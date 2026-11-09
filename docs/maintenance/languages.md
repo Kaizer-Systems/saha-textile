@@ -3,7 +3,7 @@ title: Languages
 description: How the shop serves English and Bengali, and the rules for Bengali text, names and numbers.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - apps/storefront/src/app/core/i18n/locale.ts

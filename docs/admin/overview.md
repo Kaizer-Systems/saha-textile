@@ -4,7 +4,7 @@ wide: true
 description: What the admin application is, how it is organized, and what to check before changing it.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/admin/src/app
     - apps/api/src/admin
@@ -41,24 +41,27 @@ flowchart LR
 
 ## Capabilities
 
-| Capability       | How it works                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| Route graph      | Authentication, two shells, a fallback and about 30 lazy feature families             |
-| Admin shell      | Header, sidebar, footer, loader and page wrapper                                      |
-| Authentication   | Cookie sessions, password and PIN sign-in, recovery, invites and the idle lock        |
-| Account Security | PIN, password and session management at `/account`                                    |
-| Authority        | Roles, operators and role assignments against the permission registry                 |
-| Customers        | List, create, edit, soft delete, recycle bin, restore and customer ledger             |
-| Catalogue        | Product form, old-address redirects, add-on templates, FAQ, and questions and answers |
-| Media            | Media library, home banners, review moderation and the YouTube field                  |
-| Notifications    | Channel switches, usage and templates                                                 |
-| Tables and forms | Shared search, pagination, selection, actions and permission-aware UI                 |
+| Capability       | How it works                                                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route graph      | Authentication, two shells, a fallback and about 30 lazy feature families                                                                             |
+| Admin shell      | Header, sidebar, footer, loader and page wrapper                                                                                                      |
+| Authentication   | Cookie sessions, password and PIN sign-in, recovery, invites and the idle lock                                                                        |
+| Account Security | PIN, password and session management at `/account`                                                                                                    |
+| Authority        | Roles, operators and role assignments against the permission registry                                                                                 |
+| Customers        | List, create, edit, soft delete, recycle bin, restore and customer ledger                                                                             |
+| Catalogue        | Product form with Save and next, categories, attributes with swatch pictures, old-address redirects, add-on templates, FAQ, and questions and answers |
+| Media            | Media library, home banners, review moderation and the YouTube field                                                                                  |
+| Content          | Blog posts, categories and tags; launch and sale events                                                                                               |
+| Search           | Search words and Storefront settings › Search                                                                                                         |
+| Settings         | Brand Kit, Stores, Mailboxes and the inbox                                                                                                            |
+| Notifications    | Channel switches, usage and templates                                                                                                                 |
+| Tables and forms | Shared search, pagination, selection, actions and permission-aware UI                                                                                 |
 
 Other feature routes render from JSON data. See [Data sources](./state-and-data#data-sources).
 
 ## Feature families
 
-The content shell lazy-loads: dashboard, account, role, admin user, customer, customer ledger, attribute, measurement, add-on template, tag, redirect, blog, page, tax, store, category, shipping, media, coupon, product, currency, points, settings, order status, orders, theme options, home banners, reviews, FAQ, notifications, refunds, and questions and answers.
+The content shell lazy-loads: dashboard, account, role, admin user, customer, customer ledger, attribute, measurement, add-on template, tag, redirect, blog, event, page, tax, category, shipping, media, coupon, product, currency, points, settings, storefront settings, search words, order status, orders, theme options, home banners, reviews, FAQ, notifications, refunds, and questions and answers.
 
 Most families have create and edit routes. Orders add details, create-order and checkout routes. Blog adds category and tag routes.
 
@@ -90,7 +93,7 @@ Hiding an action improves usability but does not secure it. The API authenticate
 
 ## Limitations
 
-- Orders, categories, attributes, tags, coupons, pages, blog, settings and other families read JSON data.
-- On the home page, the Total Stores tile, Top Stores panel, Latest Blogs panel and the chart's commission line read JSON data. The other widgets read the API.
+- Orders, product tags, coupons, pages, general settings and other families read JSON data.
+- On the home page, only the chart's commission line reads JSON data. The other widgets, including Total Stores and Latest Blogs, read the API.
 - Many list actions and form submissions in those families have no backend.
 - The create-order flow uses a client cart and does not place an order.

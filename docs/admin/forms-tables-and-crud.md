@@ -4,7 +4,7 @@ wide: true
 description: Conventions for operator forms, data tables, validation and actions.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
     - apps/admin/src/app/shared/ui/form-fields
@@ -25,7 +25,7 @@ The shared table coordinates:
 - page size and page number;
 - sort field and direction;
 - optional date-range filters;
-- checkbox selection and bulk-item output;
+- checkbox selection and bulk-item output, plus `bulkActions` buttons shown while a ticked row is on the page and the operator holds each button's permission;
 - row-action output;
 - rating/date/currency presentation;
 - loading-state resets;
@@ -53,7 +53,7 @@ Large forms such as product editing combine:
 - reactive `FormGroup`, `FormControl`, and `FormArray` structures;
 - route-derived create/edit mode;
 - query-backed dropdowns;
-- category, tag, store, attribute, and tax data;
+- category, tag, attribute, and tax data;
 - rich-text editing;
 - date ranges;
 - image selection, where the media modal uploads directly to Spaces and shows the preview once the worker finishes;
@@ -88,7 +88,7 @@ Every real mutation UI should make these states explicit:
 
 ## Bulk actions
 
-Bulk delete, approval, publish, and status actions require more than a selected-ID array:
+The blog list's **Go Live** and **Take off shop** buttons follow this pattern. Bulk delete, approval, publish, and status actions require more than a selected-ID array:
 
 - explicit scope and item count;
 - confirmation for destructive operations;
@@ -108,7 +108,7 @@ Bulk delete, approval, publish, and status actions require more than a selected-
 
 ## Product form rules
 
-The product form writes through `POST /admin/catalog/products/:idOrSlug`.
+The product form writes through `POST /admin/catalog/products/:idOrSlug`. Its Go Live button and the product list both call `POST /admin/catalog/products/:idOrSlug/go-live`, which lists what stops the product going live. **Save and next** saves, then opens the next product from the list the form was opened from, or the list after the last one.
 
 - Product status is `live` or `disabled` here. Discontinuing is a separate action that writes a `410`, or a `301` when a live replacement is named.
 - A product that has ever been live keeps its SKUs.

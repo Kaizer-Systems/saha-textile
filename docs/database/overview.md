@@ -3,7 +3,7 @@ title: Database Overview
 description: How MongoDB is used, what the adapter holds, and where to find database documentation.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/contracts/src
@@ -33,6 +33,11 @@ Models cover:
 - Content and media: media assets and roles, content blocks, site settings, FAQ, questions, reviews and rating aggregates.
 - Inventory: the stock ledger and FIFO cost layers.
 - Merchandising: stock alerts and weekly insight sets.
+- Search: search totals, result clicks and the admin's search words.
+- Blog: posts, categories and tags.
+- Events: launch and sale events.
+- Stores and mail: store locations, connected mailboxes, mailbox access lists and Contact Us messages.
+- Wishlist: each signed-in customer's saved products.
 
 ## Database documentation
 
@@ -57,5 +62,5 @@ Enum values in Mongoose schemas derive from shared contract and domain option se
 
 - Payment, shipment, return, refund and search-outbox records have no collections. Schema Nebula shows them as planned.
 - Some models use `Mixed` nested fields, which are flagged as temporary in the catalogue.
-- MongoDB integration tests run only with `RUN_DB_IT=1`.
+- MongoDB integration tests run only with `RUN_DB_IT=1`. `pnpm coverage`, which CI runs, sets it.
 - Backup and restore procedures are planned. See [Operations overview](/operations/overview).

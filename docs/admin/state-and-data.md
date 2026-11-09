@@ -4,7 +4,7 @@ wide: true
 description: State ownership, data sources, interceptors and runtime configuration in the admin application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -31,10 +31,10 @@ The admin application combines server-state queries, application stores, a clien
 
 ## Data sources
 
-| Source | Features                                                                                                                                                                                                                                                       |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API    | Auth, roles, operators, customers, notification settings, media library, banners, reviews, YouTube, product form, redirects, add-on templates, FAQ, questions, home page widgets                                                                               |
-| JSON   | Attributes, blog, cart, categories, countries, coupons, currencies, customer ledger, home page demo widgets, navigation badges, notification inbox, order status, orders, pages, points, refunds, settings, shipping, states, stores, tags, tax, theme options |
+| Source | Features                                                                                                                                                                                                                                                                                                                                       |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API    | Auth, roles, operators, customers, notification settings, media library, banners, reviews, YouTube, product form, categories, attributes, redirects, add-on templates, FAQ, questions, blog posts, categories and tags, launch and sale events, stores, mailboxes and the inbox, search words, Storefront settings › Search, home page widgets |
+| JSON   | Cart, countries, coupons, currencies, customer ledger, home page demo widgets, navigation badges, notification inbox, order status, orders, pages, points, product tags, refunds, settings, shipping, states, tax, theme options                                                                                                               |
 
 ## Read path
 

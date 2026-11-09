@@ -3,7 +3,7 @@ title: Frontend Path
 description: Reading path for storefront and admin developers.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app
@@ -38,9 +38,9 @@ Use this path for work in the Angular storefront, the Angular admin application,
 ## Frontend stack
 
 - The storefront uses Analog file-based pages under `apps/storefront/src/app/pages`.
-- Classic NgRx holds heavily mutated client state: cart, wishlist and compare.
+- Classic NgRx holds the cart, which mirrors the API's cart in the browser.
 - TanStack Angular Query holds server state, with feature queries under `data-access/queries`.
-- NgRx SignalStore holds small application state such as session and settings.
+- NgRx SignalStore holds small application state such as session and settings, and the wishlist and compare lists.
 - Both applications use Transloco for interface text, with English and Bengali translations.
 - Some services read the API and others read JSON files. Check the service method behind your page before changing data behaviour. The storefront and admin state pages list which is which.
 

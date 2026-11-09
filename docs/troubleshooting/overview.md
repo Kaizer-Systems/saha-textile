@@ -3,7 +3,7 @@ title: Troubleshooting Overview
 description: Common local problems and how to fix them.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - docs/getting-started/local-development.md

@@ -3,7 +3,7 @@ title: Backend Path
 description: Reading path for API, contract, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src
@@ -21,11 +21,12 @@ The backend is a NestJS API on Fastify. It includes:
 
 - Authentication for storefront customers and admin operators, using cookie sessions.
 - Catalogue, search, cart, order, currency and promotion modules.
+- Blog, launch and sale events, stores, Gmail mailboxes and wishlist modules.
 - Media, banner, YouTube and review modules, with a BullMQ worker for background jobs.
 - Privacy, consent and audit modules.
-- A hexagonal core in `packages/core-domain`, with adapters for MongoDB, Spaces, MSG91, Cloudflare and other providers.
+- A hexagonal core in `packages/core-domain`, with adapters for MongoDB, Spaces, MSG91, Cloudflare, Gmail and other providers.
 
-Payment, shipping and exchange-rate adapters are not part of the API. The ports exist in the core domain.
+The CCAvenue payment adapter is bound, and no route calls it yet. Shipping and exchange-rate adapters do not exist; their ports are in the core domain.
 
 ## Read in this order
 

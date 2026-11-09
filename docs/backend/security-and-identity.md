@@ -5,7 +5,7 @@ description: Authentication, cookie sessions, CSRF, authorization and identity f
 search_keywords: 'cookies csrf st_access st_refresh st_admin_access otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin
@@ -273,6 +273,10 @@ In local development `OTP_LOCAL_FIXED_CODE` can fix the code. It is refused in p
 
 `packages/core-domain/src/auth/rate-limit-policy.ts` defines limits per action. Login and OTP verification count failures, so honest customers behind a shared carrier address do not use up a budget. Actions that spend a real resource, such as sending a code, count every attempt. Identifier-scoped refusals keep the generic error, so an attacker cannot time them. Address-scoped refusals return 429 with `Retry-After`.
 
+## Mailbox tokens
+
+A connected Gmail mailbox's refresh token is encrypted with `MAILBOX_TOKEN_KEY` before it is stored, and it never appears in a request, a response or a log. Only mailboxes on `MAILBOX_DOMAIN` can be connected. An operator opens a mailbox only when its access list names them; `mailbox.manage` changes those lists.
+
 ## Secrets at startup
 
 A strict deployment refuses to start with unsafe secrets or settings. See [Deployment hardening](./composition-and-adapters#deployment-hardening).
@@ -299,6 +303,6 @@ Security audit records identify the request, session, actor, action, target, dec
 
 ## Limitations
 
-- Pending-intent continuation is partial: a guest's stock-alert request replays after sign-in, while wishlist and checkout intent do not.
+- Pending-intent continuation is partial: a guest's stock-alert request replays after sign-in and a guest's saved hearts merge into the account, while checkout intent does not.
 - `POST /orders` has no idempotency key.
 - Hosted access to the developer portal is not designed yet.

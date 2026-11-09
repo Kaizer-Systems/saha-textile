@@ -3,7 +3,7 @@ title: Release Pipeline
 description: How a change moves from a branch to production, and how production runs the exact images staging tested.
 status: scaffolded
 audience: [operator, backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - .github/workflows/ci.yml
     - .github/workflows/publish-images.yml

@@ -4,7 +4,7 @@ wide: true
 description: What the storefront is, how it is organized, and what to check before changing it.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -50,7 +50,9 @@ The page layer stays thin. A route identifies the customer journey and composes 
 | First paint    | The header menu renders on the server; product pages show a skeleton while loading                                                     |
 | Purchase popup | `/catalog/recent-purchases` shows real sales from the last day, and stays hidden without any                                           |
 | Product media  | Cards and the gallery use `ResolvedImage` with `srcset`, and banners use `<picture>`                                                   |
-| Cart           | Classic NgRx state with browser persistence                                                                                            |
+| Cart           | Held and priced by the API at `/cart/current`; classic NgRx mirrors it in the browser                                                  |
+| Saved lists    | Wishlist hearts saved to the account (a session cookie for guests), and a compare page                                                 |
+| Content        | Blog, launch and sale countdowns with the event popup, and Contact Us with store cards and a message form                              |
 | Authentication | Verified signup, email or phone sign-in, social sign-in, recovery and guarded account routes                                           |
 | Account        | Profile, addresses, sign-in methods, sessions and contact changes use the API                                                          |
 | Stock alerts   | **Notify me** on a sold-out variant, with replay after sign-in                                                                         |
@@ -93,9 +95,8 @@ A production build is an installable app on Android, desktop Chrome and Edge, an
 
 ## Limitations
 
-- The cart is client-side. It does not call the cart API, and its totals are not authoritative.
-- Checkout renders forms and totals but does not place an order or take a payment.
-- Order history, refunds, wallet, points, notifications, wishlist and compare read JSON files or client state.
+- Checkout is closed: the page says so, and nothing places an order or takes a payment.
+- Order history, refunds, wallet, points and notifications read JSON files.
 - The newsletter form has no subscribe endpoint.
 - Offline catalogue, offline cart and image caching are planned. The service worker has no `fetch` listener until then.
 

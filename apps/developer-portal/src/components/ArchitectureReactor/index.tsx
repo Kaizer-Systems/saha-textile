@@ -81,7 +81,7 @@ const BOUNDARIES: Boundary[] = [
 		sub: 'Mongo · MSG91 · Meili · Spaces',
 		angle: 150,
 		doc: '/backend/composition-and-adapters',
-		detail: 'Adapters translate a port into a concrete provider. The Mongo adapter is bound today; MSG91 notifications, Meilisearch, Spaces and the payment gateways are configured or planned — not yet wired.',
+		detail: 'Adapters translate a port into a concrete provider. MongoDB, MSG91, Meilisearch, Spaces, sharp, BullMQ, Cloudflare, YouTube and Gmail are bound. The CCAvenue adapter is bound and no route calls it yet. Shipping and exchange rates have no adapter.',
 	},
 	{
 		id: 'external',

@@ -4,7 +4,7 @@ wide: true
 description: Category, search, product-detail, semantic option, variant, add-on, bundle, pricing, and stock journey.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/pages/collections
     - apps/storefront/src/app/pages/product/[slug].page.ts
@@ -40,7 +40,7 @@ sequenceDiagram
     Catalog-->>SF: Validated line identity + computed display values
 ```
 
-Category pages, cards, product pages and search read the catalogue API. The cart is a client-side store.
+Category pages, cards, product pages and search read the catalogue API. The API holds the cart and prices it.
 
 ## Semantic option roles
 
@@ -127,10 +127,12 @@ A relation links a product to another product for discovery, and changes neither
 
 `related` and `upsell` are always curated by hand. `cross_sell` and `bought_together` can also come from the weekly insight job, which replaces its rows as one set. Public reads return only live relations inside their schedule, in rank order. Discontinuing a product disables every relation that points to it, in the same transaction as the product change.
 
+When fewer than six related products are picked, the product page tops **You may also like** up with live products from the product's own category, then its parents. **Trending** beside each product comes from `GET /catalog/products/:idOrSlug/trending`: trending items in the product's categories, topped up with its bestsellers.
+
 ## Reviews, questions and FAQ
 
-- **Reviews.** A customer can review a product they received. There is one review per customer, product and order, with up to five photos. A review stays pending until an operator decides. Approve publishes it and its photos. Reject deletes the photos. Public ratings count approved reviews only, and the decision and the rating recount commit in one transaction. Only an order with status `delivered` counts as a purchase.
-- **Questions.** Anyone can ask, with a name and email. The email stays in the admin view, and "stay anonymous" hides the name in public. A repeat of a pending question returns the first one. Only answered questions are public, and answering sends the `product_question_answered` email.
+- **Reviews.** A customer can review a product they received. There is one review per customer, product and order, with up to five photos. A review stays pending until an operator decides; an edit by its author sends it back to pending. Approve publishes it and its photos. Reject deletes the photos. Public ratings count approved reviews only, and the decision and the rating recount commit in one transaction. Only an order with status `delivered` counts as a purchase.
+- **Questions.** Anyone can ask, with a name and email. The email stays in the admin view, and "stay anonymous" hides the name in public. A repeat of a pending question returns the first one. Only answered questions are public, and answering sends the `product_question_answered` email. An operator can also reject or delete a question.
 - **FAQ.** An entry is global, or targets categories, products or both. A page shows the global entries plus those matching it, each once.
 
 ## Cart-line signature

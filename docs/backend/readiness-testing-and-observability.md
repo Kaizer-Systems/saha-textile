@@ -4,7 +4,7 @@ wide: true
 description: Health endpoints, logging, metrics, test layers and the backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -24,13 +24,13 @@ This page describes the API's health endpoints, logging, metrics and test layers
 
 ## Health endpoints
 
-| Probe           | Question                           | Dependencies | Deployment action                    |
-| --------------- | ---------------------------------- | ------------ | ------------------------------------ |
-| `/health/live`  | Is the process running?            | None         | Restart only when failing            |
-| `/health/ready` | Can this instance receive traffic? | MongoDB      | Remove from traffic, block promotion |
-| `/health`       | Alias of `/health/live`            | None         | Prefer `/health/live`                |
+| Probe           | Question                           | Dependencies                         | Deployment action                    |
+| --------------- | ---------------------------------- | ------------------------------------ | ------------------------------------ |
+| `/health/live`  | Is the process running?            | None                                 | Restart only when failing            |
+| `/health/ready` | Can this instance receive traffic? | MongoDB, Redis; search reported only | Remove from traffic, block promotion |
+| `/health`       | Alias of `/health/live`            | None                                 | Prefer `/health/live`                |
 
-A MongoDB outage does not stop the process. `/health/ready` returns `503` while it lasts, so an orchestrator does not restart healthy containers.
+A MongoDB or Redis outage does not stop the process. `/health/ready` returns `503` while it lasts, so an orchestrator does not restart healthy containers. A search outage shows in the reply but does not return `503`, because the shop lists from MongoDB without it. A deploy still waits for search to be up.
 
 Health output never contains credentials, connection strings, network details, provider responses or stack traces.
 
@@ -150,6 +150,6 @@ A backend capability is complete when:
 
 ## Limitations
 
-- CI runs lint and type checks. It does not run tests, integration suites or Playwright.
-- Readiness does not check Redis, Meilisearch or Spaces.
+- CI runs lint, type checks, the tests at 100% coverage against MongoDB, the production builds and the browser suite on those builds. It does not deploy.
+- Readiness does not check Spaces.
 - The API exports structured logs only. It has no metrics endpoint.

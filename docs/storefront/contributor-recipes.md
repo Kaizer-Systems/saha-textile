@@ -3,7 +3,7 @@ title: Storefront Contributor Recipes
 description: Step-by-step recipes for routes, server queries, client state, translations and server-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features

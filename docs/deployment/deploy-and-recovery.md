@@ -3,7 +3,7 @@ title: Deploy and Recovery
 description: Release folders, the side-by-side deploy, rollback, first run, secrets, backups, restore and monitoring.
 status: scaffolded
 audience: [operator, backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - docker/production/README.md
     - docker/production/bin/lib.sh

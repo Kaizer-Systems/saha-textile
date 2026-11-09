@@ -3,7 +3,7 @@ title: Backend Platform Atlas
 description: Interactive map of API request paths, and how the backend layers fit together.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 wide: true
 source_of_truth:
     - apps/api/src
@@ -60,15 +60,15 @@ A change is in the wrong layer if a controller imports a provider SDK, core impo
 
 ## Capabilities by layer
 
-| Layer              | Contains                                                                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Fastify and NestJS | Helmet, proxy and client-IP handling, request ids, redacted logs, safe errors, CORS, rate limiting, compression, cookies, CSRF, health probes, OpenAPI |
-| HTTP modules       | Authentication, account self-service, administration, catalogue, media, cart, orders, currency, promotions, privacy                                    |
-| Contracts          | Zod schemas for identity, catalogue, media, inventory, content and commerce                                                                            |
-| Core domain        | Ports, password, PIN, signup and permission policy, pricing, listing rules, badges, media processing                                                   |
-| Mongo adapter      | Models, mappers, indexes, repositories, migrations, seeds and `MongoTransactionManager`                                                                |
-| Other adapters     | Google and Facebook verification, MSG91, Spaces, sharp, BullMQ, Cloudflare, YouTube                                                                    |
-| Worker             | Image processing, garbage collection, YouTube refresh, stock alerts, weekly insights                                                                   |
+| Layer              | Contains                                                                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fastify and NestJS | Helmet, proxy and client-IP handling, request ids, redacted logs, safe errors, CORS, rate limiting, compression, cookies, CSRF, health probes, OpenAPI         |
+| HTTP modules       | Authentication, account self-service, administration, catalogue, media, blog, events, stores, mailboxes, wishlist, cart, orders, currency, promotions, privacy |
+| Contracts          | Zod schemas for identity, catalogue, media, inventory, content and commerce                                                                                    |
+| Core domain        | Ports, password, PIN, signup and permission policy, pricing, listing rules, badges, media processing, blog, event, store and mailbox rules                     |
+| Mongo adapter      | Models, mappers, indexes, repositories, migrations, seeds and `MongoTransactionManager`                                                                        |
+| Other adapters     | Google and Facebook verification, MSG91, Spaces, sharp, BullMQ, Cloudflare, YouTube, CCAvenue, Gmail                                                           |
+| Worker             | Image processing, garbage collection, YouTube refresh, stock alerts, weekly insights                                                                           |
 
 ## Request analysis framework
 
@@ -88,4 +88,5 @@ For any backend change, answer these questions in order:
 
 - Shipping and exchange-rate ports have no adapter. The CCAvenue payment adapter is bound, and no route calls it.
 - Order creation has no idempotency, stock reservation or payment step.
-- Readiness checks MongoDB only.
+- Readiness fails only on MongoDB or Redis. Search is reported but does not fail it.
+- Launch and sale events start and end from a timer inside each API process, not from the worker. A conditional write keeps two API copies from both acting on the same moment.

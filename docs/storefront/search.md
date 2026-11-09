@@ -4,7 +4,7 @@ wide: true
 description: How the menu-bar search, the Search page and the suggestion box work, how the admin's search words and Storefront settings shape results, and what search records.
 status: implemented
 audience: [beginner, frontend, backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/search-suggest
     - apps/storefront/src/app/layout/header/widgets/search

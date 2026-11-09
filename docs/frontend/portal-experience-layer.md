@@ -3,7 +3,7 @@ title: Portal Experience Layer
 description: The developer portal's own interactive layer and its code map.
 status: implemented
 audience: [frontend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/project-progress.mdx

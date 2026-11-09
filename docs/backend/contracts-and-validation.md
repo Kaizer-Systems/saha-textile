@@ -4,7 +4,7 @@ wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
@@ -56,6 +56,11 @@ A signup-finalisation request must not accept `role`, verified identifiers, prov
 | `auth-internal.ts`                                                                     | OTP, OAuth, reset, invite and rate-limit storage                  | Codes and tokens are represented by hashes                   |
 | `consent.ts`, `audit.ts`, `notification.ts`                                            | Consent, audit, notification settings and outbox                  | Records are append-only                                      |
 | `permission.ts`, `role.ts`                                                             | Permission registry, roles, assignments                           | Grants normalize against the registry                        |
+| `blog.ts`                                                                              | Blog posts, categories and tags                                   | A post goes live only when every language is complete        |
+| `shop-event.ts`                                                                        | Launch and sale events, sale rules, the public event feed         | Staff enter times in IST; the server clock decides           |
+| `store-location.ts`                                                                    | The shop's stores for Contact Us                                  | Text is per language                                         |
+| `mailbox.ts`                                                                           | Mailboxes, access lists, inbox reads and sends, Contact Us        | No Gmail token appears in any request or response            |
+| `wishlist.ts`, `search-term.ts`, `dashboard.ts`                                        | Saved products, admin search words, admin home figures            | The wishlist owner comes from the session                    |
 
 `AttributeValueType`, `ProductRelationTargetType`, `AuthRateLimitScope` and `AuthRateLimitAction` are named exports, so Mongoose schemas derive their allowed values from them instead of copying lists.
 

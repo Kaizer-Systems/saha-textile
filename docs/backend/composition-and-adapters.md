@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapters and deployment hardening.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -35,6 +35,13 @@ flowchart TD
     App --> Storefront["StorefrontModule"]
     App --> Security["SecurityModule"]
     App --> Privacy["PrivacyModule"]
+    App --> Media["MediaModule"]
+    App --> CartLines["CartLinesModule"]
+    App --> Blog["BlogModule"]
+    App --> Events["EventsModule"]
+    App --> Stores["StoreLocationsModule"]
+    App --> Mailboxes["MailboxesModule"]
+    App --> Wishlist["WishlistModule"]
 
     Persistence --> MongoRepos["Original commerce repositories"]
 	Persistence --> AuthRepos["Auth, pending-proof + consent repositories"]
@@ -42,11 +49,13 @@ flowchart TD
     Persistence --> Transaction["MongoTransactionManager"]
     Persistence --> AuthAdapter["Argon2JwtAuth"]
     Persistence --> MongoConnection["Mongo connection lifecycle"]
+    Persistence --> Payments["INR payment gateway factory (CCAvenue | unavailable)"]
+    Persistence --> Mail["MailboxPort factory (Gmail | unavailable)"]
 ```
 
 `AppModule.forRoot(config)` takes validated configuration and passes it to every module, so a test can compose the application with values that are not in the environment. `apps/api/src/bootstrap.ts` builds the application without opening a port. `main.ts` adds only the listener.
 
-`PersistenceModule` binds repositories and external adapters. `MediaModule` and `CatalogModule` consume them.
+`PersistenceModule` binds repositories and external adapters. The feature modules consume them.
 
 ## Dependency-injection bindings
 
@@ -60,6 +69,8 @@ Tokens are declared in `apps/api/src/infra/tokens.ts`.
 | Authorization repositories          | `MongoRoleRepository`, `MongoAdminUserRoleAssignmentRepository`                                                                                                                           |
 | Governance repositories             | `MongoAuditLogRepository`, `MongoConsentRepository`, notification settings, templates and outbox                                                                                          |
 | Media repositories                  | Media assets, media roles, content blocks, site settings, reviews                                                                                                                         |
+| Shop repositories                   | Blog posts, categories and tags, shop events and the sale price book, store locations, wishlist, search analytics, search words, admin dashboard                                          |
+| Mailbox repositories                | `MAILBOX_REPOSITORY`, `MAILBOX_ACCESS_REPOSITORY`, `CONTACT_MESSAGE_REPOSITORY`; `MAILBOX_TOKEN_STORE` keeps refresh tokens encrypted with the configured key                             |
 | `TRANSACTION_MANAGER`               | `MongoTransactionManager`                                                                                                                                                                 |
 | `AUTH_PORT`                         | `Argon2JwtAuth`                                                                                                                                                                           |
 | `SEARCH_PORT`                       | `MeilisearchSearch`                                                                                                                                                                       |
@@ -68,6 +79,9 @@ Tokens are declared in `apps/api/src/infra/tokens.ts`.
 | `MEDIA_JOB_QUEUE`                   | `BullMqMediaJobQueue` on Redis                                                                                                                                                            |
 | `CDN_PURGE`                         | `CloudflareCdnPurge` when zone and token are set, otherwise `LogOnlyCdnPurgeAdapter`                                                                                                      |
 | `YOUTUBE_PORT`                      | `YouTubeDataApi` when `YOUTUBE_API_KEY` is set, otherwise `UnavailableYouTubeAdapter`                                                                                                     |
+| `INR_PAYMENT_GATEWAY`               | `CcavenuePaymentGateway` when CCAvenue is configured, otherwise `UnavailablePaymentGateway`                                                                                               |
+| `MAILBOX_PORT`                      | `GmailMailbox` when the Google client and its redirect address are set, otherwise `UnavailableMailboxAdapter`                                                                             |
+| `READINESS_PROBES`                  | Redis (required) and search (reported only) for `/health/ready`                                                                                                                           |
 
 `OAuthService` builds `GoogleIdTokenVerifier` and `FacebookTokenVerifier` from `@saha-textile/adapters-auth`. The worker adds `SharpImageCodec` from `@saha-textile/adapters-image-sharp`.
 
@@ -144,12 +158,14 @@ Cookie names default to `st_access`, `st_refresh`, `st_csrf`, `st_guest` and `st
 - The notification provider is not `msg91`, its key is missing, or `OTP_LOCAL_FIXED_CODE` is set.
 - Facebook credentials are half set.
 - MongoDB has no credentials, Redis has no password, or Spaces and its HTTPS CDN URL are not configured.
+- `MEILISEARCH_HOST` is unset, or `MEILISEARCH_API_KEY` is missing, a placeholder or shorter than 16 characters.
+- CCAvenue is configured with a production host on staging, or with a test host in production.
 
 The local stack sets `DEPLOY_ENV=local` to opt out.
 
 ## Connection lifecycle and readiness
 
-A failed MongoDB connection at startup is logged and does not stop the process. `/health/live` keeps answering and `/health/ready` returns `503` until the connection is available.
+A failed MongoDB connection at startup is logged and does not stop the process. `/health/live` keeps answering and `/health/ready` returns `503` until MongoDB and Redis are available. Search is reported in the readiness reply but does not fail it.
 
 ## Adding an adapter safely
 

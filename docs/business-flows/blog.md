@@ -3,7 +3,7 @@ title: Blog
 description: How blog posts, categories and tags are written in the admin, checked for every language, published and read by the shop.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - packages/contracts/src/blog.ts
     - packages/core-domain/src/blog
@@ -59,6 +59,8 @@ Live posts join `GET /catalog/sitemap` once per language, so the sitemap pairs e
 ## Admin
 
 The admin's blog screens read and write the API. The post form uses the shared Language switch for every language-bound field (title, summary, article, byline, cover alt, title and caption, search title and description); the address, pictures, categories, tags, featured, sticky and publish date are shared. Blog categories reuse the category screen without the product-only fields; blog tags reuse the tag screen with an address field.
+
+The post list has two bulk buttons. **Go Live** runs the form's check on each ticked post and names what stops any of them. **Take off shop** turns ticked live posts back into drafts. Both ask for confirmation first.
 
 ## Shop
 

@@ -3,7 +3,7 @@ title: Deployment Overview
 description: How the platform is packaged and configured for deployment.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml
@@ -65,7 +65,7 @@ pnpm stack:down
 
 `pnpm production:proof` builds the images and runs the whole stack on one machine with throwaway secrets. It uses a local registry for GHCR, SeaweedFS for Spaces and a local CA for Cloudflare's certificates. `pnpm production:proof clean` removes it.
 
-A deploy swaps each app side by side: the new container starts next to the old one, takes traffic once healthy, and the old one then stops gently, so visitors see no gap. Nginx reloads its config in place.
+A deploy swaps each app side by side: the new container starts next to the old one, takes traffic once healthy, and the old one then stops gently, so visitors see no gap. Nginx reloads its config in place. The API and storefront run two copies each, so one copy crashing or hanging stops nothing. When an app is down anyway, Nginx answers with that app's own back-in-a-moment page. See [Deploy and recovery](./deploy-and-recovery).
 
 `.github/workflows/publish-images.yml` runs on a merge into `staging`: CI, then the proof, then it pushes four images to GHCR, tagged by commit and by Git tree hash.
 

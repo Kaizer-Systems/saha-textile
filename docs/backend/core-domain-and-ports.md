@@ -4,7 +4,7 @@ wide: true
 description: Dependency direction, business logic, ports and swappability.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
@@ -37,13 +37,19 @@ Imports point inward. Runtime calls flow outward only through a port that compos
 
 ## Domain modules
 
-| Folder     | Contains                                                                                                                                              |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth/`    | Password, PIN and signup policy, rate-limit policy, effective permissions, client-address scope                                                       |
-| `catalog/` | Card price, badges, listing filters and facets, product visibility, relations, legacy address resolution, measurements, stock alerts, weekly insights |
-| `media/`   | Ingest policy, derivative plan, asset processing, image resolution, garbage collection, review photos, YouTube feed, storage keys, size roles         |
-| `pricing/` | Money, discounts and PayPal gross-up                                                                                                                  |
-| `ports/`   | Repository and provider interfaces                                                                                                                    |
+| Folder       | Contains                                                                                                                                              |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth/`      | Password, PIN and signup policy, rate-limit policy, effective permissions, client-address scope                                                       |
+| `catalog/`   | Card price, badges, listing filters and facets, product visibility, relations, legacy address resolution, measurements, stock alerts, weekly insights |
+| `media/`     | Ingest policy, derivative plan, asset processing, image resolution, garbage collection, review photos, YouTube feed, storage keys, size roles         |
+| `pricing/`   | Money, discounts and PayPal gross-up                                                                                                                  |
+| `blog/`      | Go Live gaps, address and excerpt rules, reading time, article HTML cleaning                                                                          |
+| `events/`    | Launch and sale event rules, start and end times, sale price resolution                                                                               |
+| `stores/`    | Store location rules for Contact Us                                                                                                                   |
+| `mailbox/`   | Mailbox access rights, folder labels, reply subjects                                                                                                  |
+| `dashboard/` | Admin home periods and stock states                                                                                                                   |
+| `payments/`  | Deciding a payment result from the gateway's reply                                                                                                    |
+| `ports/`     | Repository and provider interfaces                                                                                                                    |
 
 ## Pricing functions
 
@@ -62,28 +68,34 @@ These functions do not form a checkout engine. Tax, promotion stacking, shipping
 
 ### Repositories
 
-| Port                                                                                              | Capability                                      |
-| ------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `ProductRepository`, `CategoryRepository`                                                         | Products and categories                         |
-| `ProductVariantRepository`, `ProductBundleRepository`, `ProductRelationRepository`                | Variants, bundles and relations                 |
-| `CategoryPlacementRepository`, `CategoryFacetConfigRepository`, `AttributeDefinitionRepository`   | Taxonomy, facets and attributes                 |
-| `SeoRedirectRepository`, `SeoRouteRepository`, `AddonTemplateRepository`                          | Old addresses, head data and add-on templates   |
-| `StockAlertRepository`, `ProductInsightSetRepository`                                             | Stock alerts and weekly insights                |
-| `SearchAnalyticsRepository`                                                                       | Search totals and search-result clicks          |
-| `SearchTermRepository`                                                                            | The admin's search words (`searchDictionary`)   |
-| `FaqRepository`, `ProductQuestionRepository`, `ReviewRepository`                                  | FAQ, questions and reviews                      |
-| `InventoryRepository`, `InventoryCostLayerRepository`                                             | Stock ledger and FIFO cost layers               |
-| `CartRepository`, `OrderRepository`, `CurrencyRepository`, `PromotionRepository`                  | Commerce records                                |
-| `CustomerRepository`, `AdminUserRepository`                                                       | Public account records                          |
-| `CustomerAuthRepository`, `AdminUserAuthRepository`                                               | Credentials and account security state          |
-| `AuthSessionRepository`, `OtpChallengeRepository`, `OAuthStateRepository`                         | Sessions and challenges                         |
-| `PasswordResetTokenRepository`, `EmailVerificationTokenRepository`, `AdminInviteRepository`       | Single-use tokens                               |
-| `AuthRateLimitRepository`, `AuthIdentityRepository`                                               | Rate-limit counters and provider identity links |
-| `PendingSignupRepository`, `PendingContactChangeRepository`                                       | Short-lived proof state                         |
-| `RoleRepository`, `AdminUserRoleAssignmentRepository`                                             | Roles and assignments                           |
-| `AuditLogRepository`, `ConsentRepository`                                                         | Audit trail and consent history                 |
-| `NotificationSettingsRepository`, `NotificationTemplateRepository`, `MessageOutboxRepository`     | Notification settings, templates and outbox     |
-| `MediaAssetRepository`, `MediaRoleRepository`, `ContentBlockRepository`, `SiteSettingsRepository` | Media, banners and settings                     |
+| Port                                                                                              | Capability                                           |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `ProductRepository`, `CategoryRepository`                                                         | Products and categories                              |
+| `ProductVariantRepository`, `ProductBundleRepository`, `ProductRelationRepository`                | Variants, bundles and relations                      |
+| `CategoryPlacementRepository`, `CategoryFacetConfigRepository`, `AttributeDefinitionRepository`   | Taxonomy, facets and attributes                      |
+| `SeoRedirectRepository`, `SeoRouteRepository`, `AddonTemplateRepository`                          | Old addresses, head data and add-on templates        |
+| `StockAlertRepository`, `ProductInsightSetRepository`                                             | Stock alerts and weekly insights                     |
+| `SearchAnalyticsRepository`                                                                       | Search totals and search-result clicks               |
+| `SearchTermRepository`                                                                            | The admin's search words (`searchDictionary`)        |
+| `FaqRepository`, `ProductQuestionRepository`, `ReviewRepository`                                  | FAQ, questions and reviews                           |
+| `InventoryRepository`, `InventoryCostLayerRepository`                                             | Stock ledger and FIFO cost layers                    |
+| `CartRepository`, `OrderRepository`, `CurrencyRepository`, `PromotionRepository`                  | Commerce records                                     |
+| `CustomerRepository`, `AdminUserRepository`                                                       | Public account records                               |
+| `CustomerAuthRepository`, `AdminUserAuthRepository`                                               | Credentials and account security state               |
+| `AuthSessionRepository`, `OtpChallengeRepository`, `OAuthStateRepository`                         | Sessions and challenges                              |
+| `PasswordResetTokenRepository`, `EmailVerificationTokenRepository`, `AdminInviteRepository`       | Single-use tokens                                    |
+| `AuthRateLimitRepository`, `AuthIdentityRepository`                                               | Rate-limit counters and provider identity links      |
+| `PendingSignupRepository`, `PendingContactChangeRepository`                                       | Short-lived proof state                              |
+| `RoleRepository`, `AdminUserRoleAssignmentRepository`                                             | Roles and assignments                                |
+| `AuditLogRepository`, `ConsentRepository`                                                         | Audit trail and consent history                      |
+| `NotificationSettingsRepository`, `NotificationTemplateRepository`, `MessageOutboxRepository`     | Notification settings, templates and outbox          |
+| `MediaAssetRepository`, `MediaRoleRepository`, `ContentBlockRepository`, `SiteSettingsRepository` | Media, banners and settings                          |
+| `BlogPostRepository`, `BlogCategoryRepository`, `BlogTagRepository`                               | Blog posts, categories and tags                      |
+| `ShopEventRepository`                                                                             | Launch and sale events                               |
+| `StoreLocationRepository`                                                                         | The shop's stores                                    |
+| `WishlistRepository`                                                                              | Saved products per customer                          |
+| `MailboxRepository`, `MailboxAccessRepository`, `MailboxTokenStore`, `ContactMessageRepository`   | Mailboxes, access lists, tokens, Contact Us messages |
+| `DashboardRepository`                                                                             | Admin home figures                                   |
 
 Every repository has a Mongo implementation in `packages/adapters-db-mongo`. Inventory, cost-layer and facet repositories have no HTTP workflow.
 
@@ -102,6 +114,7 @@ Every repository has a Mongo implementation in `packages/adapters-db-mongo`. Inv
 | `CdnPurgePort`           | Purge CDN URLs                              | `CloudflareCdnPurge`, `LogOnlyCdnPurgeAdapter`           |
 | `YouTubePort`            | Read channel uploads, check a video         | `YouTubeDataApi`                                         |
 | `PaymentGatewayPort`     | Start, verify, enquire and refund a payment | `adapters-payments` (CCAvenue), bound and unused         |
+| `MailboxPort`            | Read, send and label mail in a mailbox      | `GmailMailbox` (`adapters-mail-gmail`)                   |
 | `ShippingPort`           | Obtain shipping quotes                      | None                                                     |
 | `FxRatePort`             | Fetch INR exchange rates                    | None                                                     |
 | `VideoTranscodePort`     | Queue HLS transcoding                       | None                                                     |
@@ -171,22 +184,22 @@ Decoding is the real check: a renamed file fails here, and its object is deleted
 
 ### Ingest rules
 
-| Rule                    | Value                                                    |
-| ----------------------- | -------------------------------------------------------- |
-| Accepted types          | JPEG, PNG                                                |
-| Maximum file size       | 25 MB                                                    |
-| Maximum image size      | 8000 px long edge, 50 megapixels                         |
-| Minimum short edge      | 1600 px for product and category images                  |
-| Target shape            | 3:4 product and category, 16:9 blog, 1:1 avatar and icon |
-| Review photos           | Five per review. A long edge below 500 px warns          |
-| Upload URL lifetime     | 15 minutes                                               |
-| Signed preview lifetime | 10 minutes                                               |
+| Rule                    | Value                                                              |
+| ----------------------- | ------------------------------------------------------------------ |
+| Accepted types          | JPEG, PNG                                                          |
+| Maximum file size       | 25 MB                                                              |
+| Maximum image size      | 8000 px long edge, 50 megapixels                                   |
+| Minimum short edge      | 1600 px for product and category images                            |
+| Target shape            | 3:4 product and category, 2:1 blog, 4:3 store, 1:1 avatar and icon |
+| Review photos           | Five per review. A long edge below 500 px warns                    |
+| Upload URL lifetime     | 15 minutes                                                         |
+| Signed preview lifetime | 10 minutes                                                         |
 
 An image more than 5% off its target shape receives a warning and is letterboxed on white. `GET /media/upload-rules` publishes these limits to clients.
 
 ### Size roles
 
-`SEEDED_MEDIA_ROLES` defines the sizes: `thumb`, `card`, `gallery`, `zoom`, image swatches, `share`, `feed_square`, `email_thumb`, `review_thumb`, `review_full`, `banner`, `blog`, `category_icon` and `avatar`. Operators can edit widths and quality from the admin application. Purposes, shape, fit and format are fixed in code.
+`SEEDED_MEDIA_ROLES` defines the sizes: `thumb`, `card`, `gallery`, `zoom`, image swatches, `share`, `feed_square`, `email_thumb`, `review_thumb`, `review_full`, `brand_logo`, `brand_icon`, `banner`, `blog`, `store_photo`, `category_icon` and `avatar`. Operators can edit widths and quality from the admin application. Purposes, shape, fit and format are fixed in code.
 
 Each role fits the image one of four ways: `inside` keeps the source shape, `cover` crops to fill the box, `pad` letterboxes on white, and `blur` sets the image over a blurred enlargement of itself.
 

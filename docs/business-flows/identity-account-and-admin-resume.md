@@ -4,7 +4,7 @@ wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
@@ -131,6 +131,6 @@ Complex product, order and invoice forms need enough draft metadata to rebuild c
 
 ## Limitations
 
-- Pending-intent continuation covers **Notify me** only.
-- Order history, wishlist, reviews, saved items, notifications, points and wallet are separate capabilities, and most read JSON data.
+- Pending-intent continuation covers **Notify me**; a guest's wishlist also moves into the account at sign-in.
+- Wishlist and reviews use the API. Order history, notifications, points and wallet read JSON data.
 - Reload and crash recovery for complex admin forms is not built.

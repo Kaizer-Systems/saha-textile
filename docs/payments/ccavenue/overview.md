@@ -4,7 +4,7 @@ slug: /payments/ccavenue
 description: "The INR gateway role: HDFC's documentation and the calls this project will make."
 status: scaffolded
 audience: [backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit non-seamless initiateTransaction encResp orderStatusTracker refundOrder DoWebTrans working key access code
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -47,6 +47,8 @@ Every CCAvenue document says the same three values come from the CCAvenue **M.A.
 | Working Key (also "Encryption Key") | AES key material for every request and response              | `CCAVENUE_WORKING_KEY` (server env, secret) |
 
 The API reads these with `CCAVENUE_RETURN_URL`, `CCAVENUE_BASE_URL` and `CCAVENUE_API_URL`, all catalogued in [Environment variables](/engineering-live-context/environment-variables). The merchant API also requires the server's **public IP** to be registered with CCAvenue before any API call works.
+
+Once CCAvenue is configured, a staging API refuses to start unless both hosts are CCAvenue test hosts, and a production API refuses to start with a test host. See [Deployment hardening](/backend/composition-and-adapters#deployment-hardening).
 
 The kits ship with hard-coded keys and access codes that belong to someone else. None of them has been copied into this repository; every sample on these pages uses `<MERCHANT_ID>`, `<ACCESS_CODE>`, and `<WORKING_KEY>`.
 

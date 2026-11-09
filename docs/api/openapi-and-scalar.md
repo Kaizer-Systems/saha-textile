@@ -4,7 +4,7 @@ wide: true
 description: How the OpenAPI document is produced, how to use Test Request, and its limitations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts
@@ -44,7 +44,7 @@ Do not maintain a second OpenAPI file by hand.
 
 ## Tags
 
-Each operation carries one tag from the fixed list in `apps/api/src/openapi-tags.ts`: `health`, `catalog`, `currency`, `promotions`, `cart`, `orders`, `auth`, `storefront-account`, `privacy`, `media` and `reviews`. `pnpm --filter @saha-textile/api check:openapi` rejects any other tag.
+Each operation carries one tag from the fixed list in `apps/api/src/openapi-tags.ts`: `health`, `catalog`, `currency`, `promotions`, `cart`, `orders`, `auth`, `storefront-account`, `privacy`, `media`, `reviews`, `blog`, `events`, `stores`, `mailboxes` and `wishlist`. `pnpm --filter @saha-textile/api check:openapi` rejects any other tag.
 
 ## Using Test Request
 

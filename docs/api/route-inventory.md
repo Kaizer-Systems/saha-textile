@@ -4,7 +4,7 @@ wide: true
 description: Every API route with its access rule.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -22,6 +22,11 @@ source_of_truth:
     - apps/api/src/currency
     - apps/api/src/promotions
     - apps/api/src/media
+    - apps/api/src/blog
+    - apps/api/src/events
+    - apps/api/src/stores
+    - apps/api/src/mailboxes
+    - apps/api/src/wishlist
     - packages/adapters-db-mongo/src/models/auth-session.model.ts
     - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
     - packages/adapters-db-mongo/src/models/auth-token.model.ts
@@ -218,32 +223,45 @@ A restore returns the customer to the previous status. It does not re-attach pro
 
 ## Admin catalogue routes
 
-| Method   | Route                                           | Access                      | Purpose                                                           |
-| -------- | ----------------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
-| `GET`    | `/admin/catalog/addon-templates`                | `product.index`             | List add-on templates                                             |
-| `POST`   | `/admin/catalog/addon-templates`                | `product.edit`              | Save an add-on template option                                    |
-| `DELETE` | `/admin/catalog/addon-templates/:code`          | `product.edit`              | Remove an add-on template option                                  |
-| `GET`    | `/admin/catalog/products`                       | `product.index`             | List products for the admin, every status                         |
-| `GET`    | `/admin/catalog/products/replacement-targets`   | `product.edit`              | Live products and collections a discontinued product may point to |
-| `GET`    | `/admin/catalog/products/:idOrSlug`             | `product.index`             | Read one product and its variants for the admin form              |
-| `POST`   | `/admin/catalog/products/:idOrSlug/discontinue` | `product.edit`              | Discontinue a product and write its redirect                      |
-| `POST`   | `/admin/catalog/products/:idOrSlug`             | `product.edit`              | Save the product form fields                                      |
-| `GET`    | `/admin/catalog/redirects`                      | `product.index`             | List redirect rows                                                |
-| `POST`   | `/admin/catalog/redirects`                      | `product.edit`              | Save a redirect, collapsing any chain                             |
-| `DELETE` | `/admin/catalog/redirects`                      | `product.edit`              | Remove one redirect row                                           |
-| `GET`    | `/admin/catalog/faq`                            | `faq.index`                 | List FAQ entries                                                  |
-| `DELETE` | `/admin/catalog/faq/:id`                        | `faq.destroy`               | Remove an FAQ entry                                               |
-| `POST`   | `/admin/catalog/faq`                            | `faq.edit`                  | Save an FAQ entry                                                 |
-| `GET`    | `/admin/catalog/questions`                      | `question_and_answer.index` | List shopper questions                                            |
-| `POST`   | `/admin/catalog/questions/:id/answer`           | `question_and_answer.edit`  | Answer a question and email the shopper                           |
-| `GET`    | `/admin/search-terms`                           | `search_term.index`         | List search words, any status                                     |
-| `GET`    | `/admin/search-terms/:id`                       | `search_term.index`         | One search word with its tagged products                          |
-| `POST`   | `/admin/search-terms`                           | `search_term.create`        | Add a search word                                                 |
-| `POST`   | `/admin/search-terms/:id`                       | `search_term.edit`          | Save a search word; Live needs every language and a tag           |
-| `POST`   | `/admin/search-terms/status`                    | `search_term.edit`          | Bulk Go Live or Take off shop                                     |
-| `DELETE` | `/admin/search-terms/:id`                       | `search_term.destroy`       | Delete a search word                                              |
-| `GET`    | `/admin/storefront-settings/search`             | `theme_option.index`        | Which categories show first in search                             |
-| `PUT`    | `/admin/storefront-settings/search`             | `theme_option.edit`         | Save Search; the shop re-indexes in the background                |
+| Method   | Route                                           | Access                        | Purpose                                                                            |
+| -------- | ----------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
+| `GET`    | `/admin/catalog/addon-templates`                | `product.index`               | List add-on templates                                                              |
+| `POST`   | `/admin/catalog/addon-templates`                | `product.edit`                | Save an add-on template option                                                     |
+| `DELETE` | `/admin/catalog/addon-templates/:code`          | `product.edit`                | Remove an add-on template option                                                   |
+| `GET`    | `/admin/catalog/categories`                     | `category.index`              | Every category with its address and product count                                  |
+| `POST`   | `/admin/catalog/categories`                     | `category.create`             | Add a category                                                                     |
+| `POST`   | `/admin/catalog/categories/:id`                 | `category.edit`               | Save a category; a move or rename writes its redirects                             |
+| `DELETE` | `/admin/catalog/categories/:id`                 | `category.destroy`            | Delete an empty category                                                           |
+| `GET`    | `/admin/catalog/attributes`                     | `attribute.index`             | Every attribute and its values                                                     |
+| `POST`   | `/admin/catalog/attributes`                     | `attribute.edit`              | Add or save an attribute                                                           |
+| `DELETE` | `/admin/catalog/attributes/:code`               | `attribute.destroy`           | Delete an attribute no product uses                                                |
+| `GET`    | `/admin/catalog/products`                       | `product.index`               | List products for the admin, every status                                          |
+| `GET`    | `/admin/catalog/products/replacement-targets`   | `product.edit`                | Live products and collections a discontinued product may point to                  |
+| `POST`   | `/admin/catalog/products`                       | `product.create`              | Add a product; it starts disabled                                                  |
+| `POST`   | `/admin/catalog/products/:idOrSlug/go-live`     | `product.edit`                | Put a product on sale, or list what stops it; the form and the list both call this |
+| `GET`    | `/admin/catalog/products/:idOrSlug/bundle`      | `product.index`               | Read a bundle product's groups                                                     |
+| `POST`   | `/admin/catalog/products/:idOrSlug/bundle`      | `product.edit`                | Save a bundle product's groups                                                     |
+| `GET`    | `/admin/catalog/products/:idOrSlug`             | `product.index`               | Read one product and its variants for the admin form                               |
+| `POST`   | `/admin/catalog/products/:idOrSlug/discontinue` | `product.edit`                | Discontinue a product and write its redirect                                       |
+| `POST`   | `/admin/catalog/products/:idOrSlug`             | `product.edit`                | Save the product form fields                                                       |
+| `GET`    | `/admin/catalog/redirects`                      | `product.index`               | List redirect rows                                                                 |
+| `POST`   | `/admin/catalog/redirects`                      | `product.edit`                | Save a redirect, collapsing any chain                                              |
+| `DELETE` | `/admin/catalog/redirects`                      | `product.edit`                | Remove one redirect row                                                            |
+| `GET`    | `/admin/catalog/faq`                            | `faq.index`                   | List FAQ entries                                                                   |
+| `DELETE` | `/admin/catalog/faq/:id`                        | `faq.destroy`                 | Remove an FAQ entry                                                                |
+| `POST`   | `/admin/catalog/faq`                            | `faq.edit`                    | Save an FAQ entry                                                                  |
+| `GET`    | `/admin/catalog/questions`                      | `question_and_answer.index`   | List shopper questions                                                             |
+| `POST`   | `/admin/catalog/questions/:id/answer`           | `question_and_answer.edit`    | Answer a question and email the shopper                                            |
+| `POST`   | `/admin/catalog/questions/:id/reject`           | `question_and_answer.edit`    | Reject a question so it never shows                                                |
+| `DELETE` | `/admin/catalog/questions/:id`                  | `question_and_answer.destroy` | Delete a question                                                                  |
+| `GET`    | `/admin/search-terms`                           | `search_term.index`           | List search words, any status                                                      |
+| `GET`    | `/admin/search-terms/:id`                       | `search_term.index`           | One search word with its tagged products                                           |
+| `POST`   | `/admin/search-terms`                           | `search_term.create`          | Add a search word                                                                  |
+| `POST`   | `/admin/search-terms/:id`                       | `search_term.edit`            | Save a search word; Live needs every language and a tag                            |
+| `POST`   | `/admin/search-terms/status`                    | `search_term.edit`            | Bulk Go Live or Take off shop                                                      |
+| `DELETE` | `/admin/search-terms/:id`                       | `search_term.destroy`         | Delete a search word                                                               |
+| `GET`    | `/admin/storefront-settings/search`             | `theme_option.index`          | Which categories show first in search                                              |
+| `PUT`    | `/admin/storefront-settings/search`             | `theme_option.edit`           | Save Search; the shop re-indexes in the background                                 |
 
 Admin catalogue reads answer `no-store`.
 
@@ -274,32 +292,113 @@ Admin catalogue reads answer `no-store`.
 | `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                           |
 | `POST`   | `/admin/reviews/:reviewId/moderation` | `review.edit`        | Approve or reject a review and its photos                                    |
 
+## Admin blog routes
+
+| Method   | Route                           | Access             | Purpose                                                |
+| -------- | ------------------------------- | ------------------ | ------------------------------------------------------ |
+| `GET`    | `/admin/blog/posts`             | `blog.index`       | Every post, any status                                 |
+| `GET`    | `/admin/blog/posts/:id`         | `blog.index`       | One post with every language, for the form             |
+| `POST`   | `/admin/blog/posts`             | `blog.create`      | Add a post; it starts as a draft                       |
+| `POST`   | `/admin/blog/posts/:id/go-live` | `blog.edit`        | Publish a post, or list what stops it                  |
+| `POST`   | `/admin/blog/posts/:id/status`  | `blog.edit`        | The list's switch: Go Live, or take the post down      |
+| `POST`   | `/admin/blog/posts/:id`         | `blog.edit`        | Save the post form                                     |
+| `DELETE` | `/admin/blog/posts/:id`         | `blog.destroy`     | Delete a post; a published one leaves its address gone |
+| `GET`    | `/admin/blog/categories`        | `category.index`   | Every blog category                                    |
+| `POST`   | `/admin/blog/categories`        | `category.create`  | Add a blog category                                    |
+| `POST`   | `/admin/blog/categories/:id`    | `category.edit`    | Save a blog category                                   |
+| `DELETE` | `/admin/blog/categories/:id`    | `category.destroy` | Delete a blog category and take it off every post      |
+| `GET`    | `/admin/blog/tags`              | `tag.index`        | Every blog tag                                         |
+| `POST`   | `/admin/blog/tags`              | `tag.create`       | Add a blog tag                                         |
+| `POST`   | `/admin/blog/tags/:id`          | `tag.edit`         | Save a blog tag                                        |
+| `DELETE` | `/admin/blog/tags/:id`          | `tag.destroy`      | Delete a blog tag and take it off every post           |
+
+## Admin event routes
+
+| Method   | Route                                         | Access          | Purpose                                                   |
+| -------- | --------------------------------------------- | --------------- | --------------------------------------------------------- |
+| `GET`    | `/admin/events`                               | `event.index`   | Every launch and sale event, any state                    |
+| `GET`    | `/admin/events/category-products/:categoryId` | `event.index`   | A category's products and SKU prices                      |
+| `GET`    | `/admin/events/:id`                           | `event.index`   | One event for the form                                    |
+| `GET`    | `/admin/events/:id/review`                    | `event.index`   | Items, final prices, what stops Publish, and the reach    |
+| `POST`   | `/admin/events`                               | `event.create`  | Add a launch or a sale; it starts as a draft              |
+| `POST`   | `/admin/events/:id/publish`                   | `event.publish` | Arm the event and send its message, or list what stops it |
+| `POST`   | `/admin/events/:id/unpublish`                 | `event.publish` | Back to draft before the start                            |
+| `POST`   | `/admin/events/:id/cancel`                    | `event.cancel`  | Cancel for good; a running sale's prices go back at once  |
+| `POST`   | `/admin/events/:id/end-now`                   | `event.cancel`  | End a running sale now and keep its record                |
+| `POST`   | `/admin/events/:id/test-message`              | `event.edit`    | Send the event message to the signed-in admin             |
+| `POST`   | `/admin/events/:id/preview`                   | `event.index`   | A 30-minute link that opens the event popup on the shop   |
+| `POST`   | `/admin/events/:id`                           | `event.edit`    | Save the event form                                       |
+| `DELETE` | `/admin/events/:id`                           | `event.destroy` | Delete a draft                                            |
+
+## Admin store routes
+
+| Method   | Route                               | Access          | Purpose                                              |
+| -------- | ----------------------------------- | --------------- | ---------------------------------------------------- |
+| `GET`    | `/admin/store-locations`            | `setting.index` | Every store in display order, active or not          |
+| `GET`    | `/admin/store-locations/:id`        | `setting.index` | One store with every language, for the form          |
+| `POST`   | `/admin/store-locations`            | `setting.edit`  | Add a store; it goes last in the order               |
+| `POST`   | `/admin/store-locations/order`      | `setting.edit`  | Save the order dragged in the list                   |
+| `POST`   | `/admin/store-locations/:id/active` | `setting.edit`  | Show or hide the store on Contact Us                 |
+| `POST`   | `/admin/store-locations/:id`        | `setting.edit`  | Save the store form                                  |
+| `DELETE` | `/admin/store-locations/:id`        | `setting.edit`  | Delete a store; its photos stay in the media library |
+
+## Admin mailbox and inbox routes
+
+| Method | Route                                                                   | Access           | Purpose                                                             |
+| ------ | ----------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------- |
+| `GET`  | `/admin/mailboxes`                                                      | `mailbox.manage` | Connected mailboxes, their reader counts and the Contact Us mailbox |
+| `POST` | `/admin/mailboxes/connect`                                              | `mailbox.manage` | Google's sign-in address for connecting a mailbox                   |
+| `GET`  | `/admin/mailboxes/oauth/callback`                                       | Public           | Google's answer; returns to the admin's Mailboxes tab               |
+| `PUT`  | `/admin/mailboxes/contact-target`                                       | `mailbox.manage` | Choose where Contact Us messages go                                 |
+| `GET`  | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Who may read or send from one mailbox                               |
+| `PUT`  | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Replace one mailbox's access list                                   |
+| `POST` | `/admin/mailboxes/:id/refresh`                                          | `mailbox.manage` | Re-read the mailbox's send-as addresses from Gmail                  |
+| `POST` | `/admin/mailboxes/:id/disconnect`                                       | `mailbox.manage` | Withdraw access at Google and forget the token                      |
+| `GET`  | `/admin/inbox`                                                          | `mailbox.use`    | The mailboxes the operator may open, with unread counts             |
+| `GET`  | `/admin/inbox/:mailboxId/threads`                                       | `mailbox.use`    | One folder of a mailbox, a page at a time                           |
+| `GET`  | `/admin/inbox/:mailboxId/threads/:threadId`                             | `mailbox.use`    | A whole conversation, cleaned for display                           |
+| `GET`  | `/admin/inbox/:mailboxId/messages/:messageId/attachments/:attachmentId` | `mailbox.use`    | One attachment, always as a download                                |
+| `POST` | `/admin/inbox/:mailboxId/send`                                          | `mailbox.use`    | Reply, forward or write, from the mailbox or one of its aliases     |
+| `POST` | `/admin/inbox/:mailboxId/threads/:threadId/modify`                      | `mailbox.use`    | Mark read or unread, archive, move to Inbox, trash or restore       |
+
+The Gmail token stays on the server. `mailbox.use` opens only the mailboxes whose access list names the operator.
+
 ## Public catalogue routes
 
-| Method | Route                                      | Access             | Purpose                                                      |
-| ------ | ------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| `GET`  | `/catalog/search`                          | Public             | Typeahead and search results, one page at a time             |
-| `POST` | `/catalog/search/clicks`                   | Public             | Count a product opened from search results                   |
-| `GET`  | `/catalog/search/trending`                 | Public             | Products most opened from search lately, or bestsellers      |
-| `GET`  | `/catalog/categories`                      | Public             | Get the full category taxonomy tree                          |
-| `GET`  | `/catalog/categories/:slug`                | Public             | Get a single category by slug                                |
-| `GET`  | `/catalog/faq`                             | Public             | Live FAQ entries for one page                                |
-| `GET`  | `/catalog/questions`                       | Public             | Answered questions for one product                           |
-| `POST` | `/catalog/questions`                       | Public             | Ask a product question                                       |
-| `GET`  | `/catalog/products`                        | Public             | List live products with filtering and pagination             |
-| `GET`  | `/catalog/products/legacy-redirects`       | Public             | Redirect rows for the storefront resolver                    |
-| `GET`  | `/catalog/products/:idOrSlug/relations`    | Public             | Saved related, upsell, cross-sell, and bought-together cards |
-| `GET`  | `/catalog/products/:idOrSlug/gallery`      | Public             | Gallery frames for quick view and the product page           |
-| `GET`  | `/catalog/products/:idOrSlug/view`         | Public             | Card and product-page read model for one live product        |
-| `GET`  | `/catalog/products/:idOrSlug`              | Public             | Get a single product by id or slug                           |
-| `POST` | `/catalog/products/:idOrSlug/stock-alerts` | Storefront session | Ask to be told when a variant can be bought                  |
-| `GET`  | `/catalog/home`                            | Public             | Homepage rails                                               |
-| `GET`  | `/catalog/placements`                      | Public             | Category listing by placement path                           |
-| `GET`  | `/catalog/cards`                           | Public             | Live cards for a personal slug list                          |
-| `GET`  | `/catalog/recent-purchases`                | Public             | Real sales from the last day, without buyer data             |
-| `GET`  | `/catalog/seo-route`                       | Public             | Head data for one public address                             |
-| `GET`  | `/catalog/sitemap`                         | Public             | Indexable addresses for the sitemap                          |
-| `GET`  | `/catalog/live-paths`                      | Public             | Live product slugs and category paths                        |
+| Method | Route                                      | Access             | Purpose                                                                        |
+| ------ | ------------------------------------------ | ------------------ | ------------------------------------------------------------------------------ |
+| `GET`  | `/catalog/search`                          | Public             | Typeahead and search results, one page at a time                               |
+| `POST` | `/catalog/search/clicks`                   | Public             | Count a product opened from search results                                     |
+| `GET`  | `/catalog/search/trending`                 | Public             | Products most opened from search lately, or bestsellers                        |
+| `GET`  | `/catalog/categories`                      | Public             | Get the full category taxonomy tree                                            |
+| `GET`  | `/catalog/categories/:slug`                | Public             | Get a single category by slug                                                  |
+| `GET`  | `/catalog/categories/menu`                 | Public             | The shop menu, in the language asked for                                       |
+| `GET`  | `/catalog/faq`                             | Public             | Live FAQ entries for one page                                                  |
+| `GET`  | `/catalog/questions`                       | Public             | Answered questions for one product                                             |
+| `POST` | `/catalog/questions`                       | Public             | Ask a product question                                                         |
+| `GET`  | `/catalog/products`                        | Public             | List live products with filtering and pagination                               |
+| `GET`  | `/catalog/products/legacy-redirects`       | Public             | Redirect rows for the storefront resolver                                      |
+| `GET`  | `/catalog/products/:idOrSlug/relations`    | Public             | Saved related, upsell, cross-sell, and bought-together cards                   |
+| `GET`  | `/catalog/products/:idOrSlug/trending`     | Public             | Trending in the product's categories, topped up with bestsellers               |
+| `GET`  | `/catalog/products/:idOrSlug/gallery`      | Public             | Gallery frames for quick view and the product page                             |
+| `GET`  | `/catalog/products/:idOrSlug/view`         | Public             | Card and product-page read model for one live product                          |
+| `GET`  | `/catalog/products/:idOrSlug`              | Public             | Get a single product by id or slug                                             |
+| `POST` | `/catalog/products/:idOrSlug/stock-alerts` | Storefront session | Ask to be told when a variant can be bought                                    |
+| `GET`  | `/catalog/home`                            | Public             | Homepage rails                                                                 |
+| `GET`  | `/catalog/placements`                      | Public             | Category listing by placement path                                             |
+| `GET`  | `/catalog/cards`                           | Public             | Live cards for a personal slug list                                            |
+| `GET`  | `/catalog/recent-purchases`                | Public             | Real sales from the last day, without buyer data                               |
+| `GET`  | `/catalog/seo-route`                       | Public             | Head data for one public address                                               |
+| `GET`  | `/catalog/sitemap`                         | Public             | Indexable addresses for the sitemap                                            |
+| `GET`  | `/catalog/live-paths`                      | Public             | Live product slugs and category paths                                          |
+| `GET`  | `/catalog/reviews`                         | Public             | A product's approved reviews and rating summary                                |
+| `GET`  | `/catalog/blog/posts`                      | Public             | Live posts, sticky first then newest, one page at a time                       |
+| `GET`  | `/catalog/blog/posts/:slug`                | Public             | One live post by its address                                                   |
+| `GET`  | `/catalog/blog/categories`                 | Public             | Blog categories that hold a live post                                          |
+| `GET`  | `/catalog/blog/tags`                       | Public             | Blog tags that hold a live post                                                |
+| `GET`  | `/catalog/events`                          | Public             | Published launch and sale events, with the server clock                        |
+| `GET`  | `/catalog/events/preview`                  | Public             | One event's popup through the admin's 30-minute preview link, published or not |
+| `GET`  | `/catalog/store-locations`                 | Public             | Active stores in display order, in one language                                |
 
 Listing, product and home reads are cacheable for 60 seconds with `stale-while-revalidate=300`, and carry an ETag. `GET /catalog/cards`, `GET /catalog/search` and the legacy redirect list are `no-store`. `GET /catalog/search/trending` is cacheable for five minutes.
 
@@ -309,18 +408,32 @@ The server enforces public visibility, not the caller. Public repository calls d
 
 ## Storefront media and review routes
 
-| Method | Route                                          | Access             | Purpose                                                     |
-| ------ | ---------------------------------------------- | ------------------ | ----------------------------------------------------------- |
-| `GET`  | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                     |
-| `GET`  | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale              |
-| `GET`  | `/storefront/brand`                            | Public             | The shop's name, logo, seal and icons                       |
-| `GET`  | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                |
-| `POST` | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)          |
-| `POST` | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                 |
-| `GET`  | `/storefront/reviews/photos/:assetId/status`   | Storefront session | Processing state of a review photo                          |
-| `POST` | `/storefront/reviews`                          | Storefront session | Submit a review with up to five photos; held for moderation |
+| Method  | Route                                          | Access             | Purpose                                                                    |
+| ------- | ---------------------------------------------- | ------------------ | -------------------------------------------------------------------------- |
+| `GET`   | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                                    |
+| `GET`   | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale                             |
+| `GET`   | `/storefront/brand`                            | Public             | The shop's name, logo, seal and icons                                      |
+| `GET`   | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                               |
+| `POST`  | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)                         |
+| `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                                |
+| `GET`   | `/storefront/reviews/photos/:assetId/status`   | Storefront session | Processing state of a review photo                                         |
+| `GET`   | `/storefront/reviews/mine`                     | Storefront session | Whether you can review a product, are waiting for delivery, or your review |
+| `POST`  | `/storefront/reviews`                          | Storefront session | Submit a review with up to five photos; held for moderation                |
+| `PATCH` | `/storefront/reviews/:reviewId`                | Storefront session | Edit your review; it waits for approval again                              |
 
 Uploads go directly to Spaces through a presigned PUT. The API does not proxy image bytes. Review photos stay private until a moderator approves them.
+
+## Storefront wishlist and contact routes
+
+| Method   | Route                             | Access             | Purpose                                             |
+| -------- | --------------------------------- | ------------------ | --------------------------------------------------- |
+| `GET`    | `/storefront/wishlist`            | Storefront session | Your saved product ids, and cards for those on sale |
+| `POST`   | `/storefront/wishlist`            | Storefront session | Save a product; saving it again changes nothing     |
+| `POST`   | `/storefront/wishlist/merge`      | Storefront session | Move the guest list into the account on sign-in     |
+| `DELETE` | `/storefront/wishlist/:productId` | Storefront session | Remove a saved product                              |
+| `POST`   | `/storefront/contact-messages`    | Public             | Send a Contact Us message to the shop's mailbox     |
+
+The wishlist has no customer id in any route; the session names the owner. Wishlist writes and Contact Us messages are rate-limited.
 
 ## Currency and promotion routes
 
@@ -335,15 +448,17 @@ These routes support price display. They do not produce a checkout total.
 
 ## Cart routes
 
-| Method   | Route                     | Access | Purpose                            |
-| -------- | ------------------------- | ------ | ---------------------------------- |
-| `POST`   | `/cart`                   | Public | Create a new (guest or user) cart  |
-| `GET`    | `/cart/:id`               | Public | Get a cart by id                   |
-| `POST`   | `/cart/:id/lines`         | Public | Add a line to a cart               |
-| `PATCH`  | `/cart/:id/lines/:lineId` | Public | Update the quantity of a cart line |
-| `DELETE` | `/cart/:id/lines/:lineId` | Public | Remove a line from a cart          |
+| Method   | Route                         | Access | Purpose                                            |
+| -------- | ----------------------------- | ------ | -------------------------------------------------- |
+| `GET`    | `/cart/current`               | Public | The shopper's cart, priced from the live catalogue |
+| `POST`   | `/cart/current/lines`         | Public | Add a line, starting a cart when there is none     |
+| `PATCH`  | `/cart/current/lines/:lineId` | Public | Change a line quantity or its choices              |
+| `DELETE` | `/cart/current/lines/:lineId` | Public | Remove a line                                      |
+| `GET`    | `/cart/:id`                   | Public | Read a cart by id, for its owner or support staff  |
 
 Cart routes are reachable without an account. Ownership is still enforced: a signed-in customer owns a cart through the session, and a guest owns one through the hashed `st_guest` cookie. A mismatch returns 404.
+
+The browser sends choices, never prices. Every read re-prices each line from the live product, and a write is refused when the choice is unavailable or the stock is short. Cart writes are rate-limited.
 
 ## Order routes
 
@@ -383,9 +498,8 @@ Consent changes are append-only: each change adds a `consentEvents` row. Export 
 
 - No route takes a payment, books a shipment or processes a refund or return.
 - `POST /orders` has no idempotency key, stock reservation or quote. A retried request can create a second order.
-- `/cart` lines are not validated against product, price or stock.
 - Export and erasure requests are acknowledged but not executed.
-- Health readiness checks MongoDB only.
+- Health readiness answers 503 when MongoDB or Redis is down. Search is reported but not required, because the shop lists from MongoDB without it.
 
 ## Adding a route
 

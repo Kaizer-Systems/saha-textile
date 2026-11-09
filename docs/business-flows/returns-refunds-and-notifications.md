@@ -4,7 +4,7 @@ wide: true
 description: Item return, financial reversal, shipment consequences, and multi-channel communication boundaries.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/modal/refund-modal
     - apps/admin/src/app/features/refund
@@ -79,6 +79,8 @@ The MSG91 adapter applies channel kill-switches, plan limits and marketing conse
 | ------------- | --------------------------------------------- | ----------------------------------------------------------- |
 | Transactional | OTP, order status, shipment, refund, security | Sent subject to legal and provider rules                    |
 | Marketing     | Campaigns, promotions, abandoned cart         | Needs explicit consent, with its own caps and kill-switches |
+
+A launch or sale event's message is a marketing message. Publishing the event sends it by email only, to customers who agreed to marketing. SMS and WhatsApp wait for approved MSG91 templates. Contact Us messages do not use `NotificationPort`: they go to the shop's connected Gmail mailbox.
 
 ## Channel settings
 

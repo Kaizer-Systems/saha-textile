@@ -90,7 +90,7 @@ describe('FormBlog', () => {
 	const render = (options: Options = {}, overrides: Record<string, unknown> = {}) => {
 		const blogs = {
 			getPost: vi.fn(() => of(row)),
-			savePost: vi.fn(() => of(row)),
+			savePost: vi.fn((_id: string | null, _body: Record<string, unknown>) => of(row)),
 			goLive: vi.fn(() => of({ live: true, gaps: [] })),
 			...overrides,
 		};

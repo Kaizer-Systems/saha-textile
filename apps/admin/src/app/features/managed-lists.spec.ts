@@ -200,7 +200,7 @@ describe('Admin users list', () => {
 
 describe('Role list', () => {
 	const setup = () => {
-		const gateway = { remove: vi.fn(() => of(undefined)) };
+		const gateway = { remove: vi.fn((_id: string) => of(undefined)) };
 		return { ...render(Role, [{ provide: AdminRolesGateway, useValue: gateway }]), gateway };
 	};
 
@@ -319,7 +319,7 @@ describe('Tag list', () => {
 describe('Blog list', () => {
 	const blogSetup = () => {
 		const blogs = {
-			goLive: vi.fn(() => of({ live: true, gaps: [] })),
+			goLive: vi.fn((_id: string) => of({ live: true, gaps: [] })),
 			setStatus: vi.fn((_id: string, status: string) =>
 				of(
 					status === 'live'
@@ -432,7 +432,13 @@ const productDeps = () => [
 describe('Product list', () => {
 	it('remembers the rows on screen for Save and next when opening one', () => {
 		const { page, router } = render(Product, productDeps());
-		data.set({ items: [{ id: 'p1', stock: 1 }, { id: 'p2', stock: 0 }], total: 2 });
+		data.set({
+			items: [
+				{ id: 'p1', stock: 1 },
+				{ id: 'p2', stock: 0 },
+			],
+			total: 2,
+		});
 		TestBed.tick();
 		page.edit({ id: 'p1' } as never);
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/product/edit/p1');
@@ -593,7 +599,7 @@ describe('Review moderation', () => {
 			total: 3,
 		});
 		TestBed.tick();
-		const rows = page.tableConfig().data as Record<string, unknown>[];
+		const rows = page.tableConfig().data as unknown as Record<string, unknown>[];
 		expect(rows[0]).toMatchObject({
 			consumer_name: 'Asha',
 			product_name: 'Red',

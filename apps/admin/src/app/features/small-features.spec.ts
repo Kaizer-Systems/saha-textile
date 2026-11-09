@@ -89,7 +89,7 @@ describe('simple screens', () => {
 
 	it.each<[string, Type<Error403>]>([
 		['Error403', Error403],
-		['Error404', Error404 as Type<Error403>],
+		['Error404', Error404 as unknown as Type<Error403>],
 	])('%s goes back', (_name, type) => {
 		const location = { back: vi.fn() };
 		bare(type, [{ provide: Location, useValue: location }]).componentInstance.back();

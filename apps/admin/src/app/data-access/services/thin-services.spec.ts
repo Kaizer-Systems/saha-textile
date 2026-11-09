@@ -202,7 +202,7 @@ describe('AddonTemplateService', () => {
 		const service = TestBed.inject(AddonTemplateService);
 		service.list();
 		expect(lastUrl(http.get)).toMatch(/\/admin\/catalog\/addon-templates$/);
-		service.save({ code: 'fall', label: 'Fall', priceINR: 100 });
+		service.save({ code: 'fall', label: { en: 'Fall' }, priceINR: 100, fields: [], sizeGuide: [] });
 		expect(http.post.mock.lastCall?.[1]).toMatchObject({ code: 'fall' });
 		service.remove('fall pico');
 		expect(lastUrl(http.delete)).toMatch(/addon-templates\/fall%20pico$/);

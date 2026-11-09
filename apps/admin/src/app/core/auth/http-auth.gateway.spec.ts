@@ -71,7 +71,7 @@ describe('HttpAdminAuthGateway credential classification', () => {
 		['password reset', () => gateway.resetPassword({ token: 'tok', newPassword: 'x'.repeat(12) })],
 		['logout', () => gateway.logout()],
 	])('treats %s as a credential endpoint', (_label, call) => {
-		const url = urlUsedBy(() => call().subscribe({ error: () => undefined }));
+		const url = urlUsedBy(() => (call() as Observable<unknown>).subscribe({ error: () => undefined }));
 		expect(gateway.isCredentialEndpoint(url)).toBe(true);
 	});
 
@@ -102,7 +102,7 @@ describe('HttpAdminAuthGateway credential classification', () => {
 			() => gateway.changePassword({ currentPassword: 'x'.repeat(12), newPassword: 'y'.repeat(12) }),
 		],
 	])('does NOT treat %s as a credential endpoint', (_label, call) => {
-		const url = urlUsedBy(() => call().subscribe({ error: () => undefined }));
+		const url = urlUsedBy(() => (call() as Observable<unknown>).subscribe({ error: () => undefined }));
 		expect(gateway.isCredentialEndpoint(url)).toBe(false);
 		// Nor session-establishing: none of them issues a session, and the password change
 		// ends every one the operator has.
@@ -131,7 +131,8 @@ describe('HttpAdminAuthGateway credential classification', () => {
 	])('addresses %s to the same audience as the current-user route', (_label, call) => {
 		const mePath = new URL(urlUsedBy(() => gateway.currentUser().subscribe())).pathname;
 		const audiencePrefix = mePath.replace(/[^/]+$/, '');
-		const path = new URL(urlUsedBy(() => call().subscribe({ error: () => undefined }))).pathname;
+		const path = new URL(urlUsedBy(() => (call() as Observable<unknown>).subscribe({ error: () => undefined })))
+			.pathname;
 
 		expect(audiencePrefix.length).toBeGreaterThan(1);
 		expect(path.startsWith(audiencePrefix)).toBe(true);
@@ -177,14 +178,14 @@ describe('HttpAdminAuthGateway credential classification', () => {
 	// ENDING one, so treating their success as proof would un-latch the transport into a
 	// pointless rotation per later 401 — the loop the latch exists to prevent.
 	it.each(establishingCalls)('treats %s as session-establishing', (_label, call) => {
-		const url = urlUsedBy(() => call().subscribe({ error: () => undefined }));
+		const url = urlUsedBy(() => (call() as Observable<unknown>).subscribe({ error: () => undefined }));
 		expect(gateway.isSessionEstablishingEndpoint(url)).toBe(true);
 		// Every session-establishing route is also a credential route; the reverse is not true.
 		expect(gateway.isCredentialEndpoint(url)).toBe(true);
 	});
 
 	it.each(endingCalls)('does NOT treat %s as session-establishing', (_label, call) => {
-		const url = urlUsedBy(() => call().subscribe({ error: () => undefined }));
+		const url = urlUsedBy(() => (call() as Observable<unknown>).subscribe({ error: () => undefined }));
 		expect(gateway.isSessionEstablishingEndpoint(url)).toBe(false);
 		expect(gateway.isCredentialEndpoint(url)).toBe(true);
 	});

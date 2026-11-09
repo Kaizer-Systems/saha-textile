@@ -78,6 +78,8 @@ export class Blog {
 	readonly breadcrumb = computed<IBreadcrumb>(() => ({
 		title: this.scope() ? `${this.blogsLabel}: ${this.scope()}` : this.blogsLabel,
 		items: [{ label: this.blogsLabel, active: true }],
+		// The list has no visible heading of its own, so the breadcrumb writes a hidden h1.
+		hiddenHeading: true,
 	}));
 
 	public readonly totalItems = computed(() => this.blogsQuery.data()?.total ?? 0);

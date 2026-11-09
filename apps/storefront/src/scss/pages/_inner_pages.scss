@@ -3283,10 +3283,14 @@
 				}
 			}
 
-			h2 {
+			// The post's title is its page's main heading (h1) with the theme's h2 look: the
+			// line height is set because the base h1's 1.1 would differ. Brief "Headings and
+			// Deep Trails" (H2).
+			h1 {
 				margin: calc(10px + (14 - 10) * ((100vw - 320px) / (1920 - 320))) 0;
 				font-weight: 700;
 				font-size: calc(22px + (34 - 22) * ((100vw - 320px) / (1920 - 320)));
+				line-height: 1;
 			}
 
 			.contain-comment-list {

@@ -81,7 +81,11 @@ describe('Blog', () => {
 		const { page, seo, fixture } = render();
 		expect(page.style).toBe('list_view');
 		expect(page.sidebar).toBe('left_sidebar');
-		expect(page.breadcrumb()).toEqual({ title: 'Blogs', items: [{ label: 'Blogs', active: true }] });
+		expect(page.breadcrumb()).toEqual({
+			title: 'Blogs',
+			items: [{ label: 'Blogs', active: true }],
+			hiddenHeading: true,
+		});
 		expect(seo.applyDocument).toHaveBeenLastCalledWith({
 			title: 'Blogs | Saha Textile',
 			description: 'Guides and care tips',

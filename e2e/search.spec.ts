@@ -149,8 +149,8 @@ test.describe('the Search page', () => {
 		await expect(rows(page)).toHaveText(['লাল শাড়ি']);
 		await field.pressSequentially('cotton', { delay: 40 });
 		await expect(box(page).locator('.suggest-title').last()).toHaveText('পণ্য');
-		await expect(rows(page).last()).toContainText('সব ফল দেখুন');
+		await expect(rows(page).last()).toContainText('সব ফলাফল দেখুন');
 		await field.press('Enter');
-		await expect(page.locator('.search-section p.text-content')).toContainText('“cotton”-এর ফল');
+		await expect(page.locator('.search-section p.text-content')).toContainText('“cotton”-এর ফলাফল');
 	});
 });

@@ -26,6 +26,10 @@ export default [
 			import('./stores/form-store-location/form-store-location').then((m) => m.FormStoreLocation),
 	},
 	{
+		path: 'mailboxes',
+		loadComponent: () => import('./mailboxes/mailboxes').then((m) => m.MailboxesSettings),
+	},
+	{
 		path: 'notifications',
 		loadComponent: () =>
 			import('./notification-settings/notification-settings').then((m) => m.NotificationSettings),

@@ -72,32 +72,6 @@ export class Setting {
 	public active_payment = 1;
 	public time_zone = data.time_zone;
 	public active_analytics = 'facebook';
-	public mail_mailer: Select2Data = [
-		{
-			value: 'sendmail',
-			label: 'Sendmail',
-		},
-		{
-			value: 'smtp',
-			label: 'SMTP',
-		},
-		{
-			value: 'mailgun',
-			label: 'Mailgun',
-		},
-	];
-
-	public encryption: Select2Data = [
-		{
-			value: 'ssl',
-			label: 'SSL',
-		},
-		{
-			value: 'tls',
-			label: 'TLS',
-		},
-	];
-
 	public language_direction: Select2Data = [
 		{
 			value: 'ltr',
@@ -155,18 +129,6 @@ export class Setting {
 				min_per_order_amount: new FormControl(100),
 				point_currency_ratio: new FormControl(30),
 				reward_per_order_amount: new FormControl(''),
-			}),
-			email: new FormGroup({
-				mail_host: new FormControl(),
-				mail_port: new FormControl(465),
-				mail_mailer: new FormControl('smtp'),
-				mail_password: new FormControl(),
-				mail_username: new FormControl(),
-				mail_encryption: new FormControl('ssl'),
-				mail_from_name: new FormControl(),
-				mail_from_address: new FormControl(),
-				mailgun_domain: new FormControl(),
-				mailgun_secret: new FormControl(),
 			}),
 			vendor_commissions: new FormGroup({
 				status: new FormControl(true),
@@ -283,18 +245,6 @@ export class Setting {
 						min_per_order_amount: option?.wallet_points?.min_per_order_amount,
 						point_currency_ratio: option?.wallet_points?.point_currency_ratio,
 						reward_per_order_amount: option?.wallet_points?.reward_per_order_amount,
-					},
-					email: {
-						mail_host: option?.email?.mail_host,
-						mail_port: option?.email?.mail_port,
-						mail_mailer: option?.email?.mail_mailer,
-						mail_password: option?.email?.mail_password,
-						mail_username: option?.email?.mail_username,
-						mail_encryption: option?.email?.mail_encryption,
-						mail_from_name: option?.email?.mail_from_name,
-						mail_from_address: option?.email?.mail_from_address,
-						mailgun_domain: option?.email?.mailgun_domain,
-						mailgun_secret: option?.email?.mailgun_secret,
 					},
 					vendor_commissions: {
 						status: option?.vendor_commissions?.status,

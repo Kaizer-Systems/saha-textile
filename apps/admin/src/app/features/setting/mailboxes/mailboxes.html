@@ -1,0 +1,210 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'mailboxes'"
+>
+	<div button>
+		<button
+			type="button"
+			class="align-items-center btn btn-theme d-flex"
+			id="connect_mailbox_btn"
+			[disabled]="busy() || !configured()"
+			(click)="connect()"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'connect_mailbox' | transloco }}
+		</button>
+	</div>
+	@if (!configured()) {
+	<div class="alert alert-warning">{{ 'mailbox_not_set_up' | transloco }}</div>
+	}
+	<p class="help-text">{{ 'mailbox_connect_help' | transloco: { domain: domain() } }}</p>
+	<div class="table-responsive datatable-wrapper border-table">
+		@if (loading()) {
+		<div class="table-loader">
+			<span>{{ 'please_wait' | transloco }}...</span>
+		</div>
+		}
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'mailbox' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th>{{ 'mailbox_access' | transloco }}</th>
+					<th>{{ 'mailbox_connected_by' | transloco }}</th>
+					<th>{{ 'actions' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.mailbox.id) {
+				<tr [attr.data-mailbox-id]="row.mailbox.id">
+					<td>
+						{{ row.mailbox.address }} @if (row.contactTarget) {
+						<span class="badge bg-info ms-1">{{ 'mailbox_contact_badge' | transloco }}</span>
+						}
+					</td>
+					<td>
+						<span [class]="statusClass(row)">{{ 'mailbox_status_' + row.mailbox.status | transloco }}</span>
+						@if (row.mailbox.lastSyncAt) {
+						<div class="text-content small">
+							{{ 'mailbox_checked' | transloco }} {{ row.mailbox.lastSyncAt | date: 'd MMM, HH:mm' }}
+						</div>
+						}
+					</td>
+					<td>{{ 'mailbox_people' | transloco: { readers: row.readers, senders: row.senders } }}</td>
+					<td>{{ row.mailbox.connectedAt ? (row.mailbox.connectedAt | date: 'd MMM y') : '—' }}</td>
+					<td>
+						<div class="d-flex flex-wrap gap-2">
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								(click)="openAccess(row, accessModal)"
+							>
+								{{ 'mailbox_access' | transloco }}
+							</button>
+							@if (row.mailbox.status === 'connected') {
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								[attr.aria-label]="'mailbox_refresh_aliases' | transloco"
+								(click)="refresh(row)"
+							>
+								<i class="ri-refresh-line"></i>
+							</button>
+							} @else {
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								[disabled]="!configured()"
+								(click)="connect()"
+							>
+								{{ 'mailbox_reconnect' | transloco }}
+							</button>
+							} @if (row.mailbox.status !== 'disconnected') {
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								(click)="confirm.openModal('disconnect', row)"
+							>
+								{{ 'mailbox_disconnect' | transloco }}
+							</button>
+							}
+						</div>
+					</td>
+				</tr>
+				} @empty { @if (!loading()) {
+				<tr>
+					<td
+						colspan="5"
+						class="text-content text-center"
+					>
+						{{ 'mailbox_none' | transloco }}
+					</td>
+				</tr>
+				} }
+			</tbody>
+		</table>
+	</div>
+
+	<div class="theme-form theme-form-2 mega-form mt-4">
+		<app-form-fields
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+			[label]="'mailbox_contact_goes_to'"
+			[for]="'contact_mailbox'"
+		>
+			<select2
+				class="custom-select"
+				id="contact_mailbox"
+				[data]="contactChoices()"
+				[value]="contactTarget() ?? ''"
+				(update)="chooseContact($event)"
+			/>
+			<p class="help-text mt-2">{{ 'mailbox_contact_help' | transloco }}</p>
+		</app-form-fields>
+	</div>
+</app-page-wrapper>
+
+<app-confirmation-modal
+	#confirm
+	(confirmed)="disconnect($event)"
+/>
+
+<ng-template
+	#accessModal
+	let-modal
+>
+	<div class="modal-header">
+		<h3 class="fw-semibold mb-1">
+			{{ 'mailbox_access_title' | transloco: { address: accessFor()?.mailbox?.address } }}
+		</h3>
+		<button
+			type="button"
+			class="btn btn-close"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<div class="table-responsive rounded-3 border">
+			<table class="all-package theme-table no-footer mb-0 table">
+				<thead>
+					<tr>
+						<th class="text-start">{{ 'mailbox_admin_user' | transloco }}</th>
+						<th>{{ 'mailbox_can_read' | transloco }}</th>
+						<th>{{ 'mailbox_can_send' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (line of accessLines(); track line.adminUserId) {
+					<tr>
+						<td class="text-start">{{ line.name }}</td>
+						<td>
+							<div class="form-check form-switch ps-0">
+								<label class="switch switch-sm">
+									<input
+										type="checkbox"
+										[attr.aria-label]="('mailbox_can_read' | transloco) + ': ' + line.name"
+										[checked]="line.read"
+										(change)="setAccess(line.adminUserId, 'read', $any($event.target).checked)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+							</div>
+						</td>
+						<td>
+							<div class="form-check form-switch ps-0">
+								<label class="switch switch-sm">
+									<input
+										type="checkbox"
+										[attr.aria-label]="('mailbox_can_send' | transloco) + ': ' + line.name"
+										[checked]="line.send"
+										(change)="setAccess(line.adminUserId, 'send', $any($event.target).checked)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+							</div>
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="button-box justify-content-end mt-3">
+			<button
+				type="button"
+				class="btn btn-md btn-secondary fw-bold"
+				(click)="modal.dismiss('Cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-md btn-theme fw-bold"
+				(click)="saveAccess(modal)"
+			>
+				{{ 'mailbox_save_access' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

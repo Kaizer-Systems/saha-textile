@@ -448,6 +448,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'mailboxes',
+				path: '/setting/mailboxes',
+				type: 'link',
+				level: 2,
+				permission: ['mailbox.manage'],
+			},
+			{
+				parent_id: 19,
 				title: 'notification_settings',
 				path: '/setting/notifications',
 				type: 'link',

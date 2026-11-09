@@ -1,0 +1,120 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+
+import { injectQuery } from '@tanstack/angular-query-experimental';
+import { firstValueFrom, Observable } from 'rxjs';
+
+import { runtimeConfig } from '@core/config/runtime-config';
+
+import type {
+	AdminMailboxRow,
+	InboxFolder,
+	InboxMailboxSummary,
+	InboxModifyRequest,
+	InboxSendRequest,
+	InboxThread,
+	InboxThreadPage,
+	Mailbox,
+	MailboxAccess,
+} from '@saha-textile/contracts';
+
+/** What Settings › Mailboxes reads in one call. */
+export interface MailboxesOverview {
+	configured: boolean;
+	domain: string;
+	rows: AdminMailboxRow[];
+}
+
+export const MAILBOXES_KEY = ['mailboxes'] as const;
+export const INBOX_KEY = ['inbox'] as const;
+/** How often the Inbox asks for unread counts: new mail shows within a minute, with no Gmail push. */
+export const INBOX_REFRESH_MS = 60_000;
+
+/** Gmail mailboxes: Settings › Mailboxes (super admin) and the Inbox (everyone given access). */
+@Injectable({ providedIn: 'root' })
+export class MailboxGateway {
+	private readonly http = inject(HttpClient);
+	private readonly admin = (path = '') => `${runtimeConfig.apiUrl}/admin/mailboxes${path}`;
+	private readonly inbox = (path = '') => `${runtimeConfig.apiUrl}/admin/inbox${path}`;
+	private readonly id = (value: string) => encodeURIComponent(value);
+
+	overview(): Observable<MailboxesOverview> {
+		return this.http.get<MailboxesOverview>(this.admin());
+	}
+
+	connect(): Observable<{ url: string }> {
+		return this.http.post<{ url: string }>(this.admin('/connect'), {});
+	}
+
+	access(mailboxId: string): Observable<MailboxAccess[]> {
+		return this.http.get<MailboxAccess[]>(this.admin(`/${this.id(mailboxId)}/access`));
+	}
+
+	saveAccess(mailboxId: string, entries: { adminUserId: string; canSend: boolean }[]): Observable<MailboxAccess[]> {
+		return this.http.put<MailboxAccess[]>(this.admin(`/${this.id(mailboxId)}/access`), { entries });
+	}
+
+	setContactTarget(mailboxId: string | null): Observable<{ mailboxId: string | null }> {
+		return this.http.put<{ mailboxId: string | null }>(this.admin('/contact-target'), { mailboxId });
+	}
+
+	refresh(mailboxId: string): Observable<Mailbox> {
+		return this.http.post<Mailbox>(this.admin(`/${this.id(mailboxId)}/refresh`), {});
+	}
+
+	disconnect(mailboxId: string): Observable<Mailbox> {
+		return this.http.post<Mailbox>(this.admin(`/${this.id(mailboxId)}/disconnect`), {});
+	}
+
+	summary(): Observable<InboxMailboxSummary[]> {
+		return this.http.get<InboxMailboxSummary[]>(this.inbox());
+	}
+
+	threads(mailboxId: string, folder: InboxFolder, q?: string, pageToken?: string): Observable<InboxThreadPage> {
+		let params = new HttpParams().set('folder', folder);
+		if (q) params = params.set('q', q);
+		if (pageToken) params = params.set('pageToken', pageToken);
+		return this.http.get<InboxThreadPage>(this.inbox(`/${this.id(mailboxId)}/threads`), { params });
+	}
+
+	thread(mailboxId: string, threadId: string): Observable<InboxThread> {
+		return this.http.get<InboxThread>(this.inbox(`/${this.id(mailboxId)}/threads/${this.id(threadId)}`));
+	}
+
+	/** An attachment's download address; the API always answers it as a download. */
+	attachmentUrl(mailboxId: string, messageId: string, attachmentId: string, filename: string): string {
+		return this.inbox(
+			`/${this.id(mailboxId)}/messages/${this.id(messageId)}/attachments/${this.id(attachmentId)}?name=${this.id(filename)}`,
+		);
+	}
+
+	send(mailboxId: string, body: InboxSendRequest): Observable<{ id: string; threadId: string }> {
+		return this.http.post<{ id: string; threadId: string }>(this.inbox(`/${this.id(mailboxId)}/send`), body);
+	}
+
+	modify(mailboxId: string, threadId: string, action: InboxModifyRequest['action']): Observable<{ ok: boolean }> {
+		return this.http.post<{ ok: boolean }>(
+			this.inbox(`/${this.id(mailboxId)}/threads/${this.id(threadId)}/modify`),
+			{
+				action,
+			},
+		);
+	}
+}
+
+/** Settings › Mailboxes. */
+export function injectMailboxesQuery() {
+	const gateway = inject(MailboxGateway);
+	return injectQuery(() => ({ queryKey: MAILBOXES_KEY, queryFn: () => firstValueFrom(gateway.overview()) }));
+}
+
+/** The mailboxes I may open, with unread counts, asked again every minute. */
+export function injectInboxSummaryQuery(enabled: () => boolean = () => true) {
+	const gateway = inject(MailboxGateway);
+	return injectQuery(() => ({
+		queryKey: INBOX_KEY,
+		queryFn: () => firstValueFrom(gateway.summary()),
+		refetchInterval: INBOX_REFRESH_MS,
+		enabled: enabled(),
+	}));
+}

@@ -3,7 +3,7 @@ title: Storefront Cutover
 description: How catalogue data, search, old addresses and stock alerts fit together.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - packages/adapters-db-mongo/src/seed/seed-demo-catalogue.ts
     - packages/adapters-db-mongo/src/seed/legacy-addresses.ts
@@ -23,7 +23,7 @@ The storefront reads products from MongoDB through the API. Meilisearch runs as 
 
 Addresses from the previous website are listed in `packages/adapters-db-mongo/src/seed/legacy-addresses.ts`. The seed writes a row only when it is approved. An unapproved row fails the seed and names itself.
 
-The storefront resolves an old address in one hop. It checks WordPress patterns first, then an exact redirect row, then the same path under `/en` if that page exists. Anything else answers `410`; the home page is never a fallback. Admin operators manage rows on the redirect screen. A retired collection gets an automatic row unless an operator has saved one for it.
+The storefront resolves an old address in one hop. It checks WordPress patterns first, then an exact redirect row, then the same path under `/en` if that page exists. A row never applies to a page that exists under a language: the old `/videos` row moves the bare address to `/en/videos`, and `/en/videos` itself is the shop's video page. Anything else answers `410`; the home page is never a fallback. Admin operators manage rows on the redirect screen. A retired collection gets an automatic row unless an operator has saved one for it.
 
 ## Stock alerts
 

@@ -3,7 +3,7 @@ title: Hosting Topology
 description: The droplet, its services, the traffic path through Cloudflare and Nginx, and the security controls at each layer.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - docker/production/compose.yaml
     - docker/production/nginx/edge.conf.template
@@ -101,7 +101,7 @@ Caps and measurements are per copy. Nginx spreads requests over both copies and 
 - **Origin lock.** A connection from outside the Docker network must present the Authenticated Origin Pulls certificate. Without one it gets 403, and a wrong certificate fails with 400.
 - **Real client address.** Taken from `CF-Connecting-IP` only on connections that passed the origin lock, and passed to the API for rate limits and audit.
 - **Internal listener.** The storefront's server reaches the API through the edge from inside the Docker network, without the client certificate, and trusts Cloudflare's Origin CA root.
-- **Security headers.** HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy` and a Content Security Policy per site. Headers are set at server level, because an `add_header` inside a location would cancel the inherited ones.
+- **Security headers.** HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy` and a Content Security Policy per site. The shop's policy lets in YouTube's player script and its `youtube-nocookie` frame, which load only when a shopper presses play on a video. Headers are set at server level, because an `add_header` inside a location would cancel the inherited ones.
 - **Readiness stays private.** `/health/ready` answers only inside the Docker network; outside it is 404.
 - **Unknown hostnames** get 421.
 - **Storefront `config.json`** is served by Nginx, because the storefront's server sends public files at their build-time size.

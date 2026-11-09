@@ -10,14 +10,18 @@
 		@for (event of events(); track event.id) {
 		<div class="swiper-slide">
 			<div class="d-flex justify-content-xxl-center">
-				<div class="timer-notification">
+				<!--
+					One line on every screen: a long title ends in "…" so the countdown always shows
+					whole (Bootstrap text-truncate and text-nowrap; the strip is one line high).
+				-->
+				<div class="timer-notification mw-100">
 					<h6>
 						<a
-							class="text-white"
+							class="d-flex text-white"
 							[routerLink]="event.linkHref ?? '/'"
 						>
-							<strong class="me-1">{{ event.title }}</strong>
-							{{ label(event) | transloco }} {{ countdown(event) }}
+							<strong class="text-truncate me-1">{{ event.title }}</strong>
+							<span class="text-nowrap">{{ label(event) | transloco }} {{ countdown(event) }}</span>
 						</a>
 					</h6>
 				</div>

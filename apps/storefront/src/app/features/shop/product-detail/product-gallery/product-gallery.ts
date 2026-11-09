@@ -8,6 +8,9 @@ import { IProduct, IVariation } from '@data-access/interfaces/product.interface'
 import * as data from '@shared/data/owl-carousel';
 
 import { GalleryFullscreen } from './gallery-fullscreen';
+import { roleSrcset } from '@core/media/resolved-image';
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
+
 import { GalleryImage, toGalleryImage } from './gallery-image';
 import { GalleryZoomLens } from './gallery-zoom-lens';
 
@@ -38,6 +41,17 @@ export class ProductGallery {
 	});
 
 	readonly images = computed<GalleryImage[]>(() => this.frames().map(toGalleryImage));
+
+	/** About 120 px wide in the strip; the `card` widths (200 / 400) cover it at any density. */
+	readonly thumbSizes = '120px';
+
+	/** The strip uses the small `card` file, not the 900 px main photo it used to download three of. */
+	thumb(image: IAttachment): { src: string; srcset: string | null } {
+		return {
+			src: image.image?.roles['card']?.[0]?.url ?? image.original_url,
+			srcset: roleSrcset(image.image, 'card'),
+		};
+	}
 
 	public activeSlide: string = '0';
 

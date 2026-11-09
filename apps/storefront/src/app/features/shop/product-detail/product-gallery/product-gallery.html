@@ -73,7 +73,13 @@
 								[class.active]="image.id.toString() === activeSlide.toString()"
 							>
 								<img
-									[src]="image ? image.original_url : 'assets/images/product.png'"
+									[src]="image ? thumb(image).src : 'assets/images/product.png'"
+									[attr.srcset]="image ? thumb(image).srcset : null"
+									[attr.sizes]="image && thumb(image).srcset ? thumbSizes : null"
+									[attr.width]="image?.image?.width ?? null"
+									[attr.height]="image?.image?.height ?? null"
+									loading="lazy"
+									decoding="async"
 									class="img-fluid"
 									alt="{{ product()?.name }}"
 									(click)="carousel()?.to(activeSlide = image.id.toString())"

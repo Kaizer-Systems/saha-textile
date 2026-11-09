@@ -39,4 +39,21 @@ describe('ProductGallery', () => {
 		gallery.openFullscreen(1);
 		expect(instance['alt']).toBe('');
 	});
+
+	it('shows the small card file in the thumbnail strip', () => {
+		const { gallery } = render();
+		const card = [
+			{ url: 'https://cdn/a-200.webp', width: 200, height: 267, format: 'image/webp' },
+			{ url: 'https://cdn/a-400.webp', width: 400, height: 533, format: 'image/webp' },
+		];
+		const image = { id: 1, original_url: 'https://cdn/a.jpg', image: { roles: { card } } };
+		expect(gallery.thumb(image as never)).toEqual({
+			src: 'https://cdn/a-200.webp',
+			srcset: 'https://cdn/a-200.webp 200w, https://cdn/a-400.webp 400w',
+		});
+		expect(gallery.thumb({ id: 2, original_url: 'https://cdn/b.jpg' } as never)).toEqual({
+			src: 'https://cdn/b.jpg',
+			srcset: null,
+		});
+	});
 });

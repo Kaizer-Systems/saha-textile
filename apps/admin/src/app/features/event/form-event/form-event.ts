@@ -24,6 +24,7 @@ import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Subject, debounceTime, of, switchMap, takeUntil } from 'rxjs';
 
 import { goLiveLabels } from '@core/catalog/go-live-report';
+import { MediaGateway } from '@core/media/media.gateway';
 import { runtimeConfig } from '@core/config/runtime-config';
 import { istInputToUtc, utcToIstInput } from '@core/i18n/ist-time';
 import {
@@ -120,6 +121,7 @@ export class FormEvent {
 	private transloco = inject(TranslocoService);
 	private queryClient = inject(QueryClient);
 	private modal = inject(NgbModal);
+	private media = inject(MediaGateway);
 	private page = inject<Document>(DOCUMENT);
 	readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 	/** The message's rich editor, as on the blog form. Browser only. */
@@ -142,6 +144,8 @@ export class FormEvent {
 	readonly locales = ADMIN_LOCALES;
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 	popupImage: IAttachment | null = null;
+	/** The library picture last fetched, so a reload after Save doesn't fetch it again. */
+	private popupImageId: string | null = null;
 
 	// Launch picks.
 	readonly launchCategoryIds = signal<string[]>([]);
@@ -274,9 +278,17 @@ export class FormEvent {
 		this.heldProductIds.set(event.launch.heldProductIds);
 		this.saleCategories.set(event.sale.categories);
 		this.saleProducts.set(event.sale.products);
-		this.popupImage = event.popupAssetId
-			? ({ id: event.popupAssetId, original_url: '' } as unknown as IAttachment)
-			: null;
+		// The saved picture is drawn from the library, as the media picker draws it.
+		if (!event.popupAssetId) {
+			this.popupImage = null;
+			this.popupImageId = null;
+		} else if (this.popupImageId !== event.popupAssetId) {
+			this.popupImageId = event.popupAssetId;
+			this.media.get(event.popupAssetId).subscribe({
+				next: (image) => (this.popupImage = image),
+				error: () => (this.popupImage = null),
+			});
+		}
 		if (this.readOnly()) this.form.disable();
 		this.loadReview();
 	}
@@ -355,6 +367,7 @@ export class FormEvent {
 	selectPopupImage(data: IAttachment) {
 		if (Array.isArray(data)) return;
 		this.popupImage = data ?? null;
+		this.popupImageId = data ? String(data.id) : null;
 		this.form.controls.popup_asset_id.setValue(data ? String(data.id) : null);
 	}
 

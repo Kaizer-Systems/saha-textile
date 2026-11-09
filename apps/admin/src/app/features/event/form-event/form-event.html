@@ -123,7 +123,8 @@
 										[disabled]="readOnly()"
 										(update)="pickLinkKind($event)"
 									/>
-									@if (linkKind() === 'category') {
+									<!-- Drawn once the categories have loaded: select2 matches a saved value only against options it already has. -->
+									@if (linkKind() === 'category' && categoryLinks().length) {
 									<select2
 										class="custom-select mt-2"
 										id="link_category"

@@ -384,7 +384,6 @@ export class FormProduct {
 			sale_expired_at: new FormControl(),
 			tags: new FormControl(),
 			categories: new FormControl([]),
-			is_random_related_products: new FormControl(0),
 			related_products: new FormControl(),
 			upsell_products: new FormControl([]),
 			cross_sell_products: new FormControl([]),

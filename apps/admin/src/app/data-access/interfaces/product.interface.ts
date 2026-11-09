@@ -69,7 +69,6 @@ export interface IProduct {
 	variants: IVariant[];
 	attributes: IAttribute[];
 	attributes_ids: number[];
-	is_random_related_products: boolean;
 	related_products: number[];
 	cross_sell_products: number[];
 	pivot?: IPivotProduct;

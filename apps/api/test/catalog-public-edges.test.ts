@@ -1021,6 +1021,35 @@ describe('relations', () => {
 		built.products.findById.mockResolvedValue(null);
 		expect((await built.service.relationCards('red-saree')).related).toEqual([]);
 	});
+
+	it("tops related up from the product's own category, deepest first, never itself or a bundle", async () => {
+		const rows = [
+			product({ categoryIds: ['cat_sarees', 'cat_silk'] }),
+			product({ id: 'prd_2', slug: 'b' }),
+			product({ id: 'prd_3', slug: 'c' }),
+			product({ id: 'prd_4', slug: 'd', type: 'bundle' }),
+			product({ id: 'prd_5', slug: 'e' }),
+		];
+		const built = build({ rows, relations: [relation('related', 'prd_3')] });
+		const cards = await built.service.relationCards('red-saree');
+		expect(cards.related.map((card) => card.id)).toEqual(['prd_3', 'prd_2', 'prd_5']);
+		expect(built.products.list).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ audience: 'public', categoryId: 'cat_silk' }),
+		);
+		expect(built.products.list).toHaveBeenCalledTimes(2);
+	});
+
+	it('leaves related alone once six are picked', async () => {
+		const ids = ['prd_2', 'prd_3', 'prd_4', 'prd_5', 'prd_6', 'prd_7'];
+		const rows = [
+			product({ categoryIds: ['cat_silk'] }),
+			...ids.map((id) => product({ id, slug: id.replace('_', '-') })),
+		];
+		const built = build({ rows, relations: ids.map((id) => relation('related', id)) });
+		expect((await built.service.relationCards('red-saree')).related.map((card) => card.id)).toEqual(ids);
+		expect(built.products.list).not.toHaveBeenCalled();
+	});
 });
 
 describe('addresses', () => {

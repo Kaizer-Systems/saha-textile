@@ -828,29 +828,7 @@
 									<div class="invalid-feedback">{{ 'categories_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'random_related_product'"
-									[for]="'is_random_related_products'"
-									[required]="false"
-								>
-									<div class="form-check form-switch ps-0">
-										<label class="switch">
-											<input
-												type="checkbox"
-												id="is_random_related_products"
-												formControlName="is_random_related_products"
-											/>
-											<span class="switch-state"></span>
-										</label>
-										<p class="help-text">
-											{{ '*Enabling this option allows the backend to randomly select 6 products
-											for display.' }}
-										</p>
-									</div>
-								</app-form-fields>
-								@if (!form.get('is_random_related_products')?.value) {
+
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -886,9 +864,7 @@
 										</ng-template>
 									</select2>
 									}
-									<p class="help-text">
-										{{ '*Choose a maximum of 6 products for effective related products display.' }}
-									</p>
+									<p class="help-text">{{ 'related_products_help' | transloco }}</p>
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -907,7 +883,6 @@
 									/>
 									}
 								</app-form-fields>
-								}
 
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"

@@ -76,6 +76,9 @@ const CATEGORY_IMAGE_ROLES = ['category_icon', 'card', 'gallery', 'thumb'] as co
 /** Matches no category, so an unknown slug empties the list instead of widening it. */
 const NO_CATEGORY = 'no-such-category';
 
+/** "You may also like" shows at least this many when the category has them. */
+const RELATED_MINIMUM = 6;
+
 @Injectable()
 export class CatalogPublicService {
 	private readonly listings: ListingPort;
@@ -549,28 +552,65 @@ export class CatalogPublicService {
 
 	async relationCards(slug: string) {
 		const product = await this.requireLive(slug);
-		if (!this.relations) return { related: [], upsell: [], crossSell: [], boughtTogether: [] };
-		const rows = liveRelations(
-			await this.relations.listForProduct({ sourceProductId: product.id, audience: 'public', pageSize: 24 }),
-			new Set(
-				(await this.products.list({ audience: 'public', page: 1, pageSize: 1000 })).items.map((row) => row.id),
-			),
-		);
-		const grouped = async (type: 'related' | 'upsell' | 'cross_sell' | 'bought_together') => {
-			const ids = rows.filter((row) => row.relationType === type).map((row) => row.targetId);
-			const found: Product[] = [];
-			for (const id of ids.slice(0, 12)) {
-				const target = await this.products.findById(id, 'public');
-				if (target) found.push(target);
-			}
-			return this.cards(found);
-		};
+		const rows = this.relations
+			? await this.relations.listForProduct({ sourceProductId: product.id, audience: 'public', pageSize: 24 })
+			: [];
+		// Only targets still on sale, looked up one by one: at most 24 reads, however large the
+		// catalogue grows (this used to load the first 1,000 products to build the same set).
+		const targets = new Map<string, Product>();
+		for (const id of new Set(rows.map((row) => row.targetId))) {
+			const target = await this.products.findById(id, 'public');
+			if (target) targets.set(id, target);
+		}
+		const live = liveRelations(rows, new Set(targets.keys()));
+		const products = (type: 'related' | 'upsell' | 'cross_sell' | 'bought_together') =>
+			live
+				.filter((row) => row.relationType === type)
+				.slice(0, 12)
+				.flatMap((row) => targets.get(row.targetId) ?? []);
+		const picked = products('related');
+		const related =
+			picked.length < RELATED_MINIMUM
+				? [
+						...picked,
+						...(await this.sameCategory(
+							product,
+							new Set([product.id, ...picked.map((row) => row.id)]),
+							RELATED_MINIMUM - picked.length,
+						)),
+					]
+				: picked;
 		return {
-			related: await grouped('related'),
-			upsell: await grouped('upsell'),
-			crossSell: await grouped('cross_sell'),
-			boughtTogether: await grouped('bought_together'),
+			related: await this.cards(related),
+			upsell: await this.cards(products('upsell')),
+			crossSell: await this.cards(products('cross_sell')),
+			boughtTogether: await this.cards(products('bought_together')),
 		};
+	}
+
+	/**
+	 * Tops up "You may also like" when fewer than six were picked in the admin: live products
+	 * from the product's own category first, then each parent in turn (owner decision 2026-11-09).
+	 */
+	private async sameCategory(product: Product, exclude: ReadonlySet<string>, wanted: number): Promise<Product[]> {
+		const found: Product[] = [];
+		const skip = new Set(exclude);
+		for (const categoryId of [...product.categoryIds].reverse()) {
+			if (found.length >= wanted) break;
+			const page = await this.products.list({
+				audience: 'public',
+				categoryId,
+				page: 1,
+				pageSize: wanted + skip.size,
+			});
+			for (const row of page.items) {
+				if (found.length >= wanted) break;
+				if (skip.has(row.id) || row.type === 'bundle') continue;
+				skip.add(row.id);
+				found.push(row);
+			}
+		}
+		return found;
 	}
 
 	async livePaths(): Promise<{ products: string[]; collections: string[] }> {

@@ -95,6 +95,8 @@ export interface ApiProductPage {
 	madeToOrder: boolean;
 	/** When a running sale on this product ends; null with no sale. */
 	saleEndsAt?: string | null;
+	/** The main photo's 1200×630 link-preview card, once made. */
+	shareImageUrl?: string | null;
 	estimatedDeliveryText: string | null;
 	sareeLengthM: number | null;
 	blousePieceM: number | null;
@@ -186,10 +188,8 @@ export const galleryAttachment = (image: ApiImage, index: number): IAttachment =
 };
 
 /** The link-preview card (1200×630) when the main-photo sizes exist, else the first gallery photo. */
-const shareAttachment = (image: ApiImage | undefined, fallback: IAttachment | undefined): IAttachment | undefined => {
-	const url = image?.roles['share']?.[0]?.url;
-	return url ? ({ id: 0, original_url: url, image } as unknown as IAttachment) : fallback;
-};
+const shareAttachment = (url: string | null | undefined, fallback: IAttachment | undefined): IAttachment | undefined =>
+	url ? ({ id: 0, original_url: url } as unknown as IAttachment) : fallback;
 
 const swatchAttachment = (image: ApiImage | null, id: number): IAttachment | undefined => {
 	const url = image?.roles['swatch_image']?.at(-1)?.url;
@@ -465,7 +465,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				}
 			: undefined,
 		product_thumbnail: galleries[0],
-		product_meta_image: shareAttachment(page.gallery[0], ordered[0]),
+		product_meta_image: shareAttachment(page.shareImageUrl, ordered[0]),
 		product_galleries: galleries,
 		attributes,
 		variations,

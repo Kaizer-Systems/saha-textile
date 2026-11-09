@@ -157,7 +157,8 @@ describe('pageToProduct link preview', () => {
 	it('uses the 1200×630 link-preview card once the main-photo sizes exist', () => {
 		const product = pageToProduct({
 			...page,
-			gallery: [photo({ gallery: 'g.webp', share: 'share.jpg' })],
+			gallery: [photo({ gallery: 'g.webp' })],
+			shareImageUrl: 'share.jpg',
 		} as ApiProductPage);
 		expect(product.product_meta_image?.original_url).toBe('share.jpg');
 		expect(product.product_thumbnail?.original_url).toBe('g.webp');

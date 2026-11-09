@@ -28,7 +28,7 @@ const catalogue = [
 	product('prd_3', ['cat_sarees']),
 ];
 
-function setup() {
+function setup(options: { audit?: boolean } = {}) {
 	const stored = new Map<string, SearchTerm>();
 	const terms = {
 		list: vi.fn(async () => ({ items: [...stored.values()], total: stored.size, page: 1, pageSize: 20 })),
@@ -72,9 +72,9 @@ function setup() {
 		cards as never,
 		vocabulary,
 		search as never,
-		audit as never,
+		options.audit === false ? null : (audit as never),
 	);
-	return { service, stored, catalog, search, audit, settings, products };
+	return { service, stored, catalog, search, audit, settings, products, terms, cards, vocabulary };
 }
 
 const body = (over: Record<string, unknown> = {}) => ({
@@ -179,6 +179,48 @@ describe('search words', () => {
 	});
 });
 
+describe('search word edges', () => {
+	it('skips a tagged product deleted before the re-index, and pages through a long category', async () => {
+		const { service, catalog, products } = setup();
+		const { id } = await service.save(null, body({ productIds: ['prd_2'] }), null);
+		await service.pending;
+		products.findById.mockResolvedValueOnce(null);
+		products.list
+			.mockResolvedValueOnce({ items: [catalogue[0]!], total: 5, page: 1, pageSize: 200 })
+			.mockResolvedValueOnce({ items: [], total: 5, page: 2, pageSize: 200 });
+		await service.remove(id, null);
+		await service.pending;
+		expect(ids(catalog.syncSearchMany.mock.calls.at(-1)?.[0])).toEqual(['prd_1']);
+		expect(products.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
+	});
+
+	it('shows a tagged product with no photo, an untitled one by its id, and drops one that is gone', async () => {
+		const { service, cards, products } = setup();
+		const { id } = await service.save(null, body({ productIds: ['prd_1', 'prd_2', 'prd_3'] }), null);
+		cards.cardsForIds.mockResolvedValueOnce([{ id: 'prd_1', title: 'Laal Paar', image: null }] as never);
+		products.findById.mockResolvedValueOnce({ ...catalogue[1]!, title: {} } as never).mockResolvedValueOnce(null);
+		expect((await service.detail(id)).products).toEqual([
+			{ id: 'prd_1', name: 'Laal Paar', image: null },
+			{ id: 'prd_2', name: 'prd_2', image: null },
+		]);
+	});
+
+	it('saves without an audit log wired in', async () => {
+		const { service, stored, audit } = setup({ audit: false });
+		await service.save(null, body(), null);
+		expect(stored.size).toBe(1);
+		expect(audit.append).not.toHaveBeenCalled();
+	});
+
+	it('loads the vocabulary again after a failed read', async () => {
+		const { vocabulary, terms } = setup();
+		terms.listLive.mockRejectedValueOnce(new Error('db down'));
+		await expect(vocabulary.current()).rejects.toThrow('db down');
+		await expect(vocabulary.current()).resolves.toMatchObject({ synonyms: {} });
+		expect(terms.listLive).toHaveBeenCalledTimes(2);
+	});
+});
+
 describe('storefront settings › search', () => {
 	it('starts empty, saves the show-first categories and re-indexes the whole shop', async () => {
 		const { service, catalog, settings } = setup();
@@ -191,6 +233,14 @@ describe('storefront settings › search', () => {
 		await expect(service.saveSearchSettings({ showFirstCategoryIds: ['nope'] }, null)).rejects.toThrow(
 			'Unknown category',
 		);
+	});
+
+	it('keeps the saved settings and logs when the shop cannot be re-indexed', async () => {
+		const { service, search, settings } = setup();
+		search.updateSynonyms.mockRejectedValueOnce(new Error('down'));
+		await service.saveSearchSettings({ showFirstCategoryIds: ['cat_suits'] }, null);
+		await expect(service.pending).resolves.toBeUndefined();
+		expect(settings.set).toHaveBeenCalledWith('storefront.search', { showFirstCategoryIds: ['cat_suits'] });
 	});
 });
 

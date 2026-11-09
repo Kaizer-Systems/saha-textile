@@ -3,13 +3,14 @@ import { termWords, type Paginated, type SearchTermFilter, type SearchTermReposi
 
 import { SearchTermModel, type SearchTermDoc } from '../models/index';
 
+/** The contract fills a missing list or status, so an old row without them still reads. */
 const toTerm = (doc: SearchTermDoc): SearchTerm =>
 	SearchTerm.parse({
 		id: doc._id,
 		name: doc.name ?? {},
-		spellings: doc.spellings ?? {},
-		categoryIds: doc.categoryIds ?? [],
-		productIds: doc.productIds ?? [],
+		spellings: doc.spellings,
+		categoryIds: doc.categoryIds,
+		productIds: doc.productIds,
 		status: doc.status,
 		createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
 		updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,

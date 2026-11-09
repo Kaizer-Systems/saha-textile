@@ -54,7 +54,7 @@ const gapRefusal = (gaps: GoLiveResult['gaps']): BadRequestException =>
 const cleanText = (values: Readonly<Record<string, string>>): Record<string, string> =>
 	Object.fromEntries(
 		Object.entries(values)
-			.map(([locale, text]): [string, string] => [locale, (text ?? '').replace(/\s+/g, ' ').trim()])
+			.map(([locale, text]): [string, string] => [locale, text.replace(/\s+/g, ' ').trim()])
 			.filter(([, text]) => text.length > 0),
 	);
 

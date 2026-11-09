@@ -79,6 +79,7 @@ export class MongoSearchAnalyticsRepository implements SearchAnalyticsRepository
 		)
 			.lean<Array<Pick<AnalyticsDailyAggregateDoc, 'key' | 'date' | 'metrics'>>>()
 			.exec();
-		return rows.map((row) => ({ productId: row.key, date: row.date, clicks: row.metrics['searchClicks'] ?? 0 }));
+		// The query keeps only rows with clicks, so the count is always there.
+		return rows.map((row) => ({ productId: row.key, date: row.date, clicks: Number(row.metrics['searchClicks']) }));
 	}
 }

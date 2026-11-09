@@ -74,6 +74,12 @@ describe('catalogue search', () => {
 		expect(cardsForIds).toHaveBeenCalledWith(['prd_silk']);
 	});
 
+	it('narrows to one category when asked', async () => {
+		const { controller, search } = setup();
+		await controller.searchProducts({ ...query('silk'), categoryId: 'cat_sarees' }, request);
+		expect(search).toHaveBeenCalledWith({ q: 'silk', categoryId: 'cat_sarees', page: 1, pageSize: 24 });
+	});
+
 	it('counts a committed search once, on its first page, in the request language', async () => {
 		const { controller, analytics } = setup();
 		await withCatalogLocale('bn', () =>
@@ -226,6 +232,26 @@ describe('trending beside a product', () => {
 		await withCatalogLocale('bn', () => insights.trendingFor('red', 6, now));
 		await insights.trendingFor('red', 6, new Date(now.getTime() + 6 * 60_000));
 		expect(analytics.listProductClicks).toHaveBeenCalledTimes(3);
+	});
+
+	it('needs no bestsellers or newest pieces once clicks fill the list', async () => {
+		const many = Array.from({ length: 14 }, (_, index) => `c${index}`);
+		const cards = many.map((id) => card(id));
+		const parts = setup({ cards });
+		parts.cardsForIds.mockImplementation(async (ids: readonly string[]) =>
+			ids.flatMap((id) => cards.filter((row) => row.id === id)),
+		);
+		const products = parts.products as unknown as Record<string, ReturnType<typeof vi.fn>>;
+		products['findById'] = vi.fn(async (id: string) => ({ id, categoryIds: ['cat_saree'] }));
+		products['findBySlug'] = vi.fn(async () => ({ id: 'self', categoryIds: ['cat_saree'] }));
+		products['list'] = vi.fn();
+		parts.analytics.listProductClicks.mockResolvedValue(
+			many.map((productId, index) => ({ productId, date: '2026-11-08', clicks: 30 - index })),
+		);
+		const result = await parts.insights.trendingFor('red', 20, now);
+		expect(result).toMatchObject({ kind: 'trending' });
+		expect(result.items).toHaveLength(12);
+		expect(products['list']).not.toHaveBeenCalled();
 	});
 
 	it('keeps the cache bounded', async () => {

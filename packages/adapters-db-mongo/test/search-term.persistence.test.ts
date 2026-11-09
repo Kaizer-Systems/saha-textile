@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
 import { SearchTermModel } from '../src/models/index';
@@ -61,5 +61,33 @@ describe.runIf(hasMongoEnv())('search word persistence (rs0)', () => {
 
 		await repo.remove(id('draft'));
 		expect(await repo.findById(id('draft'))).toBeNull();
+	});
+
+	it('reads an old row that lacks its lists and dates, and lists everything with no filter', async () => {
+		await SearchTermModel.collection.insertOne({ _id: id('old'), status: 'draft' } as never);
+		expect(await repo.findById(id('old'))).toEqual({
+			id: id('old'),
+			name: {},
+			spellings: {},
+			categoryIds: [],
+			productIds: [],
+			status: 'draft',
+		});
+		const all = await repo.list({ page: 1, pageSize: 500 });
+		expect(all.items.map((row) => row.id)).toContain(id('old'));
+	});
+
+	it('answers with what it was given if the saved row cannot be read back', async () => {
+		const term = {
+			id: id('gone'),
+			name: { en: 'Gone' },
+			spellings: {},
+			categoryIds: [],
+			productIds: [],
+			status: 'draft' as const,
+		};
+		const read = vi.spyOn(repo, 'findById').mockResolvedValueOnce(null);
+		expect(await repo.save(term)).toBe(term);
+		read.mockRestore();
 	});
 });

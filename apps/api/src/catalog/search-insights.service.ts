@@ -104,10 +104,9 @@ export class SearchInsightsService {
 		}
 		const items = (await this.catalog.cardsForIds(ids.slice(0, MAX_ITEMS * 2))).filter(buyable).slice(0, MAX_ITEMS);
 		const value: CatalogSearchTrending = { kind, items };
-		if (this.productCache.size >= PRODUCT_CACHE_LIMIT) {
-			const oldest = this.productCache.keys().next().value;
-			if (oldest !== undefined) this.productCache.delete(oldest);
-		}
+		// A Map keeps insertion order, so its first key is the oldest entry.
+		if (this.productCache.size >= PRODUCT_CACHE_LIMIT)
+			this.productCache.delete(this.productCache.keys().next().value as string);
 		this.productCache.set(key, { at: now.getTime(), value });
 		return { kind, items: items.slice(0, limit) };
 	}

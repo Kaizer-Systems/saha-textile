@@ -688,6 +688,18 @@ describe('saving the product form', () => {
 		]);
 	});
 
+	it('re-indexes many products at once, leaving out those not on the shop', async () => {
+		const { service, search } = build();
+		const count = await service.syncSearchMany([
+			product({ id: 'prd_1', status: 'live' }),
+			product({ id: 'prd_2', status: 'draft' }),
+		]);
+		expect(count).toBe(1);
+		expect(search.indexProducts).toHaveBeenLastCalledWith([
+			expect.objectContaining({ product: expect.objectContaining({ id: 'prd_1' }) }),
+		]);
+	});
+
 	it('saves even when the search index is down', async () => {
 		const { service, search } = build();
 		search.indexProducts.mockRejectedValue(new Error('search down'));

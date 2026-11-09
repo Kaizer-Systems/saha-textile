@@ -38,7 +38,7 @@ const saved = {
 const setup = (id?: string, row = saved) => {
 	const gateway = {
 		detail: vi.fn(() => of(row)),
-		save: vi.fn(() => of({ id: 's1', active: true, gaps: [] as unknown[] })),
+		save: vi.fn((..._args: unknown[]) => of({ id: 's1', active: true, gaps: [] as unknown[] })),
 	};
 	const media = { get: vi.fn((assetId: string) => of({ id: assetId, original_url: `${assetId}.webp` })) };
 	const router = { navigateByUrl: vi.fn() };

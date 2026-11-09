@@ -7,6 +7,7 @@ import {
 	Injector,
 	Input,
 	Renderer2,
+	computed,
 	inject,
 	input,
 	output,
@@ -18,14 +19,16 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbDropdown, NgbDropdownItem, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Observable, debounceTime, distinctUntilChanged } from 'rxjs';
 
+import { AuthStore } from '@core/state/auth.store';
 import { IAttachment, IAttachmentModel } from '@data-access/interfaces/attachment.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { injectAttachmentsQuery } from '@data-access/queries/attachment.queries';
 import { Loader } from '@layout/loader/loader';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { DeleteModal, DeleteModal as DeleteModalComponent_1 } from '@shared/ui/modal/delete-modal/delete-modal';
+import { MediaDetailsModal } from '@shared/ui/modal/media-details-modal/media-details-modal';
 
 import { NoData } from '../no-data/no-data';
 import { Pagination } from '../pagination/pagination';
@@ -37,7 +40,7 @@ import { Pagination } from '../pagination/pagination';
 	imports: [
 		ReactiveFormsModule,
 		Loader,
-		HasPermissionDirective,
+		MediaDetailsModal,
 		NgbDropdown,
 		NgbDropdownToggle,
 		NgbDropdownMenu,
@@ -54,6 +57,11 @@ export class MediaBox {
 	private renderer = inject(Renderer2);
 	private changeDetector = inject(ChangeDetectorRef);
 
+	private queryClient = inject(QueryClient);
+	private permissions = inject(AuthStore).permissions;
+	readonly canEdit = computed(() => this.permissions().includes('attachment.edit'));
+	readonly canDelete = computed(() => this.permissions().includes('attachment.destroy'));
+	readonly detailsModal = viewChild<MediaDetailsModal>('detailsModal');
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
 
 	// TODO: Skipped for migration because:
@@ -133,6 +141,15 @@ export class MediaBox {
 			this.selectedImages = <any>attachment;
 		}
 		this.setImage.emit(this.selectedImages);
+	}
+
+	editDetails(attachment: IAttachment) {
+		void this.detailsModal()?.openModal(String(attachment.id));
+	}
+
+	/** After Edit details: the grid shows the saved file name. */
+	refresh() {
+		void this.queryClient.invalidateQueries({ queryKey: ['attachments'] });
 	}
 
 	setPaginate(data: number) {

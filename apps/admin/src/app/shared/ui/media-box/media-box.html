@@ -47,34 +47,44 @@
 						/>
 					</div>
 				</label>
-				<ng-container *hasPermission="'attachment.destroy'">
-					@if (deleteAction()) {
-					<div
-						ngbDropdown
-						class="dropdown"
+				@if (deleteAction() && (canEdit() || canDelete())) {
+				<div
+					ngbDropdown
+					class="dropdown"
+				>
+					<a
+						href="javascript:void(0)"
+						ngbDropdownToggle
+						[attr.aria-label]="'more_actions' | transloco"
 					>
+						<i class="ri-more-fill"></i>
+					</a>
+					<ul
+						ngbDropdownMenu
+						class="dropdown-menu dropdown-menu-end"
+					>
+						@if (canEdit()) {
 						<a
-							href="javascript:void(0)"
-							ngbDropdownToggle
+							ngbDropdownItem
+							class="d-flex align-items-center"
+							(click)="editDetails(attachment)"
 						>
-							<i class="ri-more-fill"></i>
+							<i class="ri-edit-line me-2"></i>
+							{{ 'edit_details' | transloco }}
 						</a>
-						<ul
-							ngbDropdownMenu
-							class="dropdown-menu dropdown-menu-end"
+						} @if (canDelete()) {
+						<a
+							ngbDropdownItem
+							class="d-flex align-items-center"
+							(click)="DeleteModal().openModal('delete', attachment)"
 						>
-							<a
-								ngbDropdownItem
-								class="d-flex align-items-center"
-								(click)="DeleteModal().openModal('delete', attachment)"
-							>
-								<i class="ri-delete-bin-line me-2"></i>
-								{{ 'delete' | transloco }}
-							</a>
-						</ul>
-					</div>
-					}
-				</ng-container>
+							<i class="ri-delete-bin-line me-2"></i>
+							{{ 'delete' | transloco }}
+						</a>
+						}
+					</ul>
+				</div>
+				}
 			</div>
 		</div>
 		}
@@ -99,4 +109,8 @@
 	#deleteModal
 	[message]="'media_deleted_message'"
 	(deleteItem)="onActionClicked($event.actionToPerform,$event.data)"
+/>
+<app-media-details-modal
+	#detailsModal
+	(saved)="refresh()"
 />

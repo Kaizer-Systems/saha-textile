@@ -335,6 +335,11 @@ export class FormProduct {
 		altOverrides: {},
 	});
 	readonly tiles = signal<ReadonlyMap<string, string>>(new Map());
+	/** The product's photos in Images-tab order, offered as swatch pictures in the Options tab. */
+	readonly swatchPhotos = computed(() => {
+		const { imageMode, gallery, compound } = this.images();
+		return imageMode === 'simple' ? gallery : [...new Set(compound.flatMap((row) => row.gallery))];
+	});
 	readonly bundle = signal<ProductBundleWrite>({
 		bundleType: 'fixed_kit',
 		pricePolicy: 'sum_components',

@@ -178,8 +178,9 @@ export class CatalogPublicService {
 		const groups = product.optionGroups.length ? product.optionGroups : groupsFromAttributes(product);
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
 		const assets = await this.assetsFor([...productGallery(product), ...swatchIds]);
-		const gallery = productGallery(product).flatMap((id) => {
-			const image = this.image(assets.get(id), ['gallery', 'zoom']);
+		// The first photo also carries its 1200×630 link-preview card, once the main-photo sizes exist.
+		const gallery = productGallery(product).flatMap((id, index) => {
+			const image = this.image(assets.get(id), index === 0 ? ['gallery', 'zoom', 'share'] : ['gallery', 'zoom']);
 			return image ? [{ id, image }] : [];
 		});
 		const axisCodes = new Set(

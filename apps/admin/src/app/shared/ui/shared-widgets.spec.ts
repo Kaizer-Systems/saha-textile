@@ -4,10 +4,12 @@ import { FormControl } from '@angular/forms';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Store } from '@ngrx/store';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { BehaviorSubject, Subject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { YouTubeGateway } from '@core/media/content-blocks.gateway';
+import { AuthStore } from '@core/state/auth.store';
 import { LoaderStore } from '@core/state/loader.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
@@ -299,8 +301,13 @@ describe('YouTubeVideoField', () => {
 });
 
 describe('MediaBox', () => {
+	const permissions = signal<string[]>(['attachment.edit', 'attachment.destroy']);
+	const invalidateQueries = vi.fn();
 	const render = () => {
-		const fixture = bare(MediaBox);
+		const fixture = bare(MediaBox, [
+			{ provide: QueryClient, useValue: { invalidateQueries } },
+			{ provide: AuthStore, useValue: { permissions } },
+		]);
 		fixture.detectChanges();
 		TestBed.tick();
 		const box = fixture.componentInstance;
@@ -311,6 +318,17 @@ describe('MediaBox', () => {
 		return { fixture, box, images, deleted };
 	};
 	const event = (checked: boolean, value = '1') => ({ target: { checked, value } }) as never;
+
+	it('offers Edit details and Delete by permission, and refreshes after a save', () => {
+		const { box } = render();
+		expect([box.canEdit(), box.canDelete()]).toEqual([true, true]);
+		permissions.set(['attachment.edit']);
+		expect([box.canEdit(), box.canDelete()]).toEqual([true, false]);
+		permissions.set(['attachment.edit', 'attachment.destroy']);
+		box.refresh();
+		expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['attachments'] });
+		box.editDetails({ id: 'med_1' } as never);
+	});
 
 	it('follows the query', async () => {
 		const { box } = render();

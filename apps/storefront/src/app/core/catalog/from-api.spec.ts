@@ -137,3 +137,34 @@ describe('pageToProduct', () => {
 		]);
 	});
 });
+
+describe('pageToProduct link preview', () => {
+	const photo = (roles: Record<string, string>) => ({
+		assetId: 'med_1',
+		width: 1200,
+		height: 1600,
+		alt: 'Saree',
+		dominantColor: null,
+		thumbHash: null,
+		roles: Object.fromEntries(
+			Object.entries(roles).map(([role, url]) => [
+				role,
+				[{ url, width: 1200, height: 630, format: 'image/jpeg' }],
+			]),
+		),
+	});
+
+	it('uses the 1200×630 link-preview card once the main-photo sizes exist', () => {
+		const product = pageToProduct({
+			...page,
+			gallery: [photo({ gallery: 'g.webp', share: 'share.jpg' })],
+		} as ApiProductPage);
+		expect(product.product_meta_image?.original_url).toBe('share.jpg');
+		expect(product.product_thumbnail?.original_url).toBe('g.webp');
+	});
+
+	it('falls back to the first gallery photo before they are made', () => {
+		const product = pageToProduct({ ...page, gallery: [photo({ gallery: 'g.webp' })] } as ApiProductPage);
+		expect(product.product_meta_image?.original_url).toBe('g.webp');
+	});
+});

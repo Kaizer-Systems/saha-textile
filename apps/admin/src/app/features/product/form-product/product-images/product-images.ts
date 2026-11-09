@@ -1,13 +1,15 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input, model, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, model, signal, viewChild } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
-import type { ProductContentWrite } from '@saha-textile/contracts';
 
+import { MediaGateway } from '@core/media/media.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { MediaModal } from '@shared/ui/modal/media-modal/media-modal';
+
+import type { ProductContentWrite } from '@saha-textile/contracts';
 
 type ImagesValue = Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>;
 
@@ -47,6 +49,23 @@ export class ProductImages {
 	readonly locale = input.required<string>();
 
 	readonly picker = viewChild<MediaModal>('picker');
+	private media = inject(MediaGateway);
+	/** The primary image's alt text from the Media Library, shown in grey as what an empty field uses. */
+	readonly libraryAlt = signal<Record<string, string>>({});
+
+	constructor() {
+		effect((onCleanup) => {
+			const id = this.primary();
+			this.libraryAlt.set({});
+			if (!id) return;
+			const request = this.media.details(id).subscribe({
+				next: (details) => this.libraryAlt.set(details.text.alt),
+				error: () => undefined,
+			});
+			onCleanup(() => request.unsubscribe());
+		});
+	}
+
 	/** The gallery the library is adding to: null is the simple gallery. */
 	private target: string | null = null;
 

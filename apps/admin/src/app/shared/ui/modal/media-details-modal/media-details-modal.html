@@ -1,0 +1,105 @@
+<ng-template
+	#detailsModal
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="media-details-title">{{ 'edit_details' | transloco }}</h2>
+		<app-button
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'media_details_close_btn'"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<div class="modal-body">
+		<form
+			class="theme-form theme-form-2 mega-form"
+			[formGroup]="form"
+			(ngSubmit)="save(modal)"
+		>
+			<app-language-switch
+				[locales]="locales"
+				[active]="fields.locale()"
+				[gaps]="gaps()"
+				(changed)="switchLanguage($event)"
+			/>
+			<app-form-fields
+				[label]="'file_name'"
+				[for]="'media_slug'"
+				[required]="true"
+			>
+				<input
+					class="form-control"
+					id="media_slug"
+					formControlName="slug"
+					(change)="setSlug($any($event.target).value)"
+				/>
+				@if (form.controls.slug.touched && form.controls.slug.invalid) {
+				<div class="invalid-feedback d-block">{{ 'file_name_invalid' | transloco }}</div>
+				} @if (renaming()) {
+				<p class="help-text text-danger">{{ 'file_name_rename_warning' | transloco }}</p>
+				} @else {
+				<p class="help-text">{{ 'file_name_help' | transloco }}</p>
+				}
+			</app-form-fields>
+			<app-form-fields
+				[label]="'alt_text'"
+				[for]="'alt'"
+				[required]="true"
+			>
+				<input
+					class="form-control"
+					id="alt"
+					formControlName="alt"
+					(change)="refreshGaps()"
+				/>
+				@if (fields.source('alt'); as text) {
+				<p class="help-text">{{ 'english_guide' | transloco: { text: text } }}</p>
+				}
+			</app-form-fields>
+			<app-form-fields
+				[label]="'title'"
+				[for]="'title'"
+			>
+				<input
+					class="form-control"
+					id="title"
+					formControlName="title"
+					(change)="refreshGaps()"
+				/>
+				@if (fields.source('title'); as text) {
+				<p class="help-text">{{ 'english_guide' | transloco: { text: text } }}</p>
+				}
+			</app-form-fields>
+			<app-form-fields
+				[label]="'caption'"
+				[for]="'caption'"
+			>
+				<input
+					class="form-control"
+					id="caption"
+					formControlName="caption"
+					(change)="refreshGaps()"
+				/>
+				@if (fields.source('caption'); as text) {
+				<p class="help-text">{{ 'english_guide' | transloco: { text: text } }}</p>
+				}
+			</app-form-fields>
+		</form>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part">
+			<app-button
+				[class]="'align-items-center btn btn-theme d-flex'"
+				[id]="'media_details_btn'"
+				[disabled]="saving()"
+				(click)="save(modal)"
+			>
+				{{ 'save' | transloco }}
+			</app-button>
+		</div>
+	</div>
+</ng-template>

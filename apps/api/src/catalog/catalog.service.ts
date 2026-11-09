@@ -40,6 +40,7 @@ import {
 	type ProductRelationRepository,
 	type ProductRepository,
 	type ProductVariantRepository,
+	type MediaJobQueuePort,
 	type SeoRedirectRepository,
 	type StoragePort,
 	type TransactionManagerPort,
@@ -56,6 +57,7 @@ import {
 	CATEGORY_REPOSITORY,
 	FAQ_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
+	MEDIA_JOB_QUEUE,
 	PRODUCT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
@@ -99,6 +101,7 @@ export class CatalogService {
 		// Named outright: a `| null` type is recorded as Object, which Nest cannot resolve.
 		@Optional() @Inject(SearchVocabularyService) private readonly vocabulary: SearchVocabularyService | null = null,
 		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
+		@Optional() @Inject(MEDIA_JOB_QUEUE) private readonly mediaJobs: MediaJobQueuePort | null = null,
 	) {}
 
 	/** A product's own FAQ questions, any status, in display order (the form and Go Live). */
@@ -486,6 +489,7 @@ export class CatalogService {
 			}
 		});
 		if (body.content) await this.syncProductFaq(product.id, body.content.faq);
+		await this.promotePrimaryImage(next);
 		await this.syncSearch(next);
 		await this.record(actorUserId, 'catalog.product.save', product.id, {
 			sku: next.sku,
@@ -562,8 +566,29 @@ export class CatalogService {
 		return ids;
 	}
 
+	/**
+	 * The product's first photo gets the sizes only a main photo needs: the 1200×630 link-preview
+	 * card, the shopping-feed square and the email thumbnail. Marking it queues a background
+	 * reprocess; a photo already marked is left alone. A photo that stops being first keeps its
+	 * extra sizes, which cost a few files and keep any link already shared working.
+	 */
+	private async promotePrimaryImage(product: Product): Promise<void> {
+		const assetId = productGallery(product)[0];
+		if (!assetId || !this.media || !this.mediaJobs) return;
+		const asset = await this.media.findById(assetId);
+		if (!asset || asset.servesAsPrimary) return;
+		await this.media.update({ ...asset, servesAsPrimary: true });
+		if (asset.processing.state === 'ready') {
+			await this.mediaJobs.enqueue({ type: 'reprocess', assetId, reason: 'primary' });
+		}
+	}
+
 	private async imageTiles(product: Product) {
-		const ids = [...new Set([...product.media.gallery, ...productGallery(product)])];
+		// Swatch pictures too, so the Options tab can show each value's chosen picture.
+		const swatches = product.optionGroups.flatMap((group) =>
+			group.terms.flatMap((term) => term.swatchAssetId ?? []),
+		);
+		const ids = [...new Set([...product.media.gallery, ...productGallery(product), ...swatches])];
 		const assets = await this.assetsFor(ids);
 		return ids.flatMap((assetId) => {
 			const asset = assets.get(assetId);

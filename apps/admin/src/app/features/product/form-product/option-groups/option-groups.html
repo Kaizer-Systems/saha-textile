@@ -71,7 +71,66 @@
 							</div>
 							}
 						</app-form-fields>
-						@if (group.semanticRole === 'named_add_on') {
+						@if (group.displayStyle === 'image_swatch') {
+						<app-form-fields
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+							[label]="'swatch_pictures'"
+							[for]="'swatch_' + index"
+							[required]="true"
+						>
+							@for (term of group.terms; track term.code) {
+							<div
+								class="d-flex align-items-start mb-3 gap-3"
+								[id]="$first ? 'swatch_' + index : null"
+							>
+								<span class="input-group-text">{{ termLabel(term) }}</span>
+								<div>
+									<ul class="image-select-list cursor-pointer">
+										<li
+											class="choosefile-input"
+											role="button"
+											tabindex="0"
+											[attr.aria-label]="'swatch_from_library' | transloco"
+											(click)="openLibrary(index, term.code)"
+											(keydown.enter)="openLibrary(index, term.code)"
+										>
+											<i class="ri-add-line"></i>
+										</li>
+										@for (tile of swatchTiles(term); track tile.id) {
+										<li
+											class="image-order-tile"
+											role="button"
+											tabindex="0"
+											[attr.aria-pressed]="tile.id === term.swatchAssetId"
+											[attr.aria-label]="'swatch_choose' | transloco: { value: termLabel(term) }"
+											(click)="chooseSwatch(index, group, term.code, tile.id)"
+											(keydown.enter)="chooseSwatch(index, group, term.code, tile.id)"
+										>
+											@if (tile.id === term.swatchAssetId) {
+											<span class="image-order-position is-primary">
+												{{ 'swatch' | transloco }}
+											</span>
+											}
+											<img
+												[src]="tile.url"
+												alt=""
+												class="img-fluid"
+											/>
+										</li>
+										}
+									</ul>
+									@if (!term.swatchAssetId) {
+									<div class="invalid-feedback d-block">
+										{{ 'swatch_picture_missing' | transloco }}
+									</div>
+									}
+								</div>
+							</div>
+							}
+							<p class="help-text">{{ 'swatch_pictures_help' | transloco }}</p>
+						</app-form-fields>
+						} @if (group.semanticRole === 'named_add_on') {
 						<app-form-fields
 							[labelClass]="'form-label-title col-sm-3 mb-0'"
 							[gridClass]="'col-sm-9'"
@@ -166,3 +225,9 @@
 		(update)="add($event)"
 	/>
 </app-form-fields>
+<app-media-modal
+	#swatchPicker
+	[multipleImage]="false"
+	[purpose]="'product'"
+	(selectImage)="fromLibrary($event)"
+/>

@@ -1,14 +1,18 @@
-import { Component, computed, inject, input, model, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, model, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
-import type { AttributeDefinition, ProductOptionGroup, ProductOptionTerm } from '@saha-textile/contracts';
 import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
 
-import type { AddonTemplateRow } from '@data-access/services/addon-template.service';
+import { MediaGateway } from '@core/media/media.gateway';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { MediaModal } from '@shared/ui/modal/media-modal/media-modal';
+
+import type { IAttachment } from '@data-access/interfaces/attachment.interface';
+import type { AddonTemplateRow } from '@data-access/services/addon-template.service';
+import type { AttributeDefinition, ProductOptionGroup, ProductOptionTerm } from '@saha-textile/contracts';
 
 const ROLES = ['variation_axis', 'named_add_on', 'filter_only', 'bundle_component_option'] as const;
 const STYLES = ['rectangle', 'circle', 'image_swatch', 'color_swatch', 'radio', 'dropdown'] as const;
@@ -28,6 +32,8 @@ function termFrom(term: AttributeDefinition['terms'][number], position: number):
 	};
 }
 
+const PLACEHOLDER = 'assets/images/product.png';
+
 /**
  * The product's option groups. The role decides behaviour, the style only the look. A value is one
  * thing with a name in each language, so a pick here holds in every language; the picker offers
@@ -36,7 +42,9 @@ function termFrom(term: AttributeDefinition['terms'][number], position: number):
 @Component({
 	selector: 'app-option-groups',
 	templateUrl: './option-groups.html',
-	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields],
+	// The Images tab's tile and badge, reused as they are for the swatch pictures.
+	styleUrls: ['../product-images/product-images.scss'],
+	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields, MediaModal],
 })
 export class OptionGroups {
 	readonly groups = model.required<ProductOptionGroup[]>();
@@ -50,6 +58,32 @@ export class OptionGroups {
 	private transloco = inject(TranslocoService);
 	/** One measurement template per product, asked for by any option that measures. */
 	readonly templateCode = model<string | null>(null);
+	/** The product's photos in Images-tab order: the tiles a swatch picture is chosen from. */
+	readonly photos = input<readonly string[]>([]);
+	/** Preview address of each image, shared with the Images tab. */
+	readonly tiles = model<ReadonlyMap<string, string>>(new Map());
+
+	private media = inject(MediaGateway);
+	readonly picker = viewChild<MediaModal>('swatchPicker');
+	/** The value the media library is choosing a picture for. */
+	private target: { index: number; code: string } | null = null;
+	private requested = new Set<string>();
+
+	constructor() {
+		// A value brings its default picture from Settings › Attributes; fetch any preview not yet known.
+		effect(() => {
+			const known = this.tiles();
+			const chosen = this.groups().flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
+			const missing = [...new Set(chosen)].filter((id) => !known.has(id) && !this.requested.has(id));
+			for (const id of missing) {
+				this.requested.add(id);
+				this.media.get(id).subscribe({
+					next: (row) => this.tiles.update((tiles) => new Map([...tiles, [id, row.original_url]])),
+					error: () => undefined,
+				});
+			}
+		});
+	}
 
 	readonly templateOptions = computed(() =>
 		this.templates().map((row) => ({ value: row.code, label: labelIn(row.label, this.locale()) || row.code })),
@@ -160,5 +194,43 @@ export class OptionGroups {
 			return amount === undefined ? rest : { ...rest, priceDeltaINR: amount };
 		});
 		this.update(index, { terms });
+	}
+
+	termLabel(term: ProductOptionTerm): string {
+		return labelIn(term.label, this.locale()) || term.code;
+	}
+
+	/** The product's photos, then a library picture already chosen that is not one of them. */
+	swatchTiles(term: ProductOptionTerm): { id: string; url: string }[] {
+		const ids = [...this.photos()];
+		if (term.swatchAssetId && !ids.includes(term.swatchAssetId)) ids.push(term.swatchAssetId);
+		return ids.map((id) => ({ id, url: this.tiles().get(id) ?? PLACEHOLDER }));
+	}
+
+	/** Tapping a photo makes it the value's swatch; tapping the chosen one again clears it. */
+	chooseSwatch(index: number, group: ProductOptionGroup, code: string, assetId: string): void {
+		const terms = group.terms.map((term) => {
+			if (term.code !== code) return term;
+			const { swatchAssetId: current, ...rest } = term;
+			return current === assetId ? rest : { ...rest, swatchAssetId: assetId };
+		});
+		this.update(index, { terms });
+	}
+
+	openLibrary(index: number, code: string): void {
+		this.target = { index, code };
+		void this.picker()?.openModal();
+	}
+
+	/** A picture from the library: any image, such as a fabric close-up, or one just uploaded. */
+	fromLibrary(picked: IAttachment | IAttachment[]): void {
+		const row = Array.isArray(picked) ? picked[0] : picked;
+		const target = this.target;
+		const group = target ? this.groups()[target.index] : undefined;
+		if (!row || !target || !group) return;
+		const id = String(row.id);
+		this.tiles.update((tiles) => new Map([...tiles, [id, row.original_url]]));
+		const terms = group.terms.map((term) => (term.code === target.code ? { ...term, swatchAssetId: id } : term));
+		this.update(target.index, { terms });
 	}
 }

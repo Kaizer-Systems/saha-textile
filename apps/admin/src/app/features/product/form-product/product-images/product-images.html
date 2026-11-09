@@ -141,6 +141,7 @@
 		class="form-control"
 		id="primary_alt"
 		[value]="alt()"
+		[placeholder]="libraryAlt()[locale()] ?? ''"
 		(change)="setAlt($any($event.target).value)"
 	/>
 	<p class="help-text">{{ 'alt_text_help' | transloco }}</p>

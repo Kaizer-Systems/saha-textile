@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
 import { LocalizedFields } from '@core/i18n/localized-fields';
+import { MediaGateway } from '@core/media/media.gateway';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { BlogService } from '@data-access/services/blog.service';
@@ -356,8 +357,30 @@ describe('ProductImages', () => {
 		altOverrides: {},
 		...over,
 	});
+	const library = {
+		details: vi.fn((assetId: string) =>
+			assetId === 'broken'
+				? throwError(() => new Error('gone'))
+				: of({ slug: assetId, text: { alt: { bn: `${assetId} বিবরণ` }, title: {}, caption: {} } }),
+		),
+	};
 	const render = (over: Record<string, unknown> = {}) =>
-		mount(ProductImages, [], { value: value(over), tiles: new Map(), combinations: [], locale: 'bn' });
+		mount(ProductImages, [{ provide: MediaGateway, useValue: library }], {
+			value: value(over),
+			tiles: new Map(),
+			combinations: [],
+			locale: 'bn',
+		});
+
+	it('shows the primary image’s library alt text as what an empty field uses', () => {
+		const page = render();
+		expect(page.libraryAlt()).toEqual({ bn: 'a বিবরণ' });
+		page.makePrimary(null, 1);
+		TestBed.tick();
+		expect(page.libraryAlt()).toEqual({ bn: 'b বিবরণ' });
+		expect(render({ gallery: ['broken'] }).libraryAlt()).toEqual({});
+		expect(render({ gallery: [] }).libraryAlt()).toEqual({});
+	});
 
 	it('knows the primary in each mode, and when there is none', () => {
 		expect(render().primary()).toBe('a');
@@ -1017,11 +1040,29 @@ describe('FormAttribute', () => {
 				{ provide: QueryClient, useValue: client },
 				{ provide: NotificationService, useValue: toasts },
 				{ provide: TranslocoService, useValue: translate },
+				{
+					provide: MediaGateway,
+					useValue: { get: (assetId: string) => of({ id: assetId, original_url: 'a.webp' }) },
+				},
 			],
 			{ type: id ? 'edit' : 'create' },
 		);
 		return { page, service, router, toasts };
 	};
+
+	it('gives each value a default picture in the picture styles only', () => {
+		const { page } = render('color');
+		expect(page.isPicture).toBe(false);
+		expect(page.picture(page.terms()[0]!)).toMatchObject({ id: 'a1', original_url: 'a.webp' });
+		page.form.patchValue({ style: 'image_tile' });
+		expect(page.isPicture).toBe(true);
+		page.setPicture(0, [{ id: 'b2', original_url: 'b.webp' }] as never);
+		expect(page.terms()[0]?.swatchAssetId).toBe('b2');
+		expect(page.picture(page.terms()[0]!)?.original_url).toBe('b.webp');
+		page.setPicture(0, null);
+		expect(page.terms()[0]).not.toHaveProperty('swatchAssetId');
+		expect(page.picture(page.terms()[0]!)).toBeNull();
+	});
 
 	it('fills from the API, keeping the code', () => {
 		const { page } = render('color');
@@ -1221,5 +1262,72 @@ describe('Taxonomy services', () => {
 		const posted = (client.post.mock.calls as unknown as string[][]).map((call) => call[0]);
 		expect(posted[1]).toMatch(/products\/p%201\/go-live$/);
 		expect(posted[2]).toMatch(/products\/p%201\/bundle$/);
+	});
+});
+
+describe('swatch pictures', () => {
+	const picture = (id: string) => ({ id, original_url: `${id}.webp` });
+	const gateway = { get: vi.fn((id: string) => of(picture(id))), details: vi.fn() };
+	const providers = [
+		{ provide: TranslocoService, useValue: translate },
+		{ provide: MediaGateway, useValue: gateway },
+	];
+	const swatchGroup = (terms: Record<string, unknown>[]) =>
+		group({
+			displayStyle: 'image_swatch',
+			terms: terms.map((term, index) => ({
+				code: `v${index}`,
+				label: both,
+				isBase: false,
+				addonTemplateIds: [],
+				requiresMeasurements: false,
+				sortOrder: index,
+				...term,
+			})),
+		});
+	const render = (terms: Record<string, unknown>[], tiles = new Map<string, string>()) =>
+		mount(OptionGroups, providers, {
+			groups: [swatchGroup(terms)],
+			definitions: [],
+			locale: 'en',
+			photos: ['p1', 'p2'],
+			tiles,
+		});
+
+	afterEach(() => gateway.get.mockClear());
+
+	it('offers the product photos in order, then a library picture already chosen', () => {
+		const page = render([{}, { swatchAssetId: 'lib' }], new Map([['p1', 'p1.webp']]));
+		const [plain, chosen] = page.groups()[0]!.terms;
+		expect(page.swatchTiles(plain!).map((tile) => tile.id)).toEqual(['p1', 'p2']);
+		expect(page.swatchTiles(plain!)[1]?.url).toBe('assets/images/product.png');
+		expect(page.swatchTiles(chosen!).map((tile) => tile.id)).toEqual(['p1', 'p2', 'lib']);
+	});
+
+	it('fetches a preview it does not know, once', () => {
+		const page = render([{ swatchAssetId: 'lib' }, { swatchAssetId: 'lib' }]);
+		expect(gateway.get).toHaveBeenCalledTimes(1);
+		expect(page.tiles().get('lib')).toBe('lib.webp');
+	});
+
+	it('chooses a photo on tap and clears it on a second tap', () => {
+		const page = render([{}]);
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p2');
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('p2');
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p1');
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('p1');
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p1');
+		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchAssetId');
+	});
+
+	it('takes a picture from the library for the value that asked', () => {
+		const page = render([{}, {}]);
+		page.fromLibrary(picture('nothing') as never);
+		expect(page.groups()[0]?.terms.every((term) => !term.swatchAssetId)).toBe(true);
+		page.openLibrary(0, 'v1');
+		page.fromLibrary([picture('close-up')] as never);
+		expect(page.groups()[0]?.terms[1]?.swatchAssetId).toBe('close-up');
+		expect(page.tiles().get('close-up')).toBe('close-up.webp');
+		expect(page.termLabel(page.groups()[0]!.terms[0]!)).toBe('Red');
 	});
 });

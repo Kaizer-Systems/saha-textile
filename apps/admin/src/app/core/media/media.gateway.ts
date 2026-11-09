@@ -42,9 +42,20 @@ interface MediaLibraryItem {
 		height: number;
 		createdAt?: string;
 		processing: { state: string };
+		text?: MediaDetails['text'];
 	};
 	preview: { roles: Record<string, ResolvedSource[]> } | null;
 	usageCount: number;
+}
+
+/** An image's search-friendly file name and its alt text, title and caption in each language. */
+export interface MediaDetails {
+	slug: string;
+	text: {
+		alt: Record<string, string>;
+		title: Record<string, string>;
+		caption: Record<string, string>;
+	};
 }
 
 interface MediaLibraryResponse {
@@ -124,6 +135,25 @@ export class MediaGateway {
 		return this.http
 			.get<MediaLibraryItem>(this.url(`/${encodeURIComponent(assetId)}`))
 			.pipe(map((item) => toAttachment(item)));
+	}
+
+	/** The file name and text of one image, for Edit details and the product form's alt hint. */
+	details(assetId: string): Observable<MediaDetails> {
+		return this.http.get<MediaLibraryItem>(this.url(`/${encodeURIComponent(assetId)}`)).pipe(
+			map((item) => ({
+				slug: item.asset.slug,
+				text: {
+					alt: item.asset.text?.alt ?? {},
+					title: item.asset.text?.title ?? {},
+					caption: item.asset.text?.caption ?? {},
+				},
+			})),
+		);
+	}
+
+	/** Saves the details. A new file name renames every size of the image in the background. */
+	saveDetails(assetId: string, body: MediaDetails['text'] & { slug: string }): Observable<void> {
+		return this.http.patch(this.url(`/${encodeURIComponent(assetId)}`), body).pipe(map(() => undefined));
 	}
 
 	presign(body: {

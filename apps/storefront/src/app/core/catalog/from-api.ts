@@ -185,6 +185,12 @@ export const galleryAttachment = (image: ApiImage, index: number): IAttachment =
 	return { id: index + 1, original_url: url, image } as unknown as IAttachment;
 };
 
+/** The link-preview card (1200×630) when the main-photo sizes exist, else the first gallery photo. */
+const shareAttachment = (image: ApiImage | undefined, fallback: IAttachment | undefined): IAttachment | undefined => {
+	const url = image?.roles['share']?.[0]?.url;
+	return url ? ({ id: 0, original_url: url, image } as unknown as IAttachment) : fallback;
+};
+
 const swatchAttachment = (image: ApiImage | null, id: number): IAttachment | undefined => {
 	const url = image?.roles['swatch_image']?.at(-1)?.url;
 	return url ? ({ id, original_url: url, image } as unknown as IAttachment) : undefined;
@@ -459,7 +465,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				}
 			: undefined,
 		product_thumbnail: galleries[0],
-		product_meta_image: galleries[0],
+		product_meta_image: shareAttachment(page.gallery[0], ordered[0]),
 		product_galleries: galleries,
 		attributes,
 		variations,

@@ -4,7 +4,6 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { AdminAttributeWrite, AttributeDefinition, AttributeDefinitionTerm } from '@saha-textile/contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
@@ -18,11 +17,16 @@ import {
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { MediaGateway } from '@core/media/media.gateway';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
+
+import type { IAttachment } from '@data-access/interfaces/attachment.interface';
+import type { AdminAttributeWrite, AttributeDefinition, AttributeDefinitionTerm } from '@saha-textile/contracts';
 
 const slugOf = (text: string): string =>
 	text
@@ -49,7 +53,7 @@ const blankTerm = (): AttributeDefinitionTerm => ({
 	selector: 'app-form-attribute',
 	templateUrl: './form-attribute.html',
 	styleUrls: ['./form-attribute.scss'],
-	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule, Select2, LanguageSwitch],
+	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule, Select2, LanguageSwitch, ImageUpload],
 })
 export class FormAttribute {
 	private page = inject<Document>(DOCUMENT);
@@ -60,6 +64,7 @@ export class FormAttribute {
 	private queryClient = inject(QueryClient);
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
+	private media = inject(MediaGateway);
 
 	readonly type = input<string>(undefined);
 
@@ -67,6 +72,8 @@ export class FormAttribute {
 	readonly locales = ADMIN_LOCALES;
 	readonly fields: LocalizedFields;
 	readonly terms = signal<AttributeDefinitionTerm[]>([blankTerm()]);
+	/** Each value's default picture, by image id, as the picker shows it. */
+	readonly pictures = signal<ReadonlyMap<string, IAttachment>>(new Map());
 	/** Set when editing: the code stays, because products point at it. */
 	readonly code = signal<string | null>(null);
 
@@ -112,6 +119,28 @@ export class FormAttribute {
 		return this.form.get('style')?.value === 'color_swatch';
 	}
 
+	/** Picture styles give each value a default picture that products start with. */
+	get isPicture(): boolean {
+		const style = this.form.get('style')?.value;
+		return style === 'image_swatch' || style === 'image_tile';
+	}
+
+	picture(term: AttributeDefinitionTerm): IAttachment | null {
+		return term.swatchAssetId ? (this.pictures().get(term.swatchAssetId) ?? null) : null;
+	}
+
+	setPicture(index: number, picked: IAttachment | IAttachment[] | null) {
+		const row = Array.isArray(picked) ? picked[0] : picked;
+		if (row) this.pictures.update((map) => new Map([...map, [String(row.id), row]]));
+		this.terms.update((rows) =>
+			rows.map((term, position) => {
+				if (position !== index) return term;
+				const { swatchAssetId: _dropped, ...rest } = term;
+				return row ? { ...rest, swatchAssetId: String(row.id) } : rest;
+			}),
+		);
+	}
+
 	ngOnInit() {
 		this.route.params
 			.pipe(
@@ -133,6 +162,12 @@ export class FormAttribute {
 		this.code.set(definition.code);
 		this.fields.load({ name: definition.label });
 		this.terms.set(definition.terms);
+		for (const id of new Set(definition.terms.flatMap((term) => term.swatchAssetId ?? []))) {
+			this.media.get(id).subscribe({
+				next: (row) => this.pictures.update((map) => new Map([...map, [id, row]])),
+				error: () => undefined,
+			});
+		}
 		this.form.patchValue({
 			style: definition.defaultDisplayStyle,
 			default_role: definition.defaultRole,

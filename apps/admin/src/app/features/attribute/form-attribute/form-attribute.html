@@ -96,6 +96,14 @@
 					(change)="setHex(index, $any($event.target).value)"
 				/>
 			</div>
+			} @if (isPicture) {
+			<div class="col-auto">
+				<app-image-upload
+					[image]="picture(term)"
+					[purpose]="'product'"
+					(selectedFiles)="setPicture(index, $event)"
+				/>
+			</div>
 			}
 			<div class="col">
 				<input

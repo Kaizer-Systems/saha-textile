@@ -422,6 +422,9 @@ importers:
       '@saha-textile/adapters-image-sharp':
         specifier: workspace:*
         version: link:../../packages/adapters-image-sharp
+      '@saha-textile/adapters-mail-gmail':
+        specifier: workspace:*
+        version: link:../../packages/adapters-mail-gmail
       '@saha-textile/adapters-notifications-msg91':
         specifier: workspace:*
         version: link:../../packages/adapters-notifications-msg91

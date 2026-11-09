@@ -93,6 +93,8 @@ export const PermissionCode = z.enum([
 	'faq.destroy',
 	'faq.edit',
 	'faq.index',
+	'mailbox.manage',
+	'mailbox.use',
 	'order.create',
 	'order.edit',
 	'order.index',
@@ -167,6 +169,8 @@ export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.option
  * real answer. A template is not.
  */
 export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
+	'mailbox.manage':
+		'The Mailboxes tab under Settings (setting/mailboxes): connect or disconnect a Gmail mailbox, its Access modal and the Contact Us mailbox choice (/admin/mailboxes). Its own code because it hands out other people\'s email.',
 	'dashboard.customers':
 		'Total Customers tile on the admin home page (dashboard.html, GET /admin/dashboard/customers). The tile is a count only, so it is separate from customer.index, which opens personal records.',
 	'dashboard.orders':
@@ -299,6 +303,7 @@ export const PermissionResource = z.enum([
 	'dashboard',
 	'event',
 	'faq',
+	'mailbox',
 	'order',
 	'page',
 	'permission',
@@ -342,6 +347,7 @@ export const PermissionAction = z.enum([
 	'destroy',
 	'edit',
 	'index',
+	'manage',
 	'orders',
 	'publish',
 	'restore',
@@ -351,6 +357,7 @@ export const PermissionAction = z.enum([
 	'stock',
 	'top_products',
 	'update',
+	'use',
 ]);
 export type PermissionAction = z.infer<typeof PermissionAction>;
 

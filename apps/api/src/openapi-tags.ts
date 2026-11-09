@@ -25,6 +25,7 @@ export const API_TAGS = {
 	blog: 'blog',
 	events: 'events',
 	stores: 'stores',
+	mailboxes: 'mailboxes',
 	wishlist: 'wishlist',
 } as const;
 
@@ -76,6 +77,11 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.stores,
 		description:
 			"The shop's physical stores. Contact Us reads active stores in one language; the super admin writes every language under Settings › Stores.",
+	},
+	{
+		name: API_TAGS.mailboxes,
+		description:
+			'Gmail mailboxes in the admin and the Contact Us form. The super admin connects mailboxes and decides who may read or send; the Inbox reads mail live from Gmail; Contact Us messages are stored, then placed in the chosen mailbox.',
 	},
 	{
 		name: API_TAGS.wishlist,

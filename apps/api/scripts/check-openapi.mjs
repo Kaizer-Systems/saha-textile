@@ -45,7 +45,9 @@ const DECLARED_TAGS = [
 	'media',
 	'reviews',
 	'blog',
+	'events',
 	'stores',
+	'mailboxes',
 	'wishlist',
 ];
 

@@ -71,7 +71,8 @@ export type AuthRateLimitAction =
 	| 'search_click'
 	| 'cart_write'
 	| 'wishlist_write'
-	| 'consent_write';
+	| 'consent_write'
+	| 'contact_message';
 
 const MINUTES = 60;
 const HOURS = 60 * MINUTES;
@@ -165,6 +166,15 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 	consent_write: {
 		counting: 'attempts',
 		ip: { max: 30, windowSeconds: 1 * MINUTES },
+	},
+	/**
+	 * Contact Us lands in a staff mailbox, so one sender gets three messages a day and one
+	 * address ten (a shared office or phone network still fits).
+	 */
+	contact_message: {
+		counting: 'attempts',
+		identifier: { max: 3, windowSeconds: 24 * HOURS },
+		ip: { max: 10, windowSeconds: 24 * HOURS },
 	},
 };
 

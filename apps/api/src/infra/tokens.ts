@@ -64,4 +64,10 @@ export const SALE_PRICE_BOOK = Symbol('SalePriceBook');
 export const BLOG_CATEGORY_REPOSITORY = Symbol('BlogCategoryRepository');
 export const BLOG_TAG_REPOSITORY = Symbol('BlogTagRepository');
 export const STORE_LOCATION_REPOSITORY = Symbol('StoreLocationRepository');
+/** Gmail mailboxes in the admin and Contact Us delivery (owner log § stores, Contact Us and Gmail mailboxes). */
+export const MAILBOX_PORT = Symbol('MailboxPort');
+export const MAILBOX_REPOSITORY = Symbol('MailboxRepository');
+export const MAILBOX_ACCESS_REPOSITORY = Symbol('MailboxAccessRepository');
+export const MAILBOX_TOKEN_STORE = Symbol('MailboxTokenStore');
+export const CONTACT_MESSAGE_REPOSITORY = Symbol('ContactMessageRepository');
 export const WISHLIST_REPOSITORY = Symbol('WishlistRepository');

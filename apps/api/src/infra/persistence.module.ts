@@ -30,6 +30,9 @@ import {
 	MongoStoreLocationRepository,
 	MongoWishlistRepository,
 	MongoMediaAssetRepository,
+	MongoMailboxRepository,
+	MongoMailboxAccessRepository,
+	MongoContactMessageRepository,
 	MongoMediaRoleRepository,
 	MongoReviewRepository,
 	MongoSeoRouteRepository,
@@ -73,6 +76,7 @@ import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
 import { LogOnlyCdnPurgeAdapter } from './log-only-cdn-purge.adapter';
 import { buildInrPaymentGateway } from './payment-gateway-factory';
+import { buildMailboxPort, buildMailboxTokenStore } from './mail-adapters-factory';
 import { UnavailableYouTubeAdapter } from './unavailable-youtube.adapter';
 import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
 import { buildNotificationPort } from './notification-factory';
@@ -137,6 +141,11 @@ import {
 	BLOG_CATEGORY_REPOSITORY,
 	BLOG_TAG_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
+	MAILBOX_PORT,
+	MAILBOX_REPOSITORY,
+	MAILBOX_ACCESS_REPOSITORY,
+	MAILBOX_TOKEN_STORE,
+	CONTACT_MESSAGE_REPOSITORY,
 	WISHLIST_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 	SEARCH_ANALYTICS_REPOSITORY,
@@ -287,6 +296,12 @@ import { SalePriceBook } from '../events/sale-price-book';
 		{ provide: BLOG_CATEGORY_REPOSITORY, useClass: MongoBlogCategoryRepository },
 		{ provide: BLOG_TAG_REPOSITORY, useClass: MongoBlogTagRepository },
 		{ provide: STORE_LOCATION_REPOSITORY, useClass: MongoStoreLocationRepository },
+		// Gmail mailboxes and Contact Us (owner log § stores, Contact Us and Gmail mailboxes).
+		{ provide: MAILBOX_REPOSITORY, useClass: MongoMailboxRepository },
+		{ provide: MAILBOX_ACCESS_REPOSITORY, useClass: MongoMailboxAccessRepository },
+		{ provide: CONTACT_MESSAGE_REPOSITORY, useClass: MongoContactMessageRepository },
+		{ provide: MAILBOX_TOKEN_STORE, useFactory: buildMailboxTokenStore, inject: [APP_CONFIG] },
+		{ provide: MAILBOX_PORT, useFactory: buildMailboxPort, inject: [APP_CONFIG] },
 		{ provide: WISHLIST_REPOSITORY, useClass: MongoWishlistRepository },
 		{ provide: SITE_SETTINGS_REPOSITORY, useClass: MongoSiteSettingsRepository },
 		// Search totals and result clicks, with no shopper detail (search suggestions, 2026-11-08).
@@ -389,6 +404,11 @@ import { SalePriceBook } from '../events/sale-price-book';
 		BLOG_CATEGORY_REPOSITORY,
 		BLOG_TAG_REPOSITORY,
 		STORE_LOCATION_REPOSITORY,
+		MAILBOX_PORT,
+		MAILBOX_REPOSITORY,
+		MAILBOX_ACCESS_REPOSITORY,
+		MAILBOX_TOKEN_STORE,
+		CONTACT_MESSAGE_REPOSITORY,
 		WISHLIST_REPOSITORY,
 		SITE_SETTINGS_REPOSITORY,
 		SEARCH_ANALYTICS_REPOSITORY,

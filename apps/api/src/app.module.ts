@@ -5,6 +5,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
 import { EventsModule } from './events/events.module';
+import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { CartLinesModule } from './cart/cart-lines.module';
@@ -55,6 +56,7 @@ export class AppModule {
 				BlogModule,
 				EventsModule,
 				StoreLocationsModule,
+				MailboxesModule,
 				WishlistModule,
 			],
 			providers: [

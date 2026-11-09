@@ -295,6 +295,43 @@ const ConfigSchema = z.object({
 		)
 		.pipe(z.array(z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/)).min(1))
 		.refine((locales) => locales.includes('en'), { message: 'ACTIVE_LOCALES must include en' }),
+	/**
+	 * Gmail mailboxes in the admin (owner log § page headings, deep trails and Gmail on Google
+	 * Cloud, 2026-11-09). The client comes from a second, free Google Cloud project with Internal
+	 * consent; no Pub/Sub and no billing. All-or-nothing like the payment and storage pairs:
+	 * without every value the mailbox screens answer "not set up" and Contact Us messages wait
+	 * in `contactMessages` instead of being lost.
+	 *
+	 * - `tokenKey`: 32 random bytes, base64 (`openssl rand -base64 32`). It encrypts the stored
+	 *   refresh tokens; changing it means reconnecting every mailbox.
+	 * - `redirectUri`: the API's `/admin/mailboxes/oauth/callback`, registered on the client.
+	 * - `adminUrl`: where the browser returns after Google's sign-in.
+	 */
+	mail: z
+		.object({
+			googleClientId: z.string().min(1).optional(),
+			googleClientSecret: z.string().min(1).optional(),
+			redirectUri: z.string().url().optional(),
+			tokenKey: z
+				.string()
+				.optional()
+				.refine((value) => value === undefined || Buffer.from(value, 'base64').length === 32, {
+					message: 'MAILBOX_TOKEN_KEY must be 32 bytes, base64',
+				}),
+			adminUrl: z.string().url().optional(),
+			domain: z.string().min(3).default('sahatextile.com'),
+		})
+		.superRefine((mail, ctx) => {
+			const set = [mail.googleClientId, mail.googleClientSecret, mail.redirectUri, mail.tokenKey, mail.adminUrl];
+			if (set.some(Boolean) && !set.every(Boolean)) {
+				ctx.addIssue({
+					code: 'custom',
+					message:
+						'Set GOOGLE_MAIL_CLIENT_ID, GOOGLE_MAIL_CLIENT_SECRET, GOOGLE_MAIL_REDIRECT_URI, MAILBOX_TOKEN_KEY and ADMIN_APP_URL together, or none.',
+					path: ['googleClientId'],
+				});
+			}
+		}),
 	media: z
 		.object({
 			workerConcurrency: z.coerce.number().int().min(1).max(8).default(2),
@@ -437,6 +474,14 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			db: env.REDIS_DB || undefined,
 		},
 		locales: env.ACTIVE_LOCALES || undefined,
+		mail: {
+			googleClientId: env.GOOGLE_MAIL_CLIENT_ID || undefined,
+			googleClientSecret: env.GOOGLE_MAIL_CLIENT_SECRET || undefined,
+			redirectUri: env.GOOGLE_MAIL_REDIRECT_URI || undefined,
+			tokenKey: env.MAILBOX_TOKEN_KEY || undefined,
+			adminUrl: env.ADMIN_APP_URL || undefined,
+			domain: env.MAILBOX_DOMAIN || undefined,
+		},
 		media: {
 			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
 			gcLive: env.MEDIA_GC_LIVE || undefined,

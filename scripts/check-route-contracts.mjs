@@ -44,6 +44,7 @@ const DECLARED_FAMILIES = [
 	'blog',
 	'events',
 	'stores',
+	'mailboxes',
 	'wishlist',
 ];
 

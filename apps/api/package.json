@@ -49,6 +49,7 @@
     "@saha-textile/adapters-payments": "workspace:*",
     "@saha-textile/adapters-queue-bullmq": "workspace:*",
     "@saha-textile/adapters-storage-spaces": "workspace:*",
+    "@saha-textile/adapters-mail-gmail": "workspace:*",
     "@saha-textile/adapters-youtube": "workspace:*",
     "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",

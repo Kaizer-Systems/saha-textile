@@ -3,32 +3,50 @@
 		class="nav nav-tabs custom-nav"
 		role="tablist"
 	>
-		<li class="nav-item">
+		<li
+			class="nav-item"
+			role="presentation"
+		>
 			<a
 				class="nav-link"
 				role="tab"
+				tabindex="0"
 				[class.active]="active === 'description'"
+				[attr.aria-selected]="active === 'description'"
 				(click)="active = 'description'"
+				(keydown.enter)="active = 'description'"
 			>
 				{{ 'description' | transloco }}
 			</a>
 		</li>
-		<li class="nav-item">
+		<li
+			class="nav-item"
+			role="presentation"
+		>
 			<a
 				class="nav-link"
 				role="tab"
+				tabindex="0"
 				[class.active]="active === 'review'"
+				[attr.aria-selected]="active === 'review'"
 				(click)="active = 'review'"
+				(keydown.enter)="active = 'review'"
 			>
 				{{ 'review' | transloco }}
 			</a>
 		</li>
-		<li class="nav-item">
+		<li
+			class="nav-item"
+			role="presentation"
+		>
 			<a
 				class="nav-link"
 				role="tab"
+				tabindex="0"
 				[class.active]="active === 'questions_answers'"
+				[attr.aria-selected]="active === 'questions_answers'"
 				(click)="active = 'questions_answers'"
+				(keydown.enter)="active = 'questions_answers'"
 			>
 				{{ 'q_a' | transloco }}
 			</a>

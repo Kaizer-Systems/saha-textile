@@ -77,6 +77,8 @@
 		>
 			<button
 				type="button"
+				[attr.aria-label]="t.label"
+				[attr.aria-pressed]="t.code === selected()"
 				(click)="select(t.code)"
 				[style.background-color]="t.image || '#cccccc'"
 			></button>

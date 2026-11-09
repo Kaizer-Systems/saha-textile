@@ -6,13 +6,18 @@
 				class="checkbox_animated"
 				type="checkbox"
 				id="rating-{{number}}"
+				[attr.aria-label]="number + ' ' + ('star' | transloco)"
 				[value]="number"
 				[checked]="checked(number.toString())"
 				(change)="applyFilter($event)"
 			/>
 			<div class="form-check-label">
 				<div class="product-rating">
-					<ngb-rating [rate]="number" />
+					<!-- The checkbox carries the name; the stars only show it. -->
+					<ngb-rating
+						aria-hidden="true"
+						[rate]="number"
+					/>
 				</div>
 				<span class="text-content">({{number}} {{ 'star' | transloco }})</span>
 			</div>

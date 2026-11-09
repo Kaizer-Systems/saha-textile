@@ -22,6 +22,7 @@
 	@if (product()?.size_guide; as guide) {
 	<a
 		href="javascript:void(0)"
+		role="button"
 		(click)="SizeChartModal()?.openModal(guide)"
 	>
 		<i class="ri-ruler-line"></i>
@@ -30,6 +31,7 @@
 	} @if (policy && product()?.is_return) {
 	<a
 		href="javascript:void(0)"
+		role="button"
 		(click)="DeliveryReturnModal()?.openModal(policy)"
 	>
 		<i class="ri-truck-line"></i>
@@ -38,6 +40,7 @@
 	} @if (policy && product()?.is_return) {
 	<a
 		href="javascript:void(0)"
+		role="button"
 		(click)="QuestionModal()?.openModal(product()!)"
 	>
 		<i class="ri-questionnaire-line"></i>

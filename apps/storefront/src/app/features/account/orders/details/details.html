@@ -7,6 +7,7 @@
 				@if (order.payment_status === 'FAILED') {
 				<a
 					href="javascript:void(0)"
+					role="button"
 					class="btn btn-md fw-bold text-light theme-bg-color"
 					(click)="payModal.openModal(order)"
 				>
@@ -113,6 +114,7 @@
 								order.payment_status === 'COMPLETED' && order.order_status.slug === 'delivered') {
 								<a
 									href="javascript:void(0)"
+									role="button"
 									(click)="refundModal.openModal(product)"
 								>
 									{{ 'ask_for_refund' | transloco }}
@@ -261,10 +263,7 @@
 								</h6>
 							</td>
 							<td>
-								<a
-									href="javascript:void(0)"
-									[routerLink]="['/account/order/details', subOrder.order_number]"
-								>
+								<a [routerLink]="['/account/order/details', subOrder.order_number]">
 									<i [class]="'ri-eye-line'"></i>
 								</a>
 							</td>

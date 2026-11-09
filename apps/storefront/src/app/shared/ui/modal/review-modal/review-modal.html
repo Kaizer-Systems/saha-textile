@@ -38,6 +38,7 @@
 					<label>{{ 'rating' | transloco }}</label>
 					<div class="product-rating">
 						<ngb-rating
+							[attr.aria-label]="'rating' | transloco"
 							[(rate)]="currentRate"
 							formControlName="rating"
 							[readonly]="false"

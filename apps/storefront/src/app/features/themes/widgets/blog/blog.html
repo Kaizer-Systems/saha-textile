@@ -23,7 +23,6 @@
 							<a
 								[routerLink]="['/blog/', blog.slug]"
 								class="blog-image bg-size"
-								role="img"
 								[attr.aria-label]="blog.blog_thumbnail?.alt || blog.title"
 								[style.background-image]="'url(' + (blog.blog_thumbnail?.original_url || 'assets/images/product.png') + ')'"
 							></a>

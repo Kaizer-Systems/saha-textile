@@ -838,5 +838,9 @@
 	"tab_come_back": "⚡ Come Back !!",
 	"tab_offers_for_you": "🎉 Offers for you...",
 	"cookie_item_events": "Remembers which event popups you closed or asked not to see again",
-	"cookie_kept_events": "Until that event's popup ends"
+	"cookie_kept_events": "Until that event's popup ends",
+	"decrease_quantity": "Decrease quantity",
+	"increase_quantity": "Increase quantity",
+	"previous_page": "Previous page",
+	"next_page": "Next page"
 }

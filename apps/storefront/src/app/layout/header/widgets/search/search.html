@@ -12,6 +12,7 @@
 		[class]="'btn'"
 		[spinner]="false"
 		[id]="'basic_search_btn'"
+		[ariaLabel]="'search' | transloco"
 		(click)="redirectToSearch()"
 	>
 		<i class="ri-search-line"></i>
@@ -23,7 +24,9 @@
 <div class="input-group">
 	<a
 		href="javascript:void(0)"
+		role="button"
 		class="btn"
+		[attr.aria-label]="'search' | transloco"
 		(click)="toggleSearchBox()"
 	>
 		<i class="ri-search-line"></i>

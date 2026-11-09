@@ -48,6 +48,7 @@
 									[id]="'add-to-cart'+product.id"
 									[spinner]="false"
 									(click)="updateQuantity(-1)"
+									[ariaLabel]="'decrease_quantity' | transloco"
 								>
 									<i class="ri-subtract-fill"></i>
 								</app-button>
@@ -57,12 +58,14 @@
 									name="quantity"
 									value="{{productQty}}"
 									readonly
+									[attr.aria-label]="'quantity' | transloco"
 								/>
 								<app-button
 									[class]="'btn qty-left-minus'"
 									[id]="'qty-left-minus'+product.id"
 									[spinner]="false"
 									(click)="updateQuantity(1)"
+									[ariaLabel]="'increase_quantity' | transloco"
 								>
 									<i class="ri-add-line"></i>
 								</app-button>

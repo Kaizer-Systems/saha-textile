@@ -44,6 +44,7 @@
 				<h5>
 					<a
 						href="javascript:void(0)"
+						role="button"
 						(click)="redirectToCollection(category.slug!)"
 					>
 						{{ category?.name }}
@@ -93,6 +94,7 @@
 			@if (theme() === 'paris') {
 			<a
 				href="javascript:void(0)"
+				role="button"
 				(click)="redirectToCollection(category.slug!)"
 				class="category-box category-dark"
 				[class.active]="selectedCategorySlug.length && selectedCategorySlug.includes(category.slug!)"
@@ -112,6 +114,7 @@
 			<div class="category-box-list">
 				<a
 					href="javascript:void(0)"
+					role="button"
 					(click)="redirectToCollection(category.slug!)"
 					class="category-name"
 				>
@@ -121,6 +124,7 @@
 				<div class="category-box-view">
 					<a
 						href="javascript:void(0)"
+						role="button"
 						(click)="redirectToCollection(category.slug!)"
 					>
 						<img
@@ -143,6 +147,7 @@
 			<div class="shop-category-box border-0">
 				<a
 					href="javascript:void(0)"
+					role="button"
 					(click)="redirectToCollection(category.slug!)"
 					class="circle-1"
 				>
@@ -172,6 +177,7 @@
 			<div class="shop-category-box wow fadeIn border-0">
 				<a
 					href="javascript:void(0)"
+					role="button"
 					(click)="redirectToCollection(category.slug!)"
 					class="circle-1"
 				>
@@ -215,6 +221,7 @@
 	<li class="onhover-category-list">
 		<a
 			href="javascript:void(0)"
+			role="button"
 			(click)="redirectToCollection(category.slug!)"
 			class="category-name"
 		>

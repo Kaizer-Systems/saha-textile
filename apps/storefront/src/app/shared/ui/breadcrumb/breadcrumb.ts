@@ -1,6 +1,8 @@
 import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
+
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 
@@ -8,7 +10,7 @@ import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 	selector: 'app-breadcrumb',
 	templateUrl: './breadcrumb.html',
 	styleUrls: ['./breadcrumb.scss'],
-	imports: [RouterLink, TitleCasePipe],
+	imports: [RouterLink, TitleCasePipe, TranslocoModule],
 })
 export class Breadcrumb {
 	// TODO: Skipped for migration because:

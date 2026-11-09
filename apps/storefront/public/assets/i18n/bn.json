@@ -838,5 +838,9 @@
 	"tab_come_back": "⚡ ফিরে আসুন !!",
 	"tab_offers_for_you": "🎉 আপনার জন্য অফার...",
 	"cookie_item_events": "কোন ইভেন্ট পপআপ আপনি বন্ধ করেছেন বা আর দেখতে চান না, তা মনে রাখে",
-	"cookie_kept_events": "ওই ইভেন্টের পপআপ শেষ হওয়া পর্যন্ত"
+	"cookie_kept_events": "ওই ইভেন্টের পপআপ শেষ হওয়া পর্যন্ত",
+	"decrease_quantity": "পরিমাণ কমান",
+	"increase_quantity": "পরিমাণ বাড়ান",
+	"previous_page": "আগের পৃষ্ঠা",
+	"next_page": "পরের পৃষ্ঠা"
 }

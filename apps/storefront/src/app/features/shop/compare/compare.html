@@ -11,6 +11,7 @@
 						</div>
 						<a
 							href="javascript:void(0)"
+							role="button"
 							tabindex="0"
 						>
 							<h5 class="placeholder col-6"></h5>
@@ -127,6 +128,7 @@
 							@if (product.reviews_count) {
 							<div class="compare-rating">
 								<ngb-rating
+									[attr.aria-label]="'rating' | transloco"
 									[rate]="product.rating_count"
 									[readonly]="true"
 								/>

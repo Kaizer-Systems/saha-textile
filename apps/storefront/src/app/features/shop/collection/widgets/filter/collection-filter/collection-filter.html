@@ -3,6 +3,7 @@
 	<h2>{{ 'filters' | transloco }}</h2>
 	<a
 		href="javascript:void(0)"
+		role="button"
 		(click)="clear()"
 	>
 		{{ 'clear_all' | transloco }}
@@ -12,7 +13,12 @@
 <ul>
 	@for (filter of filters; track filter) {
 	<li>
-		<a href="javascript:void(0)">{{filter | titleCase}}</a>
+		<a
+			href="javascript:void(0)"
+			role="button"
+		>
+			{{filter | titleCase}}
+		</a>
 		<i
 			class="ri-close-line close-icon"
 			(click)="remove(filter)"

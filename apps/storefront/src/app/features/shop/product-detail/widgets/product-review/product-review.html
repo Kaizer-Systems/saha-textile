@@ -85,6 +85,7 @@
 									<h6 class="text-content">{{ own.createdAt | shopDate }}</h6>
 									<div class="product-rating">
 										<ngb-rating
+											[attr.aria-label]="'rating' | transloco"
 											[rate]="own.rating"
 											[readonly]="true"
 										/>
@@ -120,6 +121,7 @@
 									<h6 class="text-content">{{ review.createdAt | shopDate }}</h6>
 									<div class="product-rating">
 										<ngb-rating
+											[attr.aria-label]="'rating' | transloco"
 											[rate]="review.rating"
 											[readonly]="true"
 										/>

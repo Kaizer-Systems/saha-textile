@@ -5,6 +5,7 @@
 	[class]="'btn p-0 position-relative header-wishlist'"
 	[spinner]="false"
 	[id]="'cart_sidebar_btn'"
+	[ariaLabel]="'cart' | transloco"
 	(click)="cartStyle === 'cart_sidebar' && cartToggle(true)"
 >
 	<i class="ri-shopping-cart-line"></i>
@@ -21,6 +22,7 @@
 @if (style() === 'classic') {
 <a
 	href="javascript:void(0)"
+	role="button"
 	class="header-icon swap-icon"
 	(click)="cartStyle === 'cart_sidebar' && cartToggle(true)"
 >
@@ -41,6 +43,7 @@
 		<h4>{{ 'shopping_cart' | transloco }}</h4>
 		<a
 			href="javascript:void(0)"
+			role="button"
 			(click)="cartToggle(false)"
 		>
 			<i class="ri-close-line"></i>
@@ -84,6 +87,7 @@
 			<div class="drop-cart">
 				<a
 					href="javascript:void(0)"
+					role="button"
 					class="drop-image"
 				>
 					<img
@@ -97,7 +101,10 @@
 					/>
 				</a>
 				<div class="drop-contain">
-					<a href="javascript:void(0)">
+					<a
+						href="javascript:void(0)"
+						role="button"
+					>
 						<h5>{{ item?.product?.name }}</h5>
 					</a>
 					<h6>{{ unitPrice(item) | currencySymbol }}</h6>
@@ -126,12 +133,14 @@
 								name="quantity"
 								[value]="item?.quantity"
 								readonly
+								[attr.aria-label]="'quantity' | transloco"
 							/>
 							<app-button
 								[class]="'btn qty-left-minus'"
 								[id]="'qty-left-minus'+item.product.id"
 								[spinner]="false"
 								(click)="updateQuantity(item, 1)"
+								[ariaLabel]="'increase_quantity' | transloco"
 							>
 								<i class="ri-add-line"></i>
 							</app-button>

@@ -96,12 +96,14 @@
 																	name="quantity"
 																	[value]="item?.quantity"
 																	readonly
+																	[attr.aria-label]="'quantity' | transloco"
 																/>
 																<app-button
 																	[class]="'btn qty-left-minus'"
 																	[id]="'qty-left-minus'+item.product.id"
 																	[spinner]="false"
 																	(click)="updateQuantity(item, 1)"
+																	[ariaLabel]="'increase_quantity' | transloco"
 																>
 																	<i class="ri-add-line"></i>
 																</app-button>
@@ -147,6 +149,7 @@
 														[spinner]="false"
 														[type]="'button'"
 														(click)="updateQuantity(item, -1)"
+														[ariaLabel]="'decrease_quantity' | transloco"
 													>
 														<i class="ri-subtract-fill ms-0"></i>
 													</app-button>
@@ -156,6 +159,7 @@
 														name="quantity"
 														value="{{ item.quantity }}"
 														readonly
+														[attr.aria-label]="'quantity' | transloco"
 													/>
 													<app-button
 														[class]="'btn qty-left-minus'"
@@ -163,6 +167,7 @@
 														[spinner]="false"
 														[type]="'button'"
 														(click)="updateQuantity(item, 1)"
+														[ariaLabel]="'increase_quantity' | transloco"
 													>
 														<i class="ri-add-line ms-0"></i>
 													</app-button>
@@ -180,6 +185,7 @@
 										<a
 											class="save"
 											href="javascript:void(0)"
+											role="button"
 											(click)="configModal.openModal(item)"
 										>
 											{{ 'edit' | transloco }}
@@ -192,6 +198,7 @@
 										<a
 											class="save notifi-wishlist"
 											href="javascript:void(0)"
+											role="button"
 											(click)="addToWishlist(item.product.id)"
 										>
 											{{ 'add_to_wishlist' | transloco }}
@@ -199,6 +206,7 @@
 										<a
 											class="remove close_button"
 											href="javascript:void(0)"
+											role="button"
 											(click)="delete(item.id)"
 										>
 											{{ 'remove' | transloco }}

@@ -43,6 +43,7 @@ import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { CatalogLocaleInterceptor } from './core/interceptors/catalog-locale.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
+import { provideCarouselInert } from './core/a11y/carousel-inert';
 import { provideAppUpdate } from './core/pwa/app-update';
 import { QUERY_CLIENT, isPublicRequest } from './core/query/query-client';
 import { provideInstallApp } from './shared/ui/modal/install-help-modal/install-app';
@@ -133,6 +134,7 @@ export const appConfig: ApplicationConfig = {
 		),
 		provideZoneChangeDetection({ eventCoalescing: true }),
 		provideAppUpdate(),
+		provideCarouselInert(),
 		provideInstallApp(),
 		provideToastr({
 			positionClass: 'toast-top-center',

@@ -7,8 +7,10 @@
 		<a
 			class="page-link"
 			href="javascript:void(0)"
+			role="button"
 			tabindex="-1"
 			aria-disabled="true"
+			[attr.aria-label]="'previous_page' | transloco"
 			(click)="pageSet(paginate.currentPage - 1)"
 		>
 			<i class="ri-arrow-left-s-line"></i>
@@ -22,6 +24,7 @@
 		<a
 			class="page-link"
 			href="javascript:void(0)"
+			role="button"
 			(click)="pageSet(page)"
 		>
 			{{ page }}
@@ -35,6 +38,8 @@
 		<a
 			class="page-link"
 			href="javascript:void(0)"
+			role="button"
+			[attr.aria-label]="'next_page' | transloco"
 			(click)="pageSet(paginate.currentPage + 1)"
 		>
 			<i class="ri-arrow-right-s-line"></i>

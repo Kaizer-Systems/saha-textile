@@ -5,6 +5,7 @@
 } @if (attribute?.style === 'dropdown' || isAllVariantStyleDropdown()) {
 <select
 	id="input-state-{{i}}"
+	[attr.aria-label]="attribute?.name"
 	class="form-control form-select"
 	#selectedValue
 	(change)="setVariant(product.variations, attribute.attribute_values[$any($event.target).value])"

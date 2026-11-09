@@ -1,5 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -155,19 +156,23 @@ export class FormEvent {
 	readonly productOptions = signal<Select2Data>([]);
 
 	// "Link to".
+	/** The admin's language file; the pickers' labels are read again once it has loaded. */
+	private readonly words = toSignal(this.transloco.selectTranslation(), { initialValue: {} });
 	readonly linkKind = signal<LinkKind>('page');
-	readonly linkKindOptions = computed<Select2Data>(() =>
-		(['category', 'product', 'page', 'path'] as const).map((kind) => ({
+	readonly linkKindOptions = computed<Select2Data>(() => {
+		this.words();
+		return (['category', 'product', 'page', 'path'] as const).map((kind) => ({
 			value: kind,
 			label: this.transloco.translate(`event_link_${kind}`),
-		})),
-	);
+		}));
+	});
 	readonly categoryLinks = computed<Select2Data>(() =>
 		categoryAddresses(this.categoryOptions()).map((row) => ({ value: row.href, label: row.label })),
 	);
-	readonly pageLinks = computed<Select2Data>(() =>
-		SHOP_PAGES.map((page) => ({ value: page.href, label: this.transloco.translate(page.label) })),
-	);
+	readonly pageLinks = computed<Select2Data>(() => {
+		this.words();
+		return SHOP_PAGES.map((page) => ({ value: page.href, label: this.transloco.translate(page.label) }));
+	});
 	/** Searched products by their shop address; a saved link stays listed so it shows. */
 	readonly productLinks = signal<Select2Data>([]);
 	private readonly search$ = new Subject<string>();

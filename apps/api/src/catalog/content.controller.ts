@@ -35,6 +35,7 @@ export class AdminFaqController {
 	@Get()
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('faq.index')
+	@ApiOperation({ operationId: 'adminListFaq', summary: 'Every FAQ entry, any status' })
 	list() {
 		return this.content.adminFaq();
 	}
@@ -42,6 +43,7 @@ export class AdminFaqController {
 	@Delete(':id')
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('faq.destroy')
+	@ApiOperation({ operationId: 'adminRemoveFaq', summary: 'Delete one FAQ entry' })
 	remove(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
 		return this.content.removeFaq(id, principal?.userId ?? null);
 	}
@@ -49,6 +51,7 @@ export class AdminFaqController {
 	@Post()
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('faq.edit')
+	@ApiOperation({ operationId: 'adminSaveFaq', summary: 'Create or update one FAQ entry' })
 	save(
 		@Body(new ZodValidationPipe(FaqWrite)) body: FaqWrite,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -102,6 +105,7 @@ export class AdminQuestionsController {
 	@Get()
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('question_and_answer.index')
+	@ApiOperation({ operationId: 'adminListQuestions', summary: 'Product questions, filtered and paged' })
 	list(@Query(new ZodValidationPipe(AdminQuestionListQuery)) query: AdminQuestionListQuery) {
 		return this.content.adminQuestions(query);
 	}
@@ -109,6 +113,7 @@ export class AdminQuestionsController {
 	@Post(':id/reject')
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('question_and_answer.edit')
+	@ApiOperation({ operationId: 'adminRejectQuestion', summary: 'Reject a product question' })
 	reject(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
 		return this.content.reject(id, principal?.userId ?? null);
 	}
@@ -116,6 +121,7 @@ export class AdminQuestionsController {
 	@Delete(':id')
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('question_and_answer.destroy')
+	@ApiOperation({ operationId: 'adminRemoveQuestion', summary: 'Delete a product question' })
 	remove(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
 		return this.content.removeQuestion(id, principal?.userId ?? null);
 	}
@@ -123,6 +129,7 @@ export class AdminQuestionsController {
 	@Post(':id/answer')
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('question_and_answer.edit')
+	@ApiOperation({ operationId: 'adminAnswerQuestion', summary: 'Answer a product question and publish it' })
 	answer(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(AnswerWrite)) body: AnswerWrite,

@@ -6,7 +6,8 @@
 	white over the theme's link colour. The one new piece is the phone band: the newsletter
 	hides its picture on phones, but here the picture is the point, so phones see its top part
 	in a 16:9 band (Bootstrap `ratio` and `object-fit-cover`). On desktop the picture covers its
-	column whatever its shape (`h-100 w-100 object-fit-cover`), so a wide one leaves no white.
+	column whatever its shape (`h-100 w-100 object-fit-cover`; `h-auto` on the column undoes the
+	theme's `height: 100%`, which stops the flex row stretching it), so a wide one leaves no white.
 -->
 <ng-template
 	#eventModal
@@ -25,7 +26,7 @@
 	</div>
 	<div class="modal-box flex-lg-row-reverse">
 		@if (image(); as art) {
-		<div class="modal-image d-none d-lg-block">
+		<div class="modal-image d-none d-lg-block h-auto">
 			<img
 				[src]="art.src"
 				[attr.srcset]="art.srcset"

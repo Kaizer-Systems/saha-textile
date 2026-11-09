@@ -10,7 +10,7 @@ import {
 	finishShowcase,
 	SHOWCASE_SIZE,
 } from '../scripts/showcase-catalogue-build';
-import { LEAVES } from '../scripts/showcase-catalogue-data';
+import { fabricFor, LEAVES, patternFor, workFor } from '../scripts/showcase-catalogue-data';
 import { mapDemoCatalogue } from '../src/seed/map-demo-catalogue';
 
 const now = new Date('2026-11-07T00:00:00.000Z');
@@ -131,5 +131,50 @@ describe('showcase catalogue', () => {
 				.map((label) => label.en),
 		);
 		expect([...untranslated]).toEqual([]);
+	});
+
+	it('lists every value a product uses in its attribute, so filters and the admin agree', () => {
+		const terms = new Map(
+			catalogue.attributeDefinitions.map((row) => [row.code, new Set(row.terms.map((term) => term.code))]),
+		);
+		for (const product of catalogue.products) {
+			for (const group of product.optionGroups) {
+				for (const term of group.terms) expect(terms.get(group.attributeCode)?.has(term.code)).toBe(true);
+			}
+		}
+		expect(terms.get('work')?.size).toBeGreaterThan(5);
+	});
+
+	it('never files a product under a Work its title contradicts', () => {
+		for (const product of catalogue.products) {
+			const work = product.optionGroups.find((group) => group.attributeCode === 'work')?.terms[0]?.label['en'];
+			if (work) expect(workFor(product.title['en'] as string, work)).toBe(work);
+		}
+	});
+});
+
+describe('filter values from the title', () => {
+	it.each([
+		['Bottle Green Meenakari Jangla Katan Banarasi Saree', 'Zari', 'Meenakari'],
+		['Burnt Orange Kadhua Buti Katan Banarasi Saree', 'Meenakari', 'Zari'],
+		['Rust Kantha Pallu Bengal Handloom Cotton Saree', 'Woven', 'Embroidered'],
+		['Rust Bandhani Print Jaipur Print Saree', 'Woven', 'Print'],
+		['Rust Sequin Bel Organza Saree', 'Stone', 'Sequins'],
+		['Teal Temple Border Kanchipuram Saree', 'Woven', 'Woven'],
+	])('Work of %s', (title, fallback, expected) => {
+		expect(workFor(title, fallback)).toBe(expected);
+	});
+
+	it('takes the pattern the title names', () => {
+		expect(patternFor('Indigo Pasapali Checks Cotton Saree', 'Floral')).toBe('Checks');
+		expect(patternFor('Mustard Stripe Linen Saree', 'Geometric')).toBe('Striped');
+		expect(patternFor('Teal Tilfi Banarasi Saree', 'Geometric')).toBe('Geometric');
+	});
+
+	it('takes the one fabric the title names, never a "Semi" blend or a mix', () => {
+		expect(fabricFor('Peach Tissue Banarasi Saree', 'Silk')).toBe('Tissue');
+		expect(fabricFor('Mustard Yellow Booti Weave Semi Organza Saree', 'Blended Silk')).toBe('Blended Silk');
+		expect(fabricFor('Ivory Cotton Silk Saree', 'Blended Silk')).toBe('Blended Silk');
+		expect(fabricFor('Teal Tilfi Banarasi Saree', 'Silk')).toBe('Silk');
 	});
 });

@@ -563,3 +563,49 @@ export const SECOND_PLACEMENTS: ReadonlyArray<{ path: string; alsoUnder: string 
 
 export const SIZES = ['S', 'M', 'L', 'XL', 'XXL'] as const;
 export const BLOUSE_SIZES = ['34', '36', '38', '40', '42'] as const;
+
+/**
+ * Filter values the title already states. A shopper who filters by Work, Pattern or Fabric and sees
+ * a "Meenakari Jangla" saree under Zari stops trusting the filter, so a word in the title wins over
+ * the family's default. The first matching rule wins; a title with no rule keeps the fallback.
+ */
+const WORK_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+	[/Meenakari/i, 'Meenakari'],
+	[/Sequin|Cutdana|Crystal/i, 'Sequins'],
+	[/Stone|Pearl/i, 'Stone'],
+	[
+		/Mukaish|Gota Patti|Mirror|Chikan|Phulkari|Aari|Resham|Thread|Shadow Work|Kantha|Zardosi|Embroider|Phanda/i,
+		'Embroidered',
+	],
+	[/Kalamkari|Ajrakh|Bagru|Dabu|Bandhani|Print/i, 'Print'],
+	[/Zari|Kadhua|Kadwa|Rangkat|Jangla|Ashrafi|Korvai|Brocade|Tanchoi|Shikargah/i, 'Zari'],
+];
+
+const PATTERN_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+	[/Stripe/i, 'Striped'],
+	[/Check/i, 'Checks'],
+	[/Floral|Rose|Lotus|Flower/i, 'Floral'],
+	[/Ikk?at|Geometric|Chevron|Diamond/i, 'Geometric'],
+	[/\bPlain\b/i, 'Plain'],
+];
+
+/** "Semi Organza" is a blend, so only a fabric named without "Semi" counts. */
+const FABRICS = ['Georgette', 'Organza', 'Tissue', 'Linen', 'Crepe', 'Chiffon', 'Net', 'Cotton', 'Tussar'] as const;
+
+const firstRule = (rules: ReadonlyArray<readonly [RegExp, string]>, title: string): string | undefined =>
+	rules.find(([pattern]) => pattern.test(title))?.[1];
+
+export function workFor(title: string, fallback: string): string {
+	return firstRule(WORK_RULES, title) ?? fallback;
+}
+
+export function patternFor(title: string, fallback: string): string {
+	return firstRule(PATTERN_RULES, title) ?? fallback;
+}
+
+/** The one fabric the title names; none, or two (a "Cotton Silk"), keeps the fallback. */
+export function fabricFor(title: string, fallback: string): string {
+	const named = FABRICS.filter((fabric) => new RegExp(`(?<!Semi )\\b${fabric}\\b`, 'i').test(title));
+	const silk = /(?<!Semi )\bSilk\b/i.test(title) && named.length > 0;
+	return named.length === 1 && !silk ? (named[0] as string) : fallback;
+}

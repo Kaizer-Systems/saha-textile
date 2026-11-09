@@ -7,11 +7,14 @@ import {
 	COLOURS,
 	COLOUR_FAMILIES,
 	FAMILIES,
+	fabricFor,
 	GARMENTS,
 	GROUPS,
 	LEAVES,
 	SECOND_PLACEMENTS,
 	SIZES,
+	patternFor,
+	workFor,
 	type ColourWord,
 	type Family,
 	type Leaf,
@@ -332,10 +335,11 @@ export function buildShowcaseProducts({ productIds, categoryIds, now }: Showcase
 			const saleOn = random() < 0.22;
 			const sale = saleOn ? money(price * (0.7 + random() * 0.2)) : price;
 			const sku = `ST-${leaf.path.split('/').at(-1)?.slice(0, 3).toUpperCase() ?? 'SKU'}-${String(id).padStart(4, '0')}`;
-			const fabric = leaf.fabric ?? family.fabric;
+			const fabric = fabricFor(title.en, leaf.fabric ?? family.fabric);
 			const occasion = family.occasion[position % family.occasion.length] as string;
-			const work = family.work[position % family.work.length] as string;
-			const pattern = family.pattern[position % family.pattern.length] as string;
+			// The family's first Work is its own; a rotating pick put Meenakari on a Kadhua Buti saree.
+			const work = workFor(title.en, family.work[0] as string);
+			const pattern = patternFor(title.en, family.pattern[position % family.pattern.length] as string);
 			const axisColours =
 				scenario === 'colour' || scenario === 'compound' || scenario === 'colour_size'
 					? coloursNear(shade, random)

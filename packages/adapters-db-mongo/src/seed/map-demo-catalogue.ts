@@ -731,7 +731,30 @@ export function mapDemoCatalogue(input: {
 
 	for (const product of productDocs) {
 		for (const group of product.optionGroups) {
-			if (definitions.has(group.attributeCode)) continue;
+			const known = definitions.get(group.attributeCode);
+			if (known) {
+				// Every value any product uses belongs in the list the admin and the filters read. Taking
+				// the first product's values alone left Work, Fabric, Pattern and Occasion with one each.
+				const codes = new Set(known.terms.map((term) => term.code));
+				const added = group.terms.filter((term) => !codes.has(term.code));
+				if (added.length) {
+					definitions.set(group.attributeCode, {
+						...known,
+						terms: [
+							...known.terms,
+							...added.map((term) => ({
+								code: term.code,
+								label: term.label,
+								slug: term.code,
+								aliases: [],
+								isBase: term.isBase,
+								hidden: false,
+							})),
+						],
+					});
+				}
+				continue;
+			}
 			definitions.set(group.attributeCode, {
 				id: `attr_${group.attributeCode}`,
 				code: group.attributeCode,

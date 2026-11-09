@@ -4324,15 +4324,6 @@
 					"sensitive": false
 				},
 				{
-					"path": "saleWindow",
-					"type": "Mixed",
-					"required": false,
-					"select": "included",
-					"enum": [],
-					"temporaryShape": true,
-					"sensitive": false
-				},
-				{
 					"path": "stock.tracked",
 					"type": "Boolean",
 					"required": false,
@@ -4462,7 +4453,6 @@
 				"priceINR": 0,
 				"compareAtPriceINR": null,
 				"salePriceINR": null,
-				"saleWindow": "<shape pending>",
 				"stock.tracked": true,
 				"stock.quantity": 0,
 				"stock.lowStockThreshold": null,
@@ -4474,7 +4464,6 @@
 				"updatedAt": "2026-01-01T00:00:00.000Z"
 			},
 			"limitations": [
-				"saleWindow uses a temporary Mixed shape.",
 				"shippingProfile uses a temporary Mixed shape.",
 				"taxProfile uses a temporary Mixed shape.",
 				"media uses a temporary Mixed shape."

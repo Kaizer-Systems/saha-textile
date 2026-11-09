@@ -612,10 +612,8 @@ Purpose: purchasable SKU rows, prices, stock, variant media, and option selectio
   priceINR: number;
   compareAtPriceINR?: number;
   salePriceINR?: number;
-  saleWindow?: {
-    startsAt?: Date;
-    endsAt?: Date;
-  };
+  // No per-SKU sale window: timed sales are launch and sale events (owner log, 2026-11-09),
+  // laid over shop reads while they run. The field was removed on 2026-11-10.
   stock: {
     tracked: boolean;
     quantity: number;

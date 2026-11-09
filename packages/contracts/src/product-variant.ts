@@ -48,16 +48,6 @@ export const VariantTaxProfile = z.object({
 export type VariantTaxProfile = z.infer<typeof VariantTaxProfile>;
 
 /**
- * Optional window during which `salePriceINR` is the selling price. The card and the
- * product page read the two stored rupee amounts; they do not recompute a percent.
- */
-export const VariantSaleWindow = z.object({
-	startsAt: IsoDateTime.nullable().default(null),
-	endsAt: IsoDateTime.nullable().default(null),
-});
-export type VariantSaleWindow = z.infer<typeof VariantSaleWindow>;
-
-/**
  * A purchasable SKU row (`productVariants`) — first-class, not embedded in the product.
  *
  * Owner locks encoded here:
@@ -92,7 +82,6 @@ export const ProductVariant = z
 		compareAtPriceINR: CatalogRupee.nullable().default(null),
 		salePriceINR: CatalogRupee.nullable().default(null),
 		barcode: z.string().min(1).nullable().optional(),
-		saleWindow: VariantSaleWindow.optional(),
 		stock: VariantStock.default({ tracked: true, quantity: 0, lowStockThreshold: null, allowBackorder: false }),
 		shippingProfile: VariantShippingProfile.optional(),
 		taxProfile: VariantTaxProfile.optional(),
@@ -119,15 +108,6 @@ export const ProductVariant = z
 				code: 'custom',
 				message: '`salePriceINR` may not exceed `priceINR`',
 				path: ['salePriceINR'],
-			});
-		}
-
-		const { startsAt, endsAt } = variant.saleWindow ?? {};
-		if (startsAt && endsAt && startsAt > endsAt) {
-			ctx.addIssue({
-				code: 'custom',
-				message: 'sale window ends before it starts',
-				path: ['saleWindow', 'endsAt'],
 			});
 		}
 	});

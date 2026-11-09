@@ -18,7 +18,6 @@ export interface ProductVariantDoc {
 	priceINR: number;
 	compareAtPriceINR: number | null;
 	salePriceINR: number | null;
-	saleWindow?: { startsAt: Date | null; endsAt: Date | null };
 	stock: { tracked: boolean; quantity: number; lowStockThreshold: number | null; allowBackorder: boolean };
 	shippingProfile?: Record<string, number | null>;
 	taxProfile?: { hsnCode: string | null; taxClassId: string | null };
@@ -43,7 +42,6 @@ const ProductVariantSchema = new Schema<ProductVariantDoc>(
 		priceINR: { type: Number, required: true },
 		compareAtPriceINR: { type: Number, default: null },
 		salePriceINR: { type: Number, default: null },
-		saleWindow: { type: Schema.Types.Mixed },
 		stock: {
 			tracked: { type: Boolean, default: true },
 			quantity: { type: Number, default: 0 },

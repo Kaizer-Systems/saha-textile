@@ -41,9 +41,6 @@ const toVariant = (doc: ProductVariantDoc): ProductVariant => ({
 	priceINR: doc.priceINR,
 	compareAtPriceINR: doc.compareAtPriceINR ?? null,
 	salePriceINR: doc.salePriceINR ?? null,
-	saleWindow: doc.saleWindow
-		? { startsAt: isoOrNull(doc.saleWindow.startsAt), endsAt: isoOrNull(doc.saleWindow.endsAt) }
-		: undefined,
 	stock: doc.stock ?? { tracked: true, quantity: 0, lowStockThreshold: null, allowBackorder: false },
 	shippingProfile: doc.shippingProfile as ProductVariant['shippingProfile'],
 	taxProfile: doc.taxProfile as ProductVariant['taxProfile'],

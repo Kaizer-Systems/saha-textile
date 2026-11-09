@@ -150,14 +150,9 @@ describe('ProductVariant', () => {
 		).toBe(false);
 	});
 
-	it('rejects a sale price above the list price and an inverted sale window', () => {
+	it('rejects a sale price above the list price', () => {
 		expect(ProductVariant.safeParse(variant({ salePriceINR: 1500 })).success).toBe(false);
 		expect(ProductVariant.safeParse(variant({ salePriceINR: 900 })).success).toBe(true);
-		expect(
-			ProductVariant.safeParse(
-				variant({ saleWindow: { startsAt: '2026-08-10T00:00:00.000Z', endsAt: '2026-08-01T00:00:00.000Z' } }),
-			).success,
-		).toBe(false);
 	});
 
 	it('requires at least one axis selection and a SKU', () => {

@@ -430,7 +430,6 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 				priceINR: 100,
 				compareAtPriceINR: 200,
 				salePriceINR: 90,
-				saleWindow: { startsAt: past, endsAt: future },
 				stock: { tracked: true, quantity: 5, lowStockThreshold: 1, allowBackorder: false },
 				barcode: 'b',
 				...overrides,
@@ -456,7 +455,6 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 				compareAtPriceINR: 200,
 				salePriceINR: 90,
 				barcode: 'b',
-				saleWindow: { startsAt: past, endsAt: future },
 			});
 			expect(await repo.findById(`${P}v2`)).toBeNull();
 			expect((await repo.findById(`${P}v2`, 'admin'))?.status).toBe('draft');
@@ -479,9 +477,7 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 			expect(Array.isArray((await repo.list({ pageSize: 1 } as never)).items)).toBe(true);
 		});
 
-		it('reads a window with open ends, and fills the gaps', async () => {
-			await repo.save(variant('v4', { saleWindow: { startsAt: null, endsAt: null } }));
-			expect((await repo.findById(`${P}v4`))?.saleWindow).toEqual({ startsAt: null, endsAt: null });
+		it('fills the gaps in a sparse row', async () => {
 			await insertRaw(ProductVariantModel, {
 				_id: `${P}sparse`,
 				sku: `${P}sparse`,
@@ -494,7 +490,6 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 				isBaseVariant: false,
 				compareAtPriceINR: null,
 				salePriceINR: null,
-				saleWindow: undefined,
 				stock: { tracked: true, quantity: 0 },
 				barcode: null,
 				createdAt: undefined,

@@ -34,10 +34,18 @@
 	display: inline-block;
 	position: relative;
 
+	h1,
 	h2 {
 		font-weight: 700;
 		color: $title-color;
 		position: relative;
+	}
+
+	// A page's main heading in a title block keeps the section-title size (the base h1 is a
+	// 40–70px display size). Owner-approved, brief "Headings and Deep Trails" (H2).
+	h1 {
+		font-size: calc(22px + (28 - 22) * ((100vw - 320px) / (1920 - 320)));
+		line-height: 1;
 	}
 
 	p {

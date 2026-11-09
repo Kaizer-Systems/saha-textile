@@ -18,6 +18,8 @@ export interface FixedPageHead {
 	description: string;
 	/** `noindex,follow` for a page that still holds stand-in content. */
 	robots?: string;
+	/** The page draws its own visible h1; otherwise a hidden one is written from the label. */
+	ownHeading?: boolean;
 }
 
 /**
@@ -31,6 +33,9 @@ export interface FixedPageHead {
  * Every such page gets "Label | Saha Textile" as its title. A public page passes `head`: it then
  * also gets its meta description and a schema.org BreadcrumbList (Home › Label), which is what
  * search engines show as the page's trail in results.
+ *
+ * A page without a visible heading of its own gets its label as a hidden main heading (h1), so
+ * every page has exactly one.
  *
  * Must be called from an injection context (component field initializer or
  * constructor). Produces a single active crumb whose label matches the title,
@@ -46,6 +51,7 @@ export function translatedBreadcrumb(titleKey: string, head?: FixedPageHead): Si
 			map((title) => ({
 				title,
 				items: [{ label: title, active: true }],
+				...(head?.ownHeading ? {} : { hiddenHeading: true }),
 			})),
 		),
 	);

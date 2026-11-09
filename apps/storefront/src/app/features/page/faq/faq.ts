@@ -23,7 +23,7 @@ import { SkeletonPage } from '../skeleton-page/skeleton-page';
 export class Faq {
 	private seo = inject(LocaleSeo);
 
-	public breadcrumb = translatedBreadcrumb('faq', { description: 'faq_meta_description' });
+	public breadcrumb = translatedBreadcrumb('faq', { description: 'faq_meta_description', ownHeading: true });
 
 	private readonly faqsQuery = injectFaqsQuery();
 	faq$: Observable<IFaqModel> = toObservable(computed(() => this.faqsQuery.data() ?? { data: [], total: 0 }));

@@ -71,6 +71,8 @@ describe('AboutUs', () => {
 		TestBed.tick();
 		expect(await firstValueFrom(page.blog$)).toEqual({ data: [] });
 		expect(page.breadcrumb()?.title).toBe('Title');
+		// No visible heading of its own: the label is written as a hidden h1.
+		expect(page.breadcrumb()?.hiddenHeading).toBe(true);
 		expect(seo.applyDocument).toHaveBeenCalledWith({
 			title: 'Title | Saha Textile',
 			description: 't:about_us_meta_description',

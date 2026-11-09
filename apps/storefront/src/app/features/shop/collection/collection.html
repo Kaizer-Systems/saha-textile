@@ -1,6 +1,9 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section>
 	<div class="container-fluid-lg">
+		<div class="title mt-3">
+			<h1>{{ breadcrumb().title }}</h1>
+		</div>
 		<div class="row">
 			<div class="col-12">
 				<app-collection-categories

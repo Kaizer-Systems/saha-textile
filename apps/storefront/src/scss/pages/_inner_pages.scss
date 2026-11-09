@@ -2104,6 +2104,8 @@
 			margin-bottom: calc(30px + (50 - 30) * ((100vw - 320px) / (1920 - 320)));
 		}
 
+		// h1 on the FAQ page, h2 in a category's FAQ: the same look.
+		h1,
 		h2 {
 			font-weight: 700;
 			font-size: calc(28px + (56 - 28) * ((100vw - 320px) / (1920 - 320)));

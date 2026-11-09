@@ -95,6 +95,8 @@ describe('ContactUs', () => {
 	it('names and describes itself, with its Home › Contact Us trail', () => {
 		const { form, seo } = render();
 		expect(form.breadcrumb()?.title).toBe('Contact Us');
+		// The page draws its own "Contact Us" h1, so no hidden one is added.
+		expect(form.breadcrumb()?.hiddenHeading).toBeUndefined();
 		expect(seo.applyDocument).toHaveBeenCalledWith({
 			title: 'Contact Us | Saha Textile',
 			description: 't:contact_us_meta_description',

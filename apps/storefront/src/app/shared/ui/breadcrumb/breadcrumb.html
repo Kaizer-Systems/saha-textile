@@ -1,4 +1,6 @@
-@if (breadcrumb()) {
+@if (breadcrumb()) { @if (breadcrumb()?.hiddenHeading) {
+<h1 class="visually-hidden">{{ breadcrumb()?.title }}</h1>
+}
 <section class="breadcrumb-section pt-0">
 	<div class="container-fluid-lg">
 		<div class="row">

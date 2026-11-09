@@ -107,6 +107,16 @@
 							line-height: 20px;
 						}
 					}
+
+					// Phones: when the trail is four steps deep after Home, the page's own name is
+					// left out so every parent fits at 360px; the page's heading names it, and the
+					// HTML and the BreadcrumbList data keep it. Owner-approved, brief "Headings and
+					// Deep Trails" (T2).
+					&:last-child:nth-child(n + 5) {
+						@include mq-max(md) {
+							display: none;
+						}
+					}
 					display: flex;
 					line-height: 1;
 					align-items: center;

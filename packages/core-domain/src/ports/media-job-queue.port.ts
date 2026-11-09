@@ -6,7 +6,9 @@ export type MediaJob =
 	| { type: 'reprocess'; assetId: string; reason: 'ladder' | 'slug' | 'primary' | 'manual' }
 	/** Delete storage objects, then purge their public URLs from the CDN. */
 	| { type: 'delete-objects'; keys: string[]; urls: string[] }
-	| { type: 'purge'; urls: string[] };
+	| { type: 'purge'; urls: string[] }
+	/** Admin's "Refresh now": the daily YouTube refresh, run at once. */
+	| { type: 'youtube-refresh' };
 
 /**
  * Enqueue port for media jobs (`MediaJobQueuePort`), implemented with BullMQ + Redis at the

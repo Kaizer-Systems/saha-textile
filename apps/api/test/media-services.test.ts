@@ -733,7 +733,13 @@ describe('YouTubeService', () => {
 			get: vi.fn(async (key: string) => (key === 'youtube' ? stored : feed)),
 			set: vi.fn(async () => {}),
 		};
-		return { service: new YouTubeService(youtube as never, settings as never), youtube, settings };
+		const queue = { enqueue: vi.fn(async () => {}) };
+		return {
+			service: new YouTubeService(youtube as never, settings as never, queue as never),
+			youtube,
+			settings,
+			queue,
+		};
 	};
 	const stored = {
 		channelHandle: '@a',
@@ -782,6 +788,30 @@ describe('YouTubeService', () => {
 		});
 		const { service } = build(stored, { videos: [feedVideo('a', 'cdn/a'), feedVideo('b'), feedVideo('c')] });
 		expect((await service.rail('home')).videos.map((row) => row.thumbnailUrl)).toEqual(['cdn/a', 'yt/b']);
+	});
+
+	it('tells admin when the cache was filled, how much it holds and the last error', async () => {
+		expect(await build(stored).service.status()).toEqual({
+			fetchedAt: null,
+			lastAttemptAt: null,
+			lastError: null,
+			videos: 0,
+			shorts: 0,
+		});
+		const feed = { videos: [{}, {}], shorts: [{}], fetchedAt: 'f', lastAttemptAt: 'a', lastError: 'HTTP 403' };
+		expect(await build(stored, feed).service.status()).toEqual({
+			fetchedAt: 'f',
+			lastAttemptAt: 'a',
+			lastError: 'HTTP 403',
+			videos: 2,
+			shorts: 1,
+		});
+	});
+
+	it('queues the refresh when admin asks for it now', async () => {
+		const { service, queue } = build(stored);
+		await service.refreshNow();
+		expect(queue.enqueue).toHaveBeenCalledWith({ type: 'youtube-refresh' });
 	});
 
 	it('serves /videos: every cached video and Short, our poster first, and the channel page', async () => {
@@ -841,6 +871,8 @@ describe('media controllers', () => {
 			validate: vi.fn(async () => 'valid'),
 			getSettings: vi.fn(async () => 'settings'),
 			updateSettings: vi.fn(async () => 'updated'),
+			status: vi.fn(async () => 'status'),
+			refreshNow: vi.fn(async () => undefined),
 		};
 		const brand = { settingsValue: vi.fn(async () => 'kit'), save: vi.fn(async () => 'kept') };
 		const controller = new AdminContentController(blocks as never, youtube as never, brand as never);
@@ -857,6 +889,9 @@ describe('media controllers', () => {
 		expect(await controller.validate({ input: 'x' } as never)).toBe('valid');
 		expect(await controller.settings()).toBe('settings');
 		expect(await controller.updateSettings({} as never)).toBe('updated');
+		expect(await controller.status()).toBe('status');
+		await controller.refresh();
+		expect(youtube.refreshNow).toHaveBeenCalledOnce();
 	});
 
 	it('hands review moderation to the service', async () => {

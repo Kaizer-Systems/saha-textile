@@ -548,11 +548,15 @@ describe('refreshYouTubeFeed', () => {
 		publishedAt: new Date(Date.UTC(2026, 9, 1) + index * 3_600_000).toISOString(),
 		thumbnailUrl: 'https://i.ytimg.com/a.jpg',
 	});
+	let feedBefore: unknown = null;
 	/** 50 uploads: every third one is a Short; the last one cannot be played. */
 	const uploads = Array.from({ length: 50 }, (_, index) => upload(index));
 	const build = (stored: unknown, channel: unknown) => {
 		const set = vi.fn(async () => {});
-		const settings = { get: async () => stored, set } as unknown as SiteSettingsRepository;
+		const settings = {
+			get: async (key: string) => (key === 'youtube.feed' ? feedBefore : stored),
+			set,
+		} as unknown as SiteSettingsRepository;
 		const youtube = {
 			resolveChannel: vi.fn(async () => channel),
 			listPlaylistVideos: vi.fn(async () => uploads),
@@ -578,7 +582,37 @@ describe('refreshYouTubeFeed', () => {
 		const { settings, youtube, set } = build(null, null);
 		expect(await refreshYouTubeFeed({ settings, youtube, now })).toEqual({ skipped: 'channel_not_found' });
 		expect(youtube.resolveChannel).toHaveBeenCalledWith('@SahaTextile');
-		expect(set).not.toHaveBeenCalled();
+		expect(set).toHaveBeenCalledOnce();
+		expect(set).toHaveBeenCalledWith('youtube.feed', {
+			videos: [],
+			shorts: [],
+			fetchedAt: null,
+			lastAttemptAt: '2026-11-02T00:00:00.000Z',
+			lastError: 'No YouTube channel has the handle @SahaTextile.',
+		});
+	});
+
+	it("keeps yesterday's videos and says why when YouTube fails, then lets the job retry", async () => {
+		feedBefore = { videos: [{ videoId: 'kept' }], shorts: [], fetchedAt: '2026-11-01T00:00:00.000Z' };
+		const { settings, youtube, set } = build(
+			{ channelHandle: '@a', channelId: 'UC1', uploadsPlaylistId: 'UU9', displayCount: 8, railPlacements: [] },
+			null,
+		);
+		vi.mocked(youtube.listPlaylistVideos).mockRejectedValueOnce(
+			new Error('YouTube playlistItems answered HTTP 403'),
+		);
+		await expect(refreshYouTubeFeed({ settings, youtube, now })).rejects.toThrow('HTTP 403');
+		expect(set).toHaveBeenLastCalledWith('youtube.feed', {
+			videos: [{ videoId: 'kept' }],
+			shorts: [],
+			fetchedAt: '2026-11-01T00:00:00.000Z',
+			lastAttemptAt: '2026-11-02T00:00:00.000Z',
+			lastError: 'YouTube playlistItems answered HTTP 403',
+		});
+		vi.mocked(youtube.listPlaylistVideos).mockRejectedValueOnce('down');
+		await expect(refreshYouTubeFeed({ settings, youtube, now })).rejects.toBe('down');
+		expect(set).toHaveBeenLastCalledWith('youtube.feed', expect.objectContaining({ lastError: 'down' }));
+		feedBefore = null;
 	});
 
 	it('resolves the channel once and stores the 24 newest videos and 12 newest Shorts', async () => {
@@ -594,6 +628,7 @@ describe('refreshYouTubeFeed', () => {
 		expect(feed.shorts[0]?.videoId).toBe(upload(48).videoId);
 		expect(feed.videos[0]?.videoId).toBe(upload(47).videoId);
 		expect(feed.fetchedAt).toBe('2026-11-02T00:00:00.000Z');
+		expect(feed).toMatchObject({ lastAttemptAt: '2026-11-02T00:00:00.000Z', lastError: null });
 	});
 
 	it('reuses a saved playlist and reads one page of uploads', async () => {

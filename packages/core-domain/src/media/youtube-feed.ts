@@ -40,29 +40,56 @@ export const refreshYouTubeFeed = async (deps: {
 	settings: SiteSettingsRepository;
 	now: () => Date;
 }): Promise<{ videos: number; shorts: number } | { skipped: 'channel_not_found' }> => {
-	const settings = (await deps.settings.get('youtube')) ?? DEFAULT_SETTINGS;
-	let { uploadsPlaylistId } = settings;
-	if (!uploadsPlaylistId) {
-		const channel = await deps.youtube.resolveChannel(settings.channelHandle);
-		if (!channel) return { skipped: 'channel_not_found' };
-		uploadsPlaylistId = channel.uploadsPlaylistId;
-		await deps.settings.set('youtube', { ...settings, channelId: channel.channelId, uploadsPlaylistId });
+	const attemptAt = deps.now().toISOString();
+	const previous = await deps.settings.get('youtube.feed');
+	const keep = {
+		videos: previous?.videos ?? [],
+		shorts: previous?.shorts ?? [],
+		fetchedAt: previous?.fetchedAt ?? null,
+	};
+	try {
+		const settings = (await deps.settings.get('youtube')) ?? DEFAULT_SETTINGS;
+		let { uploadsPlaylistId } = settings;
+		if (!uploadsPlaylistId) {
+			const channel = await deps.youtube.resolveChannel(settings.channelHandle);
+			if (!channel) {
+				await deps.settings.set('youtube.feed', {
+					...keep,
+					lastAttemptAt: attemptAt,
+					lastError: `No YouTube channel has the handle ${settings.channelHandle}.`,
+				});
+				return { skipped: 'channel_not_found' };
+			}
+			uploadsPlaylistId = channel.uploadsPlaylistId;
+			await deps.settings.set('youtube', { ...settings, channelId: channel.channelId, uploadsPlaylistId });
+		}
+		const uploads = await deps.youtube.listPlaylistVideos({
+			playlistId: uploadsPlaylistId,
+			limit: YOUTUBE_UPLOADS_READ,
+		});
+		const described = await deps.youtube.describeVideos(uploads.map((upload) => upload.videoId));
+		// Newest first, whatever order the API answered in.
+		const newest = [...described].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+		const videos = newest.filter((video) => video.kind === 'video').slice(0, YOUTUBE_FEED_VIDEOS);
+		const shorts = newest.filter((video) => video.kind === 'short').slice(0, YOUTUBE_FEED_SHORTS);
+		await deps.settings.set('youtube.feed', {
+			videos: videos.map(summary),
+			shorts: shorts.map(summary),
+			fetchedAt: attemptAt,
+			lastAttemptAt: attemptAt,
+			lastError: null,
+		});
+		return { videos: videos.length, shorts: shorts.length };
+	} catch (error) {
+		// Yesterday's videos stay; admin sees why today's refresh failed. The job retries.
+		const message = error instanceof Error ? error.message : String(error);
+		await deps.settings.set('youtube.feed', {
+			...keep,
+			lastAttemptAt: attemptAt,
+			lastError: message.slice(0, 500),
+		});
+		throw error;
 	}
-	const uploads = await deps.youtube.listPlaylistVideos({
-		playlistId: uploadsPlaylistId,
-		limit: YOUTUBE_UPLOADS_READ,
-	});
-	const described = await deps.youtube.describeVideos(uploads.map((upload) => upload.videoId));
-	// Newest first, whatever order the API answered in.
-	const newest = [...described].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-	const videos = newest.filter((video) => video.kind === 'video').slice(0, YOUTUBE_FEED_VIDEOS);
-	const shorts = newest.filter((video) => video.kind === 'short').slice(0, YOUTUBE_FEED_SHORTS);
-	await deps.settings.set('youtube.feed', {
-		videos: videos.map(summary),
-		shorts: shorts.map(summary),
-		fetchedAt: deps.now().toISOString(),
-	});
-	return { videos: videos.length, shorts: shorts.length };
 };
 
 export { DEFAULT_SETTINGS as DEFAULT_YOUTUBE_SETTINGS };

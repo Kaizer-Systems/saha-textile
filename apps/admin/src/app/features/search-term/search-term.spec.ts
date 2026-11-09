@@ -8,6 +8,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { YouTubeGateway } from '@core/media/content-blocks.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 import { SearchTermService } from '@data-access/services/search-term.service';
 
@@ -35,6 +36,23 @@ vi.mock('@data-access/queries/product.queries', () => ({
 	injectCatalogProductsQuery: (params: () => unknown) => ((productQuery = params), params(), { data: products }),
 }));
 
+const youtube = {
+	settings: vi.fn(() =>
+		of({
+			channelHandle: '@SahaTextile',
+			channelId: 'UC',
+			uploadsPlaylistId: 'UU',
+			displayCount: 8,
+			railPlacements: ['home', 'product'],
+		}),
+	),
+	status: vi.fn(() =>
+		of({ fetchedAt: '2026-11-10T18:30:00.000Z', lastAttemptAt: null, lastError: null, videos: 24, shorts: 12 }),
+	),
+	saveSettings: vi.fn(() => of({})),
+	refresh: vi.fn(() => of(undefined)),
+};
+
 const translate = (key: string, params?: Record<string, unknown>) =>
 	params ? `${key} ${JSON.stringify(params)}` : key;
 
@@ -49,6 +67,7 @@ function render<T>(type: Type<T>, service: Partial<Record<keyof SearchTermServic
 			{ provide: QueryClient, useValue: client },
 			{ provide: NotificationService, useValue: toasts },
 			{ provide: TranslocoService, useValue: { translate } },
+			{ provide: YouTubeGateway, useValue: youtube },
 		],
 	});
 	TestBed.overrideComponent(type, { set: { imports: [], template: '' } });
@@ -221,5 +240,56 @@ describe('Storefront settings', () => {
 		service.saveSearchSettings.mockReturnValueOnce(throwError(() => new Error('no')) as never);
 		page.submit();
 		expect(toasts.showError).toHaveBeenCalledWith('storefront_settings_rejected');
+	});
+
+	it('loads the YouTube tab and saves it with the search settings, keeping other rail places', () => {
+		const service = { saveSearchSettings: vi.fn(() => of({ showFirstCategoryIds: [] })) };
+		const { page, toasts } = render(StorefrontSetting, service);
+		expect(page.channelHandle()).toBe('@SahaTextile');
+		expect(page.onHome()).toBe(true);
+		expect(page.status()?.videos).toBe(24);
+		page.channelHandle.set(' @Other ');
+		page.displayCount.set(40);
+		page.onHome.set(false);
+		page.submit();
+		expect(youtube.saveSettings).toHaveBeenLastCalledWith({
+			channelHandle: '@Other',
+			displayCount: 24,
+			railPlacements: ['product'],
+		});
+		page.onHome.set(true);
+		page.displayCount.set(0);
+		page.submit();
+		expect(youtube.saveSettings).toHaveBeenLastCalledWith(
+			expect.objectContaining({ displayCount: 1, railPlacements: ['home', 'product'] }),
+		);
+		youtube.saveSettings.mockReturnValueOnce(throwError(() => new Error('no')) as never);
+		page.submit();
+		expect(toasts.showError).toHaveBeenCalledWith('youtube_settings_rejected');
+	});
+
+	it('leaves YouTube alone until its settings have loaded', () => {
+		youtube.settings.mockReturnValueOnce(of() as never);
+		youtube.saveSettings.mockClear();
+		const { page } = render(StorefrontSetting, { saveSearchSettings: vi.fn(() => of({})) });
+		page.submit();
+		expect(youtube.saveSettings).not.toHaveBeenCalled();
+	});
+
+	it('refreshes now, then reads the status again; and says when it could not start', () => {
+		vi.useFakeTimers();
+		const { page, toasts } = render(StorefrontSetting, { saveSearchSettings: vi.fn() });
+		youtube.status.mockClear();
+		page.refreshNow();
+		expect(page.refreshing()).toBe(true);
+		expect(toasts.showSuccess).toHaveBeenCalledWith('youtube_refresh_started');
+		vi.advanceTimersByTime(15_000);
+		expect(page.refreshing()).toBe(false);
+		expect(youtube.status).toHaveBeenCalledOnce();
+		youtube.refresh.mockReturnValueOnce(throwError(() => new Error('no')) as never);
+		page.refreshNow();
+		expect(page.refreshing()).toBe(false);
+		expect(toasts.showError).toHaveBeenCalledWith('youtube_refresh_failed');
+		vi.useRealTimers();
 	});
 });

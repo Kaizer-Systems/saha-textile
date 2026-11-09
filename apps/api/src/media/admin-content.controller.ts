@@ -7,6 +7,7 @@ import {
 	ContentBlockListQuery,
 	type HomeHeroLayout,
 	StorefrontHomeSettings,
+	type YouTubeFeedStatus,
 	type YouTubeSettings,
 	YouTubeSettingsUpdate,
 	YouTubeValidateRequest,
@@ -101,6 +102,24 @@ export class AdminContentController {
 	@ApiOperation({ operationId: 'getYouTubeSettings', summary: 'YouTube rail settings' })
 	settings(): Promise<YouTubeSettings> {
 		return this.youtube.getSettings();
+	}
+
+	@Get('youtube/status')
+	@RequirePermissions('setting.index')
+	@ApiOperation({
+		operationId: 'getYouTubeStatus',
+		summary: 'When the YouTube cache was last refreshed, and its last error',
+	})
+	status(): Promise<YouTubeFeedStatus> {
+		return this.youtube.status();
+	}
+
+	@Post('youtube/refresh')
+	@HttpCode(202)
+	@RequirePermissions('setting.edit')
+	@ApiOperation({ operationId: 'refreshYouTubeNow', summary: 'Run the daily YouTube refresh now' })
+	async refresh(): Promise<void> {
+		await this.youtube.refreshNow();
 	}
 
 	@Put('youtube/settings')

@@ -45,6 +45,103 @@
 								</div>
 							</ng-template>
 						</li>
+						<li ngbNavItem="youtube">
+							<a ngbNavLink>
+								<i class="ri-youtube-line"></i>
+								{{ 'youtube' | transloco }}
+							</a>
+							<ng-template ngbNavContent>
+								<div class="row">
+									<div class="col-xl-9">
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'youtube_channel' | transloco"
+											[for]="'youtube_channel'"
+											[required]="true"
+										>
+											<input
+												class="form-control"
+												type="text"
+												id="youtube_channel"
+												name="youtube_channel"
+												placeholder="@SahaTextile"
+												[ngModel]="channelHandle()"
+												(ngModelChange)="channelHandle.set($event)"
+											/>
+											<p class="help-text">{{ 'youtube_channel_help' | transloco }}</p>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'youtube_rail_count' | transloco"
+											[for]="'youtube_rail_count'"
+											[required]="true"
+										>
+											<input
+												class="form-control"
+												type="number"
+												min="1"
+												max="24"
+												id="youtube_rail_count"
+												name="youtube_rail_count"
+												[ngModel]="displayCount()"
+												(ngModelChange)="displayCount.set($event)"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'youtube_rail_on_home' | transloco"
+											[for]="'youtube_rail_on_home'"
+											[required]="false"
+										>
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="youtube_rail_on_home"
+													name="youtube_rail_on_home"
+													[checked]="onHome()"
+													(change)="onHome.set($any($event.target).checked)"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'youtube_last_refresh' | transloco"
+											[for]="'youtube_refresh_now'"
+											[required]="false"
+										>
+											@if (status(); as feed) {
+											<p class="mb-1">
+												@if (feed.fetchedAt) { {{ feed.fetchedAt | date: 'd MMM y, HH:mm' :
+												'+0530' }} IST · {{ 'youtube_cached_counts' | transloco: { videos:
+												feed.videos, shorts: feed.shorts } }} } @else { {{
+												'youtube_never_refreshed' | transloco }} }
+											</p>
+											@if (feed.lastError) {
+											<div class="invalid-feedback d-block mb-2">
+												{{ 'youtube_last_error' | transloco: { error: feed.lastError } }}
+											</div>
+											} }
+											<app-button
+												[class]="'btn btn-theme'"
+												[id]="'youtube_refresh_now'"
+												[type]="'button'"
+												[spinner]="false"
+												[disabled]="refreshing()"
+												(click)="refreshNow()"
+											>
+												{{ 'youtube_refresh_now' | transloco }}
+											</app-button>
+											<p class="help-text mt-2">{{ 'youtube_refresh_help' | transloco }}</p>
+										</app-form-fields>
+									</div>
+								</div>
+							</ng-template>
+						</li>
 					</ul>
 				</div>
 				<div class="col-xl-9 col-lg-8">

@@ -5,6 +5,8 @@ import { Observable, map } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 
+import type { YouTubeFeedStatus, YouTubeSettings, YouTubeSettingsUpdate } from '@saha-textile/contracts';
+
 /** Home hero arrangements (`HomeHeroLayout`). */
 export type HeroLayout = 'hero_full' | 'hero_main_side' | 'hero_main_stack' | 'hero_center_sides';
 
@@ -93,5 +95,23 @@ export class YouTubeGateway {
 
 	validate(input: string): Observable<YouTubeValidation> {
 		return this.http.post<YouTubeValidation>(`${runtimeConfig.apiUrl}/admin/youtube/validate`, { input });
+	}
+
+	settings(): Observable<YouTubeSettings> {
+		return this.http.get<YouTubeSettings>(`${runtimeConfig.apiUrl}/admin/youtube/settings`);
+	}
+
+	saveSettings(update: YouTubeSettingsUpdate): Observable<YouTubeSettings> {
+		return this.http.put<YouTubeSettings>(`${runtimeConfig.apiUrl}/admin/youtube/settings`, update);
+	}
+
+	/** When the cache was last filled, how much it holds, and the last refresh error. */
+	status(): Observable<YouTubeFeedStatus> {
+		return this.http.get<YouTubeFeedStatus>(`${runtimeConfig.apiUrl}/admin/youtube/status`);
+	}
+
+	/** Queues the daily refresh to run now. */
+	refresh(): Observable<void> {
+		return this.http.post<void>(`${runtimeConfig.apiUrl}/admin/youtube/refresh`, {});
 	}
 }

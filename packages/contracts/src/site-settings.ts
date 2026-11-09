@@ -62,6 +62,9 @@ export const YouTubeFeedCache = z.object({
 	videos: z.array(YouTubeVideoSummary).max(YOUTUBE_FEED_VIDEOS).default([]),
 	shorts: z.array(YouTubeVideoSummary).max(YOUTUBE_FEED_SHORTS).default([]),
 	fetchedAt: IsoDateTime.nullable().default(null),
+	/** The last refresh tried, and why it failed when it did (the lists keep yesterday's videos). */
+	lastAttemptAt: IsoDateTime.nullable().default(null),
+	lastError: z.string().max(500).nullable().default(null),
 });
 export type YouTubeFeedCache = z.infer<typeof YouTubeFeedCache>;
 
@@ -192,6 +195,16 @@ export const YouTubeVideosResponse = z.object({
 	channelUrl: z.string().url(),
 });
 export type YouTubeVideosResponse = z.infer<typeof YouTubeVideosResponse>;
+
+/** `GET /admin/youtube/status` — what admin's YouTube tab shows about the daily refresh. */
+export const YouTubeFeedStatus = z.object({
+	fetchedAt: IsoDateTime.nullable(),
+	lastAttemptAt: IsoDateTime.nullable(),
+	lastError: z.string().nullable(),
+	videos: z.number().int().nonnegative(),
+	shorts: z.number().int().nonnegative(),
+});
+export type YouTubeFeedStatus = z.infer<typeof YouTubeFeedStatus>;
 
 /** One video on a product, as admin saved it after the check (long video or Short). */
 export const ProductVideo = z.object({

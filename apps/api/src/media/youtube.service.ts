@@ -6,13 +6,19 @@ import {
 	type YouTubeSettings,
 	type YouTubeSettingsUpdate,
 	type YouTubeValidateResponse,
+	type YouTubeFeedStatus,
 	type YouTubeVideoSummary,
 	type YouTubeVideosResponse,
 	normalizeYouTubeVideoId,
 } from '@saha-textile/contracts';
-import { DEFAULT_YOUTUBE_SETTINGS, type SiteSettingsRepository, type YouTubePort } from '@saha-textile/core-domain';
+import {
+	DEFAULT_YOUTUBE_SETTINGS,
+	type MediaJobQueuePort,
+	type SiteSettingsRepository,
+	type YouTubePort,
+} from '@saha-textile/core-domain';
 
-import { SITE_SETTINGS_REPOSITORY, YOUTUBE_PORT } from '../infra/tokens';
+import { MEDIA_JOB_QUEUE, SITE_SETTINGS_REPOSITORY, YOUTUBE_PORT } from '../infra/tokens';
 
 /** Our CDN copy of a poster when the refresh has made one, else YouTube's own picture. */
 const withPoster = (video: YouTubeVideoSummary): YouTubeVideoSummary =>
@@ -24,6 +30,7 @@ export class YouTubeService {
 	constructor(
 		@Inject(YOUTUBE_PORT) private readonly youtube: YouTubePort,
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
+		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 	) {}
 
 	/** Normalises whatever was pasted and confirms the video exists and can be embedded. */
@@ -72,6 +79,23 @@ export class YouTubeService {
 		if (!settings.railPlacements.includes(placement)) return { videos: [] };
 		const feed = await this.settings.get('youtube.feed');
 		return { videos: (feed?.videos ?? []).slice(0, settings.displayCount).map(withPoster) };
+	}
+
+	/** What admin's YouTube tab shows: when the cache was last filled, and the last error. */
+	async status(): Promise<YouTubeFeedStatus> {
+		const feed = await this.settings.get('youtube.feed');
+		return {
+			fetchedAt: feed?.fetchedAt ?? null,
+			lastAttemptAt: feed?.lastAttemptAt ?? null,
+			lastError: feed?.lastError ?? null,
+			videos: feed?.videos.length ?? 0,
+			shorts: feed?.shorts.length ?? 0,
+		};
+	}
+
+	/** Admin's "Refresh now": the worker runs the daily refresh at once (2 quota units). */
+	async refreshNow(): Promise<void> {
+		await this.queue.enqueue({ type: 'youtube-refresh' });
 	}
 
 	/** Everything `/videos` shows. Empty lists until the first refresh, which the page says plainly. */

@@ -8,7 +8,10 @@ import { Id, IsoDateTime } from './common';
  * The super admin connects each sahatextile.com mailbox once through Google's own sign-in; the
  * API keeps that mailbox's refresh token encrypted and never sends it anywhere. Admin users are
  * given Read or Read-and-send per mailbox and never sign in to Google. Email content is read live
- * from Gmail and never stored here; only the mailbox's identity and sync markers are.
+ * from Gmail and never stored here; only the mailbox's identity is.
+ *
+ * No Gmail push and no Pub/Sub (owner, 2026-11-09: no billing anywhere): the admin's Inbox asks
+ * for unread counts about once a minute while it is open, and each read goes to Gmail live.
  */
 
 export const MailboxStatus = z.enum(['connected', 'needs_reconnect', 'disconnected']);
@@ -31,12 +34,8 @@ export const Mailbox = z.object({
 	status: MailboxStatus,
 	connectedBy: Id.nullable().default(null),
 	connectedAt: IsoDateTime.nullable().default(null),
-	/** Last time the API read the mailbox's change list. */
+	/** Last time the API reached the mailbox at Gmail. */
 	lastSyncAt: IsoDateTime.nullable().default(null),
-	/** Gmail's change marker after the last sync; the next sync reads changes after it. */
-	historyId: z.string().nullable().default(null),
-	/** When Gmail's push watch ends unless renewed (at most 7 days ahead). */
-	watchExpiresAt: IsoDateTime.nullable().default(null),
 	sendAs: z.array(MailboxSendAs).default([]),
 	createdAt: IsoDateTime.optional(),
 	updatedAt: IsoDateTime.optional(),
@@ -55,7 +54,7 @@ export type MailboxAccess = z.infer<typeof MailboxAccess>;
 // ── Super admin: Settings › Mailboxes ──────────────────────────────────────────
 
 export const AdminMailboxRow = z.object({
-	mailbox: Mailbox.omit({ historyId: true }),
+	mailbox: Mailbox,
 	readers: z.number().int().nonnegative(),
 	senders: z.number().int().nonnegative(),
 	/** True for the mailbox Contact Us messages go to. */

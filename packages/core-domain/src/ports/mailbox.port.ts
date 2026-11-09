@@ -23,6 +23,8 @@ export interface MailboxGrant {
 /** A message ready to send: raw RFC 822, built by the adapter from the admin's form. */
 export interface OutgoingMail {
 	from: string;
+	/** The send-as address's display name in Gmail; the bare address when absent. */
+	fromName?: string;
 	to: readonly string[];
 	cc: readonly string[];
 	subject: string;
@@ -42,8 +44,6 @@ export interface ImportedMail {
 	subject: string;
 	text: string;
 }
-
-export type MailboxChange = 'messages_added' | 'labels_changed' | 'messages_deleted';
 
 /** Why a mailbox call failed, in words the API can act on. */
 export class MailboxAccessRevoked extends Error {
@@ -88,13 +88,6 @@ export interface MailboxPort {
 	importMessage(credentials: MailboxCredentials, mail: ImportedMail): Promise<{ id: string }>;
 	unreadCount(credentials: MailboxCredentials): Promise<number>;
 	listSendAs(credentials: MailboxCredentials): Promise<MailboxSendAs[]>;
-	/** Starts or renews Gmail's push watch. Returns the change marker and when the watch ends. */
-	watch(credentials: MailboxCredentials, topic: string): Promise<{ historyId: string; expiresAt: string }>;
-	/** Changes since `historyId`; null when the marker is too old and a full refresh is needed. */
-	changesSince(
-		credentials: MailboxCredentials,
-		historyId: string,
-	): Promise<{ historyId: string; changes: MailboxChange[] } | null>;
 }
 
 /** Mailboxes (`mailboxes`). The refresh token is not here: see `MailboxTokenStore`. */

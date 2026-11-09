@@ -31,6 +31,9 @@ export interface ShopEventDoc {
 	messageSentAt: Date | null;
 	launchReport: unknown;
 	saleRecord: unknown;
+	/** SHA-256 of the admin's popup preview link, and when it stops working. Never sent out. */
+	previewTokenHash?: string | null;
+	previewExpiresAt?: Date | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -59,12 +62,16 @@ const ShopEventSchema = new Schema<ShopEventDoc>(
 		messageSentAt: { type: Date, default: null },
 		launchReport: { type: Schema.Types.Mixed, default: null },
 		saleRecord: { type: Schema.Types.Mixed, default: null },
+		previewTokenHash: { type: String, default: null },
+		previewExpiresAt: { type: Date, default: null },
 	},
 	{ collection: 'shopEvents', timestamps: true, minimize: false },
 );
 
 /** The clock, the shop and the sale prices read published events by state. */
 ShopEventSchema.index({ status: 1, startsAt: 1 });
+/** The shop reads a preview by its link's hash. */
+ShopEventSchema.index({ previewTokenHash: 1 }, { sparse: true });
 /** Media reference counting. */
 ShopEventSchema.index({ popupAssetId: 1 });
 

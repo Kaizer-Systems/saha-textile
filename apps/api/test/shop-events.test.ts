@@ -58,6 +58,15 @@ class MemoryEvents implements ShopEventRepository {
 	async remove(id: string) {
 		this.rows.delete(id);
 	}
+	readonly previews = new Map<string, { id: string; expiresAt: string }>();
+	async setPreview(id: string, tokenHash: string, expiresAt: string) {
+		for (const [hash, row] of this.previews) if (row.id === id) this.previews.delete(hash);
+		this.previews.set(tokenHash, { id, expiresAt });
+	}
+	async findByPreview(tokenHash: string, now: string) {
+		const row = this.previews.get(tokenHash);
+		return row && row.expiresAt > now ? (this.rows.get(row.id) ?? null) : null;
+	}
 }
 
 function harness() {
@@ -337,5 +346,45 @@ describe('what the shop reads', () => {
 		expect(result.serverNow).toBe(at.toISOString());
 		expect(result.items).toHaveLength(1);
 		expect(result.items[0]).toMatchObject({ title: 'পুজোর সেল', phase: 'upcoming', popupImage: null });
+	});
+
+	it('shows a draft through its 30-minute preview link, and nothing once the link is old or wrong', async () => {
+		const h = harness();
+		const created = await h.admin.create(saleBody(h.now + HOUR, h.now + 2 * HOUR), null);
+		const link = await h.admin.previewLink(created.id);
+		expect(link.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+		// Only the link's hash is kept.
+		expect([...h.events.previews.keys()][0]).not.toBe(link.token);
+		const shop = new EventsPublicService(h.events, null, null);
+		const shown = await shop.preview(link.token, 'en', new Date(h.now));
+		expect(shown.items).toHaveLength(1);
+		expect(shown.items[0]).toMatchObject({ id: created.id, phase: 'upcoming', title: 'Puja Sale' });
+		// The draft stays a draft and stays off the shop's normal list.
+		expect((await h.events.findById(created.id))?.status).toBe('draft');
+		expect((await shop.list('en', new Date(h.now))).items).toHaveLength(0);
+		expect((await shop.preview(link.token, 'en', new Date(h.now + 31 * 60_000))).items).toHaveLength(0);
+		expect((await shop.preview('x'.repeat(43), 'en', new Date(h.now))).items).toHaveLength(0);
+		// A new link replaces the old one.
+		await h.admin.previewLink(created.id);
+		expect((await shop.preview(link.token, 'en', new Date(h.now))).items).toHaveLength(0);
+	});
+});
+
+describe('the message', () => {
+	it('keeps only the blog article markup', async () => {
+		const h = harness();
+		const body = saleBody(h.now + HOUR, h.now + 2 * HOUR);
+		const created = await h.admin.create(
+			{
+				...body,
+				message: {
+					en: '<p onclick="steal()">Up to <strong>30%</strong> off<script>alert(1)</script></p>',
+					bn: '<p>৩০% পর্যন্ত ছাড়</p>',
+				},
+			},
+			null,
+		);
+		expect(created.message['en']).toBe('<p>Up to <strong>30%</strong> off</p>');
+		expect(created.message['bn']).toBe('<p>৩০% পর্যন্ত ছাড়</p>');
 	});
 });

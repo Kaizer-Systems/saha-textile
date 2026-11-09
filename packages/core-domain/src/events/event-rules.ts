@@ -6,6 +6,7 @@ import type {
 	ShopEventWrite,
 } from '@saha-textile/contracts';
 
+import { articleText } from '../blog/sanitize-html';
 import { saleRuleProblem } from './sale-pricing';
 
 const DAY_MS = 86_400_000;
@@ -52,16 +53,14 @@ export function shopEventSaveProblems(type: ShopEvent['type'], body: ShopEventWr
  * gaps, overlapping sales): both languages of the title and message, a start in the future,
  * a sale's end, and at least one item.
  */
-export function shopEventPublishProblems(
-	event: ShopEvent,
-	locales: readonly string[],
-	now: Date,
-): ShopEventProblem[] {
+export function shopEventPublishProblems(event: ShopEvent, locales: readonly string[], now: Date): ShopEventProblem[] {
 	const problems: ShopEventProblem[] = [];
 	if (event.status !== 'draft') problems.push(problem('not_draft'));
 	for (const locale of locales) {
 		if (!filled(event.title[locale])) problems.push(problem('missing_text', `title:${locale}`, { locale }));
-		if (!filled(event.message[locale])) problems.push(problem('missing_text', `message:${locale}`, { locale }));
+		// The message comes from the rich editor: an empty one still holds a bare paragraph.
+		if (!filled(articleText(event.message[locale] ?? '')))
+			problems.push(problem('missing_text', `message:${locale}`, { locale }));
 	}
 	if (!event.startsAt) problems.push(problem('missing_start', 'startsAt'));
 	else if (Date.parse(event.startsAt) <= now.getTime()) problems.push(problem('start_passed', 'startsAt'));

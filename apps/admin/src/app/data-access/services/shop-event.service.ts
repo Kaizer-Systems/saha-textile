@@ -12,6 +12,7 @@ import type {
 	ShopEvent,
 	ShopEventCategoryProducts,
 	ShopEventCreate,
+	ShopEventPreviewLink,
 	ShopEventPublishResult,
 	ShopEventReview,
 	ShopEventStatus,
@@ -40,6 +41,13 @@ export const EVENT_STATUS_PILL: Readonly<Record<ShopEventStatus, string>> = {
 	cancelled: 'cancelled',
 };
 
+/** Table columns that sort, and the list query's names for them. */
+const SORT_FIELDS: Readonly<Record<string, 'name' | 'startsAt' | 'endsAt'>> = {
+	name: 'name',
+	starts_at: 'startsAt',
+	ends_at: 'endsAt',
+};
+
 /** The admin events API: launches and sales, their Review, Publish and the clock-side actions. */
 @Injectable({ providedIn: 'root' })
 export class ShopEventService {
@@ -55,6 +63,11 @@ export class ShopEventService {
 		if (typeof search === 'string' && search.trim()) params['search'] = search.trim();
 		const type = payload?.['type'];
 		if (type === 'launch' || type === 'sale') params['type'] = type;
+		const field = SORT_FIELDS[String(payload?.['field'] ?? '')];
+		if (field) {
+			params['sort'] = field;
+			params['direction'] = payload?.['sort'] === 'asc' ? 'asc' : 'desc';
+		}
 		return this.http
 			.get<AdminShopEventListResponse>(this.base(), { params })
 			.pipe(map((page) => ({ data: page.items, total: page.total })));
@@ -90,6 +103,11 @@ export class ShopEventService {
 
 	endNow(id: string): Observable<ShopEvent> {
 		return this.http.post<ShopEvent>(this.base(`/${encodeURIComponent(id)}/end-now`), {});
+	}
+
+	/** A 30-minute link the shop opens the event popup with, published or not. */
+	previewLink(id: string): Observable<ShopEventPreviewLink> {
+		return this.http.post<ShopEventPreviewLink>(this.base(`/${encodeURIComponent(id)}/preview`), {});
 	}
 
 	sendTest(id: string): Observable<{ sent: boolean }> {

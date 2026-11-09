@@ -1,6 +1,6 @@
 import { Controller, Get, Header, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PublicShopEventsQuery } from '@saha-textile/contracts';
+import { PublicShopEventPreviewQuery, PublicShopEventsQuery } from '@saha-textile/contracts';
 
 import { Public } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -20,5 +20,16 @@ export class EventsPublicController {
 	@ApiOperation({ operationId: 'listShopEvents', summary: 'Published launch and sale events, with the server clock' })
 	list(@Query(new ZodValidationPipe(PublicShopEventsQuery)) query: PublicShopEventsQuery) {
 		return this.events.list(query.locale);
+	}
+
+	@Get('preview')
+	@Header('Cache-Control', 'no-store')
+	@Header('X-Robots-Tag', 'noindex')
+	@ApiOperation({
+		operationId: 'previewShopEvent',
+		summary: 'One event’s popup through the admin’s 30-minute preview link, published or not',
+	})
+	preview(@Query(new ZodValidationPipe(PublicShopEventPreviewQuery)) query: PublicShopEventPreviewQuery) {
+		return this.events.preview(query.token, query.locale);
 	}
 }

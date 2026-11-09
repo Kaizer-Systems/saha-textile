@@ -157,6 +157,15 @@ describe('publish checks', () => {
 		expect(codes).toEqual(['missing_text:title:bn', 'start_passed:startsAt', 'missing_end:endsAt', 'no_items:']);
 	});
 
+	it('counts a rich-editor message with no words as missing', () => {
+		const codes = shopEventPublishProblems(
+			sale({ message: { en: '<p>Up to 30% off</p>', bn: '<p></p>' } }),
+			['en', 'bn'],
+			now,
+		).map((row) => `${row.code}:${row.target}`);
+		expect(codes).toEqual(['missing_text:message:bn']);
+	});
+
 	it('refuses an event already published', () => {
 		expect(shopEventPublishProblems(sale({ status: 'scheduled' }), ['en'], now)[0]?.code).toBe('not_draft');
 	});

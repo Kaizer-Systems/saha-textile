@@ -73,7 +73,11 @@ export class MongoShopEventRepository implements ShopEventRepository {
 		}
 		const [docs, total] = await Promise.all([
 			ShopEventModel.find(query)
-				.sort({ startsAt: -1, createdAt: -1, _id: 1 })
+				.sort(
+					filter.sort
+						? { [filter.sort]: filter.direction === 'asc' ? 1 : -1, createdAt: -1, _id: 1 }
+						: { startsAt: -1, createdAt: -1, _id: 1 },
+				)
 				.skip((filter.page - 1) * filter.pageSize)
 				.limit(filter.pageSize)
 				.lean<ShopEventDoc[]>()
@@ -115,5 +119,22 @@ export class MongoShopEventRepository implements ShopEventRepository {
 
 	async remove(id: string): Promise<void> {
 		await ShopEventModel.deleteOne({ _id: id }).exec();
+	}
+
+	async setPreview(id: string, tokenHash: string, expiresAt: string): Promise<void> {
+		await ShopEventModel.updateOne(
+			{ _id: id },
+			{ $set: { previewTokenHash: tokenHash, previewExpiresAt: new Date(expiresAt) } },
+		).exec();
+	}
+
+	async findByPreview(tokenHash: string, now: string): Promise<ShopEvent | null> {
+		const doc = await ShopEventModel.findOne({
+			previewTokenHash: tokenHash,
+			previewExpiresAt: { $gt: new Date(now) },
+		})
+			.lean<ShopEventDoc>()
+			.exec();
+		return doc ? toEvent(doc) : null;
 	}
 }

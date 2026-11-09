@@ -72,7 +72,8 @@ render_public_config() {
 	printf '%s\n' "$storefront" >"$PUBLIC/storefront.config.json"
 	printf 'SAHA_TEXTILE_PUBLIC_CONFIG=%s\n' "$storefront" >"$PUBLIC/storefront.env"
 	ops "$RELEASE" jq -n --arg apiUrl "$(release_value "$RELEASE" API_URL)" \
-		--arg adminUrl "$(release_value "$RELEASE" ADMIN_URL)" '{$apiUrl, $adminUrl}' \
+		--arg adminUrl "$(release_value "$RELEASE" ADMIN_URL)" \
+		--arg siteUrl "$(release_value "$RELEASE" SITE_URL)" '{$apiUrl, $adminUrl, $siteUrl}' \
 		>"$PUBLIC/admin.config.json"
 }
 

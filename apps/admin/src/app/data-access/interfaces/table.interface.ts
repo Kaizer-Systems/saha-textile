@@ -45,6 +45,8 @@ export interface ITableAction {
 	deletedRows?: boolean;
 	/** Asks through the table's existing confirmation modal before the action is emitted. */
 	confirm?: boolean;
+	/** Shown only on rows whose `status` is one of these, for example Delete on drafts only. */
+	rowStatuses?: string[];
 }
 
 export interface ITableClickedAction {

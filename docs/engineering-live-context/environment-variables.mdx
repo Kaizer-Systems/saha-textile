@@ -130,7 +130,7 @@ Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppIniti
 | `apiUrl`           | `https://localhost:4000` | `https://api-staging.sahatextile.com` | `https://api.sahatextile.com` |
 | `siteUrl`          | `https://localhost:4200` | test                                  | prod                          |
 | `defaultLocale`    | `en`                     | `en`                                  | `en`                          |
-| `supportedLocales` | `["en","fr"]`            | same                                  | same                          |
+| `supportedLocales` | `["en","bn"]`            | same                                  | same                          |
 
 ## Admin (`apps/admin/public/config.json`) — public runtime config
 
@@ -138,6 +138,9 @@ Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppIniti
 | ----------------- | ------------------------ | ------------------------------------- | ----------------------------- |
 | `apiUrl`          | `https://localhost:4000` | `https://api-staging.sahatextile.com` | `https://api.sahatextile.com` |
 | `adminUrl`        | `https://localhost:4300` | test                                  | prod                          |
+| `siteUrl`         | `https://localhost:4200` | test                                  | prod                          |
+
+`siteUrl` is the shop's origin. The event form's Preview buttons open the event popup there. Deploys fill it from the release's `SITE_URL`, as for the storefront.
 
 ## Setup checklist (LOCAL)
 

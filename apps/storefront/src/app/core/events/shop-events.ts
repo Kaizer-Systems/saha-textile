@@ -66,6 +66,27 @@ export class ShopEvents {
 		this.now.set(Date.now() + this.offset);
 	}
 
+	/**
+	 * The admin's Preview: one event's popup through its 30-minute link, published or not. It
+	 * sets the clock like a normal read; nothing else on the page changes.
+	 */
+	preview(token: string, done: (event: PublicShopEvent | null) => void): void {
+		const sent = Date.now();
+		this.http
+			.get<PublicShopEventsResponse>(`${environment.apiUrl}/catalog/events/preview`, {
+				params: { token },
+				transferCache: false,
+			})
+			.subscribe({
+				next: (response) => {
+					this.offset = Date.parse(response.serverNow) - (sent + Date.now()) / 2;
+					this.now.set(Date.now() + this.offset);
+					done(response.items[0] ?? null);
+				},
+				error: () => done(null),
+			});
+	}
+
 	/** Server time now, for a component that reads it outside a signal. */
 	serverTime(): number {
 		return Date.now() + this.offset;

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
@@ -8,6 +8,7 @@ import {
 	ShopEvent,
 	type ShopEventCreate,
 	type ShopEventProblem,
+	type ShopEventPreviewLink,
 	type ShopEventPublishResult,
 	type ShopEventReview,
 	type ShopEventWrite,
@@ -15,6 +16,7 @@ import {
 import {
 	type AuditLogRepository,
 	type ShopEventRepository,
+	sanitizeArticleHtml,
 	shopEventPublishProblems,
 	shopEventSaveProblems,
 } from '@saha-textile/core-domain';
@@ -24,6 +26,9 @@ import { AUDIT_LOG_REPOSITORY, SHOP_EVENT_REPOSITORY } from '../infra/tokens';
 import { EventCatalog } from './event-catalog';
 import { EventClock } from './event-clock';
 import { EventMessenger } from './event-messenger';
+
+/** How long an admin's popup preview link works. */
+const PREVIEW_MINUTES = 30;
 
 /** Trimmed text per language, empty languages dropped. */
 const clean = (values: Readonly<Record<string, string>>): Record<string, string> =>
@@ -73,7 +78,12 @@ export class EventsAdminService {
 		return {
 			name: body.name.trim(),
 			title: clean(body.title),
-			message: clean(body.message),
+			// The rich editor's markup, cut down to the blog's allowlist like an article.
+			message: Object.fromEntries(
+				Object.entries(clean(body.message))
+					.map(([locale, html]) => [locale, sanitizeArticleHtml(html)] as const)
+					.filter(([, html]) => html.length > 0),
+			),
 			startsAt: body.startsAt,
 			endsAt: body.endsAt,
 			linkHref: body.linkHref,
@@ -160,7 +170,13 @@ export class EventsAdminService {
 		if (event.type === 'launch') {
 			for (const item of await this.catalog.launchItems(event)) {
 				if (!item.held && item.gaps.length) {
-					problems.push({ code: 'not_ready', target: item.productId, locale: null, gaps: item.gaps, detail: item.title });
+					problems.push({
+						code: 'not_ready',
+						target: item.productId,
+						locale: null,
+						gaps: item.gaps,
+						detail: item.title,
+					});
 				}
 			}
 		} else {
@@ -227,7 +243,10 @@ export class EventsAdminService {
 		if (event.type === 'sale') {
 			await this.clock.end(event, new Date(), event.status, true);
 		} else {
-			await this.events.transition(id, event.status, { status: 'cancelled', cancelledAt: new Date().toISOString() });
+			await this.events.transition(id, event.status, {
+				status: 'cancelled',
+				cancelledAt: new Date().toISOString(),
+			});
 			await this.clock.poke();
 		}
 		await this.record(actor, `event.${event.type}.cancel`, id, { from: event.status });
@@ -237,12 +256,22 @@ export class EventsAdminService {
 	/** Ends a running sale now: prices go back and the record is written. */
 	async endNow(id: string, actor: string | null): Promise<ShopEvent> {
 		const event = await this.detail(id);
-		if (event.type !== 'sale' || event.status !== 'live') throw new BadRequestException('Only a running sale can end now');
+		if (event.type !== 'sale' || event.status !== 'live')
+			throw new BadRequestException('Only a running sale can end now');
 		const now = new Date();
 		const shortened = await this.events.save({ ...event, endsAt: now.toISOString() });
 		await this.clock.end(shortened, now);
 		await this.record(actor, 'event.sale.end-now', id, {});
 		return this.detail(id);
+	}
+
+	/** A 30-minute link the shop opens the popup with, published or not. Only its hash is kept. */
+	async previewLink(id: string): Promise<ShopEventPreviewLink> {
+		await this.detail(id);
+		const token = randomBytes(32).toString('base64url');
+		const expiresAt = new Date(Date.now() + PREVIEW_MINUTES * 60_000).toISOString();
+		await this.events.setPreview(id, createHash('sha256').update(token).digest('hex'), expiresAt);
+		return { token, expiresAt };
 	}
 
 	categoryProducts(categoryId: string) {

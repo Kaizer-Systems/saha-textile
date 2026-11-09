@@ -66,7 +66,8 @@
 				/>
 				}
 				<h2 id="event-modal-title">{{ event.title }}</h2>
-				<p>{{ event.message }}</p>
+				<!-- The admin writes the message in the blog's rich editor; the API keeps only the blog's allowed markup, and Angular sanitises it again. -->
+				<div [innerHTML]="event.message"></div>
 				<p class="mb-2">
 					<strong>{{ momentText(event) }}</strong>
 				</p>

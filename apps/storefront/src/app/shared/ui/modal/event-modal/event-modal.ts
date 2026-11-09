@@ -31,6 +31,8 @@ const DWELL_MS = 30_000;
 const SCROLL_DEPTH = 0.5;
 /** Never interrupt someone mid-purchase, signing in, or managing their account. */
 const QUIET_PATHS = ['/cart', '/checkout', '/account', '/auth'];
+/** The admin's Preview link opens the popup at once with this search parameter. */
+const PREVIEW_PARAM = 'event_preview';
 
 interface PopupImage {
 	src: string;
@@ -76,15 +78,33 @@ export class EventModal {
 
 	private disarm: (() => void) | null = null;
 	private armed = false;
+	/** Opened from the admin's Preview: nothing is remembered, and the normal popup stays away. */
+	private previewing = false;
 
 	constructor() {
+		if (isPlatformBrowser(this.platformId)) this.startPreview();
 		// Arms once a published event could show; the newsletter popup stands aside meanwhile.
 		effect(() => {
 			const candidate = this.candidate();
+			if (this.previewing) return;
 			this.events.popupWaiting.set(!!candidate && !this.shownThisVisit());
 			if (candidate && !this.armed && isPlatformBrowser(this.platformId) && !this.shownThisVisit()) this.arm();
 		});
 		this.destroyRef.onDestroy(() => this.disarm?.());
+	}
+
+	/**
+	 * Preview popup (owner brief): the admin's link carries a 30-minute token. The popup opens
+	 * at once, whatever the engagement rules, and closing it stores no cookie or visit flag.
+	 */
+	private startPreview(): void {
+		const token = new URLSearchParams(this.document.defaultView?.location.search ?? '').get(PREVIEW_PARAM);
+		if (!token) return;
+		this.previewing = true;
+		this.events.popupWaiting.set(true);
+		this.events.preview(token, (event) => {
+			if (event) this.show(event);
+		});
 	}
 
 	private candidate(): ShopEvent | null {
@@ -157,6 +177,10 @@ export class EventModal {
 		session?.setItem(SESSION_FLAG, '1');
 		session?.setItem(NEWSLETTER_SESSION_FLAG, '1');
 		this.events.popupWaiting.set(false);
+		this.show(event);
+	}
+
+	private show(event: ShopEvent): void {
 		this.shown.set(event);
 		this.image.set(this.pickImage(event));
 		this.neverAgain.set(false);
@@ -167,7 +191,9 @@ export class EventModal {
 				windowClass: 'theme-modal modal-lg newsletter-modal',
 			})
 			.result.catch(() => undefined)
-			.finally(() => this.remember(event));
+			.finally(() => {
+				if (!this.previewing) this.remember(event);
+			});
 	}
 
 	private pickImage(event: ShopEvent): PopupImage | null {

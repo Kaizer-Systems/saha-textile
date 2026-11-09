@@ -43,15 +43,22 @@ export class Events {
 	readonly tableConfig = signal<ITableConfig<IShopEventRow>>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
-			{ title: 'name', dataField: 'name' },
+			{ title: 'name', dataField: 'name', sortable: true },
 			{ title: 'type', dataField: 'type_label' },
 			{ title: 'status', dataField: 'status_pill' },
-			{ title: 'starts_at_ist', dataField: 'starts_at' },
-			{ title: 'ends_at_ist', dataField: 'ends_at' },
+			{ title: 'starts_at_ist', dataField: 'starts_at', sortable: true, sort_direction: 'desc' },
+			{ title: 'ends_at_ist', dataField: 'ends_at', sortable: true },
 		],
 		rowActions: [
 			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'event.edit' },
-			{ label: 'Delete', actionToPerform: 'delete', icon: 'ri-delete-bin-line', permission: 'event.destroy' },
+			// A published event is cancelled instead, so its record stays (owner brief).
+			{
+				label: 'Delete',
+				actionToPerform: 'delete',
+				icon: 'ri-delete-bin-line',
+				permission: 'event.destroy',
+				rowStatuses: ['draft'],
+			},
 		],
 		data: [],
 		total: 0,

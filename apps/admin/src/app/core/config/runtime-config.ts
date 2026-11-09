@@ -14,11 +14,14 @@ export interface RuntimeConfig {
 	apiUrl: string;
 	/** Admin app origin, e.g. https://localhost:4300 */
 	adminUrl: string;
+	/** The shop's origin, e.g. https://localhost:4200: the event popup Preview opens it. */
+	siteUrl: string;
 }
 
 const DEFAULTS: RuntimeConfig = {
 	apiUrl: 'https://localhost:4000',
 	adminUrl: 'https://localhost:4300',
+	siteUrl: 'https://localhost:4200',
 };
 
 /** Mutable singleton — read this (or the legacy `environment`) after app init. */

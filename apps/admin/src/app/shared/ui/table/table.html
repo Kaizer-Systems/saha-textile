@@ -293,7 +293,8 @@
 								<i [class]="'ri-lock-line'"></i>
 							</a>
 							} @else { @for ( action of tableConfig?.rowActions; track action) { @if
-							((columnData['status'] === 'deleted') === !!action.deletedRows) {
+							((columnData['status'] === 'deleted') === !!action.deletedRows && (!action.rowStatuses ||
+							action.rowStatuses.includes(columnData['status']))) {
 							<ng-container *hasPermission="action.permission">
 								<li>
 									<a

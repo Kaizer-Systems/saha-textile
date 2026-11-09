@@ -94,6 +94,8 @@ export type LaunchReport = z.infer<typeof LaunchReport>;
 /** The compact record a sale keeps after it ends: each SKU's prices and what it sold. */
 export const SaleRecordRow = z.object({
 	productId: Id,
+	/** The product's English title when the sale ended, so the record reads without the catalogue. */
+	productTitle: z.string().default(''),
 	sku: z.string(),
 	normalINR: Rupees,
 	saleINR: Rupees,
@@ -119,7 +121,7 @@ export const ShopEvent = z.object({
 	name: z.string().min(1).max(120),
 	/** The line the top bar, the phone strip and the popup heading show. */
 	title: LocalizedText.default({}),
-	/** The customer message: the popup's paragraph and the email body. Plain text. */
+	/** The customer message: the popup's text and the email body. Article markup, sanitised on save. */
 	message: LocalizedText.default({}),
 	startsAt: IsoDateTime.nullable().default(null),
 	/** A sale's end. Always null for a launch. */
@@ -149,7 +151,8 @@ export type ShopEvent = z.infer<typeof ShopEvent>;
 // ── Admin writes ───────────────────────────────────────────────────────────────
 
 const Text = z.record(z.string(), z.string().max(300));
-const MessageText = z.record(z.string(), z.string().max(2_000));
+/** The rich editor's markup, sanitised by the API on save. */
+const MessageText = z.record(z.string(), z.string().max(6_000));
 
 /** The event form. The type is fixed by the first save. */
 export const ShopEventWrite = z.object({
@@ -185,6 +188,9 @@ export const AdminShopEventListQuery = z.object({
 	search: z.string().max(100).optional(),
 	type: ShopEventType.optional(),
 	status: ShopEventStatus.optional(),
+	/** The All events table's sortable columns. Left out: newest start first. */
+	sort: z.enum(['name', 'startsAt', 'endsAt']).optional(),
+	direction: z.enum(['asc', 'desc']).default('desc'),
 	page: z.coerce.number().int().positive().default(1),
 	pageSize: z.coerce.number().int().positive().max(100).default(20),
 });
@@ -316,6 +322,23 @@ export const PublicShopEventsResponse = z.object({
 	items: z.array(PublicShopEvent),
 });
 export type PublicShopEventsResponse = z.infer<typeof PublicShopEventsResponse>;
+
+/** The admin's popup preview link: a random token that works for 30 minutes. */
+export const ShopEventPreviewLink = z.object({
+	token: z.string(),
+	expiresAt: IsoDateTime,
+});
+export type ShopEventPreviewLink = z.infer<typeof ShopEventPreviewLink>;
+
+/** The shop reads one event's popup through its preview link, published or not. */
+export const PublicShopEventPreviewQuery = z.object({
+	token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+	locale: z
+		.string()
+		.regex(/^[a-z]{2}$/)
+		.default('en'),
+});
+export type PublicShopEventPreviewQuery = z.infer<typeof PublicShopEventPreviewQuery>;
 
 export const PublicShopEventsQuery = z.object({
 	locale: z

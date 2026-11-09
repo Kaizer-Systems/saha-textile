@@ -71,7 +71,10 @@ export class AdminEventsController {
 	@Post(':id/publish')
 	@HttpCode(200)
 	@RequirePermissions('event.publish')
-	@ApiOperation({ operationId: 'publishShopEvent', summary: 'Arm the event and send its message, or list what stops it' })
+	@ApiOperation({
+		operationId: 'publishShopEvent',
+		summary: 'Arm the event and send its message, or list what stops it',
+	})
 	publish(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
 		return this.events.publish(id, actor(principal));
 	}
@@ -87,7 +90,10 @@ export class AdminEventsController {
 	@Post(':id/cancel')
 	@HttpCode(200)
 	@RequirePermissions('event.cancel')
-	@ApiOperation({ operationId: 'cancelShopEvent', summary: 'Cancel for good; a running sale’s prices go back at once' })
+	@ApiOperation({
+		operationId: 'cancelShopEvent',
+		summary: 'Cancel for good; a running sale’s prices go back at once',
+	})
 	cancel(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
 		return this.events.cancel(id, actor(principal));
 	}
@@ -98,6 +104,17 @@ export class AdminEventsController {
 	@ApiOperation({ operationId: 'endShopEventNow', summary: 'End a running sale now and keep its record' })
 	endNow(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
 		return this.events.endNow(id, actor(principal));
+	}
+
+	@Post(':id/preview')
+	@HttpCode(200)
+	@RequirePermissions('event.index')
+	@ApiOperation({
+		operationId: 'previewShopEventLink',
+		summary: 'A 30-minute link that opens the event popup on the shop',
+	})
+	preview(@Param('id') id: string) {
+		return this.events.previewLink(id);
 	}
 
 	@Post(':id/test-message')

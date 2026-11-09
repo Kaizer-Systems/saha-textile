@@ -7,6 +7,8 @@ export interface ShopEventFilter {
 	status?: ShopEventStatus;
 	/** Every word must appear in the name or the English title. Letter case is ignored. */
 	search?: string;
+	sort?: 'name' | 'startsAt' | 'endsAt';
+	direction?: 'asc' | 'desc';
 	page: number;
 	pageSize: number;
 }
@@ -24,4 +26,8 @@ export interface ShopEventRepository {
 	 */
 	transition(id: string, from: ShopEventStatus, patch: Partial<ShopEvent>): Promise<ShopEvent | null>;
 	remove(id: string): Promise<void>;
+	/** Keeps the hash of the event's popup preview link until it expires; a new link replaces it. */
+	setPreview(id: string, tokenHash: string, expiresAt: string): Promise<void>;
+	/** The event whose preview link has this hash, if the link has not expired at `now`. */
+	findByPreview(tokenHash: string, now: string): Promise<ShopEvent | null>;
 }

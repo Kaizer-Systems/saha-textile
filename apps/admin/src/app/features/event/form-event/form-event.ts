@@ -19,9 +19,11 @@ import type {
 } from '@saha-textile/contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
+import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Subject, debounceTime, of, switchMap, takeUntil } from 'rxjs';
 
 import { goLiveLabels } from '@core/catalog/go-live-report';
+import { runtimeConfig } from '@core/config/runtime-config';
 import { istInputToUtc, utcToIstInput } from '@core/i18n/ist-time';
 import {
 	ADMIN_LOCALES,
@@ -52,6 +54,34 @@ const LANGUAGE_FIELDS = ['title', 'message'];
 /** A new rule starts at 10% off: a value that can never be refused. */
 const NEW_RULE = (): SaleRule => ({ kind: 'percent', value: 10, skuPrices: {} });
 
+/** What "Link to" can point at: a category, a product, a shop page, or a typed shop address. */
+type LinkKind = 'category' | 'product' | 'page' | 'path';
+
+/** The shop's own pages an event can link to, by their address. */
+const SHOP_PAGES: readonly { href: string; label: string }[] = [
+	{ href: '/', label: 'event_page_home' },
+	{ href: '/collections', label: 'event_page_collections' },
+	{ href: '/offer', label: 'event_page_offer' },
+	{ href: '/blogs', label: 'event_page_blogs' },
+	{ href: '/about-us', label: 'event_page_about_us' },
+	{ href: '/contact-us', label: 'event_page_contact_us' },
+	{ href: '/faq', label: 'event_page_faq' },
+];
+
+/** Each category with its shop address (`/collections/` and its slugs from the top) and its trail. */
+function categoryAddresses(rows: readonly ICategory[] = [], parents: { slug: string; name: string }[] = []) {
+	return rows.flatMap((row): { href: string; label: string }[] => {
+		const trail = [...parents, { slug: row.slug, name: row.name }];
+		return [
+			{
+				href: `/collections/${trail.map((step) => step.slug).join('/')}`,
+				label: trail.map((step) => step.name).join(' › '),
+			},
+			...categoryAddresses((row as { subcategories?: ICategory[] }).subcategories ?? [], trail),
+		];
+	});
+}
+
 /** Every category in the tree, flat, so a picked id can show its name. */
 function flatten(rows: readonly ICategory[] = []): ICategory[] {
 	return rows.flatMap((row) => [row, ...flatten((row as { subcategories?: ICategory[] }).subcategories ?? [])]);
@@ -73,6 +103,7 @@ function flatten(rows: readonly ICategory[] = []): ICategory[] {
 		AdvancedDropdown,
 		ImageUpload,
 		Select2,
+		NgxEditorModule,
 		Button,
 		ConfirmationModal,
 		HasPermissionDirective,
@@ -90,6 +121,8 @@ export class FormEvent {
 	private modal = inject(NgbModal);
 	private page = inject<Document>(DOCUMENT);
 	readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+	/** The message's rich editor, as on the blog form. Browser only. */
+	readonly editor: Editor | null = this.isBrowser ? new Editor() : null;
 
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product' }));
 	readonly categoryOptions = computed(() => this.categoriesQuery.data()?.data ?? []);
@@ -120,6 +153,23 @@ export class FormEvent {
 	private readonly titles = signal(new Map<string, string>());
 
 	readonly productOptions = signal<Select2Data>([]);
+
+	// "Link to".
+	readonly linkKind = signal<LinkKind>('page');
+	readonly linkKindOptions = computed<Select2Data>(() =>
+		(['category', 'product', 'page', 'path'] as const).map((kind) => ({
+			value: kind,
+			label: this.transloco.translate(`event_link_${kind}`),
+		})),
+	);
+	readonly categoryLinks = computed<Select2Data>(() =>
+		categoryAddresses(this.categoryOptions()).map((row) => ({ value: row.href, label: row.label })),
+	);
+	readonly pageLinks = computed<Select2Data>(() =>
+		SHOP_PAGES.map((page) => ({ value: page.href, label: this.transloco.translate(page.label) })),
+	);
+	/** Searched products by their shop address; a saved link stays listed so it shows. */
+	readonly productLinks = signal<Select2Data>([]);
 	private readonly search$ = new Subject<string>();
 	private readonly destroy$ = new Subject<void>();
 
@@ -169,6 +219,15 @@ export class FormEvent {
 				const titles = new Map(this.titles());
 				for (const row of list.items) titles.set(row.id, `${row.title} · ${row.sku}`);
 				this.titles.set(titles);
+				const saved = this.form.controls.link_href.value;
+				const links = list.items.map((row) => ({
+					value: `/product/${row.slug}`,
+					label: `${row.title} · ${row.sku}`,
+				}));
+				if (saved.startsWith('/product/') && !links.some((row) => row.value === saved)) {
+					links.unshift({ value: saved, label: saved });
+				}
+				this.productLinks.set(links);
 				this.productOptions.set(
 					list.items
 						.filter((row) => this.type() === 'sale' || row.status !== 'live')
@@ -196,6 +255,15 @@ export class FormEvent {
 			now_live_days: event.nowLiveDays,
 		});
 		this.fields.load({ title: event.title, message: event.message });
+		this.linkKind.set(this.kindOf(event.linkHref ?? ''));
+		const href = event.linkHref;
+		if (this.linkKind() === 'product' && href) {
+			this.productLinks.update((rows) =>
+				rows.some((row) => 'value' in row && row.value === href)
+					? rows
+					: [{ value: href, label: href }, ...rows],
+			);
+		}
 		this.launchCategoryIds.set(event.launch.categoryIds);
 		this.launchProductIds.set(event.launch.productIds);
 		this.heldProductIds.set(event.launch.heldProductIds);
@@ -256,6 +324,27 @@ export class FormEvent {
 
 	searchProduct(event: Select2SearchEvent) {
 		this.search$.next(event.search);
+	}
+
+	/** Which kind a saved address is, so the picker opens on it. */
+	private kindOf(href: string): LinkKind {
+		if (!href || SHOP_PAGES.some((page) => page.href === href)) return 'page';
+		if (href.startsWith('/product/')) return 'product';
+		if (href.startsWith('/collections/')) return 'category';
+		return 'path';
+	}
+
+	pickLinkKind(event: Select2UpdateEvent) {
+		const kind = String(event.value ?? '') as LinkKind;
+		if (!['category', 'product', 'page', 'path'].includes(kind) || kind === this.linkKind()) return;
+		this.linkKind.set(kind);
+		// A typed address is kept to edit; switching to a list starts from nothing picked.
+		if (kind !== 'path') this.form.controls.link_href.setValue('');
+	}
+
+	pickLink(event: Select2UpdateEvent) {
+		const href = typeof event.value === 'string' ? event.value : '';
+		this.form.controls.link_href.setValue(href);
 	}
 
 	selectPopupImage(data: IAttachment) {
@@ -561,6 +650,55 @@ export class FormEvent {
 		}
 	}
 
+	/**
+	 * Preview popup (owner brief): the shop opens the saved popup at once, in the language shown
+	 * on the form, at desktop width in a new tab or at phone width in a phone-sized window. The
+	 * window opens on the click itself, so the browser doesn't block it, and gets its address when
+	 * the 30-minute link arrives. Unsaved changes are saved first when the event can still change.
+	 */
+	preview(size: 'desktop' | 'phone') {
+		const id = this.event()?.id;
+		if (!id) return;
+		const view = this.page.defaultView;
+		const win =
+			size === 'phone'
+				? view?.open('', 'event_preview_phone', 'popup,width=390,height=844')
+				: view?.open('', '_blank');
+		if (!win) {
+			this.notifier.showError(this.transloco.translate('event_preview_blocked'));
+			return;
+		}
+		win.opener = null;
+		const locale = this.fields.locale();
+		const open = () =>
+			this.events.previewLink(id).subscribe({
+				next: ({ token }) => {
+					const address = new URL(`/${locale}`, runtimeConfig.siteUrl);
+					address.searchParams.set('event_preview', token);
+					win.location.href = address.toString();
+				},
+				error: () => {
+					win.close();
+					this.notifier.showError(this.transloco.translate('event_rejected'));
+				},
+			});
+		if (this.readOnly() || !this.form.dirty) {
+			open();
+			return;
+		}
+		this.events.save(id, this.body()).subscribe({
+			next: (event) => {
+				this.load(event);
+				this.form.markAsPristine();
+				open();
+			},
+			error: (error: unknown) => {
+				win.close();
+				this.refused(error);
+			},
+		});
+	}
+
 	sendTest() {
 		const id = this.event()?.id;
 		if (!id) return;
@@ -571,6 +709,7 @@ export class FormEvent {
 	}
 
 	ngOnDestroy() {
+		this.editor?.destroy();
 		this.destroy$.next();
 		this.destroy$.complete();
 	}

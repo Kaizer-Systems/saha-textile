@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { MediaAsset, PublicShopEventsResponse, ResolvedImage } from '@saha-textile/contracts';
 import {
@@ -33,9 +35,34 @@ export class EventsPublicService {
 		return { serverNow: now.toISOString(), items };
 	}
 
+	/**
+	 * The admin's Preview: one event's popup as it would show, whatever its state, through a
+	 * link that works for 30 minutes. An unknown or expired link shows nothing.
+	 */
+	async preview(token: string, locale: string, now = new Date()): Promise<PublicShopEventsResponse> {
+		const hash = createHash('sha256').update(token).digest('hex');
+		const event = await this.events.findByPreview(hash, now.toISOString());
+		if (!event) return { serverNow: now.toISOString(), items: [] };
+		const asset = event.showPopup && event.popupAssetId ? await this.media?.findById(event.popupAssetId) : null;
+		// Shown as if published, so a draft's popup reads exactly as it will.
+		const shown = publicShopEvent(
+			{ ...event, status: 'scheduled' },
+			locale,
+			now,
+			this.image(asset ?? undefined, locale),
+		);
+		return { serverNow: now.toISOString(), items: shown ? [shown] : [] };
+	}
+
 	private image(asset: MediaAsset | undefined, locale: string): ResolvedImage | null {
 		if (!asset || asset.deletedAt || !this.storage) return null;
 		const storage = this.storage;
-		return resolveImage({ asset, getUrl: (key) => storage.getUrl(key), locale, fallbackLocale: 'en', roles: POPUP_ROLES });
+		return resolveImage({
+			asset,
+			getUrl: (key) => storage.getUrl(key),
+			locale,
+			fallbackLocale: 'en',
+			roles: POPUP_ROLES,
+		});
 	}
 }

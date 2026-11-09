@@ -99,7 +99,8 @@ JSON
 		echo "SAHA_TEXTILE_PUBLIC_CONFIG=$(echo "$public_config" | tr -d '\n\t')"
 		echo "NODE_EXTRA_CA_CERTS=/certs/rootCA.pem"
 	} >"$ENV_DIR/storefront.env"
-	printf '{\n\t"apiUrl": "https://%s",\n\t"adminUrl": "https://%s"\n}\n' "$API_HOST$PORT_SUFFIX" "$ADMIN_HOST$PORT_SUFFIX" >"$ENV_DIR/admin.config.json"
+	printf '{\n\t"apiUrl": "https://%s",\n\t"adminUrl": "https://%s",\n\t"siteUrl": "https://%s"\n}\n' \
+		"$API_HOST$PORT_SUFFIX" "$ADMIN_HOST$PORT_SUFFIX" "$STOREFRONT_HOST$PORT_SUFFIX" >"$ENV_DIR/admin.config.json"
 
 	echo "Wrote docker/stack/env (api.env, stack.env, storefront.env, *.config.json)."
 	echo "Safari only — add to /etc/hosts:  127.0.0.1 $STOREFRONT_HOST $ADMIN_HOST $API_HOST"

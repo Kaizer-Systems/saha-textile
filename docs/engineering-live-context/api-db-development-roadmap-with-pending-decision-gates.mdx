@@ -249,6 +249,17 @@ accept-invitation page and the browser PIN proof.
 - Listing responses include configured facet counts/ranges.
 - Locale routes follow the 2026-10-31 locale URL law (G-I18N-ROUTES resolved): every route locale-prefixed, same slug across locales at launch.
 
+#### Open items carried into this chunk
+
+- **Product categories have no draft or live status in the admin (found 2026-11-09).** The
+  category form has no status switch that is saved: `AdminCategoryWrite` carries no status and
+  the admin's category rows are always drawn as live. A launch event is meant to put **draft
+  categories** live at its start (owner log § launch and sale events), and the brief's Items tab
+  lists only draft categories. Until categories can be saved as drafts, a launch can only
+  carry draft products; its category picker lists every category. Add the status to the
+  category write and row, the form's switch, the Go Live check a category needs, and then
+  limit the launch picker to draft categories.
+
 ---
 
 ### Chunk G — Cart, pricing, checkout, orders, payments, shipping
@@ -292,6 +303,15 @@ accept-invitation page and the browser PIN proof.
   filtered page. Past the first page, totals, search and date filters are wrong. Fix by moving
   `q`/`startDate`/`endDate` into the repository query (index-backed) and returning the
   repository's own count. Owner: do it here, when real orders exist to page through.
+- **Coupons on sale items (launch and sale events, 2026-11-09).** The approved brief says coupons
+  don't apply to items in a running sale until `DEC-PROMO-STACK` is answered. Events lay the sale
+  price over shop reads, but checkout is closed, so no coupon code path exists yet to refuse.
+  When checkout opens, refuse a coupon on any line whose price comes from a running sale
+  (`SalePriceBook`), until the owner answers `DEC-PROMO-STACK`.
+- **A cart whose sale ended (2026-11-09).** The cart is priced by the server, so a line re-prices
+  by itself when its sale ends. The brief also asks the cart to **say** the price changed; it
+  doesn't yet. Add the notice with checkout. A payment already started keeps the price it started
+  with for as long as that payment session lasts (order snapshot, `DEC-ORDER-SNAPSHOT`).
 
 ---
 
@@ -365,11 +385,23 @@ of that matrix. Until then those two sends record `lastError` and the alert stay
 reply to `leopard@msg91.com` is still unsent and is the owner's to send.
 
 **Open item: event messages on SMS and WhatsApp (2026-11-08).** Launch and sale events
-(brief of 2026-11-08, not built yet) send a customer message when the owner presses Publish.
+(built 2026-11-09) send a customer message when the owner presses Publish.
 Email carries the owner's own wording. SMS needs a DLT-registered template and WhatsApp a
 Meta-approved marketing template, so neither can carry free text. The owner asked to keep this
 open and settle it when MSG91 is discussed in depth: whether events use SMS and WhatsApp at all,
 and if so which approved line (event name, time, link) each sends.
+
+**Open items from launch and sale events (2026-11-09).**
+
+- The email goes out on the `shop_event_announcement` template, which isn't registered in MSG91
+  yet. It is listed with its variables in `codex-msg91-console-setup-plan-prompt.mdx` § 6.
+  Until it exists, each send fails and is logged, and the event still runs.
+- The message reaches customers whose saved consent includes marketing. The brief also names
+  newsletter subscribers; newsletter sign-up isn't built, so add them when it is.
+- The events clock runs inside the API (a sweep every minute plus a timer for the next start or
+  end), which meets the brief's within-a-minute rule. The brief listed BullMQ delayed jobs; move
+  to them only if the API runs as several instances and the conditional state writes prove not
+  enough.
 
 **Optional, owner's call (not blocking):** a hero text-colour option for banners with text, and
 whether unapproved review photos should appear in the admin media library at all (today they
@@ -404,6 +436,16 @@ show as a placeholder tile; the review page shows them via signed URLs).
 - **BLOCKED — database catalogue:** persistence schemas, nested validators/indexes, mappings, migrations, and deterministic sanitized examples are not stable enough for authoritative generation.
 - **BLOCKED — deployment:** `DEC-PORTAL-PRIVATE-ACCESS` is unanswered; whole-host default-deny identity and origin protection must be implemented and probed before promotion.
 - **PARTIAL — follow-up debt:** repository-level pnpm/peer/formatting issues and Storybook bundle/shell warnings remain tracked separately from the completed local portal foundation.
+
+#### Open item from launch and sale events (2026-11-09)
+
+At a sale's start and end the API re-reads its prices at once and re-indexes search, but shop
+pages and public catalogue reads may be cached for up to about a minute, so a price can show
+the old value that long. When the production cache rules are set (Cloudflare and Nginx), keep
+catalogue pages and reads at that short lifetime, or purge them at an event's start and end.
+The privacy policy's cookie section, when it is rewritten from the real cookie list, must also
+list `st_events` (Functional; remembers closed event popups until that event's popup ends) in
+English and Bengali; the cookie settings popup already lists it.
 
 #### Agreed plan (2026-11-08)
 

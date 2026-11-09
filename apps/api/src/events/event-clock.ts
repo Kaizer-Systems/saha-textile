@@ -119,7 +119,10 @@ export class EventClock implements OnApplicationBootstrap, OnApplicationShutdown
 	}
 
 	async start(event: ShopEvent, now = new Date()): Promise<void> {
-		const won = await this.events.transition(event.id, 'scheduled', { status: 'live', startedAt: now.toISOString() });
+		const won = await this.events.transition(event.id, 'scheduled', {
+			status: 'live',
+			startedAt: now.toISOString(),
+		});
 		if (!won) return;
 		if (won.type === 'launch') {
 			const report = await this.runLaunch(won);
@@ -159,7 +162,9 @@ export class EventClock implements OnApplicationBootstrap, OnApplicationShutdown
 				else report.failed.push({ productId, gaps: result.gaps });
 			} catch (error) {
 				report.failed.push({ productId, gaps: [{ field: 'error', locale: null }] });
-				this.logger.warn(`Launch item ${productId} failed: ${error instanceof Error ? error.message : 'unknown'}`);
+				this.logger.warn(
+					`Launch item ${productId} failed: ${error instanceof Error ? error.message : 'unknown'}`,
+				);
 			}
 		}
 		return report;
@@ -173,7 +178,12 @@ export class EventClock implements OnApplicationBootstrap, OnApplicationShutdown
 	}
 
 	/** A running sale ends: prices go back by themselves; the record keeps what it sold. */
-	async end(event: ShopEvent, now = new Date(), from: 'live' | 'scheduled' = 'live', cancelled = false): Promise<void> {
+	async end(
+		event: ShopEvent,
+		now = new Date(),
+		from: 'live' | 'scheduled' = 'live',
+		cancelled = false,
+	): Promise<void> {
 		const productIds = this.book.productsIn(event.id);
 		const record = cancelled ? null : await this.saleRecord(event, now);
 		const won = await this.events.transition(
@@ -214,6 +224,7 @@ export class EventClock implements OnApplicationBootstrap, OnApplicationShutdown
 				const revenueINR = lines.reduce((sum, line) => sum + line.unitPriceINR * line.quantity, 0);
 				return {
 					productId: row.productId,
+					productTitle: row.productTitle,
 					sku: row.sku,
 					normalINR: row.normalINR,
 					saleINR: row.saleINR as number,

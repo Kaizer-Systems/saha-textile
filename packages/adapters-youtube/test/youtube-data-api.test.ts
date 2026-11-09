@@ -233,3 +233,30 @@ describe('YouTubeDataApi kinds and lengths', () => {
 		expect(heads).toEqual([]);
 	});
 });
+
+describe('YouTubeDataApi thumbnails', () => {
+	const serving = (available: Record<string, number | 'down'>) => {
+		const asked: string[] = [];
+		const fetchImpl = (async (url: string) => {
+			const name = new URL(url).pathname.split('/').at(-1) ?? '';
+			asked.push(name);
+			const status = available[name];
+			if (status === 'down') throw new Error('offline');
+			return new Response(status === 200 ? new Uint8Array([7, 8]) : null, { status: status ?? 404 });
+		}) as unknown as typeof fetch;
+		return { asked, api: new YouTubeDataApi({ apiKey: 'k', fetch: fetchImpl }) };
+	};
+
+	it("takes a Short's 9:16 picture", async () => {
+		const { api, asked } = serving({ 'oar2.jpg': 200 });
+		expect(await api.downloadThumbnail('aaaaaaaaaaa', 'short')).toEqual(new Uint8Array([7, 8]));
+		expect(asked).toEqual(['oar2.jpg']);
+	});
+
+	it("falls back through a video's sizes, and answers null when there is none", async () => {
+		const { api, asked } = serving({ 'maxresdefault.jpg': 'down', 'hqdefault.jpg': 200 });
+		expect(await api.downloadThumbnail('aaaaaaaaaaa', 'video')).toEqual(new Uint8Array([7, 8]));
+		expect(asked).toEqual(['maxresdefault.jpg', 'sddefault.jpg', 'hqdefault.jpg']);
+		expect(await serving({}).api.downloadThumbnail('aaaaaaaaaaa', 'short')).toBeNull();
+	});
+});

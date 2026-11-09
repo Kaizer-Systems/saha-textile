@@ -52,6 +52,8 @@ export const YouTubeVideoSummary = z.object({
 	thumbnailUrl: z.string(),
 	/** Our CDN copy of that picture, once the refresh has made it; pages prefer it. */
 	posterUrl: z.string().min(1).nullable().default(null),
+	/** Storage key of that copy (`youtube/<id>-<fingerprint>.webp`), so a replaced one can be deleted. */
+	posterKey: z.string().min(1).nullable().default(null),
 	kind: YouTubeVideoKind.default('video'),
 	durationSeconds: z.number().int().nonnegative().default(0),
 });
@@ -65,6 +67,8 @@ export const YouTubeFeedCache = z.object({
 	/** The last refresh tried, and why it failed when it did (the lists keep yesterday's videos). */
 	lastAttemptAt: IsoDateTime.nullable().default(null),
 	lastError: z.string().max(500).nullable().default(null),
+	/** CDN posters of videos that left the list, for the poster step to delete. */
+	retiredPosters: z.array(z.object({ key: z.string().min(1), url: z.string().min(1) })).default([]),
 });
 export type YouTubeFeedCache = z.infer<typeof YouTubeFeedCache>;
 

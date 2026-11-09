@@ -21,6 +21,10 @@ export class UnavailableYouTubeAdapter implements YouTubePort {
 		return Promise.reject(new ServiceUnavailableException(UnavailableYouTubeAdapter.MESSAGE));
 	}
 
+	downloadThumbnail(): Promise<Uint8Array | null> {
+		return Promise.reject(new ServiceUnavailableException(UnavailableYouTubeAdapter.MESSAGE));
+	}
+
 	findVideo(): Promise<YouTubeVideo | null> {
 		return Promise.reject(new ServiceUnavailableException(UnavailableYouTubeAdapter.MESSAGE));
 	}

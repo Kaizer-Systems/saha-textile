@@ -589,6 +589,7 @@ describe('refreshYouTubeFeed', () => {
 			fetchedAt: null,
 			lastAttemptAt: '2026-11-02T00:00:00.000Z',
 			lastError: 'No YouTube channel has the handle @SahaTextile.',
+			retiredPosters: [],
 		});
 	});
 
@@ -608,6 +609,7 @@ describe('refreshYouTubeFeed', () => {
 			fetchedAt: '2026-11-01T00:00:00.000Z',
 			lastAttemptAt: '2026-11-02T00:00:00.000Z',
 			lastError: 'YouTube playlistItems answered HTTP 403',
+			retiredPosters: [],
 		});
 		vi.mocked(youtube.listPlaylistVideos).mockRejectedValueOnce('down');
 		await expect(refreshYouTubeFeed({ settings, youtube, now })).rejects.toBe('down');
@@ -628,7 +630,7 @@ describe('refreshYouTubeFeed', () => {
 		expect(feed.shorts[0]?.videoId).toBe(upload(48).videoId);
 		expect(feed.videos[0]?.videoId).toBe(upload(47).videoId);
 		expect(feed.fetchedAt).toBe('2026-11-02T00:00:00.000Z');
-		expect(feed).toMatchObject({ lastAttemptAt: '2026-11-02T00:00:00.000Z', lastError: null });
+		expect(feed).toMatchObject({ lastAttemptAt: '2026-11-02T00:00:00.000Z', lastError: null, retiredPosters: [] });
 	});
 
 	it('reuses a saved playlist and reads one page of uploads', async () => {

@@ -27,6 +27,8 @@ const hoisted = vi.hoisted(() => ({
 	process: vi.fn(async () => ({ status: 'ready' })),
 	gc: vi.fn(async () => ({ dryRun: true, softDeleted: [], restored: [], hardDeleted: [] })),
 	refresh: vi.fn(async () => ({ videos: 1 })),
+	posters: vi.fn(async () => ({ copied: 1, kept: 0, removed: 0 })),
+	videoCheck: vi.fn(async () => ({ checked: 2, gone: 1, back: 0, products: 1 })),
 	weekly: vi.fn(async () => ({ insightSetId: 'w', relations: 2 })),
 	alerts: vi.fn(async () => ({ sent: 1, held: 0, waiting: 0 })),
 	roles: vi.fn(async () => [{ key: 'card', version: 2 }]),
@@ -100,6 +102,8 @@ vi.mock('@saha-textile/core-domain', async (original) => ({
 	processMediaAsset: hoisted.process,
 	runMediaGarbageCollection: hoisted.gc,
 	refreshYouTubeFeed: hoisted.refresh,
+	copyYouTubePosters: hoisted.posters,
+	checkProductVideos: hoisted.videoCheck,
 	runWeeklyInsight: hoisted.weekly,
 	deliverStockAlerts: hoisted.alerts,
 }));
@@ -198,8 +202,24 @@ describe('composeMediaWorker', () => {
 		expect(await skipped.entry.handlers['youtube-refresh']?.({} as never)).toEqual({ skipped: 'not_configured' });
 		hoisted.started.length = 0;
 		const running = await started(config({ media: { workerConcurrency: 1, youtubeApiKey: 'y' } }));
-		expect(await running.entry.handlers['youtube-refresh']?.({} as never)).toEqual({ videos: 1 });
+		expect(await running.entry.handlers['youtube-refresh']?.({} as never)).toEqual({
+			videos: 1,
+			posters: { copied: 1, kept: 0, removed: 0 },
+		});
 		expect(hoisted.YouTubeCalls).toEqual([{ apiKey: 'y' }]);
+		// A poster failure never undoes the refreshed list.
+		hoisted.posters.mockRejectedValueOnce(new Error('spaces down'));
+		expect(await running.entry.handlers['youtube-refresh']?.({} as never)).toEqual({ videos: 1, posters: null });
+	});
+
+	it('skips the weekly product-video check with no key, and runs it with one', async () => {
+		const skipped = await started();
+		expect(await skipped.entry.handlers['product-videos-check']?.({} as never)).toEqual({
+			skipped: 'not_configured',
+		});
+		hoisted.started.length = 0;
+		const running = await started(config({ media: { workerConcurrency: 1, youtubeApiKey: 'y' } }));
+		expect(await running.entry.handlers['product-videos-check']?.({} as never)).toMatchObject({ gone: 1 });
 	});
 
 	it('queues stale assets that still have an original', async () => {

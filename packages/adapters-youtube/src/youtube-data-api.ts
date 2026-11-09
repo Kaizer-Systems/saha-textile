@@ -147,6 +147,19 @@ export class YouTubeDataApi implements YouTubePort {
 		return video ?? null;
 	}
 
+	async downloadThumbnail(videoId: string, kind: YouTubeVideoKind): Promise<Uint8Array | null> {
+		const names = kind === 'short' ? ['oar2', 'hqdefault'] : ['maxresdefault', 'sddefault', 'hqdefault'];
+		for (const name of names) {
+			try {
+				const response = await this.fetchImpl(`https://i.ytimg.com/vi/${videoId}/${name}.jpg`);
+				if (response.ok) return new Uint8Array(await response.arrayBuffer());
+			} catch {
+				// Try the next size.
+			}
+		}
+		return null;
+	}
+
 	private async toVideo(video: ApiVideo): Promise<YouTubeVideo> {
 		const durationSeconds = isoDurationSeconds(video.contentDetails?.duration);
 		return {

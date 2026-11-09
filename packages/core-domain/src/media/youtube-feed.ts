@@ -18,12 +18,14 @@ const DEFAULT_SETTINGS: YouTubeSettings = {
 	railPlacements: ['home'],
 };
 
-const summary = (video: YouTubeVideo): YouTubeVideoSummary => ({
+/** A video already in the cache keeps its CDN poster until the poster step replaces it. */
+const summary = (video: YouTubeVideo, before: ReadonlyMap<string, YouTubeVideoSummary>): YouTubeVideoSummary => ({
 	videoId: video.videoId,
 	title: video.title,
 	publishedAt: video.publishedAt,
 	thumbnailUrl: video.thumbnailUrl,
-	posterUrl: null,
+	posterUrl: before.get(video.videoId)?.posterUrl ?? null,
+	posterKey: before.get(video.videoId)?.posterKey ?? null,
 	kind: video.kind,
 	durationSeconds: video.durationSeconds,
 });
@@ -46,6 +48,7 @@ export const refreshYouTubeFeed = async (deps: {
 		videos: previous?.videos ?? [],
 		shorts: previous?.shorts ?? [],
 		fetchedAt: previous?.fetchedAt ?? null,
+		retiredPosters: previous?.retiredPosters ?? [],
 	};
 	try {
 		const settings = (await deps.settings.get('youtube')) ?? DEFAULT_SETTINGS;
@@ -72,12 +75,20 @@ export const refreshYouTubeFeed = async (deps: {
 		const newest = [...described].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 		const videos = newest.filter((video) => video.kind === 'video').slice(0, YOUTUBE_FEED_VIDEOS);
 		const shorts = newest.filter((video) => video.kind === 'short').slice(0, YOUTUBE_FEED_SHORTS);
+		const before = new Map([...keep.videos, ...keep.shorts].map((row) => [row.videoId, row] as const));
+		const staying = new Set([...videos, ...shorts].map((video) => video.videoId));
+		const leaving = [...before.values()].flatMap((row) =>
+			!staying.has(row.videoId) && row.posterKey && row.posterUrl
+				? [{ key: row.posterKey, url: row.posterUrl }]
+				: [],
+		);
 		await deps.settings.set('youtube.feed', {
-			videos: videos.map(summary),
-			shorts: shorts.map(summary),
+			videos: videos.map((video) => summary(video, before)),
+			shorts: shorts.map((video) => summary(video, before)),
 			fetchedAt: attemptAt,
 			lastAttemptAt: attemptAt,
 			lastError: null,
+			retiredPosters: [...keep.retiredPosters, ...leaving],
 		});
 		return { videos: videos.length, shorts: shorts.length };
 	} catch (error) {

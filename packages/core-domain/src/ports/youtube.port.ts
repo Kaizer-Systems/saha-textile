@@ -35,4 +35,6 @@ export interface YouTubePort {
 	/** Details of up to 50 ids, in the order asked; private, deleted and non-embeddable ones are left out. */
 	describeVideos(videoIds: readonly string[]): Promise<YouTubeVideo[]>;
 	findVideo(videoId: string): Promise<YouTubeVideo | null>;
+	/** The video's picture from YouTube's image server (no quota): a Short's 9:16 one, else the largest. Null if none. */
+	downloadThumbnail(videoId: string, kind: YouTubeVideoKind): Promise<Uint8Array | null>;
 }

@@ -29,6 +29,7 @@ import {
 	processMediaAsset,
 	reconcileSeededRoles,
 	checkProductVideos,
+	copyYouTubePosters,
 	refreshYouTubeFeed,
 	runMediaGarbageCollection,
 	runWeeklyInsight,
@@ -101,7 +102,13 @@ export const composeMediaWorker = async (config: AppConfig) => {
 				logger.warn('YouTube refresh skipped: YOUTUBE_API_KEY is not set');
 				return { skipped: 'not_configured' };
 			}
-			return refreshYouTubeFeed({ youtube, settings, now });
+			const refreshed = await refreshYouTubeFeed({ youtube, settings, now });
+			// Our CDN copies of the pictures; a failure here never undoes the refreshed list.
+			const posters = await copyYouTubePosters({ youtube, codec, storage, queue, settings }).catch((error) => {
+				logger.warn(`YouTube posters not copied: ${String(error)}`);
+				return null;
+			});
+			return { ...refreshed, posters };
 		},
 		'reprocess-stale': async () => {
 			let queued = 0;

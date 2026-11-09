@@ -82,6 +82,7 @@ const fakeYouTube: YouTubePort = {
 	describeVideos: async (videoIds) =>
 		videoIds.map((videoId) => ({ ...video(0), videoId, kind: 'video' as const, durationSeconds: 60 })),
 	findVideo: async (videoId) => ({ ...video(0), videoId, kind: 'short', durationSeconds: 48 }),
+	downloadThumbnail: async () => new Uint8Array([1]),
 };
 
 const fakeTranscode: VideoTranscodePort = {

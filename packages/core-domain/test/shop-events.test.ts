@@ -35,7 +35,8 @@ const sale = (partial: Partial<ShopEvent> = {}): ShopEvent => ({
 	linkHref: null,
 	showCountdown: true,
 	showPopup: true,
-	popupAssetId: null,
+	popupAssetIds: [],
+	popupImageSide: 'right',
 	nowLiveDays: 3,
 	launch: { categoryIds: [], productIds: [], heldProductIds: [] },
 	status: 'draft',
@@ -198,15 +199,15 @@ describe('the clock', () => {
 
 describe('publicShopEvent', () => {
 	it('counts down to the start, then to the end of a sale', () => {
-		const before = publicShopEvent(sale({ status: 'scheduled' }), 'bn', new Date('2027-09-01'), null);
+		const before = publicShopEvent(sale({ status: 'scheduled' }), 'bn', new Date('2027-09-01'), []);
 		expect(before).toMatchObject({
 			phase: 'upcoming',
 			countdownTo: '2027-09-20T04:30:00.000Z',
 			title: 'পুজোর সেল',
 		});
-		const during = publicShopEvent(sale({ status: 'live' }), 'en', new Date('2027-09-21'), null);
+		const during = publicShopEvent(sale({ status: 'live' }), 'en', new Date('2027-09-21'), []);
 		expect(during).toMatchObject({ phase: 'running', countdownTo: '2027-09-27T18:29:00.000Z' });
-		expect(publicShopEvent(sale({ status: 'live' }), 'en', new Date('2027-09-28'), null)).toBeNull();
+		expect(publicShopEvent(sale({ status: 'live' }), 'en', new Date('2027-09-28'), [])).toBeNull();
 	});
 
 	it('keeps a launch popup 60 days from the start, not from publishing', () => {
@@ -217,14 +218,14 @@ describe('publicShopEvent', () => {
 			startsAt: '2027-09-01T04:30:00.000Z',
 			publishedAt: '2027-08-01T00:00:00.000Z',
 		});
-		const day59 = publicShopEvent(launch, 'en', new Date('2027-10-30T00:00:00.000Z'), null);
+		const day59 = publicShopEvent(launch, 'en', new Date('2027-10-30T00:00:00.000Z'), []);
 		expect(day59).toMatchObject({ phase: 'launched', countdownTo: null, popupUntil: '2027-10-31T04:30:00.000Z' });
-		expect(publicShopEvent(launch, 'en', new Date('2027-10-31T05:00:00.000Z'), null)).toBeNull();
+		expect(publicShopEvent(launch, 'en', new Date('2027-10-31T05:00:00.000Z'), [])).toBeNull();
 	});
 
 	it('shows nothing for drafts and cancelled events', () => {
-		expect(publicShopEvent(sale(), 'en', new Date('2027-09-01'), null)).toBeNull();
-		expect(publicShopEvent(sale({ status: 'cancelled' }), 'en', new Date('2027-09-01'), null)).toBeNull();
+		expect(publicShopEvent(sale(), 'en', new Date('2027-09-01'), [])).toBeNull();
+		expect(publicShopEvent(sale({ status: 'cancelled' }), 'en', new Date('2027-09-01'), [])).toBeNull();
 	});
 });
 
@@ -296,33 +297,33 @@ describe('event rule edges', () => {
 	it('shows the shop the right text, phase and lines', () => {
 		const at = new Date('2027-09-01T00:00:00.000Z');
 		const image = { assetId: 'a', width: 1, height: 1, alt: '', dominantColor: null, thumbHash: null, roles: {} };
-		expect(publicShopEvent(sale({ status: 'scheduled', startsAt: null }), 'en', at, null)).toBeNull();
-		expect(publicShopEvent(sale({ status: 'scheduled', endsAt: null }), 'en', at, null)).toBeNull();
+		expect(publicShopEvent(sale({ status: 'scheduled', startsAt: null }), 'en', at, [])).toBeNull();
+		expect(publicShopEvent(sale({ status: 'scheduled', endsAt: null }), 'en', at, [])).toBeNull();
 		const fallback = publicShopEvent(
 			sale({ status: 'scheduled', title: { en: ' Puja ' }, message: {} }),
 			'bn',
 			at,
-			image as never,
+			[image] as never,
 		);
-		expect(fallback).toMatchObject({ title: 'Puja', message: '', popupImage: image });
+		expect(fallback).toMatchObject({ title: 'Puja', message: '', popupImages: [image], popupImageSide: 'right' });
 		const hidden = publicShopEvent(
 			sale({ status: 'scheduled', showPopup: false, showCountdown: false }),
 			'en',
 			at,
-			image as never,
+			[image] as never,
 		);
-		expect(hidden).toMatchObject({ popupUntil: null, stripUntil: null, popupImage: null });
+		expect(hidden).toMatchObject({ popupUntil: null, stripUntil: null, popupImages: [] });
 		const launch = sale({ type: 'launch', status: 'live', endsAt: null, startsAt: '2027-08-31T00:00:00.000Z' });
-		expect(publicShopEvent({ ...launch, showPopup: false, showCountdown: false }, 'en', at, null)).toBeNull();
-		expect(publicShopEvent({ ...launch, showPopup: false }, 'en', at, null)).toMatchObject({
+		expect(publicShopEvent({ ...launch, showPopup: false, showCountdown: false }, 'en', at, [])).toBeNull();
+		expect(publicShopEvent({ ...launch, showPopup: false }, 'en', at, [])).toMatchObject({
 			phase: 'launched',
 			countdownTo: null,
 		});
-		expect(publicShopEvent({ ...launch, showCountdown: false }, 'en', at, null)).toMatchObject({
+		expect(publicShopEvent({ ...launch, showCountdown: false }, 'en', at, [])).toMatchObject({
 			phase: 'launched',
 			stripUntil: null,
 		});
-		expect(publicShopEvent({ ...launch, startsAt: '2027-09-02T00:00:00.000Z' }, 'en', at, null)).toMatchObject({
+		expect(publicShopEvent({ ...launch, startsAt: '2027-09-02T00:00:00.000Z' }, 'en', at, [])).toMatchObject({
 			phase: 'upcoming',
 		});
 	});

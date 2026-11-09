@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import type { MediaAsset, PublicShopEventsResponse, ResolvedImage } from '@saha-textile/contracts';
+import type { MediaAsset, PublicShopEventsResponse, ResolvedImage, ShopEvent } from '@saha-textile/contracts';
 import {
 	type MediaAssetRepository,
 	type ShopEventRepository,
@@ -28,8 +28,7 @@ export class EventsPublicService {
 		const published = await this.events.listPublished();
 		const items = [];
 		for (const event of published) {
-			const asset = event.showPopup && event.popupAssetId ? await this.media?.findById(event.popupAssetId) : null;
-			const shown = publicShopEvent(event, locale, now, this.image(asset ?? undefined, locale));
+			const shown = publicShopEvent(event, locale, now, await this.images(event, locale));
 			if (shown) items.push(shown);
 		}
 		return { serverNow: now.toISOString(), items };
@@ -43,15 +42,19 @@ export class EventsPublicService {
 		const hash = createHash('sha256').update(token).digest('hex');
 		const event = await this.events.findByPreview(hash, now.toISOString());
 		if (!event) return { serverNow: now.toISOString(), items: [] };
-		const asset = event.showPopup && event.popupAssetId ? await this.media?.findById(event.popupAssetId) : null;
 		// Shown as if published, so a draft's popup reads exactly as it will.
-		const shown = publicShopEvent(
-			{ ...event, status: 'scheduled' },
-			locale,
-			now,
-			this.image(asset ?? undefined, locale),
-		);
+		const shown = publicShopEvent({ ...event, status: 'scheduled' }, locale, now, await this.images(event, locale));
 		return { serverNow: now.toISOString(), items: shown ? [shown] : [] };
+	}
+
+	/** The popup pictures that can be shown, in order; a deleted or unfinished one is left out. */
+	private async images(event: ShopEvent, locale: string): Promise<ResolvedImage[]> {
+		if (!event.showPopup || !event.popupAssetIds.length || !this.media) return [];
+		const media = this.media;
+		const assets = await Promise.all(event.popupAssetIds.map((id) => media.findById(id)));
+		return assets
+			.map((asset) => this.image(asset ?? undefined, locale))
+			.filter((image): image is ResolvedImage => image !== null);
 	}
 
 	private image(asset: MediaAsset | undefined, locale: string): ResolvedImage | null {

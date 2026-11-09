@@ -24,7 +24,8 @@ const event = (partial: Partial<ShopEvent> = {}): ShopEvent => ({
 	stripUntil: new Date(at + 86_400_000).toISOString(),
 	showCountdown: true,
 	linkHref: '/',
-	popupImage: null,
+	popupImages: [],
+	popupImageSide: 'right',
 	...partial,
 });
 
@@ -90,5 +91,16 @@ describe('ShopEvents', () => {
 		const failing = setup('browser', () => throwError(() => new Error('down')));
 		failing.preview('token', done);
 		expect(done).toHaveBeenLastCalledWith(null);
+	});
+
+	it('says whether an event has a popup to show now, and passes a strip tap to the popup', () => {
+		vi.useFakeTimers({ now: at });
+		const events = setup('server', () => of({ serverNow: new Date(at).toISOString(), items: [] }));
+		events.load();
+		expect(events.hasPopup(event())).toBe(true);
+		expect(events.hasPopup(event({ popupUntil: null }))).toBe(false);
+		expect(events.hasPopup(event({ popupUntil: new Date(at - 1).toISOString() }))).toBe(false);
+		events.ask(event());
+		expect(events.asked()?.id).toBe('evt_1');
 	});
 });

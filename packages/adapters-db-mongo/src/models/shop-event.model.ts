@@ -1,4 +1,4 @@
-import { ShopEventStatus, ShopEventType } from '@saha-textile/contracts';
+import { PopupImageSide, ShopEventStatus, ShopEventType } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -6,7 +6,8 @@ import { type Model, Schema, model, models } from 'mongoose';
  *
  * The setup blocks (`launch`, `sale`) and the after-the-fact records (`launchReport`,
  * `saleRecord`) are stored whole: they are read and written with the event, never queried
- * on their own. `popupAssetId` is the one media reference.
+ * on their own. `popupAssetIds` lists the popup pictures; `popupAssetId` is the single picture
+ * events had before 2026-11-10, read as the first of the list until the event is saved again.
  */
 export interface ShopEventDoc {
 	_id: string;
@@ -19,7 +20,10 @@ export interface ShopEventDoc {
 	linkHref: string | null;
 	showCountdown: boolean;
 	showPopup: boolean;
-	popupAssetId: string | null;
+	popupAssetIds?: string[];
+	/** Before 2026-11-10 an event had one picture. */
+	popupAssetId?: string | null;
+	popupImageSide?: string;
 	nowLiveDays: number;
 	launch: unknown;
 	sale: unknown;
@@ -50,7 +54,9 @@ const ShopEventSchema = new Schema<ShopEventDoc>(
 		linkHref: { type: String, default: null },
 		showCountdown: { type: Boolean, default: true },
 		showPopup: { type: Boolean, default: true },
-		popupAssetId: { type: String, default: null },
+		popupAssetIds: { type: [String], default: [] },
+		popupAssetId: { type: String, default: undefined },
+		popupImageSide: { type: String, enum: PopupImageSide.options, default: 'right' },
 		nowLiveDays: { type: Number, default: 3 },
 		launch: { type: Schema.Types.Mixed, default: {} },
 		sale: { type: Schema.Types.Mixed, default: {} },
@@ -73,7 +79,7 @@ ShopEventSchema.index({ status: 1, startsAt: 1 });
 /** The shop reads a preview by its link's hash. */
 ShopEventSchema.index({ previewTokenHash: 1 }, { sparse: true });
 /** Media reference counting. */
-ShopEventSchema.index({ popupAssetId: 1 });
+ShopEventSchema.index({ popupAssetIds: 1 });
 
 export const ShopEventModel: Model<ShopEventDoc> =
 	(models.ShopEvent as Model<ShopEventDoc>) ?? model<ShopEventDoc>('ShopEvent', ShopEventSchema);

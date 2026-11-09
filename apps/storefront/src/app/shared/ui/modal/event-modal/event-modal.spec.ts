@@ -36,7 +36,8 @@ const sale = (partial: Partial<ShopEvent> = {}): ShopEvent => ({
 	stripUntil: null,
 	showCountdown: true,
 	linkHref: '/collections/sarees',
-	popupImage: null,
+	popupImages: [],
+	popupImageSide: 'right',
 	...partial,
 });
 
@@ -100,11 +101,13 @@ const render = (
 		serverTime: () => now,
 		left: vi.fn(() => ({ days: 1, hours: 0, minutes: 0, seconds: 0 })),
 		preview: vi.fn((_token: string, done: (event: ShopEvent | null) => void) => done(options.preview ?? null)),
+		asked: signal<ShopEvent | null>(null),
 	};
+	const hasOpenModals = vi.fn(() => false);
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
-			{ provide: NgbModal, useValue: { open } },
+			{ provide: NgbModal, useValue: { open, hasOpenModals } },
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
 			{ provide: Router, useValue: { url: options.url ?? '/collections/sarees?page=2' } },
 			{
@@ -138,6 +141,7 @@ const render = (
 		docListeners,
 		open,
 		events,
+		hasOpenModals,
 		close: (value?: unknown) => close(value),
 		dismiss: (reason?: unknown) => dismiss(reason),
 	};
@@ -287,7 +291,7 @@ describe('EventModal preview', () => {
 describe('EventModal text and picture', () => {
 	it('labels the timer, the moment and the button by the event', () => {
 		const { modal } = render({ items: [] });
-		expect(modal.label(sale())).toBe('event_sale_ends_in');
+		expect(modal.label(sale())).toBe('event_popup_sale_ends_in');
 		expect(modal.left(sale())).toEqual({ days: 1, hours: 0, minutes: 0, seconds: 0 });
 		expect(modal.left(sale({ countdownTo: null }))).toBeNull();
 		expect(modal.momentText(sale())).toBe('event_ends_at 22 Sep 2027, 5:30 AM IST');
@@ -296,31 +300,94 @@ describe('EventModal text and picture', () => {
 		expect(modal.buttonKey(sale({ type: 'launch', phase: 'launched' }))).toBe('event_shop_the_collection');
 	});
 
-	it('uses the largest picture with a srcset, and nothing without one', async () => {
-		const popupImage = {
+	it('uses the largest size of each picture in order, leaving out one with no sizes', async () => {
+		const art = (name: string) => ({
 			width: 1200,
 			height: 1600,
-			alt: 'Red silk',
+			alt: name,
 			roles: {
 				banner: [
-					{ url: 'https://cdn/s.webp', width: 600, height: 800 },
-					{ url: 'https://cdn/l.webp', width: 1200, height: 1600 },
+					{ url: `https://cdn/${name}-s.webp`, width: 600, height: 800 },
+					{ url: `https://cdn/${name}-l.webp`, width: 1200, height: 1600 },
 				],
 			},
-		};
-		const parts = render({ items: [sale({ popupImage: popupImage as never })] });
+		});
+		const pictures = [art('one'), { ...art('empty'), roles: {} }, art('two')];
+		const parts = render({ items: [sale({ popupImages: pictures as never })] });
 		scrolledHalf(parts);
 		await flush();
-		expect(parts.modal.image()).toEqual({
-			src: 'https://cdn/l.webp',
-			srcset: 'https://cdn/s.webp 600w, https://cdn/l.webp 1200w',
-			width: 1200,
-			height: 1600,
-			alt: 'Red silk',
-		});
-		const bare = render({ items: [sale({ popupImage: { ...popupImage, roles: {} } as never })] });
-		scrolledHalf(bare);
+		expect(parts.modal.images()).toEqual([
+			{
+				src: 'https://cdn/one-l.webp',
+				srcset: 'https://cdn/one-s.webp 600w, https://cdn/one-l.webp 1200w',
+				width: 1200,
+				height: 1600,
+				alt: 'one',
+			},
+			{
+				src: 'https://cdn/two-l.webp',
+				srcset: 'https://cdn/two-s.webp 600w, https://cdn/two-l.webp 1200w',
+				width: 1200,
+				height: 1600,
+				alt: 'two',
+			},
+		]);
+		expect(parts.open).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ windowClass: 'theme-modal newsletter-modal modal-lg' }),
+		);
+	});
+
+	it('opens the 400px text-only popup when there is no picture', async () => {
+		const parts = render();
+		scrolledHalf(parts);
 		await flush();
-		expect(bare.modal.image()).toBeNull();
+		expect(parts.modal.images()).toEqual([]);
+		expect(parts.open).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ windowClass: 'theme-modal newsletter-modal event-popup-text-only' }),
+		);
+	});
+
+	it('labels the popup timer with its subject, unlike the top bar', () => {
+		const { modal } = render({ items: [] });
+		expect(modal.label(sale({ phase: 'upcoming' }))).toBe('event_popup_sale_starts_in');
+		expect(modal.label(sale({ type: 'launch', phase: 'upcoming' }))).toBe('event_popup_launches_in');
+		expect(modal.label(sale({ type: 'launch', phase: 'launched' }))).toBe('event_now_live');
+	});
+});
+
+describe('EventModal from the phone strip', () => {
+	const answered = `x=1; st_events=${encodeURIComponent(`evt_1~${Math.ceil((now + day) / 1000)}`)}`;
+
+	it('opens a tapped event at once, even one already answered, and stores nothing on ✕', async () => {
+		const parts = render({ cookie: answered, shown: true, url: '/cart' });
+		expect(parts.open).not.toHaveBeenCalled();
+		parts.events.asked.set(sale());
+		parts.fixture.detectChanges();
+		expect(parts.open).toHaveBeenCalledOnce();
+		expect(parts.events.asked()).toBeNull();
+		parts.close();
+		await flush();
+		expect(parts.doc.cookie).toBe(answered);
+	});
+
+	it('saves a "Don\'t show this again" ticked in a tapped popup', async () => {
+		const parts = render({ items: [] });
+		parts.events.asked.set(sale());
+		parts.fixture.detectChanges();
+		parts.modal.neverAgain.set(true);
+		parts.close();
+		await flush();
+		expect(parts.doc.cookie).toContain('st_events=');
+	});
+
+	it('does not stack a second popup over an open one', () => {
+		const parts = render({ items: [] });
+		parts.hasOpenModals.mockReturnValue(true);
+		parts.events.asked.set(sale());
+		parts.fixture.detectChanges();
+		expect(parts.open).not.toHaveBeenCalled();
+		expect(parts.events.asked()).toBeNull();
 	});
 });

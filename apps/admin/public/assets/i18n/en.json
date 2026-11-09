@@ -1365,8 +1365,6 @@
 	"event_show_popup": "Show popup",
 	"event_popup_help_sale": "The popup stops at the sale's end.",
 	"event_popup_help_launch": "The popup stops 60 days after the launch starts.",
-	"event_popup_image": "Popup image",
-	"event_popup_image_help": "Portrait 3:4, about 1200 × 1600. Without one the popup shows text only.",
 	"event_items": "Items",
 	"event_launch_categories_help": "Draft categories go live at the start, with their draft products.",
 	"event_launch_products_help": "Single draft products outside those categories.",
@@ -1487,5 +1485,11 @@
 	"open_list": "Open or close the list",
 	"previous_page": "Previous page",
 	"next_page": "Next page",
-	"locked_item": "Built in: it cannot be changed or deleted"
+	"locked_item": "Built in: it cannot be changed or deleted",
+	"event_popup_pictures": "Popup pictures",
+	"event_popup_pictures_help": "Up to 5 pictures, portrait 3:4 (about 1200 × 1600). Several slide by themselves in the order shown. Without any, the popup shows text only.",
+	"event_picture_side": "Picture side",
+	"event_picture_right": "Right of the text",
+	"event_picture_left": "Left of the text",
+	"event_picture_side_help": "On computers. Phones and tablets show the pictures as a band above the text."
 }

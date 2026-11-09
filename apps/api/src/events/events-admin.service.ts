@@ -89,7 +89,8 @@ export class EventsAdminService {
 			linkHref: body.linkHref,
 			showCountdown: body.showCountdown,
 			showPopup: body.showPopup,
-			popupAssetId: body.popupAssetId,
+			popupAssetIds: body.popupAssetIds,
+			popupImageSide: body.popupImageSide,
 			nowLiveDays: body.nowLiveDays,
 			launch: body.launch,
 			sale: body.sale,
@@ -143,7 +144,8 @@ export class EventsAdminService {
 				sale: body.sale,
 				showCountdown: body.showCountdown,
 				showPopup: body.showPopup,
-				popupAssetId: body.popupAssetId,
+				popupAssetIds: body.popupAssetIds,
+				popupImageSide: body.popupImageSide,
 			});
 		} else {
 			throw new BadRequestException('This event can no longer be changed');

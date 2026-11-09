@@ -3,7 +3,8 @@
 	the theme modal (`modal-box`, `modal-image`, `modal-content`), the brand logo, the dark pill
 	button and the login page's tick. The email field is replaced by the product page timer's four
 	boxes (`deal-timer product-deal-timer`). The button is a link, so `text-white` keeps its label
-	white over the theme's link colour. The one new piece is the phone band: the newsletter
+	white over the theme's link colour. Owner, 2026-11-10: up to five pictures, sliding when there
+	are several, on the side the admin chose; without any, the popup is the theme's 400px text half. The one new piece is the phone band: the newsletter
 	hides its picture on phones, but here the picture is the point, so phones see its top part
 	in a 16:9 band (Bootstrap `ratio` and `object-fit-cover`). On desktop the picture covers its
 	column whatever its shape (`h-100 w-100 object-fit-cover`; `h-auto` on the column undoes the
@@ -24,9 +25,39 @@
 			<i class="ri-close-line"></i>
 		</app-button>
 	</div>
-	<div class="modal-box flex-lg-row-reverse">
-		@if (image(); as art) {
+	<!-- The pictures sit right of the text (theme row reversed) or left, as the admin chose. -->
+	<div
+		class="modal-box"
+		[class.flex-lg-row-reverse]="event.popupImageSide !== 'left'"
+	>
+		@if (images(); as pictures) { @if (pictures.length) {
+		<!-- Computers: the picture half, filled whatever the picture's shape (h-auto undoes the theme's height: 100%). -->
 		<div class="modal-image d-none d-lg-block h-auto">
+			@if (pictures.length > 1) {
+			<!-- Several pictures slide like the Contact Us store photos: no arrows, Bootstrap's bar indicators. -->
+			<ngb-carousel
+				class="event-popup-slides h-100"
+				[interval]="interval"
+				[showNavigationArrows]="false"
+				[pauseOnHover]="true"
+				[pauseOnFocus]="true"
+			>
+				@for (art of pictures; track art.src) {
+				<ng-template ngbSlide>
+					<img
+						[src]="art.src"
+						[attr.srcset]="art.srcset"
+						sizes="400px"
+						[attr.width]="art.width"
+						[attr.height]="art.height"
+						class="img-fluid object-fit-cover h-100 w-100"
+						[alt]="art.alt"
+						decoding="async"
+					/>
+				</ng-template>
+				}
+			</ngb-carousel>
+			} @else if (pictures[0]; as art) {
 			<img
 				[src]="art.src"
 				[attr.srcset]="art.srcset"
@@ -37,8 +68,33 @@
 				[alt]="art.alt"
 				decoding="async"
 			/>
+			}
 		</div>
+		<!-- Phones and tablets: the top of the pictures as a 16:9 band above the text. -->
 		<div class="ratio ratio-16x9 d-lg-none">
+			@if (pictures.length > 1) {
+			<ngb-carousel
+				class="event-popup-slides"
+				[interval]="interval"
+				[showNavigationArrows]="false"
+				[pauseOnHover]="true"
+				[pauseOnFocus]="true"
+			>
+				@for (art of pictures; track art.src) {
+				<ng-template ngbSlide>
+					<img
+						[src]="art.src"
+						[attr.srcset]="art.srcset"
+						sizes="100vw"
+						class="object-fit-cover h-100 w-100"
+						[style.object-position]="'top'"
+						[alt]="art.alt"
+						decoding="async"
+					/>
+				</ng-template>
+				}
+			</ngb-carousel>
+			} @else if (pictures[0]; as art) {
 			<img
 				[src]="art.src"
 				[attr.srcset]="art.srcset"
@@ -48,12 +104,13 @@
 				[alt]="art.alt"
 				decoding="async"
 			/>
+			}
 		</div>
-		}
-		<!-- No picture: the text takes the 400px the theme keeps for it (Bootstrap w-100). -->
+		} }
+		<!-- No picture: the text half alone fills the 400px text-only popup (Bootstrap w-100). -->
 		<div
 			class="modal-content content-padding"
-			[class.w-100]="!image()"
+			[class.w-100]="!images().length"
 		>
 			<div>
 				@if (brand.data()?.logo; as logo) {

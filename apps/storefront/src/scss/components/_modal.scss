@@ -2526,3 +2526,22 @@
 		}
 	}
 }
+
+/*
+ * Event popup (owner brief, approved 2026-11-10). The two style rules the brief named as custom:
+ * - Without a picture the popup is the newsletter popup's text half on its own: the theme's 400px
+ *   (`.newsletter-modal .modal-box .modal-image` takes the other 400px). Bootstrap has no 400px
+ *   popup size, so the dialog width is set here.
+ * - Several pictures slide with ng-bootstrap's carousel, which draws its inner boxes itself; they
+ *   take the full height so the slides fill the picture half and the phone band.
+ */
+.newsletter-modal.event-popup-text-only .modal-dialog {
+	max-width: 400px;
+}
+
+.event-popup-slides {
+	.carousel-inner,
+	.carousel-item {
+		height: 100%;
+	}
+}

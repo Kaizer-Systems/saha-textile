@@ -82,11 +82,18 @@ export class SalePriceBook {
 	}
 
 	private async add(into: Map<string, BookEntry[]>, event: ShopEvent, below: Map<string, Set<string>>) {
-		const categoryIds = [...new Set(event.sale.categories.flatMap((line) => [...(below.get(line.categoryId) ?? [])]))];
+		const categoryIds = [
+			...new Set(event.sale.categories.flatMap((line) => [...(below.get(line.categoryId) ?? [])])),
+		];
 		const memberOf = new Map<string, Set<string>>();
 		if (categoryIds.length) {
 			for (let page = 1; ; page += 1) {
-				const { items, total } = await this.products.list({ audience: 'admin', categoryIds, page, pageSize: PAGE });
+				const { items, total } = await this.products.list({
+					audience: 'admin',
+					categoryIds,
+					page,
+					pageSize: PAGE,
+				});
 				for (const product of items) memberOf.set(product.id, new Set(product.categoryIds));
 				if (!items.length || page * PAGE >= total) break;
 			}

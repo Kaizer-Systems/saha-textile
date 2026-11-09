@@ -114,6 +114,12 @@ export const SaleRecord = z.object({
 });
 export type SaleRecord = z.infer<typeof SaleRecord>;
 
+/** The most popup pictures one event takes. */
+export const MAX_POPUP_PICTURES = 5;
+const PopupAssetIds = z.array(Id).max(MAX_POPUP_PICTURES).default([]);
+export const PopupImageSide = z.enum(['right', 'left']);
+export type PopupImageSide = z.infer<typeof PopupImageSide>;
+
 export const ShopEvent = z.object({
 	id: Id,
 	type: ShopEventType,
@@ -130,7 +136,10 @@ export const ShopEvent = z.object({
 	linkHref: z.string().max(500).nullable().default(null),
 	showCountdown: z.boolean().default(true),
 	showPopup: z.boolean().default(true),
-	popupAssetId: Id.nullable().default(null),
+	/** Up to five popup pictures, in the order they slide. Optional (owner, 2026-11-10). */
+	popupAssetIds: PopupAssetIds,
+	/** Which side of the text the pictures sit on, on computers. Phones show them above. */
+	popupImageSide: PopupImageSide.default('right'),
 	/** A launch keeps a "Now live" line in the top bar this many days after its start. */
 	nowLiveDays: z.number().int().min(0).max(60).default(3),
 	launch: LaunchSetup.default({ categoryIds: [], productIds: [], heldProductIds: [] }),
@@ -170,7 +179,8 @@ export const ShopEventWrite = z.object({
 		.default(null),
 	showCountdown: z.boolean().default(true),
 	showPopup: z.boolean().default(true),
-	popupAssetId: Id.nullable().default(null),
+	popupAssetIds: PopupAssetIds,
+	popupImageSide: PopupImageSide.default('right'),
 	nowLiveDays: z.number().int().min(0).max(60).default(3),
 	launch: LaunchSetup.default({ categoryIds: [], productIds: [], heldProductIds: [] }),
 	sale: SaleSetup.default({ categories: [], products: [] }),
@@ -312,7 +322,9 @@ export const PublicShopEvent = z.object({
 	stripUntil: IsoDateTime.nullable(),
 	showCountdown: z.boolean(),
 	linkHref: z.string().nullable(),
-	popupImage: ResolvedImage.nullable(),
+	/** The popup pictures that can be shown, in order. Empty when there are none or the popup is off. */
+	popupImages: z.array(ResolvedImage),
+	popupImageSide: PopupImageSide,
 });
 export type PublicShopEvent = z.infer<typeof PublicShopEvent>;
 
@@ -349,5 +361,4 @@ export const PublicShopEventsQuery = z.object({
 export type PublicShopEventsQuery = z.infer<typeof PublicShopEventsQuery>;
 
 /** Every media asset an event points at; the media garbage collector reads this list. */
-export const shopEventAssetIds = (event: Pick<ShopEvent, 'popupAssetId'>): string[] =>
-	event.popupAssetId ? [event.popupAssetId] : [];
+export const shopEventAssetIds = (event: Pick<ShopEvent, 'popupAssetIds'>): string[] => [...event.popupAssetIds];

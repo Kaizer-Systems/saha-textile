@@ -28,6 +28,8 @@ export class ShopEvents {
 	readonly items = signal<PublicShopEvent[]>([]);
 	/** An event popup will open this visit, so the newsletter popup waits for a later one. */
 	readonly popupWaiting = signal(false);
+	/** An event the shopper tapped on the phone strip: its popup opens at once (owner, 2026-11-10). */
+	readonly asked = signal<PublicShopEvent | null>(null);
 	/** Server time in milliseconds, ticking once a second in the browser. */
 	readonly now = signal(Date.now());
 	private offset = 0;
@@ -85,6 +87,16 @@ export class ShopEvents {
 				},
 				error: () => done(null),
 			});
+	}
+
+	/** Whether this event has a popup to show right now: switched on and not over. */
+	hasPopup(event: PublicShopEvent): boolean {
+		return !!event.popupUntil && Date.parse(event.popupUntil) > this.serverTime();
+	}
+
+	/** The phone strip asks for an event's popup; the popup opens it whatever was answered before. */
+	ask(event: PublicShopEvent): void {
+		this.asked.set(event);
 	}
 
 	/** Server time now, for a component that reads it outside a signal. */

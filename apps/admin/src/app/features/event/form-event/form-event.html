@@ -234,19 +234,37 @@
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'event_popup_image'"
+									[label]="'event_popup_pictures'"
 									[for]="'popup_image'"
 									[required]="false"
 								>
+									<!-- Several pictures, as on the store form: they slide in this order (owner, 2026-11-10). -->
 									<div id="popup_image">
 										<app-image-upload
-											[multipleImage]="false"
+											[multipleImage]="true"
 											[purpose]="'banner'"
-											[image]="popupImage"
-											[helpText]="'event_popup_image_help' | transloco"
-											(selectedFiles)="selectPopupImage($event)"
+											[images]="popupImages()"
+											[helpText]="'event_popup_pictures_help' | transloco"
+											(selectedFiles)="selectPopupImages($event)"
 										/>
 									</div>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_picture_side'"
+									[for]="'popup_image_side'"
+									[required]="false"
+								>
+									<select
+										class="form-select"
+										id="popup_image_side"
+										formControlName="popup_image_side"
+									>
+										<option value="right">{{ 'event_picture_right' | transloco }}</option>
+										<option value="left">{{ 'event_picture_left' | transloco }}</option>
+									</select>
+									<p class="help-text">{{ 'event_picture_side_help' | transloco }}</p>
 								</app-form-fields>
 								@if (event()) {
 								<app-form-fields

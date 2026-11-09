@@ -50,5 +50,6 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('blog share image', as(BlogPostModel), 'shareImageAssetId'),
 	entry('blog post picture', as(BlogPostModel), 'assetIds'),
 	entry('store photos', as(StoreLocationModel), 'photoAssetIds'),
-	entry('event popup image', as(ShopEventModel), 'popupAssetId'),
+	entry('event popup pictures', as(ShopEventModel), 'popupAssetIds'),
+	entry('event popup picture (before 2026-11-10)', as(ShopEventModel), 'popupAssetId'),
 ];

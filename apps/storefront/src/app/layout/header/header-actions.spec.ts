@@ -79,6 +79,8 @@ describe('NavbarMenuButton', () => {
 	});
 });
 
+const ask = vi.fn();
+
 describe('Notice', () => {
 	const render = (platform: string, template = '<div #swiperContainer></div>') => {
 		TestBed.resetTestingModule();
@@ -89,6 +91,8 @@ describe('Notice', () => {
 					provide: ShopEvents,
 					useValue: {
 						left: (iso: string | null) => (iso ? { days: 3, hours: 4, minutes: 12, seconds: 5 } : null),
+						hasPopup: (event: { popupUntil: string | null }) => !!event.popupUntil,
+						ask,
 					},
 				},
 				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
@@ -125,6 +129,19 @@ describe('Notice', () => {
 		expect(
 			componentInstance.countdown({ ...(sale as object), phase: 'launched', countdownTo: null } as never),
 		).toBe('');
+	});
+
+	it('opens the popup on a phone strip tap when the event has one, and links otherwise', () => {
+		const fixture = render('server');
+		const notice = fixture.componentInstance;
+		const withPopup = { id: 'e', popupUntil: '2099-01-01T00:00:00.000Z' } as never;
+		const noPopup = { id: 'f', popupUntil: null } as never;
+		expect(notice.opensPopup(withPopup)).toBe(false);
+		fixture.componentRef.setInput('tapOpensPopup', true);
+		expect(notice.opensPopup(withPopup)).toBe(true);
+		expect(notice.opensPopup(noPopup)).toBe(false);
+		notice.openPopup(withPopup);
+		expect(ask).toHaveBeenCalledWith(withPopup);
 	});
 
 	it('tells the slider when an event line comes or goes', () => {

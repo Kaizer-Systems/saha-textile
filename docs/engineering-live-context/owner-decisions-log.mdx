@@ -1091,6 +1091,17 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 - **Event popup on desktop and phones**, built like the newsletter popup: the admin's event image, the message, the IST moment and the live countdown. A sale's popup stops at the sale's end; **a launch's popup stops 60 days after the launch starts** (not the publish date). It goes before the newsletter popup, which waits for a later visit. ✕ rests that event for 3 days; "Don't show this again" stops it for good. Both answers live per event in the **Functional `st_events` cookie**.
 - **Messages:** email to customers whose consent includes marketing, each in their own language. **SMS and WhatsApp stay an open item** for the MSG91 discussion (API roadmap, Chunk I).
 
+## Owner decision round (2026-11-10) — event popup, pictures and phone strip
+
+- **Brief approved as a whole** (Event Popup Brief, version 2, artifact NKM6KhGbaChMEM4nR6vfqa), after a full browser test of events.
+- **No picture:** on computers and tablets the popup is the text half of the picture popup on its own: 400px wide, the theme's text-half width, centred. Phones are unchanged.
+- **Pictures:** an event takes up to 5 popup pictures (portrait 3:4), still optional. One picture shows as before. Two or more slide by themselves every 4 seconds, with no arrows and Bootstrap's bar indicators at the bottom, like the Contact Us store photos (pause on hover, still for reduced motion). **Picture side** per event: right of the text (default) or left, on computers from 992px; phones and tablets show the pictures as a band above the text.
+- **Phone strip tap** opens that event's popup at once, overriding the ✕ rest, "Don't show this again", the one-per-visit limit, the quiet pages and an unanswered cookie box. If the event's popup is off or its popup period is over, the tap goes to the event's link. Closing a tapped popup stores nothing new; ticking "Don't show this again" in it is saved. The computer top bar line still goes to the link.
+- **Popup timer labels** say "Sale ends in", "Sale starts in" and "Launches in" (Bengali: সেল শেষ হতে বাকি, সেল শুরু হতে বাকি, লঞ্চ হতে বাকি). The product page's "Hurry up! Sales Ends In" becomes "Hurry up! Sale ends in".
+- **Small product card** (Trending Products on the product page, home product columns): the price line wraps inside the box and the Sale tag is left out of this card.
+- **Custom pieces approved:** two commented style rules (400px popup without a picture; the slider fills the picture half), the pictures list and picture side on the event, the three popup labels, and the strip tap behaviour.
+- `saleWindow` stays removed: timed sales are events. `flash_sale` stays for the seed promotion.
+
 ## Owner decision round (2026-11-09) — page headings, deep trails and Gmail on Google Cloud
 
 - **One main heading per page (brief "Headings and Deep Trails", option H2).** Categories, Collections and the four policy pages show their name as a visible h1 in the theme's `.title` block (section-title size). Contact Us and FAQ promote their existing heading. Cart, wishlist, checkout, search, sign-in, account, About Us and Offer carry their label as a hidden h1 (Bootstrap `visually-hidden`). A blog post's title becomes its h1 (blog chat).

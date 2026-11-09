@@ -28,7 +28,10 @@ export interface ShopEvent {
 	stripUntil: string | null;
 	showCountdown: boolean;
 	linkHref: string | null;
-	popupImage: ShopEventImage | null;
+	/** Popup pictures in slide order; empty when there are none or the popup is off. */
+	popupImages: ShopEventImage[];
+	/** Which side of the text the pictures sit on, on computers. */
+	popupImageSide: 'right' | 'left';
 }
 
 export interface ShopEventsResponse {

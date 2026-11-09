@@ -111,7 +111,7 @@ export function publicShopEvent(
 	event: ShopEvent,
 	locale: string,
 	now: Date,
-	popupImage: ResolvedImage | null,
+	popupImages: readonly ResolvedImage[],
 ): PublicShopEvent | null {
 	if (event.status !== 'scheduled' && event.status !== 'live') return null;
 	if (!event.startsAt) return null;
@@ -150,6 +150,7 @@ export function publicShopEvent(
 		stripUntil: event.showCountdown ? stripUntil : null,
 		showCountdown: event.showCountdown,
 		linkHref: event.linkHref,
-		popupImage: event.showPopup ? popupImage : null,
+		popupImages: event.showPopup ? [...popupImages] : [],
+		popupImageSide: event.popupImageSide,
 	};
 }

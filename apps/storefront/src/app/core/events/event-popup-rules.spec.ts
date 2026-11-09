@@ -28,7 +28,8 @@ const event = (id: string, partial: Partial<ShopEvent>): ShopEvent => ({
 	stripUntil: null,
 	showCountdown: true,
 	linkHref: '/',
-	popupImage: null,
+	popupImages: [],
+	popupImageSide: 'right',
 	...partial,
 });
 

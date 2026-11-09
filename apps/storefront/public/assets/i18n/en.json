@@ -229,7 +229,7 @@
 	"hot_stock_progress": "Hot Stock Progress",
 	"hours": "Hours",
 	"hurry_up_offer_end_in": "Hurry up offer end in",
-	"hurry_up_sales_ends_in": "Hurry up! Sales Ends In",
+	"hurry_up_sales_ends_in": "Hurry up! Sale ends in",
 	"i_agree_with": "I agree with",
 	"if_the_details_are_correct_we_have_sent_you_an_email": "If the details are correct, we have sent you an email.",
 	"if_you_any_query": "If You Any Query",
@@ -842,5 +842,8 @@
 	"decrease_quantity": "Decrease quantity",
 	"increase_quantity": "Increase quantity",
 	"previous_page": "Previous page",
-	"next_page": "Next page"
+	"next_page": "Next page",
+	"event_popup_sale_ends_in": "Sale ends in",
+	"event_popup_sale_starts_in": "Sale starts in",
+	"event_popup_launches_in": "Launches in"
 }

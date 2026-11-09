@@ -36,6 +36,12 @@ export class Notice {
 
 	readonly content = input<ITopBarContent[]>();
 	readonly events = input<ShopEvent[]>([]);
+	/**
+	 * The phone strip (owner, 2026-11-10): phones have no hover, so a tap on an event line opens
+	 * that event's popup instead of its link, whatever the shopper answered before. A line whose
+	 * popup is off or over still goes to its link. The computer top bar leaves this off.
+	 */
+	readonly tapOpensPopup = input(false);
 
 	readonly swiperContainer = viewChild.required<ElementRef>('swiperContainer');
 	private swiper: SwiperCore | null = null;
@@ -46,6 +52,15 @@ export class Notice {
 			const count = this.events().length + (this.content()?.length ?? 0);
 			if (this.swiper && count) this.zone.runOutsideAngular(() => setTimeout(() => this.swiper?.update()));
 		});
+	}
+
+	/** True when a tap on this line opens the event's popup rather than following its link. */
+	opensPopup(event: ShopEvent): boolean {
+		return this.tapOpensPopup() && this.clock.hasPopup(event);
+	}
+
+	openPopup(event: ShopEvent): void {
+		this.clock.ask(event);
 	}
 
 	label(event: ShopEvent): string {

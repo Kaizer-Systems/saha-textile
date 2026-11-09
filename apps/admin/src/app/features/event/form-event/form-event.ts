@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
+import { MAX_POPUP_PICTURES, type PopupImageSide } from '@saha-textile/contracts';
 import type {
 	SaleCategoryLine,
 	SaleException,
@@ -21,7 +22,7 @@ import type {
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
-import { Subject, debounceTime, of, switchMap, takeUntil } from 'rxjs';
+import { Subject, catchError, debounceTime, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
 
 import { goLiveLabels } from '@core/catalog/go-live-report';
 import { MediaGateway } from '@core/media/media.gateway';
@@ -151,9 +152,10 @@ export class FormEvent {
 	readonly problems = signal<ShopEventProblem[]>([]);
 	readonly locales = ADMIN_LOCALES;
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
-	popupImage: IAttachment | null = null;
-	/** The library picture last fetched, so a reload after Save doesn't fetch it again. */
-	private popupImageId: string | null = null;
+	/** The popup pictures in slide order, as the media picker draws them (owner, 2026-11-10). */
+	readonly popupImages = signal<IAttachment[]>([]);
+	/** The ids last fetched, so a reload after Save doesn't fetch them again. */
+	private popupImageIds = '';
 
 	// Launch picks.
 	readonly launchCategoryIds = signal<string[]>([]);
@@ -202,7 +204,7 @@ export class FormEvent {
 		link_href: new FormControl('', { nonNullable: true }),
 		show_countdown: new FormControl(true, { nonNullable: true }),
 		show_popup: new FormControl(true, { nonNullable: true }),
-		popup_asset_id: new FormControl<string | null>(null),
+		popup_image_side: new FormControl<PopupImageSide>('right', { nonNullable: true }),
 		now_live_days: new FormControl(3, { nonNullable: true }),
 	});
 	readonly fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, []);
@@ -268,7 +270,7 @@ export class FormEvent {
 			link_href: event.linkHref ?? '',
 			show_countdown: event.showCountdown,
 			show_popup: event.showPopup,
-			popup_asset_id: event.popupAssetId,
+			popup_image_side: event.popupImageSide,
 			now_live_days: event.nowLiveDays,
 		});
 		this.fields.load({ title: event.title, message: event.message });
@@ -286,16 +288,16 @@ export class FormEvent {
 		this.heldProductIds.set(event.launch.heldProductIds);
 		this.saleCategories.set(event.sale.categories);
 		this.saleProducts.set(event.sale.products);
-		// The saved picture is drawn from the library, as the media picker draws it.
-		if (!event.popupAssetId) {
-			this.popupImage = null;
-			this.popupImageId = null;
-		} else if (this.popupImageId !== event.popupAssetId) {
-			this.popupImageId = event.popupAssetId;
-			this.media.get(event.popupAssetId).subscribe({
-				next: (image) => (this.popupImage = image),
-				error: () => (this.popupImage = null),
-			});
+		// Fetched together from the library so the pictures keep their slide order, as on the
+		// store form; one deleted since is left out.
+		const ids = event.popupAssetIds.join(',');
+		if (ids !== this.popupImageIds) {
+			this.popupImageIds = ids;
+			if (!event.popupAssetIds.length) this.popupImages.set([]);
+			else
+				forkJoin(event.popupAssetIds.map((id) => this.media.get(id).pipe(catchError(() => of(null)))))
+					.pipe(map((list) => list.filter((image): image is IAttachment => image !== null)))
+					.subscribe((list) => this.popupImages.set(list));
 		}
 		if (this.readOnly()) this.form.disable();
 		this.loadReview();
@@ -372,11 +374,13 @@ export class FormEvent {
 		this.form.controls.link_href.setValue(href);
 	}
 
-	selectPopupImage(data: IAttachment) {
-		if (Array.isArray(data)) return;
-		this.popupImage = data ?? null;
-		this.popupImageId = data ? String(data.id) : null;
-		this.form.controls.popup_asset_id.setValue(data ? String(data.id) : null);
+	/** The picker hands back the whole list, a single picture, or nothing. */
+	selectPopupImages(selection: IAttachment[] | IAttachment | null | undefined) {
+		const list = Array.isArray(selection) ? selection : selection ? [selection] : [];
+		const kept = list.slice(0, MAX_POPUP_PICTURES);
+		this.popupImages.set(kept);
+		this.popupImageIds = kept.map((image) => String(image.id)).join(',');
+		this.form.markAsDirty();
 	}
 
 	pickLaunchCategories(ids: string[]) {
@@ -545,7 +549,8 @@ export class FormEvent {
 			linkHref: raw.link_href.trim() || null,
 			showCountdown: raw.show_countdown,
 			showPopup: raw.show_popup,
-			popupAssetId: raw.popup_asset_id,
+			popupAssetIds: this.popupImages().map((image) => String(image.id)),
+			popupImageSide: raw.popup_image_side,
 			nowLiveDays: Number(raw.now_live_days) || 0,
 			launch: {
 				categoryIds: this.launchCategoryIds(),

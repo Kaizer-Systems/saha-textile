@@ -18,7 +18,8 @@ const toEvent = (doc: ShopEventDoc): ShopEvent =>
 		linkHref: doc.linkHref ?? null,
 		showCountdown: doc.showCountdown ?? true,
 		showPopup: doc.showPopup ?? true,
-		popupAssetId: doc.popupAssetId ?? null,
+		popupAssetIds: doc.popupAssetIds?.length ? doc.popupAssetIds : doc.popupAssetId ? [doc.popupAssetId] : [],
+		popupImageSide: doc.popupImageSide ?? 'right',
 		nowLiveDays: doc.nowLiveDays ?? 3,
 		launch: doc.launch ?? {},
 		sale: doc.sale ?? {},
@@ -98,7 +99,8 @@ export class MongoShopEventRepository implements ShopEventRepository {
 	async save(event: ShopEvent): Promise<ShopEvent> {
 		const doc = await ShopEventModel.findByIdAndUpdate(
 			event.id,
-			{ $set: toDoc(event) },
+			// The single picture of before 2026-11-10 now lives in the list.
+			{ $set: toDoc(event), $unset: { popupAssetId: '' } },
 			{ upsert: true, new: true, setDefaultsOnInsert: true },
 		)
 			.lean<ShopEventDoc>()

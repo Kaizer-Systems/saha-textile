@@ -13,7 +13,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbCarousel, NgbModal, NgbSlide } from '@ng-bootstrap/ng-bootstrap';
 import { formatIst } from '@saha-textile/core-domain/ist-time';
 
 import { ConsentStore } from '@core/consent/consent.store';
@@ -52,6 +52,16 @@ interface PopupImage {
 	alt: string;
 }
 
+/** Several pictures slide at the Contact Us store photos' pace (owner, 2026-11-10). */
+const SLIDE_INTERVAL_MS = 4000;
+
+/** The popup's own timer labels: unlike the top bar line, no title stands before them. */
+const POPUP_LABELS: Readonly<Record<string, string>> = {
+	event_sale_ends_in: 'event_popup_sale_ends_in',
+	event_sale_starts_in: 'event_popup_sale_starts_in',
+	event_launches_in: 'event_popup_launches_in',
+};
+
 /** Sizes the popup picture may come in, best first; any library image can be the popup's. */
 const IMAGE_ROLES = ['banner', 'blog', 'gallery', 'card'];
 
@@ -68,7 +78,7 @@ const IMAGE_ROLES = ['banner', 'blog', 'gallery', 'card'];
 @Component({
 	selector: 'app-event-modal',
 	templateUrl: './event-modal.html',
-	imports: [Button, RouterLink, TranslocoModule],
+	imports: [Button, RouterLink, TranslocoModule, NgbCarousel, NgbSlide],
 })
 export class EventModal {
 	private readonly modalService = inject(NgbModal);
@@ -83,13 +93,22 @@ export class EventModal {
 
 	readonly template = viewChild.required<TemplateRef<unknown>>('eventModal');
 	readonly shown = signal<ShopEvent | null>(null);
-	readonly image = signal<PopupImage | null>(null);
+	/** The pictures in slide order; several slide, one stands, none gives the text-only popup. */
+	readonly images = signal<PopupImage[]>([]);
+	/** The pictures stand still on the server and for visitors who ask for reduced motion. */
+	readonly interval =
+		isPlatformBrowser(this.platformId) &&
+		!this.document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+			? SLIDE_INTERVAL_MS
+			: 0;
 	readonly neverAgain = signal(false);
 
 	private disarm: (() => void) | null = null;
 	private armed = false;
 	/** Opened from the admin's Preview: nothing is remembered, and the normal popup stays away. */
 	private previewing = false;
+	/** Opened by a tap on the phone strip: only a "Don't show this again" tick is remembered. */
+	private tapped = false;
 
 	constructor() {
 		// After the first render, so the popup's template exists whenever the answer comes back.
@@ -100,6 +119,15 @@ export class EventModal {
 			if (this.previewing) return;
 			this.events.popupWaiting.set(!!candidate && !this.shownThisVisit());
 			if (candidate && !this.armed && isPlatformBrowser(this.platformId) && !this.shownThisVisit()) this.arm();
+		});
+		// A tap on the phone strip opens that event's popup at once, whatever was answered before.
+		effect(() => {
+			const event = this.events.asked();
+			if (!event) return;
+			this.events.asked.set(null);
+			if (this.modalService.hasOpenModals()) return;
+			this.tapped = true;
+			this.show(event);
 		});
 		this.destroyRef.onDestroy(() => this.disarm?.());
 	}
@@ -137,7 +165,8 @@ export class EventModal {
 	}
 
 	label(event: ShopEvent): string {
-		return countdownKey(event);
+		const key = countdownKey(event);
+		return POPUP_LABELS[key] ?? key;
 	}
 
 	left(event: ShopEvent) {
@@ -194,33 +223,40 @@ export class EventModal {
 
 	private show(event: ShopEvent): void {
 		this.shown.set(event);
-		this.image.set(this.pickImage(event));
+		const images = this.pickImages(event);
+		this.images.set(images);
 		this.neverAgain.set(false);
 		this.modalService
 			.open(this.template(), {
 				ariaLabelledBy: 'event-modal-title',
 				centered: true,
-				windowClass: 'theme-modal modal-lg newsletter-modal',
+				// With pictures the theme's 800px split; without, its 400px text half alone.
+				windowClass: `theme-modal newsletter-modal ${images.length ? 'modal-lg' : 'event-popup-text-only'}`,
 			})
 			.result.catch(() => undefined)
 			.finally(() => {
-				if (!this.previewing) this.remember(event);
+				const tapped = this.tapped;
+				this.tapped = false;
+				if (this.previewing || (tapped && !this.neverAgain())) return;
+				this.remember(event);
 			});
 	}
 
-	private pickImage(event: ShopEvent): PopupImage | null {
-		const art = event.popupImage;
-		if (!art) return null;
-		const sources = IMAGE_ROLES.map((role) => art.roles[role] ?? []).find((list) => list.length) ?? [];
-		const largest = sources.at(-1);
-		if (!largest) return null;
-		return {
-			src: largest.url,
-			srcset: sources.map((source) => `${source.url} ${source.width}w`).join(', '),
-			width: art.width,
-			height: art.height,
-			alt: art.alt,
-		};
+	private pickImages(event: ShopEvent): PopupImage[] {
+		return event.popupImages.flatMap((art) => {
+			const sources = IMAGE_ROLES.map((role) => art.roles[role] ?? []).find((list) => list.length) ?? [];
+			const largest = sources.at(-1);
+			if (!largest) return [];
+			return [
+				{
+					src: largest.url,
+					srcset: sources.map((source) => `${source.url} ${source.width}w`).join(', '),
+					width: art.width,
+					height: art.height,
+					alt: art.alt,
+				},
+			];
+		});
 	}
 
 	/** Without functional consent nothing is stored: the session flag keeps it to once a visit. */

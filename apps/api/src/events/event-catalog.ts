@@ -63,7 +63,12 @@ export class EventCatalog {
 		const ids = [...new Set(categoryIds.flatMap((id) => [...(below.get(id) ?? [id])]))];
 		const found: Product[] = [];
 		for (let page = 1; ; page += 1) {
-			const { items, total } = await this.products.list({ audience: 'admin', categoryIds: ids, page, pageSize: PAGE });
+			const { items, total } = await this.products.list({
+				audience: 'admin',
+				categoryIds: ids,
+				page,
+				pageSize: PAGE,
+			});
 			found.push(...items);
 			if (!items.length || page * PAGE >= total) return found;
 		}
@@ -229,9 +234,8 @@ export class EventCatalog {
 			event.type === 'sale' ? event.sale.products.map((line) => line.productId) : event.launch.productIds;
 		const known = new Set((await this.categories.tree()).map((row) => row.id));
 		const found = new Set((await this.byIds(productIds)).map((product) => product.id));
-		return [
-			...categoryIds.filter((id) => !known.has(id)),
-			...productIds.filter((id) => !found.has(id)),
-		].map((id) => ({ code: 'unknown_item' as const, target: id, locale: null, gaps: [], detail: '' }));
+		return [...categoryIds.filter((id) => !known.has(id)), ...productIds.filter((id) => !found.has(id))].map(
+			(id) => ({ code: 'unknown_item' as const, target: id, locale: null, gaps: [], detail: '' }),
+		);
 	}
 }

@@ -842,5 +842,8 @@
 	"decrease_quantity": "পরিমাণ কমান",
 	"increase_quantity": "পরিমাণ বাড়ান",
 	"previous_page": "আগের পৃষ্ঠা",
-	"next_page": "পরের পৃষ্ঠা"
+	"next_page": "পরের পৃষ্ঠা",
+	"event_popup_sale_ends_in": "সেল শেষ হতে বাকি",
+	"event_popup_sale_starts_in": "সেল শুরু হতে বাকি",
+	"event_popup_launches_in": "লঞ্চ হতে বাকি"
 }

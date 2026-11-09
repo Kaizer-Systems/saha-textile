@@ -16,6 +16,19 @@
 				-->
 				<div class="timer-notification mw-100">
 					<h6>
+						<!-- On the phone strip a line with a popup opens it; any other line is a link. -->
+						@if (opensPopup(event)) {
+						<a
+							class="d-flex text-white"
+							href="javascript:void(0)"
+							role="button"
+							aria-haspopup="dialog"
+							(click)="openPopup(event); $event.preventDefault()"
+						>
+							<strong class="text-truncate me-1">{{ event.title }}</strong>
+							<span class="text-nowrap">{{ label(event) | transloco }} {{ countdown(event) }}</span>
+						</a>
+						} @else {
 						<a
 							class="d-flex text-white"
 							[routerLink]="event.linkHref ?? '/'"
@@ -23,6 +36,7 @@
 							<strong class="text-truncate me-1">{{ event.title }}</strong>
 							<span class="text-nowrap">{{ label(event) | transloco }} {{ countdown(event) }}</span>
 						</a>
+						}
 					</h6>
 				</div>
 			</div>

@@ -76,7 +76,10 @@
 	<div class="header-top d-lg-none">
 		<div class="container-fluid-lg">
 			<div class="header-offer">
-				<app-notice [events]="events.stripItems()" />
+				<app-notice
+					[events]="events.stripItems()"
+					[tapOpensPopup]="true"
+				/>
 			</div>
 		</div>
 	</div>

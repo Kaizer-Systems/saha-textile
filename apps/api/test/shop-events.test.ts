@@ -184,7 +184,8 @@ const saleBody = (startsAt: number, endsAt: number) => ({
 	linkHref: '/collections/saree',
 	showCountdown: true,
 	showPopup: true,
-	popupAssetId: null,
+	popupAssetIds: [] as string[],
+	popupImageSide: 'right' as const,
 	nowLiveDays: 3,
 	launch: { categoryIds: [], productIds: [], heldProductIds: [] },
 	sale: {
@@ -365,7 +366,7 @@ describe('what the shop reads', () => {
 		const result = await shop.list('bn', at);
 		expect(result.serverNow).toBe(at.toISOString());
 		expect(result.items).toHaveLength(1);
-		expect(result.items[0]).toMatchObject({ title: 'পুজোর সেল', phase: 'upcoming', popupImage: null });
+		expect(result.items[0]).toMatchObject({ title: 'পুজোর সেল', phase: 'upcoming', popupImages: [] });
 	});
 
 	it('shows a draft through its 30-minute preview link, and nothing once the link is old or wrong', async () => {
@@ -920,10 +921,7 @@ describe('the clock edges', () => {
 		await clock.start(sale, new Date(h.now));
 		await clock.end((await h.events.findById(sale.id)) as ShopEvent, new Date(h.now + HOUR));
 		expect(h.events.rows.get(sale.id)?.saleRecord).toMatchObject({ orders: 0, unitsSold: 0 });
-		expect(log.append.mock.calls.map(([entry]) => entry.action)).toEqual([
-			'event.sale.start',
-			'event.sale.end',
-		]);
+		expect(log.append.mock.calls.map(([entry]) => entry.action)).toEqual(['event.sale.start', 'event.sale.end']);
 	});
 });
 
@@ -931,7 +929,7 @@ describe('the shop’s event pictures', () => {
 	it('sends the popup picture when shown, and nothing for a deleted one or without storage', async () => {
 		const h = harness();
 		const created = await h.admin.create(
-			{ ...saleBody(h.now + HOUR, h.now + 2 * HOUR), popupAssetId: 'asset_1' },
+			{ ...saleBody(h.now + HOUR, h.now + 2 * HOUR), popupAssetIds: ['asset_1'] },
 			null,
 		);
 		await h.admin.publish(created.id, null);
@@ -941,17 +939,17 @@ describe('the shop’s event pictures', () => {
 		const shop = new EventsPublicService(h.events, media as never, storage as never);
 		const shown = await shop.list('en', new Date(h.now));
 		expect(media.findById).toHaveBeenCalledWith('asset_1');
-		expect(shown.items[0]).toHaveProperty('popupImage');
+		expect(shown.items[0]).toHaveProperty('popupImages');
 		media.findById.mockResolvedValueOnce({ ...asset, deletedAt: '2026-11-01T00:00:00.000Z' } as never);
-		expect((await shop.list('en', new Date(h.now))).items[0]?.popupImage).toBeNull();
+		expect((await shop.list('en', new Date(h.now))).items[0]?.popupImages).toEqual([]);
 		media.findById.mockResolvedValueOnce(null as never);
-		expect((await shop.list('en', new Date(h.now))).items[0]?.popupImage).toBeNull();
+		expect((await shop.list('en', new Date(h.now))).items[0]?.popupImages).toEqual([]);
 		expect(
 			(await new EventsPublicService(h.events, media as never, null).list('en', new Date(h.now))).items[0]
-				?.popupImage,
-		).toBeNull();
+				?.popupImages,
+		).toEqual([]);
 		await h.events.save({ ...(await h.admin.detail(created.id)), showPopup: false });
-		expect((await new EventsPublicService(h.events).list('en', new Date(h.now))).items[0]?.popupImage).toBeNull();
+		expect((await new EventsPublicService(h.events).list('en', new Date(h.now))).items[0]?.popupImages).toEqual([]);
 		const link = await h.admin.previewLink(created.id);
 		expect((await shop.preview(link.token, 'en', new Date(h.now))).items).toHaveLength(1);
 		await h.events.save({ ...(await h.admin.detail(created.id)), showPopup: true });
@@ -1082,7 +1080,7 @@ describe('the remaining event branches', () => {
 	it('leaves out a published sale already past its end, and resolves a picture through storage', async () => {
 		const h = harness();
 		const created = await h.admin.create(
-			{ ...saleBody(h.now + HOUR, h.now + 2 * HOUR), popupAssetId: 'asset_1' },
+			{ ...saleBody(h.now + HOUR, h.now + 2 * HOUR), popupAssetIds: ['asset_1'] },
 			null,
 		);
 		await h.admin.publish(created.id, null);
@@ -1105,7 +1103,7 @@ describe('the remaining event branches', () => {
 			} as never,
 		);
 		const shown = await shop.list('en', new Date(h.now));
-		expect(shown.items[0]?.popupImage?.roles['banner']?.[0]?.url).toBe('https://cdn.example.com/banner/a.webp');
+		expect(shown.items[0]?.popupImages[0]?.roles['banner']?.[0]?.url).toBe('https://cdn.example.com/banner/a.webp');
 		expect((await shop.list('en', new Date(h.now + 3 * HOUR))).items).toEqual([]);
 	});
 });
@@ -1139,5 +1137,43 @@ describe('the sale price book’s membership', () => {
 		await h.book.refresh();
 		expect(h.book.productsIn(first.id)).toEqual(['p1']);
 		expect(h.book.productsIn(second.id)).toEqual(['p3']);
+	});
+});
+
+describe('several popup pictures', () => {
+	it('sends them in order, skipping one that is missing, with the chosen side', async () => {
+		const h = harness();
+		const created = await h.admin.create(
+			{
+				...saleBody(h.now + HOUR, h.now + 2 * HOUR),
+				popupAssetIds: ['a1', 'gone', 'a2'],
+				popupImageSide: 'left',
+			},
+			null,
+		);
+		await h.admin.publish(created.id, null);
+		const asset = (id: string) => ({
+			id,
+			visibility: 'public',
+			width: 1200,
+			height: 1600,
+			dominantColor: null,
+			thumbHash: null,
+			deletedAt: null,
+			text: { alt: {} },
+			derivatives: [
+				{ role: 'banner', storageKey: `${id}.webp`, width: 1200, height: 1600, format: 'image/webp' },
+			],
+		});
+		const media = { findById: vi.fn(async (id: string) => (id === 'gone' ? null : asset(id))) };
+		const shop = new EventsPublicService(
+			h.events,
+			media as never,
+			{ getUrl: (key: string) => `https://cdn/${key}` } as never,
+		);
+		const [shown] = (await shop.list('en', new Date(h.now))).items;
+		expect(shown?.popupImages.map((image) => image.assetId)).toEqual(['a1', 'a2']);
+		expect(shown?.popupImageSide).toBe('left');
+		expect((await h.admin.detail(created.id)).popupAssetIds).toEqual(['a1', 'gone', 'a2']);
 	});
 });

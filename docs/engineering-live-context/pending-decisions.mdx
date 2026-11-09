@@ -47,6 +47,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 | `DEC-PERF-TRIM`             | Which unused styles, icons and font weights to remove once development is finished                   | Storefront speed, theme, design system        |
+| `DEC-SHORTS-PRODUCT-LINK`   | Whether a Short's on-screen episode code links it to a product, and how                              | Shorts popup, product page, admin             |
 
 ---
 
@@ -755,3 +756,28 @@ Measured on 2026-11-09 with a production build behind Brotli: the global stylesh
 Removals approved (owner's own words, with date):
 
 Notes:
+
+---
+
+## 26. `DEC-SHORTS-PRODUCT-LINK` — Linking Shorts to products by episode code
+
+### Decision needed
+
+The channel's Shorts each show one saree with a code and a price burned into the picture (for example `EP679-S6D, Rs.6995 offer price Rs.5245` and a WhatsApp number). Decide whether a Short should link to that saree's product page ("Shop this saree" in the Shorts popup and on its card), and how the link is made. The owner will ask the business owner (2026-11-10).
+
+### Why this matters
+
+The code is part of the video's pixels; the site cannot read it. Without a link, a viewer who likes the saree only has the on-screen WhatsApp number, which takes the sale off the site. The on-screen price is fixed when the Short is made and goes stale when the site price changes.
+
+### Options
+
+1. **Paste the Short into that product's video list** (recommended in the brief). The product's existing video field already accepts Shorts; when a Short is linked to exactly one product, the popup shows "Shop this saree" and the card shows the product name. No new admin field.
+2. **An episode-code field on products.** Admin types the code (for example `EP679-S6D`); the daily refresh matches it against Short titles and links them automatically. Depends on the channel always putting the code in the title.
+3. **No link.** Shorts stay a channel showcase.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: built so far without any product link; adding option 1 or 2 later changes no page layout.
+

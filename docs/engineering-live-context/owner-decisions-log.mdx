@@ -513,9 +513,10 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
 ### Video and YouTube
 
 - Uploaded video is dropped at launch; the HLS/ffmpeg seams stay dormant behind an off-by-default flag.
-- YouTube playback uses Vidstack's YouTube provider, `youtube-nocookie`, click-to-load, `rel=0` (end-screen suggestions stay within the same channel).
-- PDP videos come from a per-product field that accepts a URL or bare ID, normalised to the ID. The field has a **Validate** button that must succeed before the form can submit; on success it becomes plain text showing the matched video title, and editing the field resets it.
-- The home rail uses Data API v3 through `YouTubePort` (`playlistItems.list` on the uploads playlist, 1 quota unit), fetching and caching 10 daily at 00:00 IST; the displayed count is an admin setting seeded at 8; surfaces are a `youtubeRailPlacements` list seeded with `home`.
+- YouTube playback uses **Video.js 10** (`@videojs/html` with `@videojs/youtube-video`, Apache-2.0) in place of Vidstack (deprecated, security fixes only until January 2028): `youtube-nocookie`, click-to-load (the server renders a poster button; the player loads on the click), `rel=0`, controls in the shop's colours (2026-11-10).
+- PDP videos come from a per-product **list** of up to 5 YouTube videos, long videos and Shorts mixed, in the order admin sets. Each row accepts a URL or bare ID, normalised to the ID; the server checks it on paste or Enter (a Validate button stays for typed IDs) and refuses private, deleted, non-embeddable or duplicate videos. Nothing unchecked is ever saved. The server tells a Short from a long video by itself (length and portrait shape), so admin has no long/short switch (2026-11-10).
+- The home rail and `/videos` use Data API v3 through `YouTubePort` (`playlistItems.list` on the uploads playlist plus `videos.list`, 1 quota unit per 50 each), refreshed once a day at 00:00 IST by the worker, never per shopper. The cache holds the **24 newest videos and 12 newest Shorts**; the rail's displayed count is an admin setting seeded at 8 (maximum 24); surfaces are a `youtubeRailPlacements` list seeded with `home`.
+- See the 2026-11-10 video page round below for the page, Shorts, product-page and consent rules.
 
 ## Payments, FX, and shipping
 
@@ -1121,6 +1122,21 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 
 - **Every icon-only action in the admin shows its name on hover.** Staff may not know that a pencil means Edit or a bin means Delete, so any clickable thing that shows only an icon carries a translated `title` naming the action ("Edit", "Delete", "Pick a date", "Next page"). The browser's own hover text is used: no popover and no tooltip library. Buttons that already show words need nothing more.
 - **It holds for all future work.** `pnpm check:icon-titles` (part of `pnpm lint`) reads every admin template and fails on an icon-only button, link or click target without a `title`. Table row-action labels are translation keys, so the shared table names each row action in English and Bengali.
+
+## Owner decision round (2026-11-10) — video page, Shorts and product videos
+
+The owner approved the video page brief (revision 4) in full on 2026-11-10.
+
+- **`/videos` (V3, R1, V5).** One page with two tabs in the product-tab style, **Videos (24)** and **Shorts (12)**. Both tabs' contents are in the server-rendered page; `?tab=shorts` opens on Shorts. Videos tab: a large player that plays in place, then a grid of video cards. Shorts tab: a grid of 9:16 cards that open a vertical popup. A "See all on YouTube" button closes the page.
+- **What a click does (V2).** Home rail and product page open a popup (theme modal); `/videos` plays in place.
+- **When a Short ends (S2).** The next Short from our own saved list plays; another channel's video never plays.
+- **Posters on our CDN (V4).** The daily refresh copies each poster through the image pipeline. Keys carry the video ID and a fingerprint, so a changed poster gets a new address and the old one is deleted: the set stays exactly what the site shows, and nothing is overwritten in place (Cloudflare would keep the old picture).
+- **Product videos (R3, R4).** Up to 5 per product. In the photo strip they come after the photos, in admin order; a tile opens the wide popup (video) or the vertical popup (Short). In the Description tab one video plays in place; two or more form a carousel that moves on by itself only while nothing plays and stops while a video plays. Long videos and Shorts share one 16:9 frame in the carousel, a Short centred inside it.
+- **Bengali pages (V6).** Shop text is Bengali; video titles stay as YouTube gives them, marked `lang="en"`. No Bengali title field for now.
+- **Consent (V7).** YouTube is listed under Functional; pressing play counts as consent for that one video, as with the Contact map. The cookie list gains a YouTube row in both languages and the cookie policy version goes up so everyone is asked again.
+- **Old address and menus (V8).** The old-URL row `/videos` changes from 410 to a 301 to `/en/videos`. "Videos" is added to the header and footer menus.
+- **Playlists (V9).** Not at launch.
+- **Open:** whether a Short's episode code (for example `EP679-S6D` burned into the video) should link that Short to a product, and how. Tracked as `DEC-SHORTS-PRODUCT-LINK`; nothing that links Shorts to products is built until it is answered.
 
 ## Open decisions
 

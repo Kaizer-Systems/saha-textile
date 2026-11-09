@@ -516,6 +516,7 @@ const detail = (over: Record<string, unknown> = {}) => ({
 	relatedProductIds: [],
 	upsellProductIds: [],
 	crossSellProductIds: [],
+	videos: [],
 	content: {
 		title: { en: 'Silk' },
 		shortDescription: {},

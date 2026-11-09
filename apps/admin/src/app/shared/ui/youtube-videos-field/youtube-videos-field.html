@@ -1,0 +1,105 @@
+<!-- The product FAQ's repeatable rows (product-faq.html): numbered box, up / down / remove. -->
+@for (row of control().value; track row.videoId; let index = $index, first = $first, last = $last) {
+<div class="rounded-3 mb-3 border p-3">
+	<div class="d-flex align-items-center justify-content-between mb-2 gap-2">
+		<h5 class="fw-semibold mb-0">
+			{{ 'product_video_number' | transloco: { number: index + 1 } }} @if (row.kind === 'short') {
+			<span class="badge bg-info ms-1">
+				{{ 'video_kind_short' | transloco }} · {{ length(row.durationSeconds) }}
+			</span>
+			} @else {
+			<span class="badge rounded-pill badge-theme ms-1">
+				{{ 'video_kind_video' | transloco }} · {{ length(row.durationSeconds) }}
+			</span>
+			}
+		</h5>
+		<div class="d-flex gap-1">
+			<button
+				[title]="'move_up' | transloco"
+				type="button"
+				class="btn btn-sm btn-outline-secondary"
+				[disabled]="first"
+				[attr.aria-label]="'move_up' | transloco"
+				(click)="move(index, -1)"
+			>
+				<i class="ri-arrow-up-line"></i>
+			</button>
+			<button
+				[title]="'move_down' | transloco"
+				type="button"
+				class="btn btn-sm btn-outline-secondary"
+				[disabled]="last"
+				[attr.aria-label]="'move_down' | transloco"
+				(click)="move(index, 1)"
+			>
+				<i class="ri-arrow-down-line"></i>
+			</button>
+			<button
+				[title]="'remove' | transloco"
+				type="button"
+				class="btn btn-sm btn-outline-danger"
+				[attr.aria-label]="'remove' | transloco"
+				(click)="remove(index)"
+			>
+				<i class="ri-delete-bin-line"></i>
+			</button>
+		</div>
+	</div>
+	<div class="d-flex align-items-center gap-3">
+		<img
+			[src]="row.thumbnailUrl"
+			[alt]="row.title"
+			width="120"
+			class="rounded-2 flex-shrink-0"
+		/>
+		<div>
+			<p class="fw-semibold mb-1">
+				<i class="ri-checkbox-circle-line me-1"></i>
+				{{ row.title }}
+			</p>
+			<p class="help-text mb-0">
+				youtube.com/{{ row.kind === 'short' ? 'shorts/' : 'watch?v=' }}{{ row.videoId }}
+			</p>
+		</div>
+	</div>
+</div>
+} @if (adding() || !control().value.length) {
+<div class="input-group">
+	<input
+		class="form-control"
+		type="text"
+		[id]="id()"
+		[value]="text()"
+		[placeholder]="'product_video_paste' | transloco"
+		[disabled]="checking()"
+		(input)="edit($any($event.target).value)"
+		(paste)="pasted($event)"
+		(keydown.enter)="$event.preventDefault(); validate()"
+	/>
+	<app-button
+		[class]="'btn btn-theme'"
+		[id]="id() + '_validate'"
+		[type]="'button'"
+		[spinner]="false"
+		[disabled]="checking() || !text().trim()"
+		(click)="validate()"
+	>
+		{{ 'validate' | transloco }}
+	</app-button>
+</div>
+@if (error()) {
+<div class="invalid-feedback d-block">{{ error() }}</div>
+} @else {
+<p class="help-text">{{ 'product_video_check_help' | transloco }}</p>
+} } @else {
+<button
+	type="button"
+	class="btn btn-theme"
+	[disabled]="control().value.length >= max"
+	(click)="adding.set(true)"
+>
+	<i class="ri-add-line"></i>
+	{{ 'product_video_add_another' | transloco }}
+</button>
+<p class="help-text mt-2">{{ 'product_videos_help' | transloco: { max: max } }}</p>
+}

@@ -1,6 +1,6 @@
 /** The API's admin catalogue shapes (`AdminProductList`, `AdminProductDetail`, `ProductMerchandisingWrite`). */
 
-import type { ProductContentWrite } from '@saha-textile/contracts';
+import type { ProductContentWrite, ProductVideo } from '@saha-textile/contracts';
 
 export type CatalogBadgeCode = 'sale' | 'featured' | 'bestseller' | 'trending' | 'new' | 'low_stock' | 'back_in_stock';
 
@@ -80,6 +80,8 @@ export interface CatalogProductDetail {
 	upsellProductIds: string[];
 	crossSellProductIds: string[];
 	variants: CatalogVariantView[];
+	/** Checked YouTube videos and Shorts, in order. */
+	videos: ProductVideo[];
 }
 
 export interface CatalogVariantWrite extends CatalogShipping {
@@ -111,6 +113,8 @@ export interface CatalogProductWrite {
 	relatedProductIds?: string[];
 	upsellProductIds?: string[];
 	crossSellProductIds?: string[];
+	/** Replaces the product's videos when sent. */
+	videos?: ProductVideo[];
 }
 
 export interface CatalogReplacementTarget {

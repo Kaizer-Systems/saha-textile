@@ -81,6 +81,9 @@ export interface YouTubeValidation {
 	videoId: string;
 	title: string;
 	thumbnailUrl: string;
+	/** Worked out by the API from YouTube's data; admin never picks it. */
+	kind: 'video' | 'short';
+	durationSeconds: number;
 }
 
 @Injectable({ providedIn: 'root' })

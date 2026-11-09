@@ -55,6 +55,7 @@ import type {
 	ProductContentWrite,
 	ProductCreate,
 	ProductOptionGroup,
+	ProductVideo,
 } from '@saha-textile/contracts';
 import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
@@ -95,7 +96,7 @@ import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
-import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
+import { YouTubeVideosField } from '@shared/ui/youtube-videos-field/youtube-videos-field';
 import { priceValidator } from '@shared/validators/price-validator';
 
 import { OptionGroups } from './option-groups/option-groups';
@@ -189,7 +190,7 @@ function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
 		OptionGroups,
 		ProductBundleForm,
 		ProductImages,
-		YouTubeVideoField,
+		YouTubeVideosField,
 		AdvancedDropdown,
 		NgbNavOutlet,
 		TranslocoModule,
@@ -370,8 +371,8 @@ export class FormProduct {
 		this.isBrowser = isPlatformBrowser(platformId);
 
 		this.form = this.formBuilder.group({
-			/** Validated YouTube video id for the PDP (catalog chunk persists it). */
-			youtube_video_id: new FormControl<string | null>(null),
+			/** Checked YouTube videos and Shorts for the product page, in order (up to five). */
+			videos: new FormControl<ProductVideo[]>([], { nonNullable: true }),
 			name: new FormControl(''),
 			short_description: new FormControl(''),
 			description: new FormControl(''),
@@ -514,6 +515,7 @@ export class FormProduct {
 				related_products: detail.relatedProductIds,
 				upsell_products: detail.upsellProductIds,
 				cross_sell_products: detail.crossSellProductIds,
+				videos: detail.videos,
 			},
 			{ emitEvent: false },
 		);
@@ -965,6 +967,7 @@ export class FormProduct {
 			relatedProductIds: ids(raw['related_products']),
 			upsellProductIds: ids(raw['upsell_products']),
 			crossSellProductIds: ids(raw['cross_sell_products']),
+			videos: (raw['videos'] as ProductVideo[] | undefined) ?? [],
 		};
 		const saved: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
 		const bundled = product.type === 'bundle' && this.bundle().groups.length > 0;

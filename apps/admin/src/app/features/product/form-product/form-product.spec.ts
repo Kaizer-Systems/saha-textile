@@ -87,6 +87,7 @@ const detail = (overrides: Record<string, unknown> = {}) => ({
 	relatedProductIds: ['a', ''],
 	upsellProductIds: [],
 	crossSellProductIds: [],
+	videos: [],
 	variants: [variant()],
 	...overrides,
 });
@@ -605,6 +606,7 @@ describe('FormProduct.submit', () => {
 			relatedProductIds: ['a'],
 			upsellProductIds: [],
 			crossSellProductIds: [],
+			videos: [],
 		});
 		expect(page.tabError).toBeNull();
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/product');

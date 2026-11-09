@@ -225,6 +225,7 @@ export class CatalogPublicService {
 			unknownVariant: read.unknownVariant,
 			gallery: gallery.map((frame) => frame.image),
 			shareImageUrl,
+			videos: product.videos,
 			optionGroups: groups.map((group) => ({
 				code: group.attributeCode,
 				label: localized(group.label),

@@ -1,7 +1,14 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ContentBlock, MediaAsset } from '@saha-textile/contracts';
+import {
+	type ContentBlock,
+	type MediaAsset,
+	YOUTUBE_FEED_SHORTS,
+	YOUTUBE_FEED_VIDEOS,
+	YouTubeFeedCache,
+} from '@saha-textile/contracts';
+import * as core from '@saha-textile/core-domain';
 import type { MediaAssetRepository, StoragePort } from '@saha-textile/core-domain';
 
 import { loadConfig } from '../src/config/app-config';
@@ -243,6 +250,23 @@ describe('ContentBlocksService', () => {
 });
 
 describe('YouTubeService', () => {
+	it('keeps the refresh and the cache schema to the same 24 videos and 12 Shorts', () => {
+		expect([core.YOUTUBE_FEED_VIDEOS, core.YOUTUBE_FEED_SHORTS]).toEqual([
+			YOUTUBE_FEED_VIDEOS,
+			YOUTUBE_FEED_SHORTS,
+		]);
+		const row = (id: number) => ({
+			videoId: `v${String(id).padStart(10, '0')}`,
+			title: 't',
+			publishedAt: '2026-11-01T00:00:00.000Z',
+			thumbnailUrl: 'u',
+		});
+		const many = (count: number) => Array.from({ length: count }, (_, index) => row(index));
+		expect(YouTubeFeedCache.safeParse({ videos: many(24), shorts: many(12) }).success).toBe(true);
+		expect(YouTubeFeedCache.safeParse({ videos: many(25) }).success).toBe(false);
+		expect(YouTubeFeedCache.safeParse({ shorts: many(13) }).success).toBe(false);
+	});
+
 	it('rejects a non-YouTube link before calling the API', async () => {
 		const youtube = { findVideo: vi.fn() };
 		await expect(

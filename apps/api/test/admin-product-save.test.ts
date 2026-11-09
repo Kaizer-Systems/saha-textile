@@ -236,6 +236,47 @@ describe('admin product save', () => {
 		expect(faqs.deleteById).toHaveBeenCalledWith('faq_old');
 	});
 
+	it('saves the product videos in admin order, and leaves them alone when the form sends none', async () => {
+		const long = {
+			videoId: 'QRP0xuczTUo',
+			title: 'EP693',
+			thumbnailUrl: 'u',
+			kind: 'video',
+			durationSeconds: 1521,
+		};
+		const short = {
+			videoId: 'YfNsUapqTqE',
+			title: 'EP679 S6D',
+			thumbnailUrl: 'u',
+			kind: 'short',
+			durationSeconds: 48,
+		};
+		const { catalog, current } = harness();
+		await catalog.updateMerchandising('prd_kurti', form({ videos: [short, long] as never }));
+		expect(current().videos.map((video) => video.videoId)).toEqual(['YfNsUapqTqE', 'QRP0xuczTUo']);
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().videos).toHaveLength(2);
+		await catalog.updateMerchandising('prd_kurti', form({ videos: [] }));
+		expect(current().videos).toEqual([]);
+	});
+
+	it('refuses a sixth video and the same video twice', () => {
+		const pipe = new ZodValidationPipe(ProductMerchandisingWrite);
+		const video = (id: string) => ({
+			videoId: id,
+			title: 't',
+			thumbnailUrl: 'u',
+			kind: 'video',
+			durationSeconds: 60,
+		});
+		const ids = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc', 'ddddddddddd', 'eeeeeeeeeee', 'fffffffffff'];
+		expect(() => pipe.transform({ ...form(), videos: ids.map(video) })).toThrow(BadRequestException);
+		expect(() => pipe.transform({ ...form(), videos: [video(ids[0]!), video(ids[0]!)] })).toThrow(
+			BadRequestException,
+		);
+		expect(pipe.transform({ ...form(), videos: ids.slice(0, 5).map(video) })).toBeTruthy();
+	});
+
 	it('rejects a selling price above the MRP before it reaches the service', () => {
 		const pipe = new ZodValidationPipe(ProductMerchandisingWrite);
 		const body = { ...form(), variants: [{ ...row('var_s', 'KPS-1'), mrpINR: 2000, sellingINR: 2400 }] };

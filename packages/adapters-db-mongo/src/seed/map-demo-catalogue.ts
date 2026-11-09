@@ -612,6 +612,7 @@ export function mapDemoCatalogue(input: {
 			lifetimeUnitsReceived: 0,
 			featured: Boolean(product.is_featured),
 			faqEnabled: false,
+			videos: [],
 			insightBadges: [],
 			pinnedBadges: [],
 			hiddenBadges: [],

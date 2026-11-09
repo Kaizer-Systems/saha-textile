@@ -1,7 +1,10 @@
-import type { YouTubePort, YouTubeVideo } from '@saha-textile/core-domain';
+import type { YouTubePlaylistItem, YouTubePort, YouTubeVideo } from '@saha-textile/core-domain';
+import type { YouTubeVideoKind } from '@saha-textile/contracts';
 import { z } from 'zod';
 
 const API = 'https://www.googleapis.com/youtube/v3';
+/** YouTube's own rule: a Short is at most three minutes long. */
+const SHORT_MAX_SECONDS = 180;
 
 const Thumbnails = z
 	.object({
@@ -40,14 +43,27 @@ const VideosResponse = z.object({
 			z.object({
 				id: z.string(),
 				snippet: z.object({ title: z.string(), publishedAt: z.string(), thumbnails: Thumbnails }),
+				contentDetails: z.object({ duration: z.string() }).optional(),
 				status: z.object({ privacyStatus: z.string(), embeddable: z.boolean().optional() }).optional(),
+				player: z
+					.object({ embedWidth: z.coerce.number().optional(), embedHeight: z.coerce.number().optional() })
+					.optional(),
 			}),
 		)
 		.default([]),
 });
+type ApiVideo = z.infer<typeof VideosResponse>['items'][number];
 
 const bestThumbnail = (thumbnails: z.infer<typeof Thumbnails>): string =>
 	thumbnails.maxres?.url ?? thumbnails.high?.url ?? thumbnails.medium?.url ?? thumbnails.default?.url ?? '';
+
+/** `PT1H2M3S` → 3723. Anything unreadable (a live stream's `P0D`) is 0. */
+export const isoDurationSeconds = (value: string | undefined): number => {
+	const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(value ?? '');
+	if (!match) return 0;
+	const [, days, hours, minutes, seconds] = match.map((part) => Number(part ?? 0));
+	return (((days ?? 0) * 24 + (hours ?? 0)) * 60 + (minutes ?? 0)) * 60 + (seconds ?? 0);
+};
 
 export class YouTubeApiError extends Error {
 	constructor(message: string, cause?: unknown) {
@@ -60,9 +76,14 @@ export class YouTubeApiError extends Error {
  * YouTube Data API v3 implementation of `YouTubePort`.
  *
  * The API key is server env inside this adapter and never appears in a URL that is logged
- * or an error message: errors carry the HTTP status only. Quota use is tiny — channel
- * resolution once, then one `playlistItems.list` (1 unit) per daily refresh and one
- * `videos.list` (1 unit) per admin Validate click.
+ * or an error message: errors carry the HTTP status only. Quota use is tiny: channel
+ * resolution once, then per daily refresh one `playlistItems.list` and one `videos.list`
+ * (1 unit each), and one `videos.list` per admin check.
+ *
+ * Shorts: the Data API has no "is a Short" field. A video of three minutes or less is a Short
+ * when `youtube.com/shorts/<id>` answers 200 (YouTube redirects any other video to `/watch`).
+ * That check costs no quota. If YouTube cannot be reached for it, the player's embed shape
+ * decides: taller than wide is a Short.
  */
 export class YouTubeDataApi implements YouTubePort {
 	private readonly fetchImpl: typeof fetch;
@@ -79,7 +100,7 @@ export class YouTubeDataApi implements YouTubePort {
 			: null;
 	}
 
-	async listPlaylistVideos(input: { playlistId: string; limit: number }): Promise<YouTubeVideo[]> {
+	async listPlaylistVideos(input: { playlistId: string; limit: number }): Promise<YouTubePlaylistItem[]> {
 		const body = PlaylistItemsResponse.parse(
 			await this.get('playlistItems', {
 				part: 'snippet,contentDetails',
@@ -101,17 +122,57 @@ export class YouTubeDataApi implements YouTubePort {
 		});
 	}
 
-	/** Null for an unknown, private, or non-embeddable video — none of those can play on a PDP. */
+	async describeVideos(videoIds: readonly string[]): Promise<YouTubeVideo[]> {
+		const ids = [...new Set(videoIds)].slice(0, 50);
+		if (!ids.length) return [];
+		const body = VideosResponse.parse(
+			await this.get('videos', {
+				part: 'snippet,status,contentDetails,player',
+				id: ids.join(','),
+				maxWidth: '1080',
+			}),
+		);
+		const playable = body.items.filter(
+			(video) => video.status?.privacyStatus !== 'private' && video.status?.embeddable !== false,
+		);
+		const byId = new Map(
+			await Promise.all(playable.map(async (video) => [video.id, await this.toVideo(video)] as const)),
+		);
+		return ids.flatMap((id) => byId.get(id) ?? []);
+	}
+
+	/** Null for an unknown, private, or non-embeddable video; none of those can play on a product page. */
 	async findVideo(videoId: string): Promise<YouTubeVideo | null> {
-		const body = VideosResponse.parse(await this.get('videos', { part: 'snippet,status', id: videoId }));
-		const video = body.items[0];
-		if (!video || video.status?.privacyStatus === 'private' || video.status?.embeddable === false) return null;
+		const [video] = await this.describeVideos([videoId]);
+		return video ?? null;
+	}
+
+	private async toVideo(video: ApiVideo): Promise<YouTubeVideo> {
+		const durationSeconds = isoDurationSeconds(video.contentDetails?.duration);
 		return {
 			videoId: video.id,
 			title: video.snippet.title,
 			publishedAt: video.snippet.publishedAt,
 			thumbnailUrl: bestThumbnail(video.snippet.thumbnails),
+			kind: await this.kindOf(video, durationSeconds),
+			durationSeconds,
 		};
+	}
+
+	private async kindOf(video: ApiVideo, durationSeconds: number): Promise<YouTubeVideoKind> {
+		if (durationSeconds === 0 || durationSeconds > SHORT_MAX_SECONDS) return 'video';
+		try {
+			const response = await this.fetchImpl(`https://www.youtube.com/shorts/${video.id}`, {
+				method: 'HEAD',
+				redirect: 'manual',
+			});
+			if (response.status === 200) return 'short';
+			if (response.status >= 300 && response.status < 400) return 'video';
+		} catch {
+			// Fall through to the embed shape.
+		}
+		const { embedWidth, embedHeight } = video.player ?? {};
+		return embedWidth && embedHeight && embedHeight > embedWidth ? 'short' : 'video';
 	}
 
 	private async get(resource: string, params: Record<string, string>): Promise<unknown> {

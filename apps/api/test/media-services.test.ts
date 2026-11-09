@@ -719,7 +719,14 @@ describe('ContentBlocksService', () => {
 });
 
 describe('YouTubeService', () => {
-	const video = { videoId: 'dQw4w9WgXcQ', title: 'T', thumbnailUrl: 'u', publishedAt: 'p' };
+	const video = {
+		videoId: 'dQw4w9WgXcQ',
+		title: 'T',
+		thumbnailUrl: 'u',
+		publishedAt: 'p',
+		kind: 'short',
+		durationSeconds: 48,
+	};
 	const build = (stored: unknown = null, feed: unknown = null) => {
 		const youtube = { findVideo: vi.fn(async () => video as unknown) };
 		const settings = {
@@ -742,6 +749,8 @@ describe('YouTubeService', () => {
 			videoId: 'dQw4w9WgXcQ',
 			title: 'T',
 			thumbnailUrl: 'u',
+			kind: 'short',
+			durationSeconds: 48,
 		});
 		expect((await statusOf(service.validate('not a link at all'))).status).toBe(422);
 		youtube.findVideo.mockResolvedValue(null);
@@ -765,8 +774,26 @@ describe('YouTubeService', () => {
 	it('serves the rail only where it is switched on, and cut to the display count', async () => {
 		expect(await build(stored).service.rail('product')).toEqual({ videos: [] });
 		expect(await build(stored).service.rail('home')).toEqual({ videos: [] });
-		const { service } = build(stored, { videos: [1, 2, 3] });
-		expect((await service.rail('home')).videos).toEqual([1, 2]);
+		const feedVideo = (id: string, posterUrl: string | null = null) => ({
+			videoId: id,
+			thumbnailUrl: `yt/${id}`,
+			posterUrl,
+		});
+		const { service } = build(stored, { videos: [feedVideo('a', 'cdn/a'), feedVideo('b'), feedVideo('c')] });
+		expect((await service.rail('home')).videos.map((row) => row.thumbnailUrl)).toEqual(['cdn/a', 'yt/b']);
+	});
+
+	it('serves /videos: every cached video and Short, our poster first, and the channel page', async () => {
+		const empty = await build(stored).service.videos();
+		expect(empty).toEqual({ videos: [], shorts: [], channelUrl: 'https://www.youtube.com/@a' });
+		const { service } = build(stored, {
+			videos: [{ videoId: 'v', thumbnailUrl: 'yt/v', posterUrl: null }],
+			shorts: [{ videoId: 's', thumbnailUrl: 'yt/s', posterUrl: 'cdn/s' }],
+		});
+		const page = await service.videos();
+		expect(page.videos[0]?.thumbnailUrl).toBe('yt/v');
+		expect(page.shorts[0]?.thumbnailUrl).toBe('cdn/s');
+		expect((await build(null, { videos: [] }).service.videos()).shorts).toEqual([]);
 	});
 });
 
@@ -843,13 +870,14 @@ describe('media controllers', () => {
 		const controller = new StorefrontMediaController(
 			{ uploadRules: () => 'rules' } as never,
 			{ storefront: async () => 'banners' } as never,
-			{ rail: async () => 'rail' } as never,
+			{ rail: async () => 'rail', videos: async () => 'videos' } as never,
 			{ storefront: async () => 'brand' } as never,
 		);
 		expect(await controller.brandKit()).toBe('brand');
 		expect(controller.rules()).toBe('rules');
 		expect(await controller.banners({} as never)).toBe('banners');
 		expect(await controller.rail({ placement: 'home' } as never)).toBe('rail');
+		expect(await controller.videos()).toBe('videos');
 	});
 
 	it('uses the session as the review owner, and refuses a guest', async () => {

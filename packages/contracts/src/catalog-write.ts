@@ -5,6 +5,7 @@ import { Slug } from './common';
 import { BundleGroup, BundlePricePolicy, BundleType } from './product-bundle';
 import { ProductShippingDefaults, ProductStatus, ProductType } from './product';
 import { ProductOptionGroupSet } from './product-options';
+import { ProductVideo, ProductVideos } from './site-settings';
 
 /** Every badge a card can show. Pinning wins inside its own slot; hiding skips it. */
 export const CatalogBadgeCode = z.enum([
@@ -116,6 +117,8 @@ export const ProductMerchandisingWrite = z
 		relatedProductIds: z.array(z.string().min(1)).max(12).optional(),
 		upsellProductIds: z.array(z.string().min(1)).max(12).optional(),
 		crossSellProductIds: z.array(z.string().min(1)).max(12).optional(),
+		/** YouTube videos and Shorts for the product page, as checked in admin. Absent leaves them. */
+		videos: ProductVideos.optional(),
 	})
 	.superRefine((body, ctx) => {
 		if (body.madeToOrder && body.status !== 'live') {
@@ -219,6 +222,7 @@ export const AdminProductDetail = z.object({
 	upsellProductIds: z.array(z.string()),
 	crossSellProductIds: z.array(z.string()),
 	variants: z.array(AdminVariantView),
+	videos: z.array(ProductVideo).default([]),
 });
 export type AdminProductDetail = z.infer<typeof AdminProductDetail>;
 

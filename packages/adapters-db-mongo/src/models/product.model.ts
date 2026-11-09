@@ -38,6 +38,13 @@ export interface ProductDoc {
 	lifetimeUnitsReceived?: number;
 	featured?: boolean;
 	faqEnabled?: boolean;
+	videos?: Array<{
+		videoId: string;
+		title: string;
+		thumbnailUrl: string;
+		kind: 'video' | 'short';
+		durationSeconds: number;
+	}>;
 	insightBadges?: Array<'bestseller' | 'trending'>;
 	pinnedBadges?: string[];
 	hiddenBadges?: string[];
@@ -90,6 +97,7 @@ const ProductSchema = new Schema<ProductDoc>(
 		lifetimeUnitsReceived: { type: Number, default: 0 },
 		featured: { type: Boolean, default: false },
 		faqEnabled: { type: Boolean, default: false },
+		videos: { type: [Schema.Types.Mixed], default: [] },
 		insightBadges: { type: [String], default: [] },
 		pinnedBadges: { type: [String], default: [] },
 		hiddenBadges: { type: [String], default: [] },

@@ -79,6 +79,15 @@ describe('product page link-preview card', () => {
 		]);
 	});
 
+	it('sends the product videos in admin order, and none when it has none', async () => {
+		expect((await service(false).page('red-banarasi-saree')).videos).toEqual([]);
+		const short = { videoId: 'YfNsUapqTqE', title: 'S', thumbnailUrl: 'u', kind: 'short', durationSeconds: 48 };
+		product.videos = [short as never];
+		const page = await service(false).page('red-banarasi-saree');
+		product.videos = [];
+		expect(page.videos).toEqual([short]);
+	});
+
 	it('sends none before the main-photo sizes are made', async () => {
 		const page = await service(false).page('red-banarasi-saree');
 		expect(page.shareImageUrl).toBeNull();

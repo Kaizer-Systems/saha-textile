@@ -6,13 +6,19 @@ import {
 	type YouTubeSettings,
 	type YouTubeSettingsUpdate,
 	type YouTubeValidateResponse,
+	type YouTubeVideoSummary,
+	type YouTubeVideosResponse,
 	normalizeYouTubeVideoId,
 } from '@saha-textile/contracts';
 import { DEFAULT_YOUTUBE_SETTINGS, type SiteSettingsRepository, type YouTubePort } from '@saha-textile/core-domain';
 
 import { SITE_SETTINGS_REPOSITORY, YOUTUBE_PORT } from '../infra/tokens';
 
-/** The PDP video Validate button and the home rail (owner log § Media → Video and YouTube). */
+/** Our CDN copy of a poster when the refresh has made one, else YouTube's own picture. */
+const withPoster = (video: YouTubeVideoSummary): YouTubeVideoSummary =>
+	video.posterUrl ? { ...video, thumbnailUrl: video.posterUrl } : video;
+
+/** The product video check, the home rail and `/videos` (owner log § Media → Video and YouTube). */
 @Injectable()
 export class YouTubeService {
 	constructor(
@@ -33,7 +39,13 @@ export class YouTubeService {
 		const video = await this.youtube.findVideo(videoId);
 		if (!video)
 			throw mediaRefusal(HttpStatus.NOT_FOUND, 'video_not_found', 'No public, embeddable video has that id.');
-		return { videoId: video.videoId, title: video.title, thumbnailUrl: video.thumbnailUrl };
+		return {
+			videoId: video.videoId,
+			title: video.title,
+			thumbnailUrl: video.thumbnailUrl,
+			kind: video.kind,
+			durationSeconds: video.durationSeconds,
+		};
 	}
 
 	async getSettings(): Promise<YouTubeSettings> {
@@ -58,6 +70,16 @@ export class YouTubeService {
 		const settings = await this.getSettings();
 		if (!settings.railPlacements.includes(placement)) return { videos: [] };
 		const feed = await this.settings.get('youtube.feed');
-		return { videos: (feed?.videos ?? []).slice(0, settings.displayCount) };
+		return { videos: (feed?.videos ?? []).slice(0, settings.displayCount).map(withPoster) };
+	}
+
+	/** Everything `/videos` shows. Empty lists until the first refresh, which the page says plainly. */
+	async videos(): Promise<YouTubeVideosResponse> {
+		const [settings, feed] = await Promise.all([this.getSettings(), this.settings.get('youtube.feed')]);
+		return {
+			videos: (feed?.videos ?? []).map(withPoster),
+			shorts: (feed?.shorts ?? []).map(withPoster),
+			channelUrl: `https://www.youtube.com/${settings.channelHandle}`,
+		};
 	}
 }

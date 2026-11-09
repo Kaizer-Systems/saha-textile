@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { CatalogRupee, I18nString, Id, IsoDateTime, LocalizedText, PriceINR, SeoMeta, Slug } from './common';
 import { ProductOptionGroupSet } from './product-options';
+import { ProductVideo } from './site-settings';
 
 export const ProductType = z.enum(['simple', 'variable', 'bundle']);
 export type ProductType = z.infer<typeof ProductType>;
@@ -172,6 +173,8 @@ export const Product = z.object({
 	featured: z.boolean().default(false),
 	/** Shows the FAQ section on the product page: its own questions and its categories'. */
 	faqEnabled: z.boolean().default(false),
+	/** YouTube videos and Shorts, at most five, in the order admin set (owner, 2026-11-10). */
+	videos: z.array(ProductVideo).default([]),
 	insightBadges: z.array(z.enum(['bestseller', 'trending'])).default([]),
 	pinnedBadges: z.array(z.string()).default([]),
 	hiddenBadges: z.array(z.string()).default([]),

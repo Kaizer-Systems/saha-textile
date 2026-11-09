@@ -79,7 +79,9 @@ const video = (index: number) => ({
 const fakeYouTube: YouTubePort = {
 	resolveChannel: async () => ({ channelId: 'UC_saha_textile', uploadsPlaylistId: 'UU_saha_textile' }),
 	listPlaylistVideos: async ({ limit }) => Array.from({ length: limit }, (_unused, index) => video(index)),
-	findVideo: async (videoId) => ({ ...video(0), videoId }),
+	describeVideos: async (videoIds) =>
+		videoIds.map((videoId) => ({ ...video(0), videoId, kind: 'video' as const, durationSeconds: 60 })),
+	findVideo: async (videoId) => ({ ...video(0), videoId, kind: 'short', durationSeconds: 48 }),
 };
 
 const fakeTranscode: VideoTranscodePort = {
@@ -242,5 +244,11 @@ describe('port conformance (compile-time)', () => {
 		const channel = await fakeYouTube.resolveChannel('@saha-textile');
 		const videos = await fakeYouTube.listPlaylistVideos({ playlistId: channel!.uploadsPlaylistId, limit: 3 });
 		expect(videos).toHaveLength(3);
+	});
+
+	it('describes videos with their kind and length', async () => {
+		const [described] = await fakeYouTube.describeVideos(['abcdefghijk']);
+		expect(described).toMatchObject({ videoId: 'abcdefghijk', kind: 'video', durationSeconds: 60 });
+		expect(await fakeYouTube.findVideo('abcdefghijk')).toMatchObject({ kind: 'short', durationSeconds: 48 });
 	});
 });

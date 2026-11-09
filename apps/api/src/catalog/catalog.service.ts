@@ -346,6 +346,7 @@ export class CatalogService {
 			relatedProductIds: relationIds.related,
 			upsellProductIds: relationIds.upsell,
 			crossSellProductIds: relationIds.cross_sell,
+			videos: product.videos,
 			variants: variants.map((row) => ({
 				id: row.id,
 				sku: row.sku,
@@ -460,6 +461,7 @@ export class CatalogService {
 			basePriceINR: selling.length ? Math.min(...selling) : product.basePriceINR,
 			onSale: live.some((row) => row.salePriceINR !== null && row.salePriceINR < row.priceINR),
 			...(body.content ? applyProductContent(product, body.content) : {}),
+			...(body.videos ? { videos: body.videos } : {}),
 		};
 		const stocked = (list: readonly ProductVariant[]) => list.reduce((sum, row) => sum + row.stock.quantity, 0);
 		const received = nextRows.reduce(

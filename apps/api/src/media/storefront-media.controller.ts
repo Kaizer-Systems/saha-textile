@@ -29,6 +29,7 @@ import {
 	type StorefrontBrand,
 	YouTubeRailQuery,
 	type YouTubeRailResponse,
+	type YouTubeVideosResponse,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -81,6 +82,13 @@ export class StorefrontMediaController {
 	@ApiOperation({ operationId: 'youtubeRail', summary: 'Cached latest channel videos for a placement' })
 	rail(@Query(new ZodValidationPipe(YouTubeRailQuery)) query: YouTubeRailQuery): Promise<YouTubeRailResponse> {
 		return this.youtube.rail(query.placement);
+	}
+
+	@Get('storefront/youtube/videos')
+	@Public()
+	@ApiOperation({ operationId: 'youtubeVideos', summary: "The channel's cached videos and Shorts for /videos" })
+	videos(): Promise<YouTubeVideosResponse> {
+		return this.youtube.videos();
 	}
 }
 

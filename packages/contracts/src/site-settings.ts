@@ -15,10 +15,16 @@ export const StorefrontHomeSettings = z.object({
 });
 export type StorefrontHomeSettings = z.infer<typeof StorefrontHomeSettings>;
 
+/** Long videos and Shorts kept by the daily refresh, newest first (owner, 2026-11-10). */
+export const YOUTUBE_FEED_VIDEOS = 24;
+export const YOUTUBE_FEED_SHORTS = 12;
+/** Videos one product may carry, long and Shorts together (owner, 2026-11-10). */
+export const PRODUCT_VIDEOS_MAX = 5;
+
 /**
- * `youtube` — the home rail. The channel handle resolves once to a channel id and uploads
- * playlist; the daily refresh then costs one quota unit. Ten are fetched, `displayCount`
- * (seeded 8) are shown, on the surfaces listed in `railPlacements` (seeded `home`).
+ * `youtube` — the channel feed behind `/videos` and the home rail. The channel handle resolves
+ * once to a channel id and uploads playlist; the daily refresh then costs two quota units.
+ * `displayCount` (seeded 8) videos show on the rail, on the surfaces in `railPlacements`.
  */
 export const YouTubeSettings = z.object({
 	channelHandle: z
@@ -27,22 +33,34 @@ export const YouTubeSettings = z.object({
 		.default('@SahaTextile'),
 	channelId: z.string().min(1).nullable().default(null),
 	uploadsPlaylistId: z.string().min(1).nullable().default(null),
-	displayCount: z.number().int().min(1).max(10).default(8),
+	displayCount: z.number().int().min(1).max(YOUTUBE_FEED_VIDEOS).default(8),
 	railPlacements: z.array(z.string().regex(/^[a-z][a-z0-9_]*$/)).default(['home']),
 });
 export type YouTubeSettings = z.infer<typeof YouTubeSettings>;
 
+/** A Short is vertical and at most three minutes long; everything else is a video. */
+export const YouTubeVideoKind = z.enum(['video', 'short']);
+export type YouTubeVideoKind = z.infer<typeof YouTubeVideoKind>;
+
+const YouTubeVideoId = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
+
 export const YouTubeVideoSummary = z.object({
-	videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+	videoId: YouTubeVideoId,
 	title: z.string(),
 	publishedAt: IsoDateTime,
+	/** YouTube's own picture of the video. */
 	thumbnailUrl: z.string(),
+	/** Our CDN copy of that picture, once the refresh has made it; pages prefer it. */
+	posterUrl: z.string().min(1).nullable().default(null),
+	kind: YouTubeVideoKind.default('video'),
+	durationSeconds: z.number().int().nonnegative().default(0),
 });
 export type YouTubeVideoSummary = z.infer<typeof YouTubeVideoSummary>;
 
-/** `youtube.feed` — the cached latest uploads, written by the 00:00 IST refresh. */
+/** `youtube.feed` — the cached latest uploads, split into videos and Shorts by the 00:00 IST refresh. */
 export const YouTubeFeedCache = z.object({
-	videos: z.array(YouTubeVideoSummary).max(10).default([]),
+	videos: z.array(YouTubeVideoSummary).max(YOUTUBE_FEED_VIDEOS).default([]),
+	shorts: z.array(YouTubeVideoSummary).max(YOUTUBE_FEED_SHORTS).default([]),
 	fetchedAt: IsoDateTime.nullable().default(null),
 });
 export type YouTubeFeedCache = z.infer<typeof YouTubeFeedCache>;
@@ -99,9 +117,11 @@ export const YouTubeValidateRequest = z.object({ input: z.string().min(1).max(50
 export type YouTubeValidateRequest = z.infer<typeof YouTubeValidateRequest>;
 
 export const YouTubeValidateResponse = z.object({
-	videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+	videoId: YouTubeVideoId,
 	title: z.string(),
 	thumbnailUrl: z.string(),
+	kind: YouTubeVideoKind,
+	durationSeconds: z.number().int().nonnegative(),
 });
 export type YouTubeValidateResponse = z.infer<typeof YouTubeValidateResponse>;
 
@@ -162,3 +182,30 @@ export type YouTubeRailQuery = z.infer<typeof YouTubeRailQuery>;
 
 export const YouTubeRailResponse = z.object({ videos: z.array(YouTubeVideoSummary) });
 export type YouTubeRailResponse = z.infer<typeof YouTubeRailResponse>;
+
+/** `GET /storefront/youtube/videos` — everything `/videos` shows: the cached videos and Shorts. */
+export const YouTubeVideosResponse = z.object({
+	videos: z.array(YouTubeVideoSummary),
+	shorts: z.array(YouTubeVideoSummary),
+	/** The channel's own page, for "See all on YouTube". */
+	channelUrl: z.string().url(),
+});
+export type YouTubeVideosResponse = z.infer<typeof YouTubeVideosResponse>;
+
+/** One video on a product, as admin saved it after the check (long video or Short). */
+export const ProductVideo = z.object({
+	videoId: YouTubeVideoId,
+	title: z.string().max(300),
+	thumbnailUrl: z.string(),
+	kind: YouTubeVideoKind,
+	durationSeconds: z.number().int().nonnegative(),
+});
+export type ProductVideo = z.infer<typeof ProductVideo>;
+
+/** A product's videos: at most five, each once, in the order admin set. */
+export const ProductVideos = z
+	.array(ProductVideo)
+	.max(PRODUCT_VIDEOS_MAX)
+	.refine((rows) => new Set(rows.map((row) => row.videoId)).size === rows.length, {
+		message: 'Each video may appear once',
+	});

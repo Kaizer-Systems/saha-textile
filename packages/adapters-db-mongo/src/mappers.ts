@@ -78,6 +78,7 @@ export function toProduct(doc: ProductDoc): Product {
 		lifetimeUnitsReceived: doc.lifetimeUnitsReceived ?? 0,
 		featured: doc.featured ?? false,
 		faqEnabled: doc.faqEnabled ?? false,
+		videos: doc.videos ?? [],
 		insightBadges: doc.insightBadges ?? [],
 		pinnedBadges: doc.pinnedBadges ?? [],
 		hiddenBadges: doc.hiddenBadges ?? [],

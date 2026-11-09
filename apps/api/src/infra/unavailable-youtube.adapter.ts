@@ -1,5 +1,5 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import type { YouTubePort, YouTubeVideo } from '@saha-textile/core-domain';
+import type { YouTubePlaylistItem, YouTubePort, YouTubeVideo } from '@saha-textile/core-domain';
 
 /**
  * Bound when `YOUTUBE_API_KEY` is unset. Validate answers "unavailable" rather than
@@ -13,7 +13,11 @@ export class UnavailableYouTubeAdapter implements YouTubePort {
 		return Promise.reject(new ServiceUnavailableException(UnavailableYouTubeAdapter.MESSAGE));
 	}
 
-	listPlaylistVideos(): Promise<YouTubeVideo[]> {
+	listPlaylistVideos(): Promise<YouTubePlaylistItem[]> {
+		return Promise.reject(new ServiceUnavailableException(UnavailableYouTubeAdapter.MESSAGE));
+	}
+
+	describeVideos(): Promise<YouTubeVideo[]> {
 		return Promise.reject(new ServiceUnavailableException(UnavailableYouTubeAdapter.MESSAGE));
 	}
 

@@ -541,20 +541,37 @@ describe('review photos', () => {
 });
 
 describe('refreshYouTubeFeed', () => {
-	const video = (index: number) => ({
-		videoId: `video${index}`,
-		title: `Video ${index}`,
-		publishedAt: '2026-10-01T00:00:00.000Z',
+	const upload = (index: number) => ({
+		videoId: `video${String(index).padStart(6, '0')}`,
+		title: `Upload ${index}`,
+		// Newer uploads have higher numbers.
+		publishedAt: new Date(Date.UTC(2026, 9, 1) + index * 3_600_000).toISOString(),
 		thumbnailUrl: 'https://i.ytimg.com/a.jpg',
 	});
+	/** 50 uploads: every third one is a Short; the last one cannot be played. */
+	const uploads = Array.from({ length: 50 }, (_, index) => upload(index));
 	const build = (stored: unknown, channel: unknown) => {
 		const set = vi.fn(async () => {});
 		const settings = { get: async () => stored, set } as unknown as SiteSettingsRepository;
 		const youtube = {
 			resolveChannel: vi.fn(async () => channel),
-			listPlaylistVideos: vi.fn(async () => Array.from({ length: 12 }, (_, index) => video(index))),
+			listPlaylistVideos: vi.fn(async () => uploads),
+			describeVideos: vi.fn(async (ids: string[]) =>
+				uploads
+					.filter((item) => ids.includes(item.videoId) && item.videoId !== upload(49).videoId)
+					.map((item, index) => ({
+						...item,
+						kind: index % 3 === 0 ? 'short' : 'video',
+						durationSeconds: index % 3 === 0 ? 45 : 900,
+					})),
+			),
 		} as unknown as YouTubePort;
 		return { set, settings, youtube };
+	};
+	type Feed = {
+		videos: { videoId: string; kind: string; posterUrl: null }[];
+		shorts: { videoId: string; kind: string }[];
+		fetchedAt: string;
 	};
 
 	it('stops when the channel cannot be found', async () => {
@@ -564,22 +581,29 @@ describe('refreshYouTubeFeed', () => {
 		expect(set).not.toHaveBeenCalled();
 	});
 
-	it('resolves the channel once, saves it, and stores ten videos', async () => {
+	it('resolves the channel once and stores the 24 newest videos and 12 newest Shorts', async () => {
 		const { settings, youtube, set } = build(null, { channelId: 'UC1', uploadsPlaylistId: 'UU1' });
-		expect(await refreshYouTubeFeed({ settings, youtube, now })).toEqual({ videos: 12 });
+		expect(await refreshYouTubeFeed({ settings, youtube, now })).toEqual({ videos: 24, shorts: 12 });
 		expect(set).toHaveBeenNthCalledWith(1, 'youtube', expect.objectContaining({ uploadsPlaylistId: 'UU1' }));
-		const feed = (set.mock.calls[1] as unknown as [string, { videos: unknown[]; fetchedAt: string }])[1];
-		expect(feed.videos).toHaveLength(10);
+		const feed = (set.mock.calls[1] as unknown as [string, Feed])[1];
+		expect(feed.videos).toHaveLength(24);
+		expect(feed.shorts).toHaveLength(12);
+		expect(feed.videos.every((video) => video.kind === 'video' && video.posterUrl === null)).toBe(true);
+		expect(feed.shorts.every((video) => video.kind === 'short')).toBe(true);
+		// Newest first; the unplayable newest upload (49) is left out, and 48 is a Short.
+		expect(feed.shorts[0]?.videoId).toBe(upload(48).videoId);
+		expect(feed.videos[0]?.videoId).toBe(upload(47).videoId);
 		expect(feed.fetchedAt).toBe('2026-11-02T00:00:00.000Z');
 	});
 
-	it('reuses a saved playlist', async () => {
+	it('reuses a saved playlist and reads one page of uploads', async () => {
 		const { settings, youtube } = build(
 			{ channelHandle: '@a', channelId: 'UC1', uploadsPlaylistId: 'UU9', displayCount: 8, railPlacements: [] },
 			null,
 		);
 		await refreshYouTubeFeed({ settings, youtube, now });
 		expect(youtube.resolveChannel).not.toHaveBeenCalled();
-		expect(youtube.listPlaylistVideos).toHaveBeenCalledWith({ playlistId: 'UU9', limit: 10 });
+		expect(youtube.listPlaylistVideos).toHaveBeenCalledWith({ playlistId: 'UU9', limit: 50 });
+		expect(youtube.describeVideos).toHaveBeenCalledWith(uploads.map((item) => item.videoId));
 	});
 });

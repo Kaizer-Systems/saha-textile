@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { OptionDisplayStyle, SemanticRole, SizeGuideRow } from './attribute';
 import { Id, IsoDateTime, Slug } from './common';
 import { ResolvedImage } from './media';
+import { ProductVideo } from './site-settings';
 
 const money = z.number().int().nonnegative();
 
@@ -340,6 +341,8 @@ export const CatalogProductPage = z.object({
 	rating: z.object({ average: z.number().min(0).max(5), count: z.number().int().nonnegative() }),
 	/** The FAQ section, in the page language; empty when the product's FAQ is off. */
 	faq: z.array(z.object({ question: z.string(), answer: z.string() })).default([]),
+	/** YouTube videos and Shorts, in admin order: photo-strip tiles after the photos, and the Description tab. */
+	videos: z.array(ProductVideo).default([]),
 });
 export type CatalogProductPage = z.infer<typeof CatalogProductPage>;
 

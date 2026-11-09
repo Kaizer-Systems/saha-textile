@@ -1,0 +1,10 @@
+// The list lives in the browser, so the server renders stand-in cards and the browser swaps in
+// the saved products or the empty message. The section keeps the empty message's height from the
+// start (measured: 359 px on phones, 576 px from 768 px up), so the footer never jumps.
+:host .wishlist-section {
+	min-height: 360px;
+
+	@media (min-width: 768px) {
+		min-height: 576px;
+	}
+}

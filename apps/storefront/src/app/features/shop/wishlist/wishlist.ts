@@ -26,6 +26,15 @@ export class Wishlist {
 	public breadcrumb = translatedBreadcrumb('wishlist');
 
 	public skeletonItems = Array.from({ length: 6 }, (_, index) => index);
+	/** Bootstrap display classes that keep the stand-ins to one row: 2 on phones, 3, 4, then 6. */
+	public skeletonVisibility = [
+		'',
+		'',
+		'd-none d-md-block',
+		'd-none d-lg-block',
+		'd-none d-xxl-block',
+		'd-none d-xxl-block',
+	];
 
 	/** False until the browser has the list: the server shows the skeleton, never a false "empty". */
 	readonly ready = signal(false);

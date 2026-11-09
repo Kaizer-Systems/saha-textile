@@ -244,6 +244,40 @@ describe('ProductDetail SEO', () => {
 		});
 	});
 
+	it('names the product videos as VideoObjects, and nothing for a product without one', () => {
+		const { seo } = render();
+		product.set({ ...base });
+		TestBed.tick();
+		expect(jsonLd(seo, 'product-group')).not.toHaveProperty('subjectOf');
+		const short = {
+			videoId: 'YfNsUapqTqE',
+			title: 'S6D',
+			thumbnailUrl: '',
+			kind: 'short',
+			durationSeconds: 48,
+			publishedAt: '2026-10-01T00:00:00Z',
+		};
+		const long = { videoId: 'QRP0xuczTUo', title: 'EP693', thumbnailUrl: '', kind: 'video', durationSeconds: 0 };
+		product.set({ ...base, videos: [short, long] });
+		TestBed.tick();
+		expect(jsonLd(seo, 'product-group')).toMatchObject({
+			subjectOf: [
+				{
+					'@type': 'VideoObject',
+					name: 'S6D',
+					uploadDate: '2026-10-01T00:00:00Z',
+					duration: 'PT48S',
+					embedUrl: 'https://www.youtube-nocookie.com/embed/YfNsUapqTqE',
+					contentUrl: 'https://www.youtube.com/shorts/YfNsUapqTqE',
+				},
+				{ '@type': 'VideoObject', name: 'EP693', contentUrl: 'https://www.youtube.com/watch?v=QRP0xuczTUo' },
+			],
+		});
+		const [, second] = (jsonLd(seo, 'product-group') as { subjectOf: object[] }).subjectOf;
+		expect(second).not.toHaveProperty('uploadDate');
+		expect(second).not.toHaveProperty('duration');
+	});
+
 	it('uses the regular price when there is no sale price', () => {
 		const { seo } = render();
 		product.set({ ...base, sale_price: 0 });

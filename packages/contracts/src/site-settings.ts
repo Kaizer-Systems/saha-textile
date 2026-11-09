@@ -122,6 +122,7 @@ export const YouTubeValidateResponse = z.object({
 	thumbnailUrl: z.string(),
 	kind: YouTubeVideoKind,
 	durationSeconds: z.number().int().nonnegative(),
+	publishedAt: IsoDateTime,
 });
 export type YouTubeValidateResponse = z.infer<typeof YouTubeValidateResponse>;
 
@@ -199,6 +200,8 @@ export const ProductVideo = z.object({
 	thumbnailUrl: z.string(),
 	kind: YouTubeVideoKind,
 	durationSeconds: z.number().int().nonnegative(),
+	/** When it went up on YouTube; search engines need it for video results. Older rows lack it. */
+	publishedAt: IsoDateTime.optional(),
 });
 export type ProductVideo = z.infer<typeof ProductVideo>;
 

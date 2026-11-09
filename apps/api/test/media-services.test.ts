@@ -751,6 +751,7 @@ describe('YouTubeService', () => {
 			thumbnailUrl: 'u',
 			kind: 'short',
 			durationSeconds: 48,
+			publishedAt: 'p',
 		});
 		expect((await statusOf(service.validate('not a link at all'))).status).toBe(422);
 		youtube.findVideo.mockResolvedValue(null);

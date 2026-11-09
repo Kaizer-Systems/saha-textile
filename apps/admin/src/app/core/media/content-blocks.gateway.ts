@@ -84,6 +84,7 @@ export interface YouTubeValidation {
 	/** Worked out by the API from YouTube's data; admin never picks it. */
 	kind: 'video' | 'short';
 	durationSeconds: number;
+	publishedAt: string;
 }
 
 @Injectable({ providedIn: 'root' })

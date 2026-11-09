@@ -45,6 +45,7 @@ export class YouTubeService {
 			thumbnailUrl: video.thumbnailUrl,
 			kind: video.kind,
 			durationSeconds: video.durationSeconds,
+			publishedAt: video.publishedAt,
 		};
 	}
 

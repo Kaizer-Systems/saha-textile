@@ -38,6 +38,7 @@ import { StickyCheckout } from '@features/shop/product-detail/widgets/sticky-che
 import { SkeletonPage } from '@features/page/skeleton-page/skeleton-page';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
+import { isoDuration, posterFor, watchUrl } from '@shared/ui/video/video-links';
 
 import { BuyBox } from './buy-box/buy-box';
 import { ProductBlogs } from './product-blogs/product-blogs';
@@ -293,7 +294,19 @@ export class ProductDetail {
 			availability: `https://schema.org/${inStock ? 'InStock' : 'OutOfStock'}`,
 			seller,
 		});
+		// The product's videos, as search engines read them (VideoObject on the Product).
+		const videos = (product.videos ?? []).map((video) => ({
+			'@type': 'VideoObject',
+			name: video.title,
+			description: video.title,
+			thumbnailUrl: [posterFor(video, 'large')],
+			...(video.publishedAt ? { uploadDate: video.publishedAt } : {}),
+			...(video.durationSeconds ? { duration: isoDuration(video.durationSeconds) } : {}),
+			embedUrl: `https://www.youtube-nocookie.com/embed/${video.videoId}`,
+			contentUrl: watchUrl(video),
+		}));
 		const shared = {
+			...(videos.length ? { subjectOf: videos } : {}),
 			description,
 			brand,
 			material: facts.get('fabric'),

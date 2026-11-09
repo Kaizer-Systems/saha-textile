@@ -44,6 +44,7 @@ export interface ProductDoc {
 		thumbnailUrl: string;
 		kind: 'video' | 'short';
 		durationSeconds: number;
+		publishedAt?: string;
 	}>;
 	insightBadges?: Array<'bestseller' | 'trending'>;
 	pinnedBadges?: string[];

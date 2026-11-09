@@ -43,7 +43,10 @@ const render = (url = '/') => {
 			{ provide: TranslocoService, useValue: { translate: (key: string) => WORDS[key] ?? key } },
 			{
 				provide: ShopEvents,
-				useValue: { stripItems, left: () => ({ days: 1, hours: 9, minutes: 0, seconds: 0 }) },
+				useValue: {
+					stripItems,
+					left: (iso: string | null) => (iso ? { days: 1, hours: 9, minutes: 0, seconds: 0 } : null),
+				},
 			},
 		],
 	});
@@ -161,5 +164,14 @@ describe('App', () => {
 		hide(true);
 		vi.advanceTimersByTime(1000);
 		expect(title.setTitle).toHaveBeenLastCalledWith('🎉 Puja Sale ends in 1d 9h');
+	});
+
+	it('names a launched event without a countdown', () => {
+		vi.useFakeTimers();
+		stripItems.set([{ id: 'e', type: 'launch', phase: 'launched', title: 'Puja Collection', countdownTo: null }]);
+		const { title } = render();
+		hide(true);
+		vi.advanceTimersByTime(1000);
+		expect(title.setTitle).toHaveBeenLastCalledWith('🎉 Puja Collection event_now_live');
 	});
 });

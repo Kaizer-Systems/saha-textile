@@ -85,7 +85,12 @@ describe('Notice', () => {
 		TestBed.configureTestingModule({
 			providers: [
 				{ provide: PLATFORM_ID, useValue: platform },
-				{ provide: ShopEvents, useValue: { left: () => null } },
+				{
+					provide: ShopEvents,
+					useValue: {
+						left: (iso: string | null) => (iso ? { days: 3, hours: 4, minutes: 12, seconds: 5 } : null),
+					},
+				},
 				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
 			],
 		});
@@ -108,6 +113,47 @@ describe('Notice', () => {
 		render('server');
 		vi.advanceTimersByTime(2000);
 		expect(swiper.created).toEqual([]);
+	});
+
+	it('writes each event line with its countdown in days, and none once launched', () => {
+		const { componentInstance } = render('server');
+		const sale = { id: 'e', type: 'sale', phase: 'running', countdownTo: 'x' } as never;
+		expect(componentInstance.label(sale)).toBe('event_sale_ends_in');
+		expect(componentInstance.countdown(sale)).toBe(
+			'3event_unit_day 04event_unit_hour 12event_unit_minute 05event_unit_second',
+		);
+		expect(
+			componentInstance.countdown({ ...(sale as object), phase: 'launched', countdownTo: null } as never),
+		).toBe('');
+	});
+
+	it('tells the slider when an event line comes or goes', () => {
+		vi.useFakeTimers();
+		const fixture = render('browser');
+		vi.advanceTimersByTime(2000);
+		const update = vi.spyOn(
+			(fixture.componentInstance as unknown as { swiper: { update: () => void } }).swiper,
+			'update',
+		);
+		fixture.componentRef.setInput('events', [{ id: 'e' }]);
+		fixture.detectChanges();
+		vi.advanceTimersByTime(1);
+		expect(update).toHaveBeenCalled();
+		fixture.componentRef.setInput('events', []);
+		fixture.detectChanges();
+		vi.advanceTimersByTime(1);
+		expect(update).toHaveBeenCalledOnce();
+	});
+
+	it('plays several lines in turn and leaves one line still', () => {
+		vi.useFakeTimers();
+		const fixture = render('browser');
+		fixture.componentRef.setInput('events', [{ id: 'a' }, { id: 'b' }]);
+		vi.advanceTimersByTime(2000);
+		expect((swiper.created[0]?.[1] as { autoplay: unknown }).autoplay).toEqual({
+			delay: 2000,
+			disableOnInteraction: false,
+		});
 	});
 
 	it('skips the slider when the element is gone', () => {

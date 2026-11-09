@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 import {
 	applySaleRule,
 	dueTransition,
+	nextBoundary,
 	publicShopEvent,
 	resolveSaleRule,
 	saleRuleProblem,
 	salePriceINR,
 	saleRunsAt,
+	saleTargets,
 	saleWarning,
 	shopEventPublishProblems,
 	shopEventSaveProblems,
@@ -223,5 +225,135 @@ describe('publicShopEvent', () => {
 	it('shows nothing for drafts and cancelled events', () => {
 		expect(publicShopEvent(sale(), 'en', new Date('2027-09-01'), null)).toBeNull();
 		expect(publicShopEvent(sale({ status: 'cancelled' }), 'en', new Date('2027-09-01'), null)).toBeNull();
+	});
+});
+
+describe('event rule edges', () => {
+	it('refuses bad own rules, bad product rules and an end before the start on Save', () => {
+		const body = {
+			...sale(),
+			sale: {
+				categories: [
+					{
+						categoryId: 'cat_saree',
+						rule: rule('percent', 20),
+						exceptions: [
+							{ productId: 'p_own', mode: 'own' as const, rule: rule('amount', 1.5) },
+							{ productId: 'p_ok', mode: 'own' as const, rule: rule('percent', 10) },
+							{ productId: 'p_held', mode: 'held' as const, rule: null },
+						],
+					},
+				],
+				products: [
+					{ productId: 'p_bad', rule: rule('fixed', 0) },
+					{ productId: 'p_good', rule: rule('fixed', 900) },
+				],
+			},
+			endsAt: '2027-09-20T04:30:00.000Z',
+		};
+		expect(shopEventSaveProblems('sale', body as never).map((row) => `${row.code}:${row.target}`)).toEqual([
+			'bad_rule:p_own',
+			'bad_rule:p_bad',
+			'end_before_start:endsAt',
+		]);
+		expect(shopEventSaveProblems('sale', { ...body, startsAt: null } as never)).toHaveLength(2);
+		expect(shopEventSaveProblems('launch', body as never)).toEqual([]);
+		const badCategory = {
+			...sale(),
+			sale: { categories: [{ categoryId: 'cat_x', rule: rule('percent', 120), exceptions: [] }], products: [] },
+		};
+		expect(shopEventSaveProblems('sale', badCategory as never).map((row) => row.target)).toEqual(['cat_x']);
+	});
+
+	it('asks for a start, an end after the start, and a launch item', () => {
+		const now = new Date('2027-09-01T00:00:00.000Z');
+		const codes = (event: ShopEvent) => shopEventPublishProblems(event, ['en', 'bn'], now).map((row) => row.code);
+		expect(codes(sale({ startsAt: null }))).toEqual(['missing_start']);
+		expect(codes(sale({ endsAt: '2027-09-10T00:00:00.000Z' }))).toEqual(['end_before_start']);
+		expect(codes(sale({ startsAt: null, endsAt: '2027-09-10T00:00:00.000Z' }))).toEqual(['missing_start']);
+		const launch = sale({ type: 'launch', endsAt: null });
+		expect(codes(launch)).toEqual(['no_items']);
+		expect(codes({ ...launch, launch: { categoryIds: ['cat_new'], productIds: [], heldProductIds: [] } })).toEqual(
+			[],
+		);
+		expect(codes({ ...launch, launch: { categoryIds: [], productIds: ['p1'], heldProductIds: [] } })).toEqual([]);
+		expect(codes(sale({ message: {} }))).toEqual(['missing_text', 'missing_text']);
+	});
+
+	it('knows the next moment the clock acts on', () => {
+		expect(nextBoundary(sale({ status: 'scheduled' }))).toBe('2027-09-20T04:30:00.000Z');
+		expect(nextBoundary(sale({ status: 'live' }))).toBe('2027-09-27T18:29:00.000Z');
+		expect(nextBoundary(sale({ status: 'live', type: 'launch' }))).toBeNull();
+		expect(nextBoundary(sale({ status: 'draft' }))).toBeNull();
+		expect(saleRunsAt(sale({ status: 'live', endsAt: null }), new Date('2027-09-21T00:00:00.000Z'))).toBe(false);
+		expect(saleRunsAt(sale({ status: 'ended' }), new Date('2027-09-21T00:00:00.000Z'))).toBe(false);
+		expect(
+			dueTransition(sale({ status: 'scheduled', startsAt: null }), new Date('2027-09-21T00:00:00.000Z')),
+		).toBeNull();
+		expect(dueTransition(sale({ status: 'live', endsAt: null }), new Date('2027-09-30T00:00:00.000Z'))).toBeNull();
+	});
+
+	it('shows the shop the right text, phase and lines', () => {
+		const at = new Date('2027-09-01T00:00:00.000Z');
+		const image = { assetId: 'a', width: 1, height: 1, alt: '', dominantColor: null, thumbHash: null, roles: {} };
+		expect(publicShopEvent(sale({ status: 'scheduled', startsAt: null }), 'en', at, null)).toBeNull();
+		expect(publicShopEvent(sale({ status: 'scheduled', endsAt: null }), 'en', at, null)).toBeNull();
+		const fallback = publicShopEvent(
+			sale({ status: 'scheduled', title: { en: ' Puja ' }, message: {} }),
+			'bn',
+			at,
+			image as never,
+		);
+		expect(fallback).toMatchObject({ title: 'Puja', message: '', popupImage: image });
+		const hidden = publicShopEvent(
+			sale({ status: 'scheduled', showPopup: false, showCountdown: false }),
+			'en',
+			at,
+			image as never,
+		);
+		expect(hidden).toMatchObject({ popupUntil: null, stripUntil: null, popupImage: null });
+		const launch = sale({ type: 'launch', status: 'live', endsAt: null, startsAt: '2027-08-31T00:00:00.000Z' });
+		expect(publicShopEvent({ ...launch, showPopup: false, showCountdown: false }, 'en', at, null)).toBeNull();
+		expect(publicShopEvent({ ...launch, showPopup: false }, 'en', at, null)).toMatchObject({
+			phase: 'launched',
+			countdownTo: null,
+		});
+		expect(publicShopEvent({ ...launch, showCountdown: false }, 'en', at, null)).toMatchObject({
+			phase: 'launched',
+			stripUntil: null,
+		});
+		expect(publicShopEvent({ ...launch, startsAt: '2027-09-02T00:00:00.000Z' }, 'en', at, null)).toMatchObject({
+			phase: 'upcoming',
+		});
+	});
+});
+
+describe('sale pricing edges', () => {
+	it('refuses a price that is not a positive number, and a fixed price with a part rupee', () => {
+		expect(applySaleRule(rule('percent', 10), Number.NaN, 'S')).toBeNull();
+		expect(applySaleRule(rule('percent', 10), 0, 'S')).toBeNull();
+		expect(saleRuleProblem(rule('fixed', 900, { S: 10.5 }))).toBe('fixed_not_whole');
+		expect(saleRuleProblem(rule('fixed', -1, { S: 100 }))).toBe('fixed_not_whole');
+		expect(saleRuleProblem(rule('fixed', 0, { S: 100 }))).toBeNull();
+	});
+
+	it('keeps the first of two equal prices, and lists what a sale names', () => {
+		const candidates = [
+			{ rule: rule('amount', 100), source: 'category' as const, categoryId: 'a' },
+			{ rule: rule('fixed', 900), source: 'category' as const, categoryId: 'b' },
+		];
+		expect(salePriceINR(candidates, 1_000, 'S')).toBe(900);
+		expect(
+			saleTargets({
+				categories: [{ categoryId: 'cat_saree', rule: rule('percent', 20), exceptions: [] }],
+				products: [{ productId: 'p1', rule: rule('percent', 10) }],
+			} as SaleSetup),
+		).toEqual({ productIds: ['p1'], categoryIds: ['cat_saree'] });
+		expect(
+			windowsOverlap(
+				{ startsAt: '2027-01-01T00:00:00Z', endsAt: null },
+				{ startsAt: '2027-02-01T00:00:00Z', endsAt: null },
+			),
+		).toBe(true);
 	});
 });

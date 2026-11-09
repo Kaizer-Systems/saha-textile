@@ -84,3 +84,41 @@ describe('labels', () => {
 		expect(momentKey(event('a', {})).key).toBe('event_ends_at');
 	});
 });
+
+describe('popup rule edges', () => {
+	it('reads an empty cookie, and rests an event with no popup end from now', () => {
+		expect(readEventsCookie(undefined).size).toBe(0);
+		expect(answerUntil(event('x', { popupUntil: null }), true, now)).toBe(now);
+	});
+
+	it('orders two upcoming sales by start and two launches newest first, and skips an answered one', () => {
+		const first = event('first', { phase: 'upcoming', startsAt: new Date(now + day).toISOString() });
+		const second = event('second', { phase: 'upcoming', startsAt: new Date(now + 2 * day).toISOString() });
+		expect(choosePopupEvent([second, first], now, new Map())?.id).toBe('first');
+		expect(choosePopupEvent([second, first], now, new Map([['first', now + day]]))?.id).toBe('second');
+		const old = event('old', {
+			type: 'launch',
+			phase: 'launched',
+			startsAt: new Date(now - 2 * day).toISOString(),
+		});
+		const fresh = event('fresh', {
+			type: 'launch',
+			phase: 'launched',
+			startsAt: new Date(now - day).toISOString(),
+		});
+		expect(choosePopupEvent([old, fresh], now, new Map())?.id).toBe('fresh');
+		const undated = event('undated', { endsAt: null });
+		expect(choosePopupEvent([undated, event('dated', {})], now, new Map())?.id).toBe('dated');
+		expect(choosePopupEvent([event('closed', { popupUntil: null })], now, new Map())).toBeNull();
+	});
+
+	it('names every moment and label', () => {
+		expect(countdownKey(event('l', { type: 'launch', phase: 'upcoming' }))).toBe('event_launches_in');
+		expect(countdownKey(event('n', { type: 'launch', phase: 'launched' }))).toBe('event_now_live');
+		expect(countdownKey(event('s', { phase: 'upcoming' }))).toBe('event_sale_starts_in');
+		expect(momentKey(event('l', { type: 'launch', phase: 'upcoming' })).key).toBe('event_launches_at');
+		expect(momentKey(event('u', { phase: 'upcoming' })).key).toBe('event_starts_at');
+		const open = event('o', { endsAt: null });
+		expect(momentKey(open)).toEqual({ key: 'event_ends_at', at: open.startsAt });
+	});
+});

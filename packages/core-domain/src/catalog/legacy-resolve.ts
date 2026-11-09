@@ -201,7 +201,10 @@ export function resolveLegacyAddress(
 	if (isAsset(pathname)) return null;
 
 	const row = findRow(rows, path);
-	if (row) return fromRow(row, locale);
+	// A row is for an old address. When an old WordPress page has been rebuilt at the same path
+	// (`/videos`), the shop's own page in a language (`/en/videos`) is live and the row does not
+	// apply to it: it would send the page to itself, or answer "gone" for it.
+	if (row && !(locale && livePath(path))) return fromRow(row, locale);
 
 	if (legacyShape(path)) return { status: 410 };
 	if (path === '/') return null;

@@ -422,6 +422,14 @@ export const menu: IMenu[] = [
 			},
 		],
 	},
+	// The channel's videos and Shorts (owner, 2026-11-10: the WordPress site has it in its menu too).
+	{
+		id: 6,
+		title: 'videos',
+		type: 'link',
+		path: 'videos',
+		active: false,
+	},
 	{
 		id: 5,
 		title: 'pages',

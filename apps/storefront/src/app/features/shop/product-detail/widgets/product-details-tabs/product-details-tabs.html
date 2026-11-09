@@ -67,6 +67,8 @@
 					[innerHTML]="product()?.description"
 				></div>
 			</div>
+			<!-- The product's videos under its description (owner, 2026-11-10). -->
+			<app-product-videos [videos]="product()?.videos ?? []" />
 		</div>
 		<div
 			class="tab-pane"

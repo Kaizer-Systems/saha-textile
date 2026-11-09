@@ -88,9 +88,44 @@
 						</div>
 					</ng-template>
 					}
+					<!-- One tile per product video, after the photos, in admin order (owner R4). -->
+					@for (video of videos(); track video.videoId) {
+					<ng-template
+						carouselSlide
+						[id]="'video-' + video.videoId"
+					>
+						<div>
+							<button
+								type="button"
+								class="slider-image position-relative d-block w-100 border-0 bg-transparent p-0"
+								[attr.aria-label]="(video.kind === 'short' ? 'play_short' : 'play_video') | transloco: { title: video.title }"
+								(click)="playVideo(video)"
+							>
+								<span class="ratio ratio-3x4 d-block">
+									<img
+										[src]="poster(video)"
+										class="object-fit-cover"
+										[alt]="video.title"
+										lang="en"
+										loading="lazy"
+										decoding="async"
+									/>
+								</span>
+								<span
+									class="position-absolute translate-middle rounded-circle theme-bg-color d-inline-flex lh-1 fs-5 start-50 top-50 p-2 text-white"
+									aria-hidden="true"
+								>
+									<i class="ri-play-fill"></i>
+								</span>
+							</button>
+						</div>
+					</ng-template>
+					}
 				</owl-carousel-o>
 			</div>
 		</div>
 		}
 	</div>
 </div>
+<app-video-modal />
+<app-shorts-modal />

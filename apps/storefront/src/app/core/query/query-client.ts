@@ -33,6 +33,8 @@ const PUBLIC_QUERY_ROOTS = new Set([
 	'store-locations',
 	// The Brand Kit logo and seal in the header, footer and store cards.
 	'brand',
+	// The channel's videos and Shorts on /videos and the home rail.
+	'youtube',
 ]);
 
 export const isPublicQuery = (queryKey: readonly unknown[]): boolean =>

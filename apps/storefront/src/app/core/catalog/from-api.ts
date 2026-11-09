@@ -9,6 +9,7 @@ import {
 	ISemanticAttribute,
 } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
+import { IVideo } from '@data-access/interfaces/video.interface';
 
 interface ApiSource {
 	url: string;
@@ -97,6 +98,8 @@ export interface ApiProductPage {
 	saleEndsAt?: string | null;
 	/** The main photo's 1200×630 link-preview card, once made. */
 	shareImageUrl?: string | null;
+	/** YouTube videos and Shorts in admin order. */
+	videos?: IVideo[];
 	estimatedDeliveryText: string | null;
 	sareeLengthM: number | null;
 	blousePieceM: number | null;
@@ -467,6 +470,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		product_thumbnail: galleries[0],
 		product_meta_image: shareAttachment(page.shareImageUrl, ordered[0]),
 		product_galleries: galleries,
+		videos: page.videos ?? [],
 		attributes,
 		variations,
 		semantic_attributes: facts.length ? facts : undefined,

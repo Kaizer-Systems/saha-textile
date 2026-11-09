@@ -17,7 +17,7 @@ export const LEGACY_ADDRESSES: readonly LegacyAddressRow[] = JSON.parse(
 	readFileSync(resolve(__dirname, '../../data/legacy-addresses.json'), 'utf8'),
 ) as LegacyAddressRow[];
 
-const STATIC_PAGES = new Set(['/contact-us', '/account', '/cart', '/checkout', '/blogs', '/search']);
+const STATIC_PAGES = new Set(['/contact-us', '/account', '/cart', '/checkout', '/blogs', '/search', '/videos']);
 
 export function approvedLegacyRows(rows: readonly LegacyAddressRow[]): LegacyAddressRow[] {
 	const pending = rows.filter((row) => !row.approved);

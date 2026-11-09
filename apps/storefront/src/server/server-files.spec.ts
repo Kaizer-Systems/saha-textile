@@ -209,7 +209,14 @@ describe('SEO files', () => {
 		);
 		await run(event('/sitemap.xml', {}, { host: 'shop.test' }));
 		const body = sitemapBody();
-		for (const page of ['/blogs', '/collections', '/contact-us', '/privacy-policy', '/terms-conditions']) {
+		for (const page of [
+			'/blogs',
+			'/collections',
+			'/contact-us',
+			'/privacy-policy',
+			'/terms-conditions',
+			'/videos',
+		]) {
 			expect(body).toContain(`<loc>https://shop.test/en${page}</loc>`);
 			expect(body).toContain(`<loc>https://shop.test/bn${page}</loc>`);
 		}

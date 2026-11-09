@@ -14,6 +14,8 @@ const held = vi.hoisted(() => ({ options: null as null | { queryFn: () => Promis
 const homeData = signal<unknown>(undefined);
 const pending = signal(true);
 const bannerData = signal<unknown>(undefined);
+const railData = signal<unknown>(undefined);
+const railPlacement = vi.hoisted(() => ({ value: '' }));
 
 vi.mock('@tanstack/angular-query-experimental', async (original) => ({
 	...(await original<object>()),
@@ -28,6 +30,12 @@ vi.mock('@data-access/queries/banner.queries', () => ({
 		return { data: bannerData };
 	},
 	bannerSrc: (image: { url: string }) => image.url,
+}));
+vi.mock('@data-access/queries/youtube.queries', () => ({
+	injectVideoRailQuery: (placement: () => string) => {
+		railPlacement.value = placement();
+		return { data: railData };
+	},
 }));
 
 const banner = (position: string, slot: string, url: string) => ({
@@ -59,6 +67,7 @@ const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }])), platform = 'bro
 afterEach(() => {
 	homeData.set(undefined);
 	bannerData.set(undefined);
+	railData.set(undefined);
 	pending.set(true);
 	localStorage.clear();
 });
@@ -70,6 +79,16 @@ describe('Home head', () => {
 			title: 't:home_page_title',
 			description: 't:home_page_description',
 		});
+	});
+});
+
+describe('Home YouTube rail', () => {
+	it('reads the home placement, and is empty until the API answers', () => {
+		const { page } = render();
+		expect(railPlacement.value).toBe('home');
+		expect(page.railVideos()).toEqual([]);
+		railData.set([{ videoId: 'v1' }]);
+		expect(page.railVideos()).toEqual([{ videoId: 'v1' }]);
 	});
 });
 

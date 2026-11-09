@@ -381,6 +381,14 @@ describe('legacy addresses', () => {
 		expect(resolveLegacyAddress('/videos', [{ sourcePath: '/videos', statusCode: 410 }], live)).toEqual({
 			status: 410,
 		});
+		// The old /videos page rebuilt in the shop: the bare address moves, the shop's own page stays.
+		const rebuilt = [{ sourcePath: '/videos', statusCode: 301 as const, targetPath: '/en/videos' }];
+		const withVideos = (path: string) => path === '/videos' || live(path);
+		expect(resolveLegacyAddress('/videos', rebuilt, withVideos)).toEqual({ status: 301, location: '/en/videos' });
+		expect(resolveLegacyAddress('/en/videos', rebuilt, withVideos)).toBeNull();
+		expect(resolveLegacyAddress('/bn/videos', rebuilt, withVideos)).toBeNull();
+		// A stored "gone" row from before the rebuild cannot take the new page down either.
+		expect(resolveLegacyAddress('/en/videos', [{ sourcePath: '/videos', statusCode: 410 }], withVideos)).toBeNull();
 		expect(resolveLegacyAddress('/?porto_builder=1', [], live)).toEqual({ status: 410 });
 		expect(resolveLegacyAddress('/?attachment_id=9', [], live)).toEqual({ status: 410 });
 	});

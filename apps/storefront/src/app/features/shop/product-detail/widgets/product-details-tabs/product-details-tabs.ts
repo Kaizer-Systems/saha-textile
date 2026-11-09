@@ -11,6 +11,7 @@ import { injectQuestionAnswersQuery } from '@data-access/queries/questions-answe
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 
 import { ProductReview } from '../product-review/product-review';
+import { ProductVideos } from '../product-videos/product-videos';
 import { QuestionsAnswers } from '../questions-answers/questions-answers';
 
 /**
@@ -24,7 +25,7 @@ import { QuestionsAnswers } from '../questions-answers/questions-answers';
 	selector: 'app-product-details-tabs',
 	templateUrl: './product-details-tabs.html',
 	styleUrls: ['./product-details-tabs.scss'],
-	imports: [ProductReview, QuestionsAnswers, AsyncPipe, TranslocoModule],
+	imports: [ProductReview, QuestionsAnswers, ProductVideos, AsyncPipe, TranslocoModule],
 })
 export class ProductDetailsTabs {
 	private questionsAnswersService = inject(QuestionsAnswersService);

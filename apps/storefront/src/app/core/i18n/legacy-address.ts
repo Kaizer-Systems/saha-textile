@@ -31,6 +31,7 @@ const LIVE_EXACT = new Set([
 	'/compare',
 	'/account',
 	'/collections',
+	'/videos',
 ]);
 
 let rows: SeoRedirectRow[] = [];

@@ -119,7 +119,7 @@
 				{
 					"label": "Blogs",
 					"link": "blogs"
-				},
+				}, {"label": "Videos", "link": "videos"},
 				{
 					"label": "Offers",
 					"link": "offer"

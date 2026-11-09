@@ -176,6 +176,32 @@
 	</div>
 </section>
 
+<!-- ===== YouTube rail: the channel's latest videos (admin: rail placements include home). Not
+     rendered at all when there are none, so no pictures load. ===== -->
+@if (railVideos().length) {
+<section>
+	<div class="container-fluid-lg">
+		<app-title
+			[title]="'watch_on_youtube' | transloco"
+			[description]="'video_rail_description' | transloco"
+		/>
+		<div class="product-arrow">
+			<owl-carousel-o [options]="blogSlider">
+				@for (video of railVideos(); track video.videoId) {
+				<ng-template carouselSlide>
+					<app-video-card
+						[video]="video"
+						(picked)="videoModal.open($event)"
+					/>
+				</ng-template>
+				}
+			</owl-carousel-o>
+		</div>
+	</div>
+	<app-video-modal #videoModal />
+</section>
+}
+
 <!-- ===== Featured Blog (Osaka featured_blogs) — carousel w/ side arrows ===== -->
 <section>
 	<div class="container-fluid-lg">

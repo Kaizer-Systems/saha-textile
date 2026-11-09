@@ -16,6 +16,7 @@ const STATIC_PAGES = [
 	'/refund-returns',
 	'/shipping-policy',
 	'/terms-conditions',
+	'/videos',
 ];
 
 /** Whether the shop FAQ has any questions; an empty FAQ page is `noindex`. */

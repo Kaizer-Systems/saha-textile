@@ -30,6 +30,8 @@ describe('legacy address file', () => {
 		const live = new Set(['sarees/pure-silk']);
 		expect(legacyTargetIsLive('/en/collections/sarees/pure-silk', live)).toBe(true);
 		expect(legacyTargetIsLive('/en/contact-us', live)).toBe(true);
+		// The old WordPress /videos page moved here (owner, 2026-11-10).
+		expect(legacyTargetIsLive('/en/videos', live)).toBe(true);
 		expect(legacyTargetIsLive('/en/collections/missing', live)).toBe(false);
 	});
 });

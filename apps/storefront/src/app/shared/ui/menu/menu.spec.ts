@@ -61,7 +61,7 @@ describe('Menu', () => {
 			render()
 				.menu()
 				.map((item) => item.title),
-		).toEqual(['home', 'product', 'mega_menu', 'blog', 'pages']);
+		).toEqual(['home', 'product', 'mega_menu', 'blog', 'videos', 'pages']);
 	});
 
 	it('leaves the demo product links alone until real products arrive', () => {

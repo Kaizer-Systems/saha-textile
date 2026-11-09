@@ -3,7 +3,7 @@
  * it, so what shoppers read cannot drift from what the code does. Adding a tool to an empty
  * category turns its switch on: change `COOKIE_POLICY_VERSION` then, so everyone is asked again.
  */
-export const COOKIE_POLICY_VERSION = '2026-11-07';
+export const COOKIE_POLICY_VERSION = '2026-11-10';
 
 export type OptionalCategory = 'functional' | 'analytics' | 'targeting' | 'marketing' | 'promotional';
 
@@ -31,6 +31,8 @@ export const FUNCTIONAL_ITEMS: readonly CookieItem[] = [
 	{ name: 'st_search', purpose: 'cookie_item_search', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_newsletter', purpose: 'cookie_item_newsletter', keptFor: 'cookie_kept_newsletter' },
 	{ name: 'st_events', purpose: 'cookie_item_events', keptFor: 'cookie_kept_events' },
+	// Nothing from YouTube loads until play is pressed; that press is consent for that one video.
+	{ name: 'YouTube (youtube-nocookie.com)', purpose: 'cookie_item_youtube', keptFor: 'cookie_kept_by_them' },
 ];
 
 /** Categories with nothing behind them show Not in use, and Accept all leaves them off. */

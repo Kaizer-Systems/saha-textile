@@ -49,6 +49,8 @@
     "@saha-textile/core-domain": "workspace:*",
     "@saha-textile/http-transport": "workspace:*",
     "@tanstack/angular-query-experimental": "^5.104.5",
+    "@videojs/html": "10.3.0",
+    "@videojs/youtube-video": "10.3.0",
     "bootstrap": "^5.3.8",
     "feather-icons": "^4.29.2",
     "h3": "1.15.11",

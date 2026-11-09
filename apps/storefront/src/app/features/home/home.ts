@@ -10,6 +10,7 @@ import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
 import { injectHomeRailsQuery } from '@data-access/queries/product.queries';
+import { injectVideoRailQuery } from '@data-access/queries/youtube.queries';
 import { ProductService } from '@data-access/services/product.service';
 import { Blog } from '@features/themes/widgets/blog/blog';
 import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
@@ -18,6 +19,8 @@ import { Product } from '@features/themes/widgets/product/product';
 import { blogSliderNav, heroBannerSlider, productSlider6ItemMarginNav } from '@shared/data/owl-carousel';
 import { ImageLink } from '@shared/ui/image-link/image-link';
 import { Title } from '@shared/ui/title/title';
+import { VideoCard } from '@shared/ui/video/video-card';
+import { VideoModal } from '@shared/ui/video/video-modal';
 
 /**
  * Custom home page — served at `/` (the app's default route).
@@ -54,7 +57,18 @@ const HERO_LAYOUT_TILES: Record<StorefrontBanners['heroLayout'], [string | null,
 	selector: 'app-home',
 	templateUrl: './home.html',
 	styleUrls: ['./home.scss'],
-	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter, HomeBanner, TranslocoModule],
+	imports: [
+		CarouselModule,
+		ImageLink,
+		Title,
+		Product,
+		Blog,
+		Newsletter,
+		HomeBanner,
+		TranslocoModule,
+		VideoCard,
+		VideoModal,
+	],
 })
 export class Home {
 	constructor() {
@@ -119,6 +133,10 @@ export class Home {
 	};
 
 	private readonly bannersQuery = injectBannersQuery(() => 'home');
+
+	/** The channel's latest videos for the home rail, as many as admin set to show. */
+	private readonly railQuery = injectVideoRailQuery(() => 'home');
+	readonly railVideos = computed(() => this.railQuery.data() ?? []);
 
 	/**
 	 * The admin's hero (owner log § Media → Banners). `hero_full` keeps this page's carousel;

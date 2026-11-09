@@ -1,0 +1,66 @@
+@switch (state()) { @case ('playing') {
+<div
+	class="ratio rounded-3 bg-dark overflow-hidden"
+	[class.ratio-16x9]="!vertical()"
+	[class.ratio-9x16]="vertical()"
+>
+	<video-player>
+		<video-skin>
+			<youtube-video
+				[attr.src]="'youtube/' + video().videoId"
+				autoplay
+				playsinline
+				(ended)="ended.emit()"
+				(error)="failed()"
+			></youtube-video>
+		</video-skin>
+	</video-player>
+</div>
+} @case ('poster') {
+<button
+	type="button"
+	class="ratio d-block bg-dark rounded-3 w-100 overflow-hidden border-0 p-0"
+	[class.ratio-16x9]="!vertical()"
+	[class.ratio-9x16]="vertical()"
+	[attr.aria-label]="(vertical() ? 'play_short' : 'play_video') | transloco: { title: video().title }"
+	(click)="play()"
+>
+	<span class="d-block">
+		<img
+			class="object-fit-cover h-100 w-100"
+			[src]="poster()"
+			[alt]="video().title"
+			lang="en"
+			[attr.loading]="priority() ? 'eager' : 'lazy'"
+			[attr.fetchpriority]="priority() ? 'high' : null"
+			[attr.width]="vertical() ? 1080 : 1280"
+			[attr.height]="vertical() ? 1920 : 720"
+		/>
+		<span
+			class="position-absolute translate-middle rounded-circle theme-bg-color d-inline-flex lh-1 fs-2 start-50 top-50 p-3 text-white shadow"
+			aria-hidden="true"
+		>
+			<i class="ri-play-fill"></i>
+		</span>
+	</span>
+</button>
+} @default {
+<div
+	class="ratio rounded-3 bg-dark overflow-hidden"
+	[class.ratio-16x9]="!vertical()"
+	[class.ratio-9x16]="vertical()"
+>
+	<div class="d-flex flex-column align-items-center justify-content-center gap-3 p-3 text-center text-white">
+		<p class="mb-0">{{ (state() === 'offline' ? 'video_offline' : 'video_unavailable') | transloco }}</p>
+		<a
+			class="btn btn-animation btn-sm"
+			[href]="youtubeUrl()"
+			target="_blank"
+			rel="noopener"
+		>
+			<i class="ri-youtube-fill me-2"></i>
+			{{ 'watch_on_youtube' | transloco }}
+		</a>
+	</div>
+</div>
+} }

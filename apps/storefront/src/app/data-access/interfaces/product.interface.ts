@@ -7,6 +7,7 @@ import { IReview } from './review.interface';
 import { IStores } from './store.interface';
 import { ITag } from './tag.interface';
 import { ITax } from './tax.interface';
+import { IVideo } from './video.interface';
 
 /** A real sale, as the popup shows it. Product and time only. */
 export interface IRecentPurchase {
@@ -45,6 +46,8 @@ export interface IProduct {
 	store_id?: number;
 	size_guide?: ISizeGuide;
 	saree_length_m?: number | null;
+	/** YouTube videos and Shorts: photo-strip tiles after the photos, and the Description tab. */
+	videos?: IVideo[];
 	blouse_piece_m?: number | null;
 	estimated_delivery_text: string;
 	return_policy_text: string;

@@ -4,13 +4,16 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent, CarouselModule } from 'ngx-owl-carousel-o';
 
-import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
-import * as data from '@shared/data/owl-carousel';
-
-import { GalleryFullscreen } from './gallery-fullscreen';
 import { roleSrcset } from '@core/media/resolved-image';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
+import { IVideo } from '@data-access/interfaces/video.interface';
+import * as data from '@shared/data/owl-carousel';
+import { ShortsModal } from '@shared/ui/video/shorts-modal';
+import { posterFor } from '@shared/ui/video/video-links';
+import { VideoModal } from '@shared/ui/video/video-modal';
 
+import { GalleryFullscreen } from './gallery-fullscreen';
 import { GalleryImage, toGalleryImage } from './gallery-image';
 import { GalleryZoomLens } from './gallery-zoom-lens';
 
@@ -24,7 +27,7 @@ import { GalleryZoomLens } from './gallery-zoom-lens';
 	selector: 'app-product-gallery',
 	templateUrl: './product-gallery.html',
 	styleUrls: ['./product-gallery.scss'],
-	imports: [CarouselModule, TranslocoModule, GalleryZoomLens],
+	imports: [CarouselModule, TranslocoModule, GalleryZoomLens, VideoModal, ShortsModal],
 })
 export class ProductGallery {
 	private readonly modals = inject(NgbModal);
@@ -54,6 +57,24 @@ export class ProductGallery {
 	}
 
 	public activeSlide: string = '0';
+
+	/** The product's YouTube videos and Shorts, tiled after the photos. */
+	readonly videos = computed<IVideo[]>(() => this.product()?.videos ?? []);
+	readonly videoModal = viewChild(VideoModal);
+	readonly shortsModal = viewChild(ShortsModal);
+	readonly poster = (video: IVideo) => posterFor(video, 'card');
+
+	/** A video opens the wide popup; a Short opens the vertical one, stepping through this product's Shorts. */
+	playVideo(video: IVideo): void {
+		if (video.kind === 'short') {
+			this.shortsModal()?.open(
+				this.videos().filter((row) => row.kind === 'short'),
+				video,
+			);
+		} else {
+			this.videoModal()?.open(video);
+		}
+	}
 
 	public productMainThumbSlider = data.productMainThumbSlider;
 	public productThumbSlider = data.productThumbSlider;

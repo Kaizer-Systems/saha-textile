@@ -81,10 +81,10 @@
 						>
 							@for (term of group.terms; track term.code) {
 							<div
-								class="d-flex align-items-start mb-3 gap-3"
+								class="mb-3"
 								[id]="$first ? 'swatch_' + index : null"
 							>
-								<span class="input-group-text">{{ termLabel(term) }}</span>
+								<span class="input-group-text d-inline-flex mb-2">{{ termLabel(term) }}</span>
 								<div>
 									<ul class="image-select-list cursor-pointer">
 										<li

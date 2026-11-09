@@ -22,12 +22,18 @@
 				{{ 'filter_menu' | transloco }}
 			</a>
 			}
-			<h5 class="text-content">{{ 'sort_by'| transloco}} :</h5>
+			<h5
+				class="text-content"
+				id="collection-sort-label"
+			>
+				{{ 'sort_by'| transloco}} :
+			</h5>
 			@if(isBrowser) {
 			<div class="dropdown">
 				<select2
 					class="custom-select"
 					[displaySearchStatus]="'hidden'"
+					ariaLabelledby="collection-sort-label"
 					[placeholder]="'sort' | transloco"
 					[value]="filter()!['sortBy']"
 					[data]="sortOptions()"

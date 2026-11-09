@@ -12,7 +12,7 @@
 	@if ((cartItem$ | async)?.length) {
 	<span class="position-absolute translate-middle badge start-100 top-0">
 		{{ (cartItem$ | async)?.length }}
-		<span class="visually-hidden">{{ 'unread_messages' | transloco }}</span>
+		<span class="visually-hidden">{{ 'items' | transloco }}</span>
 	</span>
 	}
 </app-button>

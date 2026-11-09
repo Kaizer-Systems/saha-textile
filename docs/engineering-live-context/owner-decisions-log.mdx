@@ -1099,6 +1099,13 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 - **Gmail runs on a second, free Google Cloud project.** The owner never planned on Google Cloud and does not want a paid service. Any Gmail API access needs an OAuth client from the Google Cloud console, as the customer Google sign-in already has. The mailbox client lives in its own project with **Internal** consent (only sahatextile.com staff), because the customer sign-in project must stay External and full-mailbox access on an External app needs Google's paid security review. **No Pub/Sub and no billing account**: the API reads each mailbox's change list about once a minute instead of Gmail push.
 - **DNS waits for staging.** Adding Google to the SPF record and adding a DMARC record are done when staging is set up, not now.
 
+## Owner decision round (2026-11-10) — speed targets and nothing removed without a written say-so
+
+- **Nothing is removed without the owner's own written words.** No style, theme rule, icon, font, file, page section or library is stripped, dropped, purged or subset unless the owner asks for that specific removal in their own chat message. Accepting a plan or brief through a button is not that consent, even when the plan lists the removal. Removal is the last step of any speed work, never the first, and waits until development is finished (`DEC-PERF-TRIM`).
+- **Lighthouse and PageSpeed Insights targets.** Every category at 100 on every device class (small phone to 4K and 50-inch screens, standard and Retina) for every page Google lists, with no layout shift. Pages that must stay hidden from Google (cart, wishlist, compare, sign-in, account, search results) keep `noindex`; the only points they may lose are the hidden-page audit's, and everything else on them must be perfect. Phone performance is pushed hard.
+- **Industry-grade methods only.** Speed work uses the framework's and the industry's standard architecture, not makeshift fixes. Hand-written `style=""` attributes stay banned. A build-generated critical-CSS block in the page head (what Angular's own production build does) is a different thing and is allowed when it comes from the same stylesheets automatically.
+- **AVIF stays as locked under Image ingest:** no AVIF now; each derivative records its format so AVIF can be added later as a setting.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

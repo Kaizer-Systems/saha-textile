@@ -46,6 +46,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
 | `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
+| `DEC-PERF-TRIM`             | Which unused styles, icons and font weights to remove once development is finished                   | Storefront speed, theme, design system        |
 
 ---
 
@@ -722,5 +723,35 @@ Session duration and re-authentication rule:
 Service-token consumers:
 
 Origin-bypass test target:
+
+Notes:
+
+---
+
+## 25. `DEC-PERF-TRIM` — Removing unused styles, icons and font weights
+
+### Decision needed
+
+After development is finished, decide which unused theme and Bootstrap style rules, icon-font icons and font weights the storefront stops shipping. Until the owner asks for a specific removal in their own words, nothing is removed (owner rule, 2026-11-10).
+
+### Why this matters
+
+Measured on 2026-11-09 with a production build behind Brotli: the global stylesheet is about 0.98 MB (about 120 KB compressed) and every page must download it before it can draw, which is the largest cost on phones (main image at 6 to 9.4 s). The Remix Icon font is about 141 KB while about 100 icons are used. The Google Fonts request asks for 18 Public Sans styles (100 to 900, upright and italic) plus two Bengali weights.
+
+### Work that does not remove anything (can go first)
+
+- Split the global stylesheet by where rules are used: a small shared base, route-level styles that load with each page type, and component styles that Angular's server render already puts only on pages that use them. The same rules move; none are deleted.
+- Build-generated critical CSS for the first screen, with the full stylesheets still loaded as cached files without blocking the first paint.
+- Serve fonts and the icon font from our own origin with preload, so no second site is contacted.
+
+### Candidates for removal (each needs the owner's written go-ahead)
+
+- Theme and Bootstrap rules no page uses, found by coverage over every route and state.
+- Icon-font glyphs no template uses, or a move from the icon font to SVG icons.
+- Font weights and italics no style uses.
+
+### Owner answer
+
+Removals approved (owner's own words, with date):
 
 Notes:

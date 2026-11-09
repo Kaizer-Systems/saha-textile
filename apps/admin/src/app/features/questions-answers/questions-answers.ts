@@ -89,7 +89,7 @@ export class QuestionsAnswers {
 				confirm: true,
 			},
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'question_and_answer.destroy',

@@ -285,6 +285,7 @@
 						>
 							<li>
 								<a
+									[title]="'delete_address' | transloco"
 									href="javascript:void(0)"
 									(click)="confirmDeleteAddress(i)"
 								>
@@ -526,6 +527,7 @@
 			<span>{{ 'add' | transloco }} {{ 'address' | transloco }}</span>
 		</h3>
 		<app-button
+			[title]="'close' | transloco"
 			[class]="'btn btn-close'"
 			[spinner]="false"
 			[id]="'customer_address_modal_close_btn'"

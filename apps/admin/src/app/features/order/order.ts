@@ -39,7 +39,7 @@ export class Order {
 			{ title: 'payment_status', dataField: 'order_payment_status' },
 			{ title: 'payment_method', dataField: 'payment_mode' },
 		],
-		rowActions: [{ label: 'View', actionToPerform: 'view', icon: 'ri-eye-line', permission: 'order.edit' }],
+		rowActions: [{ label: 'view', actionToPerform: 'view', icon: 'ri-eye-line', permission: 'order.edit' }],
 		data: [],
 		total: 0,
 	};

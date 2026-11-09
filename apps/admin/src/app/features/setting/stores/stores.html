@@ -52,6 +52,7 @@
 						<div class="store-order d-flex align-items-center gap-1">
 							@if (canEdit()) {
 							<button
+								[title]="'drag_to_reorder' | transloco"
 								type="button"
 								class="btn store-drag-handle p-0"
 								cdkDragHandle
@@ -60,6 +61,7 @@
 								<i class="ri-draggable"></i>
 							</button>
 							<button
+								[title]="'move_up' | transloco"
 								type="button"
 								class="btn p-0"
 								[class.invisible]="first"
@@ -70,6 +72,7 @@
 								<i class="ri-arrow-up-s-line"></i>
 							</button>
 							<button
+								[title]="'move_down' | transloco"
 								type="button"
 								class="btn p-0"
 								[class.invisible]="last"
@@ -127,6 +130,7 @@
 						<ul id="actions">
 							<li *hasPermission="'setting.edit'">
 								<a
+									[title]="'edit' | transloco"
 									[routerLink]="['/setting/stores/edit', row.store.id]"
 									[attr.aria-label]="'edit' | transloco"
 								>
@@ -135,6 +139,7 @@
 							</li>
 							<li *hasPermission="'setting.edit'">
 								<a
+									[title]="'delete' | transloco"
 									href="javascript:void(0)"
 									[attr.aria-label]="'delete' | transloco"
 									(click)="deleteModal.openModal('delete', row)"

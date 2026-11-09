@@ -40,13 +40,13 @@ export class Currency {
 		],
 		rowActions: [
 			{
-				label: 'Edit',
+				label: 'edit',
 				actionToPerform: 'edit',
 				icon: 'ri-pencil-line',
 				permission: 'currency.edit',
 			},
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'currency.destroy',

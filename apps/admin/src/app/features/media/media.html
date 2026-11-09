@@ -12,6 +12,7 @@
 			<li>{{ 'selected' | transloco }}({{ images.length ? images.length : 0 }})</li>
 			<li>
 				<a
+					[title]="'delete_selected' | transloco"
 					href="javascript:void(0)"
 					(click)="DeleteModal().openModal('deleteAll', [])"
 				>

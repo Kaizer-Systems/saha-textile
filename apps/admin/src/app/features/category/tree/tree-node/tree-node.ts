@@ -1,7 +1,7 @@
 import { Component, inject, viewChild, input } from '@angular/core';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 
-import { TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { ICategory } from '@data-access/interfaces/category.interface';
@@ -15,7 +15,7 @@ import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
 	selector: 'app-tree-node',
 	templateUrl: './tree-node.html',
 	styleUrls: ['./tree-node.scss'],
-	imports: [HasPermissionDirective, RouterModule, DeleteModal],
+	imports: [HasPermissionDirective, RouterModule, DeleteModal, TranslocoPipe],
 })
 export class TreeNode {
 	private router = inject(Router);

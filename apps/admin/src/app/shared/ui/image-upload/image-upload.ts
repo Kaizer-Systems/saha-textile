@@ -1,15 +1,17 @@
 import { Component, Input, viewChild, output, input } from '@angular/core';
 
-import type { MediaPurpose } from '@core/media/media.gateway';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { MediaModal, MediaModal as MediaModalComponent_1 } from '@shared/ui/modal/media-modal/media-modal';
+
+import type { MediaPurpose } from '@core/media/media.gateway';
 
 @Component({
 	selector: 'app-image-upload',
 	templateUrl: './image-upload.html',
 	styleUrls: ['./image-upload.scss'],
-	imports: [MediaModalComponent_1],
+	imports: [MediaModalComponent_1, TranslocoPipe],
 })
 export class ImageUpload {
 	readonly MediaModal = viewChild<MediaModal>('mediaModal');

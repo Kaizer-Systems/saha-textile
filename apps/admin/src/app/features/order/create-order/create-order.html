@@ -131,6 +131,7 @@
 										<div class="qty-box cart_qty">
 											<div class="input-group">
 												<app-button
+													[title]="'decrease_quantity' | transloco"
 													[class]="'btn qty-left-minus'"
 													[id]="'add-to-cart'+item.product.id"
 													[spinner]="false"
@@ -146,6 +147,7 @@
 													readonly
 												/>
 												<app-button
+													[title]="'increase_quantity' | transloco"
 													[class]="'btn qty-left-minus'"
 													[id]="'qty-left-minus'+item.product.id"
 													[spinner]="false"

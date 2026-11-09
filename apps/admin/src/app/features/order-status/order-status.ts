@@ -35,8 +35,8 @@ export class OrderStatus {
 			{ title: 'status', dataField: 'status', type: 'switch' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line' },
-			{ label: 'Delete', actionToPerform: 'delete', icon: 'ri-delete-bin-line' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line' },
+			{ label: 'delete', actionToPerform: 'delete', icon: 'ri-delete-bin-line' },
 		],
 		data: [] as IOrderStatus[],
 		total: 0,

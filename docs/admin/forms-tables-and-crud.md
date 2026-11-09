@@ -105,6 +105,8 @@ The blog list's **Go Live** and **Take off shop** buttons follow this pattern. B
 - Do not use table configuration as an authorization mechanism.
 - Keep destructive actions recoverable or explicitly confirmed.
 - Do not show a success message for a method with no backend.
+- Give every icon-only action a translated hover name: `[title]="'edit' | transloco"` on the button, link or click target. Use the same key for `aria-label` when one is set. `pnpm check:icon-titles` fails the lint on a missing one (`DEC-ICON-TITLES`).
+- Write table `rowActions` and `bulkActions` labels as translation keys (`edit`, `delete`, `view`, `go_live`). The shared table shows the row-action label as the icon's hover name and screen-reader name.
 
 ## Product form rules
 

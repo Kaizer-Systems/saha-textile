@@ -69,9 +69,9 @@ export class SearchTermList {
 			{ title: 'updated_at', dataField: 'updated_at', type: 'date', date_format: 'dd MMM yyyy' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'search_term.edit' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'search_term.edit' },
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'search_term.destroy',

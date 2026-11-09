@@ -83,6 +83,11 @@ Then **wait for approval.** If custom work proves unavoidable mid-build, stop ag
 in the browser pane before it lands. A silently added class, element or component is the failure
 this rule exists to prevent. Full text: `owner-decisions-log.mdx` § `DEC-UI-REUSE`.
 
+**Icon-only actions name themselves (owner lock 2026-11-10, `DEC-ICON-TITLES`).** Any admin button,
+link or click target that shows only an icon carries a translated hover name,
+`[title]="'edit' | transloco"`, with keys in both `en.json` and `bn.json`. No popover or tooltip
+library. `pnpm check:icon-titles` (in `pnpm lint`) enforces it.
+
 ## 6. Security baseline (OWASP Top 10:2025)
 
 - Object-level authorization on every order/cart/user endpoint (BOLA is the #1 API risk).

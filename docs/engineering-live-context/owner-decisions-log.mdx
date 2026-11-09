@@ -1106,6 +1106,11 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 - **Industry-grade methods only.** Speed work uses the framework's and the industry's standard architecture, not makeshift fixes. Hand-written `style=""` attributes stay banned. A build-generated critical-CSS block in the page head (what Angular's own production build does) is a different thing and is allowed when it comes from the same stylesheets automatically.
 - **AVIF stays as locked under Image ingest:** no AVIF now; each derivative records its format so AVIF can be added later as a setting.
 
+## Owner decision round (2026-11-10) — icon actions name themselves (`DEC-ICON-TITLES`)
+
+- **Every icon-only action in the admin shows its name on hover.** Staff may not know that a pencil means Edit or a bin means Delete, so any clickable thing that shows only an icon carries a translated `title` naming the action ("Edit", "Delete", "Pick a date", "Next page"). The browser's own hover text is used: no popover and no tooltip library. Buttons that already show words need nothing more.
+- **It holds for all future work.** `pnpm check:icon-titles` (part of `pnpm lint`) reads every admin template and fails on an icon-only button, link or click target without a `title`. Table row-action labels are translation keys, so the shared table names each row action in English and Bengali.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

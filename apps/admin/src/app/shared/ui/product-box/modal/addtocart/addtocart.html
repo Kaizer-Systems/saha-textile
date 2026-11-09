@@ -5,6 +5,7 @@
 	<div class="modal-header">
 		<h3 class="fw-semibold mb-1">{{ 'product_details' | transloco }}</h3>
 		<app-button
+			[title]="'close' | transloco"
 			[class]="'btn btn-close'"
 			[spinner]="false"
 			[id]="'media_close_btn'"
@@ -62,6 +63,7 @@
 						<div class="qty-box cart_qty">
 							<div class="input-group">
 								<app-button
+									[title]="'decrease_quantity' | transloco"
 									[class]="'btn qty-left-minus'"
 									[id]="'add-to-cart'+product.id"
 									[spinner]="false"
@@ -77,6 +79,7 @@
 									readonly
 								/>
 								<app-button
+									[title]="'increase_quantity' | transloco"
 									[class]="'btn qty-left-minus'"
 									[id]="'qty-left-minus'+product.id"
 									[spinner]="false"

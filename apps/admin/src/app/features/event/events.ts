@@ -50,10 +50,10 @@ export class Events {
 			{ title: 'ends_at_ist', dataField: 'ends_at', sortable: true },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'event.edit' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'event.edit' },
 			// A published event is cancelled instead, so its record stays (owner brief).
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'event.destroy',

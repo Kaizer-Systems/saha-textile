@@ -51,10 +51,10 @@ export class Blog {
 			{ title: 'status', dataField: 'status', type: 'switch' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'blog.edit' },
-			{ label: 'Go Live', actionToPerform: 'go_live', icon: 'ri-rocket-line', permission: 'blog.edit' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'blog.edit' },
+			{ label: 'go_live', actionToPerform: 'go_live', icon: 'ri-rocket-line', permission: 'blog.edit' },
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'blog.destroy',

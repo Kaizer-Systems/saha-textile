@@ -42,13 +42,13 @@ export class Attribute {
 		],
 		rowActions: [
 			{
-				label: 'Edit',
+				label: 'edit',
 				actionToPerform: 'edit',
 				icon: 'ri-pencil-line',
 				permission: 'attribute.edit',
 			},
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'attribute.destroy',

@@ -4,7 +4,7 @@ wide: true
 description: Testing approach and completion checks for storefront and admin changes.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/package.json
@@ -72,6 +72,7 @@ A change is done when it passes these checks, not when it renders once.
 - [ ] Storefront direct SSR navigation and hydration were checked.
 - [ ] Admin deep-link refresh reaches the correct shell.
 - [ ] Keyboard, focus, touch target, screen-reader label, and reduced-motion behaviour were checked.
+- [ ] Every icon-only admin action shows a translated name on hover (`pnpm check:icon-titles`).
 - [ ] Dense tables/forms remain usable at supported widths.
 
 ### Verification

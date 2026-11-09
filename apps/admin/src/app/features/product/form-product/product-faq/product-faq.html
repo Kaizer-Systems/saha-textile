@@ -25,6 +25,7 @@
 		<h5 class="fw-semibold mb-0">{{ 'faq_question_number' | transloco: { number: index + 1 } }}</h5>
 		<div class="d-flex gap-1">
 			<button
+				[title]="'move_up' | transloco"
 				type="button"
 				class="btn btn-sm btn-outline-secondary"
 				[disabled]="first"
@@ -34,6 +35,7 @@
 				<i class="ri-arrow-up-line"></i>
 			</button>
 			<button
+				[title]="'move_down' | transloco"
 				type="button"
 				class="btn btn-sm btn-outline-secondary"
 				[disabled]="last"
@@ -43,6 +45,7 @@
 				<i class="ri-arrow-down-line"></i>
 			</button>
 			<button
+				[title]="'remove' | transloco"
 				type="button"
 				class="btn btn-sm btn-outline-danger"
 				[attr.aria-label]="'remove' | transloco"

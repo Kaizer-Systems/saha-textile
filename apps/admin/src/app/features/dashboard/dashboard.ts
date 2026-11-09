@@ -233,7 +233,7 @@ export class Dashboard {
 			{ title: 'amount', dataField: 'total', type: 'price' },
 			{ title: 'payment', dataField: 'order_payment_status' },
 		],
-		rowActions: [{ label: 'View', actionToPerform: 'view', icon: 'ri-eye-line', permission: 'order.edit' }],
+		rowActions: [{ label: 'view', actionToPerform: 'view', icon: 'ri-eye-line', permission: 'order.edit' }],
 		data: [],
 		total: 0,
 	});
@@ -253,7 +253,7 @@ export class Dashboard {
 		],
 		rowActions: [
 			{
-				label: 'Edit',
+				label: 'edit',
 				actionToPerform: 'edit',
 				icon: 'ri-pencil-line',
 				permission: 'product.edit',

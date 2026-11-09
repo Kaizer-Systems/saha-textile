@@ -13,6 +13,7 @@
 					<span class="badge badge-pill badge-primary">
 						{{ pills[displayKey()] }}
 						<i
+							[title]="'remove' | transloco"
 							class="ri-close-line"
 							(click)="removeItem(pills); $event.stopPropagation()"
 						></i>
@@ -41,6 +42,7 @@
 			</ol>
 		</nav>
 		<a
+			[title]="'open_list' | transloco"
 			class="cateogry-close-btn d-inline-block"
 			[class.show]="isOpen"
 			(click)="toggleDropdown($event)"

@@ -1,5 +1,6 @@
 <ul class="image-select-list cursor-pointer">
 	<li
+		[title]="'add_image' | transloco"
 		class="choosefile-input"
 		(click)="MediaModal().openModal()"
 	>
@@ -13,6 +14,7 @@
 			class="img-fluid"
 		/>
 		<a
+			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
 			class="remove-icon"
 			id="remove-icon{{ i }}"
@@ -29,6 +31,7 @@
 			class="img-fluid"
 		/>
 		<a
+			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
 			class="remove-icon"
 			(click)="remove($any(showImage?.id), 'single')"
@@ -44,6 +47,7 @@
 			class="img-fluid"
 		/>
 		<a
+			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
 			class="remove-icon"
 			(click)="remove(1, 'single_image_url')"

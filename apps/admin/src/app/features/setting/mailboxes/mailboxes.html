@@ -63,6 +63,7 @@
 							</button>
 							@if (row.mailbox.status === 'connected') {
 							<button
+								[title]="'mailbox_refresh_aliases' | transloco"
 								type="button"
 								class="btn btn-outline btn-sm"
 								[attr.aria-label]="'mailbox_refresh_aliases' | transloco"
@@ -138,6 +139,7 @@
 			{{ 'mailbox_access_title' | transloco: { address: accessFor()?.mailbox?.address } }}
 		</h3>
 		<button
+			[title]="'close' | transloco"
 			type="button"
 			class="btn btn-close"
 			(click)="modal.dismiss('Cross click')"

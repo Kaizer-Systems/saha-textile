@@ -93,6 +93,7 @@
 				readonly
 			/>
 			<button
+				[title]="'pick_date' | transloco"
 				class="btn btn-outline-secondary"
 				(click)="datepicker.toggle()"
 				type="button"
@@ -111,6 +112,7 @@
 				readonly
 			/>
 			<button
+				[title]="'pick_date' | transloco"
 				class="btn btn-outline-secondary"
 				(click)="datepicker.toggle()"
 				type="button"
@@ -289,7 +291,10 @@
 					<td>
 						<ul id="actions">
 							@if (columnData['system_reserve'] === '1') {
-							<a href="javascript:void(0)">
+							<a
+								[title]="'locked_item' | transloco"
+								href="javascript:void(0)"
+							>
 								<i [class]="'ri-lock-line'"></i>
 							</a>
 							} @else { @for ( action of tableConfig?.rowActions; track action) { @if
@@ -298,8 +303,9 @@
 							<ng-container *hasPermission="action.permission">
 								<li>
 									<a
+										[title]="action.label | transloco"
 										href="javascript:void(0)"
-										[attr.aria-label]="action.label"
+										[attr.aria-label]="action.label | transloco"
 										(click)="action?.actionToPerform === 'delete' 
                                                                 ? DeleteModal().openModal('delete', columnData) 
                                                                 : action.confirm

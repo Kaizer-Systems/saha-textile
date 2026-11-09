@@ -35,6 +35,7 @@
 >
 	<ul class="image-select-list cursor-pointer">
 		<li
+			[title]="'add_image' | transloco"
 			class="choosefile-input"
 			(click)="open(hash)"
 		>
@@ -54,6 +55,7 @@
 				class="img-fluid"
 			/>
 			<a
+				[title]="'remove_image' | transloco"
 				href="javascript:void(0)"
 				class="remove-icon"
 				(click)="remove(hash, index)"
@@ -62,6 +64,7 @@
 			</a>
 			<div class="image-order-actions">
 				<button
+					[title]="'move_earlier' | transloco"
 					type="button"
 					[attr.aria-label]="'move_earlier' | transloco"
 					(click)="move(hash, index, -1)"
@@ -69,6 +72,7 @@
 					<i class="ri-arrow-left-s-line"></i>
 				</button>
 				<button
+					[title]="'make_primary' | transloco"
 					type="button"
 					[attr.aria-label]="'make_primary' | transloco"
 					(click)="makePrimary(hash, index)"
@@ -76,6 +80,7 @@
 					<i [class]="index === 0 ? 'ri-star-fill' : 'ri-star-line'"></i>
 				</button>
 				<button
+					[title]="'move_later' | transloco"
 					type="button"
 					[attr.aria-label]="'move_later' | transloco"
 					(click)="move(hash, index, 1)"

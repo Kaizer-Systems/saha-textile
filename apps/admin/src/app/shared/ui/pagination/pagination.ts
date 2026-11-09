@@ -1,10 +1,13 @@
 import { Component, Input, output, SimpleChanges } from '@angular/core';
 
+import { TranslocoPipe } from '@jsverse/transloco';
+
 import { IPaginate } from '@data-access/interfaces/paginate.interface';
 
 @Component({
 	selector: 'app-pagination',
 	templateUrl: './pagination.html',
+	imports: [TranslocoPipe],
 	styleUrls: ['./pagination.scss'],
 })
 export class Pagination {

@@ -1,10 +1,12 @@
 import { Component, output, input } from '@angular/core';
 
+import { TranslocoPipe } from '@jsverse/transloco';
+
 @Component({
 	selector: 'app-dropdown-list',
 	templateUrl: './dropdown-list.html',
 	styleUrls: ['./dropdown-list.scss'],
-	imports: [],
+	imports: [TranslocoPipe],
 })
 export class DropdownList {
 	// TODO: Skipped for migration because:

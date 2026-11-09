@@ -70,9 +70,9 @@ export class Review {
 			{ title: 'created_at', dataField: 'created_at', type: 'date' },
 		],
 		rowActions: [
-			{ label: 'Photos', actionToPerform: 'photos', icon: 'ri-image-line', permission: 'review.index' },
-			{ label: 'Approve', actionToPerform: 'approve', icon: 'ri-check-line', permission: 'review.edit' },
-			{ label: 'Reject', actionToPerform: 'reject', icon: 'ri-close-circle-line', permission: 'review.edit' },
+			{ label: 'photos', actionToPerform: 'photos', icon: 'ri-image-line', permission: 'review.index' },
+			{ label: 'approve', actionToPerform: 'approve', icon: 'ri-check-line', permission: 'review.edit' },
+			{ label: 'reject', actionToPerform: 'reject', icon: 'ri-close-circle-line', permission: 'review.edit' },
 		],
 		data: [] as ReviewTableRow[],
 		total: 0,

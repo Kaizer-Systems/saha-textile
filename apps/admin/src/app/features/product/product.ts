@@ -73,19 +73,19 @@ export class Product {
 		],
 		rowActions: [
 			{
-				label: 'Edit',
+				label: 'edit',
 				actionToPerform: 'edit',
 				icon: 'ri-pencil-line',
 				permission: 'product.edit',
 			},
 			{
-				label: 'Go Live',
+				label: 'go_live',
 				actionToPerform: 'go_live',
 				icon: 'ri-rocket-line',
 				permission: 'product.edit',
 			},
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'product.destroy',

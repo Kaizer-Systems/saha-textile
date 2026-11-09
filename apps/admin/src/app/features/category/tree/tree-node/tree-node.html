@@ -4,6 +4,7 @@
 >
 	<div>
 		<i
+			[title]="'show_subcategories' | transloco"
 			class="tree-icon file-icon"
 			role="presentation"
 			(click)="showChildrenNode = !showChildrenNode"
@@ -16,6 +17,7 @@
 		</span>
 		<div class="tree-options">
 			<a
+				[title]="'edit' | transloco"
 				href="javascript:void(0)"
 				*hasPermission="'category.edit'"
 				[routerLink]="[node().type === 'post' ? '/blog/category/edit' : '/category/edit', node()?.id]"
@@ -23,6 +25,7 @@
 				<i class="ri-pencil-line text-success"></i>
 			</a>
 			<a
+				[title]="'delete' | transloco"
 				href="javascript:void(0)"
 				*hasPermission="'category.destroy'"
 				(click)="DeleteModal().openModal('delete', node())"

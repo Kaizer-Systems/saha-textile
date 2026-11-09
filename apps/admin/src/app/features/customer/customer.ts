@@ -95,15 +95,15 @@ export class Customer {
 			{ title: 'status', dataField: 'status' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'customer.update' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'customer.update' },
 			{
-				label: 'Delete',
+				label: 'delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'customer.destroy',
 			},
 			{
-				label: 'Restore',
+				label: 'restore',
 				actionToPerform: 'restore',
 				icon: 'ri-arrow-go-back-line',
 				permission: 'customer.restore',

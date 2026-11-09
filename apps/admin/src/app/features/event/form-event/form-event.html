@@ -507,6 +507,7 @@
 												<td>
 													@if (!readOnly()) {
 													<a
+														[title]="'delete' | transloco"
 														href="javascript:void(0)"
 														[attr.aria-label]="'delete' | transloco"
 														(click)="removeCategoryLine(line.categoryId)"
@@ -556,6 +557,7 @@
 												<td>
 													@if (!readOnly()) {
 													<a
+														[title]="'delete' | transloco"
 														href="javascript:void(0)"
 														[attr.aria-label]="'delete' | transloco"
 														(click)="removeProductLine(line.productId)"
@@ -846,6 +848,7 @@
 			{{ 'event_exceptions' | transloco }} · {{ categoryName(exceptionsFor()?.line?.categoryId ?? '') }}
 		</h3>
 		<app-button
+			[title]="'close' | transloco"
 			[class]="'btn btn-close'"
 			[spinner]="false"
 			[id]="'exceptions_close_btn'"

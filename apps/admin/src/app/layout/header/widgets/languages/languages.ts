@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 
-import { TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 import { Button } from '@shared/ui/button/button';
@@ -16,7 +16,7 @@ export interface ILanguage {
 	selector: 'app-languages',
 	templateUrl: './languages.html',
 	styleUrls: ['./languages.scss'],
-	imports: [ClickOutsideDirective, Button],
+	imports: [ClickOutsideDirective, Button, TranslocoPipe],
 })
 export class Languages {
 	private translate = inject(TranslocoService);

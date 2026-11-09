@@ -65,7 +65,7 @@ export class AdminUsers {
 			{ title: 'status', dataField: 'status', type: 'switch' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'admin_user.update' },
+			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'admin_user.update' },
 		],
 		data: [],
 		total: 0,

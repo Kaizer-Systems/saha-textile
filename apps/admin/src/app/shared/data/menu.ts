@@ -16,6 +16,18 @@ export const menu: IMenu[] = [
 		level: 1,
 	},
 	{
+		id: 22,
+		title: 'inbox',
+		path: '/inbox',
+		active: false,
+		icon: 'ri-mail-line',
+		type: 'sub',
+		badgeType: 'badge bg-danger ml-3',
+		badgeValue: 0,
+		level: 1,
+		permission: ['mailbox.use'],
+	},
+	{
 		id: 2,
 		title: 'users',
 		active: false,

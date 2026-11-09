@@ -128,6 +128,10 @@ export const content: Routes = [
 		loadChildren: () => import('@features/faq/faq.routes'),
 	},
 	{
+		path: 'inbox',
+		loadChildren: () => import('@features/inbox/inbox.routes'),
+	},
+	{
 		path: 'notification',
 		loadChildren: () => import('@features/notification/notification.routes'),
 	},

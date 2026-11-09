@@ -1,0 +1,439 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'inbox'"
+>
+	<div
+		button
+		class="d-flex align-items-center flex-wrap gap-2"
+	>
+		@if (mailboxes().length > 1) {
+		<select2
+			class="custom-select keep-case"
+			id="inbox_mailbox"
+			[attr.aria-label]="'mailbox' | transloco"
+			[data]="mailboxChoices()"
+			[value]="mailbox()?.mailboxId ?? ''"
+			(update)="chooseMailbox($event)"
+		/>
+		} @if (canSend()) {
+		<button
+			type="button"
+			class="align-items-center btn btn-theme d-flex"
+			id="inbox_compose_btn"
+			(click)="compose()"
+		>
+			<i class="ri-edit-line"></i>
+			{{ 'inbox_compose' | transloco }}
+		</button>
+		}
+	</div>
+
+	@if (loadingMailboxes()) {
+	<div class="table-loader">
+		<span>{{ 'please_wait' | transloco }}...</span>
+	</div>
+	} @else if (!mailbox()) {
+	<p class="text-content">{{ 'inbox_no_mailboxes' | transloco }}</p>
+	} @else { @if (mailboxes().length === 1) {
+	<p class="text-content">{{ mailbox()?.address }}</p>
+	} @if (!connected()) {
+	<div class="alert alert-warning">{{ 'inbox_needs_reconnect' | transloco: { address: mailbox()?.address } }}</div>
+	} @if (gmailDown()) {
+	<div class="alert alert-warning">{{ 'inbox_gmail_unavailable' | transloco }}</div>
+	}
+
+	<div class="vertical-tabs">
+		<div class="row g-4">
+			<!-- Folders -->
+			<div
+				class="col-xl-2 col-lg-3 d-lg-block"
+				[class.d-none]="reading()"
+			>
+				<ul class="nav nav-pills flex-column">
+					@for (entry of folders; track entry.id) {
+					<li class="nav-item">
+						<a
+							class="nav-link"
+							href="javascript:void(0)"
+							[class.active]="folder() === entry.id"
+							[attr.aria-current]="folder() === entry.id ? 'page' : null"
+							(click)="chooseFolder(entry.id)"
+						>
+							<i [class]="entry.icon"></i>
+							{{ 'inbox_folder_' + entry.id | transloco }} @if (entry.id === 'inbox' && mailbox()?.unread)
+							{
+							<span class="badge bg-danger ms-1">{{ mailbox()?.unread }}</span>
+							}
+						</a>
+					</li>
+					}
+				</ul>
+			</div>
+
+			<!-- Conversation list -->
+			<div
+				class="col-xl-4 col-lg-4 d-lg-block"
+				[class.d-none]="reading()"
+			>
+				<form
+					class="mb-3"
+					role="search"
+					(submit)="$event.preventDefault(); search()"
+				>
+					<input
+						class="form-control"
+						type="search"
+						id="inbox_search"
+						[attr.aria-label]="'inbox_search' | transloco"
+						[placeholder]="'inbox_search' | transloco"
+						[value]="searchText()"
+						(input)="searchText.set($any($event.target).value)"
+					/>
+				</form>
+				@if (loadingThreads()) {
+				<div class="table-loader position-static">
+					<span>{{ 'please_wait' | transloco }}...</span>
+				</div>
+				} @else {
+				<ul class="notification-setting inbox-list">
+					@for (row of threads(); track row.id) {
+					<li
+						tabindex="0"
+						role="button"
+						[class.unread]="row.unread"
+						[class.border]="openId() === row.id"
+						[attr.aria-current]="openId() === row.id ? 'true' : null"
+						(click)="open(row)"
+						(keydown.enter)="open(row)"
+					>
+						<h4 [class.fw-bold]="row.unread">
+							{{ senderName(row.from) }} @if (row.messageCount > 1) {
+							<span class="text-content small">({{ row.messageCount }})</span>
+							}
+						</h4>
+						<h5 class="mb-1">{{ row.subject || ('inbox_no_subject' | transloco) }}</h5>
+						<p class="text-content small text-truncate mb-1">{{ row.snippet }}</p>
+						<h5 class="small">
+							<i class="ri-time-line"></i>
+							{{ row.date | date: 'd MMM, HH:mm' }}
+						</h5>
+					</li>
+					} @empty {
+					<li class="text-content">{{ 'inbox_empty_folder' | transloco }}</li>
+					}
+				</ul>
+				@if (!firstPage() || nextPage()) {
+				<div class="d-flex justify-content-between mt-3">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="firstPage()"
+						(click)="newer()"
+					>
+						<i class="ri-arrow-left-s-line"></i>
+						{{ 'inbox_newer' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="!nextPage()"
+						(click)="older()"
+					>
+						{{ 'inbox_older' | transloco }}
+						<i class="ri-arrow-right-s-line"></i>
+					</button>
+				</div>
+				} }
+			</div>
+
+			<!-- Reading pane -->
+			<div
+				class="col-xl-6 col-lg-5 d-lg-block"
+				[class.d-none]="!reading()"
+			>
+				@if (reading()) {
+				<button
+					type="button"
+					class="btn btn-outline btn-sm d-lg-none mb-3"
+					(click)="back()"
+				>
+					<i class="ri-arrow-left-line"></i>
+					{{ 'back' | transloco }}
+				</button>
+				} @if (draft(); as d) {
+				<h4 class="mb-3">{{ 'inbox_draft_' + d.mode | transloco }}</h4>
+				<div class="theme-form theme-form-2 mega-form">
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-2 mb-0'"
+						[gridClass]="'col-sm-10'"
+						[label]="'inbox_from'"
+						[for]="'inbox_from'"
+					>
+						<select2
+							class="custom-select keep-case"
+							id="inbox_from"
+							[data]="fromChoices()"
+							[value]="d.from"
+							(update)="chooseFrom($event)"
+						/>
+					</app-form-fields>
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-2 mb-0'"
+						[gridClass]="'col-sm-10'"
+						[label]="'inbox_to'"
+						[for]="'inbox_to'"
+						[required]="true"
+					>
+						<input
+							class="form-control"
+							type="text"
+							id="inbox_to"
+							autocomplete="off"
+							[placeholder]="'inbox_addresses_help' | transloco"
+							[value]="d.to"
+							(input)="editDraft('to', $any($event.target).value)"
+						/>
+					</app-form-fields>
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-2 mb-0'"
+						[gridClass]="'col-sm-10'"
+						[label]="'inbox_cc'"
+						[for]="'inbox_cc'"
+					>
+						<input
+							class="form-control"
+							type="text"
+							id="inbox_cc"
+							autocomplete="off"
+							[value]="d.cc"
+							(input)="editDraft('cc', $any($event.target).value)"
+						/>
+					</app-form-fields>
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-2 mb-0'"
+						[gridClass]="'col-sm-10'"
+						[label]="'inbox_subject'"
+						[for]="'inbox_subject'"
+						[required]="true"
+					>
+						<input
+							class="form-control"
+							type="text"
+							id="inbox_subject"
+							[value]="d.subject"
+							(input)="editDraft('subject', $any($event.target).value)"
+						/>
+					</app-form-fields>
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-2 mb-0'"
+						[gridClass]="'col-sm-10'"
+						[label]="'message'"
+						[for]="'inbox_body'"
+					>
+						<textarea
+							class="form-control"
+							id="inbox_body"
+							rows="8"
+							[value]="d.body"
+							(input)="editDraft('body', $any($event.target).value)"
+						></textarea>
+						<p class="help-text mt-2">{{ 'inbox_signature_help' | transloco }}</p>
+					</app-form-fields>
+					<!-- One row under the message, lined up with the fields: Attach on the left,
+						 Discard and Send on the right. On a narrow screen the buttons wrap under
+						 Attach, still on the right. The gaps match the theme's own button row. -->
+					<div class="row g-2">
+						<div class="col-sm-10 offset-sm-2">
+							<div class="d-flex align-items-center flex-wrap gap-3">
+								<input
+									#picker
+									type="file"
+									id="inbox_files"
+									multiple
+									hidden
+									(change)="pickFiles($event)"
+								/>
+								<button
+									type="button"
+									class="btn btn-outline btn-md fw-bold"
+									id="inbox_attach_btn"
+									(click)="picker.click()"
+								>
+									<i class="ri-attachment-2"></i>
+									{{ 'inbox_attach' | transloco }}
+								</button>
+								<div class="d-flex ms-auto gap-3">
+									<button
+										type="button"
+										class="btn btn-md btn-secondary fw-bold"
+										(click)="discard()"
+									>
+										{{ 'inbox_discard' | transloco }}
+									</button>
+									<button
+										type="button"
+										class="btn btn-md btn-theme fw-bold"
+										id="inbox_send_btn"
+										[disabled]="sending()"
+										(click)="send()"
+									>
+										<i class="ri-send-plane-line"></i>
+										{{ 'send' | transloco }}
+									</button>
+								</div>
+							</div>
+							@if (files().length) {
+							<p class="help-text d-flex column-gap-3 mt-2 mb-0 flex-wrap">
+								@for (file of files(); track $index) {
+								<span class="text-break">
+									<i class="ri-attachment-2"></i>
+									{{ file.name }} ({{ size(file.size) }})
+								</span>
+								}
+							</p>
+							}
+							<p class="help-text mt-2">{{ 'inbox_attach_help' | transloco }}</p>
+						</div>
+					</div>
+				</div>
+				} @else if (loadingThread()) {
+				<div class="table-loader position-static">
+					<span>{{ 'please_wait' | transloco }}...</span>
+				</div>
+				} @else if (thread(); as t) {
+				<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+					<h4 class="mb-0">{{ t.subject || ('inbox_no_subject' | transloco) }}</h4>
+					<div class="d-flex flex-wrap gap-2">
+						@if (canSend()) { @if (folder() === 'trash') {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="act('untrash')"
+						>
+							<i class="ri-arrow-go-back-line"></i>
+							{{ 'inbox_untrash' | transloco }}
+						</button>
+						} @else { @if (folder() === 'inbox') {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="act('archive')"
+						>
+							<i class="ri-archive-line"></i>
+							{{ 'inbox_archive' | transloco }}
+						</button>
+						} @else if (folder() !== 'sent') {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="act('move_to_inbox')"
+						>
+							<i class="ri-inbox-unarchive-line"></i>
+							{{ 'inbox_move_to_inbox' | transloco }}
+						</button>
+						}
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="act('trash')"
+						>
+							<i class="ri-delete-bin-line"></i>
+							{{ 'inbox_trash' | transloco }}
+						</button>
+						} }
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="act('mark_unread')"
+						>
+							<i class="ri-mail-unread-line"></i>
+							{{ 'inbox_mark_unread' | transloco }}
+						</button>
+					</div>
+				</div>
+				@for (message of t.messages; track message.id) {
+				<div class="rounded-3 mb-3 border p-3">
+					<div class="d-flex justify-content-between flex-wrap gap-2">
+						<div>
+							<h5 class="mb-1">{{ senderName(message.from) }}</h5>
+							<div class="text-content small">
+								{{ 'inbox_to' | transloco }}: {{ message.to }} @if (message.cc) { · {{ 'inbox_cc' |
+								transloco }}: {{ message.cc }} } @if (message.replyTo) { · {{ 'inbox_reply_goes_to' |
+								transloco }} {{ message.replyTo }} }
+							</div>
+						</div>
+						<div class="text-content small">{{ message.date | date: 'd MMM y, HH:mm' }}</div>
+					</div>
+					@if (message.hasRemoteImages && !picturesShown(message)) {
+					<div
+						class="alert alert-light d-flex justify-content-between align-items-center mt-3 mb-0 flex-wrap gap-2 py-2"
+					>
+						<span class="small">{{ 'inbox_pictures_hidden' | transloco }}</span>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="showPictures(message)"
+						>
+							{{ 'inbox_show_pictures' | transloco }}
+						</button>
+					</div>
+					}
+					<iframe
+						class="inbox-frame mt-3"
+						sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+						referrerpolicy="no-referrer"
+						[title]="message.subject"
+						[srcdoc]="frames().get(message.id)"
+						(load)="fitFrame($event)"
+					></iframe>
+					@if (message.attachments.length) {
+					<div class="d-flex mt-3 flex-wrap gap-2">
+						@for (attachment of message.attachments; track attachment.id) {
+						<a
+							class="btn btn-outline btn-sm"
+							target="_blank"
+							rel="noopener"
+							[href]="attachmentUrl(message, attachment)"
+						>
+							<i class="ri-attachment-2"></i>
+							{{ attachment.filename }} ({{ size(attachment.size) }})
+						</a>
+						}
+					</div>
+					}
+				</div>
+				} @if (canSend()) {
+				<div class="d-flex flex-wrap gap-2">
+					<button
+						type="button"
+						class="btn btn-theme btn-sm"
+						(click)="startDraft('reply')"
+					>
+						<i class="ri-reply-line"></i>
+						{{ 'inbox_reply' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="startDraft('reply_all')"
+					>
+						<i class="ri-reply-all-line"></i>
+						{{ 'inbox_reply_all' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="startDraft('forward')"
+					>
+						<i class="ri-share-forward-line"></i>
+						{{ 'inbox_forward' | transloco }}
+					</button>
+				</div>
+				} } @else {
+				<p class="text-content py-5 text-center">{{ 'inbox_pick_conversation' | transloco }}</p>
+				}
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

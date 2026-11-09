@@ -54,6 +54,22 @@ describe('MenuStore', () => {
 		return null;
 	};
 
+	it("sets one entry's number, and leaves the menu alone when it has not changed", () => {
+		const menu = store(of(null));
+		menu.setBadge('/inbox', 4);
+		const first = menu.menu();
+		expect((find(first as never, '/inbox') as { badgeValue: number }).badgeValue).toBe(4);
+		menu.setBadge('/inbox', 4);
+		expect(menu.menu()).toBe(first);
+		menu.setBadge('/nowhere', 1);
+		expect(menu.menu()).not.toBe(first);
+		const nested = menu.menu();
+		const product = find(nested as never, '/product') as { badgeValue: number };
+		menu.setBadge('/product', product.badgeValue);
+		expect(menu.menu()).toBe(nested);
+		menu.setBadge('/inbox', 0);
+	});
+
 	it('writes the badges into the menu, however deep', () => {
 		const menu = store(
 			of({

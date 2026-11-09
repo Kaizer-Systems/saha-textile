@@ -29,10 +29,26 @@ function updateBadgeValueRecursive(menuItems: IMenu[], path: string, badgeValue:
 	}
 }
 
+function findBadge(menuItems: IMenu[], path: string): IMenu['badgeValue'] {
+	for (const item of menuItems) {
+		if (item.path === path) return item.badgeValue;
+		const found = item.children ? findBadge(item.children, path) : undefined;
+		if (found !== undefined) return found;
+	}
+	return undefined;
+}
+
 export const MenuStore = signalStore(
 	{ providedIn: 'root' },
 	withState(initialState),
 	withMethods((store, navService = inject(NavService)) => ({
+		/** One menu entry's number, such as the Inbox's unread conversations. */
+		setBadge(path: string, value: number) {
+			const menu = store.menu();
+			if (findBadge(menu, path) === value) return;
+			updateBadgeValueRecursive(menu, path, value);
+			patchState(store, { menu: [...menu] });
+		},
 		loadBadges(payload?: Params) {
 			navService.getBadges(payload).subscribe({
 				next: (result) => {

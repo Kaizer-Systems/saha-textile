@@ -30,6 +30,15 @@ vi.mock('@core/brand/brand.gateway', () => ({
 	injectBrandQuery: () => ({ data: brandData }),
 }));
 
+const inbox = vi.hoisted(() => ({ enabled: (() => false) as () => boolean }));
+const inboxData = signal<{ unread: number }[] | undefined>(undefined);
+vi.mock('@core/mailboxes/mailbox.gateway', () => ({
+	injectInboxSummaryQuery: (enabled: () => boolean) => {
+		inbox.enabled = enabled;
+		return { data: inboxData };
+	},
+}));
+
 const notifications = signal<unknown>(undefined);
 vi.mock('@data-access/queries/notification.queries', () => ({
 	injectNotificationsQuery: () => ({ data: notifications }),
@@ -63,15 +72,26 @@ describe('shell pieces', () => {
 	});
 
 	it('loads the badges and stops the sidebar skeleton', () => {
-		const menu = { loadBadges: vi.fn() };
+		const menu = { loadBadges: vi.fn(), setBadge: vi.fn() };
 		const nav = { sidebarLoading: true };
+		const permissions = signal<string[]>([]);
 		const content = bare(Content, [
 			{ provide: MenuStore, useValue: menu },
 			{ provide: NavService, useValue: nav },
+			{ provide: AuthStore, useValue: { permissions } },
 		]);
 		expect(content.isBrowser).toBe(true);
 		expect(menu.loadBadges).toHaveBeenCalledOnce();
 		expect(nav.sidebarLoading).toBe(false);
+		TestBed.tick();
+		expect(menu.setBadge).toHaveBeenLastCalledWith('/inbox', 0);
+		expect(inbox.enabled()).toBe(false);
+		permissions.set(['mailbox.use']);
+		expect(inbox.enabled()).toBe(true);
+		inboxData.set([{ unread: 2 }, { unread: 3 }]);
+		TestBed.tick();
+		expect(menu.setBadge).toHaveBeenLastCalledWith('/inbox', 5);
+		inboxData.set(undefined);
 	});
 
 	it('toggles dark mode', () => {

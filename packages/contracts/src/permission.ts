@@ -169,8 +169,6 @@ export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.option
  * real answer. A template is not.
  */
 export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
-	'mailbox.use':
-		'Guards /admin/inbox and each mailbox the person was given (the per-mailbox list decides the rest). The Inbox screen and its menu entry land once the owner has looked at its reading pane (AGENTS.md §5a).',
 	'dashboard.customers':
 		'Total Customers tile on the admin home page (dashboard.html, GET /admin/dashboard/customers). The tile is a count only, so it is separate from customer.index, which opens personal records.',
 	'dashboard.orders':

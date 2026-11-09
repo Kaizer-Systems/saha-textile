@@ -1,0 +1,17 @@
+// The reading pane is the Inbox's one custom part (approved brief, Gmail mailboxes 3 of 3).
+// Everything else on this page is the theme's own classes.
+
+// The theme capitalises notification rows; senders, subjects and addresses keep their own case.
+.inbox-list li {
+	text-transform: none;
+	cursor: pointer;
+}
+
+// Each message body sits in a locked-down frame, grown to its content so the conversation scrolls
+// as one page.
+.inbox-frame {
+	display: block;
+	width: 100%;
+	min-height: 80px;
+	border: 0;
+}

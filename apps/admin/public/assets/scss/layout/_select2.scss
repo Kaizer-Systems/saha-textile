@@ -8,6 +8,14 @@
 		}
 	}
 
+	// Email addresses keep their own case (Settings › Mailboxes, the Inbox's From and mailbox lists).
+	&.keep-case {
+		.select2-container .select2-selection .select2-selection__rendered,
+		.select2-results__options li {
+			text-transform: none;
+		}
+	}
+
 	.select2-dropdown {
 		top: -10px;
 	}

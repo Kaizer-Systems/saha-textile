@@ -1,24 +1,19 @@
-import { ViewportScroller } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
-import { Event, Scroll, Router } from '@angular/router';
 
-import { filter } from 'rxjs';
+import { ScrollMemory } from '@core/navigation/scroll-memory';
 
+/**
+ * Kept on the pages that used it: it makes sure `ScrollMemory` is running, which opens new pages at
+ * the top and restores the position on Back. It used to subscribe to scroll events on every
+ * activation and scroll to the top even on Back.
+ */
 @Injectable({
 	providedIn: 'root',
 })
 export class ScrollPositionGuard {
-	private viewportScroller = inject(ViewportScroller);
-	private router = inject(Router);
+	private readonly scrollMemory = inject(ScrollMemory);
 
 	canActivate(): boolean {
-		void this.router.events.pipe(filter((e: Event): e is Scroll => e instanceof Scroll)).subscribe((_e) => {
-			if (!this.router.url.includes('collections')) {
-				this.viewportScroller.scrollToPosition([0, 0]);
-			} else {
-				this.viewportScroller.scrollToPosition([150, 150]);
-			}
-		});
 		return true;
 	}
 }

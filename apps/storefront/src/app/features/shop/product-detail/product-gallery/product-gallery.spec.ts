@@ -8,7 +8,7 @@ import { ProductGallery } from './product-gallery';
 
 const render = (product?: unknown) => {
 	const instance: Record<string, unknown> = {};
-	const open = vi.fn(() => ({ componentInstance: instance }));
+	const open = vi.fn(() => ({ componentInstance: instance, result: Promise.resolve() }));
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({ providers: [{ provide: NgbModal, useValue: { open } }] });
 	TestBed.overrideComponent(ProductGallery, { set: { imports: [], template: '' } });

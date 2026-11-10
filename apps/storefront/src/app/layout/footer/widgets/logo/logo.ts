@@ -6,7 +6,8 @@ import { injectBrandQuery } from '@data-access/queries/brand.queries';
 
 /**
  * The footer is dark, so the light logo sits on a white plate and keeps its own colours. In dark
- * mode the Brand Kit's dark logo, where set, is drawn without the plate.
+ * mode the Brand Kit's dark logo, where set, takes the same box with the plate's white left out, so
+ * it is the same size in both modes.
  */
 @Component({
 	selector: 'app-footer-logo',
@@ -21,6 +22,6 @@ export class FooterLogo {
 
 	readonly brand = computed(() => this.brandQuery.data());
 	readonly logo = computed(() => this.themeMode.pick(this.brand()?.logo, this.brand()?.logoDark));
-	/** True when the dark logo is shown, which needs no white plate. */
+	/** True when the dark logo is shown, which needs no white behind it. */
 	readonly darkLogo = computed(() => this.themeMode.dark() && !!this.brand()?.logoDark);
 }

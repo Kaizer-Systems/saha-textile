@@ -1,10 +1,5 @@
 import { ApiImage, galleryAttachment } from '@core/catalog/from-api';
-import {
-	CartLineProblem,
-	ICart,
-	ICartAddOrUpdate,
-	ICartLineConfig,
-} from '@data-access/interfaces/cart.interface';
+import { CartLineProblem, ICart, ICartAddOrUpdate, ICartLineConfig } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 
 interface ApiCartOption {

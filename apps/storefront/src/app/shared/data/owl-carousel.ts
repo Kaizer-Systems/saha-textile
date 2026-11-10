@@ -325,6 +325,8 @@ export const productMainThumbSlider: OwlOptions = {
 	items: 1,
 	nav: true,
 	autoplay: true,
+	// Stays on the photo while the pointer is over it (the hover zoom); moves on once it leaves.
+	autoplayHoverPause: true,
 	navSpeed: 300,
 	responsive: {
 		0: {

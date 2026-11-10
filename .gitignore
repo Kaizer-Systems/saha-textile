@@ -40,6 +40,7 @@ Thumbs.db
 # Generated: dart-sass precompiled theme css (analog SSR dev sass-importer workaround)
 apps/storefront/src/scss/app.gen.css
 apps/storefront/public/assets/css/theme-dark.gen.css
+apps/storefront/src/scss/dark-copy.gen.css
 apps/admin/public/assets/scss/app.gen.css
 
 # Local HTTPS certificates (mkcert). Regenerate with scripts/setup-local-https.sh —

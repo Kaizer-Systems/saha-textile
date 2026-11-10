@@ -69,9 +69,11 @@ export const appConfig: ApplicationConfig = {
 		// Every route is served under its locale (`/en/…`, `/bn/…`) as the router's base —
 		// see provideLocaleRouting; the pages themselves stay locale-free.
 		provideFileRouter(
+			// Scrolling after navigation is ScrollMemory's job (core/navigation/scroll-memory.ts): the
+			// router's own waits for a stable app, which this shop with its timers may never reach.
 			withInMemoryScrolling({
-				anchorScrolling: 'enabled',
-				scrollPositionRestoration: 'enabled',
+				anchorScrolling: 'disabled',
+				scrollPositionRestoration: 'disabled',
 			}),
 		),
 		{

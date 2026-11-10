@@ -60,7 +60,9 @@ describe('cartPersistenceMetaReducer', () => {
 
 	it('works on the server, where there is no storage', () => {
 		vi.stubGlobal('localStorage', undefined);
-		expect(selectAll(reduce(initialCartState, CartActions.cartLineAdded({ items: [item], total: 1 })))).toEqual([item]);
+		expect(selectAll(reduce(initialCartState, CartActions.cartLineAdded({ items: [item], total: 1 })))).toEqual([
+			item,
+		]);
 		expect(selectAll(reduce(undefined, { type: INIT } as never))).toEqual([]);
 	});
 

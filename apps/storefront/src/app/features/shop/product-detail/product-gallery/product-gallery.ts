@@ -79,11 +79,19 @@ export class ProductGallery {
 	public productMainThumbSlider = data.productMainThumbSlider;
 	public productThumbSlider = data.productThumbSlider;
 
+	/**
+	 * A click (or a tap on phones, which have no hover) opens the full-screen gallery. The slider
+	 * stays on that photo while it is open and moves on again once it closes.
+	 */
 	openFullscreen(index: number): void {
-		const gallery = this.modals.open(GalleryFullscreen, { fullscreen: true })
-			.componentInstance as GalleryFullscreen;
+		const carousel = this.carousel();
+		carousel?.stopAutoplay();
+		const modal = this.modals.open(GalleryFullscreen, { fullscreen: true });
+		const gallery = modal.componentInstance as GalleryFullscreen;
 		gallery.images = this.images();
 		gallery.start = index;
 		gallery.alt = this.product()?.name ?? '';
+		const resume = () => carousel?.startAutoplay();
+		modal.result.then(resume, resume);
 	}
 }

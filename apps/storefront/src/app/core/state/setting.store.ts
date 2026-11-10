@@ -30,30 +30,37 @@ const CURRENCY_KEY = 'selectedCurrency';
 export const SettingStore = signalStore(
 	{ providedIn: 'root' },
 	withState<SettingStateModel>({ setting: null, selectedCurrency: null }),
-	withMethods((store, settingService = inject(SettingService), platformId = inject(PLATFORM_ID), consent = inject(ConsentStore)) => ({
-		loadSettings: rxMethod<void>(
-			pipe(
-				switchMap(() =>
-					settingService.getSettingOption().pipe(
-						tap((result) => {
-							patchState(store, (state) => ({
-								setting: result.values,
-								selectedCurrency: state.selectedCurrency
-									? state.selectedCurrency
-									: (result?.values?.general?.default_currency ?? null),
-							}));
-						}),
+	withMethods(
+		(
+			store,
+			settingService = inject(SettingService),
+			platformId = inject(PLATFORM_ID),
+			consent = inject(ConsentStore),
+		) => ({
+			loadSettings: rxMethod<void>(
+				pipe(
+					switchMap(() =>
+						settingService.getSettingOption().pipe(
+							tap((result) => {
+								patchState(store, (state) => ({
+									setting: result.values,
+									selectedCurrency: state.selectedCurrency
+										? state.selectedCurrency
+										: (result?.values?.general?.default_currency ?? null),
+								}));
+							}),
+						),
 					),
 				),
 			),
-		),
-		setCurrency(currency: ICurrency): void {
-			patchState(store, { selectedCurrency: currency });
-			if (isPlatformBrowser(platformId) && consent.allows('functional')) {
-				localStorage.setItem(CURRENCY_KEY, JSON.stringify(currency));
-			}
-		},
-	})),
+			setCurrency(currency: ICurrency): void {
+				patchState(store, { selectedCurrency: currency });
+				if (isPlatformBrowser(platformId) && consent.allows('functional')) {
+					localStorage.setItem(CURRENCY_KEY, JSON.stringify(currency));
+				}
+			},
+		}),
+	),
 	withHooks({
 		onInit(store) {
 			// Restore the persisted currency before settings load, so it isn't

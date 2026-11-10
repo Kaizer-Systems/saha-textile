@@ -8,6 +8,7 @@ import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, filter } from 'rxjs';
 
 import { ThemeModeStore } from '@core/brand/theme-mode';
+import { ScrollMemory } from '@core/navigation/scroll-memory';
 import { countdownKey } from '@core/events/event-popup-rules';
 import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
@@ -44,6 +45,8 @@ export class App {
 	private siteConfigStore = inject(SiteConfigStore);
 	/** Applies the light or dark mode (the shopper's switch, else the site mode), on the server too. */
 	private readonly themeMode = inject(ThemeModeStore);
+	/** New pages open at the top; Back returns to the saved position. */
+	private readonly scrollMemory = inject(ScrollMemory);
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
 

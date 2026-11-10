@@ -118,3 +118,8 @@ html.dark .status-rejected span {
 	color: #ff8a80;
 	border-color: #ff8a80;
 }
+
+// The item count on category tiles: the theme's dark grey was 3.7 : 1 on the dark card.
+html.dark .category-section-3 .category-box-list .category-name h6 {
+	color: var(--st-text-faint);
+}

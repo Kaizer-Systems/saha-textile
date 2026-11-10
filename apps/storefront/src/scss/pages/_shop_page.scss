@@ -1030,6 +1030,8 @@
 			color: $white;
 
 			a {
+				// The link colour would put blue text on the blue button; the label is white.
+				color: #ffffff;
 				cursor: pointer;
 				font-size: calc(14px + (16 - 14) * ((100vw - 320px) / (1920 - 320)));
 				font-weight: 600;

@@ -2290,7 +2290,7 @@
 							font-weight: 400;
 							font-size: 15px;
 							margin-left: 4px;
-							color: #777;
+							color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 						}
 
 						span {
@@ -2316,7 +2316,7 @@
 				}
 
 				.summary {
-					color: #777;
+					color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 					line-height: 1.5;
 					margin-bottom: 0;
 					font-size: 15px;
@@ -2768,7 +2768,7 @@
 												font-size: 15px;
 												padding: 4px 5px 3px;
 												border-radius: 100%;
-												color: #787878;
+												color: #666; // #787878 was 4.2 : 1 (shop change, 2026-11-10)
 											}
 										}
 									}
@@ -3297,7 +3297,7 @@
 				@include flex_common;
 				flex-wrap: wrap;
 				gap: calc(10px + (23 - 10) * ((100vw - 320px) / (1920 - 320)));
-				color: #777;
+				color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 
 				li {
 					.user-list {
@@ -3443,7 +3443,7 @@
 
 						i {
 							margin: -3px 9px 0 0;
-							color: #777;
+							color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 
 							body.rtl & {
 								margin: -3px 0 0 9px;
@@ -4304,7 +4304,7 @@
 					calc(12px + (20 - 12) * ((100vw - 320px) / (1920 - 320)));
 				font-size: calc(15px + (17 - 15) * ((100vw - 320px) / (1920 - 320)));
 				min-width: 160px;
-				color: #777;
+				color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 			}
 		}
 	}
@@ -4364,7 +4364,7 @@
 							calc(12px + (20 - 12) * ((100vw - 320px) / (1920 - 320)));
 						font-size: calc(15px + (17 - 15) * ((100vw - 320px) / (1920 - 320)));
 						min-width: 160px;
-						color: #777;
+						color: #666; // #777 was under 4.5 : 1 on the light greys (shop change, 2026-11-10)
 					}
 				}
 			}

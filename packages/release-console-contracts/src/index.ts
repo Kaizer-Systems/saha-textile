@@ -42,3 +42,5 @@ export type Readiness = z.infer<typeof readinessSchema>;
 /** The console API's own liveness answer. */
 export const consoleApiHealthSchema = z.object({ status: z.literal('ok'), version: z.string() });
 export type ConsoleApiHealth = z.infer<typeof consoleApiHealthSchema>;
+
+export * from './projects.js';

@@ -49,12 +49,41 @@ The script runs before `dev`, `build` and `lint`. A running dev server does not 
 
 The theme builds dark mode by compiling the whole theme a second time with dark variables, with every rule under `.dark`. That copy is about as large as the light theme (about 1 MB, about 119 KB gzip), so it lives in its own file instead of the global stylesheet.
 
-- **When it applies.** The shop's mode comes from `general.mode` in `site-config.json`. `applyThemeMode` (`core/brand/theme-mode.ts`), called from `App`, adds the `dark` class to `<html>` and appends a stylesheet link with the id `theme-dark` that loads `theme-dark.gen.css` when the mode is `dark`, and removes both otherwise.
+- **When it applies.** `ThemeModeStore` (`core/brand/theme-mode.ts`), created by `App`, decides the mode: the shopper's choice from the `st_theme` cookie, or, without a choice, `general.mode` in `site-config.json` (the site mode). When the Brand Kit's **Show the light/dark switch in the shop** is off, the cookie is ignored and everyone gets the site mode. `applyThemeMode`, run by the store whenever the mode changes, adds the `dark` class to `<html>` and appends a stylesheet link with the id `theme-dark` that loads `theme-dark.gen.css` when the mode is `dark`, and removes both otherwise.
 - **No flash.** The function also runs during server rendering, so a dark page arrives with the stylesheet already linked. In the browser it finds the server's link by its id and does not add a second one.
 - **No cost in light mode.** Light pages never request the file, so search engines and Lighthouse see the same page as without it. The service worker's precache list (`injectManifest.globIgnores` in `service-worker.vite.ts`) leaves it out, so light-mode shoppers do not download it in the background either.
 - **Scoping.** `dark.scss` imports the base variables inside `.dark`, so the theme's default `--theme-color` lands under `.dark` and never overrides `theme-color.css`.
 
 The admin has its own dark mode, switched from its header, and is not affected by any of this.
+
+### The light/dark switch
+
+`app-mode` (`layout/header/widgets/mode`) is a moon/sun button in the top bar, after Language and Currency, at every width. When the top bar is turned off it sits in the menu panel's heading instead. The icon shows the mode a press gives, and its translated hover name says "Switch to dark" or "Switch to light". The Brand Kit's `modeSwitch` setting (on by default) shows or hides it.
+
+Pressing it calls `ThemeModeStore.toggle()`, which writes `st_theme=dark|light`:
+
+| Cookie consent     | `st_theme` is kept                             |
+| ------------------ | ---------------------------------------------- |
+| Functional allowed | One year                                       |
+| Functional refused | Until the browser closes (a visit-only cookie) |
+
+A later refusal shortens an existing `st_theme` to the visit instead of deleting it (`VISIT_ONLY_WHEN_REFUSED` in `cookie-catalogue.ts`), so the switch never undoes itself on the next page. Cookie settings list it under Functional.
+
+The server reads the cookie from the request, so the page arrives in the chosen mode with no flash. Because pages differ by this cookie, a cache placed in front of the storefront's HTML must vary on it or skip pages that carry it; today's Nginx setup does not cache pages.
+
+### Dark pictures
+
+In dark mode, `ThemeModeStore.pick(light, dark)` returns the Brand Kit's dark picture where one is set:
+
+| Place                       | Light mode                        | Dark mode, dark picture set |
+| --------------------------- | --------------------------------- | --------------------------- |
+| Header (wide screens)       | Logo                              | Dark logo                   |
+| Header (phones)             | Seal                              | Dark seal                   |
+| Footer                      | Logo on a white plate             | Dark logo, no plate         |
+| Newsletter and event popups | Logo                              | Dark logo                   |
+| Browser tab icon            | Follows the browser's own setting | Dark icon                   |
+
+Where no dark picture is set, the light one stays. With no shopper choice and a light site mode, the tab icon keeps following the browser's light or dark setting (`applyBrandHead` in `core/brand/brand-head.ts`).
 
 ## Fonts
 

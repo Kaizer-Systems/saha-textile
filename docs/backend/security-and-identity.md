@@ -97,6 +97,7 @@ sequenceDiagram
 | Guest (`st_guest`)   |                  No | Opaque proof of ownership of one guest cart              |
 | Signup (`st_signup`) |                  No | Ties an in-progress signup to one browser                |
 | Locale (`st_locale`) |                 Yes | The visitor's language choice                            |
+| Theme (`st_theme`)   |                 Yes | The visitor's light or dark choice                       |
 
 Storefront sessions use `st_access`, `st_refresh` and `st_csrf`. Admin sessions use `st_admin_access`, `st_admin_refresh` and `st_admin_csrf`, so the two never overwrite each other. `CookieAudienceGuard` selects the right names from the route's `@Audience`.
 

@@ -3,7 +3,7 @@ title: Operator Path
 description: Reading path for deployment and runtime operations.
 status: planned
 audience: [operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - .cursor/rules/mcp-tools.mdc

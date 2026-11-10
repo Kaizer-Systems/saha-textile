@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
+import { BrandSettings } from '@saha-textile/contracts';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -30,13 +31,8 @@ describe('BrandGateway', () => {
 		await firstValueFrom(gateway.settings());
 		expect(http.get).toHaveBeenLastCalledWith('https://api.test/admin/settings/brand');
 		await firstValueFrom(
-			gateway.save({
-				shopName: 'S',
-				logoAssetId: null,
-				sealAssetId: null,
-				sealAsFavicon: true,
-				faviconAssetId: null,
-			}),
+			// Every Brand Kit field, from the contract's own defaults (tests may import values).
+			gateway.save(BrandSettings.parse({ shopName: 'S' })),
 		);
 		expect(http.put).toHaveBeenCalledOnce();
 	});

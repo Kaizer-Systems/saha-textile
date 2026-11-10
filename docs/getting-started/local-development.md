@@ -47,8 +47,11 @@ pnpm turbo run lint typecheck test
 | `check:route-contracts`     | Unnamed controller-local request shapes and unstable operation identifiers    |
 | `check:route-authorization` | Admin routes without a declared permission                                    |
 | `check:permission-registry` | Permission codes outside the registry                                         |
+| `check:e2e-types`           | Type errors in the Playwright specs and their helpers                         |
 
 Each script documents its allow marker for deliberate exceptions. Run the root lint command before you finish a change.
+
+`pnpm typecheck` compiles each app's code with `ngc` and then its test files with `tsconfig.spec.json`, so a test written against an old shape fails the check even though Vitest, which strips types, still runs it.
 
 ## Other commands
 

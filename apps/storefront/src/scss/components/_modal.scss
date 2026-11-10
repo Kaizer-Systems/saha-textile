@@ -1328,9 +1328,13 @@
 				width: 100%;
 			}
 
+			// The Brand Kit's wide logo is about seven times wider than tall, so the theme's 100px left
+			// it ~15px high (owner, 2026-11-10). 210px doubles its height; the gap below shrinks by the
+			// same amount, so the newsletter and event popups keep their size.
 			.modal-logo {
-				width: 100px;
-				margin-bottom: 23px;
+				width: 210px;
+				max-width: 100%;
+				margin-bottom: 8px;
 			}
 
 			h2 {

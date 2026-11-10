@@ -3,7 +3,7 @@ title: Operations Overview
 description: Available operational tools, background jobs and required runbooks.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-10'
 source_of_truth:
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
@@ -17,15 +17,15 @@ This page lists the operational tools available, and the runbooks required befor
 
 ## Available operations
 
-| Area                | Tool                                                                                                                                                        |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local MongoDB       | `pnpm mongo:up`, `mongo:status`, `mongo:down`, `mongo:wipe`. See [local development](../getting-started/local-development#local-mongodb-docker-replica-set) |
-| Local stack         | `pnpm stack:up`, `stack:status`, `stack:logs`, `stack:down`. See [Deployment overview](/deployment/overview)                                                |
-| Health              | `/health/live` and `/health/ready`                                                                                                                          |
-| First administrator | `pnpm --filter @saha-textile/api bootstrap:first-admin -- --email <address>`                                                                                |
-| System roles        | `pnpm --filter @saha-textile/adapters-db-mongo seed:system-roles`. Run this after adding a permission                                                       |
-| Database indexes    | `pnpm mongo:reconcile-indexes`                                                                                                                              |
-| Search index        | `pnpm --filter @saha-textile/api search:rebuild`. Safe to repeat. Run on a fresh index and after bulk catalogue changes                                     |
+| Area                | Tool                                                                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Local MongoDB       | `pnpm mongo:up`, `mongo:status`, `mongo:down`, `mongo:wipe`. See [local development](../getting-started/local-development#local-mongodb-docker-replica-set)                                                        |
+| Local stack         | `pnpm stack:up`, `stack:status`, `stack:logs`, `stack:down`. See [Deployment overview](/deployment/overview)                                                                                                       |
+| Health              | `/health/live` and `/health/ready`                                                                                                                                                                                 |
+| First administrator | `pnpm --filter @saha-textile/api bootstrap:first-admin -- --email <address>`                                                                                                                                       |
+| System roles        | `pnpm --filter @saha-textile/adapters-db-mongo seed:system-roles`. Run this after adding a permission                                                                                                              |
+| Database indexes    | `pnpm mongo:reconcile-indexes`                                                                                                                                                                                     |
+| Search index        | `pnpm --filter @saha-textile/api search:rebuild` rebuilds this version's index. Safe to repeat. Product changes reach search on their own through the change queue; see [Search index](../backend/search-index.md) |
 
 ## Background jobs
 

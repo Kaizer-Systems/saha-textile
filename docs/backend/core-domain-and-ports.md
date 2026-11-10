@@ -213,7 +213,7 @@ A library delete is refused while anything uses the image. Otherwise the asset i
 
 ## Search boundary
 
-`SearchPort` is bound to `MeilisearchSearch` in `apps/api/src/search/meilisearch-search.ts`. The index holds ids and words, and prices are read back from MongoDB. If the index is down, `GET /catalog/search` answers 503 and never falls back to a MongoDB text query. A failed index update does not fail a product save. Rebuild the index with `pnpm --filter @saha-textile/api search:rebuild`.
+`SearchPort` is bound to `MeilisearchSearch` in `apps/api/src/search/meilisearch-search.ts`. The index holds ids and words, and prices are read back from MongoDB. If the index is down, `GET /catalog/search` answers 503 and never falls back to a MongoDB text query. Product saves reach the index through the `searchOutbox` change queue, written in the same transaction, so a save never waits for search and no change is lost while search is down. The index is versioned (`products_v<SEARCH_INDEX_VERSION>`), built before a release switches, and checked nightly. See [Search index](./search-index.md).
 
 Search counts go through `SearchAnalyticsRepository`, bound to `MongoSearchAnalyticsRepository`. It stores totals only: searches per normalised words and language in `searchQueryAggregates`, and search-result clicks per product per day in `analyticsDailyAggregates`. The ranking for Trending (`rankTrending`) and the word normaliser (`normalizeSearchQuery`) live in core-domain. Search words go through `SearchTermRepository`; `searchVocabulary` turns the live ones and the Storefront settings "show first" categories into index synonyms and per-product words. See [Storefront search](../storefront/search.md).
 

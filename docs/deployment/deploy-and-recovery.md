@@ -54,7 +54,7 @@ Each release keeps its own secrets and public config, so a rollback returns to t
 5. Start MongoDB, Redis and Meilisearch, which a deploy never restarts.
 6. Start the replica set once, and keep the API's database user in step with its password.
 7. Read Meilisearch's Default Admin API Key with the master key, so it is never stored as a separate secret.
-8. Run the release steps, `node dist/release-steps.js`, from the new release's image while the old release keeps serving. The first failed check stops the deploy here, before the switch:
+8. Run the [release steps](./release-steps.md), `node dist/release-steps.js`, from the new release's image while the old release keeps serving. The first failed check stops the deploy here, before the switch:
     - **System roles and permissions:** first-run setup adds the administrator role, currencies and notification templates when missing and leaves existing rows alone. Then a check confirms that the Administrator role holds every permission code.
     - **Database indexes:** compared with the models and rebuilt where they differ.
     - **Data migrations:** each listed migration runs once and is recorded in `releaseMigrations`.

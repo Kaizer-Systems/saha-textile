@@ -133,6 +133,7 @@ export class BrandService {
 			socials,
 			apps: { android: value.apps?.android ?? '', ios: value.apps?.ios ?? '' },
 			themeColor: value.themeColor ?? EMPTY.themeColor,
+			adminThemeColor: value.adminThemeColor ?? EMPTY.adminThemeColor,
 		};
 		this.cached = { brand, until: now + CACHE_MS };
 		return brand;

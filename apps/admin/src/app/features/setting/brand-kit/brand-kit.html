@@ -148,6 +148,22 @@
 			</div>
 			<p class="help-text mb-0">{{ 'browser_bar_colour_help' | transloco }}</p>
 		</app-form-fields>
+		<app-form-fields
+			[label]="'admin_theme_colour'"
+			[for]="'admin_theme_color'"
+		>
+			<div class="color-box">
+				<input
+					class="form-control"
+					id="admin_theme_color"
+					type="color"
+					formControlName="adminThemeColor"
+					(input)="previewAdminColour($any($event.target).value)"
+				/>
+				<h6>{{ form.controls.adminThemeColor.value }}</h6>
+			</div>
+			<p class="help-text mb-0">{{ 'admin_theme_colour_help' | transloco }}</p>
+		</app-form-fields>
 
 		<app-button
 			[id]="'save_brand_btn'"

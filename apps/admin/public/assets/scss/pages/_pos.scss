@@ -478,7 +478,7 @@
 				background-color: #f7f7f7;
 				padding: 15px 40px;
 				border-radius: 20px;
-				background-color: rgba(13, 164, 135, 0.07);
+				background-color: color-mix(in srgb, var(--theme-color) 7%, transparent);
 				text-align: center;
 				cursor: pointer;
 
@@ -919,7 +919,7 @@
 		}
 
 		&:hover {
-			background: linear-gradient(-45deg, #0da487, #719460);
+			background: linear-gradient(-45deg, var(--theme-color), #719460);
 			transition: all 0.5s ease;
 
 			h4 {
@@ -928,7 +928,7 @@
 		}
 
 		&.active {
-			background: linear-gradient(-45deg, #0da487, #719460);
+			background: linear-gradient(-45deg, var(--theme-color), #719460);
 			transition: all 0.5s ease;
 
 			h4 {

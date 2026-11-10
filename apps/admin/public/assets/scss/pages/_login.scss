@@ -10,7 +10,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .resend-it {
-	color: $primary-color;
+	color: tc($primary-color);
 	margin-left: 5px;
 }
 .show-hide {
@@ -23,7 +23,7 @@ input[type='number']::-webkit-outer-spin-button {
 	span {
 		cursor: pointer;
 		font-size: 13px;
-		color: $primary-color;
+		color: tc($primary-color);
 		.show-hide span:before {
 			content: 'hide';
 		}

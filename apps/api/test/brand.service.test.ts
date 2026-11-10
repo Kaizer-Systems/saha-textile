@@ -75,6 +75,7 @@ describe('BrandService', () => {
 			socials: { facebook: '', instagram: '', x: '', pinterest: '', linkedin: '', threads: '', youtube: '' },
 			apps: { android: '', ios: '' },
 			themeColor: '#417394',
+			adminThemeColor: '#0da487',
 		});
 	});
 
@@ -211,6 +212,8 @@ describe('BrandService', () => {
 		).service.storefront();
 		expect(social.socials['instagram']).toBe('https://www.instagram.com/shop/');
 		expect(social.themeColor).toBe('#112233');
+		const purple = await build(kit({ adminThemeColor: '#7b3fa0' })).service.storefront();
+		expect(purple.adminThemeColor).toBe('#7b3fa0');
 		const android = 'https://play.google.com/store/apps/details?id=com.shop.app';
 		const withApp = await build(kit({ apps: { android, ios: '' } })).service.storefront();
 		expect(withApp.apps).toEqual({ android, ios: '' });

@@ -10,7 +10,7 @@
 			flex: 1 1 auto;
 
 			&::placeholder {
-				color: $primary-color;
+				color: tc($primary-color);
 			}
 
 			&:focus {
@@ -72,7 +72,7 @@
 		}
 
 		h6 {
-			color: $primary-color;
+			color: tc($primary-color);
 		}
 
 		+ .info-block {
@@ -137,11 +137,11 @@
 	display: inline-flex;
 	border-radius: 10px;
 	overflow: hidden;
-	border: 1px solid $primary-color;
+	border: 1px solid tc($primary-color);
 	border: none;
 
 	.nav-item {
-		background-color: rgba($primary-color, 0.1);
+		background-color: tc-alpha($primary-color, 0.1);
 
 		.nav-link {
 			border: none;
@@ -149,7 +149,7 @@
 			opacity: 0.5;
 
 			&.active {
-				background-color: rgba($primary-color, 0.1);
+				background-color: tc-alpha($primary-color, 0.1);
 				color: var(--theme-color);
 				opacity: 1;
 			}
@@ -157,7 +157,7 @@
 
 		&.show,
 		&.active {
-			background-color: rgba($primary-color, 0.1);
+			background-color: tc-alpha($primary-color, 0.1);
 		}
 	}
 }

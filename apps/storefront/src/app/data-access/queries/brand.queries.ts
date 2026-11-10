@@ -36,6 +36,8 @@ export interface StorefrontBrand extends BrandLogos {
 	/** App store pages; '' where there is none. Phones open them in the store app. */
 	apps: { android: string; ios: string };
 	themeColor: string;
+	/** The admin's theme colour; the shop does not use it. */
+	adminThemeColor: string;
 }
 
 const NO_LOGOS: BrandLogos = { logo: null, logoDark: null, seal: null, sealDark: null, icons: {}, iconsDark: {} };
@@ -47,6 +49,7 @@ export const NO_BRAND: StorefrontBrand = {
 	socials: {},
 	apps: { android: '', ios: '' },
 	themeColor: '#417394',
+	adminThemeColor: '#0da487',
 };
 
 /** The Brand Kit. An unreachable API answers "no brand", so screens fall back to the shop name. */

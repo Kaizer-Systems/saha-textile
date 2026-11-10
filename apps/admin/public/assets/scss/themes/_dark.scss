@@ -186,8 +186,8 @@ body {
 
 		@media (min-width: 991px) {
 			::-webkit-scrollbar-track {
-				-webkit-box-shadow: inset 0 0 6px rgba($primary-color, 0.1);
-				box-shadow: inset 0 0 6px rgba($primary-color, 0.1);
+				-webkit-box-shadow: inset 0 0 6px tc-alpha($primary-color, 0.1);
+				box-shadow: inset 0 0 6px tc-alpha($primary-color, 0.1);
 				background-color: #1d1e26;
 				border-radius: 5px;
 			}
@@ -199,7 +199,7 @@ body {
 			}
 
 			::-webkit-scrollbar-thumb {
-				background-color: rgba($primary-color, 0.5);
+				background-color: tc-alpha($primary-color, 0.5);
 				border-radius: 5px;
 			}
 		}
@@ -2112,7 +2112,7 @@ body {
 													> li {
 														.sidebar-link {
 															&.active {
-																background-color: rgba($primary-color, 0.2);
+																background-color: tc-alpha($primary-color, 0.2);
 
 																span {
 																	color: var(--theme-color);
@@ -2338,14 +2338,14 @@ body {
 		.kanban-container {
 			.kanban-item {
 				.kanban-box {
-					border: 1px solid rgba($primary-color, 0.15);
+					border: 1px solid tc-alpha($primary-color, 0.15);
 					background-color: $dark-body-background;
 				}
 			}
 		}
 
 		.project-box {
-			border: 1px solid rgba($primary-color, 0.15);
+			border: 1px solid tc-alpha($primary-color, 0.15);
 			background-color: $dark-body-background;
 		}
 
@@ -2356,31 +2356,31 @@ body {
 
 			.files {
 				.file-box {
-					border: 1px solid rgba($primary-color, 0.15);
+					border: 1px solid tc-alpha($primary-color, 0.15);
 					background-color: $dark-body-background;
 
 					.file-top {
 						background-color: $dark-card-background;
-						border: 1px solid rgba($primary-color, 0.15);
+						border: 1px solid tc-alpha($primary-color, 0.15);
 					}
 				}
 			}
 
 			.folder .folder-box {
-				border: 1px solid rgba($primary-color, 0.15);
+				border: 1px solid tc-alpha($primary-color, 0.15);
 				background-color: $dark-body-background;
 			}
 		}
 
 		.file-sidebar {
 			.pricing-plan {
-				border: 1px solid rgba($primary-color, 0.15) !important;
+				border: 1px solid tc-alpha($primary-color, 0.15) !important;
 			}
 
 			.btn-light {
 				color: $dark-all-font-color;
 				background-color: $dark-body-background !important;
-				border: 1px solid rgba($primary-color, 0.15) !important;
+				border: 1px solid tc-alpha($primary-color, 0.15) !important;
 			}
 		}
 
@@ -2702,7 +2702,7 @@ body {
 			background-color: $dark-card-inbox;
 
 			.datepicker--cell.-current- {
-				color: $primary-color;
+				color: tc($primary-color);
 			}
 		}
 
@@ -2715,7 +2715,7 @@ body {
 				}
 
 				.datepicker--cell.-current- {
-					color: $primary-color;
+					color: tc($primary-color);
 				}
 			}
 		}
@@ -2868,18 +2868,18 @@ body {
 			$i: index($alert-name, $var);
 
 			.alert-#{$var} {
-				background-color: rgba(nth($alert-color, $i), 0.8) !important;
-				border-color: rgba(nth($alert-color, $i), 0.9) !important;
+				background-color: tc-alpha(nth($alert-color, $i), 0.8) !important;
+				border-color: tc-alpha(nth($alert-color, $i), 0.9) !important;
 				color: $white;
 
 				.progress {
 					height: 5px;
-					background-color: darken(nth($alert-color, $i), 1%);
+					background-color: tc-shade(nth($alert-color, $i), -1%);
 					border-radius: 0;
 				}
 
 				.progress-bar {
-					background-color: lighten(nth($alert-color, $i), 50%);
+					background-color: tc-shade(nth($alert-color, $i), 50%);
 				}
 			}
 
@@ -2934,7 +2934,7 @@ body {
 		}
 
 		.pricing-block {
-			box-shadow: 0 0 10px 5px rgba($primary-color, 0.05) !important;
+			box-shadow: 0 0 10px 5px tc-alpha($primary-color, 0.05) !important;
 		}
 
 		.search-page {
@@ -8096,7 +8096,7 @@ body {
 												> li {
 													.sidebar-link {
 														&.active {
-															background-color: rgba($primary-color, 0.2);
+															background-color: tc-alpha($primary-color, 0.2);
 
 															svg {
 																color: var(--theme-color);
@@ -8285,7 +8285,7 @@ body {
 													> li {
 														.sidebar-link {
 															&.active {
-																background-color: rgba($primary-color, 0.2);
+																background-color: tc-alpha($primary-color, 0.2);
 
 																span {
 																	color: var(--theme-color);

@@ -3446,7 +3446,7 @@ html[dir='rtl'] {
 
 		.alert-#{$var}.inverse {
 			&:before {
-				border-right: 7px solid nth($alert-color, $i);
+				border-right: 7px solid tc(nth($alert-color, $i));
 				right: 54px;
 				left: unset;
 				border-left: unset;
@@ -4860,7 +4860,7 @@ html[dir='rtl'] {
 				left: unset;
 				border-width: 5px 5px 5px 0;
 				border-left-color: unset;
-				border-right-color: lighten($primary-color, 25%);
+				border-right-color: tc-shade($primary-color, 25%);
 			}
 
 			span {

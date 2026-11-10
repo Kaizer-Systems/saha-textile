@@ -224,7 +224,7 @@ pre {
 	.owl-dots {
 		.owl-dot {
 			span {
-				background: lighten($primary-color, 20%);
+				background: tc-shade($primary-color, 20%);
 			}
 
 			&.active,
@@ -400,7 +400,7 @@ pre {
 	background-color: var(--theme-color);
 
 	&:active {
-		background-color: darken($primary-color, 5%);
+		background-color: tc-shade($primary-color, -5%);
 	}
 }
 

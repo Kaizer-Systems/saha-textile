@@ -53,12 +53,12 @@
 		> div {
 			&:first-child {
 				.card-tiles {
-					background: rgba(#0da487, 0.1);
+					background: color-mix(in srgb, var(--theme-color) 10%, transparent);
 					&:after {
-						background-color: #0da487;
+						background-color: var(--theme-color);
 					}
 					.icon-box {
-						background: #0da487;
+						background: var(--theme-color);
 					}
 				}
 			}

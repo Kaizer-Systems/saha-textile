@@ -382,7 +382,7 @@
 		}
 
 		&[type='file']::file-selector-button:hover {
-			background-color: rgba($primary-color, 0.2);
+			background-color: tc-alpha($primary-color, 0.2);
 		}
 	}
 }
@@ -756,8 +756,8 @@
 			.select-btn {
 				margin-left: auto;
 				padding: 5px calc(6px + (16 - 6) * ((100vw - 320px) / (1920 - 320)));
-				background-color: rgba(13, 164, 135, 0.08);
-				border: 1px solid rgba(13, 164, 135, 0.25);
+				background-color: color-mix(in srgb, var(--theme-color) 8%, transparent);
+				border: 1px solid color-mix(in srgb, var(--theme-color) 25%, transparent);
 				border-radius: 5px;
 				color: var(--theme-color);
 				font-size: calc(12px + (14 - 12) * ((100vw - 320px) / (1920 - 320)));

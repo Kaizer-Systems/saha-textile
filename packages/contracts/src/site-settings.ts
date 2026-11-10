@@ -180,6 +180,11 @@ export const BrandSettings = z.object({
 		.string()
 		.regex(/^#[0-9a-fA-F]{6}$/)
 		.default('#417394'),
+	/** The admin's theme colour: every button, tab, link and the side menu read it (`--theme-color`). */
+	adminThemeColor: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.default('#0da487'),
 });
 export type BrandSettings = z.infer<typeof BrandSettings>;
 
@@ -216,6 +221,8 @@ export const StorefrontBrand = ResolvedBrandLogos.extend({
 	/** Store pages of the shop's apps; '' where there is none. */
 	apps: z.object({ android: z.string(), ios: z.string() }),
 	themeColor: z.string(),
+	/** The admin's theme colour (`--theme-color`). */
+	adminThemeColor: z.string(),
 });
 export type StorefrontBrand = z.infer<typeof StorefrontBrand>;
 

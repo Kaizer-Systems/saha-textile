@@ -29,6 +29,7 @@ export const NO_BRAND: StorefrontBrand = {
 	socials: {},
 	apps: { android: '', ios: '' },
 	themeColor: '#417394',
+	adminThemeColor: '#0da487',
 };
 
 @Injectable({ providedIn: 'root' })

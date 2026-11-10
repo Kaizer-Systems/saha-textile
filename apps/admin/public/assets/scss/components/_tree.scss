@@ -34,7 +34,7 @@
 					color: #707070;
 
 					&:hover {
-						color: rgba($primary-color, 1);
+						color: tc-alpha($primary-color, 1);
 					}
 				}
 			}
@@ -141,7 +141,7 @@
 	}
 
 	span.active {
-		color: $primary-color;
+		color: tc($primary-color);
 		font-weight: bold;
 	}
 }

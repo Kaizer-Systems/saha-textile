@@ -9,6 +9,7 @@ import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
 import { Observable } from 'rxjs';
 
 import { injectBrandQuery } from '@core/brand/brand.gateway';
+import { applyThemeColor } from '@core/brand/theme-color';
 import { IdleLockService } from '@core/auth/idle-lock.service';
 import { AuthStore } from '@core/state/auth.store';
 import { SettingStore } from '@core/state/setting.store';
@@ -38,6 +39,8 @@ export class App {
 
 	constructor() {
 		const page = inject<Document>(DOCUMENT);
+		// The admin's theme colour from the Brand Kit (every theme style reads `--theme-color`).
+		effect(() => applyThemeColor(page, this.brand.data()?.adminThemeColor));
 		// The admin's tab icon from the Brand Kit (its own set, else the shop's), plus the icon a
 		// dark browser picks when the Brand Kit has one.
 		effect(() => {

@@ -20,11 +20,11 @@
 }
 .custom-day.range,
 .custom-day:hover {
-	background-color: #0da487;
+	background-color: var(--theme-color);
 	color: white;
 }
 .custom-day.faded {
-	background-color: #009289;
+	background-color: hsl(from var(--theme-color) h s calc(l - 6));
 }
 
 .error-border {

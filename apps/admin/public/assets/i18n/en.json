@@ -1274,6 +1274,8 @@
 	"app_link_unchecked": "Press Validate before saving.",
 	"app_links_help": "The app's store page address, such as https://play.google.com/store/apps/details?id=com.shop.app or https://apps.apple.com/in/app/shop/id1234567890. Phones open it in their store app, computers on the store's website. Once saved, the footer shows that store's badge; an empty one hides it.",
 	"app_link_check_first": "Validate the changed app links before saving.",
+	"admin_theme_colour": "Admin theme colour",
+	"admin_theme_colour_help": "The colour of the admin: side menu, buttons, tabs, links and highlights. Changes show at once; Save keeps them.",
 	"brand_saved": "Brand Kit saved",
 	"role_change_confirm": "Changing this role retires its saved variants. Continue?",
 	"gap_swatch_colour": "Add a colour for",

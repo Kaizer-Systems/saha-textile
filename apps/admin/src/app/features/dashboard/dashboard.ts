@@ -282,7 +282,7 @@ export class Dashboard {
 						{
 							name: 'Revenue',
 							data: monthly.months.map((row) => row.revenueINR),
-							color: '#0da487',
+							color: this.themeColor(),
 						},
 						{
 							name: 'Comission',
@@ -434,6 +434,18 @@ export class Dashboard {
 	}
 
 	/** `2026-11` as "Nov '26", in the language the admin is using. */
+	/**
+	 * The chart library needs a real colour, so the revenue line reads the admin's theme colour
+	 * (`--theme-color`, Brand Kit) when it draws; the theme's green until one is set.
+	 */
+	private themeColor(): string {
+		const value = this.document.defaultView
+			?.getComputedStyle(this.document.documentElement)
+			.getPropertyValue('--theme-color')
+			.trim();
+		return value || '#0da487';
+	}
+
 	private monthLabel(month: string): string {
 		const name = new Intl.DateTimeFormat(intlLocale(this.transloco.getActiveLang()), {
 			month: 'short',

@@ -146,8 +146,8 @@
 			overflow: hidden;
 			transition: all 0.3s ease;
 			position: relative;
-			background: #0da487;
-			background: linear-gradient(90deg, #0da487 0%, #0e947a 100%);
+			background: var(--theme-color);
+			background: linear-gradient(90deg, var(--theme-color) 0%, hsl(from var(--theme-color) h s calc(l - 3)) 100%);
 			border: none;
 			z-index: 0;
 
@@ -158,8 +158,8 @@
 				left: 0;
 				z-index: -1;
 				border-radius: 5px;
-				background: #0da487;
-				background: linear-gradient(90deg, #0e947a 0%, #0da487 100%);
+				background: var(--theme-color);
+				background: linear-gradient(90deg, hsl(from var(--theme-color) h s calc(l - 3)) 0%, var(--theme-color) 100%);
 				transition: all 0.3s ease;
 			}
 		}
@@ -190,7 +190,7 @@
 }
 
 .btn-primary-gradien {
-	@include btn-gradien(60, lighten($primary-color, 8%), 0%, darken($primary-color, 8%), 100%, $white);
+	@include btn-gradien(60, tc-shade($primary-color, 8%), 0%, tc-shade($primary-color, -8%), 100%, $white);
 	color: $white;
 
 	&:focus,
@@ -200,9 +200,9 @@
 		background-position: right center;
 		background-image: linear-gradient(
 			to right,
-			lighten($primary-color, 8%),
+			tc-shade($primary-color, 8%),
 			0%,
-			darken($primary-color, 8%),
+			tc-shade($primary-color, -8%),
 			100%,
 			$white
 		) !important;
@@ -401,34 +401,34 @@
 		&:hover,
 		&:active,
 		&:not([disabled]):not(.disabled):active {
-			background-color: darken($btn-color, 10%);
-			border-color: darken($btn-color, 10%);
+			background-color: tc-shade($btn-color, -10%);
+			border-color: tc-shade($btn-color, -10%);
 		}
 	}
 
 	.btn-#{$btn-name} {
-		background-color: $btn-color;
-		border: 1px solid $btn-color;
+		background-color: tc($btn-color);
+		border: 1px solid tc($btn-color);
 		color: $white;
 		&:hover {
 			background-color: $white;
-			border: 1px solid $btn-color;
-			color: $btn-color;
+			border: 1px solid tc($btn-color);
+			color: tc($btn-color);
 		}
 	}
 
 	.input-air-#{$btn-name} {
-		box-shadow: 0 3px 5px 1px rgba($btn-color, 0.1) !important;
+		box-shadow: 0 3px 5px 1px tc-alpha($btn-color, 0.1) !important;
 
 		&:focus {
-			border-color: $btn-color;
+			border-color: tc($btn-color);
 		}
 	}
 }
 
 .btn-primary:hover {
-	background-color: #0da487;
-	border: 1px solid #0da487;
+	background-color: var(--theme-color);
+	border: 1px solid var(--theme-color);
 	color: #fff;
 }
 
@@ -439,18 +439,18 @@
 }
 
 .btn-outline {
-	border: 1px solid $primary-color !important;
-	color: $primary-color !important;
+	border: 1px solid tc($primary-color) !important;
+	color: tc($primary-color) !important;
 
 	&:hover {
-		background-color: $primary-color !important;
+		background-color: tc($primary-color) !important;
 		color: $white !important;
 	}
 }
 
 .btn-solid {
-	border: 1px solid $primary-color !important;
-	background-color: $primary-color !important;
+	border: 1px solid tc($primary-color) !important;
+	background-color: tc($primary-color) !important;
 	color: $white;
 }
 
@@ -459,7 +459,7 @@
 	font-weight: 500;
 	padding: 10px 30px;
 	border-radius: 5px;
-	background-color: $primary-color;
+	background-color: tc($primary-color);
 	letter-spacing: 0.06rem;
 
 	&:hover {

@@ -29,6 +29,7 @@ const SAVED = {
 	socials: { facebook: '', instagram: '', x: '', pinterest: '', linkedin: '', threads: '' },
 	apps: { android: '', ios: '' },
 	themeColor: '#417394',
+	adminThemeColor: '#0da487',
 };
 
 const setup = (saved = SAVED, check: unknown = { found: true, name: 'Shop app' }) => {
@@ -145,5 +146,18 @@ describe('BrandKit', () => {
 		gateway.save.mockReturnValueOnce(throwError(() => new Error('400')));
 		page.save();
 		expect(notifier.showError).toHaveBeenCalledWith('brand_rejected');
+	});
+
+	it('shows a picked admin colour at once, and puts the saved one back if the page closes unsaved', () => {
+		const { page } = setup({ ...SAVED, adminThemeColor: '#112233' });
+		page.previewAdminColour('#7b3fa0');
+		expect(document.documentElement.style.getPropertyValue('--theme-color')).toBe('#7b3fa0');
+		page.ngOnDestroy();
+		expect(document.documentElement.style.getPropertyValue('--theme-color')).toBe('#112233');
+		page.form.controls.adminThemeColor.setValue('#445566');
+		page.save();
+		page.ngOnDestroy();
+		expect(document.documentElement.style.getPropertyValue('--theme-color')).toBe('#445566');
+		document.documentElement.style.removeProperty('--theme-color');
 	});
 });

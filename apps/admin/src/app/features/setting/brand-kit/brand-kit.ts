@@ -1,5 +1,5 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { Component, inject, signal, type WritableSignal } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
+import { Component, inject, type OnDestroy, signal, type WritableSignal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
 import type { BrandAppStore, BrandLogoSet, BrandSettings, BrandSocialNetwork } from '@saha-textile/contracts';
@@ -7,6 +7,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { BrandGateway } from '@core/brand/brand.gateway';
+import { applyThemeColor } from '@core/brand/theme-color';
 import { MediaGateway } from '@core/media/media.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -61,13 +62,14 @@ const STORES: readonly { key: BrandAppStore; label: string }[] = [
 	templateUrl: './brand-kit.html',
 	imports: [PageWrapper, ReactiveFormsModule, NgTemplateOutlet, TranslocoModule, FormFields, Button, ImageUpload],
 })
-export class BrandKit {
+export class BrandKit implements OnDestroy {
 	private readonly gateway = inject(BrandGateway);
 	private readonly media = inject(MediaGateway);
 	private readonly queryClient = inject(QueryClient);
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
 	private readonly fb = inject(FormBuilder).nonNullable;
+	private readonly page = inject(DOCUMENT);
 
 	readonly networks = NETWORKS;
 	readonly stores = STORES;
@@ -83,6 +85,7 @@ export class BrandKit {
 		),
 		apps: this.fb.group({ android: [''], ios: [''] }),
 		themeColor: ['#417394'],
+		adminThemeColor: ['#0da487'],
 	});
 	/** Each store link's check: a changed link must be found in its store before Save. */
 	readonly appState = { android: signal<AppLinkState>('saved'), ios: signal<AppLinkState>('saved') };
@@ -109,6 +112,7 @@ export class BrandKit {
 			this.sealAsFavicon.shop.set(value.sealAsFavicon);
 			this.sealAsFavicon.admin.set(value.admin?.sealAsFavicon ?? true);
 			this.adminOwnLogos.set(value.adminOwnLogos);
+			this.savedAdminColour = value.adminThemeColor;
 		});
 	}
 
@@ -160,6 +164,18 @@ export class BrandKit {
 		this.adminOwnLogos.set(on);
 	}
 
+	/** The admin colour as saved; a colour only tried here is put back when the page closes. */
+	private savedAdminColour = '#0da487';
+
+	/** The whole admin takes a picked colour at once, before Save. */
+	previewAdminColour(colour: string) {
+		applyThemeColor(this.page, colour);
+	}
+
+	ngOnDestroy() {
+		applyThemeColor(this.page, this.savedAdminColour);
+	}
+
 	/** Typing in a store link means it must be checked again before Save. */
 	editAppLink(store: BrandAppStore) {
 		const empty = !this.form.controls.apps.controls[store].value.trim();
@@ -192,6 +208,7 @@ export class BrandKit {
 		}
 		this.gateway.save(this.form.getRawValue() as BrandSettings).subscribe({
 			next: () => {
+				this.savedAdminColour = this.form.controls.adminThemeColor.value;
 				void this.queryClient.invalidateQueries({ queryKey: ['brand'] });
 				this.notifier.showSuccess(this.transloco.translate('brand_saved'));
 			},

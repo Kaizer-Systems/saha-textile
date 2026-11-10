@@ -24,10 +24,13 @@ https
 				answer.pipe(response);
 			},
 		);
+		// A reply that breaks after its headers went out can only be cut off; a second set of
+		// headers would throw and take the proxy, and every later test, down with it.
 		upstream.on('error', () => {
-			response.writeHead(502);
-			response.end();
+			if (response.headersSent) response.destroy();
+			else response.writeHead(502).end();
 		});
+		response.on('error', () => upstream.destroy());
 		request.pipe(upstream);
 	})
 	.listen(Number(listenPort), '127.0.0.1');

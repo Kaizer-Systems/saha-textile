@@ -54,7 +54,10 @@
 		<ng-container *ngTemplateOutlet="logoSet; context: { $implicit: 'admin' }" />
 		}
 
-		<div class="border-bottom mt-4 mb-3 pb-2">
+		<div
+			class="border-bottom mt-4 mb-3 pb-2"
+			id="brand_sharing"
+		>
 			<h5 class="fw-semibold mb-1">{{ 'brand_sharing_and_profiles' | transloco }}</h5>
 		</div>
 		<app-form-fields
@@ -180,6 +183,7 @@
 	let-set
 >
 	<app-form-fields
+		[attr.id]="set + '_logo_section'"
 		[label]="'full_logo'"
 		[for]="set + '_full_logo'"
 	>
@@ -211,6 +215,7 @@
 		<p class="help-text mb-0">{{ 'full_logo_help' | transloco }}</p>
 	</app-form-fields>
 	<app-form-fields
+		[attr.id]="set + '_seal_section'"
 		[label]="'seal'"
 		[for]="set + '_seal'"
 	>

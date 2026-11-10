@@ -1,21 +1,30 @@
+<!--
+	Admin search (owner brief, approved 2026-11-10). The theme's search box is kept as it was; the
+	dropdown is Bootstrap's card and list group with the theme colour classes (`theme-bg-color`,
+	`theme-color`) and `<kbd>` key hints, so nothing here is styled on its own.
+-->
 <form
 	class="form-inline search-full"
 	[class.open]="navServices.search"
-	#dropdownContainer
-	(clickOutside)="clickOutside()"
+	role="search"
+	(submit)="$event.preventDefault()"
+	(clickOutside)="close()"
 >
-	<div
-		class="form-group w-100"
-		#toggleButton
-	>
+	<div class="form-group w-100">
 		<input
+			#searchInput
 			class="demo-input Typeahead-input form-control-plaintext w-100"
-			[(ngModel)]="text"
-			[ngModelOptions]="{ standalone: true }"
-			(keyup)="searchTerm(text)"
-			(click)="openDropDown(text)"
 			type="text"
 			autocomplete="off"
+			role="combobox"
+			aria-autocomplete="list"
+			aria-controls="admin_search_results"
+			[attr.aria-expanded]="open()"
+			[value]="query()"
+			(input)="type($any($event.target).value)"
+			(focus)="show()"
+			(click)="show()"
+			(keydown)="onKey($event)"
 			placeholder="{{ 'search_saha_textile' | transloco }} .."
 		/>
 		<i
@@ -24,33 +33,98 @@
 			(click)="closeSearch()"
 		></i>
 	</div>
+	@if (open()) {
 	<div
-		class="onhover-dropdown"
-		[class.open]="searchResult"
+		id="admin_search_results"
+		class="card position-fixed border-0 shadow"
+		[style.left.px]="place().left"
+		[style.top.px]="place().top"
+		[style.width.px]="place().width"
+		[style.z-index]="2000"
 	>
-		<ul>
-			@for (menu of menuItems; track menu) {
-			<li>
+		<div class="card-body p-0 pb-1">
+			@if (outcome().corrected; as corrected) {
+			<div class="small text-muted px-3 pt-3">
+				{{ 'search_close_match' | transloco: { typed: corrected.typed, used: corrected.used } }}
+			</div>
+			} @for (group of groups(); track group.titleKey) {
+			<div class="small text-muted text-uppercase fw-semibold px-3 pt-3 pb-1">
+				{{ group.titleKey | transloco }}
+			</div>
+			<div
+				class="list-group list-group-flush"
+				role="listbox"
+			>
+				@for (entry of group.entries; track entry.id) {
 				<a
-					class="main-content"
-					[routerLink]="menu?.path"
+					class="list-group-item list-group-item-action d-flex align-items-start rounded-2 mx-2 gap-3 border-0 py-2"
+					role="option"
+					href="javascript:void(0)"
+					[attr.aria-selected]="isActive(entry)"
+					[class.theme-bg-color]="isActive(entry)"
+					[class.text-white]="isActive(entry)"
+					[class.bg-transparent]="!isActive(entry)"
+					(mouseenter)="focusRow(entry)"
+					(click)="go(entry)"
 				>
-					@if (menu.icon) {
-					<i class="{{ menu.icon }}"></i>
-					} @if (menu.title) { {{ menu.title.replace(' ', '_') | transloco }} }
+					<i
+						class="{{ entry.icon }} fs-5 mt-1"
+						[class.theme-color]="!isActive(entry)"
+					></i>
+					<div class="flex-grow-1">
+						<div
+							class="small"
+							[class.text-white-50]="isActive(entry)"
+							[class.text-muted]="!isActive(entry)"
+						>
+							@for (step of trail(entry); track $index; let last = $last) { {{ step | transloco }} @if
+							(!last) {
+							<i class="ri-arrow-right-s-line"></i>
+							} }
+						</div>
+						<div class="fw-semibold">{{ entry.titleKey | transloco }}</div>
+						<div
+							class="small"
+							[class.text-white-50]="isActive(entry)"
+							[class.text-muted]="!isActive(entry)"
+						>
+							{{ 'search_hint_' + entry.id | transloco }}
+						</div>
+					</div>
+					@if (isActive(entry)) {
+					<span class="small text-white-50 mt-1 text-nowrap">Enter ↵</span>
+					}
 				</a>
-			</li>
+				}
+			</div>
+			} @if (query().trim() && !rows().length) {
+			<div class="text-muted px-4 py-4 text-center">
+				<i class="ri-search-line fs-2 theme-color"></i>
+				<p class="mt-2 mb-0">{{ 'search_nothing_matches' | transloco: { query: query().trim() } }}</p>
+			</div>
 			}
-		</ul>
-		@if (searchResultEmpty) {
-		<div
-			class="Typeahead-menu"
-			[class.open]="searchResultEmpty"
-		>
-			<div class="tt-dataset tt-dataset-0">
-				<div class="EmptyMessage">{{ 'opps!!_There_are_no_result_found' | transloco }}</div>
+			<div class="border-top small text-muted d-flex mt-2 flex-wrap gap-3 px-3 py-2">
+				<span>
+					<kbd>↑</kbd>
+					<kbd>↓</kbd>
+					{{ 'search_key_move' | transloco }}
+				</span>
+				<span>
+					<kbd>Enter</kbd>
+					{{ 'search_key_open' | transloco }}
+				</span>
+				<span>
+					<kbd>Esc</kbd>
+					{{ 'search_key_close' | transloco }}
+				</span>
+				<span class="d-none d-md-inline ms-auto">
+					<kbd>⌘K</kbd>
+					/
+					<kbd>Ctrl K</kbd>
+					{{ 'search_key_any_page' | transloco }}
+				</span>
 			</div>
 		</div>
-		}
 	</div>
+	}
 </form>

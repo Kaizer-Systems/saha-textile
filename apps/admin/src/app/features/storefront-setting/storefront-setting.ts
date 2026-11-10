@@ -1,6 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
@@ -41,6 +43,9 @@ export const SHARE_APPS: readonly ShareApp[] = [
  * brief, 2026-11-10) holds the channel, the home rail and the daily refresh's state. Sharing
  * (share brief D4) holds the share menu's shop-wide choices.
  */
+/** The tabs, by the id the address uses. */
+const TABS = ['search', 'youtube', 'share'];
+
 @Component({
 	selector: 'app-storefront-setting',
 	templateUrl: './storefront-setting.html',
@@ -63,6 +68,7 @@ export class StorefrontSetting {
 	private queryClient = inject(QueryClient);
 	private youtube = inject(YouTubeGateway);
 
+	/** The open tab; `?tab=youtube` or `?tab=share` opens another (the admin search links there). */
 	active = 'search';
 	private readonly settingsQuery = injectStorefrontSearchSettingsQuery();
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
@@ -88,6 +94,12 @@ export class StorefrontSetting {
 	readonly shareLoaded = signal(false);
 
 	constructor() {
+		inject(ActivatedRoute)
+			.queryParamMap.pipe(takeUntilDestroyed())
+			.subscribe((params) => {
+				const tab = params.get('tab');
+				if (tab && TABS.includes(tab)) this.active = tab;
+			});
 		this.terms.getShareSettings().subscribe((settings) => {
 			this.xHandle.set(settings.xHandle);
 			this.hashtags.set(settings.hashtags);

@@ -2,7 +2,6 @@ import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { Component, inject, type OnDestroy, signal, type WritableSignal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
-import type { BrandAppStore, BrandLogoSet, BrandSettings, BrandSocialNetwork } from '@saha-textile/contracts';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
@@ -15,6 +14,8 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+
+import type { BrandAppStore, BrandLogoSet, BrandSettings, BrandSocialNetwork } from '@saha-textile/contracts';
 
 /** The image slots of one logo set. */
 type SetSlot = Exclude<keyof BrandLogoSet, 'sealAsFavicon'>;

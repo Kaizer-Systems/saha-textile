@@ -4,6 +4,7 @@
 	`theme-color`) and `<kbd>` key hints, so nothing here is styled on its own.
 -->
 <form
+	#searchForm
 	class="form-inline search-full"
 	[class.open]="navServices.search"
 	role="search"
@@ -36,7 +37,7 @@
 	@if (open()) {
 	<div
 		id="admin_search_results"
-		class="card position-fixed border-0 shadow"
+		class="card position-absolute border-0 shadow"
 		[style.left.px]="place().left"
 		[style.top.px]="place().top"
 		[style.width.px]="place().width"

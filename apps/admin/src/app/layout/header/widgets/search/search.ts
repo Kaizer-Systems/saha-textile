@@ -50,6 +50,7 @@ export class Search {
 	private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
 	readonly input = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+	readonly form = viewChild<ElementRef<HTMLFormElement>>('searchForm');
 
 	private readonly entries = searchEntries(data.menu);
 	private readonly language = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -133,14 +134,24 @@ export class Search {
 	}
 
 	show(): void {
-		const box = this.input()?.nativeElement.getBoundingClientRect();
-		if (box && this.isBrowser) {
-			const viewport = this.page.defaultView?.innerWidth ?? 1200;
-			const width = Math.min(Math.max(600, box.width + 24), viewport - 16);
-			const left = Math.min(Math.max(8, box.left - 12), viewport - width - 8);
-			this.place.set({ left, top: box.bottom + 8, width });
-		}
 		this.open.set(true);
+		this.measure();
+		// Opening can move the box (the theme animates it), so measure again once it has settled.
+		if (this.isBrowser) this.page.defaultView?.requestAnimationFrame(() => this.measure());
+	}
+
+	/**
+	 * Places the dropdown under the box, at least 600 px wide and inside the window. It is
+	 * positioned inside the theme's form, which can carry a transform, so the numbers are relative to it.
+	 */
+	private measure(): void {
+		const box = this.input()?.nativeElement.getBoundingClientRect();
+		const frame = this.form()?.nativeElement.getBoundingClientRect();
+		if (!box || !frame || !this.isBrowser) return;
+		const viewport = this.page.defaultView?.innerWidth ?? 1200;
+		const width = Math.min(Math.max(600, box.width + 24), viewport - 16);
+		const left = Math.min(Math.max(8, box.left - 12), viewport - width - 8);
+		this.place.set({ left: left - frame.left, top: box.bottom + 8 - frame.top, width });
 	}
 
 	close(): void {

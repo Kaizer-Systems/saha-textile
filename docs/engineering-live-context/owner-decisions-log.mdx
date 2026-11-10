@@ -1236,6 +1236,26 @@ The brief is a private artifact: <https://claude.ai/artifact/3xBEmhDRfYHDWL6C7Dk
   over our own traces, logs, releases and issues find where it failed or spent its time, how many
   shoppers were hit, what changed, and the matching log lines, then offer rollback, the pull
   request or the runbook. An AI explanation stays parked in Chunk L.
+- **Release Console for many projects (2026-11-10).** UI brief “Release Console Projects”, version 4.
+    - Three levels: the console, a project, and the project’s repositories. A project holds several
+      repositories (for example web, API, admin).
+    - Search is on at every level and finds only what that level can open: console menus at the
+      console level, the project’s overview menus at the project level, and the repository’s
+      Ship, Watch, Run, cloud, edge and own menus at the repository level. It never crosses
+      projects or repositories.
+    - Every vendor sits in a slot on the repository: exactly one source-code vendor (GitHub today;
+      GitLab, Bitbucket, Azure Repos later), one or more cloud platforms (DigitalOcean today; AWS,
+      Google Cloud, Azure later), and one or more edge and DNS platforms (Cloudflare today). Each
+      environment runs on one cloud; each domain belongs to one edge platform.
+    - Other vendors get their own screens, built the way that vendor works, when a repository
+      first uses them; today’s screens are not stretched to fit them.
+    - Accepted: a GitHub App instead of personal tokens; cloud roles or service principals instead
+      of stored long-lived keys; a cloud or edge key reusable by repositories of the same project
+      (never across projects); each vendor built as an adapter behind its slot.
+    - No passwords in the console: a pasted token, or a browser sign-in window that returns a token
+      (and refresh token where offered). Cloudflare stays a pasted, narrow token.
+    - Proposed and not yet answered: a PIN lock screen, workspaces grouping projects, and an
+      Attention list.
 - **Parked:**
     - The privacy policy rewrite and its review are open Chunk K in the API/DB roadmap; the owner
       wants more briefs first.

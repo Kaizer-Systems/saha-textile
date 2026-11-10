@@ -228,6 +228,33 @@ Meta proves nothing about its address, so a Facebook signup finds out through th
 - A contact change keeps the old value until the new one is proven. Starting a change to a taken value looks the same as any other start, and no code is delivered. Confirmation spends the proof, changes the identifier and writes the audit record in one transaction. A race returns `contact_in_use`.
 - `signup`, `step-up` and contact-change refusals use stable codes, shown by the screen that asked rather than as a toast.
 
+### Account deletion and restore
+
+Operators delete and restore customers from the CRM (`CustomerLifecycleService`, `apps/api/src/admin/customer-lifecycle.service.ts`). A delete is a soft delete: the row stays for order history, and its email and phone leave the unique indexes so the person can sign up again.
+
+| Route                                       | Permission         | Effect                                                          |
+| ------------------------------------------- | ------------------ | --------------------------------------------------------------- |
+| `DELETE /admin/customers/:customerId`       | `customer.destroy` | Soft delete, ends access, releases Google and Facebook links    |
+| `GET /admin/customers/deleted`              | `customer.restore` | Lists deleted customers; the live list refuses `status=deleted` |
+| `POST /admin/customers/:customerId/restore` | `customer.restore` | Restores the customer to the status they had before the delete  |
+
+A soft delete commits three writes in one transaction:
+
+1. The row is set to `deleted`. Its previous status goes into `statusBeforeDelete`, the time into `deletedAt`, and `tokenVersion` increases, so every access token already issued fails on its next request.
+2. Every `authIdentities` row the customer holds for `google` or `facebook` is removed (`AuthIdentityRepository.releaseForSubject`). The pair (provider, subject) is unique, so the same provider account can now sign up again. Password identities are not affected.
+3. A `customer.delete` audit record is written with a `status` diff, an `identities` diff, and `metadata.releasedIdentities` listing each removed link's provider, subject and link time. The provider email is not copied into the record.
+
+After the commit, the service revokes what could still reach the account. Each step is idempotent, and the status and token version already block the account if one fails:
+
+- All sessions, with reason `admin_action`.
+- Unused activation, password-reset and email-verification links.
+- Open one-time codes for the customer's id, email and phone, plus the new value of a contact change in flight. Codes are marked consumed and blocked, which also frees the one-active-code slot for that address.
+- The pending contact change itself.
+
+A restore puts back the status recorded at delete time. A customer deleted before that status was recorded comes back `disabled`. Released Google and Facebook links do not come back: the customer reconnects them from the account page. Email, phone and password stay on the row and return with it.
+
+A restore is refused with `customer_identifier_taken` when another live customer now holds the email or phone. The message names which one. The service checks first for a clear answer, and the unique index decides a race between the check and the write. The restore and its `customer.restore` audit record commit together. Both audit actions use the `financial_security` tier.
+
 ## Admin identity
 
 - Operators sign in with a password or a six-digit PIN, using email or username. There is no self-registration and no social sign-in.

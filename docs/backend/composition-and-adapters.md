@@ -161,6 +161,8 @@ Cookie names default to `st_access`, `st_refresh`, `st_csrf`, `st_guest` and `st
 - `MEILISEARCH_HOST` is unset, or `MEILISEARCH_API_KEY` is missing, a placeholder or shorter than 16 characters.
 - CCAvenue is configured with a production host on staging, or with a test host in production.
 
+`DEPLOY_ENV=staging` or `production` on a build whose `NODE_ENV` is not `production` is refused as well. The refusal names variables and rules only, never a value, and prints no stack trace (`apps/api/src/config/boot-failure.ts`), so container logs stay free of secrets.
+
 The local stack sets `DEPLOY_ENV=local` to opt out.
 
 ## Connection lifecycle and readiness

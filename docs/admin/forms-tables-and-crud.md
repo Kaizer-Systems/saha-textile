@@ -7,6 +7,7 @@ audience: [beginner, frontend, operator]
 last_verified: '2026-11-10'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
+    - apps/admin/src/app/data-access/interfaces/table.interface.ts
     - apps/admin/src/app/shared/ui/form-fields
     - apps/admin/src/app/shared/ui/image-upload
     - apps/admin/src/app/features/product/form-product
@@ -33,6 +34,24 @@ The shared table coordinates:
 - confirmation/delete modal hooks.
 
 Feature components should provide table configuration and translate emitted table parameters into a query. They should not duplicate pagination/search state unless their workflow genuinely differs.
+
+## Row actions and table inputs
+
+A feature declares row actions in `tableConfig.rowActions` (`ITableAction`, `apps/admin/src/app/data-access/interfaces/table.interface.ts`):
+
+| Field             | Type               | Meaning                                                                                        |
+| ----------------- | ------------------ | ---------------------------------------------------------------------------------------------- |
+| `label`           | string             | Translation key; shown as the icon's hover name and screen-reader name                         |
+| `actionToPerform` | string             | Emitted in the `action` output. `delete` always opens the delete modal first                   |
+| `icon`            | string             | Remix icon class                                                                               |
+| `permission`      | string or string[] | Hides the action without the permission. UX only: the API enforces the permission              |
+| `deletedRows`     | boolean            | Show only on rows whose `status` is `deleted`. Without it, an action is hidden on deleted rows |
+| `confirm`         | boolean            | Open the shared confirmation modal before emitting                                             |
+| `rowStatuses`     | string[]           | Show only on rows whose `status` is one of these values                                        |
+
+Table inputs beyond `tableConfig`: `hasCheckbox`, `hasDuplicate`, `topbar`, `pagination`, `loading`, `dateRange` and `deleteMessage`. `deleteMessage` is a translation key that replaces the delete modal's default "deleted permanently" text. Use it where a delete is a soft delete, as the customer list does with `customer_deleted_message`.
+
+Pass `tableConfig` as a signal and replace it with `tableConfig.set({ ...base, data, total })` from the query effect. The admin app is zoneless, so writing `tableConfig.data` from an effect does not schedule a render, and the table keeps showing the previous rows after a refetch.
 
 ## Table request lifecycle
 

@@ -91,6 +91,20 @@ Address add and update use one atomic MongoDB statement, so concurrent edits do 
 
 Personal records are never public offline cache, and object lookups enforce ownership.
 
+## Account deletion and restore
+
+```mermaid
+stateDiagram-v2
+    [*] --> Live
+    Live --> Deleted: operator deletes (customer.destroy)
+    Deleted --> Live: operator restores (customer.restore), previous status returns
+    Deleted --> Deleted: restore refused, email or phone now held by another customer
+```
+
+Only an operator deletes a customer, from the CRM. The deleted customer is signed out everywhere, and their outstanding links and one-time codes stop working. Their email, phone and Google or Facebook account become free, so the same person can register again as a new customer.
+
+A restore brings back the original account with its previous status, email, phone and password. Google and Facebook sign-in must be reconnected from the account page. A restore is refused when someone else has registered the email or phone since the delete. The rules are in [Security, sessions, and authorization](../backend/security-and-identity#account-deletion-and-restore).
+
 ## Admin authentication
 
 Operators sign in with a password or PIN, using email or username. The guard enforces audience, role, declared permissions and current permission versions. There is no self-registration or social sign-in.

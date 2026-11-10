@@ -81,19 +81,19 @@ A manual adjustment needs a reason code, and `other` also needs a note. FIFO cos
 
 ## Index rules
 
-| Collection                                | Rule                                                                          |
-| ----------------------------------------- | ----------------------------------------------------------------------------- |
-| `customers`                               | Email and phone are unique among statuses other than `deleted`                |
-| `adminUserRoleAssignments`                | One active row per operator and role. A revoked role can be granted again     |
-| `otpChallenges`                           | One unconsumed challenge per identifier and purpose                           |
-| `adminInvites`                            | One open invite per address. Accepted invites have no TTL and stay as records |
-| `categoryPlacements`                      | A joined `pathKey` is unique, and each category has one canonical placement   |
-| `reviews`                                 | One review per product, customer and order                                    |
-| `messageOutbox`                           | One row per idempotency key                                                   |
-| `blogPosts`, `blogCategories`, `blogTags` | The address (`slug`) is unique                                                |
-| `mailboxes`                               | One row per mailbox address                                                   |
-| `wishlistItems`                           | The id is `customerId:productId`, so saving twice is one row                  |
-| `contactMessages`                         | A TTL index deletes each message twelve months after it arrives               |
+| Collection                                | Rule                                                                                                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customers`                               | Email and phone are unique among statuses other than `deleted`. A soft delete keeps the previous status in `statusBeforeDelete` and the time in `deletedAt` |
+| `adminUserRoleAssignments`                | One active row per operator and role. A revoked role can be granted again                                                                                   |
+| `otpChallenges`                           | One unconsumed challenge per identifier and purpose                                                                                                         |
+| `adminInvites`                            | One open invite per address. Accepted invites have no TTL and stay as records                                                                               |
+| `categoryPlacements`                      | A joined `pathKey` is unique, and each category has one canonical placement                                                                                 |
+| `reviews`                                 | One review per product, customer and order                                                                                                                  |
+| `messageOutbox`                           | One row per idempotency key                                                                                                                                 |
+| `blogPosts`, `blogCategories`, `blogTags` | The address (`slug`) is unique                                                                                                                              |
+| `mailboxes`                               | One row per mailbox address                                                                                                                                 |
+| `wishlistItems`                           | The id is `customerId:productId`, so saving twice is one row                                                                                                |
+| `contactMessages`                         | A TTL index deletes each message twelve months after it arrives                                                                                             |
 
 Sessions expire on their absolute limit. Audit logs, consent events and the stock ledger have no TTL.
 

@@ -132,11 +132,7 @@ Check both direct navigation and client-side navigation after hydration.
 
 ### Server handlers
 
-Handlers in `src/server/` run in Nitro, outside Angular. The app initializer that loads `/config.json` never runs there, so the shared `environment` keeps its `localhost` default. A handler that calls the API takes the address from `serverApiUrl()` in `src/server/api-url.ts`. It reads `apiUrl` from `SAHA_TEXTILE_PUBLIC_CONFIG` and falls back to `environment.apiUrl` only when the variable is unset or unreadable.
-
-:::warning `seo-files.ts` still uses the build default
-The FAQ and sitemap handlers in `src/server/middleware/seo-files.ts` read `environment.apiUrl` directly, so on a deployed host they call `localhost`. Move them to `serverApiUrl()` before relying on a deployed sitemap.
-:::
+Handlers in `src/server/` run in Nitro, outside Angular. The app initializer that loads `/config.json` never runs there, so the shared `environment` keeps its `localhost` default. A handler that calls the API takes the address from `serverApiUrl()` in `src/server/api-url.ts`. It reads `apiUrl` from `SAHA_TEXTILE_PUBLIC_CONFIG` and falls back to `environment.apiUrl` only when the variable is unset or unreadable. Every handler that calls the API uses it: the sitemap and FAQ in `middleware/seo-files.ts` and the web manifest in `middleware/web-manifest.ts`.
 
 ## Adding a route safely
 

@@ -1,7 +1,7 @@
 import { defineEventHandler, getRequestURL, send, setResponseHeaders } from 'h3';
 
-import { environment } from '../../../public/environments/environment';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../../app/core/i18n/locale';
+import { serverApiUrl } from '../api-url';
 
 /**
  * Pages the storefront itself owns, listed in every language beside the API's products,
@@ -22,7 +22,7 @@ const STATIC_PAGES = [
 /** Whether the shop FAQ has any questions; an empty FAQ page is `noindex`. */
 const faqHasRows = async () => {
 	try {
-		const response = await fetch(`${environment.apiUrl}/catalog/faq`, { signal: AbortSignal.timeout(5000) });
+		const response = await fetch(`${serverApiUrl()}/catalog/faq`, { signal: AbortSignal.timeout(5000) });
 		if (!response.ok) return false;
 		const rows = await response.json();
 		return Array.isArray(rows) && rows.length > 0;
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
 
 	if (path === '/sitemap.xml') {
 		const [response, withFaq] = await Promise.all([
-			fetch(`${environment.apiUrl}/catalog/sitemap`, { signal: AbortSignal.timeout(5000) }),
+			fetch(`${serverApiUrl()}/catalog/sitemap`, { signal: AbortSignal.timeout(5000) }),
 			faqHasRows(),
 		]);
 		if (!response.ok) {

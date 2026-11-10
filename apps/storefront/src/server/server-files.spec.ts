@@ -175,6 +175,20 @@ describe('SEO files', () => {
 		expect(body).toContain('<loc>https://shop.test/en/product/red</loc>');
 	});
 
+	it("asks the deployment's API, not the local default", async () => {
+		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({ apiUrl: 'https://api.shop.test' });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(JSON.stringify({ paths: ['/en/'], questions: [] }))),
+		);
+		await run(event('/sitemap.xml', {}, { host: 'shop.test' }));
+		const called = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((call) => call[0]);
+		expect(called).toEqual(
+			expect.arrayContaining(['https://api.shop.test/catalog/sitemap', 'https://api.shop.test/catalog/faq']),
+		);
+		expect(called.every((url) => String(url).startsWith('https://api.shop.test/'))).toBe(true);
+	});
+
 	it('names the other-language version of each address, with English as the default', async () => {
 		vi.stubGlobal(
 			'fetch',

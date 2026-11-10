@@ -110,6 +110,7 @@ export class ConsoleStore {
 								checkedAt: null,
 								state: 'unchecked',
 								note: 'Uses the sign-in made with gh auth login; nothing is stored by the console.',
+								target: '',
 							},
 						]
 					: [],

@@ -19,6 +19,12 @@ import { checkKey, stateWithExpiry } from '../vendors/key-checks.js';
 
 const run = promisify(execFile);
 
+/** The GitHub CLI's own sign-in on this computer (made in the browser with `gh auth login`). */
+export async function githubCliToken(): Promise<string | null> {
+	const { stdout } = await run('gh', ['auth', 'token'], { timeout: 10_000 }).catch(() => ({ stdout: '' }));
+	return stdout.trim() || null;
+}
+
 /** The Keychain account name of a key: project name and key id, so keys never cross projects. */
 export const keychainItemOf = (project: Pick<Project, 'name'>, keyId: string): string => `${project.name} · ${keyId}`;
 
@@ -98,6 +104,7 @@ export class ProjectsService {
 			checkedAt: null,
 			state: 'unchecked',
 			note: input.note,
+			target: input.target,
 		};
 		this.saveKey(projectId, ref);
 		this.store.audit(
@@ -117,7 +124,7 @@ export class ProjectsService {
 			.filter((r) => r.sourceCode.keyId === keyId)
 			.map((r) => r.sourceCode.repository);
 		const check = value
-			? await checkKey(ref.kind, value, repos)
+			? await checkKey(ref.kind, value, repos, ref.target)
 			: { state: 'failed' as const, account: '', rights: [], note: 'The Keychain has no value for this key.' };
 		const next: KeyRef = {
 			...ref,
@@ -208,12 +215,65 @@ export class ProjectsService {
 		return this.project(projectId);
 	}
 
+	addRepository(projectId: string, repo: Repository): Project {
+		const project = this.project(projectId);
+		if (project.repositories.some((r) => r.id === repo.id))
+			throw new ConflictException(`${project.name} has a repository ${repo.id}.`);
+		this.replaceRepositories(projectId, [...project.repositories, this.keepKnownKeys(project, repo)]);
+		this.store.audit(projectId, 'repository-added', `${repo.name} (${repo.sourceCode.repository}) added`);
+		return this.project(projectId);
+	}
+
+	/** Replaces a repository's settings; key ids the project does not hold are dropped. */
+	updateRepository(projectId: string, repoId: string, repo: Repository): Project {
+		const { project } = this.repository(projectId, repoId);
+		if (repo.id !== repoId) throw new ConflictException('A repository keeps its id.');
+		this.replaceRepositories(
+			projectId,
+			project.repositories.map((r) => (r.id === repoId ? this.keepKnownKeys(project, repo) : r)),
+		);
+		this.store.audit(projectId, 'repository-changed', `${repo.name}: settings saved`);
+		return this.project(projectId);
+	}
+
+	removeRepository(projectId: string, repoId: string): Project {
+		const { project, repo } = this.repository(projectId, repoId);
+		if (project.repositories.length === 1)
+			throw new ConflictException('A project keeps at least one repository; remove the project instead.');
+		this.replaceRepositories(
+			projectId,
+			project.repositories.filter((r) => r.id !== repoId),
+		);
+		this.store.audit(projectId, 'repository-removed', `${repo.name} removed; the project's keys stay`);
+		return this.project(projectId);
+	}
+
+	private keepKnownKeys(project: Project, repo: Repository): Repository {
+		const known = new Set(project.keys.map((k) => k.id));
+		const ids = (list: string[]) => list.filter((k) => known.has(k));
+		return {
+			...repo,
+			sourceCode: {
+				...repo.sourceCode,
+				keyId: repo.sourceCode.keyId && known.has(repo.sourceCode.keyId) ? repo.sourceCode.keyId : null,
+			},
+			cloud: repo.cloud.map((c) => ({ ...c, keyIds: ids(c.keyIds) })),
+			edge: repo.edge.map((e) => ({ ...e, keyIds: ids(e.keyIds) })),
+		};
+	}
+
+	private replaceRepositories(projectId: string, repositories: Repository[]): void {
+		const ids = repositories.map((r) => r.id);
+		if (new Set(ids).size !== ids.length) throw new ConflictException('Two repositories share an id.');
+		this.store.update((f) => ({
+			...f,
+			projects: f.projects.map((p) => (p.id === projectId ? { ...p, repositories } : p)),
+		}));
+	}
+
 	/** The key's value for a vendor call, held in memory for that call only. */
 	async valueOf(ref: KeyRef): Promise<string | null> {
-		if (ref.kind === 'github-cli') {
-			const { stdout } = await run('gh', ['auth', 'token'], { timeout: 10_000 }).catch(() => ({ stdout: '' }));
-			return stdout.trim() || null;
-		}
+		if (ref.kind === 'github-cli') return githubCliToken();
 		return ref.keychainItem ? this.keychain.get(ref.keychainItem) : null;
 	}
 

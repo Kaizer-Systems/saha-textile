@@ -9,6 +9,8 @@ const GH = { 'x-github-api-version': '2022-11-28' };
 export interface SourceCodeAdapter {
 	pulls(repository: string, key: string): Promise<PullRequest[]>;
 	runs(repository: string, key: string): Promise<WorkflowRun[]>;
+	/** A file on the default branch, or `null` when the repository has none. */
+	file(repository: string, path: string, key: string): Promise<string | null>;
 }
 
 export function toPull(p: unknown): PullRequest {
@@ -52,6 +54,13 @@ async function read(url: string, key: string): Promise<unknown> {
 export const githubAdapter: SourceCodeAdapter = {
 	async pulls(repository, key) {
 		return arr(await read(`${API}/repos/${repository}/pulls?state=open&per_page=50`, key)).map(toPull);
+	},
+	async file(repository, path, key) {
+		const a = await getJson(`${API}/repos/${repository}/contents/${path}`, key, GH);
+		if (a.status === 404) return null;
+		if (a.status >= 400) throw new VendorError(`GitHub answered ${a.status}.`, a.status);
+		const body = rec(a.body);
+		return body['encoding'] === 'base64' ? Buffer.from(str(body['content']), 'base64').toString('utf8') : null;
 	},
 	async runs(repository, key) {
 		return arr(rec(await read(`${API}/repos/${repository}/actions/runs?per_page=30`, key))['workflow_runs']).map(

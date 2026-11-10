@@ -50,6 +50,7 @@ describe('attention', () => {
 					checkedAt: null,
 					state: 'expiring',
 					note: '',
+					target: '',
 				},
 			],
 			repositories: [

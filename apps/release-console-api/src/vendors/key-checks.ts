@@ -1,6 +1,7 @@
 import type { KeyKind, KeyState } from '@saha-textile/release-console-contracts';
 
 import { arr, getJson, rec, str } from './http.js';
+import { signV4 } from './sigv4.js';
 
 export interface KeyCheck {
 	state: KeyState;
@@ -93,8 +94,39 @@ async function checkCloudflare(key: string): Promise<KeyCheck> {
 	};
 }
 
+/**
+ * A Spaces key is `ACCESS_KEY:SECRET`; it is checked by listing one object of its bucket
+ * (`region/bucket`), which also works for keys limited to that bucket.
+ */
+async function checkSpaces(key: string, target: string): Promise<KeyCheck> {
+	const split = key.indexOf(':');
+	if (split < 1) return failed('Paste a Spaces key as ACCESS_KEY:SECRET.');
+	const [region, bucket] = target.split('/');
+	if (!region || !bucket)
+		return failed('Give the Spaces key its bucket as region/bucket, for example sgp1/saha-textile-media.');
+	const url = new URL(`https://${region}.digitaloceanspaces.com/${bucket}?list-type=2&max-keys=1`);
+	const headers = signV4({
+		method: 'GET',
+		url,
+		region,
+		service: 's3',
+		accessKey: key.slice(0, split),
+		secret: key.slice(split + 1),
+	});
+	const res = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) });
+	if (res.status === 200)
+		return {
+			state: 'verified',
+			account: key.slice(0, split),
+			rights: [`lists ${bucket}`],
+			note: `Reaches ${target}`,
+		};
+	if (res.status === 404) return failed(`Spaces has no bucket ${bucket} in ${region}.`);
+	return failed(`Spaces refused the key for ${target} (${res.status}).`);
+}
+
 /** Checks a key against its vendor. Kinds without a check are kept and marked unchecked. */
-export async function checkKey(kind: KeyKind, key: string, repositories: string[]): Promise<KeyCheck> {
+export async function checkKey(kind: KeyKind, key: string, repositories: string[], target = ''): Promise<KeyCheck> {
 	try {
 		switch (kind) {
 			case 'github-cli':
@@ -106,6 +138,8 @@ export async function checkKey(kind: KeyKind, key: string, repositories: string[
 			case 'cf-read':
 			case 'cf-change':
 				return await checkCloudflare(key);
+			case 'spaces-key':
+				return await checkSpaces(key, target);
 			default:
 				return {
 					state: 'unchecked',

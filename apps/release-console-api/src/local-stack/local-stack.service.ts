@@ -14,7 +14,8 @@ export class LocalStackService {
 	private readonly prefix = process.env['CONSOLE_STACK_PREFIX'] ?? 'saha-textile';
 	private readonly readyUrl = process.env['CONSOLE_LOCAL_READY_URL'] ?? 'http://localhost:4000/health/ready';
 
-	async services(): Promise<ServicesSnapshot> {
+	/** Containers whose names start with the repository's id (the default stack when none is given). */
+	async services(repo?: string): Promise<ServicesSnapshot> {
 		const opts = { timeout: 8000, maxBuffer: 4 * 1024 * 1024 };
 		const [ps, stats] = await Promise.all([
 			run('docker', ['ps', '-a', '--format', '{{json .}}'], opts),
@@ -23,12 +24,15 @@ export class LocalStackService {
 		return {
 			environment: 'local',
 			readAt: new Date().toISOString(),
-			services: toServices(ps.stdout, stats.stdout, this.prefix),
+			services: toServices(ps.stdout, stats.stdout, repo ?? this.prefix),
 		};
 	}
 
-	async readiness(): Promise<Readiness> {
+	/** The shop API's readiness; other repositories have no readiness address yet, so they read `unknown`. */
+	async readiness(repo?: string): Promise<Readiness> {
 		const checkedAt = new Date().toISOString();
+		if (repo && repo !== this.prefix)
+			return { environment: 'local', reachable: false, status: 'unknown', checkedAt };
 		try {
 			const res = await fetch(this.readyUrl, { signal: AbortSignal.timeout(4000) });
 			const body: unknown = await res.json().catch(() => ({}));

@@ -149,6 +149,12 @@ export const keyRefSchema = z.object({
 	checkedAt: z.string().datetime().nullable().default(null),
 	state: keyStateSchema.default('unchecked'),
 	note: z.string().max(300).default(''),
+	/** What the key reaches inside the vendor: `region/bucket` for a Spaces key (e.g. `sgp1/saha-textile-media`). */
+	target: z
+		.string()
+		.max(120)
+		.regex(/^([a-z0-9-]+\/[a-z0-9.-]+)?$/, 'region/bucket')
+		.default(''),
 });
 export type KeyRef = z.infer<typeof keyRefSchema>;
 
@@ -241,6 +247,12 @@ export const storeKeySchema = z.object({
 	value: keyValueSchema.default(''),
 	expiresAt: z.string().datetime().nullable().default(null),
 	note: z.string().max(300).default(''),
+	/** What the key reaches inside the vendor: `region/bucket` for a Spaces key (e.g. `sgp1/saha-textile-media`). */
+	target: z
+		.string()
+		.max(120)
+		.regex(/^([a-z0-9-]+\/[a-z0-9.-]+)?$/, 'region/bucket')
+		.default(''),
 });
 export type StoreKey = z.infer<typeof storeKeySchema>;
 
@@ -384,3 +396,13 @@ export const dropletsAnswerSchema = vendorAnswer(z.array(dropletSchema));
 export const cloudAccountAnswerSchema = vendorAnswer(cloudAccountSchema);
 export const edgeZonesAnswerSchema = vendorAnswer(z.array(edgeZoneSchema));
 export const dnsRecordsAnswerSchema = vendorAnswer(z.array(dnsRecordSchema));
+
+/** A repository's `.release-console.json` as read from its source-code vendor before it is added. */
+export const repositoryFileQuerySchema = z.object({
+	vendor: sourceCodeVendorSchema,
+	repository: sourceCodeSlotSchema.shape.repository,
+});
+export type RepositoryFileQuery = z.infer<typeof repositoryFileQuerySchema>;
+export const repositoryFileFoundSchema = z.object({ found: z.boolean(), menus: z.array(z.string()) });
+export type RepositoryFileFound = z.infer<typeof repositoryFileFoundSchema>;
+export const repositoryFileAnswerSchema = vendorAnswer(repositoryFileFoundSchema);

@@ -80,4 +80,27 @@ describe('key checks', () => {
 			note: expect.stringContaining('offline'),
 		});
 	});
+
+	it('checks a Spaces key by listing one object of its bucket, signed', async () => {
+		const fetch = vi.fn(
+			async (url: URL) =>
+				new Response('<ListBucketResult/>', { status: url.pathname === '/saha-textile-media' ? 200 : 403 }),
+		);
+		vi.stubGlobal('fetch', fetch);
+		expect(
+			await checkKey('spaces-key', 'TESTACCESS:test/secret+value', [], 'sgp1/saha-textile-media'),
+		).toMatchObject({
+			state: 'verified',
+			account: 'TESTACCESS',
+			rights: ['lists saha-textile-media'],
+		});
+		const [url, init] = fetch.mock.calls[0] as unknown as [URL, RequestInit];
+		expect(url.href).toBe('https://sgp1.digitaloceanspaces.com/saha-textile-media?list-type=2&max-keys=1');
+		expect((init.headers as Record<string, string>)['authorization']).toMatch(
+			/^AWS4-HMAC-SHA256 Credential=TESTACCESS\/\d{8}\/sgp1\/s3\/aws4_request/,
+		);
+		expect(await checkKey('spaces-key', 'TESTACCESS:x', [], 'sgp1/other')).toMatchObject({ state: 'failed' });
+		expect(await checkKey('spaces-key', 'no-colon', [], 'sgp1/b')).toMatchObject({ state: 'failed' });
+		expect(await checkKey('spaces-key', 'A:B', [], '')).toMatchObject({ state: 'failed' });
+	});
 });

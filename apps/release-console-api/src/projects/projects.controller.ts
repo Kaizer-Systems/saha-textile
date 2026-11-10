@@ -12,6 +12,9 @@ import {
 	newProjectSchema,
 	type Project,
 	type PullRequest,
+	type RepositoryFileFound,
+	repositoryFileQuerySchema,
+	repositorySchema,
 	slotKeysSchema,
 	storeKeySchema,
 	type VendorAnswer,
@@ -79,6 +82,34 @@ export class ProjectsController {
 		const project = this.projects.setSlotKeys(id, parseBody(slotKeysSchema, body));
 		this.attention.forget(id);
 		return project;
+	}
+
+	@Post('projects/:id/repositories')
+	addRepository(@Param('id') id: string, @Body() body: unknown): Project {
+		const project = this.projects.addRepository(id, parseBody(repositorySchema, body));
+		this.attention.forget(id);
+		return project;
+	}
+
+	@Put('projects/:id/repositories/:repoId')
+	updateRepository(@Param('id') id: string, @Param('repoId') repoId: string, @Body() body: unknown): Project {
+		const project = this.projects.updateRepository(id, repoId, parseBody(repositorySchema, body));
+		this.attention.forget(id);
+		return project;
+	}
+
+	@Delete('projects/:id/repositories/:repoId')
+	@HttpCode(200)
+	removeRepository(@Param('id') id: string, @Param('repoId') repoId: string): Project {
+		const project = this.projects.removeRepository(id, repoId);
+		this.attention.forget(id);
+		return project;
+	}
+
+	@Post('repository-file')
+	@HttpCode(200)
+	repositoryFile(@Body() body: unknown): Promise<VendorAnswer<RepositoryFileFound>> {
+		return this.reads.repositoryFile(parseBody(repositoryFileQuerySchema, body));
 	}
 
 	@Get('attention')

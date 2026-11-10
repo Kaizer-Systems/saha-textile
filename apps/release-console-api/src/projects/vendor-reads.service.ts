@@ -8,12 +8,15 @@ import {
 	type KeyRef,
 	type Project,
 	type PullRequest,
+	type RepositoryFileFound,
+	type RepositoryFileQuery,
+	repositoryFileSchema,
 	VENDOR_NAMES,
 	type VendorAnswer,
 	type WorkflowRun,
 } from '@saha-textile/release-console-contracts';
 
-import { ProjectsService } from './projects.service.js';
+import { ProjectsService, githubCliToken } from './projects.service.js';
 import { cloudflareAdapter } from '../vendors/cloudflare.adapter.js';
 import { digitalOceanAdapter } from '../vendors/digitalocean.adapter.js';
 import { githubAdapter } from '../vendors/github.adapter.js';
@@ -51,6 +54,38 @@ export class VendorReadsService {
 			if (!zones.includes(zone)) throw new VendorError(`${zone} is not a domain of this edge slot.`, 404);
 			return cloudflareAdapter.records(key, zone);
 		});
+	}
+
+	/**
+	 * A repository's own menus from its `.release-console.json`, read before it joins a project.
+	 * It uses the GitHub CLI sign-in on this computer, which belongs to no project.
+	 */
+	async repositoryFile(q: RepositoryFileQuery): Promise<VendorAnswer<RepositoryFileFound>> {
+		if (q.vendor !== 'github')
+			return notConnected(`${VENDOR_NAMES[q.vendor]} screens come later; add its menus by hand.`);
+		const key = await githubCliToken();
+		if (!key)
+			return notConnected('The GitHub CLI is not signed in on this computer. Run gh auth login in a terminal.');
+		try {
+			const text = await githubAdapter.file(q.repository, '.release-console.json', key);
+			if (text === null)
+				return { state: 'ok', readAt: new Date().toISOString(), data: { found: false, menus: [] } };
+			const file = repositoryFileSchema.parse(JSON.parse(text));
+			const own = file.project?.repositories.find(
+				(r) => r.sourceCode.repository.toLowerCase() === q.repository.toLowerCase(),
+			);
+			return {
+				state: 'ok',
+				readAt: new Date().toISOString(),
+				data: { found: true, menus: own?.menus.length ? own.menus : file.menus },
+			};
+		} catch (err) {
+			return {
+				state: 'error',
+				message:
+					err instanceof VendorError ? err.message : `The file could not be read: ${(err as Error).message}`,
+			};
+		}
 	}
 
 	private async sourceCode<T>(

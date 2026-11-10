@@ -70,6 +70,7 @@ describe('projects and keys', () => {
 			value: 'test-value-1',
 			expiresAt: null,
 			note: '',
+			target: '',
 		});
 		expect(ref).toMatchObject({
 			state: 'verified',
@@ -113,6 +114,7 @@ describe('projects and keys', () => {
 			value: 'test-value-2',
 			expiresAt: null,
 			note: '',
+			target: '',
 		});
 		projects.setSlotKeys('saha-textile', {
 			repositoryId: 'saha-textile',
@@ -146,6 +148,7 @@ describe('projects and keys', () => {
 			value: 'test-value-3',
 			expiresAt: null,
 			note: '',
+			target: '',
 		});
 		projects.setSlotKeys('saha-textile', {
 			repositoryId: 'saha-textile',
@@ -188,6 +191,7 @@ describe('projects and keys', () => {
 			value: 'test-value-4',
 			expiresAt: null,
 			note: '',
+			target: '',
 		});
 		await projects.storeKey('saha-textile', {
 			id: 'do-read',
@@ -196,6 +200,7 @@ describe('projects and keys', () => {
 			value: 'test-value-5',
 			expiresAt: null,
 			note: '',
+			target: '',
 		});
 		await projects.remove('client-shop');
 		expect([...keychain.items.keys()]).toEqual(['Saha Textile · do-read']);

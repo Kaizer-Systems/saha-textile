@@ -1,7 +1,9 @@
 <!--
 	Admin search (owner brief, approved 2026-11-10). The theme's search box is kept as it was; the
 	dropdown is Bootstrap's card and list group with the theme colour classes (`theme-bg-color`,
-	`theme-color`) and `<kbd>` key hints, so nothing here is styled on its own.
+	`theme-color`) and `<kbd>` key hints, so nothing here is styled on its own. The highlighted row
+	also sets its background to `var(--theme-color)` inline, because the dark theme's
+	`.page-wrapper .list-group-item` rule outranks `theme-bg-color`.
 -->
 <form
 	#searchForm
@@ -63,6 +65,7 @@
 					href="javascript:void(0)"
 					[attr.aria-selected]="isActive(entry)"
 					[class.theme-bg-color]="isActive(entry)"
+					[style.background-color]="isActive(entry) ? 'var(--theme-color)' : null"
 					[class.text-white]="isActive(entry)"
 					[class.bg-transparent]="!isActive(entry)"
 					(mouseenter)="focusRow(entry)"

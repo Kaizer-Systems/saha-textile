@@ -95,8 +95,17 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 	}
 
 	async enqueue(job: MediaJob, options?: { delayMs?: number }): Promise<void> {
+		const jobId = jobIdFor(job);
+		// The stable id folds a request into one still waiting or running. A finished job keeps
+		// its id for a day of history, which would silently swallow the next reprocess of the
+		// same picture (the admin's Reprocess button would work once a day), so a finished or
+		// failed reprocess is cleared first and the new one runs.
+		if (jobId && job.type === 'reprocess') {
+			const earlier = await this.queue.getJob(jobId);
+			if (earlier && ((await earlier.isCompleted()) || (await earlier.isFailed()))) await earlier.remove();
+		}
 		await this.queue.add(job.type, job, {
-			...(jobIdFor(job) ? { jobId: jobIdFor(job) } : {}),
+			...(jobId ? { jobId } : {}),
 			...(options?.delayMs ? { delay: options.delayMs } : {}),
 		});
 	}

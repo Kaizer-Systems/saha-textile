@@ -6,6 +6,7 @@ const { queueCalls, queueApi, workerCalls, workerOn } = vi.hoisted(() => ({
 	queueCalls: [] as unknown[][],
 	queueApi: {
 		add: vi.fn(async () => undefined),
+		getJob: vi.fn(async (_id: string): Promise<unknown> => undefined),
 		upsertJobScheduler: vi.fn(async () => undefined),
 		count: vi.fn(async () => 0),
 		getWorkersCount: vi.fn(async () => 2),
@@ -18,6 +19,7 @@ const { queueCalls, queueApi, workerCalls, workerOn } = vi.hoisted(() => ({
 vi.mock('bullmq', () => ({
 	Queue: class {
 		add = queueApi.add;
+		getJob = queueApi.getJob;
 		upsertJobScheduler = queueApi.upsertJobScheduler;
 		count = queueApi.count;
 		getWorkersCount = queueApi.getWorkersCount;
@@ -69,6 +71,25 @@ describe('BullMqMediaJobQueue', () => {
 		expect(queueApi.add).toHaveBeenNthCalledWith(2, 'reprocess', expect.anything(), {
 			jobId: 'reprocess-a1-ladder',
 		});
+	});
+
+	it('clears a finished or failed reprocess of the same picture, and leaves a waiting one to absorb the new request', async () => {
+		const queue = new BullMqMediaJobQueue(connection);
+		const job = (completed: boolean, failed: boolean) => ({
+			isCompleted: async () => completed,
+			isFailed: async () => failed,
+			remove: vi.fn(async () => undefined),
+		});
+		for (const [earlier, removed] of [
+			[job(true, false), true],
+			[job(false, true), true],
+			[job(false, false), false],
+		] as const) {
+			queueApi.getJob.mockResolvedValueOnce(earlier);
+			await queue.enqueue({ type: 'reprocess', assetId: 'a2', reason: 'manual' });
+			expect(queueApi.getJob).toHaveBeenLastCalledWith('reprocess-a2-manual');
+			expect(earlier.remove).toHaveBeenCalledTimes(removed ? 1 : 0);
+		}
 	});
 
 	it('leaves other jobs without an id and honours a delay', async () => {

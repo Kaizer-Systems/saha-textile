@@ -43,7 +43,7 @@ The worker runs from the API image with `node dist/worker.js`, and uses the Bull
 | `youtube-refresh` | Daily, 00:00 IST   | Refreshes the cached channel feed                            |
 | `weekly-insight`  | Mondays, 04:00 IST | Writes badges and bought-together relations from paid orders |
 
-Failed jobs retry five times with exponential backoff, starting at 10 seconds. Completed jobs are kept for a day and failed jobs for a week. A repeated `process` or `reprocess` request for the same asset collapses into one job.
+Failed jobs retry five times with exponential backoff, starting at 10 seconds. Completed jobs are kept for a day and failed jobs for a week. A repeated `process` or `reprocess` request for the same asset collapses into one job while the first is still waiting or running. A `reprocess` request for an asset whose earlier reprocess has finished or failed clears that record and runs again, so Reprocess in the media library works every time.
 
 `gc` runs as a dry run until `MEDIA_GC_LIVE` is true. Each run writes an audit record.
 

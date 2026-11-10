@@ -41,9 +41,9 @@ const NETWORKS: readonly { key: BrandSocialNetwork; label: string }[] = [
 export type AppLinkState = 'saved' | 'checking' | 'found' | 'missing' | 'unknown' | 'unchecked';
 
 /** The app store rows, with their label keys. */
-const STORES: readonly { key: BrandAppStore; label: string; placeholder: string }[] = [
-	{ key: 'android', label: 'android_app', placeholder: 'https://play.google.com/store/apps/details?id=…' },
-	{ key: 'ios', label: 'ios_app', placeholder: 'https://apps.apple.com/in/app/…/id…' },
+const STORES: readonly { key: BrandAppStore; label: string }[] = [
+	{ key: 'android', label: 'android_app' },
+	{ key: 'ios', label: 'ios_app' },
 ];
 
 /**

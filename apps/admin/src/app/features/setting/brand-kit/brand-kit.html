@@ -80,7 +80,6 @@
 				<input
 					class="form-control"
 					type="url"
-					placeholder="https://"
 					[id]="'social_' + network.key"
 					[formControlName]="network.key"
 				/>
@@ -102,7 +101,6 @@
 						class="form-control"
 						type="url"
 						[id]="'app_' + store.key"
-						[placeholder]="store.placeholder"
 						[formControlName]="store.key"
 						(input)="editAppLink(store.key)"
 						(keydown.enter)="$event.preventDefault(); validateAppLink(store.key)"

@@ -32,7 +32,9 @@ This starts the app and its API together. The `release-console` and `release-con
 
 ## The lock
 
-The console opens behind a 6-digit PIN that is set on the first run.
+The console opens behind a 6-digit PIN that is set on the first run, typed once and then again to confirm.
+
+- The PIN is typed straight into the six boxes. The first box takes the keyboard when the screen opens; each digit moves to the next box, Backspace goes back, the arrow keys move between boxes, and a pasted or autofilled PIN spreads over the boxes. The sixth digit submits.
 
 - The PIN is stored as a salted scrypt hash, never as digits.
 - Five wrong tries lock the console for 15 minutes. The lock is kept in the console file, so restarting the API does not lift it.
@@ -85,7 +87,9 @@ Slots that stay keep their keys. A cloud or edge platform added later starts wit
 | Audit trail                                    | `audit.jsonl` beside it                                                           |
 | Key values                                     | The macOS login Keychain only                                                     |
 
-When the console file has no projects, the API imports the `project` block of `.release-console.json` at the repository root. For this repository that is Saha Textile in the Kaizer Systems workspace: repository `Kaizer-Systems/saha-textile` on GitHub, environments Local stack, Staging and Production, cloud DigitalOcean, edge Cloudflare with `sahatextile.com`, and the own menus Payments, Messages, Clients and SEO. The file holds no secrets.
+The console starts with no projects. Every project, Saha Textile included, is added by the owner with **Add a project**, choosing its repositories, environments, cloud and edge platforms and own menus, and is then connected on its Connections tab. Nothing is imported on its own.
+
+A repository's `.release-console.json` at its root lists only its own menus, for example `{ "menus": ["payments", "messages", "clients", "seo"] }`. The wizard and **+ Add repository** read it from the repository's default branch on GitHub and tick those menus. It holds no secrets and never adds a project.
 
 ## Connections and the Keychain
 
@@ -114,8 +118,8 @@ The console never makes a token or signs in for the owner. A browser sign-in for
 | Repository screen                           | Reads                                                                                                                                   | Before a key is pasted                                                                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Overview, Run › Services                    | Docker on this computer (containers whose names start with the repository's id) and, for the shop's own stack, the shop API's readiness | Live for environments on this computer; environments on a cloud show their domains until the agent is linked on their servers |
-| Ship › Pull requests (Open PRs tab)         | GitHub, open pull requests                                                                                                              | Live through the GitHub CLI sign-in                                                                                           |
-| Ship › Pipelines (All runs tab)             | GitHub Actions, the latest 30 runs                                                                                                      | Live through the GitHub CLI sign-in                                                                                           |
+| Ship › Pull requests (Open PRs tab)         | GitHub, open pull requests                                                                                                              | Not connected until the GitHub CLI sign-in or a GitHub token is linked on Connections                                         |
+| Ship › Pipelines (All runs tab)             | GitHub Actions, the latest 30 runs                                                                                                      | Not connected until the GitHub CLI sign-in or a GitHub token is linked on Connections                                         |
 | DigitalOcean › Droplets (Droplets tab)      | Every droplet the key sees                                                                                                              | Not connected                                                                                                                 |
 | DigitalOcean › Cloud account (Overview tab) | Team, droplet limit, month-to-date usage and balance                                                                                    | Not connected                                                                                                                 |
 | Cloudflare › Domains (Registrations tab)    | Every site (zone) the token sees                                                                                                        | Not connected                                                                                                                 |
@@ -143,14 +147,13 @@ The API listens on `127.0.0.1` only and accepts browser requests only from the c
 | `GET …/edge/:slot/zones` and `…/edge/:slot/zones/:zone/dns`                                          | Sites and DNS records                                                                                                 |
 | `GET /api/local/services?repo=`, `GET /api/local/readiness?repo=`                                    | The repository's containers on this computer; the shop API's readiness for the shop's own stack, `unknown` for others |
 
-| Setting                   | Default                                                        |
-| ------------------------- | -------------------------------------------------------------- |
-| `CONSOLE_API_PORT`        | `4410`                                                         |
-| `CONSOLE_ORIGIN`          | `http://localhost:4400`                                        |
-| `CONSOLE_DATA_DIR`        | `~/Library/Application Support/Release Console`                |
-| `CONSOLE_SEED_FILE`       | `.release-console.json`, found upwards from the working folder |
-| `CONSOLE_STACK_PREFIX`    | `saha-textile`                                                 |
-| `CONSOLE_LOCAL_READY_URL` | `http://localhost:4000/health/ready`                           |
+| Setting                   | Default                                         |
+| ------------------------- | ----------------------------------------------- |
+| `CONSOLE_API_PORT`        | `4410`                                          |
+| `CONSOLE_ORIGIN`          | `http://localhost:4400`                         |
+| `CONSOLE_DATA_DIR`        | `~/Library/Application Support/Release Console` |
+| `CONSOLE_STACK_PREFIX`    | `saha-textile`                                  |
+| `CONSOLE_LOCAL_READY_URL` | `http://localhost:4000/health/ready`            |
 
 Tests point `CONSOLE_DATA_DIR` at a temporary folder and use an in-memory Keychain, so they never touch the owner's file or Keychain and never use a real token.
 

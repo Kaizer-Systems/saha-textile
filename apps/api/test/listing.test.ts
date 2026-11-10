@@ -308,30 +308,82 @@ describe('MeilisearchSearch as the listing client', () => {
 		await expect(search().multiSearch([])).resolves.toEqual([]);
 	});
 
-	it('replaces the index in batches and waits for the last task', async () => {
+	/** Answers like Meilisearch: every write is a task that has already succeeded. */
+	const engine = (overrides: (url: string, method: string) => Response | undefined = () => undefined) => {
 		let uid = 0;
-		fetcher.mockImplementation(async (url: string) => {
-			if (url.includes('/tasks/')) return reply(200, { status: uid > 0 ? 'succeeded' : 'enqueued' });
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			const method = init.method ?? 'GET';
+			const special = overrides(url, method);
+			if (special) return special;
+			if (url.includes('/tasks/')) return reply(200, { status: 'succeeded' });
+			if (method === 'GET') return reply(200, { results: [] });
 			uid += 1;
 			return reply(202, { taskUid: uid });
 		});
+	};
+
+	it("replaces this version's index in batches, then records the build", async () => {
+		engine();
 		await search().replaceIndex(Array.from({ length: 501 }, () => entry));
 		const posts = fetcher.mock.calls.filter((call) => call[1].method === 'POST');
 		expect(posts.map((call) => call[0])).toEqual([
-			'http://meili.test/indexes/products_next/documents',
-			'http://meili.test/indexes/products_next/documents',
+			'http://meili.test/indexes/products_v1_next/documents',
+			'http://meili.test/indexes/products_v1_next/documents',
 			'http://meili.test/swap-indexes',
+			'http://meili.test/indexes/products_builds/documents?primaryKey=id',
 		]);
-		expect(JSON.parse(posts[2]?.[1].body as string)).toEqual([{ indexes: ['products', 'products_next'] }]);
-		expect(fetcher.mock.calls.at(-1)?.[0]).toBe(`http://meili.test/tasks/${uid}`);
+		expect(JSON.parse(posts[2]?.[1].body as string)).toEqual([{ indexes: ['products_v1', 'products_v1_next'] }]);
+		expect(JSON.parse(posts[3]?.[1].body as string)).toMatchObject([
+			{ id: 'v1', status: 'complete', documents: 501 },
+		]);
 		const touchedLive = fetcher.mock.calls.filter((call) =>
-			String(call[0]).includes('/indexes/products/documents'),
+			String(call[0]).includes('/indexes/products_v1/documents'),
 		);
 		expect(touchedLive).toEqual([]);
 	});
 
+	it('keeps the previous version and removes older ones and half-built copies', async () => {
+		engine((url, method) =>
+			url.endsWith('/indexes?limit=1000') && method === 'GET'
+				? reply(200, {
+						results: [
+							{ uid: 'products_v1' },
+							{ uid: 'products_v0' },
+							{ uid: 'products_v-1' },
+							{ uid: 'products_v0_next' },
+							{ uid: 'products_builds' },
+							{ uid: 'other_v0' },
+							{},
+						],
+					})
+				: undefined,
+		);
+		await search().replaceIndex([]);
+		const deleted = fetcher.mock.calls.filter((call) => call[1].method === 'DELETE').map((call) => call[0]);
+		expect(deleted).toContain('http://meili.test/indexes/products_v0_next');
+		expect(deleted).not.toContain('http://meili.test/indexes/products_v0');
+		expect(deleted).not.toContain('http://meili.test/indexes/other_v0');
+	});
+
+	it('knows whether this version is built', async () => {
+		engine((url) => (url.endsWith('/documents/v1') ? reply(200, { status: 'complete' }) : undefined));
+		await expect(search().buildState()).resolves.toBe('ready');
+		engine((url) => (url.endsWith('/documents/v1') ? reply(200, { status: 'started' }) : undefined));
+		await expect(search().buildState()).resolves.toBe('missing');
+		engine((url) => (url.endsWith('/indexes/products_v1') ? reply(404) : undefined));
+		await expect(search().buildState()).resolves.toBe('missing');
+		engine(() => reply(503));
+		await expect(search().buildState()).rejects.toBeInstanceOf(SearchUnavailableError);
+	});
+
+	it('applies settings alone for a release that keeps the version', async () => {
+		engine();
+		await search().applyCurrentSettings();
+		expect(fetcher.mock.calls.map((call) => call[0])[0]).toBe('http://meili.test/indexes/products_v1/settings');
+	});
+
 	it('reports the state of the index for the readiness probe', async () => {
-		fetcher.mockResolvedValueOnce(reply(200, { uid: 'products' }));
+		fetcher.mockResolvedValueOnce(reply(200, { uid: 'products_v1' }));
 		await expect(search().indexStatus()).resolves.toEqual({ up: true, detail: 'index ready' });
 		fetcher.mockResolvedValueOnce(reply(404));
 		await expect(search().indexStatus()).resolves.toEqual({ up: false, detail: 'unavailable or index missing' });
@@ -341,30 +393,62 @@ describe('MeilisearchSearch as the listing client', () => {
 
 	it('polls a task still running', async () => {
 		let polls = 0;
-		fetcher.mockImplementation(async (url: string) => {
-			if (!url.includes('/tasks/')) return reply(202, { taskUid: 1 });
-			polls += 1;
-			return reply(200, { status: polls > 1 ? 'succeeded' : 'processing' });
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			if (url.includes('/tasks/')) {
+				polls += 1;
+				if (polls === 1) return reply(200, {});
+				return reply(200, { status: polls > 2 ? 'succeeded' : 'processing', indexUid: 'products_v1_next' });
+			}
+			if ((init.method ?? 'GET') === 'GET')
+				return reply(200, { results: [{ uid: polls, progress: { percentage: polls } }] });
+			return reply(202, { taskUid: 1 });
 		});
 		await search().replaceIndex([]);
-		expect(polls).toBeGreaterThan(1);
+		expect(polls).toBeGreaterThan(2);
+		expect(fetcher.mock.calls.some((call) => String(call[0]).includes('indexUids=products_v1_next'))).toBe(true);
 	});
 
-	it('fails when a task fails or never finishes', async () => {
+	it("fails at once on a failed task, with the engine's reason", async () => {
 		fetcher.mockImplementation(async (url: string) =>
-			reply(200, url.includes('/tasks/') ? { status: 'failed' } : { taskUid: 1 }),
+			reply(
+				200,
+				url.includes('/tasks/') ? { status: 'failed', error: { message: 'disk full' } } : { taskUid: 1 },
+			),
 		);
-		await expect(search().replaceIndex([])).rejects.toBeInstanceOf(SearchUnavailableError);
+		await expect(search().replaceIndex([])).rejects.toThrow('task failed: disk full');
 		fetcher.mockImplementation(async (url: string) =>
-			reply(200, url.includes('/tasks/') ? { status: 'canceled' } : { taskUid: 1 }),
+			reply(200, url.includes('/tasks/') ? { status: 'canceled', error: null } : { taskUid: 1 }),
 		);
-		await expect(search().replaceIndex([])).rejects.toThrow('did not finish');
-		const start = Date.now();
-		vi.spyOn(Date, 'now')
-			.mockReturnValueOnce(start)
-			.mockReturnValue(start + 120_000);
-		fetcher.mockImplementation(async () => reply(200, { taskUid: 1 }));
-		await expect(search().replaceIndex([])).rejects.toThrow('did not finish');
+		await expect(search().replaceIndex([])).rejects.toThrow('(task canceled)');
+	});
+
+	it('keeps waiting while the engine moves, and stops when it stalls', async () => {
+		let now = 1_000_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		vi.spyOn(globalThis, 'setTimeout').mockImplementation(((done: () => void) => {
+			now += 30_000;
+			done();
+			return 0;
+		}) as never);
+		let moves = 0;
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			if (url.includes('/tasks/'))
+				return reply(200, { status: moves > 5 ? 'succeeded' : 'processing', indexUid: null });
+			if (url.includes('/batches')) {
+				moves += 1;
+				return reply(200, { results: [{ progress: { percentage: moves * 10 } }] });
+			}
+			if ((init.method ?? 'GET') === 'GET') return reply(200, {});
+			return reply(202, { taskUid: 1 });
+		});
+		// Thirty seconds between polls, but always moving: well past a minute, and still fine.
+		await expect(search().applyCurrentSettings()).resolves.toBeUndefined();
+		fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+			if (url.includes('/tasks/')) return reply(200, { status: 'processing' });
+			if ((init.method ?? 'GET') === 'GET') return reply(200, { results: [{ uid: 7, progress: null }] });
+			return reply(202, { taskUid: 1 });
+		});
+		await expect(search().applyCurrentSettings()).rejects.toThrow('no progress for 60 seconds');
 		vi.restoreAllMocks();
 	});
 });

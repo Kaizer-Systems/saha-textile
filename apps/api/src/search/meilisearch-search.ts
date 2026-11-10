@@ -9,13 +9,25 @@ import {
 } from '@saha-textile/core-domain';
 
 import { listingDocument } from './listing-document';
+import { SEARCH_INDEX_VERSION, versionedIndex } from './search-index-version';
 
 /** A hung index must not hold a page open. */
 const REQUEST_TIMEOUT_MS = 2000;
-/** Indexing runs in the background on Meilisearch, and a full rebuild takes a moment. */
-const TASK_WAIT_MS = 60_000;
+/**
+ * Indexing runs in the background on Meilisearch. A wait ends on success, on a failed task, or
+ * when the engine reports no progress for this long; never on a stopwatch, because a large
+ * catalogue legitimately takes minutes.
+ */
+const STALL_MS = 60_000;
 const TASK_POLL_MS = 100;
+const TASK_POLL_MAX_MS = 1000;
 const BATCH = 500;
+
+/** A missing index or document. Still "unavailable" to every caller that does not ask. */
+class SearchNotFoundError extends SearchUnavailableError {}
+
+/** Whether the index this release reads has been completely built. */
+export type SearchBuildState = 'ready' | 'missing';
 
 /** The HTTP side of the index, shared by search and listings. */
 export interface MeilisearchClient {
@@ -32,14 +44,21 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	private settingsApplied = false;
 	/** The admin's search words as synonyms, kept so a rebuilt index starts with them. */
 	private synonyms: Readonly<Record<string, readonly string[]>> | null = null;
+	/** The index this code reads: the configured name plus the search version, e.g. `products_v1`. */
+	readonly index: string;
+	/** Records which versions finished building, so a release can skip a rebuild it does not need. */
+	private readonly builds: string;
 
 	constructor(
 		private readonly host: string | undefined,
 		private readonly apiKey: string | undefined,
 		private readonly loadProducts: (ids: readonly string[]) => Promise<Product[]>,
-		readonly index: string,
+		private readonly baseIndex: string,
 		private readonly locales: readonly string[],
-	) {}
+	) {
+		this.index = versionedIndex(baseIndex);
+		this.builds = `${baseIndex}_builds`;
+	}
 
 	async indexProduct(entry: SearchEntry): Promise<void> {
 		await this.indexProducts([entry]);
@@ -63,9 +82,34 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	}
 
 	/**
-	 * Builds the new index beside the live one and swaps them, so a rebuild on a deploy never
-	 * shows shoppers an empty or half-filled list. Applying settings creates an index that does
-	 * not exist yet, and the swap needs both to exist.
+	 * `ready` when this version's index exists and its build was recorded as complete. A release
+	 * whose search version is unchanged finds it ready and skips the rebuild.
+	 */
+	async buildState(): Promise<SearchBuildState> {
+		try {
+			await this.send(`/indexes/${this.index}`, 'GET');
+			const record = await this.send<{ status?: string }>(
+				`/indexes/${this.builds}/documents/v${SEARCH_INDEX_VERSION}`,
+				'GET',
+			);
+			return record.status === 'complete' ? 'ready' : 'missing';
+		} catch (error) {
+			if (error instanceof SearchNotFoundError) return 'missing';
+			throw error;
+		}
+	}
+
+	/** Cheap work for a release that keeps the search version: settings only, no documents. */
+	async applyCurrentSettings(): Promise<void> {
+		await this.applySettings(this.index);
+		this.settingsApplied = true;
+	}
+
+	/**
+	 * Builds this version's index beside any copy of it and swaps them, so shoppers never see an
+	 * empty or half-filled list. Applying settings creates an index that does not exist yet, and
+	 * the swap needs both to exist. The build is recorded as complete only after the swap, and
+	 * versions older than the previous one are removed: the previous one stays for a rollback.
 	 */
 	async replaceIndex(entries: readonly SearchEntry[]): Promise<void> {
 		const next = `${this.index}_next`;
@@ -82,6 +126,32 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		await this.waitFor(swap.taskUid);
 		const removal = await this.send<{ taskUid: number }>(`/indexes/${next}`, 'DELETE');
 		await this.waitFor(removal.taskUid);
+		const record = await this.send<{ taskUid: number }>(`/indexes/${this.builds}/documents?primaryKey=id`, 'POST', [
+			{
+				id: `v${SEARCH_INDEX_VERSION}`,
+				status: 'complete',
+				documents: entries.length,
+				builtAt: new Date().toISOString(),
+			},
+		]);
+		await this.waitFor(record.taskUid);
+		await this.removeOldVersions();
+	}
+
+	/** Deletes versions older than the previous one, and any half-built copy left by a failed run. */
+	private async removeOldVersions(): Promise<void> {
+		const listed = await this.send<{ results?: Array<{ uid?: string }> }>('/indexes?limit=1000', 'GET');
+		const pattern = new RegExp(`^${this.baseIndex.replace(/[-]/g, '\\-')}_v(\\d+)(_next)?$`);
+		for (const { uid } of listed.results ?? []) {
+			const match = uid ? pattern.exec(uid) : null;
+			if (!match || !uid) continue;
+			const version = Number(match[1]);
+			const halfBuilt = !!match[2] && version !== SEARCH_INDEX_VERSION;
+			if (version < SEARCH_INDEX_VERSION - 1 || halfBuilt) {
+				const task = await this.send<{ taskUid: number }>(`/indexes/${uid}`, 'DELETE');
+				await this.waitFor(task.taskUid);
+			}
+		}
 	}
 
 	/** For the readiness probe. An authenticated read, so it proves the key as well as the host. */
@@ -171,15 +241,53 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		await this.waitFor(task.taskUid);
 	}
 
+	/**
+	 * Waits for a task by the engine's own progress: finished tasks and the running batch's
+	 * percentage. It fails at once on a failed task and after `STALL_MS` without any movement.
+	 */
 	private async waitFor(taskUid: number): Promise<void> {
-		const deadline = Date.now() + TASK_WAIT_MS;
-		while (Date.now() < deadline) {
-			const task = await this.send<{ status?: string }>(`/tasks/${taskUid}`, 'GET');
+		let lastMove = Date.now();
+		let lastSeen = '';
+		let pause = TASK_POLL_MS;
+		for (;;) {
+			const task = await this.send<{
+				status?: string;
+				indexUid?: string | null;
+				error?: { message?: string } | null;
+			}>(`/tasks/${taskUid}`, 'GET');
 			if (task.status === 'succeeded') return;
-			if (task.status === 'failed' || task.status === 'canceled') break;
-			await new Promise((done) => setTimeout(done, TASK_POLL_MS));
+			if (task.status === 'failed' || task.status === 'canceled') {
+				const reason = task.error?.message ? `: ${task.error.message}` : '';
+				throw new SearchUnavailableError(
+					`The search index did not finish updating (task ${task.status}${reason})`,
+				);
+			}
+			const seen = `${task.status ?? ''}|${await this.progress(task.indexUid ?? null)}`;
+			if (seen !== lastSeen) {
+				lastSeen = seen;
+				lastMove = Date.now();
+			} else if (Date.now() - lastMove > STALL_MS) {
+				throw new SearchUnavailableError(
+					'The search index did not finish updating: no progress for 60 seconds',
+				);
+			}
+			await new Promise((done) => setTimeout(done, pause));
+			pause = Math.min(TASK_POLL_MAX_MS, pause * 2);
 		}
-		throw new SearchUnavailableError('The search index did not finish updating');
+	}
+
+	/** A fingerprint that changes whenever the engine moves: the newest finished task and the running batch's percentage. */
+	private async progress(indexUid: string | null): Promise<string> {
+		const scope = indexUid ? `&indexUids=${encodeURIComponent(indexUid)}` : '';
+		const done = await this.send<{ results?: Array<{ uid?: number }> }>(
+			`/tasks?statuses=succeeded,failed,canceled&limit=1${scope}`,
+			'GET',
+		);
+		const running = await this.send<{ results?: Array<{ progress?: { percentage?: number } | null }> }>(
+			'/batches?statuses=processing&limit=1',
+			'GET',
+		);
+		return `${done.results?.[0]?.uid ?? ''}|${running.results?.[0]?.progress?.percentage ?? ''}`;
 	}
 
 	private async send<T>(path: string, method: string, body?: unknown): Promise<T> {
@@ -198,6 +306,7 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		} catch {
 			throw new SearchUnavailableError('Search is unavailable');
 		}
+		if (response.status === 404) throw new SearchNotFoundError('Not in the search index');
 		if (!response.ok) throw new SearchUnavailableError('Search is unavailable');
 		if (response.status === 204) return {} as T;
 		return (await response.json()) as T;

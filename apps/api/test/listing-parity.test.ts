@@ -180,7 +180,8 @@ describe.skipIf(!process.env['RUN_SEARCH_IT'] || !host)('Meilisearch and Mongo g
 	}, 60_000);
 
 	afterAll(async () => {
-		await send(`/indexes/${INDEX}`, 'DELETE');
+		await send(`/indexes/${search.index}`, 'DELETE');
+		await send(`/indexes/${INDEX}_builds`, 'DELETE');
 	});
 
 	it.each(cases)('%s', async (_name, over) => {

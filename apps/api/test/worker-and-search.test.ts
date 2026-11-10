@@ -326,10 +326,10 @@ describe('MeilisearchSearch', () => {
 		await index.indexProduct({ product: full('p1'), variants: [] });
 		await index.indexProduct({ product: full('p2'), variants: [] });
 		expect(fetcher.mock.calls.map((call) => call[0])).toEqual([
-			'http://meili.test/indexes/products/settings',
+			'http://meili.test/indexes/products_v1/settings',
 			'http://meili.test/tasks/7',
-			'http://meili.test/indexes/products/documents',
-			'http://meili.test/indexes/products/documents',
+			'http://meili.test/indexes/products_v1/documents',
+			'http://meili.test/indexes/products_v1/documents',
 		]);
 		expect(fetcher.mock.calls[2]?.[1]).toMatchObject({ method: 'POST', headers: { authorization: 'Bearer k' } });
 	});
@@ -337,7 +337,7 @@ describe('MeilisearchSearch', () => {
 	it('removes a document, encoded, and takes an empty reply', async () => {
 		fetcher.mockImplementation(async () => reply(204));
 		await search(undefined, 'http://meili.test', '').removeProduct('a/b');
-		expect(fetcher.mock.calls[0]?.[0]).toBe('http://meili.test/indexes/products/documents/a%2Fb');
+		expect(fetcher.mock.calls[0]?.[0]).toBe('http://meili.test/indexes/products_v1/documents/a%2Fb');
 		expect(fetcher.mock.calls[0]?.[1].headers).not.toHaveProperty('authorization');
 		expect(fetcher.mock.calls[0]?.[1]).not.toHaveProperty('body');
 	});

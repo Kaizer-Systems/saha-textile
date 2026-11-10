@@ -1,9 +1,9 @@
 import { defineEventHandler, getCookie, sendRedirect, setResponseHeaders } from 'h3';
 
-import { environment } from '../../../public/environments/environment';
 import { productPathForCode, readShortAddress } from '../../app/core/catalog/short-address';
 import { legacyCatalogReady, refreshLegacyCatalog, storefrontAddress } from '../../app/core/i18n/legacy-address';
 import { LOCALE_COOKIE } from '../../app/core/i18n/locale';
+import { serverApiUrl } from '../api-url';
 
 /**
  * Puts every page request under its locale before it reaches the renderer (`DEC-I18N-ROUTES`).
@@ -31,14 +31,14 @@ export default defineEventHandler(async (event) => {
 
 	// A short `/p/<code>` address from a caption: straight to the product page, whatever the language.
 	const short = readShortAddress(path);
-	const productPath = short && (await productPathForCode(environment.apiUrl, short.code));
+	const productPath = short && (await productPathForCode(serverApiUrl(), short.code));
 	if (short && productPath) {
 		setResponseHeaders(event, { 'Cache-Control': 'public, max-age=300' });
 		await sendRedirect(event, `${productPath}${short.query}`, 301);
 		return true;
 	}
 
-	await refreshLegacyCatalog(environment.apiUrl);
+	await refreshLegacyCatalog(serverApiUrl());
 	const redirect = storefrontAddress(path, getCookie(event, LOCALE_COOKIE));
 	if (!redirect) return;
 

@@ -39,7 +39,7 @@ test.describe('Screens backed by the API', () => {
 		['/customer', 'example.com'],
 		['/redirect', 'Redirects'],
 		['/faq', 'FAQ'],
-		['/qna', 'Q&A'],
+		['/qna', 'Questions and answers'],
 		['/addon-template', 'Add-on'],
 		['/media', 'Media'],
 		['/review', 'Review'],

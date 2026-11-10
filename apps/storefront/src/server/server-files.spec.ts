@@ -59,6 +59,12 @@ describe('serverApiUrl', () => {
 describe('locale middleware', () => {
 	const run = (input: unknown) => (locale as unknown as Handler)(input);
 
+	it("loads redirects and live addresses from the deployment's API, not the built-in default", async () => {
+		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({ apiUrl: 'https://api.shop.test' });
+		await run(event('/en/'));
+		expect(address.refreshLegacyCatalog).toHaveBeenCalledWith('https://api.shop.test');
+	});
+
 	it('leaves anything but a page read alone', async () => {
 		expect(await run({ ...event('/x'), method: 'POST' })).toBeUndefined();
 		expect(address.refreshLegacyCatalog).not.toHaveBeenCalled();

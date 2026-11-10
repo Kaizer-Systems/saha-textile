@@ -607,6 +607,7 @@ planned until the owner picks it up.
 | Admin search: orders by number, customers by phone                    | Owner, later              | Would use the existing APIs; product search stays on Meilisearch.                                                                                                                                            |
 | Admin search: Bengali typed while the admin shows English             | Owner, later              | Today the search reads the language on screen, plus page names and common English words.                                                                                                                     |
 | Product page logs `IntersectionObserver is not defined` on the server | A fix in the product page | The "You may also like" block's `@defer (on viewport; hydrate on viewport)` sets up its viewport trigger during server rendering. The page and its related links still render; only the log shows the error. |
+| Misspelled search "ikkatsilk" finds nothing                           | Search relevance work     | `e2e/proof.spec.ts` expects the run-together word to find ikkat sarees; on a freshly built `products_e2e` index the search returns no items.                                                                 |
 
 ## Owner lock order
 

@@ -230,9 +230,8 @@ import { ConsoleContext } from '../data/console-context';
 						</div>
 					} @empty {
 						<p class="rc-p muted">
-							No projects yet. Add one, or put a
-							<code>.release-console.json</code>
-							at the repository root.
+							No projects yet. Add a project to choose its repositories, environments, cloud and edge
+							platforms; then connect each one on its Connections tab.
 						</p>
 					}
 				</div>

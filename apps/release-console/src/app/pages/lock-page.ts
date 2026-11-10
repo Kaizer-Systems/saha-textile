@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+	ChangeDetectionStrategy,
+	Component,
+	type ElementRef,
+	computed,
+	effect,
+	inject,
+	signal,
+	viewChildren,
+} from '@angular/core';
 import { Router } from '@angular/router';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
@@ -6,7 +15,26 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleSession } from '../data/session';
 
-/** The lock screen: set the PIN on first run, then unlock with it. Five wrong tries lock it for 15 minutes. */
+const LENGTH = 6;
+
+/** Spreads typed or pasted digits over the boxes from `start`; returns the new digits and the box to focus. */
+export function fillDigits(digits: string[], start: number, typed: string): { digits: string[]; focus: number } {
+	const next = [...digits];
+	const incoming = typed.replace(/\D/g, '').split('');
+	let at = start;
+	for (const d of incoming) {
+		if (at >= LENGTH) break;
+		next[at] = d;
+		at += 1;
+	}
+	if (!incoming.length) next[start] = '';
+	return { digits: next, focus: Math.min(incoming.length ? at : start, LENGTH - 1) };
+}
+
+/**
+ * The lock screen: set the PIN on first run, then unlock with it. The PIN is typed straight into
+ * the six boxes; the sixth digit submits. Five wrong tries lock the console for 15 minutes.
+ */
 @Component({
 	selector: 'rc-lock-page',
 	changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,7 +60,10 @@ import { ConsoleSession } from '../data/session';
 						@if (lockedUntil(); as until) {
 							<p class="rc-p">Too many wrong tries. The console opens again at {{ until }}.</p>
 						} @else {
-							<p class="rc-p">
+							<p
+								class="rc-p"
+								id="pin-help"
+							>
 								@if (!s.pinSet) {
 									{{
 										confirming()
@@ -45,23 +76,26 @@ import { ConsoleSession } from '../data/session';
 							</p>
 							<div
 								class="rc-pin"
-								aria-hidden="true"
+								role="group"
+								aria-labelledby="pin-help"
 							>
 								@for (i of slots; track i) {
-									<span [class.on]="pin().length > i"></span>
+									<span [class.on]="!!digits()[i]">
+										<input
+											#box
+											type="password"
+											inputmode="numeric"
+											maxlength="6"
+											[attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
+											[attr.aria-label]="'PIN digit ' + (i + 1) + ' of 6'"
+											[value]="digits()[i]"
+											[disabled]="busy()"
+											(input)="type(i, box)"
+											(keydown)="key(i, $event)"
+											(focus)="box.select()"
+										/>
+									</span>
 								}
-							</div>
-							<div class="rc-msearch">
-								<input
-									#box
-									type="password"
-									inputmode="numeric"
-									autocomplete="off"
-									maxlength="6"
-									aria-label="Console PIN"
-									[value]="pin()"
-									(input)="type(box.value)"
-								/>
 							</div>
 							@if (message()) {
 								<p class="rc-note">{{ message() }}</p>
@@ -95,8 +129,10 @@ export class LockPage {
 	private readonly api = inject(ConsoleApi);
 	private readonly session = inject(ConsoleSession);
 	private readonly router = inject(Router);
+	private readonly boxes = viewChildren<ElementRef<HTMLInputElement>>('box');
 	protected readonly slots = [0, 1, 2, 3, 4, 5];
-	protected readonly pin = signal('');
+	protected readonly digits = signal<string[]>(Array<string>(LENGTH).fill(''));
+	protected readonly pin = computed(() => this.digits().join(''));
 	protected readonly first = signal<string | null>(null);
 	protected readonly confirming = computed(() => this.first() !== null);
 	protected readonly message = signal('');
@@ -117,29 +153,58 @@ export class LockPage {
 			},
 			() => undefined,
 		);
+		// The boxes appear once the lock status arrives; the first one takes the keyboard then.
+		let focused = false;
+		effect(() => {
+			if (!focused && this.boxes().length) {
+				focused = true;
+				this.focus(0);
+			}
+		});
 	}
 
-	/** The sixth digit submits by itself; Enter and the button do the same. */
-	protected type(value: string): void {
-		this.pin.set(value.replace(/\D/g, '').slice(0, 6));
-		if (this.pin().length === 6 && !this.busy()) void this.submit();
+	/** A digit (or a pasted PIN) typed into box `i`; the sixth digit submits. */
+	protected type(i: number, box: HTMLInputElement): void {
+		const { digits, focus } = fillDigits(this.digits(), i, box.value);
+		box.value = digits[i] ?? '';
+		this.digits.set(digits);
+		this.focus(focus);
+		if (this.pin().length === LENGTH && !this.busy()) void this.submit();
+	}
+
+	protected key(i: number, e: KeyboardEvent): void {
+		if (e.key === 'Backspace' && !this.digits()[i] && i > 0) {
+			e.preventDefault();
+			this.digits.update((d) => d.map((x, n) => (n === i - 1 ? '' : x)));
+			this.focus(i - 1);
+		} else if (e.key === 'ArrowLeft' && i > 0) this.focus(i - 1);
+		else if (e.key === 'ArrowRight' && i < LENGTH - 1) this.focus(i + 1);
+	}
+
+	private focus(i: number): void {
+		queueMicrotask(() => this.boxes()[i]?.nativeElement.focus());
+	}
+
+	private clear(): void {
+		this.digits.set(Array<string>(LENGTH).fill(''));
+		this.focus(0);
 	}
 
 	protected async submit(e?: Event): Promise<void> {
 		e?.preventDefault();
 		if (this.busy()) return;
 		const s = this.status.data();
-		if (!s || this.pin().length !== 6) return;
+		if (!s || this.pin().length !== LENGTH) return;
 		if (!s.pinSet && this.first() === null) {
 			this.first.set(this.pin());
-			this.pin.set('');
 			this.message.set('');
+			this.clear();
 			return;
 		}
 		if (!s.pinSet && this.first() !== this.pin()) {
 			this.first.set(null);
-			this.pin.set('');
 			this.message.set('The two PINs differ. Start again.');
+			this.clear();
 			return;
 		}
 		this.busy.set(true);
@@ -148,11 +213,11 @@ export class LockPage {
 			this.session.set(answer.session);
 			void this.router.navigate(['/']);
 		} catch (err) {
-			this.pin.set('');
 			this.message.set((err as Error).message);
 			void this.status.refetch();
 		} finally {
 			this.busy.set(false);
+			if (this.message()) this.clear();
 		}
 	}
 }

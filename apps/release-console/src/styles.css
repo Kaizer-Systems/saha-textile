@@ -3431,3 +3431,24 @@ figure.gif img {
 .pj-repo {
 	color: var(--hud-cyan) !important;
 }
+
+/* ===== Typable PIN boxes (owner request, 10 Nov 2026) =====
+   Each brief `rc-pin` box holds its own invisible digit field, so the PIN is typed straight
+   into the boxes; the box keeps the brief's look and gains the brief's cyan focus edge. */
+.rc-pin span {
+	position: relative;
+}
+.rc-pin span:focus-within {
+	border-color: var(--hud-cyan);
+	box-shadow: 0 0 8px rgba(94, 214, 255, 0.35);
+}
+.rc-pin input {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	cursor: text;
+}

@@ -10,10 +10,9 @@ import { filter } from 'rxjs';
 import { runtimeConfig } from '@core/config/runtime-config';
 import { backgroundRequest } from '@core/interceptors/background-request';
 
-import { environment } from '../../../../public/environments/environment';
-
 import { ACTIVE_LOCALE } from './active-locale';
 import { DEFAULT_LOCALE, OPEN_GRAPH_LOCALES, SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
+import { environment } from '../../../../public/environments/environment';
 
 const NOT_FOUND_KEY = 'notFound';
 

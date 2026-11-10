@@ -56,8 +56,8 @@ test.describe('A slow API', () => {
 				setTimeout(() => {
 					const upstream = httpsRequest(
 						{
-							host: 'localhost',
-							port: 4000,
+							host: new URL(API).hostname,
+							port: Number(new URL(API).port || 443),
 							path: incoming.url,
 							method: incoming.method,
 							headers: incoming.headers,

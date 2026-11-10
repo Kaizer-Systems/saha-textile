@@ -115,4 +115,25 @@ describe('live paths and the catalogue refresh', () => {
 		await refreshLegacyCatalog('https://api.test');
 		expect(fetcher.mock.calls.length).toBe(calls);
 	});
+
+	it('holds only the first request back; later retries run without making a visitor wait', async () => {
+		vi.useFakeTimers();
+		let answer: (value: Response) => void = () => {};
+		const fetcher = vi.fn(async () => reply({}, 500));
+		vi.stubGlobal('fetch', fetcher);
+		await refreshLegacyCatalog('https://api.test');
+		expect(legacyCatalogReady()).toBe(false);
+		vi.advanceTimersByTime(2_000);
+		fetcher.mockImplementation(() => new Promise<Response>((resolve) => (answer = resolve)));
+		let returned = false;
+		const second = refreshLegacyCatalog('https://api.test').then(() => (returned = true));
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(returned).toBe(true);
+		expect(fetcher).toHaveBeenCalledTimes(4);
+		answer(reply([]));
+		answer(reply({ products: [], collections: [] }));
+		await second;
+		vi.useRealTimers();
+	});
 });

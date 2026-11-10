@@ -42,6 +42,8 @@ let retryAt = 0;
 let backoffMs = 0;
 let catalogReady = false;
 let refreshing: Promise<void> | null = null;
+/** Set once the first load has finished, loaded or not: only that one may hold a request back. */
+let firstLoadDone = false;
 
 const CATALOG_TTL_MS = 15_000;
 const MAX_BACKOFF_MS = 60_000;
@@ -140,6 +142,7 @@ async function refresh(apiUrl: string): Promise<void> {
 		retryAt = Date.now() + backoffMs;
 	} finally {
 		refreshing = null;
+		firstLoadDone = true;
 	}
 }
 
@@ -150,7 +153,8 @@ async function refresh(apiUrl: string): Promise<void> {
 export async function refreshLegacyCatalog(apiUrl: string): Promise<void> {
 	const now = Date.now();
 	if (now - loadedAt >= CATALOG_TTL_MS && now >= retryAt) refreshing ??= refresh(apiUrl);
-	if (!catalogReady && refreshing) await refreshing;
+	// A slow or absent API would otherwise hold every request whose arrival starts a retry.
+	if (!catalogReady && !firstLoadDone && refreshing) await refreshing;
 }
 
 /** Back to a server that has loaded nothing. */
@@ -163,4 +167,5 @@ export function resetLegacyCatalog(): void {
 	backoffMs = 0;
 	catalogReady = false;
 	refreshing = null;
+	firstLoadDone = false;
 }

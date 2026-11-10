@@ -7,7 +7,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, filter } from 'rxjs';
 
-import { applyThemeMode } from '@core/brand/theme-mode';
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { countdownKey } from '@core/events/event-popup-rules';
 import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
@@ -42,6 +42,8 @@ export class App {
 
 	private settingStore = inject(SettingStore);
 	private siteConfigStore = inject(SiteConfigStore);
+	/** Applies the light or dark mode (the shopper's switch, else the site mode), on the server too. */
+	private readonly themeMode = inject(ThemeModeStore);
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
 
@@ -66,8 +68,6 @@ export class App {
 		this.siteConfigStore.loadSiteConfig();
 
 		this.siteConfig$.subscribe((theme) => {
-			applyThemeMode(document, theme?.general?.mode);
-
 			// Set Direction
 			if (theme?.general?.language_direction === 'rtl') {
 				document.getElementsByTagName('html')[0].setAttribute('dir', 'rtl');

@@ -6,7 +6,13 @@ import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 
-import { COOKIE_POLICY_VERSION, OPTIONAL_COOKIES, OPTIONAL_STORAGE, type OptionalCategory } from './cookie-catalogue';
+import {
+	COOKIE_POLICY_VERSION,
+	OPTIONAL_COOKIES,
+	OPTIONAL_STORAGE,
+	VISIT_ONLY_WHEN_REFUSED,
+	type OptionalCategory,
+} from './cookie-catalogue';
 
 const COOKIE = 'st_consent';
 const YEAR_SECONDS = 365 * 24 * 60 * 60;
@@ -97,6 +103,14 @@ export class ConsentStore {
 	private clearOptional(): void {
 		for (const name of OPTIONAL_COOKIES) this.page.cookie = `${name}=; Max-Age=0; Path=/`;
 		for (const key of OPTIONAL_STORAGE) this.page.defaultView?.localStorage.removeItem(key);
+		// The shopper's own look-and-feel choice stays for this visit, so the switch never looks broken.
+		for (const name of VISIT_ONLY_WHEN_REFUSED) {
+			const value = this.page.cookie
+				.split('; ')
+				.find((row) => row.startsWith(`${name}=`))
+				?.slice(name.length + 1);
+			if (value) this.page.cookie = `${name}=${value}; Path=/; SameSite=Lax`;
+		}
 	}
 
 	/** The history is evidence, not the live answer, so a failed write never blocks the shopper. */
@@ -124,7 +138,9 @@ export class ConsentStore {
 			const saved = await firstValueFrom(
 				this.injector
 					.get(HttpClient)
-					.get<{ categories: Categories; policyVersion: string | null }>(`${runtimeConfig.apiUrl}/privacy/consent`),
+					.get<{ categories: Categories; policyVersion: string | null }>(
+						`${runtimeConfig.apiUrl}/privacy/consent`,
+					),
 			);
 			if (saved.policyVersion !== COOKIE_POLICY_VERSION) return;
 			const { functional, analytics, targeting, marketing, promotional } = saved.categories;

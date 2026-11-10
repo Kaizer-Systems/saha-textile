@@ -85,6 +85,7 @@ export class BrandKit implements OnDestroy {
 			Object.fromEntries(NETWORKS.map((network) => [network.key, ['']])) as Record<BrandSocialNetwork, [string]>,
 		),
 		apps: this.fb.group({ android: [''], ios: [''] }),
+		modeSwitch: [true],
 		themeColor: ['#417394'],
 		adminThemeColor: ['#0da487'],
 	});

@@ -175,6 +175,8 @@ export const BrandSettings = z.object({
 	socials: BrandSocials.default(() => BrandSocials.parse({})),
 	/** Store pages of the shop's apps; the footer shows a store badge only for a saved one. */
 	apps: BrandApps.default(() => BrandApps.parse({})),
+	/** Shows the light/dark switch in the shop's top bar. Off: every shopper gets the site mode. */
+	modeSwitch: z.boolean().default(true),
 	/** The browser bar on phones and the installed app's title bar. */
 	themeColor: z
 		.string()
@@ -220,6 +222,8 @@ export const StorefrontBrand = ResolvedBrandLogos.extend({
 	socials: z.record(z.string(), z.string()),
 	/** Store pages of the shop's apps; '' where there is none. */
 	apps: z.object({ android: z.string(), ios: z.string() }),
+	/** Whether the shop shows its light/dark switch. */
+	modeSwitch: z.boolean(),
 	themeColor: z.string(),
 	/** The admin's theme colour (`--theme-color`). */
 	adminThemeColor: z.string(),

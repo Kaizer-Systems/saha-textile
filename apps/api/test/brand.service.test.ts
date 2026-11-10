@@ -74,6 +74,7 @@ describe('BrandService', () => {
 			shareImage: null,
 			socials: { facebook: '', instagram: '', x: '', pinterest: '', linkedin: '', threads: '', youtube: '' },
 			apps: { android: '', ios: '' },
+			modeSwitch: true,
 			themeColor: '#417394',
 			adminThemeColor: '#0da487',
 		});

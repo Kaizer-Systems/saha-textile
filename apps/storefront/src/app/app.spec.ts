@@ -8,12 +8,18 @@ import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 
 import { App } from './app';
+
+vi.mock('@data-access/queries/brand.queries', async (original) => ({
+	...(await original<object>()),
+	injectBrandQuery: () => ({ data: () => undefined }),
+}));
 
 const WORDS: Record<string, string> = {
 	tab_come_back: '⚡ Come Back !!',
@@ -40,6 +46,7 @@ const render = (url = '/') => {
 			{ provide: LocaleSeo, useValue: seo },
 			{ provide: SettingStore, useValue: { loadSettings: stores.loadSettings } },
 			{ provide: SiteConfigStore, useValue: { siteConfig, loadSiteConfig: stores.loadSiteConfig } },
+			{ provide: ConsentStore, useValue: { allows: () => true } },
 			{ provide: TranslocoService, useValue: { translate: (key: string) => WORDS[key] ?? key } },
 			{
 				provide: ShopEvents,

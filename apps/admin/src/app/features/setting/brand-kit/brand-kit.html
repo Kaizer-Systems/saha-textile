@@ -136,6 +136,23 @@
 			</app-form-fields>
 			}
 		</ng-container>
+		<div class="roles-form d-flex flex-column mb-1 gap-2">
+			<div class="form-check form-switch">
+				<input
+					class="checkbox_animated form-check-input"
+					type="checkbox"
+					id="mode_switch"
+					formControlName="modeSwitch"
+				/>
+				<label
+					class="form-check-label form-label m-0"
+					for="mode_switch"
+				>
+					{{ 'shop_mode_switch' | transloco }}
+				</label>
+			</div>
+		</div>
+		<p class="help-text mb-3">{{ 'shop_mode_switch_help' | transloco }}</p>
 		<app-form-fields
 			[label]="'browser_bar_colour'"
 			[for]="'theme_color'"

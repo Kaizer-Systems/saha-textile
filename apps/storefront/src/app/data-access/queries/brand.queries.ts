@@ -38,6 +38,8 @@ export interface StorefrontBrand extends BrandLogos {
 	themeColor: string;
 	/** The admin's theme colour; the shop does not use it. */
 	adminThemeColor: string;
+	/** Whether the top bar shows the light/dark switch. */
+	modeSwitch: boolean;
 }
 
 const NO_LOGOS: BrandLogos = { logo: null, logoDark: null, seal: null, sealDark: null, icons: {}, iconsDark: {} };
@@ -48,6 +50,7 @@ export const NO_BRAND: StorefrontBrand = {
 	shareImage: null,
 	socials: {},
 	apps: { android: '', ios: '' },
+	modeSwitch: true,
 	themeColor: '#417394',
 	adminThemeColor: '#0da487',
 };

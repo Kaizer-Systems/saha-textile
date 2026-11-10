@@ -7,6 +7,7 @@ import { LoadingBarModule } from '@ngx-loading-bar/core';
 import { Observable } from 'rxjs';
 
 import { applyBrandHead } from '@core/brand/brand-head';
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { AccountStore } from '@core/state/account.store';
@@ -70,6 +71,7 @@ export class Layout {
 	private readonly page = inject<Document>(DOCUMENT);
 	private readonly seo = inject(LocaleSeo);
 	private readonly shopEvents = inject(ShopEvents);
+	private readonly themeMode = inject(ThemeModeStore);
 
 	constructor() {
 		// Published launch and sale events: the top bar, the phone strip and the event popup.
@@ -77,7 +79,7 @@ export class Layout {
 		effect(() => {
 			const brand = this.brand.data();
 			if (!brand) return;
-			applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'));
+			applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'), this.themeMode.fixedMode());
 			// Pages shared without their own picture show the Brand Kit's link preview picture, or
 			// the built-in app icon while the Brand Kit has neither that nor a logo.
 			this.seo.setDefaultImage(brand.shareImage ?? DEFAULT_SHARE_IMAGE);

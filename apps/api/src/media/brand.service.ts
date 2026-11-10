@@ -132,6 +132,7 @@ export class BrandService {
 			shareImage: shareSource?.roles[SHARE_ROLE]?.at(-1)?.url ?? null,
 			socials,
 			apps: { android: value.apps?.android ?? '', ios: value.apps?.ios ?? '' },
+			modeSwitch: value.modeSwitch ?? EMPTY.modeSwitch,
 			themeColor: value.themeColor ?? EMPTY.themeColor,
 			adminThemeColor: value.adminThemeColor ?? EMPTY.adminThemeColor,
 		};

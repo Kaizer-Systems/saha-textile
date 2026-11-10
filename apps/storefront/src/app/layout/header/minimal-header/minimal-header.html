@@ -20,6 +20,13 @@
 								>
 									<div class="offcanvas-header navbar-shadow">
 										<h5>{{ 'menu' | transloco }}</h5>
+										<!-- The light/dark switch lives in the top bar; with the top bar off it moves here. -->
+										@if (!data()?.header?.page_top_bar_enable && themeMode.switchShown()) {
+										<app-mode
+											class="ms-auto me-3"
+											[onTopBar]="false"
+										/>
+										}
 										<app-button
 											[class]="'btn-close lead'"
 											[type]="'button'"

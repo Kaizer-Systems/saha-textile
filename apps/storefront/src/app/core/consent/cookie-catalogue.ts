@@ -26,6 +26,7 @@ export const NECESSARY_ITEMS: readonly CookieItem[] = [
 
 export const FUNCTIONAL_ITEMS: readonly CookieItem[] = [
 	{ name: 'st_locale', purpose: 'cookie_item_language', keptFor: 'cookie_kept_year' },
+	{ name: 'st_theme', purpose: 'cookie_item_theme', keptFor: 'cookie_kept_year' },
 	{ name: 'selectedCurrency', purpose: 'cookie_item_currency', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_recent', purpose: 'cookie_item_recent', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_search', purpose: 'cookie_item_search', keptFor: 'cookie_kept_cleared' },
@@ -41,3 +42,5 @@ export const EMPTY_CATEGORIES: readonly OptionalCategory[] = ['analytics', 'targ
 /** What a refusal removes. Anything optional stored in the browser belongs here. */
 export const OPTIONAL_COOKIES: readonly string[] = ['st_locale', 'st_newsletter', 'st_events'];
 export const OPTIONAL_STORAGE: readonly string[] = ['st_recent', 'st_search', 'selectedCurrency'];
+/** Functional cookies a refusal shortens to this visit instead of removing (the light/dark choice). */
+export const VISIT_ONLY_WHEN_REFUSED: readonly string[] = ['st_theme'];

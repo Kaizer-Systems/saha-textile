@@ -898,5 +898,8 @@
 	"video_offline": "You're offline. Connect to the internet to play this video.",
 	"videos_empty": "No videos to show right now",
 	"videos_empty_description": "Our latest videos will appear here. Meanwhile, watch the channel on YouTube.",
-	"video_rail_description": "New collections from our Kolkata shop, on our YouTube channel."
+	"video_rail_description": "New collections from our Kolkata shop, on our YouTube channel.",
+	"switch_to_dark": "Switch to dark",
+	"switch_to_light": "Switch to light",
+	"cookie_item_theme": "Remembers light or dark mode"
 }

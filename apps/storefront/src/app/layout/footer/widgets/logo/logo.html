@@ -1,6 +1,6 @@
 <div class="theme-logo">
 	<a [routerLink]="['/']">
-		@if (brand()?.logo; as logo) {
+		@if (logo(); as logo) {
 		<img
 			[src]="logo.url"
 			[attr.srcset]="logo.srcset"
@@ -8,7 +8,7 @@
 			[attr.width]="logo.width"
 			[attr.height]="logo.height"
 			[alt]="brand()?.shopName"
-			class="footer-logo-plate"
+			[class.footer-logo-plate]="!darkLogo()"
 			loading="lazy"
 		/>
 		} @else {

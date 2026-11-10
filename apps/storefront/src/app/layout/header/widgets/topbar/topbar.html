@@ -39,6 +39,11 @@
 							<app-currency />
 						</div>
 					</li>
+					@if (themeMode.switchShown()) {
+					<li class="right-nav-list">
+						<app-mode />
+					</li>
+					}
 				</ul>
 			</div>
 		</div>

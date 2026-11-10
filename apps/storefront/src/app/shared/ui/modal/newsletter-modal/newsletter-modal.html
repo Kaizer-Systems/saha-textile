@@ -38,7 +38,7 @@
 		}
 		<div class="modal-content content-padding">
 			<div>
-				@if (brand.data()?.logo; as logo) {
+				@if (themeMode.pick(brand.data()?.logo, brand.data()?.logoDark); as logo) {
 				<img
 					[src]="logo.url"
 					[attr.srcset]="logo.srcset"

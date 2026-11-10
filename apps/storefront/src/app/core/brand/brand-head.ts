@@ -1,5 +1,7 @@
 import type { StorefrontBrand } from '@data-access/queries/brand.queries';
 
+import type { ThemeMode } from './theme-mode';
+
 const LARGEST_ICON = '512';
 
 function link(page: Document, rel: string, media?: string): HTMLLinkElement {
@@ -27,18 +29,24 @@ function appTitle(page: Document, name: string): void {
 
 /**
  * The tab icons (and the dark-browser one), home screen icon, browser bar colour and Google's
- * organization card with the shop's own profiles, all from the Brand Kit.
+ * organization card with the shop's own profiles, all from the Brand Kit. With `mode` set (the
+ * shopper's switch, or a dark site mode) the tab icon follows the shop instead of the browser.
  */
-export function applyBrandHead(page: Document, brand: StorefrontBrand, origin: string): void {
-	const tabIcon = brand.icons['32'];
+export function applyBrandHead(
+	page: Document,
+	brand: StorefrontBrand,
+	origin: string,
+	mode: ThemeMode | null = null,
+): void {
+	const darkIcon = brand.iconsDark?.['32'];
+	const tabIcon = mode === 'dark' && darkIcon ? darkIcon : brand.icons['32'];
 	if (tabIcon) {
 		const icon = link(page, 'icon');
 		icon.type = 'image/png';
 		icon.href = tabIcon;
 	}
-	const darkIcon = brand.iconsDark?.['32'];
 	const darkLink = page.head.querySelector<HTMLLinkElement>(`link[rel="icon"][media="${DARK_BROWSER}"]`);
-	if (darkIcon) {
+	if (darkIcon && !mode) {
 		const icon = link(page, 'icon', DARK_BROWSER);
 		icon.type = 'image/png';
 		icon.href = darkIcon;

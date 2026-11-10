@@ -5,13 +5,20 @@ import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ThemeModeStore } from '@core/brand/theme-mode';
+
 import { MinimalHeader } from './minimal-header/minimal-header';
 import { MobileMenu } from './widgets/mobile-menu/mobile-menu';
 
 describe('MinimalHeader', () => {
 	const render = (platform = 'browser') => {
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: platform }] });
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: PLATFORM_ID, useValue: platform },
+				{ provide: ThemeModeStore, useValue: { switchShown: () => true } },
+			],
+		});
 		TestBed.overrideComponent(MinimalHeader, { set: { imports: [], template: '' } });
 		return TestBed.createComponent(MinimalHeader).componentInstance;
 	};

@@ -28,6 +28,7 @@ export const NO_BRAND: StorefrontBrand = {
 	shareImage: null,
 	socials: {},
 	apps: { android: '', ios: '' },
+	modeSwitch: true,
 	themeColor: '#417394',
 	adminThemeColor: '#0da487',
 };

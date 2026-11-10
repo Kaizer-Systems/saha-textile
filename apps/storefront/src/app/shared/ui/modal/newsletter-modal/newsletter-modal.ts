@@ -11,6 +11,7 @@ import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 import { ConsentStore } from '@core/consent/consent.store';
 import { ShopEvents } from '@core/events/shop-events';
 import { injectBrandQuery } from '@data-access/queries/brand.queries';
+import { ThemeModeStore } from '@core/brand/theme-mode';
 
 import { Button } from '../../button/button';
 
@@ -76,6 +77,8 @@ export class NewsletterModal {
 	/** The `newsletter_popup` banner. With none set, the popup is text only. */
 	readonly image = signal<PopupImage | null>(null);
 	readonly brand = injectBrandQuery();
+	/** The Brand Kit's dark logo in dark mode, where set. */
+	readonly themeMode = inject(ThemeModeStore);
 	private readonly consent = inject(ConsentStore);
 	/** A published event's popup goes first; this one waits for a later visit. */
 	private readonly events = inject(ShopEvents);

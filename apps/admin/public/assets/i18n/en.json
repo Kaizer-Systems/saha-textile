@@ -1682,5 +1682,7 @@
 	"search_hint_setting_brand_seal": "The small logo, its dark version, and the icon in the browser tab.",
 	"search_hint_setting_brand_admin": "Separate logos for the admin, when it should differ from the shop.",
 	"search_hint_setting_brand_sharing": "Link preview picture, social profiles, app store links and browser bar colour.",
-	"search_hint_setting_brand_colour": "The one colour every admin screen is drawn in."
+	"search_hint_setting_brand_colour": "The one colour every admin screen is drawn in.",
+	"shop_mode_switch": "Show the light/dark switch in the shop",
+	"shop_mode_switch_help": "On: shoppers can switch the shop between light and dark from the top bar. Off: everyone sees the site mode."
 }

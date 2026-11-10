@@ -79,7 +79,7 @@
 					white-space: nowrap;
 				}
 				&.active {
-					background: linear-gradient(-45deg, var(--theme-color), hsl(from var(--theme-color) h s calc(l - 6)));
+					background: linear-gradient(-45deg, var(--theme-color), hsl(from var(--theme-color) calc(h + 7.82) calc(s + 14.69) calc(l - 6.08)));
 					border-radius: 6px;
 					font-weight: 500;
 					color: $white;

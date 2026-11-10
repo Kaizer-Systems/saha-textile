@@ -147,7 +147,7 @@
 			transition: all 0.3s ease;
 			position: relative;
 			background: var(--theme-color);
-			background: linear-gradient(90deg, var(--theme-color) 0%, hsl(from var(--theme-color) h s calc(l - 3)) 100%);
+			background: linear-gradient(90deg, var(--theme-color) 0%, hsl(from var(--theme-color) calc(h - 0.12) calc(s - 2.59) calc(l - 2.94)) 100%);
 			border: none;
 			z-index: 0;
 
@@ -159,7 +159,7 @@
 				z-index: -1;
 				border-radius: 5px;
 				background: var(--theme-color);
-				background: linear-gradient(90deg, hsl(from var(--theme-color) h s calc(l - 3)) 0%, var(--theme-color) 100%);
+				background: linear-gradient(90deg, hsl(from var(--theme-color) calc(h - 0.12) calc(s - 2.59) calc(l - 2.94)) 0%, var(--theme-color) 100%);
 				transition: all 0.3s ease;
 			}
 		}

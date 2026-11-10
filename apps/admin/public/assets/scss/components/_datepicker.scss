@@ -20,7 +20,7 @@
 	color: white;
 }
 .custom-day.faded {
-	background-color: hsl(from var(--theme-color) h s calc(l - 6));
+	background-color: hsl(from var(--theme-color) calc(h + 7.82) calc(s + 14.69) calc(l - 6.08));
 }
 
 .error-border {

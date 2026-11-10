@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import analog from '@analogjs/platform';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 import { serviceWorkerPlugins } from './service-worker.vite.ts';
 
@@ -34,6 +34,23 @@ const localHttps = (() => {
 // (Angular-CLI + @angular/ssr Express -> Analog Vite + Nitro); the app still
 // uses the Angular Router config + NGXS + ngx-translate. File-based routing and
 // the state-layer migration land in later phases on top of this platform.
+/**
+ * Angular skips browser-only work on the server (viewport and hover triggers of `@defer`, timers
+ * meant for the page) by testing the global `ngServerMode`. Analog's build optimizer sets it once
+ * from the top-level config, which carries no `build.ssr`, so the server bundle was compiled with
+ * `ngServerMode = false` and ran those browser paths on the server (`IntersectionObserver is not
+ * defined` from the product page's `@defer (on viewport)`). This sets it to `true` for every
+ * server-side build environment; the browser build keeps Analog's `false`.
+ */
+const angularServerMode = (): Plugin => ({
+	name: 'saha-textile:angular-server-mode',
+	apply: 'build',
+	configEnvironment(name, config) {
+		if (name === 'client' || config.consumer === 'client') return undefined;
+		return { define: { ngServerMode: 'true' } };
+	},
+});
+
 export default defineConfig(({ command }) => ({
 	// Pin the project root to this file's dir (as the Analog template does) so
 	// Vite behaves identically regardless of the launch cwd — otherwise resolution
@@ -107,6 +124,7 @@ export default defineConfig(({ command }) => ({
 	plugins: [
 		// Production only: development has no `sw.js`, so a page there is never held by an old one.
 		...(command === 'build' ? serviceWorkerPlugins() : []),
+		angularServerMode(),
 		analog({
 			ssr: true,
 			static: false,

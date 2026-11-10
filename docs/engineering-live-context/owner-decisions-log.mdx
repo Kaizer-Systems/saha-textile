@@ -1257,6 +1257,16 @@ The brief is a private artifact: [https://claude.ai/artifact/3xBEmhDRfYHDWL6C7Dk
     - Also approved (owner: “Keep all three”): a PIN lock screen when the console opens,
       workspaces grouping projects on the console level, and an Attention list (keys expiring,
       failed deploys, approvals waiting; project names and counts only at the console level).
+- **The owner adds every project (2026-11-10, after the build).** The console starts with no
+  projects and never adds one by itself; Saha Textile is added by the owner with Add a project,
+  like any other. `.release-console.json` lists only a repository's own menus, which the wizard
+  reads. The owner's console data was reset the same day (the old folder moved to the Trash).
+- **PIN typed into the six boxes (2026-11-10).** The PIN is typed straight into the lock screen's
+  six boxes; there is no separate text box.
+- **Where the console keeps things (2026-11-10, explained to the owner).** Nothing goes to MongoDB
+  or any server: projects, key references, the PIN hash and the lock state are in
+  `~/Library/Application Support/Release Console/console.json` (owner-only), the audit trail in
+  `audit.jsonl` beside it, and pasted tokens only in the macOS login Keychain.
 - **Parked:**
     - The privacy policy rewrite and its review are open Chunk K in the API/DB roadmap; the owner
       wants more briefs first.

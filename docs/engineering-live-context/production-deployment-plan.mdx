@@ -255,8 +255,16 @@ The owner moved these two screens out of the admin on 2026-11-10. They are the R
 
 A dashboard that runs only on the owner's Mac (`pnpm console`). An agent on each server keeps
 30 days of logs and requests and 12 months of totals, and the console reads them through
-Cloudflare Access. Every action needs the admin PIN and is audited. The design and every screen
-are in the Safe Releases Brief, version 5.
+Cloudflare Access. The console opens behind its own 6-digit console PIN, and every action is
+audited. The design and every screen are in the Safe Releases Brief, version 5.
+
+**Projects (built 2026-11-10).** The console has three levels: the console, a project, and the
+project's repositories. It starts empty; the owner adds each project with Add a project and
+connects GitHub, DigitalOcean and Cloudflare on the project's Connections tab. Each repository's
+own menus (for this repository Payments, Messages, Client versions and Search engines) take the
+place of the Shop group below. Data stays on the Mac: `~/Library/Application Support/Release
+Console/` for projects, the PIN hash and the audit trail, and the macOS Keychain for tokens.
+Developer portal: Tooling › Release Console.
 
 **Side menu (approved 2026-11-10).** ● means built with the console; ○ means it appears once its
 feature is built. Tabs inside a screen are not menu items.

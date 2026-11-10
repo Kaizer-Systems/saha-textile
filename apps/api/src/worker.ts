@@ -7,6 +7,7 @@ import { connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 
 import { loadConfig } from './config/app-config';
 import { exitOnDeploymentConfigError } from './config/boot-failure';
+import { createAppLogger } from './infra/structured-logger';
 import { composeMediaWorker } from './worker/media-worker';
 
 /**
@@ -14,8 +15,10 @@ import { composeMediaWorker } from './worker/media-worker';
  * as the API). Encoding runs at low concurrency and is the only CPU-heavy work on the box.
  */
 async function start(): Promise<void> {
-	const logger = new Logger('MediaWorker');
 	const config = loadConfig();
+	// Job lines as JSON with personal data masked, like the API's.
+	Logger.overrideLogger(createAppLogger(config));
+	const logger = new Logger('MediaWorker');
 	await connectMongo();
 	const worker = await composeMediaWorker(config);
 

@@ -23,6 +23,12 @@
 
 name: saha-textile-stack
 
+# Docker keeps at most 100 MB of each container's output on this Mac (5 files of 20 MB), as on
+# the servers. Without it, a stack left running for weeks grows Docker Desktop's disk without end.
+x-logging: &logging
+  logging:
+    driver: local
+
 x-app-env: &app-env
   env_file:
     - ./env/stack.env
@@ -30,6 +36,7 @@ x-app-env: &app-env
 
 services:
   mongo:
+    <<: *logging
     image: mongo:9.0.4
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all', '--wiredTigerCacheSizeGB', '1']
     volumes:
@@ -45,6 +52,7 @@ services:
     restart: unless-stopped
 
   redis:
+    <<: *logging
     image: redis:8.8.4-alpine
     env_file: ./env/stack.env
     # BullMQ needs every job kept: never evict, and persist each second.
@@ -64,6 +72,7 @@ services:
     restart: unless-stopped
 
   meilisearch:
+    <<: *logging
     image: getmeili/meilisearch:v1.16.0
     environment:
       MEILI_ENV: development
@@ -76,9 +85,9 @@ services:
     restart: unless-stopped
 
   api:
+    <<: [*logging, *app-env]
     build: { context: ../.., dockerfile: docker/images/Dockerfile, target: api }
     image: saha-textile-api:local
-    <<: *app-env
     depends_on:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -86,8 +95,8 @@ services:
     restart: unless-stopped
 
   worker:
+    <<: [*logging, *app-env]
     image: saha-textile-api:local
-    <<: *app-env
     command: ['node', 'dist/worker.js']
     # Encoding is the only CPU-heavy work; keep it niced and bounded like on the droplet.
     cpus: 2
@@ -101,6 +110,7 @@ services:
     restart: unless-stopped
 
   storefront:
+    <<: *logging
     build: { context: ../.., dockerfile: docker/images/Dockerfile, target: storefront }
     image: saha-textile-storefront:local
     env_file: ./env/storefront.env
@@ -112,6 +122,7 @@ services:
     restart: unless-stopped
 
   admin:
+    <<: *logging
     build: { context: ../.., dockerfile: docker/images/Dockerfile, target: admin }
     image: saha-textile-admin:local
     volumes:
@@ -119,6 +130,7 @@ services:
     restart: unless-stopped
 
   edge:
+    <<: *logging
     image: nginx:1.30.6-alpine
     ports:
       # 443 by default; a machine where 443 is taken sets STACK_HTTPS_PORT=8443 in env/stack.env.

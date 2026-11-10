@@ -30,6 +30,7 @@ const { app, registered, hooks, connect, disconnect } = vi.hoisted(() => {
 			registered.push([plugin, options]);
 		},
 		enableCors: () => {},
+		useLogger: () => {},
 		useGlobalFilters: () => {},
 		enableShutdownHooks: () => {},
 	};

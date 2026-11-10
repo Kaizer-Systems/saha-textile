@@ -16,8 +16,10 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { isPublicRead } from './common/public-read';
-import { REQUEST_ID_HEADER, resolveClientIp, resolveRequestId } from './common/request-context';
+import { REQUEST_ID_HEADER, attachRequestContext, resolveClientIp, resolveRequestId } from './common/request-context';
 import type { AppConfig } from './config/app-config';
+import { maskPersonalData } from './infra/log-masking';
+import { createAppLogger } from './infra/structured-logger';
 import { createOpenApiDocument } from './openapi';
 
 /**
@@ -74,6 +76,29 @@ function readTlsMaterial(config: AppConfig): { key: Buffer; cert: Buffer } | nul
 	};
 }
 
+/**
+ * The request log (Fastify's pino): secrets redacted, the address masked, and the same line
+ * shape as the application logger (ISO time, a level name, kind "request").
+ */
+export function requestLogOptions(config: Pick<AppConfig, 'nodeEnv' | 'logLevel'>) {
+	return {
+		level: config.nodeEnv === 'test' ? 'silent' : config.logLevel,
+		redact: { paths: REDACTED_LOG_PATHS, censor: '[redacted]' },
+		timestamp: () => `,"time":"${new Date().toISOString()}"`,
+		formatters: { level: (label: string) => ({ level: label }) },
+		mixin: () => ({ kind: 'request' }),
+		// The address can carry an email or a token in its query; it is masked like any message.
+		serializers: {
+			req: (request: { method?: string; url?: string; hostname?: string; ip?: string }) => ({
+				method: request.method,
+				url: maskPersonalData(request.url ?? ''),
+				hostname: request.hostname,
+				remoteAddress: request.ip,
+			}),
+		},
+	};
+}
+
 export function buildAdapter(config: AppConfig): FastifyAdapter {
 	const tls = readTlsMaterial(config);
 	return new FastifyAdapter({
@@ -87,10 +112,7 @@ export function buildAdapter(config: AppConfig): FastifyAdapter {
 		// the request, so this receives the raw Node `IncomingMessage`.
 		genReqId: (request: IncomingMessage) =>
 			resolveRequestId(request.headers[REQUEST_ID_HEADER], config.trustProxy, randomUUID()),
-		logger: {
-			level: config.nodeEnv === 'test' ? 'silent' : config.logLevel,
-			redact: { paths: REDACTED_LOG_PATHS, censor: '[redacted]' },
-		},
+		logger: requestLogOptions(config),
 	});
 }
 
@@ -112,7 +134,10 @@ export function buildAdapter(config: AppConfig): FastifyAdapter {
  * database must still set `MONGODB_DB_NAME` in the environment.
  */
 export async function createApp(config: AppConfig): Promise<NestFastifyApplication> {
-	const app = await NestFactory.create<NestFastifyApplication>(AppModule.forRoot(config), buildAdapter(config));
+	const app = await NestFactory.create<NestFastifyApplication>(AppModule.forRoot(config), buildAdapter(config), {
+		bufferLogs: true,
+	});
+	app.useLogger(createAppLogger(config));
 	const instance = app.getHttpAdapter().getInstance();
 
 	// Echo the correlation id on every response, including successful ones, so a client
@@ -121,6 +146,8 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 		void reply.header(REQUEST_ID_HEADER, request.id);
 		done();
 	});
+	// Every log line written while a request is handled names that request.
+	attachRequestContext(instance);
 
 	// Parses cookies for the CSRF guard and the session cookies. No secret is configured:
 	// these cookies are not signed — session integrity comes from the opaque token's own

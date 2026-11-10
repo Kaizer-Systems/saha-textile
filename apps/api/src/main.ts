@@ -10,6 +10,7 @@ import { createApp } from './bootstrap';
 import { loadConfig } from './config/app-config';
 import { exitOnDeploymentConfigError } from './config/boot-failure';
 import { isStrictDeployment } from './config/deployment-hardening';
+import { createAppLogger } from './infra/structured-logger';
 
 /**
  * Process startup.
@@ -20,6 +21,8 @@ import { isStrictDeployment } from './config/deployment-hardening';
  */
 async function bootstrap(): Promise<void> {
 	const config = loadConfig();
+	// Before the first line, so start-up lines have the same shape as everything after.
+	Logger.overrideLogger(createAppLogger(config));
 	const logger = new Logger('Bootstrap');
 
 	// Loud on purpose: a fixed OTP left switched on should be impossible to miss in the log.

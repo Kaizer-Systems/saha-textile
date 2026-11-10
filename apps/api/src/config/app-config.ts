@@ -139,6 +139,11 @@ const ConfigSchema = z.object({
 	clientIpHeader: z.string().optional(),
 	/** Pino level for request/application logs. `silent` is used by tests. */
 	logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+	/**
+	 * `json`: one JSON line per event (deployed containers, read by the console's agent).
+	 * `pretty`: Nest's coloured lines for a terminal. Unset means `json` in production.
+	 */
+	logFormat: z.enum(['json', 'pretty']).optional(),
 	rateLimitMax: z.coerce.number().int().positive().default(100),
 	rateLimitWindow: z.string().default('1 minute'),
 	// Transitional bearer JWT until Chunk D moves auth to httpOnly cookie sessions.
@@ -398,6 +403,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 		trustProxy: env.TRUST_PROXY,
 		clientIpHeader: env.CLIENT_IP_HEADER || undefined,
 		logLevel: env.LOG_LEVEL || undefined,
+		logFormat: env.LOG_FORMAT || undefined,
 		rateLimitMax: env.RATE_LIMIT_MAX,
 		rateLimitWindow: env.RATE_LIMIT_WINDOW,
 		jwt: {

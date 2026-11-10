@@ -58,7 +58,15 @@ map $status $retry_after {
 	503     15;
 }
 
-log_format edge '$client_ip "$request" $status $body_bytes_sent $request_time "$host"';
+# One JSON line per request, read by the Release Console's agent. request_id is the id this
+# edge gave the request and passed on in X-Request-ID, so the app's log lines for the same
+# request carry it too. The agent masks emails and phone numbers in the address before it
+# keeps anything for 30 days; Docker keeps only its own 100 MB per container.
+log_format edge escape=json '{"time":"$time_iso8601","kind":"edge","request_id":"$request_id",'
+	'"ip":"$client_ip","method":"$request_method","uri":"$request_uri","status":$status,'
+	'"bytes":$body_bytes_sent,"seconds":$request_time,"upstream_seconds":"$upstream_response_time",'
+	'"host":"$host","country":"$http_cf_ipcountry","cf_ray":"$http_cf_ray","cache":"$http_cf_cache_status",'
+	'"user_agent":"$http_user_agent"}';
 access_log /var/log/nginx/access.log edge;
 
 # Cloudflare's free rule is one coarse layer, and the API has its own limits behind this.

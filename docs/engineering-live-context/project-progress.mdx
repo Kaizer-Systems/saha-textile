@@ -3900,6 +3900,14 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 
 - 2026-11-08 — [DONE] **Combined branch `feat/combined-after-pr6`.** Merged the CCAvenue, admin home, home page, PWA and deployment plan branches from `dev`; only the owner log and one `core-domain` export line conflicted, and both sides were kept. `e2e/stack/run.mjs` now forces production app builds, because `NODE_ENV=development` in `apps/api/.env` built the shop in Angular development mode and left the service worker off. Verified: lint, typecheck, 100% coverage, product builds, and `pnpm e2e:stack` with 331 passed, 0 failed, 16 skipped on phone by design. Tool: claude-code.
 - 2026-11-10 — [DONE] Release-steps runner: core `runReleaseSteps` (needed, run, check; JSON events for the console), Mongo steps `systemRolesStep` (checks Administrator holds every permission), `databaseIndexesStep` (reconcile before the switch), `dataMigrationsStep` (ledger `releaseMigrations`, list empty on purpose), API `searchIndexStep`; script `dist/release-steps.js` (`--json`, `--without-search`). `deploy.sh` runs it before `swap_apps` in place of first-run setup plus the after-switch rebuild; `pnpm stack:up` runs it; new `pnpm local:refresh`. Proved twice on `saha_textile_test`: it fixed a real changed index (`shopEvents.popupAssetId`) and skipped work on the second run. Tool: claude-code.
+- 2026-11-10 — [DONE] Logging upgrade:
+    - API and worker write JSON lines (`JsonLogger`, `LOG_FORMAT`, default `json` in production) with kind, request id and masking of emails, phone numbers and tokens (`maskPersonalData`). Terminals keep coloured lines (`MaskingConsoleLogger`), also masked.
+    - The request id is carried through each request (`attachRequestContext`).
+    - Fastify's request log has the same shape, with the address masked.
+    - Nginx gives its own `X-Request-ID` and writes a JSON request log.
+    - The local stack gets Docker's 100 MB `local` log driver.
+    - Proved by running the built API: one request's id was on the incoming, error and completed lines, with the email in the address masked. Tool: claude-code.
+    - Notes: linking a page render to its API calls comes with OpenTelemetry in the console phase.
 
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 

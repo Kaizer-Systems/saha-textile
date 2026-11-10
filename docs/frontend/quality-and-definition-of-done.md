@@ -48,6 +48,15 @@ Use Playwright for a small number of business-critical paths rather than duplica
 - admin list → create or edit, for features with real writes; and
 - authorization denial for privileged operations.
 
+### Light and dark mode
+
+`e2e/dark-mode.spec.ts` runs on every pull request with the rest of the suite. On the home, category, sign-in, blog list, contact, FAQ and cart pages, at desktop and phone size, it checks two things:
+
+- **Contrast.** Every visible piece of text reaches WCAG AA against the colour behind it (4.5 : 1, or 3 : 1 for large text) in light and in dark mode. A gradient is measured against each of its colour stops. Text over a photograph and the decorative rating stars are skipped.
+- **Layout parity.** Every element on the first screen has the same position, size, font, padding and margin in both modes. Dark mode may only change colours.
+
+A new screen passes both when it uses the shop's named colours (`--st-*`, see [Styles, Dark Mode and Fonts](../storefront/styles-and-fonts.md)) instead of typed colour values.
+
 ## Definition of done
 
 A change is done when it passes these checks, not when it renders once.

@@ -58,7 +58,37 @@ Border and outline shorthands are rewritten to their colour longhand (`border: 1
 
 Light and dark pages therefore have identical layout. A Playwright comparison of every visible element's position, size, padding, margin and font on 22 page types at 390, 768, 1024, 1280 and 1920 px found no difference.
 
-Some colours still come from rules outside the theme (component styles and the theme's own `html.dark` rules in `themes/_dark.scss`, which are part of the light build). Those are handled one by one.
+### The shop colour as text
+
+The shop colour (`--theme-color`, `#417394`) reads well on white but not on the dark theme's charcoal. The dark build therefore gives every light rule that colours text or an icon with `var(--theme-color)` a dark twin using `--theme-text-on-dark`, defined on `html.dark` as `color-mix(in srgb, var(--theme-color) 55%, #ffffff)`, which is about 6.6 : 1. The tint is worked out from the colour, so it follows any Brand Kit colour. Two kinds of rule keep the true colour: text over photographs (`home-contain`, `banner-contain`) and blue text on its own white background. Buttons and other filled areas always keep the true colour; white text on it already passes.
+
+### Named colours
+
+The shop's own screens use named colours instead of typed values, so they work in both modes:
+
+| Name                                          | Light                           | Dark                            | Used for                                  |
+| --------------------------------------------- | ------------------------------- | ------------------------------- | ----------------------------------------- |
+| `--st-surface`                                | `#ffffff`                       | `#1d1d22`                       | Cards, tables, the search box             |
+| `--st-surface-soft`, `--st-surface-subtle`    | `#f8f8f8`, `#fafafa`            | `#1d1d22`                       | Pills, table heads, form panels           |
+| `--st-surface-hover`                          | `#f5f5f5`                       | `#33373a`                       | Hover rows                                |
+| `--st-text`, `--st-text-body`                 | `#222222`, `#4a5568`            | `#ffffff`, `#dddddd`            | Headings and body text                    |
+| `--st-text-muted` … `--st-text-faint-2`       | `#666666` … `#999999`           | `#b8b8b8` … `#a8a8a8`           | Helper and secondary text                 |
+| `--st-border` and variants                    | `#eeeeee` …                     | white at 12–30 %                | Borders and lines                         |
+| `--st-success`, `--st-warning`, `--st-danger` | `#237032`, `#e8590c`, `#e03131` | `#51cf66`, `#ff922b`, `#ff6b6b` | Stock and status text                     |
+| `--st-accent-text`                            | `var(--theme-color)`            | `var(--theme-text-on-dark)`     | The shop colour as text in our components |
+
+Light values live in `scss/utils/_shop-colours.scss` (part of the light theme) and dark values in `scss/shop-dark.scss`, which `dark.scss` imports, so they load only in dark mode. `shop-dark.scss` also holds the few dark fixes for the theme itself: Bootstrap tables, form labels, status pills, stock chips, the gallery arrows, the newsletter popup text, and hero text that keeps its light colours. Every rule in it is a colour.
+
+### Contrast in both modes
+
+A full audit measured every visible piece of text on 160 page-and-state combinations: light and dark, desktop and phone, signed in and out, popups and menus included. It changed these theme colours in both modes so all of them reach WCAG AA:
+
+- The red buttons (`btn-animation`, the sign-in tabs, the account buttons): `#d32f2f → #c62828` instead of `#ff6b6b → #ff4f4f`.
+- Badges: dark text `#1d1d22` on the yellow "New" and "Featured" labels; `#c62828` instead of `#ff7272` for "Sale", the menu "New" label and the cart count.
+- Order and refund statuses darker in light mode, lighter in dark mode.
+- Grey hint text `#777` and `#999` now `#666` and `#6b6b6b`; the Facebook button `#166fe5`.
+
+`e2e/dark-mode.spec.ts` keeps it that way (see [Quality and Definition of Done](../frontend/quality-and-definition-of-done.md)).
 
 - **When it applies.** `ThemeModeStore` (`core/brand/theme-mode.ts`), created by `App`, decides the mode: the shopper's choice from the `st_theme` cookie, or, without a choice, `general.mode` in `site-config.json` (the site mode). When the Brand Kit's **Show the light/dark switch in the shop** is off, the cookie is ignored and everyone gets the site mode. `applyThemeMode`, run by the store whenever the mode changes, adds the `dark` class to `<html>` and appends a stylesheet link with the id `theme-dark` that loads `theme-dark.gen.css` when the mode is `dark`, and removes both otherwise.
 - **No flash.** The function also runs during server rendering, so a dark page arrives with the stylesheet already linked. In the browser it finds the server's link by its id and does not add a second one.

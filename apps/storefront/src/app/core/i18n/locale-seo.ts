@@ -121,11 +121,37 @@ export class LocaleSeo {
 	 * Marks the page as a product for link previews: `og:type product`, its price in rupees and the
 	 * image's alt text. Every navigation resets these, so only the product page carries them.
 	 */
-	applyProduct(input: { priceINR: number; imageAlt?: string }): void {
+	applyProduct(input: {
+		priceINR: number;
+		imageAlt?: string;
+		/** Link previews only: the name with its price. The page's own title for search engines is untouched. */
+		shareTitle?: string;
+		shareDescription?: string;
+		inStock?: boolean;
+		/** The share image is the 1200×630 link-preview card, so its size can be stated. */
+		cardImage?: boolean;
+	}): void {
 		this.meta.updateTag({ property: 'og:type', content: 'product' });
 		this.meta.updateTag({ property: 'product:price:amount', content: String(input.priceINR) });
 		this.meta.updateTag({ property: 'product:price:currency', content: 'INR' });
+		// Pinterest reads the og: price names; Facebook and Pinterest read the availability.
+		this.meta.updateTag({ property: 'og:price:amount', content: String(input.priceINR) });
+		this.meta.updateTag({ property: 'og:price:currency', content: 'INR' });
+		if (input.inStock !== undefined) {
+			this.meta.updateTag({
+				property: 'product:availability',
+				content: input.inStock ? 'in stock' : 'out of stock',
+			});
+		}
 		if (input.imageAlt) this.meta.updateTag({ property: 'og:image:alt', content: input.imageAlt });
+		if (input.shareTitle) this.meta.updateTag({ property: 'og:title', content: input.shareTitle });
+		const description = input.shareDescription && plainText(input.shareDescription);
+		if (description) this.meta.updateTag({ property: 'og:description', content: description });
+		if (input.cardImage) {
+			this.meta.updateTag({ property: 'og:image:width', content: '1200' });
+			this.meta.updateTag({ property: 'og:image:height', content: '630' });
+			this.meta.updateTag({ property: 'og:image:type', content: 'image/jpeg' });
+		}
 	}
 
 	/**
@@ -246,7 +272,13 @@ export class LocaleSeo {
 			'article:tag',
 			'product:price:amount',
 			'product:price:currency',
+			'og:price:amount',
+			'og:price:currency',
+			'product:availability',
 			'og:image:alt',
+			'og:image:width',
+			'og:image:height',
+			'og:image:type',
 		]);
 		if (hidden) {
 			this.meta.removeTag("property='og:url'");

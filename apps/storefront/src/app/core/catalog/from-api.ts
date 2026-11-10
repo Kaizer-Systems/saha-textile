@@ -192,7 +192,8 @@ export const galleryAttachment = (image: ApiImage, index: number): IAttachment =
 
 /** The link-preview card (1200×630) when the main-photo sizes exist, else the first gallery photo. */
 const shareAttachment = (url: string | null | undefined, fallback: IAttachment | undefined): IAttachment | undefined =>
-	url ? ({ id: 0, original_url: url } as unknown as IAttachment) : fallback;
+	// The pipeline's share card is always a 1200×630 JPEG; the type tells the page it can state that size.
+	url ? ({ id: 0, original_url: url, mime_type: 'image/jpeg' } as unknown as IAttachment) : fallback;
 
 const swatchAttachment = (image: ApiImage | null, id: number): IAttachment | undefined => {
 	const url = image?.roles['swatch_image']?.at(-1)?.url;

@@ -359,13 +359,24 @@ describe('ProductDetail SEO', () => {
 			inProductGroupWithID: 'red-saree',
 			offers: { itemCondition: 'https://schema.org/NewCondition', seller: { name: 'Saha Textile' } },
 		});
-		expect(seo.applyProduct).toHaveBeenLastCalledWith({ priceINR: 1500, imageAlt: 'Red saree' });
+		expect(seo.applyProduct).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				priceINR: 1500,
+				imageAlt: 'Red saree',
+				shareTitle: 'Red saree · ₹1,500',
+				inStock: true,
+				cardImage: false,
+			}),
+		);
+		expect(vi.mocked(seo.applyProduct).mock.lastCall?.[0].shareDescription).toMatch(/^Silk · Red\. /);
 		product.set({ ...base, sale_price: 0, reviews_count: 0 });
 		TestBed.tick();
 		const plain = jsonLd(seo, 'product-group') as Record<string, unknown>;
 		expect(plain['aggregateRating']).toBeUndefined();
 		expect(plain['description']).toBeUndefined();
-		expect(seo.applyProduct).toHaveBeenLastCalledWith({ priceINR: 2000, imageAlt: 'Red saree' });
+		expect(seo.applyProduct).toHaveBeenLastCalledWith(
+			expect.objectContaining({ priceINR: 2000, shareTitle: 'Red saree · ₹2,000', shareDescription: '' }),
+		);
 	});
 
 	it('adds FAQ structured data for the visible FAQ, and removes it without one', () => {

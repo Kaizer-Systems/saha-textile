@@ -245,9 +245,28 @@ export class ProductDetail {
 					description: product.meta_description,
 					image: product.product_meta_image?.original_url,
 				});
+			const price = product.sale_price || product.price;
+			const percent =
+				product.sale_price && product.sale_price < product.price
+					? Math.round((1 - product.sale_price / product.price) * 100)
+					: 0;
+			const facts = (product.semantic_attributes ?? [])
+				.map((fact) => fact.value)
+				.filter(Boolean)
+				.slice(0, 3);
 			this.seo.applyProduct({
-				priceINR: product.sale_price || product.price,
+				priceINR: price,
 				imageAlt: product.name,
+				// Link previews carry the price and why this saree (share brief, M1).
+				shareTitle: `${product.name} · ₹${price.toLocaleString('en-IN')}`,
+				shareDescription: [
+					facts.join(' · '),
+					percent ? this.transloco.translate('share_preview_offer', { percent }) : '',
+				]
+					.filter(Boolean)
+					.join('. '),
+				inStock: product.stock_status !== 'out_of_stock',
+				cardImage: product.product_meta_image?.mime_type === 'image/jpeg',
 			});
 		});
 	}

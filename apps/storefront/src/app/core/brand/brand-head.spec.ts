@@ -40,6 +40,14 @@ describe('applyBrandHead', () => {
 		expect(titles[0].content).toBe('Renamed');
 	});
 
+	it('names the shop on every link preview, once', () => {
+		applyBrandHead(document, brand, 'https://shop.test/');
+		applyBrandHead(document, { ...brand, shopName: 'Renamed' }, 'https://shop.test/');
+		const names = head().querySelectorAll<HTMLMetaElement>('meta[property="og:site_name"]');
+		expect(names).toHaveLength(1);
+		expect(names[0].content).toBe('Renamed');
+	});
+
 	it('reuses what is there on a second run', () => {
 		const icon = document.createElement('link');
 		icon.rel = 'icon';

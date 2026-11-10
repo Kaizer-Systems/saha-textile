@@ -32,6 +32,12 @@ export function applyBrandHead(page: Document, brand: StorefrontBrand, origin: s
 	if (homeIcon) link(page, 'apple-touch-icon').href = homeIcon;
 	if (!brand.shopName) return;
 	appTitle(page, brand.shopName);
+	// The shop's name on every link preview (WhatsApp, Facebook, Telegram show it above the title).
+	const siteName =
+		page.head.querySelector<HTMLMetaElement>('meta[property="og:site_name"]') ?? page.createElement('meta');
+	siteName.setAttribute('property', 'og:site_name');
+	siteName.content = brand.shopName;
+	if (!siteName.isConnected) page.head.appendChild(siteName);
 
 	const id = 'brand-organization';
 	const script = page.getElementById(id) ?? page.createElement('script');

@@ -232,6 +232,44 @@ describe('LocaleSeo', () => {
 		expect(content('og:image:alt')).toEqual([]);
 	});
 
+	it('gives link previews the price, facts, stock and card size, and clears them on the next page', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { seo, navigate, doc } = harness('en');
+		const content = (property: string) =>
+			[...doc.head.querySelectorAll(`meta[property='${property}']`)].map((tag) => tag.getAttribute('content'));
+		navigate('/product/red-saree');
+		seo.applyProduct({
+			priceINR: 2400,
+			shareTitle: 'Red saree · ₹2,400',
+			shareDescription: 'Silk · Zari border. Now 20% off',
+			inStock: false,
+			cardImage: true,
+		});
+		expect(content('og:title')).toEqual(['Red saree · ₹2,400']);
+		expect(content('og:description')).toEqual(['Silk · Zari border. Now 20% off']);
+		expect(content('og:price:amount')).toEqual(['2400']);
+		expect(content('og:price:currency')).toEqual(['INR']);
+		expect(content('product:availability')).toEqual(['out of stock']);
+		expect(content('og:image:width')).toEqual(['1200']);
+		expect(content('og:image:height')).toEqual(['630']);
+		expect(content('og:image:type')).toEqual(['image/jpeg']);
+		navigate('/collections/sarees');
+		for (const gone of ['og:price:amount', 'product:availability', 'og:image:width', 'og:image:type']) {
+			expect(content(gone)).toEqual([]);
+		}
+	});
+
+	it('leaves the image size unstated when the preview falls back to a plain photo', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { seo, navigate, doc } = harness('en');
+		navigate('/product/red-saree');
+		seo.applyProduct({ priceINR: 2400, inStock: true });
+		expect(doc.head.querySelector("meta[property='og:image:width']")).toBeNull();
+		expect(doc.head.querySelector("meta[property='product:availability']")?.getAttribute('content')).toBe(
+			'in stock',
+		);
+	});
+
 	it('removes a page’s structured data when asked', () => {
 		const { seo, doc } = harness('en');
 		seo.applyJsonLd('blog-post', { '@type': 'BlogPosting' });

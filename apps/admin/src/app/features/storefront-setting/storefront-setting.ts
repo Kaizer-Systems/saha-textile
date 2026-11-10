@@ -17,7 +17,23 @@ import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
-import { SHARE_APPS, type ShareApp, type YouTubeFeedStatus } from '@saha-textile/contracts';
+import type { ShareApp, YouTubeFeedStatus } from '@saha-textile/contracts';
+
+/**
+ * The share menu's apps, in menu order. A copy of the contracts' `SHARE_APPS`: the admin may only
+ * import types from `@saha-textile/contracts` (its build is CommonJS, which the browser cannot
+ * load), and the spec keeps the two lists the same.
+ */
+export const SHARE_APPS: readonly ShareApp[] = [
+	'whatsapp',
+	'instagram',
+	'facebook',
+	'telegram',
+	'email',
+	'x',
+	'linkedin',
+	'pinterest',
+];
 
 /**
  * Store front › Storefront settings (brief approved 2026-11-08): small shop-wide switches, one

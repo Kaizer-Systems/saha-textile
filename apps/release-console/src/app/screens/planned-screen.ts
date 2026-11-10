@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { CONSOLE_MENU } from '../menu/console-menu.data';
+import type { ScreenInfo } from '../menu/menu.types';
 
 /** A screen whose design is approved but whose live data arrives later in the build order. */
 @Component({
@@ -37,14 +37,14 @@ import { CONSOLE_MENU } from '../menu/console-menu.data';
 	`,
 })
 export class PlannedScreen {
-	readonly screen = input.required<string>();
+	readonly info = input<ScreenInfo | undefined>(undefined);
 	readonly tab = input('');
 	protected readonly caption = computed(() => {
-		const s = CONSOLE_MENU.screens[this.screen()];
+		const s = this.info();
 		return s?.captions[this.tab()] ?? Object.values(s?.captions ?? {})[0] ?? '';
 	});
 	protected readonly part = computed(() => {
-		const s = CONSOLE_MENU.screens[this.screen()];
+		const s = this.info();
 		return s?.partStates?.[this.tab()] ?? s?.part ?? '';
 	});
 }

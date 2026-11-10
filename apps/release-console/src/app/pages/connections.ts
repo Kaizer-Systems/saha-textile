@@ -1,0 +1,528 @@
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+
+import {
+	KEY_KINDS,
+	type KeyKind,
+	type KeyRef,
+	type Project,
+	type SlotKeys,
+	VENDOR_NAMES,
+	keyValueSchema,
+} from '@saha-textile/release-console-contracts';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+
+import { day, when } from './format-time';
+import { ConsoleApi } from '../data/console-api';
+
+/** Kinds the owner can paste here. The GitHub CLI sign-in is made in a terminal, never here. */
+const PASTE_KINDS: KeyKind[] = ['do-read', 'do-change', 'spaces-key', 'cf-read', 'cf-change', 'github-token'];
+
+interface SlotChoice {
+	id: string;
+	label: string;
+	slot: SlotKeys;
+}
+
+/** A key's state as the brief's pill: colour and words. */
+export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } {
+	if (!ref) return { cls: 'muted', text: 'not connected' };
+	switch (ref.state) {
+		case 'verified':
+			return { cls: 'ok', text: 'connected' };
+		case 'expiring':
+			return { cls: 'amber', text: `expires ${day(ref.expiresAt)}` };
+		case 'expired':
+			return { cls: 'red', text: 'expired' };
+		case 'failed':
+			return { cls: 'red', text: 'check failed' };
+		default:
+			return { cls: 'cy', text: 'unchecked' };
+	}
+}
+
+/**
+ * Project settings › Connections: every key by category and repository. Values go to the macOS
+ * Keychain through the local API and are never shown again; one key serves every repository of
+ * this project that uses the same account, and never another project.
+ */
+@Component({
+	selector: 'rc-connections',
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		@let p = project();
+		<div class="rc-panel">
+			<div class="rc-ph"><span class="rc-label">Source code · one vendor per repository</span></div>
+			<div class="rc-tw">
+				<table class="rc-t">
+					<thead>
+						<tr>
+							<th>Repository</th>
+							<th>Vendor · repository</th>
+							<th>Key</th>
+							<th>State</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (r of p.repositories; track r.id) {
+							@let ref = keyById(r.sourceCode.keyId);
+							@let pill = pillOf(ref);
+							<tr>
+								<td>
+									<b>{{ r.name }}</b>
+								</td>
+								<td>
+									{{ vendors[r.sourceCode.vendor] }} ·
+									<span class="rc-mono">{{ r.sourceCode.repository }}</span>
+									{{ ref?.account ? ' · ' + ref?.account : '' }}
+								</td>
+								<td>{{ ref?.label ?? '—' }}</td>
+								<td>
+									<span
+										class="rc-pill"
+										[class]="pill.cls"
+									>
+										{{ r.sourceCode.vendor === 'github' ? pill.text : 'screens later' }}
+									</span>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="rc-panel">
+			<div class="rc-ph"><span class="rc-label">Cloud platforms · per repository</span></div>
+			<div class="rc-tw">
+				<table class="rc-t">
+					<thead>
+						<tr>
+							<th>Repository</th>
+							<th>Platform</th>
+							<th>Keys</th>
+							<th>State</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of cloudRows(); track row.id) {
+							<tr>
+								<td>
+									<b>{{ row.repo }}</b>
+								</td>
+								<td>{{ row.vendor }}</td>
+								<td>{{ row.keys }}</td>
+								<td>
+									<span
+										class="rc-pill"
+										[class]="row.pill.cls"
+									>
+										{{ row.pill.text }}
+									</span>
+								</td>
+							</tr>
+						} @empty {
+							<tr><td colspan="4">No repository of this project uses a cloud platform.</td></tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="rc-panel">
+			<div class="rc-ph"><span class="rc-label">Edge, DNS and security</span></div>
+			<div class="rc-tw">
+				<table class="rc-t">
+					<thead>
+						<tr>
+							<th>Repository</th>
+							<th>Platform</th>
+							<th>Domains</th>
+							<th>Keys</th>
+							<th>State</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of edgeRows(); track row.id) {
+							<tr>
+								<td>
+									<b>{{ row.repo }}</b>
+								</td>
+								<td>{{ row.vendor }}</td>
+								<td class="rc-mono">{{ row.zones }}</td>
+								<td>{{ row.keys }}</td>
+								<td>
+									<span
+										class="rc-pill"
+										[class]="row.pill.cls"
+									>
+										{{ row.pill.text }}
+									</span>
+								</td>
+							</tr>
+						} @empty {
+							<tr><td colspan="5">No repository of this project uses an edge platform.</td></tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="rc-panel">
+			<div class="rc-ph">
+				<span class="rc-label">Keys in {{ p.name }} · values only in the macOS Keychain</span>
+			</div>
+			<div class="rc-tw">
+				<table class="rc-t">
+					<thead>
+						<tr>
+							<th>Key</th>
+							<th>Account</th>
+							<th>Rights</th>
+							<th>Expires</th>
+							<th>Checked</th>
+							<th>State</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (k of p.keys; track k.id) {
+							@let pill = pillOf(k);
+							<tr>
+								<td>
+									<b>{{ k.label }}</b>
+									<br />
+									<span class="rc-mono">
+										{{
+											k.keychainItem
+												? 'Keychain: Release Console · ' + k.keychainItem
+												: 'kept by the GitHub CLI'
+										}}
+									</span>
+								</td>
+								<td>{{ k.account || '—' }}</td>
+								<td class="rc-mono">{{ k.rights.join(', ') || '—' }}</td>
+								<td class="rc-mono">{{ day(k.expiresAt) }}</td>
+								<td class="rc-mono">{{ when(k.checkedAt) }}</td>
+								<td>
+									<span
+										class="rc-pill"
+										[class]="pill.cls"
+									>
+										{{ pill.text }}
+									</span>
+									@if (k.note) {
+										<br />
+										<span class="rc-note">{{ k.note }}</span>
+									}
+								</td>
+								<td>
+									<div class="rc-row">
+										<button
+											type="button"
+											class="rc-btn ghost"
+											[disabled]="busy()"
+											(click)="check(k.id)"
+										>
+											Check
+										</button>
+										<button
+											type="button"
+											class="rc-btn danger"
+											[disabled]="busy()"
+											(click)="remove(k)"
+										>
+											Remove
+										</button>
+									</div>
+								</td>
+							</tr>
+						} @empty {
+							<tr><td colspan="7">No keys yet.</td></tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (message()) {
+				<p class="rc-note">{{ message() }}</p>
+			}
+		</div>
+		<form
+			class="rc-panel"
+			(submit)="save($event)"
+		>
+			<div class="rc-ph"><span class="rc-label">Add a key · token paste, never a password</span></div>
+			<div class="rc-g2">
+				<div class="pj-vendors">
+					@for (k of pasteKinds; track k) {
+						<div
+							class="do-radio"
+							role="radio"
+							tabindex="0"
+							[class.on]="kind() === k"
+							[attr.aria-checked]="kind() === k"
+							(click)="choose(k)"
+							(keydown.enter)="choose(k)"
+						>
+							<i aria-hidden="true"></i>
+							<span>
+								<b>{{ kinds[k].label }}</b>
+								<small>{{ kinds[k].howTo }}</small>
+							</span>
+						</div>
+					}
+				</div>
+				<div class="rc-form">
+					<label>
+						Key
+						<div class="rc-msearch">
+							<input
+								#value
+								type="password"
+								autocomplete="off"
+								spellcheck="false"
+								[attr.aria-label]="kinds[kind()].label"
+								[attr.placeholder]="kind() === 'spaces-key' ? 'ACCESS_KEY:SECRET' : 'paste the token'"
+							/>
+						</div>
+					</label>
+					<label>
+						Expires
+						<div class="rc-msearch">
+							<input
+								#expires
+								type="date"
+								aria-label="Expiry date"
+							/>
+						</div>
+					</label>
+					<span class="rc-label">Use it for</span>
+					@for (c of slotChoices(); track c.id) {
+						<div
+							class="do-radio"
+							role="checkbox"
+							tabindex="0"
+							[class.on]="picked().has(c.id)"
+							[attr.aria-checked]="picked().has(c.id)"
+							(click)="toggle(c.id)"
+							(keydown.enter)="toggle(c.id)"
+						>
+							<i aria-hidden="true"></i>
+							<span>
+								<b>{{ c.label }}</b>
+								<small>this project only</small>
+							</span>
+						</div>
+					} @empty {
+						<p class="rc-note">
+							No repository of {{ p.name }} uses {{ vendors[kindVendor()] }}; the key is kept for later.
+						</p>
+					}
+					<p class="rc-note">
+						The key goes to the macOS Keychain (service “Release Console”, account “{{ p.name }} ·
+						{{ nextId() }}”) and is checked at once. The console never shows it again. Cloudflare tokens
+						come from the Cloudflare account that holds the domain.
+					</p>
+					<div>
+						<button
+							type="submit"
+							class="rc-btn primary"
+							[disabled]="busy()"
+						>
+							Store in the Keychain and check
+						</button>
+					</div>
+					@if (formMessage()) {
+						<p class="rc-note">{{ formMessage() }}</p>
+					}
+				</div>
+			</div>
+		</form>
+	`,
+})
+export class Connections {
+	private readonly api = inject(ConsoleApi);
+	private readonly queries = inject(QueryClient);
+	readonly project = input.required<Project>();
+	protected readonly kinds = KEY_KINDS;
+	protected readonly vendors = VENDOR_NAMES;
+	protected readonly pasteKinds = PASTE_KINDS;
+	protected readonly day = day;
+	protected readonly when = when;
+	protected readonly kind = signal<KeyKind>('do-read');
+	protected readonly picked = signal<Set<string>>(new Set());
+	protected readonly busy = signal(false);
+	protected readonly message = signal('');
+	protected readonly formMessage = signal('');
+
+	protected readonly kindVendor = computed(() => KEY_KINDS[this.kind()].vendor ?? 'github');
+	/** A new key id: the kind, or the kind with a number when the project has one already. */
+	protected readonly nextId = computed(() => {
+		const ids = new Set(this.project().keys.map((k) => k.id));
+		const base = this.kind();
+		let id: string = base;
+		for (let n = 2; ids.has(id); n++) id = `${base}-${n}`;
+		return id;
+	});
+
+	protected readonly slotChoices = computed<SlotChoice[]>(() => {
+		const info = KEY_KINDS[this.kind()];
+		const out: SlotChoice[] = [];
+		for (const r of this.project().repositories) {
+			if (info.slot === 'source-code' && r.sourceCode.vendor === info.vendor)
+				out.push({
+					id: `${r.id}:sc`,
+					label: `${r.name} · ${VENDOR_NAMES[r.sourceCode.vendor]}`,
+					slot: { repositoryId: r.id, slot: 'source-code', slotId: '', keyIds: [] },
+				});
+			if (info.slot === 'cloud')
+				for (const c of r.cloud.filter((c) => c.vendor === info.vendor))
+					out.push({
+						id: `${r.id}:c:${c.id}`,
+						label: `${r.name} · ${VENDOR_NAMES[c.vendor]}`,
+						slot: { repositoryId: r.id, slot: 'cloud', slotId: c.id, keyIds: c.keyIds },
+					});
+			if (info.slot === 'edge')
+				for (const e of r.edge.filter((e) => e.vendor === info.vendor))
+					out.push({
+						id: `${r.id}:e:${e.id}`,
+						label: `${r.name} · ${VENDOR_NAMES[e.vendor]} (${e.zones.join(', ') || 'no domain'})`,
+						slot: { repositoryId: r.id, slot: 'edge', slotId: e.id, keyIds: e.keyIds },
+					});
+		}
+		return out;
+	});
+
+	protected readonly cloudRows = computed(() =>
+		this.project().repositories.flatMap((r) =>
+			r.cloud.map((c) => ({
+				id: `${r.id}:${c.id}`,
+				repo: r.name,
+				vendor: VENDOR_NAMES[c.vendor],
+				keys: this.labels(c.keyIds),
+				pill: c.vendor === 'digitalocean' ? this.slotPill(c.keyIds) : { cls: 'amber', text: 'screens later' },
+			})),
+		),
+	);
+	protected readonly edgeRows = computed(() =>
+		this.project().repositories.flatMap((r) =>
+			r.edge.map((e) => ({
+				id: `${r.id}:${e.id}`,
+				repo: r.name,
+				vendor: VENDOR_NAMES[e.vendor],
+				zones: e.zones.join(', ') || '—',
+				keys: this.labels(e.keyIds),
+				pill: e.vendor === 'cloudflare' ? this.slotPill(e.keyIds) : { cls: 'amber', text: 'screens later' },
+			})),
+		),
+	);
+
+	constructor() {
+		this.choose('do-read');
+	}
+
+	protected keyById(id: string | null): KeyRef | undefined {
+		return this.project().keys.find((k) => k.id === id);
+	}
+	protected pillOf(ref: KeyRef | undefined) {
+		return keyPill(ref);
+	}
+	private labels(ids: string[]): string {
+		return ids.map((id) => this.keyById(id)?.label ?? id).join(' · ') || '—';
+	}
+	/** A slot is as good as its best key. */
+	private slotPill(ids: string[]): { cls: string; text: string } {
+		const refs = ids.map((id) => this.keyById(id)).filter((k): k is KeyRef => !!k);
+		const order = ['verified', 'expiring', 'unchecked', 'failed', 'expired'];
+		refs.sort((a, b) => order.indexOf(a.state) - order.indexOf(b.state));
+		return keyPill(refs[0]);
+	}
+
+	protected choose(k: KeyKind): void {
+		this.kind.set(k);
+		queueMicrotask(() => this.picked.set(new Set(this.slotChoices().map((c) => c.id))));
+	}
+	protected toggle(id: string): void {
+		const next = new Set(this.picked());
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		this.picked.set(next);
+	}
+
+	protected async save(e: Event): Promise<void> {
+		e.preventDefault();
+		const form = e.target as HTMLFormElement;
+		const valueBox = form.querySelector<HTMLInputElement>('input[type=password]');
+		const dateBox = form.querySelector<HTMLInputElement>('input[type=date]');
+		const value = valueBox?.value.trim() ?? '';
+		if (!value) {
+			this.formMessage.set('Paste the key first.');
+			return;
+		}
+		if (!keyValueSchema.safeParse(value).success) {
+			this.formMessage.set('That does not look like a token: it has spaces, quotes or backslashes.');
+			return;
+		}
+		const p = this.project();
+		const id = this.nextId();
+		const kind = this.kind();
+		this.busy.set(true);
+		this.formMessage.set('Storing in the Keychain and checking with the vendor…');
+		try {
+			const ref = await this.api.storeKey(p.id, {
+				id,
+				kind,
+				label: KEY_KINDS[kind].label,
+				value,
+				expiresAt: dateBox?.value ? new Date(`${dateBox.value}T23:59:59`).toISOString() : null,
+				note: '',
+			});
+			if (valueBox) valueBox.value = '';
+			for (const c of this.slotChoices().filter((c) => this.picked().has(c.id)))
+				await this.api.setSlotKeys(p.id, {
+					...c.slot,
+					keyIds: c.slot.slot === 'source-code' ? [id] : [...new Set([...c.slot.keyIds, id])],
+				});
+			this.formMessage.set(`${ref.label}: ${keyPill(ref).text}${ref.note ? ` · ${ref.note}` : ''}`);
+			await this.refresh();
+		} catch (err) {
+			this.formMessage.set((err as Error).message);
+		} finally {
+			this.busy.set(false);
+		}
+	}
+
+	protected async check(keyId: string): Promise<void> {
+		this.busy.set(true);
+		try {
+			const ref = await this.api.checkKey(this.project().id, keyId);
+			this.message.set(`${ref.label}: ${keyPill(ref).text}${ref.note ? ` · ${ref.note}` : ''}`);
+			await this.refresh();
+		} catch (err) {
+			this.message.set((err as Error).message);
+		} finally {
+			this.busy.set(false);
+		}
+	}
+
+	protected async remove(k: KeyRef): Promise<void> {
+		if (
+			!window.confirm(
+				`Remove ${k.label} from ${this.project().name}${k.keychainItem ? ' and delete it from the Keychain' : ''}?`,
+			)
+		)
+			return;
+		this.busy.set(true);
+		try {
+			await this.api.removeKey(this.project().id, k.id);
+			this.message.set(`${k.label} removed.`);
+			await this.refresh();
+		} catch (err) {
+			this.message.set((err as Error).message);
+		} finally {
+			this.busy.set(false);
+		}
+	}
+
+	private async refresh(): Promise<void> {
+		await this.queries.invalidateQueries({ queryKey: ['projects'] });
+		await this.queries.invalidateQueries({ queryKey: ['attention'] });
+		await this.queries.invalidateQueries({ queryKey: ['vendor'] });
+	}
+}

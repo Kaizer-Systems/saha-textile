@@ -66,3 +66,39 @@ export function searchMenu(menu: ConsoleMenu, raw: string, limit = 8): SearchHit
 	}
 	return hits.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, limit);
 }
+
+/** One thing a level's search can open, outside the repository menu (console and project levels). */
+export interface ListItem {
+	label: string;
+	path: string;
+	link: string[];
+	query?: Record<string, string>;
+	aliases?: string[];
+}
+
+export interface ListHit extends ListItem {
+	via: string;
+	score: number;
+}
+
+/** The same ranking as `searchMenu`, over a level's own short list. */
+export function searchList(items: ListItem[], raw: string, limit = 8): ListHit[] {
+	const q = raw.trim().toLowerCase();
+	if (!q) return [];
+	const word = new RegExp(`\\b${escapeRe(q)}`);
+	const hits: ListHit[] = [];
+	for (const item of items) {
+		const l = item.label.toLowerCase();
+		let score = l.startsWith(q) ? 4 : word.test(l) ? 3 : l.includes(q) ? 2 : 0;
+		let via = '';
+		if (!score) {
+			const hit = item.aliases?.find((a) => a.includes(q));
+			if (hit) {
+				score = 1.5;
+				via = hit;
+			}
+		}
+		if (score) hits.push({ ...item, via, score });
+	}
+	return hits.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, limit);
+}

@@ -1,75 +1,220 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import {
+	ChangeDetectionStrategy,
+	Component,
+	ElementRef,
+	computed,
+	effect,
+	inject,
+	signal,
+	viewChild,
+} from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
 
-import { filter, map } from 'rxjs';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 
+import { ConsoleApi } from '../data/console-api';
+import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
-import { CONSOLE_MENU } from '../menu/console-menu.data';
-import { type SearchHit, placeOf, searchMenu } from '../menu/menu-search';
+import { ConsoleSession } from '../data/session';
+import { type ListItem, placeOf, searchList, searchMenu } from '../menu/menu-search';
 
-import type { ConsoleEnvironment } from '@saha-textile/release-console-contracts';
+import type { Project } from '@saha-textile/release-console-contracts';
 
-const ENVS: [ConsoleEnvironment, string][] = [
-	['local', 'Local stack'],
-	['staging', 'Staging'],
-	['production', 'Production'],
+/** The five console-level menus. */
+export const CONSOLE_PAGES: [string, string][] = [
+	['projects', 'All projects'],
+	['add', 'Add a project'],
+	['attention', 'Attention'],
+	['audit', 'Audit (every project)'],
+	['settings', 'Console settings'],
 ];
+/** The six project-level menus. */
+export const PROJECT_PAGES: [string, string][] = [
+	['overview', 'Overview'],
+	['repositories', 'Repositories'],
+	['environments', 'Environments'],
+	['attention', 'Attention'],
+	['audit', 'Audit'],
+	['settings', 'Project settings'],
+];
+/** Project settings tabs. */
+export const SETTINGS_TABS: [string, string][] = [
+	['connections', 'Connections'],
+	['repositories', 'Repositories'],
+	['environments', 'Environments'],
+	['menus', 'Project menus'],
+	['remove', 'Remove project'],
+];
+
+interface Hit {
+	label: string;
+	path: string;
+	link: string[];
+	query: Record<string, string>;
+	via: string;
+}
+
+const tabQuery = (tab: string | null): Record<string, string> => (tab ? { tab } : {});
+
+const PAGE_WORDS: Record<string, string[]> = {
+	attention: ['expiring', 'failed', 'approval', 'needs me'],
+	audit: ['who did what', 'history', 'log'],
+	settings: ['pin', 'lock', 'keys', 'connections', 'keychain'],
+	add: ['new project', 'wizard'],
+	repositories: ['repo', 'source code'],
+	environments: ['staging', 'production', 'local'],
+};
 
 @Component({
 	selector: 'rc-shell',
 	imports: [RouterOutlet, NgTemplateOutlet],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	host: { '(document:keydown)': 'onKey($event)' },
+	host: { '(document:keydown)': 'onKey($event)', '(document:click)': 'closeMenus($event)' },
 	templateUrl: './shell.html',
 })
 export class Shell {
 	private readonly router = inject(Router);
+	private readonly api = inject(ConsoleApi);
+	private readonly session = inject(ConsoleSession);
+	private readonly queries = inject(QueryClient);
 	protected readonly state = inject(ConsoleState);
-	protected readonly menu = CONSOLE_MENU;
-	protected readonly envs = ENVS;
-	private readonly place = placeOf(CONSOLE_MENU);
+	protected readonly ctx = inject(ConsoleContext);
+	protected readonly consolePages = CONSOLE_PAGES;
+	protected readonly projectPages = PROJECT_PAGES;
 	private readonly searchBox = viewChild<ElementRef<HTMLInputElement>>('searchBox');
 
-	private readonly url = toSignal(
-		this.router.events.pipe(
-			filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-			map((e) => e.urlAfterRedirects),
-		),
-		{ initialValue: this.router.url },
-	);
-	protected readonly current = computed(() => this.url().split(/[/?#]/)[1] || 'overview');
-	protected readonly openGroup = computed(() => this.place.get(this.current())?.[0] ?? 'Overview');
-
+	protected readonly projectOpen = signal(false);
+	protected readonly repoOpen = signal(false);
 	protected readonly query = signal('');
 	protected readonly active = signal(0);
-	protected readonly hits = computed<SearchHit[]>(() => searchMenu(this.menu, this.query()));
+
+	protected readonly menu = this.ctx.repoMenu;
+	private readonly place = computed(() => {
+		const m = this.menu();
+		return m ? placeOf(m) : new Map<string, string[]>();
+	});
+	protected readonly openGroup = computed(() => this.place().get(this.ctx.page())?.[0] ?? '');
+
+	protected readonly scope = computed(() => {
+		if (this.ctx.level() === 'repository') return this.ctx.repo()?.name ?? 'this repository';
+		if (this.ctx.level() === 'project') return this.ctx.project()?.name ?? 'this project';
+		return 'the console';
+	});
+
+	/** Search finds only what the current level can open; never across projects or repositories. */
+	protected readonly hits = computed<Hit[]>(() => {
+		const q = this.query();
+		const project = this.ctx.project();
+		const repo = this.ctx.repo();
+		const menu = this.menu();
+		if (this.ctx.level() === 'repository' && project && repo && menu)
+			return searchMenu(menu, q).map((h) => ({
+				label: h.label,
+				path: `${repo.name} › ${h.path}`,
+				link: ['/p', project.id, 'r', repo.id, h.screen],
+				query: tabQuery(h.state),
+				via: h.via,
+			}));
+		const items: ListItem[] =
+			this.ctx.level() === 'project' && project ? this.projectItems(project) : this.consoleItems();
+		return searchList(items, q).map((h) => ({
+			label: h.label,
+			path: h.path,
+			link: h.link,
+			query: h.query ?? {},
+			via: h.via,
+		}));
+	});
+
+	constructor() {
+		// Keep the chosen environment one that the current repository or project has.
+		effect(() => {
+			const envs = this.ctx.environments();
+			if (envs.length && !envs.some((e) => e.name === this.state.environment()))
+				this.state.setEnvironment(envs[0]?.name ?? 'local');
+		});
+	}
+
+	private consoleItems(): ListItem[] {
+		return CONSOLE_PAGES.map(([key, label]) => ({
+			label,
+			path: 'Console',
+			link: ['/console', key],
+			aliases: PAGE_WORDS[key],
+		}));
+	}
+
+	private projectItems(p: Project): ListItem[] {
+		const at = `${p.name} › project level`;
+		return [
+			...PROJECT_PAGES.map(([key, label]) => ({
+				label,
+				path: at,
+				link: ['/p', p.id, key],
+				aliases: PAGE_WORDS[key],
+			})),
+			...SETTINGS_TABS.map(([tab, label]) => ({
+				label: `Project settings › ${label}`,
+				path: at,
+				link: ['/p', p.id, 'settings'],
+				query: { tab },
+				aliases:
+					tab === 'connections' ? ['keys', 'tokens', 'keychain', 'github', 'digitalocean', 'cloudflare'] : [],
+			})),
+			...p.repositories.map((r) => ({
+				label: r.name,
+				path: `${p.name} › repositories`,
+				link: ['/p', p.id, 'r', r.id, 'overview'],
+				aliases: [r.sourceCode.repository.toLowerCase()],
+			})),
+		];
+	}
 
 	protected screen(key: string) {
-		return this.menu.screens[key];
+		return this.menu()?.screens[key];
 	}
 	protected count(groupLabel: string): number {
-		return this.menu.menu.find((g) => g.label === groupLabel)?.subs.reduce((n, s) => n + s.items.length, 0) ?? 0;
+		return (
+			this.menu()
+				?.menu.find((g) => g.label === groupLabel)
+				?.subs.reduce((n, s) => n + s.items.length, 0) ?? 0
+		);
 	}
 	protected isLater(key: string): boolean {
-		return this.menu.later.includes(key);
+		return this.menu()?.later.includes(key) ?? false;
+	}
+	protected currentEnvLabel(): string {
+		return this.ctx.environments().find((e) => e.name === this.state.environment())?.label ?? '';
 	}
 
-	protected go(screen: string, tab: string | null = null): void {
+	protected go(link: string[], query: Record<string, string> = {}): void {
 		this.query.set('');
-		void this.router.navigate(['/', screen], { queryParams: tab ? { tab } : {} });
+		this.projectOpen.set(false);
+		this.repoOpen.set(false);
+		void this.router.navigate(link, { queryParams: query });
+	}
+	protected goScreen(key: string): void {
+		const p = this.ctx.projectId();
+		const r = this.ctx.repoId();
+		if (p && r) this.go(['/p', p, 'r', r, key]);
 	}
 	protected openGroupFirst(groupLabel: string): void {
-		const first = this.menu.menu
-			.find((g) => g.label === groupLabel)
-			?.subs[0]?.items.find((k) => !this.menu.screens[k]?.off);
-		if (first) this.go(first);
+		const first = this.menu()
+			?.menu.find((g) => g.label === groupLabel)
+			?.subs[0]?.items.find((k) => !this.menu()?.screens[k]?.off);
+		if (first) this.goScreen(first);
 	}
-	protected pick(hit: SearchHit | undefined): void {
-		if (!hit || this.menu.screens[hit.screen]?.off) return;
-		this.go(hit.screen, hit.state);
+	protected pick(hit: Hit | undefined): void {
+		if (hit) this.go(hit.link, hit.query);
 	}
+	protected async lockNow(): Promise<void> {
+		await this.api.lockNow().catch(() => undefined);
+		this.session.clear();
+		this.queries.clear();
+		void this.router.navigate(['/lock']);
+	}
+
 	protected onSearchKey(e: KeyboardEvent): void {
 		const n = this.hits().length;
 		if (e.key === 'ArrowDown') {
@@ -89,5 +234,26 @@ export class Shell {
 			e.preventDefault();
 			this.searchBox()?.nativeElement.focus();
 		}
+		if (e.key === 'Escape') {
+			this.projectOpen.set(false);
+			this.repoOpen.set(false);
+		}
+	}
+	protected closeMenus(e: MouseEvent): void {
+		const t = e.target as HTMLElement | null;
+		if (!t?.closest('.pj-switch')) {
+			this.projectOpen.set(false);
+			this.repoOpen.set(false);
+		}
+	}
+	protected toggleProject(e: Event): void {
+		e.stopPropagation();
+		this.repoOpen.set(false);
+		this.projectOpen.update((v) => !v);
+	}
+	protected toggleRepo(e: Event): void {
+		e.stopPropagation();
+		this.projectOpen.set(false);
+		this.repoOpen.update((v) => !v);
 	}
 }

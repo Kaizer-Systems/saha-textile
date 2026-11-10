@@ -6,42 +6,158 @@
 				aria-hidden="true"
 			></span>
 			<b>Release Console</b>
-			<span class="rc-mono">Saha Textile · on this computer</span>
+		</div>
+		<div
+			class="pj-switch"
+			role="button"
+			tabindex="0"
+			aria-haspopup="menu"
+			[class.open]="projectOpen()"
+			[attr.aria-expanded]="projectOpen()"
+			(click)="toggleProject($event)"
+			(keydown.enter)="toggleProject($event)"
+		>
+			<span class="rc-label">Project</span>
+			<span class="pj-cur">{{ ctx.project()?.name ?? 'None chosen' }}</span>
+			<span class="pj-caret">▾</span>
+			@if (projectOpen()) {
+			<div
+				class="pj-menu"
+				role="menu"
+			>
+				@for (p of ctx.projects.data()?.projects ?? []; track p.id) {
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					[class.on]="p.id === ctx.projectId()"
+					(click)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+				>
+					<b>{{ p.name }}</b>
+					<span class="rc-mono">
+						{{ p.workspace }} · {{ p.repositories.length }} repo{{ p.repositories.length === 1 ? '' : 's' }}
+					</span>
+				</div>
+				}
+				<div
+					class="pj-item add"
+					role="menuitem"
+					tabindex="0"
+					(click)="$event.stopPropagation(); go(['/console', 'add'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/console', 'add'])"
+				>
+					<b>+ Add a project</b>
+					<span class="rc-mono">source code, environments, cloud, edge</span>
+				</div>
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					(click)="$event.stopPropagation(); go(['/console', 'projects'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/console', 'projects'])"
+				>
+					<b>All projects</b>
+					<span class="rc-mono">the console level</span>
+				</div>
+			</div>
+			}
+		</div>
+		@if (ctx.project(); as p) {
+		<div
+			class="pj-switch repo"
+			role="button"
+			tabindex="0"
+			aria-haspopup="menu"
+			[class.open]="repoOpen()"
+			[attr.aria-expanded]="repoOpen()"
+			(click)="toggleRepo($event)"
+			(keydown.enter)="toggleRepo($event)"
+		>
+			<span class="rc-label">Repository</span>
+			<span class="pj-cur">{{ ctx.repo()?.name ?? 'Project overview' }}</span>
+			<span class="pj-caret">▾</span>
+			@if (repoOpen()) {
+			<div
+				class="pj-menu"
+				role="menu"
+			>
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					[class.on]="!ctx.repo()"
+					(click)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
+				>
+					<b>Project overview</b>
+					<span class="rc-mono">the project level: repositories, environments, keys</span>
+				</div>
+				@for (r of p.repositories; track r.id) {
+				<div
+					class="pj-item"
+					role="menuitem"
+					tabindex="0"
+					[class.on]="r.id === ctx.repoId()"
+					(click)="$event.stopPropagation(); go(['/p', p.id, 'r', r.id, 'overview'])"
+					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'r', r.id, 'overview'])"
+				>
+					<b>{{ r.name }}</b>
+					<span class="rc-mono">{{ r.role || r.sourceCode.repository }}</span>
+				</div>
+				}
+			</div>
+			}
 		</div>
 		<div
 			class="rc-envs"
 			role="tablist"
 			aria-label="Environment"
 		>
-			@for (env of envs; track env[0]) {
+			@for (env of ctx.environments(); track env.name) {
 			<button
 				type="button"
 				class="rc-env-tab"
 				role="tab"
-				[attr.aria-selected]="state.environment() === env[0]"
-				(click)="state.setEnvironment(env[0])"
+				[attr.aria-selected]="state.environment() === env.name"
+				(click)="state.setEnvironment(env.name)"
 			>
-				{{ env[1] }}
+				{{ env.label }}
 			</button>
 			}
 		</div>
+		} @else {
+		<span></span>
+		}
 		<div class="rc-who">
-			<span class="rc-mono">owner · this computer</span>
+			<span class="rc-mono">owner · unlocked</span>
 			<span class="rc-dot ok"></span>
+			<button
+				type="button"
+				class="rc-btn ghost"
+				title="Lock the console"
+				(click)="lockNow()"
+			>
+				<span
+					class="lock"
+					aria-hidden="true"
+				></span>
+				Lock
+			</button>
 		</div>
 	</div>
 	<div class="rc-body">
 		<nav
 			class="rc-side"
-			aria-label="Console screens"
+			aria-label="Console menus"
 		>
 			<div class="rc-msearch">
 				<input
 					#searchBox
 					type="search"
-					placeholder="Search screens"
-					aria-label="Search screens"
 					autocomplete="off"
+					[attr.placeholder]="'Search ' + scope()"
+					[attr.aria-label]="'Search ' + scope()"
 					[value]="query()"
 					(input)="query.set($any($event.target).value); active.set(0)"
 					(keydown)="onSearchKey($event)"
@@ -52,7 +168,8 @@
 					class="rc-mres"
 					role="listbox"
 				>
-					@for (hit of hits(); track hit.screen + (hit.state ?? '')) {
+					<div class="pj-scope">In {{ scope() }} only</div>
+					@for (hit of hits(); track hit.link.join('/') + hit.label) {
 					<button
 						type="button"
 						class="rc-mrow"
@@ -64,16 +181,61 @@
 						<span>{{ hit.path }}{{ hit.via ? ' · “' + hit.via + '”' : '' }}</span>
 					</button>
 					} @empty {
-					<div class="rc-mnone">No screen or tab matches “{{ query() }}”.</div>
+					<div class="rc-mnone">Nothing in {{ scope() }} matches “{{ query() }}”.</div>
 					}
 				</div>
 				}
 			</div>
+
+			@switch (ctx.level()) { @case ('console') { @for (page of consolePages; track page[0]) {
+			<button
+				type="button"
+				class="rc-nav"
+				[class.pj-sug]="page[0] === 'attention'"
+				[attr.aria-current]="ctx.page() === page[0]"
+				(click)="go(['/console', page[0]])"
+			>
+				{{ page[1] }}
+			</button>
+			} } @case ('project') { @if (ctx.project(); as p) {
+			<div class="pj-level">Project</div>
+			@for (page of projectPages; track page[0]) {
+			<button
+				type="button"
+				class="rc-nav"
+				[class.pj-sug]="page[0] === 'attention'"
+				[attr.aria-current]="ctx.page() === page[0]"
+				(click)="go(['/p', p.id, page[0]])"
+			>
+				{{ page[1] }}
+			</button>
+			}
+			<div class="pj-level">Repositories</div>
+			@for (r of p.repositories; track r.id) {
+			<button
+				type="button"
+				class="rc-nav pj-repo"
+				(click)="go(['/p', p.id, 'r', r.id, 'overview'])"
+			>
+				{{ r.name }} ›
+			</button>
+			} }
+			<div class="rc-navfoot">
+				<button
+					type="button"
+					class="rc-nav"
+					(click)="go(['/console', 'projects'])"
+				>
+					‹ All projects
+				</button>
+			</div>
+			} @case ('repository') { @if (ctx.project(); as p) { @if (ctx.repo(); as r) { @if (menu(); as m) {
+			<div class="pj-level">Repository · {{ r.name }}</div>
 			<ng-container
 				[ngTemplateOutlet]="navItem"
 				[ngTemplateOutletContext]="{ key: 'overview' }"
 			/>
-			@for (group of menu.menu; track group.label) {
+			@for (group of m.menu; track group.label) {
 			<div
 				class="rc-ng"
 				[class.open]="openGroup() === group.label"
@@ -81,6 +243,7 @@
 				<button
 					type="button"
 					class="rc-gl"
+					[class.pj-gl]="$index === 0 && group.label === r.name"
 					[attr.aria-expanded]="openGroup() === group.label"
 					(click)="openGroupFirst(group.label)"
 				>
@@ -106,11 +269,22 @@
 			</div>
 			}
 			<div class="rc-navfoot">
-				<ng-container
-					[ngTemplateOutlet]="navItem"
-					[ngTemplateOutletContext]="{ key: 'settings' }"
-				/>
+				<button
+					type="button"
+					class="rc-nav"
+					(click)="go(['/p', p.id, 'settings'], { tab: 'repositories' })"
+				>
+					Repository settings
+				</button>
+				<button
+					type="button"
+					class="rc-nav"
+					(click)="go(['/p', p.id, 'overview'])"
+				>
+					‹ {{ p.name }}
+				</button>
 			</div>
+			} } } } }
 		</nav>
 		<main class="rc-main"><router-outlet /></main>
 	</div>
@@ -140,8 +314,8 @@
 		class="rc-nav"
 		[class.part]="!!s.part"
 		[attr.data-tip]="s.part"
-		[attr.aria-current]="current() === key"
-		(click)="go(key)"
+		[attr.aria-current]="ctx.page() === key"
+		(click)="goScreen(key)"
 	>
 		{{ s.label }} @if (isLater(key)) {
 		<span

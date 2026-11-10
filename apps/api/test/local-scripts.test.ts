@@ -20,7 +20,8 @@ interface Harness {
 	mongo: { connect: Mock; disconnect: Mock };
 	nest: { create: Mock; context: Mock };
 	worker: { close: Mock; compose: Mock };
-	search: { rebuild: Mock; categories?: Mock };
+	search: { rebuild: Mock; categories?: Mock; state?: string; settings?: Mock };
+	failStep?: string;
 	files: { read: Mock; write: Mock; mkdir: Mock };
 	sharp: { metadata: Mock };
 	queue: { close: Mock };
@@ -98,8 +99,22 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		AdminUserModel: {},
 		ADMINISTRATOR_ROLE_KEY: 'administrator',
 		ensureSystemRoles: async () => undefined,
+		systemRolesStep: () => fakeStep('system-roles'),
+		databaseIndexesStep: () => fakeStep('database-indexes', false),
+		dataMigrationsStep: () => fakeStep('data-migrations', false),
 	};
 });
+/** A release step that does nothing, or fails when `h.failStep` names it. */
+function fakeStep(key: string, needed = true) {
+	return {
+		key,
+		label: key,
+		cadence: 'every-release',
+		needed: async () => ({ needed, reason: 'test' }),
+		run: async () => 'ran',
+		check: async () => (h.failStep === key ? { ok: false, detail: `${key} broke` } : { ok: true, detail: 'fine' }),
+	};
+}
 vi.mock('@saha-textile/adapters-queue-bullmq', () => ({
 	BullMqMediaJobQueue: class {
 		close = () => h.queue.close();
@@ -150,7 +165,10 @@ vi.mock('../src/search/meilisearch-search', () => ({
 		constructor(_host: string, _key: string, categories: () => Promise<unknown[]>) {
 			h.search.categories = vi.fn(categories);
 		}
+		readonly index = 'products_v1';
 		updateSynonyms = async () => undefined;
+		buildState = async () => h.search.state ?? 'missing';
+		applyCurrentSettings = async () => h.search.settings?.();
 	},
 }));
 vi.mock('../src/openapi', () => ({ createOpenApiDocument: (...args: unknown[]) => h.openapi(...args) }));
@@ -193,6 +211,7 @@ const scripts = {
 	main: () => import('../src/main.js'),
 	worker: () => import('../src/worker.js'),
 	rebuild: () => import('../src/rebuild-search-index.js'),
+	releaseSteps: () => import('../src/release-steps.js'),
 	firstRun: () => import('../src/first-run-setup.js'),
 	openapi: () => import('../src/generate-openapi.js'),
 	firstAdmin: () => import('../src/create-first-admin.js'),
@@ -354,7 +373,34 @@ describe('rebuild-search-index', () => {
 	beforeEach(() => {
 		h.config = { search: { host: 'http://search', apiKey: 'k' } };
 		h.search.rebuild = vi.fn(async (products: unknown[]) => products.length);
+		h.search.state = undefined;
+		h.search.settings = vi.fn();
 		h.variants = { listForProducts: vi.fn(async () => [{ productId: undefined }]) };
+	});
+
+	it('as a release step, skips the build when this search version is already built', async () => {
+		h.search.state = 'ready';
+		h.products.list = vi.fn();
+		const result = await run('rebuild', ['--release']);
+		expect(result.out).toContain('products_v1 is already built');
+		expect(h.search.settings).toHaveBeenCalledOnce();
+		expect(h.products.list).not.toHaveBeenCalled();
+		expect(h.search.rebuild).not.toHaveBeenCalled();
+	});
+
+	it('as a release step, builds a search version that is missing', async () => {
+		h.products.list = vi.fn().mockResolvedValue({ items: [], total: 0 });
+		const result = await run('rebuild', ['--release']);
+		expect(result.out).toContain('into products_v1.');
+		expect(h.search.rebuild).toHaveBeenCalledOnce();
+		expect(h.search.settings).not.toHaveBeenCalled();
+	});
+
+	it('rebuilds by hand even when the version is built', async () => {
+		h.search.state = 'ready';
+		h.products.list = vi.fn().mockResolvedValue({ items: [], total: 0 });
+		await run('rebuild');
+		expect(h.search.rebuild).toHaveBeenCalledOnce();
 	});
 
 	it('reads every page and stops at the total', async () => {
@@ -367,7 +413,7 @@ describe('rebuild-search-index', () => {
 			.mockResolvedValueOnce({ items: [{ id: 'p2', categoryIds: [], optionGroups: [] }], total: 2 });
 		const result = await run('rebuild');
 		expect(h.products.list).toHaveBeenCalledTimes(2);
-		expect(result.out).toContain('Indexed 2 live products of 2.');
+		expect(result.out).toContain('Indexed 2 live products of 2 into products_v1.');
 		expect(h.search.rebuild.mock.calls[0]?.[0]).toMatchObject([{ categoryNames: ['Sarees', 'শাড়ি'] }, {}]);
 		await expect(h.search.categories?.()).resolves.toEqual([]);
 		expect(h.mongo.disconnect).toHaveBeenCalledOnce();
@@ -376,7 +422,7 @@ describe('rebuild-search-index', () => {
 	it('stops at an empty page', async () => {
 		h.products.list = vi.fn().mockResolvedValue({ items: [], total: 5 });
 		const result = await run('rebuild');
-		expect(result.out).toContain('of 0.');
+		expect(result.out).toContain('of 0 into');
 	});
 
 	it.each([
@@ -388,6 +434,62 @@ describe('rebuild-search-index', () => {
 		expect(result.err).toBe(`${text}\n`);
 		expect(result.code).toBe(1);
 		expect(h.mongo.disconnect).toHaveBeenCalledOnce();
+	});
+});
+
+describe('release-steps', () => {
+	beforeEach(() => {
+		h.config = { search: { host: 'http://search', apiKey: 'k' } };
+		h.search.rebuild = vi.fn(async (products: unknown[]) => products.length);
+		h.search.state = 'ready';
+		h.search.settings = vi.fn();
+		h.failStep = undefined;
+	});
+
+	it('runs every step in order and says what happened', async () => {
+		const result = await run('releaseSteps');
+		expect(result.out).toContain('▶ system-roles: test');
+		expect(result.out).toContain('– database-indexes: test; fine');
+		expect(result.out).toContain('✓ Search index: products_v1 is built and answering');
+		expect(result.out).toContain('search version 1 unchanged: settings and search words only');
+		expect(result.out).toContain('Release steps done: 2 ran, 2 had nothing to do.');
+		expect(h.mongo.disconnect).toHaveBeenCalledOnce();
+	});
+
+	it('prints JSON events for the console, and can leave search out', async () => {
+		const result = await run('releaseSteps', ['--json', '--without-search']);
+		const events = result.out
+			.trim()
+			.split('\n')
+			.map((line) => JSON.parse(line) as { type: string; step: string });
+		expect(events.every((event) => event.type === 'release-step')).toBe(true);
+		expect(events.some((event) => event.step === 'search-index')).toBe(false);
+		expect(result.out).not.toContain('Release steps done');
+	});
+
+	it('stops at a failed step and exits 1', async () => {
+		h.failStep = 'system-roles';
+		const result = await run('releaseSteps');
+		expect(result.out).toContain('✗ system-roles: system-roles broke');
+		expect(result.out).not.toContain('database-indexes');
+		expect(result.err).toBe('Release step "system-roles" failed: system-roles broke\n');
+		expect(result.code).toBe(1);
+	});
+
+	it('reports a connection failure of any kind', async () => {
+		h.mongo.connect = vi.fn(async () => Promise.reject('no database'));
+		const result = await run('releaseSteps');
+		expect(result.err).toBe('no database\n');
+		expect(result.code).toBe(1);
+	});
+
+	it('builds a new search version and fails when it is not recorded', async () => {
+		h.search.state = 'missing';
+		h.products.list = vi.fn().mockResolvedValue({ items: [], total: 0 });
+		const result = await run('releaseSteps');
+		expect(result.out).toContain('search version 1 is new: full build of products_v1');
+		expect(result.err).toContain('products_v1 was not recorded as built');
+		expect(result.code).toBe(1);
 	});
 });
 

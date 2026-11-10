@@ -44,6 +44,7 @@
     "mongo:extract-credentials": "pnpm --filter @saha-textile/adapters-db-mongo extract:credentials",
     "auth:set-local-credentials": "pnpm --filter @saha-textile/api set:local-credentials",
     "mongo:reconcile-indexes": "pnpm --filter @saha-textile/adapters-db-mongo reconcile:indexes",
+    "local:refresh": "pnpm --filter @saha-textile/api release:steps",
     "stack:certs": "bash scripts/stack.sh certs",
     "stack:env": "bash scripts/stack.sh env",
     "stack:up": "bash scripts/stack.sh up",

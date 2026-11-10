@@ -495,6 +495,75 @@ The full design and build order are in `production-deployment-plan.mdx`.
   throwaway work. Do it as a late pre-launch pass, then raise `--max-warnings` to 0 in CI so
   they cannot return.
 
+### Chunk K — Privacy policy rewrite and data-rights workflows
+
+**Marker:** OPEN — parked by the owner on 2026-11-10 for later review; needs more briefs before any build.
+
+The full draft policy and its critical review (legal, architecture, security) are the privacy
+section of the Safe Releases Brief, version 5, kept as its own page:
+<https://claude.ai/artifact/XJ2RvmdEEFkmf3k9j1FdnX> (private to the owner), with a copy in the
+side-session notes folder as `privacy-policy-brief-2026-11-10.html`. Nothing in it is on the
+website; the live policy is still the old template plus the 2026-11-07 Cookies section.
+
+#### What the draft covers
+
+Thirteen sections: who we are; data collected (account, Google/Facebook sign-in, orders,
+payments, questions, reviews, contact messages, choices, technical and security records,
+cookies, page-speed measurement); purposes with their legal basis; service providers
+(DigitalOcean, Cloudflare, CCAvenue, PayPal, Shiprocket, MSG91, Google Workspace, Google and
+Meta sign-in, YouTube, Google Maps); storage outside India; cookies by category; retention;
+security; rights under the DPDP Act and the GDPR; children; Grievance Officer; changes; contact.
+Paragraphs for features that are not live (real user monitoring, 30-day server logs) are marked
+"add when live".
+
+#### Facts only the owner can give
+
+Legal name and registered address (tied to tax question `B9.1`), Grievance Officer name, role
+email, phone and hours, a privacy email, retention for contact-form messages, consent records and
+backups (suggested 3 years, 3 years, 30 days), whether backups are encrypted, and whether to add
+an "I am 18 or over" tick at registration and checkout.
+
+#### Review findings that block launch
+
+- The live policy is a generic template; replace it whole (L1).
+- Legal name, address and a named Grievance Officer are required on the site (L2, L3).
+- "Download my data" and a privacy purge across the database, logs, review photos and the Gmail
+  thread are promised by the draft but not built (A2).
+- Emails, phone numbers and tokens must be masked in server logs before the 30-day log store
+  ships (S1); this part is built with the logging upgrade, not parked.
+
+#### Review findings to confirm before launch
+
+GDPR representative (L4, lawyer), under-18 consent (L6), proof of marketing consent per channel
+(L7), the Terms and Conditions rewrite (L9), backup rotation period (A3), Meta's data-deletion
+setting for Facebook Login (A4), the category of `st_events` and the YouTube player after play
+(A5), backup encryption (S2), and adding Anthropic as a provider if "Ask Claude" is ever built (S5).
+
+#### Before work resumes
+
+More briefs, per the owner: one for the policy text, one for the data-rights workflows
+(download and purge), and one for the Grievance Officer and contact details on the site. The
+English is finalised first, then Bengali under the glossary rules, then the owner's lawyer or CA
+reads both.
+
+### Chunk L — Release Console ideas held for a later decision
+
+**Marker:** OPEN — the owner asked on 2026-11-10 to keep these for later review. None is planned.
+
+From the Safe Releases Brief, version 5, Part 6. Each idea was considered and is not
+recommended now; the reason is the current opinion, not a final answer.
+
+| Idea                                                           | Current status                           | Why not, for now                                                                                                                                           |
+| -------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session replay (recording shoppers' screens)                   | Not recommended                          | Records everything a shopper types and sees; heavy under the DPDP Act and the GDPR and needs its own consent. Real user monitoring covers the useful part. |
+| Chaos testing in production (breaking things on purpose)       | Not in production; acceptable on staging | One server, so any test is a real outage. A monthly drill on staging is fine.                                                                              |
+| Fixes applied automatically by AI                              | No                                       | Nothing changes production without the owner. "Ask Claude" may explain and suggest only.                                                                   |
+| Canary releases sending part of the traffic to the new version | Later, if needed                         | Possible with the blue and green copies, but both share one droplet's CPU. Feature switches give gradual rollout per feature more simply.                  |
+| A public status page for shoppers                              | Not now                                  | The back-in-a-moment page already covers outages, and a list of every hiccup can worry shoppers for no reason.                                             |
+
+Also held here: "Ask Claude" itself (A22) is amber, because masked log lines would leave the Mac
+and Anthropic would become a service provider in the privacy policy (Chunk K, finding S5).
+
 ## Owner lock order
 
 Recommended order for the fastest reduction of blocked behavior:

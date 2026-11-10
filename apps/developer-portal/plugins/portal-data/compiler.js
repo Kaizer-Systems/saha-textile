@@ -81,6 +81,8 @@ const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
 	'auth-rate-limit.model.ts',
 	'pending-signup.model.ts',
 	'pending-contact-change.model.ts',
+	// The release-steps runner's record of which data migrations ran: machinery, not shop data.
+	'release-migration.model.ts',
 ]);
 const COMMAND_VERBS_ROUTE = '/frontend/portal-experience-layer';
 const COMMAND_VERB_ORDER = ['trace', 'gate', 'status'];

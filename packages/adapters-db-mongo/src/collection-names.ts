@@ -69,6 +69,8 @@ export const COLLECTION_NAMES = {
 	AdminUserRoleAssignment: 'adminUserRoleAssignments',
 	/** Adapter/runtime abuse counters — intentionally NOT a Schema Nebula node. */
 	AuthRateLimit: 'authRateLimits',
+	/** Which data migrations ran on this database (release-steps runner). */
+	ReleaseMigration: 'releaseMigrations',
 	/**
 	 * Verified-but-not-yet-created signups (`DEC-SIGNUP-VERIFICATION`) — intentionally NOT a
 	 * Schema Nebula node. A row lives 15–30 minutes, holds no business record, is referenced
@@ -140,7 +142,12 @@ export type ModelName = keyof typeof COLLECTION_NAMES;
  * Absence from the graph is a classification here, never a shortcut. Anything that is genuinely
  * part of the data model belongs in the Schema Nebula graph, not in a debt list.
  */
-const RUNTIME_ONLY_COLLECTIONS = ['authRateLimits', 'pendingSignups', 'pendingContactChanges'] as const;
+const RUNTIME_ONLY_COLLECTIONS = [
+	'authRateLimits',
+	'pendingSignups',
+	'pendingContactChanges',
+	'releaseMigrations',
+] as const;
 
 /**
  * Formerly held implemented collections the graph had not caught up with.

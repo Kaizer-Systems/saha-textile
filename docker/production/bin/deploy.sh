@@ -2,7 +2,8 @@
 # Deploys one release folder: bin/deploy.sh <release-folder>
 #
 #   check inputs → back up (production) → pull by digest → data services → database and search
-#   keys → apps → first-run setup → search rebuild → health and config checks
+#   keys → release steps (roles, indexes, migrations, search; all before the switch) → apps →
+#   health and config checks
 #
 # Any failure after the apps change puts the previous release back and exits 1.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -140,10 +141,12 @@ SCRIPT
 
 start_apps() {
 	say 'Starting the apps'
-	compose_for "$RELEASE" run --rm --no-deps -T api node dist/first-run-setup.js >/dev/null
+	# Before the switch, from the new release's image, while the old release keeps serving:
+	# system roles (checked), database indexes, data migrations, and the search index (built only
+	# when its version is new). The first failed step stops the release before shoppers see it.
+	say 'Running the release steps'
+	compose_for "$RELEASE" run --rm --no-deps -T api node dist/release-steps.js
 	swap_apps "$RELEASE"
-	say 'Rebuilding the search index'
-	exec_one "$RELEASE" api node dist/rebuild-search-index.js >/dev/null
 	install_fallback_pages
 	check_running
 }

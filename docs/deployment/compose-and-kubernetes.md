@@ -3,7 +3,7 @@ title: Compose and Kubernetes
 description: How the Docker Compose deployment relates to Kubernetes, what single-node Kubernetes would and would not add, and when a move makes sense.
 status: implemented
 audience: [operator, backend]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - docker/production/compose.yaml
     - docker/production/bin/lib.sh

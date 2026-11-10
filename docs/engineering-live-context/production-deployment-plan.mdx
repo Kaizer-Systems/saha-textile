@@ -113,11 +113,35 @@ MongoDB's docs prefer X.509 for production, but a keyfile only protects traffic 
 
 **Once per environment, by hand over SSH:** run `node dist/create-first-admin.js --email <address>` in the API container, and save the credential in NordPass.
 
-**Every deploy, automatic (`docker/production/bin/deploy.sh`):** check the release and its secrets, back up (production), pull by digest, start data services, start the replica set and keep the app user's password in step, read the search key, run `node dist/first-run-setup.js`, start the apps, run `node dist/rebuild-search-index.js`, check that every dependency is up and that `/config.json` parses on storefront and admin, then record the release. All of it is safe to repeat.
+**Every deploy, automatic (`docker/production/bin/deploy.sh`):**
 
-First-run setup adds only what a new database cannot work without: the administrator role, currencies and notification templates. It skips rows that exist, so it never overwrites staff changes. Products, categories, customers and promotions are entered in admin.
+1. Check the release and its secrets.
+2. Back up (production only).
+3. Pull the images by digest.
+4. Start the data services.
+5. Start the replica set and keep the app user's password in step.
+6. Read the search key.
+7. Run the release steps (`node dist/release-steps.js`) from the new release's image while the old release keeps serving.
+8. Switch the apps.
+9. Check that every dependency is up and that `/config.json` parses on storefront and admin.
+10. Record the release.
 
-The search rebuild fills a second index and swaps it in, so shoppers never see an empty list during a deploy.
+All of it is safe to repeat.
+
+**Release steps.** Each step answers three questions: is it needed, do it, did it work. The first failed check stops the deploy before the switch, so shoppers never see a broken release. The same steps run in `pnpm stack:up` and in `pnpm local:refresh`, so a Mac never drifts from the servers.
+
+| Step                         | When it has work                                                                                     | What it checks                                                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| System roles and permissions | Every release: first-run setup (administrator role, currencies, notification templates)              | The Administrator role holds every permission code this release knows                                               |
+| Database indexes             | When a model's indexes changed                                                                       | Every collection's indexes match its model, so no index is built under shoppers and no changed index is left behind |
+| Data migrations              | When a new migration is listed in `packages/adapters-db-mongo/src/release/data-migrations.ts`        | Each migration is recorded once in `releaseMigrations`                                                              |
+| Search index                 | Every release applies settings and search words; a full build only when `SEARCH_INDEX_VERSION` rises | This version's index (`products_v<N>`) exists and its build is recorded                                             |
+
+`--json` prints one event per line for the Release Console. First-run setup adds only what a new database cannot work without and skips rows that exist, so it never overwrites staff changes. Products, categories, customers and promotions are entered in admin.
+
+**Search versions.** The index name carries the search version, so a release reads `products_v1` while a release with a new version builds `products_v2` beside it before the switch. Raise `SEARCH_INDEX_VERSION` only when a release changes what the index knows about a product (a document field, or the searchable, filterable or sortable attributes or ranking rules). A build waits on the engine's own progress and fails on a failed task or 60 seconds with no progress. The previous version's index is kept for a rollback; older ones are removed.
+
+**Data migrations come in two halves.** The `expand` half adds the new shape and keeps the old one. A later release's `contract` half removes the old. That way a rollback still finds data it understands.
 
 Any database change must keep working with the previous release, or a rollback breaks.
 
@@ -199,7 +223,7 @@ The deploy script keeps the previous digests. If health or the smoke test fails,
 
 - **Metrics and alerts:** the free metrics agent. Alert policies for CPU, memory, disk and load go to the team email.
 - **Uptime:** one free DigitalOcean Uptime check on the storefront. Each further check is $1 a month, and is added only if the owner asks.
-- **Logs:** Docker's `local` driver, about 100 MB per container, read over SSH.
+- **Logs:** Docker's `local` driver, about 100 MB per container; the Release Console's agent keeps its own 30-day copy with emails, phone numbers and tokens masked.
 - **Backups:** the host status file carries the last backup time. The worker emails the owner if it is too old, and the screen shows it. If the worker is down this alert is silent, but the uptime check should catch that case.
 
 ### Super admin Server screens
@@ -220,6 +244,43 @@ Two admin screens, super admin only. Both are feasible; both need a `DEC-UI-REUS
 - The Reboot button needs super admin rights and a PIN check, and it is audited. It writes one request file into a narrow mounted folder. A host watcher performs the reboot.
 - The API never gets root, the Docker socket or a DigitalOcean token that can change anything. A hijacked admin could only reboot the server, limited to once an hour.
 - Until the screen exists, the owner reboots by SSH. Manual fallbacks stay: SSH, the control panel, the Recovery Console.
+
+### Release Console
+
+A dashboard that runs only on the owner's Mac (`pnpm console`). An agent on each server keeps
+30 days of logs and requests and 12 months of totals, and the console reads them through
+Cloudflare Access. Every action needs the admin PIN and is audited. The design and every screen
+are in the Safe Releases Brief, version 5.
+
+**Side menu (approved 2026-11-10).** ● means built with the console; ○ means it appears once its
+feature is built. Tabs inside a screen are not menu items.
+
+- **Overview** ●
+- **Ship**
+    - Code: Pull requests ●, Pipelines ●, Job logs ●
+    - Release: Approvals ●, Live deploy ●, Release steps ●, What changed ●, Release impact ●, Rollback ●
+    - Plan: Release calendar ●, Dress rehearsal ○, Load test ○
+    - Packages: Images ●, Dependencies ●
+- **Watch**
+    - Problems: Issues ●, Alerts ●, Incident room ●
+    - Performance: APM ●, Traces ●, Database monitor ●, Shopper experience ○
+    - Availability: Health ●, Uptime and journeys ●, Service goals ○
+    - Dashboards ●
+- **Run**
+    - Servers: Services ●, Processes ●, Infrastructure ●, Server ●, Terminal ●
+    - Logs and traffic: Live logs ●, Network ●, Cache and CDN ○
+    - Data: Database and backups ●, Search index ●, Photos ●, Job queues ●, Schedules ●
+    - Controls: Switches ●, Secrets ●, Drift ○
+- **Shop:** Payments ○, Messages ●, Client versions ○, Search engines ○
+- **Governance:** Who has access ●, Audit ●, Privacy requests ○, Costs and quotas ○, Domains and email ○
+- **Settings** ●
+
+Only the open group shows its sub-groups. On phones the menu becomes a drawer.
+
+**Menu search.** A box at the top of the menu, also focused by ⌘K, lists every screen and tab
+whose name matches fully or partly, with its place in the tree (for example Watch › Performance
+› Traces). It also matches common other words, so "logs" finds Live logs and Job logs, and
+"pm2" finds Processes. A click or Enter opens the screen.
 
 ## 13. Developer portal
 

@@ -9,3 +9,4 @@ export * from './blog/index';
 export * from './stores/index';
 export * from './mailbox/index';
 export * from './events/index';
+export * from './release/index';

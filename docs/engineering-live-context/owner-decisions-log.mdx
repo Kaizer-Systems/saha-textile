@@ -1138,6 +1138,52 @@ The owner approved the video page brief (revision 4) in full on 2026-11-10.
 - **Playlists (V9).** Not at launch.
 - **Open:** whether a Short's episode code (for example `EP679-S6D` burned into the video) should link that Short to a product, and how. Tracked as `DEC-SHORTS-PRODUCT-LINK`; nothing that links Shorts to products is built until it is answered.
 
+## Owner decision round (2026-11-10) — safe releases and the Release Console
+
+The owner approved the Safe Releases Brief (version 5) "with your recommendations" on 2026-11-10.
+The brief is a private artifact: <https://claude.ai/artifact/3xBEmhDRfYHDWL6C7DkGRd>.
+
+- **Search plan, four steps.**
+    1. A versioned index (`products_v1`), built before the switch only when the search version
+       rises. Waits follow the engine's own progress, not a stopwatch, and fail on a failed task or
+       60 seconds without progress. The previous version stays for a rollback.
+    2. An outbox queue for every product change.
+    3. Search counts as optional at release unless the search version rises.
+    4. A nightly check against Mongo.
+
+    When a new index is needed it must finish before the switch, or the release stops.
+
+- **One release-steps runner** (approved earlier the same day as Decision 2). Every step answers
+  "is it needed, do it, check it", in this order: system roles with a check that Administrator
+  holds every permission; database indexes compared and rebuilt; numbered data migrations, each
+  recorded once in `releaseMigrations` and written in expand and contract halves; then search.
+  Everything runs before the switch. The production deploy, `pnpm stack:up` and
+  `pnpm local:refresh` all use it. A failed check stops the release before shoppers see it.
+- **Release Console.**
+    - Runs only on the owner's Mac, with an agent on each server.
+    - The futuristic look is approved (`DEC-UI-REUSE`).
+    - A terminal inside the console (xterm.js and node-pty) replaces the iTerm2 launcher. Production
+      tabs are framed red; destructive commands need the environment name typed.
+    - Every PM2 Plus and Enterprise feature that applies is covered, without `pm2 link`.
+    - OpenTelemetry runs locally now; on the servers it stays off until decided.
+    - Real user monitoring is approved, behind the Analytics consent category, after the privacy policy.
+    - Logs: 30 days in full, 12 months of totals.
+    - Personal data in logs is masked before the 30-day store ships.
+- **Side menu approved (2026-11-10).**
+    - Overview, then five groups (Ship, Watch, Run, Shop, Governance), each with second-level
+      sub-groups and screens, plus Settings. The tree is recorded in
+      `production-deployment-plan.mdx` § Release Console.
+    - There is no "Architect's additions" group; those screens sit in the group where they belong,
+      and a screen appears only once its feature is built.
+    - The owner added a menu search: a box at the top of the menu (⌘K focuses it) shows full and
+      partial matches of screen and tab names, with their place in the tree. A click or Enter
+      opens the screen.
+- **Parked:**
+    - The privacy policy rewrite and its review are open Chunk K in the API/DB roadmap; the owner
+      wants more briefs first.
+    - The ideas considered and not recommended (session replay, chaos testing in production, AI
+      auto-fixes, canary releases, a public status page) are open Chunk L, for a later decision.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

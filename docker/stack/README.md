@@ -32,7 +32,9 @@ and Firefox resolve `*.localhost` themselves; Safari needs the `/etc/hosts` line
 excluded from the Docker build context). Images never contain a secret; staging and
 production inject the same variables from GitHub encrypted secrets at deploy time.
 
-**Search**: a fresh stack starts with an empty index, so fill it once with
+**Release steps**: `pnpm stack:up` runs the same release steps as a deploy (system roles and
+their check, database indexes, data migrations, and the search index, built when its version is
+new), so a fresh stack starts with a filled index. Rebuild search by hand with
 `docker compose -f docker/stack/compose.yaml exec api node dist/rebuild-search-index.js`.
 
 **Known gap**: social sign-in needs the stack origins added to the Google/Meta app settings.

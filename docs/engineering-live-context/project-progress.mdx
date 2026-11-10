@@ -969,6 +969,7 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
 - _(append)_
 
 ---
+- 2026-11-10 — [DONE] Search step 1 of the approved plan: the index name carries the search version (`products_v1`, `SEARCH_INDEX_VERSION` in `apps/api/src/search/search-index-version.ts`); a build is recorded in `<index>_builds`; versions older than the previous one and half-built copies are removed; waits follow Meilisearch progress (finished tasks and batch percentage) and fail on a failed task or 60 s without progress. `rebuild-search-index --release` skips a built version and applies settings only. Proved against local Meilisearch: build, skip, forced rebuild. Local note: after this lands, run `pnpm local:refresh` (or `search:rebuild`) once, because reads now go to `products_v1`. Tool: claude-code. Notes: steps 2–4 (outbox, optional search at release, nightly check) are next.
 
 ## Notifications (`NotificationPort` / MSG91)
 
@@ -3891,6 +3892,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 ---
 
 - 2026-11-08 — [DONE] **Combined branch `feat/combined-after-pr6`.** Merged the CCAvenue, admin home, home page, PWA and deployment plan branches from `dev`; only the owner log and one `core-domain` export line conflicted, and both sides were kept. `e2e/stack/run.mjs` now forces production app builds, because `NODE_ENV=development` in `apps/api/.env` built the shop in Angular development mode and left the service worker off. Verified: lint, typecheck, 100% coverage, product builds, and `pnpm e2e:stack` with 331 passed, 0 failed, 16 skipped on phone by design. Tool: claude-code.
+- 2026-11-10 — [DONE] Release-steps runner: core `runReleaseSteps` (needed, run, check; JSON events for the console), Mongo steps `systemRolesStep` (checks Administrator holds every permission), `databaseIndexesStep` (reconcile before the switch), `dataMigrationsStep` (ledger `releaseMigrations`, list empty on purpose), API `searchIndexStep`; script `dist/release-steps.js` (`--json`, `--without-search`). `deploy.sh` runs it before `swap_apps` in place of first-run setup plus the after-switch rebuild; `pnpm stack:up` runs it; new `pnpm local:refresh`. Proved twice on `saha_textile_test`: it fixed a real changed index (`shopEvents.popupAssetId`) and skipped work on the second run. Tool: claude-code.
 
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 
@@ -4124,6 +4126,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 - _(append)_
 
 ---
+- 2026-11-10 — [DONE] Roadmap gains open Chunk K (privacy policy rewrite, parked with its brief) and Chunk L (Release Console ideas held for later); owner log records the safe-releases round and the approved console menu. Tool: claude-code.
 
 ## MCP / local tooling
 

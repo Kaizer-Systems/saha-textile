@@ -7,3 +7,4 @@ export * from './models/index';
 export * from './mappers';
 export * from './repositories/index';
 export * from './seed/index';
+export * from './release/index';

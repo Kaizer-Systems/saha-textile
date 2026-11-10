@@ -110,6 +110,8 @@ cmd_up() {
 	[[ -f "$CERT_DIR/stack-cert.pem" ]] || { echo "Run: pnpm stack:certs" >&2; exit 1; }
 	[[ -f "$ENV_DIR/api.env" ]] || { echo "Run: pnpm stack:env" >&2; exit 1; }
 	"${COMPOSE[@]}" up -d --build --wait
+	# The same release steps as a deploy: roles, indexes, migrations and the search index.
+	"${COMPOSE[@]}" exec -T api node dist/release-steps.js
 	# A broken config.json does not stop the app: the browser silently falls back to localhost.
 	curl -fsk "https://$STOREFRONT_HOST$PORT_SUFFIX/config.json" |
 		node -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))' ||

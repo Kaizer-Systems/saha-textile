@@ -1189,7 +1189,15 @@ The brief is a private artifact: <https://claude.ai/artifact/3xBEmhDRfYHDWL6C7Dk
 - **Console apps (2026-11-10).**
     - The console is its own Angular app without server-side rendering (`apps/release-console`), with its own local API (`apps/release-console-api`). A small agent (`apps/release-agent`) runs on each server and in the local stack.
     - Nothing of the console goes into the storefront or the admin.
-    - The console and its local API are never deployed or published as images, and the shop's CI skips them. The agent ships to the servers, so CI checks it.
+    - The console and its local API are never deployed or published as images. The agent ships to the servers, so CI checks it.
+- **CI checks the console only when it changes (2026-11-10).** The owner chose this over skipping it.
+    - A pull request runs the console's lint, types, tests and build only when it changes a file in
+      `apps/release-console`, `apps/release-console-api`, `apps/release-agent` or
+      `packages/release-console-contracts`, or a shared package they use (core-domain, contracts,
+      config, the root lock file or the CI files). Turborepo works out which packages a change touches.
+    - The first pull request that adds the console runs everything once. After that, a shop-only
+      change skips the console checks, and a shared-code change runs both.
+    - The shop's own checks are unchanged and still run on every pull request.
 - **Server screens live only in the console (2026-11-10).** DigitalOcean graphs, patches and Reboot are not built in the admin.
 - **English only (2026-11-10).** The Release Console has no Bengali and no Transloco: it is an
   owner-only tool, so the en and bn parity rule for the shop and admin does not apply to it.

@@ -283,6 +283,10 @@ feature is built. Tabs inside a screen are not menu items.
 
 Only the open group shows its sub-groups. On phones the menu becomes a drawer.
 
+**CI.** The console's checks run only when a pull request changes the console's own apps or
+packages, or shared code they use. Turborepo decides which packages a change touches. The shop's
+checks run on every pull request as now.
+
 **Menu search.** A box at the top of the menu, also focused by ⌘K, lists every screen and tab
 whose name matches fully or partly, with its place in the tree (for example Watch › Performance
 › Traces). It also matches common other words, so "logs" finds Live logs and Job logs, and

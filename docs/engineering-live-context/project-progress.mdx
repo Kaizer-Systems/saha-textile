@@ -972,6 +972,7 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
 
 ---
 - 2026-11-10 — [DONE] Search step 1 of the approved plan: the index name carries the search version (`products_v1`, `SEARCH_INDEX_VERSION` in `apps/api/src/search/search-index-version.ts`); a build is recorded in `<index>_builds`; versions older than the previous one and half-built copies are removed; waits follow Meilisearch progress (finished tasks and batch percentage) and fail on a failed task or 60 s without progress. `rebuild-search-index --release` skips a built version and applies settings only. Proved against local Meilisearch: build, skip, forced rebuild. Local note: after this lands, run `pnpm local:refresh` (or `search:rebuild`) once, because reads now go to `products_v1`. Tool: claude-code. Notes: steps 2–4 (outbox, optional search at release, nightly check) are next.
+- 2026-11-10 — [DONE] `pnpm local:refresh` run on the owner's local database with their yes: roles checked (106 permissions), the changed `shopEvents.popupAssetId_1` index rebuilt, `products_v1` built with 964 live products; local search answers again over HTTPS on 4000. The old unversioned `products` index is still in local Meilisearch, unused. Tool: claude-code.
 
 ## Notifications (`NotificationPort` / MSG91)
 

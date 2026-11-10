@@ -12,6 +12,7 @@
  * and writes the app's `fonts.css`. All the families are under the SIL Open Font License, which
  * allows serving them ourselves. Commit the fonts, the licences and `fonts.css` together.
  */
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -143,6 +144,8 @@ async function selfHost(name, app) {
 ${rules.join('\n\n')}
 `,
 	);
+	// The repository's own formatting, so the file passes `pnpm lint` as written.
+	execFileSync('pnpm', ['exec', 'prettier', '--write', app.css], { cwd: ROOT, stdio: 'ignore' });
 	console.log(`${name}: ${files.size} files, ${list.length} rules -> ${app.css}`);
 	console.log(
 		readdirSync(folder)

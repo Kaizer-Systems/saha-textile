@@ -98,6 +98,7 @@ const sidebars: SidebarsConfig = {
 						'admin/overview',
 						'admin/application-atlas',
 						'admin/routing-and-shell',
+						'admin/search',
 						'admin/state-and-data',
 						'admin/home-dashboard',
 						'admin/forms-tables-and-crud',

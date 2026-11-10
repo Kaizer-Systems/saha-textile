@@ -53,6 +53,7 @@ flowchart LR
 | Media            | Media library, home banners, review moderation and the YouTube field                                                                                  |
 | Content          | Blog posts, categories and tags; launch and sale events                                                                                               |
 | Search           | Search words and Storefront settings › Search                                                                                                         |
+| Header search    | Finds admin pages, Storefront settings tabs and Brand Kit sections from the header box; see [Admin Search](./search.md)                               |
 | Settings         | Brand Kit (logo sets, link preview picture, profiles, store links, colours), Stores and Mailboxes                                                     |
 | Inbox            | The shop's Gmail mailboxes, read and answered live; see [Inbox and Mailboxes](./inbox-and-mailboxes)                                                  |
 | Theme colour     | Brand Kit › Admin theme colour sets `--theme-color`; every admin style reads it, so nothing types the theme hex                                       |

@@ -1329,13 +1329,13 @@
 			}
 
 			// The Brand Kit's wide logo is about seven times wider than tall, so the theme's 100px left
-			// it ~15px high (owner, 2026-11-10). At 234px it is ~34px high: the gap below it gave up
-			// 15px and the negative top margin takes the last 3.5px from the padding above, so the
+			// it ~15px high (owner, 2026-11-10). At 258px it is ~37.5px high: the gap below it gave up
+			// 15px and the negative top margin takes the last 7px from the padding above, so the
 			// newsletter and event popups keep their size and nothing under the logo moves.
 			.modal-logo {
-				width: 234px;
+				width: 258px;
 				max-width: 100%;
-				margin-top: -3.5px;
+				margin-top: -7px;
 				margin-bottom: 8px;
 			}
 

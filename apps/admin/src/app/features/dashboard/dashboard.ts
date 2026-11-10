@@ -162,7 +162,10 @@ export class Dashboard {
 	private readonly reviewsQuery = injectDashboardReviewsQuery(() => this.can('dashboard.reviews'));
 	readonly reviews = computed(() => this.reviewsQuery.data()?.items ?? []);
 
-	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 2 }));
+	private readonly blogsQuery = injectBlogsQuery(
+		() => ({ status: 1, paginate: 2 }),
+		() => this.can('blog.index'),
+	);
 	readonly blogs = computed(() => this.blogsQuery.data()?.data ?? []);
 
 	/** The Stores tile: how many stores show on Contact Us. */

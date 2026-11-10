@@ -217,6 +217,11 @@ describe('list queries', () => {
 		await expect(query.queryFn()).resolves.toEqual({ ok: true });
 		expect(answer).toHaveBeenCalledOnce();
 	});
+
+	it('blogs ask only when enabled', () => {
+		expect(options(() => injectBlogsQuery(params)).enabled).toBe(true);
+		expect(options(() => injectBlogsQuery(params, () => false)).enabled).toBe(false);
+	});
 });
 
 describe('customer queries', () => {

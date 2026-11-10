@@ -6,11 +6,15 @@ import { firstValueFrom } from 'rxjs';
 import { Params } from '@data-access/interfaces/core.interface';
 import { BlogService } from '@data-access/services/blog.service';
 
-/** Blog posts for the admin table and pickers, any status, newest first with sticky ones on top. */
-export function injectBlogsQuery(params: () => Params) {
+/**
+ * Blog posts for the admin table and pickers, any status, newest first with sticky ones on top.
+ * `enabled` lets a caller skip the request when the person may not read posts.
+ */
+export function injectBlogsQuery(params: () => Params, enabled: () => boolean = () => true) {
 	const blogService = inject(BlogService);
 	return injectQuery(() => ({
 		queryKey: ['blogs', params()],
+		enabled: enabled(),
 		queryFn: () => firstValueFrom(blogService.getBlogs(params())),
 	}));
 }

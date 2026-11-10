@@ -40,7 +40,11 @@ vi.mock('apexcharts', () => ({
 	},
 }));
 vi.mock('@data-access/queries/blog.queries', () => ({
-	injectBlogsQuery: (p: () => unknown) => (p(), { data: blogs }),
+	injectBlogsQuery: (p: () => unknown, enabled: () => boolean) => (
+		p(),
+		(asked.enabled['blogs'] = enabled),
+		{ data: blogs }
+	),
 }));
 vi.mock('@data-access/queries/dashboard.queries', () => {
 	const plain = (name: string, data: () => unknown) => (enabled: () => boolean) => {
@@ -140,6 +144,7 @@ describe('Dashboard permissions', () => {
 		['stock', 'dashboard.stock'],
 		['reviews', 'dashboard.reviews'],
 		['categories', 'category.index'],
+		['blogs', 'blog.index'],
 	] as const;
 
 	it.each(QUERIES)('%s asks for its data only with %s', (name, code) => {

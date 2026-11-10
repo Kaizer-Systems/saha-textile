@@ -131,6 +131,8 @@ For cookie-authenticated `POST`, `PUT`, `PATCH` and `DELETE` requests, `CsrfGuar
 3. Compares them in constant time and checks the session's stored hash.
 4. Rejects with 403 and `reason: csrf_rejected`, without saying which half failed.
 
+A `@Public()` route, such as sign-in, refresh or password recovery, treats session cookies that resolve to no live session as absent. Session cookies can outlive their session: the row expires, is revoked, or was written by another database. Such a cookie carries no authority, so there is nothing to forge, and refusing it would block sign-in until the person deleted cookies by hand. A live session on a public route still gets the full check, and a route that needs a session refuses dead cookies with `csrf_rejected`.
+
 The storefront and admin cannot read cookies on the API host. They fetch the token from `GET /auth/csrf` or `GET /auth/admin/csrf` and keep it in memory (`CsrfTokenHolder` in `packages/http-transport`). The gateways fetch it again after sign-in and rotation. On `csrf_rejected`, the interceptors fetch once and replay once. A 403 without that reason is never retried. A cross-site page cannot read the token, because CORS lets only listed origins read the reply.
 
 For a live session, `GET /auth/csrf` keeps a valid bound token. It rotates the stored hash only when the cookie is missing or does not match, because a cross-site navigation must not be able to invalidate a session's token.
@@ -232,6 +234,8 @@ Meta proves nothing about its address, so a Facebook signup finds out through th
 - An operator account comes from an invite, valid for seven days, or from the first-administrator command.
 - Account Security at `/account` manages the PIN, password and sessions.
 - Five failed PIN attempts lock PIN use for 15 minutes. Password sign-in stays available.
+- The preferred sign-in method reads as `password` when the account has no PIN, so a stored `pin` preference never leaves an operator facing a PIN form they cannot use.
+- The sign-in screen says the credentials are wrong only for a 401. Any other failure shows a generic error. The hint about a locked PIN appears only on the PIN form.
 - A password reset suspends the PIN until the new password has been used once.
 - A password change ends every session, including the current one.
 

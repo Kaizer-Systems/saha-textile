@@ -107,6 +107,6 @@ Charts read the colour at run time through `themeColor()` in `core/brand/theme-c
 ## Limitations
 
 - Orders, product tags, coupons, pages, general settings and other families read JSON data.
-- On the home page, only the chart's commission line reads JSON data. The other widgets, including Total Stores and Latest Blogs, read the API.
+- On the home page, only the chart's commission line reads JSON data. The other widgets, including Total Stores and Latest Blogs, read the API. See [Admin home page](./home-dashboard).
 - Many list actions and form submissions in those families have no backend.
 - The create-order flow uses a client cart and does not place an order.

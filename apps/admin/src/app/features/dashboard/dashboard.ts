@@ -62,8 +62,7 @@ import type { DashboardPeriodQuery, DashboardStockState, I18nString, PermissionC
 /**
  * What each widget needs, in one place so the template, the queries and the empty-page message
  * cannot disagree. The Stores tile counts the shop's active stores (Settings › Stores, so super
- * admin only). The `blog.index` widget still shows demo data, kept by owner decision
- * (`DEC-ADMIN-HOME-WIDGETS`), and reads no API.
+ * admin only). The `blog.index` widget lists the two newest blog posts from the blog API.
  */
 const WIDGET_PERMISSIONS: readonly PermissionCode[] = [
 	'dashboard.revenue',

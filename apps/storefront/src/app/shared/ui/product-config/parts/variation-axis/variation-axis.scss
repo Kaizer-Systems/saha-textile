@@ -1,7 +1,7 @@
 .variation-axis {
 	.variation-table-wrap {
 		margin-top: 16px;
-		border: 1px solid #eee;
+		border: 1px solid var(--st-border);
 		border-radius: 8px;
 		overflow: hidden;
 	}
@@ -11,9 +11,9 @@
 		font-size: 14px;
 
 		thead th {
-			background-color: #f8f8f8;
+			background-color: var(--st-surface-soft);
 			font-weight: 600;
-			border-bottom: 1px solid #eee;
+			border-bottom: 1px solid var(--st-border);
 			white-space: nowrap;
 		}
 
@@ -25,11 +25,11 @@
 			}
 
 			&.disabled {
-				color: #b0b0b0;
+				color: var(--st-text-disabled);
 
 				.price-cell,
 				.text-content {
-					color: #b0b0b0;
+					color: var(--st-text-disabled);
 				}
 			}
 		}
@@ -44,7 +44,7 @@
 
 			i {
 				margin-right: 6px;
-				color: #d0d0d0;
+				color: var(--st-text-disabled-2);
 				vertical-align: middle;
 
 				&.checked {
@@ -54,7 +54,7 @@
 		}
 
 		.in-stock {
-			color: #2f9e44;
+			color: var(--st-success);
 		}
 
 		.price-cell {

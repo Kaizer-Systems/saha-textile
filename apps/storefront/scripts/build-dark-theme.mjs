@@ -127,9 +127,57 @@ dark.walkAtRules((atRule) => {
 	if (!atRule.nodes?.length) atRule.remove();
 });
 
+/**
+ * The shop colour as text. `#417394` reads well on white but not on the dark theme's charcoal
+ * (about 2.7 : 1), so every light rule that colours text or an icon with `var(--theme-color)` gets a
+ * dark twin using a lighter tint of the same colour. The tint is worked out from `--theme-color`, so
+ * it follows the Brand Kit colour. Backgrounds and borders keep the true colour: white text on it
+ * already passes.
+ */
+const TINT = '--theme-text-on-dark';
+const twins = postcss.root();
+twins.append(
+	postcss
+		.rule({ selector: 'html.dark' })
+		.append({ prop: TINT, value: 'color-mix(in srgb, var(--theme-color) 55%, #ffffff)' }),
+);
+let twinCount = 0;
+postcss.parse(readFileSync(lightFile, 'utf8')).walkDecls(/^(color|fill)$/, (decl) => {
+	if (!/^var\(--theme-color\)$/.test(decl.value.trim())) return;
+	const rule = decl.parent;
+	// Blue text on the rule's own white background stays blue: the white stays white in dark mode.
+	const ownBackground = rule.nodes.find((node) => node.type === 'decl' && /^background(-color)?$/.test(node.prop));
+	if (ownBackground && /#fff\b|#ffffff|\bwhite\b|rgb\(255, 255, 255\)/i.test(ownBackground.value)) return;
+	if (rule.type !== 'rule' || (rule.parent?.type === 'atrule' && /keyframes$/.test(rule.parent.name))) return;
+	// Text over photographs keeps its light colours in dark mode (shop-dark.scss, D7).
+	if (/home-contain|home-detail|banner-contain|banner-details/.test(rule.selector)) return;
+	const selectors = rule.selectors
+		.map((part) => part.trim())
+		.filter((part) => !part.startsWith(':root'))
+		.map((part) => (part.startsWith('html') ? part.replace(/^html(\.dark)?/, 'html.dark') : `.dark ${part}`));
+	if (!selectors.length) return;
+	const twin = postcss
+		.rule({ selector: selectors.join(', ') })
+		.append({ prop: decl.prop, value: `var(${TINT})`, important: decl.important });
+	// Same media query as the light rule.
+	let target = twins;
+	const chain = [];
+	for (let parent = rule.parent; parent && parent.type !== 'root'; parent = parent.parent) {
+		if (parent.type === 'atrule') chain.unshift(parent);
+	}
+	for (const atRule of chain) {
+		const wrapper = postcss.atRule({ name: atRule.name, params: atRule.params });
+		target.append(wrapper);
+		target = wrapper;
+	}
+	target.append(twin);
+	twinCount++;
+});
+
 const header =
 	'/* Dark theme: colour changes only, built by scripts/build-dark-theme.mjs from src/scss/dark.scss. Do not edit. */\n';
-writeFileSync(outFile, header + dark.toString());
+writeFileSync(outFile, header + dark.toString() + '\n' + twins.toString());
+console.log(`shop colour as text: ${twinCount} rules use the lighter tint in dark mode`);
 const summary = [...kept.entries()].sort((a, b) => b[1] - a[1]);
 console.log(`dark theme: kept ${summary.reduce((sum, [, count]) => sum + count, 0)} declarations, dropped ${dropped}`);
 console.log(summary.map(([prop, count]) => `  ${prop}: ${count}`).join('\n'));

@@ -10,3 +10,6 @@
 	@import 'utils/dark_variables';
 	@import 'style';
 }
+
+// The shop's own dark colours and fixes to the theme's dark mode, outside `.dark` (they use html.dark).
+@import 'shop-dark';

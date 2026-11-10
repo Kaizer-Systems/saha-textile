@@ -13,6 +13,7 @@
 
 @import 'utils/variables';
 @import 'style';
+@import 'utils/shop-colours';
 
 // The theme's dark mode is built from dark.scss into a file of its own, which a page links only
 // when the shop's mode is dark, so light pages never download it.

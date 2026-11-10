@@ -14,7 +14,7 @@
 			font-weight: 600;
 
 			.req {
-				color: #e03131;
+				color: var(--st-danger);
 			}
 		}
 
@@ -41,7 +41,7 @@
 			align-items: center;
 			gap: 4px;
 			padding: 10px;
-			border: 1.5px solid #e6e6e6;
+			border: 1.5px solid var(--st-border-soft);
 			border-radius: 8px;
 			cursor: pointer;
 			transition:
@@ -50,7 +50,7 @@
 			text-align: center;
 
 			&:hover {
-				border-color: #c9c9c9;
+				border-color: var(--st-border-strong);
 			}
 
 			&.active {
@@ -64,7 +64,7 @@
 				right: 4px;
 				color: var(--theme-color);
 				font-size: 16px;
-				background: #fff;
+				background: var(--st-surface);
 				border-radius: 50%;
 			}
 
@@ -82,7 +82,7 @@
 
 			.tile-delta {
 				font-size: 12px;
-				color: #666;
+				color: var(--st-text-muted);
 			}
 		}
 	}
@@ -98,7 +98,7 @@
 			align-items: center;
 			gap: 10px;
 			padding: 10px 14px;
-			border: 1.5px solid #e6e6e6;
+			border: 1.5px solid var(--st-border-soft);
 			border-radius: 8px;
 			cursor: pointer;
 
@@ -113,7 +113,7 @@
 
 			.opt-delta {
 				font-size: 13px;
-				color: #666;
+				color: var(--st-text-muted);
 			}
 		}
 	}

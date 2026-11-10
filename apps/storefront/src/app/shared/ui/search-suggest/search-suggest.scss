@@ -21,7 +21,7 @@
 }
 
 .search-suggestion {
-	background-color: #ffffff;
+	background-color: var(--st-surface);
 	box-shadow: 0 6px 14px rgba(34, 34, 34, 0.08);
 	overflow-y: auto;
 	overscroll-behavior: contain;
@@ -30,7 +30,7 @@
 	/* The theme's open look for `.search-full.show .search-suggestion`. */
 	&.open {
 		padding: 10px;
-		border: 1px solid #f0f3f8;
+		border: 1px solid var(--st-border-cool);
 		height: max-content;
 		/* `--suggest-room` is the space left below the field, measured as the box opens. */
 		max-height: min(500px, var(--suggest-room, 500px));
@@ -38,7 +38,7 @@
 
 	&::-webkit-scrollbar {
 		width: 4px;
-		background-color: #f5f5f5;
+		background-color: var(--st-surface-hover);
 	}
 
 	&::-webkit-scrollbar-thumb {
@@ -56,7 +56,7 @@
 	font-weight: 600;
 	letter-spacing: 0.05em;
 	text-transform: uppercase;
-	color: #4a5568;
+	color: var(--st-text-body);
 
 	i {
 		margin-right: 4px;
@@ -77,7 +77,7 @@
 
 .suggest-message {
 	margin: 4px 6px 8px;
-	color: #222222;
+	color: var(--st-text);
 
 	small {
 		display: block;
@@ -99,7 +99,7 @@
 		cursor: pointer;
 
 		+ li {
-			border-top: 1px solid #ececec;
+			border-top: 1px solid var(--st-border-line);
 		}
 
 		&:hover,
@@ -123,14 +123,14 @@
 			> i {
 				flex: none;
 				font-size: 18px;
-				color: #4a5568;
+				color: var(--st-text-body);
 			}
 
 			.drop-image img {
 				width: 40px;
 				height: 48px;
 				padding: 2px;
-				background: #f8f8f8;
+				background: var(--st-surface-soft);
 				object-fit: cover;
 			}
 
@@ -146,7 +146,7 @@
 					margin: 0;
 					font-size: 15px;
 					font-weight: 500;
-					color: #222222;
+					color: var(--st-text);
 
 					b {
 						font-weight: 700;
@@ -184,7 +184,7 @@
 			border: none;
 			background: none;
 			line-height: 1;
-			color: #4a5568;
+			color: var(--st-text-body);
 		}
 	}
 }

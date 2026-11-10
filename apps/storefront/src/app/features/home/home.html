@@ -115,6 +115,8 @@
 </section>
 }
 
+<!-- Bestsellers come from orders; the section stays hidden until there are some. -->
+@if (railsLoading() || bestsellers().length) {
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>
@@ -135,6 +137,7 @@
 		</div>
 	</div>
 </section>
+}
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>

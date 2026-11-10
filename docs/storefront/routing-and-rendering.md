@@ -11,6 +11,7 @@ source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/core/i18n
     - apps/storefront/src/server/middleware/locale.ts
+    - apps/storefront/src/server/api-url.ts
     - apps/storefront/vite.config.ts
 ---
 
@@ -128,6 +129,14 @@ Prefer rendering a stable server-safe structure and enhancing it in the browser.
 Public API requests run during the server render and pass through Angular's HTTP transfer cache, so the browser does not repeat them. `ServerApiTimeoutInterceptor` limits each API call to 2.5 seconds. Past that limit the query stays empty, and the browser fetches the data after hydration. Requests with credentials do not run through the transfer cache.
 
 Check both direct navigation and client-side navigation after hydration.
+
+### Server handlers
+
+Handlers in `src/server/` run in Nitro, outside Angular. The app initializer that loads `/config.json` never runs there, so the shared `environment` keeps its `localhost` default. A handler that calls the API takes the address from `serverApiUrl()` in `src/server/api-url.ts`. It reads `apiUrl` from `SAHA_TEXTILE_PUBLIC_CONFIG` and falls back to `environment.apiUrl` only when the variable is unset or unreadable.
+
+:::warning `seo-files.ts` still uses the build default
+The FAQ and sitemap handlers in `src/server/middleware/seo-files.ts` read `environment.apiUrl` directly, so on a deployed host they call `localhost`. Move them to `serverApiUrl()` before relying on a deployed sitemap.
+:::
 
 ## Adding a route safely
 

@@ -1,19 +1,20 @@
 ---
 title: Release Console
-description: The owner's dashboard for releases and servers, its local API, how to run it, and how it is checked.
-status: scaffolded
+description: The owner's dashboard for projects, repositories, releases and cloud accounts; its lock, its levels, its Keychain connections and its local API.
+status: implemented
 audience: [operator, frontend, backend]
 last_verified: '2026-11-10'
 source_of_truth:
     - apps/release-console
     - apps/release-console-api
     - packages/release-console-contracts
+    - .release-console.json
     - .github/workflows/ci.yml
 ---
 
 # Release Console
 
-The Release Console is an owner-only dashboard for releases, servers and cloud accounts. It runs only on the owner's computer and is never deployed or published as an image. It is in English only.
+The Release Console is an owner-only dashboard for projects, their repositories, releases, servers and cloud accounts. It runs only on the owner's Mac and is never deployed or published as an image. It is in English only.
 
 | Part          | Package                              | Where it runs                                 |
 | ------------- | ------------------------------------ | --------------------------------------------- |
@@ -27,30 +28,117 @@ The Release Console is an owner-only dashboard for releases, servers and cloud a
 pnpm console
 ```
 
-This starts the app and its API together. The `release-console` and `release-console-api` entries in `.claude/launch.json` start them one at a time.
+This starts the app and its API together. The `release-console` and `release-console-api` entries in `.claude/launch.json` start them one at a time. The app finds its API at its own port plus 10, so a second copy on port 4401 talks to an API on 4411.
+
+## The lock
+
+The console opens behind a 6-digit PIN that is set on the first run.
+
+- The PIN is stored as a salted scrypt hash, never as digits.
+- Five wrong tries lock the console for 15 minutes. The lock is kept in the console file, so restarting the API does not lift it.
+- Unlocking returns a random session token. The app keeps it in the tab's session storage and sends it as the `x-console-session` header. The API keeps sessions in memory only: they end after 30 idle minutes, on **Lock**, and when the API restarts.
+- Every route needs the session except `GET /api/health` and the `/api/lock/*` routes. A `401` sends the app back to the lock screen.
+- Console settings has **Lock now** and **Change PIN** (the current PIN is required).
+
+## Levels
+
+The console has three levels. Search (⌘K) is on at every level and finds only what that level can open; it never looks across projects or into another repository.
+
+| Level      | Address                       | Menus                                                                                                                                             |
+| ---------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Console    | `/console/…`                  | All projects (grouped by workspace), Add a project, Attention, Audit (every project), Console settings                                            |
+| Project    | `/p/:project/…`               | Overview, Repositories, Environments, Attention, Audit, Project settings (Connections, Repositories, Environments, Project menus, Remove project) |
+| Repository | `/p/:project/r/:repo/:screen` | Overview, the repository's own menus, Ship, Watch, Run, one group per cloud platform, one group per edge platform, Governance                     |
+
+The top bar holds the **Project** switcher (amber), the **Repository** switcher (cyan, with **Project overview** first) and the environment tabs of the open repository. The console level has no environment tabs.
+
+Attention lists what needs the owner: keys that are expiring (14 days or less), expired or failed; vendor slots with no key; the latest run of a workflow on `main`, `staging` or `dev` that failed; and runs waiting for approval. The console level shows only project names and counts.
+
+## Projects, repositories and vendor slots
+
+A project has one or more repositories. Each repository has:
+
+- **one source-code vendor**: GitHub, GitLab, Bitbucket or Azure Repos;
+- **one or more cloud platforms**: DigitalOcean, AWS, Google Cloud or Azure; each environment runs on one of them or on this computer;
+- **one or more edge platforms**: Cloudflare, AWS CloudFront with Route 53, or Fastly; each domain belongs to exactly one;
+- **its own menus**, listed in its `.release-console.json`.
+
+GitHub, DigitalOcean and Cloudflare have screens. Any other vendor can be chosen; its group shows **Screens later** until its own screens are built the way that vendor works. Each vendor is an adapter behind one shape per slot (source code, cloud, edge) in `apps/release-console-api/src/vendors/`.
+
+### Where the data lives
+
+| What                                           | Where                                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| Projects, key references, PIN hash, lock state | `~/Library/Application Support/Release Console/console.json` (owner-only, `0600`) |
+| Audit trail                                    | `audit.jsonl` beside it                                                           |
+| Key values                                     | The macOS login Keychain only                                                     |
+
+When the console file has no projects, the API imports the `project` block of `.release-console.json` at the repository root. For this repository that is Saha Textile in the Kaizer Systems workspace: repository `Kaizer-Systems/saha-textile` on GitHub, environments Local stack, Staging and Production, cloud DigitalOcean, edge Cloudflare with `sahatextile.com`, and the own menus Payments, Messages, Clients and SEO. The file holds no secrets.
+
+## Connections and the Keychain
+
+Project settings › **Connections** lists every key by category and repository: source code, cloud platforms, and edge, DNS and security. Below them, **Keys** lists each key with its account, rights, expiry, last check and state, with **Check** and **Remove**.
+
+Keys are a token paste or a browser sign-in, never a password.
+
+- A pasted key goes once to the local API, which writes it to the login Keychain with `security -i` and the command on standard input, so the value never appears in the list of running processes.
+- The Keychain item has the service `Release Console` and the account `<Project name> · <key id>`. One key serves every repository of the same project that uses the same account; it never serves another project.
+- No answer from the API ever contains a key value, and the console file holds only references.
+- Removing a key deletes its Keychain item. Removing a project deletes all of that project's items and no other project's.
+- Every key is checked as soon as it is stored. The states are verified, expiring (14 days or less), expired, failed and unchecked.
+
+| Key                                 | Made where                                                                           | Checked with                                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| GitHub CLI sign-in on this computer | `gh auth login` in a terminal; the browser finishes it. Nothing is pasted or stored. | `gh auth token`, then GitHub's `/user` and access to each repository that uses it                                  |
+| GitHub fine-grained token           | GitHub › Settings › Developer settings, limited to the repository, read-only         | `/user`, repository access, and GitHub's own expiry header                                                         |
+| DigitalOcean API · read / change    | DigitalOcean › API › Tokens, with an expiry                                          | `/v2/account`; DigitalOcean does not report a token's expiry, so the date typed at paste time is used              |
+| DigitalOcean Spaces key             | DigitalOcean › Spaces Object Storage › Access Keys, pasted as `ACCESS_KEY:SECRET`    | Kept unchecked until the Spaces screen reads with it                                                               |
+| Cloudflare API · read / change      | The Cloudflare account that holds `sahatextile.com` › Manage account › API Tokens    | `/user/tokens/verify`; an account token is verified at `/accounts/{id}/tokens/verify`, which also gives its expiry |
+
+The console never makes a token or signs in for the owner.
+
+## Live screens
+
+| Repository screen                           | Reads                                                | Before a key is pasted              |
+| ------------------------------------------- | ---------------------------------------------------- | ----------------------------------- |
+| Overview, Run › Services                    | Docker and the shop API on this computer             | Live                                |
+| Ship › Pull requests (Open PRs tab)         | GitHub, open pull requests                           | Live through the GitHub CLI sign-in |
+| Ship › Pipelines (All runs tab)             | GitHub Actions, the latest 30 runs                   | Live through the GitHub CLI sign-in |
+| DigitalOcean › Droplets (Droplets tab)      | Every droplet the key sees                           | Not connected                       |
+| DigitalOcean › Cloud account (Overview tab) | Team, droplet limit, month-to-date usage and balance | Not connected                       |
+| Cloudflare › Domains (Registrations tab)    | Every site (zone) the token sees                     | Not connected                       |
+| Cloudflare › DNS (Records tab)              | Every record in the edge slot's first domain         | Not connected                       |
+
+Each vendor read answers in one of three ways: data, **not connected** (with a button to Connections), or an error with the vendor's reason. DigitalOcean screens read with the read key when the slot has one, and with the change key otherwise. Every other screen and tab describes what it will show; items the console cannot do are red and disabled, and items it can do in part are yellow.
 
 ## Local API
 
-The API listens on `127.0.0.1` only and accepts browser requests only from the console page (`CONSOLE_ORIGIN`, default `http://localhost:4400`). It reads; it changes nothing.
+The API listens on `127.0.0.1` only and accepts browser requests only from the console page (`CONSOLE_ORIGIN`). Request bodies and every answer the app reads are parsed with the shared zod schemas.
 
-| Route                      | Answer                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------- |
-| `GET /api/health`          | `{ status: 'ok', version }`                                                           |
-| `GET /api/local/services`  | Every container of the local stack from Docker: state, health, uptime, CPU and memory |
-| `GET /api/local/readiness` | The shop API's `/health/ready` answer: `ok`, `degraded` or `down`                     |
+| Route                                                                             | Answer                                                       |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `GET /api/health`                                                                 | `{ status: 'ok', version }`                                  |
+| `GET /api/lock/status`, `POST /api/lock/setup`, `…/unlock`, `…/lock`, `…/pin`     | Lock state, first PIN, unlock, lock now, change PIN          |
+| `GET /api/projects`, `POST /api/projects`, `DELETE /api/projects/:id`             | Projects and workspaces; add; remove with its Keychain items |
+| `POST /api/projects/:id/keys`, `POST …/keys/:keyId/check`, `DELETE …/keys/:keyId` | Store a key and check it; check again; remove                |
+| `PUT /api/projects/:id/slots`                                                     | Which keys a repository's slot uses                          |
+| `GET /api/attention`, `GET /api/projects/:id/attention`                           | Counts per project; one project's items                      |
+| `GET /api/audit?project=`                                                         | Who did what, newest first                                   |
+| `GET /api/projects/:p/repos/:r/github/pulls` and `…/github/runs`                  | Pull requests and workflow runs                              |
+| `GET …/cloud/:slot/droplets` and `…/cloud/:slot/account`                          | Droplets and the cloud account                               |
+| `GET …/edge/:slot/zones` and `…/edge/:slot/zones/:zone/dns`                       | Sites and DNS records                                        |
+| `GET /api/local/services`, `GET /api/local/readiness`                             | The local stack's containers and the shop API's readiness    |
 
-Every answer is parsed with the shared zod schemas before the app uses it.
+| Setting                   | Default                                                        |
+| ------------------------- | -------------------------------------------------------------- |
+| `CONSOLE_API_PORT`        | `4410`                                                         |
+| `CONSOLE_ORIGIN`          | `http://localhost:4400`                                        |
+| `CONSOLE_DATA_DIR`        | `~/Library/Application Support/Release Console`                |
+| `CONSOLE_SEED_FILE`       | `.release-console.json`, found upwards from the working folder |
+| `CONSOLE_STACK_PREFIX`    | `saha-textile`                                                 |
+| `CONSOLE_LOCAL_READY_URL` | `http://localhost:4000/health/ready`                           |
 
-| Setting                   | Default                              |
-| ------------------------- | ------------------------------------ |
-| `CONSOLE_API_PORT`        | `4410`                               |
-| `CONSOLE_ORIGIN`          | `http://localhost:4400`              |
-| `CONSOLE_STACK_PREFIX`    | `saha-textile`                       |
-| `CONSOLE_LOCAL_READY_URL` | `http://localhost:4000/health/ready` |
-
-## The app
-
-The app shows the approved menu with its search (⌘K). Items the console cannot do are red and disabled, with a note to use the provider's own portal; items it can do in part are yellow. Overview and Services read live data from the local stack. Screens without live data describe what they will show.
+Tests point `CONSOLE_DATA_DIR` at a temporary folder and use an in-memory Keychain, so they never touch the owner's file or Keychain and never use a real token.
 
 ## Checks
 

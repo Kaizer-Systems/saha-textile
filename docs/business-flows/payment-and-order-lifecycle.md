@@ -90,7 +90,19 @@ Order history renders from the snapshot, not from the current product.
 
 ### Payment attempt
 
-`initiated → authorized/captured` or `failed`, with later partial or full refund states. Callback order and retries must be idempotent.
+`PaymentState` in `packages/core-domain` has seven values: `pending`, `authorized`, `captured`, `failed`, `cancelled`, `refunded` and `review`. An attempt moves only forward:
+
+| From         | May move to                                                 |
+| ------------ | ----------------------------------------------------------- |
+| `pending`    | `authorized`, `captured`, `failed`, `cancelled`, `refunded` |
+| `authorized` | `captured`, `cancelled`, `refunded`                         |
+| `captured`   | `refunded`                                                  |
+| `failed`     | `authorized`, `captured`, `cancelled`                       |
+| `cancelled`  | `authorized`, `captured`, `refunded`                        |
+| `refunded`   | nothing                                                     |
+| `review`     | nothing without an operator                                 |
+
+A failed or cancelled attempt can still turn out paid, because money that really moved must be recorded. Nothing moves from paid back to failed. Amounts are whole minor units (paise for INR) in `amountMinor`, and every attempt has its own `attemptId`, sent to the gateway as its order id.
 
 ### Shipment
 
@@ -104,6 +116,30 @@ Quote, label, pickup, transit, delivery, failure and cancellation are shipment e
 - A browser return URL is not proof of payment.
 - `decidePaymentResult` applies these rules for every gateway. Only a direct status enquiry can change an attempt; a callback is checked against it and against the stored attempt.
 - Unknown, mismatched or stale callbacks fail closed and enter an auditable review path.
+
+### Judging a gateway's answer
+
+`decidePaymentResult(attempt, status, callback?)` in `packages/core-domain/src/payments` is the one rule for every gateway. `attempt` is the stored attempt, `status` is the direct enquiry (`fetchPaymentStatus`, where `null` means the gateway has no record), and `callback` is the optional browser return (`verifyCallback`). It answers one of four decisions:
+
+| Decision    | Meaning                                                                        |
+| ----------- | ------------------------------------------------------------------------------ |
+| `apply`     | Record the returned state and gateway reference on the attempt.                |
+| `duplicate` | The attempt already holds this state. Change nothing and answer as before.     |
+| `pending`   | No verdict yet. Enquire again later.                                           |
+| `review`    | Change nothing and hand the attempt to an operator, with one of these reasons. |
+
+| Review reason                  | When                                                                          |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| `attempt-mismatch`             | A report names a different attempt.                                           |
+| `currency-mismatch`            | A report's currency differs from the stored attempt.                          |
+| `amount-mismatch`              | A report's amount differs from the stored attempt.                            |
+| `reference-mismatch`           | The stored, status and callback gateway references disagree.                  |
+| `paid-callback-without-record` | The callback claims payment, but the gateway has no record.                   |
+| `gateway-flagged`              | The gateway itself marks the payment for review, for example as high risk.    |
+| `paid-callback-contradicted`   | The callback claims payment, but the status says failed or cancelled.         |
+| `state-regression`             | The status would move the attempt backwards, or a paid attempt reads pending. |
+
+The checks run in that order. Only the status answer can change an attempt, so a re-posted callback, or an old failure arriving after a success, meets the same status and resolves to `duplicate`. The function is pure; the caller applies the decision to the attempt and its order in one transaction.
 
 ## Ownership and authorization
 
@@ -127,6 +163,7 @@ Do not generate production numbers from database counts, random ids, timestamps 
 | Provider handoff fails          | Stays pending or abandoned          | Attempt failed or not started  | Retry safely without a duplicate order |
 | Browser closes                  | Pending state remains               | Await callback or status check | Resume from account or order status    |
 | Callback delayed                | Not marked paid from browser return | Pending                        | Explain processing and poll safely     |
+| Return lost while API is down   | Pending state remains               | Settled by status enquiry      | "Confirming your payment" page         |
 | Amount mismatch                 | Not fulfilled                       | Flagged or failed              | Safe generic message; operator alert   |
 | Duplicate callback              | No duplicate transition             | Existing result returned       | Stable confirmation                    |
 | Stock changed before initiation | Not initiated                       | None                           | Return to corrected checkout           |
@@ -135,6 +172,7 @@ Do not generate production numbers from database counts, random ids, timestamps 
 
 - `POST /orders` creates a `pending` order and removes the cart in one transaction. It has no idempotency key, stock step or payment step.
 - The CCAvenue adapter is bound in the API, and no route calls it. No payment collection, hosted handoff, callback route or webhook exists.
+- No job enquires about attempts left `pending`, and no code calls `decidePaymentResult`.
 - `OrdersService` generates an interim order number.
 - Status changes have no legal-transition rule, version check or audit record.
 

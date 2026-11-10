@@ -312,14 +312,12 @@ A decrypted callback is not URL-encoded, so text a customer types on the billing
 
 ### During a restart
 
-The API can be briefly unavailable during a reboot or a crash ([Back in a moment](/engineering-live-context/production-deployment-plan#back-in-a-moment)). This is how CCAvenue meets that gap, as far as the material received shows.
+A deploy swaps old and new copies side by side, so it causes no gap ([Deploys without a gap](/engineering-live-context/production-deployment-plan#deploys-without-a-gap)). A reboot or a crash can still leave the API briefly unavailable ([Back in a moment](/engineering-live-context/production-deployment-plan#back-in-a-moment)). The payment return behaves as follows during such a moment, based on HDFC's documentation.
 
-- **No webhook is used.** The payment return (call 2) is the customer's browser posting CCAvenue's form once. Nothing received says CCAvenue sends it again. Dynamic Event Notification is a separate server-to-server post that HDFC turns on when given a URL. The material says nothing about its retries, timing or signing, so it is not planned, and CCAvenue needs no Cloudflare webhook rule.
-- **A return during the gap is lost.** The browser gets the 503 and `encResp` never reaches the API. Re-posting the same form later is a replay, which `decidePaymentResult` answers `duplicate` or `apply` as for any return. The payment itself happened at CCAvenue and is unaffected.
-- **Call 3 settles it.** HDFC makes the status enquiry mandatory because the return may not arrive. Checkout needs a sweep that runs call 3 for every attempt still `pending` once CCAvenue's 15-minute payment-page session has passed, and applies `decidePaymentResult` with no callback. A lost return then delays the order instead of losing it.
-- **What the customer sees.** A deploy swaps old and new side by side, so it has no gap ([Deploys without a gap](/engineering-live-context/production-deployment-plan#deploys-without-a-gap)). Only a reboot or a crash can still stop the API. The return address stays on the API host, and during such a moment its return path shows the storefront's "back in a moment" page, worded for a payment being confirmed.
-
-Staging proves it: post a return during a restart, then watch the sweep settle the attempt.
+- **No webhook.** The payment return (call 2) is the customer's browser posting CCAvenue's form once. HDFC's documentation does not describe CCAvenue sending it again. Dynamic Event Notification is a separate server-to-server post that HDFC enables for a given URL. Its retries, timing and signing are undocumented, so this integration does not use it, and CCAvenue needs no Cloudflare webhook rule.
+- **A return during the gap is lost.** `encResp` never reaches the API. The payment itself completed at CCAvenue and is unaffected. If the customer re-posts the same form later, `decidePaymentResult` treats it like any other return, so a replay is harmless.
+- **The status enquiry settles the attempt.** HDFC makes call 3 mandatory because the return may never arrive. An attempt still `pending` after CCAvenue's 15-minute payment-page session is settled by calling `fetchPaymentStatus` and passing the answer to `decidePaymentResult` with no callback. A lost return delays the order; it does not lose it.
+- **What the customer sees.** The return address is on the API host. While the API is unavailable, Nginx answers its path (`PAYMENT_RETURN_PATH`) with the storefront's "back in a moment" page, worded for a payment being confirmed ([Deploy and recovery](/deployment/deploy-and-recovery)).
 
 ### Open questions for HDFC
 
@@ -336,6 +334,7 @@ These come from the kits and are not answered by the material received.
 - Nothing here has run against CCAvenue. The encryption matches OpenSSL and the transcribed kit scheme, using a generated key, and the reply shapes come from the printed samples. The first test transaction may show differences.
 - Testing against CCAvenue needs these from HDFC: Merchant ID, Access Code, Working Key, the registered test return URL, and the server's public IP allow-listed for the merchant API.
 - No route, use case, payment collection or screen uses the adapter. Checkout stays closed.
+- No job runs the status enquiry for attempts left `pending`, so nothing settles a return lost during a reboot or crash automatically.
 - The cipher has no authentication tag and uses a fixed IV. The return route must answer every failure identically and be rate limited, or an attacker could learn from the differences.
 - `orderNo` is optional in `verifyCallback`, because one printed sample shows `encResp` alone. When present it must match.
 - A retry that gives one order id a second `tracking_id` goes to `review`.

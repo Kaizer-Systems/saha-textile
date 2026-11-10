@@ -564,6 +564,22 @@ recommended now; the reason is the current opinion, not a final answer.
 Also held here: "Ask Claude" itself (A22) is amber, because masked log lines would leave the Mac
 and Anthropic would become a service provider in the privacy policy (Chunk K, finding S5).
 
+### Chunk M — Offline shop for the installed app
+
+**Marker:** OPEN — held by the owner on 2026-11-07; starts only when the owner asks, in the installable-app chat. Decision: `DEC-PWA-OFFLINE`.
+
+Built so far: the manifest from the Brand Kit, a service worker with no `fetch` listener, hourly
+update checks, and Get the App with its how-to popup (portal: Storefront Orientation,
+§ Installable app).
+
+When it starts:
+
+- Answer `DEC-PWA-OFFLINE` first; each offline feature is its own route in `sw.ts`.
+- Keep the never-cached list from `DEC-PWA-OFFLINE` as a test.
+- Revisit `skipWaiting` once the worker keeps files.
+- Check on real phones, which the installable app has not had yet: Android Chrome and its own
+  install bar, iPhone Safari Add to Home Screen, and Safari and Firefox on a desktop.
+
 ## Owner lock order
 
 Recommended order for the fastest reduction of blocked behavior:

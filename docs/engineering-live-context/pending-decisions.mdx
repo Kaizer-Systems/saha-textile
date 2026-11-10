@@ -49,6 +49,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-PERF-TRIM`             | Which unused styles, icons and font weights to remove once development is finished                   | Storefront speed, theme, design system        |
 | `DEC-SHORTS-PRODUCT-LINK`   | Whether a Short's on-screen episode code links it to a product, and how                              | Shorts popup, product page, admin             |
 | `DEC-TRACING-SERVERS`       | Whether to switch on OpenTelemetry tracing on staging and production                                 | Server memory, Release Console traces         |
+| `DEC-PWA-OFFLINE`           | What the installed shop does offline, and the footer's app-store badges                              | Service worker, cart, footer                  |
 
 ---
 
@@ -830,3 +831,43 @@ bench above was done early, at the owner's request, to choose the tool.
 Answer (owner's own words, with date):
 
 Notes:
+
+---
+
+## 28. `DEC-PWA-OFFLINE` — What the installed shop does offline
+
+### Decision needed
+
+The storefront installs as an app, but its service worker caches nothing, so with no network the
+browser shows its own offline page. The owner said on 2026-11-07 that offline work comes later, in
+the installable-app chat, and only when asked. Decide, when that work starts:
+
+1. **Pages.** Which pages open offline: none, the pages a shopper has already visited, or the
+   whole catalogue (category and product pages, refreshed in the background).
+2. **Photos.** Whether product photos are kept on the device, and how much space they may take
+   (for example the last 200 photos, or 50 MB, oldest removed first).
+3. **Cart.** Whether "Add to cart" works offline. If it does, the change waits on the device and
+   is sent when the network returns; the server then re-prices it, and a line whose stock or
+   price has changed needs a rule (drop it, or keep it and show the new price).
+4. **Updates.** Once the worker keeps files, whether a new release takes over at the next visit
+   (the safe default) or at once, which can mix two builds' files on one open page.
+5. **App-store badges.** The footer's Google Play and App Store badges show whenever the shop
+   settings hold store links, and the local data has demo links. There is no store app. Keep the
+   badges for a future store app, remove them, or let them open Get the App.
+
+### Why this matters
+
+Offline pages make the app feel instant on a weak connection. Kept photos use the shopper's
+storage. An offline cart can promise a price or stock the server then refuses. Badges that lead
+to a store page with no shop app send shoppers away from the site.
+
+### Fixed whatever is chosen
+
+Nothing that belongs to one person or changes often is ever kept: API answers about accounts,
+sessions, cart, checkout or orders; signed media addresses; `/config.json`.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: nothing offline is built; the worker has no `fetch` listener (`apps/storefront/src/service-worker/sw.ts`). The badges are the theme's and stay until the owner says otherwise.

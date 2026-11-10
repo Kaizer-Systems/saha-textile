@@ -117,3 +117,30 @@ export async function writeStoryWords(card: Blob, words: StoryWords, fontFamily:
 		return card;
 	}
 }
+
+/**
+ * Share sheets get a JPEG: our photos are WebP, which WhatsApp can turn into a sticker and
+ * Instagram may refuse. Where the browser cannot draw, the picture is shared as it is.
+ */
+export async function asJpeg(photo: Blob): Promise<Blob> {
+	if (photo.type === 'image/jpeg' || photo.type === 'image/png') return photo;
+	try {
+		const picture = await createImageBitmap(photo);
+		const canvas = document.createElement('canvas');
+		canvas.width = picture.width;
+		canvas.height = picture.height;
+		const context = canvas.getContext('2d');
+		if (!context) return photo;
+		context.drawImage(picture, 0, 0);
+		return await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob ?? photo), 'image/jpeg', 0.9));
+	} catch {
+		return photo;
+	}
+}
+
+/** The file ending that matches what the picture really is. */
+export function pictureExtension(type: string): string {
+	if (type === 'image/png') return 'png';
+	if (type === 'image/webp') return 'webp';
+	return 'jpg';
+}

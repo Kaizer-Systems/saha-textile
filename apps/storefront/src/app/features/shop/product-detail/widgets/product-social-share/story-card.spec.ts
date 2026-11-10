@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { STORY_BAND, layoutStoryWords, wrap, writeStoryWords } from './story-card';
+import { STORY_BAND, asJpeg, layoutStoryWords, pictureExtension, wrap, writeStoryWords } from './story-card';
 
 /** Every letter as wide as half its size, bold a little wider: enough to test the layout. */
 const measure = (text: string, size: number, bold: boolean) => text.length * size * (bold ? 0.55 : 0.5);
@@ -59,5 +59,28 @@ describe('writeStoryWords', () => {
 	it('shares the plain card where the browser cannot draw', async () => {
 		const card = new Blob(['x'], { type: 'image/jpeg' });
 		expect(await writeStoryWords(card, { name: 'A', facts: '', shop: 'B' }, 'sans-serif')).toBe(card);
+	});
+});
+
+describe('asJpeg', () => {
+	it('keeps JPEG and PNG as they are', async () => {
+		const jpeg = new Blob(['x'], { type: 'image/jpeg' });
+		const png = new Blob(['x'], { type: 'image/png' });
+		expect(await asJpeg(jpeg)).toBe(jpeg);
+		expect(await asJpeg(png)).toBe(png);
+	});
+
+	it('shares the photo as it is where the browser cannot draw', async () => {
+		const webp = new Blob(['x'], { type: 'image/webp' });
+		expect(await asJpeg(webp)).toBe(webp);
+	});
+});
+
+describe('pictureExtension', () => {
+	it('names the file for its real type', () => {
+		expect(pictureExtension('image/png')).toBe('png');
+		expect(pictureExtension('image/webp')).toBe('webp');
+		expect(pictureExtension('image/jpeg')).toBe('jpg');
+		expect(pictureExtension('')).toBe('jpg');
 	});
 });

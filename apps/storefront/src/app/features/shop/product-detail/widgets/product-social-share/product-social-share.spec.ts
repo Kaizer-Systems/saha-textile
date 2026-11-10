@@ -13,8 +13,15 @@ const sharing = vi.hoisted(() => ({ data: undefined as unknown as { (): unknown;
 vi.mock('@data-access/queries/brand.queries', () => ({
 	injectBrandQuery: () => ({ data: () => ({ shopName: 'Saha Textile' }) }),
 }));
-const story = vi.hoisted(() => ({ write: vi.fn(async (card: Blob) => card) }));
-vi.mock('./story-card', () => ({ writeStoryWords: story.write }));
+const story = vi.hoisted(() => ({
+	write: vi.fn(async (card: Blob) => card),
+	jpeg: vi.fn(async (photo: Blob) => photo),
+}));
+vi.mock('./story-card', async (original) => ({
+	...(await original<object>()),
+	writeStoryWords: story.write,
+	asJpeg: story.jpeg,
+}));
 vi.mock('@data-access/queries/share.queries', async (original) => ({
 	...(await original<object>()),
 	injectShareSettingsQuery: () => sharing,
@@ -167,6 +174,18 @@ describe('ProductSocialShare', () => {
 			expect.any(String),
 		);
 		expect((shared[0] as { files: File[] }).files[0]?.name).toBe('katan.jpg');
+	});
+
+	it('hands the share sheet a JPEG named for what it is, never a WebP called .jpg', async () => {
+		const { share, shared } = render({ phone: true });
+		story.jpeg.mockImplementationOnce(async () => new Blob(['y'], { type: 'image/jpeg' }));
+		await share.sharePicture({ id: 'ig-post', group: 'post', icon: '', app: '', label: '', picture: 'photo' });
+		expect(story.jpeg).toHaveBeenCalledOnce();
+		const file = (shared[0] as { files: File[] }).files[0];
+		expect([file?.name, file?.type]).toEqual(['katan.jpg', 'image/jpeg']);
+		story.jpeg.mockImplementationOnce(async () => new Blob(['z'], { type: 'image/webp' }));
+		await share.sharePicture({ id: 'ig-post', group: 'post', icon: '', app: '', label: '', picture: 'photo' });
+		expect((shared[1] as { files: File[] }).files[0]?.name).toBe('katan.webp');
 	});
 
 	it('gives Instagram the short address people can type, and WhatsApp the full one', async () => {

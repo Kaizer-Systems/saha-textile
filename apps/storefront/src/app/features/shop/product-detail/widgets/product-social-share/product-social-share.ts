@@ -11,7 +11,7 @@ import { SHARE_DEFAULTS, injectShareSettingsQuery } from '@data-access/queries/s
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { ShareGroup, ShareTarget, hashtags, shareTargets, tagged } from './share-targets';
-import { writeStoryWords } from './story-card';
+import { asJpeg, pictureExtension, writeStoryWords } from './story-card';
 
 const rupees = (value: number): string => `₹${value.toLocaleString('en-IN')}`;
 
@@ -161,7 +161,9 @@ export class ProductSocialShare {
 				getComputedStyle(document.body).fontFamily || 'sans-serif',
 			);
 		}
-		return new File([blob], `${product.slug}.jpg`, { type: blob.type || 'image/jpeg' });
+		blob = await asJpeg(blob);
+		const type = blob.type || 'image/jpeg';
+		return new File([blob], `${product.slug}.${pictureExtension(type)}`, { type });
 	}
 
 	/** More: the phone's own share sheet with the message and link, for every other app. */

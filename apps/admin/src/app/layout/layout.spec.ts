@@ -20,7 +20,6 @@ import { Languages } from './header/widgets/languages/languages';
 import { Mode } from './header/widgets/mode/mode';
 import { Notification } from './header/widgets/notification/notification';
 import { Profile } from './header/widgets/profile/profile';
-import { Search } from './header/widgets/search/search';
 import { Loader } from './loader/loader';
 import { PageWrapper } from './page-wrapper/page-wrapper';
 import { Sidebar } from './sidebar/sidebar';
@@ -180,64 +179,7 @@ describe('Header notification', () => {
 	});
 });
 
-describe('Header search', () => {
-	const render = () => {
-		const nav = { search: true };
-		const search = bare(Search, [{ provide: NavService, useValue: nav }]);
-		search.items = [
-			{ title: 'Orders', type: 'link', icon: 'a' },
-			{
-				title: 'Catalog',
-				type: 'sub',
-				icon: 'b',
-				children: [
-					{ title: 'Products', type: 'link' },
-					{ title: 'Group', type: 'sub', children: [{ title: 'Order Status' }, { title: 'Other' }] },
-					{ type: 'sub' },
-				],
-			},
-			{ title: 'Plain', type: 'sub' },
-			{ icon: 'no title' },
-		] as never;
-		return { search, nav };
-	};
-
-	it('finds links at each level, carrying the parent icon', () => {
-		const { search } = render();
-		const found = search.searchTerm('order') as { title: string; icon?: string }[];
-		expect(found.map((item) => item.title)).toEqual(['Orders', 'Order Status']);
-		expect(found[1]?.icon).toBe('b');
-		expect(search.searchResultEmpty).toBe(false);
-		expect(document.body.classList.contains('overlay-search')).toBe(true);
-	});
-
-	it('says when nothing matches', () => {
-		const { search } = render();
-		search.searchTerm('zzz');
-		expect(search.searchResultEmpty).toBe(true);
-		expect(search.searchTerm('products')).toHaveLength(1);
-	});
-
-	it('clears on an empty term', () => {
-		const { search } = render();
-		search.searchTerm('order');
-		expect(search.searchTerm()).toEqual([]);
-		expect(search.searchResult).toBe(false);
-		expect(document.body.classList.contains('overlay-search')).toBe(false);
-	});
-
-	it('opens and closes', () => {
-		const { search, nav } = render();
-		search.openDropDown('x');
-		expect(search.searchResult).toBe(true);
-		search.openDropDown('');
-		expect(search.searchResult).toBe(true);
-		search.clickOutside();
-		expect(search.searchResult).toBe(false);
-		search.closeSearch();
-		expect(nav.search).toBe(false);
-	});
-});
+// The header search is tested in header/widgets/search/search.spec.ts.
 
 describe('Sidebar', () => {
 	const menu = () =>

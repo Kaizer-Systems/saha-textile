@@ -1,11 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { of, throwError } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { YouTubeGateway } from '@core/media/content-blocks.gateway';
@@ -68,6 +68,7 @@ function render<T>(type: Type<T>, service: Partial<Record<keyof SearchTermServic
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: Router, useValue: router },
+			{ provide: ActivatedRoute, useValue: { queryParamMap: new BehaviorSubject(convertToParamMap({})) } },
 			{ provide: SearchTermService, useValue: service },
 			{ provide: QueryClient, useValue: client },
 			{ provide: NotificationService, useValue: toasts },

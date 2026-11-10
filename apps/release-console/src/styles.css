@@ -1,3 +1,6 @@
+/* Self-hosted text fonts, written by scripts/self-host-fonts.mjs. */
+@import './fonts.css';
+
 /* Release Console look, from the approved Safe Releases Brief. Dark by design. */
 :root {
 	--hud-bg: #050b14;

@@ -1266,3 +1266,13 @@ The brief is a private artifact: [https://claude.ai/artifact/3xBEmhDRfYHDWL6C7Dk
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.
+
+## Owner decision round (2026-11-10) — restored theme styles and self-hosted fonts
+
+The owner answered the removal restore brief on 2026-11-10.
+
+- **Dark mode stays, as a file of its own.** The theme's dark mode (the whole theme compiled again under `.dark`) is built by the storefront's `styles` script into `public/assets/css/theme-dark.gen.css`. A page links it only when `site-config` sets the mode to dark, on the server as well as in the browser. Light pages never download it, and the service worker's precache leaves it out. The admin's dark mode was never affected.
+- **Every text font is served from our own address.** Public Sans, Noto Sans Bengali and Russo One in the storefront, Public Sans and Noto Sans Bengali in the admin, the Release Console's fonts, and the fallback pages' fonts. `scripts/self-host-fonts.mjs` downloads the same files Google Fonts serves, with every face and language subset and each family's SIL Open Font License, and writes each app's `fonts.css`. Pages no longer contact Google Fonts, the English upright Public Sans file is preloaded, and the Content Security Policy no longer allows the Google Fonts hosts.
+- **Russo One is restored but used nowhere for now.** Where it may appear is open as `DEC-DISPLAY-FONT`.
+- **The exit-intent popup stays deleted.** The newsletter popup already opens on desktop exit intent. The theme's `.exit-modal` selector goes back into the shared popup rule.
+- **The `swiper/css` import stays out** (owner's words recorded under `DEC-PERF-TRIM`): `swiper-bundle.css` holds every rule it had.

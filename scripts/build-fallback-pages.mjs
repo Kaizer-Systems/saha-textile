@@ -38,8 +38,18 @@ const SHOP_NAME = '__SHOP_NAME__';
 const LOGO = '<!--logo-->';
 const SITE_URL = '__SITE_URL__';
 
-const FONTS =
-	'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600&display=swap">';
+/**
+ * The copied stylesheet asks for the app's self-hosted fonts under `/assets/fonts/text/`. That path
+ * belongs to the app that is down, so the font files travel with the pages, like the photograph.
+ */
+const FONT_PATH = '/assets/fonts/text/';
+function withFonts(css, publicFolder, out) {
+	const files = new Set([...css.matchAll(/\/assets\/fonts\/text\/([\w.-]+\.woff2)/g)].map((match) => match[1]));
+	if (files.size === 0) throw new Error('The built stylesheet asks for no self-hosted fonts.');
+	mkdirSync(join(out, 'fonts'), { recursive: true });
+	for (const file of files) copyFileSync(join(publicFolder, 'assets/fonts/text', file), join(out, 'fonts', file));
+	return css.replaceAll(FONT_PATH, '/__fallback/fonts/');
+}
 
 function page({ locale, title, refresh, stylesheet, body }) {
 	return `<!doctype html>
@@ -49,7 +59,6 @@ function page({ locale, title, refresh, stylesheet, body }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 ${refresh ? '<meta http-equiv="refresh" content="15">\n' : ''}<title>${escape(title)} · ${SHOP_NAME}</title>
-${FONTS}
 <link rel="stylesheet" href="/__fallback/${stylesheet}">
 </head>
 <body>
@@ -130,11 +139,19 @@ for (const picture of MAINTENANCE_PICTURES) {
 }
 writeFileSync(
 	join(storefrontOut, 'storefront.css'),
-	storefrontCss.replaceAll('/assets/images/maintenance-folded-sarees-', '/__fallback/maintenance-folded-sarees-'),
+	withFonts(
+		storefrontCss.replaceAll('/assets/images/maintenance-folded-sarees-', '/__fallback/maintenance-folded-sarees-'),
+		join(ROOT, 'apps/storefront/public'),
+		storefrontOut,
+	),
 );
-copyFileSync(
-	builtStylesheet(join(ROOT, 'apps/admin/dist/index.html'), join(ROOT, 'apps/admin/dist')),
+writeFileSync(
 	join(adminOut, 'admin.css'),
+	withFonts(
+		readFileSync(builtStylesheet(join(ROOT, 'apps/admin/dist/index.html'), join(ROOT, 'apps/admin/dist')), 'utf8'),
+		join(ROOT, 'apps/admin/public'),
+		adminOut,
+	),
 );
 copyFileSync(join(ROOT, 'apps/admin/public/assets/svg/401.svg'), join(adminOut, '401.svg'));
 

@@ -50,6 +50,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-SHORTS-PRODUCT-LINK`   | Whether a Short's on-screen episode code links it to a product, and how                              | Shorts popup, product page, admin             |
 | `DEC-TRACING-SERVERS`       | Whether to switch on OpenTelemetry tracing on staging and production                                 | Server memory, Release Console traces         |
 | `DEC-PWA-OFFLINE`           | What the installed shop does offline, and the footer's app-store badges                              | Service worker, cart, footer                  |
+| `DEC-DISPLAY-FONT`          | Where, if anywhere, the shop uses the Russo One display font                                         | Storefront typography, Brand Kit              |
 
 ---
 
@@ -739,13 +740,13 @@ After development is finished, decide which unused theme and Bootstrap style rul
 
 ### Why this matters
 
-Measured on 2026-11-09 with a production build behind Brotli: the global stylesheet is about 0.98 MB (about 120 KB compressed) and every page must download it before it can draw, which is the largest cost on phones (main image at 6 to 9.4 s). The Remix Icon font is about 141 KB while about 100 icons are used. The Google Fonts request asks for 18 Public Sans styles (100 to 900, upright and italic) plus two Bengali weights.
+Measured on 2026-11-09 with a production build behind Brotli: the global stylesheet is about 0.98 MB (about 120 KB compressed) and every page must download it before it can draw, which is the largest cost on phones (main image at 6 to 9.4 s). The Remix Icon font is about 141 KB while about 100 icons are used. The text fonts are 18 Public Sans styles (100 to 900, upright and italic) plus two Bengali weights; since 2026-11-10 they are served from the shop's own address, so only faces a page uses are downloaded.
 
 ### Work that does not remove anything (can go first)
 
 - Split the global stylesheet by where rules are used: a small shared base, route-level styles that load with each page type, and component styles that Angular's server render already puts only on pages that use them. The same rules move; none are deleted.
 - Build-generated critical CSS for the first screen, with the full stylesheets still loaded as cached files without blocking the first paint.
-- Serve fonts and the icon font from our own origin with preload, so no second site is contacted.
+- Serve fonts and the icon font from our own origin with preload, so no second site is contacted. Done for the text fonts on 2026-11-10 (`scripts/self-host-fonts.mjs`); the icon font was already served by the shop.
 
 ### Candidates for removal (each needs the owner's written go-ahead)
 
@@ -757,7 +758,9 @@ Measured on 2026-11-09 with a production build behind Brotli: the global stylesh
 
 Removals approved (owner's own words, with date):
 
-Notes:
+- 2026-11-10, the storefront's `swiper/css` import beside `swiper-bundle.css`: "for the swiper, you're saying that keep it out, it's pure duplication because it is already present in a separate file in a separate way. So fine". Every rule of `swiper.css` is in `swiper-bundle.css`, which still loads, so no style is lost.
+
+Notes: the 2026-11-10 removal audit restored the theme's dark mode (now its own stylesheet, linked only in dark mode), the Russo One font (self-hosted) and the `.exit-modal` selector.
 
 ---
 
@@ -871,3 +874,31 @@ sessions, cart, checkout or orders; signed media addresses; `/config.json`.
 Answer (owner's own words, with date):
 
 Notes: nothing offline is built; the worker has no `fetch` listener (`apps/storefront/src/service-worker/sw.ts`). The badges are the theme's and stay until the owner says otherwise.
+
+---
+
+## 29. `DEC-DISPLAY-FONT` — Where the shop uses the Russo One display font
+
+### Decision needed
+
+The theme names one display font, Russo One, in a single class (`.text-russo`) that no page uses. It is served from the shop's own address since 2026-11-10, so it costs nothing until a page uses it. Decide where, if anywhere, it appears. The owner asked for this to be taken up later in its own piece of work (2026-11-10).
+
+### Why this matters
+
+- Russo One has one weight, no italic, and Latin and Cyrillic letters only. On Bengali pages any Bengali word set in it falls back to Noto Sans Bengali, so one line mixes two styles. Digits are the exception: Bengali pages use English digits.
+- Its wide, squared letters read as sporty or technical, which sits apart from a saree house's heritage look. It is hard to read in sentences and long capital-letter lines.
+- A font has no direct effect on search ranking. Indirectly, a large headline in a late-arriving font can delay the largest paint or shift text when it swaps in; used small and self-hosted, the effect is negligible. A headline in a font is live, indexable, translatable text, unlike words baked into a banner image.
+
+### Options
+
+1. **Numbers only** (recommended in the 2026-11-10 restore brief). Large sale figures and countdown digits, for example in the event popup and the phone strip. Identical in English and Bengali.
+2. **Not used.** The class stays available; a display font that suits the brand and covers Bengali is chosen with the Brand Kit.
+3. **Headings or banners.** Wider use, with the Bengali fallback above.
+
+Not recommended in any option: body text, menus, buttons, product names, or use across the whole site.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: the restore brief with samples is at https://claude.ai/artifact/CQCfTaL7ERzi9GfoK1EUeq.

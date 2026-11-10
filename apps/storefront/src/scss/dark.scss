@@ -1,0 +1,11 @@
+// The theme's dark mode: the whole theme compiled again with dark colours under `.dark`, exactly
+// as the original theme builds it. The `styles` script writes it to public/assets/css/theme-dark.gen.css,
+// a file of its own that a page links only when the shop's mode is dark (`applyThemeMode` in core/brand/theme-mode.ts), so
+// light pages never download it and the offline cache leaves it out.
+.dark {
+	// The base variables come first, as in the light theme. Inside `.dark`, so their `:root` colour
+	// lands under `.dark` and never overrides the shop's colour in theme-color.css.
+	@import 'utils/variables';
+	@import 'utils/dark_variables';
+	@import 'style';
+}

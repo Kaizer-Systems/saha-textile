@@ -14,7 +14,5 @@
 @import 'utils/variables';
 @import 'style';
 
-// The theme's dark mode compiled the whole theme a second time under `.dark` (about half of
-// this file, around 100 KB after compression, render-blocking on every page). The shop's mode is
-// fixed to light in `site-config.json` and nothing can switch it, so the copy is gone. To bring
-// dark mode back, restore:  .dark { @import 'utils/dark_variables'; @import 'style'; }
+// The theme's dark mode is built from dark.scss into a file of its own, which a page links only
+// when the shop's mode is dark, so light pages never download it.

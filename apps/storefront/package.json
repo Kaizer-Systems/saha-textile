@@ -7,8 +7,8 @@
     "node": ">=24"
   },
   "scripts": {
-    "styles": "sass --quiet --quiet-deps --no-source-map --load-path=node_modules src/scss/app.scss:src/scss/app.gen.css",
-    "styles:watch": "sass --quiet --quiet-deps --no-source-map --load-path=node_modules --watch src/scss/app.scss:src/scss/app.gen.css",
+    "styles": "sass --quiet --quiet-deps --no-source-map --load-path=node_modules src/scss/app.scss:src/scss/app.gen.css src/scss/dark.scss:public/assets/css/theme-dark.gen.css",
+    "styles:watch": "sass --quiet --quiet-deps --no-source-map --load-path=node_modules --watch src/scss/app.scss:src/scss/app.gen.css src/scss/dark.scss:public/assets/css/theme-dark.gen.css",
     "predev": "pnpm run styles",
     "dev": "vite",
     "start": "node dist/analog/server/index.mjs",

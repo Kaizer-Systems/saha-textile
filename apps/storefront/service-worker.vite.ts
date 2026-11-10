@@ -57,6 +57,8 @@ export function serviceWorkerPlugins(): Plugin[] {
 			manifest: false,
 			injectManifest: {
 				globPatterns: ['**/*.{js,css}'],
+				// The dark theme loads only when the shop's mode is dark, so light shoppers never download it.
+				globIgnores: ['**/theme-dark.gen.css'],
 				maximumFileSizeToCacheInBytes: 16 * 1024 * 1024,
 				manifestTransforms: [buildMarker],
 			},

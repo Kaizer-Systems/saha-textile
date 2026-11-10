@@ -609,6 +609,35 @@ planned until the owner picks it up.
 | Product page logs `IntersectionObserver is not defined` on the server | A fix in the product page | The "You may also like" block's `@defer (on viewport; hydrate on viewport)` sets up its viewport trigger during server rendering. The page and its related links still render; only the log shows the error. |
 | Misspelled search "ikkatsilk" finds nothing                           | Search relevance work     | `e2e/proof.spec.ts` expects the run-together word to find ikkat sarees; on a freshly built `products_e2e` index the search returns no items.                                                                 |
 
+### Chunk O — Shop speed, accessibility and product page follow-ups
+
+**Marker:** OPEN — recorded on 2026-11-10 after the product page overhaul, the Lighthouse audit
+of every public shop page and the theme removal audit. The speed plan was agreed on 2026-11-10;
+each round below starts with the owner's go-ahead, and nothing in it removes a style, icon, font
+or file (`DEC-PERF-TRIM`).
+
+| Item                                                                              | Waits on                                  | Notes                                                                                                     |
+| --------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Split the global stylesheet into a shared base, route styles and component styles | Owner go-ahead (first round)              | The same rules move; none are deleted. Largest phone gain together with critical CSS.                     |
+| Build-generated critical CSS for the first screen                                 | After the split                           | Generated from the same stylesheets at build time, with CSP nonces; hand-written `style=""` stays banned. |
+| Incremental hydration for below-the-fold blocks                                   | Owner go-ahead                            | Angular `@defer` with hydrate triggers.                                                                   |
+| Main image priority on product, category and home pages                           | Owner go-ahead                            | `fetchpriority="high"` and preload for the largest picture; no lazy loading above the fold.               |
+| Edge caching rules for HTML, styles and pictures                                  | First deployment                          | Cloudflare in front of Nginx; measured on the live domain.                                                |
+| Lighthouse CI budgets in pull requests                                            | Owner go-ahead                            | Fails a pull request that breaks the agreed scores or byte budgets.                                       |
+| Home blog photo sizes, start-up JavaScript, a 700 px gallery size                 | Owner go-ahead                            | Found in the 2026-11-09 audit.                                                                            |
+| Icon font to SVG icons, or a glyph subset                                         | Owner's written say-so                    | Remix Icon publishes the same drawings as SVG; candidates under `DEC-PERF-TRIM`.                          |
+| Measuring on the live domain                                                      | Staging, or the owner's OK for a tunnel   | Local runs stand in for Cloudflare with a Brotli front.                                                   |
+| Text contrast colours, underlined article links, larger banner-dot targets        | Owner approval of the accessibility brief | Lighthouse accessibility items from the 2026-11-09 audit.                                                 |
+| Heading order on shop pages                                                       | Next accessibility round                  | Some sections skip a heading level.                                                                       |
+| Where the Russo One display font is used                                          | `DEC-DISPLAY-FONT`                        | Served from the shop's own address and used nowhere until decided.                                        |
+| Star ratings on product cards and pages                                           | Checkout (Chunk G)                        | Owner chose to show ratings once reviews come from real orders.                                           |
+| Bundle prices far below their contents                                            | Owner answer                              | For example ₹2,600 for ₹26,600 of sarees in the demo catalogue.                                           |
+| Back-in-stock dates that have passed                                              | An admin field, owner brief               | Four demo products show a date that has passed; the admin has no field for it.                            |
+| Admin FAQ list stops at 200 rows                                                  | A fix in the admin FAQ list               | No paging or type filter yet.                                                                             |
+| Product list's Duplicate action does nothing                                      | Owner brief                               | The theme's action is shown but not wired.                                                                |
+| "Your question was answered" and back-in-stock emails                             | Notifications (Chunk I)                   | They go to the console adapter; their MSG91 templates are not registered.                                 |
+| Descriptions for the remaining demo products                                      | Owner, later                              | 102 product pages have full English and Bengali content; the rest were deferred by the owner.             |
+
 ## Owner lock order
 
 Recommended order for the fastest reduction of blocked behavior:

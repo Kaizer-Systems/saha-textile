@@ -7,6 +7,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, filter } from 'rxjs';
 
+import { applyThemeMode } from '@core/brand/theme-mode';
 import { countdownKey } from '@core/events/event-popup-rules';
 import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
@@ -65,11 +66,7 @@ export class App {
 		this.siteConfigStore.loadSiteConfig();
 
 		this.siteConfig$.subscribe((theme) => {
-			if (theme?.general?.mode === 'dark') {
-				document.getElementsByTagName('html')[0].classList.add(theme?.general && theme?.general?.mode);
-			} else {
-				document.getElementsByTagName('html')[0].classList.remove('dark');
-			}
+			applyThemeMode(document, theme?.general?.mode);
 
 			// Set Direction
 			if (theme?.general?.language_direction === 'rtl') {

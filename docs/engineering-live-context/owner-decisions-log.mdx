@@ -1210,6 +1210,32 @@ The brief is a private artifact: <https://claude.ai/artifact/3xBEmhDRfYHDWL6C7Dk
     - The owner added a menu search: a box at the top of the menu (⌘K focuses it) shows full and
       partial matches of screen and tab names, with their place in the tree. A click or Enter
       opens the screen.
+- **DigitalOcean and Cloudflare inside the console (2026-11-10).** Approved by the owner with
+  “Yes, apply it” and “start building”.
+    - Two new top-level menu groups. **DigitalOcean**: Compute, Storage, Databases, Containers and
+      images, Networking, AI, Manage, covering every product DigitalOcean offers today, used by the
+      shop or not, so another project can use them later. **Cloudflare** copies the real dashboard
+      as read from the owner’s signed-in account on 10 Nov 2026: the user level (Accounts,
+      Domains), the account menu (Build; Protect & connect; Manage account) and the domain menu
+      (Overview, AI Crawl Control, Agent Readiness, Analytics, Observability, DNS, Email, SSL/TLS,
+      Security, Access, Speed, Caching, Workers Routes, Rules, Error Pages, Network, Traffic, Web3),
+      with a domain bar, a domain switcher and the overview’s right-hand column.
+    - DigitalOcean DNS and Cloudflare DNS are separate screens, never merged.
+    - Every product has screens for each stage: see, create, creating, use, edit, monitor, back
+      up, its main operation, destroy, and history.
+    - **Portal-only states.** Red means the console cannot do it; yellow means it can do part.
+      A red menu item or tab is shown crossed out and disabled, with a hover note “Please go to
+      the ‹provider› portal to access this” and the reason. A yellow menu item or tab opens, and
+      its hover note says what is here and what is on the portal. On a page, a red striped box
+      shows a section only the portal can do (controls greyed out), and a yellow striped box
+      frames what the console can show and lists what is missing. Plan locks (Pro, Business,
+      add-on) keep their own badge; “not used today” keeps its grey band.
+    - sahatextile.com is in the owner’s second Cloudflare account, so the console’s Cloudflare
+      tokens are created in that account.
+- **Diagnose a request (2026-11-10).** Every traced request gets a Diagnose button: fixed rules
+  over our own traces, logs, releases and issues find where it failed or spent its time, how many
+  shoppers were hit, what changed, and the matching log lines, then offer rollback, the pull
+  request or the runbook. An AI explanation stays parked in Chunk L.
 - **Parked:**
     - The privacy policy rewrite and its review are open Chunk K in the API/DB roadmap; the owner
       wants more briefs first.

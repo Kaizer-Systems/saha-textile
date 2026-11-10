@@ -277,11 +277,13 @@ feature is built. Tabs inside a screen are not menu items.
     - Logs and traffic: Live logs ●, Network ●, Cache and CDN ○
     - Data: Database and backups ●, Search index ●, Photos ●, Job queues ●, Schedules ●
     - Controls: Switches ●, Secrets ●, Drift ○
+- **DigitalOcean** (approved 2026-11-10): Compute (Droplets, Autoscale pools, Kubernetes, App Platform, Functions) · Storage (Spaces, Volumes, Network file storage, Backups and snapshots) · Databases · Containers and images · Networking (Networking, VPC peering and NAT, Load balancers, DNS (DigitalOcean), Certificates) · AI platform · Manage (Monitoring and uptime, Secrets manager, Security posture, Cloud account, Team and roles ⊘, Support tickets ⊘)
+- **Cloudflare** (approved 2026-11-10): Account (Accounts and domains, Organizations ⊘, My Profile ⊘, Domains, Build, Protect & connect, Zero Trust, Workers, Manage account) · Domain (Overview, AI Crawl Control, Agent Readiness, Analytics, Observability, DNS (Cloudflare), Email, SSL/TLS, Security, Security settings, Access, Speed, Caching, Workers Routes, Rules, Error Pages, Network, Traffic, Web3)
 - **Shop:** Payments ○, Messages ●, Client versions ○, Search engines ○
 - **Governance:** Who has access ●, Audit ●, Privacy requests ○, Costs and quotas ○, Domains and email ○
 - **Settings** ●
 
-Only the open group shows its sub-groups. On phones the menu becomes a drawer.
+Only the open group shows its sub-groups. On phones the menu becomes a drawer. ⊘ marks a red, portal-only item; yellow items are partly in the console (see the owner decisions log, 2026-11-10).
 
 **CI.** The console's checks run only when a pull request changes the console's own apps or
 packages, or shared code they use. Turborepo decides which packages a change touches. The shop's

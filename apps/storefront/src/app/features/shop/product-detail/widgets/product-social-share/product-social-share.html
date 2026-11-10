@@ -1,54 +1,65 @@
-@if (product()?.social_share && option()?.product?.social_share) {
-<div class="share-option">
+<!-- The theme's "Share it" block; inside the popover the utilities drop its top rule and spacing. -->
+<div class="share-option mt-0 border-0 pt-0">
 	<div class="product-title mt-0">
 		<h4>{{ 'share_it' | transloco }}</h4>
 	</div>
+	@for (row of groups(); track row.group) {
+	<h6 class="text-content mt-3 mb-2">{{ 'share_group_' + row.group | transloco }}</h6>
 	<ul class="product-social">
+		@for (target of row.items; track target.id) {
+		<li>
+			<a
+				[href]="target.href ?? 'javascript:void(0)'"
+				target="_blank"
+				rel="noopener nofollow"
+				class="d-flex flex-column align-items-center"
+				[attr.role]="target.href ? null : 'button'"
+				[attr.aria-label]="target.label | transloco"
+				[title]="target.label | transloco"
+				(click)="open($event, target)"
+			>
+				<i
+					[class]="target.icon"
+					aria-hidden="true"
+				></i>
+				<span class="small">{{ appName(target.app) }}</span>
+			</a>
+		</li>
+		} @if (row.group === 'send') {
 		<li>
 			<a
 				href="javascript:void(0)"
 				role="button"
-				(click)="shareOnFacebook(product()!.slug)"
+				class="d-flex flex-column align-items-center"
+				[attr.aria-label]="'copy_link' | transloco"
+				[title]="'copy_link' | transloco"
+				(click)="copyLink()"
 			>
-				<i class="ri-facebook-fill"></i>
+				<i
+					class="ri-links-line"
+					aria-hidden="true"
+				></i>
+				<span class="small">{{ 'share_app_link' | transloco }}</span>
 			</a>
 		</li>
+		@if (phone) {
 		<li>
 			<a
 				href="javascript:void(0)"
 				role="button"
-				(click)="shareOnTwitter(product()!.slug)"
+				class="d-flex flex-column align-items-center"
+				[attr.aria-label]="'share_more_apps' | transloco"
+				[title]="'share_more_apps' | transloco"
+				(click)="more()"
 			>
-				<i class="ri-twitter-fill"></i>
+				<i
+					class="ri-more-fill"
+					aria-hidden="true"
+				></i>
+				<span class="small">{{ 'share_more_apps' | transloco }}</span>
 			</a>
 		</li>
-		<li>
-			<a
-				href="javascript:void(0)"
-				role="button"
-				(click)="shareOnLinkedIn(product()!.slug)"
-			>
-				<i class="ri-linkedin-fill"></i>
-			</a>
-		</li>
-		<li>
-			<a
-				href="javascript:void(0)"
-				role="button"
-				(click)="shareOnWhatsApp(product()!.slug)"
-			>
-				<i class="ri-whatsapp-fill"></i>
-			</a>
-		</li>
-		<li>
-			<a
-				href="javascript:void(0)"
-				role="button"
-				(click)="shareViaEmail(product()!.slug)"
-			>
-				<i class="ri-mail-fill"></i>
-			</a>
-		</li>
+		} }
 	</ul>
+	}
 </div>
-}

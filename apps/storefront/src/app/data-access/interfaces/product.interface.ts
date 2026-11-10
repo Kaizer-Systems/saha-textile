@@ -67,6 +67,8 @@ export interface IProduct {
 	meta_title: string;
 	meta_description: string;
 	product_meta_image: IAttachment;
+	/** The tall 1080×1920 card for WhatsApp Status and Instagram Stories, once the image pipeline has made it. */
+	share_story_image?: IAttachment;
 	product_meta_image_id: number;
 	tags: ITag[];
 	tag: ITag;

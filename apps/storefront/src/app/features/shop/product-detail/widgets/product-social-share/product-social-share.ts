@@ -1,13 +1,24 @@
-import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject, input } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+import { NotificationService } from '@data-access/services/notification.service';
 
-import { environment } from '../../../../../../../public/environments/environment';
+import { ShareGroup, ShareTarget, hashtags, shareTargets, tagged } from './share-targets';
 
+const rupees = (value: number): string => `₹${value.toLocaleString('en-IN')}`;
+
+/**
+ * The theme's "Share it" block, shown in the share popover beside wishlist and compare (owner
+ * approved the share brief, 2026-11-10). It was ported with the theme and is moved here, not copied.
+ *
+ * Nothing is stored per product: the message is built when the menu opens, from the product on
+ * the page (name, live price, chosen colour, facts) and the wording in the language files. No app
+ * needs an account or key from us: each opens its own share page or the phone's share sheet.
+ */
 @Component({
 	selector: 'app-product-social-share',
 	templateUrl: './product-social-share.html',
@@ -15,51 +26,128 @@ import { environment } from '../../../../../../../public/environments/environmen
 	imports: [TranslocoModule],
 })
 export class ProductSocialShare {
-	private platformId = inject<Object>(PLATFORM_ID);
-	private document = inject(DOCUMENT);
+	private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+	private readonly seo = inject(LocaleSeo);
+	private readonly notification = inject(NotificationService);
+	private readonly transloco = inject(TranslocoService);
 
-	// TODO: Skipped for migration because:
-	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-	//  and migrating would break narrowing currently.
-	readonly product = input<IProduct>();
-	readonly option = input<ISiteConfig | null>();
+	readonly product = input.required<IProduct>();
+	/** The colour or design the shopper is looking at, so the receiver opens the same one. */
+	readonly variantSku = input<string | null>(null);
 
-	url: string = environment.baseURL;
+	/** Phones whose share sheet takes a picture plus text get the lean menu. */
+	readonly phone = this.isBrowser && matchMedia('(pointer: coarse)').matches && canSharePictures();
 
-	shareOnFacebook(slug: string) {
-		if (isPlatformBrowser(this.platformId)) {
-			const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(this.url + '/product/' + slug)}`;
-			window.open(facebookShareUrl, '_blank');
-		}
+	readonly url = computed(() => {
+		const sku = this.variantSku();
+		const path = `/product/${this.product().slug}`;
+		return this.seo.absoluteUrl(sku ? `${path}?variant=${encodeURIComponent(sku)}` : path);
+	});
+
+	private readonly facts = computed(() =>
+		(this.product().semantic_attributes ?? []).map((fact) => fact.value).filter(Boolean),
+	);
+
+	/** Name, live price with any offer, three facts, and the invitation, in the page's language. */
+	readonly message = computed(() => {
+		const product = this.product();
+		const price = product.sale_price || product.price;
+		const percent =
+			product.sale_price && product.sale_price < product.price
+				? Math.round((1 - product.sale_price / product.price) * 100)
+				: 0;
+		const offer = percent
+			? ` · MRP ${rupees(product.price)} (${this.transloco.translate('share_off', { percent })})`
+			: '';
+		return [
+			`✨ ${product.name}`,
+			`${rupees(price)}${offer}`,
+			this.facts().slice(0, 3).join(' · '),
+			this.transloco.translate('share_see_colours'),
+		]
+			.filter(Boolean)
+			.join('\n');
+	});
+
+	readonly groups = computed(() => {
+		const product = this.product();
+		const price = rupees(product.sale_price || product.price);
+		const targets = shareTargets(
+			{
+				name: product.name,
+				url: this.url(),
+				message: this.message(),
+				short: `${product.name} · ${price} ${hashtags(this.facts())}`.trim(),
+			},
+			this.phone,
+		);
+		return (['send', 'post', 'story'] as ShareGroup[])
+			.map((group) => ({ group, items: targets.filter((target) => target.group === group) }))
+			.filter((row) => row.items.length);
+	});
+
+	appName(app: string): string {
+		return app.startsWith('share_') ? this.transloco.translate(app) : app;
 	}
 
-	shareOnTwitter(slug: string) {
-		if (isPlatformBrowser(this.platformId)) {
-			const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(this.url + '/product/' + slug)}`;
-			window.open(twitterShareUrl, '_blank');
+	open(event: Event, target: ShareTarget): void {
+		if (!this.isBrowser) return;
+		if (target.picture) {
+			event.preventDefault();
+			void this.sharePicture(target);
+			return;
 		}
+		if (!target.window || this.phone) return;
+		event.preventDefault();
+		window.open(target.href, `share-${target.id}`, 'popup,width=640,height=680,noopener');
 	}
 
-	shareOnLinkedIn(slug: string) {
-		if (isPlatformBrowser(this.platformId)) {
-			const linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(this.url + '/product/' + slug)}`;
-			window.open(linkedInShareUrl, '_blank');
-		}
+	/**
+	 * Copies the caption first (Instagram drops text from other apps), says which share-sheet
+	 * entry to pick, then opens the phone's share sheet with the right picture and the caption.
+	 */
+	async sharePicture(target: ShareTarget): Promise<void> {
+		const caption = `${this.message()}\n${tagged(this.url(), target.id)}`;
+		await navigator.clipboard?.writeText(caption).catch(() => undefined);
+		if (target.hint) this.notification.showSuccess(this.transloco.translate(target.hint));
+		const picture = await this.picture(target.picture === 'tall').catch(() => null);
+		await navigator
+			.share({ title: this.product().name, text: caption, ...(picture ? { files: [picture] } : {}) })
+			.catch(() => undefined);
 	}
 
-	shareOnWhatsApp(slug: string) {
-		if (isPlatformBrowser(this.platformId)) {
-			const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(this.url + '/product/' + slug)}`;
-			window.open(whatsappShareUrl, '_blank');
-		}
+	/** The tall card once the image pipeline has made it; until then, and for posts, the main photo. */
+	private async picture(tall: boolean): Promise<File | null> {
+		const product = this.product();
+		const url =
+			(tall ? product.share_story_image?.original_url : undefined) ?? product.product_thumbnail?.original_url;
+		if (!url) return null;
+		const blob = await fetch(url).then((response) => response.blob());
+		return new File([blob], `${product.slug}.jpg`, { type: blob.type || 'image/jpeg' });
 	}
 
-	shareViaEmail(slug: string) {
-		if (isPlatformBrowser(this.platformId)) {
-			const subject = 'Check out this awesome product!';
-			const body = `I thought you might be interested in this product: ${this.url + '/product/' + slug}`;
-			const emailShareUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-			this.document.location.href = emailShareUrl; // Use location.href to open the default email client
-		}
+	/** More: the phone's own share sheet with the message and link, for every other app. */
+	more(): void {
+		if (!this.isBrowser) return;
+		navigator
+			.share({ title: this.product().name, text: this.message(), url: tagged(this.url(), 'more') })
+			.catch(() => undefined);
+	}
+
+	copyLink(): void {
+		if (!this.isBrowser) return;
+		void navigator.clipboard
+			.writeText(tagged(this.url(), 'copy'))
+			.then(() => this.notification.showSuccess(this.transloco.translate('link_copied')));
+	}
+}
+
+/** True where the browser can hand a picture to the phone's share sheet (Android Chrome, iPhone Safari). */
+export function canSharePictures(): boolean {
+	if (typeof navigator.canShare !== 'function') return false;
+	try {
+		return navigator.canShare({ files: [new File([''], 'probe.jpg', { type: 'image/jpeg' })] });
+	} catch {
+		return false;
 	}
 }

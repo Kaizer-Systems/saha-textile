@@ -5,7 +5,6 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { RESPONSE } from '@analogjs/router/tokens';
-
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Observable } from 'rxjs';
@@ -14,8 +13,8 @@ import { rememberRecentView } from '@core/catalog/recent-views';
 import { ConsentStore } from '@core/consent/consent.store';
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { withLocale } from '@core/i18n/locale';
-import { roleSrcset } from '@core/media/resolved-image';
 import { LocaleSeo } from '@core/i18n/locale-seo';
+import { roleSrcset } from '@core/media/resolved-image';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { Params } from '@data-access/interfaces/core.interface';
@@ -26,6 +25,7 @@ import {
 	injectProductBySlugQuery,
 	injectProductRelationsQuery,
 } from '@data-access/queries/product.queries';
+import { SkeletonPage } from '@features/page/skeleton-page/skeleton-page';
 import { ProductSidebar } from '@features/shop/product-detail/sidebar/sidebar';
 import { PaymentOption } from '@features/shop/product-detail/widgets/payment-option/payment-option';
 import { ProductAction } from '@features/shop/product-detail/widgets/product-action/product-action';
@@ -33,9 +33,7 @@ import { ProductBundle } from '@features/shop/product-detail/widgets/product-bun
 import { ProductDeliveryInformation } from '@features/shop/product-detail/widgets/product-delivery-information/product-delivery-information';
 import { ProductDetailsTabs } from '@features/shop/product-detail/widgets/product-details-tabs/product-details-tabs';
 import { ProductInformation } from '@features/shop/product-detail/widgets/product-information/product-information';
-import { ProductSocialShare } from '@features/shop/product-detail/widgets/product-social-share/product-social-share';
 import { StickyCheckout } from '@features/shop/product-detail/widgets/sticky-checkout/sticky-checkout';
-import { SkeletonPage } from '@features/page/skeleton-page/skeleton-page';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 import { isoDuration, posterFor, watchUrl } from '@shared/ui/video/video-links';
@@ -82,7 +80,6 @@ const uniqueCards = (cards: IProduct[]): IProduct[] =>
 		ProductInformation,
 		ProductDeliveryInformation,
 		PaymentOption,
-		ProductSocialShare,
 		ProductBundle,
 		ProductDetailsTabs,
 		ProductSidebar,

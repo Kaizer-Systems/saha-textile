@@ -108,6 +108,32 @@
 				aria-hidden="true"
 			></i>
 		</button>
+		<!-- Share: the theme's "Share it" list in a popover beside wishlist and compare. -->
+		<button
+			type="button"
+			class="wishlist-button btn"
+			id="share_btn"
+			[attr.aria-label]="'share_product' | transloco"
+			[ngbPopover]="shareList"
+			placement="bottom-end bottom top-end auto"
+			autoClose="outside"
+			(shown)="shareTip.close()"
+		>
+			<!-- The hover name sits on the icon: the tooltip and the popover both read a "triggers" input. -->
+			<i
+				class="ri-share-line"
+				aria-hidden="true"
+				[ngbTooltip]="'share_product' | transloco"
+				triggers="hover"
+				#shareTip="ngbTooltip"
+			></i>
+		</button>
+		<ng-template #shareList>
+			<app-product-social-share
+				[product]="product()"
+				[variantSku]="summary()?.variation?.sku ?? null"
+			/>
+		</ng-template>
 	</div>
 </div>
 

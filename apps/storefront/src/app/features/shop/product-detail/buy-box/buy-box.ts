@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
+import { NgbPopover, NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
 import { rememberNotifyIntent } from '@core/catalog/notify-intent';
@@ -22,6 +22,7 @@ import { Button } from '@shared/ui/button/button';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
 
 import { environment } from '../../../../../../public/environments/environment';
+import { ProductSocialShare } from '../widgets/product-social-share/product-social-share';
 import { SaleTimer } from '../widgets/sale-timer/sale-timer';
 
 /**
@@ -35,7 +36,17 @@ import { SaleTimer } from '../widgets/sale-timer/sale-timer';
 	templateUrl: './buy-box.html',
 	styleUrls: ['./buy-box.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [NgbRating, NgbTooltip, Button, ProductConfigurator, SaleTimer, CurrencySymbolPipe, TranslocoModule],
+	imports: [
+		NgbRating,
+		NgbTooltip,
+		NgbPopover,
+		ProductSocialShare,
+		Button,
+		ProductConfigurator,
+		SaleTimer,
+		CurrencySymbolPipe,
+		TranslocoModule,
+	],
 })
 export class BuyBox {
 	private readonly wishlist = inject(WishlistStore);

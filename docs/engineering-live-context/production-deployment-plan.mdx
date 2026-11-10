@@ -232,9 +232,9 @@ The deploy script keeps the previous digests. If health or the smoke test fails,
 - **Logs:** Docker's `local` driver, about 100 MB per container, on the servers and in the local stack. The API and worker write one JSON line per event: time, level, kind, request id and a message with emails, phone numbers and tokens masked. Errors also carry their stack. Nginx gives each request its own id, passes it to the apps in `X-Request-ID`, and writes a JSON request log with that id, timings, country, Cloudflare ray and cache result. The Release Console's agent keeps a 30-day copy, masking emails and phone numbers in Nginx's addresses as it stores them.
 - **Backups:** the host status file carries the last backup time. The worker emails the owner if it is too old, and the screen shows it. If the worker is down this alert is silent, but the uptime check should catch that case.
 
-### Super admin Server screens
+### Server screens: in the Release Console, not the admin
 
-Two admin screens, super admin only. Both are feasible; both need a `DEC-UI-REUSE` brief. They come after the shop is deployed.
+The owner moved these two screens out of the admin on 2026-11-10. They are the Release Console's Server screen (Run › Servers), and the admin gets no server screens. The design below still holds; only where it is shown changed. The DigitalOcean metrics adapter is written once, for the console's local API.
 
 **Metrics.** The API fetches DigitalOcean metrics and shows them as graphs with ApexCharts.
 

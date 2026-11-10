@@ -1173,6 +1173,11 @@ The brief is a private artifact: <https://claude.ai/artifact/3xBEmhDRfYHDWL6C7Dk
     - Chunk K, the privacy policy rewrite and its data-rights workflows. That keeps out the Privacy requests screen, and real user monitoring (Shopper experience) waits for the new policy.
     - Chunk L: session replay, chaos testing in production, automatic AI fixes, canary releases, a public status page, and "Ask Claude".
     - Everything retired in the brief: packet capture, a terminal on a hosted console, the iTerm2 launcher, hosting the console anywhere but the Mac, and 14-day log history.
+- **Console apps (2026-11-10).**
+    - The console is its own Angular app without server-side rendering (`apps/release-console`), with its own local API (`apps/release-console-api`). A small agent (`apps/release-agent`) runs on each server and in the local stack.
+    - Nothing of the console goes into the storefront or the admin.
+    - The console and its local API are never deployed or published as images, and the shop's CI skips them. The agent ships to the servers, so CI checks it.
+- **Server screens live only in the console (2026-11-10).** DigitalOcean graphs, patches and Reboot are not built in the admin.
 - **English only (2026-11-10).** The Release Console has no Bengali and no Transloco: it is an
   owner-only tool, so the en and bn parity rule for the shop and admin does not apply to it.
 - **Side menu approved (2026-11-10).**

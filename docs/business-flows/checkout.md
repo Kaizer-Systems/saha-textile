@@ -74,7 +74,7 @@ effectiveSellingINR = activeSalePriceINR ?? priceINR;
 displayNet = roundCurrency(effectiveSellingINR * rateFromINR, currency);
 ```
 
-`activeSalePriceINR` is the price a running sale event sets for the SKU. Sale events are laid over catalogue reads only while they run; a SKU has no sale window of its own.
+`activeSalePriceINR` is the price a running sale event sets for the SKU. Sale events are laid over catalogue reads only while they run; a SKU has no sale window of its own. See [Launch and sale events](./events.md).
 
 INR uses a rate of `1`. If a rate refresh fails, keep the latest good rate and mark it stale. Never overwrite it with an invalid value.
 

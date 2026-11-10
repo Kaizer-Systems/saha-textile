@@ -385,7 +385,10 @@ function photoAssets(derivatives: Map<string, ImageDerivative[]>): MediaAsset[] 
 				processedAt: '2026-11-03T00:00:00.000Z',
 			},
 			warnings: [],
-			servesAsPrimary: false,
+			// Rotated by product index, each photo leads some products, so each needs the sizes only a
+			// main photo gets (link preview, Story card, feed square, email thumbnail), as the admin's
+			// product save would mark it.
+			servesAsPrimary: true,
 			maxDisplayWidth: null,
 			renditions: [],
 			hlsPlaylistKey: null,

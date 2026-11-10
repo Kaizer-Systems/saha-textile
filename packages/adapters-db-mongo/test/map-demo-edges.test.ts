@@ -520,7 +520,13 @@ describe('photo assets', () => {
 			},
 		]);
 		expect(photoAssets).toHaveLength(1);
-		expect(photoAssets[0]).toMatchObject({ width: 800, height: 1067, slug: 'local-catalog-photo-1' });
+		expect(photoAssets[0]).toMatchObject({
+			width: 800,
+			height: 1067,
+			slug: 'local-catalog-photo-1',
+			// Each photo leads some products, so it gets the main-photo sizes.
+			servesAsPrimary: true,
+		});
 		expect(photoAssets[0]?.derivatives.map((row) => row.width)).toEqual([400, 800]);
 	});
 });

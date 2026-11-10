@@ -6,9 +6,10 @@ import { Schema, model, type Model } from 'mongoose';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
-import { ReleaseMigrationModel, RoleModel } from '../src/models/index';
+import { ReleaseMarkerModel, ReleaseMigrationModel, RoleModel } from '../src/models/index';
 import { allModels, dataMigrationsStep, databaseIndexesStep, systemRolesStep } from '../src/release/database-steps';
 import { DATA_MIGRATIONS } from '../src/release/data-migrations';
+import { lastBuiltSearchVersion, recordSearchVersionBuilt } from '../src/release/search-marker';
 import { SYSTEM_ROLE_IDS, ensureSystemRoles } from '../src/seed/system-roles';
 import { hasMongoEnv } from './mongo-test-env';
 
@@ -112,5 +113,22 @@ describe.skipIf(!hasMongoEnv())('release steps (integration)', () => {
 			ok: false,
 			detail: `not recorded: ${ids[1]}`,
 		});
+	});
+});
+
+describe.skipIf(!hasMongoEnv())('search version marker (integration)', () => {
+	it('remembers the last search version built', async () => {
+		await connectMongo();
+		const held = await ReleaseMarkerModel.findById('search-index-version').lean();
+		try {
+			await ReleaseMarkerModel.deleteOne({ _id: 'search-index-version' });
+			await expect(lastBuiltSearchVersion()).resolves.toBeNull();
+			await recordSearchVersionBuilt(7, new Date(1));
+			await expect(lastBuiltSearchVersion()).resolves.toBe(7);
+		} finally {
+			await ReleaseMarkerModel.deleteOne({ _id: 'search-index-version' });
+			if (held) await ReleaseMarkerModel.create(held);
+			await disconnectMongo();
+		}
 	});
 });

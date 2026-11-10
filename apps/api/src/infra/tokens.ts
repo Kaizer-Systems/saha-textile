@@ -9,6 +9,8 @@ export const PRODUCT_QUESTION_REPOSITORY = Symbol('ProductQuestionRepository');
 export const PRODUCT_RELATION_REPOSITORY = Symbol('ProductRelationRepository');
 export const PRODUCT_BUNDLE_REPOSITORY = Symbol('ProductBundleRepository');
 export const SEARCH_PORT = Symbol('SearchPort');
+/** The search change queue (outbox). */
+export const SEARCH_OUTBOX = Symbol('SearchOutboxRepository');
 export const READINESS_PROBES = Symbol('ReadinessProbes');
 export const LISTING_PORT = Symbol('ListingPort');
 export const ADDON_TEMPLATE_REPOSITORY = Symbol('AddonTemplateRepository');

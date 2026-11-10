@@ -29,3 +29,26 @@ const ReleaseMigrationSchema = new Schema<ReleaseMigrationDoc>(
 export const ReleaseMigrationModel: Model<ReleaseMigrationDoc> =
 	(models.ReleaseMigration as Model<ReleaseMigrationDoc>) ??
 	model<ReleaseMigrationDoc>('ReleaseMigration', ReleaseMigrationSchema);
+
+/**
+ * Small facts a release needs to remember in the database (`releaseMarkers`), such as the last
+ * search version that was fully built. A release reads them when the search engine itself is
+ * unreachable. Machinery, not shop data.
+ */
+export interface ReleaseMarkerDoc {
+	_id: string;
+	value: number;
+	at: Date;
+}
+
+const ReleaseMarkerSchema = new Schema<ReleaseMarkerDoc>(
+	{
+		_id: { type: String, required: true },
+		value: { type: Number, required: true },
+		at: { type: Date, required: true },
+	},
+	{ collection: 'releaseMarkers', timestamps: false },
+);
+
+export const ReleaseMarkerModel: Model<ReleaseMarkerDoc> =
+	(models.ReleaseMarker as Model<ReleaseMarkerDoc>) ?? model<ReleaseMarkerDoc>('ReleaseMarker', ReleaseMarkerSchema);

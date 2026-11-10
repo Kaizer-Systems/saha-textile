@@ -71,6 +71,12 @@ export const COLLECTION_NAMES = {
 	AuthRateLimit: 'authRateLimits',
 	/** Which data migrations ran on this database (release-steps runner). */
 	ReleaseMigration: 'releaseMigrations',
+	/** Products whose search entry waits to be refreshed (search change queue). */
+	/** Facts a release remembers, such as the last search version built. */
+	ReleaseMarker: 'releaseMarkers',
+	SearchOutbox: 'searchOutbox',
+	/** Runs of the nightly search check. */
+	SearchCheck: 'searchChecks',
 	/**
 	 * Verified-but-not-yet-created signups (`DEC-SIGNUP-VERIFICATION`) — intentionally NOT a
 	 * Schema Nebula node. A row lives 15–30 minutes, holds no business record, is referenced
@@ -147,6 +153,9 @@ const RUNTIME_ONLY_COLLECTIONS = [
 	'pendingSignups',
 	'pendingContactChanges',
 	'releaseMigrations',
+	'searchOutbox',
+	'searchChecks',
+	'releaseMarkers',
 ] as const;
 
 /**

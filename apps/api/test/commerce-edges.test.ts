@@ -547,7 +547,7 @@ describe('HealthController', () => {
 				status: 'ready',
 				dependencies: expect.arrayContaining([
 					{ name: 'redis', status: 'up', detail: 'fine' },
-					{ name: 'search', status: 'down', detail: 'broken' },
+					{ name: 'search', status: 'degraded', detail: 'broken' },
 				]),
 			}),
 		);
@@ -568,5 +568,24 @@ describe('readinessProbes', () => {
 	it('names an unreachable Redis', async () => {
 		const [redis] = readinessProbes({ isReachable: async () => false }, search);
 		await expect(redis!.check()).resolves.toEqual({ up: false, detail: 'unreachable' });
+	});
+
+	it('adds the search change queue and the last nightly check to the search line', async () => {
+		const outbox = {
+			stats: vi.fn(async () => ({ waiting: 3, failing: 1, oldestWaitingAt: new Date(0) })),
+			lastCheck: vi.fn(async () => ({ checkedAt: new Date('2026-11-10T03:00:00Z') }) as never),
+		};
+		const index = () => readinessProbes({ isReachable: async () => true }, search, outbox)[1]!;
+		await expect(index().check()).resolves.toEqual({
+			up: true,
+			detail: 'index ready; 3 changes waiting, 1 failing; last check 2026-11-10T03:00:00.000Z',
+		});
+		outbox.stats.mockResolvedValueOnce({ waiting: 0, failing: 0, oldestWaitingAt: null });
+		outbox.lastCheck.mockResolvedValueOnce(null);
+		await expect(index().check()).resolves.toMatchObject({
+			detail: 'index ready; 0 changes waiting; no check yet',
+		});
+		outbox.stats.mockRejectedValueOnce(new Error('mongo down'));
+		await expect(index().check()).resolves.toMatchObject({ detail: 'index ready; change queue unreadable' });
 	});
 });

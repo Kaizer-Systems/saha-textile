@@ -1,3 +1,4 @@
+import { SearchUnavailableError } from '@saha-textile/core-domain';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 type Repo = Record<string, Mock>;
@@ -20,7 +21,17 @@ interface Harness {
 	mongo: { connect: Mock; disconnect: Mock };
 	nest: { create: Mock; context: Mock };
 	worker: { close: Mock; compose: Mock };
-	search: { rebuild: Mock; categories?: Mock; state?: string; settings?: Mock };
+	search: {
+		rebuild: Mock;
+		categories?: Mock;
+		state?: string;
+		settings?: Mock;
+		down?: boolean | 'other';
+		built?: number | null;
+		record?: { startedAt: string; caughtUpAt: string | null } | null;
+		changes?: unknown[];
+		caughtUp?: Mock;
+	};
 	failStep?: string;
 	files: { read: Mock; write: Mock; mkdir: Mock };
 	sharp: { metadata: Mock };
@@ -99,6 +110,18 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		AdminUserModel: {},
 		ADMINISTRATOR_ROLE_KEY: 'administrator',
 		ensureSystemRoles: async () => undefined,
+		MongoSearchOutboxRepository: repository(() => ({
+			changedSince: async () => h.search.changes?.splice(0) ?? [],
+			due: async () => h.search.changes?.splice(0) ?? [],
+			markDone: async () => undefined,
+			markFailed: async () => undefined,
+			recordCheck: async () => undefined,
+			request: async () => undefined,
+		})),
+		lastBuiltSearchVersion: async () => h.search.built ?? null,
+		recordSearchVersionBuilt: async (version: number) => {
+			h.search.built = version;
+		},
 		systemRolesStep: () => fakeStep('system-roles'),
 		databaseIndexesStep: () => fakeStep('database-indexes', false),
 		dataMigrationsStep: () => fakeStep('data-migrations', false),
@@ -161,14 +184,23 @@ vi.mock('../src/worker/media-worker', () => ({
 	composeMediaWorker: (...args: unknown[]) => h.worker.compose(...args),
 }));
 vi.mock('../src/search/meilisearch-search', () => ({
+	noProductsLoaded: async () => [],
 	MeilisearchSearch: class {
 		constructor(_host: string, _key: string, categories: () => Promise<unknown[]>) {
 			h.search.categories = vi.fn(categories);
 		}
 		readonly index = 'products_v1';
 		updateSynonyms = async () => undefined;
-		buildState = async () => h.search.state ?? 'missing';
+		buildState = async () => {
+			if (h.search.down === 'other') throw new Error('engine said no');
+			if (h.search.down) throw new SearchUnavailableError('Search is unavailable');
+			return h.search.state ?? 'missing';
+		};
 		applyCurrentSettings = async () => h.search.settings?.();
+		buildRecord = async () => h.search.record ?? null;
+		recordCatchUp = async (at: Date) => h.search.caughtUp?.(at);
+		applyChanges = async () => undefined;
+		indexedIds = async () => ['p1', 'zombie'];
 	},
 }));
 vi.mock('../src/openapi', () => ({ createOpenApiDocument: (...args: unknown[]) => h.openapi(...args) }));
@@ -391,7 +423,8 @@ describe('rebuild-search-index', () => {
 	it('as a release step, builds a search version that is missing', async () => {
 		h.products.list = vi.fn().mockResolvedValue({ items: [], total: 0 });
 		const result = await run('rebuild', ['--release']);
-		expect(result.out).toContain('into products_v1.');
+		expect(result.out).toContain('into products_v1;');
+		expect(h.search.built).toBe(1);
 		expect(h.search.rebuild).toHaveBeenCalledOnce();
 		expect(h.search.settings).not.toHaveBeenCalled();
 	});
@@ -413,7 +446,9 @@ describe('rebuild-search-index', () => {
 			.mockResolvedValueOnce({ items: [{ id: 'p2', categoryIds: [], optionGroups: [] }], total: 2 });
 		const result = await run('rebuild');
 		expect(h.products.list).toHaveBeenCalledTimes(2);
-		expect(result.out).toContain('Indexed 2 live products of 2 into products_v1.');
+		expect(result.out).toContain(
+			'Indexed 2 live products of 2 into products_v1; replayed 0 changes saved meanwhile.',
+		);
 		expect(h.search.rebuild.mock.calls[0]?.[0]).toMatchObject([{ categoryNames: ['Sarees', 'শাড়ি'] }, {}]);
 		await expect(h.search.categories?.()).resolves.toEqual([]);
 		expect(h.mongo.disconnect).toHaveBeenCalledOnce();
@@ -443,6 +478,9 @@ describe('release-steps', () => {
 		h.search.rebuild = vi.fn(async (products: unknown[]) => products.length);
 		h.search.state = 'ready';
 		h.search.settings = vi.fn();
+		h.search.down = false;
+		h.search.built = null;
+		h.search.record = null;
 		h.failStep = undefined;
 	});
 
@@ -483,6 +521,42 @@ describe('release-steps', () => {
 		expect(result.code).toBe(1);
 	});
 
+	it('goes ahead without search when the search version is unchanged', async () => {
+		h.search.down = true;
+		h.search.built = 1;
+		const result = await run('releaseSteps');
+		expect(result.out).toContain('search is unavailable; search version 1 is unchanged, so the release goes ahead');
+		expect(result.out).toContain('skipped while search is down');
+		expect(result.code).toBeFalsy();
+	});
+
+	it('stops on an unexpected search error', async () => {
+		h.search.down = 'other';
+		const result = await run('releaseSteps');
+		expect(result.err).toContain('engine said no');
+		expect(result.code).toBe(1);
+	});
+
+	it('stops when search is down and the release needs a new search version', async () => {
+		h.search.down = true;
+		h.search.built = null;
+		const result = await run('releaseSteps');
+		expect(result.err).toContain('this release needs search version 1 built first');
+		expect(result.code).toBe(1);
+	});
+
+	it('replays changes saved during a build, from the build record', async () => {
+		h.search.state = 'missing';
+		h.search.record = { startedAt: '2026-11-10T00:00:00.000Z', caughtUpAt: null };
+		h.search.changes = [{ productId: 'p1', changedAt: new Date() }];
+		h.search.caughtUp = vi.fn();
+		h.products.list = vi.fn().mockResolvedValue({ items: [], total: 0 });
+		h.products.findById = vi.fn(async () => null);
+		const result = await run('rebuild', ['--release']);
+		expect(result.out).toContain('replayed 1 changes saved meanwhile');
+		expect(h.search.caughtUp).toHaveBeenCalledOnce();
+	});
+
 	it('builds a new search version and fails when it is not recorded', async () => {
 		h.search.state = 'missing';
 		h.products.list = vi.fn().mockResolvedValue({ items: [], total: 0 });
@@ -490,6 +564,37 @@ describe('release-steps', () => {
 		expect(result.out).toContain('search version 1 is new: full build of products_v1');
 		expect(result.err).toContain('products_v1 was not recorded as built');
 		expect(result.code).toBe(1);
+	});
+});
+
+describe('search queue pass and nightly check', () => {
+	beforeEach(() => {
+		h.config = { search: { host: 'http://search', apiKey: 'k' } };
+		h.search.record = null;
+	});
+
+	it('sends waiting changes, compares the index with the database, and skips a catch-up with no record', async () => {
+		vi.resetModules();
+		const release = await import('../src/search/search-release.js');
+		const search = release.releaseSearch();
+		h.search.changes = [{ productId: 'p1', changedAt: new Date() }];
+		h.products.findById = vi.fn(async () => ({ id: 'p1', status: 'live', categoryIds: [], optionGroups: [] }));
+		h.variants = { listForProducts: vi.fn(async () => []) };
+		await expect(release.drainSearchQueue(search)).resolves.toEqual({ indexed: 1, removed: 0, failed: 0 });
+		h.products.list = vi.fn().mockResolvedValue({
+			items: [
+				{ id: 'p1', status: 'live' },
+				{ id: 'p2', status: 'live' },
+			],
+			total: 2,
+		});
+		await expect(release.nightlySearchCheck(search)).resolves.toMatchObject({
+			live: 2,
+			indexed: 2,
+			missing: 1,
+			extra: 1,
+		});
+		await expect(release.catchUpSearch(search)).resolves.toBe(0);
 	});
 });
 

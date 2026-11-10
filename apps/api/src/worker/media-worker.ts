@@ -38,6 +38,8 @@ import {
 import type { AppConfig } from '../config/app-config';
 import { LogOnlyCdnPurgeAdapter } from '../infra/log-only-cdn-purge.adapter';
 import { buildNotificationPort } from '../infra/notification-factory';
+import { MeilisearchSearch, noProductsLoaded } from '../search/meilisearch-search';
+import { catchUpSearch, drainSearchQueue, nightlySearchCheck } from '../search/search-release';
 
 /** Batch size for the 15-minute stale sweep: bounded work per tick, never one giant job. */
 const STALE_BATCH = 50;
@@ -78,6 +80,13 @@ export const composeMediaWorker = async (config: AppConfig) => {
 	});
 
 	const processDeps = { assets, roles, storage, codec, queue, now };
+	const search = new MeilisearchSearch(
+		config.search.host,
+		config.search.apiKey,
+		noProductsLoaded,
+		config.search.index,
+		config.locales,
+	);
 
 	const handlers: MediaJobHandlers = {
 		process: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: false }),
@@ -145,6 +154,22 @@ export const composeMediaWorker = async (config: AppConfig) => {
 			logger.log(`Weekly insight ${result.insightSetId}: ${result.relations} relations`);
 			return result;
 		},
+		'search-outbox': async () => {
+			const result = await drainSearchQueue(search);
+			if (result.indexed + result.removed + result.failed > 0) {
+				logger.log(
+					`Search queue: ${result.indexed} indexed, ${result.removed} removed, ${result.failed} still waiting`,
+				);
+			}
+			return result;
+		},
+		'search-check': async () => {
+			const result = await nightlySearchCheck(search);
+			logger.log(
+				`Search check: ${result.live} live, ${result.indexed} indexed, ${result.missing} missing, ${result.extra} extra, ${result.requested} queued`,
+			);
+			return result;
+		},
 		'stock-alerts': async () => {
 			const result = await deliverStockAlerts({
 				alerts: new MongoStockAlertRepository(),
@@ -162,6 +187,12 @@ export const composeMediaWorker = async (config: AppConfig) => {
 	const reconciled = await reconcileSeededRoles(roles);
 	if (reconciled.length > 0) logger.log(`Media roles reconciled: ${reconciled.join(', ')}`);
 	await queue.registerSchedules();
+	// Changes the old release took while this one's index was built or switched in.
+	void catchUpSearch(search)
+		.then((replayed) => {
+			if (replayed) logger.log(`Search caught up: ${replayed} changes replayed`);
+		})
+		.catch((error: unknown) => logger.warn(`Search catch-up waits for the nightly check: ${String(error)}`));
 	const worker = startMediaWorker({
 		connection: config.redis,
 		handlers,

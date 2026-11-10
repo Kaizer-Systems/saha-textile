@@ -26,6 +26,8 @@ import {
 	sellingPriceINR,
 	type AddonTemplateRepository,
 	type AttributeDefinitionRepository,
+	requestSearchSync,
+	type SearchOutboxRepository,
 	type SearchPort,
 	valueSearchWords,
 	type StockAlertRepository,
@@ -62,6 +64,7 @@ import {
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
 	ATTRIBUTE_DEFINITION_REPOSITORY,
+	SEARCH_OUTBOX,
 	SEARCH_PORT,
 	SEO_REDIRECT_REPOSITORY,
 	STOCK_ALERT_REPOSITORY,
@@ -102,6 +105,7 @@ export class CatalogService {
 		@Optional() @Inject(SearchVocabularyService) private readonly vocabulary: SearchVocabularyService | null = null,
 		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
 		@Optional() @Inject(MEDIA_JOB_QUEUE) private readonly mediaJobs: MediaJobQueuePort | null = null,
+		@Optional() @Inject(SEARCH_OUTBOX) private readonly searchOutbox: SearchOutboxRepository | null = null,
 	) {}
 
 	/** A product's own FAQ questions, any status, in display order (the form and Go Live). */
@@ -234,6 +238,8 @@ export class CatalogService {
 			await this.upsertRedirect(redirect);
 			// Auto-pause: other products stop offering this one as related, upsell or cross-sell.
 			await this.relations?.disableForTarget(product.id);
+			// In the same transaction, so a committed change is never missing from the queue.
+			await this.searchOutbox?.request([product.id], new Date());
 		});
 		await this.syncSearch(next);
 		await this.record(actorUserId, 'catalog.product.discontinue', product.id, {
@@ -489,6 +495,8 @@ export class CatalogService {
 					entityId: product.id,
 				});
 			}
+			// In the same transaction, so a committed change is never missing from the queue.
+			await this.searchOutbox?.request([product.id], new Date());
 		});
 		if (body.content) await this.syncProductFaq(product.id, body.content.faq);
 		await this.promotePrimaryImage(next);
@@ -504,8 +512,12 @@ export class CatalogService {
 		return { id: product.id, slug: next.slug };
 	}
 
-	/** The index is derived and rebuildable, so a failed update never fails the save. */
+	/**
+	 * The index is derived and rebuildable, so a failed update never fails the save. With the
+	 * search change queue, the change waits there until search takes it.
+	 */
 	async syncSearch(product: Product): Promise<void> {
+		if (this.searchOutbox) return this.sendToSearch([product]);
 		try {
 			if (product.status === 'live') await this.indexLive([product]);
 			else await this.search?.removeProduct(product.id);
@@ -516,12 +528,40 @@ export class CatalogService {
 
 	/**
 	 * Re-indexes many products in one pass, for a search word or a Storefront setting that
-	 * changes how they are found. Products not on the shop are left out of the index.
+	 * changes how they are found. Products not on the shop leave the index.
 	 */
 	async syncSearchMany(products: readonly Product[]): Promise<number> {
 		const live = products.filter((product) => product.status === 'live');
-		await this.indexLive(live);
+		if (this.searchOutbox) await this.sendToSearch(products);
+		else await this.indexLive(live);
 		return live.length;
+	}
+
+	/** Queues the products' search changes and sends them at once; what search refuses waits for the worker. */
+	private async sendToSearch(products: readonly Product[]): Promise<void> {
+		const outbox = this.searchOutbox;
+		const search = this.search;
+		if (!outbox || !search || !products.length) return;
+		const known = new Map(products.map((product) => [product.id, product]));
+		try {
+			const result = await requestSearchSync(
+				{
+					outbox,
+					// Every id below comes from `known`.
+					loadProduct: async (id) => known.get(id),
+					apply: async (live, removed) => {
+						await this.indexLive(live);
+						for (const id of removed) await search.removeProduct(id);
+					},
+					now: () => new Date(),
+				},
+				[...known.keys()],
+			);
+			if (result.failed) this.logger.warn(`Search update waits in the queue for ${result.failed} product(s)`);
+		} catch (error) {
+			// Even the queue is unreachable: the nightly check finds and repairs the difference.
+			this.logger.warn(`Search change not queued for ${[...known.keys()].join(', ')}: ${String(error)}`);
+		}
 	}
 
 	private async indexLive(products: readonly Product[]): Promise<void> {

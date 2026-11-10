@@ -7,7 +7,7 @@ import { CatalogLocaleInterceptor, catalogLocale, localized, withCatalogLocale }
 import { ResilientListing } from '../src/catalog/resilient-listing';
 import { idOrder, listingDocument } from '../src/search/listing-document';
 import { MeilisearchListing } from '../src/search/meilisearch-listing';
-import { MeilisearchSearch } from '../src/search/meilisearch-search';
+import { MeilisearchSearch, noProductsLoaded } from '../src/search/meilisearch-search';
 
 const filters = (over: Partial<ListingFilters> = {}): ListingFilters => ({
 	priceRanges: [],
@@ -374,6 +374,64 @@ describe('MeilisearchSearch as the listing client', () => {
 		await expect(search().buildState()).resolves.toBe('missing');
 		engine(() => reply(503));
 		await expect(search().buildState()).rejects.toBeInstanceOf(SearchUnavailableError);
+	});
+
+	it('loads no products for a writer-only client', async () => {
+		await expect(noProductsLoaded()).resolves.toEqual([]);
+	});
+
+	it('reads and updates its build record', async () => {
+		engine((url) =>
+			url.endsWith('/documents/v1')
+				? reply(200, { startedAt: '2026-11-10T00:00:00Z', caughtUpAt: null })
+				: undefined,
+		);
+		await expect(search().buildRecord()).resolves.toEqual({ startedAt: '2026-11-10T00:00:00Z', caughtUpAt: null });
+		engine((url) => (url.endsWith('/documents/v1') ? reply(200, { status: 'complete' }) : undefined));
+		await expect(search().buildRecord()).resolves.toBeNull();
+		engine((url) => (url.endsWith('/documents/v1') ? reply(404) : undefined));
+		await expect(search().buildRecord()).resolves.toBeNull();
+		engine(() => reply(503));
+		await expect(search().buildRecord()).rejects.toBeInstanceOf(SearchUnavailableError);
+		engine();
+		await search().recordCatchUp(new Date('2026-11-10T01:00:00Z'));
+		const put = fetcher.mock.calls.find((call) => call[1].method === 'PUT');
+		expect(put?.[0]).toBe('http://meili.test/indexes/products_builds/documents?primaryKey=id');
+		expect(JSON.parse(put?.[1].body as string)).toEqual([{ id: 'v1', caughtUpAt: '2026-11-10T01:00:00.000Z' }]);
+	});
+
+	it('lists every document id, page by page', async () => {
+		const full = Array.from({ length: 1000 }, (_, i) => ({ id: `p${i}` }));
+		engine((url) => {
+			if (!url.includes('/documents?fields=id')) return undefined;
+			return url.includes('offset=0')
+				? reply(200, { results: [...full.slice(0, 999), {}] })
+				: reply(200, { results: [{ id: 'last' }] });
+		});
+		const ids = await search().indexedIds();
+		expect(ids).toHaveLength(1000);
+		expect(ids.at(-1)).toBe('last');
+		engine((url) => (url.includes('/documents?fields=id') ? reply(200, {}) : undefined));
+		await expect(search().indexedIds()).resolves.toEqual([]);
+	});
+
+	it('applies changes: writes live products, removes the rest, and waits', async () => {
+		engine();
+		await search().applyChanges(
+			Array.from({ length: 501 }, () => entry),
+			['gone'],
+		);
+		const posts = fetcher.mock.calls.filter((call) => call[1].method === 'POST').map((call) => call[0]);
+		expect(posts).toEqual([
+			'http://meili.test/indexes/products_v1/documents',
+			'http://meili.test/indexes/products_v1/documents',
+			'http://meili.test/indexes/products_v1/documents/delete-batch',
+		]);
+		fetcher.mockClear();
+		engine();
+		await search().applyChanges([], []);
+		const writes = fetcher.mock.calls.filter((call) => String(call[0]).includes('/documents'));
+		expect(writes).toEqual([]);
 	});
 
 	it('applies settings alone for a release that keeps the version', async () => {

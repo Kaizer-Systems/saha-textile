@@ -42,6 +42,7 @@ import {
 	MongoProductBundleRepository,
 	MongoSiteSettingsRepository,
 	MongoSearchAnalyticsRepository,
+	MongoSearchOutboxRepository,
 	MongoSearchTermRepository,
 	connectMongo,
 	disconnectMongo,
@@ -107,6 +108,7 @@ import {
 	PRODUCT_BUNDLE_REPOSITORY,
 	LISTING_PORT,
 	READINESS_PROBES,
+	SEARCH_OUTBOX,
 	SEARCH_PORT,
 	ADDON_TEMPLATE_REPOSITORY,
 	ADMIN_INVITE_REPOSITORY,
@@ -309,10 +311,12 @@ import { SalePriceBook } from '../events/sale-price-book';
 		// The admin's search words (owner log § search words, 2026-11-08).
 		{ provide: SEARCH_TERM_REPOSITORY, useClass: MongoSearchTermRepository },
 		{ provide: REVIEW_REPOSITORY, useClass: MongoReviewRepository },
+		// Product changes waiting for search (search change queue).
+		{ provide: SEARCH_OUTBOX, useClass: MongoSearchOutboxRepository },
 		{
 			provide: READINESS_PROBES,
 			useFactory: readinessProbes,
-			inject: [MEDIA_JOB_QUEUE, SEARCH_PORT],
+			inject: [MEDIA_JOB_QUEUE, SEARCH_PORT, SEARCH_OUTBOX],
 		},
 		{
 			provide: MEDIA_JOB_QUEUE,
@@ -350,6 +354,7 @@ import { SalePriceBook } from '../events/sale-price-book';
 	],
 	exports: [
 		PRODUCT_REPOSITORY,
+		SEARCH_OUTBOX,
 		SHOP_EVENT_REPOSITORY,
 		SALE_PRICE_BOOK,
 		PRODUCT_VARIANT_REPOSITORY,

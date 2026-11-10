@@ -77,7 +77,7 @@
 			[class]="'no-data-added collection-no-data'"
 			[image]="'assets/svg/no-product.svg'"
 			[text]="(unavailable() ? 'search_unavailable' : 'no_products_found') | transloco"
-			[description]="'no_search_results_description' | transloco"
+			[description]="(unavailable() ? 'search_unavailable_description' : 'no_search_results_description') | transloco"
 		/>
 		} @if (!loading() && total() > pageSize) {
 		<nav class="custome-pagination">

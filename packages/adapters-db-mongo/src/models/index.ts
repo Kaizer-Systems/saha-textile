@@ -38,6 +38,7 @@ export * from './auth-challenge.model';
 export * from './auth-token.model';
 export * from './auth-rate-limit.model';
 export * from './release-migration.model';
+export * from './search-outbox.model';
 export * from './rbac.model';
 export * from './consent.model';
 export * from './catalog-structure.model';

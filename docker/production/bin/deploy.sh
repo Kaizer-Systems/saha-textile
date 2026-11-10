@@ -127,11 +127,13 @@ check_running() {
 	api="$(release_value "$RELEASE" API_URL)"
 	site="$(release_value "$RELEASE" SITE_URL)"
 	admin="$(release_value "$RELEASE" ADMIN_URL)"
-	# Every dependency must be up here, even search, which the shop could otherwise live without.
+	# Mongo and Redis must be up. Search may read "degraded": the shop sells without it, changes
+	# wait in the search queue, and a release that needed a new search version already built it.
 	ops "$RELEASE" sh -s <<SCRIPT
 set -eu
 fetch() { curl -fsS --cacert /certs/origin-ca.pem --max-time 20 "\$1"; }
-fetch "$api/health/ready" | jq -e '[.dependencies[].status] | all(. == "up")' >/dev/null
+fetch "$api/health/ready" | jq -e '[.dependencies[] | select(.name != "search") | .status] | all(. == "up")' >/dev/null
+fetch "$api/health/ready" | jq -e '[.dependencies[] | select(.name == "search") | .status] | all(. == "up" or . == "degraded")' >/dev/null
 fetch "$site/config.json" | jq -e '.apiUrl == "$api"' >/dev/null
 fetch "$admin/config.json" | jq -e '.apiUrl == "$api"' >/dev/null
 curl -fsSL --cacert /certs/origin-ca.pem --max-time 20 "$site/" | grep -q '</html>'

@@ -141,6 +141,12 @@ All of it is safe to repeat.
 
 **Search versions.** The index name carries the search version, so a release reads `products_v1` while a release with a new version builds `products_v2` beside it before the switch. Raise `SEARCH_INDEX_VERSION` only when a release changes what the index knows about a product (a document field, or the searchable, filterable or sortable attributes or ranking rules). A build waits on the engine's own progress and fails on a failed task or 60 seconds with no progress. The previous version's index is kept for a rollback; older ones are removed.
 
+**Search change queue.** Every product change writes a row to `searchOutbox`; the two product saves write it inside their own transaction. The API sends the change at once. If search refuses it, the row waits, and the worker retries every 30 seconds, backing off from 30 seconds to at most 30 minutes. Done rows stay 14 days. A build for a new search version replays every change saved since it started, before the switch. The worker replays again when it starts, so saves the old release took during the switch reach the new index.
+
+**Search is optional at release.** Mongo and Redis must be up; search may read `degraded` in `/health/ready`. When search is down and the release keeps its search version (known from `releaseMarkers` in Mongo), the release goes ahead: shoppers see "Search is unavailable" with a pointer to the category menu, and changes wait in the queue. A release that raises the search version stops instead, because its code needs the new index.
+
+**Nightly check (03:00 IST).** The worker compares the live products in Mongo with the documents in search, queues every missing or extra one and every product changed in the last 26 hours, and records the run in `searchChecks` (kept 90 days). The search line of `/health/ready` shows the waiting changes, how many are failing, and the time of the last check.
+
 **Data migrations come in two halves.** The `expand` half adds the new shape and keeps the old one. A later release's `contract` half removes the old. That way a rollback still finds data it understands.
 
 Any database change must keep working with the previous release, or a rollback breaks.

@@ -15,7 +15,8 @@ interface LivenessStatus {
 
 interface DependencyStatus {
 	name: string;
-	status: 'up' | 'down';
+	/** `degraded`: an optional dependency is down and the shop works without it (search). */
+	status: 'up' | 'down' | 'degraded';
 	detail: string;
 }
 
@@ -75,7 +76,7 @@ export class HealthController {
 			},
 			...probed.map(({ probe, result }): DependencyStatus => ({
 				name: probe.name,
-				status: result.up ? 'up' : 'down',
+				status: result.up ? 'up' : probe.required ? 'down' : 'degraded',
 				detail: result.detail,
 			})),
 		];

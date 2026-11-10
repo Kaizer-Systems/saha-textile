@@ -38,6 +38,23 @@ const hoisted = vi.hoisted(() => ({
 	]),
 	CloudflareCalls: [] as unknown[],
 	YouTubeCalls: [] as unknown[],
+	drain: vi.fn(async () => ({ indexed: 0, removed: 0, failed: 0 })),
+	check: vi.fn(async () => ({
+		checkedAt: new Date(0),
+		live: 2,
+		indexed: 1,
+		missing: 1,
+		extra: 0,
+		recent: 0,
+		requested: 1,
+	})),
+	catchUp: vi.fn(async () => 0),
+}));
+
+vi.mock('../src/search/search-release', () => ({
+	drainSearchQueue: hoisted.drain,
+	nightlySearchCheck: hoisted.check,
+	catchUpSearch: hoisted.catchUp,
 }));
 
 vi.mock('@saha-textile/adapters-queue-bullmq', () => ({
@@ -114,6 +131,8 @@ const config = (overrides: Record<string, unknown> = {}) =>
 		redis: { host: 'h', port: 1, db: 0 },
 		media: { workerConcurrency: 2, gcLive: false },
 		notifications: { provider: 'console' },
+		search: { index: 'products' },
+		locales: ['en'],
 		...overrides,
 	}) as never;
 
@@ -226,6 +245,27 @@ describe('composeMediaWorker', () => {
 		const { entry } = await started();
 		expect(await entry.handlers['reprocess-stale']?.({} as never)).toEqual({ queued: 1 });
 		expect(hoisted.queue.enqueue).toHaveBeenCalledWith({ type: 'reprocess', assetId: 'm1', reason: 'ladder' });
+	});
+
+	it('drains the search queue, runs the nightly check, and logs only when something moved', async () => {
+		const { entry } = await started();
+		await expect(entry.handlers['search-outbox']?.({} as never)).resolves.toEqual({
+			indexed: 0,
+			removed: 0,
+			failed: 0,
+		});
+		hoisted.drain.mockResolvedValueOnce({ indexed: 2, removed: 1, failed: 1 });
+		await expect(entry.handlers['search-outbox']?.({} as never)).resolves.toMatchObject({ indexed: 2 });
+		await expect(entry.handlers['search-check']?.({} as never)).resolves.toMatchObject({ missing: 1 });
+	});
+
+	it('catches search up at start, and survives a failed catch-up', async () => {
+		hoisted.catchUp.mockResolvedValueOnce(3);
+		await started();
+		expect(hoisted.catchUp).toHaveBeenCalledTimes(1);
+		hoisted.catchUp.mockRejectedValueOnce(new Error('search down'));
+		await expect(started()).resolves.toBeDefined();
+		await new Promise((done) => setImmediate(done));
 	});
 
 	it('runs the weekly insight and stock alerts', async () => {

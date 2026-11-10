@@ -88,6 +88,8 @@ describe('BullMqMediaJobQueue', () => {
 			'reprocess-stale',
 			'stock-alerts',
 			'product-videos-check',
+			'search-outbox',
+			'search-check',
 			'weekly-insight',
 		]);
 	});

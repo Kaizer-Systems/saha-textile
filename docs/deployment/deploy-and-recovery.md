@@ -58,10 +58,10 @@ Each release keeps its own secrets and public config, so a rollback returns to t
     - **System roles and permissions:** first-run setup adds the administrator role, currencies and notification templates when missing and leaves existing rows alone. Then a check confirms that the Administrator role holds every permission code.
     - **Database indexes:** compared with the models and rebuilt where they differ.
     - **Data migrations:** each listed migration runs once and is recorded in `releaseMigrations`.
-    - **Search index:** settings and search words are applied. The index is built only when the search version rises: `products_v<N>` is built beside the live one, and the deploy waits on the engine's own progress.
+    - **Search index:** settings and search words are applied. The index is built only when the search version rises: `products_v<N>` is built beside the live one, the deploy waits on the engine's own progress, and changes saved during the build are replayed into it. If search is down and the version is unchanged, this step is skipped and the release goes ahead; product changes wait in the search change queue until search returns.
 9. Swap the apps side by side.
 10. Install the back-in-a-moment pages, with the shop's name and logo.
-11. Check that every dependency is up and that both `config.json` files parse and name the right API.
+11. Check that MongoDB and Redis are up (search may read `degraded`) and that both `config.json` files parse and name the right API.
 12. Mark the release as current.
 
 ### Side-by-side swap

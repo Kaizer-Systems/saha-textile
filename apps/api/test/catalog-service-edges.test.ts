@@ -85,6 +85,7 @@ interface Options {
 	relations?: unknown[];
 	redirects?: unknown[];
 	assets?: unknown[];
+	outbox?: unknown;
 }
 
 const build = (options: Options = {}) => {
@@ -165,6 +166,8 @@ const build = (options: Options = {}) => {
 				undefined,
 				undefined,
 				(options as { faqs?: unknown }).faqs as never,
+				undefined,
+				options.outbox as never,
 			);
 	return {
 		service,
@@ -698,6 +701,61 @@ describe('saving the product form', () => {
 		expect(search.indexProducts).toHaveBeenLastCalledWith([
 			expect.objectContaining({ product: expect.objectContaining({ id: 'prd_1' }) }),
 		]);
+	});
+
+	describe('through the search change queue', () => {
+		const queue = () => ({
+			request: vi.fn(async () => {}),
+			markDone: vi.fn(async () => {}),
+			markFailed: vi.fn(async () => {}),
+		});
+
+		it('queues inside the save transaction, then sends and marks the change done', async () => {
+			const outbox = queue();
+			const { service, search, transactions } = build({ outbox });
+			await service.updateMerchandising('red-saree', form());
+			expect(transactions.withTransaction).toHaveBeenCalled();
+			expect(outbox.request).toHaveBeenCalledTimes(2);
+			expect(search.indexProducts).toHaveBeenCalled();
+			expect(outbox.markDone).toHaveBeenCalledWith(
+				[{ productId: 'prd_1', changedAt: expect.any(Date) }],
+				expect.any(Date),
+			);
+			await service.discontinue('red-saree', null, 'a1');
+			expect(search.removeProduct).toHaveBeenCalledWith('prd_1');
+		});
+
+		it('removes products not on the shop, and loads one it was not given', async () => {
+			const outbox = queue();
+			const { service, search } = build({ outbox });
+			const count = await service.syncSearchMany([product({ id: 'prd_2', status: 'draft' })]);
+			expect(count).toBe(0);
+			expect(search.removeProduct).toHaveBeenCalledWith('prd_2');
+			await expect(service.syncSearchMany([])).resolves.toBe(0);
+		});
+
+		it('leaves a change waiting when search is down, and never fails the save', async () => {
+			const outbox = queue();
+			const { service, search } = build({ outbox });
+			search.indexProducts.mockRejectedValue(new Error('search down'));
+			await expect(service.updateMerchandising('red-saree', form())).resolves.toMatchObject({ id: 'prd_1' });
+			expect(outbox.markFailed).toHaveBeenCalledWith(expect.any(Array), 'search down', expect.any(Date));
+		});
+
+		it('still saves when even the queue is unreachable', async () => {
+			const outbox = queue();
+			outbox.request.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('mongo blip'));
+			const { service } = build({ outbox });
+			await expect(service.updateMerchandising('red-saree', form())).resolves.toMatchObject({ id: 'prd_1' });
+		});
+
+		it('does nothing without a search index', async () => {
+			const outbox = queue();
+			const { service } = build({ outbox });
+			(service as unknown as { search: null }).search = null;
+			await service.syncSearch(product({ status: 'live' }));
+			expect(outbox.request).not.toHaveBeenCalled();
+		});
 	});
 
 	it('saves even when the search index is down', async () => {

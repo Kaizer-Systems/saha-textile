@@ -18,7 +18,11 @@ export type ScheduledMediaJob =
 	| { type: 'reprocess-stale' }
 	| { type: 'weekly-insight' }
 	| { type: 'product-videos-check' }
-	| { type: 'stock-alerts' };
+	| { type: 'stock-alerts' }
+	/** Sends waiting search changes (the search change queue). */
+	| { type: 'search-outbox' }
+	/** Compares the database with the search index and queues any difference. */
+	| { type: 'search-check' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -133,6 +137,18 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'product-videos-check',
 			{ pattern: '30 4 * * 1', tz },
 			{ name: 'product-videos-check', data: { type: 'product-videos-check' } },
+		);
+		// Search changes that could not be sent at save time wait here; 30 s keeps search close.
+		await this.queue.upsertJobScheduler(
+			'search-outbox',
+			{ every: 30_000 },
+			{ name: 'search-outbox', data: { type: 'search-outbox' } },
+		);
+		// The nightly safety net for search, before the media GC (03:00 IST).
+		await this.queue.upsertJobScheduler(
+			'search-check',
+			{ pattern: '0 3 * * *', tz },
+			{ name: 'search-check', data: { type: 'search-check' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

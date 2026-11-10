@@ -23,11 +23,24 @@ const TASK_POLL_MS = 100;
 const TASK_POLL_MAX_MS = 1000;
 const BATCH = 500;
 
+/** For callers that only write to the index and never turn search hits into products. */
+export const noProductsLoaded = async (): Promise<Product[]> => [];
+
 /** A missing index or document. Still "unavailable" to every caller that does not ask. */
 class SearchNotFoundError extends SearchUnavailableError {}
 
 /** Whether the index this release reads has been completely built. */
 export type SearchBuildState = 'ready' | 'missing';
+
+/** What the index remembers about its own build. */
+export interface SearchBuildRecord {
+	/** When the build began; changes saved from then on are replayed into it. */
+	startedAt: string;
+	/** The last replay of queued changes into this index. */
+	caughtUpAt: string | null;
+}
+
+const PAGE = 1000;
 
 /** The HTTP side of the index, shared by search and listings. */
 export interface MeilisearchClient {
@@ -112,6 +125,7 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	 * versions older than the previous one are removed: the previous one stays for a rollback.
 	 */
 	async replaceIndex(entries: readonly SearchEntry[]): Promise<void> {
+		const startedAt = new Date().toISOString();
 		const next = `${this.index}_next`;
 		await this.applySettings(this.index);
 		await this.applySettings(next);
@@ -131,11 +145,69 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 				id: `v${SEARCH_INDEX_VERSION}`,
 				status: 'complete',
 				documents: entries.length,
+				startedAt,
+				caughtUpAt: null,
 				builtAt: new Date().toISOString(),
 			},
 		]);
 		await this.waitFor(record.taskUid);
 		await this.removeOldVersions();
+	}
+
+	/** This version's build record, or null when it was never recorded (or the index is missing). */
+	async buildRecord(): Promise<SearchBuildRecord | null> {
+		try {
+			const row = await this.send<{ startedAt?: string; caughtUpAt?: string | null }>(
+				`/indexes/${this.builds}/documents/v${SEARCH_INDEX_VERSION}`,
+				'GET',
+			);
+			return row.startedAt ? { startedAt: row.startedAt, caughtUpAt: row.caughtUpAt ?? null } : null;
+		} catch (error) {
+			if (error instanceof SearchNotFoundError) return null;
+			throw error;
+		}
+	}
+
+	/** Notes that queued changes up to `at` are now in this index. */
+	async recordCatchUp(at: Date): Promise<void> {
+		const task = await this.send<{ taskUid: number }>(`/indexes/${this.builds}/documents?primaryKey=id`, 'PUT', [
+			{ id: `v${SEARCH_INDEX_VERSION}`, caughtUpAt: at.toISOString() },
+		]);
+		await this.waitFor(task.taskUid);
+	}
+
+	/** Every document id in this index, for the nightly comparison with the database. */
+	async indexedIds(): Promise<string[]> {
+		const ids: string[] = [];
+		for (let offset = 0; ; offset += PAGE) {
+			const page = await this.send<{ results?: Array<{ id?: string }> }>(
+				`/indexes/${this.index}/documents?fields=id&limit=${PAGE}&offset=${offset}`,
+				'GET',
+			);
+			const rows = page.results ?? [];
+			ids.push(...rows.flatMap((row) => (row.id ? [row.id] : [])));
+			if (rows.length < PAGE) return ids;
+		}
+	}
+
+	/** Writes live products and removes the rest, waiting until search has taken them. */
+	async applyChanges(entries: readonly SearchEntry[], removedIds: readonly string[]): Promise<void> {
+		await this.ensureSettings();
+		let last: number | null = null;
+		for (let start = 0; start < entries.length; start += BATCH) {
+			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales));
+			last = (await this.send<{ taskUid: number }>(`/indexes/${this.index}/documents`, 'POST', documents))
+				.taskUid;
+		}
+		if (removedIds.length) {
+			const removal = await this.send<{ taskUid: number }>(
+				`/indexes/${this.index}/documents/delete-batch`,
+				'POST',
+				removedIds,
+			);
+			last = removal.taskUid;
+		}
+		if (last !== null) await this.waitFor(last);
 	}
 
 	/** Deletes versions older than the previous one, and any half-built copy left by a failed run. */

@@ -81,10 +81,23 @@ describe('loadRuntimeConfig on a deployed host', () => {
 		await expect(loadServedConfig(host, true)).rejects.toThrow('points at localhost');
 	});
 
-	it('starts with a real API address', async () => {
+	it('refuses a local or missing site address, which the translations load from', async () => {
+		for (const siteUrl of ['https://localhost:4200', undefined]) {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => ({ ok: true, json: async () => ({ apiUrl: 'https://api.example.test', siteUrl }) })),
+			);
+			await expect(loadServedConfig(host, true)).rejects.toThrow('Runtime config is missing');
+		}
+	});
+
+	it('starts with real addresses', async () => {
 		vi.stubGlobal(
 			'fetch',
-			vi.fn(async () => ({ ok: true, json: async () => ({ apiUrl: 'https://api.example.test' }) })),
+			vi.fn(async () => ({
+				ok: true,
+				json: async () => ({ apiUrl: 'https://api.example.test', siteUrl: 'https://shop.example.test' }),
+			})),
 		);
 		await loadServedConfig(host, true);
 		expect(runtimeConfig.apiUrl).toBe('https://api.example.test');

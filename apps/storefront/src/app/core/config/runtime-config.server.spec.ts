@@ -28,11 +28,19 @@ describe('loadRuntimeConfig on the server', () => {
 		await expect(loadRuntimeConfig()).rejects.toThrow('Runtime config is missing');
 		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({ apiUrl: 'https://localhost:4000' });
 		await expect(loadRuntimeConfig()).rejects.toThrow('points at localhost');
+		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({
+			apiUrl: 'https://api.sahatextile.com',
+			siteUrl: 'https://localhost:4200',
+		});
+		await expect(loadRuntimeConfig()).rejects.toThrow('points at localhost');
 	});
 
-	it('starts on a deployment with a real API address', async () => {
+	it('starts on a deployment with real addresses', async () => {
 		process.env['DEPLOY_ENV'] = 'production';
-		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({ apiUrl: 'https://api.sahatextile.com' });
+		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({
+			apiUrl: 'https://api.sahatextile.com',
+			siteUrl: 'https://sahatextile.com',
+		});
 		await loadRuntimeConfig();
 		expect(runtimeConfig.apiUrl).toBe('https://api.sahatextile.com');
 	});

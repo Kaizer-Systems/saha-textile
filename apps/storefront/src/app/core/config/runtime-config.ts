@@ -62,12 +62,14 @@ const LOCAL_HOST = /(^|\.)localhost$|^127\.0\.0\.1$|^\[::1\]$/;
 
 /**
  * Deployed, a missing or broken config must stop the app. Falling back would send every call to
- * localhost, which looks like a broken site with no visible cause.
+ * localhost, which looks like a broken site with no visible cause. Both addresses count: the
+ * translations load from `siteUrl`, so a local one breaks every page's text.
  */
 function assertDeployedConfig(loaded: Partial<RuntimeConfig>): void {
-	const apiUrl = loaded.apiUrl ?? '';
-	if (!URL.canParse(apiUrl) || LOCAL_HOST.test(new URL(apiUrl).hostname)) {
-		throw new Error('Runtime config is missing or points at localhost: check /config.json.');
+	for (const address of [loaded.apiUrl ?? '', loaded.siteUrl ?? '']) {
+		if (!URL.canParse(address) || LOCAL_HOST.test(new URL(address).hostname)) {
+			throw new Error('Runtime config is missing or points at localhost: check /config.json.');
+		}
 	}
 }
 

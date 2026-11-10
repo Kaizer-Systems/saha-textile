@@ -2,12 +2,14 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { BrandImage, BrandSettings, ResolvedImage, StorefrontBrand } from '@saha-textile/contracts';
 import {
 	type MediaAssetRepository,
+	type MediaRoleRepository,
+	refreshBrandStrips,
 	resolveImage,
 	type SiteSettingsRepository,
 	type StoragePort,
 } from '@saha-textile/core-domain';
 
-import { MEDIA_ASSET_REPOSITORY, SITE_SETTINGS_REPOSITORY, STORAGE_PORT } from '../infra/tokens';
+import { MEDIA_ASSET_REPOSITORY, MEDIA_ROLE_REPOSITORY, SITE_SETTINGS_REPOSITORY, STORAGE_PORT } from '../infra/tokens';
 
 const LOGO_ROLE = 'brand_logo';
 const ICON_ROLE = 'brand_icon';
@@ -37,6 +39,7 @@ export class BrandService {
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: MediaAssetRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
+		@Inject(MEDIA_ROLE_REPOSITORY) private readonly roles: MediaRoleRepository,
 	) {}
 
 	async settingsValue(): Promise<BrandSettings> {
@@ -45,7 +48,10 @@ export class BrandService {
 
 	async save(value: BrandSettings): Promise<BrandSettings> {
 		await Promise.all([this.requireBrandAsset(value.logoAssetId), this.requireBrandAsset(value.sealAssetId)]);
+		const before = await this.settingsValue();
 		await this.settings.set('brand', value);
+		// The link-preview cards carry the logo on their strip: a new logo redraws them in the background.
+		if (before.logoAssetId !== value.logoAssetId) await refreshBrandStrips(this.roles);
 		this.cached = null;
 		return value;
 	}
@@ -76,7 +82,9 @@ export class BrandService {
 		const asset = await this.assets.findById(assetId);
 		if (asset?.purpose !== 'brand') {
 			throw new BadRequestException({
-				issues: [{ path: 'assetId', message: 'Upload this image from the Brand screen', code: 'not_a_brand_image' }],
+				issues: [
+					{ path: 'assetId', message: 'Upload this image from the Brand screen', code: 'not_a_brand_image' },
+				],
 			});
 		}
 	}

@@ -17,6 +17,8 @@ export interface ProcessMediaAssetDeps {
 	codec: ImageCodecPort;
 	queue: MediaJobQueuePort;
 	now: () => Date;
+	/** The Brand Kit logo's bytes for link-preview strips; null (or absent) when the shop has none. */
+	brandLogo?: () => Promise<Uint8Array | null>;
 }
 
 export type ProcessOutcome =
@@ -82,8 +84,11 @@ export const processMediaAsset = async (
 		});
 
 		const derivatives: ImageDerivative[] = [];
+		let logo: Promise<Uint8Array | null> | null = null;
 		for (const planned of plan.derivatives) {
-			const rendered = await deps.codec.render(bytes, planned.spec);
+			// Read once per job, and only when a strip is wanted. A missing logo leaves the card plain.
+			const stripLogo = planned.brandStrip ? await (logo ??= deps.brandLogo?.() ?? Promise.resolve(null)) : null;
+			const rendered = await deps.codec.render(bytes, stripLogo ? { ...planned.spec, stripLogo } : planned.spec);
 			const storageKey = derivativeStorageKey({
 				assetId: asset.id,
 				slug: asset.slug,

@@ -135,8 +135,6 @@ export const StorefrontShareSettings = z.object({
 		.default(''),
 	/** Hashtags from the product's facts on X posts. */
 	hashtags: z.boolean().default(true),
-	/** The words on the link-preview card's strip. Empty uses the Brand Kit's shop name. */
-	stripText: z.string().trim().max(60).default(''),
 	/** The apps the menu lists, in the menu's own order. */
 	apps: z
 		.array(ShareApp)

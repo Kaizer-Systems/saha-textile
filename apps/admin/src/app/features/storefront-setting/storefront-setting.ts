@@ -68,7 +68,6 @@ export class StorefrontSetting {
 	readonly shareApps = SHARE_APPS;
 	readonly xHandle = signal('');
 	readonly hashtags = signal(true);
-	readonly stripText = signal('');
 	readonly listedApps = signal<ShareApp[]>([...SHARE_APPS]);
 	readonly shareLoaded = signal(false);
 
@@ -76,7 +75,6 @@ export class StorefrontSetting {
 		this.terms.getShareSettings().subscribe((settings) => {
 			this.xHandle.set(settings.xHandle);
 			this.hashtags.set(settings.hashtags);
-			this.stripText.set(settings.stripText);
 			this.listedApps.set([...settings.apps]);
 			this.shareLoaded.set(true);
 		});
@@ -136,7 +134,6 @@ export class StorefrontSetting {
 				.saveShareSettings({
 					xHandle: this.xHandle().trim(),
 					hashtags: this.hashtags(),
-					stripText: this.stripText().trim(),
 					apps: this.listedApps(),
 				})
 				.subscribe({

@@ -1393,8 +1393,6 @@
 	"share_x_account_help": "X পোস্টে \"via @…\" হিসেবে দেখায়। না চাইলে খালি রাখুন।",
 	"share_hashtags": "X-এ হ্যাশট্যাগ",
 	"share_hashtags_help": "পণ্যের তথ্য থেকে সর্বোচ্চ তিনটি ট্যাগ, শুধু X পোস্টে।",
-	"share_strip_text": "প্রিভিউ পট্টির লেখা",
-	"share_strip_text_help": "প্রতিটি পণ্যের লিংক প্রিভিউর পট্টিতে এই লেখা থাকে। খালি রাখলে ব্র্যান্ড কিটের দোকানের নাম বসে।",
 	"share_apps_listed": "শেয়ার মেনুর অ্যাপ",
 	"share_apps_listed_help": "লিংক আর অন্য অ্যাপ সবসময় থাকে। ফোনে Telegram, ইমেল, X, LinkedIn আর Pinterest অন্য অ্যাপ দিয়ে পাওয়া যায়।",
 	"share_app_whatsapp": "WhatsApp",

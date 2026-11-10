@@ -21,6 +21,7 @@ export const SeededMediaRole = z.enum([
 	'swatch_image',
 	'swatch_image_v2',
 	'share',
+	'story',
 	'feed_square',
 	'email_thumb',
 	'review_thumb',
@@ -111,7 +112,7 @@ export type MediaUploadRules = z.infer<typeof MediaUploadRules>;
  * - `blur` — fit inside the box over a blurred, darkened enlargement of the same photo (link
  *   previews: richer than white bands in a WhatsApp or social card, and still uncropped).
  */
-export const DerivativeFit = z.enum(['inside', 'cover', 'pad', 'blur']);
+export const DerivativeFit = z.enum(['inside', 'cover', 'pad', 'blur', 'story']);
 export type DerivativeFit = z.infer<typeof DerivativeFit>;
 
 /**
@@ -135,6 +136,8 @@ export const MediaRoleDefinition = z
 		primaryOnly: z.boolean().default(false),
 		/** Banners: skip widths beyond twice the slot's widest display. */
 		respectSlotMaxWidth: z.boolean().default(false),
+		/** Link-preview cards: the Brand Kit logo on a white strip along the bottom (share brief J2). */
+		brandStrip: z.boolean().default(false),
 		version: z.number().int().positive().default(1),
 		updatedAt: IsoDateTime.optional(),
 	})
@@ -145,7 +148,7 @@ export const MediaRoleDefinition = z
 		if (role.fit !== 'inside' && !role.aspect) {
 			ctx.addIssue({
 				code: 'custom',
-				message: '`cover`, `pad` and `blur` roles need an aspect box',
+				message: '`cover`, `pad`, `blur` and `story` roles need an aspect box',
 				path: ['aspect'],
 			});
 		}

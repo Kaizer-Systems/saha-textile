@@ -190,24 +190,6 @@
 										<app-form-fields
 											[labelClass]="'form-label-title col-sm-3 mb-0'"
 											[gridClass]="'col-sm-9'"
-											[label]="'share_strip_text' | transloco"
-											[for]="'share_strip_text'"
-											[required]="false"
-										>
-											<input
-												class="form-control"
-												type="text"
-												maxlength="60"
-												id="share_strip_text"
-												name="share_strip_text"
-												[ngModel]="stripText()"
-												(ngModelChange)="stripText.set($event)"
-											/>
-											<p class="help-text">{{ 'share_strip_text_help' | transloco }}</p>
-										</app-form-fields>
-										<app-form-fields
-											[labelClass]="'form-label-title col-sm-3 mb-0'"
-											[gridClass]="'col-sm-9'"
 											[label]="'share_apps_listed' | transloco"
 											[for]="'share_app_whatsapp'"
 											[required]="false"

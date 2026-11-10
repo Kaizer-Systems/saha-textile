@@ -46,6 +46,47 @@ describe('SharpImageCodec formats', () => {
 	});
 });
 
+describe('SharpImageCodec share cards', () => {
+	const photo = () =>
+		bytesOf(
+			sharp({ create: { width: 300, height: 400, channels: 3, background: { r: 200, g: 30, b: 40 } } }).jpeg(),
+		);
+	const pixel = async (bytes: Uint8Array, x: number, y: number) => {
+		const { data, info } = await sharp(bytes).raw().toBuffer({ resolveWithObject: true });
+		const at = (y * info.width + x) * info.channels;
+		return [data[at], data[at + 1], data[at + 2]] as number[];
+	};
+
+	it('draws the tall card with an empty dark band above the whole photo', async () => {
+		const card = await codec.render(await photo(), {
+			width: 270,
+			height: 480,
+			fit: 'story',
+			format: 'image/jpeg',
+			quality: 90,
+		});
+		expect([card.width, card.height]).toEqual([270, 480]);
+		const band = await pixel(card.bytes, 135, Math.round(480 * 0.18));
+		expect(Math.max(...band)).toBeLessThan(80);
+		const saree = await pixel(card.bytes, 135, Math.round(480 * 0.65));
+		expect(saree[0]).toBeGreaterThan(150);
+	});
+
+	it('puts the logo on a white strip along the preview card’s foot', async () => {
+		const logo = await bytesOf(
+			sharp({
+				create: { width: 400, height: 60, channels: 4, background: { r: 10, g: 10, b: 10, alpha: 1 } },
+			}).png(),
+		);
+		const spec = { width: 240, height: 126, fit: 'blur', format: 'image/jpeg', quality: 90 } as const;
+		const plain = await codec.render(await photo(), spec);
+		const branded = await codec.render(await photo(), { ...spec, stripLogo: logo });
+		expect(branded.sha256).not.toBe(plain.sha256);
+		expect(Math.min(...(await pixel(branded.bytes, 4, 122)))).toBeGreaterThan(230);
+		expect(Math.max(...(await pixel(branded.bytes, 200, 120)))).toBeLessThan(80);
+	});
+});
+
 describe('SharpImageCodec logos', () => {
 	const clear = () =>
 		sharp({ create: { width: 40, height: 40, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png();
@@ -67,4 +108,3 @@ describe('SharpImageCodec logos', () => {
 		expect(data[0]).toBe(255);
 	});
 });
-

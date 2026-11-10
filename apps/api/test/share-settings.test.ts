@@ -12,7 +12,6 @@ describe('ShareSettingsService', () => {
 		expect(await new ShareSettingsService(repository() as never).get()).toEqual({
 			xHandle: '',
 			hashtags: true,
-			stripText: '',
 			apps: ['whatsapp', 'instagram', 'facebook', 'telegram', 'email', 'x', 'linkedin', 'pinterest'],
 		});
 	});
@@ -25,7 +24,6 @@ describe('ShareSettingsService', () => {
 			{
 				xHandle: '@SahaTextile',
 				hashtags: false,
-				stripText: ' Saha Textile, Kolkata ',
 				apps: ['x', 'x', 'email'],
 			},
 			'a1',
@@ -33,7 +31,6 @@ describe('ShareSettingsService', () => {
 		expect(saved).toEqual({
 			xHandle: 'SahaTextile',
 			hashtags: false,
-			stripText: 'Saha Textile, Kolkata',
 			apps: ['x', 'email'],
 		});
 		expect(settings.set).toHaveBeenCalledWith('storefront.share', saved);
@@ -51,7 +48,7 @@ describe('ShareSettingsService', () => {
 	it('refuses an X account that X would not accept', async () => {
 		await expect(
 			new ShareSettingsService(repository() as never).save(
-				{ xHandle: 'not a handle!', hashtags: true, stripText: '', apps: [] },
+				{ xHandle: 'not a handle!', hashtags: true, apps: [] },
 				null,
 			),
 		).rejects.toThrow();

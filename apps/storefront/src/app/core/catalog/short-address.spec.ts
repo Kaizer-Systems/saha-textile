@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { productPathForCode, readShortAddress, shortAddressText } from './short-address';
+import { productPathForCode, readShortAddress, readableHost, shortAddressText } from './short-address';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,5 +39,6 @@ describe('short product address', () => {
 
 	it('writes the address the way a caption shows it', () => {
 		expect(shortAddressText('https://www.sahatextile.com/', 'KATA-1001')).toBe('sahatextile.com/p/KATA-1001');
+		expect(readableHost('http://localhost:4200/')).toBe('localhost:4200');
 	});
 });

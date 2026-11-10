@@ -9,3 +9,4 @@ export * from './review-photos';
 export * from './product-video-check';
 export * from './youtube-feed';
 export * from './youtube-posters';
+export * from './brand-strip';

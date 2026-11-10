@@ -312,7 +312,7 @@ describe('MediaRoleDefinition', () => {
 			'role widths must be unique',
 		);
 		expect(messages(MediaRoleDefinition.safeParse(role({ fit: 'cover' })))).toContain(
-			'`cover`, `pad` and `blur` roles need an aspect box',
+			'`cover`, `pad`, `blur` and `story` roles need an aspect box',
 		);
 	});
 });

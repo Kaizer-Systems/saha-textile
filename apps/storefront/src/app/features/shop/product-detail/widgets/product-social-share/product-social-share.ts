@@ -3,13 +3,15 @@ import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
-import { shortAddressText } from '@core/catalog/short-address';
+import { readableHost, shortAddressText } from '@core/catalog/short-address';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IProduct } from '@data-access/interfaces/product.interface';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { SHARE_DEFAULTS, injectShareSettingsQuery } from '@data-access/queries/share.queries';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { ShareGroup, ShareTarget, hashtags, shareTargets, tagged } from './share-targets';
+import { writeStoryWords } from './story-card';
 
 const rupees = (value: number): string => `₹${value.toLocaleString('en-IN')}`;
 
@@ -70,6 +72,8 @@ export class ProductSocialShare {
 			.filter(Boolean)
 			.join('\n');
 	});
+
+	private readonly brand = injectBrandQuery();
 
 	/** Storefront settings › Sharing; every app until it has loaded. */
 	private readonly settings = injectShareSettingsQuery();
@@ -134,13 +138,29 @@ export class ProductSocialShare {
 		return shortAddressText(this.seo.absoluteAddress('/'), code);
 	}
 
-	/** The tall card once the image pipeline has made it; until then, and for posts, the main photo. */
+	/**
+	 * For Status and Stories, the tall card with this page's words written into its band; until the
+	 * image pipeline has made the card, and for posts, the main photo.
+	 */
 	private async picture(tall: boolean): Promise<File | null> {
 		const product = this.product();
-		const url =
-			(tall ? product.share_story_image?.original_url : undefined) ?? product.product_thumbnail?.original_url;
+		const story = tall ? product.share_story_image?.original_url : undefined;
+		const url = story ?? product.product_thumbnail?.original_url;
 		if (!url) return null;
-		const blob = await fetch(url).then((response) => response.blob());
+		let blob = await fetch(url).then((response) => response.blob());
+		if (story) {
+			const host = readableHost(this.seo.absoluteAddress('/'));
+			const shop = this.brand.data()?.shopName;
+			blob = await writeStoryWords(
+				blob,
+				{
+					name: product.name,
+					facts: this.facts().slice(0, 3).join(' · '),
+					shop: shop ? `${shop} · ${host}` : host,
+				},
+				getComputedStyle(document.body).fontFamily || 'sans-serif',
+			);
+		}
 		return new File([blob], `${product.slug}.jpg`, { type: blob.type || 'image/jpeg' });
 	}
 

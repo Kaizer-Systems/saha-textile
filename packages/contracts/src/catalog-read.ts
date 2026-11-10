@@ -334,6 +334,8 @@ export const CatalogProductPage = z.object({
 	gallery: z.array(galleryImage),
 	/** The main photo's 1200×630 link-preview card, once made; until then previews use the first photo. */
 	shareImageUrl: z.string().min(1).nullable().default(null),
+	/** The main photo's 1080×1920 Status/Story card with its empty word band, once made. */
+	shareStoryUrl: z.string().min(1).nullable().default(null),
 	optionGroups: z.array(CatalogPageOptionGroup),
 	variants: z.array(CatalogPageVariant),
 	measurements: CatalogPageMeasurements.nullable(),

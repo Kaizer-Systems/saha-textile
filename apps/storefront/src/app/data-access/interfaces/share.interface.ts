@@ -7,7 +7,5 @@ export interface IShareSettings {
 	xHandle: string;
 	/** Hashtags from the product's facts on X posts. */
 	hashtags: boolean;
-	/** The words on the link-preview card's strip (drawn by the image pipeline). */
-	stripText: string;
 	apps: ShareApp[];
 }

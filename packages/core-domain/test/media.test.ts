@@ -1,5 +1,5 @@
 import type { AuditLog, MediaAsset, MediaRoleDefinition } from '@saha-textile/contracts';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	ImageDecodeError,
@@ -349,6 +349,53 @@ describe('processMediaAsset', () => {
 		expect(jobs.jobs).toEqual([]);
 	});
 
+	it('puts the Brand Kit logo on the preview card only, reading it once, and draws the tall card', async () => {
+		const assets = new FakeAssets([asset({ servesAsPrimary: true })]);
+		const specs: Parameters<ImageCodecPort['render']>[1][] = [];
+		const base = codec({ width: 3000, height: 4000, format: 'jpeg', hasAlpha: false });
+		const logo = new Uint8Array([9]);
+		const brandLogo = vi.fn(async () => logo);
+		await processMediaAsset(
+			{
+				assets,
+				roles,
+				storage: storage().port,
+				codec: { ...base, render: (bytes, spec) => (specs.push(spec), base.render(bytes, spec)) },
+				queue: queue().port,
+				now,
+				brandLogo,
+			},
+			{ assetId: 'med_1', reprocess: false },
+		);
+		expect(specs.filter((spec) => spec.stripLogo).map((spec) => [spec.fit, spec.width])).toEqual([['blur', 1200]]);
+		expect(specs.find((spec) => spec.fit === 'story')).toMatchObject({ width: 1080, height: 1920 });
+		expect(brandLogo).toHaveBeenCalledOnce();
+		expect(assets.rows.get('med_1')?.derivatives.some((row) => row.role === 'story')).toBe(true);
+	});
+
+	it('leaves the preview card plain when the shop has no logo', async () => {
+		const assets = new FakeAssets([asset({ servesAsPrimary: true })]);
+		const specs: Parameters<ImageCodecPort['render']>[1][] = [];
+		const base = codec({ width: 3000, height: 4000, format: 'jpeg', hasAlpha: false });
+		const deps = {
+			assets,
+			roles,
+			storage: storage().port,
+			codec: {
+				...base,
+				render: (bytes: Uint8Array, spec: Parameters<ImageCodecPort['render']>[1]) => (
+					specs.push(spec),
+					base.render(bytes, spec)
+				),
+			},
+			queue: queue().port,
+			now,
+		};
+		await processMediaAsset({ ...deps, brandLogo: async () => null }, { assetId: 'med_1', reprocess: false });
+		await processMediaAsset(deps, { assetId: 'med_1', reprocess: true });
+		expect(specs.some((spec) => spec.stripLogo)).toBe(false);
+	});
+
 	it('deletes an upload that is not really an image', async () => {
 		const assets = new FakeAssets([asset()]);
 		const jobs = queue();
@@ -619,5 +666,21 @@ describe('reconcileSeededRoles', () => {
 		expect(stored.get('share')).toMatchObject({ fit: 'blur', version: 2 });
 		expect(stored.get('card')).toMatchObject({ widths: [200, 400, 800], quality: 75 });
 		expect(stored.size).toBe(SEEDED_MEDIA_ROLES.length);
+	});
+
+	it('redraws only the preview card when the logo strip arrives, not roles stored before the field existed', async () => {
+		const { reconcileSeededRoles } = await import('../src/index.js');
+		const stored = new Map<string, MediaRoleDefinition>(
+			SEEDED_MEDIA_ROLES.filter((role) => role.key !== 'story').map((role) => {
+				const { brandStrip: _strip, ...older } = role;
+				return [role.key, older as MediaRoleDefinition];
+			}),
+		);
+		const changed = await reconcileSeededRoles({
+			list: async () => [...stored.values()],
+			save: async (role: MediaRoleDefinition) => (stored.set(role.key, role), role),
+		});
+		expect(changed.sort()).toEqual(['share', 'story']);
+		expect(stored.get('share')).toMatchObject({ brandStrip: true, version: 2 });
 	});
 });

@@ -514,7 +514,16 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 
 		it('reads a row with no shape or date', async () => {
 			await insertRaw(MediaRoleModel, { _id: `${P}bare`, label: 'bare' });
-			expect(await repo.findByKey(`${P}bare`)).toMatchObject({ aspect: null, updatedAt: undefined });
+			expect(await repo.findByKey(`${P}bare`)).toMatchObject({
+				aspect: null,
+				updatedAt: undefined,
+				brandStrip: false,
+			});
+		});
+
+		it('keeps the logo-strip flag, so the preview cards are not redrawn on every start', async () => {
+			await repo.save({ ...(role('strip') as object), brandStrip: true } as never);
+			expect(await repo.findByKey(`${P}strip`)).toMatchObject({ brandStrip: true });
 		});
 
 		it('inserts only what is missing', async () => {

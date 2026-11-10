@@ -54,9 +54,7 @@ const youtube = {
 };
 
 const share = {
-	getShareSettings: vi.fn(() =>
-		of({ xHandle: 'SahaTextile', hashtags: true, stripText: '', apps: ['whatsapp', 'instagram', 'x'] }),
-	),
+	getShareSettings: vi.fn(() => of({ xHandle: 'SahaTextile', hashtags: true, apps: ['whatsapp', 'instagram', 'x'] })),
 	saveShareSettings: vi.fn(() => of({})),
 };
 
@@ -291,12 +289,10 @@ describe('Storefront settings', () => {
 		page.toggleApp('instagram', false);
 		page.xHandle.set(' @Other ');
 		page.hashtags.set(false);
-		page.stripText.set(' Saha Textile, Kolkata ');
 		page.submit();
 		expect(share.saveShareSettings).toHaveBeenLastCalledWith({
 			xHandle: '@Other',
 			hashtags: false,
-			stripText: 'Saha Textile, Kolkata',
 			apps: ['whatsapp', 'facebook', 'x'],
 		});
 		share.saveShareSettings.mockReturnValueOnce(throwError(() => new Error('no')) as never);

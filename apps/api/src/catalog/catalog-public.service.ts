@@ -184,8 +184,10 @@ export class CatalogPublicService {
 		});
 		// The main photo's link-preview card, once the main-photo sizes exist.
 		const mainPhoto = productGallery(product)[0];
-		const shareImageUrl =
-			(mainPhoto && this.image(assets.get(mainPhoto), ['share'])?.roles['share']?.[0]?.url) || null;
+		const cards = mainPhoto ? this.image(assets.get(mainPhoto), ['share', 'story']) : null;
+		const shareImageUrl = cards?.roles['share']?.[0]?.url || null;
+		// The tall Status/Story card; the shopper's phone writes the words into its band (share brief J1).
+		const shareStoryUrl = cards?.roles['story']?.[0]?.url || null;
 		const axisCodes = new Set(
 			groups.filter((group) => group.semanticRole === 'variation_axis').map((group) => group.attributeCode),
 		);
@@ -225,6 +227,7 @@ export class CatalogPublicService {
 			unknownVariant: read.unknownVariant,
 			gallery: gallery.map((frame) => frame.image),
 			shareImageUrl,
+			shareStoryUrl,
 			code: product.sku,
 			// A video YouTube no longer plays (weekly check) is left off the page.
 			videos: product.videos.filter((video) => !video.unavailableSince),

@@ -10,6 +10,11 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { ProductSocialShare, canSharePictures } from './product-social-share';
 
 const sharing = vi.hoisted(() => ({ data: undefined as unknown as { (): unknown; set(value: unknown): void } }));
+vi.mock('@data-access/queries/brand.queries', () => ({
+	injectBrandQuery: () => ({ data: () => ({ shopName: 'Saha Textile' }) }),
+}));
+const story = vi.hoisted(() => ({ write: vi.fn(async (card: Blob) => card) }));
+vi.mock('./story-card', () => ({ writeStoryWords: story.write }));
 vi.mock('@data-access/queries/share.queries', async (original) => ({
 	...(await original<object>()),
 	injectShareSettingsQuery: () => sharing,
@@ -66,7 +71,10 @@ const render = (options: { platform?: string; phone?: boolean; variant?: string 
 	return { share: fixture.componentInstance, shared, notes };
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+	vi.unstubAllGlobals();
+	story.write.mockClear();
+});
 
 describe('ProductSocialShare', () => {
 	it('builds the message from the live product, with the offer only on sale', () => {
@@ -81,7 +89,7 @@ describe('ProductSocialShare', () => {
 	it('follows Sharing once it loads: fewer apps, and X without hashtags', () => {
 		const { share } = render();
 		expect(share.groups().flatMap((row) => row.items.map((item) => item.id))).toContain('pin');
-		sharing.data.set({ xHandle: 'SahaTextile', hashtags: false, stripText: '', apps: ['x'] });
+		sharing.data.set({ xHandle: 'SahaTextile', hashtags: false, apps: ['x'] });
 		const x = share.groups()[0]!.items[0]!;
 		expect(share.groups().flatMap((row) => row.items.map((item) => item.id))).toEqual(['x']);
 		expect(decodeURIComponent(x.href ?? '')).toContain('text=Katan Saree · ₹4,680&');
@@ -153,6 +161,11 @@ describe('ProductSocialShare', () => {
 		);
 		expect(notes.showSuccess).toHaveBeenCalledWith('share_hint_whatsapp_status');
 		expect(fetch).toHaveBeenCalledWith('https://cdn.test/tall.jpg');
+		expect(story.write).toHaveBeenLastCalledWith(
+			expect.any(Blob),
+			{ name: 'Katan Saree', facts: 'Katan · Black · Wedding', shop: 'Saha Textile · shop.test' },
+			expect.any(String),
+		);
 		expect((shared[0] as { files: File[] }).files[0]?.name).toBe('katan.jpg');
 	});
 
@@ -180,6 +193,8 @@ describe('ProductSocialShare', () => {
 			hint: 'h',
 		});
 		expect(fetch).toHaveBeenLastCalledWith('https://cdn.test/photo.jpg');
+		// Words go only on the tall card; the plain photo is shared as it is.
+		expect(story.write).not.toHaveBeenCalled();
 		const bare = render({ phone: true, item: { product_thumbnail: undefined, share_story_image: undefined } });
 		await bare.share.sharePicture({ id: 'ig-post', group: 'post', icon: '', app: '', label: '', picture: 'photo' });
 		expect(bare.shared[0]).not.toHaveProperty('files');

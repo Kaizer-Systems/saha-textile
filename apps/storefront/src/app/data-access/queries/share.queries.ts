@@ -11,7 +11,6 @@ import { IShareSettings } from '@data-access/interfaces/share.interface';
 export const SHARE_DEFAULTS: IShareSettings = {
 	xHandle: '',
 	hashtags: true,
-	stripText: '',
 	apps: ['whatsapp', 'instagram', 'facebook', 'telegram', 'email', 'x', 'linkedin', 'pinterest'],
 };
 

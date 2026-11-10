@@ -25,6 +25,7 @@ import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import {
 	type CdnPurgePort,
+	brandStripLogo,
 	deliverStockAlerts,
 	processMediaAsset,
 	reconcileSeededRoles,
@@ -79,7 +80,15 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		consent: new MongoConsentRepository(),
 	});
 
-	const processDeps = { assets, roles, storage, codec, queue, now };
+	const processDeps = {
+		assets,
+		roles,
+		storage,
+		codec,
+		queue,
+		now,
+		brandLogo: () => brandStripLogo({ settings, assets, storage }),
+	};
 	const search = new MeilisearchSearch(
 		config.search.host,
 		config.search.apiKey,

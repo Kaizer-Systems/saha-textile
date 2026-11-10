@@ -26,10 +26,15 @@ export async function productPathForCode(apiUrl: string, code: string): Promise<
 	}
 }
 
-/** How the address reads in a caption: no scheme, no `www.`. */
-export function shortAddressText(origin: string, code: string): string {
-	return `${origin
+/** The shop's address as people read it: no scheme, no `www.`, no trailing slash. */
+export function readableHost(origin: string): string {
+	return origin
 		.replace(/^https?:\/\//, '')
 		.replace(/^www\./, '')
-		.replace(/\/$/, '')}/p/${code}`;
+		.replace(/\/$/, '');
+}
+
+/** How the short address reads in a caption. */
+export function shortAddressText(origin: string, code: string): string {
+	return `${readableHost(origin)}/p/${code}`;
 }

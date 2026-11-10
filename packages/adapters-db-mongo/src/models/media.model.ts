@@ -113,6 +113,8 @@ export interface MediaRoleDoc {
 	quality: number;
 	primaryOnly: boolean;
 	respectSlotMaxWidth: boolean;
+	/** Absent on roles stored before the link-preview logo strip; reads as false. */
+	brandStrip?: boolean;
 	version: number;
 	updatedAt?: Date;
 }
@@ -130,6 +132,7 @@ const MediaRoleSchema = new Schema<MediaRoleDoc>(
 		quality: { type: Number, default: 82 },
 		primaryOnly: { type: Boolean, default: false },
 		respectSlotMaxWidth: { type: Boolean, default: false },
+		brandStrip: { type: Boolean, default: false },
 		version: { type: Number, default: 1 },
 	},
 	{ collection: 'mediaRoles', timestamps: { createdAt: false, updatedAt: true } },

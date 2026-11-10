@@ -270,7 +270,7 @@ describe('search word routes', () => {
 		expect(await settings.search()).toBe('settings');
 		expect(await settings.saveSearch({ showFirstCategoryIds: [] }, admin)).toBe('saved settings');
 		expect(await settings.sharing()).toBe('share');
-		const sharing = { xHandle: '', hashtags: true, stripText: '', apps: [] };
+		const sharing = { xHandle: '', hashtags: true, apps: [] };
 		expect(await settings.saveSharing(sharing, admin)).toBe('saved share');
 		expect(share.save).toHaveBeenCalledWith(sharing, 'a1');
 	});

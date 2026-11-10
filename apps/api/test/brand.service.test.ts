@@ -29,10 +29,33 @@ const build = (stored: unknown, assets: Record<string, unknown> = {}) => {
 	const settings = { get: vi.fn(async () => stored), set: vi.fn(async () => {}) };
 	const repository = { findById: vi.fn(async (id: string) => assets[id] ?? null) };
 	const storage = { getUrl: (key: string) => `https://cdn.test/${key}` };
-	return { settings, repository, service: new BrandService(settings as never, repository as never, storage as never) };
+	const roles = {
+		list: vi.fn(async () => [
+			{ key: 'share', brandStrip: true, version: 3 },
+			{ key: 'card', brandStrip: false, version: 1 },
+		]),
+		save: vi.fn(async (role: unknown) => role),
+	};
+	return {
+		settings,
+		repository,
+		roles,
+		service: new BrandService(settings as never, repository as never, storage as never, roles as never),
+	};
 };
 
 describe('BrandService', () => {
+	it('redraws the preview cards when the logo changes, and only then', async () => {
+		const { service, roles } = build(
+			{ shopName: 'Shop', logoAssetId: 'old', sealAssetId: null },
+			{ old: asset('old'), new: asset('new') },
+		);
+		await service.save({ shopName: 'Renamed', logoAssetId: 'old', sealAssetId: null });
+		expect(roles.save).not.toHaveBeenCalled();
+		await service.save({ shopName: 'Shop', logoAssetId: 'new', sealAssetId: null });
+		expect(roles.save).toHaveBeenCalledExactlyOnceWith({ key: 'share', brandStrip: true, version: 4 });
+	});
+
 	it('starts with no brand at all', async () => {
 		const { service } = build(null);
 		expect(await service.settingsValue()).toEqual({ shopName: '', logoAssetId: null, sealAssetId: null });
@@ -77,8 +100,10 @@ describe('BrandService', () => {
 		expect(settings.get).toHaveBeenCalledTimes(2);
 		expect(await service.save(value)).toBe(value);
 		expect(settings.set).toHaveBeenCalledWith('brand', value);
-		await service.storefront(70_001);
+		// The save reads the old logo once; the next page read is fresh, not cached.
 		expect(settings.get).toHaveBeenCalledTimes(3);
+		await service.storefront(70_001);
+		expect(settings.get).toHaveBeenCalledTimes(4);
 	});
 
 	it('refuses an image uploaded for something else', async () => {

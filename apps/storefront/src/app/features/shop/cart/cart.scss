@@ -40,11 +40,11 @@
 		}
 
 		tr.product-box-contain {
-			border: 1px solid #ececec;
+			border: 1px solid var(--st-border-line);
 			border-radius: 8px;
 			padding: 14px;
 			margin-bottom: 14px;
-			background-color: #fff;
+			background-color: var(--st-surface);
 		}
 
 		td {

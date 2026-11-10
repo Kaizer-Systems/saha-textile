@@ -249,6 +249,26 @@ describe('ImageUpload', () => {
 	});
 });
 
+describe('ImageUpload one picture only', () => {
+	it('hides the "+" while a picture is set, and shows it again once it is removed', () => {
+		const fixture = bare(ImageUpload);
+		const widget = fixture.componentInstance;
+		expect(widget.canAdd).toBe(true);
+		widget.image = { id: 1 } as never;
+		widget.ngOnChanges();
+		expect(widget.canAdd).toBe(true);
+		fixture.componentRef.setInput('oneOnly', true);
+		expect(widget.canAdd).toBe(false);
+		widget.remove(0, 'single');
+		expect(widget.canAdd).toBe(true);
+		widget.showImageUrl = 'u';
+		expect(widget.canAdd).toBe(false);
+		widget.showImageUrl = null;
+		widget.showImages = [{ id: 2 }] as never;
+		expect(widget.canAdd).toBe(false);
+	});
+});
+
 describe('YouTubeVideoField', () => {
 	const render = (value: string | null = null) => {
 		const gateway = { validate: vi.fn(() => of<unknown>({ title: 'Video', videoId: 'abc' })) };

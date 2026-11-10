@@ -30,6 +30,11 @@ export class ImageUpload {
 	readonly multipleImage = input<boolean>(false);
 	/** What uploads made from this picker are for; passed to the media modal. */
 	readonly purpose = input<MediaPurpose>('product');
+	/**
+	 * One picture only (Brand Kit, owner 2026-11-10): while a picture is set the "+" is hidden, so
+	 * changing it means removing it first. Off, the "+" stays and picking again replaces the picture.
+	 */
+	readonly oneOnly = input<boolean>(false);
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
@@ -40,6 +45,11 @@ export class ImageUpload {
 	public showImages: IAttachment[] = [];
 	public showImage: IAttachment | null;
 	public showImageUrl: String | null;
+
+	/** Whether the "+" tile shows. */
+	get canAdd(): boolean {
+		return !this.oneOnly() || (!this.showImage && !this.showImageUrl && !this.showImages?.length);
+	}
 
 	ngOnChanges() {
 		this.showImage = this.image;

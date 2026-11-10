@@ -23,6 +23,7 @@
 				[id]="'full_logo'"
 				[multipleImage]="false"
 				[purpose]="'brand'"
+				[oneOnly]="true"
 				[image]="logo()"
 				[helpText]="'full_logo_help' | transloco"
 				(selectedFiles)="select('logoAssetId', $event)"
@@ -36,11 +37,46 @@
 				[id]="'seal'"
 				[multipleImage]="false"
 				[purpose]="'brand'"
+				[oneOnly]="true"
 				[image]="seal()"
 				[helpText]="'seal_help' | transloco"
 				(selectedFiles)="select('sealAssetId', $event)"
 			/>
+			<!-- roles-form: the Roles page's checkbox alignment, reused as is. -->
+			<div class="roles-form d-flex flex-column mt-2 mb-1 gap-2">
+				<div class="form-check form-switch">
+					<input
+						class="checkbox_animated form-check-input"
+						type="checkbox"
+						id="seal_as_favicon"
+						[checked]="sealAsFavicon()"
+						(change)="useSealAsFavicon($any($event.target).checked)"
+					/>
+					<label
+						class="form-check-label form-label m-0"
+						for="seal_as_favicon"
+					>
+						{{ 'seal_as_favicon' | transloco }}
+					</label>
+				</div>
+			</div>
 		</app-form-fields>
+		@if (!sealAsFavicon()) {
+		<app-form-fields
+			[label]="'browser_icon'"
+			[for]="'browser_icon'"
+		>
+			<app-image-upload
+				[id]="'browser_icon'"
+				[multipleImage]="false"
+				[purpose]="'brand'"
+				[oneOnly]="true"
+				[image]="favicon()"
+				[helpText]="'browser_icon_help' | transloco"
+				(selectedFiles)="select('faviconAssetId', $event)"
+			/>
+		</app-form-fields>
+		}
 		<app-button
 			[id]="'save_brand_btn'"
 			[class]="'btn btn-theme ms-auto mt-4'"

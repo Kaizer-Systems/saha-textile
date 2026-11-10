@@ -29,7 +29,15 @@ describe('BrandGateway', () => {
 		expect(http.get).toHaveBeenLastCalledWith('https://api.test/storefront/brand');
 		await firstValueFrom(gateway.settings());
 		expect(http.get).toHaveBeenLastCalledWith('https://api.test/admin/settings/brand');
-		await firstValueFrom(gateway.save({ shopName: 'S', logoAssetId: null, sealAssetId: null }));
+		await firstValueFrom(
+			gateway.save({
+				shopName: 'S',
+				logoAssetId: null,
+				sealAssetId: null,
+				sealAsFavicon: true,
+				faviconAssetId: null,
+			}),
+		);
 		expect(http.put).toHaveBeenCalledOnce();
 	});
 

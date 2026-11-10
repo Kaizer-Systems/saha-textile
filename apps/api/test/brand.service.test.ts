@@ -1,3 +1,4 @@
+import type { BrandSettings } from '@saha-textile/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BrandService } from '../src/media/brand.service';
@@ -25,6 +26,16 @@ const asset = (id: string, purpose = 'brand') => ({
 	],
 });
 
+/** A full Brand Kit value: the phone logo makes the icons unless a test says otherwise. */
+const kit = (value: Partial<BrandSettings> = {}): BrandSettings => ({
+	shopName: '',
+	logoAssetId: null,
+	sealAssetId: null,
+	sealAsFavicon: true,
+	faviconAssetId: null,
+	...value,
+});
+
 const build = (stored: unknown, assets: Record<string, unknown> = {}) => {
 	const settings = { get: vi.fn(async () => stored), set: vi.fn(async () => {}) };
 	const repository = { findById: vi.fn(async (id: string) => assets[id] ?? null) };
@@ -50,15 +61,15 @@ describe('BrandService', () => {
 			{ shopName: 'Shop', logoAssetId: 'old', sealAssetId: null },
 			{ old: asset('old'), new: asset('new') },
 		);
-		await service.save({ shopName: 'Renamed', logoAssetId: 'old', sealAssetId: null });
+		await service.save(kit({ shopName: 'Renamed', logoAssetId: 'old', sealAssetId: null }));
 		expect(roles.save).not.toHaveBeenCalled();
-		await service.save({ shopName: 'Shop', logoAssetId: 'new', sealAssetId: null });
+		await service.save(kit({ shopName: 'Shop', logoAssetId: 'new', sealAssetId: null }));
 		expect(roles.save).toHaveBeenCalledExactlyOnceWith({ key: 'share', brandStrip: true, version: 4 });
 	});
 
 	it('starts with no brand at all', async () => {
 		const { service } = build(null);
-		expect(await service.settingsValue()).toEqual({ shopName: '', logoAssetId: null, sealAssetId: null });
+		expect(await service.settingsValue()).toEqual(kit());
 		expect(await service.storefront()).toEqual({ shopName: '', logo: null, seal: null, icons: {} });
 	});
 
@@ -91,7 +102,7 @@ describe('BrandService', () => {
 	});
 
 	it('reads once a minute, and a save takes effect at once', async () => {
-		const value = { shopName: 'Shop', logoAssetId: null, sealAssetId: null };
+		const value = kit({ shopName: 'Shop' });
 		const { service, settings } = build(value);
 		await service.storefront(1000);
 		await service.storefront(2000);
@@ -106,12 +117,36 @@ describe('BrandService', () => {
 		expect(settings.get).toHaveBeenCalledTimes(4);
 	});
 
+	it('makes the icons from the browser icon once the phone logo box is unticked', async () => {
+		const icon = { ...asset('f'), derivatives: [derivative('brand_icon', 32, 'image/png')] };
+		const { service } = build(kit({ sealAssetId: 's', sealAsFavicon: false, faviconAssetId: 'f' }), {
+			s: asset('s'),
+			f: icon,
+		});
+		const brand = await service.storefront();
+		expect(brand.icons).toEqual({ '32': 'https://cdn.test/brand_icon-32' });
+		expect(brand.seal?.url).toBe('https://cdn.test/brand_logo-960');
+	});
+
+	it('keeps the phone logo as the icon while the box is ticked, even with a browser icon kept', async () => {
+		const { service, repository } = build(kit({ sealAssetId: 's', faviconAssetId: 'f' }), { s: asset('s') });
+		expect((await service.storefront()).icons['512']).toBe('https://cdn.test/brand_icon-512');
+		expect(repository.findById).not.toHaveBeenCalledWith('f');
+	});
+
+	it('shows the built-in icons when the box is unticked and no browser icon is chosen', async () => {
+		const { service } = build(kit({ sealAssetId: 's', sealAsFavicon: false }), { s: asset('s') });
+		expect((await service.storefront()).icons).toEqual({});
+	});
+
 	it('refuses an image uploaded for something else', async () => {
 		const { service, settings } = build(null, { p: asset('p', 'product'), b: asset('b') });
-		await expect(service.save({ shopName: '', logoAssetId: 'p', sealAssetId: null })).rejects.toThrow();
-		await expect(service.save({ shopName: '', logoAssetId: 'gone', sealAssetId: null })).rejects.toThrow();
+		await expect(service.save(kit({ shopName: '', logoAssetId: 'p', sealAssetId: null }))).rejects.toThrow();
+		await expect(service.save(kit({ shopName: '', logoAssetId: 'gone', sealAssetId: null }))).rejects.toThrow();
 		expect(settings.set).not.toHaveBeenCalled();
-		await service.save({ shopName: '', logoAssetId: 'b', sealAssetId: 'b' });
+		await expect(service.save(kit({ faviconAssetId: 'p' }))).rejects.toThrow();
+		expect(settings.set).not.toHaveBeenCalled();
+		await service.save(kit({ shopName: '', logoAssetId: 'b', sealAssetId: 'b', faviconAssetId: 'b' }));
 		expect(settings.set).toHaveBeenCalled();
 	});
 });

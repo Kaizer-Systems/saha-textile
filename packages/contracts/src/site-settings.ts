@@ -80,8 +80,12 @@ export const BrandSettings = z.object({
 	shopName: z.string().trim().max(80).default(''),
 	/** The full logo: seal, name and tagline. */
 	logoAssetId: z.string().min(1).nullable().default(null),
-	/** The small mark for tight spaces and every icon. */
+	/** The small mark for phones and tight spaces (shown as "Phone logo" in admin). */
 	sealAssetId: z.string().min(1).nullable().default(null),
+	/** The phone logo also makes the browser and home-screen icons. Off: `faviconAssetId` makes them. */
+	sealAsFavicon: z.boolean().default(true),
+	/** Its own browser icon, used only while `sealAsFavicon` is off. */
+	faviconAssetId: z.string().min(1).nullable().default(null),
 });
 export type BrandSettings = z.infer<typeof BrandSettings>;
 

@@ -13,11 +13,15 @@ import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 
-type Slot = 'logoAssetId' | 'sealAssetId';
+type Slot = 'logoAssetId' | 'sealAssetId' | 'faviconAssetId';
 
 /**
  * The Brand Kit. A new owner of this codebase uploads their own logo here after deployment, and
  * every screen, icon and search result follows. No brand sits in the code.
+ *
+ * Owner brief, 2026-11-10: one picture per slot (the "+" hides while one is set), and the phone
+ * logo makes the browser icon unless "Also use it as the browser icon" is unticked, which shows a
+ * Browser icon slot of its own. Saved pictures load from the media library on open.
  */
 @Component({
 	selector: 'app-brand-kit',
@@ -35,15 +39,22 @@ export class BrandKit {
 		shopName: [''],
 		logoAssetId: this.nullableId(),
 		sealAssetId: this.nullableId(),
+		sealAsFavicon: [true],
+		faviconAssetId: this.nullableId(),
 	});
 	readonly logo = signal<IAttachment | null>(null);
 	readonly seal = signal<IAttachment | null>(null);
+	readonly favicon = signal<IAttachment | null>(null);
+	/** Ticked: the phone logo is the browser icon and the Browser icon slot stays hidden. */
+	readonly sealAsFavicon = signal(true);
 
 	constructor() {
 		this.gateway.settings().subscribe((value) => {
 			this.form.patchValue(value);
 			this.preview(value.logoAssetId, this.logo);
 			this.preview(value.sealAssetId, this.seal);
+			this.preview(value.faviconAssetId, this.favicon);
+			this.sealAsFavicon.set(value.sealAsFavicon);
 		});
 	}
 
@@ -57,6 +68,11 @@ export class BrandKit {
 
 	select(slot: Slot, image: IAttachment | null | undefined) {
 		this.form.controls[slot].setValue(image ? String(image.id) : null);
+	}
+
+	useSealAsFavicon(ticked: boolean) {
+		this.form.controls.sealAsFavicon.setValue(ticked);
+		this.sealAsFavicon.set(ticked);
 	}
 
 	save() {

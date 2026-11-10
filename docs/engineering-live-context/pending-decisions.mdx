@@ -788,8 +788,8 @@ Notes: built so far without any product link; adding option 1 or 2 later changes
 
 ### Decision needed
 
-Whether to run the two tracing containers on the staging and production servers, and so turn
-on request tracing there. It is already on for the local stack.
+Whether to run a tracing container on the staging and production servers, and so turn on
+request tracing there, and which tool it is. It is already on for the local stack.
 
 ### Why this matters
 
@@ -797,17 +797,33 @@ Tracing shows the time of every database, search and outside call inside one req
 staging and production still have request ids in every log line, but no timing chart. The two
 containers take server memory, CPU and disk.
 
-- The OpenTelemetry Collector receives, samples and forwards traces.
-- Jaeger stores them for 7 days and answers the console's queries.
+The first design used two containers: the OpenTelemetry Collector to receive and sample, and
+Jaeger to store for 7 days. Jaeger 2.x already includes tail sampling, so the collector is not
+needed for our use.
 
-They are added under a Compose profile and switched on by one GitHub environment variable;
-the deploy then sets `OTEL_EXPORTER_OTLP_ENDPOINT` on the apps.
+Measured on 2026-11-10 on the owner's Mac (Docker, about 6,000 spans a second for 75 seconds per
+candidate; details and figures in the Safe Releases Brief, version 7, Q17):
+
+| Candidate                            | Idle   | Peak    | Disk after |
+| ------------------------------------ | ------ | ------- | ---------- |
+| Collector + Jaeger, sampling a tenth | 79 MB  | 694 MB  | 53 MB      |
+| Jaeger alone, sampling a tenth       | 36 MB  | 506 MB  | 28 MB      |
+| Jaeger alone, keeping all            | 34 MB  | 2088 MB | 223 MB     |
+| VictoriaTraces 0.13, keeping all     | 8 MB   | 183 MB  | 25 MB      |
+| OpenObserve 1.1.2, keeping all       | 249 MB | 804 MB  | 137 MB     |
+| Grafana Tempo 3.1.1, keeping all     | 99 MB  | 580 MB  | 98 MB      |
+
+Recommendation: one VictoriaTraces container with a 7-day retention and a disk cap. Its search
+API uses Jaeger's format, so Jaeger alone stays a configuration-only fallback. Whichever is chosen
+goes under a Compose profile switched on by one GitHub environment variable; the deploy then sets
+`OTEL_EXPORTER_OTLP_ENDPOINT` on the apps.
 
 ### What happens first
 
 Asked by the owner on 2026-11-10: at the end of the Release Console build, measure memory, CPU
-and disk of both containers on the local stack under heavy load. Translate the figures to the
-Ubuntu droplet, then check in with the owner before switching anything on.
+and disk on the local stack under heavy load with the real shop traffic, translate the figures to
+the Ubuntu droplet, then check in with the owner before switching anything on. The synthetic
+bench above was done early, at the owner's request, to choose the tool.
 
 ### Owner answer
 

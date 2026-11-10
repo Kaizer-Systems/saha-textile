@@ -44,6 +44,15 @@ const lightSelector = (selector) =>
 const COLOUR =
 	/color|^background|^border(?!-radius)(-(top|right|bottom|left))?$|^border-(top|right|bottom|left|inline|block)?-?color$|shadow|^fill$|^stroke$|^outline(-color)?$|text-stroke|^--/;
 
+/** The colour inside a border shorthand (`1px solid #2a2d2d` → `#2a2d2d`), or null for `none`. */
+function colourOf(shorthand) {
+	const match =
+		/(#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|var\([^)]*\)|\b(transparent|currentcolor|white|black)\b)/i.exec(
+			shorthand,
+		);
+	return match ? match[0] : null;
+}
+
 const value = (decl) => `${decl.value}${decl.important ? ' !important' : ''}`;
 
 /**
@@ -89,7 +98,22 @@ dark.walkRules((rule) => {
 			// Same layout in both modes, whatever the theme's two copies say.
 			decl.remove();
 			notColour.push(`${rule.selector.replace(/\s+/g, ' ')} { ${decl.prop}: ${decl.value} }`);
-		} else kept.set(decl.prop, (kept.get(decl.prop) ?? 0) + 1);
+		} else {
+			// A border or outline shorthand would also set width and style, which can add pixels where
+			// the light theme has no border. Dark mode only recolours it.
+			const shorthand = /^(border(-(top|right|bottom|left))?|outline)$/.exec(decl.prop);
+			if (shorthand) {
+				const colour = colourOf(decl.value);
+				if (!colour) {
+					decl.remove();
+					notColour.push(`${rule.selector.replace(/\s+/g, ' ')} { ${decl.prop}: ${decl.value} }`);
+					return;
+				}
+				decl.prop = `${decl.prop}-color`;
+				decl.value = colour;
+			}
+			kept.set(decl.prop, (kept.get(decl.prop) ?? 0) + 1);
+		}
 	});
 	if (!rule.nodes.length) rule.remove();
 });

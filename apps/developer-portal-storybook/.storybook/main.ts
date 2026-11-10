@@ -21,6 +21,10 @@ const storybookStateShims = new Map([
 	['@core/state/menu.store', path.join(storybookRoot, 'src/type-shims/core/state/menu.store.ts')],
 	['@core/state/setting.store', path.join(storybookRoot, 'src/type-shims/core/state/setting.store.ts')],
 	[
+		'@core/interceptors/global-error-handler.interceptor',
+		path.join(storybookRoot, 'src/type-shims/core/interceptors/global-error-handler.interceptor.ts'),
+	],
+	[
 		'@data-access/queries/notification.queries',
 		path.join(storybookRoot, 'src/type-shims/data-access/queries/notification.queries.ts'),
 	],

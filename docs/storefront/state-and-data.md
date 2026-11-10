@@ -95,6 +95,8 @@ Use it when:
 
 `core/config/runtime-config.ts` loads `/config.json` at startup and fills a mutable `runtimeConfig` singleton, plus the `environment` object that services read for `apiUrl`. Only non-secret values live there. In deployments the edge Nginx serves the real file. The server side reads `SAHA_TEXTILE_PUBLIC_CONFIG`.
 
+On a deployed host the app refuses to start when `apiUrl` or `siteUrl` is missing, unreadable or still a local address (`localhost`, `*.localhost`, `127.0.0.1`, `[::1]`). The browser applies the check when it is online; an installed app that is offline starts from what it has. The server applies it when `DEPLOY_ENV` is `staging` or `production`. `siteUrl` is part of the check because the translations load from it.
+
 ## Session and HTTP behaviour
 
 - The auth interceptor sends `withCredentials: true`, and sends the CSRF token as `x-csrf-token` on unsafe methods. The token comes from the API's reply and is held in memory.

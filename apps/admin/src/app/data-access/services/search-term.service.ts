@@ -14,6 +14,7 @@ import type {
 	SearchTermStatus,
 	SearchTermWrite,
 	StorefrontSearchSettings,
+	StorefrontShareSettings,
 } from '@saha-textile/contracts';
 
 /** A search word as the table draws it: the English name, its spellings, what it finds and a live switch. */
@@ -71,5 +72,14 @@ export class SearchTermService {
 
 	saveSearchSettings(body: StorefrontSearchSettings): Observable<StorefrontSearchSettings> {
 		return this.http.put<StorefrontSearchSettings>(`${environment.apiUrl}/admin/storefront-settings/search`, body);
+	}
+
+	/** Storefront settings › Sharing (share brief D4). */
+	getShareSettings(): Observable<StorefrontShareSettings> {
+		return this.http.get<StorefrontShareSettings>(`${environment.apiUrl}/admin/storefront-settings/share`);
+	}
+
+	saveShareSettings(body: StorefrontShareSettings): Observable<StorefrontShareSettings> {
+		return this.http.put<StorefrontShareSettings>(`${environment.apiUrl}/admin/storefront-settings/share`, body);
 	}
 }

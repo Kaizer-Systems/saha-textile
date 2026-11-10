@@ -1,5 +1,29 @@
+import { ShareApp } from '@data-access/interfaces/share.interface';
+
 /** The destinations of the product share menu (owner-approved share brief, sections H and I). */
 export type ShareGroup = 'send' | 'post' | 'story';
+
+/** The shop-wide choices from Storefront settings › Sharing that change the list. */
+export interface ShareChoices {
+	/** The apps admin lists; a target whose app is not here is left out. */
+	apps: readonly ShareApp[];
+	/** The shop's X account, without the @, named in X posts. Empty for none. */
+	xHandle: string;
+}
+
+/** Which Sharing switch each destination answers to. */
+const APP_OF: Record<string, ShareApp> = {
+	wa: 'whatsapp',
+	'wa-status': 'whatsapp',
+	'ig-post': 'instagram',
+	'ig-story': 'instagram',
+	fb: 'facebook',
+	tg: 'telegram',
+	mail: 'email',
+	x: 'x',
+	li: 'linkedin',
+	pin: 'pinterest',
+};
 
 /**
  * One place a product can go. A target with `href` opens that app's own share address; a
@@ -47,7 +71,12 @@ export const tagged = (url: string, ref: string): string => `${url}${url.include
  *
  * Computers have no app sheet, so they list every app's own share address.
  */
-export function shareTargets(subject: ShareSubject, phone: boolean): ShareTarget[] {
+export function shareTargets(subject: ShareSubject, phone: boolean, choices: ShareChoices): ShareTarget[] {
+	const listed = new Set(choices.apps);
+	return allTargets(subject, phone, choices.xHandle).filter((target) => listed.has(APP_OF[target.id] as ShareApp));
+}
+
+function allTargets(subject: ShareSubject, phone: boolean, xHandle: string): ShareTarget[] {
 	const link = (ref: string) => tagged(subject.url, ref);
 	const whatsapp: ShareTarget = {
 		id: 'wa',
@@ -124,7 +153,7 @@ export function shareTargets(subject: ShareSubject, phone: boolean): ShareTarget
 			icon: 'ri-twitter-x-fill',
 			app: 'X',
 			label: 'share_on_x',
-			href: `https://x.com/intent/tweet?text=${enc(subject.short)}&url=${enc(link('x'))}`,
+			href: `https://x.com/intent/tweet?text=${enc(subject.short)}&url=${enc(link('x'))}${xHandle ? `&via=${enc(xHandle)}` : ''}`,
 			window: true,
 		},
 		{

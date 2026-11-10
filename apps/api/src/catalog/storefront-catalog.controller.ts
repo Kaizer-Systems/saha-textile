@@ -15,6 +15,7 @@ import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
 import { CatalogLocaleInterceptor } from './catalog-locale';
 import { CatalogPublicService } from './catalog-public.service';
 import { RecentPurchasesService } from './recent-purchases.service';
+import { ShareSettingsService } from './share-settings.service';
 
 /**
  * Public catalogue reads for the storefront. Admin writes stay on `admin/catalog`.
@@ -29,6 +30,7 @@ export class StorefrontCatalogController {
 		private readonly catalog: CatalogPublicService,
 		private readonly recentPurchases: RecentPurchasesService,
 		private readonly blog: BlogPublicService,
+		private readonly share: ShareSettingsService,
 	) {}
 
 	@Get('home')
@@ -76,6 +78,13 @@ export class StorefrontCatalogController {
 	async sitemap() {
 		const [catalog, posts] = await Promise.all([this.catalog.sitemapPaths(), this.blog.sitemapPaths()]);
 		return { paths: [...catalog, ...posts].sort() };
+	}
+
+	@Get('share-settings')
+	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
+	@ApiOperation({ operationId: 'catalogShareSettings', summary: "The share menu's shop-wide choices" })
+	shareSettings() {
+		return this.share.get();
 	}
 
 	@Get('code/:code')

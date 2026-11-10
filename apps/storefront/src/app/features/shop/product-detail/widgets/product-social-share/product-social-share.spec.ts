@@ -1,4 +1,4 @@
-import { PLATFORM_ID } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
@@ -8,6 +8,12 @@ import { LocaleSeo } from '@core/i18n/locale-seo';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { ProductSocialShare, canSharePictures } from './product-social-share';
+
+const sharing = vi.hoisted(() => ({ data: undefined as unknown as { (): unknown; set(value: unknown): void } }));
+vi.mock('@data-access/queries/share.queries', async (original) => ({
+	...(await original<object>()),
+	injectShareSettingsQuery: () => sharing,
+}));
 
 const product = {
 	name: 'Katan Saree',
@@ -20,6 +26,7 @@ const product = {
 };
 
 const render = (options: { platform?: string; phone?: boolean; variant?: string | null; item?: object } = {}) => {
+	sharing.data = signal<unknown>(undefined);
 	vi.stubGlobal('matchMedia', () => ({ matches: options.phone ?? false }));
 	const shared: unknown[] = [];
 	vi.stubGlobal('navigator', {
@@ -69,6 +76,16 @@ describe('ProductSocialShare', () => {
 		);
 		const full = render({ item: { sale_price: 0 } }).share;
 		expect(full.message().split('\n')[1]).toBe('₹5,200');
+	});
+
+	it('follows Sharing once it loads: fewer apps, and X without hashtags', () => {
+		const { share } = render();
+		expect(share.groups().flatMap((row) => row.items.map((item) => item.id))).toContain('pin');
+		sharing.data.set({ xHandle: 'SahaTextile', hashtags: false, stripText: '', apps: ['x'] });
+		const x = share.groups()[0]!.items[0]!;
+		expect(share.groups().flatMap((row) => row.items.map((item) => item.id))).toEqual(['x']);
+		expect(decodeURIComponent(x.href ?? '')).toContain('text=Katan Saree · ₹4,680&');
+		expect(x.href).toContain('via=SahaTextile');
 	});
 
 	it('links to the chosen colour', () => {

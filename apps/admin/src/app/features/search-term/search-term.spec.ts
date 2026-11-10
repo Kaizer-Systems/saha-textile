@@ -53,6 +53,13 @@ const youtube = {
 	refresh: vi.fn(() => of(undefined)),
 };
 
+const share = {
+	getShareSettings: vi.fn(() =>
+		of({ xHandle: 'SahaTextile', hashtags: true, stripText: '', apps: ['whatsapp', 'instagram', 'x'] }),
+	),
+	saveShareSettings: vi.fn(() => of({})),
+};
+
 const translate = (key: string, params?: Record<string, unknown>) =>
 	params ? `${key} ${JSON.stringify(params)}` : key;
 
@@ -228,7 +235,7 @@ describe('Search word form', () => {
 describe('Storefront settings', () => {
 	it('loads and saves the show-first categories', () => {
 		const service = { saveSearchSettings: vi.fn(() => of({ showFirstCategoryIds: ['cat_1'] })) };
-		const { page, toasts } = render(StorefrontSetting, service);
+		const { page, toasts } = render(StorefrontSetting, { ...share, ...service });
 		settings.set({ showFirstCategoryIds: ['cat_1'] });
 		TestBed.tick();
 		expect(page.showFirst()).toEqual(['cat_1']);
@@ -244,7 +251,7 @@ describe('Storefront settings', () => {
 
 	it('loads the YouTube tab and saves it with the search settings, keeping other rail places', () => {
 		const service = { saveSearchSettings: vi.fn(() => of({ showFirstCategoryIds: [] })) };
-		const { page, toasts } = render(StorefrontSetting, service);
+		const { page, toasts } = render(StorefrontSetting, { ...share, ...service });
 		expect(page.channelHandle()).toBe('@SahaTextile');
 		expect(page.onHome()).toBe(true);
 		expect(page.status()?.videos).toBe(24);
@@ -271,14 +278,39 @@ describe('Storefront settings', () => {
 	it('leaves YouTube alone until its settings have loaded', () => {
 		youtube.settings.mockReturnValueOnce(of() as never);
 		youtube.saveSettings.mockClear();
-		const { page } = render(StorefrontSetting, { saveSearchSettings: vi.fn(() => of({})) });
+		const { page } = render(StorefrontSetting, { ...share, saveSearchSettings: vi.fn(() => of({})) });
 		page.submit();
 		expect(youtube.saveSettings).not.toHaveBeenCalled();
 	});
 
+	it('loads the Sharing tab and saves it in the menu order, unless it never loaded', () => {
+		const { page, toasts } = render(StorefrontSetting, { ...share, saveSearchSettings: vi.fn(() => of({})) });
+		expect(page.xHandle()).toBe('SahaTextile');
+		expect(page.listedApps()).toEqual(['whatsapp', 'instagram', 'x']);
+		page.toggleApp('facebook', true);
+		page.toggleApp('instagram', false);
+		page.xHandle.set(' @Other ');
+		page.hashtags.set(false);
+		page.stripText.set(' Saha Textile, Kolkata ');
+		page.submit();
+		expect(share.saveShareSettings).toHaveBeenLastCalledWith({
+			xHandle: '@Other',
+			hashtags: false,
+			stripText: 'Saha Textile, Kolkata',
+			apps: ['whatsapp', 'facebook', 'x'],
+		});
+		share.saveShareSettings.mockReturnValueOnce(throwError(() => new Error('no')) as never);
+		page.submit();
+		expect(toasts.showError).toHaveBeenCalledWith('share_settings_rejected');
+		share.getShareSettings.mockReturnValueOnce(of() as never);
+		share.saveShareSettings.mockClear();
+		render(StorefrontSetting, { ...share, saveSearchSettings: vi.fn(() => of({})) }).page.submit();
+		expect(share.saveShareSettings).not.toHaveBeenCalled();
+	});
+
 	it('refreshes now, then reads the status again; and says when it could not start', () => {
 		vi.useFakeTimers();
-		const { page, toasts } = render(StorefrontSetting, { saveSearchSettings: vi.fn() });
+		const { page, toasts } = render(StorefrontSetting, { ...share, saveSearchSettings: vi.fn() });
 		youtube.status.mockClear();
 		page.refreshNow();
 		expect(page.refreshing()).toBe(true);

@@ -17,12 +17,13 @@ import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
-import type { YouTubeFeedStatus } from '@saha-textile/contracts';
+import { SHARE_APPS, type ShareApp, type YouTubeFeedStatus } from '@saha-textile/contracts';
 
 /**
  * Store front › Storefront settings (brief approved 2026-11-08): small shop-wide switches, one
  * group per side tab in the Theme Options layout. Search is the first group; YouTube (video page
- * brief, 2026-11-10) holds the channel, the home rail and the daily refresh's state.
+ * brief, 2026-11-10) holds the channel, the home rail and the daily refresh's state. Sharing
+ * (share brief D4) holds the share menu's shop-wide choices.
  */
 @Component({
 	selector: 'app-storefront-setting',
@@ -63,7 +64,22 @@ export class StorefrontSetting {
 	readonly status = signal<YouTubeFeedStatus | null>(null);
 	readonly refreshing = signal(false);
 
+	/** The Sharing tab. Saved only once it has loaded, so a slow read never overwrites it with defaults. */
+	readonly shareApps = SHARE_APPS;
+	readonly xHandle = signal('');
+	readonly hashtags = signal(true);
+	readonly stripText = signal('');
+	readonly listedApps = signal<ShareApp[]>([...SHARE_APPS]);
+	readonly shareLoaded = signal(false);
+
 	constructor() {
+		this.terms.getShareSettings().subscribe((settings) => {
+			this.xHandle.set(settings.xHandle);
+			this.hashtags.set(settings.hashtags);
+			this.stripText.set(settings.stripText);
+			this.listedApps.set([...settings.apps]);
+			this.shareLoaded.set(true);
+		});
 		this.youtube.settings().subscribe((settings) => {
 			this.channelHandle.set(settings.channelHandle);
 			this.displayCount.set(settings.displayCount);
@@ -82,6 +98,14 @@ export class StorefrontSetting {
 
 	selectShowFirst(ids: string[]) {
 		if (Array.isArray(ids)) this.showFirst.set(ids.map(String));
+	}
+
+	/** Ticks an app on or off, keeping the menu's own order. */
+	toggleApp(app: ShareApp, on: boolean): void {
+		const listed = new Set(this.listedApps());
+		if (on) listed.add(app);
+		else listed.delete(app);
+		this.listedApps.set(SHARE_APPS.filter((item) => listed.has(item)));
 	}
 
 	loadStatus(): void {
@@ -107,6 +131,18 @@ export class StorefrontSetting {
 	}
 
 	submit() {
+		if (this.shareLoaded()) {
+			this.terms
+				.saveShareSettings({
+					xHandle: this.xHandle().trim(),
+					hashtags: this.hashtags(),
+					stripText: this.stripText().trim(),
+					apps: this.listedApps(),
+				})
+				.subscribe({
+					error: () => this.notifier.showError(this.transloco.translate('share_settings_rejected')),
+				});
+		}
 		if (this.youtubeLoaded()) {
 			const others = this.placements.filter((placement) => placement !== 'home');
 			this.youtube

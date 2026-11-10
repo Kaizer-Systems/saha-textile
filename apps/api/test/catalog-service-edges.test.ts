@@ -947,7 +947,13 @@ describe('catalogue controllers', () => {
 		};
 		const recent = { list: vi.fn(async () => 'recent') };
 		const blog = { sitemapPaths: vi.fn(async () => ['/en/blog/real-banarasi']) };
-		const controller = new StorefrontCatalogController(catalog as never, recent as never, blog as never);
+		const share = { get: vi.fn(async () => 'share settings') };
+		const controller = new StorefrontCatalogController(
+			catalog as never,
+			recent as never,
+			blog as never,
+			share as never,
+		);
 		expect(await controller.home()).toBe('home');
 		expect(await controller.placement({ path: 'x' } as never)).toBe('placement');
 		await controller.cards({ slug: 'a' } as never);
@@ -961,6 +967,7 @@ describe('catalogue controllers', () => {
 		expect(await controller.sitemap()).toEqual({ paths: ['/en/', '/en/blog/real-banarasi'] });
 		expect(await controller.livePaths()).toBe('paths');
 		expect(await controller.byCode('KATA-1001')).toEqual({ slug: 'red-saree' });
+		expect(await controller.shareSettings()).toBe('share settings');
 		await expect(controller.byCode('NOPE')).rejects.toThrow('Not Found');
 	});
 

@@ -5,6 +5,7 @@ import {
 	SearchTermStatusWrite,
 	SearchTermWrite,
 	StorefrontSearchSettings,
+	StorefrontShareSettings,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -12,6 +13,7 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { SearchTermsService } from './search-terms.service';
+import { ShareSettingsService } from './share-settings.service';
 
 const actor = (principal: AuthenticatedPrincipal | undefined) => principal?.userId ?? null;
 
@@ -86,7 +88,10 @@ export class AdminSearchTermsController {
 @Audience('admin')
 @Controller('admin/storefront-settings')
 export class AdminStorefrontSettingsController {
-	constructor(private readonly terms: SearchTermsService) {}
+	constructor(
+		private readonly terms: SearchTermsService,
+		private readonly share: ShareSettingsService,
+	) {}
 
 	@Get('search')
 	@Header('Cache-Control', 'no-store')
@@ -108,5 +113,24 @@ export class AdminStorefrontSettingsController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
 		return this.terms.saveSearchSettings(body, actor(principal));
+	}
+
+	@Get('share')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({ operationId: 'getStorefrontShareSettings', summary: "The share menu's shop-wide choices" })
+	sharing() {
+		return this.share.get();
+	}
+
+	@Put('share')
+	@HttpCode(200)
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({ operationId: 'saveStorefrontShareSettings', summary: 'Save Sharing' })
+	saveSharing(
+		@Body(new ZodValidationPipe(StorefrontShareSettings)) body: StorefrontShareSettings,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.share.save(body, actor(principal));
 	}
 }

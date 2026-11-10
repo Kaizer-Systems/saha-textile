@@ -115,7 +115,7 @@ describe('catalog cards by id', () => {
 			cardsForIds: vi.fn(async () => 'by-id'),
 			cardsForSlugs: vi.fn(async () => 'by-slug'),
 		};
-		const controller = new StorefrontCatalogController(catalog as never, {} as never, {} as never);
+		const controller = new StorefrontCatalogController(catalog as never, {} as never, {} as never, {} as never);
 		expect(await controller.cards({ id: ['p1', 'p2'] })).toBe('by-id');
 		expect(catalog.cardsForIds).toHaveBeenCalledWith(['p1', 'p2']);
 		expect(await controller.cards({ id: 'p1' })).toBe('by-id');

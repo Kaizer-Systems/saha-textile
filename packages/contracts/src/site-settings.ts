@@ -107,6 +107,44 @@ export type StorefrontBrand = z.infer<typeof StorefrontBrand>;
 export const ContactMailboxSettings = z.object({ mailboxId: z.string().min(1).nullable() });
 export type ContactMailboxSettings = z.infer<typeof ContactMailboxSettings>;
 
+/** The apps the product share menu can list. Link and More are always there. */
+export const SHARE_APPS = [
+	'whatsapp',
+	'instagram',
+	'facebook',
+	'telegram',
+	'email',
+	'x',
+	'linkedin',
+	'pinterest',
+] as const;
+export const ShareApp = z.enum(SHARE_APPS);
+export type ShareApp = z.infer<typeof ShareApp>;
+
+/**
+ * `storefront.share` — Storefront settings › Sharing (share brief D4). The message, previews and
+ * pictures come from each product; these are the few shop-wide choices.
+ */
+export const StorefrontShareSettings = z.object({
+	/** The shop's X account, named in X posts as "via @…". Empty for none. */
+	xHandle: z
+		.string()
+		.trim()
+		.transform((value) => value.replace(/^@/, ''))
+		.pipe(z.string().regex(/^[A-Za-z0-9_]{0,15}$/))
+		.default(''),
+	/** Hashtags from the product's facts on X posts. */
+	hashtags: z.boolean().default(true),
+	/** The words on the link-preview card's strip. Empty uses the Brand Kit's shop name. */
+	stripText: z.string().trim().max(60).default(''),
+	/** The apps the menu lists, in the menu's own order. */
+	apps: z
+		.array(ShareApp)
+		.max(SHARE_APPS.length)
+		.default([...SHARE_APPS]),
+});
+export type StorefrontShareSettings = z.infer<typeof StorefrontShareSettings>;
+
 /** Every setting key and its schema. */
 export const SITE_SETTING_SCHEMAS = {
 	brand: BrandSettings,
@@ -114,6 +152,7 @@ export const SITE_SETTING_SCHEMAS = {
 	youtube: YouTubeSettings,
 	'youtube.feed': YouTubeFeedCache,
 	'storefront.search': StorefrontSearchSettings,
+	'storefront.share': StorefrontShareSettings,
 	'mailboxes.contact': ContactMailboxSettings,
 } as const;
 export type SiteSettingKey = keyof typeof SITE_SETTING_SCHEMAS;

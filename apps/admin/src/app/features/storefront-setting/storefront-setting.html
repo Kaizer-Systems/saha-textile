@@ -142,6 +142,100 @@
 								</div>
 							</ng-template>
 						</li>
+						<li ngbNavItem="share">
+							<a ngbNavLink>
+								<i class="ri-share-line"></i>
+								{{ 'sharing' | transloco }}
+							</a>
+							<ng-template ngbNavContent>
+								<div class="row">
+									<div class="col-xl-9">
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'share_x_account' | transloco"
+											[for]="'share_x_account'"
+											[required]="false"
+										>
+											<input
+												class="form-control"
+												type="text"
+												id="share_x_account"
+												name="share_x_account"
+												placeholder="@SahaTextile"
+												[ngModel]="xHandle()"
+												(ngModelChange)="xHandle.set($event)"
+											/>
+											<p class="help-text">{{ 'share_x_account_help' | transloco }}</p>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'share_hashtags' | transloco"
+											[for]="'share_hashtags'"
+											[required]="false"
+										>
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="share_hashtags"
+													name="share_hashtags"
+													[checked]="hashtags()"
+													(change)="hashtags.set($any($event.target).checked)"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">{{ 'share_hashtags_help' | transloco }}</p>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'share_strip_text' | transloco"
+											[for]="'share_strip_text'"
+											[required]="false"
+										>
+											<input
+												class="form-control"
+												type="text"
+												maxlength="60"
+												id="share_strip_text"
+												name="share_strip_text"
+												[ngModel]="stripText()"
+												(ngModelChange)="stripText.set($event)"
+											/>
+											<p class="help-text">{{ 'share_strip_text_help' | transloco }}</p>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'share_apps_listed' | transloco"
+											[for]="'share_app_whatsapp'"
+											[required]="false"
+										>
+											@for (app of shareApps; track app) {
+											<div class="form-check form-switch">
+												<input
+													class="checkbox_animated form-check-input"
+													type="checkbox"
+													[id]="'share_app_' + app"
+													[name]="'share_app_' + app"
+													[checked]="listedApps().includes(app)"
+													(change)="toggleApp(app, $any($event.target).checked)"
+												/>
+												<label
+													class="form-check-label form-label m-0"
+													[for]="'share_app_' + app"
+												>
+													{{ 'share_app_' + app | transloco }}
+												</label>
+											</div>
+											}
+											<p class="help-text">{{ 'share_apps_listed_help' | transloco }}</p>
+										</app-form-fields>
+									</div>
+								</div>
+							</ng-template>
+						</li>
 					</ul>
 				</div>
 				<div class="col-xl-9 col-lg-8">

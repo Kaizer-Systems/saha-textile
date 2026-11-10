@@ -6,6 +6,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { shortAddressText } from '@core/catalog/short-address';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IProduct } from '@data-access/interfaces/product.interface';
+import { SHARE_DEFAULTS, injectShareSettingsQuery } from '@data-access/queries/share.queries';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { ShareGroup, ShareTarget, hashtags, shareTargets, tagged } from './share-targets';
@@ -70,17 +71,23 @@ export class ProductSocialShare {
 			.join('\n');
 	});
 
+	/** Storefront settings › Sharing; every app until it has loaded. */
+	private readonly settings = injectShareSettingsQuery();
+
 	readonly groups = computed(() => {
 		const product = this.product();
 		const price = rupees(product.sale_price || product.price);
+		const choices = this.settings.data() ?? SHARE_DEFAULTS;
+		const tags = choices.hashtags ? hashtags(this.facts()) : '';
 		const targets = shareTargets(
 			{
 				name: product.name,
 				url: this.url(),
 				message: this.message(),
-				short: `${product.name} · ${price} ${hashtags(this.facts())}`.trim(),
+				short: `${product.name} · ${price} ${tags}`.trim(),
 			},
 			this.phone,
+			choices,
 		);
 		return (['send', 'post', 'story'] as ShareGroup[])
 			.map((group) => ({ group, items: targets.filter((target) => target.group === group) }))

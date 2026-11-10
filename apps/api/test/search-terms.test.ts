@@ -265,9 +265,14 @@ describe('search word routes', () => {
 		expect(await terms.status({ ids: ['t1'], status: 'live' }, admin)).toBe('status');
 		await terms.remove('t1', admin);
 		expect(service.remove).toHaveBeenCalledWith('t1', 'a1');
-		const settings = new AdminStorefrontSettingsController(service as never);
+		const share = { get: vi.fn(async () => 'share'), save: vi.fn(async () => 'saved share') };
+		const settings = new AdminStorefrontSettingsController(service as never, share as never);
 		expect(await settings.search()).toBe('settings');
 		expect(await settings.saveSearch({ showFirstCategoryIds: [] }, admin)).toBe('saved settings');
+		expect(await settings.sharing()).toBe('share');
+		const sharing = { xHandle: '', hashtags: true, stripText: '', apps: [] };
+		expect(await settings.saveSharing(sharing, admin)).toBe('saved share');
+		expect(share.save).toHaveBeenCalledWith(sharing, 'a1');
 	});
 });
 

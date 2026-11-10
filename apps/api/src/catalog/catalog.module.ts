@@ -22,6 +22,7 @@ import { SearchTermsService } from './search-terms.service';
 import { SearchVocabularyService } from './search-vocabulary.service';
 import { StockAlertsController } from './stock-alerts.controller';
 import { StorefrontCatalogController } from './storefront-catalog.controller';
+import { ShareSettingsService } from './share-settings.service';
 import { TaxonomyService } from './taxonomy.service';
 
 @Module({
@@ -54,6 +55,7 @@ import { TaxonomyService } from './taxonomy.service';
 		SearchInsightsService,
 		SearchTermsService,
 		SearchVocabularyService,
+		ShareSettingsService,
 	],
 	exports: [CatalogPublicService, CatalogRateLimit, CatalogService, ProductBuilderService],
 })

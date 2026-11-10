@@ -61,14 +61,15 @@ Like every Nitro handler, the middleware reaches the API through `serverApiUrl()
 
 `GET /storefront/brand` returns the Brand Kit as the shop reads it. The API resolves each picture to its sizes and caches the answer for 60 seconds.
 
-| Part                     | Where it shows                                                                                                   |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Computer and phone logos | Header, footer and popups; the dark versions on dark backgrounds                                                 |
-| Browser icon             | The tab icon and Apple touch icon (`brand-head.ts`), with a dark-browser version when a dark phone logo is set   |
-| Browser bar colour       | The `theme-color` meta tag and the web manifest                                                                  |
-| Social profiles          | The footer icons and the organisation's `sameAs` list for search engines; YouTube comes from the YouTube setting |
-| App store links          | A Google Play or App Store badge in the footer, shown only when its link is saved                                |
-| Shop name and icons      | The web manifest (`/manifest.webmanifest`), built on the server from the Brand Kit                               |
+| Part                     | Where it shows                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Computer and phone logos | Header, footer and popups; the dark versions on dark backgrounds                                                         |
+| Browser icon             | The tab icon and Apple touch icon (`brand-head.ts`), with a dark-browser version when a dark phone logo is set           |
+| Browser bar colour       | The `theme-color` meta tag and the web manifest                                                                          |
+| Light/dark switch        | The moon and sun button in the top bar, shown while `modeSwitch` is on; dark mode uses the dark logos where they are set |
+| Social profiles          | The footer icons and the organisation's `sameAs` list for search engines; YouTube comes from the YouTube setting         |
+| App store links          | A Google Play or App Store badge in the footer, shown only when its link is saved                                        |
+| Shop name and icons      | The web manifest (`/manifest.webmanifest`), built on the server from the Brand Kit                                       |
 
 ## Limitations
 

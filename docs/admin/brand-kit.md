@@ -43,6 +43,7 @@ Each slot takes one picture. The uploader's `oneOnly` mode hides the add button 
 - **Link preview picture** (`shareImageAssetId`): the picture chat apps show for pages without their own. It is made at 1200 × 630 with a 12% white margin. With none set, the computer logo is used the same way. See [Sharing and Brand](../storefront/sharing-and-brand.md).
 - **Social profiles** (`socials`): Facebook, Instagram, X, Pinterest, LinkedIn and Threads addresses. This is the only place they are stored. The X box under Storefront settings › Sharing reads and writes the same value, and YouTube comes from the YouTube setting.
 - **App store links** (`apps.android`, `apps.ios`): Google Play and App Store addresses. Validate asks Google Play, or Apple's lookup service, whether the app exists and shows its name. Only store hosts are contacted. A changed link must be validated before Save is accepted. The shop shows a store's badge only when its link is saved.
+- **Show the light/dark switch in the shop** (`modeSwitch`, on by default): shoppers can switch the shop between light and dark from the top bar. Off, every shopper sees the site mode.
 - **Browser bar colour** (`themeColor`): the shop's `theme-color` and web manifest colour.
 
 ## Admin theme colour

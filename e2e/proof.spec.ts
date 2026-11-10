@@ -39,20 +39,6 @@ test.describe.serial('Badges on real cards', () => {
 	});
 });
 
-test.describe('Misspelled search', () => {
-	test('"ikkatsilk" finds ikkat sarees in the API and on the page', async ({ page, request }) => {
-		const answer = await request.get(`${API}/catalog/search?q=ikkatsilk`, { ignoreHTTPSErrors: true });
-		expect(answer.ok()).toBe(true);
-		const body = (await answer.json()) as { total?: number; items?: Array<{ slug: string }> };
-		expect(body.items?.length ?? 0).toBeGreaterThan(0);
-		expect(body.items?.some((item) => item.slug.includes('ikkat'))).toBe(true);
-
-		await page.goto('/en/search?search=ikkatsilk');
-		await page.waitForLoadState('networkidle');
-		await expect(page.locator('app-product-box').first()).toContainText(/ikkat/i);
-	});
-});
-
 test.describe('A slow API', () => {
 	const STOREFRONT = 4211;
 	const SLOW_API = 4001;

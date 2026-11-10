@@ -554,6 +554,42 @@ test.describe('What admin makes reaches the shop', () => {
 	});
 });
 
+// Spellings come from the admin's search words (Products › Search words), which become index
+// synonyms; nothing is hard-coded. So the test adds the word the way an operator would.
+test.describe('Search words', () => {
+	test('a live search word makes its spelling find the tagged products on the shop', async ({ page }) => {
+		test.setTimeout(90_000);
+		await open(page, '/search-term');
+		const csrf = ((await (await page.request.get(`${API_URL}/auth/admin/csrf`)).json()) as { csrfToken: string })
+			.csrfToken;
+		const productIds = await withDatabase(async (db) =>
+			(await db.collection('products').find({ slug: /ikkat/, status: 'live' }).project({ _id: 1 }).toArray()).map(
+				(row) => String(row['_id']),
+			),
+		);
+		expect(productIds.length).toBeGreaterThan(0);
+		const created = await page.request.post(`${API_URL}/admin/search-terms`, {
+			headers: { 'x-csrf-token': csrf },
+			data: { name: { en: 'Ikat', bn: 'ইকাত' }, spellings: { en: ['ikkatsilk'] }, productIds, status: 'live' },
+		});
+		expect(created.ok()).toBe(true);
+		const { id } = (await created.json()) as { id: string };
+		try {
+			const found = async () => {
+				const answer = await page.request.get(`${API_URL}/catalog/search?q=ikkatsilk&locale=en`);
+				const body = (await answer.json()) as { items?: Array<{ slug: string }> };
+				return (body.items ?? []).some((item) => item.slug.includes('ikkat'));
+			};
+			// The index takes the new synonym in the background.
+			await expect.poll(found, { timeout: 60_000, intervals: [1_000] }).toBe(true);
+			await page.goto(`${SHOP}/en/search?search=ikkatsilk`);
+			await expect(page.locator('app-product-box').first()).toContainText(/ikkat/i);
+		} finally {
+			await page.request.delete(`${API_URL}/admin/search-terms/${id}`, { headers: { 'x-csrf-token': csrf } });
+		}
+	});
+});
+
 test.describe('Language to-do list', () => {
 	test('the count lists what is left, and a line jumps to the field', async ({ page }) => {
 		await open(page, '/product/create');

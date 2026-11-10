@@ -120,7 +120,7 @@ plain.describe('Cookie box at every screen size', () => {
 });
 
 test.describe('Header menu', () => {
-	const sections = ['Home', 'Sarees', 'Dress Materials', 'Product', 'Mega menu', 'Blog', 'Pages'];
+	const sections = ['Home', 'Sarees', 'Dress Materials', 'Product', 'Mega menu', 'Blog', 'Videos', 'Pages'];
 
 	test('shows the real categories and every demo section', async ({ page, isMobile }) => {
 		await page.goto('/en/');

@@ -22,13 +22,13 @@ const followed = [
 	['/my-account/orders/', 302, '/en/account'],
 	['/bn/my-account/', 302, '/bn/account'],
 	['/product/kurti-palazzo-set', 301, '/en/product/kurti-palazzo-set'],
+	['/videos', 301, '/en/videos'],
 	['/collections/sarees', 301, '/en/collections/sarees'],
 	['/en/collections/sarees/', 301, '/en/collections/sarees'],
 	['/en/Collections/Sarees', 301, '/en/collections/sarees'],
 ] as const;
 
 const answered = [
-	['/videos', 410],
 	['/en/?p=123', 410],
 	['/bn/?p=123', 410],
 	['/?p=123', 410],

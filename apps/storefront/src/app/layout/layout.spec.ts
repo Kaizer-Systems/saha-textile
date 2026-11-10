@@ -58,6 +58,15 @@ describe('Layout', () => {
 		brand.data = undefined;
 	});
 
+	it('shares the built-in app icon while the Brand Kit has no picture at all', () => {
+		seo.setDefaultImage = vi.fn();
+		brand.data = { ...NO_BRAND, shopName: 'Shop' };
+		render();
+		expect(seo.setDefaultImage).toHaveBeenCalledWith('assets/images/app-icon-512.png');
+		document.getElementById('brand-organization')?.remove();
+		brand.data = undefined;
+	});
+
 	it('drops the preloader', () => {
 		const { service } = render();
 		expect(service.preloader()).toBe(false);

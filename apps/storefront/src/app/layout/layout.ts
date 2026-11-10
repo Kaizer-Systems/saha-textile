@@ -26,6 +26,9 @@ import { RecentPurchasePopup } from '@shared/ui/recent-purchase-popup/recent-pur
 import { StickyCart } from '@shared/ui/sticky-cart/sticky-cart';
 import { StickyCompare } from '@shared/ui/sticky-compare/sticky-compare';
 
+/** The shop's built-in icon (the manifest's fallback too): never another brand's picture. */
+const DEFAULT_SHARE_IMAGE = 'assets/images/app-icon-512.png';
+
 @Component({
 	selector: 'app-layout',
 	templateUrl: './layout.html',
@@ -75,8 +78,9 @@ export class Layout {
 			const brand = this.brand.data();
 			if (!brand) return;
 			applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'));
-			// Pages shared without their own picture show the Brand Kit's link preview picture.
-			if (brand.shareImage) this.seo.setDefaultImage(brand.shareImage);
+			// Pages shared without their own picture show the Brand Kit's link preview picture, or
+			// the built-in app icon while the Brand Kit has neither that nor a logo.
+			this.seo.setDefaultImage(brand.shareImage ?? DEFAULT_SHARE_IMAGE);
 		});
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.siteConfigService.preloader.set(true);

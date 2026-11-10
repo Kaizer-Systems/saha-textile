@@ -53,7 +53,8 @@ flowchart LR
 | Media            | Media library, home banners, review moderation and the YouTube field                                                                                  |
 | Content          | Blog posts, categories and tags; launch and sale events                                                                                               |
 | Search           | Search words and Storefront settings › Search                                                                                                         |
-| Settings         | Brand Kit, Stores, Mailboxes and the inbox                                                                                                            |
+| Settings         | Brand Kit (logo sets, link preview picture, profiles, store links, colours), Stores, Mailboxes and the inbox                                          |
+| Theme colour     | Brand Kit › Admin theme colour sets `--theme-color`; every admin style reads it, so nothing types the theme hex                                       |
 | Notifications    | Channel switches, usage and templates                                                                                                                 |
 | Tables and forms | Shared search, pagination, selection, actions and permission-aware UI                                                                                 |
 
@@ -82,6 +83,18 @@ Most families have create and edit routes. Orders add details, create-order and 
 :::danger UI permissions are not authorization
 Hiding an action improves usability but does not secure it. The API authenticates the actor and authorizes the resource and action on every request.
 :::
+
+## Theme colour
+
+`app.ts` sets `--theme-color` on the page root from the Brand Kit's `adminThemeColor` (the last colour is kept in this browser so the next start paints in it), and Brand Kit previews a picked colour at once and restores the saved one if the page closes unsaved. Styles never type the theme's hex. They use the helpers in `public/assets/scss/utils/_theme-color.scss`:
+
+| Helper            | Gives                                                          |
+| ----------------- | -------------------------------------------------------------- |
+| `tc($c)`          | `var(--theme-color)`                                           |
+| `tc-alpha($c, n)` | The theme colour at `n` percent, through `color-mix()`         |
+| `tc-shade($c, n)` | The theme colour `n` points lighter or darker, keeping its hue |
+
+Charts read the colour at run time through `themeColor()` in `core/brand/theme-color.ts`. The SCSS `$primary-color` variable is kept only so old rules still compile.
 
 ## Before making an admin change
 

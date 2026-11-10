@@ -262,6 +262,8 @@ A restore returns the customer to the previous status. It does not re-attach pro
 | `DELETE` | `/admin/search-terms/:id`                       | `search_term.destroy`         | Delete a search word                                                               |
 | `GET`    | `/admin/storefront-settings/search`             | `theme_option.index`          | Which categories show first in search                                              |
 | `PUT`    | `/admin/storefront-settings/search`             | `theme_option.edit`           | Save Search; the shop re-indexes in the background                                 |
+| `GET`    | `/admin/storefront-settings/share`              | `theme_option.index`          | The share menu's apps and Story words; the X handle comes from the Brand Kit       |
+| `PUT`    | `/admin/storefront-settings/share`              | `theme_option.edit`           | Save Sharing; the X handle is written to the Brand Kit's X profile                 |
 
 Admin catalogue reads answer `no-store`.
 
@@ -273,7 +275,8 @@ Admin catalogue reads answer `no-store`.
 | `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                        |
 | `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                              |
 | `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                       |
-| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Set the shop name, logo and seal                                             |
+| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Save logo sets, link preview picture, profiles, store links and colours      |
+| `POST`   | `/admin/settings/brand/app-link`      | `setting.edit`       | Check that a Google Play or App Store address belongs to a real app          |
 | `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                |
 | `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                  |
 | `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                        |
@@ -391,6 +394,8 @@ The Gmail token stays on the server. `mailbox.use` opens only the mailboxes whos
 | `GET`  | `/catalog/seo-route`                       | Public             | Head data for one public address                                               |
 | `GET`  | `/catalog/sitemap`                         | Public             | Indexable addresses for the sitemap                                            |
 | `GET`  | `/catalog/live-paths`                      | Public             | Live product slugs and category paths                                          |
+| `GET`  | `/catalog/share-settings`                  | Public             | The share menu's shop-wide choices                                             |
+| `GET`  | `/catalog/code/:code`                      | Public             | The product slug behind a short `/p/<code>` address                            |
 | `GET`  | `/catalog/reviews`                         | Public             | A product's approved reviews and rating summary                                |
 | `GET`  | `/catalog/blog/posts`                      | Public             | Live posts, sticky first then newest, one page at a time                       |
 | `GET`  | `/catalog/blog/posts/:slug`                | Public             | One live post by its address                                                   |
@@ -412,7 +417,7 @@ The server enforces public visibility, not the caller. Public repository calls d
 | ------- | ---------------------------------------------- | ------------------ | -------------------------------------------------------------------------- |
 | `GET`   | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                                    |
 | `GET`   | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale                             |
-| `GET`   | `/storefront/brand`                            | Public             | The shop's name, logo, seal and icons                                      |
+| `GET`   | `/storefront/brand`                            | Public             | Logo sets, icons, link preview picture, profiles, store links and colours  |
 | `GET`   | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                               |
 | `POST`  | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)                         |
 | `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                                |

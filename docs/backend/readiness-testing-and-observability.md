@@ -96,7 +96,7 @@ The Playwright projects are `desktop` and `phone` for the shop, and `admin` for 
 
 The stack's default addresses are the API on `https://localhost:4000`, the shop on `https://localhost:4200` and the admin on `https://localhost:4300`. `E2E_API_URL`, `E2E_BASE_URL` and `E2E_ADMIN_URL` point the tests at another copy, so a second stack (for example from a worktree) can run beside the local servers:
 
-1. Build with `NODE_ENV=production pnpm build:product-apps`, and set `apiUrl`, `siteUrl` and `adminUrl` in the built `config.json` files to the second stack's ports.
+1. Build with `NODE_ENV=production pnpm build:product-apps`, and change the ports in the built `config.json` files (`apps/storefront/dist/analog/public`, `dist/client`, `dist/ssr` and `apps/admin/dist`). Change only the digits and keep each file the same length: the shop's server sends the length recorded at build time, and a longer file corrupts the next reply on a reused connection.
 2. Seed `saha_textile_e2e` and create the test administrator as `pnpm e2e:stack` does.
 3. Start the API with `PORT` and `CORS_ALLOWED_ORIGINS` for the new shop and admin origins, the shop with `PORT` and `SAHA_TEXTILE_PUBLIC_CONFIG`, `node e2e/stack/tls-proxy.mjs <key> <cert> <shop port> <https port>` in front of it, and the admin with `vite preview --port`.
 4. Run `pnpm exec playwright test` with the three addresses, `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD`.

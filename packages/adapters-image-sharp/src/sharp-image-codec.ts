@@ -54,6 +54,7 @@ export class SharpImageCodec implements ImageCodecPort {
 	async render(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
 		if (spec.fit === 'blur') return this.renderBlurFill(bytes, spec);
 		if (spec.fit === 'story') return this.renderStory(bytes, spec);
+		if (spec.fit === 'pad' && spec.inset) return this.renderInset(bytes, spec);
 		let pipeline = this.base(bytes, spec.keepAlpha);
 		pipeline =
 			spec.fit === 'inside'
@@ -69,6 +70,30 @@ export class SharpImageCodec implements ImageCodecPort {
 		pipeline = pipeline.sharpen({ sigma: 0.5 });
 		pipeline = this.encode(pipeline, spec);
 		return this.finish(pipeline);
+	}
+
+	/** A padded card with a white margin: the image fitted inside the inner box, then centred on white. */
+	private async renderInset(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
+		const width = spec.width;
+		const height = spec.height ?? spec.width;
+		const inset = Math.min(0.4, Math.max(0, spec.inset ?? 0));
+		const inner = await this.base(bytes, spec.keepAlpha)
+			.resize({
+				width: Math.max(1, Math.round(width * (1 - 2 * inset))),
+				height: Math.max(1, Math.round(height * (1 - 2 * inset))),
+				fit: 'inside',
+				withoutEnlargement: false,
+			})
+			.png()
+			.toBuffer({ resolveWithObject: true });
+		const pipeline = sharp({ create: { width, height, channels: 4, background: WHITE } }).composite([
+			{
+				input: inner.data,
+				left: Math.round((width - inner.info.width) / 2),
+				top: Math.round((height - inner.info.height) / 2),
+			},
+		]);
+		return this.finish(this.encode(pipeline, spec));
 	}
 
 	/**

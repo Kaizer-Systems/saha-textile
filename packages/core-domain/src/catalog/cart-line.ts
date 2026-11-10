@@ -31,11 +31,7 @@ export interface PricedCartLine {
 }
 
 export type CartLineRefusal =
-	| 'bundle_not_on_sale'
-	| 'unknown_variant'
-	| 'unknown_option'
-	| 'measurements_required'
-	| 'measurement_out_of_range';
+	'bundle_not_on_sale' | 'unknown_variant' | 'unknown_option' | 'measurements_required' | 'measurement_out_of_range';
 
 export type CartLinePricing = { ok: true; line: PricedCartLine } | { ok: false; reason: CartLineRefusal };
 
@@ -95,9 +91,7 @@ export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice):
 	const base = baseRow(page, choice.variationId);
 	if (!base) return { ok: false, reason: 'unknown_variant' };
 
-	const groups = page.optionGroups.filter(
-		(group) => group.role === 'named_add_on',
-	);
+	const groups = page.optionGroups.filter((group) => group.role === 'named_add_on');
 	const fields = page.measurements?.fields ?? [];
 	const picked = new Map(choice.addons.map((addon) => [addon.code, addon.value]));
 	for (const code of picked.keys()) {

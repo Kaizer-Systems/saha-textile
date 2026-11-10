@@ -518,12 +518,15 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 				aspect: null,
 				updatedAt: undefined,
 				brandStrip: false,
+				inset: 0,
 			});
 		});
 
 		it('keeps the logo-strip flag, so the preview cards are not redrawn on every start', async () => {
 			await repo.save({ ...(role('strip') as object), brandStrip: true } as never);
 			expect(await repo.findByKey(`${P}strip`)).toMatchObject({ brandStrip: true });
+			await repo.save({ ...(role('margin') as object), inset: 0.12 } as never);
+			expect(await repo.findByKey(`${P}margin`)).toMatchObject({ inset: 0.12 });
 		});
 
 		it('inserts only what is missing', async () => {

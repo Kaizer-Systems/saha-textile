@@ -17,6 +17,7 @@ const toRole = (doc: MediaRoleDoc): MediaRoleDefinition =>
 		primaryOnly: doc.primaryOnly,
 		respectSlotMaxWidth: doc.respectSlotMaxWidth,
 		brandStrip: doc.brandStrip === true,
+		inset: typeof doc.inset === 'number' ? doc.inset : 0,
 		version: doc.version,
 		updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
 	}) as MediaRoleDefinition;

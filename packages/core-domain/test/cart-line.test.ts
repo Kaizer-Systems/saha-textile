@@ -128,7 +128,9 @@ describe('priceCartLine', () => {
 		const product = page({ optionGroups: [group('blouse', 'named_add_on', [term('plain')])] });
 		const refused = { ok: false, reason: 'unknown_option' };
 		expect(priceCartLine(product, { variationId: null, addons: [{ code: 'other', value: 'x' }] })).toEqual(refused);
-		expect(priceCartLine(product, { variationId: null, addons: [{ code: 'blouse', value: 'x' }] })).toEqual(refused);
+		expect(priceCartLine(product, { variationId: null, addons: [{ code: 'blouse', value: 'x' }] })).toEqual(
+			refused,
+		);
 		const bare = page({ optionGroups: [group('blouse', 'named_add_on', [])] });
 		expect(priceCartLine(bare, { variationId: null, addons: [] })).toEqual(refused);
 	});
@@ -150,7 +152,11 @@ describe('priceCartLine', () => {
 					term('tailored', { priceDeltaINR: 500, requiresMeasurements: true }),
 				]),
 			],
-			measurements: { templateCode: 't', priceINR: 0, fields: [field('bust'), field('waist', { min: null, max: null })] },
+			measurements: {
+				templateCode: 't',
+				priceINR: 0,
+				fields: [field('bust'), field('waist', { min: null, max: null })],
+			},
 		});
 		const stitched = (bust: unknown, waist: unknown = 30) => ({
 			variationId: null,
@@ -182,7 +188,9 @@ describe('priceCartLine', () => {
 	});
 
 	it('refuses a bundle until it can be priced', () => {
-		expect(priceCartLine(page({ bundle: { priceINR: 700, groups: [] } }), { variationId: null, addons: [] })).toEqual({
+		expect(
+			priceCartLine(page({ bundle: { priceINR: 700, groups: [] } }), { variationId: null, addons: [] }),
+		).toEqual({
 			ok: false,
 			reason: 'bundle_not_on_sale',
 		});

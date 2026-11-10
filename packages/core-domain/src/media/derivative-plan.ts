@@ -66,7 +66,7 @@ export const planDerivatives = (input: {
 			derivatives.push({
 				role: role.key,
 				roleVersion: role.version,
-				spec: { ...spec, ...keepAlpha },
+				spec: { ...spec, ...keepAlpha, ...(role.fit === 'pad' && role.inset ? { inset: role.inset } : {}) },
 				brandStrip: role.brandStrip === true,
 			});
 		}

@@ -101,4 +101,25 @@ describe('SharpImageCodec', () => {
 		expect(dominantColor).toMatch(/^#[0-9a-f]{6}$/);
 		expect(parseInt(dominantColor.slice(1, 3), 16)).toBeGreaterThan(150);
 	});
+
+	it('leaves a white margin round a padded card with an inset, and fills the box without one', async () => {
+		const source = await jpeg(1600, 400);
+		const spec = { width: 1200, height: 630, fit: 'pad' as const, format: 'image/jpeg' as const, quality: 84 };
+		const pixel = async (bytes: Uint8Array, x: number, y: number) => {
+			const { data, info } = await sharp(bytes).raw().toBuffer({ resolveWithObject: true });
+			const i = (y * info.width + x) * info.channels;
+			return [data[i], data[i + 1], data[i + 2]];
+		};
+		const card = await codec.render(source, { ...spec, inset: 0.12 });
+		expect([card.width, card.height]).toEqual([1200, 630]);
+		// The red image is 1200 x 0.76 = 912 wide, centred: x 144..1056. Outside is white, inside red.
+		expect(await pixel(card.bytes, 60, 315)).toEqual([255, 255, 255]);
+		const red = await pixel(card.bytes, 600, 315);
+		expect(red[0]).toBeGreaterThan(150);
+		expect(red[1]).toBeLessThan(80);
+		const edge = await codec.render(source, spec);
+		const left = await pixel(edge.bytes, 4, 315);
+		expect(left[0]).toBeGreaterThan(150);
+		expect(left[1]).toBeLessThan(80);
+	});
 });

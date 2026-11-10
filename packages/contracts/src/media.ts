@@ -138,6 +138,8 @@ export const MediaRoleDefinition = z
 		respectSlotMaxWidth: z.boolean().default(false),
 		/** Link-preview cards: the Brand Kit logo on a white strip along the bottom (share brief J2). */
 		brandStrip: z.boolean().default(false),
+		/** `pad` only: white margin on every side, as a fraction of the box (a logo card that apps may crop). */
+		inset: z.number().min(0).max(0.4).default(0),
 		version: z.number().int().positive().default(1),
 		updatedAt: IsoDateTime.optional(),
 	})

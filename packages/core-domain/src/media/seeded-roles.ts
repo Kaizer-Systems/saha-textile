@@ -3,9 +3,13 @@ import type { MediaRoleDefinition } from '@saha-textile/contracts';
 import type { MediaRoleRepository } from '../ports/media-role.repository';
 
 const role = (
-	definition: Omit<MediaRoleDefinition, 'seeded' | 'version' | 'updatedAt' | 'brandStrip'> & { brandStrip?: boolean },
+	definition: Omit<MediaRoleDefinition, 'seeded' | 'version' | 'updatedAt' | 'brandStrip' | 'inset'> & {
+		brandStrip?: boolean;
+		inset?: number;
+	},
 ): MediaRoleDefinition => ({
 	brandStrip: false,
+	inset: 0,
 	...definition,
 	seeded: true,
 	version: 1,
@@ -202,6 +206,8 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		quality: 84,
 		primaryOnly: false,
 		respectSlotMaxWidth: false,
+		// Chat apps crop the edges of previews: keep a white margin round the logo.
+		inset: 0.12,
 	}),
 	role({
 		key: 'banner',
@@ -277,11 +283,14 @@ const FIXED_FIELDS = [
 	'primaryOnly',
 	'respectSlotMaxWidth',
 	'brandStrip',
+	'inset',
 ] as const;
 
 /** A stored role from before a fixed field existed reads as that field's default, not as a change. */
 const fixedValue = (role: MediaRoleDefinition, field: (typeof FIXED_FIELDS)[number]): string =>
-	JSON.stringify(field === 'brandStrip' ? Boolean(role.brandStrip) : role[field]);
+	JSON.stringify(
+		field === 'brandStrip' ? Boolean(role.brandStrip) : field === 'inset' ? (role.inset ?? 0) : role[field],
+	);
 
 /**
  * Brings stored seeded roles in line with the code. Missing seeds are inserted; a seed whose

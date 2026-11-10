@@ -28,6 +28,8 @@ export interface ImageRenderSpec {
 	keepAlpha?: boolean;
 	/** The Brand Kit logo, drawn on a white strip along the bottom of a link-preview card. */
 	stripLogo?: Uint8Array;
+	/** `pad` only: white margin on every side, as a fraction of the box. */
+	inset?: number;
 }
 
 /**

@@ -194,24 +194,27 @@
 											[for]="'share_app_whatsapp'"
 											[required]="false"
 										>
-											@for (app of shareApps; track app) {
-											<div class="form-check form-switch">
-												<input
-													class="checkbox_animated form-check-input"
-													type="checkbox"
-													[id]="'share_app_' + app"
-													[name]="'share_app_' + app"
-													[checked]="listedApps().includes(app)"
-													(change)="toggleApp(app, $any($event.target).checked)"
-												/>
-												<label
-													class="form-check-label form-label m-0"
-													[for]="'share_app_' + app"
-												>
-													{{ 'share_app_' + app | transloco }}
-												</label>
+											<!-- roles-form: the Roles page's checkbox alignment, reused as is. -->
+											<div class="roles-form d-flex flex-column mb-2 gap-2">
+												@for (app of shareApps; track app) {
+												<div class="form-check form-switch">
+													<input
+														class="checkbox_animated form-check-input"
+														type="checkbox"
+														[id]="'share_app_' + app"
+														[name]="'share_app_' + app"
+														[checked]="listedApps().includes(app)"
+														(change)="toggleApp(app, $any($event.target).checked)"
+													/>
+													<label
+														class="form-check-label form-label m-0"
+														[for]="'share_app_' + app"
+													>
+														{{ 'share_app_' + app | transloco }}
+													</label>
+												</div>
+												}
 											</div>
-											}
 											<p class="help-text">{{ 'share_apps_listed_help' | transloco }}</p>
 										</app-form-fields>
 									</div>

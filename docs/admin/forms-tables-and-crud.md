@@ -112,7 +112,7 @@ The blog list's **Go Live** and **Take off shop** buttons follow this pattern. B
 
 The product form writes through `POST /admin/catalog/products/:idOrSlug`. Its Go Live button and the product list both call `POST /admin/catalog/products/:idOrSlug/go-live`, which lists what stops the product going live. **Save and next** saves, then opens the next product from the list the form was opened from, or the list after the last one.
 
-- Product status is `live` or `disabled` here. Discontinuing is a separate action that writes a `410`, or a `301` when a live replacement is named.
+- Product status is `live` or `disabled` here. Discontinuing is a separate action that writes a `410`, or a `301` when a live replacement is named. In the same transaction it disables every related, upsell and cross-sell relation that points to the product. Disabling a product leaves its relations alone, because public reads already skip targets that are not live.
 - A product that has ever been live keeps its SKUs.
 - Changing the address writes a redirect from the old one.
 - A made-to-order product must be live and needs a lead time.

@@ -20,7 +20,9 @@
 	--st-border-strong: #c9c9c9;
 	--st-border-line: #ececec;
 	--st-border-cool: #f0f3f8;
-	--st-success: #2f9e44;
+	--st-success: #237032;
 	--st-warning: #e8590c;
 	--st-danger: #e03131;
+	// The shop colour as text: the real colour in light mode, a lighter tint in dark mode.
+	--st-accent-text: var(--theme-color);
 }

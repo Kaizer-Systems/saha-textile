@@ -25,6 +25,7 @@ html.dark {
 	--st-success: #51cf66;
 	--st-warning: #ff922b;
 	--st-danger: #ff6b6b;
+	--st-accent-text: var(--theme-text-on-dark);
 }
 
 // D2: empty-list headings ("No Items Added") keep the theme's dark title colour otherwise.
@@ -67,4 +68,53 @@ html.dark .ratio.bg-white {
 html.dark .home-contain .home-detail h1,
 html.dark .home-contain .home-detail h2 {
 	color: var(--theme-color) !important;
+}
+
+// Bootstrap tables are white by default; in dark mode they take the card behind them.
+html.dark .table {
+	--bs-table-bg: transparent;
+	--bs-table-color: var(--st-text);
+	--bs-table-border-color: var(--st-border);
+}
+
+// Text that falls back to Bootstrap's near-black body colour.
+html.dark .newsletter-modal .modal-content,
+html.dark .newsletter-modal .form-check-label {
+	color: var(--st-text-body);
+}
+html.dark .form-floating > label {
+	color: var(--st-text-muted);
+}
+
+// Status pills (orders, refunds, wallet, points) in colours that reach 4.5 : 1 on the dark page.
+html.dark .status-danger span,
+html.dark .status-out_of_stock span,
+html.dark .status-failed span,
+html.dark .status-debit span {
+	color: #ff6b6b;
+	border-color: #ff6b6b;
+}
+html.dark .status-success span,
+html.dark .status-in_stock span,
+html.dark .status-completed span,
+html.dark .status-approved span,
+html.dark .status-delivered span,
+html.dark .status-credit span {
+	color: #51cf66;
+	border-color: #51cf66;
+}
+html.dark .status-pending span,
+html.dark .status-draft span {
+	color: #ffa94d;
+	border-color: #ffa94d;
+}
+html.dark .status-processing span {
+	color: #4dabf7;
+	border-color: #4dabf7;
+}
+html.dark .status-refund span,
+html.dark .status-cancelled span,
+html.dark .status-rejected span {
+	color: #ff8a80;
+	border-color: #ff8a80;
 }

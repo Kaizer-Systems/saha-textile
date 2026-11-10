@@ -60,7 +60,7 @@
 
 	i {
 		margin-right: 4px;
-		color: var(--theme-color);
+		color: var(--st-accent-text);
 	}
 }
 
@@ -72,7 +72,7 @@
 	font-weight: 500;
 	letter-spacing: 0;
 	text-transform: none;
-	color: var(--theme-color);
+	color: var(--st-accent-text);
 }
 
 .suggest-message {
@@ -170,11 +170,11 @@
 		.suggest-all {
 			.drop-contain h5 {
 				font-weight: 600;
-				color: var(--theme-color);
+				color: var(--st-accent-text);
 			}
 
 			> i {
-				color: var(--theme-color);
+				color: var(--st-accent-text);
 			}
 		}
 

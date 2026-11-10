@@ -70,8 +70,9 @@
 		background: transparent;
 		transition: all 0.3s ease;
 		position: relative;
-		background: #ff6b6b;
-		background: linear-gradient(90deg, #ff6b6b 0%, #ff4f4f 100%);
+		// Deeper reds so the white label reaches 5 : 1 (it was 2.8 : 1 on #ff6b6b). Shop change, 2026-11-10.
+		background: #d32f2f;
+		background: linear-gradient(90deg, #d32f2f 0%, #c62828 100%);
 		border: none;
 		z-index: 0;
 

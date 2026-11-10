@@ -48,7 +48,7 @@
 				vertical-align: middle;
 
 				&.checked {
-					color: var(--theme-color);
+					color: var(--st-accent-text);
 				}
 			}
 		}
@@ -59,7 +59,7 @@
 
 		.price-cell {
 			font-weight: 600;
-			color: var(--theme-color);
+			color: var(--st-accent-text);
 		}
 	}
 }

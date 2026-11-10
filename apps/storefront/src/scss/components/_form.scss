@@ -406,8 +406,9 @@ $social-provider-height: 40px;
  * ceiling is what makes them the same length; the container centres whatever is left over.
  */
 $social-provider-max-width: 400px;
-$facebook-blue: #1877f2;
-$facebook-blue-hover: #166fe5;
+// Meta's darker blue, so the white label reaches 4.7 : 1 (#1877f2 gave 4.2 : 1). Shop change, 2026-11-10.
+$facebook-blue: #166fe5;
+$facebook-blue-hover: #135fc5;
 
 /**
  * The provider button inside an account card.
@@ -492,8 +493,9 @@ $facebook-blue-hover: #166fe5;
  * already uses, rather than to `--theme-color`, so both halves of the control belong to one
  * palette. The solid values are `btn-animation`'s own gradient endpoints.
  */
-$auth-accent: #ff6b6b;
-$auth-accent-strong: $danger-color;
+// The same deeper reds as `btn-animation` (shop change, 2026-11-10), so the inactive label reaches 5 : 1.
+$auth-accent: #d32f2f;
+$auth-accent-strong: #c62828;
 
 .auth-channel-tabs {
 	.btn {

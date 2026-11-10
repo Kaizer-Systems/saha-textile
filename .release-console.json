@@ -1,0 +1,29 @@
+{
+	"project": {
+		"id": "saha-textile",
+		"name": "Saha Textile",
+		"workspace": "Kaizer Systems",
+		"repositories": [
+			{
+				"id": "saha-textile",
+				"name": "saha-textile",
+				"role": "monorepo: shop, admin, API, worker",
+				"sourceCode": { "vendor": "github", "repository": "Kaizer-Systems/saha-textile", "keyId": "github-cli" },
+				"environments": [
+					{ "name": "local", "label": "Local stack", "cloudId": null, "domains": ["localhost"] },
+					{
+						"name": "staging",
+						"label": "Staging",
+						"cloudId": "digitalocean",
+						"domains": ["staging.sahatextile.com", "admin-staging.sahatextile.com", "api-staging.sahatextile.com"]
+					},
+					{ "name": "production", "label": "Production", "cloudId": "digitalocean", "domains": ["sahatextile.com"] }
+				],
+				"cloud": [{ "id": "digitalocean", "vendor": "digitalocean", "account": "", "keyIds": [] }],
+				"edge": [{ "id": "cloudflare", "vendor": "cloudflare", "account": "", "zones": ["sahatextile.com"], "keyIds": [] }],
+				"menus": ["payments", "messages", "clients", "seo"]
+			}
+		]
+	},
+	"menus": ["payments", "messages", "clients", "seo"]
+}

@@ -22,6 +22,10 @@ const setup = (platform = 'browser', navigated = false) => {
 		run(0);
 		return 0;
 	});
+	vi.stubGlobal('setTimeout', (run: () => void) => {
+		run();
+		return 0;
+	});
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [

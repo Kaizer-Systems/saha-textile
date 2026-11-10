@@ -2,6 +2,21 @@ import { isPlatformBrowser, ViewportScroller } from '@angular/common';
 import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 
+/**
+ * Runs `work` once the new page has rendered: after the next frame or a zero-delay timer, whichever
+ * comes first, like the router's own scrolling (a tab in the background gets no frames).
+ */
+function afterRender(work: () => void): void {
+	let done = false;
+	const run = () => {
+		if (done) return;
+		done = true;
+		work();
+	};
+	setTimeout(run);
+	requestAnimationFrame(run);
+}
+
 /** How long a restored position waits for the page to grow tall enough (lists load after the route). */
 const RESTORE_WAIT_MS = 2000;
 
@@ -46,7 +61,7 @@ export class ScrollMemory {
 				}
 				const saved = restoreFrom === null ? undefined : this.positions.get(restoreFrom);
 				const fragment = this.router.parseUrl(event.urlAfterRedirects).fragment;
-				requestAnimationFrame(() => {
+				afterRender(() => {
 					if (saved) this.restore(saved);
 					else if (fragment) this.scroller.scrollToAnchor(fragment);
 					else window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -61,7 +76,7 @@ export class ScrollMemory {
 		const attempt = () => {
 			const reachable = document.documentElement.scrollHeight - window.innerHeight >= top;
 			if (reachable || performance.now() > until) window.scrollTo({ top, left, behavior: 'instant' });
-			else requestAnimationFrame(attempt);
+			else setTimeout(attempt, 16);
 		};
 		attempt();
 	}

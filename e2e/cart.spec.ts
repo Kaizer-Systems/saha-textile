@@ -1,7 +1,6 @@
 import { withDatabase } from './database';
-import { expect, test } from './support';
+import { API_URL as API, expect, test } from './support';
 
-const API = 'https://localhost:4000';
 const SAREE = 'katan-banarasi-saree';
 const SHOPPER = 'meera.sharma.003@example.com';
 const MEASUREMENTS = { shoulder: '14', chest: '34', waist: '28', sleeve: '8' };

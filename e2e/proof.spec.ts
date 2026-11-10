@@ -4,12 +4,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { withDatabase } from './database';
-import { expect, test } from './support';
+import { API_URL as API, expect, test } from './support';
 
 test.skip(({ isMobile }) => isMobile, 'data and server behaviour, proven once');
 
 const LISTING = '/en/collections/sarees/pure-silk/ikkat';
-const API = 'https://localhost:4000';
 
 test.describe.serial('Badges on real cards', () => {
 	const slugs = ['bridal-ikkat-saree', 'classic-ikkat-saree', 'festive-ikkat-saree'];

@@ -1,4 +1,4 @@
-import { cards, expect, openFilter, showFilters, test } from './support';
+import { API_URL, cards, expect, openFilter, showFilters, test } from './support';
 
 test.describe('a category listing', () => {
 	test.beforeEach(async ({ page }) => {
@@ -123,7 +123,7 @@ test('a Bengali listing shows its filters and values in Bengali', async ({ page 
 });
 
 test('the listing comes from Meilisearch, and its counts match what a tick shows', async ({ page, request }) => {
-	const api = 'https://localhost:4000/catalog/placements?path=sarees&pageSize=100';
+	const api = `${API_URL}/catalog/placements?path=sarees&pageSize=100`;
 	const all = (await (await request.get(api, { ignoreHTTPSErrors: true })).json()) as {
 		total: number;
 		facets: Array<{ code: string; terms: Array<{ code: string; count: number }> }>;

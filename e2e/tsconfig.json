@@ -6,7 +6,9 @@
 		"strict": true,
 		"noEmit": true,
 		"skipLibCheck": true,
-		"types": ["node"]
+		"types": ["node"],
+		// The browser tests read the throwaway database through the db adapter's own mongoose.
+		"paths": { "mongoose": ["../packages/adapters-db-mongo/node_modules/mongoose"] }
 	},
 	"include": ["./**/*.ts", "../playwright.config.ts"]
 }

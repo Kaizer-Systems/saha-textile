@@ -1,9 +1,9 @@
 import { withDatabase } from './database';
-import { expect, test } from './support';
+import { API_URL, expect, test } from './support';
 
 test.describe('Real categories', () => {
 	test('the menu is in the first HTML, in the language of the page', async ({ request }) => {
-		const answer = await request.get('https://localhost:4000/catalog/categories/menu?locale=bn');
+		const answer = await request.get(`${API_URL}/catalog/categories/menu?locale=bn`);
 		const rows = (await answer.json()) as { name: string; path: string }[];
 		expect(rows.find((row) => row.path === 'sarees')?.name).toBe('শাড়ি');
 		expect(await (await request.get('/bn')).text()).toContain('শাড়ি');
@@ -11,7 +11,7 @@ test.describe('Real categories', () => {
 	});
 
 	test('the menu links open real collections', async ({ request }) => {
-		const answer = await request.get('https://localhost:4000/catalog/categories/menu?locale=en');
+		const answer = await request.get(`${API_URL}/catalog/categories/menu?locale=en`);
 		const rows = (await answer.json()) as { path: string; slug: string; level: number }[];
 		expect(rows.length).toBeGreaterThan(50);
 		const sample = rows.find((row) => row.level === 2);
@@ -30,7 +30,7 @@ test.describe('Bundles', () => {
 
 	test('the cart refuses a bundle sent by hand', async ({ page }) => {
 		await page.goto('/en');
-		const refused = await page.request.post('https://localhost:4000/cart/current/lines', {
+		const refused = await page.request.post(`${API_URL}/cart/current/lines`, {
 			data: { productId: 'prd_936', quantity: 1 },
 		});
 		expect(refused.status()).toBe(400);

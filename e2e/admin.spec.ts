@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { withDatabase } from './database';
-import { ADMIN } from './support';
+import { ADMIN, API_URL, SHOP } from './support';
 
 test.skip(!process.env['E2E_ADMIN_EMAIL'], 'needs `pnpm e2e:stack`');
 
@@ -88,9 +88,9 @@ test.describe('Saved through the API', () => {
 		expect(saved?.['targetPath']).toBe('/en/about-us');
 
 		// The shop refreshes its copy of the rows on a short timer, so a save shows up on the next one.
-		const status = async () => (await request.get(`https://localhost:4200${path}`, { maxRedirects: 0 })).status();
+		const status = async () => (await request.get(`${SHOP}${path}`, { maxRedirects: 0 })).status();
 		await expect.poll(status, { timeout: 70_000, intervals: [1_000] }).toBe(301);
-		const answer = await request.get(`https://localhost:4200${path}`, { maxRedirects: 0 });
+		const answer = await request.get(`${SHOP}${path}`, { maxRedirects: 0 });
 		expect(answer.headers()['location']).toContain('/en/about-us');
 	});
 
@@ -108,7 +108,7 @@ test.describe('Saved through the API', () => {
 				updatedAt: new Date(),
 			}),
 		);
-		await page.goto('https://localhost:4200/en/product/banarasi-silk-saree-color');
+		await page.goto(`${SHOP}/en/product/banarasi-silk-saree-color`);
 		await page.waitForLoadState('networkidle');
 		await expect(page.locator('body')).toContainText('Does this come with a blouse piece?');
 		await expect(page.locator('body')).toContainText('an unstitched blouse piece is included');
@@ -205,7 +205,7 @@ test.describe('Product builder', () => {
 		await expect(row).toBeVisible();
 		await row.locator('.ri-rocket-line').click();
 		await expect.poll(async () => (await stored())?.['status']).toBe('live');
-		const bengali = await request.get('https://localhost:4200/bn/product/builder-test-saree');
+		const bengali = await request.get(`${SHOP}/bn/product/builder-test-saree`);
 		expect(await bengali.text()).toContain('Saree de test');
 	});
 });
@@ -252,7 +252,7 @@ test.describe('Categories and attributes', () => {
 });
 
 test.describe('What admin makes reaches the shop', () => {
-	const shop = 'https://localhost:4200';
+	const shop = SHOP;
 
 	test('a category named in both languages joins the shop menu, in each language', async ({ page, request }) => {
 		const slug = `e2e-menu-${Date.now()}`;
@@ -336,7 +336,7 @@ test.describe('What admin makes reaches the shop', () => {
 			await expect(page).toHaveURL(/\/product$/);
 			const saved = await withDatabase((db) => db.collection('products').findOne({ slug }));
 			expect(saved).toMatchObject({ addonTemplateCode: code, status: 'live' });
-			const bengali = await request.get(`https://localhost:4000/catalog/products/${slug}/view?locale=bn`);
+			const bengali = await request.get(`${API_URL}/catalog/products/${slug}/view?locale=bn`);
 			expect(bengali.status(), await bengali.text()).toBe(200);
 			const body = (await bengali.json()) as {
 				measurements: { fields: { label: string }[] };
@@ -402,7 +402,7 @@ test.describe('What admin makes reaches the shop', () => {
 			await page.locator('#value_0').blur();
 			await page.locator('#attribute_btn button, button#attribute_btn').first().click();
 			await expect(page).toHaveURL(/\/attribute$/);
-			const view = await request.get(`https://localhost:4000/catalog/products/${slug}/view?locale=en`);
+			const view = await request.get(`${API_URL}/catalog/products/${slug}/view?locale=en`);
 			expect(view.status(), await view.text()).toBe(200);
 			const body = (await view.json()) as { optionGroups: { code: string; terms: { label: string }[] }[] };
 			expect(body.optionGroups.find((group) => group.code === code)?.terms[0]?.label).toBe('Satin');
@@ -431,7 +431,7 @@ test.describe('What admin makes reaches the shop', () => {
 		try {
 			const row = await withDatabase((db) => db.collection('categories').findOne({ slug }));
 			expect(row?.['media']?.bannerImage).toEqual(expect.any(String));
-			const menu = await request.get('https://localhost:4000/catalog/categories/menu?locale=bn');
+			const menu = await request.get(`${API_URL}/catalog/categories/menu?locale=bn`);
 			const rows = (await menu.json()) as { slug: string; imageUrl: string | null }[];
 			expect(rows.find((category) => category.slug === slug)?.imageUrl).toMatch(/^https?:/);
 		} finally {
@@ -528,7 +528,7 @@ test.describe('What admin makes reaches the shop', () => {
 			await expect(page).toHaveURL(/\/product$/);
 			const saved = await withDatabase((db) => db.collection('products').findOne({ slug }));
 			expect(saved).toMatchObject({ imageMode: 'compound', status: 'live' });
-			const view = await request.get(`https://localhost:4000/catalog/products/${slug}/view`);
+			const view = await request.get(`${API_URL}/catalog/products/${slug}/view`);
 			expect(view.status(), await view.text()).toBe(200);
 			const body = (await view.json()) as { variants: { galleryIndexes: number[] }[] };
 			expect(body.variants.some((row) => row.galleryIndexes.length === 1)).toBe(true);
@@ -597,7 +597,7 @@ test.describe('Size guide', () => {
 		await cell.blur();
 		await page.getByRole('button', { name: /save/i }).first().click();
 		await expect(page).toHaveURL(/\/measurement$/);
-		await page.goto(`https://localhost:4200/en/product/${slug}`);
+		await page.goto(`${SHOP}/en/product/${slug}`);
 		await page.locator('.size-delivery-info a', { hasText: 'Size Chart' }).click();
 		const table = page.locator('.modal-body table');
 		await expect(table).toContainText('36');
@@ -613,7 +613,7 @@ test.describe('Brand Kit', () => {
 		await page.locator('#shop_name').fill('Saha Textile Test');
 		await page.locator('#save_brand_btn').click();
 		await expect(page.locator('body')).toContainText('Brand Kit saved');
-		const brand = await (await request.get('https://localhost:4000/storefront/brand')).json();
+		const brand = await (await request.get(`${API_URL}/storefront/brand`)).json();
 		expect(brand.shopName).toBe('Saha Textile Test');
 	});
 
@@ -634,7 +634,7 @@ test.describe('Admin sign-in', () => {
 			['__Host-st_admin_access', '__Host-st_admin_refresh'].map((name) => ({
 				name,
 				value: 'a-session-that-no-longer-exists',
-				url: 'https://localhost:4000',
+				url: API_URL,
 				secure: true,
 				httpOnly: true,
 				sameSite: 'Lax' as const,

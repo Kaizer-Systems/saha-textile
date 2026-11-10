@@ -121,10 +121,10 @@ test.describe('Get the App', () => {
 		test('the top bar link installs, and no longer goes to apple.com', async ({ page }) => {
 			await page.goto('/bn/');
 			const link = page.locator('#get_the_app_top_link');
-			await expect(link).toHaveText(/Obtenir l.application/);
+			await expect(link).toHaveText('অ্যাপটি নিন');
 			await expect(link.locator('i')).toHaveClass('ri-download-2-line');
 			await link.click();
-			await expect(popup(page).getByRole('heading', { name: /Installer l.application/ })).toBeVisible();
+			await expect(popup(page).getByRole('heading', { name: 'অ্যাপ ইনস্টল করুন' })).toBeVisible();
 		});
 	});
 

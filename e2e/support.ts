@@ -2,11 +2,17 @@ import { expect, test as base, type Page } from '@playwright/test';
 
 import { COOKIE_POLICY_VERSION } from '../apps/storefront/src/app/core/consent/cookie-catalogue';
 
-/** The API a shop page talks to. Tests stub or block it by this pattern. */
-export const API = /localhost:4000/;
-
-/** The admin. `E2E_ADMIN_URL` points the admin tests at another copy, such as a worktree's. */
+/**
+ * Where the stack runs. The defaults are the ports `pnpm e2e:stack` and the local servers use;
+ * `E2E_API_URL`, `E2E_BASE_URL` and `E2E_ADMIN_URL` point the tests at another copy, such as a
+ * worktree's on its own ports, so the local servers can keep running.
+ */
+export const API_URL = process.env['E2E_API_URL'] ?? 'https://localhost:4000';
+export const SHOP = process.env['E2E_BASE_URL'] ?? 'https://localhost:4200';
 export const ADMIN = process.env['E2E_ADMIN_URL'] ?? 'https://localhost:4300';
+
+/** The API a shop page talks to. Tests stub or block it by this pattern. */
+export const API = new RegExp(new URL(API_URL).host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 /** The signed-in test administrator, written by `admin.setup.ts`. */
 export const ADMIN_STATE = 'node_modules/.cache/playwright/admin-state.json';

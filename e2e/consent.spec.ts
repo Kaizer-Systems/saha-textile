@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { FUNCTIONAL_ITEMS } from '../apps/storefront/src/app/core/consent/cookie-catalogue';
+
 const box = (page: Page) => page.locator('.cookie-bar-box');
 const home = async (page: Page) => {
 	await page.goto('/en/');
@@ -53,7 +55,7 @@ test.describe('Cookie box', () => {
 		await expect(popup.locator('.cookie-empty li')).toHaveCount(4);
 		await expect(popup.locator('.cookie-effect')).toBeVisible();
 		await popup.locator('.cookie-more').nth(1).click();
-		await expect(popup.locator('.cookie-list li')).toHaveCount(5);
+		await expect(popup.locator('.cookie-list li')).toHaveCount(FUNCTIONAL_ITEMS.length);
 		await popup.locator('#cookie_functional_switch').check();
 		await expect(popup.locator('.cookie-effect')).toHaveCount(0);
 		await popup.locator('#cookie_save_btn').click();
@@ -75,18 +77,19 @@ test.describe('Cookie box', () => {
 		expect(await page.evaluate(() => localStorage.getItem('st_recent'))).toBeNull();
 	});
 
-	test('the Contact map waits for consent, and a click shows it for this visit', async ({ page }) => {
+	// Contact Us shows a card per store with a link to Google Maps (owner, 2026-11-08) instead of
+	// the embedded map, so a visitor's browser asks Google for nothing until they follow a link.
+	test('Contact Us asks Google Maps for nothing until a store link is followed', async ({ page }) => {
 		const google: string[] = [];
 		page.on('request', (row) => {
-			if (row.url().includes('google.com/maps')) google.push(row.url());
+			if (/google\.[a-z.]+\/maps|maps\.googleapis|maps\.app\.goo\.gl/.test(row.url())) google.push(row.url());
 		});
 		await home(page);
 		await page.locator('#cookie_necessary_btn').click();
 		await page.goto('/en/contact-us');
-		await expect(page.locator('#show_map_btn')).toBeVisible();
+		await page.waitForLoadState('networkidle');
+		await expect(page.locator('iframe[src*="google"]')).toHaveCount(0);
 		expect(google).toEqual([]);
-		await page.locator('#show_map_btn').click();
-		await expect(page.locator('.map-box iframe')).toHaveCount(1);
 	});
 });
 

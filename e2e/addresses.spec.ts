@@ -70,6 +70,6 @@ test.describe('old addresses', () => {
 		const response = await request.get('/bn/product-tag/nope/');
 
 		expect(response.headers()['x-robots-tag']).toBe('noindex');
-		expect(await response.text()).toContain("Cette page n'est plus disponible");
+		expect(await response.text()).toContain('এই পেজটি আর পাওয়া যাচ্ছে না');
 	});
 });

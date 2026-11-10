@@ -1159,7 +1159,7 @@
 	"size": "সাইজ",
 	"add_size": "সাইজ যোগ করুন",
 	"language_done": "সম্পূর্ণ",
-	"language_to_do": "{{language}}-এ লেখা বাকি",
+	"language_to_do": "{{language}} ভাষায় লেখা বাকি",
 	"language_help": "এই ভাষার চিহ্ন দেওয়া ঘরগুলো ভাষার সঙ্গে বদলায়। বাকি সব সব ভাষায় এক।",
 	"english_guide": "ইংরেজিতে: {{text}}",
 	"options": "বিকল্প",

@@ -53,7 +53,8 @@ flowchart LR
 | Media            | Media library, home banners, review moderation and the YouTube field                                                                                  |
 | Content          | Blog posts, categories and tags; launch and sale events                                                                                               |
 | Search           | Search words and Storefront settings › Search                                                                                                         |
-| Settings         | Brand Kit (logo sets, link preview picture, profiles, store links, colours), Stores, Mailboxes and the inbox                                          |
+| Settings         | Brand Kit (logo sets, link preview picture, profiles, store links, colours), Stores and Mailboxes                                                     |
+| Inbox            | The shop's Gmail mailboxes, read and answered live; see [Inbox and Mailboxes](./inbox-and-mailboxes)                                                  |
 | Theme colour     | Brand Kit › Admin theme colour sets `--theme-color`; every admin style reads it, so nothing types the theme hex                                       |
 | Notifications    | Channel switches, usage and templates                                                                                                                 |
 | Tables and forms | Shared search, pagination, selection, actions and permission-aware UI                                                                                 |
@@ -62,7 +63,7 @@ Other feature routes render from JSON data. See [Data sources](./state-and-data#
 
 ## Feature families
 
-The content shell lazy-loads: dashboard, account, role, admin user, customer, customer ledger, attribute, measurement, add-on template, tag, redirect, blog, event, page, tax, category, shipping, media, coupon, product, currency, points, settings, storefront settings, search words, order status, orders, theme options, home banners, reviews, FAQ, notifications, refunds, and questions and answers.
+The content shell lazy-loads: dashboard, account, role, admin user, customer, customer ledger, attribute, measurement, add-on template, tag, redirect, blog, event, page, tax, category, shipping, media, coupon, product, currency, points, settings, storefront settings, search words, order status, orders, inbox, theme options, home banners, reviews, FAQ, notifications, refunds, and questions and answers.
 
 Most families have create and edit routes. Orders add details, create-order and checkout routes. Blog adds category and tag routes.
 

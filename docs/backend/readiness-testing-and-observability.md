@@ -73,13 +73,13 @@ flowchart TD
     Contract --> Unit["Many pure domain/application unit tests"]
 ```
 
-| Layer              | Location                                  | Covers                                                                                          |
-| ------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Unit               | `*.test.ts` and `*.spec.ts` beside source | Pure rules, services, stores, components, contracts                                             |
-| Integration        | `packages/adapters-db-mongo/test`         | Repositories, indexes and transactions against a replica set                                    |
-| API end-to-end     | `apps/api/e2e`                            | Session rotation, media pipeline, banners, review photos, catalogue                             |
-| Browser end-to-end | `e2e`                                     | Playwright on desktop and phone: listings, product pages, sign-in, addresses, stock alerts, SEO |
-| Portal             | `scripts/validate-developer-portal.mjs`   | Metadata, sources, links and interactive component data                                         |
+| Layer              | Location                                  | Covers                                                                                                                              |
+| ------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Unit               | `*.test.ts` and `*.spec.ts` beside source | Pure rules, services, stores, components, contracts                                                                                 |
+| Integration        | `packages/adapters-db-mongo/test`         | Repositories, indexes and transactions against a replica set                                                                        |
+| API end-to-end     | `apps/api/e2e`                            | Session rotation, media pipeline, banners, review photos, catalogue                                                                 |
+| Browser end-to-end | `e2e`                                     | Playwright on desktop and phone: listings, product pages, sign-in, addresses, stock alerts, SEO; admin journeys including the Inbox |
+| Portal             | `scripts/validate-developer-portal.mjs`   | Metadata, sources, links and interactive component data                                                                             |
 
 Run them with:
 
@@ -91,6 +91,10 @@ pnpm e2e:session-rotation # session and security scenarios
 ```
 
 Playwright uses the installed Chrome. Set `E2E_BASE_URL` to test a production build. Integration tests need the replica set: run `pnpm mongo:up` first.
+
+The Playwright projects are `desktop` and `phone` for the shop, and `admin` for files matching `admin.spec.ts`. The `admin` project signs in once through `admin-setup` and reuses that session. `pnpm e2e:stack` builds the apps, seeds `saha_textile_e2e`, creates a throwaway administrator, runs the suite and stops everything. Pass `--keep` to leave the stack running, or a spec path and `--project` to run one file. Set `E2E_ADMIN_URL` to test an admin on another address.
+
+Test helpers read shared values from the application rather than copying them. For example, `e2e/support.ts` takes the cookie policy version from the storefront's cookie catalogue, so a policy change cannot silently break every test that accepts cookies.
 
 The architecture is covered by further tests. A runtime-purity test compiles `packages/core-domain` and rejects imports outside its own modules and Node built-ins. Deployment hardening is tested by starting the real API and worker entry points.
 

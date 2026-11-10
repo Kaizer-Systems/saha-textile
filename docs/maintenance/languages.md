@@ -38,6 +38,22 @@ Add every key to `en.json` and `bn.json` in the same change. `pnpm check:i18n-pa
 - Short forms stay in English letters: OTP, PIN, SKU, GST, and sizes such as S, M and XL.
 - The brand is সাহা টেক্সটাইল in running text. Page titles end in `| Saha Textile`.
 
+### Interface wording
+
+Interface text balances Bengali words with the English words shoppers and staff already use. Choose the word a Kolkata shop assistant or app user would say, not the most formal one.
+
+| Use                                    | Instead of                          | Why                                    |
+| -------------------------------------- | ----------------------------------- | -------------------------------------- |
+| ক্যাটাগরি, সেভ, এডিট, আপডেট, কভার, পেজ | শ্রেণি, সংরক্ষণ, সম্পাদনা, হালনাগাদ | These are the words people use in apps |
+| পণ্য, খসড়া, ফলাফল, পুরোনো, নিচে       | English loanwords                   | Common Bengali words read naturally    |
+| ফলাফল for search results               | ফল                                  | ফল also means fruit                    |
+| নাকচ করুন for Reject                   | বাতিল করুন                          | বাতিল করুন already means Cancel        |
+
+- **Placeholders.** Never attach a case ending to a language name in a placeholder: `{{language}}-এ` prints বাংলা-এ. Write `{{language}} ভাষায়` instead. Names, addresses and codes may take a hyphenated ending, as in `{{name}}-এর`.
+- **Menu names.** A sentence that names an admin screen uses its Bengali menu name, such as সেটিংস › মেলবক্স, so the words match what the reader sees in the menu.
+- **Product names.** Gmail, WhatsApp, Google and similar names stay in English letters.
+- **Legal pages.** The privacy, shipping and other policy pages keep a formal register, so a word such as হালনাগাদ may stay there. Interface text describing the same thing uses the everyday word.
+
 The full glossary is in the decisions log. Catalogue words come from `packages/adapters-db-mongo/src/seed/demo-bengali.ts` and `scripts/showcase-catalogue-motifs-bn.ts`. The catalogue builder stops when a word has no Bengali, so English never lands in a Bengali field.
 
 ## Numbers

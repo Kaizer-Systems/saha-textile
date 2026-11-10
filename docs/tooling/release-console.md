@@ -65,6 +65,18 @@ A project has one or more repositories. Each repository has:
 
 GitHub, DigitalOcean and Cloudflare have screens. Any other vendor can be chosen; its group shows **Screens later** until its own screens are built the way that vendor works. Each vendor is an adapter behind one shape per slot (source code, cloud, edge) in `apps/release-console-api/src/vendors/`.
 
+### Adding and changing repositories
+
+**Add a project** walks through seven steps: name and workspace, repositories (a vendor each), environments and where each runs, cloud platforms, edge platforms with their domains, the repositories' own menus, and a summary. When a GitHub repository is added, the wizard reads its `.release-console.json` from the default branch through the GitHub CLI sign-in and ticks its own menus; a repository on another vendor gets its menus ticked by hand. The new project opens on its Connections tab.
+
+Project settings › **Repositories** (also reached from a repository's **Repository settings**) changes a repository after the project exists:
+
+- its role, environments (where each runs and its domains), cloud platforms, edge platforms with their domains, and own menus;
+- **+ Add repository**: a vendor and `owner/name`; the new repository starts with the first repository's environments, clouds and edges, keys included, and with the own menus of its `.release-console.json` when GitHub has one;
+- **Remove repository**: the project keeps at least one repository, and its keys stay.
+
+Slots that stay keep their keys. A cloud or edge platform added later starts without a key. Removing a cloud moves the environments that ran on it back to this computer. Key ids the project does not hold are dropped when a repository is saved.
+
 ### Where the data lives
 
 | What                                           | Where                                                                             |
@@ -79,7 +91,7 @@ When the console file has no projects, the API imports the `project` block of `.
 
 Project settings › **Connections** lists every key by category and repository: source code, cloud platforms, and edge, DNS and security. Below them, **Keys** lists each key with its account, rights, expiry, last check and state, with **Check** and **Remove**.
 
-Keys are a token paste or a browser sign-in, never a password.
+Keys are a token paste or a browser sign-in, never a password. **Add a key** offers each kind with where to make it; **Use it for** lists the matching slots of this project's repositories, all ticked.
 
 - A pasted key goes once to the local API, which writes it to the login Keychain with `security -i` and the command on standard input, so the value never appears in the list of running processes.
 - The Keychain item has the service `Release Console` and the account `<Project name> · <key id>`. One key serves every repository of the same project that uses the same account; it never serves another project.
@@ -87,27 +99,27 @@ Keys are a token paste or a browser sign-in, never a password.
 - Removing a key deletes its Keychain item. Removing a project deletes all of that project's items and no other project's.
 - Every key is checked as soon as it is stored. The states are verified, expiring (14 days or less), expired, failed and unchecked.
 
-| Key                                 | Made where                                                                           | Checked with                                                                                                       |
-| ----------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| GitHub CLI sign-in on this computer | `gh auth login` in a terminal; the browser finishes it. Nothing is pasted or stored. | `gh auth token`, then GitHub's `/user` and access to each repository that uses it                                  |
-| GitHub fine-grained token           | GitHub › Settings › Developer settings, limited to the repository, read-only         | `/user`, repository access, and GitHub's own expiry header                                                         |
-| DigitalOcean API · read / change    | DigitalOcean › API › Tokens, with an expiry                                          | `/v2/account`; DigitalOcean does not report a token's expiry, so the date typed at paste time is used              |
-| DigitalOcean Spaces key             | DigitalOcean › Spaces Object Storage › Access Keys, pasted as `ACCESS_KEY:SECRET`    | Kept unchecked until the Spaces screen reads with it                                                               |
-| Cloudflare API · read / change      | The Cloudflare account that holds `sahatextile.com` › Manage account › API Tokens    | `/user/tokens/verify`; an account token is verified at `/accounts/{id}/tokens/verify`, which also gives its expiry |
+| Key                                 | Made where                                                                                                                                                    | Checked with                                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| GitHub CLI sign-in on this computer | `gh auth login` in a terminal; the browser finishes it. **Link and check** links it to the chosen repositories; nothing is pasted or stored.                  | `gh auth token`, then GitHub's `/user` and access to each repository that uses it                                  |
+| GitHub fine-grained token           | GitHub › Settings › Developer settings, limited to the repository, read-only                                                                                  | `/user`, repository access, and GitHub's own expiry header                                                         |
+| DigitalOcean API · read / change    | DigitalOcean › API › Tokens, with an expiry                                                                                                                   | `/v2/account`; DigitalOcean does not report a token's expiry, so the date typed at paste time is used              |
+| DigitalOcean Spaces key             | DigitalOcean › Spaces Object Storage › Access Keys, pasted as `ACCESS_KEY:SECRET`, with its bucket as `region/bucket` (for example `sgp1/saha-textile-media`) | Lists one object of the bucket, signed with AWS Signature Version 4; works for keys limited to that bucket         |
+| Cloudflare API · read / change      | The Cloudflare account that holds `sahatextile.com` › Manage account › API Tokens                                                                             | `/user/tokens/verify`; an account token is verified at `/accounts/{id}/tokens/verify`, which also gives its expiry |
 
-The console never makes a token or signs in for the owner.
+The console never makes a token or signs in for the owner. A browser sign-in for other vendors (a GitHub App, DigitalOcean, GitLab, Bitbucket, AWS, Google Cloud, Azure) needs an OAuth application registered on that vendor by the owner; until then those vendors take a pasted token. Cloudflare takes a pasted token only.
 
 ## Live screens
 
-| Repository screen                           | Reads                                                | Before a key is pasted              |
-| ------------------------------------------- | ---------------------------------------------------- | ----------------------------------- |
-| Overview, Run › Services                    | Docker and the shop API on this computer             | Live                                |
-| Ship › Pull requests (Open PRs tab)         | GitHub, open pull requests                           | Live through the GitHub CLI sign-in |
-| Ship › Pipelines (All runs tab)             | GitHub Actions, the latest 30 runs                   | Live through the GitHub CLI sign-in |
-| DigitalOcean › Droplets (Droplets tab)      | Every droplet the key sees                           | Not connected                       |
-| DigitalOcean › Cloud account (Overview tab) | Team, droplet limit, month-to-date usage and balance | Not connected                       |
-| Cloudflare › Domains (Registrations tab)    | Every site (zone) the token sees                     | Not connected                       |
-| Cloudflare › DNS (Records tab)              | Every record in the edge slot's first domain         | Not connected                       |
+| Repository screen                           | Reads                                                                                                                                   | Before a key is pasted                                                                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Overview, Run › Services                    | Docker on this computer (containers whose names start with the repository's id) and, for the shop's own stack, the shop API's readiness | Live for environments on this computer; environments on a cloud show their domains until the agent is linked on their servers |
+| Ship › Pull requests (Open PRs tab)         | GitHub, open pull requests                                                                                                              | Live through the GitHub CLI sign-in                                                                                           |
+| Ship › Pipelines (All runs tab)             | GitHub Actions, the latest 30 runs                                                                                                      | Live through the GitHub CLI sign-in                                                                                           |
+| DigitalOcean › Droplets (Droplets tab)      | Every droplet the key sees                                                                                                              | Not connected                                                                                                                 |
+| DigitalOcean › Cloud account (Overview tab) | Team, droplet limit, month-to-date usage and balance                                                                                    | Not connected                                                                                                                 |
+| Cloudflare › Domains (Registrations tab)    | Every site (zone) the token sees                                                                                                        | Not connected                                                                                                                 |
+| Cloudflare › DNS (Records tab)              | Every record in the edge slot's first domain                                                                                            | Not connected                                                                                                                 |
 
 Each vendor read answers in one of three ways: data, **not connected** (with a button to Connections), or an error with the vendor's reason. DigitalOcean screens read with the read key when the slot has one, and with the change key otherwise. Every other screen and tab describes what it will show; items the console cannot do are red and disabled, and items it can do in part are yellow.
 
@@ -115,19 +127,21 @@ Each vendor read answers in one of three ways: data, **not connected** (with a b
 
 The API listens on `127.0.0.1` only and accepts browser requests only from the console page (`CONSOLE_ORIGIN`). Request bodies and every answer the app reads are parsed with the shared zod schemas.
 
-| Route                                                                             | Answer                                                       |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `GET /api/health`                                                                 | `{ status: 'ok', version }`                                  |
-| `GET /api/lock/status`, `POST /api/lock/setup`, `…/unlock`, `…/lock`, `…/pin`     | Lock state, first PIN, unlock, lock now, change PIN          |
-| `GET /api/projects`, `POST /api/projects`, `DELETE /api/projects/:id`             | Projects and workspaces; add; remove with its Keychain items |
-| `POST /api/projects/:id/keys`, `POST …/keys/:keyId/check`, `DELETE …/keys/:keyId` | Store a key and check it; check again; remove                |
-| `PUT /api/projects/:id/slots`                                                     | Which keys a repository's slot uses                          |
-| `GET /api/attention`, `GET /api/projects/:id/attention`                           | Counts per project; one project's items                      |
-| `GET /api/audit?project=`                                                         | Who did what, newest first                                   |
-| `GET /api/projects/:p/repos/:r/github/pulls` and `…/github/runs`                  | Pull requests and workflow runs                              |
-| `GET …/cloud/:slot/droplets` and `…/cloud/:slot/account`                          | Droplets and the cloud account                               |
-| `GET …/edge/:slot/zones` and `…/edge/:slot/zones/:zone/dns`                       | Sites and DNS records                                        |
-| `GET /api/local/services`, `GET /api/local/readiness`                             | The local stack's containers and the shop API's readiness    |
+| Route                                                                                                | Answer                                                                                                                |
+| ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`                                                                                    | `{ status: 'ok', version }`                                                                                           |
+| `GET /api/lock/status`, `POST /api/lock/setup`, `…/unlock`, `…/lock`, `…/pin`                        | Lock state, first PIN, unlock, lock now, change PIN                                                                   |
+| `GET /api/projects`, `POST /api/projects`, `DELETE /api/projects/:id`                                | Projects and workspaces; add; remove with its Keychain items                                                          |
+| `POST /api/projects/:id/keys`, `POST …/keys/:keyId/check`, `DELETE …/keys/:keyId`                    | Store a key and check it; check again; remove                                                                         |
+| `PUT /api/projects/:id/slots`                                                                        | Which keys a repository's slot uses                                                                                   |
+| `POST /api/projects/:id/repositories`, `PUT …/repositories/:repoId`, `DELETE …/repositories/:repoId` | Add, change or remove a repository                                                                                    |
+| `POST /api/repository-file`                                                                          | A GitHub repository's own menus from its `.release-console.json`, before it joins a project                           |
+| `GET /api/attention`, `GET /api/projects/:id/attention`                                              | Counts per project; one project's items                                                                               |
+| `GET /api/audit?project=`                                                                            | Who did what, newest first                                                                                            |
+| `GET /api/projects/:p/repos/:r/github/pulls` and `…/github/runs`                                     | Pull requests and workflow runs                                                                                       |
+| `GET …/cloud/:slot/droplets` and `…/cloud/:slot/account`                                             | Droplets and the cloud account                                                                                        |
+| `GET …/edge/:slot/zones` and `…/edge/:slot/zones/:zone/dns`                                          | Sites and DNS records                                                                                                 |
+| `GET /api/local/services?repo=`, `GET /api/local/readiness?repo=`                                    | The repository's containers on this computer; the shop API's readiness for the shop's own stack, `unknown` for others |
 
 | Setting                   | Default                                                        |
 | ------------------------- | -------------------------------------------------------------- |

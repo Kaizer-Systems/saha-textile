@@ -53,7 +53,11 @@
     "stack:status": "bash scripts/stack.sh status",
     "production:proof": "bash scripts/production-proof.sh",
     "redis:up": "docker compose -f docker/redis/compose.yaml up -d --wait",
-    "redis:down": "docker compose -f docker/redis/compose.yaml down"
+    "redis:down": "docker compose -f docker/redis/compose.yaml down",
+    "console": "turbo run dev --filter=@saha-textile/release-console --filter=@saha-textile/release-console-api",
+    "lint:shop": "pnpm check:nitro-handlers && pnpm check:naming && pnpm check:account-naming && pnpm check:browser-auth && pnpm check:i18n-parity && pnpm check:route-contracts && pnpm check:route-authorization && pnpm check:permission-registry && pnpm check:icon-titles && turbo run lint --filter='!@saha-textile/release-console' --filter='!@saha-textile/release-console-api' --filter='!@saha-textile/release-console-contracts'",
+    "typecheck:shop": "turbo run typecheck --filter='!@saha-textile/release-console' --filter='!@saha-textile/release-console-api' --filter='!@saha-textile/release-console-contracts'",
+    "check:console": "turbo run lint typecheck test build --filter=@saha-textile/release-console --filter=@saha-textile/release-console-api --filter=@saha-textile/release-console-contracts"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

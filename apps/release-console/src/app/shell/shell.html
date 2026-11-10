@@ -1,0 +1,156 @@
+<div class="rc">
+	<div class="rc-top">
+		<div class="rc-brand">
+			<span
+				class="rc-logo"
+				aria-hidden="true"
+			></span>
+			<b>Release Console</b>
+			<span class="rc-mono">Saha Textile · on this computer</span>
+		</div>
+		<div
+			class="rc-envs"
+			role="tablist"
+			aria-label="Environment"
+		>
+			@for (env of envs; track env[0]) {
+			<button
+				type="button"
+				class="rc-env-tab"
+				role="tab"
+				[attr.aria-selected]="state.environment() === env[0]"
+				(click)="state.setEnvironment(env[0])"
+			>
+				{{ env[1] }}
+			</button>
+			}
+		</div>
+		<div class="rc-who">
+			<span class="rc-mono">owner · this computer</span>
+			<span class="rc-dot ok"></span>
+		</div>
+	</div>
+	<div class="rc-body">
+		<nav
+			class="rc-side"
+			aria-label="Console screens"
+		>
+			<div class="rc-msearch">
+				<input
+					#searchBox
+					type="search"
+					placeholder="Search screens"
+					aria-label="Search screens"
+					autocomplete="off"
+					[value]="query()"
+					(input)="query.set($any($event.target).value); active.set(0)"
+					(keydown)="onSearchKey($event)"
+				/>
+				<kbd>⌘K</kbd>
+				@if (query().trim()) {
+				<div
+					class="rc-mres"
+					role="listbox"
+				>
+					@for (hit of hits(); track hit.screen + (hit.state ?? '')) {
+					<button
+						type="button"
+						class="rc-mrow"
+						role="option"
+						[attr.aria-selected]="$index === active()"
+						(mousedown)="pick(hit)"
+					>
+						<b>{{ hit.label }}</b>
+						<span>{{ hit.path }}{{ hit.via ? ' · “' + hit.via + '”' : '' }}</span>
+					</button>
+					} @empty {
+					<div class="rc-mnone">No screen or tab matches “{{ query() }}”.</div>
+					}
+				</div>
+				}
+			</div>
+			<ng-container
+				[ngTemplateOutlet]="navItem"
+				[ngTemplateOutletContext]="{ key: 'overview' }"
+			/>
+			@for (group of menu.menu; track group.label) {
+			<div
+				class="rc-ng"
+				[class.open]="openGroup() === group.label"
+			>
+				<button
+					type="button"
+					class="rc-gl"
+					[attr.aria-expanded]="openGroup() === group.label"
+					(click)="openGroupFirst(group.label)"
+				>
+					{{ group.label }}
+					<span>{{ count(group.label) }}</span>
+				</button>
+				@if (openGroup() === group.label) { @for (sub of group.subs; track $index) { @if (sub.label) {
+				<div class="rc-sub">
+					<span class="rc-subl">{{ sub.label }}</span>
+					@for (key of sub.items; track key) {
+					<ng-container
+						[ngTemplateOutlet]="navItem"
+						[ngTemplateOutletContext]="{ key }"
+					/>
+					}
+				</div>
+				} @else { @for (key of sub.items; track key) {
+				<ng-container
+					[ngTemplateOutlet]="navItem"
+					[ngTemplateOutletContext]="{ key }"
+				/>
+				} } } }
+			</div>
+			}
+			<div class="rc-navfoot">
+				<ng-container
+					[ngTemplateOutlet]="navItem"
+					[ngTemplateOutletContext]="{ key: 'settings' }"
+				/>
+			</div>
+		</nav>
+		<main class="rc-main"><router-outlet /></main>
+	</div>
+</div>
+
+<ng-template
+	#navItem
+	let-key="key"
+>
+	@let s = screen(key); @if (s) { @if (s.off) {
+	<span
+		class="rc-nav off"
+		aria-disabled="true"
+		[attr.data-tip]="s.tip"
+	>
+		{{ s.label }}
+		<span
+			class="nav-x"
+			aria-hidden="true"
+		>
+			⊘
+		</span>
+	</span>
+	} @else {
+	<button
+		type="button"
+		class="rc-nav"
+		[class.part]="!!s.part"
+		[attr.data-tip]="s.part"
+		[attr.aria-current]="current() === key"
+		(click)="go(key)"
+	>
+		{{ s.label }} @if (isLater(key)) {
+		<span
+			class="later"
+			title="Appears once its feature is built"
+		>
+			○
+		</span>
+		}
+	</button>
+	} }
+</ng-template>

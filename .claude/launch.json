@@ -55,6 +55,25 @@
 				"--no-open"
 			],
 			"port": 3211
+		},
+		{
+			"name": "release-console-api",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": [
+				"--filter",
+				"@saha-textile/release-console-api",
+				"exec",
+				"sh",
+				"-c",
+				"nest build -p tsconfig.build.json && node dist/main.js"
+			],
+			"port": 4410
+		},
+		{
+			"name": "release-console",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "@saha-textile/release-console", "dev"],
+			"port": 4400
 		}
 	]
 }

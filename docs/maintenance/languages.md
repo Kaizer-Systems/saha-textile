@@ -75,7 +75,7 @@ A new account records the language of the page it was created on (`preferredLoca
 
 ## Type on Bengali pages
 
-The font stack is Public Sans, then Noto Sans Bengali, so Latin letters and digits keep the shop's font. One style block for `:lang(bn)` turns off letter spacing, gives headings, buttons and labels taller lines so vowel signs are not clipped, and makes capital-letter labels semibold. The admin sets the page language when its switcher changes, so the same block applies there.
+The font stack is Public Sans, then Noto Sans Bengali, so Latin letters and digits keep the shop's font. Both fonts are served from the apps' own addresses; see [Styles, Dark Mode and Fonts](../storefront/styles-and-fonts.md). One style block for `:lang(bn)` turns off letter spacing, gives headings, buttons and labels taller lines so vowel signs are not clipped, and makes capital-letter labels semibold. The admin sets the page language when its switcher changes, so the same block applies there.
 
 ## Moving stored French to Bengali
 

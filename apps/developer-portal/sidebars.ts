@@ -88,6 +88,7 @@ const sidebars: SidebarsConfig = {
 						'storefront/routing-and-rendering',
 						'storefront/state-and-data',
 						'storefront/search',
+						'storefront/styles-and-fonts',
 						'storefront/contributor-recipes',
 					],
 				},

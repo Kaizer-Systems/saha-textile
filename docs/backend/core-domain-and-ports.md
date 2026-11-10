@@ -199,11 +199,11 @@ An image more than 5% off its target shape receives a warning and is letterboxed
 
 ### Size roles
 
-`SEEDED_MEDIA_ROLES` defines the sizes: `thumb`, `card`, `gallery`, `zoom`, image swatches, `share`, `feed_square`, `email_thumb`, `review_thumb`, `review_full`, `brand_logo`, `brand_icon`, `banner`, `blog`, `store_photo`, `category_icon` and `avatar`. Operators can edit widths and quality from the admin application. Purposes, shape, fit and format are fixed in code.
+`SEEDED_MEDIA_ROLES` defines the sizes: `thumb`, `card`, `gallery`, `zoom`, image swatches, `share`, `story`, `feed_square`, `email_thumb`, `review_thumb`, `review_full`, `brand_logo`, `brand_icon`, `site_share`, `banner`, `blog`, `store_photo`, `category_icon` and `avatar`. Operators can edit widths and quality from the admin application. Purposes, shape, fit and format are fixed in code.
 
-Each role fits the image one of four ways: `inside` keeps the source shape, `cover` crops to fill the box, `pad` letterboxes on white, and `blur` sets the image over a blurred enlargement of itself.
+Each role fits the image one of five ways: `inside` keeps the source shape, `cover` crops to fill the box, `pad` letterboxes on white, `blur` sets the image over a blurred enlargement of itself, and `story` places it above an empty band for a phone to write into. Two fixed fields adjust a fit: `inset` keeps a white margin inside a padded picture (`site_share` keeps 12%), and `brandStrip` draws the Brand Kit logo in a strip along the foot (`share`). See [Sharing and Brand](../storefront/sharing-and-brand.md).
 
-The worker never upscales: a width the source cannot fill is skipped and reported. Banners skip widths beyond twice their slot's widest display. `share`, `feed_square` and `email_thumb` apply only to an image that serves as a product's main image.
+The worker never upscales: a width the source cannot fill is skipped and reported. Banners skip widths beyond twice their slot's widest display. `share`, `story`, `feed_square` and `email_thumb` apply only to an image that serves as a product's main image (`servesAsPrimary`). Saving a product marks its first photo and queues a reprocess; the demo catalogue seed marks its photos the same way.
 
 Editing a role's widths or quality increases its version. The 15-minute `reprocess-stale` job then regenerates old files in batches.
 

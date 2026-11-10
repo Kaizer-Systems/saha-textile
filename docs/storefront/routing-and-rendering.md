@@ -124,6 +124,8 @@ if (isPlatformBrowser(this.platformId)) {
 
 Prefer rendering a stable server-safe structure and enhancing it in the browser. Avoid returning entirely different markup unless the feature genuinely cannot render on the server.
 
+Angular itself skips browser-only work on the server, such as the viewport and hover triggers of `@defer`, by testing the global `ngServerMode`. Analog's build optimizer sets that value once from the top-level config, so `vite.config.ts` adds `angularServerMode()`, which sets `ngServerMode` to `true` for every server-side build environment. Without it the server bundle takes the browser paths, and a block such as `@defer (on viewport; hydrate on viewport)` reaches for `IntersectionObserver` during the render.
+
 ## Data during server rendering
 
 Public API requests run during the server render and pass through Angular's HTTP transfer cache, so the browser does not repeat them. `ServerApiTimeoutInterceptor` limits each API call to 2.5 seconds. Past that limit the query stays empty, and the browser fetches the data after hydration. Requests with credentials do not run through the transfer cache.

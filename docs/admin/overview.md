@@ -88,6 +88,8 @@ Hiding an action improves usability but does not secure it. The API authenticate
 
 ## Theme colour
 
+See [Brand Kit](./brand-kit.md) for the screen that sets it.
+
 `app.ts` sets `--theme-color` on the page root from the Brand Kit's `adminThemeColor` (the last colour is kept in this browser so the next start paints in it), and Brand Kit previews a picked colour at once and restores the saved one if the page closes unsaved. Styles never type the theme's hex. They use the helpers in `public/assets/scss/utils/_theme-color.scss`:
 
 | Helper            | Gives                                                          |

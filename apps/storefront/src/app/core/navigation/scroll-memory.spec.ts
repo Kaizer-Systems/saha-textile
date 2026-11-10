@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ScrollMemory } from './scroll-memory';
 
-const setup = (platform = 'browser') => {
+const setup = (platform = 'browser', navigated = false) => {
 	const events = new Subject<unknown>();
 	let position: [number, number] = [0, 0];
 	const scroller = {
@@ -29,7 +29,7 @@ const setup = (platform = 'browser') => {
 			{ provide: ViewportScroller, useValue: scroller },
 			{
 				provide: Router,
-				useValue: { events, parseUrl: (url: string) => ({ fragment: url.split('#')[1] ?? null }) },
+				useValue: { events, navigated, parseUrl: (url: string) => ({ fragment: url.split('#')[1] ?? null }) },
 			},
 		],
 	});
@@ -63,6 +63,12 @@ describe('ScrollMemory', () => {
 		at(300);
 		go(3, '/', 1);
 		expect(scrollTo).toHaveBeenLastCalledWith({ top: 2500, left: 0, behavior: 'instant' });
+	});
+
+	it('moves the very next page when it starts after the first page has loaded', () => {
+		const { go, scrollTo } = setup('browser', true);
+		go(2, '/product/a');
+		expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, left: 0, behavior: 'instant' });
 	});
 
 	it('scrolls to a fragment on a new page', () => {

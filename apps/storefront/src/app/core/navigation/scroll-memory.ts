@@ -29,6 +29,8 @@ export class ScrollMemory {
 		this.started = true;
 		this.scroller.setHistoryScrollRestoration('manual');
 		let currentId = 0;
+		// The service can start after the first page has finished loading; that load is not ours to move.
+		let first = !this.router.navigated;
 		let restoreFrom: number | null = null;
 		this.router.events.subscribe((event) => {
 			if (event instanceof NavigationStart) {
@@ -36,10 +38,12 @@ export class ScrollMemory {
 				restoreFrom =
 					event.navigationTrigger === 'popstate' ? (event.restoredState?.navigationId ?? null) : null;
 			} else if (event instanceof NavigationEnd) {
-				const first = currentId === 0;
 				currentId = event.id;
 				// The first page keeps whatever the browser did on load.
-				if (first) return;
+				if (first) {
+					first = false;
+					return;
+				}
 				const saved = restoreFrom === null ? undefined : this.positions.get(restoreFrom);
 				const fragment = this.router.parseUrl(event.urlAfterRedirects).fragment;
 				requestAnimationFrame(() => {

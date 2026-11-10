@@ -36,7 +36,13 @@ const render = (options: { platform?: string; phone?: boolean; variant?: string 
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
-			{ provide: LocaleSeo, useValue: { absoluteUrl: (path: string) => `https://shop.test/en${path}` } },
+			{
+				provide: LocaleSeo,
+				useValue: {
+					absoluteUrl: (path: string) => `https://shop.test/en${path}`,
+					absoluteAddress: (path: string) => `https://shop.test${path}`,
+				},
+			},
 			{ provide: NotificationService, useValue: notes },
 			{
 				provide: TranslocoService,
@@ -131,6 +137,18 @@ describe('ProductSocialShare', () => {
 		expect(notes.showSuccess).toHaveBeenCalledWith('share_hint_whatsapp_status');
 		expect(fetch).toHaveBeenCalledWith('https://cdn.test/tall.jpg');
 		expect((shared[0] as { files: File[] }).files[0]?.name).toBe('katan.jpg');
+	});
+
+	it('gives Instagram the short address people can type, and WhatsApp the full one', async () => {
+		const { share } = render({ phone: true, item: { product_code: 'KATA-1001' } });
+		await share.sharePicture({ id: 'ig-post', group: 'post', icon: '', app: '', label: '', picture: 'photo' });
+		expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+			expect.stringMatching(/\nshop\.test\/p\/KATA-1001$/),
+		);
+		await share.sharePicture({ id: 'wa-status', group: 'story', icon: '', app: '', label: '', picture: 'tall' });
+		expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+			expect.stringContaining('https://shop.test/en/product/katan?ref=wa-status'),
+		);
 	});
 
 	it('uses the photo for posts and when the tall card is missing, and still shares the caption without a picture', async () => {

@@ -129,4 +129,12 @@ export class MongoProductRepository implements ProductRepository {
 		const docs = await ProductModel.find({ status: 'live' }).select('slug').lean<Array<{ slug: string }>>().exec();
 		return docs.map((doc) => doc.slug);
 	}
+
+	async findPublicSlugBySku(sku: string): Promise<string | null> {
+		const doc = await ProductModel.findOne({ sku, status: 'live' })
+			.select('slug')
+			.lean<{ slug: string } | null>()
+			.exec();
+		return doc?.slug ?? null;
+	}
 }

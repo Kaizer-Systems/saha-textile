@@ -943,6 +943,7 @@ describe('catalogue controllers', () => {
 			seoRoute: vi.fn(async () => 'route'),
 			sitemapPaths: vi.fn(async () => ['/en/']),
 			livePaths: vi.fn(async () => 'paths'),
+			slugForCode: vi.fn(async (code: string) => (code === 'KATA-1001' ? 'red-saree' : null)),
 		};
 		const recent = { list: vi.fn(async () => 'recent') };
 		const blog = { sitemapPaths: vi.fn(async () => ['/en/blog/real-banarasi']) };
@@ -959,6 +960,8 @@ describe('catalogue controllers', () => {
 		expect(await controller.seoRoute({ path: '/x', locale: 'en' } as never)).toEqual({ route: 'route' });
 		expect(await controller.sitemap()).toEqual({ paths: ['/en/', '/en/blog/real-banarasi'] });
 		expect(await controller.livePaths()).toBe('paths');
+		expect(await controller.byCode('KATA-1001')).toEqual({ slug: 'red-saree' });
+		await expect(controller.byCode('NOPE')).rejects.toThrow('Not Found');
 	});
 
 	it('rate limits a stock alert by person', async () => {

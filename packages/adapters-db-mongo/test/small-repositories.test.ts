@@ -479,6 +479,8 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 		it('lists public slugs and deletes', async () => {
 			expect(await repo.categorySummaries()).toEqual(expect.any(Array));
 			expect(await repo.listPublicSlugs()).toContain(`${P}filtered`.toLowerCase());
+			expect(await repo.findPublicSlugBySku(`${P}filtered`)).toBe(`${P}filtered`.toLowerCase());
+			expect(await repo.findPublicSlugBySku(`${P}missing`)).toBeNull();
 			await repo.deleteById(`${P}filtered`);
 			expect(await repo.findById(`${P}filtered`)).toBeNull();
 		});

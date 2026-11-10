@@ -220,6 +220,11 @@ export class LocaleSeo {
 		return this.absolute(withLocale(this.locale, appPath));
 	}
 
+	/** An address outside the language folders (such as `/p/<code>`), in full. */
+	absoluteAddress(path: string): string {
+		return this.absolute(path);
+	}
+
 	/** A stored file reference in full. Search engines and social cards ignore relative ones. */
 	absoluteAsset(url: string): string {
 		return /^https?:\/\//.test(url) ? url : this.absolute(`/${url.replace(/^\//, '')}`);

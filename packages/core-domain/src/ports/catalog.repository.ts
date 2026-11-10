@@ -41,6 +41,8 @@ export interface ProductRepository {
 	deleteById(id: string): Promise<void>;
 	/** Live product slugs for the storefront redirect allow-list. */
 	listPublicSlugs(): Promise<string[]>;
+	/** The live product with this product code, for the short `/p/<code>` address. */
+	findPublicSlugBySku(sku: string): Promise<string | null>;
 	/** Live products per category, with the first product's lead photo. */
 	categorySummaries(): Promise<CategorySummary[]>;
 	/** Every product with at least one YouTube video, whatever its status, for the weekly check. */

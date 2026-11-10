@@ -305,6 +305,8 @@ export type CatalogMenuCategory = z.infer<typeof CatalogMenuCategory>;
 export const CatalogProductPage = z.object({
 	id: Id,
 	slug: Slug,
+	/** The product code; `/p/<code>` is the page's short address for captions people type. */
+	code: z.string().default(''),
 	path: z.string().min(1),
 	title: z.string(),
 	description: z.string(),
@@ -354,3 +356,12 @@ export const CatalogSwatch = z.object({
 	image: swatchImage,
 });
 export type CatalogSwatch = z.infer<typeof CatalogSwatch>;
+
+/** A product code as it appears in a short `/p/<code>` address. */
+export const CatalogProductCode = z
+	.string()
+	.trim()
+	.min(1)
+	.max(64)
+	.regex(/^[A-Za-z0-9._-]+$/);
+export type CatalogProductCode = z.infer<typeof CatalogProductCode>;

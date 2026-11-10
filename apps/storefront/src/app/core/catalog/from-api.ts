@@ -98,6 +98,8 @@ export interface ApiProductPage {
 	saleEndsAt?: string | null;
 	/** The main photo's 1200×630 link-preview card, once made. */
 	shareImageUrl?: string | null;
+	/** The product code, behind the short `/p/<code>` address. */
+	code?: string;
 	/** YouTube videos and Shorts in admin order. */
 	videos?: IVideo[];
 	estimatedDeliveryText: string | null;
@@ -470,6 +472,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 			: undefined,
 		product_thumbnail: galleries[0],
 		product_meta_image: shareAttachment(page.shareImageUrl, ordered[0]),
+		product_code: page.code || undefined,
 		product_galleries: galleries,
 		videos: page.videos ?? [],
 		attributes,

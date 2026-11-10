@@ -80,6 +80,7 @@ describe('LocaleSeo addresses', () => {
 		const { seo } = setup();
 		expect(seo.absoluteAsset('https://cdn.test/a.jpg')).toBe('https://cdn.test/a.jpg');
 		expect(seo.absoluteAsset('assets/a.jpg')).toMatch(/[^/]\/assets\/a\.jpg$/);
+		expect(seo.absoluteAddress('/p/KATA-1')).toMatch(/[^/]\/p\/KATA-1$/);
 		expect(seo.absoluteAsset('/assets/a.jpg')).toMatch(/[^/]\/assets\/a\.jpg$/);
 	});
 });

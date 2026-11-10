@@ -3,6 +3,7 @@ import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
+import { shortAddressText } from '@core/catalog/short-address';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -107,13 +108,23 @@ export class ProductSocialShare {
 	 * entry to pick, then opens the phone's share sheet with the right picture and the caption.
 	 */
 	async sharePicture(target: ShareTarget): Promise<void> {
-		const caption = `${this.message()}\n${tagged(this.url(), target.id)}`;
+		const caption = `${this.message()}\n${this.captionAddress(target)}`;
 		await navigator.clipboard?.writeText(caption).catch(() => undefined);
 		if (target.hint) this.notification.showSuccess(this.transloco.translate(target.hint));
 		const picture = await this.picture(target.picture === 'tall').catch(() => null);
 		await navigator
 			.share({ title: this.product().name, text: caption, ...(picture ? { files: [picture] } : {}) })
 			.catch(() => undefined);
+	}
+
+	/**
+	 * Instagram never links a caption, so its address must be short enough to read and type
+	 * (`sahatextile.com/p/<code>`). WhatsApp links it, so it keeps the full tagged address.
+	 */
+	private captionAddress(target: ShareTarget): string {
+		const code = this.product().product_code;
+		if (!code || !target.id.startsWith('ig-')) return tagged(this.url(), target.id);
+		return shortAddressText(this.seo.absoluteAddress('/'), code);
 	}
 
 	/** The tall card once the image pipeline has made it; until then, and for posts, the main photo. */

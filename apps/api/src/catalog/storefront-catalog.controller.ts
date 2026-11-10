@@ -1,6 +1,11 @@
-import { Controller, Get, Header, Query, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Header, NotFoundException, Param, Query, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CatalogCardsQuery, CatalogPlacementQuery, CatalogSeoRouteQuery } from '@saha-textile/contracts';
+import {
+	CatalogCardsQuery,
+	CatalogPlacementQuery,
+	CatalogProductCode,
+	CatalogSeoRouteQuery,
+} from '@saha-textile/contracts';
 
 import { Public } from '../auth/session.guard';
 import { BlogPublicService } from '../blog/blog-public.service';
@@ -71,6 +76,15 @@ export class StorefrontCatalogController {
 	async sitemap() {
 		const [catalog, posts] = await Promise.all([this.catalog.sitemapPaths(), this.blog.sitemapPaths()]);
 		return { paths: [...catalog, ...posts].sort() };
+	}
+
+	@Get('code/:code')
+	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
+	@ApiOperation({ operationId: 'catalogProductByCode', summary: 'The product slug behind a short /p/<code> address' })
+	async byCode(@Param('code', new ZodValidationPipe(CatalogProductCode)) code: CatalogProductCode) {
+		const slug = await this.catalog.slugForCode(code);
+		if (!slug) throw new NotFoundException();
+		return { slug };
 	}
 
 	@Get('live-paths')

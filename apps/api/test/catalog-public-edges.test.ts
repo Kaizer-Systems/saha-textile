@@ -85,6 +85,7 @@ const build = (options: Options = {}) => {
 			pageSize: 500,
 		})),
 		listPublicSlugs: vi.fn(async () => rows.map((row) => row.slug)),
+		findPublicSlugBySku: vi.fn(async (sku: string) => rows.find((row) => row.sku === sku)?.slug ?? null),
 	};
 	const variants = {
 		listForProduct: vi.fn(async () => variantRows),
@@ -1062,6 +1063,13 @@ describe('addresses', () => {
 			products: ['red-saree'],
 			collections: [],
 		});
+	});
+
+	it('finds the product behind a short address, as typed or in capitals', async () => {
+		const { service } = build({ rows: [product({ sku: 'KATA-1001' })] });
+		expect(await service.slugForCode('KATA-1001')).toBe('red-saree');
+		expect(await service.slugForCode('kata-1001')).toBe('red-saree');
+		expect(await service.slugForCode('KATA-9')).toBeNull();
 	});
 
 	it('turns a retired collection into a row, unless it is live again', async () => {

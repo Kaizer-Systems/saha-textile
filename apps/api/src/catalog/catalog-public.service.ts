@@ -225,6 +225,7 @@ export class CatalogPublicService {
 			unknownVariant: read.unknownVariant,
 			gallery: gallery.map((frame) => frame.image),
 			shareImageUrl,
+			code: product.sku,
 			// A video YouTube no longer plays (weekly check) is left off the page.
 			videos: product.videos.filter((video) => !video.unavailableSince),
 			optionGroups: groups.map((group) => ({
@@ -626,6 +627,14 @@ export class CatalogPublicService {
 			this.placements?.listLivePaths() ?? Promise.resolve([]),
 		]);
 		return { products, collections };
+	}
+
+	/** The live product page a short `/p/<code>` address stands for. Codes are stored as typed, then tried in capitals. */
+	async slugForCode(code: string): Promise<string | null> {
+		return (
+			(await this.products.findPublicSlugBySku(code)) ??
+			(code === code.toUpperCase() ? null : await this.products.findPublicSlugBySku(code.toUpperCase()))
+		);
 	}
 
 	/** Redirects the taxonomy implies: each retired collection and where it now goes. */

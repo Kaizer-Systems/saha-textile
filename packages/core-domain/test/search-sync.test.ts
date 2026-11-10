@@ -127,7 +127,7 @@ describe('search sync through the queue', () => {
 	});
 
 	it('replays every change since a moment into a new index, page by page', async () => {
-		const { d, apply, outbox } = deps({ a: product('a'), b: product('b'), c: product('c', 'archived') });
+		const { d, apply, outbox } = deps({ a: product('a'), b: product('b'), c: product('c', 'draft') });
 		await outbox.request(['old'], new Date(1));
 		await outbox.request(['a', 'b', 'c'], new Date(10));
 		await expect(replaySearchChanges(d, new Date(5), 2)).resolves.toBe(3);

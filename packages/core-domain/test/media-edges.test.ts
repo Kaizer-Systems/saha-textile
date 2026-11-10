@@ -216,6 +216,8 @@ const role = (overrides: Partial<MediaRoleDefinition>): MediaRoleDefinition => (
 	quality: 80,
 	primaryOnly: false,
 	respectSlotMaxWidth: false,
+	brandStrip: false,
+	inset: 0,
 	version: 1,
 	...overrides,
 });

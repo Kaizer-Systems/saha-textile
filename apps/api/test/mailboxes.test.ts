@@ -1,7 +1,7 @@
 import { HttpException } from '@nestjs/common';
 import type { ContactMessage, Mailbox, MailboxAccess } from '@saha-textile/contracts';
 import { type MailboxPort, MailboxAccessRevoked } from '@saha-textile/core-domain';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { UnavailableMailboxAdapter, UnavailableMailboxTokenStore } from '../src/infra/unavailable-mailbox.adapter';
 import { AdminInboxController } from '../src/mailboxes/admin-inbox.controller';
@@ -136,7 +136,7 @@ const gmailStub = (overrides: Partial<Record<keyof MailboxPort, unknown>> = {}) 
 			{ address: 'care@shop.test', displayName: 'Care', signature: '', isPrimary: true },
 		]),
 		...overrides,
-	}) as unknown as MailboxPort & Record<string, ReturnType<typeof vi.fn>>;
+	}) as unknown as MailboxPort & { [K in keyof MailboxPort]: Mock };
 
 const books = (w: ReturnType<typeof world>, withAudit = true) =>
 	new MailboxBookkeeping(w.mailboxes as never, withAudit ? (w.auditLog as never) : null, w.adminUsers as never);

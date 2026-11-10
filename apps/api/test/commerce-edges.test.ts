@@ -7,6 +7,7 @@ import {
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
+import type { SearchCheckResult } from '@saha-textile/core-domain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { assertOwnership, Principal } from '../src/auth/ownership';
@@ -572,8 +573,15 @@ describe('readinessProbes', () => {
 
 	it('adds the search change queue and the last nightly check to the search line', async () => {
 		const outbox = {
-			stats: vi.fn(async () => ({ waiting: 3, failing: 1, oldestWaitingAt: new Date(0) })),
-			lastCheck: vi.fn(async () => ({ checkedAt: new Date('2026-11-10T03:00:00Z') }) as never),
+			stats: vi.fn(async (): Promise<{ waiting: number; failing: number; oldestWaitingAt: Date | null }> => ({
+				waiting: 3,
+				failing: 1,
+				oldestWaitingAt: new Date(0),
+			})),
+			lastCheck: vi.fn(
+				async (): Promise<SearchCheckResult | null> =>
+					({ checkedAt: new Date('2026-11-10T03:00:00Z') }) as SearchCheckResult,
+			),
 		};
 		const index = () => readinessProbes({ isReachable: async () => true }, search, outbox)[1]!;
 		await expect(index().check()).resolves.toEqual({

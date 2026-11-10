@@ -61,7 +61,7 @@ describe.skipIf(!hasMongoEnv())('release steps (integration)', () => {
 		await RoleModel.collection.updateOne({ _id: roleId } as never, { $unset: { permissions: '' } });
 		await expect(step.check()).resolves.toMatchObject({
 			ok: false,
-			detail: expect.stringContaining(PERMISSION_CODES[1]),
+			detail: expect.stringContaining(String(PERMISSION_CODES[1])),
 		});
 		await RoleModel.updateOne({ _id: roleId }, { $set: { permissions: [...PERMISSION_CODES], isSystem: false } });
 		await expect(step.check()).resolves.toMatchObject({ ok: false, detail: expect.stringContaining('not marked') });

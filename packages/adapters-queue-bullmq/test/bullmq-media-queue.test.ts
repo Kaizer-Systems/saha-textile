@@ -34,6 +34,9 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 					'reprocess-stale': async () => {},
 					'weekly-insight': async () => {},
 					'stock-alerts': async () => {},
+					'product-videos-check': async () => {},
+					'search-outbox': async () => {},
+					'search-check': async () => {},
 				},
 			});
 		});

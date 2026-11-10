@@ -6,8 +6,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
-import type { PopupImageSide } from '@saha-textile/contracts';
 import type {
+	PopupImageSide,
 	SaleCategoryLine,
 	SaleException,
 	SaleProductLine,

@@ -1373,7 +1373,7 @@
 	"storefront_settings": "Storefront settings",
 	"show_first": "Show first",
 	"show_first_help": "When the words fit two products equally well, products in these categories come first. Example: \"banarasi\" shows Banarasi sarees before Banarasi suits; \"banarasi suit\" still shows suits first.",
-	"storefront_settings_saved": "Saved. The shop's search order updates in a few seconds.",
+	"storefront_settings_saved": "Saved. The shop shows the changes within five minutes.",
 	"youtube": "YouTube",
 	"youtube_channel": "Channel",
 	"youtube_channel_help": "The channel handle, starting with @. Changing it makes the next refresh look the channel up again.",

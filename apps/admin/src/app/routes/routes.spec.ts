@@ -27,6 +27,11 @@ describe('route tables', () => {
 		30_000,
 	);
 
+	it('sends the bare address to the dashboard, whose guard handles signed-out visitors', () => {
+		const root = routes.find((route) => route.path === '' && route.redirectTo);
+		expect(root).toMatchObject({ redirectTo: 'dashboard', pathMatch: 'full' });
+	});
+
 	it('loads the top-level shells', async () => {
 		const lazy = routes.filter((route) => route.loadChildren || route.loadComponent) as Loadable[];
 		expect(lazy.length).toBeGreaterThan(2);

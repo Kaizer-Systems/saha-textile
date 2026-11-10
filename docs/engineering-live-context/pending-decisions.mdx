@@ -48,6 +48,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 | `DEC-PERF-TRIM`             | Which unused styles, icons and font weights to remove once development is finished                   | Storefront speed, theme, design system        |
 | `DEC-SHORTS-PRODUCT-LINK`   | Whether a Short's on-screen episode code links it to a product, and how                              | Shorts popup, product page, admin             |
+| `DEC-TRACING-SERVERS`       | Whether to switch on OpenTelemetry tracing on staging and production                                 | Server memory, Release Console traces         |
 
 ---
 
@@ -781,3 +782,35 @@ Answer (owner's own words, with date):
 
 Notes: built so far without any product link; adding option 1 or 2 later changes no page layout.
 
+---
+
+## 27. `DEC-TRACING-SERVERS` — Tracing on staging and production
+
+### Decision needed
+
+Whether to run the two tracing containers on the staging and production servers, and so turn
+on request tracing there. It is already on for the local stack.
+
+### Why this matters
+
+Tracing shows the time of every database, search and outside call inside one request. Without it,
+staging and production still have request ids in every log line, but no timing chart. The two
+containers take server memory, CPU and disk.
+
+- The OpenTelemetry Collector receives, samples and forwards traces.
+- Jaeger stores them for 7 days and answers the console's queries.
+
+They are added under a Compose profile and switched on by one GitHub environment variable;
+the deploy then sets `OTEL_EXPORTER_OTLP_ENDPOINT` on the apps.
+
+### What happens first
+
+Asked by the owner on 2026-11-10: at the end of the Release Console build, measure memory, CPU
+and disk of both containers on the local stack under heavy load. Translate the figures to the
+Ubuntu droplet, then check in with the owner before switching anything on.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes:

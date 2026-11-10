@@ -11,6 +11,8 @@ source_of_truth:
     - apps/admin/src/app/routes/full.routes.ts
     - apps/admin/src/app/layout
     - apps/admin/src/app/core/guards/auth.guard.ts
+    - apps/admin/src/app/features/auth/accept-invite/accept-invite.ts
+    - apps/api/src/auth/admin-invite.service.ts
 ---
 
 # Admin routing and shell
@@ -46,7 +48,7 @@ Used for full-page experiences such as authentication and errors where admin nav
 
 ## Guard behaviour
 
-`AuthGuard` checks the sanitized session state resolved from `/auth/admin/me`. The `/auth` family stays unguarded so login, PIN login and recovery are reachable; both back-office shells use `canActivate` and `canActivateChild`, redirecting anonymous navigation to `/auth/login`. On success the content shell loads the menu badges. Permissions are already in `AuthStore` from `/auth/admin/me`.
+`AuthGuard` checks the sanitized session state resolved from `/auth/admin/me`. The `/auth` family stays unguarded so login, PIN login, recovery and invitation acceptance are reachable; both back-office shells use `canActivate` and `canActivateChild`, redirecting anonymous navigation to `/auth/login`. On success the content shell loads the menu badges. Permissions are already in `AuthStore` from `/auth/admin/me`.
 
 Keep these rules in mind:
 
@@ -55,6 +57,14 @@ Keep these rules in mind:
 - `PermissionGuard` reads `route.data.permission`, which may be one code or a list that must all be held, and sends a missing grant to `/error/403`.
 - Permissions held in the store shape UI only. The API rechecks audience, role, declared permission and current versions.
 - After 15 minutes of inactivity the shell opens the idle lock, which accepts the PIN when configured, otherwise the password, through `POST /auth/admin/resume`.
+
+### Invitation acceptance
+
+An administrator creates an invite with `POST /auth/admin/invites` (permission `admin_user.create`, audited). The API never returns the link. It sends the token once, through the `admin_invite` MSG91 email template, and the template builds `<admin host>/auth/accept-invite?token=…` for its own environment. The API holds no hostname.
+
+`/auth/accept-invite` reads the token from the URL once and never copies it into the store or browser storage. The invitee sets a password of at least 12 characters and may set a six-digit PIN. "Prefer PIN" is offered only once a PIN exists. The page posts to `POST /auth/admin/invites/accept`. The token is single-use, stored server-side only as a hash, and expires after seven days.
+
+Acceptance issues no session. The new operator then signs in on `/auth/login` with the credential they just chose. The account receives the permissions recorded on the invite, which may be none. An administrator then assigns a role on the user's edit screen.
 
 ## Feature route convention
 

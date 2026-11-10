@@ -226,11 +226,11 @@ export type Project = z.infer<typeof projectSchema>;
 export const newProjectSchema = projectSchema.omit({ keys: true, createdAt: true });
 export type NewProject = z.infer<typeof newProjectSchema>;
 
-/** `.release-console.json` at a repository's root. */
-export const repositoryFileSchema = z.object({
-	project: newProjectSchema.optional(),
-	menus: z.array(z.string()).default([]),
-});
+/**
+ * `.release-console.json` at a repository's root: the repository's own menus. The Add-a-project
+ * wizard reads it to tick those menus; it never adds a project by itself.
+ */
+export const repositoryFileSchema = z.object({ menus: z.array(z.string()).default([]) });
 export type RepositoryFile = z.infer<typeof repositoryFileSchema>;
 
 export const consoleViewSchema = z.object({

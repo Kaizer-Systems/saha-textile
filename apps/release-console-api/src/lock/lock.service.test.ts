@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,12 +12,10 @@ describe('console lock', () => {
 	beforeEach(() => {
 		dir = mkdtempSync(join(tmpdir(), 'release-console-lock-'));
 		process.env['CONSOLE_DATA_DIR'] = dir;
-		process.env['CONSOLE_SEED_FILE'] = resolve(__dirname, '../../../../.release-console.json');
 	});
 	afterEach(() => {
 		vi.useRealTimers();
 		delete process.env['CONSOLE_DATA_DIR'];
-		delete process.env['CONSOLE_SEED_FILE'];
 	});
 
 	it('sets a PIN once, keeps only its hash, and unlocks with it', () => {

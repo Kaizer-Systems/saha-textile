@@ -4,6 +4,7 @@ import {
 	dropletsAnswerSchema,
 	newProjectSchema,
 	projectNameSchema,
+	repositoryFileSchema,
 	storeKeySchema,
 	vendorScreens,
 } from './projects.js';
@@ -62,5 +63,12 @@ describe('projects contracts', () => {
 	it('marks vendors without screens as screens later', () => {
 		expect(vendorScreens('github')).toBe('full');
 		expect(vendorScreens('gitlab')).toBe('later');
+	});
+
+	it('reads a repository file as its own menus only, never a project', () => {
+		expect(repositoryFileSchema.parse({ menus: ['payments'], project: { id: 'x' } })).toEqual({
+			menus: ['payments'],
+		});
+		expect(repositoryFileSchema.parse({})).toEqual({ menus: [] });
 	});
 });

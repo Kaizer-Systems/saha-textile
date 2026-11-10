@@ -1,10 +1,11 @@
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProjectsService } from './projects.service.js';
+import { SAHA_TEXTILE } from './saha-textile.fixture.js';
 import { VendorReadsService } from './vendor-reads.service.js';
 import { KeychainPort } from '../keychain/keychain.port.js';
 import { ConsoleStore } from '../store/console-store.js';
@@ -33,27 +34,23 @@ describe('projects and keys', () => {
 	beforeEach(() => {
 		dir = mkdtempSync(join(tmpdir(), 'release-console-projects-'));
 		process.env['CONSOLE_DATA_DIR'] = dir;
-		process.env['CONSOLE_SEED_FILE'] = resolve(__dirname, '../../../../.release-console.json');
 		keychain = new MemoryKeychain();
 		projects = new ProjectsService(new ConsoleStore(), keychain);
+		projects.add(SAHA_TEXTILE);
 	});
 	afterEach(() => {
 		vi.unstubAllGlobals();
 		delete process.env['CONSOLE_DATA_DIR'];
-		delete process.env['CONSOLE_SEED_FILE'];
 	});
 
-	it('seeds Saha Textile from .release-console.json with the GitHub CLI sign-in', () => {
-		const view = projects.view();
-		expect(view.workspaces).toEqual(['Kaizer Systems']);
-		const p = view.projects[0];
-		expect(p?.name).toBe('Saha Textile');
-		expect(p?.repositories[0]?.sourceCode).toEqual({
-			vendor: 'github',
-			repository: 'Kaizer-Systems/saha-textile',
-			keyId: 'github-cli',
+	it('starts empty, even beside a .release-console.json; the owner adds every project', () => {
+		const fresh = new ProjectsService(new ConsoleStore(), new MemoryKeychain());
+		process.env['CONSOLE_DATA_DIR'] = mkdtempSync(join(tmpdir(), 'release-console-empty-'));
+		expect(new ProjectsService(new ConsoleStore(), new MemoryKeychain()).view()).toEqual({
+			workspaces: [],
+			projects: [],
 		});
-		expect(p?.keys.map((k) => [k.id, k.keychainItem])).toEqual([['github-cli', '']]);
+		expect(fresh.view().projects.map((p) => p.id)).toEqual(['saha-textile']);
 	});
 
 	it('stores a key in the Keychain only, checks it, and never returns the value', async () => {

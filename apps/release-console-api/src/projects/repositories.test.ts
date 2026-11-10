@@ -1,10 +1,11 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProjectsService } from './projects.service.js';
+import { SAHA_TEXTILE } from './saha-textile.fixture.js';
 import { VendorReadsService } from './vendor-reads.service.js';
 import { KeychainPort } from '../keychain/keychain.port.js';
 import { LocalStackService } from '../local-stack/local-stack.service.js';
@@ -42,13 +43,12 @@ describe('editing repositories after a project is added', () => {
 	let projects: ProjectsService;
 	beforeEach(() => {
 		process.env['CONSOLE_DATA_DIR'] = mkdtempSync(join(tmpdir(), 'release-console-repos-'));
-		process.env['CONSOLE_SEED_FILE'] = resolve(__dirname, '../../../../.release-console.json');
 		projects = new ProjectsService(new ConsoleStore(), new MemoryKeychain());
+		projects.add(SAHA_TEXTILE);
 	});
 	afterEach(() => {
 		vi.unstubAllGlobals();
 		delete process.env['CONSOLE_DATA_DIR'];
-		delete process.env['CONSOLE_SEED_FILE'];
 	});
 
 	it('adds a repository and keeps only key ids the project holds', () => {
@@ -70,7 +70,7 @@ describe('editing repositories after a project is added', () => {
 		expect(
 			projects.updateRepository('saha-textile', 'saha-textile', next).repositories[0]?.edge.map((e) => e.id),
 		).toEqual(['cloudflare', 'fastly']);
-		expect(projects.project('saha-textile').repositories[0]?.sourceCode.keyId).toBe('github-cli');
+		expect(projects.project('saha-textile').repositories[0]?.edge[0]?.zones).toEqual(['sahatextile.com']);
 		expect(() => projects.updateRepository('saha-textile', 'saha-textile', { ...next, id: 'other' })).toThrow(
 			/keeps its id/,
 		);

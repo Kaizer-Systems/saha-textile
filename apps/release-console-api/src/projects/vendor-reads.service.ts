@@ -71,14 +71,7 @@ export class VendorReadsService {
 			if (text === null)
 				return { state: 'ok', readAt: new Date().toISOString(), data: { found: false, menus: [] } };
 			const file = repositoryFileSchema.parse(JSON.parse(text));
-			const own = file.project?.repositories.find(
-				(r) => r.sourceCode.repository.toLowerCase() === q.repository.toLowerCase(),
-			);
-			return {
-				state: 'ok',
-				readAt: new Date().toISOString(),
-				data: { found: true, menus: own?.menus.length ? own.menus : file.menus },
-			};
+			return { state: 'ok', readAt: new Date().toISOString(), data: { found: true, menus: file.menus } };
 		} catch (err) {
 			return {
 				state: 'error',

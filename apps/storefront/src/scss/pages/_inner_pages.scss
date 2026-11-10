@@ -5235,7 +5235,7 @@
 						}
 
 						&.delete {
-							color: #ff7272;
+							color: #c62828; // was #ff7272, 2.7 : 1 on white (shop change, 2026-11-10)
 							margin-left: 10px;
 
 							body.rtl & {
@@ -5309,7 +5309,7 @@
 
 					&.danger {
 						background-color: rgba(255, 114, 114, 0.1);
-						color: #ff7272;
+						color: #c62828; // was #ff7272, 2.7 : 1 on white (shop change, 2026-11-10)
 					}
 				}
 

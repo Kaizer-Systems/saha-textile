@@ -123,3 +123,12 @@ html.dark .status-rejected span {
 html.dark .category-section-3 .category-box-list .category-name h6 {
 	color: var(--st-text-faint);
 }
+
+// The country dial code and the cart's Remove link, lighter on the dark page.
+html.dark .intl-tel-input .country .dial-code {
+	color: var(--st-text-faint);
+}
+html.dark .cart-section .cart-table tbody tr td .remove,
+html.dark .remove.close_button {
+	color: #ff8a80;
+}

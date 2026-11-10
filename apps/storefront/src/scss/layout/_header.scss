@@ -924,7 +924,7 @@ header {
 							span {
 								@include pseudowh($width: 18px, $height: 18px);
 								@include flex_common;
-								background-color: #ff7272;
+								background-color: #c62828; // was #ff7272, 2.7 : 1 with white (shop change, 2026-11-10)
 								font-size: 12px;
 								padding: 0;
 								border-radius: 2px;

@@ -247,7 +247,7 @@
 					 * with every other button in the app. Using `btn-animation`'s gradient keeps it
 					 * with them, and there is no longer a hex here to drift out of step again.
 					 */
-					background: linear-gradient(90deg, #ff6b6b 0%, $danger-color 100%);
+					background: linear-gradient(90deg, #d32f2f 0%, #c62828 100%);
 					// Literal for the same reason as the channel tabs: the dark build redefines
 					// `$white`, and this gradient is the same colour in both themes.
 					color: #ffffff;
@@ -582,7 +582,7 @@
 									font-size: 12px;
 									font-weight: 400;
 									color: $white;
-									background: linear-gradient(-90deg, #ff6b6b 0%, #ff4f4f 100%);
+									background: linear-gradient(-90deg, #d32f2f 0%, #c62828 100%);
 									padding: 4px 6px;
 									border-radius: 4px;
 									margin-left: calc(9px + (20 - 9) * ((100vw - 320px) / (1920 - 320)));
@@ -856,7 +856,7 @@
 						 * destructive action in this layout.
 						 */
 						&.delete-button:hover {
-							background: linear-gradient(90deg, #ff6b6b 0%, $danger-color 100%);
+							background: linear-gradient(90deg, #d32f2f 0%, #c62828 100%);
 							// Literal, not `$white`: the dark stylesheet recompiles this file with
 							// `$white` redefined, and this gradient is the same in both themes.
 							color: #ffffff;

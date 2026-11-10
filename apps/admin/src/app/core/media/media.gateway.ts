@@ -66,14 +66,17 @@ interface MediaLibraryResponse {
 }
 
 /**
- * A small preview: the 400 px card, else any role's smallest file. A private image (an
- * unapproved review photo) has no public file, so it shows the theme's placeholder.
+ * A small preview: the 400 px card; for a Brand Kit picture its logo copy, which keeps the clear
+ * background (the icon copies sit on white, which hides a logo made for dark screens); else any
+ * role's smallest file. A private image (an unapproved review photo) has no public file, so it
+ * shows the theme's placeholder.
  */
 const previewOf = (item: MediaLibraryItem): string => {
 	const roles = item.preview?.roles ?? {};
 	const card = roles['card']?.find((source) => source.width >= 400) ?? roles['card']?.[0];
+	const logo = roles['brand_logo']?.find((source) => source.width >= 240) ?? roles['brand_logo']?.[0];
 	const any = Object.values(roles)[0]?.[0];
-	return (card ?? any)?.url ?? 'assets/images/product.png';
+	return (card ?? logo ?? any)?.url ?? 'assets/images/product.png';
 };
 
 const toAttachment = (item: MediaLibraryItem): IAttachment =>

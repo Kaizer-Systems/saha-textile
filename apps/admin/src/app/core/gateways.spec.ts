@@ -101,6 +101,19 @@ describe('MediaGateway', () => {
 		],
 		[{ roles: { card: [{ url: 'small', width: 100 }] } }, 'small'],
 		[{ roles: { thumb: [{ url: 'thumb', width: 50 }] } }, 'thumb'],
+		[
+			{
+				roles: {
+					brand_icon: [{ url: 'icon-on-white', width: 32 }],
+					brand_logo: [
+						{ url: 'logo-120', width: 120 },
+						{ url: 'logo-240', width: 240 },
+					],
+				},
+			},
+			'logo-240',
+		],
+		[{ roles: { brand_logo: [{ url: 'only-logo', width: 120 }] } }, 'only-logo'],
 		[{ roles: {} }, 'assets/images/product.png'],
 		[null, 'assets/images/product.png'],
 	])('picks the preview from %j', async (preview, expected) => {

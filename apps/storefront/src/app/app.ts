@@ -80,9 +80,9 @@ export class App {
 				document.body.classList.remove('rtl');
 			}
 
-			// Titles and descriptions come from each page in its own language (LocaleSeo). The theme
-			// file only supplies the default share picture.
-			if (theme?.seo?.og_image?.original_url) this.seo.setDefaultImage(theme.seo.og_image.original_url);
+			// Titles and descriptions come from each page in its own language (LocaleSeo), and the
+			// default share picture from the Brand Kit (Layout). The theme file's picture was the
+			// vendor demo's logo, so it is no longer used.
 		});
 
 		// A page without its own title, description or share picture must not keep the previous page's.

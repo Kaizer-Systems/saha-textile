@@ -73,8 +73,8 @@
 						<app-footer-links [links]="data()?.footer?.help_center || []" />
 					</div>
 				</div>
-				} @if (data()?.footer?.support_email || data()?.footer?.support_number || data()?.footer?.play_store_url
-				|| data()?.footer?.app_store_url) {
+				} @if (data()?.footer?.support_email || data()?.footer?.support_number || apps().android || apps().ios)
+				{
 				<div class="col-xl-2 col-lg-4 col-sm-6">
 					<div class="footer-title contact-title">
 						<h4>{{ 'contact_us' | transloco }}</h4>
@@ -94,7 +94,7 @@
 				<app-footer-payment-options />
 			</div>
 			@if (data()?.footer?.social_media_enable) {
-			<app-footer-social-links [data]="data()" />
+			<app-footer-social-links />
 			}
 		</div>
 	</div>

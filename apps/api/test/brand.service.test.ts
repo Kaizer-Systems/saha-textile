@@ -1,4 +1,4 @@
-import type { BrandSettings } from '@saha-textile/contracts';
+import { BrandSettings } from '@saha-textile/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BrandService } from '../src/media/brand.service';
@@ -27,17 +27,13 @@ const asset = (id: string, purpose = 'brand') => ({
 });
 
 /** A full Brand Kit value: the phone logo makes the icons unless a test says otherwise. */
-const kit = (value: Partial<BrandSettings> = {}): BrandSettings => ({
-	shopName: '',
-	logoAssetId: null,
-	sealAssetId: null,
-	sealAsFavicon: true,
-	faviconAssetId: null,
-	...value,
-});
+const kit = (value: Partial<BrandSettings> = {}): BrandSettings => ({ ...BrandSettings.parse({}), ...value });
 
-const build = (stored: unknown, assets: Record<string, unknown> = {}) => {
-	const settings = { get: vi.fn(async () => stored), set: vi.fn(async () => {}) };
+const build = (stored: unknown, assets: Record<string, unknown> = {}, youtube: unknown = null) => {
+	const settings = {
+		get: vi.fn(async (key: string) => (key === 'youtube' ? youtube : stored)),
+		set: vi.fn(async () => {}),
+	};
 	const repository = { findById: vi.fn(async (id: string) => assets[id] ?? null) };
 	const storage = { getUrl: (key: string) => `https://cdn.test/${key}` };
 	const roles = {
@@ -70,7 +66,16 @@ describe('BrandService', () => {
 	it('starts with no brand at all', async () => {
 		const { service } = build(null);
 		expect(await service.settingsValue()).toEqual(kit());
-		expect(await service.storefront()).toEqual({ shopName: '', logo: null, seal: null, icons: {} });
+		const none = { logo: null, logoDark: null, seal: null, sealDark: null, icons: {}, iconsDark: {} };
+		expect(await service.storefront()).toEqual({
+			shopName: '',
+			...none,
+			admin: none,
+			shareImage: null,
+			socials: { facebook: '', instagram: '', x: '', pinterest: '', linkedin: '', threads: '', youtube: '' },
+			apps: { android: '', ios: '' },
+			themeColor: '#417394',
+		});
 	});
 
 	it('gives every screen the name, both images and the icons by size', async () => {
@@ -106,15 +111,15 @@ describe('BrandService', () => {
 		const { service, settings } = build(value);
 		await service.storefront(1000);
 		await service.storefront(2000);
-		expect(settings.get).toHaveBeenCalledTimes(1);
+		expect(settings.get.mock.calls.filter(([key]) => key === 'brand')).toHaveLength(1);
 		await service.storefront(70_000);
-		expect(settings.get).toHaveBeenCalledTimes(2);
+		expect(settings.get.mock.calls.filter(([key]) => key === 'brand')).toHaveLength(2);
 		expect(await service.save(value)).toBe(value);
 		expect(settings.set).toHaveBeenCalledWith('brand', value);
 		// The save reads the old logo once; the next page read is fresh, not cached.
-		expect(settings.get).toHaveBeenCalledTimes(3);
+		expect(settings.get.mock.calls.filter(([key]) => key === 'brand')).toHaveLength(3);
 		await service.storefront(70_001);
-		expect(settings.get).toHaveBeenCalledTimes(4);
+		expect(settings.get.mock.calls.filter(([key]) => key === 'brand')).toHaveLength(4);
 	});
 
 	it('makes the icons from the browser icon once the phone logo box is unticked', async () => {
@@ -129,14 +134,86 @@ describe('BrandService', () => {
 	});
 
 	it('keeps the phone logo as the icon while the box is ticked, even with a browser icon kept', async () => {
-		const { service, repository } = build(kit({ sealAssetId: 's', faviconAssetId: 'f' }), { s: asset('s') });
+		const { service } = build(kit({ sealAssetId: 's', faviconAssetId: 'f' }), { s: asset('s'), f: asset('f') });
 		expect((await service.storefront()).icons['512']).toBe('https://cdn.test/brand_icon-512');
-		expect(repository.findById).not.toHaveBeenCalledWith('f');
 	});
 
 	it('shows the built-in icons when the box is unticked and no browser icon is chosen', async () => {
 		const { service } = build(kit({ sealAssetId: 's', sealAsFavicon: false }), { s: asset('s') });
 		expect((await service.storefront()).icons).toEqual({});
+	});
+
+	it('gives the admin the shop logos until it has its own, and fills its empty slots from the shop', async () => {
+		const shop = kit({ logoAssetId: 'l', sealAssetId: 's' });
+		const same = await build(shop, { l: asset('l'), s: asset('s') }).service.storefront();
+		expect(same.admin).toEqual({
+			logo: same.logo,
+			logoDark: null,
+			seal: same.seal,
+			sealDark: null,
+			icons: same.icons,
+			iconsDark: {},
+		});
+		const own = kit({
+			logoAssetId: 'l',
+			sealAssetId: 's',
+			adminOwnLogos: true,
+			admin: { ...kit().admin, logoAssetId: 'a', sealAsFavicon: false },
+		});
+		const adminLogo = { ...asset('a'), derivatives: [derivative('brand_logo', 480)] };
+		const brand = await build(own, { l: asset('l'), s: asset('s'), a: adminLogo }).service.storefront();
+		expect(brand.admin.logo?.url).toBe('https://cdn.test/brand_logo-480');
+		expect(brand.admin.seal).toEqual(brand.seal);
+		// Its browser icon box is unticked with no icon of its own: the shop's icon fills in.
+		expect(brand.admin.icons).toEqual(brand.icons);
+	});
+
+	it('serves dark logos, and the dark phone logo as the dark-browser icon only while it is the icon', async () => {
+		const dark = {
+			...asset('sd'),
+			derivatives: [
+				derivative('brand_logo', 240),
+				{ ...derivative('brand_icon', 32, 'image/png'), storageKey: 'dark-icon-32' },
+			],
+		};
+		const ticked = await build(kit({ sealAssetId: 's', sealDarkAssetId: 'sd', logoDarkAssetId: 'sd' }), {
+			s: asset('s'),
+			sd: dark,
+		}).service.storefront();
+		expect(ticked.logoDark?.url).toBe('https://cdn.test/brand_logo-240');
+		expect(ticked.iconsDark).toEqual({ '32': 'https://cdn.test/dark-icon-32' });
+		const unticked = await build(kit({ sealAssetId: 's', sealDarkAssetId: 'sd', sealAsFavicon: false }), {
+			s: asset('s'),
+			sd: dark,
+		}).service.storefront();
+		expect(unticked.iconsDark).toEqual({});
+	});
+
+	it('shares the chosen picture, else the logo on white, and lists the profiles with YouTube from its tab', async () => {
+		const card = (id: string) => ({
+			...asset(id),
+			derivatives: [{ ...derivative('site_share', 1200, 'image/jpeg'), storageKey: `${id}-share` }],
+		});
+		const chosen = await build(kit({ logoAssetId: 'l', shareImageAssetId: 'p' }), {
+			l: card('l'),
+			p: card('p'),
+		}).service.storefront();
+		expect(chosen.shareImage).toBe('https://cdn.test/p-share');
+		const logoOnly = await build(
+			kit({ logoAssetId: 'l' }),
+			{ l: card('l') },
+			{ channelHandle: '@Shop' },
+		).service.storefront();
+		expect(logoOnly.shareImage).toBe('https://cdn.test/l-share');
+		expect(logoOnly.socials['youtube']).toBe('https://www.youtube.com/@Shop');
+		const social = await build(
+			kit({ socials: { ...kit().socials, instagram: 'https://www.instagram.com/shop/' }, themeColor: '#112233' }),
+		).service.storefront();
+		expect(social.socials['instagram']).toBe('https://www.instagram.com/shop/');
+		expect(social.themeColor).toBe('#112233');
+		const android = 'https://play.google.com/store/apps/details?id=com.shop.app';
+		const withApp = await build(kit({ apps: { android, ios: '' } })).service.storefront();
+		expect(withApp.apps).toEqual({ android, ios: '' });
 	});
 
 	it('refuses an image uploaded for something else', async () => {
@@ -145,6 +222,8 @@ describe('BrandService', () => {
 		await expect(service.save(kit({ shopName: '', logoAssetId: 'gone', sealAssetId: null }))).rejects.toThrow();
 		expect(settings.set).not.toHaveBeenCalled();
 		await expect(service.save(kit({ faviconAssetId: 'p' }))).rejects.toThrow();
+		await expect(service.save(kit({ admin: { ...kit().admin, logoDarkAssetId: 'p' } }))).rejects.toThrow();
+		await expect(service.save(kit({ shareImageAssetId: 'p' }))).rejects.toThrow();
 		expect(settings.set).not.toHaveBeenCalled();
 		await service.save(kit({ shopName: '', logoAssetId: 'b', sealAssetId: 'b', faviconAssetId: 'b' }));
 		expect(settings.set).toHaveBeenCalled();

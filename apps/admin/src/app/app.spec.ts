@@ -103,11 +103,19 @@ describe('Admin App', () => {
 		expect(visitor.router.navigate).not.toHaveBeenCalled();
 	});
 
-	it('uses the Brand Kit icon once there is one', () => {
-		brand.data = { icons: { '32': 'https://cdn.test/i.png' } };
+	it("uses the admin's Brand Kit icon once there is one, and a dark-browser icon only while there is one", () => {
+		brand.data = {
+			admin: { icons: { '32': 'https://cdn.test/i.png' }, iconsDark: { '32': 'https://cdn.test/d.png' } },
+		};
 		render();
 		TestBed.tick();
 		expect((document.querySelector('#appIcon') as HTMLLinkElement).href).toBe('https://cdn.test/i.png');
+		const dark = document.querySelector<HTMLLinkElement>('#appIconDark');
+		expect([dark?.href, dark?.media]).toEqual(['https://cdn.test/d.png', '(prefers-color-scheme: dark)']);
+		brand.data = { admin: { icons: { '32': 'https://cdn.test/i.png' }, iconsDark: {} } };
+		render();
+		TestBed.tick();
+		expect(document.querySelector('#appIconDark')).toBeNull();
 		brand.data = undefined;
 	});
 

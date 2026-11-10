@@ -1,9 +1,10 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { IFooter } from '@data-access/interfaces/theme.interface';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 
 import { About } from '../widgets/about/about';
 import { FooterCategories } from '../widgets/categories/categories';
@@ -36,6 +37,10 @@ export class BasicFooter {
 	//  and migrating would break narrowing currently.
 	readonly data = input<ISiteConfig | null>();
 	readonly footer = input<IFooter>();
+
+	private readonly brand = injectBrandQuery();
+	/** The Brand Kit's app store pages: the contact column also shows for app badges alone. */
+	readonly apps = computed(() => this.brand.data()?.apps ?? { android: '', ios: '' });
 
 	public active: { [key: string]: boolean } = {
 		categories: false,

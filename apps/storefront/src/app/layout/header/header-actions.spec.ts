@@ -16,6 +16,9 @@ import { Notice } from './widgets/notice/notice';
 import { Search } from './widgets/search/search';
 
 const swiper = vi.hoisted(() => ({ created: [] as unknown[][] }));
+vi.mock('@data-access/queries/brand.queries', () => ({
+	injectBrandQuery: () => ({ data: () => undefined }),
+}));
 vi.mock('swiper', () => ({
 	default: class {
 		static use() {

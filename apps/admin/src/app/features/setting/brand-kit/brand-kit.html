@@ -1,3 +1,9 @@
+<!--
+	Brand Kit (owner briefs, 2026-11-10), built from existing pieces only: the page's image uploader
+	(one picture per slot, dark slots on a dark tile), the field rows, the Roles page's tick box
+	alignment (`roles-form`), the Theme Options colour box (`color-box`), and Bootstrap utilities for
+	the section headings. One template draws both logo sets, the shop's and the admin's own.
+-->
 <app-page-wrapper [title]="'brand_kit'">
 	<form
 		class="theme-form theme-form-2 mega-form"
@@ -15,68 +21,136 @@
 			/>
 			<p class="help-text mb-0">{{ 'shop_name_help' | transloco }}</p>
 		</app-form-fields>
-		<app-form-fields
-			[label]="'full_logo'"
-			[for]="'full_logo'"
-		>
-			<app-image-upload
-				[id]="'full_logo'"
-				[multipleImage]="false"
-				[purpose]="'brand'"
-				[oneOnly]="true"
-				[image]="logo()"
-				[helpText]="'full_logo_help' | transloco"
-				(selectedFiles)="select('logoAssetId', $event)"
-			/>
-		</app-form-fields>
-		<app-form-fields
-			[label]="'seal'"
-			[for]="'seal'"
-		>
-			<app-image-upload
-				[id]="'seal'"
-				[multipleImage]="false"
-				[purpose]="'brand'"
-				[oneOnly]="true"
-				[image]="seal()"
-				[helpText]="'seal_help' | transloco"
-				(selectedFiles)="select('sealAssetId', $event)"
-			/>
-			<!-- roles-form: the Roles page's checkbox alignment, reused as is. -->
-			<div class="roles-form d-flex flex-column mt-2 mb-1 gap-2">
-				<div class="form-check form-switch">
-					<input
-						class="checkbox_animated form-check-input"
-						type="checkbox"
-						id="seal_as_favicon"
-						[checked]="sealAsFavicon()"
-						(change)="useSealAsFavicon($any($event.target).checked)"
-					/>
-					<label
-						class="form-check-label form-label m-0"
-						for="seal_as_favicon"
-					>
-						{{ 'seal_as_favicon' | transloco }}
-					</label>
-				</div>
+
+		<div class="border-bottom mt-4 mb-3 pb-2">
+			<h5 class="fw-semibold mb-1">{{ 'brand_shop_logos' | transloco }}</h5>
+			<p class="help-text mb-0">{{ 'brand_shop_logos_help' | transloco }}</p>
+		</div>
+		<ng-container *ngTemplateOutlet="logoSet; context: { $implicit: 'shop' }" />
+
+		<div class="border-bottom mt-4 mb-3 pb-2">
+			<h5 class="fw-semibold mb-1">{{ 'brand_admin_logos' | transloco }}</h5>
+			<p class="help-text mb-0">{{ 'brand_admin_logos_help' | transloco }}</p>
+		</div>
+		<div class="roles-form d-flex flex-column mb-1 gap-2">
+			<div class="form-check form-switch">
+				<input
+					class="checkbox_animated form-check-input"
+					type="checkbox"
+					id="admin_own_logos"
+					[checked]="adminOwnLogos()"
+					(change)="useAdminLogos($any($event.target).checked)"
+				/>
+				<label
+					class="form-check-label form-label m-0"
+					for="admin_own_logos"
+				>
+					{{ 'admin_own_logos' | transloco }}
+				</label>
 			</div>
-		</app-form-fields>
-		@if (!sealAsFavicon()) {
+		</div>
+		<p class="help-text mb-3">{{ 'admin_own_logos_help' | transloco }}</p>
+		@if (adminOwnLogos()) {
+		<ng-container *ngTemplateOutlet="logoSet; context: { $implicit: 'admin' }" />
+		}
+
+		<div class="border-bottom mt-4 mb-3 pb-2">
+			<h5 class="fw-semibold mb-1">{{ 'brand_sharing_and_profiles' | transloco }}</h5>
+		</div>
 		<app-form-fields
-			[label]="'browser_icon'"
-			[for]="'browser_icon'"
+			[label]="'link_preview_picture'"
+			[for]="'link_preview_picture'"
 		>
 			<app-image-upload
-				[id]="'browser_icon'"
+				[id]="'link_preview_picture'"
 				[multipleImage]="false"
 				[purpose]="'brand'"
 				[oneOnly]="true"
-				[image]="favicon()"
-				[helpText]="'browser_icon_help' | transloco"
-				(selectedFiles)="select('faviconAssetId', $event)"
+				[image]="shareImage()"
+				[helpText]="'link_preview_picture_help' | transloco"
+				(selectedFiles)="selectShareImage($event)"
 			/>
 		</app-form-fields>
-		}
+		<ng-container formGroupName="socials">
+			@for (network of networks; track network.key; let last = $last) {
+			<app-form-fields
+				[label]="network.label"
+				[for]="'social_' + network.key"
+			>
+				<input
+					class="form-control"
+					type="url"
+					placeholder="https://"
+					[id]="'social_' + network.key"
+					[formControlName]="network.key"
+				/>
+				@if (last) {
+				<p class="help-text mb-0">{{ 'social_profiles_help' | transloco }}</p>
+				}
+			</app-form-fields>
+			}
+		</ng-container>
+		<!-- Store links: the YouTube field's input and Validate button, reused. -->
+		<ng-container formGroupName="apps">
+			@for (store of stores; track store.key; let last = $last) {
+			<app-form-fields
+				[label]="store.label"
+				[for]="'app_' + store.key"
+			>
+				<div class="input-group">
+					<input
+						class="form-control"
+						type="url"
+						[id]="'app_' + store.key"
+						[placeholder]="store.placeholder"
+						[formControlName]="store.key"
+						(input)="editAppLink(store.key)"
+						(keydown.enter)="$event.preventDefault(); validateAppLink(store.key)"
+					/>
+					<app-button
+						[class]="'btn btn-theme'"
+						[id]="'app_' + store.key + '_validate'"
+						[type]="'button'"
+						[spinner]="false"
+						[disabled]="appState[store.key]() === 'checking' || !form.controls.apps.controls[store.key].value.trim()"
+						(click)="validateAppLink(store.key)"
+					>
+						{{ 'validate' | transloco }}
+					</app-button>
+				</div>
+				@switch (appState[store.key]()) { @case ('found') {
+				<p class="help-text text-success mb-0">
+					<i class="ri-checkbox-circle-line me-1"></i>
+					{{ 'app_link_found' | transloco: { name: appName[store.key]() || '' } }}
+				</p>
+				} @case ('missing') {
+				<div class="invalid-feedback d-block">{{ 'app_link_missing' | transloco }}</div>
+				} @case ('unknown') {
+				<div class="invalid-feedback d-block">{{ 'app_link_unknown' | transloco }}</div>
+				} @case ('unchecked') {
+				<p class="help-text mb-0">{{ 'app_link_unchecked' | transloco }}</p>
+				} } @if (last) {
+				<p class="help-text mb-0">{{ 'app_links_help' | transloco }}</p>
+				}
+			</app-form-fields>
+			}
+		</ng-container>
+		<app-form-fields
+			[label]="'browser_bar_colour'"
+			[for]="'theme_color'"
+		>
+			<div class="color-box">
+				<input
+					class="form-control"
+					id="theme_color"
+					type="color"
+					formControlName="themeColor"
+				/>
+				<h6>{{ form.controls.themeColor.value }}</h6>
+			</div>
+			<p class="help-text mb-0">{{ 'browser_bar_colour_help' | transloco }}</p>
+		</app-form-fields>
+
 		<app-button
 			[id]="'save_brand_btn'"
 			[class]="'btn btn-theme ms-auto mt-4'"
@@ -85,3 +159,106 @@
 		</app-button>
 	</form>
 </app-page-wrapper>
+
+<!-- One logo set: computer and phone logos (light and an optional dark), and the browser icon. -->
+<ng-template
+	#logoSet
+	let-set
+>
+	<app-form-fields
+		[label]="'full_logo'"
+		[for]="set + '_full_logo'"
+	>
+		<div class="d-flex flex-wrap gap-4">
+			<div>
+				<p class="help-text mb-1">{{ 'logo_light' | transloco }}</p>
+				<app-image-upload
+					[id]="set + '_full_logo'"
+					[multipleImage]="false"
+					[purpose]="'brand'"
+					[oneOnly]="true"
+					[image]="previews[$any(set)].logoAssetId()"
+					(selectedFiles)="select(set, 'logoAssetId', $event)"
+				/>
+			</div>
+			<div>
+				<p class="help-text mb-1">{{ 'logo_dark_optional' | transloco }}</p>
+				<app-image-upload
+					[id]="set + '_full_logo_dark'"
+					[multipleImage]="false"
+					[purpose]="'brand'"
+					[oneOnly]="true"
+					[tone]="'dark'"
+					[image]="previews[$any(set)].logoDarkAssetId()"
+					(selectedFiles)="select(set, 'logoDarkAssetId', $event)"
+				/>
+			</div>
+		</div>
+		<p class="help-text mb-0">{{ 'full_logo_help' | transloco }}</p>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'seal'"
+		[for]="set + '_seal'"
+	>
+		<div class="d-flex flex-wrap gap-4">
+			<div>
+				<p class="help-text mb-1">{{ 'logo_light' | transloco }}</p>
+				<app-image-upload
+					[id]="set + '_seal'"
+					[multipleImage]="false"
+					[purpose]="'brand'"
+					[oneOnly]="true"
+					[image]="previews[$any(set)].sealAssetId()"
+					(selectedFiles)="select(set, 'sealAssetId', $event)"
+				/>
+			</div>
+			<div>
+				<p class="help-text mb-1">{{ 'logo_dark_optional' | transloco }}</p>
+				<app-image-upload
+					[id]="set + '_seal_dark'"
+					[multipleImage]="false"
+					[purpose]="'brand'"
+					[oneOnly]="true"
+					[tone]="'dark'"
+					[image]="previews[$any(set)].sealDarkAssetId()"
+					(selectedFiles)="select(set, 'sealDarkAssetId', $event)"
+				/>
+			</div>
+		</div>
+		<p class="help-text mb-0">{{ 'seal_help' | transloco }}</p>
+		<!-- roles-form: the Roles page's checkbox alignment, reused as is. -->
+		<div class="roles-form d-flex flex-column mt-2 mb-1 gap-2">
+			<div class="form-check form-switch">
+				<input
+					class="checkbox_animated form-check-input"
+					type="checkbox"
+					[id]="set + '_seal_as_favicon'"
+					[checked]="sealAsFavicon[$any(set)]()"
+					(change)="useSealAsFavicon(set, $any($event.target).checked)"
+				/>
+				<label
+					class="form-check-label form-label m-0"
+					[for]="set + '_seal_as_favicon'"
+				>
+					{{ 'seal_as_favicon' | transloco }}
+				</label>
+			</div>
+		</div>
+	</app-form-fields>
+	@if (!sealAsFavicon[$any(set)]()) {
+	<app-form-fields
+		[label]="'browser_icon'"
+		[for]="set + '_browser_icon'"
+	>
+		<app-image-upload
+			[id]="set + '_browser_icon'"
+			[multipleImage]="false"
+			[purpose]="'brand'"
+			[oneOnly]="true"
+			[image]="previews[$any(set)].faviconAssetId()"
+			[helpText]="'browser_icon_help' | transloco"
+			(selectedFiles)="select(set, 'faviconAssetId', $event)"
+		/>
+	</app-form-fields>
+	}
+</ng-template>

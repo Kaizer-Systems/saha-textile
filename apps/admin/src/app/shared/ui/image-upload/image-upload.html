@@ -25,7 +25,7 @@
 		</a>
 	</li>
 	} @if (showImage) {
-	<li>
+	<li [class.bg-dark]="tone() === 'dark'">
 		<img
 			src="{{ showImage?.original_url }}"
 			alt="image"

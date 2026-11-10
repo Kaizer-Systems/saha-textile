@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
+import { NO_BRAND } from '@data-access/queries/brand.queries';
+
 import { manifestPath, webManifest } from './web-manifest';
 
 const brand = {
+	...NO_BRAND,
 	shopName: 'Sample Shop',
-	logo: null,
-	seal: null,
 	icons: { '192': 'https://cdn.test/192.png', '512': 'https://cdn.test/512.png' },
 };
 
 describe('webManifest', () => {
+	it('takes the browser bar colour from the Brand Kit', () => {
+		expect(webManifest({ ...brand, themeColor: '#112233' }, 'en').theme_color).toBe('#112233');
+		expect(webManifest(null, 'en').theme_color).toBe('#417394');
+	});
+
 	it('takes the name and icons from the Brand Kit', () => {
 		const manifest = webManifest(brand, 'en');
 		expect(manifest).toMatchObject({ name: 'Sample Shop', short_name: 'Sample Shop', display: 'standalone' });
@@ -28,7 +34,7 @@ describe('webManifest', () => {
 	});
 
 	it('falls back to built-in icons before a Brand Kit exists', () => {
-		const bare = webManifest({ shopName: '', logo: null, seal: null, icons: {} }, 'en');
+		const bare = webManifest(NO_BRAND, 'en');
 		expect(bare.name).toBe('Saha Textile');
 		expect(bare.icons.map((icon) => icon.src)).toEqual([
 			'/assets/images/app-icon-192.png',

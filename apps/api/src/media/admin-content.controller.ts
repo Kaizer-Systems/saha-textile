@@ -1,6 +1,19 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpCode,
+	Param,
+	Post,
+	Put,
+	Query,
+	ServiceUnavailableException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	BrandAppLinkCheck,
+	type BrandAppLinkResult,
 	BrandSettings,
 	type ContentBlock,
 	ContentBlockInput,
@@ -17,6 +30,7 @@ import {
 import { Audience, RequirePermissions } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
+import { checkAppLink } from './app-link-check';
 import { BrandService } from './brand.service';
 import { ContentBlocksService } from './content-blocks.service';
 import { YouTubeService } from './youtube.service';
@@ -41,9 +55,24 @@ export class AdminContentController {
 
 	@Put('settings/brand')
 	@RequirePermissions('setting.edit')
-	@ApiOperation({ operationId: 'saveBrandKit', summary: 'Set the shop name, logo and seal' })
+	@ApiOperation({ operationId: 'saveBrandKit', summary: 'Save the Brand Kit' })
 	saveBrandKit(@Body(new ZodValidationPipe(BrandSettings)) body: BrandSettings): Promise<BrandSettings> {
 		return this.brand.save(body);
+	}
+
+	@Post('settings/brand/app-link')
+	@HttpCode(200)
+	@RequirePermissions('setting.edit')
+	@ApiOperation({
+		operationId: 'checkBrandAppLink',
+		summary: 'Check that a Google Play or App Store address belongs to a real app',
+	})
+	async checkBrandAppLink(
+		@Body(new ZodValidationPipe(BrandAppLinkCheck)) body: BrandAppLinkCheck,
+	): Promise<BrandAppLinkResult> {
+		const result = await checkAppLink(body);
+		if (!result) throw new ServiceUnavailableException({ message: 'The store could not be reached. Try again.' });
+		return result;
 	}
 
 	@Get('content-blocks')

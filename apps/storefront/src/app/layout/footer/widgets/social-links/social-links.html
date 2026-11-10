@@ -1,49 +1,16 @@
-@if (data()?.footer?.facebook || data()?.footer?.twitter || data()?.footer?.instagram || data()?.footer?.pinterest) {
+@if (profiles().length) {
 <div class="social-link">
 	<h6 class="text-content">{{ 'stay_connected' | transloco }}:</h6>
 	<ul>
-		@if (data()?.footer?.facebook) {
+		@for (profile of profiles(); track profile.key) {
 		<li>
 			<a
-				href="{{ data()?.footer?.facebook }}"
+				[href]="profile.href"
 				target="_blank"
 				rel="noopener"
-				aria-label="Facebook"
+				[attr.aria-label]="profile.label"
 			>
-				<i class="ri-facebook-fill"></i>
-			</a>
-		</li>
-		} @if (data()?.footer?.twitter) {
-		<li>
-			<a
-				href="{{ data()?.footer?.twitter }}"
-				target="_blank"
-				rel="noopener"
-				aria-label="X"
-			>
-				<i class="ri-twitter-fill"></i>
-			</a>
-		</li>
-		} @if (data()?.footer?.instagram) {
-		<li>
-			<a
-				href="{{ data()?.footer?.instagram }}"
-				target="_blank"
-				rel="noopener"
-				aria-label="Instagram"
-			>
-				<i class="ri-instagram-fill"></i>
-			</a>
-		</li>
-		} @if (data()?.footer?.pinterest) {
-		<li>
-			<a
-				href="{{ data()?.footer?.pinterest }}"
-				target="_blank"
-				rel="noopener"
-				aria-label="Pinterest"
-			>
-				<i class="ri-pinterest-fill"></i>
+				<i [class]="profile.icon"></i>
 			</a>
 		</li>
 		}

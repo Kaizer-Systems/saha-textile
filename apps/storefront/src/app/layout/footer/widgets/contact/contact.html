@@ -20,31 +20,33 @@
 				</div>
 			</div>
 		</li>
-		} @if (data()?.footer?.play_store_url || data()?.footer?.app_store_url) {
+		} @if (apps().android || apps().ios) {
 		<li class="social-app mb-0">
 			<h5 class="text-content mb-2">{{ 'download_app' | transloco }} :</h5>
 			<ul>
-				@if (data()?.footer?.play_store_url) {
+				@if (apps().android) {
 				<li class="mb-0">
 					<a
-						href="{{ data()?.footer?.play_store_url }}"
+						[href]="apps().android"
 						target="_blank"
+						rel="noopener"
 					>
 						<img
 							src="assets/images/playstore.svg"
-							alt="playstore"
+							alt="Google Play"
 						/>
 					</a>
 				</li>
-				} @if (data()?.footer?.app_store_url) {
+				} @if (apps().ios) {
 				<li class="mb-0">
 					<a
-						href="{{ data()?.footer?.app_store_url }}"
+						[href]="apps().ios"
 						target="_blank"
+						rel="noopener"
 					>
 						<img
 							src="assets/images/appstore.svg"
-							alt="appstore"
+							alt="App Store"
 						/>
 					</a>
 				</li>

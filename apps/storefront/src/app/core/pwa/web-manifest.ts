@@ -1,7 +1,7 @@
 import type { Locale } from '@core/i18n/locale';
 import type { StorefrontBrand } from '@data-access/queries/brand.queries';
 
-/** Matches the top bar, and the `theme-color` tag in `index.html`. */
+/** Until the Brand Kit answers: matches the top bar, and the `theme-color` tag in `index.html`. */
 const THEME_COLOR = '#417394';
 const BACKGROUND_COLOR = '#ffffff';
 /** Used until a Brand Kit name exists, as the page title does. */
@@ -28,7 +28,7 @@ export function webManifest(brand: StorefrontBrand | null, locale: Locale) {
 		start_url: `/${locale}/`,
 		scope: '/',
 		display: 'standalone',
-		theme_color: THEME_COLOR,
+		theme_color: brand?.themeColor || THEME_COLOR,
 		background_color: BACKGROUND_COLOR,
 		categories: ['shopping'],
 		icons: ICON_SIZES.map((size) => ({

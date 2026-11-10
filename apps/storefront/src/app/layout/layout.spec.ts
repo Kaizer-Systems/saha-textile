@@ -7,13 +7,19 @@ import { LocaleSeo } from '@core/i18n/locale-seo';
 import { AccountStore } from '@core/state/account.store';
 import { AuthStore } from '@core/state/auth.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
+import { NO_BRAND } from '@data-access/queries/brand.queries';
 import { SiteConfigService } from '@data-access/services/site-config.service';
 
 import { Layout } from './layout';
 
 const brand = vi.hoisted(() => ({ data: undefined as unknown }));
-vi.mock('@data-access/queries/brand.queries', () => ({
+vi.mock('@data-access/queries/brand.queries', async (original) => ({
+	...(await original<object>()),
 	injectBrandQuery: () => ({ data: () => brand.data }),
+}));
+const seo = vi.hoisted(() => ({
+	absoluteUrl: (path: string) => `https://shop.test${path}`,
+	setDefaultImage: (() => undefined) as (url: string) => void,
 }));
 
 const render = (signedIn = false, platform = 'browser') => {
@@ -23,7 +29,7 @@ const render = (signedIn = false, platform = 'browser') => {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: SiteConfigService, useValue: service },
-			{ provide: LocaleSeo, useValue: { absoluteUrl: (path: string) => `https://shop.test${path}` } },
+			{ provide: LocaleSeo, useValue: seo },
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
 			{ provide: AccountStore, useValue: account },
 			{ provide: AuthStore, useValue: { isAuthenticated: signal(signedIn) } },
@@ -43,9 +49,11 @@ describe('Layout', () => {
 	});
 
 	it('puts the Brand Kit in the page head once it arrives', () => {
-		brand.data = { shopName: 'Shop', icons: {} };
+		seo.setDefaultImage = vi.fn();
+		brand.data = { ...NO_BRAND, shopName: 'Shop', shareImage: 'https://cdn.test/share.jpg' };
 		render();
 		expect(document.getElementById('brand-organization')?.textContent).toContain('Shop');
+		expect(seo.setDefaultImage).toHaveBeenCalledWith('https://cdn.test/share.jpg');
 		document.getElementById('brand-organization')?.remove();
 		brand.data = undefined;
 	});

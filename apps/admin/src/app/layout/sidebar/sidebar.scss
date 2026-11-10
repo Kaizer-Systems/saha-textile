@@ -1,4 +1,3 @@
-
 // The logo keeps its own colours on a white band, level with the white top bar. The collapse
 // button sits beside it, not over it. `!important` because the theme sets these on a selector
 // five levels deep.
@@ -54,5 +53,41 @@
 
 	.sidebar-main-link {
 		display: none;
+	}
+}
+
+// Brand Kit dark logo (owner, 2026-11-10). Light mode shows the light logos. In dark mode, with a
+// dark logo set, the white band goes and the dark versions show; without one the band stays, as
+// before. `for-light` / `for-dark` are the theme's own names; `!important` beats the rules above.
+:host .logo-wrapper .for-dark {
+	display: none !important;
+}
+
+:host-context(body[class*='dark-']) .logo-wrapper.has-dark-logo {
+	background: transparent !important;
+	box-shadow: none;
+
+	.sidebar-logo .for-light {
+		display: none !important;
+	}
+
+	.sidebar-logo .for-dark {
+		display: block !important;
+	}
+
+	.toggle-sidebar,
+	.toggle-sidebar i {
+		color: #fff !important;
+	}
+}
+
+// Collapsed in dark mode: the dark phone logo, where there is one.
+:host-context(body[class*='dark-'] .sidebar-wrapper.close_icon:not(:hover)) .logo-wrapper.has-dark-logo {
+	.logo-sm.for-dark {
+		display: block !important;
+	}
+
+	.logo-sm.for-light:not(:only-of-type) {
+		display: none !important;
 	}
 }

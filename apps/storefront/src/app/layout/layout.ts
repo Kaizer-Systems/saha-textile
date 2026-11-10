@@ -73,7 +73,10 @@ export class Layout {
 		this.shopEvents.load();
 		effect(() => {
 			const brand = this.brand.data();
-			if (brand) applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'));
+			if (!brand) return;
+			applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'));
+			// Pages shared without their own picture show the Brand Kit's link preview picture.
+			if (brand.shareImage) this.seo.setDefaultImage(brand.shareImage);
 		});
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.siteConfigService.preloader.set(true);

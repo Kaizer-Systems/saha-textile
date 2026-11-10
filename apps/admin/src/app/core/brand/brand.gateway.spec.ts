@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { BrandGateway, injectBrandQuery } from './brand.gateway';
+import { BrandGateway, injectBrandQuery, NO_BRAND } from './brand.gateway';
 
 const captured = vi.hoisted(() => ({ options: undefined as unknown as () => { queryFn: () => Promise<unknown> } }));
 vi.mock('@tanstack/angular-query-experimental', () => ({
@@ -46,6 +46,6 @@ describe('BrandGateway', () => {
 		TestBed.runInInjectionContext(() => injectBrandQuery());
 		expect(await captured.options().queryFn()).toBe('read');
 		http.get.mockReturnValue(throwError(() => new Error('down')) as never);
-		expect(await captured.options().queryFn()).toEqual({ shopName: '', logo: null, seal: null, icons: {} });
+		expect(await captured.options().queryFn()).toEqual(NO_BRAND);
 	});
 });

@@ -35,6 +35,8 @@ export class ImageUpload {
 	 * changing it means removing it first. Off, the "+" stays and picking again replaces the picture.
 	 */
 	readonly oneOnly = input<boolean>(false);
+	/** `dark`: the preview tile is dark, so a logo made for dark screens can be seen (Brand Kit). */
+	readonly tone = input<'light' | 'dark'>('light');
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.

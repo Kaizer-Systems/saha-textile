@@ -13,7 +13,7 @@
 				class="ri-apps-line status_toggle middle sidebar-toggle"
 			></i>
 			<a [routerLink]="['/dashboard']">
-				@if (brand.data()?.seal; as seal) {
+				@if (brand.data()?.admin?.seal; as seal) {
 				<img
 					[src]="seal.url"
 					[attr.srcset]="seal.srcset"

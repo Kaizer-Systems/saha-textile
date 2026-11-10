@@ -38,10 +38,31 @@ export class App {
 
 	constructor() {
 		const page = inject<Document>(DOCUMENT);
+		// The admin's tab icon from the Brand Kit (its own set, else the shop's), plus the icon a
+		// dark browser picks when the Brand Kit has one.
 		effect(() => {
-			const icon = this.brand.data()?.icons['32'];
+			const logos = this.brand.data()?.admin;
+			const icon = logos?.icons['32'];
 			const link = page.querySelector<HTMLLinkElement>('#appIcon');
-			if (icon && link) link.href = icon;
+			if (icon && link) {
+				link.type = 'image/png';
+				link.href = icon;
+			}
+			const darkIcon = logos?.iconsDark['32'];
+			let dark = page.querySelector<HTMLLinkElement>('#appIconDark');
+			if (!darkIcon) {
+				dark?.remove();
+				return;
+			}
+			if (!dark) {
+				dark = page.createElement('link');
+				dark.id = 'appIconDark';
+				dark.rel = 'icon';
+				dark.type = 'image/png';
+				dark.media = '(prefers-color-scheme: dark)';
+				page.head.appendChild(dark);
+			}
+			dark.href = darkIcon;
 		});
 		const config = inject(NgbNavConfig);
 		const document = inject<Document>(DOCUMENT);

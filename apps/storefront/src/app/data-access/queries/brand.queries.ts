@@ -13,16 +13,41 @@ interface BrandImage {
 	height: number;
 }
 
-/** `StorefrontBrand` from `@saha-textile/contracts`, as the storefront reads it. */
-export interface StorefrontBrand {
-	shopName: string;
+/** One resolved logo set (`ResolvedBrandLogos` in `@saha-textile/contracts`). */
+export interface BrandLogos {
 	logo: BrandImage | null;
+	logoDark: BrandImage | null;
 	seal: BrandImage | null;
+	sealDark: BrandImage | null;
 	/** PNG icon address by pixel size. */
 	icons: Record<string, string>;
+	/** The icon for a dark browser, by size; empty when there is none. */
+	iconsDark: Record<string, string>;
 }
 
-const NO_BRAND: StorefrontBrand = { shopName: '', logo: null, seal: null, icons: {} };
+/** `StorefrontBrand` from `@saha-textile/contracts`, as the storefront reads it. */
+export interface StorefrontBrand extends BrandLogos {
+	shopName: string;
+	admin: BrandLogos;
+	/** 1200×630 JPEG for pages shared without their own picture. */
+	shareImage: string | null;
+	/** Profile addresses by network (facebook, instagram, x, pinterest, linkedin, threads, youtube); '' where unset. */
+	socials: Record<string, string>;
+	/** App store pages; '' where there is none. Phones open them in the store app. */
+	apps: { android: string; ios: string };
+	themeColor: string;
+}
+
+const NO_LOGOS: BrandLogos = { logo: null, logoDark: null, seal: null, sealDark: null, icons: {}, iconsDark: {} };
+export const NO_BRAND: StorefrontBrand = {
+	shopName: '',
+	...NO_LOGOS,
+	admin: NO_LOGOS,
+	shareImage: null,
+	socials: {},
+	apps: { android: '', ios: '' },
+	themeColor: '#417394',
+};
 
 /** The Brand Kit. An unreachable API answers "no brand", so screens fall back to the shop name. */
 export function injectBrandQuery() {

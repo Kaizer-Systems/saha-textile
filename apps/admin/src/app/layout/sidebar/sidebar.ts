@@ -1,5 +1,5 @@
 import { isPlatformBrowser, NgTemplateOutlet, AsyncPipe } from '@angular/common';
-import { Component, inject, input, PLATFORM_ID } from '@angular/core';
+import { Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 
@@ -29,6 +29,8 @@ export class Sidebar {
 	readonly class = input<string>('');
 
 	readonly brand = injectBrandQuery();
+	/** The admin's logos: its own from the Brand Kit, else the shop's (resolved by the API). */
+	readonly logos = computed(() => this.brand.data()?.admin);
 	readonly menu = this.menuStore.menu;
 
 	public item: IMenu;

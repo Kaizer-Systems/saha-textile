@@ -72,20 +72,114 @@ export const YouTubeFeedCache = z.object({
 });
 export type YouTubeFeedCache = z.infer<typeof YouTubeFeedCache>;
 
+/** A media library image chosen for one Brand Kit slot, or none. */
+const BrandAssetId = z.string().min(1).nullable().default(null);
+
 /**
- * `brand` — the Brand Kit. Images live in the media library, so a new owner of this codebase
- * uploads their own after deployment and no brand sits in the code.
+ * One set of logos: wide and small, each with an optional dark version for dark screens, and
+ * the browser icon (the small logo unless `sealAsFavicon` is off). The shop has one; the admin
+ * may have its own (`adminOwnLogos`), where every empty slot falls back to the shop's.
  */
-export const BrandSettings = z.object({
-	shopName: z.string().trim().max(80).default(''),
-	/** The full logo: seal, name and tagline. */
-	logoAssetId: z.string().min(1).nullable().default(null),
-	/** The small mark for phones and tight spaces (shown as "Phone logo" in admin). */
-	sealAssetId: z.string().min(1).nullable().default(null),
+export const BrandLogoSet = z.object({
+	/** The full logo: seal, name and tagline ("Computer logo" in admin). */
+	logoAssetId: BrandAssetId,
+	/** The same logo with light lettering, for dark screens. Empty: the logo keeps a white band. */
+	logoDarkAssetId: BrandAssetId,
+	/** The small mark for phones and tight spaces ("Phone logo" in admin). */
+	sealAssetId: BrandAssetId,
+	/** The small mark for dark screens. Empty: the light one is used everywhere. */
+	sealDarkAssetId: BrandAssetId,
 	/** The phone logo also makes the browser and home-screen icons. Off: `faviconAssetId` makes them. */
 	sealAsFavicon: z.boolean().default(true),
 	/** Its own browser icon, used only while `sealAsFavicon` is off. */
-	faviconAssetId: z.string().min(1).nullable().default(null),
+	faviconAssetId: BrandAssetId,
+});
+export type BrandLogoSet = z.infer<typeof BrandLogoSet>;
+
+/** The profile networks the Brand Kit keeps. YouTube comes from the YouTube settings' channel. */
+export const BRAND_SOCIAL_NETWORKS = ['facebook', 'instagram', 'x', 'pinterest', 'linkedin', 'threads'] as const;
+export type BrandSocialNetwork = (typeof BRAND_SOCIAL_NETWORKS)[number];
+
+/** A profile address: empty, or an https address. */
+const ProfileUrl = z
+	.string()
+	.trim()
+	.max(300)
+	.refine((value) => value === '' || /^https:\/\/\S+$/.test(value), 'Use a full https:// address')
+	.default('');
+
+export const BrandSocials = z.object({
+	facebook: ProfileUrl,
+	instagram: ProfileUrl,
+	/** Also the account X posts from the share menu name as "via @…" (shown in Sharing too). */
+	x: ProfileUrl,
+	pinterest: ProfileUrl,
+	linkedin: ProfileUrl,
+	threads: ProfileUrl,
+});
+export type BrandSocials = z.infer<typeof BrandSocials>;
+
+/** The X handle in an X (or Twitter) profile address, or '' when there is none. */
+export function xHandleFromUrl(url: string): string {
+	const match = /^https:\/\/(?:www\.)?(?:x|twitter)\.com\/@?([A-Za-z0-9_]{1,15})\/?(?:[?#].*)?$/.exec(url.trim());
+	return match?.[1] ?? '';
+}
+
+/**
+ * The shop's phone apps, as their store pages. These https addresses open the store app on a phone
+ * (Google Play on Android, the App Store on iPhone and iPad) and the store's web page elsewhere.
+ */
+export const ANDROID_APP_URL =
+	/^https:\/\/play\.google\.com\/store\/apps\/details\?id=([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+)(?:&\S*)?$/;
+export const IOS_APP_URL = /^https:\/\/apps\.apple\.com\/(?:[a-z]{2}\/)?app\/(?:[^/\s?]+\/)?id(\d{5,12})(?:[/?]\S*)?$/;
+
+export const BrandApps = z.object({
+	/** e.g. https://play.google.com/store/apps/details?id=com.shop.app */
+	android: z
+		.string()
+		.trim()
+		.refine((value) => value === '' || ANDROID_APP_URL.test(value), 'Use the Google Play address of the app')
+		.default(''),
+	/** e.g. https://apps.apple.com/in/app/shop/id1234567890 */
+	ios: z
+		.string()
+		.trim()
+		.refine((value) => value === '' || IOS_APP_URL.test(value), 'Use the App Store address of the app')
+		.default(''),
+});
+export type BrandApps = z.infer<typeof BrandApps>;
+export type BrandAppStore = keyof BrandApps;
+
+/** `POST /admin/settings/brand/app-link`: is this the address of a real app in that store? */
+export const BrandAppLinkCheck = z.object({
+	store: z.enum(['android', 'ios']),
+	url: z.string().trim().min(1).max(500),
+});
+export type BrandAppLinkCheck = z.infer<typeof BrandAppLinkCheck>;
+export const BrandAppLinkResult = z.object({ found: z.boolean(), name: z.string().nullable() });
+export type BrandAppLinkResult = z.infer<typeof BrandAppLinkResult>;
+
+/**
+ * `brand` — the Brand Kit. Images live in the media library, so a new owner of this codebase
+ * uploads their own after deployment and no brand sits in the code. Every value is stored once,
+ * here; other screens (Sharing's X account) read and write these fields.
+ */
+export const BrandSettings = z.object({
+	shopName: z.string().trim().max(80).default(''),
+	...BrandLogoSet.shape,
+	/** Off: the admin shows the shop's logos. On: `admin` holds its own, slot by slot. */
+	adminOwnLogos: z.boolean().default(false),
+	admin: BrandLogoSet.default(() => BrandLogoSet.parse({})),
+	/** The picture shared for pages without their own (home, categories, blog). Empty: the logo on white. */
+	shareImageAssetId: BrandAssetId,
+	socials: BrandSocials.default(() => BrandSocials.parse({})),
+	/** Store pages of the shop's apps; the footer shows a store badge only for a saved one. */
+	apps: BrandApps.default(() => BrandApps.parse({})),
+	/** The browser bar on phones and the installed app's title bar. */
+	themeColor: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.default('#417394'),
 });
 export type BrandSettings = z.infer<typeof BrandSettings>;
 
@@ -97,13 +191,31 @@ const BrandImage = z.object({
 });
 export type BrandImage = z.infer<typeof BrandImage>;
 
-/** `GET /storefront/brand`. With nothing uploaded, screens show `shopName` as text. */
-export const StorefrontBrand = z.object({
-	shopName: z.string(),
+/** One resolved logo set, as screens read it. Dark images and dark icons are null/empty when unset. */
+export const ResolvedBrandLogos = z.object({
 	logo: BrandImage.nullable(),
+	logoDark: BrandImage.nullable(),
 	seal: BrandImage.nullable(),
+	sealDark: BrandImage.nullable(),
 	/** PNG icon address by pixel size. */
 	icons: z.record(z.string(), z.string()),
+	/** The icon for a dark browser, by size; empty when there is no dark phone logo to make it. */
+	iconsDark: z.record(z.string(), z.string()),
+});
+export type ResolvedBrandLogos = z.infer<typeof ResolvedBrandLogos>;
+
+/** `GET /storefront/brand`. With nothing uploaded, screens show `shopName` as text. */
+export const StorefrontBrand = ResolvedBrandLogos.extend({
+	shopName: z.string(),
+	/** The admin's logos: its own where set, else the shop's. */
+	admin: ResolvedBrandLogos,
+	/** 1200×630 JPEG for pages shared without their own picture; null with no picture and no logo. */
+	shareImage: z.string().nullable(),
+	/** Profile addresses by network, YouTube included; '' where unset. */
+	socials: z.record(z.string(), z.string()),
+	/** Store pages of the shop's apps; '' where there is none. */
+	apps: z.object({ android: z.string(), ios: z.string() }),
+	themeColor: z.string(),
 });
 export type StorefrontBrand = z.infer<typeof StorefrontBrand>;
 

@@ -59,6 +59,7 @@ const SHARED_WORDS = new Set([
 	'images',
 	'instagram',
 	'linkedin',
+	'threads',
 	'logo',
 	'maintenance',
 	'maximum',

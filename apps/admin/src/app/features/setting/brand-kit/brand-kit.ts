@@ -1,6 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, inject, signal, type WritableSignal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
+import type { BrandAppStore, BrandLogoSet, BrandSettings, BrandSocialNetwork } from '@saha-textile/contracts';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
@@ -13,20 +15,51 @@ import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 
-type Slot = 'logoAssetId' | 'sealAssetId' | 'faviconAssetId';
+/** The image slots of one logo set. */
+type SetSlot = Exclude<keyof BrandLogoSet, 'sealAsFavicon'>;
+const SET_SLOTS: readonly SetSlot[] = [
+	'logoAssetId',
+	'logoDarkAssetId',
+	'sealAssetId',
+	'sealDarkAssetId',
+	'faviconAssetId',
+];
+/** Which logo set a slot belongs to: the shop's, or the admin's own. */
+export type LogoSetName = 'shop' | 'admin';
+
+/** The profile boxes, in order, with their label keys (YouTube comes from Storefront settings › YouTube). */
+const NETWORKS: readonly { key: BrandSocialNetwork; label: string }[] = [
+	{ key: 'facebook', label: 'facebook' },
+	{ key: 'instagram', label: 'instagram' },
+	{ key: 'x', label: 'share_app_x' },
+	{ key: 'pinterest', label: 'pinterest' },
+	{ key: 'linkedin', label: 'share_app_linkedin' },
+	{ key: 'threads', label: 'social_threads' },
+];
+
+/** Where a store link stands: unchanged since load, being asked, found, not found, or the store was away. */
+export type AppLinkState = 'saved' | 'checking' | 'found' | 'missing' | 'unknown' | 'unchecked';
+
+/** The app store rows, with their label keys. */
+const STORES: readonly { key: BrandAppStore; label: string; placeholder: string }[] = [
+	{ key: 'android', label: 'android_app', placeholder: 'https://play.google.com/store/apps/details?id=…' },
+	{ key: 'ios', label: 'ios_app', placeholder: 'https://apps.apple.com/in/app/…/id…' },
+];
 
 /**
- * The Brand Kit. A new owner of this codebase uploads their own logo here after deployment, and
+ * The Brand Kit. A new owner of this codebase uploads their own logos here after deployment, and
  * every screen, icon and search result follows. No brand sits in the code.
  *
- * Owner brief, 2026-11-10: one picture per slot (the "+" hides while one is set), and the phone
- * logo makes the browser icon unless "Also use it as the browser icon" is unticked, which shows a
- * Browser icon slot of its own. Saved pictures load from the media library on open.
+ * Owner briefs, 2026-11-10: one picture per slot (the "+" hides while one is set); each logo has
+ * an optional dark version; the phone logo makes the browser icon unless unticked; the admin may
+ * carry its own logos, each empty slot falling back to the shop's; plus the link preview picture,
+ * the shop's profiles (X is also shown in Sharing: one stored value) and the browser bar colour.
+ * Saved pictures load from the media library when the page opens.
  */
 @Component({
 	selector: 'app-brand-kit',
 	templateUrl: './brand-kit.html',
-	imports: [PageWrapper, ReactiveFormsModule, TranslocoModule, FormFields, Button, ImageUpload],
+	imports: [PageWrapper, ReactiveFormsModule, NgTemplateOutlet, TranslocoModule, FormFields, Button, ImageUpload],
 })
 export class BrandKit {
 	private readonly gateway = inject(BrandGateway);
@@ -34,51 +67,135 @@ export class BrandKit {
 	private readonly queryClient = inject(QueryClient);
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
+	private readonly fb = inject(FormBuilder).nonNullable;
 
-	readonly form = inject(FormBuilder).nonNullable.group({
+	readonly networks = NETWORKS;
+	readonly stores = STORES;
+
+	readonly form = this.fb.group({
 		shopName: [''],
-		logoAssetId: this.nullableId(),
-		sealAssetId: this.nullableId(),
-		sealAsFavicon: [true],
-		faviconAssetId: this.nullableId(),
+		...this.logoSetControls(),
+		adminOwnLogos: [false],
+		admin: this.fb.group(this.logoSetControls()),
+		shareImageAssetId: this.nullableId(),
+		socials: this.fb.group(
+			Object.fromEntries(NETWORKS.map((network) => [network.key, ['']])) as Record<BrandSocialNetwork, [string]>,
+		),
+		apps: this.fb.group({ android: [''], ios: [''] }),
+		themeColor: ['#417394'],
 	});
-	readonly logo = signal<IAttachment | null>(null);
-	readonly seal = signal<IAttachment | null>(null);
-	readonly favicon = signal<IAttachment | null>(null);
-	/** Ticked: the phone logo is the browser icon and the Browser icon slot stays hidden. */
-	readonly sealAsFavicon = signal(true);
+	/** Each store link's check: a changed link must be found in its store before Save. */
+	readonly appState = { android: signal<AppLinkState>('saved'), ios: signal<AppLinkState>('saved') };
+	readonly appName = { android: signal<string | null>(null), ios: signal<string | null>(null) };
+
+	/** Previews by set and slot, loaded from the media library. */
+	readonly previews: Record<LogoSetName, Record<SetSlot, WritableSignal<IAttachment | null>>> = {
+		shop: this.previewSignals(),
+		admin: this.previewSignals(),
+	};
+	readonly shareImage = signal<IAttachment | null>(null);
+	/** Ticked: that set's phone logo is its browser icon, and the Browser icon slot stays hidden. */
+	readonly sealAsFavicon = { shop: signal(true), admin: signal(true) };
+	readonly adminOwnLogos = signal(false);
 
 	constructor() {
 		this.gateway.settings().subscribe((value) => {
 			this.form.patchValue(value);
-			this.preview(value.logoAssetId, this.logo);
-			this.preview(value.sealAssetId, this.seal);
-			this.preview(value.faviconAssetId, this.favicon);
-			this.sealAsFavicon.set(value.sealAsFavicon);
+			for (const slot of SET_SLOTS) {
+				this.preview(value[slot], this.previews.shop[slot]);
+				this.preview(value.admin?.[slot], this.previews.admin[slot]);
+			}
+			this.preview(value.shareImageAssetId, this.shareImage);
+			this.sealAsFavicon.shop.set(value.sealAsFavicon);
+			this.sealAsFavicon.admin.set(value.admin?.sealAsFavicon ?? true);
+			this.adminOwnLogos.set(value.adminOwnLogos);
 		});
+	}
+
+	private logoSetControls() {
+		return {
+			logoAssetId: this.nullableId(),
+			logoDarkAssetId: this.nullableId(),
+			sealAssetId: this.nullableId(),
+			sealDarkAssetId: this.nullableId(),
+			sealAsFavicon: [true],
+			faviconAssetId: this.nullableId(),
+		};
+	}
+
+	private previewSignals(): Record<SetSlot, WritableSignal<IAttachment | null>> {
+		return Object.fromEntries(SET_SLOTS.map((slot) => [slot, signal<IAttachment | null>(null)])) as Record<
+			SetSlot,
+			WritableSignal<IAttachment | null>
+		>;
 	}
 
 	private nullableId() {
 		return inject(FormBuilder).control<string | null>(null);
 	}
 
-	private preview(assetId: string | null, target: { set(value: IAttachment | null): void }) {
+	private preview(assetId: string | null | undefined, target: { set(value: IAttachment | null): void }) {
 		if (assetId) this.media.get(assetId).subscribe((image) => target.set(image));
 	}
 
-	select(slot: Slot, image: IAttachment | null | undefined) {
-		this.form.controls[slot].setValue(image ? String(image.id) : null);
+	/** Sets or clears one logo slot of the shop's or the admin's set. */
+	select(set: LogoSetName, slot: SetSlot, image: IAttachment | null | undefined) {
+		const control = set === 'shop' ? this.form.controls[slot] : this.form.controls.admin.controls[slot];
+		control.setValue(image ? String(image.id) : null);
 	}
 
-	useSealAsFavicon(ticked: boolean) {
-		this.form.controls.sealAsFavicon.setValue(ticked);
-		this.sealAsFavicon.set(ticked);
+	selectShareImage(image: IAttachment | null | undefined) {
+		this.form.controls.shareImageAssetId.setValue(image ? String(image.id) : null);
+	}
+
+	useSealAsFavicon(set: LogoSetName, ticked: boolean) {
+		const control =
+			set === 'shop' ? this.form.controls.sealAsFavicon : this.form.controls.admin.controls.sealAsFavicon;
+		control.setValue(ticked);
+		this.sealAsFavicon[set].set(ticked);
+	}
+
+	useAdminLogos(on: boolean) {
+		this.form.controls.adminOwnLogos.setValue(on);
+		this.adminOwnLogos.set(on);
+	}
+
+	/** Typing in a store link means it must be checked again before Save. */
+	editAppLink(store: BrandAppStore) {
+		const empty = !this.form.controls.apps.controls[store].value.trim();
+		this.appState[store].set(empty ? 'saved' : 'unchecked');
+		this.appName[store].set(null);
+	}
+
+	validateAppLink(store: BrandAppStore) {
+		const url = this.form.controls.apps.controls[store].value.trim();
+		if (!url) return;
+		this.appState[store].set('checking');
+		this.gateway.checkAppLink(store, url).subscribe({
+			next: (result) => {
+				this.appState[store].set(result.found ? 'found' : 'missing');
+				this.appName[store].set(result.name);
+			},
+			error: () => this.appState[store].set('unknown'),
+		});
+	}
+
+	/** Save waits until every changed store link has been found in its store. */
+	appLinksReady(): boolean {
+		return this.stores.every((store) => ['saved', 'found'].includes(this.appState[store.key]()));
 	}
 
 	save() {
-		this.gateway.save(this.form.getRawValue()).subscribe(() => {
-			void this.queryClient.invalidateQueries({ queryKey: ['brand'] });
-			this.notifier.showSuccess(this.transloco.translate('brand_saved'));
+		if (!this.appLinksReady()) {
+			this.notifier.showError(this.transloco.translate('app_link_check_first'));
+			return;
+		}
+		this.gateway.save(this.form.getRawValue() as BrandSettings).subscribe({
+			next: () => {
+				void this.queryClient.invalidateQueries({ queryKey: ['brand'] });
+				this.notifier.showSuccess(this.transloco.translate('brand_saved'));
+			},
+			error: () => this.notifier.showError(this.transloco.translate('brand_rejected')),
 		});
 	}
 }

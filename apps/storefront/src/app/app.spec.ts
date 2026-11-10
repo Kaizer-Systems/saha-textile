@@ -90,7 +90,7 @@ describe('App', () => {
 		expect(shown('/maintenance')).toBe(false);
 	});
 
-	it('applies dark mode, right-to-left, the icon and only the share picture from the theme', () => {
+	it('applies dark mode and right-to-left from the theme, but not its demo share picture', () => {
 		const { siteConfig, meta, seo } = render();
 		siteConfig.set({
 			general: { mode: 'dark', language_direction: 'rtl' },
@@ -109,7 +109,8 @@ describe('App', () => {
 		expect(document.body.classList.contains('rtl')).toBe(true);
 		// The theme file's text is one language for every page, so titles and descriptions come
 		// from each page instead (LocaleSeo).
-		expect(seo.setDefaultImage).toHaveBeenCalledWith('/og.jpg');
+		// The default share picture comes from the Brand Kit now (Layout), never the theme file.
+		expect(seo.setDefaultImage).not.toHaveBeenCalled();
 		expect(meta.updateTag).not.toHaveBeenCalled();
 	});
 

@@ -190,6 +190,20 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		respectSlotMaxWidth: false,
 	}),
 	role({
+		// The Brand Kit's link preview picture (owner, 2026-11-10): pages shared without their own
+		// picture. Padded on white, so with no picture chosen the computer logo makes a clean card.
+		key: 'site_share',
+		label: 'Shop link preview',
+		purposes: ['brand'],
+		widths: [1200],
+		aspect: { width: 1200, height: 630 },
+		fit: 'pad',
+		format: 'image/jpeg',
+		quality: 84,
+		primaryOnly: false,
+		respectSlotMaxWidth: false,
+	}),
+	role({
 		key: 'banner',
 		label: 'Banner',
 		purposes: ['banner'],

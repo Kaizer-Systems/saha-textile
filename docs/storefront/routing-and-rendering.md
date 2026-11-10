@@ -44,7 +44,7 @@ A page entry does four small jobs:
 4. Exports the feature as the default route component.
 
 ```ts title="Conceptual route entry"
-import { ScrollPositionGuard } from '@core/guards/scroll-position.guard';
+import { ScrollPositionGuard } from '@core/guards/scroll.guard';
 import { Collections } from '@features/shop/collection/collection';
 
 export const routeMeta = { canActivate: [ScrollPositionGuard] };
@@ -54,6 +54,21 @@ export default Collections;
 Keep querying, filtering, mutation, and presentation orchestration inside the appropriate feature/data layer.
 
 The registration route carries both guards. `guestOnlyGuard` keeps a signed-in customer on `/account/dashboard`. Its `canDeactivate` guard distinguishes in-app abandonment from a browser reload. Leaving discards server-held pending signup state without blocking navigation; reload does not run the guard and the page resumes through `GET /auth/storefront/signup`. Login, one-time-code, and forgot-password use the same guest-only activation guard.
+
+## Scroll position after navigation
+
+`ScrollMemory` (`core/navigation/scroll-memory.ts`), started by `App`, decides where the page sits after a navigation:
+
+| Navigation                  | Result                                        |
+| --------------------------- | --------------------------------------------- |
+| A link or `router.navigate` | The new page opens at its top                 |
+| Back or Forward             | The page returns to where the shopper left it |
+| A URL with a `#fragment`    | The element with that id scrolls into view    |
+| The first page of a visit   | Left where the browser put it                 |
+
+A restored position waits up to two seconds for content that loads after the route (product grids) before scrolling. Scrolls are instant, never smooth.
+
+The router's own `withInMemoryScrolling` is set to `disabled`. Angular only scrolls once the application is stable after hydration, and the storefront keeps timers running inside Angular's zone (query cache clean-up, countdowns, refresh intervals), so that moment may never come. `ScrollPositionGuard` remains on the pages that list it and only makes sure `ScrollMemory` is running.
 
 ## Locale URLs
 

@@ -40,30 +40,31 @@ The page layer stays thin. A route identifies the customer journey and composes 
 
 ## Capabilities
 
-| Capability     | How it works                                                                                                                                  |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Routing        | About 40 page files, including dynamic slug and catch-all routes                                                                              |
-| Rendering      | Dynamic server rendering through Nitro. Nothing is prerendered                                                                                |
-| Locale URLs    | Every page is served under `/en/` or `/bn/`. The router base carries the locale                                                               |
-| Catalogue      | Home, category pages, cards, product pages and redirects read `/catalog/*`                                                                    |
-| Search         | The menu-bar search and the Search page share one suggestion box; see [Search](./search.md)                                                   |
-| First paint    | The header menu renders on the server; product pages show a skeleton while loading                                                            |
-| Purchase popup | `/catalog/recent-purchases` shows real sales from the last day, and stays hidden without any                                                  |
-| Product media  | Cards and the gallery use `ResolvedImage` with `srcset`, and banners use `<picture>`                                                          |
-| Cart           | Held and priced by the API at `/cart/current`; classic NgRx mirrors it in the browser                                                         |
-| Saved lists    | Wishlist hearts saved to the account (a session cookie for guests), and a compare page                                                        |
-| Content        | Blog, launch and sale countdowns with the event popup, and Contact Us with store cards and a message form                                     |
-| Authentication | Verified signup, email or phone sign-in, social sign-in, recovery and guarded account routes                                                  |
-| Account        | Profile, addresses, sign-in methods, sessions and contact changes use the API                                                                 |
-| Stock alerts   | **Notify me** on a sold-out variant, with replay after sign-in                                                                                |
-| Brand          | Logos, icons, the browser bar colour, footer profiles and app badges come from `/storefront/brand`; a badge shows only when its link is saved |
-| Sharing        | The product page's share button uses the phone's share sheet where there is one, else a popover; its apps come from `/catalog/share-settings` |
-| Short address  | `/p/<product code>` looks up the slug through `/catalog/code/:code` and answers with a 301 to the product page, for Instagram captions        |
-| Newsletter     | The popup opens on half-page scroll, after 30 seconds or on desktop exit intent, and never on cart, checkout, account or sign-in pages        |
-| SEO            | Canonical and `hreflang` tags, `/sitemap.xml`, `/robots.txt`, redirects and `410` answers                                                     |
-| Home banners   | The hero and the promo row read `/storefront/banners`; see [Home page banners](#home-page-banners)                                            |
-| Header menu    | Fixed menu entries plus the live category tree; see [Header menu](#header-menu)                                                               |
-| Cookie consent | A first-visit box and a Cookie settings popup; see [Cookie box](#cookie-box)                                                                  |
+| Capability      | How it works                                                                                                                                                                     |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Routing         | About 40 page files, including dynamic slug and catch-all routes                                                                                                                 |
+| Rendering       | Dynamic server rendering through Nitro. Nothing is prerendered                                                                                                                   |
+| Locale URLs     | Every page is served under `/en/` or `/bn/`. The router base carries the locale                                                                                                  |
+| Catalogue       | Home, category pages, cards, product pages and redirects read `/catalog/*`                                                                                                       |
+| Search          | The menu-bar search and the Search page share one suggestion box; see [Search](./search.md)                                                                                      |
+| First paint     | The header menu renders on the server; product pages show a skeleton while loading                                                                                               |
+| Purchase popup  | `/catalog/recent-purchases` shows real sales from the last day, and stays hidden without any                                                                                     |
+| Product media   | Cards and the gallery use `ResolvedImage` with `srcset`, and banners use `<picture>`                                                                                             |
+| Product gallery | The main photo slider moves on by itself, but holds while the pointer is over a photo (the hover zoom) and while the full-screen gallery, opened by a click or a tap, is showing |
+| Cart            | Held and priced by the API at `/cart/current`; classic NgRx mirrors it in the browser                                                                                            |
+| Saved lists     | Wishlist hearts saved to the account (a session cookie for guests), and a compare page                                                                                           |
+| Content         | Blog, launch and sale countdowns with the event popup, and Contact Us with store cards and a message form                                                                        |
+| Authentication  | Verified signup, email or phone sign-in, social sign-in, recovery and guarded account routes                                                                                     |
+| Account         | Profile, addresses, sign-in methods, sessions and contact changes use the API                                                                                                    |
+| Stock alerts    | **Notify me** on a sold-out variant, with replay after sign-in                                                                                                                   |
+| Brand           | Logos, icons, the browser bar colour, footer profiles and app badges come from `/storefront/brand`; a badge shows only when its link is saved                                    |
+| Sharing         | The product page's share button uses the phone's share sheet where there is one, else a popover; its apps come from `/catalog/share-settings`                                    |
+| Short address   | `/p/<product code>` looks up the slug through `/catalog/code/:code` and answers with a 301 to the product page, for Instagram captions                                           |
+| Newsletter      | The popup opens on half-page scroll, after 30 seconds or on desktop exit intent, and never on cart, checkout, account or sign-in pages                                           |
+| SEO             | Canonical and `hreflang` tags, `/sitemap.xml`, `/robots.txt`, redirects and `410` answers                                                                                        |
+| Home banners    | The hero and the promo row read `/storefront/banners`; see [Home page banners](#home-page-banners)                                                                               |
+| Header menu     | Fixed menu entries plus the live category tree; see [Header menu](#header-menu)                                                                                                  |
+| Cookie consent  | A first-visit box and a Cookie settings popup; see [Cookie box](#cookie-box)                                                                                                     |
 
 ## Installable app
 

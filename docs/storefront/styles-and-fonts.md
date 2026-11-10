@@ -25,14 +25,14 @@ The storefront keeps its template theme's look. Its styles reach the browser as 
 
 `src/styles.css` is linked from `index.html`, so the server-rendered page is styled before it first paints. Importing it from `main.ts` instead would let the dev server add it from JavaScript, and the page would paint unstyled first. Its imports run in this order, and the order matters:
 
-| Order | File                                   | What it holds                                                           |
-| ----- | -------------------------------------- | ----------------------------------------------------------------------- |
-| 1     | `src/fonts.css`                        | The `@font-face` rules for the self-hosted text fonts                   |
-| 2     | `bootstrap/dist/css/bootstrap.min.css` | Bootstrap 5                                                             |
-| 3     | `@damjantonkli/ngx-toastr/toastr`      | Toast messages                                                          |
-| 4     | `swiper/swiper-bundle.css`             | Swiper's core rules plus arrows, dots and zoom, for the product gallery |
-| 5     | `src/scss/app.gen.css`                 | The theme, compiled from `src/scss/app.scss`                            |
-| 6     | `src/scss/theme-color.css`             | The shop's theme colour, which overrides the theme's default            |
+| Order | File                                   | What it holds                                                                       |
+| ----- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1     | `src/fonts.css`                        | The `@font-face` rules for the self-hosted text fonts                               |
+| 2     | `bootstrap/dist/css/bootstrap.min.css` | Bootstrap 5                                                                         |
+| 3     | `@damjantonkli/ngx-toastr/toastr`      | Toast messages                                                                      |
+| 4     | `swiper/swiper-bundle.css`             | Swiper's core rules plus arrows, dots and zoom, for the full-screen product gallery |
+| 5     | `src/scss/app.gen.css`                 | The theme, compiled from `src/scss/app.scss`                                        |
+| 6     | `src/scss/theme-color.css`             | The shop's theme colour, which overrides the theme's default                        |
 
 `swiper-bundle.css` already contains every rule in `swiper/css`, so the core file is not imported separately.
 
@@ -41,13 +41,24 @@ The storefront keeps its template theme's look. Its styles reach the browser as 
 The Analog dev server cannot resolve the theme's relative SCSS imports, so dart-sass compiles them. `pnpm --filter @saha-textile/storefront styles` writes two files:
 
 - `src/scss/app.gen.css` from `src/scss/app.scss`: the theme in light colours.
-- `public/assets/css/theme-dark.gen.css` from `src/scss/dark.scss`: the dark mode, described below.
+- `public/assets/css/theme-dark.gen.css`: the dark mode's colour changes, described below. Sass first compiles `src/scss/dark.scss` to `src/scss/dark-copy.gen.css`, then `scripts/build-dark-theme.mjs` reduces it.
 
-The script runs before `dev`, `build` and `lint`. A running dev server does not recompile SCSS, so run `styles` (or `styles:watch`) after changing a theme file. Both outputs are generated and ignored by git. The admin works the same way with its own `styles` script.
+The script runs before `dev`, `build` and `lint`. A running dev server does not recompile SCSS, so run `styles` after changing a theme file. `styles:watch` recompiles only the light theme; run `styles` once more to refresh the dark file. Both outputs are generated and ignored by git. The admin works the same way with its own `styles` script.
 
 ## Dark mode
 
-The theme builds dark mode by compiling the whole theme a second time with dark variables, with every rule under `.dark`. That copy is about as large as the light theme (about 1 MB, about 119 KB gzip), so it lives in its own file instead of the global stylesheet.
+The theme builds dark mode by compiling the whole theme a second time with dark variables, with every rule under `.dark`. Loaded as it is, that copy repeats every size, spacing and font rule, and because `.dark x` outranks `x` it undoes the shop's own layout work wherever that differs from the original theme (logo sizes, the hero's padding, the footer's logo plate).
+
+So `scripts/build-dark-theme.mjs` keeps only what dark mode is meant to change. It walks the dark copy rule by rule, matches each rule to the light rule with the same selector in the same media query (the n-th occurrence to the n-th, because the theme repeats some selectors), and keeps a declaration only when:
+
+- its value differs from the light value, and
+- it is a colour property: `color`, backgrounds, border colours, shadows, `fill`, `stroke`, outline colour or a custom property.
+
+Border and outline shorthands are rewritten to their colour longhand (`border: 1px solid #333` becomes `border-color: #333`), so dark mode can never add a border width the light theme does not have. Keyframes, font faces and the theme's random demo confetti are dropped. The script prints what it kept and how many non-colour declarations it left out. The result is about 1,170 declarations, about 110 KB raw and 12 KB compressed, instead of a 1 MB copy.
+
+Light and dark pages therefore have identical layout. A Playwright comparison of every visible element's position, size, padding, margin and font on 22 page types at 390, 768, 1024, 1280 and 1920 px found no difference.
+
+Some colours still come from rules outside the theme (component styles and the theme's own `html.dark` rules in `themes/_dark.scss`, which are part of the light build). Those are handled one by one.
 
 - **When it applies.** `ThemeModeStore` (`core/brand/theme-mode.ts`), created by `App`, decides the mode: the shopper's choice from the `st_theme` cookie, or, without a choice, `general.mode` in `site-config.json` (the site mode). When the Brand Kit's **Show the light/dark switch in the shop** is off, the cookie is ignored and everyone gets the site mode. `applyThemeMode`, run by the store whenever the mode changes, adds the `dark` class to `<html>` and appends a stylesheet link with the id `theme-dark` that loads `theme-dark.gen.css` when the mode is `dark`, and removes both otherwise.
 - **No flash.** The function also runs during server rendering, so a dark page arrives with the stylesheet already linked. In the browser it finds the server's link by its id and does not add a second one.

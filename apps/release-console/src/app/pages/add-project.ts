@@ -26,17 +26,17 @@ export const STEPS = [
 	'Project menus',
 	'Done',
 ];
-const SOURCE: SourceCodeVendor[] = ['github', 'gitlab', 'bitbucket', 'azure-repos'];
-const CLOUDS: CloudVendor[] = ['digitalocean', 'aws', 'gcp', 'azure'];
-const EDGES: EdgeVendor[] = ['cloudflare', 'cloudfront', 'fastly'];
-const SOURCE_NOTES: Record<SourceCodeVendor, string> = {
+export const SOURCE: SourceCodeVendor[] = ['github', 'gitlab', 'bitbucket', 'azure-repos'];
+export const CLOUDS: CloudVendor[] = ['digitalocean', 'aws', 'gcp', 'azure'];
+export const EDGES: EdgeVendor[] = ['cloudflare', 'cloudfront', 'fastly'];
+export const SOURCE_NOTES: Record<SourceCodeVendor, string> = {
 	github: 'pull requests, Actions, environments, packages',
 	gitlab: 'merge requests, GitLab CI',
 	bitbucket: 'pull requests, Pipelines',
 	'azure-repos': 'pull requests, Azure Pipelines',
 };
 /** Own menus a repository can list in its `.release-console.json`. */
-const OWN_MENUS = CONSOLE_MENU.menu.find((g) => g.label === 'Shop')?.subs.flatMap((s) => s.items) ?? [];
+export const OWN_MENUS = CONSOLE_MENU.menu.find((g) => g.label === 'Shop')?.subs.flatMap((s) => s.items) ?? [];
 
 export const slugOf = (text: string): string =>
 	text
@@ -50,6 +50,8 @@ interface RepoDraft {
 	repository: string;
 	role: string;
 	menus: string[];
+	/** What reading the repository's `.release-console.json` found. */
+	file: string;
 }
 interface EnvDraft {
 	name: string;
@@ -217,6 +219,7 @@ interface EnvDraft {
 											<th>Repository</th>
 											<th>Vendor</th>
 											<th>Role</th>
+											<th>Own menus</th>
 											<th></th>
 										</tr>
 									</thead>
@@ -226,6 +229,7 @@ interface EnvDraft {
 												<td class="rc-mono">{{ r.repository }}</td>
 												<td>{{ names[r.vendor] }}</td>
 												<td>{{ r.role || '—' }}</td>
+												<td class="rc-mono">{{ r.file }}</td>
 												<td>
 													<button
 														type="button"
@@ -237,7 +241,7 @@ interface EnvDraft {
 												</td>
 											</tr>
 										} @empty {
-											<tr><td colspan="4">None yet.</td></tr>
+											<tr><td colspan="5">None yet.</td></tr>
 										}
 									</tbody>
 								</table>
@@ -594,13 +598,43 @@ export class AddProject {
 			return;
 		}
 		if (this.repos().some((r) => r.repository === repository)) return;
+		const vendor = this.repoVendor();
 		this.repos.update((rs) => [
 			...rs,
-			{ vendor: this.repoVendor(), repository, role: role.value.trim(), menus: [] },
+			{
+				vendor,
+				repository,
+				role: role.value.trim(),
+				menus: [],
+				file: vendor === 'github' ? 'reading…' : 'add menus by hand',
+			},
 		]);
 		box.value = '';
 		role.value = '';
 		this.message.set('');
+		if (vendor === 'github') void this.readFile(repository);
+	}
+
+	/** Prefills the repository's own menus from its `.release-console.json`, read through the GitHub CLI sign-in. */
+	private async readFile(repository: string): Promise<void> {
+		const set = (file: string, menus?: string[]) =>
+			this.repos.update((rs) =>
+				rs.map((r) => (r.repository !== repository ? r : { ...r, file, menus: menus ?? r.menus })),
+			);
+		try {
+			const a = await this.api.repositoryFile({ vendor: 'github', repository });
+			if (a.state !== 'ok') set(a.message);
+			else if (!a.data.found) set('no .release-console.json');
+			else {
+				const menus = a.data.menus.filter((m) => !!CONSOLE_MENU.screens[m]);
+				set(
+					`menus from .release-console.json: ${menus.map((m) => this.menuLabel(m)).join(', ') || 'none'}`,
+					menus,
+				);
+			}
+		} catch (err) {
+			set((err as Error).message);
+		}
 	}
 	protected dropRepo(repository: string): void {
 		this.repos.update((rs) => rs.filter((r) => r.repository !== repository));

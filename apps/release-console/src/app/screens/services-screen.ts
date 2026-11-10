@@ -4,6 +4,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { formatBytes } from './format';
 import { ConsoleApi } from '../data/console-api';
+import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 
 /** Every container in the chosen environment, refreshed every 5 seconds. Local stack is live today. */
@@ -11,13 +12,12 @@ import { ConsoleState } from '../data/console-state';
 	selector: 'rc-services-screen',
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		@if (state.environment() !== 'local') {
+		@if (!onThisComputer()) {
 			<div class="rc-banner amber small">
 				<span class="rc-dot amber"></span>
 				<div>
-					<b>No {{ state.environment() }} server is linked yet.</b>
-					The staging droplet is created after development, as planned; its containers appear here once its
-					agent is linked.
+					<b>No server is linked for this environment.</b>
+					Its containers appear here once the console's agent is linked on its server.
 				</div>
 			</div>
 		} @else if (services.isPending()) {
@@ -37,7 +37,7 @@ import { ConsoleState } from '../data/console-state';
 				<div class="rc-stat">
 					<span class="rc-label">Containers</span>
 					<b>{{ rows().length }}</b>
-					<small>saha-textile stack</small>
+					<small>{{ repoId() }} stack</small>
 				</div>
 				<div class="rc-stat">
 					<span class="rc-label">Running</span>
@@ -105,11 +105,18 @@ import { ConsoleState } from '../data/console-state';
 export class ServicesScreen {
 	protected readonly state = inject(ConsoleState);
 	private readonly api = inject(ConsoleApi);
+	private readonly ctx = inject(ConsoleContext);
+	protected readonly repoId = computed(() => this.ctx.repoId() ?? '');
+	/** An environment with no cloud runs on this computer, so Docker here is its truth. */
+	protected readonly onThisComputer = computed(() => {
+		const env = this.ctx.repo()?.environments.find((e) => e.name === this.state.environment());
+		return !!env && env.cloudId === null;
+	});
 	protected readonly services = injectQuery(() => ({
-		queryKey: ['local-services'],
-		queryFn: () => this.api.localServices(),
+		queryKey: ['local-services', this.repoId()],
+		queryFn: () => this.api.localServices(this.repoId()),
 		refetchInterval: 5000,
-		enabled: this.state.environment() === 'local',
+		enabled: this.onThisComputer() && !!this.repoId(),
 	}));
 	protected readonly rows = computed(() => this.services.data()?.services ?? []);
 	protected readonly running = computed(() => this.rows().filter((s) => s.state === 'running').length);

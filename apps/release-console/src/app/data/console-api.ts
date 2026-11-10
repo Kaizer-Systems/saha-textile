@@ -16,6 +16,9 @@ import {
 	type Project,
 	type PullRequest,
 	type Readiness,
+	type Repository,
+	type RepositoryFileFound,
+	type RepositoryFileQuery,
 	type ServicesSnapshot,
 	type SlotKeys,
 	type StoreKey,
@@ -36,10 +39,12 @@ import {
 	projectSchema,
 	pullRequestsAnswerSchema,
 	readinessSchema,
+	repositoryFileAnswerSchema,
 	servicesSnapshotSchema,
 	unlockAnswerSchema,
 	workflowRunsAnswerSchema,
 } from '@saha-textile/release-console-contracts';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { ConsoleSession } from './session';
 
@@ -67,6 +72,7 @@ type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export class ConsoleApi {
 	private readonly session = inject(ConsoleSession);
 	private readonly router = inject(Router);
+	private readonly queries = inject(QueryClient);
 
 	private async call<T>(
 		method: Method,
@@ -85,10 +91,7 @@ export class ConsoleApi {
 			body: body === undefined ? undefined : JSON.stringify(body),
 			signal: AbortSignal.timeout(timeout),
 		});
-		if (res.status === 401 && !path.startsWith('/api/lock/')) {
-			this.session.clear();
-			void this.router.navigate(['/lock']);
-		}
+		if (res.status === 401 && !path.startsWith('/api/lock/')) this.forget();
 		if (!res.ok) {
 			const detail: unknown = await res.json().catch(() => null);
 			const message =
@@ -108,8 +111,15 @@ export class ConsoleApi {
 	unlock(pin: string): Promise<UnlockAnswer> {
 		return this.call('POST', '/api/lock/unlock', unlockAnswerSchema, { pin });
 	}
-	lockNow(): Promise<unknown> {
-		return this.call('POST', '/api/lock/lock', okAnswerSchema, {});
+	/** Locks the console: ends the session on the API, forgets it and every cached answer here. */
+	async lockNow(): Promise<void> {
+		await this.call('POST', '/api/lock/lock', okAnswerSchema, {}).catch(() => undefined);
+		this.forget();
+	}
+	private forget(): void {
+		this.session.clear();
+		this.queries.clear();
+		void this.router.navigate(['/lock']);
 	}
 	changePin(current: string, next: string): Promise<unknown> {
 		return this.call('POST', '/api/lock/pin', okAnswerSchema, { current, next });
@@ -136,6 +146,19 @@ export class ConsoleApi {
 	}
 	setSlotKeys(projectId: string, slot: SlotKeys): Promise<Project> {
 		return this.call('PUT', `/api/projects/${projectId}/slots`, projectSchema, slot);
+	}
+	addRepository(projectId: string, repo: Repository): Promise<Project> {
+		return this.call('POST', `/api/projects/${projectId}/repositories`, projectSchema, repo);
+	}
+	updateRepository(projectId: string, repo: Repository): Promise<Project> {
+		return this.call('PUT', `/api/projects/${projectId}/repositories/${repo.id}`, projectSchema, repo);
+	}
+	removeRepository(projectId: string, repoId: string): Promise<Project> {
+		return this.call('DELETE', `/api/projects/${projectId}/repositories/${repoId}`, projectSchema);
+	}
+	/** A repository's own menus from its `.release-console.json`, read through the GitHub CLI sign-in. */
+	repositoryFile(q: RepositoryFileQuery): Promise<VendorAnswer<RepositoryFileFound>> {
+		return this.call('POST', '/api/repository-file', repositoryFileAnswerSchema, q);
 	}
 
 	/* attention and audit */
@@ -178,10 +201,10 @@ export class ConsoleApi {
 	}
 
 	/* local stack (this computer) */
-	localServices(): Promise<ServicesSnapshot> {
-		return this.call('GET', '/api/local/services', servicesSnapshotSchema);
+	localServices(repo: string): Promise<ServicesSnapshot> {
+		return this.call('GET', `/api/local/services?repo=${encodeURIComponent(repo)}`, servicesSnapshotSchema);
 	}
-	localReadiness(): Promise<Readiness> {
-		return this.call('GET', '/api/local/readiness', readinessSchema);
+	localReadiness(repo: string): Promise<Readiness> {
+		return this.call('GET', `/api/local/readiness?repo=${encodeURIComponent(repo)}`, readinessSchema);
 	}
 }

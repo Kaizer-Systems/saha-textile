@@ -11,12 +11,9 @@ import {
 } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 
-import { QueryClient } from '@tanstack/angular-query-experimental';
-
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
-import { ConsoleSession } from '../data/session';
 import { type ListItem, placeOf, searchList, searchMenu } from '../menu/menu-search';
 
 import type { Project } from '@saha-textile/release-console-contracts';
@@ -76,8 +73,6 @@ const PAGE_WORDS: Record<string, string[]> = {
 export class Shell {
 	private readonly router = inject(Router);
 	private readonly api = inject(ConsoleApi);
-	private readonly session = inject(ConsoleSession);
-	private readonly queries = inject(QueryClient);
 	protected readonly state = inject(ConsoleState);
 	protected readonly ctx = inject(ConsoleContext);
 	protected readonly consolePages = CONSOLE_PAGES;
@@ -208,11 +203,8 @@ export class Shell {
 	protected pick(hit: Hit | undefined): void {
 		if (hit) this.go(hit.link, hit.query);
 	}
-	protected async lockNow(): Promise<void> {
-		await this.api.lockNow().catch(() => undefined);
-		this.session.clear();
-		this.queries.clear();
-		void this.router.navigate(['/lock']);
+	protected lockNow(): void {
+		void this.api.lockNow();
 	}
 
 	protected onSearchKey(e: KeyboardEvent): void {

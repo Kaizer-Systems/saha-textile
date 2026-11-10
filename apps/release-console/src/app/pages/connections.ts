@@ -14,8 +14,16 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { day, when } from './format-time';
 import { ConsoleApi } from '../data/console-api';
 
-/** Kinds the owner can paste here. The GitHub CLI sign-in is made in a terminal, never here. */
-const PASTE_KINDS: KeyKind[] = ['do-read', 'do-change', 'spaces-key', 'cf-read', 'cf-change', 'github-token'];
+/** Kinds the owner can add here. The GitHub CLI sign-in itself is made in a terminal; here it is only linked. */
+const PASTE_KINDS: KeyKind[] = [
+	'do-read',
+	'do-change',
+	'spaces-key',
+	'cf-read',
+	'cf-change',
+	'github-cli',
+	'github-token',
+];
 
 interface SlotChoice {
 	id: string;
@@ -269,29 +277,55 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 					}
 				</div>
 				<div class="rc-form">
-					<label>
-						Key
-						<div class="rc-msearch">
-							<input
-								#value
-								type="password"
-								autocomplete="off"
-								spellcheck="false"
-								[attr.aria-label]="kinds[kind()].label"
-								[attr.placeholder]="kind() === 'spaces-key' ? 'ACCESS_KEY:SECRET' : 'paste the token'"
-							/>
-						</div>
-					</label>
-					<label>
-						Expires
-						<div class="rc-msearch">
-							<input
-								#expires
-								type="date"
-								aria-label="Expiry date"
-							/>
-						</div>
-					</label>
+					@if (kinds[kind()].stored) {
+						<label>
+							Key
+							<div class="rc-msearch">
+								<input
+									#value
+									type="password"
+									autocomplete="off"
+									spellcheck="false"
+									name="value"
+									[attr.aria-label]="kinds[kind()].label"
+									[attr.placeholder]="
+										kind() === 'spaces-key' ? 'ACCESS_KEY:SECRET' : 'paste the token'
+									"
+								/>
+							</div>
+						</label>
+					} @else {
+						<p class="rc-note">
+							Nothing is pasted: the console uses the GitHub CLI's own sign-in on this computer and checks
+							that it opens each chosen repository.
+						</p>
+					}
+					@if (kind() === 'spaces-key') {
+						<label>
+							Bucket
+							<div class="rc-msearch">
+								<input
+									type="text"
+									name="target"
+									autocomplete="off"
+									placeholder="sgp1/saha-textile-media"
+									aria-label="Spaces region and bucket"
+								/>
+							</div>
+						</label>
+					}
+					@if (kinds[kind()].stored) {
+						<label>
+							Expires
+							<div class="rc-msearch">
+								<input
+									type="date"
+									name="expires"
+									aria-label="Expiry date"
+								/>
+							</div>
+						</label>
+					}
 					<span class="rc-label">Use it for</span>
 					@for (c of slotChoices(); track c.id) {
 						<div
@@ -315,7 +349,7 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 						</p>
 					}
 					<p class="rc-note">
-						The key goes to the macOS Keychain (service “Release Console”, account “{{ p.name }} ·
+						A pasted key goes to the macOS Keychain (service “Release Console”, account “{{ p.name }} ·
 						{{ nextId() }}”) and is checked at once. The console never shows it again. Cloudflare tokens
 						come from the Cloudflare account that holds the domain.
 					</p>
@@ -325,7 +359,7 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 							class="rc-btn primary"
 							[disabled]="busy()"
 						>
-							Store in the Keychain and check
+							{{ kinds[kind()].stored ? 'Store in the Keychain and check' : 'Link and check' }}
 						</button>
 					</div>
 					@if (formMessage()) {
@@ -448,10 +482,13 @@ export class Connections {
 	protected async save(e: Event): Promise<void> {
 		e.preventDefault();
 		const form = e.target as HTMLFormElement;
-		const valueBox = form.querySelector<HTMLInputElement>('input[type=password]');
-		const dateBox = form.querySelector<HTMLInputElement>('input[type=date]');
+		const valueBox = form.querySelector<HTMLInputElement>('input[name=value]');
+		const dateBox = form.querySelector<HTMLInputElement>('input[name=expires]');
+		const targetBox = form.querySelector<HTMLInputElement>('input[name=target]');
+		const kind = this.kind();
 		const value = valueBox?.value.trim() ?? '';
-		if (!value) {
+		const target = targetBox?.value.trim() ?? '';
+		if (KEY_KINDS[kind].stored && !value) {
 			this.formMessage.set('Paste the key first.');
 			return;
 		}
@@ -459,9 +496,12 @@ export class Connections {
 			this.formMessage.set('That does not look like a token: it has spaces, quotes or backslashes.');
 			return;
 		}
+		if (kind === 'spaces-key' && !/^[a-z0-9-]+\/[a-z0-9.-]+$/.test(target)) {
+			this.formMessage.set('Give the bucket as region/bucket, for example sgp1/saha-textile-media.');
+			return;
+		}
 		const p = this.project();
 		const id = this.nextId();
-		const kind = this.kind();
 		this.busy.set(true);
 		this.formMessage.set('Storing in the Keychain and checking with the vendor…');
 		try {
@@ -472,6 +512,7 @@ export class Connections {
 				value,
 				expiresAt: dateBox?.value ? new Date(`${dateBox.value}T23:59:59`).toISOString() : null,
 				note: '',
+				target,
 			});
 			if (valueBox) valueBox.value = '';
 			for (const c of this.slotChoices().filter((c) => this.picked().has(c.id)))

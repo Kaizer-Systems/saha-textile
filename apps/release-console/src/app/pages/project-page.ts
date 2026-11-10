@@ -9,6 +9,7 @@ import { Connections } from './connections';
 import { when } from './format-time';
 import { PageHead } from './page-head';
 import { RepoCi } from './repo-ci';
+import { RepositoryEditor } from './repository-editor';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
@@ -17,7 +18,7 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 /** The project level: every repository at a glance, environments, Attention, Audit and settings. */
 @Component({
 	selector: 'rc-project-page',
-	imports: [PageHead, Connections, RepoCi, NgTemplateOutlet],
+	imports: [PageHead, Connections, RepoCi, NgTemplateOutlet, RepositoryEditor],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (ctx.project(); as p) {
@@ -126,7 +127,10 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 					@case ('settings') {
 						@switch (settingsTab()) {
 							@case ('repositories') {
-								<ng-container *ngTemplateOutlet="repoTable" />
+								<rc-repository-editor
+									[project]="p"
+									[open]="repo()"
+								/>
 							}
 							@case ('environments') {
 								<ng-container *ngTemplateOutlet="envTable" />
@@ -342,6 +346,8 @@ export class ProjectPage {
 	protected readonly ctx = inject(ConsoleContext);
 	readonly page = input('overview');
 	readonly tab = input<string | undefined>(undefined);
+	/** The repository opened from its menu's Repository settings. */
+	readonly repo = input<string | undefined>(undefined);
 	protected readonly when = when;
 	protected readonly settingsTabs = SETTINGS_TABS;
 	protected readonly removeMessage = signal('');

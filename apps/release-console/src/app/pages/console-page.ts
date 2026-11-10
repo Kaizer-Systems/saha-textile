@@ -9,7 +9,6 @@ import { when } from './format-time';
 import { PageHead } from './page-head';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
-import { ConsoleSession } from '../data/session';
 
 /** The console level: all projects by workspace, Add a project, Attention, Audit and Console settings. */
 @Component({
@@ -245,7 +244,6 @@ export class ConsolePage {
 	protected readonly router = inject(Router);
 	private readonly api = inject(ConsoleApi);
 	private readonly ctx = inject(ConsoleContext);
-	private readonly session = inject(ConsoleSession);
 	readonly page = input('projects');
 	protected readonly when = when;
 	protected readonly pinMessage = signal('');
@@ -290,10 +288,7 @@ export class ConsolePage {
 		void this.router.navigate(['/p', projectId, page]);
 	}
 	protected lockNow(): void {
-		void this.api.lockNow().finally(() => {
-			this.session.clear();
-			void this.router.navigate(['/lock']);
-		});
+		void this.api.lockNow();
 	}
 	protected async changePin(e: Event, current: string, next: string): Promise<void> {
 		e.preventDefault();

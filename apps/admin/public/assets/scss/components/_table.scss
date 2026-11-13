@@ -368,6 +368,21 @@ th {
 	vertical-align: middle;
 }
 
+// A table whose first column stays in place while the other columns scroll sideways on a
+// narrow screen (Settings › Communications). The column paints the card colour so the
+// scrolled cells pass under it, and draws its right-hand line as an inset shadow: with
+// collapsed table borders a real border stays with the grid and scrolls away.
+// Dark mode repaints both in themes/_dark.scss.
+.table-sticky-first {
+	> :not(caption) > tr > :first-child {
+		position: sticky;
+		left: 0;
+		z-index: 1;
+		background-color: $white;
+		box-shadow: inset -1px 0 0 var(--bs-table-border-color);
+	}
+}
+
 .table {
 	margin-bottom: $table-b-margin;
 

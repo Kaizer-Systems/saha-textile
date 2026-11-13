@@ -102,6 +102,7 @@ const sidebars: SidebarsConfig = {
 						'admin/routing-and-shell',
 						'admin/search',
 						'admin/brand-kit',
+						'admin/communications',
 						'admin/state-and-data',
 						'admin/home-dashboard',
 						'admin/forms-tables-and-crud',

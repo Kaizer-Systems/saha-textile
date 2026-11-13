@@ -30,6 +30,10 @@ export default [
 		loadComponent: () => import('./mailboxes/mailboxes').then((m) => m.MailboxesSettings),
 	},
 	{
+		path: 'communications',
+		loadComponent: () => import('./communications/communications').then((m) => m.CommunicationsSettings),
+	},
+	{
 		path: 'notifications',
 		loadComponent: () =>
 			import('./notification-settings/notification-settings').then((m) => m.NotificationSettings),

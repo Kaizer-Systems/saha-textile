@@ -77,6 +77,7 @@ const KEYWORDS: Record<string, string[]> = {
 	setting_brand: ['logo', 'brand', 'identity'],
 	setting_stores: ['branch', 'address', 'map', 'hours', 'contact'],
 	setting_mailboxes: ['gmail', 'email', 'google', 'mail'],
+	setting_communications: ['message', 'channel', 'sms', 'whatsapp', 'email', 'otp'],
 	setting_notifications: ['sms', 'whatsapp', 'email', 'otp', 'msg91', 'template'],
 };
 

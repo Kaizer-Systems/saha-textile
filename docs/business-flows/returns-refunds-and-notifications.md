@@ -4,7 +4,7 @@ wide: true
 description: Item return, financial reversal, shipment consequences, and multi-channel communication boundaries.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-14'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/modal/refund-modal
     - apps/admin/src/app/features/refund
@@ -86,7 +86,7 @@ A launch or sale event's message is a marketing message. Publishing the event se
 
 Each channel and category pair has one settings row, held in the database and changed only by holders of `setting.edit`. A row can record a plan limit and a warning threshold, which defaults to 80%. With `autoDisableAtLimit` on, reaching the limit stops the pair. Settings hold no provider secrets.
 
-Every attempt writes an outbox row with a hashed destination. A suppressed send is an expected outcome, not an error. Its status is `suppressed_channel_disabled`, `suppressed_no_consent` or `suppressed_plan_limit`.
+Every attempt writes an outbox row with a hashed destination. A suppressed send is an expected outcome, not an error. Its status is `suppressed_channel_disabled`, `suppressed_use_disabled`, `suppressed_no_consent` or `suppressed_plan_limit`. `suppressed_use_disabled` means Settings › Communications has that message switched off on that channel; the channel kill switch is checked first and still wins. See [Communications](../admin/communications.md).
 
 ## Delivery rules
 

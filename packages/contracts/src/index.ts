@@ -48,3 +48,4 @@ export * from './mailbox';
 export * from './wishlist';
 export * from './search-term';
 export * from './shop-event';
+export * from './communication-use';

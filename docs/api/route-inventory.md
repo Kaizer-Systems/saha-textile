@@ -4,7 +4,7 @@ wide: true
 description: Every API route with its access rule.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-14'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -199,6 +199,15 @@ The command generates a password, prints it once, stores only its Argon2 hash an
 | `PUT`   | `/admin/notifications/templates` | `setting.edit`  | Upsert template metadata and MSG91 Flow/WhatsApp ids (audited)    |
 
 These routes manage non-secret settings. The MSG91 key stays in the API environment.
+
+## Admin communications routes
+
+| Method | Route                   | Access          | Purpose                                                                                    |
+| ------ | ----------------------- | --------------- | ------------------------------------------------------------------------------------------ |
+| `GET`  | `/admin/communications` | `setting.index` | Every approved message with its email, SMS and WhatsApp switches                           |
+| `PUT`  | `/admin/communications` | `setting.edit`  | Switch one message on or off for one channel (password for a cell with a warning; audited) |
+
+See [Communications](../admin/communications.md) for the rules.
 
 ## Admin customer routes
 

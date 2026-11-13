@@ -4,10 +4,12 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { HttpAdminCommunicationsGateway } from './admin-communications/http-admin-communications.gateway';
 import { HttpAdminCustomersGateway } from './admin-customers/http-admin-customers.gateway';
 import { HttpAdminNotificationsGateway } from './admin-notifications/http-admin-notifications.gateway';
 import { HttpAdminRolesGateway } from './admin-roles/http-admin-roles.gateway';
 import { HttpAdminUsersGateway } from './admin-users/http-admin-users.gateway';
+import { QUIET_ERRORS } from './interceptors/global-error-handler.interceptor';
 import { ContentBlocksGateway, YouTubeGateway } from './media/content-blocks.gateway';
 import { MediaGateway } from './media/media.gateway';
 import { ReviewsGateway } from './media/reviews.gateway';
@@ -34,6 +36,18 @@ describe('HttpAdminNotificationsGateway', () => {
 		expect(url(http.get)).toMatch(/\/templates$/);
 		gateway.upsertTemplate({ key: 'k', channel: 'sms', category: 'marketing', name: 'n' });
 		expect(http.put).toHaveBeenCalledOnce();
+	});
+});
+
+describe('HttpAdminCommunicationsGateway', () => {
+	it('reads the table and changes one cell quietly', () => {
+		const gateway = TestBed.inject(HttpAdminCommunicationsGateway);
+		gateway.settings();
+		expect(url(http.get)).toMatch(/\/admin\/communications$/);
+		gateway.change({ use: 'order_shipped', channel: 'sms', on: false });
+		expect(url(http.put)).toMatch(/\/admin\/communications$/);
+		expect(http.put.mock.lastCall?.[1]).toEqual({ use: 'order_shipped', channel: 'sms', on: false });
+		expect(http.put.mock.lastCall?.[2].context.get(QUIET_ERRORS)).toBe(true);
 	});
 });
 

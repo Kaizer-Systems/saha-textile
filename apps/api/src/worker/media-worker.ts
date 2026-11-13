@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
 import {
 	MongoAuditLogRepository,
+	MongoCommunicationSwitchRepository,
 	MongoConsentRepository,
 	MongoCustomerRepository,
 	MongoMediaAssetRepository,
@@ -78,6 +79,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		templates: new MongoNotificationTemplateRepository(),
 		outbox: new MongoMessageOutboxRepository(),
 		consent: new MongoConsentRepository(),
+		switches: new MongoCommunicationSwitchRepository(),
 	});
 
 	const processDeps = {

@@ -1023,6 +1023,12 @@ body {
 			background-color: $dark-card-background;
 		}
 
+		// The pinned first column of .table-sticky-first takes the dark card colour and the dark row-line colour.
+		.table-sticky-first > :not(caption) > tr > :first-child {
+			background-color: $dark-card-background;
+			box-shadow: inset -1px 0 0 $dark-border;
+		}
+
 		.page-wrapper {
 			.page-header {
 				.header-wrapper {

@@ -7,6 +7,7 @@ import { BlogModule } from './blog/blog.module';
 import { EventsModule } from './events/events.module';
 import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
+import { CommunicationsModule } from './communications/communications.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { CartLinesModule } from './cart/cart-lines.module';
 import { CookieAudienceGuard } from './common/cookie-audience.guard';
@@ -56,6 +57,7 @@ export class AppModule {
 				BlogModule,
 				EventsModule,
 				StoreLocationsModule,
+				CommunicationsModule,
 				MailboxesModule,
 				WishlistModule,
 			],

@@ -4,7 +4,7 @@ wide: true
 description: Dependency direction, business logic, ports and swappability.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-11-10'
+last_verified: '2026-11-14'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
@@ -37,19 +37,20 @@ Imports point inward. Runtime calls flow outward only through a port that compos
 
 ## Domain modules
 
-| Folder       | Contains                                                                                                                                              |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth/`      | Password, PIN and signup policy, rate-limit policy, effective permissions, client-address scope                                                       |
-| `catalog/`   | Card price, badges, listing filters and facets, product visibility, relations, legacy address resolution, measurements, stock alerts, weekly insights |
-| `media/`     | Ingest policy, derivative plan, asset processing, image resolution, garbage collection, review photos, YouTube feed, storage keys, size roles         |
-| `pricing/`   | Money, discounts and PayPal gross-up                                                                                                                  |
-| `blog/`      | Go Live gaps, address and excerpt rules, reading time, article HTML cleaning                                                                          |
-| `events/`    | Launch and sale event rules, start and end times, sale price resolution                                                                               |
-| `stores/`    | Store location rules for Contact Us                                                                                                                   |
-| `mailbox/`   | Mailbox access rights, folder labels, reply subjects                                                                                                  |
-| `dashboard/` | Admin home periods and stock states                                                                                                                   |
-| `payments/`  | Deciding a payment result from the gateway's reply                                                                                                    |
-| `ports/`     | Repository and provider interfaces                                                                                                                    |
+| Folder            | Contains                                                                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth/`           | Password, PIN and signup policy, rate-limit policy, effective permissions, client-address scope                                                       |
+| `catalog/`        | Card price, badges, listing filters and facets, product visibility, relations, legacy address resolution, measurements, stock alerts, weekly insights |
+| `media/`          | Ingest policy, derivative plan, asset processing, image resolution, garbage collection, review photos, YouTube feed, storage keys, size roles         |
+| `pricing/`        | Money, discounts and PayPal gross-up                                                                                                                  |
+| `blog/`           | Go Live gaps, address and excerpt rules, reading time, article HTML cleaning                                                                          |
+| `events/`         | Launch and sale event rules, start and end times, sale price resolution                                                                               |
+| `communications/` | Settings › Communications change rules and the send gate                                                                                              |
+| `stores/`         | Store location rules for Contact Us                                                                                                                   |
+| `mailbox/`        | Mailbox access rights, folder labels, reply subjects                                                                                                  |
+| `dashboard/`      | Admin home periods and stock states                                                                                                                   |
+| `payments/`       | Deciding a payment result from the gateway's reply                                                                                                    |
+| `ports/`          | Repository and provider interfaces                                                                                                                    |
 
 ## Pricing functions
 
@@ -93,6 +94,7 @@ These functions do not form a checkout engine. Tax, promotion stacking, shipping
 | `BlogPostRepository`, `BlogCategoryRepository`, `BlogTagRepository`                               | Blog posts, categories and tags                      |
 | `ShopEventRepository`                                                                             | Launch and sale events                               |
 | `StoreLocationRepository`                                                                         | The shop's stores                                    |
+| `CommunicationSwitchRepository`                                                                   | Settings › Communications message × channel switches |
 | `WishlistRepository`                                                                              | Saved products per customer                          |
 | `MailboxRepository`, `MailboxAccessRepository`, `MailboxTokenStore`, `ContactMessageRepository`   | Mailboxes, access lists, tokens, Contact Us messages |
 | `DashboardRepository`                                                                             | Admin home figures                                   |

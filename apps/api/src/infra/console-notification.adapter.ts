@@ -3,7 +3,12 @@ import { randomUUID } from 'node:crypto';
 
 import { Injectable, Logger } from '@nestjs/common';
 import type { NotificationChannel, NotificationCategory } from '@saha-textile/contracts';
-import type { NotificationPort, NotificationMessage, NotificationResult } from '@saha-textile/core-domain';
+import type {
+	CommunicationSendGate,
+	NotificationMessage,
+	NotificationPort,
+	NotificationResult,
+} from '@saha-textile/core-domain';
 
 /**
  * Development/test implementation of `NotificationPort`.
@@ -19,8 +24,21 @@ import type { NotificationPort, NotificationMessage, NotificationResult } from '
 export class ConsoleNotificationAdapter implements NotificationPort {
 	private readonly logger = new Logger('Notifications');
 
+	/** Settings › Communications; absent in tests that build the adapter bare. */
+	constructor(private readonly gate: Pick<CommunicationSendGate, 'allows'> | null = null) {}
+
 	async send(message: NotificationMessage): Promise<NotificationResult> {
 		const destinationHash = createHash('sha256').update(message.destination).digest('hex').slice(0, 12);
+		if (this.gate && !(await this.gate.allows(message.templateKey, message.channel))) {
+			this.logger.log(
+				`[console] ${message.channel}/${message.category} template=${message.templateKey} switched off in Settings › Communications`,
+			);
+			return {
+				status: 'suppressed_use_disabled',
+				providerMessageId: null,
+				outboxEntryId: `outbox_${randomUUID()}`,
+			};
+		}
 		this.logger.log(
 			`[console] ${message.channel}/${message.category} template=${message.templateKey} to=sha256:${destinationHash} (payload withheld)`,
 		);

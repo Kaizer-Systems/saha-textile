@@ -4,7 +4,7 @@ description: Mongoose models, repositories, mappers, seed tools and local replic
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-14'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -36,7 +36,7 @@ This page maps the models, repositories and mappers in `packages/adapters-db-mon
 | Auth runtime             | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits`, `pendingSignups`, `pendingContactChanges` | Session, recovery, signup and contact flows          |
 | Authorization            | `roles`, `adminUserRoleAssignments`                                                                                                                                           | Admin authority routes                               |
 | Privacy                  | `consentEvents`                                                                                                                                                               | Consent routes                                       |
-| Governance               | `auditLogs`, `notificationChannelSettings`, `notificationTemplates`, `messageOutbox`                                                                                          | Audit, notification settings, MSG91 adapter          |
+| Governance               | `auditLogs`, `notificationChannelSettings`, `communicationSwitches`, `notificationTemplates`, `messageOutbox`                                                                 | Audit, notification settings, MSG91 adapter          |
 | Media and settings       | `mediaAssets`, `mediaRoles`, `contentBlocks`, `siteSettings`                                                                                                                  | Media library, banners, YouTube settings             |
 | Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                                                               | FAQ, questions and reviews                           |
 | Inventory                | `inventoryLedger`, `inventoryCostLayers`                                                                                                                                      | Repository only; no HTTP workflow                    |

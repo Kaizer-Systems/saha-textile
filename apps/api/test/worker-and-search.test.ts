@@ -94,6 +94,7 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 	return {
 		MongoAuditLogRepository: plain,
 		MongoConsentRepository: plain,
+		MongoCommunicationSwitchRepository: plain,
 		MongoCustomerRepository: plain,
 		MongoMessageOutboxRepository: plain,
 		MongoNotificationSettingsRepository: plain,

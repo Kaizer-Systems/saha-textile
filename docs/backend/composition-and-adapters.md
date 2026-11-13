@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapters and deployment hardening.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-14'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -40,6 +40,7 @@ flowchart TD
     App --> Blog["BlogModule"]
     App --> Events["EventsModule"]
     App --> Stores["StoreLocationsModule"]
+    App --> Communications["CommunicationsModule"]
     App --> Mailboxes["MailboxesModule"]
     App --> Wishlist["WishlistModule"]
 

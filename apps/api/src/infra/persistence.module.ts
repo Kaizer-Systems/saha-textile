@@ -28,6 +28,7 @@ import {
 	MongoShopEventRepository,
 	MongoBlogTagRepository,
 	MongoStoreLocationRepository,
+	MongoCommunicationSwitchRepository,
 	MongoWishlistRepository,
 	MongoMediaAssetRepository,
 	MongoMailboxRepository,
@@ -67,6 +68,7 @@ import { BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import type {
+	CommunicationSwitchRepository,
 	ConsentRepository,
 	MessageOutboxRepository,
 	NotificationSettingsRepository,
@@ -143,6 +145,7 @@ import {
 	BLOG_CATEGORY_REPOSITORY,
 	BLOG_TAG_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
+	COMMUNICATION_SWITCH_REPOSITORY,
 	MAILBOX_PORT,
 	MAILBOX_REPOSITORY,
 	MAILBOX_ACCESS_REPOSITORY,
@@ -280,13 +283,15 @@ import { SalePriceBook } from '../events/sale-price-book';
 				templates: NotificationTemplateRepository,
 				outbox: MessageOutboxRepository,
 				consent: ConsentRepository,
-			) => buildNotificationPort(config, { settings, templates, outbox, consent }),
+				switches: CommunicationSwitchRepository,
+			) => buildNotificationPort(config, { settings, templates, outbox, consent, switches }),
 			inject: [
 				APP_CONFIG,
 				NOTIFICATION_SETTINGS_REPOSITORY,
 				NOTIFICATION_TEMPLATE_REPOSITORY,
 				MESSAGE_OUTBOX_REPOSITORY,
 				CONSENT_REPOSITORY,
+				COMMUNICATION_SWITCH_REPOSITORY,
 			],
 		},
 		// Media pipeline (owner log § Media).
@@ -298,6 +303,8 @@ import { SalePriceBook } from '../events/sale-price-book';
 		{ provide: BLOG_CATEGORY_REPOSITORY, useClass: MongoBlogCategoryRepository },
 		{ provide: BLOG_TAG_REPOSITORY, useClass: MongoBlogTagRepository },
 		{ provide: STORE_LOCATION_REPOSITORY, useClass: MongoStoreLocationRepository },
+		// Settings › Communications (owner decision round 2026-11-13).
+		{ provide: COMMUNICATION_SWITCH_REPOSITORY, useClass: MongoCommunicationSwitchRepository },
 		// Gmail mailboxes and Contact Us (owner log § stores, Contact Us and Gmail mailboxes).
 		{ provide: MAILBOX_REPOSITORY, useClass: MongoMailboxRepository },
 		{ provide: MAILBOX_ACCESS_REPOSITORY, useClass: MongoMailboxAccessRepository },
@@ -409,6 +416,7 @@ import { SalePriceBook } from '../events/sale-price-book';
 		BLOG_CATEGORY_REPOSITORY,
 		BLOG_TAG_REPOSITORY,
 		STORE_LOCATION_REPOSITORY,
+		COMMUNICATION_SWITCH_REPOSITORY,
 		MAILBOX_PORT,
 		MAILBOX_REPOSITORY,
 		MAILBOX_ACCESS_REPOSITORY,

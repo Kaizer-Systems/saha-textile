@@ -1,11 +1,14 @@
 import { Logger } from '@nestjs/common';
 import { Msg91NotificationAdapter } from '@saha-textile/adapters-notifications-msg91';
-import type {
-	ConsentRepository,
-	MessageOutboxRepository,
-	NotificationPort,
-	NotificationSettingsRepository,
-	NotificationTemplateRepository,
+import { COMMUNICATION_USES } from '@saha-textile/contracts';
+import {
+	CommunicationSendGate,
+	type CommunicationSwitchRepository,
+	type ConsentRepository,
+	type MessageOutboxRepository,
+	type NotificationPort,
+	type NotificationSettingsRepository,
+	type NotificationTemplateRepository,
 } from '@saha-textile/core-domain';
 
 import type { AppConfig } from '../config/app-config';
@@ -16,10 +19,13 @@ export interface NotificationStores {
 	templates: NotificationTemplateRepository;
 	outbox: MessageOutboxRepository;
 	consent: ConsentRepository;
+	/** Settings › Communications switches; every sender obeys them. */
+	switches: CommunicationSwitchRepository;
 }
 
 /** One choice of provider, so the API and the worker can never disagree about how mail leaves. */
 export function buildNotificationPort(config: AppConfig, stores: NotificationStores): NotificationPort {
+	const gate = new CommunicationSendGate(COMMUNICATION_USES, stores.switches);
 	const wantMsg91 = config.notifications.provider === 'msg91';
 	const authKey = config.notifications.msg91AuthKey;
 	if (wantMsg91 && authKey) {
@@ -31,7 +37,11 @@ export function buildNotificationPort(config: AppConfig, stores: NotificationSto
 				emailDomain: config.notifications.msg91EmailDomain,
 				whatsappNumber: config.notifications.msg91WhatsappNumber,
 			},
-			...stores,
+			settings: stores.settings,
+			templates: stores.templates,
+			outbox: stores.outbox,
+			consent: stores.consent,
+			gate,
 		});
 	}
 	if (wantMsg91 && !authKey) {
@@ -40,5 +50,5 @@ export function buildNotificationPort(config: AppConfig, stores: NotificationSto
 			'Notifications',
 		);
 	}
-	return new ConsoleNotificationAdapter();
+	return new ConsoleNotificationAdapter(gate);
 }

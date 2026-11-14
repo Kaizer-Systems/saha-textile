@@ -30,6 +30,10 @@
 		h6 {
 			color: rgba($content-color, 0.8);
 		}
+		// The period link sits on the tile's pale tint, where even the deeper teal falls short (R6-3).
+		.txt-primary {
+			color: var(--theme-ink-on-tint) !important;
+		}
 		h3 {
 			color: $title-color;
 			margin-top: 8px;

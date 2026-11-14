@@ -67,17 +67,17 @@
 		margin-top: 10px;
 
 		.paginate_button {
-			color: var(--theme-color) !important;
+			color: var(--theme-ink) !important;
 
 			&:hover {
-				color: var(--theme-color) !important;
+				color: var(--theme-ink) !important;
 				border: none;
 				background: none;
 			}
 
 			&.disabled,
 			&:active {
-				color: var(--theme-color) !important;
+				color: var(--theme-ink) !important;
 				border: 1px solid transparent;
 				background: transparent;
 				box-shadow: none;
@@ -715,7 +715,7 @@ table {
 				&:nth-child(2),
 				&:nth-child(5) {
 					font-weight: 800;
-					color: var(--theme-color);
+					color: var(--theme-ink);
 				}
 
 				&:nth-child(2),
@@ -841,7 +841,7 @@ table {
 
 						&.warning {
 							background-color: rgba(226, 36, 84, 0.1);
-							color: var(--theme-color);
+							color: var(--theme-ink);
 						}
 					}
 				}
@@ -927,7 +927,7 @@ table {
 				&.status-danger {
 					span {
 						background-color: color-mix(in srgb, var(--theme-color) 15%, transparent);
-						color: var(--theme-color);
+						color: var(--theme-ink);
 						padding: 5px 10px;
 						text-transform: capitalize;
 						display: inline-block;
@@ -993,7 +993,7 @@ table {
 				}
 
 				&:nth-child(7) {
-					color: var(--theme-color);
+					color: var(--theme-ink);
 				}
 
 				&:last-child {
@@ -1108,7 +1108,7 @@ table {
 					font-size: 18px;
 
 					&.lost {
-						color: var(--theme-color);
+						color: var(--theme-ink);
 					}
 
 					&.success {
@@ -1201,7 +1201,7 @@ table {
 		tr {
 			td {
 				&:nth-child(3) {
-					color: var(--theme-color);
+					color: var(--theme-ink);
 				}
 			}
 		}
@@ -1546,7 +1546,7 @@ table {
 			&:last-child {
 				td {
 					h5 {
-						color: var(--theme-color) !important;
+						color: var(--theme-ink) !important;
 						font-weight: 800;
 					}
 				}

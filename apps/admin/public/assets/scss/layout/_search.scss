@@ -10,7 +10,7 @@
 			flex: 1 1 auto;
 
 			&::placeholder {
-				color: tc($primary-color);
+				color: tc-ink($primary-color);
 			}
 
 			&:focus {
@@ -72,7 +72,7 @@
 		}
 
 		h6 {
-			color: tc($primary-color);
+			color: tc-ink($primary-color);
 		}
 
 		+ .info-block {
@@ -150,7 +150,7 @@
 
 			&.active {
 				background-color: tc-alpha($primary-color, 0.1);
-				color: var(--theme-color);
+				color: var(--theme-ink);
 				opacity: 1;
 			}
 		}

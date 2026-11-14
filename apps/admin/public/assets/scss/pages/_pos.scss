@@ -265,7 +265,7 @@
 
 		.stock {
 			font-size: 14px;
-			color: var(--theme-color);
+			color: var(--theme-ink);
 			margin-left: auto;
 		}
 
@@ -380,7 +380,7 @@
 				color: $title-color !important;
 
 				&.txt-primary {
-					color: var(--theme-color) !important;
+					color: var(--theme-ink) !important;
 				}
 
 				&.price {
@@ -494,7 +494,7 @@
 
 				&.active {
 					border-color: var(--theme-color);
-					color: var(--theme-color);
+					color: var(--theme-ink);
 
 					i {
 						color: var(--theme-color);

@@ -534,7 +534,7 @@
 			}
 
 			input[type='file'] + label {
-				color: var(--theme-color);
+				color: var(--theme-ink);
 				cursor: pointer;
 				display: flex;
 				font-weight: 600;
@@ -759,7 +759,7 @@
 				background-color: color-mix(in srgb, var(--theme-color) 8%, transparent);
 				border: 1px solid color-mix(in srgb, var(--theme-color) 25%, transparent);
 				border-radius: 5px;
-				color: var(--theme-color);
+				color: var(--theme-ink);
 				font-size: calc(12px + (14 - 12) * ((100vw - 320px) / (1920 - 320)));
 				margin-right: 10px;
 				transition: all 0.5s ease;
@@ -780,7 +780,7 @@
 				transition: all 0.5s ease;
 
 				&:hover {
-					color: var(--theme-color);
+					color: var(--theme-ink);
 					transition: all 0.5s ease;
 				}
 			}

@@ -141,7 +141,7 @@
 	}
 
 	span.active {
-		color: tc($primary-color);
+		color: tc-ink($primary-color);
 		font-weight: bold;
 	}
 }

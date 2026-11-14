@@ -21,7 +21,7 @@
 			position: relative;
 
 			&:hover {
-				color: var(--theme-color) !important;
+				color: var(--theme-ink) !important;
 			}
 		}
 
@@ -49,7 +49,7 @@
 			color: $theme-body-font-color;
 
 			&:hover {
-				color: var(--theme-color);
+				color: var(--theme-ink);
 			}
 		}
 

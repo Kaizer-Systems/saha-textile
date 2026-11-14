@@ -167,21 +167,21 @@
 			}
 
 			&:hover {
-				color: var(--theme-color) !important;
+				color: var(--theme-ink) !important;
 			}
 		}
 
 		.select2-results__option[aria-selected='true'] {
-			color: var(--theme-color) !important;
+			color: var(--theme-ink) !important;
 			background: $white !important;
 		}
 
 		.select2-results__option--highlighted[aria-selected] {
 			background: $white !important;
-			color: var(--theme-color) !important;
+			color: var(--theme-ink) !important;
 
 			&:hover {
-				color: var(--theme-color) !important;
+				color: var(--theme-ink) !important;
 			}
 		}
 	}

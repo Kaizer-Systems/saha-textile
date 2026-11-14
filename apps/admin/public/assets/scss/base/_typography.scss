@@ -16,7 +16,7 @@ ul {
 }
 
 * a {
-	color: var(--theme-color);
+	color: var(--theme-ink);
 	text-decoration: none;
 	letter-spacing: 1px;
 }
@@ -24,7 +24,7 @@ ul {
 a {
 	&:hover {
 		text-decoration: none;
-		color: var(--theme-color);
+		color: var(--theme-ink);
 	}
 
 	&[class*='badge-'] {
@@ -181,7 +181,7 @@ span {
 }
 
 .theme-color {
-	color: var(--theme-color) !important;
+	color: var(--theme-ink) !important;
 }
 
 .theme-bg-color {
@@ -298,7 +298,7 @@ pre {
 	button {
 		top: 25px !important;
 		right: 20px !important;
-		color: var(--theme-color);
+		color: var(--theme-ink);
 	}
 
 	[data-notify='title'] {
@@ -309,7 +309,7 @@ pre {
 		+ span {
 			+ span {
 				background-color: $white;
-				color: var(--theme-color);
+				color: var(--theme-ink);
 				border-radius: 4px;
 				box-shadow: 0 2px 14px -3px rgba($black, 0.2);
 			}

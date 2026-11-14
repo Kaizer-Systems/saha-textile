@@ -543,7 +543,7 @@
 										&.active {
 											a {
 												span {
-													color: var(--theme-color);
+													color: var(--theme-ink);
 													font-weight: 600;
 												}
 											}
@@ -699,7 +699,7 @@
 
 							button {
 								background-color: $transparent-color;
-								color: tc($primary-color);
+								color: tc-ink($primary-color);
 								border: none;
 
 								&:focus {
@@ -990,7 +990,7 @@
 						&:hover {
 							a {
 								span {
-									color: var(--theme-color);
+									color: var(--theme-ink);
 									transition: color 0.3s ease;
 								}
 
@@ -1100,7 +1100,7 @@
 					}
 
 					a {
-						color: var(--theme-color);
+						color: var(--theme-ink);
 
 						svg {
 							width: 16px;
@@ -1288,7 +1288,7 @@
 
 													svg,
 													span {
-														color: var(--theme-color);
+														color: var(--theme-ink);
 														transition: all 0.3s ease;
 													}
 												}
@@ -1341,7 +1341,7 @@
 														}
 
 														&:hover {
-															color: var(--theme-color);
+															color: var(--theme-ink);
 															letter-spacing: 1.5px;
 															transition: all 0.3s ease;
 
@@ -1406,12 +1406,12 @@
 																	transition: all 0.3s ease;
 
 																	&:hover {
-																		color: var(--theme-color);
+																		color: var(--theme-ink);
 																		letter-spacing: 1.5px;
 																		transition: all 0.3s ease;
 
 																		&:after {
-																			color: var(--theme-color);
+																			color: var(--theme-ink);
 																			transition: all 0.3s ease;
 																		}
 																	}
@@ -1539,7 +1539,7 @@
 		}
 
 		h6 {
-			color: var(--theme-color);
+			color: var(--theme-ink);
 			margin-bottom: 5px;
 			letter-spacing: 0.8px;
 		}
@@ -2231,7 +2231,7 @@
 									.link-section {
 										&:hover {
 											h5 {
-												color: var(--theme-color) !important;
+												color: var(--theme-ink) !important;
 												transition: all 0.3s ease;
 
 												&:after {
@@ -2287,7 +2287,7 @@
 														}
 
 														&.active {
-															color: var(--theme-color);
+															color: var(--theme-ink);
 														}
 													}
 												}
@@ -2493,7 +2493,7 @@
 										}
 
 										&.active {
-											color: var(--theme-color);
+											color: var(--theme-ink);
 										}
 									}
 								}
@@ -2651,12 +2651,12 @@
 
 								&.active {
 									background: tc-alpha($primary-color, 0.1);
-									color: tc($primary-color);
+									color: tc-ink($primary-color);
 									border-radius: 20px;
 									margin: 0 10px;
 
 									span {
-										color: tc($primary-color);
+										color: tc-ink($primary-color);
 									}
 
 									~ .sidebar-submenu,
@@ -2706,7 +2706,7 @@
 
 										&.active {
 											background-color: tc-alpha($primary-color, 0.1);
-											color: tc($primary-color);
+											color: tc-ink($primary-color);
 											transition: all 0.3s ease;
 										}
 									}
@@ -3134,7 +3134,7 @@
 		}
 
 		.alert-primary {
-			color: tc($primary-color);
+			color: tc-ink($primary-color);
 		}
 
 		.project-box {
@@ -3461,7 +3461,7 @@
 			margin: 0 -15px;
 
 			h5 {
-				color: var(--theme-color);
+				color: var(--theme-ink);
 			}
 
 			svg {

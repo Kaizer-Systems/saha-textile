@@ -18,3 +18,16 @@
 .select2-container .select2-selection__placeholder {
 	color: var(--admin-muted) !important;
 }
+
+// Bootstrap's coloured text at AA shades in both modes.
+.text-success {
+	color: var(--admin-ok) !important;
+}
+
+.text-danger {
+	color: var(--admin-bad) !important;
+}
+
+.text-warning {
+	color: var(--admin-warn) !important;
+}

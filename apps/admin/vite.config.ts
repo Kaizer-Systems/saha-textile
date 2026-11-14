@@ -6,6 +6,8 @@ import { fileURLToPath, URL } from 'node:url';
 import angular from '@analogjs/vite-plugin-angular';
 import { defineConfig } from 'vite';
 
+import { stripDarkRules } from './scripts/dark-theme.mjs';
+
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 /** Machine-local mkcert pair, or `null` when absent — see the storefront config. */
@@ -31,6 +33,9 @@ export default defineConfig(() => ({
 		...(localHttps ? { https: localHttps } : {}),
 	},
 	css: {
+		// Dark mode is its own file (`public/assets/css/theme-dark.gen.css`, built by the `styles`
+		// script and linked only in dark mode), so its rules leave the main stylesheet.
+		postcss: { plugins: [stripDarkRules()] },
 		preprocessorOptions: {
 			scss: {
 				// The Fastkart theme + Bootstrap 5.3 lean on Sass APIs Dart Sass marks

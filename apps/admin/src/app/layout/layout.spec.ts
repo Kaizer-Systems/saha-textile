@@ -93,18 +93,27 @@ describe('shell pieces', () => {
 		inboxData.set(undefined);
 	});
 
-	it('toggles dark mode', () => {
-		bare(Mode).customizeLayoutDark();
-		expect(document.body.classList.contains('dark-only')).toBe(true);
+	it('switches dark mode through the shared store, and remembers it', () => {
+		const mode = bare(Mode);
+		expect(mode.themeMode.dark()).toBe(false);
+		mode.themeMode.toggle();
+		expect(mode.themeMode.dark()).toBe(true);
+		expect(localStorage.getItem('st_admin_theme')).toBe('dark');
+		mode.themeMode.toggle();
+		document.getElementById('theme-dark')?.remove();
 	});
 });
 
 describe('Header', () => {
-	it('applies the mode, and toggles the sidebar and mobile search', () => {
+	it('leaves the mode to the theme-mode store, and toggles the sidebar and mobile search', () => {
 		const nav = { collapseSidebar: false, search: false };
-		const header = bare(Header, [settings({ general: { mode: 'dark' } }), { provide: NavService, useValue: nav }]);
+		// The demo settings' `mode` once became a body class; dark mode now belongs to ThemeModeStore.
+		const header = bare(Header, [
+			settings({ general: { mode: 'dark-only' } }),
+			{ provide: NavService, useValue: nav },
+		]);
 		TestBed.tick();
-		expect(document.body.classList.contains('dark')).toBe(true);
+		expect(document.body.className).toBe('');
 		header.sidebarToggle();
 		expect(nav.collapseSidebar).toBe(true);
 		header.clickHeaderOnMobile();

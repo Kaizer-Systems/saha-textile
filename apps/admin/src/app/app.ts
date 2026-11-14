@@ -10,6 +10,7 @@ import { Observable } from 'rxjs';
 
 import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { applyThemeColor } from '@core/brand/theme-color';
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { IdleLockService } from '@core/auth/idle-lock.service';
 import { AuthStore } from '@core/state/auth.store';
 import { SettingStore } from '@core/state/setting.store';
@@ -33,6 +34,8 @@ export class App {
 	setting$: Observable<IValues | null> = toObservable(this.settingStore.setting);
 
 	private readonly brand = injectBrandQuery();
+	/** Light or dark, on every screen including sign-in (the header's switch changes it). */
+	private readonly themeMode = inject(ThemeModeStore);
 
 	/** True after this tab has held an authenticated session — drives clean login redirect. */
 	private hadAuthenticatedSession = false;

@@ -5,7 +5,7 @@
 				<app-alert />
 				<div class="log-in-box">
 					<div class="log-in-title">
-						@if (brand.data()?.admin?.logo; as logo) {
+						@if (themeMode.pick(brand.data()?.admin?.logo, brand.data()?.admin?.logoDark); as logo) {
 						<img
 							class="img-fluid mb-3"
 							[src]="logo.url"

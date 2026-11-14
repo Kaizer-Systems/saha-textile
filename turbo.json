@@ -8,7 +8,11 @@
 			"outputs": ["dist/**", "!**/.angular/cache/**", "!**/.nitro/**"]
 		},
 		"styles": {
-			"outputs": ["src/scss/app.gen.css"]
+			"outputs": [
+				"src/scss/app.gen.css",
+				"public/assets/css/theme-dark.gen.css",
+				"public/assets/scss/app.gen.css"
+			]
 		},
 		"lint": {
 			"dependsOn": ["^build", "styles"]

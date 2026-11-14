@@ -1,14 +1,11 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, DOCUMENT, inject } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
 
 import { injectBrandQuery } from '@core/brand/brand.gateway';
-import { SettingStore } from '@core/state/setting.store';
-import { ILanguage, IValues } from '@data-access/interfaces/setting.interface';
+import { ILanguage } from '@data-access/interfaces/setting.interface';
 import { NavService } from '@data-access/services/nav.service';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
@@ -35,11 +32,9 @@ import { Search } from './widgets/search/search';
 	],
 })
 export class Header {
-	private document = inject<Document>(DOCUMENT);
 	navServices = inject(NavService);
 
 	readonly brand = injectBrandQuery();
-	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
 
 	public active: boolean = false;
 	public profileOpen: boolean = false;
@@ -63,14 +58,6 @@ export class Header {
 		code: 'en',
 		icon: 'us',
 	};
-
-	constructor() {
-		const document = this.document;
-
-		this.setting$.subscribe((setting) => {
-			document.body.classList.add(setting?.general?.mode!);
-		});
-	}
 
 	sidebarToggle() {
 		this.navServices.collapseSidebar = !this.navServices.collapseSidebar;

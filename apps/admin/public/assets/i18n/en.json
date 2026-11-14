@@ -1610,6 +1610,8 @@
 	"open_photo": "Open the full photo in a new tab",
 	"toggle_menu": "Show or hide the side menu",
 	"dark_mode": "Switch between dark and light screens",
+	"switch_to_dark": "Switch to dark",
+	"switch_to_light": "Switch to light",
 	"open_list": "Open or close the list",
 	"previous_page": "Previous page",
 	"next_page": "Next page",

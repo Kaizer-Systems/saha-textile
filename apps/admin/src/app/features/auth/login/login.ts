@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { injectBrandQuery } from '@core/brand/brand.gateway';
+import { ThemeModeStore } from '@core/brand/theme-mode';
 import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
@@ -35,6 +36,8 @@ const PIN_LENGTH = 6;
 })
 export class Login {
 	readonly brand = injectBrandQuery();
+	/** The Brand Kit's dark logo in dark mode, when there is one. */
+	readonly themeMode = inject(ThemeModeStore);
 	private authStore = inject(AuthStore);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);

@@ -1,0 +1,77 @@
+// Dark-mode contrast fixes (R6-3): text that kept a dark light-mode colour on the dark card, menus
+// that stayed white, and the warning banner that turned purple. Colours only, all under
+// `body.dark-only`, so they ship in the dark file. Theme rules are fixed where they are written;
+// this file holds what has no dark rule of its own.
+body.dark-only {
+	// Select boxes: ng-select2 colours its text through these variables.
+	--select2-selection-text-color: #c9d1d9;
+	--select2-option-text-color: #c9d1d9;
+
+	// Tables, their headers, and the small tables inside popups.
+	.table {
+		--bs-table-color: #c9d1d9;
+		--bs-table-bg: transparent;
+		--bs-table-striped-color: #c9d1d9;
+		--bs-table-striped-bg: #232a31;
+		--bs-table-hover-color: #e6e8eb;
+		--bs-table-hover-bg: #232a31;
+		color: #c9d1d9;
+		border-color: #1d3436;
+	}
+
+	.table > :not(caption) > * > * {
+		color: #c9d1d9;
+		border-color: #1d3436;
+	}
+
+	.theme-table thead th,
+	.table thead th {
+		color: #e6e8eb !important;
+		background-color: #232a31 !important;
+	}
+
+	// Popup titles, form labels and small headings.
+	.modal-header h2,
+	.modal-title,
+	.form-label-title,
+	.form-check-label,
+	h5,
+	h6 {
+		color: #e6e8eb;
+	}
+
+	// Menus and dropdowns, which stayed white.
+	.dropdown-menu {
+		background-color: #1c2128;
+		border-color: #1d3436;
+		color: #c9d1d9;
+
+		.dropdown-item,
+		label,
+		li {
+			background-color: transparent;
+			color: #c9d1d9;
+		}
+
+		.dropdown-item:hover,
+		.dropdown-item.active {
+			background-color: #232a31;
+			color: #fff;
+		}
+	}
+
+	.dropdown-divider {
+		border-color: #1d3436;
+	}
+
+	// Page numbers.
+	.pagination .page-item:not(.active) .page-link {
+		color: #c9d1d9;
+	}
+
+	// Bootstrap's blue outline buttons (Settings › Notifications).
+	.btn-outline-primary {
+		color: var(--admin-info);
+		border-color: var(--admin-info);
+	}
+}

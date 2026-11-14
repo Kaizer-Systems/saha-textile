@@ -761,13 +761,13 @@ hr {
 
 	.NgxEditor__Dropdown .NgxEditor__Dropdown--Selected,
 	.NgxEditor__Dropdown .NgxEditor__Dropdown--Open {
-		color: #26957e;
+		color: var(--theme-ink);
 		background-color: color-mix(in srgb, var(--theme-color) 7%, transparent);
 	}
 
 	.NgxEditor__MenuItem.NgxEditor__MenuItem--Active,
 	.NgxEditor__MenuItem .NgxEditor__MenuItem--Active {
-		color: #26957e;
+		color: var(--theme-ink);
 		background-color: color-mix(in srgb, var(--theme-color) 7%, transparent);
 	}
 

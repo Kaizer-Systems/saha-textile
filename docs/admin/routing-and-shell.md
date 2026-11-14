@@ -4,7 +4,7 @@ wide: true
 description: How admin guards, layouts, lazy routes, and feature families compose the operator workspace.
 status: implemented
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-15'
 source_of_truth:
     - apps/admin/src/app/app.routes.ts
     - apps/admin/src/app/routes/content.routes.ts
@@ -40,7 +40,7 @@ Route order matters because both shells use an empty parent path. The feature ch
 
 ### Content shell
 
-Used for the operator workspace. It composes navigation, header, content outlet, footer, loader, and page-level wrapper behaviour. The header's icon controls (menu, search, language, dark screen) each show their name on hover.
+Used for the operator workspace. It composes navigation, header, content outlet, footer, loader, and page-level wrapper behaviour. The header's icon controls (menu, search, language, light/dark switch) each show their name on hover. The light/dark switch is remembered in the browser and applied before the app starts (see [Admin Styles and Dark Mode](./styles-and-dark-mode.md)).
 
 ### Full shell
 

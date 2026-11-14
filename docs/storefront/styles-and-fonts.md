@@ -95,7 +95,7 @@ A full audit measured every visible piece of text on 160 page-and-state combinat
 - **No cost in light mode.** Light pages never request the file, so search engines and Lighthouse see the same page as without it. The service worker's precache list (`injectManifest.globIgnores` in `service-worker.vite.ts`) leaves it out, so light-mode shoppers do not download it in the background either.
 - **Scoping.** `dark.scss` imports the base variables inside `.dark`, so the theme's default `--theme-color` lands under `.dark` and never overrides `theme-color.css`.
 
-The admin has its own dark mode, switched from its header, and is not affected by any of this.
+The admin has its own dark mode, built the same colour-only way from its own theme rules; see [Admin Styles and Dark Mode](../admin/styles-and-dark-mode.md).
 
 ### The light/dark switch
 

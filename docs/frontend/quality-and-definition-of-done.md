@@ -4,7 +4,7 @@ wide: true
 description: Testing approach and completion checks for storefront and admin changes.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-15'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/package.json
@@ -56,6 +56,8 @@ Use Playwright for a small number of business-critical paths rather than duplica
 - **Layout parity.** Every element on the first screen has the same position, size, font, padding and margin in both modes. Dark mode may only change colours.
 
 A new screen passes both when it uses the shop's named colours (`--st-*`, see [Styles, Dark Mode and Fonts](../storefront/styles-and-fonts.md)) instead of typed colour values.
+
+`e2e/dark-mode.admin.spec.ts` does the same for the admin: layout parity on every admin screen and on sign-in, plus checks that light pages never download the dark stylesheet, that the header's switch is remembered, and that a reload is dark before the app starts (see [Admin Styles and Dark Mode](../admin/styles-and-dark-mode.md)). Both specs share their page functions from `e2e/colour-checks.ts`.
 
 ## Definition of done
 

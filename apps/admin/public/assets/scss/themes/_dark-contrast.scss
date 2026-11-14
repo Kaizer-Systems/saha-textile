@@ -75,3 +75,19 @@ body.dark-only {
 		border-color: var(--admin-info);
 	}
 }
+
+// The warning banner was drawn purple-blue in dark mode, with teal links on it (1.6 : 1). It becomes
+// a dark amber banner with light amber text, so a warning still looks like a warning.
+body.dark-only {
+	.alert-warning {
+		background-color: #3a2f12 !important;
+		border-color: #5c4a1c !important;
+		color: #f2c66d !important;
+
+		a,
+		.btn-outline {
+			color: #ffd98a !important;
+			border-color: #ffd98a !important;
+		}
+	}
+}

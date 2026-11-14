@@ -8035,7 +8035,7 @@ body {
 		.blog-box {
 			.blog-content {
 				h6 {
-					color: rgba($dark-all-font-color, 0.3);
+					color: var(--admin-muted);
 				}
 				a {
 					color: $dark-all-font-color;

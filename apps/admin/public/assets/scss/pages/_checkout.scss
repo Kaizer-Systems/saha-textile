@@ -212,7 +212,7 @@
 										line-height: 1;
 									}
 									h5 {
-										color: #898989;
+										color: var(--admin-muted);
 									}
 									&.active {
 										border-color: var(--theme-color);

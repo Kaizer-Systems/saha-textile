@@ -444,7 +444,7 @@
 
 				label {
 					font-size: 14px;
-					color: #777;
+					color: var(--admin-muted);
 					padding-top: 2px;
 				}
 			}
@@ -489,7 +489,7 @@
 				}
 
 				h5 {
-					color: #898989;
+					color: var(--admin-muted);
 				}
 
 				&.active {

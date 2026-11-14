@@ -296,7 +296,7 @@
 				font-size: 13px;
 				font-weight: 500;
 				margin-top: calc(6px + (10 - 6) * ((100vw - 320px) / (1920 - 320)));
-				color: #777;
+				color: var(--admin-muted);
 			}
 		}
 

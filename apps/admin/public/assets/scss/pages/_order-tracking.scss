@@ -281,7 +281,7 @@
 			width: 100%;
 			display: block;
 			label {
-				color: #999;
+				color: var(--admin-muted);
 				text-transform: capitalize;
 				margin-bottom: 0;
 			}

@@ -881,7 +881,7 @@ table {
 		tr {
 			td {
 				vertical-align: middle;
-				color: #777777;
+				color: var(--admin-muted);
 				border-top: 0;
 				border-bottom: 1px solid $light-blue !important;
 				text-align: left;
@@ -1397,7 +1397,7 @@ table {
 					}
 
 					span + span {
-						color: $grey-9;
+						color: var(--admin-muted);
 					}
 				}
 			}
@@ -1433,7 +1433,7 @@ table {
 
 				&:nth-child(8) {
 					span {
-						color: $grey-9;
+						color: var(--admin-muted);
 					}
 				}
 
@@ -1462,7 +1462,7 @@ table {
 					}
 
 					span + span {
-						color: $grey-9;
+						color: var(--admin-muted);
 					}
 				}
 			}
@@ -1861,7 +1861,7 @@ table {
 				}
 
 				p {
-					color: #777777;
+					color: var(--admin-muted);
 					font-weight: 400;
 					font-size: 14px;
 					text-transform: capitalize;

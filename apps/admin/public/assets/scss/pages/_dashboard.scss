@@ -28,7 +28,7 @@
 			}
 		}
 		h6 {
-			color: rgba($content-color, 0.8);
+			color: var(--admin-ink-2);
 		}
 		// The period link sits on the tile's pale tint, where even the deeper teal falls short (R6-3).
 		.txt-primary {
@@ -248,7 +248,7 @@
 			letter-spacing: 0.01em;
 		}
 		h6 {
-			color: rgba($content-color, 0.7);
+			color: var(--admin-ink-2);
 		}
 	}
 }

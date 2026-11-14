@@ -1,0 +1,20 @@
+// Contrast fixes for Bootstrap's own utilities and other pieces the theme does not style itself
+// (R6-3). Theme rules are fixed where they are written; this file only holds what has no theme
+// source. Colours come from the named admin colours (utils/_admin-colours.scss), so dark mode
+// follows through their dark twins. Loaded after the rest of the theme.
+
+// Secondary text: a little darker in light mode, the theme's light grey in dark mode.
+.text-muted,
+.help-text {
+	color: var(--admin-muted) !important;
+}
+
+// The breadcrumb's last step.
+.breadcrumb-item.active {
+	color: var(--admin-ink-2);
+}
+
+// Placeholders in the select boxes (ng-select2): text, so the same muted grey.
+.select2-container .select2-selection__placeholder {
+	color: var(--admin-muted) !important;
+}

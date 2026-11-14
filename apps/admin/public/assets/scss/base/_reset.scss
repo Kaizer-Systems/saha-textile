@@ -557,7 +557,7 @@ button {
 			border-color: $light-semi-gray;
 			background-color: $white;
 			font-size: 14px;
-			color: $dark-gray;
+			color: var(--admin-muted);
 			padding: 5px 10px;
 			border-radius: 5px;
 			width: 46%;

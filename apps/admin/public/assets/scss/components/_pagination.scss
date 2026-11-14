@@ -21,12 +21,12 @@
 
 			&.active {
 				.page-link {
-					background-color: var(--theme-color);
-					border-color: var(--theme-color);
+					background-color: var(--theme-strong);
+					border-color: var(--theme-strong);
 					color: $white;
 					&:hover {
-						background-color: var(--theme-color);
-						border-color: var(--theme-color);
+						background-color: var(--theme-strong);
+						border-color: var(--theme-strong);
 						color: $white;
 					}
 				}
@@ -44,7 +44,7 @@
 				}
 
 				&:focus {
-					color: var(--theme-color);
+					color: var(--theme-ink);
 					background-color: transparent;
 					box-shadow: none;
 				}

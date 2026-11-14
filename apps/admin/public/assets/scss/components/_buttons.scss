@@ -176,8 +176,8 @@
 }
 
 .btn-outline {
-	border: 1px solid var(--theme-color);
-	color: var(--theme-color);
+	border: 1px solid var(--theme-ink);
+	color: var(--theme-ink);
 	background-color: transparent;
 }
 
@@ -406,14 +406,15 @@
 		}
 	}
 
+	// Theme-coloured fills use the deeper `tc-fill` shade so white text reaches AA (R6-3).
 	.btn-#{$btn-name} {
-		background-color: tc($btn-color);
-		border: 1px solid tc($btn-color);
+		background-color: tc-fill($btn-color);
+		border: 1px solid tc-fill($btn-color);
 		color: $white;
 		&:hover {
 			background-color: $white;
-			border: 1px solid tc($btn-color);
-			color: tc($btn-color);
+			border: 1px solid tc-fill($btn-color);
+			color: tc-ink($btn-color);
 		}
 	}
 
@@ -427,8 +428,8 @@
 }
 
 .btn-primary:hover {
-	background-color: var(--theme-color);
-	border: 1px solid var(--theme-color);
+	background-color: var(--theme-strong);
+	border: 1px solid var(--theme-strong);
 	color: #fff;
 }
 
@@ -439,18 +440,18 @@
 }
 
 .btn-outline {
-	border: 1px solid tc($primary-color) !important;
-	color: tc($primary-color) !important;
+	border: 1px solid tc-ink($primary-color) !important;
+	color: tc-ink($primary-color) !important;
 
 	&:hover {
-		background-color: tc($primary-color) !important;
+		background-color: tc-fill($primary-color) !important;
 		color: $white !important;
 	}
 }
 
 .btn-solid {
-	border: 1px solid tc($primary-color) !important;
-	background-color: tc($primary-color) !important;
+	border: 1px solid tc-fill($primary-color) !important;
+	background-color: tc-fill($primary-color) !important;
 	color: $white;
 }
 
@@ -459,7 +460,7 @@
 	font-weight: 500;
 	padding: 10px 30px;
 	border-radius: 5px;
-	background-color: tc($primary-color);
+	background-color: tc-fill($primary-color);
 	letter-spacing: 0.06rem;
 
 	&:hover {

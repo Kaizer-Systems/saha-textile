@@ -20,6 +20,24 @@
 	@return $color;
 }
 
+/// The colour as a fill under white text. For the theme colour, its deeper shade (`--theme-strong`,
+/// 75% theme + 25% black), which reaches WCAG AA with white where the theme colour itself does not.
+@function tc-fill($color) {
+	@if is-theme-color($color) {
+		@return var(--theme-strong);
+	}
+	@return $color;
+}
+
+/// The colour as text. For the theme colour, `--theme-ink`: the deeper shade on light surfaces, the
+/// bright theme colour in dark mode (utils/_admin-colours.scss, themes/_dark-colours.scss).
+@function tc-ink($color) {
+	@if is-theme-color($color) {
+		@return var(--theme-ink);
+	}
+	@return $color;
+}
+
 /// The colour at an opacity: 0.1 or 10% (like rgba($color, 0.1)).
 @function tc-alpha($color, $alpha) {
 	@if is-theme-color($color) {

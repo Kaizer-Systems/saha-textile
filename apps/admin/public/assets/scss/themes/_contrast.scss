@@ -31,3 +31,9 @@
 .text-warning {
 	color: var(--admin-warn) !important;
 }
+
+// Yellow badges carry dark text: white on the theme's yellow and orange was below 2 : 1.
+.badge.bg-warning,
+.badge.badge-warning {
+	color: var(--admin-on-yellow) !important;
+}

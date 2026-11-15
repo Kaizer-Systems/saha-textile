@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { AttributeDefinition } from './attribute';
-import { Slug } from './common';
+import { LocaleCode, Slug } from './common';
 import { BundleGroup, BundlePricePolicy, BundleType } from './product-bundle';
 import { ProductShippingDefaults, ProductStatus, ProductType } from './product';
 import { ProductOptionGroupSet } from './product-options';
@@ -149,6 +149,8 @@ export type ProductMerchandisingWrite = z.infer<typeof ProductMerchandisingWrite
 export const AdminProductListQuery = z.object({
 	search: z.string().trim().max(100).optional(),
 	status: ProductStatus.optional(),
+	/** Only items the shop shows that still lack text in this language (Settings › Languages). */
+	missing: LocaleCode.optional(),
 	page: z.coerce.number().int().min(1).default(1),
 	pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

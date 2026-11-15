@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime, LocalizedText, Slug } from './common';
+import { Id, IsoDateTime, LocaleCode, LocalizedText, Slug } from './common';
 import { ResolvedImage } from './media';
 
 /**
@@ -131,6 +131,8 @@ export type BlogStatusWrite = z.infer<typeof BlogStatusWrite>;
 export const AdminBlogListQuery = z.object({
 	search: z.string().max(100).optional(),
 	status: BlogStatus.optional(),
+	/** Only items the shop shows that still lack text in this language (Settings › Languages). */
+	missing: LocaleCode.optional(),
 	page: z.coerce.number().int().positive().default(1),
 	pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

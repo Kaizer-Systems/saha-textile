@@ -4,6 +4,8 @@ import type { CatalogAudience } from '../catalog/product-visibility';
 import type { PageQuery, Paginated } from './pagination';
 
 export interface ProductFilter extends PageQuery {
+	/** Only these items (Settings › Languages: a list filtered to what is missing in a language). */
+	ids?: readonly string[];
 	/**
 	 * Defaults to `public` in every implementation — an omitted audience must hide
 	 * non-live products, never reveal them.

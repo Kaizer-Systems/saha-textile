@@ -3,6 +3,8 @@ import type { SearchTerm, SearchTermStatus } from '@saha-textile/contracts';
 import type { Paginated } from './pagination';
 
 export interface SearchTermFilter {
+	/** Only these items (Settings › Languages: a list filtered to what is missing in a language). */
+	ids?: readonly string[];
 	/** Every typed word must appear in a name or spelling, any language, any case. */
 	search?: string;
 	status?: SearchTermStatus;

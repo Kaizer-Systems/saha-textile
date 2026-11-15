@@ -143,6 +143,8 @@ export interface ProductRelationRepository {
 }
 
 export interface FaqFilter extends PageQuery {
+	/** Only these items (Settings › Languages: a list filtered to what is missing in a language). */
+	ids?: readonly string[];
 	categoryId?: string;
 	productId?: string;
 	audience?: CatalogAudience;
@@ -282,7 +284,7 @@ export interface ProductInsightSetRepository {
 
 /** One public address per language. Filtered, private and gone URLs are not rows. */
 export interface SeoRouteRepository {
-	find(path: string, locale: 'en' | 'bn'): Promise<SeoRoute | null>;
+	find(path: string, locale: string): Promise<SeoRoute | null>;
 	listIndexable(): Promise<SeoRoute[]>;
 	save(route: SeoRoute): Promise<SeoRoute>;
 }

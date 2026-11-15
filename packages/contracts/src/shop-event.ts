@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime, LocalizedText } from './common';
+import { Id, IsoDateTime, LocaleCode, LocalizedText } from './common';
 import { GoLiveGap } from './catalog-write';
 import { ResolvedImage } from './media';
 
@@ -198,6 +198,8 @@ export const AdminShopEventListQuery = z.object({
 	search: z.string().max(100).optional(),
 	type: ShopEventType.optional(),
 	status: ShopEventStatus.optional(),
+	/** Only items the shop shows that still lack text in this language (Settings › Languages). */
+	missing: LocaleCode.optional(),
 	/** The All events table's sortable columns. Left out: newest start first. */
 	sort: z.enum(['name', 'startsAt', 'endsAt']).optional(),
 	direction: z.enum(['asc', 'desc']).default('desc'),

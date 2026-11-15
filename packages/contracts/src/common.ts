@@ -27,7 +27,15 @@ export type LocaleCode = z.infer<typeof LocaleCode>;
 export const ActiveLocaleConfig = z
 	.object({
 		default: LocaleCode.default(PRIMARY_LOCALE),
+		/** The languages the shop shows. */
 		active: z.array(LocaleCode).min(1),
+		/** The languages staff may turn the admin into (Settings › Languages, Admin switch). */
+		admin: z.array(LocaleCode).optional(),
+		/**
+		 * Languages the shop showed once and no longer shows: their `/xx/…` addresses answer 301
+		 * to the same page in English.
+		 */
+		redirect: z.array(LocaleCode).optional(),
 	})
 	.refine((config) => config.active.includes(config.default), {
 		message: '`active` must contain the `default` locale',

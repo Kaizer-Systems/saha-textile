@@ -3,6 +3,8 @@ import type { ShopEvent, ShopEventStatus, ShopEventType } from '@saha-textile/co
 import type { Paginated } from './pagination';
 
 export interface ShopEventFilter {
+	/** Only these items (Settings › Languages: a list filtered to what is missing in a language). */
+	ids?: readonly string[];
 	type?: ShopEventType;
 	status?: ShopEventStatus;
 	/** Every word must appear in the name or the English title. Letter case is ignored. */

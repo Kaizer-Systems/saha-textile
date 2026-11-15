@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { OptionDisplayStyle, SemanticRole, SizeGuideRow } from './attribute';
-import { Id, IsoDateTime, Slug } from './common';
+import { Id, IsoDateTime, LocaleCode, Slug } from './common';
 import { ResolvedImage } from './media';
 import { ProductVideo } from './site-settings';
 
@@ -125,7 +125,7 @@ export type CatalogPlacementQuery = z.infer<typeof CatalogPlacementQuery>;
 
 export const CatalogSeoRouteQuery = z.object({
 	path: z.string().min(1).max(300),
-	locale: z.enum(['en', 'bn']),
+	locale: LocaleCode,
 });
 export type CatalogSeoRouteQuery = z.infer<typeof CatalogSeoRouteQuery>;
 

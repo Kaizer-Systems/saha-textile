@@ -49,3 +49,4 @@ export * from './wishlist';
 export * from './search-term';
 export * from './shop-event';
 export * from './communication-use';
+export * from './language';

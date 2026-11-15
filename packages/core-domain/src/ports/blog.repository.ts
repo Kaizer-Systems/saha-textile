@@ -3,6 +3,8 @@ import type { BlogCategory, BlogPost, BlogStatus, BlogTag } from '@saha-textile/
 import type { Paginated } from './pagination';
 
 export interface BlogPostFilter {
+	/** Only these items (Settings › Languages: a list filtered to what is missing in a language). */
+	ids?: readonly string[];
 	status?: BlogStatus;
 	/**
 	 * Every word must appear, in any order and as part of a word, in the title, summary or article

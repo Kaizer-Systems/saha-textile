@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime, LocalizedText } from './common';
+import { Id, IsoDateTime, LocaleCode, LocalizedText } from './common';
 
 /**
  * Search words (`searchDictionary`, owner log § search words, 2026-11-08): a word such as "Puja"
@@ -49,6 +49,8 @@ export type SearchTermStatusWrite = z.infer<typeof SearchTermStatusWrite>;
 export const AdminSearchTermListQuery = z.object({
 	search: z.string().max(100).optional(),
 	status: SearchTermStatus.optional(),
+	/** Only items the shop shows that still lack text in this language (Settings › Languages). */
+	missing: LocaleCode.optional(),
 	page: z.coerce.number().int().positive().default(1),
 	pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

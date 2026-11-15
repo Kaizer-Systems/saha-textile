@@ -104,6 +104,7 @@ const sidebars: SidebarsConfig = {
 						'admin/brand-kit',
 						'admin/communications',
 						'admin/languages',
+						'admin/media-page',
 						'admin/styles-and-dark-mode',
 						'admin/state-and-data',
 						'admin/home-dashboard',

@@ -341,6 +341,37 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 		return rows.map((row) => ({ folderId: row._id, files: row.files, bytes: row.bytes }));
 	}
 
+	async whereUsed(ids: readonly string[]): Promise<Map<string, string[]>> {
+		const found = new Map<string, string[]>();
+		if (!ids.length) return found;
+		const wanted = new Set(ids);
+		for (const entry of MEDIA_OWNER_REGISTRY) {
+			const owners = await entry.model.collection
+				.find({ [entry.path]: { $in: [...ids] } } as never, {
+					projection: { [entry.path]: 1, title: 1, name: 1, key: 1, slug: 1 },
+				})
+				.toArray();
+			for (const owner of owners) {
+				const name =
+					(owner['title'] as Record<string, string> | undefined)?.['en'] ??
+					(owner['name'] as Record<string, string> | undefined)?.['en'] ??
+					(owner['key'] as string | undefined) ??
+					(owner['slug'] as string | undefined) ??
+					String(owner['_id']);
+				const label = `${entry.owner} · ${name}`;
+				const values = JSON.stringify(owner).match(/"(med_[^"]+)"/g) ?? [];
+				for (const quoted of new Set(values)) {
+					const id = quoted.slice(1, -1);
+					if (!wanted.has(id)) continue;
+					const list = found.get(id) ?? [];
+					if (!list.includes(label)) list.push(label);
+					found.set(id, list);
+				}
+			}
+		}
+		return found;
+	}
+
 	async listInFolders(folderIds: readonly string[]): Promise<MediaAsset[]> {
 		const docs = await MediaAssetModel.find({ folderId: { $in: [...folderIds] }, deletedAt: null })
 			.lean<MediaAssetDoc[]>()

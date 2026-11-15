@@ -91,6 +91,8 @@ export interface MediaBrowseRepository {
 	listTrashedBefore(cutoff: string, limit: number): Promise<MediaAsset[]>;
 	/** Files and bytes directly in each folder (not in Trash). */
 	totalsByFolder(folderIds: readonly string[]): Promise<{ folderId: string; files: number; bytes: number }[]>;
+	/** Where each file is used on the website ("Product · Red Banarasi Silk"); absent when unused. */
+	whereUsed(ids: readonly string[]): Promise<Map<string, string[]>>;
 	/** Every file in these folders, Trash included: what moves to Trash with them. */
 	listInFolders(folderIds: readonly string[]): Promise<MediaAsset[]>;
 }

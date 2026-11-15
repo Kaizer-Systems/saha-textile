@@ -471,6 +471,13 @@ export const MediaPresignRequest = z.object({
 	 * banner widths beyond twice this, so a small promo card does not get a 2880 px file.
 	 */
 	maxDisplayWidth: z.number().int().positive().max(4000).optional(),
+	/** From the Media page (step 1): where it goes, its SHA-256, and the storage approval it runs under. */
+	folderId: Id.nullable().optional(),
+	sha256: z
+		.string()
+		.regex(/^[0-9a-f]{64}$/)
+		.optional(),
+	reservationId: Id.optional(),
 });
 export type MediaPresignRequest = z.infer<typeof MediaPresignRequest>;
 

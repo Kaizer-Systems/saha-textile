@@ -10,6 +10,15 @@
 export const originalStorageKey = (assetId: string, contentType: string): string =>
 	`media/${assetId}/original.${contentType === 'image/png' ? 'png' : 'jpg'}`;
 
+/**
+ * A plain file's stored copy (Media page, step 1): the id keeps it unique; the extension is the
+ * uploaded name's, cleaned, so a downloaded file opens in the right program.
+ */
+export const plainFileStorageKey = (assetId: string, fileName: string): string => {
+	const extension = /\.([a-z0-9]{1,10})$/i.exec(fileName)?.[1]?.toLowerCase();
+	return `media/${assetId}/original${extension ? `.${extension}` : ''}`;
+};
+
 const DERIVATIVE_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' } as const;
 
 export const derivativeStorageKey = (input: {

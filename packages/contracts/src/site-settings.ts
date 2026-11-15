@@ -271,7 +271,15 @@ export const StorefrontShareSettings = z.object({
 export type StorefrontShareSettings = z.infer<typeof StorefrontShareSettings>;
 
 /** Every setting key and its schema. */
+/**
+ * Storage on the Media page (R4-7, R5-3): whether admins who are not super admins may approve
+ * going past the 250 GB plan. Only a super admin changes it.
+ */
+export const MediaStorageSettings = z.object({ othersMayUseOnDemand: z.boolean().default(false) });
+export type MediaStorageSettings = z.infer<typeof MediaStorageSettings>;
+
 export const SITE_SETTING_SCHEMAS = {
+	media_storage: MediaStorageSettings,
 	brand: BrandSettings,
 	'storefront.home': StorefrontHomeSettings,
 	youtube: YouTubeSettings,

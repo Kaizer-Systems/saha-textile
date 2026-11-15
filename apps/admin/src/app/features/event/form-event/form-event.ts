@@ -28,13 +28,8 @@ import { goLiveLabels } from '@core/catalog/go-live-report';
 import { MediaGateway } from '@core/media/media.gateway';
 import { runtimeConfig } from '@core/config/runtime-config';
 import { istInputToUtc, utcToIstInput } from '@core/i18n/ist-time';
-import {
-	ADMIN_LOCALES,
-	focusField,
-	gapsByLocale,
-	type LanguageGap,
-	LocalizedFields,
-} from '@core/i18n/localized-fields';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { ITableClickedAction } from '@data-access/interfaces/table.interface';
@@ -51,6 +46,7 @@ import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 
 import { istLabel } from '../events';
+import { LanguageNamePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 const LANGUAGE_FIELDS = ['title', 'message'];
 
@@ -113,6 +109,8 @@ function flatten(rows: readonly ICategory[] = []): ICategory[] {
 	selector: 'app-form-event',
 	templateUrl: './form-event.html',
 	imports: [
+		LanguageNamePipe,
+		PluralPipe,
 		ReactiveFormsModule,
 		NgbNavModule,
 		FormFields,
@@ -156,7 +154,7 @@ export class FormEvent {
 	readonly event = signal<ShopEvent | null>(null);
 	readonly review = signal<ShopEventReview | null>(null);
 	readonly problems = signal<ShopEventProblem[]>([]);
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 	/** The popup pictures in slide order, as the media picker draws them (owner, 2026-11-10). */
 	readonly popupImages = signal<IAttachment[]>([]);
@@ -350,7 +348,7 @@ export class FormEvent {
 	}
 
 	private refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	// ── Pickers ───────────────────────────────────────────────────────────────

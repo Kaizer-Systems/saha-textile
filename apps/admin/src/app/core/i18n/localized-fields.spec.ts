@@ -26,7 +26,7 @@ describe('language gaps', () => {
 	});
 
 	it('builds one list per language', () => {
-		expect(gapsByLocale((locale) => [{ key: locale, label: 'x' }])).toEqual({
+		expect(gapsByLocale(['en', 'bn'], (locale) => [{ key: locale, label: 'x' }])).toEqual({
 			en: [{ key: 'en', label: 'x' }],
 			bn: [{ key: 'bn', label: 'x' }],
 		});

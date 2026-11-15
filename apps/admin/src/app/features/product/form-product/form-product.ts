@@ -64,7 +64,6 @@ import { debounceTime, switchMap, takeUntil } from 'rxjs/operators';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
@@ -72,6 +71,7 @@ import {
 	type LocalizedText,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import {
 	CATALOG_BADGE_CODES,
@@ -316,7 +316,7 @@ export class FormProduct {
 	public editor: Editor;
 	public html = '';
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	/** Language-bound fields behind the Language switch. */
 	readonly fields: LocalizedFields;
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
@@ -764,7 +764,7 @@ export class FormProduct {
 	}
 
 	private refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.languageGaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.languageGaps(locale)));
 	}
 
 	/** What Go Live would refuse for a language: fields as typed, option names and values. */

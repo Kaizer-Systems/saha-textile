@@ -5,7 +5,6 @@ import { RouterModule } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { injectBrandQuery } from '@core/brand/brand.gateway';
-import { ILanguage } from '@data-access/interfaces/setting.interface';
 import { NavService } from '@data-access/services/nav.service';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
@@ -39,25 +38,6 @@ export class Header {
 	public active: boolean = false;
 	public profileOpen: boolean = false;
 	public open: boolean = false;
-
-	public languages: ILanguage[] = [
-		{
-			language: 'English',
-			code: 'en',
-			icon: 'us',
-		},
-		{
-			language: 'বাংলা',
-			code: 'bn',
-			icon: 'in',
-		},
-	];
-
-	public selectedLanguage: ILanguage = {
-		language: 'English',
-		code: 'en',
-		icon: 'us',
-	};
 
 	sidebarToggle() {
 		this.navServices.collapseSidebar = !this.navServices.collapseSidebar;

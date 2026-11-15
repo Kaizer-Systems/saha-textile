@@ -25,6 +25,7 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 import { PinPad } from '@shared/ui/pin-pad/pin-pad';
 import { CustomValidators } from '@shared/validators/password-match';
+import { translateCount } from '@shared/pipes/language.pipes';
 
 /** Owner lock 2026-06-29 / UX lock 2026-07-23. Mirrors the login screen rather than redefining. */
 const PIN_LENGTH = 6;
@@ -213,7 +214,7 @@ export class Account {
 			next: (result) => {
 				this.sessionsBusy.set(false);
 				this.notificationService.showSuccess(
-					this.transloco.translate('other_sessions_revoked', { count: result.revoked }),
+					translateCount(this.transloco, 'other_sessions_revoked', result.revoked),
 				);
 				this.loadSecurity();
 			},

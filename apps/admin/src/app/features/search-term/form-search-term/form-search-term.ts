@@ -8,13 +8,8 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 
 import { SEARCH_TERM_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
-import {
-	ADMIN_LOCALES,
-	focusField,
-	gapsByLocale,
-	type LanguageGap,
-	LocalizedFields,
-} from '@core/i18n/localized-fields';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { injectSearchTermQuery } from '@data-access/queries/search-term.queries';
@@ -59,7 +54,7 @@ export class FormSearchTerm {
 	readonly id = input<string | undefined>(undefined);
 
 	readonly form: FormGroup;
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly fields: LocalizedFields;
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 
@@ -191,6 +186,6 @@ export class FormSearchTerm {
 	}
 
 	private refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 }

@@ -5,7 +5,8 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
-import { ADMIN_LOCALES, gapsByLocale, LocalizedFields, type LanguageGap } from '@core/i18n/localized-fields';
+import { gapsByLocale, LocalizedFields, type LanguageGap } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaGateway } from '@core/media/media.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
@@ -45,7 +46,7 @@ export class MediaDetailsModal {
 	/** After a save, so the library can refresh. */
 	readonly saved = output<string>();
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly form = new FormGroup({
 		slug: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(SLUG)] }),
 		alt: new FormControl('', { nonNullable: true }),
@@ -91,7 +92,7 @@ export class MediaDetailsModal {
 	}
 
 	refreshGaps(): void {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	async save(modal: NgbModalRef): Promise<void> {

@@ -7,13 +7,13 @@ import { Select2, type Select2Data, type Select2SearchEvent } from 'ng-select2-c
 import { map, of, Subject, switchMap, takeUntil } from 'rxjs';
 
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { FaqScope, IFaq } from '@data-access/interfaces/faq.interface';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
@@ -50,7 +50,7 @@ export class FormFaq {
 	public form: FormGroup;
 	public faq: IFaq | null;
 	readonly fields: LocalizedFields;
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 
 	private destroy$ = new Subject<void>();
@@ -112,7 +112,7 @@ export class FormFaq {
 	}
 
 	refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	ngOnInit() {

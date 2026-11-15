@@ -4,6 +4,7 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { type ContentBlock, ContentBlocksGateway, type ContentBlockInput } from '@core/media/content-blocks.gateway';
 import { MediaGateway } from '@core/media/media.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
@@ -11,9 +12,6 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-
-/** Locales the storefront serves during development (en + fr; Bengali later, as data). */
-export const BANNER_LOCALES = ['en', 'bn'] as const;
 
 type Band = 'desktop' | 'tablet' | 'phone';
 const WIDE_SLOTS = new Set([
@@ -25,10 +23,9 @@ const WIDE_SLOTS = new Set([
 	'category_banner:main',
 ]);
 
-const localizedGroup = () =>
-	new FormGroup(
-		Object.fromEntries(BANNER_LOCALES.map((locale) => [locale, new FormControl('', { nonNullable: true })])),
-	);
+/** One text box per active language. */
+const localizedGroup = (locales: readonly string[]) =>
+	new FormGroup(Object.fromEntries(locales.map((locale) => [locale, new FormControl('', { nonNullable: true })])));
 
 const toLocal = (iso: string | null) => (iso ? iso.slice(0, 16) : '');
 const toIso = (local: string) => (local ? new Date(local).toISOString() : null);
@@ -56,7 +53,7 @@ export class BannerSlotForm implements OnInit {
 	readonly existing = input<ContentBlock | null>(null);
 	readonly saved = output<void>();
 
-	readonly locales = BANNER_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly bands: Band[] = ['desktop', 'tablet', 'phone'];
 	readonly previews = signal<Record<Band, IAttachment | null>>({ desktop: null, tablet: null, phone: null });
 	readonly saving = signal(false);
@@ -66,10 +63,10 @@ export class BannerSlotForm implements OnInit {
 		tablet: new FormControl<string | null>(null),
 		phone: new FormControl<string | null>(null),
 		containsText: new FormControl(false, { nonNullable: true }),
-		heading: localizedGroup(),
-		subheading: localizedGroup(),
-		ctaLabel: localizedGroup(),
-		alt: localizedGroup(),
+		heading: localizedGroup(this.locales),
+		subheading: localizedGroup(this.locales),
+		ctaLabel: localizedGroup(this.locales),
+		alt: localizedGroup(this.locales),
 		linkHref: new FormControl('', { nonNullable: true }),
 		linkExternal: new FormControl(false, { nonNullable: true }),
 		status: new FormControl<'draft' | 'active' | 'archived'>('draft', { nonNullable: true }),

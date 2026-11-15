@@ -121,7 +121,7 @@
 					ngbAccordionButton
 					type="button"
 				>
-					{{ row.label }} · {{ 'image_count' | transloco: { count: gallery(row.hash).length } }}
+					{{ row.label }} · {{ 'image_count' | plural: gallery(row.hash).length }}
 				</button>
 			</div>
 			<div ngbAccordionCollapse>

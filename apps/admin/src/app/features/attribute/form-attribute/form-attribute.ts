@@ -10,13 +10,13 @@ import { Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaGateway } from '@core/media/media.gateway';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -69,7 +69,7 @@ export class FormAttribute {
 	readonly type = input<string>(undefined);
 
 	public form: FormGroup;
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly fields: LocalizedFields;
 	readonly terms = signal<AttributeDefinitionTerm[]>([blankTerm()]);
 	/** Each value's default picture, by image id, as the picker shows it. */
@@ -88,7 +88,7 @@ export class FormAttribute {
 	readonly nameGaps = signal<Record<string, LanguageGap[]>>({});
 	/** Name plus every value, per language, for the Language switch. */
 	readonly gaps = computed(() =>
-		gapsByLocale((locale) => [
+		gapsByLocale(this.locales, (locale) => [
 			...(this.nameGaps()[locale] ?? []),
 			...this.terms().flatMap((term, index) =>
 				term.label[locale]?.trim()
@@ -187,7 +187,7 @@ export class FormAttribute {
 	}
 
 	refreshMissing() {
-		this.nameGaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.nameGaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	guide(term: AttributeDefinitionTerm): string {

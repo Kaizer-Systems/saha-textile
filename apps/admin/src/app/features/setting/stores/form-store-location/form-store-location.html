@@ -210,7 +210,7 @@
 					<span class="switch-state"></span>
 				</label>
 			</div>
-			<p class="help-text mb-0">{{ 'store_active_help' | transloco }}</p>
+			<p class="help-text mb-0">{{ 'store_active_help' | transloco: { languages: (locales | languageList) } }}</p>
 		</app-form-fields>
 		<app-button
 			[id]="'save_store_btn'"

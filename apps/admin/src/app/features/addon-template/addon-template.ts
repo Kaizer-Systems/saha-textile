@@ -5,13 +5,13 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/addon-template.service';
@@ -54,17 +54,23 @@ export class AddonTemplate {
 		priceINR: [0, Validators.required],
 	});
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly text = new LocalizedFields(this.form, ['label']);
 	private readonly nameGaps = signal<Record<string, LanguageGap[]>>({});
 	/** Name plus every field label, per language, for the Language switch. */
 	readonly gaps = computed(() =>
-		gapsByLocale((locale) => [
+		gapsByLocale(this.locales, (locale) => [
 			...(this.nameGaps()[locale] ?? []).map((gap) => ({ ...gap, label: 'name' })),
 			...this.measures().flatMap((row, index) =>
 				row.label[locale]?.trim()
 					? []
-					: [{ key: `field_${index}`, label: 'measurement_field', name: this.guide(row) || String(index + 1) }],
+					: [
+							{
+								key: `field_${index}`,
+								label: 'measurement_field',
+								name: this.guide(row) || String(index + 1),
+							},
+						],
 			),
 		]),
 	);
@@ -121,7 +127,7 @@ export class AddonTemplate {
 	}
 
 	refreshMissing() {
-		this.nameGaps.set(gapsByLocale((locale) => this.text.gaps(locale)));
+		this.nameGaps.set(gapsByLocale(this.locales, (locale) => this.text.gaps(locale)));
 	}
 
 	guide(row: Measure): string {

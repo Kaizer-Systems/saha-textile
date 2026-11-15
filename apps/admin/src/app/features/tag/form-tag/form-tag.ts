@@ -6,13 +6,8 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
-import {
-	ADMIN_LOCALES,
-	focusField,
-	gapsByLocale,
-	type LanguageGap,
-	LocalizedFields,
-} from '@core/i18n/localized-fields';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { ITag } from '@data-access/interfaces/tag.interface';
 import { injectTagQuery } from '@data-access/queries/tag.queries';
 import { BlogService } from '@data-access/services/blog.service';
@@ -53,7 +48,7 @@ export class FormTag {
 	public form: FormGroup;
 	public tag: ITag | null;
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly fields: LocalizedFields;
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 
@@ -117,7 +112,7 @@ export class FormTag {
 	}
 
 	private refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	submit() {

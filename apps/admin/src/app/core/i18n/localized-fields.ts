@@ -1,6 +1,8 @@
 import { signal } from '@angular/core';
 import type { FormGroup } from '@angular/forms';
 
+import { intlLocale, PRIMARY_LOCALE } from '@saha-textile/core-domain/languages';
+
 export type LocalizedText = Record<string, string>;
 
 /** One line of the Language switch's to-do list. */
@@ -14,8 +16,11 @@ export interface LanguageGap {
 }
 
 /** Every language's to-do list, built from a function that lists one language. */
-export function gapsByLocale(gaps: (locale: string) => LanguageGap[]): Record<string, LanguageGap[]> {
-	return Object.fromEntries(ADMIN_LOCALES.map((locale) => [locale, gaps(locale)]));
+export function gapsByLocale(
+	locales: readonly string[],
+	gaps: (locale: string) => LanguageGap[],
+): Record<string, LanguageGap[]> {
+	return Object.fromEntries(locales.map((locale) => [locale, gaps(locale)]));
 }
 
 /** Long enough for the to-do menu to hand focus back, and for a tab to finish fading in. */
@@ -32,17 +37,12 @@ export function focusField(page: Document, key: string): void {
 	}, FOCUS_DELAY_MS);
 }
 
-/** The admin edits every language; English is the guide shown under other languages. */
-export const ADMIN_LOCALES: readonly string[] = ['en', 'bn'];
-export const SOURCE_LOCALE = 'en';
-
 /**
- * The locale to hand to `Intl` for an admin language. Bengali keeps English digits (BN-3), so it
- * formats with the Latin numbering system while month names stay Bengali.
+ * English is the guide shown under other languages. The languages themselves come from the API
+ * (`ActiveLanguages`); the BN-3 digits rule for `Intl` lives with the shared language rules.
  */
-export function intlLocale(locale: string): string {
-	return locale === 'bn' ? 'bn-IN-u-nu-latn' : locale;
-}
+export const SOURCE_LOCALE = PRIMARY_LOCALE;
+export { intlLocale };
 
 /**
  * Language-bound form fields behind one Language switch. Each field keeps one control; this holds

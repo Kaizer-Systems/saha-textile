@@ -9,13 +9,8 @@ import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
-import {
-	ADMIN_LOCALES,
-	focusField,
-	gapsByLocale,
-	type LanguageGap,
-	LocalizedFields,
-} from '@core/i18n/localized-fields';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { BlogService } from '@data-access/services/blog.service';
@@ -72,7 +67,7 @@ export class FormCategory {
 	public category: ICategory;
 	public id: string;
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly fields: LocalizedFields;
 	/** The tree beside this form follows its language. */
 	readonly localeChange = output<string>();
@@ -186,7 +181,7 @@ export class FormCategory {
 		const english = this.fields.text('description')['en']?.trim();
 		const shown = (gap: LanguageGap) =>
 			!this.isBlog() || gap.key === 'name' || (gap.key === 'description' && !!english);
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale).filter(shown)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale).filter(shown)));
 	}
 
 	/** A top-level category and its children, for the second-parent dropdown. */

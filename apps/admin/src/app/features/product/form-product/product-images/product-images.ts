@@ -10,6 +10,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { MediaModal } from '@shared/ui/modal/media-modal/media-modal';
 
 import type { ProductContentWrite } from '@saha-textile/contracts';
+import { PluralPipe } from '@shared/pipes/language.pipes';
 
 type ImagesValue = Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>;
 
@@ -38,7 +39,7 @@ const SHAPE_TOLERANCE = 0.05;
 	selector: 'app-product-images',
 	templateUrl: './product-images.html',
 	styleUrls: ['./product-images.scss'],
-	imports: [NgTemplateOutlet, TranslocoModule, NgbAccordionModule, FormFields, MediaModal],
+	imports: [PluralPipe, NgTemplateOutlet, TranslocoModule, NgbAccordionModule, FormFields, MediaModal],
 })
 export class ProductImages {
 	readonly value = model.required<ImagesValue>();

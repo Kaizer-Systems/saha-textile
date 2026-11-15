@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@saha-textile/contracts": "workspace:*",
+    "@saha-textile/core-domain": "workspace:*",
     "@saha-textile/http-transport": "workspace:*",
     "@analogjs/router": "^2.9.2",
     "@angular/animations": "^22.2.3",

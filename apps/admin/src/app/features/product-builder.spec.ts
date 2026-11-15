@@ -108,10 +108,12 @@ describe('LocalizedFields with an optional field', () => {
 });
 
 describe('LanguageSwitch', () => {
-	it('names languages it knows, and falls back to the code', () => {
-		const page = mount(LanguageSwitch, [], { locales: ['en'], active: 'en' });
-		expect(page.name('bn')).toBe('বাংলা');
-		expect(page.name('xx')).toBe('xx');
+	it('names languages from the browser’s language data, in the language the admin is shown in', () => {
+		const reading = (lang: string) => [{ provide: TranslocoService, useValue: { langChanges$: of(lang) } }];
+		const english = mount(LanguageSwitch, reading('en'), { locales: ['en'], active: 'en' });
+		expect([english.name('bn'), english.name('hi'), english.name('xx')]).toEqual(['Bangla', 'Hindi', 'xx']);
+		const bengali = mount(LanguageSwitch, reading('bn'), { locales: ['en'], active: 'en' });
+		expect([bengali.name('en'), bengali.name('bn')]).toEqual(['ইংরেজি', 'বাংলা']);
 	});
 });
 

@@ -24,6 +24,7 @@ import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { HttpAdminAuthGateway } from '@core/auth/http-auth.gateway';
 import { provideAdminSessionBootstrap } from '@core/auth/session-bootstrap';
 import { provideRuntimeConfig } from '@core/config/runtime-config';
+import { provideActiveLanguages, savedLanguages } from '@core/i18n/active-languages';
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from '@core/interceptors/loader.interceptor';
@@ -39,6 +40,7 @@ export const appConfig: ApplicationConfig = {
 		// Public runtime config: fetches /config.json before the app starts and
 		// fills the mutable environment (no fileReplacements for deploy URLs).
 		provideRuntimeConfig(),
+		provideActiveLanguages(),
 		// The one binding that decides how this app talks to the auth API. Components,
 		// guards and stores depend on the abstract gateway, so swapping the transport (or
 		// faking it in a test) is this line, not a search across features.
@@ -82,7 +84,8 @@ export const appConfig: ApplicationConfig = {
 		// it through TranslocoService.setActiveLang.
 		provideTransloco({
 			config: {
-				availableLangs: ['en', 'bn'],
+				// The API's list replaces this once it arrives (`ActiveLanguages`).
+				availableLangs: [...savedLanguages()],
 				defaultLang: 'en',
 				fallbackLang: 'en',
 				reRenderOnLangChange: true,

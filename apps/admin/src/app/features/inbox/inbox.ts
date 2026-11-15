@@ -66,6 +66,7 @@ import type {
 	InboxModifyRequest,
 	InboxThreadSummary,
 } from '@saha-textile/contracts';
+import { LanguageNamePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 export const FOLDERS: readonly { id: InboxFolder; icon: string }[] = [
 	{ id: 'inbox', icon: 'ri-inbox-line' },
@@ -126,6 +127,8 @@ const statusOf = (error: unknown): number => (error instanceof HttpErrorResponse
 	templateUrl: './inbox.html',
 	styleUrls: ['./inbox.scss'],
 	imports: [
+		LanguageNamePipe,
+		PluralPipe,
 		PageWrapper,
 		TranslocoModule,
 		Select2,

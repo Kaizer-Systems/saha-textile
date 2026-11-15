@@ -10,13 +10,13 @@ import { forkJoin } from 'rxjs';
 
 import { STORE_GO_LIVE_WORDS, goLiveToast } from '@core/catalog/go-live-report';
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaGateway } from '@core/media/media.gateway';
 import { WEEKDAYS, summariseStoreHours } from '@core/stores/store-hours';
 import { STORE_LOCATIONS_KEY, StoreLocationGateway } from '@core/stores/store-location.gateway';
@@ -29,6 +29,7 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import type { AdminStoreLocationRow, StoreDayHours, StoreLocationWrite, Weekday } from '@saha-textile/contracts';
+import { LanguageListPipe } from '@shared/pipes/language.pipes';
 
 /** 06:00 to 23:30 in half hours: the times the opens and closes pickers offer. */
 export const STORE_TIMES: Select2Data = Array.from({ length: 36 }, (_, index) => {
@@ -58,6 +59,7 @@ type DayGroup = FormGroup<{
 	selector: 'app-form-store-location',
 	templateUrl: './form-store-location.html',
 	imports: [
+		LanguageListPipe,
 		PageWrapper,
 		ReactiveFormsModule,
 		TranslocoModule,
@@ -81,7 +83,7 @@ export class FormStoreLocation {
 
 	readonly times = STORE_TIMES;
 	readonly weekdays = WEEKDAYS;
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly storeId = signal<string | null>(null);
 	readonly photos = signal<IAttachment[]>([]);
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
@@ -138,7 +140,7 @@ export class FormStoreLocation {
 	}
 
 	refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	/** Copies Monday's open switch and times to the other six days. */

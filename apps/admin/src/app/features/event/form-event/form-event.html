@@ -295,8 +295,8 @@
 										</button>
 									</div>
 									<p class="help-text">
-										{{ 'event_preview_help' | transloco: { language: ('language_' + fields.locale()
-										| transloco) } }}
+										{{ 'event_preview_help' | transloco: { language: (fields.locale() |
+										languageName) } }}
 									</p>
 								</app-form-fields>
 								} }
@@ -662,7 +662,7 @@
 									</ul>
 								</div>
 								} @if (review(); as data) { @if (status() === 'draft') {
-								<p class="help-text">{{ 'event_reach' | transloco: { count: data.recipients } }}</p>
+								<p class="help-text">{{ 'event_reach' | plural: data.recipients }}</p>
 								} @if (type() === 'sale' && data.prices.length) {
 								<div class="table-responsive">
 									<table class="all-package theme-table no-footer table">

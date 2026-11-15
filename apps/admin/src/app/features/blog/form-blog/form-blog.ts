@@ -12,13 +12,13 @@ import { switchMap, takeUntil } from 'rxjs/operators';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
 import {
-	ADMIN_LOCALES,
 	focusField,
 	gapsByLocale,
 	type LanguageGap,
 	LocalizedFields,
 	type LocalizedText,
 } from '@core/i18n/localized-fields';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
@@ -127,7 +127,7 @@ export class FormBlog {
 	private destroy$ = new Subject<void>();
 	public isBrowser: boolean;
 
-	readonly locales = ADMIN_LOCALES;
+	readonly locales = inject(ActiveLanguages).list();
 	readonly fields: LocalizedFields;
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 	readonly goLiveGaps = signal<GoLiveGap[]>([]);
@@ -235,7 +235,7 @@ export class FormBlog {
 	}
 
 	private refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
 	selectThumbnail(data: IAttachment) {

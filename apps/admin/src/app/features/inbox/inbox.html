@@ -32,7 +32,7 @@
 						</span>
 						}
 						<span [class.text-danger]="data.broken">{{ data.state | transloco }}</span>
-						@if (data.aliases) { · {{ 'inbox_alias_count' | transloco: { count: data.aliases } }} }
+						@if (data.aliases) { · {{ 'inbox_alias_count' | plural: data.aliases }} }
 					</span>
 				</div>
 			</ng-template>
@@ -462,7 +462,7 @@
 				>
 					@if (t.messages.length > 2 && !allOpen()) {
 					<p class="text-content small mb-2">
-						{{ 'inbox_message_count' | transloco: { count: t.messages.length } }} ·
+						{{ 'inbox_message_count' | plural: t.messages.length }} ·
 						<button
 							type="button"
 							class="btn btn-link btn-sm d-inline p-0 align-baseline"
@@ -518,7 +518,7 @@
 						<div class="alert alert-light small mt-3 mb-0 py-2">
 							{{ 'inbox_contact_form' | transloco }} · {{ 'inbox_reply_goes_to' | transloco }} {{
 							contact.replyTo }} @if (contact.locale) { · {{ 'inbox_prefers' | transloco: { language:
-							('language_' + contact.locale | transloco) } }} }
+							(contact.locale | languageName) } }} }
 						</div>
 						} @if (message.hasRemoteImages && !picturesShown(message)) {
 						<div
@@ -844,7 +844,7 @@
 						class="form-check-label"
 						for="inbox_forward_files"
 					>
-						{{ 'inbox_include_attachments' | transloco: { count: source.count } }}
+						{{ 'inbox_include_attachments' | plural: source.count }}
 					</label>
 				</div>
 			</div>

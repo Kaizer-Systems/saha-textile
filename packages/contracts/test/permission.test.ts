@@ -35,7 +35,8 @@ describe('permission registry', () => {
 	it('exposes every code with a stable order', () => {
 		// 98 → 104 on 2026-11-09 with `event.{cancel,create,destroy,edit,index,publish}` (launch and sale events).
 		// 104 → 106 on 2026-11-09 with `mailbox.{manage,use}` (Gmail mailboxes in the admin).
-		expect(PERMISSION_CODES).toHaveLength(106);
+		// 106 → 107 on 2026-11-15 with `language.manage` (Settings › Languages).
+		expect(PERMISSION_CODES).toHaveLength(107);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

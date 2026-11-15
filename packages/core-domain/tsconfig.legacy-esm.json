@@ -11,5 +11,5 @@
 		"declaration": false,
 		"sourceMap": false
 	},
-	"files": ["src/catalog/legacy-resolve.ts", "src/catalog/listing.ts", "src/catalog/ist-time.ts", "src/catalog/languages.ts"]
+	"files": ["src/catalog/legacy-resolve.ts", "src/catalog/listing.ts", "src/catalog/ist-time.ts", "src/catalog/languages.ts", "src/catalog/media-files.ts"]
 }

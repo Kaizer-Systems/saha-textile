@@ -28,6 +28,11 @@
       "types": "./dist/catalog/languages.d.ts",
       "import": "./dist/esm/languages.js",
       "default": "./dist/catalog/languages.js"
+    },
+    "./media-files": {
+      "types": "./dist/catalog/media-files.d.ts",
+      "import": "./dist/esm/media-files.js",
+      "default": "./dist/catalog/media-files.js"
     }
   },
   "files": [

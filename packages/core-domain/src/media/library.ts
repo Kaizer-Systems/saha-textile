@@ -7,6 +7,8 @@ import type {
 	StorageColour,
 } from '@saha-textile/contracts';
 
+export { CAMERA_RAW, waitsForImageProfiles } from '../catalog/media-files';
+
 /**
  * The Media page as a file manager (media build step 1, brief revision 6): names, folders, Trash,
  * categories, share links and the storage check. Rules only; the API and the adapters apply them.
@@ -128,18 +130,6 @@ export function restoreTarget(
 }
 
 // --- Categories ---------------------------------------------------------------------------------
-
-/** Camera RAW files: stored as files, labelled, never processed as photos (decision 3). */
-export const CAMERA_RAW = /\.(dng|cr2|cr3|nef|nrw|arw|srf|sr2|raf|orf|rw2|pef|srw|x3f|3fr|iiq|erf|kdc|mrw)$/i;
-
-/**
- * A photo the image worker will process: it uploads with an image profile, which the Media page
- * offers from step 2 (owner, 15 Nov). Until then the Media page uploads every other file and lists
- * photos as waiting; camera RAW files are not photos here, so they upload as files.
- */
-export function waitsForImageProfiles(contentType: string, name: string): boolean {
-	return contentType.toLowerCase().startsWith('image/') && !CAMERA_RAW.test(name);
-}
 
 const ARCHIVES = /\.(zip|rar|7z|tar|gz|tgz|bz2|xz)$/i;
 const BACKUPS = /\.(bak|dump|archive|bson|sql)$|(^|[-_.])backup([-_.]|$)/i;

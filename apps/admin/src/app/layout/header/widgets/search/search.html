@@ -2,8 +2,9 @@
 	Admin search (owner brief, approved 2026-11-10). The theme's search box is kept as it was; the
 	dropdown is Bootstrap's card and list group with the theme colour classes (`theme-bg-color`,
 	`theme-color`) and `<kbd>` key hints, so nothing here is styled on its own. The highlighted row
-	also sets its background to `var(--theme-color)` inline, because the dark theme's
-	`.page-wrapper .list-group-item` rule outranks `theme-bg-color`.
+	also sets its background inline, because the dark theme's `.page-wrapper .list-group-item` rule
+	outranks `theme-bg-color`. It is the deeper theme shade (`--theme-strong`) with all-white text:
+	on the theme colour, or with half-white lines, the row fell below WCAG AA.
 -->
 <form
 	#searchForm
@@ -65,7 +66,7 @@
 					href="javascript:void(0)"
 					[attr.aria-selected]="isActive(entry)"
 					[class.theme-bg-color]="isActive(entry)"
-					[style.background-color]="isActive(entry) ? 'var(--theme-color)' : null"
+					[style.background-color]="isActive(entry) ? 'var(--theme-strong)' : null"
 					[class.text-white]="isActive(entry)"
 					[class.bg-transparent]="!isActive(entry)"
 					(mouseenter)="focusRow(entry)"
@@ -78,7 +79,7 @@
 					<div class="flex-grow-1">
 						<div
 							class="small"
-							[class.text-white-50]="isActive(entry)"
+							[class.text-white]="isActive(entry)"
 							[class.text-muted]="!isActive(entry)"
 						>
 							@for (step of trail(entry); track $index; let last = $last) { {{ step | transloco }} @if
@@ -89,14 +90,14 @@
 						<div class="fw-semibold">{{ entry.titleKey | transloco }}</div>
 						<div
 							class="small"
-							[class.text-white-50]="isActive(entry)"
+							[class.text-white]="isActive(entry)"
 							[class.text-muted]="!isActive(entry)"
 						>
 							{{ 'search_hint_' + entry.id | transloco }}
 						</div>
 					</div>
 					@if (isActive(entry)) {
-					<span class="small text-white-50 mt-1 text-nowrap">Enter ↵</span>
+					<span class="small mt-1 text-nowrap text-white">Enter ↵</span>
 					}
 				</a>
 				}

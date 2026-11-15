@@ -1,5 +1,5 @@
 import type { MediaAsset, MediaFolder } from '@saha-textile/contracts';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { MediaJob } from '../src/ports/media-job-queue.port';
 import {
@@ -7,6 +7,7 @@ import {
 	deleteMediaForever,
 	publicKeys,
 	purgeMediaTrash,
+	sweepUnfinishedUploads,
 	storedKeys,
 } from '../src/media/library-use-cases';
 
@@ -161,5 +162,56 @@ describe('nightly Trash purge', () => {
 		expect([...w.dirs.keys()]).toEqual(['fld_new']);
 		expect(w.audit[0]?.action).toBe('media.trash_purged');
 		expect(await purgeMediaTrash(world([], []).deps, NOW)).toEqual({ files: 0, folders: 0 });
+	});
+});
+
+describe('the nightly sweep of unfinished uploads', () => {
+	it('removes uploads still waiting a day after they started: bytes, record and hold', async () => {
+		const enqueued: unknown[] = [];
+		const deleted: string[] = [];
+		const released: string[] = [];
+		const recorded: unknown[] = [];
+		const cutoffs: string[] = [];
+		const now = new Date('2026-11-16T22:00:00.000Z');
+		const swept = await sweepUnfinishedUploads(
+			{
+				files: {
+					listUnfinishedBefore: async (cutoff: string) => {
+						cutoffs.push(cutoff);
+						return [
+							{ id: 'med_a', originalStorageKey: 'media/med_a/original.pdf' },
+							{ id: 'med_b', originalStorageKey: null },
+						] as never;
+					},
+				},
+				assets: { hardDelete: async (id: string) => void deleted.push(id) },
+				queue: { enqueue: async (job: unknown) => void enqueued.push(job) } as never,
+				release: async (holdId) => void released.push(holdId),
+				record: async (action, metadata) => recorded.push({ action, metadata }),
+			},
+			now,
+		);
+		expect(swept).toBe(2);
+		expect(cutoffs).toEqual(['2026-11-15T22:00:00.000Z']);
+		expect(enqueued).toEqual([{ type: 'delete-objects', keys: ['media/med_a/original.pdf'], urls: [] }]);
+		expect(deleted).toEqual(['med_a', 'med_b']);
+		expect(released).toEqual(['res_med_a', 'res_med_b']);
+		expect(recorded).toEqual([{ action: 'media.unfinished_swept', metadata: { files: ['med_a', 'med_b'] } }]);
+	});
+
+	it('does nothing and records nothing when every upload finished', async () => {
+		const record = vi.fn();
+		const swept = await sweepUnfinishedUploads(
+			{
+				files: { listUnfinishedBefore: async () => [] },
+				assets: { hardDelete: vi.fn() },
+				queue: { enqueue: vi.fn() } as never,
+				release: vi.fn(),
+				record,
+			},
+			new Date(),
+		);
+		expect(swept).toBe(0);
+		expect(record).not.toHaveBeenCalled();
 	});
 });

@@ -23,6 +23,7 @@ import {
 	MongoProductVariantRepository,
 	MongoSiteSettingsRepository,
 	MongoStockAlertRepository,
+	MongoStorageLedgerRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { SharpImageCodec } from '@saha-textile/adapters-image-sharp';
 import { BullMqMediaJobQueue, type MediaJobHandlers, startMediaWorker } from '@saha-textile/adapters-queue-bullmq';
@@ -37,6 +38,7 @@ import {
 	checkProductVideos,
 	copyYouTubePosters,
 	purgeMediaTrash,
+	sweepUnfinishedUploads,
 	refreshYouTubeFeed,
 	runMediaGarbageCollection,
 	runWeeklyInsight,
@@ -226,6 +228,38 @@ export const composeMediaWorker = async (config: AppConfig) => {
 				logger.log(`Trash: ${result.files} files and ${result.folders} folders removed after 30 days`);
 			}
 			return result;
+		},
+		'upload-sweep': async () => {
+			const ledger = new MongoStorageLedgerRepository();
+			const swept = await sweepUnfinishedUploads(
+				{
+					files: assets,
+					assets,
+					queue,
+					release: (holdId) => ledger.release(holdId),
+					record: (action, metadata) =>
+						audit.append({
+							id: `audit_${randomUUID()}`,
+							actorUserId: null,
+							targetUserId: null,
+							audience: 'system',
+							action,
+							entityType: 'media',
+							entityId: null,
+							severity: 'info',
+							retentionTier: 'catalog_admin',
+							diffs: [],
+							metadata,
+							requestId: null,
+							ipHash: null,
+							userAgentHash: null,
+							createdAt: now().toISOString(),
+						}),
+				},
+				now(),
+			);
+			if (swept) logger.log(`Uploads: ${swept} never finished, removed after a day`);
+			return { swept };
 		},
 		'stock-alerts': async () => {
 			const result = await deliverStockAlerts({

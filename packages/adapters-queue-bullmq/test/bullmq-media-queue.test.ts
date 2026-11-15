@@ -38,6 +38,7 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 					'search-outbox': async () => {},
 					'search-check': async () => {},
 					'trash-purge': async () => {},
+					'upload-sweep': async () => {},
 				},
 			});
 		});
@@ -79,6 +80,7 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 				'search-outbox': idle,
 				'search-check': idle,
 				'trash-purge': idle,
+				'upload-sweep': idle,
 			},
 		});
 		const ran = () => new Promise<void>((resolve) => (release = resolve));

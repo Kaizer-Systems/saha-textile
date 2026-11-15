@@ -24,7 +24,9 @@ export type ScheduledMediaJob =
 	/** Compares the database with the search index and queues any difference. */
 	| { type: 'search-check' }
 	/** Removes for good what has been in the Media page's Trash for 30 days. */
-	| { type: 'trash-purge' };
+	| { type: 'trash-purge' }
+	/** Removes uploads still waiting for their bytes a day after they started. */
+	| { type: 'upload-sweep' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -166,6 +168,12 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'trash-purge',
 			{ pattern: '45 3 * * *', tz },
 			{ name: 'trash-purge', data: { type: 'trash-purge' } },
+		);
+		// Uploads never finished (a closed tab, a lost line): gone after a day (03:50 IST).
+		await this.queue.upsertJobScheduler(
+			'upload-sweep',
+			{ pattern: '50 3 * * *', tz },
+			{ name: 'upload-sweep', data: { type: 'upload-sweep' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

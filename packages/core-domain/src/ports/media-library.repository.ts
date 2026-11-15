@@ -102,6 +102,8 @@ export interface MediaBrowseRepository {
 	/** Bytes stored, by what they are. */
 	usage(): Promise<{ originals: number; versions: number; files: number; trash: number }>;
 	listTrashedBefore(cutoff: string, limit: number): Promise<MediaAsset[]>;
+	/** Uploads still waiting for their bytes that started before `cutoff`: abandoned (S11's leftovers). */
+	listUnfinishedBefore(cutoff: string, limit: number): Promise<MediaAsset[]>;
 	/** Files and bytes directly in each folder (not in Trash). */
 	totalsByFolder(folderIds: readonly string[]): Promise<{ folderId: string; files: number; bytes: number }[]>;
 	/** Where each file is used on the website ("Product · Red Banarasi Silk"); absent when unused. */

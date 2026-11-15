@@ -112,6 +112,7 @@ describe('BullMqMediaJobQueue', () => {
 			'search-outbox',
 			'search-check',
 			'trash-purge',
+			'upload-sweep',
 			'weekly-insight',
 		]);
 	});

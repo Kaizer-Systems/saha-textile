@@ -366,6 +366,19 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 		return docs.map(toAsset);
 	}
 
+	async listUnfinishedBefore(cutoff: string, limit: number): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({
+			'processing.state': 'awaiting_upload',
+			deletedAt: null,
+			createdAt: { $lt: new Date(cutoff) },
+		})
+			.sort({ createdAt: 1 })
+			.limit(limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
 	async totalsByFolder(folderIds: readonly string[]): Promise<{ folderId: string; files: number; bytes: number }[]> {
 		const rows = await MediaAssetModel.aggregate<{ _id: string; files: number; bytes: number }>([
 			{ $match: { folderId: { $in: [...folderIds] }, deletedAt: null, trashedAt: null } },

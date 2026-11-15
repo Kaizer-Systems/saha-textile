@@ -103,3 +103,34 @@ export async function purgeMediaTrash(deps: DeleteForeverDeps, now: Date): Promi
 	);
 	return result.ok ? { files: result.files.length, folders: result.folders.length } : { files: 0, folders: 0 };
 }
+
+/** An upload not finished a day after it started was abandoned: a closed tab, a lost line. */
+export const UNFINISHED_UPLOAD_HOURS = 24;
+
+export interface UnfinishedSweepDeps {
+	files: Pick<MediaBrowseRepository, 'listUnfinishedBefore'>;
+	assets: Pick<MediaAssetRepository, 'hardDelete'>;
+	queue: MediaJobQueuePort;
+	/** Ends the upload's storage hold, `res_<assetId>`, if it is still there. */
+	release: (holdId: string) => Promise<void>;
+	record: (action: string, metadata: Record<string, unknown>) => Promise<unknown>;
+}
+
+/**
+ * Removes uploads still waiting for their bytes a day after they started (the worker runs this every
+ * night): the record, anything that reached Spaces, and the hold. Nothing else is touched.
+ */
+export async function sweepUnfinishedUploads(deps: UnfinishedSweepDeps, now: Date): Promise<number> {
+	const cutoff = new Date(now.getTime() - UNFINISHED_UPLOAD_HOURS * 3_600_000).toISOString();
+	const left = await deps.files.listUnfinishedBefore(cutoff, TRASH_PURGE_BATCH);
+	if (!left.length) return 0;
+	const keys = left.flatMap((asset) => (asset.originalStorageKey ? [asset.originalStorageKey] : []));
+	// Private and never public: there is nothing at the CDN to forget.
+	if (keys.length) await deps.queue.enqueue({ type: 'delete-objects', keys, urls: [] });
+	for (const asset of left) {
+		await deps.assets.hardDelete(asset.id);
+		await deps.release(`res_${asset.id}`);
+	}
+	await deps.record('media.unfinished_swept', { files: left.map((asset) => asset.id) });
+	return left.length;
+}

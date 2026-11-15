@@ -153,6 +153,28 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 		]);
 		expect(await assets.findNamedIn(null, ['Red Banarasi front.jpg'])).toEqual([]);
 		expect(await assets.findNamedIn('fld_banarasi', [])).toEqual([]);
+		// The nightly sweep sees only uploads still waiting for their bytes, started before the cutoff.
+		await assets.create(
+			file('med_unfinished', {
+				kind: 'file',
+				derivatives: [],
+				processing: { state: 'awaiting_upload', attempts: 0, error: null, processedAt: null },
+			}),
+		);
+		const later = new Date(Date.now() + 60_000).toISOString();
+		await assets.create(
+			file('med_finished', {
+				kind: 'file',
+				derivatives: [],
+				processing: { state: 'ready', attempts: 0, error: null, processedAt: null },
+			}),
+		);
+		const unfinished = (await assets.listUnfinishedBefore(later, 50)).map((row) => row.id);
+		expect(unfinished).toContain('med_unfinished');
+		expect(unfinished).not.toContain('med_finished');
+		await assets.hardDelete('med_finished');
+		expect(await assets.listUnfinishedBefore('2000-01-01T00:00:00.000Z', 10)).toEqual([]);
+		await assets.hardDelete('med_unfinished');
 
 		await assets.moveTo(['med_blue'], 'fld_banarasi');
 		await assets.rename('med_blue', 'blue tant (1).jpg');

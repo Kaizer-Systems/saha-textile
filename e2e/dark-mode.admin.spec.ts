@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
-import { firstScreen } from './colour-checks';
-import { ADMIN, ADMIN_STATE } from './support';
+import { firstScreen, lowContrast, type ContrastOptions } from './colour-checks';
+import { ADMIN, ADMIN_STATE, API_URL } from './support';
 
 /**
  * The admin's light and dark modes, the same guards as the shop's `dark-mode.spec.ts`:
@@ -11,6 +11,9 @@ import { ADMIN, ADMIN_STATE } from './support';
  * 2. Parity: every screen has the same layout in both modes. The dark stylesheet only changes
  *    colours (`apps/admin/scripts/build-dark-theme.mjs`); a size, spacing or font that differs
  *    means a dark rule leaked layout.
+ * 3. Contrast: every visible piece of text on every screen, at desktop and phone size, and in the
+ *    menus, lists and popups people open, reaches WCAG AA in both modes, with see-through layers
+ *    blended as the eye sees them.
  */
 
 test.skip(!process.env['E2E_ADMIN_EMAIL'], 'needs `pnpm e2e:stack`');
@@ -54,6 +57,12 @@ const SCREENS = [
 /** Moving parts that differ from one load to the next whatever the mode. */
 const UNSTABLE = 'ngx-loading-bar, .toast-container, #toast-container, .apexcharts-canvas';
 
+/** The admin's contrast rule: see-through layers blended, text under a popup's backdrop skipped. */
+const CONTRAST: ContrastOptions = { blend: true, skipCovered: true, skip: '' };
+
+/** Screens also checked at phone size. */
+const PHONE_SCREENS = ['/dashboard', '/product', '/product/edit/prd_906', '/media', '/setting/brand', '/auth/login'];
+
 const STILL =
 	'*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}';
 
@@ -61,10 +70,10 @@ async function open(
 	browser: Browser,
 	mode: 'light' | 'dark',
 	path: string,
-	options: { signedIn?: boolean } = {},
+	options: { signedIn?: boolean; phone?: boolean } = {},
 ): Promise<Page> {
 	const context = await browser.newContext({
-		viewport: { width: 1440, height: 900 },
+		viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
 		ignoreHTTPSErrors: true,
 		reducedMotion: 'reduce',
 		storageState: options.signedIn === false ? undefined : ADMIN_STATE,
@@ -77,8 +86,36 @@ async function open(
 	await page.goto(`${ADMIN}${path}`, { waitUntil: 'networkidle' });
 	await page.addStyleTag({ content: STILL });
 	await page.evaluate(() => document.fonts.ready);
-	await page.waitForTimeout(400);
+	await settled(page);
 	return page;
+}
+
+/**
+ * Waits until the page stops changing: a list can swap its loading rows for its rows or its empty
+ * state a moment after the network is quiet, and the two modes must be compared in the same state.
+ */
+async function settled(page: Page): Promise<void> {
+	const shape = () =>
+		page.evaluate(() => `${document.body.innerHTML.length}:${document.documentElement.scrollHeight}`);
+	let before = await shape();
+	for (let tries = 0; tries < 20; tries++) {
+		await page.waitForTimeout(250);
+		const now = await shape();
+		if (now === before) return;
+		before = now;
+	}
+}
+
+/** Every text on the whole page, not only the first screen: the viewport grows to the content. */
+async function readable(page: Page): Promise<string[]> {
+	const width = page.viewportSize()?.width ?? 1440;
+	const height = await page.evaluate(() => Math.min(Math.max(document.documentElement.scrollHeight, 900), 3400));
+	await page.setViewportSize({ width, height });
+	await page.waitForTimeout(200);
+	const found = await page.evaluate(lowContrast, CONTRAST);
+	return found.map(
+		(issue) => `${issue.ratio} "${issue.text}" ${issue.where} | ${issue.color} on ${issue.background}`,
+	);
 }
 
 /** Runs in the page: how many rules the browser parsed from the dark stylesheet. */
@@ -147,17 +184,27 @@ test.describe('Admin dark mode', () => {
 
 	test('sign-in is dark before anyone signs in, with the dark logo when the Brand Kit has one', async ({
 		browser,
+		request,
 	}) => {
+		const brand = (await (
+			await request.get(`${API_URL}/storefront/brand`, { ignoreHTTPSErrors: true })
+		).json()) as {
+			admin?: { logo?: { url: string } | null; logoDark?: { url: string } | null };
+		};
 		const page = await open(browser, 'dark', '/auth/login', { signedIn: false });
 		await expect(page.locator('body')).toHaveClass(/dark-only/);
 		expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(11, 20, 29)');
+		const logo = page.locator('.log-in-title img');
+		const expected = brand.admin?.logoDark?.url ?? brand.admin?.logo?.url;
+		if (expected) await expect(logo).toHaveAttribute('src', expected);
+		else await expect(logo).toHaveCount(0);
 		await page.context().close();
 	});
 });
 
-test.describe('Admin light and dark parity', () => {
+test.describe('Admin light and dark: layout and contrast on every screen', () => {
 	for (const path of [...SCREENS, '/auth/login']) {
-		test(`${path} has the same layout in light and dark mode`, async ({ browser }) => {
+		test(`${path} has the same layout and readable text in light and dark mode`, async ({ browser }) => {
 			const signedIn = path !== '/auth/login';
 			const light = await open(browser, 'light', path, { signedIn });
 			const dark = await open(browser, 'dark', path, { signedIn });
@@ -167,9 +214,71 @@ test.describe('Admin light and dark parity', () => {
 			]);
 			expect(Object.keys(before).length).toBeGreaterThan(20);
 			const changed = Object.keys(before).filter((key) => key in after && before[key] !== after[key]);
-			expect(changed.map((key) => `${key}: ${before[key]} → ${after[key]}`)).toEqual([]);
+			expect(
+				changed.map((key) => `${key}: ${before[key]} → ${after[key]}`),
+				'layout',
+			).toEqual([]);
+			expect(await readable(light), 'light mode').toEqual([]);
+			expect(await readable(dark), 'dark mode').toEqual([]);
 			await light.context().close();
 			await dark.context().close();
+		});
+	}
+
+	for (const path of PHONE_SCREENS) {
+		test(`${path} has readable text at phone size in light and dark mode`, async ({ browser }) => {
+			for (const mode of ['light', 'dark'] as const) {
+				const page = await open(browser, mode, path, { signedIn: path !== '/auth/login', phone: true });
+				expect(await readable(page), `${mode} mode`).toEqual([]);
+				await page.context().close();
+			}
+		});
+	}
+});
+
+test.describe('Admin light and dark: menus, lists and popups', () => {
+	for (const mode of ['light', 'dark'] as const) {
+		test(`what people open is readable in ${mode} mode`, async ({ browser }) => {
+			// The product list: every database the suite runs on has products.
+			const page = await open(browser, mode, '/product');
+			const check = async (what: string): Promise<void> => {
+				await page.waitForTimeout(300);
+				expect(await page.evaluate(lowContrast, CONTRAST), what).toEqual([]);
+			};
+
+			await page.locator('table [title="Delete"]:visible').first().click();
+			await expect(page.locator('.modal.show')).toBeVisible();
+			await check('the delete question');
+			await page.keyboard.press('Escape');
+			await expect(page.locator('.modal.show')).toHaveCount(0);
+
+			await page.locator('.page-header [title="Language"]').first().click();
+			await check('the header language menu');
+			await page.keyboard.press('Escape');
+
+			await page.locator('li.profile-nav').hover();
+			await check('the profile menu');
+			await page.mouse.move(10, 890);
+
+			await page.goto(`${ADMIN}/qna`, { waitUntil: 'networkidle' });
+			await page.locator('.select2-selection').first().click();
+			await expect(page.locator('.select2-results__option').first()).toBeVisible();
+			await check('an open select list');
+			await page.keyboard.press('Escape');
+
+			await page.goto(`${ADMIN}/media`, { waitUntil: 'networkidle' });
+			await page.getByText('Add Media').first().click();
+			await expect(page.locator('.modal.show')).toBeVisible();
+			await check('the media upload popup');
+			await page.keyboard.press('Escape');
+
+			await page.goto(`${ADMIN}/dashboard`, { waitUntil: 'networkidle' });
+			const search = page.locator('.page-header input.Typeahead-input').first();
+			await search.click();
+			await search.fill('pro');
+			await expect(page.locator('.search-full .list-group-item').first()).toBeVisible();
+			await check('the search suggestions, with a highlighted row');
+			await page.context().close();
 		});
 	}
 });

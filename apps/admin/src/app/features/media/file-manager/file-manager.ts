@@ -57,7 +57,9 @@ import {
 	pickedCount,
 	stepItem,
 } from './fm-selection';
+import { FmShare } from './fm-share';
 import { FM_CATEGORIES, FmSidebar, type FmNav } from './fm-sidebar';
+import { FmStorageDetails } from './fm-storage-details';
 import { FmUndoToast } from './fm-undo-toast';
 import { FmUploadFlow, type FmUploadPopups } from './fm-upload-flow';
 import { type FmUploadRow, planUpload, readDropped, readPickedFolder } from './fm-upload-plan';
@@ -389,8 +391,8 @@ export class FileManager {
 		if (!file) return [];
 		const star: FmMenuLine = file.starred ? 'unstar' : 'star';
 		if (file.state === 'awaiting_upload') return ['rename', 'move', star, 'divider', 'trash'];
-		if (file.kind === 'image') return ['rename', 'download_original', 'move', star, 'divider', 'trash'];
-		return ['preview', 'rename', 'download', 'move', star, 'divider', 'trash'];
+		if (file.kind === 'image') return ['rename', 'download_original', 'share', 'move', star, 'divider', 'trash'];
+		return ['preview', 'rename', 'download', 'share', 'move', star, 'divider', 'trash'];
 	}
 
 	/** Right-click, or the ⋮ on a row, tile or folder card. An item not picked yet becomes the pick. */
@@ -453,6 +455,9 @@ export class FileManager {
 			case 'rename':
 				this.openRename();
 				return;
+			case 'share':
+				if (file) this.openShare(file);
+				return;
 			case 'star':
 			case 'unstar':
 				if (folder)
@@ -500,6 +505,34 @@ export class FileManager {
 			tab?.close();
 			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
 		}
+	}
+
+	/** Share (A35–A35D): links, a public address, or the website's picture. */
+	openShare(file: MediaFileRow): void {
+		const popup = this.modals.open(FmShare, {
+			size: 'xl',
+			centered: true,
+			windowClass: 'theme-modal media-modal',
+			ariaLabelledBy: 'fm_share_title',
+		});
+		void (popup.componentInstance as FmShare).start(file);
+		// Links stop, files go public or private: the list refreshes when the popup closes.
+		popup.result
+			.finally(() => void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY }))
+			.catch(() => undefined);
+	}
+
+	/** Storage details (A47), from the storage box. */
+	openStorageDetails(): void {
+		const summary = this.storage.data();
+		if (!summary) return;
+		const popup = this.modals.open(FmStorageDetails, {
+			size: 'lg',
+			centered: true,
+			windowClass: 'theme-modal media-modal',
+			ariaLabelledBy: 'fm_storage_title',
+		});
+		(popup.componentInstance as FmStorageDetails).start(summary);
 	}
 
 	// --- Stars, New folder, Rename (A17, A23, A24) ----------------------------------------------

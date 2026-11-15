@@ -582,9 +582,26 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 		page.openMenu({ item: { type: 'folder', id: 'fld_w' }, event: click(), anchor: null });
 		expect(page.menu()?.lines).toEqual(['open', 'new_inside', 'rename', 'move', 'star', 'divider', 'trash']);
 		page.openMenu({ item: { type: 'file', id: 'med_1' }, event: click(), anchor: null });
-		expect(page.menu()?.lines).toEqual(['rename', 'download_original', 'move', 'star', 'divider', 'trash']);
+		expect(page.menu()?.lines).toEqual([
+			'rename',
+			'download_original',
+			'share',
+			'move',
+			'star',
+			'divider',
+			'trash',
+		]);
 		page.openMenu({ item: { type: 'file', id: 'med_pdf' }, event: click(), anchor: null });
-		expect(page.menu()?.lines).toEqual(['preview', 'rename', 'download', 'move', 'star', 'divider', 'trash']);
+		expect(page.menu()?.lines).toEqual([
+			'preview',
+			'rename',
+			'download',
+			'share',
+			'move',
+			'star',
+			'divider',
+			'trash',
+		]);
 		page.pick({ type: 'file', id: 'med_1' }, click({ metaKey: true }));
 		// A right-click on something already picked keeps the pick: the menu acts on both.
 		page.openMenu({ item: { type: 'file', id: 'med_1' }, event: click(), anchor: null });

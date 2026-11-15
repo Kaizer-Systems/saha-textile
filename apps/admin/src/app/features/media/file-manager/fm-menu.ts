@@ -14,6 +14,7 @@ export type FmMenuKey =
 	| 'rename'
 	| 'download'
 	| 'download_original'
+	| 'share'
 	| 'move'
 	| 'star'
 	| 'unstar'
@@ -29,6 +30,7 @@ const LOOK: Readonly<Record<FmMenuKey, { icon: string; label: string }>> = {
 	rename: { icon: 'ri-edit-line', label: 'rename' },
 	download: { icon: 'ri-download-2-line', label: 'fm_download' },
 	download_original: { icon: 'ri-download-2-line', label: 'fm_download_original' },
+	share: { icon: 'ri-share-line', label: 'fm_share' },
 	move: { icon: 'ri-drag-move-2-line', label: 'fm_move_to' },
 	star: { icon: 'ri-star-line', label: 'fm_star' },
 	unstar: { icon: 'ri-star-fill', label: 'fm_unstar' },

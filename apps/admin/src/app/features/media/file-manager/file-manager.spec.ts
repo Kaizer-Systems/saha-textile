@@ -109,6 +109,51 @@ describe('the Media page reads its view from the address', () => {
 		});
 	});
 
+	it('reads filters from the address, applies the menu, and removes one chip or all', () => {
+		const { page, router } = render({
+			cats: 'documents,nope,images',
+			state: 'failed',
+			size: 'over25',
+			up: '7d',
+			used: 'out',
+		});
+		expect(page.query()).toMatchObject({
+			categories: ['documents', 'images'],
+			state: 'failed',
+			size: 'over25',
+			uploaded: '7d',
+			used: 'out',
+		});
+		expect(page.filterCount()).toBe(6);
+		expect(page.showLocation()).toBe(true);
+		page.toggleFilters();
+		page.toggleDraftCategory('documents');
+		page.setDraft('state', '');
+		page.applyFilters();
+		expect(page.filtersOpen()).toBe(false);
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({
+				queryParams: { cats: 'images', state: null, size: 'over25', up: '7d', used: 'out' },
+			}),
+		);
+		page.removeFilter('cats', 'images');
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({
+				queryParams: expect.objectContaining({ cats: 'documents', state: 'failed' }),
+			}),
+		);
+		page.clearFilters();
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({
+				queryParams: { cats: null, state: null, size: null, up: null, used: null },
+			}),
+		);
+		expect(render({ state: 'odd', size: '', used: 'maybe' }).page.filterCount()).toBe(0);
+	});
+
 	it('writes changes into the address, and waits for a pause in typing before searching', () => {
 		vi.useFakeTimers();
 		const { page, router } = render({ folder: 'fld_b' });

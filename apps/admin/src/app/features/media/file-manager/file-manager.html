@@ -35,6 +35,141 @@
 					</span>
 					}
 				</div>
+				<div class="dropdown fm-menu-host">
+					<button
+						type="button"
+						class="btn btn-outline d-flex align-items-center gap-2"
+						id="fm_filters"
+						(click)="toggleFilters()"
+					>
+						<i class="ri-filter-3-line"></i>
+						{{ 'fm_filters' | transloco }} @if (filterCount()) {
+						<span class="badge rounded-pill badge-theme">{{ filterCount() }}</span>
+						}
+					</button>
+					@if (filtersOpen()) {
+					<div
+						class="dropdown-menu show fm-ctx p-3"
+						id="fm_filters_menu"
+						style="top: 46px; left: 0; width: 520px; max-width: 90vw"
+					>
+						<div class="row g-3">
+							<div class="col-6">
+								<h6 class="mb-2">{{ 'type' | transloco }}</h6>
+								@for (item of categoryOptions; track item.key) {
+								<div class="form-check">
+									<input
+										class="form-check-input"
+										type="checkbox"
+										[id]="'fm_f_' + item.key"
+										[checked]="draft().cats.includes(item.key)"
+										(change)="toggleDraftCategory(item.key)"
+									/>
+									<label
+										class="form-check-label"
+										[for]="'fm_f_' + item.key"
+									>
+										{{ item.label | transloco }}
+									</label>
+								</div>
+								}
+							</div>
+							<div class="d-grid align-content-start col-6 gap-3">
+								<div>
+									<h6 class="mb-2">{{ 'status' | transloco }}</h6>
+									<select
+										class="form-select"
+										id="fm_f_state"
+										(change)="setDraft('state', $any($event.target).value)"
+									>
+										<option value="">{{ 'fm_any_status' | transloco }}</option>
+										@for (option of filterOptions.state; track option) {
+										<option
+											[value]="option"
+											[selected]="draft().state === option"
+										>
+											{{ 'fm_state_' + option | transloco }}
+										</option>
+										}
+									</select>
+								</div>
+								<div>
+									<h6 class="mb-2">{{ 'fm_uploaded' | transloco }}</h6>
+									<select
+										class="form-select"
+										id="fm_f_up"
+										(change)="setDraft('up', $any($event.target).value)"
+									>
+										<option value="">{{ 'fm_any_time' | transloco }}</option>
+										@for (option of filterOptions.up; track option) {
+										<option
+											[value]="option"
+											[selected]="draft().up === option"
+										>
+											{{ 'fm_up_' + option | transloco }}
+										</option>
+										}
+									</select>
+								</div>
+							</div>
+							<div class="col-6">
+								<h6 class="mb-2">{{ 'size' | transloco }}</h6>
+								<select
+									class="form-select"
+									id="fm_f_size"
+									(change)="setDraft('size', $any($event.target).value)"
+								>
+									<option value="">{{ 'fm_any_size' | transloco }}</option>
+									@for (option of filterOptions.size; track option) {
+									<option
+										[value]="option"
+										[selected]="draft().size === option"
+									>
+										{{ 'fm_size_' + option | transloco }}
+									</option>
+									}
+								</select>
+							</div>
+							<div class="col-6">
+								<h6 class="mb-2">{{ 'fm_used_filter' | transloco }}</h6>
+								<select
+									class="form-select"
+									id="fm_f_used"
+									(change)="setDraft('used', $any($event.target).value)"
+								>
+									<option value="">{{ 'fm_any' | transloco }}</option>
+									@for (option of filterOptions.used; track option) {
+									<option
+										[value]="option"
+										[selected]="draft().used === option"
+									>
+										{{ 'fm_used_' + option | transloco }}
+									</option>
+									}
+								</select>
+							</div>
+						</div>
+						<div class="d-flex justify-content-between mt-3">
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								id="fm_f_clear"
+								(click)="clearFilters()"
+							>
+								{{ 'fm_clear_all' | transloco }}
+							</button>
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								id="fm_f_apply"
+								(click)="applyFilters()"
+							>
+								{{ 'fm_show_results' | transloco }}
+							</button>
+						</div>
+					</div>
+					}
+				</div>
 				<div class="ms-auto">
 					<select
 						class="form-select"
@@ -76,7 +211,72 @@
 				</div>
 			</div>
 
-			@if (nav() === 'favourites') {
+			@if (filterCount()) {
+			<div
+				class="fm-chips"
+				id="fm_chips"
+			>
+				@for (key of filters().cats; track key) {
+				<span class="fm-chip">
+					{{ 'type' | transloco }}: {{ ('fm_cat_' + key) | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('cats', key)"
+					></i>
+				</span>
+				} @if (filters().state; as value) {
+				<span class="fm-chip">
+					{{ 'status' | transloco }}: {{ 'fm_state_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('state')"
+					></i>
+				</span>
+				} @if (filters().up; as value) {
+				<span class="fm-chip">
+					{{ 'fm_uploaded' | transloco }}: {{ 'fm_up_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('up')"
+					></i>
+				</span>
+				} @if (filters().size; as value) {
+				<span class="fm-chip">
+					{{ 'size' | transloco }}: {{ 'fm_size_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('size')"
+					></i>
+				</span>
+				} @if (filters().used; as value) {
+				<span class="fm-chip">
+					{{ 'fm_used_' + value | transloco }}
+					<i
+						class="ri-close-line"
+						role="button"
+						[title]="'fm_remove_filter' | transloco"
+						(click)="removeFilter('used')"
+					></i>
+				</span>
+				}
+				<a
+					href="javascript:void(0)"
+					class="small ms-1"
+					id="fm_chips_clear"
+					(click)="clearFilters()"
+				>
+					{{ 'fm_clear_all' | transloco }}
+				</a>
+			</div>
+			} @if (nav() === 'favourites') {
 			<ul class="nav nav-tabs mb-3">
 				<li class="nav-item">
 					<a

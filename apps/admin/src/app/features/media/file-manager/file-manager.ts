@@ -39,6 +39,22 @@ export type FmSort = keyof typeof FM_SORTS;
 /** Typing in search waits this long before asking, so a word is not sent letter by letter. */
 export const SEARCH_PAUSE_MS = 300;
 
+/** The filter menu (A11): what each choice is called in the address and on its chip. */
+export interface FmFilters {
+	cats: MediaCategory[];
+	state: 'ready' | 'processing' | 'failed' | null;
+	size: 'under1' | '1to25' | 'over25' | null;
+	up: '7d' | '30d' | '90d' | '365d' | null;
+	used: 'in' | 'out' | null;
+}
+export const FM_FILTER_OPTIONS = {
+	state: ['ready', 'processing', 'failed'],
+	size: ['under1', '1to25', 'over25'],
+	up: ['7d', '30d', '90d', '365d'],
+	used: ['in', 'out'],
+} as const;
+const NO_FILTERS: FmFilters = { cats: [], state: null, size: null, up: null, used: null };
+
 /** What a confirmation popup is about: restore (A19), delete forever, or empty Trash. */
 export type FmAsk =
 	| { kind: 'restore'; item: TrashItem; folderName: string }
@@ -88,6 +104,26 @@ export class FileManager {
 	readonly display = computed<'list' | 'grid'>(() => (this.params().get('show') === 'grid' ? 'grid' : 'list'));
 	readonly who = computed<'mine' | 'everyone'>(() => (this.params().get('who') === 'everyone' ? 'everyone' : 'mine'));
 
+	readonly filters = computed<FmFilters>(() => {
+		const read = <K extends keyof typeof FM_FILTER_OPTIONS>(key: K) => {
+			const value = this.params().get(key);
+			return (FM_FILTER_OPTIONS[key] as readonly string[]).includes(value ?? '') ? (value as FmFilters[K]) : null;
+		};
+		const cats = (this.params().get('cats') ?? '')
+			.split(',')
+			.filter((key): key is MediaCategory => FM_CATEGORIES.some((item) => item.key === key));
+		return { cats, state: read('state'), size: read('size'), up: read('up'), used: read('used') };
+	});
+	readonly filterCount = computed(() => {
+		const f = this.filters();
+		return f.cats.length + [f.state, f.size, f.up, f.used].filter(Boolean).length;
+	});
+	/** The menu's choices before Show results. */
+	readonly draft = signal<FmFilters>(NO_FILTERS);
+	readonly filtersOpen = signal(false);
+	readonly categoryOptions = FM_CATEGORIES;
+	readonly filterOptions = FM_FILTER_OPTIONS;
+
 	readonly query = computed<Partial<MediaBrowseQuery>>(() => {
 		const sort = FM_SORTS[this.sortKey()];
 		return {
@@ -96,6 +132,11 @@ export class FileManager {
 			category: this.category() ?? undefined,
 			search: this.search() || undefined,
 			who: this.nav() === 'favourites' ? this.who() : undefined,
+			categories: this.filters().cats.length ? this.filters().cats : undefined,
+			state: this.filters().state ?? undefined,
+			size: this.filters().size ?? undefined,
+			uploaded: this.filters().up ?? undefined,
+			used: this.filters().used ?? undefined,
 			sort: sort.sort,
 			direction: sort.direction,
 			page: 1,
@@ -112,7 +153,9 @@ export class FileManager {
 	readonly folderName = computed(() => this.result()?.folder?.name ?? null);
 	/** Where a search looks: inside a folder, that folder and below (A09); otherwise everywhere (A08). */
 	readonly searchScope = computed(() => (this.nav() === 'folder' ? this.folderName() : null));
-	readonly showLocation = computed(() => !!this.search() || !!this.category() || this.nav() !== 'folder');
+	readonly showLocation = computed(
+		() => !!this.search() || !!this.category() || this.filterCount() > 0 || this.nav() !== 'folder',
+	);
 	readonly empty = computed(() => {
 		const data = this.result();
 		return !!data && !data.folders.length && !data.files.length;
@@ -153,6 +196,48 @@ export class FileManager {
 
 	setWho(who: 'mine' | 'everyone'): void {
 		this.go({ who: who === 'everyone' ? 'everyone' : null });
+	}
+
+	// --- Filters (A11, A12) ---------------------------------------------------------------------
+
+	toggleFilters(): void {
+		this.draft.set({ ...this.filters(), cats: [...this.filters().cats] });
+		this.filtersOpen.update((open) => !open);
+	}
+
+	toggleDraftCategory(key: MediaCategory): void {
+		this.draft.update((d) => ({
+			...d,
+			cats: d.cats.includes(key) ? d.cats.filter((one) => one !== key) : [...d.cats, key],
+		}));
+	}
+
+	setDraft<K extends Exclude<keyof FmFilters, 'cats'>>(key: K, value: string): void {
+		this.draft.update((d) => ({ ...d, [key]: value || null }));
+	}
+
+	applyFilters(filters: FmFilters = this.draft()): void {
+		this.filtersOpen.set(false);
+		this.go({
+			cats: filters.cats.length ? filters.cats.join(',') : null,
+			state: filters.state,
+			size: filters.size,
+			up: filters.up,
+			used: filters.used,
+		});
+	}
+
+	clearFilters(): void {
+		this.draft.set(NO_FILTERS);
+		this.applyFilters(NO_FILTERS);
+	}
+
+	/** A chip's ×: that one filter goes. */
+	removeFilter(key: keyof FmFilters, category?: MediaCategory): void {
+		const f = this.filters();
+		this.applyFilters(
+			key === 'cats' ? { ...f, cats: f.cats.filter((one) => one !== category) } : { ...f, [key]: null },
+		);
 	}
 
 	// --- Trash (A18, A19) ------------------------------------------------------------------------

@@ -62,7 +62,11 @@ export class MongoLanguageCoverageRepository implements LanguageCoverageReposito
 	}
 
 	private async missingFilter(entry: LocalizedTextEntry, code: string): Promise<TextFilter> {
-		return missingTextFilter(entry, code, entry.area === 'photos' ? { _id: { $in: await this.shownPhotoIds() } } : {});
+		return missingTextFilter(
+			entry,
+			code,
+			entry.area === 'photos' ? { _id: { $in: await this.shownPhotoIds() } } : {},
+		);
 	}
 
 	async missing(code: string): Promise<Record<WrittenLanguageArea, number>> {

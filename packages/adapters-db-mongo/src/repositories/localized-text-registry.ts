@@ -98,11 +98,7 @@ export const LOCALIZED_TEXT_REGISTRY: readonly LocalizedTextEntry[] = [
 		area: 'options',
 		live: {},
 		idField: 'code',
-		fields: [
-			required('label'),
-			required('terms.$[].label'),
-			followsEnglish('filterConfig.defaultFacetLabel'),
-		],
+		fields: [required('label'), required('terms.$[].label'), followsEnglish('filterConfig.defaultFacetLabel')],
 	},
 	{
 		owner: 'categories',
@@ -124,12 +120,7 @@ export const LOCALIZED_TEXT_REGISTRY: readonly LocalizedTextEntry[] = [
 		model: as(ContentBlockModel),
 		area: 'banners',
 		live: { status: 'active' },
-		fields: [
-			required('alt'),
-			followsEnglish('heading'),
-			followsEnglish('subheading'),
-			followsEnglish('ctaLabel'),
-		],
+		fields: [required('alt'), followsEnglish('heading'), followsEnglish('subheading'), followsEnglish('ctaLabel')],
 		keyedByLanguage: ['localeImages'],
 	},
 	{

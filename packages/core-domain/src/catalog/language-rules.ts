@@ -126,8 +126,7 @@ export interface LanguageFacts {
 }
 
 export type LanguageDecision =
-	| { ok: true; next: LanguageRecord; changed: boolean }
-	| { ok: false; reason: LanguageRefusal };
+	{ ok: true; next: LanguageRecord; changed: boolean } | { ok: false; reason: LanguageRefusal };
 
 const refuse = (reason: LanguageRefusal): LanguageDecision => ({ ok: false, reason });
 
@@ -150,7 +149,8 @@ export function decideLanguageChange(
 	const done = (next: LanguageRecord): LanguageDecision => ({
 		ok: true,
 		next,
-		changed: JSON.stringify({ ...next, changedAt: null, changedBy: null }) !==
+		changed:
+			JSON.stringify({ ...next, changedAt: null, changedBy: null }) !==
 			JSON.stringify({ ...current, changedAt: null, changedBy: null }),
 	});
 
@@ -217,9 +217,10 @@ export function languageReminderDue(record: LanguageRecord, now: Date): boolean 
  * A language's to-do list in the page's order. Everything stops the shop except the admin's own
  * words, which only the Admin switch needs. English has nothing to do by definition.
  */
-export function languageTodo(
-	counts: Readonly<Partial<Record<LanguageArea, number>>>,
-): { lines: LanguageTodoLine[]; total: number } {
+export function languageTodo(counts: Readonly<Partial<Record<LanguageArea, number>>>): {
+	lines: LanguageTodoLine[];
+	total: number;
+} {
 	const lines = AREA_ORDER.map((area) => ({
 		area,
 		count: Math.max(0, Math.floor(counts[area] ?? 0)),

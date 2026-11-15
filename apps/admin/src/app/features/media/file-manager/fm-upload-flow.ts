@@ -5,6 +5,7 @@ import { NgbModal, type NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { lastValueFrom } from 'rxjs';
 
+import { heicToJpeg } from '@core/media-library/heic';
 import {
 	type MediaDuplicateAnswer,
 	MediaLibraryGateway,
@@ -149,9 +150,25 @@ export class FmUploadFlow {
 			this.thumbs.set(new Map(photos.map((row) => [row.key, URL.createObjectURL(row.file)])));
 		}
 		for (const row of photos) {
-			const size = await readPhotoSize(row.file);
+			// A HEIC becomes a full-size JPEG first, one at a time (phones have little memory).
+			const converted = row.heic ? await heicToJpeg(row.file).catch(() => null) : null;
+			const file = converted ?? row.file;
+			const size = row.heic && !converted ? null : await readPhotoSize(file);
+			if (converted) {
+				const url = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(converted) : null;
+				if (url) this.thumbs.update((all) => new Map([...all, [row.key, url]]));
+			}
 			this.updateRow(row.key, (current) => ({
 				...current,
+				...(converted
+					? {
+							source: current.file,
+							file: converted,
+							name: converted.name,
+							contentType: 'image/jpeg',
+							bytes: converted.size,
+						}
+					: {}),
 				size,
 				sizeRead: true,
 				picks: size ? suggestedPicks(this.profiles(), size) : [],
@@ -278,7 +295,8 @@ export class FmUploadFlow {
 		this.review.set({ ...review, checking: true });
 		try {
 			const hashes = new Map<string, string | null>();
-			for (const row of going) hashes.set(row.key, await sha256Hex(row.file));
+			// The duplicate check uses the file as picked, so the same HEIC picked twice is still caught.
+			for (const row of going) hashes.set(row.key, await sha256Hex(row.source ?? row.file));
 			const answers = await this.duplicates(going, hashes, review.targetId);
 			if (!answers) return;
 			closeReview();

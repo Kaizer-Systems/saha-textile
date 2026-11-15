@@ -2,6 +2,7 @@ import {
 	type PhotoShape,
 	fitsShape,
 	isProcessedPhoto,
+	looksLikeHeic,
 	minSizeCheck,
 	photoFills,
 	suggestProfile,
@@ -44,6 +45,10 @@ export interface FmUploadRow {
 	sizeRead: boolean;
 	/** Profiles picked for the photo, suggested from its shape (B01). */
 	picks: FmPick[];
+	/** A HEIC photo: turned into a full-size JPEG in the browser before it uploads (B02). */
+	heic: boolean;
+	/** The file as picked, kept for the duplicate check when what uploads is a converted copy. */
+	source: File | null;
 }
 
 export interface FmUploadPlan {
@@ -74,11 +79,16 @@ export function planUpload(picked: readonly FmPicked[]): FmUploadPlan {
 			bytes: file.size,
 			contentType,
 			folderPath: path,
-			photo: isProcessedPhoto(contentType),
-			waits: waitsForImageProfiles(contentType, file.name) && !isProcessedPhoto(contentType),
+			photo: isProcessedPhoto(contentType) || looksLikeHeic(contentType, file.name),
+			waits:
+				waitsForImageProfiles(contentType, file.name) &&
+				!isProcessedPhoto(contentType) &&
+				!looksLikeHeic(contentType, file.name),
 			size: null,
 			sizeRead: false,
 			picks: [],
+			heic: looksLikeHeic(contentType, file.name),
+			source: null,
 		});
 	}
 	const tops = new Set(rows.map((row) => row.folderPath[0] ?? ''));

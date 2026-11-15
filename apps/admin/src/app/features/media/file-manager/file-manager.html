@@ -1105,8 +1105,7 @@
 				<i class="ri-folder-3-line"></i>
 				{{ 'fm_folders_made' | plural: flow.foldersToMake() }}
 			</span>
-			}
-			@if (flow.photos().length) {
+			} @if (flow.photos().length) {
 			<span class="fm-chip">
 				<i class="ri-image-line"></i>
 				{{ 'fm_photos_to_process' | plural: flow.photos().length }}
@@ -1121,8 +1120,7 @@
 				<i class="ri-time-line"></i>
 				{{ 'fm_photos_wait' | plural: flow.waiting() }}
 			</span>
-			}
-			@if (flow.overLimit().length) {
+			} @if (flow.overLimit().length) {
 			<span class="fm-chip bad">
 				<i class="ri-close-circle-line"></i>
 				{{ 'fm_photos_over' | plural: flow.overLimit().length }}
@@ -1165,7 +1163,7 @@
 			>
 				{{ 'fm_remove_profile' | transloco }}
 			</button>
-			<span class="ms-auto text-muted small">{{ 'fm_profiles_suggested' | transloco }}</span>
+			<span class="text-muted small ms-auto">{{ 'fm_profiles_suggested' | transloco }}</span>
 		</div>
 		}
 		<div class="table-responsive datatable-wrapper border-table">
@@ -1230,7 +1228,9 @@
 								<div style="min-width: 0">
 									<h6>{{ row.name }}</h6>
 									<p>
-										{{ row.bytes | fileSize }} @if (row.folderPath.length) { ·
+										{{ row.bytes | fileSize }} @if (row.heic) { ·
+										<span class="text-success">{{ 'fm_heic_as_jpeg' | transloco }}</span>
+										} @if (row.folderPath.length) { ·
 										<span class="fm-file-path">
 											<i class="ri-folder-3-line"></i>
 											{{ row.folderPath.join(' › ') }}
@@ -1241,11 +1241,9 @@
 							</div>
 						</td>
 						<td class="fm-dims">
-							@if (row.size; as size) {
-							{{ size.width }} × {{ size.height }}<small>{{ shapeOf(row) }}</small>
-							} @else {
-							{{ typeOf({ name: row.name, contentType: row.contentType }) || '—' }}
-							}
+							@if (row.size; as size) { {{ size.width }} × {{ size.height }}
+							<small>{{ shapeOf(row) }}</small>
+							} @else { {{ typeOf({ name: row.name, contentType: row.contentType }) || '—' }} }
 						</td>
 						@if (flow.photos().length) {
 						<td>
@@ -1260,12 +1258,13 @@
 								>
 									<button
 										type="button"
-										class="fm-pick btn p-0 border-0"
+										class="fm-pick btn border-0 p-0"
 										ngbDropdownToggle
 										[attr.aria-label]="'fm_choose_profiles' | transloco"
 										[title]="'fm_choose_profiles' | transloco"
 									>
-										@for (pick of row.picks; track pick.profileKey) { @for (label of pickLabels(pick); track label) {
+										@for (pick of row.picks; track pick.profileKey) { @for (label of
+										pickLabels(pick); track label) {
 										<span class="fm-pchip">{{ label }}</span>
 										} } @empty {
 										<span class="fm-pchip">{{ 'fm_choose_profile' | transloco }}</span>
@@ -1305,7 +1304,9 @@
 								</div>
 								@for (note of flow.notesFor(row); track $index) {
 								<div [class]="note.kind === 'too_small' || note.kind === 'over' ? 'fm-err' : 'fm-warn'">
-									<i [class]="note.kind === 'too_small' || note.kind === 'over' ? 'ri-close-circle-line' : 'ri-alert-line'"></i>
+									<i
+										[class]="note.kind === 'too_small' || note.kind === 'over' ? 'ri-close-circle-line' : 'ri-alert-line'"
+									></i>
 									<span>{{ noteText(note) }}</span>
 								</div>
 								}
@@ -1329,7 +1330,7 @@
 							} @else if (row.photo && !row.sizeRead) {
 							<span class="fm-status wait">
 								<i class="ri-time-line"></i>
-								{{ 'fm_reading_photo' | transloco }}
+								{{ (row.heic ? 'fm_converting_heic' : 'fm_reading_photo') | transloco }}
 							</span>
 							} @else if (row.photo && !row.size) {
 							<div class="fm-err">
@@ -1431,13 +1432,16 @@
 		</h5>
 		<p>{{ 'fm_over_body' | transloco }}</p>
 		<div
-			class="text-start mx-auto mb-3"
+			class="mx-auto mb-3 text-start"
 			style="max-width: 460px"
 		>
 			<ul class="list-group">
 				@for (row of flow.overLimit(); track row.key) {
 				<li class="list-group-item d-flex justify-content-between">
-					<span><i class="ri-image-line me-2 text-danger"></i>{{ row.name }}</span>
+					<span>
+						<i class="ri-image-line text-danger me-2"></i>
+						{{ row.name }}
+					</span>
 					<strong>{{ row.bytes | fileSize }}</strong>
 				</li>
 				}
@@ -1481,11 +1485,11 @@
 		</h5>
 		<p>{{ 'fm_notes_body' | plural: flow.noted().length }}</p>
 		<div
-			class="text-start mx-auto mb-3"
+			class="mx-auto mb-3 text-start"
 			style="max-width: 460px"
 		>
 			@for (row of flow.noted(); track row.key) {
-			<div class="d-flex gap-2 align-items-center mb-2">
+			<div class="d-flex align-items-center mb-2 gap-2">
 				@if (flow.thumb(row.key); as thumb) {
 				<img
 					[src]="thumb"

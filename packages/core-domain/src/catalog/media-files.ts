@@ -99,3 +99,95 @@ const rank = (key: string) => {
 	const at = SUGGESTION_ORDER.indexOf(key);
 	return at === -1 ? SUGGESTION_ORDER.length : at;
 };
+
+// --- HEIC photos (media step 2d): turned into JPEG in the browser, colours kept ----------------------------------
+
+/** What a picked photo's first bytes say it is, whatever its name claims. */
+export function sniffPhoto(head: Uint8Array): 'jpeg' | 'png' | 'heic' | null {
+	if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'jpeg';
+	if (head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47) return 'png';
+	const brand = String.fromCharCode(...head.slice(4, 12));
+	if (brand.startsWith('ftyp') && /heic|heix|hevc|heim|heis|mif1|msf1/.test(brand.slice(4))) return 'heic';
+	return null;
+}
+
+/** A HEIC or HEIF by its type or name (some phones send no type). */
+export const looksLikeHeic = (contentType: string, name: string): boolean =>
+	/^image\/hei[cf]/i.test(contentType) || /\.(heic|heif)$/i.test(name);
+
+/**
+ * The quality steps for a converted HEIC (decision 8): top quality first, then 95 and 90 until the JPEG is 25 MB or
+ * less. A photo still over after 90 is listed with the other big photos.
+ */
+export const HEIC_QUALITY_STEPS: readonly number[] = [1, 0.95, 0.9];
+
+/**
+ * The HEIC's own colour profile (the ISOBMFF `colr` box of type `prof`), or null. Browsers drop it when they turn a
+ * wide-colour (Display P3) photo into JPEG, so reds and pinks come out 10–15% duller; putting it back fixes that.
+ */
+export function heicColourProfile(bytes: Uint8Array): Uint8Array | null {
+	const limit = Math.min(bytes.length - 12, 4 * 1024 * 1024);
+	for (let i = 4; i < limit; i += 1) {
+		if (
+			bytes[i] === 0x63 &&
+			bytes[i + 1] === 0x6f &&
+			bytes[i + 2] === 0x6c &&
+			bytes[i + 3] === 0x72 &&
+			bytes[i + 4] === 0x70 &&
+			bytes[i + 5] === 0x72 &&
+			bytes[i + 6] === 0x6f &&
+			bytes[i + 7] === 0x66
+		) {
+			const size =
+				((bytes[i - 4] ?? 0) << 24) |
+				((bytes[i - 3] ?? 0) << 16) |
+				((bytes[i - 2] ?? 0) << 8) |
+				(bytes[i - 1] ?? 0);
+			const end = i - 4 + size;
+			if (size > 16 && end <= bytes.length) return bytes.slice(i + 8, end);
+			return null;
+		}
+	}
+	return null;
+}
+
+/** ICC profile segments: at most this many profile bytes each (64 KB less the segment's own header). */
+const ICC_CHUNK = 65519;
+
+/**
+ * The JPEG with the given colour profile in its APP2 `ICC_PROFILE` segments (any it had are replaced), right after
+ * the start marker. The image worker then converts the colours to sRGB as it does for every photo.
+ */
+export function withColourProfile(jpeg: Uint8Array, icc: Uint8Array): Uint8Array {
+	if (jpeg[0] !== 0xff || jpeg[1] !== 0xd8 || !icc.length) return jpeg;
+	const kept: Uint8Array[] = [];
+	let at = 2;
+	while (at + 4 <= jpeg.length && jpeg[at] === 0xff && jpeg[at + 1] !== 0xda) {
+		const length = ((jpeg[at + 2] ?? 0) << 8) | (jpeg[at + 3] ?? 0);
+		const isIcc = jpeg[at + 1] === 0xe2 && String.fromCharCode(...jpeg.slice(at + 4, at + 15)) === 'ICC_PROFILE';
+		if (!isIcc) kept.push(jpeg.slice(at, at + 2 + length));
+		at += 2 + length;
+	}
+	const chunks = Math.ceil(icc.length / ICC_CHUNK);
+	const segments: Uint8Array[] = [];
+	for (let n = 0; n < chunks; n += 1) {
+		const part = icc.slice(n * ICC_CHUNK, (n + 1) * ICC_CHUNK);
+		const head = new Uint8Array(18);
+		const length = 16 + part.length;
+		head.set([0xff, 0xe2, length >> 8, length & 0xff]);
+		head.set(
+			[...'ICC_PROFILE'].map((c) => c.charCodeAt(0)),
+			4,
+		);
+		head.set([0, n + 1, chunks], 15);
+		segments.push(head, part);
+	}
+	const parts = [jpeg.slice(0, 2), ...segments, ...kept, jpeg.slice(at)];
+	const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+	let offset = 0;
+	for (const part of parts) {
+		out.set(part, offset);
+		offset += part.length;
+	}
+	return out;
+}

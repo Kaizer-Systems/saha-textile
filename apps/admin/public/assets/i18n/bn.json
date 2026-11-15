@@ -2275,5 +2275,7 @@
 	"fm_versions_failed": "সংস্করণ বানানো গেল না ({{reason}})",
 	"fm_making_versions": "সংস্করণ বানানো হচ্ছে",
 	"fm_versions_next": "এরপর সংস্করণ বানানো হবে",
-	"fm_unreadable_photo": "এই ছবিটি পড়া যাচ্ছে না। আপলোড হবে না।"
+	"fm_unreadable_photo": "এই ছবিটি পড়া যাচ্ছে না। আপলোড হবে না।",
+	"fm_heic_as_jpeg": "HEIC ছবি: পুরো মাপের JPEG হয়ে আপলোড হবে",
+	"fm_converting_heic": "JPEG-এ বদলানো হচ্ছে…"
 }

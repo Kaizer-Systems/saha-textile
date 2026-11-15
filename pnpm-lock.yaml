@@ -286,6 +286,9 @@ importers:
       feather-icons:
         specifier: ^4.29.2
         version: 4.29.2
+      heic-to:
+        specifier: 1.6.6
+        version: 1.6.6
       ng-apexcharts:
         specifier: 3.2.0
         version: 3.2.0(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))(apexcharts@8.7.0)(rxjs@7.8.2)

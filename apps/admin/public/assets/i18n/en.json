@@ -2275,5 +2275,7 @@
 	"fm_versions_failed": "Versions could not be made ({{reason}})",
 	"fm_making_versions": "Making versions",
 	"fm_versions_next": "Versions are made next",
-	"fm_unreadable_photo": "This photo can't be read. Not uploaded."
+	"fm_unreadable_photo": "This photo can't be read. Not uploaded.",
+	"fm_heic_as_jpeg": "HEIC photo: uploads as a full-size JPEG",
+	"fm_converting_heic": "Converting to JPEG…"
 }

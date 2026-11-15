@@ -216,8 +216,25 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 		const query: Record<string, unknown> = { deletedAt: null, trashedAt: filter.trashed ? { $ne: null } : null };
 		if (filter.folderId !== undefined) query.folderId = filter.folderId;
 		if (filter.withinFolders) query.folderId = { $in: [...filter.withinFolders] };
-		if (filter.category) query.category = filter.category;
-		if (filter.ids) query._id = { $in: [...filter.ids] };
+		if (filter.categories?.length) {
+			const wanted = filter.category
+				? filter.categories.filter((one) => one === filter.category)
+				: filter.categories;
+			query.category = { $in: [...wanted] };
+		} else if (filter.category) query.category = filter.category;
+		if (filter.ids || filter.excludeIds) {
+			query._id = {
+				...(filter.ids ? { $in: [...filter.ids] } : {}),
+				...(filter.excludeIds ? { $nin: [...filter.excludeIds] } : {}),
+			};
+		}
+		if (filter.states?.length) query['processing.state'] = { $in: [...filter.states] };
+		if (filter.minBytes !== undefined || filter.maxBytes !== undefined) {
+			query.originalByteSize = {
+				...(filter.minBytes !== undefined ? { $gte: filter.minBytes } : {}),
+				...(filter.maxBytes !== undefined ? { $lt: filter.maxBytes } : {}),
+			};
+		}
 		if (filter.createdSince) query.createdAt = { $gte: new Date(filter.createdSince) };
 		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
 		if (words.length) {
@@ -339,6 +356,16 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 			{ $group: { _id: '$folderId', files: { $sum: 1 }, bytes: { $sum: sizeField } } },
 		]).exec();
 		return rows.map((row) => ({ folderId: row._id, files: row.files, bytes: row.bytes }));
+	}
+
+	async referencedIds(): Promise<string[]> {
+		const found = new Set<string>();
+		for (const entry of MEDIA_OWNER_REGISTRY) {
+			for (const value of await entry.model.collection.distinct(entry.path)) {
+				if (typeof value === 'string' && value.startsWith('med_')) found.add(value);
+			}
+		}
+		return [...found];
 	}
 
 	async whereUsed(ids: readonly string[]): Promise<Map<string, string[]>> {

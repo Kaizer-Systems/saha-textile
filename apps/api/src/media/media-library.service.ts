@@ -24,6 +24,7 @@ import type {
 import {
 	type AuditLogRepository,
 	type MediaAssetRepository,
+	type MediaBrowseFilter,
 	type MediaBrowseRepository,
 	type MediaFavouriteRepository,
 	type MediaFolderRepository,
@@ -103,6 +104,8 @@ export class MediaLibraryService {
 	}
 
 	async browse(userId: string, query: MediaBrowseQuery, now = new Date()): Promise<MediaBrowseResponse> {
+		const extra = await this.filterParts(query, now);
+		const filtering = Object.keys(extra).length > 0;
 		const mine = await this.stars.listForUser(userId);
 		const starred = new Set(mine.map((star) => `${star.type}:${star.id}`));
 		const page = { sort: query.sort, direction: query.direction, page: query.page, pageSize: query.pageSize };
@@ -114,7 +117,7 @@ export class MediaLibraryService {
 
 		if (query.view === 'trash') {
 			const trashedFolders = await this.folders.listTrashed();
-			const result = await this.files.browse({ ...page, trashed: true, search: query.search });
+			const result = await this.files.browse({ ...page, ...extra, trashed: true, search: query.search });
 			return {
 				folder: null,
 				breadcrumb: [],
@@ -132,7 +135,8 @@ export class MediaLibraryService {
 				query.who === 'everyone' ? await this.stars.listAll() : mine.map((star) => ({ ...star, userId }));
 			const fileIds = [...new Set(all.filter((star) => star.type === 'file').map((star) => star.id))];
 			const folderIds = new Set(all.filter((star) => star.type === 'folder').map((star) => star.id));
-			const result = await this.files.browse({ ...page, trashed: false, ids: fileIds });
+			const ids = extra.ids ? fileIds.filter((id) => extra.ids?.includes(id)) : fileIds;
+			const result = await this.files.browse({ ...page, ...extra, trashed: false, ids });
 			const starredBy: Record<string, string[]> = {};
 			for (const star of all) (starredBy[`${star.type}:${star.id}`] ??= []).push(star.userId);
 			return {
@@ -153,10 +157,12 @@ export class MediaLibraryService {
 			const since = new Date(now.getTime() - 30 * 86_400_000).toISOString();
 			const result = await this.files.browse({
 				...page,
+				...extra,
 				sort: 'created',
 				direction: 'desc',
 				trashed: false,
-				createdSince: since,
+				// The later of Recent's 30 days and an “uploaded” filter.
+				createdSince: extra.createdSince && extra.createdSince > since ? extra.createdSince : since,
 			});
 			return {
 				folder: null,
@@ -171,13 +177,14 @@ export class MediaLibraryService {
 		}
 
 		// A search or a category lists files only: from the top level everything, inside a folder that folder and below.
-		const searching = !!query.search || !!query.category;
+		const searching = !!query.search || !!query.category || filtering;
 		const within =
 			folder && searching
 				? (await this.folders.listSubtree(folder.id)).filter((row) => !row.trashedAt).map((row) => row.id)
 				: undefined;
 		const result = await this.files.browse({
 			...page,
+			...extra,
 			trashed: false,
 			search: query.search,
 			category: query.category,
@@ -402,6 +409,32 @@ export class MediaLibraryService {
 			publicUrl: (key: string) => this.storage.getUrl(key),
 			record: (action: string, metadata: Record<string, unknown>) => this.record(actor, action, metadata),
 		};
+	}
+
+	/**
+	 * The filters (A11) as the repository reads them. Sizes are the uploaded size in MB of 1024 KB;
+	 * “processing” covers every state before ready; “used” asks the owner registry once.
+	 */
+	private async filterParts(query: MediaBrowseQuery, now: Date): Promise<Partial<MediaBrowseFilter>> {
+		const MB = 1024 * 1024;
+		const parts: Partial<MediaBrowseFilter> = {};
+		if (query.categories?.length) parts.categories = query.categories;
+		if (query.state) {
+			parts.states = query.state === 'processing' ? ['awaiting_upload', 'queued', 'processing'] : [query.state];
+		}
+		if (query.size === 'under1') parts.maxBytes = MB;
+		if (query.size === '1to25') Object.assign(parts, { minBytes: MB, maxBytes: 25 * MB });
+		if (query.size === 'over25') parts.minBytes = 25 * MB;
+		if (query.uploaded) {
+			const days = { '7d': 7, '30d': 30, '90d': 90, '365d': 365 }[query.uploaded];
+			parts.createdSince = new Date(now.getTime() - days * 86_400_000).toISOString();
+		}
+		if (query.used) {
+			const used = await this.files.referencedIds();
+			if (query.used === 'in') parts.ids = used;
+			else parts.excludeIds = used;
+		}
+		return parts;
 	}
 
 	// --- Plain files (R4-5): stored as they are, private until made public -----------------------

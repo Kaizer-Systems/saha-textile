@@ -168,6 +168,18 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 		]);
 		expect(await assets.findBySha256(['b'.repeat(64)])).toEqual([]);
 
+		// Filters (A11): several categories, states, the uploaded size, and files left out.
+		expect((await page({ categories: ['documents', 'videos'] })).items.map((row) => row.id)).toEqual(['med_pdf']);
+		expect((await page({ categories: ['documents'], category: 'images' })).items).toEqual([]);
+		expect((await page({ minBytes: 5000 })).items.map((row) => row.id)).toEqual([]);
+		expect((await page({ maxBytes: 5000 })).items.map((row) => row.id).sort()).toEqual(['med_pdf', 'med_red']);
+		expect((await page({ excludeIds: ['med_red'] })).items.map((row) => row.id)).toEqual(['med_pdf']);
+		expect(
+			(await page({ ids: ['med_red', 'med_pdf'], excludeIds: ['med_red'] })).items.map((row) => row.id),
+		).toEqual(['med_pdf']);
+		expect((await page({ states: ['failed'] })).items).toEqual([]);
+		expect(await assets.referencedIds()).toEqual([]);
+
 		expect(await assets.usage()).toEqual({ originals: 1000, versions: 200, files: 1000, trash: 9200 });
 		await assets.setTrashed(['med_blue'], null, new Map(), new Map([['med_blue', null]]));
 		expect(await assets.findById('med_blue')).toMatchObject({ folderId: null, trashedAt: null });

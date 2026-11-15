@@ -65,7 +65,14 @@ export interface MediaBrowseFilter {
 	search?: string;
 	category?: MediaCategory;
 	ids?: readonly string[];
+	/** Files left out, for “not used anywhere”. */
+	excludeIds?: readonly string[];
 	createdSince?: string;
+	/** Filters (A11): several categories, processing states, and the uploaded size in bytes. */
+	categories?: readonly MediaCategory[];
+	states?: readonly MediaAsset['processing']['state'][];
+	minBytes?: number;
+	maxBytes?: number;
 	sort: 'name' | 'created' | 'size';
 	direction: 'asc' | 'desc';
 	page: number;
@@ -75,6 +82,8 @@ export interface MediaBrowseFilter {
 /** The Media page's queries and changes on stored files (`mediaAssets`). */
 export interface MediaBrowseRepository {
 	browse(filter: MediaBrowseFilter): Promise<Paginated<MediaAsset>>;
+	/** Every file the website uses somewhere (the owner registry), for the “used” filter. */
+	referencedIds(): Promise<string[]>;
 	/** Files with exactly these bytes (S6), not in Trash. */
 	findBySha256(hashes: readonly string[]): Promise<MediaAsset[]>;
 	/** Names of the files in one folder, not in Trash: for "(1)", "(2)". */

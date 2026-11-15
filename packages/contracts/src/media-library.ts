@@ -77,6 +77,20 @@ export const MediaBrowseQuery = z.object({
 	category: MediaCategory.optional(),
 	/** Favourites: this admin's stars, or everyone's. */
 	who: z.enum(['mine', 'everyone']).default('mine'),
+	/** Filters (A11, A12). Several categories at once, as `images,documents`. */
+	categories: z
+		.preprocess(
+			(value) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value),
+			z.array(MediaCategory).max(6),
+		)
+		.optional(),
+	state: z.enum(['ready', 'processing', 'failed']).optional(),
+	/** The uploaded size: under 1 MB, 1 to 25 MB, over 25 MB. */
+	size: z.enum(['under1', '1to25', 'over25']).optional(),
+	/** Uploaded in the last 7, 30 or 90 days, or the last year. */
+	uploaded: z.enum(['7d', '30d', '90d', '365d']).optional(),
+	/** Used on the website, or not used anywhere. */
+	used: z.enum(['in', 'out']).optional(),
 	sort: z.enum(['name', 'created', 'size']).default('name'),
 	direction: z.enum(['asc', 'desc']).default('asc'),
 	page: z.coerce.number().int().positive().default(1),

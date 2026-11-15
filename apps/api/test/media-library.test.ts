@@ -99,6 +99,7 @@ function harness() {
 		listTrashedBefore: async (cutoff: string) =>
 			[...files.values()].filter((asset) => asset.trashedAt && asset.trashedAt <= cutoff),
 		totalsByFolder: async () => [],
+		referencedIds: async () => [...used.keys()],
 		whereUsed: async (ids: readonly string[]) =>
 			new Map(ids.filter((id) => used.has(id)).map((id) => [id, used.get(id) as string[]])),
 		listInFolders: async (ids: readonly string[]) =>
@@ -190,6 +191,7 @@ function harness() {
 		jobs,
 		storage,
 		storageCheck,
+		browseRepo,
 		file,
 		recount: folderRepo.recount,
 	};
@@ -495,5 +497,66 @@ describe('plain files', () => {
 		expect(await refusalCode(h.service.setFileVisibility('adm_1', 'med_photo', 'private'))).toBe(
 			'not_a_plain_file',
 		);
+	});
+});
+
+describe('filters on the Media page (A11, A12)', () => {
+	const base = { view: 'folder', who: 'mine', sort: 'name', direction: 'asc', page: 1, pageSize: 60 } as const;
+	const NOW = new Date('2026-11-15T10:00:00.000Z');
+
+	it('turns each filter into what the store reads, and filters like a search: folder and below, files only', async () => {
+		const h = harness();
+		h.folders.set('fld_b', {
+			id: 'fld_b',
+			name: 'Banarasi',
+			parentId: null,
+			ancestors: [],
+			files: 0,
+			bytes: 0,
+			trashedAt: null,
+			trashedFrom: null,
+		} as never);
+		h.used.set('med_used', ['Product · Red Banarasi']);
+		const spy = vi.spyOn(h.browseRepo, 'browse');
+		const answer = await h.service.browse(
+			'adm_1',
+			{
+				...base,
+				folderId: 'fld_b',
+				categories: ['images', 'documents'],
+				state: 'processing',
+				size: '1to25',
+				uploaded: '7d',
+				used: 'out',
+			},
+			NOW,
+		);
+		expect(spy).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				categories: ['images', 'documents'],
+				states: ['awaiting_upload', 'queued', 'processing'],
+				minBytes: 1024 * 1024,
+				maxBytes: 25 * 1024 * 1024,
+				createdSince: '2026-11-08T10:00:00.000Z',
+				excludeIds: ['med_used'],
+				withinFolders: ['fld_b'],
+			}),
+		);
+		expect(answer.folders).toEqual([]);
+		await h.service.browse('adm_1', { ...base, size: 'under1', used: 'in' }, NOW);
+		expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ maxBytes: 1024 * 1024, ids: ['med_used'] }));
+		// Without filters a folder lists its own files and sub-folders, as before.
+		await h.service.browse('adm_1', { ...base, folderId: 'fld_b' }, NOW);
+		expect(spy.mock.lastCall?.[0]).toMatchObject({ folderId: 'fld_b' });
+		expect(spy.mock.lastCall?.[0]).not.toHaveProperty('withinFolders');
+	});
+
+	it('keeps Recent to its 30 days unless the upload filter is narrower', async () => {
+		const h = harness();
+		const spy = vi.spyOn(h.browseRepo, 'browse');
+		await h.service.browse('adm_1', { ...base, view: 'recent', uploaded: '90d' }, NOW);
+		expect(spy.mock.lastCall?.[0]).toMatchObject({ createdSince: '2026-10-16T10:00:00.000Z' });
+		await h.service.browse('adm_1', { ...base, view: 'recent', uploaded: '7d' }, NOW);
+		expect(spy.mock.lastCall?.[0]).toMatchObject({ createdSince: '2026-11-08T10:00:00.000Z' });
 	});
 });

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
@@ -7,7 +7,16 @@ import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { fileKind, fileTypeLabel } from './file-kinds';
 
-import type { MediaFileRow } from '@core/media-library/media-library.gateway';
+import type { MediaFileRow, MediaFolderRow } from '@core/media-library/media-library.gateway';
+
+/** One item in Trash, as its row actions report it. */
+export interface TrashItem {
+	type: 'file' | 'folder';
+	id: string;
+	name: string;
+	/** For a file: the folder it was in, to tell whether that folder is in Trash too (A19). */
+	folderId: string | null;
+}
 
 /** The files of one view, as the theme table (A01) or as thumbnails (A02). */
 @Component({
@@ -22,9 +31,23 @@ export class FmFileList {
 	readonly trash = input(false);
 	/** Search, Recent and Favourites show where each file is (A08). */
 	readonly showLocation = input(false);
+	/** Trash lists folders as rows too, above the files (A18). */
+	readonly folders = input<readonly MediaFolderRow[]>([]);
+
+	/** Trash's row actions (A18): put an item back, or delete it for good. */
+	readonly restore = output<TrashItem>();
+	readonly deleteForever = output<TrashItem>();
 
 	readonly kind = fileKind;
 	readonly typeLabel = fileTypeLabel;
+
+	fileItem(file: MediaFileRow): TrashItem {
+		return { type: 'file', id: file.id, name: file.name, folderId: file.folderId };
+	}
+
+	folderItem(folder: MediaFolderRow): TrashItem {
+		return { type: 'folder', id: folder.id, name: folder.name, folderId: folder.parentId };
+	}
 
 	pending(file: MediaFileRow): boolean {
 		return ['awaiting_upload', 'queued', 'processing'].includes(file.state);

@@ -2,11 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
+import { NotificationService } from '@data-access/services/notification.service';
 
 import { fileExtension, fileKind, fileTypeLabel } from './file-kinds';
 import { FileManager, SEARCH_PAUSE_MS } from './file-manager';
@@ -63,6 +65,8 @@ describe('the Media page reads its view from the address', () => {
 			providers: [
 				provideTanStackQuery(new QueryClient()),
 				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: NgbModal, useValue: { open: vi.fn() } },
+				{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
 				{ provide: Router, useValue: router },
 				{
 					provide: ActivatedRoute,
@@ -132,5 +136,130 @@ describe('the Media page reads its view from the address', () => {
 		page.setSort('name');
 		expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { sort: null } }));
 		vi.useRealTimers();
+	});
+});
+
+describe('Trash on the Media page (A18, A19)', () => {
+	const trash = {
+		folder: null,
+		breadcrumb: [],
+		folders: [
+			{
+				id: 'fld_tant',
+				parentId: 'fld_p',
+				name: 'Tant cotton',
+				location: 'Product photos',
+				files: 2,
+				bytes: 9,
+				starred: false,
+				daysLeft: 20,
+				ancestors: [],
+				trashedAt: '2026-11-10T00:00:00.000Z',
+				trashedFrom: 'fld_p',
+			},
+		],
+		files: [
+			{ id: 'med_blue', name: 'blue-tant-draft.jpg', folderId: 'fld_tant' },
+			{ id: 'med_pdf', name: 'old.pdf', folderId: null },
+		],
+		total: 2,
+		page: 1,
+		pageSize: 200,
+	};
+	const setup = (answer: 'yes' | 'no' = 'yes', failing = false) => {
+		const result = { done: 1, inUse: [], undoId: null };
+		const gateway = {
+			browse: vi.fn(() => of(trash)),
+			tree: vi.fn(() => of({ folders: [] })),
+			storage: vi.fn(() => of(null)),
+			restore: vi.fn(() => (failing ? throwError(() => new Error('down')) : of(result))),
+			deleteForever: vi.fn(() => of(result)),
+		};
+		const modals = {
+			open: vi.fn(() => ({ result: answer === 'yes' ? Promise.resolve('yes') : Promise.reject('cancel') })),
+		};
+		const notifications = { showSuccess: vi.fn(), showError: vi.fn() };
+		const params = new BehaviorSubject(convertToParamMap({ view: 'trash' }));
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				provideTanStackQuery(new QueryClient()),
+				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: NotificationService, useValue: notifications },
+				{ provide: Router, useValue: { navigate: vi.fn() } },
+				{
+					provide: ActivatedRoute,
+					useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
+				},
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+			],
+		});
+		TestBed.overrideComponent(FileManager, {
+			set: { imports: [], template: '<ng-template #fmConfirm></ng-template>' },
+		});
+		const fixture = TestBed.createComponent(FileManager);
+		fixture.detectChanges();
+		return { page: fixture.componentInstance, gateway, modals, notifications };
+	};
+	const settled = async (page: FileManager) => {
+		for (let i = 0; i < 20 && !page.result(); i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
+	};
+
+	it('asks where a file goes when its old folder is in Trash too, and restores with the choice', async () => {
+		const { page, gateway, modals, notifications } = setup();
+		await settled(page);
+		const restoring = page.restoreItem({
+			type: 'file',
+			id: 'med_blue',
+			name: 'blue-tant-draft.jpg',
+			folderId: 'fld_tant',
+		});
+		page.restoreChoice.set('my_files');
+		await restoring;
+		expect(modals.open).toHaveBeenCalledTimes(1);
+		expect(page.ask()).toMatchObject({ kind: 'restore', folderName: 'Product photos › Tant cotton' });
+		expect(gateway.restore).toHaveBeenCalledWith({
+			fileIds: ['med_blue'],
+			folderIds: [],
+			whenFolderGone: 'my_files',
+		});
+		expect(notifications.showSuccess).toHaveBeenCalledWith('fm_restored');
+	});
+
+	it('restores straight away when the old folder is not in Trash', async () => {
+		const { page, gateway, modals } = setup();
+		await settled(page);
+		await page.restoreItem({ type: 'file', id: 'med_pdf', name: 'old.pdf', folderId: null });
+		expect(modals.open).not.toHaveBeenCalled();
+		expect(gateway.restore).toHaveBeenCalledWith({
+			fileIds: ['med_pdf'],
+			folderIds: [],
+			whenFolderGone: 'restore_folder',
+		});
+	});
+
+	it('deletes for good only after a yes, and empties Trash of what it shows', async () => {
+		const declined = setup('no');
+		await settled(declined.page);
+		await declined.page.deleteItem({ type: 'folder', id: 'fld_tant', name: 'Tant cotton', folderId: null });
+		expect(declined.gateway.deleteForever).not.toHaveBeenCalled();
+		const { page, gateway } = setup();
+		await settled(page);
+		await page.deleteItem({ type: 'folder', id: 'fld_tant', name: 'Tant cotton', folderId: null });
+		expect(gateway.deleteForever).toHaveBeenLastCalledWith({ fileIds: [], folderIds: ['fld_tant'] });
+		await page.emptyTrash();
+		expect(page.ask()).toEqual({ kind: 'empty', count: 3 });
+		expect(gateway.deleteForever).toHaveBeenLastCalledWith({
+			fileIds: ['med_blue', 'med_pdf'],
+			folderIds: ['fld_tant'],
+		});
+	});
+
+	it('says so when the change fails', async () => {
+		const { page, notifications } = setup('yes', true);
+		await settled(page);
+		await page.restoreItem({ type: 'file', id: 'med_pdf', name: 'old.pdf', folderId: null });
+		expect(notifications.showError).toHaveBeenCalledWith('fm_action_failed');
 	});
 });

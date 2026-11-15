@@ -13,6 +13,7 @@
 				<th>{{ 'type' | transloco }}</th>
 				@if (trash()) {
 				<th>{{ 'fm_removed_in' | transloco }}</th>
+				<th>{{ 'fm_action' | transloco }}</th>
 				} @else {
 				<th>{{ 'status' | transloco }}</th>
 				<th>{{ 'fm_used_on' | transloco }}</th>
@@ -21,7 +22,53 @@
 			</tr>
 		</thead>
 		<tbody>
-			@for (file of files(); track file.id) {
+			@for (folder of folders(); track folder.id) {
+			<tr [attr.data-folder]="folder.id">
+				<td class="fm-namecol">
+					<div class="fm-file">
+						<div class="fm-type k-other"><i class="ri-folder-3-fill"></i></div>
+						<div style="min-width: 0">
+							<h6>{{ folder.name }}</h6>
+							<p>{{ folder.bytes | fileSize }} · {{ 'fm_files' | plural: folder.files }}</p>
+						</div>
+					</div>
+				</td>
+				<td class="fm-path">
+					<i class="ri-folder-3-line"></i>
+					{{ folder.location || ('fm_my_files' | transloco) }}
+				</td>
+				<td>{{ 'fm_folder' | transloco }}</td>
+				<td>
+					<span [class.text-danger]="(folder.daysLeft ?? 30) <= 3">
+						{{ 'fm_days' | plural: folder.daysLeft ?? 0 }}
+					</span>
+				</td>
+				<td>
+					<ul id="actions">
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-restore"
+								[title]="'restore' | transloco"
+								(click)="restore.emit(folderItem(folder))"
+							>
+								<i class="ri-arrow-go-back-line"></i>
+							</a>
+						</li>
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-delete-forever"
+								[title]="'fm_delete_forever' | transloco"
+								(click)="deleteForever.emit(folderItem(folder))"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</a>
+						</li>
+					</ul>
+				</td>
+			</tr>
+			} @for (file of files(); track file.id) {
 			<tr
 				[class.is-pending]="pending(file)"
 				[attr.data-file]="file.id"
@@ -57,7 +104,7 @@
 				@if (showLocation() || trash()) {
 				<td class="fm-path">
 					<i class="ri-folder-3-line"></i>
-					{{ file.location }}
+					{{ file.location || ('fm_my_files' | transloco) }}
 				</td>
 				}
 				<td>{{ typeLabel(file) || '—' }}</td>
@@ -66,6 +113,30 @@
 					<span [class.text-danger]="(file.daysLeft ?? 30) <= 3">
 						{{ 'fm_days' | plural: file.daysLeft ?? 0 }}
 					</span>
+				</td>
+				<td>
+					<ul id="actions">
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-restore"
+								[title]="'restore' | transloco"
+								(click)="restore.emit(fileItem(file))"
+							>
+								<i class="ri-arrow-go-back-line"></i>
+							</a>
+						</li>
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-delete-forever"
+								[title]="'fm_delete_forever' | transloco"
+								(click)="deleteForever.emit(fileItem(file))"
+							>
+								<i class="ri-delete-bin-line"></i>
+							</a>
+						</li>
+					</ul>
 				</td>
 				} @else {
 				<td>

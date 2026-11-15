@@ -59,6 +59,14 @@ export function injectRelatedProductsQuery() {
 	};
 }
 
+/** The Trending rail beside a product: the other sample products, as the API's trending list. */
+export function injectProductTrendingQuery() {
+	return {
+		...idleQuery,
+		data: signal<IProduct[] | undefined>(products.slice(1)),
+	};
+}
+
 export function injectRelatedProductsData() {
 	return {
 		...idleQuery,

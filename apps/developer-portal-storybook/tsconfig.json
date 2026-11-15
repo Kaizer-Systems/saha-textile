@@ -20,11 +20,13 @@
 			"@core/state/loader.store": ["./src/type-shims/core/state/loader.store.ts"],
 			"@core/state/menu.store": ["./src/type-shims/core/state/menu.store.ts"],
 			"@core/state/setting.store": ["./src/type-shims/core/state/setting.store.ts"],
+			"@core/i18n/active-languages": ["./src/type-shims/core/i18n/active-languages.ts"],
 			"@core/interceptors/global-error-handler.interceptor": [
 				"./src/type-shims/core/interceptors/global-error-handler.interceptor.ts"
 			],
 			"@data-access/interfaces/menu.interface": ["./src/type-shims/data-access/interfaces/menu.interface.ts"],
 			"@data-access/interfaces/refund.interface": ["../admin/src/app/data-access/interfaces/refund.interface.ts"],
+			"@data-access/queries/category.queries": ["./src/type-shims/data-access/queries/category.queries.ts"],
 			"@data-access/queries/notification.queries": [
 				"./src/type-shims/data-access/queries/notification.queries.ts"
 			],
@@ -47,7 +49,11 @@
 		"../admin/src/app/core/state/cart/**/*.ts",
 		"../admin/src/app/shared/directives/out-side-directive.ts",
 		"../admin/src/app/shared/data/menu.ts",
-		"../admin/src/app/shared/pipes/**/*.ts"
+		"../admin/src/app/shared/pipes/**/*.ts",
+		"../admin/src/app/core/brand/theme-mode.ts",
+		"../admin/src/app/core/config/runtime-config.ts",
+		"../admin/src/app/data-access/services/error.service.ts",
+		"../admin/src/app/data-access/services/logging.service.ts"
 	],
-	"exclude": ["./src/main.ts", "../admin/src/app/core/state/cart/cart.effects.ts"]
+	"exclude": ["./src/main.ts", "../admin/src/app/core/state/cart/cart.effects.ts", "../admin/src/**/*.spec.ts"]
 }

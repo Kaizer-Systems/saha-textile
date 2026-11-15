@@ -15,7 +15,11 @@
 		"../admin/src/app/core/state/cart/**/*.ts",
 		"../admin/src/app/shared/directives/out-side-directive.ts",
 		"../admin/src/app/shared/data/menu.ts",
-		"../admin/src/app/shared/pipes/**/*.ts"
+		"../admin/src/app/shared/pipes/**/*.ts",
+		"../admin/src/app/core/brand/theme-mode.ts",
+		"../admin/src/app/core/config/runtime-config.ts",
+		"../admin/src/app/data-access/services/error.service.ts",
+		"../admin/src/app/data-access/services/logging.service.ts"
 	],
-	"exclude": ["src/main.ts", "../admin/src/app/core/state/cart/cart.effects.ts"]
+	"exclude": ["src/main.ts", "../admin/src/app/core/state/cart/cart.effects.ts", "../admin/src/**/*.spec.ts"]
 }

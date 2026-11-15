@@ -43,6 +43,17 @@ export interface FmUploadPopups {
 	overLimit: TemplateRef<unknown>;
 	/** B05: photos with notes, confirmed before they upload. */
 	notes: TemplateRef<unknown>;
+	/** B12: a photo uploaded anyway beside one of the same name: keep both, or replace that one. */
+	anyway?: TemplateRef<unknown>;
+	/** B13: the photo to replace is used on the website: the pages, then “Replace everywhere”. */
+	replaceInUse?: TemplateRef<unknown>;
+}
+
+/** A photo that takes the place of one already in the folder (B12), instead of uploading beside it. */
+export interface FmReplaceRow {
+	row: FmUploadRow;
+	id: string;
+	name: string;
 }
 
 /** The upload popup (B03): what was picked, where it goes, and what is left out. */
@@ -96,6 +107,11 @@ export class FmUploadFlow {
 	readonly review = signal<FmReview | null>(null);
 	readonly duplicate = signal<FmDuplicateAsk | null>(null);
 	readonly storageAsk = signal<FmStorageAsk | null>(null);
+	/** B12: the photo asked about and the name it would get if both are kept. */
+	readonly anyway = signal<{ row: FmUploadRow; existing: string; keepBothName: string; place: string } | null>(null);
+	readonly anywayChoice = signal<'keep' | 'replace'>('keep');
+	/** B13: where the photo to replace is used. */
+	readonly replaceInUse = signal<{ name: string; places: string[] } | null>(null);
 	/** B18's box: a super admin also lets other admins use on-demand storage. */
 	readonly alsoLetOthers = signal(false);
 
@@ -305,15 +321,35 @@ export class FmUploadFlow {
 			const answers = await this.duplicates(going, hashes, review.targetId);
 			if (!answers) return;
 			closeReview();
-			const keep = await this.decide(going, answers, popups);
-			if (!keep?.length) return;
-			const reservationId = await this.storageGo(keep, popups);
+			const decided = await this.decide(going, answers, popups, review.place);
+			if (!decided || (!decided.keep.length && !decided.replace.length)) return;
+			const { keep, replace } = decided;
+			const reservationId = await this.storageGo([...keep, ...replace.map((one) => one.row)], popups);
 			if (reservationId === false) return;
 			const folderIds = await this.makeFolders(keep, review.targetId);
 			if (!folderIds) {
 				if (reservationId) void lastValueFrom(this.gateway.releaseHold(reservationId)).catch(() => undefined);
 				return;
 			}
+			// B12: these take the place of the photo of the same name; its versions are remade from them (S7).
+			for (const one of replace) {
+				const sha256 = hashes.get(one.row.key);
+				void this.uploads.replacePhoto({
+					fileId: one.id,
+					name: one.name,
+					file: one.row.file,
+					request: {
+						fileName: one.row.name,
+						contentType: one.row.contentType,
+						byteSize: one.row.bytes,
+						width: one.row.size?.width ?? 1,
+						height: one.row.size?.height ?? 1,
+						...(sha256 ? { sha256 } : {}),
+						...(reservationId ? { reservationId } : {}),
+					},
+				});
+			}
+			if (!keep.length) return;
 			this.uploads.add(
 				keep.map((row) => ({
 					file: row.file,
@@ -368,7 +404,8 @@ export class FmUploadFlow {
 		rows: readonly FmUploadRow[],
 		answers: MediaDuplicateAnswer['files'],
 		popups: FmUploadPopups,
-	): Promise<FmUploadRow[] | null> {
+		place = '',
+	): Promise<{ keep: FmUploadRow[]; replace: FmReplaceRow[] } | null> {
 		const kindOf = (index: number): 'identical' | 'name' | null => {
 			const answer = answers[index];
 			const row = rows[index];
@@ -378,6 +415,7 @@ export class FmUploadFlow {
 		};
 		const remembered: Partial<Record<'identical' | 'name', 'upload' | 'existing'>> = {};
 		const keep: FmUploadRow[] = [];
+		const replace: FmReplaceRow[] = [];
 		for (const [index, row] of rows.entries()) {
 			const kind = kindOf(index);
 			const answer = answers[index];
@@ -409,9 +447,56 @@ export class FmUploadFlow {
 				choice = picked;
 				if (this.duplicate()?.sameForOthers) remembered[kind] = picked;
 			}
-			if (choice === 'upload') keep.push(row);
+			if (choice !== 'upload') continue;
+			// B12: a photo beside one of the same name may take its place instead (S6). Files keep both.
+			const same = kind === 'name' ? answer.sameName : null;
+			if (same && row.photo && row.size && popups.anyway) {
+				const how = await this.askAnyway(row, same, answer.keepBothName, place, popups);
+				if (!how) return null;
+				if (how === 'replace') {
+					replace.push({ row, id: same.id, name: same.name });
+					continue;
+				}
+			}
+			keep.push(row);
 		}
-		return keep;
+		return { keep, replace };
+	}
+
+	/**
+	 * B12, then B13 when the photo is used on the website: answers how the photo goes in (beside, or in place of the
+	 * one already there), or null when the admin goes back (nothing uploads).
+	 */
+	private async askAnyway(
+		row: FmUploadRow,
+		same: { id: string; name: string },
+		keepBothName: string,
+		place: string,
+		popups: FmUploadPopups,
+	): Promise<'keep' | 'replace' | null> {
+		if (!popups.anyway) return 'keep';
+		this.anyway.set({ row, existing: same.name, keepBothName, place });
+		this.anywayChoice.set('keep');
+		const go = await this.show<'go'>(popups.anyway, { windowClass: 'theme-modal text-center' }, 'fm_anyway_title');
+		if (!go) return null;
+		if (this.anywayChoice() === 'keep') return 'keep';
+		const usedOn = await lastValueFrom(this.gateway.details(same.id))
+			.then((details) => details.usedOn)
+			.catch(() => null);
+		if (usedOn === null) {
+			this.notifications.showError(this.transloco.translate('fm_action_failed'));
+			return null;
+		}
+		if (usedOn.length && popups.replaceInUse) {
+			this.replaceInUse.set({ name: same.name, places: usedOn });
+			const yes = await this.show<'yes'>(
+				popups.replaceInUse,
+				{ size: 'lg', windowClass: 'theme-modal text-center' },
+				'fm_replace_in_use_title',
+			);
+			if (!yes) return null;
+		}
+		return 'replace';
 	}
 
 	/** B18/B19: one check for the whole upload; its approval is held until the last file settles. */

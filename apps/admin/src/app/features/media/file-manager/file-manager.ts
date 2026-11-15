@@ -1248,6 +1248,8 @@ export class FileManager {
 	readonly pickFolderInput = viewChild<ElementRef<HTMLInputElement>>('fmPickFolder');
 	readonly reviewTemplate = viewChild<TemplateRef<unknown>>('fmUploadReview');
 	readonly duplicateTemplate = viewChild<TemplateRef<unknown>>('fmDuplicate');
+	readonly anywayTemplate = viewChild<TemplateRef<unknown>>('fmUploadAnyway');
+	readonly replaceInUseTemplate = viewChild<TemplateRef<unknown>>('fmReplaceInUse');
 	readonly onDemandTemplate = viewChild<TemplateRef<unknown>>('fmOnDemand');
 	readonly refusedTemplate = viewChild<TemplateRef<unknown>>('fmStorageRefused');
 	readonly overLimitTemplate = viewChild<TemplateRef<unknown>>('fmOverLimit');
@@ -1375,8 +1377,19 @@ export class FileManager {
 		const refused = this.refusedTemplate();
 		const overLimit = this.overLimitTemplate();
 		const notes = this.notesTemplate();
+		const anyway = this.anywayTemplate();
+		const replaceInUse = this.replaceInUseTemplate();
 		return review && duplicate && onDemand && refused && overLimit && notes
-			? { review, duplicate, onDemand, refused, overLimit, notes }
+			? {
+					review,
+					duplicate,
+					onDemand,
+					refused,
+					overLimit,
+					notes,
+					...(anyway ? { anyway } : {}),
+					...(replaceInUse ? { replaceInUse } : {}),
+				}
 			: null;
 	}
 

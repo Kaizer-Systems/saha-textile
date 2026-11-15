@@ -549,6 +549,87 @@ describe('photos in the upload popup (media step 2d: B01, B02, B02b, B04, B05, B
 		return { flow, uploads, answers };
 	};
 
+	it('a same-name photo uploaded anyway can replace the one there, asking first when it is used (B12, B13, step 3b)', async () => {
+		const sizes = { 'front.jpg': { width: 3000, height: 4000 } };
+		profileData.list = PROFILES.map((entry) => ({ profile: entry, photos: 0 }));
+		vi.stubGlobal('createImageBitmap', async (blob: File) => ({
+			...sizes[blob.name as 'front.jpg'],
+			close: () => undefined,
+		}));
+		const asked: string[] = [];
+		const setup = (choice: 'keep' | 'replace') => {
+			let flow: FmUploadFlow | null = null;
+			const modals = {
+				open: vi.fn((template: { name?: string }) => {
+					const name = template?.name ?? 'review';
+					asked.push(name);
+					if (name === 'anyway') flow?.anywayChoice.set(choice);
+					const answer = { duplicate: 'upload', anyway: 'go', replaceInUse: 'yes' }[name];
+					return { result: answer ? Promise.resolve(answer) : new Promise(() => undefined) };
+				}),
+			};
+			const uploads = { add: vi.fn(), replacePhoto: vi.fn(async () => undefined) };
+			const gateway = {
+				duplicates: vi.fn(() =>
+					of({
+						files: [
+							{
+								identical: null,
+								sameName: { id: 'med_old', name: 'front.jpg' },
+								keepBothName: 'front (1).jpg',
+							},
+						],
+					}),
+				),
+				details: vi.fn(() => of({ usedOn: ['product · Red Banarasi Silk'] })),
+				checkStorage: vi.fn(() => of({ decision: 'go', reservationId: 'res_1' })),
+			};
+			TestBed.resetTestingModule();
+			TestBed.configureTestingModule({
+				providers: [
+					FmUploadFlow,
+					{ provide: MediaLibraryGateway, useValue: gateway },
+					{ provide: NgbModal, useValue: modals },
+					{ provide: NotificationService, useValue: { showError: vi.fn() } },
+					{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+					{ provide: MediaUploads, useValue: uploads },
+				],
+			});
+			flow = TestBed.inject(FmUploadFlow);
+			return { flow, uploads };
+		};
+		const popups = {
+			...POPUPS,
+			duplicate: { name: 'duplicate' },
+			anyway: { name: 'anyway' },
+			replaceInUse: { name: 'replaceInUse' },
+		} as unknown as FmUploadPopups;
+
+		const replacing = setup('replace');
+		replacing.flow.open(planUpload([{ file: photo('front.jpg'), path: [] }]), 'fld_1', 'Banarasi', popups);
+		await vi.waitFor(() => expect(replacing.flow.reading()).toBe(0));
+		await replacing.flow.start(vi.fn(), popups);
+		expect(asked).toEqual(['review', 'duplicate', 'anyway', 'replaceInUse']);
+		expect(replacing.flow.replaceInUse()).toEqual({ name: 'front.jpg', places: ['product · Red Banarasi Silk'] });
+		expect(replacing.uploads.replacePhoto).toHaveBeenCalledWith(
+			expect.objectContaining({
+				fileId: 'med_old',
+				name: 'front.jpg',
+				request: expect.objectContaining({ width: 3000, height: 4000, reservationId: 'res_1' }),
+			}),
+		);
+		expect(replacing.uploads.add).not.toHaveBeenCalled();
+
+		asked.length = 0;
+		const keeping = setup('keep');
+		keeping.flow.open(planUpload([{ file: photo('front.jpg'), path: [] }]), 'fld_1', 'Banarasi', popups);
+		await vi.waitFor(() => expect(keeping.flow.reading()).toBe(0));
+		await keeping.flow.start(vi.fn(), popups);
+		expect(asked).toEqual(['review', 'duplicate', 'anyway']);
+		expect(keeping.uploads.replacePhoto).not.toHaveBeenCalled();
+		expect(keeping.uploads.add).toHaveBeenCalledTimes(1);
+	});
+
 	it('suggests a profile from each photo’s shape, offers only switched-on chosen profiles, and sends versions', async () => {
 		const { flow, uploads } = await run({ 'front.jpg': { width: 3000, height: 4000 } }, [photo('front.jpg')]);
 		expect(flow.profiles().map((entry) => entry.key)).toEqual(['product_3x4', 'hero_21x9']);

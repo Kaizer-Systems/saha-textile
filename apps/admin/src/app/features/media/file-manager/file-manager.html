@@ -1759,3 +1759,150 @@
 	</div>
 	}
 </ng-template>
+
+<!-- B12: a photo uploaded anyway beside one of the same name: keep both, or replace the one already there (S6). -->
+<ng-template
+	#fmUploadAnyway
+	let-modal
+>
+	@if (flow.anyway(); as ask) {
+	<div
+		class="modal-body"
+		id="fm_anyway"
+	>
+		<i class="ri-upload-cloud-2-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_anyway_title"
+		>
+			{{ 'fm_anyway_title' | transloco }}
+		</h5>
+		<p>
+			<strong>{{ ask.row.name }}</strong>
+			· {{ 'fm_anyway_what' | transloco: { place: ask.place } }}
+		</p>
+		<div
+			class="mx-auto mb-3 text-start"
+			style="max-width: 470px"
+		>
+			<div class="form-check mb-3">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="fm_anyway"
+					id="fm_anyway_keep"
+					[checked]="flow.anywayChoice() === 'keep'"
+					(change)="flow.anywayChoice.set('keep')"
+				/>
+				<label
+					class="form-check-label"
+					for="fm_anyway_keep"
+				>
+					<strong>{{ 'fm_keep_both' | transloco }}</strong>
+					<br />
+					<span class="text-muted">{{ 'fm_anyway_keep_help' | transloco: { name: ask.keepBothName } }}</span>
+				</label>
+			</div>
+			<div class="form-check">
+				<input
+					class="form-check-input"
+					type="radio"
+					name="fm_anyway"
+					id="fm_anyway_replace"
+					[checked]="flow.anywayChoice() === 'replace'"
+					(change)="flow.anywayChoice.set('replace')"
+				/>
+				<label
+					class="form-check-label"
+					for="fm_anyway_replace"
+				>
+					<strong>{{ 'fm_replace_existing' | transloco }}</strong>
+					<br />
+					<span class="text-muted">{{ 'fm_anyway_replace_help' | transloco }}</span>
+				</label>
+			</div>
+		</div>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="modal.dismiss()"
+			>
+				{{ 'fm_go_back' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-theme btn-md fw-bold btn"
+				id="fm_anyway_go"
+				(click)="modal.close('go')"
+			>
+				{{ 'fm_continue' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
+</ng-template>
+
+<!-- B13: the photo to replace is used on the website: these pages change too. -->
+<ng-template
+	#fmReplaceInUse
+	let-modal
+>
+	@if (flow.replaceInUse(); as used) {
+	<div
+		class="modal-body"
+		id="fm_replace_in_use"
+	>
+		<i class="ri-error-warning-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_replace_in_use_title"
+		>
+			{{ 'fm_replace_in_use_title' | transloco }}
+		</h5>
+		<p>
+			<strong>{{ used.name }}</strong>
+			· {{ 'fm_replace_in_use_body' | transloco }}
+		</p>
+		<div
+			class="mx-auto mb-3 text-start"
+			style="max-width: 470px"
+		>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer fm-table table">
+					<thead>
+						<tr>
+							<th>{{ 'fm_used_on' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (place of used.places; track place) {
+						<tr>
+							<td>{{ place }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<p class="small text-muted">{{ 'fm_replace_in_use_note' | transloco }}</p>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-theme btn-md fw-bold btn"
+				id="fm_replace_everywhere"
+				(click)="modal.close('yes')"
+			>
+				{{ 'fm_replace_everywhere' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
+</ng-template>

@@ -2399,5 +2399,16 @@
 	"fm_rp_failed_reason": "The new photo could not be used ({{reason}})",
 	"fm_replacing": "Replacing the photo",
 	"fm_activity_replace": "Replaced with a new photo",
-	"fm_rpp_help_unused": "This photo isn't used on the website yet. Its old picture files stay 7 days, then go."
+	"fm_rpp_help_unused": "This photo isn't used on the website yet. Its old picture files stay 7 days, then go.",
+	"fm_anyway_title": "Upload it anyway",
+	"fm_anyway_what": "What happens to the one already in {{place}}?",
+	"fm_keep_both": "Keep both",
+	"fm_anyway_keep_help": "The new one is saved as {{name}}. Nothing on the website changes.",
+	"fm_replace_existing": "Replace the existing file",
+	"fm_anyway_replace_help": "Same name, folder and text. Pages using it show the new photo once its sizes are ready.",
+	"fm_continue": "Continue",
+	"fm_replace_in_use_title": "This photo is used on the website",
+	"fm_replace_in_use_body": "Replacing it changes the photo on these pages too:",
+	"fm_replace_in_use_note": "They keep showing the current photo until the new sizes are ready, then switch.",
+	"fm_replace_everywhere": "Replace everywhere"
 }

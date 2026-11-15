@@ -206,6 +206,35 @@ test.describe('Media page (step 1)', () => {
 		await page.locator('#fm_rpp_close').click();
 	});
 
+	test('a different photo with the same name, uploaded anyway, can replace the one there (B11, B12, step 3b)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await card(page, RUN).dblclick();
+		const other = readFileSync('apps/admin/public/assets/images/address.png');
+		await page
+			.locator('#fm_pick_files')
+			.setInputFiles([{ name: 'product-sample.png', mimeType: 'image/png', buffer: other }]);
+		await page.locator('#fm_review_upload').click();
+		if (
+			await page
+				.locator('#fm_notes')
+				.isVisible()
+				.catch(() => false)
+		)
+			await page.locator('#fm_notes_go').click();
+		await page.locator('#fm_dup_upload').click();
+		const anyway = page.locator('#fm_anyway');
+		await expect(anyway).toContainText('product-sample (1).png');
+		await shot(page, 'b12-keep-or-replace');
+		await page.locator('#fm_anyway_replace').check();
+		await page.locator('#fm_anyway_go').click();
+		// Not used on the website here, so no B13; the Replace starts. No image worker runs in this stack, so the
+		// photo's versions are still being made and the tray says the Replace waits; nothing new is uploaded.
+		await expect(page.locator('.fm-tray')).toContainText('versions are made');
+		await expect(row(page, 'product-sample (1).png')).toHaveCount(0);
+	});
+
 	test('the same bytes again asks first; “Use the existing one” leaves it out (B10)', async ({ page }) => {
 		await openRoot(page);
 		await card(page, RUN).dblclick();

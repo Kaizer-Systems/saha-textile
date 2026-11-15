@@ -1,13 +1,14 @@
 ---
 title: Media page
 wide: true
-description: The admin Media page as a file manager — views kept in the address, picking items, the right-click and ⋮ menus, Move to, Rename, Trash with the in-use block, Undo, dragging onto folders, keyboard keys, Preview and Download.
+description: The admin Media page as a file manager — views kept in the address, picking items, the right-click and ⋮ menus, Move to, Rename, Trash with the in-use block, Undo, dragging onto folders, keyboard keys, uploading with the duplicate and storage checks, the upload tray, Preview and Download.
 status: implemented
 audience: [beginner, frontend, backend]
 last_verified: '2026-11-15'
 source_of_truth:
     - packages/contracts/src/media-library.ts
     - packages/core-domain/src/media/library.ts
+    - packages/core-domain/src/catalog/media-files.ts
     - packages/core-domain/src/media/library-use-cases.ts
     - apps/api/src/media/media-library.service.ts
     - apps/api/src/media/admin-media-library.controller.ts
@@ -91,6 +92,18 @@ Rows, thumbnails and folder cards can be dragged onto a folder card. Dragging so
 | ⌘/Ctrl+Z            | Undo the last move, rename or Trash  |
 | Esc                 | Close the menu, or clear the picks   |
 
+## Uploading
+
+The Upload button at the top left offers Upload files, Upload a folder and New folder. The folder header has **Upload here**, an empty folder shows the same buttons, and files or whole folders dropped on the page from the computer upload into the folder shown. From Recent, Favourites or Trash, uploads go into My files.
+
+1. **The upload popup** lists every picked file with its size, type and the folders it sits in, and says where it goes, how many folders will be made and the total size. Rows can be unticked or removed. Files a computer leaves in folders (`.DS_Store`, `Thumbs.db`, `._` files, hidden folders) are left out. Photos are listed as waiting for image profiles and are not sent: the Media page uploads photos once image profiles exist, and the API refuses them with `photo_needs_profiles` until then. Camera RAW files are not photos here; they upload as files.
+2. **The duplicate check.** The browser counts each file's SHA-256 (files up to 256 MB, on HTTPS), and `POST /duplicates` answers, per file, a file with exactly the same bytes anywhere in Media and a different file with the same name in the target folder. Each match asks once: **Upload anyway** keeps both, the new one named “(1)”, and **Use the existing one** leaves the file out. “Same answer for the other N” answers the rest of that kind. Closing the question stops the whole upload. Files going into folders the upload makes have no neighbours, so only the same-bytes question applies to them.
+3. **The storage check.** One `POST /storage/check` covers the batch. Within the plan the upload goes and holds its bytes; past the plan a super admin is asked, with a box to also let other admins use on-demand storage; another admin is refused unless allowed, and is asked when allowed. The approval is given back when the batch's last file settles.
+4. **Folders.** A folder upload makes its folders first, parents before children; a taken name gets “(1)”.
+5. **Sending.** `MediaUploads` (app-wide) sends three files at once. Each file is named by `POST /files/presign`, sent straight to Spaces with the signed headers and real progress (never the admin's cookies), then finished by `POST /files/:id/finalize`. A failure shows **Retry**, which drops the unfinished record (`POST /files/:id/cancel`) and starts the file again; clearing the tray drops failed ones the same way. While files are sending, closing or reloading the tab gets the browser's own warning.
+
+The tray sits at the bottom right of every admin page while files upload, so moving around the admin never stops them. Its head counts what is uploading, failed and done; each file shows its bar with the size sent and the time left, then a green bar. A file kept beside one of the same name shows a toast with its new name. In the list, an uploading file shows its own bar and percentage, and a folder card shows the progress of everything going into it.
+
 ## Preview and Download
 
 `GET /files/:id/address` answers a five-minute address for the original in Spaces. `as=view` lets the browser show it; Preview opens it in a new tab that has no link back to the admin. `as=save` downloads it under its Media name; when the name has no extension, the stored file's is added, so `3-bengali-bridal-saree` saves as `3-bengali-bridal-saree.jpg`.
@@ -105,6 +118,9 @@ Rows, thumbnails and folder cards can be dragged onto a folder card. Dragging so
 | List and thumbnails                                         | `features/media/file-manager/fm-file-list.ts`                                                |
 | Left side, folder tree, storage box                         | `features/media/file-manager/fm-sidebar.ts`                                                  |
 | Undo toast                                                  | `features/media/file-manager/fm-undo-toast.ts`                                               |
+| Upload popup, duplicate and storage questions               | `features/media/file-manager/fm-upload-flow.ts`, `fm-upload-plan.ts`                         |
+| Upload queue (app-wide) and the tray                        | `core/media-library/media-uploads.ts`, `features/media/file-manager/fm-tray.ts`              |
+| The photo rule shared with the API                          | `@saha-textile/core-domain/media-files` (`waitsForImageProfiles`)                            |
 | Server calls                                                | `core/media-library/media-library.gateway.ts` (abstract) and `http-media-library.gateway.ts` |
 | Styles                                                      | `public/assets/scss/pages/_file-manager.scss`; dark colours come from `pnpm styles`          |
 
@@ -112,7 +128,9 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 
 ## Limitations
 
-- The page lives at `/media/files`; `/media` still shows the earlier Media page until uploads move to the new one.
-- Uploading, the upload tray, sharing, storage details and Activity are not on this page yet.
+- The page lives at `/media/files`; `/media` still shows the earlier Media page until photos upload here.
+- Photos do not upload on this page yet, and pasting an image to upload it is not offered.
+- An upload cut off by a closed tab starts again from the beginning; the unfinished record stays in the list as waiting until it is cleared.
+- Sharing, storage details and Activity are not on this page yet.
 - Download as .zip is not offered.
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.

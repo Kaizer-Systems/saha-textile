@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { type ActiveLocaleConfig, PRIMARY_LOCALE } from '@saha-textile/contracts';
+import { setLocalePrefixTest } from '@saha-textile/core-domain';
 import { orderLocales } from '@saha-textile/core-domain/languages';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
@@ -10,7 +11,10 @@ import { APP_CONFIG, type AppConfig } from '../config/app-config';
  */
 @Injectable()
 export class LanguagesService {
-	constructor(@Inject(APP_CONFIG) private readonly config: Pick<AppConfig, 'locales'>) {}
+	constructor(@Inject(APP_CONFIG) private readonly config: Pick<AppConfig, 'locales'>) {
+		// Saved redirects strip a language prefix before comparing addresses; these are the prefixes.
+		setLocalePrefixTest((segment) => this.config.locales.includes(segment));
+	}
 
 	active(): ActiveLocaleConfig {
 		return { default: PRIMARY_LOCALE, active: orderLocales(this.config.locales) };

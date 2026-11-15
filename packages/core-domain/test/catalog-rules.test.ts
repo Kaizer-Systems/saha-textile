@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 
 import {
 	badgeSlots,
@@ -13,7 +13,11 @@ import {
 	saleFromPercent,
 	sellingPriceINR,
 	snapToStep,
+	setLocalePrefixTest,
 } from '../src/catalog/index';
+
+// Today's addresses carry English and Bengali prefixes (the shop and the API set the real list).
+beforeAll(() => setLocalePrefixTest((segment) => segment === 'en' || segment === 'bn'));
 
 describe('catalog card price', () => {
 	it('shows one price, the MRP and a percent rounded down when every variant matches', () => {

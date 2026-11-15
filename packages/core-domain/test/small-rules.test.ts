@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 
 import {
 	AssignmentAlreadyActiveError,
@@ -25,8 +25,12 @@ import {
 	selectDefaultVariant,
 	snapToStep,
 	sortListing,
+	setLocalePrefixTest,
 } from '../src/index';
 import { rateLimitClientScope } from '../src/auth/client-scope';
+
+// Today's addresses carry English and Bengali prefixes (the shop and the API set the real list).
+beforeAll(() => setLocalePrefixTest((segment) => segment === 'en' || segment === 'bn'));
 
 describe('rateLimitClientScope with malformed addresses', () => {
 	it.each([

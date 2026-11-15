@@ -6,8 +6,8 @@
  * The API owns the list (`GET /storefront/languages`, shaped as contracts' `ActiveLocaleConfig`).
  * English is the default, always in it and always first.
  *
- * Names come from the platform's own language data (`Intl.DisplayNames`), so a new language is
- * named correctly without anyone typing it. Lists ("English, Hindi and Bangla") come from
+ * Names come from the platform's own language data (`Intl.DisplayNames`), each in its own script,
+ * so a new language is named correctly without anyone typing it. Lists ("English, हिन्दी and বাংলা") come from
  * `Intl.ListFormat`, and counts choose their wording with `Intl.PluralRules`, so no sentence writes
  * a language list or a plural by hand.
  */
@@ -49,21 +49,16 @@ export function intlLocale(locale: string): string {
 	return locale === 'bn' ? 'bn-IN-u-nu-latn' : locale;
 }
 
-/** The name of a language in the reader's language: `languageName('bn', 'en')` is "Bangla". */
-export function languageName(code: string, inLocale: string): string {
+/**
+ * A language's name, always in its own script: "English", "বাংলা", "हिन्दी" (owner rule, 15 Nov):
+ * in buttons, menus, sentences, reports and emails alike, whatever language the reader uses.
+ */
+export function languageName(code: string): string {
 	try {
-		return new Intl.DisplayNames([intlLocale(inLocale)], { type: 'language' }).of(code) ?? code;
+		return new Intl.DisplayNames([intlLocale(code)], { type: 'language' }).of(code) ?? code;
 	} catch {
 		return code;
 	}
-}
-
-/**
- * The name of a language in itself ("English", "বাংলা", "हिन्दी"), for menus that change the page
- * language: a reader looks for their own language by its own name.
- */
-export function ownName(code: string): string {
-	return languageName(code, code);
 }
 
 /** Items joined the way the reader's language joins them: "A, B and C" in Indian English. */
@@ -78,12 +73,12 @@ export function formatList(items: readonly string[], locale: string): string {
 	}
 }
 
-/** The names of some languages as one list, in the reader's language. */
+/**
+ * Some languages as one list: each named in its own script, joined the reader's way
+ * ("English and বাংলা" for an English reader, "English এবং বাংলা" for a Bengali one).
+ */
 export function languageList(codes: readonly string[], inLocale: string): string {
-	return formatList(
-		codes.map((code) => languageName(code, inLocale)),
-		inLocale,
-	);
+	return formatList(codes.map(languageName), inLocale);
 }
 
 /** The plural form a count takes in a language: `one`, `other`, and in some languages more. */

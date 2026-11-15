@@ -9,7 +9,6 @@ import {
 	languageList,
 	languageName,
 	orderLocales,
-	ownName,
 	parseLanguageList,
 	pluralCategory,
 	PRIMARY_LOCALE,
@@ -42,20 +41,16 @@ describe('the language list', () => {
 });
 
 describe('naming, listing and counting', () => {
-	it('names a language in the reader’s language, and in itself for page menus', () => {
-		expect(languageName('bn', 'en')).toBe('Bangla');
-		expect(languageName('hi', 'en')).toBe('Hindi');
-		expect(languageName('hi', 'bn')).toBe('হিন্দি');
-		expect(languageName('en', 'bn')).toBe('ইংরেজি');
-		expect(ownName('en')).toBe('English');
-		expect(ownName('bn')).toBe('বাংলা');
-		expect(languageName('zz', 'en')).toBe('zz');
+	it('names every language in its own script, whoever reads', () => {
+		expect(['en', 'bn', 'hi', 'ta'].map(languageName)).toEqual(['English', 'বাংলা', 'हिन्दी', 'தமிழ்']);
+		expect(languageName('zz')).toBe('zz');
 	});
 
-	it('lists the Indian English way, and in Bengali with এবং', () => {
+	it('joins names the reader’s way: commas, then and (Indian English), or এবং', () => {
 		expect(formatList(['English', 'Bangla'], 'en')).toBe('English and Bangla');
-		expect(formatList(['English', 'Hindi', 'French', 'Bangla'], 'en')).toBe('English, Hindi, French and Bangla');
-		expect(languageList(['en', 'hi', 'fr', 'bn'], 'bn')).toBe('ইংরেজি, হিন্দি, ফরাসি এবং বাংলা');
+		expect(formatList(['A', 'B', 'C', 'D'], 'en')).toBe('A, B, C and D');
+		expect(languageList(['en', 'bn'], 'en')).toBe('English and বাংলা');
+		expect(languageList(['en', 'hi', 'bn'], 'bn')).toBe('English, हिन्दी এবং বাংলা');
 		expect(languageList(['en'], 'en')).toBe('English');
 	});
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 
 import {
 	collapseRedirectTarget,
@@ -8,7 +8,11 @@ import {
 	retiredCollectionRow,
 	SITEMAP_PATH,
 	type SeoRedirectRow,
+	setLocalePrefixTest,
 } from '../src/catalog/legacy-resolve';
+
+// Today's addresses carry English and Bengali prefixes (the shop and the API set the real list).
+beforeAll(() => setLocalePrefixTest((segment) => segment === 'en' || segment === 'bn'));
 
 const rows: SeoRedirectRow[] = [
 	{ sourcePath: '/product-category/saree', statusCode: 301, targetPath: '/en/collections/sarees' },

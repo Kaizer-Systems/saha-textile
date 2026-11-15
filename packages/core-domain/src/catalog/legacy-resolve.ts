@@ -21,7 +21,16 @@ export interface LegacyResolution {
 	location?: string;
 }
 
-const LOCALES = ['en', 'bn'] as const;
+/**
+ * Whether a path's first segment is a language prefix (`/en/…`, `/bn/…`). The active languages come
+ * from the API: the shop passes its own test (`isLocale`), the API its `ACTIVE_LOCALES`. English
+ * alone until one does.
+ */
+let isLocalePrefix: (segment: string) => boolean = (segment) => segment === 'en';
+
+export function setLocalePrefixTest(test: (segment: string) => boolean): void {
+	isLocalePrefix = test;
+}
 
 function split(pathAndQuery: string): { pathname: string; query: string } {
 	const queryAt = pathAndQuery.indexOf('?');
@@ -37,7 +46,7 @@ function stripSlash(pathname: string): string {
 
 function withoutLocale(pathname: string): string {
 	const parts = stripSlash(pathname).split('/').filter(Boolean);
-	if ((LOCALES as readonly string[]).includes(parts[0] ?? '')) {
+	if (isLocalePrefix(parts[0] ?? '')) {
 		const rest = parts.slice(1);
 		return rest.length ? `/${rest.join('/')}` : '/';
 	}
@@ -59,7 +68,7 @@ function legacyShape(pathname: string): boolean {
 
 function localeOf(pathname: string): string | null {
 	const first = stripSlash(pathname).split('/').filter(Boolean)[0] ?? '';
-	return (LOCALES as readonly string[]).includes(first) ? first : null;
+	return isLocalePrefix(first) ? first : null;
 }
 
 /** Lower case, with any `/page/N` tail gone. */

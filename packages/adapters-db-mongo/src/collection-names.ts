@@ -114,6 +114,12 @@ export const COLLECTION_NAMES = {
 	ShopEvent: 'shopEvents',
 	/** The shop's physical stores, shown as cards on Contact Us. */
 	StoreLocation: 'storeLocations',
+	/** The Media page (step 1): folders, stars, share links. */
+	MediaFolder: 'mediaFolders',
+	MediaFavourite: 'mediaFavourites',
+	MediaShareLink: 'mediaShareLinks',
+	/** Bytes held for running uploads; machinery, removed by its own expiry. */
+	StorageReservation: 'storageReservations',
 	/** Settings › Languages: every language ever added, English included (step 0d, 2026-11-15). */
 	Language: 'languages',
 	/** Settings › Communications: message × channel switches an operator changed. */
@@ -160,6 +166,7 @@ const RUNTIME_ONLY_COLLECTIONS = [
 	'searchOutbox',
 	'searchChecks',
 	'releaseMarkers',
+	'storageReservations',
 ] as const;
 
 /**

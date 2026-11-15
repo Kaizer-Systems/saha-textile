@@ -632,6 +632,22 @@ describe('runMediaGarbageCollection', () => {
 		expect(log.entries[0]?.action).toBe('media.gc.run');
 	});
 
+	it('leaves the files kept on the Media page alone: plain files, named, in a folder or in Trash', async () => {
+		const old = '2026-09-01T00:00:00.000Z';
+		const assets = new FakeAssets([
+			asset({ id: 'form_orphan', createdAt: old }),
+			asset({ id: 'plain_file', kind: 'file', originalFormat: 'application/pdf', createdAt: old }),
+			asset({ id: 'named', displayName: 'red-banarasi.jpg', createdAt: old }),
+			asset({ id: 'in_folder', folderId: 'fld_1', createdAt: old }),
+			asset({ id: 'in_trash', trashedAt: '2026-10-01T00:00:00.000Z', createdAt: old }),
+		]);
+		const report = await runMediaGarbageCollection(
+			{ assets, storage: storage().port, queue: queue().port, audit: audit().port, now, newId: () => 'aud_1' },
+			{ dryRun: false },
+		);
+		expect(report.softDeleted).toEqual(['form_orphan']);
+	});
+
 	it('writes nothing in a dry run', async () => {
 		const assets = new FakeAssets([asset({ id: 'orphan', createdAt: '2026-09-01T00:00:00.000Z' })]);
 		const report = await runMediaGarbageCollection(

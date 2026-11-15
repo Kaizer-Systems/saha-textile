@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 81,
-		"existingModelCount": 57,
+		"nodeCount": 84,
+		"existingModelCount": 60,
 		"targetOnlyCount": 24,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -997,6 +997,45 @@
 			"purpose": "Settings › Languages: every language ever added, English included, with its Admin switch (the admin's own words) and its Shop state (draft, on or off). A deleted language keeps its row, so its old addresses still answer 301 and adding it again finds its text.",
 			"source": "decisions § Language management, step 0d (2026-11-15)",
 			"currentModel": "packages/adapters-db-mongo/src/models/language.model.ts",
+			"references": []
+		},
+		{
+			"id": "mediaFolders",
+			"label": "mediaFolders",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "The Media page folder tree: name, parent, ancestors, running totals and Trash. Files keep their Spaces address when folders move or are renamed.",
+			"source": "decisions § Media file manager brief revision 6, build step 1 (2026-11-15)",
+			"currentModel": "packages/adapters-db-mongo/src/models/media-library.model.ts",
+			"references": []
+		},
+		{
+			"id": "mediaFavourites",
+			"label": "mediaFavourites",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Stars on Media folders and files: each admin’s own, and everyone’s together with who starred what.",
+			"source": "decisions § Media file manager brief revision 6, build step 1 (2026-11-15)",
+			"currentModel": "packages/adapters-db-mongo/src/models/media-library.model.ts",
+			"references": []
+		},
+		{
+			"id": "mediaShareLinks",
+			"label": "mediaShareLinks",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Share links for Media files: the code’s hash, who may open it, when it stops, an optional password, open counts. A link stops when its file goes to Trash.",
+			"source": "decisions § Media file manager brief revision 6, build step 1 (2026-11-15)",
+			"currentModel": "packages/adapters-db-mongo/src/models/media-library.model.ts",
 			"references": []
 		},
 		{

@@ -2,6 +2,7 @@ import {
 	CatalogStatus,
 	DerivativeFit,
 	DerivativeFormat,
+	MediaCategory,
 	MediaKind,
 	MediaProcessingState,
 	MediaPurpose,
@@ -42,6 +43,13 @@ export interface MediaAssetDoc {
 	status: string;
 	uploadedBy: { type: string; id: string } | null;
 	deletedAt: Date | null;
+	/** The Media page (step 1): folder, name, content hash, Trash, and the category it is listed under. */
+	folderId?: string | null;
+	displayName?: string | null;
+	sha256?: string | null;
+	trashedAt?: Date | null;
+	trashedFrom?: string | null;
+	category?: string;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -77,9 +85,21 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 		uploadedBy: { type: Schema.Types.Mixed, default: null },
 		deletedAt: { type: Date, default: null },
+		folderId: { type: String, default: null },
+		displayName: { type: String, default: null },
+		sha256: { type: String, default: null },
+		trashedAt: { type: Date, default: null },
+		trashedFrom: { type: String, default: null },
+		category: { type: String, enum: MediaCategory.options, default: 'images' },
 	},
 	{ collection: 'mediaAssets', timestamps: true },
 );
+
+/** The Media page: a folder's files, in or out of Trash, by name or date. */
+MediaAssetSchema.index({ folderId: 1, trashedAt: 1, displayName: 1 });
+MediaAssetSchema.index({ trashedAt: 1, category: 1, createdAt: -1 });
+/** The duplicate check (S6): the same bytes already in Media. */
+MediaAssetSchema.index({ sha256: 1 }, { partialFilterExpression: { sha256: { $type: 'string' } } });
 
 /** Admin media library browsing. */
 MediaAssetSchema.index({ kind: 1, purpose: 1, status: 1, createdAt: -1 });

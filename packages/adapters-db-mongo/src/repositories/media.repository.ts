@@ -1,5 +1,12 @@
 import type { MediaAsset } from '@saha-textile/contracts';
-import type { MediaAssetFilter, MediaAssetRepository, Paginated } from '@saha-textile/core-domain';
+import {
+	type MediaAssetFilter,
+	type MediaAssetRepository,
+	type MediaBrowseFilter,
+	type MediaBrowseRepository,
+	type Paginated,
+	mediaCategory,
+} from '@saha-textile/core-domain';
 
 import { MediaAssetModel, type MediaAssetDoc } from '../models/index';
 import { MEDIA_OWNER_REGISTRY } from './media-owner-registry';
@@ -40,21 +47,41 @@ const toAsset = (doc: MediaAssetDoc): MediaAsset =>
 		status: doc.status,
 		uploadedBy: doc.uploadedBy ?? null,
 		deletedAt: isoOrNull(doc.deletedAt),
+		folderId: doc.folderId ?? null,
+		displayName: doc.displayName ?? null,
+		sha256: doc.sha256 ?? null,
+		trashedAt: isoOrNull(doc.trashedAt),
+		trashedFrom: doc.trashedFrom ?? null,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	}) as MediaAsset;
 
 /** The persisted shape of an asset, minus the id and timestamps Mongo owns. */
 const toDoc = (asset: MediaAsset) => {
-	const { id: _id, deletedAt, createdAt: _createdAt, updatedAt: _updatedAt, processing, ...rest } = asset;
+	const { id: _id, deletedAt, createdAt: _createdAt, updatedAt: _updatedAt, processing, trashedAt, ...rest } = asset;
 	return {
 		...rest,
 		processing: { ...processing, processedAt: dateOrNull(processing.processedAt) },
 		deletedAt: dateOrNull(deletedAt),
+		folderId: asset.folderId ?? null,
+		displayName: asset.displayName ?? null,
+		sha256: asset.sha256 ?? null,
+		trashedAt: dateOrNull(trashedAt ?? null),
+		trashedFrom: asset.trashedFrom ?? null,
+		// Stored so the Media page can filter by it with an index.
+		category: mediaCategory(asset.originalFormat, asset.displayName ?? asset.slug),
 	};
 };
 
-export class MongoMediaAssetRepository implements MediaAssetRepository {
+/** The bytes an asset takes, for the size sort. */
+const sizeField = {
+	$add: [
+		{ $ifNull: ['$originalByteSize', 0] },
+		{ $sum: { $map: { input: { $ifNull: ['$derivatives', []] }, as: 'd', in: { $ifNull: ['$$d.byteSize', 0] } } } },
+	],
+};
+
+export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBrowseRepository {
 	async findById(assetId: string): Promise<MediaAsset | null> {
 		const doc = await MediaAssetModel.findById(assetId).lean<MediaAssetDoc>().exec();
 		return doc ? toAsset(doc) : null;
@@ -182,5 +209,142 @@ export class MongoMediaAssetRepository implements MediaAssetRepository {
 	 */
 	async hardDelete(assetId: string): Promise<void> {
 		await MediaAssetModel.deleteOne({ _id: assetId }).exec();
+	}
+	// --- The Media page (step 1) ------------------------------------------------------------
+
+	async browse(filter: MediaBrowseFilter): Promise<Paginated<MediaAsset>> {
+		const query: Record<string, unknown> = { deletedAt: null, trashedAt: filter.trashed ? { $ne: null } : null };
+		if (filter.folderId !== undefined) query.folderId = filter.folderId;
+		if (filter.withinFolders) query.folderId = { $in: [...filter.withinFolders] };
+		if (filter.category) query.category = filter.category;
+		if (filter.ids) query._id = { $in: [...filter.ids] };
+		if (filter.createdSince) query.createdAt = { $gte: new Date(filter.createdSince) };
+		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+		if (words.length) {
+			query.$and = words.map((word) => {
+				const pattern = new RegExp(escapeRegex(word), 'i');
+				return {
+					$or: [
+						{ displayName: pattern },
+						{ slug: pattern },
+						{ 'text.alt.en': pattern },
+						{ 'text.alt.bn': pattern },
+					],
+				};
+			});
+		}
+		const direction = filter.direction === 'desc' ? -1 : 1;
+		const page = Math.max(1, filter.page);
+		const pageSize = Math.max(1, filter.pageSize);
+		const sort: Record<string, 1 | -1> =
+			filter.sort === 'created'
+				? { createdAt: direction, _id: direction }
+				: filter.sort === 'size'
+					? { size: direction, _id: 1 }
+					: { sortName: direction, _id: 1 };
+		const [rows, total] = await Promise.all([
+			MediaAssetModel.aggregate<MediaAssetDoc>([
+				{ $match: query },
+				{ $addFields: { size: sizeField, sortName: { $toLower: { $ifNull: ['$displayName', '$slug'] } } } },
+				{ $sort: sort },
+				{ $skip: (page - 1) * pageSize },
+				{ $limit: pageSize },
+			]).exec(),
+			MediaAssetModel.countDocuments(query).exec(),
+		]);
+		return { items: rows.map(toAsset), total, page, pageSize };
+	}
+
+	async findBySha256(hashes: readonly string[]): Promise<MediaAsset[]> {
+		if (!hashes.length) return [];
+		const docs = await MediaAssetModel.find({ sha256: { $in: [...hashes] }, deletedAt: null, trashedAt: null })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async namesIn(folderId: string | null): Promise<string[]> {
+		const docs = await MediaAssetModel.find({ folderId, deletedAt: null, trashedAt: null })
+			.select({ displayName: 1, slug: 1 })
+			.lean<Pick<MediaAssetDoc, 'displayName' | 'slug'>[]>()
+			.exec();
+		return docs.map((doc) => doc.displayName ?? doc.slug);
+	}
+
+	async moveTo(ids: readonly string[], folderId: string | null): Promise<void> {
+		await MediaAssetModel.updateMany({ _id: { $in: [...ids] } }, { $set: { folderId } }).exec();
+	}
+
+	async rename(id: string, name: string): Promise<void> {
+		await MediaAssetModel.updateOne({ _id: id }, { $set: { displayName: name } }).exec();
+	}
+
+	async setTrashed(
+		ids: readonly string[],
+		at: string | null,
+		from: ReadonlyMap<string, string | null>,
+		restoreTo?: ReadonlyMap<string, string | null>,
+	): Promise<void> {
+		for (const id of ids) {
+			const set = at
+				? { trashedAt: new Date(at), trashedFrom: from.get(id) ?? null }
+				: {
+						trashedAt: null,
+						trashedFrom: null,
+						...(restoreTo?.has(id) ? { folderId: restoreTo.get(id) ?? null } : {}),
+					};
+			await MediaAssetModel.updateOne({ _id: id }, { $set: set }).exec();
+		}
+	}
+
+	async usage(): Promise<{ originals: number; versions: number; files: number; trash: number }> {
+		const rows = await MediaAssetModel.aggregate<{
+			_id: { trashed: boolean; kind: string };
+			originals: number;
+			versions: number;
+		}>([
+			{ $match: { deletedAt: null } },
+			{
+				$group: {
+					_id: { trashed: { $ne: [{ $ifNull: ['$trashedAt', null] }, null] }, kind: '$kind' },
+					originals: { $sum: { $ifNull: ['$originalByteSize', 0] } },
+					versions: { $sum: { $subtract: [sizeField, { $ifNull: ['$originalByteSize', 0] }] } },
+				},
+			},
+		]).exec();
+		const total = { originals: 0, versions: 0, files: 0, trash: 0 };
+		for (const row of rows) {
+			if (row._id.trashed) total.trash += row.originals + row.versions;
+			else if (row._id.kind === 'file') total.files += row.originals;
+			else {
+				total.originals += row.originals;
+				total.versions += row.versions;
+			}
+		}
+		return total;
+	}
+
+	async listTrashedBefore(cutoff: string, limit: number): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ trashedAt: { $ne: null, $lte: new Date(cutoff) }, deletedAt: null })
+			.sort({ trashedAt: 1 })
+			.limit(limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async totalsByFolder(folderIds: readonly string[]): Promise<{ folderId: string; files: number; bytes: number }[]> {
+		const rows = await MediaAssetModel.aggregate<{ _id: string; files: number; bytes: number }>([
+			{ $match: { folderId: { $in: [...folderIds] }, deletedAt: null, trashedAt: null } },
+			{ $group: { _id: '$folderId', files: { $sum: 1 }, bytes: { $sum: sizeField } } },
+		]).exec();
+		return rows.map((row) => ({ folderId: row._id, files: row.files, bytes: row.bytes }));
+	}
+
+	async listInFolders(folderIds: readonly string[]): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ folderId: { $in: [...folderIds] }, deletedAt: null })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
 	}
 }

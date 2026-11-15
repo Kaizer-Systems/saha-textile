@@ -44,15 +44,15 @@ describe('counts in sentences', () => {
 });
 
 describe('language names and lists', () => {
-	it('names a language in the language the admin is shown in', () => {
-		expect(pipe(LanguageNamePipe, transloco('en', {})).transform('bn')).toBe('Bangla');
-		expect(pipe(LanguageNamePipe, transloco('bn', {})).transform('en')).toBe('ইংরেজি');
-		expect(pipe(LanguageNamePipe, transloco('en', {})).transform(null)).toBe('');
+	it('names a language in its own script, whoever reads', () => {
+		expect(new LanguageNamePipe().transform('bn')).toBe('বাংলা');
+		expect(new LanguageNamePipe().transform('en')).toBe('English');
+		expect(new LanguageNamePipe().transform(null)).toBe('');
 	});
 
-	it('joins languages the way the reader’s language does', () => {
-		expect(pipe(LanguageListPipe, transloco('en', {})).transform(['en', 'bn'])).toBe('English and Bangla');
-		expect(pipe(LanguageListPipe, transloco('bn', {})).transform(['en', 'bn'])).toBe('ইংরেজি এবং বাংলা');
+	it('joins the own-script names the way the reader’s language does', () => {
+		expect(pipe(LanguageListPipe, transloco('en', {})).transform(['en', 'bn'])).toBe('English and বাংলা');
+		expect(pipe(LanguageListPipe, transloco('bn', {})).transform(['en', 'bn'])).toBe('English এবং বাংলা');
 		expect(pipe(LanguageListPipe, transloco('en', {})).transform(undefined)).toBe('');
 	});
 });

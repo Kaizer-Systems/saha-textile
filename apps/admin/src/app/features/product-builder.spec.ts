@@ -108,12 +108,9 @@ describe('LocalizedFields with an optional field', () => {
 });
 
 describe('LanguageSwitch', () => {
-	it('names languages from the browser’s language data, in the language the admin is shown in', () => {
-		const reading = (lang: string) => [{ provide: TranslocoService, useValue: { langChanges$: of(lang) } }];
-		const english = mount(LanguageSwitch, reading('en'), { locales: ['en'], active: 'en' });
-		expect([english.name('bn'), english.name('hi'), english.name('xx')]).toEqual(['Bangla', 'Hindi', 'xx']);
-		const bengali = mount(LanguageSwitch, reading('bn'), { locales: ['en'], active: 'en' });
-		expect([bengali.name('en'), bengali.name('bn')]).toEqual(['ইংরেজি', 'বাংলা']);
+	it('names each language in its own script, from the browser’s language data', () => {
+		const page = mount(LanguageSwitch, [], { locales: ['en'], active: 'en' });
+		expect(['en', 'bn', 'hi', 'xx'].map((code) => page.name(code))).toEqual(['English', 'বাংলা', 'हिन्दी', 'xx']);
 	});
 });
 
@@ -132,6 +129,11 @@ describe('Go Live report', () => {
 				key,
 			),
 		).toEqual(['বাংলা: gap_title', 'xx: gap_value color red', 'gap_category']);
+	});
+
+	it('names English in English and every other language in its own script', () => {
+		expect(goLiveLabels([{ field: 'title', locale: 'en' }], key)).toEqual(['English: gap_title']);
+		expect(goLiveLabels([{ field: 'title', locale: 'hi' }], key)).toEqual(['हिन्दी: gap_title']);
 	});
 
 	it('toasts success, or the first gaps and how many more', () => {

@@ -37,17 +37,15 @@ export class PluralPipe implements PipeTransform {
 	}
 }
 
-/** A language's name in the language the admin is shown in: `{{ 'bn' | languageName }}` → "Bangla". */
-@Pipe({ name: 'languageName', pure: false })
+/** A language's name in its own script: `{{ 'bn' | languageName }}` → "বাংলা". */
+@Pipe({ name: 'languageName' })
 export class LanguageNamePipe implements PipeTransform {
-	private readonly transloco = inject(TranslocoService);
-
 	transform(code: string | null | undefined): string {
-		return code ? languageName(code, this.transloco.getActiveLang()) : '';
+		return code ? languageName(code) : '';
 	}
 }
 
-/** Several languages as one list: `{{ ['en', 'bn'] | languageList }}` → "English and Bangla". */
+/** Several languages as one list, joined the reader's way: `{{ ['en', 'bn'] | languageList }}` → "English and বাংলা". */
 @Pipe({ name: 'languageList', pure: false })
 export class LanguageListPipe implements PipeTransform {
 	private readonly transloco = inject(TranslocoService);

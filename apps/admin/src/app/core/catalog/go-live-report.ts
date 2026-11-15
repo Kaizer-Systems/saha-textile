@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
+import { languageName } from '@saha-textile/core-domain/languages';
+
 import type { GoLiveGap, GoLiveResult } from '@saha-textile/contracts';
 
-const LANGUAGE_NAMES: Readonly<Record<string, string>> = { en: 'English', bn: 'বাংলা' };
 const SHOWN_IN_TOAST = 3;
 
 type Translate = (key: string) => string;
@@ -42,7 +43,7 @@ function gapKey(field: string, words: GoLiveWords): string {
 	return `${words.gapPrefix}${field.split(':')[0]}`;
 }
 
-/** Each gap in words, with its language. */
+/** Each gap in words, with its language in that language's own script ("বাংলা: Name"). */
 export function goLiveLabels(
 	gaps: readonly GoLiveGap[],
 	translate: Translate,
@@ -51,7 +52,7 @@ export function goLiveLabels(
 	return gaps.map(({ field, locale }) => {
 		const detail = words === PRODUCT_WORDS ? field.split(':').slice(1).join(' ') : '';
 		const label = [translate(gapKey(field, words)), detail].filter(Boolean).join(' ');
-		return locale ? `${LANGUAGE_NAMES[locale] ?? locale}: ${label}` : label;
+		return locale ? `${languageName(locale)}: ${label}` : label;
 	});
 }
 

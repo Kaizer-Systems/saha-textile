@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { languageFlag, ownName } from '@saha-textile/core-domain/languages';
+import { languageFlag, languageName } from '@saha-textile/core-domain/languages';
 
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
@@ -29,7 +29,7 @@ export class Languages {
 	public active: boolean = false;
 	/** The page-language menu: every active language, each in its own name, with the theme's flag. */
 	public languages: ILanguage[] = this.activeLanguages.list().map((code) => ({
-		language: ownName(code),
+		language: languageName(code),
 		code,
 		icon: languageFlag(code),
 	}));

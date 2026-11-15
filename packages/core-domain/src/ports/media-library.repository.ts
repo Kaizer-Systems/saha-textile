@@ -42,6 +42,8 @@ export interface ShareLinkRepository {
 	countOpen(id: string, at: string): Promise<void>;
 	/** Stops every active link of these files: they went to Trash. */
 	stopForAssets(assetIds: readonly string[], at: string): Promise<number>;
+	/** Removes every link of these files: they were deleted for good. */
+	removeForAssets(assetIds: readonly string[]): Promise<number>;
 }
 
 /** Storage in use and the work already running against the plan (R4-7). */

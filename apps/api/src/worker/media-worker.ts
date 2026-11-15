@@ -12,6 +12,7 @@ import {
 	MongoMediaFavouriteRepository,
 	MongoMediaFolderRepository,
 	MongoMediaRoleRepository,
+	MongoShareLinkRepository,
 	MongoMessageOutboxRepository,
 	MongoNotificationSettingsRepository,
 	MongoNotificationTemplateRepository,
@@ -197,6 +198,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 					files: assets,
 					assets,
 					stars: new MongoMediaFavouriteRepository(),
+					links: new MongoShareLinkRepository(),
 					queue,
 					publicUrl: (key) => storage.getUrl(key),
 					record: (action, metadata) =>

@@ -277,6 +277,12 @@ export class MongoShareLinkRepository implements ShareLinkRepository {
 		).exec();
 		return result.modifiedCount;
 	}
+
+	async removeForAssets(assetIds: readonly string[]): Promise<number> {
+		if (!assetIds.length) return 0;
+		const result = await MediaShareLinkModel.deleteMany({ assetId: { $in: [...assetIds] } }).exec();
+		return result.deletedCount;
+	}
 }
 
 export class MongoStorageLedgerRepository implements StorageLedgerRepository {

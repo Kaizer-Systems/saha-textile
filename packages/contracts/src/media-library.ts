@@ -274,8 +274,14 @@ export const ShareOpenRequest = z.object({ password: z.string().max(128).optiona
 export type ShareOpenRequest = z.infer<typeof ShareOpenRequest>;
 
 export const ShareOpenAnswer = z.discriminatedUnion('state', [
-	/** Straight from Spaces, valid five minutes. */
-	z.object({ state: z.literal('open'), url: z.string(), fileName: z.string() }),
+	/** Straight from Spaces, valid five minutes. Type and size let the page say what is downloading (S8). */
+	z.object({
+		state: z.literal('open'),
+		url: z.string(),
+		fileName: z.string(),
+		contentType: z.string(),
+		bytes: z.number().int().nonnegative(),
+	}),
 	/** `wrong`: a password was sent and did not match. */
 	z.object({ state: z.literal('password'), wrong: z.boolean().default(false) }),
 	z.object({ state: z.literal('admins_only') }),

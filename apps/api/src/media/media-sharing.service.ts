@@ -192,7 +192,13 @@ export class MediaSharingService {
 				expiresInSeconds: SHARE_HANDOVER_SECONDS,
 				fileName: name,
 			});
-			return { state: 'open', url, fileName: name };
+			return {
+				state: 'open',
+				url,
+				fileName: name,
+				contentType: asset.originalFormat,
+				bytes: asset.originalByteSize,
+			};
 		}
 		if (state === 'password') return { state: 'password', wrong: passwordOk === false };
 		if (state === 'admins_only') return { state: 'admins_only' };

@@ -205,6 +205,8 @@ describe('opening links', () => {
 			state: 'open',
 			url: 'https://spaces.test/media/med_pdf/original.pdf?signed',
 			fileName: 'Bridal catalogue 2027.pdf',
+			contentType: 'application/pdf',
+			bytes: 5000,
 		});
 		expect(h.links.get(made.id)).toMatchObject({ opens: 1, lastOpenedAt: NOW.toISOString() });
 	});

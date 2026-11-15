@@ -397,6 +397,7 @@ export class MediaLibraryService {
 			files: this.files,
 			assets: this.assets,
 			stars: this.stars,
+			links: this.links,
 			queue: this.queue,
 			publicUrl: (key: string) => this.storage.getUrl(key),
 			record: (action: string, metadata: Record<string, unknown>) => this.record(actor, action, metadata),

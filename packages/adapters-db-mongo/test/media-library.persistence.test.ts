@@ -218,6 +218,9 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 		expect(await links.stopForAssets(['med_pdf'], NOW)).toBe(1);
 		expect(await links.findById('shl_1')).toMatchObject({ stoppedAt: NOW, stoppedBecause: 'trash' });
 		expect(await links.stopForAssets(['med_pdf'], NOW)).toBe(0);
+		expect(await links.removeForAssets(['med_pdf'])).toBe(1);
+		expect(await links.listForAsset('med_pdf')).toEqual([]);
+		expect(await links.removeForAssets([])).toBe(0);
 	});
 
 	it('holds storage for running work until it is released or expires', async () => {

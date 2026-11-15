@@ -63,6 +63,7 @@ function world(assets: MediaAsset[], folders: MediaFolder[]) {
 	const jobs: MediaJob[] = [];
 	const audit: Array<{ action: string; metadata: Record<string, unknown> }> = [];
 	const removedStars: Array<[string, readonly string[]]> = [];
+	const removedLinks: string[] = [];
 	const deps = {
 		folders: {
 			findManyByIds: async (ids: readonly string[]) => ids.map((id) => dirs.get(id)).filter((row) => !!row),
@@ -82,11 +83,12 @@ function world(assets: MediaAsset[], folders: MediaFolder[]) {
 			hardDelete: async (id: string) => void files.delete(id),
 		},
 		stars: { removeTargets: async (type: string, ids: readonly string[]) => void removedStars.push([type, ids]) },
+		links: { removeForAssets: async (ids: readonly string[]) => (removedLinks.push(...ids), ids.length) },
 		queue: { enqueue: async (job: MediaJob) => void jobs.push(job) },
 		publicUrl: (key: string) => `https://cdn.example/${key}`,
 		record: async (action: string, metadata: Record<string, unknown>) => void audit.push({ action, metadata }),
 	} as unknown as DeleteForeverDeps;
-	return { deps, files, dirs, jobs, audit, removedStars };
+	return { deps, files, dirs, jobs, audit, removedStars, removedLinks };
 }
 
 describe('stored and public keys', () => {
@@ -140,6 +142,7 @@ describe('delete forever', () => {
 		]);
 		expect(w.audit[0]?.action).toBe('media.delete_forever');
 		expect(w.removedStars.map(([type]) => type)).toEqual(['file', 'folder']);
+		expect(w.removedLinks.sort()).toEqual(['med_alone', 'med_in']);
 	});
 });
 

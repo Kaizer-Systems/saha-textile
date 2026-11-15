@@ -128,7 +128,10 @@ function harness() {
 				if (stars[i]?.type === type && ids.includes(stars[i]?.id ?? '')) stars.splice(i, 1);
 		},
 	};
-	const links = { stopForAssets: async (ids: readonly string[]) => (stopped.push(...ids), ids.length) };
+	const links = {
+		stopForAssets: async (ids: readonly string[]) => (stopped.push(...ids), ids.length),
+		removeForAssets: async (ids: readonly string[]) => ids.length,
+	};
 	const storage = {
 		getUrl: (key: string) => `https://cdn.test/${key}`,
 		createSignedUploadUrl: async ({ key }: { key: string }) => ({

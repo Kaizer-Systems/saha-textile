@@ -5,6 +5,7 @@ import type {
 	MediaBrowseRepository,
 	MediaFavouriteRepository,
 	MediaFolderRepository,
+	ShareLinkRepository,
 } from '../ports/media-library.repository';
 import type { MediaAssetRepository } from '../ports/media.repository';
 import { TRASH_DAYS } from './library';
@@ -15,6 +16,7 @@ export interface DeleteForeverDeps {
 	files: MediaBrowseRepository;
 	assets: MediaAssetRepository;
 	stars: MediaFavouriteRepository;
+	links: Pick<ShareLinkRepository, 'removeForAssets'>;
 	queue: MediaJobQueuePort;
 	/** A stored object's public address, so the CDN forgets it too. */
 	publicUrl: (key: string) => string;
@@ -78,6 +80,7 @@ export async function deleteMediaForever(
 		doomed.map((asset) => asset.id),
 	);
 	await deps.stars.removeTargets('folder', [...folderIds]);
+	await deps.links.removeForAssets(doomed.map((asset) => asset.id));
 
 	const result = { files: doomed.map((asset) => asset.id), folders: [...folderIds] };
 	await deps.record(action, result);

@@ -166,6 +166,8 @@ test.describe('Offline', () => {
 		await addToCart(page);
 		await page.goto('/en/cart');
 		await expect(page.locator('.cart-section .product-box-contain').first()).toBeVisible();
+		// A filled cart never also shows "No Items Added" (the server's empty block once stayed beside it).
+		await expect(page.locator('.cart-section app-no-data')).toHaveCount(0);
 		await context.setOffline(true);
 		await expect(page.locator('.cart-section .alert-warning')).toBeVisible();
 		await expect(page.locator('.cart-section [inert]')).toHaveCount(1);

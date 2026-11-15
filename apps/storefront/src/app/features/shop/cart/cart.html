@@ -1,7 +1,13 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="cart-section section-b-space">
 	<div class="container-fluid-lg">
-		@if ((cartItem$ | async)?.length) { @if (!online()) {
+		<!-- The cart lives in the browser: the server holds the space, never a false "No Items Added"
+			 (see Cart.ready). One read of the cart and one @if/@else, so the two states never show together. -->
+		@if (!ready()) {
+		<!-- The theme's loader box (as on the account pages) only holds the space: its inner overlay is
+			 white with no dark-mode rule, so it is left out and nothing flashes in either mode. -->
+		<div class="custom-box-loader"></div>
+		} @else { @let items = (cartItem$ | async) ?? []; @if (items.length) { @if (!online()) {
 		<div
 			class="alert alert-warning d-flex align-items-center gap-2"
 			role="status"
@@ -19,7 +25,7 @@
 					<div class="table-responsive">
 						<table class="table">
 							<tbody>
-								@for (item of cartItem$ | async; track item.id) {
+								@for (item of items; track item.id) {
 								<tr class="product-box-contain">
 									<td class="product-detail">
 										<div class="product border-0">
@@ -74,7 +80,10 @@
 														</h5>
 													</li>
 													}
-													<li class="cart-line-qty">
+													<!-- Phones and tablets only: from 992px the Quantity column shows this stepper.
+														 The theme hides these rows by position (li:nth-child(n + 4)), which missed it
+														 on items without a discount (owner, 2026-11-15). -->
+													<li class="cart-line-qty d-lg-none">
 														<!-- theme off-canvas cart qty stepper, reused verbatim (.qty-box) -->
 														<div class="cart_qty qty-box product-qty">
 															<div class="input-group h-100">
@@ -270,13 +279,13 @@
 				</div>
 			</div>
 		</div>
-		} @if (!(cartItem$ | async)?.length) {
+		} @else {
 		<app-no-data
 			[class]="'no-data-added'"
 			[image]="'assets/svg/empty-items.svg'"
 			[text]="'no_items_added' | transloco"
 			[description]="'empty_cart_description' | transloco"
 		/>
-		}
+		} }
 	</div>
 </section>

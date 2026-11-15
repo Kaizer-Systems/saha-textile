@@ -1,5 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, effect, inject, untracked } from '@angular/core';
+import { afterNextRender, Component, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
@@ -45,6 +45,14 @@ export class Cart {
 	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 	cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
 
+	/**
+	 * False on the server and until the browser's first paint. The server never has the shopper's
+	 * cart (the browser keeps it), so it holds the space rather than showing a false "No Items Added";
+	 * drawing either state there left that block on the page beside a filled cart after hydration.
+	 * Same approach as the wishlist page.
+	 */
+	readonly ready = signal(false);
+
 	/** Composed per-unit price (base + add-on/bundle deltas) when present, else plain sale price. */
 	unitPrice(item: ICart): number {
 		return item.unit_price ?? (item.variation ? item.variation.sale_price : item.product.sale_price);
@@ -53,6 +61,7 @@ export class Cart {
 	public breadcrumb = translatedBreadcrumb('cart');
 
 	constructor() {
+		afterNextRender(() => this.ready.set(true));
 		effect(() => {
 			const online = this.online();
 			if (online && this.wasOffline) untracked(() => this.cartFacade.getCartItems());

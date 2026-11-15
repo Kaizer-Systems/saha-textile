@@ -35,6 +35,15 @@ const render = () => {
 };
 
 describe('Cart page', () => {
+	it('draws neither the cart nor "No Items Added" until the browser has rendered once', async () => {
+		render();
+		const fixture = TestBed.createComponent(Cart);
+		expect(fixture.componentInstance.ready()).toBe(false);
+		fixture.detectChanges();
+		await fixture.whenStable();
+		expect(fixture.componentInstance.ready()).toBe(true);
+	});
+
 	it('re-reads prices and stock when the connection returns', () => {
 		const { cart, online } = render();
 		TestBed.tick();

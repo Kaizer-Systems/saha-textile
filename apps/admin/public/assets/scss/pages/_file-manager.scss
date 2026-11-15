@@ -1,0 +1,1856 @@
+// The Media page as a file manager (media build step 1.5): the styles approved in the media brief
+// (revision 6, harness/fm.css), the only new styles it brings. Colours come from the --fm-* tokens
+// below; their dark values sit under body.dark-only, which the styles build moves into the dark file.
+// Everything else on the page is the admin's own theme, Bootstrap and Remix icons.
+/* =====================================================================================
+   File manager brief — the ONLY new styles. Everything not listed here is the admin's own
+   global CSS (theme, Bootstrap, Remix icons) or an existing component's markup.
+   Each block names what it adds. Colours come from --theme-color and Bootstrap tokens.
+   ===================================================================================== */
+
+/* ===================== rev 6 (R6) — light and dark tokens for every brief style ===================== */
+/* NEW 26 (R6-2) — one set of colour tokens, switched by the admin's own dark-mode class. Light values
+   all reach WCAG AA (4.5 : 1) on white and on the light grey surfaces; dark values use the admin
+   theme's own dark palette (#0b141d page, #1c2128 card, #1d3436 lines, #98a6ad secondary). */
+:root {
+	--fm-surface: #fff;
+	--fm-soft: #f8f9fa;
+	--fm-soft2: #f1f3f5;
+	--fm-line: #e9ecef;
+	--fm-head: #1c2128;
+	--fm-ink: #1c2128;
+	--fm-ink2: #4a5568;
+	--fm-muted: #667085;
+	--fm-ok: #15803d;
+	--fm-warn-ink: #8a5a00;
+	--fm-warn-bg: #fff8e6;
+	--fm-bad-ink: #b42318;
+	--fm-bad-bg: #fdecec;
+	--fm-blue-ink: #2563eb;
+	--fm-theme-ink: color-mix(in srgb, var(--theme-color) 75%, #000);
+	--fm-theme-on-tint: color-mix(in srgb, var(--theme-color) 66%, #000);
+}
+body.dark-only {
+	--fm-surface: #1c2128;
+	--fm-soft: #232a31;
+	--fm-soft2: #2a3138;
+	--fm-line: #2c3a40;
+	--fm-head: #0b141d;
+	--fm-ink: #e6e8eb;
+	--fm-ink2: #c3cad1;
+	--fm-muted: #98a6ad;
+	--fm-ok: #4cc38a;
+	--fm-warn-ink: #f2c66d;
+	--fm-warn-bg: #3a2f12;
+	--fm-bad-ink: #ff9b93;
+	--fm-bad-bg: #3d1b1b;
+	--fm-blue-ink: #8ab4ff;
+	--fm-theme-ink: var(--theme-color);
+	--fm-theme-on-tint: color-mix(in srgb, var(--theme-color) 70%, #fff);
+}
+
+/* NEW 1 — two-pane file manager inside the existing page-wrapper card (Inspinia layout). */
+.fm-wrap {
+	display: flex;
+	min-height: 640px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-surface);
+}
+.fm-side {
+	flex: 0 0 236px;
+	padding: 20px 16px;
+	border-right: 1px solid var(--fm-line);
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+.fm-main {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 18px 22px 22px;
+}
+.fm-nav {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.fm-nav li a {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 9px 12px;
+	border-radius: 6px;
+	color: var(--fm-ink2);
+	font-size: 15px;
+	cursor: pointer;
+}
+.fm-nav li a i {
+	font-size: 18px;
+}
+.fm-nav li a .badge {
+	margin-left: auto;
+}
+.fm-nav li a .fm-count {
+	margin-left: auto;
+	font-size: 13px;
+	color: var(--fm-muted);
+}
+.fm-nav li.active a {
+	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+	color: var(--theme-color);
+	font-weight: 600;
+}
+.fm-side-title {
+	margin: 4px 0 -4px 12px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--fm-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.fm-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex: 0 0 10px;
+}
+.fm-storage {
+	margin-top: auto;
+	padding: 12px;
+	border-radius: 8px;
+	background: var(--fm-soft);
+	font-size: 13px;
+	color: var(--fm-ink2);
+}
+.fm-storage .progress {
+	height: 6px;
+	margin-top: 8px;
+}
+.fm-storage .progress-bar {
+	background: var(--theme-color);
+}
+
+/* NEW 2 — toolbar row: search · filters · sort · list/thumbnail switch. */
+.fm-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 14px;
+}
+.fm-search {
+	position: relative;
+	flex: 1 1 260px;
+	max-width: 420px;
+}
+.fm-search i {
+	position: absolute;
+	top: 50%;
+	left: 12px;
+	transform: translateY(-50%);
+	color: var(--fm-muted);
+}
+.fm-search .form-control {
+	padding-left: 36px;
+}
+.fm-search .fm-scope {
+	position: absolute;
+	top: 50%;
+	right: 8px;
+	transform: translateY(-50%);
+}
+.fm-toolbar .ms-auto {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+}
+.fm-toolbar .form-select {
+	width: auto;
+}
+.fm-view .btn {
+	padding: 6px 10px;
+}
+.fm-view .btn.active {
+	background: var(--theme-color);
+	color: #fff;
+	border-color: var(--theme-color);
+}
+.fm-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: -4px 0 14px;
+}
+.fm-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: 20px;
+	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+	color: var(--fm-theme-on-tint);
+	font-size: 13px;
+}
+.fm-chip.muted {
+	background: var(--fm-soft2);
+	color: var(--fm-ink2);
+}
+
+/* NEW 3 — breadcrumb row with the folder's own actions. */
+.fm-crumbs {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 14px;
+	padding: 10px 14px;
+	border-radius: 6px;
+	background: var(--fm-soft);
+}
+.fm-crumbs .breadcrumb {
+	margin: 0;
+	font-size: 15px;
+}
+.fm-crumbs .breadcrumb a {
+	color: var(--theme-color);
+}
+.fm-crumbs .fm-crumb-actions {
+	display: flex;
+	gap: 8px;
+}
+.fm-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 6px 0 10px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--fm-ink2);
+}
+.fm-heading small {
+	font-weight: 400;
+	color: var(--fm-muted);
+}
+
+/* NEW 4 — folder cards (Inspinia): icon, name, size and count, menu. */
+.fm-folders {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+	gap: 14px;
+	margin-bottom: 20px;
+}
+.fm-folder {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-surface);
+	cursor: pointer;
+}
+.fm-folder .fm-folder-icon {
+	display: grid;
+	place-items: center;
+	width: 42px;
+	height: 42px;
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+	color: var(--theme-color);
+	font-size: 22px;
+	flex: 0 0 42px;
+}
+.fm-folder h6 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--fm-ink);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.fm-folder p {
+	margin: 2px 0 0;
+	font-size: 13px;
+	color: var(--fm-muted);
+}
+.fm-folder .fm-more {
+	margin-left: auto;
+	color: var(--fm-muted);
+	font-size: 18px;
+}
+.fm-folder .fm-star {
+	position: absolute;
+	top: 6px;
+	right: 34px;
+	color: #f5b301;
+	font-size: 13px;
+}
+.fm-folder.is-selected {
+	border-color: var(--theme-color);
+	box-shadow: 0 0 0 1px var(--theme-color);
+}
+.fm-folder.is-drop {
+	border: 2px dashed var(--theme-color);
+	background: color-mix(in srgb, var(--theme-color) 8%, var(--fm-surface));
+}
+.fm-folder.is-uploading {
+	opacity: 0.6;
+}
+.fm-folder.is-uploading .progress {
+	height: 4px;
+	margin-top: 6px;
+}
+
+/* NEW 5 — file-type icon tile in the Name column (colour per kind). */
+.fm-file {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+.fm-type {
+	display: grid;
+	place-items: center;
+	width: 38px;
+	height: 38px;
+	flex: 0 0 38px;
+	border-radius: 8px;
+	font-size: 19px;
+	overflow: hidden;
+}
+.fm-type img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+.fm-file h6 {
+	margin: 0;
+	font-size: 14.5px;
+	font-weight: 600;
+	color: var(--fm-ink);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 280px;
+}
+.fm-file p {
+	margin: 1px 0 0;
+	font-size: 12.5px;
+	color: var(--fm-muted);
+}
+.k-image {
+	background: #e6f6f2;
+	color: var(--fm-theme-ink);
+}
+.k-pdf {
+	background: var(--fm-bad-bg);
+	color: var(--fm-bad-ink);
+}
+.k-doc {
+	background: #e8f0fe;
+	color: var(--fm-blue-ink);
+}
+.k-sheet {
+	background: #e7f6ec;
+	color: var(--fm-ok);
+}
+.k-zip {
+	background: #fff4e0;
+	color: #d48806;
+}
+.k-video {
+	background: #f1ebfd;
+	color: #7c4dff;
+}
+.k-backup {
+	background: var(--fm-soft2);
+	color: var(--fm-ink2);
+}
+.k-other {
+	background: var(--fm-soft2);
+	color: var(--fm-muted);
+}
+.k-audio {
+	background: #fde8f3;
+	color: #d6338c;
+}
+.fm-dot.k-image {
+	background: #0da487;
+}
+.fm-dot.k-doc {
+	background: #2f6fed;
+}
+.fm-dot.k-video {
+	background: #7c4dff;
+}
+.fm-dot.k-zip {
+	background: #d48806;
+}
+.fm-dot.k-backup {
+	background: #475569;
+}
+.fm-dot.k-other {
+	background: #9ca3af;
+}
+
+/* NEW 6 — the file table's extra cells: profile chips, live status, path. */
+.fm-table td,
+.fm-table th {
+	vertical-align: middle;
+	white-space: nowrap;
+}
+.fm-table.table tbody tr td {
+	padding-top: 12px;
+	padding-bottom: 12px;
+}
+.fm-table th {
+	text-transform: uppercase;
+	font-size: 12.5px;
+	letter-spacing: 0.03em;
+}
+.fm-pchip {
+	display: inline-block;
+	margin: 1px 4px 1px 0;
+	padding: 2px 8px;
+	border-radius: 4px;
+	background: var(--fm-soft2);
+	color: var(--fm-ink2);
+	font-size: 12px;
+	font-weight: 500;
+}
+.fm-pchip.new {
+	background: color-mix(in srgb, var(--theme-color) 12%, transparent);
+	color: var(--fm-theme-on-tint);
+}
+.fm-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 500;
+}
+.fm-status.ready {
+	color: var(--fm-ok);
+}
+.fm-status.busy {
+	color: var(--fm-blue-ink);
+}
+.fm-status.wait {
+	color: var(--fm-muted);
+}
+.fm-status.fail {
+	color: var(--fm-bad-ink);
+}
+.fm-status.warn {
+	color: var(--fm-warn-ink);
+}
+.fm-live {
+	min-width: 170px;
+}
+.fm-live .progress {
+	height: 6px;
+	margin-top: 5px;
+}
+.fm-live .progress-bar {
+	background: var(--theme-color);
+}
+.fm-live .progress-bar.proc {
+	background: #2f6fed;
+}
+tr.is-pending td:not(.fm-live) {
+	opacity: 0.45;
+}
+tr.is-pending {
+	background: var(--fm-soft);
+}
+tr.is-selected {
+	background: color-mix(in srgb, var(--theme-color) 6%, var(--fm-surface));
+}
+tr.is-disabled td:not(.fm-reason) {
+	opacity: 0.4;
+}
+.fm-path {
+	font-size: 13px;
+	color: var(--fm-muted);
+}
+.fm-path i {
+	font-size: 12px;
+}
+.fm-used {
+	font-size: 13px;
+	color: var(--fm-ink2);
+}
+.fm-table ul#actions li a i.ri-star-fill {
+	color: #f5b301;
+}
+.fm-table .fm-reason {
+	font-size: 12.5px;
+	color: var(--fm-warn-ink);
+	white-space: normal;
+}
+
+/* NEW 7 — thumbnail view states over the existing .library-box tiles. */
+.fm-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+	gap: 16px;
+}
+.fm-tile {
+	position: relative;
+	border: 1px solid var(--fm-line);
+	border-radius: 10px;
+	overflow: hidden;
+	background: var(--fm-surface);
+}
+.fm-tile .fm-thumb {
+	position: relative;
+	aspect-ratio: 1 / 1;
+	background: var(--fm-soft);
+	display: grid;
+	place-items: center;
+}
+.fm-tile .fm-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+.fm-tile .fm-thumb .fm-bigicon {
+	font-size: 54px;
+	width: 92px;
+	height: 92px;
+	border-radius: 18px;
+	display: grid;
+	place-items: center;
+}
+.fm-tile .fm-cap {
+	padding: 8px 10px 10px;
+}
+.fm-tile .fm-cap h6 {
+	margin: 0;
+	font-size: 13.5px;
+	font-weight: 600;
+	color: var(--fm-ink);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.fm-tile .fm-cap p {
+	margin: 1px 0 0;
+	font-size: 12px;
+	color: var(--fm-muted);
+}
+.fm-tile .fm-check {
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	z-index: 2;
+	width: 20px;
+	height: 20px;
+	border-radius: 4px;
+	border: 1px solid var(--fm-line);
+	background: rgba(255, 255, 255, 0.9);
+	display: grid;
+	place-items: center;
+	color: #fff;
+	font-size: 14px;
+}
+.fm-tile.is-selected {
+	border-color: var(--theme-color);
+	box-shadow: 0 0 0 1px var(--theme-color);
+}
+.fm-tile.is-selected .fm-check {
+	background: var(--theme-color);
+	border-color: var(--theme-color);
+}
+.fm-tile .fm-tmenu {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	z-index: 2;
+	width: 26px;
+	height: 26px;
+	border-radius: 3px;
+	background: rgba(82, 82, 82, 0.72);
+	color: #fff;
+	display: grid;
+	place-items: center;
+}
+.fm-tile .fm-tstar {
+	position: absolute;
+	top: 8px;
+	right: 40px;
+	z-index: 2;
+	color: #f5b301;
+	font-size: 16px;
+	text-shadow: 0 0 3px #fff;
+}
+.fm-tile .fm-ttype {
+	position: absolute;
+	bottom: 8px;
+	left: 8px;
+	z-index: 2;
+	padding: 1px 6px;
+	border-radius: 4px;
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+}
+/* Bottom-half overlay while a file uploads or an image is being processed. */
+.fm-tile.is-pending .fm-thumb img {
+	filter: grayscale(0.7) blur(1px);
+	opacity: 0.55;
+}
+.fm-tile .fm-overlay {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 50%;
+	z-index: 3;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 6px;
+	padding: 10px 12px;
+	background: rgba(255, 255, 255, 0.88);
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--fm-ink);
+}
+.fm-tile .fm-overlay .progress {
+	height: 6px;
+}
+.fm-tile .fm-overlay .progress-bar {
+	background: var(--theme-color);
+}
+.fm-tile .fm-overlay .progress-bar.proc {
+	background: #2f6fed;
+}
+.fm-tile .fm-overlay small {
+	font-weight: 400;
+	color: var(--fm-muted);
+}
+.fm-tile.is-disabled {
+	opacity: 0.45;
+}
+.fm-tile.is-drag {
+	opacity: 0.35;
+}
+
+/* NEW 8 — context menu with a cascading Move submenu (Bootstrap dropdown-menu inside). */
+.fm-menu-host {
+	position: relative;
+}
+.fm-ctx {
+	position: absolute;
+	z-index: 30;
+	display: block;
+	min-width: 220px;
+	padding: 6px 0;
+	box-shadow: 0 8px 28px rgba(16, 24, 40, 0.14);
+	border: 1px solid var(--fm-line);
+}
+.fm-ctx .dropdown-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 16px;
+	font-size: 14.5px;
+}
+.fm-ctx .dropdown-item i {
+	font-size: 17px;
+	color: var(--fm-muted);
+}
+.fm-ctx .dropdown-item .fm-sub {
+	margin-left: auto;
+}
+.fm-ctx .dropdown-item.active-path {
+	background: var(--fm-soft2);
+	color: var(--fm-ink);
+}
+.fm-ctx .dropdown-item.text-danger i {
+	color: var(--fm-bad-ink);
+}
+.fm-ctx .dropdown-item.disabled {
+	opacity: 0.45;
+}
+.fm-ctx .dropdown-divider {
+	margin: 4px 0;
+}
+
+/* NEW 9 — floating selection bar for bulk actions. */
+.fm-bulk {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 14px;
+	padding: 10px 14px;
+	border-radius: 8px;
+	background: var(--fm-head);
+	color: #fff;
+	font-size: 14px;
+}
+.fm-bulk .btn {
+	color: #fff !important;
+	border-color: rgba(255, 255, 255, 0.35) !important;
+}
+.fm-bulk .fm-bulk-x {
+	margin-left: auto;
+	color: #fff !important;
+	opacity: 0.8;
+}
+
+/* NEW 10 — drag ghost and drop-from-computer overlay (reuses the dropzone dashed look). */
+.fm-ghost {
+	position: absolute;
+	z-index: 40;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--fm-surface);
+	box-shadow: 0 10px 30px rgba(16, 24, 40, 0.25);
+	font-size: 14px;
+	font-weight: 600;
+}
+.fm-ghost img {
+	width: 34px;
+	height: 34px;
+	object-fit: cover;
+	border-radius: 4px;
+}
+.fm-dropover {
+	position: absolute;
+	inset: 0;
+	z-index: 20;
+	display: grid;
+	place-items: center;
+	margin: 10px;
+	border: 2px dashed var(--theme-color);
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--theme-color) 7%, rgba(255, 255, 255, 0.92));
+	text-align: center;
+}
+.fm-dropover i {
+	font-size: 48px;
+	color: var(--theme-color);
+}
+.fm-dropover h4 {
+	margin: 8px 0 4px;
+	color: var(--fm-ink);
+}
+
+/* NEW 11 — upload tray (stays while you move around the admin). */
+.fm-tray {
+	position: fixed;
+	right: 24px;
+	bottom: 24px;
+	z-index: 60;
+	width: 380px;
+	border-radius: 10px;
+	background: var(--fm-surface);
+	box-shadow: 0 12px 40px rgba(16, 24, 40, 0.22);
+	overflow: hidden;
+}
+.fm-tray-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 16px;
+	background: var(--fm-head);
+	color: #fff;
+	font-size: 14px;
+	font-weight: 600;
+}
+.fm-tray-head span {
+	margin-left: auto;
+	display: flex;
+	gap: 12px;
+	font-weight: 400;
+}
+.fm-tray ul {
+	list-style: none;
+	margin: 0;
+	padding: 6px 0;
+	max-height: 260px;
+}
+.fm-tray li {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 16px;
+	font-size: 13px;
+}
+.fm-tray li .fm-type {
+	width: 30px;
+	height: 30px;
+	flex-basis: 30px;
+	font-size: 15px;
+}
+.fm-tray li .fm-tray-name {
+	flex: 1;
+	min-width: 0;
+}
+.fm-tray li .fm-tray-name div {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-weight: 600;
+}
+.fm-tray li .progress {
+	height: 4px;
+	margin-top: 4px;
+}
+.fm-tray li .progress-bar {
+	background: var(--theme-color);
+}
+.fm-tray li .progress-bar.proc {
+	background: #2f6fed;
+}
+
+/* NEW 12 — upload review (one row per file; profiles per image; checks inline). */
+.fm-review-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 12px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--fm-soft);
+	font-size: 14px;
+}
+.fm-review-bar .form-select {
+	width: auto;
+	min-width: 200px;
+}
+.fm-review-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.fm-profiles {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 280px;
+	white-space: normal;
+}
+.fm-pick {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border: 1px solid var(--fm-line);
+	border-radius: 6px;
+	background: var(--fm-surface);
+	font-size: 13px;
+	cursor: pointer;
+}
+.fm-warn {
+	display: flex;
+	gap: 6px;
+	align-items: flex-start;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--fm-warn-bg);
+	color: var(--fm-warn-ink);
+	font-size: 12.5px;
+	line-height: 1.35;
+	white-space: normal;
+}
+.fm-warn i {
+	font-size: 15px;
+	margin-top: 1px;
+}
+.fm-err {
+	display: flex;
+	gap: 6px;
+	align-items: flex-start;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--fm-bad-bg);
+	color: var(--fm-bad-ink);
+	font-size: 12.5px;
+	white-space: normal;
+}
+.fm-ok {
+	color: var(--fm-ok);
+	font-size: 13px;
+}
+.fm-file-path {
+	font-size: 12px;
+	color: var(--fm-muted);
+}
+.fm-dims {
+	font-size: 13px;
+	color: var(--fm-ink2);
+}
+.fm-dims small {
+	display: block;
+	color: var(--fm-muted);
+}
+.fm-profile-menu {
+	position: absolute;
+	z-index: 30;
+	display: block;
+	width: 300px;
+	padding: 8px 0;
+	box-shadow: 0 8px 28px rgba(16, 24, 40, 0.16);
+}
+.fm-profile-menu label {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	padding: 7px 14px;
+	font-size: 14px;
+	cursor: pointer;
+}
+.fm-profile-menu label small {
+	display: block;
+	color: var(--fm-muted);
+	font-size: 12px;
+}
+.fm-profile-menu .fm-warn {
+	margin: 0 14px 6px 40px;
+}
+
+/* NEW 13 — profile checklist (reprocess popup and profile pickers). */
+.fm-checklist {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+}
+.fm-checkitem {
+	padding: 12px 14px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+}
+.fm-checkitem .form-check {
+	margin: 0;
+}
+.fm-checkitem .form-check-label {
+	font-weight: 600;
+	color: var(--fm-ink);
+}
+.fm-checkitem small {
+	display: block;
+	margin: 2px 0 0 28px;
+	color: var(--fm-muted);
+	font-size: 12.5px;
+}
+.fm-checkitem .fm-warn {
+	margin: 8px 0 0 0;
+}
+.fm-checkitem.is-done {
+	background: var(--fm-soft);
+}
+.fm-checkitem.is-on {
+	border-color: var(--theme-color);
+}
+.fm-checkitem .badge {
+	margin-left: 6px;
+	font-weight: 500;
+}
+
+/* NEW 14 — picker rules strip and footer messages. */
+.fm-rules {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--fm-line);
+	background: var(--fm-soft);
+	font-size: 13.5px;
+}
+.fm-rules strong {
+	color: var(--fm-ink);
+}
+.fm-footer-note {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+}
+.fm-footer-note.warn {
+	color: var(--fm-warn-ink);
+	font-weight: 600;
+}
+.fm-footer-note.info {
+	color: var(--fm-ink2);
+}
+.media-modal .fm-wrap {
+	border: 0;
+	border-radius: 0;
+	min-height: 560px;
+}
+.media-modal .fm-side {
+	flex-basis: 200px;
+}
+.fm-picker .modal-body {
+	padding: 0;
+}
+
+/* NEW 15 — a sizes tree in the details popup (reuses .theme-tree-box lines). */
+.fm-sizes li > div {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	font-size: 13.5px;
+}
+.fm-sizes .fm-meta {
+	color: var(--fm-muted);
+	font-size: 12.5px;
+}
+
+/* NEW 16 — toast for a folder download being zipped. */
+.fm-toast {
+	position: fixed;
+	right: 24px;
+	bottom: 24px;
+	z-index: 60;
+	width: 360px;
+	padding: 14px 16px;
+	border-radius: 10px;
+	background: var(--fm-surface);
+	box-shadow: 0 12px 40px rgba(16, 24, 40, 0.22);
+	font-size: 14px;
+}
+.fm-toast .progress {
+	height: 6px;
+	margin: 8px 0 4px;
+}
+.fm-toast .progress-bar {
+	background: var(--theme-color);
+}
+
+/* Product images field: the existing tile overlay (copied from product-images.scss). */
+.image-order-tile {
+	position: relative;
+}
+.image-order-tile img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+.image-order-position {
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	z-index: 3;
+	padding: 1px 6px;
+	border-radius: 4px;
+	background: #444;
+	color: #fff;
+	font-size: 11px;
+}
+.image-order-position.is-primary {
+	background: var(--theme-strong);
+}
+.image-order-actions {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-around;
+	height: 24px;
+	border-radius: 0 0 10px 10px;
+	background: rgba(0, 0, 0, 0.6);
+}
+.image-order-actions button {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #fff;
+	line-height: 1;
+}
+/* NEW 17 — the add tile states how many are left. */
+.choosefile-input .fm-left {
+	position: absolute;
+	bottom: 6px;
+	left: 0;
+	right: 0;
+	text-align: center;
+	font-size: 11.5px;
+	color: var(--fm-muted);
+}
+.choosefile-input {
+	position: relative;
+}
+
+/* Phone (≤ 575 px): the sidebar becomes a strip; the table becomes a list. */
+@media (max-width: 575px) {
+	.fm-wrap {
+		flex-direction: column;
+		border: 0;
+	}
+	.fm-side {
+		flex: none;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		padding: 10px 0;
+		border-right: 0;
+		border-bottom: 1px solid var(--fm-line);
+		gap: 8px;
+	}
+	.fm-side .fm-side-title,
+	.fm-side .fm-storage {
+		display: none;
+	}
+	.fm-nav {
+		display: flex;
+		gap: 6px;
+	}
+	.fm-nav li a {
+		white-space: nowrap;
+		padding: 7px 10px;
+		font-size: 14px;
+	}
+	.fm-main {
+		padding: 12px 0;
+	}
+	.fm-folders {
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+	}
+	.fm-folder {
+		padding: 10px;
+		gap: 8px;
+	}
+	.fm-folder .fm-folder-icon {
+		width: 34px;
+		height: 34px;
+		flex-basis: 34px;
+		font-size: 18px;
+	}
+	.fm-folder h6 {
+		font-size: 13.5px;
+	}
+	.fm-grid {
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+	}
+	.fm-toolbar .ms-auto {
+		margin-left: 0 !important;
+		width: 100%;
+	}
+	.fm-search {
+		max-width: none;
+	}
+	.fm-phone-list .fm-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 2px;
+		border-bottom: 1px solid var(--fm-line);
+	}
+	.fm-phone-list .fm-row .fm-file {
+		flex: 1;
+	}
+	.fm-phone-list .fm-row .fm-file h6 {
+		max-width: 200px;
+	}
+	.fm-phone-list .fm-row i.ri-more-2-fill {
+		font-size: 20px;
+		color: var(--fm-muted);
+	}
+	.fm-tray,
+	.fm-toast {
+		left: 12px;
+		right: 12px;
+		width: auto;
+		bottom: 12px;
+	}
+	.fm-checklist {
+		grid-template-columns: 1fr;
+	}
+}
+/* Upload review rows as cards on a phone. */
+.fm-rcard {
+	padding: 12px;
+	margin-bottom: 10px;
+	border: 1px solid var(--fm-line);
+	border-radius: 10px;
+}
+.fm-rcard .fm-rcard-top {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	margin-bottom: 8px;
+}
+.fm-rcard .fm-type {
+	width: 54px;
+	height: 54px;
+	flex-basis: 54px;
+}
+
+/* Settings › Image profiles: the shape preview box in the list and form. */
+.fm-shape {
+	display: inline-block;
+	border: 2px solid var(--theme-color);
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+	vertical-align: middle;
+	margin-right: 8px;
+}
+.fm-fit-demo {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+}
+.fm-fit-demo label {
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	padding: 10px;
+	text-align: center;
+	font-size: 13px;
+	cursor: pointer;
+}
+.fm-fit-demo label.on {
+	border-color: var(--theme-color);
+	box-shadow: 0 0 0 1px var(--theme-color);
+}
+.fm-fit-demo .fm-fit-box {
+	position: relative;
+	aspect-ratio: 21 / 9;
+	margin-bottom: 8px;
+	border-radius: 4px;
+	overflow: hidden;
+	background: var(--fm-surface);
+	border: 1px solid var(--fm-line);
+}
+.fm-fit-demo .fm-fit-box img {
+	position: absolute;
+	top: 0;
+	height: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+}
+.fm-fit-demo .fm-fit-box img.bg {
+	width: 100%;
+	left: 0;
+	transform: none;
+	object-fit: cover;
+	filter: blur(6px) brightness(0.8);
+}
+.fm-fit-demo .fm-fit-box img.crop {
+	width: 100%;
+	height: auto;
+	top: 50%;
+	left: 0;
+	transform: translateY(-50%);
+}
+.fm-fit-demo .fm-fit-box.white {
+	background: var(--fm-surface);
+}
+.fm-fit-demo .fm-fit-box.dom {
+	background: #8c1d1d;
+}
+
+/* Brief-only: a screen label strip at the very top of each capture. */
+.brief-tag {
+	position: fixed;
+	top: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 200;
+	padding: 3px 14px;
+	border-radius: 0 0 8px 8px;
+	background: var(--fm-head);
+	color: #fff;
+	font:
+		600 12px/1.6 system-ui,
+		sans-serif;
+	letter-spacing: 0.02em;
+}
+
+.fm-table .fm-namecol {
+	min-width: 270px;
+}
+.fm-when small {
+	display: block;
+	color: var(--fm-muted);
+	font-size: 12.5px;
+}
+.fm-table th.fm-namecol,
+.fm-table td.fm-namecol {
+	min-width: 300px;
+	width: 30%;
+	text-align: left;
+}
+.fm-tile .fm-thumb img {
+	position: absolute;
+	inset: 0;
+}
+.fm-view .btn.active i {
+	color: #fff !important;
+}
+.fm-folder p {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.fm-folder .fm-star {
+	position: static;
+	margin-left: auto;
+	font-size: 15px;
+}
+.fm-folder .fm-star + .fm-more {
+	margin-left: 4px;
+}
+.modal .table-responsive {
+	overflow: visible !important;
+}
+.fm-table td.fm-path {
+	white-space: normal;
+	min-width: 170px;
+	max-width: 220px;
+	text-align: left;
+}
+.fm-table td.fm-prof {
+	white-space: normal;
+	min-width: 150px;
+	max-width: 210px;
+}
+.fm-folders {
+	grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+}
+.fm-table.table {
+	table-layout: auto !important;
+}
+
+.fm-table td.fm-namecol,
+.fm-table th.fm-namecol {
+	min-width: 250px;
+}
+.fm-table td.fm-path {
+	min-width: 150px;
+	max-width: 190px;
+}
+.fm-table.table td {
+	white-space: normal;
+	padding-left: 10px;
+	padding-right: 10px;
+}
+.fm-table.table th {
+	padding-left: 10px;
+	padding-right: 10px;
+}
+.fm-table.table td.sm-width,
+.fm-table.table th.sm-width {
+	width: 44px;
+	min-width: 44px;
+	padding-left: 14px;
+	padding-right: 4px;
+}
+.fm-table td.fm-namecol,
+.fm-table th.fm-namecol {
+	min-width: 230px;
+	width: auto;
+}
+.fm-table .fm-file h6 {
+	max-width: 240px;
+}
+.fm-table td.fm-used {
+	min-width: 90px;
+}
+.fm-table td.fm-when {
+	min-width: 104px;
+}
+.fm-table td.fm-live {
+	min-width: 180px;
+}
+.fm-table.table thead tr th {
+	min-width: 0;
+	padding: 12px 10px;
+}
+.fm-table.table thead tr th.fm-namecol {
+	min-width: 230px;
+}
+.fm-table.table thead tr th.sm-width {
+	min-width: 44px;
+	padding-left: 14px;
+}
+@media (max-width: 575px) {
+	.fm-toolbar .fm-search {
+		flex: 1 1 100%;
+	}
+	.fm-toolbar .ms-auto {
+		width: auto !important;
+		margin-left: auto !important;
+	}
+	.fm-side .d-grid {
+		display: flex !important;
+		flex: 0 0 auto;
+	}
+	.fm-side .d-grid .btn {
+		white-space: nowrap;
+		padding: 6px 10px;
+	}
+	.fm-side .fm-nav + .fm-side-title + .fm-nav {
+		border-left: 1px solid var(--fm-line);
+		padding-left: 6px;
+	}
+	.fm-rules {
+		gap: 6px;
+		font-size: 12.5px;
+	}
+	.modal-footer .fm-footer-note {
+		font-size: 13px;
+	}
+}
+@media (max-width: 575px) {
+	.fm-side {
+		align-items: center;
+	}
+}
+@media (max-width: 575px) {
+	.media-modal .fm-side {
+		flex: none;
+		flex-basis: auto;
+	}
+	.media-modal .fm-wrap {
+		min-height: 0;
+	}
+}
+
+/* ===================== rev 3 (15 Nov) — decisions and accepted suggestions ===================== */
+
+/* NEW 18 — OPTION (decision 7): folder tree in the sidebar. Tree lines reused from .theme-tree-box;
+   adds compact rows, expand arrows and the open-folder highlight. */
+.fm-tree {
+	margin: -4px 0 0;
+	max-height: 360px;
+	overflow: auto;
+}
+.fm-tree ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.fm-tree ul ul {
+	padding-left: 16px;
+	border-left: 1px dashed var(--fm-line);
+	margin-left: 13px;
+}
+.fm-tree li > div {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 6px;
+	border-radius: 6px;
+	font-size: 14px;
+	color: var(--fm-ink2);
+	white-space: nowrap;
+	cursor: pointer;
+}
+.fm-tree li > div .fm-tw {
+	width: 16px;
+	color: var(--fm-muted);
+	font-size: 16px;
+}
+.fm-tree li > div .fm-ti {
+	color: #f2b01e;
+	font-size: 16px;
+}
+.fm-tree li > div.active {
+	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+	color: var(--fm-theme-ink);
+	font-weight: 600;
+}
+.fm-tree li > div small {
+	margin-left: auto;
+	padding-left: 8px;
+	color: var(--fm-muted);
+	font-weight: 400;
+}
+
+/* NEW 19 — focal point: the marker on the photo and the crop previews beside it. */
+.fm-focal {
+	position: relative;
+	display: inline-block;
+	cursor: crosshair;
+}
+.fm-focal img {
+	display: block;
+	max-height: 520px;
+	border-radius: 8px;
+}
+.fm-focal .fm-dotmark {
+	position: absolute;
+	width: 34px;
+	height: 34px;
+	margin: -17px 0 0 -17px;
+	border: 3px solid #fff;
+	border-radius: 50%;
+	box-shadow:
+		0 0 0 2px var(--theme-color),
+		0 2px 10px rgba(0, 0, 0, 0.4);
+}
+.fm-crop {
+	border-radius: 6px;
+	overflow: hidden;
+	border: 1px solid var(--fm-line);
+}
+.fm-crop img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+/* NEW 20 — side-by-side compare (duplicate found, replace file). */
+.fm-compare {
+	display: flex;
+	gap: 16px;
+	justify-content: center;
+	align-items: flex-start;
+	text-align: left;
+}
+.fm-compare > div {
+	width: 200px;
+}
+.fm-compare img,
+.fm-compare .fm-drop {
+	width: 200px;
+	height: 240px;
+	object-fit: cover;
+	border-radius: 8px;
+	border: 1px solid var(--fm-line);
+	display: block;
+}
+.fm-compare .fm-drop {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border: 2px dashed var(--fm-line);
+	color: var(--fm-muted);
+	font-size: 13px;
+	text-align: center;
+	padding: 12px;
+}
+.fm-compare p {
+	margin: 6px 0 0;
+	font-size: 13px;
+	color: var(--fm-ink2);
+}
+.fm-compare .fm-arrow {
+	width: auto;
+	align-self: center;
+	font-size: 26px;
+	color: var(--fm-muted);
+}
+
+/* NEW 21 — Recent row at the top of the picker: one line of small tiles. */
+.fm-recent {
+	grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+.fm-recent .fm-cap p {
+	display: none;
+}
+
+/* NEW 22 — activity list in Details. */
+.fm-activity {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.fm-activity li {
+	display: flex;
+	gap: 12px;
+	padding: 10px 0;
+	border-bottom: 1px solid var(--fm-line);
+	font-size: 14px;
+}
+.fm-activity li i {
+	flex: 0 0 32px;
+	height: 32px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+	color: var(--theme-color);
+	font-size: 16px;
+}
+.fm-activity li small {
+	display: block;
+	color: var(--fm-muted);
+}
+
+/* NEW 23 — storage bar when the plan is nearly full. */
+.fm-storage.is-full .progress-bar {
+	background: #f0a020 !important;
+}
+.fm-storage.is-full strong {
+	color: var(--fm-warn-ink);
+}
+
+/* ===================== rev 4 (15 Nov, evening) — search the brief for "R4-" ===================== */
+
+/* NEW 24 (R4-8) — operation steps: a label row and its own bar, in the tray and the Replace popup.
+   Bars are the theme's progress bar. Done steps use bg-success; work with no measurable % uses the
+   theme's own striped, animated bar. */
+.fm-phase {
+	margin-top: 6px;
+}
+.fm-phase > div:first-child {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
+	color: var(--fm-ink2);
+}
+.fm-phase > div:first-child small {
+	color: var(--fm-muted);
+	white-space: nowrap;
+}
+.fm-phase .progress {
+	height: 5px;
+	margin-top: 3px;
+}
+.fm-phase .progress-bar {
+	background-color: var(--theme-color);
+}
+.fm-phase .progress-bar.proc {
+	background-color: #2f6fed;
+}
+.modal .fm-phase {
+	margin-top: 16px;
+}
+.modal .fm-phase > div:first-child {
+	font-size: 14px;
+}
+.modal .fm-phase .progress {
+	height: 8px;
+}
+.fm-tray.is-wide {
+	width: 440px;
+}
+.fm-tray.is-wide ul {
+	max-height: none;
+}
+.fm-tray.is-wide li {
+	align-items: flex-start;
+	padding: 9px 16px;
+	border-bottom: 1px solid var(--fm-line);
+}
+.fm-tray.is-wide li .fm-tray-name > small {
+	display: block;
+	margin-top: 3px;
+	font-size: 11.5px;
+}
+/* A thin bar under a popup header while a save takes longer than 0.3 s. */
+.fm-thin {
+	height: 3px;
+	border-radius: 0;
+}
+
+/* NEW 25 (R4-1, R4-2) — versions: fill choices in Reprocess and upload, the chosen-version chip on
+   picker tiles, the version name on form tiles, and the action buttons in the versions tree. */
+.fm-checkitem.is-wide {
+	grid-column: 1 / -1;
+}
+.fm-fit-demo.fm-fills {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	max-width: 620px;
+	margin: 10px 0 0 28px;
+}
+.fm-fills label {
+	padding: 8px;
+	font-size: 12.5px;
+}
+.fm-fills label.is-done {
+	background: var(--fm-soft);
+	cursor: default;
+}
+.fm-fills .fm-fit-box {
+	margin-bottom: 6px;
+}
+.fm-checkitem .fm-fills + .fm-warn {
+	margin-left: 28px;
+	max-width: 620px;
+}
+.fm-subfills {
+	margin-left: 22px;
+	padding-left: 6px;
+	border-left: 2px solid var(--fm-line);
+}
+.fm-subfills label {
+	padding: 4px 10px;
+	font-size: 13px;
+}
+.fm-vchips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 4px;
+}
+.fm-vchips .fm-pchip {
+	margin: 0;
+	border: 1px solid transparent;
+}
+.fm-pchip.is-on {
+	border-color: var(--fm-theme-ink);
+	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+	color: var(--fm-theme-ink);
+}
+.fm-vnode {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.fm-vnode > span:first-of-type {
+	flex: 1;
+}
+.fm-tilebox {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+.fm-tilebox .fm-fit-box {
+	height: 100%;
+	margin: 0;
+	border: 0;
+}
+.fm-vbadge {
+	position: absolute;
+	bottom: 28px;
+	left: 5px;
+	z-index: 3;
+	padding: 1px 6px;
+	border-radius: 4px;
+	background: #2f6fed;
+	color: #fff;
+	font-size: 10.5px;
+	white-space: nowrap;
+}
+
+/* (R4-5) The share popup's links table: the link column wider than the rest. */
+.fm-links th:first-child,
+.fm-links td:first-child {
+	width: 30%;
+}
+
+/* (R6-2) Pieces that used inline colours now use classes with both modes. */
+.fm-warn.fm-good {
+	background: var(--fm-good-bg, #eef6ee);
+	border-color: var(--fm-good-line, #cfe6cf);
+	color: var(--fm-ok);
+}
+body.dark-only .fm-warn.fm-good {
+	--fm-good-bg: #12301f;
+	--fm-good-line: #1f4a31;
+}
+.fm-chip.bad {
+	background: var(--fm-bad-bg);
+	color: var(--fm-bad-ink);
+}
+/* (R6-2) File-type tiles: in dark mode a soft wash of the icon's own colour instead of a pastel. */
+body.dark-only .fm-type:not(:has(img)),
+body.dark-only .fm-bigicon {
+	background: color-mix(in srgb, currentColor 16%, transparent) !important;
+}
+/* (R6-2) The type label on a picture is always a solid dark chip, so it reads on any photo. */
+.fm-ttype {
+	background: rgba(28, 33, 40, 0.92) !important;
+	color: #fff !important;
+}
+
+/* 10. Links in the tray and the zip toast; the white toast keeps the strong teal in both modes. */
+.fm-tray a,
+.fm-toast a {
+	color: var(--fm-theme-ink) !important;
+}
+.toast-message a {
+	color: var(--theme-strong) !important;
+}
+
+body.dark-only .fm-ctx,
+body.dark-only .fm-profile-menu {
+	background-color: #1c2128 !important;
+}
+body.dark-only .fm-dropover {
+	background: color-mix(in srgb, var(--theme-color) 14%, #1c2128) !important;
+}
+body.dark-only .fm-dropover h4 {
+	color: #e6e8eb;
+}
+.text-body {
+	color: var(--fm-ink) !important;
+}
+
+/* NEW 27 (R6-1) — a calm note box (Clean up › Email pictures): soft surface, icon, text; both modes. */
+.fm-note {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+	padding: 12px 16px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-soft);
+	color: var(--fm-ink2);
+	font-size: 14px;
+}
+.fm-note i {
+	font-size: 20px;
+	color: var(--fm-theme-ink);
+}
+.fm-note strong {
+	color: var(--fm-ink);
+}
+
+/* NEW 28 (R6-6) — the versions tree: an open/close arrow on every level, file rows with copy and open,
+   and a box of its own that scrolls inside the popup. Tree lines are the theme's own. */
+.fm-vnode .fm-caret {
+	flex: 0 0 16px;
+	color: var(--fm-muted);
+	font-size: 16px;
+	cursor: pointer;
+}
+.fm-sizes.fm-scroll {
+	max-height: 440px;
+	overflow-y: auto;
+	padding-right: 8px;
+	scrollbar-width: thin;
+	scrollbar-color: var(--fm-muted) transparent;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+}
+.fm-file-actions {
+	display: flex;
+	gap: 10px;
+	color: var(--fm-ink2);
+}
+.fm-file-actions a {
+	color: inherit !important;
+}
+
+/* (R6-2) Text on a teal tint, and the counts in the active menu item. */
+.fm-nav li.active a .fm-count {
+	color: var(--fm-ink2);
+}
+/* (R6-2) Dark mode: the upload/processing overlay on a picture is a dark glass, not a white one. */
+body.dark-only .fm-tile .fm-overlay {
+	background: rgba(11, 20, 29, 0.92) !important;
+	color: #e6e8eb;
+}
+body.dark-only .fm-tile .fm-overlay small {
+	color: #c3cad1;
+}
+/* (R6-2) A fill preview shows the real output, so "White padding" stays white in dark mode too. */
+.fm-fit-demo .fm-fit-box.white {
+	background: #fff !important;
+}

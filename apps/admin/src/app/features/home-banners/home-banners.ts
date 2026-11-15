@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 
+import { injectMissingLanguage } from '@core/i18n/missing-language';
 import {
 	type ContentBlock,
 	ContentBlocksGateway,
@@ -11,6 +12,7 @@ import {
 } from '@core/media/content-blocks.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 
 import { BannerSlotForm } from './banner-slot-form/banner-slot-form';
 
@@ -24,7 +26,7 @@ import { BannerSlotForm } from './banner-slot-form/banner-slot-form';
 @Component({
 	selector: 'app-home-banners',
 	templateUrl: './home-banners.html',
-	imports: [PageWrapper, TranslocoModule, BannerSlotForm],
+	imports: [MissingLanguageNotice, PageWrapper, TranslocoModule, BannerSlotForm],
 })
 export class HomeBanners implements OnInit {
 	private readonly gateway = inject(ContentBlocksGateway);
@@ -38,6 +40,14 @@ export class HomeBanners implements OnInit {
 	readonly loaded = signal(false);
 
 	readonly slots = computed(() => HERO_LAYOUT_SLOTS[this.layout()]);
+	/** Opened from Settings › Languages: only banners still missing one language's text. */
+	readonly missing = injectMissingLanguage('banners');
+
+	/** Every slot, or only those whose banner still lacks the language when the page is filtered. */
+	shows(block: ContentBlock | null): boolean {
+		const ids = this.missing.ids();
+		return !ids || (!!block && ids.has(block.id));
+	}
 	readonly promoSlots = ['item_1', 'item_2'];
 
 	async ngOnInit(): Promise<void> {

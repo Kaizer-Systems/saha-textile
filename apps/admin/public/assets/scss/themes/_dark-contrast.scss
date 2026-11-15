@@ -40,6 +40,14 @@ body.dark-only {
 		color: #e6e8eb;
 	}
 
+	// List rows inside popups (Settings › Languages' to-do list, the add popup): the theme darkens
+	// list rows only inside the page body, so in a popup they stayed white under light-on-dark links.
+	.modal .list-group-item {
+		background-color: transparent;
+		border-color: rgba(255, 255, 255, 0.3);
+		color: #c9d1d9;
+	}
+
 	// Menus and dropdowns, which stayed white.
 	.dropdown-menu {
 		background-color: #1c2128;

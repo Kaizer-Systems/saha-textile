@@ -10,7 +10,7 @@
 		<span class="badge rounded-pill badge-theme">{{ unreadNotificationCount() }}</span>
 		}
 	</div>
-	@if (notifications().length) {
+	@if (notifications().length || languageReminders().length) {
 	<ul
 		class="notification-dropdown onhover-show-div"
 		[class.active]="active"
@@ -19,7 +19,20 @@
 			<i class="ri-notification-line"></i>
 			<h6 class="f-18 mb-0">{{ 'notifications' | transloco }}</h6>
 		</li>
-		@for (notification of notifications() | slice:0:3; track notification.id) {
+		@for (reminder of languageReminders(); track reminder.code) {
+		<li>
+			<a
+				[routerLink]="['/setting/languages']"
+				[queryParams]="{ erase: reminder.code }"
+				[id]="'language_reminder_' + reminder.code"
+			>
+				<p>
+					<i class="ri-record-circle-line txt-primary me-2"></i>
+					{{ 'lang_reminder' | transloco: { language: languageName(reminder.code) } }}
+				</p>
+			</a>
+		</li>
+		} @for (notification of notifications() | slice:0:3; track notification.id) {
 		<li>
 			<p>
 				<i class="ri-record-circle-line txt-primary me-2"></i>

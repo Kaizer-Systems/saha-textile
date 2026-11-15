@@ -14,6 +14,9 @@
 			{{ 'add_tag' | transloco }}
 		</a>
 	</div>
+	@if (tagType() === 'post') {
+	<app-missing-language-notice [code]="missing.code()" />
+	}
 	<app-table
 		[tableConfig]="tableConfig()"
 		[hasCheckbox]="true"

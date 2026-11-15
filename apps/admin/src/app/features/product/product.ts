@@ -5,14 +5,16 @@ import { Router, RouterModule } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
 import { goLiveToast } from '@core/catalog/go-live-report';
+import { rememberProductQueue } from '@core/catalog/product-queue';
+import { injectMissingLanguage } from '@core/i18n/missing-language';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { NotificationService } from '@data-access/services/notification.service';
-import { rememberProductQueue } from '@core/catalog/product-queue';
 import { ProductService } from '@data-access/services/product.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
 
 interface ProductTableRow {
@@ -31,7 +33,7 @@ interface ProductTableRow {
 	selector: 'app-product',
 	templateUrl: './product.html',
 	styleUrls: ['./product.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
+	imports: [MissingLanguageNotice, PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Product {
 	private router = inject(Router);
@@ -41,10 +43,13 @@ export class Product {
 	private transloco = inject(TranslocoService);
 
 	private readonly params = signal<Params>({});
+	/** Opened from Settings › Languages: only live products still missing one language's text. */
+	readonly missing = injectMissingLanguage('products');
 	readonly productsQuery = injectCatalogProductsQuery(() => ({
 		search: typeof this.params()['search'] === 'string' ? this.params()['search'] : undefined,
 		page: Number(this.params()['page']) || 1,
 		pageSize: Number(this.params()['paginate']) || 15,
+		missing: this.missing.code(),
 	}));
 
 	readonly tableConfig = signal<ITableConfig<ProductTableRow>>({

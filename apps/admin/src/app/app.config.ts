@@ -14,6 +14,8 @@ import { AdminCommunicationsGateway } from '@core/admin-communications/admin-com
 import { HttpAdminCommunicationsGateway } from '@core/admin-communications/http-admin-communications.gateway';
 import { AdminCustomersGateway } from '@core/admin-customers/admin-customers.gateway';
 import { HttpAdminCustomersGateway } from '@core/admin-customers/http-admin-customers.gateway';
+import { AdminLanguagesGateway } from '@core/admin-languages/admin-languages.gateway';
+import { HttpAdminLanguagesGateway } from '@core/admin-languages/http-admin-languages.gateway';
 import { AdminNotificationsGateway } from '@core/admin-notifications/admin-notifications.gateway';
 import { HttpAdminNotificationsGateway } from '@core/admin-notifications/http-admin-notifications.gateway';
 import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
@@ -52,6 +54,7 @@ export const appConfig: ApplicationConfig = {
 		// Non-secret notification Settings (MSG91 Authkey stays in API env).
 		{ provide: AdminNotificationsGateway, useClass: HttpAdminNotificationsGateway },
 		{ provide: AdminCommunicationsGateway, useClass: HttpAdminCommunicationsGateway },
+		{ provide: AdminLanguagesGateway, useClass: HttpAdminLanguagesGateway },
 		// Admin roles + permission registry gateway (auth pass 5c.3 UI wiring).
 		{ provide: AdminRolesGateway, useClass: HttpAdminRolesGateway },
 		// Resolves the admin cookie session before routing, so the guard protecting the

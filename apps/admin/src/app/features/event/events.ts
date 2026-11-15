@@ -2,10 +2,10 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { ShopEvent } from '@saha-textile/contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { utcToIstInput } from '@core/i18n/ist-time';
+import { injectMissingLanguage } from '@core/i18n/missing-language';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectShopEventsQuery } from '@data-access/queries/shop-event.queries';
@@ -13,7 +13,10 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { EVENT_STATUS_PILL, IShopEventRow, ShopEventService } from '@data-access/services/shop-event.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
+
+import type { ShopEvent } from '@saha-textile/contracts';
 
 /** `2027-09-27T23:59` → `27 Sep 2027, 23:59 IST`: the admin always reads India time. */
 export function istLabel(iso: string | null): string {
@@ -28,7 +31,7 @@ export function istLabel(iso: string | null): string {
 @Component({
 	selector: 'app-events',
 	templateUrl: './events.html',
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
+	imports: [MissingLanguageNotice, PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Events {
 	private router = inject(Router);
@@ -38,7 +41,9 @@ export class Events {
 	private queryClient = inject(QueryClient);
 
 	private readonly params = signal<Params>({});
-	readonly eventsQuery = injectShopEventsQuery(() => this.params());
+	/** Opened from Settings › Languages: only items still missing one language's text. */
+	readonly missing = injectMissingLanguage('events');
+	readonly eventsQuery = injectShopEventsQuery(() => ({ ...this.params(), missing: this.missing.code() }));
 
 	readonly tableConfig = signal<ITableConfig<IShopEventRow>>({
 		columns: [

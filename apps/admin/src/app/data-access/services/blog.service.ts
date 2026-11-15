@@ -51,6 +51,8 @@ export class BlogService {
 		};
 		const search = payload?.['search'];
 		if (typeof search === 'string' && search.trim()) params['search'] = search.trim();
+		const missing = payload?.['missing'];
+		if (typeof missing === 'string' && missing) params['missing'] = missing;
 		return this.http
 			.get<AdminBlogListResponse>(this.base('/posts'), { params })
 			.pipe(map((page) => ({ data: page.items.map(toBlog), total: page.total }) as IBlogModel));

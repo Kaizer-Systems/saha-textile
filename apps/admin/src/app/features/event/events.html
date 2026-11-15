@@ -22,6 +22,7 @@
 			{{ 'new_sale' | transloco }}
 		</a>
 	</div>
+	<app-missing-language-notice [code]="missing.code()" />
 	<app-table
 		[tableConfig]="tableConfig()"
 		(tableChanged)="onTableChange($event)"

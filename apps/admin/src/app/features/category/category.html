@@ -18,6 +18,7 @@
 				</a>
 				}
 			</div>
+			<app-missing-language-notice [code]="missing().code()" />
 			<app-tree
 				[data]="(category$ | async)?.data"
 				[recursionKey]="'subcategories'"

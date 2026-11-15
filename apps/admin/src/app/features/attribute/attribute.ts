@@ -3,6 +3,7 @@ import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
+import { injectMissingLanguage, keepMissing } from '@core/i18n/missing-language';
 import { IAttribute } from '@data-access/interfaces/attribute.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
@@ -11,13 +12,14 @@ import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-attribute',
 	templateUrl: './attribute.html',
 	styleUrls: ['./attribute.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
+	imports: [MissingLanguageNotice, PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Attribute {
 	router = inject(Router);
@@ -58,13 +60,20 @@ export class Attribute {
 		total: 0,
 	});
 
+	/** Opened from Settings › Languages: only items still missing one language's text. */
+	readonly missing = injectMissingLanguage('options');
+
 	constructor() {
 		effect(() => {
 			const attribute = this.attributesQuery.data();
 			this.tableConfig.update((config) => ({
 				...config,
-				data: attribute ? attribute.data : [],
-				total: attribute ? attribute.total : 0,
+				data: attribute ? keepMissing(attribute.data, this.missing.ids(), (row) => String(row.id)) : [],
+				total: attribute
+					? this.missing.ids()
+						? keepMissing(attribute.data, this.missing.ids(), (row) => String(row.id)).length
+						: attribute.total
+					: 0,
 			}));
 		});
 	}

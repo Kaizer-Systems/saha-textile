@@ -5,6 +5,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { SEARCH_TERM_GO_LIVE_WORDS, goLiveLabels } from '@core/catalog/go-live-report';
+import { injectMissingLanguage } from '@core/i18n/missing-language';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectSearchTermsQuery } from '@data-access/queries/search-term.queries';
@@ -16,6 +17,7 @@ import {
 } from '@data-access/services/search-term.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
 
 import type { SearchTerm, SearchTermStatus } from '@saha-textile/contracts';
@@ -45,7 +47,7 @@ export function toRow(
 @Component({
 	selector: 'app-search-term',
 	templateUrl: './search-term.html',
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
+	imports: [MissingLanguageNotice, PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class SearchTermList {
 	private router = inject(Router);
@@ -55,7 +57,9 @@ export class SearchTermList {
 	private queryClient = inject(QueryClient);
 
 	private readonly params = signal<Params>({});
-	readonly termsQuery = injectSearchTermsQuery(() => this.params());
+	/** Opened from Settings › Languages: only items still missing one language's text. */
+	readonly missing = injectMissingLanguage('search_words');
+	readonly termsQuery = injectSearchTermsQuery(() => ({ ...this.params(), missing: this.missing.code() }));
 	private readonly table = viewChild(Table);
 
 	/** A signal, so the table redraws when an answer arrives after it was first drawn. */

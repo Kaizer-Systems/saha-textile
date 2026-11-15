@@ -450,9 +450,9 @@ describe('Product list', () => {
 		const { page } = render(Product, productDeps());
 		const params = lastParams;
 		page.onTableChange({ search: 'silk', page: 2, paginate: 30 });
-		expect(params?.()).toEqual({ search: 'silk', page: 2, pageSize: 30 });
+		expect(params?.()).toEqual({ search: 'silk', page: 2, pageSize: 30, missing: null });
 		page.onTableChange({ search: 5 });
-		expect(params?.()).toEqual({ search: undefined, page: 1, pageSize: 15 });
+		expect(params?.()).toEqual({ search: undefined, page: 1, pageSize: 15, missing: null });
 	});
 
 	it('maps the catalogue rows', () => {

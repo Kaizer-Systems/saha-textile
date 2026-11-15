@@ -468,6 +468,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'languages',
+				path: '/setting/languages',
+				type: 'link',
+				level: 2,
+				permission: ['language.manage'],
+			},
+			{
+				parent_id: 19,
 				title: 'communications',
 				path: '/setting/communications',
 				type: 'link',

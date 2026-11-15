@@ -63,6 +63,8 @@ export class ShopEventService {
 		if (typeof search === 'string' && search.trim()) params['search'] = search.trim();
 		const type = payload?.['type'];
 		if (type === 'launch' || type === 'sale') params['type'] = type;
+		const missing = payload?.['missing'];
+		if (typeof missing === 'string' && missing) params['missing'] = missing;
 		const field = SORT_FIELDS[String(payload?.['field'] ?? '')];
 		if (field) {
 			params['sort'] = field;

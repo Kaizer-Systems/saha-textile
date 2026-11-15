@@ -27,8 +27,12 @@ export class Languages {
 	private readonly activeLanguages = inject(ActiveLanguages);
 
 	public active: boolean = false;
-	/** The page-language menu: every active language, each in its own name, with the theme's flag. */
-	public languages: ILanguage[] = this.activeLanguages.list().map((code) => ({
+	/**
+	 * The page-language menu: the languages the Admin switch lets staff use (Settings › Languages),
+	 * each in its own name, with the theme's flag. Languages only being written for the shop are not
+	 * offered here (Option 1, 2026-11-15).
+	 */
+	public languages: ILanguage[] = this.activeLanguages.adminList().map((code) => ({
 		language: languageName(code),
 		code,
 		icon: languageFlag(code),

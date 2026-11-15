@@ -1,15 +1,17 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, input, signal } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { ICategoryModel } from '@data-access/interfaces/category.interface';
+import { injectMissingLanguage } from '@core/i18n/missing-language';
+import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 
 import { FormCategory } from './form-category/form-category';
 import { Tree } from './tree/tree';
@@ -18,7 +20,16 @@ import { Tree } from './tree/tree';
 	selector: 'app-category',
 	templateUrl: './category.html',
 	styleUrls: ['./category.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Tree, FormCategory, TranslocoModule, AsyncPipe],
+	imports: [
+		MissingLanguageNotice,
+		PageWrapper,
+		HasPermissionDirective,
+		RouterModule,
+		Tree,
+		FormCategory,
+		TranslocoModule,
+		AsyncPipe,
+	],
 })
 export class Category {
 	// TODO: Skipped for migration because:
@@ -29,5 +40,22 @@ export class Category {
 	readonly locale = signal('en');
 
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: this.categoryType() }));
-	category$: Observable<ICategoryModel | undefined> = toObservable(this.categoriesQuery.data);
+	/** Opened from Settings › Languages: only categories still missing one language's text. */
+	private readonly missingShop = injectMissingLanguage('categories');
+	private readonly missingBlog = injectMissingLanguage('blog_categories');
+	readonly missing = computed(() => (this.categoryType() === 'post' ? this.missingBlog : this.missingShop));
+	private readonly shown = computed(() => {
+		const model = this.categoriesQuery.data();
+		const ids = this.missing().ids();
+		return model && ids ? { ...model, data: keepBranches(model.data, ids) } : model;
+	});
+	category$: Observable<ICategoryModel | undefined> = toObservable(this.shown);
+}
+
+/** The categories in `ids`, with the parents that lead to them, so the tree keeps its shape. */
+export function keepBranches(nodes: readonly ICategory[], ids: ReadonlySet<string>): ICategory[] {
+	return nodes.flatMap((node) => {
+		const children = keepBranches(node.subcategories ?? [], ids);
+		return ids.has(String(node.id)) || children.length ? [{ ...node, subcategories: children }] : [];
+	});
 }

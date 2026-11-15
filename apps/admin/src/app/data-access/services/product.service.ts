@@ -1,12 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import type {
-	GoLiveResult,
-	ProductBundle,
-	ProductBundleWrite,
-	ProductCreate,
-} from '@saha-textile/contracts';
 import { Observable } from 'rxjs';
 
 import {
@@ -20,6 +14,8 @@ import { IProductModel } from '@data-access/interfaces/product.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
+import type { GoLiveResult, ProductBundle, ProductBundleWrite, ProductCreate } from '@saha-textile/contracts';
+
 @Injectable({
 	providedIn: 'root',
 })
@@ -31,9 +27,15 @@ export class ProductService {
 	}
 
 	/** The catalogue as the API holds it, every status, for the product list and its pickers. */
-	getCatalogProducts(query: { search?: string; page?: number; pageSize?: number }): Observable<CatalogProductList> {
+	getCatalogProducts(query: {
+		search?: string;
+		page?: number;
+		pageSize?: number;
+		missing?: string | null;
+	}): Observable<CatalogProductList> {
 		const params: Record<string, string> = {};
 		if (query.search) params['search'] = query.search;
+		if (query.missing) params['missing'] = query.missing;
 		if (query.page) params['page'] = String(query.page);
 		if (query.pageSize) params['pageSize'] = String(query.pageSize);
 		return this.http.get<CatalogProductList>(`${environment.apiUrl}/admin/catalog/products`, { params });

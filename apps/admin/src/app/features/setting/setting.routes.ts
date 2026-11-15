@@ -30,6 +30,10 @@ export default [
 		loadComponent: () => import('./mailboxes/mailboxes').then((m) => m.MailboxesSettings),
 	},
 	{
+		path: 'languages',
+		loadComponent: () => import('./languages/languages').then((m) => m.LanguagesSettings),
+	},
+	{
 		path: 'communications',
 		loadComponent: () => import('./communications/communications').then((m) => m.CommunicationsSettings),
 	},

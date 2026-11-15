@@ -16,6 +16,7 @@
 		</a>
 	</div>
 	<p class="help-text">{{ 'stores_order_help' | transloco }}</p>
+	<app-missing-language-notice [code]="missingLanguage.code()" />
 	<div class="table-responsive datatable-wrapper border-table">
 		@if (loading()) {
 		<div class="table-loader">

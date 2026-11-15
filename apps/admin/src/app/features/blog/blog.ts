@@ -6,6 +6,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { type Observable, catchError, concatMap, from, map, of, toArray } from 'rxjs';
 
 import { BLOG_GO_LIVE_WORDS, goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import { injectMissingLanguage } from '@core/i18n/missing-language';
 import { IBlog } from '@data-access/interfaces/blog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
@@ -14,6 +15,7 @@ import { BlogService } from '@data-access/services/blog.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
 
 import type { GoLiveResult } from '@saha-textile/contracts';
@@ -22,7 +24,7 @@ import type { GoLiveResult } from '@saha-textile/contracts';
 	selector: 'app-blog',
 	templateUrl: './blog.html',
 	styleUrls: ['./blog.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
+	imports: [MissingLanguageNotice, PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Blog {
 	router = inject(Router);
@@ -32,7 +34,9 @@ export class Blog {
 	private queryClient = inject(QueryClient);
 
 	private readonly params = signal<Params>({});
-	readonly blogsQuery = injectBlogsQuery(() => this.params());
+	/** Opened from Settings › Languages: only items still missing one language's text. */
+	readonly missing = injectMissingLanguage('blog_posts');
+	readonly blogsQuery = injectBlogsQuery(() => ({ ...this.params(), missing: this.missing.code() }));
 	private readonly table = viewChild(Table);
 
 	/** A signal, so the table redraws when an answer arrives after it was first drawn. */

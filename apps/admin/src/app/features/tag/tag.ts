@@ -5,6 +5,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
+import { injectMissingLanguage, keepMissing } from '@core/i18n/missing-language';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { ITag } from '@data-access/interfaces/tag.interface';
@@ -13,13 +14,14 @@ import { BlogService } from '@data-access/services/blog.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-tag',
 	templateUrl: './tag.html',
 	styleUrls: ['./tag.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
+	imports: [MissingLanguageNotice, PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Tag {
 	router = inject(Router);
@@ -31,6 +33,8 @@ export class Tag {
 	readonly tagType = input<string | null>('product');
 
 	private readonly params = signal<Params>({});
+	/** Opened from Settings › Languages: only blog tags still missing one language's text. */
+	readonly missing = injectMissingLanguage('blog_tags');
 	readonly tagsQuery = injectTagsQuery(() => ({
 		...this.params(),
 		type: this.tagType() ?? undefined,
@@ -68,7 +72,9 @@ export class Tag {
 		// NGXS `tag$` subscription).
 		effect(() => {
 			const tag = this.tagsQuery.data();
-			this.tableConfig.update((config) => ({ ...config, data: tag ? tag.data : [], total: tag ? tag.total : 0 }));
+			const ids = this.tagType() === 'post' ? this.missing.ids() : null;
+			const data = tag ? keepMissing(tag.data, ids, (row) => String(row.id)) : [];
+			this.tableConfig.update((config) => ({ ...config, data, total: ids ? data.length : (tag?.total ?? 0) }));
 		});
 	}
 

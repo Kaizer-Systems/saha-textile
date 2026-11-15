@@ -6,6 +6,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { STORE_GO_LIVE_WORDS, goLiveToast } from '@core/catalog/go-live-report';
+import { injectMissingLanguage, keepMissing } from '@core/i18n/missing-language';
 import { AuthStore } from '@core/state/auth.store';
 import { displayPhone } from '@core/stores/store-hours';
 import {
@@ -16,6 +17,7 @@ import {
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
 
 import type { AdminStoreLocationRow } from '@saha-textile/contracts';
@@ -29,6 +31,7 @@ import type { AdminStoreLocationRow } from '@saha-textile/contracts';
 	templateUrl: './stores.html',
 	styleUrls: ['./stores.scss'],
 	imports: [
+		MissingLanguageNotice,
 		PageWrapper,
 		RouterLink,
 		TranslocoModule,
@@ -49,7 +52,11 @@ export class StoresSettings {
 	private readonly query = injectStoreLocationsQuery();
 	/** The rows as shown; a drag moves them here first, so the list never jumps back while saving. */
 	readonly rows = signal<AdminStoreLocationRow[]>([]);
-	private readonly saved = computed(() => this.query.data() ?? []);
+	/** Opened from Settings › Languages: only stores still missing one language's text. */
+	readonly missingLanguage = injectMissingLanguage('stores');
+	private readonly saved = computed(() =>
+		keepMissing(this.query.data() ?? [], this.missingLanguage.ids(), (row) => row.store.id),
+	);
 	readonly loading = computed(() => this.query.isPending());
 	readonly canEdit = computed(() => this.auth.permissions().includes('setting.edit'));
 

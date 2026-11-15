@@ -42,6 +42,14 @@ const notifications = signal<unknown>(undefined);
 vi.mock('@data-access/queries/notification.queries', () => ({
 	injectNotificationsQuery: () => ({ data: notifications }),
 }));
+const reminders = signal<unknown>(undefined);
+const remindersAsked = vi.hoisted(() => ({ enabled: [] as boolean[] }));
+vi.mock('@data-access/queries/admin-languages.queries', () => ({
+	injectLanguageRemindersQuery: (enabled: () => boolean) => {
+		remindersAsked.enabled.push(enabled());
+		return { data: reminders };
+	},
+}));
 
 const bare = <T>(type: new () => T, providers: unknown[] = []) => {
 	TestBed.resetTestingModule();
@@ -178,13 +186,27 @@ describe('Profile', () => {
 });
 
 describe('Header notification', () => {
+	const auth = (permissions: string[]) => ({ provide: AuthStore, useValue: { permissions: signal(permissions) } });
+
 	it('counts the unread ones and toggles', () => {
-		const widget = bare(Notification, [{ provide: NavService, useValue: {} }]);
+		const widget = bare(Notification, [{ provide: NavService, useValue: {} }, auth([])]);
 		expect(widget.notifications()).toEqual([]);
 		notifications.set({ data: [{ read_at: null }, { read_at: 'now' }] });
 		expect(widget.unreadNotificationCount()).toBe(1);
 		widget.clickHeaderOnMobile();
 		expect(widget.active).toBe(true);
+	});
+
+	it('reminds whoever manages languages about a deleted language’s stored text', () => {
+		remindersAsked.enabled = [];
+		bare(Notification, [{ provide: NavService, useValue: {} }, auth([])]);
+		const widget = bare(Notification, [{ provide: NavService, useValue: {} }, auth(['language.manage'])]);
+		expect(remindersAsked.enabled).toEqual([false, true]);
+		reminders.set({ reminders: [{ code: 'bn', deletedAt: '2026-10-01T00:00:00.000Z', itemsWithText: 12 }] });
+		expect(widget.languageReminders().map((row) => row.code)).toEqual(['bn']);
+		expect(widget.unreadNotificationCount()).toBe(1);
+		expect(widget.languageName('bn')).toBe('বাংলা');
+		reminders.set(undefined);
 	});
 });
 

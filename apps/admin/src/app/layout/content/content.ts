@@ -2,6 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, effect, inject, untracked } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { injectInboxSummaryQuery } from '@core/mailboxes/mailbox.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { MenuStore } from '@core/state/menu.store';
@@ -30,6 +31,8 @@ export class Content {
 
 	constructor() {
 		this.isBrowser = isPlatformBrowser(this.platformId);
+		// Signed in now: the working list adds the draft languages forms show (Settings › Languages).
+		if (this.isBrowser) void inject(ActiveLanguages).load();
 		this.menuStore.loadBadges();
 		this.navServices.sidebarLoading = false;
 		effect(() => {

@@ -147,6 +147,12 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 
 		expect((await assets.findBySha256(['a'.repeat(64)])).map((row) => row.id)).toEqual(['med_red']);
 		expect(await assets.namesIn('fld_banarasi')).toEqual(['Red Banarasi front.jpg']);
+		// S6: the same name, whatever the letter case, only in that folder.
+		expect((await assets.findNamedIn('fld_banarasi', ['red banarasi FRONT.jpg'])).map((row) => row.id)).toEqual([
+			'med_red',
+		]);
+		expect(await assets.findNamedIn(null, ['Red Banarasi front.jpg'])).toEqual([]);
+		expect(await assets.findNamedIn('fld_banarasi', [])).toEqual([]);
 
 		await assets.moveTo(['med_blue'], 'fld_banarasi');
 		await assets.rename('med_blue', 'blue tant (1).jpg');

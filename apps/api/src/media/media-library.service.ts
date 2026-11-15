@@ -47,6 +47,7 @@ import {
 	renameKeepingExtension,
 	restoreTarget,
 	trashDaysLeft,
+	waitsForImageProfiles,
 } from '@saha-textile/core-domain';
 
 import { domainRefusal } from '../auth/domain-refusal';
@@ -73,6 +74,7 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	not_in_trash: 'Only items in Trash can be deleted for good',
 	nothing_to_undo: 'This can no longer be undone',
 	not_a_plain_file: 'Only files other than photos and videos can be made public or private here',
+	photo_needs_profiles: 'Photos upload on the Media page once image profiles are in place',
 };
 
 const refuse = (code: string) => domainRefusal(code, REFUSALS[code] ?? 'Not allowed');
@@ -431,6 +433,7 @@ export class MediaLibraryService {
 		request: MediaFilePresignRequest,
 		now = new Date(),
 	): Promise<MediaFilePresignResponse> {
+		if (waitsForImageProfiles(request.contentType, request.fileName)) throw refuse('photo_needs_profiles');
 		if (request.folderId) {
 			const folder = await this.requireFolder(request.folderId);
 			if (folder.trashedAt) throw refuse('target_in_trash');
@@ -487,6 +490,19 @@ export class MediaLibraryService {
 		};
 	}
 
+	/**
+	 * An upload this admin started and will not finish (cancelled, or failed for good): the record,
+	 * anything that reached Spaces, and its storage hold go. Only an unfinished upload of one's own.
+	 */
+	async cancelUpload(actor: string, id: string): Promise<void> {
+		const asset = await this.assets.findById(id);
+		if (!asset || asset.processing.state !== 'awaiting_upload' || asset.uploadedBy?.id !== actor)
+			throw new NotFoundException('Upload not found');
+		if (asset.originalStorageKey) await this.storage.delete(asset.originalStorageKey);
+		await this.assets.hardDelete(id);
+		await this.storageCheck.release(`res_${id}`);
+	}
+
 	/** The browser finished its PUT: the file is ready (nothing to process) and its hold ends. */
 	async finalizeFile(actor: string, id: string, now = new Date()): Promise<{ assetId: string; state: 'ready' }> {
 		const asset = await this.requireFile(id);
@@ -535,24 +551,20 @@ export class MediaLibraryService {
 
 	/** S6: exactly the same bytes somewhere in Media, or the same name in this folder. */
 	async duplicates(query: MediaDuplicateQuery): Promise<MediaDuplicateAnswer> {
-		const same = await this.files.findBySha256(query.files.map((file) => file.sha256));
+		const hashes = query.files.flatMap((file) => (file.sha256 ? [file.sha256] : []));
+		const same = await this.files.findBySha256(hashes);
 		const names = await this.files.namesIn(query.folderId);
-		const inFolder = await this.files.browse({
-			folderId: query.folderId,
-			trashed: false,
-			sort: 'name',
-			direction: 'asc',
-			page: 1,
-			pageSize: 200,
-			search: undefined,
-		});
+		const named = await this.files.findNamedIn(
+			query.folderId,
+			query.files.map((file) => file.name),
+		);
 		const all = await this.folders.listAll();
 		const lookup = new Map(all.map((row) => [row.id, row]));
 		const taken = [...names];
 		return {
 			files: query.files.map((file) => {
-				const identical = same.find((asset) => asset.sha256 === file.sha256) ?? null;
-				const named = inFolder.items.find(
+				const identical = file.sha256 ? (same.find((asset) => asset.sha256 === file.sha256) ?? null) : null;
+				const sameName = named.find(
 					(asset) => fileName(asset).toLocaleLowerCase() === file.name.toLocaleLowerCase(),
 				);
 				const keepBothName = freeName(file.name, taken);
@@ -566,7 +578,10 @@ export class MediaLibraryService {
 								location: this.location(identical.folderId ?? null, lookup),
 							}
 						: null,
-					sameName: named && named.sha256 !== file.sha256 ? { id: named.id, name: fileName(named) } : null,
+					sameName:
+						sameName && (!file.sha256 || sameName.sha256 !== file.sha256)
+							? { id: sameName.id, name: fileName(sameName) }
+							: null,
 					keepBothName,
 				};
 			}),

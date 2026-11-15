@@ -211,6 +211,17 @@ export class AdminMediaLibraryController {
 		return this.library.presignFile(actor(principal), body);
 	}
 
+	@Post('files/:id/cancel')
+	@HttpCode(204)
+	@RequirePermissions('attachment.create')
+	@ApiOperation({
+		operationId: 'cancelMediaFileUpload',
+		summary: 'Drop your own unfinished upload: its record, any stored bytes and its hold',
+	})
+	cancelUpload(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
+		return this.library.cancelUpload(actor(principal), id);
+	}
+
 	@Get('files/:id/address')
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('attachment.index')

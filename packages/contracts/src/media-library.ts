@@ -203,8 +203,14 @@ export const MediaDuplicateQuery = z.object({
 			z.object({
 				name: z.string().min(1).max(255),
 				bytes: z.number().int().nonnegative(),
-				/** SHA-256 of the picked file (hex), counted in the browser. */
-				sha256: z.string().regex(/^[0-9a-f]{64}$/),
+				/**
+				 * SHA-256 of the picked file (hex), counted in the browser. Left out for files too big
+				 * to read whole in a browser tab: those get the same-name check only.
+				 */
+				sha256: z
+					.string()
+					.regex(/^[0-9a-f]{64}$/)
+					.optional(),
 			}),
 		)
 		.min(1)

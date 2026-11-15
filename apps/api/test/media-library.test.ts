@@ -66,6 +66,13 @@ function harness() {
 		},
 		findBySha256: async (hashes: readonly string[]) =>
 			[...files.values()].filter((asset) => !asset.trashedAt && hashes.includes(asset.sha256 ?? '')),
+		findNamedIn: async (folderId: string | null, names: readonly string[]) =>
+			[...files.values()].filter(
+				(asset) =>
+					(asset.folderId ?? null) === folderId &&
+					!asset.trashedAt &&
+					names.some((name) => name.toLowerCase() === (asset.displayName ?? asset.slug).toLowerCase()),
+			),
 		namesIn: async (folderId: string | null) =>
 			[...files.values()]
 				.filter((asset) => (asset.folderId ?? null) === folderId && !asset.trashedAt)
@@ -140,6 +147,7 @@ function harness() {
 			headers: {},
 		}),
 		setVisibility: vi.fn(async () => undefined),
+		delete: vi.fn(async () => undefined),
 		createSignedDownloadUrl: vi.fn(
 			async (input: { key: string; expiresInSeconds: number; fileName?: string; disposition?: string }) =>
 				`https://spaces.test/${input.key}?for=${input.expiresInSeconds}&as=${input.disposition}&name=${input.fileName}`,
@@ -439,6 +447,20 @@ describe('the Media page', () => {
 			keepBothName: 'back (1).jpg',
 		});
 	});
+
+	it('break-it: a file too big to hash gets the same-name check only, whatever the letter case', async () => {
+		const h = harness();
+		h.file('med_video', { sha256: 'd'.repeat(64), displayName: 'Shoot.mp4' });
+		const answer = await h.service.duplicates({
+			folderId: null,
+			files: [
+				{ name: 'shoot.MP4', bytes: 1_700_000_000 },
+				{ name: 'other.mp4', bytes: 1_700_000_000 },
+			],
+		});
+		expect(answer.files[0]).toMatchObject({ identical: null, sameName: { id: 'med_video' } });
+		expect(answer.files[1]).toMatchObject({ identical: null, sameName: null, keepBothName: 'other.mp4' });
+	});
 });
 
 describe('plain files', () => {
@@ -490,6 +512,44 @@ describe('plain files', () => {
 		// Finishing twice changes nothing.
 		await h.service.finalizeFile('adm_1', presigned.assetId);
 		expect(h.storageCheck.release).toHaveBeenCalledTimes(1);
+	});
+
+	it('wait for image profiles when they are photos; camera RAW and every other file upload now', async () => {
+		const h = harness();
+		const request = (fileName: string, contentType: string) => ({
+			fileName,
+			contentType,
+			byteSize: 10,
+			folderId: null,
+		});
+		expect(await refusalCode(h.service.presignFile('adm_1', request('red.jpg', 'image/jpeg')))).toBe(
+			'photo_needs_profiles',
+		);
+		expect(await refusalCode(h.service.presignFile('adm_1', request('IMG_0412.HEIC', 'image/heic')))).toBe(
+			'photo_needs_profiles',
+		);
+		expect(h.storageCheck.admit).not.toHaveBeenCalled();
+		const raw = await h.service.presignFile('adm_1', request('DSC0412.CR3', 'image/x-canon-cr3'));
+		expect(h.files.get(raw.assetId)).toMatchObject({ kind: 'file', displayName: 'DSC0412.CR3' });
+	});
+
+	it('drops one’s own unfinished upload with its stored bytes and hold, and nothing else (BOLA)', async () => {
+		const h = harness();
+		const mine = await h.service.presignFile('adm_1', {
+			fileName: 'brief.pdf',
+			contentType: 'application/pdf',
+			byteSize: 10,
+			folderId: null,
+		});
+		await expect(h.service.cancelUpload('adm_2', mine.assetId)).rejects.toBeInstanceOf(NotFoundException);
+		await h.service.cancelUpload('adm_1', mine.assetId);
+		expect(h.files.has(mine.assetId)).toBe(false);
+		expect(h.storage.delete).toHaveBeenCalledWith(`media/${mine.assetId}/original.pdf`);
+		expect(h.storageCheck.release).toHaveBeenCalledWith(`res_${mine.assetId}`);
+		// A finished file is not an upload to cancel.
+		h.file('med_done', { processing: { state: 'ready' }, uploadedBy: { type: 'admin', id: 'adm_1' } });
+		await expect(h.service.cancelUpload('adm_1', 'med_done')).rejects.toBeInstanceOf(NotFoundException);
+		expect(h.files.has('med_done')).toBe(true);
 	});
 
 	it('refuses a folder in Trash, and nothing is held', async () => {

@@ -88,6 +88,8 @@ export interface MediaBrowseRepository {
 	findBySha256(hashes: readonly string[]): Promise<MediaAsset[]>;
 	/** Names of the files in one folder, not in Trash: for "(1)", "(2)". */
 	namesIn(folderId: string | null): Promise<string[]>;
+	/** Files in one folder, not in Trash, named any of these (letter case ignored): S6's same name. */
+	findNamedIn(folderId: string | null, names: readonly string[]): Promise<MediaAsset[]>;
 	moveTo(ids: readonly string[], folderId: string | null): Promise<void>;
 	rename(id: string, name: string): Promise<void>;
 	/** Into Trash (at), or out of it (null) into `restoreTo`. */

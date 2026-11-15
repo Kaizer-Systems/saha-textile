@@ -13,6 +13,7 @@ import {
 	onDemand,
 	renameKeepingExtension,
 	downloadName,
+	waitsForImageProfiles,
 	restoreTarget,
 	shareCreateRefusal,
 	shareExpiresAt,
@@ -62,6 +63,18 @@ describe('names', () => {
 		expect(downloadName('3-bengali-bridal-saree', 'media/med_1/original.JPG')).toBe('3-bengali-bridal-saree.jpg');
 		expect(downloadName('size chart.pdf', 'media/med_2/original.pdf')).toBe('size chart.pdf');
 		expect(downloadName('notes', 'media/med_3/original')).toBe('notes');
+	});
+});
+
+describe('photos wait for image profiles', () => {
+	it('holds back photos the worker processes, and lets camera RAW and every other file through', () => {
+		expect(waitsForImageProfiles('image/jpeg', 'red.jpg')).toBe(true);
+		expect(waitsForImageProfiles('IMAGE/PNG', 'logo.PNG')).toBe(true);
+		expect(waitsForImageProfiles('image/heic', 'IMG_0412.HEIC')).toBe(true);
+		expect(waitsForImageProfiles('image/x-canon-cr3', 'DSC0412.CR3')).toBe(false);
+		expect(waitsForImageProfiles('image/x-nikon-nef', 'raw-dsc0099.nef')).toBe(false);
+		expect(waitsForImageProfiles('application/pdf', 'chart.pdf')).toBe(false);
+		expect(waitsForImageProfiles('video/mp4', 'shoot.mp4')).toBe(false);
 	});
 });
 

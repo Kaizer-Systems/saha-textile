@@ -288,6 +288,22 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 		return docs.map((doc) => doc.displayName ?? doc.slug);
 	}
 
+	async findNamedIn(folderId: string | null, names: readonly string[]): Promise<MediaAsset[]> {
+		if (!names.length) return [];
+		const list = [...names];
+		// A file shows its Media name, or its web file name when it has none (older photos).
+		const docs = await MediaAssetModel.find({
+			folderId,
+			deletedAt: null,
+			trashedAt: null,
+			$or: [{ displayName: { $in: list } }, { displayName: null, slug: { $in: list } }],
+		})
+			.collation({ locale: 'en', strength: 2 })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
 	async moveTo(ids: readonly string[], folderId: string | null): Promise<void> {
 		await MediaAssetModel.updateMany({ _id: { $in: [...ids] } }, { $set: { folderId } }).exec();
 	}

@@ -1318,3 +1318,23 @@ The owner accepted the media file manager brief (revision 6) on 2026-11-15, incl
 - **Delete** (only once the shop is off) removes the language from every list and switch and keeps its text; after 30 days unused the bell reminds the owner every 30 days. **Erase**, from that reminder, removes the stored text for good after the language's name is typed. Files in the code stay until a release removes them.
 - **Legal pages become real admin Pages** (privacy, shipping, returns and refunds, terms) in their own chunk with its own brief; until then they count as to-dos for a new language.
 - **A new permission, `language.manage`**, held by the Administrator role only at first. **Messages** (email, SMS, WhatsApp) fall back to English and never block a language.
+
+## Owner decision round (2026-11-15) — legal pages in the admin (brief accepted)
+
+Brief: https://claude.ai/artifact/Byj8JxDnANYQPnnqNhnBtW. The owner wrote “your legal pages brief is
+approved”, accepting it as drawn with the recommended choice in each question. Nothing is built yet.
+
+- **The pages.** Privacy Policy, Terms & Conditions, Refund & Returns Policy and Shipping Policy
+  become database pages in Admin › Pages, written per language behind the one Language switch.
+  The shop reads them from the API at the same addresses. A release step copies today's text in
+  once and never overwrites a page already stored.
+- **1 · Only the four legal pages (A).** Their URL slugs are fixed; they cannot be deleted or taken
+  off the shop. A save is refused while any language the shop shows lacks a title or content.
+  Draft languages may stay empty and count as that language's to-dos.
+- **2 · “Last updated” date** under the title on the shop page.
+- **3 · Earlier versions** kept in the database; no screen for them yet.
+- **4 · The eight page files** in the shop's code are deleted in the same change.
+- **5 · Menu place** unchanged: Pages stays between Blog and Taxes.
+- **Removals.** Choice A drops the demo screens' Add Page button, Delete action, row tick boxes and
+  Status switch; choice 4 deletes the eight files. They were named in the brief and approved with
+  it in typed words; the build still names each one again before it lands.

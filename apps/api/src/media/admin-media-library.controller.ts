@@ -30,6 +30,7 @@ import {
 	MediaRestoreRequest,
 	MediaSelection,
 	type MediaFileAddress,
+	type MediaFileDetails,
 	MediaFileAddressQuery,
 	type MediaMultipartStart,
 	type MediaPartUrls,
@@ -88,8 +89,20 @@ export class AdminMediaLibraryController {
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('attachment.index')
 	@ApiOperation({ operationId: 'mediaActivity', summary: 'Who did what on the Media page, newest first' })
-	activity(@Query('page') page?: string) {
-		return this.library.activity(Math.max(1, Number(page) || 1), 50);
+	activity(@Query('page') page?: string, @Query('entityId') entityId?: string) {
+		const id = typeof entityId === 'string' && /^[\w-]{1,80}$/.test(entityId) ? entityId : undefined;
+		return this.library.activity(Math.max(1, Number(page) || 1), 50, id);
+	}
+
+	@Get('files/:id/details')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({
+		operationId: 'mediaFileDetails',
+		summary: 'One file: its facts, where it is used, its versions with their files, and per-photo pictures',
+	})
+	fileDetails(@Param('id') id: string): Promise<MediaFileDetails> {
+		return this.library.details(id);
 	}
 
 	@Post('folders')

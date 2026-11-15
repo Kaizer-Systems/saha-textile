@@ -187,6 +187,52 @@ export type MediaTrashCheck = z.infer<typeof MediaTrashCheck>;
 export const MediaFileAddressQuery = z.object({ as: z.enum(['view', 'save']).default('save') });
 export type MediaFileAddressQuery = z.infer<typeof MediaFileAddressQuery>;
 export const MediaFileAddress = z.object({ url: z.string().url() });
+
+/** One made file in a version's tree (A31B): its size and its public address. */
+const MediaDetailFile = z.object({
+	width: z.number().int().positive(),
+	height: z.number().int().positive(),
+	bytes: z.number().int().nonnegative(),
+	format: z.string(),
+	url: z.string(),
+});
+
+/** A size family of a version: its role key and files, smallest first. */
+const MediaDetailFamily = z.object({ role: z.string(), files: z.array(MediaDetailFile) });
+
+/**
+ * `GET /admin/media/library/files/:id/details` (A31, A31B, A32): what the details popup shows. Versions are the
+ * photo's branches with their size families and files; per-photo pictures (link preview, status card, feed
+ * square, email picture) are listed apart.
+ */
+export const MediaFileDetails = z.object({
+	id: Id,
+	name: z.string(),
+	kind: z.enum(['image', 'video', 'file']),
+	contentType: z.string(),
+	bytes: z.number().int().nonnegative(),
+	width: z.number().int().positive().nullable(),
+	height: z.number().int().positive().nullable(),
+	folderPath: z.array(z.string()),
+	uploadedBy: z.string().nullable(),
+	uploadedAt: IsoDateTime.nullable(),
+	usedOn: z.array(z.string()),
+	visibility: z.enum(['public', 'private']),
+	versions: z.array(
+		z.object({
+			id: z.string(),
+			profileKey: z.string(),
+			fill: z.string(),
+			state: z.enum(['making', 'ready', 'failed']),
+			error: z.string().nullable(),
+			createdAt: IsoDateTime,
+			bytes: z.number().int().nonnegative(),
+			families: z.array(MediaDetailFamily),
+		}),
+	),
+	perPhoto: z.array(MediaDetailFamily),
+});
+export type MediaFileDetails = z.infer<typeof MediaFileDetails>;
 export type MediaFileAddress = z.infer<typeof MediaFileAddress>;
 
 /** S11: a big upload in parts. Every call names the upload the browser started. */

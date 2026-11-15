@@ -171,7 +171,13 @@ function harness() {
 	const storageCheck = { admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) };
 	const auditRepo = {
 		append: async (entry: AuditLog) => (audit.unshift(entry), entry),
-		list: async () => ({ items: [...audit], total: audit.length, page: 1, pageSize: 50 }),
+		list: async (query: { entityType?: string; entityId?: string } = {}) => {
+			// One item's trail (A43) filters by its id and type; the page-wide list takes everything.
+			const items = query.entityId
+				? audit.filter((row) => row.entityId === query.entityId && row.entityType === query.entityType)
+				: [...audit];
+			return { items, total: items.length, page: 1, pageSize: 50 };
+		},
 	};
 	const service = new MediaLibraryService(
 		folderRepo as never,
@@ -190,6 +196,7 @@ function harness() {
 				return found && key === 'hero_16x9' ? { ...found, enabled: false } : found;
 			},
 		},
+		{ findById: async (id: string) => (id === 'adm_1' ? { displayName: 'Moulik' } : null) } as never,
 	);
 	const file = (id: string, overrides: Record<string, unknown> = {}) =>
 		files.set(
@@ -855,5 +862,70 @@ describe('filters on the Media page (A11, A12)', () => {
 		expect(spy.mock.lastCall?.[0]).toMatchObject({ createdSince: '2026-10-16T10:00:00.000Z' });
 		await h.service.browse('adm_1', { ...base, view: 'recent', uploaded: '7d' }, NOW);
 		expect(spy.mock.lastCall?.[0]).toMatchObject({ createdSince: '2026-11-08T10:00:00.000Z' });
+	});
+});
+
+describe('details and Activity (A31, A32, A43, step 2e)', () => {
+	it('shows a photo’s facts, folder, uploader, versions with their files, and per-photo pictures', async () => {
+		const h = harness();
+		const folder = await h.service.createFolder('adm_1', { name: 'Banarasi', parentId: null });
+		const file = (role: string, width: number, versionId: string | null) => ({
+			role,
+			storageKey: `media/med_v/${role}-${width}.webp`,
+			width,
+			height: width,
+			byteSize: width,
+			format: 'image/webp',
+			roleVersion: 1,
+			versionId,
+		});
+		h.file('med_v', {
+			folderId: folder.id,
+			width: 3000,
+			height: 4000,
+			uploadedBy: { type: 'admin', id: 'adm_1' },
+			createdAt: '2026-11-16T00:00:00.000Z',
+			versions: [
+				{
+					id: 'product_3x4.as_is',
+					profileKey: 'product_3x4',
+					profileVersion: 1,
+					fill: 'as_is',
+					state: 'ready',
+					createdAt: '2026-11-16T00:00:00.000Z',
+				},
+			],
+			derivatives: [
+				file('card', 400, 'product_3x4.as_is'),
+				file('card', 200, 'product_3x4.as_is'),
+				file('share', 1200, null),
+			],
+		});
+		const details = await h.service.details('med_v');
+		expect(details).toMatchObject({
+			name: 'med_v.jpg',
+			folderPath: ['Banarasi'],
+			uploadedBy: 'Moulik',
+			width: 3000,
+		});
+		expect(details.versions[0]).toMatchObject({ id: 'product_3x4.as_is', bytes: 600, state: 'ready', error: null });
+		expect(details.versions[0]?.families[0]?.files.map((row) => row.width)).toEqual([200, 400]);
+		expect(details.perPhoto.map((family) => family.role)).toEqual(['share']);
+		await expect(h.service.details('nope')).rejects.toThrow('File not found');
+	});
+
+	it('lists one item’s own trail, the Media page’s and the pipeline’s entries together, newest first', async () => {
+		const h = harness();
+		h.file('med_a');
+		const entry = (id: string, entityType: string, entityId: string, createdAt: string) =>
+			({ id, entityType, entityId, createdAt, action: 'x', actorUserId: 'adm_1' }) as never;
+		h.audit.push(
+			entry('a1', 'media', 'med_a', '2026-11-16T10:00:00.000Z'),
+			entry('a2', 'mediaAsset', 'med_a', '2026-11-16T11:00:00.000Z'),
+			entry('a3', 'media', 'med_b', '2026-11-16T12:00:00.000Z'),
+		);
+		const trail = await h.service.activity(1, 50, 'med_a');
+		expect(trail.items.map((row) => row.id)).toEqual(['a2', 'a1']);
+		expect((await h.service.activity(1, 50)).items.length).toBeGreaterThanOrEqual(3);
 	});
 });

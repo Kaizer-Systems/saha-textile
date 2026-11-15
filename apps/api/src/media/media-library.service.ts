@@ -21,6 +21,7 @@ import type {
 	MediaRestoreRequest,
 	MediaSelection,
 	MediaFileAddress,
+	MediaFileDetails,
 	MediaMultipartStart,
 	MediaPartUrls,
 	MediaPartsRequest,
@@ -29,6 +30,7 @@ import type {
 	MediaVersion,
 } from '@saha-textile/contracts';
 import {
+	type AdminUserRepository,
 	type AuditLogRepository,
 	type MediaAssetRepository,
 	type MediaBrowseFilter,
@@ -67,6 +69,7 @@ import {
 
 import { domainRefusal } from '../auth/domain-refusal';
 import {
+	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	MEDIA_BROWSE_REPOSITORY,
@@ -132,6 +135,7 @@ export class MediaLibraryService {
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		private readonly storageCheck: MediaStorageService,
 		@Inject(MEDIA_PROFILE_REPOSITORY) private readonly profiles: Pick<MediaProfileRepository, 'findByKey'>,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 	) {}
 
 	// --- Reading ----------------------------------------------------------------------------------
@@ -787,9 +791,74 @@ export class MediaLibraryService {
 		};
 	}
 
-	/** S9: who did what on the Media page, newest first. */
-	async activity(page: number, pageSize: number) {
-		return this.audit.list({ entityType: 'media', page, pageSize } as never);
+	/**
+	 * S9: who did what on the Media page, newest first; with a file or folder id, that item's own trail (A43), the
+	 * Media page's entries and the image pipeline's together.
+	 */
+	async activity(page: number, pageSize: number, entityId?: string) {
+		if (!entityId) return this.audit.list({ entityType: 'media', page, pageSize } as never);
+		const [media, pipeline] = await Promise.all([
+			this.audit.list({ entityType: 'media', entityId, page: 1, pageSize: 200 } as never),
+			this.audit.list({ entityType: 'mediaAsset', entityId, page: 1, pageSize: 200 } as never),
+		]);
+		const items = [...media.items, ...pipeline.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+		return { items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length, page, pageSize };
+	}
+
+	/** A31, A31B, A32: what the details popup shows about one file. */
+	async details(id: string): Promise<MediaFileDetails> {
+		const asset = await this.requireFile(id);
+		const folder = asset.folderId ? await this.folders.findById(asset.folderId) : null;
+		const folderPath = folder ? (await this.breadcrumb(folder)).map((crumb) => crumb.name) : [];
+		const uploader =
+			asset.uploadedBy?.type === 'admin'
+				? await this.admins.findById(asset.uploadedBy.id).catch(() => null)
+				: null;
+		const used = (await this.files.whereUsed([asset.id])).get(asset.id) ?? [];
+		const familiesOf = (rows: typeof asset.derivatives) => {
+			const byRole = new Map<string, typeof asset.derivatives>();
+			for (const row of rows) byRole.set(row.role, [...(byRole.get(row.role) ?? []), row]);
+			return [...byRole.entries()].map(([role, files]) => ({
+				role,
+				files: [...files]
+					.sort((a, b) => a.width - b.width)
+					.map((file) => ({
+						width: file.width,
+						height: file.height,
+						bytes: file.byteSize,
+						format: file.format,
+						url: this.storage.getUrl(file.storageKey),
+					})),
+			}));
+		};
+		return {
+			id: asset.id,
+			name: fileName(asset),
+			kind: asset.kind,
+			contentType: asset.originalFormat,
+			bytes: asset.originalByteSize,
+			width: asset.width,
+			height: asset.height,
+			folderPath,
+			uploadedBy: uploader ? (uploader.displayName ?? uploader.username ?? uploader.email ?? null) : null,
+			uploadedAt: asset.createdAt ?? null,
+			usedOn: used,
+			visibility: asset.visibility,
+			versions: (asset.versions ?? []).map((version) => {
+				const files = asset.derivatives.filter((row) => row.versionId === version.id);
+				return {
+					id: version.id,
+					profileKey: version.profileKey,
+					fill: version.fill,
+					state: version.state,
+					error: version.error ?? null,
+					createdAt: version.createdAt,
+					bytes: files.reduce((sum, row) => sum + row.byteSize, 0),
+					families: familiesOf(files),
+				};
+			}),
+			perPhoto: familiesOf(asset.derivatives.filter((row) => !row.versionId)),
+		};
 	}
 
 	/** S1: reverses a move, a rename or a Trash, once, by the person who did it. */

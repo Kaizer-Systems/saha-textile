@@ -52,6 +52,7 @@ const library = new MediaLibraryService(
 	queue,
 	storageCheck as never,
 	new MongoMediaProfileRepository(),
+	{ findById: async () => null } as never,
 );
 // Every open is allowed here; the limits are covered by their own tests.
 const limits = {

@@ -1443,3 +1443,17 @@ and asked for the cart, phone cart and mini cart screens to be redrawn with alig
 - **Cart page, wide screens:** the small stepper under the product name is hidden from 992 px up,
   where the Quantity column already shows one (owner's written OK, 2026-11-15). The theme hid it by
   position (`li:nth-child(n + 4)`), which missed items without a discount. Phones and tablets keep it.
+
+## Owner decision round (2026-11-15) — the shop's share link page (media step 1.4)
+
+Brief: https://claude.ai/artifact/F22nAygDh1T3PtZPvY7g5a. The owner accepted it (“looks good and I
+accept it”), with both recommended choices, and asked what happens after “Opening the file…”.
+
+- **S1–S6 as drawn**, built from the shop's sign-in and not-found pages; nothing custom.
+- **Dark-mode red alerts, shop-wide:** colour only in the shop's dark file (dark red surface, light
+  red text). The sign-in page's error was unreadable in dark mode before this.
+- **After “Opening the file…” (revision 2):** files the browser can show open in its own viewer in
+  the same tab (S7); anything else downloads and the page says so (S8). At the owner's request S8
+  carries “If your download didn't start automatically, click here to download it.”, which fetches
+  a fresh five-minute address, as Google Drive and OneDrive do. S9 shows Spaces' own message when the
+  viewer is reloaded after five minutes; opening the share link again works.

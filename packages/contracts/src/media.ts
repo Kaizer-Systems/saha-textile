@@ -44,7 +44,7 @@ export const MediaRoleKey = z
 	.regex(/^[a-z][a-z0-9_]{1,39}$/, 'role keys are lower snake case, 2–40 characters');
 export type MediaRoleKey = z.infer<typeof MediaRoleKey>;
 
-export const MediaKind = z.enum(['image', 'video']);
+export const MediaKind = z.enum(['image', 'video', 'file']);
 export type MediaKind = z.infer<typeof MediaKind>;
 
 /**
@@ -83,6 +83,13 @@ export type DerivativeFormat = z.infer<typeof DerivativeFormat>;
 /** Master video upload format (H.264/AAC MP4, 1080p or better). Dormant: video is off at launch. */
 export const VideoUploadFormat = z.enum(['video/mp4']);
 export type VideoUploadFormat = z.infer<typeof VideoUploadFormat>;
+
+/** A plain file's MIME type (Media page, step 1): stored as it is, never processed. */
+export const PlainFileFormat = z
+	.string()
+	.regex(/^[\w.+-]+\/[\w.+-]+$/)
+	.max(127);
+export type PlainFileFormat = z.infer<typeof PlainFileFormat>;
 
 /**
  * Ingest limits as served to clients (`GET /media/upload-rules`). The numbers are domain
@@ -271,7 +278,8 @@ export const MediaAsset = z
 		purpose: MediaPurpose.default('product'),
 		/** Spaces key of the retained original; null once discarded (review photos) or purged. */
 		originalStorageKey: z.string().min(1).nullable().default(null),
-		originalFormat: z.union([ImageUploadFormat, VideoUploadFormat]),
+		/** The upload's type: JPEG or PNG for images, MP4 for videos, any MIME type for a plain file. */
+		originalFormat: z.union([ImageUploadFormat, VideoUploadFormat, PlainFileFormat]),
 		originalByteSize: z.number().int().nonnegative(),
 		width: z.number().int().positive().nullable().default(null),
 		height: z.number().int().positive().nullable().default(null),
@@ -319,6 +327,20 @@ export const MediaAsset = z
 			.default(null),
 		/** Soft delete for orphan GC after grace (`DEC-DELETE-RETENTION`). */
 		deletedAt: IsoDateTime.nullable().default(null),
+		/**
+		 * The Media page (step 1): its folder (absent or null is My files), its name there, and Trash.
+		 * Optional, so an asset written before step 1 reads as being in My files and not in Trash.
+		 */
+		folderId: Id.nullable().optional(),
+		displayName: z.string().max(255).nullable().optional(),
+		/** SHA-256 of the uploaded bytes (hex), for the duplicate check (S6). */
+		sha256: z
+			.string()
+			.regex(/^[0-9a-f]{64}$/)
+			.nullable()
+			.optional(),
+		trashedAt: IsoDateTime.nullable().optional(),
+		trashedFrom: Id.nullable().optional(),
 		createdAt: IsoDateTime.optional(),
 		updatedAt: IsoDateTime.optional(),
 	})
@@ -347,6 +369,14 @@ export const MediaAsset = z
 					path: ['originalFormat'],
 				});
 			}
+		}
+
+		if (asset.kind === 'file' && asset.derivatives.length > 0) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'a plain file is stored as it is and has no image sizes',
+				path: ['derivatives'],
+			});
 		}
 
 		if (asset.kind === 'video') {

@@ -13,6 +13,7 @@ import {
 	type MediaDuplicateAnswer,
 	type MediaDuplicateQuery,
 	type MediaFavouriteWrite,
+	type MediaFileAddress,
 	type MediaFilePresignRequest,
 	type MediaFilePresignResponse,
 	type MediaFolderCreate,
@@ -23,6 +24,7 @@ import {
 	type MediaOperationResult,
 	type MediaRestoreRequest,
 	type MediaSelection,
+	type MediaTrashCheck,
 	type ShareLinkCreate,
 	type ShareLinkUpdate,
 	type ShareLinkView,
@@ -77,6 +79,10 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 		return this.http.post<MediaOperationResult>(this.url('/move'), body, quiet());
 	}
 
+	override checkTrash(body: MediaSelection): Observable<MediaTrashCheck> {
+		return this.http.post<MediaTrashCheck>(this.url('/trash/check'), body, quiet());
+	}
+
 	override trash(body: MediaSelection): Observable<MediaOperationResult> {
 		return this.http.post<MediaOperationResult>(this.url('/trash'), body, quiet());
 	}
@@ -119,6 +125,13 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 			{ visibility },
 			quiet(),
 		);
+	}
+
+	override fileAddress(fileId: string, as: 'view' | 'save'): Observable<MediaFileAddress> {
+		return this.http.get<MediaFileAddress>(this.url(`/files/${id(fileId)}/address`), {
+			params: { as },
+			...quiet(),
+		});
 	}
 
 	override links(fileId: string): Observable<ShareLinksResponse> {

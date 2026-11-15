@@ -88,6 +88,12 @@
 				[class.is-pending]="pending(file)"
 				[class.is-selected]="selected().has(file.id)"
 				[attr.data-file]="file.id"
+				[attr.draggable]="trash() ? null : 'true'"
+				(click)="trash() || pick.emit({ item: ref(file), event: $event, anchor: null })"
+				(dblclick)="trash() || activate.emit(file)"
+				(contextmenu)="trash() || menu.emit({ item: ref(file), event: $event, anchor: null })"
+				(dragstart)="trash() || dragStart.emit({ item: ref(file), event: $event })"
+				(dragend)="dragEnd.emit()"
 			>
 				@if (!trash()) {
 				<td class="sm-width">
@@ -97,6 +103,7 @@
 							class="custom-control-input checkbox_animated"
 							[attr.aria-label]="file.name"
 							[checked]="selected().has(file.id)"
+							(click)="alone($event)"
 							(change)="toggleSelect.emit(file.id)"
 						/>
 					</div>
@@ -199,9 +206,19 @@
 								href="javascript:void(0)"
 								class="fm-star"
 								[title]="(file.starred ? 'fm_unstar' : 'fm_star') | transloco"
-								(click)="star.emit(file)"
+								(click)="alone($event); star.emit(file)"
 							>
 								<i [class]="file.starred ? 'ri-star-fill' : 'ri-star-line'"></i>
+							</a>
+						</li>
+						<li>
+							<a
+								href="javascript:void(0)"
+								data-action="more"
+								[title]="'fm_more_actions' | transloco"
+								(click)="more(file, $event)"
+							>
+								<i class="ri-more-2-fill"></i>
 							</a>
 						</li>
 					</ul>
@@ -220,14 +237,18 @@
 	@for (file of files(); track file.id) {
 	<div
 		class="fm-tile"
+		draggable="true"
 		[class.is-pending]="pending(file)"
 		[class.is-selected]="selected().has(file.id)"
+		[class.is-drag]="dragging().has(file.id)"
 		[attr.data-file]="file.id"
+		(click)="pick.emit({ item: ref(file), event: $event, anchor: null })"
+		(dblclick)="activate.emit(file)"
+		(contextmenu)="menu.emit({ item: ref(file), event: $event, anchor: null })"
+		(dragstart)="dragStart.emit({ item: ref(file), event: $event })"
+		(dragend)="dragEnd.emit()"
 	>
-		<div
-			class="fm-thumb"
-			(click)="toggleSelect.emit(file.id)"
-		>
+		<div class="fm-thumb">
 			@if (file.thumbnailUrl) {
 			<img
 				[src]="file.thumbnailUrl"
@@ -243,11 +264,28 @@
 			} @if (file.starred) {
 			<i class="ri-star-fill fm-tstar"></i>
 			}
-			<span class="fm-check">
+			<span
+				class="fm-check"
+				role="checkbox"
+				[title]="'fm_tick' | transloco"
+				[attr.aria-checked]="selected().has(file.id)"
+				[attr.aria-label]="file.name"
+				(click)="alone($event); toggleSelect.emit(file.id)"
+			>
 				@if (selected().has(file.id)) {
 				<i class="ri-check-line"></i>
 				}
 			</span>
+			@if (!pending(file)) {
+			<span
+				class="fm-tmenu"
+				role="button"
+				[title]="'fm_more_actions' | transloco"
+				(click)="more(file, $event)"
+			>
+				<i class="ri-more-fill"></i>
+			</span>
+			}
 			<span class="fm-ttype">{{ typeLabel(file) }}</span>
 		</div>
 		<div class="fm-cap">

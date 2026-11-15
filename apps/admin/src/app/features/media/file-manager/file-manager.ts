@@ -1,7 +1,18 @@
-import { Component, DestroyRef, type TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
+import {
+	Component,
+	DestroyRef,
+	type ElementRef,
+	HostListener,
+	type TemplateRef,
+	computed,
+	inject,
+	signal,
+	viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
@@ -12,8 +23,11 @@ import {
 	type MediaBrowseQuery,
 	type MediaCategory,
 	type MediaFileRow,
+	type MediaFolderRow,
 	MediaLibraryGateway,
 	type MediaOperationResult,
+	type MediaSelection,
+	type MediaTrashCheck,
 } from '@core/media-library/media-library.gateway';
 import {
 	MEDIA_LIBRARY_KEY,
@@ -23,11 +37,26 @@ import {
 } from '@data-access/queries/media-library.queries';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
+import { FileSizePipe, PluralPipe, translateCount } from '@shared/pipes/language.pipes';
 import { Button } from '@shared/ui/button/button';
 
-import { FmFileList, type TrashItem } from './fm-file-list';
+import { fileKind } from './file-kinds';
+import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
+import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
+import {
+	type FmItemRef,
+	type FmSelection,
+	NO_SELECTION,
+	blockedTargets,
+	commonPlace,
+	isPicked,
+	pickHow,
+	pickItem,
+	pickedCount,
+	stepItem,
+} from './fm-selection';
 import { FM_CATEGORIES, FmSidebar, type FmNav } from './fm-sidebar';
+import { FmUndoToast } from './fm-undo-toast';
 
 const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash'];
 /** The sort menu: what each choice asks the API for. */
@@ -56,11 +85,59 @@ export const FM_FILTER_OPTIONS = {
 } as const;
 const NO_FILTERS: FmFilters = { cats: [], state: null, size: null, up: null, used: null };
 
-/** What a confirmation popup is about: restore (A19), delete forever, or empty Trash. */
+/** What a confirmation popup is about: restore (A19), delete forever, empty Trash, or Trash (A25). */
 export type FmAsk =
 	| { kind: 'restore'; item: TrashItem; folderName: string }
 	| { kind: 'delete'; item: TrashItem }
-	| { kind: 'empty'; count: number };
+	| { kind: 'empty'; count: number }
+	| { kind: 'trash'; folder: MediaFolderRow | null; fileName: string | null; count: number };
+
+/** Undo stays on screen this long (S1); ⌘/Ctrl+Z works until the next change. */
+export const UNDO_SECONDS = 8;
+/** The menu's width in the brief's look (`fm-ctx`), to keep it inside the page. */
+const MENU_WIDTH = 230;
+/** Marks a drag that started on this page, so files dropped from the computer stay uploads (A29). */
+export const MEDIA_DRAG_TYPE = 'application/x-saha-textile-media';
+/** A see-through drag picture: the page draws its own label by the pointer (A28). */
+const BLANK_PICTURE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+/** The Rename popup (A24): a file keeps its extension, shown beside the box. */
+export interface FmRenaming {
+	type: 'folder' | 'file';
+	id: string;
+	base: string;
+	extension: string;
+	before: string;
+}
+
+/** What is being dragged (A28), and the words by the pointer. */
+interface FmDrag {
+	fileIds: string[];
+	folderIds: string[];
+	what: string;
+	thumb: string | null;
+}
+
+/** The keys list (A39): what is pressed, and what it does. `click` is the word Click. */
+export const FM_KEY_ROWS: ReadonlyArray<{ keys: readonly string[]; does: string }> = [
+	{ keys: ['click'], does: 'fm_key_click' },
+	{ keys: ['Shift', 'click'], does: 'fm_key_shift_click' },
+	{ keys: ['⌘ / Ctrl', 'click'], does: 'fm_key_command_click' },
+	{ keys: ['⌘ / Ctrl', 'A'], does: 'fm_key_select_all' },
+	{ keys: ['↑ ↓ ← →'], does: 'fm_key_arrows' },
+	{ keys: ['Enter'], does: 'fm_key_enter' },
+	{ keys: ['F2'], does: 'rename' },
+	{ keys: ['Delete'], does: 'fm_key_delete' },
+	{ keys: ['⌘ / Ctrl', 'Z'], does: 'fm_key_undo' },
+	{ keys: ['Esc'], does: 'fm_key_escape' },
+	{ keys: ['?'], does: 'fm_key_help' },
+];
+
+/** Keys type into boxes, never into the page (A39). */
+const typing = (target: EventTarget | null): boolean => {
+	const element = target as HTMLElement | null;
+	return !!element && (element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName ?? ''));
+};
 
 /**
  * Admin › Media as a file manager (media build step 1.5). The folder, search, category, sort and
@@ -70,7 +147,7 @@ export type FmAsk =
 @Component({
 	selector: 'app-file-manager',
 	templateUrl: './file-manager.html',
-	imports: [PageWrapper, TranslocoModule, FmSidebar, FmFileList, FileSizePipe, PluralPipe, Button],
+	imports: [PageWrapper, TranslocoModule, FmSidebar, FmFileList, FmMenu, FileSizePipe, PluralPipe, Button],
 })
 export class FileManager {
 	private readonly route = inject(ActivatedRoute);
@@ -81,7 +158,9 @@ export class FileManager {
 	private readonly modals = inject(NgbModal);
 	private readonly notifications = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
+	private readonly toastr = inject(ToastrService);
 	private searchTimer: ReturnType<typeof setTimeout> | null = null;
+	readonly mainRef = viewChild<ElementRef<HTMLElement>>('fmMain');
 
 	readonly confirmTemplate = viewChild<TemplateRef<unknown>>('fmConfirm');
 	readonly ask = signal<FmAsk | null>(null);
@@ -167,7 +246,7 @@ export class FileManager {
 	}
 
 	go(changes: Record<string, string | null>): void {
-		this.selected.set(new Set());
+		this.clearSelection();
 		void this.router.navigate([], { relativeTo: this.route, queryParams: changes, queryParamsHandling: 'merge' });
 	}
 
@@ -200,29 +279,229 @@ export class FileManager {
 		this.go({ who: who === 'everyone' ? 'everyone' : null });
 	}
 
-	// --- Selection, stars, New folder (A17, A23, A27) ----------------------------------------------
+	// --- Selection (A27, A39) --------------------------------------------------------------------
 
-	readonly selected = signal<ReadonlySet<string>>(new Set());
+	readonly selection = signal<FmSelection>(NO_SELECTION);
+	/** Where Shift+click counts from, and where the arrow keys start. */
+	private anchor: FmItemRef | null = null;
+	private cursor: FmItemRef | null = null;
+	/** Ticked files, for the list's checkboxes and tiles. */
+	readonly selected = computed(() => this.selection().files);
+	readonly selectedFolders = computed(() => this.selection().folders);
+	/** Folder cards, then files, as the page shows them: the order Shift+click and arrows follow. */
+	readonly ordered = computed<FmItemRef[]>(() => {
+		const data = this.result();
+		if (!data || this.nav() === 'trash') return [];
+		return [
+			...data.folders.map((row) => ({ type: 'folder' as const, id: row.id })),
+			...data.files.map((row) => ({ type: 'file' as const, id: row.id })),
+		];
+	});
+	readonly chosen = computed(() => {
+		const data = this.result();
+		const picked = this.selection();
+		return {
+			folders: (data?.folders ?? []).filter((row) => picked.folders.has(row.id)),
+			files: (data?.files ?? []).filter((row) => picked.files.has(row.id)),
+		};
+	});
+	readonly chosenCount = computed(() => pickedCount(this.selection()));
+	/** “2 folders and 3 files”, for the bulk bar (A27) and the toasts. */
+	readonly chosenWhat = computed(() => this.what(this.chosen().folders.length, this.chosen().files.length));
+
+	clearSelection(): void {
+		this.selection.set(NO_SELECTION);
+		this.anchor = null;
+		this.cursor = null;
+		this.menu.set(null);
+	}
+
+	/** A click on a folder card, a row or a tile (A39). */
+	pick(item: FmItemRef, event: MouseEvent): void {
+		const how = pickHow(event);
+		this.selection.set(pickItem(this.selection(), this.ordered(), item, how, this.anchor));
+		if (how !== 'range') this.anchor = item;
+		this.cursor = item;
+	}
+
+	toggleSelect(id: string): void {
+		const item: FmItemRef = { type: 'file', id };
+		this.selection.set(pickItem(this.selection(), this.ordered(), item, 'toggle', this.anchor));
+		this.anchor = item;
+		this.cursor = item;
+	}
+
+	/** The table head's box: every file shown, or none (folders keep their own picks). */
+	toggleAll(on: boolean): void {
+		this.selection.update((current) => ({
+			folders: current.folders,
+			files: on ? new Set((this.result()?.files ?? []).map((file) => file.id)) : new Set(),
+		}));
+	}
+
+	selectEverything(): void {
+		const items = this.ordered();
+		this.selection.set({
+			folders: new Set(items.filter((item) => item.type === 'folder').map((item) => item.id)),
+			files: new Set(items.filter((item) => item.type === 'file').map((item) => item.id)),
+		});
+	}
+
+	// --- Menus (A20–A22) ------------------------------------------------------------------------
+
+	readonly menu = signal<{
+		at: { x: number; y: number };
+		lines: FmMenuLine[];
+		moveOnly: boolean;
+		flip: boolean;
+	} | null>(null);
+	/** Move to: a chosen folder cannot go into itself or anything inside it. */
+	readonly moveBlocked = computed(() => blockedTargets(this.tree.data()?.folders ?? [], this.selection().folders));
+	/** Where everything chosen is now: moving there does nothing, so it is greyed. */
+	readonly moveHere = computed(() => {
+		const { folders, files } = this.chosen();
+		return commonPlace([...folders.map((row) => row.parentId ?? null), ...files.map((row) => row.folderId)]);
+	});
+
+	/** What the menu offers for what is chosen: one folder, one image, one other file, or several. */
+	menuLines(): FmMenuLine[] {
+		const { folders, files } = this.chosen();
+		if (folders.length + files.length > 1) return ['move', 'divider', 'trash'];
+		const folder = folders[0];
+		if (folder)
+			return ['open', 'new_inside', 'rename', 'move', folder.starred ? 'unstar' : 'star', 'divider', 'trash'];
+		const file = files[0];
+		if (!file) return [];
+		const star: FmMenuLine = file.starred ? 'unstar' : 'star';
+		if (file.state === 'awaiting_upload') return ['rename', 'move', star, 'divider', 'trash'];
+		if (file.kind === 'image') return ['rename', 'download_original', 'move', star, 'divider', 'trash'];
+		return ['preview', 'rename', 'download', 'move', star, 'divider', 'trash'];
+	}
+
+	/** Right-click, or the ⋮ on a row, tile or folder card. An item not picked yet becomes the pick. */
+	openMenu({ item, event, anchor }: FmItemEvent): void {
+		event.preventDefault();
+		event.stopPropagation();
+		if (!isPicked(this.selection(), item)) {
+			this.selection.set(pickItem(NO_SELECTION, [], item, 'only', null));
+			this.anchor = item;
+		}
+		this.cursor = item;
+		this.showMenu(this.menuLines(), event, anchor, false);
+	}
+
+	/** The bulk bar's Move to: the folder list opens under the button. */
+	openMoveMenu(event: MouseEvent): void {
+		event.stopPropagation();
+		this.showMenu([], event, event.currentTarget as HTMLElement, true);
+	}
+
+	private showMenu(lines: FmMenuLine[], event: MouseEvent, anchor: HTMLElement | null, moveOnly: boolean): void {
+		const box = this.mainRef()?.nativeElement.getBoundingClientRect();
+		if (!box) return;
+		let x = event.clientX - box.left;
+		let y = event.clientY - box.top;
+		if (anchor) {
+			const spot = anchor.getBoundingClientRect();
+			x = (moveOnly ? spot.left : spot.right - MENU_WIDTH) - box.left;
+			y = spot.bottom - box.top + 4;
+		}
+		x = Math.max(0, Math.min(x, box.width - MENU_WIDTH));
+		this.menu.set({ at: { x, y }, lines, moveOnly, flip: x + MENU_WIDTH * 2 > box.width });
+	}
+
+	@HostListener('document:click')
+	@HostListener('document:contextmenu')
+	closeMenu(): void {
+		if (this.menu()) this.menu.set(null);
+	}
+
+	async menuChoose(key: FmMenuKey): Promise<void> {
+		this.menu.set(null);
+		const { folders, files } = this.chosen();
+		const folder = folders[0];
+		const file = files[0];
+		switch (key) {
+			case 'open':
+				if (folder) this.openFolder(folder.id);
+				return;
+			case 'new_inside':
+				if (folder) this.openNewFolder(folder);
+				return;
+			case 'preview':
+				if (file) await this.openFile(file, 'view');
+				return;
+			case 'download':
+			case 'download_original':
+				if (file) await this.openFile(file, 'save');
+				return;
+			case 'rename':
+				this.openRename();
+				return;
+			case 'star':
+			case 'unstar':
+				if (folder)
+					await this.run(
+						this.gateway.star({ targetType: 'folder', targetId: folder.id, starred: key === 'star' }),
+						key === 'star' ? 'fm_starred' : 'fm_unstarred',
+					);
+				else if (file) await this.star(file);
+				return;
+			case 'trash':
+				await this.trashChosen(false);
+				return;
+			case 'move':
+				return;
+		}
+	}
+
+	/** Double-click or Enter: a folder opens; a file opens in a new tab until Details lands (step 2). */
+	async activate(item: FmItemRef): Promise<void> {
+		if (item.type === 'folder') return this.openFolder(item.id);
+		const file = this.result()?.files.find((row) => row.id === item.id);
+		if (file && file.state !== 'awaiting_upload') await this.openFile(file, 'view');
+	}
+
+	/**
+	 * Preview opens the original in a new tab; Download saves it. The tab opens at the click, so the
+	 * browser does not block it, and loses its link back to this page before anything loads in it.
+	 */
+	async openFile(file: MediaFileRow, as: 'view' | 'save'): Promise<void> {
+		const tab = as === 'view' ? window.open('', '_blank') : null;
+		if (tab) tab.opener = null;
+		try {
+			const { url } = await lastValueFrom(this.gateway.fileAddress(file.id, as));
+			if (tab) tab.location.href = url;
+			else if (as === 'view') window.open(url, '_blank', 'noopener');
+			else {
+				const link = document.createElement('a');
+				link.href = url;
+				link.rel = 'noopener';
+				document.body.appendChild(link);
+				link.click();
+				link.remove();
+			}
+		} catch (error) {
+			tab?.close();
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		}
+	}
+
+	// --- Stars, New folder, Rename (A17, A23, A24) ----------------------------------------------
+
 	readonly newFolderTemplate = viewChild<TemplateRef<unknown>>('fmNewFolder');
 	readonly newFolderName = signal('');
 	readonly newFolderError = signal<string | null>(null);
 	readonly creating = signal(false);
+	/** The folder a new folder goes into: the one shown, or the one whose menu said New folder inside. */
+	readonly newFolderParent = signal<{ id: string | null; place: string } | null>(null);
 	/** Where a new folder goes: the folder shown, or My files. */
 	readonly newFolderPlace = computed(() => {
+		const parent = this.newFolderParent();
+		if (parent) return parent.place;
 		const steps = this.result()?.breadcrumb ?? [];
 		return [this.transloco.translate('fm_my_files'), ...steps.map((step) => step.name)].join(' › ');
 	});
-
-	toggleSelect(id: string): void {
-		const next = new Set(this.selected());
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		this.selected.set(next);
-	}
-
-	toggleAll(on: boolean): void {
-		this.selected.set(on ? new Set((this.result()?.files ?? []).map((file) => file.id)) : new Set());
-	}
 
 	async star(file: MediaFileRow): Promise<void> {
 		await this.run(
@@ -231,11 +510,21 @@ export class FileManager {
 		);
 	}
 
-	openNewFolder(): void {
+	openNewFolder(inside: MediaFolderRow | null = null): void {
 		const template = this.newFolderTemplate();
 		if (!template) return;
 		this.newFolderName.set('');
 		this.newFolderError.set(null);
+		this.newFolderParent.set(
+			inside
+				? {
+						id: inside.id,
+						place: [this.transloco.translate('fm_my_files'), inside.location, inside.name]
+							.filter(Boolean)
+							.join(' › '),
+					}
+				: null,
+		);
 		this.modals.open(template, {
 			centered: true,
 			windowClass: 'theme-modal',
@@ -249,7 +538,8 @@ export class FileManager {
 		if (!name || this.creating()) return;
 		this.creating.set(true);
 		try {
-			await lastValueFrom(this.gateway.createFolder({ name, parentId: this.folderId() ?? null }));
+			const parentId = this.newFolderParent() ? (this.newFolderParent()?.id ?? null) : (this.folderId() ?? null);
+			await lastValueFrom(this.gateway.createFolder({ name, parentId }));
 			close();
 			this.notifications.showSuccess(this.transloco.translate('fm_folder_created'));
 			void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
@@ -258,6 +548,345 @@ export class FileManager {
 		} finally {
 			this.creating.set(false);
 		}
+	}
+
+	readonly renameTemplate = viewChild<TemplateRef<unknown>>('fmRename');
+	readonly renaming = signal<FmRenaming | null>(null);
+	readonly renameError = signal<string | null>(null);
+	readonly saving = signal(false);
+
+	/** F2 or the menu's Rename (A24): one folder or one file. */
+	openRename(): void {
+		const { folders, files } = this.chosen();
+		const template = this.renameTemplate();
+		if (folders.length + files.length !== 1 || !template) return;
+		const folder = folders[0];
+		const file = files[0];
+		if (folder)
+			this.renaming.set({ type: 'folder', id: folder.id, base: folder.name, extension: '', before: folder.name });
+		else if (file) {
+			const dot = file.name.lastIndexOf('.');
+			const extension = dot > 0 ? file.name.slice(dot) : '';
+			this.renaming.set({
+				type: 'file',
+				id: file.id,
+				base: extension ? file.name.slice(0, dot) : file.name,
+				extension,
+				before: file.name,
+			});
+		}
+		this.renameError.set(null);
+		const popup = this.modals.open(template, {
+			centered: true,
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'fm_rename_title',
+		});
+		// F2 then typing replaces the name, as in a desktop file manager.
+		popup.shown?.subscribe(() => (document.getElementById('fm_rename_name') as HTMLInputElement | null)?.select());
+	}
+
+	/** Saves the name; a taken one becomes “(1)” on the server, and Undo puts the old one back. */
+	async saveRename(close: () => void): Promise<void> {
+		const renaming = this.renaming();
+		const base = renaming?.base.trim() ?? '';
+		if (!renaming || !base || this.saving()) return;
+		const name = `${base}${renaming.extension}`;
+		if (name === renaming.before) return close();
+		this.saving.set(true);
+		try {
+			const result = await lastValueFrom(
+				renaming.type === 'folder'
+					? this.gateway.renameFolder(renaming.id, name)
+					: this.gateway.renameFile(renaming.id, name),
+			);
+			close();
+			this.undoToast(this.transloco.translate('fm_renamed'), result.undoId);
+			void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+		} catch (error) {
+			this.renameError.set(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		} finally {
+			this.saving.set(false);
+		}
+	}
+
+	// --- Move, Trash, Undo (A21, A25, A26, A27, A37) --------------------------------------------
+
+	readonly inUseTemplate = viewChild<TemplateRef<unknown>>('fmInUse');
+	readonly inUse = signal<MediaTrashCheck | null>(null);
+	/** The last change Undo can take back: ⌘/Ctrl+Z works until the next one. */
+	private lastUndo: { id: string; toastId: number } | null = null;
+
+	async moveChosen(to: string | null): Promise<void> {
+		this.menu.set(null);
+		const { folders, files } = this.chosen();
+		await this.moveItems(
+			{ folderIds: folders.map((row) => row.id), fileIds: files.map((row) => row.id) },
+			to,
+			this.whatOf(folders, files),
+		);
+	}
+
+	private async moveItems(ids: { folderIds: string[]; fileIds: string[] }, to: string | null, what: string) {
+		if (!ids.folderIds.length && !ids.fileIds.length) return;
+		const result = await this.change(
+			this.gateway.move({ folderIds: ids.folderIds, fileIds: ids.fileIds, toFolderId: to }),
+		);
+		if (!result) return;
+		this.clearSelection();
+		if (!result.done) return;
+		this.undoToast(this.transloco.translate('fm_moved', { what, folder: this.placeName(to) }), result.undoId);
+	}
+
+	/**
+	 * Move to Trash from the menu, the bulk bar or the Delete key. Images the website uses cannot go
+	 * (A26): when any might be chosen, the server is asked first and the popup lists them. A folder,
+	 * or the Delete key, asks before anything goes (A25, A39); otherwise Undo is the way back.
+	 */
+	async trashChosen(viaKey: boolean): Promise<void> {
+		const { folders, files } = this.chosen();
+		if (!folders.length && !files.length) return;
+		const body: MediaSelection = { folderIds: folders.map((row) => row.id), fileIds: files.map((row) => row.id) };
+		if (folders.length || files.some((row) => row.usedOn > 0)) {
+			const check = await this.change(this.gateway.checkTrash(body), false);
+			if (!check) return;
+			if (check.inUse.length) {
+				const template = this.inUseTemplate();
+				if (!template) return;
+				this.inUse.set(check);
+				const yes = await this.modals
+					.open(template, {
+						centered: true,
+						size: 'lg',
+						windowClass: 'theme-modal text-center',
+						ariaLabelledBy: 'fm_in_use_title',
+					})
+					.result.then(
+						() => true,
+						() => false,
+					);
+				if (!yes || !check.moving) return;
+				return this.trashNow(body, this.translateCount('fm_items', check.moving));
+			}
+		}
+		if (
+			(folders.length || viaKey) &&
+			!(await this.confirm({
+				kind: 'trash',
+				folder: folders.length === 1 && !files.length ? (folders[0] ?? null) : null,
+				fileName: files.length === 1 && !folders.length ? (files[0]?.name ?? null) : null,
+				count: folders.length + files.length,
+			}))
+		)
+			return;
+		await this.trashNow(body, this.whatOf(folders, files));
+	}
+
+	private async trashNow(body: MediaSelection, what: string): Promise<void> {
+		const result = await this.change(this.gateway.trash(body));
+		if (!result) return;
+		this.clearSelection();
+		if (result.done) this.undoToast(this.transloco.translate('fm_trashed', { what }), result.undoId);
+		// Someone else put one of them on a page meanwhile: it stayed, and the admin is told.
+		if (result.inUse.length)
+			this.notifications.showError(this.translateCount('fm_kept_in_use', result.inUse.length));
+	}
+
+	/** The theme's toast with Undo for 8 seconds (A37). */
+	private undoToast(message: string, undoId: string | null): void {
+		if (!undoId) {
+			this.notifications.showSuccess(message);
+			return;
+		}
+		const toast = this.toastr.success(message, undefined, {
+			toastComponent: FmUndoToast,
+			timeOut: UNDO_SECONDS * 1000,
+			payload: { action: this.transloco.translate('fm_undo') },
+		});
+		this.lastUndo = { id: undoId, toastId: toast.toastId };
+		toast.onAction.subscribe(() => void this.undo());
+	}
+
+	async undo(): Promise<void> {
+		const last = this.lastUndo;
+		if (!last) return;
+		this.lastUndo = null;
+		this.toastr.remove(last.toastId);
+		const result = await this.change(this.gateway.undo(last.id));
+		if (result) this.notifications.showSuccess(this.transloco.translate('fm_undone'));
+	}
+
+	// --- Drag between folders (A28) -------------------------------------------------------------
+
+	readonly dragging = signal<FmDrag | null>(null);
+	readonly dropOn = signal<string | null>(null);
+	readonly ghostAt = signal<{ x: number; y: number } | null>(null);
+	readonly draggedFiles = computed(() => new Set(this.dragging()?.fileIds ?? []));
+	readonly dropName = computed(() => {
+		const id = this.dropOn();
+		return id ? this.placeName(id) : null;
+	});
+	private readonly blank = typeof Image === 'undefined' ? null : Object.assign(new Image(), { src: BLANK_PICTURE });
+
+	dragStart(item: FmItemRef, event: DragEvent): void {
+		if (!isPicked(this.selection(), item)) {
+			this.selection.set(pickItem(NO_SELECTION, [], item, 'only', null));
+			this.anchor = item;
+		}
+		const { folders, files } = this.chosen();
+		event.dataTransfer?.setData(MEDIA_DRAG_TYPE, '1');
+		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+		if (this.blank) event.dataTransfer?.setDragImage(this.blank, 0, 0);
+		this.menu.set(null);
+		this.dragging.set({
+			folderIds: folders.map((row) => row.id),
+			fileIds: files.map((row) => row.id),
+			what: this.whatOf(folders, files),
+			thumb: files.find((row) => row.thumbnailUrl)?.thumbnailUrl ?? null,
+		});
+	}
+
+	/** A folder card takes the drop unless it is one of the dragged folders or inside one. */
+	dragOver(folder: MediaFolderRow, event: DragEvent): void {
+		const drag = this.dragging();
+		if (!drag || !event.dataTransfer?.types.includes(MEDIA_DRAG_TYPE)) return;
+		if (blockedTargets(this.tree.data()?.folders ?? [], drag.folderIds).has(folder.id)) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'move';
+		this.dropOn.set(folder.id);
+	}
+
+	dragLeave(folder: MediaFolderRow, event: DragEvent): void {
+		const card = event.currentTarget as HTMLElement | null;
+		if (card?.contains(event.relatedTarget as Node | null)) return;
+		if (this.dropOn() === folder.id) this.dropOn.set(null);
+	}
+
+	async drop(folder: MediaFolderRow, event: DragEvent): Promise<void> {
+		event.preventDefault();
+		const drag = this.dragging();
+		const allowed = this.dropOn() === folder.id;
+		this.dragEnd();
+		if (drag && allowed) await this.moveItems(drag, folder.id, drag.what);
+	}
+
+	dragEnd(): void {
+		this.dragging.set(null);
+		this.dropOn.set(null);
+		this.ghostAt.set(null);
+	}
+
+	/** The label follows the pointer anywhere on the page while a drag from this page runs. */
+	@HostListener('document:dragover', ['$event'])
+	trackDrag(event: DragEvent): void {
+		const box = this.mainRef()?.nativeElement.getBoundingClientRect();
+		if (!this.dragging() || !box) return;
+		this.ghostAt.set({ x: event.clientX - box.left + 16, y: event.clientY - box.top + 16 });
+	}
+
+	// --- Keys (A39) -----------------------------------------------------------------------------
+
+	readonly keysTemplate = viewChild<TemplateRef<unknown>>('fmKeys');
+	/** The list on ? (A39). ⌘/Ctrl+V comes with uploads (step 1.5e). */
+	readonly keyRows = FM_KEY_ROWS;
+	readonly imageKind = fileKind({ name: '', category: 'images', kind: 'image' });
+
+	@HostListener('document:keydown', ['$event'])
+	onKey(event: KeyboardEvent): void {
+		if (typing(event.target) || this.modals.hasOpenModals()) return;
+		const command = event.metaKey || event.ctrlKey;
+		const key = event.key;
+		if (key === 'Escape') {
+			if (this.menu()) this.menu.set(null);
+			else this.clearSelection();
+			return;
+		}
+		if (command && key.toLowerCase() === 'z' && !event.shiftKey) {
+			if (!this.lastUndo) return;
+			event.preventDefault();
+			void this.undo();
+			return;
+		}
+		if (key === '?') {
+			this.openKeys();
+			return;
+		}
+		// Trash has its own buttons; the rest act on what this view lists.
+		if (this.nav() === 'trash') return;
+		if (command && key.toLowerCase() === 'a') {
+			event.preventDefault();
+			this.selectEverything();
+			return;
+		}
+		// Enter and Delete on a focused button or link belong to that button or link.
+		const onPage = !event.target || event.target === document.body;
+		switch (key) {
+			case 'ArrowDown':
+			case 'ArrowRight':
+			case 'ArrowUp':
+			case 'ArrowLeft':
+				if (!onPage) return;
+				event.preventDefault();
+				this.step(key === 'ArrowDown' || key === 'ArrowRight' ? 1 : -1);
+				return;
+			case 'Enter':
+				if (onPage && this.chosenCount() === 1 && this.cursor) void this.activate(this.cursor);
+				return;
+			case 'F2':
+				event.preventDefault();
+				this.openRename();
+				return;
+			case 'Delete':
+			case 'Backspace':
+				if (!onPage || !this.chosenCount()) return;
+				event.preventDefault();
+				void this.trashChosen(true);
+				return;
+		}
+	}
+
+	openKeys(): void {
+		const template = this.keysTemplate();
+		if (template)
+			this.modals.open(template, { centered: true, windowClass: 'theme-modal', ariaLabelledBy: 'fm_keys_title' });
+	}
+
+	private step(direction: 1 | -1): void {
+		const next = stepItem(this.ordered(), this.cursor, direction);
+		if (!next) return;
+		this.selection.set(pickItem(NO_SELECTION, [], next, 'only', null));
+		this.anchor = next;
+		this.cursor = next;
+		document.querySelector(`[data-${next.type}="${CSS.escape(next.id)}"]`)?.scrollIntoView?.({ block: 'nearest' });
+	}
+
+	// --- Words ----------------------------------------------------------------------------------
+
+	private translateCount(key: string, count: number): string {
+		return translateCount(this.transloco, key, count);
+	}
+
+	/** “2 folders and 3 files”; one item is named: “red-banarasi.jpg”. */
+	private whatOf(folders: readonly MediaFolderRow[], files: readonly MediaFileRow[]): string {
+		const one = folders.length + files.length === 1 ? (folders[0]?.name ?? files[0]?.name) : null;
+		return one ? `“${one}”` : this.what(folders.length, files.length);
+	}
+
+	private what(folders: number, files: number): string {
+		const someFolders = folders ? this.translateCount('fm_folders_count', folders) : '';
+		const someFiles = files ? this.translateCount('fm_files', files) : '';
+		return someFolders && someFiles
+			? this.transloco.translate('fm_what_both', { folders: someFolders, files: someFiles })
+			: someFolders || someFiles;
+	}
+
+	/** A folder's name from the tree, or My files. */
+	private placeName(id: string | null): string {
+		if (!id) return this.transloco.translate('fm_my_files');
+		return (
+			this.tree.data()?.folders.find((row) => row.id === id)?.name ??
+			this.result()?.folders.find((row) => row.id === id)?.name ??
+			''
+		);
 	}
 
 	// --- Filters (A11, A12) ---------------------------------------------------------------------
@@ -356,6 +985,18 @@ export class FileManager {
 				() => true,
 				() => false,
 			);
+	}
+
+	/** A change that answers something: the answer, or null after saying what went wrong. */
+	private async change<T>(work: Observable<T>, refresh = true): Promise<T | null> {
+		try {
+			return await lastValueFrom(work);
+		} catch (error) {
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+			return null;
+		} finally {
+			if (refresh) void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+		}
 	}
 
 	private async run(work: Observable<MediaOperationResult | { starred: boolean }>, done: string): Promise<void> {

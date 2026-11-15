@@ -55,6 +55,8 @@ describe('HttpMediaLibraryGateway', () => {
 		expectCall('PATCH', /\/files\/med_1$/, { name: 'front.jpg' });
 		gateway.move({ fileIds: ['med_1'], folderIds: [], toFolderId: 'fld_2' }).subscribe();
 		expectCall('POST', /\/move$/, { fileIds: ['med_1'], folderIds: [], toFolderId: 'fld_2' });
+		gateway.checkTrash({ fileIds: ['med_1'], folderIds: ['fld_1'] }).subscribe();
+		expectCall('POST', /\/trash\/check$/, { fileIds: ['med_1'], folderIds: ['fld_1'] });
 		gateway.trash({ fileIds: ['med_1'], folderIds: [] }).subscribe();
 		expectCall('POST', /\/trash$/);
 		gateway.restore({ fileIds: ['med_1'], folderIds: [], whenFolderGone: 'my_files' }).subscribe();
@@ -78,6 +80,8 @@ describe('HttpMediaLibraryGateway', () => {
 		expectCall('POST', /\/files\/med_1\/finalize$/, {});
 		gateway.setVisibility('med_1', 'public').subscribe();
 		expectCall('PUT', /\/files\/med_1\/visibility$/, { visibility: 'public' });
+		gateway.fileAddress('med_1', 'view').subscribe();
+		expectCall('GET', /\/files\/med_1\/address\?as=view$/);
 	});
 
 	it('reads and changes share links and storage', () => {

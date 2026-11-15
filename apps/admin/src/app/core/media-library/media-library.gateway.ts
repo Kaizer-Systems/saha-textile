@@ -6,6 +6,7 @@ import type {
 	MediaDuplicateAnswer,
 	MediaDuplicateQuery,
 	MediaFavouriteWrite,
+	MediaFileAddress,
 	MediaFilePresignRequest,
 	MediaFilePresignResponse,
 	MediaFolderCreate,
@@ -15,6 +16,7 @@ import type {
 	MediaOperationResult,
 	MediaRestoreRequest,
 	MediaSelection,
+	MediaTrashCheck,
 	ShareLinkCreate,
 	ShareLinkUpdate,
 	ShareLinkView,
@@ -34,6 +36,7 @@ export type {
 	MediaDuplicateAnswer,
 	MediaDuplicateQuery,
 	MediaFavouriteWrite,
+	MediaFileAddress,
 	MediaFilePresignRequest,
 	MediaFilePresignResponse,
 	MediaFolderCreate,
@@ -43,6 +46,7 @@ export type {
 	MediaOperationResult,
 	MediaRestoreRequest,
 	MediaSelection,
+	MediaTrashCheck,
 	ShareLinkCreate,
 	ShareLinkUpdate,
 	ShareLinkView,
@@ -82,6 +86,8 @@ export abstract class MediaLibraryGateway {
 	abstract renameFolder(id: string, name: string): Observable<MediaOperationResult>;
 	abstract renameFile(id: string, name: string): Observable<MediaOperationResult>;
 	abstract move(body: MediaMoveRequest): Observable<MediaOperationResult>;
+	/** Before Trash (A26): which chosen images the website uses; nothing moves. */
+	abstract checkTrash(body: MediaSelection): Observable<MediaTrashCheck>;
 	abstract trash(body: MediaSelection): Observable<MediaOperationResult>;
 	abstract restore(body: MediaRestoreRequest): Observable<MediaOperationResult>;
 	abstract deleteForever(body: MediaSelection): Observable<MediaOperationResult>;
@@ -92,6 +98,8 @@ export abstract class MediaLibraryGateway {
 	abstract presignFile(body: MediaFilePresignRequest): Observable<MediaFilePresignResponse>;
 	abstract finalizeFile(id: string): Observable<{ assetId: string; state: 'ready' }>;
 	abstract setVisibility(id: string, visibility: 'public' | 'private'): Observable<MediaOperationResult>;
+	/** Preview (`view`) or Download (`save`): a five-minute address for the original. */
+	abstract fileAddress(id: string, as: 'view' | 'save'): Observable<MediaFileAddress>;
 
 	abstract links(id: string): Observable<ShareLinksResponse>;
 	abstract createLink(id: string, body: ShareLinkCreate): Observable<ShareLinkView>;

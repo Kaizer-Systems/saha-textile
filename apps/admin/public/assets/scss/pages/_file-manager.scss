@@ -642,11 +642,13 @@ tr.is-disabled td:not(.fm-reason) {
 	opacity: 0.35;
 }
 
-/* NEW 8 — context menu with a cascading Move submenu (Bootstrap dropdown-menu inside). */
+/* NEW 8 — context menu with a cascading Move submenu (Bootstrap dropdown-menu inside).
+   `.dropdown-menu.fm-ctx`: the theme's `.dropdown-menu` rules (themes/_update) load after this file
+   and would otherwise put back their padding, border and 13px items over the approved look (A20–A22). */
 .fm-menu-host {
 	position: relative;
 }
-.fm-ctx {
+.dropdown-menu.fm-ctx {
 	position: absolute;
 	z-index: 30;
 	display: block;
@@ -655,7 +657,7 @@ tr.is-disabled td:not(.fm-reason) {
 	box-shadow: 0 8px 28px rgba(16, 24, 40, 0.14);
 	border: 1px solid var(--fm-line);
 }
-.fm-ctx .dropdown-item {
+.dropdown-menu.fm-ctx .dropdown-item {
 	display: flex;
 	align-items: center;
 	gap: 10px;

@@ -1,0 +1,119 @@
+<ul
+	class="dropdown-menu show fm-ctx"
+	role="menu"
+	id="fm_menu"
+	[style.top.px]="at().y"
+	[style.left.px]="at().x"
+	(click)="$event.stopPropagation()"
+	(contextmenu)="$event.preventDefault()"
+>
+	@if (moveOnly()) {
+	<ng-container *ngTemplateOutlet="folderLines; context: { $implicit: tree(), depth: 0, parent: null }" />
+	} @else { @for (line of lines(); track $index) { @if (line === 'divider') {
+	<li><hr class="dropdown-divider" /></li>
+	} @else {
+	<li
+		class="position-relative"
+		(mouseenter)="enter(line)"
+	>
+		<a
+			class="dropdown-item"
+			href="javascript:void(0)"
+			role="menuitem"
+			[id]="'fm_menu_' + line"
+			[class.text-danger]="line === 'trash'"
+			[class.active-path]="line === 'move' && moveOpen()"
+			(click)="pick(line)"
+		>
+			<i [class]="look[line].icon"></i>
+			{{ look[line].label | transloco }} @if (line === 'move') {
+			<i class="ri-arrow-right-s-line fm-sub"></i>
+			}
+		</a>
+		@if (line === 'move' && moveOpen()) {
+		<ul
+			class="dropdown-menu show fm-ctx"
+			role="menu"
+			id="fm_move_menu"
+			style="top: -7px"
+			[style.left]="flip() ? 'auto' : '100%'"
+			[style.right]="flip() ? '100%' : 'auto'"
+		>
+			<ng-container *ngTemplateOutlet="folderLines; context: { $implicit: tree(), depth: 0, parent: null }" />
+		</ul>
+		}
+	</li>
+	} } }
+</ul>
+
+<ng-template
+	#folderLines
+	let-nodes
+	let-depth="depth"
+	let-parent="parent"
+>
+	@if (parent) {
+	<li (mouseenter)="openAt(depth, '', false)">
+		<a
+			class="dropdown-item"
+			href="javascript:void(0)"
+			role="menuitem"
+			[attr.data-target]="parent.id"
+			[class.disabled]="!canGo(parent.id)"
+			(click)="go(parent.id)"
+		>
+			<i class="ri-check-line"></i>
+			{{ 'fm_put_here' | transloco: { name: parent.name } }}
+		</a>
+	</li>
+	} @else {
+	<li (mouseenter)="openAt(0, '', false)">
+		<a
+			class="dropdown-item"
+			href="javascript:void(0)"
+			role="menuitem"
+			data-target="top"
+			[class.disabled]="!canGo(null)"
+			(click)="go(null)"
+		>
+			<i class="ri-home-4-line"></i>
+			{{ 'fm_top_level' | transloco }}
+		</a>
+	</li>
+	}
+	<li><hr class="dropdown-divider" /></li>
+	@for (node of nodes; track node.folder.id) {
+	<li
+		class="position-relative"
+		(mouseenter)="openAt(depth, node.folder.id, node.children.length > 0)"
+	>
+		<a
+			class="dropdown-item"
+			href="javascript:void(0)"
+			role="menuitem"
+			[attr.data-target]="node.folder.id"
+			[class.active-path]="path()[depth] === node.folder.id"
+			[class.disabled]="blocked().has(node.folder.id) || (!node.children.length && !canGo(node.folder.id))"
+			(click)="node.children.length ? openAt(depth, node.folder.id, true) : go(node.folder.id)"
+		>
+			<i class="ri-folder-3-line"></i>
+			{{ node.folder.name }} @if (node.children.length && !blocked().has(node.folder.id)) {
+			<i class="ri-arrow-right-s-line fm-sub"></i>
+			}
+		</a>
+		@if (path()[depth] === node.folder.id) {
+		<ul
+			class="dropdown-menu show fm-ctx"
+			role="menu"
+			style="top: -7px"
+			[style.left]="flip() ? 'auto' : '100%'"
+			[style.right]="flip() ? '100%' : 'auto'"
+		>
+			<ng-container
+				*ngTemplateOutlet="folderLines; context: { $implicit: node.children, depth: depth + 1, parent: node.folder }"
+			/>
+		</ul>
+		}
+	</li>
+	}
+</ng-template>

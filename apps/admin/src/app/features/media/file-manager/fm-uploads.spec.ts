@@ -5,13 +5,15 @@ import { TestBed } from '@angular/core/testing';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Subject, of, throwError } from 'rxjs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
-import { MediaUploads } from '@core/media-library/media-uploads';
+import { MediaUploads, OPERATION_BAR_AFTER_MS } from '@core/media-library/media-uploads';
 import { NotificationService } from '@data-access/services/notification.service';
 
+import { splitSelection } from './fm-selection';
 import { FmTray } from './fm-tray';
 import { FmUploadFlow, type FmUploadPopups } from './fm-upload-flow';
 import {
@@ -369,6 +371,7 @@ describe('the upload tray head', () => {
 		const uploads = {
 			jobs: vi.fn(),
 			active: vi.fn(() => [] as unknown[]),
+			runningOperations: vi.fn(() => [] as unknown[]),
 			doneCount: vi.fn(() => 0),
 			failedCount: vi.fn(() => 0),
 			renamed: new Subject(),
@@ -394,5 +397,62 @@ describe('the upload tray head', () => {
 		uploads.doneCount.mockReturnValue(3);
 		uploads.failedCount.mockReturnValue(1);
 		expect(tray.head()).toBe('fm_tray_uploading_other:2 · fm_tray_failed_other:1 · fm_tray_done_other:3');
+	});
+});
+
+describe('bulk changes in the tray (A48, A49)', () => {
+	const service = () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: MediaLibraryGateway, useValue: {} },
+				{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+		});
+		return TestBed.inject(MediaUploads);
+	};
+
+	it('splits a big selection into parts, folders first', () => {
+		const parts = splitSelection({ folderIds: ['f1', 'f2'], fileIds: ['a', 'b', 'c'] }, 2);
+		expect(parts).toEqual([
+			{ folderIds: ['f1', 'f2'], fileIds: [] },
+			{ folderIds: [], fileIds: ['a', 'b'] },
+			{ folderIds: [], fileIds: ['c'] },
+		]);
+		expect(splitSelection({ folderIds: [], fileIds: [] })).toEqual([]);
+	});
+
+	it('shows no bar for a change done within 0.3 s', async () => {
+		const uploads = service();
+		const answers = await uploads.operation('Renamed', 'ri-edit-line', [1], async () => 'ok');
+		expect(answers).toEqual(['ok']);
+		expect(uploads.operations()).toEqual([]);
+	});
+
+	it('counts a slow change part by part, then marks it done; a refusal marks it failed', async () => {
+		vi.useFakeTimers();
+		const uploads = service();
+		let release: () => void = () => undefined;
+		const running = uploads.operation('Moving 3 files', 'ri-drag-move-2-line', [2, 1], (index) =>
+			index === 0 ? new Promise<number>((done) => (release = () => done(0))) : Promise.resolve(1),
+		);
+		await vi.advanceTimersByTimeAsync(OPERATION_BAR_AFTER_MS + 10);
+		expect(uploads.operations()[0]).toMatchObject({ done: 0, total: 3, state: 'running' });
+		release();
+		await vi.runAllTimersAsync();
+		await running;
+		expect(uploads.operations()[0]).toMatchObject({ done: 3, total: 3, state: 'done' });
+		const failing = uploads.operation('Deleting', 'ri-delete-bin-2-line', [1], async () => {
+			await new Promise((done) => setTimeout(done, 500));
+			throw new Error('down');
+		});
+		const caught = failing.catch(() => 'refused');
+		await vi.runAllTimersAsync();
+		expect(await caught).toBe('refused');
+		expect(uploads.operations()[1]).toMatchObject({ state: 'failed', error: 'fm_action_failed' });
+		uploads.dismiss();
+		expect(uploads.operations()).toEqual([]);
+		vi.useRealTimers();
 	});
 });

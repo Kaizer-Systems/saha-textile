@@ -29,14 +29,20 @@ export class FmTray {
 	readonly secondsLeft = uploadSecondsLeft;
 	readonly timeLeft = timeLeft;
 
-	/** “Uploading 2 · 3 done · 1 failed”, or “Uploaded 5 files” once all are done. */
+	/** Anything still running: uploads, or bulk changes (A48). */
+	readonly busy = computed(() => !!this.uploads.active().length || !!this.uploads.runningOperations().length);
+
+	/** “Working on 1 · Uploading 2 · 3 done · 1 failed”, or “Uploaded 5 files” once all are done. */
 	readonly head = computed(() => {
+		const working = this.uploads.runningOperations().length;
 		const active = this.uploads.active().length;
 		const done = this.uploads.doneCount();
 		const failed = this.uploads.failedCount();
 		const parts: string[] = [];
+		if (working) parts.push(translateCount(this.transloco, 'fm_tray_working', working));
 		if (active) parts.push(translateCount(this.transloco, 'fm_tray_uploading', active));
-		else if (!failed) return translateCount(this.transloco, 'fm_tray_uploaded', done);
+		else if (!failed && !working && done) return translateCount(this.transloco, 'fm_tray_uploaded', done);
+		if (!parts.length && !failed && !done) return this.transloco.translate('fm_op_all_done');
 		if (failed) parts.push(translateCount(this.transloco, 'fm_tray_failed', failed));
 		if (done) parts.push(translateCount(this.transloco, 'fm_tray_done', done));
 		return parts.join(' · ');

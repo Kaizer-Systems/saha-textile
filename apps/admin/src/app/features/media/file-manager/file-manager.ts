@@ -48,6 +48,7 @@ import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
 import {
 	type FmItemRef,
 	type FmSelection,
+	BULK_PART,
 	NO_SELECTION,
 	blockedTargets,
 	commonPlace,
@@ -55,6 +56,7 @@ import {
 	pickHow,
 	pickItem,
 	pickedCount,
+	splitSelection,
 	stepItem,
 } from './fm-selection';
 import { FmShare } from './fm-share';
@@ -662,7 +664,7 @@ export class FileManager {
 	readonly inUseTemplate = viewChild<TemplateRef<unknown>>('fmInUse');
 	readonly inUse = signal<MediaTrashCheck | null>(null);
 	/** The last change Undo can take back: ⌘/Ctrl+Z works until the next one. */
-	private lastUndo: { id: string; toastId: number } | null = null;
+	private lastUndo: { ids: string[]; toastId: number } | null = null;
 
 	async moveChosen(to: string | null): Promise<void> {
 		this.menu.set(null);
@@ -676,13 +678,17 @@ export class FileManager {
 
 	private async moveItems(ids: { folderIds: string[]; fileIds: string[] }, to: string | null, what: string) {
 		if (!ids.folderIds.length && !ids.fileIds.length) return;
-		const result = await this.change(
-			this.gateway.move({ folderIds: ids.folderIds, fileIds: ids.fileIds, toFolderId: to }),
+		const folder = this.placeName(to);
+		const result = await this.bulk(
+			this.transloco.translate('fm_op_moving', { what, folder }),
+			'ri-drag-move-2-line',
+			ids,
+			(part) => this.gateway.move({ ...part, toFolderId: to }),
 		);
 		if (!result) return;
 		this.clearSelection();
 		if (!result.done) return;
-		this.undoToast(this.transloco.translate('fm_moved', { what, folder: this.placeName(to) }), result.undoId);
+		this.undoToast(this.transloco.translate('fm_moved', { what, folder }), result.undoIds);
 	}
 
 	/**
@@ -730,18 +736,24 @@ export class FileManager {
 	}
 
 	private async trashNow(body: MediaSelection, what: string): Promise<void> {
-		const result = await this.change(this.gateway.trash(body));
+		const result = await this.bulk(
+			this.transloco.translate('fm_op_trashing', { what }),
+			'ri-delete-bin-line',
+			body,
+			(part) => this.gateway.trash(part),
+		);
 		if (!result) return;
 		this.clearSelection();
-		if (result.done) this.undoToast(this.transloco.translate('fm_trashed', { what }), result.undoId);
+		if (result.done) this.undoToast(this.transloco.translate('fm_trashed', { what }), result.undoIds);
 		// Someone else put one of them on a page meanwhile: it stayed, and the admin is told.
 		if (result.inUse.length)
 			this.notifications.showError(this.translateCount('fm_kept_in_use', result.inUse.length));
 	}
 
 	/** The theme's toast with Undo for 8 seconds (A37). */
-	private undoToast(message: string, undoId: string | null): void {
-		if (!undoId) {
+	private undoToast(message: string, undo: string | null | readonly string[]): void {
+		const ids = (Array.isArray(undo) ? [...undo] : undo ? [undo] : []) as string[];
+		if (!ids.length) {
 			this.notifications.showSuccess(message);
 			return;
 		}
@@ -750,7 +762,7 @@ export class FileManager {
 			timeOut: UNDO_SECONDS * 1000,
 			payload: { action: this.transloco.translate('fm_undo') },
 		});
-		this.lastUndo = { id: undoId, toastId: toast.toastId };
+		this.lastUndo = { ids, toastId: toast.toastId };
 		toast.onAction.subscribe(() => void this.undo());
 	}
 
@@ -759,7 +771,15 @@ export class FileManager {
 		if (!last) return;
 		this.lastUndo = null;
 		this.toastr.remove(last.toastId);
-		const result = await this.change(this.gateway.undo(last.id));
+		// A change made in parts is undone part by part, the last part first.
+		const ids = [...last.ids].reverse();
+		const result = await this.bulk(
+			this.transloco.translate('fm_op_undoing'),
+			'ri-arrow-go-back-line',
+			{ folderIds: [], fileIds: ids },
+			(part) => this.gateway.undo(part.fileIds[0] ?? ''),
+			1,
+		);
 		if (result) this.notifications.showSuccess(this.transloco.translate('fm_undone'));
 	}
 
@@ -1138,7 +1158,15 @@ export class FileManager {
 		const folderIds = data.folders.map((row) => row.id);
 		if (!fileIds.length && !folderIds.length) return;
 		if (!(await this.confirm({ kind: 'empty', count: fileIds.length + folderIds.length }))) return;
-		await this.run(this.gateway.deleteForever({ fileIds, folderIds }), 'fm_deleted_for_good');
+		const result = await this.bulk(
+			this.transloco.translate('fm_op_deleting', {
+				what: this.translateCount('fm_items', fileIds.length + folderIds.length),
+			}),
+			'ri-delete-bin-2-line',
+			{ fileIds, folderIds },
+			(part) => this.gateway.deleteForever(part),
+		);
+		if (result) this.notifications.showSuccess(this.transloco.translate('fm_deleted_for_good'));
 	}
 
 	private confirm(ask: FmAsk): Promise<boolean> {
@@ -1155,6 +1183,39 @@ export class FileManager {
 				() => true,
 				() => false,
 			);
+	}
+
+	/**
+	 * A bulk change in parts (A48): the tray counts as each part is answered, and shows nothing for a
+	 * change done within 0.3 s (A49). Answers the totals and every part's Undo, or null after saying
+	 * what went wrong; the lists refresh either way.
+	 */
+	private async bulk(
+		label: string,
+		icon: string,
+		selection: { folderIds: readonly string[]; fileIds: readonly string[] },
+		call: (part: { folderIds: string[]; fileIds: string[] }) => Observable<MediaOperationResult>,
+		size = BULK_PART,
+	): Promise<{ done: number; inUse: MediaOperationResult['inUse']; undoIds: string[] } | null> {
+		const parts = splitSelection(selection, size);
+		try {
+			const answers = await this.uploads.operation(
+				label,
+				icon,
+				parts.map((part) => part.folderIds.length + part.fileIds.length),
+				(index) => lastValueFrom(call(parts[index] ?? { folderIds: [], fileIds: [] })),
+			);
+			return {
+				done: answers.reduce((sum, answer) => sum + answer.done, 0),
+				inUse: answers.flatMap((answer) => answer.inUse),
+				undoIds: answers.flatMap((answer) => (answer.undoId ? [answer.undoId] : [])),
+			};
+		} catch (error) {
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+			return null;
+		} finally {
+			void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+		}
 	}
 
 	/** A change that answers something: the answer, or null after saying what went wrong. */

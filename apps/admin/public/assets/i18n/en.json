@@ -2115,5 +2115,15 @@
 	"fm_storage_others_note": "Super admins always can. Only a super admin can change this, here or from the on-demand question.",
 	"fm_share_made_by": "Made by",
 	"fm_share_stop_title": "Stop this link?",
-	"fm_share_stop_body": "It stops for good: anyone who opens it sees that the link has ended. Make a new link if needed."
+	"fm_share_stop_body": "It stops for good: anyone who opens it sees that the link has ended. Make a new link if needed.",
+	"fm_op_moving": "Moving {{what}} to “{{folder}}”",
+	"fm_op_trashing": "Moving {{what}} to Trash",
+	"fm_op_deleting": "Deleting {{what}} for good",
+	"fm_op_undoing": "Undoing the last change",
+	"fm_op_working": "Working",
+	"fm_op_done": "Done",
+	"fm_op_count": "{{done}} of {{total}}",
+	"fm_op_all_done": "All done",
+	"fm_tray_working_one": "Working on {{count}}",
+	"fm_tray_working_other": "Working on {{count}}"
 }

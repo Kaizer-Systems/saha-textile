@@ -37,6 +37,20 @@ export interface UploadRequest {
 	sha256: string | null;
 }
 
+/** A bulk change in the tray (A48): its words, its icon, and real counts from the API's answers. */
+export interface MediaOperation {
+	id: string;
+	label: string;
+	icon: string;
+	done: number;
+	total: number;
+	state: 'running' | 'done' | 'failed';
+	error: string | null;
+}
+
+/** A change that ends sooner than this shows no bar at all (A49): a bar that flashes is flicker. */
+export const OPERATION_BAR_AFTER_MS = 300;
+
 /** Uploads at once: enough to fill a line, few enough that each shows steady progress. */
 export const UPLOADS_AT_ONCE = 3;
 /** The tray's numbers update at most this often per file, so a fast line does not redraw the page constantly. */
@@ -64,6 +78,8 @@ export class MediaUploads {
 	private readonly transloco = inject(TranslocoService);
 
 	readonly jobs = signal<readonly UploadJob[]>([]);
+	readonly operations = signal<readonly MediaOperation[]>([]);
+	readonly runningOperations = computed(() => this.operations().filter((op) => op.state === 'running'));
 	readonly active = computed(() => this.jobs().filter((job) => job.state === 'waiting' || job.state === 'uploading'));
 	readonly doneCount = computed(() => this.jobs().filter((job) => job.state === 'done').length);
 	readonly failedCount = computed(() => this.jobs().filter((job) => job.state === 'failed').length);
@@ -124,8 +140,50 @@ export class MediaUploads {
 		this.pump();
 	}
 
-	/** Clears finished and failed files from the tray; failed ones leave nothing behind. */
+	/**
+	 * Runs a bulk change part by part, counting as the API answers (A48). It appears in the tray only
+	 * if it is still running after 0.3 s (A49). Answers what each part answered; throws the first refusal.
+	 */
+	async operation<T>(
+		label: string,
+		icon: string,
+		parts: readonly number[],
+		run: (index: number) => Promise<T>,
+	): Promise<T[]> {
+		this.counter += 1;
+		const id = `op_${this.counter}`;
+		const total = parts.reduce((sum, size) => sum + size, 0);
+		let shown = false;
+		let done = 0;
+		const show = setTimeout(() => {
+			shown = true;
+			this.operations.update((ops) => [...ops, { id, label, icon, done, total, state: 'running', error: null }]);
+		}, OPERATION_BAR_AFTER_MS);
+		const patch = (changes: Partial<MediaOperation>) =>
+			shown && this.operations.update((ops) => ops.map((op) => (op.id === id ? { ...op, ...changes } : op)));
+		const answers: T[] = [];
+		try {
+			for (const [index, size] of parts.entries()) {
+				answers.push(await run(index));
+				done += size;
+				patch({ done });
+			}
+			patch({ state: 'done' });
+			return answers;
+		} catch (error) {
+			patch({
+				state: 'failed',
+				error: readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'),
+			});
+			throw error;
+		} finally {
+			clearTimeout(show);
+		}
+	}
+
+	/** Clears finished and failed files and changes from the tray; failed uploads leave nothing behind. */
 	dismiss(): void {
+		this.operations.update((ops) => ops.filter((op) => op.state === 'running'));
 		for (const job of this.jobs()) {
 			if (job.state === 'failed' && job.assetId) void this.forget(job.assetId);
 			if (job.state === 'done' || job.state === 'failed') this.running.delete(job.id);

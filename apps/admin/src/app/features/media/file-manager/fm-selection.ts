@@ -99,3 +99,26 @@ export function commonPlace(places: readonly (string | null)[]): string | null |
 	const first = places[0] ?? null;
 	return places.every((place) => (place ?? null) === first) ? first : undefined;
 }
+
+/** Items per call for bulk changes: each answer moves the tray's count (A48). */
+export const BULK_PART = 50;
+
+/** A selection in parts of `size`, folders first, so a big change can count as it goes. */
+export function splitSelection(
+	selection: { folderIds: readonly string[]; fileIds: readonly string[] },
+	size = BULK_PART,
+): { folderIds: string[]; fileIds: string[] }[] {
+	const items = [
+		...selection.folderIds.map((id) => ({ type: 'folder' as const, id })),
+		...selection.fileIds.map((id) => ({ type: 'file' as const, id })),
+	];
+	const parts: { folderIds: string[]; fileIds: string[] }[] = [];
+	for (let at = 0; at < items.length; at += size) {
+		const chunk = items.slice(at, at + size);
+		parts.push({
+			folderIds: chunk.filter((item) => item.type === 'folder').map((item) => item.id),
+			fileIds: chunk.filter((item) => item.type === 'file').map((item) => item.id),
+		});
+	}
+	return parts;
+}

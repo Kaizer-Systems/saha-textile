@@ -88,7 +88,14 @@ describe('the Media page reads its view from the address', () => {
 					provide: ActivatedRoute,
 					useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
 				},
-				{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+				{
+					provide: TranslocoService,
+					useValue: {
+						translate: (key: string) => key,
+						getActiveLang: () => 'en',
+						getTranslation: () => ({}),
+					},
+				},
 				{ provide: ToastrService, useValue: toastStub() },
 			],
 		});
@@ -254,7 +261,14 @@ describe('Trash on the Media page (A18, A19)', () => {
 					provide: ActivatedRoute,
 					useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
 				},
-				{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+				{
+					provide: TranslocoService,
+					useValue: {
+						translate: (key: string) => key,
+						getActiveLang: () => 'en',
+						getTranslation: () => ({}),
+					},
+				},
 				{ provide: ToastrService, useValue: toastStub() },
 			],
 		});
@@ -360,7 +374,14 @@ describe('selection, stars and New folder (A17, A23, A27)', () => {
 					provide: ActivatedRoute,
 					useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
 				},
-				{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+				{
+					provide: TranslocoService,
+					useValue: {
+						translate: (key: string) => key,
+						getActiveLang: () => 'en',
+						getTranslation: () => ({}),
+					},
+				},
 				{ provide: ToastrService, useValue: toastStub() },
 			],
 		});

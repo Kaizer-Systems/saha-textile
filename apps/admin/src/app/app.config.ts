@@ -30,6 +30,8 @@ import { provideActiveLanguages, savedLanguages } from '@core/i18n/active-langua
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from '@core/interceptors/loader.interceptor';
+import { HttpMediaLibraryGateway } from '@core/media-library/http-media-library.gateway';
+import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
 import { CartEffects } from '@core/state/cart/cart.effects';
 import { cartReducer } from '@core/state/cart/cart.reducer';
 
@@ -55,6 +57,7 @@ export const appConfig: ApplicationConfig = {
 		{ provide: AdminNotificationsGateway, useClass: HttpAdminNotificationsGateway },
 		{ provide: AdminCommunicationsGateway, useClass: HttpAdminCommunicationsGateway },
 		{ provide: AdminLanguagesGateway, useClass: HttpAdminLanguagesGateway },
+		{ provide: MediaLibraryGateway, useClass: HttpMediaLibraryGateway },
 		// Admin roles + permission registry gateway (auth pass 5c.3 UI wiring).
 		{ provide: AdminRolesGateway, useClass: HttpAdminRolesGateway },
 		// Resolves the admin cookie session before routing, so the guard protecting the

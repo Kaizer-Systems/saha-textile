@@ -105,6 +105,8 @@ export abstract class MediaLibraryGateway {
 
 	abstract presignFile(body: MediaFilePresignRequest): Observable<MediaFilePresignResponse>;
 	abstract finalizeFile(id: string, uploadId?: string): Observable<{ assetId: string; state: 'ready' }>;
+	/** A photo's processing: `ready` once its versions are made, `failed` with the reason. */
+	abstract photoStatus(id: string): Observable<{ state: string; error: string | null }>;
 	/** Drop your own unfinished upload (cancelled, or failed for good), with any parts already stored. */
 	abstract cancelUpload(id: string, uploadId?: string): Observable<void>;
 	/** S11: a big file in parts that resume. */

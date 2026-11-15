@@ -9,7 +9,8 @@ import type {
 } from '@saha-textile/contracts';
 
 import type { MediaProfileRepository } from '../ports/media-profile.repository';
-import { MEDIA_INGEST_POLICY, aspectDeviation } from './policy';
+import { fitsShape } from '../catalog/media-files';
+import { MEDIA_INGEST_POLICY } from './policy';
 import { SEEDED_MEDIA_ROLES } from './seeded-roles';
 
 const MB = 1024 * 1024;
@@ -186,7 +187,7 @@ export const versionFolder = (versionId: string): string => versionId.replace(/[
 export const fitsProfileShape = (
 	source: { width: number; height: number },
 	shape: { width: number; height: number } | null,
-): boolean => !shape || aspectDeviation(source.width, source.height, shape) <= MEDIA_INGEST_POLICY.aspectWarnTolerance;
+): boolean => fitsShape(source, shape);
 
 /** The profile today's purpose-based pipeline made a role's files for. Null: made once per photo. */
 const profileForRole = (purpose: MediaPurpose, role: string): string | null => {

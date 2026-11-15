@@ -15,7 +15,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, NgbDropdown, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { type Observable, lastValueFrom } from 'rxjs';
@@ -64,7 +64,18 @@ import { FM_CATEGORIES, FmSidebar, type FmNav } from './fm-sidebar';
 import { FmStorageDetails } from './fm-storage-details';
 import { FmUndoToast } from './fm-undo-toast';
 import { FmUploadFlow, type FmUploadPopups } from './fm-upload-flow';
-import { type FmUploadRow, planUpload, readDropped, readPickedFolder } from './fm-upload-plan';
+import {
+	type FmPhotoNote,
+	type FmPick,
+	type FmUploadRow,
+	PHOTO_MAX_BYTES,
+	pastedName,
+	photoShapeLabel,
+	planUpload,
+	readDropped,
+	readPickedFolder,
+} from './fm-upload-plan';
+import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-profiles/profile-words';
 
 const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash'];
 /** The sort menu: what each choice asks the API for. */
@@ -137,6 +148,7 @@ export const FM_KEY_ROWS: ReadonlyArray<{ keys: readonly string[]; does: string 
 	{ keys: ['F2'], does: 'rename' },
 	{ keys: ['Delete'], does: 'fm_key_delete' },
 	{ keys: ['⌘ / Ctrl', 'Z'], does: 'fm_key_undo' },
+	{ keys: ['⌘ / Ctrl', 'V'], does: 'fm_key_paste' },
 	{ keys: ['Esc'], does: 'fm_key_escape' },
 	{ keys: ['?'], does: 'fm_key_help' },
 ];
@@ -165,6 +177,9 @@ const typing = (target: EventTarget | null): boolean => {
 		PluralPipe,
 		Button,
 		CurrencyPipe,
+		NgbDropdown,
+		NgbDropdownToggle,
+		NgbDropdownMenu,
 	],
 	providers: [FmUploadFlow],
 })
@@ -971,6 +986,8 @@ export class FileManager {
 	readonly duplicateTemplate = viewChild<TemplateRef<unknown>>('fmDuplicate');
 	readonly onDemandTemplate = viewChild<TemplateRef<unknown>>('fmOnDemand');
 	readonly refusedTemplate = viewChild<TemplateRef<unknown>>('fmStorageRefused');
+	readonly overLimitTemplate = viewChild<TemplateRef<unknown>>('fmOverLimit');
+	readonly notesTemplate = viewChild<TemplateRef<unknown>>('fmNotes');
 	/** Files from the computer are over the page (A29). */
 	readonly dropping = signal(false);
 	private dropDepth = 0;
@@ -1092,7 +1109,72 @@ export class FileManager {
 		const duplicate = this.duplicateTemplate();
 		const onDemand = this.onDemandTemplate();
 		const refused = this.refusedTemplate();
-		return review && duplicate && onDemand && refused ? { review, duplicate, onDemand, refused } : null;
+		const overLimit = this.overLimitTemplate();
+		const notes = this.notesTemplate();
+		return review && duplicate && onDemand && refused && overLimit && notes
+			? { review, duplicate, onDemand, refused, overLimit, notes }
+			: null;
+	}
+
+	// --- Photos in the upload popup (media step 2d) -------------------------------------------------------------
+
+	/** A profile's name: a built-in one by its translation, an added one as typed. */
+	profileName(key: string): string {
+		const profile = this.flow.profiles().find((entry) => entry.key === key);
+		if (!profile) return key;
+		return profile.builtIn ? this.transloco.translate(profileNameKey(profile)) : profile.name;
+	}
+
+	/** A picked profile as its chip says it: “Product 3:4”, or “Product 3:4 · White padding” per fill. */
+	pickLabels(pick: FmPick): string[] {
+		const name = this.profileName(pick.profileKey);
+		const profile = this.flow.profiles().find((entry) => entry.key === pick.profileKey);
+		const icon = !!profile && isIconProfile(profile);
+		return pick.fills.map((fill) =>
+			fill === 'as_is' ? name : `${name} · ${this.transloco.translate(fillKey(fill, icon))}`,
+		);
+	}
+
+	/** The fills a picked profile offers this photo when its shape differs (B21). */
+	fillChoices(row: FmUploadRow, key: string): { fill: Exclude<FmPick['fills'][number], 'as_is'>; label: string }[] {
+		const profile = this.flow.profiles().find((entry) => entry.key === key);
+		if (!profile || !row.size || !profile.shape) return [];
+		const fits =
+			Math.abs(row.size.width / row.size.height - profile.shape.width / profile.shape.height) /
+				(profile.shape.width / profile.shape.height) <=
+			0.05;
+		if (fits) return [];
+		const icon = isIconProfile(profile);
+		return profile.fills.map((fill) => ({ fill, label: this.transloco.translate(fillKey(fill, icon)) }));
+	}
+
+	noteText(note: FmPhotoNote): string {
+		return this.transloco.translate(`fm_note_${note.kind}`, {
+			profile: this.profileName(note.profileKey),
+			px: note.px,
+			has: note.has,
+		});
+	}
+
+	readonly photoMax = PHOTO_MAX_BYTES;
+
+	shapeOf(row: FmUploadRow): string {
+		return row.size ? photoShapeLabel(row.size) : '';
+	}
+
+	/** S12, B17: a picture pasted with ⌘/Ctrl+V uploads here, unless the paste is into a text box. */
+	@HostListener('document:paste', ['$event'])
+	onPaste(event: ClipboardEvent): void {
+		if (typing(event.target) || this.modals.hasOpenModals()) return;
+		const files = [...(event.clipboardData?.files ?? [])].filter((file) => file.type.startsWith('image/'));
+		if (!files.length) return;
+		event.preventDefault();
+		const named = files.map((file) => ({
+			file: new File([file], pastedName(file.type), { type: file.type, lastModified: Date.now() }),
+			path: [] as string[],
+		}));
+		const popups = this.popups();
+		if (popups) this.flow.open(planUpload(named), this.uploadTargetId(), this.herePlace(), popups);
 	}
 
 	rowKind(row: FmUploadRow) {

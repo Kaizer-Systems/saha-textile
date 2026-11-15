@@ -6,9 +6,10 @@ import type {
 	MediaVersionId,
 } from '@saha-textile/contracts';
 
+import { minSizeCheck, photoFills } from '../catalog/media-files';
 import type { ImageRenderSpec } from '../ports/image-codec.port';
 import { MEDIA_INGEST_POLICY, aspectDeviation } from './policy';
-import { fitsProfileShape, versionIdOf } from './profiles';
+import { versionIdOf } from './profiles';
 
 /**
  * Media build step 2b: what the image worker makes for one version (a profile and a fill, Media brief R4-1), and
@@ -35,12 +36,7 @@ export type ProfileSizeCheck =
 export const checkProfileMinSize = (
 	profile: Pick<MediaProfile, 'minSize'>,
 	source: { width: number; height: number },
-): ProfileSizeCheck => {
-	const rule = profile.minSize;
-	if (!rule) return { result: 'ok' };
-	const has = rule.edge === 'short' ? Math.min(source.width, source.height) : source.width;
-	return has >= rule.px ? { result: 'ok' } : { result: rule.mode, edge: rule.edge, px: rule.px, has };
-};
+): ProfileSizeCheck => minSizeCheck(profile.minSize, source);
 
 /**
  * The fills a photo may get under a profile (R4-1): “As is” alone when it already has the profile's shape (within
@@ -49,7 +45,7 @@ export const checkProfileMinSize = (
 export const fillsForPhoto = (
 	profile: Pick<MediaProfile, 'shape' | 'fills'>,
 	source: { width: number; height: number },
-): MediaFill[] => (fitsProfileShape(source, profile.shape) ? ['as_is'] : [...profile.fills]);
+): MediaFill[] => photoFills(profile, source);
 
 export type VersionRequestRefusal =
 	| 'profile_unknown'

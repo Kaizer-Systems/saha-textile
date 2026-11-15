@@ -123,6 +123,14 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 		);
 	}
 
+	/** The upload status route of the image pipeline; quiet, the tray says what happened. */
+	override photoStatus(fileId: string): Observable<{ state: string; error: string | null }> {
+		return this.http.get<{ state: string; error: string | null }>(
+			`${runtimeConfig.apiUrl}/admin/media/${id(fileId)}/status`,
+			quiet(),
+		);
+	}
+
 	override cancelUpload(fileId: string, uploadId?: string): Observable<void> {
 		return this.http.post<void>(this.url(`/files/${id(fileId)}/cancel`), uploadId ? { uploadId } : {}, quiet());
 	}

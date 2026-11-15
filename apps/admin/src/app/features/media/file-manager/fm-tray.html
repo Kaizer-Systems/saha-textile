@@ -88,7 +88,28 @@
 						></div>
 					</div>
 				</div>
-				<small class="text-muted">{{ 'fm_stored_as_is' | transloco }}</small>
+				<small class="text-muted">{{ (job.photo ? 'fm_versions_next' : 'fm_stored_as_is') | transloco }}</small>
+				} @case ('making') {
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_uploaded' | transloco }}</span>
+						<small>
+							{{ job.bytes | fileSize }}
+							<i class="ri-check-line"></i>
+						</small>
+					</div>
+				</div>
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_making_versions' | transloco }}</span>
+					</div>
+					<div class="progress">
+						<div
+							class="progress-bar progress-bar-striped progress-bar-animated"
+							style="width: 100%"
+						></div>
+					</div>
+				</div>
 				} @case ('done') {
 				<div class="fm-phase">
 					<div>

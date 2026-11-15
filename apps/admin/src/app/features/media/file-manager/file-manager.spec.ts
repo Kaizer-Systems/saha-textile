@@ -17,6 +17,12 @@ import { NO_SELECTION, blockedTargets, commonPlace, pickHow, pickItem, stepItem 
 import { buildTree, parentsOf } from './fm-sidebar';
 import { FmUndoToast } from './fm-undo-toast';
 
+// The upload flow reads image profiles; the page's own tests need none.
+vi.mock('@data-access/queries/media-profiles.queries', async (original) => ({
+	...(await original<object>()),
+	injectMediaProfilesQuery: () => ({ data: () => [] }),
+}));
+
 /** The theme's toasts, as the page uses them: Undo reports through `onAction`. */
 const toastStub = () => {
 	const action = new BehaviorSubject<unknown>(undefined);

@@ -10,7 +10,10 @@ import { MEDIA_LIBRARY_KEY } from '@data-access/queries/media-library.queries';
 
 import { MediaLibraryGateway } from './media-library.gateway';
 
-export type UploadState = 'waiting' | 'uploading' | 'done' | 'failed';
+import type { MediaFill } from '@saha-textile/contracts';
+
+/** `making`: a photo has arrived and the image worker is making its versions (R4-8, bar 2). */
+export type UploadState = 'waiting' | 'uploading' | 'making' | 'done' | 'failed';
 
 /** One file in the upload tray (B08, B20). */
 export interface UploadJob {
@@ -31,6 +34,8 @@ export interface UploadJob {
 	uploadId: string | null;
 	/** The line dropped; the part is tried again shortly (B15). */
 	paused: boolean;
+	/** A photo: after the upload, its versions are made before it is done. */
+	photo: boolean;
 }
 
 /** A big upload cut off by a closed tab (B16): enough to carry on once the same file is chosen. */
@@ -58,7 +63,13 @@ export interface UploadRequest {
 	contentType: string;
 	folderId: string | null;
 	sha256: string | null;
+	/** A photo (media step 2): its decoded size and the versions to make. */
+	photo?: { width: number; height: number; versions: { profileKey: string; fill: MediaFill }[] };
 }
+
+/** How often a photo's versions are checked on, and for how long, before the tray says to look later. */
+export const MAKING_POLL_MS = 2000;
+export const MAKING_GIVE_UP_MS = 10 * 60_000;
 
 /** A bulk change in the tray (A48): its words, its icon, and real counts from the API's answers. */
 export interface MediaOperation {
@@ -90,6 +101,7 @@ interface Running {
 	partBytes: number;
 	/** Carry on: ask Spaces which parts it already has. */
 	resume: boolean;
+	photo: UploadRequest['photo'] | null;
 }
 
 /**
@@ -143,6 +155,7 @@ export class MediaUploads {
 				uploadId: null,
 				partBytes: MULTIPART_PART_BYTES,
 				resume: false,
+				photo: request.photo ?? null,
 			});
 			return {
 				id,
@@ -158,6 +171,7 @@ export class MediaUploads {
 				startedAt: null,
 				uploadId: null,
 				paused: false,
+				photo: !!request.photo,
 			};
 		});
 		if (!added.length) {
@@ -232,7 +246,9 @@ export class MediaUploads {
 			if (job.state === 'failed' && job.assetId) void this.forget(job.assetId, job.uploadId ?? undefined);
 			if (job.state === 'done' || job.state === 'failed') this.running.delete(job.id);
 		}
-		this.jobs.update((jobs) => jobs.filter((job) => job.state === 'waiting' || job.state === 'uploading'));
+		this.jobs.update((jobs) =>
+			jobs.filter((job) => job.state === 'waiting' || job.state === 'uploading' || job.state === 'making'),
+		);
 	}
 
 	/** Upload progress per stored file, for the list's status cell and the folder cards (B06). */
@@ -269,6 +285,7 @@ export class MediaUploads {
 						folderId: job.folderId,
 						...(held.sha256 ? { sha256: held.sha256 } : {}),
 						...(held.reservationId ? { reservationId: held.reservationId } : {}),
+						...(held.photo ? held.photo : {}),
 					}),
 				);
 				assetId = presigned.assetId;
@@ -286,7 +303,10 @@ export class MediaUploads {
 			}
 			await lastValueFrom(this.gateway.finalizeFile(assetId, held.uploadId ?? undefined));
 			this.unremember(assetId);
-			this.patch(id, { state: 'done', sent: job.bytes, paused: false });
+			if (held.photo) {
+				this.patch(id, { state: 'making', sent: job.bytes, paused: false });
+				await this.whileMaking(id, assetId);
+			} else this.patch(id, { state: 'done', sent: job.bytes, paused: false });
 			const finished = this.find(id);
 			if (finished && finished.savedAs && finished.savedAs !== finished.name) this.renamed.next(finished);
 		} catch (error) {
@@ -304,6 +324,30 @@ export class MediaUploads {
 			this.settle(held.reservationId);
 			this.pump();
 		}
+	}
+
+	/**
+	 * A photo's second bar (R4-8): its versions are being made. Checked every couple of seconds until the image
+	 * worker says ready or failed; after ten minutes the tray stops waiting and the Media page shows the state.
+	 */
+	private async whileMaking(id: string, assetId: string): Promise<void> {
+		const started = Date.now();
+		while (Date.now() - started < MAKING_GIVE_UP_MS) {
+			await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
+			const status = await lastValueFrom(this.gateway.photoStatus(assetId)).catch(() => null);
+			if (status?.state === 'ready') {
+				this.patch(id, { state: 'done' });
+				return;
+			}
+			if (status?.state === 'failed') {
+				this.patch(id, {
+					state: 'failed',
+					error: this.transloco.translate('fm_versions_failed', { reason: status.error ?? '' }),
+				});
+				return;
+			}
+		}
+		this.patch(id, { state: 'done' });
 	}
 
 	/**
@@ -453,6 +497,7 @@ export class MediaUploads {
 			uploadId: entry.uploadId,
 			partBytes: MULTIPART_PART_BYTES,
 			resume: true,
+			photo: null,
 		});
 		this.jobs.update((jobs) => [
 			...jobs,
@@ -470,6 +515,7 @@ export class MediaUploads {
 				startedAt: null,
 				uploadId: entry.uploadId,
 				paused: false,
+				photo: false,
 			},
 		]);
 		this.pump();

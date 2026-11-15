@@ -11,9 +11,26 @@ import {
 	type StorageCheckAnswer,
 } from '@core/media-library/media-library.gateway';
 import { MediaUploads } from '@core/media-library/media-uploads';
+import { injectMediaProfilesQuery } from '@data-access/queries/media-profiles.queries';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { type FmUploadPlan, type FmUploadRow, foldersFor, sha256Hex } from './fm-upload-plan';
+import {
+	type FmPhotoNote,
+	type FmUploadPlan,
+	type FmUploadRow,
+	PHOTO_MAX_BYTES,
+	choosable,
+	foldersFor,
+	isRefusal,
+	newPick,
+	photoNotes,
+	readPhotoSize,
+	sha256Hex,
+	suggestedPicks,
+	versionsOf,
+} from './fm-upload-plan';
+
+import type { MediaFill } from '@saha-textile/contracts';
 
 /** The popups the flow opens; the page owns their templates. */
 export interface FmUploadPopups {
@@ -21,6 +38,10 @@ export interface FmUploadPopups {
 	duplicate: TemplateRef<unknown>;
 	onDemand: TemplateRef<unknown>;
 	refused: TemplateRef<unknown>;
+	/** B04: photos over 25 MB, listed before anything uploads. */
+	overLimit: TemplateRef<unknown>;
+	/** B05: photos with notes, confirmed before they upload. */
+	notes: TemplateRef<unknown>;
 }
 
 /** The upload popup (B03): what was picked, where it goes, and what is left out. */
@@ -63,17 +84,49 @@ export class FmUploadFlow {
 	private readonly transloco = inject(TranslocoService);
 	private readonly uploads = inject(MediaUploads);
 
+	private readonly profilesQuery = injectMediaProfilesQuery();
+	/** The profiles a photo can be given, as the upload popup lists them. */
+	readonly profiles = computed(() => choosable((this.profilesQuery.data() ?? []).map((item) => item.profile)));
 	readonly review = signal<FmReview | null>(null);
 	readonly duplicate = signal<FmDuplicateAsk | null>(null);
 	readonly storageAsk = signal<FmStorageAsk | null>(null);
 	/** B18's box: a super admin also lets other admins use on-demand storage. */
 	readonly alsoLetOthers = signal(false);
 
-	/** Ticked rows that are not photos: what Upload sends. */
+	/** Ticked rows that can go: files, and photos with a readable size, at least one version and no refusal. */
 	readonly going = computed(() => {
 		const review = this.review();
-		return review ? review.rows.filter((row) => !row.waits && !review.skipped.has(row.key)) : [];
+		return review ? review.rows.filter((row) => !review.skipped.has(row.key) && this.canGo(row)) : [];
 	});
+	readonly photos = computed(() => (this.review()?.rows ?? []).filter((row) => row.photo));
+	/** Ticked photos over 25 MB (B04): listed and left out. */
+	readonly overLimit = computed(() => {
+		const review = this.review();
+		return review
+			? review.rows.filter((row) => row.photo && row.bytes > PHOTO_MAX_BYTES && !review.skipped.has(row.key))
+			: [];
+	});
+	/** Photos going with yellow notes (B05). */
+	readonly noted = computed(() =>
+		this.going().filter((row) => row.photo && this.notesFor(row).some((note) => !isRefusal(note))),
+	);
+	/** B02's bar: the profile added to or removed from every ticked photo. */
+	readonly bulkProfile = signal<string>('');
+	/** Photos still being read for their size. */
+	readonly reading = signal(0);
+	/** Ticked files that are not photos: stored as they are. */
+	readonly goingFiles = computed(() => this.going().filter((row) => !row.photo).length);
+	/** Each photo's preview while the popup is open; let go when it closes. */
+	private readonly thumbs = signal<ReadonlyMap<string, string>>(new Map());
+
+	thumb(key: string): string | null {
+		return this.thumbs().get(key) ?? null;
+	}
+
+	private dropThumbs(): void {
+		for (const url of this.thumbs().values()) URL.revokeObjectURL(url);
+		this.thumbs.set(new Map());
+	}
 	readonly waiting = computed(() => (this.review()?.rows ?? []).filter((row) => row.waits).length);
 	/** Folders a folder upload makes: those holding something that goes. */
 	readonly foldersToMake = computed(() => foldersFor(this.going()).length);
@@ -82,7 +135,92 @@ export class FmUploadFlow {
 	open(plan: FmUploadPlan, targetId: string | null, place: string, popups: FmUploadPopups): void {
 		if (!plan.rows.length) return;
 		this.review.set({ plan, rows: plan.rows, skipped: new Set(), targetId, place, checking: false });
-		void this.show(popups.review, { size: 'xl', windowClass: 'theme-modal media-modal' }, 'fm_review_title');
+		void this.readSizes();
+		void this.show(popups.review, { size: 'xl', windowClass: 'theme-modal media-modal' }, 'fm_review_title').then(
+			() => this.dropThumbs(),
+		);
+	}
+
+	/** Each photo's size, read in the browser, then its suggested profile (B01). */
+	private async readSizes(): Promise<void> {
+		const photos = (this.review()?.rows ?? []).filter((row) => row.photo && !row.size);
+		this.reading.set(photos.length);
+		if (typeof URL.createObjectURL === 'function') {
+			this.thumbs.set(new Map(photos.map((row) => [row.key, URL.createObjectURL(row.file)])));
+		}
+		for (const row of photos) {
+			const size = await readPhotoSize(row.file);
+			this.updateRow(row.key, (current) => ({
+				...current,
+				size,
+				sizeRead: true,
+				picks: size ? suggestedPicks(this.profiles(), size) : [],
+			}));
+			this.reading.update((left) => Math.max(0, left - 1));
+		}
+	}
+
+	private canGo(row: FmUploadRow): boolean {
+		if (row.waits) return false;
+		if (!row.photo) return true;
+		if (row.bytes > PHOTO_MAX_BYTES || !row.size || !versionsOf(row).length) return false;
+		return !this.notesFor(row).some(isRefusal);
+	}
+
+	notesFor(row: FmUploadRow): FmPhotoNote[] {
+		return row.photo ? photoNotes(row, this.profiles()) : [];
+	}
+
+	isPicked(row: FmUploadRow, profileKey: string): boolean {
+		return row.picks.some((pick) => pick.profileKey === profileKey);
+	}
+
+	hasFill(row: FmUploadRow, profileKey: string, fill: MediaFill): boolean {
+		return row.picks.find((pick) => pick.profileKey === profileKey)?.fills.includes(fill) ?? false;
+	}
+
+	/** Ticks or unticks a profile for one photo (B02's menu). */
+	togglePick(rowKey: string, profileKey: string): void {
+		const profile = this.profiles().find((entry) => entry.key === profileKey);
+		this.updateRow(rowKey, (row) => {
+			if (!row.size || !profile) return row;
+			const picks = this.isPicked(row, profileKey)
+				? row.picks.filter((pick) => pick.profileKey !== profileKey)
+				: [...row.picks, newPick(profile, row.size)];
+			return { ...row, picks };
+		});
+	}
+
+	/** B21: each fill ticked under a profile becomes its own version; the last one cannot be unticked. */
+	toggleFill(rowKey: string, profileKey: string, fill: MediaFill): void {
+		this.updateRow(rowKey, (row) => ({
+			...row,
+			picks: row.picks.map((pick) => {
+				if (pick.profileKey !== profileKey) return pick;
+				const fills = pick.fills.includes(fill)
+					? pick.fills.filter((entry) => entry !== fill)
+					: [...pick.fills, fill];
+				return fills.length ? { ...pick, fills } : pick;
+			}),
+		}));
+	}
+
+	/** B02's bar: one profile added to, or taken off, every ticked photo. */
+	bulk(action: 'add' | 'remove'): void {
+		const key = this.bulkProfile();
+		const review = this.review();
+		if (!key || !review) return;
+		for (const row of review.rows) {
+			if (!row.photo || review.skipped.has(row.key)) continue;
+			const picked = this.isPicked(row, key);
+			if ((action === 'add' && !picked) || (action === 'remove' && picked)) this.togglePick(row.key, key);
+		}
+	}
+
+	private updateRow(key: string, change: (row: FmUploadRow) => FmUploadRow): void {
+		this.review.update((review) =>
+			review ? { ...review, rows: review.rows.map((row) => (row.key === key ? change(row) : row)) } : review,
+		);
 	}
 
 	toggleRow(key: string): void {
@@ -120,6 +258,23 @@ export class FmUploadFlow {
 		const review = this.review();
 		const going = this.going();
 		if (!review || review.checking || !going.length) return;
+		// B04: photos over 25 MB are named first; B05: photos with notes are confirmed.
+		if (this.overLimit().length) {
+			const go = await this.show<'yes'>(
+				popups.overLimit,
+				{ size: 'lg', windowClass: 'theme-modal text-center' },
+				'fm_over_title',
+			);
+			if (!go) return;
+		}
+		if (this.noted().length) {
+			const go = await this.show<'yes'>(
+				popups.notes,
+				{ windowClass: 'theme-modal text-center' },
+				'fm_notes_title',
+			);
+			if (!go) return;
+		}
 		this.review.set({ ...review, checking: true });
 		try {
 			const hashes = new Map<string, string | null>();
@@ -143,6 +298,9 @@ export class FmUploadFlow {
 					contentType: row.contentType,
 					folderId: folderIds.get(row.folderPath.join('/')) ?? review.targetId,
 					sha256: hashes.get(row.key) ?? null,
+					...(row.photo && row.size
+						? { photo: { width: row.size.width, height: row.size.height, versions: versionsOf(row) } }
+						: {}),
 				})),
 				reservationId,
 			);

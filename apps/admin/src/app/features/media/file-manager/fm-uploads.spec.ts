@@ -26,7 +26,16 @@ import {
 	sha256Hex,
 	timeLeft,
 	uploadPercent,
+	pastedName,
+	photoShapeLabel,
+	versionsOf,
 } from './fm-upload-plan';
+
+const profileData = vi.hoisted(() => ({ list: [] as unknown[] }));
+vi.mock('@data-access/queries/media-profiles.queries', async (original) => ({
+	...(await original<object>()),
+	injectMediaProfilesQuery: () => ({ data: () => profileData.list }),
+}));
 
 // The test page has no Web Crypto of its own; a browser on HTTPS has.
 beforeAll(() => vi.stubGlobal('crypto', webcrypto));
@@ -34,7 +43,7 @@ beforeAll(() => vi.stubGlobal('crypto', webcrypto));
 const file = (name: string, type = 'application/pdf', size = 4) => new File(['x'.repeat(size)], name, { type });
 
 describe('planning an upload (B03)', () => {
-	it('keeps folder paths, lists photos as waiting, and leaves out what the computer left behind', () => {
+	it('keeps folder paths, takes JPEG and PNG as photos, lists other pictures as waiting, and leaves out what the computer left behind', () => {
 		const plan = planUpload([
 			{ file: file('shoot-brief.pdf'), path: ['Bridal 2027'] },
 			{ file: file('cover-front.jpg', 'image/jpeg'), path: ['Bridal 2027'] },
@@ -44,14 +53,16 @@ describe('planning an upload (B03)', () => {
 			{ file: file('._cover-front.jpg', 'image/jpeg'), path: ['Bridal 2027'] },
 			{ file: file('secret.txt', 'text/plain'), path: ['Bridal 2027', '.git'] },
 			{ file: file('notes', ''), path: ['Bridal 2027'] },
+			{ file: file('look.webp', 'image/webp'), path: ['Bridal 2027'] },
 		]);
 		expect(plan.folderName).toBe('Bridal 2027');
-		expect(plan.rows.map((row) => [row.name, row.waits])).toEqual([
-			['shoot-brief.pdf', false],
-			['cover-front.jpg', true],
-			['raw-dsc0099.nef', false],
-			['behind.mp4', false],
-			['notes', false],
+		expect(plan.rows.map((row) => [row.name, row.waits, row.photo])).toEqual([
+			['shoot-brief.pdf', false, false],
+			['cover-front.jpg', false, true],
+			['raw-dsc0099.nef', false, false],
+			['behind.mp4', false, false],
+			['notes', false, false],
+			['look.webp', true, false],
 		]);
 		// A browser that knows no type still sends one the API takes.
 		expect(plan.rows[4]?.contentType).toBe('application/octet-stream');
@@ -124,7 +135,14 @@ describe('planning an upload (B03)', () => {
 });
 
 describe('the upload flow: popup, duplicates, storage, folders (B03, B10, B11, B18, B19)', () => {
-	const popups = { review: {}, duplicate: {}, onDemand: {}, refused: {} } as unknown as FmUploadPopups;
+	const popups = {
+		review: {},
+		duplicate: {},
+		onDemand: {},
+		refused: {},
+		overLimit: { name: 'over' },
+		notes: { name: 'notes' },
+	} as unknown as FmUploadPopups;
 	const setup = (
 		options: {
 			duplicates?: unknown[];
@@ -188,7 +206,9 @@ describe('the upload flow: popup, duplicates, storage, folders (B03, B10, B11, B
 	it('lists everything, sends only ticked non-photos, and makes the folders parents first', async () => {
 		const { flow, gateway, uploads } = setup();
 		flow.open(folderPlan(), 'fld_b', 'My files › Banarasi', popups);
-		expect(flow.waiting()).toBe(1);
+		// The JPEG is a photo now; with no size read here (no decoder in the test browser) it does not go yet.
+		expect(flow.waiting()).toBe(0);
+		expect(flow.photos().map((row) => row.name)).toEqual(['cover.jpg']);
 		expect(flow.going().map((row) => row.name)).toEqual(['brief.pdf', 'catalogue.zip', 'inner.pdf']);
 		expect(flow.foldersToMake()).toBe(2);
 		flow.toggleRow(flow.going()[1]?.key ?? '');
@@ -356,7 +376,7 @@ describe('the upload flow: popup, duplicates, storage, folders (B03, B10, B11, B
 		expect(uploads.add).not.toHaveBeenCalled();
 	});
 
-	it('only photos: nothing to send, Upload does nothing', async () => {
+	it('a photo whose size cannot be read here has nothing to send: Upload does nothing', async () => {
 		const { flow, gateway } = setup();
 		flow.open(planUpload([{ file: file('a.jpg', 'image/jpeg'), path: [] }]), null, 'My files', popups);
 		expect(flow.going()).toEqual([]);
@@ -454,5 +474,146 @@ describe('bulk changes in the tray (A48, A49)', () => {
 		uploads.dismiss();
 		expect(uploads.operations()).toEqual([]);
 		vi.useRealTimers();
+	});
+});
+
+describe('photos in the upload popup (media step 2d: B01, B02, B02b, B04, B05, B17, B21)', () => {
+	const profile = (key: string, extra: Record<string, unknown> = {}) => ({
+		key,
+		name: key,
+		builtIn: true,
+		shape: { width: 3, height: 4 },
+		roles: ['card'],
+		widths: { card: [400] },
+		quality: null,
+		fills: ['white', 'blur', 'crop'],
+		minSize: { edge: 'short', px: 1600, mode: 'refuse' },
+		maxBytes: 25 * 1024 * 1024,
+		accepts: ['image/jpeg', 'image/png'],
+		mainPhotoOnly: false,
+		enabled: true,
+		version: 1,
+		...extra,
+	});
+	const PROFILES = [
+		profile('product_3x4'),
+		profile('hero_21x9', {
+			shape: { width: 21, height: 9 },
+			fills: ['crop', 'blur', 'colour'],
+			minSize: { edge: 'width', px: 2560, mode: 'warn' },
+		}),
+		profile('link_preview', { mainPhotoOnly: true }),
+		profile('square_1x1', { enabled: false, shape: { width: 1, height: 1 } }),
+	];
+	const photo = (name: string) => new File([new Uint8Array(4)], name, { type: 'image/jpeg' });
+	const POPUPS = {
+		review: {},
+		duplicate: {},
+		onDemand: {},
+		refused: {},
+		overLimit: { name: 'over' },
+		notes: { name: 'notes' },
+	} as unknown as FmUploadPopups;
+
+	const run = async (sizes: Record<string, { width: number; height: number }>, files: File[]) => {
+		profileData.list = PROFILES.map((entry) => ({ profile: entry, photos: 0 }));
+		vi.stubGlobal('createImageBitmap', async (blob: File) => ({ ...sizes[blob.name], close: () => undefined }));
+		const answers: unknown[] = [];
+		const modals = {
+			open: vi.fn((template: { name?: string }) => {
+				answers.push(template?.name ?? 'review');
+				return { result: template?.name ? Promise.resolve('yes') : new Promise(() => undefined) };
+			}),
+		};
+		const uploads = { add: vi.fn() };
+		const gateway = {
+			duplicates: vi.fn(() =>
+				of({ files: files.map(() => ({ identical: null, sameName: null, keepBothName: '' })) }),
+			),
+			checkStorage: vi.fn(() => of({ decision: 'go', reservationId: 'res_1' })),
+		};
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				FmUploadFlow,
+				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: NotificationService, useValue: { showError: vi.fn() } },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+				{ provide: MediaUploads, useValue: uploads },
+			],
+		});
+		const flow = TestBed.inject(FmUploadFlow);
+		flow.open(planUpload(files.map((entry) => ({ file: entry, path: [] }))), 'fld_1', 'Banarasi', POPUPS);
+		await vi.waitFor(() => expect(flow.reading()).toBe(0));
+		return { flow, uploads, answers };
+	};
+
+	it('suggests a profile from each photo’s shape, offers only switched-on chosen profiles, and sends versions', async () => {
+		const { flow, uploads } = await run({ 'front.jpg': { width: 3000, height: 4000 } }, [photo('front.jpg')]);
+		expect(flow.profiles().map((entry) => entry.key)).toEqual(['product_3x4', 'hero_21x9']);
+		const row = flow.review()?.rows[0];
+		expect(row?.picks).toEqual([{ profileKey: 'product_3x4', fills: ['as_is'] }]);
+		expect(flow.going()).toHaveLength(1);
+		await flow.start(vi.fn(), POPUPS);
+		expect(uploads.add).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					name: 'front.jpg',
+					photo: { width: 3000, height: 4000, versions: [{ profileKey: 'product_3x4', fill: 'as_is' }] },
+				}),
+			],
+			'res_1',
+		);
+	});
+
+	it('ticks a different-shape profile with its first fill, adds fills side by side, never leaves none (B21)', async () => {
+		const { flow } = await run({ 'wide.jpg': { width: 4800, height: 2400 } }, [photo('wide.jpg')]);
+		const key = flow.review()?.rows[0]?.key as string;
+		expect(flow.review()?.rows[0]?.picks).toEqual([]);
+		flow.togglePick(key, 'product_3x4');
+		flow.toggleFill(key, 'product_3x4', 'blur');
+		expect(flow.review()?.rows[0]?.picks).toEqual([{ profileKey: 'product_3x4', fills: ['white', 'blur'] }]);
+		flow.toggleFill(key, 'product_3x4', 'white');
+		flow.toggleFill(key, 'product_3x4', 'blur');
+		expect(flow.review()?.rows[0]?.picks[0]?.fills).toEqual(['blur']);
+		expect(flow.notesFor(flow.review()?.rows[0] as never).map((note) => note.kind)).toEqual(['shape']);
+	});
+
+	it('the bar adds or removes a profile on every ticked photo; refusals stop a photo, notes ask first (B02b, B05)', async () => {
+		const { flow, uploads, answers } = await run(
+			{ 'a.jpg': { width: 1800, height: 2400 }, 'small.jpg': { width: 900, height: 1200 } },
+			[photo('a.jpg'), photo('small.jpg')],
+		);
+		flow.bulkProfile.set('hero_21x9');
+		flow.bulk('add');
+		const [a, small] = flow.review()?.rows ?? [];
+		expect(flow.isPicked(a as never, 'hero_21x9')).toBe(true);
+		expect(flow.notesFor(a as never).map((note) => note.kind)).toEqual(['small', 'shape']);
+		// The small photo is refused by Product 3:4 (1600 px short side): it does not go.
+		expect(flow.notesFor(small as never).some((note) => note.kind === 'too_small')).toBe(true);
+		expect(flow.going().map((row) => row.name)).toEqual(['a.jpg']);
+		expect(flow.noted().map((row) => row.name)).toEqual(['a.jpg']);
+		await flow.start(vi.fn(), POPUPS);
+		expect(answers).toContain('notes');
+		expect(uploads.add.mock.calls[0]?.[0][0].photo.versions).toEqual([
+			{ profileKey: 'product_3x4', fill: 'as_is' },
+			{ profileKey: 'hero_21x9', fill: 'crop' },
+		]);
+		flow.bulk('remove');
+	});
+});
+
+describe('photo helpers', () => {
+	it('names a pasted picture and a photo’s shape', () => {
+		expect(pastedName('image/png', new Date(2026, 10, 15, 10, 32))).toBe('pasted-image-15-nov-2026-10-32.png');
+		expect(pastedName('image/jpeg', new Date(2026, 0, 2, 9, 5))).toBe('pasted-image-2-jan-2026-09-05.jpg');
+		expect(photoShapeLabel({ width: 3000, height: 4000 })).toBe('3:4');
+		expect(photoShapeLabel({ width: 4800, height: 2400 })).toBe('2:1');
+		expect(photoShapeLabel({ width: 2721, height: 805 })).toBe('3.38:1');
+		expect(versionsOf({ picks: [{ profileKey: 'p', fills: ['white', 'blur'] }] })).toEqual([
+			{ profileKey: 'p', fill: 'white' },
+			{ profileKey: 'p', fill: 'blur' },
+		]);
 	});
 });

@@ -1,4 +1,23 @@
-import { waitsForImageProfiles } from '@saha-textile/core-domain/media-files';
+import {
+	type PhotoShape,
+	fitsShape,
+	isProcessedPhoto,
+	minSizeCheck,
+	photoFills,
+	suggestProfile,
+	waitsForImageProfiles,
+} from '@saha-textile/core-domain/media-files';
+
+import type { MediaFill, MediaProfile } from '@saha-textile/contracts';
+
+/** A photo over this is listed and left out (B04); other files have no limit from us. */
+export const PHOTO_MAX_BYTES = 25 * 1024 * 1024;
+
+/** One profile picked for a photo, with the fills ticked when its shape differs (“As is” when it fits). */
+export interface FmPick {
+	profileKey: string;
+	fills: MediaFill[];
+}
 
 /** One picked or dropped file, with the folders it sat in under what was picked (empty for loose files). */
 export interface FmPicked {
@@ -15,8 +34,16 @@ export interface FmUploadRow {
 	contentType: string;
 	/** Folders under the place the upload goes, as picked: kept on upload. */
 	folderPath: readonly string[];
-	/** A photo: it waits for image profiles (owner, 15 Nov); everything else uploads now. */
+	/** A picture type the image worker does not read yet: listed as waiting, not sent. */
 	waits: boolean;
+	/** A JPEG or PNG photo: it uploads with the versions picked for it (media step 2). */
+	photo: boolean;
+	/** The photo's size as the browser decoded it, once read. */
+	size: PhotoShape | null;
+	/** The browser has tried to read the photo (a size of null after that: it cannot be read). */
+	sizeRead: boolean;
+	/** Profiles picked for the photo, suggested from its shape (B01). */
+	picks: FmPick[];
 }
 
 export interface FmUploadPlan {
@@ -47,7 +74,11 @@ export function planUpload(picked: readonly FmPicked[]): FmUploadPlan {
 			bytes: file.size,
 			contentType,
 			folderPath: path,
-			waits: waitsForImageProfiles(contentType, file.name),
+			photo: isProcessedPhoto(contentType),
+			waits: waitsForImageProfiles(contentType, file.name) && !isProcessedPhoto(contentType),
+			size: null,
+			sizeRead: false,
+			picks: [],
 		});
 	}
 	const tops = new Set(rows.map((row) => row.folderPath[0] ?? ''));
@@ -143,4 +174,103 @@ export function readPickedFolder(files: readonly File[]): FmPicked[] {
 		const parts = (file.webkitRelativePath || file.name).split('/');
 		return { file, path: parts.slice(0, -1) };
 	});
+}
+
+// --- Photos (media step 2d): sizes, suggested profiles, notes ----------------------------------------------------
+
+type Profile = Pick<MediaProfile, 'key' | 'shape' | 'fills' | 'minSize' | 'enabled' | 'mainPhotoOnly' | 'maxBytes'>;
+
+/** The photo's upright size as the browser decodes it; null when it cannot be read here. */
+export async function readPhotoSize(file: Blob): Promise<PhotoShape | null> {
+	if (typeof createImageBitmap !== 'function') return null;
+	try {
+		const bitmap = await createImageBitmap(file);
+		const size = { width: bitmap.width, height: bitmap.height };
+		bitmap.close();
+		return size;
+	} catch {
+		return null;
+	}
+}
+
+/** The profiles a photo may be given: switched on, chosen by people (not the link preview). */
+export const choosable = <P extends Profile>(profiles: readonly P[]): P[] =>
+	profiles.filter((profile) => profile.enabled && !profile.mainPhotoOnly);
+
+/** The suggestion for a photo (B01): the first profile it already fits, kept as is. */
+export function suggestedPicks(profiles: readonly Profile[], size: PhotoShape): FmPick[] {
+	const key = suggestProfile(profiles as Parameters<typeof suggestProfile>[0], size);
+	return key ? [{ profileKey: key, fills: ['as_is'] }] : [];
+}
+
+/** A newly ticked profile: “As is” when the photo fits, else the profile's first fill. */
+export function newPick(profile: Profile, size: PhotoShape): FmPick {
+	const fills = photoFills(profile as Parameters<typeof photoFills>[0], size);
+	return { profileKey: profile.key, fills: fills.slice(0, 1) as MediaFill[] };
+}
+
+/** One yellow note or red refusal for a picked profile (B02b). */
+export interface FmPhotoNote {
+	profileKey: string;
+	kind: 'shape' | 'small' | 'too_small' | 'over';
+	px?: number;
+	has?: number;
+	edge?: 'short' | 'width';
+}
+
+/** What the popup says about a photo's picks: a different shape, smaller than asked, or refused. */
+export function photoNotes(
+	row: Pick<FmUploadRow, 'size' | 'picks' | 'bytes'>,
+	profiles: readonly Profile[],
+): FmPhotoNote[] {
+	const notes: FmPhotoNote[] = [];
+	if (!row.size) return notes;
+	for (const pick of row.picks) {
+		const profile = profiles.find((entry) => entry.key === pick.profileKey);
+		if (!profile) continue;
+		if (row.bytes > profile.maxBytes) notes.push({ profileKey: profile.key, kind: 'over' });
+		const check = minSizeCheck(profile.minSize, row.size);
+		if (check.result === 'refuse')
+			notes.push({ profileKey: profile.key, kind: 'too_small', px: check.px, has: check.has, edge: check.edge });
+		else if (check.result === 'warn')
+			notes.push({ profileKey: profile.key, kind: 'small', px: check.px, has: check.has, edge: check.edge });
+		if (!fitsShape(row.size, profile.shape ?? null)) notes.push({ profileKey: profile.key, kind: 'shape' });
+	}
+	return notes;
+}
+
+/** A refusal stops the photo; a note only asks for a confirmation (B05). */
+export const isRefusal = (note: FmPhotoNote): boolean => note.kind === 'too_small' || note.kind === 'over';
+
+/** The versions a photo asks for: one per profile and ticked fill. */
+export const versionsOf = (row: Pick<FmUploadRow, 'picks'>): { profileKey: string; fill: MediaFill }[] =>
+	row.picks.flatMap((pick) => pick.fills.map((fill) => ({ profileKey: pick.profileKey, fill })));
+
+/** A name for a pasted picture (B17): `pasted-image-15-nov-2026-10-32.png`. */
+export function pastedName(type: string, at = new Date()): string {
+	const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+	const two = (value: number) => String(value).padStart(2, '0');
+	const extension = type === 'image/png' ? 'png' : type === 'image/jpeg' ? 'jpg' : (type.split('/')[1] ?? 'img');
+	return `pasted-image-${at.getDate()}-${months[at.getMonth()]}-${at.getFullYear()}-${two(at.getHours())}-${two(at.getMinutes())}.${extension}`;
+}
+
+/** A photo's own shape as people say it (“3:4”, “2:1”), or as a decimal when it is no common one. */
+const COMMON_SHAPES: readonly [number, number][] = [
+	[1, 1],
+	[4, 5],
+	[3, 4],
+	[2, 3],
+	[9, 16],
+	[5, 4],
+	[4, 3],
+	[3, 2],
+	[16, 9],
+	[2, 1],
+	[21, 9],
+	[3, 1],
+];
+export function photoShapeLabel(size: PhotoShape): string {
+	const ratio = size.width / size.height;
+	const near = COMMON_SHAPES.find(([w, h]) => Math.abs(ratio - w / h) / (w / h) <= 0.02);
+	return near ? `${near[0]}:${near[1]}` : `${ratio.toFixed(2)}:1`;
 }

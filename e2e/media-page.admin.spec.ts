@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { type APIRequestContext, type Page, expect, test } from '@playwright/test';
 
 import { ADMIN, API_URL } from './support';
@@ -93,7 +95,7 @@ test.describe('Media page (step 1)', () => {
 		await shot(page, 'a06-empty-folder');
 	});
 
-	test('uploads: the popup lists photos as waiting and sends the rest; the tray counts (B03, B08)', async ({
+	test('uploads: the popup sends files, refuses a photo it cannot read, and the tray counts (B03, B08)', async ({
 		page,
 	}) => {
 		await openRoot(page);
@@ -107,13 +109,45 @@ test.describe('Media page (step 1)', () => {
 			]);
 		const review = page.locator('#fm_review');
 		await expect(review).toContainText('2 items go to');
-		await expect(review).toContainText('Waits for image profiles');
+		// Four bytes named .jpg: a photo the browser cannot read is listed and left out.
+		await expect(review).toContainText("This photo can't be read");
 		await expect(review).not.toContainText('.DS_Store');
 		await shot(page, 'b03-upload-popup');
 		await page.locator('#fm_review_upload').click();
 		await expect(page.locator('.fm-tray-head')).toContainText('Uploaded 1 file');
 		await expect(row(page, 'size-chart.pdf')).toContainText('Ready');
 		await shot(page, 'b08-tray-done');
+	});
+
+	test('a photo gets a profile suggested from its shape, a note when it does not fit, and goes up to make its versions (B01, B05, step 2d)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await card(page, RUN).dblclick();
+		// A real PNG from the admin's own pictures; square, so a square profile is suggested and notes are shown.
+		const png = readFileSync('apps/admin/public/assets/images/product.png');
+		await page
+			.locator('#fm_pick_files')
+			.setInputFiles([{ name: 'product-sample.png', mimeType: 'image/png', buffer: png }]);
+		const review = page.locator('#fm_review');
+		await expect(review.locator('tr[data-row="product-sample.png"] .fm-pchip').first()).toBeVisible();
+		await expect(page.locator('#fm_review_bar')).toContainText('For the ticked images');
+		await shot(page, 'b01-photo-suggested');
+		const upload = page.locator('#fm_review_upload');
+		await expect(upload).toBeEnabled();
+		await upload.click();
+		// A photo smaller than its profile asks is confirmed first (B05).
+		if (
+			await page
+				.locator('#fm_notes')
+				.isVisible()
+				.catch(() => false)
+		) {
+			await shot(page, 'b05-notes');
+			await page.locator('#fm_notes_go').click();
+		}
+		await expect(page.locator('.fm-tray')).toContainText(/Making versions|Uploaded/);
+		await expect(row(page, 'product-sample.png')).toBeVisible();
 	});
 
 	test('the same bytes again asks first; “Use the existing one” leaves it out (B10)', async ({ page }) => {

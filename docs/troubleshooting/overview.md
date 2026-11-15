@@ -33,6 +33,7 @@ This page lists common local problems and how to fix them. For failures in busin
 | Server rendering fails on TLS               | Node does not trust the local certificate    | Start with `NODE_OPTIONS=--use-system-ca`                               |
 | The browser calls `localhost` in the stack  | `/config.json` did not parse                 | Check that Nginx serves the file                                        |
 | No code arrives locally                     | The console provider logs instead of sending | Set `OTP_LOCAL_FIXED_CODE`                                              |
+| Database tests time out in setup hooks      | Too many index builds on a fresh database    | Connect with `autoIndex: false` and sync only the file's own indexes    |
 
 ## Installable app
 

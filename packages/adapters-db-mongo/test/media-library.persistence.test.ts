@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
-import { MediaFolderModel, StorageReservationModel } from '../src/models/index';
+import { MediaFolderModel, MediaShareLinkModel, StorageReservationModel } from '../src/models/index';
 import {
 	MongoMediaFavouriteRepository,
 	MongoMediaFolderRepository,
@@ -65,9 +65,14 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 
 	beforeAll(async () => {
 		await disconnectMongo();
-		await connectMongo({ dbName: ownDatabase });
+		// A fresh database: build only the indexes this file uses, not every model's (see connectMongo).
+		await connectMongo({ dbName: ownDatabase, autoIndex: false });
 		await dropOwn();
-		await Promise.all([MediaFolderModel.syncIndexes(), StorageReservationModel.syncIndexes()]);
+		await Promise.all([
+			MediaFolderModel.syncIndexes(),
+			StorageReservationModel.syncIndexes(),
+			MediaShareLinkModel.syncIndexes(),
+		]);
 	});
 
 	afterAll(async () => {

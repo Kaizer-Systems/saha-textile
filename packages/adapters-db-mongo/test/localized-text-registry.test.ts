@@ -82,9 +82,14 @@ const registered = (model: WalkableModel): string[] =>
 const freeFormPaths = (schema: Schema): string[] => {
 	const found: string[] = [];
 	schema.eachPath((path, type) => {
-		const element = type as unknown as { caster?: { instance?: string }; embeddedSchemaType?: { instance?: string } };
+		const element = type as unknown as {
+			caster?: { instance?: string };
+			embeddedSchemaType?: { instance?: string };
+		};
 		const instance =
-			type.instance === 'Array' ? (element.caster?.instance ?? element.embeddedSchemaType?.instance) : type.instance;
+			type.instance === 'Array'
+				? (element.caster?.instance ?? element.embeddedSchemaType?.instance)
+				: type.instance;
 		if (instance === 'Mixed') found.push(path);
 	});
 	return found;
@@ -148,6 +153,9 @@ describe('localized text registry', () => {
 		expect(missing).toContain('"optionGroups":{"$elemMatch":{"terms":{"$elemMatch":{"label.hi"');
 		expect(missing).toContain('"estimatedDeliveryText.en"');
 		expect(JSON.stringify(heldTextFilter(product!, 'hi'))).not.toContain('status');
-		expect(eraseUpdate(product!, 'hi')).toMatchObject({ 'title.hi': '', 'optionGroups.$[].terms.$[].label.hi': '' });
+		expect(eraseUpdate(product!, 'hi')).toMatchObject({
+			'title.hi': '',
+			'optionGroups.$[].terms.$[].label.hi': '',
+		});
 	});
 });

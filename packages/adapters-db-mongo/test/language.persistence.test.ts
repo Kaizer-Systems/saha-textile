@@ -48,7 +48,8 @@ describe.runIf(hasMongoEnv())('languages persistence (rs0)', () => {
 
 	beforeAll(async () => {
 		await disconnectMongo();
-		await connectMongo({ dbName: ownDatabase });
+		// A fresh database: build only the indexes this file uses, not every model's (see connectMongo).
+		await connectMongo({ dbName: ownDatabase, autoIndex: false });
 		await dropOwn();
 	});
 
@@ -98,7 +99,9 @@ describe.runIf(hasMongoEnv())('languages persistence (rs0)', () => {
 		await insertRaw(ProductModel, product('no_title', { title: { en: 'English only' } }));
 		await insertRaw(
 			ProductModel,
-			product('no_value', { optionGroups: [{ label: text('size'), terms: [{ code: 'm', label: { en: 'Medium' } }] }] }),
+			product('no_value', {
+				optionGroups: [{ label: text('size'), terms: [{ code: 'm', label: { en: 'Medium' } }] }],
+			}),
 		);
 		await insertRaw(ProductModel, product('draft_gap', { status: 'draft', title: { en: 'Draft only' } }));
 		// The delivery line may stay empty while English is empty; once English has one, it is needed.
@@ -107,7 +110,9 @@ describe.runIf(hasMongoEnv())('languages persistence (rs0)', () => {
 		// An older shape the form no longer writes: erased with the rest, never a to-do.
 		await insertRaw(
 			ProductModel,
-			product('older_shape', { attributes: [{ code: 'size', label: { en: 'Size' }, terms: [{ code: 's', label: { en: 'S' } }] }] }),
+			product('older_shape', {
+				attributes: [{ code: 'size', label: { en: 'Size' }, terms: [{ code: 's', label: { en: 'S' } }] }],
+			}),
 		);
 
 		await insertRaw(BlogPostModel, {
@@ -126,7 +131,9 @@ describe.runIf(hasMongoEnv())('languages persistence (rs0)', () => {
 		});
 
 		const missingProducts = await coverage.missingIds('products', code);
-		expect(missingProducts).toEqual(expect.arrayContaining([id('no_title'), id('no_value'), id('delivery_needed')]));
+		expect(missingProducts).toEqual(
+			expect.arrayContaining([id('no_title'), id('no_value'), id('delivery_needed')]),
+		);
 		for (const name of ['complete', 'draft_gap', 'delivery_unset', 'older_shape']) {
 			expect(missingProducts).not.toContain(id(name));
 		}

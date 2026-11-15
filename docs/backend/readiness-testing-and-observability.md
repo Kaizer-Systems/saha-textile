@@ -4,7 +4,7 @@ wide: true
 description: Health endpoints, logging, metrics, test layers and the backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-15'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -12,6 +12,7 @@ source_of_truth:
     - packages/contracts/test
     - packages/core-domain/test
     - packages/adapters-db-mongo/test
+    - packages/adapters-db-mongo/vitest.config.mts
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
     - docs/engineering-live-context/execution-roadmap.mdx
@@ -91,6 +92,8 @@ pnpm e2e:session-rotation # session and security scenarios
 ```
 
 Playwright uses the installed Chrome. Set `E2E_BASE_URL` to test a production build. Integration tests need the replica set: run `pnpm mongo:up` first.
+
+The MongoDB integration tests share one replica set, so `packages/adapters-db-mongo/vitest.config.mts` runs at most four test files at once and gives setup hooks 30 seconds. A file that needs a database of its own connects with `connectMongo({ dbName, autoIndex: false })` and builds only the indexes it uses with `Model.syncIndexes()`. Building every model's indexes on a fresh database queues about 180 index builds, MongoDB runs three at a time, and the other files then time out in their setup hooks. A query that reads a whole collection belongs in such a file, or filters to its own records, because other files write to the shared test database at the same time.
 
 The Playwright projects are `desktop` and `phone` for the shop, and `admin` for files matching `admin.spec.ts`. The `admin` project signs in once through `admin-setup` and reuses that session. `pnpm e2e:stack` builds the apps, seeds `saha_textile_e2e`, creates a throwaway administrator, runs the suite and stops everything. Pass `--keep` to leave the stack running, or a spec path and `--project` to run one file.
 

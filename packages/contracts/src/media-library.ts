@@ -188,6 +188,28 @@ export type MediaFileAddressQuery = z.infer<typeof MediaFileAddressQuery>;
 export const MediaFileAddress = z.object({ url: z.string().url() });
 export type MediaFileAddress = z.infer<typeof MediaFileAddress>;
 
+/** S11: a big upload in parts. Every call names the upload the browser started. */
+export const MediaMultipartStart = z.object({
+	uploadId: z.string().min(1).max(1024),
+	partBytes: z.number().int().positive(),
+});
+export type MediaMultipartStart = z.infer<typeof MediaMultipartStart>;
+export const MediaUploadRef = z.object({ uploadId: z.string().min(1).max(1024).optional() });
+export type MediaUploadRef = z.infer<typeof MediaUploadRef>;
+export const MediaPartsRequest = z.object({
+	uploadId: z.string().min(1).max(1024),
+	partNumbers: z.array(z.number().int().min(1).max(10_000)).min(1).max(100),
+});
+export type MediaPartsRequest = z.infer<typeof MediaPartsRequest>;
+export const MediaPartUrls = z.object({ urls: z.array(z.object({ partNumber: z.number().int(), url: z.string() })) });
+export type MediaPartUrls = z.infer<typeof MediaPartUrls>;
+export const MediaUploadedParts = z.object({
+	parts: z.array(z.object({ partNumber: z.number().int(), size: z.number().int().nonnegative() })),
+});
+export type MediaUploadedParts = z.infer<typeof MediaUploadedParts>;
+export const MediaPartsQuery = z.object({ uploadId: z.string().min(1).max(1024) });
+export type MediaPartsQuery = z.infer<typeof MediaPartsQuery>;
+
 export const MediaFavouriteWrite = z.object({
 	targetType: z.enum(['folder', 'file']),
 	targetId: Id,

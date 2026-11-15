@@ -21,7 +21,11 @@ import type {
 	MediaRestoreRequest,
 	MediaSelection,
 	MediaFileAddress,
+	MediaMultipartStart,
+	MediaPartUrls,
+	MediaPartsRequest,
 	MediaTrashCheck,
+	MediaUploadedParts,
 } from '@saha-textile/contracts';
 import {
 	type AuditLogRepository,
@@ -32,6 +36,7 @@ import {
 	type MediaFolderRepository,
 	type MediaJobQueuePort,
 	MEDIA_INGEST_POLICY,
+	MULTIPART_PART_BYTES,
 	type ShareLinkRepository,
 	type StoragePort,
 	ancestorsUnder,
@@ -494,20 +499,65 @@ export class MediaLibraryService {
 	 * An upload this admin started and will not finish (cancelled, or failed for good): the record,
 	 * anything that reached Spaces, and its storage hold go. Only an unfinished upload of one's own.
 	 */
-	async cancelUpload(actor: string, id: string): Promise<void> {
-		const asset = await this.assets.findById(id);
-		if (!asset || asset.processing.state !== 'awaiting_upload' || asset.uploadedBy?.id !== actor)
-			throw new NotFoundException('Upload not found');
+	async cancelUpload(actor: string, id: string, uploadId?: string): Promise<void> {
+		const asset = await this.requireUnfinished(actor, id);
+		if (uploadId && asset.originalStorageKey) {
+			// Parts already stored would otherwise stay billed until Spaces drops them.
+			await this.storage.abortMultipartUpload({ key: asset.originalStorageKey, uploadId }).catch(() => undefined);
+		}
 		if (asset.originalStorageKey) await this.storage.delete(asset.originalStorageKey);
 		await this.assets.hardDelete(id);
 		await this.storageCheck.release(`res_${id}`);
 	}
 
-	/** The browser finished its PUT: the file is ready (nothing to process) and its hold ends. */
-	async finalizeFile(actor: string, id: string, now = new Date()): Promise<{ assetId: string; state: 'ready' }> {
+	/** S11: starts a big upload in parts; the browser keeps the upload id to carry on after a reload. */
+	async startMultipart(actor: string, id: string): Promise<MediaMultipartStart> {
+		const asset = await this.requireUnfinished(actor, id);
+		const { uploadId } = await this.storage.startMultipartUpload({
+			key: asset.originalStorageKey as string,
+			contentType: asset.originalFormat,
+		});
+		return { uploadId, partBytes: MULTIPART_PART_BYTES };
+	}
+
+	/** Signed addresses for the parts the browser sends next; an hour each. */
+	async partUrls(actor: string, id: string, request: MediaPartsRequest): Promise<MediaPartUrls> {
+		const asset = await this.requireUnfinished(actor, id);
+		const urls = [];
+		for (const partNumber of request.partNumbers)
+			urls.push({
+				partNumber,
+				url: await this.storage.createSignedPartUrl({
+					key: asset.originalStorageKey as string,
+					uploadId: request.uploadId,
+					partNumber,
+					expiresInSeconds: 3600,
+				}),
+			});
+		return { urls };
+	}
+
+	/** What already reached Spaces, so a cut-off upload sends only the rest (B16). */
+	async uploadedParts(actor: string, id: string, uploadId: string): Promise<MediaUploadedParts> {
+		const asset = await this.requireUnfinished(actor, id);
+		const parts = await this.storage.listUploadedParts({ key: asset.originalStorageKey as string, uploadId });
+		return { parts: parts.map(({ partNumber, size }) => ({ partNumber, size })) };
+	}
+
+	/** The browser finished its PUT (or every part): the file is ready (nothing to process) and its hold ends. */
+	async finalizeFile(
+		actor: string,
+		id: string,
+		now = new Date(),
+		uploadId?: string,
+	): Promise<{ assetId: string; state: 'ready' }> {
 		const asset = await this.requireFile(id);
 		if (asset.kind !== 'file') throw refuse('not_a_plain_file');
 		if (asset.processing.state === 'awaiting_upload') {
+			if (uploadId && asset.originalStorageKey) {
+				if (asset.uploadedBy?.id !== actor) throw new NotFoundException('Upload not found');
+				await this.storage.completeMultipartUpload({ key: asset.originalStorageKey, uploadId });
+			}
 			await this.assets.update({
 				...asset,
 				processing: { ...asset.processing, state: 'ready', processedAt: now.toISOString() },
@@ -708,6 +758,19 @@ export class MediaLibraryService {
 		const folder = await this.folders.findById(id);
 		if (!folder) throw new NotFoundException('Folder not found');
 		return folder;
+	}
+
+	/** An upload this admin started that has not finished: the only kind its parts may be sent for. */
+	private async requireUnfinished(actor: string, id: string): Promise<MediaAsset> {
+		const asset = await this.assets.findById(id);
+		if (
+			!asset ||
+			asset.processing.state !== 'awaiting_upload' ||
+			asset.uploadedBy?.id !== actor ||
+			!asset.originalStorageKey
+		)
+			throw new NotFoundException('Upload not found');
+		return asset;
 	}
 
 	private async requireFile(id: string): Promise<MediaAsset> {

@@ -148,6 +148,13 @@ function harness() {
 		}),
 		setVisibility: vi.fn(async () => undefined),
 		delete: vi.fn(async () => undefined),
+		startMultipartUpload: vi.fn(async () => ({ uploadId: 'up_1' })),
+		createSignedPartUrl: vi.fn(
+			async (input: { partNumber: number }) => `https://spaces.test/part/${input.partNumber}`,
+		),
+		listUploadedParts: vi.fn(async () => [{ partNumber: 1, etag: '"a"', size: 16 }]),
+		completeMultipartUpload: vi.fn(async () => undefined),
+		abortMultipartUpload: vi.fn(async () => undefined),
 		createSignedDownloadUrl: vi.fn(
 			async (input: { key: string; expiresInSeconds: number; fileName?: string; disposition?: string }) =>
 				`https://spaces.test/${input.key}?for=${input.expiresInSeconds}&as=${input.disposition}&name=${input.fileName}`,
@@ -550,6 +557,56 @@ describe('plain files', () => {
 		h.file('med_done', { processing: { state: 'ready' }, uploadedBy: { type: 'admin', id: 'adm_1' } });
 		await expect(h.service.cancelUpload('adm_1', 'med_done')).rejects.toBeInstanceOf(NotFoundException);
 		expect(h.files.has('med_done')).toBe(true);
+	});
+
+	it('send a big file in parts that resume: only one’s own unfinished upload, finished by joining the parts (S11)', async () => {
+		const h = harness();
+		const big = await h.service.presignFile('adm_1', {
+			fileName: 'shoot.mp4',
+			contentType: 'video/mp4',
+			byteSize: 200 * 1024 * 1024,
+			folderId: null,
+		});
+		await expect(h.service.startMultipart('adm_2', big.assetId)).rejects.toBeInstanceOf(NotFoundException);
+		expect(await h.service.startMultipart('adm_1', big.assetId)).toEqual({
+			uploadId: 'up_1',
+			partBytes: 16 * 1024 * 1024,
+		});
+		expect(await h.service.partUrls('adm_1', big.assetId, { uploadId: 'up_1', partNumbers: [1, 2] })).toEqual({
+			urls: [
+				{ partNumber: 1, url: 'https://spaces.test/part/1' },
+				{ partNumber: 2, url: 'https://spaces.test/part/2' },
+			],
+		});
+		expect(await h.service.uploadedParts('adm_1', big.assetId, 'up_1')).toEqual({
+			parts: [{ partNumber: 1, size: 16 }],
+		});
+		await h.service.finalizeFile('adm_1', big.assetId, new Date(), 'up_1');
+		expect(h.storage.completeMultipartUpload).toHaveBeenCalledWith({
+			key: `media/${big.assetId}/original.mp4`,
+			uploadId: 'up_1',
+		});
+		expect(h.files.get(big.assetId)?.processing.state).toBe('ready');
+		// Finished: nothing more can be sent for it.
+		await expect(
+			h.service.partUrls('adm_1', big.assetId, { uploadId: 'up_1', partNumbers: [3] }),
+		).rejects.toBeInstanceOf(NotFoundException);
+	});
+
+	it('cancelling a big upload drops its stored parts too', async () => {
+		const h = harness();
+		const big = await h.service.presignFile('adm_1', {
+			fileName: 'shoot.mp4',
+			contentType: 'video/mp4',
+			byteSize: 200 * 1024 * 1024,
+			folderId: null,
+		});
+		await h.service.cancelUpload('adm_1', big.assetId, 'up_1');
+		expect(h.storage.abortMultipartUpload).toHaveBeenCalledWith({
+			key: `media/${big.assetId}/original.mp4`,
+			uploadId: 'up_1',
+		});
+		expect(h.files.has(big.assetId)).toBe(false);
 	});
 
 	it('refuses a folder in Trash, and nothing is held', async () => {

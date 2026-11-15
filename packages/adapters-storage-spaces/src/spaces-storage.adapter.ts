@@ -1,10 +1,15 @@
 import {
+	AbortMultipartUploadCommand,
+	CompleteMultipartUploadCommand,
+	CreateMultipartUploadCommand,
 	DeleteObjectCommand,
 	DeleteObjectsCommand,
 	GetObjectCommand,
+	ListPartsCommand,
 	PutObjectAclCommand,
 	PutObjectCommand,
 	S3Client,
+	UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { ObjectVisibility, SignedUpload, StoragePort, StoredObject } from '@saha-textile/core-domain';
@@ -238,6 +243,106 @@ export class SpacesStorageAdapter implements StoragePort {
 			throw new SpacesStorageError(
 				`presigned expiry must be at most ${MAX_UPLOAD_EXPIRY_SECONDS} seconds (seven days)`,
 			);
+		}
+	}
+
+	async startMultipartUpload(input: { key: string; contentType: string }): Promise<{ uploadId: string }> {
+		assertValidStorageKey(input.key);
+		try {
+			const answer = await this.client.send(
+				new CreateMultipartUploadCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					ContentType: input.contentType,
+					ACL: aclFor('private'),
+				}),
+			);
+			if (!answer.UploadId) throw new Error('no upload id');
+			return { uploadId: answer.UploadId };
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to start a multipart upload for "${input.key}"`, err);
+		}
+	}
+
+	async createSignedPartUrl(input: {
+		key: string;
+		uploadId: string;
+		partNumber: number;
+		expiresInSeconds: number;
+	}): Promise<string> {
+		assertValidStorageKey(input.key);
+		this.assertExpiry(input.expiresInSeconds);
+		if (!Number.isInteger(input.partNumber) || input.partNumber < 1 || input.partNumber > 10_000)
+			throw new SpacesStorageError(`Part number ${input.partNumber} is outside 1–10000`);
+		try {
+			return await getSignedUrl(
+				this.client,
+				new UploadPartCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: input.uploadId,
+					PartNumber: input.partNumber,
+				}),
+				{ expiresIn: input.expiresInSeconds },
+			);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to presign part ${input.partNumber} of "${input.key}"`, err);
+		}
+	}
+
+	async listUploadedParts(input: {
+		key: string;
+		uploadId: string;
+	}): Promise<{ partNumber: number; etag: string; size: number }[]> {
+		assertValidStorageKey(input.key);
+		const parts: { partNumber: number; etag: string; size: number }[] = [];
+		let marker: string | undefined;
+		try {
+			do {
+				const page = await this.client.send(
+					new ListPartsCommand({
+						Bucket: this.bucket,
+						Key: input.key,
+						UploadId: input.uploadId,
+						...(marker ? { PartNumberMarker: marker } : {}),
+					}),
+				);
+				for (const part of page.Parts ?? [])
+					if (part.PartNumber && part.ETag)
+						parts.push({ partNumber: part.PartNumber, etag: part.ETag, size: part.Size ?? 0 });
+				marker = page.IsTruncated ? page.NextPartNumberMarker : undefined;
+			} while (marker);
+			return parts.sort((a, b) => a.partNumber - b.partNumber);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to list the parts of "${input.key}"`, err);
+		}
+	}
+
+	/** Joins the stored parts, as storage lists them, into the object. */
+	async completeMultipartUpload(input: { key: string; uploadId: string }): Promise<void> {
+		const parts = await this.listUploadedParts(input);
+		try {
+			await this.client.send(
+				new CompleteMultipartUploadCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: input.uploadId,
+					MultipartUpload: { Parts: parts.map((part) => ({ PartNumber: part.partNumber, ETag: part.etag })) },
+				}),
+			);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to finish the multipart upload of "${input.key}"`, err);
+		}
+	}
+
+	async abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void> {
+		assertValidStorageKey(input.key);
+		try {
+			await this.client.send(
+				new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: input.key, UploadId: input.uploadId }),
+			);
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to stop the multipart upload of "${input.key}"`, err);
 		}
 	}
 }

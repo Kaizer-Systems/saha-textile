@@ -14,3 +14,8 @@ export const CAMERA_RAW = /\.(dng|cr2|cr3|nef|nrw|arw|srf|sr2|raf|orf|rw2|pef|sr
 export function waitsForImageProfiles(contentType: string, name: string): boolean {
 	return contentType.toLowerCase().startsWith('image/') && !CAMERA_RAW.test(name);
 }
+
+/** Uploads this big go in parts, so a cut-off one carries on where it stopped (S11). */
+export const MULTIPART_FROM_BYTES = 100 * 1024 * 1024;
+/** Each part of a big upload; S3 takes at most 10,000 parts of at least 5 MB (the last may be smaller). */
+export const MULTIPART_PART_BYTES = 16 * 1024 * 1024;

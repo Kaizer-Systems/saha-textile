@@ -137,6 +137,11 @@ const storage = (bytes = new Uint8Array([1, 2, 3])) => {
 		setVisibility: async () => {},
 		createSignedDownloadUrl: async ({ key }) => `https://signed.test/${key}`,
 		createSignedUploadUrl: async ({ key }) => ({ url: `https://upload.test/${key}` }),
+		startMultipartUpload: async () => ({ uploadId: 'upload_1' }),
+		createSignedPartUrl: async ({ partNumber }) => `https://upload.test/part/${partNumber}`,
+		listUploadedParts: async () => [],
+		completeMultipartUpload: async () => undefined,
+		abortMultipartUpload: async () => undefined,
 	};
 	return { port, uploads };
 };

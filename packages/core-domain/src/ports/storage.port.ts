@@ -68,4 +68,22 @@ export interface StoragePort {
 		expiresInSeconds?: number;
 		visibility?: ObjectVisibility;
 	}): Promise<SignedUpload>;
+	/**
+	 * A big upload in parts (S11), so a cut-off one carries on where it stopped. The object is
+	 * private; the browser PUTs each part to its own signed address; the parts already stored are
+	 * read back from storage, so nothing about them has to be kept anywhere else.
+	 */
+	startMultipartUpload(input: { key: string; contentType: string }): Promise<{ uploadId: string }>;
+	createSignedPartUrl(input: {
+		key: string;
+		uploadId: string;
+		partNumber: number;
+		expiresInSeconds: number;
+	}): Promise<string>;
+	listUploadedParts(input: {
+		key: string;
+		uploadId: string;
+	}): Promise<{ partNumber: number; etag: string; size: number }[]>;
+	completeMultipartUpload(input: { key: string; uploadId: string }): Promise<void>;
+	abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void>;
 }

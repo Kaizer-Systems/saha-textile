@@ -265,6 +265,36 @@ describe('visibility and server-side operations', () => {
 		);
 	});
 
+	it('signs each part of a big upload, and refuses part numbers S3 does not take (S11)', async () => {
+		const adapter = new SpacesStorageAdapter(baseConfig);
+		const url = await adapter.createSignedPartUrl({
+			key: 'media/a/original.mp4',
+			uploadId: 'up_1',
+			partNumber: 3,
+			expiresInSeconds: 3600,
+		});
+		const signed = new URL(url);
+		expect(signed.searchParams.get('partNumber')).toBe('3');
+		expect(signed.searchParams.get('uploadId')).toBe('up_1');
+		expect(signed.searchParams.get('X-Amz-Expires')).toBe('3600');
+		await expect(
+			adapter.createSignedPartUrl({
+				key: 'media/a/original.mp4',
+				uploadId: 'up_1',
+				partNumber: 0,
+				expiresInSeconds: 60,
+			}),
+		).rejects.toThrow(/outside/);
+		await expect(
+			adapter.createSignedPartUrl({
+				key: 'media/a/original.mp4',
+				uploadId: 'up_1',
+				partNumber: 10_001,
+				expiresInSeconds: 60,
+			}),
+		).rejects.toThrow(/outside/);
+	});
+
 	it('saves the file instead of showing it when asked to (the Media page’s Download)', async () => {
 		const adapter = new SpacesStorageAdapter(baseConfig);
 		const url = await adapter.createSignedDownloadUrl({

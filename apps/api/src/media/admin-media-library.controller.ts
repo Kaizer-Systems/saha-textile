@@ -31,7 +31,13 @@ import {
 	MediaSelection,
 	type MediaFileAddress,
 	MediaFileAddressQuery,
+	type MediaMultipartStart,
+	type MediaPartUrls,
+	MediaPartsQuery,
+	MediaPartsRequest,
 	type MediaTrashCheck,
+	type MediaUploadedParts,
+	MediaUploadRef,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -218,8 +224,12 @@ export class AdminMediaLibraryController {
 		operationId: 'cancelMediaFileUpload',
 		summary: 'Drop your own unfinished upload: its record, any stored bytes and its hold',
 	})
-	cancelUpload(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
-		return this.library.cancelUpload(actor(principal), id);
+	cancelUpload(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaUploadRef)) body: MediaUploadRef,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<void> {
+		return this.library.cancelUpload(actor(principal), id, body.uploadId);
 	}
 
 	@Get('files/:id/address')
@@ -242,9 +252,45 @@ export class AdminMediaLibraryController {
 	@ApiOperation({ operationId: 'finalizeMediaFile', summary: 'The plain file is uploaded: it is ready' })
 	finalizeFile(
 		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaUploadRef)) body: MediaUploadRef,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<{ assetId: string; state: 'ready' }> {
-		return this.library.finalizeFile(actor(principal), id);
+		return this.library.finalizeFile(actor(principal), id, new Date(), body.uploadId);
+	}
+
+	@Post('files/:id/multipart')
+	@HttpCode(200)
+	@RequirePermissions('attachment.create')
+	@ApiOperation({ operationId: 'startMediaMultipart', summary: 'Start a big upload in parts (S11)' })
+	startMultipart(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaMultipartStart> {
+		return this.library.startMultipart(actor(principal), id);
+	}
+
+	@Post('files/:id/parts')
+	@HttpCode(200)
+	@RequirePermissions('attachment.create')
+	@ApiOperation({ operationId: 'mediaPartUrls', summary: 'Signed addresses for the next parts of a big upload' })
+	partUrls(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaPartsRequest)) body: MediaPartsRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaPartUrls> {
+		return this.library.partUrls(actor(principal), id, body);
+	}
+
+	@Get('files/:id/parts')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.create')
+	@ApiOperation({ operationId: 'mediaUploadedParts', summary: 'The parts of a big upload already in Spaces' })
+	uploadedParts(
+		@Param('id') id: string,
+		@Query(new ZodValidationPipe(MediaPartsQuery)) query: MediaPartsQuery,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaUploadedParts> {
+		return this.library.uploadedParts(actor(principal), id, query.uploadId);
 	}
 
 	@Put('files/:id/visibility')

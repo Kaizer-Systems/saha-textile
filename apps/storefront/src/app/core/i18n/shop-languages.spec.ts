@@ -12,6 +12,9 @@ import {
 	openGraphLocale,
 	refreshSupportedLocales,
 	resetSupportedLocales,
+	retiredLocaleRedirect,
+	retiredLocales,
+	setRetiredLocales,
 	setSupportedLocales,
 	supportedLocales,
 	supportedLocalesReady,
@@ -21,6 +24,37 @@ const answer = (body: unknown, ok = true) =>
 	vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok, json: async () => body } as Response);
 
 afterEach(() => vi.restoreAllMocks());
+
+describe('a language the shop no longer shows (Settings › Languages)', () => {
+	it('sends its pages to the same page in English for good, kept an hour', async () => {
+		resetSupportedLocales();
+		answer({ default: 'en', active: ['en'], redirect: ['bn'] });
+		await refreshSupportedLocales('https://api.test', 2_000_000);
+		expect(retiredLocales()).toEqual(['bn']);
+		const kept = { status: 301, cacheSeconds: 3600 };
+		expect(localeRedirectFor('/bn/product/red-saree?colour=red', undefined)).toEqual({
+			location: '/en/product/red-saree?colour=red',
+			...kept,
+		});
+		expect(localeRedirectFor('/bn', undefined)).toEqual({ location: '/en/', ...kept });
+		expect(localeRedirectFor('/bn/', undefined)).toEqual({ location: '/en/', ...kept });
+		expect(retiredLocaleRedirect('/bn/assets/logo.png')).toBeNull();
+		expect(retiredLocaleRedirect('/en/cart')).toBeNull();
+	});
+
+	it('never retires English or a language the shop shows, and forgets the list on reset', () => {
+		setSupportedLocales(['en', 'hi']);
+		setRetiredLocales({ redirect: ['en', 'hi', 'bn', 'not a code'] });
+		expect(retiredLocales()).toEqual(['bn']);
+		setRetiredLocales(['ta']);
+		expect(retiredLocales()).toEqual(['ta']);
+		setRetiredLocales(null);
+		expect(retiredLocales()).toEqual([]);
+		setRetiredLocales(['bn']);
+		resetSupportedLocales();
+		expect(retiredLocales()).toEqual([]);
+	});
+});
 
 describe('the shop’s language list (from the API)', () => {
 	it('is English alone until the API answers, and trusts any language prefix meanwhile', () => {

@@ -124,6 +124,14 @@ describe('locale middleware', () => {
 		expect(h3.sendRedirect).toHaveBeenLastCalledWith(expect.anything(), '/en/x', 301);
 	});
 
+	it('keeps a switched-off language’s 301 for an hour, so switching it back on brings its pages back', async () => {
+		address.storefrontAddress.mockReturnValue({ status: 301, location: '/en/product/x', cacheSeconds: 3600 });
+		h3.setResponseHeaders.mockClear();
+		expect(await run(event('/bn/product/x'))).toBe(true);
+		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), { 'Cache-Control': 'public, max-age=3600' });
+		expect(h3.sendRedirect).toHaveBeenLastCalledWith(expect.anything(), '/en/product/x', 301);
+	});
+
 	it('does nothing with an answer that has no address', async () => {
 		address.storefrontAddress.mockReturnValue({ status: 301 });
 		expect(await run(event('/x'))).toBeUndefined();

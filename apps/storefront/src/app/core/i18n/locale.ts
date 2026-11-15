@@ -24,6 +24,8 @@ export type Locale = string;
 export const DEFAULT_LOCALE: Locale = PRIMARY_LOCALE;
 
 let locales: readonly Locale[] = [PRIMARY_LOCALE];
+/** Languages the shop showed once and no longer shows: their addresses answer 301 to English. */
+let retired: readonly Locale[] = [];
 let loaded = false;
 let loadedAt = 0;
 let refreshing: Promise<void> | null = null;
@@ -45,6 +47,19 @@ export function setSupportedLocales(next: unknown): void {
 	loadedAt = Date.now();
 }
 
+/** Languages switched off or deleted in Settings › Languages after the shop showed them. */
+export function retiredLocales(): readonly Locale[] {
+	return retired;
+}
+
+/** Adopts the API's `redirect` list (or a test's); never English, never a language still shown. */
+export function setRetiredLocales(next: unknown): void {
+	const list = Array.isArray(next) ? next : (next as { redirect?: unknown } | null)?.redirect;
+	retired = Array.isArray(list)
+		? list.filter((code): code is string => isLocaleCode(code) && code !== PRIMARY_LOCALE && !locales.includes(code))
+		: [];
+}
+
 /** True once the API's list has arrived. */
 export function supportedLocalesReady(): boolean {
 	return loaded;
@@ -56,9 +71,12 @@ export function refreshSupportedLocales(apiUrl: string, now: number = Date.now()
 	refreshing ??= (async () => {
 		try {
 			const answer = await fetch(`${apiUrl}/storefront/languages`);
-			const list = parseLanguageList(answer.ok ? await answer.json() : null);
-			if (list) setSupportedLocales(list);
-			else loadedAt = Date.now() - LOCALES_TTL_MS + RETRY_MS;
+			const body: unknown = answer.ok ? await answer.json() : null;
+			const list = parseLanguageList(body);
+			if (list) {
+				setSupportedLocales(list);
+				setRetiredLocales(body);
+			} else loadedAt = Date.now() - LOCALES_TTL_MS + RETRY_MS;
 		} catch {
 			loadedAt = Date.now() - LOCALES_TTL_MS + RETRY_MS;
 		} finally {
@@ -71,6 +89,7 @@ export function refreshSupportedLocales(apiUrl: string, now: number = Date.now()
 /** Back to English alone, as before the API answered (tests). */
 export function resetSupportedLocales(): void {
 	locales = [PRIMARY_LOCALE];
+	retired = [];
 	loaded = false;
 	loadedAt = 0;
 	refreshing = null;
@@ -154,6 +173,33 @@ export interface LocaleRedirect {
 	location: string;
 	/** 301 where the answer never changes; 302 where it depends on the visitor (`/`). */
 	status: 301 | 302;
+	/**
+	 * How long browsers and the edge may keep this answer. Set on a switched-off language's 301:
+	 * permanent for search engines, yet a language switched back on returns within the hour.
+	 */
+	cacheSeconds?: number;
+}
+
+/** A switched-off language's 301 is kept this long (see `LocaleRedirect.cacheSeconds`). */
+export const RETIRED_LOCALE_CACHE_SECONDS = 3600;
+
+/**
+ * A page under a language the shop no longer shows goes to the same page in English, for good
+ * (owner decision round 2026-11-15, Settings › Languages): `/bn/product/x` → `/en/product/x`.
+ */
+export function retiredLocaleRedirect(pathAndQuery: string): LocaleRedirect | null {
+	const queryAt = pathAndQuery.indexOf('?');
+	const pathname = queryAt === -1 ? pathAndQuery : pathAndQuery.slice(0, queryAt);
+	const query = queryAt === -1 ? '' : pathAndQuery.slice(queryAt);
+	if (!isPagePath(pathname)) return null;
+	const first = pathname.split('/')[1] ?? '';
+	if (!retired.includes(first) || locales.includes(first)) return null;
+	const rest = pathname.slice(first.length + 1) || '/';
+	return {
+		location: `/${DEFAULT_LOCALE}${rest}${query}`,
+		status: 301,
+		cacheSeconds: RETIRED_LOCALE_CACHE_SECONDS,
+	};
 }
 
 /**
@@ -171,6 +217,9 @@ export function localeRedirectFor(pathAndQuery: string, rememberedLocale: string
 	const query = queryAt === -1 ? '' : pathAndQuery.slice(queryAt);
 
 	if (!isPagePath(pathname)) return null;
+
+	const retiredLanguage = retiredLocaleRedirect(pathAndQuery);
+	if (retiredLanguage) return retiredLanguage;
 
 	if (pathname === '/') {
 		const locale = isLocale(rememberedLocale) ? rememberedLocale : DEFAULT_LOCALE;

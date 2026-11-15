@@ -68,6 +68,10 @@ export default defineEventHandler(async (event) => {
 	if (redirect.status === 302) {
 		setResponseHeaders(event, { 'Cache-Control': 'private, no-store', Vary: 'Cookie' });
 	}
+	// A switched-off language's 301: kept an hour, so switching it back on brings its pages back.
+	if ('cacheSeconds' in redirect && typeof redirect.cacheSeconds === 'number') {
+		setResponseHeaders(event, { 'Cache-Control': `public, max-age=${redirect.cacheSeconds}` });
+	}
 	const location = redirect.location;
 	if (typeof location !== 'string') return;
 	await sendRedirect(event, location, redirect.status);

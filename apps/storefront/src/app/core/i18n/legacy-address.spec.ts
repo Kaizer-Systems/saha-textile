@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { resetSupportedLocales, setRetiredLocales, setSupportedLocales } from './locale';
 import {
 	isLiveStorefrontPath,
 	legacyCatalogReady,
@@ -14,6 +15,15 @@ describe('storefrontAddress', () => {
 	afterEach(() => {
 		setLegacyRedirectRows([]);
 		setLiveCatalog({ products: [], collections: [] });
+	});
+
+	it('sends a switched-off language’s pages to English before any saved redirect', () => {
+		setSupportedLocales(['en']);
+		setRetiredLocales(['bn']);
+		setLegacyRedirectRows([{ sourcePath: '/bn/old', statusCode: 410 }]);
+		expect(storefrontAddress('/bn/old', undefined)).toEqual({ status: 301, location: '/en/old', cacheSeconds: 3600 });
+		resetSupportedLocales();
+		setSupportedLocales(['en', 'bn']);
 	});
 
 	it('sends / to the remembered locale', () => {

@@ -1,6 +1,6 @@
 import { resolveLegacyAddress, setLocalePrefixTest } from '@saha-textile/core-domain/legacy-resolve';
 
-import { isLocale, localeRedirectFor, type LocaleRedirect } from './locale';
+import { isLocale, localeRedirectFor, type LocaleRedirect, retiredLocaleRedirect } from './locale';
 
 // Old addresses lose their language prefix before they are compared: the shop's own languages.
 setLocalePrefixTest(isLocale);
@@ -86,6 +86,9 @@ export function storefrontAddress(
 	pathAndQuery: string,
 	rememberedLocale: string | undefined,
 ): LocaleRedirect | { status: 410 } | null {
+	// A switched-off language's pages go to English before any saved redirect is consulted.
+	const retired = retiredLocaleRedirect(pathAndQuery);
+	if (retired) return retired;
 	const legacy = resolveLegacyAddress(pathAndQuery, rows, isLiveStorefrontPath);
 	if (legacy?.status === 410) return { status: 410 };
 	if (legacy && legacy.location) return { status: legacy.status, location: legacy.location };

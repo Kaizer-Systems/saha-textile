@@ -36,3 +36,6 @@ export * from './search-term.repository';
 export * from './shop-event.repository';
 export * from './search-outbox.repository';
 export * from './communication-switch.repository';
+export * from './language.repository';
+export * from './language-coverage.repository';
+export * from './localized-text-registry';

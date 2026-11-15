@@ -4,7 +4,7 @@ import { type Model, Schema, model, models } from 'mongoose';
 export interface SeoRouteDoc {
 	_id: string;
 	path: string;
-	locale: 'en' | 'bn';
+	locale: string;
 	title: string;
 	description: string;
 	canonicalPath: string;

@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 80,
-		"existingModelCount": 56,
+		"nodeCount": 81,
+		"existingModelCount": 57,
 		"targetOnlyCount": 24,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -984,6 +984,19 @@
 			"purpose": "Settings › Communications: whether each approved message goes out by email, SMS or WhatsApp. One row per message and channel an operator changed; a missing row means the recommended start state.",
 			"source": "decisions § MSG91 terms, channels and the Communications page (2026-11-13)",
 			"currentModel": "packages/adapters-db-mongo/src/models/communication-switch.model.ts",
+			"references": []
+		},
+		{
+			"id": "languages",
+			"label": "languages",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Settings › Languages: every language ever added, English included, with its Admin switch (the admin's own words) and its Shop state (draft, on or off). A deleted language keeps its row, so its old addresses still answer 301 and adding it again finds its text.",
+			"source": "decisions § Language management, step 0d (2026-11-15)",
+			"currentModel": "packages/adapters-db-mongo/src/models/language.model.ts",
 			"references": []
 		},
 		{

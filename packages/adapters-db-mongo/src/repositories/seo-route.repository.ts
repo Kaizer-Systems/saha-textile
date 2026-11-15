@@ -17,7 +17,7 @@ const toRoute = (doc: SeoRouteDoc): SeoRoute => ({
 });
 
 export class MongoSeoRouteRepository implements SeoRouteRepository {
-	async find(path: string, locale: 'en' | 'bn'): Promise<SeoRoute | null> {
+	async find(path: string, locale: string): Promise<SeoRoute | null> {
 		const doc = await SeoRouteModel.findOne({ path, locale }).lean<SeoRouteDoc>().exec();
 		return doc ? toRoute(doc) : null;
 	}

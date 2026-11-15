@@ -61,3 +61,4 @@ export * from './wishlist-item.model';
 export * from './search-dictionary.model';
 export * from './shop-event.model';
 export * from './communication-switch.model';
+export * from './language.model';

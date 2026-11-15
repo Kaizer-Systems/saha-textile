@@ -19,10 +19,11 @@ const toTerm = (doc: SearchTermDoc): SearchTerm =>
 const escape = (word: string) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export class MongoSearchTermRepository implements SearchTermRepository {
-	async list({ search, status, page, pageSize }: SearchTermFilter): Promise<Paginated<SearchTerm>> {
+	async list({ search, status, ids, page, pageSize }: SearchTermFilter): Promise<Paginated<SearchTerm>> {
 		const words = (search ?? '').toLocaleLowerCase('en').split(/\s+/).filter(Boolean);
 		const filter = {
 			...(status ? { status } : {}),
+			...(ids ? { _id: { $in: [...ids] } } : {}),
 			...(words.length ? { $and: words.map((word) => ({ searchText: { $regex: escape(word) } })) } : {}),
 		};
 		const [docs, total] = await Promise.all([

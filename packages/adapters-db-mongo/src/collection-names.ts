@@ -114,6 +114,8 @@ export const COLLECTION_NAMES = {
 	ShopEvent: 'shopEvents',
 	/** The shop's physical stores, shown as cards on Contact Us. */
 	StoreLocation: 'storeLocations',
+	/** Settings › Languages: every language ever added, English included (step 0d, 2026-11-15). */
+	Language: 'languages',
 	/** Settings › Communications: message × channel switches an operator changed. */
 	CommunicationSwitch: 'communicationSwitches',
 	/** Gmail mailboxes connected in the admin, who may open them, and Contact Us messages. */

@@ -65,6 +65,7 @@ export class MongoShopEventRepository implements ShopEventRepository {
 		const query: Record<string, unknown> = {};
 		if (filter.type) query.type = filter.type;
 		if (filter.status) query.status = filter.status;
+		if (filter.ids) query._id = { $in: [...filter.ids] };
 		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
 		if (words.length) {
 			query.$and = words.map((word) => {

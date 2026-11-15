@@ -54,6 +54,7 @@ export class MongoFaqRepository implements FaqRepository {
 		if (filter.audience !== 'admin') query.status = 'live';
 		if (filter.categoryId) query.categoryIds = filter.categoryId;
 		if (filter.productId) query.productIds = filter.productId;
+		if (filter.ids) query._id = { $in: [...filter.ids] };
 
 		const page = filter.page && filter.page > 0 ? filter.page : 1;
 		const pageSize = filter.pageSize && filter.pageSize > 0 ? filter.pageSize : 50;

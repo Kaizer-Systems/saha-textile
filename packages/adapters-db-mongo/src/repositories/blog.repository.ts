@@ -52,6 +52,7 @@ export class MongoBlogPostRepository implements BlogPostRepository {
 		}
 		if (filter.categoryId) query.categoryIds = filter.categoryId;
 		if (filter.tagId) query.tagIds = filter.tagId;
+		if (filter.ids) query._id = { $in: [...filter.ids] };
 		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
 		if (words.length) {
 			const locales = (filter.searchLocales?.length ? filter.searchLocales : ['en']).filter((locale) =>

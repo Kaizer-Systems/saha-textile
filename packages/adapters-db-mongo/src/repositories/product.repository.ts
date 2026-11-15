@@ -66,6 +66,7 @@ export class MongoProductRepository implements ProductRepository {
 		if (filter.onSale) query.onSale = true;
 		if (filter.insight) query.insightBadges = filter.insight;
 		if (filter.tag) query.tags = filter.tag;
+		if (filter.ids) query._id = { $in: [...filter.ids] };
 		if (filter.search) {
 			const rx = new RegExp(escapeRegex(filter.search), 'i');
 			query.$or = [{ slug: rx }, { sku: rx }, { 'title.en': rx }, { tags: rx }];

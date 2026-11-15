@@ -1299,3 +1299,13 @@ MSG91 answered by phone and in writing on 2026-11-13 (Vishant Chaurasia, quotati
 - **Settings › Communications (super admin).** One table, a switch per message and channel, a heading row per group. Yellow and red i marks sit at the switch's top right with the reason as the translated hover name. Turning on a yellow cell asks for the **password only**, never the PIN; the API checks it with the existing recent-password proof. Turning off needs no password. For the four code rows, Email stays on and SMS and WhatsApp cannot both be off. The channel kill switches on Notification settings still win, and every change is audited.
 - **One custom piece approved:** the shared class `table-sticky-first` (admin `components/_table.scss` and `themes/_dark.scss`) keeps a table's first column in place while the others scroll on narrow screens.
 - **Still owed to the brief:** real captures of the hover tooltips, which need the owner's read-only Chrome permission at the Mac. On phones the i has no hover; the reason shows in the password popup.
+
+## Owner decision round (2026-11-15) — media build foundations: admin dark mode, contrast, one language list
+
+The owner accepted the media file manager brief (revision 6) on 2026-11-15, including R6-3, and asked for the foundations first. Decisions made while building them:
+
+- **Admin dark mode is its own colour-only file**, like the shop's: built from the theme's `body.dark-only` rules, loaded only in dark mode, remembered per browser and applied before the first paint.
+- **R6-3 contrast fixes are colour changes only** and reach WCAG AA on every admin screen in both modes. They extend to every grey, teal, status and dark-mode text the check finds on real screens, not only the brief's examples, and live in named admin colours (`--theme-strong`, `--theme-ink`, `--admin-muted` and the rest).
+- **One language list, from the API** (`GET /storefront/languages`, today from `ACTIVE_LOCALES`), read by every admin switch and by the shop's addresses, menu, alternates and sitemap. No app keeps its own copy.
+- **Language names are always in their own script** (owner, 2026-11-15): "English", "বাংলা", "हिन्दी" in buttons, menus, sentences, reports, emails and test expectations, whatever language the reader uses. Names come from `Intl.DisplayNames` in the language itself. Only the joining words of a list follow the reader ("English and বাংলা", "English এবং বাংলা"). This replaces the brief's R5-4 wording that named languages in the reader's language ("Hindi" in English).
+- **Counts in sentences use plural rules** (`_one` / `_other` keys chosen by `Intl.PluralRules`), and lists use `Intl.ListFormat` (Indian English: no comma before "and").

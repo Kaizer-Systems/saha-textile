@@ -4,7 +4,7 @@ wide: true
 description: Every API route with its access rule.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-14'
+last_verified: '2026-11-15'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -427,6 +427,7 @@ The server enforces public visibility, not the caller. Public repository calls d
 | `GET`   | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                                    |
 | `GET`   | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale                             |
 | `GET`   | `/storefront/brand`                            | Public             | Logo sets, icons, link preview picture, profiles, store links and colours  |
+| `GET`   | `/storefront/languages`                        | Public             | The active languages, English first                                        |
 | `GET`   | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                               |
 | `POST`  | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)                         |
 | `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                                |

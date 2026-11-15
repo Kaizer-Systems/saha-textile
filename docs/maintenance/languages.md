@@ -1,12 +1,17 @@
 ---
 title: Languages
-description: How the shop serves English and Bengali, and the rules for Bengali text, names and numbers.
+description: How the shop and the admin get one list of languages from the API, how languages are named, listed and counted, and the rules for Bengali text, names and numbers.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-15'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
+    - packages/core-domain/src/catalog/languages.ts
+    - apps/api/src/languages
     - apps/storefront/src/app/core/i18n/locale.ts
+    - apps/storefront/src/app/core/i18n/active-locale.ts
+    - apps/admin/src/app/core/i18n/active-languages.ts
+    - apps/admin/src/app/shared/pipes/language.pipes.ts
     - packages/contracts/src/common.ts
 ---
 
@@ -24,7 +29,29 @@ The shop serves two languages: English (`en`) and Bengali (`bn`). English is the
 | Catalogue content | the `en` key of each language object | the `bn` key                       |
 | Link previews     | `og:locale` `en_IN`                  | `og:locale` `bn_IN`                |
 
-Product and category addresses stay in English letters in both languages. Only the language prefix changes. The list of languages is configuration: `ACTIVE_LOCALES` for the API and `supportedLocales` in the storefront's served `config.json`.
+Product and category addresses stay in English letters in both languages. Only the language prefix changes.
+
+## One list of languages
+
+The API owns the list. `GET /storefront/languages` answers `{ "default": "en", "active": ["en", "bn"] }` (contracts' `ActiveLocaleConfig`), from the API setting `ACTIVE_LOCALES`. English is always in it and always first. The answer is public, cached for a minute, and outside the shared rate limit.
+
+| Reader | How it gets the list                                                                                                                                                                                                                                                                                                                                                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin  | `ActiveLanguages` (`core/i18n/active-languages.ts`) loads it before the app starts and keeps this browser's last copy (`st_admin_languages`) for when the API is slow. Every Language switch, every per-language form, the banner form and the header's page-language menu read it.                                                                                 |
+| Shop   | The server's locale middleware refreshes it at most once a minute (`refreshSupportedLocales` in `core/i18n/locale.ts`) and hands it to the renderer on the request. `ACTIVE_LOCALE` adopts it and passes it to the browser in the page's transfer state. Address prefixes, the language menu, `hreflang` and `og:locale` tags, the sitemap and the manifest use it. |
+| API    | `ACTIVE_LOCALES` directly, and it tells the shared old-address rules which prefixes are languages.                                                                                                                                                                                                                                                                  |
+
+Until the shop has heard from the API once, any well-formed language prefix counts as a language, so an outage at start-up can never send `/bn/…` on a permanent redirect to `/en/bn/…`. A Contact Us message in a language the shop does not offer is stored in English.
+
+## Naming, listing and counting
+
+The rules are shared, browser-safe code in `@saha-textile/core-domain/languages`:
+
+- **Names are always in the language's own script**: "English", "বাংলা", "हिन्दी", in buttons, menus, sentences, Go Live reports and emails, whatever language the reader uses. `languageName(code)` takes them from `Intl.DisplayNames`, so a new language is named without anyone typing it. The admin's `languageName` pipe and the flags beside the page-language menus (`languageFlag`) use the same rules.
+- **Lists** follow the reader: `languageList(codes, reader)` joins the names with `Intl.ListFormat`, so English reads "English and বাংলা" (Indian English, no comma before "and") and Bengali reads "English এবং বাংলা". In the admin, the `languageList` pipe; a sentence takes the list as a value, such as `{{languages}}` in Settings › Stores' help.
+- **Counts** pick their wording with `Intl.PluralRules`: a sentence with a count has one key per form (`image_count_one`, `image_count_other`) in each language file, and the admin's `plural` pipe (or `translateCount` in code) chooses the key and writes the count with the language's digits. A language whose file lacks a form falls back to `_other`.
+
+No sentence writes a language list or a plural by hand.
 
 ## Adding interface text
 
@@ -58,7 +85,7 @@ The full glossary is in the decisions log. Catalogue words come from `packages/a
 
 ## Numbers
 
-Bengali pages use English digits for prices, sizes, PIN codes, phone and order numbers, and dates. Month and weekday names stay Bengali. Code that formats a number for a page language passes it through `intlLocale()`, which turns `bn` into `bn-IN-u-nu-latn`.
+Bengali pages use English digits for prices, sizes, PIN codes, phone and order numbers, and dates. Month and weekday names stay Bengali. Code that formats a number for a page language passes it through `intlLocale()` (shared in `@saha-textile/core-domain/languages`), which turns `bn` into `bn-IN-u-nu-latn`.
 
 ## Names and delivery details
 

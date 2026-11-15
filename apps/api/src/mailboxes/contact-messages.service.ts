@@ -7,6 +7,7 @@ import {
 	type ContactMessage,
 	type ContactMessageParsed,
 } from '@saha-textile/contracts';
+import { languageName, PRIMARY_LOCALE } from '@saha-textile/core-domain/languages';
 import type {
 	ContactMessageRepository,
 	MailboxPort,
@@ -33,7 +34,6 @@ export const CONTACT_SWEEP_MS = 5 * 60 * 1000;
 export const CONTACT_RETRY_FOR_MS = 72 * 60 * 60 * 1000;
 const SWEEP_BATCH = 20;
 
-const LANGUAGE: Readonly<Record<ContactMessage['locale'], string>> = { en: 'English', bn: 'Bengali' };
 
 /**
  * Contact Us (owner log § stores, Contact Us and Gmail mailboxes). A message is stored first, so
@@ -82,7 +82,8 @@ export class ContactMessagesService implements OnApplicationBootstrap, OnApplica
 			phone: body.phone ? normalisePhone(body.phone) : null,
 			subject: body.subject,
 			message: body.message,
-			locale: body.locale,
+			// A language the shop no longer offers is answered in English.
+			locale: this.config.locales.includes(body.locale) ? body.locale : PRIMARY_LOCALE,
 			status: 'queued',
 			ipHash: this.hashIp(ip),
 			contentHash,
@@ -162,7 +163,7 @@ export class ContactMessagesService implements OnApplicationBootstrap, OnApplica
 			`Name: ${message.name}`,
 			`Email: ${message.email}`,
 			...(message.phone ? [`Phone: ${message.phone}`] : []),
-			`Reply in: ${LANGUAGE[message.locale]}`,
+			`Reply in: ${languageName(message.locale)}`,
 			'',
 			message.message,
 			'',

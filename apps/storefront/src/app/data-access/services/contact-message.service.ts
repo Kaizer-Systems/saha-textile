@@ -12,7 +12,7 @@ export interface ContactMessageRequest {
 	phone: string;
 	subject: string;
 	message: string;
-	locale: 'en' | 'bn';
+	locale: string;
 	/** The hidden field; a person never fills it. */
 	website: string;
 	/** How long the form was open before sending. */

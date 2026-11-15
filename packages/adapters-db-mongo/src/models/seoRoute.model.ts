@@ -18,7 +18,8 @@ const SeoRouteSchema = new Schema<SeoRouteDoc>(
 	{
 		_id: { type: String, required: true },
 		path: { type: String, required: true },
-		locale: { type: String, enum: ['en', 'bn'], required: true },
+		// Any language code; which languages are active is the API's list, not the schema's.
+		locale: { type: String, match: /^[a-z]{2,3}(?:-[A-Z]{2})?$/, required: true },
 		title: { type: String, required: true },
 		description: { type: String, default: '' },
 		canonicalPath: { type: String, required: true },

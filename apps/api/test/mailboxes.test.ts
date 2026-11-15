@@ -20,6 +20,7 @@ const KEY = Buffer.alloc(32, 9).toString('base64');
 const mailConfig = (overrides: Record<string, unknown> = {}) =>
 	({
 		mail: { tokenKey: KEY, adminUrl: 'https://admin.test/', domain: 'shop.test', ...overrides },
+		locales: ['en', 'bn'],
 	}) as never;
 
 const mailbox = (id: string, overrides: Partial<Mailbox> = {}): Mailbox => ({
@@ -747,8 +748,15 @@ describe('ContactMessagesService', () => {
 			replyTo: 'rina@x.test',
 			subject: 'Contact Us: Blouse size',
 		});
-		expect(mail.text).toContain('Reply in: Bengali');
+		expect(mail.text).toContain('Reply in: বাংলা');
 		expect(mail.text).toContain('Phone: +919836663137');
+	});
+
+	it('answers a language the shop no longer offers in English', async () => {
+		contact = make();
+		const save = vi.spyOn(w.contactRepo, 'save');
+		await contact.submit(form({ locale: 'hi' }), '203.0.113.9');
+		expect(save.mock.calls[0]?.[0].locale).toBe('en');
 	});
 
 	it('drops bots silently and skips a repeat within a day', async () => {

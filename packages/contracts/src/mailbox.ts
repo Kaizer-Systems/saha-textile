@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime } from './common';
+import { Id, IsoDateTime, LocaleCode } from './common';
 
 /**
  * Gmail mailboxes in the admin (owner log § stores, Contact Us and Gmail mailboxes, 2026-11-08).
@@ -158,7 +158,7 @@ export const InboxMessage = z.object({
 	references: z.string().default(''),
 	/** Set when the website's Contact Us form placed this message in the mailbox. */
 	contactForm: z
-		.object({ replyTo: z.string(), locale: z.enum(['en', 'bn']).nullable() })
+		.object({ replyTo: z.string(), locale: LocaleCode.nullable() })
 		.nullable()
 		.default(null),
 	/** The admin user who sent this message from the admin, when one did. */
@@ -246,7 +246,7 @@ export const ContactMessageRequest = z.object({
 		.min(10)
 		.max(2_000)
 		.refine((value) => (value.match(LINK) ?? []).length <= MAX_CONTACT_LINKS, { message: 'too_many_links' }),
-	locale: z.enum(['en', 'bn']).default('en'),
+	locale: LocaleCode.default('en'),
 	/** Hidden from people; anything typed here marks a bot. */
 	website: z.string().max(200).optional().default(''),
 	/** Milliseconds the form was open before sending; under 3 seconds marks a bot. */
@@ -268,7 +268,7 @@ export const ContactMessage = z.object({
 	phone: z.string().nullable().default(null),
 	subject: z.string(),
 	message: z.string(),
-	locale: z.enum(['en', 'bn']),
+	locale: LocaleCode,
 	status: ContactMessageStatus,
 	/** The connection address, hashed; never stored raw. */
 	ipHash: z.string().nullable().default(null),

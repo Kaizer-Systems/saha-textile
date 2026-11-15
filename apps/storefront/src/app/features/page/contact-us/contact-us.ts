@@ -164,7 +164,7 @@ export class ContactUs {
 				phone: String(value['phone'] ?? ''),
 				subject: value['subject'] ?? '',
 				message: value['message'] ?? '',
-				locale: this.locale === 'bn' ? 'bn' : 'en',
+				locale: this.locale,
 				website: value['website'] ?? '',
 				elapsedMs: Date.now() - this.openedAt,
 			})

@@ -16,6 +16,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, NgbDropdown, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
+import { estimateVersionBytes } from '@saha-textile/core-domain/media-files';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { type Observable, lastValueFrom } from 'rxjs';
@@ -43,13 +44,15 @@ import { FileSizePipe, PluralPipe, translateCount } from '@shared/pipes/language
 import { Button } from '@shared/ui/button/button';
 
 import { fileKind, fileTypeLabel } from './file-kinds';
-import { FmDetails } from './fm-details';
+import { FmDetails, type FmDetailsAction } from './fm-details';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
 import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
+import { FmReprocess, type FmReprocessChoice } from './fm-reprocess';
 import {
 	type FmItemRef,
 	type FmSelection,
 	BULK_PART,
+	VERSIONS_PER_CALL,
 	NO_SELECTION,
 	blockedTargets,
 	commonPlace,
@@ -410,7 +413,7 @@ export class FileManager {
 		const star: FmMenuLine = file.starred ? 'unstar' : 'star';
 		if (file.state === 'awaiting_upload') return ['rename', 'move', star, 'divider', 'trash'];
 		if (file.kind === 'image')
-			return ['details', 'rename', 'download_original', 'share', 'move', star, 'divider', 'trash'];
+			return ['details', 'rename', 'download_original', 'share', 'move', 'reprocess', star, 'divider', 'trash'];
 		return ['preview', 'details', 'rename', 'download', 'share', 'move', star, 'divider', 'trash'];
 	}
 
@@ -480,6 +483,9 @@ export class FileManager {
 			case 'details':
 				if (file) this.openDetails(file);
 				return;
+			case 'reprocess':
+				if (file) await this.openReprocess([file]);
+				return;
 			case 'star':
 			case 'unstar':
 				if (folder)
@@ -506,7 +512,10 @@ export class FileManager {
 		else await this.openFile(file, 'view');
 	}
 
-	/** Image or file details (A31, A31B, A32) with the item's Activity (A43). */
+	/**
+	 * Image or file details (A31, A31B, A32) with the item's Activity (A43). Its buttons (Add versions, Download
+	 * original, Share) close it and carry on here; removing a version refreshes the list.
+	 */
 	openDetails(file: MediaFileRow): void {
 		const popup = this.modals.open(FmDetails, {
 			size: 'xl',
@@ -516,6 +525,127 @@ export class FileManager {
 			ariaLabelledBy: 'fm_details_title',
 		});
 		void (popup.componentInstance as FmDetails).start(file.id);
+		popup.result.then(
+			(action: FmDetailsAction | undefined) => {
+				void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+				if (action?.kind === 'add_versions') void this.openReprocess([file], action.versions);
+				if (action?.kind === 'download') void this.openFile(file, 'save');
+				if (action?.kind === 'share') this.openShare(file);
+			},
+			() => void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY }),
+		);
+	}
+
+	/** The photos among the picked files, for the bulk bar's “Add a version” (C07). */
+	readonly chosenPhotos = computed(() =>
+		this.chosen().files.filter((row) => row.kind === 'image' && row.state !== 'awaiting_upload'),
+	);
+
+	/**
+	 * Reprocess (C01 for one photo, C07 for many): the popup picks the versions, then the shared storage check runs
+	 * (asking a super admin past 250 GB), the API queues them, and one tray row counts the photos as they finish.
+	 */
+	async openReprocess(
+		files: readonly MediaFileRow[],
+		versions?: readonly { id: string; state: string }[],
+	): Promise<void> {
+		const photos = files.filter((row) => row.kind === 'image' && row.state !== 'awaiting_upload');
+		const first = photos[0];
+		if (!first) return;
+		let existing = versions;
+		if (!existing && photos.length === 1) {
+			existing = await lastValueFrom(this.gateway.details(first.id))
+				.then((details) => details.versions)
+				.catch(() => []);
+		}
+		const popup = this.modals.open(FmReprocess, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			windowClass: 'theme-modal media-modal',
+			ariaLabelledBy: 'fm_rp_title',
+		});
+		(popup.componentInstance as FmReprocess).start({
+			photos: photos.map((row) => ({
+				id: row.id,
+				name: row.name,
+				width: row.width,
+				height: row.height,
+				bytes: row.bytes,
+				contentType: row.contentType,
+				thumbnailUrl: row.thumbnailUrl,
+			})),
+			versions: existing ?? [],
+		});
+		const choice = await popup.result.then(
+			(answer: FmReprocessChoice) => answer,
+			() => null,
+		);
+		if (choice?.versions.length) await this.addVersions(photos, choice);
+	}
+
+	private async addVersions(photos: readonly MediaFileRow[], choice: FmReprocessChoice): Promise<void> {
+		const onDemand = this.onDemandTemplate();
+		const refused = this.refusedTemplate();
+		if (!onDemand || !refused) return;
+		const many = photos.length > 1;
+		const what = many
+			? translateCount(this.transloco, 'fm_rp_for_photos', photos.length, { versions: choice.label })
+			: this.transloco.translate('fm_rp_for_photo', { versions: choice.label, name: photos[0]?.name ?? '' });
+		const bytes = estimateVersionBytes(
+			photos.reduce((sum, row) => sum + row.bytes, 0),
+			choice.versions.length,
+		);
+		const reservationId = await this.flow.storageCheck('versions', bytes, photos.length, what, {
+			onDemand,
+			refused,
+		});
+		if (reservationId === false) return;
+		const held = reservationId ? { reservationId } : {};
+		try {
+			const ids = photos.map((row) => row.id);
+			const parts: string[][] = [];
+			for (let at = 0; at < ids.length; at += VERSIONS_PER_CALL)
+				parts.push(ids.slice(at, at + VERSIONS_PER_CALL));
+			const answers =
+				parts.length === 1 && !many
+					? [
+							await lastValueFrom(
+								this.gateway.addVersions(ids[0] ?? '', { versions: choice.versions, ...held }),
+							),
+						]
+					: await this.uploads.operation(
+							translateCount(this.transloco, 'fm_rp_asking', photos.length),
+							'ri-refresh-line',
+							parts.map((part) => part.length),
+							(index) =>
+								lastValueFrom(
+									this.gateway.addVersionsToMany({
+										fileIds: parts[index] ?? [],
+										versions: choice.versions,
+										...held,
+									}),
+								),
+						);
+			const added = answers.reduce((sum, answer) => sum + answer.added, 0);
+			const skipped = answers.flatMap((answer) => answer.skipped);
+			const asked = new Set(choice.versions.map((row) => `${row.profileKey}.${row.fill}`)).size;
+			const skippedBy = new Map<string, number>();
+			for (const row of skipped) skippedBy.set(row.fileId, (skippedBy.get(row.fileId) ?? 0) + 1);
+			const working = ids.filter((id) => (skippedBy.get(id) ?? 0) < asked);
+			if (added) {
+				this.notifications.showSuccess(translateCount(this.transloco, 'fm_rp_started', added));
+				this.uploads.watchVersions(what.replace(/\.$/, ''), working);
+			}
+			if (skipped.length) {
+				const message = translateCount(this.transloco, 'fm_rp_skipped', skipped.length);
+				if (added) this.toastr.warning(message);
+				else this.notifications.showError(message);
+			}
+			void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+		} catch (error) {
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		}
 	}
 
 	/**

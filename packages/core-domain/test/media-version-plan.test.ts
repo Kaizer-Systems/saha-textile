@@ -1,6 +1,8 @@
 import type { MediaAsset, MediaProfile, MediaRoleDefinition, MediaVersion } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
+import { cropKeeps } from '../src/catalog/media-files';
+
 import {
 	SEEDED_MEDIA_PROFILES,
 	SEEDED_MEDIA_ROLES,
@@ -17,6 +19,7 @@ import {
 	type MediaAssetRepository,
 	type MediaJob,
 	type StoragePort,
+	planAddVersions,
 } from '../src/index';
 
 /** Media build step 2b: versions planned by profile and fill, and the worker making them write-once. */
@@ -423,5 +426,93 @@ describe('processMediaAsset with versions asked for', () => {
 		const gone = harness(photo({ originalStorageKey: null }));
 		await processMediaAsset(gone.deps, { assetId: 'med_1', reprocess: false });
 		expect(gone.row().versions?.[0]).toMatchObject({ state: 'failed', error: 'original_gone' });
+	});
+});
+
+describe('Reprocess: which versions a photo gets (media step 3a)', () => {
+	const profiles = new Map(SEEDED_MEDIA_PROFILES.map((profile) => [profile.key, profile]));
+	const weave = {
+		kind: 'image' as const,
+		width: 4800,
+		height: 2400,
+		originalByteSize: 1_000_000,
+		originalFormat: 'image/png' as const,
+		originalStorageKey: 'media/med_w/original.png',
+		versions: [
+			{
+				id: 'blog_cover_2x1.as_is',
+				profileKey: 'blog_cover_2x1',
+				profileVersion: 1,
+				fill: 'as_is' as const,
+				state: 'ready' as const,
+				error: null,
+				createdAt: '2026-11-16T00:00:00.000Z',
+			},
+			{
+				id: 'product_3x4.white',
+				profileKey: 'product_3x4',
+				profileVersion: 1,
+				fill: 'white' as const,
+				state: 'failed' as const,
+				error: 'render_failed',
+				createdAt: '2026-11-16T00:00:00.000Z',
+			},
+		],
+	};
+	const at = '2026-11-16T12:00:00.000Z';
+
+	it('adds new versions, retries a failed one, skips one already made and names each refusal', () => {
+		const plan = planAddVersions({
+			asset: weave,
+			asked: [
+				{ profileKey: 'product_3x4', fill: 'crop' },
+				{ profileKey: 'product_3x4', fill: 'white' },
+				{ profileKey: 'blog_cover_2x1', fill: 'as_is' },
+				{ profileKey: 'product_3x4', fill: 'as_is' },
+				{ profileKey: 'link_preview', fill: 'blur' },
+				{ profileKey: 'nope', fill: 'white' },
+				{ profileKey: 'product_3x4', fill: 'crop' },
+			],
+			profiles,
+			at,
+		});
+		expect(plan.add.map((version) => `${version.id}:${version.state}`)).toEqual(['product_3x4.crop:making']);
+		expect(plan.retry.map((version) => version.id)).toEqual(['product_3x4.white']);
+		expect(plan.skipped).toEqual([
+			{ versionId: 'blog_cover_2x1.as_is', reason: 'already_made' },
+			{ versionId: 'product_3x4.as_is', reason: 'fill_not_offered' },
+			{ versionId: 'link_preview.blur', reason: 'profile_not_chosen' },
+			{ versionId: 'nope.white', reason: 'profile_unknown' },
+		]);
+	});
+
+	it('for many photos, a fill becomes “As is” where the photo already fits; a file without an original is no photo', () => {
+		const square = { ...weave, width: 2000, height: 2000, versions: [] };
+		const plan = planAddVersions({
+			asset: square,
+			asked: [{ profileKey: 'square_1x1', fill: 'crop' }],
+			profiles,
+			fitAsIs: true,
+			at,
+		});
+		expect(plan.add.map((version) => version.id)).toEqual(['square_1x1.as_is']);
+		const file = planAddVersions({
+			asset: { ...square, kind: 'file' as never, originalStorageKey: null },
+			asked: [{ profileKey: 'square_1x1', fill: 'crop' }],
+			profiles,
+			at,
+		});
+		expect(file.skipped).toEqual([{ versionId: 'square_1x1.crop', reason: 'not_a_photo' }]);
+	});
+
+	it('a crop keeps the middle share of the photo, and estimates count every new version', () => {
+		// The brief's example: a 2:1 photo cropped to 3:4 keeps the middle 38% of its width (C01).
+		expect(cropKeeps({ width: 4800, height: 2400 }, { width: 3, height: 4 })).toEqual({
+			side: 'width',
+			share: 0.375,
+		});
+		expect(cropKeeps({ width: 3000, height: 4000 }, { width: 21, height: 9 }).side).toBe('height');
+		expect(cropKeeps({ width: 2000, height: 1000 }, { width: 2, height: 1 }).share).toBe(1);
+		expect(estimateVersionBytes(1_000_000, 3)).toBe(1_050_000);
 	});
 });

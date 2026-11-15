@@ -1,5 +1,7 @@
 import type { MediaPurpose } from '@saha-textile/contracts';
 
+import { VERSION_BYTES_SHARE } from '../catalog/media-files';
+
 /**
  * Ingest policy (`DEC-MEDIA-CAPS`, locked 2026-11-02). The presign handler refuses anything
  * outside it before a byte moves; the worker re-checks the decoded image, which is the real
@@ -38,7 +40,7 @@ export const MEDIA_INGEST_POLICY = {
 	 * One version's files, as a share of the original's bytes: the storage check's estimate before a version is made
 	 * (R4-7). WebP sizes from 150 to 2000 px come to about a third of a top-quality JPEG original.
 	 */
-	versionBytesShare: 0.35,
+	versionBytesShare: VERSION_BYTES_SHARE,
 	/** Moderation preview lifetime for private review photos. */
 	signedPreviewTtlSeconds: 600,
 	/** Orphans wait this long between soft and hard delete. */

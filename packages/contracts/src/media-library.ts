@@ -49,6 +49,8 @@ export const MediaFileRow = z.object({
 	location: z.string(),
 	visibility: z.enum(['public', 'private']),
 	state: z.enum(['awaiting_upload', 'queued', 'processing', 'ready', 'failed']),
+	/** A photo: versions still being made (“Adding 2 versions”, C03); the website keeps showing the live copy. */
+	versionsMaking: z.number().int().nonnegative().optional(),
 	/** A small picture for the list; null for files the worker does not process. */
 	thumbnailUrl: z.string().nullable(),
 	/** Pages that use it: an image used on the website cannot go to Trash. */
@@ -228,6 +230,8 @@ export const MediaFileDetails = z.object({
 			createdAt: IsoDateTime,
 			bytes: z.number().int().nonnegative(),
 			families: z.array(MediaDetailFamily),
+			/** The website draws this version (A31's “On 2 pages” while the photo is used); it can't be removed then. */
+			shown: z.boolean().optional(),
 		}),
 	),
 	perPhoto: z.array(MediaDetailFamily),
@@ -328,6 +332,49 @@ export const MediaFilePresignRequest = z.object({
 		.optional(),
 });
 export type MediaFilePresignRequest = z.infer<typeof MediaFilePresignRequest>;
+
+// --- Reprocess: add versions (media step 3, C01, C07) ----------------------------------------
+
+/** The versions to add, a profile and a fill each; the storage approval when the check asked for one. */
+const VersionAsk = z
+	.array(z.object({ profileKey: MediaProfileKey, fill: MediaFill }))
+	.min(1)
+	.max(12);
+
+/** `POST /admin/media/library/files/:id/versions`: add versions to one photo (C01). */
+export const MediaAddVersionsRequest = z.object({ versions: VersionAsk, reservationId: Id.optional() }).strict();
+export type MediaAddVersionsRequest = z.infer<typeof MediaAddVersionsRequest>;
+
+/**
+ * `POST /admin/media/library/versions`: the same versions for many photos (C07, “Add a version”). A fill becomes
+ * “As is” for a photo that already has the profile's shape; a photo that can't take a version is listed, not failed.
+ */
+export const MediaBulkAddVersionsRequest = z
+	.object({ fileIds: z.array(Id).min(1).max(200), versions: VersionAsk, reservationId: Id.optional() })
+	.strict();
+export type MediaBulkAddVersionsRequest = z.infer<typeof MediaBulkAddVersionsRequest>;
+
+export const MediaAddVersionsResult = z.object({
+	/** Photos that got at least one version to make. */
+	photos: z.number().int().nonnegative(),
+	/** Versions now being made (new ones and failed ones asked again). */
+	added: z.number().int().nonnegative(),
+	skipped: z.array(z.object({ fileId: z.string(), versionId: z.string(), reason: z.string() })),
+});
+export type MediaAddVersionsResult = z.infer<typeof MediaAddVersionsResult>;
+
+/** `POST /admin/media/library/versions/status`: how far versions being made have got, for the tray (A48). */
+export const MediaVersionsStatusRequest = z.object({ fileIds: z.array(Id).min(1).max(1000) }).strict();
+export type MediaVersionsStatusRequest = z.infer<typeof MediaVersionsStatusRequest>;
+
+export const MediaVersionsStatus = z.object({
+	photos: z.number().int().nonnegative(),
+	/** Photos with a version still being made. */
+	making: z.number().int().nonnegative(),
+	/** Photos with a version that failed. */
+	failed: z.number().int().nonnegative(),
+});
+export type MediaVersionsStatus = z.infer<typeof MediaVersionsStatus>;
 
 // --- Share links (R4-5, decision 13) ---------------------------------------------------------
 

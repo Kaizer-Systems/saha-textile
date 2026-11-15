@@ -331,38 +331,42 @@ Admin catalogue reads answer `no-store`.
 
 The Media page works as a file manager. Every route below is under `/admin/media/library` and needs an admin session.
 
-| Method   | Route                    | Access               | Purpose                                                                                          |
-| -------- | ------------------------ | -------------------- | ------------------------------------------------------------------------------------------------ |
-| `GET`    | `/`                      | `attachment.index`   | A folder, a search, a category, Recent, Favourites or Trash                                      |
-| `GET`    | `/tree`                  | `attachment.index`   | Every folder not in Trash, for the folder tree                                                   |
-| `GET`    | `/activity`              | `attachment.index`   | Who did what on the Media page, newest first; `?entityId=` lists one file's or folder's trail    |
-| `GET`    | `/files/:id/details`     | `attachment.index`   | One file: facts, folder, uploader, where used, its versions with their files, per-photo pictures |
-| `POST`   | `/folders`               | `attachment.create`  | A new folder; a taken name gets “(1)”                                                            |
-| `PATCH`  | `/folders/:id`           | `attachment.edit`    | Rename a folder; file addresses never change                                                     |
-| `PATCH`  | `/files/:id`             | `attachment.edit`    | Rename a file; its extension and website address stay                                            |
-| `POST`   | `/move`                  | `attachment.edit`    | Move files and folders; never a folder into itself                                               |
-| `POST`   | `/trash/check`           | `attachment.destroy` | Before Trash: the chosen images the website uses, folders included; nothing moves                |
-| `POST`   | `/trash`                 | `attachment.destroy` | Move to Trash; images the website uses stay, named with where they are used                      |
-| `POST`   | `/restore`               | `attachment.edit`    | Restore from Trash to the old folder, or to My files                                             |
-| `POST`   | `/delete-forever`        | `attachment.destroy` | Delete what is in Trash for good; stored files go through a queued job                           |
-| `POST`   | `/undo/:undoId`          | `attachment.edit`    | Undo your last move, rename or Trash, once                                                       |
-| `PUT`    | `/favourites`            | `attachment.edit`    | Star or unstar a folder or a file for yourself                                                   |
-| `POST`   | `/duplicates`            | `attachment.create`  | Before an upload: the same bytes in Media, or the same name                                      |
-| `POST`   | `/files/presign`         | `attachment.create`  | Start an upload: a plain file, or a photo with the versions to make; held against the plan       |
-| `POST`   | `/files/:id/finalize`    | `attachment.create`  | The plain file is uploaded and ready                                                             |
-| `POST`   | `/files/:id/cancel`      | `attachment.create`  | Drop your own unfinished upload: its record, any stored bytes and its hold                       |
-| `POST`   | `/files/:id/multipart`   | `attachment.create`  | Start a big upload (100 MB and over) in parts                                                    |
-| `POST`   | `/files/:id/parts`       | `attachment.create`  | Signed addresses for the next parts, an hour each                                                |
-| `GET`    | `/files/:id/parts`       | `attachment.create`  | The parts already in Spaces, so a cut-off upload carries on                                      |
-| `PUT`    | `/files/:id/visibility`  | `attachment.edit`    | Public gives a plain file a permanent address; private takes it away                             |
-| `GET`    | `/files/:id/address`     | `attachment.index`   | Preview (`as=view`) or Download (`as=save`): the original for five minutes                       |
-| `GET`    | `/files/:id/links`       | `attachment.index`   | A file's share links, and its public address or website picture                                  |
-| `POST`   | `/files/:id/links`       | `attachment.edit`    | Make a share link; its code is in this answer only                                               |
-| `PATCH`  | `/links/:linkId`         | `attachment.edit`    | Stop a link for good, or give a live link a new end                                              |
-| `GET`    | `/storage`               | `attachment.index`   | The storage bar and its details                                                                  |
-| `POST`   | `/storage/check`         | `attachment.create`  | Before work that adds stored data: go and hold the bytes, ask, or refuse                         |
-| `DELETE` | `/storage/holds/:holdId` | `attachment.create`  | End your own storage hold early                                                                  |
-| `PUT`    | `/storage/settings`      | `attachment.edit`    | Super admins only: whether other admins may use on-demand storage                                |
+| Method   | Route                            | Access               | Purpose                                                                                          |
+| -------- | -------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------ |
+| `GET`    | `/`                              | `attachment.index`   | A folder, a search, a category, Recent, Favourites or Trash                                      |
+| `GET`    | `/tree`                          | `attachment.index`   | Every folder not in Trash, for the folder tree                                                   |
+| `GET`    | `/activity`                      | `attachment.index`   | Who did what on the Media page, newest first; `?entityId=` lists one file's or folder's trail    |
+| `GET`    | `/files/:id/details`             | `attachment.index`   | One file: facts, folder, uploader, where used, its versions with their files, per-photo pictures |
+| `POST`   | `/files/:id/versions`            | `attachment.edit`    | Reprocess one photo: add versions (a profile and a fill each), never twice; storage check first  |
+| `DELETE` | `/files/:id/versions/:versionId` | `attachment.edit`    | Remove a version the website does not show, with its files; never the last one                   |
+| `POST`   | `/versions`                      | `attachment.edit`    | The same versions for up to 200 photos; a fill is “As is” where a photo already fits             |
+| `POST`   | `/versions/status`               | `attachment.index`   | How many of these photos still have versions being made, for the tray                            |
+| `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                            |
+| `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                     |
+| `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                            |
+| `POST`   | `/move`                          | `attachment.edit`    | Move files and folders; never a folder into itself                                               |
+| `POST`   | `/trash/check`                   | `attachment.destroy` | Before Trash: the chosen images the website uses, folders included; nothing moves                |
+| `POST`   | `/trash`                         | `attachment.destroy` | Move to Trash; images the website uses stay, named with where they are used                      |
+| `POST`   | `/restore`                       | `attachment.edit`    | Restore from Trash to the old folder, or to My files                                             |
+| `POST`   | `/delete-forever`                | `attachment.destroy` | Delete what is in Trash for good; stored files go through a queued job                           |
+| `POST`   | `/undo/:undoId`                  | `attachment.edit`    | Undo your last move, rename or Trash, once                                                       |
+| `PUT`    | `/favourites`                    | `attachment.edit`    | Star or unstar a folder or a file for yourself                                                   |
+| `POST`   | `/duplicates`                    | `attachment.create`  | Before an upload: the same bytes in Media, or the same name                                      |
+| `POST`   | `/files/presign`                 | `attachment.create`  | Start an upload: a plain file, or a photo with the versions to make; held against the plan       |
+| `POST`   | `/files/:id/finalize`            | `attachment.create`  | The plain file is uploaded and ready                                                             |
+| `POST`   | `/files/:id/cancel`              | `attachment.create`  | Drop your own unfinished upload: its record, any stored bytes and its hold                       |
+| `POST`   | `/files/:id/multipart`           | `attachment.create`  | Start a big upload (100 MB and over) in parts                                                    |
+| `POST`   | `/files/:id/parts`               | `attachment.create`  | Signed addresses for the next parts, an hour each                                                |
+| `GET`    | `/files/:id/parts`               | `attachment.create`  | The parts already in Spaces, so a cut-off upload carries on                                      |
+| `PUT`    | `/files/:id/visibility`          | `attachment.edit`    | Public gives a plain file a permanent address; private takes it away                             |
+| `GET`    | `/files/:id/address`             | `attachment.index`   | Preview (`as=view`) or Download (`as=save`): the original for five minutes                       |
+| `GET`    | `/files/:id/links`               | `attachment.index`   | A file's share links, and its public address or website picture                                  |
+| `POST`   | `/files/:id/links`               | `attachment.edit`    | Make a share link; its code is in this answer only                                               |
+| `PATCH`  | `/links/:linkId`                 | `attachment.edit`    | Stop a link for good, or give a live link a new end                                              |
+| `GET`    | `/storage`                       | `attachment.index`   | The storage bar and its details                                                                  |
+| `POST`   | `/storage/check`                 | `attachment.create`  | Before work that adds stored data: go and hold the bytes, ask, or refuse                         |
+| `DELETE` | `/storage/holds/:holdId`         | `attachment.create`  | End your own storage hold early                                                                  |
+| `PUT`    | `/storage/settings`              | `attachment.edit`    | Super admins only: whether other admins may use on-demand storage                                |
 
 Rules the routes apply:
 

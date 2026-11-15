@@ -75,6 +75,25 @@ export function minSizeCheck(
 }
 
 /** Profiles a photo is suggested for at upload (B01): the first, in this order, that it already fits. */
+/** New versions take about this share of the original's bytes each (all their sizes together), for estimates. */
+export const VERSION_BYTES_SHARE = 0.35;
+
+/** The rough size of new versions, for the storage check and the Reprocess footer (R4-7, C01). */
+export const estimateVersionBytes = (originalBytes: number, versions: number): number =>
+	Math.round(originalBytes * VERSION_BYTES_SHARE * versions);
+
+/**
+ * How much of a photo a crop into `box` keeps (C01's note, “keeps only the middle 38% of the photo's width”): the
+ * share of its width (a wider photo) or height (a taller one), from 0 to 1; 1 when the shapes match.
+ */
+export function cropKeeps(source: PhotoShape, box: PhotoShape): { side: 'width' | 'height'; share: number } {
+	const photo = source.width / source.height;
+	const target = box.width / box.height;
+	return photo >= target
+		? { side: 'width', share: Math.min(1, target / photo) }
+		: { side: 'height', share: Math.min(1, photo / target) };
+}
+
 export const SUGGESTION_ORDER: readonly string[] = [
 	'product_3x4',
 	'blog_cover_2x1',

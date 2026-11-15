@@ -7,6 +7,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Subject, lastValueFrom } from 'rxjs';
 
 import { MEDIA_LIBRARY_KEY } from '@data-access/queries/media-library.queries';
+import { translateCount } from '@shared/pipes/language.pipes';
 
 import { MediaLibraryGateway } from './media-library.gateway';
 
@@ -69,6 +70,8 @@ export interface UploadRequest {
 
 /** How often a photo's versions are checked on, and for how long, before the tray says to look later. */
 export const MAKING_POLL_MS = 2000;
+/** The tray asks about this many photos per call while their versions are made. */
+export const VERSIONS_STATUS_PER_CALL = 1000;
 export const MAKING_GIVE_UP_MS = 10 * 60_000;
 
 /** A bulk change in the tray (A48): its words, its icon, and real counts from the API's answers. */
@@ -237,6 +240,52 @@ export class MediaUploads {
 		} finally {
 			clearTimeout(show);
 		}
+	}
+
+	/**
+	 * Versions being made after Reprocess (R4-8, A48): one tray row counting the photos whose new versions are done,
+	 * from the image worker's real state, checked every couple of seconds. It stops waiting after ten minutes; the
+	 * Media page's rows keep showing each photo's own state.
+	 */
+	watchVersions(label: string, fileIds: readonly string[]): void {
+		if (!fileIds.length) return;
+		this.counter += 1;
+		const id = `op_${this.counter}`;
+		const total = fileIds.length;
+		this.operations.update((ops) => [
+			...ops,
+			{ id, label, icon: 'ri-refresh-line', done: 0, total, state: 'running', error: null },
+		]);
+		const patch = (changes: Partial<MediaOperation>) =>
+			this.operations.update((ops) => ops.map((op) => (op.id === id ? { ...op, ...changes } : op)));
+		const parts: string[][] = [];
+		for (let at = 0; at < fileIds.length; at += VERSIONS_STATUS_PER_CALL)
+			parts.push(fileIds.slice(at, at + VERSIONS_STATUS_PER_CALL));
+		void (async () => {
+			const started = Date.now();
+			while (Date.now() - started < MAKING_GIVE_UP_MS) {
+				await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
+				const answers = await Promise.all(
+					parts.map((part) => lastValueFrom(this.gateway.versionsStatus(part)).catch(() => null)),
+				);
+				if (answers.some((answer) => !answer)) continue;
+				const making = answers.reduce((sum, answer) => sum + (answer?.making ?? 0), 0);
+				const failed = answers.reduce((sum, answer) => sum + (answer?.failed ?? 0), 0);
+				patch({ done: total - making });
+				if (making > 0) continue;
+				void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+				patch(
+					failed
+						? {
+								state: 'failed',
+								error: translateCount(this.transloco, 'fm_versions_failed_photos', failed),
+							}
+						: { state: 'done' },
+				);
+				return;
+			}
+			patch({ state: 'done' });
+		})();
 	}
 
 	/** Clears finished and failed files and changes from the tray; failed uploads leave nothing behind. */

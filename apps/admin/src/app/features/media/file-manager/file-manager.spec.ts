@@ -9,6 +9,7 @@ import { BehaviorSubject, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { fileExtension, fileKind, fileTypeLabel } from './file-kinds';
@@ -615,6 +616,7 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 			'download_original',
 			'share',
 			'move',
+			'reprocess',
 			'star',
 			'divider',
 			'trash',
@@ -826,5 +828,147 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 		expect(clicked).toHaveBeenCalledTimes(1);
 		open.mockRestore();
 		clicked.mockRestore();
+	});
+});
+
+describe('Reprocess from the Media page (C01, C03, C07, step 3a)', () => {
+	const photoRow = (id: string, extra: Record<string, unknown> = {}) =>
+		({
+			id,
+			kind: 'image',
+			name: `${id}.jpg`,
+			contentType: 'image/jpeg',
+			category: 'images',
+			bytes: 1_000_000,
+			width: 3000,
+			height: 4000,
+			folderId: null,
+			location: '',
+			visibility: 'public',
+			state: 'ready',
+			thumbnailUrl: 'https://cdn/t.webp',
+			usedOn: 0,
+			starred: false,
+			uploadedBy: null,
+			createdAt: null,
+			trashedAt: null,
+			daysLeft: null,
+			...extra,
+		}) as never;
+	const choice = { versions: [{ profileKey: 'hero_21x9', fill: 'crop' }], label: 'Hero 21:9 · Crop' };
+
+	const setup = (answer: unknown = choice) => {
+		const gateway = {
+			browse: vi.fn(() =>
+				of({ folder: null, breadcrumb: [], folders: [], files: [], total: 0, page: 1, pageSize: 200 }),
+			),
+			tree: vi.fn(() => of({ folders: [] })),
+			storage: vi.fn(() => of(null)),
+			details: vi.fn(() => of({ versions: [{ id: 'product_3x4.as_is', state: 'ready' }] })),
+			checkStorage: vi.fn(() =>
+				of({
+					decision: 'go',
+					reservationId: 'res_1',
+					usedBytes: 0,
+					afterBytes: 0,
+					onDemandBytes: 0,
+					onDemandMonthlyUsd: 0,
+					canApprove: false,
+				}),
+			),
+			addVersions: vi.fn(() => of({ photos: 1, added: 1, skipped: [] })),
+			addVersionsToMany: vi.fn((body: { fileIds: string[] }) =>
+				of({
+					photos: body.fileIds.length - 1,
+					added: body.fileIds.length - 1,
+					skipped: [{ fileId: 'med_2', versionId: 'hero_21x9.as_is', reason: 'already_made' }],
+				}),
+			),
+		};
+		const reprocess = { start: vi.fn() };
+		const modals = {
+			open: vi.fn(() => ({
+				componentInstance: reprocess,
+				result: answer ? Promise.resolve(answer) : Promise.reject(new Error('closed')),
+			})),
+		};
+		const toasts = toastStub();
+		const notifications = { showSuccess: vi.fn(), showError: vi.fn() };
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				provideTanStackQuery(new QueryClient()),
+				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: NotificationService, useValue: notifications },
+				{ provide: Router, useValue: { navigate: vi.fn() } },
+				{
+					provide: ActivatedRoute,
+					useValue: {
+						queryParamMap: new BehaviorSubject(convertToParamMap({})),
+						snapshot: { queryParamMap: convertToParamMap({}) },
+					},
+				},
+				{
+					provide: TranslocoService,
+					useValue: {
+						translate: (key: string) => key,
+						getActiveLang: () => 'en',
+						getTranslation: () => ({}),
+					},
+				},
+				{ provide: ToastrService, useValue: { ...toasts, warning: vi.fn() } },
+			],
+		});
+		TestBed.overrideComponent(FileManager, {
+			set: {
+				imports: [],
+				template: '<ng-template #fmOnDemand></ng-template><ng-template #fmStorageRefused></ng-template>',
+			},
+		});
+		const fixture = TestBed.createComponent(FileManager);
+		fixture.detectChanges();
+		const uploads = TestBed.inject(MediaUploads);
+		const watch = vi.spyOn(uploads, 'watchVersions').mockImplementation(() => undefined);
+		return { page: fixture.componentInstance, gateway, modals, reprocess, watch, notifications };
+	};
+
+	it('one photo: reads its versions, opens the popup, checks storage, queues them and follows them in the tray', async () => {
+		const { page, gateway, reprocess, watch, notifications } = setup();
+		await page.openReprocess([photoRow('med_1')]);
+		expect(gateway.details).toHaveBeenCalledWith('med_1');
+		expect(reprocess.start).toHaveBeenCalledWith({
+			photos: [expect.objectContaining({ id: 'med_1', width: 3000, contentType: 'image/jpeg' })],
+			versions: [{ id: 'product_3x4.as_is', state: 'ready' }],
+		});
+		// One new version at 35% of the photo (R4-7).
+		expect(gateway.checkStorage).toHaveBeenCalledWith({ operation: 'versions', bytes: 350_000, approve: false });
+		expect(gateway.addVersions).toHaveBeenCalledWith('med_1', {
+			versions: choice.versions,
+			reservationId: 'res_1',
+		});
+		expect(notifications.showSuccess).toHaveBeenCalledWith('fm_rp_started_other');
+		expect(watch).toHaveBeenCalledWith('fm_rp_for_photo', ['med_1']);
+	});
+
+	it('many photos (C07): the same versions for each, photos already having them are told and not followed', async () => {
+		const { page, gateway, watch } = setup();
+		await page.openReprocess([photoRow('med_1'), photoRow('med_2'), photoRow('med_pdf', { kind: 'file' })]);
+		expect(gateway.details).not.toHaveBeenCalled();
+		expect(gateway.addVersionsToMany).toHaveBeenCalledWith({
+			fileIds: ['med_1', 'med_2'],
+			versions: choice.versions,
+			reservationId: 'res_1',
+		});
+		expect(watch).toHaveBeenCalledWith('fm_rp_for_photos_other', ['med_1']);
+	});
+
+	it('closing the popup, or no photo picked, asks nothing', async () => {
+		const closed = setup(null);
+		await closed.page.openReprocess([photoRow('med_1')]);
+		expect(closed.gateway.checkStorage).not.toHaveBeenCalled();
+		const files = setup();
+		await files.page.openReprocess([photoRow('med_pdf', { kind: 'file' })]);
+		expect(files.modals.open).not.toHaveBeenCalled();
 	});
 });

@@ -96,6 +96,18 @@ describe('HttpMediaLibraryGateway', () => {
 		expectCall('GET', /\/files\/med_1\/address\?as=view$/);
 	});
 
+	it('adds, removes and follows versions (media step 3a)', () => {
+		const versions = [{ profileKey: 'hero_21x9', fill: 'crop' as const }];
+		gateway.addVersions('med_1', { versions }).subscribe();
+		expectCall('POST', /\/files\/med_1\/versions$/, { versions });
+		gateway.addVersionsToMany({ fileIds: ['med_1', 'med_2'], versions, reservationId: 'res_1' }).subscribe();
+		expectCall('POST', /\/library\/versions$/, { fileIds: ['med_1', 'med_2'], versions, reservationId: 'res_1' });
+		gateway.versionsStatus(['med_1']).subscribe();
+		expectCall('POST', /\/versions\/status$/, { fileIds: ['med_1'] });
+		gateway.removeVersion('med_1', 'hero_21x9.crop').subscribe();
+		expectCall('DELETE', /\/files\/med_1\/versions\/hero_21x9\.crop$/);
+	});
+
 	it('reads and changes share links and storage', () => {
 		gateway.links('med_1').subscribe();
 		expectCall('GET', /\/files\/med_1\/links$/, undefined, false);

@@ -150,6 +150,38 @@ test.describe('Media page (step 1)', () => {
 		await expect(row(page, 'product-sample.png')).toBeVisible();
 	});
 
+	test('Reprocess: a photo’s menu opens its versions; a new one with a note is confirmed, then made (C01–C03, step 3a)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await card(page, RUN).dblclick();
+		await row(page, 'product-sample.png').click({ button: 'right' });
+		await page.locator('#fm_menu_reprocess').click();
+		const popup = page.locator('#fm_reprocess');
+		await expect(popup).toContainText('product-sample.png');
+		// Nothing ticked yet: the button waits.
+		await expect(page.locator('#fm_rp_make')).toBeDisabled();
+		// A square photo as a 2:1 Blog cover: Crop is ticked first, and keeps only half the height, so it has a note.
+		await popup.locator('#fm_rp_blog_cover_2x1').check();
+		await expect(popup.locator('[data-profile="blog_cover_2x1"] .fm-fills label')).toHaveCount(2);
+		await expect(popup.locator('[data-profile="blog_cover_2x1"] .fm-warn').first()).toContainText('height');
+		await shot(page, 'c01-reprocess');
+		await page.locator('#fm_rp_make').click();
+		await expect(page.locator('#fm_rp_notes')).toContainText('Blog cover');
+		await shot(page, 'c02-notes');
+		await page.locator('#fm_rp_notes_yes').click();
+		await expect(page.locator('.toast-container')).toContainText('1 version is being made');
+		await expect(page.locator('.fm-tray')).toContainText('Blog cover');
+		// Details lists it, being made; Add versions there opens the same popup with it ticked and locked.
+		await row(page, 'product-sample.png').click({ button: 'right' });
+		await page.locator('#fm_menu_details').click();
+		await expect(page.locator('#fm_versions_tree')).toContainText('Blog cover');
+		await page.locator('#fm_details_add_versions').click();
+		await expect(page.locator('#fm_rp_blog_cover_2x1')).toBeChecked();
+		await expect(page.locator('#fm_rp_blog_cover_2x1_crop')).toBeDisabled();
+		await page.keyboard.press('Escape');
+	});
+
 	test('the same bytes again asks first; “Use the existing one” leaves it out (B10)', async ({ page }) => {
 		await openRoot(page);
 		await card(page, RUN).dblclick();

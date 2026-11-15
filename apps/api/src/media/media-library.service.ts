@@ -28,6 +28,8 @@ import type {
 	MediaTrashCheck,
 	MediaUploadedParts,
 	MediaVersion,
+	MediaAddVersionsResult,
+	MediaVersionsStatus,
 } from '@saha-textile/contracts';
 import {
 	type AdminUserRepository,
@@ -59,8 +61,11 @@ import {
 	originalStorageKey,
 	plainFileStorageKey,
 	purgeMediaTrash,
+	planAddVersions,
 	purposeForProfile,
 	renameKeepingExtension,
+	shownDerivatives,
+	shownVersionIds,
 	restoreTarget,
 	trashDaysLeft,
 	versionIdOf,
@@ -104,6 +109,11 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	fill_not_offered: 'That fill is not offered for this photo and profile',
 	below_minimum: 'The photo is smaller than the profile allows',
 	version_twice: 'The same version is asked for twice',
+	not_a_photo: 'Only photos have versions',
+	version_unknown: 'This photo has no such version',
+	version_making: 'This version is still being made',
+	version_in_use: 'The website shows this version; choose another on its pages first',
+	last_version: 'A photo keeps at least one version',
 };
 
 const refuse = (code: string) => domainRefusal(code, REFUSALS[code] ?? 'Not allowed');
@@ -831,6 +841,7 @@ export class MediaLibraryService {
 					})),
 			}));
 		};
+		const shown = shownVersionIds(asset);
 		return {
 			id: asset.id,
 			name: fileName(asset),
@@ -855,6 +866,7 @@ export class MediaLibraryService {
 					createdAt: version.createdAt,
 					bytes: files.reduce((sum, row) => sum + row.byteSize, 0),
 					families: familiesOf(files),
+					shown: shown.has(version.id),
 				};
 			}),
 			perPhoto: familiesOf(asset.derivatives.filter((row) => !row.versionId)),
@@ -1049,6 +1061,9 @@ export class MediaLibraryService {
 				location: location(asset.trashedAt ? asset.trashedFrom : asset.folderId),
 				visibility: asset.visibility,
 				state: asset.processing.state,
+				...(asset.kind === 'image'
+					? { versionsMaking: (asset.versions ?? []).filter((version) => version.state === 'making').length }
+					: {}),
 				thumbnailUrl: this.thumbnailOf(asset),
 				usedOn: (used.get(asset.id) ?? []).length,
 				starred: starred.has(`file:${asset.id}`),
@@ -1060,9 +1075,144 @@ export class MediaLibraryService {
 		});
 	}
 
+	// --- Reprocess: versions (media step 3) -------------------------------------------------------
+
+	/**
+	 * Adds versions to photos (C01 for one, C07 for many). Each is checked against its profile and the original's
+	 * size; one already made or being made is skipped, never made twice; one that failed is made again. The storage
+	 * check counts every new version before anything is queued. The website keeps showing the versions it shows now
+	 * (shownDerivatives), so nothing on a live page moves.
+	 */
+	async addVersions(
+		actor: string,
+		input: {
+			fileIds: readonly string[];
+			versions: readonly { profileKey: string; fill: MediaVersion['fill'] }[];
+			reservationId?: string;
+			many: boolean;
+		},
+		now = new Date(),
+	): Promise<MediaAddVersionsResult> {
+		const profiles = new Map<string, NonNullable<Awaited<ReturnType<MediaProfileRepository['findByKey']>>>>();
+		for (const key of new Set(input.versions.map((row) => row.profileKey))) {
+			const profile = await this.profiles.findByKey(key);
+			if (profile) profiles.set(key, profile);
+		}
+		const at = now.toISOString();
+		const skipped: MediaAddVersionsResult['skipped'] = [];
+		const work: { asset: MediaAsset; plan: ReturnType<typeof planAddVersions> }[] = [];
+		for (const id of new Set(input.fileIds)) {
+			const asset = await this.assets.findById(id);
+			if (!asset || asset.trashedAt || asset.deletedAt) {
+				if (!input.many) throw new NotFoundException();
+				continue;
+			}
+			const plan = planAddVersions({ asset, asked: input.versions, profiles, fitAsIs: input.many, at });
+			if (!input.many && plan.skipped.some((row) => row.reason === 'not_a_photo')) throw refuse('not_a_photo');
+			skipped.push(...plan.skipped.map((row) => ({ fileId: id, versionId: row.versionId, reason: row.reason })));
+			if (plan.add.length || plan.retry.length) work.push({ asset, plan });
+		}
+		const bytes = work.reduce(
+			(sum, row) =>
+				sum + estimateVersionBytes(row.asset.originalByteSize, row.plan.add.length + row.plan.retry.length),
+			0,
+		);
+		if (bytes > 0) {
+			await this.storageCheck.admit(actor, bytes, input.reservationId, `res_versions_${randomUUID()}`, now);
+		}
+		let photos = 0;
+		let added = 0;
+		for (const { asset, plan } of work) {
+			const made = await this.writeVersions(asset, plan, input.versions, profiles, at, input.many);
+			if (!made) continue;
+			photos += 1;
+			added += made.length;
+			await this.queue.enqueue({ type: 'reprocess', assetId: asset.id, reason: 'versions' });
+			await this.record(actor, 'media.versions.add', { name: fileName(asset), versions: made }, asset.id);
+		}
+		return { photos, added, skipped };
+	}
+
+	/**
+	 * Writes one photo's new versions; when another admin added some meanwhile, reads the photo again and plans
+	 * what is still missing (twice at most). Answers the version ids now being made, or null when none are left.
+	 */
+	private async writeVersions(
+		asset: MediaAsset,
+		first: ReturnType<typeof planAddVersions>,
+		asked: readonly { profileKey: string; fill: MediaVersion['fill'] }[],
+		profiles: ReadonlyMap<string, NonNullable<Awaited<ReturnType<MediaProfileRepository['findByKey']>>>>,
+		at: string,
+		many: boolean,
+	): Promise<string[] | null> {
+		let plan = first;
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			if (!plan.add.length && !plan.retry.length) return null;
+			const saved = await this.assets.addVersions({ assetId: asset.id, add: plan.add, retry: plan.retry });
+			if (saved) return [...plan.add, ...plan.retry].map((version) => version.id);
+			const again = await this.assets.findById(asset.id);
+			if (!again || again.trashedAt || again.deletedAt) return null;
+			plan = planAddVersions({ asset: again, asked, profiles, fitAsIs: many, at });
+		}
+		return null;
+	}
+
+	/**
+	 * Takes an unused version off a photo (A31 “Remove”) and deletes its files. A version the website shows while the
+	 * photo is used somewhere stays; so does one still being made, and a photo's last version.
+	 */
+	async removeVersion(actor: string, id: string, versionId: string): Promise<void> {
+		const asset = await this.assets.findById(id);
+		if (!asset || asset.deletedAt) throw new NotFoundException();
+		const version = asset.versions?.find((row) => row.id === versionId);
+		if (!version) throw refuse('version_unknown');
+		if (version.state === 'making') throw refuse('version_making');
+		if ((asset.versions?.length ?? 0) <= 1) throw refuse('last_version');
+		const used = ((await this.files.whereUsed([id])).get(id) ?? []).length > 0;
+		if (used && shownVersionIds(asset).has(versionId)) throw refuse('version_in_use');
+		const before = await this.assets.removeVersion(id, versionId);
+		if (!before) throw refuse('version_making');
+		const files = before.derivatives.filter((row) => row.versionId === versionId);
+		if (files.length) {
+			const keys = files.map((row) => row.storageKey);
+			await this.queue.enqueue({
+				type: 'delete-objects',
+				keys,
+				urls: keys.map((key) => this.storage.getUrl(key)),
+			});
+		}
+		await this.record(
+			actor,
+			'media.versions.remove',
+			{
+				name: fileName(asset),
+				version: versionId,
+				bytes: files.reduce((sum, row) => sum + (row.byteSize ?? 0), 0),
+			},
+			id,
+		);
+	}
+
+	/** How far versions being made have got across some photos: the tray's “230 of 612 photos” (A48). */
+	async versionsStatus(fileIds: readonly string[]): Promise<MediaVersionsStatus> {
+		let photos = 0;
+		let making = 0;
+		let failed = 0;
+		for (const id of new Set(fileIds)) {
+			const asset = await this.assets.findById(id);
+			if (!asset) continue;
+			photos += 1;
+			const versions = asset.versions ?? [];
+			if (versions.some((version) => version.state === 'making')) making += 1;
+			else if (versions.some((version) => version.state === 'failed')) failed += 1;
+		}
+		return { photos, making, failed };
+	}
+
 	/** The small picture a list shows: public photos only; private ones show their type icon. */
 	private thumbnailOf(asset: MediaAsset): string | null {
-		const thumb = asset.derivatives.find((row) => row.role === 'thumb') ?? asset.derivatives[0];
+		const shown = shownDerivatives(asset);
+		const thumb = shown.find((row) => row.role === 'thumb') ?? shown[0];
 		return thumb && asset.visibility === 'public' ? this.storage.getUrl(thumb.storageKey) : null;
 	}
 

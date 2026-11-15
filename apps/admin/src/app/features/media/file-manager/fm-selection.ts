@@ -102,6 +102,8 @@ export function commonPlace(places: readonly (string | null)[]): string | null |
 
 /** Items per call for bulk changes: each answer moves the tray's count (A48). */
 export const BULK_PART = 50;
+/** Photos per call when versions are added to many at once (C07); the API takes up to 200. */
+export const VERSIONS_PER_CALL = 100;
 
 /** A selection in parts of `size`, folders first, so a big change can count as it goes. */
 export function splitSelection(

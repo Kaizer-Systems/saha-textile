@@ -364,3 +364,43 @@ describe('big uploads in parts (S11, B15, B16)', () => {
 		expect(localStorage.getItem(RESUME_KEY)).toBeNull();
 	});
 });
+
+describe('versions being made after Reprocess (A48, step 3a)', () => {
+	it('counts the photos as their versions finish, and says how many failed', async () => {
+		vi.useFakeTimers();
+		const answers = [
+			{ photos: 3, making: 3, failed: 0 },
+			{ photos: 3, making: 1, failed: 0 },
+			{ photos: 3, making: 0, failed: 1 },
+		];
+		const gateway = { versionsStatus: vi.fn(() => of(answers.shift() ?? { photos: 3, making: 0, failed: 0 })) };
+		const invalidateQueries = vi.fn(async () => undefined);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: QueryClient, useValue: { invalidateQueries } },
+				{
+					provide: TranslocoService,
+					useValue: {
+						translate: (key: string) => key,
+						getActiveLang: () => 'en',
+						getTranslation: () => ({}),
+					},
+				},
+			],
+		});
+		const uploads = TestBed.inject(MediaUploads);
+		uploads.watchVersions('Hero 21:9 · Crop for 3 photos', ['med_1', 'med_2', 'med_3']);
+		expect(uploads.operations()[0]).toMatchObject({ done: 0, total: 3, state: 'running', icon: 'ri-refresh-line' });
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(uploads.operations()[0]).toMatchObject({ done: 0, state: 'running' });
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(uploads.operations()[0]).toMatchObject({ done: 2, state: 'running' });
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(uploads.operations()[0]).toMatchObject({ done: 3, state: 'failed' });
+		expect(invalidateQueries).toHaveBeenCalled();
+		expect(gateway.versionsStatus).toHaveBeenCalledWith(['med_1', 'med_2', 'med_3']);
+		vi.useRealTimers();
+	});
+});

@@ -127,10 +127,28 @@
 										<span class="badge bg-warning text-dark ms-1">
 											{{ 'fm_making_versions' | transloco }}
 										</span>
-										} @if (version.state === 'failed') {
+										} @else if (version.state === 'failed') {
 										<span class="badge bg-danger ms-1">{{ 'fm_failed' | transloco }}</span>
+										} @else if (inUse(version)) {
+										<span class="badge bg-success ms-1">
+											{{ 'fm_on_pages' | plural: file.usedOn.length }}
+										</span>
+										} @else {
+										<span class="text-muted small ms-1">{{ 'fm_not_used' | transloco }}</span>
 										}
 									</span>
+									@if (canRemove(version)) {
+									<span class="d-flex gap-1">
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											[attr.data-remove]="version.id"
+											(click)="remove(version)"
+										>
+											{{ 'fm_remove_version' | transloco }}
+										</button>
+									</span>
+									}
 								</div>
 								@if (open().has(version.id)) {
 								<ul>
@@ -206,6 +224,33 @@
 					</li>
 				</ul>
 			</div>
+			<div class="d-flex mt-3 gap-2">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+					id="fm_details_add_versions"
+					(click)="act('add_versions')"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'fm_add_versions' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+					(click)="act('download')"
+				>
+					<i class="ri-download-2-line"></i>
+					{{ 'fm_download_original' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+					(click)="act('share')"
+				>
+					<i class="ri-share-line"></i>
+					{{ 'fm_share' | transloco }}
+				</button>
+			</div>
 			<p class="help-text mt-2 mb-0">{{ 'fm_versions_help' | transloco }}</p>
 			} @else {
 			<ul
@@ -230,3 +275,44 @@
 	</div>
 	}
 </div>
+
+<ng-template
+	#fmRemoveVersion
+	let-confirm
+>
+	<div
+		class="modal-body"
+		id="fm_remove_version"
+	>
+		<i class="ri-delete-bin-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_rv_title"
+		>
+			{{ 'fm_rv_title' | transloco }}
+		</h5>
+		@if (removing(); as version) {
+		<p>
+			<strong>{{ versionName(version) }}</strong>
+		</p>
+		<p>{{ 'fm_rv_body' | transloco: { bytes: (version.bytes | fileSize) } }}</p>
+		}
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="confirm.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-danger"
+				id="fm_rv_yes"
+				(click)="confirm.close('yes')"
+			>
+				{{ 'fm_remove_version' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

@@ -190,6 +190,58 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		).toBeNull();
 	});
 
+	it('adds versions once even when two admins ask at the same moment; retries a failed one; removes one (step 3a)', async () => {
+		const version = (id: string, state = 'ready') => {
+			const [profileKey = '', fill = 'as_is'] = id.split('.');
+			return {
+				id,
+				profileKey,
+				profileVersion: 1,
+				fill: fill as 'as_is',
+				state: state as 'ready',
+				error: state === 'failed' ? 'render_failed' : null,
+				createdAt: '2026-11-16T00:00:00.000Z',
+			};
+		};
+		await raw('med_add', {
+			derivatives: [
+				{ ...file('med_add', 'card', 200), versionId: 'product_3x4.white' },
+				{ ...file('med_add', 'card', 400), versionId: 'product_3x4.blur' },
+			],
+			versions: [version('product_3x4.white'), version('product_3x4.blur'), version('hero_21x9.crop', 'failed')],
+		});
+		const crop = { ...version('product_3x4.crop'), state: 'making' as const };
+		// Two admins add the same version at once: exactly one write lands.
+		const [first, second] = await Promise.all([
+			assets.addVersions({ assetId: 'med_add', add: [crop], retry: [] }),
+			assets.addVersions({ assetId: 'med_add', add: [crop], retry: [] }),
+		]);
+		expect([first, second].filter(Boolean)).toHaveLength(1);
+		// A failed version asked again goes back to making, beside a new one, in one write.
+		const again = { ...version('hero_21x9.crop'), state: 'making' as const };
+		const blurNew = { ...version('hero_21x9.blur'), state: 'making' as const };
+		const stored = await assets.addVersions({ assetId: 'med_add', add: [blurNew], retry: [again] });
+		expect(stored?.versions?.map((row) => `${row.id}:${row.state}`)).toEqual([
+			'product_3x4.white:ready',
+			'product_3x4.blur:ready',
+			'hero_21x9.crop:making',
+			'product_3x4.crop:making',
+			'hero_21x9.blur:making',
+		]);
+		// Retrying one that is no longer failed changes nothing.
+		expect(await assets.addVersions({ assetId: 'med_add', add: [], retry: [again] })).toBeNull();
+		// Removing takes the version and only its files; one still being made stays.
+		const before = await assets.removeVersion('med_add', 'product_3x4.blur');
+		expect(before?.derivatives).toHaveLength(2);
+		const after = await assets.findById('med_add');
+		expect(after?.versions?.map((row) => row.id)).not.toContain('product_3x4.blur');
+		expect(after?.derivatives.map((row) => row.versionId)).toEqual(['product_3x4.white']);
+		expect(await assets.removeVersion('med_add', 'product_3x4.crop')).toBeNull();
+		expect(await assets.removeVersion('med_add', 'square_1x1.white')).toBeNull();
+		// Out of the way of the per-profile photo count below.
+		await MediaAssetModel.deleteOne({ _id: 'med_add' }).exec();
+	});
+
 	it('leaves files of versions and per-photo pictures out of the ladder sweep; only unnamed old files count', async () => {
 		await raw('med_old', { derivatives: [{ ...file('med_old', 'thumb', 150), roleVersion: 1 }] });
 		await raw('med_named', {

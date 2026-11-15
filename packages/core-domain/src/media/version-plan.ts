@@ -1,6 +1,8 @@
 import type {
+	MediaAsset,
 	MediaFill,
 	MediaProfile,
+	MediaVersion,
 	MediaPurpose,
 	MediaRoleDefinition,
 	MediaVersionId,
@@ -8,7 +10,7 @@ import type {
 
 import { minSizeCheck, photoFills } from '../catalog/media-files';
 import type { ImageRenderSpec } from '../ports/image-codec.port';
-import { MEDIA_INGEST_POLICY, aspectDeviation } from './policy';
+import { aspectDeviation } from './policy';
 import { versionIdOf } from './profiles';
 
 /**
@@ -204,6 +206,82 @@ export const planVersion = (input: {
 	return { files, skipped };
 };
 
-/** The rough size of new versions, for the storage check before an upload or Reprocess (R4-7). */
-export const estimateVersionBytes = (originalBytes: number, versions: number): number =>
-	Math.round(originalBytes * MEDIA_INGEST_POLICY.versionBytesShare * versions);
+/** The rough size of new versions (R4-7); one rule for the browser and the server. */
+export { estimateVersionBytes } from '../catalog/media-files';
+
+/** Why one version is left out when versions are added (Reprocess, media step 3). */
+export type AddVersionSkip = VersionRequestRefusal | 'already_made' | 'not_a_photo';
+
+export interface AddVersionsPlan {
+	/** New versions, written as `making`. */
+	add: MediaVersion[];
+	/** Versions that failed before and are asked again: they go back to `making` (Retry). */
+	retry: MediaVersion[];
+	skipped: { versionId: MediaVersionId; reason: AddVersionSkip }[];
+}
+
+/**
+ * Reprocess (media step 3, C01 and C07): the versions to add to one photo, checked against its profile and the
+ * original's real size. A version already made or being made is skipped, never made twice; one that failed is made
+ * again. Asked for many photos at once (`fitAsIs`), a fill becomes “As is” for a photo that already has the
+ * profile's shape, so “Hero 21:9 · Crop for 612 photos” never refuses the ones that fit.
+ */
+export const planAddVersions = (input: {
+	asset: Pick<
+		MediaAsset,
+		'kind' | 'width' | 'height' | 'originalByteSize' | 'originalFormat' | 'originalStorageKey'
+	> &
+		Partial<Pick<MediaAsset, 'versions'>>;
+	asked: readonly { profileKey: string; fill: MediaFill }[];
+	profiles: ReadonlyMap<string, MediaProfile>;
+	fitAsIs?: boolean;
+	at: string;
+}): AddVersionsPlan => {
+	const { asset } = input;
+	const plan: AddVersionsPlan = { add: [], retry: [], skipped: [] };
+	const source = asset.width && asset.height ? { width: asset.width, height: asset.height } : null;
+	const have = new Map((asset.versions ?? []).map((version) => [version.id, version]));
+	const seen = new Set<string>();
+	for (const row of input.asked) {
+		const profile = input.profiles.get(row.profileKey) ?? null;
+		let fill = row.fill;
+		if (input.fitAsIs && profile && source && fill !== 'as_is') {
+			const offered = fillsForPhoto(profile, source);
+			if (offered.length === 1 && offered[0] === 'as_is') fill = 'as_is';
+		}
+		const versionId = versionIdOf(row.profileKey, fill);
+		if (seen.has(versionId)) continue;
+		seen.add(versionId);
+		if (asset.kind !== 'image' || !source || !asset.originalStorageKey) {
+			plan.skipped.push({ versionId, reason: 'not_a_photo' });
+			continue;
+		}
+		const existing = have.get(versionId);
+		if (existing && existing.state !== 'failed') {
+			plan.skipped.push({ versionId, reason: 'already_made' });
+			continue;
+		}
+		const refusal = checkVersionRequest({
+			profile,
+			fill,
+			source,
+			byteSize: asset.originalByteSize,
+			contentType: asset.originalFormat,
+		});
+		if (refusal || !profile) {
+			plan.skipped.push({ versionId, reason: refusal ?? 'profile_unknown' });
+			continue;
+		}
+		const made: MediaVersion = {
+			id: versionId,
+			profileKey: row.profileKey,
+			profileVersion: profile.version,
+			fill,
+			state: 'making',
+			error: null,
+			createdAt: input.at,
+		};
+		(existing ? plan.retry : plan.add).push(made);
+	}
+	return plan;
+};

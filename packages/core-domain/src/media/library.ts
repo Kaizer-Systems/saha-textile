@@ -7,6 +7,8 @@ import type {
 	StorageColour,
 } from '@saha-textile/contracts';
 
+import { shownDerivatives } from './resolve-image';
+
 export {
 	CAMERA_RAW,
 	MULTIPART_FROM_BYTES,
@@ -200,11 +202,12 @@ const PAGE_ROLES = ['gallery', 'banner', 'blog', 'store_photo', 'category_icon',
  * widest size of the first page role it has. Null for a private file or one with no sizes yet.
  */
 export function websitePicture(
-	asset: Pick<MediaAsset, 'visibility' | 'derivatives'>,
+	asset: Pick<MediaAsset, 'visibility' | 'derivatives' | 'versions'>,
 ): { role: string; width: number; storageKey: string } | null {
 	if (asset.visibility !== 'public') return null;
+	const shown = shownDerivatives(asset);
 	for (const role of PAGE_ROLES) {
-		const sizes = asset.derivatives.filter((row) => row.role === role);
+		const sizes = shown.filter((row) => row.role === role);
 		if (!sizes.length) continue;
 		const widest = sizes.reduce((a, b) => (b.width > a.width ? b : a));
 		return { role, width: widest.width, storageKey: widest.storageKey };

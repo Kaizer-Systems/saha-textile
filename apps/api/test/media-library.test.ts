@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { type AuditLog, MediaAsset, type MediaFolder } from '@saha-textile/contracts';
+import { type AuditLog, MediaAsset, type MediaFolder, type MediaVersion } from '@saha-textile/contracts';
 import { type MediaBrowseFilter, SEEDED_MEDIA_PROFILES } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -119,6 +119,32 @@ function harness() {
 		findManyByIds: async (ids: readonly string[]) =>
 			ids.flatMap((id) => (files.has(id) ? [files.get(id) as MediaAsset] : [])),
 		hardDelete: async (id: string) => void files.delete(id),
+		// Same rules as the Mongo write: new ones still missing, retried ones still failed, or nothing changes.
+		addVersions: async (input: { assetId: string; add: MediaVersion[]; retry: MediaVersion[] }) => {
+			const asset = files.get(input.assetId);
+			if (!asset) return null;
+			const have = asset.versions ?? [];
+			if (input.add.some((row) => have.some((version) => version.id === row.id))) return null;
+			if (input.retry.some((row) => !have.some((version) => version.id === row.id && version.state === 'failed')))
+				return null;
+			const versions = [
+				...have.map((version) => input.retry.find((row) => row.id === version.id) ?? version),
+				...input.add,
+			];
+			files.set(input.assetId, { ...asset, versions });
+			return files.get(input.assetId) ?? null;
+		},
+		removeVersion: async (assetId: string, versionId: string) => {
+			const asset = files.get(assetId);
+			const version = asset?.versions?.find((row) => row.id === versionId);
+			if (!asset || !version || version.state === 'making') return null;
+			files.set(assetId, {
+				...asset,
+				versions: (asset.versions ?? []).filter((row) => row.id !== versionId),
+				derivatives: asset.derivatives.filter((row) => row.versionId !== versionId),
+			});
+			return asset;
+		},
 	};
 	const starRepo = {
 		set: async (userId: string, target: { type: 'folder' | 'file'; id: string }, on: boolean) => {
@@ -908,7 +934,13 @@ describe('details and Activity (A31, A32, A43, step 2e)', () => {
 			uploadedBy: 'Moulik',
 			width: 3000,
 		});
-		expect(details.versions[0]).toMatchObject({ id: 'product_3x4.as_is', bytes: 600, state: 'ready', error: null });
+		expect(details.versions[0]).toMatchObject({
+			id: 'product_3x4.as_is',
+			bytes: 600,
+			state: 'ready',
+			error: null,
+			shown: true,
+		});
 		expect(details.versions[0]?.families[0]?.files.map((row) => row.width)).toEqual([200, 400]);
 		expect(details.perPhoto.map((family) => family.role)).toEqual(['share']);
 		await expect(h.service.details('nope')).rejects.toThrow('File not found');
@@ -927,5 +959,199 @@ describe('details and Activity (A31, A32, A43, step 2e)', () => {
 		const trail = await h.service.activity(1, 50, 'med_a');
 		expect(trail.items.map((row) => row.id)).toEqual(['a2', 'a1']);
 		expect((await h.service.activity(1, 50)).items.length).toBeGreaterThanOrEqual(3);
+	});
+});
+
+describe('Reprocess: adding and removing versions (C01, C07, A31, step 3a)', () => {
+	const ready = (id: string): MediaVersion => {
+		const [profileKey = '', fill = 'as_is'] = id.split('.');
+		return {
+			id,
+			profileKey,
+			profileVersion: 1,
+			fill: fill as MediaVersion['fill'],
+			state: 'ready',
+			error: null,
+			createdAt: '2026-11-16T00:00:00.000Z',
+		};
+	};
+	const derivative = (role: string, width: number, versionId: string) => ({
+		role,
+		storageKey: `media/med_w/${versionId}/${role}-${width}.webp`,
+		width,
+		height: width,
+		byteSize: 10,
+		format: 'image/webp' as const,
+		roleVersion: 1,
+		versionId,
+	});
+	/** A 2:1 photo (4800 × 2400) with one version, as in the brief's banarasi-weave-closeup. */
+	const weave = (h: ReturnType<typeof harness>, versions: MediaVersion[] = [ready('blog_cover_2x1.as_is')]) =>
+		h.file('med_w', {
+			width: 4800,
+			height: 2400,
+			originalByteSize: 1_000_000,
+			versions,
+			derivatives: [derivative('blog', 480, 'blog_cover_2x1.as_is')],
+			processing: { state: 'ready', attempts: 1, error: null, processedAt: '2026-11-16T00:00:00.000Z' },
+		});
+
+	it('adds new versions as making, queues the worker, checks storage and records it', async () => {
+		const h = harness();
+		weave(h);
+		const result = await h.service.addVersions('adm_1', {
+			fileIds: ['med_w'],
+			versions: [
+				{ profileKey: 'product_3x4', fill: 'crop' },
+				{ profileKey: 'hero_21x9', fill: 'blur' },
+			],
+			many: false,
+		});
+		expect(result).toEqual({ photos: 1, added: 2, skipped: [] });
+		const versions = h.files.get('med_w')?.versions ?? [];
+		expect(versions.map((row) => `${row.id}:${row.state}`)).toEqual([
+			'blog_cover_2x1.as_is:ready',
+			'product_3x4.crop:making',
+			'hero_21x9.blur:making',
+		]);
+		expect(h.jobs).toContainEqual({ type: 'reprocess', assetId: 'med_w', reason: 'versions' });
+		// Two versions at 35% of the original each (R4-7).
+		expect(h.storageCheck.admit).toHaveBeenCalledWith(
+			'adm_1',
+			700_000,
+			undefined,
+			expect.any(String),
+			expect.any(Date),
+		);
+		expect(h.audit[0]).toMatchObject({ action: 'media.versions.add', entityId: 'med_w' });
+		// The row says versions are being made (C03).
+		const rows = await h.service.browse('adm_1', { view: 'folder' } as never);
+		expect(rows.files.find((row) => row.id === 'med_w')?.versionsMaking).toBe(2);
+	});
+
+	it('never makes a version twice; a failed one is made again; a refused one is named', async () => {
+		const h = harness();
+		weave(h, [ready('blog_cover_2x1.as_is'), { ...ready('product_3x4.white'), state: 'failed', error: 'x' }]);
+		const result = await h.service.addVersions('adm_1', {
+			fileIds: ['med_w'],
+			versions: [
+				{ profileKey: 'blog_cover_2x1', fill: 'as_is' },
+				{ profileKey: 'product_3x4', fill: 'white' },
+				{ profileKey: 'product_3x4', fill: 'as_is' },
+			],
+			many: false,
+		});
+		expect(result.added).toBe(1);
+		expect(result.skipped).toEqual([
+			{ fileId: 'med_w', versionId: 'blog_cover_2x1.as_is', reason: 'already_made' },
+			{ fileId: 'med_w', versionId: 'product_3x4.as_is', reason: 'fill_not_offered' },
+		]);
+		expect(h.files.get('med_w')?.versions?.find((row) => row.id === 'product_3x4.white')?.state).toBe('making');
+		// A switched-off profile is refused, nothing queued.
+		const off = await h.service.addVersions('adm_1', {
+			fileIds: ['med_w'],
+			versions: [{ profileKey: 'hero_16x9', fill: 'crop' }],
+			many: false,
+		});
+		expect(off).toEqual({
+			photos: 0,
+			added: 0,
+			skipped: [{ fileId: 'med_w', versionId: 'hero_16x9.crop', reason: 'profile_off' }],
+		});
+	});
+
+	it('many photos: a fill becomes “As is” where the photo already fits; files and missing photos are listed', async () => {
+		const h = harness();
+		weave(h);
+		h.file('med_wide', { width: 2100, height: 900, versions: [ready('hero_21x9.as_is')] });
+		h.file('med_pdf', { kind: 'file', originalFormat: 'application/pdf', displayName: 'a.pdf' });
+		const result = await h.service.addVersions('adm_1', {
+			fileIds: ['med_w', 'med_wide', 'med_pdf', 'med_gone'],
+			versions: [{ profileKey: 'hero_21x9', fill: 'crop' }],
+			many: true,
+		});
+		expect(result.photos).toBe(1);
+		expect(result.skipped).toEqual([
+			{ fileId: 'med_wide', versionId: 'hero_21x9.as_is', reason: 'already_made' },
+			{ fileId: 'med_pdf', versionId: 'hero_21x9.crop', reason: 'not_a_photo' },
+		]);
+		expect(await h.service.versionsStatus(['med_w', 'med_wide'])).toEqual({ photos: 2, making: 1, failed: 0 });
+	});
+
+	it('refuses a file that is not a photo, and a missing one, when asked for one photo', async () => {
+		const h = harness();
+		h.file('med_pdf', { kind: 'file', originalFormat: 'application/pdf', displayName: 'a.pdf' });
+		expect(
+			await refusalCode(
+				h.service.addVersions('adm_1', {
+					fileIds: ['med_pdf'],
+					versions: [{ profileKey: 'product_3x4', fill: 'white' }],
+					many: false,
+				}),
+			),
+		).toBe('not_a_photo');
+		await expect(
+			h.service.addVersions('adm_1', {
+				fileIds: ['med_none'],
+				versions: [{ profileKey: 'product_3x4', fill: 'white' }],
+				many: false,
+			}),
+		).rejects.toThrow();
+	});
+
+	it('removes a version the website does not show, with its files; keeps the shown one, the last one and one being made', async () => {
+		const h = harness();
+		weave(h, [
+			ready('blog_cover_2x1.as_is'),
+			ready('product_3x4.white'),
+			ready('product_3x4.blur'),
+			{ ...ready('product_3x4.crop'), state: 'making' },
+			ready('hero_21x9.crop'),
+		]);
+		const asset = h.files.get('med_w') as MediaAsset;
+		h.files.set('med_w', {
+			...asset,
+			derivatives: [
+				...asset.derivatives,
+				derivative('card', 200, 'product_3x4.white'),
+				derivative('card', 200, 'product_3x4.blur'),
+				derivative('card', 400, 'product_3x4.blur'),
+				derivative('banner', 480, 'hero_21x9.crop'),
+			],
+		});
+		h.used.set('med_w', ['blog · How to spot a real Banarasi']);
+		// Shown on the website (the first ready version with its role) while the photo is used somewhere. Until pages
+		// store their version (step 4), a version that is a role's only source counts as shown.
+		expect(await refusalCode(h.service.removeVersion('adm_1', 'med_w', 'blog_cover_2x1.as_is'))).toBe(
+			'version_in_use',
+		);
+		expect(await refusalCode(h.service.removeVersion('adm_1', 'med_w', 'product_3x4.white'))).toBe(
+			'version_in_use',
+		);
+		expect(await refusalCode(h.service.removeVersion('adm_1', 'med_w', 'hero_21x9.crop'))).toBe('version_in_use');
+		expect(await refusalCode(h.service.removeVersion('adm_1', 'med_w', 'product_3x4.crop'))).toBe('version_making');
+		expect(await refusalCode(h.service.removeVersion('adm_1', 'med_w', 'square_1x1.white'))).toBe(
+			'version_unknown',
+		);
+		await h.service.removeVersion('adm_1', 'med_w', 'product_3x4.blur');
+		expect(h.files.get('med_w')?.versions?.map((row) => row.id)).toEqual([
+			'blog_cover_2x1.as_is',
+			'product_3x4.white',
+			'product_3x4.crop',
+			'hero_21x9.crop',
+		]);
+		expect(h.deletedKeys).toEqual([
+			'media/med_w/product_3x4.blur/card-200.webp',
+			'media/med_w/product_3x4.blur/card-400.webp',
+		]);
+		expect(h.audit[0]).toMatchObject({ action: 'media.versions.remove', entityId: 'med_w' });
+		// Not used anywhere: any version but the last may go.
+		h.used.delete('med_w');
+		await h.service.removeVersion('adm_1', 'med_w', 'hero_21x9.crop');
+		// The last version stays.
+		h.file('med_one', { width: 3000, height: 4000, versions: [ready('product_3x4.as_is')] });
+		expect(await refusalCode(h.service.removeVersion('adm_1', 'med_one', 'product_3x4.as_is'))).toBe(
+			'last_version',
+		);
 	});
 });

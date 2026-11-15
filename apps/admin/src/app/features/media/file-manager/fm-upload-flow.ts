@@ -31,7 +31,7 @@ import {
 	versionsOf,
 } from './fm-upload-plan';
 
-import type { MediaFill } from '@saha-textile/contracts';
+import type { MediaFill, StorageOperation } from '@saha-textile/contracts';
 
 /** The popups the flow opens; the page owns their templates. */
 export interface FmUploadPopups {
@@ -67,7 +67,12 @@ export interface FmDuplicateAsk {
 }
 
 /** B18/B19: the storage check's answer, with what the upload adds. */
-export type FmStorageAsk = StorageCheckAnswer & { bytes: number; files: number };
+export type FmStorageAsk = StorageCheckAnswer & {
+	bytes: number;
+	files: number;
+	what?: string | null;
+	operation?: StorageOperation;
+};
 
 /** The duplicate check takes this many files per call. */
 const DUPLICATES_PER_CALL = 500;
@@ -410,13 +415,28 @@ export class FmUploadFlow {
 	}
 
 	/** B18/B19: one check for the whole upload; its approval is held until the last file settles. */
-	private async storageGo(rows: readonly FmUploadRow[], popups: FmUploadPopups): Promise<string | null | false> {
+	private storageGo(rows: readonly FmUploadRow[], popups: FmUploadPopups): Promise<string | null | false> {
 		const bytes = rows.reduce((sum, row) => sum + row.bytes, 0);
+		return this.storageCheck('upload', bytes, rows.length, null, popups);
+	}
+
+	/**
+	 * The shared storage check (R4-7) before anything that adds stored data: an upload, or new versions (C07). Answers
+	 * the approval to pass on, null when none is needed, or false when the work must not start. `what` is the line
+	 * the on-demand popup shows (C07: “Hero 21:9 · Crop for 612 photos.”); null uses the upload's own words.
+	 */
+	async storageCheck(
+		operation: StorageOperation,
+		bytes: number,
+		files: number,
+		what: string | null,
+		popups: Pick<FmUploadPopups, 'onDemand' | 'refused'>,
+	): Promise<string | null | false> {
 		const ask = async (approve: boolean, alsoLetOthers?: boolean) => {
 			try {
 				return await lastValueFrom(
 					this.gateway.checkStorage({
-						operation: 'upload',
+						operation,
 						bytes,
 						approve,
 						...(alsoLetOthers === undefined ? {} : { alsoLetOthers }),
@@ -430,7 +450,7 @@ export class FmUploadFlow {
 		const first = await ask(false);
 		if (!first) return false;
 		if (first.decision === 'go') return first.reservationId;
-		this.storageAsk.set({ ...first, bytes, files: rows.length });
+		this.storageAsk.set({ ...first, bytes, files, what, operation });
 		if (first.decision === 'refused') {
 			await this.show(popups.refused, { windowClass: 'theme-modal text-center' }, 'fm_refused_title');
 			return false;
@@ -445,7 +465,7 @@ export class FmUploadFlow {
 		const approved = await ask(true, first.canApprove ? this.alsoLetOthers() : undefined);
 		if (!approved) return false;
 		if (approved.decision === 'go') return approved.reservationId;
-		this.storageAsk.set({ ...approved, bytes, files: rows.length });
+		this.storageAsk.set({ ...approved, bytes, files, what, operation });
 		await this.show(popups.refused, { windowClass: 'theme-modal text-center' }, 'fm_refused_title');
 		return false;
 	}

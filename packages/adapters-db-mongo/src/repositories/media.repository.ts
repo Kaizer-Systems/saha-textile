@@ -185,6 +185,56 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 	}
 
 	/**
+	 * One write for Reprocess: new versions must still be missing and retried ones still failed, or nothing changes
+	 * (another admin got there first; the caller reads the photo again). A pipeline update, because a push and an
+	 * in-place change to the same list can't share one ordinary update.
+	 */
+	async addVersions(input: Parameters<MediaAssetRepository['addVersions']>[0]): Promise<MediaAsset | null> {
+		if (!input.add.length && !input.retry.length) return this.findById(input.assetId);
+		const guards: Record<string, unknown>[] = [];
+		if (input.add.length) guards.push({ 'versions.id': { $nin: input.add.map((version) => version.id) } });
+		for (const version of input.retry)
+			guards.push({ versions: { $elemMatch: { id: version.id, state: 'failed' } } });
+		const current = { $ifNull: ['$versions', []] };
+		const kept = input.retry.length
+			? {
+					$map: {
+						input: current,
+						as: 'v',
+						in: {
+							$switch: {
+								branches: input.retry.map((version) => ({
+									case: { $eq: ['$$v.id', version.id] },
+									then: { $literal: version },
+								})),
+								default: '$$v',
+							},
+						},
+					},
+				}
+			: current;
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: input.assetId, deletedAt: null, $and: guards },
+			[{ $set: { versions: { $concatArrays: [kept, { $literal: [...input.add] }] } } }],
+			{ returnDocument: 'after', updatePipeline: true },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async removeVersion(assetId: string, versionId: string): Promise<MediaAsset | null> {
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: assetId, versions: { $elemMatch: { id: versionId, state: { $ne: 'making' } } } },
+			{ $pull: { versions: { id: versionId }, derivatives: { versionId } } },
+			{ returnDocument: 'before' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	/**
 	 * Files made before photo versions existed, older than their role's settings. Files of a version are written
 	 * once (Media brief R4-1): a ladder edit applies to versions made afterwards, never to these.
 	 */

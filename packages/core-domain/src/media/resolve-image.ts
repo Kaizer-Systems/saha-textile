@@ -1,4 +1,41 @@
-import type { MediaAsset, ResolvedImage, ResolvedImageSource } from '@saha-textile/contracts';
+import type { ImageDerivative, MediaAsset, ResolvedImage, ResolvedImageSource } from '@saha-textile/contracts';
+
+type ShownSource = Pick<MediaAsset, 'derivatives' | 'versions'>;
+
+/** Each role's chosen version: the rank (in the order versions were asked for) of the first ready one with files of it. */
+const roleChoice = (asset: ShownSource): { rank: Map<string, number>; chosen: Map<string, number> } => {
+	const ready = (asset.versions ?? []).filter((version) => version.state === 'ready');
+	const rank = new Map(ready.map((version, index) => [version.id, index]));
+	const chosen = new Map<string, number>();
+	for (const file of asset.derivatives) {
+		const at = file.versionId ? rank.get(file.versionId) : undefined;
+		if (at === undefined) continue;
+		const now = chosen.get(file.role);
+		if (now === undefined || at < now) chosen.set(file.role, at);
+	}
+	return { rank, chosen };
+};
+
+/**
+ * The files the website draws while a page stores only the photo, not its version (until media step 4): for each
+ * role, the first ready version that has that role; a picture made once per photo only where no version has its
+ * role. So adding a version never changes what a page shows, and two versions are never mixed in one list.
+ */
+export const shownDerivatives = (asset: ShownSource): ImageDerivative[] => {
+	const { rank, chosen } = roleChoice(asset);
+	return asset.derivatives.filter((file) => {
+		const pick = chosen.get(file.role);
+		if (pick === undefined) return true;
+		return !!file.versionId && rank.get(file.versionId) === pick;
+	});
+};
+
+/** The versions the website draws from (see shownDerivatives): these count as in use while the photo is used. */
+export const shownVersionIds = (asset: ShownSource): Set<string> => {
+	const { rank, chosen } = roleChoice(asset);
+	const picked = new Set(chosen.values());
+	return new Set([...rank].filter(([, at]) => picked.has(at)).map(([id]) => id));
+};
 
 /**
  * Builds the client-facing image: srcset-ready URLs per role, the intrinsic shape, the
@@ -21,7 +58,7 @@ export const resolveImage = (input: {
 
 	const allowed = input.roles ? new Set(input.roles) : null;
 	const roles: Record<string, ResolvedImageSource[]> = {};
-	for (const derivative of [...asset.derivatives].sort((a, b) => a.width - b.width)) {
+	for (const derivative of [...shownDerivatives(asset)].sort((a, b) => a.width - b.width)) {
 		if (allowed && !allowed.has(derivative.role)) continue;
 		(roles[derivative.role] ??= []).push({
 			url: input.getUrl(derivative.storageKey),

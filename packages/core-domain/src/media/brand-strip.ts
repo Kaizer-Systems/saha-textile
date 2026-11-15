@@ -3,6 +3,8 @@ import type { MediaRoleRepository } from '../ports/media-role.repository';
 import type { SiteSettingsRepository } from '../ports/site-settings.repository';
 import type { StoragePort } from '../ports/storage.port';
 
+import { shownDerivatives } from './resolve-image';
+
 /** The strip is about 63 px tall on a 1200×630 card, so the 640 px logo is ample and small to read. */
 const STRIP_LOGO_WIDTH = 640;
 
@@ -17,7 +19,7 @@ export const brandStripLogo = async (deps: {
 }): Promise<Uint8Array | null> => {
 	const logoAssetId = (await deps.settings.get('brand'))?.logoAssetId;
 	const asset = logoAssetId ? await deps.assets.findById(logoAssetId) : null;
-	const files = (asset?.derivatives ?? [])
+	const files = (asset ? shownDerivatives(asset) : [])
 		.filter((file) => file.role === 'brand_logo')
 		.sort((a, b) => Math.abs(a.width - STRIP_LOGO_WIDTH) - Math.abs(b.width - STRIP_LOGO_WIDTH));
 	const file = files[0];

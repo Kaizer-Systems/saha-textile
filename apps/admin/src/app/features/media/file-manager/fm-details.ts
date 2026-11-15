@@ -1,9 +1,10 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { MediaFill } from '@saha-textile/contracts';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { lastValueFrom } from 'rxjs';
 
 import {
@@ -11,12 +12,21 @@ import {
 	type MediaActivityPage,
 	type MediaFileDetails,
 } from '@core/media-library/media-library.gateway';
-import { NotificationService } from '@data-access/services/notification.service';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { fillKey, profileNameKey } from '../../setting/image-profiles/profile-words';
 
+import type { MediaFill } from '@saha-textile/contracts';
+
 type Tab = 'versions' | 'activity';
+
+/** The fills a version can have; the contracts package is types-only in the browser, so the list lives here. */
+const FILLS: readonly string[] = ['as_is', 'white', 'blur', 'crop', 'colour', 'brand'];
+const isFill = (value: string): value is MediaFill => FILLS.includes(value);
+
+/** What the popup's buttons hand back to the Media page (A31): it closes and the page carries on. */
+export type FmDetailsAction =
+	{ kind: 'add_versions'; versions: { id: string; state: string }[] } | { kind: 'download' } | { kind: 'share' };
 type Version = MediaFileDetails['versions'][number];
 type Family = MediaFileDetails['perPhoto'][number];
 
@@ -37,9 +47,11 @@ const familyKey = (role: string) => `profile_family_${role}`;
 })
 export class FmDetails {
 	readonly modal = inject(NgbActiveModal);
+	private readonly modals = inject(NgbModal);
 	private readonly gateway = inject(MediaLibraryGateway);
 	private readonly transloco = inject(TranslocoService);
-	private readonly notifications = inject(NotificationService);
+	/** Toasts straight from the theme's toastr: the shared notifier's success closes every popup, this one too. */
+	private readonly toastr = inject(ToastrService);
 
 	readonly details = signal<MediaFileDetails | null>(null);
 	readonly activity = signal<MediaActivityPage['items']>([]);
@@ -49,6 +61,9 @@ export class FmDetails {
 	readonly open = signal<ReadonlySet<string>>(new Set());
 
 	readonly isImage = computed(() => this.details()?.kind === 'image');
+	/** The version asked about in the Remove popup. */
+	readonly removing = signal<Version | null>(null);
+	readonly removeConfirm = viewChild<TemplateRef<unknown>>('fmRemoveVersion');
 	/** The picture on the left: a middle-sized file of the first ready version, else nothing. */
 	readonly preview = computed(() => {
 		const version = this.details()?.versions.find((row) => row.state === 'ready');
@@ -62,13 +77,52 @@ export class FmDetails {
 		try {
 			const details = await lastValueFrom(this.gateway.details(fileId));
 			this.details.set(details);
-			const first = details.versions[0];
+			// The version the website shows opens first (R6-6); else the first one.
+			const first = details.versions.find((row) => row.shown) ?? details.versions[0];
 			if (first) this.open.set(new Set([first.id]));
 			if (details.kind !== 'image') this.tab.set('activity');
 			const trail = await lastValueFrom(this.gateway.itemActivity(fileId));
 			this.activity.set(trail.items);
 		} catch {
 			this.error.set(true);
+		}
+	}
+
+	/** A31's badge: shown on the website while the photo is used somewhere (it can't be removed then). */
+	inUse(version: Version): boolean {
+		return !!version.shown && (this.details()?.usedOn.length ?? 0) > 0;
+	}
+
+	/** Remove is offered for a version that isn't in use, isn't being made, and isn't the photo's last one. */
+	canRemove(version: Version): boolean {
+		return !this.inUse(version) && version.state !== 'making' && (this.details()?.versions.length ?? 0) > 1;
+	}
+
+	/** Add versions, Download original, Share: the popup closes and the Media page opens the next step. */
+	act(kind: FmDetailsAction['kind']): void {
+		const versions = (this.details()?.versions ?? []).map((row) => ({ id: row.id, state: row.state }));
+		this.modal.close(kind === 'add_versions' ? { kind, versions } : { kind });
+	}
+
+	/** Remove an unused version (A31), after a confirmation; its files are deleted. */
+	async remove(version: Version): Promise<void> {
+		const file = this.details();
+		const template = this.removeConfirm();
+		if (!file || !template) return;
+		this.removing.set(version);
+		const yes = await this.modals
+			.open(template, { centered: true, windowClass: 'theme-modal text-center', ariaLabelledBy: 'fm_rv_title' })
+			.result.then(
+				() => true,
+				() => false,
+			);
+		if (!yes) return;
+		try {
+			await lastValueFrom(this.gateway.removeVersion(file.id, version.id));
+			this.toastr.success(this.transloco.translate('fm_version_removed', { name: this.versionName(version) }));
+			this.details.set(await lastValueFrom(this.gateway.details(file.id)));
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
 		}
 	}
 
@@ -86,9 +140,8 @@ export class FmDetails {
 		const nameKey = profileNameKey({ key: version.profileKey });
 		const name = this.transloco.translate(nameKey);
 		const profile = name === nameKey ? version.profileKey : name;
-		const fill = MediaFill.safeParse(version.fill);
-		const fillName = fill.success
-			? this.transloco.translate(fillKey(fill.data, version.profileKey === 'browser_icon_1x1'))
+		const fillName = isFill(version.fill)
+			? this.transloco.translate(fillKey(version.fill, version.profileKey === 'browser_icon_1x1'))
 			: version.fill;
 		return `${profile} · ${fillName}`;
 	}
@@ -114,9 +167,9 @@ export class FmDetails {
 	async copy(url: string): Promise<void> {
 		try {
 			await navigator.clipboard.writeText(url);
-			this.notifications.showSuccess(this.transloco.translate('fm_address_copied'));
+			this.toastr.success(this.transloco.translate('fm_address_copied'));
 		} catch {
-			this.notifications.showError(this.transloco.translate('fm_action_failed'));
+			this.toastr.error(this.transloco.translate('fm_action_failed'));
 		}
 	}
 

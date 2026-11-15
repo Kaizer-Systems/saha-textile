@@ -50,6 +50,21 @@ export interface MediaAssetRepository {
 		addDerivatives: readonly ImageDerivative[];
 		versions: readonly MediaVersion[];
 	}): Promise<MediaAsset | null>;
+	/**
+	 * Reprocess (media step 3): adds versions to a photo as `making`, and puts failed ones asked again back to
+	 * `making`. Atomic: when another admin added one of the same versions meanwhile, nothing is written and null comes
+	 * back, so the caller reads the photo again; a version is never made twice.
+	 */
+	addVersions(input: {
+		assetId: string;
+		add: readonly MediaVersion[];
+		retry: readonly MediaVersion[];
+	}): Promise<MediaAsset | null>;
+	/**
+	 * Takes one version and its files off a photo, only while that version is not being made. Returns the photo as it
+	 * was before, so the caller can delete the version's stored files; null when there was nothing to remove.
+	 */
+	removeVersion(assetId: string, versionId: string): Promise<MediaAsset | null>;
 	/** Assets holding a derivative of `role` older than `version` — the reprocess work list. */
 	listStaleForRole(input: { role: string; version: number; limit: number }): Promise<MediaAsset[]>;
 	/** Live (not soft-deleted) assets created before the cutoff — GC soft-delete candidates. */

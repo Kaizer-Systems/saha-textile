@@ -175,7 +175,7 @@
 					</ul>
 				</td>
 				} @else {
-				<td [class.fm-live]="file.state === 'awaiting_upload'">
+				<td [class.fm-live]="file.state === 'awaiting_upload' || adding(file)">
 					@switch (file.state) { @case ('awaiting_upload') { @if (uploads().get(file.id); as job) { @if
 					(job.state === 'failed') {
 					<span class="fm-status fail">
@@ -217,22 +217,26 @@
 						<i class="ri-time-line"></i>
 						{{ 'fm_waiting_to_upload' | transloco }}
 					</span>
-					} } @case ('ready') {
+					} } @case ('ready') { @if (adding(file)) {
+					<ng-container *ngTemplateOutlet="addingVersions; context: { $implicit: file }" />
+					} @else {
 					<span class="fm-status ready">
 						<i class="ri-checkbox-circle-line"></i>
 						{{ 'fm_ready' | transloco }}
 					</span>
-					} @case ('failed') {
+					} } @case ('failed') {
 					<span class="fm-status fail">
 						<i class="ri-error-warning-line"></i>
 						{{ 'fm_failed' | transloco }}
 					</span>
-					} @default {
+					} @default { @if (adding(file)) {
+					<ng-container *ngTemplateOutlet="addingVersions; context: { $implicit: file }" />
+					} @else {
 					<span class="fm-status busy">
 						<i class="ri-loader-4-line"></i>
 						{{ 'fm_making_sizes' | transloco }}
 					</span>
-					} }
+					} } }
 				</td>
 				<td class="fm-used">
 					@if (file.usedOn) { {{ 'fm_places' | plural: file.usedOn }} } @else {
@@ -328,6 +332,21 @@
 			</span>
 			}
 			<span class="fm-ttype">{{ typeLabel(file) }}</span>
+			@if (adding(file)) {
+			<!-- C04: the tile's overlay while versions are added. -->
+			<div class="fm-overlay">
+				<div class="d-flex justify-content-between">
+					<span>{{ 'fm_adding_versions' | plural: file.versionsMaking ?? 0 }}</span>
+				</div>
+				<div class="progress">
+					<div
+						class="progress-bar proc progress-bar-striped progress-bar-animated"
+						style="width: 100%"
+					></div>
+				</div>
+				<small>{{ 'fm_live_copy_in_use' | transloco }}</small>
+			</div>
+			}
 		</div>
 		<div class="fm-cap">
 			<h6>{{ file.name }}</h6>
@@ -337,3 +356,21 @@
 	}
 </div>
 }
+
+<!-- C03: versions being added to a photo that already has a live copy; the website keeps showing that copy. -->
+<ng-template
+	#addingVersions
+	let-file
+>
+	<span class="fm-status busy">
+		<i class="ri-refresh-line"></i>
+		{{ 'fm_adding_versions' | plural: file.versionsMaking }}
+	</span>
+	<div class="progress">
+		<div
+			class="progress-bar proc progress-bar-striped progress-bar-animated"
+			style="width: 100%"
+		></div>
+	</div>
+	<small class="text-muted">{{ 'fm_live_copy_in_use' | transloco }}</small>
+</ng-template>

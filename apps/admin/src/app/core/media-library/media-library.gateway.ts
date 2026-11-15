@@ -8,6 +8,10 @@ import type {
 	MediaFavouriteWrite,
 	MediaFileAddress,
 	MediaFileDetails,
+	MediaAddVersionsRequest,
+	MediaAddVersionsResult,
+	MediaBulkAddVersionsRequest,
+	MediaVersionsStatus,
 	MediaFilePresignRequest,
 	MediaFilePresignResponse,
 	MediaFolderCreate,
@@ -35,6 +39,10 @@ import type { Observable } from 'rxjs';
 
 export type {
 	MediaFileDetails,
+	MediaAddVersionsRequest,
+	MediaBulkAddVersionsRequest,
+	MediaAddVersionsResult,
+	MediaVersionsStatus,
 	MediaBrowseQuery,
 	MediaCategory,
 	MediaFileRow,
@@ -95,6 +103,13 @@ export abstract class MediaLibraryGateway {
 	abstract itemActivity(entityId: string): Observable<MediaActivityPage>;
 	/** What the details popup shows (A31, A31B, A32). */
 	abstract details(id: string): Observable<MediaFileDetails>;
+	/** Reprocess (step 3): add versions to one photo (C01), or the same ones to many (C07). */
+	abstract addVersions(id: string, body: MediaAddVersionsRequest): Observable<MediaAddVersionsResult>;
+	abstract addVersionsToMany(body: MediaBulkAddVersionsRequest): Observable<MediaAddVersionsResult>;
+	/** How many of these photos still have versions being made (the tray, A48). */
+	abstract versionsStatus(fileIds: readonly string[]): Observable<MediaVersionsStatus>;
+	/** Removes a version the website does not show (A31). */
+	abstract removeVersion(id: string, versionId: string): Observable<void>;
 
 	abstract createFolder(body: MediaFolderCreate): Observable<MediaFolderRow>;
 	abstract renameFolder(id: string, name: string): Observable<MediaOperationResult>;

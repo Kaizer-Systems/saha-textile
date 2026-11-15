@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
@@ -33,9 +33,14 @@ export interface FmItemEvent {
 @Component({
 	selector: 'app-fm-file-list',
 	templateUrl: './fm-file-list.html',
-	imports: [DatePipe, TranslocoModule, FileSizePipe, PluralPipe],
+	imports: [DatePipe, NgTemplateOutlet, TranslocoModule, FileSizePipe, PluralPipe],
 })
 export class FmFileList {
+	/** C03: versions are being added to a photo that already has a live copy (the website keeps showing it). */
+	adding(file: MediaFileRow): boolean {
+		return (file.versionsMaking ?? 0) > 0 && !!file.thumbnailUrl;
+	}
+
 	readonly files = input.required<readonly MediaFileRow[]>();
 	readonly display = input<'list' | 'grid'>('list');
 	/** Trash lists where each item came from and how long it stays (A18). */
@@ -102,6 +107,7 @@ export class FmFileList {
 	}
 
 	pending(file: MediaFileRow): boolean {
-		return ['awaiting_upload', 'queued', 'processing'].includes(file.state);
+		// A photo getting new versions keeps its live copy: it stays usable, so it isn't greyed (C03).
+		return ['awaiting_upload', 'queued', 'processing'].includes(file.state) && !this.adding(file);
 	}
 }

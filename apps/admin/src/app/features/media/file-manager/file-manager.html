@@ -457,6 +457,17 @@
 					<i class="ri-drag-move-2-line"></i>
 					{{ 'fm_move_to' | transloco }}
 				</button>
+				@if (chosenPhotos().length) {
+				<button
+					type="button"
+					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
+					id="fm_bulk_versions"
+					(click)="openReprocess(chosenPhotos())"
+				>
+					<i class="ri-refresh-line"></i>
+					{{ 'fm_add_a_version' | transloco }}
+				</button>
+				}
 				<button
 					type="button"
 					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
@@ -1627,9 +1638,10 @@
 			class="modal-title"
 			id="fm_on_demand_title"
 		>
-			{{ 'fm_od_title' | transloco: { plan: (storage.data()?.planBytes ?? 0 | fileSize) } }}
+			{{ (ask.operation === 'versions' ? 'fm_od_title_versions' : 'fm_od_title') | transloco: { plan:
+			(storage.data()?.planBytes ?? 0 | fileSize) } }}
 		</h5>
-		<p>{{ 'fm_od_what' | plural: ask.files }}</p>
+		<p>{{ ask.what ?? ('fm_od_what' | plural: ask.files) }}</p>
 		<div
 			class="mx-auto mb-3 text-start"
 			style="max-width: 480px"
@@ -1728,7 +1740,7 @@
 			class="modal-title"
 			id="fm_refused_title"
 		>
-			{{ 'fm_refused_title' | transloco }}
+			{{ (ask.operation === 'versions' ? 'fm_refused_title_versions' : 'fm_refused_title') | transloco }}
 		</h5>
 		<p>
 			{{ 'fm_refused_body' | transloco: { extra: (ask.onDemandBytes | fileSize), plan: (storage.data()?.planBytes

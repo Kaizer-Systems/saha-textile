@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Header,
 	HttpCode,
@@ -39,6 +40,11 @@ import {
 	type MediaTrashCheck,
 	type MediaUploadedParts,
 	MediaUploadRef,
+	MediaAddVersionsRequest,
+	type MediaAddVersionsResult,
+	MediaBulkAddVersionsRequest,
+	MediaVersionsStatusRequest,
+	type MediaVersionsStatus,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -103,6 +109,67 @@ export class AdminMediaLibraryController {
 	})
 	fileDetails(@Param('id') id: string): Promise<MediaFileDetails> {
 		return this.library.details(id);
+	}
+
+	@Post('files/:id/versions')
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'addMediaFileVersions',
+		summary: 'Reprocess one photo: add versions (a profile and a fill each); made from the original, never twice',
+	})
+	addVersions(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaAddVersionsRequest)) body: MediaAddVersionsRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaAddVersionsResult> {
+		return this.library.addVersions(actor(principal), {
+			fileIds: [id],
+			versions: body.versions,
+			reservationId: body.reservationId,
+			many: false,
+		});
+	}
+
+	@Delete('files/:id/versions/:versionId')
+	@HttpCode(204)
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'removeMediaFileVersion',
+		summary: 'Remove a version the website does not show, with its files; never the last one',
+	})
+	removeVersion(
+		@Param('id') id: string,
+		@Param('versionId') versionId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<void> {
+		return this.library.removeVersion(actor(principal), id, versionId);
+	}
+
+	@Post('versions')
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'addMediaVersionsToMany',
+		summary: 'Add the same versions to many photos; a fill is “As is” where the photo already fits',
+	})
+	addVersionsToMany(
+		@Body(new ZodValidationPipe(MediaBulkAddVersionsRequest)) body: MediaBulkAddVersionsRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaAddVersionsResult> {
+		return this.library.addVersions(actor(principal), { ...body, many: true });
+	}
+
+	@Post('versions/status')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({
+		operationId: 'mediaVersionsStatus',
+		summary: 'How many of these photos still have versions being made, for the tray',
+	})
+	versionsStatus(
+		@Body(new ZodValidationPipe(MediaVersionsStatusRequest)) body: MediaVersionsStatusRequest,
+	): Promise<MediaVersionsStatus> {
+		return this.library.versionsStatus(body.fileIds);
 	}
 
 	@Post('folders')

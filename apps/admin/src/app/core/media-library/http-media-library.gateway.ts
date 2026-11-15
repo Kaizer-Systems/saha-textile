@@ -15,6 +15,10 @@ import {
 	type MediaFavouriteWrite,
 	type MediaFileAddress,
 	type MediaFileDetails,
+	type MediaAddVersionsRequest,
+	type MediaAddVersionsResult,
+	type MediaBulkAddVersionsRequest,
+	type MediaVersionsStatus,
 	type MediaFilePresignRequest,
 	type MediaFilePresignResponse,
 	type MediaFolderCreate,
@@ -74,6 +78,22 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override details(fileId: string): Observable<MediaFileDetails> {
 		return this.http.get<MediaFileDetails>(this.url(`/files/${id(fileId)}/details`));
+	}
+
+	override addVersions(fileId: string, body: MediaAddVersionsRequest): Observable<MediaAddVersionsResult> {
+		return this.http.post<MediaAddVersionsResult>(this.url(`/files/${id(fileId)}/versions`), body, quiet());
+	}
+
+	override addVersionsToMany(body: MediaBulkAddVersionsRequest): Observable<MediaAddVersionsResult> {
+		return this.http.post<MediaAddVersionsResult>(this.url('/versions'), body, quiet());
+	}
+
+	override versionsStatus(fileIds: readonly string[]): Observable<MediaVersionsStatus> {
+		return this.http.post<MediaVersionsStatus>(this.url('/versions/status'), { fileIds }, quiet());
+	}
+
+	override removeVersion(fileId: string, versionId: string): Observable<void> {
+		return this.http.delete<void>(this.url(`/files/${id(fileId)}/versions/${id(versionId)}`), quiet());
 	}
 
 	override createFolder(body: MediaFolderCreate): Observable<MediaFolderRow> {

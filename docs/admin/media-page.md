@@ -148,15 +148,21 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 
 ## Limitations
 
-- The page lives at `/media/files`; `/media` still shows the earlier Media page until photos upload here.
-- Photos do not upload on this page yet, and pasting an image to upload it is not offered.
-- Activity for a file or folder, and the details popup it sits in, are not on this page yet.
-- The share popup's link list does not say who made each link.
-- Download as .zip is not offered.
+- Download as .zip is not offered yet (media step 5).
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.
+- Until pages store which version they use (media step 4), a version counts as in use when the website draws it for a used photo: the first ready version for each kind of size (see Reprocess below). A version that is the only source of a kind of size therefore can't be removed while the photo is used anywhere.
+- Replace, the focal point, a new web file name and "Bring older versions up to date" come in the next parts of step 3.
 
 ## Details and Activity
 
-**Details** in a file's menu (and a double-click on a photo) opens the details popup (`FmDetails`, `GET /files/:id/details`). The left column shows the file's name, a picture from its first ready version, its size and dimensions, its folder, who uploaded it and when, and where it is used. A photo's **Versions** tab is its tree (R6-6): the private original, then each version (profile · fill, its number of sizes and bytes, and a badge while it is being made or if it failed); every level opens and closes with its arrow and only the first version starts open; a version opens to its size families, a family to its files, each with **Copy address** and **Open**; the pictures made once per photo (link preview, status card, feed square, email picture) are listed last. The tree scrolls inside its own box. The **Activity** tab lists that item's own trail (`GET /activity?entityId=`), the Media page's entries and the image pipeline's together, newest first; a file other than a photo opens on it. The Text tab (alt text on the photo) comes with the picker in step 4, and adding versions with Reprocess in step 3.
+**Details** in a file's menu (and a double-click on a photo) opens the details popup (`FmDetails`, `GET /files/:id/details`). The left column shows the file's name, a picture from its first ready version, its size and dimensions, its folder, who uploaded it and when, and where it is used. A photo's **Versions** tab is its tree (R6-6): the private original, then each version (profile · fill, its number of sizes and bytes, and a badge while it is being made or if it failed); every level opens and closes with its arrow and only the first version starts open; a version opens to its size families, a family to its files, each with **Copy address** and **Open**; the pictures made once per photo (link preview, status card, feed square, email picture) are listed last. The tree scrolls inside its own box. The **Activity** tab lists that item's own trail (`GET /activity?entityId=`), the Media page's entries and the image pipeline's together, newest first; a file other than a photo opens on it. The Text tab (alt text on the photo) comes with the picker in step 4. Under the tree, **Add versions**, **Download original** and **Share** close the popup and carry on from the Media page.
 
 `/media` opens this page since step 2e; the earlier Media page stays reachable at `/media/previous` (not in the menu) until its removal is agreed.
+
+## Reprocess: adding versions
+
+**Reprocess image** in a photo's menu (C01), **Add versions** in its details, and **Add a version** in the bulk bar for several photos (C07) open the Reprocess popup (`FmReprocess`). Each image profile people choose is a line. A profile the photo already fits is used as is; one of another shape opens its fill cards, drawn with the photo itself, and every fill ticked becomes its own version. Versions the photo already has are ticked, locked and marked Done (or Making versions); one that failed can be ticked again. A profile the photo is too small for, or over its upload limit, is refused in red. A crop that keeps less than 60% of the photo and a photo smaller than a profile asks are notes; Make asks once about them (C02). The footer counts the new versions and estimates their size.
+
+For many photos the popup offers every fill of each profile; the API makes a fill "As is" for a photo that already has the profile's shape, skips versions a photo already has, and lists any it can't take in a toast. The shared storage check runs first (B18/B19 wording for versions, C07). One tray row then counts the photos as their versions finish ("Hero 21:9 · Crop for 612 photos", A48), from the worker's real state; the row in the list says "Adding 2 versions · Live copy stays in use" (C03, C04) and is not greyed.
+
+Versions are written once: adding one never changes what the website shows. Until pages store their version (step 4), the website draws the first ready version for each kind of size, so the newest version is never the one on show. In the details tree that version is marked **On N pages** while the photo is used; any other is **Not used** and has **Remove**, which deletes its files after a confirmation (never a photo's last version, nor one being made). Routes: `POST /files/:id/versions`, `POST /versions` (up to 200 photos a call; the page sends 100), `POST /versions/status`, `DELETE /files/:id/versions/:versionId`.

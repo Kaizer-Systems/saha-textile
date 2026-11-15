@@ -1,4 +1,4 @@
-import type { MediaAsset } from '@saha-textile/contracts';
+import type { MediaAsset, MediaReplacement } from '@saha-textile/contracts';
 import {
 	type MediaAssetFilter,
 	type MediaAssetRepository,
@@ -29,6 +29,8 @@ const toAsset = (doc: MediaAssetDoc): MediaAsset =>
 		slug: doc.slug ?? 'image',
 		derivatives: doc.derivatives ?? [],
 		versions: doc.versions ?? [],
+		replacing: doc.replacing ?? null,
+		keptFiles: doc.keptFiles ?? [],
 		dominantColor: doc.dominantColor ?? null,
 		thumbHash: doc.thumbHash ?? null,
 		visibility: doc.visibility ?? 'public',
@@ -213,6 +215,8 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 					},
 				}
 			: current;
+		// Not while a Replace runs: its swap writes every version at once (step 3b).
+		guards.push({ $or: [{ replacing: null }, { 'replacing.phase': 'failed' }] });
 		const doc = await MediaAssetModel.findOneAndUpdate(
 			{ _id: input.assetId, deletedAt: null, $and: guards },
 			[{ $set: { versions: { $concatArrays: [kept, { $literal: [...input.add] }] } } }],
@@ -221,6 +225,74 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 			.lean<MediaAssetDoc>()
 			.exec();
 		return doc ? toAsset(doc) : null;
+	}
+
+	async startReplace(assetId: string, replacing: MediaReplacement): Promise<MediaAsset | null> {
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{
+				_id: assetId,
+				deletedAt: null,
+				$or: [{ replacing: null }, { 'replacing.phase': 'failed' }],
+				'versions.state': { $ne: 'making' },
+			},
+			{ $set: { replacing } },
+			{ returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async moveReplace(
+		assetId: string,
+		from: readonly MediaReplacement['phase'][],
+		change: Partial<MediaReplacement> | null,
+	): Promise<MediaAsset | null> {
+		const $set: Record<string, unknown> = {};
+		if (change === null) $set['replacing'] = null;
+		else for (const [field, value] of Object.entries(change)) $set[`replacing.${field}`] = value;
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: assetId, 'replacing.phase': { $in: [...from] } },
+			{ $set },
+			{ returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async finishReplace(input: Parameters<MediaAssetRepository['finishReplace']>[0]): Promise<MediaAsset | null> {
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: input.assetId, 'replacing.phase': 'making' },
+			{
+				$set: {
+					...input.set,
+					derivatives: [...input.derivatives],
+					versions: [...input.versions],
+					replacing: null,
+				},
+				...(input.kept ? { $push: { keptFiles: input.kept } } : {}),
+			},
+			{ returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	async listKeptDue(before: string, limit: number): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ 'keptFiles.deleteAfter': { $lte: before } })
+			.limit(limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async dropKept(assetId: string, before: string): Promise<void> {
+		await MediaAssetModel.updateOne(
+			{ _id: assetId },
+			{ $pull: { keptFiles: { deleteAfter: { $lte: before } } } },
+		).exec();
 	}
 
 	async removeVersion(assetId: string, versionId: string): Promise<MediaAsset | null> {

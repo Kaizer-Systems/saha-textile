@@ -341,6 +341,10 @@ The Media page works as a file manager. Every route below is under `/admin/media
 | `DELETE` | `/files/:id/versions/:versionId` | `attachment.edit`    | Remove a version the website does not show, with its files; never the last one                   |
 | `POST`   | `/versions`                      | `attachment.edit`    | The same versions for up to 200 photos; a fill is “As is” where a photo already fits             |
 | `POST`   | `/versions/status`               | `attachment.index`   | How many of these photos still have versions being made, for the tray                            |
+| `POST`   | `/files/:id/replace`             | `attachment.edit`    | Replace a photo: the new one is checked against every version, then uploads beside the old one   |
+| `POST`   | `/files/:id/replace/finish`      | `attachment.edit`    | The new photo is uploaded: its versions are remade, then it takes the old one's place everywhere |
+| `GET`    | `/files/:id/replace`             | `attachment.index`   | Where a Replace has got, for its three steps                                                     |
+| `DELETE` | `/files/:id/replace`             | `attachment.edit`    | Stop a Replace still uploading, or clear one that failed                                         |
 | `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                            |
 | `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                     |
 | `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                            |

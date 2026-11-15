@@ -34,6 +34,9 @@ export function storedKeys(asset: MediaAsset): string[] {
 		...asset.derivatives.map((row) => row.storageKey),
 		...asset.renditions.map((row) => row.storageKey),
 		asset.hlsPlaylistKey,
+		// Files kept after a Replace (decision 11), and a replacement still on its way in (S7).
+		...(asset.keptFiles ?? []).flatMap((row) => row.keys),
+		asset.replacing?.key,
 	].filter((key): key is string => !!key);
 }
 
@@ -45,6 +48,8 @@ export function publicKeys(asset: MediaAsset): string[] {
 	if (asset.visibility !== 'public') return [];
 	const keys = asset.derivatives.map((row) => row.storageKey);
 	if (asset.kind === 'file' && asset.originalStorageKey) keys.push(asset.originalStorageKey);
+	// Kept picture sizes from before a Replace are public too (an original is not, and is left out by its name).
+	for (const row of asset.keptFiles ?? []) keys.push(...row.keys.filter((key) => !/\/original[.-]/.test(key)));
 	return keys;
 }
 

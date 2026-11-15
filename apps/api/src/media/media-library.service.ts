@@ -114,6 +114,7 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	version_making: 'This version is still being made',
 	version_in_use: 'The website shows this version; choose another on its pages first',
 	last_version: 'A photo keeps at least one version',
+	replacing: 'This photo is being replaced; add versions when that is done',
 };
 
 const refuse = (code: string) => domainRefusal(code, REFUSALS[code] ?? 'Not allowed');
@@ -1064,6 +1065,7 @@ export class MediaLibraryService {
 				...(asset.kind === 'image'
 					? { versionsMaking: (asset.versions ?? []).filter((version) => version.state === 'making').length }
 					: {}),
+				...(asset.replacing ? { replacing: asset.replacing.phase } : {}),
 				thumbnailUrl: this.thumbnailOf(asset),
 				usedOn: (used.get(asset.id) ?? []).length,
 				starred: starred.has(`file:${asset.id}`),
@@ -1105,6 +1107,12 @@ export class MediaLibraryService {
 			const asset = await this.assets.findById(id);
 			if (!asset || asset.trashedAt || asset.deletedAt) {
 				if (!input.many) throw new NotFoundException();
+				continue;
+			}
+			// A photo being replaced gets its versions remade by the Replace; new ones wait until it is done (3b).
+			if (asset.replacing && asset.replacing.phase !== 'failed') {
+				if (!input.many) throw refuse('replacing');
+				skipped.push({ fileId: id, versionId: '', reason: 'replacing' });
 				continue;
 			}
 			const plan = planAddVersions({ asset, asked: input.versions, profiles, fitAsIs: input.many, at });

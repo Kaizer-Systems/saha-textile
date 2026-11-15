@@ -1,4 +1,10 @@
-import type { ImageDerivative, MediaAsset, MediaVersion } from '@saha-textile/contracts';
+import type {
+	ImageDerivative,
+	MediaAsset,
+	MediaKeptFiles,
+	MediaReplacement,
+	MediaVersion,
+} from '@saha-textile/contracts';
 
 import type { PageQuery, Paginated } from './pagination';
 
@@ -65,7 +71,37 @@ export interface MediaAssetRepository {
 	 * was before, so the caller can delete the version's stored files; null when there was nothing to remove.
 	 */
 	removeVersion(assetId: string, versionId: string): Promise<MediaAsset | null>;
-	/** Assets holding a derivative of `role` older than `version` — the reprocess work list. */
+	/**
+	 * Replace (media step 3b): records a new original on its way in, only while no other Replace runs and no version
+	 * is being made. Null when that isn't so.
+	 */
+	startReplace(assetId: string, replacing: MediaReplacement): Promise<MediaAsset | null>;
+	/**
+	 * Moves a Replace on, only from one of the phases given: changes some of its fields, or clears it (null). Answers
+	 * the photo afterwards, or null when the Replace wasn't in one of those phases.
+	 */
+	moveReplace(
+		assetId: string,
+		from: readonly MediaReplacement['phase'][],
+		change: Partial<MediaReplacement> | null,
+	): Promise<MediaAsset | null>;
+	/**
+	 * Puts the new photo in place in one write, only while its Replace is being made: the original and its facts,
+	 * every file, the versions, and the old files to keep; the Replace is cleared.
+	 */
+	finishReplace(input: {
+		assetId: string;
+		set: Pick<MediaAsset, 'originalStorageKey' | 'originalFormat' | 'originalByteSize' | 'width' | 'height'> &
+			Partial<Pick<MediaAsset, 'dominantColor' | 'thumbHash' | 'warnings' | 'sha256'>>;
+		derivatives: readonly ImageDerivative[];
+		versions: readonly MediaVersion[];
+		kept: MediaKeptFiles | null;
+	}): Promise<MediaAsset | null>;
+	/** Photos holding kept files due for deletion by `before` (the daily sweep). */
+	listKeptDue(before: string, limit: number): Promise<MediaAsset[]>;
+	/** Forgets the kept files due by `before`, once they have been sent for deletion. */
+	dropKept(assetId: string, before: string): Promise<void>;
+	/** Assets holding a derivative of `role` older than `version` — the reprocess work list. */ /** Assets holding a derivative of `role` older than `version` — the reprocess work list. */
 	listStaleForRole(input: { role: string; version: number; limit: number }): Promise<MediaAsset[]>;
 	/** Live (not soft-deleted) assets created before the cutoff — GC soft-delete candidates. */
 	listLiveCreatedBefore(input: {

@@ -151,7 +151,7 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 - Download as .zip is not offered yet (media step 5).
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.
 - Until pages store which version they use (media step 4), a version counts as in use when the website draws it for a used photo: the first ready version for each kind of size (see Reprocess below). A version that is the only source of a kind of size therefore can't be removed while the photo is used anywhere.
-- Replace, the focal point, a new web file name and "Bring older versions up to date" come in the next parts of step 3.
+- Replace runs from a photo's menu; replacing through the duplicate check when the same name is uploaded again (B12, B13), Replace for files other than photos, the focal point, a new web file name and "Bring older versions up to date" come in the next parts of step 3.
 
 ## Details and Activity
 
@@ -166,3 +166,11 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 For many photos the popup offers every fill of each profile; the API makes a fill "As is" for a photo that already has the profile's shape, skips versions a photo already has, and lists any it can't take in a toast. The shared storage check runs first (B18/B19 wording for versions, C07). One tray row then counts the photos as their versions finish ("Hero 21:9 · Crop for 612 photos", A48), from the worker's real state; the row in the list says "Adding 2 versions · Live copy stays in use" (C03, C04) and is not greyed.
 
 Versions are written once: adding one never changes what the website shows. Until pages store their version (step 4), the website draws the first ready version for each kind of size, so the newest version is never the one on show. In the details tree that version is marked **On N pages** while the photo is used; any other is **Not used** and has **Remove**, which deletes its files after a confirmation (never a photo's last version, nor one being made). Routes: `POST /files/:id/versions`, `POST /versions` (up to 200 photos a call; the page sends 100), `POST /versions/status`, `DELETE /files/:id/versions/:versionId`.
+
+## Replace a photo
+
+**Replace file** in a photo's menu (S7) opens the browser's file chooser; a HEIC becomes a full-size JPEG first. The Replace popup (C05, `FmReplace`) shows the photo now and the new one side by side with their sizes and shapes. Every version is remade with the same profile and fill, so a page never changes version: when the new photo can make them all, a green line says so ("Same shape as before, big enough for Product 3:4"); a version it can't make the same way (another shape for "As is", too small, over a profile's limit, a type the profile doesn't take) is named in red and Replace waits. The table lists what stays the same (name, folder, alt text, favourites, share links, profiles), where the photo is used, and that the old files are kept 7 days (decision 11).
+
+Replace runs the shared storage check (the new photo and every version to remake), then the progress popup (C08, `FmReplaceProgress`) follows three steps with real counts: the upload's bytes, the sizes the image worker has made, and the places that show the photo, which all switch at once when it is in place (search results read pictures from the catalogue, so nothing is re-indexed). The popup can be closed; the tray carries on. While it runs, the photo's row says "Replacing the photo · Live copy stays in use", and no versions can be added. If the new photo can't make a version after all, the website keeps the old photo and the popup says why.
+
+The worker (`replaceMediaAsset`) checks the new original's real bytes, remakes every version and the pictures made once per photo, and swaps everything in one write. The old picture files and the old original are kept on the photo (`keptFiles`) for 7 days, then the daily sweep (03:55 India time) deletes them; deleting the photo for good deletes them too. Routes: `POST /files/:id/replace`, `POST /files/:id/replace/finish`, `GET /files/:id/replace`, `DELETE /files/:id/replace`.

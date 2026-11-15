@@ -74,6 +74,21 @@ export const MAKING_POLL_MS = 2000;
 export const VERSIONS_STATUS_PER_CALL = 1000;
 export const MAKING_GIVE_UP_MS = 10 * 60_000;
 
+/** One Replace's three steps (S7, C08): upload, making versions, switching pages. */
+export interface ReplaceRun {
+	fileId: string;
+	name: string;
+	step: 'uploading' | 'making' | 'done' | 'failed';
+	sent: number;
+	bytes: number;
+	/** Sizes made and in all, as the image worker counts them. */
+	made: number;
+	total: number;
+	/** Places that show the photo: they switch together when it is in place. */
+	places: number;
+	error: string | null;
+}
+
 /** A bulk change in the tray (A48): its words, its icon, and real counts from the API's answers. */
 export interface MediaOperation {
 	id: string;
@@ -286,6 +301,99 @@ export class MediaUploads {
 			}
 			patch({ state: 'done' });
 		})();
+	}
+
+	/** Replaces under way (S7, C08), by file id: their three steps, for the progress popup. */
+	readonly replaces = signal<ReadonlyMap<string, ReplaceRun>>(new Map());
+
+	/**
+	 * Replace a photo (S7, C08): the new photo uploads beside the old one, its versions are made by the image worker,
+	 * then every page using the photo switches to it at once. The popup and the tray follow the three steps; the
+	 * website keeps the old photo until the last one. A failure leaves the old photo in place and says why.
+	 */
+	async replacePhoto(input: {
+		fileId: string;
+		name: string;
+		file: Blob;
+		request: Parameters<MediaLibraryGateway['startReplace']>[1];
+	}): Promise<void> {
+		const { fileId } = input;
+		const opId = `rp_${fileId}`;
+		const words = (key: string, params: Record<string, unknown> = {}) =>
+			this.transloco.translate(key, { name: input.name, ...params });
+		const run = (changes: Partial<ReplaceRun>) => {
+			const next = new Map(this.replaces());
+			const before = next.get(fileId) ?? {
+				fileId,
+				name: input.name,
+				step: 'uploading',
+				sent: 0,
+				bytes: input.file.size,
+				made: 0,
+				total: 0,
+				places: 0,
+				error: null,
+			};
+			next.set(fileId, { ...before, ...changes });
+			this.replaces.set(next);
+		};
+		const tray = (changes: Partial<MediaOperation>) =>
+			this.operations.update((ops) => ops.map((op) => (op.id === opId ? { ...op, ...changes } : op)));
+		run({ step: 'uploading', sent: 0, error: null });
+		this.operations.update((ops) => [
+			...ops.filter((op) => op.id !== opId),
+			{
+				id: opId,
+				label: words('fm_rp_step_uploading'),
+				icon: 'ri-swap-line',
+				done: 0,
+				total: 3,
+				state: 'running',
+				error: null,
+			},
+		]);
+		const fail = (error: unknown, said?: string) => {
+			const message = said ?? readApiErrorMessage(error) ?? words('fm_action_failed');
+			run({ step: 'failed', error: message });
+			tray({ state: 'failed', error: message });
+		};
+		try {
+			const upload = await lastValueFrom(this.gateway.startReplace(fileId, input.request));
+			try {
+				await this.put(upload.uploadUrl, upload.headers, input.file, (sent) => run({ sent }));
+			} catch (error) {
+				await lastValueFrom(this.gateway.cancelReplace(fileId)).catch(() => undefined);
+				throw error;
+			}
+			run({ step: 'making', sent: input.file.size });
+			tray({ done: 1, label: words('fm_rp_step_making') });
+			const queued = await lastValueFrom(this.gateway.finishReplace(fileId));
+			run({ places: queued.places });
+		} catch (error) {
+			fail(error);
+			return;
+		}
+		const started = Date.now();
+		while (Date.now() - started < MAKING_GIVE_UP_MS) {
+			await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
+			const status = await lastValueFrom(this.gateway.replaceStatus(fileId)).catch(() => null);
+			if (!status) continue;
+			// A count of 0 means the worker has not planned the sizes yet; the last real count stays.
+			run({ ...(status.total ? { made: status.made, total: status.total } : {}), places: status.places });
+			if (status.phase === 'failed') {
+				fail(null, words('fm_rp_failed_reason', { reason: status.error ?? '' }));
+				await lastValueFrom(this.gateway.cancelReplace(fileId)).catch(() => undefined);
+				return;
+			}
+			if (status.phase === 'done') {
+				run({ step: 'done' });
+				tray({ done: 3, state: 'done', label: words('fm_rp_step_done') });
+				void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+				return;
+			}
+		}
+		run({ step: 'done' });
+		tray({ done: 3, state: 'done' });
 	}
 
 	/** Clears finished and failed files and changes from the tray; failed uploads leave nothing behind. */

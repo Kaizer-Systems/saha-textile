@@ -16,11 +16,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, NgbDropdown, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
-import { estimateVersionBytes } from '@saha-textile/core-domain/media-files';
+import { estimateVersionBytes, looksLikeHeic } from '@saha-textile/core-domain/media-files';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { type Observable, lastValueFrom } from 'rxjs';
 
+import { heicToJpeg } from '@core/media-library/heic';
 import {
 	type MediaBrowseQuery,
 	type MediaCategory,
@@ -47,6 +48,8 @@ import { fileKind, fileTypeLabel } from './file-kinds';
 import { FmDetails, type FmDetailsAction } from './fm-details';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
 import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
+import { FmReplace } from './fm-replace';
+import { FmReplaceProgress } from './fm-replace-progress';
 import { FmReprocess, type FmReprocessChoice } from './fm-reprocess';
 import {
 	type FmItemRef,
@@ -77,7 +80,9 @@ import {
 	photoShapeLabel,
 	planUpload,
 	readDropped,
+	readPhotoSize,
 	readPickedFolder,
+	sha256Hex,
 } from './fm-upload-plan';
 import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-profiles/profile-words';
 
@@ -413,7 +418,18 @@ export class FileManager {
 		const star: FmMenuLine = file.starred ? 'unstar' : 'star';
 		if (file.state === 'awaiting_upload') return ['rename', 'move', star, 'divider', 'trash'];
 		if (file.kind === 'image')
-			return ['details', 'rename', 'download_original', 'share', 'move', 'reprocess', star, 'divider', 'trash'];
+			return [
+				'details',
+				'rename',
+				'download_original',
+				'share',
+				'move',
+				'reprocess',
+				'replace',
+				star,
+				'divider',
+				'trash',
+			];
 		return ['preview', 'details', 'rename', 'download', 'share', 'move', star, 'divider', 'trash'];
 	}
 
@@ -486,6 +502,9 @@ export class FileManager {
 			case 'reprocess':
 				if (file) await this.openReprocess([file]);
 				return;
+			case 'replace':
+				if (file) this.pickReplacement(file);
+				return;
 			case 'star':
 			case 'unstar':
 				if (folder)
@@ -534,6 +553,102 @@ export class FileManager {
 			},
 			() => void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY }),
 		);
+	}
+
+	/** Replace file (S7): the browser's file chooser first; the chosen photo goes to the C05 check. */
+	pickReplacement(file: MediaFileRow): void {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'image/jpeg,image/png,image/heic,image/heif,.heic,.heif';
+		input.addEventListener('change', () => {
+			const picked = input.files?.[0];
+			if (picked) void this.openReplace(file, picked);
+		});
+		input.click();
+	}
+
+	/**
+	 * Replace (C05 → C08): the new photo is read in the browser (a HEIC becomes a full-size JPEG first), checked
+	 * against every version in the popup, then the shared storage check runs, the upload starts and the progress
+	 * popup follows its three steps (it can be closed: the tray carries on).
+	 */
+	async openReplace(file: MediaFileRow, picked: File): Promise<void> {
+		let photo: File = picked;
+		const preview: { url: string | null } = { url: null };
+		try {
+			if (looksLikeHeic(picked.type, picked.name)) photo = await heicToJpeg(picked);
+			const size = await readPhotoSize(photo);
+			if (!size) {
+				this.notifications.showError(this.transloco.translate('fm_unreadable_photo'));
+				return;
+			}
+			const details = await lastValueFrom(this.gateway.details(file.id));
+			preview.url = URL.createObjectURL(photo);
+			const contentType = photo.type || 'image/jpeg';
+			const popup = this.modals.open(FmReplace, {
+				size: 'lg',
+				centered: true,
+				scrollable: true,
+				windowClass: 'theme-modal media-modal',
+				ariaLabelledBy: 'fm_rpl_title',
+			});
+			(popup.componentInstance as FmReplace).start({
+				name: file.name,
+				folder: details.folderPath.join(' › '),
+				bytes: details.bytes,
+				width: details.width,
+				height: details.height,
+				preview: file.thumbnailUrl,
+				versions: details.versions,
+				usedOn: details.usedOn,
+				next: {
+					name: picked.name,
+					bytes: photo.size,
+					width: size.width,
+					height: size.height,
+					contentType,
+					preview: preview.url,
+				},
+			});
+			const yes = await popup.result.then(
+				(answer: string) => answer === 'replace',
+				() => false,
+			);
+			if (!yes) return;
+			const onDemand = this.onDemandTemplate();
+			const refused = this.refusedTemplate();
+			if (!onDemand || !refused) return;
+			const bytes = photo.size + estimateVersionBytes(photo.size, details.versions.length);
+			const what = this.transloco.translate('fm_rpl_storage_what', { name: file.name });
+			const reservationId = await this.flow.storageCheck('replace', bytes, 1, what, { onDemand, refused });
+			if (reservationId === false) return;
+			const sha256 = await sha256Hex(photo);
+			void this.uploads.replacePhoto({
+				fileId: file.id,
+				name: file.name,
+				file: photo,
+				request: {
+					fileName: picked.name,
+					contentType,
+					byteSize: photo.size,
+					width: size.width,
+					height: size.height,
+					...(sha256 ? { sha256 } : {}),
+					...(reservationId ? { reservationId } : {}),
+				},
+			});
+			const progress = this.modals.open(FmReplaceProgress, {
+				size: 'lg',
+				centered: true,
+				windowClass: 'theme-modal media-modal',
+				ariaLabelledBy: 'fm_rpp_title',
+			});
+			(progress.componentInstance as FmReplaceProgress).start(file.id, file.name, picked.name);
+		} catch (error) {
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		} finally {
+			if (preview.url) setTimeout(() => URL.revokeObjectURL(preview.url ?? ''), 60_000);
+		}
 	}
 
 	/** The photos among the picked files, for the bulk bar's “Add a version” (C07). */

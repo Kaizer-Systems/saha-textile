@@ -6,6 +6,7 @@ export * from './version-plan';
 export * from './derivative-plan';
 export * from './storage-keys';
 export * from './process-asset';
+export * from './replace-photo';
 export * from './resolve-image';
 export * from './garbage-collection';
 export * from './review-photos';

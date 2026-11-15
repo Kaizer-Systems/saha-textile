@@ -18,6 +18,7 @@ import { YouTubeService } from './youtube.service';
 import { AdminMediaLibraryController } from './admin-media-library.controller';
 import { AdminMediaSharingController } from './admin-media-sharing.controller';
 import { MediaLibraryService } from './media-library.service';
+import { MediaReplaceService } from './media-replace.service';
 import { MediaSharingService } from './media-sharing.service';
 import { MediaStorageService } from './media-storage.service';
 import { ShareController } from './share.controller';
@@ -38,6 +39,7 @@ import { ShareController } from './share.controller';
 	],
 	providers: [
 		MediaLibraryService,
+		MediaReplaceService,
 		MediaSharingService,
 		MediaStorageService,
 		MediaProfilesService,

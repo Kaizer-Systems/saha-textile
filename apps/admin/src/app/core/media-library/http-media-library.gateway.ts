@@ -19,6 +19,9 @@ import {
 	type MediaAddVersionsResult,
 	type MediaBulkAddVersionsRequest,
 	type MediaVersionsStatus,
+	type MediaReplaceRequest,
+	type MediaReplaceStatus,
+	type MediaReplaceUpload,
 	type MediaFilePresignRequest,
 	type MediaFilePresignResponse,
 	type MediaFolderCreate,
@@ -94,6 +97,22 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override removeVersion(fileId: string, versionId: string): Observable<void> {
 		return this.http.delete<void>(this.url(`/files/${id(fileId)}/versions/${id(versionId)}`), quiet());
+	}
+
+	override startReplace(fileId: string, body: MediaReplaceRequest): Observable<MediaReplaceUpload> {
+		return this.http.post<MediaReplaceUpload>(this.url(`/files/${id(fileId)}/replace`), body, quiet());
+	}
+
+	override finishReplace(fileId: string): Observable<MediaReplaceStatus> {
+		return this.http.post<MediaReplaceStatus>(this.url(`/files/${id(fileId)}/replace/finish`), {}, quiet());
+	}
+
+	override replaceStatus(fileId: string): Observable<MediaReplaceStatus> {
+		return this.http.get<MediaReplaceStatus>(this.url(`/files/${id(fileId)}/replace`), quiet());
+	}
+
+	override cancelReplace(fileId: string): Observable<void> {
+		return this.http.delete<void>(this.url(`/files/${id(fileId)}/replace`), quiet());
 	}
 
 	override createFolder(body: MediaFolderCreate): Observable<MediaFolderRow> {

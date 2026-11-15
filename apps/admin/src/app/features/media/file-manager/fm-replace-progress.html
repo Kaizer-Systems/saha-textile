@@ -1,0 +1,104 @@
+<div class="modal-header">
+	<h2 id="fm_rpp_title">{{ 'fm_replace_title' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.close()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div
+	class="modal-body"
+	id="fm_replace_progress"
+>
+	<p class="mb-1">
+		<strong>{{ names().old }}</strong>
+		→ {{ names().next }}
+	</p>
+	@if (run(); as step) {
+	<div class="fm-phase">
+		<div>
+			<span>{{ 'fm_rpp_upload' | transloco }}</span>
+			<small>
+				@if (step.step === 'uploading') { {{ 'fm_sent_of' | transloco: { sent: (step.sent | fileSize), total:
+				(step.bytes | fileSize) } }} } @else { {{ step.bytes | fileSize }}
+				<i class="ri-check-line"></i>
+				}
+			</small>
+		</div>
+		<div class="progress">
+			<div
+				class="progress-bar"
+				[class.bg-success]="step.step !== 'uploading'"
+				[style.width.%]="step.step === 'uploading' ? sentPercent() : 100"
+			></div>
+		</div>
+	</div>
+	<div class="fm-phase">
+		<div>
+			<span>{{ 'fm_rpp_making' | transloco }}</span>
+			<small>
+				@if (step.step === 'done') { {{ 'fm_rpp_sizes' | plural: step.total : { made: step.made } }}
+				<i class="ri-check-line"></i>
+				} @else if (step.step === 'making' && step.total) { {{ 'fm_rpp_sizes' | plural: step.total : { made:
+				step.made } }} } @else if (step.step === 'making') { {{ 'fm_rpp_waiting' | transloco }} }
+			</small>
+		</div>
+		<div class="progress">
+			<div
+				class="progress-bar proc"
+				[class.bg-success]="step.step === 'done'"
+				[style.width.%]="madePercent()"
+			></div>
+		</div>
+	</div>
+	<div class="fm-phase">
+		<div>
+			<span>{{ 'fm_rpp_switch' | transloco }}</span>
+			<small>
+				@if (step.step === 'done') { {{ step.places ? ('fm_places' | plural: step.places) : ('fm_rpl_not_used' |
+				transloco) }}
+				<i class="ri-check-line"></i>
+				}
+			</small>
+		</div>
+		<div class="progress">
+			<div
+				class="progress-bar"
+				[class.bg-success]="step.step === 'done'"
+				[style.width.%]="step.step === 'done' ? 100 : 0"
+			></div>
+		</div>
+	</div>
+	@if (step.step === 'failed') {
+	<div class="fm-err mt-3">
+		<i class="ri-close-circle-line"></i>
+		<span>{{ step.error }}</span>
+	</div>
+	<p class="small text-muted mt-2 mb-0">{{ 'fm_rpp_failed_help' | transloco }}</p>
+	} @else {
+	<p class="small text-muted mt-3 mb-0">
+		{{ step.places ? ('fm_rpp_help' | plural: step.places) : ('fm_rpp_help_unused' | transloco) }}
+	</p>
+	} }
+</div>
+<div class="modal-footer">
+	<div class="left-part">
+		<span class="fm-footer-note info">
+			<i class="ri-information-line"></i>
+			{{ 'fm_rpp_close_note' | transloco }}
+		</span>
+	</div>
+	<div class="right-part">
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="fm_rpp_close"
+			(click)="modal.close()"
+		>
+			{{ 'close' | transloco }}
+		</button>
+	</div>
+</div>

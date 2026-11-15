@@ -1078,6 +1078,39 @@ describe('Reprocess: adding and removing versions (C01, C07, A31, step 3a)', () 
 		expect(await h.service.versionsStatus(['med_w', 'med_wide'])).toEqual({ photos: 2, making: 1, failed: 0 });
 	});
 
+	it('while a photo is being replaced, its versions wait (step 3b)', async () => {
+		const h = harness();
+		weave(h);
+		const asset = h.files.get('med_w') as MediaAsset;
+		const replacing = {
+			key: 'media/med_w/original-1.png',
+			contentType: 'image/png',
+			byteSize: 1,
+			width: 4800,
+			height: 2400,
+			sha256: null,
+			phase: 'making' as const,
+			made: 0,
+			total: 0,
+			error: null,
+			startedAt: '2026-11-16T00:00:00.000Z',
+			by: 'adm_1',
+		};
+		h.files.set('med_w', { ...asset, replacing });
+		const ask = { profileKey: 'hero_21x9', fill: 'crop' as const };
+		expect(
+			await refusalCode(h.service.addVersions('adm_1', { fileIds: ['med_w'], versions: [ask], many: false })),
+		).toBe('replacing');
+		const many = await h.service.addVersions('adm_1', { fileIds: ['med_w'], versions: [ask], many: true });
+		expect(many).toEqual({
+			photos: 0,
+			added: 0,
+			skipped: [{ fileId: 'med_w', versionId: '', reason: 'replacing' }],
+		});
+		const rows = await h.service.browse('adm_1', { view: 'folder' } as never);
+		expect(rows.files.find((row) => row.id === 'med_w')?.replacing).toBe('making');
+	});
+
 	it('refuses a file that is not a photo, and a missing one, when asked for one photo', async () => {
 		const h = harness();
 		h.file('med_pdf', { kind: 'file', originalFormat: 'application/pdf', displayName: 'a.pdf' });

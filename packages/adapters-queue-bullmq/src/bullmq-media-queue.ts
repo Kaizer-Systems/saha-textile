@@ -26,7 +26,9 @@ export type ScheduledMediaJob =
 	/** Removes for good what has been in the Media page's Trash for 30 days. */
 	| { type: 'trash-purge' }
 	/** Removes uploads still waiting for their bytes a day after they started. */
-	| { type: 'upload-sweep' };
+	| { type: 'upload-sweep' }
+	/** Deletes files kept after a Replace once their 7 days are over (decision 11). */
+	| { type: 'kept-files-sweep' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -174,6 +176,12 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'upload-sweep',
 			{ pattern: '50 3 * * *', tz },
 			{ name: 'upload-sweep', data: { type: 'upload-sweep' } },
+		);
+		// Files kept 7 days after a Replace (decision 11): deleted once due (03:55 IST).
+		await this.queue.upsertJobScheduler(
+			'kept-files-sweep',
+			{ pattern: '55 3 * * *', tz },
+			{ name: 'kept-files-sweep', data: { type: 'kept-files-sweep' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

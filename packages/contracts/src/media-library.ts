@@ -51,6 +51,8 @@ export const MediaFileRow = z.object({
 	state: z.enum(['awaiting_upload', 'queued', 'processing', 'ready', 'failed']),
 	/** A photo: versions still being made (“Adding 2 versions”, C03); the website keeps showing the live copy. */
 	versionsMaking: z.number().int().nonnegative().optional(),
+	/** A photo being replaced (S7): where the Replace has got; the website keeps the old photo until it is done. */
+	replacing: z.enum(['uploading', 'queued', 'making', 'failed']).optional(),
 	/** A small picture for the list; null for files the worker does not process. */
 	thumbnailUrl: z.string().nullable(),
 	/** Pages that use it: an image used on the website cannot go to Trash. */
@@ -375,6 +377,43 @@ export const MediaVersionsStatus = z.object({
 	failed: z.number().int().nonnegative(),
 });
 export type MediaVersionsStatus = z.infer<typeof MediaVersionsStatus>;
+
+// --- Replace a photo (media step 3b, S7, C05, C08, B12, B13) --------------------------------
+
+/** `POST /admin/media/library/files/:id/replace`: the new photo's facts, checked against every version first. */
+export const MediaReplaceRequest = z
+	.object({
+		fileName: z.string().min(1).max(255),
+		contentType: z.string().min(1).max(100),
+		byteSize: z.number().int().positive(),
+		width: z.number().int().positive().max(100_000),
+		height: z.number().int().positive().max(100_000),
+		sha256: z
+			.string()
+			.regex(/^[0-9a-f]{64}$/)
+			.optional(),
+		reservationId: Id.optional(),
+	})
+	.strict();
+export type MediaReplaceRequest = z.infer<typeof MediaReplaceRequest>;
+
+export const MediaReplaceUpload = z.object({
+	uploadUrl: z.string(),
+	headers: z.record(z.string(), z.string()),
+	expiresAt: IsoDateTime,
+});
+export type MediaReplaceUpload = z.infer<typeof MediaReplaceUpload>;
+
+/** `GET …/files/:id/replace`: C08's three steps. `done` once the new photo is in place (or nothing is running). */
+export const MediaReplaceStatus = z.object({
+	phase: z.enum(['uploading', 'queued', 'making', 'failed', 'done']),
+	made: z.number().int().nonnegative(),
+	total: z.number().int().nonnegative(),
+	error: z.string().nullable(),
+	/** Places that show the photo: they switch together when the new one is in place. */
+	places: z.number().int().nonnegative(),
+});
+export type MediaReplaceStatus = z.infer<typeof MediaReplaceStatus>;
 
 // --- Share links (R4-5, decision 13) ---------------------------------------------------------
 

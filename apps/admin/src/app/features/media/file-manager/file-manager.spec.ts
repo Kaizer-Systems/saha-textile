@@ -617,6 +617,7 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 			'share',
 			'move',
 			'reprocess',
+			'replace',
 			'star',
 			'divider',
 			'trash',

@@ -7,6 +7,8 @@ export type MediaJob =
 	 * make the versions asked for and any missing per-photo pictures (`versions`).
 	 */
 	| { type: 'reprocess'; assetId: string; reason: 'ladder' | 'slug' | 'primary' | 'manual' | 'versions' }
+	/** Replace (media step 3b): remake every version from the new original, then swap it in. */
+	| { type: 'replace'; assetId: string }
 	/** Delete storage objects, then purge their public URLs from the CDN. */
 	| { type: 'delete-objects'; keys: string[]; urls: string[] }
 	| { type: 'purge'; urls: string[] }

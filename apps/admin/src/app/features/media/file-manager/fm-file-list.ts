@@ -36,9 +36,13 @@ export interface FmItemEvent {
 	imports: [DatePipe, NgTemplateOutlet, TranslocoModule, FileSizePipe, PluralPipe],
 })
 export class FmFileList {
-	/** C03: versions are being added to a photo that already has a live copy (the website keeps showing it). */
+	/**
+	 * C03: versions are being added to a photo that already has a live copy, or it is being replaced (S7): the website
+	 * keeps showing the live copy meanwhile.
+	 */
 	adding(file: MediaFileRow): boolean {
-		return (file.versionsMaking ?? 0) > 0 && !!file.thumbnailUrl;
+		const replacing = !!file.replacing && file.replacing !== 'failed';
+		return ((file.versionsMaking ?? 0) > 0 || replacing) && !!file.thumbnailUrl;
 	}
 
 	readonly files = input.required<readonly MediaFileRow[]>();

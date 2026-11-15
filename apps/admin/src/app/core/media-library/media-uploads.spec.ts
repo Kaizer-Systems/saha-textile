@@ -404,3 +404,90 @@ describe('versions being made after Reprocess (A48, step 3a)', () => {
 		vi.useRealTimers();
 	});
 });
+
+describe('Replace a photo (S7, C08, step 3b)', () => {
+	const setup = (finalPhase: 'done' | 'failed' = 'done', uploadStatus = 200) => {
+		SentRequest.status = uploadStatus;
+		SentRequest.sent = [];
+		vi.stubGlobal('XMLHttpRequest', SentRequest);
+		const statuses = [
+			{ phase: 'making', made: 2, total: 5, error: null, places: 2 },
+			{
+				phase: finalPhase,
+				made: 5,
+				total: 5,
+				error: finalPhase === 'failed' ? 'product_3x4.as_is: too_small' : null,
+				places: 2,
+			},
+		];
+		const gateway = {
+			startReplace: vi.fn(() =>
+				of({ uploadUrl: 'https://spaces.test/media/med_r/original-1.jpg?signed', headers: {}, expiresAt: '' }),
+			),
+			finishReplace: vi.fn(() => of({ phase: 'queued', made: 0, total: 0, error: null, places: 2 })),
+			replaceStatus: vi.fn(() =>
+				of(statuses.shift() ?? { phase: 'done', made: 5, total: 5, error: null, places: 2 }),
+			),
+			cancelReplace: vi.fn(() => of(undefined)),
+		};
+		const invalidateQueries = vi.fn(async () => undefined);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: QueryClient, useValue: { invalidateQueries } },
+				{
+					provide: TranslocoService,
+					useValue: {
+						translate: (key: string) => key,
+						getActiveLang: () => 'en',
+						getTranslation: () => ({}),
+					},
+				},
+			],
+		});
+		return { uploads: TestBed.inject(MediaUploads), gateway, invalidateQueries };
+	};
+	const request = { fileName: 'reshoot.jpg', contentType: 'image/jpeg', byteSize: 10, width: 3000, height: 4000 };
+
+	it('uploads beside the old photo, then follows the sizes, then says it is in place everywhere', async () => {
+		vi.useFakeTimers();
+		const { uploads, gateway, invalidateQueries } = setup();
+		const running = uploads.replacePhoto({ fileId: 'med_r', name: 'red.jpg', file: file('x.jpg'), request });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(uploads.replaces().get('med_r')?.step).toBe('uploading');
+		SentRequest.sent[0]?.finish();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(gateway.finishReplace).toHaveBeenCalledWith('med_r');
+		expect(uploads.replaces().get('med_r')).toMatchObject({ step: 'making', places: 2 });
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(uploads.replaces().get('med_r')).toMatchObject({ made: 2, total: 5 });
+		await vi.advanceTimersByTimeAsync(2000);
+		await running;
+		expect(uploads.replaces().get('med_r')).toMatchObject({ step: 'done', made: 5 });
+		expect(uploads.operations()[0]).toMatchObject({ id: 'rp_med_r', state: 'done', done: 3, total: 3 });
+		expect(invalidateQueries).toHaveBeenCalled();
+		vi.useRealTimers();
+	});
+
+	it('a failed upload stops the Replace on the server; a failed remake says why and leaves the old photo', async () => {
+		vi.useFakeTimers();
+		const broken = setup('done', 0);
+		const first = broken.uploads.replacePhoto({ fileId: 'med_r', name: 'red.jpg', file: file('x.jpg'), request });
+		await vi.advanceTimersByTimeAsync(0);
+		SentRequest.sent[0]?.finish();
+		await first;
+		expect(broken.gateway.cancelReplace).toHaveBeenCalledWith('med_r');
+		expect(broken.uploads.replaces().get('med_r')?.step).toBe('failed');
+
+		const refused = setup('failed');
+		const second = refused.uploads.replacePhoto({ fileId: 'med_r', name: 'red.jpg', file: file('x.jpg'), request });
+		await vi.advanceTimersByTimeAsync(0);
+		SentRequest.sent[0]?.finish();
+		await vi.advanceTimersByTimeAsync(4000);
+		await second;
+		expect(refused.uploads.replaces().get('med_r')).toMatchObject({ step: 'failed', error: 'fm_rp_failed_reason' });
+		expect(refused.uploads.operations()[0]).toMatchObject({ state: 'failed' });
+		vi.useRealTimers();
+	});
+});

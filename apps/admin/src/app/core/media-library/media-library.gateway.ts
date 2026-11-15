@@ -12,6 +12,9 @@ import type {
 	MediaAddVersionsResult,
 	MediaBulkAddVersionsRequest,
 	MediaVersionsStatus,
+	MediaReplaceRequest,
+	MediaReplaceStatus,
+	MediaReplaceUpload,
 	MediaFilePresignRequest,
 	MediaFilePresignResponse,
 	MediaFolderCreate,
@@ -43,6 +46,9 @@ export type {
 	MediaBulkAddVersionsRequest,
 	MediaAddVersionsResult,
 	MediaVersionsStatus,
+	MediaReplaceRequest,
+	MediaReplaceStatus,
+	MediaReplaceUpload,
 	MediaBrowseQuery,
 	MediaCategory,
 	MediaFileRow,
@@ -110,6 +116,11 @@ export abstract class MediaLibraryGateway {
 	abstract versionsStatus(fileIds: readonly string[]): Observable<MediaVersionsStatus>;
 	/** Removes a version the website does not show (A31). */
 	abstract removeVersion(id: string, versionId: string): Observable<void>;
+	/** Replace a photo (S7, C08): start, finish the upload, follow it, or stop it. */
+	abstract startReplace(id: string, body: MediaReplaceRequest): Observable<MediaReplaceUpload>;
+	abstract finishReplace(id: string): Observable<MediaReplaceStatus>;
+	abstract replaceStatus(id: string): Observable<MediaReplaceStatus>;
+	abstract cancelReplace(id: string): Observable<void>;
 
 	abstract createFolder(body: MediaFolderCreate): Observable<MediaFolderRow>;
 	abstract renameFolder(id: string, name: string): Observable<MediaOperationResult>;

@@ -242,6 +242,101 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await MediaAssetModel.deleteOne({ _id: 'med_add' }).exec();
 	});
 
+	it('runs one Replace at a time, swaps in one write, keeps the old files and sweeps them (step 3b)', async () => {
+		const version = (id: string, state = 'ready') => {
+			const [profileKey = '', fill = 'as_is'] = id.split('.');
+			return {
+				id,
+				profileKey,
+				profileVersion: 1,
+				fill,
+				state,
+				error: null,
+				createdAt: '2026-11-16T00:00:00.000Z',
+			};
+		};
+		const replacement = (key: string) => ({
+			key,
+			contentType: 'image/jpeg',
+			byteSize: 2000,
+			width: 3000,
+			height: 4000,
+			sha256: null,
+			phase: 'uploading' as const,
+			made: 0,
+			total: 0,
+			error: null,
+			startedAt: '2026-11-16T10:00:00.000Z',
+			by: 'adm_1',
+		});
+		await raw('med_rep', {
+			derivatives: [{ ...file('med_rep', 'card', 400), versionId: 'product_3x4.as_is' }],
+			versions: [version('product_3x4.as_is')],
+		});
+		await raw('med_busy_rep', { derivatives: [], versions: [version('product_3x4.white', 'making')] });
+		// Not while versions are being made.
+		expect(await assets.startReplace('med_busy_rep', replacement('media/med_busy_rep/original-1.jpg'))).toBeNull();
+		const started = await assets.startReplace('med_rep', replacement('media/med_rep/original-1.jpg'));
+		expect(started?.replacing).toMatchObject({ phase: 'uploading', key: 'media/med_rep/original-1.jpg' });
+		// One at a time; and no versions are added meanwhile.
+		expect(await assets.startReplace('med_rep', replacement('media/med_rep/original-2.jpg'))).toBeNull();
+		const crop = { ...version('product_3x4.crop', 'making'), fill: 'crop' as const, state: 'making' as const };
+		expect(await assets.addVersions({ assetId: 'med_rep', add: [crop as never], retry: [] })).toBeNull();
+		// uploading → queued → making, each only from the phase before.
+		expect(await assets.moveReplace('med_rep', ['queued'], { phase: 'making' })).toBeNull();
+		expect((await assets.moveReplace('med_rep', ['uploading'], { phase: 'queued' }))?.replacing?.phase).toBe(
+			'queued',
+		);
+		const making = await assets.moveReplace('med_rep', ['queued'], { phase: 'making', made: 0, total: 9 });
+		expect(making?.replacing).toMatchObject({ phase: 'making', total: 9 });
+		const swapped = await assets.finishReplace({
+			assetId: 'med_rep',
+			set: {
+				originalStorageKey: 'media/med_rep/original-1.jpg',
+				originalFormat: 'image/jpeg',
+				originalByteSize: 2000,
+				width: 3000,
+				height: 4000,
+			},
+			derivatives: [
+				{ ...file('med_rep', 'card', 400), storageKey: 'new-card.webp', versionId: 'product_3x4.as_is' },
+			],
+			versions: [version('product_3x4.as_is') as never],
+			kept: {
+				keys: ['old-card.webp', 'media/med_rep/original.jpg'],
+				bytes: 100,
+				deleteAfter: '2026-11-23T10:00:00.000Z',
+				reason: 'replace',
+			},
+		});
+		expect(swapped?.replacing).toBeNull();
+		expect(swapped?.originalStorageKey).toBe('media/med_rep/original-1.jpg');
+		expect(swapped?.derivatives.map((row) => row.storageKey)).toEqual(['new-card.webp']);
+		expect(swapped?.keptFiles?.[0]?.keys).toEqual(['old-card.webp', 'media/med_rep/original.jpg']);
+		// Swapping again, with no Replace running, changes nothing.
+		expect(
+			await assets.finishReplace({
+				assetId: 'med_rep',
+				set: {
+					originalStorageKey: 'x',
+					originalFormat: 'image/jpeg',
+					originalByteSize: 1,
+					width: 1,
+					height: 1,
+				},
+				derivatives: [],
+				versions: [],
+				kept: null,
+			}),
+		).toBeNull();
+		// The sweep finds it only once its 7 days are over, then forgets it.
+		expect(await assets.listKeptDue('2026-11-20T00:00:00.000Z', 10)).toEqual([]);
+		expect((await assets.listKeptDue('2026-11-24T00:00:00.000Z', 10)).map((row) => row.id)).toEqual(['med_rep']);
+		await assets.dropKept('med_rep', '2026-11-24T00:00:00.000Z');
+		expect((await assets.findById('med_rep'))?.keptFiles).toEqual([]);
+		await MediaAssetModel.deleteMany({ _id: { $in: ['med_rep', 'med_busy_rep'] } }).exec();
+	});
+
 	it('leaves files of versions and per-photo pictures out of the ladder sweep; only unnamed old files count', async () => {
 		await raw('med_old', { derivatives: [{ ...file('med_old', 'thumb', 150), roleVersion: 1 }] });
 		await raw('med_named', {

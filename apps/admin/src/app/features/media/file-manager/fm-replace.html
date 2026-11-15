@@ -1,0 +1,112 @@
+<div class="modal-header">
+	<h2 id="fm_rpl_title">{{ 'fm_replace_title' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+@if (input(); as file) {
+<div
+	class="modal-body"
+	id="fm_replace"
+>
+	<p class="mb-3">
+		<strong>{{ file.name }}</strong>
+		@if (file.folder) { · {{ file.folder }} }
+	</p>
+	<div class="fm-compare mb-3">
+		<div>
+			@if (file.preview) {
+			<img
+				[src]="file.preview"
+				alt=""
+			/>
+			}
+			<p>
+				<strong>{{ 'fm_rpl_now' | transloco }}</strong>
+				<br />
+				{{ file.bytes | fileSize }} @if (file.width && file.height) { · {{ file.width }} × {{ file.height }} ·
+				{{ shape(file.width, file.height) }} }
+			</p>
+		</div>
+		<div class="fm-arrow"><i class="ri-arrow-right-line"></i></div>
+		<div>
+			<img
+				[src]="file.next.preview"
+				alt=""
+			/>
+			<p>
+				<strong>{{ 'fm_rpl_new' | transloco }}</strong>
+				<br />
+				{{ file.next.name }} · {{ file.next.bytes | fileSize }} · {{ file.next.width }} × {{ file.next.height }}
+				· {{ shape(file.next.width, file.next.height) }}
+			</p>
+		</div>
+	</div>
+	@if (good(); as words) {
+	<div class="fm-warn fm-good mb-2">
+		<i class="ri-checkbox-circle-line"></i>
+		<span>{{ words }}</span>
+	</div>
+	} @for (row of refused(); track row.version) {
+	<div class="fm-err mb-2">
+		<i class="ri-close-circle-line"></i>
+		<span>
+			<strong>{{ row.version }}</strong>
+			· {{ row.reason }}
+		</span>
+	</div>
+	} @if (refused().length) {
+	<p class="small text-muted">{{ 'fm_rpl_refused_help' | transloco }}</p>
+	}
+	<table class="table-sm small mb-0 table">
+		<tbody>
+			<tr>
+				<td
+					class="text-muted"
+					style="width: 150px"
+				>
+					{{ 'fm_rpl_stays' | transloco }}
+				</td>
+				<td>{{ 'fm_rpl_stays_what' | transloco: { profiles: profileList() } }}</td>
+			</tr>
+			<tr>
+				<td class="text-muted">{{ 'fm_used_on' | transloco }}</td>
+				<td>
+					@if (file.usedOn.length) { {{ 'fm_rpl_used_on' | transloco: { places: usedOn() } }} } @else { {{
+					'fm_rpl_not_used' | transloco }} }
+				</td>
+			</tr>
+			<tr>
+				<td class="text-muted">{{ 'fm_rpl_old' | transloco }}</td>
+				<td>{{ 'fm_rpl_old_kept' | transloco }}</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
+}
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="fm_rpl_go"
+			[disabled]="refused().length > 0"
+			(click)="replace()"
+		>
+			{{ 'fm_rpl_replace' | transloco }}
+		</button>
+	</div>
+</div>

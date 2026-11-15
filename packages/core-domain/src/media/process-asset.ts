@@ -178,41 +178,47 @@ export const processMediaAsset = async (
 	}
 };
 
+/** What one rendering pass made: new files, the versions with their outcome, and what it noticed. */
+export interface RenderedPhoto {
+	added: ImageDerivative[];
+	made: MediaVersion[];
+	warnings: Set<MediaWarning>;
+	skipped: number;
+	placeholder: { dominantColor: string; thumbHash: string };
+}
+
 /**
- * A photo with versions (media step 2b, Media brief R4-1): makes each version asked for (state `making`) from the
- * profile and the fill, and the pictures made once per photo that are still missing. Files already made are never
- * touched: versions are written once. A version that cannot be made fails on its own, its half-made files are
- * removed, and the others still get made. A version asked for while this ran is picked up by a new job.
+ * Renders a photo's files from its original's bytes (media steps 2b and 3): the pictures made once per photo that
+ * `have` lacks, then each version given, each failing alone (its half-made files deleted). Reprocess passes the
+ * versions being made and the photo's own placeholder; Replace passes every version, nothing in `have`, and a fresh
+ * placeholder. `onPlanned` hears the number of files to make, `onFile` each one made, for C08's progress.
  */
-const makeVersions = async (
+export const renderPhoto = async (
 	deps: ProcessMediaAssetDeps,
 	asset: MediaAsset,
-	bytes: Uint8Array | null,
-	probe: ImageProbe | null,
-): Promise<ProcessOutcome> => {
-	const now = deps.now().toISOString();
-	const asked = (asset.versions ?? []).filter((version) => version.state === 'making');
-	if (!bytes || !probe) {
-		const versions = asked.map((version) => ({ ...version, state: 'failed' as const, error: 'original_gone' }));
-		await deps.assets.settleVersions({
-			assetId: asset.id,
-			set: { processing: { ...asset.processing, state: 'ready', error: null, processedAt: now } },
-			addDerivatives: [],
-			versions,
-		});
-		return { status: 'ready', rendered: 0, skipped: 0 };
-	}
-
+	bytes: Uint8Array,
+	probe: ImageProbe,
+	versions: readonly MediaVersion[],
+	have: ReadonlySet<string>,
+	options: {
+		freshPlaceholder?: boolean;
+		onPlanned?: (total: number) => Promise<void>;
+		onFile?: () => Promise<void>;
+	} = {},
+): Promise<RenderedPhoto> => {
 	const source = { width: probe.width, height: probe.height };
 	const placeholder =
-		asset.dominantColor && asset.thumbHash
+		!options.freshPlaceholder && asset.dominantColor && asset.thumbHash
 			? { dominantColor: asset.dominantColor, thumbHash: asset.thumbHash }
 			: await deps.codec.placeholder(bytes);
 	const roles = await deps.roles.list();
 	const profiles = new Map((await deps.profiles?.list())?.map((profile) => [profile.key, profile]));
-	let brand: Promise<string | null> | null = null;
+	const brand = versions.some((version) => version.fill === 'brand')
+		? await (deps.brandColour?.() ?? Promise.resolve(null))
+		: null;
 	let logo: Promise<Uint8Array | null> | null = null;
 	const added: ImageDerivative[] = [];
+	const made: MediaVersion[] = [];
 	const warnings = new Set<MediaWarning>();
 	let skipped = 0;
 
@@ -226,11 +232,11 @@ const makeVersions = async (
 			visibility: asset.visibility,
 			cacheControl: IMMUTABLE_CACHE_CONTROL,
 		});
+		await options.onFile?.();
 		return { storageKey, rendered };
 	};
 
-	// Pictures made once per photo (link preview, status card, feed square, email picture), only those missing.
-	const have = new Set(asset.derivatives.filter((row) => !row.versionId).map((row) => `${row.role}@${row.width}`));
+	// Plan everything first, so the files to make are known before the first one is written.
 	const perPhoto = planDerivatives({
 		asset,
 		source,
@@ -239,35 +245,7 @@ const makeVersions = async (
 	}).derivatives.filter(
 		(planned) => PER_PHOTO_ROLES.has(planned.role) && !have.has(`${planned.role}@${planned.spec.width}`),
 	);
-	for (const planned of perPhoto) {
-		const stripLogo = planned.brandStrip ? await (logo ??= deps.brandLogo?.() ?? Promise.resolve(null)) : null;
-		const spec = stripLogo ? { ...planned.spec, stripLogo } : planned.spec;
-		const { storageKey, rendered } = await write(
-			(sha256) =>
-				derivativeStorageKey({
-					assetId: asset.id,
-					slug: asset.slug,
-					role: planned.role,
-					width: spec.width,
-					sha256,
-					format: spec.format,
-				}),
-			spec,
-		);
-		added.push({
-			role: planned.role,
-			storageKey,
-			width: rendered.width,
-			height: rendered.height,
-			byteSize: rendered.bytes.byteLength,
-			format: spec.format,
-			roleVersion: planned.roleVersion,
-			versionId: null,
-		});
-	}
-
-	const made: MediaVersion[] = [];
-	for (const version of asked) {
+	const planned = versions.map((version) => {
 		const profile = profiles.get(version.profileKey) ?? null;
 		const refusal = checkVersionRequest({
 			profile,
@@ -276,23 +254,53 @@ const makeVersions = async (
 			byteSize: bytes.byteLength,
 			contentType: asset.originalFormat,
 		});
-		if (refusal || !profile) {
-			made.push({ ...version, state: 'failed', error: refusal ?? 'profile_unknown' });
-			continue;
-		}
-		if (checkProfileMinSize(profile, source).result === 'warn') warnings.add('below_recommended_size');
+		if (refusal || !profile) return { version, profile: null, refusal: refusal ?? 'profile_unknown', plan: null };
 		const plan = planVersion({
 			profile,
 			fill: version.fill,
 			roles,
 			source,
 			maxDisplayWidth: asset.maxDisplayWidth,
-			colours: {
-				dominant: placeholder.dominantColor,
-				brand:
-					version.fill === 'brand' ? await (brand ??= deps.brandColour?.() ?? Promise.resolve(null)) : null,
-			},
+			colours: { dominant: placeholder.dominantColor, brand: version.fill === 'brand' ? brand : null },
 		});
+		return { version, profile, refusal: null, plan };
+	});
+	await options.onPlanned?.(perPhoto.length + planned.reduce((sum, row) => sum + (row.plan?.files.length ?? 0), 0));
+
+	// Pictures made once per photo (link preview, status card, feed square, email picture), only those missing.
+	for (const one of perPhoto) {
+		const stripLogo = one.brandStrip ? await (logo ??= deps.brandLogo?.() ?? Promise.resolve(null)) : null;
+		const spec = stripLogo ? { ...one.spec, stripLogo } : one.spec;
+		const { storageKey, rendered } = await write(
+			(sha256) =>
+				derivativeStorageKey({
+					assetId: asset.id,
+					slug: asset.slug,
+					role: one.role,
+					width: one.spec.width,
+					sha256,
+					format: one.spec.format,
+				}),
+			spec,
+		);
+		added.push({
+			role: one.role,
+			storageKey,
+			width: rendered.width,
+			height: rendered.height,
+			byteSize: rendered.bytes.byteLength,
+			format: spec.format,
+			roleVersion: one.roleVersion,
+			versionId: null,
+		});
+	}
+
+	for (const { version, profile, refusal, plan } of planned) {
+		if (refusal || !profile || !plan) {
+			made.push({ ...version, state: 'failed', error: refusal ?? 'profile_unknown' });
+			continue;
+		}
+		if (checkProfileMinSize(profile, source).result === 'warn') warnings.add('below_recommended_size');
 		skipped += plan.skipped.length;
 		if (plan.files.length === 0) {
 			made.push({ ...version, state: 'failed', error: 'too_small' });
@@ -341,6 +349,29 @@ const makeVersions = async (
 		made.push({ ...version, state: 'ready', error: null, profileVersion: profile.version });
 	}
 	if (skipped > 0) warnings.add('role_width_skipped');
+	return { added, made, warnings, skipped, placeholder };
+};
+
+const makeVersions = async (
+	deps: ProcessMediaAssetDeps,
+	asset: MediaAsset,
+	bytes: Uint8Array | null,
+	probe: ImageProbe | null,
+): Promise<ProcessOutcome> => {
+	const now = deps.now().toISOString();
+	const asked = (asset.versions ?? []).filter((version) => version.state === 'making');
+	if (!bytes || !probe) {
+		const versions = asked.map((version) => ({ ...version, state: 'failed' as const, error: 'original_gone' }));
+		await deps.assets.settleVersions({
+			assetId: asset.id,
+			set: { processing: { ...asset.processing, state: 'ready', error: null, processedAt: now } },
+			addDerivatives: [],
+			versions,
+		});
+		return { status: 'ready', rendered: 0, skipped: 0 };
+	}
+	const have = new Set(asset.derivatives.filter((row) => !row.versionId).map((row) => `${row.role}@${row.width}`));
+	const { added, made, warnings, skipped, placeholder } = await renderPhoto(deps, asset, bytes, probe, asked, have);
 
 	const stored = await deps.assets.settleVersions({
 		assetId: asset.id,

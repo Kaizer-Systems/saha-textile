@@ -336,7 +336,7 @@
 			<!-- C04: the tile's overlay while versions are added. -->
 			<div class="fm-overlay">
 				<div class="d-flex justify-content-between">
-					<span>{{ 'fm_adding_versions' | plural: file.versionsMaking ?? 0 }}</span>
+					<span>{{ file.replacing ? ('fm_replacing' | transloco) : ('fm_adding_versions' | plural: file.versionsMaking ?? 0) }}</span>
 				</div>
 				<div class="progress">
 					<div
@@ -364,7 +364,7 @@
 >
 	<span class="fm-status busy">
 		<i class="ri-refresh-line"></i>
-		{{ 'fm_adding_versions' | plural: file.versionsMaking }}
+		{{ file.replacing ? ('fm_replacing' | transloco) : ('fm_adding_versions' | plural: file.versionsMaking) }}
 	</span>
 	<div class="progress">
 		<div

@@ -182,6 +182,30 @@ test.describe('Media page (step 1)', () => {
 		await page.keyboard.press('Escape');
 	});
 
+	test('Replace file: the new photo is compared and checked (C05); while versions are being made the server says wait (step 3b)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await card(page, RUN).dblclick();
+		await row(page, 'product-sample.png').click({ button: 'right' });
+		const chooser = page.waitForEvent('filechooser');
+		await page.locator('#fm_menu_replace').click();
+		const png = readFileSync('apps/admin/public/assets/images/product.png');
+		await (await chooser).setFiles([{ name: 'product-reshoot.png', mimeType: 'image/png', buffer: png }]);
+		const popup = page.locator('#fm_replace');
+		await expect(popup).toContainText('product-sample.png');
+		await expect(popup).toContainText('product-reshoot.png');
+		await expect(popup.locator('.fm-good')).toBeVisible();
+		await shot(page, 'c05-replace');
+		await page.locator('#fm_rpl_go').click();
+		// No image worker runs in this stack, so the photo's versions are still being made: Replace waits, and the
+		// progress popup and the tray say why; the old photo stays.
+		await expect(page.locator('#fm_replace_progress')).toContainText('versions are made');
+		await expect(page.locator('.fm-tray')).toContainText('versions are made');
+		await shot(page, 'c08-refused');
+		await page.locator('#fm_rpp_close').click();
+	});
+
 	test('the same bytes again asks first; “Use the existing one” leaves it out (B10)', async ({ page }) => {
 		await openRoot(page);
 		await card(page, RUN).dblclick();

@@ -35,6 +35,8 @@ import {
 	brandStripLogo,
 	deliverStockAlerts,
 	processMediaAsset,
+	replaceMediaAsset,
+	sweepKeptFiles,
 	reconcileSeededRoles,
 	checkProductVideos,
 	copyYouTubePosters,
@@ -119,6 +121,12 @@ export const composeMediaWorker = async (config: AppConfig) => {
 	const handlers: MediaJobHandlers = {
 		process: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: false }),
 		reprocess: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: true }),
+		replace: (job) => replaceMediaAsset(processDeps, { assetId: job.assetId }),
+		'kept-files-sweep': async () => {
+			const swept = await sweepKeptFiles({ assets, queue, storage: processDeps.storage }, now());
+			if (swept > 0) logger.log(`Kept files: ${swept} photos' files from before a Replace deleted after 7 days`);
+			return swept;
+		},
 		'delete-objects': async (job) => {
 			await storage.deleteMany(job.keys);
 			if (job.urls.length > 0) await cdn.purgeUrls(job.urls);

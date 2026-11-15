@@ -306,6 +306,34 @@ export type MediaProfileListItem = z.infer<typeof MediaProfileListItem>;
  * A version id is the profile and the fill (`hero_21x9.crop`): one photo has at most one version of each, so two
  * admins adding the same version can never make it twice, and a page that stores it keeps finding it.
  */
+/** One Replace in progress (S7, C08): the new original, then its versions being made. */
+export const MediaReplacement = z.object({
+	key: z.string().min(1),
+	contentType: z.string(),
+	byteSize: z.number().int().nonnegative(),
+	width: z.number().int().positive(),
+	height: z.number().int().positive(),
+	sha256: z.string().nullable().default(null),
+	/** uploading → queued (the upload finished) → making (the worker took it) → gone on success, or failed. */
+	phase: z.enum(['uploading', 'queued', 'making', 'failed']),
+	/** Sizes made so far and in all, for C08's “5 of 5 sizes”. */
+	made: z.number().int().nonnegative().default(0),
+	total: z.number().int().nonnegative().default(0),
+	error: z.string().nullable().default(null),
+	startedAt: IsoDateTime,
+	by: z.string().nullable().default(null),
+});
+export type MediaReplacement = z.infer<typeof MediaReplacement>;
+
+/** Files kept after a Replace until `deleteAfter` (decision 11: 7 days), then deleted by the worker. */
+export const MediaKeptFiles = z.object({
+	keys: z.array(z.string().min(1)),
+	bytes: z.number().int().nonnegative(),
+	deleteAfter: IsoDateTime,
+	reason: z.enum(['replace']),
+});
+export type MediaKeptFiles = z.infer<typeof MediaKeptFiles>;
+
 export const MediaVersionId = z.string().regex(/^[a-z][a-z0-9_]{1,39}\.(as_is|white|blur|crop|colour|brand)$/);
 export type MediaVersionId = z.infer<typeof MediaVersionId>;
 
@@ -454,6 +482,13 @@ export const MediaAsset = z
 		 * on an asset written before image profiles (the release migration names those).
 		 */
 		versions: z.array(MediaVersion).optional(),
+		/** A new photo on its way in, while Replace runs (media step 3b, S7, C08); null or absent otherwise. */
+		replacing: MediaReplacement.nullable().optional(),
+		/**
+		 * Files a Replace (or, later, a focal point move) left behind: kept 7 days so pages already open keep their
+		 * pictures, then deleted (decision 11).
+		 */
+		keptFiles: z.array(MediaKeptFiles).optional(),
 		/** Dominant colour as `#rrggbb`, painted in the image box while it loads. */
 		dominantColor: z
 			.string()

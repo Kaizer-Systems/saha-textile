@@ -11,6 +11,16 @@ export const originalStorageKey = (assetId: string, contentType: string): string
 	`media/${assetId}/original.${contentType === 'image/png' ? 'png' : 'jpg'}`;
 
 /**
+ * A replacement original (S7): its own name, so the old original stays in place, private, for the 7 days it is
+ * kept (decision 11) while the new one is checked and its versions made.
+ */
+export const replacementOriginalKey = (assetId: string, contentType: string, at: Date): string =>
+	`media/${assetId}/original-${at
+		.toISOString()
+		.replace(/[-:.TZ]/g, '')
+		.slice(0, 14)}.${contentType === 'image/png' ? 'png' : 'jpg'}`;
+
+/**
  * A plain file's stored copy (Media page, step 1): the id keeps it unique; the extension is the
  * uploaded name's, cleaned, so a downloaded file opens in the right program.
  */

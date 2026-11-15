@@ -45,6 +45,9 @@ import {
 	MediaBulkAddVersionsRequest,
 	MediaVersionsStatusRequest,
 	type MediaVersionsStatus,
+	MediaReplaceRequest,
+	type MediaReplaceStatus,
+	type MediaReplaceUpload,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -52,6 +55,7 @@ import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { MediaLibraryService } from './media-library.service';
+import { MediaReplaceService } from './media-replace.service';
 
 export const actor = (principal: AuthenticatedPrincipal | undefined): string => {
 	if (!principal) throw new UnauthorizedException('Authentication required');
@@ -67,7 +71,10 @@ export const actor = (principal: AuthenticatedPrincipal | undefined): string => 
 @Audience('admin')
 @Controller('admin/media/library')
 export class AdminMediaLibraryController {
-	constructor(private readonly library: MediaLibraryService) {}
+	constructor(
+		private readonly library: MediaLibraryService,
+		private readonly replace: MediaReplaceService,
+	) {}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')
@@ -143,6 +150,53 @@ export class AdminMediaLibraryController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<void> {
 		return this.library.removeVersion(actor(principal), id, versionId);
+	}
+
+	@Post('files/:id/replace')
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'startMediaFileReplace',
+		summary: 'Replace a photo: the new one is checked against every version, then uploads beside the old one',
+	})
+	startReplace(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaReplaceRequest)) body: MediaReplaceRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaReplaceUpload> {
+		return this.replace.start(actor(principal), id, body);
+	}
+
+	@Post('files/:id/replace/finish')
+	@HttpCode(200)
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'finishMediaFileReplaceUpload',
+		summary: 'The new photo is uploaded: its versions are remade, then it takes the old one’s place everywhere',
+	})
+	finishReplace(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaReplaceStatus> {
+		return this.replace.finish(actor(principal), id);
+	}
+
+	@Get('files/:id/replace')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'mediaFileReplaceStatus', summary: 'Where a Replace has got, for its three steps' })
+	replaceStatus(@Param('id') id: string): Promise<MediaReplaceStatus> {
+		return this.replace.status(id);
+	}
+
+	@Delete('files/:id/replace')
+	@HttpCode(204)
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'cancelMediaFileReplace',
+		summary: 'Stop a Replace still uploading, or clear one that failed; the new photo’s bytes go',
+	})
+	cancelReplace(@Param('id') id: string): Promise<void> {
+		return this.replace.cancel(id);
 	}
 
 	@Post('versions')

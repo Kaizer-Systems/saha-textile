@@ -32,6 +32,10 @@ export interface MediaAssetDoc {
 	derivatives: unknown[];
 	/** Absent on assets stored before image profiles (media step 2); the release migration names them. */
 	versions?: unknown[];
+	/** A Replace in progress (media step 3b). */
+	replacing?: unknown;
+	/** Files kept after a Replace until they are swept (decision 11). */
+	keptFiles?: unknown[];
 	dominantColor: string | null;
 	thumbHash: string | null;
 	visibility: string;
@@ -70,6 +74,10 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		slug: { type: String, required: true },
 		derivatives: { type: [Schema.Types.Mixed], default: [] },
 		versions: { type: [Schema.Types.Mixed], default: [] },
+		/** A Replace in progress (media step 3b); null otherwise. */
+		replacing: { type: Schema.Types.Mixed, default: null },
+		/** Files kept after a Replace until their `deleteAfter` (ISO time), then swept (decision 11). */
+		keptFiles: { type: [Schema.Types.Mixed], default: [] },
 		dominantColor: { type: String, default: null },
 		thumbHash: { type: String, default: null },
 		visibility: { type: String, enum: MediaVisibility.options, default: 'public' },
@@ -117,6 +125,8 @@ MediaAssetSchema.index({ 'derivatives.role': 1, 'derivatives.roleVersion': 1 });
 MediaAssetSchema.index({ slug: 1 });
 /** Pickers list photos holding a version of the profile a slot needs (R4-2); F01 counts them. */
 MediaAssetSchema.index({ 'versions.profileKey': 1, 'versions.state': 1 });
+// The daily sweep of files kept after a Replace.
+MediaAssetSchema.index({ 'keptFiles.deleteAfter': 1 }, { sparse: true });
 /** Storage keys must not be claimed twice; partial because a purged master is null. */
 MediaAssetSchema.index(
 	{ originalStorageKey: 1 },

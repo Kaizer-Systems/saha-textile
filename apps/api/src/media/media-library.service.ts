@@ -822,7 +822,7 @@ export class MediaLibraryService {
 				id: asset.id,
 				kind: asset.kind,
 				name: fileName(asset),
-				contentType: asset.originalFormat,
+				contentType: asset.originalFormat ?? 'application/octet-stream',
 				category: mediaCategory(asset.originalFormat, fileName(asset)),
 				bytes: storedBytes(asset),
 				width: asset.width,

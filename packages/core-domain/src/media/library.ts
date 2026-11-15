@@ -136,12 +136,15 @@ const BACKUPS = /\.(bak|dump|archive|bson|sql)$|(^|[-_.])backup([-_.]|$)/i;
 const DOCUMENTS = /^(application\/(pdf|msword|rtf|vnd\.(ms-|openxmlformats|oasis))|text\/)/;
 
 /** The category a file is listed under (A13–A16), from its type and name. */
-export function mediaCategory(contentType: string, name: string): MediaCategory {
-	if (BACKUPS.test(name)) return 'backups';
-	if (contentType.startsWith('image/')) return 'images';
-	if (contentType.startsWith('video/')) return 'videos';
-	if (ARCHIVES.test(name) || /zip|x-7z|x-rar|x-tar|gzip/.test(contentType)) return 'archives';
-	if (DOCUMENTS.test(contentType)) return 'documents';
+export function mediaCategory(contentType: string | null | undefined, name: string | null | undefined): MediaCategory {
+	// Older records may lack a type or a name: they still list, as what their name says or Other.
+	const type = (contentType ?? '').toLowerCase();
+	const file = name ?? '';
+	if (BACKUPS.test(file)) return 'backups';
+	if (type.startsWith('image/')) return 'images';
+	if (type.startsWith('video/')) return 'videos';
+	if (ARCHIVES.test(file) || /zip|x-7z|x-rar|x-tar|gzip/.test(type)) return 'archives';
+	if (DOCUMENTS.test(type)) return 'documents';
 	return 'other';
 }
 

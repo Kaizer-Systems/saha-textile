@@ -66,6 +66,14 @@ describe('names', () => {
 	});
 });
 
+describe('break-it: older records', () => {
+	it('a record with no type or name still has a category, so the Media page lists it', () => {
+		expect(mediaCategory(undefined, 'catalogue.zip')).toBe('archives');
+		expect(mediaCategory(null, null)).toBe('other');
+		expect(mediaCategory('IMAGE/JPEG', undefined)).toBe('images');
+	});
+});
+
 describe('photos wait for image profiles', () => {
 	it('holds back photos the worker processes, and lets camera RAW and every other file through', () => {
 		expect(waitsForImageProfiles('image/jpeg', 'red.jpg')).toBe(true);

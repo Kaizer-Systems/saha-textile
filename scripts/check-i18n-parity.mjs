@@ -144,9 +144,11 @@ const fail = (message) => {
 
 for (const catalogue of CATALOGUES) {
 	const directory = join(repositoryRoot, catalogue.dir);
+	// Only `<language code>.json` is a catalogue; any other JSON beside them is not a language.
 	const locales = readdirSync(directory)
 		.filter((name) => name.endsWith('.json'))
-		.map((name) => name.slice(0, -'.json'.length));
+		.map((name) => name.slice(0, -'.json'.length))
+		.filter((name) => /^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(name));
 
 	if (!locales.includes(catalogue.reference)) {
 		fail(`${catalogue.app}: reference locale ${catalogue.reference} not found in ${catalogue.dir}`);

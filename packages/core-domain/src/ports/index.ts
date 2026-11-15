@@ -17,6 +17,7 @@ export * from './image-codec.port';
 export * from './cdn-purge.port';
 export * from './media-job-queue.port';
 export * from './media-role.repository';
+export * from './media-profile.repository';
 export * from './content-block.repository';
 export * from './site-settings.repository';
 export * from './payment-gateway.port';

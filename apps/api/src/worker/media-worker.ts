@@ -11,6 +11,7 @@ import {
 	MongoMediaAssetRepository,
 	MongoMediaFavouriteRepository,
 	MongoMediaFolderRepository,
+	MongoMediaProfileRepository,
 	MongoMediaRoleRepository,
 	MongoShareLinkRepository,
 	MongoMessageOutboxRepository,
@@ -68,6 +69,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 
 	const assets = new MongoMediaAssetRepository();
 	const roles = new MongoMediaRoleRepository();
+	const profiles = new MongoMediaProfileRepository();
 	const settings = new MongoSiteSettingsRepository();
 	const audit = new MongoAuditLogRepository();
 	const storage = new SpacesStorageAdapter({ key, secret, bucket, region, endpoint, cdnUrl });
@@ -98,6 +100,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		queue,
 		now,
 		brandLogo: () => brandStripLogo({ settings, assets, storage }),
+		profiles,
 	};
 	// The worker reads Settings › Languages too: search documents carry every added language.
 	const languages = new LanguageStore(new MongoLanguageRepository(), config);

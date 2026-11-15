@@ -1,5 +1,6 @@
 export * from './policy';
 export * from './seeded-roles';
+export * from './profiles';
 export * from './derivative-plan';
 export * from './storage-keys';
 export * from './process-asset';

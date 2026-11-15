@@ -51,6 +51,7 @@ export const ROLE_REPOSITORY = Symbol('RoleRepository');
 export const ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY = Symbol('AdminUserRoleAssignmentRepository');
 export const MEDIA_ASSET_REPOSITORY = Symbol('MediaAssetRepository');
 export const MEDIA_ROLE_REPOSITORY = Symbol('MediaRoleRepository');
+export const MEDIA_PROFILE_REPOSITORY = Symbol('MediaProfileRepository');
 export const CONTENT_BLOCK_REPOSITORY = Symbol('ContentBlockRepository');
 export const SITE_SETTINGS_REPOSITORY = Symbol('SiteSettingsRepository');
 export const SEARCH_ANALYTICS_REPOSITORY = Symbol('SearchAnalyticsRepository');

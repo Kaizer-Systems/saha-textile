@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 
 import { AdminContentController } from './admin-content.controller';
 import { AdminMediaController } from './admin-media.controller';
+import { AdminMediaProfilesController } from './admin-media-profiles.controller';
 import { AdminReviewsController } from './admin-reviews.controller';
 import { BrandService } from './brand.service';
 import { ContentBlocksService } from './content-blocks.service';
+import { MediaProfilesService } from './media-profiles.service';
 import { MediaService } from './media.service';
 import { ReviewsService } from './reviews.service';
 import {
@@ -25,6 +27,7 @@ import { ShareController } from './share.controller';
 	controllers: [
 		AdminMediaLibraryController,
 		AdminMediaSharingController,
+		AdminMediaProfilesController,
 		ShareController,
 		AdminMediaController,
 		AdminContentController,
@@ -37,6 +40,7 @@ import { ShareController } from './share.controller';
 		MediaLibraryService,
 		MediaSharingService,
 		MediaStorageService,
+		MediaProfilesService,
 		MediaService,
 		ContentBlocksService,
 		YouTubeService,

@@ -173,6 +173,116 @@ export const MediaRoleUpdate = z.object({
 export type MediaRoleUpdate = z.infer<typeof MediaRoleUpdate>;
 
 /**
+ * How a photo of a different shape is fitted to a profile's shape (Media brief R4-1, fills table).
+ *
+ * - `as_is` — the photo already has the profile's shape (within 5%), or the profile keeps the photo's own shape;
+ * - `white` — white padding (for icons: a white background, never see-through);
+ * - `blur` — a blurred, darkened enlargement of the same photo fills the gaps;
+ * - `crop` — fills the box by cutting the edges, guided by the focal point;
+ * - `colour` — bars in the photo's own dominant colour;
+ * - `brand` — icons only: the Brand Kit colour behind the logo.
+ *
+ * Stretching is never offered.
+ */
+export const MediaFill = z.enum(['as_is', 'white', 'blur', 'crop', 'colour', 'brand']);
+export type MediaFill = z.infer<typeof MediaFill>;
+
+/** A profile key: lower snake case, like role keys. */
+export const MediaProfileKey = z
+	.string()
+	.regex(/^[a-z][a-z0-9_]{1,39}$/, 'profile keys are lower snake case, 2–40 characters');
+export type MediaProfileKey = z.infer<typeof MediaProfileKey>;
+
+/** The smallest photo a profile wants, on its short side or its width, and whether it only warns or refuses. */
+export const MediaProfileMinSize = z.object({
+	edge: z.enum(['short', 'width']),
+	px: z.number().int().positive().max(8192),
+	mode: z.enum(['warn', 'refuse']),
+});
+export type MediaProfileMinSize = z.infer<typeof MediaProfileMinSize>;
+
+/**
+ * An image profile (`mediaProfiles`, Settings › Image profiles F01/F02): what the image worker makes for one
+ * kind of use. A named bundle of the size families in `mediaRoles` plus its own rules. Edits bump `version` and
+ * apply to versions made afterwards only; versions already made never change.
+ */
+export const MediaProfile = z
+	.object({
+		key: MediaProfileKey,
+		name: z.string().trim().min(1).max(60),
+		/** Built-in profiles can be edited and switched off, never deleted. */
+		builtIn: z.boolean().default(false),
+		/** The box the photo is fitted to; null keeps the photo's own shape (logos, banners). */
+		shape: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).nullable(),
+		/** The size families it makes, by role key. */
+		roles: z.array(MediaRoleKey).min(1),
+		/** The fills an admin may tick when the photo's shape differs; empty when the shape is kept. */
+		fills: z.array(MediaFill.exclude(['as_is'])),
+		minSize: MediaProfileMinSize.nullable().default(null),
+		maxBytes: z
+			.number()
+			.int()
+			.positive()
+			.max(25 * 1024 * 1024),
+		accepts: z.array(z.string().regex(/^image\/[\w.+-]+$/)).min(1),
+		/** Made by itself for a product's main photo, never chosen (the link preview). */
+		mainPhotoOnly: z.boolean().default(false),
+		/** Off: hidden from uploads and pickers; versions already made keep working. */
+		enabled: z.boolean().default(true),
+		version: z.number().int().positive().default(1),
+		updatedAt: IsoDateTime.optional(),
+	})
+	.superRefine((profile, ctx) => {
+		if (new Set(profile.roles).size !== profile.roles.length) {
+			ctx.addIssue({ code: 'custom', message: 'a profile lists each size family once', path: ['roles'] });
+		}
+		if (new Set(profile.fills).size !== profile.fills.length) {
+			ctx.addIssue({ code: 'custom', message: 'a profile lists each fill once', path: ['fills'] });
+		}
+		if (!profile.shape && profile.fills.length > 0) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'a profile that keeps the photo’s own shape has nothing to fill',
+				path: ['fills'],
+			});
+		}
+	});
+export type MediaProfile = z.infer<typeof MediaProfile>;
+
+/** `GET /admin/media/profiles`: each profile with how many photos hold a version of it (F01's Images column). */
+export const MediaProfileListItem = z.object({
+	profile: MediaProfile,
+	photos: z.number().int().nonnegative(),
+});
+export type MediaProfileListItem = z.infer<typeof MediaProfileListItem>;
+
+/**
+ * A version id is the profile and the fill (`hero_21x9.crop`): one photo has at most one version of each, so two
+ * admins adding the same version can never make it twice, and a page that stores it keeps finding it.
+ */
+export const MediaVersionId = z.string().regex(/^[a-z][a-z0-9_]{1,39}\.(as_is|white|blur|crop|colour|brand)$/);
+export type MediaVersionId = z.infer<typeof MediaVersionId>;
+
+export const MediaVersionState = z.enum(['making', 'ready', 'failed']);
+export type MediaVersionState = z.infer<typeof MediaVersionState>;
+
+/**
+ * One branch of a photo's tree (R4-1): a profile plus a fill, written once. Its files are the asset's
+ * derivatives that carry its id; derivatives without one are made once per photo (link preview, status card,
+ * feed square, email pictures).
+ */
+export const MediaVersion = z.object({
+	id: MediaVersionId,
+	profileKey: MediaProfileKey,
+	/** The profile's version when this one was made; lower than the profile's current one = made under older settings. */
+	profileVersion: z.number().int().positive(),
+	fill: MediaFill,
+	state: MediaVersionState.default('ready'),
+	createdAt: IsoDateTime,
+});
+export type MediaVersion = z.infer<typeof MediaVersion>;
+
+/**
  * One generated image derivative. Dimensions are RECORDED here (what the worker actually
  * produced) but never PRESCRIBED — the ladder lives in `mediaRoles`. A derivative is unique
  * by (role, width): a role emits several widths.
@@ -186,6 +296,8 @@ export const ImageDerivative = z.object({
 	format: DerivativeFormat,
 	/** The role version this was rendered from; lower than the role's current version = stale. */
 	roleVersion: z.number().int().positive().default(1),
+	/** The version this file belongs to; absent or null for files made once per photo. */
+	versionId: MediaVersionId.nullable().optional(),
 });
 export type ImageDerivative = z.infer<typeof ImageDerivative>;
 
@@ -289,6 +401,11 @@ export const MediaAsset = z
 			.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 			.max(80),
 		derivatives: z.array(ImageDerivative).default([]),
+		/**
+		 * The photo's versions (profile × fill, R4-1). Absent or empty for plain files, videos and review photos, and
+		 * on an asset written before image profiles (the release migration names those).
+		 */
+		versions: z.array(MediaVersion).optional(),
 		/** Dominant colour as `#rrggbb`, painted in the image box while it loads. */
 		dominantColor: z
 			.string()
@@ -345,11 +462,25 @@ export const MediaAsset = z
 		updatedAt: IsoDateTime.optional(),
 	})
 	.superRefine((asset, ctx) => {
-		const pairs = asset.derivatives.map((derivative) => `${derivative.role}@${derivative.width}`);
+		const pairs = asset.derivatives.map(
+			(derivative) => `${derivative.versionId ?? ''}|${derivative.role}@${derivative.width}`,
+		);
 		if (new Set(pairs).size !== pairs.length) {
 			ctx.addIssue({
 				code: 'custom',
-				message: 'an asset may not hold two derivatives of the same role and width',
+				message: 'one version of an asset may not hold two derivatives of the same role and width',
+				path: ['derivatives'],
+			});
+		}
+		const versionIds = (asset.versions ?? []).map((version) => version.id);
+		if (new Set(versionIds).size !== versionIds.length) {
+			ctx.addIssue({ code: 'custom', message: 'an asset holds each version once', path: ['versions'] });
+		}
+		const known = new Set(versionIds);
+		if (asset.derivatives.some((derivative) => derivative.versionId && !known.has(derivative.versionId))) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'a derivative names a version the asset does not have',
 				path: ['derivatives'],
 			});
 		}

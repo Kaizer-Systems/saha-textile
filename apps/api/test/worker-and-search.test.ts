@@ -121,6 +121,7 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoMediaRoleRepository: class {
 			list = hoisted.roles;
 		},
+		MongoMediaProfileRepository: plain,
 	};
 });
 vi.mock('@saha-textile/core-domain', async (original) => ({

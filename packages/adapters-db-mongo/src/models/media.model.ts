@@ -3,6 +3,7 @@ import {
 	DerivativeFit,
 	DerivativeFormat,
 	MediaCategory,
+	MediaFill,
 	MediaKind,
 	MediaProcessingState,
 	MediaPurpose,
@@ -29,6 +30,8 @@ export interface MediaAssetDoc {
 	height: number | null;
 	slug: string;
 	derivatives: unknown[];
+	/** Absent on assets stored before image profiles (media step 2); the release migration names them. */
+	versions?: unknown[];
 	dominantColor: string | null;
 	thumbHash: string | null;
 	visibility: string;
@@ -66,6 +69,7 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		height: { type: Number, default: null },
 		slug: { type: String, required: true },
 		derivatives: { type: [Schema.Types.Mixed], default: [] },
+		versions: { type: [Schema.Types.Mixed], default: [] },
 		dominantColor: { type: String, default: null },
 		thumbHash: { type: String, default: null },
 		visibility: { type: String, enum: MediaVisibility.options, default: 'public' },
@@ -111,6 +115,8 @@ MediaAssetSchema.index({ deletedAt: 1, createdAt: 1, _id: 1 });
 MediaAssetSchema.index({ 'derivatives.role': 1, 'derivatives.roleVersion': 1 });
 /** Library search over the SEO slug. */
 MediaAssetSchema.index({ slug: 1 });
+/** Pickers list photos holding a version of the profile a slot needs (R4-2); F01 counts them. */
+MediaAssetSchema.index({ 'versions.profileKey': 1, 'versions.state': 1 });
 /** Storage keys must not be claimed twice; partial because a purged master is null. */
 MediaAssetSchema.index(
 	{ originalStorageKey: 1 },
@@ -163,3 +169,41 @@ const MediaRoleSchema = new Schema<MediaRoleDoc>(
 
 export const MediaRoleModel: Model<MediaRoleDoc> =
 	(models.MediaRole as Model<MediaRoleDoc>) ?? model<MediaRoleDoc>('MediaRole', MediaRoleSchema);
+
+/** Image profiles (`mediaProfiles`, Settings › Image profiles). Keyed by the profile key itself. */
+export interface MediaProfileDoc {
+	_id: string;
+	name: string;
+	builtIn: boolean;
+	shape: { width: number; height: number } | null;
+	roles: string[];
+	fills: string[];
+	minSize: { edge: string; px: number; mode: string } | null;
+	maxBytes: number;
+	accepts: string[];
+	mainPhotoOnly: boolean;
+	enabled: boolean;
+	version: number;
+	updatedAt?: Date;
+}
+
+const MediaProfileSchema = new Schema<MediaProfileDoc>(
+	{
+		_id: { type: String, required: true },
+		name: { type: String, required: true },
+		builtIn: { type: Boolean, default: false },
+		shape: { type: Schema.Types.Mixed, default: null },
+		roles: { type: [String], required: true },
+		fills: { type: [String], enum: MediaFill.options, default: [] },
+		minSize: { type: Schema.Types.Mixed, default: null },
+		maxBytes: { type: Number, required: true },
+		accepts: { type: [String], required: true },
+		mainPhotoOnly: { type: Boolean, default: false },
+		enabled: { type: Boolean, default: true },
+		version: { type: Number, default: 1 },
+	},
+	{ collection: 'mediaProfiles', timestamps: { createdAt: false, updatedAt: true } },
+);
+
+export const MediaProfileModel: Model<MediaProfileDoc> =
+	(models.MediaProfile as Model<MediaProfileDoc>) ?? model<MediaProfileDoc>('MediaProfile', MediaProfileSchema);

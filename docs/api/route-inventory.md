@@ -4,7 +4,7 @@ wide: true
 description: Every API route with its access rule.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-15'
+last_verified: '2026-11-16'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -312,6 +312,7 @@ Admin catalogue reads answer `no-store`.
 | `GET`    | `/admin/media`                        | `attachment.index`   | Media library page with previews, usage counts and stale roles                            |
 | `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                                     |
 | `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; changed widths mark old derivatives stale                                    |
+| `GET`    | `/admin/media/profiles`               | `attachment.index`   | Image profiles, built-in first, each with how many photos hold a version of it            |
 | `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy and storage checks, then a presigned PUT for the private original |
 | `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                                     |
 | `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                             |

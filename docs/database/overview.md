@@ -30,7 +30,7 @@ Models cover:
 - Authentication runtime: sessions, challenges, tokens, invites, rate limits, and pending signup and contact-change records.
 - Authorization: roles and role assignments.
 - Governance: audit logs, consent events, notification settings, templates and the message outbox.
-- Content and media: media assets and roles, content blocks, site settings, FAQ, questions, reviews and rating aggregates.
+- Content and media: media assets, roles and image profiles, content blocks, site settings, FAQ, questions, reviews and rating aggregates.
 - Inventory: the stock ledger and FIFO cost layers.
 - Merchandising: stock alerts and weekly insight sets.
 - Search: search totals, result clicks and the admin's search words.

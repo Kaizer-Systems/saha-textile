@@ -15,6 +15,7 @@ export * from './inventory.repository';
 export * from './media.repository';
 export * from './media-owner-registry';
 export * from './media-role.repository';
+export * from './media-profile.repository';
 export * from './content-block.repository';
 export * from './site-settings.repository';
 export * from './governance.repository';

@@ -4,10 +4,12 @@ import type { ImageCodecPort } from '../ports/image-codec.port';
 import { ImageDecodeError } from '../ports/image-codec.port';
 import type { MediaJobQueuePort } from '../ports/media-job-queue.port';
 import type { MediaAssetRepository } from '../ports/media.repository';
+import type { MediaProfileRepository } from '../ports/media-profile.repository';
 import type { MediaRoleRepository } from '../ports/media-role.repository';
 import type { StoragePort } from '../ports/storage.port';
 import { planDerivatives } from './derivative-plan';
 import { IMMUTABLE_CACHE_CONTROL, checkIngest } from './policy';
+import { assignExistingVersions } from './profiles';
 import { derivativeStorageKey } from './storage-keys';
 
 export interface ProcessMediaAssetDeps {
@@ -19,6 +21,8 @@ export interface ProcessMediaAssetDeps {
 	now: () => Date;
 	/** The Brand Kit logo's bytes for link-preview strips; null (or absent) when the shop has none. */
 	brandLogo?: () => Promise<Uint8Array | null>;
+	/** Image profiles, so each version records the profile settings it was made under (absent: version 1). */
+	profiles?: Pick<MediaProfileRepository, 'list'>;
 }
 
 export type ProcessOutcome =
@@ -126,11 +130,18 @@ export const processMediaAsset = async (
 			dominantColor: placeholder.dominantColor,
 			thumbHash: placeholder.thumbHash,
 		};
+		// Until the worker makes versions by profile and fill (media step 2b), each file is named under the
+		// version the purpose-based plan made, exactly as the migration names older photos'.
+		const now = deps.now().toISOString();
+		const profileVersions = new Map((await deps.profiles?.list())?.map((entry) => [entry.key, entry.version]));
+		const named = assignExistingVersions({ ...updated, warnings, derivatives, versions: [] }, now, profileVersions);
+		const kept = new Map((asset.versions ?? []).map((version) => [version.id, version]));
+		const versions = named.versions.map((version) => kept.get(version.id) ?? { ...version, createdAt: now });
 		return await settle(
 			deps,
-			updated,
+			{ ...updated, versions },
 			{ status: 'ready', rendered: derivatives.length, skipped: plan.skipped.length },
-			derivatives,
+			named.derivatives,
 			warnings,
 		);
 	} catch (error) {

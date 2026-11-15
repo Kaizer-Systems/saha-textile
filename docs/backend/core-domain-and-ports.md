@@ -4,7 +4,7 @@ wide: true
 description: Dependency direction, business logic, ports and swappability.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-11-14'
+last_verified: '2026-11-16'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
@@ -208,6 +208,31 @@ Each role fits the image one of five ways: `inside` keeps the source shape, `cov
 The worker never upscales: a width the source cannot fill is skipped and reported. Banners skip widths beyond twice their slot's widest display. `share`, `story`, `feed_square` and `email_thumb` apply only to an image that serves as a product's main image (`servesAsPrimary`). Saving a product marks its first photo and queues a reprocess; the demo catalogue seed marks its photos the same way.
 
 Editing a role's widths or quality increases its version. The 15-minute `reprocess-stale` job then regenerates old files in batches.
+
+### Image profiles and versions
+
+An image profile (`mediaProfiles`, `MediaProfileRepository`) says what the worker makes for one kind of use: a shape, or the photo's own shape; the size families it makes (role keys from `mediaRoles`); the fills it offers when a photo's shape differs; the smallest photo it wants (warn or refuse); the largest upload; and the accepted types. `SEEDED_MEDIA_PROFILES` in `media/profiles.ts` lists the twelve a database starts with:
+
+| Profile             | Shape    | Size families                        | Fills offered                       | Built in |
+| ------------------- | -------- | ------------------------------------ | ----------------------------------- | -------- |
+| Product 3:4         | 3:4      | thumb, card, gallery, zoom, swatches | White padding, blurred fill, crop   | Yes      |
+| Category 3:4        | 3:4      | thumb, card                          | White padding, blurred fill, crop   | Yes      |
+| Hero 21:9           | 21:9     | banner                               | Crop, blurred fill, colour bars     | No       |
+| Hero 16:9           | 16:9     | banner                               | Crop, blurred fill, colour bars     | No       |
+| Phone banner 4:5    | 4:5      | banner                               | Crop, blurred fill                  | No       |
+| Banner (keep shape) | Its own  | banner                               | —                                   | Yes      |
+| Blog cover 2:1      | 2:1      | blog                                 | Crop, blurred fill                  | Yes      |
+| Store photo 4:3     | 4:3      | store_photo                          | Crop, blurred fill, white padding   | Yes      |
+| Square 1:1          | 1:1      | avatar, category_icon                | White padding, colour bars, crop    | No       |
+| Browser icon 1:1    | 1:1      | brand_icon                           | White background, brand colour      | Yes      |
+| Logo (keep shape)   | Its own  | brand_logo                           | —                                   | Yes      |
+| Link preview 1.91:1 | 1200:630 | share                                | Blurred fill, made for a main photo | Yes      |
+
+Stretching is never offered. A built-in profile can be edited and switched off but not deleted; each API start puts back a built-in profile that has gone missing (`reconcileBuiltInProfiles`) and never re-adds one an admin deleted. `GET /admin/media/profiles` lists them with how many photos hold a version of each.
+
+A photo's **versions** (`MediaAsset.versions`) are its branches: one per profile and fill, with the id `profile.fill` (for example `hero_21x9.crop`), so a photo holds each version once. Each derivative carries the `versionId` it belongs to. Pictures made once per photo (`share`, `story`, `feed_square`, `email_thumb`, `site_share`) and review photos carry none. One version may hold the same role and width as another; within a version the pair is unique. A version records the profile's `version` it was made under; versions are written once, and later profile edits apply to versions made afterwards.
+
+The release migration `0001-media-profiles-and-versions` adds the starting profiles and names the version every stored photo already is (`assignExistingVersions`): a product photo letterboxed on white becomes `product_3x4.white`, one already 3:4 becomes `product_3x4.as_is`, every banner becomes `banner_keep_shape.as_is`, a Brand Kit picture becomes `logo_keep_shape.as_is` plus `browser_icon_1x1.white`. No file moves or changes, and the date modified stays. Until the worker makes versions by profile and fill, `processMediaAsset` names each new file the same way.
 
 ### Deletion
 

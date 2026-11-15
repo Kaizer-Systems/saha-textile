@@ -99,6 +99,8 @@ export const COLLECTION_NAMES = {
 	MediaAsset: 'mediaAssets',
 	/** Editable size ladder (owner log § Media, `mediaRoles` locked 2026-08-23). */
 	MediaRole: 'mediaRoles',
+	/** Image profiles (media build step 2, Settings › Image profiles). */
+	MediaProfile: 'mediaProfiles',
 	InventoryLedger: 'inventoryLedger',
 	InventoryCostLayer: 'inventoryCostLayers',
 	// --- Content -------------------------------------------------------------

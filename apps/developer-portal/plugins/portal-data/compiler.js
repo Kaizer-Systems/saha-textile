@@ -24,8 +24,8 @@ const VALID_SCHEMA_COLLECTION_STATES = new Set(['existing', 'planned']);
 const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
-const SCHEMA_NEBULA_NODE_COUNT = 84;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 60;
+const SCHEMA_NEBULA_NODE_COUNT = 85;
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 61;
 const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['categoryPlacements', 'catalog-structure.model.ts'],
 	['categoryFacetConfigs', 'catalog-structure.model.ts'],
@@ -35,6 +35,7 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['productRelations', 'merchandising.model.ts'],
 	['mediaAssets', 'media.model.ts'],
 	['mediaRoles', 'media.model.ts'],
+	['mediaProfiles', 'media.model.ts'],
 	['contentBlocks', 'content-block.model.ts'],
 	['blogPosts', 'blog.model.ts'],
 	['blogCategories', 'blog.model.ts'],

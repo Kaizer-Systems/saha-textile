@@ -3,3 +3,4 @@ export * from './extract-credentials';
 export * from './reconcile-indexes';
 export * from './rename-admin-user-permissions';
 export * from './split-admin-users';
+export * from './media-versions';

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	ImageDecodeError,
+	SEEDED_MEDIA_PROFILES,
 	SEEDED_MEDIA_ROLES,
 	checkIngest,
 	checkReviewPhotos,
@@ -352,6 +353,50 @@ describe('processMediaAsset', () => {
 		).toBe(true);
 		expect(store.uploads.every((upload) => upload.cacheControl?.includes('immutable'))).toBe(true);
 		expect(jobs.jobs).toEqual([]);
+	});
+
+	it('names each new file under the version it is, keeping per-photo pictures apart (media step 2a)', async () => {
+		const assets = new FakeAssets([asset({ servesAsPrimary: true })]);
+		const profiles = {
+			list: async () =>
+				SEEDED_MEDIA_PROFILES.map((row) => (row.key === 'product_3x4' ? { ...row, version: 3 } : row)),
+		};
+		const deps = {
+			assets,
+			roles,
+			storage: storage().port,
+			// A square photo: today's plan pads it on white to 3:4.
+			codec: codec({ width: 3000, height: 3000, format: 'jpeg', hasAlpha: false }),
+			queue: queue().port,
+			now,
+			profiles,
+		};
+		await processMediaAsset(deps, { assetId: 'med_1', reprocess: false });
+		const saved = assets.rows.get('med_1');
+		expect(saved?.versions).toEqual([
+			{
+				id: 'product_3x4.white',
+				profileKey: 'product_3x4',
+				profileVersion: 3,
+				fill: 'white',
+				state: 'ready',
+				createdAt: '2026-11-02T00:00:00.000Z',
+			},
+		]);
+		const perPhoto = saved?.derivatives.filter((row) => row.versionId === null).map((row) => row.role);
+		expect(new Set(perPhoto)).toEqual(new Set(['share', 'story', 'feed_square', 'email_thumb']));
+		expect(
+			saved?.derivatives
+				.filter((row) => row.role === 'gallery')
+				.every((row) => row.versionId === 'product_3x4.white'),
+		).toBe(true);
+
+		// Run again later: the version keeps its first date.
+		await processMediaAsset(
+			{ ...deps, now: () => new Date('2026-12-01T00:00:00.000Z') },
+			{ assetId: 'med_1', reprocess: true },
+		);
+		expect(assets.rows.get('med_1')?.versions?.[0]?.createdAt).toBe('2026-11-02T00:00:00.000Z');
 	});
 
 	it('puts the Brand Kit logo on the preview card only, reading it once, and draws the tall card', async () => {

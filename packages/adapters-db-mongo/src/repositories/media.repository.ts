@@ -28,6 +28,7 @@ const toAsset = (doc: MediaAssetDoc): MediaAsset =>
 		height: doc.height ?? null,
 		slug: doc.slug ?? 'image',
 		derivatives: doc.derivatives ?? [],
+		versions: doc.versions ?? [],
 		dominantColor: doc.dominantColor ?? null,
 		thumbHash: doc.thumbHash ?? null,
 		visibility: doc.visibility ?? 'public',

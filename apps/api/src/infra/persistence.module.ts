@@ -41,6 +41,7 @@ import {
 	MongoMailboxAccessRepository,
 	MongoContactMessageRepository,
 	MongoMediaRoleRepository,
+	MongoMediaProfileRepository,
 	MongoReviewRepository,
 	MongoSeoRouteRepository,
 	MongoFaqRepository,
@@ -147,6 +148,7 @@ import {
 	TRANSACTION_MANAGER,
 	MEDIA_ASSET_REPOSITORY,
 	MEDIA_ROLE_REPOSITORY,
+	MEDIA_PROFILE_REPOSITORY,
 	CONTENT_BLOCK_REPOSITORY,
 	BLOG_POST_REPOSITORY,
 	BLOG_CATEGORY_REPOSITORY,
@@ -312,6 +314,7 @@ import { LanguageStore } from '../languages/language-store';
 		// Media pipeline (owner log § Media).
 		{ provide: MEDIA_ASSET_REPOSITORY, useClass: MongoMediaAssetRepository },
 		{ provide: MEDIA_ROLE_REPOSITORY, useClass: MongoMediaRoleRepository },
+		{ provide: MEDIA_PROFILE_REPOSITORY, useClass: MongoMediaProfileRepository },
 		{ provide: CONTENT_BLOCK_REPOSITORY, useClass: MongoContentBlockRepository },
 		// The Media page (step 1): folders, stars, share links, storage holds, and browsing stored files.
 		{ provide: MEDIA_FOLDER_REPOSITORY, useClass: MongoMediaFolderRepository },
@@ -440,6 +443,7 @@ import { LanguageStore } from '../languages/language-store';
 		STORAGE_PORT,
 		MEDIA_ASSET_REPOSITORY,
 		MEDIA_ROLE_REPOSITORY,
+		MEDIA_PROFILE_REPOSITORY,
 		CONTENT_BLOCK_REPOSITORY,
 		BLOG_POST_REPOSITORY,
 		BLOG_CATEGORY_REPOSITORY,

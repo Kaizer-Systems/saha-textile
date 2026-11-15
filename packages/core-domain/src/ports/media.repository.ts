@@ -1,4 +1,4 @@
-import type { MediaAsset } from '@saha-textile/contracts';
+import type { ImageDerivative, MediaAsset, MediaVersion } from '@saha-textile/contracts';
 
 import type { PageQuery, Paginated } from './pagination';
 
@@ -38,6 +38,18 @@ export interface MediaAssetRepository {
 	 * returns it, or null when another worker already holds it — so a duplicated job is a no-op.
 	 */
 	claimForProcessing(assetId: string, options?: { allowReady?: boolean }): Promise<MediaAsset | null>;
+	/**
+	 * Records a versions run (media step 2b) without overwriting what changed meanwhile: sets the photo's facts and
+	 * processing state, adds the new files, and replaces only the versions this run made, so a version asked for
+	 * during the run stays asked for. Returns the photo as stored afterwards.
+	 */
+	settleVersions(input: {
+		assetId: string;
+		set: Partial<Pick<MediaAsset, 'width' | 'height' | 'dominantColor' | 'thumbHash' | 'warnings'>> &
+			Pick<MediaAsset, 'processing'>;
+		addDerivatives: readonly ImageDerivative[];
+		versions: readonly MediaVersion[];
+	}): Promise<MediaAsset | null>;
 	/** Assets holding a derivative of `role` older than `version` — the reprocess work list. */
 	listStaleForRole(input: { role: string; version: number; limit: number }): Promise<MediaAsset[]>;
 	/** Live (not soft-deleted) assets created before the cutoff — GC soft-delete candidates. */

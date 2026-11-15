@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Id, IsoDateTime } from './common';
+import { MediaFill, MediaProfileKey } from './media';
 
 /**
  * The Media page as a file manager (media build step 1; brief revision 6, accepted 15 Nov 2026):
@@ -270,6 +271,15 @@ export const MediaFilePresignRequest = z.object({
 	folderId: Id.nullable().default(null),
 	/** The storage approval this upload runs under, when the check asked for one (B18). */
 	reservationId: Id.optional(),
+	/** A photo (media step 2): its size as the browser decoded it, checked against each profile before upload. */
+	width: z.number().int().positive().max(100_000).optional(),
+	height: z.number().int().positive().max(100_000).optional(),
+	/** A photo: the versions to make, a profile and a fill each (R4-1, B01–B02). Plain files send none. */
+	versions: z
+		.array(z.object({ profileKey: MediaProfileKey, fill: MediaFill }))
+		.min(1)
+		.max(12)
+		.optional(),
 });
 export type MediaFilePresignRequest = z.infer<typeof MediaFilePresignRequest>;
 

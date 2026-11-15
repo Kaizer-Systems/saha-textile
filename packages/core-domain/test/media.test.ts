@@ -64,7 +64,9 @@ describe('checkIngest — the locked caps', () => {
 		expect(checkIngest({ ...base, byteSize: 26 * 1024 * 1024, width: 1600, height: 2133 }).refusal?.code).toBe(
 			'too_large',
 		);
-		expect(checkIngest({ ...base, width: 8001, height: 6000 }).refusal?.code).toBe('too_many_pixels');
+		// 8192 px since decision 8 (a 48 MP iPhone photo is 8064 × 6048); the 50 MP cap stays.
+		expect(checkIngest({ ...base, width: 8064, height: 6048 }).refusal).toBeNull();
+		expect(checkIngest({ ...base, width: 8193, height: 6000 }).refusal?.code).toBe('too_many_pixels');
 		expect(checkIngest({ ...base, width: 7900, height: 7000 }).refusal?.code).toBe('too_many_pixels');
 		expect(checkIngest({ ...base, width: 1500, height: 2000 }).refusal?.code).toBe('below_minimum');
 	});
@@ -242,6 +244,19 @@ class FakeAssets implements MediaAssetRepository {
 	}
 	async listStaleForRole() {
 		return [];
+	}
+	async settleVersions(input: Parameters<MediaAssetRepository['settleVersions']>[0]) {
+		const row = this.rows.get(input.assetId);
+		if (!row) return null;
+		const byId = new Map(input.versions.map((version) => [version.id, version]));
+		const next = {
+			...row,
+			...input.set,
+			derivatives: [...row.derivatives, ...input.addDerivatives],
+			versions: row.versions?.map((version) => byId.get(version.id) ?? version),
+		};
+		this.rows.set(row.id, next);
+		return next;
 	}
 	async listLiveCreatedBefore(input: { createdBefore: string; afterId: string | null; limit: number }) {
 		return [...this.rows.values()]

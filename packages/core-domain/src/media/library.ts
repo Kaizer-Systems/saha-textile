@@ -7,7 +7,14 @@ import type {
 	StorageColour,
 } from '@saha-textile/contracts';
 
-export { CAMERA_RAW, MULTIPART_FROM_BYTES, MULTIPART_PART_BYTES, waitsForImageProfiles } from '../catalog/media-files';
+export {
+	CAMERA_RAW,
+	MULTIPART_FROM_BYTES,
+	MULTIPART_PART_BYTES,
+	PROCESSED_PHOTO_TYPES,
+	isProcessedPhoto,
+	waitsForImageProfiles,
+} from '../catalog/media-files';
 
 /**
  * The Media page as a file manager (media build step 1, brief revision 6): names, folders, Trash,

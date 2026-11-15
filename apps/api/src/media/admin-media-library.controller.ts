@@ -208,7 +208,8 @@ export class AdminMediaLibraryController {
 	@RequirePermissions('attachment.create')
 	@ApiOperation({
 		operationId: 'presignMediaFile',
-		summary: 'Start a plain-file upload: private, named in its folder, held against the storage plan',
+		summary:
+			'Start an upload: a plain file, or a photo with the versions to make; named in its folder, held against the plan',
 	})
 	presignFile(
 		@Body(new ZodValidationPipe(MediaFilePresignRequest)) body: MediaFilePresignRequest,

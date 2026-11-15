@@ -15,6 +15,16 @@ export function waitsForImageProfiles(contentType: string, name: string): boolea
 	return contentType.toLowerCase().startsWith('image/') && !CAMERA_RAW.test(name);
 }
 
+/**
+ * The photo types the image worker makes versions from today: JPEG and PNG (HEIC is turned into a JPEG in the
+ * browser first). Other picture types keep waiting until the extra decoders arrive (build step 5).
+ */
+export const PROCESSED_PHOTO_TYPES: readonly string[] = ['image/jpeg', 'image/png'];
+
+export function isProcessedPhoto(contentType: string): boolean {
+	return PROCESSED_PHOTO_TYPES.includes(contentType.toLowerCase());
+}
+
 /** Uploads this big go in parts, so a cut-off one carries on where it stopped (S11). */
 export const MULTIPART_FROM_BYTES = 100 * 1024 * 1024;
 /** Each part of a big upload; S3 takes at most 10,000 parts of at least 5 MB (the last may be smaller). */

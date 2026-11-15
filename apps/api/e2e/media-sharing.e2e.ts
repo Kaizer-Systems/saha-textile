@@ -16,6 +16,7 @@ import {
 	MongoMediaAssetRepository,
 	MongoMediaFavouriteRepository,
 	MongoMediaFolderRepository,
+	MongoMediaProfileRepository,
 	MongoShareLinkRepository,
 	connectMongo,
 	disconnectMongo,
@@ -50,6 +51,7 @@ const library = new MediaLibraryService(
 	audit,
 	queue,
 	storageCheck as never,
+	new MongoMediaProfileRepository(),
 );
 // Every open is allowed here; the limits are covered by their own tests.
 const limits = {

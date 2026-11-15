@@ -157,10 +157,43 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 		return doc ? toAsset(doc) : null;
 	}
 
+	async settleVersions(input: Parameters<MediaAssetRepository['settleVersions']>[0]): Promise<MediaAsset | null> {
+		const { processing, ...facts } = input.set;
+		const $set: Record<string, unknown> = {
+			...facts,
+			'processing.state': processing.state,
+			'processing.error': processing.error,
+			'processing.processedAt': dateOrNull(processing.processedAt),
+		};
+		const arrayFilters = input.versions.map((version, index) => ({ [`v${index}.id`]: version.id }));
+		input.versions.forEach((version, index) => {
+			$set[`versions.$[v${index}]`] = version;
+		});
+		const doc = await MediaAssetModel.findOneAndUpdate(
+			{ _id: input.assetId },
+			{
+				$set,
+				...(input.addDerivatives.length
+					? { $push: { derivatives: { $each: [...input.addDerivatives] } } }
+					: {}),
+			},
+			{ arrayFilters, returnDocument: 'after' },
+		)
+			.lean<MediaAssetDoc>()
+			.exec();
+		return doc ? toAsset(doc) : null;
+	}
+
+	/**
+	 * Files made before photo versions existed, older than their role's settings. Files of a version are written
+	 * once (Media brief R4-1): a ladder edit applies to versions made afterwards, never to these.
+	 */
 	async listStaleForRole(input: { role: string; version: number; limit: number }): Promise<MediaAsset[]> {
 		const docs = await MediaAssetModel.find({
 			deletedAt: null,
-			derivatives: { $elemMatch: { role: input.role, roleVersion: { $lt: input.version } } },
+			derivatives: {
+				$elemMatch: { role: input.role, roleVersion: { $lt: input.version }, versionId: { $exists: false } },
+			},
 		})
 			.limit(input.limit)
 			.lean<MediaAssetDoc[]>()

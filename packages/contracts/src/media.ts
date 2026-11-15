@@ -278,6 +278,8 @@ export const MediaVersion = z.object({
 	profileVersion: z.number().int().positive(),
 	fill: MediaFill,
 	state: MediaVersionState.default('ready'),
+	/** Why a version failed (a refusal code or `render_failed`), shown beside Retry; null otherwise. */
+	error: z.string().max(80).nullable().optional(),
 	createdAt: IsoDateTime,
 });
 export type MediaVersion = z.infer<typeof MediaVersion>;

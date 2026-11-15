@@ -2,8 +2,11 @@
 export type MediaJob =
 	/** Decode, validate, and render every role for a freshly uploaded asset. */
 	| { type: 'process'; assetId: string }
-	/** Re-render stale roles (ladder edit, slug change, primary-only roles on promotion). */
-	| { type: 'reprocess'; assetId: string; reason: 'ladder' | 'slug' | 'primary' | 'manual' }
+	/**
+	 * Re-render stale roles (ladder edit, slug change, primary-only roles on promotion); for a photo with versions,
+	 * make the versions asked for and any missing per-photo pictures (`versions`).
+	 */
+	| { type: 'reprocess'; assetId: string; reason: 'ladder' | 'slug' | 'primary' | 'manual' | 'versions' }
 	/** Delete storage objects, then purge their public URLs from the CDN. */
 	| { type: 'delete-objects'; keys: string[]; urls: string[] }
 	| { type: 'purge'; urls: string[] }

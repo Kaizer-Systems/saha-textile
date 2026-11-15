@@ -95,6 +95,19 @@ class FakeAssets implements MediaAssetRepository {
 	async listStaleForRole() {
 		return [];
 	}
+	async settleVersions(input: Parameters<MediaAssetRepository['settleVersions']>[0]) {
+		const row = this.rows.get(input.assetId);
+		if (!row) return null;
+		const byId = new Map(input.versions.map((version) => [version.id, version]));
+		const next = {
+			...row,
+			...input.set,
+			derivatives: [...row.derivatives, ...input.addDerivatives],
+			versions: row.versions?.map((version) => byId.get(version.id) ?? version),
+		};
+		this.rows.set(row.id, next);
+		return next;
+	}
 	async listLiveCreatedBefore(input: { createdBefore: string; afterId: string | null; limit: number }) {
 		return [...this.rows.values()]
 			.filter(

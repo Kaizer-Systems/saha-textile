@@ -4,7 +4,7 @@ wide: true
 description: The admin Media page as a file manager — views kept in the address, picking items, the right-click and ⋮ menus, Move to, Rename, Trash with the in-use block, Undo, dragging onto folders, keyboard keys, uploading with the duplicate and storage checks, the upload tray, sharing, storage details, Preview and Download.
 status: implemented
 audience: [beginner, frontend, backend]
-last_verified: '2026-11-15'
+last_verified: '2026-11-16'
 source_of_truth:
     - packages/contracts/src/media-library.ts
     - packages/core-domain/src/media/library.ts
@@ -100,7 +100,7 @@ Rows, thumbnails and folder cards can be dragged onto a folder card. Dragging so
 
 The Upload button at the top left offers Upload files, Upload a folder and New folder. The folder header has **Upload here**, an empty folder shows the same buttons, and files or whole folders dropped on the page from the computer upload into the folder shown. From Recent, Favourites or Trash, uploads go into My files.
 
-1. **The upload popup** lists every picked file with its size, type and the folders it sits in, and says where it goes, how many folders will be made and the total size. Rows can be unticked or removed. Files a computer leaves in folders (`.DS_Store`, `Thumbs.db`, `._` files, hidden folders) are left out. Photos are listed as waiting for image profiles and are not sent: the Media page uploads photos once image profiles exist, and the API refuses them with `photo_needs_profiles` until then. Camera RAW files are not photos here; they upload as files.
+1. **The upload popup** lists every picked file with its size, type and the folders it sits in, and says where it goes, how many folders will be made and the total size. Rows can be unticked or removed. Files a computer leaves in folders (`.DS_Store`, `Thumbs.db`, `._` files, hidden folders) are left out. Photos are listed as waiting for image profiles and are not sent yet: the popup's profile and fill choices arrive in media step 2d. The API already takes JPEG and PNG photos with the versions to make (see [Image profiles and versions](../backend/core-domain-and-ports.md#image-profiles-and-versions)); without versions it answers `photo_needs_profiles`, and other picture types answer `photo_type_waits` until their decoders arrive. Camera RAW files are not photos here; they upload as files.
 2. **The duplicate check.** The browser counts each file's SHA-256 (files up to 256 MB, on HTTPS), and `POST /duplicates` answers, per file, a file with exactly the same bytes anywhere in Media and a different file with the same name in the target folder. Each match asks once: **Upload anyway** keeps both, the new one named “(1)”, and **Use the existing one** leaves the file out. “Same answer for the other N” answers the rest of that kind. Closing the question stops the whole upload. Files going into folders the upload makes have no neighbours, so only the same-bytes question applies to them.
 3. **The storage check.** One `POST /storage/check` covers the batch. Within the plan the upload goes and holds its bytes; past the plan a super admin is asked, with a box to also let other admins use on-demand storage; another admin is refused unless allowed, and is asked when allowed. The approval is given back when the batch's last file settles.
 4. **Folders.** A folder upload makes its folders first, parents before children; a taken name gets “(1)”.

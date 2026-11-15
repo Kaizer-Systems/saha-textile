@@ -190,7 +190,7 @@ Decoding is the real check: a renamed file fails here, and its object is deleted
 | ----------------------- | ------------------------------------------------------------------ |
 | Accepted types          | JPEG, PNG                                                          |
 | Maximum file size       | 25 MB                                                              |
-| Maximum image size      | 8000 px long edge, 50 megapixels                                   |
+| Maximum image size      | 8192 px long edge, 50 megapixels                                   |
 | Minimum short edge      | 1600 px for product and category images                            |
 | Target shape            | 3:4 product and category, 2:1 blog, 4:3 store, 1:1 avatar and icon |
 | Review photos           | Five per review. A long edge below 500 px warns                    |
@@ -207,7 +207,7 @@ Each role fits the image one of five ways: `inside` keeps the source shape, `cov
 
 The worker never upscales: a width the source cannot fill is skipped and reported. Banners skip widths beyond twice their slot's widest display. `share`, `story`, `feed_square` and `email_thumb` apply only to an image that serves as a product's main image (`servesAsPrimary`). Saving a product marks its first photo and queues a reprocess; the demo catalogue seed marks its photos the same way.
 
-Editing a role's widths or quality increases its version. The 15-minute `reprocess-stale` job then regenerates old files in batches.
+Editing a role's widths or quality increases its version. Files are written once: the new settings apply to files made afterwards. The 15-minute `reprocess-stale` job only regenerates files made before photo versions existed (those without a `versionId`); after the release migration there are none.
 
 ### Image profiles and versions
 
@@ -232,7 +232,11 @@ Stretching is never offered. A built-in profile can be edited and switched off b
 
 A photo's **versions** (`MediaAsset.versions`) are its branches: one per profile and fill, with the id `profile.fill` (for example `hero_21x9.crop`), so a photo holds each version once. Each derivative carries the `versionId` it belongs to. Pictures made once per photo (`share`, `story`, `feed_square`, `email_thumb`, `site_share`) and review photos carry none. One version may hold the same role and width as another; within a version the pair is unique. A version records the profile's `version` it was made under; versions are written once, and later profile edits apply to versions made afterwards.
 
-The release migration `0001-media-profiles-and-versions` adds the starting profiles and names the version every stored photo already is (`assignExistingVersions`): a product photo letterboxed on white becomes `product_3x4.white`, one already 3:4 becomes `product_3x4.as_is`, every banner becomes `banner_keep_shape.as_is`, a Brand Kit picture becomes `logo_keep_shape.as_is` plus `browser_icon_1x1.white`. No file moves or changes, and the date modified stays. Until the worker makes versions by profile and fill, `processMediaAsset` names each new file the same way.
+**Making versions.** A Media page photo upload (`POST /admin/media/library/files/presign`, JPEG or PNG) sends its size as the browser decoded it and the versions to make, a profile and a fill each. `checkVersionRequest` refuses, before a byte moves, a profile that does not exist, is switched off or is made by itself (the link preview), a fill the photo cannot have (`fillsForPhoto`: “As is” alone when the photo already has the shape, otherwise the profile's fills), a photo below a refusing minimum, over the profile's upload limit, or of a type it does not accept; a warning-only minimum adds `below_recommended_size`. `checkCaps` holds every photo to JPEG or PNG, 25 MB, 8192 px on the long edge and 50 megapixels. The storage check counts the original plus `estimateVersionBytes`. The versions are stored as `making`; finishing the upload queues a `process` job.
+
+The worker re-checks every version against the decoded photo and makes it with `planVersion`: each of the profile's size families at each width, fitted by the fill — White padding and Brand colour pad onto white or the Brand Kit colour, Colour bars pad onto the photo's dominant colour, Blurred fill sets the photo over a blurred enlargement, Crop fills the box, As is keeps the photo whole. A family with its own box (the square swatches inside Product 3:4) keeps its own crop. Nothing is enlarged; banner widths beyond twice the slot are skipped. Files go under the version's folder, `media/{asset}/{profile-fill}/{slug}-{role}-{width}w-{hash}.webp` (`versionStorageKey`). Versions already made are never touched; pictures made once per photo are added only where missing. A version that cannot be made fails alone (`error`: a refusal code, `too_small` or `render_failed`) and its half-made files are deleted. `settleVersions` writes the run field by field, so a version asked for meanwhile stays `making`, and a new `reprocess` job (reason `versions`) picks it up. Every file is upright and carries no location or camera details (C1, C2, tested on real photos in `adapters-image-sharp`).
+
+The release migration `0001-media-profiles-and-versions` adds the starting profiles and names the version every stored photo already is (`assignExistingVersions`): a product photo letterboxed on white becomes `product_3x4.white`, one already 3:4 becomes `product_3x4.as_is`, every banner becomes `banner_keep_shape.as_is`, a Brand Kit picture becomes `logo_keep_shape.as_is` plus `browser_icon_1x1.white`. No file moves or changes, and the date modified stays. A photo uploaded through the older purpose-based screens (no versions asked for) is still made by `planDerivatives` and named the same way afterwards.
 
 ### Deletion
 

@@ -33,6 +33,23 @@ export const derivativeStorageKey = (input: {
 		DERIVATIVE_EXTENSIONS[input.format]
 	}`;
 
+/**
+ * A version's file (R4-1): under the version's own folder, so one photo's branches sit apart in Spaces —
+ * `media/med_7Hk2/hero-21x9-crop/banarasi-weave-closeup-banner-1920w-1f3a9c2e.webp`. Written once.
+ */
+export const versionStorageKey = (input: {
+	assetId: string;
+	versionId: string;
+	slug: string;
+	role: string;
+	width: number;
+	sha256: string;
+	format: 'image/webp' | 'image/jpeg' | 'image/png';
+}): string =>
+	`media/${input.assetId}/${input.versionId.replace(/[._]/g, '-')}/${input.slug}-${input.role.replace(/_/g, '-')}-${
+		input.width
+	}w-${input.sha256.slice(0, 8)}.${DERIVATIVE_EXTENSIONS[input.format]}`;
+
 const COMBINING_MARKS = /[̀-ͯ]/g;
 
 /**

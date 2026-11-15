@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { type AuditLog, MediaAsset, type MediaFolder } from '@saha-textile/contracts';
-import type { MediaBrowseFilter } from '@saha-textile/core-domain';
+import { type MediaBrowseFilter, SEEDED_MEDIA_PROFILES } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryService } from '../src/media/media-library.service';
@@ -183,6 +183,13 @@ function harness() {
 		auditRepo as never,
 		queue as never,
 		storageCheck as never,
+		{
+			// Hero 16:9 is switched off in this harness.
+			findByKey: async (key: string) => {
+				const found = SEEDED_MEDIA_PROFILES.find((row) => row.key === key) ?? null;
+				return found && key === 'hero_16x9' ? { ...found, enabled: false } : found;
+			},
+		},
 	);
 	const file = (id: string, overrides: Record<string, unknown> = {}) =>
 		files.set(
@@ -521,7 +528,7 @@ describe('plain files', () => {
 		expect(h.storageCheck.release).toHaveBeenCalledTimes(1);
 	});
 
-	it('wait for image profiles when they are photos; camera RAW and every other file upload now', async () => {
+	it('asks photos for image profiles, keeps other picture types waiting; camera RAW and every other file upload now', async () => {
 		const h = harness();
 		const request = (fileName: string, contentType: string) => ({
 			fileName,
@@ -533,11 +540,118 @@ describe('plain files', () => {
 			'photo_needs_profiles',
 		);
 		expect(await refusalCode(h.service.presignFile('adm_1', request('IMG_0412.HEIC', 'image/heic')))).toBe(
-			'photo_needs_profiles',
+			'photo_type_waits',
+		);
+		expect(await refusalCode(h.service.presignFile('adm_1', request('look.webp', 'image/webp')))).toBe(
+			'photo_type_waits',
 		);
 		expect(h.storageCheck.admit).not.toHaveBeenCalled();
 		const raw = await h.service.presignFile('adm_1', request('DSC0412.CR3', 'image/x-canon-cr3'));
 		expect(h.files.get(raw.assetId)).toMatchObject({ kind: 'file', displayName: 'DSC0412.CR3' });
+	});
+
+	it('starts a photo upload with the versions asked for, checked against each profile first (step 2b)', async () => {
+		const h = harness();
+		const presigned = await h.service.presignFile('adm_1', {
+			fileName: 'Red Banarasi.jpg',
+			contentType: 'image/jpeg',
+			byteSize: 4_000_000,
+			folderId: null,
+			width: 3000,
+			height: 3000,
+			versions: [
+				{ profileKey: 'product_3x4', fill: 'white' },
+				{ profileKey: 'square_1x1', fill: 'as_is' },
+			],
+		});
+		const asset = h.files.get(presigned.assetId);
+		expect(asset).toMatchObject({
+			kind: 'image',
+			purpose: 'product',
+			originalStorageKey: `media/${presigned.assetId}/original.jpg`,
+			visibility: 'public',
+			width: 3000,
+			slug: 'red-banarasi',
+			displayName: 'Red Banarasi.jpg',
+		});
+		expect(asset?.versions?.map((row) => [row.id, row.state])).toEqual([
+			['product_3x4.white', 'making'],
+			['square_1x1.as_is', 'making'],
+		]);
+		// The original plus an estimate of two versions passes the storage check.
+		expect(h.storageCheck.admit).toHaveBeenCalledWith(
+			'adm_1',
+			6_800_000,
+			undefined,
+			`res_${presigned.assetId}`,
+			expect.any(Date),
+		);
+		// The original goes up private; the versions made from it are the public pictures.
+		expect(presigned.uploadUrl).toContain('original.jpg');
+
+		await h.service.finalizeFile('adm_1', presigned.assetId);
+		expect(h.files.get(presigned.assetId)?.processing.state).toBe('queued');
+		expect(h.jobs).toContainEqual({ type: 'process', assetId: presigned.assetId });
+		expect(h.storageCheck.release).toHaveBeenCalledWith(`res_${presigned.assetId}`);
+		expect(h.audit[0]).toMatchObject({ action: 'media.upload' });
+		// Finishing twice changes nothing; another admin cannot finish it.
+		await h.service.finalizeFile('adm_1', presigned.assetId);
+		expect(h.jobs.filter((job) => job.type === 'process')).toHaveLength(1);
+	});
+
+	it('refuses a photo version its profile does not allow, before anything is stored', async () => {
+		const h = harness();
+		const photo = (versions: { profileKey: string; fill: string }[], extra: Record<string, unknown> = {}) =>
+			refusalCode(
+				h.service.presignFile('adm_1', {
+					fileName: 'a.jpg',
+					contentType: 'image/jpeg',
+					byteSize: 1000,
+					folderId: null,
+					width: 3000,
+					height: 4000,
+					versions: versions as never,
+					...extra,
+				}),
+			);
+		expect(await photo([{ profileKey: 'product_3x4', fill: 'white' }])).toBe('fill_not_offered');
+		expect(await photo([{ profileKey: 'nope_1x1', fill: 'as_is' }])).toBe('profile_unknown');
+		expect(await photo([{ profileKey: 'hero_16x9', fill: 'crop' }])).toBe('profile_off');
+		expect(await photo([{ profileKey: 'link_preview', fill: 'blur' }])).toBe('profile_not_chosen');
+		expect(await photo([{ profileKey: 'product_3x4', fill: 'as_is' }], { width: 900, height: 1200 })).toBe(
+			'below_minimum',
+		);
+		expect(await photo([{ profileKey: 'product_3x4', fill: 'as_is' }], { width: 8200, height: 10933 })).toBe(
+			'too_many_pixels',
+		);
+		expect(
+			await photo([
+				{ profileKey: 'product_3x4', fill: 'as_is' },
+				{ profileKey: 'product_3x4', fill: 'as_is' },
+			]),
+		).toBe('version_twice');
+		expect(await photo([{ profileKey: 'product_3x4', fill: 'as_is' }], { width: undefined })).toBe(
+			'photo_needs_profiles',
+		);
+		expect(h.storageCheck.admit).not.toHaveBeenCalled();
+		expect(h.files.size).toBe(0);
+	});
+
+	it('lets a photo below a profile’s warning size through, with a note', async () => {
+		const h = harness();
+		const presigned = await h.service.presignFile('adm_1', {
+			fileName: 'hero.jpg',
+			contentType: 'image/jpeg',
+			byteSize: 1000,
+			folderId: null,
+			width: 2100,
+			height: 900,
+			versions: [{ profileKey: 'hero_21x9', fill: 'as_is' }],
+		});
+		expect(h.files.get(presigned.assetId)).toMatchObject({
+			purpose: 'banner',
+			warnings: ['below_recommended_size'],
+		});
 	});
 
 	it('drops one’s own unfinished upload with its stored bytes and hold, and nothing else (BOLA)', async () => {

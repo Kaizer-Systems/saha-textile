@@ -26,6 +26,7 @@ import type {
 	MediaPartsRequest,
 	MediaTrashCheck,
 	MediaUploadedParts,
+	MediaVersion,
 } from '@saha-textile/contracts';
 import {
 	type AuditLogRepository,
@@ -35,23 +36,32 @@ import {
 	type MediaFavouriteRepository,
 	type MediaFolderRepository,
 	type MediaJobQueuePort,
+	type MediaProfileRepository,
 	MEDIA_INGEST_POLICY,
 	MULTIPART_PART_BYTES,
 	type ShareLinkRepository,
 	type StoragePort,
 	ancestorsUnder,
+	checkCaps,
+	checkProfileMinSize,
+	checkVersionRequest,
 	cleanMediaName,
 	deleteMediaForever,
 	downloadName,
+	estimateVersionBytes,
 	folderMoveRefusal,
 	freeName,
+	isProcessedPhoto,
 	mediaCategory,
 	mediaSlug,
+	originalStorageKey,
 	plainFileStorageKey,
 	purgeMediaTrash,
+	purposeForProfile,
 	renameKeepingExtension,
 	restoreTarget,
 	trashDaysLeft,
+	versionIdOf,
 	waitsForImageProfiles,
 } from '@saha-textile/core-domain';
 
@@ -63,6 +73,7 @@ import {
 	MEDIA_FAVOURITE_REPOSITORY,
 	MEDIA_FOLDER_REPOSITORY,
 	MEDIA_JOB_QUEUE,
+	MEDIA_PROFILE_REPOSITORY,
 	SHARE_LINK_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
@@ -79,7 +90,17 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	not_in_trash: 'Only items in Trash can be deleted for good',
 	nothing_to_undo: 'This can no longer be undone',
 	not_a_plain_file: 'Only files other than photos and videos can be made public or private here',
-	photo_needs_profiles: 'Photos upload on the Media page once image profiles are in place',
+	photo_needs_profiles: 'Choose at least one image profile for this photo',
+	photo_type_waits: 'This picture type is turned into versions in a later step; JPEG and PNG work now',
+	type_not_accepted: 'Only JPEG and PNG photos are processed',
+	too_large: 'The photo is over 25 MB',
+	too_many_pixels: 'The photo is larger than 8192 px on its long edge or 50 megapixels',
+	profile_unknown: 'That image profile does not exist',
+	profile_off: 'That image profile is switched off',
+	profile_not_chosen: 'That image profile is made by itself and cannot be chosen',
+	fill_not_offered: 'That fill is not offered for this photo and profile',
+	below_minimum: 'The photo is smaller than the profile allows',
+	version_twice: 'The same version is asked for twice',
 };
 
 const refuse = (code: string) => domainRefusal(code, REFUSALS[code] ?? 'Not allowed');
@@ -110,6 +131,7 @@ export class MediaLibraryService {
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		private readonly storageCheck: MediaStorageService,
+		@Inject(MEDIA_PROFILE_REPOSITORY) private readonly profiles: Pick<MediaProfileRepository, 'findByKey'>,
 	) {}
 
 	// --- Reading ----------------------------------------------------------------------------------
@@ -438,7 +460,10 @@ export class MediaLibraryService {
 		request: MediaFilePresignRequest,
 		now = new Date(),
 	): Promise<MediaFilePresignResponse> {
-		if (waitsForImageProfiles(request.contentType, request.fileName)) throw refuse('photo_needs_profiles');
+		if (waitsForImageProfiles(request.contentType, request.fileName)) {
+			if (!isProcessedPhoto(request.contentType)) throw refuse('photo_type_waits');
+			return this.presignPhoto(actor, request, now);
+		}
 		if (request.folderId) {
 			const folder = await this.requireFolder(request.folderId);
 			if (folder.trashedAt) throw refuse('target_in_trash');
@@ -479,6 +504,106 @@ export class MediaLibraryService {
 			trashedFrom: null,
 		};
 		await this.assets.create(asset);
+		const ttl = MEDIA_INGEST_POLICY.uploadUrlTtlSeconds;
+		const signed = await this.storage.createSignedUploadUrl({
+			key,
+			contentType: request.contentType,
+			expiresInSeconds: ttl,
+			visibility: 'private',
+		});
+		return {
+			assetId: id,
+			name,
+			uploadUrl: signed.url,
+			headers: signed.headers ?? {},
+			expiresAt: new Date(now.getTime() + ttl * 1000).toISOString(),
+		};
+	}
+
+	/**
+	 * Starts a photo upload (media step 2b): every version asked for is checked against its profile and the photo's
+	 * size as the browser decoded it, before a byte moves; the worker checks again against the real bytes. The
+	 * original is private; the versions made from it are public website pictures.
+	 */
+	private async presignPhoto(
+		actor: string,
+		request: MediaFilePresignRequest,
+		now: Date,
+	): Promise<MediaFilePresignResponse> {
+		const { width, height, versions: asked } = request;
+		if (!asked?.length || !width || !height) throw refuse('photo_needs_profiles');
+		const caps = checkCaps({ contentType: request.contentType, byteSize: request.byteSize, width, height });
+		if (caps) throw refuse(caps.code);
+		const ids = asked.map((row) => versionIdOf(row.profileKey, row.fill));
+		if (new Set(ids).size !== ids.length) throw refuse('version_twice');
+		const at = now.toISOString();
+		const versions: MediaVersion[] = [];
+		const warnings: MediaAsset['warnings'] = [];
+		for (const row of asked) {
+			const profile = await this.profiles.findByKey(row.profileKey);
+			const refusal = checkVersionRequest({
+				profile,
+				fill: row.fill,
+				source: { width, height },
+				byteSize: request.byteSize,
+				contentType: request.contentType,
+			});
+			if (refusal || !profile) throw refuse(refusal ?? 'profile_unknown');
+			if (checkProfileMinSize(profile, { width, height }).result === 'warn' && !warnings.length) {
+				warnings.push('below_recommended_size');
+			}
+			versions.push({
+				id: versionIdOf(row.profileKey, row.fill),
+				profileKey: row.profileKey,
+				profileVersion: profile.version,
+				fill: row.fill,
+				state: 'making',
+				error: null,
+				createdAt: at,
+			});
+		}
+		if (request.folderId) {
+			const folder = await this.requireFolder(request.folderId);
+			if (folder.trashedAt) throw refuse('target_in_trash');
+		}
+		const name = freeName(this.cleanName(request.fileName), await this.files.namesIn(request.folderId));
+		const id = `med_${randomUUID()}`;
+		// The storage check counts the versions to be made as well as the original (R4-7).
+		const bytes = request.byteSize + estimateVersionBytes(request.byteSize, versions.length);
+		await this.storageCheck.admit(actor, bytes, request.reservationId, `res_${id}`, now);
+		const key = originalStorageKey(id, request.contentType);
+		await this.assets.create({
+			id,
+			kind: 'image',
+			purpose: purposeForProfile(versions[0]?.profileKey ?? ''),
+			originalStorageKey: key,
+			originalFormat: request.contentType as MediaAsset['originalFormat'],
+			originalByteSize: request.byteSize,
+			width,
+			height,
+			slug: mediaSlug(name),
+			derivatives: [],
+			versions,
+			dominantColor: null,
+			thumbHash: null,
+			visibility: 'public',
+			processing: { state: 'awaiting_upload', attempts: 0, error: null, processedAt: null },
+			warnings,
+			servesAsPrimary: false,
+			maxDisplayWidth: null,
+			renditions: [],
+			hlsPlaylistKey: null,
+			durationSeconds: null,
+			text: { alt: {}, title: {}, caption: {} },
+			status: 'draft',
+			uploadedBy: { type: 'admin', id: actor },
+			deletedAt: null,
+			folderId: request.folderId,
+			displayName: name,
+			sha256: request.sha256 ?? null,
+			trashedAt: null,
+			trashedFrom: null,
+		});
 		const ttl = MEDIA_INGEST_POLICY.uploadUrlTtlSeconds;
 		const signed = await this.storage.createSignedUploadUrl({
 			key,
@@ -552,6 +677,7 @@ export class MediaLibraryService {
 		uploadId?: string,
 	): Promise<{ assetId: string; state: 'ready' }> {
 		const asset = await this.requireFile(id);
+		if (asset.kind === 'image' && asset.versions?.length) return this.finalizePhoto(actor, asset);
 		if (asset.kind !== 'file') throw refuse('not_a_plain_file');
 		if (asset.processing.state === 'awaiting_upload') {
 			if (uploadId && asset.originalStorageKey) {
@@ -567,6 +693,29 @@ export class MediaLibraryService {
 			await this.record(actor, 'media.upload', { name: fileName(asset), bytes: asset.originalByteSize }, id);
 		}
 		return { assetId: id, state: 'ready' };
+	}
+
+	/** A photo's upload finished: its versions go in line for the image worker; the storage hold ends. */
+	private async finalizePhoto(actor: string, asset: MediaAsset): Promise<{ assetId: string; state: 'ready' }> {
+		if (asset.processing.state === 'awaiting_upload') {
+			if (asset.uploadedBy?.id !== actor) throw new NotFoundException('Upload not found');
+			await this.assets.update({ ...asset, processing: { ...asset.processing, state: 'queued' } });
+			await this.queue.enqueue({ type: 'process', assetId: asset.id });
+			await this.storageCheck.release(`res_${asset.id}`);
+			await this.recount([asset.folderId ?? null]);
+			await this.record(
+				actor,
+				'media.upload',
+				{
+					name: fileName(asset),
+					bytes: asset.originalByteSize,
+					versions: asset.versions?.map((row) => row.id),
+				},
+				asset.id,
+			);
+		}
+		// The upload is done; the versions are being made (the Media page shows each one's state).
+		return { assetId: asset.id, state: 'ready' };
 	}
 
 	/**

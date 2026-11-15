@@ -57,7 +57,7 @@ type IngestRefusalCode = NonNullable<ReturnType<typeof checkIngest>['refusal']>[
 const REFUSAL_MESSAGES: Record<IngestRefusalCode, string> = {
 	type_not_accepted: 'Upload a JPEG or PNG image.',
 	too_large: 'The file is larger than 25 MB.',
-	too_many_pixels: 'The image is larger than 8000 px on its long edge or 50 megapixels.',
+	too_many_pixels: 'The image is larger than 8192 px on its long edge or 50 megapixels.',
 	below_minimum: 'Product and category photos need at least 1600 px on the short edge.',
 };
 

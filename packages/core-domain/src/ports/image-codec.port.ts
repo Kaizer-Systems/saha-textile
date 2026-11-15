@@ -30,6 +30,11 @@ export interface ImageRenderSpec {
 	stripLogo?: Uint8Array;
 	/** `pad` only: white margin on every side, as a fraction of the box. */
 	inset?: number;
+	/**
+	 * `pad` only: the colour of the bars and of anything see-through, `#rrggbb` (absent: white). Colour bars use
+	 * the photo's own dominant colour; an icon's Brand colour fill uses the Brand Kit colour.
+	 */
+	background?: string;
 }
 
 /**

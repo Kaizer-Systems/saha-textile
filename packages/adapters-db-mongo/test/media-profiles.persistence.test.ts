@@ -149,6 +149,61 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		expect((await assets.findById('med_busy'))?.versions).toHaveLength(1);
 	});
 
+	it('records a versions run without losing a version asked for meanwhile (step 2b)', async () => {
+		const making = (id: string) => {
+			const [profileKey, fill] = id.split('.');
+			return { id, profileKey, profileVersion: 1, fill, state: 'making', createdAt: '2026-11-16T00:00:00.000Z' };
+		};
+		await raw('med_run', {
+			processing: { state: 'processing', attempts: 1, error: null, processedAt: null },
+			derivatives: [],
+			versions: [making('square_1x1.crop')],
+		});
+		// Another admin asks for a second version while the worker is busy.
+		await MediaAssetModel.updateOne({ _id: 'med_run' }, { $push: { versions: making('square_1x1.white') } }).exec();
+		const stored = await assets.settleVersions({
+			assetId: 'med_run',
+			set: {
+				width: 3000,
+				height: 3000,
+				dominantColor: '#aa3322',
+				thumbHash: 'AAAA',
+				warnings: [],
+				processing: { state: 'ready', attempts: 1, error: null, processedAt: '2026-11-16T10:00:00.000Z' },
+			},
+			addDerivatives: [{ ...file('med_run', 'avatar', 96), versionId: 'square_1x1.crop' }],
+			versions: [{ ...making('square_1x1.crop'), state: 'ready', error: null } as never],
+		});
+		expect(stored?.versions?.map((version) => [version.id, version.state])).toEqual([
+			['square_1x1.crop', 'ready'],
+			['square_1x1.white', 'making'],
+		]);
+		expect(stored?.derivatives.map((row) => row.versionId)).toEqual(['square_1x1.crop']);
+		expect(stored?.processing).toMatchObject({
+			state: 'ready',
+			attempts: 1,
+			processedAt: '2026-11-16T10:00:00.000Z',
+		});
+		const processing = { state: 'ready' as const, attempts: 0, error: null, processedAt: null };
+		expect(
+			await assets.settleVersions({ assetId: 'med_none', set: { processing }, addDerivatives: [], versions: [] }),
+		).toBeNull();
+	});
+
+	it('leaves files of versions and per-photo pictures out of the ladder sweep; only unnamed old files count', async () => {
+		await raw('med_old', { derivatives: [{ ...file('med_old', 'thumb', 150), roleVersion: 1 }] });
+		await raw('med_named', {
+			derivatives: [
+				{ ...file('med_named', 'thumb', 150), roleVersion: 1, versionId: 'product_3x4.as_is' },
+				{ ...file('med_named', 'share', 1200), roleVersion: 1, versionId: null },
+			],
+		});
+		const thumbs = await assets.listStaleForRole({ role: 'thumb', version: 2, limit: 10 });
+		expect(thumbs.map((row) => row.id)).toEqual(['med_old']);
+		expect(await assets.listStaleForRole({ role: 'share', version: 2, limit: 10 })).toEqual([]);
+		await MediaAssetModel.deleteMany({ _id: { $in: ['med_old', 'med_named', 'med_run'] } }).exec();
+	});
+
 	it('counts the photos holding a version of each profile, leaving deleted ones out', async () => {
 		await raw('med_gone', {
 			deletedAt: new Date('2026-11-10T00:00:00.000Z'),

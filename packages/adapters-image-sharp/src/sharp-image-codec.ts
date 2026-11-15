@@ -13,6 +13,19 @@ import sharp, { type Sharp } from 'sharp';
 import { rgbaToThumbHash } from 'thumbhash';
 
 const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
+
+/** `#rrggbb` as sharp's colour; white when absent or not a colour. */
+const colourOf = (hex: string | undefined) => {
+	const match = hex ? /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex) : null;
+	return match
+		? {
+				r: parseInt(match[1] as string, 16),
+				g: parseInt(match[2] as string, 16),
+				b: parseInt(match[3] as string, 16),
+				alpha: 1,
+			}
+		: WHITE;
+};
 /** ThumbHash encodes at most 100×100; it only needs a soft preview. */
 const THUMBHASH_EDGE = 100;
 
@@ -55,7 +68,8 @@ export class SharpImageCodec implements ImageCodecPort {
 		if (spec.fit === 'blur') return this.renderBlurFill(bytes, spec);
 		if (spec.fit === 'story') return this.renderStory(bytes, spec);
 		if (spec.fit === 'pad' && spec.inset) return this.renderInset(bytes, spec);
-		let pipeline = this.base(bytes, spec.keepAlpha);
+		const background = colourOf(spec.background);
+		let pipeline = this.base(bytes, spec.keepAlpha, background);
 		pipeline =
 			spec.fit === 'inside'
 				? pipeline.resize({ width: spec.width, withoutEnlargement: true })
@@ -64,7 +78,7 @@ export class SharpImageCodec implements ImageCodecPort {
 						height: spec.height ?? spec.width,
 						fit: spec.fit === 'cover' ? 'cover' : 'contain',
 						position: 'centre',
-						background: WHITE,
+						background,
 						withoutEnlargement: false,
 					});
 		pipeline = pipeline.sharpen({ sigma: 0.5 });
@@ -77,7 +91,8 @@ export class SharpImageCodec implements ImageCodecPort {
 		const width = spec.width;
 		const height = spec.height ?? spec.width;
 		const inset = Math.min(0.4, Math.max(0, spec.inset ?? 0));
-		const inner = await this.base(bytes, spec.keepAlpha)
+		const background = colourOf(spec.background);
+		const inner = await this.base(bytes, spec.keepAlpha, background)
 			.resize({
 				width: Math.max(1, Math.round(width * (1 - 2 * inset))),
 				height: Math.max(1, Math.round(height * (1 - 2 * inset))),
@@ -86,7 +101,7 @@ export class SharpImageCodec implements ImageCodecPort {
 			})
 			.png()
 			.toBuffer({ resolveWithObject: true });
-		const pipeline = sharp({ create: { width, height, channels: 4, background: WHITE } }).composite([
+		const pipeline = sharp({ create: { width, height, channels: 4, background } }).composite([
 			{
 				input: inner.data,
 				left: Math.round((width - inner.info.width) / 2),
@@ -216,8 +231,9 @@ export class SharpImageCodec implements ImageCodecPort {
 		return pipeline.webp({ quality: spec.quality, effort: 5, smartSubsample: true });
 	}
 
-	private base(bytes: Uint8Array, keepAlpha = false) {
+	/** Upright, sRGB, and see-through parts laid on `background` (white unless a fill says otherwise). */
+	private base(bytes: Uint8Array, keepAlpha = false, background: typeof WHITE = WHITE) {
 		const image = sharp(bytes, { limitInputPixels: this.options.maxInputPixels, failOn: 'error' }).rotate();
-		return (keepAlpha ? image : image.flatten({ background: WHITE })).toColourspace('srgb');
+		return (keepAlpha ? image : image.flatten({ background })).toColourspace('srgb');
 	}
 }

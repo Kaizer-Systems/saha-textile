@@ -101,6 +101,8 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		now,
 		brandLogo: () => brandStripLogo({ settings, assets, storage }),
 		profiles,
+		// An icon's Brand colour fill: the Brand Kit's theme colour.
+		brandColour: async () => (await settings.get('brand'))?.themeColor ?? null,
 	};
 	// The worker reads Settings › Languages too: search documents carry every added language.
 	const languages = new LanguageStore(new MongoLanguageRepository(), config);

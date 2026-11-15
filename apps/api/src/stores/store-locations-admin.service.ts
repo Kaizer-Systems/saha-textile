@@ -19,7 +19,7 @@ import {
 	storeLocationGaps,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { AUDIT_LOG_REPOSITORY, MEDIA_ASSET_REPOSITORY, STORAGE_PORT, STORE_LOCATION_REPOSITORY } from '../infra/tokens';
 
 /** Trimmed text per language, empty languages dropped. */
@@ -41,7 +41,7 @@ export class StoreLocationsAdminService {
 		@Inject(STORE_LOCATION_REPOSITORY) private readonly stores: StoreLocationRepository,
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: MediaAssetRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
 	) {}
 
@@ -70,7 +70,7 @@ export class StoreLocationsAdminService {
 	/** The list's switch. Switching on is refused, with the gaps, while anything is missing. */
 	async setActive(id: string, active: boolean, actor: string | null): Promise<StoreLocationSaveResult> {
 		const store = await this.require(id);
-		const gaps = active ? storeLocationGaps(store, this.config.locales) : [];
+		const gaps = active ? storeLocationGaps(store, this.languages.shop()) : [];
 		if (gaps.length) return { id, active: store.active, gaps };
 		if (store.active !== active) {
 			await this.stores.save({ ...store, active });
@@ -124,7 +124,7 @@ export class StoreLocationsAdminService {
 			displayOrder,
 			active: false,
 		});
-		const gaps = storeLocationGaps(draft, this.config.locales);
+		const gaps = storeLocationGaps(draft, this.languages.shop());
 		// Asked to be active but not ready: everything else is saved and the store stays off.
 		const active = body.active && gaps.length === 0;
 		await this.stores.save({ ...draft, active });
@@ -154,7 +154,7 @@ export class StoreLocationsAdminService {
 			photos: store.photoAssetIds
 				.map((id) => this.photo(id, assets))
 				.filter((photo): photo is AdminStorePhoto => !!photo),
-			gaps: storeLocationGaps(store, this.config.locales),
+			gaps: storeLocationGaps(store, this.languages.shop()),
 		};
 	}
 

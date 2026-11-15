@@ -8,6 +8,7 @@ import { CatalogPublicService } from '../src/catalog/catalog-public.service';
 import { catalogEtag, CatalogEtagInterceptor } from '../src/catalog/catalog-etag.interceptor';
 import { pricedRow, productReadModel, skuView } from '../src/catalog/catalog-read-model';
 import { lastValueFrom, of } from 'rxjs';
+import { LanguageStore } from '../src/languages/language-store';
 
 type Variant = z.output<typeof ProductVariant>;
 type ProductRow = z.output<typeof Product>;
@@ -58,6 +59,7 @@ interface Options {
 	rows?: ProductRow[];
 	variants?: Variant[];
 	withAll?: boolean;
+	languages?: string[];
 	assets?: unknown[];
 	placement?: unknown;
 	category?: unknown;
@@ -125,7 +127,7 @@ const build = (options: Options = {}) => {
 					categories as never,
 					seo as never,
 					undefined,
-					undefined,
+					options.languages ? LanguageStore.fixed(options.languages) : undefined,
 					options.faqs as never,
 				);
 	return { service, products, variants, placements, media, seo };
@@ -340,7 +342,7 @@ describe('shop menu', () => {
 			{ tree: async () => categories } as never,
 			null,
 			null,
-			{ locales } as never,
+			LanguageStore.fixed(locales),
 		);
 
 	it('is empty without its repositories', async () => {
@@ -1090,21 +1092,31 @@ describe('addresses', () => {
 		expect(await build({ withAll: false }).service.seoRoute('/x', 'en')).toBeNull();
 	});
 
+	const routes = [
+		{ path: '/', locale: 'en', entityType: 'page', canonicalPath: '/en' },
+		{ path: '/about', locale: 'en', entityType: 'page', canonicalPath: '/en/about' },
+		{ path: '/product/red-saree', locale: 'bn', entityType: 'product', canonicalPath: '/bn/product/red-saree' },
+		{ path: '/collections/sarees', locale: 'en', entityType: 'category', canonicalPath: '/en/collections/sarees' },
+		{ path: '/product/gone', locale: 'en', entityType: 'product', canonicalPath: '/en/product/gone' },
+	];
+
 	it('lists only addresses that are still live, with a slash on language homes', async () => {
-		const routes = [
-			{ path: '/', entityType: 'page', canonicalPath: '/en' },
-			{ path: '/about', entityType: 'page', canonicalPath: '/en/about' },
-			{ path: '/product/red-saree', entityType: 'product', canonicalPath: '/bn/product/red-saree' },
-			{ path: '/collections/sarees', entityType: 'category', canonicalPath: '/en/collections/sarees' },
-			{ path: '/product/gone', entityType: 'product', canonicalPath: '/en/product/gone' },
-		];
-		expect(await build({ routes, live: ['sarees'] }).service.sitemapPaths()).toEqual([
+		expect(await build({ routes, live: ['sarees'], languages: ['en', 'bn'] }).service.sitemapPaths()).toEqual([
+			'/bn/',
+			'/bn/about',
+			'/bn/collections/sarees',
 			'/bn/product/red-saree',
 			'/en/',
 			'/en/about',
 			'/en/collections/sarees',
 		]);
 		expect(await build({ withAll: false }).service.sitemapPaths()).toEqual([]);
+	});
+
+	it('follows the shop’s languages: one switched on joins, one switched off leaves', async () => {
+		const paths = await build({ routes, live: ['sarees'], languages: ['en', 'hi'] }).service.sitemapPaths();
+		expect(paths).toEqual(['/en/', '/en/about', '/en/collections/sarees', '/hi/', '/hi/about', '/hi/collections/sarees']);
+		expect(paths.some((path) => path.startsWith('/bn'))).toBe(false);
 	});
 });
 

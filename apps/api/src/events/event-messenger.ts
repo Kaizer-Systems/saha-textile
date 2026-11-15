@@ -7,7 +7,7 @@ import {
 	formatIst,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { CONSENT_REPOSITORY, CUSTOMER_REPOSITORY, NOTIFICATION_PORT } from '../infra/tokens';
 
 /** The marketing email template the event message goes out on, registered with MSG91. */
@@ -27,7 +27,7 @@ export class EventMessenger {
 
 	constructor(
 		@Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 		@Optional() @Inject(CONSENT_REPOSITORY) private readonly consents: ConsentRepository | null = null,
 		@Optional() @Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort | null = null,
 	) {}
@@ -70,7 +70,7 @@ export class EventMessenger {
 		let sent = 0;
 		for await (const customer of this.recipients()) {
 			const locale =
-				customer.preferredLocale && this.config.locales.includes(customer.preferredLocale)
+				customer.preferredLocale && this.languages.shop().includes(customer.preferredLocale)
 					? customer.preferredLocale
 					: 'en';
 			try {
@@ -96,7 +96,7 @@ export class EventMessenger {
 	/** "Send me a test": the message to the signed-in admin, in every language. */
 	async test(event: ShopEvent, email: string): Promise<void> {
 		if (!this.notifications) return;
-		for (const locale of this.config.locales) {
+		for (const locale of this.languages.shop()) {
 			await this.notifications.send({
 				channel: 'email',
 				category: 'transactional',

@@ -36,7 +36,7 @@ import {
 
 import { mediaRefusal } from './media-refusal';
 import { localized } from '../catalog/catalog-locale';
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	CUSTOMER_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
@@ -70,7 +70,7 @@ export class ReviewsService {
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		private readonly media: MediaService,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 		@Optional() @Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort | null = null,
 	) {}
 
@@ -221,7 +221,7 @@ export class ReviewsService {
 		// Alt text is generated for every active locale and names the product, never the customer.
 		const product = await this.products.findById(request.productId);
 		const alt = Object.fromEntries(
-			this.config.locales.map((locale) => {
+			this.languages.content().map((locale) => {
 				const name = product?.title[locale] || product?.title.en || '';
 				const label = REVIEW_PHOTO_ALT[locale] ?? REVIEW_PHOTO_ALT.en;
 				return [locale, `${name} — ${label}`.replace(/^ — /, '')];

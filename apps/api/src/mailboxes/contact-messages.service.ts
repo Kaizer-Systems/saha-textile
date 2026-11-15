@@ -18,6 +18,7 @@ import type {
 import { MailboxAccessRevoked } from '@saha-textile/core-domain';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	CONTACT_MESSAGE_REPOSITORY,
 	MAILBOX_PORT,
@@ -54,6 +55,7 @@ export class ContactMessagesService implements OnApplicationBootstrap, OnApplica
 		@Inject(MAILBOX_TOKEN_STORE) private readonly tokens: MailboxTokenStore,
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	onApplicationBootstrap(): void {
@@ -83,7 +85,7 @@ export class ContactMessagesService implements OnApplicationBootstrap, OnApplica
 			subject: body.subject,
 			message: body.message,
 			// A language the shop no longer offers is answered in English.
-			locale: this.config.locales.includes(body.locale) ? body.locale : PRIMARY_LOCALE,
+			locale: this.languages.shop().includes(body.locale) ? body.locale : PRIMARY_LOCALE,
 			status: 'queued',
 			ipHash: this.hashIp(ip),
 			contentHash,

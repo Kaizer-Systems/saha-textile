@@ -92,7 +92,7 @@ beforeEach(() => {
 	vi.stubEnv('NODE_ENV', 'development');
 	vi.stubEnv('MONGODB_HOST', '127.0.0.1');
 	vi.stubEnv('MONGODB_DB_NAME', 'shop_local');
-	h.config = { spaces, redis: {} };
+	h.config = { spaces, redis: {}, locales: ['en', 'bn'] };
 	h.connect = vi.fn(async () => undefined);
 	h.disconnect = vi.fn(async () => undefined);
 	h.close = vi.fn(async () => undefined);

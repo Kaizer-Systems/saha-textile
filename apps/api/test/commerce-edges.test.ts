@@ -22,6 +22,7 @@ import { OrdersService } from '../src/orders/orders.service';
 import { PrivacyController } from '../src/privacy/privacy.controller';
 import { PromotionsController } from '../src/promotions/promotions.controller';
 import { PromotionsService } from '../src/promotions/promotions.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const { readyState } = vi.hoisted(() => ({ readyState: { value: 1 } }));
 
@@ -181,14 +182,14 @@ describe('OrdersController', () => {
 	});
 
 	it('needs a session', () => {
-		const controller = new OrdersController(service() as never, config);
+		const controller = new OrdersController(service() as never, config, LanguageStore.fixed(['en', 'bn']));
 		expect(() => controller.create(undefined, {} as never, {} as never)).toThrow(UnauthorizedException);
 		expect(() => controller.listMine(undefined)).toThrow(UnauthorizedException);
 	});
 
 	it('creates with the guest cookie when there is one', async () => {
 		const orders = service();
-		const controller = new OrdersController(orders as never, config);
+		const controller = new OrdersController(orders as never, config, LanguageStore.fixed(['en', 'bn']));
 		await controller.create(shopper, { cartId: 'c' } as never, { cookies: { st_guest: 'g' } } as never);
 		expect(orders.createFromCart).toHaveBeenLastCalledWith(expect.objectContaining({ guestToken: 'g' }));
 		await controller.create(shopper, { cartId: 'c' } as never, {} as never);
@@ -197,7 +198,7 @@ describe('OrdersController', () => {
 
 	it('pages, reads with ownership, and updates a status', async () => {
 		const orders = service();
-		const controller = new OrdersController(orders as never, config);
+		const controller = new OrdersController(orders as never, config, LanguageStore.fixed(['en', 'bn']));
 		await controller.listMine(shopper, '2', '5');
 		expect(orders.listByUser).toHaveBeenLastCalledWith('cus_1', { page: 2, pageSize: 5 });
 		await controller.listMine(shopper);

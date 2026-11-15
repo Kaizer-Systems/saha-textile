@@ -12,8 +12,9 @@ import { EventsPublicController } from '../src/events/events-public.controller';
 import { EventsPublicService } from '../src/events/events-public.service';
 import { SaleAwareVariantRepository } from '../src/events/sale-aware-variant.repository';
 import { SalePriceBook, descendants } from '../src/events/sale-price-book';
+import { LanguageStore } from '../src/languages/language-store';
 
-const config = { locales: ['en', 'bn'] } as never;
+const config = LanguageStore.fixed(['en', 'bn']);
 const HOUR = 3_600_000;
 
 const category = (id: string, parentId: string | null = null): Category =>

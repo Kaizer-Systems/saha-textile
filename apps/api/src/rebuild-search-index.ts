@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 import { connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 
-import { prepareSearchIndex, releaseSearch } from './search/search-release';
+import { prepareSearchIndex, releaseLanguages, releaseSearch } from './search/search-release';
 
 /**
  * Fills the Meilisearch index from Mongo, the source of truth. Safe to repeat.
@@ -15,7 +15,9 @@ import { prepareSearchIndex, releaseSearch } from './search/search-release';
 async function main(): Promise<void> {
 	await connectMongo();
 	try {
-		const done = await prepareSearchIndex(releaseSearch(), { release: process.argv.includes('--release') });
+		const languages = releaseLanguages();
+		await languages.refresh();
+		const done = await prepareSearchIndex(releaseSearch(languages), { release: process.argv.includes('--release') });
 		process.stdout.write(`${done}\n`);
 	} finally {
 		await disconnectMongo();

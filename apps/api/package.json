@@ -4,7 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && node dist/write-language-manifest.js",
     "dev": "nest start --watch",
     "generate:openapi": "nest build && node dist/generate-openapi.js && node scripts/check-openapi.mjs",
     "start": "node dist/main.js",

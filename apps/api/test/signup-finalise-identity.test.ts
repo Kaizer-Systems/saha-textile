@@ -6,6 +6,7 @@ import { OAuthService } from '../src/auth/oauth.service';
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
 import { cookieNames } from '../src/common/cookies';
 import { loadConfig } from '../src/config/app-config';
+import { LanguageStore } from '../src/languages/language-store';
 
 /**
  * What signup finalisation writes as the account's login methods.
@@ -154,6 +155,7 @@ function harness(options: { consumed?: Record<string, unknown>; preclaimedBy?: s
 		oauth,
 		transactions as never,
 		config,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	return result;
 }

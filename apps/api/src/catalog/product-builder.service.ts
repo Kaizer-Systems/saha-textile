@@ -20,7 +20,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { CatalogService } from './catalog.service';
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	MEDIA_ASSET_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
@@ -46,7 +46,7 @@ export class ProductBuilderService {
 		private readonly catalog: CatalogService,
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		@Inject(PRODUCT_VARIANT_REPOSITORY) private readonly variants: ProductVariantRepository,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 		@Optional() @Inject(MEDIA_ASSET_REPOSITORY) private readonly media: MediaAssetRepository | null = null,
 		@Optional()
 		@Inject(PRODUCT_BUNDLE_REPOSITORY)
@@ -120,7 +120,7 @@ export class ProductBuilderService {
 		const gaps = goLiveGaps({
 			product,
 			variants: rows,
-			locales: this.config.locales,
+			locales: this.languages.shop(),
 			assetAlt: () => assetAlt(asset),
 			primaryRoles: asset ? asset.derivatives.map((row) => row.role) : null,
 			faq: product.faqEnabled ? await this.catalog.productFaq(product.id) : [],

@@ -54,7 +54,9 @@ export interface MeilisearchClient {
  * `SearchUnavailableError` and never falls through to a Mongo text query.
  */
 export class MeilisearchSearch implements SearchPort, MeilisearchClient {
-	private settingsApplied = false;
+	/** The language list the index's settings were last applied for; null until they are. */
+	private settingsFor: string | null = null;
+	private readonly locales: () => readonly string[];
 	/** The admin's search words as synonyms, kept so a rebuilt index starts with them. */
 	private synonyms: Readonly<Record<string, readonly string[]>> | null = null;
 	/** The index this code reads: the configured name plus the search version, e.g. `products_v1`. */
@@ -67,8 +69,14 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		private readonly apiKey: string | undefined,
 		private readonly loadProducts: (ids: readonly string[]) => Promise<Product[]>,
 		private readonly baseIndex: string,
-		private readonly locales: readonly string[],
+		/**
+		 * The languages each document carries a sortable title for: every added language, drafts
+		 * included, so a language the shop switches on later sorts without a rebuild. A function,
+		 * because Settings › Languages changes the list while the process runs.
+		 */
+		locales: readonly string[] | (() => readonly string[]),
 	) {
+		this.locales = typeof locales === 'function' ? locales : () => locales;
 		this.index = versionedIndex(baseIndex);
 		this.builds = `${baseIndex}_builds`;
 	}
@@ -81,7 +89,7 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		if (!entries.length) return;
 		await this.ensureSettings();
 		for (let start = 0; start < entries.length; start += BATCH) {
-			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales));
+			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales()));
 			await this.send(`/indexes/${this.index}/documents`, 'POST', documents);
 		}
 	}
@@ -115,7 +123,7 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	/** Cheap work for a release that keeps the search version: settings only, no documents. */
 	async applyCurrentSettings(): Promise<void> {
 		await this.applySettings(this.index);
-		this.settingsApplied = true;
+		this.settingsFor = this.locales().join(',');
 	}
 
 	/**
@@ -129,10 +137,10 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		const next = `${this.index}_next`;
 		await this.applySettings(this.index);
 		await this.applySettings(next);
-		this.settingsApplied = true;
+		this.settingsFor = this.locales().join(',');
 		let task = await this.send<{ taskUid: number }>(`/indexes/${next}/documents`, 'DELETE');
 		for (let start = 0; start < entries.length; start += BATCH) {
-			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales));
+			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales()));
 			task = await this.send<{ taskUid: number }>(`/indexes/${next}/documents`, 'POST', documents);
 		}
 		await this.waitFor(task.taskUid);
@@ -195,7 +203,7 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		await this.ensureSettings();
 		let last: number | null = null;
 		for (let start = 0; start < entries.length; start += BATCH) {
-			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales));
+			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales()));
 			last = (await this.send<{ taskUid: number }>(`/indexes/${this.index}/documents`, 'POST', documents))
 				.taskUid;
 		}
@@ -278,9 +286,10 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	}
 
 	private async ensureSettings(): Promise<void> {
-		if (this.settingsApplied) return;
+		// Applied again when a language is added or removed, so its sortable title exists.
+		if (this.settingsFor === this.locales().join(',')) return;
 		await this.applySettings(this.index);
-		this.settingsApplied = true;
+		this.settingsFor = this.locales().join(',');
 	}
 
 	private async applySettings(index: string): Promise<void> {
@@ -299,7 +308,7 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 				'minINR',
 				'percentOff',
 				'rankFirst',
-				...this.locales.map((locale) => `titleOrder.${locale}`),
+				...this.locales().map((locale) => `titleOrder.${locale}`),
 			],
 			// Left out until known, so a first product save never wipes the admin's list.
 			...(this.synonyms ? { synonyms: this.synonyms } : {}),

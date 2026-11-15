@@ -96,6 +96,8 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 			tree: async () => [{ id: 'cat_1', name: { en: 'Sarees', bn: 'শাড়ি' }, ancestors: [] }],
 		})),
 		MongoSearchTermRepository: repository(() => ({ listLive: async () => [] })),
+		// Settings › Languages: a release reads the stored list (here: none yet, so it is seeded).
+		MongoLanguageRepository: repository(() => ({ seedIfEmpty: async () => true, list: async () => [] })),
 		MongoSiteSettingsRepository: repository(() => ({ get: async () => null })),
 		MongoMediaAssetRepository: repository(() => h.assets),
 		MongoMediaRoleRepository: blank,
@@ -175,7 +177,7 @@ vi.mock('prettier', () => ({
 }));
 vi.mock('sharp', () => ({ default: () => ({ metadata: () => h.sharp.metadata() }) }));
 vi.mock('../src/app.module', () => ({ AppModule: { forRoot: () => 'module' } }));
-vi.mock('../src/config/app-config', () => ({ loadConfig: () => h.config }));
+vi.mock('../src/config/app-config', () => ({ APP_CONFIG: Symbol('AppConfig'), loadConfig: () => h.config }));
 vi.mock('../src/config/boot-failure', () => ({
 	exitOnDeploymentConfigError: (error: unknown) => h.boot.failed.push(error),
 }));
@@ -282,7 +284,7 @@ beforeEach(() => {
 	h.mongo.connect = vi.fn(async () => undefined);
 	h.mongo.disconnect = vi.fn(async () => undefined);
 	h.queue.close = vi.fn(async () => undefined);
-	h.config = {};
+	h.config = { locales: ['en', 'bn'] };
 });
 
 afterEach(() => {
@@ -403,7 +405,7 @@ describe('worker', () => {
 
 describe('rebuild-search-index', () => {
 	beforeEach(() => {
-		h.config = { search: { host: 'http://search', apiKey: 'k' } };
+		h.config = { search: { host: 'http://search', apiKey: 'k' }, locales: ['en', 'bn'] };
 		h.search.rebuild = vi.fn(async (products: unknown[]) => products.length);
 		h.search.state = undefined;
 		h.search.settings = vi.fn();
@@ -474,7 +476,7 @@ describe('rebuild-search-index', () => {
 
 describe('release-steps', () => {
 	beforeEach(() => {
-		h.config = { search: { host: 'http://search', apiKey: 'k' } };
+		h.config = { search: { host: 'http://search', apiKey: 'k' }, locales: ['en', 'bn'] };
 		h.search.rebuild = vi.fn(async (products: unknown[]) => products.length);
 		h.search.state = 'ready';
 		h.search.settings = vi.fn();
@@ -569,7 +571,7 @@ describe('release-steps', () => {
 
 describe('search queue pass and nightly check', () => {
 	beforeEach(() => {
-		h.config = { search: { host: 'http://search', apiKey: 'k' } };
+		h.config = { search: { host: 'http://search', apiKey: 'k' }, locales: ['en', 'bn'] };
 		h.search.record = null;
 	});
 
@@ -982,7 +984,7 @@ describe('seed-local-catalog-photos', () => {
 	};
 
 	beforeEach(() => {
-		h.config = { spaces, redis: {} };
+		h.config = { spaces, redis: {}, locales: ['en', 'bn'] };
 		h.files.read = vi.fn(async (path: string) => (String(path).endsWith('.json') ? demo() : Buffer.from('photo')));
 		h.files.write = vi.fn(async () => undefined);
 		h.format = vi.fn(async (text: string) => text);

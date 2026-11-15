@@ -9,7 +9,7 @@ import {
 } from '@saha-textile/adapters-db-mongo';
 import { runReleaseSteps, type ReleaseStep, type ReleaseStepEvent } from '@saha-textile/core-domain';
 
-import { releaseSearch, searchIndexStep } from './search/search-release';
+import { releaseLanguages, releaseSearch, searchIndexStep } from './search/search-release';
 
 const MARK: Record<ReleaseStepEvent['phase'], string> = {
 	start: '…',
@@ -32,7 +32,8 @@ const MARK: Record<ReleaseStepEvent['phase'], string> = {
 async function main(): Promise<void> {
 	const json = process.argv.includes('--json');
 	const steps: ReleaseStep[] = [systemRolesStep(), databaseIndexesStep(), dataMigrationsStep()];
-	if (!process.argv.includes('--without-search')) steps.push(searchIndexStep(releaseSearch()));
+	const languages = releaseLanguages();
+	if (!process.argv.includes('--without-search')) steps.push(searchIndexStep(releaseSearch(languages)));
 	const report = (event: ReleaseStepEvent) =>
 		// A person reading the deploy needs no "starting" line; the console does.
 		(json || event.phase !== 'start') &&
@@ -43,6 +44,8 @@ async function main(): Promise<void> {
 		);
 	await connectMongo();
 	try {
+		// The stored languages (seeded from ACTIVE_LOCALES on a first release) decide the search titles.
+		await languages.refresh();
 		const { ran, skipped } = await runReleaseSteps(steps, report);
 		if (!json)
 			process.stdout.write(`Release steps done: ${ran.length} ran, ${skipped.length} had nothing to do.\n`);

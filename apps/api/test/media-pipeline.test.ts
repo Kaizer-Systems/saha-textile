@@ -15,12 +15,14 @@ import { loadConfig } from '../src/config/app-config';
 import { ContentBlocksService } from '../src/media/content-blocks.service';
 import { MediaService } from '../src/media/media.service';
 import { YouTubeService } from '../src/media/youtube.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const config = loadConfig({
 	JWT_ACCESS_SECRET: 'a'.repeat(32),
 	JWT_REFRESH_SECRET: 'b'.repeat(32),
 	CSRF_SECRET: 'c'.repeat(32),
 });
+const languages = LanguageStore.fixed(config.locales);
 
 const asset = (overrides: Partial<MediaAsset> = {}): MediaAsset => ({
 	id: 'med_1',
@@ -86,7 +88,7 @@ const mediaService = (rows: MediaAsset[] = []) =>
 		storage,
 		{ enqueue: vi.fn() } as never,
 		{ append: vi.fn() } as never,
-		config,
+		languages,
 	);
 
 describe('MediaService', () => {
@@ -133,7 +135,7 @@ describe('MediaService', () => {
 			storage,
 			{ enqueue: vi.fn() } as never,
 			{ append: vi.fn() } as never,
-			config,
+			languages,
 		);
 		await service.presign(
 			{ type: 'customer', id: 'cus_1' },
@@ -202,7 +204,7 @@ describe('ContentBlocksService', () => {
 			assetsOf([asset({ purpose: 'product' })]),
 			settings as never,
 			storage,
-			config,
+			languages,
 		);
 		await expect(service.upsert(input)).rejects.toMatchObject({ status: 422 });
 	});
@@ -213,7 +215,7 @@ describe('ContentBlocksService', () => {
 			assetsOf([asset()]),
 			settings as never,
 			storage,
-			config,
+			languages,
 		);
 		await expect(service.upsert({ ...input, status: 'active' })).rejects.toMatchObject({ status: 422 });
 		const saved = await service.upsert({
@@ -238,7 +240,7 @@ describe('ContentBlocksService', () => {
 			assetsOf([asset()]),
 			settings as never,
 			storage,
-			config,
+			languages,
 		);
 		const { heroLayout, banners } = await service.storefront({ ownerType: 'home', locale: 'bn' });
 		expect(heroLayout).toBe('hero_full');

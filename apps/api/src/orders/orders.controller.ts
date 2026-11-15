@@ -9,6 +9,7 @@ import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../au
 import { cookieNames } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { OrdersService } from './orders.service';
 import { API_TAGS } from '../openapi-tags';
 
@@ -23,6 +24,7 @@ export class OrdersController {
 	constructor(
 		private readonly orders: OrdersService,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	@Post()
@@ -39,7 +41,7 @@ export class OrdersController {
 			...body,
 			principal,
 			guestToken: cookies[names.guest] ?? null,
-			locale: requestedLocale(request.query, this.config.locales),
+			locale: requestedLocale(request.query, this.languages.shop()),
 		});
 	}
 

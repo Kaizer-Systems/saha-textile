@@ -36,7 +36,7 @@ import {
 	type StoragePort,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { catalogLocale, localized } from './catalog-locale';
 import { pricedRow, productReadModel, skuView } from './catalog-read-model';
 import { MongoListing } from './mongo-listing';
@@ -82,7 +82,10 @@ const RELATED_MINIMUM = 6;
 @Injectable()
 export class CatalogPublicService {
 	private readonly listings: ListingPort;
-	private readonly locales: readonly string[];
+	/** The languages the shop shows; English alone where no store is given (unit tests). */
+	private get locales(): readonly string[] {
+		return this.languages?.shop() ?? ['en'];
+	}
 
 	constructor(
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
@@ -104,12 +107,12 @@ export class CatalogPublicService {
 		@Optional() @Inject(CATEGORY_REPOSITORY) private readonly categories: CategoryRepository | null = null,
 		@Optional() @Inject(SEO_ROUTE_REPOSITORY) private readonly seoRoutes: SeoRouteRepository | null = null,
 		@Optional() @Inject(LISTING_PORT) listing: ListingPort | null = null,
-		@Optional() @Inject(APP_CONFIG) config: AppConfig | null = null,
+		// Named outright: a `| null` type is recorded as Object, which Nest cannot resolve.
+		@Optional() @Inject(LanguageStore) private readonly languages: LanguageStore | null = null,
 		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
 		@Optional() @Inject(SALE_PRICE_BOOK) private readonly sales: SalePriceBook | null = null,
 	) {
 		this.listings = listing ?? new MongoListing(products, variants);
-		this.locales = config?.locales ?? ['en'];
 	}
 
 	/**
@@ -652,7 +655,7 @@ export class CatalogPublicService {
 	}
 
 	/** The head data for one public address. Null when the address has no row. */
-	async seoRoute(path: string, locale: 'en' | 'bn') {
+	async seoRoute(path: string, locale: string) {
 		const route = (await this.seoRoutes?.find(path, locale)) ?? null;
 		return route && { ...route, description: plainText(route.description) };
 	}
@@ -667,10 +670,20 @@ export class CatalogPublicService {
 			...products.map((slug) => `/product/${slug}`),
 			...collections.map((path) => `/collections/${path}`),
 		]);
-		return routes
-			.filter((route) => route.entityType === 'page' || live.has(route.path))
-			.map((route) => (/^\/(en|bn)$/.test(route.canonicalPath) ? `${route.canonicalPath}/` : route.canonicalPath))
-			.sort();
+		const shown = new Set(this.locales);
+		const prefix = (path: string) => /^\/([a-z]{2,3}(?:-[A-Z]{2})?)(?=\/|$)/.exec(path)?.[1] ?? null;
+		const listed = routes.filter(
+			(route) => (route.entityType === 'page' || live.has(route.path)) && shown.has(route.locale),
+		);
+		const paths = new Set(listed.map((route) => route.canonicalPath));
+		// A language switched on after the rows were written has its pages too: every live item has
+		// its text by then (Settings › Languages), so its address follows the English one.
+		for (const route of listed.filter((row) => row.locale === 'en' && prefix(row.canonicalPath) === 'en')) {
+			const rest = route.canonicalPath.slice('/en'.length);
+			for (const locale of this.locales) if (locale !== 'en') paths.add(`/${locale}${rest}`);
+		}
+		const own = (path: string) => (prefix(path) && path === `/${prefix(path)}` ? `${path}/` : path);
+		return [...new Set([...paths].map(own))].sort();
 	}
 
 	private async requireLive(slug: string): Promise<Product> {

@@ -26,6 +26,7 @@ import sharp from 'sharp';
 
 import { loadConfig } from '../src/config/app-config';
 import { MediaService } from '../src/media/media.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const MARKER = 'E2E review photo check';
 const config = loadConfig();
@@ -41,7 +42,7 @@ const media = new MediaService(
 	storage,
 	queue,
 	{ append: async () => undefined } as never,
-	config,
+	LanguageStore.fixed(config.locales),
 );
 const deps = { assets, storage, queue };
 const check = (ok: boolean, label: string) => console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`);

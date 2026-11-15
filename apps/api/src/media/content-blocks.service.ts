@@ -23,7 +23,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	CONTENT_BLOCK_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
@@ -43,7 +43,7 @@ export class ContentBlocksService {
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: MediaAssetRepository,
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	list(query: ContentBlockListQuery): Promise<ContentBlock[]> {
@@ -72,7 +72,7 @@ export class ContentBlocksService {
 			);
 		}
 		if (input.status === 'active') {
-			const missing = this.config.locales.filter((locale) => !input.alt[locale]?.trim());
+			const missing = this.languages.shop().filter((locale) => !input.alt[locale]?.trim());
 			if (missing.length > 0) {
 				throw mediaRefusal(
 					HttpStatus.UNPROCESSABLE_ENTITY,

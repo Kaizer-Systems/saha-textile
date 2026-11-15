@@ -25,18 +25,19 @@ import {
 	type SiteSettingsRepository,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	AUDIT_LOG_REPOSITORY,
 	CATEGORY_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	SEARCH_PORT,
 	SEARCH_TERM_REPOSITORY,
-	SITE_SETTINGS_REPOSITORY,
-} from '../infra/tokens';
+	SITE_SETTINGS_REPOSITORY, LANGUAGE_COVERAGE_REPOSITORY } from '../infra/tokens';
 import { CatalogPublicService } from './catalog-public.service';
 import { CatalogService } from './catalog.service';
 import { SearchVocabularyService } from './search-vocabulary.service';
+import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
+import { missingFilter } from '../languages/missing-filter';
 
 const PAGE = 200;
 
@@ -75,18 +76,20 @@ export class SearchTermsService {
 		@Inject(CATEGORY_REPOSITORY) private readonly categories: CategoryRepository,
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 		private readonly catalog: CatalogService,
 		private readonly cards: CatalogPublicService,
 		private readonly vocabulary: SearchVocabularyService,
 		@Optional() @Inject(SEARCH_PORT) private readonly search: SearchPort | null = null,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
 	) {}
 
 	// ── Search words ───────────────────────────────────────────────────────────
 
 	async list(query: AdminSearchTermListQuery): Promise<AdminSearchTermListResponse> {
 		return this.terms.list({
+			...(await missingFilter(this.coverage, 'search_words', query.missing)),
 			search: query.search,
 			status: query.status,
 			page: query.page,
@@ -113,7 +116,7 @@ export class SearchTermsService {
 			status: body.status,
 		});
 		if (term.status === 'live') {
-			const gaps = searchTermGaps(term, this.config.locales);
+			const gaps = searchTermGaps(term, this.languages.shop());
 			if (gaps.length) throw gapRefusal(gaps);
 		}
 		await this.terms.save(term);
@@ -136,7 +139,7 @@ export class SearchTermsService {
 		const refused: Array<{ id: string; gaps: GoLiveResult['gaps'] }> = [];
 		for (const term of found) {
 			if (term.status === status) continue;
-			const gaps = status === 'live' ? searchTermGaps(term, this.config.locales) : [];
+			const gaps = status === 'live' ? searchTermGaps(term, this.languages.shop()) : [];
 			if (gaps.length) {
 				refused.push({ id: term.id, gaps });
 				continue;

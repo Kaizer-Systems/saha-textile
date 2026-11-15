@@ -10,6 +10,7 @@ import { CatalogService } from '../src/catalog/catalog.service';
 import { SearchTermsService } from '../src/catalog/search-terms.service';
 import { SearchVocabularyService } from '../src/catalog/search-vocabulary.service';
 import { TaxonomyService } from '../src/catalog/taxonomy.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const tree = [
 	{ id: 'cat_sarees', name: { en: 'Sarees' }, ancestors: [] },
@@ -67,7 +68,7 @@ function setup(options: { audit?: boolean } = {}) {
 		categories as never,
 		products as never,
 		settings as never,
-		{ locales: ['en', 'bn'] } as never,
+		LanguageStore.fixed(['en', 'bn']),
 		catalog as never,
 		cards as never,
 		vocabulary,

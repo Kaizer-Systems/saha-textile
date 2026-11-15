@@ -29,6 +29,8 @@ import {
 	MongoBlogTagRepository,
 	MongoStoreLocationRepository,
 	MongoCommunicationSwitchRepository,
+	MongoLanguageCoverageRepository,
+	MongoLanguageRepository,
 	MongoWishlistRepository,
 	MongoMediaAssetRepository,
 	MongoMailboxRepository,
@@ -70,6 +72,7 @@ import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import type {
 	CommunicationSwitchRepository,
 	ConsentRepository,
+	LanguageRepository,
 	MessageOutboxRepository,
 	NotificationSettingsRepository,
 	NotificationTemplateRepository,
@@ -146,6 +149,8 @@ import {
 	BLOG_TAG_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
 	COMMUNICATION_SWITCH_REPOSITORY,
+	LANGUAGE_COVERAGE_REPOSITORY,
+	LANGUAGE_REPOSITORY,
 	MAILBOX_PORT,
 	MAILBOX_REPOSITORY,
 	MAILBOX_ACCESS_REPOSITORY,
@@ -163,6 +168,7 @@ import {
 } from './tokens';
 import { SaleAwareVariantRepository } from '../events/sale-aware-variant.repository';
 import { SalePriceBook } from '../events/sale-price-book';
+import { LanguageStore } from '../languages/language-store';
 
 @Global()
 @Module({
@@ -194,7 +200,7 @@ import { SalePriceBook } from '../events/sale-price-book';
 		{ provide: PRODUCT_BUNDLE_REPOSITORY, useClass: MongoProductBundleRepository },
 		{
 			provide: SEARCH_PORT,
-			useFactory: (products: MongoProductRepository, config: AppConfig) =>
+			useFactory: (products: MongoProductRepository, config: AppConfig, languages: LanguageStore) =>
 				new MeilisearchSearch(
 					config.search.host,
 					config.search.apiKey,
@@ -207,9 +213,9 @@ import { SalePriceBook } from '../events/sale-price-book';
 						return found;
 					},
 					config.search.index,
-					config.locales,
+					() => languages.content(),
 				),
-			inject: [PRODUCT_REPOSITORY, APP_CONFIG],
+			inject: [PRODUCT_REPOSITORY, APP_CONFIG, LanguageStore],
 		},
 		{
 			provide: LISTING_PORT,
@@ -305,6 +311,14 @@ import { SalePriceBook } from '../events/sale-price-book';
 		{ provide: STORE_LOCATION_REPOSITORY, useClass: MongoStoreLocationRepository },
 		// Settings › Communications (owner decision round 2026-11-13).
 		{ provide: COMMUNICATION_SWITCH_REPOSITORY, useClass: MongoCommunicationSwitchRepository },
+		// Settings › Languages (step 0d, 2026-11-15): the stored list, read once and kept in memory.
+		{ provide: LANGUAGE_REPOSITORY, useClass: MongoLanguageRepository },
+		{ provide: LANGUAGE_COVERAGE_REPOSITORY, useClass: MongoLanguageCoverageRepository },
+		{
+			provide: LanguageStore,
+			useFactory: (languages: LanguageRepository, config: AppConfig) => new LanguageStore(languages, config),
+			inject: [LANGUAGE_REPOSITORY, APP_CONFIG],
+		},
 		// Gmail mailboxes and Contact Us (owner log § stores, Contact Us and Gmail mailboxes).
 		{ provide: MAILBOX_REPOSITORY, useClass: MongoMailboxRepository },
 		{ provide: MAILBOX_ACCESS_REPOSITORY, useClass: MongoMailboxAccessRepository },
@@ -417,6 +431,9 @@ import { SalePriceBook } from '../events/sale-price-book';
 		BLOG_TAG_REPOSITORY,
 		STORE_LOCATION_REPOSITORY,
 		COMMUNICATION_SWITCH_REPOSITORY,
+		LANGUAGE_REPOSITORY,
+		LANGUAGE_COVERAGE_REPOSITORY,
+		LanguageStore,
 		MAILBOX_PORT,
 		MAILBOX_REPOSITORY,
 		MAILBOX_ACCESS_REPOSITORY,

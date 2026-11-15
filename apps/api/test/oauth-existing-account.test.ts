@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
 import { loadConfig } from '../src/config/app-config';
+import { LanguageStore } from '../src/languages/language-store';
 
 /**
  * A provider-proven address that already has an account is answered at the callback.
@@ -42,6 +43,7 @@ function harness(identity: { emailVerified: boolean; email: string | null }, own
 		oauth as never,
 		{} as never,
 		config,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	const request = { cookies: {}, ip: '127.0.0.1' } as never;
 	const reply = { setCookie: () => undefined } as never;

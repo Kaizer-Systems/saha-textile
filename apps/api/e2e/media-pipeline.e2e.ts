@@ -25,6 +25,7 @@ import sharp from 'sharp';
 
 import { loadConfig } from '../src/config/app-config';
 import { MediaService, type MediaUploader } from '../src/media/media.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const config = loadConfig();
 const { key, secret, bucket, region, endpoint, cdnUrl } = config.spaces;
@@ -38,7 +39,7 @@ const audit = {
 	list: async () => ({ items: [], total: 0, page: 1, pageSize: 1 }),
 	purgeOlderThan: async () => 0,
 };
-const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, audit as never, config);
+const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, audit as never, LanguageStore.fixed(config.locales));
 
 const check = (ok: boolean, label: string) => {
 	console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`);

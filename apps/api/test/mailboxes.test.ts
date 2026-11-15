@@ -15,6 +15,7 @@ import { ContactMessagesController } from '../src/mailboxes/contact-messages.con
 import { InboxService } from '../src/mailboxes/inbox.service';
 import { MailboxBookkeeping, MailboxSignInState, STATE_TTL_MS } from '../src/mailboxes/mailbox-support';
 import { MailboxesAdminService } from '../src/mailboxes/mailboxes-admin.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const KEY = Buffer.alloc(32, 9).toString('base64');
 const mailConfig = (overrides: Record<string, unknown> = {}) =>
@@ -716,6 +717,7 @@ describe('ContactMessagesService', () => {
 			w.tokens as never,
 			w.settings as never,
 			config,
+			LanguageStore.fixed(['en', 'bn']),
 		);
 	const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 

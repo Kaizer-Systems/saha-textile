@@ -10,6 +10,7 @@ import { cookieNames } from '../src/common/cookies';
 import { OAuthIdentityConflictError, OAuthStateInvalidError } from '../src/auth/oauth.service';
 import { SignupError } from '../src/auth/signup.service';
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
+import { LanguageStore } from '../src/languages/language-store';
 
 const principal = { userId: 'cus_1', sessionId: 's1' } as never;
 const session = { audience: 'storefront', expiresAt: 'e', absoluteExpiresAt: 'a', userId: 'cus_1' };
@@ -122,6 +123,7 @@ const harness = () => {
 		oauth as never,
 		transactions as never,
 		config as never,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	return { controller, auth, repo, sessions, carts, signup, oauth, transactions, record };
 };

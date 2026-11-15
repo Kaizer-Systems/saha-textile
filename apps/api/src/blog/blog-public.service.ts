@@ -23,7 +23,7 @@ import {
 	resolveImage,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	BLOG_CATEGORY_REPOSITORY,
 	BLOG_POST_REPOSITORY,
@@ -51,7 +51,7 @@ export class BlogPublicService {
 		@Inject(BLOG_TAG_REPOSITORY) private readonly tags: BlogTagRepository,
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: MediaAssetRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	async list(query: PublicBlogQuery): Promise<PublicBlogListResponse> {
@@ -133,7 +133,7 @@ export class BlogPublicService {
 		for (let page = 1; ; page += 1) {
 			const batch = await this.posts.list({ visibleAt: now, page, pageSize: 100 });
 			for (const post of batch.items) {
-				for (const locale of this.config.locales) paths.push(`/${locale}/blog/${post.slug}`);
+				for (const locale of this.languages.shop()) paths.push(`/${locale}/blog/${post.slug}`);
 			}
 			if (page * batch.pageSize >= batch.total) break;
 		}
@@ -188,6 +188,6 @@ export class BlogPublicService {
 	}
 
 	private locale(requested: string): string {
-		return this.config.locales.includes(requested) ? requested : FALLBACK;
+		return this.languages.shop().includes(requested) ? requested : FALLBACK;
 	}
 }

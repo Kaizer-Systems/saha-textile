@@ -92,6 +92,15 @@ vi.mock('@saha-textile/adapters-youtube', () => ({
 vi.mock('@saha-textile/adapters-db-mongo', () => {
 	const plain = class {};
 	return {
+		// Settings › Languages: the worker reads the stored list (none here, so ACTIVE_LOCALES stands in).
+		MongoLanguageRepository: class {
+			async seedIfEmpty() {
+				return false;
+			}
+			async list() {
+				return [];
+			}
+		},
 		MongoAuditLogRepository: plain,
 		MongoConsentRepository: plain,
 		MongoCommunicationSwitchRepository: plain,

@@ -56,6 +56,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { requestedLocale } from '../catalog/catalog-locale';
 import { englishNameOrNothing } from './english-name';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { TRANSACTION_MANAGER } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
 import { AuthService } from './auth.service';
@@ -101,6 +102,7 @@ export class StorefrontAuthController {
 		private readonly oauth: OAuthService,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	/**
@@ -455,7 +457,7 @@ export class StorefrontAuthController {
 					measurementProfiles: [],
 					guestCartId: consumed.guestCartId,
 					// The language of the page they signed up on (BN-13).
-					preferredLocale: requestedLocale(request.query, this.config.locales),
+					preferredLocale: requestedLocale(request.query, this.languages.shop()),
 				});
 
 				/**

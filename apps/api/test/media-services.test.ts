@@ -13,6 +13,7 @@ import {
 	StorefrontReviewsController,
 } from '../src/media/storefront-media.controller';
 import { YouTubeService } from '../src/media/youtube.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const derivative = (role: string, width = 100) => ({
 	role,
@@ -74,7 +75,7 @@ const mediaDeps = (found: unknown = asset()) => {
 		storage as never,
 		queue as never,
 		audit as never,
-		{ locales: ['en', 'bn'] } as never,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	return { service, assets, roles, storage, queue, audit };
 };
@@ -353,7 +354,7 @@ describe('ReviewsService', () => {
 			storage as never,
 			queue as never,
 			media as never,
-			{ locales: overrides.locales ?? ['en', 'bn'] } as never,
+			LanguageStore.fixed(overrides.locales ?? ['en', 'bn']),
 			overrides.transactional === false ? null : (transactions as never),
 		);
 		return { service, reviews, assets, products, customers, storage, media, transactions };
@@ -617,9 +618,7 @@ describe('ContentBlocksService', () => {
 			assets as never,
 			settings as never,
 			storage as never,
-			{
-				locales: ['en', 'bn'],
-			} as never,
+			LanguageStore.fixed(['en', 'bn']),
 		);
 		return { service, blocks, assets, settings };
 	};

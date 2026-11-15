@@ -1,6 +1,7 @@
 import {
 	MongoAttributeDefinitionRepository,
 	MongoCategoryRepository,
+	MongoLanguageRepository,
 	MongoProductRepository,
 	MongoProductVariantRepository,
 	MongoSearchOutboxRepository,
@@ -26,6 +27,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { loadConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { MeilisearchSearch, noProductsLoaded } from './meilisearch-search';
 import { SEARCH_INDEX_VERSION } from './search-index-version';
 
@@ -33,11 +35,18 @@ const PAGE_SIZE = 200;
 /** Replays start this much before the recorded moment, so a save on the boundary is not missed. */
 const REPLAY_MARGIN_MS = 60_000;
 
-/** The search index this code reads, from the API's own settings. */
-export function releaseSearch(): MeilisearchSearch {
-	const config = loadConfig();
-	const { host, apiKey, index } = config.search;
-	return new MeilisearchSearch(host, apiKey, noProductsLoaded, index, config.locales);
+/** Settings › Languages for a release script: read (and seeded on a first release) once Mongo is connected. */
+export function releaseLanguages(): LanguageStore {
+	return new LanguageStore(new MongoLanguageRepository(), loadConfig());
+}
+
+/**
+ * The search index this code reads, from the API's own settings. Its documents carry every added
+ * language; call `languages.refresh()` once Mongo is connected, or `ACTIVE_LOCALES` stands in.
+ */
+export function releaseSearch(languages: LanguageStore = releaseLanguages()): MeilisearchSearch {
+	const { host, apiKey, index } = loadConfig().search;
+	return new MeilisearchSearch(host, apiKey, noProductsLoaded, index, () => languages.content());
 }
 
 /** The admin's search words and "show first" categories, as every product save writes them. */

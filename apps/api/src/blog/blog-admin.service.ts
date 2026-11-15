@@ -33,7 +33,7 @@ import {
 	sanitizeArticleHtml,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	AUDIT_LOG_REPOSITORY,
 	BLOG_CATEGORY_REPOSITORY,
@@ -41,8 +41,9 @@ import {
 	BLOG_TAG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	SEO_REDIRECT_REPOSITORY,
-	STORAGE_PORT,
-} from '../infra/tokens';
+	STORAGE_PORT, LANGUAGE_COVERAGE_REPOSITORY } from '../infra/tokens';
+import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
+import { missingFilter } from '../languages/missing-filter';
 
 const PREVIEW_ROLES = ['blog'];
 
@@ -92,17 +93,19 @@ export class BlogAdminService {
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: MediaAssetRepository,
 		@Inject(SEO_REDIRECT_REPOSITORY) private readonly redirects: SeoRedirectRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
 	) {}
 
 	// ── Posts ──────────────────────────────────────────────────────────────────
 
 	async list(query: AdminBlogListQuery): Promise<AdminBlogListResponse> {
 		const page = await this.posts.list({
+			...(await missingFilter(this.coverage, 'blog_posts', query.missing)),
 			status: query.status,
 			search: query.search,
-			searchLocales: this.config.locales,
+			searchLocales: this.languages.shop(),
 			page: query.page,
 			pageSize: query.pageSize,
 		});
@@ -218,7 +221,7 @@ export class BlogAdminService {
 		]);
 		return blogGoLiveGaps({
 			post,
-			locales: this.config.locales,
+			locales: this.languages.shop(),
 			coverAlt: usable ? usable.text.alt : null,
 			coverReady:
 				!!usable &&
@@ -374,7 +377,7 @@ export class BlogAdminService {
 	): Promise<{ id: string; gaps: GoLiveResult['gaps'] }> {
 		const name = clean(body.name);
 		if (!name['en']) throw new BadRequestException('A name in English is required');
-		const gaps = body.status === 'live' ? blogTermGaps({ name }, this.config.locales) : [];
+		const gaps = body.status === 'live' ? blogTermGaps({ name }, this.languages.shop()) : [];
 		if (gaps.length) throw gapRefusal(gaps);
 		const repository = this.termRepository(kind);
 		const existing = id ? await repository.findById(id) : null;

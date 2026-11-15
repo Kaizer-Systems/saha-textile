@@ -7,6 +7,7 @@ import {
 	MongoCommunicationSwitchRepository,
 	MongoConsentRepository,
 	MongoCustomerRepository,
+	MongoLanguageRepository,
 	MongoMediaAssetRepository,
 	MongoMediaRoleRepository,
 	MongoMessageOutboxRepository,
@@ -38,6 +39,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import type { AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import { LogOnlyCdnPurgeAdapter } from '../infra/log-only-cdn-purge.adapter';
 import { buildNotificationPort } from '../infra/notification-factory';
 import { MeilisearchSearch, noProductsLoaded } from '../search/meilisearch-search';
@@ -91,12 +93,16 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		now,
 		brandLogo: () => brandStripLogo({ settings, assets, storage }),
 	};
+	// The worker reads Settings › Languages too: search documents carry every added language.
+	const languages = new LanguageStore(new MongoLanguageRepository(), config);
+	await languages.refresh().catch((error: unknown) => logger.warn(`Languages from ACTIVE_LOCALES: ${String(error)}`));
+	languages.start();
 	const search = new MeilisearchSearch(
 		config.search.host,
 		config.search.apiKey,
 		noProductsLoaded,
 		config.search.index,
-		config.locales,
+		() => languages.content(),
 	);
 
 	const handlers: MediaJobHandlers = {
@@ -214,6 +220,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 
 	return {
 		async close() {
+			languages.onModuleDestroy();
 			await worker.close();
 			await queue.close();
 		},

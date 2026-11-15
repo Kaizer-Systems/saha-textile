@@ -7,8 +7,9 @@ import { AdminBlogController } from '../src/blog/admin-blog.controller';
 import { BlogAdminService } from '../src/blog/blog-admin.service';
 import { BlogPublicController } from '../src/blog/blog-public.controller';
 import { BlogPublicService } from '../src/blog/blog-public.service';
+import { LanguageStore } from '../src/languages/language-store';
 
-const config = { locales: ['en', 'bn'] } as never;
+const config = LanguageStore.fixed(['en', 'bn']);
 
 const asset = (overrides: Partial<MediaAsset> = {}): MediaAsset =>
 	({

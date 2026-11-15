@@ -33,7 +33,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LanguageStore } from '../languages/language-store';
 import {
 	AUDIT_LOG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
@@ -71,7 +71,7 @@ export class MediaService implements OnApplicationBootstrap {
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 	) {}
 
 	/**
@@ -374,6 +374,6 @@ export class MediaService implements OnApplicationBootstrap {
 
 	/** For tests and health: the active locale list. */
 	get activeLocales(): string[] {
-		return this.config.locales;
+		return this.languages.shop();
 	}
 }

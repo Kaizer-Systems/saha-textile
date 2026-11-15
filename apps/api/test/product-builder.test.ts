@@ -7,6 +7,7 @@ import { AdminTaxonomyController } from '../src/catalog/admin-taxonomy.controlle
 import { applyProductContent, syncVariantRows } from '../src/catalog/product-content';
 import { ProductBuilderService } from '../src/catalog/product-builder.service';
 import { TaxonomyService } from '../src/catalog/taxonomy.service';
+import { LanguageStore } from '../src/languages/language-store';
 
 const both = { en: 'Text', bn: 'Texte' };
 const product = (over: Record<string, unknown> = {}) =>
@@ -153,7 +154,7 @@ describe('ProductBuilderService', () => {
 			catalog as never,
 			products as never,
 			variants as never,
-			{ locales: ['en', 'bn'] } as never,
+			LanguageStore.fixed(['en', 'bn']),
 			options.media === false ? null : (media as never),
 			options.bundles === false ? null : (bundles as never),
 		);

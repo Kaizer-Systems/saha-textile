@@ -69,8 +69,9 @@ import {
 	SEO_REDIRECT_REPOSITORY,
 	STOCK_ALERT_REPOSITORY,
 	STORAGE_PORT,
-	TRANSACTION_MANAGER,
-} from '../infra/tokens';
+	TRANSACTION_MANAGER, LANGUAGE_COVERAGE_REPOSITORY } from '../infra/tokens';
+import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
+import { missingFilter } from '../languages/missing-filter';
 
 const RELATION_TYPES = ['related', 'upsell', 'cross_sell'] as const;
 
@@ -106,6 +107,7 @@ export class CatalogService {
 		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
 		@Optional() @Inject(MEDIA_JOB_QUEUE) private readonly mediaJobs: MediaJobQueuePort | null = null,
 		@Optional() @Inject(SEARCH_OUTBOX) private readonly searchOutbox: SearchOutboxRepository | null = null,
+		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
 	) {}
 
 	/** A product's own FAQ questions, any status, in display order (the form and Go Live). */
@@ -269,6 +271,7 @@ export class CatalogService {
 			status: query.status,
 			page: query.page,
 			pageSize: query.pageSize,
+			...(await missingFilter(this.coverage, 'products', query.missing)),
 		});
 		const rows = await Promise.all(
 			page.items.map(async (product) => ({

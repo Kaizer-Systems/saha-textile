@@ -7,8 +7,9 @@ import { AdminStoreLocationsController } from '../src/stores/admin-store-locatio
 import { StoreLocationsAdminService } from '../src/stores/store-locations-admin.service';
 import { StoreLocationsPublicController } from '../src/stores/store-locations-public.controller';
 import { StoreLocationsPublicService } from '../src/stores/store-locations-public.service';
+import { LanguageStore } from '../src/languages/language-store';
 
-const config = { locales: ['en', 'bn'] } as never;
+const config = LanguageStore.fixed(['en', 'bn']);
 const open = WEEKDAYS.map((day) => ({ day, open: day !== 'sun', opens: '10:00', closes: '20:30' }));
 const closed = WEEKDAYS.map((day) => ({ day, open: false }));
 

@@ -6,6 +6,7 @@ import { SignupService } from '../src/auth/signup.service';
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
 import { cookieNames } from '../src/common/cookies';
 import { loadConfig } from '../src/config/app-config';
+import { LanguageStore } from '../src/languages/language-store';
 
 /**
  * Reading back, and throwing away, the signup a browser has in flight.
@@ -85,6 +86,7 @@ function harness(stored: PendingSignup | null): Harness {
 		{} as never,
 		{} as never,
 		config,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	return result;
 }

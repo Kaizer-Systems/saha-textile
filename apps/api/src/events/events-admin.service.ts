@@ -21,11 +21,13 @@ import {
 	shopEventSaveProblems,
 } from '@saha-textile/core-domain';
 
-import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { AUDIT_LOG_REPOSITORY, SHOP_EVENT_REPOSITORY } from '../infra/tokens';
+import { LanguageStore } from '../languages/language-store';
+import { AUDIT_LOG_REPOSITORY, SHOP_EVENT_REPOSITORY, LANGUAGE_COVERAGE_REPOSITORY } from '../infra/tokens';
 import { EventCatalog } from './event-catalog';
 import { EventClock } from './event-clock';
 import { EventMessenger } from './event-messenger';
+import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
+import { missingFilter } from '../languages/missing-filter';
 
 /** How long an admin's popup preview link works. */
 const PREVIEW_MINUTES = 30;
@@ -57,15 +59,17 @@ const refusal = (problems: readonly ShopEventProblem[]): BadRequestException =>
 export class EventsAdminService {
 	constructor(
 		@Inject(SHOP_EVENT_REPOSITORY) private readonly events: ShopEventRepository,
-		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly languages: LanguageStore,
 		private readonly catalog: EventCatalog,
 		private readonly clock: EventClock,
 		private readonly messenger: EventMessenger,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
 	) {}
 
 	async list(query: AdminShopEventListQuery): Promise<AdminShopEventListResponse> {
-		return this.events.list(query);
+		const { missing, ...filter } = query;
+		return this.events.list({ ...filter, ...(await missingFilter(this.coverage, 'events', missing)) });
 	}
 
 	async detail(id: string): Promise<ShopEvent> {
@@ -166,7 +170,7 @@ export class EventsAdminService {
 
 	private async publishProblems(event: ShopEvent): Promise<ShopEventProblem[]> {
 		const problems = [
-			...shopEventPublishProblems(event, this.config.locales, new Date()),
+			...shopEventPublishProblems(event, this.languages.shop(), new Date()),
 			...(await this.catalog.unknownItems(event)),
 		];
 		if (event.type === 'launch') {

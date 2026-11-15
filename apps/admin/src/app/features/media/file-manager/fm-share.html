@@ -291,6 +291,7 @@
 					<th>{{ 'fm_share_who_short' | transloco }}</th>
 					<th>{{ 'fm_share_stops' | transloco }}</th>
 					<th>{{ 'fm_share_opened' | transloco }}</th>
+					<th>{{ 'fm_share_made_by' | transloco }}</th>
 					<th></th>
 				</tr>
 			</thead>
@@ -353,6 +354,7 @@
 						<small class="d-block text-muted">{{ link.lastOpenedAt | date: 'd MMM, HH:mm' }}</small>
 						}
 					</td>
+					<td>{{ link.createdByName ?? '—' }}</td>
 					<td>
 						@if (link.state === 'active') {
 						<ul id="actions">
@@ -403,3 +405,39 @@
 		</button>
 	</div>
 </div>
+
+<ng-template
+	#fmStopAsk
+	let-ask
+>
+	<div
+		class="modal-body"
+		id="fm_stop_ask"
+	>
+		<i class="ri-forbid-line icon-box wo-bg"></i>
+		<h5
+			class="modal-title"
+			id="fm_stop_title"
+		>
+			{{ 'fm_share_stop_title' | transloco }}
+		</h5>
+		<p>{{ 'fm_share_stop_body' | transloco }}</p>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="ask.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-danger"
+				id="fm_stop_yes"
+				(click)="ask.close('yes')"
+			>
+				{{ 'fm_share_stop' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

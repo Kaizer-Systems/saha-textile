@@ -57,7 +57,17 @@ const limits = {
 	checkRateLimit: async () => ({ allowed: true }),
 	recordRateLimitFailure: async () => undefined,
 };
-const sharing = new MediaSharingService(links, assets, storage, new Argon2JwtAuth(config), audit, limits as never);
+// Link makers are named from the admin users; this script's actor is not one.
+const admins = { findById: async () => null };
+const sharing = new MediaSharingService(
+	links,
+	assets,
+	storage,
+	new Argon2JwtAuth(config),
+	audit,
+	limits as never,
+	admins,
+);
 const actor = 'adm_e2e_sharing';
 const ip = '127.0.0.1';
 

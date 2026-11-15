@@ -12,6 +12,7 @@ import type {
 	ShareOpenAnswer,
 } from '@saha-textile/contracts';
 import {
+	type AdminUserRepository,
 	type AuditLogRepository,
 	type AuthPort,
 	type MediaAssetRepository,
@@ -27,6 +28,7 @@ import {
 
 import { AuthService } from '../auth/auth.service';
 import {
+	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	AUTH_PORT,
 	MEDIA_ASSET_REPOSITORY,
@@ -78,6 +80,7 @@ export class MediaSharingService {
 		@Inject(AUTH_PORT) private readonly passwords: Pick<AuthPort, 'hashPassword' | 'verifyPassword'>,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
 		private readonly limits: AuthService,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 	) {}
 
 	/** The share popup (A35): the file's links, and its permanent address when it is public. */
@@ -85,11 +88,16 @@ export class MediaSharingService {
 		const asset = await this.requireAsset(assetId);
 		const links = await this.links.listForAsset(assetId);
 		const picture = asset.kind === 'image' ? websitePicture(asset) : null;
+		const names = new Map<string, string | null>();
+		for (const id of new Set(links.map((link) => link.createdBy))) {
+			const admin = await this.admins.findById(id);
+			names.set(id, admin ? (admin.displayName ?? admin.username ?? admin.email ?? null) : null);
+		}
 		return {
 			visibility: asset.visibility,
 			publicUrl: picture ? this.storage.getUrl(picture.storageKey) : this.publicUrl(asset),
 			publicPicture: picture ? { role: picture.role, width: picture.width } : null,
-			links: links.map((link) => this.view(link, now)),
+			links: links.map((link) => ({ ...this.view(link, now), createdByName: names.get(link.createdBy) ?? null })),
 		};
 	}
 
@@ -207,7 +215,7 @@ export class MediaSharingService {
 
 	private view(link: ShareLink, now: Date): ShareLinkView {
 		const { codeHash: _codeHash, passwordHash, ...rest } = link;
-		return { ...rest, hasPassword: !!passwordHash, state: shareLinkState(link, now) };
+		return { ...rest, hasPassword: !!passwordHash, state: shareLinkState(link, now), createdByName: null };
 	}
 
 	private publicUrl(asset: MediaAsset): string | null {

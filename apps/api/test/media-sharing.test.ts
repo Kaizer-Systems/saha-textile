@@ -57,6 +57,10 @@ function harness() {
 		passwords as never,
 		auditRepo as never,
 		limits as never,
+		{
+			findById: async (id: string) =>
+				id === 'adm_1' ? { id, displayName: 'Moulik', username: null, email: null } : null,
+		} as never,
 	);
 	const file = (id: string, overrides: Record<string, unknown> = {}) =>
 		files.set(
@@ -125,7 +129,12 @@ describe('making links', () => {
 		expect(stored.passwordHash).toBe('argon:saree-2027');
 		expect(stored.expiresAt).toBe(later(7 * 86_400_000).toISOString());
 		const listed = await h.service.list('med_pdf', NOW);
-		expect(listed.links[0]).toMatchObject({ id: made.id, hasPassword: true, state: 'active' });
+		expect(listed.links[0]).toMatchObject({
+			id: made.id,
+			hasPassword: true,
+			state: 'active',
+			createdByName: 'Moulik',
+		});
 		expect(listed.links[0]).not.toHaveProperty('code');
 		expect(listed.links[0]).not.toHaveProperty('codeHash');
 		expect(listed.links[0]).not.toHaveProperty('passwordHash');

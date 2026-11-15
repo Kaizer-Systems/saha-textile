@@ -1,8 +1,8 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, type TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
@@ -40,6 +40,8 @@ export const shareAddress = (code: string): string => `${runtimeConfig.siteUrl.r
 })
 export class FmShare {
 	readonly modal = inject(NgbActiveModal);
+	private readonly modals = inject(NgbModal);
+	readonly stopTemplate = viewChild<TemplateRef<unknown>>('fmStopAsk');
 	private readonly gateway = inject(MediaLibraryGateway);
 	private readonly queries = inject(QueryClient);
 	private readonly transloco = inject(TranslocoService);
@@ -130,8 +132,22 @@ export class FmShare {
 		});
 	}
 
-	/** Stopping is for good: a stopped link never opens again. */
+	/** Stopping is for good: a stopped link never opens again, so it asks first. */
 	async stop(id: string): Promise<void> {
+		const template = this.stopTemplate();
+		if (template) {
+			const yes = await this.modals
+				.open(template, {
+					centered: true,
+					windowClass: 'theme-modal text-center',
+					ariaLabelledBy: 'fm_stop_title',
+				})
+				.result.then(
+					() => true,
+					() => false,
+				);
+			if (!yes) return;
+		}
 		await this.work(async () => {
 			await lastValueFrom(this.gateway.updateLink(id, { stop: true }));
 			await this.load();

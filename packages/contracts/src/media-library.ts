@@ -305,6 +305,8 @@ export const ShareLinkView = ShareLink.omit({ codeHash: true, passwordHash: true
 	state: z.enum(['active', 'expired', 'stopped']),
 	/** The code, only in the answer to creating it; the admin shows it as `<shop>/s/<code>`. */
 	code: z.string().optional(),
+	/** Who made it, as the admin is named (A35 “Made by”); null when that admin is gone. */
+	createdByName: z.string().nullable().default(null),
 });
 export type ShareLinkView = z.infer<typeof ShareLinkView>;
 

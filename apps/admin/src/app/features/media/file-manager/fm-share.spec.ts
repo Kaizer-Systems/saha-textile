@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -31,7 +31,10 @@ const link = (state: string, extra: object = {}) => ({
 	...extra,
 });
 
-const setup = (answer: object) => {
+const setup = (answer: object, stopAnswer: 'yes' | 'no' = 'yes') => {
+	const modals = {
+		open: vi.fn(() => ({ result: stopAnswer === 'yes' ? Promise.resolve('yes') : Promise.reject('cancel') })),
+	};
 	const gateway = {
 		links: vi.fn(() => of(answer)),
 		createLink: vi.fn(() => of(link('active', { code: 'AbCdEfGhIjKlMnOpQrT3vX' }))),
@@ -44,13 +47,14 @@ const setup = (answer: object) => {
 		providers: [
 			{ provide: MediaLibraryGateway, useValue: gateway },
 			{ provide: NgbActiveModal, useValue: { close: vi.fn(), dismiss: vi.fn() } },
+			{ provide: NgbModal, useValue: modals },
 			{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
 			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
 		],
 	});
-	TestBed.overrideComponent(FmShare, { set: { imports: [], template: '' } });
+	TestBed.overrideComponent(FmShare, { set: { imports: [], template: '<ng-template #fmStopAsk></ng-template>' } });
 	TestBed.overrideComponent(FmStorageDetails, { set: { imports: [], template: '' } });
-	return { gateway };
+	return { gateway, modals };
 };
 
 describe('Share (A35–A35D)', () => {
@@ -92,6 +96,18 @@ describe('Share (A35–A35D)', () => {
 			who: 'admins',
 			expiresAt: new Date('2026-12-31T23:59:59').toISOString(),
 		});
+	});
+
+	it('asks before stopping a link, and a no keeps it', async () => {
+		const { gateway, modals } = setup(
+			{ visibility: 'private', publicUrl: null, publicPicture: null, links: [link('active')] },
+			'no',
+		);
+		const share = TestBed.createComponent(FmShare).componentInstance;
+		await share.start(pdf);
+		await share.stop('lnk_active');
+		expect(modals.open).toHaveBeenCalledTimes(1);
+		expect(gateway.updateLink).not.toHaveBeenCalled();
 	});
 
 	it('gives a live link a new end, stops one, and names a refusal', async () => {

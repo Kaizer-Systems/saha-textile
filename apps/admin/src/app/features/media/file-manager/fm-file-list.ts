@@ -34,6 +34,13 @@ export class FmFileList {
 	/** Trash lists folders as rows too, above the files (A18). */
 	readonly folders = input<readonly MediaFolderRow[]>([]);
 
+	/** Ticked files (A27); the page keeps the set. */
+	readonly selected = input<ReadonlySet<string>>(new Set());
+	readonly toggleSelect = output<string>();
+	readonly toggleAll = output<boolean>();
+	/** A row's star (A17): this admin's favourite. */
+	readonly star = output<MediaFileRow>();
+
 	/** Trash's row actions (A18): put an item back, or delete it for good. */
 	readonly restore = output<TrashItem>();
 	readonly deleteForever = output<TrashItem>();
@@ -47,6 +54,10 @@ export class FmFileList {
 
 	folderItem(folder: MediaFolderRow): TrashItem {
 		return { type: 'folder', id: folder.id, name: folder.name, folderId: folder.parentId };
+	}
+
+	allSelected(): boolean {
+		return this.files().length > 0 && this.files().every((file) => this.selected().has(file.id));
 	}
 
 	pending(file: MediaFileRow): boolean {

@@ -6,6 +6,20 @@
 	>
 		<thead>
 			<tr>
+				@if (!trash()) {
+				<th class="sm-width">
+					<div class="custom-control custom-checkbox">
+						<input
+							type="checkbox"
+							class="custom-control-input checkbox_animated"
+							id="fm_select_all"
+							[attr.aria-label]="'fm_select_all' | transloco"
+							[checked]="allSelected()"
+							(change)="toggleAll.emit(!allSelected())"
+						/>
+					</div>
+				</th>
+				}
 				<th class="fm-namecol">{{ 'name' | transloco }}</th>
 				@if (showLocation() || trash()) {
 				<th>{{ (trash() ? 'fm_deleted_from' : 'fm_location') | transloco }}</th>
@@ -18,6 +32,7 @@
 				<th>{{ 'status' | transloco }}</th>
 				<th>{{ 'fm_used_on' | transloco }}</th>
 				<th>{{ 'fm_modified' | transloco }}</th>
+				<th></th>
 				}
 			</tr>
 		</thead>
@@ -71,8 +86,22 @@
 			} @for (file of files(); track file.id) {
 			<tr
 				[class.is-pending]="pending(file)"
+				[class.is-selected]="selected().has(file.id)"
 				[attr.data-file]="file.id"
 			>
+				@if (!trash()) {
+				<td class="sm-width">
+					<div class="custom-control custom-checkbox">
+						<input
+							type="checkbox"
+							class="custom-control-input checkbox_animated"
+							[attr.aria-label]="file.name"
+							[checked]="selected().has(file.id)"
+							(change)="toggleSelect.emit(file.id)"
+						/>
+					</div>
+				</td>
+				}
 				<td class="fm-namecol">
 					<div class="fm-file">
 						@if (file.thumbnailUrl) {
@@ -163,6 +192,20 @@
 					}
 				</td>
 				<td class="fm-when">{{ file.createdAt | date: 'd MMM y' }}</td>
+				<td>
+					<ul id="actions">
+						<li>
+							<a
+								href="javascript:void(0)"
+								class="fm-star"
+								[title]="(file.starred ? 'fm_unstar' : 'fm_star') | transloco"
+								(click)="star.emit(file)"
+							>
+								<i [class]="file.starred ? 'ri-star-fill' : 'ri-star-line'"></i>
+							</a>
+						</li>
+					</ul>
+				</td>
 				}
 			</tr>
 			}
@@ -178,9 +221,13 @@
 	<div
 		class="fm-tile"
 		[class.is-pending]="pending(file)"
+		[class.is-selected]="selected().has(file.id)"
 		[attr.data-file]="file.id"
 	>
-		<div class="fm-thumb">
+		<div
+			class="fm-thumb"
+			(click)="toggleSelect.emit(file.id)"
+		>
 			@if (file.thumbnailUrl) {
 			<img
 				[src]="file.thumbnailUrl"
@@ -196,6 +243,11 @@
 			} @if (file.starred) {
 			<i class="ri-star-fill fm-tstar"></i>
 			}
+			<span class="fm-check">
+				@if (selected().has(file.id)) {
+				<i class="ri-check-line"></i>
+				}
+			</span>
 			<span class="fm-ttype">{{ typeLabel(file) }}</span>
 		</div>
 		<div class="fm-cap">

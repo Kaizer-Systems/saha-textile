@@ -11,6 +11,7 @@ import { type Observable, lastValueFrom } from 'rxjs';
 import {
 	type MediaBrowseQuery,
 	type MediaCategory,
+	type MediaFileRow,
 	MediaLibraryGateway,
 	type MediaOperationResult,
 } from '@core/media-library/media-library.gateway';
@@ -166,6 +167,7 @@ export class FileManager {
 	}
 
 	go(changes: Record<string, string | null>): void {
+		this.selected.set(new Set());
 		void this.router.navigate([], { relativeTo: this.route, queryParams: changes, queryParamsHandling: 'merge' });
 	}
 
@@ -196,6 +198,66 @@ export class FileManager {
 
 	setWho(who: 'mine' | 'everyone'): void {
 		this.go({ who: who === 'everyone' ? 'everyone' : null });
+	}
+
+	// --- Selection, stars, New folder (A17, A23, A27) ----------------------------------------------
+
+	readonly selected = signal<ReadonlySet<string>>(new Set());
+	readonly newFolderTemplate = viewChild<TemplateRef<unknown>>('fmNewFolder');
+	readonly newFolderName = signal('');
+	readonly newFolderError = signal<string | null>(null);
+	readonly creating = signal(false);
+	/** Where a new folder goes: the folder shown, or My files. */
+	readonly newFolderPlace = computed(() => {
+		const steps = this.result()?.breadcrumb ?? [];
+		return [this.transloco.translate('fm_my_files'), ...steps.map((step) => step.name)].join(' › ');
+	});
+
+	toggleSelect(id: string): void {
+		const next = new Set(this.selected());
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		this.selected.set(next);
+	}
+
+	toggleAll(on: boolean): void {
+		this.selected.set(on ? new Set((this.result()?.files ?? []).map((file) => file.id)) : new Set());
+	}
+
+	async star(file: MediaFileRow): Promise<void> {
+		await this.run(
+			this.gateway.star({ targetType: 'file', targetId: file.id, starred: !file.starred }),
+			file.starred ? 'fm_unstarred' : 'fm_starred',
+		);
+	}
+
+	openNewFolder(): void {
+		const template = this.newFolderTemplate();
+		if (!template) return;
+		this.newFolderName.set('');
+		this.newFolderError.set(null);
+		this.modals.open(template, {
+			centered: true,
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'fm_new_folder_title',
+		});
+	}
+
+	/** Creates the folder where the page is; a taken name becomes “(1)” on the server (A23). */
+	async createFolder(close: () => void): Promise<void> {
+		const name = this.newFolderName().trim();
+		if (!name || this.creating()) return;
+		this.creating.set(true);
+		try {
+			await lastValueFrom(this.gateway.createFolder({ name, parentId: this.folderId() ?? null }));
+			close();
+			this.notifications.showSuccess(this.transloco.translate('fm_folder_created'));
+			void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+		} catch (error) {
+			this.newFolderError.set(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		} finally {
+			this.creating.set(false);
+		}
 	}
 
 	// --- Filters (A11, A12) ---------------------------------------------------------------------
@@ -296,7 +358,7 @@ export class FileManager {
 			);
 	}
 
-	private async run(work: Observable<MediaOperationResult>, done: string): Promise<void> {
+	private async run(work: Observable<MediaOperationResult | { starred: boolean }>, done: string): Promise<void> {
 		try {
 			await lastValueFrom(work);
 			this.notifications.showSuccess(this.transloco.translate(done));

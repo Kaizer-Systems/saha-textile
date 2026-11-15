@@ -1903,5 +1903,16 @@
 	"fm_cat_documents": "Documents",
 	"fm_cat_archives": "Archives",
 	"fm_cat_backups": "Backups",
-	"fm_cat_other": "Other"
+	"fm_cat_other": "Other",
+	"fm_select_all": "Select all",
+	"fm_star": "Add to favourites",
+	"fm_unstar": "Remove from favourites",
+	"fm_starred": "Added to favourites",
+	"fm_unstarred": "Removed from favourites",
+	"fm_new_folder": "New folder",
+	"fm_inside": "Inside",
+	"fm_folder_name": "Folder name",
+	"fm_folder_name_help": "Folder names are for you only. They never change any address on the website.",
+	"fm_create_folder": "Create folder",
+	"fm_folder_created": "Folder created"
 }

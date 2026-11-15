@@ -354,6 +354,19 @@
 						} }
 					</ol>
 				</nav>
+				@if (nav() === 'folder' && !search() && !category() && !filterCount()) {
+				<div class="fm-crumb-actions">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+						id="fm_new_folder"
+						(click)="openNewFolder()"
+					>
+						<i class="ri-folder-add-line"></i>
+						{{ 'fm_new_folder' | transloco }}
+					</button>
+				</div>
+				}
 			</div>
 
 			@if (nav() === 'trash' && !empty() && result()) {
@@ -435,6 +448,10 @@
 				[display]="nav() === 'trash' ? 'list' : display()"
 				[trash]="nav() === 'trash'"
 				[showLocation]="showLocation()"
+				[selected]="selected()"
+				(toggleSelect)="toggleSelect($event)"
+				(toggleAll)="toggleAll($event)"
+				(star)="star($event)"
 				(restore)="restoreItem($event)"
 				(deleteForever)="deleteItem($event)"
 			/>
@@ -543,6 +560,71 @@
 			>
 				{{ (ask()?.kind === 'restore' ? 'restore' : 'fm_delete_forever') | transloco }}
 			</app-button>
+		</div>
+	</div>
+</ng-template>
+
+<ng-template
+	#fmNewFolder
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="fm_new_folder_title">{{ 'fm_new_folder' | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<p class="text-muted mb-3">
+			{{ 'fm_inside' | transloco }}
+			<strong>{{ newFolderPlace() }}</strong>
+		</p>
+		<div class="theme-form">
+			<label
+				class="form-label-title mb-2"
+				for="fm_new_folder_name"
+			>
+				{{ 'fm_folder_name' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="fm_new_folder_name"
+				maxlength="120"
+				[value]="newFolderName()"
+				[class.is-invalid]="!!newFolderError()"
+				(input)="newFolderName.set($any($event.target).value); newFolderError.set(null)"
+				(keydown.enter)="createFolder(modal.close)"
+			/>
+			@if (newFolderError(); as error) {
+			<div class="invalid-feedback d-block">{{ error }}</div>
+			}
+			<p class="help-text mt-2">{{ 'fm_folder_name_help' | transloco }}</p>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="fm_create_folder"
+				[disabled]="!newFolderName().trim() || creating()"
+				(click)="createFolder(modal.close)"
+			>
+				{{ 'fm_create_folder' | transloco }}
+			</button>
 		</div>
 	</div>
 </ng-template>

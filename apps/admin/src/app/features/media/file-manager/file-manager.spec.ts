@@ -308,3 +308,86 @@ describe('Trash on the Media page (A18, A19)', () => {
 		expect(notifications.showError).toHaveBeenCalledWith('fm_action_failed');
 	});
 });
+
+describe('selection, stars and New folder (A17, A23, A27)', () => {
+	const setup = (createFails = false) => {
+		const gateway = {
+			browse: vi.fn(() =>
+				of({
+					folder: null,
+					breadcrumb: [{ id: 'fld_b', name: 'Banarasi' }],
+					folders: [],
+					files: [{ id: 'med_1' }, { id: 'med_2' }],
+					total: 2,
+					page: 1,
+					pageSize: 200,
+				}),
+			),
+			tree: vi.fn(() => of({ folders: [] })),
+			storage: vi.fn(() => of(null)),
+			star: vi.fn(() => of({ starred: true })),
+			createFolder: vi.fn(() => (createFails ? throwError(() => new Error('taken')) : of({ id: 'fld_new' }))),
+		};
+		const modals = { open: vi.fn() };
+		const params = new BehaviorSubject(convertToParamMap({ folder: 'fld_b' }));
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				provideTanStackQuery(new QueryClient()),
+				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
+				{ provide: Router, useValue: { navigate: vi.fn() } },
+				{
+					provide: ActivatedRoute,
+					useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
+				},
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+			],
+		});
+		TestBed.overrideComponent(FileManager, {
+			set: { imports: [], template: '<ng-template #fmNewFolder></ng-template>' },
+		});
+		const fixture = TestBed.createComponent(FileManager);
+		fixture.detectChanges();
+		return { page: fixture.componentInstance, gateway, modals };
+	};
+
+	it('ticks files one by one or all at once, and forgets the ticks when the view changes', async () => {
+		const { page } = setup();
+		for (let i = 0; i < 20 && !page.result(); i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
+		page.toggleSelect('med_1');
+		expect([...page.selected()]).toEqual(['med_1']);
+		page.toggleAll(true);
+		expect([...page.selected()].sort()).toEqual(['med_1', 'med_2']);
+		page.toggleSelect('med_1');
+		expect([...page.selected()]).toEqual(['med_2']);
+		page.openNav('recent');
+		expect(page.selected().size).toBe(0);
+	});
+
+	it('stars and unstars a file for this admin', async () => {
+		const { page, gateway } = setup();
+		await page.star({ id: 'med_1', starred: false } as never);
+		expect(gateway.star).toHaveBeenCalledWith({ targetType: 'file', targetId: 'med_1', starred: true });
+	});
+
+	it('creates a folder where the page is, and keeps the popup open with the reason when refused', async () => {
+		const { page, gateway, modals } = setup();
+		page.openNewFolder();
+		expect(modals.open).toHaveBeenCalled();
+		const close = vi.fn();
+		await page.createFolder(close);
+		expect(gateway.createFolder).not.toHaveBeenCalled();
+		page.newFolderName.set('  Bridal 2027 ');
+		await page.createFolder(close);
+		expect(gateway.createFolder).toHaveBeenCalledWith({ name: 'Bridal 2027', parentId: 'fld_b' });
+		expect(close).toHaveBeenCalled();
+		const refused = setup(true);
+		refused.page.newFolderName.set('Bridal 2027');
+		const stay = vi.fn();
+		await refused.page.createFolder(stay);
+		expect(stay).not.toHaveBeenCalled();
+		expect(refused.page.newFolderError()).toBe('fm_action_failed');
+	});
+});

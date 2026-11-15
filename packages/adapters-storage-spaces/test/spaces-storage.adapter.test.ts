@@ -249,5 +249,19 @@ describe('visibility and server-side operations', () => {
 		const url = await adapter.createSignedDownloadUrl({ key: 'media/a/review.webp', expiresInSeconds: 600 });
 		expect(url).toContain('sgp1.digitaloceanspaces.com');
 		expect(url).toContain('X-Amz-Expires=600');
+		expect(url).not.toContain('response-content-disposition');
+	});
+
+	it('names a shared file in the download, in any script, with nothing that breaks the header', async () => {
+		const adapter = new SpacesStorageAdapter(baseConfig);
+		const url = await adapter.createSignedDownloadUrl({
+			key: 'media/a/original.pdf',
+			expiresInSeconds: 300,
+			fileName: 'শাড়ির "তালিকা"\r\n (2026).pdf',
+		});
+		const disposition = new URL(url).searchParams.get('response-content-disposition');
+		expect(disposition).toBe(
+			`inline; filename="______ ______ (2026).pdf"; filename*=UTF-8''${encodeURIComponent('শাড়ির তালিকা (2026).pdf').replace(/[()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`,
+		);
 	});
 });

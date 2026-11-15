@@ -163,13 +163,24 @@ export class SpacesStorageAdapter implements StoragePort {
 	 * A short-lived GET for a private object. Signed against the ORIGIN, never the CDN: a
 	 * private object must not be cached at an edge, and the CDN cannot verify a signature.
 	 */
-	async createSignedDownloadUrl(input: { key: string; expiresInSeconds: number }): Promise<string> {
+	async createSignedDownloadUrl(input: {
+		key: string;
+		expiresInSeconds: number;
+		fileName?: string;
+	}): Promise<string> {
 		assertValidStorageKey(input.key);
 		this.assertExpiry(input.expiresInSeconds);
 		try {
-			return await getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: input.key }), {
-				expiresIn: input.expiresInSeconds,
-			});
+			return await getSignedUrl(
+				this.client,
+				new GetObjectCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					// Opens in the browser where it can (a PDF, a picture) and saves under its own name.
+					...(input.fileName ? { ResponseContentDisposition: contentDisposition(input.fileName) } : {}),
+				}),
+				{ expiresIn: input.expiresInSeconds },
+			);
 		} catch (err) {
 			throw new SpacesStorageError(`Failed to presign download for "${input.key}"`, err);
 		}
@@ -242,4 +253,17 @@ function resolvePublicBaseUrl(config: SpacesStorageConfig): string {
 	}
 	const endpoint = new URL(config.endpoint);
 	return `${endpoint.protocol}//${config.bucket}.${endpoint.host}`;
+}
+
+/**
+ * `inline` with the name twice: a plain ASCII fallback for old clients and the exact UTF-8 name
+ * (RFC 6266), so a বাংলা file name survives. Quotes, backslashes and line breaks never reach the
+ * header.
+ */
+export function contentDisposition(fileName: string): string {
+	const clean = fileName.replace(/[\r\n"\\]/g, '').slice(0, 200) || 'file';
+	const ascii = clean.replace(/[^\x20-\x7e]/g, '_');
+	// RFC 5987 leaves ' ( ) * out of a value, and encodeURIComponent keeps them, so encode them too.
+	const utf8 = encodeURIComponent(clean).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+	return `inline; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }

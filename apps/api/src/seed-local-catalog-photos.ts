@@ -4,12 +4,7 @@ import 'reflect-metadata';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, extname, resolve } from 'node:path';
 
-import {
-	MongoMediaAssetRepository,
-	MongoMediaRoleRepository,
-	connectMongo,
-	disconnectMongo,
-} from '@saha-textile/adapters-db-mongo';
+import { MongoMediaAssetRepository, connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 import { BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import type { ResolvedImage } from '@saha-textile/contracts';
@@ -19,7 +14,7 @@ import sharp from 'sharp';
 
 import { loadConfig } from './config/app-config';
 import { LanguageStore } from './languages/language-store';
-import { MediaService } from './media/media.service';
+import { composeMongoMediaService } from './media/compose-media-service';
 
 /**
  * LOCAL-ONLY: dresses the storefront's demo catalogue in real product photos.
@@ -101,7 +96,7 @@ const queue = new BullMqMediaJobQueue(config.redis);
 // Local demo data is written in the languages this Mac starts with.
 const languages = LanguageStore.fixed(config.locales);
 const audit = { append: async <T>(entry: T) => entry };
-const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, audit as never, languages);
+const media = composeMongoMediaService({ storage, queue, audit: audit as never, languages });
 const admin = { type: 'admin' as const, id: 'adm_local_catalog' };
 
 interface DemoPhoto {

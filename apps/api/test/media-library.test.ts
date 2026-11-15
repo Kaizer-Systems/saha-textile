@@ -105,6 +105,8 @@ function harness() {
 			[...files.values()].filter((asset) => ids.includes(asset.folderId ?? '')),
 	};
 	const assetRepo = {
+		create: async (asset: MediaAsset) => (files.set(asset.id, MediaAsset.parse(asset)), asset),
+		update: async (asset: MediaAsset) => (files.set(asset.id, asset), asset),
 		findById: async (id: string) => files.get(id) ?? null,
 		findManyByIds: async (ids: readonly string[]) =>
 			ids.flatMap((id) => (files.has(id) ? [files.get(id) as MediaAsset] : [])),
@@ -128,9 +130,22 @@ function harness() {
 	};
 	const links = { stopForAssets: async (ids: readonly string[]) => (stopped.push(...ids), ids.length) };
 	const storage = {
-		deleteMany: async (keys: readonly string[]) => void deletedKeys.push(...keys),
 		getUrl: (key: string) => `https://cdn.test/${key}`,
+		createSignedUploadUrl: async ({ key }: { key: string }) => ({
+			url: `https://spaces.test/${key}?signed`,
+			headers: {},
+		}),
+		setVisibility: vi.fn(async () => undefined),
 	};
+	const jobs: { type: string; keys?: string[]; urls: string[] }[] = [];
+	// Deleting goes through a queued job that removes the objects and clears the CDN.
+	const queue = {
+		enqueue: async (job: { type: string; keys?: string[]; urls: string[] }) => {
+			jobs.push(job);
+			if (job.type === 'delete-objects') deletedKeys.push(...(job.keys ?? []));
+		},
+	};
+	const storageCheck = { admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) };
 	const auditRepo = {
 		append: async (entry: AuditLog) => (audit.unshift(entry), entry),
 		list: async () => ({ items: [...audit], total: audit.length, page: 1, pageSize: 50 }),
@@ -143,6 +158,8 @@ function harness() {
 		links as never,
 		storage as never,
 		auditRepo as never,
+		queue as never,
+		storageCheck as never,
 	);
 	const file = (id: string, overrides: Record<string, unknown> = {}) =>
 		files.set(
@@ -158,7 +175,21 @@ function harness() {
 				...overrides,
 			}),
 		);
-	return { service, folders, files, used, stars, audit, stopped, deletedKeys, file, recount: folderRepo.recount };
+	return {
+		service,
+		folders,
+		files,
+		used,
+		stars,
+		audit,
+		stopped,
+		deletedKeys,
+		jobs,
+		storage,
+		storageCheck,
+		file,
+		recount: folderRepo.recount,
+	};
 }
 
 const refusalCode = async (promise: Promise<unknown>) => {
@@ -297,7 +328,7 @@ describe('the Media page', () => {
 		expect(h.folders.get(tant.id)?.trashedAt).toBeNull();
 	});
 
-	it('deletes for good only from Trash, files in Spaces first; the nightly purge takes what is 30 days old', async () => {
+	it('deletes for good only from Trash, the stored files by a queued job; the nightly purge takes what is 30 days old', async () => {
 		const h = harness();
 		h.file('med_1');
 		expect(await refusalCode(h.service.deleteForever('adm_1', { fileIds: ['med_1'], folderIds: [] }))).toBe(
@@ -307,11 +338,12 @@ describe('the Media page', () => {
 		await h.service.deleteForever('adm_1', { fileIds: ['med_1'], folderIds: [] });
 		expect(h.files.has('med_1')).toBe(false);
 		expect(h.deletedKeys).toEqual(['media/med_1/original.jpg']);
+		expect(h.audit[0]).toMatchObject({ action: 'media.delete_forever', actorUserId: 'adm_1' });
 		h.file('med_old', { trashedAt: '2026-09-01T00:00:00.000Z' });
 		h.file('med_new', { trashedAt: '2026-11-14T00:00:00.000Z' });
 		expect(await h.service.purgeTrash(new Date('2026-11-15T00:00:00.000Z'))).toBe(1);
 		expect([...h.files.keys()]).toEqual(['med_new']);
-		expect(h.audit[0]).toMatchObject({ action: 'media.delete_forever', actorUserId: null, audience: 'system' });
+		expect(h.audit[0]).toMatchObject({ action: 'media.trash_purged', actorUserId: null, audience: 'system' });
 	});
 
 	it('keeps each admin’s stars, and everyone’s with who starred', async () => {
@@ -362,5 +394,103 @@ describe('the Media page', () => {
 			sameName: { id: 'med_named' },
 			keepBothName: 'back (1).jpg',
 		});
+	});
+});
+
+describe('plain files', () => {
+	it('start private in their folder, take “(1)” when the name is taken, and pass the storage check', async () => {
+		const h = harness();
+		h.folders.set('fld_docs', {
+			id: 'fld_docs',
+			name: 'Documents',
+			parentId: null,
+			ancestors: [],
+			files: 0,
+			bytes: 0,
+			trashedAt: null,
+			trashedFrom: null,
+		} as never);
+		h.file('med_old', {
+			folderId: 'fld_docs',
+			displayName: 'Bridal catalogue.pdf',
+			kind: 'file',
+			originalFormat: 'application/pdf',
+			derivatives: [],
+		});
+		const presigned = await h.service.presignFile(
+			'adm_1',
+			{ fileName: 'Bridal catalogue.pdf', contentType: 'application/pdf', byteSize: 5000, folderId: 'fld_docs' },
+			new Date('2026-11-15T10:00:00.000Z'),
+		);
+		expect(presigned.name).toBe('Bridal catalogue (1).pdf');
+		expect(presigned.uploadUrl).toContain(`media/${presigned.assetId}/original.pdf`);
+		expect(h.storageCheck.admit).toHaveBeenCalledWith(
+			'adm_1',
+			5000,
+			undefined,
+			`res_${presigned.assetId}`,
+			expect.any(Date),
+		);
+		expect(h.files.get(presigned.assetId)).toMatchObject({
+			kind: 'file',
+			visibility: 'private',
+			folderId: 'fld_docs',
+			processing: { state: 'awaiting_upload' },
+		});
+
+		const done = await h.service.finalizeFile('adm_1', presigned.assetId);
+		expect(done).toEqual({ assetId: presigned.assetId, state: 'ready' });
+		expect(h.files.get(presigned.assetId)?.processing.state).toBe('ready');
+		expect(h.storageCheck.release).toHaveBeenCalledWith(`res_${presigned.assetId}`);
+		expect(h.audit[0]).toMatchObject({ action: 'media.upload', entityId: presigned.assetId });
+		// Finishing twice changes nothing.
+		await h.service.finalizeFile('adm_1', presigned.assetId);
+		expect(h.storageCheck.release).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a folder in Trash, and nothing is held', async () => {
+		const h = harness();
+		h.folders.set('fld_gone', {
+			id: 'fld_gone',
+			name: 'Gone',
+			parentId: null,
+			ancestors: [],
+			files: 0,
+			bytes: 0,
+			trashedAt: '2026-11-10T00:00:00.000Z',
+			trashedFrom: null,
+		} as never);
+		expect(
+			await refusalCode(
+				h.service.presignFile('adm_1', {
+					fileName: 'a.pdf',
+					contentType: 'application/pdf',
+					byteSize: 1,
+					folderId: 'fld_gone',
+				}),
+			),
+		).toBe('target_in_trash');
+		expect(h.storageCheck.admit).not.toHaveBeenCalled();
+	});
+
+	it('go public with a permanent address and back to private, which clears the CDN; photos stay as they are', async () => {
+		const h = harness();
+		h.file('med_pdf', {
+			kind: 'file',
+			originalFormat: 'application/pdf',
+			derivatives: [],
+			originalStorageKey: 'media/med_pdf/original.pdf',
+			visibility: 'private',
+		});
+		await h.service.setFileVisibility('adm_1', 'med_pdf', 'public');
+		expect(h.storage.setVisibility).toHaveBeenLastCalledWith('media/med_pdf/original.pdf', 'public');
+		expect(h.files.get('med_pdf')?.visibility).toBe('public');
+		expect(h.jobs).toEqual([]);
+		await h.service.setFileVisibility('adm_1', 'med_pdf', 'private');
+		expect(h.jobs).toEqual([{ type: 'purge', urls: ['https://cdn.test/media/med_pdf/original.pdf'] }]);
+		h.file('med_photo');
+		expect(await refusalCode(h.service.setFileVisibility('adm_1', 'med_photo', 'private'))).toBe(
+			'not_a_plain_file',
+		);
 	});
 });

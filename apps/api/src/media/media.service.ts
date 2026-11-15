@@ -21,10 +21,14 @@ import {
 	type AuditLogRepository,
 	MEDIA_INGEST_POLICY,
 	type MediaAssetRepository,
+	type MediaBrowseRepository,
+	type MediaFolderRepository,
 	type MediaJobQueuePort,
 	type MediaRoleRepository,
 	type StoragePort,
 	checkIngest,
+	cleanMediaName,
+	freeName,
 	reconcileSeededRoles,
 	mediaSlug,
 	originalStorageKey,
@@ -33,10 +37,13 @@ import {
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
+import { MediaStorageService } from './media-storage.service';
 import { LanguageStore } from '../languages/language-store';
 import {
 	AUDIT_LOG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
+	MEDIA_BROWSE_REPOSITORY,
+	MEDIA_FOLDER_REPOSITORY,
 	MEDIA_JOB_QUEUE,
 	MEDIA_ROLE_REPOSITORY,
 	STORAGE_PORT,
@@ -72,6 +79,9 @@ export class MediaService implements OnApplicationBootstrap {
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
 		private readonly languages: LanguageStore,
+		@Inject(MEDIA_BROWSE_REPOSITORY) private readonly browse: MediaBrowseRepository,
+		@Inject(MEDIA_FOLDER_REPOSITORY) private readonly folders: MediaFolderRepository,
+		private readonly storageCheck: MediaStorageService,
 	) {}
 
 	/**
@@ -125,6 +135,11 @@ export class MediaService implements OnApplicationBootstrap {
 		}
 
 		const id = `med_${randomUUID()}`;
+		const place = await this.mediaPagePlace(request);
+		// Every admin upload passes the storage check (R4-7); a customer's review photo does not.
+		if (uploader.type === 'admin') {
+			await this.storageCheck.admit(uploader.id, request.byteSize, request.reservationId, `res_${id}`);
+		}
 		const storageKey = originalStorageKey(id, request.contentType);
 		const asset: MediaAsset = {
 			id,
@@ -152,6 +167,7 @@ export class MediaService implements OnApplicationBootstrap {
 			status: 'draft',
 			uploadedBy: uploader,
 			deletedAt: null,
+			...place,
 		};
 		await this.assets.create(asset);
 
@@ -177,8 +193,44 @@ export class MediaService implements OnApplicationBootstrap {
 		if (asset.processing.state === 'awaiting_upload') {
 			await this.assets.update({ ...asset, processing: { ...asset.processing, state: 'queued' } });
 			await this.queue.enqueue({ type: 'process', assetId });
+			if (uploader.type === 'admin') await this.storageCheck.release(`res_${assetId}`);
 		}
 		return this.status(uploader, assetId);
+	}
+
+	/**
+	 * An upload from the Media page names its folder: the photo gets its Media name there (“(1)”
+	 * when taken) and its SHA-256 for the duplicate check (S6). Other screens' uploads stay in My files.
+	 */
+	private async mediaPagePlace(
+		request: Pick<MediaPresignRequest, 'folderId' | 'fileName' | 'sha256'>,
+	): Promise<Partial<MediaAsset>> {
+		if (request.folderId === undefined) return {};
+		if (request.folderId) {
+			const folder = await this.folders.findById(request.folderId);
+			if (!folder || folder.trashedAt) {
+				throw mediaRefusal(
+					HttpStatus.UNPROCESSABLE_ENTITY,
+					'target_in_trash',
+					'That folder is gone or in Trash.',
+				);
+			}
+		}
+		const cleaned = cleanMediaName(request.fileName);
+		if (!cleaned.ok) {
+			throw mediaRefusal(
+				HttpStatus.UNPROCESSABLE_ENTITY,
+				'bad_name',
+				'This file name cannot be used. Rename it and try again.',
+			);
+		}
+		return {
+			folderId: request.folderId,
+			displayName: freeName(cleaned.name, await this.browse.namesIn(request.folderId)),
+			sha256: request.sha256 ?? null,
+			trashedAt: null,
+			trashedFrom: null,
+		};
 	}
 
 	async status(uploader: MediaUploader, assetId: string): Promise<MediaUploadStatus> {

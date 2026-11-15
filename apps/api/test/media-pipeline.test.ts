@@ -89,6 +89,9 @@ const mediaService = (rows: MediaAsset[] = []) =>
 		{ enqueue: vi.fn() } as never,
 		{ append: vi.fn() } as never,
 		languages,
+		{ namesIn: async () => [] } as never,
+		{ findById: async () => null } as never,
+		{ admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) } as never,
 	);
 
 describe('MediaService', () => {
@@ -136,6 +139,9 @@ describe('MediaService', () => {
 			{ enqueue: vi.fn() } as never,
 			{ append: vi.fn() } as never,
 			languages,
+			{ namesIn: async () => [] } as never,
+			{ findById: async () => null } as never,
+			{ admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) } as never,
 		);
 		await service.presign(
 			{ type: 'customer', id: 'cus_1' },

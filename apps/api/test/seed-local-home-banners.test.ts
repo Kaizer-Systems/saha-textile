@@ -39,6 +39,11 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoMediaAssetRepository: blank,
 		MongoMediaRoleRepository: blank,
 		MongoSiteSettingsRepository: blank,
+		// The storage check the demo uploads pass (composeMongoMediaService).
+		MongoMediaFolderRepository: blank,
+		MongoStorageLedgerRepository: blank,
+		MongoRoleRepository: blank,
+		MongoAdminUserRoleAssignmentRepository: blank,
 	};
 });
 vi.mock('@saha-textile/adapters-queue-bullmq', () => ({

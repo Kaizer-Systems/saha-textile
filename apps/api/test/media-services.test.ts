@@ -69,6 +69,17 @@ const mediaDeps = (found: unknown = asset()) => {
 	};
 	const queue = { enqueue: vi.fn(async () => {}) };
 	const audit = { append: vi.fn(async () => {}) };
+	const browse = { namesIn: vi.fn(async () => ['Red Saree.jpg']) };
+	const folders = {
+		findById: vi.fn(async (id: string) =>
+			id === 'fld_trash'
+				? { id, trashedAt: '2026-11-01T00:00:00.000Z' }
+				: id === 'fld_1'
+					? { id, trashedAt: null }
+					: null,
+		),
+	};
+	const storageCheck = { admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) };
 	const service = new MediaService(
 		assets as never,
 		roles as never,
@@ -76,8 +87,11 @@ const mediaDeps = (found: unknown = asset()) => {
 		queue as never,
 		audit as never,
 		LanguageStore.fixed(['en', 'bn']),
+		browse as never,
+		folders as never,
+		storageCheck as never,
 	);
-	return { service, assets, roles, storage, queue, audit };
+	return { service, assets, roles, storage, queue, audit, browse, folders, storageCheck };
 };
 
 const admin = { type: 'admin', id: 'a1' } as const;
@@ -90,6 +104,8 @@ const upload = {
 	width: 1600,
 	height: 2133,
 } as never;
+/** The same upload with Media-page fields (folder, fingerprint, storage hold) or another purpose. */
+const uploadWith = (extra: Record<string, unknown>) => ({ ...(upload as object), ...extra }) as never;
 
 const statusOf = async (work: Promise<unknown>) => {
 	const error = (await work.catch((caught: unknown) => caught)) as HttpException;
@@ -168,6 +184,37 @@ describe('MediaService', () => {
 		const done = mediaDeps();
 		await done.service.finalize(admin, 'med_1');
 		expect(done.queue.enqueue).not.toHaveBeenCalled();
+	});
+
+	it('holds storage for an admin upload until it is finished, never for a customer’s review photo', async () => {
+		const { service, storageCheck, assets } = mediaDeps();
+		const presigned = await service.presign(admin, uploadWith({ reservationId: 'res_batch' }));
+		expect(storageCheck.admit).toHaveBeenCalledWith('a1', 1000, 'res_batch', `res_${presigned.assetId}`);
+		const waiting = asset({
+			id: presigned.assetId,
+			processing: { state: 'awaiting_upload', attempts: 0, error: null, processedAt: null },
+		});
+		assets.findById.mockResolvedValue(waiting as never);
+		await service.finalize(admin, presigned.assetId);
+		expect(storageCheck.release).toHaveBeenCalledWith(`res_${presigned.assetId}`);
+		const review = mediaDeps();
+		await review.service.presign(customer, uploadWith({ purpose: 'review' }));
+		expect(review.storageCheck.admit).not.toHaveBeenCalled();
+	});
+
+	it('puts a Media-page upload in its folder with a free name and its fingerprint; other screens leave it in My files', async () => {
+		const { service, assets } = mediaDeps();
+		await service.presign(admin, uploadWith({ folderId: 'fld_1', sha256: 'a'.repeat(64) }));
+		expect(assets.create).toHaveBeenLastCalledWith(
+			expect.objectContaining({ folderId: 'fld_1', displayName: 'Red Saree (1).jpg', sha256: 'a'.repeat(64) }),
+		);
+		await service.presign(admin, upload as never);
+		expect(assets.create.mock.lastCall?.[0]).not.toHaveProperty('folderId');
+		const trashed = mediaDeps();
+		await expect(trashed.service.presign(admin, uploadWith({ folderId: 'fld_trash' }))).rejects.toMatchObject({
+			status: 422,
+		});
+		expect(trashed.storageCheck.admit).not.toHaveBeenCalled();
 	});
 
 	it('picks the best preview: known roles first, widest within a role', async () => {

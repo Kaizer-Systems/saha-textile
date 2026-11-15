@@ -12,7 +12,6 @@ import 'dotenv/config';
 import {
 	MongoContentBlockRepository,
 	MongoMediaAssetRepository,
-	MongoMediaRoleRepository,
 	MongoSiteSettingsRepository,
 	connectMongo,
 	disconnectMongo,
@@ -24,7 +23,7 @@ import sharp from 'sharp';
 
 import { loadConfig } from '../src/config/app-config';
 import { ContentBlocksService } from '../src/media/content-blocks.service';
-import { MediaService } from '../src/media/media.service';
+import { composeMongoMediaService } from '../src/media/compose-media-service';
 import { LanguageStore } from '../src/languages/language-store';
 
 const config = loadConfig();
@@ -36,7 +35,12 @@ const settings = new MongoSiteSettingsRepository();
 const storage = new SpacesStorageAdapter({ key, secret, bucket, region, endpoint, cdnUrl });
 const queue = new BullMqMediaJobQueue(config.redis);
 const audit = { append: async <T>(entry: T) => entry };
-const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, audit as never, LanguageStore.fixed(config.locales));
+const media = composeMongoMediaService({
+	storage,
+	queue,
+	audit: audit as never,
+	languages: LanguageStore.fixed(config.locales),
+});
 const content = new ContentBlocksService(blocks, assets, settings, storage, LanguageStore.fixed(config.locales));
 const admin = { type: 'admin' as const, id: 'adm_e2e' };
 

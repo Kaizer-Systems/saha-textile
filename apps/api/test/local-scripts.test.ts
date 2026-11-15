@@ -101,6 +101,11 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoSiteSettingsRepository: repository(() => ({ get: async () => null })),
 		MongoMediaAssetRepository: repository(() => h.assets),
 		MongoMediaRoleRepository: blank,
+		// The storage check the demo uploads pass (composeMongoMediaService).
+		MongoMediaFolderRepository: blank,
+		MongoStorageLedgerRepository: blank,
+		MongoRoleRepository: blank,
+		MongoAdminUserRoleAssignmentRepository: blank,
 		MongoAdminInviteRepository: blank,
 		MongoAdminUserRepository: blank,
 		MongoAuditLogRepository: blank,

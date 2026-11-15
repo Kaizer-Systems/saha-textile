@@ -9,6 +9,8 @@ import type {
 	MediaDuplicateAnswer,
 	MediaDuplicateQuery,
 	MediaFavouriteWrite,
+	MediaFilePresignRequest,
+	MediaFilePresignResponse,
 	MediaFileRow,
 	MediaFolder,
 	MediaFolderCreate,
@@ -25,13 +27,19 @@ import {
 	type MediaBrowseRepository,
 	type MediaFavouriteRepository,
 	type MediaFolderRepository,
+	type MediaJobQueuePort,
+	MEDIA_INGEST_POLICY,
 	type ShareLinkRepository,
 	type StoragePort,
 	ancestorsUnder,
 	cleanMediaName,
+	deleteMediaForever,
 	folderMoveRefusal,
 	freeName,
 	mediaCategory,
+	mediaSlug,
+	plainFileStorageKey,
+	purgeMediaTrash,
 	renameKeepingExtension,
 	restoreTarget,
 	trashDaysLeft,
@@ -44,9 +52,11 @@ import {
 	MEDIA_BROWSE_REPOSITORY,
 	MEDIA_FAVOURITE_REPOSITORY,
 	MEDIA_FOLDER_REPOSITORY,
+	MEDIA_JOB_QUEUE,
 	SHARE_LINK_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
+import { MediaStorageService } from './media-storage.service';
 
 /** English fallbacks; the Media page names each refusal in its own words. */
 const REFUSALS: Readonly<Record<string, string>> = {
@@ -58,6 +68,7 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	target_in_trash: 'That folder is in Trash',
 	not_in_trash: 'Only items in Trash can be deleted for good',
 	nothing_to_undo: 'This can no longer be undone',
+	not_a_plain_file: 'Only files other than photos and videos can be made public or private here',
 };
 
 const refuse = (code: string) => domainRefusal(code, REFUSALS[code] ?? 'Not allowed');
@@ -80,6 +91,8 @@ export class MediaLibraryService {
 		@Inject(SHARE_LINK_REPOSITORY) private readonly links: ShareLinkRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
+		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
+		private readonly storageCheck: MediaStorageService,
 	) {}
 
 	// --- Reading ----------------------------------------------------------------------------------
@@ -362,47 +375,137 @@ export class MediaLibraryService {
 		return { done, inUse: [], undoId: null };
 	}
 
-	/** Deletes for good what is in Trash: the files in Spaces, then the records. Cannot be undone. */
+	/**
+	 * Deletes for good what is in Trash (A20): the records at once, the stored files through a
+	 * queued job that also clears the CDN. Cannot be undone. The nightly purge shares this code.
+	 */
 	async deleteForever(actor: string, selection: MediaSelection): Promise<MediaOperationResult> {
-		const folders = await this.folders.findManyByIds(selection.folderIds);
-		const files = await this.assets.findManyByIds(selection.fileIds);
-		if ([...folders, ...files].some((item) => !item.trashedAt)) throw refuse('not_in_trash');
-		const folderIds = new Set<string>();
-		for (const folder of folders)
-			for (const row of await this.folders.listSubtree(folder.id)) folderIds.add(row.id);
-		const inside = folderIds.size ? await this.files.listInFolders([...folderIds]) : [];
-		const doomed = [...files, ...inside.filter((asset) => asset.trashedAt)];
-		for (const asset of doomed) {
-			const keys = [asset.originalStorageKey, ...asset.derivatives.map((row) => row.storageKey)].filter(
-				(key): key is string => !!key,
-			);
-			if (keys.length) await this.storage.deleteMany(keys);
-			await this.assets.hardDelete(asset.id);
-		}
-		await this.folders.hardDelete([...folderIds]);
-		await this.stars.removeTargets(
-			'file',
-			doomed.map((asset) => asset.id),
-		);
-		await this.stars.removeTargets('folder', [...folderIds]);
-		await this.record(actor, 'media.delete_forever', {
-			files: doomed.map((asset) => asset.id),
-			folders: [...folderIds],
-		});
-		return { done: folders.length + files.length, inUse: [], undoId: null };
+		const result = await deleteMediaForever(this.deleteDeps(actor), selection);
+		if (!result.ok) throw refuse(result.reason);
+		return { done: result.done, inUse: [], undoId: null };
 	}
 
-	/** Items trashed 30 days ago are removed for good (the worker runs this nightly). */
+	/** Items trashed 30 days ago are removed for good (the worker runs the same use case nightly). */
 	async purgeTrash(now = new Date()): Promise<number> {
-		const cutoff = new Date(now.getTime() - 30 * 86_400_000).toISOString();
-		const files = await this.files.listTrashedBefore(cutoff, 500);
-		const folders = (await this.folders.listTrashed()).filter((row) => row.trashedAt && row.trashedAt <= cutoff);
-		if (!files.length && !folders.length) return 0;
-		await this.deleteForever('system', {
-			fileIds: files.map((row) => row.id),
-			folderIds: folders.map((row) => row.id),
+		const purged = await purgeMediaTrash(this.deleteDeps('system'), now);
+		return purged.files + purged.folders;
+	}
+
+	private deleteDeps(actor: string) {
+		return {
+			folders: this.folders,
+			files: this.files,
+			assets: this.assets,
+			stars: this.stars,
+			queue: this.queue,
+			publicUrl: (key: string) => this.storage.getUrl(key),
+			record: (action: string, metadata: Record<string, unknown>) => this.record(actor, action, metadata),
+		};
+	}
+
+	// --- Plain files (R4-5): stored as they are, private until made public -----------------------
+
+	/**
+	 * Starts a plain-file upload: a private object in Spaces, named in its folder (“(1)” when the
+	 * name is taken), held against the storage plan until the upload finishes.
+	 */
+	async presignFile(
+		actor: string,
+		request: MediaFilePresignRequest,
+		now = new Date(),
+	): Promise<MediaFilePresignResponse> {
+		if (request.folderId) {
+			const folder = await this.requireFolder(request.folderId);
+			if (folder.trashedAt) throw refuse('target_in_trash');
+		}
+		const name = freeName(this.cleanName(request.fileName), await this.files.namesIn(request.folderId));
+		const id = `med_${randomUUID()}`;
+		await this.storageCheck.admit(actor, request.byteSize, request.reservationId, `res_${id}`, now);
+		const key = plainFileStorageKey(id, name);
+		const asset: MediaAsset = {
+			id,
+			kind: 'file',
+			purpose: 'product',
+			originalStorageKey: key,
+			originalFormat: request.contentType,
+			originalByteSize: request.byteSize,
+			width: null,
+			height: null,
+			slug: mediaSlug(name),
+			derivatives: [],
+			dominantColor: null,
+			thumbHash: null,
+			visibility: 'private',
+			processing: { state: 'awaiting_upload', attempts: 0, error: null, processedAt: null },
+			warnings: [],
+			servesAsPrimary: false,
+			maxDisplayWidth: null,
+			renditions: [],
+			hlsPlaylistKey: null,
+			durationSeconds: null,
+			text: { alt: {}, title: {}, caption: {} },
+			status: 'draft',
+			uploadedBy: { type: 'admin', id: actor },
+			deletedAt: null,
+			folderId: request.folderId,
+			displayName: name,
+			sha256: request.sha256 ?? null,
+			trashedAt: null,
+			trashedFrom: null,
+		};
+		await this.assets.create(asset);
+		const ttl = MEDIA_INGEST_POLICY.uploadUrlTtlSeconds;
+		const signed = await this.storage.createSignedUploadUrl({
+			key,
+			contentType: request.contentType,
+			expiresInSeconds: ttl,
+			visibility: 'private',
 		});
-		return files.length + folders.length;
+		return {
+			assetId: id,
+			name,
+			uploadUrl: signed.url,
+			headers: signed.headers ?? {},
+			expiresAt: new Date(now.getTime() + ttl * 1000).toISOString(),
+		};
+	}
+
+	/** The browser finished its PUT: the file is ready (nothing to process) and its hold ends. */
+	async finalizeFile(actor: string, id: string, now = new Date()): Promise<{ assetId: string; state: 'ready' }> {
+		const asset = await this.requireFile(id);
+		if (asset.kind !== 'file') throw refuse('not_a_plain_file');
+		if (asset.processing.state === 'awaiting_upload') {
+			await this.assets.update({
+				...asset,
+				processing: { ...asset.processing, state: 'ready', processedAt: now.toISOString() },
+			});
+			await this.storageCheck.release(`res_${id}`);
+			await this.recount([asset.folderId]);
+			await this.record(actor, 'media.upload', { name: fileName(asset), bytes: asset.originalByteSize }, id);
+		}
+		return { assetId: id, state: 'ready' };
+	}
+
+	/**
+	 * Public gives a plain file a permanent CDN address (A35C); private takes it away and asks the
+	 * CDN to forget it within a minute. Copies people already downloaded stay with them.
+	 */
+	async setFileVisibility(
+		actor: string,
+		id: string,
+		visibility: 'public' | 'private',
+	): Promise<MediaOperationResult> {
+		const asset = await this.requireFile(id);
+		if (asset.kind !== 'file' || !asset.originalStorageKey) throw refuse('not_a_plain_file');
+		if (asset.visibility !== visibility) {
+			await this.storage.setVisibility(asset.originalStorageKey, visibility);
+			await this.assets.update({ ...asset, visibility });
+			if (visibility === 'private') {
+				await this.queue.enqueue({ type: 'purge', urls: [this.storage.getUrl(asset.originalStorageKey)] });
+			}
+			await this.record(actor, 'media.visibility', { name: fileName(asset), visibility }, id);
+		}
+		return { done: 1, inUse: [], undoId: null };
 	}
 
 	// --- Stars, duplicates, Activity, Undo ------------------------------------------------------

@@ -14,12 +14,18 @@ import {
 } from './storefront-media.controller';
 import { YouTubeService } from './youtube.service';
 import { AdminMediaLibraryController } from './admin-media-library.controller';
+import { AdminMediaSharingController } from './admin-media-sharing.controller';
 import { MediaLibraryService } from './media-library.service';
+import { MediaSharingService } from './media-sharing.service';
+import { MediaStorageService } from './media-storage.service';
+import { ShareController } from './share.controller';
 
 /** Media pipeline HTTP surface (owner log § Media). The worker composes the same use cases. */
 @Module({
 	controllers: [
 		AdminMediaLibraryController,
+		AdminMediaSharingController,
+		ShareController,
 		AdminMediaController,
 		AdminContentController,
 		AdminReviewsController,
@@ -27,6 +33,15 @@ import { MediaLibraryService } from './media-library.service';
 		StorefrontReviewsController,
 		CatalogReviewsController,
 	],
-	providers: [MediaLibraryService, MediaService, ContentBlocksService, YouTubeService, ReviewsService, BrandService],
+	providers: [
+		MediaLibraryService,
+		MediaSharingService,
+		MediaStorageService,
+		MediaService,
+		ContentBlocksService,
+		YouTubeService,
+		ReviewsService,
+		BrandService,
+	],
 })
 export class MediaModule {}

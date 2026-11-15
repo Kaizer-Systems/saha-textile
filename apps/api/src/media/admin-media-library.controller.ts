@@ -18,6 +18,9 @@ import {
 	MediaDuplicateQuery,
 	type MediaDuplicateAnswer,
 	MediaFavouriteWrite,
+	MediaFilePresignRequest,
+	type MediaFilePresignResponse,
+	MediaFileVisibilityWrite,
 	MediaFolderCreate,
 	type MediaFolderRow,
 	type MediaFolderTree,
@@ -34,7 +37,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { MediaLibraryService } from './media-library.service';
 
-const actor = (principal: AuthenticatedPrincipal | undefined): string => {
+export const actor = (principal: AuthenticatedPrincipal | undefined): string => {
 	if (!principal) throw new UnauthorizedException('Authentication required');
 	return principal.userId;
 };
@@ -179,6 +182,44 @@ export class AdminMediaLibraryController {
 	): Promise<{ starred: boolean }> {
 		await this.library.star(actor(principal), body);
 		return { starred: body.starred };
+	}
+
+	@Post('files/presign')
+	@RequirePermissions('attachment.create')
+	@ApiOperation({
+		operationId: 'presignMediaFile',
+		summary: 'Start a plain-file upload: private, named in its folder, held against the storage plan',
+	})
+	presignFile(
+		@Body(new ZodValidationPipe(MediaFilePresignRequest)) body: MediaFilePresignRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaFilePresignResponse> {
+		return this.library.presignFile(actor(principal), body);
+	}
+
+	@Post('files/:id/finalize')
+	@HttpCode(200)
+	@RequirePermissions('attachment.create')
+	@ApiOperation({ operationId: 'finalizeMediaFile', summary: 'The plain file is uploaded: it is ready' })
+	finalizeFile(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<{ assetId: string; state: 'ready' }> {
+		return this.library.finalizeFile(actor(principal), id);
+	}
+
+	@Put('files/:id/visibility')
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'setMediaFileVisibility',
+		summary: 'Public gives a plain file a permanent address; private takes it away',
+	})
+	setVisibility(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaFileVisibilityWrite)) body: MediaFileVisibilityWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaOperationResult> {
+		return this.library.setFileVisibility(actor(principal), id, body.visibility);
 	}
 
 	@Post('duplicates')

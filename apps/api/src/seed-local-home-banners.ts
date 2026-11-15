@@ -7,7 +7,6 @@ import { resolve } from 'node:path';
 import {
 	MongoContentBlockRepository,
 	MongoMediaAssetRepository,
-	MongoMediaRoleRepository,
 	MongoSiteSettingsRepository,
 	connectMongo,
 	disconnectMongo,
@@ -25,7 +24,7 @@ import sharp from 'sharp';
 import { loadConfig } from './config/app-config';
 import { ContentBlocksService } from './media/content-blocks.service';
 import { LanguageStore } from './languages/language-store';
-import { MediaService } from './media/media.service';
+import { composeMongoMediaService } from './media/compose-media-service';
 
 /**
  * LOCAL-ONLY: gives the home page its stand-in banners.
@@ -86,7 +85,7 @@ const queue = new BullMqMediaJobQueue(config.redis);
 // Local demo data is written in the languages this Mac starts with.
 const languages = LanguageStore.fixed(config.locales);
 const audit = { append: async <T>(entry: T) => entry };
-const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, audit as never, languages);
+const media = composeMongoMediaService({ storage, queue, audit: audit as never, languages });
 const banners = new ContentBlocksService(blocks, assets, new MongoSiteSettingsRepository(), storage, languages);
 const admin = { type: 'admin' as const, id: 'adm_local_banners' };
 

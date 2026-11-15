@@ -12,7 +12,6 @@ import 'dotenv/config';
 import {
 	CustomerModel,
 	MongoMediaAssetRepository,
-	MongoMediaRoleRepository,
 	MongoReviewRepository,
 	ProductModel,
 	ReviewModel,
@@ -25,7 +24,7 @@ import { discardReviewPhotos, publishReviewPhotos } from '@saha-textile/core-dom
 import sharp from 'sharp';
 
 import { loadConfig } from '../src/config/app-config';
-import { MediaService } from '../src/media/media.service';
+import { composeMongoMediaService } from '../src/media/compose-media-service';
 import { LanguageStore } from '../src/languages/language-store';
 
 const MARKER = 'E2E review photo check';
@@ -36,14 +35,12 @@ const assets = new MongoMediaAssetRepository();
 const reviews = new MongoReviewRepository();
 const storage = new SpacesStorageAdapter({ key, secret, bucket, region, endpoint, cdnUrl });
 const queue = new BullMqMediaJobQueue(config.redis);
-const media = new MediaService(
-	assets,
-	new MongoMediaRoleRepository(),
+const media = composeMongoMediaService({
 	storage,
 	queue,
-	{ append: async () => undefined } as never,
-	LanguageStore.fixed(config.locales),
-);
+	audit: { append: async () => undefined } as never,
+	languages: LanguageStore.fixed(config.locales),
+});
 const deps = { assets, storage, queue };
 const check = (ok: boolean, label: string) => console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`);
 

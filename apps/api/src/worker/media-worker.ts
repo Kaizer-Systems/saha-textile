@@ -9,6 +9,8 @@ import {
 	MongoCustomerRepository,
 	MongoLanguageRepository,
 	MongoMediaAssetRepository,
+	MongoMediaFavouriteRepository,
+	MongoMediaFolderRepository,
 	MongoMediaRoleRepository,
 	MongoMessageOutboxRepository,
 	MongoNotificationSettingsRepository,
@@ -33,6 +35,7 @@ import {
 	reconcileSeededRoles,
 	checkProductVideos,
 	copyYouTubePosters,
+	purgeMediaTrash,
 	refreshYouTubeFeed,
 	runMediaGarbageCollection,
 	runWeeklyInsight,
@@ -185,6 +188,41 @@ export const composeMediaWorker = async (config: AppConfig) => {
 			logger.log(
 				`Search check: ${result.live} live, ${result.indexed} indexed, ${result.missing} missing, ${result.extra} extra, ${result.requested} queued`,
 			);
+			return result;
+		},
+		'trash-purge': async () => {
+			const result = await purgeMediaTrash(
+				{
+					folders: new MongoMediaFolderRepository(),
+					files: assets,
+					assets,
+					stars: new MongoMediaFavouriteRepository(),
+					queue,
+					publicUrl: (key) => storage.getUrl(key),
+					record: (action, metadata) =>
+						audit.append({
+							id: `audit_${randomUUID()}`,
+							actorUserId: null,
+							targetUserId: null,
+							audience: 'system',
+							action,
+							entityType: 'media',
+							entityId: null,
+							severity: 'info',
+							retentionTier: 'catalog_admin',
+							diffs: [],
+							metadata,
+							requestId: null,
+							ipHash: null,
+							userAgentHash: null,
+							createdAt: now().toISOString(),
+						}),
+				},
+				now(),
+			);
+			if (result.files + result.folders > 0) {
+				logger.log(`Trash: ${result.files} files and ${result.folders} folders removed after 30 days`);
+			}
 			return result;
 		},
 		'stock-alerts': async () => {

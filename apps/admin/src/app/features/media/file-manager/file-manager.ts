@@ -1,3 +1,4 @@
+import { CurrencyPipe } from '@angular/common';
 import {
 	Component,
 	DestroyRef,
@@ -29,6 +30,7 @@ import {
 	type MediaSelection,
 	type MediaTrashCheck,
 } from '@core/media-library/media-library.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
 import {
 	MEDIA_LIBRARY_KEY,
 	injectMediaBrowseQuery,
@@ -40,7 +42,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { FileSizePipe, PluralPipe, translateCount } from '@shared/pipes/language.pipes';
 import { Button } from '@shared/ui/button/button';
 
-import { fileKind } from './file-kinds';
+import { fileKind, fileTypeLabel } from './file-kinds';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
 import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
 import {
@@ -57,6 +59,8 @@ import {
 } from './fm-selection';
 import { FM_CATEGORIES, FmSidebar, type FmNav } from './fm-sidebar';
 import { FmUndoToast } from './fm-undo-toast';
+import { FmUploadFlow, type FmUploadPopups } from './fm-upload-flow';
+import { type FmUploadRow, planUpload, readDropped, readPickedFolder } from './fm-upload-plan';
 
 const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash'];
 /** The sort menu: what each choice asks the API for. */
@@ -147,7 +151,18 @@ const typing = (target: EventTarget | null): boolean => {
 @Component({
 	selector: 'app-file-manager',
 	templateUrl: './file-manager.html',
-	imports: [PageWrapper, TranslocoModule, FmSidebar, FmFileList, FmMenu, FileSizePipe, PluralPipe, Button],
+	imports: [
+		PageWrapper,
+		TranslocoModule,
+		FmSidebar,
+		FmFileList,
+		FmMenu,
+		FileSizePipe,
+		PluralPipe,
+		Button,
+		CurrencyPipe,
+	],
+	providers: [FmUploadFlow],
 })
 export class FileManager {
 	private readonly route = inject(ActivatedRoute);
@@ -495,13 +510,13 @@ export class FileManager {
 	readonly creating = signal(false);
 	/** The folder a new folder goes into: the one shown, or the one whose menu said New folder inside. */
 	readonly newFolderParent = signal<{ id: string | null; place: string } | null>(null);
-	/** Where a new folder goes: the folder shown, or My files. */
-	readonly newFolderPlace = computed(() => {
-		const parent = this.newFolderParent();
-		if (parent) return parent.place;
-		const steps = this.result()?.breadcrumb ?? [];
+	/** “My files › Product photos › Banarasi”: the folder shown, or My files in the other views. */
+	readonly herePlace = computed(() => {
+		const steps = this.nav() === 'folder' ? (this.result()?.breadcrumb ?? []) : [];
 		return [this.transloco.translate('fm_my_files'), ...steps.map((step) => step.name)].join(' › ');
 	});
+	/** Where a new folder goes: the folder shown, or My files. */
+	readonly newFolderPlace = computed(() => this.newFolderParent()?.place ?? this.herePlace());
 
 	async star(file: MediaFileRow): Promise<void> {
 		await this.run(
@@ -887,6 +902,128 @@ export class FileManager {
 			this.result()?.folders.find((row) => row.id === id)?.name ??
 			''
 		);
+	}
+
+	// --- Uploads (A03, A06, A29, B03, B06, B10, B11, B18, B19) -----------------------------------
+
+	readonly uploads = inject(MediaUploads);
+	readonly flow = inject(FmUploadFlow);
+	readonly pickFilesInput = viewChild<ElementRef<HTMLInputElement>>('fmPickFiles');
+	readonly pickFolderInput = viewChild<ElementRef<HTMLInputElement>>('fmPickFolder');
+	readonly reviewTemplate = viewChild<TemplateRef<unknown>>('fmUploadReview');
+	readonly duplicateTemplate = viewChild<TemplateRef<unknown>>('fmDuplicate');
+	readonly onDemandTemplate = viewChild<TemplateRef<unknown>>('fmOnDemand');
+	readonly refusedTemplate = viewChild<TemplateRef<unknown>>('fmStorageRefused');
+	/** Files from the computer are over the page (A29). */
+	readonly dropping = signal(false);
+	private dropDepth = 0;
+	readonly typeOf = fileTypeLabel;
+
+	/** Uploads go into the folder shown; from Recent, Favourites or Trash, into My files. */
+	readonly uploadTargetId = computed(() => (this.nav() === 'folder' ? (this.folderId() ?? null) : null));
+	readonly uploadPlace = computed(
+		() => (this.nav() === 'folder' && this.folderName()) || this.transloco.translate('fm_my_files'),
+	);
+
+	/** Each folder card's upload progress (B06): files going into it or anything inside it. */
+	readonly cardProgress = computed(() => {
+		const rows = this.tree.data()?.folders ?? [];
+		const parent = new Map(rows.map((row) => [row.id, row.parentId]));
+		const totals = new Map<string, { sent: number; bytes: number }>();
+		for (const job of this.uploads.active()) {
+			for (let at = job.folderId; at; at = parent.get(at) ?? null) {
+				const total = totals.get(at) ?? { sent: 0, bytes: 0 };
+				totals.set(at, { sent: total.sent + job.sent, bytes: total.bytes + job.bytes });
+			}
+		}
+		return new Map(
+			[...totals].map(([id, total]) => [id, total.bytes ? Math.round((total.sent / total.bytes) * 100) : 0]),
+		);
+	});
+
+	uploadChoice(choice: 'files' | 'folder' | 'new_folder'): void {
+		if (choice === 'new_folder') return this.openNewFolder();
+		(choice === 'files' ? this.pickFilesInput() : this.pickFolderInput())?.nativeElement.click();
+	}
+
+	filesPicked(input: HTMLInputElement): void {
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		this.review(planUpload(files.map((file) => ({ file, path: [] }))));
+	}
+
+	folderPicked(input: HTMLInputElement): void {
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		this.review(planUpload(readPickedFolder(files)));
+	}
+
+	/** Only files from the computer, in a folder view; a drag of Media's own items is a move (A28). */
+	private fromComputer(event: DragEvent): boolean {
+		const types = [...(event.dataTransfer?.types ?? [])];
+		return (
+			this.nav() === 'folder' && !this.dragging() && types.includes('Files') && !types.includes(MEDIA_DRAG_TYPE)
+		);
+	}
+
+	dropEnter(event: DragEvent): void {
+		if (!this.fromComputer(event)) return;
+		event.preventDefault();
+		this.dropDepth += 1;
+		this.dropping.set(true);
+	}
+
+	dropOver(event: DragEvent): void {
+		if (!this.fromComputer(event)) return;
+		event.preventDefault();
+		if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+	}
+
+	dropLeave(): void {
+		if (!this.dropping()) return;
+		this.dropDepth = Math.max(0, this.dropDepth - 1);
+		if (!this.dropDepth) this.dropping.set(false);
+	}
+
+	/** Files and whole folders dropped from the computer (A29). The folders are read at once. */
+	async dropFiles(event: DragEvent): Promise<void> {
+		if (!this.dropping()) return;
+		event.preventDefault();
+		this.dropDepth = 0;
+		this.dropping.set(false);
+		const items = [...(event.dataTransfer?.items ?? [])].filter((item) => item.kind === 'file');
+		const files = [...(event.dataTransfer?.files ?? [])];
+		const entries =
+			items.length && typeof items[0]?.webkitGetAsEntry === 'function' ? await readDropped(items) : [];
+		// A browser that gives no folder entries still gives the dropped files.
+		const picked = entries.length ? entries : files.map((file) => ({ file, path: [] as string[] }));
+		this.review(planUpload(picked));
+	}
+
+	private review(plan: ReturnType<typeof planUpload>): void {
+		const popups = this.popups();
+		if (popups) this.flow.open(plan, this.uploadTargetId(), this.herePlace(), popups);
+	}
+
+	startUpload(close: () => void): void {
+		const popups = this.popups();
+		if (popups) void this.flow.start(close, popups);
+	}
+
+	popups(): FmUploadPopups | null {
+		const review = this.reviewTemplate();
+		const duplicate = this.duplicateTemplate();
+		const onDemand = this.onDemandTemplate();
+		const refused = this.refusedTemplate();
+		return review && duplicate && onDemand && refused ? { review, duplicate, onDemand, refused } : null;
+	}
+
+	rowKind(row: FmUploadRow) {
+		return fileKind({
+			name: row.name,
+			category: row.waits ? 'images' : 'other',
+			kind: row.waits ? 'image' : 'file',
+		});
 	}
 
 	// --- Filters (A11, A12) ---------------------------------------------------------------------

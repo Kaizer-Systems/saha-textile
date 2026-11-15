@@ -119,6 +119,10 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 		);
 	}
 
+	override cancelUpload(fileId: string): Observable<void> {
+		return this.http.post<void>(this.url(`/files/${id(fileId)}/cancel`), {}, quiet());
+	}
+
 	override setVisibility(fileId: string, visibility: 'public' | 'private'): Observable<MediaOperationResult> {
 		return this.http.put<MediaOperationResult>(
 			this.url(`/files/${id(fileId)}/visibility`),

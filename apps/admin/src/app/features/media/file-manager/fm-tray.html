@@ -1,0 +1,95 @@
+@if (uploads.jobs().length) {
+<div
+	class="fm-tray"
+	id="fm_tray"
+>
+	<div class="fm-tray-head">
+		<i
+			[class]="uploads.active().length ? 'ri-loader-4-line' : uploads.failedCount() ? 'ri-error-warning-line' : 'ri-checkbox-circle-line'"
+		></i>
+		{{ head() }}
+		<span>
+			<i
+				class="ri-arrow-down-s-line"
+				role="button"
+				[title]="(open() ? 'fm_tray_hide' : 'fm_tray_show') | transloco"
+				(click)="open.set(!open())"
+			></i>
+			@if (!uploads.active().length) {
+			<i
+				class="ri-close-line"
+				role="button"
+				id="fm_tray_close"
+				[title]="'close' | transloco"
+				(click)="uploads.dismiss()"
+			></i>
+			}
+		</span>
+	</div>
+	@if (open()) {
+	<ul class="overflow-auto">
+		@for (job of uploads.jobs(); track job.id) {
+		<li [attr.data-upload]="job.state">
+			<div
+				class="fm-type"
+				[class]="kind(job).cls"
+			>
+				<i [class]="kind(job).icon"></i>
+			</div>
+			<div class="fm-tray-name">
+				<div>{{ job.savedAs ?? job.name }}</div>
+				@switch (job.state) { @case ('waiting') {
+				<small class="text-muted">{{ 'fm_waiting_to_upload' | transloco }}</small>
+				} @case ('uploading') {
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_uploading' | transloco }}</span>
+						<small>
+							{{ 'fm_sent_of' | transloco: { sent: (job.sent | fileSize), total: (job.bytes | fileSize) }
+							}} @if (secondsLeft(job); as left) { · {{ timeLeft(left).key | plural: timeLeft(left).count
+							}} }
+						</small>
+					</div>
+					<div class="progress">
+						<div
+							class="progress-bar"
+							[style.width.%]="percent(job)"
+						></div>
+					</div>
+				</div>
+				<small class="text-muted">{{ 'fm_stored_as_is' | transloco }}</small>
+				} @case ('done') {
+				<div class="fm-phase">
+					<div>
+						<span>{{ 'fm_uploaded' | transloco }}</span>
+						<small>
+							{{ job.bytes | fileSize }}
+							<i class="ri-check-line"></i>
+						</small>
+					</div>
+					<div class="progress">
+						<div
+							class="progress-bar bg-success"
+							style="width: 100%"
+						></div>
+					</div>
+				</div>
+				} @case ('failed') {
+				<small class="text-danger">
+					{{ job.error }} ·
+					<a
+						href="javascript:void(0)"
+						class="text-decoration-underline"
+						(click)="uploads.retry(job.id)"
+					>
+						{{ 'fm_retry' | transloco }}
+					</a>
+				</small>
+				} }
+			</div>
+		</li>
+		}
+	</ul>
+	}
+</div>
+}

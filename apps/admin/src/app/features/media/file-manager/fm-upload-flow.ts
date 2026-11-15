@@ -1,0 +1,309 @@
+import { Injectable, type TemplateRef, computed, inject, signal } from '@angular/core';
+
+import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal, type NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
+import { readApiErrorMessage } from '@saha-textile/http-transport';
+import { lastValueFrom } from 'rxjs';
+
+import {
+	type MediaDuplicateAnswer,
+	MediaLibraryGateway,
+	type StorageCheckAnswer,
+} from '@core/media-library/media-library.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
+import { NotificationService } from '@data-access/services/notification.service';
+
+import { type FmUploadPlan, type FmUploadRow, foldersFor, sha256Hex } from './fm-upload-plan';
+
+/** The popups the flow opens; the page owns their templates. */
+export interface FmUploadPopups {
+	review: TemplateRef<unknown>;
+	duplicate: TemplateRef<unknown>;
+	onDemand: TemplateRef<unknown>;
+	refused: TemplateRef<unknown>;
+}
+
+/** The upload popup (B03): what was picked, where it goes, and what is left out. */
+export interface FmReview {
+	plan: FmUploadPlan;
+	rows: FmUploadRow[];
+	skipped: ReadonlySet<string>;
+	targetId: string | null;
+	place: string;
+	checking: boolean;
+}
+
+/** S6: one file that matches something already in Media (B10 same bytes, B11 same name). */
+export interface FmDuplicateAsk {
+	kind: 'identical' | 'name';
+	row: FmUploadRow;
+	existing: { name: string; location: string };
+	keepBothName: string;
+	/** Later files with the same kind of match, for “Same answer for the other N”. */
+	others: number;
+	sameForOthers: boolean;
+}
+
+/** B18/B19: the storage check's answer, with what the upload adds. */
+export type FmStorageAsk = StorageCheckAnswer & { bytes: number; files: number };
+
+/** The duplicate check takes this many files per call. */
+const DUPLICATES_PER_CALL = 500;
+
+/**
+ * Upload on the Media page (step 1.5e), from the popup to the tray: the duplicate check (S6), the
+ * storage check (B18, B19), the folders a folder upload brings, then the files go to the tray.
+ * Photos wait for image profiles (owner, 15 Nov), so they are listed and left out.
+ */
+@Injectable()
+export class FmUploadFlow {
+	private readonly gateway = inject(MediaLibraryGateway);
+	private readonly modals = inject(NgbModal);
+	private readonly notifications = inject(NotificationService);
+	private readonly transloco = inject(TranslocoService);
+	private readonly uploads = inject(MediaUploads);
+
+	readonly review = signal<FmReview | null>(null);
+	readonly duplicate = signal<FmDuplicateAsk | null>(null);
+	readonly storageAsk = signal<FmStorageAsk | null>(null);
+	/** B18's box: a super admin also lets other admins use on-demand storage. */
+	readonly alsoLetOthers = signal(false);
+
+	/** Ticked rows that are not photos: what Upload sends. */
+	readonly going = computed(() => {
+		const review = this.review();
+		return review ? review.rows.filter((row) => !row.waits && !review.skipped.has(row.key)) : [];
+	});
+	readonly waiting = computed(() => (this.review()?.rows ?? []).filter((row) => row.waits).length);
+	/** Folders a folder upload makes: those holding something that goes. */
+	readonly foldersToMake = computed(() => foldersFor(this.going()).length);
+	readonly goingBytes = computed(() => this.going().reduce((sum, row) => sum + row.bytes, 0));
+
+	open(plan: FmUploadPlan, targetId: string | null, place: string, popups: FmUploadPopups): void {
+		if (!plan.rows.length) return;
+		this.review.set({ plan, rows: plan.rows, skipped: new Set(), targetId, place, checking: false });
+		void this.show(popups.review, { size: 'xl', windowClass: 'theme-modal media-modal' }, 'fm_review_title');
+	}
+
+	toggleRow(key: string): void {
+		this.review.update((review) => {
+			if (!review) return review;
+			const skipped = new Set(review.skipped);
+			if (skipped.has(key)) skipped.delete(key);
+			else skipped.add(key);
+			return { ...review, skipped };
+		});
+	}
+
+	/** The head checkbox: every row that can go, or none. */
+	toggleAll(on: boolean): void {
+		this.review.update((review) =>
+			review
+				? {
+						...review,
+						skipped: on
+							? new Set()
+							: new Set(review.rows.filter((row) => !row.waits).map((row) => row.key)),
+					}
+				: review,
+		);
+	}
+
+	removeRow(key: string): void {
+		this.review.update((review) =>
+			review ? { ...review, rows: review.rows.filter((row) => row.key !== key) } : review,
+		);
+	}
+
+	/** Upload: checks, asks, makes folders, and hands the files to the tray. */
+	async start(closeReview: () => void, popups: FmUploadPopups): Promise<void> {
+		const review = this.review();
+		const going = this.going();
+		if (!review || review.checking || !going.length) return;
+		this.review.set({ ...review, checking: true });
+		try {
+			const hashes = new Map<string, string | null>();
+			for (const row of going) hashes.set(row.key, await sha256Hex(row.file));
+			const answers = await this.duplicates(going, hashes, review.targetId);
+			if (!answers) return;
+			closeReview();
+			const keep = await this.decide(going, answers, popups);
+			if (!keep?.length) return;
+			const reservationId = await this.storageGo(keep, popups);
+			if (reservationId === false) return;
+			const folderIds = await this.makeFolders(keep, review.targetId);
+			if (!folderIds) {
+				if (reservationId) void lastValueFrom(this.gateway.releaseHold(reservationId)).catch(() => undefined);
+				return;
+			}
+			this.uploads.add(
+				keep.map((row) => ({
+					file: row.file,
+					name: row.name,
+					contentType: row.contentType,
+					folderId: folderIds.get(row.folderPath.join('/')) ?? review.targetId,
+					sha256: hashes.get(row.key) ?? null,
+				})),
+				reservationId,
+			);
+		} finally {
+			this.review.set(null);
+		}
+	}
+
+	private async duplicates(
+		rows: readonly FmUploadRow[],
+		hashes: ReadonlyMap<string, string | null>,
+		folderId: string | null,
+	): Promise<MediaDuplicateAnswer['files'] | null> {
+		const out: MediaDuplicateAnswer['files'] = [];
+		try {
+			for (let at = 0; at < rows.length; at += DUPLICATES_PER_CALL) {
+				const chunk = rows.slice(at, at + DUPLICATES_PER_CALL);
+				const answer = await lastValueFrom(
+					this.gateway.duplicates({
+						folderId,
+						files: chunk.map((row) => {
+							const sha256 = hashes.get(row.key);
+							return { name: row.name, bytes: row.bytes, ...(sha256 ? { sha256 } : {}) };
+						}),
+					}),
+				);
+				out.push(...answer.files);
+			}
+			return out;
+		} catch (error) {
+			this.failed(error);
+			return null;
+		}
+	}
+
+	/**
+	 * Asks about each match in turn (B10, B11). A file going into a folder the upload makes has no
+	 * neighbours yet, so only the same-bytes question applies to it. Closing a question stops the
+	 * whole upload: nothing is sent that the admin did not agree to.
+	 */
+	private async decide(
+		rows: readonly FmUploadRow[],
+		answers: MediaDuplicateAnswer['files'],
+		popups: FmUploadPopups,
+	): Promise<FmUploadRow[] | null> {
+		const kindOf = (index: number): 'identical' | 'name' | null => {
+			const answer = answers[index];
+			const row = rows[index];
+			if (!answer || !row) return null;
+			if (answer.identical) return 'identical';
+			return answer.sameName && !row.folderPath.length ? 'name' : null;
+		};
+		const remembered: Partial<Record<'identical' | 'name', 'upload' | 'existing'>> = {};
+		const keep: FmUploadRow[] = [];
+		for (const [index, row] of rows.entries()) {
+			const kind = kindOf(index);
+			const answer = answers[index];
+			if (!kind || !answer) {
+				keep.push(row);
+				continue;
+			}
+			let choice = remembered[kind];
+			if (!choice) {
+				const others = rows.slice(index + 1).filter((_, later) => kindOf(index + 1 + later) === kind).length;
+				const existing =
+					kind === 'identical' && answer.identical
+						? { name: answer.identical.name, location: answer.identical.location }
+						: { name: answer.sameName?.name ?? row.name, location: '' };
+				this.duplicate.set({
+					kind,
+					row,
+					existing,
+					keepBothName: answer.keepBothName,
+					others,
+					sameForOthers: false,
+				});
+				const picked = await this.show<'upload' | 'existing'>(
+					popups.duplicate,
+					{ size: 'lg', windowClass: 'theme-modal text-center' },
+					'fm_duplicate_title',
+				);
+				if (!picked) return null;
+				choice = picked;
+				if (this.duplicate()?.sameForOthers) remembered[kind] = picked;
+			}
+			if (choice === 'upload') keep.push(row);
+		}
+		return keep;
+	}
+
+	/** B18/B19: one check for the whole upload; its approval is held until the last file settles. */
+	private async storageGo(rows: readonly FmUploadRow[], popups: FmUploadPopups): Promise<string | null | false> {
+		const bytes = rows.reduce((sum, row) => sum + row.bytes, 0);
+		const ask = async (approve: boolean, alsoLetOthers?: boolean) => {
+			try {
+				return await lastValueFrom(
+					this.gateway.checkStorage({
+						operation: 'upload',
+						bytes,
+						approve,
+						...(alsoLetOthers === undefined ? {} : { alsoLetOthers }),
+					}),
+				);
+			} catch (error) {
+				this.failed(error);
+				return null;
+			}
+		};
+		const first = await ask(false);
+		if (!first) return false;
+		if (first.decision === 'go') return first.reservationId;
+		this.storageAsk.set({ ...first, bytes, files: rows.length });
+		if (first.decision === 'refused') {
+			await this.show(popups.refused, { windowClass: 'theme-modal text-center' }, 'fm_refused_title');
+			return false;
+		}
+		this.alsoLetOthers.set(false);
+		const yes = await this.show<'yes'>(
+			popups.onDemand,
+			{ size: 'lg', windowClass: 'theme-modal text-center' },
+			'fm_on_demand_title',
+		);
+		if (!yes) return false;
+		const approved = await ask(true, first.canApprove ? this.alsoLetOthers() : undefined);
+		if (!approved) return false;
+		if (approved.decision === 'go') return approved.reservationId;
+		this.storageAsk.set({ ...approved, bytes, files: rows.length });
+		await this.show(popups.refused, { windowClass: 'theme-modal text-center' }, 'fm_refused_title');
+		return false;
+	}
+
+	/** A folder upload keeps its folders: parents first; a taken name gets “(1)” on the server. */
+	private async makeFolders(
+		rows: readonly FmUploadRow[],
+		targetId: string | null,
+	): Promise<Map<string, string | null> | null> {
+		const ids = new Map<string, string | null>([['', targetId]]);
+		try {
+			for (const path of foldersFor(rows)) {
+				const parent = ids.get(path.slice(0, -1).join('/')) ?? targetId;
+				const made = await lastValueFrom(
+					this.gateway.createFolder({ name: path[path.length - 1] ?? '', parentId: parent }),
+				);
+				ids.set(path.join('/'), made.id);
+			}
+			return ids;
+		} catch (error) {
+			this.failed(error);
+			return null;
+		}
+	}
+
+	private failed(error: unknown): void {
+		this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+	}
+
+	/** Opens a popup and answers what it was closed with, or null when it was dismissed. */
+	private show<T>(template: TemplateRef<unknown>, options: NgbModalOptions, labelledBy: string): Promise<T | null> {
+		return this.modals.open(template, { centered: true, ariaLabelledBy: labelledBy, ...options }).result.then(
+			(value: T) => value,
+			() => null,
+		);
+	}
+}

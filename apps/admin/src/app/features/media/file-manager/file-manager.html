@@ -15,11 +15,33 @@
 			(navigate)="openNav($event)"
 			(pickCategory)="openCategory($event)"
 			(openFolder)="openFolder($event)"
+			(upload)="uploadChoice($event)"
 		/>
 		<section
 			class="fm-main position-relative"
 			#fmMain
+			(dragenter)="dropEnter($event)"
+			(dragover)="dropOver($event)"
+			(dragleave)="dropLeave()"
+			(drop)="dropFiles($event)"
 		>
+			<input
+				type="file"
+				multiple
+				hidden
+				id="fm_pick_files"
+				#fmPickFiles
+				(change)="filesPicked(fmPickFiles)"
+			/>
+			<input
+				type="file"
+				multiple
+				hidden
+				webkitdirectory
+				id="fm_pick_folder"
+				#fmPickFolder
+				(change)="folderPicked(fmPickFolder)"
+			/>
 			<div class="fm-toolbar">
 				<div class="fm-search">
 					<i class="ri-search-line"></i>
@@ -368,6 +390,15 @@
 						<i class="ri-folder-add-line"></i>
 						{{ 'fm_new_folder' | transloco }}
 					</button>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm d-flex align-items-center gap-1"
+						id="fm_upload_here"
+						(click)="uploadChoice('files')"
+					>
+						<i class="ri-upload-cloud-2-line"></i>
+						{{ 'fm_upload_here' | transloco }}
+					</button>
 				</div>
 				}
 			</div>
@@ -435,8 +466,28 @@
 				<h5 class="mt-3">{{ 'fm_trash_empty' | transloco }}</h5>
 				} @else if (nav() === 'favourites') {
 				<h5 class="mt-3">{{ 'fm_no_favourites' | transloco }}</h5>
-				} @else if (folderId()) {
-				<h5 class="mt-3">{{ 'fm_empty_folder' | transloco }}</h5>
+				} @else if (nav() === 'folder' && !category() && !filterCount()) {
+				<h5 class="mt-3">{{ (folderId() ? 'fm_empty_folder' : 'fm_no_files_yet') | transloco }}</h5>
+				<p class="text-muted">{{ 'fm_empty_hint' | transloco }}</p>
+				<div class="d-flex justify-content-center gap-2">
+					<button
+						type="button"
+						class="btn btn-theme d-flex align-items-center gap-2"
+						id="fm_empty_upload"
+						(click)="uploadChoice('files')"
+					>
+						<i class="ri-upload-cloud-2-line"></i>
+						{{ 'fm_upload_here' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline d-flex align-items-center gap-2"
+						(click)="openNewFolder()"
+					>
+						<i class="ri-folder-add-line"></i>
+						{{ 'fm_new_folder' | transloco }}
+					</button>
+				</div>
 				} @else {
 				<h5 class="mt-3">{{ 'fm_no_files_yet' | transloco }}</h5>
 				}
@@ -458,6 +509,7 @@
 					role="button"
 					tabindex="0"
 					draggable="true"
+					[class.is-uploading]="cardProgress().has(folder.id)"
 					[class.is-selected]="selectedFolders().has(folder.id)"
 					[class.is-drop]="dropOn() === folder.id"
 					[attr.data-folder]="folder.id"
@@ -475,6 +527,15 @@
 					<div style="min-width: 0">
 						<h6>{{ folder.name }}</h6>
 						<p>{{ folder.bytes | fileSize }} · {{ 'fm_files' | plural: folder.files }}</p>
+						@if (cardProgress().get(folder.id); as sent) {
+						<div class="progress">
+							<div
+								class="progress-bar"
+								style="background: var(--theme-color)"
+								[style.width.%]="sent"
+							></div>
+						</div>
+						}
 					</div>
 					@if (folder.starred) {
 					<i class="ri-star-fill fm-star"></i>
@@ -504,6 +565,8 @@
 				[showLocation]="showLocation()"
 				[selected]="selected()"
 				[dragging]="draggedFiles()"
+				[uploads]="uploads.byAsset()"
+				(retryUpload)="uploads.retry($event)"
 				(toggleSelect)="toggleSelect($event)"
 				(toggleAll)="toggleAll($event)"
 				(star)="star($event)"
@@ -515,7 +578,18 @@
 				(dragStart)="dragStart($event.item, $event.event)"
 				(dragEnd)="dragEnd()"
 			/>
-			} } @if (menu(); as open) {
+			} } @if (dropping()) {
+			<div
+				class="fm-dropover"
+				id="fm_dropover"
+			>
+				<div>
+					<i class="ri-upload-cloud-2-line"></i>
+					<h4>{{ 'fm_drop_to_upload' | transloco: { place: uploadPlace() } }}</h4>
+					<p class="text-muted mb-0">{{ 'fm_drop_hint' | transloco }}</p>
+				</div>
+			</div>
+			} @if (menu(); as open) {
 			<app-fm-menu
 				[lines]="open.lines"
 				[at]="open.at"
@@ -956,4 +1030,404 @@
 			</button>
 		</div>
 	</div>
+</ng-template>
+
+<ng-template
+	#fmUploadReview
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="fm_review_title">
+			{{ (flow.review()?.plan?.folderName ? 'fm_upload_a_folder' : 'fm_upload_files') | transloco }}
+		</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	@if (flow.review(); as current) {
+	<div
+		class="modal-body"
+		id="fm_review"
+	>
+		<p class="mb-2">
+			@if (current.plan.folderName; as folder) {
+			<strong>{{ folder }}</strong>
+			{{ 'fm_review_folder_to' | plural: current.rows.length }} } @else { {{ 'fm_review_files_to' | plural:
+			current.rows.length }} }
+			<strong>{{ current.place }}</strong>
+		</p>
+		<div class="fm-review-summary">
+			@if (flow.foldersToMake()) {
+			<span class="fm-chip">
+				<i class="ri-folder-3-line"></i>
+				{{ 'fm_folders_made' | plural: flow.foldersToMake() }}
+			</span>
+			}
+			<span class="fm-chip muted">
+				<i class="ri-file-3-line"></i>
+				{{ 'fm_files_as_is' | plural: flow.going().length }}
+			</span>
+			@if (flow.waiting()) {
+			<span class="fm-chip muted">
+				<i class="ri-time-line"></i>
+				{{ 'fm_photos_wait' | plural: flow.waiting() }}
+			</span>
+			}
+			<span class="fm-chip muted">{{ 'fm_total' | transloco: { size: (flow.goingBytes() | fileSize) } }}</span>
+		</div>
+		<div class="table-responsive datatable-wrapper border-table">
+			<table
+				class="all-package theme-table no-footer fm-table table"
+				id="fm_review_table"
+			>
+				<thead>
+					<tr>
+						<th class="sm-width">
+							<div class="custom-control custom-checkbox">
+								<input
+									type="checkbox"
+									class="custom-control-input checkbox_animated"
+									[attr.aria-label]="'fm_select_all' | transloco"
+									[checked]="!current.skipped.size"
+									(change)="flow.toggleAll(!!current.skipped.size)"
+								/>
+							</div>
+						</th>
+						<th class="fm-namecol">{{ 'fm_file' | transloco }}</th>
+						<th>{{ 'type' | transloco }}</th>
+						<th>{{ 'fm_checks' | transloco }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (row of current.rows; track row.key) {
+					<tr [attr.data-row]="row.name">
+						<td class="sm-width">
+							<div class="custom-control custom-checkbox">
+								<input
+									type="checkbox"
+									class="custom-control-input checkbox_animated"
+									[attr.aria-label]="row.name"
+									[checked]="!row.waits && !current.skipped.has(row.key)"
+									[disabled]="row.waits"
+									(change)="flow.toggleRow(row.key)"
+								/>
+							</div>
+						</td>
+						<td class="fm-namecol">
+							<div class="fm-file">
+								<div
+									class="fm-type"
+									[class]="rowKind(row).cls"
+								>
+									<i [class]="rowKind(row).icon"></i>
+								</div>
+								<div style="min-width: 0">
+									<h6>{{ row.name }}</h6>
+									<p>
+										{{ row.bytes | fileSize }} @if (row.folderPath.length) { ·
+										<span class="fm-file-path">
+											<i class="ri-folder-3-line"></i>
+											{{ row.folderPath.join(' › ') }}
+										</span>
+										}
+									</p>
+								</div>
+							</div>
+						</td>
+						<td class="fm-dims">{{ typeOf({ name: row.name, contentType: row.contentType }) || '—' }}</td>
+						<td>
+							@if (row.waits) {
+							<span class="fm-status wait">
+								<i class="ri-time-line"></i>
+								{{ 'fm_waits_for_profiles' | transloco }}
+							</span>
+							} @else {
+							<span class="fm-ok">
+								<i class="ri-checkbox-circle-line"></i>
+								{{ 'fm_ok' | transloco }}
+							</span>
+							}
+						</td>
+						<td>
+							<ul id="actions">
+								<li>
+									<a
+										href="javascript:void(0)"
+										[title]="'fm_remove_from_upload' | transloco"
+										(click)="flow.removeRow(row.key)"
+									>
+										<i class="ri-close-line"></i>
+									</a>
+								</li>
+							</ul>
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part">
+			@if (flow.waiting()) {
+			<span class="fm-footer-note info">
+				<i class="ri-information-line"></i>
+				{{ 'fm_photos_wait_note' | transloco }}
+			</span>
+			} @else if (current.plan.folderName) {
+			<span class="fm-footer-note info">
+				<i class="ri-information-line"></i>
+				{{ 'fm_structure_kept' | transloco }}
+			</span>
+			}
+		</div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="fm_review_upload"
+				[disabled]="!flow.going().length || current.checking"
+				(click)="startUpload(modal.close)"
+			>
+				{{ current.checking ? ('fm_checking_files' | transloco) : ('fm_upload_items' | plural:
+				flow.going().length) }}
+			</button>
+		</div>
+	</div>
+	}
+</ng-template>
+
+<ng-template
+	#fmDuplicate
+	let-modal
+>
+	@if (flow.duplicate(); as ask) {
+	<div
+		class="modal-body"
+		id="fm_duplicate"
+	>
+		<i class="ri-file-copy-2-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_duplicate_title"
+		>
+			{{ (ask.kind === 'identical' ? 'fm_dup_identical_title' : 'fm_dup_name_title') | transloco }}
+		</h5>
+		<p>{{ (ask.kind === 'identical' ? 'fm_dup_identical_body' : 'fm_dup_name_body') | transloco }}</p>
+		<div class="fm-compare mb-3">
+			<div>
+				<div class="fm-drop">
+					<i [class]="rowKind(ask.row).icon + ' fs-1'"></i>
+				</div>
+				<p>
+					<strong>{{ 'fm_dup_uploading_now' | transloco }}</strong>
+					<br />
+					{{ ask.row.name }} · {{ ask.row.bytes | fileSize }}
+				</p>
+			</div>
+			<div class="fm-arrow">
+				<i [class]="ask.kind === 'identical' ? 'ri-equal-line' : 'ri-arrow-left-right-line'"></i>
+			</div>
+			<div>
+				<div class="fm-drop">
+					<i [class]="rowKind(ask.row).icon + ' fs-1'"></i>
+				</div>
+				<p>
+					<strong>
+						{{ 'fm_dup_already_in' | transloco: { place: ask.existing.location || uploadPlace() } }}
+					</strong>
+					<br />
+					{{ ask.existing.name }}
+				</p>
+			</div>
+		</div>
+		@if (ask.others) {
+		<div class="form-check d-inline-block mb-3">
+			<input
+				class="form-check-input"
+				type="checkbox"
+				id="fm_dup_same"
+				[checked]="ask.sameForOthers"
+				(change)="flow.duplicate.set({ ...ask, sameForOthers: !ask.sameForOthers })"
+			/>
+			<label
+				class="form-check-label"
+				for="fm_dup_same"
+			>
+				{{ 'fm_dup_same_answer' | plural: ask.others }}
+			</label>
+		</div>
+		}
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				id="fm_dup_upload"
+				(click)="modal.close('upload')"
+			>
+				{{ 'fm_upload_anyway' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-theme btn-md fw-bold btn"
+				id="fm_dup_existing"
+				(click)="modal.close('existing')"
+			>
+				{{ 'fm_use_existing' | transloco }}
+			</button>
+		</div>
+		<p class="small text-muted mt-3 mb-0">
+			{{ ask.kind === 'identical' ? ('fm_dup_identical_note' | transloco) : ('fm_dup_keep_both_note' | transloco:
+			{ name: ask.keepBothName }) }}
+		</p>
+	</div>
+	}
+</ng-template>
+
+<ng-template
+	#fmOnDemand
+	let-modal
+>
+	@if (flow.storageAsk(); as ask) {
+	<div
+		class="modal-body"
+		id="fm_on_demand"
+	>
+		<i class="ri-hard-drive-2-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_on_demand_title"
+		>
+			{{ 'fm_od_title' | transloco: { plan: (storage.data()?.planBytes ?? 0 | fileSize) } }}
+		</h5>
+		<p>{{ 'fm_od_what' | plural: ask.files }}</p>
+		<div
+			class="mx-auto mb-3 text-start"
+			style="max-width: 480px"
+		>
+			<table class="table-sm mb-2 table">
+				<tbody>
+					<tr>
+						<td>{{ 'fm_od_stored_now' | transloco }}</td>
+						<td class="text-end text-nowrap">{{ ask.usedBytes | fileSize }}</td>
+					</tr>
+					<tr>
+						<td>{{ 'fm_od_adds' | transloco }}</td>
+						<td class="text-end text-nowrap">{{ ask.bytes | fileSize }}</td>
+					</tr>
+					<tr>
+						<td>{{ 'fm_od_after' | transloco }}</td>
+						<td class="text-end text-nowrap">
+							<strong>{{ ask.afterBytes | fileSize }}</strong>
+							{{ 'fm_od_of_plan' | transloco: { plan: (storage.data()?.planBytes ?? 0 | fileSize) } }}
+						</td>
+					</tr>
+					<tr>
+						<td>{{ 'fm_on_demand' | transloco }}</td>
+						<td class="text-end text-nowrap">
+							<strong class="text-danger">
+								{{ 'fm_about' | transloco: { value: (ask.onDemandBytes | fileSize) } }}
+							</strong>
+						</td>
+					</tr>
+					<tr>
+						<td>{{ 'fm_od_cost' | transloco }}</td>
+						<td class="text-end text-nowrap">
+							{{ 'fm_od_per_month' | transloco: { usd: (ask.onDemandMonthlyUsd | currency: 'USD' :
+							'symbol' : '1.2-2') } }}
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="small text-muted mb-0">{{ 'fm_od_note' | transloco }}</p>
+		</div>
+		@if (ask.canApprove) {
+		<div
+			class="mx-auto mb-3 rounded p-3 text-start"
+			style="max-width: 480px; background: var(--fm-soft)"
+		>
+			<div class="form-check mb-0">
+				<input
+					class="form-check-input"
+					type="checkbox"
+					id="fm_od_others"
+					[checked]="flow.alsoLetOthers()"
+					(change)="flow.alsoLetOthers.set(!flow.alsoLetOthers())"
+				/>
+				<label
+					class="form-check-label"
+					for="fm_od_others"
+				>
+					<strong>{{ 'fm_od_let_others' | transloco }}</strong>
+					<span class="d-block small text-muted">{{ 'fm_od_let_others_help' | transloco }}</span>
+				</label>
+			</div>
+		</div>
+		}
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-theme btn-md fw-bold btn"
+				id="fm_od_yes"
+				(click)="modal.close('yes')"
+			>
+				{{ 'fm_od_use' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
+</ng-template>
+
+<ng-template
+	#fmStorageRefused
+	let-modal
+>
+	@if (flow.storageAsk(); as ask) {
+	<div
+		class="modal-body"
+		id="fm_storage_refused"
+	>
+		<i class="ri-lock-line icon-box"></i>
+		<h5
+			class="modal-title"
+			id="fm_refused_title"
+		>
+			{{ 'fm_refused_title' | transloco }}
+		</h5>
+		<p>
+			{{ 'fm_refused_body' | transloco: { extra: (ask.onDemandBytes | fileSize), plan: (storage.data()?.planBytes
+			?? 0 | fileSize) } }}
+		</p>
+		<p class="small text-muted">{{ 'fm_refused_note' | transloco }}</p>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-theme btn-md fw-bold btn"
+				(click)="modal.close()"
+			>
+				{{ 'close' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
 </ng-template>

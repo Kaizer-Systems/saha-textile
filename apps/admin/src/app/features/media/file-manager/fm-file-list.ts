@@ -6,9 +6,11 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { fileKind, fileTypeLabel } from './file-kinds';
+import { timeLeft, uploadPercent, uploadSecondsLeft } from './fm-upload-plan';
 
 import type { FmItemRef } from './fm-selection';
 import type { MediaFileRow, MediaFolderRow } from '@core/media-library/media-library.gateway';
+import type { UploadJob } from '@core/media-library/media-uploads';
 
 /** One item in Trash, as its row actions report it. */
 export interface TrashItem {
@@ -58,6 +60,12 @@ export class FmFileList {
 	readonly dragEnd = output<void>();
 	/** Files being dragged: their tiles fade (A28). */
 	readonly dragging = input<ReadonlySet<string>>(new Set());
+	/** Uploads from this tab, by stored file, for the status cell (B06). */
+	readonly uploads = input<ReadonlyMap<string, UploadJob>>(new Map());
+	readonly retryUpload = output<string>();
+	readonly percent = uploadPercent;
+	readonly secondsLeft = uploadSecondsLeft;
+	readonly timeLeft = timeLeft;
 
 	/** Trash's row actions (A18): put an item back, or delete it for good. */
 	readonly restore = output<TrashItem>();

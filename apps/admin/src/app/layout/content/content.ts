@@ -7,6 +7,7 @@ import { injectInboxSummaryQuery } from '@core/mailboxes/mailbox.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { MenuStore } from '@core/state/menu.store';
 import { NavService } from '@data-access/services/nav.service';
+import { FmTray } from '@features/media/file-manager/fm-tray';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { Sidebar } from '@layout/sidebar/sidebar';
@@ -16,7 +17,7 @@ import { SidebarMenuSkeleton } from '@shared/ui/skeleton/sidebar-menu-skeleton/s
 	selector: 'app-content',
 	templateUrl: './content.html',
 	styleUrls: ['./content.scss'],
-	imports: [Header, SidebarMenuSkeleton, Sidebar, RouterModule, Footer],
+	imports: [Header, SidebarMenuSkeleton, Sidebar, RouterModule, Footer, FmTray],
 })
 export class Content {
 	navServices = inject(NavService);

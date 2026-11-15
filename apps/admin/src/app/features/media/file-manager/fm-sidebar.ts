@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, HostListener, computed, input, output, signal } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
@@ -64,12 +64,30 @@ export class FmSidebar {
 	readonly pickCategory = output<MediaCategory>();
 	readonly openFolder = output<string>();
 	readonly storageDetails = output<void>();
+	/** The Upload menu (A03): files, a whole folder, or a new folder. */
+	readonly upload = output<'files' | 'folder' | 'new_folder'>();
+	readonly uploadMenuOpen = signal(false);
 
 	readonly categories = FM_CATEGORIES;
 	readonly tree = computed(() => buildTree(this.folders()));
 	/** Opened by hand; the open folder's parents are always open too. */
 	private readonly opened = signal<ReadonlySet<string>>(new Set());
 	readonly open = computed(() => new Set([...this.opened(), ...parentsOf(this.folders(), this.folderId())]));
+
+	toggleUploadMenu(event: Event): void {
+		event.stopPropagation();
+		this.uploadMenuOpen.update((open) => !open);
+	}
+
+	chooseUpload(choice: 'files' | 'folder' | 'new_folder'): void {
+		this.uploadMenuOpen.set(false);
+		this.upload.emit(choice);
+	}
+
+	@HostListener('document:click')
+	closeUploadMenu(): void {
+		if (this.uploadMenuOpen()) this.uploadMenuOpen.set(false);
+	}
 
 	toggle(id: string, event: Event): void {
 		event.stopPropagation();

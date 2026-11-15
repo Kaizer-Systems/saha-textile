@@ -97,6 +97,8 @@ export abstract class MediaLibraryGateway {
 
 	abstract presignFile(body: MediaFilePresignRequest): Observable<MediaFilePresignResponse>;
 	abstract finalizeFile(id: string): Observable<{ assetId: string; state: 'ready' }>;
+	/** Drop your own unfinished upload (cancelled, or failed for good). */
+	abstract cancelUpload(id: string): Observable<void>;
 	abstract setVisibility(id: string, visibility: 'public' | 'private'): Observable<MediaOperationResult>;
 	/** Preview (`view`) or Download (`save`): a five-minute address for the original. */
 	abstract fileAddress(id: string, as: 'view' | 'save'): Observable<MediaFileAddress>;

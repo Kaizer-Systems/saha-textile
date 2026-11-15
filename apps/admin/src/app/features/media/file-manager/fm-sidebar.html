@@ -1,4 +1,59 @@
 <aside class="fm-side">
+	<div class="dropdown fm-menu-host">
+		<button
+			type="button"
+			class="btn btn-theme d-flex align-items-center justify-content-center w-100 gap-2"
+			id="fm_upload"
+			(click)="toggleUploadMenu($event)"
+		>
+			<i class="ri-upload-cloud-2-line"></i>
+			{{ 'fm_upload' | transloco }}
+			<i class="ri-arrow-down-s-line"></i>
+		</button>
+		@if (uploadMenuOpen()) {
+		<ul
+			class="dropdown-menu show fm-ctx"
+			id="fm_upload_menu"
+			style="top: 46px; left: 0; width: 100%"
+			(click)="$event.stopPropagation()"
+		>
+			<li>
+				<a
+					class="dropdown-item"
+					href="javascript:void(0)"
+					id="fm_upload_files"
+					(click)="chooseUpload('files')"
+				>
+					<i class="ri-file-upload-line"></i>
+					{{ 'fm_upload_files' | transloco }}
+				</a>
+			</li>
+			<li>
+				<a
+					class="dropdown-item"
+					href="javascript:void(0)"
+					id="fm_upload_folder"
+					(click)="chooseUpload('folder')"
+				>
+					<i class="ri-folder-upload-line"></i>
+					{{ 'fm_upload_a_folder' | transloco }}
+				</a>
+			</li>
+			<li><hr class="dropdown-divider" /></li>
+			<li>
+				<a
+					class="dropdown-item"
+					href="javascript:void(0)"
+					id="fm_upload_new_folder"
+					(click)="chooseUpload('new_folder')"
+				>
+					<i class="ri-folder-add-line"></i>
+					{{ 'fm_new_folder' | transloco }}
+				</a>
+			</li>
+		</ul>
+		}
+	</div>
 	<ul class="fm-nav">
 		<li [class.active]="nav() === 'folder' && !category()">
 			<a

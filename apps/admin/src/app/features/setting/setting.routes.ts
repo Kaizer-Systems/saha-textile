@@ -34,6 +34,20 @@ export default [
 		loadComponent: () => import('./languages/languages').then((m) => m.LanguagesSettings),
 	},
 	{
+		path: 'image-profiles',
+		loadComponent: () => import('./image-profiles/image-profiles').then((m) => m.ImageProfilesSettings),
+	},
+	{
+		path: 'image-profiles/create',
+		loadComponent: () =>
+			import('./image-profiles/image-profile-form/image-profile-form').then((m) => m.ImageProfileForm),
+	},
+	{
+		path: 'image-profiles/edit/:key',
+		loadComponent: () =>
+			import('./image-profiles/image-profile-form/image-profile-form').then((m) => m.ImageProfileForm),
+	},
+	{
 		path: 'communications',
 		loadComponent: () => import('./communications/communications').then((m) => m.CommunicationsSettings),
 	},

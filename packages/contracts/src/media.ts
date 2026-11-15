@@ -214,8 +214,12 @@ export const MediaProfile = z
 		builtIn: z.boolean().default(false),
 		/** The box the photo is fitted to; null keeps the photo's own shape (logos, banners). */
 		shape: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).nullable(),
-		/** The size families it makes, by role key. */
+		/** The size families it makes, by role key (a profile added in Settings has one family, its own key). */
 		roles: z.array(MediaRoleKey).min(1),
+		/** The widths each family makes, in px (F02 “Sizes made”); never enlarged. Absent: the family's own widths. */
+		widths: z.record(MediaRoleKey, z.array(z.number().int().positive().max(8192)).min(1).max(12)).default({}),
+		/** WebP/JPEG quality for this profile's files; null keeps each size family's own (80–86). */
+		quality: z.number().int().min(40).max(100).nullable().default(null),
 		/** The fills an admin may tick when the photo's shape differs; empty when the shape is kept. */
 		fills: z.array(MediaFill.exclude(['as_is'])),
 		minSize: MediaProfileMinSize.nullable().default(null),
@@ -239,6 +243,18 @@ export const MediaProfile = z
 		if (new Set(profile.fills).size !== profile.fills.length) {
 			ctx.addIssue({ code: 'custom', message: 'a profile lists each fill once', path: ['fills'] });
 		}
+		for (const [role, list] of Object.entries(profile.widths)) {
+			if (!profile.roles.includes(role)) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'sizes are given for a family the profile does not make',
+					path: ['widths', role],
+				});
+			}
+			if (new Set(list).size !== list.length) {
+				ctx.addIssue({ code: 'custom', message: 'each size is listed once', path: ['widths', role] });
+			}
+		}
 		if (!profile.shape && profile.fills.length > 0) {
 			ctx.addIssue({
 				code: 'custom',
@@ -248,6 +264,36 @@ export const MediaProfile = z
 		}
 	});
 export type MediaProfile = z.infer<typeof MediaProfile>;
+
+/**
+ * `POST /admin/media/profiles` and `PUT /admin/media/profiles/:key` (Settings › Image profiles F02). The key is
+ * made from the name when a profile is added and never changes; a built-in profile keeps its name.
+ */
+export const MediaProfileWrite = z.object({
+	name: z.string().trim().min(1).max(60),
+	shape: z
+		.object({ width: z.number().int().positive().max(100), height: z.number().int().positive().max(100) })
+		.nullable(),
+	widths: z.record(MediaRoleKey, z.array(z.number().int().positive().max(8192)).min(1).max(12)),
+	quality: z.number().int().min(40).max(100).nullable(),
+	minSize: MediaProfileMinSize.nullable(),
+	fills: z.array(MediaFill.exclude(['as_is'])).max(5),
+	maxBytes: z
+		.number()
+		.int()
+		.positive()
+		.max(25 * 1024 * 1024),
+	accepts: z
+		.array(z.string().regex(/^image\/[\w.+-]+$/))
+		.min(1)
+		.max(20),
+	enabled: z.boolean(),
+});
+export type MediaProfileWrite = z.infer<typeof MediaProfileWrite>;
+
+/** `PUT /admin/media/profiles/:key`: any part of a profile; the list's Status switch sends `enabled` alone. */
+export const MediaProfileUpdate = MediaProfileWrite.partial();
+export type MediaProfileUpdate = z.infer<typeof MediaProfileUpdate>;
 
 /** `GET /admin/media/profiles`: each profile with how many photos hold a version of it (F01's Images column). */
 export const MediaProfileListItem = z.object({

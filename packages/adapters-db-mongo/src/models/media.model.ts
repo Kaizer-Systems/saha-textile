@@ -177,6 +177,9 @@ export interface MediaProfileDoc {
 	builtIn: boolean;
 	shape: { width: number; height: number } | null;
 	roles: string[];
+	/** Absent on profiles stored before Settings › Image profiles (release migration 0002 adds them). */
+	widths?: Record<string, number[]>;
+	quality?: number | null;
 	fills: string[];
 	minSize: { edge: string; px: number; mode: string } | null;
 	maxBytes: number;
@@ -194,6 +197,8 @@ const MediaProfileSchema = new Schema<MediaProfileDoc>(
 		builtIn: { type: Boolean, default: false },
 		shape: { type: Schema.Types.Mixed, default: null },
 		roles: { type: [String], required: true },
+		widths: { type: Schema.Types.Mixed, default: {} },
+		quality: { type: Number, default: null },
 		fills: { type: [String], enum: MediaFill.options, default: [] },
 		minSize: { type: Schema.Types.Mixed, default: null },
 		maxBytes: { type: Number, required: true },

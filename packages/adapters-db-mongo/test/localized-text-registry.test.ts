@@ -55,6 +55,7 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 	'MediaAsset.versions': 'profile keys, fills and dates',
 	'MediaProfile.shape': 'a ratio',
 	'MediaProfile.minSize': 'a size in pixels',
+	'MediaProfile.widths': 'sizes in pixels',
 	'ProductBundle.groups': 'product ids and quantities',
 	'Promotion.conditions': 'amounts and flags',
 	'Product.media': 'photo ids; per-photo alt overrides are erased by the coverage repository',

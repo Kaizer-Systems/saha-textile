@@ -32,6 +32,8 @@ import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-h
 import { LoaderInterceptor } from '@core/interceptors/loader.interceptor';
 import { HttpMediaLibraryGateway } from '@core/media-library/http-media-library.gateway';
 import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
+import { HttpMediaProfilesGateway } from '@core/media-profiles/http-media-profiles.gateway';
+import { MediaProfilesGateway } from '@core/media-profiles/media-profiles.gateway';
 import { CartEffects } from '@core/state/cart/cart.effects';
 import { cartReducer } from '@core/state/cart/cart.reducer';
 
@@ -56,6 +58,7 @@ export const appConfig: ApplicationConfig = {
 		// Non-secret notification Settings (MSG91 Authkey stays in API env).
 		{ provide: AdminNotificationsGateway, useClass: HttpAdminNotificationsGateway },
 		{ provide: AdminCommunicationsGateway, useClass: HttpAdminCommunicationsGateway },
+		{ provide: MediaProfilesGateway, useClass: HttpMediaProfilesGateway },
 		{ provide: AdminLanguagesGateway, useClass: HttpAdminLanguagesGateway },
 		{ provide: MediaLibraryGateway, useClass: HttpMediaLibraryGateway },
 		// Admin roles + permission registry gateway (auth pass 5c.3 UI wiring).

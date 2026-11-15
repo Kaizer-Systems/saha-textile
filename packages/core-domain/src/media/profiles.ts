@@ -10,12 +10,25 @@ import type {
 
 import type { MediaProfileRepository } from '../ports/media-profile.repository';
 import { MEDIA_INGEST_POLICY, aspectDeviation } from './policy';
+import { SEEDED_MEDIA_ROLES } from './seeded-roles';
 
 const MB = 1024 * 1024;
 const ACCEPTS = ['image/jpeg', 'image/png'];
 
+/** Each family's widths as the seeded ladder has them, so a profile shows and edits its own sizes (F02). */
+export const seededWidths = (roles: readonly string[]): Record<string, number[]> =>
+	Object.fromEntries(
+		roles.flatMap((key) => {
+			const role = SEEDED_MEDIA_ROLES.find((row) => row.key === key);
+			return role ? [[key, [...role.widths]]] : [];
+		}),
+	);
+
 const profile = (
-	definition: Omit<MediaProfile, 'version' | 'updatedAt' | 'maxBytes' | 'accepts' | 'enabled' | 'mainPhotoOnly'> &
+	definition: Omit<
+		MediaProfile,
+		'version' | 'updatedAt' | 'maxBytes' | 'accepts' | 'enabled' | 'mainPhotoOnly' | 'widths' | 'quality'
+	> &
 		Partial<Pick<MediaProfile, 'mainPhotoOnly'>>,
 ): MediaProfile => ({
 	maxBytes: 25 * MB,
@@ -23,6 +36,8 @@ const profile = (
 	enabled: true,
 	mainPhotoOnly: false,
 	...definition,
+	widths: seededWidths(definition.roles),
+	quality: null,
 	version: 1,
 });
 

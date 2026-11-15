@@ -313,6 +313,10 @@ Admin catalogue reads answer `no-store`.
 | `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                                     |
 | `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; new widths apply to files made afterwards                                    |
 | `GET`    | `/admin/media/profiles`               | `attachment.index`   | Image profiles, built-in first, each with how many photos hold a version of it            |
+| `GET`    | `/admin/media/profiles/:key`          | `attachment.index`   | One image profile with its photo count                                                    |
+| `POST`   | `/admin/media/profiles`               | `setting.edit`       | Add an image profile; its key is made from the name                                       |
+| `PUT`    | `/admin/media/profiles/:key`          | `setting.edit`       | Edit or switch an image profile on or off; applies to versions made afterwards            |
+| `DELETE` | `/admin/media/profiles/:key`          | `setting.edit`       | Delete an image profile no photo uses; built-in profiles are never deleted                |
 | `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy and storage checks, then a presigned PUT for the private original |
 | `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                                     |
 | `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                             |

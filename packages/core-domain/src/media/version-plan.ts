@@ -134,8 +134,26 @@ const fitFor = (
  * the fill says. Never enlarged: a width the photo cannot fill is skipped. Banners skip widths beyond twice their
  * slot's widest display. Logos keep their see-through background unless the fill puts them on a colour.
  */
+/** A profile added in Settings makes one family of its own: its widths, kept whole, WebP. */
+const ownFamily = (key: string): MediaRoleDefinition => ({
+	key,
+	label: key,
+	seeded: false,
+	purposes: [],
+	widths: [],
+	aspect: null,
+	fit: 'inside',
+	format: 'image/webp',
+	quality: 82,
+	primaryOnly: false,
+	respectSlotMaxWidth: false,
+	brandStrip: false,
+	inset: 0,
+	version: 1,
+});
+
 export const planVersion = (input: {
-	profile: Pick<MediaProfile, 'key' | 'shape' | 'roles'>;
+	profile: Pick<MediaProfile, 'key' | 'shape' | 'roles'> & Partial<Pick<MediaProfile, 'widths' | 'quality'>>;
 	fill: MediaFill;
 	roles: readonly MediaRoleDefinition[];
 	source: { width: number; height: number };
@@ -148,13 +166,15 @@ export const planVersion = (input: {
 	const skipped: { role: string; width: number }[] = [];
 
 	for (const key of input.profile.roles) {
-		const role = byKey.get(key);
+		const role = byKey.get(key) ?? (input.profile.widths?.[key] ? ownFamily(key) : undefined);
 		if (!role) continue;
+		const widths = input.profile.widths?.[key] ?? role.widths;
+		const quality = input.profile.quality ?? role.quality;
 		const { box, fit, background } = fitFor(role, input.profile, input.fill, {
 			dominant: input.colours?.dominant ?? null,
 			brand: input.colours?.brand ?? null,
 		});
-		for (const width of [...role.widths].sort((a, b) => a - b)) {
+		for (const width of [...widths].sort((a, b) => a - b)) {
 			const height = box ? Math.round((width * box.height) / box.width) : null;
 			const scale =
 				height === null
@@ -178,7 +198,7 @@ export const planVersion = (input: {
 					height: fit === 'inside' ? null : height,
 					fit,
 					format: role.format,
-					quality: role.quality,
+					quality,
 					...(keepAlpha ? { keepAlpha: true } : {}),
 					...(background ? { background } : {}),
 				},

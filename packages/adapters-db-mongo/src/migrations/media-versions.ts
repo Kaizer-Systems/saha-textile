@@ -1,10 +1,30 @@
 import type { ImageDerivative, MediaAsset, MediaVersion } from '@saha-textile/contracts';
-import { SEEDED_MEDIA_PROFILES, assignExistingVersions } from '@saha-textile/core-domain';
+import { SEEDED_MEDIA_PROFILES, assignExistingVersions, seededWidths } from '@saha-textile/core-domain';
 
-import { MediaAssetModel, type MediaAssetDoc } from '../models/index';
+import { MediaAssetModel, MediaProfileModel, type MediaAssetDoc } from '../models/index';
 import { MongoMediaProfileRepository } from '../repositories/media-profile.repository';
 
 const BATCH = 200;
+
+/**
+ * Release migration `0002-media-profile-sizes` (media step 2c, expand): profiles stored before their sizes and
+ * quality were editable get the widths their size families have, and “each size's own” quality. Safe to run again.
+ */
+export async function addProfileSizes(): Promise<string> {
+	const docs = await MediaProfileModel.find({ $or: [{ widths: { $exists: false } }, { widths: {} }] })
+		.lean()
+		.exec();
+	let changed = 0;
+	for (const doc of docs) {
+		const result = await MediaProfileModel.updateOne(
+			{ _id: doc._id },
+			{ $set: { widths: seededWidths(doc.roles), quality: doc.quality ?? null } },
+			{ timestamps: false },
+		).exec();
+		changed += result.modifiedCount;
+	}
+	return `gave ${changed} image profile${changed === 1 ? '' : 's'} their sizes`;
+}
 
 /**
  * Media build step 2a, release migration `0001-media-profiles-and-versions` (expand half):

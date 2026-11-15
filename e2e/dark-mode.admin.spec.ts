@@ -53,6 +53,9 @@ const SCREENS = [
 	'/setting/mailboxes',
 	'/setting/communications',
 	'/setting/languages',
+	'/setting/image-profiles',
+	'/setting/image-profiles/edit/product_3x4',
+	'/setting/image-profiles/create',
 	'/attribute?missing=bn',
 	'/setting/notifications',
 ];

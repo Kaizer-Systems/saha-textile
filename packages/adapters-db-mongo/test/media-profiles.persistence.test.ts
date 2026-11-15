@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
-import { seedProfilesAndNameVersions } from '../src/migrations/media-versions';
+import { addProfileSizes, seedProfilesAndNameVersions } from '../src/migrations/media-versions';
 import { MediaAssetModel, MediaProfileModel } from '../src/models/index';
 import { MongoMediaProfileRepository } from '../src/repositories/media-profile.repository';
 import { MongoMediaAssetRepository } from '../src/repositories/media.repository';
@@ -202,6 +202,25 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		expect(thumbs.map((row) => row.id)).toEqual(['med_old']);
 		expect(await assets.listStaleForRole({ role: 'share', version: 2, limit: 10 })).toEqual([]);
 		await MediaAssetModel.deleteMany({ _id: { $in: ['med_old', 'med_named', 'med_run'] } }).exec();
+	});
+
+	it('deletes only a profile that is not built in, and gives older profiles their sizes once (step 2c)', async () => {
+		await profiles.delete('product_3x4');
+		expect(await profiles.findByKey('product_3x4')).not.toBeNull();
+		await profiles.delete('square_1x1');
+		expect(await profiles.findByKey('square_1x1')).toBeNull();
+		await profiles.insertMissing(SEEDED_MEDIA_PROFILES.filter((row) => row.key === 'square_1x1'));
+
+		// A profile stored before its sizes were editable.
+		await MediaProfileModel.updateOne({ _id: 'hero_21x9' }, { $unset: { widths: 1, quality: 1 } }).exec();
+		expect((await profiles.findByKey('hero_21x9'))?.widths).toEqual({
+			banner: [480, 768, 1080, 1440, 1920, 2560, 2880],
+		});
+		await expect(addProfileSizes()).resolves.toBe('gave 1 image profile their sizes');
+		const stored = await MediaProfileModel.findById('hero_21x9').lean().exec();
+		expect(stored?.widths).toEqual({ banner: [480, 768, 1080, 1440, 1920, 2560, 2880] });
+		expect(stored?.quality).toBeNull();
+		await expect(addProfileSizes()).resolves.toBe('gave 0 image profiles their sizes');
 	});
 
 	it('counts the photos holding a version of each profile, leaving deleted ones out', async () => {

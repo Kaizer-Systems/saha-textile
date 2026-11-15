@@ -1,6 +1,6 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
-import { seedProfilesAndNameVersions } from '../migrations/media-versions';
+import { addProfileSizes, seedProfilesAndNameVersions } from '../migrations/media-versions';
 
 /**
  * Every data migration, in id order. The release-steps runner applies each one once per
@@ -25,5 +25,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Image profiles (media step 2): the starting profiles, and every photo’s files named under the version they already are; nothing is remade',
 		half: 'expand',
 		up: () => seedProfilesAndNameVersions(),
+	},
+	{
+		id: '0002-media-profile-sizes',
+		description:
+			'Image profiles (media step 2c): each stored profile gets its sizes and quality, so Settings can edit them',
+		half: 'expand',
+		up: () => addProfileSizes(),
 	},
 ];

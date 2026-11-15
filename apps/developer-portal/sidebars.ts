@@ -105,6 +105,7 @@ const sidebars: SidebarsConfig = {
 						'admin/communications',
 						'admin/languages',
 						'admin/media-page',
+						'admin/image-profiles',
 						'admin/styles-and-dark-mode',
 						'admin/state-and-data',
 						'admin/home-dashboard',

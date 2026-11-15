@@ -1,5 +1,5 @@
 import type { MediaProfile } from '@saha-textile/contracts';
-import type { MediaProfileRepository } from '@saha-textile/core-domain';
+import { type MediaProfileRepository, seededWidths } from '@saha-textile/core-domain';
 
 import { MediaAssetModel, MediaProfileModel, type MediaProfileDoc } from '../models/index';
 
@@ -10,6 +10,9 @@ const toProfile = (doc: MediaProfileDoc): MediaProfile =>
 		builtIn: doc.builtIn === true,
 		shape: doc.shape ?? null,
 		roles: doc.roles,
+		// A profile stored before its sizes were editable shows the ladder's own widths.
+		widths: doc.widths && Object.keys(doc.widths).length ? doc.widths : seededWidths(doc.roles),
+		quality: doc.quality ?? null,
 		fills: doc.fills ?? [],
 		minSize: doc.minSize ?? null,
 		maxBytes: doc.maxBytes,
@@ -40,6 +43,10 @@ export class MongoMediaProfileRepository implements MediaProfileRepository {
 	async save(profile: MediaProfile): Promise<MediaProfile> {
 		await MediaProfileModel.updateOne({ _id: profile.key }, { $set: toDoc(profile) }, { upsert: true }).exec();
 		return profile;
+	}
+
+	async delete(key: string): Promise<void> {
+		await MediaProfileModel.deleteOne({ _id: key, builtIn: { $ne: true } }).exec();
 	}
 
 	/** `$setOnInsert` only: an admin's edits survive every boot and every release. */

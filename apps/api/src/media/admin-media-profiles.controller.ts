@@ -1,12 +1,19 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { MediaProfileListItem } from '@saha-textile/contracts';
+import {
+	type MediaProfile,
+	type MediaProfileListItem,
+	MediaProfileUpdate,
+	MediaProfileWrite,
+} from '@saha-textile/contracts';
 
-import { Audience, RequirePermissions } from '../auth/session.guard';
+import { Principal } from '../auth/ownership';
+import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../auth/session.guard';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { MediaProfilesService } from './media-profiles.service';
 
-/** Settings › Image profiles (media build step 2). Editing arrives with the Settings screens (step 2c). */
+/** Settings › Image profiles (media build step 2, Media brief F01–F03). */
 @ApiTags(API_TAGS.media)
 @Audience('admin')
 @Controller('admin/media/profiles')
@@ -21,5 +28,47 @@ export class AdminMediaProfilesController {
 	})
 	list(): Promise<MediaProfileListItem[]> {
 		return this.profiles.list();
+	}
+
+	@Get(':key')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'getMediaProfile', summary: 'One image profile with its photo count' })
+	get(@Param('key') key: string): Promise<MediaProfileListItem> {
+		return this.profiles.get(key);
+	}
+
+	@Post()
+	@RequirePermissions('setting.edit')
+	@ApiOperation({ operationId: 'createMediaProfile', summary: 'Add an image profile; its key is made from the name' })
+	create(
+		@Principal() principal: AuthenticatedPrincipal,
+		@Body(new ZodValidationPipe(MediaProfileWrite)) body: MediaProfileWrite,
+	): Promise<MediaProfile> {
+		return this.profiles.create(principal.userId, body);
+	}
+
+	@Put(':key')
+	@RequirePermissions('setting.edit')
+	@ApiOperation({
+		operationId: 'updateMediaProfile',
+		summary: 'Edit or switch an image profile on or off; applies to versions made afterwards',
+	})
+	update(
+		@Principal() principal: AuthenticatedPrincipal,
+		@Param('key') key: string,
+		@Body(new ZodValidationPipe(MediaProfileUpdate)) body: MediaProfileUpdate,
+	): Promise<MediaProfile> {
+		return this.profiles.update(principal.userId, key, body);
+	}
+
+	@Delete(':key')
+	@HttpCode(204)
+	@RequirePermissions('setting.edit')
+	@ApiOperation({
+		operationId: 'deleteMediaProfile',
+		summary: 'Delete an image profile no photo uses; built-in profiles are never deleted',
+	})
+	remove(@Principal() principal: AuthenticatedPrincipal, @Param('key') key: string): Promise<void> {
+		return this.profiles.remove(principal.userId, key);
 	}
 }

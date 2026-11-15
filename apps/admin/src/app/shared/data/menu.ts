@@ -476,6 +476,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'image_profiles',
+				path: '/setting/image-profiles',
+				type: 'link',
+				level: 2,
+				permission: ['setting.index'],
+			},
+			{
+				parent_id: 19,
 				title: 'communications',
 				path: '/setting/communications',
 				type: 'link',

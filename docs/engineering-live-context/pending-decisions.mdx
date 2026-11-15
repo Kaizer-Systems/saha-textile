@@ -155,8 +155,8 @@ re-ask these:
 - Resolved HSN, rate, taxable base and tax amount are snapshotted on the order line.
 
 **Still open here:** the actual HSN codes and GST rates per category, whether the per-piece value
-threshold for apparel applies and on which value it is tested, and whether the category-default
-plus product/variant-override model is acceptable to the CA as a control. Round-2 items `B2.1`–`B2.8`.
+threshold for apparel applies and on which value it is tested, and who signs off a new product's
+HSN. Round-2 items `B2.1`–`B2.6` and `B2.8` (the category-default model is the owner's, 2026-11-15).
 
 **Architectural warning for anyone building before this closes:** if the rate turns on per-piece
 value, `taxClass → rate` is the wrong model and it must be `taxClass + unit value → rate`. Write
@@ -165,7 +165,9 @@ Tax-inclusive pricing also makes the threshold test circular near the boundary (
 
 ### Owner answer
 
-Choice:
+Choice: **Option A** (owner, 2026-11-15): HSN set on the category when it is created, inherited
+by the product form, overridable per product; a category change on edit refills the HSN and
+warns the admin to check it. Codes, rates and the threshold still wait on the CA.
 
 HSN required at product or variant level:
 
@@ -273,7 +275,8 @@ Choice:
 
 Return window:
 
-Non-returnable products/services:
+Non-returnable products/services: category default with product override (owner, 2026-11-15);
+not returnable: made-to-measure/customised, altered, innerwear and petticoats.
 
 Refund destinations:
 
@@ -407,7 +410,9 @@ These snapshot fields are now mandatory regardless of which option is chosen, an
 
 ### Owner answer
 
-Choice:
+Choice: **Option A, the rich bounded snapshot** (owner, 2026-11-15; recorded in the owner log).
+Refunds and returns are separate records pointing at order lines; the order is never edited.
+Only additions or removals to the field list remain open.
 
 Fields to add:
 

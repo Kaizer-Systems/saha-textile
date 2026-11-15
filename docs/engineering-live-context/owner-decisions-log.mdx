@@ -1319,6 +1319,94 @@ The owner accepted the media file manager brief (revision 6) on 2026-11-15, incl
 - **Legal pages become real admin Pages** (privacy, shipping, returns and refunds, terms) in their own chunk with its own brief; until then they count as to-dos for a new language.
 - **A new permission, `language.manage`**, held by the Administrator role only at first. **Messages** (email, SMS, WhatsApp) fall back to English and never block a language.
 
+## Owner decision round (2026-11-15) — order snapshot, refunds, HSN by category, returnability, purchase module
+
+- **`DEC-ORDER-SNAPSHOT` — Option A, the rich bounded snapshot.** Every order line keeps its own
+  copy of what was sold: product and variant ids, title, SKU, chosen options, add-ons and
+  measurements, primary picture reference, quantity, INR price, display currency and rate,
+  discounts, HSN, tax rate, taxable base and tax per line (with the CA-mandated place-of-supply
+  fields), category context, whether it can be returned and its return window, and cost (COGS)
+  when known. Refunds, returns and reports read the snapshot, never today's product.
+- **Refunds are separate records that point at order lines.** An order is never edited to show a
+  refund, return or cancellation; each one is its own record naming the lines and quantities it
+  covers, so partial returns and later CA rules (round-2 `D14`) plug in without a schema change.
+- **HSN is set on categories and inherited by products (`DEC-TAX-HSN` model, Option A).** A
+  category carries an HSN when it is created. Choosing a category on the product form fills the
+  product's HSN from it; the product may override it. On edit, changing the category refills the
+  HSN from the new category at once and shows a warning popup asking the admin to check the HSN
+  because the category changed. The actual codes, rates and the per-piece threshold still wait on
+  the CA (round-2 `B2.4`–`B2.6`). The model itself is the owner's decision and is no longer put to the CA (old `B2.7` removed).
+- **Returnability is a category default with a product override.** Not returnable by default:
+  made-to-measure or customised garments, altered garments, innerwear and petticoats (hygiene),
+  per the owner's round-2 `A2.6` answer. The resolved value is frozen on the order line.
+- **Stock enters through a purchase invoice module, not a typed number.** The owner asked for a
+  full screen brief first: purchase in, purchase return, damaged or dead stock found after a
+  purchase is accepted, inventory tables, and permission-controlled stock adjustments with reason
+  codes and audit messages, automated wherever possible. Brief to be approved before building.
+
+## Owner decision round (2026-11-15, later) — purchases and stock brief accepted; P1–P13
+
+The owner accepted every screen and user story of the purchases and stock brief, revision 1
+(https://claude.ai/artifact/83RYxkJJk8RoF4XiwbaeQd), and asked that all of them be built with every
+button and behaviour shown: no screen or feature may be dropped. Revision 2 adds the changes below.
+
+- **HSN popup on category change (R2-1).** Three buttons: Put back the old code, Enter manually,
+  Keep the new code. Enter manually swaps the buttons for an HSN box with a green tick and a red
+  cross icon (each with a hover name). The tick puts the typed code into the HSN field and closes
+  the popup; the cross hides the box and brings the three buttons back. An HSN has 4, 6 or 8
+  digits. The popup also names "Can be returned", which refills from the new category the same
+  way (P13).
+- **P1 — posting steps.** One person may check goods and post, for now. The super admin can make
+  any purchase-entry step need a different person from the step before (Settings › Purchases and stock).
+- **P2 — write-offs.** Every write-off needs approval; there is no amount limit. Anyone holding
+  the write-off approval permission (the super admin, and any role or single user the super admin
+  gives it to) writes off directly, recorded as approved by themselves; everyone else raises a
+  request. Stock-count differences follow the same rule.
+- **P3 — held stock.** A Held bucket: on hand, in stock value, not for sale.
+- **P4 — purchase orders at launch.** Draft → Sent → Part received → Received, closed short or
+  cancelled; sent by email through a connected mailbox or as a PDF; never moves stock or money;
+  the reorder list makes draft orders.
+- **P5 — cost basis.** Before GST where input credit is claimable, full price where not (AS 2).
+  Sent to the CA to confirm (round 2, D15.5).
+- **P6 — freight inward.** Part of stock cost, shared across a bill's lines by value. Sent to the
+  CA to confirm (D15.6).
+- **P7 — internal numbers.** PE/26-27/000014, OS/26-27/000001, SC/26-27/000007, and PO/ in the
+  same style; reset each 1 April. Debit notes and challans wait on the CA (16-character limit).
+- **P8 — cost visibility.** A separate permission; the API sends no cost to anyone without it.
+- **P9 — books-closed date.** Set by the owner; nothing can be dated on or before it.
+- **P10 — barcode labels now.** A4 label sheets holding many labels and many items per sheet.
+- **P11 — units.** A product is sold by the piece or by the metre; metres in steps of 0.1 m,
+  stored as whole tenths. Unit codes sent to the CA (D15.7). The shop side (product page and cart
+  in metres) needs its own brief.
+- **P12 — notes.** Every write-off carries a written note.
+- **P13 — returnability refill.** Yes, named inside the HSN popup.
+
+## Owner decision round (2026-11-15) — round-2 CA questionnaire cut to open questions
+
+Answers the owner gave as final in the "Accountant questions interactive pop-ups" chat
+(2026-11-10/11, ledger `.claude/tax-r2-answers.md`), now recorded here and removed from the
+round-2 questionnaire:
+
+- **Loyalty coins on returns (old round-2 `A1.3`, business half).** Coins earned on an order stay
+  on hold per product until that product's own return window has passed, and are credited only
+  then. If admin accepts a return after the window as an exception, admin may take back the coins
+  for those products only. If the customer has already spent them, the balance goes negative and
+  shows in red (instead of the normal points colour, in light and dark mode). Whether taking
+  coins back creates a GST event stays with the CA (`A1.3`).
+- **Refund choice (old `A2.3`).** For orders paid fully by card, UPI or netbanking, the customer
+  chooses a refund to the original method or to store balance; the original method is always
+  available.
+- **Non-returnable items (old `A2.6`).** Made-to-measure or customised garments, altered garments,
+  innerwear and petticoats, and any return after the published window (admin may accept one as an
+  exception, per the coin rule above).
+
+The owner asked (2026-11-15) that `tax-compliance-questionnaire-round-2.mdx` hold only open or
+confirmation questions, each with options, for and against, and a recommended answer, with no
+restated settled points. It was rewritten that way the same day; item numbers were kept, so gaps
+mark removed items. Also removed as owner-answered: `B2.7` (HSN by category with product
+override) and `D15.1` (FIFO valuation, stock value on any date). New: `B4.9` (store credit issued
+only on refunds, same GST treatment as gift cards?) and `D13.1` options.
+
 ## Owner decision round (2026-11-15) — legal pages in the admin (brief accepted)
 
 Brief: https://claude.ai/artifact/Byj8JxDnANYQPnnqNhnBtW. The owner wrote “your legal pages brief is
@@ -1338,3 +1426,20 @@ approved”, accepting it as drawn with the recommended choice in each question.
 - **Removals.** Choice A drops the demo screens' Add Page button, Delete action, row tick boxes and
   Status switch; choice 4 deletes the eight files. They were named in the brief and approved with
   it in typed words; the build still names each one again before it lands.
+
+## Owner decision round (2026-11-15) — fabric sold by the metre (shop brief)
+
+The owner accepted the shop brief for metre products (https://claude.ai/artifact/QrQRbrvj3d9DzLxFXnLzX8)
+and asked for the cart, phone cart and mini cart screens to be redrawn with aligned steppers
+(done in revision 2).
+
+- **M1:** − and + change a metre line by 0.5 m; any length in steps of 0.1 m can be typed.
+- **M2:** a new metre product's shortest cut defaults to 1.0 m, changeable per product.
+- **M3:** what happens when a cut would leave less than the shortest cut goes to the business
+  owner (round-2 questionnaire, item `O1`).
+- **M4:** fabric sold by the metre is not returnable by default; admin can change it per product.
+- **M5:** up to 4 quick-length buttons per product, set in admin; none shown when empty.
+- **M6:** "/ m" after the price on cards, "per metre" on the product page.
+- **Cart page, wide screens:** the small stepper under the product name is hidden from 992 px up,
+  where the Quantity column already shows one (owner's written OK, 2026-11-15). The theme hid it by
+  position (`li:nth-child(n + 4)`), which missed items without a discount. Phones and tablets keep it.

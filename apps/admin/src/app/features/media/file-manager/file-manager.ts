@@ -796,11 +796,15 @@ export class FileManager {
 	private readonly blank = typeof Image === 'undefined' ? null : Object.assign(new Image(), { src: BLANK_PICTURE });
 
 	dragStart(item: FmItemRef, event: DragEvent): void {
-		if (!isPicked(this.selection(), item)) {
-			this.selection.set(pickItem(NO_SELECTION, [], item, 'only', null));
-			this.anchor = item;
-		}
-		const { folders, files } = this.chosen();
+		// Dragging something not picked carries just that item and leaves the picks alone: picking it
+		// here would bring up the bulk bar and move the page under the pointer mid-drag.
+		const data = this.result();
+		const { folders, files } = isPicked(this.selection(), item)
+			? this.chosen()
+			: {
+					folders: item.type === 'folder' ? (data?.folders ?? []).filter((row) => row.id === item.id) : [],
+					files: item.type === 'file' ? (data?.files ?? []).filter((row) => row.id === item.id) : [],
+				};
 		event.dataTransfer?.setData(MEDIA_DRAG_TYPE, '1');
 		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
 		if (this.blank) event.dataTransfer?.setDragImage(this.blank, 0, 0);

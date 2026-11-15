@@ -31,6 +31,7 @@ const SCREENS = [
 	'/addon-template',
 	'/tag',
 	'/media',
+	'/media/files',
 	'/home-banners',
 	'/event',
 	'/blog',

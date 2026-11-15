@@ -98,7 +98,8 @@ body.dark-only {
 }
 .fm-nav li.active a {
 	background: color-mix(in srgb, var(--theme-color) 10%, transparent);
-	color: var(--theme-color);
+	/* R6-3: the stronger teal on the pale teal reads at 4.5 : 1; the bright teal did not (2.8 : 1). */
+	color: var(--fm-theme-ink);
 	font-weight: 600;
 }
 .fm-side-title {

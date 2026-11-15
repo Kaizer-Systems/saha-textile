@@ -766,7 +766,8 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 			({ dataTransfer, preventDefault: vi.fn(), clientX: 50, clientY: 60, ...extra }) as unknown as DragEvent;
 		page.dragStart({ type: 'file', id: 'med_2' }, drag());
 		expect(types).toEqual([MEDIA_DRAG_TYPE]);
-		expect([...page.selected()]).toEqual(['med_2']);
+		// Dragging something not picked leaves the picks alone, so the bulk bar never moves the page.
+		expect(page.chosenCount()).toBe(0);
 		expect([...page.draggedFiles()]).toEqual(['med_2']);
 		const over = drag();
 		page.dragOver(folder as never, over);

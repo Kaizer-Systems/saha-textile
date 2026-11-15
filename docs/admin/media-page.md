@@ -1,7 +1,7 @@
 ---
 title: Media page
 wide: true
-description: The admin Media page as a file manager — views kept in the address, picking items, the right-click and ⋮ menus, Move to, Rename, Trash with the in-use block, Undo, dragging onto folders, keyboard keys, uploading with the duplicate and storage checks, the upload tray, Preview and Download.
+description: The admin Media page as a file manager — views kept in the address, picking items, the right-click and ⋮ menus, Move to, Rename, Trash with the in-use block, Undo, dragging onto folders, keyboard keys, uploading with the duplicate and storage checks, the upload tray, sharing, storage details, Preview and Download.
 status: implemented
 audience: [beginner, frontend, backend]
 last_verified: '2026-11-15'
@@ -104,6 +104,18 @@ The Upload button at the top left offers Upload files, Upload a folder and New f
 
 The tray sits at the bottom right of every admin page while files upload, so moving around the admin never stops them. Its head counts what is uploading, failed and done; each file shows its bar with the size sent and the time left, then a green bar. A file kept beside one of the same name shows a toast with its new name. In the list, an uploading file shows its own bar and percentage, and a folder card shows the progress of everything going into it.
 
+## Sharing
+
+**Share** in a file's or photo's menu opens the share popup.
+
+- A plain file is **Private** (admins see it in Media; anyone else needs a link) or **Public** (a permanent CDN address with Copy, for linking from the website). Making it private again stops the address within a minute; copies people already downloaded stay with them.
+- A photo shows the address the website already uses, with its width, and shares its full-size original by link.
+- A link opens for anyone with it or for signed-in admins only, stops in 1 hour, 1 day, 7 days or 30 days, at the end of a chosen day, or never, and may ask for a password (anyone links only). Its full address, `<shop>/s/<code>`, is shown once with Copy: only the code's hash is stored, so the list names links by their last characters. Live links can get a new end or be stopped for good; links stop when their file goes to Trash.
+
+## Storage details
+
+**Details** in the storage box shows what is stored against the plan, by kind (original photos, picture versions, other files, Trash) and what running uploads hold, the plan's prices, and the switch **Other admins may use on-demand storage**. Only a super admin can change the switch; other admins see it read-only.
+
 ## Preview and Download
 
 `GET /files/:id/address` answers a five-minute address for the original in Spaces. `as=view` lets the browser show it; Preview opens it in a new tab that has no link back to the admin. `as=save` downloads it under its Media name; when the name has no extension, the stored file's is added, so `3-bengali-bridal-saree` saves as `3-bengali-bridal-saree.jpg`.
@@ -118,6 +130,8 @@ The tray sits at the bottom right of every admin page while files upload, so mov
 | List and thumbnails                                         | `features/media/file-manager/fm-file-list.ts`                                                |
 | Left side, folder tree, storage box                         | `features/media/file-manager/fm-sidebar.ts`                                                  |
 | Undo toast                                                  | `features/media/file-manager/fm-undo-toast.ts`                                               |
+| Share popup                                                 | `features/media/file-manager/fm-share.ts`                                                    |
+| Storage details                                             | `features/media/file-manager/fm-storage-details.ts`                                          |
 | Upload popup, duplicate and storage questions               | `features/media/file-manager/fm-upload-flow.ts`, `fm-upload-plan.ts`                         |
 | Upload queue (app-wide) and the tray                        | `core/media-library/media-uploads.ts`, `features/media/file-manager/fm-tray.ts`              |
 | The photo rule shared with the API                          | `@saha-textile/core-domain/media-files` (`waitsForImageProfiles`)                            |
@@ -131,6 +145,7 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 - The page lives at `/media/files`; `/media` still shows the earlier Media page until photos upload here.
 - Photos do not upload on this page yet, and pasting an image to upload it is not offered.
 - An upload cut off by a closed tab starts again from the beginning; the unfinished record stays in the list as waiting until it is cleared.
-- Sharing, storage details and Activity are not on this page yet.
+- Activity for a file or folder, and the details popup it sits in, are not on this page yet.
+- The share popup's link list does not say who made each link.
 - Download as .zip is not offered.
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.

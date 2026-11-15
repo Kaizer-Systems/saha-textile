@@ -111,6 +111,7 @@ describe('BullMqMediaJobQueue', () => {
 			'product-videos-check',
 			'search-outbox',
 			'search-check',
+			'trash-purge',
 			'weekly-insight',
 		]);
 	});

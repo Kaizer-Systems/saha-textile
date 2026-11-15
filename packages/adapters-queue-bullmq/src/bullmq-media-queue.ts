@@ -22,7 +22,9 @@ export type ScheduledMediaJob =
 	/** Sends waiting search changes (the search change queue). */
 	| { type: 'search-outbox' }
 	/** Compares the database with the search index and queues any difference. */
-	| { type: 'search-check' };
+	| { type: 'search-check' }
+	/** Removes for good what has been in the Media page's Trash for 30 days. */
+	| { type: 'trash-purge' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -158,6 +160,12 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'search-check',
 			{ pattern: '0 3 * * *', tz },
 			{ name: 'search-check', data: { type: 'search-check' } },
+		);
+		// The Media page's Trash: items 30 days old go for good (03:45 IST, after the media GC).
+		await this.queue.upsertJobScheduler(
+			'trash-purge',
+			{ pattern: '45 3 * * *', tz },
+			{ name: 'trash-purge', data: { type: 'trash-purge' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

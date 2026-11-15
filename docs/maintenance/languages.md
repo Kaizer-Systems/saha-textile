@@ -13,11 +13,12 @@ source_of_truth:
     - apps/admin/src/app/core/i18n/active-languages.ts
     - apps/admin/src/app/shared/pipes/language.pipes.ts
     - packages/contracts/src/common.ts
+    - apps/api/src/languages/language-store.ts
 ---
 
 # Languages
 
-The shop serves two languages: English (`en`) and Bengali (`bn`). English is the default and the fallback. Bengali replaced French on 8 November 2026; the decisions log holds the reasoning.
+The shop serves English (`en`) and Bengali (`bn`); Settings › Languages adds others. English is the default and the fallback. Bengali replaced French on 8 November 2026; the decisions log holds the reasoning.
 
 ## Where each language lives
 
@@ -33,13 +34,18 @@ Product and category addresses stay in English letters in both languages. Only t
 
 ## One list of languages
 
-The API owns the list. `GET /storefront/languages` answers `{ "default": "en", "active": ["en", "bn"] }` (contracts' `ActiveLocaleConfig`), from the API setting `ACTIVE_LOCALES`. English is always in it and always first. The answer is public, cached for a minute, and outside the shared rate limit.
+Settings › Languages decides which languages exist, separately for the admin and the shop; see [Settings › Languages](../admin/languages.md). The API keeps the stored list in memory and serves it:
 
-| Reader | How it gets the list                                                                                                                                                                                                                                                                                                                                                |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin  | `ActiveLanguages` (`core/i18n/active-languages.ts`) loads it before the app starts and keeps this browser's last copy (`st_admin_languages`) for when the API is slow. Every Language switch, every per-language form, the banner form and the header's page-language menu read it.                                                                                 |
-| Shop   | The server's locale middleware refreshes it at most once a minute (`refreshSupportedLocales` in `core/i18n/locale.ts`) and hands it to the renderer on the request. `ACTIVE_LOCALE` adopts it and passes it to the browser in the page's transfer state. Address prefixes, the language menu, `hreflang` and `og:locale` tags, the sitemap and the manifest use it. |
-| API    | `ACTIVE_LOCALES` directly, and it tells the shared old-address rules which prefixes are languages.                                                                                                                                                                                                                                                                  |
+- `GET /storefront/languages` (public, cached for a minute, outside the shared rate limit) answers `{ "default": "en", "active": [...], "admin": [...], "redirect": [...] }` (contracts' `ActiveLocaleConfig`): the languages the shop shows, the languages staff may use the admin in, and the languages whose addresses answer 301 to English.
+- `GET /admin/languages` gives every signed-in admin the working list, drafts included.
+
+English is always in every list and always first. `ACTIVE_LOCALES` only seeds an empty list once.
+
+| Reader | How it gets the list                                                                                                                                                                                                                                                                                                                                                                            |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin  | `ActiveLanguages` (`core/i18n/active-languages.ts`) loads the public list before the app starts and the working list once signed in, and keeps this browser's last copy (`st_admin_languages`). Every Language switch and per-language form reads `list()` (every added language); the header's page-language menu and Transloco read `adminList()`.                                            |
+| Shop   | The server's locale middleware refreshes it at most once a minute (`refreshSupportedLocales` in `core/i18n/locale.ts`) and hands it to the renderer on the request. `ACTIVE_LOCALE` adopts it and passes it to the browser in the page's transfer state. Address prefixes, the language menu, `hreflang` and `og:locale` tags, the sitemap and the manifest use it; `redirect` drives the 301s. |
+| API    | `LanguageStore`: `shop()` for Go Live, sitemaps, messages and saved redirects; `content()` for search documents and review photo alt text.                                                                                                                                                                                                                                                      |
 
 Until the shop has heard from the API once, any well-formed language prefix counts as a language, so an outage at start-up can never send `/bn/…` on a permanent redirect to `/en/bn/…`. A Contact Us message in a language the shop does not offer is stored in English.
 

@@ -209,6 +209,24 @@ These routes manage non-secret settings. The MSG91 key stays in the API environm
 
 See [Communications](../admin/communications.md) for the rules.
 
+## Admin language routes
+
+Settings › Languages. Every signed-in admin reads the working list; everything else needs `language.manage`. Every change is audited and answers the whole page.
+
+| Method   | Route                                  | Access            | Purpose                                                                |
+| -------- | -------------------------------------- | ----------------- | ---------------------------------------------------------------------- |
+| `GET`    | `/admin/languages`                     | Admin session     | Every added language with its Admin and Shop state, English first      |
+| `GET`    | `/admin/languages/settings`            | `language.manage` | The page: to-do totals, stored text, addresses, what the release ships |
+| `GET`    | `/admin/languages/reminders`           | `language.manage` | Deleted languages whose stored text the bell reminds about             |
+| `GET`    | `/admin/languages/:code/todo`          | `language.manage` | What is still empty in one language, by area                           |
+| `GET`    | `/admin/languages/:code/missing/:area` | `language.manage` | The items one list shows when filtered to what is missing              |
+| `POST`   | `/admin/languages`                     | `language.manage` | Add a language this release ships, as a draft                          |
+| `PUT`    | `/admin/languages/:code/admin`         | `language.manage` | Let staff use the admin in it, or stop                                 |
+| `PUT`    | `/admin/languages/:code/shop`          | `language.manage` | Show it on the shop once nothing is left, or take it off (301)         |
+| `DELETE` | `/admin/languages/:code`               | `language.manage` | Remove it from every list once the shop does not show it; text kept    |
+| `POST`   | `/admin/languages/:code/keep`          | `language.manage` | Keep a deleted language's text; the reminder waits 30 days             |
+| `POST`   | `/admin/languages/:code/erase`         | `language.manage` | Erase a deleted language's stored text after its name is typed         |
+
 ## Admin customer routes
 
 | Method   | Route                                               | Access             | Purpose                                                                                               |
@@ -427,7 +445,7 @@ The server enforces public visibility, not the caller. Public repository calls d
 | `GET`   | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                                    |
 | `GET`   | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale                             |
 | `GET`   | `/storefront/brand`                            | Public             | Logo sets, icons, link preview picture, profiles, store links and colours  |
-| `GET`   | `/storefront/languages`                        | Public             | The active languages, English first                                        |
+| `GET`   | `/storefront/languages`                        | Public             | The shop's languages, the admin's own languages, and the 301s to English   |
 | `GET`   | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                               |
 | `POST`  | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)                         |
 | `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                                |

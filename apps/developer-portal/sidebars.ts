@@ -103,6 +103,7 @@ const sidebars: SidebarsConfig = {
 						'admin/search',
 						'admin/brand-kit',
 						'admin/communications',
+						'admin/languages',
 						'admin/styles-and-dark-mode',
 						'admin/state-and-data',
 						'admin/home-dashboard',

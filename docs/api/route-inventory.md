@@ -296,31 +296,68 @@ Admin catalogue reads answer `no-store`.
 
 ## Admin media and content routes
 
-| Method   | Route                                 | Access               | Purpose                                                                      |
-| -------- | ------------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
-| `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                |
-| `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                        |
-| `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                              |
-| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                       |
-| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Save logo sets, link preview picture, profiles, store links and colours      |
-| `POST`   | `/admin/settings/brand/app-link`      | `setting.edit`       | Check that a Google Play or App Store address belongs to a real app          |
-| `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                |
-| `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                  |
-| `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                        |
-| `GET`    | `/admin/youtube/settings`             | `setting.index`      | YouTube rail settings                                                        |
-| `PUT`    | `/admin/youtube/settings`             | `setting.edit`       | Edit the rail: handle, display count, placements                             |
-| `GET`    | `/admin/media`                        | `attachment.index`   | Media library page with previews, usage counts and stale roles               |
-| `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                        |
-| `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; changed widths mark old derivatives stale                       |
-| `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy check, then a presigned PUT for the private original |
-| `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                        |
-| `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                |
-| `GET`    | `/admin/media/:assetId`               | `attachment.index`   | One library item                                                             |
-| `PATCH`  | `/admin/media/:assetId`               | `attachment.edit`    | Edit slug, alt, title and caption; a new slug queues a reprocess             |
-| `POST`   | `/admin/media/:assetId/reprocess`     | `attachment.edit`    | Regenerate every role from the retained original                             |
-| `DELETE` | `/admin/media/:assetId`               | `attachment.destroy` | Soft-delete an unused image; GC removes files after 30 days                  |
-| `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                           |
-| `POST`   | `/admin/reviews/:reviewId/moderation` | `review.edit`        | Approve or reject a review and its photos                                    |
+| Method   | Route                                 | Access               | Purpose                                                                                   |
+| -------- | ------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------- |
+| `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                             |
+| `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                                     |
+| `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                                           |
+| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                                    |
+| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Save logo sets, link preview picture, profiles, store links and colours                   |
+| `POST`   | `/admin/settings/brand/app-link`      | `setting.edit`       | Check that a Google Play or App Store address belongs to a real app                       |
+| `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                             |
+| `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                               |
+| `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                                     |
+| `GET`    | `/admin/youtube/settings`             | `setting.index`      | YouTube rail settings                                                                     |
+| `PUT`    | `/admin/youtube/settings`             | `setting.edit`       | Edit the rail: handle, display count, placements                                          |
+| `GET`    | `/admin/media`                        | `attachment.index`   | Media library page with previews, usage counts and stale roles                            |
+| `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                                     |
+| `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; changed widths mark old derivatives stale                                    |
+| `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy and storage checks, then a presigned PUT for the private original |
+| `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                                     |
+| `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                             |
+| `GET`    | `/admin/media/:assetId`               | `attachment.index`   | One library item                                                                          |
+| `PATCH`  | `/admin/media/:assetId`               | `attachment.edit`    | Edit slug, alt, title and caption; a new slug queues a reprocess                          |
+| `POST`   | `/admin/media/:assetId/reprocess`     | `attachment.edit`    | Regenerate every role from the retained original                                          |
+| `DELETE` | `/admin/media/:assetId`               | `attachment.destroy` | Soft-delete an unused image; GC removes files after 30 days                               |
+| `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                                        |
+| `POST`   | `/admin/reviews/:reviewId/moderation` | `review.edit`        | Approve or reject a review and its photos                                                 |
+
+## Admin Media page routes
+
+The Media page works as a file manager. Every route below is under `/admin/media/library` and needs an admin session.
+
+| Method   | Route                    | Access               | Purpose                                                                        |
+| -------- | ------------------------ | -------------------- | ------------------------------------------------------------------------------ |
+| `GET`    | `/`                      | `attachment.index`   | A folder, a search, a category, Recent, Favourites or Trash                    |
+| `GET`    | `/tree`                  | `attachment.index`   | Every folder not in Trash, for the folder tree                                 |
+| `GET`    | `/activity`              | `attachment.index`   | Who did what on the Media page, newest first                                   |
+| `POST`   | `/folders`               | `attachment.create`  | A new folder; a taken name gets “(1)”                                          |
+| `PATCH`  | `/folders/:id`           | `attachment.edit`    | Rename a folder; file addresses never change                                   |
+| `PATCH`  | `/files/:id`             | `attachment.edit`    | Rename a file; its extension and website address stay                          |
+| `POST`   | `/move`                  | `attachment.edit`    | Move files and folders; never a folder into itself                             |
+| `POST`   | `/trash`                 | `attachment.destroy` | Move to Trash; images the website uses stay, named with where they are used    |
+| `POST`   | `/restore`               | `attachment.edit`    | Restore from Trash to the old folder, or to My files                           |
+| `POST`   | `/delete-forever`        | `attachment.destroy` | Delete what is in Trash for good; stored files go through a queued job         |
+| `POST`   | `/undo/:undoId`          | `attachment.edit`    | Undo your last move, rename or Trash, once                                     |
+| `PUT`    | `/favourites`            | `attachment.edit`    | Star or unstar a folder or a file for yourself                                 |
+| `POST`   | `/duplicates`            | `attachment.create`  | Before an upload: the same bytes in Media, or the same name                    |
+| `POST`   | `/files/presign`         | `attachment.create`  | Start a plain-file upload: private, named in its folder, held against the plan |
+| `POST`   | `/files/:id/finalize`    | `attachment.create`  | The plain file is uploaded and ready                                           |
+| `PUT`    | `/files/:id/visibility`  | `attachment.edit`    | Public gives a plain file a permanent address; private takes it away           |
+| `GET`    | `/files/:id/links`       | `attachment.index`   | A file's share links, and its public address or website picture                |
+| `POST`   | `/files/:id/links`       | `attachment.edit`    | Make a share link; its code is in this answer only                             |
+| `PATCH`  | `/links/:linkId`         | `attachment.edit`    | Stop a link for good, or give a live link a new end                            |
+| `GET`    | `/storage`               | `attachment.index`   | The storage bar and its details                                                |
+| `POST`   | `/storage/check`         | `attachment.create`  | Before work that adds stored data: go and hold the bytes, ask, or refuse       |
+| `DELETE` | `/storage/holds/:holdId` | `attachment.create`  | End your own storage hold early                                                |
+| `PUT`    | `/storage/settings`      | `attachment.edit`    | Super admins only: whether other admins may use on-demand storage              |
+
+Rules the routes apply:
+
+- **Trash.** Items stay 30 days, then the worker's nightly `trash-purge` job deletes them for good. An image the website uses cannot go to Trash.
+- **Share links.** A link lasts 1 hour, 1 day, 7 days, 30 days, until a date, or never. It opens for anyone or for signed-in admins only, and may have a password (anyone links only). Codes are 22 random characters, stored only as a SHA-256 hash. A link stops for good when it is stopped by hand or when its file goes to Trash; restoring the file does not restart it.
+- **Public files.** Only plain files are made public or private here. A public file has a permanent address, so links are made only for private files. Making a file private queues a CDN purge.
+- **Storage.** The plan is 250 GiB, counted in GiB like the bill. Running work holds its bytes for one hour or until it finishes, so two uploads near the limit cannot both pass. Past the plan, a super admin (a holder of the system Administrator role) is asked once per operation; other admins are refused unless a super admin allowed them, and then they are asked too.
 
 ## Admin blog routes
 
@@ -440,21 +477,25 @@ The server enforces public visibility, not the caller. Public repository calls d
 
 ## Storefront media and review routes
 
-| Method  | Route                                          | Access             | Purpose                                                                    |
-| ------- | ---------------------------------------------- | ------------------ | -------------------------------------------------------------------------- |
-| `GET`   | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                                    |
-| `GET`   | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale                             |
-| `GET`   | `/storefront/brand`                            | Public             | Logo sets, icons, link preview picture, profiles, store links and colours  |
-| `GET`   | `/storefront/languages`                        | Public             | The shop's languages, the admin's own languages, and the 301s to English   |
-| `GET`   | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                               |
-| `POST`  | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)                         |
-| `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                                |
-| `GET`   | `/storefront/reviews/photos/:assetId/status`   | Storefront session | Processing state of a review photo                                         |
-| `GET`   | `/storefront/reviews/mine`                     | Storefront session | Whether you can review a product, are waiting for delivery, or your review |
-| `POST`  | `/storefront/reviews`                          | Storefront session | Submit a review with up to five photos; held for moderation                |
-| `PATCH` | `/storefront/reviews/:reviewId`                | Storefront session | Edit your review; it waits for approval again                              |
+| Method  | Route                                          | Access                | Purpose                                                                    |
+| ------- | ---------------------------------------------- | --------------------- | -------------------------------------------------------------------------- |
+| `GET`   | `/media/upload-rules`                          | Public                | Size, type and count limits for uploads                                    |
+| `GET`   | `/storefront/banners`                          | Public                | A page's live banners, resolved for the locale                             |
+| `GET`   | `/storefront/brand`                            | Public                | Logo sets, icons, link preview picture, profiles, store links and colours  |
+| `GET`   | `/storefront/languages`                        | Public                | The shop's languages, the admin's own languages, and the 301s to English   |
+| `GET`   | `/share/:code`                                 | Public (rate-limited) | Check a Media share link; an admin session opens admins-only links         |
+| `POST`  | `/share/:code`                                 | Public (rate-limited) | Open a password link; wrong passwords are limited per link and address     |
+| `GET`   | `/storefront/youtube/rail`                     | Public                | Cached latest channel videos for a placement                               |
+| `POST`  | `/storefront/reviews/photos/presign`           | Storefront session    | Start a review photo upload (verified buyers only)                         |
+| `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session    | The photo upload finished; queue processing                                |
+| `GET`   | `/storefront/reviews/photos/:assetId/status`   | Storefront session    | Processing state of a review photo                                         |
+| `GET`   | `/storefront/reviews/mine`                     | Storefront session    | Whether you can review a product, are waiting for delivery, or your review |
+| `POST`  | `/storefront/reviews`                          | Storefront session    | Submit a review with up to five photos; held for moderation                |
+| `PATCH` | `/storefront/reviews/:reviewId`                | Storefront session    | Edit your review; it waits for approval again                              |
 
 Uploads go directly to Spaces through a presigned PUT. The API does not proxy image bytes. Review photos stay private until a moderator approves them.
+
+A share link that opens answers with a Spaces address valid for five minutes, which names the download after the file. Every dead end (an unknown, stopped or expired code, or a file in Trash) answers `expired`. Answers carry `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow` and `Referrer-Policy: no-referrer`.
 
 ## Storefront wishlist and contact routes
 

@@ -84,6 +84,17 @@ body.dark-only {
 	}
 }
 
+// Red alerts get white text in dark mode but kept Bootstrap's dark-red link colour, so the lines of a
+// Go Live list (Blog, products, events) were red on red. Their links follow the alert's white text.
+body.dark-only {
+	.alert-danger {
+		a,
+		.alert-link {
+			color: #fff !important;
+		}
+	}
+}
+
 // The warning banner was drawn purple-blue in dark mode, with teal links on it (1.6 : 1). It becomes
 // a dark amber banner with light amber text, so a warning still looks like a warning.
 body.dark-only {

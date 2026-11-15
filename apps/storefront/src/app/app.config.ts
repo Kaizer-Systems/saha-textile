@@ -32,18 +32,18 @@ import { cartReducer } from '@core/state/cart/cart.reducer';
 import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
+import { provideCarouselInert } from './core/a11y/carousel-inert';
 import { StorefrontAuthGateway } from './core/auth/auth-gateway';
 import { HttpStorefrontAuthGateway } from './core/auth/http-auth.gateway';
 import { provideSessionBootstrap } from './core/auth/session-bootstrap';
 import { provideRuntimeConfig } from './core/config/runtime-config';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './core/i18n/locale';
+import { DEFAULT_LOCALE } from './core/i18n/locale';
 import { provideLocaleRouting } from './core/i18n/locale-routing';
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { CatalogLocaleInterceptor } from './core/interceptors/catalog-locale.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
-import { provideCarouselInert } from './core/a11y/carousel-inert';
 import { provideAppUpdate } from './core/pwa/app-update';
 import { QUERY_CLIENT, isPublicRequest } from './core/query/query-client';
 import { provideInstallApp } from './shared/ui/modal/install-help-modal/install-app';
@@ -108,7 +108,8 @@ export const appConfig: ApplicationConfig = {
 		provideLocaleRouting(),
 		provideTransloco({
 			config: {
-				availableLangs: [...SUPPORTED_LOCALES],
+				// English until the API's list arrives; `provideLocaleRouting` sets the rest.
+				availableLangs: [DEFAULT_LOCALE],
 				defaultLang: DEFAULT_LOCALE,
 				fallbackLang: DEFAULT_LOCALE,
 				reRenderOnLangChange: true,

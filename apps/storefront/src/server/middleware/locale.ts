@@ -2,7 +2,13 @@ import { defineEventHandler, getCookie, sendRedirect, setResponseHeaders } from 
 
 import { productPathForCode, readShortAddress } from '../../app/core/catalog/short-address';
 import { legacyCatalogReady, refreshLegacyCatalog, storefrontAddress } from '../../app/core/i18n/legacy-address';
-import { LOCALE_COOKIE } from '../../app/core/i18n/locale';
+import {
+	DEFAULT_LOCALE,
+	LOCALE_COOKIE,
+	localeOfPath,
+	refreshSupportedLocales,
+	supportedLocales,
+} from '../../app/core/i18n/locale';
 import { serverApiUrl } from '../api-url';
 
 /**
@@ -38,6 +44,10 @@ export default defineEventHandler(async (event) => {
 		return true;
 	}
 
+	// The shop's languages (from the API, at most once a minute), handed on to the renderer.
+	await refreshSupportedLocales(serverApiUrl());
+	Object.assign(req, { shopLocales: supportedLocales() });
+
 	await refreshLegacyCatalog(serverApiUrl());
 	const redirect = storefrontAddress(path, getCookie(event, LOCALE_COOKIE));
 	if (!redirect) return;
@@ -49,7 +59,7 @@ export default defineEventHandler(async (event) => {
 			'X-Robots-Tag': 'noindex',
 		});
 		event.node.res.statusCode = 410;
-		const gone = path.startsWith('/bn') ? '/bn/gone' : '/en/gone';
+		const gone = `/${localeOfPath(path) ?? DEFAULT_LOCALE}/gone`;
 		event.node.req.url = gone;
 		if ('originalUrl' in req) req.originalUrl = gone;
 		return;

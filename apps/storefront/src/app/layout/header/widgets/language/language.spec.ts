@@ -5,9 +5,8 @@ import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 
-import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
-
 import { ConsentStore } from '@core/consent/consent.store';
+import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 
 import { Language } from './language';
 

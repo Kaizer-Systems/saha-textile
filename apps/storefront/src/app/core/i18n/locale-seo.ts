@@ -11,7 +11,7 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import { backgroundRequest } from '@core/interceptors/background-request';
 
 import { ACTIVE_LOCALE } from './active-locale';
-import { DEFAULT_LOCALE, OPEN_GRAPH_LOCALES, SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
+import { DEFAULT_LOCALE, isPrivatePath, openGraphLocale, supportedLocales, withLocale } from './locale';
 import { environment } from '../../../../public/environments/environment';
 
 const NOT_FOUND_KEY = 'notFound';
@@ -239,7 +239,7 @@ export class LocaleSeo {
 		const canonical = this.absolute(withLocale(this.locale, appPath));
 		this.setLink('canonical', null, canonical);
 		this.meta.updateTag({ property: 'og:url', content: canonical });
-		for (const locale of SUPPORTED_LOCALES) {
+		for (const locale of supportedLocales()) {
 			this.setLink('alternate', locale, this.absolute(withLocale(locale, appPath)));
 		}
 		this.setLink('alternate', 'x-default', this.absolute(withLocale(DEFAULT_LOCALE, appPath)));
@@ -247,12 +247,12 @@ export class LocaleSeo {
 
 	/** `og:locale` for this page's language; the other languages only on a page meant to be found. */
 	private setOpenGraphLocales(publicPage: boolean): void {
-		this.meta.updateTag({ property: 'og:locale', content: OPEN_GRAPH_LOCALES[this.locale] });
+		this.meta.updateTag({ property: 'og:locale', content: openGraphLocale(this.locale) });
 		this.meta.getTags("property='og:locale:alternate'").forEach((tag) => this.meta.removeTagElement(tag));
 		if (!publicPage) return;
-		for (const locale of SUPPORTED_LOCALES) {
+		for (const locale of supportedLocales()) {
 			if (locale !== this.locale) {
-				this.meta.addTag({ property: 'og:locale:alternate', content: OPEN_GRAPH_LOCALES[locale] });
+				this.meta.addTag({ property: 'og:locale:alternate', content: openGraphLocale(locale) });
 			}
 		}
 	}

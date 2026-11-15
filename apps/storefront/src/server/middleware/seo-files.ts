@@ -1,6 +1,6 @@
 import { defineEventHandler, getRequestURL, send, setResponseHeaders } from 'h3';
 
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../../app/core/i18n/locale';
+import { DEFAULT_LOCALE, localeOfPath, refreshSupportedLocales, supportedLocales } from '../../app/core/i18n/locale';
 import { serverApiUrl } from '../api-url';
 
 /**
@@ -61,11 +61,13 @@ export default defineEventHandler(async (event) => {
 			await send(event, 'The sitemap is unavailable.', 'text/plain; charset=utf-8');
 			return true;
 		}
+		await refreshSupportedLocales(serverApiUrl());
+		const locales = supportedLocales();
 		const own = withFaq ? [...STATIC_PAGES, '/faq'] : STATIC_PAGES;
 		const paths = [
 			...new Set([
 				...(await response.json()).paths,
-				...SUPPORTED_LOCALES.flatMap((locale) => own.map((page) => `/${locale}${page}`)),
+				...locales.flatMap((locale) => own.map((page) => `/${locale}${page}`)),
 			]),
 		].sort();
 		const origin = originOf();
@@ -73,9 +75,10 @@ export default defineEventHandler(async (event) => {
 		const listed = new Set(paths);
 		let urls = '';
 		for (const entry of paths) {
-			const rest = entry.replace(/^\/[a-z]{2}(?=\/|$)/, '');
+			const prefix = localeOfPath(entry);
+			const rest = prefix ? entry.slice(prefix.length + 1) : entry;
 			let alternates = '';
-			for (const locale of SUPPORTED_LOCALES) {
+			for (const locale of locales) {
 				const sibling = `/${locale}${rest}`;
 				if (listed.has(sibling)) {
 					alternates += `<xhtml:link rel="alternate" hreflang="${locale}" href="${origin}${sibling}"/>`;

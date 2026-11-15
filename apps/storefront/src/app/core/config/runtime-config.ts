@@ -16,7 +16,6 @@ export interface RuntimeConfig {
 	/** Public storefront origin, e.g. https://localhost:4200 */
 	siteUrl: string;
 	defaultLocale: string;
-	supportedLocales: string[];
 	/**
 	 * Public provider identifiers for the social sign-in buttons.
 	 *
@@ -36,11 +35,7 @@ const DEFAULTS: RuntimeConfig = {
 	apiUrl: 'https://localhost:4000',
 	siteUrl: 'https://localhost:4200',
 	defaultLocale: 'en',
-	// English and Bengali (Bengali replaced French on 2026-11-08).
-	// Bengali is added once development is complete, deliberately: building against two
-	// live locales keeps the i18n seams exercised, so a third is a data change rather
-	// than an architecture change. Must agree with `availableLangs` in `app.config.ts`.
-	supportedLocales: ['en', 'bn'],
+	// The languages themselves come from the API (`GET /storefront/languages`; core/i18n/locale.ts).
 	googleClientId: '',
 	facebookAppId: '',
 };

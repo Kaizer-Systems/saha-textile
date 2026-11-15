@@ -3,7 +3,6 @@
 	"apiUrl": "https://localhost:4000",
 	"siteUrl": "https://localhost:4200",
 	"defaultLocale": "en",
-	"supportedLocales": ["en", "bn"],
 	"googleClientId": "",
 	"facebookAppId": ""
 }

@@ -16,7 +16,7 @@ vi.mock('@core/config/runtime-config', () => ({
 }));
 
 const boot = async (load: () => unknown) => {
-	const transloco = { setActiveLang: vi.fn(), load: vi.fn(load) };
+	const transloco = { setActiveLang: vi.fn(), setAvailableLangs: vi.fn(), load: vi.fn(load) };
 	const seo = vi.fn();
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -38,6 +38,11 @@ const boot = async (load: () => unknown) => {
 };
 
 describe('provideLocaleRouting', () => {
+	it('lets Transloco load every active language', async () => {
+		const { transloco } = await boot(() => of({}));
+		expect(transloco.setAvailableLangs).toHaveBeenCalledWith(['en', 'bn']);
+	});
+
 	it('sets the base address, language and SEO service', async () => {
 		const { transloco, seo } = await boot(() => of({}));
 		expect(TestBed.inject(APP_BASE_HREF)).toBe('/bn');

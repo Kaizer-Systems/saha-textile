@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery, send, setResponseHeaders } from 'h3';
 
-import { DEFAULT_LOCALE, isLocale } from '../../app/core/i18n/locale';
+import { DEFAULT_LOCALE, isLocale, refreshSupportedLocales } from '../../app/core/i18n/locale';
 import { MANIFEST_PATH, webManifest } from '../../app/core/pwa/web-manifest';
 import { serverApiUrl } from '../api-url';
 
@@ -18,6 +18,7 @@ export default defineEventHandler(async (event) => {
 	const url = 'originalUrl' in req && typeof req.originalUrl === 'string' ? req.originalUrl : event.path;
 	if (url.split('?')[0] !== MANIFEST_PATH) return;
 
+	await refreshSupportedLocales(serverApiUrl());
 	const { lang } = getQuery(event);
 	const locale = isLocale(lang) ? lang : DEFAULT_LOCALE;
 

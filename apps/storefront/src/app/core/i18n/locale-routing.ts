@@ -8,6 +8,7 @@ import { runtimeConfigReady } from '@core/config/runtime-config';
 import { manifestPath } from '@core/pwa/web-manifest';
 
 import { ACTIVE_LOCALE } from './active-locale';
+import { supportedLocales } from './locale';
 import { LocaleSeo } from './locale-seo';
 
 /**
@@ -37,6 +38,8 @@ export function provideLocaleRouting() {
 				?.setAttribute('href', manifestPath(locale));
 
 			await runtimeConfigReady;
+			// Transloco may load every active language; `ACTIVE_LOCALE` has adopted the list.
+			transloco.setAvailableLangs([...supportedLocales()]);
 			transloco.setActiveLang(locale);
 			try {
 				await firstValueFrom(transloco.load(locale));

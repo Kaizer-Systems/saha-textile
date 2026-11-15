@@ -69,7 +69,7 @@ render_public_config() {
 		--arg siteUrl "$(release_value "$RELEASE" SITE_URL)" \
 		--arg googleClientId "$(release_value "$RELEASE" GOOGLE_CLIENT_ID)" \
 		--arg facebookAppId "$(release_value "$RELEASE" FACEBOOK_APP_ID)" \
-		'{$apiUrl, $siteUrl, defaultLocale: "en", supportedLocales: ["en", "bn"], $googleClientId, $facebookAppId}')"
+		'{$apiUrl, $siteUrl, defaultLocale: "en", $googleClientId, $facebookAppId}')"
 	printf '%s\n' "$storefront" >"$PUBLIC/storefront.config.json"
 	printf 'SAHA_TEXTILE_PUBLIC_CONFIG=%s\n' "$storefront" >"$PUBLIC/storefront.env"
 	ops "$RELEASE" jq -n --arg apiUrl "$(release_value "$RELEASE" API_URL)" \

@@ -6,22 +6,83 @@
  * the prefix on every URL it writes. One switch of base, not a prefix threaded through every
  * `routerLink`.
  *
- * Deliberately dependency-free: the Nitro middleware (`src/server/middleware/locale.ts`) imports
- * this file too, so the redirect rules and the app's reading of the URL cannot drift apart.
+ * Deliberately free of Angular: the Nitro middleware (`src/server/middleware/locale.ts`) imports
+ * this file too, so the redirect rules and the app's reading of the URL cannot drift apart. Its
+ * only import is the shared, browser-safe language rules.
  */
 
-/** English and Bengali (Bengali replaced French on 2026-11-08, owner decision round). */
-export const SUPPORTED_LOCALES = ['en', 'bn'] as const;
-
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
-
-export const DEFAULT_LOCALE: Locale = 'en';
+import { intlLocale, isLocaleCode, parseLanguageList, PRIMARY_LOCALE } from '@saha-textile/core-domain/languages';
 
 /**
- * The Open Graph name of each language (`og:locale`), so WhatsApp, Facebook and other link
- * previews know what language a shared page is in. Both are the Indian variants the shop writes.
+ * The shop's languages come from the API (`GET /storefront/languages`), the one list the admin
+ * reads too: English until it has answered once. The server's middleware refreshes it
+ * (`refreshSupportedLocales`) and hands it to the renderer on the request; the server render hands
+ * it to the browser (`ACTIVE_LOCALE`). Nothing here names a language but English.
  */
-export const OPEN_GRAPH_LOCALES: Readonly<Record<Locale, string>> = { en: 'en_IN', bn: 'bn_IN' };
+export type Locale = string;
+
+export const DEFAULT_LOCALE: Locale = PRIMARY_LOCALE;
+
+let locales: readonly Locale[] = [PRIMARY_LOCALE];
+let loaded = false;
+let loadedAt = 0;
+let refreshing: Promise<void> | null = null;
+const LOCALES_TTL_MS = 60_000;
+/** After a failed answer, ask again soon: until the list has loaded once, prefixes are trusted. */
+const RETRY_MS = 5_000;
+
+/** The active languages, English first. */
+export function supportedLocales(): readonly Locale[] {
+	return locales;
+}
+
+/** Adopts a list that came with the request or the page (`ACTIVE_LOCALE`), or from a test. */
+export function setSupportedLocales(next: unknown): void {
+	const list = parseLanguageList(next);
+	if (!list) return;
+	locales = list;
+	loaded = true;
+	loadedAt = Date.now();
+}
+
+/** True once the API's list has arrived. */
+export function supportedLocalesReady(): boolean {
+	return loaded;
+}
+
+/** Fetches the list from the API at most once a minute. A failure keeps the last list. */
+export function refreshSupportedLocales(apiUrl: string, now: number = Date.now()): Promise<void> {
+	if (now - loadedAt < LOCALES_TTL_MS) return Promise.resolve();
+	refreshing ??= (async () => {
+		try {
+			const answer = await fetch(`${apiUrl}/storefront/languages`);
+			const list = parseLanguageList(answer.ok ? await answer.json() : null);
+			if (list) setSupportedLocales(list);
+			else loadedAt = Date.now() - LOCALES_TTL_MS + RETRY_MS;
+		} catch {
+			loadedAt = Date.now() - LOCALES_TTL_MS + RETRY_MS;
+		} finally {
+			refreshing = null;
+		}
+	})();
+	return refreshing;
+}
+
+/** Back to English alone, as before the API answered (tests). */
+export function resetSupportedLocales(): void {
+	locales = [PRIMARY_LOCALE];
+	loaded = false;
+	loadedAt = 0;
+	refreshing = null;
+}
+
+/**
+ * The Open Graph name of a language (`og:locale`), so WhatsApp, Facebook and other link previews
+ * know what language a shared page is in: the Indian variant the shop writes (`en_IN`, `bn_IN`).
+ */
+export function openGraphLocale(locale: Locale): string {
+	return `${locale.split('-')[0]}_IN`;
+}
 
 /**
  * The visitor's last explicit choice from the language switcher.
@@ -31,18 +92,16 @@ export const OPEN_GRAPH_LOCALES: Readonly<Record<Locale, string>> = { en: 'en_IN
  */
 export const LOCALE_COOKIE = 'st_locale';
 
-/**
- * The locale to hand to `Intl` for a page language. Bengali pages keep English digits (BN-3:
- * prices, sizes, PIN codes and dates read the same in both languages, and a copied number
- * pastes into any form), so Bengali formats with the Latin numbering system while month and
- * weekday names stay Bengali.
- */
-export function intlLocale(locale: string): string {
-	return locale === 'bn' ? 'bn-IN-u-nu-latn' : locale;
-}
+/** The locale to hand to `Intl` for a page language (the BN-3 digits rule; shared with the admin). */
+export { intlLocale };
 
+/**
+ * True for an active language. Until the API's list has arrived, any well-formed language code
+ * counts, so an outage at start-up can never send `/bn/…` on a permanent redirect to `/en/bn/…`.
+ */
 export function isLocale(value: unknown): value is Locale {
-	return typeof value === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(value);
+	if (typeof value !== 'string') return false;
+	return locales.includes(value) || (!loaded && isLocaleCode(value));
 }
 
 /** The locale a path is published under, or null when its first segment is not one. */

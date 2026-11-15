@@ -1,6 +1,9 @@
-import { resolveLegacyAddress } from '@saha-textile/core-domain/legacy-resolve';
+import { resolveLegacyAddress, setLocalePrefixTest } from '@saha-textile/core-domain/legacy-resolve';
 
-import { localeRedirectFor, type LocaleRedirect } from './locale';
+import { isLocale, localeRedirectFor, type LocaleRedirect } from './locale';
+
+// Old addresses lose their language prefix before they are compared: the shop's own languages.
+setLocalePrefixTest(isLocale);
 
 /**
  * Storefront adapter for the core address rules. The rules themselves live in

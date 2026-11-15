@@ -3,11 +3,12 @@ import { Component, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 
+import { languageFlag, languageName } from '@saha-textile/core-domain/languages';
 import { filter, map } from 'rxjs';
 
 import { ConsentStore } from '@core/consent/consent.store';
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
-import { LOCALE_COOKIE, Locale, withLocale } from '@core/i18n/locale';
+import { LOCALE_COOKIE, Locale, supportedLocales, withLocale } from '@core/i18n/locale';
 import { ILanguage } from '@data-access/interfaces/setting.interface';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 import { Button } from '@shared/ui/button/button';
@@ -50,18 +51,12 @@ export class Language {
 	readonly style = input<string>('basic');
 
 	public active: boolean = false;
-	public languages: (ILanguage & { code: Locale })[] = [
-		{
-			language: 'English',
-			code: 'en',
-			icon: 'us',
-		},
-		{
-			language: 'বাংলা',
-			code: 'bn',
-			icon: 'in',
-		},
-	];
+	/** Every active language, each in its own name, with the theme's flag. */
+	public languages: (ILanguage & { code: Locale })[] = supportedLocales().map((code) => ({
+		language: languageName(code),
+		code,
+		icon: languageFlag(code),
+	}));
 
 	public selectedLanguage: ILanguage =
 		this.languages.find((language) => language.code === this.locale) ?? this.languages[0];

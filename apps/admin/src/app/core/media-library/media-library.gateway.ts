@@ -1,5 +1,7 @@
 import type {
 	MediaBrowseQuery,
+	MediaCategory,
+	MediaFileRow,
 	MediaBrowseResponse,
 	MediaDuplicateAnswer,
 	MediaDuplicateQuery,
@@ -26,6 +28,8 @@ import type { Observable } from 'rxjs';
 
 export type {
 	MediaBrowseQuery,
+	MediaCategory,
+	MediaFileRow,
 	MediaBrowseResponse,
 	MediaDuplicateAnswer,
 	MediaDuplicateQuery,

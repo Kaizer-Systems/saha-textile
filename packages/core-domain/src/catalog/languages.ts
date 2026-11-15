@@ -95,6 +95,27 @@ export function formatCount(count: number, locale: string): string {
 	return new Intl.NumberFormat(intlLocale(locale)).format(count);
 }
 
+const BYTE_UNITS = ['byte', 'kilobyte', 'megabyte', 'gigabyte', 'terabyte'] as const;
+
+/**
+ * A size in the reader's language: “18.6 MB”, “1.2 GB”. Steps of 1024, as the Media page's storage
+ * box counts (GiB, like DigitalOcean's bill), with the browser's own unit names.
+ */
+export function formatBytes(bytes: number, locale: string): string {
+	let value = Math.max(0, bytes);
+	let unit = 0;
+	while (value >= 1024 && unit < BYTE_UNITS.length - 1) {
+		value /= 1024;
+		unit += 1;
+	}
+	return new Intl.NumberFormat(intlLocale(locale), {
+		style: 'unit',
+		unit: BYTE_UNITS[unit],
+		unitDisplay: 'short',
+		maximumFractionDigits: unit === 0 ? 0 : 1,
+	}).format(value);
+}
+
 /**
  * The flag beside a language in the page-language menus, as the theme draws it (`iti-flag us`):
  * English keeps the flag it has always shown; every other language shows the shop's country.

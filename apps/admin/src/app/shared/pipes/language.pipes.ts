@@ -1,7 +1,13 @@
 import { inject, Pipe, type PipeTransform } from '@angular/core';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { formatCount, languageList, languageName, pluralCategory } from '@saha-textile/core-domain/languages';
+import {
+	formatBytes,
+	formatCount,
+	languageList,
+	languageName,
+	pluralCategory,
+} from '@saha-textile/core-domain/languages';
 
 /**
  * The translation key for a count: `key_one`, `key_other` (or another form the language has),
@@ -52,5 +58,15 @@ export class LanguageListPipe implements PipeTransform {
 
 	transform(codes: readonly string[] | null | undefined): string {
 		return languageList(codes ?? [], this.transloco.getActiveLang());
+	}
+}
+
+/** A size in the admin's language: `{{ bytes | fileSize }}` → "18.6 MB" (steps of 1024, as the storage box). */
+@Pipe({ name: 'fileSize', pure: false })
+export class FileSizePipe implements PipeTransform {
+	private readonly transloco = inject(TranslocoService);
+
+	transform(bytes: number | null | undefined): string {
+		return formatBytes(bytes ?? 0, this.transloco.getActiveLang());
 	}
 }

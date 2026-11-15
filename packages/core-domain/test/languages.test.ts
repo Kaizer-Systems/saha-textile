@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	formatBytes,
 	formatCount,
 	formatList,
 	intlLocale,
@@ -73,5 +74,14 @@ describe('naming, listing and counting', () => {
 		expect(languageFlag('en')).toBe('us');
 		expect(languageFlag('bn')).toBe('in');
 		expect(languageFlag('hi')).toBe('in');
+	});
+});
+
+describe('sizes', () => {
+	it('counts in steps of 1024 with the language’s own unit names and English digits in বাংলা', () => {
+		expect(formatBytes(0, 'en')).toBe('0 byte');
+		expect(formatBytes(19_503_513, 'en')).toBe('18.6 MB');
+		expect(formatBytes(250 * 1024 ** 3, 'en')).toBe('250 GB');
+		expect(formatBytes(19_503_513, 'bn')).toMatch(/^18\.6 /);
 	});
 });

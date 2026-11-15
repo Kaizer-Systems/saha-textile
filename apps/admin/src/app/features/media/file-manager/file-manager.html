@@ -1,0 +1,231 @@
+<app-page-wrapper
+	[gridClass]="'col-12'"
+	[title]="'media'"
+>
+	<div
+		class="fm-wrap"
+		id="fm_page"
+	>
+		<app-fm-sidebar
+			[nav]="nav()"
+			[category]="category()"
+			[folderId]="folderId()"
+			[folders]="tree.data()?.folders ?? []"
+			[storage]="storage.data() ?? null"
+			(navigate)="openNav($event)"
+			(pickCategory)="openCategory($event)"
+			(openFolder)="openFolder($event)"
+		/>
+		<section class="fm-main position-relative">
+			<div class="fm-toolbar">
+				<div class="fm-search">
+					<i class="ri-search-line"></i>
+					<input
+						class="form-control"
+						type="search"
+						id="fm_search"
+						[value]="search()"
+						[attr.placeholder]="searchScope() ? ('fm_search_in' | transloco: { folder: searchScope() }) : ('fm_search_all' | transloco)"
+						(input)="typed($any($event.target).value)"
+					/>
+					@if (searchScope() && search()) {
+					<span class="fm-scope fm-chip muted">
+						<i class="ri-folder-3-line"></i>
+						{{ searchScope() }}
+					</span>
+					}
+				</div>
+				<div class="ms-auto">
+					<select
+						class="form-select"
+						id="fm_sort"
+						[attr.aria-label]="'fm_sort' | transloco"
+						(change)="setSort($any($event.target).value)"
+					>
+						@for (item of sorts; track item.key) {
+						<option
+							[value]="item.key"
+							[selected]="item.key === sortKey()"
+						>
+							{{ item.label | transloco }}
+						</option>
+						}
+					</select>
+					<div class="btn-group fm-view">
+						<button
+							type="button"
+							class="btn btn-outline"
+							id="fm_show_list"
+							[class.active]="display() === 'list'"
+							[title]="'list_view' | transloco"
+							(click)="setDisplay('list')"
+						>
+							<i class="ri-list-check-2"></i>
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline"
+							id="fm_show_grid"
+							[class.active]="display() === 'grid'"
+							[title]="'grid_view' | transloco"
+							(click)="setDisplay('grid')"
+						>
+							<i class="ri-layout-grid-line"></i>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			@if (nav() === 'favourites') {
+			<ul class="nav nav-tabs mb-3">
+				<li class="nav-item">
+					<a
+						class="nav-link"
+						href="javascript:void(0)"
+						id="fm_fav_mine"
+						[class.active]="who() === 'mine'"
+						(click)="setWho('mine')"
+					>
+						{{ 'fm_fav_mine' | transloco }}
+					</a>
+				</li>
+				<li class="nav-item">
+					<a
+						class="nav-link"
+						href="javascript:void(0)"
+						id="fm_fav_everyone"
+						[class.active]="who() === 'everyone'"
+						(click)="setWho('everyone')"
+					>
+						{{ 'fm_fav_everyone' | transloco }}
+					</a>
+				</li>
+			</ul>
+			}
+
+			<div class="fm-crumbs">
+				<nav>
+					<ol
+						class="breadcrumb"
+						id="fm_crumbs"
+					>
+						@switch (nav()) { @case ('folder') { @if (folderId() || category() || search()) {
+						<li class="breadcrumb-item">
+							<a
+								href="javascript:void(0)"
+								(click)="openFolder(null)"
+							>
+								<i class="ri-home-4-line me-1"></i>
+								{{ 'fm_my_files' | transloco }}
+							</a>
+						</li>
+						} @else {
+						<li class="breadcrumb-item active">
+							<i class="ri-home-4-line me-1"></i>
+							{{ 'fm_my_files' | transloco }}
+						</li>
+						} @for (step of result()?.breadcrumb ?? []; track step.id; let last = $last) { @if (last &&
+						!search()) {
+						<li class="breadcrumb-item active">{{ step.name }}</li>
+						} @else {
+						<li class="breadcrumb-item">
+							<a
+								href="javascript:void(0)"
+								(click)="openFolder(step.id)"
+							>
+								{{ step.name }}
+							</a>
+						</li>
+						} } } @case ('recent') {
+						<li class="breadcrumb-item active">
+							<i class="ri-history-line me-1"></i>
+							{{ 'fm_recent' | transloco }}
+						</li>
+						} @case ('favourites') {
+						<li class="breadcrumb-item active">
+							<i class="ri-star-line me-1"></i>
+							{{ 'fm_favourites' | transloco }}
+						</li>
+						} @case ('trash') {
+						<li class="breadcrumb-item active">
+							<i class="ri-delete-bin-line me-1"></i>
+							{{ 'fm_trash' | transloco }}
+						</li>
+						} }
+					</ol>
+				</nav>
+			</div>
+
+			@if (nav() === 'trash' && result()?.files?.length) {
+			<p class="text-muted small">{{ 'fm_trash_note' | transloco }}</p>
+			} @if (empty()) {
+			<div
+				class="no-data-added py-5 text-center"
+				id="fm_empty"
+			>
+				<img
+					src="assets/svg/no-media.svg"
+					alt=""
+					style="max-width: 220px"
+				/>
+				@if (search()) {
+				<h5 class="mt-3">{{ 'fm_no_results' | transloco: { q: search() } }}</h5>
+				} @else if (nav() === 'trash') {
+				<h5 class="mt-3">{{ 'fm_trash_empty' | transloco }}</h5>
+				} @else if (nav() === 'favourites') {
+				<h5 class="mt-3">{{ 'fm_no_favourites' | transloco }}</h5>
+				} @else if (folderId()) {
+				<h5 class="mt-3">{{ 'fm_empty_folder' | transloco }}</h5>
+				} @else {
+				<h5 class="mt-3">{{ 'fm_no_files_yet' | transloco }}</h5>
+				}
+			</div>
+			} @else if (result(); as data) { @if (data.folders.length) {
+			<div class="fm-heading">
+				<span>
+					{{ 'fm_folders' | transloco }}
+					<small>· {{ data.folders.length }}</small>
+				</span>
+			</div>
+			<div
+				class="fm-folders"
+				id="fm_folders"
+			>
+				@for (folder of data.folders; track folder.id) {
+				<div
+					class="fm-folder"
+					role="button"
+					tabindex="0"
+					[attr.data-folder]="folder.id"
+					(click)="nav() === 'trash' || openFolder(folder.id)"
+					(keydown.enter)="nav() === 'trash' || openFolder(folder.id)"
+				>
+					<div class="fm-folder-icon"><i class="ri-folder-3-fill"></i></div>
+					<div style="min-width: 0">
+						<h6>{{ folder.name }}</h6>
+						<p>{{ folder.bytes | fileSize }} · {{ 'fm_files' | plural: folder.files }}</p>
+					</div>
+					@if (folder.starred) {
+					<i class="ri-star-fill fm-star"></i>
+					}
+				</div>
+				}
+			</div>
+			} @if (data.files.length) {
+			<div class="fm-heading">
+				<span>
+					@if (nav() === 'folder' && !search() && !category()) { {{ 'fm_files_in' | transloco: { folder:
+					folderName() ?? ('fm_my_files' | transloco) } }} } @else { {{ 'fm_files_heading' | transloco }} }
+					<small>· {{ 'fm_files' | plural: data.total }}</small>
+				</span>
+			</div>
+			<app-fm-file-list
+				[files]="data.files"
+				[display]="display()"
+				[trash]="nav() === 'trash'"
+				[showLocation]="showLocation()"
+			/>
+			} }
+		</section>
+	</div>
+</app-page-wrapper>

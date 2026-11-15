@@ -1,0 +1,144 @@
+<aside class="fm-side">
+	<ul class="fm-nav">
+		<li [class.active]="nav() === 'folder' && !category()">
+			<a
+				href="javascript:void(0)"
+				id="fm_nav_files"
+				(click)="navigate.emit('folder')"
+			>
+				<i class="ri-folder-3-line"></i>
+				{{ 'fm_my_files' | transloco }}
+			</a>
+		</li>
+		<li [class.active]="nav() === 'recent'">
+			<a
+				href="javascript:void(0)"
+				id="fm_nav_recent"
+				(click)="navigate.emit('recent')"
+			>
+				<i class="ri-history-line"></i>
+				{{ 'fm_recent' | transloco }}
+			</a>
+		</li>
+		<li [class.active]="nav() === 'favourites'">
+			<a
+				href="javascript:void(0)"
+				id="fm_nav_favourites"
+				(click)="navigate.emit('favourites')"
+			>
+				<i class="ri-star-line"></i>
+				{{ 'fm_favourites' | transloco }}
+			</a>
+		</li>
+		<li [class.active]="nav() === 'trash'">
+			<a
+				href="javascript:void(0)"
+				id="fm_nav_trash"
+				(click)="navigate.emit('trash')"
+			>
+				<i class="ri-delete-bin-line"></i>
+				{{ 'fm_trash' | transloco }}
+			</a>
+		</li>
+	</ul>
+	@if (tree().length) {
+	<div class="fm-side-title">{{ 'fm_folders' | transloco }}</div>
+	<div
+		class="fm-tree"
+		id="fm_tree"
+	>
+		<ng-template
+			#branch
+			let-nodes
+		>
+			<ul>
+				@for (node of nodes; track node.folder.id) {
+				<li>
+					<div
+						[class.active]="nav() === 'folder' && folderId() === node.folder.id"
+						[attr.data-folder]="node.folder.id"
+						(click)="openFolder.emit(node.folder.id)"
+					>
+						<i
+							class="fm-tw"
+							[class.ri-arrow-down-s-line]="node.children.length && open().has(node.folder.id)"
+							[class.ri-arrow-right-s-line]="node.children.length && !open().has(node.folder.id)"
+							[attr.title]="node.children.length ? (open().has(node.folder.id) ? ('fm_close_folder' | transloco) : ('fm_open_folder' | transloco)) : null"
+							(click)="node.children.length && toggle(node.folder.id, $event)"
+						></i>
+						<i
+							class="fm-ti"
+							[class.ri-folder-open-fill]="open().has(node.folder.id) && node.children.length"
+							[class.ri-folder-3-fill]="!(open().has(node.folder.id) && node.children.length)"
+						></i>
+						<span>{{ node.folder.name }}</span>
+						@if (node.folder.files) {
+						<small>{{ node.folder.files }}</small>
+						}
+					</div>
+					@if (node.children.length && open().has(node.folder.id)) {
+					<ng-container *ngTemplateOutlet="branch; context: { $implicit: node.children }" />
+					}
+				</li>
+				}
+			</ul>
+		</ng-template>
+		<ng-container *ngTemplateOutlet="branch; context: { $implicit: tree() }" />
+	</div>
+	}
+	<div class="fm-side-title">{{ 'categories' | transloco }}</div>
+	<ul class="fm-nav">
+		@for (item of categories; track item.key) {
+		<li [class.active]="category() === item.key">
+			<a
+				href="javascript:void(0)"
+				[id]="'fm_cat_' + item.key"
+				(click)="pickCategory.emit(item.key)"
+			>
+				<span
+					class="fm-dot"
+					[class]="item.dot"
+				></span>
+				{{ item.label | transloco }}
+			</a>
+		</li>
+		}
+	</ul>
+	@if (storage(); as summary) {
+	<div
+		class="fm-storage"
+		id="fm_storage"
+	>
+		<div class="d-flex justify-content-between">
+			<span>{{ 'fm_storage_used' | transloco }}</span>
+			<strong [class.text-danger]="summary.colour === 'red'">{{ summary.usedBytes | fileSize }}</strong>
+		</div>
+		<div class="progress">
+			<div
+				class="progress-bar"
+				[class]="barClass(summary)"
+				[style.width.%]="summary.percent > 100 ? 100 : summary.percent"
+			></div>
+		</div>
+		<div class="text-muted mt-1">
+			{{ (summary.onDemandBytes ? 'fm_plan_full' : 'fm_of_plan') | transloco: { plan: (summary.planBytes |
+			fileSize) } }} · {{ summary.percent }}%
+		</div>
+		<div class="d-flex justify-content-between border-top mt-2 pt-2">
+			<span>{{ 'fm_on_demand' | transloco }}</span>
+			<strong [class.text-danger]="summary.onDemandBytes > 0">{{ summary.onDemandBytes | fileSize }}</strong>
+		</div>
+		@if (summary.onDemandBytes) {
+		<div class="text-muted">{{ 'fm_on_demand_cost' | transloco: { usd: summary.onDemandMonthlyUsd } }}</div>
+		}
+		<a
+			href="javascript:void(0)"
+			class="small text-decoration-underline d-inline-block mt-1"
+			id="fm_storage_details"
+			(click)="storageDetails.emit()"
+		>
+			{{ 'fm_details' | transloco }}
+		</a>
+	</div>
+	}
+</aside>

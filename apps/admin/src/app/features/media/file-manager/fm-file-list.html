@@ -1,0 +1,137 @@
+@if (display() === 'list') {
+<div class="table-responsive datatable-wrapper border-table">
+	<table
+		class="all-package theme-table no-footer fm-table table"
+		id="fm_table"
+	>
+		<thead>
+			<tr>
+				<th class="fm-namecol">{{ 'name' | transloco }}</th>
+				@if (showLocation() || trash()) {
+				<th>{{ (trash() ? 'fm_deleted_from' : 'fm_location') | transloco }}</th>
+				}
+				<th>{{ 'type' | transloco }}</th>
+				@if (trash()) {
+				<th>{{ 'fm_removed_in' | transloco }}</th>
+				} @else {
+				<th>{{ 'status' | transloco }}</th>
+				<th>{{ 'fm_used_on' | transloco }}</th>
+				<th>{{ 'fm_modified' | transloco }}</th>
+				}
+			</tr>
+		</thead>
+		<tbody>
+			@for (file of files(); track file.id) {
+			<tr
+				[class.is-pending]="pending(file)"
+				[attr.data-file]="file.id"
+			>
+				<td class="fm-namecol">
+					<div class="fm-file">
+						@if (file.thumbnailUrl) {
+						<div class="fm-type">
+							<img
+								[src]="file.thumbnailUrl"
+								alt=""
+							/>
+						</div>
+						} @else {
+						<div
+							class="fm-type"
+							[class]="kind(file).cls"
+						>
+							<i [class]="kind(file).icon"></i>
+						</div>
+						}
+						<div style="min-width: 0">
+							<h6>{{ file.name }}</h6>
+							<p>
+								{{ file.bytes | fileSize }}@if (file.width && file.height) { · {{ file.width }} × {{
+								file.height }} } @if (file.visibility === 'private' && file.kind === 'file') { ·
+								<i class="ri-lock-line"></i>
+								{{ 'fm_private' | transloco }} }
+							</p>
+						</div>
+					</div>
+				</td>
+				@if (showLocation() || trash()) {
+				<td class="fm-path">
+					<i class="ri-folder-3-line"></i>
+					{{ file.location }}
+				</td>
+				}
+				<td>{{ typeLabel(file) || '—' }}</td>
+				@if (trash()) {
+				<td>
+					<span [class.text-danger]="(file.daysLeft ?? 30) <= 3">
+						{{ 'fm_days' | plural: file.daysLeft ?? 0 }}
+					</span>
+				</td>
+				} @else {
+				<td>
+					@switch (file.state) { @case ('ready') {
+					<span class="fm-status ready">
+						<i class="ri-checkbox-circle-line"></i>
+						{{ 'fm_ready' | transloco }}
+					</span>
+					} @case ('failed') {
+					<span class="fm-status fail">
+						<i class="ri-error-warning-line"></i>
+						{{ 'fm_failed' | transloco }}
+					</span>
+					} @default {
+					<span class="fm-status busy">
+						<i class="ri-loader-4-line"></i>
+						{{ 'fm_making_sizes' | transloco }}
+					</span>
+					} }
+				</td>
+				<td class="fm-used">
+					@if (file.usedOn) { {{ 'fm_places' | plural: file.usedOn }} } @else {
+					<span class="text-muted">—</span>
+					}
+				</td>
+				<td class="fm-when">{{ file.createdAt | date: 'd MMM y' }}</td>
+				}
+			</tr>
+			}
+		</tbody>
+	</table>
+</div>
+} @else {
+<div
+	class="fm-grid"
+	id="fm_grid"
+>
+	@for (file of files(); track file.id) {
+	<div
+		class="fm-tile"
+		[class.is-pending]="pending(file)"
+		[attr.data-file]="file.id"
+	>
+		<div class="fm-thumb">
+			@if (file.thumbnailUrl) {
+			<img
+				[src]="file.thumbnailUrl"
+				alt=""
+			/>
+			} @else {
+			<div
+				class="fm-bigicon"
+				[class]="kind(file).cls"
+			>
+				<i [class]="kind(file).icon"></i>
+			</div>
+			} @if (file.starred) {
+			<i class="ri-star-fill fm-tstar"></i>
+			}
+			<span class="fm-ttype">{{ typeLabel(file) }}</span>
+		</div>
+		<div class="fm-cap">
+			<h6>{{ file.name }}</h6>
+			<p>{{ file.bytes | fileSize }}</p>
+		</div>
+	</div>
+	}
+</div>
+}

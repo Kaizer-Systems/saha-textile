@@ -11,3 +11,4 @@ export * from './youtube-feed';
 export * from './youtube-posters';
 export * from './brand-strip';
 export * from './library';
+export * from './library-use-cases';

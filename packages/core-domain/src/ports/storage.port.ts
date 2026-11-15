@@ -49,8 +49,11 @@ export interface StoragePort {
 	deleteMany(keys: readonly string[]): Promise<void>;
 	/** Flips an object's ACL; used when a moderator approves (or withdraws) a review photo. */
 	setVisibility(key: string, visibility: ObjectVisibility): Promise<void>;
-	/** A short-lived read URL for a private object (moderation previews). */
-	createSignedDownloadUrl(input: { key: string; expiresInSeconds: number }): Promise<string>;
+	/**
+	 * A short-lived read URL for a private object (moderation previews, Media share links).
+	 * `fileName` makes the browser save it under that name instead of the storage key's.
+	 */
+	createSignedDownloadUrl(input: { key: string; expiresInSeconds: number; fileName?: string }): Promise<string>;
 	/** Presigned browser PUT. Uploads default to `private`: an original is never public. */
 	createSignedUploadUrl(input: {
 		key: string;

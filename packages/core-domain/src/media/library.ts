@@ -1,4 +1,11 @@
-import type { MediaCategory, MediaFolder, ShareExpiry, ShareLink, StorageColour } from '@saha-textile/contracts';
+import type {
+	MediaAsset,
+	MediaCategory,
+	MediaFolder,
+	ShareExpiry,
+	ShareLink,
+	StorageColour,
+} from '@saha-textile/contracts';
 
 /**
  * The Media page as a file manager (media build step 1, brief revision 6): names, folders, Trash,
@@ -163,7 +170,78 @@ export function shareLinkState(
 /** How long the hand-over address from Spaces lasts once a link checks out (five minutes). */
 export const SHARE_HANDOVER_SECONDS = 300;
 
+/** Page sizes, in the order the share popup prefers them; link previews, emails and zoom are not pages. */
+const PAGE_ROLES = ['gallery', 'banner', 'blog', 'store_photo', 'category_icon', 'brand_logo', 'card', 'thumb'];
+
+/**
+ * The picture the website already shows for a public photo (A35D: “Product page · 1600 px”): the
+ * widest size of the first page role it has. Null for a private file or one with no sizes yet.
+ */
+export function websitePicture(
+	asset: Pick<MediaAsset, 'visibility' | 'derivatives'>,
+): { role: string; width: number; storageKey: string } | null {
+	if (asset.visibility !== 'public') return null;
+	for (const role of PAGE_ROLES) {
+		const sizes = asset.derivatives.filter((row) => row.role === role);
+		if (!sizes.length) continue;
+		const widest = sizes.reduce((a, b) => (b.width > a.width ? b : a));
+		return { role, width: widest.width, storageKey: widest.storageKey };
+	}
+	return null;
+}
+
+export type ShareCreateRefusal = 'public_file' | 'password_for_admins' | 'file_in_trash';
+
+/**
+ * Whether a link may be made. A public file already has a permanent address, so expiring links
+ * are for private files (a photo's private original included). A link for admins only needs their
+ * sign-in, not a password: the shop page checks it with the admin's session and never sends a
+ * password with it.
+ */
+export function shareCreateRefusal(input: {
+	kind: 'image' | 'video' | 'file';
+	visibility: 'public' | 'private';
+	trashed: boolean;
+	who: 'anyone' | 'admins';
+	hasPassword: boolean;
+}): ShareCreateRefusal | null {
+	if (input.trashed) return 'file_in_trash';
+	if (input.kind === 'file' && input.visibility === 'public') return 'public_file';
+	if (input.who === 'admins' && input.hasPassword) return 'password_for_admins';
+	return null;
+}
+
+export type ShareOpenState = 'open' | 'password' | 'admins_only' | 'expired';
+
+/**
+ * What opening a link does now. A missing, stopped or expired link, or one whose file is gone or
+ * in Trash, all read as expired, so a guessed code learns nothing. Admins-only links need a
+ * signed-in admin; a password link needs the right password.
+ */
+export function shareOpenState(input: {
+	link: Pick<ShareLink, 'stoppedAt' | 'expiresAt' | 'who' | 'passwordHash'> | null;
+	fileAvailable: boolean;
+	now: Date;
+	signedInAdmin: boolean;
+	passwordOk: boolean | null;
+}): ShareOpenState {
+	const { link } = input;
+	if (!link || !input.fileAvailable || shareLinkState(link, input.now) !== 'active') return 'expired';
+	if (link.who === 'admins') return input.signedInAdmin ? 'open' : 'admins_only';
+	if (link.passwordHash && input.passwordOk !== true) return 'password';
+	return 'open';
+}
+
 // --- Storage (R4-7) ------------------------------------------------------------------------------
+
+/**
+ * A super admin holds the seeded system Administrator role (its key). Only they approve going past
+ * the plan, and only they let other admins do so (decision 14, B18).
+ */
+export const SUPER_ADMIN_ROLE_KEY = 'administrator';
+
+/** A storage hold lasts this long unless the work releases it first, so a crashed upload frees it. */
+export const STORAGE_HOLD_SECONDS = 3600;
 
 /** DigitalOcean counts in GiB, so the box does too and matches the bill. */
 export const GIB = 1024 ** 3;

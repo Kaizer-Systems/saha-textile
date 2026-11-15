@@ -72,7 +72,9 @@ export type AuthRateLimitAction =
 	| 'cart_write'
 	| 'wishlist_write'
 	| 'consent_write'
-	| 'contact_message';
+	| 'contact_message'
+	| 'share_open'
+	| 'share_password';
 
 const MINUTES = 60;
 const HOURS = 60 * MINUTES;
@@ -175,6 +177,17 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 		counting: 'attempts',
 		identifier: { max: 3, windowSeconds: 24 * HOURS },
 		ip: { max: 10, windowSeconds: 24 * HOURS },
+	},
+	/** Media share links: codes are long and random, so this only stops one address trying many. */
+	share_open: {
+		counting: 'attempts',
+		ip: { max: 60, windowSeconds: 1 * MINUTES },
+	},
+	/** Wrong passwords on one link, and from one address across links (break-it: 20 tries). */
+	share_password: {
+		counting: 'failures',
+		identifier: { max: 10, windowSeconds: 15 * MINUTES },
+		ip: { max: 50, windowSeconds: 15 * MINUTES },
 	},
 };
 

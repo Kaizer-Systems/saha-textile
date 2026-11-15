@@ -238,7 +238,9 @@ export const ShareLinkCreate = z
 		who: ShareAudience.default('anyone'),
 		password: z.string().min(4).max(128).optional(),
 	})
-	.refine((value) => value.expiry !== 'date' || !!value.expiresAt, { message: 'a date is needed' });
+	.refine((value) => value.expiry !== 'date' || !!value.expiresAt, { message: 'a date is needed' })
+	// Admins-only links are opened with the admin's own sign-in; a password would add nothing.
+	.refine((value) => value.who !== 'admins' || !value.password, { message: 'admins-only links take no password' });
 export type ShareLinkCreate = z.infer<typeof ShareLinkCreate>;
 
 export const ShareLinkUpdate = z.object({
@@ -252,15 +254,17 @@ export type ShareLinkUpdate = z.infer<typeof ShareLinkUpdate>;
 export const ShareLinkView = ShareLink.omit({ codeHash: true, passwordHash: true }).extend({
 	hasPassword: z.boolean(),
 	state: z.enum(['active', 'expired', 'stopped']),
-	/** Only in the answer to creating it. */
-	url: z.string().optional(),
+	/** The code, only in the answer to creating it; the admin shows it as `<shop>/s/<code>`. */
+	code: z.string().optional(),
 });
 export type ShareLinkView = z.infer<typeof ShareLinkView>;
 
 export const ShareLinksResponse = z.object({
 	visibility: z.enum(['public', 'private']),
-	/** The permanent address of a public file. */
+	/** The permanent address of a public file, or the picture the website shows for a photo. */
 	publicUrl: z.string().nullable(),
+	/** For a photo: which size that address is (A35D: “Product page · 1600 px”). */
+	publicPicture: z.object({ role: z.string(), width: z.number().int().positive() }).nullable().default(null),
 	links: z.array(ShareLinkView),
 });
 export type ShareLinksResponse = z.infer<typeof ShareLinksResponse>;
@@ -272,7 +276,8 @@ export type ShareOpenRequest = z.infer<typeof ShareOpenRequest>;
 export const ShareOpenAnswer = z.discriminatedUnion('state', [
 	/** Straight from Spaces, valid five minutes. */
 	z.object({ state: z.literal('open'), url: z.string(), fileName: z.string() }),
-	z.object({ state: z.literal('password') }),
+	/** `wrong`: a password was sent and did not match. */
+	z.object({ state: z.literal('password'), wrong: z.boolean().default(false) }),
 	z.object({ state: z.literal('admins_only') }),
 	z.object({ state: z.literal('expired') }),
 ]);
@@ -326,3 +331,21 @@ export type StorageCheckAnswer = z.infer<typeof StorageCheckAnswer>;
 
 export const StorageSettingsWrite = z.object({ othersMayUseOnDemand: z.boolean() });
 export type StorageSettingsWrite = z.infer<typeof StorageSettingsWrite>;
+
+// --- Plain files (R4-5) -------------------------------------------------------------------------
+
+/** The answer to a plain file's presign: where the browser sends the bytes, and its Media name. */
+export const MediaFilePresignResponse = z.object({
+	assetId: Id,
+	/** The name it gets in its folder: “(1)” is added when the name is taken. */
+	name: z.string(),
+	uploadUrl: z.string().min(1),
+	/** Headers the browser must replay verbatim on the PUT (they are signed). */
+	headers: z.record(z.string(), z.string()).default({}),
+	expiresAt: IsoDateTime,
+});
+export type MediaFilePresignResponse = z.infer<typeof MediaFilePresignResponse>;
+
+/** Public gives a plain file a permanent CDN address; private stops it (copies already taken stay). */
+export const MediaFileVisibilityWrite = z.object({ visibility: z.enum(['public', 'private']) });
+export type MediaFileVisibilityWrite = z.infer<typeof MediaFileVisibilityWrite>;

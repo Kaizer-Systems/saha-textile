@@ -1,0 +1,102 @@
+import type { MediaAsset } from '@saha-textile/contracts';
+
+import type { MediaJobQueuePort } from '../ports/media-job-queue.port';
+import type {
+	MediaBrowseRepository,
+	MediaFavouriteRepository,
+	MediaFolderRepository,
+} from '../ports/media-library.repository';
+import type { MediaAssetRepository } from '../ports/media.repository';
+import { TRASH_DAYS } from './library';
+
+/** What deleting for good needs; the API and the nightly worker both compose it. */
+export interface DeleteForeverDeps {
+	folders: MediaFolderRepository;
+	files: MediaBrowseRepository;
+	assets: MediaAssetRepository;
+	stars: MediaFavouriteRepository;
+	queue: MediaJobQueuePort;
+	/** A stored object's public address, so the CDN forgets it too. */
+	publicUrl: (key: string) => string;
+	/** Writes the audit line (Activity) and returns its id. */
+	record: (action: string, metadata: Record<string, unknown>) => Promise<unknown>;
+}
+
+export type DeleteForeverResult =
+	{ ok: true; done: number; files: string[]; folders: string[] } | { ok: false; reason: 'not_in_trash' };
+
+/** Every stored object of one file: its original, its picture sizes and its video files. */
+export function storedKeys(asset: MediaAsset): string[] {
+	return [
+		asset.originalStorageKey,
+		...asset.derivatives.map((row) => row.storageKey),
+		...asset.renditions.map((row) => row.storageKey),
+		asset.hlsPlaylistKey,
+	].filter((key): key is string => !!key);
+}
+
+/**
+ * The addresses the CDN may hold for a file: picture sizes of a public file, and the original of a
+ * public plain file. A photo's original is private and never on the CDN.
+ */
+export function publicKeys(asset: MediaAsset): string[] {
+	if (asset.visibility !== 'public') return [];
+	const keys = asset.derivatives.map((row) => row.storageKey);
+	if (asset.kind === 'file' && asset.originalStorageKey) keys.push(asset.originalStorageKey);
+	return keys;
+}
+
+/**
+ * Deletes for good what is in Trash: chosen files, and chosen folders with everything inside
+ * them. The records go at once; the stored objects go through a queued job that also clears them
+ * from the CDN. Anything chosen that is not in Trash refuses the whole request.
+ */
+export async function deleteMediaForever(
+	deps: DeleteForeverDeps,
+	selection: { fileIds: readonly string[]; folderIds: readonly string[] },
+	action = 'media.delete_forever',
+): Promise<DeleteForeverResult> {
+	const folders = await deps.folders.findManyByIds(selection.folderIds);
+	const files = await deps.assets.findManyByIds(selection.fileIds);
+	if ([...folders, ...files].some((item) => !item.trashedAt)) return { ok: false, reason: 'not_in_trash' };
+
+	const folderIds = new Set<string>();
+	for (const folder of folders) for (const row of await deps.folders.listSubtree(folder.id)) folderIds.add(row.id);
+	// Only what is itself in Trash: a file the website uses never goes there, so it never goes here.
+	const inside = folderIds.size
+		? (await deps.files.listInFolders([...folderIds])).filter((row) => row.trashedAt)
+		: [];
+	const doomed = [...new Map([...files, ...inside].map((asset) => [asset.id, asset])).values()];
+
+	const keys = doomed.flatMap(storedKeys);
+	const urls = doomed.flatMap(publicKeys).map(deps.publicUrl);
+	for (const asset of doomed) await deps.assets.hardDelete(asset.id);
+	await deps.folders.hardDelete([...folderIds]);
+	if (keys.length) await deps.queue.enqueue({ type: 'delete-objects', keys, urls });
+	await deps.stars.removeTargets(
+		'file',
+		doomed.map((asset) => asset.id),
+	);
+	await deps.stars.removeTargets('folder', [...folderIds]);
+
+	const result = { files: doomed.map((asset) => asset.id), folders: [...folderIds] };
+	await deps.record(action, result);
+	return { ok: true, done: folders.length + files.length, ...result };
+}
+
+/** How many Trash items one nightly run removes; the rest wait for the next night. */
+export const TRASH_PURGE_BATCH = 500;
+
+/** Removes for good what has been in Trash for 30 days (the worker runs this every night). */
+export async function purgeMediaTrash(deps: DeleteForeverDeps, now: Date): Promise<{ files: number; folders: number }> {
+	const cutoff = new Date(now.getTime() - TRASH_DAYS * 86_400_000).toISOString();
+	const files = await deps.files.listTrashedBefore(cutoff, TRASH_PURGE_BATCH);
+	const folders = (await deps.folders.listTrashed()).filter((row) => !!row.trashedAt && row.trashedAt <= cutoff);
+	if (!files.length && !folders.length) return { files: 0, folders: 0 };
+	const result = await deleteMediaForever(
+		deps,
+		{ fileIds: files.map((row) => row.id), folderIds: folders.map((row) => row.id) },
+		'media.trash_purged',
+	);
+	return result.ok ? { files: result.files.length, folders: result.folders.length } : { files: 0, folders: 0 };
+}

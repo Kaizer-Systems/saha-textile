@@ -13,12 +13,15 @@ import {
 	onDemand,
 	renameKeepingExtension,
 	restoreTarget,
+	shareCreateRefusal,
 	shareExpiresAt,
 	shareLinkState,
+	shareOpenState,
 	splitExtension,
 	storageColour,
 	trashDaysLeft,
 	trashPurgeDue,
+	websitePicture,
 } from '../src/media/library';
 
 const NOW = new Date('2026-11-15T10:00:00.000Z');
@@ -124,6 +127,73 @@ describe('share links', () => {
 		expect(shareLinkState({ stoppedAt: daysAgo(1), expiresAt: null }, NOW)).toBe('stopped');
 		expect(shareLinkState({ stoppedAt: null, expiresAt: daysAgo(1) }, NOW)).toBe('expired');
 		expect(shareLinkState({ stoppedAt: null, expiresAt: null }, NOW)).toBe('active');
+	});
+});
+
+describe('the website picture in the share popup', () => {
+	const size = (role: string, width: number) => ({ role, width, storageKey: `media/x/${role}-${width}.webp` });
+	it('names the widest size of the page role a photo has, and nothing for private files', () => {
+		const derivatives = [
+			size('thumb', 150),
+			size('gallery', 800),
+			size('gallery', 1600),
+			size('zoom', 2000),
+			size('share', 1200),
+		];
+		expect(websitePicture({ visibility: 'public', derivatives } as never)).toEqual({
+			role: 'gallery',
+			width: 1600,
+			storageKey: 'media/x/gallery-1600.webp',
+		});
+		expect(
+			websitePicture({ visibility: 'public', derivatives: [size('banner', 1920), size('card', 400)] } as never)
+				?.role,
+		).toBe('banner');
+		expect(websitePicture({ visibility: 'private', derivatives } as never)).toBeNull();
+		expect(websitePicture({ visibility: 'public', derivatives: [size('share', 1200)] } as never)).toBeNull();
+	});
+});
+
+describe('share links: making and opening', () => {
+	const base = {
+		kind: 'file' as const,
+		visibility: 'private' as const,
+		trashed: false,
+		who: 'anyone' as const,
+		hasPassword: false,
+	};
+
+	it('makes links for private files and photo originals, not for public files or Trash', () => {
+		expect(shareCreateRefusal(base)).toBeNull();
+		expect(shareCreateRefusal({ ...base, kind: 'image', visibility: 'public' })).toBeNull();
+		expect(shareCreateRefusal({ ...base, visibility: 'public' })).toBe('public_file');
+		expect(shareCreateRefusal({ ...base, trashed: true })).toBe('file_in_trash');
+		expect(shareCreateRefusal({ ...base, who: 'admins', hasPassword: true })).toBe('password_for_admins');
+		expect(shareCreateRefusal({ ...base, who: 'admins' })).toBeNull();
+	});
+
+	const link = { stoppedAt: null, expiresAt: null, who: 'anyone' as const, passwordHash: null };
+	const open = (over: Partial<Parameters<typeof shareOpenState>[0]> = {}) =>
+		shareOpenState({ link, fileAvailable: true, now: NOW, signedInAdmin: false, passwordOk: null, ...over });
+
+	it('opens an active link and reads every dead end as expired', () => {
+		expect(open()).toBe('open');
+		expect(open({ link: null })).toBe('expired');
+		expect(open({ fileAvailable: false })).toBe('expired');
+		expect(open({ link: { ...link, stoppedAt: daysAgo(1) } })).toBe('expired');
+		expect(open({ link: { ...link, expiresAt: daysAgo(1) } })).toBe('expired');
+	});
+
+	it('asks for the password until it is right, and admins-only links for a signed-in admin', () => {
+		const locked = { ...link, passwordHash: 'hash' };
+		expect(open({ link: locked })).toBe('password');
+		expect(open({ link: locked, passwordOk: false })).toBe('password');
+		expect(open({ link: locked, passwordOk: true })).toBe('open');
+		const admins = { ...link, who: 'admins' as const };
+		expect(open({ link: admins })).toBe('admins_only');
+		expect(open({ link: admins, signedInAdmin: true })).toBe('open');
+		// A stopped admins-only link stays stopped for admins too.
+		expect(open({ link: { ...admins, stoppedAt: daysAgo(0) }, signedInAdmin: true })).toBe('expired');
 	});
 });
 

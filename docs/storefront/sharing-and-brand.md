@@ -1,7 +1,7 @@
 ---
 title: Sharing and Brand
 wide: true
-description: How the product share button builds its message and pictures, how link previews and short addresses work, and how the shop reads the Brand Kit for logos, icons, colours, profiles and app badges.
+description: How the product share button builds its message and pictures, how link previews, short addresses and Media share links work, and how the shop reads the Brand Kit for logos, icons, colours, profiles and app badges.
 status: implemented
 audience: [beginner, frontend, backend]
 last_verified: '2026-11-10'
@@ -14,6 +14,8 @@ source_of_truth:
     - apps/storefront/src/server/middleware/web-manifest.ts
     - apps/storefront/src/app/layout/layout.ts
     - apps/api/src/media/brand.service.ts
+    - apps/storefront/src/app/features/page/share-link
+    - apps/storefront/src/app/data-access/services/share-link.service.ts
     - apps/api/src/catalog/share-settings.service.ts
     - packages/core-domain/src/media/seeded-roles.ts
 ---
@@ -56,6 +58,17 @@ A page without its own picture uses the Brand Kit's link preview picture. With n
 `/p/<product code>` is answered on the server by `src/server/middleware/locale.ts`. It asks `GET /catalog/code/:code` for the product's address and answers with a 301 to the product page, keeping any query.
 
 Like every Nitro handler, the middleware reaches the API through `serverApiUrl()`, which reads `SAHA_TEXTILE_PUBLIC_CONFIG`. Nitro handlers never run Angular's start-up, so the built-in `environment.apiUrl` (a localhost default) would point a deployed server at nothing. The same address loads the old-address redirect rows and the live product and category paths.
+
+## Media share links
+
+Admins share files from Admin › Media with links such as `https://sahatextile.com/s/<code>`. The shop page `/<locale>/s/<code>` opens them; an address without a language moves to the visitor's language like every other.
+
+1. The page asks the API (`GET /share/:code`) with the browser's cookies, so an admin signed in to the admin in the same browser opens an admins-only link.
+2. A link that opens answers with a Spaces address valid for five minutes. The page sends the tab there. A file the browser can show (PDF, picture, video) opens in the browser's own viewer. Anything else downloads, and the tab stays on the page, which then says the download has started; its "click here to download it" asks for a fresh address.
+3. A password link shows the password card. The password goes in `POST /share/:code` without cookies, because a password link is never admins-only.
+4. Expired, stopped, unknown or trashed links show the not-found layout, saying the link has ended. A slow answer shows "Opening the file…" after 0.3 seconds.
+
+The page uses the browser's `fetch` rather than the app's HTTP client, which always sends cookies and the shop's CSRF value. It runs only in the browser, carries `noindex` (`/s` is a private prefix) and has no styles of its own: it uses the sign-in page's card and the not-found page.
 
 ## The Brand Kit in the shop
 

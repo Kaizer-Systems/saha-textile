@@ -21,9 +21,23 @@ describe('storefrontAddress', () => {
 		setSupportedLocales(['en']);
 		setRetiredLocales(['bn']);
 		setLegacyRedirectRows([{ sourcePath: '/bn/old', statusCode: 410 }]);
-		expect(storefrontAddress('/bn/old', undefined)).toEqual({ status: 301, location: '/en/old', cacheSeconds: 3600 });
+		expect(storefrontAddress('/bn/old', undefined)).toEqual({
+			status: 301,
+			location: '/en/old',
+			cacheSeconds: 3600,
+		});
 		resetSupportedLocales();
 		setSupportedLocales(['en', 'bn']);
+	});
+
+	it('opens a share link’s short address in the visitor’s language, never as an old address', () => {
+		const code = 'k7Q2mX9vT3abcdefghijkl';
+		expect(storefrontAddress(`/s/${code}`, undefined)).toEqual({ status: 302, location: `/en/s/${code}` });
+		expect(storefrontAddress(`/s/${code}/?utm=x`, 'bn')).toEqual({ status: 302, location: `/bn/s/${code}?utm=x` });
+		expect(storefrontAddress(`/s/${code}`, 'xx')).toEqual({ status: 302, location: `/en/s/${code}` });
+		// Not a share code: the old-address rules still decide.
+		expect(storefrontAddress('/s/ab', undefined)).toEqual({ status: 410 });
+		expect(storefrontAddress(`/en/s/${code}`, 'bn')).toBeNull();
 	});
 
 	it('sends / to the remembered locale', () => {

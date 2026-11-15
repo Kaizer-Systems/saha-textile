@@ -1,0 +1,145 @@
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
+@if (view() === 'expired') {
+<!-- S6: the not-found page's own layout (approved in the media brief), saying the link has ended. -->
+<section class="section-404 section-lg-space">
+	<div class="container-fluid-lg">
+		<div class="row">
+			<div class="col-12">
+				<div class="image-404">
+					<img
+						src="assets/images/inner-page/404.png"
+						class="img-fluid"
+						alt=""
+					/>
+				</div>
+			</div>
+			<div class="col-12">
+				<div class="contain-404">
+					<h3 class="text-content">{{ 'share_link_expired' | transloco }}</h3>
+					<a
+						[routerLink]="['/']"
+						class="btn btn-md theme-bg-color mx-auto mt-4 text-white"
+						id="share_back_home"
+					>
+						{{ 'back_to_home' | transloco }}
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+} @else {
+<!-- S1–S5 and S8 in the sign-in page's card; nothing of its own. -->
+<section class="log-in-section background-image-2 section-b-space">
+	<div class="container-fluid-lg w-100">
+		<div class="row">
+			<div class="col-xxl-6 col-xl-5 col-lg-6 d-lg-block d-none ms-auto">
+				<div class="image-contain">
+					<img
+						src="assets/images/inner-page/log-in.png"
+						class="img-fluid"
+						alt=""
+					/>
+				</div>
+			</div>
+			<div class="col-xxl-4 col-xl-5 col-lg-6 col-sm-8 mx-auto">
+				@if (view() !== 'waiting') {
+				<div
+					class="log-in-box"
+					id="share_box"
+					[attr.data-view]="view()"
+				>
+					@switch (view()) { @case ('opening') {
+					<div class="log-in-title">
+						<h3>{{ 'share_opening' | transloco }}</h3>
+					</div>
+					<div class="d-flex justify-content-center py-3">
+						<div
+							class="spinner-border theme-color"
+							role="status"
+						>
+							<span class="visually-hidden">{{ 'share_opening' | transloco }}</span>
+						</div>
+					</div>
+					} @case ('staff') {
+					<div class="log-in-title">
+						<h3>{{ 'share_staff_title' | transloco }}</h3>
+						<h4>{{ 'share_staff_text' | transloco }}</h4>
+					</div>
+					} @case ('downloading') {
+					<div class="log-in-title">
+						<h3>{{ 'share_download_started' | transloco }}</h3>
+						<h4>
+							<b>{{ file()?.name }}</b>
+							· {{ fileSize() }}{{ 'share_sentence_end' | transloco }} {{ 'share_download_where' |
+							transloco }}
+						</h4>
+					</div>
+					<div class="sign-up-box">
+						<h4>{{ 'share_download_not_started' | transloco }}</h4>
+						<a
+							href="#"
+							id="share_download_again"
+							(click)="$event.preventDefault(); downloadAgain()"
+						>
+							{{ 'share_download_click_here' | transloco }}
+						</a>
+					</div>
+					} @default {
+					<div class="log-in-title">
+						<h3>{{ 'share_password_title' | transloco }}</h3>
+						<h4>{{ 'share_password_text' | transloco }}</h4>
+					</div>
+					@if (view() === 'too_many') {
+					<div
+						class="alert alert-danger"
+						role="alert"
+					>
+						{{ 'share_too_many' | transloco }}
+					</div>
+					} @else if (wrong()) {
+					<div
+						class="alert alert-danger"
+						role="alert"
+					>
+						{{ 'share_password_wrong' | transloco }}
+					</div>
+					}
+					<div class="input-box">
+						<form
+							class="row g-4"
+							(ngSubmit)="submit()"
+						>
+							<div class="col-12">
+								<div class="form-floating theme-form-floating log-in-form">
+									<input
+										type="password"
+										class="form-control"
+										id="share_password"
+										name="password"
+										autocomplete="off"
+										[(ngModel)]="password"
+										[disabled]="view() === 'too_many'"
+										placeholder="{{ 'password' | transloco }}"
+									/>
+									<label for="share_password">{{ 'password' | transloco }}</label>
+								</div>
+							</div>
+							<div class="col-12">
+								<app-button
+									[id]="'share_open_btn'"
+									[disabled]="view() === 'too_many' || busy()"
+								>
+									{{ 'share_open_file' | transloco }}
+								</app-button>
+							</div>
+						</form>
+					</div>
+					} }
+				</div>
+				}
+			</div>
+		</div>
+	</div>
+</section>
+}

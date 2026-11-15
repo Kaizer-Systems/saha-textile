@@ -56,7 +56,9 @@ export function retiredLocales(): readonly Locale[] {
 export function setRetiredLocales(next: unknown): void {
 	const list = Array.isArray(next) ? next : (next as { redirect?: unknown } | null)?.redirect;
 	retired = Array.isArray(list)
-		? list.filter((code): code is string => isLocaleCode(code) && code !== PRIMARY_LOCALE && !locales.includes(code))
+		? list.filter(
+				(code): code is string => isLocaleCode(code) && code !== PRIMARY_LOCALE && !locales.includes(code),
+			)
 		: [];
 }
 
@@ -155,6 +157,8 @@ const PRIVATE_PREFIXES = [
 	'/compare',
 	'/search',
 	'/maintenance',
+	// Media share links (`/s/{code}`): a link is for the person it was sent to, never a page to find.
+	'/s',
 ];
 
 export function isPrivatePath(appPath: string): boolean {

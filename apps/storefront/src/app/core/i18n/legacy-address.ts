@@ -1,6 +1,6 @@
 import { resolveLegacyAddress, setLocalePrefixTest } from '@saha-textile/core-domain/legacy-resolve';
 
-import { isLocale, localeRedirectFor, type LocaleRedirect, retiredLocaleRedirect } from './locale';
+import { DEFAULT_LOCALE, isLocale, localeRedirectFor, type LocaleRedirect, retiredLocaleRedirect } from './locale';
 
 // Old addresses lose their language prefix before they are compared: the shop's own languages.
 setLocalePrefixTest(isLocale);
@@ -82,6 +82,9 @@ export function isLiveStorefrontPath(pathname: string): boolean {
 	return false;
 }
 
+/** A Media share link's short form, `/s/<code>`, as admins send it. */
+const SHARE_LINK = /^\/s\/[A-Za-z0-9]{16,64}\/?$/;
+
 export function storefrontAddress(
 	pathAndQuery: string,
 	rememberedLocale: string | undefined,
@@ -89,6 +92,15 @@ export function storefrontAddress(
 	// A switched-off language's pages go to English before any saved redirect is consulted.
 	const retired = retiredLocaleRedirect(pathAndQuery);
 	if (retired) return retired;
+	// A share link opens in the visitor's own language. 302: it depends on who asks, and it is
+	// never an old WordPress address, so it must not reach the legacy rules (which answer 410).
+	const queryAt = pathAndQuery.indexOf('?');
+	const pathname = queryAt === -1 ? pathAndQuery : pathAndQuery.slice(0, queryAt);
+	if (SHARE_LINK.test(pathname)) {
+		const locale = isLocale(rememberedLocale) ? rememberedLocale : DEFAULT_LOCALE;
+		const query = queryAt === -1 ? '' : pathAndQuery.slice(queryAt);
+		return { status: 302, location: `/${locale}${pathname.replace(/\/$/, '')}${query}` };
+	}
 	const legacy = resolveLegacyAddress(pathAndQuery, rows, isLiveStorefrontPath);
 	if (legacy?.status === 410) return { status: 410 };
 	if (legacy && legacy.location) return { status: legacy.status, location: legacy.location };

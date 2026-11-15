@@ -901,5 +901,20 @@
 	"video_rail_description": "আমাদের কলকাতার দোকানের নতুন কালেকশন, আমাদের YouTube চ্যানেলে।",
 	"switch_to_dark": "ডার্ক মোডে যান",
 	"switch_to_light": "লাইট মোডে যান",
-	"cookie_item_theme": "লাইট বা ডার্ক মোড মনে রাখে"
+	"cookie_item_theme": "লাইট বা ডার্ক মোড মনে রাখে",
+	"shared_file": "শেয়ার করা ফাইল",
+	"share_opening": "ফাইলটি খোলা হচ্ছে…",
+	"share_password_title": "এই ফাইলে পাসওয়ার্ড আছে",
+	"share_password_text": "লিঙ্কের সঙ্গে যে পাসওয়ার্ড পেয়েছেন, সেটি লিখুন।",
+	"share_password_wrong": "পাসওয়ার্ডটি ঠিক নয়। আবার চেষ্টা করুন।",
+	"share_too_many": "অনেকবার চেষ্টা হয়েছে। 15 মিনিট পরে আবার চেষ্টা করুন।",
+	"share_open_file": "ফাইলটি খুলুন",
+	"share_staff_title": "এই লিঙ্কটি Saha Textile-এর কর্মীদের জন্য",
+	"share_staff_text": "এই ব্রাউজারে Saha Textile অ্যাডমিনে সাইন ইন করে লিঙ্কটি আবার খুলুন।",
+	"share_download_started": "ডাউনলোড শুরু হয়েছে",
+	"share_sentence_end": "।",
+	"share_download_where": "ফাইলটি আপনার ডাউনলোড ফোল্ডারে পাবেন।",
+	"share_download_not_started": "ডাউনলোড নিজে থেকে শুরু না হলে",
+	"share_download_click_here": "এখানে ক্লিক করে ডাউনলোড করুন।",
+	"share_link_expired": "এই লিঙ্কের মেয়াদ শেষ, বা এটি বন্ধ করা হয়েছে। যিনি পাঠিয়েছেন, তাঁর কাছে নতুন লিঙ্ক চেয়ে নিন।"
 }

@@ -901,5 +901,20 @@
 	"video_rail_description": "New collections from our Kolkata shop, on our YouTube channel.",
 	"switch_to_dark": "Switch to dark",
 	"switch_to_light": "Switch to light",
-	"cookie_item_theme": "Remembers light or dark mode"
+	"cookie_item_theme": "Remembers light or dark mode",
+	"shared_file": "Shared file",
+	"share_opening": "Opening the file…",
+	"share_password_title": "This file has a password",
+	"share_password_text": "Enter the password you were given with the link.",
+	"share_password_wrong": "That password is not right. Try again.",
+	"share_too_many": "Too many tries. Wait 15 minutes, then try again.",
+	"share_open_file": "Open the file",
+	"share_staff_title": "This link is for Saha Textile staff",
+	"share_staff_text": "Sign in to the Saha Textile admin in this browser, then open the link again.",
+	"share_download_started": "Your download has started",
+	"share_sentence_end": ".",
+	"share_download_where": "You will find it in your Downloads.",
+	"share_download_not_started": "If your download didn’t start automatically,",
+	"share_download_click_here": "click here to download it.",
+	"share_link_expired": "This link has expired or was stopped. Ask the person who sent it for a new one."
 }

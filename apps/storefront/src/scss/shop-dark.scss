@@ -132,3 +132,12 @@ html.dark .cart-section .cart-table tbody tr td .remove,
 html.dark .remove.close_button {
 	color: #ff8a80;
 }
+
+// Red alerts (sign-in errors, the share page's wrong password) kept the theme's dark-red text on
+// the dark card, which could not be read. A dark red surface with light red text (9.7 : 1), owner
+// OK 15 Nov (share link page brief).
+html.dark .alert-danger {
+	background-color: #3a1416;
+	border-color: #7a2a2f;
+	color: #ffb4ab;
+}

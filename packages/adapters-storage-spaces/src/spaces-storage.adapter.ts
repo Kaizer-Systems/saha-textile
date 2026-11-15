@@ -167,6 +167,7 @@ export class SpacesStorageAdapter implements StoragePort {
 		key: string;
 		expiresInSeconds: number;
 		fileName?: string;
+		disposition?: 'inline' | 'attachment';
 	}): Promise<string> {
 		assertValidStorageKey(input.key);
 		this.assertExpiry(input.expiresInSeconds);
@@ -177,7 +178,9 @@ export class SpacesStorageAdapter implements StoragePort {
 					Bucket: this.bucket,
 					Key: input.key,
 					// Opens in the browser where it can (a PDF, a picture) and saves under its own name.
-					...(input.fileName ? { ResponseContentDisposition: contentDisposition(input.fileName) } : {}),
+					...(input.fileName
+						? { ResponseContentDisposition: contentDisposition(input.fileName, input.disposition) }
+						: {}),
 				}),
 				{ expiresIn: input.expiresInSeconds },
 			);
@@ -256,14 +259,14 @@ function resolvePublicBaseUrl(config: SpacesStorageConfig): string {
 }
 
 /**
- * `inline` with the name twice: a plain ASCII fallback for old clients and the exact UTF-8 name
- * (RFC 6266), so a বাংলা file name survives. Quotes, backslashes and line breaks never reach the
- * header.
+ * `inline` (or `attachment`, to always save) with the name twice: a plain ASCII fallback for old
+ * clients and the exact UTF-8 name (RFC 6266), so a বাংলা file name survives. Quotes, backslashes
+ * and line breaks never reach the header.
  */
-export function contentDisposition(fileName: string): string {
+export function contentDisposition(fileName: string, disposition: 'inline' | 'attachment' = 'inline'): string {
 	const clean = fileName.replace(/[\r\n"\\]/g, '').slice(0, 200) || 'file';
 	const ascii = clean.replace(/[^\x20-\x7e]/g, '_');
 	// RFC 5987 leaves ' ( ) * out of a value, and encodeURIComponent keeps them, so encode them too.
 	const utf8 = encodeURIComponent(clean).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
-	return `inline; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+	return `${disposition}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }

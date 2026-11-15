@@ -264,4 +264,17 @@ describe('visibility and server-side operations', () => {
 			`inline; filename="______ ______ (2026).pdf"; filename*=UTF-8''${encodeURIComponent('শাড়ির তালিকা (2026).pdf').replace(/[()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`,
 		);
 	});
+
+	it('saves the file instead of showing it when asked to (the Media page’s Download)', async () => {
+		const adapter = new SpacesStorageAdapter(baseConfig);
+		const url = await adapter.createSignedDownloadUrl({
+			key: 'media/a/original.pdf',
+			expiresInSeconds: 300,
+			fileName: 'size-chart.pdf',
+			disposition: 'attachment',
+		});
+		expect(new URL(url).searchParams.get('response-content-disposition')).toBe(
+			`attachment; filename="size-chart.pdf"; filename*=UTF-8''size-chart.pdf`,
+		);
+	});
 });

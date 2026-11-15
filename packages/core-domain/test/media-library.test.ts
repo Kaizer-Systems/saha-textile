@@ -12,6 +12,7 @@ import {
 	mediaCategory,
 	onDemand,
 	renameKeepingExtension,
+	downloadName,
 	restoreTarget,
 	shareCreateRefusal,
 	shareExpiresAt,
@@ -57,6 +58,10 @@ describe('names', () => {
 		expect(renameKeepingExtension('red.jpg', 'red-front')).toBe('red-front.jpg');
 		expect(renameKeepingExtension('red.jpg', 'red-front.JPG')).toBe('red-front.jpg');
 		expect(renameKeepingExtension('notes', 'notes 2')).toBe('notes 2');
+		// A download is saved with an extension, taken from the stored file when the name has none.
+		expect(downloadName('3-bengali-bridal-saree', 'media/med_1/original.JPG')).toBe('3-bengali-bridal-saree.jpg');
+		expect(downloadName('size chart.pdf', 'media/med_2/original.pdf')).toBe('size chart.pdf');
+		expect(downloadName('notes', 'media/med_3/original')).toBe('notes');
 	});
 });
 

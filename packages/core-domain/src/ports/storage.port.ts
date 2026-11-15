@@ -51,9 +51,16 @@ export interface StoragePort {
 	setVisibility(key: string, visibility: ObjectVisibility): Promise<void>;
 	/**
 	 * A short-lived read URL for a private object (moderation previews, Media share links).
-	 * `fileName` makes the browser save it under that name instead of the storage key's.
+	 * `fileName` makes the browser save it under that name instead of the storage key's;
+	 * `disposition` `attachment` always saves it, `inline` (the default) lets the browser show what
+	 * it can.
 	 */
-	createSignedDownloadUrl(input: { key: string; expiresInSeconds: number; fileName?: string }): Promise<string>;
+	createSignedDownloadUrl(input: {
+		key: string;
+		expiresInSeconds: number;
+		fileName?: string;
+		disposition?: 'inline' | 'attachment';
+	}): Promise<string>;
 	/** Presigned browser PUT. Uploads default to `private`: an original is never public. */
 	createSignedUploadUrl(input: {
 		key: string;

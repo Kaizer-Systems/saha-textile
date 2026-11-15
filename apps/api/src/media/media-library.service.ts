@@ -20,6 +20,8 @@ import type {
 	MediaOperationResult,
 	MediaRestoreRequest,
 	MediaSelection,
+	MediaFileAddress,
+	MediaTrashCheck,
 } from '@saha-textile/contracts';
 import {
 	type AuditLogRepository,
@@ -35,6 +37,7 @@ import {
 	ancestorsUnder,
 	cleanMediaName,
 	deleteMediaForever,
+	downloadName,
 	folderMoveRefusal,
 	freeName,
 	mediaCategory,
@@ -73,6 +76,12 @@ const REFUSALS: Readonly<Record<string, string>> = {
 };
 
 const refuse = (code: string) => domainRefusal(code, REFUSALS[code] ?? 'Not allowed');
+/** How long a Preview or Download address from the Media page works. */
+export const FILE_ADDRESS_SECONDS = 300;
+
+/** What a file takes in storage: the original and every version made from it. */
+const storedBytes = (asset: MediaAsset): number =>
+	asset.originalByteSize + asset.derivatives.reduce((sum, row) => sum + (row.byteSize ?? 0), 0);
 
 /** The name a file shows: its Media name, else its web file name. */
 export const fileName = (asset: MediaAsset): string => asset.displayName ?? asset.slug;
@@ -295,33 +304,7 @@ export class MediaLibraryService {
 	 */
 	async trash(actor: string, selection: MediaSelection, now = new Date()): Promise<MediaOperationResult> {
 		const at = now.toISOString();
-		const folders = await this.folders.findManyByIds(selection.folderIds);
-		const subtreeIds = new Set<string>();
-		for (const folder of folders)
-			for (const row of await this.folders.listSubtree(folder.id)) subtreeIds.add(row.id);
-		const inFolders = subtreeIds.size ? await this.files.listInFolders([...subtreeIds]) : [];
-		const chosen = await this.assets.findManyByIds(selection.fileIds);
-		const candidates = [...chosen, ...inFolders].filter(
-			(asset, index, all) => !asset.trashedAt && all.findIndex((other) => other.id === asset.id) === index,
-		);
-		const used = await this.files.whereUsed(candidates.map((asset) => asset.id));
-		const inUse = candidates
-			.filter((asset) => (used.get(asset.id) ?? []).length > 0)
-			.map((asset) => ({ id: asset.id, name: fileName(asset), usedOn: used.get(asset.id) ?? [] }));
-		// A folder holding an image the website uses stays put, with everything in it.
-		const blockedFolders = new Set<string>();
-		for (const asset of inUse) {
-			const owner = inFolders.find((row) => row.id === asset.id);
-			if (!owner?.folderId) continue;
-			const folder = (await this.folders.findById(owner.folderId)) as MediaFolder;
-			for (const id of [folder.id, ...folder.ancestors]) blockedFolders.add(id);
-		}
-		const trashFolders = folders.filter((folder) => !blockedFolders.has(folder.id) && !folder.trashedAt);
-		const blockedIds = new Set(inUse.map((row) => row.id));
-		const trashFiles = chosen.filter((asset) => !blockedIds.has(asset.id) && !asset.trashedAt);
-		const insideTrashed = inFolders.filter(
-			(asset) => !blockedIds.has(asset.id) && !asset.trashedAt && !blockedFolders.has(asset.folderId ?? ''),
-		);
+		const { inUse, trashFolders, trashFiles, insideTrashed } = await this.trashPlan(selection);
 		await this.folders.setTrashed(
 			trashFolders.map((folder) => folder.id),
 			at,
@@ -632,7 +615,73 @@ export class MediaLibraryService {
 		return { done: 1, inUse: [], undoId: null };
 	}
 
+	/** A26, before anything moves: which chosen images, folders' contents included, the website uses. */
+	async checkTrash(selection: MediaSelection): Promise<MediaTrashCheck> {
+		const plan = await this.trashPlan(selection);
+		return {
+			inUse: plan.inUse,
+			total: plan.candidates.length,
+			moving: plan.trashFolders.length + plan.trashFiles.length,
+			keptFolders: plan.folders.filter((folder) => !folder.trashedAt).length - plan.trashFolders.length,
+		};
+	}
+
+	/**
+	 * Preview or Download from the Media page: the original, straight from Spaces, for five minutes,
+	 * under its own name. Nothing is stored, so the storage check is not asked.
+	 */
+	async fileAddress(id: string, as: 'view' | 'save'): Promise<MediaFileAddress> {
+		const asset = await this.requireFile(id);
+		if (!asset.originalStorageKey || asset.processing.state === 'awaiting_upload')
+			throw new NotFoundException('File not found');
+		const url = await this.storage.createSignedDownloadUrl({
+			key: asset.originalStorageKey,
+			expiresInSeconds: FILE_ADDRESS_SECONDS,
+			fileName: downloadName(fileName(asset), asset.originalStorageKey),
+			disposition: as === 'view' ? 'inline' : 'attachment',
+		});
+		return { url };
+	}
+
 	// --- Helpers ----------------------------------------------------------------------------------
+
+	/** What Trash would take: the chosen files, everything inside the chosen folders, and what is used. */
+	private async trashPlan(selection: MediaSelection) {
+		const folders = await this.folders.findManyByIds(selection.folderIds);
+		const subtreeIds = new Set<string>();
+		for (const folder of folders)
+			for (const row of await this.folders.listSubtree(folder.id)) subtreeIds.add(row.id);
+		const inFolders = subtreeIds.size ? await this.files.listInFolders([...subtreeIds]) : [];
+		const chosen = await this.assets.findManyByIds(selection.fileIds);
+		const candidates = [...chosen, ...inFolders].filter(
+			(asset, index, all) => !asset.trashedAt && all.findIndex((other) => other.id === asset.id) === index,
+		);
+		const used = await this.files.whereUsed(candidates.map((asset) => asset.id));
+		const inUse = candidates
+			.filter((asset) => (used.get(asset.id) ?? []).length > 0)
+			.map((asset) => ({
+				id: asset.id,
+				name: fileName(asset),
+				usedOn: used.get(asset.id) ?? [],
+				bytes: storedBytes(asset),
+				thumbnailUrl: this.thumbnailOf(asset),
+			}));
+		// A folder holding an image the website uses stays put, with everything in it.
+		const blockedFolders = new Set<string>();
+		for (const asset of inUse) {
+			const owner = inFolders.find((row) => row.id === asset.id);
+			if (!owner?.folderId) continue;
+			const folder = (await this.folders.findById(owner.folderId)) as MediaFolder;
+			for (const id of [folder.id, ...folder.ancestors]) blockedFolders.add(id);
+		}
+		const trashFolders = folders.filter((folder) => !blockedFolders.has(folder.id) && !folder.trashedAt);
+		const blockedIds = new Set(inUse.map((row) => row.id));
+		const trashFiles = chosen.filter((asset) => !blockedIds.has(asset.id) && !asset.trashedAt);
+		const insideTrashed = inFolders.filter(
+			(asset) => !blockedIds.has(asset.id) && !asset.trashedAt && !blockedFolders.has(asset.folderId ?? ''),
+		);
+		return { folders, candidates, inUse, trashFolders, trashFiles, insideTrashed };
+	}
 
 	private cleanName(typed: string): string {
 		const cleaned = cleanMediaName(typed);
@@ -691,21 +740,20 @@ export class MediaLibraryService {
 	): Promise<MediaFileRow[]> {
 		const used = await this.files.whereUsed(assets.map((asset) => asset.id));
 		return assets.map((asset) => {
-			const thumb = asset.derivatives.find((row) => row.role === 'thumb') ?? asset.derivatives[0];
 			return {
 				id: asset.id,
 				kind: asset.kind,
 				name: fileName(asset),
 				contentType: asset.originalFormat,
 				category: mediaCategory(asset.originalFormat, fileName(asset)),
-				bytes: asset.originalByteSize + asset.derivatives.reduce((sum, row) => sum + (row.byteSize ?? 0), 0),
+				bytes: storedBytes(asset),
 				width: asset.width,
 				height: asset.height,
 				folderId: asset.folderId ?? null,
 				location: location(asset.trashedAt ? asset.trashedFrom : asset.folderId),
 				visibility: asset.visibility,
 				state: asset.processing.state,
-				thumbnailUrl: thumb && asset.visibility === 'public' ? this.storage.getUrl(thumb.storageKey) : null,
+				thumbnailUrl: this.thumbnailOf(asset),
 				usedOn: (used.get(asset.id) ?? []).length,
 				starred: starred.has(`file:${asset.id}`),
 				uploadedBy: asset.uploadedBy?.id ?? null,
@@ -714,6 +762,12 @@ export class MediaLibraryService {
 				daysLeft: asset.trashedAt ? trashDaysLeft(asset.trashedAt, now) : null,
 			};
 		});
+	}
+
+	/** The small picture a list shows: public photos only; private ones show their type icon. */
+	private thumbnailOf(asset: MediaAsset): string | null {
+		const thumb = asset.derivatives.find((row) => row.role === 'thumb') ?? asset.derivatives[0];
+		return thumb && asset.visibility === 'public' ? this.storage.getUrl(thumb.storageKey) : null;
 	}
 
 	/** Writes the audit row Activity lists; answers its id, which Undo takes. */

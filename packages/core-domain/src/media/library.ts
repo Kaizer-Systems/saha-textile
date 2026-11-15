@@ -67,6 +67,16 @@ export function renameKeepingExtension(current: string, typed: string): string {
 		: `${typed}${extension}`;
 }
 
+/**
+ * The name a downloaded file is saved under: its Media name, with the stored file's extension when
+ * the name has none (older photos are named without one), so the computer knows how to open it.
+ */
+export function downloadName(name: string, storageKey: string): string {
+	if (splitExtension(name).extension) return name;
+	const { extension } = splitExtension(storageKey.slice(storageKey.lastIndexOf('/') + 1));
+	return `${name}${extension.toLowerCase()}`;
+}
+
 // --- Folders ------------------------------------------------------------------------------------
 
 export type MoveRefusal = 'into_itself' | 'target_in_trash' | 'unknown_target';

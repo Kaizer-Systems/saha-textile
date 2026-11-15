@@ -140,6 +140,10 @@ function harness() {
 			headers: {},
 		}),
 		setVisibility: vi.fn(async () => undefined),
+		createSignedDownloadUrl: vi.fn(
+			async (input: { key: string; expiresInSeconds: number; fileName?: string; disposition?: string }) =>
+				`https://spaces.test/${input.key}?for=${input.expiresInSeconds}&as=${input.disposition}&name=${input.fileName}`,
+		),
 	};
 	const jobs: { type: string; keys?: string[]; urls: string[] }[] = [];
 	// Deleting goes through a queued job that removes the objects and clears the CDN.
@@ -283,7 +287,13 @@ describe('the Media page', () => {
 		const result = await h.service.trash('adm_1', { fileIds: ['med_used', 'med_free'], folderIds: [] });
 		expect(result.done).toBe(1);
 		expect(result.inUse).toEqual([
-			{ id: 'med_used', name: 'med_used.jpg', usedOn: ['product gallery · Red Banarasi Silk'] },
+			{
+				id: 'med_used',
+				name: 'med_used.jpg',
+				usedOn: ['product gallery · Red Banarasi Silk'],
+				bytes: 100,
+				thumbnailUrl: null,
+			},
 		]);
 		expect(h.files.get('med_free')?.trashedAt).toBeTruthy();
 		expect(h.files.get('med_used')?.trashedAt ?? null).toBeNull();
@@ -316,6 +326,35 @@ describe('the Media page', () => {
 		const blocked = await h.service.trash('adm_1', { fileIds: [], folderIds: [box.id] });
 		expect(blocked.done).toBe(0);
 		expect(h.folders.get(box.id)?.trashedAt).toBeNull();
+	});
+
+	it('checks before Trash which images the website uses, folders’ contents included, and moves nothing (A26)', async () => {
+		const h = harness();
+		const box = await h.service.createFolder('adm_1', { name: 'Box', parentId: null });
+		const inner = await h.service.createFolder('adm_1', { name: 'Inner', parentId: box.id });
+		h.file('med_deep', { folderId: inner.id });
+		h.file('med_top', { folderId: box.id });
+		h.file('med_loose');
+		h.used.set('med_deep', ['banner · Home hero']);
+		const check = await h.service.checkTrash({ fileIds: ['med_loose'], folderIds: [box.id] });
+		// Box stays with everything in it, because Inner holds a used image; the loose file can go.
+		expect(check).toEqual({
+			inUse: [
+				{
+					id: 'med_deep',
+					name: 'med_deep.jpg',
+					usedOn: ['banner · Home hero'],
+					bytes: 100,
+					thumbnailUrl: null,
+				},
+			],
+			total: 3,
+			moving: 1,
+			keptFolders: 1,
+		});
+		expect([...h.files.values()].every((asset) => !asset.trashedAt)).toBe(true);
+		expect(h.folders.get(box.id)?.trashedAt ?? null).toBeNull();
+		expect(h.audit.filter((entry) => entry.action === 'media.trash')).toHaveLength(0);
 	});
 
 	it('restores to the old folder, or to My files when that folder is in Trash too (A19)', async () => {
@@ -497,6 +536,33 @@ describe('plain files', () => {
 		expect(await refusalCode(h.service.setFileVisibility('adm_1', 'med_photo', 'private'))).toBe(
 			'not_a_plain_file',
 		);
+	});
+});
+
+describe('Preview and Download', () => {
+	it('hands over the original for five minutes under its own name: shown for Preview, saved for Download', async () => {
+		const h = harness();
+		h.file('med_pdf', {
+			kind: 'file',
+			originalFormat: 'application/pdf',
+			displayName: 'Size chart.pdf',
+			processing: { state: 'ready' },
+		});
+		const view = await h.service.fileAddress('med_pdf', 'view');
+		expect(view.url).toBe('https://spaces.test/media/med_pdf/original.jpg?for=300&as=inline&name=Size chart.pdf');
+		const save = await h.service.fileAddress('med_pdf', 'save');
+		expect(save.url).toContain('as=attachment');
+		// An older photo named without an extension is saved with the stored file's one.
+		h.file('med_old', { displayName: '3-bengali-bridal-saree', processing: { state: 'ready' } });
+		expect((await h.service.fileAddress('med_old', 'save')).url).toContain('name=3-bengali-bridal-saree.jpg');
+	});
+
+	it('break-it: an upload that never finished, or a file deleted for good, has no address', async () => {
+		const h = harness();
+		h.file('med_half', { processing: { state: 'awaiting_upload' } });
+		await expect(h.service.fileAddress('med_half', 'save')).rejects.toBeInstanceOf(NotFoundException);
+		await expect(h.service.fileAddress('med_none', 'save')).rejects.toBeInstanceOf(NotFoundException);
+		expect(h.storage.createSignedDownloadUrl).not.toHaveBeenCalled();
 	});
 });
 

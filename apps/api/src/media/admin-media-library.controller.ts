@@ -29,6 +29,9 @@ import {
 	MediaRename,
 	MediaRestoreRequest,
 	MediaSelection,
+	type MediaFileAddress,
+	MediaFileAddressQuery,
+	type MediaTrashCheck,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -140,6 +143,17 @@ export class AdminMediaLibraryController {
 		return this.library.trash(actor(principal), body);
 	}
 
+	@Post('trash/check')
+	@HttpCode(200)
+	@RequirePermissions('attachment.destroy')
+	@ApiOperation({
+		operationId: 'checkMediaTrash',
+		summary: 'Before Trash: the chosen images, folders included, that the website uses (nothing moves)',
+	})
+	checkTrash(@Body(new ZodValidationPipe(MediaSelection)) body: MediaSelection): Promise<MediaTrashCheck> {
+		return this.library.checkTrash(body);
+	}
+
 	@Post('restore')
 	@HttpCode(200)
 	@RequirePermissions('attachment.edit')
@@ -195,6 +209,20 @@ export class AdminMediaLibraryController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<MediaFilePresignResponse> {
 		return this.library.presignFile(actor(principal), body);
+	}
+
+	@Get('files/:id/address')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({
+		operationId: 'mediaFileAddress',
+		summary: 'Preview or Download: the original from Spaces for five minutes, under its own name',
+	})
+	fileAddress(
+		@Param('id') id: string,
+		@Query(new ZodValidationPipe(MediaFileAddressQuery)) query: MediaFileAddressQuery,
+	): Promise<MediaFileAddress> {
+		return this.library.fileAddress(id, query.as);
 	}
 
 	@Post('files/:id/finalize')

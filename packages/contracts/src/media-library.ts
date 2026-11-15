@@ -149,15 +149,44 @@ export const MediaRestoreRequest = z.object({
 });
 export type MediaRestoreRequest = z.infer<typeof MediaRestoreRequest>;
 
+/** An image the website uses, with the pages that use it: it cannot go to Trash (A26). */
+export const MediaInUse = z.object({
+	id: Id,
+	name: z.string(),
+	usedOn: z.array(z.string()),
+	/** For the popup's list (A26): the same small picture and size the Media page shows. */
+	bytes: z.number().int().nonnegative().default(0),
+	thumbnailUrl: z.string().nullable().default(null),
+});
+export type MediaInUse = z.infer<typeof MediaInUse>;
+
 /** What an operation did, with what Undo needs (S1). */
 export const MediaOperationResult = z.object({
 	done: z.number().int().nonnegative(),
 	/** Images used on the website that stayed out of Trash, with where they are used (A26). */
-	inUse: z.array(z.object({ id: Id, name: z.string(), usedOn: z.array(z.string()) })).default([]),
+	inUse: z.array(MediaInUse).default([]),
 	/** Present when the operation can be undone: the audit entry Undo reverses. */
 	undoId: z.string().nullable().default(null),
 });
 export type MediaOperationResult = z.infer<typeof MediaOperationResult>;
+
+/** Before Trash (A26): which of the chosen items, folders' contents included, the website uses. */
+export const MediaTrashCheck = z.object({
+	inUse: z.array(MediaInUse),
+	/** Every file looked at: the chosen ones and everything inside the chosen folders. */
+	total: z.number().int().nonnegative(),
+	/** Chosen folders and files that would go to Trash. */
+	moving: z.number().int().nonnegative(),
+	/** Chosen folders that stay because something inside is used on the website. */
+	keptFolders: z.number().int().nonnegative(),
+});
+export type MediaTrashCheck = z.infer<typeof MediaTrashCheck>;
+
+/** A short-lived address for one file: shown in the browser (Preview) or saved (Download). */
+export const MediaFileAddressQuery = z.object({ as: z.enum(['view', 'save']).default('save') });
+export type MediaFileAddressQuery = z.infer<typeof MediaFileAddressQuery>;
+export const MediaFileAddress = z.object({ url: z.string().url() });
+export type MediaFileAddress = z.infer<typeof MediaFileAddress>;
 
 export const MediaFavouriteWrite = z.object({
 	targetType: z.enum(['folder', 'file']),

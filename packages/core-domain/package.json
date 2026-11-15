@@ -23,6 +23,11 @@
       "types": "./dist/catalog/ist-time.d.ts",
       "import": "./dist/esm/ist-time.js",
       "default": "./dist/catalog/ist-time.js"
+    },
+    "./languages": {
+      "types": "./dist/catalog/languages.d.ts",
+      "import": "./dist/esm/languages.js",
+      "default": "./dist/catalog/languages.js"
     }
   },
   "files": [

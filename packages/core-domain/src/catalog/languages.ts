@@ -1,0 +1,109 @@
+/**
+ * Languages: the rules for the one list every app reads, and for naming, listing and counting in
+ * those languages. Browser-safe and dependency-free (`@saha-textile/core-domain/languages`), so the
+ * admin, the shop and the API share one copy.
+ *
+ * The API owns the list (`GET /storefront/languages`, shaped as contracts' `ActiveLocaleConfig`).
+ * English is the default, always in it and always first.
+ *
+ * Names come from the platform's own language data (`Intl.DisplayNames`), so a new language is
+ * named correctly without anyone typing it. Lists ("English, Hindi and Bangla") come from
+ * `Intl.ListFormat`, and counts choose their wording with `Intl.PluralRules`, so no sentence writes
+ * a language list or a plural by hand.
+ */
+
+/** The default language, the same value as contracts' `PRIMARY_LOCALE` (a test keeps them equal). */
+export const PRIMARY_LOCALE = 'en';
+
+const LOCALE_CODE = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
+
+/** A language code: a primary subtag (`en`, `bn`, `hi`) with an optional region (`en-IN`). */
+export function isLocaleCode(value: unknown): value is string {
+	return typeof value === 'string' && LOCALE_CODE.test(value);
+}
+
+/** English first, each language once. */
+export function orderLocales(locales: readonly string[]): string[] {
+	const unique = [...new Set(locales)];
+	return [PRIMARY_LOCALE, ...unique.filter((locale) => locale !== PRIMARY_LOCALE)];
+}
+
+/**
+ * The active languages from an answer of `GET /storefront/languages`, or a stored copy of its
+ * `active` list; null when it is not a list of language codes. For apps that cannot load the zod
+ * contracts in the browser.
+ */
+export function parseLanguageList(value: unknown): string[] | null {
+	const active = Array.isArray(value) ? value : (value as { active?: unknown } | null)?.active;
+	if (!Array.isArray(active) || !active.length || !active.every(isLocaleCode)) return null;
+	return orderLocales(active);
+}
+
+/**
+ * The locale to hand to `Intl` for a page language. Bengali keeps English digits (BN-3: prices,
+ * sizes, PIN codes and dates read the same in both languages, and a copied number pastes into any
+ * form), so it formats with the Latin numbering system while month and weekday names stay
+ * Bengali. Every other language uses its own default.
+ */
+export function intlLocale(locale: string): string {
+	return locale === 'bn' ? 'bn-IN-u-nu-latn' : locale;
+}
+
+/** The name of a language in the reader's language: `languageName('bn', 'en')` is "Bangla". */
+export function languageName(code: string, inLocale: string): string {
+	try {
+		return new Intl.DisplayNames([intlLocale(inLocale)], { type: 'language' }).of(code) ?? code;
+	} catch {
+		return code;
+	}
+}
+
+/**
+ * The name of a language in itself ("English", "বাংলা", "हिन्दी"), for menus that change the page
+ * language: a reader looks for their own language by its own name.
+ */
+export function ownName(code: string): string {
+	return languageName(code, code);
+}
+
+/** Items joined the way the reader's language joins them: "A, B and C" in Indian English. */
+export function formatList(items: readonly string[], locale: string): string {
+	try {
+		return new Intl.ListFormat(locale === PRIMARY_LOCALE ? 'en-IN' : intlLocale(locale), {
+			style: 'long',
+			type: 'conjunction',
+		}).format(items);
+	} catch {
+		return items.join(', ');
+	}
+}
+
+/** The names of some languages as one list, in the reader's language. */
+export function languageList(codes: readonly string[], inLocale: string): string {
+	return formatList(
+		codes.map((code) => languageName(code, inLocale)),
+		inLocale,
+	);
+}
+
+/** The plural form a count takes in a language: `one`, `other`, and in some languages more. */
+export function pluralCategory(count: number, locale: string): Intl.LDMLPluralRule {
+	try {
+		return new Intl.PluralRules(intlLocale(locale)).select(count);
+	} catch {
+		return count === 1 ? 'one' : 'other';
+	}
+}
+
+/** A count written with the language's digits rule (English digits in Bengali too, BN-3). */
+export function formatCount(count: number, locale: string): string {
+	return new Intl.NumberFormat(intlLocale(locale)).format(count);
+}
+
+/**
+ * The flag beside a language in the page-language menus, as the theme draws it (`iti-flag us`):
+ * English keeps the flag it has always shown; every other language shows the shop's country.
+ */
+export function languageFlag(code: string): string {
+	return code === PRIMARY_LOCALE ? 'us' : 'in';
+}

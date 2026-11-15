@@ -111,7 +111,8 @@ export function formatBytes(bytes: number, locale: string): string {
 	return new Intl.NumberFormat(intlLocale(locale), {
 		style: 'unit',
 		unit: BYTE_UNITS[unit],
-		unitDisplay: 'short',
+		// Bytes in words (“6 bytes”, “1 byte”): the short form reads “6 byte” in English.
+		unitDisplay: unit === 0 ? 'long' : 'short',
 		maximumFractionDigits: unit === 0 ? 0 : 1,
 	}).format(value);
 }

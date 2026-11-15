@@ -154,3 +154,9 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 - The share popup's link list does not say who made each link.
 - Download as .zip is not offered.
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.
+
+## Details and Activity
+
+**Details** in a file's menu (and a double-click on a photo) opens the details popup (`FmDetails`, `GET /files/:id/details`). The left column shows the file's name, a picture from its first ready version, its size and dimensions, its folder, who uploaded it and when, and where it is used. A photo's **Versions** tab is its tree (R6-6): the private original, then each version (profile · fill, its number of sizes and bytes, and a badge while it is being made or if it failed); every level opens and closes with its arrow and only the first version starts open; a version opens to its size families, a family to its files, each with **Copy address** and **Open**; the pictures made once per photo (link preview, status card, feed square, email picture) are listed last. The tree scrolls inside its own box. The **Activity** tab lists that item's own trail (`GET /activity?entityId=`), the Media page's entries and the image pipeline's together, newest first; a file other than a photo opens on it. The Text tab (alt text on the photo) comes with the picker in step 4, and adding versions with Reprocess in step 3.
+
+`/media` opens this page since step 2e; the earlier Media page stays reachable at `/media/previous` (not in the menu) until its removal is agreed.

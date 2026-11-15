@@ -4,13 +4,18 @@ import { FileManager } from './file-manager/file-manager';
 import { Media } from './media';
 
 export default [
+	// The Media page as a file manager (media steps 1–2); `/media` opens it since step 2e.
 	{
 		path: '',
-		component: Media,
+		component: FileManager,
 	},
-	// The new Media page while it is being built (media step 1.5); `/media` moves to it once uploads work.
 	{
 		path: 'files',
 		component: FileManager,
+	},
+	// The earlier Media page, kept reachable (not in the menu) until the owner types its removal.
+	{
+		path: 'previous',
+		component: Media,
 	},
 ] as Routes;

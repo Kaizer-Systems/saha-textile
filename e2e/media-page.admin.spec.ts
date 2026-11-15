@@ -216,6 +216,23 @@ test.describe('Media page (step 1)', () => {
 		await expect(row(page, 'size-chart.pdf')).toBeVisible();
 	});
 
+	test('Details shows a file’s facts and its own Activity; /media opens the new page (A32, A43, step 2e)', async ({
+		page,
+	}) => {
+		await page.goto(`${ADMIN}/media`, { waitUntil: 'networkidle' });
+		await expect(page.locator('#fm_page')).toBeVisible();
+		await card(page, RUN).dblclick();
+		await card(page, `${RUN} inner`).dblclick();
+		await row(page, 'size-chart.pdf').click({ button: 'right' });
+		await page.locator('#fm_menu_details').click();
+		const details = page.locator('#fm_details');
+		await expect(details).toContainText('size-chart.pdf');
+		await expect(details).toContainText(RUN);
+		await expect(page.locator('#fm_item_activity')).toContainText(/Uploaded|Moved|Renamed/);
+		await shot(page, 'a32-file-details');
+		await page.keyboard.press('Escape');
+	});
+
 	test('Share: a link with a password is shown once and listed with who made it; Stop asks first (A35)', async ({
 		page,
 	}) => {

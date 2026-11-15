@@ -610,6 +610,7 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 		expect(page.menu()?.lines).toEqual(['open', 'new_inside', 'rename', 'move', 'star', 'divider', 'trash']);
 		page.openMenu({ item: { type: 'file', id: 'med_1' }, event: click(), anchor: null });
 		expect(page.menu()?.lines).toEqual([
+			'details',
 			'rename',
 			'download_original',
 			'share',
@@ -621,6 +622,7 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 		page.openMenu({ item: { type: 'file', id: 'med_pdf' }, event: click(), anchor: null });
 		expect(page.menu()?.lines).toEqual([
 			'preview',
+			'details',
 			'rename',
 			'download',
 			'share',

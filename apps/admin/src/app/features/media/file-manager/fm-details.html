@@ -1,0 +1,232 @@
+<div class="modal-header">
+	<h2 id="fm_details_title">{{ (isImage() ? 'fm_image_details' : 'fm_file_details') | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div
+	class="modal-body"
+	id="fm_details"
+>
+	@if (error()) {
+	<div class="alert alert-danger">{{ 'fm_action_failed' | transloco }}</div>
+	} @if (details(); as file) {
+	<div class="row g-4">
+		<div class="col-md-4">
+			<h6 class="text-break mb-2">{{ file.name }}</h6>
+			@if (preview(); as url) {
+			<img
+				[src]="url"
+				class="img-fluid rounded border"
+				alt=""
+			/>
+			}
+			<table class="table-sm small mt-3 table">
+				<tbody>
+					<tr>
+						<td class="text-muted">{{ 'fm_size' | transloco }}</td>
+						<td>
+							{{ file.bytes | fileSize }} @if (file.width && file.height) { · {{ file.width }} × {{
+							file.height }} }
+						</td>
+					</tr>
+					<tr>
+						<td class="text-muted">{{ 'fm_folder' | transloco }}</td>
+						<td>
+							{{ file.folderPath.length ? file.folderPath.join(' › ') : ('fm_my_files' | transloco) }}
+						</td>
+					</tr>
+					<tr>
+						<td class="text-muted">{{ 'fm_uploaded' | transloco }}</td>
+						<td>
+							@if (file.uploadedAt) { {{ file.uploadedAt | date: 'd MMM y' }} } @if (file.uploadedBy) { ·
+							{{ file.uploadedBy }} }
+						</td>
+					</tr>
+					<tr>
+						<td class="text-muted">{{ 'fm_used_on' | transloco }}</td>
+						<td>{{ file.usedOn.length ? file.usedOn.join(', ') : '—' }}</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div class="col-md-8">
+			<ul class="nav nav-tabs mb-3">
+				@if (isImage()) {
+				<li class="nav-item">
+					<button
+						type="button"
+						class="nav-link"
+						id="fm_details_tab_versions"
+						[class.active]="tab() === 'versions'"
+						(click)="tab.set('versions')"
+					>
+						{{ 'fm_versions' | transloco }}
+					</button>
+				</li>
+				}
+				<li class="nav-item">
+					<button
+						type="button"
+						class="nav-link"
+						id="fm_details_tab_activity"
+						[class.active]="tab() === 'activity'"
+						(click)="tab.set('activity')"
+					>
+						{{ 'fm_activity' | transloco }}
+					</button>
+				</li>
+			</ul>
+			@if (tab() === 'versions' && isImage()) {
+			<div
+				class="theme-tree-box fm-sizes fm-scroll"
+				id="fm_versions_tree"
+			>
+				<ul
+					class="tree-main-ul"
+					style="padding-top: 6px"
+				>
+					<li>
+						<div class="fm-vnode">
+							<i class="tree-icon folder-icon"></i>
+							<span>
+								<strong>{{ 'fm_original' | transloco }}</strong>
+								<span class="fm-meta">
+									· {{ 'fm_original_meta' | transloco }} · {{ file.bytes | fileSize }}
+								</span>
+							</span>
+						</div>
+						<ul>
+							@for (version of file.versions; track version.id) {
+							<li [attr.data-version]="version.id">
+								<div class="fm-vnode">
+									<button
+										type="button"
+										class="btn border-0 p-0"
+										[title]="(open().has(version.id) ? 'fm_close_level' : 'fm_open_level') | transloco"
+										[attr.aria-expanded]="open().has(version.id)"
+										(click)="toggle(version.id)"
+									>
+										<i
+											[class]="'fm-caret ' + (open().has(version.id) ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line')"
+										></i>
+									</button>
+									<i class="tree-icon file-icon"></i>
+									<span>
+										<strong>{{ versionName(version) }}</strong>
+										<span class="fm-meta">
+											· {{ 'fm_sizes_count' | plural: sizeCount(version) }} · {{ version.bytes |
+											fileSize }}
+										</span>
+										@if (version.state === 'making') {
+										<span class="badge bg-warning text-dark ms-1">
+											{{ 'fm_making_versions' | transloco }}
+										</span>
+										} @if (version.state === 'failed') {
+										<span class="badge bg-danger ms-1">{{ 'fm_failed' | transloco }}</span>
+										}
+									</span>
+								</div>
+								@if (open().has(version.id)) {
+								<ul>
+									@for (family of version.families; track family.role) {
+									<li>
+										<div class="fm-vnode">
+											<button
+												type="button"
+												class="btn border-0 p-0"
+												[title]="(open().has(version.id + '|' + family.role) ? 'fm_close_level' : 'fm_open_level') | transloco"
+												[attr.aria-expanded]="open().has(version.id + '|' + family.role)"
+												(click)="toggle(version.id + '|' + family.role)"
+											>
+												<i
+													[class]="'fm-caret ' + (open().has(version.id + '|' + family.role) ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line')"
+												></i>
+											</button>
+											<span>
+												{{ familyName(family) }}
+												<span class="fm-meta">{{ widths(family) }} px</span>
+											</span>
+										</div>
+										@if (open().has(version.id + '|' + family.role)) {
+										<ul>
+											@for (entry of family.files; track entry.url) {
+											<li>
+												<div class="fm-vnode">
+													<span>
+														{{ entry.width }} × {{ entry.height }} · {{ entry.bytes |
+														fileSize }}
+														<span class="fm-meta">{{ fileLabel(entry.url) }}</span>
+													</span>
+													<span class="fm-file-actions">
+														<button
+															type="button"
+															class="btn border-0 p-0"
+															[title]="'fm_copy_address' | transloco"
+															(click)="copy(entry.url)"
+														>
+															<i class="ri-file-copy-line"></i>
+														</button>
+														<a
+															[href]="entry.url"
+															target="_blank"
+															rel="noopener"
+															[title]="'fm_open' | transloco"
+														>
+															<i class="ri-external-link-line"></i>
+														</a>
+													</span>
+												</div>
+											</li>
+											}
+										</ul>
+										}
+									</li>
+									}
+								</ul>
+								}
+							</li>
+							} @if (file.perPhoto.length) {
+							<li>
+								<div class="fm-vnode">
+									<i class="tree-icon file-icon"></i>
+									<span class="text-muted">
+										<strong>{{ 'fm_sharing_pictures' | transloco }}</strong>
+										<span class="fm-meta">· {{ 'fm_sharing_pictures_meta' | transloco }}</span>
+									</span>
+								</div>
+							</li>
+							}
+						</ul>
+					</li>
+				</ul>
+			</div>
+			<p class="help-text mt-2 mb-0">{{ 'fm_versions_help' | transloco }}</p>
+			} @else {
+			<ul
+				class="fm-activity"
+				id="fm_item_activity"
+			>
+				@for (row of activity(); track $index) {
+				<li>
+					<i class="ri-history-line"></i>
+					<div>
+						{{ activityText(row) }}
+						<small>{{ row.createdAt | date: 'd MMM y, HH:mm' }}</small>
+					</div>
+				</li>
+				} @empty {
+				<li class="text-muted">{{ 'fm_no_activity' | transloco }}</li>
+				}
+			</ul>
+			<p class="help-text mt-2 mb-0">{{ 'fm_activity_help' | transloco }}</p>
+			}
+		</div>
+	</div>
+	}
+</div>

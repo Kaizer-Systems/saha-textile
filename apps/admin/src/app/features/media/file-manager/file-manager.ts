@@ -43,6 +43,7 @@ import { FileSizePipe, PluralPipe, translateCount } from '@shared/pipes/language
 import { Button } from '@shared/ui/button/button';
 
 import { fileKind, fileTypeLabel } from './file-kinds';
+import { FmDetails } from './fm-details';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
 import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
 import {
@@ -408,8 +409,9 @@ export class FileManager {
 		if (!file) return [];
 		const star: FmMenuLine = file.starred ? 'unstar' : 'star';
 		if (file.state === 'awaiting_upload') return ['rename', 'move', star, 'divider', 'trash'];
-		if (file.kind === 'image') return ['rename', 'download_original', 'share', 'move', star, 'divider', 'trash'];
-		return ['preview', 'rename', 'download', 'share', 'move', star, 'divider', 'trash'];
+		if (file.kind === 'image')
+			return ['details', 'rename', 'download_original', 'share', 'move', star, 'divider', 'trash'];
+		return ['preview', 'details', 'rename', 'download', 'share', 'move', star, 'divider', 'trash'];
 	}
 
 	/** Right-click, or the ⋮ on a row, tile or folder card. An item not picked yet becomes the pick. */
@@ -475,6 +477,9 @@ export class FileManager {
 			case 'share':
 				if (file) this.openShare(file);
 				return;
+			case 'details':
+				if (file) this.openDetails(file);
+				return;
 			case 'star':
 			case 'unstar':
 				if (folder)
@@ -492,11 +497,25 @@ export class FileManager {
 		}
 	}
 
-	/** Double-click or Enter: a folder opens; a file opens in a new tab until Details lands (step 2). */
+	/** Double-click or Enter: a folder opens; a photo shows its details (A31); another file opens in a new tab. */
 	async activate(item: FmItemRef): Promise<void> {
 		if (item.type === 'folder') return this.openFolder(item.id);
 		const file = this.result()?.files.find((row) => row.id === item.id);
-		if (file && file.state !== 'awaiting_upload') await this.openFile(file, 'view');
+		if (!file || file.state === 'awaiting_upload') return;
+		if (file.kind === 'image') this.openDetails(file);
+		else await this.openFile(file, 'view');
+	}
+
+	/** Image or file details (A31, A31B, A32) with the item's Activity (A43). */
+	openDetails(file: MediaFileRow): void {
+		const popup = this.modals.open(FmDetails, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			windowClass: 'theme-modal media-modal',
+			ariaLabelledBy: 'fm_details_title',
+		});
+		void (popup.componentInstance as FmDetails).start(file.id);
 	}
 
 	/**

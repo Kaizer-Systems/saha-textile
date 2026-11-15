@@ -7,6 +7,7 @@ import type {
 	MediaDuplicateQuery,
 	MediaFavouriteWrite,
 	MediaFileAddress,
+	MediaFileDetails,
 	MediaFilePresignRequest,
 	MediaFilePresignResponse,
 	MediaFolderCreate,
@@ -33,6 +34,7 @@ import type {
 import type { Observable } from 'rxjs';
 
 export type {
+	MediaFileDetails,
 	MediaBrowseQuery,
 	MediaCategory,
 	MediaFileRow,
@@ -89,6 +91,10 @@ export abstract class MediaLibraryGateway {
 	abstract browse(query: Partial<MediaBrowseQuery>): Observable<MediaBrowseResponse>;
 	abstract tree(): Observable<MediaFolderTree>;
 	abstract activity(page: number): Observable<MediaActivityPage>;
+	/** One file's or folder's own trail (A43). */
+	abstract itemActivity(entityId: string): Observable<MediaActivityPage>;
+	/** What the details popup shows (A31, A31B, A32). */
+	abstract details(id: string): Observable<MediaFileDetails>;
 
 	abstract createFolder(body: MediaFolderCreate): Observable<MediaFolderRow>;
 	abstract renameFolder(id: string, name: string): Observable<MediaOperationResult>;

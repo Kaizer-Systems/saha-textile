@@ -14,6 +14,7 @@ import {
 	type MediaDuplicateQuery,
 	type MediaFavouriteWrite,
 	type MediaFileAddress,
+	type MediaFileDetails,
 	type MediaFilePresignRequest,
 	type MediaFilePresignResponse,
 	type MediaFolderCreate,
@@ -65,6 +66,14 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override activity(page: number): Observable<MediaActivityPage> {
 		return this.http.get<MediaActivityPage>(this.url('/activity'), { params: { page: String(page) } });
+	}
+
+	override itemActivity(entityId: string): Observable<MediaActivityPage> {
+		return this.http.get<MediaActivityPage>(this.url('/activity'), { params: { page: '1', entityId } });
+	}
+
+	override details(fileId: string): Observable<MediaFileDetails> {
+		return this.http.get<MediaFileDetails>(this.url(`/files/${id(fileId)}/details`));
 	}
 
 	override createFolder(body: MediaFolderCreate): Observable<MediaFolderRow> {

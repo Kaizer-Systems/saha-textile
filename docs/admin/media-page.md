@@ -70,6 +70,10 @@ Move to Trash comes from the menu, the bulk bar or the Delete key.
 - Otherwise a folder, or the Delete key, asks first ("Move this folder to Trash?", with its files and size). Files picked from a menu or the bulk bar go at once, and Undo brings them back.
 - Items stay in Trash for 30 days. Trash lists folders and files with where they were and the days left, and each row restores or deletes for good. Restoring a file whose folder is also in Trash asks whether to restore the folder too or use My files.
 
+## Bulk changes
+
+Moves, Trash, Empty Trash and Undo of a big change run in parts of 50, folders first. A change still running after 0.3 s gets a row in the tray that counts as each part is answered (“31 of 48”) and then reads Done; a quicker one shows no bar.
+
 ## Undo
 
 A move, a rename or a Trash shows the theme's toast with **Undo** for 8 seconds. ⌘/Ctrl+Z undoes the same change until the next one. The server undoes a change once, and only for the admin who made it. The toast is `FmUndoToast`, ngx-toastr's own toast with one link; its words are plain text.
@@ -101,6 +105,8 @@ The Upload button at the top left offers Upload files, Upload a folder and New f
 3. **The storage check.** One `POST /storage/check` covers the batch. Within the plan the upload goes and holds its bytes; past the plan a super admin is asked, with a box to also let other admins use on-demand storage; another admin is refused unless allowed, and is asked when allowed. The approval is given back when the batch's last file settles.
 4. **Folders.** A folder upload makes its folders first, parents before children; a taken name gets “(1)”.
 5. **Sending.** `MediaUploads` (app-wide) sends three files at once. Each file is named by `POST /files/presign`, sent straight to Spaces with the signed headers and real progress (never the admin's cookies), then finished by `POST /files/:id/finalize`. A failure shows **Retry**, which drops the unfinished record (`POST /files/:id/cancel`) and starts the file again; clearing the tray drops failed ones the same way. While files are sending, closing or reloading the tab gets the browser's own warning.
+
+Files from 100 MB go in 16 MB parts, three at once. A part whose line drops pauses the file (“Paused: connection lost · tries again in 5 s”) and is tried again up to three times; Retry on a failed big file carries on. Big uploads are remembered in the browser (`saha-textile.media.resume`): after a reload or a closed tab the Media page lists each cut-off upload with **Choose the file**, which carries on from the parts Spaces already has when the same file (name, size and date) is chosen, and **Discard**. Uploads still unfinished a day after they started are removed each night.
 
 The tray sits at the bottom right of every admin page while files upload, so moving around the admin never stops them. Its head counts what is uploading, failed and done; each file shows its bar with the size sent and the time left, then a green bar. A file kept beside one of the same name shows a toast with its new name. In the list, an uploading file shows its own bar and percentage, and a folder card shows the progress of everything going into it.
 
@@ -144,7 +150,6 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 
 - The page lives at `/media/files`; `/media` still shows the earlier Media page until photos upload here.
 - Photos do not upload on this page yet, and pasting an image to upload it is not offered.
-- An upload cut off by a closed tab starts again from the beginning; the unfinished record stays in the list as waiting until it is cleared.
 - Activity for a file or folder, and the details popup it sits in, are not on this page yet.
 - The share popup's link list does not say who made each link.
 - Download as .zip is not offered.

@@ -345,6 +345,9 @@ The Media page works as a file manager. Every route below is under `/admin/media
 | `POST`   | `/files/presign`         | `attachment.create`  | Start a plain-file upload: private, named in its folder, held against the plan    |
 | `POST`   | `/files/:id/finalize`    | `attachment.create`  | The plain file is uploaded and ready                                              |
 | `POST`   | `/files/:id/cancel`      | `attachment.create`  | Drop your own unfinished upload: its record, any stored bytes and its hold        |
+| `POST`   | `/files/:id/multipart`   | `attachment.create`  | Start a big upload (100 MB and over) in parts                                     |
+| `POST`   | `/files/:id/parts`       | `attachment.create`  | Signed addresses for the next parts, an hour each                                 |
+| `GET`    | `/files/:id/parts`       | `attachment.create`  | The parts already in Spaces, so a cut-off upload carries on                       |
 | `PUT`    | `/files/:id/visibility`  | `attachment.edit`    | Public gives a plain file a permanent address; private takes it away              |
 | `GET`    | `/files/:id/address`     | `attachment.index`   | Preview (`as=view`) or Download (`as=save`): the original for five minutes        |
 | `GET`    | `/files/:id/links`       | `attachment.index`   | A file's share links, and its public address or website picture                   |
@@ -359,6 +362,7 @@ Rules the routes apply:
 
 - **Trash.** Items stay 30 days, then the worker's nightly `trash-purge` job deletes them for good. An image the website uses cannot go to Trash, and a folder holding one stays with everything in it. The Media page asks `/trash/check` first whenever a folder or a used image is chosen, and lists them before anything moves.
 - **Plain-file uploads.** Photos (image types other than camera RAW) are refused with `photo_needs_profiles` until image profiles exist; every other file uploads private, named in its folder with “(1)” when the name is taken. The duplicate check takes files without a SHA-256 (too big to hash in a browser) and checks their names only.
+- **Big uploads.** Files from 100 MB go in 16 MB parts; finalize and cancel take the upload id to join or drop the parts. Only the admin's own unfinished upload takes parts. Uploads still unfinished a day after they started are removed each night (the worker's `upload-sweep`).
 - **Preview and Download.** The address points at the original in Spaces and works for five minutes. Download saves it under its Media name, adding the stored file's extension when the name has none; Preview lets the browser show what it can. Nothing is stored, so the storage check is not asked.
 - **Share links.** A link lasts 1 hour, 1 day, 7 days, 30 days, until a date, or never. It opens for anyone or for signed-in admins only, and may have a password (anyone links only). Codes are 22 random characters, stored only as a SHA-256 hash. A link stops for good when it is stopped by hand or when its file goes to Trash; restoring the file does not restart it.
 - **Public files.** Only plain files are made public or private here. A public file has a permanent address, so links are made only for private files. Making a file private queues a CDN purge.

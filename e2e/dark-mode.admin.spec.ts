@@ -51,6 +51,8 @@ const SCREENS = [
 	'/setting/stores',
 	'/setting/mailboxes',
 	'/setting/communications',
+	'/setting/languages',
+	'/attribute?missing=bn',
 	'/setting/notifications',
 ];
 
@@ -271,6 +273,21 @@ test.describe('Admin light and dark: menus, lists and popups', () => {
 			await expect(page.locator('.modal.show')).toBeVisible();
 			await check('the media upload popup');
 			await page.keyboard.press('Escape');
+
+			// Settings › Languages: the add popup and a language's to-do list.
+			await page.goto(`${ADMIN}/setting/languages`, { waitUntil: 'networkidle' });
+			await page.locator('#add_language_btn').click();
+			await expect(page.locator('.modal.show')).toBeVisible();
+			await check('the add-a-language popup');
+			await page.keyboard.press('Escape');
+			await expect(page.locator('.modal.show')).toHaveCount(0);
+			const todo = page.locator('#language_todo_bn');
+			if (await todo.count()) {
+				await todo.click();
+				await expect(page.locator('.modal.show .list-group-item').first()).toBeVisible();
+				await check('a language’s to-do list');
+				await page.keyboard.press('Escape');
+			}
 
 			await page.goto(`${ADMIN}/dashboard`, { waitUntil: 'networkidle' });
 			const search = page.locator('.page-header input.Typeahead-input').first();

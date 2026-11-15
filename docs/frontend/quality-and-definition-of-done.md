@@ -55,9 +55,9 @@ Use Playwright for a small number of business-critical paths rather than duplica
 - **Contrast.** Every visible piece of text reaches WCAG AA against the colour behind it (4.5 : 1, or 3 : 1 for large text) in light and in dark mode. A gradient is measured against each of its colour stops. Text over a photograph and the decorative rating stars are skipped.
 - **Layout parity.** Every element on the first screen has the same position, size, font, padding and margin in both modes. Dark mode may only change colours.
 
-A new screen passes both when it uses the shop's named colours (`--st-*`, see [Styles, Dark Mode and Fonts](../storefront/styles-and-fonts.md)) instead of typed colour values.
+A new shop screen passes both when it uses the shop's named colours (`--st-*`, see [Styles, Dark Mode and Fonts](../storefront/styles-and-fonts.md)) instead of typed colour values.
 
-`e2e/dark-mode.admin.spec.ts` does the same for the admin: layout parity on every admin screen and on sign-in, plus checks that light pages never download the dark stylesheet, that the header's switch is remembered, and that a reload is dark before the app starts (see [Admin Styles and Dark Mode](../admin/styles-and-dark-mode.md)). Both specs share their page functions from `e2e/colour-checks.ts`.
+`e2e/dark-mode.admin.spec.ts` does the same for the admin: layout parity and contrast on every admin screen and on sign-in, contrast at phone size and in the menus and popups people open, plus checks that light pages never download the dark stylesheet, that the header's switch is remembered, and that a reload is dark before the app starts (see [Admin Styles and Dark Mode](../admin/styles-and-dark-mode.md)). Both specs share their page functions from `e2e/colour-checks.ts`. A new admin screen passes when it uses the admin's named colours (`--theme-ink`, `--admin-muted` and the rest) instead of typed colour values.
 
 ## Definition of done
 

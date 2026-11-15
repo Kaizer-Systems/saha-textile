@@ -1,7 +1,7 @@
 ---
 title: Admin Styles and Dark Mode
 wide: true
-description: How the admin's global stylesheet is built, how dark mode is split into a colour-only file that loads only in dark mode, how a dark choice is applied before the app starts, and the checks that keep both modes the same layout.
+description: How the admin's global stylesheet is built, the named colours that keep every text at WCAG AA, how dark mode is split into a colour-only file that loads only in dark mode, how a dark choice is applied before the app starts, and the checks that keep both modes readable and the same layout.
 status: implemented
 audience: [beginner, frontend]
 last_verified: '2026-11-15'
@@ -10,6 +10,11 @@ source_of_truth:
     - apps/admin/scripts/build-dark-theme.mjs
     - apps/admin/vite.config.ts
     - apps/admin/public/assets/js/theme-mode.js
+    - apps/admin/public/assets/scss/utils/_admin-colours.scss
+    - apps/admin/public/assets/scss/utils/_theme-color.scss
+    - apps/admin/public/assets/scss/themes/_contrast.scss
+    - apps/admin/public/assets/scss/themes/_dark-colours.scss
+    - apps/admin/public/assets/scss/themes/_dark-contrast.scss
     - apps/admin/src/app/core/brand/theme-mode.ts
     - apps/admin/src/app/layout/header/widgets/mode
     - docker/images/admin-nginx.conf
@@ -22,6 +27,36 @@ source_of_truth:
 The admin keeps its template theme's look. Its global styles start in `src/styles.scss`, which imports the self-hosted fonts and `public/assets/scss/app.scss` (Bootstrap, the toast and carousel styles, Remix Icon and the theme). Vite compiles that file for `index.html`. Each component keeps its own styles.
 
 Dark mode is a file of its own: light pages never download it, and it can only change colours.
+
+## Named colours
+
+Every admin text reaches WCAG AA against what is behind it (4.5 : 1, or 3 : 1 for large text) in both modes. The colours that make that true have names, so theme pieces and components use a name instead of typing a colour, and a fix happens in one place.
+
+| Name                   | Light                        | Dark                         | Used for                                                       |
+| ---------------------- | ---------------------------- | ---------------------------- | -------------------------------------------------------------- |
+| `--theme-strong`       | 75% theme colour + 25% black | same                         | Fills under white text: buttons, the active page, pills        |
+| `--theme-strong-hover` | 65% theme colour + 35% black | same                         | Their hover, the second stop of the active tab                 |
+| `--theme-ink`          | `--theme-strong`             | the theme colour             | The theme colour as text: links, outline buttons, active tabs  |
+| `--theme-ink-on-tint`  | 66% theme colour + 34% black | 70% theme colour + 30% white | Theme-coloured text on the dashboard tiles' pale tints         |
+| `--admin-ink-2`        | `#4a5568`                    | `#c3cad1`                    | Secondary text: dates, tile labels, the breadcrumb's last step |
+| `--admin-muted`        | `#5f6b7a`                    | `#98a6ad`                    | Help lines, `.text-muted`, placeholders, empty states          |
+| `--admin-ok`           | `#15803d`                    | `#4cc38a`                    | Done, in stock, approved; `.text-success`                      |
+| `--admin-warn`         | `#8a5a00`                    | `#f2c66d`                    | Pending, draft; `.text-warning`                                |
+| `--admin-bad`          | `#b42318`                    | `#ff9b93`                    | Failed, out of stock, cancelled; `.text-danger`                |
+| `--admin-info`         | `#0369a1`                    | `#7dc4f0`                    | In progress; Bootstrap's blue outline buttons in dark mode     |
+| `--admin-on-yellow`    | `#3d2a00`                    | same                         | Text on yellow badges                                          |
+| `--admin-alert`        | `#d92d20`                    | same                         | The bell's unread count                                        |
+
+Light values are in `utils/_admin-colours.scss`, part of the main stylesheet. Dark values are in `themes/_dark-colours.scss` under `body.dark-only`, so they ship in the dark file. The theme colour ones are worked out from `--theme-color`, so a Brand Kit colour change keeps them right. The bright theme colour itself stays for icons, lines and progress bars, which need only 3 : 1.
+
+In Sass, `tc-fill($color)` and `tc-ink($color)` (in `utils/_theme-color.scss`, beside `tc()`) return `var(--theme-strong)` and `var(--theme-ink)` for the theme colour and leave any other colour as it is; the theme's button loop uses them.
+
+Where the fixes live:
+
+- **Theme rules** are changed where they are written: buttons, pagination, badges, the active tab, the status pills, help text, empty states, the sign-in title and subtitle, the bell, and every rule that coloured text with the theme colour.
+- **The side menu's gradient** (`$sidebar-gradient` in `utils/_admin-colours.scss`) keeps its slow movement in three deep shades of the theme colour, so its white text reaches 4.5 : 1 at every moment. Dark mode keeps the theme's dark menu.
+- **`themes/_contrast.scss`** (loaded last) holds what has no theme source: Bootstrap's `.text-muted`, `.text-success`, `.text-danger`, `.text-warning`, `.help-text`, the breadcrumb's last step, select placeholders, yellow badges, and amber links on the warning banner.
+- **`themes/_dark-contrast.scss`** holds dark fixes with no dark rule of their own: light text in tables, popup titles, form labels, menus, select boxes (through ng-select2's `--select2-*-text-color` variables) and page numbers, and the warning banner as dark amber instead of purple.
 
 ## Where the dark rules come from
 
@@ -78,11 +113,12 @@ The production admin container (`docker/images/admin-nginx.conf`) marks hashed b
 
 ## Checks
 
-| Check                  | Where                                   | What it proves                                                                                                                                        |
-| ---------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Split and filter       | `scripts/dark-theme.spec.ts`            | Dark selectors leave the main stylesheet, mixed lists keep their light half, only paint survives, hidden borders become transparent.                  |
-| Store and boot script  | `src/app/core/brand/theme-mode.spec.ts` | Saved choice, toggling, refused storage, other tabs, `pick`, and the boot script's behaviour and agreement with the app.                              |
-| Downloads and no flash | `e2e/dark-mode.admin.spec.ts`           | Light pages request no dark file; the switch loads it and is remembered; a reload is dark before Angular runs; the main stylesheet has no dark rules. |
-| Parity                 | `e2e/dark-mode.admin.spec.ts`           | On every admin screen and on sign-in, every visible element on the first screen has the same position, size, padding, margin and font in both modes.  |
+| Check                  | Where                                   | What it proves                                                                                                                                                                                                      |
+| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Split and filter       | `scripts/dark-theme.spec.ts`            | Dark selectors leave the main stylesheet, mixed lists keep their light half, only paint survives, hidden borders become transparent.                                                                                |
+| Store and boot script  | `src/app/core/brand/theme-mode.spec.ts` | Saved choice, toggling, refused storage, other tabs, `pick`, and the boot script's behaviour and agreement with the app.                                                                                            |
+| Downloads and no flash | `e2e/dark-mode.admin.spec.ts`           | Light pages request no dark file; the switch loads it and is remembered; a reload is dark before Angular runs; the main stylesheet has no dark rules.                                                               |
+| Parity                 | `e2e/dark-mode.admin.spec.ts`           | On every admin screen and on sign-in, every visible element on the first screen has the same position, size, padding, margin and font in both modes.                                                                |
+| Contrast               | `e2e/dark-mode.admin.spec.ts`           | Every visible text on every admin screen (the whole page), six screens at phone size, and the delete question, header menus, an open select list, the media upload popup and the search suggestions, in both modes. |
 
 `e2e/colour-checks.ts` holds the page functions both apps' dark-mode specs use: `firstScreen` for parity and `lowContrast` for WCAG AA text contrast. The admin runs `lowContrast` with see-through layers blended as the eye sees them and with text under a popup's backdrop skipped; the shop keeps its original settings.

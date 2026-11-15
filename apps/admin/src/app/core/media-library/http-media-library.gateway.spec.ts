@@ -80,6 +80,16 @@ describe('HttpMediaLibraryGateway', () => {
 		expectCall('POST', /\/files\/med_1\/finalize$/, {});
 		gateway.cancelUpload('med_1').subscribe();
 		expectCall('POST', /\/files\/med_1\/cancel$/, {});
+		gateway.cancelUpload('med_1', 'up_1').subscribe();
+		expectCall('POST', /\/files\/med_1\/cancel$/, { uploadId: 'up_1' });
+		gateway.startMultipart('med_1').subscribe();
+		expectCall('POST', /\/files\/med_1\/multipart$/, {});
+		gateway.partUrls('med_1', { uploadId: 'up_1', partNumbers: [2] }).subscribe();
+		expectCall('POST', /\/files\/med_1\/parts$/, { uploadId: 'up_1', partNumbers: [2] });
+		gateway.uploadedParts('med_1', 'up_1').subscribe();
+		expectCall('GET', /\/files\/med_1\/parts\?uploadId=up_1$/);
+		gateway.finalizeFile('med_1', 'up_1').subscribe();
+		expectCall('POST', /\/files\/med_1\/finalize$/, { uploadId: 'up_1' });
 		gateway.setVisibility('med_1', 'public').subscribe();
 		expectCall('PUT', /\/files\/med_1\/visibility$/, { visibility: 'public' });
 		gateway.fileAddress('med_1', 'view').subscribe();

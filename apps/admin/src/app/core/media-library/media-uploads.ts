@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { MULTIPART_FROM_BYTES, MULTIPART_PART_BYTES } from '@saha-textile/core-domain/media-files';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Subject, lastValueFrom } from 'rxjs';
@@ -26,7 +27,29 @@ export interface UploadJob {
 	error: string | null;
 	assetId: string | null;
 	startedAt: number | null;
+	/** A big upload in parts: its id at Spaces, so it can carry on (S11). */
+	uploadId: string | null;
+	/** The line dropped; the part is tried again shortly (B15). */
+	paused: boolean;
 }
+
+/** A big upload cut off by a closed tab (B16): enough to carry on once the same file is chosen. */
+export interface CutOffUpload {
+	assetId: string;
+	uploadId: string;
+	name: string;
+	bytes: number;
+	lastModified: number;
+	folderId: string | null;
+	/** About how much had arrived. */
+	sent: number;
+}
+
+/** Where cut-off uploads are remembered in this browser (S11); nothing else is kept there. */
+export const RESUME_KEY = 'saha-textile.media.resume';
+/** A part that fails is tried again after this long (B15), this many times. */
+export const PART_RETRY_MS = 5000;
+export const PART_RETRIES = 3;
 
 /** What the page hands over once the popups are answered. */
 export interface UploadRequest {
@@ -63,6 +86,10 @@ interface Running {
 	sha256: string | null;
 	reservationId: string | null;
 	request: XMLHttpRequest | null;
+	uploadId: string | null;
+	partBytes: number;
+	/** Carry on: ask Spaces which parts it already has. */
+	resume: boolean;
 }
 
 /**
@@ -108,7 +135,15 @@ export class MediaUploads {
 		const added: UploadJob[] = requests.map((request) => {
 			this.counter += 1;
 			const id = `upl_${Date.now().toString(36)}_${this.counter}`;
-			this.running.set(id, { file: request.file, sha256: request.sha256, reservationId, request: null });
+			this.running.set(id, {
+				file: request.file,
+				sha256: request.sha256,
+				reservationId,
+				request: null,
+				uploadId: null,
+				partBytes: MULTIPART_PART_BYTES,
+				resume: false,
+			});
 			return {
 				id,
 				name: request.name,
@@ -121,6 +156,8 @@ export class MediaUploads {
 				error: null,
 				assetId: null,
 				startedAt: null,
+				uploadId: null,
+				paused: false,
 			};
 		});
 		if (!added.length) {
@@ -131,10 +168,17 @@ export class MediaUploads {
 		this.pump();
 	}
 
-	/** Tries a failed file again from the start; the unfinished record goes first. */
+	/** Tries a failed file again: a big one carries on; a small one starts again, its record dropped first. */
 	retry(id: string): void {
 		const job = this.find(id);
 		if (!job || job.state !== 'failed') return;
+		const held = this.running.get(id);
+		if (held?.uploadId && job.assetId) {
+			held.resume = true;
+			this.patch(id, { state: 'waiting', error: null, paused: false });
+			this.pump();
+			return;
+		}
 		if (job.assetId) void this.forget(job.assetId);
 		this.patch(id, { state: 'waiting', error: null, sent: 0, assetId: null, startedAt: null });
 		this.pump();
@@ -185,7 +229,7 @@ export class MediaUploads {
 	dismiss(): void {
 		this.operations.update((ops) => ops.filter((op) => op.state === 'running'));
 		for (const job of this.jobs()) {
-			if (job.state === 'failed' && job.assetId) void this.forget(job.assetId);
+			if (job.state === 'failed' && job.assetId) void this.forget(job.assetId, job.uploadId ?? undefined);
 			if (job.state === 'done' || job.state === 'failed') this.running.delete(job.id);
 		}
 		this.jobs.update((jobs) => jobs.filter((job) => job.state === 'waiting' || job.state === 'uploading'));
@@ -210,28 +254,45 @@ export class MediaUploads {
 		const job = this.find(id);
 		const held = this.running.get(id);
 		if (!job || !held) return;
-		this.patch(id, { state: 'uploading', startedAt: Date.now(), sent: 0 });
+		this.patch(id, { state: 'uploading', startedAt: Date.now(), paused: false });
 		try {
-			const presigned = await lastValueFrom(
-				this.gateway.presignFile({
-					fileName: job.name,
-					contentType: job.contentType,
-					byteSize: job.bytes,
-					folderId: job.folderId,
-					...(held.sha256 ? { sha256: held.sha256 } : {}),
-					...(held.reservationId ? { reservationId: held.reservationId } : {}),
-				}),
-			);
-			this.patch(id, { assetId: presigned.assetId, savedAs: presigned.name });
-			this.refreshSoon();
-			await this.send(id, held, presigned.uploadUrl, presigned.headers);
-			await lastValueFrom(this.gateway.finalizeFile(presigned.assetId));
-			this.patch(id, { state: 'done', sent: job.bytes });
+			let assetId = job.assetId;
+			if (assetId && held.uploadId) {
+				// Carrying on a big upload: Spaces says which parts it already has.
+				await this.sendInParts(id, held, assetId);
+			} else {
+				const presigned = await lastValueFrom(
+					this.gateway.presignFile({
+						fileName: job.name,
+						contentType: job.contentType,
+						byteSize: job.bytes,
+						folderId: job.folderId,
+						...(held.sha256 ? { sha256: held.sha256 } : {}),
+						...(held.reservationId ? { reservationId: held.reservationId } : {}),
+					}),
+				);
+				assetId = presigned.assetId;
+				this.patch(id, { assetId, savedAs: presigned.name, sent: 0 });
+				this.refreshSoon();
+				if (job.bytes >= MULTIPART_FROM_BYTES) await this.sendInParts(id, held, assetId);
+				else
+					await this.put(
+						presigned.uploadUrl,
+						presigned.headers,
+						held.file,
+						(sent) => this.patch(id, { sent }),
+						held,
+					);
+			}
+			await lastValueFrom(this.gateway.finalizeFile(assetId, held.uploadId ?? undefined));
+			this.unremember(assetId);
+			this.patch(id, { state: 'done', sent: job.bytes, paused: false });
 			const finished = this.find(id);
 			if (finished && finished.savedAs && finished.savedAs !== finished.name) this.renamed.next(finished);
 		} catch (error) {
 			this.patch(id, {
 				state: 'failed',
+				paused: false,
 				error:
 					error instanceof SendFailed
 						? this.transloco.translate('fm_upload_connection_lost')
@@ -245,11 +306,85 @@ export class MediaUploads {
 		}
 	}
 
+	/**
+	 * A big file (S11) in parts, three at once, each straight to Spaces. A part whose line drops is
+	 * tried again after 5 s (B15). The upload is remembered in this browser, so after a reload the
+	 * same file carries on from the parts Spaces already has (B16).
+	 */
+	private async sendInParts(id: string, held: Running, assetId: string): Promise<void> {
+		const job = this.find(id);
+		if (!job) return;
+		if (!held.uploadId) {
+			const started = await lastValueFrom(this.gateway.startMultipart(assetId));
+			held.uploadId = started.uploadId;
+			held.partBytes = started.partBytes;
+			this.patch(id, { uploadId: started.uploadId });
+		}
+		const uploadId = held.uploadId;
+		const size = held.partBytes;
+		const count = Math.max(1, Math.ceil(held.file.size / size));
+		const have = new Set<number>();
+		let base = 0;
+		if (held.resume) {
+			const stored = await lastValueFrom(this.gateway.uploadedParts(assetId, uploadId));
+			for (const part of stored.parts) {
+				have.add(part.partNumber);
+				base += part.size;
+			}
+		}
+		const entry: CutOffUpload = {
+			assetId,
+			uploadId,
+			name: job.name,
+			bytes: job.bytes,
+			lastModified: held.file.lastModified,
+			folderId: job.folderId,
+			sent: base,
+		};
+		this.remember(entry);
+		const loaded = new Map<number, number>();
+		const sentNow = () => base + [...loaded.values()].reduce((sum, bytes) => sum + bytes, 0);
+		const waiting = Array.from({ length: count }, (_, index) => index + 1).filter((part) => !have.has(part));
+		const sendPart = async (part: number): Promise<void> => {
+			for (let attempt = 0; ; attempt += 1) {
+				try {
+					const { urls } = await lastValueFrom(
+						this.gateway.partUrls(assetId, { uploadId, partNumbers: [part] }),
+					);
+					const slice = held.file.slice((part - 1) * size, Math.min(part * size, held.file.size));
+					await this.put(urls[0]?.url ?? '', {}, slice, (sent) => {
+						loaded.set(part, sent);
+						this.patch(id, { sent: sentNow() });
+					});
+					loaded.set(part, slice.size);
+					this.patch(id, { sent: sentNow(), paused: false });
+					this.remember({ ...entry, sent: sentNow() });
+					return;
+				} catch (error) {
+					loaded.delete(part);
+					if (attempt >= PART_RETRIES) throw error;
+					this.patch(id, { paused: true });
+					await new Promise((settle) => setTimeout(settle, PART_RETRY_MS));
+				}
+			}
+		};
+		const lanes = Array.from({ length: Math.min(UPLOADS_AT_ONCE, waiting.length) }, async () => {
+			for (let part = waiting.shift(); part !== undefined; part = waiting.shift()) await sendPart(part);
+		});
+		await Promise.all(lanes);
+	}
+
 	/** The bytes go straight to Spaces with the signed headers; never the admin's cookies. */
-	private send(id: string, held: Running, url: string, headers: Record<string, string>): Promise<void> {
+	private put(
+		url: string,
+		headers: Record<string, string>,
+		body: Blob,
+		progress: (sent: number) => void,
+		held?: Running,
+	): Promise<void> {
 		return new Promise((done, failed) => {
 			const request = new XMLHttpRequest();
-			held.request = request;
+			if (held) held.request = request;
 			request.open('PUT', url);
 			for (const [name, value] of Object.entries(headers)) request.setRequestHeader(name, value);
 			let shown = 0;
@@ -257,13 +392,13 @@ export class MediaUploads {
 				const now = Date.now();
 				if (now - shown < PROGRESS_EVERY_MS && event.loaded < event.total) return;
 				shown = now;
-				this.patch(id, { sent: event.loaded });
+				progress(event.loaded);
 			};
 			request.onload = () =>
 				request.status >= 200 && request.status < 300 ? done() : failed(new SendFailed(request.status));
 			request.onerror = () => failed(new SendFailed(0));
 			request.onabort = () => failed(new SendFailed(0));
-			request.send(held.file);
+			request.send(body);
 		});
 	}
 
@@ -286,13 +421,95 @@ export class MediaUploads {
 		}
 	}
 
-	private async forget(assetId: string): Promise<void> {
+	private async forget(assetId: string, uploadId?: string): Promise<void> {
+		this.unremember(assetId);
 		try {
-			await lastValueFrom(this.gateway.cancelUpload(assetId));
+			await lastValueFrom(this.gateway.cancelUpload(assetId, uploadId));
 		} catch {
 			// Already gone, or finished meanwhile.
 		}
 		this.refreshSoon();
+	}
+
+	// --- Cut-off big uploads (S11, B16) ----------------------------------------------------------
+
+	private readonly saved = signal<readonly CutOffUpload[]>(this.readSaved());
+	/** Big uploads cut off by a closed or reloaded tab, not running here now. */
+	readonly cutOff = computed(() =>
+		this.saved().filter((entry) => !this.jobs().some((job) => job.assetId === entry.assetId)),
+	);
+
+	/** Carries on with the same file: same name, size and date; anything else is refused. */
+	resumeWith(entry: CutOffUpload, file: File): boolean {
+		if (file.name !== entry.name || file.size !== entry.bytes || file.lastModified !== entry.lastModified)
+			return false;
+		this.counter += 1;
+		const id = `upl_${Date.now().toString(36)}_${this.counter}`;
+		this.running.set(id, {
+			file,
+			sha256: null,
+			reservationId: null,
+			request: null,
+			uploadId: entry.uploadId,
+			partBytes: MULTIPART_PART_BYTES,
+			resume: true,
+		});
+		this.jobs.update((jobs) => [
+			...jobs,
+			{
+				id,
+				name: entry.name,
+				savedAs: entry.name,
+				bytes: entry.bytes,
+				sent: entry.sent,
+				contentType: file.type,
+				folderId: entry.folderId,
+				state: 'waiting',
+				error: null,
+				assetId: entry.assetId,
+				startedAt: null,
+				uploadId: entry.uploadId,
+				paused: false,
+			},
+		]);
+		this.pump();
+		return true;
+	}
+
+	/** Gives up on a cut-off upload: its record and stored parts go. */
+	discard(entry: CutOffUpload): void {
+		void this.forget(entry.assetId, entry.uploadId);
+	}
+
+	private readSaved(): CutOffUpload[] {
+		try {
+			const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(RESUME_KEY);
+			const list = raw ? (JSON.parse(raw) as unknown) : [];
+			return Array.isArray(list)
+				? (list as CutOffUpload[]).filter((entry) => !!entry?.assetId && !!entry.uploadId)
+				: [];
+		} catch {
+			return [];
+		}
+	}
+
+	private writeSaved(list: readonly CutOffUpload[]): void {
+		this.saved.set(list);
+		try {
+			if (list.length) localStorage.setItem(RESUME_KEY, JSON.stringify(list));
+			else localStorage.removeItem(RESUME_KEY);
+		} catch {
+			// A private window or blocked storage: the upload still runs; only carrying on later is lost.
+		}
+	}
+
+	private remember(entry: CutOffUpload): void {
+		this.writeSaved([...this.saved().filter((row) => row.assetId !== entry.assetId), entry]);
+	}
+
+	private unremember(assetId: string): void {
+		if (this.saved().some((row) => row.assetId === assetId))
+			this.writeSaved(this.saved().filter((row) => row.assetId !== assetId));
 	}
 
 	private refreshSoon(): void {

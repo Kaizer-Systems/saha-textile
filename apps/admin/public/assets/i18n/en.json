@@ -2125,5 +2125,11 @@
 	"fm_op_count": "{{done}} of {{total}}",
 	"fm_op_all_done": "All done",
 	"fm_tray_working_one": "Working on {{count}}",
-	"fm_tray_working_other": "Working on {{count}}"
+	"fm_tray_working_other": "Working on {{count}}",
+	"fm_upload_paused": "Paused: connection lost · tries again in 5 s",
+	"fm_cut_off_title": "1 upload was cut off: {{name}}",
+	"fm_cut_off_body": "{{sent}} of {{total}} had arrived. Choose the same file again to carry on from there. The browser can’t reopen it by itself after a reload.",
+	"fm_cut_off_wrong_file": "That isn’t the same file: choose the one with the same name and size.",
+	"fm_cut_off_choose": "Choose the file",
+	"fm_cut_off_discard": "Discard"
 }

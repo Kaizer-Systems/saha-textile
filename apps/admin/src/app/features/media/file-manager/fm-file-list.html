@@ -191,11 +191,17 @@
 							{{ 'fm_retry' | transloco }}
 						</a>
 					</div>
+					} @else { @if (job.paused) {
+					<span class="fm-status warn">
+						<i class="ri-pause-circle-line"></i>
+						{{ 'fm_upload_paused' | transloco }}
+					</span>
 					} @else {
 					<span class="fm-status busy">
 						<i class="ri-upload-cloud-2-line"></i>
 						{{ 'fm_uploading_percent' | transloco: { percent: percent(job) } }}
 					</span>
+					}
 					<div class="progress">
 						<div
 							class="progress-bar"

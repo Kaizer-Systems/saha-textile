@@ -2125,5 +2125,11 @@
 	"fm_op_count": "{{total}}-এর মধ্যে {{done}}",
 	"fm_op_all_done": "সব হয়ে গেছে",
 	"fm_tray_working_one": "{{count}}টি কাজ চলছে",
-	"fm_tray_working_other": "{{count}}টি কাজ চলছে"
+	"fm_tray_working_other": "{{count}}টি কাজ চলছে",
+	"fm_upload_paused": "বিরতি: সংযোগ বিচ্ছিন্ন · 5 সেকেন্ড পরে আবার চেষ্টা হবে",
+	"fm_cut_off_title": "একটি আপলোড মাঝপথে থেমে গেছে: {{name}}",
+	"fm_cut_off_body": "{{total}}-এর মধ্যে {{sent}} পৌঁছেছিল। সেখান থেকে চালিয়ে যেতে একই ফাইলটি আবার বেছে নিন। রিলোডের পরে ব্রাউজার নিজে থেকে ফাইলটি আর খুলতে পারে না।",
+	"fm_cut_off_wrong_file": "এটি একই ফাইল নয়: একই নাম ও মাপের ফাইলটি বেছে নিন।",
+	"fm_cut_off_choose": "ফাইলটি বেছে নিন",
+	"fm_cut_off_discard": "বাদ দিন"
 }

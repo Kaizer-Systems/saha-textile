@@ -43,6 +43,43 @@
 				#fmPickFolder
 				(change)="folderPicked(fmPickFolder)"
 			/>
+			<input
+				type="file"
+				hidden
+				id="fm_resume_file"
+				#fmResumeFile
+				(change)="resumePicked(fmResumeFile)"
+			/>
+			@for (entry of uploads.cutOff(); track entry.assetId) {
+			<div
+				class="alert alert-warning d-flex align-items-center mb-3 gap-3"
+				data-cut-off
+			>
+				<i class="ri-upload-cloud-2-line fs-4"></i>
+				<div class="flex-grow-1">
+					<strong>{{ 'fm_cut_off_title' | transloco: { name: entry.name } }}</strong>
+					<div class="small">
+						{{ 'fm_cut_off_body' | transloco: { sent: (entry.sent | fileSize), total: (entry.bytes |
+						fileSize) } }} @if (resumeRefused() === entry.assetId) { {{ 'fm_cut_off_wrong_file' | transloco
+						}} }
+					</div>
+				</div>
+				<button
+					type="button"
+					class="btn btn-theme btn-sm"
+					(click)="chooseResume(entry, fmResumeFile)"
+				>
+					{{ 'fm_cut_off_choose' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					(click)="uploads.discard(entry)"
+				>
+					{{ 'fm_cut_off_discard' | transloco }}
+				</button>
+			</div>
+			}
 			<div class="fm-toolbar">
 				<div class="fm-search">
 					<i class="ri-search-line"></i>

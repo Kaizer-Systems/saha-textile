@@ -69,7 +69,9 @@
 				<div>{{ job.savedAs ?? job.name }}</div>
 				@switch (job.state) { @case ('waiting') {
 				<small class="text-muted">{{ 'fm_waiting_to_upload' | transloco }}</small>
-				} @case ('uploading') {
+				} @case ('uploading') { @if (job.paused) {
+				<small class="text-warning">{{ 'fm_upload_paused' | transloco }}</small>
+				}
 				<div class="fm-phase">
 					<div>
 						<span>{{ 'fm_uploading' | transloco }}</span>

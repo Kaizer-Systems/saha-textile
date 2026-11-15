@@ -16,6 +16,10 @@ import type {
 	MediaOperationResult,
 	MediaRestoreRequest,
 	MediaSelection,
+	MediaUploadedParts,
+	MediaPartsRequest,
+	MediaPartUrls,
+	MediaMultipartStart,
 	MediaTrashCheck,
 	ShareLinkCreate,
 	ShareLinkUpdate,
@@ -46,6 +50,10 @@ export type {
 	MediaOperationResult,
 	MediaRestoreRequest,
 	MediaSelection,
+	MediaUploadedParts,
+	MediaPartsRequest,
+	MediaPartUrls,
+	MediaMultipartStart,
 	MediaTrashCheck,
 	ShareLinkCreate,
 	ShareLinkUpdate,
@@ -96,9 +104,13 @@ export abstract class MediaLibraryGateway {
 	abstract duplicates(body: MediaDuplicateQuery): Observable<MediaDuplicateAnswer>;
 
 	abstract presignFile(body: MediaFilePresignRequest): Observable<MediaFilePresignResponse>;
-	abstract finalizeFile(id: string): Observable<{ assetId: string; state: 'ready' }>;
-	/** Drop your own unfinished upload (cancelled, or failed for good). */
-	abstract cancelUpload(id: string): Observable<void>;
+	abstract finalizeFile(id: string, uploadId?: string): Observable<{ assetId: string; state: 'ready' }>;
+	/** Drop your own unfinished upload (cancelled, or failed for good), with any parts already stored. */
+	abstract cancelUpload(id: string, uploadId?: string): Observable<void>;
+	/** S11: a big file in parts that resume. */
+	abstract startMultipart(id: string): Observable<MediaMultipartStart>;
+	abstract partUrls(id: string, body: MediaPartsRequest): Observable<MediaPartUrls>;
+	abstract uploadedParts(id: string, uploadId: string): Observable<MediaUploadedParts>;
 	abstract setVisibility(id: string, visibility: 'public' | 'private'): Observable<MediaOperationResult>;
 	/** Preview (`view`) or Download (`save`): a five-minute address for the original. */
 	abstract fileAddress(id: string, as: 'view' | 'save'): Observable<MediaFileAddress>;

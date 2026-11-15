@@ -30,7 +30,7 @@ import {
 	type MediaSelection,
 	type MediaTrashCheck,
 } from '@core/media-library/media-library.gateway';
-import { MediaUploads } from '@core/media-library/media-uploads';
+import { type CutOffUpload, MediaUploads } from '@core/media-library/media-uploads';
 import {
 	MEDIA_LIBRARY_KEY,
 	injectMediaBrowseQuery,
@@ -993,6 +993,26 @@ export class FileManager {
 			[...totals].map(([id, total]) => [id, total.bytes ? Math.round((total.sent / total.bytes) * 100) : 0]),
 		);
 	});
+
+	/** B16: the cut-off upload a file is being chosen for, and one whose file did not match. */
+	private resuming: CutOffUpload | null = null;
+	readonly resumeRefused = signal<string | null>(null);
+
+	chooseResume(entry: CutOffUpload, input: HTMLInputElement): void {
+		this.resuming = entry;
+		this.resumeRefused.set(null);
+		input.click();
+	}
+
+	/** Carries on only with the same file: same name, size and date. */
+	resumePicked(input: HTMLInputElement): void {
+		const file = input.files?.[0];
+		input.value = '';
+		const entry = this.resuming;
+		this.resuming = null;
+		if (!file || !entry) return;
+		if (!this.uploads.resumeWith(entry, file)) this.resumeRefused.set(entry.assetId);
+	}
 
 	uploadChoice(choice: 'files' | 'folder' | 'new_folder'): void {
 		if (choice === 'new_folder') return this.openNewFolder();

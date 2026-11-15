@@ -24,6 +24,10 @@ import {
 	type MediaOperationResult,
 	type MediaRestoreRequest,
 	type MediaSelection,
+	type MediaUploadedParts,
+	type MediaPartsRequest,
+	type MediaPartUrls,
+	type MediaMultipartStart,
 	type MediaTrashCheck,
 	type ShareLinkCreate,
 	type ShareLinkUpdate,
@@ -111,16 +115,31 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 		return this.http.post<MediaFilePresignResponse>(this.url('/files/presign'), body, quiet());
 	}
 
-	override finalizeFile(fileId: string): Observable<{ assetId: string; state: 'ready' }> {
+	override finalizeFile(fileId: string, uploadId?: string): Observable<{ assetId: string; state: 'ready' }> {
 		return this.http.post<{ assetId: string; state: 'ready' }>(
 			this.url(`/files/${id(fileId)}/finalize`),
-			{},
+			uploadId ? { uploadId } : {},
 			quiet(),
 		);
 	}
 
-	override cancelUpload(fileId: string): Observable<void> {
-		return this.http.post<void>(this.url(`/files/${id(fileId)}/cancel`), {}, quiet());
+	override cancelUpload(fileId: string, uploadId?: string): Observable<void> {
+		return this.http.post<void>(this.url(`/files/${id(fileId)}/cancel`), uploadId ? { uploadId } : {}, quiet());
+	}
+
+	override startMultipart(fileId: string): Observable<MediaMultipartStart> {
+		return this.http.post<MediaMultipartStart>(this.url(`/files/${id(fileId)}/multipart`), {}, quiet());
+	}
+
+	override partUrls(fileId: string, body: MediaPartsRequest): Observable<MediaPartUrls> {
+		return this.http.post<MediaPartUrls>(this.url(`/files/${id(fileId)}/parts`), body, quiet());
+	}
+
+	override uploadedParts(fileId: string, uploadId: string): Observable<MediaUploadedParts> {
+		return this.http.get<MediaUploadedParts>(this.url(`/files/${id(fileId)}/parts`), {
+			params: { uploadId },
+			...quiet(),
+		});
 	}
 
 	override setVisibility(fileId: string, visibility: 'public' | 'private'): Observable<MediaOperationResult> {

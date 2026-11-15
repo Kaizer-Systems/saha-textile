@@ -1471,3 +1471,19 @@ from the photo's shape.
   upload (`photo_needs_profiles`) as well.
 - Paste to upload (S12) is for photos, so it comes with step 2.
 - `/media` switches to the new page only after step 2; the earlier Media page stays until then.
+
+## Owner decision round (2026-11-16) — banner profiles and the homepage builder (media step 2)
+
+Brief: https://claude.ai/artifact/Uug8q6gFMQQVb8SdhEs9sL (every banner slot, where it shows, today's pictures).
+
+- **Banners keep their own shape (option A).** One more built-in image profile, “Banner (keep shape)”: banner
+  sizes 480–2,880 px, the picture keeps its own shape, as banners work today. Every existing banner becomes
+  “Banner (keep shape) · As is” and nothing is remade. Hero 21:9, Hero 16:9 and Phone banner 4:5 stay for slots
+  that want a fixed shape. Pictures are never squeezed to fit a profile.
+- **A homepage builder gets its own brief, started now beside step 2.** Ready templates (the Fastkart home
+  layouts, including the three-piece left · main · right banner) and custom layouts made from the shop's own
+  sections. Every element has its own picture picker; several pictures in one element make that element its own
+  slider, with controls inside the picture, readable in light and dark mode, and its own auto-slide time. The
+  admin previews the real shop at phone, tablet, desktop and large sizes, upright and on its side. Performance
+  comes first: Lighthouse 97+ overall and close to 100 in every category on every size and orientation, no
+  layout shift. A picture that does not fit an element warns and offers a new version of it (a fill).

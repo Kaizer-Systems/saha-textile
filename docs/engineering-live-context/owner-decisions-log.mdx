@@ -1492,3 +1492,16 @@ Brief: https://claude.ai/artifact/Uug8q6gFMQQVb8SdhEs9sL (every banner slot, whe
   other pages join later as extensions under Page Builder. The brief's own plan is to be critiqued and pushed
   further, more customisable, with no cost to SEO, speed, accessibility or UI/UX: every Lighthouse and PageSpeed
   score at 97 or more, 100 as the target. Revision 2 of the brief carries this.
+- **How layouts reach the shop (owner, 16 Nov, after reading revision 2).** The owner accepted revision 2 and the
+  build approach: the shop's server draws each page from the layout stored in the database, using section kinds
+  shipped ahead of time with a normal release, each its own small, late-loading file. A layout change or Go Live is
+  data only: no build, no deploy, no admin-triggered pipeline. A new kind of section is developer work, tested and
+  budgeted once, then shipped in a release. Every ready-made template and section kind is tested at every screen
+  size: layout shift 0 and Accessibility, Best Practices and SEO 100 are hard; Performance aims at 100 and fails
+  under 97 (lab scores move a point or two between runs).
+- **Speed check of a draft before Go Live (owner asked; recommended, to add to the builder).** A "Test speed" button
+  in the Go Live checks: a 10-minute, read-only, hidden-from-search test address for that one draft goes to Google's
+  free PageSpeed Insights API, which runs Lighthouse on Google's machines (our server serves two page views); phone
+  and computer scores show in about a minute. Staging and production only. Also to add for "feels instant": link
+  prerendering while the pointer rests on a link (Speculation Rules), finished pages cached at Cloudflare per
+  language and currency and refreshed at each Go Live, and the PWA's saved page shell.

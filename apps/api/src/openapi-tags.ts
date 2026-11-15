@@ -27,6 +27,7 @@ export const API_TAGS = {
 	stores: 'stores',
 	mailboxes: 'mailboxes',
 	wishlist: 'wishlist',
+	languages: 'languages',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -87,5 +88,10 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.wishlist,
 		description:
 			"A signed-in customer's saved products. The customer comes from the session; a guest's list stays in a session cookie and merges in on sign-in.",
+	},
+	{
+		name: API_TAGS.languages,
+		description:
+			'The active languages, English first: the one list the admin and the shop both read. No authentication.',
 	},
 ];

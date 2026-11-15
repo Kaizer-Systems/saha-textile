@@ -8,6 +8,7 @@ import { EventsModule } from './events/events.module';
 import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
 import { CommunicationsModule } from './communications/communications.module';
+import { LanguagesModule } from './languages/languages.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { CartLinesModule } from './cart/cart-lines.module';
 import { CookieAudienceGuard } from './common/cookie-audience.guard';
@@ -60,6 +61,7 @@ export class AppModule {
 				CommunicationsModule,
 				MailboxesModule,
 				WishlistModule,
+				LanguagesModule,
 			],
 			providers: [
 				// Ordered deliberately, and the order is itself a security property.

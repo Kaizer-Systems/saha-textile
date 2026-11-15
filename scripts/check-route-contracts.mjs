@@ -46,6 +46,7 @@ const DECLARED_FAMILIES = [
 	'stores',
 	'mailboxes',
 	'wishlist',
+	'languages',
 ];
 
 const ROUTE_DECORATOR = /@(Get|Post|Put|Patch|Delete)\s*\(/g;

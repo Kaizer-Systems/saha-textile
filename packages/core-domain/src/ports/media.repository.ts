@@ -87,7 +87,7 @@ export interface MediaAssetRepository {
 	): Promise<MediaAsset | null>;
 	/**
 	 * Puts the new photo in place in one write, only while its Replace is being made: the original and its facts,
-	 * every file, the versions, and the old files to keep; the Replace is cleared.
+	 * every file, the versions, and the whole kept-files list (see `keptAfterSwap`); the Replace is cleared.
 	 */
 	finishReplace(input: {
 		assetId: string;
@@ -95,7 +95,7 @@ export interface MediaAssetRepository {
 			Partial<Pick<MediaAsset, 'dominantColor' | 'thumbHash' | 'warnings' | 'sha256'>>;
 		derivatives: readonly ImageDerivative[];
 		versions: readonly MediaVersion[];
-		kept: MediaKeptFiles | null;
+		keptFiles: readonly MediaKeptFiles[];
 	}): Promise<MediaAsset | null>;
 	/** Records a photo's focal point (S10); null puts crops back on the middle. */
 	setFocal(assetId: string, focal: { x: number; y: number } | null): Promise<void>;

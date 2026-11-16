@@ -270,9 +270,9 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 					...input.set,
 					derivatives: [...input.derivatives],
 					versions: [...input.versions],
+					keptFiles: [...input.keptFiles],
 					replacing: null,
 				},
-				...(input.kept ? { $push: { keptFiles: input.kept } } : {}),
 			},
 			{ returnDocument: 'after' },
 		)

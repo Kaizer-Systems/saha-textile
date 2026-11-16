@@ -84,6 +84,36 @@ export function keptAfterReplace(
 }
 
 /**
+ * The kept-files list after a swap: earlier entries lose any file the new set uses again (a focal point moved and
+ * then reset to centre makes byte-identical crops, so their old addresses are live once more), entries left empty
+ * go, and the new entry is added. A kept file must never be a file the photo shows.
+ */
+export function keptAfterSwap(
+	earlier: readonly MediaKeptFiles[],
+	fresh: { derivatives: readonly ImageDerivative[]; originalStorageKey: string },
+	added: MediaKeptFiles | null,
+): MediaKeptFiles[] {
+	const live = new Map<string, number>(fresh.derivatives.map((row) => [row.storageKey, row.byteSize ?? 0]));
+	live.set(fresh.originalStorageKey, 0);
+	const pruned = earlier.flatMap((row) => {
+		const keys = row.keys.filter((key) => !live.has(key));
+		if (keys.length === row.keys.length) return [row];
+		if (!keys.length) return [];
+		const back = row.keys.reduce((sum, key) => sum + (live.get(key) ?? 0), 0);
+		return [{ ...row, keys, bytes: Math.max(0, row.bytes - back) }];
+	});
+	return added ? [...pruned, added] : pruned;
+}
+
+/** Every stored file a photo shows or is about to show: these are never deleted by the kept-files sweep. */
+function liveKeys(asset: Pick<MediaAsset, 'originalStorageKey' | 'derivatives' | 'replacing'>): Set<string> {
+	const keys = new Set(asset.derivatives.map((row) => row.storageKey));
+	if (asset.originalStorageKey) keys.add(asset.originalStorageKey);
+	if (asset.replacing?.key) keys.add(asset.replacing.key);
+	return keys;
+}
+
+/**
  * The worker's Replace (S7, C08): takes the queued replacement, checks the new original's real bytes, remakes every
  * version and the pictures made once per photo from it (counting sizes for the popup), and puts it all in place in
  * one write. Any version that can't be remade stops the whole Replace: the website keeps the old photo, the new
@@ -163,11 +193,11 @@ export const replaceMediaAsset = async (
 	const allVersions = focal
 		? (asset.versions ?? []).map((version) => madeById.get(version.id) ?? version)
 		: rendered.made;
-	const kept = keptAfterReplace(
-		asset,
-		{ derivatives, originalStorageKey: next.key },
-		deps.now(),
-		focal ? 'focal' : 'replace',
+	const swapped = { derivatives, originalStorageKey: next.key };
+	const keptFiles = keptAfterSwap(
+		asset.keptFiles ?? [],
+		swapped,
+		keptAfterReplace(asset, swapped, deps.now(), focal ? 'focal' : 'replace'),
 	);
 	const stored = await deps.assets.finishReplace({
 		assetId: asset.id,
@@ -184,7 +214,7 @@ export const replaceMediaAsset = async (
 		},
 		derivatives,
 		versions: allVersions,
-		kept,
+		keptFiles,
 	});
 	if (!stored) return fail('replace_gone', rendered.added);
 	return { status: 'ready', rendered: rendered.added.length, skipped: rendered.skipped };
@@ -207,7 +237,9 @@ export const sweepKeptFiles = async (
 	const due = await deps.assets.listKeptDue(before, limit);
 	for (const asset of due) {
 		const rows = (asset.keptFiles ?? []).filter((row) => row.deleteAfter <= before);
-		const keys = rows.flatMap((row) => row.keys);
+		// A file the photo shows again (same bytes, same address) stays, whatever the list says.
+		const live = liveKeys(asset);
+		const keys = rows.flatMap((row) => row.keys).filter((key) => !live.has(key));
 		if (keys.length) {
 			const pictures = keys.filter((key) => !/\/original[.-]/.test(key));
 			await deps.queue.enqueue({

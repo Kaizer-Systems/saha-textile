@@ -303,12 +303,14 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 				{ ...file('med_rep', 'card', 400), storageKey: 'new-card.webp', versionId: 'product_3x4.as_is' },
 			],
 			versions: [version('product_3x4.as_is') as never],
-			kept: {
-				keys: ['old-card.webp', 'media/med_rep/original.jpg'],
-				bytes: 100,
-				deleteAfter: '2026-11-23T10:00:00.000Z',
-				reason: 'replace',
-			},
+			keptFiles: [
+				{
+					keys: ['old-card.webp', 'media/med_rep/original.jpg'],
+					bytes: 100,
+					deleteAfter: '2026-11-23T10:00:00.000Z',
+					reason: 'replace',
+				},
+			],
 		});
 		expect(swapped?.replacing).toBeNull();
 		expect(swapped?.originalStorageKey).toBe('media/med_rep/original-1.jpg');
@@ -327,7 +329,7 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 				},
 				derivatives: [],
 				versions: [],
-				kept: null,
+				keptFiles: [],
 			}),
 		).toBeNull();
 		// The sweep finds it only once its 7 days are over, then forgets it.

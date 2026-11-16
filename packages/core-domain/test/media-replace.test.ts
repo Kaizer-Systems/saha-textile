@@ -113,7 +113,7 @@ const harness = (start: MediaAsset, probe = { width: 3000, height: 4000, format:
 				...input.set,
 				derivatives: [...input.derivatives],
 				versions: [...input.versions],
-				keptFiles: [...(row.keptFiles ?? []), ...(input.kept ? [input.kept] : [])],
+				keptFiles: [...input.keptFiles],
 				replacing: null,
 			};
 			return row;
@@ -277,6 +277,8 @@ describe('kept files (decision 11)', () => {
 
 	it('the daily sweep deletes what is due (pictures cleared from the CDN, never the private original) and forgets it', async () => {
 		const due = photo({
+			// After the Replace, the photo shows a new original; the old one is among the kept files.
+			originalStorageKey: 'media/med_r/original-20261109100000.jpg',
 			keptFiles: [
 				{
 					keys: ['media/med_r/x/card-400w-old.webp', 'media/med_r/original.jpg'],
@@ -365,6 +367,42 @@ describe('a new focal point (S10, media step 3c)', () => {
 		expect(row.versions?.map((version) => `${version.id}:${version.state}`)).toEqual([
 			'product_3x4.white:ready',
 			'product_3x4.crop:ready',
+		]);
+	});
+
+	it('a point moved and put back makes the same files again: they leave the kept list and the sweep never deletes them', async () => {
+		const probe = { width: 4000, height: 2000, format: 'jpeg', hasAlpha: false };
+		const first = harness(focalPhoto(), probe);
+		await replaceMediaAsset(first.deps, { assetId: 'med_r' });
+		const made = first.row().derivatives.filter((row) => row.versionId === 'product_3x4.crop');
+		expect(made.length).toBeGreaterThan(0);
+		// An earlier move kept these very files; putting the point back makes them again, at the same addresses.
+		const earlier = {
+			keys: [...made.map((row) => row.storageKey), 'media/med_r/product_3x4.crop/card-400w-b.webp'],
+			bytes: 5000,
+			deleteAfter: '2026-11-16T09:00:00.000Z',
+			reason: 'focal' as const,
+		};
+		const again = harness({ ...focalPhoto(), keptFiles: [earlier] }, probe);
+		await replaceMediaAsset(again.deps, { assetId: 'med_r' });
+		const row = again.row();
+		const madeBytes = made.reduce((sum, one) => sum + one.byteSize, 0);
+		expect(row.keptFiles).toEqual([
+			{ ...earlier, keys: ['media/med_r/product_3x4.crop/card-400w-b.webp'], bytes: 5000 - madeBytes },
+			expect.objectContaining({ keys: ['media/med_r/product_3x4.crop/card-400w-old.webp'], reason: 'focal' }),
+		]);
+		// Even a kept list written before that, still naming live files, never deletes them.
+		const jobs: MediaJob[] = [];
+		await sweepKeptFiles(
+			{
+				assets: { listKeptDue: async () => [{ ...row, keptFiles: [earlier] }], dropKept: async () => {} },
+				queue: { enqueue: async (job: MediaJob) => void jobs.push(job) },
+				storage: { getUrl: (key: string) => `https://cdn.example.test/${key}` },
+			},
+			NOW,
+		);
+		expect(jobs.flatMap((job) => (job.type === 'delete-objects' ? job.keys : []))).toEqual([
+			'media/med_r/product_3x4.crop/card-400w-b.webp',
 		]);
 	});
 

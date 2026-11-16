@@ -122,6 +122,9 @@ export const COLLECTION_NAMES = {
 	MediaShareLink: 'mediaShareLinks',
 	/** Email pictures whose photo was deleted or replaced, kept for good for emails already sent (step 3f). */
 	EmailPicture: 'emailPictures',
+	/** The four legal pages and every earlier version of them (Legal Pages brief, 2026-11-16). */
+	LegalPage: 'legalPages',
+	LegalPageRevision: 'legalPageRevisions',
 	/** Bytes held for running uploads; machinery, removed by its own expiry. */
 	StorageReservation: 'storageReservations',
 	/** Settings › Languages: every language ever added, English included (step 0d, 2026-11-15). */

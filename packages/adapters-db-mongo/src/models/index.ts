@@ -54,6 +54,7 @@ export * from './stock-alert.model';
 export * from './pending-signup.model';
 export * from './pending-contact-change.model';
 export * from './blog.model';
+export * from './legal-page.model';
 export * from './store-location.model';
 export * from './mailbox.model';
 export * from './search-analytics.model';

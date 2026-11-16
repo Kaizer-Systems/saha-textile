@@ -5,6 +5,7 @@ import type {
 	MediaCleanUpQuery,
 	MediaCleanUpResponse,
 	MediaCleanUpRow,
+	MediaNightlyCheck,
 	MediaBrowseQuery,
 	MediaCategory,
 	MediaFileRow,
@@ -53,6 +54,7 @@ export type {
 	MediaCleanUpQuery,
 	MediaCleanUpResponse,
 	MediaCleanUpRow,
+	MediaNightlyCheck,
 	MediaFileDetails,
 	MediaAddVersionsRequest,
 	MediaBulkAddVersionsRequest,
@@ -180,6 +182,8 @@ export abstract class MediaLibraryGateway {
 	abstract emailPictures(query: EmailPictureQuery): Observable<EmailPictureList>;
 	/** Clean up's other lists (A44): not used for 90 days, the largest, the same file twice. */
 	abstract cleanUp(query: MediaCleanUpQuery): Observable<MediaCleanUpResponse>;
+	/** The nightly Spaces check's last result (R5-5), or null before the first night. */
+	abstract nightlyCheck(): Observable<MediaNightlyCheck | null>;
 	/** A51: deletes the chosen email pictures for good, after the warning. */
 	abstract deleteEmailPictures(keys: readonly string[]): Observable<{ deleted: number; bytes: number }>;
 	abstract checkStorage(body: StorageCheckRequest): Observable<StorageCheckAnswer>;

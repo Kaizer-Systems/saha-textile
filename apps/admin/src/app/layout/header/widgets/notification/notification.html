@@ -10,7 +10,7 @@
 		<span class="badge rounded-pill badge-theme">{{ unreadNotificationCount() }}</span>
 		}
 	</div>
-	@if (notifications().length || languageReminders().length || storageAlert()) {
+	@if (notifications().length || languageReminders().length || storageAlert() || missingPictures()) {
 	<ul
 		class="notification-dropdown onhover-show-div"
 		[class.active]="active"
@@ -30,6 +30,18 @@
 					<i class="ri-record-circle-line txt-primary me-2"></i>
 					{{ (summary.onDemandBytes ? 'fm_storage_bell_over' : 'fm_storage_bell') | transloco: { percent:
 					summary.percent } }}
+				</p>
+			</a>
+		</li>
+		} @if (missingPictures()) {
+		<li>
+			<a
+				[routerLink]="['/media']"
+				id="missing_pictures_bell"
+			>
+				<p>
+					<i class="ri-record-circle-line txt-primary me-2"></i>
+					{{ 'fm_missing_title' | plural: missingPictures() }}
 				</p>
 			</a>
 		</li>

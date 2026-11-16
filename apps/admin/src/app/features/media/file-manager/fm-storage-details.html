@@ -54,7 +54,18 @@
 				</td>
 				<td class="text-end text-nowrap">{{ current.reservedBytes | fileSize }}</td>
 			</tr>
-			}
+			} @if (nightly.data()?.unrecorded; as unrecorded) { @if (unrecorded.count) {
+			<tr data-row="unrecorded">
+				<td>
+					{{ 'fm_storage_unrecorded' | transloco }}
+					<div class="small text-muted">
+						{{ 'fm_storage_unrecorded_note' | transloco: { date: (nightly.data()?.checkedAt | date: 'd MMM
+						y') } }}
+					</div>
+				</td>
+				<td class="text-end text-nowrap">{{ unrecorded.bytes | fileSize }} · {{ unrecorded.count }}</td>
+			</tr>
+			} }
 		</tbody>
 	</table>
 	<table class="table-sm small mb-0 table">

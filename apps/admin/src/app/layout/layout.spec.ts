@@ -59,7 +59,9 @@ vi.mock('@data-access/queries/media-library.queries', async (original) => ({
 		storageAsked.enabled.push(enabled());
 		return { data: storage };
 	},
+	injectNightlyCheckQuery: () => ({ data: nightly }),
 }));
+const nightly = signal<unknown>(undefined);
 
 const bare = <T>(type: new () => T, providers: unknown[] = []) => {
 	TestBed.resetTestingModule();
@@ -230,6 +232,14 @@ describe('Header notification', () => {
 		expect(widget.storageAlert()).toMatchObject({ percent: 88 });
 		expect(widget.unreadNotificationCount()).toBe(1);
 		storage.set(undefined);
+	});
+
+	it('says how many pictures the website uses are missing from storage (R5-5, step 5)', () => {
+		const widget = bare(Notification, [{ provide: NavService, useValue: {} }, auth(['attachment.index'])]);
+		nightly.set({ missingCount: 2 });
+		expect(widget.missingPictures()).toBe(2);
+		expect(widget.unreadNotificationCount()).toBe(1);
+		nightly.set(undefined);
 	});
 });
 

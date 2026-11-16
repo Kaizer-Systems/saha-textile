@@ -67,6 +67,17 @@ export function injectShareLinksQuery(fileId: () => string | null) {
 }
 
 /** Clean up › Email pictures (A50): one filter's page. */
+/** The nightly Spaces check's last result (R5-5): read once an hour at most. */
+export function injectNightlyCheckQuery(enabled: () => boolean = () => true) {
+	const gateway = inject(MediaLibraryGateway);
+	return injectQuery(() => ({
+		queryKey: [...MEDIA_LIBRARY_KEY, 'nightly-check'] as const,
+		queryFn: () => lastValueFrom(gateway.nightlyCheck()),
+		staleTime: 3_600_000,
+		enabled: enabled(),
+	}));
+}
+
 /** Clean up's other lists (A44), one page at a time. */
 export function injectCleanUpQuery(query: () => MediaCleanUpQuery) {
 	const gateway = inject(MediaLibraryGateway);

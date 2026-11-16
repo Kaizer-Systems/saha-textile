@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -7,7 +8,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
 
 import { MediaLibraryGateway, type StorageSummary } from '@core/media-library/media-library.gateway';
-import { MEDIA_LIBRARY_KEY } from '@data-access/queries/media-library.queries';
+import { MEDIA_LIBRARY_KEY, injectNightlyCheckQuery } from '@data-access/queries/media-library.queries';
 import { FileSizePipe } from '@shared/pipes/language.pipes';
 
 /** The storage rows the API counts today (A47), each with what it holds. */
@@ -26,7 +27,7 @@ export const STORAGE_ROWS: Readonly<Record<string, { label: string; note: string
 @Component({
 	selector: 'app-fm-storage-details',
 	templateUrl: './fm-storage-details.html',
-	imports: [TranslocoModule, FileSizePipe],
+	imports: [DatePipe, TranslocoModule, FileSizePipe],
 })
 export class FmStorageDetails {
 	readonly modal = inject(NgbActiveModal);
@@ -37,6 +38,8 @@ export class FmStorageDetails {
 	/** Set by `start()` right after the popup opens. */
 	readonly summary = signal<StorageSummary | null>(null);
 	readonly rows = STORAGE_ROWS;
+	/** R5-5: files in storage that Media has no record of, from the nightly check. */
+	readonly nightly = injectNightlyCheckQuery();
 	readonly others = signal<boolean | null>(null);
 	readonly error = signal<string | null>(null);
 	readonly saving = signal(false);

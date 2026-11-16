@@ -11,6 +11,7 @@ import {
 	type EmailPictureQuery,
 	type MediaCleanUpQuery,
 	type MediaCleanUpResponse,
+	type MediaNightlyCheck,
 	type MediaActivityPage,
 	type MediaBrowseQuery,
 	type MediaBrowseResponse,
@@ -243,6 +244,10 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override storage(): Observable<StorageSummary> {
 		return this.http.get<StorageSummary>(this.url('/storage'));
+	}
+
+	override nightlyCheck(): Observable<MediaNightlyCheck | null> {
+		return this.http.get<MediaNightlyCheck | null>(this.url('/nightly-check'));
 	}
 
 	override cleanUp(query: MediaCleanUpQuery): Observable<MediaCleanUpResponse> {

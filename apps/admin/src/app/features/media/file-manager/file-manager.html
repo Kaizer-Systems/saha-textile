@@ -84,6 +84,26 @@
 					</a>
 				</div>
 			</div>
+			} @if (missingPictures(); as check) {
+			<!-- R5-5: the nightly check found pictures the website uses with files gone. -->
+			<div
+				class="alert alert-warning d-flex align-items-center mb-3 gap-2"
+				id="fm_missing_alert"
+			>
+				<i class="ri-image-line fs-5"></i>
+				<div>
+					<strong>{{ 'fm_missing_title' | plural: check.missingCount }}</strong>
+					{{ 'fm_missing_body' | transloco: { date: (check.checkedAt | date: 'd MMM y, h:mm a') } }}
+					<ul class="mt-1 mb-0 ps-3">
+						@for (photo of check.missing.slice(0, 5); track photo.assetId) {
+						<li>
+							<strong>{{ photo.name }}</strong>
+							@if (photo.usedOn.length) { · {{ photo.usedOn.join(', ') }} }
+						</li>
+						}
+					</ul>
+				</div>
+			</div>
 			} @for (entry of uploads.cutOff(); track entry.assetId) {
 			<div
 				class="alert alert-warning d-flex align-items-center mb-3 gap-3"

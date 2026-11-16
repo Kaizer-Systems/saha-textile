@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import {
 	Component,
 	DestroyRef,
@@ -36,6 +37,7 @@ import {
 	MEDIA_LIBRARY_KEY,
 	injectMediaBrowseQuery,
 	injectMediaStorageQuery,
+	injectNightlyCheckQuery,
 	injectMediaTreeQuery,
 } from '@data-access/queries/media-library.queries';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -169,6 +171,7 @@ const typing = (target: EventTarget | null): boolean => {
 	selector: 'app-file-manager',
 	templateUrl: './file-manager.html',
 	imports: [
+		DatePipe,
 		FmUploadPopups,
 		FmCleanUp,
 		PageWrapper,
@@ -266,6 +269,12 @@ export class FileManager {
 	);
 	readonly tree = injectMediaTreeQuery();
 	readonly storage = injectMediaStorageQuery();
+	/** R5-5: the nightly check found pictures the website uses with files gone. */
+	private readonly nightly = injectNightlyCheckQuery();
+	readonly missingPictures = computed(() => {
+		const check = this.nightly.data();
+		return check && check.missingCount > 0 ? check : null;
+	});
 	/** A45: the storage summary once it reaches 85% of the plan (and past it), for the banner. */
 	readonly storageAlert = computed(() => {
 		const summary = this.storage.data();

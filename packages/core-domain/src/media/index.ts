@@ -17,3 +17,4 @@ export * from './youtube-posters';
 export * from './brand-strip';
 export * from './library';
 export * from './library-use-cases';
+export * from '../catalog/media-placeholder';

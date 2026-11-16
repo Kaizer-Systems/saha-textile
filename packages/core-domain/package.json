@@ -33,6 +33,11 @@
       "types": "./dist/catalog/media-files.d.ts",
       "import": "./dist/esm/media-files.js",
       "default": "./dist/catalog/media-files.js"
+    },
+    "./media-placeholder": {
+      "types": "./dist/catalog/media-placeholder.d.ts",
+      "import": "./dist/esm/media-placeholder.js",
+      "default": "./dist/catalog/media-placeholder.js"
     }
   },
   "files": [

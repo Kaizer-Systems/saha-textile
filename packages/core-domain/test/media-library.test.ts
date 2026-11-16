@@ -27,6 +27,7 @@ import {
 	trashPurgeDue,
 	websitePicture,
 } from '../src/media/library';
+import { isMediaPictureUrl, placeholderFile, placeholderShape } from '../src/catalog/media-placeholder';
 
 const NOW = new Date('2026-11-15T10:00:00.000Z');
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000).toISOString();
@@ -278,5 +279,18 @@ describe('Media search words and folders (media step 4e)', () => {
 			photos: ['fld_photos', 'fld_banarasi', 'fld_bridal'],
 			nothing: [],
 		});
+	});
+});
+
+describe('the missing-picture placeholder shapes (R5-1; media step 5)', () => {
+	it('picks the nearest shape, square when the box is unknown, light or dark', () => {
+		expect(placeholderShape(300, 400)).toBe('3x4');
+		expect(placeholderShape(1920, 1080)).toBe('16x9');
+		expect(placeholderShape(1200, 630)).toBe('1.91x1');
+		expect(placeholderShape(2721, 805)).toBe('21x9');
+		expect(placeholderShape(0, 0)).toBe('1x1');
+		expect(placeholderFile('3x4', true)).toBe('placeholder-dark-3x4.svg');
+		expect(isMediaPictureUrl('https://cdn.test/media/med_1/a-200w-1.webp')).toBe(true);
+		expect(isMediaPictureUrl('https://cdn.test/email/med_1/a.jpg')).toBe(false);
 	});
 });

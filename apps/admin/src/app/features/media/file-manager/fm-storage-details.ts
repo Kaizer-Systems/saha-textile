@@ -17,6 +17,7 @@ export const STORAGE_ROWS: Readonly<Record<string, { label: string; note: string
 	versions: { label: 'fm_storage_versions', note: 'fm_storage_versions_note' },
 	files: { label: 'fm_storage_files', note: 'fm_storage_files_note' },
 	trash: { label: 'fm_trash', note: 'fm_storage_trash_note' },
+	zips: { label: 'fm_storage_zips', note: 'fm_storage_zips_note' },
 };
 
 /**

@@ -75,7 +75,7 @@ describe('the storage box', () => {
 			onDemandMonthlyUsd: 0.2,
 			canChangeOnDemand: true,
 		});
-		expect(red.breakdown.map((row) => row.key)).toEqual(['originals', 'versions', 'files', 'trash']);
+		expect(red.breakdown.map((row) => row.key)).toEqual(['originals', 'versions', 'files', 'trash', 'zips']);
 	});
 });
 

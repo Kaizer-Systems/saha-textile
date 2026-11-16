@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { ForbiddenException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, HttpStatus, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type {
 	MediaNightlyCheck,
 	AuditLog,
@@ -12,6 +12,7 @@ import type {
 import {
 	type AdminUserRoleAssignmentRepository,
 	type AuditLogRepository,
+	type MediaZipRepository,
 	type MediaBrowseRepository,
 	type RoleRepository,
 	type SiteSettingsRepository,
@@ -31,6 +32,7 @@ import {
 	ROLE_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 	STORAGE_LEDGER_REPOSITORY,
+	MEDIA_ZIP_REPOSITORY,
 } from '../infra/tokens';
 import { mediaRefusal } from './media-refusal';
 
@@ -48,6 +50,8 @@ export class MediaStorageService {
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
 		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: AdminUserRoleAssignmentRepository,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
+		/** .zip downloads kept for their 24 hours (A47's “.zip downloads” line; media step 5). */
+		@Optional() @Inject(MEDIA_ZIP_REPOSITORY) private readonly zips?: Pick<MediaZipRepository, 'storedBytes'>,
 	) {}
 
 	/** A super admin holds the system Administrator role. */
@@ -62,11 +66,12 @@ export class MediaStorageService {
 	}
 
 	async summary(userId: string, now = new Date()): Promise<StorageSummary> {
-		const [usage, reservedBytes, othersMayUseOnDemand, superAdmin] = await Promise.all([
+		const [usage, reservedBytes, othersMayUseOnDemand, superAdmin, zipBytes] = await Promise.all([
 			this.files.usage(),
 			this.ledger.reservedBytes(now.toISOString()),
 			this.othersMayUseOnDemand(),
 			this.isSuperAdmin(userId),
+			this.zips ? this.zips.storedBytes() : Promise.resolve(0),
 		]);
 		const usedBytes = usage.originals + usage.versions + usage.files + usage.trash;
 		const percent = Math.round((usedBytes / STORAGE_PLAN_BYTES) * 1000) / 10;
@@ -83,6 +88,8 @@ export class MediaStorageService {
 				{ key: 'versions', bytes: usage.versions },
 				{ key: 'files', bytes: usage.files },
 				{ key: 'trash', bytes: usage.trash },
+				// Held as work in progress until the sweep deletes them, so they are not added to the used total.
+				{ key: 'zips', bytes: zipBytes },
 			],
 			othersMayUseOnDemand,
 			canChangeOnDemand: superAdmin,

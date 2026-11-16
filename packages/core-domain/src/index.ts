@@ -6,6 +6,7 @@ export * from './media/index';
 export * from './payments/index';
 export * from './dashboard/index';
 export * from './blog/index';
+export * from './legal/index';
 export * from './stores/index';
 export * from './mailbox/index';
 export * from './events/index';

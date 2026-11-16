@@ -224,12 +224,10 @@ Every night at 04:15 IST the worker runs the Spaces check (R5-5): it lists what 
 1. `POST /zips/plan` answers the .zip's name, files and bytes, and the shared storage check runs with `zip` (the .zip is stored for 24 hours, R4-7).
 2. `POST /zips` starts it under the check's hold. The .zip then keeps a storage hold of its own (`zip_…`) for its 24 hours.
 3. The worker's `zip` job (`buildZip`) writes it into Spaces file by file: one file read at a time, entries stored as they are (photos and archives are compressed already), ZIP64 past 4 GB, in 16 MB parts (`StoragePort.uploadStream`). It saves the real counts at most once a second.
-4. The tray shows the row (A48): “Adding files”, files done of total, and **Cancel**, which stops it at the next file and keeps nothing. A .zip still being made comes back to the tray when the Media page opens again.
-5. When it is ready the download starts by itself (`GET /zips/:id/link`, five minutes, saved under the .zip's name), a toast says it is ready, and the row keeps **Download** with the size and “link works for 24 hours”.
+4. A .zip alone floats as its own box at the bottom right (A30): “Preparing Product photos.zip”, its bar, files done of total with the size, **Cancel**, and “You can keep working”. Cancel stops it at the next file and keeps nothing. With other uploads or operations running too, the tray lists everything and the .zip is one of its rows (A48), with the same counts and Cancel. A .zip still being made comes back when the Media page opens again.
+5. When it is ready the download starts by itself (`GET /zips/:id/link`, five minutes, saved under the .zip's name). The box says it is ready, with its size, “link works for 24 hours”, **Download** and **Dismiss** (A30B); as a tray row it keeps **Download**.
 
 Each admin sees, cancels and downloads only their own .zip files; another admin's id answers 404. Every hour the `zip-sweep` job deletes ready .zip files past their 24 hours and cancelled or failed ones, ends their holds, and marks each swept once. The adapter is `packages/adapters-archive-zip` (yazl); records live in `mediaZips`.
-
-The brief draws the progress and the ready message as a floating box (A30, A30B); they live in the tray and the admin's toast instead, as the brief's one tray for every operation (R4-8) asks.
 
 ## Photo types
 

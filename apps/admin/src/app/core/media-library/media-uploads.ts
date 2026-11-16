@@ -110,6 +110,8 @@ export interface MediaOperation {
 	note?: string;
 	/** One link on the row: Cancel while a .zip is made, Download once it is ready. */
 	action?: { label: string; run: () => void };
+	/** A .zip's size: the floating box shows it beside the files (A30, A30B). */
+	bytes?: number;
 }
 
 /** A .zip is followed this long at most; its row then says it is still being made on the server. */
@@ -341,6 +343,7 @@ export class MediaUploads {
 				phase: 'fm_zip_adding',
 				done: zip.files.done,
 				total: zip.files.total,
+				bytes: zip.bytes.total,
 				state: 'running',
 				error: null,
 				action: {
@@ -355,7 +358,7 @@ export class MediaUploads {
 				await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
 				const now = await lastValueFrom(this.gateway.zip(zip.id)).catch(() => null);
 				if (!now) continue;
-				tray({ done: now.files.done, total: now.files.total });
+				tray({ done: now.files.done, total: now.files.total, bytes: now.bytes.total });
 				if (now.state === 'adding') continue;
 				if (now.state === 'ready') {
 					const save = () => void this.saveZip(zip.id);
@@ -367,7 +370,6 @@ export class MediaUploads {
 						}),
 						action: { label: 'fm_download', run: save },
 					});
-					this.toastr?.success(words('fm_zip_ready'));
 					save();
 				} else if (now.state === 'cancelled') {
 					this.operations.update((ops) => ops.filter((op) => op.id !== id));
@@ -384,6 +386,11 @@ export class MediaUploads {
 				return;
 			}
 		})();
+	}
+
+	/** Dismiss on a ready .zip's box (A30B): only that one leaves; its link keeps working for the 24 hours. */
+	dismissOperation(id: string): void {
+		this.operations.update((ops) => ops.filter((op) => op.id !== id));
 	}
 
 	/** The person's own .zip files still being made, followed again after a reload (A48). */

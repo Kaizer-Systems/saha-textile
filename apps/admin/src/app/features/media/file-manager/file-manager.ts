@@ -804,7 +804,6 @@ export class FileManager {
 			const zip = await lastValueFrom(
 				this.gateway.createZip({ ...pick, ...(reservationId ? { reservationId } : {}) }),
 			);
-			this.toastr.info(this.transloco.translate('fm_zip_preparing', { name: zip.name }));
 			this.uploads.watchZip(zip);
 		} catch (error) {
 			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));

@@ -1857,3 +1857,32 @@ body.dark-only .fm-tile .fm-overlay small {
 .fm-fit-demo .fm-fit-box.white {
 	background: #fff !important;
 }
+
+/* .zip toast (A30, A30B; brief's approved list, owner 16 Nov): a .zip alone floats as its own box, bottom right. */
+.fm-toast {
+	position: fixed;
+	right: 24px;
+	bottom: 24px;
+	z-index: 60;
+	width: 360px;
+	padding: 14px 16px;
+	border-radius: 10px;
+	background: var(--fm-surface);
+	box-shadow: 0 12px 40px rgba(16, 24, 40, 0.22);
+	font-size: 14px;
+}
+.fm-toast .progress {
+	height: 6px;
+	margin: 8px 0 4px;
+}
+.fm-toast .progress-bar {
+	background: var(--theme-color);
+}
+@media (max-width: 575.98px) {
+	.fm-toast {
+		left: 12px;
+		right: 12px;
+		width: auto;
+		bottom: 12px;
+	}
+}

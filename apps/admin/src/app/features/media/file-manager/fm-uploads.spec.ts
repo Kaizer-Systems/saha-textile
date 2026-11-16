@@ -396,6 +396,7 @@ describe('the upload tray head', () => {
 		const jobs = (states: string[]) => states.map((state, index) => ({ id: `u${index}`, state }));
 		const uploads = {
 			jobs: vi.fn(),
+			operations: vi.fn(() => [] as unknown[]),
 			active: vi.fn(() => [] as unknown[]),
 			runningOperations: vi.fn(() => [] as unknown[]),
 			doneCount: vi.fn(() => 0),
@@ -423,6 +424,17 @@ describe('the upload tray head', () => {
 		uploads.doneCount.mockReturnValue(3);
 		uploads.failedCount.mockReturnValue(1);
 		expect(tray.head()).toBe('fm_tray_uploading_other:2 · fm_tray_failed_other:1 · fm_tray_done_other:3');
+		// A .zip alone floats as its own box (A30, A30B); beside anything else it is a row of the tray (A48).
+		const zipRow = { id: 'zip_zip_1', kind: 'k-zip', label: 'Product photos.zip', state: 'running' };
+		uploads.operations.mockReturnValue([zipRow]);
+		uploads.jobs.mockReturnValue([]);
+		const fresh = () => TestBed.createComponent(FmTray).componentInstance;
+		expect(fresh().soloZip()).toEqual(zipRow);
+		uploads.operations.mockReturnValue([zipRow, { id: 'op_1', kind: undefined, state: 'running' }]);
+		expect(fresh().soloZip()).toBeNull();
+		uploads.operations.mockReturnValue([zipRow]);
+		uploads.jobs.mockReturnValue(jobs(['uploading']));
+		expect(fresh().soloZip()).toBeNull();
 	});
 });
 

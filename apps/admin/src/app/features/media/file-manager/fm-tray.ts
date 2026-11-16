@@ -30,6 +30,15 @@ export class FmTray {
 	readonly timeLeft = timeLeft;
 
 	/** Anything still running: uploads, or bulk changes (A48). */
+	/**
+	 * A .zip alone (owner, 16 Nov): when it is the only thing running or done, it shows as its own floating box (A30
+	 * while it is made, A30B when ready). With anything else beside it, the tray lists everything, the .zip as a row (A48).
+	 */
+	readonly soloZip = computed(() => {
+		const ops = this.uploads.operations();
+		const only = ops.length === 1 && !this.uploads.jobs().length ? ops[0] : undefined;
+		return only?.kind === 'k-zip' ? only : null;
+	});
 	readonly busy = computed(() => !!this.uploads.active().length || !!this.uploads.runningOperations().length);
 
 	/** “Working on 1 · Uploading 2 · 3 done · 1 failed”, or “Uploaded 5 files” once all are done. */

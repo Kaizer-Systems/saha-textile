@@ -119,7 +119,7 @@ test.describe('Media page (step 1)', () => {
 		await shot(page, 'b08-tray-done');
 	});
 
-	test('Download .zip: the tray follows the .zip with Cancel; cancelling takes the row away (A27, A48, step 5)', async ({
+	test('Download .zip: alone it floats as its own box with Cancel (A30); cancelling takes it away (A27, A48, step 5)', async ({
 		page,
 	}) => {
 		await openRoot(page);
@@ -127,12 +127,15 @@ test.describe('Media page (step 1)', () => {
 		await card(page, RUN).click();
 		await expect(page.locator('#fm_bulk_zip')).toBeVisible();
 		await page.locator('#fm_bulk_zip').click();
-		const row = page.locator('.fm-tray li[data-operation="running"]').filter({ hasText: `${RUN}.zip` });
-		await expect(row).toBeVisible();
-		await expect(row).toContainText('Adding files');
-		await shot(page, 'a48-zip-in-tray');
-		await row.locator('[data-op-action="cancel"]').click();
-		await expect(row).toHaveCount(0, { timeout: 10_000 });
+		// Nothing else is running, so the .zip shows as its own box, not as a tray row.
+		const box = page.locator('#fm_zip_box');
+		await expect(box).toBeVisible();
+		await expect(box).toContainText(`Preparing ${RUN}.zip`);
+		await expect(box).toContainText('You can keep working');
+		await expect(page.locator('#fm_tray')).toHaveCount(0);
+		await shot(page, 'a30-zip-box');
+		await page.locator('#fm_zip_box_cancel').click();
+		await expect(box).toHaveCount(0, { timeout: 10_000 });
 	});
 
 	test('photo types the browser cannot draw: a PSD with no type and an SVG are photos, measured from their header (step 5)', async ({

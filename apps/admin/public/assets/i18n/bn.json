@@ -2579,11 +2579,14 @@
 	"fm_zip_download": ".zip হিসেবে ডাউনলোড করুন",
 	"fm_zip_bulk": ".zip ডাউনলোড",
 	"fm_zip_adding": "ফাইল যোগ হচ্ছে",
-	"fm_zip_preparing": "{{name}} তৈরি হচ্ছে। কাজ চালিয়ে যেতে পারেন; তৈরি হলেই ডাউনলোড শুরু হবে।",
 	"fm_zip_ready": "{{name}} তৈরি",
 	"fm_zip_ready_note": "{{size}} · লিংক 24 ঘণ্টা কাজ করবে",
 	"fm_zip_failed": "{{name}} তৈরি করা যায়নি। আবার চেষ্টা করুন, বা কম ফাইল ডাউনলোড করুন।",
 	"fm_zip_link_gone": "এই .zip আর রাখা নেই। Media পেজ থেকে আবার তৈরি করুন।",
 	"fm_zip_empty": "এখানে .zip-এ রাখার মতো কিছু নেই।",
-	"fm_zip_what": "{{name}} 24 ঘণ্টা রাখা হবে।"
+	"fm_zip_what": "{{name}} 24 ঘণ্টা রাখা হবে।",
+	"fm_zip_preparing_title": "{{name}} তৈরি হচ্ছে",
+	"fm_zip_box_count": "{{total}}টির মধ্যে {{done}}টি ফাইল · {{size}}",
+	"fm_zip_keep_working": "কাজ চালিয়ে যেতে পারেন। তৈরি হলেই ডাউনলোড শুরু হবে।",
+	"fm_zip_dismiss": "বন্ধ করুন"
 }

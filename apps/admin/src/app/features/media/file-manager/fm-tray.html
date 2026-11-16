@@ -1,4 +1,78 @@
-@if (uploads.jobs().length || uploads.operations().length) {
+@if (soloZip(); as zip) {
+<!-- A30 / A30B: a .zip alone shows as its own box; beside anything else it is a row of the tray (A48). -->
+<div
+	class="fm-toast"
+	id="fm_zip_box"
+	role="status"
+	[attr.data-zip]="zip.state"
+>
+	@if (zip.state === 'done') {
+	<div class="d-flex align-items-center gap-2">
+		<i class="ri-checkbox-circle-line text-success fs-5"></i>
+		<strong>{{ zip.label }}</strong>
+	</div>
+	<div class="small text-muted my-2">{{ zip.note }}</div>
+	<div class="d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-theme btn-sm"
+			id="fm_zip_box_download"
+			(click)="zip.action?.run()"
+		>
+			{{ 'fm_download' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-outline btn-sm"
+			id="fm_zip_box_dismiss"
+			(click)="uploads.dismissOperation(zip.id)"
+		>
+			{{ 'fm_zip_dismiss' | transloco }}
+		</button>
+	</div>
+	} @else if (zip.state === 'failed') {
+	<div class="d-flex align-items-center gap-2">
+		<i class="ri-error-warning-line text-danger fs-5"></i>
+		<strong>{{ zip.label }}</strong>
+	</div>
+	<div class="small text-danger my-2">{{ zip.error }}</div>
+	<button
+		type="button"
+		class="btn btn-outline btn-sm"
+		(click)="uploads.dismissOperation(zip.id)"
+	>
+		{{ 'fm_zip_dismiss' | transloco }}
+	</button>
+	} @else {
+	<div class="d-flex align-items-center gap-2">
+		<i class="ri-file-zip-line text-warning fs-5"></i>
+		<strong>{{ 'fm_zip_preparing_title' | transloco: { name: zip.label } }}</strong>
+	</div>
+	<div class="progress">
+		<div
+			class="progress-bar"
+			[style.width.%]="zip.total ? (zip.done / zip.total) * 100 : 0"
+		></div>
+	</div>
+	<div class="d-flex justify-content-between small text-muted">
+		<span>
+			{{ 'fm_zip_box_count' | transloco: { done: zip.done, total: zip.total, size: (zip.bytes ?? 0 | fileSize) }
+			}}
+		</span>
+		@if (zip.action; as action) {
+		<a
+			href="javascript:void(0)"
+			id="fm_zip_box_cancel"
+			(click)="action.run()"
+		>
+			{{ 'cancel' | transloco }}
+		</a>
+		}
+	</div>
+	<div class="small text-muted mt-1">{{ 'fm_zip_keep_working' | transloco }}</div>
+	}
+</div>
+} @else if (uploads.jobs().length || uploads.operations().length) {
 <div
 	class="fm-tray"
 	id="fm_tray"

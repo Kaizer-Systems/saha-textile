@@ -486,6 +486,7 @@ test.describe('Media page (step 1)', () => {
 		await page.locator('#fm_nav_clean').click();
 		await expect(page).toHaveURL(/view=clean/);
 		await expect(page.locator('#fm_clean_email_tab')).toContainText('Email pictures');
+		await page.locator('#fm_clean_email_tab').click();
 		await expect(page.locator('#fm_email_note')).toContainText('Email pictures are kept for good');
 		// The file list asks for nothing while Clean up shows.
 		await expect(page.locator('section.fm-main.d-none')).toHaveCount(1);
@@ -493,6 +494,30 @@ test.describe('Media page (step 1)', () => {
 		await expect(page.locator('#fm_email_sent')).toHaveValue('over_2y');
 		await expect(page.locator('#fm_email_empty')).toBeVisible();
 		await shot(page, 'a50-email-pictures');
+	});
+
+	test('Clean up lists: not used for 90 days, largest, same file twice; chosen ones go to Trash (A44, step 5)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await page.locator('#fm_nav_clean').click();
+		await expect(page.locator('#fm_clean_tab_unused')).toHaveClass(/active/);
+		await expect(page.locator('#fm_clean_tab_unused')).toContainText('Not used for 90 days');
+		await expect(page.locator('#fm_clean_table, #fm_clean_empty').first()).toBeVisible();
+		await shot(page, 'a44-clean-up');
+		await page.locator('#fm_clean_tab_largest').click();
+		await expect(page.locator('#fm_clean_tab_largest')).toHaveClass(/active/);
+		await expect(page.locator('#fm_clean_table, #fm_clean_empty').first()).toBeVisible();
+		// This run's uploads are not used on any page, so the largest list holds files to choose.
+		const first = page.locator('#fm_clean_table tbody tr').first();
+		if (await first.count()) {
+			await first.locator('input[type=checkbox]').check();
+			await expect(page.locator('#fm_clean_bulk')).toContainText('selected');
+			await page.locator('#fm_clean_bulk .fm-bulk-x').click();
+			await expect(page.locator('#fm_clean_bulk')).toHaveCount(0);
+		}
+		await page.locator('#fm_clean_tab_duplicates').click();
+		await expect(page.locator('#fm_clean_table, #fm_clean_empty').first()).toBeVisible();
 	});
 
 	test('a folder goes to Trash after asking, comes back with Undo, and is deleted for good (A25, A18)', async ({

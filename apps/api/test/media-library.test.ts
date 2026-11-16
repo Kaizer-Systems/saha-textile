@@ -60,7 +60,12 @@ function harness() {
 					(filter.folderId === undefined || (asset.folderId ?? null) === filter.folderId) &&
 					(!filter.withinFolders || filter.withinFolders.includes(asset.folderId ?? '')) &&
 					(!filter.ids || filter.ids.includes(asset.id)) &&
-					(!filter.search || (asset.displayName ?? '').toLowerCase().includes(filter.search.toLowerCase())),
+					(!filter.search || (asset.displayName ?? '').toLowerCase().includes(filter.search.toLowerCase())) &&
+					(!filter.kinds || filter.kinds.includes(asset.kind)) &&
+					(!filter.withVersionOf ||
+						!!asset.versions?.some((v) => v.profileKey === filter.withVersionOf && v.state === 'ready')) &&
+					(!filter.withoutVersionOf ||
+						!asset.versions?.some((v) => v.profileKey === filter.withoutVersionOf && v.state === 'ready')),
 			);
 			return { items, total: items.length, page: filter.page, pageSize: filter.pageSize };
 		},
@@ -630,6 +635,66 @@ describe('plain files', () => {
 		// Finishing twice changes nothing; another admin cannot finish it.
 		await h.service.finalizeFile('adm_1', presigned.assetId);
 		expect(h.jobs.filter((job) => job.type === 'process')).toHaveLength(1);
+	});
+
+	it('a picker lists only photos with a ready version of the profile it needs, with their chips, and counts the rest (R4-2, D15, D16)', async () => {
+		const h = harness();
+		const version = (id: string, state = 'ready') => {
+			const [profileKey = '', fill = 'as_is'] = id.split('.');
+			return { id, profileKey, profileVersion: 1, fill, state, createdAt: '2026-11-16T00:00:00.000Z' };
+		};
+		h.file('med_fits', {
+			versions: [version('product_3x4.white'), version('product_3x4.blur'), version('hero_21x9.crop')],
+		});
+		h.file('med_other', { versions: [version('hero_21x9.crop')] });
+		h.file('med_making', { versions: [version('product_3x4.white', 'making')] });
+		h.file('med_pdf', { kind: 'file', originalFormat: 'application/pdf', displayName: 'catalogue.pdf' });
+		const picker = await h.service.browse('adm_1', {
+			view: 'folder',
+			accept: 'image',
+			profile: 'product_3x4',
+			sort: 'name',
+			direction: 'asc',
+			page: 1,
+			pageSize: 60,
+			who: 'mine',
+		} as never);
+		expect(picker.files.map((row) => row.id)).toEqual(['med_fits']);
+		expect(picker.files[0]?.fitting).toEqual([
+			{ versionId: 'product_3x4.white', fill: 'white' },
+			{ versionId: 'product_3x4.blur', fill: 'blur' },
+		]);
+		expect(picker.hidden).toEqual({ noVersion: 2, notImage: 1 });
+		// The switch shows the photos without it too; their chips are empty, so they can't be chosen yet.
+		const all = await h.service.browse('adm_1', {
+			view: 'folder',
+			accept: 'image',
+			profile: 'product_3x4',
+			showWithout: true,
+			sort: 'name',
+			direction: 'asc',
+			page: 1,
+			pageSize: 60,
+			who: 'mine',
+		} as never);
+		expect(all.files.map((row) => [row.id, row.fitting?.length]).sort()).toEqual([
+			['med_fits', 2],
+			['med_making', 0],
+			['med_other', 0],
+		]);
+		expect(all.hidden).toEqual({ noVersion: 0, notImage: 1 });
+		// The Media page itself is unchanged: everything, no chips, nothing hidden.
+		const page = await h.service.browse('adm_1', {
+			view: 'folder',
+			sort: 'name',
+			direction: 'asc',
+			page: 1,
+			pageSize: 60,
+			who: 'mine',
+		} as never);
+		expect(page.files).toHaveLength(4);
+		expect(page.hidden).toBeUndefined();
+		expect(page.files[0]?.fitting).toBeUndefined();
 	});
 
 	it('refuses a photo version its profile does not allow, before anything is stored', async () => {

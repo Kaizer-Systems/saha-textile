@@ -73,6 +73,10 @@ export interface MediaBrowseFilter {
 	states?: readonly MediaAsset['processing']['state'][];
 	minBytes?: number;
 	maxBytes?: number;
+	/** Pickers (R4-2): only these kinds of file; only photos with (or without) a ready version of a profile. */
+	kinds?: readonly MediaAsset['kind'][];
+	withVersionOf?: string;
+	withoutVersionOf?: string;
 	sort: 'name' | 'created' | 'size';
 	direction: 'asc' | 'desc';
 	page: number;

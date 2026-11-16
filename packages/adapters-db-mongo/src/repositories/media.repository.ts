@@ -434,6 +434,12 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 			};
 		}
 		if (filter.createdSince) query.createdAt = { $gte: new Date(filter.createdSince) };
+		if (filter.kinds?.length) query.kind = { $in: [...filter.kinds] };
+		if (filter.withVersionOf) {
+			query.versions = { $elemMatch: { profileKey: filter.withVersionOf, state: 'ready' } };
+		} else if (filter.withoutVersionOf) {
+			query.versions = { $not: { $elemMatch: { profileKey: filter.withoutVersionOf, state: 'ready' } } };
+		}
 		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
 		if (words.length) {
 			query.$and = words.map((word) => {

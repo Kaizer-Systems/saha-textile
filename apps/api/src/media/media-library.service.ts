@@ -163,6 +163,8 @@ export class MediaLibraryService {
 	async browse(userId: string, query: MediaBrowseQuery, now = new Date()): Promise<MediaBrowseResponse> {
 		const extra = await this.filterParts(query, now);
 		const filtering = Object.keys(extra).length > 0;
+		// A picker (R4-2) narrows what is listed without turning the view into a search.
+		const pick = this.pickParts(query);
 		const mine = await this.stars.listForUser(userId);
 		const starred = new Set(mine.map((star) => `${star.type}:${star.id}`));
 		const page = { sort: query.sort, direction: query.direction, page: query.page, pageSize: query.pageSize };
@@ -215,6 +217,7 @@ export class MediaLibraryService {
 			const result = await this.files.browse({
 				...page,
 				...extra,
+				...pick,
 				sort: 'created',
 				direction: 'desc',
 				trashed: false,
@@ -225,7 +228,7 @@ export class MediaLibraryService {
 				folder: null,
 				breadcrumb: [],
 				folders: [],
-				files: await this.fileRows(result.items, starred, location, now),
+				files: await this.fileRows(result.items, starred, location, now, query.profile),
 				total: result.total,
 				page: result.page,
 				pageSize: result.pageSize,
@@ -239,25 +242,52 @@ export class MediaLibraryService {
 			folder && searching
 				? (await this.folders.listSubtree(folder.id)).filter((row) => !row.trashedAt).map((row) => row.id)
 				: undefined;
-		const result = await this.files.browse({
+		const scope = {
 			...page,
 			...extra,
 			trashed: false,
 			search: query.search,
 			category: query.category,
 			...(searching ? (within ? { withinFolders: within } : {}) : { folderId: folder?.id ?? null }),
-		});
+		};
+		const result = await this.files.browse({ ...scope, ...pick });
+		const hidden = await this.hiddenInPicker(scope, query);
 		const childFolders = searching ? [] : await this.folders.listChildren(folder?.id ?? null, { trashed: false });
 		return {
 			folder: folder ? this.folderRow(folder, starred, location(folder.parentId), now) : null,
 			breadcrumb,
 			folders: childFolders.map((row) => this.folderRow(row, starred, location(row.parentId), now)),
-			files: await this.fileRows(result.items, starred, location, now),
+			files: await this.fileRows(result.items, starred, location, now, query.profile),
 			total: result.total,
 			page: result.page,
 			pageSize: result.pageSize,
 			starredBy: {},
+			...(hidden ? { hidden } : {}),
 		};
+	}
+
+	/** A picker's own narrowing (R4-2): images only, and only photos with a ready version of the profile asked. */
+	private pickParts(query: MediaBrowseQuery): Partial<MediaBrowseFilter> {
+		const parts: Partial<MediaBrowseFilter> = {};
+		if (query.accept === 'image' || query.profile) parts.kinds = ['image'];
+		if (query.profile && !query.showWithout) parts.withVersionOf = query.profile;
+		return parts;
+	}
+
+	/** D15's heading: what the folder holds that the picker leaves out. Null outside a picker. */
+	private async hiddenInPicker(
+		scope: Omit<MediaBrowseFilter, 'page' | 'pageSize'> & Partial<MediaBrowseFilter>,
+		query: MediaBrowseQuery,
+	): Promise<{ noVersion: number; notImage: number } | null> {
+		if (query.accept !== 'image' && !query.profile) return null;
+		const count = async (more: Partial<MediaBrowseFilter>) =>
+			(await this.files.browse({ ...scope, ...more, page: 1, pageSize: 1 })).total;
+		const notImage = await count({ kinds: ['file', 'video'] });
+		const noVersion =
+			query.profile && !query.showWithout
+				? await count({ kinds: ['image'], withoutVersionOf: query.profile })
+				: 0;
+		return { noVersion, notImage };
 	}
 
 	// --- Folders and names ----------------------------------------------------------------------
@@ -1053,6 +1083,7 @@ export class MediaLibraryService {
 		starred: ReadonlySet<string>,
 		location: (folderId: string | null | undefined) => string,
 		now: Date,
+		profile?: string,
 	): Promise<MediaFileRow[]> {
 		const used = await this.files.whereUsed(assets.map((asset) => asset.id));
 		return assets.map((asset) => {
@@ -1074,6 +1105,13 @@ export class MediaLibraryService {
 					: {}),
 				...(asset.replacing
 					? { replacing: asset.replacing.phase, replacingWhy: asset.replacing.reason ?? 'replace' }
+					: {}),
+				...(profile
+					? {
+							fitting: (asset.versions ?? [])
+								.filter((version) => version.profileKey === profile && version.state === 'ready')
+								.map((version) => ({ versionId: version.id, fill: version.fill })),
+						}
 					: {}),
 				thumbnailUrl: this.thumbnailOf(asset),
 				usedOn: (used.get(asset.id) ?? []).length,

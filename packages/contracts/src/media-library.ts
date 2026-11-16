@@ -55,6 +55,8 @@ export const MediaFileRow = z.object({
 	replacing: z.enum(['uploading', 'queued', 'making', 'failed']).optional(),
 	/** What that run does: a new photo, a new focal point (only crops remade), or a new web file name. */
 	replacingWhy: z.enum(['replace', 'focal', 'rename', 'refresh']).optional(),
+	/** In a picker that needs a profile (R4-2): this photo's ready versions of it, for the chips; empty = can't be chosen. */
+	fitting: z.array(z.object({ versionId: z.string(), fill: MediaFill })).optional(),
 	/** A small picture for the list; null for files the worker does not process. */
 	thumbnailUrl: z.string().nullable(),
 	/** Pages that use it: an image used on the website cannot go to Trash. */
@@ -102,6 +104,12 @@ export const MediaBrowseQuery = z.object({
 	direction: z.enum(['asc', 'desc']).default('asc'),
 	page: z.coerce.number().int().positive().default(1),
 	pageSize: z.coerce.number().int().positive().max(200).default(60),
+	/** A picker (R4-2, D01–D17): images only, or any file. */
+	accept: z.enum(['image', 'any']).optional(),
+	/** A picker that needs this profile lists only photos with a ready version of it (D15)… */
+	profile: MediaProfileKey.optional(),
+	/** …unless the switch shows the rest too, greyed (D16). */
+	showWithout: z.preprocess((value) => value === true || value === 'true' || value === '1', z.boolean()).optional(),
 });
 export type MediaBrowseQuery = z.infer<typeof MediaBrowseQuery>;
 
@@ -116,6 +124,8 @@ export const MediaBrowseResponse = z.object({
 	pageSize: z.number().int().positive(),
 	/** Who starred what, for Favourites › Everyone's (A17B). */
 	starredBy: z.record(z.string(), z.array(z.string())).default({}),
+	/** In a picker: what this folder holds that isn't listed (D15: “2 photos hidden (no Product 3:4) · 2 files hidden”). */
+	hidden: z.object({ noVersion: z.number().int().nonnegative(), notImage: z.number().int().nonnegative() }).optional(),
 });
 export type MediaBrowseResponse = z.infer<typeof MediaBrowseResponse>;
 

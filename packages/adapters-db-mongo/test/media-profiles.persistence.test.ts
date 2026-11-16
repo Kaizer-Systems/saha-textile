@@ -451,6 +451,47 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		}
 	});
 
+	it('the picker filter: images only, with or without a ready version of a profile (step 4a)', async () => {
+		const made = (id: string, state = 'ready') => ({
+			id,
+			profileKey: id.split('.')[0],
+			profileVersion: 1,
+			fill: id.split('.')[1],
+			state,
+			error: null,
+			createdAt: '2026-11-16T00:00:00.000Z',
+		});
+		const folderId = 'fld_picker_it';
+		try {
+			await raw('med_pk_fits', { folderId, versions: [made('product_3x4.white')] });
+			await raw('med_pk_making', { folderId, versions: [made('product_3x4.white', 'making')] });
+			await raw('med_pk_other', { folderId, versions: [made('hero_21x9.crop')] });
+			await raw('med_pk_pdf', { folderId, kind: 'file', versions: [] });
+			const ids = async (more: Record<string, unknown>) =>
+				(
+					await assets.browse({
+						folderId,
+						trashed: false,
+						sort: 'name',
+						direction: 'asc',
+						page: 1,
+						pageSize: 50,
+						...more,
+					})
+				).items
+					.map((row) => row.id)
+					.sort();
+			expect(await ids({ kinds: ['image'], withVersionOf: 'product_3x4' })).toEqual(['med_pk_fits']);
+			expect(await ids({ kinds: ['image'], withoutVersionOf: 'product_3x4' })).toEqual([
+				'med_pk_making',
+				'med_pk_other',
+			]);
+			expect(await ids({ kinds: ['file', 'video'] })).toEqual(['med_pk_pdf']);
+		} finally {
+			await MediaAssetModel.deleteMany({ folderId }).exec();
+		}
+	});
+
 	it('carries a new web file name with its Replace and puts it on the photo at the swap (step 3d)', async () => {
 		await raw('med_name', { derivatives: [], versions: [] });
 		const original = (await assets.findById('med_name'))?.originalStorageKey ?? '';

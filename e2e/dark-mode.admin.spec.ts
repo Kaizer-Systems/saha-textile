@@ -296,6 +296,18 @@ test.describe('Admin light and dark: menus, lists and popups', () => {
 				await page.keyboard.press('Escape');
 			}
 
+			// A photo's Text tab (A42, media step 4c), when the Media page has a photo at the top of My files.
+			await page.goto(`${ADMIN}/media`, { waitUntil: 'networkidle' });
+			const photoRow = page.locator('tr[data-file]', { hasText: /\.(jpe?g|png|webp)/i }).first();
+			if (await photoRow.count()) {
+				await photoRow.click({ button: 'right' });
+				await page.locator('#fm_menu_details').click();
+				await page.locator('#fm_details_tab_text').click();
+				await expect(page.locator('#fm_text_alt')).toBeVisible();
+				await check('a photo’s Text tab');
+				await page.keyboard.press('Escape');
+			}
+
 			// Settings › Languages: the add popup and a language's to-do list.
 			await page.goto(`${ADMIN}/setting/languages`, { waitUntil: 'networkidle' });
 			await page.locator('#add_language_btn').click();

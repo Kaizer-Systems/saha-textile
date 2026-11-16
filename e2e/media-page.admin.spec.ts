@@ -318,6 +318,33 @@ test.describe('Media page (step 1)', () => {
 		await page.keyboard.press('Escape');
 	});
 
+	test('a photo’s Text tab: default alt text and caption per language, with its to-dos, saved (A42, step 4c)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await card(page, RUN).dblclick();
+		await row(page, 'product-sample.png').click({ button: 'right' });
+		await page.locator('#fm_menu_details').click();
+		await page.locator('#fm_details_tab_text').click();
+		await expect(page.locator('#fm_details')).toContainText('Saved on the image itself');
+		await page.locator('#fm_text_alt').fill('A sample product photo on a plain background');
+		// বাংলা still has no alt text: its button carries a red to-do until it is written.
+		const bengali = page.locator('app-language-switch').getByRole('button', { name: /বাংলা/ }).first();
+		await expect(page.locator('app-language-switch')).toContainText('1');
+		await bengali.click();
+		await page.locator('#fm_text_alt').fill('সাদা পটভূমিতে একটি পণ্যের ছবি');
+		await shot(page, 'a42-photo-text');
+		await page.locator('#fm_text_save').click();
+		await expect(page.locator('.toast-success, #toast-container')).toContainText("The photo's text is saved");
+		await page.keyboard.press('Escape');
+		// Opened again, the text is there.
+		await row(page, 'product-sample.png').click({ button: 'right' });
+		await page.locator('#fm_menu_details').click();
+		await page.locator('#fm_details_tab_text').click();
+		await expect(page.locator('#fm_text_alt')).toHaveValue('A sample product photo on a plain background');
+		await page.keyboard.press('Escape');
+	});
+
 	test('Share: a link with a password is shown once and listed with who made it; Stop asks first (A35)', async ({
 		page,
 	}) => {

@@ -1237,7 +1237,7 @@
 			"label": "mediaZips",
 			"cluster": "content-seo-media",
 			"currentState": "existing",
-			"targetAction": "add",
+			"targetAction": "refactor",
 			"owningChunks": ["I"],
 			"blockingDecisions": [],
 			"source": "decisions § media step 5 answers (2026-11-16)",

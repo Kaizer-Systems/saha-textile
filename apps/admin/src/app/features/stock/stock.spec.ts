@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import type { StockHold, StockListRow } from '@saha-textile/contracts';
-
 import { adjustProblem } from './adjust-popup';
 import { isOwnRequest } from './approvals';
 import { holdPill, rowFromHold } from './held';
 import { documentLink, movementPill } from './stock-item';
 import { toStockRow } from './stock-list';
+
+import type { StockHold, StockListRow } from '@saha-textile/contracts';
 
 const t = (key: string, params?: Record<string, unknown>) => (params ? `${key}:${JSON.stringify(params)}` : key);
 const row = (over: Partial<StockListRow> = {}): StockListRow => ({
@@ -100,5 +100,41 @@ describe('history, approvals and holds (i02, i05, i06)', () => {
 		expect(rowFromHold(hold)).toMatchObject({ variantId: 'v', held: 4 });
 		expect(holdPill('photoshoot')).toBe('processing');
 		expect(holdPill('waiting_for_supplier')).toBe('pending');
+	});
+});
+
+describe('reports (i07–i10)', () => {
+	it('orders only ticked lines with a supplier and a quantity, metres as tenths', async () => {
+		const { orderLines } = await import('./reorder');
+		const base = {
+			productId: 'p',
+			sku: 'S',
+			title: 'T',
+			optionsLabel: '',
+			imageUrl: null,
+			freeToSell: 1,
+			soldLast60Days: 19,
+			daysLeft: 3,
+			lastSupplierName: 'X',
+			lastCostINR: 1050,
+			suggested: 14,
+		};
+		const lines = orderLines([
+			{ row: { ...base, variantId: 'a', soldBy: 'piece', lastSupplierId: 's1' }, ticked: true, quantity: '14' },
+			{ row: { ...base, variantId: 'b', soldBy: 'metre', lastSupplierId: 's1' }, ticked: true, quantity: '12.5' },
+			{ row: { ...base, variantId: 'c', soldBy: 'piece', lastSupplierId: null }, ticked: true, quantity: '3' },
+			{ row: { ...base, variantId: 'd', soldBy: 'piece', lastSupplierId: 's2' }, ticked: false, quantity: '3' },
+			{ row: { ...base, variantId: 'e', soldBy: 'piece', lastSupplierId: 's2' }, ticked: true, quantity: '0' },
+		]);
+		expect(lines).toEqual([
+			{ variantId: 'a', quantity: 14, supplierId: 's1' },
+			{ variantId: 'b', quantity: 125, supplierId: 's1' },
+		]);
+	});
+
+	it('turns a month into its first and last day', async () => {
+		const { monthRange } = await import('./reports');
+		expect(monthRange('2026-11')).toEqual({ from: '2026-11-01', to: '2026-11-30' });
+		expect(monthRange('2028-02')).toEqual({ from: '2028-02-01', to: '2028-02-29' });
 	});
 });

@@ -1505,3 +1505,21 @@ Brief: https://claude.ai/artifact/Uug8q6gFMQQVb8SdhEs9sL (every banner slot, whe
   and computer scores show in about a minute. Staging and production only. Also to add for "feels instant": link
   prerendering while the pointer rests on a link (Speculation Rules), finished pages cached at Cloudflare per
   language and currency and refreshed at each Go Live, and the PWA's saved page shell.
+
+## Owner decision round (2026-11-16) — media step 5 answers and the cleanup rule
+
+- **AVIF photos upload (answers the "No AVIF now" question).** The worker's image library reads AVIF (checked on
+  16 Nov: an AVIF photo decoded and was made into WebP sizes), so AVIF photos upload and get versions like JPEG,
+  PNG, WebP and GIF. The lock under Image ingest stays for what we make: versions are WebP, JPEG and PNG, and AVIF
+  output waits as a later setting.
+- **New packages approved:** a zip library for folder downloads as .zip (a link that works 24 hours), and decoders
+  so JPEG XL, JPEG 2000, BMP, ICO and PSD photos are made into versions in the worker.
+- **TIFF and SVG are measured in the browser** during upload (their size read from the file's first bytes, no new
+  package), so the upload popup can suggest profiles and give its notes for them.
+- **Cleanup at the end of the project.** Pieces replaced or left unused by the build (the earlier Add Media popup,
+  the media-box grid, the old picker path in the image field, `ngx-dropzone`, the purpose list, the earlier Media
+  page at `/media/previous`) are not removed now. They are kept and listed in `end-of-project-cleanup-list.mdx`
+  for one cleanup pass when the project is finished.
+- **Shown before deciding:** the Legal Pages removals (choice A's four parts, the eight page files) and the place
+  of the web file name were drawn on the real admin for the owner
+  (https://claude.ai/artifact/VF4CfdFBnArQynXvdWTGSs); the answers are recorded when given.

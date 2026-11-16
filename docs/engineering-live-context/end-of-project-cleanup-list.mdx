@@ -1,0 +1,37 @@
+---
+title: End-of-Project Cleanup List
+description: Pieces replaced or left unused during the build, kept on purpose until one cleanup pass at the end of the project.
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: '2026-11-16'
+search_keywords: 'cleanup removal list unused replaced old media popup media-box ngx-dropzone purpose enum media previous'
+---
+
+# End-of-Project Cleanup List — Saha Textile
+
+**Owner rule (2026-11-16):** pieces that a new build replaces or leaves unused are **not removed during the build**.
+They stay in the code, working where they still work, and are listed here. One cleanup pass at the end of the
+project removes them, after the owner reads this list. Adding a line here is how a removal is proposed; nothing on
+this list is removed without the owner's typed go-ahead at that time.
+
+Each line names the files, what replaced the piece, and what the removal also touches.
+
+## Media file manager build
+
+| #   | Piece                                                       | Files                                                                                                                                                                           | Replaced by                                                      | The removal also touches                                                                                                                  |
+| --- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| M1  | The earlier Media page (`/media/previous`, not in the menu) | `apps/admin/src/app/features/media/media.ts`, `media.html`, and the `previous` route in `features/media/media.routes.ts`                                                        | The Media page as a file manager (`/media`, media steps 1–2)     | `e2e/dark-mode.admin.spec.ts` opens the earlier popups there; `docs/admin/media-page.md` names it                                         |
+| M2  | The earlier Add Media popup                                 | `apps/admin/src/app/shared/ui/modal/media-modal/` and its cases in `shared/ui/modal/modals.spec.ts`                                                                             | The Media picker (`FmPicker`, media step 4) in every image field | Used only by M1                                                                                                                           |
+| M3  | The media-box grid                                          | `apps/admin/src/app/shared/ui/media-box/` and its cases in `shared/ui/shared-widgets.spec.ts`; the comment about it in `core/media/media.gateway.ts`                            | The Media page's file list and the picker's tiles                | Used only by M1 and M2                                                                                                                    |
+| M4  | The earlier Edit Details popup                              | `apps/admin/src/app/shared/ui/modal/media-details-modal/`                                                                                                                       | The Image details popup (`FmDetails`, steps 2e and 4c)           | Opened only from M3. It holds the web file name box: that box needs its new place first (owner question, 16 Nov)                          |
+| M5  | The old picker path inside the image field                  | Gone from `shared/ui/image-upload/image-upload.html` (step 4d); what remains is the shared `IAttachment` shape the field still emits                                            | `FmPicker` with the place's image profile                        | Nothing further in the field itself                                                                                                       |
+| M6  | `ngx-dropzone`                                              | `apps/admin/package.json`; used in M2's upload tab and in `shared/ui/modal/import-csv-modal/`                                                                                   | The Media page's own upload (drop, paste, folders)               | The CSV import still uses it: drop the package only if that import moves to another drop zone                                             |
+| M7  | The purpose list (`MediaPurpose`)                           | `packages/contracts/src/media.ts` (`MediaPurpose`, `minShortEdge`, `targetAspect`, `MediaAsset.purpose`), `packages/core-domain/src/media/policy.ts`, the worker's purpose plan | Image profiles and versions (step 2)                             | Stored photos carry `purpose`: its removal needs a database migration, and the shop's review photos still upload with `purpose: 'review'` |
+
+## Waiting on an owner answer (2026-11-16)
+
+These join the list only if the owner chooses "keep for now":
+
+- Admin › Pages: the Add Page button, the Delete action, the row tick boxes and the Status switch (Legal Pages
+  brief, choice A).
+- The eight legal page files in `apps/storefront/public/assets/data/pages/` (Legal Pages brief, choice 4).

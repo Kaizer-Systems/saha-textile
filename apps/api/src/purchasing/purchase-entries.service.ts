@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, Optional } from '@nestjs/common';
 import type {
 	PurchaseEntry,
 	PurchaseEntryListQuery,
@@ -8,6 +8,7 @@ import type {
 	PurchaseEntryWrite,
 	PurchaseGoodsCheck,
 	PurchasePost,
+	PurchaseStep,
 	PurchaseReturn,
 	PurchaseVoid,
 	PurchaseWarning,
@@ -156,6 +157,7 @@ export class PurchaseEntriesService {
 
 	async create(write: PurchaseEntryWrite, principal: AuthenticatedPrincipal | undefined): Promise<PurchaseEntry> {
 		const actor = actorOf(principal);
+		await this.refuseStepRole(actor, 'draft');
 		// An empty draft is fine: the header is often typed before the parcel is opened.
 		const { entry } = await this.builder.build(write, null, actor);
 		await this.refuseDuplicate(entry);
@@ -184,6 +186,7 @@ export class PurchaseEntriesService {
 			);
 		}
 		await this.stale(existing, write.version);
+		await this.refuseStepRole(actor, 'draft');
 		const { entry } = await this.builder.build(write, existing, actor);
 		// A changed item or quantity undoes the goods check: the parcel must be counted again.
 		const checkStands = entry.lines.every((line) => line.accepted !== null) && entry.lines.length > 0;
@@ -206,6 +209,15 @@ export class PurchaseEntriesService {
 				: `${await this.support.nameOf(actor)} changed the bill details.`,
 		});
 		return entryView(saved, canSeeCost(principal));
+	}
+
+	private async refuseStepRole(actor: string | null, step: PurchaseStep): Promise<void> {
+		const problem = await this.support.stepRoleProblem(actor, step);
+		if (problem)
+			throw new ForbiddenException({
+				message: problem.code,
+				issues: [{ path: [problem.code], message: problem.detail, code: problem.code }],
+			});
 	}
 
 	async remove(id: string, actor: string | null): Promise<void> {
@@ -243,6 +255,7 @@ export class PurchaseEntriesService {
 			);
 		}
 		const settings = await this.support.settings();
+		await this.refuseStepRole(actor, 'check');
 		const person = samePersonProblem({
 			required: settings.stepRules.checkByDifferentPerson,
 			actorId: actor,
@@ -444,6 +457,7 @@ export class PurchaseEntriesService {
 		await this.stale(entry, body.version);
 		const built = await this.builder.build(PurchaseEntryBuilder.writeOf(entry), entry, actor);
 		const settings = built.settings;
+		await this.refuseStepRole(actor, 'post');
 		const person = samePersonProblem({
 			required: settings.stepRules.postByDifferentPerson,
 			actorId: actor,
@@ -851,6 +865,7 @@ export class PurchaseEntriesService {
 		const settings = await this.support.settings();
 		const closed = booksClosedProblem([write.paidOn], settings.booksClosedUpTo);
 		if (closed) throw refuse(closed.code, closed.detail, 'paidOn');
+		await this.refuseStepRole(actor, 'payment');
 		const person = samePersonProblem({
 			required: settings.stepRules.paymentByDifferentPerson,
 			actorId: actor,

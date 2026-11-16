@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AuditLog, InventorySettings, MediaAsset } from '@saha-textile/contracts';
+import type { AuditLog, InventorySettings, MediaAsset, PermissionCode, PurchaseStep } from '@saha-textile/contracts';
 import {
 	type AdminUserRepository,
+	type AdminUserRoleAssignmentRepository,
 	type AuditLogRepository,
 	type InventorySettingsRepository,
 	type MediaAssetRepository,
+	type RoleRepository,
 	StaleVersionError,
 	type StoragePort,
 	type TransactionContext,
@@ -18,12 +20,29 @@ import {
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
 	ADMIN_USER_REPOSITORY,
+	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	INVENTORY_SETTINGS_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
+	ROLE_REPOSITORY,
 	STORAGE_PORT,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
+
+/** The permission each purchase-entry step needs; a step role must hold it too. */
+export const STEP_PERMISSION: Readonly<Record<PurchaseStep, PermissionCode>> = {
+	draft: 'purchase.create',
+	check: 'purchase.check',
+	post: 'purchase.post',
+	payment: 'purchase.payment',
+};
+
+const STEP_WORDS: Readonly<Record<PurchaseStep, string>> = {
+	draft: 'make or change a draft',
+	check: 'check goods',
+	post: 'post to stock',
+	payment: 'record a payment',
+};
 
 /**
  * A refusal the admin can show next to the thing it is about. `code` is translated on the
@@ -95,7 +114,48 @@ export class PurchasingSupport {
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly media: MediaAssetRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
+		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
+		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY)
+		private readonly assignments: AdminUserRoleAssignmentRepository,
 	) {}
+
+	/**
+	 * P1: when the super admin narrows a step to one role, only holders of that role (and the
+	 * super admin) may do it. A role deleted after it was chosen closes the step until the super
+	 * admin picks another: failing open would hand the step back to everyone silently.
+	 */
+	async stepRoleProblem(actor: string | null, step: PurchaseStep): Promise<{ code: string; detail: string } | null> {
+		const settings = await this.settings();
+		const roleId = settings.stepRules[`${step}RoleId`];
+		if (!roleId) return null;
+		if (actor) {
+			const user = await this.admins.findById(actor).catch(() => null);
+			if (user?.role === 'admin') return null;
+			const held = await this.assignments.listActiveForUser(actor);
+			if (held.some((assignment) => assignment.roleId === roleId)) return null;
+		}
+		const role = await this.roles.findById(roleId);
+		return {
+			code: 'step_role',
+			detail: role
+				? `Only people with the role ${role.label} may ${STEP_WORDS[step]} (Settings › Purchases and stock).`
+				: `The role chosen to ${STEP_WORDS[step]} no longer exists. The super admin must choose again in Settings › Purchases and stock.`,
+		};
+	}
+
+	/** Role names for the step rules, for the settings page. */
+	async roleLabels(ids: ReadonlyArray<string | null>): Promise<Record<string, string>> {
+		const out: Record<string, string> = {};
+		for (const id of new Set(ids.filter((value): value is string => Boolean(value)))) {
+			const role = await this.roles.findById(id);
+			if (role) out[id] = role.label;
+		}
+		return out;
+	}
+
+	findRole(id: string) {
+		return this.roles.findById(id);
+	}
 
 	/** Today in India, `YYYY-MM-DD`: bill dates, due dates and the financial year all use it. */
 	today(): string {

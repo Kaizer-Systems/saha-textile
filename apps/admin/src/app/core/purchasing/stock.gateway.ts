@@ -14,7 +14,7 @@ import type {
 	AdjustmentRequestListQuery,
 	AdjustmentResult,
 	AgeingRow,
-	InventorySettings,
+	InventorySettingsView,
 	InventorySettingsWrite,
 	OpeningStockCheckResult,
 	OpeningStockRow,
@@ -270,11 +270,11 @@ export class StockGateway {
 	}
 
 	/* settings (x02) */
-	settings(): Observable<InventorySettings> {
-		return this.http.get<InventorySettings>(this.api('settings/inventory'));
+	settings(): Observable<InventorySettingsView> {
+		return this.http.get<InventorySettingsView>(this.api('settings/inventory'));
 	}
-	saveSettings(body: InventorySettingsWrite): Observable<InventorySettings> {
-		return this.http.post<InventorySettings>(this.api('settings/inventory'), body, QUIET);
+	saveSettings(body: InventorySettingsWrite): Observable<InventorySettingsView> {
+		return this.http.post<InventorySettingsView>(this.api('settings/inventory'), body, QUIET);
 	}
 }
 

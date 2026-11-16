@@ -52,6 +52,10 @@ export default [
 		loadComponent: () => import('./communications/communications').then((m) => m.CommunicationsSettings),
 	},
 	{
+		path: 'purchases',
+		loadComponent: () => import('./purchases/purchase-settings').then((m) => m.PurchaseSettings),
+	},
+	{
 		path: 'notifications',
 		loadComponent: () =>
 			import('./notification-settings/notification-settings').then((m) => m.NotificationSettings),

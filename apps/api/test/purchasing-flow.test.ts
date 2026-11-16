@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import {
 	AdminUser,
 	PERMISSION_CODES,
@@ -14,6 +14,7 @@ import {
 	CategoryModel,
 	MongoAdjustmentRequestRepository,
 	MongoAdminUserRepository,
+	MongoAdminUserRoleAssignmentRepository,
 	MongoAuditLogRepository,
 	MongoInventoryCostLayerRepository,
 	MongoInventoryRepository,
@@ -26,6 +27,7 @@ import {
 	MongoPurchaseEntryRepository,
 	MongoPurchaseOrderRepository,
 	MongoPurchaseReturnRepository,
+	MongoRoleRepository,
 	MongoStockCountRepository,
 	MongoStockHoldRepository,
 	MongoStockMovement,
@@ -110,7 +112,11 @@ const refusalCode = async (work: Promise<unknown>): Promise<string> => {
 	try {
 		await work;
 	} catch (error) {
-		if (error instanceof BadRequestException || error instanceof ConflictException) {
+		if (
+			error instanceof BadRequestException ||
+			error instanceof ConflictException ||
+			error instanceof ForbiddenException
+		) {
 			const body = error.getResponse() as { issues?: Array<{ code?: string }> };
 			return body.issues?.[0]?.code ?? 'refused';
 		}
@@ -140,6 +146,8 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		variants: new MongoProductVariantRepository(),
 	};
 	const storage = { getUrl: (key: string) => `https://cdn.example.test/${key}` } as never;
+	const roleRepository = new MongoRoleRepository();
+	const assignmentRepository = new MongoAdminUserRoleAssignmentRepository();
 	const support = new PurchasingSupport(
 		repos.settings,
 		new MongoAdminUserRepository(),
@@ -147,6 +155,8 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		new MongoMediaAssetRepository(),
 		storage,
 		new MongoTransactionManager(),
+		roleRepository,
+		assignmentRepository,
 	);
 	const outbox = { request: async () => undefined } as never;
 	const categories = {
@@ -1151,7 +1161,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 			expect(late.counts.invalid).toBe(1);
 			const current = await settingsService.get();
 			const yesterday = new Date(Date.parse(`${today}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
-			await settingsService.update({ ...current, booksClosedUpTo: yesterday }, OWNER);
+			await settingsService.update({ ...current, booksClosedUpTo: yesterday }, OWNER, { superAdmin: true });
 			try {
 				const load = await opening.post(
 					[
@@ -1168,7 +1178,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 					OWNER,
 				);
 				expect(load.rows[0]?.receivedOn).toBe('2026-03-14');
-				await settingsService.update({ ...current, booksClosedUpTo: today }, OWNER);
+				await settingsService.update({ ...current, booksClosedUpTo: today }, OWNER, { superAdmin: true });
 				await ProductVariantModel.collection.insertOne(
 					variantDoc('var_it_closed', ids.tant, 'ST-TNT-1108-CLO', 1_890) as never,
 				);
@@ -1191,7 +1201,94 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 					),
 				).toBe('books_closed');
 			} finally {
-				await settingsService.update({ ...current, booksClosedUpTo: null }, OWNER);
+				await settingsService.update({ ...current, booksClosedUpTo: null }, OWNER, { superAdmin: true });
+			}
+		});
+	});
+
+	describe('settings and step rules (x02, P1, P9)', () => {
+		it('lets only the super admin change the steps or the books-closed date, and narrows a step to one role', async () => {
+			const current = await settingsService.get();
+			expect(
+				await refusalCode(
+					settingsService.update({ ...current, booksClosedUpTo: today }, STAFF, { superAdmin: false }),
+				),
+			).toBe('super_admin_only');
+			expect(
+				await refusalCode(
+					settingsService.update(
+						{ ...current, stepRules: { ...current.stepRules, postByDifferentPerson: true } },
+						STAFF,
+					),
+				),
+			).toBe('super_admin_only');
+			// The other figures stay open to anyone with setting.edit.
+			const saved = await settingsService.update({ ...current, marginFloorPct: 25 }, STAFF);
+			expect(saved.marginFloorPct).toBe(25);
+
+			const now = new Date().toISOString();
+			await roleRepository.create({
+				id: 'rol_it_counter',
+				key: 'it-counter',
+				label: 'Counter only',
+				description: null,
+				baseRole: 'staff',
+				permissions: ['purchase.index', 'purchase.check'],
+				isSystem: false,
+				createdAt: now,
+				updatedAt: now,
+			});
+			await roleRepository.create({
+				id: 'rol_it_poster',
+				key: 'it-poster',
+				label: 'Poster',
+				description: null,
+				baseRole: 'staff',
+				permissions: ['purchase.index', 'purchase.create', 'purchase.post'],
+				isSystem: false,
+				createdAt: now,
+				updatedAt: now,
+			});
+			expect(
+				await refusalCode(
+					settingsService.update(
+						{ ...saved, stepRules: { ...saved.stepRules, postRoleId: 'rol_it_counter' } },
+						OWNER,
+						{ superAdmin: true },
+					),
+				),
+			).toBe('role_lacks_permission');
+			await settingsService.update(
+				{ ...saved, stepRules: { ...saved.stepRules, draftRoleId: 'rol_it_poster' } },
+				OWNER,
+				{ superAdmin: true },
+			);
+			const view = await settingsService.view(true);
+			expect(view.stepRoleLabels).toEqual({ rol_it_poster: 'Poster' });
+			try {
+				const staffMaker = principal(STAFF, ['purchase.index', 'purchase.create']);
+				expect(await refusalCode(entries.create(entryWrite({ billNumber: 'ROLE-1' }), staffMaker))).toBe(
+					'step_role',
+				);
+				await assignmentRepository.assign({
+					id: 'ura_it_poster',
+					userId: STAFF,
+					roleId: 'rol_it_poster',
+					assignedByUserId: OWNER,
+					assignedAt: now,
+					revokedAt: null,
+					revokedByUserId: null,
+					revokeReason: null,
+				});
+				const made = await entries.create(entryWrite({ billNumber: 'ROLE-2' }), staffMaker);
+				expect(made.status).toBe('draft');
+				await entries.remove(made.id, STAFF);
+			} finally {
+				await settingsService.update(
+					{ ...current, stepRules: { ...current.stepRules, draftRoleId: null } },
+					OWNER,
+					{ superAdmin: true },
+				);
 			}
 		});
 	});
@@ -1199,9 +1296,9 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 	describe('books closed (P9)', () => {
 		it('refuses bills dated on or before the books-closed day', async () => {
 			const current = await settingsService.get();
-			await settingsService.update({ ...current, booksClosedUpTo: today }, OWNER);
+			await settingsService.update({ ...current, booksClosedUpTo: today }, OWNER, { superAdmin: true });
 			expect(await refusalCode(entries.create(entryWrite({ billNumber: 'LATE-1' }), owner))).toBe('books_closed');
-			await settingsService.update({ ...current, booksClosedUpTo: null }, OWNER);
+			await settingsService.update({ ...current, booksClosedUpTo: null }, OWNER, { superAdmin: true });
 		});
 	});
 

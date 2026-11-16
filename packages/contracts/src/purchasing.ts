@@ -232,7 +232,14 @@ export const PurchaseItemsByVariantQuery = z.object({
 		.string()
 		.trim()
 		.min(1)
-		.transform((value) => [...new Set(value.split(',').map((id) => id.trim()).filter(Boolean))])
+		.transform((value) => [
+			...new Set(
+				value
+					.split(',')
+					.map((id) => id.trim())
+					.filter(Boolean),
+			),
+		])
 		.pipe(z.array(Id).min(1).max(200)),
 	supplierId: Id.optional(),
 });
@@ -910,13 +917,22 @@ export type LabelSheetRequest = z.infer<typeof LabelSheetRequest>;
 
 /* ------------------------------------------------------------------ settings */
 
-/** P1: which purchase-entry steps need a second person. All off by default; super admin only. */
+/**
+ * P1: who may do each purchase-entry step, and which steps need a second person. A role id
+ * narrows a step from "anyone with the step's permission" to holders of that one role. All open
+ * and off by default (one person may do every step); only the super admin changes them.
+ */
 export const PurchaseStepRules = z.object({
+	draftRoleId: Id.nullable().default(null),
+	checkRoleId: Id.nullable().default(null),
+	postRoleId: Id.nullable().default(null),
+	paymentRoleId: Id.nullable().default(null),
 	checkByDifferentPerson: z.boolean().default(false),
 	postByDifferentPerson: z.boolean().default(false),
 	paymentByDifferentPerson: z.boolean().default(false),
 });
 export type PurchaseStepRules = z.infer<typeof PurchaseStepRules>;
+export type PurchaseStep = 'draft' | 'check' | 'post' | 'payment';
 
 export const NumberFormats = z.object({
 	purchaseEntry: z.string().default('PE/{fy}/{seq6}'),
@@ -930,6 +946,10 @@ export type NumberFormats = z.infer<typeof NumberFormats>;
 
 export const InventorySettings = z.object({
 	stepRules: PurchaseStepRules.default({
+		draftRoleId: null,
+		checkRoleId: null,
+		postRoleId: null,
+		paymentRoleId: null,
 		checkByDifferentPerson: false,
 		postByDifferentPerson: false,
 		paymentByDifferentPerson: false,
@@ -967,3 +987,10 @@ export type InventorySettings = z.infer<typeof InventorySettings>;
 
 export const InventorySettingsWrite = InventorySettings.omit({ updatedAt: true, updatedBy: true, numberFormats: true });
 export type InventorySettingsWrite = z.infer<typeof InventorySettingsWrite>;
+
+/** x02 as the admin reads it: the settings, the step roles' names, and whether this reader may change the steps. */
+export const InventorySettingsView = InventorySettings.extend({
+	stepRoleLabels: z.record(z.string(), z.string()).default({}),
+	canChangeSteps: z.boolean().default(false),
+});
+export type InventorySettingsView = z.infer<typeof InventorySettingsView>;

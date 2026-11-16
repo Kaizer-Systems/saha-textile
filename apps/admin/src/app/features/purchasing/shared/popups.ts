@@ -1,3 +1,4 @@
+import { ConfirmPopup, type ConfirmAsk } from './confirm-popup';
 import { ReasonPopup, type ReasonAsk } from './reason-popup';
 
 import type { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -11,4 +12,18 @@ export async function askReason(modals: NgbModal, ask: ReasonAsk): Promise<unkno
 	});
 	(popup.componentInstance as ReasonPopup).start(ask);
 	return popup.result.catch(() => null);
+}
+
+/** Opens a yes-or-no question; resolves true on yes, false when cancelled or closed. */
+export async function askConfirm(modals: NgbModal, ask: ConfirmAsk): Promise<boolean> {
+	const popup = modals.open(ConfirmPopup, {
+		centered: true,
+		windowClass: 'theme-modal text-center',
+		ariaLabelledBy: 'confirm_popup_title',
+	});
+	(popup.componentInstance as ConfirmPopup).start(ask);
+	return popup.result.then(
+		(answer) => answer === true,
+		() => false,
+	);
 }

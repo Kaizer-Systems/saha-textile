@@ -374,18 +374,19 @@ export class InventorySettingsController {
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('setting.index')
 	@ApiOperation({ operationId: 'getInventorySettings', summary: 'Purchases and stock settings' })
-	get() {
-		return this.settings.get();
+	get(@Principal() principal: AuthenticatedPrincipal | undefined) {
+		return this.settings.view(principal?.role === 'admin');
 	}
 
 	@Post()
 	@HttpCode(200)
 	@RequirePermissions('setting.edit')
 	@ApiOperation({ operationId: 'saveInventorySettings', summary: 'Save; every change is audited' })
-	save(
+	async save(
 		@Body(new ZodValidationPipe(InventorySettingsWrite)) body: InventorySettingsWrite,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
-		return this.settings.update(body, actorOf(principal));
+		await this.settings.update(body, actorOf(principal), { superAdmin: principal?.role === 'admin' });
+		return this.settings.view(principal?.role === 'admin');
 	}
 }

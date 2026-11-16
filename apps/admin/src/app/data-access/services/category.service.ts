@@ -8,7 +8,7 @@ import { Params } from '@data-access/interfaces/core.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
-import type { AdminCategoryRow, AdminCategoryWrite, BlogCategory } from '@saha-textile/contracts';
+import type { AdminCategoryRow, AdminCategoryWrite, BlogCategory, CategoryHsnImpact } from '@saha-textile/contracts';
 
 /** A row as the tree and dropdowns draw it, with every language kept for the form. */
 function toCategory(row: AdminCategoryRow): ICategory {
@@ -73,6 +73,11 @@ export class CategoryService {
 
 	saveCategory(id: string | null, body: AdminCategoryWrite): Observable<{ id: string }> {
 		return this.http.post<{ id: string }>(id ? `${this.base()}/${encodeURIComponent(id)}` : this.base(), body);
+	}
+
+	/** F03: products that follow this category's HSN, and those with their own code. */
+	hsnImpact(id: string): Observable<CategoryHsnImpact> {
+		return this.http.get<CategoryHsnImpact>(`${this.base()}/${encodeURIComponent(id)}/hsn-impact`);
 	}
 
 	deleteCategory(id: string): Observable<void> {

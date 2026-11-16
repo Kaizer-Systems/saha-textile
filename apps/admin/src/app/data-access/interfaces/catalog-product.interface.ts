@@ -1,6 +1,6 @@
 /** The API's admin catalogue shapes (`AdminProductList`, `AdminProductDetail`, `ProductMerchandisingWrite`). */
 
-import type { ProductContentWrite, ProductVideo } from '@saha-textile/contracts';
+import type { ProductContentWrite, ProductVideo, QuickLength } from '@saha-textile/contracts';
 
 export type CatalogBadgeCode = 'sale' | 'featured' | 'bestseller' | 'trending' | 'new' | 'low_stock' | 'back_in_stock';
 
@@ -50,10 +50,32 @@ export interface CatalogVariantView extends CatalogShipping {
 	isBase: boolean;
 	mrpINR: number | null;
 	sellingINR: number;
+	/** On hand, in stock units (pieces, or tenths of a metre). */
 	quantity: number;
+	/** On hand but not for sale (P3). */
+	held: number;
+	/** Paid, not yet shipped (0 until DEC-STOCK-RESERVE). */
+	inOrders: number;
+	freeToSell: number;
 	available: boolean;
 	barcode: string | null;
 	hsnCode: string | null;
+}
+
+/** The main category's defaults for HSN and returnability (F02). */
+export interface CatalogMainCategory {
+	id: string;
+	name: string;
+	hsnCode: string | null;
+	returnable: boolean;
+}
+
+/** A product sold by the metre (shop brief A01); lengths in tenths of a metre. */
+export interface CatalogMetreFields {
+	shortestCutTenths: number | null;
+	quickLengths: QuickLength[];
+	widthInches: number | null;
+	weightPerMetreGrams: number | null;
 }
 
 export interface CatalogProductDetail {
@@ -74,6 +96,13 @@ export interface CatalogProductDetail {
 	replacementPath: string | null;
 	shipping: CatalogShipping;
 	hsnCode: string | null;
+	soldBy: 'piece' | 'metre';
+	/** True once it has stock, stock history or orders: Sold by is then fixed. */
+	soldByLocked: boolean;
+	/** Null follows the main category. */
+	returnable: boolean | null;
+	mainCategory: CatalogMainCategory | null;
+	metre: CatalogMetreFields;
 	content: ProductContentWrite;
 	images: Array<{ assetId: string; url: string; width: number; height: number }>;
 	relatedProductIds: string[];
@@ -107,6 +136,14 @@ export interface CatalogProductWrite {
 	addonPriceINR: number | null;
 	shipping: CatalogShipping;
 	hsnCode: string | null;
+	soldBy?: 'piece' | 'metre';
+	returnable?: boolean | null;
+	metre?: {
+		shortestCutTenths: number;
+		quickLengths: QuickLength[];
+		widthInches: number | null;
+		weightPerMetreGrams: number;
+	};
 	variants: CatalogVariantWrite[];
 	slug?: string;
 	content?: ProductContentWrite;

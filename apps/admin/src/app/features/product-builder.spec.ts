@@ -800,7 +800,17 @@ describe('FormCategory', () => {
 		save = () => of({ id: 'cat_1' }) as never,
 		saveBlog = () => of({ id: 'bcat_1' }) as never,
 	) => {
-		const service = { getCategoryRows: () => of([row]), saveCategory: vi.fn(save) };
+		const service = {
+			getCategoryRows: () => of([row]),
+			saveCategory: vi.fn(save),
+			hsnImpact: vi.fn(() =>
+				of({
+					categoryHsn: '5007',
+					using: 214,
+					own: [{ id: 'p9', sku: 'ST-9', title: 'Own', hsnCode: '5407' }],
+				}),
+			),
+		};
 		const blogs = { getTerms: () => of([blogRow]), saveTerm: vi.fn(saveBlog) };
 		const router = { navigateByUrl: vi.fn() };
 		const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
@@ -820,6 +830,58 @@ describe('FormCategory', () => {
 		);
 		return { page, service, blogs, router, toasts, client };
 	};
+
+	it('asks about the products that follow a changed HSN, and saves the answer with the category (F03)', async () => {
+		const { page, service } = render('cat_1');
+		const modals = TestBed.inject(NgbModal);
+		const asked: unknown[] = [];
+		let answer: unknown = true;
+		const open = vi.spyOn(modals, 'open').mockImplementation(
+			() =>
+				({
+					componentInstance: { start: (ask: unknown) => asked.push(ask) },
+					result: Promise.resolve(answer),
+				}) as never,
+		);
+		// Unchanged HSN: no question, saved at once with its returnability.
+		page.form.patchValue({ hsn_code: '', returnable: 'no' });
+		page.submit();
+		expect(service.saveCategory).toHaveBeenLastCalledWith(
+			'cat_1',
+			expect.objectContaining({ hsnCode: null, returnable: false, updateProductsHsn: false }),
+		);
+		expect(asked).toEqual([]);
+		page.form.patchValue({ hsn_code: '5208' });
+		page.submit();
+		await vi.waitFor(() => expect(service.saveCategory).toHaveBeenCalledTimes(2));
+		expect(asked[0]).toMatchObject({
+			params: { count: 214, to: '5208', own: 1 },
+			items: ['ST-9 · Own · 5407'],
+			yes: 'category_hsn_update',
+			no: 'category_hsn_only',
+		});
+		expect(service.saveCategory).toHaveBeenLastCalledWith(
+			'cat_1',
+			expect.objectContaining({ hsnCode: '5208', updateProductsHsn: true }),
+		);
+		// Cancelled: nothing is saved.
+		answer = undefined;
+		open.mockImplementation(
+			() =>
+				({
+					componentInstance: { start: () => undefined },
+					result: Promise.reject(new Error('closed')),
+				}) as never,
+		);
+		page.submit();
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(service.saveCategory).toHaveBeenCalledTimes(2);
+		// A bad code never reaches the API.
+		page.form.patchValue({ hsn_code: '54' });
+		page.submit();
+		expect(service.saveCategory).toHaveBeenCalledTimes(2);
+		open.mockRestore();
+	});
 
 	it('switches to the language of a to-do line', () => {
 		const { page } = render();

@@ -5,7 +5,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { NgbDate, NgbDateParserFormatter } from '@ng-bootstrap/ng-bootstrap';
+import { NgbDate, NgbDateParserFormatter, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -568,6 +568,8 @@ describe('FormProduct.submit', () => {
 			addonPriceINR: null,
 			shipping: { weightGrams: null, lengthCm: 1, widthCm: 2, heightCm: 3 },
 			hsnCode: null,
+			soldBy: 'piece',
+			returnable: null,
 			variants: [
 				{
 					id: 'v1',
@@ -670,5 +672,115 @@ describe('FormProduct.submit', () => {
 		page.form.setErrors({ other: true });
 		page.submit();
 		expect(page.tabError).toBeUndefined();
+	});
+});
+
+describe('FormProduct inventory and HSN (F01, F02, A01)', () => {
+	const tree = () => ({
+		data: [
+			{
+				id: 'sarees',
+				name: 'Sarees',
+				subcategories: [
+					{ id: 'banarasi', name: 'Banarasi', row: { hsnCode: '5007', returnable: true } },
+					{ id: 'tant', name: 'Tant', row: { hsnCode: '5208', returnable: false } },
+				],
+			},
+		],
+	});
+
+	it('refills the HSN from a new main category and asks before replacing a different code', async () => {
+		const { page } = editing({ content: content({ categoryIds: ['banarasi'] }) });
+		const modals = TestBed.inject(NgbModal);
+		categories.set(tree());
+		const started: unknown[] = [];
+		const open = vi.spyOn(modals, 'open').mockReturnValue({
+			componentInstance: { start: (change: unknown) => started.push(change) },
+			result: Promise.resolve('5407'),
+		} as never);
+		page.selectCategoryItem(['tant', 'banarasi']);
+		expect(page.form.get('hsn_code')?.value).toBe('5208');
+		expect(started[0]).toMatchObject({
+			category: 'Tant',
+			oldCategory: 'Banarasi',
+			oldHsn: '5007',
+			newHsn: '5208',
+			returnableBefore: true,
+			returnableNow: false,
+		});
+		await Promise.resolve();
+		await Promise.resolve();
+		// Enter manually: the typed code goes into the field; "Can be returned" follows Tant now.
+		expect(page.form.get('hsn_code')?.value).toBe('5407');
+		expect(page.hsnChangedFrom()).toBe('5007');
+		expect(page.returnableNow()).toBe(false);
+		open.mockRestore();
+	});
+
+	it('fills the HSN quietly on the first category of a new product', () => {
+		const { page } = render();
+		categories.set(tree());
+		page.selectCategoryItem(['banarasi']);
+		expect(page.form.get('hsn_code')?.value).toBe('5007');
+		expect(page.hsnChangedFrom()).toBeNull();
+	});
+
+	it('refuses an HSN that is not 4, 6 or 8 digits before saving', () => {
+		const { page, service } = editing();
+		page.form.patchValue({ hsn_code: '54' });
+		page.submit();
+		expect(service.saveCatalogProduct).not.toHaveBeenCalled();
+		page.form.patchValue({ hsn_code: '520811' });
+		page.submit();
+		expect(service.saveCatalogProduct).toHaveBeenCalled();
+	});
+
+	it('keeps Sold by fixed once locked, and shows stock as on hand, held and free', () => {
+		const { page } = editing({
+			soldBy: 'piece',
+			soldByLocked: true,
+			variants: [variant({ quantity: 7, held: 1, inOrders: 0, freeToSell: 6 })],
+		});
+		page.setSoldBy('metre');
+		expect(page.soldBy()).toBe('piece');
+		expect(page.totals()).toEqual({ onHand: 7, held: 1, inOrders: 0, free: 6 });
+		expect(page.stockStatus()).toBe('stock_status_in');
+	});
+
+	it('saves a metre product in tenths and refuses one without its cut and weight', () => {
+		const { page, service } = editing({ soldBy: 'piece', soldByLocked: false, lowStockThreshold: null });
+		page.setSoldBy('metre');
+		expect(page.metreCut()).toBe('1.0');
+		page.submit();
+		expect(page.metreError()).toBe('metre_weight_invalid');
+		expect(service.saveCatalogProduct).not.toHaveBeenCalled();
+		page.metreWeight.set('85');
+		page.metreWidth.set('44');
+		page.addQuickLength();
+		page.setQuickLength(0, 'length', '2.5');
+		page.setQuickLength(0, 'label', 'suit');
+		page.form.patchValue({ low_stock_threshold: '5.0' });
+		page.submit();
+		expect(service.saveCatalogProduct).toHaveBeenCalledWith(
+			'p1',
+			expect.objectContaining({
+				soldBy: 'metre',
+				lowStockThreshold: 50,
+				metre: {
+					shortestCutTenths: 10,
+					quickLengths: [{ tenths: 25, label: { en: 'suit' } }],
+					widthInches: 44,
+					weightPerMetreGrams: 85,
+				},
+			}),
+		);
+	});
+
+	it('sends the product’s own returnability, or null to follow the category', () => {
+		const { page, service } = editing({ returnable: false });
+		expect(page.returnableChoice()).toBe('no');
+		page.returnableChoice.set('');
+		page.submit();
+		expect(service.saveCatalogProduct).toHaveBeenCalledWith('p1', expect.objectContaining({ returnable: null }));
 	});
 });

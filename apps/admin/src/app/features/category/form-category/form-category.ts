@@ -3,19 +3,21 @@ import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2 } from 'ng-select2-component';
-import { Subject, of } from 'rxjs';
+import { Subject, firstValueFrom, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
-import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { ActiveLanguages } from '@core/i18n/active-languages';
+import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { askYesNo } from '@features/purchasing/shared/popups';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
@@ -64,6 +66,7 @@ export class FormCategory {
 	private queryClient = inject(QueryClient);
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
+	private modals = inject(NgbModal);
 
 	readonly type = input<string>(undefined);
 	readonly categories = input<ICategory[]>(undefined);
@@ -92,6 +95,8 @@ export class FormCategory {
 			slug: new FormControl('', [Validators.required, Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]),
 			parent_id: new FormControl(),
 			also_under: new FormControl<string[]>([]),
+			hsn_code: new FormControl<string>('', [Validators.pattern(/^(\d{4}|\d{6}|\d{8})$/)]),
+			returnable: new FormControl<'yes' | 'no'>('yes'),
 			type: new FormControl(this.categoryType(), []),
 			category_image_id: new FormControl(),
 			category_icon_id: new FormControl(),
@@ -144,10 +149,13 @@ export class FormCategory {
 			.subscribe((row) => {
 				if (!row) return;
 				this.id = row.id;
+				this.savedHsn = row.hsnCode ?? null;
 				this.form.patchValue({
 					slug: row.slug,
 					parent_id: row.parentId,
 					also_under: row.alsoUnder,
+					hsn_code: row.hsnCode ?? '',
+					returnable: row.returnable === false ? 'no' : 'yes',
 					category_image_id: row.image?.id ?? '',
 					category_icon_id: row.icon?.id ?? '',
 				});
@@ -230,6 +238,34 @@ export class FormCategory {
 		}
 	}
 
+	/** The HSN the category had when opened, to tell a change apart (F03). */
+	private savedHsn: string | null = null;
+
+	/**
+	 * F03: a changed HSN asks whether the products that follow the category (its old code, or
+	 * none) take the new one; products with their own code are named and left alone.
+	 */
+	private async askProductsHsn(next: string | null): Promise<boolean | null> {
+		if (!this.id || next === this.savedHsn) return false;
+		const impact = await firstValueFrom(this.categoryService.hsnImpact(this.id)).catch(() => null);
+		// Nothing follows the category's code: there is nobody to ask about.
+		if (!impact || impact.using === 0) return false;
+		const shown = impact.own.slice(0, 6);
+		return askYesNo(this.modals, {
+			icon: 'ri-error-warning-line',
+			title: 'category_hsn_title',
+			body: impact.own.length ? 'category_hsn_body_own' : 'category_hsn_body',
+			params: { count: impact.using, from: this.savedHsn ?? '—', to: next ?? '—', own: impact.own.length },
+			items: shown.map((row) => `${row.sku} · ${row.title} · ${row.hsnCode}`),
+			more:
+				impact.own.length > shown.length
+					? this.transloco.translate('and_n_more', { count: impact.own.length - shown.length })
+					: undefined,
+			yes: 'category_hsn_update',
+			no: 'category_hsn_only',
+		});
+	}
+
 	submit() {
 		this.form.markAllAsTouched();
 		const name = this.fields.text('name');
@@ -246,7 +282,11 @@ export class FormCategory {
 		const raw = this.form.getRawValue() as Record<string, unknown>;
 		const parent = raw['parent_id'];
 		const also = raw['also_under'];
+		const hsn = String(raw['hsn_code'] ?? '').trim() || null;
 		const body: AdminCategoryWrite = {
+			hsnCode: hsn,
+			returnable: raw['returnable'] !== 'no',
+			updateProductsHsn: false,
 			name,
 			description: this.fields.text('description'),
 			seoTitle: this.fields.text('seo_title'),
@@ -258,6 +298,17 @@ export class FormCategory {
 			iconId: picked(raw['category_icon_id']),
 			imageVersions: this.imageVersions,
 		};
+		// F03: a changed HSN on a saved category first asks about the products that follow it.
+		if (this.id && hsn !== this.savedHsn) {
+			void this.askProductsHsn(hsn).then((update) => {
+				if (update !== null) this.send({ ...body, updateProductsHsn: update });
+			});
+			return;
+		}
+		this.send(body);
+	}
+
+	private send(body: AdminCategoryWrite) {
 		this.categoryService.saveCategory(this.id ?? null, body).subscribe({
 			next: () => {
 				void this.queryClient.invalidateQueries({ queryKey: ['categories'] });

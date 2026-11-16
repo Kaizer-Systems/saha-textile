@@ -27,3 +27,17 @@ export async function askConfirm(modals: NgbModal, ask: ConfirmAsk): Promise<boo
 		() => false,
 	);
 }
+
+/** Two answers and a way out: true for yes, false for the `no` answer, null when cancelled. */
+export async function askYesNo(modals: NgbModal, ask: ConfirmAsk & { no: string }): Promise<boolean | null> {
+	const popup = modals.open(ConfirmPopup, {
+		centered: true,
+		windowClass: 'theme-modal text-center',
+		ariaLabelledBy: 'confirm_popup_title',
+	});
+	(popup.componentInstance as ConfirmPopup).start(ask);
+	return popup.result.then(
+		(answer) => (answer === true ? true : answer === false ? false : null),
+		() => null,
+	);
+}

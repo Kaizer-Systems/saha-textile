@@ -155,7 +155,158 @@
 									<div class="invalid-feedback">{{ 'type_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
-								@if (showsLengths()) {
+								@if (form.controls['type'].value !== 'bundle') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'sold_by'"
+									[for]="'sold_by'"
+								>
+									<select
+										class="form-select"
+										id="sold_by"
+										[disabled]="soldByLocked()"
+										(change)="setSoldBy($any($event.target).value)"
+									>
+										<option
+											value="piece"
+											[selected]="soldBy() === 'piece'"
+										>
+											{{ 'sold_by_piece' | transloco }}
+										</option>
+										<option
+											value="metre"
+											[selected]="soldBy() === 'metre'"
+										>
+											{{ 'sold_by_metre' | transloco }}
+										</option>
+									</select>
+									<p class="help-text">
+										{{ (soldByLocked() ? 'sold_by_locked_help' : 'sold_by_help') | transloco }}
+									</p>
+								</app-form-fields>
+								} @if (soldBy() === 'metre' && form.controls['type'].value !== 'bundle') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'shortest_cut'"
+									[for]="'shortest_cut'"
+									[required]="true"
+								>
+									<div class="input-group">
+										<input
+											class="form-control"
+											id="shortest_cut"
+											inputmode="decimal"
+											[class.is-invalid]="metreError() === 'metre_cut_invalid'"
+											[value]="metreCut()"
+											(input)="metreCut.set($any($event.target).value)"
+										/>
+										<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+									</div>
+									<p class="help-text">{{ 'shortest_cut_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'quick_lengths'"
+									[for]="'quick_length_0'"
+								>
+									<div class="d-flex align-items-center flex-wrap gap-2">
+										@for (row of quickLengths(); track $index; let i = $index) {
+										<div
+											class="input-group"
+											style="width: 290px"
+										>
+											<input
+												class="form-control"
+												inputmode="decimal"
+												[id]="'quick_length_' + i"
+												[attr.aria-label]="'quick_length_metres' | transloco"
+												[value]="row.length"
+												(input)="setQuickLength(i, 'length', $any($event.target).value)"
+											/>
+											<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+											<input
+												class="form-control"
+												maxlength="24"
+												[attr.aria-label]="'quick_length_label' | transloco"
+												[placeholder]="row.label['en'] ?? ''"
+												[value]="row.label[fields.locale()] ?? ''"
+												(input)="setQuickLength(i, 'label', $any($event.target).value)"
+											/>
+											<button
+												type="button"
+												class="btn btn-outline"
+												[title]="'remove_quick_length' | transloco"
+												[attr.aria-label]="'remove_quick_length' | transloco"
+												(click)="removeQuickLength(i)"
+											>
+												<i class="ri-close-line"></i>
+											</button>
+										</div>
+										} @if (quickLengths().length < 4) {
+										<button
+											class="btn btn-outline btn-sm"
+											type="button"
+											id="add_quick_length"
+											(click)="addQuickLength()"
+										>
+											<i class="ri-add-line"></i>
+											{{ 'add' | transloco }}
+										</button>
+										}
+									</div>
+									<p class="help-text">{{ 'quick_lengths_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'cloth_width'"
+									[for]="'cloth_width'"
+								>
+									<div class="input-group">
+										<input
+											class="form-control"
+											id="cloth_width"
+											inputmode="decimal"
+											[class.is-invalid]="metreError() === 'metre_width_invalid'"
+											[value]="metreWidth()"
+											(input)="metreWidth.set($any($event.target).value)"
+										/>
+										<span class="input-group-text">{{ 'unit_in' | transloco }}</span>
+									</div>
+									<p class="help-text">{{ 'cloth_width_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'weight_per_metre'"
+									[for]="'weight_per_metre'"
+									[required]="true"
+								>
+									<div class="input-group">
+										<input
+											class="form-control"
+											id="weight_per_metre"
+											inputmode="numeric"
+											[class.is-invalid]="metreError() === 'metre_weight_invalid'"
+											[value]="metreWeight()"
+											(input)="metreWeight.set($any($event.target).value)"
+										/>
+										<span class="input-group-text">{{ 'unit_g' | transloco }}</span>
+									</div>
+									<p class="help-text">{{ 'weight_per_metre_help' | transloco }}</p>
+								</app-form-fields>
+								@if (metreError(); as problem) {
+								<div
+									class="alert alert-warning"
+									role="alert"
+									id="metre_error"
+								>
+									{{ problem | transloco }}
+								</div>
+								} } @if (showsLengths()) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -248,7 +399,87 @@
 									<div class="invalid-feedback">{{ 'sku_is_required' | transloco}}</div>
 									}
 								</app-form-fields>
-								@if (form.controls['type'].value === 'simple' && !catalogProduct) {
+								@if (form.controls['type'].value !== 'bundle') {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'stock'"
+									[for]="'stock_figures'"
+								>
+									@if (catalogProduct) {
+									<div
+										class="d-flex align-items-center flex-wrap gap-3"
+										id="stock_figures"
+									>
+										<span>
+											<strong>{{ qty(totals().onHand) }}</strong>
+											{{ 'fig_on_hand' | transloco }}
+										</span>
+										<span class="text-muted">·</span>
+										<span>{{ qty(totals().held) }} {{ 'fig_held' | transloco }}</span>
+										<span class="text-muted">·</span>
+										<span>
+											<strong>{{ qty(totals().free) }}</strong>
+											{{ 'fig_free_to_sell' | transloco }}
+										</span>
+										@if (catalogProduct.variants.length === 1) {
+										<span class="d-flex ms-auto gap-2">
+											<a
+												class="btn btn-outline btn-sm"
+												target="_blank"
+												*hasPermission="'stock.index'"
+												[routerLink]="['/stock/items', catalogProduct.variants[0]?.id]"
+											>
+												<i class="ri-history-line me-1"></i>
+												{{ 'stock_history' | transloco }}
+											</a>
+											<button
+												type="button"
+												class="btn btn-outline btn-sm"
+												*hasPermission="'stock.adjust'"
+												(click)="adjustStock(catalogProduct.variants[0]?.id ?? '')"
+											>
+												<i class="ri-equalizer-line me-1"></i>
+												{{ 'adjust' | transloco }}
+											</button>
+											<a
+												class="btn btn-theme btn-sm"
+												target="_blank"
+												*hasPermission="'purchase.create'"
+												[routerLink]="['/purchase-entries', 'create']"
+												[queryParams]="{ variant: catalogProduct.variants[0]?.id }"
+											>
+												<i class="ri-inbox-archive-line me-1"></i>
+												{{ 'receive_stock' | transloco }}
+											</a>
+										</span>
+										}
+									</div>
+									<p class="help-text">
+										{{ (catalogProduct.variants.length === 1 ? 'stock_moves_help' :
+										'stock_moves_help_variants') | transloco }}
+									</p>
+									} @else {
+									<p class="mb-0">{{ 'stock_after_save' | transloco }}</p>
+									}
+								</app-form-fields>
+								@if (catalogProduct) {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'stock_status'"
+									[for]="'stock_status_shown'"
+								>
+									<input
+										class="form-control"
+										id="stock_status_shown"
+										type="text"
+										readonly
+										[value]="stockStatus() | transloco"
+									/>
+									<p class="help-text">{{ 'stock_status_help' | transloco }}</p>
+								</app-form-fields>
+								} } @if (typedStockBox && form.controls['type'].value === 'simple' && !catalogProduct) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -461,12 +692,20 @@
 											[label]="'low_stock_threshold'"
 											[for]="'low_stock_threshold'"
 										>
-											<input
-												class="form-control"
-												id="low_stock_threshold"
-												type="number"
-												formControlName="low_stock_threshold"
-											/>
+											<div class="input-group">
+												<input
+													class="form-control"
+													id="low_stock_threshold"
+													type="number"
+													min="0"
+													[attr.step]="soldBy() === 'metre' ? 0.1 : 1"
+													formControlName="low_stock_threshold"
+												/>
+												@if (soldBy() === 'metre') {
+												<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+												}
+											</div>
+											<p class="help-text">{{ 'low_stock_level_help' | transloco }}</p>
 										</app-form-fields>
 										<app-form-fields
 											[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -639,6 +878,67 @@
 																	</div>
 																	}
 																</app-form-fields>
+																@if (variantFigures(variation.get('id')?.value); as
+																figures) {
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'stock'"
+																	[for]="'stock_figures'+i"
+																>
+																	<div
+																		class="d-flex align-items-center flex-wrap gap-3"
+																		[id]="'stock_figures'+i"
+																	>
+																		<span>
+																			<strong>{{ qty(figures.onHand) }}</strong>
+																			{{ 'fig_on_hand' | transloco }}
+																		</span>
+																		<span class="text-muted">·</span>
+																		<span>
+																			{{ qty(figures.held) }} {{ 'fig_held' |
+																			transloco }}
+																		</span>
+																		<span class="text-muted">·</span>
+																		<span>
+																			<strong>{{ qty(figures.free) }}</strong>
+																			{{ 'fig_free_to_sell' | transloco }}
+																		</span>
+																		<span class="d-flex ms-auto gap-2">
+																			<a
+																				class="btn btn-outline btn-sm"
+																				target="_blank"
+																				*hasPermission="'stock.index'"
+																				[routerLink]="['/stock/items', variation.get('id')?.value]"
+																			>
+																				<i class="ri-history-line me-1"></i>
+																				{{ 'stock_history' | transloco }}
+																			</a>
+																			<button
+																				type="button"
+																				class="btn btn-outline btn-sm"
+																				*hasPermission="'stock.adjust'"
+																				(click)="adjustStock(variation.get('id')?.value)"
+																			>
+																				<i class="ri-equalizer-line me-1"></i>
+																				{{ 'adjust' | transloco }}
+																			</button>
+																			<a
+																				class="btn btn-theme btn-sm"
+																				target="_blank"
+																				*hasPermission="'purchase.create'"
+																				[routerLink]="['/purchase-entries', 'create']"
+																				[queryParams]="{ variant: variation.get('id')?.value }"
+																			>
+																				<i
+																					class="ri-inbox-archive-line me-1"
+																				></i>
+																				{{ 'receive_stock' | transloco }}
+																			</a>
+																		</span>
+																	</div>
+																</app-form-fields>
+																} @if (typedStockBox) {
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
@@ -659,6 +959,7 @@
 																	</div>
 																	}
 																</app-form-fields>
+																}
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
@@ -832,6 +1133,75 @@
 									form.controls['categories'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'categories_is_required' | transloco }}</div>
 									}
+									<p class="help-text">{{ 'main_category_help' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'hsn'"
+									[for]="'hsn_code'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="hsn_code"
+										type="text"
+										inputmode="numeric"
+										maxlength="8"
+										formControlName="hsn_code"
+										[class.border-warning]="!!hsnChangedFrom()"
+										[class.is-invalid]="form.controls['hsn_code'].invalid"
+									/>
+									@if (form.controls['hsn_code'].invalid) {
+									<div class="invalid-feedback d-block">{{ 'hsn_digits' | transloco }}</div>
+									} @if (mainCategory(); as main) { @if (main.hsnCode &&
+									form.controls['hsn_code'].value === main.hsnCode) {
+									<p class="help-text">
+										{{ 'hsn_from_category' | transloco: { category: main.name, code: main.hsnCode }
+										}}@if (hsnChangedFrom(); as from) { {{ 'hsn_changed_from' | transloco: { code:
+										from } }} }
+									</p>
+									} @else if (main.hsnCode) {
+									<p class="help-text">
+										{{ 'hsn_own_code' | transloco: { category: main.name, code: main.hsnCode } }}@if
+										(hsnChangedFrom(); as from) { {{ 'hsn_changed_from' | transloco: { code: from }
+										}} }
+									</p>
+									} }
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'can_be_returned'"
+									[for]="'can_be_returned'"
+								>
+									<select
+										class="form-select"
+										id="can_be_returned"
+										(change)="returnableChoice.set($any($event.target).value)"
+									>
+										<option
+											value=""
+											[selected]="returnableChoice() === ''"
+										>
+											{{ (mainCategory()?.returnable ?? true ? 'returnable_yes_from' :
+											'returnable_no_from') | transloco: { category: mainCategory()?.name ?? '—' }
+											}}
+										</option>
+										<option
+											value="yes"
+											[selected]="returnableChoice() === 'yes'"
+										>
+											{{ 'yes' | transloco }}
+										</option>
+										<option
+											value="no"
+											[selected]="returnableChoice() === 'no'"
+										>
+											{{ 'no' | transloco }}
+										</option>
+									</select>
+									<p class="help-text">{{ 'can_be_returned_help' | transloco }}</p>
 								</app-form-fields>
 
 								<app-form-fields
@@ -1165,20 +1535,6 @@
 										id="height_cm"
 										type="number"
 										formControlName="height_cm"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'hsn'"
-									[for]="'hsn_code'"
-									[required]="false"
-								>
-									<input
-										class="form-control"
-										id="hsn_code"
-										type="text"
-										formControlName="hsn_code"
 									/>
 								</app-form-fields>
 								<app-form-fields

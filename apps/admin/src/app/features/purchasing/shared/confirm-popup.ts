@@ -10,6 +10,12 @@ export interface ConfirmAsk {
 	body: string;
 	params?: Record<string, unknown>;
 	yes: string;
+	/** A second answer that is not "cancel": closes with false (askYesNo). */
+	no?: string;
+	/** Short lines listed under the question (already in the reader's words). */
+	items?: readonly string[];
+	/** A note under the list, e.g. "and 12 more". */
+	more?: string;
 }
 
 /**
@@ -29,6 +35,19 @@ export interface ConfirmAsk {
 					{{ current.title | transloco: current.params ?? {} }}
 				</h5>
 				<p>{{ current.body | transloco: current.params ?? {} }}</p>
+				@if (current.items?.length) {
+					<ul
+						class="list-unstyled small text-muted mx-auto mb-3 text-start"
+						style="max-width: 420px"
+					>
+						@for (item of current.items; track $index) {
+							<li>{{ item }}</li>
+						}
+						@if (current.more) {
+							<li>{{ current.more }}</li>
+						}
+					</ul>
+				}
 				<div class="button-box">
 					<button
 						type="button"
@@ -37,6 +56,16 @@ export interface ConfirmAsk {
 					>
 						{{ 'cancel' | transloco }}
 					</button>
+					@if (current.no) {
+						<button
+							type="button"
+							class="btn-md fw-bold btn btn-outline"
+							id="confirm_popup_no"
+							(click)="modal.close(false)"
+						>
+							{{ current.no | transloco: current.params ?? {} }}
+						</button>
+					}
 					<button
 						type="button"
 						class="btn-theme btn-md fw-bold btn"

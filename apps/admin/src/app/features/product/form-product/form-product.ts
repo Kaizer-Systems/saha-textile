@@ -24,7 +24,7 @@ import {
 	ValidationErrors,
 	Validators,
 } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import {
@@ -47,22 +47,16 @@ import {
 	NgbNavLink,
 	NgbNavLinkBase,
 	NgbNavOutlet,
+	NgbModal,
 } from '@ng-bootstrap/ng-bootstrap';
-import type {
-	AttributeDefinition,
-	GoLiveGap,
-	ProductBundleWrite,
-	ProductContentWrite,
-	ProductCreate,
-	ProductOptionGroup,
-	ProductVideo,
-} from '@saha-textile/contracts';
 import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
-import { Observable, of, Subject } from 'rxjs';
+import { firstValueFrom, Observable, of, Subject } from 'rxjs';
 import { debounceTime, switchMap, takeUntil } from 'rxjs/operators';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import { nextInProductQueue } from '@core/catalog/product-queue';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
 	focusField,
 	gapsByLocale,
@@ -71,13 +65,14 @@ import {
 	type LocalizedText,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
-import { ActiveLanguages } from '@core/i18n/active-languages';
+import { StockGateway } from '@core/purchasing/stock.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import {
 	CATALOG_BADGE_CODES,
 	CatalogBadgeCode,
 	CatalogProductDetail,
 	CatalogProductWrite,
+	CatalogVariantView,
 } from '@data-access/interfaces/catalog-product.interface';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
@@ -90,6 +85,9 @@ import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/ad
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
+import { metresText } from '@features/purchasing/shared/purchasing-labels';
+import { AdjustPopup } from '@features/stock/adjust-popup';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
@@ -99,13 +97,34 @@ import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { YouTubeVideosField } from '@shared/ui/youtube-videos-field/youtube-videos-field';
 import { priceValidator } from '@shared/validators/price-validator';
 
+import { HsnPopup, hsnValid } from './hsn-popup';
+import {
+	type CategoryDefaults,
+	categoryRefill,
+	metreProblem,
+	metresToTenths,
+	type SoldBy,
+	stockFigures,
+	stockStatusKey,
+	tenthsToMetres,
+} from './inventory-fields';
 import { OptionGroups } from './option-groups/option-groups';
 import { ProductBundleForm } from './product-bundle/product-bundle';
-import { ImageCombination, ProductImages } from './product-images/product-images';
 import { FaqValue, ProductFaq } from './product-faq/product-faq';
-import { nextInProductQueue } from '@core/catalog/product-queue';
+import { ImageCombination, ProductImages } from './product-images/product-images';
 import { variantCombinations } from './variant-combinations';
 import { environment } from '../../../../../public/environments/environment';
+
+import type {
+	AttributeDefinition,
+	GoLiveGap,
+	ProductBundleWrite,
+	ProductContentWrite,
+	ProductCreate,
+	ProductOptionGroup,
+	ProductVideo,
+	QuickLength,
+} from '@saha-textile/contracts';
 
 const LANGUAGE_FIELDS = [
 	'name',
@@ -117,6 +136,12 @@ const LANGUAGE_FIELDS = [
 ];
 
 const SAREE_ROOT_SLUG = 'sarees';
+
+/** An HSN has 4, 6 or 8 digits (F02C), spaces round it ignored as the API does; empty is allowed. */
+function hsnField(control: AbstractControl): ValidationErrors | null {
+	const value = control.value === null || control.value === undefined ? '' : String(control.value).trim();
+	return value === '' || hsnValid(value) ? null : { hsn: true };
+}
 
 /** The Sarees category and everything under it. */
 function sareeCategoryIds(tree: readonly ICategory[], inside = false): Set<string> {
@@ -196,6 +221,8 @@ function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
 		TranslocoModule,
 		AsyncPipe,
 		CurrencySymbolPipe,
+		HasPermissionDirective,
+		RouterLink,
 	],
 })
 export class FormProduct {
@@ -212,8 +239,57 @@ export class FormProduct {
 	private attributes = inject(AttributeService);
 	private templates = inject(AddonTemplateService);
 	private notifier = inject(NotificationService);
+	private modals = inject(NgbModal);
+	private stockGateway = inject(StockGateway);
 
 	readonly type = input<string>(undefined);
+
+	/**
+	 * F01: the typed Stock quantity box is replaced by the stock figures and their buttons. Its
+	 * markup and form control stay until the owner types its removal (end-of-project cleanup list).
+	 */
+	readonly typedStockBox = false;
+	/** Piece or metre (P11); fixed once the product has stock, stock history or orders. */
+	readonly soldBy = signal<SoldBy>('piece');
+	readonly soldByLocked = signal(false);
+	/** '' follows the main category; 'yes' or 'no' is this product's own answer (P13). */
+	readonly returnableChoice = signal<'' | 'yes' | 'no'>('');
+	/** The metre fields (A01), as typed: metres, inches and grams. */
+	readonly metreCut = signal('1.0');
+	readonly metreWidth = signal('');
+	readonly metreWeight = signal('');
+	readonly quickLengths = signal<Array<{ length: string; label: Record<string, string> }>>([]);
+	readonly metreError = signal<string | null>(null);
+	/** "Changed from 5007" under the HSN after a category change (F02). */
+	readonly hsnChangedFrom = signal<string | null>(null);
+	/** Each variant's stock as the API last sent it (F01). */
+	readonly variantStock = signal<ReadonlyMap<string, CatalogVariantView>>(new Map());
+	/** Every category's HSN and returnability, from the category tree the form already reads. */
+	readonly categoryDefaults = computed<ReadonlyMap<string, CategoryDefaults>>(() => {
+		const flat = (rows: readonly ICategory[]): ICategory[] =>
+			rows.flatMap((row) => [row, ...flat(row.subcategories ?? [])]);
+		return new Map(
+			flat(this.categoriesQuery.data()?.data ?? []).map((row) => [
+				String(row.id),
+				{
+					id: String(row.id),
+					name: row.name,
+					hsnCode: row.row?.hsnCode ?? null,
+					returnable: row.row?.returnable ?? true,
+				},
+			]),
+		);
+	});
+	/** The main (first) category's defaults: HSN and "Can be returned" follow it (F02, PD3). */
+	readonly mainCategory = computed<CategoryDefaults | null>(() => {
+		const id = this.chosenCategories()[0];
+		return (id ? this.categoryDefaults().get(String(id)) : null) ?? this.catalogProduct?.mainCategory ?? null;
+	});
+	readonly totals = computed(() => stockFigures([...this.variantStock().values()]));
+	/** F01: In stock, Low stock or Out of stock, from free to sell; made to order keeps selling. */
+	stockStatus(): string {
+		return stockStatusKey(this.totals().free, this.lowLevelUnits(), Boolean(this.form.get('made_to_order')?.value));
+	}
 
 	readonly nav = viewChild<NgbNav>('nav');
 
@@ -386,7 +462,8 @@ export class FormProduct {
 			weight: new FormControl(),
 			stock_status: new FormControl('in_stock', []),
 			sku: new FormControl('', [Validators.required]),
-			quantity: new FormControl('', [Validators.required]),
+			// Kept with the typed Stock quantity box (F01): stock now moves only through documents.
+			quantity: new FormControl(0),
 			price: new FormControl('', [Validators.required, priceValidator]),
 			discount: new FormControl(),
 			sale_starts_at: new FormControl(),
@@ -418,7 +495,7 @@ export class FormProduct {
 			length_cm: new FormControl(),
 			width_cm: new FormControl(),
 			height_cm: new FormControl(),
-			hsn_code: new FormControl(),
+			hsn_code: new FormControl<string | null>(null, [hsnField]),
 			addon_price_inr: new FormControl(null),
 			return_policy_text: new FormControl(),
 			is_featured: new FormControl(0),
@@ -431,6 +508,8 @@ export class FormProduct {
 			this.optionGroups();
 			this.faq();
 			this.goLiveGaps();
+			this.quickLengths();
+			this.soldBy();
 			untracked(() => this.refreshMissing());
 		});
 
@@ -532,6 +611,37 @@ export class FormProduct {
 			estimated_delivery_text: content.estimatedDeliveryText,
 		});
 		this.form.get('type')?.disable({ emitEvent: false });
+		this.soldBy.set(detail.soldBy ?? 'piece');
+		this.soldByLocked.set(detail.soldByLocked ?? false);
+		this.returnableChoice.set(
+			detail.returnable === null || detail.returnable === undefined ? '' : detail.returnable ? 'yes' : 'no',
+		);
+		this.metreCut.set(tenthsToMetres(detail.metre?.shortestCutTenths ?? 10));
+		this.metreWidth.set(
+			detail.metre?.widthInches === null || detail.metre?.widthInches === undefined
+				? ''
+				: String(detail.metre.widthInches),
+		);
+		this.metreWeight.set(
+			detail.metre?.weightPerMetreGrams === null || detail.metre?.weightPerMetreGrams === undefined
+				? ''
+				: String(detail.metre.weightPerMetreGrams),
+		);
+		this.quickLengths.set(
+			(detail.metre?.quickLengths ?? []).map((row) => ({
+				length: tenthsToMetres(row.tenths),
+				label: { ...row.label },
+			})),
+		);
+		this.hsnChangedFrom.set(null);
+		this.variantStock.set(new Map(detail.variants.map((row) => [row.id, row])));
+		// A metre product's low-stock level is stored in tenths and typed in metres.
+		if (detail.soldBy === 'metre' && detail.lowStockThreshold !== null) {
+			this.form.patchValue(
+				{ low_stock_threshold: tenthsToMetres(detail.lowStockThreshold) },
+				{ emitEvent: false },
+			);
+		}
 		this.form.patchValue({ categories: content.categoryIds }, { emitEvent: false });
 		this.selectedCategories = content.categoryIds;
 		this.chosenCategories.set(content.categoryIds);
@@ -582,7 +692,7 @@ export class FormProduct {
 					width_cm: new FormControl(row.widthCm),
 					height_cm: new FormControl(row.heightCm),
 					barcode: new FormControl(row.barcode),
-					hsn: new FormControl(row.hsnCode),
+					hsn: new FormControl(row.hsnCode, [hsnField]),
 					availability: new FormControl(row.available ? 'available' : 'unavailable', [Validators.required]),
 					variation_image_id: new FormControl(),
 					variation_image: new FormControl(),
@@ -605,6 +715,11 @@ export class FormProduct {
 				this.productParams.set({ ...this.filter });
 			});
 
+		// The variant grid's "New colour not listed" and stock links open a tab directly (?tab=inventory).
+		const tab = this.route.snapshot?.queryParamMap?.get('tab');
+		if (tab && ['general', 'inventory', 'setup', 'images', 'seo', 'faq', 'shipping', 'status'].includes(tab)) {
+			this.active = tab;
+		}
 		this.route.params
 			.pipe(
 				switchMap((params) => (params['id'] ? this.productService.getCatalogProduct(params['id']) : of(null))),
@@ -648,7 +763,7 @@ export class FormProduct {
 		this.form.controls['type'].valueChanges.subscribe((value) => {
 			if (this.catalogProduct) return;
 			if (value == 'simple') {
-				this.form.setControl('quantity', new FormControl('', [Validators.required]));
+				this.form.setControl('quantity', new FormControl(0));
 				this.form.setControl('price', new FormControl('', [Validators.required]));
 				this.form.setControl('discount', new FormControl());
 			} else {
@@ -738,9 +853,117 @@ export class FormProduct {
 	}
 
 	selectCategoryItem(data: string[]) {
-		if (Array.isArray(data)) {
-			this.form.controls['categories'].setValue(data);
-			this.chosenCategories.set(data);
+		if (!Array.isArray(data)) return;
+		const previousMain = this.chosenCategories()[0] ?? null;
+		// Read before the list changes: the popup names what "Can be returned" was (P13).
+		const returnableBefore = this.returnableNow();
+		this.form.controls['categories'].setValue(data);
+		this.chosenCategories.set(data);
+		const currentHsn = textOrNull(this.form.get('hsn_code')?.value);
+		const refill = categoryRefill({
+			previousMain: previousMain === null ? null : String(previousMain),
+			nextMain: data[0] === undefined ? null : String(data[0]),
+			currentHsn,
+			categories: this.categoryDefaults(),
+		});
+		// P13: "Can be returned" refills from the new category, named in the same popup.
+		if (refill.followCategory) this.returnableChoice.set('');
+		if (refill.hsn !== currentHsn) {
+			this.form.get('hsn_code')?.setValue(refill.hsn);
+			this.hsnChangedFrom.set(currentHsn);
+		}
+		if (refill.popup) void this.askHsn({ ...refill.popup, returnableBefore, returnableNow: this.returnableNow() });
+	}
+
+	/** F02: the HSN popup; its answer goes into the HSN field, saved only with Save. */
+	private async askHsn(change: Parameters<HsnPopup['start']>[0]): Promise<void> {
+		const popup = this.modals.open(HsnPopup, {
+			centered: true,
+			backdrop: 'static',
+			keyboard: false,
+			windowClass: 'theme-modal text-center',
+			ariaLabelledBy: 'hsn_popup_title',
+		});
+		(popup.componentInstance as HsnPopup).start(change);
+		const code = (await popup.result.catch(() => null)) as string | null;
+		if (!code || !hsnValid(code)) return;
+		this.form.get('hsn_code')?.setValue(code);
+		this.hsnChangedFrom.set(code === change.oldHsn ? null : change.oldHsn);
+	}
+
+	/** Whether buyers can return it now: the product's own answer, else the main category's. */
+	returnableNow(): boolean {
+		const choice = this.returnableChoice();
+		if (choice) return choice === 'yes';
+		return this.mainCategory()?.returnable ?? true;
+	}
+
+	/** F01: Sold by, refused once the unit is fixed; a new metre product starts at 1.0 m (M2). */
+	setSoldBy(value: string): void {
+		if (this.soldByLocked() || (value !== 'piece' && value !== 'metre')) return;
+		this.soldBy.set(value);
+		if (value === 'metre' && !this.metreCut().trim()) this.metreCut.set('1.0');
+		this.metreError.set(null);
+	}
+
+	addQuickLength(): void {
+		if (this.quickLengths().length >= 4) return;
+		this.quickLengths.update((rows) => [...rows, { length: '', label: {} }]);
+	}
+
+	removeQuickLength(index: number): void {
+		this.quickLengths.update((rows) => rows.filter((_, at) => at !== index));
+	}
+
+	setQuickLength(index: number, field: 'length' | 'label', value: string): void {
+		const locale = this.fields.locale();
+		this.quickLengths.update((rows) =>
+			rows.map((row, at) =>
+				at !== index
+					? row
+					: field === 'length'
+						? { ...row, length: value }
+						: { ...row, label: { ...row.label, [locale]: value } },
+			),
+		);
+	}
+
+	/** A stock figure as shown: pieces as a number, metres with their unit. */
+	qty(units: number): string {
+		return this.soldBy() === 'metre'
+			? metresText(units, (key, params) => this.transloco.translate(key, params))
+			: String(units);
+	}
+
+	variantFigures(id: string) {
+		const row = this.variantStock().get(id);
+		return row ? stockFigures([row]) : null;
+	}
+
+	/** The low-stock level in stock units (tenths for metres), for the status line. */
+	lowLevelUnits(): number | null {
+		const typed = this.form?.get('low_stock_threshold')?.value;
+		if (typed === null || typed === undefined || typed === '') return null;
+		return this.soldBy() === 'metre' ? metresToTenths(String(typed)) : Number(typed);
+	}
+
+	/** F01 Adjust: the stock adjust popup for one variant; figures refresh after. */
+	async adjustStock(variantId: string): Promise<void> {
+		const detail = await firstValueFrom(this.stockGateway.detail(variantId, 1, 1)).catch(() => null);
+		if (!detail) return;
+		const popup = this.modals.open(AdjustPopup, {
+			size: 'lg',
+			windowClass: 'theme-modal modal-lg',
+			ariaLabelledBy: 'adjust_popup_title',
+		});
+		await (popup.componentInstance as AdjustPopup).start(detail.row);
+		if (!(await popup.result.catch(() => null)) || !this.catalogProduct) return;
+		const fresh = await firstValueFrom(this.productService.getCatalogProduct(this.catalogProduct.id)).catch(
+			() => null,
+		);
+		if (fresh) {
+			this.variantStock.set(new Map(fresh.variants.map((row) => [row.id, row])));
+			this.soldByLocked.set(fresh.soldByLocked);
 		}
 	}
 
@@ -805,7 +1028,19 @@ export class FormProduct {
 		const images = this.goLiveGaps()
 			.filter((gap) => gap.field === 'image_alt' && gap.locale === locale)
 			.map(() => ({ key: 'image_alt', label: 'gap_image_alt' }));
-		return [...this.fields.gaps(locale), ...options, ...faq, ...images];
+		// Quick-length buttons of fabric by the metre show their label in every language (M5).
+		const lengths =
+			this.soldBy() === 'metre'
+				? this.quickLengths()
+						.map((row, index) => ({ row, index }))
+						.filter(({ row }) => !row.label[locale]?.trim())
+						.map(({ row, index }) => ({
+							key: `quick_length_${index}`,
+							label: 'gap_quick_length',
+							name: `${row.length} m`,
+						}))
+				: [];
+		return [...this.fields.gaps(locale), ...options, ...faq, ...images, ...lengths];
 	}
 
 	openLanguageGap({ key, locale }: { key: string; locale: string }) {
@@ -887,6 +1122,21 @@ export class FormProduct {
 		const leadTime = textOrNull(this.fields.text('estimated_delivery_text')['en']);
 		const leadTimeControl = this.form.get('estimated_delivery_text');
 		if (raw['made_to_order'] && !leadTime) leadTimeControl?.setErrors({ leadTimeRequired: true });
+		const metre =
+			this.soldBy() === 'metre'
+				? metreProblem({
+						shortestCut: this.metreCut(),
+						weightPerMetre: this.metreWeight(),
+						width: this.metreWidth(),
+						quickLengths: this.quickLengths(),
+					})
+				: null;
+		this.metreError.set(metre);
+		if (metre) {
+			this.nav()?.select('inventory');
+			this.tabError = 'inventory';
+			return;
+		}
 		if (!this.form.valid) {
 			this.showInvalidTab();
 			return;
@@ -910,6 +1160,14 @@ export class FormProduct {
 		const typed = Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, this.fields.text(field)]));
 		const groups = this.optionGroups();
 		const images = this.images();
+		const kept = {
+			soldBy: this.soldBy(),
+			returnable: this.returnableChoice(),
+			cut: this.metreCut(),
+			width: this.metreWidth(),
+			weight: this.metreWeight(),
+			lengths: this.quickLengths(),
+		};
 		const body: ProductCreate = {
 			type: raw['type'] === 'classified' ? 'variable' : (raw['type'] as ProductCreate['type']),
 			sku: String(raw['sku']).trim(),
@@ -924,6 +1182,12 @@ export class FormProduct {
 				this.fields.load({ ...typed });
 				this.optionGroups.set(groups);
 				this.images.set(images);
+				this.soldBy.set(kept.soldBy);
+				this.returnableChoice.set(kept.returnable);
+				this.metreCut.set(kept.cut);
+				this.metreWidth.set(kept.width);
+				this.metreWeight.set(kept.weight);
+				this.quickLengths.set(kept.lengths);
 				this.variationControl.at(0)?.patchValue({ quantity: blankToNull(raw['quantity']) ?? 0 });
 				this.save(detail, this.form.getRawValue() as Record<string, unknown>);
 			});
@@ -939,7 +1203,10 @@ export class FormProduct {
 			featured: Boolean(raw['is_featured']),
 			madeToOrder: Boolean(raw['made_to_order']),
 			estimatedDeliveryText: textOrNull(this.fields.text('estimated_delivery_text')['en']),
-			lowStockThreshold: blankToNull(raw['low_stock_threshold']),
+			lowStockThreshold:
+				this.soldBy() === 'metre'
+					? metresToTenths(String(raw['low_stock_threshold'] ?? ''))
+					: blankToNull(raw['low_stock_threshold']),
 			pinnedBadges: ids(raw['pinned_badges']) as CatalogBadgeCode[],
 			hiddenBadges: ids(raw['hidden_badges']) as CatalogBadgeCode[],
 			addonPriceINR: blankToNull(raw['addon_price_inr']),
@@ -950,6 +1217,23 @@ export class FormProduct {
 				heightCm: blankToNull(raw['height_cm']),
 			},
 			hsnCode: textOrNull(raw['hsn_code']),
+			...(product.soldByLocked ? {} : { soldBy: this.soldBy() }),
+			returnable: this.returnableChoice() === '' ? null : this.returnableChoice() === 'yes',
+			...(this.soldBy() === 'metre'
+				? {
+						metre: {
+							shortestCutTenths: metresToTenths(this.metreCut()) ?? 10,
+							quickLengths: this.quickLengths().map((row) => ({
+								tenths: metresToTenths(row.length) ?? 10,
+								label: Object.fromEntries(
+									Object.entries(row.label).filter(([, text]) => text.trim()),
+								) as QuickLength['label'],
+							})),
+							widthInches: this.metreWidth().trim() ? Number(this.metreWidth()) : null,
+							weightPerMetreGrams: Math.round(Number(this.metreWeight())),
+						},
+					}
+				: {}),
 			variants: this.variationControl.controls.map((group) => {
 				const row = (group as FormGroup).getRawValue() as Record<string, unknown>;
 				return {

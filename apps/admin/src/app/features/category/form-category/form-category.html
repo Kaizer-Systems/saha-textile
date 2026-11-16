@@ -91,6 +91,49 @@
 			<p class="help-text">{{ 'also_appears_under_help' | transloco }}</p>
 		</app-form-fields>
 		<app-form-fields
+			[label]="'hsn' | transloco"
+			[for]="'category_hsn'"
+			[required]="false"
+		>
+			<input
+				class="form-control"
+				id="category_hsn"
+				type="text"
+				inputmode="numeric"
+				maxlength="8"
+				formControlName="hsn_code"
+				[class.is-invalid]="form.controls['hsn_code'].invalid"
+			/>
+			@if (form.controls['hsn_code'].invalid) {
+			<div class="invalid-feedback d-block">{{ 'hsn_digits' | transloco }}</div>
+			}
+			<p class="help-text">{{ 'category_hsn_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'can_be_returned' | transloco"
+			[for]="'category_returnable'"
+			[required]="false"
+		>
+			<select
+				class="form-select"
+				id="category_returnable"
+				formControlName="returnable"
+			>
+				<option value="yes">{{ 'yes' | transloco }}</option>
+				<option value="no">{{ 'no' | transloco }}</option>
+			</select>
+			<p class="help-text">{{ 'category_returnable_help' | transloco }}</p>
+		</app-form-fields>
+		@if (id) {
+		<div
+			class="alert alert-info d-flex align-items-start gap-2"
+			role="note"
+		>
+			<i class="ri-information-line mt-1"></i>
+			<div>{{ 'category_hsn_note' | transloco }}</div>
+		</div>
+		}
+		<app-form-fields
 			[label]="'image' | transloco "
 			[for]="'image'"
 			[required]="false"

@@ -1,5 +1,6 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
+import { seedLegalPages } from '../migrations/legal-pages';
 import { addProfileSizes, seedProfilesAndNameVersions } from '../migrations/media-versions';
 
 /**
@@ -32,5 +33,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Image profiles (media step 2c): each stored profile gets its sizes and quality, so Settings can edit them',
 		half: 'expand',
 		up: () => addProfileSizes(),
+	},
+	{
+		id: '0003-legal-pages',
+		description:
+			'Legal pages (Legal Pages brief): the four pages, exactly as the shop showed them, written once into the database; a stored page is never overwritten',
+		half: 'expand',
+		up: () => seedLegalPages(),
 	},
 ];

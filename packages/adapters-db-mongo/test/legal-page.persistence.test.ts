@@ -2,6 +2,8 @@ import type { LegalPage } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
+import { seedLegalPages } from '../src/migrations/legal-pages';
+import { LEGAL_PAGES_AS_SHIPPED } from '../src/migrations/legal-pages-as-shipped';
 import { LegalPageModel, LegalPageRevisionModel } from '../src/models/index';
 import { MongoLegalPageRepository } from '../src/repositories/legal-page.repository';
 import { hasMongoEnv } from './mongo-test-env';
@@ -47,5 +49,29 @@ describe.runIf(hasMongoEnv())('legal pages persistence (rs0)', () => {
 			['shipping-policy:1', 1, '<p>First</p>'],
 		]);
 		expect((await pages.list()).map((row) => row.slug)).toContain('shipping-policy');
+	});
+});
+
+describe.runIf(hasMongoEnv())('migration 0003: the legal pages as shipped (rs0)', () => {
+	beforeAll(async () => {
+		await connectMongo();
+	});
+
+	afterAll(async () => {
+		await disconnectMongo();
+	});
+
+	it('writes the four pages once, exactly as shipped, and never over a stored page', async () => {
+		const before = await LegalPageModel.find({}).lean().exec();
+		await LegalPageModel.deleteMany({}).exec();
+		try {
+			expect(await seedLegalPages()).toBe('wrote 4 legal pages');
+			const privacy = await new MongoLegalPageRepository().find('privacy-policy');
+			expect(privacy?.content['bn']).toBe(LEGAL_PAGES_AS_SHIPPED['privacy-policy']?.content['bn']);
+			expect(await seedLegalPages()).toBe('wrote 0 legal pages');
+		} finally {
+			await LegalPageModel.deleteMany({}).exec();
+			if (before.length) await LegalPageModel.insertMany(before);
+		}
 	});
 });

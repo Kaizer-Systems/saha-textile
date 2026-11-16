@@ -53,6 +53,8 @@ export const MediaFileRow = z.object({
 	versionsMaking: z.number().int().nonnegative().optional(),
 	/** A photo being replaced (S7): where the Replace has got; the website keeps the old photo until it is done. */
 	replacing: z.enum(['uploading', 'queued', 'making', 'failed']).optional(),
+	/** What that run does: a new photo, a new focal point (only crops remade), or a new web file name. */
+	replacingWhy: z.enum(['replace', 'focal', 'rename']).optional(),
 	/** A small picture for the list; null for files the worker does not process. */
 	thumbnailUrl: z.string().nullable(),
 	/** Pages that use it: an image used on the website cannot go to Trash. */

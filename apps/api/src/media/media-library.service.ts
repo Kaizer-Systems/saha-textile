@@ -1066,7 +1066,9 @@ export class MediaLibraryService {
 				...(asset.kind === 'image'
 					? { versionsMaking: (asset.versions ?? []).filter((version) => version.state === 'making').length }
 					: {}),
-				...(asset.replacing ? { replacing: asset.replacing.phase } : {}),
+				...(asset.replacing
+					? { replacing: asset.replacing.phase, replacingWhy: asset.replacing.reason ?? 'replace' }
+					: {}),
 				thumbnailUrl: this.thumbnailOf(asset),
 				usedOn: (used.get(asset.id) ?? []).length,
 				starred: starred.has(`file:${asset.id}`),

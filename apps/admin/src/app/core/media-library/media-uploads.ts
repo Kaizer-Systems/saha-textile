@@ -402,18 +402,44 @@ export class MediaUploads {
 	 * the API's refusal.
 	 */
 	async refocus(fileId: string, name: string, focal: { x: number; y: number } | null): Promise<boolean> {
-		const opId = `fp_${fileId}`;
-		const words = (key: string, params: Record<string, unknown> = {}) =>
-			this.transloco.translate(key, { name, ...params });
 		// A refusal (versions still being made, a Replace under way) is the caller's to say.
 		const status = await lastValueFrom(this.gateway.setFocal(fileId, focal));
 		if (status.phase === 'done') return true;
+		return this.followRemake(fileId, name, {
+			id: `fp_${fileId}`,
+			icon: 'ri-focus-3-line',
+			label: 'fm_focal_tray',
+			done: 'fm_focal_tray_done',
+		});
+	}
+
+	/**
+	 * A new web file name (R5-6, media step 3d) was saved: the worker makes every file again under it, like a Replace.
+	 * The tray follows it until the new files are in place.
+	 */
+	followRename(fileId: string, name: string): Promise<boolean> {
+		return this.followRemake(fileId, name, {
+			id: `fn_${fileId}`,
+			icon: 'ri-text',
+			label: 'fm_rename_files_tray',
+			done: 'fm_rename_files_tray_done',
+		});
+	}
+
+	/** One tray row that follows the worker remaking a photo's files on its own original (focal point, new name). */
+	private async followRemake(
+		fileId: string,
+		name: string,
+		row: { id: string; icon: string; label: string; done: string },
+	): Promise<boolean> {
+		const words = (key: string, params: Record<string, unknown> = {}) =>
+			this.transloco.translate(key, { name, ...params });
 		this.operations.update((ops) => [
-			...ops.filter((op) => op.id !== opId),
+			...ops.filter((op) => op.id !== row.id),
 			{
-				id: opId,
-				label: words('fm_focal_tray'),
-				icon: 'ri-focus-3-line',
+				id: row.id,
+				label: words(row.label),
+				icon: row.icon,
 				done: 0,
 				total: 1,
 				state: 'running',
@@ -421,7 +447,7 @@ export class MediaUploads {
 			},
 		]);
 		const tray = (changes: Partial<MediaOperation>) =>
-			this.operations.update((ops) => ops.map((op) => (op.id === opId ? { ...op, ...changes } : op)));
+			this.operations.update((ops) => ops.map((op) => (op.id === row.id ? { ...op, ...changes } : op)));
 		const started = Date.now();
 		while (Date.now() - started < MAKING_GIVE_UP_MS) {
 			await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
@@ -433,7 +459,7 @@ export class MediaUploads {
 				return false;
 			}
 			if (next.phase === 'done') {
-				tray({ done: 1, state: 'done', label: words('fm_focal_tray_done') });
+				tray({ done: 1, state: 'done', label: words(row.done) });
 				void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
 				return true;
 			}

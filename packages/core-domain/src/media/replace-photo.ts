@@ -128,8 +128,11 @@ export const replaceMediaAsset = async (
 	if (!asset || !next) return { status: 'not_claimed' };
 	// A new focal point (S10) keeps the original: only Crop versions are remade, and the original is never deleted.
 	const focal = next.reason === 'focal';
+	// A new web file name (R5-6) keeps the original too: every file is made again under the new name.
+	const slug = next.reason === 'rename' && next.slug ? next.slug : asset.slug;
+	const sameOriginal = next.reason !== 'replace';
 	const fail = async (reason: string, made: readonly ImageDerivative[] = []): Promise<ProcessOutcome> => {
-		const keys = [...(focal ? [] : [next.key]), ...made.map((row) => row.storageKey)];
+		const keys = [...(sameOriginal ? [] : [next.key]), ...made.map((row) => row.storageKey)];
 		await deps.queue.enqueue({
 			type: 'delete-objects',
 			keys,
@@ -167,13 +170,13 @@ export const replaceMediaAsset = async (
 		.filter((version) => !focal || version.fill === 'crop')
 		.map((version) => ({ ...version, state: 'making' as const, error: null }));
 	const remade = new Set(versions.map((version) => version.id));
-	const fresh = { ...asset, originalFormat: next.contentType as MediaAsset['originalFormat'] };
+	const fresh = { ...asset, slug, originalFormat: next.contentType as MediaAsset['originalFormat'] };
 	// A focal change keeps every picture made once per photo; a Replace makes them all again.
 	const have = new Set(
 		focal ? asset.derivatives.filter((row) => !row.versionId).map((row) => `${row.role}@${row.width}`) : [],
 	);
 	const rendered = await renderPhoto(deps, fresh, bytes, probe, versions, have, {
-		freshPlaceholder: !focal,
+		freshPlaceholder: !sameOriginal,
 		onPlanned: async (count) => {
 			total = count;
 			await deps.assets.moveReplace(asset.id, ['making'], { total, made: 0 });
@@ -197,7 +200,7 @@ export const replaceMediaAsset = async (
 	const keptFiles = keptAfterSwap(
 		asset.keptFiles ?? [],
 		swapped,
-		keptAfterReplace(asset, swapped, deps.now(), focal ? 'focal' : 'replace'),
+		keptAfterReplace(asset, swapped, deps.now(), next.reason),
 	);
 	const stored = await deps.assets.finishReplace({
 		assetId: asset.id,
@@ -211,6 +214,7 @@ export const replaceMediaAsset = async (
 			thumbHash: rendered.placeholder.thumbHash,
 			warnings: [...rendered.warnings],
 			sha256: next.sha256,
+			slug,
 		},
 		derivatives,
 		versions: allVersions,

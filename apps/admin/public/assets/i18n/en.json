@@ -1577,7 +1577,8 @@
 	"file_name": "File name",
 	"file_name_help": "Lowercase words joined by hyphens, the same in every language. Search engines read it.",
 	"file_name_invalid": "Use lowercase letters, numbers and single hyphens, up to 80 characters.",
-	"file_name_rename_warning": "Saving renames every size of this image in the background. Pages pick up the new name on their own.",
+	"file_name_rename_warning": "Saving makes every size of this image again under the new name. Pages switch to the new files on their own once they are ready; the old files stay for 7 days.",
+	"file_name_rename_waits": "This photo is busy: its versions are being made or it is being replaced. Change its file name when that has finished.",
 	"alt_text": "Alt text",
 	"caption": "Caption",
 	"media_details_saved": "Image details saved",
@@ -2398,6 +2399,8 @@
 	"fm_rp_step_done": "Replaced {{name}}",
 	"fm_rp_failed_reason": "The new photo could not be used ({{reason}})",
 	"fm_replacing": "Replacing the photo",
+	"fm_remaking_crops": "Remaking the crops",
+	"fm_renaming_files": "Renaming the files",
 	"fm_activity_replace": "Replaced with a new photo",
 	"fm_rpp_help_unused": "This photo isn't used on the website yet. Its old picture files stay 7 days, then go.",
 	"fm_anyway_title": "Upload it anyway",
@@ -2424,5 +2427,8 @@
 	"fm_focal_saved": "Focal point saved",
 	"fm_focal_saved_remaking": "Focal point saved; the crops were remade around it",
 	"fm_focal_button": "Focal point",
-	"fm_activity_focal": "Focal point changed"
+	"fm_activity_focal": "Focal point changed",
+	"fm_activity_rename": "Web file name changed",
+	"fm_rename_files_tray": "Renaming the files of {{name}}",
+	"fm_rename_files_tray_done": "Files of {{name}} renamed"
 }

@@ -318,9 +318,16 @@ export const MediaReplacement = z.object({
 	phase: z.enum(['uploading', 'queued', 'making', 'failed']),
 	/**
 	 * `replace`: a new original (S7). `focal`: the same original with a new focal point (S10): only Crop versions are
-	 * remade, and the original is never deleted.
+	 * remade, and the original is never deleted. `rename`: the same original under a new web file name (R5-6): every
+	 * file is made again with the new name, and the original is never deleted.
 	 */
-	reason: z.enum(['replace', 'focal']).default('replace'),
+	reason: z.enum(['replace', 'focal', 'rename']).default('replace'),
+	/** The new web file name of a `rename`; it becomes the photo's `slug` when the new files are in place. */
+	slug: z
+		.string()
+		.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+		.max(80)
+		.optional(),
 	/** Sizes made so far and in all, for C08's “5 of 5 sizes”. */
 	made: z.number().int().nonnegative().default(0),
 	total: z.number().int().nonnegative().default(0),
@@ -335,7 +342,7 @@ export const MediaKeptFiles = z.object({
 	keys: z.array(z.string().min(1)),
 	bytes: z.number().int().nonnegative(),
 	deleteAfter: IsoDateTime,
-	reason: z.enum(['replace', 'focal']),
+	reason: z.enum(['replace', 'focal', 'rename']),
 });
 export type MediaKeptFiles = z.infer<typeof MediaKeptFiles>;
 

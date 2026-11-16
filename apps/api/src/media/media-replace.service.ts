@@ -48,6 +48,7 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	not_uploading: 'There is no upload waiting to finish',
 	not_cancellable: 'This Replace is already under way',
 	focal_waits: 'Wait until this photo’s versions are made or its Replace is done',
+	rename_waits: 'Wait until this photo’s versions are made or its Replace is done, then change its web file name',
 };
 const refuse = (code: string, detail?: string) =>
 	domainRefusal(code, detail ? `${REFUSALS[code] ?? 'Not allowed'}: ${detail}` : (REFUSALS[code] ?? 'Not allowed'));
@@ -175,6 +176,55 @@ export class MediaReplaceService {
 		await this.storageCheck.release(holdId(id));
 		if (!started) throw refuse('focal_waits');
 		await this.queue.enqueue({ type: 'replace', assetId: id });
+		return this.status(id);
+	}
+
+	/**
+	 * Whether a new web file name goes through the Replace machinery (R5-6): a photo with versions. Refused while its
+	 * versions are being made or a Replace runs, before anything is saved.
+	 */
+	renames(asset: MediaAsset): boolean {
+		if (asset.kind !== 'image' || !asset.originalStorageKey || !(asset.versions ?? []).length) return false;
+		if (
+			(asset.replacing && asset.replacing.phase !== 'failed') ||
+			(asset.versions ?? []).some((version) => version.state === 'making')
+		) {
+			throw refuse('rename_waits');
+		}
+		return true;
+	}
+
+	/**
+	 * A new web file name (R5-6): every file is made again under it from the same original, the pages switch when the
+	 * new files are in place, and the old files are kept 7 days, as after a Replace. The name changes with the files.
+	 */
+	async rename(actor: string, id: string, slug: string, now = new Date()): Promise<MediaReplaceStatus> {
+		const asset = await this.photo(id);
+		if (!this.renames(asset) || !asset.originalStorageKey || !asset.width || !asset.height) {
+			throw refuse('not_a_photo');
+		}
+		const bytes = asset.derivatives.reduce((sum, row) => sum + (row.byteSize ?? 0), 0);
+		await this.storageCheck.admit(actor, bytes, undefined, holdId(id), now);
+		const started = await this.assets.startReplace(id, {
+			key: asset.originalStorageKey,
+			contentType: asset.originalFormat,
+			byteSize: asset.originalByteSize,
+			width: asset.width,
+			height: asset.height,
+			sha256: asset.sha256 ?? null,
+			phase: 'queued',
+			reason: 'rename',
+			slug,
+			made: 0,
+			total: 0,
+			error: null,
+			startedAt: now.toISOString(),
+			by: actor,
+		});
+		await this.storageCheck.release(holdId(id));
+		if (!started) throw refuse('rename_waits');
+		await this.queue.enqueue({ type: 'replace', assetId: id });
+		await this.record(actor, 'media.rename', { name: fileName(asset), from: asset.slug, to: slug }, id);
 		return this.status(id);
 	}
 

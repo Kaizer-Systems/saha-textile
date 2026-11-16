@@ -293,6 +293,46 @@ describe('MediaService', () => {
 		expect(busy.queue.enqueue).not.toHaveBeenCalled();
 	});
 
+	it('a new web file name on a photo with versions runs like a Replace; a busy one is refused before anything is saved (step 3d)', async () => {
+		const deps = mediaDeps();
+		const withRenamer = (renamer: unknown) =>
+			new MediaService(
+				deps.assets as never,
+				deps.roles as never,
+				deps.storage as never,
+				deps.queue as never,
+				deps.audit as never,
+				LanguageStore.fixed(['en', 'bn']),
+				deps.browse as never,
+				deps.folders as never,
+				deps.storageCheck as never,
+				renamer as never,
+			);
+		const renamer = { renames: vi.fn(() => true), rename: vi.fn(async () => ({ phase: 'queued' })) };
+		await withRenamer(renamer).updateText('a1', 'med_1', { slug: 'new', alt: { en: 'A' } } as never);
+		// The text is saved now; the name changes with the new files.
+		expect(deps.assets.update).toHaveBeenCalledWith(
+			expect.objectContaining({ slug: 'red', text: expect.objectContaining({ alt: { en: 'A' } }) }),
+		);
+		expect(renamer.rename).toHaveBeenCalledWith('a1', 'med_1', 'new');
+		expect(deps.queue.enqueue).not.toHaveBeenCalled();
+		deps.assets.update.mockClear();
+		const busy = {
+			renames: vi.fn(() => {
+				throw new Error('rename_waits');
+			}),
+			rename: vi.fn(),
+		};
+		await expect(withRenamer(busy).updateText('a1', 'med_1', { slug: 'new' } as never)).rejects.toThrow(
+			'rename_waits',
+		);
+		expect(deps.assets.update).not.toHaveBeenCalled();
+		expect(busy.rename).not.toHaveBeenCalled();
+		// The same name again is no rename.
+		await withRenamer(renamer).updateText('a1', 'med_1', { slug: 'red' } as never);
+		expect(renamer.rename).toHaveBeenCalledTimes(1);
+	});
+
 	it('reprocesses only with an original', async () => {
 		const { service, queue } = mediaDeps();
 		await service.reprocess('a1', 'med_1');

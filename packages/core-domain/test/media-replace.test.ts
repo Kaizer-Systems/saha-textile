@@ -414,3 +414,60 @@ describe('a new focal point (S10, media step 3c)', () => {
 		expect(run.row().originalStorageKey).toBe('media/med_r/original.jpg');
 	});
 });
+
+describe('a new web file name (R5-6, media step 3d)', () => {
+	const renaming = () =>
+		photo({
+			width: 4000,
+			height: 2000,
+			versions: [ready('product_3x4.white'), { ...ready('product_3x4.crop'), fill: 'crop' as const }],
+			derivatives: [
+				file('product_3x4.white', 'card', 400),
+				file('product_3x4.crop', 'card', 400),
+				file(null, 'share', 1200),
+			],
+			replacing: queued({
+				key: 'media/med_r/original.jpg',
+				reason: 'rename',
+				slug: 'red-banarasi-silk-front',
+				width: 4000,
+				height: 2000,
+			}),
+		});
+	const probe = { width: 4000, height: 2000, format: 'jpeg', hasAlpha: false };
+
+	it('makes every file again under the new name from the same original, and swaps the name in with them', async () => {
+		const run = harness(renaming(), probe);
+		await expect(replaceMediaAsset(run.deps, { assetId: 'med_r' })).resolves.toMatchObject({ status: 'ready' });
+		const row = run.row();
+		expect(row.slug).toBe('red-banarasi-silk-front');
+		expect(row.originalStorageKey).toBe('media/med_r/original.jpg');
+		expect(row.derivatives.length).toBeGreaterThan(0);
+		expect(row.derivatives.every((one) => one.storageKey.includes('/red-banarasi-silk-front-'))).toBe(true);
+		expect(row.versions?.map((version) => `${version.id}:${version.state}`)).toEqual([
+			'product_3x4.white:ready',
+			'product_3x4.crop:ready',
+		]);
+		// The old files stay 7 days; the original is the photo's own, so it is not among them.
+		expect(row.keptFiles).toEqual([
+			expect.objectContaining({
+				reason: 'rename',
+				keys: [
+					'media/med_r/product_3x4.white/card-400w-old.webp',
+					'media/med_r/product_3x4.crop/card-400w-old.webp',
+					'media/med_r/photo/share-1200w-old.webp',
+				],
+			}),
+		]);
+		expect(run.jobs.filter((job) => job.type === 'delete-objects')).toEqual([]);
+	});
+
+	it('a failure keeps the old name and never deletes the original', async () => {
+		const run = harness(renaming(), { ...probe, format: 'png' });
+		await expect(replaceMediaAsset(run.deps, { assetId: 'med_r' })).resolves.toMatchObject({ status: 'rejected' });
+		const deleted = run.jobs.flatMap((job) => (job.type === 'delete-objects' ? job.keys : []));
+		expect(deleted).not.toContain('media/med_r/original.jpg');
+		expect(run.row().slug).toBe('red-banarasi');
+		expect(run.row().replacing).toMatchObject({ phase: 'failed' });
+	});
+});

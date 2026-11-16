@@ -321,7 +321,7 @@ Admin catalogue reads answer `no-store`.
 | `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                                     |
 | `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                             |
 | `GET`    | `/admin/media/:assetId`               | `attachment.index`   | One library item                                                                          |
-| `PATCH`  | `/admin/media/:assetId`               | `attachment.edit`    | Edit slug, alt, title and caption; a new slug queues a reprocess                          |
+| `PATCH`  | `/admin/media/:assetId`               | `attachment.edit`    | Edit slug, alt, title and caption; a new slug on a photo with versions runs like a Replace (step 3d), else queues a reprocess |
 | `POST`   | `/admin/media/:assetId/reprocess`     | `attachment.edit`    | Regenerate every role from the retained original                                          |
 | `DELETE` | `/admin/media/:assetId`               | `attachment.destroy` | Soft-delete an unused image; GC removes files after 30 days                               |
 | `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                                        |

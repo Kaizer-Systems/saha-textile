@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, Optional, type OnApplicationBootstrap } from '@nestjs/common';
 import { HttpStatus } from '@nestjs/common';
 import type {
 	AuditLog,
@@ -37,6 +37,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
+import { MediaReplaceService } from './media-replace.service';
 import { MediaStorageService } from './media-storage.service';
 import { LanguageStore } from '../languages/language-store';
 import {
@@ -82,6 +83,8 @@ export class MediaService implements OnApplicationBootstrap {
 		@Inject(MEDIA_BROWSE_REPOSITORY) private readonly browse: MediaBrowseRepository,
 		@Inject(MEDIA_FOLDER_REPOSITORY) private readonly folders: MediaFolderRepository,
 		private readonly storageCheck: MediaStorageService,
+		/** A photo with versions gets a new web file name through the Replace machinery (R5-6); absent in scripts. */
+		@Optional() private readonly renamer?: MediaReplaceService,
 	) {}
 
 	/**
@@ -261,13 +264,18 @@ export class MediaService implements OnApplicationBootstrap {
 		return this.libraryItem(await this.requireAsset(assetId), await this.roleVersions());
 	}
 
-	/** SEO identity edits. A new slug renames every derivative, so it queues a reprocess. */
+	/**
+	 * SEO identity edits. A new slug renames every file: on a photo with versions it runs like a Replace (R5-6: new
+	 * files under the new name, pages switch together, old files kept 7 days, the name changes with the files);
+	 * refused before anything is saved while that photo is busy. Older assets queue a reprocess as before.
+	 */
 	async updateText(actorId: string, assetId: string, update: MediaAssetTextUpdate): Promise<MediaLibraryItem> {
 		const asset = await this.requireAsset(assetId);
 		const slugChanged = update.slug !== undefined && update.slug !== asset.slug;
+		const renames = slugChanged && !!this.renamer?.renames(asset);
 		const next: MediaAsset = {
 			...asset,
-			slug: update.slug ?? asset.slug,
+			slug: renames ? asset.slug : (update.slug ?? asset.slug),
 			text: {
 				alt: update.alt ?? asset.text.alt,
 				title: update.title ?? asset.text.title,
@@ -275,7 +283,9 @@ export class MediaService implements OnApplicationBootstrap {
 			},
 		};
 		await this.assets.update(next);
-		if (slugChanged && asset.processing.state === 'ready') {
+		if (renames && update.slug && this.renamer) {
+			await this.renamer.rename(actorId, assetId, update.slug);
+		} else if (slugChanged && asset.processing.state === 'ready') {
 			await this.queue.enqueue({ type: 'reprocess', assetId, reason: 'slug' });
 		}
 		await this.record(actorId, 'media.asset.text.update', assetId, { slugChanged });

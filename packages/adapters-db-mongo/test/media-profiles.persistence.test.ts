@@ -383,6 +383,46 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await MediaAssetModel.deleteMany({ _id: 'med_focal' }).exec();
 	});
 
+	it('carries a new web file name with its Replace and puts it on the photo at the swap (step 3d)', async () => {
+		await raw('med_name', { derivatives: [], versions: [] });
+		const original = (await assets.findById('med_name'))?.originalStorageKey ?? '';
+		const started = await assets.startReplace('med_name', {
+			key: original,
+			contentType: 'image/jpeg',
+			byteSize: 2000,
+			width: 3000,
+			height: 4000,
+			sha256: null,
+			phase: 'queued',
+			reason: 'rename',
+			slug: 'red-banarasi-front',
+			made: 0,
+			total: 0,
+			error: null,
+			startedAt: '2026-11-16T10:00:00.000Z',
+			by: 'adm_1',
+		});
+		expect(started?.replacing).toMatchObject({ reason: 'rename', slug: 'red-banarasi-front' });
+		await assets.moveReplace('med_name', ['queued'], { phase: 'making' });
+		const swapped = await assets.finishReplace({
+			assetId: 'med_name',
+			set: {
+				originalStorageKey: original,
+				originalFormat: 'image/jpeg',
+				originalByteSize: 2000,
+				width: 3000,
+				height: 4000,
+				slug: 'red-banarasi-front',
+			},
+			derivatives: [],
+			versions: [],
+			keptFiles: [],
+		});
+		expect(swapped?.slug).toBe('red-banarasi-front');
+		expect(swapped?.replacing).toBeNull();
+		await MediaAssetModel.deleteMany({ _id: 'med_name' }).exec();
+	});
+
 	it('leaves files of versions and per-photo pictures out of the ladder sweep; only unnamed old files count', async () => {
 		await raw('med_old', { derivatives: [{ ...file('med_old', 'thumb', 150), roleVersion: 1 }] });
 		await raw('med_named', {

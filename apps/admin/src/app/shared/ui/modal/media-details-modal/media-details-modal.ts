@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, TemplateRef, computed, inject, output, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -8,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { gapsByLocale, LocalizedFields, type LanguageGap } from '@core/i18n/localized-fields';
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaGateway } from '@core/media/media.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
@@ -29,7 +31,9 @@ export const fileNameOf = (text: string): string =>
 /**
  * Edit details for one Media Library image: one search-friendly file name for every language,
  * then alt text, title and caption in each language behind one Language switch. A new file name
- * renames every size of the image in the background, so the window says so before saving.
+ * renames every size of the image in the background, so the window says so before saving: like a Replace, the
+ * files are made again under the new name, pages switch when they are in place, and the old files stay 7 days
+ * (R5-6, media step 3d). The tray follows it.
  */
 @Component({
 	selector: 'app-media-details-modal',
@@ -41,6 +45,7 @@ export class MediaDetailsModal {
 	private media = inject(MediaGateway);
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
+	private uploads = inject(MediaUploads);
 
 	readonly template = viewChild<TemplateRef<unknown>>('detailsModal');
 	/** After a save, so the library can refresh. */
@@ -100,10 +105,12 @@ export class MediaDetailsModal {
 		this.form.markAllAsTouched();
 		if (!assetId || this.form.controls.slug.invalid) return;
 		this.saving.set(true);
+		const renamed = this.renaming();
+		const slug = this.form.controls.slug.value;
 		try {
 			await firstValueFrom(
 				this.media.saveDetails(assetId, {
-					slug: this.form.controls.slug.value,
+					slug,
 					alt: this.fields.text('alt'),
 					title: this.fields.text('title'),
 					caption: this.fields.text('caption'),
@@ -112,8 +119,15 @@ export class MediaDetailsModal {
 			modal.close('saved');
 			this.saved.emit(assetId);
 			this.notifier.showSuccess(this.transloco.translate('media_details_saved'));
-		} catch {
-			this.notifier.showError(this.transloco.translate('media_details_rejected'));
+			if (renamed) void this.uploads.followRename(assetId, slug);
+		} catch (error) {
+			const code =
+				error instanceof HttpErrorResponse
+					? (error.error as { issues?: { code?: string }[] } | null)?.issues?.[0]?.code
+					: undefined;
+			this.notifier.showError(
+				this.transloco.translate(code === 'rename_waits' ? 'file_name_rename_waits' : 'media_details_rejected'),
+			);
 		} finally {
 			this.saving.set(false);
 		}

@@ -151,7 +151,7 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 - Download as .zip is not offered yet (media step 5).
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.
 - Until pages store which version they use (media step 4), a version counts as in use when the website draws it for a used photo: the first ready version for each kind of size (see Reprocess below). A version that is the only source of a kind of size therefore can't be removed while the photo is used anywhere.
-- Replace works for photos (from the menu, or through the duplicate check); Replace for files other than photos, a new web file name and "Bring older versions up to date" come in the next parts of step 3.
+- Replace works for photos (from the menu, or through the duplicate check); Replace for files other than photos and "Bring older versions up to date" come in the next parts of step 3.
 
 ## Details and Activity
 
@@ -180,3 +180,7 @@ The worker (`replaceMediaAsset`) checks the new original's real bytes, remakes e
 ## Focal point
 
 A Crop version in the details tree has a **Focal point** button (S10). The popup (C06, `FmFocal`) shows the whole photo (its original, through a 5-minute address); a click puts the point on the part that must stay in every crop. Each Crop version is previewed with the point and as it is today, placed exactly as the image worker will cut it (the largest window of the profile's shape, centred on the point as far as the photo allows). **Save** stores the point on the photo (`PUT /files/:id/focal`) and the worker remakes only the Crop versions around it, through the same machinery as Replace with the original kept: new files, the old crop files kept 7 days, other versions and the pictures made once per photo untouched; one tray row follows it. **Reset to centre** puts the point back on the middle. A photo with no Crop version just keeps the point for crops made later. It waits while versions are being made or a Replace runs.
+
+## A new web file name
+
+A photo's web file name (its `slug`) is the start of every picture file's address, such as `red-banarasi-front-card-400w-1f3a9c2e.webp`. Today it is changed in the **File name** box of the Image details popup that every image field's picker opens (`MediaDetailsModal`, `PATCH /admin/media/:assetId`). On a photo with versions a new name runs like a Replace (R5-6): the worker makes every version and the pictures made once per photo again under the new name, from the same original; the pages switch when the new files are in place, and the name on the photo changes with them. The old files are kept 7 days. One tray row ("Renaming the files of …") follows it, and the photo's row on the Media page says **Renaming the files** meanwhile. While versions are being made or a Replace runs, the save is refused before anything is written, with a message saying to wait. A failure keeps the old name and files. Older assets without versions keep the earlier path (a reprocess).

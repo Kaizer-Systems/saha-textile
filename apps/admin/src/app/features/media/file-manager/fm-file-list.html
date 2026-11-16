@@ -337,7 +337,7 @@
 			<div class="fm-overlay">
 				<div class="d-flex justify-content-between">
 					<span>
-						{{ file.replacing ? ('fm_replacing' | transloco) : ('fm_adding_versions' | plural:
+						{{ file.replacing ? (remakeWords(file) | transloco) : ('fm_adding_versions' | plural:
 						file.versionsMaking ?? 0) }}
 					</span>
 				</div>
@@ -367,7 +367,7 @@
 >
 	<span class="fm-status busy">
 		<i class="ri-refresh-line"></i>
-		{{ file.replacing ? ('fm_replacing' | transloco) : ('fm_adding_versions' | plural: file.versionsMaking) }}
+		{{ file.replacing ? (remakeWords(file) | transloco) : ('fm_adding_versions' | plural: file.versionsMaking) }}
 	</span>
 	<div class="progress">
 		<div

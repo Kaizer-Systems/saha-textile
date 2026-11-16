@@ -202,3 +202,57 @@ describe('a focal point (S10, C06, media step 3c)', () => {
 		);
 	});
 });
+
+describe('a new web file name (R5-6, media step 3d)', () => {
+	it('runs like a Replace on the same original, carrying the new name; the worker takes it and it is recorded', async () => {
+		const h = harness();
+		h.photo('med_w', {
+			derivatives: [
+				{
+					role: 'card',
+					storageKey: 'media/med_w/product-3x4-as-is/med-w-card-400w-1f3a9c2e.webp',
+					width: 400,
+					height: 533,
+					byteSize: 30_000,
+					format: 'image/webp',
+					roleVersion: 1,
+					versionId: 'product_3x4.as_is',
+				},
+			],
+		});
+		const status = await h.service.rename('adm_1', 'med_w', 'red-banarasi-front', NOW);
+		expect(h.files.get('med_w')?.replacing).toMatchObject({
+			reason: 'rename',
+			slug: 'red-banarasi-front',
+			phase: 'queued',
+			key: 'media/med_w/original.jpg',
+		});
+		// The name on the record changes only when the new files are in place.
+		expect(h.files.get('med_w')?.slug).toBe('med-w');
+		expect(h.storageCheck.admit).toHaveBeenCalledWith('adm_1', 30_000, undefined, 'res_replace_med_w', NOW);
+		expect(h.jobs).toEqual([{ type: 'replace', assetId: 'med_w' }]);
+		expect(h.audit[0]).toMatchObject({ action: 'media.rename', entityId: 'med_w' });
+		expect(status.phase).toBe('queued');
+	});
+
+	it('only photos with versions go this way; while versions are made or a Replace runs, it waits', async () => {
+		const h = harness();
+		h.photo('med_old', { versions: [] });
+		expect(h.service.renames(h.files.get('med_old') as MediaAsset)).toBe(false);
+		h.photo('med_busy', {
+			versions: [
+				{
+					id: 'product_3x4.as_is',
+					profileKey: 'product_3x4',
+					profileVersion: 1,
+					fill: 'as_is',
+					state: 'making',
+					createdAt: '2026-11-16T00:00:00.000Z',
+				},
+			],
+		});
+		expect(() => h.service.renames(h.files.get('med_busy') as MediaAsset)).toThrow(BadRequestException);
+		expect((await refusal(h.service.rename('adm_1', 'med_busy', 'new-name', NOW)))?.code).toBe('rename_waits');
+		expect(h.jobs).toEqual([]);
+	});
+});

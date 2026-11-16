@@ -92,7 +92,7 @@ export interface MediaAssetRepository {
 	finishReplace(input: {
 		assetId: string;
 		set: Pick<MediaAsset, 'originalStorageKey' | 'originalFormat' | 'originalByteSize' | 'width' | 'height'> &
-			Partial<Pick<MediaAsset, 'dominantColor' | 'thumbHash' | 'warnings' | 'sha256'>>;
+			Partial<Pick<MediaAsset, 'dominantColor' | 'thumbHash' | 'warnings' | 'sha256' | 'slug'>>;
 		derivatives: readonly ImageDerivative[];
 		versions: readonly MediaVersion[];
 		keptFiles: readonly MediaKeptFiles[];

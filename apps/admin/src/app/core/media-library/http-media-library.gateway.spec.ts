@@ -108,6 +108,12 @@ describe('HttpMediaLibraryGateway', () => {
 		expectCall('DELETE', /\/files\/med_1\/versions\/hero_21x9\.crop$/);
 	});
 
+	it('saves a photo’s own text where the image fields save it (A42)', () => {
+		const text = { alt: { en: 'Red Banarasi silk saree' }, caption: {} };
+		gateway.saveText('med_1', text).subscribe();
+		expectCall('PATCH', /\/admin\/media\/med_1$/, text);
+	});
+
 	it('reads and changes share links and storage', () => {
 		gateway.links('med_1').subscribe();
 		expectCall('GET', /\/files\/med_1\/links$/, undefined, false);

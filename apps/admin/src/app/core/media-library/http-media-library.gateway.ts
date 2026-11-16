@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.interceptor';
@@ -17,6 +17,7 @@ import {
 	type MediaFavouriteWrite,
 	type MediaFileAddress,
 	type MediaFileDetails,
+	type MediaPhotoText,
 	type MediaAddVersionsRequest,
 	type MediaAddVersionsResult,
 	type MediaBulkAddVersionsRequest,
@@ -99,6 +100,13 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override removeVersion(fileId: string, versionId: string): Observable<void> {
 		return this.http.delete<void>(this.url(`/files/${id(fileId)}/versions/${id(versionId)}`), quiet());
+	}
+
+	/** The photo's text is saved where every image field's old popup saves it (`PATCH /admin/media/:id`). */
+	override saveText(fileId: string, text: MediaPhotoText): Observable<void> {
+		return this.http
+			.patch(`${runtimeConfig.apiUrl}/admin/media/${id(fileId)}`, text, quiet())
+			.pipe(map(() => undefined));
 	}
 
 	override startReplace(fileId: string, body: MediaReplaceRequest): Observable<MediaReplaceUpload> {

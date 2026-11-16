@@ -107,6 +107,12 @@ export interface MediaActivityPage {
  * The Media page as a file manager (media build step 1): browsing, folders, moves, Trash, stars,
  * the duplicate check, plain files, share links and storage, all under `/admin/media/library`.
  */
+/** A photo's default alt text and caption, per language (A42; the unused title is dropped, R5-7). */
+export interface MediaPhotoText {
+	alt: Record<string, string>;
+	caption: Record<string, string>;
+}
+
 export abstract class MediaLibraryGateway {
 	abstract browse(query: Partial<MediaBrowseQuery>): Observable<MediaBrowseResponse>;
 	abstract tree(): Observable<MediaFolderTree>;
@@ -122,6 +128,8 @@ export abstract class MediaLibraryGateway {
 	abstract versionsStatus(fileIds: readonly string[]): Observable<MediaVersionsStatus>;
 	/** Removes a version the website does not show (A31). */
 	abstract removeVersion(id: string, versionId: string): Observable<void>;
+	/** A photo's own text (A42): the default alt text and the caption, per language. */
+	abstract saveText(id: string, text: MediaPhotoText): Observable<void>;
 	/** Replace a photo (S7, C08): start, finish the upload, follow it, or stop it. */
 	abstract startReplace(id: string, body: MediaReplaceRequest): Observable<MediaReplaceUpload>;
 	abstract finishReplace(id: string): Observable<MediaReplaceStatus>;

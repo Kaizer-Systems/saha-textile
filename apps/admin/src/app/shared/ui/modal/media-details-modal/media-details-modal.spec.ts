@@ -70,7 +70,6 @@ describe('MediaDetailsModal', () => {
 		expect(media.saveDetails).toHaveBeenCalledWith('med_1', {
 			slug: 'red-saree',
 			alt: { en: 'Red saree', bn: 'লাল শাড়ি' },
-			title: { en: '', bn: '' },
 			caption: { en: '', bn: '' },
 		});
 		expect(close).toHaveBeenCalledWith('saved');

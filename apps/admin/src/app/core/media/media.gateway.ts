@@ -155,7 +155,7 @@ export class MediaGateway {
 	}
 
 	/** Saves the details. A new file name renames every size of the image in the background. */
-	saveDetails(assetId: string, body: MediaDetails['text'] & { slug: string }): Observable<void> {
+	saveDetails(assetId: string, body: Omit<MediaDetails['text'], 'title'> & { slug: string }): Observable<void> {
 		return this.http.patch(this.url(`/${encodeURIComponent(assetId)}`), body).pipe(map(() => undefined));
 	}
 

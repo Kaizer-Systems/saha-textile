@@ -217,7 +217,16 @@
 			<i
 				[class]="note().warn ? 'ri-alert-line' : chosen().size ? 'ri-checkbox-circle-line text-success' : 'ri-information-line'"
 			></i>
-			{{ note().text }}
+			{{ note().text }} @if (note().addText; as assetId) {
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline ms-1"
+				id="fm_pick_add_text"
+				(click)="addText(assetId)"
+			>
+				{{ 'fm_pick_add_text' | transloco }}
+			</a>
+			}
 		</span>
 	</div>
 	<div class="right-part d-flex gap-2">

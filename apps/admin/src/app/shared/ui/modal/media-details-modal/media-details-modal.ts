@@ -30,7 +30,7 @@ export const fileNameOf = (text: string): string =>
 
 /**
  * Edit details for one Media Library image: one search-friendly file name for every language,
- * then alt text, title and caption in each language behind one Language switch. A new file name
+ * then alt text and caption in each language behind one Language switch (the unused Title is dropped, R5-7). A new file name
  * renames every size of the image in the background, so the window says so before saving: like a Replace, the
  * files are made again under the new name, pages switch when they are in place, and the old files stay 7 days
  * (R5-6, media step 3d). The tray follows it.
@@ -55,11 +55,10 @@ export class MediaDetailsModal {
 	readonly form = new FormGroup({
 		slug: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(SLUG)] }),
 		alt: new FormControl('', { nonNullable: true }),
-		title: new FormControl('', { nonNullable: true }),
 		caption: new FormControl('', { nonNullable: true }),
 	});
-	/** Alt text is needed in every language; a title or caption only once it is written in English. */
-	readonly fields = new LocalizedFields(this.form, ['alt', 'title', 'caption'], ['title', 'caption']);
+	/** Alt text is needed in every language; a caption only once it is written in English. */
+	readonly fields = new LocalizedFields(this.form, ['alt', 'caption'], ['caption']);
 	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 	private readonly savedSlug = signal('');
 	readonly slug = signal('');
@@ -112,7 +111,6 @@ export class MediaDetailsModal {
 				this.media.saveDetails(assetId, {
 					slug,
 					alt: this.fields.text('alt'),
-					title: this.fields.text('title'),
 					caption: this.fields.text('caption'),
 				}),
 			);

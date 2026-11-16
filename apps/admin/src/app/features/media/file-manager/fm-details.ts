@@ -7,18 +7,34 @@ import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { lastValueFrom } from 'rxjs';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import {
 	MediaLibraryGateway,
 	type MediaActivityPage,
 	type MediaFileDetails,
+	type MediaPhotoText,
 } from '@core/media-library/media-library.gateway';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import { fillKey, profileNameKey } from '../../setting/image-profiles/profile-words';
 
 import type { MediaFill } from '@saha-textile/contracts';
 
-type Tab = 'versions' | 'activity';
+export type FmDetailsTab = 'text' | 'versions' | 'activity';
+
+/** A49: a save that takes longer than this shows the thin bar; a quicker one never flickers. */
+export const TEXT_BAR_AFTER_MS = 300;
+
+/** Trimmed, with empty languages left out; languages not shown in the form (a deleted one's text) are kept. */
+function cleanText(text: Readonly<Record<string, string>>): Record<string, string> {
+	return Object.fromEntries(
+		Object.entries(text)
+			.map(([locale, value]) => [locale, value.trim()] as const)
+			.filter(([, value]) => value.length > 0),
+	);
+}
 
 /** The fills a version can have; the contracts package is types-only in the browser, so the list lives here. */
 const FILLS: readonly string[] = ['as_is', 'white', 'blur', 'crop', 'colour', 'brand'];
@@ -39,14 +55,15 @@ const familyKey = (role: string) => `profile_family_${role}`;
 /**
  * Image or file details (media step 2e; Media brief A31, A31B, A32, A43): the file's facts on the left, and on the
  * right its versions as a tree (R6-6: version → size family → each file, every level opens and closes, only the
- * first version starts open, the tree scrolls in its own box) and its Activity. The Text tab (alt text on the photo)
- * comes with the picker in step 4. Built from existing pieces: the media popup, the theme's nav tabs and tree box,
- * `fm-vnode`, `fm-activity`.
+ * first version starts open, the tree scrolls in its own box) and its Activity. A photo's Text tab (A42, media step
+ * 4c) holds its default alt text and caption per language, with the Language switch; the unused title is dropped
+ * (R5-7). Built from existing pieces: the media popup, the theme's nav tabs and tree box, `fm-vnode`, `fm-activity`,
+ * the form fields and the Language switch.
  */
 @Component({
 	selector: 'app-fm-details',
 	templateUrl: './fm-details.html',
-	imports: [TranslocoModule, FileSizePipe, PluralPipe, DatePipe],
+	imports: [TranslocoModule, FileSizePipe, FormFields, LanguageSwitch, PluralPipe, DatePipe],
 })
 export class FmDetails {
 	readonly modal = inject(NgbActiveModal);
@@ -58,7 +75,7 @@ export class FmDetails {
 
 	readonly details = signal<MediaFileDetails | null>(null);
 	readonly activity = signal<MediaActivityPage['items']>([]);
-	readonly tab = signal<Tab>('versions');
+	readonly tab = signal<FmDetailsTab>('versions');
 	readonly error = signal(false);
 	/** Which tree nodes are open: version ids, `version|role` for families. */
 	readonly open = signal<ReadonlySet<string>>(new Set());
@@ -75,11 +92,56 @@ export class FmDetails {
 		return middle?.url ?? null;
 	});
 
-	/** Set right after the popup opens. */
-	async start(fileId: string): Promise<void> {
+	// --- Text (A42, A49): the photo's own default alt text and caption, per language ---------------------------
+
+	readonly locales = inject(ActiveLanguages).list();
+	readonly locale = signal<string>(this.locales[0] ?? 'en');
+	readonly alt = signal<Record<string, string>>({});
+	readonly caption = signal<Record<string, string>>({});
+	readonly saving = signal(false);
+	/** A49: the thin bar and “Saving…” only once a save has taken longer than 0.3 s. */
+	readonly savingSlow = signal(false);
+	/** Default alt text is what every page falls back to, so an empty one is a to-do; a caption is optional. */
+	readonly textGaps = computed(() =>
+		Object.fromEntries(
+			this.locales.map((locale) => [
+				locale,
+				this.alt()[locale]?.trim() ? [] : [{ key: 'fm_text_alt', label: 'fm_text_alt' }],
+			]),
+		),
+	);
+
+	setText(field: 'alt' | 'caption', value: string): void {
+		(field === 'alt' ? this.alt : this.caption).update((text) => ({ ...text, [this.locale()]: value }));
+	}
+
+	async saveText(): Promise<void> {
+		const file = this.details();
+		if (!file || this.saving()) return;
+		const text: MediaPhotoText = { alt: cleanText(this.alt()), caption: cleanText(this.caption()) };
+		this.saving.set(true);
+		const slow = setTimeout(() => this.savingSlow.set(true), TEXT_BAR_AFTER_MS);
+		try {
+			await lastValueFrom(this.gateway.saveText(file.id, text));
+			this.details.set({ ...file, text });
+			this.toastr.success(this.transloco.translate('fm_text_saved'));
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		} finally {
+			clearTimeout(slow);
+			this.saving.set(false);
+			this.savingSlow.set(false);
+		}
+	}
+
+	/** Set right after the popup opens; `tab` opens a photo on its Text tab (D14's Add text). */
+	async start(fileId: string, tab?: FmDetailsTab): Promise<void> {
 		try {
 			const details = await lastValueFrom(this.gateway.details(fileId));
 			this.details.set(details);
+			this.alt.set({ ...(details.text?.alt ?? {}) });
+			this.caption.set({ ...(details.text?.caption ?? {}) });
+			if (tab && details.kind === 'image') this.tab.set(tab);
 			// The version the website shows opens first (R6-6); else the first one.
 			const first = details.versions.find((row) => row.shown) ?? details.versions[0];
 			if (first) this.open.set(new Set([first.id]));

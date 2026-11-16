@@ -61,20 +61,6 @@
 				}
 			</app-form-fields>
 			<app-form-fields
-				[label]="'title'"
-				[for]="'title'"
-			>
-				<input
-					class="form-control"
-					id="title"
-					formControlName="title"
-					(change)="refreshGaps()"
-				/>
-				@if (fields.source('title'); as text) {
-				<p class="help-text">{{ 'english_guide' | transloco: { text: text } }}</p>
-				}
-			</app-form-fields>
-			<app-form-fields
 				[label]="'caption'"
 				[for]="'caption'"
 			>

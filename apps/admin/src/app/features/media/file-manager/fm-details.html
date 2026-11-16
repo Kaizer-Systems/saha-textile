@@ -9,6 +9,18 @@
 		<i class="ri-close-line"></i>
 	</button>
 </div>
+@if (savingSlow()) {
+<!-- A49: a save taking longer than 0.3 s shows the thin bar under the header. -->
+<div
+	class="progress fm-thin"
+	id="fm_text_saving"
+>
+	<div
+		class="progress-bar progress-bar-striped progress-bar-animated"
+		style="width: 100%"
+	></div>
+</div>
+}
 <div
 	class="modal-body"
 	id="fm_details"
@@ -62,6 +74,17 @@
 					<button
 						type="button"
 						class="nav-link"
+						id="fm_details_tab_text"
+						[class.active]="tab() === 'text'"
+						(click)="tab.set('text')"
+					>
+						{{ 'fm_text' | transloco }}
+					</button>
+				</li>
+				<li class="nav-item">
+					<button
+						type="button"
+						class="nav-link"
 						id="fm_details_tab_versions"
 						[class.active]="tab() === 'versions'"
 						(click)="tab.set('versions')"
@@ -82,7 +105,66 @@
 					</button>
 				</li>
 			</ul>
-			@if (tab() === 'versions' && isImage()) {
+			@if (tab() === 'text' && isImage()) {
+			<!-- A42: saved on the photo itself; every page that shows it uses this text unless it sets its own. -->
+			<p class="text-muted small">{{ 'fm_text_intro' | transloco }}</p>
+			<app-language-switch
+				[locales]="locales"
+				[active]="locale()"
+				[gaps]="textGaps()"
+				(changed)="locale.set($event)"
+			/>
+			<div
+				class="theme-form theme-form-2 mega-form"
+				id="fm_text_form"
+			>
+				<app-form-fields
+					labelClass="form-label-title col-sm-3 mb-0"
+					gridClass="col-sm-9"
+					[label]="'fm_text_alt'"
+					[for]="'fm_text_alt'"
+				>
+					<input
+						class="form-control"
+						id="fm_text_alt"
+						maxlength="250"
+						[disabled]="savingSlow()"
+						[value]="alt()[locale()] ?? ''"
+						(input)="setText('alt', $any($event.target).value)"
+					/>
+					<p class="help-text">{{ 'fm_text_alt_help' | transloco }}</p>
+				</app-form-fields>
+				<app-form-fields
+					labelClass="form-label-title col-sm-3 mb-0"
+					gridClass="col-sm-9"
+					[label]="'fm_text_caption'"
+					[for]="'fm_text_caption'"
+				>
+					<textarea
+						class="form-control"
+						id="fm_text_caption"
+						rows="2"
+						maxlength="500"
+						[disabled]="savingSlow()"
+						[attr.placeholder]="'fm_optional' | transloco"
+						[value]="caption()[locale()] ?? ''"
+						(input)="setText('caption', $any($event.target).value)"
+					></textarea>
+					<p class="help-text">{{ 'fm_text_caption_help' | transloco }}</p>
+				</app-form-fields>
+			</div>
+			<div class="d-flex justify-content-end gap-2">
+				<button
+					type="button"
+					class="btn btn-theme"
+					id="fm_text_save"
+					[disabled]="saving()"
+					(click)="saveText()"
+				>
+					{{ (savingSlow() ? 'fm_saving' : 'save') | transloco }}
+				</button>
+			</div>
+			} @if (tab() === 'versions' && isImage()) {
 			<div
 				class="theme-tree-box fm-sizes fm-scroll"
 				id="fm_versions_tree"

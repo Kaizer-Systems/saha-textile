@@ -2,12 +2,14 @@ import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryGateway, type MediaFileRow } from '@core/media-library/media-library.gateway';
 import { MediaUploads } from '@core/media-library/media-uploads';
 
+import { FmDetails } from './fm-details';
 import { FmNewFolder } from './fm-new-folder';
 import { FmPicker, isRawFile } from './fm-picker';
 import { FmUploadFlow } from './fm-upload-flow';
@@ -49,10 +51,14 @@ const setup = (max = 6, already = 2, withPopups = false) => {
 	const gateway = { details: vi.fn(() => of({ versions: [] })), addVersions: vi.fn(() => of({ added: 1 })) };
 	const uploads = { watchVersions: vi.fn() };
 	const flow = { open: vi.fn() };
+	const transloco = { translate: vi.fn((key: string) => key), getActiveLang: () => 'en' };
+	const queries = { invalidateQueries: vi.fn(async () => undefined) };
+	const details = { start: vi.fn(async () => undefined), details: vi.fn(() => ({ text: { alt: { bn: 'লাল' } } })) };
 	const folderPopup = { start: vi.fn() };
 	const modals = {
 		open: vi.fn((content: unknown) => ({
-			componentInstance: content === FmNewFolder ? folderPopup : { start: vi.fn() },
+			componentInstance:
+				content === FmNewFolder ? folderPopup : content === FmDetails ? details : { start: vi.fn() },
 			result: Promise.resolve({
 				versions: [{ profileKey: 'product_3x4', fill: 'white' }],
 				label: 'Product 3:4 · White padding',
@@ -66,7 +72,8 @@ const setup = (max = 6, already = 2, withPopups = false) => {
 			{ provide: NgbModal, useValue: modals },
 			{ provide: MediaLibraryGateway, useValue: gateway },
 			{ provide: MediaUploads, useValue: uploads },
-			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			{ provide: TranslocoService, useValue: transloco },
+			{ provide: QueryClient, useValue: queries },
 		],
 	});
 	TestBed.overrideComponent(FmUploadPopups, { set: { imports: [], template: POPUP_TEMPLATES } });
@@ -87,7 +94,7 @@ const setup = (max = 6, already = 2, withPopups = false) => {
 		already,
 		profile: { key: 'product_3x4', name: 'Product 3:4', icon: false },
 	});
-	return { picker, modal, modals, gateway, uploads, flow, folderPopup };
+	return { picker, modal, modals, gateway, uploads, flow, folderPopup, transloco, queries, details };
 };
 
 describe('the Media picker (R4-2, D01–D17; media step 4a)', () => {
@@ -196,5 +203,27 @@ describe('the Media picker (R4-2, D01–D17; media step 4a)', () => {
 		picker.sidebarUpload('new_folder');
 		expect(modals.open).toHaveBeenCalledWith(FmNewFolder, expect.objectContaining({ windowClass: 'theme-modal' }));
 		expect(folderPopup.start).toHaveBeenCalledWith({ parentId: 'fld_banarasi', place: 'fm_my_files' });
+	});
+
+	it('D14: a chosen photo without alt text in a shop language is named, never refused; Add text opens its Text tab', async () => {
+		const { picker, transloco, details, queries, modals } = setup();
+		picker.toggle(row('med_a', { altMissing: ['bn'] }));
+		expect(picker.chosen().size).toBe(1);
+		expect(picker.note()).toEqual({ text: 'fm_pick_alt_missing', warn: false, addText: 'med_a' });
+		expect(transloco.translate).toHaveBeenCalledWith('fm_pick_alt_missing', {
+			name: 'med_a.jpg',
+			languages: 'বাংলা',
+		});
+		await picker.addText('med_a');
+		expect(modals.open).toHaveBeenCalledWith(FmDetails, expect.objectContaining({ size: 'xl' }));
+		expect(details.start).toHaveBeenCalledWith('med_a', 'text');
+		// বাংলা was written in the popup: the note goes back to what was chosen, and the lists are read again.
+		expect(picker.altGaps().size).toBe(0);
+		expect(picker.note().addText).toBeUndefined();
+		expect(queries.invalidateQueries).toHaveBeenCalled();
+		// Letting go of the photo drops its note too.
+		picker.toggle(row('med_b', { altMissing: ['bn'] }));
+		picker.toggle(row('med_b', { altMissing: ['bn'] }));
+		expect(picker.altGaps().size).toBe(0);
 	});
 });

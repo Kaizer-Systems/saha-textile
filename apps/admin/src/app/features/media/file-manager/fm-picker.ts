@@ -3,14 +3,21 @@ import { Component, type ElementRef, computed, inject, signal, viewChild } from 
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { languageList } from '@saha-textile/core-domain/languages';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
 
 import { MediaLibraryGateway, type MediaFileRow } from '@core/media-library/media-library.gateway';
 import { MediaUploads } from '@core/media-library/media-uploads';
-import { injectMediaBrowseQuery, injectMediaTreeQuery } from '@data-access/queries/media-library.queries';
+import {
+	MEDIA_LIBRARY_KEY,
+	injectMediaBrowseQuery,
+	injectMediaTreeQuery,
+} from '@data-access/queries/media-library.queries';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { fillKey } from '../../setting/image-profiles/profile-words';
+import { FmDetails } from './fm-details';
 import { FmSidebar, type FmNav } from './fm-sidebar';
 import { fileExtension, fileKind } from './file-kinds';
 import { FmNewFolder } from './fm-new-folder';
@@ -64,6 +71,7 @@ export class FmPicker {
 	private readonly modals = inject(NgbModal);
 	private readonly gateway = inject(MediaLibraryGateway);
 	private readonly uploads = inject(MediaUploads);
+	private readonly queries = inject(QueryClient);
 	readonly flow = inject(FmUploadFlow);
 	readonly uploadPopups = viewChild(FmUploadPopups);
 	readonly pickFilesInput = viewChild<ElementRef<HTMLInputElement>>('fmPickFiles');
@@ -84,6 +92,8 @@ export class FmPicker {
 	readonly chosen = signal<ReadonlyMap<string, FmPicked>>(new Map());
 	/** A refusal the last click met (D03, D05, D07, D11), shown in the footer until the next good click. */
 	readonly warning = signal<string | null>(null);
+	/** D14: chosen photos without default alt text in some of the shop's languages (never a refusal). */
+	readonly altGaps = signal<ReadonlyMap<string, { name: string; locales: readonly string[] }>>(new Map());
 
 	private readonly base = computed(() => {
 		const rules = this.rules();
@@ -190,16 +200,35 @@ export class FmPicker {
 		}
 		this.warning.set(null);
 		this.chosen.set(next);
+		this.altGaps.set(
+			new Map(
+				[
+					...this.altGaps(),
+					...(row.altMissing?.length ? [[row.id, { name: row.name, locales: row.altMissing }] as const] : []),
+				].filter(([id]) => next.has(id)),
+			),
+		);
 	}
 
-	/** The footer's note (D01, D04, D05, D15). */
-	readonly note = computed<{ text: string; warn: boolean }>(() => {
+	/** The footer's note (D01, D04, D05, D14, D15); `addText` names the photo D14's Add text opens. */
+	readonly note = computed<{ text: string; warn: boolean; addText?: string }>(() => {
 		const warning = this.warning();
 		if (warning) return { text: warning, warn: true };
 		const chosen = [...this.chosen().values()];
 		if (!chosen.length) return { text: this.transloco.translate('fm_pick_nothing'), warn: false };
 		if (!this.one() && this.left() === 0 && this.room() > 1) {
 			return { text: this.transloco.translate('fm_pick_full', { count: this.room() }), warn: true };
+		}
+		const [gapId, gap] = [...this.altGaps()][0] ?? [];
+		if (gapId && gap) {
+			return {
+				text: this.transloco.translate('fm_pick_alt_missing', {
+					name: gap.name,
+					languages: languageList(gap.locales, this.transloco.getActiveLang()),
+				}),
+				warn: false,
+				addText: gapId,
+			};
 		}
 		if (chosen.length === 1) {
 			const only = chosen[0] as FmPicked;
@@ -307,6 +336,33 @@ export class FmPicker {
 		});
 		(popup.componentInstance as FmNewFolder).start({ parentId: this.targetId(), place: this.herePlace() });
 		void popup.result.catch(() => undefined);
+	}
+
+	/**
+	 * D14's Add text: the photo's Text tab (A42) over the picker. When it closes, the languages still empty are
+	 * named again, and the lists are read again so every tile knows.
+	 */
+	async addText(assetId: string): Promise<void> {
+		const popup = this.modals.open(FmDetails, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			windowClass: 'theme-modal media-modal',
+			ariaLabelledBy: 'fm_details_title',
+		});
+		const details = popup.componentInstance as FmDetails;
+		void details.start(assetId, 'text');
+		await popup.result.catch(() => undefined);
+		const alt = details.details()?.text?.alt ?? {};
+		const gap = this.altGaps().get(assetId);
+		if (gap) {
+			const left = gap.locales.filter((locale) => !alt[locale]?.trim());
+			const next = new Map(this.altGaps());
+			if (left.length) next.set(assetId, { ...gap, locales: left });
+			else next.delete(assetId);
+			this.altGaps.set(next);
+		}
+		void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
 	}
 
 	choose(): void {

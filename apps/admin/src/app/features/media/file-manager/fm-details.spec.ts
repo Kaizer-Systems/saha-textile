@@ -3,12 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { of, throwError } from 'rxjs';
+import { from, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
 
-import { FmDetails } from './fm-details';
+import { FmDetails, TEXT_BAR_AFTER_MS } from './fm-details';
 
 /** Image or file details (media step 2e; A31, A31B, A32, A43). */
 const file = (kind: 'image' | 'file' = 'image') => ({
@@ -70,13 +71,15 @@ const file = (kind: 'image' | 'file' = 'image') => ({
 				]
 			: [],
 	perPhoto: [],
+	text: { alt: { en: 'Red Banarasi silk saree, front', fr: 'Sari rouge' }, caption: {} },
 });
 
-const setup = (details: unknown, fails = false, confirm = true) => {
+const setup = (details: unknown, fails = false, confirm = true, save: () => unknown = () => of(undefined)) => {
 	const gateway = {
 		details: vi.fn(() => (fails ? throwError(() => new Error('down')) : of(details))),
 		itemActivity: vi.fn(() => of({ items: [{ action: 'media.upload', createdAt: '2026-11-16T00:00:00.000Z' }] })),
 		removeVersion: vi.fn(() => of(undefined)),
+		saveText: vi.fn(save),
 	};
 	const notifications = { success: vi.fn(), error: vi.fn() };
 	const modal = { dismiss: vi.fn(), close: vi.fn() };
@@ -90,6 +93,7 @@ const setup = (details: unknown, fails = false, confirm = true) => {
 			{ provide: NgbActiveModal, useValue: modal },
 			{ provide: NgbModal, useValue: modals },
 			{ provide: ToastrService, useValue: notifications },
+			{ provide: ActiveLanguages, useValue: { list: () => ['en', 'bn'], isDraft: () => false } },
 			{
 				provide: TranslocoService,
 				useValue: {
@@ -203,5 +207,66 @@ describe('FmDetails', () => {
 		await no.popup.start('med_1');
 		await no.popup.remove(white as never);
 		expect(no.gateway.removeVersion).not.toHaveBeenCalled();
+	});
+
+	it('A42: the Text tab holds the photo’s default alt text and caption per language; an empty alt is a to-do', async () => {
+		const { popup } = setup(file());
+		await popup.start('med_1', 'text');
+		expect(popup.tab()).toBe('text');
+		expect(popup.alt()).toEqual({ en: 'Red Banarasi silk saree, front', fr: 'Sari rouge' });
+		expect(popup.textGaps()).toEqual({ en: [], bn: [{ key: 'fm_text_alt', label: 'fm_text_alt' }] });
+		popup.locale.set('bn');
+		popup.setText('alt', 'লাল বেনারসি সিল্ক শাড়ি');
+		popup.setText('caption', '  ');
+		expect(popup.textGaps()['bn']).toEqual([]);
+		// A file other than a photo has no Text tab: it opens on Activity whatever was asked.
+		const other = setup(file('file'));
+		await other.popup.start('med_1', 'text');
+		expect(other.popup.tab()).toBe('activity');
+	});
+
+	it('saves trimmed text, keeps a language the form doesn’t show, and leaves out empty ones', async () => {
+		const { popup, gateway, notifications } = setup(file());
+		await popup.start('med_1');
+		popup.locale.set('bn');
+		popup.setText('alt', '  লাল বেনারসি  ');
+		popup.setText('caption', '   ');
+		await popup.saveText();
+		expect(gateway.saveText).toHaveBeenCalledWith('med_1', {
+			alt: { en: 'Red Banarasi silk saree, front', fr: 'Sari rouge', bn: 'লাল বেনারসি' },
+			caption: {},
+		});
+		expect(notifications.success).toHaveBeenCalledWith('fm_text_saved');
+		expect(popup.saving()).toBe(false);
+	});
+
+	it('A49: the bar shows only after 0.3 s, the fields wait, and a refusal is said in a toast', async () => {
+		vi.useFakeTimers();
+		try {
+			let finish: (value: unknown) => void = () => undefined;
+			const { popup, notifications } = setup(file(), false, true, () =>
+				from(new Promise((resolve) => (finish = resolve))),
+			);
+			await popup.start('med_1');
+			const saving = popup.saveText();
+			expect(popup.saving()).toBe(true);
+			vi.advanceTimersByTime(TEXT_BAR_AFTER_MS - 1);
+			expect(popup.savingSlow()).toBe(false);
+			vi.advanceTimersByTime(1);
+			expect(popup.savingSlow()).toBe(true);
+			// A second click while saving sends nothing.
+			await popup.saveText();
+			finish(undefined);
+			await saving;
+			expect(popup.savingSlow()).toBe(false);
+			expect(notifications.success).toHaveBeenCalledTimes(1);
+
+			const refused = setup(file(), false, true, () => throwError(() => new Error('down')));
+			await refused.popup.start('med_1');
+			await refused.popup.saveText();
+			expect(refused.notifications.error).toHaveBeenCalledWith('fm_action_failed');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

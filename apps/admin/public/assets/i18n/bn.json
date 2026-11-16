@@ -2454,6 +2454,7 @@
 	"fm_email_confirm_note": "বাক্সে টিক দিলে বোতামটি চালু হবে। কে কখন মুছেছেন, তা কার্যকলাপে থাকবে।",
 	"fm_email_deleted": "মোছা ইমেলের ছবি: {{count}}",
 	"fm_pick_title": "ছবি বাছুন",
+	"fm_pick_title_product": "পণ্যের ছবি বাছুন",
 	"fm_pick_rule_one": "একটি ছবি",
 	"fm_pick_rule_images": "শুধু ছবি",
 	"fm_pick_rule_any": "যেকোনো ফাইল",

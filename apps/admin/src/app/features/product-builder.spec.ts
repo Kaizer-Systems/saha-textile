@@ -5,6 +5,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -368,13 +369,32 @@ describe('ProductImages', () => {
 				: of({ slug: assetId, text: { alt: { bn: `${assetId} বিবরণ` }, title: {}, caption: {} } }),
 		),
 	};
+	/** What the Media picker hands back (media step 4b); each test sets it before opening. */
+	let picks: unknown[] = [];
+	const modals = {
+		open: vi.fn(() => ({ componentInstance: { start: vi.fn() }, result: Promise.resolve(picks) })),
+	};
+	const pick = (assetId: string, versionId: string | null = null) => ({
+		assetId,
+		versionId,
+		name: `${assetId}.jpg`,
+		thumbnailUrl: `https://cdn.test/${assetId}.webp`,
+	});
 	const render = (over: Record<string, unknown> = {}) =>
-		mount(ProductImages, [{ provide: MediaGateway, useValue: library }], {
-			value: value(over),
-			tiles: new Map(),
-			combinations: [],
-			locale: 'bn',
-		});
+		mount(
+			ProductImages,
+			[
+				{ provide: MediaGateway, useValue: library },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+			{
+				value: value(over),
+				tiles: new Map(),
+				combinations: [],
+				locale: 'bn',
+			},
+		);
 
 	it('shows the primary image’s library alt text as what an empty field uses', () => {
 		const page = render();
@@ -415,21 +435,25 @@ describe('ProductImages', () => {
 		expect(page.gallery('h')).toEqual([]);
 	});
 
-	it('adds library picks once, to the gallery it was opened for', () => {
+	it('adds what the Media picker hands back once, with each photo’s version, to the gallery it was opened for', async () => {
 		const page = render();
-		page.open(null);
-		page.add([
-			{ id: 'b', original_url: 'u' },
-			{ id: 'd', original_url: 'v' },
-		] as never);
+		picks = [pick('b', 'product_3x4.white'), pick('d', 'product_3x4.blur')];
+		await page.open(null);
 		expect(page.value().gallery).toEqual(['a', 'b', 'c', 'd']);
-		expect(page.tiles().get('d')).toBe('v');
-		page.open('new');
-		page.add({ id: 'z', original_url: 'w' } as never);
+		expect(page.value().versions).toEqual({ b: 'product_3x4.white', d: 'product_3x4.blur' });
+		expect(page.tiles().get('d')).toBe('https://cdn.test/d.webp');
+		// E04: a tile names its version when it isn't the photo as it is.
+		expect(page.versionLabel('d')).toBe('profile_fill_blur');
+		expect(page.versionLabel('a')).toBeNull();
+		picks = [pick('z')];
+		await page.open('new');
 		expect(page.gallery('new')).toEqual(['z']);
+		picks = [];
+		await page.open(null);
+		expect(page.value().gallery).toEqual(['a', 'b', 'c', 'd']);
 	});
 
-	it('flags images more than 5% away from 3:4, and takes sizes from the library', () => {
+	it('flags images more than 5% away from 3:4', () => {
 		const page = render();
 		expect(page.offShape(null)).toEqual([]);
 		page.sizes.set(
@@ -440,12 +464,6 @@ describe('ProductImages', () => {
 			]),
 		);
 		expect(page.offShape(null)).toEqual([3]);
-		page.open(null);
-		page.add([
-			{ id: 'd', original_url: 'v', width: 600, height: 600 },
-			{ id: 'e', original_url: 'w' },
-		] as never);
-		expect(page.offShape(null)).toEqual([3, 4]);
 	});
 
 	it('edits alt text for the primary in this language', () => {

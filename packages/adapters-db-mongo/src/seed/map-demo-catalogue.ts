@@ -582,7 +582,7 @@ export function mapDemoCatalogue(input: {
 			categoryIds,
 			tags: (product.tags ?? []).map((tag) => tag.slug || tag.name || '').filter(Boolean),
 			basePriceINR: onSale ? sale : price,
-			media: { gallery: [...frames], compound: [], altOverrides: {} },
+			media: { gallery: [...frames], compound: [], altOverrides: {}, versions: {} },
 			attributes,
 			optionGroups: optionGroupsFor(product, variable, frames),
 			variations: [],

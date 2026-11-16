@@ -600,6 +600,7 @@ describe('FormProduct.submit', () => {
 				gallery: ['m1'],
 				compound: [],
 				altOverrides: {},
+				versions: {},
 				faqEnabled: false,
 				faq: [],
 			},

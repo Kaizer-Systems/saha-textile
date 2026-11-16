@@ -54,6 +54,9 @@
 				alt="image"
 				class="img-fluid"
 			/>
+			@if (versionLabel(id); as label) {
+			<span class="fm-vbadge">{{ label }}</span>
+			}
 			<a
 				[title]="'remove_image' | transloco"
 				href="javascript:void(0)"
@@ -152,9 +155,3 @@
 	<p class="help-text">{{ 'alt_text_help' | transloco }}</p>
 </app-form-fields>
 }
-<app-media-modal
-	#picker
-	[multipleImage]="true"
-	[purpose]="'product'"
-	(selectImage)="add($event)"
-/>

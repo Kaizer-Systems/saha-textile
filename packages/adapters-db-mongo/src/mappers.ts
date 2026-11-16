@@ -60,7 +60,7 @@ export function toProduct(doc: ProductDoc): Product {
 		categoryIds: doc.categoryIds ?? [],
 		tags: doc.tags ?? [],
 		basePriceINR: doc.basePriceINR,
-		media: { compound: [], altOverrides: {}, ...(doc.media ?? { gallery: [] }) } as Product['media'],
+		media: { compound: [], altOverrides: {}, versions: {}, ...(doc.media ?? { gallery: [] }) } as Product['media'],
 		attributes: (doc.attributes ?? []) as Product['attributes'],
 		optionGroups: (doc.optionGroups ?? []) as Product['optionGroups'],
 		variations: (doc.variations ?? []) as Product['variations'],

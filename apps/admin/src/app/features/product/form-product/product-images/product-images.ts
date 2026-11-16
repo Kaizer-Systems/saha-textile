@@ -1,16 +1,17 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, model, signal, viewChild } from '@angular/core';
 
-import { TranslocoModule } from '@jsverse/transloco';
-import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbAccordionModule, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 import { MediaGateway } from '@core/media/media.gateway';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { MediaModal } from '@shared/ui/modal/media-modal/media-modal';
 
 import type { ProductContentWrite } from '@saha-textile/contracts';
 import { PluralPipe } from '@shared/pipes/language.pipes';
+
+import { FmPicker, type FmPicked } from '../../../media/file-manager/fm-picker';
+import { fillKey, profileNameKey } from '../../../setting/image-profiles/profile-words';
 
 type ImagesValue = Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions'>;
 
@@ -34,12 +35,15 @@ function moved(list: readonly string[], from: number, to: number): string[] {
  */
 const PORTRAIT = 3 / 4;
 const SHAPE_TOLERANCE = 0.05;
+/** The profile product photos need, and how many a gallery holds (the product contract's limit). */
+const PRODUCT_PROFILE = 'product_3x4';
+const GALLERY_MAX = 40;
 
 @Component({
 	selector: 'app-product-images',
 	templateUrl: './product-images.html',
 	styleUrls: ['./product-images.scss'],
-	imports: [PluralPipe, NgTemplateOutlet, TranslocoModule, NgbAccordionModule, FormFields, MediaModal],
+	imports: [PluralPipe, NgTemplateOutlet, TranslocoModule, NgbAccordionModule, FormFields],
 })
 export class ProductImages {
 	readonly value = model.required<ImagesValue>();
@@ -49,8 +53,9 @@ export class ProductImages {
 	readonly combinations = input.required<readonly ImageCombination[]>();
 	readonly locale = input.required<string>();
 
-	readonly picker = viewChild<MediaModal>('picker');
 	private media = inject(MediaGateway);
+	private readonly modals = inject(NgbModal);
+	private readonly transloco = inject(TranslocoService);
 	/** The primary image's alt text from the Media Library, shown in grey as what an empty field uses. */
 	readonly libraryAlt = signal<Record<string, string>>({});
 
@@ -92,9 +97,57 @@ export class ProductImages {
 		});
 	}
 
-	open(hash: string | null): void {
+	/** The “+” tile: the Media picker, listing photos with a Product 3:4 version (R4-2, D15). */
+	async open(hash: string | null): Promise<void> {
 		this.target = hash;
-		void this.picker()?.openModal();
+		const popup = this.modals.open(FmPicker, {
+			size: 'xl',
+			windowClass: 'theme-modal media-modal fm-picker',
+			scrollable: true,
+		});
+		const picker = popup.componentInstance as FmPicker;
+		picker.start({
+			title: 'fm_pick_title_product',
+			accept: 'image',
+			max: GALLERY_MAX,
+			already: this.gallery(hash).length,
+			profile: {
+				key: PRODUCT_PROFILE,
+				name: this.transloco.translate(profileNameKey({ key: PRODUCT_PROFILE })),
+				icon: false,
+			},
+		});
+		const picked = (await popup.result.catch(() => null)) as FmPicked[] | null;
+		if (picked?.length) this.addPicked(picked);
+	}
+
+	/** Adds the chosen photos with the version each will show; a photo already here only changes its version. */
+	addPicked(picked: readonly FmPicked[]): void {
+		const current = this.gallery(this.target);
+		this.tiles.update(
+			(tiles) =>
+				new Map([
+					...tiles,
+					...picked.flatMap((row) => (row.thumbnailUrl ? [[row.assetId, row.thumbnailUrl] as const] : [])),
+				]),
+		);
+		this.value.update((value) => ({
+			...value,
+			versions: {
+				...value.versions,
+				...Object.fromEntries(picked.flatMap((row) => (row.versionId ? [[row.assetId, row.versionId]] : []))),
+			},
+		}));
+		this.write(this.target, [
+			...current,
+			...picked.map((row) => row.assetId).filter((id) => !current.includes(id)),
+		]);
+	}
+
+	/** E04: a tile names its version when it isn't the photo as it is (“Blurred fill”). */
+	versionLabel(id: string): string | null {
+		const fill = this.value().versions?.[id]?.split('.')[1];
+		return fill && fill !== 'as_is' ? this.transloco.translate(fillKey(fill as never, false)) : null;
 	}
 
 	/** Adds what the media library returned. An image already here is not added twice. */
@@ -104,26 +157,6 @@ export class ProductImages {
 			const size = this.sizes().get(id);
 			return size && Math.abs(size[0] / size[1] / PORTRAIT - 1) > SHAPE_TOLERANCE ? [index + 1] : [];
 		});
-	}
-
-	add(picked: IAttachment | IAttachment[]): void {
-		const rows = Array.isArray(picked) ? picked : [picked];
-		const current = this.gallery(this.target);
-		const fresh = rows.filter((row) => !current.includes(String(row.id)));
-		this.sizes.update(
-			(sizes) =>
-				new Map([
-					...sizes,
-					...rows.flatMap((row) =>
-						row.width && row.height ? [[String(row.id), [row.width, row.height]] as const] : [],
-					),
-				]),
-		);
-		this.tiles.update(
-			(tiles) =>
-				new Map([...tiles, ...rows.map((row) => [String(row.id), row.original_url] as [string, string])]),
-		);
-		this.write(this.target, [...current, ...fresh.map((row) => String(row.id))]);
 	}
 
 	move(hash: string | null, index: number, by: number): void {

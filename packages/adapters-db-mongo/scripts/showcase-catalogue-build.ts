@@ -451,7 +451,7 @@ function finishProduct(doc: Product, note: ShowcaseNote, now: Date): Product {
 			title: { en: `${title.en} | Saha Textile`, bn: `${title.bn} | Saha Textile` },
 			description: shortDescription,
 		},
-		media: { gallery: [...photos], compound: [], altOverrides },
+		media: { gallery: [...photos], compound: [], altOverrides, versions: {} },
 		optionGroups: doc.optionGroups.map((group) => ({
 			...group,
 			label: withBengali(group.label) as typeof group.label,

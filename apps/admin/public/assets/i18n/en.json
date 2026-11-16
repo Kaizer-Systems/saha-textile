@@ -2454,6 +2454,7 @@
 	"fm_email_confirm_note": "The button turns on once the box is ticked. Who deleted them and when goes into Activity.",
 	"fm_email_deleted": "Email pictures deleted: {{count}}",
 	"fm_pick_title": "Choose images",
+	"fm_pick_title_product": "Choose product images",
 	"fm_pick_rule_one": "One image",
 	"fm_pick_rule_images": "Images only",
 	"fm_pick_rule_any": "Any file",

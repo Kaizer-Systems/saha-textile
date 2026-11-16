@@ -2,7 +2,6 @@ import { DOCUMENT } from '@angular/common';
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { firstValueFrom } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingStore } from '@core/state/setting.store';
@@ -48,32 +47,36 @@ afterEach(() => {
 });
 
 describe('Header currency', () => {
-	it('shows the stored currency', () => {
-		expect(render().widget.selectedCurrency).toEqual({ code: 'INR' });
+	it('shows the stored currency, and follows the store when the settings arrive later (after hydration)', () => {
+		const { widget, store } = render();
+		expect(widget.selectedCurrency()).toEqual({ code: 'INR' });
+		store.selectedCurrency.set(null);
+		expect(widget.selectedCurrency()).toBeNull();
+		store.selectedCurrency.set({ code: 'USD' });
+		expect(widget.selectedCurrency()).toEqual({ code: 'USD' });
 	});
 
-	it('lists the currencies, empty until loaded', async () => {
+	it('lists the currencies, empty until loaded', () => {
 		const { widget } = render();
-		expect(await firstValueFrom(widget.currency$)).toEqual({ data: [], total: 0 });
+		expect(widget.currencies()).toEqual([]);
 		data.set({ data: [{ code: 'USD' }], total: 1 });
-		TestBed.tick();
-		expect(await firstValueFrom(widget.currency$)).toEqual({ data: [{ code: 'USD' }], total: 1 });
+		expect(widget.currencies()).toEqual([{ code: 'USD' }]);
 	});
 
 	it('opens and closes', () => {
 		const { widget } = render();
 		widget.openDropDown();
-		expect(widget.open).toBe(true);
+		expect(widget.open()).toBe(true);
 		widget.hideDropdown();
-		expect(widget.open).toBe(false);
+		expect(widget.open()).toBe(false);
 	});
 
 	it('stores the choice and reloads in the browser', () => {
 		const { widget, store, reload } = render();
-		widget.open = true;
+		widget.open.set(true);
 		widget.selectCurrency({ code: 'USD' } as never);
 		expect(store.setCurrency).toHaveBeenCalledWith({ code: 'USD' });
-		expect(widget.open).toBe(false);
+		expect(widget.open()).toBe(false);
 		expect(reload).toHaveBeenCalledOnce();
 	});
 

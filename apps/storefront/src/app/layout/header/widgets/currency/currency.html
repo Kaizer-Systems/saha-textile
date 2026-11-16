@@ -1,5 +1,5 @@
 <!-- Currency Basic Style -->
-@if (selectedCurrency && style() === 'basic') {
+@if (selectedCurrency(); as current) { @if (style() === 'basic') {
 <div (clickOutside)="hideDropdown()">
 	<div class="dropdown theme-form-select">
 		<app-button
@@ -9,13 +9,13 @@
 			[spinner]="false"
 			(click)="openDropDown()"
 		>
-			<span>{{ selectedCurrency.code }}</span>
+			<span>{{ current.code }}</span>
 		</app-button>
 		<ul
 			class="dropdown-menu dropdown-menu-end sm-dropdown-menu"
-			[class.show]="open"
+			[class.show]="open()"
 		>
-			@for (currency of (currency$ | async)?.data; track currency) {
+			@for (currency of currencies(); track currency.code) {
 			<li>
 				<a
 					class="dropdown-item"
@@ -32,7 +32,7 @@
 </div>
 }
 <!-- Currency Standard Style -->
-@if (selectedCurrency && style() === 'standard') {
+@if (style() === 'standard') {
 <div (clickOutside)="hideDropdown()">
 	<app-button
 		[class]="'dropdown-toggle m-0'"
@@ -42,15 +42,15 @@
 		(click)="openDropDown()"
 	>
 		<span>
-			{{ selectedCurrency.code }}
+			{{ current.code }}
 			<i class="ri-arrow-down-s-line"></i>
 		</span>
 	</app-button>
 	<ul
 		class="dropdown-menu"
-		[class.show]="open"
+		[class.show]="open()"
 	>
-		@for (currency of (currency$ | async)?.data; track currency) {
+		@for (currency of currencies(); track currency.code) {
 		<li>
 			<a
 				id="usd"
@@ -65,4 +65,4 @@
 		}
 	</ul>
 </div>
-}
+} }

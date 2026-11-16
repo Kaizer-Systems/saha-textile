@@ -6,6 +6,7 @@ import { lastValueFrom } from 'rxjs';
 import {
 	type EmailPictureQuery,
 	type MediaBrowseQuery,
+	type MediaCleanUpQuery,
 	MediaLibraryGateway,
 } from '@core/media-library/media-library.gateway';
 
@@ -66,6 +67,16 @@ export function injectShareLinksQuery(fileId: () => string | null) {
 }
 
 /** Clean up › Email pictures (A50): one filter's page. */
+/** Clean up's other lists (A44), one page at a time. */
+export function injectCleanUpQuery(query: () => MediaCleanUpQuery) {
+	const gateway = inject(MediaLibraryGateway);
+	return injectQuery(() => ({
+		queryKey: [...MEDIA_LIBRARY_KEY, 'clean-up', query()] as const,
+		queryFn: () => lastValueFrom(gateway.cleanUp(query())),
+		placeholderData: (previous) => previous,
+	}));
+}
+
 export function injectEmailPicturesQuery(query: () => EmailPictureQuery) {
 	const gateway = inject(MediaLibraryGateway);
 	return injectQuery(() => ({

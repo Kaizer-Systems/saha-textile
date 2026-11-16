@@ -1,4 +1,4 @@
-<!-- A50: Clean up › Email pictures. The other Clean up lists (90 days, largest, same file twice) come with media step 5. -->
+<!-- Clean up: files not used for 90 days, the largest, the same file twice (A44), and Email pictures (A50). -->
 <div class="fm-crumbs">
 	<nav>
 		<ol class="breadcrumb">
@@ -11,18 +11,154 @@
 	<span class="text-muted small">{{ 'fm_clean_hint' | transloco }}</span>
 </div>
 <ul class="nav nav-tabs mb-3">
+	@for (one of tabs; track one) {
 	<li class="nav-item">
 		<a
 			href="javascript:void(0)"
-			class="nav-link active"
-			id="fm_clean_email_tab"
+			class="nav-link"
+			[class.active]="tab() === one"
+			[id]="one === 'email' ? 'fm_clean_email_tab' : 'fm_clean_tab_' + one"
+			(click)="setTab(one)"
 		>
-			{{ 'fm_email_tab' | transloco: { count: list.data()?.total?.count ?? 0 } }}
+			@if (one === 'email') { {{ 'fm_email_tab' | transloco: { count: list.data()?.total?.count ?? 0 } }} } @else
+			{ {{ 'fm_clean_tab_' + one | transloco: { count: clean.data()?.counts?.[one] ?? 0 } }} }
 		</a>
 	</li>
+	}
 </ul>
 
-@if (list.data(); as data) {
+@if (tab() !== 'email') {
+<!-- A44: files not used for 90 days, the largest, the same file twice. Never a file the website uses or a backup. -->
+@if (chosenFiles().length) {
+<div
+	class="fm-bulk"
+	id="fm_clean_bulk"
+>
+	<i class="ri-checkbox-multiple-line"></i>
+	<strong>{{ 'fm_clean_selected' | plural: chosenFiles().length : { size: (chosenFileBytes() | fileSize) } }}</strong>
+	<button
+		type="button"
+		class="btn btn-sm btn-outline d-flex align-items-center gap-1"
+		id="fm_clean_trash"
+		(click)="trashChosenFiles()"
+	>
+		<i class="ri-delete-bin-line"></i>
+		{{ 'fm_move_to_trash' | transloco }}
+	</button>
+	<a
+		href="javascript:void(0)"
+		class="fm-bulk-x"
+		(click)="clearFiles()"
+	>
+		<i class="ri-close-line"></i>
+		{{ 'clear' | transloco }}
+	</a>
+</div>
+} @if (fileRows().length) {
+<div class="table-responsive datatable-wrapper border-table">
+	<table
+		class="all-package theme-table no-footer fm-table table"
+		id="fm_clean_table"
+	>
+		<thead>
+			<tr>
+				<th class="sm-width">
+					<div class="custom-control custom-checkbox">
+						<input
+							type="checkbox"
+							class="custom-control-input checkbox_animated"
+							[attr.aria-label]="'fm_select_all' | transloco"
+							[checked]="allFilesPicked()"
+							(change)="toggleAllFiles()"
+						/>
+					</div>
+				</th>
+				<th class="fm-namecol">{{ 'name' | transloco }}</th>
+				<th>{{ 'fm_clean_col_why' | transloco }}</th>
+				<th>{{ 'fm_location' | transloco }}</th>
+				<th>{{ 'type' | transloco }}</th>
+			</tr>
+		</thead>
+		<tbody>
+			@for (row of fileRows(); track row.file.id) {
+			<tr
+				[class.is-selected]="filePicked().has(row.file.id)"
+				[attr.data-clean]="row.file.id"
+			>
+				<td class="sm-width">
+					<div class="custom-control custom-checkbox">
+						<input
+							type="checkbox"
+							class="custom-control-input checkbox_animated"
+							[attr.aria-label]="row.file.name"
+							[checked]="filePicked().has(row.file.id)"
+							(change)="toggleFile(row.file.id)"
+						/>
+					</div>
+				</td>
+				<td class="fm-namecol">
+					<div class="fm-file">
+						@if (row.file.thumbnailUrl) {
+						<div class="fm-type">
+							<img
+								[src]="row.file.thumbnailUrl"
+								alt=""
+							/>
+						</div>
+						} @else {
+						<div
+							class="fm-type"
+							[class]="kind(row.file).cls"
+						>
+							<i [class]="kind(row.file).icon"></i>
+						</div>
+						}
+						<div style="min-width: 0">
+							<h6>{{ row.file.name }}</h6>
+							<p>{{ row.file.bytes | fileSize }}</p>
+						</div>
+					</div>
+				</td>
+				<td>
+					@if (row.sameAs; as first) { {{ 'fm_clean_why_same' | transloco: { name: first.name, place:
+					first.location || ('fm_my_files' | transloco) } }} } @else if (tab() === 'largest') { {{
+					'fm_clean_why_largest' | transloco }} } @else { {{ 'fm_clean_why_unused' | transloco: { date:
+					(row.uploadedAt | date: 'd MMM y') } }} }
+				</td>
+				<td class="fm-path">
+					<i class="ri-folder-3-line"></i>
+					{{ row.file.location || ('fm_my_files' | transloco) }}
+				</td>
+				<td>{{ typeLabel(row.file) }}</td>
+			</tr>
+			}
+		</tbody>
+	</table>
+</div>
+@if (moreFiles()) {
+<div class="mt-3 text-center">
+	<button
+		type="button"
+		class="btn btn-outline btn-sm"
+		id="fm_clean_more"
+		(click)="moreFileRows()"
+	>
+		{{ 'fm_email_more' | transloco }}
+	</button>
+</div>
+} } @else if (clean.data()) {
+<div
+	class="no-data-added py-5 text-center"
+	id="fm_clean_empty"
+>
+	<img
+		src="assets/svg/no-media.svg"
+		alt=""
+		style="max-width: 220px"
+	/>
+	<h4>{{ 'fm_clean_empty' | transloco }}</h4>
+</div>
+} } @else { @if (list.data(); as data) {
 <div
 	class="fm-note mb-3"
 	id="fm_email_note"
@@ -188,7 +324,7 @@
 	/>
 	<h4>{{ 'fm_email_empty' | transloco }}</h4>
 </div>
-} }
+} } }
 
 <!-- A51: the warning before email pictures are deleted for good. -->
 <ng-template

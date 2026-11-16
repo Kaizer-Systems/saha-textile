@@ -2,6 +2,9 @@ import type {
 	EmailPictureList,
 	EmailPictureQuery,
 	EmailPictureRow,
+	MediaCleanUpQuery,
+	MediaCleanUpResponse,
+	MediaCleanUpRow,
 	MediaBrowseQuery,
 	MediaCategory,
 	MediaFileRow,
@@ -47,6 +50,9 @@ export type {
 	EmailPictureList,
 	EmailPictureQuery,
 	EmailPictureRow,
+	MediaCleanUpQuery,
+	MediaCleanUpResponse,
+	MediaCleanUpRow,
 	MediaFileDetails,
 	MediaAddVersionsRequest,
 	MediaBulkAddVersionsRequest,
@@ -172,6 +178,8 @@ export abstract class MediaLibraryGateway {
 	abstract storage(): Observable<StorageSummary>;
 	/** Clean up › Email pictures (A50): email pictures whose photo was deleted or replaced, kept for good. */
 	abstract emailPictures(query: EmailPictureQuery): Observable<EmailPictureList>;
+	/** Clean up's other lists (A44): not used for 90 days, the largest, the same file twice. */
+	abstract cleanUp(query: MediaCleanUpQuery): Observable<MediaCleanUpResponse>;
 	/** A51: deletes the chosen email pictures for good, after the warning. */
 	abstract deleteEmailPictures(keys: readonly string[]): Observable<{ deleted: number; bytes: number }>;
 	abstract checkStorage(body: StorageCheckRequest): Observable<StorageCheckAnswer>;

@@ -9,6 +9,8 @@ import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.intercepto
 import {
 	type EmailPictureList,
 	type EmailPictureQuery,
+	type MediaCleanUpQuery,
+	type MediaCleanUpResponse,
 	type MediaActivityPage,
 	type MediaBrowseQuery,
 	type MediaBrowseResponse,
@@ -241,6 +243,12 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override storage(): Observable<StorageSummary> {
 		return this.http.get<StorageSummary>(this.url('/storage'));
+	}
+
+	override cleanUp(query: MediaCleanUpQuery): Observable<MediaCleanUpResponse> {
+		return this.http.get<MediaCleanUpResponse>(this.url('/clean-up'), {
+			params: { list: query.list, page: String(query.page) },
+		});
 	}
 
 	override emailPictures(query: EmailPictureQuery): Observable<EmailPictureList> {

@@ -991,6 +991,19 @@ export class FileManager {
 	 */
 	async trashChosen(viaKey: boolean): Promise<void> {
 		const { folders, files } = this.chosen();
+		return this.trashItems(folders, files, viaKey);
+	}
+
+	/** Clean up's chosen files (A44) go through the same Trash: the in-use check, then Undo. */
+	trashFromCleanUp(files: MediaFileRow[]): Promise<void> {
+		return this.trashItems([], files, false);
+	}
+
+	private async trashItems(
+		folders: readonly MediaFolderRow[],
+		files: readonly MediaFileRow[],
+		viaKey: boolean,
+	): Promise<void> {
 		if (!folders.length && !files.length) return;
 		const body: MediaSelection = { folderIds: folders.map((row) => row.id), fileIds: files.map((row) => row.id) };
 		if (folders.length || files.some((row) => row.usedOn > 0)) {

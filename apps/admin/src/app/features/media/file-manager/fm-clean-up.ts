@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, inject, output, signal, viewChild } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -10,13 +10,26 @@ import { lastValueFrom } from 'rxjs';
 import {
 	type EmailPictureQuery,
 	type EmailPictureRow,
+	type MediaCleanUpQuery,
+	type MediaCleanUpRow,
+	type MediaFileRow,
 	MediaLibraryGateway,
 } from '@core/media-library/media-library.gateway';
-import { MEDIA_LIBRARY_KEY, injectEmailPicturesQuery } from '@data-access/queries/media-library.queries';
+import {
+	MEDIA_LIBRARY_KEY,
+	injectCleanUpQuery,
+	injectEmailPicturesQuery,
+} from '@data-access/queries/media-library.queries';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
+
+import { fileKind, fileTypeLabel } from './file-kinds';
 
 /** The “last sent in an email” filter (A50), widest first. */
 export const EMAIL_SENT_OPTIONS: readonly EmailPictureQuery['sent'][] = ['all', 'never', 'over_1y', 'over_2y'];
+
+/** Clean up's tabs (A44): the three file lists, then Email pictures (A50). */
+export type CleanTab = MediaCleanUpQuery['list'] | 'email';
+export const CLEAN_TABS: readonly CleanTab[] = ['unused', 'largest', 'duplicates', 'email'];
 
 /** DigitalOcean bills extra storage per GiB a month (R4-7). */
 const PRICE_PER_GIB_MONTH = 0.02;
@@ -29,7 +42,9 @@ export function monthlyCost(bytes: number): number {
 /**
  * Clean up › Email pictures (Media brief R6-1, A50, A51; media step 3f): the email pictures whose photo was deleted or
  * replaced, kept for good so order emails already sent keep their pictures. Nothing here is deleted by itself; an
- * admin can delete chosen ones after a warning with a box to tick. The other Clean up lists come with media step 5.
+ * admin can delete chosen ones after a warning with a box to tick. The other lists (A44, media step 5): files not
+ * used for 90 days, the largest, and later copies of the same file; chosen ones go to Trash through the Media
+ * page's own Trash (the in-use check and Undo), never deleted from here.
  */
 @Component({
 	selector: 'app-fm-clean-up',
@@ -37,6 +52,73 @@ export function monthlyCost(bytes: number): number {
 	imports: [DatePipe, FileSizePipe, PluralPipe, TranslocoModule],
 })
 export class FmCleanUp {
+	/** A44: the chosen files, for the Media page's Trash. */
+	readonly trash = output<MediaFileRow[]>();
+	/** Which list shows; Email pictures is A50. */
+	readonly tab = signal<CleanTab>('unused');
+	readonly filePage = signal(1);
+	readonly clean = injectCleanUpQuery(() => ({
+		list: this.tab() === 'email' ? 'unused' : (this.tab() as MediaCleanUpQuery['list']),
+		page: this.filePage(),
+	}));
+	/** Rows shown so far in a file list: earlier pages are kept as more are asked for. */
+	readonly shownFiles = signal<MediaCleanUpRow[]>([]);
+	readonly fileRows = computed(() => {
+		const page = this.tab() === 'email' ? [] : (this.clean.data()?.rows ?? []);
+		const seen = new Set(this.shownFiles().map((row) => row.file.id));
+		return [...this.shownFiles(), ...page.filter((row) => !seen.has(row.file.id))];
+	});
+	readonly filePicked = signal<ReadonlySet<string>>(new Set());
+	readonly chosenFiles = computed(() => this.fileRows().filter((row) => this.filePicked().has(row.file.id)));
+	readonly chosenFileBytes = computed(() => this.chosenFiles().reduce((sum, row) => sum + row.file.bytes, 0));
+	readonly allFilesPicked = computed(
+		() => this.fileRows().length > 0 && this.fileRows().every((row) => this.filePicked().has(row.file.id)),
+	);
+	readonly moreFiles = computed(() => {
+		const data = this.clean.data();
+		return !!data && data.list === this.tab() && this.fileRows().length < data.total;
+	});
+	readonly kind = fileKind;
+	readonly tabs = CLEAN_TABS;
+	readonly typeLabel = fileTypeLabel;
+
+	setTab(tab: CleanTab): void {
+		this.tab.set(tab);
+		this.filePage.set(1);
+		this.shownFiles.set([]);
+		this.filePicked.set(new Set());
+	}
+
+	moreFileRows(): void {
+		this.shownFiles.set(this.fileRows());
+		this.filePage.update((page) => page + 1);
+	}
+
+	toggleFile(id: string): void {
+		const next = new Set(this.filePicked());
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		this.filePicked.set(next);
+	}
+
+	clearFiles(): void {
+		this.filePicked.set(new Set());
+	}
+
+	toggleAllFiles(): void {
+		this.filePicked.set(this.allFilesPicked() ? new Set() : new Set(this.fileRows().map((row) => row.file.id)));
+	}
+
+	/** Move to Trash: the Media page asks, keeps Undo for 8 seconds, and the lists are read again. */
+	trashChosenFiles(): void {
+		const files = this.chosenFiles().map((row) => row.file);
+		if (!files.length) return;
+		this.trash.emit(files);
+		this.filePicked.set(new Set());
+		this.shownFiles.set([]);
+		this.filePage.set(1);
+	}
+
 	private readonly gateway = inject(MediaLibraryGateway);
 	private readonly queries = inject(QueryClient);
 	private readonly modals = inject(NgbModal);

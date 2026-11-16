@@ -27,10 +27,16 @@ const row = (key: string, extra: Partial<EmailPictureRow> = {}): EmailPictureRow
 	...extra,
 });
 
-const data = vi.hoisted(() => ({ value: undefined as unknown }));
+const data = vi.hoisted(() => ({ value: undefined as unknown, clean: undefined as unknown, asked: [] as unknown[] }));
 vi.mock('@data-access/queries/media-library.queries', async (original) => ({
 	...(await original<object>()),
 	injectEmailPicturesQuery: () => ({ data: () => data.value }),
+	injectCleanUpQuery: (query: () => unknown) => ({
+		data: () => {
+			data.asked.push(query());
+			return data.clean;
+		},
+	}),
 }));
 
 const setup = (rows: EmailPictureRow[], answer: unknown = 'yes') => {
@@ -107,5 +113,46 @@ describe('Clean up › Email pictures (A50, A51; media step 3f)', () => {
 		expect(clean.picked().size).toBe(0);
 		clean.setSent('nonsense');
 		expect(clean.sent()).toBe('over_2y');
+	});
+});
+
+describe('Clean up lists (A44; media step 5)', () => {
+	const file = (id: string, bytes = 1000) => ({ id, name: `${id}.jpg`, bytes, location: '', kind: 'image' }) as never;
+	const page = (list: string, ids: string[], total = ids.length) => ({
+		list,
+		rows: ids.map((id) => ({ file: file(id, 2000), uploadedAt: '2026-06-01T00:00:00.000Z', sameAs: null })),
+		page: 1,
+		pageSize: 50,
+		total,
+		counts: { unused: 3, largest: 2, duplicates: 1 },
+	});
+
+	it('starts on Not used for 90 days, asks the list of the tab chosen, and hands chosen files to Trash', () => {
+		data.clean = page('unused', ['med_a', 'med_b'], 3);
+		const { clean } = setup([]);
+		expect(clean.tab()).toBe('unused');
+		expect(clean.fileRows().map((row) => row.file.id)).toEqual(['med_a', 'med_b']);
+		expect(clean.moreFiles()).toBe(true);
+		clean.toggleFile('med_b');
+		expect(clean.chosenFileBytes()).toBe(2000);
+		const trashed: unknown[] = [];
+		clean.trash.subscribe((files) => trashed.push(files));
+		clean.trashChosenFiles();
+		expect(trashed).toEqual([[expect.objectContaining({ id: 'med_b' })]]);
+		expect(clean.filePicked().size).toBe(0);
+
+		data.asked = [];
+		data.clean = page('largest', ['med_big']);
+		clean.setTab('largest');
+		expect(clean.fileRows().map((row) => row.file.id)).toEqual(['med_big']);
+		expect(data.asked.at(-1)).toEqual({ list: 'largest', page: 1 });
+		clean.toggleAllFiles();
+		expect(clean.allFilesPicked()).toBe(true);
+		clean.clearFiles();
+		expect(clean.chosenFiles()).toEqual([]);
+		// Email pictures has its own list; the file lists show nothing there.
+		clean.setTab('email');
+		expect(clean.fileRows()).toEqual([]);
+		data.clean = undefined;
 	});
 });

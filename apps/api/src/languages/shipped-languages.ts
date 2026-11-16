@@ -7,7 +7,7 @@ import { isLocaleCode } from '@saha-textile/core-domain/languages';
 
 /**
  * What this release ships for each language (step 0d, "release first, then add"): the menu and
- * button files of both apps, and the shop's four legal pages. The API's build writes it next to
+ * button files of both apps. The legal pages live in the database (Legal Pages brief). The API's build writes it next to
  * `main.js` from the same commit the apps are built from (`write-language-manifest.ts`); on a
  * developer's Mac, where the build output is rebuilt on every save, it is read from the repository.
  */
@@ -19,14 +19,11 @@ export interface LanguageManifest {
 	/** English keys in each app's file: what a language without a file still has to write. */
 	adminKeys: number;
 	shopKeys: number;
-	/** The shop's legal pages and the languages each exists in. */
-	pages: Record<string, string[]>;
 }
 
 export const MANIFEST_FILE = 'shipped-languages.json';
 const ADMIN_FILES = 'apps/admin/public/assets/i18n';
 const SHOP_FILES = 'apps/storefront/public/assets/i18n';
-const SHOP_PAGES = 'apps/storefront/public/assets/data/pages';
 
 /** The repository root above a path, found by its workspace file; null inside a built image. */
 export function repositoryRoot(from: string): string | null {
@@ -62,20 +59,6 @@ function readFiles(directory: string): { missing: Record<string, number>; keys: 
 	return { missing, keys: english.size };
 }
 
-/** Legal pages: `<slug>.json` is English, `<slug>.<code>.json` another language. */
-function readPages(directory: string): Record<string, string[]> {
-	if (!existsSync(directory)) return {};
-	const pages: Record<string, string[]> = {};
-	for (const name of readdirSync(directory).filter((file) => file.endsWith('.json'))) {
-		const parts = name.slice(0, -'.json'.length).split('.');
-		const code = parts.length > 1 ? (parts.pop() as string) : 'en';
-		if (!isLocaleCode(code)) continue;
-		const slug = parts.join('.');
-		(pages[slug] ??= []).push(code);
-	}
-	return pages;
-}
-
 /** The manifest from a repository checkout. */
 export function manifestFromRepository(root: string): LanguageManifest {
 	const admin = readFiles(join(root, ADMIN_FILES));
@@ -85,7 +68,6 @@ export function manifestFromRepository(root: string): LanguageManifest {
 		shop: shop.missing,
 		adminKeys: admin.keys,
 		shopKeys: shop.keys,
-		pages: readPages(join(root, SHOP_PAGES)),
 	};
 }
 
@@ -94,19 +76,12 @@ export function loadLanguageManifest(builtDirectory: string = join(__dirname, '.
 	const built = join(builtDirectory, MANIFEST_FILE);
 	if (existsSync(built)) return JSON.parse(readFileSync(built, 'utf8')) as LanguageManifest;
 	const root = repositoryRoot(builtDirectory);
-	return root
-		? manifestFromRepository(root)
-		: { admin: { en: 0 }, shop: { en: 0 }, adminKeys: 0, shopKeys: 0, pages: {} };
+	return root ? manifestFromRepository(root) : { admin: { en: 0 }, shop: { en: 0 }, adminKeys: 0, shopKeys: 0 };
 }
 
 /** The languages this release can offer, from a manifest. */
 export function shippedFrom(manifest: LanguageManifest): ShippedLanguage[] {
 	return shippedLanguages(manifest.admin, manifest.shop);
-}
-
-/** Legal pages a language still lacks (each page English has). */
-export function missingPages(manifest: LanguageManifest, code: string): number {
-	return Object.values(manifest.pages).filter((codes) => codes.includes('en') && !codes.includes(code)).length;
 }
 
 /** Shop menu and button text a language lacks: every English key when its file is not shipped. */

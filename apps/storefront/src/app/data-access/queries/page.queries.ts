@@ -22,7 +22,7 @@ export function injectFaqsQuery() {
 }
 
 /** A single static content page (privacy policy, terms, etc.) keyed on slug.
- *  Fetches assets/data/pages/<slug>.json via PageService.getPage(). */
+ *  Fetches a legal page from the API (`GET /catalog/pages/:slug`) via PageService.getPage(). */
 export function injectStaticPageQuery(slug: () => string | undefined) {
 	const pageService = inject(PageService);
 	const locale = inject(ACTIVE_LOCALE);

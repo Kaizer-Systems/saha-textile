@@ -26,7 +26,6 @@ import {
 	loadLanguageManifest,
 	manifestFromRepository,
 	missingAdminText,
-	missingPages,
 	missingShopText,
 	repositoryRoot,
 	shippedFrom,
@@ -38,12 +37,6 @@ const MANIFEST: LanguageManifest = {
 	shop: { en: 0, bn: 0, hi: 0, ta: 0 },
 	adminKeys: 900,
 	shopKeys: 500,
-	pages: {
-		'privacy-policy': ['en', 'bn', 'hi'],
-		'shipping-policy': ['en', 'bn', 'hi'],
-		'refund-returns': ['en', 'bn', 'hi'],
-		'terms-conditions': ['en', 'bn', 'hi'],
-	},
 };
 
 class MemoryLanguages implements LanguageRepository {
@@ -159,7 +152,17 @@ describe('Settings › Languages', () => {
 	it('lets every signed-in admin read the working list; everything else needs language.manage', () => {
 		const reflector = new Reflector();
 		expect(reflector.get(PERMISSIONS_KEY, AdminLanguagesController.prototype.list)).toBeUndefined();
-		for (const name of ['settings', 'reminders', 'todo', 'add', 'admin', 'shop', 'remove', 'keep', 'erase'] as const) {
+		for (const name of [
+			'settings',
+			'reminders',
+			'todo',
+			'add',
+			'admin',
+			'shop',
+			'remove',
+			'keep',
+			'erase',
+		] as const) {
 			expect(reflector.get(PERMISSIONS_KEY, AdminLanguagesController.prototype[name]), name).toEqual([
 				'language.manage',
 			]);
@@ -227,7 +230,7 @@ describe('Settings › Languages', () => {
 	it('counts the admin’s own words apart: they never stop the shop', async () => {
 		// The legal pages are counted from the database since the Legal Pages build, not from the release files.
 		const { service } = harness({ pages: 1 });
-		service.useManifest({ ...MANIFEST, admin: { en: 0 }, pages: { 'privacy-policy': ['en'] } });
+		service.useManifest({ ...MANIFEST, admin: { en: 0 } });
 		const todo = await service.todo('hi');
 		expect(todo.lines.find((line) => line.area === 'admin_text')).toEqual({
 			area: 'admin_text',
@@ -272,7 +275,11 @@ describe('Settings › Languages', () => {
 		const erased = await admin.erase('bn', { confirm: 'বাংলা' }, principal, request);
 		expect(coverage.erase).toHaveBeenCalledWith('bn');
 		expect(erased.rows.at(-1)).toMatchObject({ code: 'bn', itemsWithText: 0 });
-		expect(audit.at(-1)).toMatchObject({ action: 'language.erase', severity: 'warn', metadata: { erasedItems: 12 } });
+		expect(audit.at(-1)).toMatchObject({
+			action: 'language.erase',
+			severity: 'warn',
+			metadata: { erasedItems: 12 },
+		});
 		expect(await refusal(admin.erase('bn', { confirm: 'বাংলা' }, principal, request))).toBe('already_erased');
 
 		// Adding it again starts a draft; its addresses keep answering 301 until the shop shows it.
@@ -302,20 +309,12 @@ describe('Settings › Languages', () => {
 describe('what this release ships', () => {
 	const root = repositoryRoot(resolve(__dirname));
 
-	it('reads both apps’ files and the shop’s legal pages from this checkout', () => {
+	it('reads both apps’ files from this checkout', () => {
 		expect(root).toBeTruthy();
 		const manifest = manifestFromRepository(root!);
 		expect(manifest.admin).toMatchObject({ en: 0, bn: 0 });
 		expect(manifest.shop).toMatchObject({ en: 0, bn: 0 });
 		expect(manifest.adminKeys).toBeGreaterThan(500);
-		expect(Object.keys(manifest.pages).sort()).toEqual([
-			'privacy-policy',
-			'refund-returns',
-			'shipping-policy',
-			'terms-conditions',
-		]);
-		expect(missingPages(manifest, 'bn')).toBe(0);
-		expect(missingPages(manifest, 'hi')).toBe(4);
 		expect(missingShopText(manifest, 'hi')).toBe(manifest.shopKeys);
 		expect(missingAdminText(manifest, 'bn')).toBe(0);
 		expect(shippedFrom(manifest).map((row) => row.code)).toEqual(expect.arrayContaining(['en', 'bn']));

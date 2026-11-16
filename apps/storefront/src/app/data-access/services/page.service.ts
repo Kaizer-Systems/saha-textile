@@ -38,8 +38,7 @@ export class PageService {
 			);
 	}
 
-	// Static content pages (privacy policy, terms, etc.) — one JSON per slug
-	// under assets/data/pages/.
+	// The legal pages (privacy policy, terms, refunds and returns, shipping) from the API, written in Admin › Pages.
 	/** A legal page in one language from the API (Legal Pages brief); the API falls back to English. */
 	getPage(slug: string, locale = 'en'): Observable<IStaticPage> {
 		return this.http.get<IStaticPage>(`${runtimeConfig.apiUrl}/catalog/pages/${encodeURIComponent(slug)}`, {

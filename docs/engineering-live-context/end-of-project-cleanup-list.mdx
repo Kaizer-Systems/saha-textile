@@ -28,10 +28,11 @@ Each line names the files, what replaced the piece, and what the removal also to
 | M6  | `ngx-dropzone`                                              | `apps/admin/package.json`; used in M2's upload tab and in `shared/ui/modal/import-csv-modal/`                                                                                   | The Media page's own upload (drop, paste, folders)               | The CSV import still uses it: drop the package only if that import moves to another drop zone                                             |
 | M7  | The purpose list (`MediaPurpose`)                           | `packages/contracts/src/media.ts` (`MediaPurpose`, `minShortEdge`, `targetAspect`, `MediaAsset.purpose`), `packages/core-domain/src/media/policy.ts`, the worker's purpose plan | Image profiles and versions (step 2)                             | Stored photos carry `purpose`: its removal needs a database migration, and the shop's review photos still upload with `purpose: 'review'` |
 
-## Waiting on an owner answer (2026-11-16)
+## Decided, so not on this list (2026-11-16)
 
-These join the list only if the owner chooses "keep for now":
+The owner chose to remove these with the Legal Pages build instead of keeping them for the end:
 
 - Admin › Pages: the Add Page button, the Delete action, the row tick boxes and the Status switch (Legal Pages
   brief, choice A).
-- The eight legal page files in `apps/storefront/public/assets/data/pages/` (Legal Pages brief, choice 4).
+- The eight legal page files the shop read before the API (Legal Pages brief, choice 4), with the language
+  manifest's `pages` part that counted them.

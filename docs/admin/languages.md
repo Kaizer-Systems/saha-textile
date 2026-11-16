@@ -37,7 +37,7 @@ The Admin switch is only about the admin's own words. Writing a language's text 
 
 ## Menu and button text comes with a release
 
-Every word the apps show that is not stored in the database ships as one file per language per app: `apps/admin/public/assets/i18n/xx.json` and `apps/storefront/public/assets/i18n/xx.json`, checked by `pnpm check:i18n-parity`. The API's build records which languages both apps ship (`dist/shipped-languages.json`, written by `write-language-manifest.ts` from the same commit; on a developer's Mac the API reads the files directly). The shop's legal pages count too: `apps/storefront/public/assets/data/pages/<slug>(.xx).json`.
+Every word the apps show that is not stored in the database ships as one file per language per app: `apps/admin/public/assets/i18n/xx.json` and `apps/storefront/public/assets/i18n/xx.json`, checked by `pnpm check:i18n-parity`. The API's build records which languages both apps ship (`dist/shipped-languages.json`, written by `write-language-manifest.ts` from the same commit; on a developer's Mac the API reads the files directly). The legal pages are counted from the database (Admin › Pages), with every other area.
 
 So a new language takes two steps:
 

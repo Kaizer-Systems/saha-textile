@@ -6,8 +6,7 @@
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/apps/admin/public/assets/i18n/*.json",
-				"$TURBO_ROOT$/apps/storefront/public/assets/i18n/*.json",
-				"$TURBO_ROOT$/apps/storefront/public/assets/data/pages/*.json"
+				"$TURBO_ROOT$/apps/storefront/public/assets/i18n/*.json"
 			]
 		}
 	}

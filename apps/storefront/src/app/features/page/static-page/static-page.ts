@@ -16,7 +16,7 @@ const CRUMBS_JSONLD = 'page-crumbs';
  * Shared presentational page for CMS-style static content (privacy policy, terms,
  * refund & returns, shipping policy). Each route re-exports this component; the
  * slug is derived from the URL (route path == JSON filename), so `/privacy-policy`
- * loads assets/data/pages/privacy-policy.json.
+ * reads privacy-policy from the API (`GET /catalog/pages/privacy-policy`).
  *
  * Rich HTML is rendered via [innerHTML] into the theme's `.ckeditor-content`
  * wrapper — the same style used by blog detail — so no page-specific CSS is needed.

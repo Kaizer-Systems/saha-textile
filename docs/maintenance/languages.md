@@ -22,13 +22,13 @@ The shop serves English (`en`) and Bengali (`bn`); Settings › Languages adds o
 
 ## Where each language lives
 
-| Part              | English                              | Bengali                            |
-| ----------------- | ------------------------------------ | ---------------------------------- |
-| Storefront pages  | `/en/…`                              | `/bn/…`                            |
-| Interface text    | `assets/i18n/en.json`                | `assets/i18n/bn.json`              |
-| Legal pages       | `assets/data/pages/<slug>.json`      | `assets/data/pages/<slug>.bn.json` |
-| Catalogue content | the `en` key of each language object | the `bn` key                       |
-| Link previews     | `og:locale` `en_IN`                  | `og:locale` `bn_IN`                |
+| Part              | English                              | Bengali                  |
+| ----------------- | ------------------------------------ | ------------------------ |
+| Storefront pages  | `/en/…`                              | `/bn/…`                  |
+| Interface text    | `assets/i18n/en.json`                | `assets/i18n/bn.json`    |
+| Legal pages       | Admin › Pages (database)             | Admin › Pages (database) |
+| Catalogue content | the `en` key of each language object | the `bn` key             |
+| Link previews     | `og:locale` `en_IN`                  | `og:locale` `bn_IN`      |
 
 Product and category addresses stay in English letters in both languages. Only the language prefix changes.
 

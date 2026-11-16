@@ -723,6 +723,21 @@ describe('ContentBlocksService', () => {
 		expect((await statusOf(build(found).service.upsert(input()))).status).toBe(422);
 	});
 
+	it('takes a photo given a banner version later, whatever it was first uploaded for (media step 4d)', async () => {
+		const version = (profileKey: string) => ({
+			id: `${profileKey}.as_is`,
+			profileKey,
+			profileVersion: 1,
+			fill: 'as_is',
+			state: 'ready',
+			createdAt: '2026-11-16T00:00:00.000Z',
+		});
+		const reused = banner({ purpose: 'product', versions: [version('product_3x4'), version('banner_keep_shape')] });
+		await expect(build([reused]).service.upsert(input())).resolves.toMatchObject({ key: expect.any(String) });
+		const plain = banner({ purpose: 'product', versions: [version('product_3x4')] });
+		expect((await statusOf(build([plain]).service.upsert(input()))).status).toBe(422);
+	});
+
 	it('needs alt text in every language to go live', async () => {
 		const refused = await statusOf(build().service.upsert(input({ status: 'active', alt: { en: 'A', bn: ' ' } })));
 		expect(JSON.stringify(refused.body)).toContain('bn');

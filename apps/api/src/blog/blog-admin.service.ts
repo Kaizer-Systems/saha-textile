@@ -31,6 +31,7 @@ import {
 	repointedRows,
 	resolveImage,
 	sanitizeArticleHtml,
+	servesProfile,
 } from '@saha-textile/core-domain';
 
 import { LanguageStore } from '../languages/language-store';
@@ -41,7 +42,9 @@ import {
 	BLOG_TAG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	SEO_REDIRECT_REPOSITORY,
-	STORAGE_PORT, LANGUAGE_COVERAGE_REPOSITORY } from '../infra/tokens';
+	STORAGE_PORT,
+	LANGUAGE_COVERAGE_REPOSITORY,
+} from '../infra/tokens';
 import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
 import { missingFilter } from '../languages/missing-filter';
 
@@ -95,7 +98,9 @@ export class BlogAdminService {
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		private readonly languages: LanguageStore,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
-		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
+		@Optional()
+		@Inject(LANGUAGE_COVERAGE_REPOSITORY)
+		private readonly coverage: LanguageCoverageRepository | null = null,
 	) {}
 
 	// ── Posts ──────────────────────────────────────────────────────────────────
@@ -265,7 +270,9 @@ export class BlogAdminService {
 		if (!assetId) return;
 		const asset = await this.assets.findById(assetId);
 		if (!asset || asset.deletedAt) throw new BadRequestException('That picture is not in the media library');
-		if (asset.purpose !== 'blog') throw new BadRequestException('Blog pictures must be uploaded as Blog images');
+		// A photo with a ready Blog cover version, whatever it was first uploaded for (media step 4d).
+		if (!servesProfile(asset, ['blog_cover_2x1']))
+			throw new BadRequestException('Blog pictures need a Blog cover 2:1 version');
 	}
 
 	/** The cover's alt, title and caption live on the picture, so every place it shows reads them. */

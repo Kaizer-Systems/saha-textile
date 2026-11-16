@@ -95,6 +95,18 @@ export const purposeForProfile = (profileKey: string): MediaPurpose => {
 	return 'product';
 };
 
+/**
+ * Whether a photo can be used where one of these profiles is needed (media step 4d): it holds a ready version of
+ * one, or, for a photo the versions model hasn't named yet, it was uploaded for that kind of place. Pages check
+ * this instead of the upload's purpose, so a photo given a version later (Reprocess, Make one) is accepted.
+ */
+export const servesProfile = (
+	asset: Pick<MediaAsset, 'purpose'> & { versions?: readonly { profileKey: string; state: string }[] | null },
+	profileKeys: readonly string[],
+): boolean =>
+	(asset.versions ?? []).some((version) => version.state === 'ready' && profileKeys.includes(version.profileKey)) ||
+	(!(asset.versions ?? []).length && profileKeys.some((key) => purposeForProfile(key) === asset.purpose));
+
 const sameShape = (a: { width: number; height: number }, b: { width: number; height: number }) =>
 	aspectDeviation(a.width, a.height, b) < 0.001;
 

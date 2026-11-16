@@ -15,9 +15,13 @@ import {
 	resolveImage,
 	type SiteSettingsRepository,
 	type StoragePort,
+	servesProfile,
 } from '@saha-textile/core-domain';
 
 import { MEDIA_ASSET_REPOSITORY, MEDIA_ROLE_REPOSITORY, SITE_SETTINGS_REPOSITORY, STORAGE_PORT } from '../infra/tokens';
+
+/** The profiles a Brand Kit picture comes from: the logos and seals, and the browser icon (R4-2, D17). */
+const BRAND_PROFILES = ['logo_keep_shape', 'browser_icon_1x1'];
 
 const LOGO_ROLE = 'brand_logo';
 const ICON_ROLE = 'brand_icon';
@@ -149,7 +153,8 @@ export class BrandService {
 
 	private async requireBrandAsset(assetId: string): Promise<void> {
 		const asset = await this.assets.findById(assetId);
-		if (asset?.purpose !== 'brand') {
+		// A photo with a ready Logo or Browser icon version (media step 4d); older brand uploads still count.
+		if (!asset || !servesProfile(asset, BRAND_PROFILES)) {
 			throw new BadRequestException({
 				issues: [
 					{ path: 'assetId', message: 'Upload this image from the Brand screen', code: 'not_a_brand_image' },

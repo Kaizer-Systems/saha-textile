@@ -232,4 +232,21 @@ describe('BrandService', () => {
 		await service.save(kit({ shopName: '', logoAssetId: 'b', sealAssetId: 'b', faviconAssetId: 'b' }));
 		expect(settings.set).toHaveBeenCalled();
 	});
+
+	it('takes a photo given a Logo version later, whatever it was first uploaded for (media step 4d)', async () => {
+		const ready = (profileKey: string) => ({
+			id: `${profileKey}.as_is`,
+			profileKey,
+			profileVersion: 1,
+			fill: 'as_is',
+			state: 'ready',
+			createdAt: '2026-11-16T00:00:00.000Z',
+		});
+		const reused = { ...asset('r', 'product'), versions: [ready('product_3x4'), ready('logo_keep_shape')] };
+		const plain = { ...asset('p', 'product'), versions: [ready('product_3x4')] };
+		const { service, settings } = build(null, { r: reused, p: plain });
+		await expect(service.save(kit({ shopName: '', logoAssetId: 'p', sealAssetId: null }))).rejects.toThrow();
+		await service.save(kit({ shopName: '', logoAssetId: 'r', sealAssetId: null }));
+		expect(settings.set).toHaveBeenCalled();
+	});
 });

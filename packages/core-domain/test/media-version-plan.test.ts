@@ -14,6 +14,7 @@ import {
 	planVersion,
 	processMediaAsset,
 	purposeForProfile,
+	servesProfile,
 	versionStorageKey,
 	type ImageCodecPort,
 	type MediaAssetRepository,
@@ -195,6 +196,24 @@ describe('the checks before a version is made', () => {
 			maxLongEdge: 8192,
 		});
 		expect(checkCaps({ ...iphone, width: 8000, height: 7000 })).toMatchObject({ code: 'too_many_pixels' });
+	});
+
+	it('a place accepts a photo holding a ready version of its profile, whatever it was uploaded for (step 4d)', () => {
+		const version = (profileKey: string, state = 'ready') => ({ profileKey, state });
+		// A product photo given a Blog cover version later is a blog picture now.
+		expect(servesProfile({ purpose: 'product', versions: [version('blog_cover_2x1')] }, ['blog_cover_2x1'])).toBe(
+			true,
+		);
+		// A version still being made doesn't count yet; nor does another profile.
+		expect(
+			servesProfile({ purpose: 'blog', versions: [version('blog_cover_2x1', 'making')] }, ['blog_cover_2x1']),
+		).toBe(false);
+		expect(servesProfile({ purpose: 'product', versions: [version('product_3x4')] }, ['banner_keep_shape'])).toBe(
+			false,
+		);
+		// A photo not yet named into versions is judged by what it was uploaded for.
+		expect(servesProfile({ purpose: 'brand', versions: [] }, ['logo_keep_shape', 'browser_icon_1x1'])).toBe(true);
+		expect(servesProfile({ purpose: 'product' }, ['logo_keep_shape'])).toBe(false);
 	});
 
 	it('keeps the older screens’ purpose, files under the version’s folder, and estimates storage', () => {

@@ -201,7 +201,26 @@ describe('blog admin service', () => {
 		await expect(h.admin.create(write({ title: { bn: 'শিরোনাম' } }), null)).rejects.toThrow(BadRequestException);
 		await expect(h.admin.create(write({ categoryIds: ['nope'] }), null)).rejects.toThrow('Unknown blog category');
 		h.assets.set('med_product', asset({ id: 'med_product', purpose: 'product' }));
-		await expect(h.admin.create(write({ coverAssetId: 'med_product' }), null)).rejects.toThrow('Blog images');
+		await expect(h.admin.create(write({ coverAssetId: 'med_product' }), null)).rejects.toThrow('Blog cover 2:1');
+		// A product photo given a Blog cover version later is accepted (media step 4d).
+		h.assets.set(
+			'med_reused',
+			asset({
+				id: 'med_reused',
+				purpose: 'product',
+				versions: [
+					{
+						id: 'blog_cover_2x1.crop',
+						profileKey: 'blog_cover_2x1',
+						profileVersion: 1,
+						fill: 'crop',
+						state: 'ready',
+						createdAt: '2026-11-16T00:00:00.000Z',
+					},
+				],
+			} as never),
+		);
+		await expect(h.admin.create(write({ coverAssetId: 'med_reused' }), null)).resolves.toBeTruthy();
 	});
 
 	it('writes the cover alt, title and caption to the picture', async () => {

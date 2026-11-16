@@ -20,6 +20,7 @@ import {
 	type SiteSettingsRepository,
 	type StoragePort,
 	resolveImage,
+	servesProfile,
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
@@ -30,6 +31,9 @@ import {
 	SITE_SETTINGS_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
+
+/** Every banner profile makes the banner sizes: the slot keeps the picture's shape (option A) or a fixed one. */
+const BANNER_PROFILES = ['banner_keep_shape', 'hero_21x9', 'hero_16x9', 'phone_banner_4x5'];
 
 /**
  * Banners (owner log § Media → Banners and content blocks). One record per page position and
@@ -62,7 +66,12 @@ export class ContentBlocksService {
 		const found = await this.assets.findManyByIds(ids);
 		const unusable = ids.filter((id) => {
 			const asset = found.find((candidate) => candidate.id === id);
-			return !asset || asset.deletedAt || asset.purpose !== 'banner' || asset.processing.state !== 'ready';
+			return (
+				!asset ||
+				asset.deletedAt ||
+				!servesProfile(asset, BANNER_PROFILES) ||
+				asset.processing.state !== 'ready'
+			);
 		});
 		if (unusable.length > 0) {
 			throw mediaRefusal(

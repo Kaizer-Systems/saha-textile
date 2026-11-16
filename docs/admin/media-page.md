@@ -37,6 +37,8 @@ The left side holds My files, Recent, Favourites (Mine and Everyone's), Trash, t
 | `who`                                 | `everyone` on Favourites                                            |
 | `cats`, `state`, `size`, `up`, `used` | The Filters menu; each shows as a chip with its own ×               |
 
+Search (media step 4e) finds a file when every word is in its name, its web file name, its alt text or caption in any added language, or the name of the folder it sits in or any folder above it, so `banarasi` lists the files in Product photos › Banarasi and its sub-folders. Up to eight words are read. The picker searches the same way.
+
 ## Picking items
 
 A click on a folder card, a row or a thumbnail picks it. ⌘/Ctrl+click adds or removes one; Shift+click picks everything between the last click and this one, folders included. The row checkboxes and the thumbnail tick add or remove one; the table head's box picks every file shown. Picks clear when the page moves to another place.

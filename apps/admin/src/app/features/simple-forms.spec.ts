@@ -13,14 +13,15 @@ import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { CurrencyService } from '@data-access/services/currency.service';
 import { NotificationService } from '@data-access/services/notification.service';
-import { PageService } from '@data-access/services/page.service';
 import { TaxService } from '@data-access/services/tax.service';
 
 import { FormAttribute } from './attribute/form-attribute/form-attribute';
 import { FormBlog, fromShopDate, shopDate } from './blog/form-blog/form-blog';
 import { FormCategory } from './category/form-category/form-category';
 import { FormCurrency } from './currency/form-currency/form-currency';
-import { FormPage } from './page/form-page/form-page';
+import { FormPage, refusedFields } from './page/form-page/form-page';
+import { LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { FormTax } from './tax/form-tax/form-tax';
 
 const categories = signal<unknown>(undefined);
@@ -296,40 +297,65 @@ describe('FormCurrency', () => {
 	});
 });
 
-describe('FormPage', () => {
-	const rows = [{ id: 1, title: 'About', content: 'Text', status: 1 }];
-	const render = (options?: Options) =>
-		mount(FormPage, [PageService, { getPages: () => of({ data: rows }) }], options);
+describe('FormPage (Legal Pages brief, P3–P6)', () => {
+	const row = {
+		page: {
+			slug: 'privacy-policy',
+			title: { en: 'Privacy Policy', bn: 'গোপনীয়তা নীতি' },
+			content: { en: '<p>Text</p>', bn: '' },
+			metaTitle: {},
+			metaDescription: {},
+			metaImageAssetId: null,
+			version: 3,
+			updatedAt: '2026-11-15T10:00:00.000Z',
+			updatedBy: 'adm_1',
+		},
+		updatedByName: 'Moulik',
+		gaps: { bn: ['content'] },
+		metaImageUrl: null,
+	};
+	const render = (gateway: Record<string, unknown>, query: Record<string, string> = {}) => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: LegalPagesGateway, useValue: gateway },
+				{
+					provide: ActivatedRoute,
+					useValue: { snapshot: { params: { id: 'privacy-policy' }, queryParams: query } },
+				},
+				{ provide: PLATFORM_ID, useValue: 'server' },
+				{ provide: ActiveLanguages, useValue: { list: () => ['en', 'bn'] } },
+				{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+		});
+		TestBed.overrideComponent(FormPage, { set: { imports: [], template: '' } });
+		return TestBed.createComponent(FormPage).componentInstance;
+	};
 
-	it('fills from a saved page, with an editor in the browser', () => {
-		const { page } = render({ params: { id: 1 } });
-		expect(page.form.value.title).toBe('About');
-		expect(page.editor).toBeDefined();
+	it('loads the page per language from the API, shows বাংলা’s to-do, and opens the language asked for', async () => {
+		const page = render({ get: () => of(row) }, { missing: 'bn' });
+		await vi.waitFor(() => expect(page.row()).not.toBeNull());
+		expect(page.fields.locale()).toBe('bn');
+		expect(page.form.value.title).toBe('গোপনীয়তা নীতি');
+		expect(page.gaps()['bn']?.map((gap) => gap.key)).toEqual(['content']);
 	});
 
-	it('copes with a missing page and skips the editor on the server', () => {
-		const { page } = render({ params: { id: 9 }, platform: 'server' });
-		expect(page.page).toBeNull();
-		expect(page.editor).toBeUndefined();
-	});
-
-	it('stores the image, clears it and ignores lists', () => {
-		const { page } = render();
-		page.selectMetaImage({ id: 4 } as never);
-		page.selectMetaImage([] as never);
-		expect(page.form.value.page_meta_image_id).toBe(4);
-		page.selectMetaImage(null as never);
-		expect(page.form.value.page_meta_image_id).toBeNull();
-	});
-
-	it('returns to the list from a valid form only', () => {
-		const { page, router } = render({ params: { id: 1 } });
-		page.submit();
-		expect(router.navigateByUrl).toHaveBeenCalledWith('/page');
-		router.navigateByUrl.mockClear();
-		page.form.patchValue({ title: '' });
-		page.submit();
-		expect(router.navigateByUrl).not.toHaveBeenCalled();
+	it('saves every language at once; a refusal lists each missing language and field', async () => {
+		const refusal = {
+			error: { issues: [{ code: 'legal_page_incomplete', missing: [{ locale: 'bn', field: 'content' }] }] },
+		};
+		const save = vi.fn(() => throwError(() => refusal));
+		const page = render({ get: () => of(row), save });
+		await vi.waitFor(() => expect(page.row()).not.toBeNull());
+		await page.submit();
+		expect(save).toHaveBeenCalledWith(
+			'privacy-policy',
+			expect.objectContaining({ title: row.page.title, metaImageAssetId: null }),
+		);
+		expect(page.refused()).toEqual([{ locale: 'bn', field: 'content' }]);
+		expect(page.gapLabel({ locale: 'bn', field: 'content' })).toBe('বাংলা: content');
+		expect(refusedFields(new Error('down'))).toEqual([]);
 	});
 });
 

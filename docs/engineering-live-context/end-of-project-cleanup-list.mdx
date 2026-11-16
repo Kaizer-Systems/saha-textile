@@ -28,6 +28,13 @@ Each line names the files, what replaced the piece, and what the removal also to
 | M6  | `ngx-dropzone`                                              | `apps/admin/package.json`; used in M2's upload tab and in `shared/ui/modal/import-csv-modal/`                                                                                   | The Media page's own upload (drop, paste, folders)               | The CSV import still uses it: drop the package only if that import moves to another drop zone                                             |
 | M7  | The purpose list (`MediaPurpose`)                           | `packages/contracts/src/media.ts` (`MediaPurpose`, `minShortEdge`, `targetAspect`, `MediaAsset.purpose`), `packages/core-domain/src/media/policy.ts`, the worker's purpose plan | Image profiles and versions (step 2)                             | Stored photos carry `purpose`: its removal needs a database migration, and the shop's review photos still upload with `purpose: 'review'` |
 
+## Legal Pages build
+
+| #   | Piece                               | Files                                                                                                                                                                          | Replaced by                                               | The removal also touches                                       |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- | -------------------------------------------------------------- |
+| L1  | The earlier Add Page screen         | `apps/admin/src/app/features/page/create-page/` (its route is gone)                                                                                                            | Nothing: Pages holds the four legal pages only (choice A) | `FormPage.type`, kept only because this screen passes `create` |
+| L2  | The demo Pages data and its service | `apps/admin/public/assets/data/page.json`, `data-access/services/page.service.ts`, `injectPagesQuery` in `data-access/queries/page.queries.ts`, `interfaces/page.interface.ts` | `LegalPagesGateway` on `/admin/pages`                     | Their cases in `data-access/services/thin-services.spec.ts`    |
+
 ## Decided, so not on this list (2026-11-16)
 
 The owner chose to remove these with the Legal Pages build instead of keeping them for the end:

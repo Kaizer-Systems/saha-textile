@@ -32,8 +32,19 @@ describe.skipIf(!hasMongoEnv())('shop event repository (integration, rs0)', () =
 	});
 
 	it('saves and reads an event with its pictures and side', async () => {
-		const saved = await repo.save(event('a', { popupAssetIds: ['m1', 'm2'], popupImageSide: 'left' }));
-		expect(saved).toMatchObject({ popupAssetIds: ['m1', 'm2'], popupImageSide: 'left', status: 'draft' });
+		const saved = await repo.save(
+			event('a', {
+				popupAssetIds: ['m1', 'm2'],
+				imageVersions: { m1: 'phone_banner_4x5.as_is' },
+				popupImageSide: 'left',
+			}),
+		);
+		expect(saved).toMatchObject({
+			popupAssetIds: ['m1', 'm2'],
+			imageVersions: { m1: 'phone_banner_4x5.as_is' },
+			popupImageSide: 'left',
+			status: 'draft',
+		});
 		expect(await repo.findById(`${P}a`)).toMatchObject({ name: `${P} a`, startsAt: '2027-09-20T04:30:00.000Z' });
 		expect(await repo.findById(`${P}missing`)).toBeNull();
 	});

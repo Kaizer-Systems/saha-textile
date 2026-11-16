@@ -41,6 +41,15 @@ const clean = (values: Readonly<Record<string, string>>): Record<string, string>
 	);
 
 /** Problems travel as field issues, the one part of an error body the API filter passes on. */
+/** Only the event's own popup pictures keep a stored version (R4-1; media step 4d). */
+const ownVersions = (body: {
+	popupAssetIds: readonly string[];
+	imageVersions?: Readonly<Record<string, string>>;
+}): Record<string, string> =>
+	Object.fromEntries(
+		Object.entries(body.imageVersions ?? {}).filter(([assetId]) => body.popupAssetIds.includes(assetId)),
+	);
+
 const refusal = (problems: readonly ShopEventProblem[]): BadRequestException =>
 	new BadRequestException({
 		message: 'event_refused',
@@ -64,7 +73,9 @@ export class EventsAdminService {
 		private readonly clock: EventClock,
 		private readonly messenger: EventMessenger,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
-		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
+		@Optional()
+		@Inject(LANGUAGE_COVERAGE_REPOSITORY)
+		private readonly coverage: LanguageCoverageRepository | null = null,
 	) {}
 
 	async list(query: AdminShopEventListQuery): Promise<AdminShopEventListResponse> {
@@ -94,6 +105,7 @@ export class EventsAdminService {
 			showCountdown: body.showCountdown,
 			showPopup: body.showPopup,
 			popupAssetIds: body.popupAssetIds,
+			imageVersions: ownVersions(body),
 			popupImageSide: body.popupImageSide,
 			nowLiveDays: body.nowLiveDays,
 			launch: body.launch,
@@ -149,6 +161,7 @@ export class EventsAdminService {
 				showCountdown: body.showCountdown,
 				showPopup: body.showPopup,
 				popupAssetIds: body.popupAssetIds,
+				imageVersions: ownVersions(body),
 				popupImageSide: body.popupImageSide,
 			});
 		} else {

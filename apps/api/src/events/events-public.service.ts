@@ -53,11 +53,14 @@ export class EventsPublicService {
 		const media = this.media;
 		const assets = await Promise.all(event.popupAssetIds.map((id) => media.findById(id)));
 		return assets
-			.map((asset) => this.image(asset ?? undefined, locale))
+			.map((asset, index) =>
+				this.image(asset ?? undefined, locale, event.imageVersions?.[event.popupAssetIds[index] ?? '']),
+			)
 			.filter((image): image is ResolvedImage => image !== null);
 	}
 
-	private image(asset: MediaAsset | undefined, locale: string): ResolvedImage | null {
+	/** A popup picture drawn from the version the event stored for it (else the shop's own pick, R4-1). */
+	private image(asset: MediaAsset | undefined, locale: string, versionId?: string | null): ResolvedImage | null {
 		if (!asset || asset.deletedAt || !this.storage) return null;
 		const storage = this.storage;
 		return resolveImage({
@@ -66,6 +69,7 @@ export class EventsPublicService {
 			locale,
 			fallbackLocale: 'en',
 			roles: POPUP_ROLES,
+			versionId: versionId ?? null,
 		});
 	}
 }

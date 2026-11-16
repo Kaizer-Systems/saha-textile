@@ -19,6 +19,7 @@ const toEvent = (doc: ShopEventDoc): ShopEvent =>
 		showCountdown: doc.showCountdown ?? true,
 		showPopup: doc.showPopup ?? true,
 		popupAssetIds: doc.popupAssetIds?.length ? doc.popupAssetIds : doc.popupAssetId ? [doc.popupAssetId] : [],
+		imageVersions: doc.imageVersions ?? {},
 		popupImageSide: doc.popupImageSide ?? 'right',
 		nowLiveDays: doc.nowLiveDays ?? 3,
 		launch: doc.launch ?? {},

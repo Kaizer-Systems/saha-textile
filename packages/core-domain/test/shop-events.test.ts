@@ -36,6 +36,7 @@ const sale = (partial: Partial<ShopEvent> = {}): ShopEvent => ({
 	showCountdown: true,
 	showPopup: true,
 	popupAssetIds: [],
+	imageVersions: {},
 	popupImageSide: 'right',
 	nowLiveDays: 3,
 	launch: { categoryIds: [], productIds: [], heldProductIds: [] },

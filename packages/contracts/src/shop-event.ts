@@ -138,6 +138,8 @@ export const ShopEvent = z.object({
 	showPopup: z.boolean().default(true),
 	/** Up to five popup pictures, in the order they slide. Optional (owner, 2026-11-10). */
 	popupAssetIds: PopupAssetIds,
+	/** The version each popup picture shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	/** Which side of the text the pictures sit on, on computers. Phones show them above. */
 	popupImageSide: PopupImageSide.default('right'),
 	/** A launch keeps a "Now live" line in the top bar this many days after its start. */
@@ -180,6 +182,8 @@ export const ShopEventWrite = z.object({
 	showCountdown: z.boolean().default(true),
 	showPopup: z.boolean().default(true),
 	popupAssetIds: PopupAssetIds,
+	/** The version each popup picture shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	popupImageSide: PopupImageSide.default('right'),
 	nowLiveDays: z.number().int().min(0).max(60).default(3),
 	launch: LaunchSetup.default({ categoryIds: [], productIds: [], heldProductIds: [] }),

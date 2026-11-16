@@ -21,6 +21,8 @@ export interface ShopEventDoc {
 	showCountdown: boolean;
 	showPopup: boolean;
 	popupAssetIds?: string[];
+	/** The version each popup picture shows, by photo id (media step 4d). */
+	imageVersions?: Record<string, string>;
 	/** Before 2026-11-10 an event had one picture. */
 	popupAssetId?: string | null;
 	popupImageSide?: string;
@@ -55,6 +57,7 @@ const ShopEventSchema = new Schema<ShopEventDoc>(
 		showCountdown: { type: Boolean, default: true },
 		showPopup: { type: Boolean, default: true },
 		popupAssetIds: { type: [String], default: [] },
+		imageVersions: { type: Schema.Types.Mixed, default: {} },
 		popupAssetId: { type: String, default: undefined },
 		popupImageSide: { type: String, enum: PopupImageSide.options, default: 'right' },
 		nowLiveDays: { type: Number, default: 3 },

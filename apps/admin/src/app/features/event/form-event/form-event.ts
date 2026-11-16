@@ -41,7 +41,7 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 
@@ -303,7 +303,14 @@ export class FormEvent {
 			else
 				forkJoin(event.popupAssetIds.map((id) => this.media.get(id).pipe(catchError(() => of(null)))))
 					.pipe(map((list) => list.filter((image): image is IAttachment => image !== null)))
-					.subscribe((list) => this.popupImages.set(list));
+					.subscribe((list) =>
+						this.popupImages.set(
+							list.map((image) => {
+								const versionId = event.imageVersions?.[String(image.id)];
+								return versionId ? ({ ...image, versionId } as IAttachment) : image;
+							}),
+						),
+					);
 		}
 		if (this.readOnly()) this.form.disable();
 		this.loadReview();
@@ -556,6 +563,13 @@ export class FormEvent {
 			showCountdown: raw.show_countdown,
 			showPopup: raw.show_popup,
 			popupAssetIds: this.popupImages().map((image) => String(image.id)),
+			// The version each popup picture was chosen with (R4-1; media step 4d).
+			imageVersions: Object.fromEntries(
+				this.popupImages().flatMap((image) => {
+					const versionId = (image as PickedAttachment).versionId;
+					return versionId ? [[String(image.id), versionId]] : [];
+				}),
+			),
 			popupImageSide: raw.popup_image_side,
 			nowLiveDays: Number(raw.now_live_days) || 0,
 			launch: {

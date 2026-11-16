@@ -186,6 +186,7 @@ const saleBody = (startsAt: number, endsAt: number) => ({
 	showCountdown: true,
 	showPopup: true,
 	popupAssetIds: [] as string[],
+	imageVersions: {} as Record<string, string>,
 	popupImageSide: 'right' as const,
 	nowLiveDays: 3,
 	launch: { categoryIds: [], productIds: [], heldProductIds: [] },
@@ -1148,6 +1149,7 @@ describe('several popup pictures', () => {
 			{
 				...saleBody(h.now + HOUR, h.now + 2 * HOUR),
 				popupAssetIds: ['a1', 'gone', 'a2'],
+				imageVersions: { a2: 'phone_banner_4x5.crop', elsewhere: 'x.y' },
 				popupImageSide: 'left',
 			},
 			null,
@@ -1176,5 +1178,7 @@ describe('several popup pictures', () => {
 		expect(shown?.popupImages.map((image) => image.assetId)).toEqual(['a1', 'a2']);
 		expect(shown?.popupImageSide).toBe('left');
 		expect((await h.admin.detail(created.id)).popupAssetIds).toEqual(['a1', 'gone', 'a2']);
+		// Only its own pictures keep a stored version (R4-1, media step 4d).
+		expect((await h.admin.detail(created.id)).imageVersions).toEqual({ a2: 'phone_banner_4x5.crop' });
 	});
 });

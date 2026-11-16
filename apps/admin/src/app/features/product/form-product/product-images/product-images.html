@@ -33,6 +33,7 @@
 	#galleryList
 	let-hash
 >
+	<p class="help-text">{{ 'product_photo_hint' | transloco }}</p>
 	<ul class="image-select-list cursor-pointer">
 		<li
 			[title]="'add_image' | transloco"
@@ -53,6 +54,10 @@
 				[src]="tiles().get(id) ?? 'assets/images/product.png'"
 				alt="image"
 				class="img-fluid"
+				role="button"
+				[title]="'product_photo_title' | transloco"
+				[attr.data-photo]="id"
+				(click)="editPhoto(id)"
 			/>
 			@if (versionLabel(id); as label) {
 			<span class="fm-vbadge">{{ label }}</span>

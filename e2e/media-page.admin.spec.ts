@@ -382,6 +382,24 @@ test.describe('Media page (step 1)', () => {
 		await expect(page.locator('#fm_pick_title')).toHaveCount(0);
 	});
 
+	test('a product photo opens E05: its version and alt text on this product (R4-6, step 4b)', async ({ page }) => {
+		await page.goto(`${ADMIN}/product/edit/prd_906`, { waitUntil: 'networkidle' });
+		await page
+			.getByRole('tab', { name: 'Images' })
+			.or(page.locator('.nav-link', { hasText: 'Images' }))
+			.first()
+			.click();
+		const photo = page.locator('app-product-images [data-photo]').first();
+		test.skip((await photo.count()) === 0, 'the test product has no photos');
+		await photo.click();
+		await expect(page.locator('#product_photo_title')).toHaveText('Photo on this product');
+		await expect(page.locator('#product_photo_version')).toBeVisible();
+		await page.locator('#product_photo_alt').fill('E2E alt on this product');
+		await shot(page, 'e05-photo-on-product');
+		await page.locator('#product_photo_save').click();
+		await expect(page.locator('#product_photo_title')).toHaveCount(0);
+	});
+
 	test('Clean up › Email pictures: the note, the filter and the empty list (A50, step 3f)', async ({ page }) => {
 		await openRoot(page);
 		await page.locator('#fm_nav_clean').click();

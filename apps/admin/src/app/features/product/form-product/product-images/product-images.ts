@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, input, model, signal, viewChild } 
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbAccordionModule, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { lastValueFrom } from 'rxjs';
 
 import { MediaGateway } from '@core/media/media.gateway';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
@@ -11,6 +12,7 @@ import type { ProductContentWrite } from '@saha-textile/contracts';
 import { PluralPipe } from '@shared/pipes/language.pipes';
 
 import { FmPicker, type FmPicked } from '../../../media/file-manager/fm-picker';
+import { ProductPhoto, type ProductPhotoResult } from './product-photo';
 import { fillKey, profileNameKey } from '../../../setting/image-profiles/profile-words';
 
 type ImagesValue = Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions'>;
@@ -142,6 +144,31 @@ export class ProductImages {
 			...current,
 			...picked.map((row) => row.assetId).filter((id) => !current.includes(id)),
 		]);
+	}
+
+	/** E05: a click on a photo opens its version and its alt text on this product. */
+	async editPhoto(id: string): Promise<void> {
+		const popup = this.modals.open(ProductPhoto, { size: 'lg', windowClass: 'theme-modal' });
+		const photo = popup.componentInstance as ProductPhoto;
+		const defaultAlt = await lastValueFrom(this.media.details(id))
+			.then((details) => details.text.alt)
+			.catch(() => ({}));
+		void photo.start({
+			assetId: id,
+			thumbnailUrl: this.tiles().get(id) ?? null,
+			profileKey: PRODUCT_PROFILE,
+			versionId: this.value().versions?.[id] ?? null,
+			alt: this.value().altOverrides[id] ?? {},
+			defaultAlt,
+		});
+		const result = (await popup.result.catch(() => null)) as ProductPhotoResult | null;
+		if (!result) return;
+		this.value.update((value) => {
+			const versions = { ...value.versions };
+			if (result.versionId) versions[id] = result.versionId;
+			else delete versions[id];
+			return { ...value, versions, altOverrides: { ...value.altOverrides, [id]: result.alt } };
+		});
 	}
 
 	/** E04: a tile names its version when it isn't the photo as it is (“Blurred fill”). */

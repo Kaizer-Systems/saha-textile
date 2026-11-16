@@ -370,7 +370,7 @@ describe('ProductImages', () => {
 		),
 	};
 	/** What the Media picker hands back (media step 4b); each test sets it before opening. */
-	let picks: unknown[] = [];
+	let picks: unknown = [];
 	const modals = {
 		open: vi.fn(() => ({ componentInstance: { start: vi.fn() }, result: Promise.resolve(picks) })),
 	};
@@ -451,6 +451,21 @@ describe('ProductImages', () => {
 		picks = [];
 		await page.open(null);
 		expect(page.value().gallery).toEqual(['a', 'b', 'c', 'd']);
+	});
+
+	it('E05: the photo popup sets its version and its alt text on this product', async () => {
+		const page = render();
+		picks = { versionId: 'product_3x4.blur', alt: { bn: 'লাল' } } as never;
+		await page.editPhoto('a');
+		expect(page.value().versions).toEqual({ a: 'product_3x4.blur' });
+		expect(page.value().altOverrides).toEqual({ a: { bn: 'লাল' } });
+		// Cancelled: nothing changes.
+		modals.open.mockReturnValueOnce({
+			componentInstance: { start: vi.fn() },
+			result: Promise.reject(new Error('x')),
+		} as never);
+		await page.editPhoto('a');
+		expect(page.value().versions).toEqual({ a: 'product_3x4.blur' });
 	});
 
 	it('flags images more than 5% away from 3:4', () => {

@@ -30,6 +30,7 @@ const toAsset = (doc: MediaAssetDoc): MediaAsset =>
 		derivatives: doc.derivatives ?? [],
 		versions: doc.versions ?? [],
 		replacing: doc.replacing ?? null,
+		focal: doc.focal ?? null,
 		keptFiles: doc.keptFiles ?? [],
 		dominantColor: doc.dominantColor ?? null,
 		thumbHash: doc.thumbHash ?? null,
@@ -278,6 +279,10 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 			.lean<MediaAssetDoc>()
 			.exec();
 		return doc ? toAsset(doc) : null;
+	}
+
+	async setFocal(assetId: string, focal: { x: number; y: number } | null): Promise<void> {
+		await MediaAssetModel.updateOne({ _id: assetId }, { $set: { focal } }).exec();
 	}
 
 	async listKeptDue(before: string, limit: number): Promise<MediaAsset[]> {

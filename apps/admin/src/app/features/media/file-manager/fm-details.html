@@ -137,8 +137,18 @@
 										<span class="text-muted small ms-1">{{ 'fm_not_used' | transloco }}</span>
 										}
 									</span>
-									@if (canRemove(version)) {
+									@if (version.fill === 'crop' || canRemove(version)) {
 									<span class="d-flex gap-1">
+										@if (version.fill === 'crop' && version.state === 'ready') {
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											[attr.data-focal]="version.id"
+											(click)="act('focal')"
+										>
+											{{ 'fm_focal_button' | transloco }}
+										</button>
+										} @if (canRemove(version)) {
 										<button
 											type="button"
 											class="btn btn-outline btn-sm"
@@ -147,6 +157,7 @@
 										>
 											{{ 'fm_remove_version' | transloco }}
 										</button>
+										}
 									</span>
 									}
 								</div>

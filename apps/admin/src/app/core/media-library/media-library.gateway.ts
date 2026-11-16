@@ -121,6 +121,8 @@ export abstract class MediaLibraryGateway {
 	abstract finishReplace(id: string): Observable<MediaReplaceStatus>;
 	abstract replaceStatus(id: string): Observable<MediaReplaceStatus>;
 	abstract cancelReplace(id: string): Observable<void>;
+	/** The point every crop keeps (S10); the photo's Crop versions are then remade around it. */
+	abstract setFocal(id: string, focal: { x: number; y: number } | null): Observable<MediaReplaceStatus>;
 
 	abstract createFolder(body: MediaFolderCreate): Observable<MediaFolderRow>;
 	abstract renameFolder(id: string, name: string): Observable<MediaOperationResult>;

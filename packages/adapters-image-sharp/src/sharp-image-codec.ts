@@ -70,6 +70,10 @@ export class SharpImageCodec implements ImageCodecPort {
 		if (spec.fit === 'pad' && spec.inset) return this.renderInset(bytes, spec);
 		const background = colourOf(spec.background);
 		let pipeline = this.base(bytes, spec.keepAlpha, background);
+		if (spec.fit === 'cover' && spec.focal) {
+			const window = await focalWindow(bytes, spec);
+			if (window) pipeline = pipeline.extract(window);
+		}
 		pipeline =
 			spec.fit === 'inside'
 				? pipeline.resize({ width: spec.width, withoutEnlargement: true })
@@ -236,4 +240,32 @@ export class SharpImageCodec implements ImageCodecPort {
 		const image = sharp(bytes, { limitInputPixels: this.options.maxInputPixels, failOn: 'error' }).rotate();
 		return (keepAlpha ? image : image.flatten({ background })).toColourspace('srgb');
 	}
+}
+
+/**
+ * The part of the upright photo a focal-point crop keeps (S10): the largest window of the box's shape, centred on the
+ * point as far as the photo allows. Null when the photo can't be read (the plain centred crop then applies).
+ */
+export async function focalWindow(
+	bytes: Uint8Array,
+	spec: Pick<ImageRenderSpec, 'width' | 'height' | 'focal'>,
+): Promise<{ left: number; top: number; width: number; height: number } | null> {
+	const meta = await sharp(bytes).metadata();
+	if (!meta.width || !meta.height || !spec.focal) return null;
+	// EXIF orientations 5–8 turn the photo on its side: the upright width is the stored height.
+	const sideways = (meta.orientation ?? 1) >= 5;
+	const width = sideways ? meta.height : meta.width;
+	const height = sideways ? meta.width : meta.height;
+	const ratio = spec.width / (spec.height ?? spec.width);
+	const clamp = (value: number, max: number) => Math.min(Math.max(0, value), max);
+	const keepWidth = width / height > ratio ? Math.round(height * ratio) : width;
+	const keepHeight = width / height > ratio ? height : Math.round(width / ratio);
+	const x = clamp(spec.focal.x, 1);
+	const y = clamp(spec.focal.y, 1);
+	return {
+		left: clamp(Math.round(x * width - keepWidth / 2), width - keepWidth),
+		top: clamp(Math.round(y * height - keepHeight / 2), height - keepHeight),
+		width: keepWidth,
+		height: keepHeight,
+	};
 }

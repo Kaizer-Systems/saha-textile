@@ -396,6 +396,52 @@ export class MediaUploads {
 		tray({ done: 3, state: 'done' });
 	}
 
+	/**
+	 * A new focal point (S10, C06): saved, then the photo's Crop versions are remade around it by the image worker; one
+	 * tray row follows it to the end. A photo with no Crop version only keeps the point (nothing to follow). Throws
+	 * the API's refusal.
+	 */
+	async refocus(fileId: string, name: string, focal: { x: number; y: number } | null): Promise<boolean> {
+		const opId = `fp_${fileId}`;
+		const words = (key: string, params: Record<string, unknown> = {}) =>
+			this.transloco.translate(key, { name, ...params });
+		// A refusal (versions still being made, a Replace under way) is the caller's to say.
+		const status = await lastValueFrom(this.gateway.setFocal(fileId, focal));
+		if (status.phase === 'done') return true;
+		this.operations.update((ops) => [
+			...ops.filter((op) => op.id !== opId),
+			{
+				id: opId,
+				label: words('fm_focal_tray'),
+				icon: 'ri-focus-3-line',
+				done: 0,
+				total: 1,
+				state: 'running',
+				error: null,
+			},
+		]);
+		const tray = (changes: Partial<MediaOperation>) =>
+			this.operations.update((ops) => ops.map((op) => (op.id === opId ? { ...op, ...changes } : op)));
+		const started = Date.now();
+		while (Date.now() - started < MAKING_GIVE_UP_MS) {
+			await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
+			const next = await lastValueFrom(this.gateway.replaceStatus(fileId)).catch(() => null);
+			if (!next) continue;
+			if (next.phase === 'failed') {
+				tray({ state: 'failed', error: words('fm_rp_failed_reason', { reason: next.error ?? '' }) });
+				await lastValueFrom(this.gateway.cancelReplace(fileId)).catch(() => undefined);
+				return false;
+			}
+			if (next.phase === 'done') {
+				tray({ done: 1, state: 'done', label: words('fm_focal_tray_done') });
+				void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+				return true;
+			}
+		}
+		tray({ done: 1, state: 'done' });
+		return true;
+	}
+
 	/** Clears finished and failed files and changes from the tray; failed uploads leave nothing behind. */
 	dismiss(): void {
 		this.operations.update((ops) => ops.filter((op) => op.state === 'running'));

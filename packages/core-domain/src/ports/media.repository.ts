@@ -97,6 +97,8 @@ export interface MediaAssetRepository {
 		versions: readonly MediaVersion[];
 		kept: MediaKeptFiles | null;
 	}): Promise<MediaAsset | null>;
+	/** Records a photo's focal point (S10); null puts crops back on the middle. */
+	setFocal(assetId: string, focal: { x: number; y: number } | null): Promise<void>;
 	/** Photos holding kept files due for deletion by `before` (the daily sweep). */
 	listKeptDue(before: string, limit: number): Promise<MediaAsset[]>;
 	/** Forgets the kept files due by `before`, once they have been sent for deletion. */

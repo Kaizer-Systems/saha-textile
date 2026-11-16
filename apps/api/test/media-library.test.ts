@@ -1090,6 +1090,7 @@ describe('Reprocess: adding and removing versions (C01, C07, A31, step 3a)', () 
 			height: 2400,
 			sha256: null,
 			phase: 'making' as const,
+			reason: 'replace' as const,
 			made: 0,
 			total: 0,
 			error: null,

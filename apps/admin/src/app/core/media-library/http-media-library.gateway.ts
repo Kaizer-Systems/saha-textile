@@ -115,6 +115,10 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 		return this.http.delete<void>(this.url(`/files/${id(fileId)}/replace`), quiet());
 	}
 
+	override setFocal(fileId: string, focal: { x: number; y: number } | null): Observable<MediaReplaceStatus> {
+		return this.http.put<MediaReplaceStatus>(this.url(`/files/${id(fileId)}/focal`), { focal }, quiet());
+	}
+
 	override createFolder(body: MediaFolderCreate): Observable<MediaFolderRow> {
 		return this.http.post<MediaFolderRow>(this.url('/folders'), body, quiet());
 	}

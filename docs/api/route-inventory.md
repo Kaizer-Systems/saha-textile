@@ -345,6 +345,7 @@ The Media page works as a file manager. Every route below is under `/admin/media
 | `POST`   | `/files/:id/replace/finish`      | `attachment.edit`    | The new photo is uploaded: its versions are remade, then it takes the old one's place everywhere |
 | `GET`    | `/files/:id/replace`             | `attachment.index`   | Where a Replace has got, for its three steps                                                     |
 | `DELETE` | `/files/:id/replace`             | `attachment.edit`    | Stop a Replace still uploading, or clear one that failed                                         |
+| `PUT`    | `/files/:id/focal`               | `attachment.edit`    | Set the point every crop keeps; the photo's Crop versions are remade around it                   |
 | `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                            |
 | `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                     |
 | `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                            |

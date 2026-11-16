@@ -47,6 +47,7 @@ const REFUSALS: Readonly<Record<string, string>> = {
 	versions_refused: 'The new photo can’t make every version this photo has',
 	not_uploading: 'There is no upload waiting to finish',
 	not_cancellable: 'This Replace is already under way',
+	focal_waits: 'Wait until this photo’s versions are made or its Replace is done',
 };
 const refuse = (code: string, detail?: string) =>
 	domainRefusal(code, detail ? `${REFUSALS[code] ?? 'Not allowed'}: ${detail}` : (REFUSALS[code] ?? 'Not allowed'));
@@ -100,6 +101,7 @@ export class MediaReplaceService {
 			height: request.height,
 			sha256: request.sha256 ?? null,
 			phase: 'uploading',
+			reason: 'replace',
 			made: 0,
 			total: 0,
 			error: null,
@@ -122,6 +124,58 @@ export class MediaReplaceService {
 			headers: signed.headers ?? {},
 			expiresAt: new Date(now.getTime() + ttl * 1000).toISOString(),
 		};
+	}
+
+	/**
+	 * A photo's focal point (S10, C06): saved, then its Crop versions are remade around it (new files; the old ones
+	 * are kept 7 days). Other versions and the original are untouched. A photo with no Crop version just keeps the
+	 * point for crops made later.
+	 */
+	async setFocal(
+		actor: string,
+		id: string,
+		focal: { x: number; y: number } | null,
+		now = new Date(),
+	): Promise<MediaReplaceStatus> {
+		const asset = await this.photo(id);
+		if (asset.kind !== 'image' || !asset.originalStorageKey) throw refuse('not_a_photo');
+		const versions = asset.versions ?? [];
+		if (
+			(asset.replacing && asset.replacing.phase !== 'failed') ||
+			versions.some((version) => version.state === 'making')
+		) {
+			throw refuse('focal_waits');
+		}
+		await this.assets.setFocal(id, focal);
+		await this.record(actor, 'media.focal', { name: fileName(asset), focal }, id);
+		const crops = versions.filter((version) => version.fill === 'crop');
+		if (!crops.length || !asset.width || !asset.height) return this.status(id);
+		await this.storageCheck.admit(
+			actor,
+			estimateVersionBytes(asset.originalByteSize, crops.length),
+			undefined,
+			holdId(id),
+			now,
+		);
+		const started = await this.assets.startReplace(id, {
+			key: asset.originalStorageKey,
+			contentType: asset.originalFormat,
+			byteSize: asset.originalByteSize,
+			width: asset.width,
+			height: asset.height,
+			sha256: asset.sha256 ?? null,
+			phase: 'queued',
+			reason: 'focal',
+			made: 0,
+			total: 0,
+			error: null,
+			startedAt: now.toISOString(),
+			by: actor,
+		});
+		await this.storageCheck.release(holdId(id));
+		if (!started) throw refuse('focal_waits');
+		await this.queue.enqueue({ type: 'replace', assetId: id });
+		return this.status(id);
 	}
 
 	/** The upload finished (C08 step 2 starts): the worker takes it from here. */

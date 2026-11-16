@@ -47,6 +47,7 @@ import {
 	type MediaVersionsStatus,
 	MediaReplaceRequest,
 	type MediaReplaceStatus,
+	MediaFocalRequest,
 	type MediaReplaceUpload,
 } from '@saha-textile/contracts';
 
@@ -186,6 +187,20 @@ export class AdminMediaLibraryController {
 	@ApiOperation({ operationId: 'mediaFileReplaceStatus', summary: 'Where a Replace has got, for its three steps' })
 	replaceStatus(@Param('id') id: string): Promise<MediaReplaceStatus> {
 		return this.replace.status(id);
+	}
+
+	@Put('files/:id/focal')
+	@RequirePermissions('attachment.edit')
+	@ApiOperation({
+		operationId: 'setMediaFileFocal',
+		summary: 'Set the point every crop keeps; the photo’s Crop versions are remade around it',
+	})
+	setFocal(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaFocalRequest)) body: MediaFocalRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaReplaceStatus> {
+		return this.replace.setFocal(actor(principal), id, body.focal);
 	}
 
 	@Delete('files/:id/replace')

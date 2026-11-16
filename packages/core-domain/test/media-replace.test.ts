@@ -80,6 +80,7 @@ const queued = (overrides: Partial<MediaReplacement> = {}): MediaReplacement => 
 	height: 4000,
 	sha256: null,
 	phase: 'queued',
+	reason: 'replace',
 	made: 0,
 	total: 0,
 	error: null,
@@ -136,12 +137,12 @@ const harness = (start: MediaAsset, probe = { width: 3000, height: 4000, format:
 	const deps = {
 		assets: assets as unknown as MediaAssetRepository,
 		roles: {
-			list: async () => SEEDED_MEDIA_ROLES,
+			list: async () => [...SEEDED_MEDIA_ROLES],
 			findByKey: async () => null,
 			save: async (role: never) => role,
 			insertMissing: async () => 0,
 		},
-		profiles: { list: async () => SEEDED_MEDIA_PROFILES },
+		profiles: { list: async () => [...SEEDED_MEDIA_PROFILES] },
 		storage,
 		codec,
 		queue: { enqueue: async (job: MediaJob) => void jobs.push(job) },
@@ -323,5 +324,55 @@ describe('kept files (decision 11)', () => {
 			expect.arrayContaining(['media/med_r/kept.webp', 'media/med_r/original-20261116095900.jpg']),
 		);
 		expect(replacementOriginalKey('med_r', 'image/png', NOW)).toBe('media/med_r/original-20261116100000.png');
+	});
+});
+
+describe('a new focal point (S10, media step 3c)', () => {
+	const cropVersion = { ...ready('product_3x4.crop'), fill: 'crop' as const };
+	const focalPhoto = () =>
+		photo({
+			width: 4000,
+			height: 2000,
+			focal: { x: 0.2, y: 0.5 },
+			versions: [ready('product_3x4.white'), cropVersion],
+			derivatives: [
+				file('product_3x4.white', 'card', 400),
+				file('product_3x4.crop', 'card', 400),
+				file(null, 'share', 1200),
+			],
+			replacing: queued({ key: 'media/med_r/original.jpg', reason: 'focal', width: 4000, height: 2000 }),
+		});
+
+	it('remakes only Crop versions around the point; other files and the original stay, old crop files are kept', async () => {
+		const run = harness(focalPhoto(), { width: 4000, height: 2000, format: 'jpeg', hasAlpha: false });
+		const specs: { focal?: unknown; fit: string }[] = [];
+		const render = run.deps.codec.render;
+		run.deps.codec.render = async (bytes, spec) => (specs.push(spec), render(bytes, spec));
+		await expect(replaceMediaAsset(run.deps, { assetId: 'med_r' })).resolves.toMatchObject({ status: 'ready' });
+		const row = run.row();
+		expect(specs.length).toBeGreaterThan(0);
+		expect(specs.every((spec) => spec.fit === 'cover' && JSON.stringify(spec.focal) === '{"x":0.2,"y":0.5}')).toBe(
+			true,
+		);
+		expect(row.originalStorageKey).toBe('media/med_r/original.jpg');
+		const keys = row.derivatives.map((one) => one.storageKey);
+		expect(keys).toContain('media/med_r/product_3x4.white/card-400w-old.webp');
+		expect(keys).toContain('media/med_r/photo/share-1200w-old.webp');
+		expect(keys).not.toContain('media/med_r/product_3x4.crop/card-400w-old.webp');
+		expect(row.keptFiles).toEqual([
+			expect.objectContaining({ keys: ['media/med_r/product_3x4.crop/card-400w-old.webp'], reason: 'focal' }),
+		]);
+		expect(row.versions?.map((version) => `${version.id}:${version.state}`)).toEqual([
+			'product_3x4.white:ready',
+			'product_3x4.crop:ready',
+		]);
+	});
+
+	it('a failure never deletes the original the photo still uses', async () => {
+		const run = harness(focalPhoto(), { width: 4000, height: 2000, format: 'png', hasAlpha: false });
+		await expect(replaceMediaAsset(run.deps, { assetId: 'med_r' })).resolves.toMatchObject({ status: 'rejected' });
+		const deleted = run.jobs.flatMap((job) => (job.type === 'delete-objects' ? job.keys : []));
+		expect(deleted).not.toContain('media/med_r/original.jpg');
+		expect(run.row().originalStorageKey).toBe('media/med_r/original.jpg');
 	});
 });

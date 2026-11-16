@@ -237,6 +237,8 @@ export const MediaFileDetails = z.object({
 		}),
 	),
 	perPhoto: z.array(MediaDetailFamily),
+	/** The point every crop keeps (S10); null or absent: the middle. */
+	focal: z.object({ x: z.number(), y: z.number() }).nullable().optional(),
 });
 export type MediaFileDetails = z.infer<typeof MediaFileDetails>;
 export type MediaFileAddress = z.infer<typeof MediaFileAddress>;
@@ -414,6 +416,12 @@ export const MediaReplaceStatus = z.object({
 	places: z.number().int().nonnegative(),
 });
 export type MediaReplaceStatus = z.infer<typeof MediaReplaceStatus>;
+
+/** `PUT /admin/media/library/files/:id/focal`: the point every crop keeps (S10, C06); null puts it back on the middle. */
+export const MediaFocalRequest = z
+	.object({ focal: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).nullable() })
+	.strict();
+export type MediaFocalRequest = z.infer<typeof MediaFocalRequest>;
 
 // --- Share links (R4-5, decision 13) ---------------------------------------------------------
 

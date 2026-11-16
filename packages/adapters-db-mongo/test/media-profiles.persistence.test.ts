@@ -32,7 +32,7 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		width,
 		height: width,
 		byteSize: 100,
-		format: 'image/webp',
+		format: 'image/webp' as const,
 		roleVersion: 1,
 	});
 	const raw = (id: string, fields: Record<string, unknown>) =>
@@ -263,6 +263,7 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 			height: 4000,
 			sha256: null,
 			phase: 'uploading' as const,
+			reason: 'replace' as const,
 			made: 0,
 			total: 0,
 			error: null,
@@ -335,6 +336,49 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await assets.dropKept('med_rep', '2026-11-24T00:00:00.000Z');
 		expect((await assets.findById('med_rep'))?.keptFiles).toEqual([]);
 		await MediaAssetModel.deleteMany({ _id: { $in: ['med_rep', 'med_busy_rep'] } }).exec();
+	});
+
+	it('keeps a focal point on the photo, clears it, and runs a focal remake on the same original (step 3c)', async () => {
+		await raw('med_focal', {
+			derivatives: [{ ...file('med_focal', 'card', 400), versionId: 'product_3x4.crop' }],
+			versions: [
+				{
+					id: 'product_3x4.crop',
+					profileKey: 'product_3x4',
+					profileVersion: 1,
+					fill: 'crop',
+					state: 'ready',
+					error: null,
+					createdAt: '2026-11-16T00:00:00.000Z',
+				},
+			],
+		});
+		// A photo saved before step 3c has no focal point: the crop keeps the middle.
+		expect((await assets.findById('med_focal'))?.focal).toBeNull();
+		await assets.setFocal('med_focal', { x: 0.25, y: 0.8 });
+		expect((await assets.findById('med_focal'))?.focal).toEqual({ x: 0.25, y: 0.8 });
+		// A focal remake is a Replace on the photo's own original, marked as such.
+		const original = (await assets.findById('med_focal'))?.originalStorageKey ?? '';
+		const started = await assets.startReplace('med_focal', {
+			key: original,
+			contentType: 'image/jpeg',
+			byteSize: 2000,
+			width: 3000,
+			height: 4000,
+			sha256: null,
+			phase: 'queued',
+			reason: 'focal',
+			made: 0,
+			total: 0,
+			error: null,
+			startedAt: '2026-11-16T10:00:00.000Z',
+			by: 'adm_1',
+		});
+		expect(started?.replacing).toMatchObject({ reason: 'focal', phase: 'queued', key: original });
+		// Reset to centre.
+		await assets.setFocal('med_focal', null);
+		expect((await assets.findById('med_focal'))?.focal).toBeNull();
+		await MediaAssetModel.deleteMany({ _id: 'med_focal' }).exec();
 	});
 
 	it('leaves files of versions and per-photo pictures out of the ladder sweep; only unnamed old files count', async () => {

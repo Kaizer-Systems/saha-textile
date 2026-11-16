@@ -2410,5 +2410,19 @@
 	"fm_replace_in_use_title": "This photo is used on the website",
 	"fm_replace_in_use_body": "Replacing it changes the photo on these pages too:",
 	"fm_replace_in_use_note": "They keep showing the current photo until the new sizes are ready, then switch.",
-	"fm_replace_everywhere": "Replace everywhere"
+	"fm_replace_everywhere": "Replace everywhere",
+	"fm_focal_title": "Focal point",
+	"fm_focal_pick": "Click the part that must stay in every crop.",
+	"fm_focal_only_crops": "Only profiles that crop use it: {{profiles}}. White padding and blurred fill always show the whole photo.",
+	"fm_focal_with_point": "{{name}} · with this point",
+	"fm_focal_today": "{{name}} · today",
+	"fm_focal_note": "Saving remakes only the cropped sizes",
+	"fm_focal_reset": "Reset to centre",
+	"fm_focal_save": "Save",
+	"fm_focal_tray": "Remaking the crops of {{name}}",
+	"fm_focal_tray_done": "Crops of {{name}} remade",
+	"fm_focal_saved": "Focal point saved",
+	"fm_focal_saved_remaking": "Focal point saved; the crops were remade around it",
+	"fm_focal_button": "Focal point",
+	"fm_activity_focal": "Focal point changed"
 }

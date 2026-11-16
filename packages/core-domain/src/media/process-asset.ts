@@ -262,6 +262,7 @@ export const renderPhoto = async (
 			source,
 			maxDisplayWidth: asset.maxDisplayWidth,
 			colours: { dominant: placeholder.dominantColor, brand: version.fill === 'brand' ? brand : null },
+			focal: asset.focal ?? null,
 		});
 		return { version, profile, refusal: null, plan };
 	});

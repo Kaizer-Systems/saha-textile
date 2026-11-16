@@ -316,6 +316,11 @@ export const MediaReplacement = z.object({
 	sha256: z.string().nullable().default(null),
 	/** uploading → queued (the upload finished) → making (the worker took it) → gone on success, or failed. */
 	phase: z.enum(['uploading', 'queued', 'making', 'failed']),
+	/**
+	 * `replace`: a new original (S7). `focal`: the same original with a new focal point (S10): only Crop versions are
+	 * remade, and the original is never deleted.
+	 */
+	reason: z.enum(['replace', 'focal']).default('replace'),
 	/** Sizes made so far and in all, for C08's “5 of 5 sizes”. */
 	made: z.number().int().nonnegative().default(0),
 	total: z.number().int().nonnegative().default(0),
@@ -330,7 +335,7 @@ export const MediaKeptFiles = z.object({
 	keys: z.array(z.string().min(1)),
 	bytes: z.number().int().nonnegative(),
 	deleteAfter: IsoDateTime,
-	reason: z.enum(['replace']),
+	reason: z.enum(['replace', 'focal']),
 });
 export type MediaKeptFiles = z.infer<typeof MediaKeptFiles>;
 
@@ -482,6 +487,11 @@ export const MediaAsset = z
 		 * on an asset written before image profiles (the release migration names those).
 		 */
 		versions: z.array(MediaVersion).optional(),
+		/** The part that must stay in every crop (S10), as fractions of the upright photo; null keeps the middle. */
+		focal: z
+			.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
+			.nullable()
+			.optional(),
 		/** A new photo on its way in, while Replace runs (media step 3b, S7, C08); null or absent otherwise. */
 		replacing: MediaReplacement.nullable().optional(),
 		/**

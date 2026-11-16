@@ -35,6 +35,11 @@ export interface ImageRenderSpec {
 	 * the photo's own dominant colour; an icon's Brand colour fill uses the Brand Kit colour.
 	 */
 	background?: string;
+	/**
+	 * `cover` only: the point that must stay in the crop (S10), as fractions of the upright photo's width and height
+	 * (0–1). The crop is centred on it as far as the photo allows; absent, the crop is centred on the middle.
+	 */
+	focal?: { x: number; y: number };
 }
 
 /**

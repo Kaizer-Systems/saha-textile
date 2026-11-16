@@ -47,6 +47,7 @@ import { Button } from '@shared/ui/button/button';
 import { fileKind, fileTypeLabel } from './file-kinds';
 import { FmDetails, type FmDetailsAction } from './fm-details';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
+import { FmFocal, type FmPoint } from './fm-focal';
 import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
 import { FmReplace } from './fm-replace';
 import { FmReplaceProgress } from './fm-replace-progress';
@@ -550,6 +551,7 @@ export class FileManager {
 				if (action?.kind === 'add_versions') void this.openReprocess([file], action.versions);
 				if (action?.kind === 'download') void this.openFile(file, 'save');
 				if (action?.kind === 'share') this.openShare(file);
+				if (action?.kind === 'focal') void this.openFocal(file);
 			},
 			() => void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY }),
 		);
@@ -648,6 +650,46 @@ export class FileManager {
 			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
 		} finally {
 			if (preview.url) setTimeout(() => URL.revokeObjectURL(preview.url ?? ''), 60_000);
+		}
+	}
+
+	/**
+	 * Focal point (S10, C06): the whole photo through a 5-minute address, the point picked on it, then the photo's
+	 * Crop versions are remade around it (the tray follows; other versions stay as they are).
+	 */
+	async openFocal(file: MediaFileRow): Promise<void> {
+		try {
+			const details = await lastValueFrom(this.gateway.details(file.id));
+			const crops = [
+				...new Set(details.versions.filter((row) => row.fill === 'crop').map((row) => row.profileKey)),
+			];
+			if (!details.width || !details.height) return;
+			const { url } = await lastValueFrom(this.gateway.fileAddress(file.id, 'view'));
+			const popup = this.modals.open(FmFocal, {
+				size: 'xl',
+				centered: true,
+				scrollable: true,
+				windowClass: 'theme-modal media-modal',
+				ariaLabelledBy: 'fm_focal_title',
+			});
+			(popup.componentInstance as FmFocal).start({
+				name: file.name,
+				picture: url,
+				width: details.width,
+				height: details.height,
+				focal: details.focal ?? null,
+				crops,
+			});
+			const answer = await popup.result.then(
+				(result: { focal: FmPoint | null }) => result,
+				() => null,
+			);
+			if (!answer) return;
+			const done = this.uploads.refocus(file.id, file.name, answer.focal);
+			await done;
+			this.toastr.success(this.transloco.translate(crops.length ? 'fm_focal_saved_remaking' : 'fm_focal_saved'));
+		} catch (error) {
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
 		}
 	}
 

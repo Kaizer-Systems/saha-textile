@@ -211,6 +211,27 @@ class FakeAssets implements MediaAssetRepository {
 	constructor(seed: MediaAsset[]) {
 		for (const row of seed) this.rows.set(row.id, row);
 	}
+	/** Reprocess, Replace and focal point (media step 3) are not exercised here. */
+	async addVersions() {
+		return null;
+	}
+	async removeVersion() {
+		return null;
+	}
+	async startReplace() {
+		return null;
+	}
+	async moveReplace() {
+		return null;
+	}
+	async finishReplace() {
+		return null;
+	}
+	async setFocal() {}
+	async listKeptDue() {
+		return [];
+	}
+	async dropKept() {}
 	async findById(id: string) {
 		return this.rows.get(id) ?? null;
 	}

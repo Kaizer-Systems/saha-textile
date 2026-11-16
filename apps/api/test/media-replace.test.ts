@@ -28,6 +28,9 @@ const harness = () => {
 			return files.get(id) ?? null;
 		},
 	};
+	(assets as Record<string, unknown>)['setFocal'] = async (id: string, focal: { x: number; y: number } | null) => {
+		files.set(id, { ...(files.get(id) as MediaAsset), focal });
+	};
 	const storageCheck = { admit: vi.fn(async () => undefined), release: vi.fn(async () => undefined) };
 	const service = new MediaReplaceService(
 		assets as never,
@@ -159,5 +162,43 @@ describe('Replace a photo (media step 3b)', () => {
 			],
 		});
 		expect((await refusal(h.service.start('adm_1', 'med_m', NEW, NOW)))?.code).toBe('versions_making');
+	});
+});
+
+describe('a focal point (S10, C06, media step 3c)', () => {
+	const crop = {
+		id: 'product_3x4.crop',
+		profileKey: 'product_3x4',
+		profileVersion: 1,
+		fill: 'crop',
+		state: 'ready',
+		createdAt: '2026-11-16T00:00:00.000Z',
+	};
+
+	it('is saved and the Crop versions are remade from the same original; the worker takes it', async () => {
+		const h = harness();
+		h.photo('med_f', { width: 4000, height: 2000, versions: [crop] });
+		const status = await h.service.setFocal('adm_1', 'med_f', { x: 0.3, y: 0.4 }, NOW);
+		expect(h.files.get('med_f')?.focal).toEqual({ x: 0.3, y: 0.4 });
+		expect(h.files.get('med_f')?.replacing).toMatchObject({
+			reason: 'focal',
+			phase: 'queued',
+			key: 'media/med_f/original.jpg',
+		});
+		expect(h.jobs).toEqual([{ type: 'replace', assetId: 'med_f' }]);
+		expect(h.audit[0]).toMatchObject({ action: 'media.focal', entityId: 'med_f' });
+		expect(status.phase).toBe('queued');
+	});
+
+	it('a photo with no Crop version just keeps the point; while versions are made or a Replace runs, it waits', async () => {
+		const h = harness();
+		h.photo('med_n');
+		await h.service.setFocal('adm_1', 'med_n', null, NOW);
+		expect(h.jobs).toEqual([]);
+		expect(h.files.get('med_n')?.focal).toBeNull();
+		h.photo('med_m', { versions: [{ ...crop, state: 'making' }] });
+		expect((await refusal(h.service.setFocal('adm_1', 'med_m', { x: 0.5, y: 0.5 }, NOW)))?.code).toBe(
+			'focal_waits',
+		);
 	});
 });

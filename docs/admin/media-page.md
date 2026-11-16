@@ -151,7 +151,7 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 - Download as .zip is not offered yet (media step 5).
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.
 - Until pages store which version they use (media step 4), a version counts as in use when the website draws it for a used photo: the first ready version for each kind of size (see Reprocess below). A version that is the only source of a kind of size therefore can't be removed while the photo is used anywhere.
-- Replace works for photos (from the menu, or through the duplicate check); Replace for files other than photos, the focal point, a new web file name and "Bring older versions up to date" come in the next parts of step 3.
+- Replace works for photos (from the menu, or through the duplicate check); Replace for files other than photos, a new web file name and "Bring older versions up to date" come in the next parts of step 3.
 
 ## Details and Activity
 
@@ -176,3 +176,7 @@ Replace runs the shared storage check (the new photo and every version to remake
 The worker (`replaceMediaAsset`) checks the new original's real bytes, remakes every version and the pictures made once per photo, and swaps everything in one write. The old picture files and the old original are kept on the photo (`keptFiles`) for 7 days, then the daily sweep (03:55 India time) deletes them; deleting the photo for good deletes them too. Routes: `POST /files/:id/replace`, `POST /files/:id/replace/finish`, `GET /files/:id/replace`, `DELETE /files/:id/replace`.
 
 **Through the duplicate check (S6, B12, B13).** When a photo is uploaded into a folder that already holds a different photo of the same name and the admin chooses **Upload anyway**, B12 asks what happens to the one already there: **Keep both** (the new one is saved as "name (1)") or **Replace the existing file** (same name, folder and text; pages show the new photo once its sizes are ready). If that photo is used on the website, B13 lists the pages first and asks for **Replace everywhere**. A replaced photo then goes through the same Replace as above (no new file is made; its versions are remade from the new photo), counted in the upload's storage check. Files other than photos keep both, as before.
+
+## Focal point
+
+A Crop version in the details tree has a **Focal point** button (S10). The popup (C06, `FmFocal`) shows the whole photo (its original, through a 5-minute address); a click puts the point on the part that must stay in every crop. Each Crop version is previewed with the point and as it is today, placed exactly as the image worker will cut it (the largest window of the profile's shape, centred on the point as far as the photo allows). **Save** stores the point on the photo (`PUT /files/:id/focal`) and the worker remakes only the Crop versions around it, through the same machinery as Replace with the original kept: new files, the old crop files kept 7 days, other versions and the pictures made once per photo untouched; one tray row follows it. **Reset to centre** puts the point back on the middle. A photo with no Crop version just keeps the point for crops made later. It waits while versions are being made or a Replace runs.

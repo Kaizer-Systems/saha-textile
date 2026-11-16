@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { heicToJpeg } from './heic';
+import { heicToJpeg, type HeicConvert } from './heic';
 
 /** HEIC in the browser (media step 2d): full size, top quality first, colours kept. */
 const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
@@ -19,7 +19,7 @@ const jpegOf = (bytes: number) => {
 
 describe('heicToJpeg', () => {
 	it('makes a full-quality JPEG named .jpg, with the photo’s colour profile put back', async () => {
-		const convert = vi.fn(async () => jpegOf(64));
+		const convert = vi.fn<HeicConvert>(async () => jpegOf(64));
 		const made = await heicToJpeg(heic(true), convert);
 		expect(convert).toHaveBeenCalledTimes(1);
 		expect(convert.mock.calls[0]?.[1]).toBe(1);
@@ -31,7 +31,7 @@ describe('heicToJpeg', () => {
 
 	it('steps the quality down to 95, then 90, while the JPEG is over 25 MB', async () => {
 		const sizes = [27 * 1024 * 1024, 26 * 1024 * 1024, 24 * 1024 * 1024];
-		const convert = vi.fn(async () => jpegOf(sizes.shift() ?? 10));
+		const convert = vi.fn<HeicConvert>(async () => jpegOf(sizes.shift() ?? 10));
 		const made = await heicToJpeg(heic(false), convert);
 		expect(convert.mock.calls.map((call) => call[1])).toEqual([1, 0.95, 0.9]);
 		expect(made.size).toBe(24 * 1024 * 1024);

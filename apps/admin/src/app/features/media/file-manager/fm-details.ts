@@ -26,7 +26,10 @@ const isFill = (value: string): value is MediaFill => FILLS.includes(value);
 
 /** What the popup's buttons hand back to the Media page (A31): it closes and the page carries on. */
 export type FmDetailsAction =
-	{ kind: 'add_versions'; versions: { id: string; state: string }[] } | { kind: 'download' } | { kind: 'share' };
+	| { kind: 'add_versions'; versions: { id: string; state: string }[] }
+	| { kind: 'download' }
+	| { kind: 'share' }
+	| { kind: 'focal' };
 type Version = MediaFileDetails['versions'][number];
 type Family = MediaFileDetails['perPhoto'][number];
 

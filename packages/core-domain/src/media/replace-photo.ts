@@ -68,6 +68,7 @@ export function keptAfterReplace(
 	old: Pick<MediaAsset, 'derivatives' | 'originalStorageKey'>,
 	fresh: { derivatives: readonly ImageDerivative[]; originalStorageKey: string },
 	now: Date,
+	reason: MediaKeptFiles['reason'] = 'replace',
 ): MediaKeptFiles | null {
 	const still = new Set([...fresh.derivatives.map((row) => row.storageKey), fresh.originalStorageKey]);
 	const files = old.derivatives.filter((row) => !still.has(row.storageKey));
@@ -78,7 +79,7 @@ export function keptAfterReplace(
 		keys,
 		bytes: files.reduce((sum, row) => sum + (row.byteSize ?? 0), 0),
 		deleteAfter: new Date(now.getTime() + KEEP_REPLACED_DAYS * 86_400_000).toISOString(),
-		reason: 'replace',
+		reason,
 	};
 }
 
@@ -95,8 +96,10 @@ export const replaceMediaAsset = async (
 	const asset = await deps.assets.moveReplace(input.assetId, ['queued'], { phase: 'making', made: 0 });
 	const next = asset?.replacing;
 	if (!asset || !next) return { status: 'not_claimed' };
+	// A new focal point (S10) keeps the original: only Crop versions are remade, and the original is never deleted.
+	const focal = next.reason === 'focal';
 	const fail = async (reason: string, made: readonly ImageDerivative[] = []): Promise<ProcessOutcome> => {
-		const keys = [next.key, ...made.map((row) => row.storageKey)];
+		const keys = [...(focal ? [] : [next.key]), ...made.map((row) => row.storageKey)];
 		await deps.queue.enqueue({
 			type: 'delete-objects',
 			keys,
@@ -130,10 +133,17 @@ export const replaceMediaAsset = async (
 
 	let total = 0;
 	let made = 0;
-	const versions = (asset.versions ?? []).map((version) => ({ ...version, state: 'making' as const, error: null }));
+	const versions = (asset.versions ?? [])
+		.filter((version) => !focal || version.fill === 'crop')
+		.map((version) => ({ ...version, state: 'making' as const, error: null }));
+	const remade = new Set(versions.map((version) => version.id));
 	const fresh = { ...asset, originalFormat: next.contentType as MediaAsset['originalFormat'] };
-	const rendered = await renderPhoto(deps, fresh, bytes, probe, versions, new Set(), {
-		freshPlaceholder: true,
+	// A focal change keeps every picture made once per photo; a Replace makes them all again.
+	const have = new Set(
+		focal ? asset.derivatives.filter((row) => !row.versionId).map((row) => `${row.role}@${row.width}`) : [],
+	);
+	const rendered = await renderPhoto(deps, fresh, bytes, probe, versions, have, {
+		freshPlaceholder: !focal,
 		onPlanned: async (count) => {
 			total = count;
 			await deps.assets.moveReplace(asset.id, ['making'], { total, made: 0 });
@@ -146,7 +156,19 @@ export const replaceMediaAsset = async (
 	const broken = rendered.made.find((version) => version.state !== 'ready');
 	if (broken) return fail(`${broken.id}: ${broken.error ?? 'render_failed'}`, rendered.added);
 
-	const kept = keptAfterReplace(asset, { derivatives: rendered.added, originalStorageKey: next.key }, deps.now());
+	const derivatives = focal
+		? [...asset.derivatives.filter((row) => !row.versionId || !remade.has(row.versionId)), ...rendered.added]
+		: rendered.added;
+	const madeById = new Map(rendered.made.map((version) => [version.id, version]));
+	const allVersions = focal
+		? (asset.versions ?? []).map((version) => madeById.get(version.id) ?? version)
+		: rendered.made;
+	const kept = keptAfterReplace(
+		asset,
+		{ derivatives, originalStorageKey: next.key },
+		deps.now(),
+		focal ? 'focal' : 'replace',
+	);
 	const stored = await deps.assets.finishReplace({
 		assetId: asset.id,
 		set: {
@@ -160,8 +182,8 @@ export const replaceMediaAsset = async (
 			warnings: [...rendered.warnings],
 			sha256: next.sha256,
 		},
-		derivatives: rendered.added,
-		versions: rendered.made,
+		derivatives,
+		versions: allVersions,
 		kept,
 	});
 	if (!stored) return fail('replace_gone', rendered.added);

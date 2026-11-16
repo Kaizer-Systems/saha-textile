@@ -34,6 +34,8 @@ export interface MediaAssetDoc {
 	versions?: unknown[];
 	/** A Replace in progress (media step 3b). */
 	replacing?: unknown;
+	/** The focal point for crops (S10), fractions of the upright photo. */
+	focal?: { x: number; y: number } | null;
 	/** Files kept after a Replace until they are swept (decision 11). */
 	keptFiles?: unknown[];
 	dominantColor: string | null;
@@ -76,6 +78,8 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		versions: { type: [Schema.Types.Mixed], default: [] },
 		/** A Replace in progress (media step 3b); null otherwise. */
 		replacing: { type: Schema.Types.Mixed, default: null },
+		/** The focal point for crops (S10): { x, y } as fractions; null keeps the middle. */
+		focal: { type: Schema.Types.Mixed, default: null },
 		/** Files kept after a Replace until their `deleteAfter` (ISO time), then swept (decision 11). */
 		keptFiles: { type: [Schema.Types.Mixed], default: [] },
 		dominantColor: { type: String, default: null },

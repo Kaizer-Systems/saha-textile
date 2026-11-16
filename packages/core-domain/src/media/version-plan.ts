@@ -157,6 +157,8 @@ export const planVersion = (input: {
 	source: { width: number; height: number };
 	maxDisplayWidth: number | null;
 	colours?: { dominant: string | null; brand: string | null };
+	/** The photo's focal point (S10): crop versions keep the part around it. */
+	focal?: { x: number; y: number } | null;
 }): VersionPlan => {
 	const versionId = versionIdOf(input.profile.key, input.fill);
 	const byKey = new Map(input.roles.map((role) => [role.key, role]));
@@ -198,6 +200,7 @@ export const planVersion = (input: {
 					format: role.format,
 					quality,
 					...(keepAlpha ? { keepAlpha: true } : {}),
+					...(input.fill === 'crop' && fit === 'cover' && input.focal ? { focal: input.focal } : {}),
 					...(background ? { background } : {}),
 				},
 			});

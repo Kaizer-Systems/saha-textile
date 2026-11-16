@@ -871,6 +871,7 @@ export class MediaLibraryService {
 				};
 			}),
 			perPhoto: familiesOf(asset.derivatives.filter((row) => !row.versionId)),
+			focal: asset.focal ?? null,
 		};
 	}
 

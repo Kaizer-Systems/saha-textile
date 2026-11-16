@@ -91,6 +91,7 @@ export const WRITTEN_LANGUAGE_AREAS = [
 	'faqs',
 	'search_words',
 	'addon_templates',
+	'pages',
 ] as const satisfies readonly LanguageArea[];
 export type WrittenLanguageArea = (typeof WRITTEN_LANGUAGE_AREAS)[number];
 /** One written area, as a route parameter. */

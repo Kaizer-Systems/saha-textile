@@ -33,7 +33,6 @@ import {
 	type LanguageManifest,
 	loadLanguageManifest,
 	missingAdminText,
-	missingPages,
 	missingShopText,
 	shippedFrom,
 } from './shipped-languages';
@@ -123,7 +122,7 @@ export class LanguagesService {
 			...written,
 			shop_text: missingShopText(manifest, code),
 			admin_text: missingAdminText(manifest, code),
-			pages: missingPages(manifest, code),
+			// The four legal pages are written in Admin › Pages and counted from the database (Legal Pages brief).
 		});
 		return { code, lines, total };
 	}

@@ -195,8 +195,8 @@ export const LOCALIZED_TEXT_REGISTRY: readonly LocalizedTextEntry[] = [
 		// language; the search title and description follow English.
 		owner: 'legal pages',
 		model: as(LegalPageModel),
-		// Counted from the release files until the API step moves Settings › Languages to the database (brief).
-		area: null,
+		// Settings › Languages counts them from the database (Legal Pages brief).
+		area: 'pages',
 		live: {},
 		fields: [
 			required('title'),

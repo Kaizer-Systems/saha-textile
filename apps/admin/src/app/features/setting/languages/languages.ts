@@ -61,6 +61,7 @@ export const AREA_LISTS: Readonly<Partial<Record<LanguageArea, string>>> = {
 	faqs: '/faq',
 	search_words: '/search-term',
 	addon_templates: '/addon-template',
+	pages: '/page',
 };
 
 /** The popups this page opens, each with the language it is about. */

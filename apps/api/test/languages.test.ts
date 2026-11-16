@@ -225,7 +225,8 @@ describe('Settings › Languages', () => {
 	});
 
 	it('counts the admin’s own words apart: they never stop the shop', async () => {
-		const { service } = harness();
+		// The legal pages are counted from the database since the Legal Pages build, not from the release files.
+		const { service } = harness({ pages: 1 });
 		service.useManifest({ ...MANIFEST, admin: { en: 0 }, pages: { 'privacy-policy': ['en'] } });
 		const todo = await service.todo('hi');
 		expect(todo.lines.find((line) => line.area === 'admin_text')).toEqual({

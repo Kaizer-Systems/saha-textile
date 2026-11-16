@@ -10,6 +10,7 @@ import {
 	CategoryModel,
 	ContentBlockModel,
 	FaqEntryModel,
+	LegalPageModel,
 	MediaAssetModel,
 	NotificationTemplateModel,
 	ProductModel,
@@ -188,6 +189,21 @@ export const LOCALIZED_TEXT_REGISTRY: readonly LocalizedTextEntry[] = [
 		live: {},
 		idField: 'code',
 		fields: [required('label'), required('fields.$[].label')],
+	},
+	{
+		// The four legal pages (Legal Pages brief): always on the shop, so Title and Content are needed in every
+		// language; the search title and description follow English.
+		owner: 'legal pages',
+		model: as(LegalPageModel),
+		// Counted from the release files until the API step moves Settings › Languages to the database (brief).
+		area: null,
+		live: {},
+		fields: [
+			required('title'),
+			required('content', true),
+			followsEnglish('metaTitle'),
+			followsEnglish('metaDescription'),
+		],
 	},
 	{
 		// Email wording per language. Messages fall back to English and never block a language.

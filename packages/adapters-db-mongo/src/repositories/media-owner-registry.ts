@@ -3,6 +3,8 @@ import type { Model } from 'mongoose';
 import {
 	AttributeDefinitionModel,
 	BlogPostModel,
+	LegalPageModel,
+	LegalPageRevisionModel,
 	CategoryModel,
 	ContentBlockModel,
 	ProductModel,
@@ -49,6 +51,8 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('blog cover', as(BlogPostModel), 'coverAssetId'),
 	entry('blog share image', as(BlogPostModel), 'shareImageAssetId'),
 	entry('blog post picture', as(BlogPostModel), 'assetIds'),
+	entry('legal page share picture', as(LegalPageModel), 'metaImageAssetId'),
+	entry('legal page share picture (earlier version)', as(LegalPageRevisionModel), 'metaImageAssetId'),
 	entry('store photos', as(StoreLocationModel), 'photoAssetIds'),
 	entry('event popup pictures', as(ShopEventModel), 'popupAssetIds'),
 	entry('event popup picture (before 2026-11-10)', as(ShopEventModel), 'popupAssetId'),

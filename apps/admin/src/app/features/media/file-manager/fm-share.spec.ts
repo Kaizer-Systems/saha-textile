@@ -184,6 +184,6 @@ describe('Storage details (A47)', () => {
 		other.start(summary({ canChangeOnDemand: false }));
 		await other.toggleOthers();
 		expect(gateway.saveStorageSettings).toHaveBeenCalledTimes(1);
-		expect(Object.keys(STORAGE_ROWS)).toEqual(['originals', 'versions', 'files', 'trash']);
+		expect(Object.keys(STORAGE_ROWS)).toEqual(['originals', 'versions', 'files', 'trash', 'zips']);
 	});
 });

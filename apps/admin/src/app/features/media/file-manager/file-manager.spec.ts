@@ -78,6 +78,8 @@ describe('the Media page reads its view from the address', () => {
 		const params = new BehaviorSubject(convertToParamMap(query));
 		const router = { navigate: vi.fn() };
 		const gateway = {
+			// The page follows this person's .zip files still being made (media step 5).
+			zips: vi.fn(() => of({ zips: [] })),
 			browse: vi.fn(() =>
 				of({ folder: null, breadcrumb: [], folders: [], files: [], total: 0, page: 1, pageSize: 200 }),
 			),
@@ -246,6 +248,8 @@ describe('Trash on the Media page (A18, A19)', () => {
 	const setup = (answer: 'yes' | 'no' = 'yes', failing = false) => {
 		const result = { done: 1, inUse: [], undoId: null };
 		const gateway = {
+			// The page follows this person's .zip files still being made (media step 5).
+			zips: vi.fn(() => of({ zips: [] })),
 			browse: vi.fn(() => of(trash)),
 			tree: vi.fn(() => of({ folders: [] })),
 			storage: vi.fn(() => of(null)),
@@ -352,6 +356,8 @@ describe('Trash on the Media page (A18, A19)', () => {
 describe('selection, stars and New folder (A17, A23, A27)', () => {
 	const setup = (createFails = false) => {
 		const gateway = {
+			// The page follows this person's .zip files still being made (media step 5).
+			zips: vi.fn(() => of({ zips: [] })),
 			browse: vi.fn(() =>
 				of({
 					folder: null,
@@ -516,6 +522,8 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 	) => {
 		const result = { done: 2, inUse: [], undoId: 'audit_1' };
 		const gateway = {
+			// The page follows this person's .zip files still being made (media step 5).
+			zips: vi.fn(() => of({ zips: [] })),
 			browse: vi.fn(() =>
 				of({
 					folder: { id: 'fld_b', name: 'Banarasi' },
@@ -851,6 +859,8 @@ describe('Reprocess from the Media page (C01, C03, C07, step 3a)', () => {
 
 	const setup = (answer: unknown = choice) => {
 		const gateway = {
+			// The page follows this person's .zip files still being made (media step 5).
+			zips: vi.fn(() => of({ zips: [] })),
 			browse: vi.fn(() =>
 				of({ folder: null, breadcrumb: [], folders: [], files: [], total: 0, page: 1, pageSize: 200 }),
 			),

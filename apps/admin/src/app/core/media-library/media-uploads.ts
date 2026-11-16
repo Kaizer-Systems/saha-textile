@@ -1,6 +1,8 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoService } from '@jsverse/transloco';
+import { formatBytes } from '@saha-textile/core-domain/languages';
 import { MULTIPART_FROM_BYTES, MULTIPART_PART_BYTES } from '@saha-textile/core-domain/media-files';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -11,7 +13,7 @@ import { translateCount } from '@shared/pipes/language.pipes';
 
 import { MediaLibraryGateway } from './media-library.gateway';
 
-import type { MediaFill } from '@saha-textile/contracts';
+import type { MediaFill, MediaZip } from '@saha-textile/contracts';
 
 /** `making`: a photo has arrived and the image worker is making its versions (R4-8, bar 2). */
 export type UploadState = 'waiting' | 'uploading' | 'making' | 'done' | 'failed';
@@ -100,7 +102,18 @@ export interface MediaOperation {
 	total: number;
 	state: 'running' | 'done' | 'failed';
 	error: string | null;
+	/** The icon tile's colour class (a .zip's is `k-zip`); `k-other` when absent. */
+	kind?: string;
+	/** The step's words while it runs (“Adding files”); “Working” when absent. */
+	phase?: string;
+	/** A line under the row, such as a ready .zip's size and how long its link works. */
+	note?: string;
+	/** One link on the row: Cancel while a .zip is made, Download once it is ready. */
+	action?: { label: string; run: () => void };
 }
+
+/** A .zip is followed this long at most; its row then says it is still being made on the server. */
+export const ZIP_GIVE_UP_MS = 6 * 60 * 60_000;
 
 /** A change that ends sooner than this shows no bar at all (A49): a bar that flashes is flicker. */
 export const OPERATION_BAR_AFTER_MS = 300;
@@ -135,6 +148,8 @@ export class MediaUploads {
 	private readonly gateway = inject(MediaLibraryGateway);
 	private readonly queries = inject(QueryClient);
 	private readonly transloco = inject(TranslocoService);
+	/** Toasts for a ready .zip; optional, so pages and tests without the toast service still work. */
+	private readonly toastr = inject(ToastrService, { optional: true });
 
 	readonly jobs = signal<readonly UploadJob[]>([]);
 	readonly operations = signal<readonly MediaOperation[]>([]);
@@ -303,6 +318,93 @@ export class MediaUploads {
 			}
 			patch({ state: 'done' });
 		})();
+	}
+
+	/**
+	 * A .zip being made (media step 5, A30, A48): one tray row with the worker's real counts and Cancel. When it is
+	 * ready the download starts by itself, a toast says so, and the row keeps Download for the 24 hours its link works.
+	 */
+	watchZip(zip: MediaZip): void {
+		const id = `zip_${zip.id}`;
+		if (this.operations().some((op) => op.id === id)) return;
+		const words = (key: string, params: Record<string, unknown> = {}) =>
+			this.transloco.translate(key, { name: zip.name, ...params });
+		const tray = (changes: Partial<MediaOperation>) =>
+			this.operations.update((ops) => ops.map((op) => (op.id === id ? { ...op, ...changes } : op)));
+		this.operations.update((ops) => [
+			...ops,
+			{
+				id,
+				label: zip.name,
+				icon: 'ri-file-zip-line',
+				kind: 'k-zip',
+				phase: 'fm_zip_adding',
+				done: zip.files.done,
+				total: zip.files.total,
+				state: 'running',
+				error: null,
+				action: {
+					label: 'cancel',
+					run: () => void lastValueFrom(this.gateway.cancelZip(zip.id)).catch(() => null),
+				},
+			},
+		]);
+		void (async () => {
+			const started = Date.now();
+			while (Date.now() - started < ZIP_GIVE_UP_MS) {
+				await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
+				const now = await lastValueFrom(this.gateway.zip(zip.id)).catch(() => null);
+				if (!now) continue;
+				tray({ done: now.files.done, total: now.files.total });
+				if (now.state === 'adding') continue;
+				if (now.state === 'ready') {
+					const save = () => void this.saveZip(zip.id);
+					tray({
+						state: 'done',
+						label: words('fm_zip_ready'),
+						note: words('fm_zip_ready_note', {
+							size: formatBytes(now.bytes.total, this.transloco.getActiveLang()),
+						}),
+						action: { label: 'fm_download', run: save },
+					});
+					this.toastr?.success(words('fm_zip_ready'));
+					save();
+				} else if (now.state === 'cancelled') {
+					this.operations.update((ops) => ops.filter((op) => op.id !== id));
+				} else {
+					const { action: _cancel, ...rest } = this.operations().find((op) => op.id === id) ?? {};
+					this.operations.update((ops) =>
+						ops.map((op) =>
+							op.id === id
+								? { ...(rest as MediaOperation), state: 'failed', error: words('fm_zip_failed') }
+								: op,
+						),
+					);
+				}
+				return;
+			}
+		})();
+	}
+
+	/** The person's own .zip files still being made, followed again after a reload (A48). */
+	async resumeZips(): Promise<void> {
+		const answer = await lastValueFrom(this.gateway.zips()).catch(() => null);
+		for (const zip of answer?.zips ?? []) if (zip.state === 'adding') this.watchZip(zip);
+	}
+
+	/** Starts saving a ready .zip from a fresh five-minute link, under its own name. */
+	private async saveZip(zipId: string): Promise<void> {
+		const link = await lastValueFrom(this.gateway.zipLink(zipId)).catch(() => null);
+		if (!link) {
+			this.toastr?.error(this.transloco.translate('fm_zip_link_gone'));
+			return;
+		}
+		const anchor = document.createElement('a');
+		anchor.href = link.url;
+		anchor.rel = 'noopener';
+		document.body.appendChild(anchor);
+		anchor.click();
+		anchor.remove();
 	}
 
 	/** Replaces under way (S7, C08), by file id: their three steps, for the progress popup. */

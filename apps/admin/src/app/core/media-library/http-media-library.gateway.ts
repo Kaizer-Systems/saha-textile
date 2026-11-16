@@ -38,6 +38,10 @@ import {
 	type MediaOperationResult,
 	type MediaRestoreRequest,
 	type MediaSelection,
+	type MediaZip,
+	type MediaZipList,
+	type MediaZipPlan,
+	type MediaZipRequest,
 	type MediaUploadedParts,
 	type MediaPartsRequest,
 	type MediaPartUrls,
@@ -248,6 +252,30 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override nightlyCheck(): Observable<MediaNightlyCheck | null> {
 		return this.http.get<MediaNightlyCheck | null>(this.url('/nightly-check'));
+	}
+
+	override zipPlan(body: MediaSelection): Observable<MediaZipPlan> {
+		return this.http.post<MediaZipPlan>(this.url('/zips/plan'), body);
+	}
+
+	override createZip(body: MediaZipRequest): Observable<MediaZip> {
+		return this.http.post<MediaZip>(this.url('/zips'), body);
+	}
+
+	override zips(): Observable<MediaZipList> {
+		return this.http.get<MediaZipList>(this.url('/zips'));
+	}
+
+	override zip(id: string): Observable<MediaZip> {
+		return this.http.get<MediaZip>(this.url(`/zips/${encodeURIComponent(id)}`));
+	}
+
+	override cancelZip(id: string): Observable<MediaZip> {
+		return this.http.post<MediaZip>(this.url(`/zips/${encodeURIComponent(id)}/cancel`), {});
+	}
+
+	override zipLink(id: string): Observable<MediaFileAddress> {
+		return this.http.get<MediaFileAddress>(this.url(`/zips/${encodeURIComponent(id)}/link`));
 	}
 
 	override cleanUp(query: MediaCleanUpQuery): Observable<MediaCleanUpResponse> {

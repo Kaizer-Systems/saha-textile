@@ -491,3 +491,63 @@ describe('Replace a photo (S7, C08, step 3b)', () => {
 		vi.useRealTimers();
 	});
 });
+
+describe('a folder download as .zip (A30, A48, media step 5)', () => {
+	it('follows the worker’s counts with Cancel, then starts the download and keeps Download in the row', async () => {
+		vi.useFakeTimers();
+		const states = [
+			{ state: 'adding', files: { done: 1, total: 3 } },
+			{ state: 'ready', files: { done: 3, total: 3 } },
+		];
+		const zipOf = (index: number) => ({
+			id: 'zip_1',
+			name: 'Product photos.zip',
+			bytes: { done: 2048, total: 2048 },
+			createdAt: '2026-11-16T10:00:00.000Z',
+			readyAt: null,
+			expiresAt: null,
+			error: null,
+			...states[Math.min(index, states.length - 1)],
+		});
+		let polls = 0;
+		const gateway = {
+			zip: vi.fn(() => of(zipOf(polls++))),
+			zipLink: vi.fn(() => of({ url: 'https://spaces.test/zips/zip_1' })),
+			cancelZip: vi.fn(() => of(zipOf(0))),
+		};
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				MediaUploads,
+				{ provide: MediaLibraryGateway, useValue: gateway },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+				{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
+			],
+		});
+		const uploads = TestBed.inject(MediaUploads);
+		const clicked: string[] = [];
+		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+			this: HTMLAnchorElement,
+		) {
+			clicked.push(this.href);
+		});
+		uploads.watchZip(zipOf(0) as never);
+		const row = () => uploads.operations().find((op) => op.id === 'zip_zip_1');
+		expect(row()).toMatchObject({
+			kind: 'k-zip',
+			phase: 'fm_zip_adding',
+			state: 'running',
+			action: { label: 'cancel' },
+		});
+		row()?.action?.run();
+		expect(gateway.cancelZip).toHaveBeenCalledWith('zip_1');
+		await vi.advanceTimersByTimeAsync(2100);
+		expect(row()).toMatchObject({ done: 1, total: 3, state: 'running' });
+		await vi.advanceTimersByTimeAsync(2100);
+		expect(row()).toMatchObject({ state: 'done', label: 'fm_zip_ready', action: { label: 'fm_download' } });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(clicked).toEqual(['https://spaces.test/zips/zip_1']);
+		click.mockRestore();
+		vi.useRealTimers();
+	});
+});

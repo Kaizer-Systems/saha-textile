@@ -599,7 +599,7 @@ describe('menus, Move, Rename, Trash, Undo, drag and keys (A20–A28, A37, A39)'
 		const { page } = setup();
 		await ready(page);
 		page.openMenu({ item: { type: 'folder', id: 'fld_w' }, event: click(), anchor: null });
-		expect(page.menu()?.lines).toEqual(['open', 'new_inside', 'rename', 'move', 'star', 'divider', 'trash']);
+		expect(page.menu()?.lines).toEqual(['open', 'new_inside', 'rename', 'zip', 'move', 'star', 'divider', 'trash']);
 		page.openMenu({ item: { type: 'file', id: 'med_1' }, event: click(), anchor: null });
 		expect(page.menu()?.lines).toEqual([
 			'details',

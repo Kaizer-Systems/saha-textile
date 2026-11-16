@@ -2310,7 +2310,7 @@
 	"profile_fill_as_is": "As is",
 	"fm_activity_upload": "Uploaded",
 	"fm_activity_move": "Moved",
-	"fm_activity_rename": "Renamed",
+	"fm_activity_rename": "Web file name changed",
 	"fm_activity_trash": "Moved to Trash",
 	"fm_activity_restore": "Restored",
 	"fm_activity_visibility": "Made public or private",
@@ -2574,7 +2574,16 @@
 	"fm_focal_saved_remaking": "Focal point saved; the crops were remade around it",
 	"fm_focal_button": "Focal point",
 	"fm_activity_focal": "Focal point changed",
-	"fm_activity_rename": "Web file name changed",
 	"fm_rename_files_tray": "Renaming the files of {{name}}",
-	"fm_rename_files_tray_done": "Files of {{name}} renamed"
+	"fm_rename_files_tray_done": "Files of {{name}} renamed",
+	"fm_zip_download": "Download as .zip",
+	"fm_zip_bulk": "Download .zip",
+	"fm_zip_adding": "Adding files",
+	"fm_zip_preparing": "Preparing {{name}}. You can keep working; the download starts when it is ready.",
+	"fm_zip_ready": "{{name}} is ready",
+	"fm_zip_ready_note": "{{size}} · link works for 24 hours",
+	"fm_zip_failed": "{{name}} could not be made. Try again, or download fewer files.",
+	"fm_zip_link_gone": "This .zip is no longer kept. Make it again from the Media page.",
+	"fm_zip_empty": "There is nothing to put in a .zip here.",
+	"fm_zip_what": "Stores {{name}} for 24 hours."
 }

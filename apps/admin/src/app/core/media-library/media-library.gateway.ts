@@ -44,6 +44,10 @@ import type {
 	StorageCheckRequest,
 	StorageSettingsWrite,
 	StorageSummary,
+	MediaZip,
+	MediaZipList,
+	MediaZipPlan,
+	MediaZipRequest,
 } from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
@@ -55,6 +59,10 @@ export type {
 	MediaCleanUpResponse,
 	MediaCleanUpRow,
 	MediaNightlyCheck,
+	MediaZip,
+	MediaZipList,
+	MediaZipPlan,
+	MediaZipRequest,
 	MediaFileDetails,
 	MediaAddVersionsRequest,
 	MediaBulkAddVersionsRequest,
@@ -189,4 +197,12 @@ export abstract class MediaLibraryGateway {
 	abstract checkStorage(body: StorageCheckRequest): Observable<StorageCheckAnswer>;
 	abstract releaseHold(holdId: string): Observable<void>;
 	abstract saveStorageSettings(body: StorageSettingsWrite): Observable<{ othersMayUseOnDemand: boolean }>;
+
+	// Folder downloads as .zip (media step 5, A30, A30B, A48).
+	abstract zipPlan(body: MediaSelection): Observable<MediaZipPlan>;
+	abstract createZip(body: MediaZipRequest): Observable<MediaZip>;
+	abstract zips(): Observable<MediaZipList>;
+	abstract zip(id: string): Observable<MediaZip>;
+	abstract cancelZip(id: string): Observable<MediaZip>;
+	abstract zipLink(id: string): Observable<MediaFileAddress>;
 }

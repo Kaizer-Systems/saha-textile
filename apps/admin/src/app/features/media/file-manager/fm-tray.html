@@ -30,7 +30,12 @@
 	<ul class="overflow-auto">
 		@for (op of uploads.operations(); track op.id) {
 		<li [attr.data-operation]="op.state">
-			<div class="fm-type k-other"><i [class]="op.icon"></i></div>
+			<div
+				class="fm-type"
+				[class]="op.kind ?? 'k-other'"
+			>
+				<i [class]="op.icon"></i>
+			</div>
 			<div class="fm-tray-name">
 				<div>{{ op.label }}</div>
 				@if (op.state === 'failed') {
@@ -38,7 +43,9 @@
 				} @else {
 				<div class="fm-phase">
 					<div>
-						<span>{{ (op.state === 'done' ? 'fm_op_done' : 'fm_op_working') | transloco }}</span>
+						<span>
+							{{ (op.state === 'done' ? 'fm_op_done' : (op.phase ?? 'fm_op_working')) | transloco }}
+						</span>
 						<small>
 							{{ 'fm_op_count' | transloco: { done: op.done, total: op.total } }} @if (op.state ===
 							'done') {
@@ -54,6 +61,19 @@
 						></div>
 					</div>
 				</div>
+				} @if (op.note) {
+				<small class="text-muted d-block">{{ op.note }}</small>
+				} @if (op.action; as action) {
+				<small>
+					<a
+						href="javascript:void(0)"
+						class="text-decoration-underline"
+						[attr.data-op-action]="action.label"
+						(click)="action.run()"
+					>
+						{{ action.label | transloco }}
+					</a>
+				</small>
 				}
 			</div>
 		</li>

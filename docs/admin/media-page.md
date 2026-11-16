@@ -11,6 +11,8 @@ source_of_truth:
     - packages/core-domain/src/catalog/media-files.ts
     - packages/core-domain/src/catalog/photo-header.ts
     - packages/adapters-image-sharp/src/extra-decoders.ts
+    - packages/core-domain/src/media/zip.ts
+    - packages/adapters-archive-zip/src/yazl-zip-archive.ts
     - packages/core-domain/src/media/library-use-cases.ts
     - apps/api/src/media/media-library.service.ts
     - apps/api/src/media/admin-media-library.controller.ts
@@ -214,6 +216,20 @@ From 85% of the storage plan the Media page shows the theme's warning banner wit
 When a Media picture fails to load on the shop or in the admin (a deleted or missing file), it becomes the bundled placeholder: a grey box with the image icon, in the shape nearest the picture's box (3:4, 4:5, 9:16, 1:1, 4:3, 16:9, 1.91:1, 2:1 or 21:9), light or dark with the page (R5-1, R5-5). The box keeps its size, so nothing moves; each picture is swapped once, and pictures that failed before the app started are swapped too. Only Media pictures (`…/media/med_…/…`) are swapped. The shape choice is `@saha-textile/core-domain/media-placeholder`; each app installs `installPictureFallback` at start-up, and the files are in `public/assets/images/placeholder/`. There is no edge script: email pictures are never deleted, and search engines and link previews keep an honest "not found".
 
 Every night at 04:15 IST the worker runs the Spaces check (R5-5): it lists what Spaces holds under `media/` (`StoragePort.listKeys`) and keeps one result in the `media_nightly_check` setting. It names the photos the website uses whose files are gone, with where they are used, and counts the files Spaces holds that no record knows (made by other tools, or left behind). It changes nothing. The Media page shows the missing pictures in a warning banner, the bell counts them for people who use Media, and Storage details lists the files without a record (`GET /nightly-check`).
+
+## Folder downloads as .zip
+
+**Download as .zip** in a folder's menu, and **Download .zip** in the bar over chosen items, make one .zip of the chosen folders and files (A20, A27). One folder alone gives `Folder.zip` with that folder at its top; anything else is named after the folder it was picked in. Folders keep their tree, an empty folder stays a folder, a name met twice in one folder gets “(1)”, and Trash and unfinished uploads are left out. Photos go in as their originals.
+
+1. `POST /zips/plan` answers the .zip's name, files and bytes, and the shared storage check runs with `zip` (the .zip is stored for 24 hours, R4-7).
+2. `POST /zips` starts it under the check's hold. The .zip then keeps a storage hold of its own (`zip_…`) for its 24 hours.
+3. The worker's `zip` job (`buildZip`) writes it into Spaces file by file: one file read at a time, entries stored as they are (photos and archives are compressed already), ZIP64 past 4 GB, in 16 MB parts (`StoragePort.uploadStream`). It saves the real counts at most once a second.
+4. The tray shows the row (A48): “Adding files”, files done of total, and **Cancel**, which stops it at the next file and keeps nothing. A .zip still being made comes back to the tray when the Media page opens again.
+5. When it is ready the download starts by itself (`GET /zips/:id/link`, five minutes, saved under the .zip's name), a toast says it is ready, and the row keeps **Download** with the size and “link works for 24 hours”.
+
+Each admin sees, cancels and downloads only their own .zip files; another admin's id answers 404. Every hour the `zip-sweep` job deletes ready .zip files past their 24 hours and cancelled or failed ones, ends their holds, and marks each swept once. The adapter is `packages/adapters-archive-zip` (yazl); records live in `mediaZips`.
+
+The brief draws the progress and the ready message as a floating box (A30, A30B); they live in the tray and the admin's toast instead, as the brief's one tray for every operation (R4-8) asks.
 
 ## Photo types
 

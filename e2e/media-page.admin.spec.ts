@@ -119,6 +119,22 @@ test.describe('Media page (step 1)', () => {
 		await shot(page, 'b08-tray-done');
 	});
 
+	test('Download .zip: the tray follows the .zip with Cancel; cancelling takes the row away (A27, A48, step 5)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		// The test folder, chosen in the list, then the bar's Download .zip.
+		await card(page, RUN).click();
+		await expect(page.locator('#fm_bulk_zip')).toBeVisible();
+		await page.locator('#fm_bulk_zip').click();
+		const row = page.locator('.fm-tray li[data-operation="running"]').filter({ hasText: `${RUN}.zip` });
+		await expect(row).toBeVisible();
+		await expect(row).toContainText('Adding files');
+		await shot(page, 'a48-zip-in-tray');
+		await row.locator('[data-op-action="cancel"]').click();
+		await expect(row).toHaveCount(0, { timeout: 10_000 });
+	});
+
 	test('photo types the browser cannot draw: a PSD with no type and an SVG are photos, measured from their header (step 5)', async ({
 		page,
 	}) => {

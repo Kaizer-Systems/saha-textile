@@ -306,6 +306,8 @@ export class FileManager {
 
 	constructor() {
 		inject(DestroyRef).onDestroy(() => this.searchTimer && clearTimeout(this.searchTimer));
+		// A .zip still being made when the page was left or reloaded comes back to the tray (A48).
+		void this.uploads.resumeZips();
 	}
 
 	go(changes: Record<string, string | null>): void {
@@ -432,7 +434,16 @@ export class FileManager {
 		if (folders.length + files.length > 1) return ['move', 'divider', 'trash'];
 		const folder = folders[0];
 		if (folder)
-			return ['open', 'new_inside', 'rename', 'move', folder.starred ? 'unstar' : 'star', 'divider', 'trash'];
+			return [
+				'open',
+				'new_inside',
+				'rename',
+				'zip',
+				'move',
+				folder.starred ? 'unstar' : 'star',
+				'divider',
+				'trash',
+			];
 		const file = files[0];
 		if (!file) return [];
 		const star: FmMenuLine = file.starred ? 'unstar' : 'star';
@@ -515,6 +526,9 @@ export class FileManager {
 				return;
 			case 'share':
 				if (file) this.openShare(file);
+				return;
+			case 'zip':
+				await this.downloadZip();
 				return;
 			case 'details':
 				if (file) this.openDetails(file);
@@ -762,6 +776,39 @@ export class FileManager {
 			() => null,
 		);
 		if (choice?.versions.length) await this.addVersions(photos, choice);
+	}
+
+	/**
+	 * Download as .zip (A20, A27; media step 5): what is chosen is planned (name, files, bytes), the shared storage
+	 * check runs (the .zip is stored for 24 hours), then the worker makes it and the tray follows it (A48).
+	 */
+	async downloadZip(): Promise<void> {
+		const onDemand = this.onDemandTemplate();
+		const refused = this.refusedTemplate();
+		if (!onDemand || !refused) return;
+		const { folders, files } = this.chosen();
+		const pick = { folderIds: folders.map((row) => row.id), fileIds: files.map((row) => row.id) };
+		if (!pick.folderIds.length && !pick.fileIds.length) return;
+		try {
+			const plan = await lastValueFrom(this.gateway.zipPlan(pick));
+			if (!plan.files) {
+				this.notifications.showError(this.transloco.translate('fm_zip_empty'));
+				return;
+			}
+			const what = this.transloco.translate('fm_zip_what', { name: plan.name });
+			const reservationId = await this.flow.storageCheck('zip', plan.bytes, plan.files, what, {
+				onDemand,
+				refused,
+			});
+			if (reservationId === false) return;
+			const zip = await lastValueFrom(
+				this.gateway.createZip({ ...pick, ...(reservationId ? { reservationId } : {}) }),
+			);
+			this.toastr.info(this.transloco.translate('fm_zip_preparing', { name: zip.name }));
+			this.uploads.watchZip(zip);
+		} catch (error) {
+			this.notifications.showError(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		}
 	}
 
 	private async addVersions(photos: readonly MediaFileRow[], choice: FmReprocessChoice): Promise<void> {

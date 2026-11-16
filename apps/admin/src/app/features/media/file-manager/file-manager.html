@@ -505,6 +505,15 @@
 				<button
 					type="button"
 					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
+					id="fm_bulk_zip"
+					(click)="downloadZip()"
+				>
+					<i class="ri-download-2-line"></i>
+					{{ 'fm_zip_bulk' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline d-flex align-items-center gap-1"
 					id="fm_bulk_move"
 					(click)="openMoveMenu($event)"
 				>

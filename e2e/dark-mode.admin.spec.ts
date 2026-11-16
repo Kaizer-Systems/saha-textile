@@ -281,6 +281,21 @@ test.describe('Admin light and dark: menus, lists and popups', () => {
 			await check('the media upload popup');
 			await page.keyboard.press('Escape');
 
+			// The Media picker (D15) and a product photo's popup (E05), media step 4.
+			await page.goto(`${ADMIN}/product/edit/prd_906`, { waitUntil: 'networkidle' });
+			await page.locator('.nav-link', { hasText: 'Images' }).first().click();
+			await page.locator('app-product-images .choosefile-input').first().click();
+			await expect(page.locator('#fm_pick_title')).toBeVisible();
+			await check('the Media picker');
+			await page.keyboard.press('Escape');
+			const productPhoto = page.locator('app-product-images [data-photo]').first();
+			if (await productPhoto.count()) {
+				await productPhoto.click();
+				await expect(page.locator('#product_photo_title')).toBeVisible();
+				await check('a product photo popup');
+				await page.keyboard.press('Escape');
+			}
+
 			// Settings › Languages: the add popup and a language's to-do list.
 			await page.goto(`${ADMIN}/setting/languages`, { waitUntil: 'networkidle' });
 			await page.locator('#add_language_btn').click();

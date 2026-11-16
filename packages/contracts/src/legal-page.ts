@@ -56,3 +56,7 @@ export const PublicLegalPage = z.object({
 	updatedAt: IsoDateTime,
 });
 export type PublicLegalPage = z.infer<typeof PublicLegalPage>;
+
+/** `GET /catalog/pages/:slug?locale=`: the language the shop draws (English when absent). */
+export const PublicLegalPageQuery = z.object({ locale: z.string().min(2).max(12).default('en') });
+export type PublicLegalPageQuery = z.infer<typeof PublicLegalPageQuery>;

@@ -389,6 +389,14 @@ Rules the routes apply:
 - **Public files.** Only plain files are made public or private here. A public file has a permanent address, so links are made only for private files. Making a file private queues a CDN purge.
 - **Storage.** The plan is 250 GiB, counted in GiB like the bill. Running work holds its bytes for one hour or until it finishes, so two uploads near the limit cannot both pass. Past the plan, a super admin (a holder of the system Administrator role) is asked once per operation; other admins are refused unless a super admin allowed them, and then they are asked too.
 
+## Admin legal pages routes
+
+| Method  | Route                | Access       | Purpose                                                                                    |
+| ------- | -------------------- | ------------ | ------------------------------------------------------------------------------------------ |
+| `GET`   | `/admin/pages`       | `page.index` | The four legal pages with what each language still misses (P1)                             |
+| `GET`   | `/admin/pages/:slug` | `page.index` | One legal page for its form (P3)                                                           |
+| `PATCH` | `/admin/pages/:slug` | `page.edit`  | Save a legal page: Title and Content in every shop language; cleaned; earlier version kept |
+
 ## Admin blog routes
 
 | Method   | Route                           | Access             | Purpose                                                |
@@ -493,6 +501,7 @@ The Gmail token stays on the server. `mailbox.use` opens only the mailboxes whos
 | `GET`  | `/catalog/reviews`                         | Public             | A product's approved reviews and rating summary                                |
 | `GET`  | `/catalog/blog/posts`                      | Public             | Live posts, sticky first then newest, one page at a time                       |
 | `GET`  | `/catalog/blog/posts/:slug`                | Public             | One live post by its address                                                   |
+| `GET`  | `/catalog/pages/:slug`                     | Public             | One legal page in one language, English where it is empty                      |
 | `GET`  | `/catalog/blog/categories`                 | Public             | Blog categories that hold a live post                                          |
 | `GET`  | `/catalog/blog/tags`                       | Public             | Blog tags that hold a live post                                                |
 | `GET`  | `/catalog/events`                          | Public             | Published launch and sale events, with the server clock                        |

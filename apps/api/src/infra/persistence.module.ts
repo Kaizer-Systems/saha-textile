@@ -25,6 +25,7 @@ import {
 	MongoContentBlockRepository,
 	MongoBlogCategoryRepository,
 	MongoBlogPostRepository,
+	MongoLegalPageRepository,
 	MongoShopEventRepository,
 	MongoBlogTagRepository,
 	MongoStoreLocationRepository,
@@ -153,6 +154,7 @@ import {
 	EMAIL_PICTURE_REPOSITORY,
 	CONTENT_BLOCK_REPOSITORY,
 	BLOG_POST_REPOSITORY,
+	LEGAL_PAGE_REPOSITORY,
 	BLOG_CATEGORY_REPOSITORY,
 	BLOG_TAG_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
@@ -327,6 +329,8 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: MEDIA_BROWSE_REPOSITORY, useExisting: MEDIA_ASSET_REPOSITORY },
 		// The blog (owner log § blog, 2026-11-08).
 		{ provide: BLOG_POST_REPOSITORY, useClass: MongoBlogPostRepository },
+		// The four legal pages (Legal Pages brief, 2026-11-15).
+		{ provide: LEGAL_PAGE_REPOSITORY, useClass: MongoLegalPageRepository },
 		{ provide: BLOG_CATEGORY_REPOSITORY, useClass: MongoBlogCategoryRepository },
 		{ provide: BLOG_TAG_REPOSITORY, useClass: MongoBlogTagRepository },
 		{ provide: STORE_LOCATION_REPOSITORY, useClass: MongoStoreLocationRepository },
@@ -450,6 +454,7 @@ import { LanguageStore } from '../languages/language-store';
 		EMAIL_PICTURE_REPOSITORY,
 		CONTENT_BLOCK_REPOSITORY,
 		BLOG_POST_REPOSITORY,
+		LEGAL_PAGE_REPOSITORY,
 		BLOG_CATEGORY_REPOSITORY,
 		BLOG_TAG_REPOSITORY,
 		STORE_LOCATION_REPOSITORY,

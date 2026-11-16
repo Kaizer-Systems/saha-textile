@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
+import { LegalPagesModule } from './legal/legal-pages.module';
 import { EventsModule } from './events/events.module';
 import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
@@ -56,6 +57,7 @@ export class AppModule {
 				PrivacyModule,
 				MediaModule,
 				BlogModule,
+				LegalPagesModule,
 				EventsModule,
 				StoreLocationsModule,
 				CommunicationsModule,

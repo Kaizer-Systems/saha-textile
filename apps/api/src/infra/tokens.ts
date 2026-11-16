@@ -54,6 +54,8 @@ export const MEDIA_ROLE_REPOSITORY = Symbol('MediaRoleRepository');
 export const MEDIA_PROFILE_REPOSITORY = Symbol('MediaProfileRepository');
 /** Email pictures whose photo is gone, kept for good (media step 3f). */
 export const EMAIL_PICTURE_REPOSITORY = Symbol('EmailPictureRepository');
+/** The four legal pages and their earlier versions (Legal Pages brief). */
+export const LEGAL_PAGE_REPOSITORY = Symbol('LegalPageRepository');
 export const CONTENT_BLOCK_REPOSITORY = Symbol('ContentBlockRepository');
 export const SITE_SETTINGS_REPOSITORY = Symbol('SiteSettingsRepository');
 export const SEARCH_ANALYTICS_REPOSITORY = Symbol('SearchAnalyticsRepository');

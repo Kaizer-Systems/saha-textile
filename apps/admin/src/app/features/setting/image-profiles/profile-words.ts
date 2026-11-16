@@ -41,15 +41,15 @@ export function fillKey(fill: MediaFill, icon: boolean): string {
 /** Icon profiles: never cropped or blurred, a white or Brand Kit colour background instead. */
 export const isIconProfile = (profile: Pick<MediaProfile, 'roles'>): boolean => profile.roles.includes('brand_icon');
 
-/** The picture types a profile can accept (F02); JPEG and PNG are made into versions today. */
+/** The picture types a profile can accept (F02); JPEG, PNG, WebP and GIF are made into versions today. */
 export const IMAGE_TYPES: readonly { label: string; mime: string; now: boolean }[] = [
 	{ label: 'JPEG', mime: 'image/jpeg', now: true },
 	{ label: 'PNG', mime: 'image/png', now: true },
-	{ label: 'WebP', mime: 'image/webp', now: false },
+	{ label: 'WebP', mime: 'image/webp', now: true },
 	{ label: 'AVIF', mime: 'image/avif', now: false },
 	{ label: 'HEIC/HEIF', mime: 'image/heic', now: false },
 	{ label: 'TIFF', mime: 'image/tiff', now: false },
-	{ label: 'GIF', mime: 'image/gif', now: false },
+	{ label: 'GIF', mime: 'image/gif', now: true },
 	{ label: 'SVG', mime: 'image/svg+xml', now: false },
 	{ label: 'BMP', mime: 'image/bmp', now: false },
 	{ label: 'JPEG XL', mime: 'image/jxl', now: false },

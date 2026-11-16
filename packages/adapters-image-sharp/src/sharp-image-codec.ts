@@ -43,6 +43,13 @@ const THUMBHASH_EDGE = 100;
  * `limitInputPixels` matches the 50 MP ingest cap, so a decompression bomb fails to decode
  * instead of exhausting the worker's memory.
  */
+/** The format the bytes are: an AVIF reads as HEIF with AV1 compression; an HEIC (HEVC) is not one the worker takes. */
+function probeFormat(format: string | undefined, compression: string | undefined): ImageProbe['format'] {
+	if (format === 'jpeg' || format === 'png' || format === 'webp' || format === 'gif') return format;
+	if (format === 'heif' && compression === 'av1') return 'avif';
+	return 'other';
+}
+
 export class SharpImageCodec implements ImageCodecPort {
 	constructor(private readonly options: { maxInputPixels: number } = { maxInputPixels: 50_000_000 }) {}
 
@@ -55,8 +62,7 @@ export class SharpImageCodec implements ImageCodecPort {
 			return {
 				width: swapped ? meta.height : meta.width,
 				height: swapped ? meta.width : meta.height,
-				format:
-					meta.format === 'jpeg' || meta.format === 'png' || meta.format === 'webp' ? meta.format : 'other',
+				format: probeFormat(meta.format, meta.compression),
 				hasAlpha: meta.hasAlpha ?? false,
 			};
 		} catch (error) {

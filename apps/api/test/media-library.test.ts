@@ -614,7 +614,7 @@ describe('plain files', () => {
 		expect(await refusalCode(h.service.presignFile('adm_1', request('IMG_0412.HEIC', 'image/heic')))).toBe(
 			'photo_type_waits',
 		);
-		expect(await refusalCode(h.service.presignFile('adm_1', request('look.webp', 'image/webp')))).toBe(
+		expect(await refusalCode(h.service.presignFile('adm_1', request('look.tif', 'image/tiff')))).toBe(
 			'photo_type_waits',
 		);
 		expect(h.storageCheck.admit).not.toHaveBeenCalled();

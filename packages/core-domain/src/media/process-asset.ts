@@ -36,7 +36,13 @@ export type ProcessOutcome =
 	| { status: 'rejected'; reason: string }
 	| { status: 'not_claimed' };
 
-const FORMAT_FOR_TYPE: Record<string, string> = { 'image/jpeg': 'jpeg', 'image/png': 'png' };
+/** What the bytes must decode as for each photo type the worker takes (WebP and GIF since media step 5). */
+const FORMAT_FOR_TYPE: Record<string, string> = {
+	'image/jpeg': 'jpeg',
+	'image/png': 'png',
+	'image/webp': 'webp',
+	'image/gif': 'gif',
+};
 
 /**
  * The worker's job body: turn an uploaded original into every derivative its purpose needs.

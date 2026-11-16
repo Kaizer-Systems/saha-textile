@@ -3,7 +3,7 @@ export interface ImageProbe {
 	width: number;
 	height: number;
 	/** The format the BYTES actually are, whatever the upload claimed. */
-	format: 'jpeg' | 'png' | 'webp' | 'other';
+	format: 'jpeg' | 'png' | 'webp' | 'avif' | 'gif' | 'other';
 	hasAlpha: boolean;
 }
 

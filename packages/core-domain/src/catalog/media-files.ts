@@ -16,10 +16,12 @@ export function waitsForImageProfiles(contentType: string, name: string): boolea
 }
 
 /**
- * The photo types the image worker makes versions from today: JPEG and PNG (HEIC is turned into a JPEG in the
- * browser first). Other picture types keep waiting until the extra decoders arrive (build step 5).
+ * The photo types the image worker makes versions from: JPEG and PNG, and since media step 5 WebP and GIF (a GIF's
+ * first frame), which the image library reads and the browser can measure for the upload popup. HEIC is turned into
+ * a JPEG in the browser first. AVIF stays out (owner lock, Image ingest); TIFF, SVG and the types that need extra
+ * decoders (JPEG XL, JPEG 2000, BMP, ICO, PSD) are stored as files until they are added.
  */
-export const PROCESSED_PHOTO_TYPES: readonly string[] = ['image/jpeg', 'image/png'];
+export const PROCESSED_PHOTO_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 export function isProcessedPhoto(contentType: string): boolean {
 	return PROCESSED_PHOTO_TYPES.includes(contentType.toLowerCase());

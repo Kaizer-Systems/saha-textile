@@ -15,8 +15,25 @@ describe('SharpImageCodec formats', () => {
 		expect((await codec.probe(await bytesOf(solid().webp()))).format).toBe('webp');
 	});
 
-	it('names anything else other', async () => {
-		expect((await codec.probe(await bytesOf(solid().gif()))).format).toBe('other');
+	it('names AVIF and GIF, which the worker takes since media step 5, and anything else other', async () => {
+		expect((await codec.probe(await bytesOf(solid().avif()))).format).toBe('avif');
+		expect((await codec.probe(await bytesOf(solid().gif()))).format).toBe('gif');
+		expect((await codec.probe(await bytesOf(solid().tiff()))).format).toBe('other');
+	});
+
+	it('makes versions from an animated GIF’s first frame, and from AVIF and WebP', async () => {
+		const frames = sharp({ create: { width: 40, height: 90, channels: 4, background: '#c81e28' } });
+		const animated = await bytesOf(frames.gif());
+		for (const source of [animated, await bytesOf(solid().avif()), await bytesOf(solid().webp())]) {
+			const out = await codec.render(source, {
+				width: 20,
+				height: 20,
+				fit: 'cover',
+				format: 'image/webp',
+				quality: 80,
+			} as never);
+			expect(out.width).toBe(20);
+		}
 	});
 
 	it('refuses an image over the pixel limit', async () => {

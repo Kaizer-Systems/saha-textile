@@ -53,7 +53,7 @@ describe('planning an upload (B03)', () => {
 			{ file: file('._cover-front.jpg', 'image/jpeg'), path: ['Bridal 2027'] },
 			{ file: file('secret.txt', 'text/plain'), path: ['Bridal 2027', '.git'] },
 			{ file: file('notes', ''), path: ['Bridal 2027'] },
-			{ file: file('look.webp', 'image/webp'), path: ['Bridal 2027'] },
+			{ file: file('look.tif', 'image/tiff'), path: ['Bridal 2027'] },
 		]);
 		expect(plan.folderName).toBe('Bridal 2027');
 		expect(plan.rows.map((row) => [row.name, row.waits, row.photo])).toEqual([
@@ -62,7 +62,7 @@ describe('planning an upload (B03)', () => {
 			['raw-dsc0099.nef', false, false],
 			['behind.mp4', false, false],
 			['notes', false, false],
-			['look.webp', true, false],
+			['look.tif', true, false],
 		]);
 		// A browser that knows no type still sends one the API takes.
 		expect(plan.rows[4]?.contentType).toBe('application/octet-stream');

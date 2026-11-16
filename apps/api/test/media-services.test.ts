@@ -144,7 +144,7 @@ describe('MediaService', () => {
 	it('refuses an upload the policy rejects, with a message for each reason', async () => {
 		const { service } = mediaDeps();
 		const refused = await statusOf(
-			service.presign(admin, { ...(upload as object), contentType: 'image/gif' } as never),
+			service.presign(admin, { ...(upload as object), contentType: 'image/tiff' } as never),
 		);
 		expect(refused.status).toBe(422);
 	});

@@ -182,7 +182,7 @@ export class CatalogPublicService {
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
 		const assets = await this.assetsFor([...productGallery(product), ...swatchIds]);
 		const gallery = productGallery(product).flatMap((id) => {
-			const image = this.image(assets.get(id), ['gallery', 'zoom']);
+			const image = this.image(assets.get(id), ['gallery', 'zoom'], product.media.versions?.[id]);
 			return image ? [{ id, image }] : [];
 		});
 		// The main photo's link-preview card, once the main-photo sizes exist.
@@ -526,7 +526,7 @@ export class CatalogPublicService {
 		const product = await this.requireLive(slug);
 		const assets = await this.assetsFor(productGallery(product));
 		const frames = productGallery(product).flatMap((id) => {
-			const image = this.image(assets.get(id), ['gallery', 'zoom']);
+			const image = this.image(assets.get(id), ['gallery', 'zoom'], product.media.versions?.[id]);
 			return image ? [image] : [];
 		});
 		return CatalogGallery.parse({ slug: product.slug, frames });
@@ -711,7 +711,7 @@ export class CatalogPublicService {
 			badges: [read.badges.primary, read.badges.secondary].filter((badge) => badge !== null),
 			lowStockLeft: read.badges.secondary === 'low_stock' ? read.sellable : null,
 			sku: read.selected?.sku ?? product.sku,
-			image: primary ? this.image(assets.get(primary), ['card']) : null,
+			image: primary ? this.image(assets.get(primary), ['card'], product.media.versions?.[primary]) : null,
 			inStock: read.sellable > 0 || read.madeToOrder,
 			madeToOrder: read.madeToOrder,
 		});
@@ -723,7 +723,11 @@ export class CatalogPublicService {
 		return new Map(assets.map((asset) => [asset.id, asset]));
 	}
 
-	private image(asset: MediaAsset | undefined, roles: readonly string[]): ResolvedImage | null {
+	private image(
+		asset: MediaAsset | undefined,
+		roles: readonly string[],
+		versionId?: string | null,
+	): ResolvedImage | null {
 		if (!asset || !this.storage) return null;
 		const resolved = resolveImage({
 			asset,
@@ -731,6 +735,7 @@ export class CatalogPublicService {
 			locale: 'en',
 			fallbackLocale: 'en',
 			roles,
+			versionId,
 		});
 		if (!resolved || !roles.some((role) => (resolved.roles[role]?.length ?? 0) > 0)) return null;
 		return resolved;

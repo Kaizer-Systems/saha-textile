@@ -140,8 +140,13 @@ export const Product = z.object({
 			compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string()) })).default([]),
 			/** Alt text set here, per asset, in each language. Empty inherits the media library. */
 			altOverrides: z.record(z.string(), LocalizedText).default({}),
+			/**
+			 * The version each photo shows here (R4-1: a page stores the photo and its version), per asset id. A photo
+			 * without one shows the version the website picks by itself (photos chosen before media step 4).
+			 */
+			versions: z.record(z.string(), z.string()).default({}),
 		})
-		.default({ gallery: [], compound: [], altOverrides: {} }),
+		.default({ gallery: [], compound: [], altOverrides: {}, versions: {} }),
 	attributes: z.array(Attribute).default([]),
 	/**
 	 * Per-product option groups: variation axes, named add-ons, filter-only facts, and bundle

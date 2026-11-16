@@ -329,11 +329,14 @@ export class FormProduct {
 	readonly optionGroups = signal<ProductOptionGroup[]>([]);
 	/** The FAQ tab: the switch and this product's own questions, every language. */
 	readonly faq = signal<FaqValue>({ enabled: false, rows: [] });
-	readonly images = signal<Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>>({
+	readonly images = signal<
+		Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions'>
+	>({
 		imageMode: 'simple',
 		gallery: [],
 		compound: [],
 		altOverrides: {},
+		versions: {},
 	});
 	readonly tiles = signal<ReadonlyMap<string, string>>(new Map());
 	/** The product's photos in Images-tab order, offered as swatch pictures in the Options tab. */
@@ -544,6 +547,7 @@ export class FormProduct {
 			gallery: content.gallery,
 			compound: content.compound,
 			altOverrides: content.altOverrides,
+			versions: content.versions ?? {},
 		});
 		this.tiles.set(new Map(detail.images.map((image) => [image.assetId, image.url])));
 		this.imageSizes.set(new Map(detail.images.map((image) => [image.assetId, [image.width, image.height]])));

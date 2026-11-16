@@ -43,6 +43,8 @@ export const ProductContentWrite = z.object({
 	gallery: z.array(z.string().min(1)).max(40),
 	compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string().min(1)).max(40) })),
 	altOverrides: z.record(z.string(), TextByLocale),
+	/** The version each photo shows on this product, per asset id (media step 4b). */
+	versions: z.record(z.string(), z.string().min(1)).default({}),
 	/** The FAQ tab: the switch, and this product's own questions in display order. */
 	faqEnabled: z.boolean().default(false),
 	faq: z

@@ -20,7 +20,12 @@ export function applyProductContent(product: Product, content: ProductContentWri
 		optionGroups: content.optionGroups,
 		addonTemplateCode: content.addonTemplateCode,
 		imageMode: content.imageMode,
-		media: { gallery: content.gallery, compound: content.compound, altOverrides: content.altOverrides },
+		media: {
+			gallery: content.gallery,
+			compound: content.compound,
+			altOverrides: content.altOverrides,
+			versions: content.versions,
+		},
 	};
 }
 

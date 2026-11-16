@@ -153,6 +153,7 @@ describe('productGallery', () => {
 				{ selectionHash: 'y', gallery: ['c', 'd'] },
 			],
 			altOverrides: {},
+			versions: {},
 		};
 		expect(productGallery({ imageMode: 'simple', media })).toEqual(['a']);
 		expect(productGallery({ imageMode: 'compound', media })).toEqual(['b', 'c', 'd']);

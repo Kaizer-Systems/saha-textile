@@ -30,6 +30,21 @@ export const shownDerivatives = (asset: ShownSource): ImageDerivative[] => {
 	});
 };
 
+/**
+ * The files a place draws when it stores a version (R4-1, media step 4): that version's files, plus pictures made once
+ * per photo for roles it has none of. A version that is gone or not ready falls back to `shownDerivatives`, so the
+ * place still shows the photo.
+ */
+export const derivativesFor = (asset: ShownSource, versionId?: string | null): ImageDerivative[] => {
+	const stored = versionId
+		? (asset.versions ?? []).find((version) => version.id === versionId && version.state === 'ready')
+		: undefined;
+	const files = stored ? asset.derivatives.filter((file) => file.versionId === stored.id) : [];
+	if (!files.length) return shownDerivatives(asset);
+	const roles = new Set(files.map((file) => file.role));
+	return [...files, ...asset.derivatives.filter((file) => !file.versionId && !roles.has(file.role))];
+};
+
 /** The versions the website draws from (see shownDerivatives): these count as in use while the photo is used. */
 export const shownVersionIds = (asset: ShownSource): Set<string> => {
 	const { rank, chosen } = roleChoice(asset);
@@ -52,13 +67,15 @@ export const resolveImage = (input: {
 	altOverride?: Record<string, string>;
 	/** When set, every other role is omitted. A card response asks for `card` only. */
 	roles?: readonly string[];
+	/** The version this place stores (media step 4); absent: the version the website picks by itself. */
+	versionId?: string | null;
 }): ResolvedImage | null => {
 	const { asset } = input;
 	if (asset.visibility !== 'public' || asset.derivatives.length === 0 || !asset.width || !asset.height) return null;
 
 	const allowed = input.roles ? new Set(input.roles) : null;
 	const roles: Record<string, ResolvedImageSource[]> = {};
-	for (const derivative of [...shownDerivatives(asset)].sort((a, b) => a.width - b.width)) {
+	for (const derivative of [...derivativesFor(asset, input.versionId)].sort((a, b) => a.width - b.width)) {
 		if (allowed && !allowed.has(derivative.role)) continue;
 		(roles[derivative.role] ??= []).push({
 			url: input.getUrl(derivative.storageKey),

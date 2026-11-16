@@ -12,7 +12,7 @@ import { MediaModal } from '@shared/ui/modal/media-modal/media-modal';
 import type { ProductContentWrite } from '@saha-textile/contracts';
 import { PluralPipe } from '@shared/pipes/language.pipes';
 
-type ImagesValue = Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>;
+type ImagesValue = Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions'>;
 
 export interface ImageCombination {
 	hash: string;

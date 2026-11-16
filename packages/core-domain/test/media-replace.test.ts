@@ -6,6 +6,7 @@ import {
 	SEEDED_MEDIA_PROFILES,
 	SEEDED_MEDIA_ROLES,
 	checkReplace,
+	derivativesFor,
 	keptAfterReplace,
 	olderVersions,
 	replaceMediaAsset,
@@ -534,5 +535,33 @@ describe('bringing older versions up to date (F02, media step 3e)', () => {
 		expect(olderVersions(older(), profile).map((version) => version.id)).toEqual(['product_3x4.white']);
 		expect(olderVersions(older(), { ...profile, version: 1 })).toEqual([]);
 		expect(olderVersions(older(), { ...profile, fills: ['blur'] })).toEqual([]);
+	});
+});
+
+describe('a place that stores its version (R4-1, media step 4b)', () => {
+	const two = () =>
+		photo({
+			width: 4000,
+			height: 2000,
+			versions: [ready('product_3x4.white'), ready('product_3x4.blur')],
+			derivatives: [
+				file('product_3x4.white', 'card', 400),
+				file('product_3x4.blur', 'card', 400),
+				file(null, 'share', 1200),
+			],
+		});
+
+	it('draws that version’s files and the pictures made once per photo; without one, the website’s own pick', () => {
+		const keys = (versionId?: string | null) => derivativesFor(two(), versionId).map((row) => row.storageKey);
+		expect(keys('product_3x4.blur')).toEqual([
+			'media/med_r/product_3x4.blur/card-400w-old.webp',
+			'media/med_r/photo/share-1200w-old.webp',
+		]);
+		expect(keys(null)).toEqual([
+			'media/med_r/product_3x4.white/card-400w-old.webp',
+			'media/med_r/photo/share-1200w-old.webp',
+		]);
+		// A version that is gone or not ready falls back, so the place still shows the photo.
+		expect(keys('product_3x4.crop')).toEqual(keys(null));
 	});
 });

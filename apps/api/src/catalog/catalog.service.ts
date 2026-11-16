@@ -344,6 +344,7 @@ export class CatalogService {
 				gallery: product.media.gallery,
 				compound: product.media.compound,
 				altOverrides: product.media.altOverrides,
+				versions: product.media.versions ?? {},
 				faqEnabled: product.faqEnabled,
 				faq: (await this.productFaq(product.id)).map((entry) => ({
 					id: entry.id,

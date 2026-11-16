@@ -5,6 +5,11 @@
 		<div class="title">
 			<h1>{{ crumb.title }}</h1>
 		</div>
+		} @if (updatedAt(); as date) {
+		<p id="page_last_updated">
+			<i class="ri-time-line"></i>
+			{{ 'page_last_updated' | transloco: { date: (date | shopDate) } }}
+		</p>
 		}
 		<div
 			class="ckeditor-content"

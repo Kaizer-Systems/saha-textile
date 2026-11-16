@@ -4,4 +4,8 @@
 export interface IStaticPage {
 	title: string;
 	content: string;
+	/** Legal pages (Legal Pages brief): the last save, shown as “Last updated”; the search title and description. */
+	updatedAt?: string;
+	metaTitle?: string;
+	metaDescription?: string;
 }

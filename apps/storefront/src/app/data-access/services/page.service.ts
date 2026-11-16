@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { catchError, Observable, map } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { IFaqModel } from '@data-access/interfaces/page.interface';
+import { runtimeConfig } from '@core/config/runtime-config';
 import { IStaticPage } from '@data-access/interfaces/static-page.interface';
 
 import { environment } from '../../../../public/environments/environment';
@@ -39,11 +40,10 @@ export class PageService {
 
 	// Static content pages (privacy policy, terms, etc.) — one JSON per slug
 	// under assets/data/pages/.
+	/** A legal page in one language from the API (Legal Pages brief); the API falls back to English. */
 	getPage(slug: string, locale = 'en'): Observable<IStaticPage> {
-		const english = this.http.get<IStaticPage>(`${environment.URL}/pages/${slug}.json`);
-		if (locale === 'en') return english;
-		return this.http
-			.get<IStaticPage>(`${environment.URL}/pages/${slug}.${locale}.json`)
-			.pipe(catchError(() => english));
+		return this.http.get<IStaticPage>(`${runtimeConfig.apiUrl}/catalog/pages/${encodeURIComponent(slug)}`, {
+			params: { locale },
+		});
 	}
 }

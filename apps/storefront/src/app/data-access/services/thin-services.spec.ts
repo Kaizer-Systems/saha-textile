@@ -70,7 +70,7 @@ const plainReads: [string, () => unknown, string][] = [
 	['settings', () => TestBed.inject(SettingService).getSettingOption(), '/setting.json'],
 	['site config', () => TestBed.inject(SiteConfigService).getSiteConfig(), '/site-config.json'],
 	['states', () => TestBed.inject(StateService).getStates(), '/state.json'],
-	['a static page', () => TestBed.inject(PageService).getPage('about'), '/pages/about.json'],
+	['a legal page', () => TestBed.inject(PageService).getPage('privacy-policy'), '/catalog/pages/privacy-policy'],
 ];
 
 describe('contact message service', () => {

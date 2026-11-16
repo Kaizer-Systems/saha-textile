@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime } from './common';
+import { Id, IsoDateTime, LocalizedText } from './common';
 import { MediaFill, MediaProfileKey } from './media';
 
 /**
@@ -57,6 +57,8 @@ export const MediaFileRow = z.object({
 	replacingWhy: z.enum(['replace', 'focal', 'rename', 'refresh']).optional(),
 	/** In a picker that needs a profile (R4-2): this photo's ready versions of it, for the chips; empty = can't be chosen. */
 	fitting: z.array(z.object({ versionId: z.string(), fill: MediaFill })).optional(),
+	/** A photo: the shop's languages it has no default alt text in yet (D14: the picker says so, never refuses). */
+	altMissing: z.array(z.string()).optional(),
 	/** A small picture for the list; null for files the worker does not process. */
 	thumbnailUrl: z.string().nullable(),
 	/** Pages that use it: an image used on the website cannot go to Trash. */
@@ -251,6 +253,8 @@ export const MediaFileDetails = z.object({
 	perPhoto: z.array(MediaDetailFamily),
 	/** The point every crop keeps (S10); null or absent: the middle. */
 	focal: z.object({ x: z.number(), y: z.number() }).nullable().optional(),
+	/** A photo's own text (A42), per language: the default alt text and the caption. Saved with PATCH /admin/media/:id. */
+	text: z.object({ alt: LocalizedText, caption: LocalizedText }).optional(),
 });
 export type MediaFileDetails = z.infer<typeof MediaFileDetails>;
 export type MediaFileAddress = z.infer<typeof MediaFileAddress>;

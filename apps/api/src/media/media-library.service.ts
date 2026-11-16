@@ -87,6 +87,7 @@ import {
 	SHARE_LINK_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
+import { LanguageStore } from '../languages/language-store';
 import { MediaStorageService } from './media-storage.service';
 
 /** English fallbacks; the Media page names each refusal in its own words. */
@@ -151,6 +152,8 @@ export class MediaLibraryService {
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 		/** Email pictures of photos deleted for good are recorded for Clean up, never deleted (media step 3f). */
 		@Optional() @Inject(EMAIL_PICTURE_REPOSITORY) private readonly emailPictures?: EmailPictureRepository,
+		/** The shop's languages, for a photo's missing alt text (D14). */
+		@Optional() private readonly languages?: LanguageStore,
 	) {}
 
 	// --- Reading ----------------------------------------------------------------------------------
@@ -908,6 +911,9 @@ export class MediaLibraryService {
 			}),
 			perPhoto: familiesOf(asset.derivatives.filter((row) => !row.versionId)),
 			focal: asset.focal ?? null,
+			...(asset.kind === 'image'
+				? { text: { alt: { ...asset.text.alt }, caption: { ...asset.text.caption } } }
+				: {}),
 		};
 	}
 
@@ -1086,6 +1092,7 @@ export class MediaLibraryService {
 		profile?: string,
 	): Promise<MediaFileRow[]> {
 		const used = await this.files.whereUsed(assets.map((asset) => asset.id));
+		const shop = this.languages?.shop() ?? [];
 		return assets.map((asset) => {
 			return {
 				id: asset.id,
@@ -1112,6 +1119,9 @@ export class MediaLibraryService {
 								.filter((version) => version.profileKey === profile && version.state === 'ready')
 								.map((version) => ({ versionId: version.id, fill: version.fill })),
 						}
+					: {}),
+				...(asset.kind === 'image' && shop.length
+					? { altMissing: shop.filter((locale) => !asset.text?.alt?.[locale]?.trim()) }
 					: {}),
 				thumbnailUrl: this.thumbnailOf(asset),
 				usedOn: (used.get(asset.id) ?? []).length,

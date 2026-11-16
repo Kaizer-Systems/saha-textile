@@ -3,6 +3,7 @@ import { type AuditLog, MediaAsset, type MediaFolder, type MediaVersion } from '
 import { type MediaBrowseFilter, SEEDED_MEDIA_PROFILES } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
+import { LanguageStore } from '../src/languages/language-store';
 import { MediaLibraryService } from '../src/media/media-library.service';
 
 /** In-memory stand-ins for the Media page's stores: enough behaviour to test the rules end to end. */
@@ -228,6 +229,8 @@ function harness() {
 			},
 		},
 		{ findById: async (id: string) => (id === 'adm_1' ? { displayName: 'Moulik' } : null) } as never,
+		undefined,
+		LanguageStore.fixed(['en', 'bn']),
 	);
 	const file = (id: string, overrides: Record<string, unknown> = {}) =>
 		files.set(
@@ -645,6 +648,7 @@ describe('plain files', () => {
 		};
 		h.file('med_fits', {
 			versions: [version('product_3x4.white'), version('product_3x4.blur'), version('hero_21x9.crop')],
+			text: { alt: { en: 'Red Banarasi silk saree, front', bn: ' ' }, title: {}, caption: {} },
 		});
 		h.file('med_other', { versions: [version('hero_21x9.crop')] });
 		h.file('med_making', { versions: [version('product_3x4.white', 'making')] });
@@ -665,6 +669,8 @@ describe('plain files', () => {
 			{ versionId: 'product_3x4.blur', fill: 'blur' },
 		]);
 		expect(picker.hidden).toEqual({ noVersion: 2, notImage: 1 });
+		// D14: the shop's languages without default alt text are named (a blank one counts as missing).
+		expect(picker.files[0]?.altMissing).toEqual(['bn']);
 		// The switch shows the photos without it too; their chips are empty, so they can't be chosen yet.
 		const all = await h.service.browse('adm_1', {
 			view: 'folder',
@@ -1008,6 +1014,8 @@ describe('details and Activity (A31, A32, A43, step 2e)', () => {
 		});
 		expect(details.versions[0]?.families[0]?.files.map((row) => row.width)).toEqual([200, 400]);
 		expect(details.perPhoto.map((family) => family.role)).toEqual(['share']);
+		// A42: the photo's own text, per language (the unused title is not sent).
+		expect(details.text).toEqual({ alt: {}, caption: {} });
 		await expect(h.service.details('nope')).rejects.toThrow('File not found');
 	});
 

@@ -1,4 +1,3 @@
-import { CurrencyPipe } from '@angular/common';
 import {
 	Component,
 	DestroyRef,
@@ -15,7 +14,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbModal, NgbDropdown, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { estimateVersionBytes, looksLikeHeic } from '@saha-textile/core-domain/media-files';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -44,7 +43,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { FileSizePipe, PluralPipe, translateCount } from '@shared/pipes/language.pipes';
 import { Button } from '@shared/ui/button/button';
 
-import { fileKind, fileTypeLabel } from './file-kinds';
+import { fileKind } from './file-kinds';
 import { FmDetails, type FmDetailsAction } from './fm-details';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
 import { FmCleanUp } from './fm-clean-up';
@@ -72,21 +71,9 @@ import { FmShare } from './fm-share';
 import { FM_CATEGORIES, FmSidebar, type FmNav } from './fm-sidebar';
 import { FmStorageDetails } from './fm-storage-details';
 import { FmUndoToast } from './fm-undo-toast';
-import { FmUploadFlow, type FmUploadPopups } from './fm-upload-flow';
-import {
-	type FmPhotoNote,
-	type FmPick,
-	type FmUploadRow,
-	PHOTO_MAX_BYTES,
-	pastedName,
-	photoShapeLabel,
-	planUpload,
-	readDropped,
-	readPhotoSize,
-	readPickedFolder,
-	sha256Hex,
-} from './fm-upload-plan';
-import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-profiles/profile-words';
+import { FmUploadFlow, type FmUploadPopups as FmUploadPopupRefs } from './fm-upload-flow';
+import { FmUploadPopups } from './fm-upload-popups';
+import { pastedName, planUpload, readDropped, readPhotoSize, readPickedFolder, sha256Hex } from './fm-upload-plan';
 
 const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash', 'clean'];
 /** The sort menu: what each choice asks the API for. */
@@ -179,6 +166,7 @@ const typing = (target: EventTarget | null): boolean => {
 	selector: 'app-file-manager',
 	templateUrl: './file-manager.html',
 	imports: [
+		FmUploadPopups,
 		FmCleanUp,
 		PageWrapper,
 		TranslocoModule,
@@ -188,10 +176,6 @@ const typing = (target: EventTarget | null): boolean => {
 		FileSizePipe,
 		PluralPipe,
 		Button,
-		CurrencyPipe,
-		NgbDropdown,
-		NgbDropdownToggle,
-		NgbDropdownMenu,
 	],
 	providers: [FmUploadFlow],
 })
@@ -1296,18 +1280,13 @@ export class FileManager {
 	readonly flow = inject(FmUploadFlow);
 	readonly pickFilesInput = viewChild<ElementRef<HTMLInputElement>>('fmPickFiles');
 	readonly pickFolderInput = viewChild<ElementRef<HTMLInputElement>>('fmPickFolder');
-	readonly reviewTemplate = viewChild<TemplateRef<unknown>>('fmUploadReview');
-	readonly duplicateTemplate = viewChild<TemplateRef<unknown>>('fmDuplicate');
-	readonly anywayTemplate = viewChild<TemplateRef<unknown>>('fmUploadAnyway');
-	readonly replaceInUseTemplate = viewChild<TemplateRef<unknown>>('fmReplaceInUse');
-	readonly onDemandTemplate = viewChild<TemplateRef<unknown>>('fmOnDemand');
-	readonly refusedTemplate = viewChild<TemplateRef<unknown>>('fmStorageRefused');
-	readonly overLimitTemplate = viewChild<TemplateRef<unknown>>('fmOverLimit');
-	readonly notesTemplate = viewChild<TemplateRef<unknown>>('fmNotes');
+	/** The upload popups live in FmUploadPopups (shared with the Media picker); the page reads them from there. */
+	readonly uploadPopups = viewChild(FmUploadPopups);
+	private readonly onDemandTemplate = computed(() => this.uploadPopups()?.onDemandTemplate());
+	private readonly refusedTemplate = computed(() => this.uploadPopups()?.refusedTemplate());
 	/** Files from the computer are over the page (A29). */
 	readonly dropping = signal(false);
 	private dropDepth = 0;
-	readonly typeOf = fileTypeLabel;
 
 	/** Uploads go into the folder shown; from Recent, Favourites or Trash, into My files. */
 	readonly uploadTargetId = computed(() => (this.nav() === 'folder' ? (this.folderId() ?? null) : null));
@@ -1415,78 +1394,8 @@ export class FileManager {
 		if (popups) this.flow.open(plan, this.uploadTargetId(), this.herePlace(), popups);
 	}
 
-	startUpload(close: () => void): void {
-		const popups = this.popups();
-		if (popups) void this.flow.start(close, popups);
-	}
-
-	popups(): FmUploadPopups | null {
-		const review = this.reviewTemplate();
-		const duplicate = this.duplicateTemplate();
-		const onDemand = this.onDemandTemplate();
-		const refused = this.refusedTemplate();
-		const overLimit = this.overLimitTemplate();
-		const notes = this.notesTemplate();
-		const anyway = this.anywayTemplate();
-		const replaceInUse = this.replaceInUseTemplate();
-		return review && duplicate && onDemand && refused && overLimit && notes
-			? {
-					review,
-					duplicate,
-					onDemand,
-					refused,
-					overLimit,
-					notes,
-					...(anyway ? { anyway } : {}),
-					...(replaceInUse ? { replaceInUse } : {}),
-				}
-			: null;
-	}
-
-	// --- Photos in the upload popup (media step 2d) -------------------------------------------------------------
-
-	/** A profile's name: a built-in one by its translation, an added one as typed. */
-	profileName(key: string): string {
-		const profile = this.flow.profiles().find((entry) => entry.key === key);
-		if (!profile) return key;
-		return profile.builtIn ? this.transloco.translate(profileNameKey(profile)) : profile.name;
-	}
-
-	/** A picked profile as its chip says it: “Product 3:4”, or “Product 3:4 · White padding” per fill. */
-	pickLabels(pick: FmPick): string[] {
-		const name = this.profileName(pick.profileKey);
-		const profile = this.flow.profiles().find((entry) => entry.key === pick.profileKey);
-		const icon = !!profile && isIconProfile(profile);
-		return pick.fills.map((fill) =>
-			fill === 'as_is' ? name : `${name} · ${this.transloco.translate(fillKey(fill, icon))}`,
-		);
-	}
-
-	/** The fills a picked profile offers this photo when its shape differs (B21). */
-	fillChoices(row: FmUploadRow, key: string): { fill: Exclude<FmPick['fills'][number], 'as_is'>; label: string }[] {
-		const profile = this.flow.profiles().find((entry) => entry.key === key);
-		if (!profile || !row.size || !profile.shape) return [];
-		const fits =
-			Math.abs(row.size.width / row.size.height - profile.shape.width / profile.shape.height) /
-				(profile.shape.width / profile.shape.height) <=
-			0.05;
-		if (fits) return [];
-		const icon = isIconProfile(profile);
-		return profile.fills.map((fill) => ({ fill, label: this.transloco.translate(fillKey(fill, icon)) }));
-	}
-
-	noteText(note: FmPhotoNote): string {
-		return this.transloco.translate(`fm_note_${note.kind}`, {
-			profile: this.profileName(note.profileKey),
-			px: note.px,
-			has: note.has,
-		});
-	}
-
-	readonly photoMax = PHOTO_MAX_BYTES;
-
-	shapeOf(row: FmUploadRow): string {
-		return row.size ? photoShapeLabel(row.size) : '';
+	popups(): FmUploadPopupRefs | null {
+		return this.uploadPopups()?.popups() ?? null;
 	}
 
 	/** S12, B17: a picture pasted with ⌘/Ctrl+V uploads here, unless the paste is into a text box. */
@@ -1502,14 +1411,6 @@ export class FileManager {
 		}));
 		const popups = this.popups();
 		if (popups) this.flow.open(planUpload(named), this.uploadTargetId(), this.herePlace(), popups);
-	}
-
-	rowKind(row: FmUploadRow) {
-		return fileKind({
-			name: row.name,
-			category: row.waits ? 'images' : 'other',
-			kind: row.waits ? 'image' : 'file',
-		});
 	}
 
 	// --- Filters (A11, A12) ---------------------------------------------------------------------

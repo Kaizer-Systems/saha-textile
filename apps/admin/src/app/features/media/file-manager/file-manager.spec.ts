@@ -13,6 +13,7 @@ import { MediaUploads } from '@core/media-library/media-uploads';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { fileExtension, fileKind, fileTypeLabel } from './file-kinds';
+import { FmUploadPopups } from './fm-upload-popups';
 import { FileManager, MEDIA_DRAG_TYPE, SEARCH_PAUSE_MS, UNDO_SECONDS } from './file-manager';
 import { NO_SELECTION, blockedTargets, commonPlace, pickHow, pickItem, stepItem } from './fm-selection';
 import { buildTree, parentsOf } from './fm-sidebar';
@@ -921,11 +922,15 @@ describe('Reprocess from the Media page (C01, C03, C07, step 3a)', () => {
 				{ provide: ToastrService, useValue: { ...toasts, warning: vi.fn() } },
 			],
 		});
-		TestBed.overrideComponent(FileManager, {
+		// The upload popups live in FmUploadPopups (shared with the Media picker): the page reads them from there.
+		TestBed.overrideComponent(FmUploadPopups, {
 			set: {
 				imports: [],
 				template: '<ng-template #fmOnDemand></ng-template><ng-template #fmStorageRefused></ng-template>',
 			},
+		});
+		TestBed.overrideComponent(FileManager, {
+			set: { imports: [FmUploadPopups], template: '<app-fm-upload-popups />' },
 		});
 		const fixture = TestBed.createComponent(FileManager);
 		fixture.detectChanges();

@@ -88,10 +88,11 @@ test.describe('Share link page', () => {
 	}) => {
 		const made = await link(page.request, zip, { expiry: '1h', who: 'anyone' });
 		const first = page.waitForEvent('download');
-		// The short form admins send: it moves to the visitor's language, then the file downloads.
-		await page.goto(`${SHOP}/s/${made.code}`);
-		expect(new URL(page.url()).pathname).toBe(`/en/s/${made.code}`);
+		// The short form admins send: it moves to the visitor's language, then the file downloads. The page hands the
+		// browser to the file as soon as it can (S1), often before its own load event, so only its start is awaited.
+		await page.goto(`${SHOP}/s/${made.code}`, { waitUntil: 'commit' });
 		expect((await first).suggestedFilename()).toBe(zip.name);
+		await expect.poll(() => new URL(page.url()).pathname).toBe(`/en/s/${made.code}`);
 		await expect(box(page)).toHaveAttribute('data-view', 'downloading');
 		await expect(box(page)).toContainText('Your download has started');
 		await expect(box(page)).toContainText(zip.name);
@@ -129,7 +130,7 @@ test.describe('Share link page', () => {
 	test('S5: an admins-only link opens for a signed-in admin and nobody else', async ({ page, browser }) => {
 		const made = await link(page.request, zip, { expiry: 'never', who: 'admins' });
 		const download = page.waitForEvent('download');
-		await page.goto(`${SHOP}/en/s/${made.code}`);
+		await page.goto(`${SHOP}/en/s/${made.code}`, { waitUntil: 'commit' });
 		expect((await download).suggestedFilename()).toBe(zip.name);
 		// An empty session: in this project a new context would otherwise reuse the admin's.
 		const stranger = await browser.newContext({

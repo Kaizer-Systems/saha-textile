@@ -89,6 +89,17 @@ describe('BrandKit', () => {
 		expect(page.form.controls.shareImageAssetId.value).toBeNull();
 	});
 
+	it('keeps the version a picture was chosen with in the Media picker (R4-1, media step 4d)', () => {
+		const { page } = setup();
+		page.select('shop', 'faviconAssetId', { id: 'f', versionId: 'browser_icon_1x1.brand' } as never);
+		page.selectShareImage({ id: 'p', versionId: 'logo_keep_shape.as_is' } as never);
+		page.select('shop', 'logoAssetId', { id: 'l' } as never);
+		expect(page.form.controls.imageVersions.value).toEqual({
+			f: 'browser_icon_1x1.brand',
+			p: 'logo_keep_shape.as_is',
+		});
+	});
+
 	it('switches the browser icon box per set and the admin logos switch', () => {
 		const { page } = setup();
 		page.useSealAsFavicon('shop', false);

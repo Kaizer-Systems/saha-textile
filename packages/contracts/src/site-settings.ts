@@ -172,6 +172,8 @@ export const BrandSettings = z.object({
 	admin: BrandLogoSet.default(() => BrandLogoSet.parse({})),
 	/** The picture shared for pages without their own (home, categories, blog). Empty: the logo on white. */
 	shareImageAssetId: BrandAssetId,
+	/** The version each of these pictures shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	socials: BrandSocials.default(() => BrandSocials.parse({})),
 	/** Store pages of the shop's apps; the footer shows a store badge only for a saved one. */
 	apps: BrandApps.default(() => BrandApps.parse({})),

@@ -116,7 +116,7 @@ describe('BrandService', () => {
 		expect(settings.get.mock.calls.filter(([key]) => key === 'brand')).toHaveLength(1);
 		await service.storefront(70_000);
 		expect(settings.get.mock.calls.filter(([key]) => key === 'brand')).toHaveLength(2);
-		expect(await service.save(value)).toBe(value);
+		expect(await service.save(value)).toEqual(value);
 		expect(settings.set).toHaveBeenCalledWith('brand', value);
 		// The save reads the old logo once; the next page read is fresh, not cached.
 		expect(settings.get.mock.calls.filter(([key]) => key === 'brand')).toHaveLength(3);
@@ -231,6 +231,22 @@ describe('BrandService', () => {
 		expect(settings.set).not.toHaveBeenCalled();
 		await service.save(kit({ shopName: '', logoAssetId: 'b', sealAssetId: 'b', faviconAssetId: 'b' }));
 		expect(settings.set).toHaveBeenCalled();
+	});
+
+	it('keeps the version each picture was chosen with, for the pictures the kit uses only (R4-1, step 4d)', async () => {
+		const { service, settings } = build(null, { b: asset('b') });
+		await service.save(
+			kit({
+				shopName: '',
+				logoAssetId: 'b',
+				sealAssetId: null,
+				imageVersions: { b: 'logo_keep_shape.as_is', gone: 'x.y' },
+			}),
+		);
+		expect(settings.set).toHaveBeenCalledWith(
+			'brand',
+			expect.objectContaining({ imageVersions: { b: 'logo_keep_shape.as_is' } }),
+		);
 	});
 
 	it('takes a photo given a Logo version later, whatever it was first uploaded for (media step 4d)', async () => {

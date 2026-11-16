@@ -13,7 +13,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 
 import type { BrandAppStore, BrandLogoSet, BrandSettings, BrandSocialNetwork } from '@saha-textile/contracts';
 
@@ -81,6 +81,8 @@ export class BrandKit implements OnDestroy {
 		adminOwnLogos: [false],
 		admin: this.fb.group(this.logoSetControls()),
 		shareImageAssetId: this.nullableId(),
+		/** The version each chosen picture shows (R4-1), by photo id. */
+		imageVersions: inject(FormBuilder).nonNullable.control<Record<string, string>>({}),
 		socials: this.fb.group(
 			Object.fromEntries(NETWORKS.map((network) => [network.key, ['']])) as Record<BrandSocialNetwork, [string]>,
 		),
@@ -106,11 +108,12 @@ export class BrandKit implements OnDestroy {
 	constructor() {
 		this.gateway.settings().subscribe((value) => {
 			this.form.patchValue(value);
+			const versions = value.imageVersions ?? {};
 			for (const slot of SET_SLOTS) {
-				this.preview(value[slot], this.previews.shop[slot]);
-				this.preview(value.admin?.[slot], this.previews.admin[slot]);
+				this.preview(value[slot], this.previews.shop[slot], versions);
+				this.preview(value.admin?.[slot], this.previews.admin[slot], versions);
 			}
-			this.preview(value.shareImageAssetId, this.shareImage);
+			this.preview(value.shareImageAssetId, this.shareImage, versions);
 			this.sealAsFavicon.shop.set(value.sealAsFavicon);
 			this.sealAsFavicon.admin.set(value.admin?.sealAsFavicon ?? true);
 			this.adminOwnLogos.set(value.adminOwnLogos);
@@ -140,18 +143,39 @@ export class BrandKit implements OnDestroy {
 		return inject(FormBuilder).control<string | null>(null);
 	}
 
-	private preview(assetId: string | null | undefined, target: { set(value: IAttachment | null): void }) {
-		if (assetId) this.media.get(assetId).subscribe((image) => target.set(image));
+	/** A tile's picture, with the version it shows so the tile can name it (E04). */
+	private preview(
+		assetId: string | null | undefined,
+		target: { set(value: IAttachment | null): void },
+		versions: Readonly<Record<string, string>> = {},
+	) {
+		if (assetId)
+			this.media
+				.get(assetId)
+				.subscribe((image) =>
+					target.set(versions[assetId] ? ({ ...image, versionId: versions[assetId] } as IAttachment) : image),
+				);
+	}
+
+	/** Keeps the version a picture was chosen with (media step 4d). */
+	private keepVersion(image: IAttachment | null | undefined) {
+		const id = image ? String(image.id) : null;
+		const versionId = (image as PickedAttachment | null | undefined)?.versionId;
+		if (!id || !versionId) return;
+		const control = this.form.controls.imageVersions;
+		control.setValue({ ...control.value, [id]: versionId });
 	}
 
 	/** Sets or clears one logo slot of the shop's or the admin's set. */
 	select(set: LogoSetName, slot: SetSlot, image: IAttachment | null | undefined) {
 		const control = set === 'shop' ? this.form.controls[slot] : this.form.controls.admin.controls[slot];
 		control.setValue(image ? String(image.id) : null);
+		this.keepVersion(image);
 	}
 
 	selectShareImage(image: IAttachment | null | undefined) {
 		this.form.controls.shareImageAssetId.setValue(image ? String(image.id) : null);
+		this.keepVersion(image);
 	}
 
 	useSealAsFavicon(set: LogoSetName, ticked: boolean) {

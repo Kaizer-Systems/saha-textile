@@ -100,8 +100,16 @@ export class BrandService {
 		return (await this.settings.get('brand')) ?? EMPTY;
 	}
 
-	async save(value: BrandSettings): Promise<BrandSettings> {
-		await Promise.all(assetIds(value).map((id) => this.requireBrandAsset(id)));
+	async save(input: BrandSettings): Promise<BrandSettings> {
+		await Promise.all(assetIds(input).map((id) => this.requireBrandAsset(id)));
+		// Only the pictures the kit points at keep a stored version.
+		const used = new Set(assetIds(input));
+		const value: BrandSettings = {
+			...input,
+			imageVersions: Object.fromEntries(
+				Object.entries(input.imageVersions ?? {}).filter(([assetId]) => used.has(assetId)),
+			),
+		};
 		const before = await this.settingsValue();
 		await this.settings.set('brand', value);
 		// The link-preview cards carry the logo on their strip: a new logo redraws them in the background.
@@ -117,7 +125,7 @@ export class BrandService {
 		const images: Resolved = new Map();
 		await Promise.all(
 			[...new Set(assetIds(value))].map(async (id) => {
-				const resolved = await this.resolved(id);
+				const resolved = await this.resolved(id, value.imageVersions?.[id] ?? null);
 				if (resolved) images.set(id, resolved);
 			}),
 		);
@@ -144,10 +152,17 @@ export class BrandService {
 		return brand;
 	}
 
-	private async resolved(assetId: string): Promise<ResolvedImage | null> {
+	/** One picture, drawn from the version the kit stored for it (else the shop's own pick). */
+	private async resolved(assetId: string, versionId: string | null): Promise<ResolvedImage | null> {
 		const asset = await this.assets.findById(assetId);
 		return asset
-			? resolveImage({ asset, getUrl: (key) => this.storage.getUrl(key), locale: 'en', fallbackLocale: 'en' })
+			? resolveImage({
+					asset,
+					getUrl: (key) => this.storage.getUrl(key),
+					locale: 'en',
+					fallbackLocale: 'en',
+					versionId,
+				})
 			: null;
 	}
 

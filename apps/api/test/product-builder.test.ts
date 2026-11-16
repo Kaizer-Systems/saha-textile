@@ -404,6 +404,28 @@ describe('TaxonomyService', () => {
 		expect(saved.media).toEqual({ iconImage: 'a3' });
 	});
 
+	it('keeps the version each of its pictures was chosen with, and only for its own (R4-1, media step 4d)', async () => {
+		const { service, categories } = repositories();
+		rows = [category({ media: { bannerImage: 'a1', iconImage: 'a2', versions: { a1: 'category_3x4.white' } } })];
+		// A save that leaves the pictures out keeps them and their versions.
+		await service.saveCategory('cat_1', body({ displayOrder: 1 }), null);
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({
+			media: { bannerImage: 'a1', iconImage: 'a2', versions: { a1: 'category_3x4.white' } },
+		});
+		// A new choice brings its version; a picture taken off drops its version.
+		await service.saveCategory(
+			'cat_1',
+			body({ imageId: null, iconId: 'a3', imageVersions: { a3: 'square_1x1.crop', a9: 'x.y' } }),
+			null,
+		);
+		expect((categories.save.mock.lastCall?.[0] as { media: object }).media).toEqual({
+			iconImage: 'a3',
+			versions: { a3: 'square_1x1.crop' },
+		});
+		const [row] = await service.listCategories();
+		expect(row?.imageVersions).toEqual({ a1: 'category_3x4.white' });
+	});
+
 	it('adds a top-level and a child category with their placements', async () => {
 		const { service, placements } = repositories();
 		await service.saveCategory(null, body({ slug: 'dress' }), 'adm_1');

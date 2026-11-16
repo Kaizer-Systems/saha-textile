@@ -306,6 +306,8 @@ export const AdminCategoryWrite = z.object({
 	displayOrder: z.number().int().optional(),
 	imageId: z.string().min(1).nullable().optional(),
 	iconId: z.string().min(1).nullable().optional(),
+	/** The version each chosen picture shows, by photo id (R4-1; media step 4d). */
+	imageVersions: z.record(z.string(), z.string()).optional(),
 });
 export type AdminCategoryWrite = z.infer<typeof AdminCategoryWrite>;
 
@@ -324,6 +326,8 @@ export const AdminCategoryRow = z.object({
 	productCount: z.number().int().nonnegative(),
 	image: CategoryImageRow.nullable(),
 	icon: CategoryImageRow.nullable(),
+	/** The version each picture shows, by photo id (media step 4d). */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 });
 export type AdminCategoryRow = z.infer<typeof AdminCategoryRow>;
 

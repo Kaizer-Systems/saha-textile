@@ -904,6 +904,8 @@ describe('FormCategory', () => {
 		expect(created.router.navigateByUrl).toHaveBeenCalledWith('/category');
 		const edited = render('cat_1');
 		edited.page.switchLanguage('bn');
+		// The icon chosen in the Media picker brings its version (R4-1, media step 4d).
+		edited.page.selectCategoryIcon({ id: 'a7', versionId: 'square_1x1.crop' } as never);
 		edited.page.submit();
 		expect(edited.service.saveCategory.mock.calls[0]).toMatchObject([
 			'cat_1',
@@ -912,7 +914,8 @@ describe('FormCategory', () => {
 				parentId: 'cat_0',
 				alsoUnder: ['cat_9'],
 				imageId: 'a1',
-				iconId: null,
+				iconId: 'a7',
+				imageVersions: { a7: 'square_1x1.crop' },
 			},
 		]);
 	});

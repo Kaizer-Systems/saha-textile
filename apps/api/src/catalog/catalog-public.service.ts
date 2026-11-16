@@ -128,12 +128,17 @@ export class CatalogPublicService {
 		]);
 		const byId = new Map(categories.map((category) => [category.id, category]));
 		const summary = new Map(summaries.map((row) => [row.categoryId, row]));
-		const images = await this.categoryImages([
-			...categories.flatMap((category) =>
-				[category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat(),
-			),
-			...summaries.flatMap((row) => row.coverAssetId ?? []),
-		]);
+		const images = await this.categoryImages(
+			[
+				...categories.flatMap((category) =>
+					[category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat(),
+				),
+				...summaries.flatMap((row) => row.coverAssetId ?? []),
+			],
+			// The version each category stored for its pictures (R4-1; media step 4d). A photo two categories
+			// show in different versions draws the last one read: the address is shared by photo id.
+			Object.assign({}, ...categories.map((category) => category.media?.versions ?? {})),
+		);
 		const shown = new Set<string>();
 		const rows: CatalogMenuCategory[] = [];
 		const ordered = [...placements].sort((a, b) => a.depth - b.depth || a.displayOrder - b.displayOrder);
@@ -163,10 +168,13 @@ export class CatalogPublicService {
 	}
 
 	/** One address per asset, for images that only need showing. */
-	async categoryImages(ids: readonly string[]): Promise<Map<string, string>> {
+	async categoryImages(
+		ids: readonly string[],
+		versions: Readonly<Record<string, string>> = {},
+	): Promise<Map<string, string>> {
 		const assets = await this.assetsFor([...ids]);
 		const urls = [...assets].flatMap(([id, asset]) => {
-			const image = this.image(asset, CATEGORY_IMAGE_ROLES);
+			const image = this.image(asset, CATEGORY_IMAGE_ROLES, versions[id]);
 			const url = CATEGORY_IMAGE_ROLES.flatMap((role) => image?.roles[role]?.[0]?.url ?? [])[0];
 			return url ? [[id, url] as const] : [];
 		});

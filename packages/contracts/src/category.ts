@@ -26,6 +26,8 @@ export const Category = z.object({
 		.object({
 			bannerImage: z.string().optional(),
 			iconImage: z.string().optional(),
+			/** The version each picture shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+			versions: z.record(z.string(), z.string()).optional(),
 		})
 		.optional(),
 });

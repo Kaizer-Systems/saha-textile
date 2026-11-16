@@ -35,6 +35,26 @@ function imageChange(key: 'bannerImage' | 'iconImage', id: string | null | undef
 	return { [key]: kept };
 }
 
+/**
+ * A category's pictures and the version each shows (R4-1; media step 4d): a picture left out is kept with its
+ * version; only the category's own pictures keep one.
+ */
+function categoryMedia(body: AdminCategoryWrite, existing: Category | null): NonNullable<Category['media']> {
+	const media = {
+		...existing?.media,
+		...imageChange('bannerImage', body.imageId, existing),
+		...imageChange('iconImage', body.iconId, existing),
+	};
+	const own = [media.bannerImage, media.iconImage].filter((id): id is string => !!id);
+	const versions = Object.fromEntries(
+		Object.entries({ ...existing?.media?.versions, ...body.imageVersions }).filter(([assetId]) =>
+			own.includes(assetId),
+		),
+	);
+	const { versions: _old, ...rest } = media;
+	return Object.keys(versions).length ? { ...rest, versions } : rest;
+}
+
 /** Categories and attributes: the helpers the product form picks from. */
 @Injectable()
 export class TaxonomyService {
@@ -54,6 +74,7 @@ export class TaxonomyService {
 			categories.flatMap((category) =>
 				[category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat(),
 			),
+			Object.assign({}, ...categories.map((category) => category.media?.versions ?? {})),
 		);
 		return Promise.all(categories.map((category) => this.categoryRow(category, images)));
 	}
@@ -86,6 +107,7 @@ export class TaxonomyService {
 			productCount: total,
 			image: shown(category.media?.bannerImage),
 			icon: shown(category.media?.iconImage),
+			imageVersions: category.media?.versions ?? {},
 		});
 	}
 
@@ -116,11 +138,7 @@ export class TaxonomyService {
 			displayOrder: body.displayOrder ?? existing?.displayOrder ?? 0,
 			description: body.description,
 			seo: { title: body.seoTitle, description: body.seoDescription },
-			media: {
-				...existing?.media,
-				...imageChange('bannerImage', body.imageId, existing),
-				...imageChange('iconImage', body.iconId, existing),
-			},
+			media: categoryMedia(body, existing),
 		});
 		const current = await this.placements.findCanonical(categoryId);
 		const oldPaths = current ? await this.subtreePaths(current.id) : new Map<string, string>();

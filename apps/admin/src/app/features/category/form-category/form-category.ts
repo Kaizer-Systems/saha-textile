@@ -20,7 +20,7 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import type { AdminCategoryRow, AdminCategoryWrite, BlogCategory } from '@saha-textile/contracts';
@@ -29,6 +29,12 @@ const LANGUAGE_FIELDS = ['name', 'description', 'seo_title', 'seo_description'];
 
 const attachment = (image: AdminCategoryRow['image']) =>
 	image ? ({ id: image.id, original_url: image.url } as unknown as IAttachment) : undefined;
+
+/** A tile's picture with the version the category stored for it, so the tile can name it (E04). */
+const withVersion = <T extends { id: string | number } | null | undefined>(
+	image: T,
+	versions: Readonly<Record<string, string>>,
+): T => (image && versions[String(image.id)] ? ({ ...image, versionId: versions[String(image.id)] } as T) : image);
 
 const picked = (id: unknown): string | null => (id ? String(id) : null);
 
@@ -65,6 +71,8 @@ export class FormCategory {
 
 	public form: FormGroup;
 	public category: ICategory;
+	/** The version each chosen picture shows, by photo id (R4-1; media step 4d). */
+	private imageVersions: Record<string, string> = {};
 	public id: string;
 
 	readonly locales = inject(ActiveLanguages).list();
@@ -143,10 +151,11 @@ export class FormCategory {
 					category_image_id: row.image?.id ?? '',
 					category_icon_id: row.icon?.id ?? '',
 				});
+				this.imageVersions = { ...(row.imageVersions ?? {}) };
 				this.category = {
 					...this.category,
-					category_image: attachment(row.image),
-					category_icon: attachment(row.icon),
+					category_image: withVersion(attachment(row.image), this.imageVersions),
+					category_icon: withVersion(attachment(row.icon), this.imageVersions),
 				};
 				this.fields.load({
 					name: row.name,
@@ -201,14 +210,22 @@ export class FormCategory {
 		}
 	}
 
+	/** Keeps the version a picture was chosen with in the Media picker (R4-1; media step 4d). */
+	private keepVersion(data: IAttachment | null | undefined) {
+		const versionId = (data as PickedAttachment | null | undefined)?.versionId;
+		if (data && versionId) this.imageVersions = { ...this.imageVersions, [String(data.id)]: versionId };
+	}
+
 	selectCategoryImage(data: IAttachment) {
 		if (!Array.isArray(data)) {
+			this.keepVersion(data);
 			this.form.controls['category_image_id'].setValue(data ? data.id : '');
 		}
 	}
 
 	selectCategoryIcon(data: IAttachment) {
 		if (!Array.isArray(data)) {
+			this.keepVersion(data);
 			this.form.controls['category_icon_id'].setValue(data ? data.id : '');
 		}
 	}
@@ -239,6 +256,7 @@ export class FormCategory {
 			alsoUnder: Array.isArray(also) ? also.map(String) : [],
 			imageId: picked(raw['category_image_id']),
 			iconId: picked(raw['category_icon_id']),
+			imageVersions: this.imageVersions,
 		};
 		this.categoryService.saveCategory(this.id ?? null, body).subscribe({
 			next: () => {

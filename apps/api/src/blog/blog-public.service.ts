@@ -93,7 +93,9 @@ export class BlogPublicService {
 		]);
 		const card = this.card(post, locale, assets, categories, tags);
 		const text = (map: Record<string, string>) => map[locale] || map[FALLBACK] || '';
-		const shareImage = post.shareImageAssetId ? this.image(assets.get(post.shareImageAssetId), locale) : null;
+		const shareImage = post.shareImageAssetId
+			? this.image(assets.get(post.shareImageAssetId), locale, post.imageVersions?.[post.shareImageAssetId])
+			: null;
 		const seoDescription = text(post.seoDescription) || card.excerpt;
 		return {
 			...card,
@@ -160,13 +162,16 @@ export class BlogPublicService {
 			featured: post.featured,
 			sticky: post.sticky,
 			readingMinutes: readingMinutes(content),
-			cover: post.coverAssetId ? this.image(assets.get(post.coverAssetId), locale) : null,
+			cover: post.coverAssetId
+				? this.image(assets.get(post.coverAssetId), locale, post.imageVersions?.[post.coverAssetId])
+				: null,
 			categories: categories.filter((row) => post.categoryIds.includes(row.id)).map(term),
 			tags: tags.filter((row) => post.tagIds.includes(row.id)).map(term),
 		};
 	}
 
-	private image(asset: MediaAsset | undefined, locale: string): ResolvedImage | null {
+	/** A picture drawn from the version the post stored for it (else the shop's own pick, R4-1). */
+	private image(asset: MediaAsset | undefined, locale: string, versionId?: string | null): ResolvedImage | null {
 		if (!asset || asset.deletedAt) return null;
 		return resolveImage({
 			asset,
@@ -174,6 +179,7 @@ export class BlogPublicService {
 			locale,
 			fallbackLocale: FALLBACK,
 			roles: ['blog'],
+			versionId: versionId ?? null,
 		});
 	}
 

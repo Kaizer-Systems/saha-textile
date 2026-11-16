@@ -55,6 +55,8 @@ export const BlogPost = z.object({
 	coverAssetId: Id.nullable().default(null),
 	/** The picture link previews use. Empty means the cover. */
 	shareImageAssetId: Id.nullable().default(null),
+	/** The version each picture shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	categoryIds: z.array(Id).default([]),
 	tagIds: z.array(Id).default([]),
 	featured: z.boolean().default(false),
@@ -113,6 +115,8 @@ export const BlogPostWrite = z.object({
 	coverAssetId: Id.nullable().default(null),
 	coverText: BlogCoverText.optional(),
 	shareImageAssetId: Id.nullable().default(null),
+	/** The version each picture shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	categoryIds: z.array(Id).max(10).default([]),
 	tagIds: z.array(Id).max(30).default([]),
 	featured: z.boolean().default(false),

@@ -23,6 +23,7 @@ const post = (overrides: Partial<BlogPost> = {}): BlogPost => ({
 	content: { en: '<p>Seven checks.</p>', bn: '<p>সাতটি পরীক্ষা।</p>' },
 	coverAssetId: 'med_1',
 	shareImageAssetId: null,
+	imageVersions: {},
 	categoryIds: ['bcat_guides'],
 	tagIds: [],
 	featured: false,

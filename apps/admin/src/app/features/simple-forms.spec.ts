@@ -172,13 +172,15 @@ describe('FormBlog', () => {
 		page.submit();
 		expect(blogs.savePost).not.toHaveBeenCalled();
 		page.form.patchValue({ title: 'Real Banarasi', slug: '', published_at: '2026-11-01' });
-		page.selectThumbnail({ id: 'med_1' } as never);
+		page.selectThumbnail({ id: 'med_1', versionId: 'blog_cover_2x1.blur' } as never);
 		page.submit();
 		expect(blogs.savePost).toHaveBeenCalledWith(
 			null,
 			expect.objectContaining({
 				title: { en: 'Real Banarasi' },
 				coverAssetId: 'med_1',
+				// The version the cover was chosen with in the Media picker (R4-1, media step 4d).
+				imageVersions: { med_1: 'blog_cover_2x1.blur' },
 				author: { en: 'Saha Textile', bn: 'সাহা টেক্সটাইল' },
 				publishedAt: '2026-10-31T18:30:00.000Z',
 			}),

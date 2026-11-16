@@ -15,6 +15,8 @@ export interface BlogPostDoc {
 	content: Record<string, string>;
 	coverAssetId: string | null;
 	shareImageAssetId: string | null;
+	/** The version each picture shows, by photo id (media step 4d). */
+	imageVersions?: Record<string, string>;
 	assetIds: string[];
 	categoryIds: string[];
 	tagIds: string[];
@@ -38,6 +40,7 @@ const BlogPostSchema = new Schema<BlogPostDoc>(
 		content: { type: Schema.Types.Mixed, default: {} },
 		coverAssetId: { type: String, default: null },
 		shareImageAssetId: { type: String, default: null },
+		imageVersions: { type: Schema.Types.Mixed, default: {} },
 		assetIds: { type: [String], default: [] },
 		categoryIds: { type: [String], default: [] },
 		tagIds: { type: [String], default: [] },

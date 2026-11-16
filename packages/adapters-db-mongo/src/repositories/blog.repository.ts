@@ -14,6 +14,7 @@ const toPost = (doc: BlogPostDoc): BlogPost => ({
 	content: doc.content ?? {},
 	coverAssetId: doc.coverAssetId ?? null,
 	shareImageAssetId: doc.shareImageAssetId ?? null,
+	imageVersions: doc.imageVersions ?? {},
 	categoryIds: doc.categoryIds ?? [],
 	tagIds: doc.tagIds ?? [],
 	featured: !!doc.featured,

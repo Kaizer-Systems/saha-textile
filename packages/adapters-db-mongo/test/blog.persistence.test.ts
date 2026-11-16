@@ -73,11 +73,13 @@ describe.runIf(hasMongoEnv())('blog persistence (rs0)', () => {
 			post('full', {
 				coverAssetId: `${prefix}cover`,
 				shareImageAssetId: `${prefix}share`,
+				imageVersions: { [`${prefix}cover`]: 'blog_cover_2x1.crop' },
 				excerpt: { en: 'Short', bn: 'ছোট' },
 				publishedAt: '2026-11-02T00:00:00.000Z',
 			}),
 		);
 		expect(saved.excerpt).toEqual({ en: 'Short', bn: 'ছোট' });
+		expect(saved.imageVersions).toEqual({ [`${prefix}cover`]: 'blog_cover_2x1.crop' });
 		expect(saved.publishedAt).toBe('2026-11-02T00:00:00.000Z');
 		const raw = await BlogPostModel.findById(`${prefix}full`).lean().exec();
 		expect(raw?.assetIds).toEqual([`${prefix}cover`, `${prefix}share`]);

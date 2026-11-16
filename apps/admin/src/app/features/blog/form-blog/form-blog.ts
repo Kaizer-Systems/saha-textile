@@ -28,7 +28,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import type { AdminBlogPostRow, BlogPostWrite, GoLiveGap, GoLiveResult } from '@saha-textile/contracts';
@@ -84,6 +84,10 @@ export function fromShopDate(date: string): string {
 const asAttachment = (image: AdminBlogPostRow['cover']): IAttachment | null =>
 	image ? ({ id: image.id, original_url: image.url } as unknown as IAttachment) : null;
 
+/** A tile's picture with the version the post stored for it, so the tile can name it (E04). */
+const withVersion = (image: IAttachment | null, versions: Readonly<Record<string, string>>): IAttachment | null =>
+	image && versions[String(image.id)] ? ({ ...image, versionId: versions[String(image.id)] } as IAttachment) : image;
+
 @Component({
 	selector: 'app-form-blog',
 	templateUrl: './form-blog.html',
@@ -123,6 +127,8 @@ export class FormBlog {
 	public selectedTags: string[] = [];
 	public cover: IAttachment | null = null;
 	public shareImage: IAttachment | null = null;
+	/** The version each chosen picture shows, by photo id (R4-1; media step 4d). */
+	private imageVersions: Record<string, string> = {};
 	public editor: Editor;
 	private destroy$ = new Subject<void>();
 	public isBrowser: boolean;
@@ -184,8 +190,9 @@ export class FormBlog {
 		this.id = post.id;
 		this.selectedCategories = post.categoryIds;
 		this.selectedTags = post.tagIds;
-		this.cover = asAttachment(row.cover);
-		this.shareImage = asAttachment(row.shareImage);
+		this.imageVersions = { ...(post.imageVersions ?? {}) };
+		this.cover = withVersion(asAttachment(row.cover), this.imageVersions);
+		this.shareImage = withVersion(asAttachment(row.shareImage), this.imageVersions);
 		this.loadedDate = shopDate(post.publishedAt);
 		this.form.patchValue({
 			slug: post.slug,
@@ -238,8 +245,15 @@ export class FormBlog {
 		this.gaps.set(gapsByLocale(this.locales, (locale) => this.fields.gaps(locale)));
 	}
 
+	/** Keeps the version a picture was chosen with in the Media picker (R4-1; media step 4d). */
+	private keepVersion(data: IAttachment | null | undefined) {
+		const versionId = (data as PickedAttachment | null | undefined)?.versionId;
+		if (data && versionId) this.imageVersions = { ...this.imageVersions, [String(data.id)]: versionId };
+	}
+
 	selectThumbnail(data: IAttachment) {
 		if (!Array.isArray(data)) {
+			this.keepVersion(data);
 			this.cover = data ?? null;
 			this.form.controls['blog_thumbnail_id'].setValue(data ? String(data.id) : '');
 		}
@@ -247,6 +261,7 @@ export class FormBlog {
 
 	selectMetaImage(data: IAttachment) {
 		if (!Array.isArray(data)) {
+			this.keepVersion(data);
 			this.shareImage = data ?? null;
 			this.form.controls['blog_meta_image_id'].setValue(data ? String(data.id) : null);
 		}
@@ -284,6 +299,7 @@ export class FormBlog {
 				typeof raw['blog_meta_image_id'] === 'string' && raw['blog_meta_image_id']
 					? raw['blog_meta_image_id']
 					: null,
+			imageVersions: this.imageVersions,
 			categoryIds: ids(raw['categories']),
 			tagIds: ids(raw['tags']),
 			featured: !!raw['is_featured'],

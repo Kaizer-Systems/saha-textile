@@ -191,6 +191,14 @@ describe('blog admin service', () => {
 		expect(h.audit.map((entry) => entry.action)).toContain('blog.post.create');
 	});
 
+	it('keeps the version each of its own pictures was chosen with (R4-1, media step 4d)', async () => {
+		const row = await h.admin.create(
+			write({ imageVersions: { med_cover: 'blog_cover_2x1.crop', med_other: 'x.y' } }),
+			'adm_1',
+		);
+		expect(row.post.imageVersions).toEqual({ med_cover: 'blog_cover_2x1.crop' });
+	});
+
 	it('gives a second post with the same title its own address', async () => {
 		await h.admin.create(write(), null);
 		const second = await h.admin.create(write(), null);

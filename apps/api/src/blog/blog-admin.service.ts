@@ -256,6 +256,12 @@ export class BlogAdminService {
 			content: cleanHtml(body.content),
 			coverAssetId: body.coverAssetId,
 			shareImageAssetId: body.shareImageAssetId,
+			// Only the post's own pictures keep a stored version.
+			imageVersions: Object.fromEntries(
+				Object.entries(body.imageVersions ?? {}).filter(
+					([assetId]) => assetId === body.coverAssetId || assetId === body.shareImageAssetId,
+				),
+			),
 			categoryIds,
 			tagIds,
 			featured: body.featured,

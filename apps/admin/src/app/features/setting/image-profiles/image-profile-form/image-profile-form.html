@@ -378,6 +378,52 @@
 				{{ 'profile_save' | transloco }}
 			</button>
 		</div>
-		<p class="help-text mt-2 text-end">{{ 'profile_changes_apply' | transloco }}</p>
+		<p class="help-text mt-2 text-end">
+			{{ 'profile_changes_apply' | transloco }} @if (key()) {
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline"
+				id="profile_refresh"
+				(click)="bringUpToDate()"
+			>
+				{{ 'profile_refresh_link' | transloco }}
+			</a>
+			}
+		</p>
 	</form>
 </app-page-wrapper>
+
+<!-- F02's “Bring older versions up to date”: the theme's confirm popup, as for removing a version. -->
+<ng-template
+	#profileRefresh
+	let-confirm
+>
+	<div
+		class="modal-body"
+		id="profile_refresh_confirm"
+	>
+		<i class="ri-refresh-line icon-box"></i>
+		<h5 class="modal-title">{{ 'profile_refresh_title' | transloco }}</h5>
+		@if (refreshing(); as preview) {
+		<p>{{ 'profile_refresh_body' | transloco: { photos: preview.photos, versions: preview.versions } }}</p>
+		<p>{{ 'profile_refresh_keep' | transloco: { size: (preview.bytes | fileSize) } }}</p>
+		}
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-secondary"
+				(click)="confirm.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn-md fw-bold btn btn-theme"
+				id="profile_refresh_yes"
+				(click)="confirm.close('yes')"
+			>
+				{{ 'profile_refresh_yes' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>

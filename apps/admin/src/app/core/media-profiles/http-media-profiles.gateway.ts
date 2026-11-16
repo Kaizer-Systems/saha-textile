@@ -10,6 +10,8 @@ import {
 	MediaProfilesGateway,
 	type MediaProfile,
 	type MediaProfileListItem,
+	type MediaProfileRefresh,
+	type MediaProfileRefreshStarted,
 	type MediaProfileUpdate,
 	type MediaProfileWrite,
 } from './media-profiles.gateway';
@@ -39,6 +41,14 @@ export class HttpMediaProfilesGateway extends MediaProfilesGateway {
 
 	override update(key: string, update: MediaProfileUpdate): Observable<MediaProfile> {
 		return this.http.put<MediaProfile>(this.url(`/${encodeURIComponent(key)}`), update, quiet());
+	}
+
+	override refreshPreview(key: string): Observable<MediaProfileRefresh> {
+		return this.http.get<MediaProfileRefresh>(this.url(`/${encodeURIComponent(key)}/refresh`));
+	}
+
+	override refresh(key: string): Observable<MediaProfileRefreshStarted> {
+		return this.http.post<MediaProfileRefreshStarted>(this.url(`/${encodeURIComponent(key)}/refresh`), {}, quiet());
 	}
 
 	override remove(key: string): Observable<void> {

@@ -1,12 +1,21 @@
 import type {
 	MediaProfile,
 	MediaProfileListItem,
+	MediaProfileRefresh,
+	MediaProfileRefreshStarted,
 	MediaProfileUpdate,
 	MediaProfileWrite,
 } from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
-export type { MediaProfile, MediaProfileListItem, MediaProfileUpdate, MediaProfileWrite };
+export type {
+	MediaProfile,
+	MediaProfileListItem,
+	MediaProfileRefresh,
+	MediaProfileRefreshStarted,
+	MediaProfileUpdate,
+	MediaProfileWrite,
+};
 
 /** Settings › Image profiles (media step 2c, Media brief F01–F03). */
 export abstract class MediaProfilesGateway {
@@ -16,4 +25,7 @@ export abstract class MediaProfilesGateway {
 	/** Any part of a profile; the list's Status switch sends `enabled` alone. */
 	abstract update(key: string, update: MediaProfileUpdate): Observable<MediaProfile>;
 	abstract remove(key: string): Observable<void>;
+	/** “Bring older versions up to date” (F02): what it would remake, and runs under way. */
+	abstract refreshPreview(key: string): Observable<MediaProfileRefresh>;
+	abstract refresh(key: string): Observable<MediaProfileRefreshStarted>;
 }

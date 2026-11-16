@@ -383,6 +383,74 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await MediaAssetModel.deleteMany({ _id: 'med_focal' }).exec();
 	});
 
+	it('finds photos holding versions made with a profile’s earlier settings, and counts runs bringing them up to date (step 3e)', async () => {
+		try {
+			const made = (id: string, profileVersion: number, state = 'ready') => ({
+				id,
+				profileKey: id.split('.')[0],
+				profileVersion,
+				fill: id.split('.')[1],
+				state,
+				error: null,
+				createdAt: '2026-11-16T00:00:00.000Z',
+			});
+			await raw('med_old1', { versions: [made('zz_refresh_3x4.white', 1)] });
+			await raw('med_old2', { versions: [made('zz_refresh_3x4.white', 1), made('zz_other_2x1.as_is', 1)] });
+			await raw('med_new', { versions: [made('zz_refresh_3x4.white', 2)] });
+			await raw('med_trash', {
+				versions: [made('zz_refresh_3x4.white', 1)],
+				trashedAt: new Date('2026-11-15T00:00:00Z'),
+			});
+			await raw('med_making', { versions: [made('zz_refresh_3x4.white', 1, 'making')] });
+			const first = await assets.listWithOlderVersions({
+				profileKey: 'zz_refresh_3x4',
+				version: 2,
+				after: null,
+				limit: 1,
+			});
+			expect(first.map((row) => row.id)).toEqual(['med_old1']);
+			const rest = await assets.listWithOlderVersions({
+				profileKey: 'zz_refresh_3x4',
+				version: 2,
+				after: 'med_old1',
+				limit: 10,
+			});
+			expect(rest.map((row) => row.id)).toEqual(['med_old2']);
+			expect(
+				await assets.listWithOlderVersions({
+					profileKey: 'zz_refresh_3x4',
+					version: 1,
+					after: null,
+					limit: 10,
+				}),
+			).toEqual([]);
+			const original = (await assets.findById('med_old1'))?.originalStorageKey ?? '';
+			await assets.startReplace('med_old1', {
+				key: original,
+				contentType: 'image/jpeg',
+				byteSize: 2000,
+				width: 3000,
+				height: 4000,
+				sha256: null,
+				phase: 'queued',
+				reason: 'refresh',
+				profileKey: 'zz_refresh_3x4',
+				made: 0,
+				total: 0,
+				error: null,
+				startedAt: '2026-11-16T10:00:00.000Z',
+				by: 'adm_1',
+			});
+			expect(await assets.refreshCounts('zz_refresh_3x4', 2)).toEqual({ older: 2, running: 1, failed: 0 });
+			await assets.moveReplace('med_old1', ['queued'], { phase: 'failed', error: 'render_failed' });
+			expect(await assets.refreshCounts('zz_refresh_3x4', 2)).toEqual({ older: 2, running: 0, failed: 1 });
+		} finally {
+			await MediaAssetModel.deleteMany({
+				_id: { $in: ['med_old1', 'med_old2', 'med_new', 'med_trash', 'med_making'] },
+			}).exec();
+		}
+	});
+
 	it('carries a new web file name with its Replace and puts it on the photo at the swap (step 3d)', async () => {
 		await raw('med_name', { derivatives: [], versions: [] });
 		const original = (await assets.findById('med_name'))?.originalStorageKey ?? '';

@@ -228,6 +228,12 @@ class FakeAssets implements MediaAssetRepository {
 		return null;
 	}
 	async setFocal() {}
+	async listWithOlderVersions() {
+		return [];
+	}
+	async refreshCounts() {
+		return { older: 0, running: 0, failed: 0 };
+	}
 	async listKeptDue() {
 		return [];
 	}

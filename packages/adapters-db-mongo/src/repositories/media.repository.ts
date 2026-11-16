@@ -85,6 +85,13 @@ const sizeField = {
 	],
 };
 
+/** Photos (not deleted, not in Trash) holding a ready version of this profile made with settings before `version`. */
+const olderVersionsFilter = (profileKey: string, version: number) => ({
+	deletedAt: null,
+	trashedAt: null,
+	versions: { $elemMatch: { profileKey, state: 'ready', profileVersion: { $lt: version } } },
+});
+
 export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBrowseRepository {
 	async findById(assetId: string): Promise<MediaAsset | null> {
 		const doc = await MediaAssetModel.findById(assetId).lean<MediaAssetDoc>().exec();
@@ -279,6 +286,36 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 			.lean<MediaAssetDoc>()
 			.exec();
 		return doc ? toAsset(doc) : null;
+	}
+
+	async listWithOlderVersions(input: {
+		profileKey: string;
+		version: number;
+		after: string | null;
+		limit: number;
+	}): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({
+			...olderVersionsFilter(input.profileKey, input.version),
+			...(input.after ? { _id: { $gt: input.after } } : {}),
+		})
+			.sort({ _id: 1 })
+			.limit(input.limit)
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
+	async refreshCounts(
+		profileKey: string,
+		version: number,
+	): Promise<{ older: number; running: number; failed: number }> {
+		const mine = { 'replacing.reason': 'refresh', 'replacing.profileKey': profileKey, deletedAt: null };
+		const [older, running, failed] = await Promise.all([
+			MediaAssetModel.countDocuments(olderVersionsFilter(profileKey, version)).exec(),
+			MediaAssetModel.countDocuments({ ...mine, 'replacing.phase': { $in: ['queued', 'making'] } }).exec(),
+			MediaAssetModel.countDocuments({ ...mine, 'replacing.phase': 'failed' }).exec(),
+		]);
+		return { older, running, failed };
 	}
 
 	async setFocal(assetId: string, focal: { x: number; y: number } | null): Promise<void> {

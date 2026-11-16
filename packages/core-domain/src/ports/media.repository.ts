@@ -97,6 +97,18 @@ export interface MediaAssetRepository {
 		versions: readonly MediaVersion[];
 		keptFiles: readonly MediaKeptFiles[];
 	}): Promise<MediaAsset | null>;
+	/**
+	 * “Bring older versions up to date” (F02): photos (not deleted, not in Trash) holding a ready version of this profile
+	 * made before `version`, in id order after `after`.
+	 */
+	listWithOlderVersions(input: {
+		profileKey: string;
+		version: number;
+		after: string | null;
+		limit: number;
+	}): Promise<MediaAsset[]>;
+	/** Where bringing a profile up to date stands: photos still holding older versions, runs queued or under way, and failed runs. */
+	refreshCounts(profileKey: string, version: number): Promise<{ older: number; running: number; failed: number }>;
 	/** Records a photo's focal point (S10); null puts crops back on the middle. */
 	setFocal(assetId: string, focal: { x: number; y: number } | null): Promise<void>;
 	/** Photos holding kept files due for deletion by `before` (the daily sweep). */

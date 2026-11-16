@@ -1,4 +1,4 @@
-import type { ImageDerivative, MediaAsset, MediaKeptFiles, MediaProfile } from '@saha-textile/contracts';
+import type { ImageDerivative, MediaAsset, MediaKeptFiles, MediaProfile, MediaVersion } from '@saha-textile/contracts';
 
 import { isProcessedPhoto } from '../catalog/media-files';
 import { ImageDecodeError } from '../ports/image-codec.port';
@@ -84,6 +84,32 @@ export function keptAfterReplace(
 }
 
 /**
+ * “Bring older versions up to date” (F02): a photo's ready versions of this profile made with earlier settings
+ * (`profileVersion` below the profile's), that today's settings can still make from this photo. A version the new
+ * settings refuse (a new minimum, a fill no longer offered) stays as it is: only what can be remade is.
+ */
+export function olderVersions(
+	asset: Pick<MediaAsset, 'versions' | 'width' | 'height' | 'originalByteSize' | 'originalFormat'>,
+	profile: MediaProfile,
+): MediaVersion[] {
+	if (!asset.width || !asset.height) return [];
+	const source = { width: asset.width, height: asset.height };
+	return (asset.versions ?? []).filter(
+		(version) =>
+			version.profileKey === profile.key &&
+			version.state === 'ready' &&
+			version.profileVersion < profile.version &&
+			!checkVersionRequest({
+				profile,
+				fill: version.fill,
+				source,
+				byteSize: asset.originalByteSize,
+				contentType: asset.originalFormat,
+			}),
+	);
+}
+
+/**
  * The kept-files list after a swap: earlier entries lose any file the new set uses again (a focal point moved and
  * then reset to centre makes byte-identical crops, so their old addresses are live once more), entries left empty
  * go, and the new entry is added. A kept file must never be a file the photo shows.
@@ -128,6 +154,10 @@ export const replaceMediaAsset = async (
 	if (!asset || !next) return { status: 'not_claimed' };
 	// A new focal point (S10) keeps the original: only Crop versions are remade, and the original is never deleted.
 	const focal = next.reason === 'focal';
+	// Bring older versions up to date (F02): one profile's older versions are remade with today's settings; the rest
+	// of the photo stays as it is.
+	const refresh = next.reason === 'refresh';
+	const partial = focal || refresh;
 	// A new web file name (R5-6) keeps the original too: every file is made again under the new name.
 	const slug = next.reason === 'rename' && next.slug ? next.slug : asset.slug;
 	const sameOriginal = next.reason !== 'replace';
@@ -166,14 +196,24 @@ export const replaceMediaAsset = async (
 
 	let total = 0;
 	let made = 0;
-	const versions = (asset.versions ?? [])
-		.filter((version) => !focal || version.fill === 'crop')
-		.map((version) => ({ ...version, state: 'making' as const, error: null }));
+	const refreshed = refresh ? (await deps.profiles?.list())?.find((row) => row.key === next.profileKey) : undefined;
+	const versions = (
+		refresh
+			? refreshed
+				? olderVersions(asset, refreshed)
+				: []
+			: (asset.versions ?? []).filter((version) => !focal || version.fill === 'crop')
+	).map((version) => ({ ...version, state: 'making' as const, error: null }));
+	if (refresh && !versions.length) {
+		// Nothing left to bring up to date (made meanwhile, or the settings now refuse it): nothing changes.
+		await deps.assets.moveReplace(asset.id, ['making'], null);
+		return { status: 'ready', rendered: 0, skipped: 0 };
+	}
 	const remade = new Set(versions.map((version) => version.id));
 	const fresh = { ...asset, slug, originalFormat: next.contentType as MediaAsset['originalFormat'] };
-	// A focal change keeps every picture made once per photo; a Replace makes them all again.
+	// A focal change or a refresh keeps every picture made once per photo; a Replace makes them all again.
 	const have = new Set(
-		focal ? asset.derivatives.filter((row) => !row.versionId).map((row) => `${row.role}@${row.width}`) : [],
+		partial ? asset.derivatives.filter((row) => !row.versionId).map((row) => `${row.role}@${row.width}`) : [],
 	);
 	const rendered = await renderPhoto(deps, fresh, bytes, probe, versions, have, {
 		freshPlaceholder: !sameOriginal,
@@ -189,11 +229,11 @@ export const replaceMediaAsset = async (
 	const broken = rendered.made.find((version) => version.state !== 'ready');
 	if (broken) return fail(`${broken.id}: ${broken.error ?? 'render_failed'}`, rendered.added);
 
-	const derivatives = focal
+	const derivatives = partial
 		? [...asset.derivatives.filter((row) => !row.versionId || !remade.has(row.versionId)), ...rendered.added]
 		: rendered.added;
 	const madeById = new Map(rendered.made.map((version) => [version.id, version]));
-	const allVersions = focal
+	const allVersions = partial
 		? (asset.versions ?? []).map((version) => madeById.get(version.id) ?? version)
 		: rendered.made;
 	const swapped = { derivatives, originalStorageKey: next.key };

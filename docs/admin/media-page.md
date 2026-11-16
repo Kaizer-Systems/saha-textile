@@ -151,7 +151,7 @@ The menu's rules are written as `.dropdown-menu.fm-ctx` because the theme's `.dr
 - Download as .zip is not offered yet (media step 5).
 - At 1440 px wide the list is slightly wider than its box, so the last column scrolls into view.
 - Until pages store which version they use (media step 4), a version counts as in use when the website draws it for a used photo: the first ready version for each kind of size (see Reprocess below). A version that is the only source of a kind of size therefore can't be removed while the photo is used anywhere.
-- Replace works for photos (from the menu, or through the duplicate check); Replace for files other than photos and "Bring older versions up to date" come in the next parts of step 3.
+- Replace works for photos (from the menu, or through the duplicate check); Replace for files other than photos comes later.
 
 ## Details and Activity
 
@@ -184,3 +184,7 @@ A Crop version in the details tree has a **Focal point** button (S10). The popup
 ## A new web file name
 
 A photo's web file name (its `slug`) is the start of every picture file's address, such as `red-banarasi-front-card-400w-1f3a9c2e.webp`. Today it is changed in the **File name** box of the Image details popup that every image field's picker opens (`MediaDetailsModal`, `PATCH /admin/media/:assetId`). On a photo with versions a new name runs like a Replace (R5-6): the worker makes every version and the pictures made once per photo again under the new name, from the same original; the pages switch when the new files are in place, and the name on the photo changes with them. The old files are kept 7 days. One tray row ("Renaming the files of …") follows it, and the photo's row on the Media page says **Renaming the files** meanwhile. While versions are being made or a Replace runs, the save is refused before anything is written, with a message saying to wait. A failure keeps the old name and files. Older assets without versions keep the earlier path (a reprocess).
+
+## Bring older versions up to date
+
+A saved change to an image profile (Settings › Image profiles) applies to versions made from then on; versions already made never change. The note under the profile form ends with **Bring older versions up to date** (F02). It counts the photos holding versions of that profile made with earlier settings that today's settings can still make (a version the new settings refuse, such as one below a new minimum, stays as it is), shows them with the extra storage while the old files are kept, and asks first. Each photo then runs like a Replace on its own original (`reason: 'refresh'`): only that profile's older versions are made again, the rest of the photo stays, the pages switch when it is done, and the old files are kept 7 days. One storage check covers the whole run. A photo busy with versions or a Replace is left for a later run, and the popup says how many. One tray row counts the photos as the worker finishes them; the photos' rows on the Media page say **Bringing versions up to date** meanwhile. Routes: `GET` and `POST /admin/media/profiles/:key/refresh` (Settings edit).

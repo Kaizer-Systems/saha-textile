@@ -45,10 +45,11 @@ export class FmFileList {
 		return ((file.versionsMaking ?? 0) > 0 || replacing) && !!file.thumbnailUrl;
 	}
 
-	/** What a photo's files being made again are for: a new photo, a new focal point, or a new web file name. */
+	/** What a photo's files being made again are for: a new photo, a new focal point, a new web file name, or a profile brought up to date. */
 	remakeWords(file: MediaFileRow): string {
 		if (file.replacingWhy === 'focal') return 'fm_remaking_crops';
 		if (file.replacingWhy === 'rename') return 'fm_renaming_files';
+		if (file.replacingWhy === 'refresh') return 'fm_refreshing';
 		return 'fm_replacing';
 	}
 

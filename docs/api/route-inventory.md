@@ -314,6 +314,8 @@ Admin catalogue reads answer `no-store`.
 | `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; new widths apply to files made afterwards                                    |
 | `GET`    | `/admin/media/profiles`               | `attachment.index`   | Image profiles, built-in first, each with how many photos hold a version of it            |
 | `GET`    | `/admin/media/profiles/:key`          | `attachment.index`   | One image profile with its photo count                                                    |
+| `GET`    | `/admin/media/profiles/:key/refresh` | `setting.edit` | Bring older versions up to date (F02): photos and versions made with earlier settings, bytes, runs under way |
+| `POST`   | `/admin/media/profiles/:key/refresh` | `setting.edit` | Start it: each photo remade like a Replace on its own original, busy photos left for later (step 3e) |
 | `POST`   | `/admin/media/profiles`               | `setting.edit`       | Add an image profile; its key is made from the name                                       |
 | `PUT`    | `/admin/media/profiles/:key`          | `setting.edit`       | Edit or switch an image profile on or off; applies to versions made afterwards            |
 | `DELETE` | `/admin/media/profiles/:key`          | `setting.edit`       | Delete an image profile no photo uses; built-in profiles are never deleted                |

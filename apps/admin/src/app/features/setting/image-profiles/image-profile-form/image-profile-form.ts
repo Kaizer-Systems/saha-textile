@@ -1,18 +1,24 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, TemplateRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
 
 import { injectBrandQuery } from '@core/brand/brand.gateway';
-import { MediaProfilesGateway, type MediaProfileWrite } from '@core/media-profiles/media-profiles.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
+import {
+	MediaProfilesGateway,
+	type MediaProfileRefresh,
+	type MediaProfileWrite,
+} from '@core/media-profiles/media-profiles.gateway';
 import { MEDIA_PROFILES_QUERY_KEY, injectMediaProfileQuery } from '@data-access/queries/media-profiles.queries';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { PluralPipe } from '@shared/pipes/language.pipes';
+import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { IMAGE_TYPES, MB, fillKey, isIconProfile, profileNameKey } from '../profile-words';
 
@@ -33,7 +39,7 @@ const NEW_FAMILY = 'own';
 @Component({
 	selector: 'app-image-profile-form',
 	templateUrl: './image-profile-form.html',
-	imports: [PageWrapper, ReactiveFormsModule, RouterLink, TranslocoModule, PluralPipe],
+	imports: [PageWrapper, ReactiveFormsModule, RouterLink, TranslocoModule, PluralPipe, FileSizePipe],
 })
 export class ImageProfileForm {
 	private readonly route = inject(ActivatedRoute);
@@ -42,6 +48,11 @@ export class ImageProfileForm {
 	private readonly queryClient = inject(QueryClient);
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
+	private readonly modals = inject(NgbModal);
+	private readonly uploads = inject(MediaUploads);
+	private readonly refreshConfirm = viewChild<TemplateRef<unknown>>('profileRefresh');
+	/** What “Bring older versions up to date” would remake, shown in its confirm popup. */
+	readonly refreshing = signal<MediaProfileRefresh | null>(null);
 	private readonly brand = injectBrandQuery();
 
 	readonly key = signal<string | null>(this.route.snapshot.paramMap.get('key'));
@@ -230,6 +241,45 @@ export class ImageProfileForm {
 			this.error.set(this.transloco.translate(code ? `profile_error_${code}` : 'profile_error_unknown'));
 		} finally {
 			this.saving.set(false);
+		}
+	}
+
+	/**
+	 * F02's “Bring older versions up to date” (media step 3e): photos whose versions of this profile were made with
+	 * earlier settings are made again with today's, each like a Replace on its own original (old files kept 7 days).
+	 */
+	async bringUpToDate(): Promise<void> {
+		const key = this.key();
+		const template = this.refreshConfirm();
+		const profile = this.profile();
+		if (!key || !template || !profile) return;
+		const name = profile.builtIn ? this.transloco.translate(profileNameKey(profile)) : profile.name;
+		try {
+			const preview = await lastValueFrom(this.gateway.refreshPreview(key));
+			if (!preview.photos) {
+				this.notifier.showSuccess(
+					this.transloco.translate(preview.running ? 'profile_refresh_running' : 'profile_refresh_none', {
+						name,
+					}),
+				);
+				return;
+			}
+			this.refreshing.set(preview);
+			const answer = await this.modals
+				.open(template, { centered: true, windowClass: 'theme-modal text-center' })
+				.result.catch(() => null);
+			if (answer !== 'yes') return;
+			const started = await lastValueFrom(this.gateway.refresh(key));
+			if (started.started) {
+				void this.uploads.followRefresh(name, started.started + preview.running, async () =>
+					lastValueFrom(this.gateway.refreshPreview(key)),
+				);
+			}
+			if (started.busy) {
+				this.notifier.showError(this.transloco.translate('profile_refresh_busy', { count: started.busy }));
+			}
+		} catch {
+			this.notifier.showError(this.transloco.translate('profile_refresh_failed_start'));
 		}
 	}
 }

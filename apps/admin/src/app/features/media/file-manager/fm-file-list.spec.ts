@@ -22,5 +22,6 @@ describe('FmFileList', () => {
 		expect(view.remakeWords(row({ replacing: 'making', replacingWhy: 'replace' }))).toBe('fm_replacing');
 		expect(view.remakeWords(row({ replacing: 'queued', replacingWhy: 'focal' }))).toBe('fm_remaking_crops');
 		expect(view.remakeWords(row({ replacing: 'queued', replacingWhy: 'rename' }))).toBe('fm_renaming_files');
+		expect(view.remakeWords(row({ replacing: 'making', replacingWhy: 'refresh' }))).toBe('fm_refreshing');
 	});
 });

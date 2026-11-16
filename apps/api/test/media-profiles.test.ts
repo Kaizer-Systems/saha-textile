@@ -143,11 +143,22 @@ describe('MediaProfilesService: adding, editing and deleting (F01–F03, step 2c
 describe('AdminMediaProfilesController', () => {
 	it('hands the list to the service, behind the media view permission', async () => {
 		const service = { list: vi.fn(async () => 'profiles') };
-		const controller = new AdminMediaProfilesController(service as never);
+		const replace = {
+			refreshPreview: vi.fn(async () => 'preview'),
+			refresh: vi.fn(async () => 'started'),
+		};
+		const controller = new AdminMediaProfilesController(service as never, replace as never);
 		expect(await controller.list()).toBe('profiles');
+		// Bring older versions up to date (F02, media step 3e): Settings edit, as for the profile itself.
+		expect(await controller.refreshPreview('product_3x4')).toBe('preview');
+		expect(await controller.refresh({ userId: 'adm_1' } as never, 'product_3x4')).toBe('started');
+		expect(replace.refresh).toHaveBeenCalledWith('adm_1', 'product_3x4');
 		const reflector = new Reflector();
 		expect(reflector.get(PERMISSIONS_KEY, AdminMediaProfilesController.prototype.list)).toEqual([
 			'attachment.index',
+		]);
+		expect(reflector.get(PERMISSIONS_KEY, AdminMediaProfilesController.prototype.refresh)).toEqual([
+			'setting.edit',
 		]);
 		expect(reflector.get(AUDIENCE_KEY, AdminMediaProfilesController)).toBe('admin');
 	});

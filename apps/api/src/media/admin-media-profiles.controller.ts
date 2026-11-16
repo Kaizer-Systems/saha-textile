@@ -3,6 +3,8 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	type MediaProfile,
 	type MediaProfileListItem,
+	type MediaProfileRefresh,
+	type MediaProfileRefreshStarted,
 	MediaProfileUpdate,
 	MediaProfileWrite,
 } from '@saha-textile/contracts';
@@ -12,13 +14,17 @@ import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { MediaProfilesService } from './media-profiles.service';
+import { MediaReplaceService } from './media-replace.service';
 
 /** Settings › Image profiles (media build step 2, Media brief F01–F03). */
 @ApiTags(API_TAGS.media)
 @Audience('admin')
 @Controller('admin/media/profiles')
 export class AdminMediaProfilesController {
-	constructor(private readonly profiles: MediaProfilesService) {}
+	constructor(
+		private readonly profiles: MediaProfilesService,
+		private readonly replace: MediaReplaceService,
+	) {}
 
 	@Get()
 	@RequirePermissions('attachment.index')
@@ -59,6 +65,30 @@ export class AdminMediaProfilesController {
 		@Body(new ZodValidationPipe(MediaProfileUpdate)) body: MediaProfileUpdate,
 	): Promise<MediaProfile> {
 		return this.profiles.update(principal.userId, key, body);
+	}
+
+	@Get(':key/refresh')
+	@RequirePermissions('setting.edit')
+	@ApiOperation({
+		operationId: 'previewMediaProfileRefresh',
+		summary: 'Photos whose versions of this profile were made with earlier settings, and runs under way (F02)',
+	})
+	refreshPreview(@Param('key') key: string): Promise<MediaProfileRefresh> {
+		return this.replace.refreshPreview(key);
+	}
+
+	@Post(':key/refresh')
+	@HttpCode(200)
+	@RequirePermissions('setting.edit')
+	@ApiOperation({
+		operationId: 'refreshMediaProfile',
+		summary: 'Bring older versions up to date: remake them with today’s settings, old files kept 7 days (F02)',
+	})
+	refresh(
+		@Principal() principal: AuthenticatedPrincipal,
+		@Param('key') key: string,
+	): Promise<MediaProfileRefreshStarted> {
+		return this.replace.refresh(principal.userId, key);
 	}
 
 	@Delete(':key')

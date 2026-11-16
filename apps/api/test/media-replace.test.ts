@@ -28,6 +28,36 @@ const harness = () => {
 			return files.get(id) ?? null;
 		},
 	};
+	(assets as Record<string, unknown>)['listWithOlderVersions'] = async (input: {
+		profileKey: string;
+		version: number;
+		after: string | null;
+		limit: number;
+	}) =>
+		[...files.values()]
+			.filter((row) =>
+				row.versions?.some(
+					(version) =>
+						version.profileKey === input.profileKey &&
+						version.state === 'ready' &&
+						version.profileVersion < input.version,
+				),
+			)
+			.filter((row) => !input.after || row.id > input.after)
+			.sort((a, b) => a.id.localeCompare(b.id))
+			.slice(0, input.limit);
+	(assets as Record<string, unknown>)['refreshCounts'] = async (profileKey: string) => ({
+		older: 0,
+		running: [...files.values()].filter(
+			(row) =>
+				row.replacing?.reason === 'refresh' &&
+				row.replacing.profileKey === profileKey &&
+				row.replacing.phase !== 'failed',
+		).length,
+		failed: 0,
+	});
+	/** Settings saved since the photos were made: each saved change bumps a profile's version. */
+	const bump = { value: 0 };
 	(assets as Record<string, unknown>)['setFocal'] = async (id: string, focal: { x: number; y: number } | null) => {
 		files.set(id, { ...(files.get(id) as MediaAsset), focal });
 	};
@@ -35,7 +65,12 @@ const harness = () => {
 	const service = new MediaReplaceService(
 		assets as never,
 		{ whereUsed: async (ids: readonly string[]) => new Map(ids.map((id) => [id, used.get(id) ?? []])) } as never,
-		{ findByKey: async (key: string) => SEEDED_MEDIA_PROFILES.find((row) => row.key === key) ?? null },
+		{
+			findByKey: async (key: string) => {
+				const row = SEEDED_MEDIA_PROFILES.find((one) => one.key === key);
+				return row ? { ...row, version: row.version + bump.value } : null;
+			},
+		},
 		{
 			createSignedUploadUrl: async ({ key }: { key: string }) => ({ url: `https://spaces.test/${key}?signed` }),
 			delete: async (key: string) => void deleted.push(key),
@@ -73,7 +108,7 @@ const harness = () => {
 				...overrides,
 			}),
 		);
-	return { service, files, used, jobs, audit, deleted, storageCheck, photo };
+	return { service, files, used, jobs, audit, deleted, storageCheck, photo, bump };
 };
 
 const NEW = { fileName: 'reshoot.jpg', contentType: 'image/jpeg', byteSize: 2_000_000, width: 3000, height: 4000 };
@@ -254,5 +289,59 @@ describe('a new web file name (R5-6, media step 3d)', () => {
 		expect(() => h.service.renames(h.files.get('med_busy') as MediaAsset)).toThrow(BadRequestException);
 		expect((await refusal(h.service.rename('adm_1', 'med_busy', 'new-name', NOW)))?.code).toBe('rename_waits');
 		expect(h.jobs).toEqual([]);
+	});
+});
+
+describe('bringing older versions up to date (F02, media step 3e)', () => {
+	it('counts the photos a profile change left behind, then sends each to the worker on its own original', async () => {
+		const h = harness();
+		h.photo('med_a');
+		h.photo('med_b');
+		h.photo('med_busy', {
+			replacing: {
+				key: 'media/med_busy/original-2.jpg',
+				contentType: 'image/jpeg',
+				byteSize: 1000,
+				width: 3000,
+				height: 4000,
+				phase: 'making',
+				startedAt: NOW.toISOString(),
+			},
+		});
+		// Nothing changed since the photos were made: nothing to do.
+		expect(await h.service.refreshPreview('product_3x4')).toMatchObject({ photos: 0, versions: 0 });
+		expect(await h.service.refresh('adm_1', 'product_3x4', NOW)).toEqual({ started: 0, busy: 0 });
+		h.bump.value = 1;
+		const preview = await h.service.refreshPreview('product_3x4');
+		expect(preview).toMatchObject({ photos: 3, versions: 3, running: 0 });
+		expect(preview.bytes).toBeGreaterThan(0);
+		expect(await h.service.refresh('adm_1', 'product_3x4', NOW)).toEqual({ started: 2, busy: 1 });
+		expect(h.files.get('med_a')?.replacing).toMatchObject({
+			reason: 'refresh',
+			profileKey: 'product_3x4',
+			phase: 'queued',
+			key: 'media/med_a/original.jpg',
+		});
+		expect(h.jobs).toEqual([
+			{ type: 'replace', assetId: 'med_a' },
+			{ type: 'replace', assetId: 'med_b' },
+		]);
+		// One storage check for the whole run, given back when every photo is queued.
+		expect(h.storageCheck.admit).toHaveBeenCalledWith(
+			'adm_1',
+			preview.bytes,
+			undefined,
+			'res_refresh_product_3x4',
+			NOW,
+		);
+		expect(h.storageCheck.release).toHaveBeenCalledWith('res_refresh_product_3x4');
+		expect(h.audit[0]).toMatchObject({ action: 'media.profile.refresh', entityId: 'product_3x4' });
+		// The tray follows the runs under way.
+		expect((await h.service.refreshPreview('product_3x4')).running).toBe(2);
+	});
+
+	it('an unknown profile is not found', async () => {
+		const h = harness();
+		await expect(h.service.refreshPreview('nope')).rejects.toThrow('Image profile not found');
 	});
 });

@@ -54,7 +54,7 @@ export const MediaFileRow = z.object({
 	/** A photo being replaced (S7): where the Replace has got; the website keeps the old photo until it is done. */
 	replacing: z.enum(['uploading', 'queued', 'making', 'failed']).optional(),
 	/** What that run does: a new photo, a new focal point (only crops remade), or a new web file name. */
-	replacingWhy: z.enum(['replace', 'focal', 'rename']).optional(),
+	replacingWhy: z.enum(['replace', 'focal', 'rename', 'refresh']).optional(),
 	/** A small picture for the list; null for files the worker does not process. */
 	thumbnailUrl: z.string().nullable(),
 	/** Pages that use it: an image used on the website cannot go to Trash. */
@@ -418,6 +418,27 @@ export const MediaReplaceStatus = z.object({
 	places: z.number().int().nonnegative(),
 });
 export type MediaReplaceStatus = z.infer<typeof MediaReplaceStatus>;
+
+/**
+ * `GET /admin/media/profiles/:key/refresh` — “Bring older versions up to date” (F02): photos whose versions of this
+ * profile were made with earlier settings and can be made again with today's, how many versions, about how many
+ * bytes, and runs under way or failed.
+ */
+export const MediaProfileRefresh = z.object({
+	photos: z.number().int().nonnegative(),
+	versions: z.number().int().nonnegative(),
+	bytes: z.number().int().nonnegative(),
+	running: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+});
+export type MediaProfileRefresh = z.infer<typeof MediaProfileRefresh>;
+
+/** `POST /admin/media/profiles/:key/refresh`: photos sent to the worker, and photos left for now because they were busy. */
+export const MediaProfileRefreshStarted = z.object({
+	started: z.number().int().nonnegative(),
+	busy: z.number().int().nonnegative(),
+});
+export type MediaProfileRefreshStarted = z.infer<typeof MediaProfileRefreshStarted>;
 
 /** `PUT /admin/media/library/files/:id/focal`: the point every crop keeps (S10, C06); null puts it back on the middle. */
 export const MediaFocalRequest = z

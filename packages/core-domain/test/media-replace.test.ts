@@ -7,6 +7,7 @@ import {
 	SEEDED_MEDIA_ROLES,
 	checkReplace,
 	keptAfterReplace,
+	olderVersions,
 	replaceMediaAsset,
 	replacementOriginalKey,
 	storedKeys,
@@ -469,5 +470,69 @@ describe('a new web file name (R5-6, media step 3d)', () => {
 		expect(deleted).not.toContain('media/med_r/original.jpg');
 		expect(run.row().slug).toBe('red-banarasi');
 		expect(run.row().replacing).toMatchObject({ phase: 'failed' });
+	});
+});
+
+describe('bringing older versions up to date (F02, media step 3e)', () => {
+	const older = () =>
+		photo({
+			width: 4000,
+			height: 2000,
+			versions: [ready('product_3x4.white'), ready('blog_cover_2x1.as_is')],
+			derivatives: [
+				file('product_3x4.white', 'card', 400),
+				file('blog_cover_2x1.as_is', 'blog', 480),
+				file(null, 'share', 1200),
+			],
+			replacing: queued({
+				key: 'media/med_r/original.jpg',
+				reason: 'refresh',
+				profileKey: 'product_3x4',
+				width: 4000,
+				height: 2000,
+			}),
+		});
+	const probe = { width: 4000, height: 2000, format: 'jpeg', hasAlpha: false };
+	/** Product 3:4's settings were changed once since the photo's versions were made. */
+	const changed = SEEDED_MEDIA_PROFILES.map((row) =>
+		row.key === 'product_3x4' ? { ...row, version: row.version + 1 } : row,
+	);
+
+	it('remakes only that profile’s older versions with today’s settings; the rest of the photo stays', async () => {
+		const run = harness(older(), probe);
+		run.deps.profiles = { list: async () => changed };
+		await expect(replaceMediaAsset(run.deps, { assetId: 'med_r' })).resolves.toMatchObject({ status: 'ready' });
+		const row = run.row();
+		const keys = row.derivatives.map((one) => one.storageKey);
+		expect(keys).toContain('media/med_r/blog_cover_2x1.as_is/blog-480w-old.webp');
+		expect(keys).toContain('media/med_r/photo/share-1200w-old.webp');
+		expect(keys).not.toContain('media/med_r/product_3x4.white/card-400w-old.webp');
+		expect(row.versions?.find((version) => version.id === 'product_3x4.white')?.profileVersion).toBe(
+			(changed.find((one) => one.key === 'product_3x4')?.version ?? 0) as number,
+		);
+		expect(row.versions?.find((version) => version.id === 'blog_cover_2x1.as_is')?.profileVersion).toBe(1);
+		expect(row.originalStorageKey).toBe('media/med_r/original.jpg');
+		expect(row.keptFiles).toEqual([
+			expect.objectContaining({ reason: 'refresh', keys: ['media/med_r/product_3x4.white/card-400w-old.webp'] }),
+		]);
+	});
+
+	it('with nothing older left, the run just ends and nothing changes', async () => {
+		const run = harness(older(), probe);
+		await expect(replaceMediaAsset(run.deps, { assetId: 'med_r' })).resolves.toMatchObject({
+			status: 'ready',
+			rendered: 0,
+		});
+		expect(run.row().replacing).toBeNull();
+		expect(run.row().derivatives).toEqual(older().derivatives);
+		expect(run.uploads).toEqual([]);
+	});
+
+	it('olderVersions lists only ready versions of that profile, made before its settings changed, that can be made again', () => {
+		const profile = changed.find((one) => one.key === 'product_3x4');
+		if (!profile) throw new Error('product_3x4 missing');
+		expect(olderVersions(older(), profile).map((version) => version.id)).toEqual(['product_3x4.white']);
+		expect(olderVersions(older(), { ...profile, version: 1 })).toEqual([]);
+		expect(olderVersions(older(), { ...profile, fills: ['blur'] })).toEqual([]);
 	});
 });

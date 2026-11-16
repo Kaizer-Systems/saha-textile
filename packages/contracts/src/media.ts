@@ -319,9 +319,13 @@ export const MediaReplacement = z.object({
 	/**
 	 * `replace`: a new original (S7). `focal`: the same original with a new focal point (S10): only Crop versions are
 	 * remade, and the original is never deleted. `rename`: the same original under a new web file name (R5-6): every
-	 * file is made again with the new name, and the original is never deleted.
+	 * file is made again with the new name, and the original is never deleted. `refresh`: the same original; one
+	 * profile's versions made with its earlier settings are made again with today's (“Bring older versions up to
+	 * date”, F02).
 	 */
-	reason: z.enum(['replace', 'focal', 'rename']).default('replace'),
+	reason: z.enum(['replace', 'focal', 'rename', 'refresh']).default('replace'),
+	/** The profile a `refresh` brings up to date. */
+	profileKey: z.string().min(1).optional(),
 	/** The new web file name of a `rename`; it becomes the photo's `slug` when the new files are in place. */
 	slug: z
 		.string()
@@ -342,7 +346,7 @@ export const MediaKeptFiles = z.object({
 	keys: z.array(z.string().min(1)),
 	bytes: z.number().int().nonnegative(),
 	deleteAfter: IsoDateTime,
-	reason: z.enum(['replace', 'focal', 'rename']),
+	reason: z.enum(['replace', 'focal', 'rename', 'refresh']),
 });
 export type MediaKeptFiles = z.infer<typeof MediaKeptFiles>;
 

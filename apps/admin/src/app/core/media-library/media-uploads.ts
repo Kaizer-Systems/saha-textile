@@ -73,6 +73,8 @@ export const MAKING_POLL_MS = 2000;
 /** The tray asks about this many photos per call while their versions are made. */
 export const VERSIONS_STATUS_PER_CALL = 1000;
 export const MAKING_GIVE_UP_MS = 10 * 60_000;
+/** A profile brought up to date can hold thousands of photos: the tray follows it for up to two hours. */
+const REFRESH_GIVE_UP_MS = 2 * 60 * 60 * 1000;
 
 /** One Replace's three steps (S7, C08): upload, making versions, switching pages. */
 export interface ReplaceRun {
@@ -424,6 +426,51 @@ export class MediaUploads {
 			label: 'fm_rename_files_tray',
 			done: 'fm_rename_files_tray_done',
 		});
+	}
+
+	/**
+	 * “Bring older versions up to date” (F02, media step 3e): one tray row counts the photos as the worker finishes
+	 * them (“230 of 612 photos”), from the runs still under way.
+	 */
+	async followRefresh(
+		name: string,
+		total: number,
+		poll: () => Promise<{ running: number; failed: number }>,
+	): Promise<void> {
+		const id = `pr_${name}`;
+		const words = (key: string, params: Record<string, unknown> = {}) =>
+			this.transloco.translate(key, { name, ...params });
+		this.operations.update((ops) => [
+			...ops.filter((op) => op.id !== id),
+			{
+				id,
+				label: words('profile_refresh_tray'),
+				icon: 'ri-refresh-line',
+				done: 0,
+				total,
+				state: 'running',
+				error: null,
+			},
+		]);
+		const tray = (changes: Partial<MediaOperation>) =>
+			this.operations.update((ops) => ops.map((op) => (op.id === id ? { ...op, ...changes } : op)));
+		const started = Date.now();
+		while (Date.now() - started < REFRESH_GIVE_UP_MS) {
+			await new Promise((resolve) => setTimeout(resolve, MAKING_POLL_MS));
+			const now = await poll().catch(() => null);
+			if (!now) continue;
+			tray({ done: Math.max(0, total - now.running) });
+			if (now.running === 0) {
+				tray(
+					now.failed
+						? { state: 'failed', error: words('profile_refresh_failed', { count: now.failed }) }
+						: { state: 'done', label: words('profile_refresh_tray_done') },
+				);
+				void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
+				return;
+			}
+		}
+		tray({ state: 'done' });
 	}
 
 	/** One tray row that follows the worker remaking a photo's files on its own original (focal point, new name). */

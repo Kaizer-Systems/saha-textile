@@ -360,6 +360,28 @@ test.describe('Media page (step 1)', () => {
 		await shot(page, 'a47-storage');
 	});
 
+	test('Product › Images opens the Media picker: only photos with a Product 3:4 version (R4-2, D15, step 4b)', async ({
+		page,
+	}) => {
+		await page.goto(`${ADMIN}/product/edit/prd_906`, { waitUntil: 'networkidle' });
+		await page
+			.getByRole('tab', { name: 'Images' })
+			.or(page.locator('.nav-link', { hasText: 'Images' }))
+			.first()
+			.click();
+		await page.locator('app-product-images .choosefile-input').first().click();
+		await expect(page.locator('#fm_pick_title')).toHaveText('Choose product images');
+		await expect(page.locator('#fm_pick_rules')).toContainText('Needs Product 3:4');
+		await expect(page.locator('#fm_pick_note')).toContainText('Nothing chosen yet');
+		await expect(page.locator('#fm_pick_choose')).toBeDisabled();
+		// The theme hides the switch's input behind its drawn track: click the track, as a person does.
+		await page.locator('#fm_pick_rules .switch-state').click();
+		await expect(page.locator('#fm_pick_rules')).toContainText('Showing every photo');
+		await shot(page, 'd15-picker');
+		await page.keyboard.press('Escape');
+		await expect(page.locator('#fm_pick_title')).toHaveCount(0);
+	});
+
 	test('Clean up › Email pictures: the note, the filter and the empty list (A50, step 3f)', async ({ page }) => {
 		await openRoot(page);
 		await page.locator('#fm_nav_clean').click();

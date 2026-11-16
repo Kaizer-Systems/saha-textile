@@ -194,6 +194,7 @@ describe('ContentBlocksService', () => {
 		images: { desktop: 'med_1', tablet: null, phone: null },
 		containsText: false,
 		localeImages: {},
+		imageVersions: {},
 		heading: { en: 'Festive edit' },
 		subheading: {},
 		ctaLabel: {},

@@ -146,6 +146,8 @@ export const StoreLocation = z.object({
 	hours: StoreHours,
 	/** In carousel order; the first is the cover. */
 	photoAssetIds: z.array(Id).max(MAX_STORE_PHOTOS).default([]),
+	/** The version each photo shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	/** Lower shows first on Contact Us. Set by dragging rows in the admin list. */
 	displayOrder: z.number().int().nonnegative().default(0),
 	active: z.boolean().default(false),
@@ -175,6 +177,8 @@ export const StoreLocationWrite = z.object({
 		.pipe(E164Phone.nullable()),
 	hours: StoreHours,
 	photoAssetIds: z.array(Id).max(MAX_STORE_PHOTOS).default([]),
+	/** The version each photo shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	active: z.boolean().default(false),
 });
 export type StoreLocationWrite = z.input<typeof StoreLocationWrite>;

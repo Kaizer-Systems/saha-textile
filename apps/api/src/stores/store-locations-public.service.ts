@@ -52,13 +52,13 @@ export class StoreLocationsPublicService {
 			hours: store.hours,
 			geo: store.geo,
 			photos: store.photoAssetIds
-				.map((id) => this.photo(assets.get(id), locale))
+				.map((id) => this.photo(assets.get(id), locale, store.imageVersions?.[id]))
 				.filter((photo): photo is ResolvedImage => !!photo),
 		};
 	}
 
 	/** A finished, public photo in the store sizes; anything still processing is left out. */
-	private photo(asset: MediaAsset | undefined, locale: string): ResolvedImage | null {
+	private photo(asset: MediaAsset | undefined, locale: string, versionId?: string | null): ResolvedImage | null {
 		if (!asset || asset.deletedAt || asset.visibility !== 'public') return null;
 		const resolved = resolveImage({
 			asset,
@@ -66,6 +66,7 @@ export class StoreLocationsPublicService {
 			locale,
 			fallbackLocale: FALLBACK,
 			roles: ['store_photo'],
+			versionId: versionId ?? null,
 		});
 		const sources = resolved?.roles['store_photo'] ?? [];
 		return sources.length ? resolved : null;

@@ -121,6 +121,10 @@ export class StoreLocationsAdminService {
 			phone: body.phone,
 			hours: body.hours,
 			photoAssetIds: [...new Set(body.photoAssetIds)],
+			// Only the store's own photos keep a stored version.
+			imageVersions: Object.fromEntries(
+				Object.entries(body.imageVersions ?? {}).filter(([assetId]) => body.photoAssetIds.includes(assetId)),
+			),
 			displayOrder,
 			active: false,
 		});

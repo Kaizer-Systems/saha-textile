@@ -25,6 +25,7 @@ const toStore = (doc: StoreLocationDoc): StoreLocation => ({
 	phone: doc.phone ?? null,
 	hours: toHours(doc.hours),
 	photoAssetIds: doc.photoAssetIds ?? [],
+	imageVersions: doc.imageVersions ?? {},
 	displayOrder: doc.displayOrder ?? 0,
 	active: !!doc.active,
 	createdAt: iso(doc.createdAt),

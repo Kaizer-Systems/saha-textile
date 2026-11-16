@@ -27,6 +27,7 @@ describe.runIf(hasMongoEnv())('store location persistence (rs0)', () => {
 			phone: '+913325521595',
 			hours: WEEKDAYS.map((day) => ({ day, open: day !== 'sun', opens: '10:00', closes: '21:00' })),
 			photoAssetIds: [`${prefix}photo`],
+			imageVersions: { [`${prefix}photo`]: 'store_photo_4x3.blur' },
 			displayOrder,
 			active: true,
 		});
@@ -51,6 +52,7 @@ describe.runIf(hasMongoEnv())('store location persistence (rs0)', () => {
 		expect(rows[0]?.hours).toHaveLength(7);
 		expect(rows[0]?.hours.at(-1)).toEqual({ day: 'sun', open: false, opens: null, closes: null });
 		expect(rows[0]?.geo).toEqual({ lat: 22.72, lng: 88.48 });
+		expect(rows[0]?.imageVersions).toEqual({ [`${prefix}photo`]: 'store_photo_4x3.blur' });
 		expect(rows[0]?.createdAt).toBeTruthy();
 	});
 

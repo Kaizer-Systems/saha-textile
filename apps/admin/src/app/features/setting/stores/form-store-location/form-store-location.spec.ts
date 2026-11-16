@@ -132,13 +132,14 @@ describe('FormStoreLocation', () => {
 
 	it('saves and returns to the list', () => {
 		const { page, gateway, router, notifier, client } = setup('s1');
-		page.selectPhotos([{ id: 'p9' } as never]);
+		page.selectPhotos([{ id: 'p9', versionId: 'store_photo_4x3.blur' } as never]);
 		page.submit();
 		expect(gateway.save).toHaveBeenCalledWith(
 			's1',
 			expect.objectContaining({
 				name: { en: 'Saha Textile, Barasat', bn: 'সাহা টেক্সটাইল, বারাসাত' },
 				photoAssetIds: ['p9'],
+				imageVersions: { p9: 'store_photo_4x3.blur' },
 				active: true,
 			}),
 		);

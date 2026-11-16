@@ -146,6 +146,14 @@ describe('StoreLocationsAdminService', () => {
 		expect(h.audit.map((entry) => entry.action)).toEqual(['store_location.create', 'store_location.create']);
 	});
 
+	it('keeps the version each of its own photos was chosen with (R4-1, media step 4d)', async () => {
+		const { id } = await h.admin.create(
+			body({ imageVersions: { med_a: 'store_photo_4x3.crop', med_elsewhere: 'x.y' } }),
+			null,
+		);
+		expect(h.stores.get(id)?.imageVersions).toEqual({ med_a: 'store_photo_4x3.crop' });
+	});
+
 	it('saves an incomplete store switched off and says what is missing', async () => {
 		const result = await h.admin.create(body({ name: { en: 'Agartala' }, hours: closed }), null);
 		expect(result.active).toBe(false);

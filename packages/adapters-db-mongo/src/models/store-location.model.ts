@@ -15,6 +15,8 @@ export interface StoreLocationDoc {
 	phone: string | null;
 	hours: { day: string; open: boolean; opens: string | null; closes: string | null }[];
 	photoAssetIds: string[];
+	/** The version each photo shows, by photo id (media step 4d). */
+	imageVersions?: Record<string, string>;
 	displayOrder: number;
 	active: boolean;
 	createdAt?: Date;
@@ -43,6 +45,7 @@ const StoreLocationSchema = new Schema<StoreLocationDoc>(
 		phone: { type: String, default: null },
 		hours: { type: [DayHoursSchema], default: [] },
 		photoAssetIds: { type: [String], default: [] },
+		imageVersions: { type: Schema.Types.Mixed, default: {} },
 		displayOrder: { type: Number, default: 0 },
 		active: { type: Boolean, default: false },
 	},

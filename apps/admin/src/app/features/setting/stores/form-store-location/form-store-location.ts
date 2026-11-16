@@ -25,7 +25,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import type { AdminStoreLocationRow, StoreDayHours, StoreLocationWrite, Weekday } from '@saha-textile/contracts';
@@ -178,6 +178,13 @@ export class FormStoreLocation {
 			phone: raw.phone,
 			hours: this.hoursValue(),
 			photoAssetIds: this.photos().map((photo) => String(photo.id)),
+			// The version each photo was chosen with (R4-1; media step 4d).
+			imageVersions: Object.fromEntries(
+				this.photos().flatMap((photo) => {
+					const versionId = (photo as PickedAttachment).versionId;
+					return versionId ? [[String(photo.id), versionId]] : [];
+				}),
+			),
 			active: raw.active,
 		};
 		this.gateway.save(this.storeId(), body).subscribe({
@@ -237,7 +244,14 @@ export class FormStoreLocation {
 		this.fields.load({ name: store.name, address: store.address, landmark: store.landmark });
 		// Fetched together so the photos keep their carousel order.
 		if (store.photoAssetIds.length) {
-			forkJoin(store.photoAssetIds.map((id) => this.media.get(id))).subscribe((list) => this.photos.set(list));
+			forkJoin(store.photoAssetIds.map((id) => this.media.get(id))).subscribe((list) =>
+				this.photos.set(
+					list.map((photo) => {
+						const versionId = store.imageVersions?.[String(photo.id)];
+						return versionId ? ({ ...photo, versionId } as IAttachment) : photo;
+					}),
+				),
+			);
 		}
 		this.refreshMissing();
 	}

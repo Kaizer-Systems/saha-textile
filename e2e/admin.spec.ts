@@ -14,7 +14,7 @@ async function open(page: Page, path: string): Promise<void> {
 async function chooseInPicker(page: Page): Promise<void> {
 	const choose = page.locator('#fm_pick_choose');
 	await expect(choose).toBeVisible();
-	await page.locator('ngb-modal-window [data-file]').first().click();
+	await page.locator('ngb-modal-window [data-pick]').first().click();
 	await choose.click();
 	await expect(choose).toHaveCount(0);
 }
@@ -144,7 +144,8 @@ test.describe('Product builder', () => {
 		await expect(page).toHaveURL(/\/product$/);
 		expect(await stored()).toMatchObject({
 			status: 'disabled',
-			slug: 'builder-test-saree',
+			// A rerun on the same e2e database finds the earlier product's address taken, so it gets "-2".
+			slug: expect.stringMatching(/^builder-test-saree(-\d+)?$/),
 			shortDescription: { en: 'A short description.' },
 		});
 		const row = await withDatabase(async (db) =>
@@ -214,7 +215,7 @@ test.describe('Product builder', () => {
 		await expect(row).toBeVisible();
 		await row.locator('.ri-rocket-line').click();
 		await expect.poll(async () => (await stored())?.['status']).toBe('live');
-		const bengali = await request.get(`${SHOP}/bn/product/builder-test-saree`);
+		const bengali = await request.get(`${SHOP}/bn/product/${String((await stored())?.['slug'])}`);
 		expect(await bengali.text()).toContain('Saree de test');
 	});
 });

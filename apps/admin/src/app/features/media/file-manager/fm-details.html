@@ -187,7 +187,8 @@
 					type="button"
 					class="btn btn-theme"
 					id="fm_text_save"
-					[disabled]="saving()"
+					[class.disabled]="saving()"
+					[attr.aria-disabled]="saving()"
 					(click)="saveText()"
 				>
 					{{ (savingSlow() ? 'fm_saving' : 'save') | transloco }}

@@ -164,7 +164,9 @@ test.describe('Media page (step 1)', () => {
 		// No picture tag can draw a PSD: its row shows the type's icon, not a broken picture.
 		await expect(review.locator('tr[data-row="layered-cover.psd"] .fm-type img')).toHaveCount(0);
 		await shot(page, 'b01-new-photo-types');
-		await review.locator('.modal-footer .btn-outline').first().click();
+		// The footer sits beside the popup body, so Cancel is found from the Upload button's footer.
+		await page.locator('.modal-footer:has(#fm_review_upload) .btn-outline').click();
+		await expect(review).toHaveCount(0);
 	});
 
 	test('a photo gets a profile suggested from its shape, a note when it does not fit, and goes up to make its versions (B01, B05, step 2d)', async ({
@@ -385,8 +387,10 @@ test.describe('Media page (step 1)', () => {
 		await page.locator('#fm_text_alt').fill('সাদা পটভূমিতে একটি পণ্যের ছবি');
 		await shot(page, 'a42-photo-text');
 		await page.locator('#fm_text_save').click();
-		await expect(page.locator('.toast-success, #toast-container')).toContainText("The photo's text is saved");
+		await expect(page.locator('#toast-container')).toContainText("The photo's text is saved");
+		// Saving keeps the focus in the popup, so Escape still closes it.
 		await page.keyboard.press('Escape');
+		await expect(page.locator('#fm_details')).toHaveCount(0);
 		// Opened again, the text is there.
 		await row(page, 'product-sample.png').click({ button: 'right' });
 		await page.locator('#fm_menu_details').click();
@@ -506,7 +510,7 @@ test.describe('Media page (step 1)', () => {
 		await expect(review.locator('tr[data-row="picker-upload.png"] .fm-pchip').first()).toContainText('Product 3:4');
 		await shot(page, 'd10-upload-in-picker');
 		// Cancel the upload: the picker stays, nothing was sent.
-		await review.locator('..').locator('.modal-footer .btn-outline').click();
+		await page.locator('.modal-footer:has(#fm_review_upload) .btn-outline').click();
 		await expect(page.locator('#fm_review')).toHaveCount(0);
 		await expect(page.locator('#fm_pick_title')).toBeVisible();
 		await page.keyboard.press('Escape');

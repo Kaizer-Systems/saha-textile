@@ -2418,6 +2418,7 @@
 	"fm_email_note_title": "Email pictures are kept for good, so old order emails keep showing their pictures.",
 	"fm_email_note_body_one": "This one belongs to a photo that was deleted or replaced in Media ({{size}}). Nothing here is ever deleted automatically: only by an admin, from this page.",
 	"fm_email_note_body_other": "These {{count}} belong to photos that were deleted or replaced in Media ({{size}} in all). Nothing here is ever deleted automatically: only by an admin, from this page.",
+	"fm_email_note_none": "There are none yet. Nothing here is ever deleted automatically: only by an admin, from this page.",
 	"fm_email_filter": "Show pictures last sent in an email",
 	"fm_email_sent_all": "at any time, or never",
 	"fm_email_sent_never": "never (no email has shown them)",

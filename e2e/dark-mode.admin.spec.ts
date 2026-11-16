@@ -32,6 +32,7 @@ const SCREENS = [
 	'/tag',
 	'/media',
 	'/media/files',
+	'/media?view=clean',
 	'/home-banners',
 	'/event',
 	'/blog',

@@ -30,7 +30,8 @@
 	<i class="ri-mail-line"></i>
 	<div>
 		<strong>{{ 'fm_email_note_title' | transloco }}</strong>
-		{{ 'fm_email_note_body' | plural: data.total.count : { size: (data.total.bytes | fileSize) } }}
+		@if (data.total.count) { {{ 'fm_email_note_body' | plural: data.total.count : { size: (data.total.bytes |
+		fileSize) } }} } @else { {{ 'fm_email_note_none' | transloco }} }
 	</div>
 </div>
 <div class="d-flex align-items-center mb-3 gap-2">

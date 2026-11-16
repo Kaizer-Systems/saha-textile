@@ -360,6 +360,20 @@ test.describe('Media page (step 1)', () => {
 		await shot(page, 'a47-storage');
 	});
 
+	test('Clean up › Email pictures: the note, the filter and the empty list (A50, step 3f)', async ({ page }) => {
+		await openRoot(page);
+		await page.locator('#fm_nav_clean').click();
+		await expect(page).toHaveURL(/view=clean/);
+		await expect(page.locator('#fm_clean_email_tab')).toContainText('Email pictures');
+		await expect(page.locator('#fm_email_note')).toContainText('Email pictures are kept for good');
+		// The file list asks for nothing while Clean up shows.
+		await expect(page.locator('section.fm-main.d-none')).toHaveCount(1);
+		await page.locator('#fm_email_sent').selectOption('over_2y');
+		await expect(page.locator('#fm_email_sent')).toHaveValue('over_2y');
+		await expect(page.locator('#fm_email_empty')).toBeVisible();
+		await shot(page, 'a50-email-pictures');
+	});
+
 	test('a folder goes to Trash after asking, comes back with Undo, and is deleted for good (A25, A18)', async ({
 		page,
 	}) => {

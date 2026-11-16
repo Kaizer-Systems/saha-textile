@@ -51,6 +51,16 @@ vi.mock('@data-access/queries/admin-languages.queries', () => ({
 	},
 }));
 
+const storage = signal<unknown>(undefined);
+const storageAsked = vi.hoisted(() => ({ enabled: [] as boolean[] }));
+vi.mock('@data-access/queries/media-library.queries', async (original) => ({
+	...(await original<object>()),
+	injectMediaStorageQuery: (enabled: () => boolean = () => true) => {
+		storageAsked.enabled.push(enabled());
+		return { data: storage };
+	},
+}));
+
 const bare = <T>(type: new () => T, providers: unknown[] = []) => {
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({ providers: providers as never[] });
@@ -207,6 +217,19 @@ describe('Header notification', () => {
 		expect(widget.unreadNotificationCount()).toBe(1);
 		expect(widget.languageName('bn')).toBe('বাংলা');
 		reminders.set(undefined);
+	});
+
+	it('says Media storage is at 85% or past the plan, to people who use Media (R4-7, step 5)', () => {
+		storageAsked.enabled = [];
+		bare(Notification, [{ provide: NavService, useValue: {} }, auth([])]);
+		const widget = bare(Notification, [{ provide: NavService, useValue: {} }, auth(['attachment.index'])]);
+		expect(storageAsked.enabled).toEqual([false, true]);
+		storage.set({ percent: 84, onDemandBytes: 0 });
+		expect(widget.storageAlert()).toBeNull();
+		storage.set({ percent: 88, onDemandBytes: 0 });
+		expect(widget.storageAlert()).toMatchObject({ percent: 88 });
+		expect(widget.unreadNotificationCount()).toBe(1);
+		storage.set(undefined);
 	});
 });
 

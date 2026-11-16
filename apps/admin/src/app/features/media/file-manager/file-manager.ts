@@ -77,6 +77,8 @@ import { pastedName, planUpload, readDropped, readPhotoSize, readPickedFolder, s
 import { FmUploadPopups } from './fm-upload-popups';
 
 const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash', 'clean'];
+/** R4-7: the banner and the bell speak up from 85% of the plan. */
+export const STORAGE_ALERT_PERCENT = 85;
 /** The sort menu: what each choice asks the API for. */
 export const FM_SORTS = {
 	name: { sort: 'name', direction: 'asc', label: 'fm_sort_name' },
@@ -264,6 +266,11 @@ export class FileManager {
 	);
 	readonly tree = injectMediaTreeQuery();
 	readonly storage = injectMediaStorageQuery();
+	/** A45: the storage summary once it reaches 85% of the plan (and past it), for the banner. */
+	readonly storageAlert = computed(() => {
+		const summary = this.storage.data();
+		return summary && summary.percent >= STORAGE_ALERT_PERCENT ? summary : null;
+	});
 	readonly sorts = Object.entries(FM_SORTS).map(([key, value]) => ({ key: key as FmSort, label: value.label }));
 
 	readonly result = computed(() => this.browse.data());

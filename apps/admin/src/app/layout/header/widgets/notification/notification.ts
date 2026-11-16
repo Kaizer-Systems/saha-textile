@@ -7,6 +7,7 @@ import { languageName } from '@saha-textile/core-domain/languages';
 
 import { AuthStore } from '@core/state/auth.store';
 import { injectLanguageRemindersQuery } from '@data-access/queries/admin-languages.queries';
+import { injectMediaStorageQuery } from '@data-access/queries/media-library.queries';
 import { injectNotificationsQuery } from '@data-access/queries/notification.queries';
 import { NavService } from '@data-access/services/nav.service';
 import { SummaryPipe } from '@shared/pipes/summary.pipe';
@@ -31,8 +32,19 @@ export class Notification {
 		this.authStore.permissions().includes('language.manage'),
 	);
 	readonly languageReminders = computed(() => this.remindersQuery.data()?.reminders ?? []);
+	/** R4-7: Media storage at 85% of the plan or past it, for people who use Media. */
+	private readonly storageQuery = injectMediaStorageQuery(() =>
+		this.authStore.permissions().includes('attachment.index'),
+	);
+	readonly storageAlert = computed(() => {
+		const summary = this.storageQuery.data();
+		return summary && summary.percent >= 85 ? summary : null;
+	});
 	readonly unreadNotificationCount = computed(
-		() => this.languageReminders().length + this.notifications().filter((item) => !item.read_at).length,
+		() =>
+			this.languageReminders().length +
+			(this.storageAlert() ? 1 : 0) +
+			this.notifications().filter((item) => !item.read_at).length,
 	);
 
 	languageName(code: string): string {

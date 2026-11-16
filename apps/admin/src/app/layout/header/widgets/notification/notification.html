@@ -10,7 +10,7 @@
 		<span class="badge rounded-pill badge-theme">{{ unreadNotificationCount() }}</span>
 		}
 	</div>
-	@if (notifications().length || languageReminders().length) {
+	@if (notifications().length || languageReminders().length || storageAlert()) {
 	<ul
 		class="notification-dropdown onhover-show-div"
 		[class.active]="active"
@@ -19,7 +19,21 @@
 			<i class="ri-notification-line"></i>
 			<h6 class="f-18 mb-0">{{ 'notifications' | transloco }}</h6>
 		</li>
-		@for (reminder of languageReminders(); track reminder.code) {
+		@if (storageAlert(); as summary) {
+		<li>
+			<a
+				[routerLink]="['/media']"
+				[queryParams]="{ view: 'clean' }"
+				id="storage_alert_bell"
+			>
+				<p>
+					<i class="ri-record-circle-line txt-primary me-2"></i>
+					{{ (summary.onDemandBytes ? 'fm_storage_bell_over' : 'fm_storage_bell') | transloco: { percent:
+					summary.percent } }}
+				</p>
+			</a>
+		</li>
+		} @for (reminder of languageReminders(); track reminder.code) {
 		<li>
 			<a
 				[routerLink]="['/setting/languages']"

@@ -59,7 +59,32 @@
 				#fmResumeFile
 				(change)="resumePicked(fmResumeFile)"
 			/>
-			@for (entry of uploads.cutOff(); track entry.assetId) {
+			@if (storageAlert(); as summary) {
+			<!-- A45: storage at 85% of the plan or past it. -->
+			<div
+				class="alert alert-warning d-flex align-items-center mb-3 gap-2"
+				id="fm_storage_alert"
+			>
+				<i class="ri-alert-line fs-5"></i>
+				<div>
+					<strong>
+						{{ (summary.onDemandBytes ? 'fm_storage_alert_over_title' : 'fm_storage_alert_title') |
+						transloco: { percent: summary.percent } }}
+					</strong>
+					@if (summary.onDemandBytes) { {{ 'fm_storage_alert_over' | transloco: { used: (summary.usedBytes |
+					fileSize), plan: (summary.planBytes | fileSize), extra: (summary.onDemandBytes | fileSize), usd:
+					summary.onDemandMonthlyUsd } }} } @else { {{ 'fm_storage_alert' | transloco: { used:
+					(summary.usedBytes | fileSize), plan: (summary.planBytes | fileSize) } }} }
+					<a
+						href="javascript:void(0)"
+						class="text-decoration-underline"
+						(click)="openNav('clean')"
+					>
+						{{ 'fm_clean_up' | transloco }}
+					</a>
+				</div>
+			</div>
+			} @for (entry of uploads.cutOff(); track entry.assetId) {
 			<div
 				class="alert alert-warning d-flex align-items-center mb-3 gap-3"
 				data-cut-off

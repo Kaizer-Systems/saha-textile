@@ -35,12 +35,13 @@ export function injectMediaTreeQuery() {
 }
 
 /** The storage box (A46) and its details (A47). */
-export function injectMediaStorageQuery() {
+export function injectMediaStorageQuery(enabled: () => boolean = () => true) {
 	const gateway = inject(MediaLibraryGateway);
 	return injectQuery(() => ({
 		queryKey: MEDIA_STORAGE_KEY,
 		queryFn: () => lastValueFrom(gateway.storage()),
 		staleTime: 60_000,
+		enabled: enabled(),
 	}));
 }
 

@@ -343,7 +343,7 @@ describe('FormPage (Legal Pages brief, P3–P6)', () => {
 
 	it('saves every language at once; a refusal lists each missing language and field', async () => {
 		const refusal = {
-			error: { issues: [{ code: 'legal_page_incomplete', missing: [{ locale: 'bn', field: 'content' }] }] },
+			error: { error: { issues: [{ code: 'legal_page_incomplete', path: ['content', 'bn'], message: 'x' }] } },
 		};
 		const save = vi.fn(() => throwError(() => refusal));
 		const page = render({ get: () => of(row), save });

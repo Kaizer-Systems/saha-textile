@@ -10,6 +10,15 @@ async function open(page: Page, path: string): Promise<void> {
 	await page.waitForLoadState('networkidle');
 }
 
+/** Chooses the first photo the Media picker offers (media step 4) and closes it with Choose. */
+async function chooseInPicker(page: Page): Promise<void> {
+	const choose = page.locator('#fm_pick_choose');
+	await expect(choose).toBeVisible();
+	await page.locator('ngb-modal-window [data-file]').first().click();
+	await choose.click();
+	await expect(choose).toHaveCount(0);
+}
+
 test.describe('Admin shell', () => {
 	test('the sidebar labels are real words and the title names the shop', async ({ page }) => {
 		await open(page, '/dashboard');
@@ -422,10 +431,29 @@ test.describe('What admin makes reaches the shop', () => {
 		await page.locator('app-language-switch button', { hasText: 'বাংলা' }).click();
 		await expect(page.locator('input[formcontrolname="name"]')).toHaveValue('');
 		await page.locator('input[formcontrolname="name"]').fill('ছবি সহ ক্যাটাগরি');
+		// The Media picker (step 4) lists photos with a Category 3:4 version; the test copy has no image worker, so
+		// one demo photo is given that version here (its Product 3:4 files), and loses it again at the end.
+		const photo = await withDatabase((db) =>
+			db.collection('mediaAssets').findOne({ slug: 'local-catalog-photo-1', 'versions.0': { $exists: true } }),
+		);
+		const versions = (photo?.['versions'] ?? []) as Record<string, unknown>[];
+		const asCategory = {
+			...versions[0],
+			id: 'category_3x4.as_is',
+			profileKey: 'category_3x4',
+			fill: 'as_is',
+			state: 'ready',
+		};
+		await withDatabase((db) =>
+			db.collection('mediaAssets').updateOne({ _id: photo?._id }, { $push: { versions: asCategory } } as never),
+		);
 		await page.locator('app-image-upload .choosefile-input').first().click();
-		await page.locator('.modal .library-box label').first().click();
-		await page.locator('#media_btn button, button#media_btn').first().click();
-		await expect(page.locator('.modal')).toHaveCount(0);
+		await chooseInPicker(page);
+		await withDatabase((db) =>
+			db
+				.collection('mediaAssets')
+				.updateOne({ _id: photo?._id }, { $pull: { versions: { id: 'category_3x4.as_is' } } } as never),
+		);
 		await page.locator('#category_btn button, button#category_btn').first().click();
 		await expect.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug }))).toBe(1);
 		try {
@@ -520,9 +548,7 @@ test.describe('What admin makes reaches the shop', () => {
 		await page.locator('.nav-link', { hasText: 'Images' }).first().click();
 		await page.locator('input[name="image_mode"]').nth(1).check();
 		await page.locator('app-product-images .variant-accordion .choosefile-input:visible').first().click();
-		await page.locator('.modal .library-box label').first().click();
-		await page.locator('#media_btn button, button#media_btn').first().click();
-		await expect(page.locator('.modal')).toHaveCount(0);
+		await chooseInPicker(page);
 		try {
 			await page.getByRole('button', { name: /update product/i }).click();
 			await expect(page).toHaveURL(/\/product$/);

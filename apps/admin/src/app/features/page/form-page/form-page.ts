@@ -170,7 +170,9 @@ export class FormPage {
 
 /** The fields a refused save names (`legal_page_incomplete`), or none for any other answer. */
 export function refusedFields(error: unknown): PageGap[] {
-	const issues = (error as { error?: { issues?: { code?: string; missing?: PageGap[] }[] } })?.error?.issues ?? [];
-	const issue = issues.find((entry) => entry.code === 'legal_page_incomplete');
-	return issue?.missing ?? [];
+	// The API's error envelope: `{ error: { code, message, issues } }`; each issue's path is [field, locale].
+	const body = (error as { error?: { error?: { issues?: { code?: string; path?: unknown[] }[] } } })?.error;
+	return (body?.error?.issues ?? [])
+		.filter((issue) => issue.code === 'legal_page_incomplete')
+		.map((issue) => ({ field: String(issue.path?.[0] ?? ''), locale: String(issue.path?.[1] ?? '') }));
 }

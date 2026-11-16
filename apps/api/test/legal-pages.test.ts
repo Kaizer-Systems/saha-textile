@@ -48,7 +48,7 @@ describe('legal pages (Legal Pages brief)', () => {
 				metaImageAssetId: null,
 			}),
 		).rejects.toMatchObject({
-			response: { code: 'legal_page_incomplete', missing: [{ locale: 'bn', field: 'content' }] },
+			response: { issues: [{ path: ['content', 'bn'], code: 'legal_page_incomplete' }] },
 		});
 		expect(repo.save).not.toHaveBeenCalled();
 	});

@@ -65,10 +65,14 @@ export class LegalPagesService {
 		const gaps = legalPageGaps(write, this.languages.shop());
 		const missing = Object.entries(gaps).flatMap(([locale, fields]) => fields.map((field) => ({ locale, field })));
 		if (missing.length) {
+			// One issue per missing language and field (path [field, locale]), the shape the error filter passes on.
 			throw new BadRequestException({
-				message: 'Title and Content are needed in every language the shop shows',
-				code: 'legal_page_incomplete',
-				missing,
+				message: 'Validation failed',
+				issues: missing.map(({ locale, field }) => ({
+					path: [field, locale],
+					message: 'Title and Content are needed in every language the shop shows',
+					code: 'legal_page_incomplete',
+				})),
 			});
 		}
 		const page = legalPageToSave({ slug: current.slug, write, current, actor, now });

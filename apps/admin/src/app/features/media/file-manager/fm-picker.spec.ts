@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { MediaFileRow } from '@core/media-library/media-library.gateway';
+import { MediaLibraryGateway, type MediaFileRow } from '@core/media-library/media-library.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
 
 import { FmPicker, isRawFile } from './fm-picker';
 
@@ -35,10 +37,24 @@ const row = (id: string, extra: Partial<MediaFileRow> = {}): MediaFileRow =>
 
 const setup = (max = 6, already = 2) => {
 	const modal = { close: vi.fn(), dismiss: vi.fn() };
+	const gateway = { details: vi.fn(() => of({ versions: [] })), addVersions: vi.fn(() => of({ added: 1 })) };
+	const uploads = { watchVersions: vi.fn() };
+	const modals = {
+		open: vi.fn(() => ({
+			componentInstance: { start: vi.fn() },
+			result: Promise.resolve({
+				versions: [{ profileKey: 'product_3x4', fill: 'white' }],
+				label: 'Product 3:4 · White padding',
+			}),
+		})),
+	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: NgbActiveModal, useValue: modal },
+			{ provide: NgbModal, useValue: modals },
+			{ provide: MediaLibraryGateway, useValue: gateway },
+			{ provide: MediaUploads, useValue: uploads },
 			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
 		],
 	});
@@ -51,7 +67,7 @@ const setup = (max = 6, already = 2) => {
 		already,
 		profile: { key: 'product_3x4', name: 'Product 3:4', icon: false },
 	});
-	return { picker, modal };
+	return { picker, modal, gateway, uploads };
 };
 
 describe('the Media picker (R4-2, D01–D17; media step 4a)', () => {
@@ -118,5 +134,15 @@ describe('the Media picker (R4-2, D01–D17; media step 4a)', () => {
 			{ versionId: 'product_3x4.white', label: 'profile_fill_white' },
 			{ versionId: 'product_3x4.blur', label: 'profile_fill_blur' },
 		]);
+	});
+
+	it('Make one opens the photo’s Reprocess popup, then the new version is made and followed in the tray (D16)', async () => {
+		const { picker, gateway, uploads } = setup();
+		await picker.makeOne(row('med_bare', { fitting: [] }));
+		expect(gateway.addVersions).toHaveBeenCalledWith('med_bare', {
+			versions: [{ profileKey: 'product_3x4', fill: 'white' }],
+		});
+		expect(uploads.watchVersions).toHaveBeenCalledWith('Product 3:4 · White padding', ['med_bare']);
+		expect(picker.note()).toEqual({ text: 'fm_pick_making', warn: true });
 	});
 });

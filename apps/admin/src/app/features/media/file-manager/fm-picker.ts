@@ -2,15 +2,18 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { lastValueFrom } from 'rxjs';
 
-import type { MediaFileRow } from '@core/media-library/media-library.gateway';
+import { MediaLibraryGateway, type MediaFileRow } from '@core/media-library/media-library.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
 import { injectMediaBrowseQuery, injectMediaTreeQuery } from '@data-access/queries/media-library.queries';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { fillKey } from '../../setting/image-profiles/profile-words';
 import { FmSidebar, type FmNav } from './fm-sidebar';
 import { fileExtension, fileKind } from './file-kinds';
+import { FmReprocess, type FmReprocessChoice } from './fm-reprocess';
 
 /** What an image field asks of the picker (R4-2, D01–D17). */
 export interface FmPickRules {
@@ -52,6 +55,9 @@ export const isRawFile = (row: Pick<MediaFileRow, 'name'>): boolean => RAW.has(f
 export class FmPicker {
 	readonly modal = inject(NgbActiveModal);
 	private readonly transloco = inject(TranslocoService);
+	private readonly modals = inject(NgbModal);
+	private readonly gateway = inject(MediaLibraryGateway);
+	private readonly uploads = inject(MediaUploads);
 
 	readonly rules = signal<FmPickRules>({
 		title: 'fm_pick_title',
@@ -207,6 +213,46 @@ export class FmPicker {
 			warn: false,
 		};
 	});
+
+	/**
+	 * D16 “Make one”: the photo's Reprocess popup (C01), then its new version is made in the background and the tray
+	 * follows it; the photo can be chosen here once the version is ready.
+	 */
+	async makeOne(row: MediaFileRow): Promise<void> {
+		const existing = await lastValueFrom(this.gateway.details(row.id))
+			.then((details) => details.versions)
+			.catch(() => []);
+		const popup = this.modals.open(FmReprocess, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			windowClass: 'theme-modal media-modal',
+			ariaLabelledBy: 'fm_rp_title',
+		});
+		(popup.componentInstance as FmReprocess).start({
+			photos: [
+				{
+					id: row.id,
+					name: row.name,
+					width: row.width,
+					height: row.height,
+					bytes: row.bytes,
+					contentType: row.contentType,
+					thumbnailUrl: row.thumbnailUrl,
+				},
+			],
+			versions: existing,
+		});
+		const choice = (await popup.result.catch(() => null)) as FmReprocessChoice | null;
+		if (!choice?.versions.length) return;
+		try {
+			await lastValueFrom(this.gateway.addVersions(row.id, { versions: choice.versions }));
+			this.uploads.watchVersions(choice.label, [row.id]);
+			this.warning.set(this.transloco.translate('fm_pick_making', { name: row.name }));
+		} catch {
+			this.warning.set(this.transloco.translate('fm_action_failed'));
+		}
+	}
 
 	choose(): void {
 		if (!this.chosen().size) return;

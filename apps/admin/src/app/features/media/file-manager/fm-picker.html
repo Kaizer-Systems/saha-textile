@@ -296,7 +296,15 @@
 				class="text-warning"
 				style="white-space: normal"
 			>
-				{{ 'fm_pick_no_version_short' | transloco: { profile: rules().profile?.name ?? '' } }}
+				{{ 'fm_pick_no_version_short' | transloco: { profile: rules().profile?.name ?? '' } }} ·
+				<a
+					href="javascript:void(0)"
+					class="text-decoration-underline"
+					[attr.data-make]="row.id"
+					(click)="$event.stopPropagation(); makeOne(row)"
+				>
+					{{ 'fm_pick_make_one' | transloco }}
+				</a>
 			</p>
 			}
 		</div>

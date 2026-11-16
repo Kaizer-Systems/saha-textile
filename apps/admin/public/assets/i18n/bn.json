@@ -2496,6 +2496,8 @@
 	"fm_pick_not_ready_short": "এখনো ব্যবহারের জন্য তৈরি নয়",
 	"fm_pick_no_version": "{{name}}-এর এখনো {{profile}} সংস্করণ নেই।",
 	"fm_pick_no_version_short": "এখনো {{profile}} সংস্করণ নেই",
+	"fm_pick_make_one": "একটি বানান",
+	"fm_pick_making": "{{name}}: নতুন সংস্করণ বানানো হচ্ছে। তৈরি হলে এখানে বাছা যাবে।",
 	"fm_remaking_crops": "কাটছাঁট আবার বানানো হচ্ছে",
 	"fm_renaming_files": "ফাইলগুলোর নাম বদলানো হচ্ছে",
 	"fm_activity_replace": "নতুন ছবি দিয়ে বদলানো হয়েছে",

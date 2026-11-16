@@ -2496,6 +2496,8 @@
 	"fm_pick_not_ready_short": "Not ready to use yet",
 	"fm_pick_no_version": "{{name}} has no {{profile}} version yet.",
 	"fm_pick_no_version_short": "No {{profile}} version yet",
+	"fm_pick_make_one": "Make one",
+	"fm_pick_making": "{{name}}: the new version is being made. It can be chosen here once it's ready.",
 	"fm_remaking_crops": "Remaking the crops",
 	"fm_renaming_files": "Renaming the files",
 	"fm_activity_replace": "Replaced with a new photo",

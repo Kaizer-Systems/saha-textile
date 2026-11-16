@@ -594,6 +594,21 @@ test.describe('Media page (step 1)', () => {
 		await expect(page.locator('#fm_clean_table, #fm_clean_empty').first()).toBeVisible();
 	});
 
+	test('a language’s Photos to-do opens here: only the photos it counts, with Show all (L4)', async ({ page }) => {
+		// The photos Settings › Languages counts for বাংলা: shown by the website, alt text missing in it.
+		const answer = await page.request.get(`${API_URL}/admin/languages/bn/missing/photos`);
+		const { ids } = (await answer.json()) as { ids: string[] };
+		await page.goto(`${ADMIN}/media/files?missing=bn`, { waitUntil: 'networkidle' });
+		await expect(page.locator('app-missing-language-notice .alert')).toContainText('বাংলা');
+		const listed = await page
+			.locator('tr[data-file]')
+			.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-file')));
+		expect(listed.sort()).toEqual([...ids].sort().slice(0, 200));
+		await page.locator('#missing_language_show_all').click();
+		await expect(page).not.toHaveURL(/missing=/);
+		await expect(page.locator('app-missing-language-notice .alert')).toHaveCount(0);
+	});
+
 	test('on a phone (390 px): rows with ⋮, a wrapping selection bar, the review as cards; nothing scrolls sideways (G01, G03)', async ({
 		page,
 	}) => {

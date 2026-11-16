@@ -40,6 +40,9 @@ The left side holds My files, Recent, Favourites (Mine and Everyone's), Trash, t
 | `show`                                | `grid` for thumbnails; absent for the list                          |
 | `who`                                 | `everyone` on Favourites                                            |
 | `cats`, `state`, `size`, `up`, `used` | The Filters menu; each shows as a chip with its own ×               |
+| `missing`                             | A language code, from Settings › Languages: see below               |
+
+Settings › Languages opens the Photos line of a language's to-dos here as `?missing=bn`: the photos the website shows that still lack that language's alt text, from every folder, the same photos the to-do counts (`LanguageCoverageRepository.missingIds('photos', …)`, `MediaBrowseQuery.missing`). The amber line above the list says so, with **Show all**; the other filters narrow it further.
 
 Search (media step 4e) finds a file when every word is in its name, its web file name, its alt text or caption in any added language, or the name of the folder it sits in or any folder above it, so `banarasi` lists the files in Product photos › Banarasi and its sub-folders. Up to eight words are read. The picker searches the same way.
 

@@ -16,6 +16,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { isLocaleCode } from '@saha-textile/core-domain/languages';
 import { estimateVersionBytes, looksLikeHeic } from '@saha-textile/core-domain/media-files';
 import { PHOTO_KIND_TYPES, type PhotoKind, photoKindOf } from '@saha-textile/core-domain/photo-header';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
@@ -45,6 +46,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { FileSizePipe, PluralPipe, translateCount } from '@shared/pipes/language.pipes';
 import { Button } from '@shared/ui/button/button';
+import { MissingLanguageNotice } from '@shared/ui/missing-language-notice/missing-language-notice';
 
 import { fileKind } from './file-kinds';
 import { FmCleanUp } from './fm-clean-up';
@@ -192,6 +194,7 @@ const typing = (target: EventTarget | null): boolean => {
 		FileSizePipe,
 		PluralPipe,
 		Button,
+		MissingLanguageNotice,
 	],
 	providers: [FmUploadFlow],
 })
@@ -226,6 +229,11 @@ export class FileManager {
 	readonly sortKey = computed<FmSort>(() => {
 		const value = this.params().get('sort') as FmSort | null;
 		return value && value in FM_SORTS ? value : 'name';
+	});
+	/** Opened from Settings › Languages: only photos the website shows that still lack this language's alt text. */
+	readonly missing = computed(() => {
+		const value = this.params().get('missing');
+		return value && isLocaleCode(value) ? value : null;
 	});
 	readonly display = computed<'list' | 'grid'>(() => (this.params().get('show') === 'grid' ? 'grid' : 'list'));
 	readonly who = computed<'mine' | 'everyone'>(() => (this.params().get('who') === 'everyone' ? 'everyone' : 'mine'));
@@ -265,6 +273,7 @@ export class FileManager {
 			size: this.filters().size ?? undefined,
 			uploaded: this.filters().up ?? undefined,
 			used: this.filters().used ?? undefined,
+			missing: this.missing() ?? undefined,
 			sort: sort.sort,
 			direction: sort.direction,
 			page: 1,
@@ -297,7 +306,12 @@ export class FileManager {
 	/** Where a search looks: inside a folder, that folder and below (A09); otherwise everywhere (A08). */
 	readonly searchScope = computed(() => (this.nav() === 'folder' ? this.folderName() : null));
 	readonly showLocation = computed(
-		() => !!this.search() || !!this.category() || this.filterCount() > 0 || this.nav() !== 'folder',
+		() =>
+			!!this.search() ||
+			!!this.category() ||
+			this.filterCount() > 0 ||
+			!!this.missing() ||
+			this.nav() !== 'folder',
 	);
 	readonly empty = computed(() => {
 		const data = this.result();

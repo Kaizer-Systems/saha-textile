@@ -59,6 +59,8 @@
 				#fmResumeFile
 				(change)="resumePicked(fmResumeFile)"
 			/>
+			<!-- Settings › Languages, Photos to-do: the theme's amber line with Show all, as on every other list. -->
+			<app-missing-language-notice [code]="missing()" />
 			@if (storageAlert(); as summary) {
 			<!-- A45: storage at 85% of the plan or past it. -->
 			<div

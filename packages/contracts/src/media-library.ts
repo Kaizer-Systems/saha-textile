@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime, LocalizedText } from './common';
+import { Id, IsoDateTime, LocaleCode, LocalizedText } from './common';
 import { MediaFill, MediaProfileKey } from './media';
 
 /**
@@ -112,6 +112,11 @@ export const MediaBrowseQuery = z.object({
 	profile: MediaProfileKey.optional(),
 	/** …unless the switch shows the rest too, greyed (D16). */
 	showWithout: z.preprocess((value) => value === true || value === 'true' || value === '1', z.boolean()).optional(),
+	/**
+	 * Opened from Settings › Languages ("Open" on the Photos to-do): only photos the website shows that still lack this
+	 * language's alt text, the same photos the to-do counts.
+	 */
+	missing: LocaleCode.optional(),
 });
 export type MediaBrowseQuery = z.infer<typeof MediaBrowseQuery>;
 

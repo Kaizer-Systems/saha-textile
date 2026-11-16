@@ -44,10 +44,7 @@ const REFUSAL_KEYS: Readonly<Record<string, string>> = {
 	already_erased: 'lang_error_already_erased',
 };
 
-/**
- * The list each written area opens, filtered to what is missing in the language. Photos have no
- * link yet: the Media file manager (media build steps 1–5) replaces the library page and brings it.
- */
+/** The list each written area opens, filtered to what is missing in the language (L4). */
 export const AREA_LISTS: Readonly<Partial<Record<LanguageArea, string>>> = {
 	products: '/product',
 	options: '/attribute',
@@ -62,6 +59,7 @@ export const AREA_LISTS: Readonly<Partial<Record<LanguageArea, string>>> = {
 	search_words: '/search-term',
 	addon_templates: '/addon-template',
 	pages: '/page',
+	photos: '/media/files',
 };
 
 /** The popups this page opens, each with the language it is about. */

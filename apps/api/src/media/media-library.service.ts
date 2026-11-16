@@ -38,6 +38,7 @@ import {
 	type EmailPictureRepository,
 	type AdminUserRepository,
 	type AuditLogRepository,
+	type LanguageCoverageRepository,
 	type MediaAssetRepository,
 	type MediaBrowseFilter,
 	type MediaBrowseRepository,
@@ -89,10 +90,12 @@ import {
 	MEDIA_JOB_QUEUE,
 	MEDIA_PROFILE_REPOSITORY,
 	EMAIL_PICTURE_REPOSITORY,
+	LANGUAGE_COVERAGE_REPOSITORY,
 	SHARE_LINK_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
 import { LanguageStore } from '../languages/language-store';
+import { missingFilter } from '../languages/missing-filter';
 import { MediaStorageService } from './media-storage.service';
 
 /** Clean up (A44): a list's page size, the days a file must sit unused, the largest files shown, groups read. */
@@ -165,6 +168,8 @@ export class MediaLibraryService {
 		@Optional() @Inject(EMAIL_PICTURE_REPOSITORY) private readonly emailPictures?: EmailPictureRepository,
 		/** The shop's languages, for a photo's missing alt text (D14). */
 		@Optional() private readonly languages?: LanguageStore,
+		/** The photos a language's to-do counts, for `?missing=` from Settings › Languages. */
+		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage?: LanguageCoverageRepository,
 	) {}
 
 	// --- Reading ----------------------------------------------------------------------------------
@@ -517,6 +522,11 @@ export class MediaLibraryService {
 			const used = await this.files.referencedIds();
 			if (query.used === 'in') parts.ids = used;
 			else parts.excludeIds = used;
+		}
+		if (query.missing) {
+			// The same photos Settings › Languages counts: shown by the website, alt text missing in that language.
+			const missing = new Set((await missingFilter(this.coverage ?? null, 'photos', query.missing)).ids ?? []);
+			parts.ids = parts.ids ? parts.ids.filter((id) => missing.has(id)) : [...missing];
 		}
 		return parts;
 	}

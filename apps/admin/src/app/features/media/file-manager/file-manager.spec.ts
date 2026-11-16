@@ -143,6 +143,17 @@ describe('the Media page reads its view from the address', () => {
 		});
 	});
 
+	it('opened from Settings › Languages asks only for the photos missing that language, everywhere', () => {
+		const { page } = render({ missing: 'bn' });
+		expect(page.missing()).toBe('bn');
+		expect(page.query()).toMatchObject({ missing: 'bn' });
+		expect(page.showLocation()).toBe(true);
+		// Not a language code: no narrowing.
+		const odd = render({ missing: 'Bengali!' }).page;
+		expect(odd.missing()).toBeNull();
+		expect(odd.query().missing).toBeUndefined();
+	});
+
 	it('reads filters from the address, applies the menu, and removes one chip or all', () => {
 		const { page, router } = render({
 			cats: 'documents,nope,images',

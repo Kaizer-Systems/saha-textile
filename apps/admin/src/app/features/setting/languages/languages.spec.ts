@@ -273,5 +273,8 @@ describe('LanguagesSettings', () => {
 		view.openArea('shop_text', 'hi');
 		expect(router.navigate).toHaveBeenCalledOnce();
 		expect(Object.keys(AREA_LISTS)).not.toContain('admin_text');
+		// Photos the website uses open the Media page, narrowed the same way (media build).
+		view.openArea('photos', 'hi');
+		expect(router.navigate).toHaveBeenLastCalledWith(['/media/files'], { queryParams: { missing: 'hi' } });
 	});
 });

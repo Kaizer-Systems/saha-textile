@@ -4,7 +4,7 @@ wide: true
 description: Adding, switching and removing languages for the admin and the shop, the rules the API applies, the to-do counts, the 301s for a language the shop stops showing, and the 30-day reminder before stored text is erased.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-15'
+last_verified: '2026-11-17'
 source_of_truth:
     - packages/contracts/src/language.ts
     - packages/core-domain/src/catalog/language-rules.ts
@@ -66,8 +66,8 @@ Every change writes an audit row (`language.add`, `language.admin.switch`, `lang
 
 `GET /admin/languages/:code/todo` answers one line per area:
 
-- **Files from the release**: shop menu and button text, admin menu and button text, and the four legal pages. The admin's own words never stop the shop; they decide only the Admin switch.
-- **Text written in the admin**, counted only for what the shop shows: live products (title, both descriptions, search text, every option and value name, the delivery line once English has one), options and values, categories, photos the website uses (alt text in every language; a title or caption once English has one), active banners, live blog posts, categories and tags, published launches and sales, active stores, live FAQs, live search words, and add-on templates.
+- **Files from the release**: shop menu and button text, admin menu and button text. The admin's own words never stop the shop; they decide only the Admin switch.
+- **Text written in the admin**, counted only for what the shop shows: live products (title, both descriptions, search text, every option and value name, the delivery line once English has one), options and values, categories, photos the website uses (alt text in every language; a title or caption once English has one), active banners, live blog posts, categories and tags, published launches and sales, active stores, live FAQs, live search words, add-on templates, and the four legal pages (Title and Content, written in Admin › Pages).
 
 One list in the database adapter, `LOCALIZED_TEXT_REGISTRY`, names every stored per-language field with its rule. The same list counts the to-dos, filters a list page (`?missing=xx`), counts the items that hold a language's text, and erases it. A schema-walking test fails when a model gains a free-form field that is neither in the list nor named as not text.
 
@@ -75,7 +75,7 @@ Photos count when something the shop shows uses them (`MEDIA_OWNER_REGISTRY` wit
 
 ## Filtered lists
 
-**Open** on a to-do line opens the list with `?missing=xx`, and an amber line above it says what it shows, with **Show all**. Paged lists (products, blog posts, launches and sales, search words) send `missing` to their API, which narrows the page. Lists that load every row (options, categories, blog categories and tags, stores, FAQs, add-on templates, banner slots) keep the rows in `GET /admin/languages/:code/missing/:area`. The category trees keep the branches that lead to a missing category. Photos show their count without a link until the Media file manager replaces the library page.
+**Open** on a to-do line opens the list with `?missing=xx`, and an amber line above it says what it shows, with **Show all**. Paged lists (products, blog posts, launches and sales, search words) send `missing` to their API, which narrows the page. Lists that load every row (options, categories, blog categories and tags, stores, FAQs, add-on templates, banner slots) keep the rows in `GET /admin/languages/:code/missing/:area`. The category trees keep the branches that lead to a missing category. Photos open the Media page with `?missing=xx`, which lists the photos the to-do counts from every folder.
 
 ## Switching the shop off
 

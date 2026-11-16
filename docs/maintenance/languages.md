@@ -3,7 +3,7 @@ title: Languages
 description: How the shop and the admin get one list of languages from the API, how languages are named, listed and counted, and the rules for Bengali text, names and numbers.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-15'
+last_verified: '2026-11-17'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - packages/core-domain/src/catalog/languages.ts

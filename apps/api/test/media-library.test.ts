@@ -262,6 +262,11 @@ function harness() {
 		{ findById: async (id: string) => (id === 'adm_1' ? { displayName: 'Moulik' } : null) } as never,
 		undefined,
 		LanguageStore.fixed(['en', 'bn']),
+		// Settings › Languages' Photos to-do: these two photos the website shows lack বাংলা alt text.
+		{
+			missingIds: async (area: string, code: string) =>
+				area === 'photos' && code === 'bn' ? ['med_used', 'med_other'] : [],
+		} as never,
 	);
 	const file = (id: string, overrides: Record<string, unknown> = {}) =>
 		files.set(
@@ -985,6 +990,19 @@ describe('filters on the Media page (A11, A12)', () => {
 		await h.service.browse('adm_1', { ...base, folderId: 'fld_b' }, NOW);
 		expect(spy.mock.lastCall?.[0]).toMatchObject({ folderId: 'fld_b' });
 		expect(spy.mock.lastCall?.[0]).not.toHaveProperty('withinFolders');
+	});
+
+	it('opened from Settings › Languages, lists only the photos its Photos to-do counts, with any other filter', async () => {
+		const h = harness();
+		h.used.set('med_used', ['product:prd_1']);
+		const spy = vi.spyOn(h.browseRepo, 'browse');
+		await h.service.browse('adm_1', { ...base, missing: 'bn' }, NOW);
+		expect(spy.mock.lastCall?.[0]).toMatchObject({ ids: ['med_used', 'med_other'] });
+		await h.service.browse('adm_1', { ...base, missing: 'bn', used: 'in' }, NOW);
+		expect(spy.mock.lastCall?.[0]).toMatchObject({ ids: ['med_used'] });
+		// Nothing missing in a language: an empty list, never everything.
+		await h.service.browse('adm_1', { ...base, missing: 'hi' }, NOW);
+		expect(spy.mock.lastCall?.[0]).toMatchObject({ ids: [] });
 	});
 
 	it('keeps Recent to its 30 days unless the upload filter is narrower', async () => {

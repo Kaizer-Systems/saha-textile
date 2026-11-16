@@ -46,6 +46,7 @@ import {
 	refreshYouTubeFeed,
 	runMediaGarbageCollection,
 	runWeeklyInsight,
+	checkSpaces,
 } from '@saha-textile/core-domain';
 
 import type { AppConfig } from '../config/app-config';
@@ -125,6 +126,23 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		process: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: false }),
 		reprocess: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: true }),
 		replace: (job) => replaceMediaAsset(processDeps, { assetId: job.assetId }),
+		// The nightly Spaces check (R5-5): missing pictures the website uses, and files no record knows.
+		'spaces-check': async () => {
+			const result = await checkSpaces(
+				{
+					listKeys: (prefix) => storage.listKeys(prefix),
+					referencedIds: () => assets.referencedIds(),
+					findManyByIds: (ids) => assets.findManyByIds(ids),
+					whereUsed: (ids) => assets.whereUsed(ids),
+				},
+				now(),
+			);
+			await settings.set('media_nightly_check', result);
+			logger.log(
+				`Spaces check: ${result.filesInSpaces} files, ${result.missingCount} used photos missing files, ${result.unrecorded.count} files without a record`,
+			);
+			return { missing: result.missingCount, unrecorded: result.unrecorded.count };
+		},
 		'kept-files-sweep': async () => {
 			const swept = await sweepKeptFiles({ assets, queue, storage: processDeps.storage }, now());
 			if (swept > 0) logger.log(`Kept files: ${swept} photos' files from before a Replace deleted after 7 days`);

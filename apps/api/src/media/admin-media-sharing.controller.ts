@@ -9,6 +9,7 @@ import {
 	type StorageCheckAnswer,
 	StorageSettingsWrite,
 	type StorageSummary,
+	type MediaNightlyCheck,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -72,6 +73,17 @@ export class AdminMediaSharingController {
 	@ApiOperation({ operationId: 'mediaStorage', summary: 'The storage bar and its details' })
 	summary(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<StorageSummary> {
 		return this.storage.summary(actor(principal));
+	}
+
+	@Get('nightly-check')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({
+		operationId: 'mediaNightlyCheck',
+		summary: 'The nightly Spaces check: used photos with files gone, and files no record knows (R5-5)',
+	})
+	nightlyCheck(): Promise<MediaNightlyCheck | null> {
+		return this.storage.nightlyCheck();
 	}
 
 	@Post('storage/check')

@@ -18,3 +18,4 @@ export * from './brand-strip';
 export * from './library';
 export * from './library-use-cases';
 export * from '../catalog/media-placeholder';
+export * from './spaces-check';

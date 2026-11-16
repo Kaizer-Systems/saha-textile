@@ -308,3 +308,33 @@ describe('visibility and server-side operations', () => {
 		);
 	});
 });
+
+describe('listKeys (the nightly Spaces check, media step 5)', () => {
+	it('lists every file under a prefix, page by page', async () => {
+		const asked: unknown[] = [];
+		const adapter = new SpacesStorageAdapter(
+			baseConfig,
+			fakeClient(async (command) => {
+				const input = (command as { input: { Prefix: string; ContinuationToken?: string } }).input;
+				asked.push(input);
+				return input.ContinuationToken
+					? { Contents: [{ Key: 'media/med_2/b.webp', Size: 20 }], IsTruncated: false }
+					: {
+							Contents: [{ Key: 'media/med_1/a.webp', Size: 10 }, { Size: 5 }],
+							IsTruncated: true,
+							NextContinuationToken: 'next',
+						};
+			}),
+		);
+		const keys: { key: string; bytes: number }[] = [];
+		for await (const item of adapter.listKeys('media/')) keys.push(item);
+		expect(keys).toEqual([
+			{ key: 'media/med_1/a.webp', bytes: 10 },
+			{ key: 'media/med_2/b.webp', bytes: 20 },
+		]);
+		expect(asked).toEqual([
+			{ Bucket: baseConfig.bucket, Prefix: 'media/' },
+			{ Bucket: baseConfig.bucket, Prefix: 'media/', ContinuationToken: 'next' },
+		]);
+	});
+});

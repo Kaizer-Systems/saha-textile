@@ -280,8 +280,36 @@ export type StorefrontShareSettings = z.infer<typeof StorefrontShareSettings>;
 export const MediaStorageSettings = z.object({ othersMayUseOnDemand: z.boolean().default(false) });
 export type MediaStorageSettings = z.infer<typeof MediaStorageSettings>;
 
+/**
+ * The nightly Spaces check's last result (Media brief R5-5; media step 5): photos the website uses whose files are
+ * gone, named with where they are used, and files Spaces holds that no record knows. Written by the worker only.
+ */
+export const MediaNightlyCheck = z.object({
+	checkedAt: z.string().datetime(),
+	filesInSpaces: z.number().int().nonnegative(),
+	bytesInSpaces: z.number().int().nonnegative(),
+	missing: z
+		.array(
+			z.object({
+				assetId: z.string().min(1),
+				name: z.string(),
+				usedOn: z.array(z.string()),
+				files: z.number().int().nonnegative(),
+			}),
+		)
+		.max(50),
+	missingCount: z.number().int().nonnegative(),
+	unrecorded: z.object({
+		count: z.number().int().nonnegative(),
+		bytes: z.number().int().nonnegative(),
+		sample: z.array(z.string()).max(20),
+	}),
+});
+export type MediaNightlyCheck = z.infer<typeof MediaNightlyCheck>;
+
 export const SITE_SETTING_SCHEMAS = {
 	media_storage: MediaStorageSettings,
+	media_nightly_check: MediaNightlyCheck,
 	brand: BrandSettings,
 	'storefront.home': StorefrontHomeSettings,
 	youtube: YouTubeSettings,

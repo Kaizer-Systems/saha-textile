@@ -28,7 +28,9 @@ export type ScheduledMediaJob =
 	/** Removes uploads still waiting for their bytes a day after they started. */
 	| { type: 'upload-sweep' }
 	/** Deletes files kept after a Replace once their 7 days are over (decision 11). */
-	| { type: 'kept-files-sweep' };
+	| { type: 'kept-files-sweep' }
+	/** The nightly Spaces check (R5-5): missing pictures the website uses, files no record knows. */
+	| { type: 'spaces-check' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -182,6 +184,12 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'kept-files-sweep',
 			{ pattern: '55 3 * * *', tz },
 			{ name: 'kept-files-sweep', data: { type: 'kept-files-sweep' } },
+		);
+		// The nightly Spaces check, after the clean-ups so it sees what they left (04:15 IST).
+		await this.queue.upsertJobScheduler(
+			'spaces-check',
+			{ pattern: '15 4 * * *', tz },
+			{ name: 'spaces-check', data: { type: 'spaces-check' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

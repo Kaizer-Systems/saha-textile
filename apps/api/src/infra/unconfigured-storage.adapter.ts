@@ -74,4 +74,9 @@ export class UnconfiguredStorageAdapter implements StoragePort {
 	abortMultipartUpload(): Promise<void> {
 		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
 	}
+
+	// eslint-disable-next-line require-yield -- nothing is stored, so nothing is listed
+	async *listKeys(): AsyncIterable<{ key: string; bytes: number }> {
+		throw new Error(UnconfiguredStorageAdapter.MESSAGE);
+	}
 }

@@ -86,4 +86,6 @@ export interface StoragePort {
 	}): Promise<{ partNumber: number; etag: string; size: number }[]>;
 	completeMultipartUpload(input: { key: string; uploadId: string }): Promise<void>;
 	abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void>;
+	/** Every stored file under a prefix, page by page (the nightly Spaces check, media step 5). */
+	listKeys(prefix: string): AsyncIterable<{ key: string; bytes: number }>;
 }

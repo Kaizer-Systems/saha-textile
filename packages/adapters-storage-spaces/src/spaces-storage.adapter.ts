@@ -5,6 +5,7 @@ import {
 	DeleteObjectCommand,
 	DeleteObjectsCommand,
 	GetObjectCommand,
+	ListObjectsV2Command,
 	ListPartsCommand,
 	PutObjectAclCommand,
 	PutObjectCommand,
@@ -288,6 +289,22 @@ export class SpacesStorageAdapter implements StoragePort {
 		} catch (err) {
 			throw new SpacesStorageError(`Failed to presign part ${input.partNumber} of "${input.key}"`, err);
 		}
+	}
+
+	/** Every stored file under a prefix, a thousand at a time (ListObjectsV2). */
+	async *listKeys(prefix: string): AsyncIterable<{ key: string; bytes: number }> {
+		let token: string | undefined;
+		do {
+			const page = await this.client.send(
+				new ListObjectsV2Command({
+					Bucket: this.bucket,
+					Prefix: prefix,
+					...(token ? { ContinuationToken: token } : {}),
+				}),
+			);
+			for (const item of page.Contents ?? []) if (item.Key) yield { key: item.Key, bytes: item.Size ?? 0 };
+			token = page.IsTruncated ? page.NextContinuationToken : undefined;
+		} while (token);
 	}
 
 	async listUploadedParts(input: {

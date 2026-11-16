@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { ForbiddenException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
+	MediaNightlyCheck,
 	AuditLog,
 	StorageCheckAnswer,
 	StorageCheckRequest,
@@ -53,6 +54,11 @@ export class MediaStorageService {
 	async isSuperAdmin(userId: string): Promise<boolean> {
 		const role = await this.roles.findByKey(SUPER_ADMIN_ROLE_KEY);
 		return !!role && !!(await this.assignments.findActive(userId, role.id));
+	}
+
+	/** The nightly Spaces check's last result (R5-5), or null before the first night. */
+	async nightlyCheck(): Promise<MediaNightlyCheck | null> {
+		return this.settings.get('media_nightly_check');
 	}
 
 	async summary(userId: string, now = new Date()): Promise<StorageSummary> {

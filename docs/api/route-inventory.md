@@ -348,6 +348,7 @@ The Media page works as a file manager. Every route below is under `/admin/media
 | `GET`    | `/files/:id/replace`             | `attachment.index`   | Where a Replace has got, for its three steps                                                                          |
 | `DELETE` | `/files/:id/replace`             | `attachment.edit`    | Stop a Replace still uploading, or clear one that failed                                                              |
 | `PUT`    | `/files/:id/focal`               | `attachment.edit`    | Set the point every crop keeps; the photo's Crop versions are remade around it                                        |
+| `GET`    | `/nightly-check`                 | `attachment.index`   | The nightly Spaces check: used photos with files gone, and files no record knows (R5-5)                               |
 | `GET`    | `/clean-up`                      | `attachment.index`   | Clean up: files not used for 90 days, the 50 largest, later copies of the same file; never used ones or backups (A44) |
 | `GET`    | `/email-pictures`                | `attachment.index`   | Clean up › Email pictures: email pictures whose photo was deleted or replaced, kept for good (A50)                    |
 | `POST`   | `/email-pictures/delete`         | `attachment.destroy` | Delete chosen email pictures for good after the warning (A51); recorded ones only, audited                            |

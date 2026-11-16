@@ -316,6 +316,8 @@ class FakeAssets implements MediaAssetRepository {
 const storage = (bytes = new Uint8Array([1, 2, 3])) => {
 	const uploads: { key: string; visibility?: string; cacheControl?: string }[] = [];
 	const port: StoragePort = {
+		// eslint-disable-next-line require-yield -- nothing listed in this test
+		listKeys: async function* () {},
 		upload: async (input) => {
 			uploads.push(input);
 			return { key: input.key, url: `https://cdn.test/${input.key}` };

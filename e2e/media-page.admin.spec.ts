@@ -382,6 +382,39 @@ test.describe('Media page (step 1)', () => {
 		await expect(page.locator('#fm_pick_title')).toHaveCount(0);
 	});
 
+	test('Upload inside the picker: the review popup opens over it with Product 3:4 asked by the picker (D10, step 4)', async ({
+		page,
+	}) => {
+		await page.goto(`${ADMIN}/product/edit/prd_906`, { waitUntil: 'networkidle' });
+		await page
+			.getByRole('tab', { name: 'Images' })
+			.or(page.locator('.nav-link', { hasText: 'Images' }))
+			.first()
+			.click();
+		await page.locator('app-product-images .choosefile-input').first().click();
+		await expect(page.locator('#fm_pick_upload')).toBeVisible();
+		await expect(page.locator('#fm_pick_new_folder')).toBeVisible();
+		// New folder opens the shared popup over the picker; Cancel leaves the picker open.
+		await page.locator('#fm_pick_new_folder').click();
+		await expect(page.locator('#fm_new_folder_name')).toBeVisible();
+		await page.locator('#fm_new_folder_title').locator('..').getByTitle('Close').click();
+		await expect(page.locator('#fm_pick_title')).toBeVisible();
+		// A square photo: Product 3:4 is ticked anyway, because the picker asks for it, with its shape note.
+		const png = readFileSync('apps/admin/public/assets/images/product.png');
+		await page
+			.locator('#fm_picker_files')
+			.setInputFiles([{ name: 'picker-upload.png', mimeType: 'image/png', buffer: png }]);
+		const review = page.locator('#fm_review');
+		await expect(page.locator('#fm_review_asked')).toContainText('Product 3:4 asked by this picker');
+		await expect(review.locator('tr[data-row="picker-upload.png"] .fm-pchip').first()).toContainText('Product 3:4');
+		await shot(page, 'd10-upload-in-picker');
+		// Cancel the upload: the picker stays, nothing was sent.
+		await review.locator('..').locator('.modal-footer .btn-outline').click();
+		await expect(page.locator('#fm_review')).toHaveCount(0);
+		await expect(page.locator('#fm_pick_title')).toBeVisible();
+		await page.keyboard.press('Escape');
+	});
+
 	test('a product photo opens E05: its version and alt text on this product (R4-6, step 4b)', async ({ page }) => {
 		await page.goto(`${ADMIN}/product/edit/prd_906`, { waitUntil: 'networkidle' });
 		await page

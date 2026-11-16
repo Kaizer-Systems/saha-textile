@@ -95,6 +95,16 @@
 				{{ 'fm_trash' | transloco }}
 			</a>
 		</li>
+		<li [class.active]="nav() === 'clean'">
+			<a
+				href="javascript:void(0)"
+				id="fm_nav_clean"
+				(click)="navigate.emit('clean')"
+			>
+				<i class="ri-brush-3-line"></i>
+				{{ 'fm_clean_up' | transloco }}
+			</a>
+		</li>
 	</ul>
 	@if (tree().length) {
 	<div class="fm-side-title">{{ 'fm_folders' | transloco }}</div>

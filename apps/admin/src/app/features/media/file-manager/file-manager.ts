@@ -47,6 +47,7 @@ import { Button } from '@shared/ui/button/button';
 import { fileKind, fileTypeLabel } from './file-kinds';
 import { FmDetails, type FmDetailsAction } from './fm-details';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
+import { FmCleanUp } from './fm-clean-up';
 import { FmFocal, type FmPoint } from './fm-focal';
 import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
 import { FmReplace } from './fm-replace';
@@ -87,7 +88,7 @@ import {
 } from './fm-upload-plan';
 import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-profiles/profile-words';
 
-const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash'];
+const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash', 'clean'];
 /** The sort menu: what each choice asks the API for. */
 export const FM_SORTS = {
 	name: { sort: 'name', direction: 'asc', label: 'fm_sort_name' },
@@ -178,6 +179,7 @@ const typing = (target: EventTarget | null): boolean => {
 	selector: 'app-file-manager',
 	templateUrl: './file-manager.html',
 	imports: [
+		FmCleanUp,
 		PageWrapper,
 		TranslocoModule,
 		FmSidebar,
@@ -250,8 +252,10 @@ export class FileManager {
 
 	readonly query = computed<Partial<MediaBrowseQuery>>(() => {
 		const sort = FM_SORTS[this.sortKey()];
+		const nav = this.nav();
 		return {
-			view: this.nav(),
+			// Clean up has its own lists; the file list is switched off there.
+			view: nav === 'clean' ? 'folder' : nav,
 			folderId: this.folderId() ?? undefined,
 			category: this.category() ?? undefined,
 			search: this.search() || undefined,
@@ -268,7 +272,11 @@ export class FileManager {
 		};
 	});
 
-	readonly browse = injectMediaBrowseQuery(() => this.query());
+	// Clean up shows its own lists (FmCleanUp), so the file list asks for nothing there.
+	readonly browse = injectMediaBrowseQuery(
+		() => this.query(),
+		() => this.nav() !== 'clean',
+	);
 	readonly tree = injectMediaTreeQuery();
 	readonly storage = injectMediaStorageQuery();
 	readonly sorts = Object.entries(FM_SORTS).map(([key, value]) => ({ key: key as FmSort, label: value.label }));

@@ -18,8 +18,17 @@
 			(upload)="uploadChoice($event)"
 			(storageDetails)="openStorageDetails()"
 		/>
+		@if (nav() === 'clean') {
 		<section
 			class="fm-main position-relative"
+			id="fm_clean"
+		>
+			<app-fm-clean-up />
+		</section>
+		}
+		<section
+			class="fm-main position-relative"
+			[class.d-none]="nav() === 'clean'"
 			#fmMain
 			(dragenter)="dropEnter($event)"
 			(dragover)="dropOver($event)"

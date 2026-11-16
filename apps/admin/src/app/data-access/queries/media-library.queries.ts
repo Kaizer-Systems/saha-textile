@@ -3,7 +3,11 @@ import { inject } from '@angular/core';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
 
-import { type MediaBrowseQuery, MediaLibraryGateway } from '@core/media-library/media-library.gateway';
+import {
+	type EmailPictureQuery,
+	type MediaBrowseQuery,
+	MediaLibraryGateway,
+} from '@core/media-library/media-library.gateway';
 
 /** Every Media page query sits under this key, so one change refreshes them all. */
 export const MEDIA_LIBRARY_KEY = ['media-library'] as const;
@@ -13,11 +17,12 @@ export const MEDIA_TREE_KEY = [...MEDIA_LIBRARY_KEY, 'tree'] as const;
 export const MEDIA_STORAGE_KEY = [...MEDIA_LIBRARY_KEY, 'storage'] as const;
 
 /** One view of the Media page: a folder, a search, a category, Recent, Favourites or Trash. */
-export function injectMediaBrowseQuery(query: () => Partial<MediaBrowseQuery>) {
+export function injectMediaBrowseQuery(query: () => Partial<MediaBrowseQuery>, enabled: () => boolean = () => true) {
 	const gateway = inject(MediaLibraryGateway);
 	return injectQuery(() => ({
 		queryKey: mediaBrowseKey(query()),
 		queryFn: () => lastValueFrom(gateway.browse(query())),
+		enabled: enabled(),
 		// Moving between folders keeps the last view on screen until the next arrives: no flicker.
 		placeholderData: (previous) => previous,
 	}));
@@ -56,5 +61,15 @@ export function injectShareLinksQuery(fileId: () => string | null) {
 		queryKey: [...MEDIA_LIBRARY_KEY, 'links', fileId()] as const,
 		queryFn: () => lastValueFrom(gateway.links(fileId() as string)),
 		enabled: !!fileId(),
+	}));
+}
+
+/** Clean up › Email pictures (A50): one filter's page. */
+export function injectEmailPicturesQuery(query: () => EmailPictureQuery) {
+	const gateway = inject(MediaLibraryGateway);
+	return injectQuery(() => ({
+		queryKey: [...MEDIA_LIBRARY_KEY, 'email-pictures', query()] as const,
+		queryFn: () => lastValueFrom(gateway.emailPictures(query())),
+		placeholderData: (previous) => previous,
 	}));
 }

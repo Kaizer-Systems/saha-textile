@@ -7,6 +7,8 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.interceptor';
 
 import {
+	type EmailPictureList,
+	type EmailPictureQuery,
 	type MediaActivityPage,
 	type MediaBrowseQuery,
 	type MediaBrowseResponse,
@@ -231,6 +233,20 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override storage(): Observable<StorageSummary> {
 		return this.http.get<StorageSummary>(this.url('/storage'));
+	}
+
+	override emailPictures(query: EmailPictureQuery): Observable<EmailPictureList> {
+		const params: Record<string, string> = { sent: query.sent };
+		if (query.after) params['after'] = query.after;
+		return this.http.get<EmailPictureList>(this.url('/email-pictures'), { params });
+	}
+
+	override deleteEmailPictures(keys: readonly string[]): Observable<{ deleted: number; bytes: number }> {
+		return this.http.post<{ deleted: number; bytes: number }>(
+			this.url('/email-pictures/delete'),
+			{ keys },
+			quiet(),
+		);
 	}
 
 	override checkStorage(body: StorageCheckRequest): Observable<StorageCheckAnswer> {

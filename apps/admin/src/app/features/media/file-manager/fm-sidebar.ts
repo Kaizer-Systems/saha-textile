@@ -7,7 +7,7 @@ import { FileSizePipe } from '@shared/pipes/language.pipes';
 
 import type { MediaCategory, MediaFolderTree, StorageSummary } from '@core/media-library/media-library.gateway';
 
-export type FmNav = 'folder' | 'recent' | 'favourites' | 'trash';
+export type FmNav = 'folder' | 'recent' | 'favourites' | 'trash' | 'clean';
 type TreeRow = MediaFolderTree['folders'][number];
 export interface TreeNode {
 	folder: TreeRow;

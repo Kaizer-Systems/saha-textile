@@ -1,4 +1,7 @@
 import type {
+	EmailPictureList,
+	EmailPictureQuery,
+	EmailPictureRow,
 	MediaBrowseQuery,
 	MediaCategory,
 	MediaFileRow,
@@ -41,6 +44,9 @@ import type {
 import type { Observable } from 'rxjs';
 
 export type {
+	EmailPictureList,
+	EmailPictureQuery,
+	EmailPictureRow,
 	MediaFileDetails,
 	MediaAddVersionsRequest,
 	MediaBulkAddVersionsRequest,
@@ -156,6 +162,10 @@ export abstract class MediaLibraryGateway {
 	abstract updateLink(linkId: string, body: ShareLinkUpdate): Observable<ShareLinkView>;
 
 	abstract storage(): Observable<StorageSummary>;
+	/** Clean up › Email pictures (A50): email pictures whose photo was deleted or replaced, kept for good. */
+	abstract emailPictures(query: EmailPictureQuery): Observable<EmailPictureList>;
+	/** A51: deletes the chosen email pictures for good, after the warning. */
+	abstract deleteEmailPictures(keys: readonly string[]): Observable<{ deleted: number; bytes: number }>;
 	abstract checkStorage(body: StorageCheckRequest): Observable<StorageCheckAnswer>;
 	abstract releaseHold(holdId: string): Observable<void>;
 	abstract saveStorageSettings(body: StorageSettingsWrite): Observable<{ othersMayUseOnDemand: boolean }>;

@@ -159,9 +159,10 @@ export type InventoryCostLayer = z.infer<typeof InventoryCostLayer>;
 /**
  * Current stock for one variant, as read by admin surfaces.
  *
- * `reserved` is a SEAM: reservation timing and TTL are `DEC-STOCK-RESERVE`, and whether
- * `available` may go negative at all is `DEC-BACKORDER`. The shape is stable; no
- * reservation engine reads it yet.
+ * `reserved` is a SEAM for the checkout hold (owner decision round 2026-11-17, orders). Whether
+ * `available` may go below zero is now per product: backorders up to a set limit where switched
+ * on (OD2, replacing DEC-BACKORDER's "oversell stays off"). The shape is stable; no reservation
+ * engine reads it yet.
  */
 export const VariantStockSnapshot = z.object({
 	variantId: Id,

@@ -32,7 +32,7 @@ export function escapeHtml(value: string | number | null | undefined): string {
 		.replace(/'/g, '&#39;');
 }
 
-const longDate = (day: string): string =>
+export const longDate = (day: string): string =>
 	new Date(`${day}T12:00:00+05:30`).toLocaleDateString('en-IN', {
 		timeZone: 'Asia/Kolkata',
 		day: 'numeric',
@@ -41,7 +41,7 @@ const longDate = (day: string): string =>
 	});
 
 /** A theme colour is only ever a 3- or 6-digit hex, so it can sit in a style attribute. */
-const safeColour = (value: string | undefined): string | null =>
+export const safeColour = (value: string | undefined): string | null =>
 	value && /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(value) ? value : null;
 
 /**
@@ -56,8 +56,8 @@ export class PurchaseOrderDocument {
 
 	constructor(@Optional() private readonly brand: BrandService | null = null) {}
 
-	/** The stylesheet and fonts, read once per process. */
-	private loadStatic(): Promise<DocumentAsset[]> {
+	/** The stylesheet and fonts, read once per process (shared by every business document). */
+	loadStatic(): Promise<DocumentAsset[]> {
 		this.staticAssets ??= Promise.all([
 			readFile(resolve(ASSET_DIRECTORY, 'invoice-1.css')).then((data) => ({
 				path: 'invoice-1.css',
@@ -79,7 +79,7 @@ export class PurchaseOrderDocument {
 	}
 
 	/** The Brand Kit logo's bytes, fetched here because the renderer itself never reaches the network. */
-	private async logo(): Promise<{ asset: DocumentAsset | null; shopName: string; themeColor: string | null }> {
+	async logo(): Promise<{ asset: DocumentAsset | null; shopName: string; themeColor: string | null }> {
 		const brand = await this.brand?.storefront().catch(() => null);
 		const shopName = brand?.shopName || 'Saha Textile';
 		const themeColor = safeColour(brand?.adminThemeColor) ?? safeColour(brand?.themeColor);

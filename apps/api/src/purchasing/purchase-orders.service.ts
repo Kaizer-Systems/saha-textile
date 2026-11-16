@@ -121,6 +121,7 @@ export class PurchaseOrdersService {
 				lastCostINR: last.get(fact.variantId)?.unitPriceExGstINR ?? null,
 				receivedQuantity: before?.receivedQuantity ?? 0,
 				receivedOn: before?.receivedOn ?? [],
+				backorderLineIds: line.backorderLineIds ?? before?.backorderLineIds ?? [],
 			};
 		});
 	}
@@ -257,6 +258,8 @@ export class PurchaseOrdersService {
 					agreedPriceINR: line.agreedPriceINR,
 					gstRatePct: line.gstRatePct,
 					supplierItemCode: line.supplierItemCode,
+					// A copy is a new order: backorders stay with the order that covers them.
+					backorderLineIds: [],
 				})),
 			},
 			actor,

@@ -266,6 +266,12 @@ export const PurchaseOrderLine = z.object({
 	receivedOn: z
 		.array(z.object({ entryId: Id, number: z.string().nullable(), quantity: z.number().int() }))
 		.default([]),
+	/**
+	 * Customer backorder lines this order line covers (owner decision OD2, 2026-11-17). Kept from
+	 * the start so the Backorders screen and picker (their own brief) need no migration; empty
+	 * until they are built.
+	 */
+	backorderLineIds: z.array(Id).default([]),
 });
 export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
 
@@ -306,6 +312,8 @@ export const PurchaseOrderLineWrite = z.object({
 	/** For the estimate only (example rate until the CA's table, round 2 B2.4). */
 	gstRatePct: z.number().min(0).max(28).default(5),
 	supplierItemCode: OptionalText(60),
+	/** Backorder lines this line covers (OD2); the Backorders screen fills it. */
+	backorderLineIds: z.array(Id).max(500).default([]),
 });
 export type PurchaseOrderLineWrite = z.infer<typeof PurchaseOrderLineWrite>;
 

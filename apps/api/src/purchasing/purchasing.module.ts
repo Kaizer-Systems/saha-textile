@@ -14,6 +14,8 @@ import { PurchaseOrdersController } from './purchase-orders.controller';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { PurchaseReturnsController } from './purchase-returns.controller';
 import { PurchaseReturnsService } from './purchase-returns.service';
+import { PurchasingPrints } from './purchasing-prints';
+import { PurchasingPrintsController } from './purchasing-prints.controller';
 import { PurchasingSupport } from './purchasing-support';
 import { StockApprovalsService } from './stock-approvals.service';
 import { StockCountsService } from './stock-counts.service';
@@ -43,6 +45,7 @@ import { SuppliersService } from './suppliers.service';
 		PurchaseEntriesController,
 		PurchaseOrdersController,
 		PurchaseReturnsController,
+		PurchasingPrintsController,
 		StockController,
 		StockCountsController,
 		OpeningStockController,
@@ -58,6 +61,7 @@ import { SuppliersService } from './suppliers.service';
 		PurchaseOrderDocument,
 		PurchaseOrdersService,
 		PurchaseReturnsService,
+		PurchasingPrints,
 		StockWriter,
 		StockService,
 		StockCountsService,

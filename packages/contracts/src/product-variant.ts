@@ -14,9 +14,11 @@ export type VariantOptionSelection = z.infer<typeof VariantOptionSelection>;
  * Stock for one variant.
  *
  * Owner lock: stock is tracked on VARIANTS, never on the parent product.
- * `allowBackorder` stays false. Made to order is a product switch, not an oversell
- * of a stocked saree. `DEC-STOCK-RESERVE` still owns reservation timing. The card's
- * low-stock threshold lives on the product, so this per-variant field is not a second rule.
+ * `allowBackorder`: backorders are allowed per product with a limit on pieces owed, and a
+ * variant may override both (owner decision OD2, 2026-11-17, replacing DEC-BACKORDER's
+ * "oversell stays off"). Everything starts switched off until that chunk is built. Made to
+ * order is a product switch, not a backorder. The card's low-stock threshold lives on the
+ * product, so this per-variant field is not a second rule.
  */
 export const VariantStock = z.object({
 	tracked: z.boolean().default(true),
@@ -25,7 +27,7 @@ export const VariantStock = z.object({
 	/** On hand but not for sale (photoshoot, display, waiting for the supplier). Free = quantity − held. */
 	held: z.number().int().nonnegative().default(0),
 	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
-	/** Seam — `DEC-BACKORDER`. */
+	/** Backorders for this variant (OD2): off by default; the product's switch and limit, overridable here. */
 	allowBackorder: z.boolean().default(false),
 });
 export type VariantStock = z.infer<typeof VariantStock>;

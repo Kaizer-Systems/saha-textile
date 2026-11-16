@@ -1160,6 +1160,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 							agreedPriceINR: 1_050,
 							gstRatePct: 5,
 							supplierItemCode: null,
+							backorderLineIds: [],
 						},
 					],
 				},

@@ -140,6 +140,7 @@ export class StockReportsService {
 				agreedPriceINR: number;
 				gstRatePct: number;
 				supplierItemCode: string | null;
+				backorderLineIds: string[];
 			}>
 		>();
 		for (const line of lines) {
@@ -153,6 +154,7 @@ export class StockReportsService {
 				agreedPriceINR: last.get(line.variantId)?.unitPriceExGstINR ?? 0,
 				gstRatePct: 5,
 				supplierItemCode: null,
+				backorderLineIds: [],
 			});
 			groups.set(supplierId, group);
 		}

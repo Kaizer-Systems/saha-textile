@@ -5,3 +5,4 @@ export * from './purchase-rules';
 export * from './purchase-return-rules';
 export * from './stock-rules';
 export * from './supplier-account';
+export * from './labels';

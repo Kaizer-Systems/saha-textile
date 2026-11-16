@@ -48,6 +48,8 @@ export interface OrderFormLine {
 	gstRatePct: number;
 	quantity: string;
 	price: string;
+	/** Backorder lines this line covers (OD2); kept as saved, empty for new lines. */
+	backorderLineIds: string[];
 }
 
 /** GST used for the order's estimate only (example rate until the CA's table, round 2 B2.4). */
@@ -67,6 +69,7 @@ export function lineFromOption(option: PurchaseItemOption, units: number | null,
 		gstRatePct: ESTIMATE_GST_PCT,
 		quantity: units === null ? '' : option.soldBy === 'metre' ? (units / 10).toFixed(1) : String(units),
 		price: price === null ? (option.lastCostINR === null ? '' : String(option.lastCostINR)) : String(price),
+		backorderLineIds: [],
 	};
 }
 
@@ -85,6 +88,7 @@ export function lineFromOrder(line: PurchaseOrderLine): OrderFormLine {
 		gstRatePct: line.gstRatePct,
 		quantity: line.soldBy === 'metre' ? (line.quantity / 10).toFixed(1) : String(line.quantity),
 		price: String(line.agreedPriceINR),
+		backorderLineIds: line.backorderLineIds ?? [],
 	};
 }
 
@@ -368,6 +372,7 @@ export class OrderForm {
 					agreedPriceINR: parseRupees(line.price) ?? 0,
 					gstRatePct: line.gstRatePct,
 					supplierItemCode: line.supplierItemCode,
+					backorderLineIds: line.backorderLineIds,
 				};
 			}),
 			...(order ? { version: order.version } : {}),

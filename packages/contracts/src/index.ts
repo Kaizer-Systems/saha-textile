@@ -17,6 +17,8 @@ export * from './media';
 export * from './content-block';
 export * from './site-settings';
 export * from './inventory';
+export * from './gst';
+export * from './purchasing';
 export * from './content';
 export * from './promotion';
 export * from './cart';

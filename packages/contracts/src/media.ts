@@ -73,8 +73,11 @@ export type MediaPurpose = z.infer<typeof MediaPurpose>;
  * Review photos may be picked as HEIC/HEIF on the customer's phone, but the browser
  * converts them to JPEG before presign, so the API still only ever accepts these two.
  */
-/** Photo types made into versions: JPEG and PNG; WebP and GIF since media step 5. AVIF stays out (owner lock). */
-export const ImageUploadFormat = z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+/**
+ * Photo types made into versions: JPEG and PNG; WebP, GIF and AVIF since media step 5. AVIF is taken as an upload
+ * (owner, 16 Nov); the versions made from it stay WebP, JPEG and PNG (the lock above).
+ */
+export const ImageUploadFormat = z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 export type ImageUploadFormat = z.infer<typeof ImageUploadFormat>;
 
 /** Formats a derivative may be written in. */

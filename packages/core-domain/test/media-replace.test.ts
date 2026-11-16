@@ -9,6 +9,7 @@ import {
 	derivativesFor,
 	keptAfterReplace,
 	olderVersions,
+	originalStorageKey,
 	replaceMediaAsset,
 	replacementOriginalKey,
 	storedKeys,
@@ -251,6 +252,25 @@ describe('the worker’s Replace (S7, C08)', () => {
 			status: 'rejected',
 			reason: 'content_does_not_match_declared_type',
 		});
+	});
+
+	it('takes a WebP, GIF or AVIF replacement whose bytes are that type, and keeps its own ending (media step 5)', async () => {
+		for (const [contentType, format] of [
+			['image/webp', 'webp'],
+			['image/gif', 'gif'],
+			['image/avif', 'avif'],
+		] as const) {
+			const run = harness(photo({ replacing: queued({ contentType }) }), {
+				width: 3000,
+				height: 4000,
+				format,
+				hasAlpha: false,
+			});
+			const outcome = await replaceMediaAsset(run.deps, { assetId: 'med_r' });
+			expect(outcome).not.toEqual({ status: 'rejected', reason: 'content_does_not_match_declared_type' });
+		}
+		expect(replacementOriginalKey('med_r', 'image/avif', NOW)).toBe('media/med_r/original-20261116100000.avif');
+		expect(originalStorageKey('med_r', 'image/gif')).toBe('media/med_r/original.gif');
 	});
 
 	it('runs once: a Replace not queued is not taken again', async () => {

@@ -8,8 +8,18 @@
  * `assetId` first so one asset's objects share a prefix; the content hash makes every
  * derivative key immutable, which is what earns the one-year cache header.
  */
+/** A photo original's ending by its type (JPEG when the type is not one of these). */
+const ORIGINAL_EXTENSIONS: Readonly<Record<string, string>> = {
+	'image/jpeg': 'jpg',
+	'image/png': 'png',
+	'image/webp': 'webp',
+	'image/gif': 'gif',
+	'image/avif': 'avif',
+};
+const originalExtension = (contentType: string): string => ORIGINAL_EXTENSIONS[contentType] ?? 'jpg';
+
 export const originalStorageKey = (assetId: string, contentType: string): string =>
-	`media/${assetId}/original.${contentType === 'image/png' ? 'png' : 'jpg'}`;
+	`media/${assetId}/original.${originalExtension(contentType)}`;
 
 /**
  * A replacement original (S7): its own name, so the old original stays in place, private, for the 7 days it is
@@ -19,7 +29,7 @@ export const replacementOriginalKey = (assetId: string, contentType: string, at:
 	`media/${assetId}/original-${at
 		.toISOString()
 		.replace(/[-:.TZ]/g, '')
-		.slice(0, 14)}.${contentType === 'image/png' ? 'png' : 'jpg'}`;
+		.slice(0, 14)}.${originalExtension(contentType)}`;
 
 /**
  * A plain file's stored copy (Media page, step 1): the id keeps it unique; the extension is the

@@ -33,8 +33,8 @@ export const MEDIA_INGEST_POLICY = {
 	/** Store photos below this warn (4:3 at ≥1600×1200 is the recommendation). */
 	storeRecommendedWidth: 1600,
 	maxReviewPhotos: 5,
-	/** JPEG and PNG; WebP and GIF since media step 5 (a GIF's first frame). AVIF stays out (owner lock, Image ingest). */
-	acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const,
+	/** JPEG and PNG; WebP, GIF (its first frame) and AVIF since media step 5. Versions are never AVIF (owner lock). */
+	acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'] as const,
 	/** Presigned upload lifetime. */
 	uploadUrlTtlSeconds: 900,
 	/**

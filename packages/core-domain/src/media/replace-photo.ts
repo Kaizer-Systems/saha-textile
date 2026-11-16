@@ -1,6 +1,6 @@
 import type { ImageDerivative, MediaAsset, MediaKeptFiles, MediaProfile, MediaVersion } from '@saha-textile/contracts';
 
-import { isProcessedPhoto } from '../catalog/media-files';
+import { PHOTO_FORMATS, isProcessedPhoto } from '../catalog/media-files';
 import { ImageDecodeError } from '../ports/image-codec.port';
 import type { MediaAssetRepository } from '../ports/media.repository';
 import { checkCaps } from './policy';
@@ -11,8 +11,6 @@ import { checkVersionRequest } from './version-plan';
 
 /** Old files stay this long after a Replace, so pages already open keep their pictures (decision 11). */
 export const KEEP_REPLACED_DAYS = 7;
-
-const FORMAT_FOR_TYPE: Record<string, string> = { 'image/jpeg': 'jpeg', 'image/png': 'png' };
 
 /** The new photo as the browser read it, before a byte moves (C05). */
 export interface ReplacementPhoto {
@@ -188,7 +186,7 @@ export const replaceMediaAsset = async (
 		if (error instanceof ImageDecodeError) return fail('not_an_image');
 		throw error;
 	}
-	if (probe.format !== FORMAT_FOR_TYPE[next.contentType]) return fail('content_does_not_match_declared_type');
+	if (probe.format !== PHOTO_FORMATS[next.contentType]) return fail('content_does_not_match_declared_type');
 	const caps = checkCaps({
 		contentType: next.contentType,
 		byteSize: bytes.byteLength,

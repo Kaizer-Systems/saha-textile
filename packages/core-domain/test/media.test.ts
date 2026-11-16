@@ -58,13 +58,13 @@ describe('checkIngest — the locked caps', () => {
 		expect(checkIngest({ ...base, width: 1600, height: 2133 })).toEqual({ refusal: null, warnings: [] });
 	});
 	it('refuses types, bytes, pixels and the product floor', () => {
-		// WebP and GIF are read since media step 5; TIFF waits, and AVIF stays out (owner lock).
-		for (const contentType of ['image/tiff', 'image/avif']) {
+		// WebP, GIF and AVIF are read since media step 5 (AVIF as an upload only, owner 16 Nov); TIFF waits.
+		for (const contentType of ['image/tiff', 'image/bmp']) {
 			expect(checkIngest({ ...base, contentType, width: 1600, height: 2133 }).refusal?.code).toBe(
 				'type_not_accepted',
 			);
 		}
-		for (const contentType of ['image/webp', 'image/gif']) {
+		for (const contentType of ['image/webp', 'image/gif', 'image/avif']) {
 			expect(checkIngest({ ...base, contentType, width: 1600, height: 2133 }).refusal).toBeNull();
 		}
 		expect(checkIngest({ ...base, byteSize: 26 * 1024 * 1024, width: 1600, height: 2133 }).refusal?.code).toBe(

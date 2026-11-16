@@ -16,12 +16,21 @@ export function waitsForImageProfiles(contentType: string, name: string): boolea
 }
 
 /**
- * The photo types the image worker makes versions from: JPEG and PNG, and since media step 5 WebP and GIF (a GIF's
- * first frame), which the image library reads and the browser can measure for the upload popup. HEIC is turned into
- * a JPEG in the browser first. AVIF stays out (owner lock, Image ingest); TIFF, SVG and the types that need extra
- * decoders (JPEG XL, JPEG 2000, BMP, ICO, PSD) are stored as files until they are added.
+ * The photo types the image worker makes versions from, each with the name the image library gives the bytes: an
+ * upload must decode as the type it was sent as. JPEG and PNG; since media step 5 WebP, GIF (its first frame) and
+ * AVIF as an upload (owner, 16 Nov: the worker reads it; versions stay WebP, JPEG and PNG). HEIC is turned into a
+ * JPEG in the browser first. TIFF, SVG and the types that need extra decoders (JPEG XL, JPEG 2000, BMP, ICO, PSD)
+ * are stored as files until they are added.
  */
-export const PROCESSED_PHOTO_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+export const PHOTO_FORMATS: Readonly<Record<string, string>> = {
+	'image/jpeg': 'jpeg',
+	'image/png': 'png',
+	'image/webp': 'webp',
+	'image/gif': 'gif',
+	'image/avif': 'avif',
+};
+
+export const PROCESSED_PHOTO_TYPES: readonly string[] = Object.keys(PHOTO_FORMATS);
 
 export function isProcessedPhoto(contentType: string): boolean {
 	return PROCESSED_PHOTO_TYPES.includes(contentType.toLowerCase());

@@ -64,11 +64,12 @@ describe('MediaAsset', () => {
 		expect(parsed.text).toEqual({ alt: {}, title: {}, caption: {} });
 	});
 
-	it('accepts JPEG, PNG, WebP and GIF photos (WebP and GIF since media step 5) — AVIF is deliberately absent', () => {
+	it('accepts JPEG, PNG, WebP, GIF and AVIF photos (media step 5; AVIF as an upload only, owner 16 Nov)', () => {
 		expect(MediaAsset.safeParse(image({ originalFormat: 'image/png' })).success).toBe(true);
 		expect(MediaAsset.safeParse(image({ originalFormat: 'image/webp' })).success).toBe(true);
 		expect(MediaAsset.safeParse(image({ originalFormat: 'image/gif' })).success).toBe(true);
-		expect(MediaAsset.safeParse(image({ originalFormat: 'image/avif' })).success).toBe(false);
+		expect(MediaAsset.safeParse(image({ originalFormat: 'image/avif' })).success).toBe(true);
+		expect(MediaAsset.safeParse(image({ originalFormat: 'image/tiff' })).success).toBe(false);
 	});
 
 	it('holds several widths per role, unique by (role, width), in WebP or JPEG only', () => {

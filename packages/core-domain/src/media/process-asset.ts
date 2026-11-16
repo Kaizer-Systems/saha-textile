@@ -1,5 +1,6 @@
 import type { ImageDerivative, MediaAsset, MediaVersion, MediaWarning } from '@saha-textile/contracts';
 
+import { PHOTO_FORMATS } from '../catalog/media-files';
 import type { EmailPictureRepository } from '../ports/email-picture.repository';
 import type { ImageCodecPort, ImageProbe } from '../ports/image-codec.port';
 import { ImageDecodeError } from '../ports/image-codec.port';
@@ -35,14 +36,6 @@ export type ProcessOutcome =
 	| { status: 'ready'; rendered: number; skipped: number }
 	| { status: 'rejected'; reason: string }
 	| { status: 'not_claimed' };
-
-/** What the bytes must decode as for each photo type the worker takes (WebP and GIF since media step 5). */
-const FORMAT_FOR_TYPE: Record<string, string> = {
-	'image/jpeg': 'jpeg',
-	'image/png': 'png',
-	'image/webp': 'webp',
-	'image/gif': 'gif',
-};
 
 /**
  * The worker's job body: turn an uploaded original into every derivative its purpose needs.
@@ -80,7 +73,7 @@ export const processMediaAsset = async (
 			if (error instanceof ImageDecodeError) return await reject(deps, asset, originalKey, 'not_an_image');
 			throw error;
 		}
-		if (probe.format !== FORMAT_FOR_TYPE[asset.originalFormat]) {
+		if (probe.format !== PHOTO_FORMATS[asset.originalFormat]) {
 			return await reject(deps, asset, originalKey, 'content_does_not_match_declared_type');
 		}
 		if (versioned) {

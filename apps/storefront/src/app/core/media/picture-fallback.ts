@@ -5,16 +5,17 @@ const PLACEHOLDER_BASE = 'assets/images/placeholder';
 
 /**
  * The missing-picture placeholder (Media brief R5-5): when a Media picture fails to load, it becomes the bundled
- * placeholder of the nearest shape, light or dark, so the box keeps its size and nothing jumps. Each picture is
- * swapped once; other pictures (logos, icons, outside images) are left alone. Pictures that failed before the app
- * started are swapped too. Browser only.
+ * placeholder of the nearest shape, light or dark, so the box keeps its size and nothing jumps. A picture is swapped
+ * every time a Media address fails on it: the app can set its address again after a swap (hydration does), and the
+ * placeholder itself is not a Media address, so it never loops. Other pictures (logos, icons, outside images) are left
+ * alone. Pictures that failed before the app started are swapped too. Browser only.
  */
 export function installPictureFallback(
 	doc: Document,
 	isDark: () => boolean = () => doc.documentElement.classList.contains('dark'),
 ): () => void {
 	const swap = (img: HTMLImageElement): void => {
-		if (img.dataset['fallback'] || !isMediaPictureUrl(img.currentSrc || img.src)) return;
+		if (!isMediaPictureUrl(img.currentSrc || img.src)) return;
 		const box = img.getBoundingClientRect();
 		const width = img.width || Number(img.getAttribute('width')) || box.width;
 		const height = img.height || Number(img.getAttribute('height')) || box.height;

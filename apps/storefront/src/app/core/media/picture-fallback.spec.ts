@@ -19,7 +19,7 @@ describe('the missing-picture placeholder (R5-1, R5-5; media step 5)', () => {
 		return img;
 	};
 
-	it('swaps a failed Media picture for the placeholder of its shape, once, keeping its box', () => {
+	it('swaps a failed Media picture for the placeholder of its shape, keeping its box', () => {
 		let dark = false;
 		stop = installPictureFallback(document, () => dark);
 		const card = picture('https://cdn.test/media/med_7Hk2/red-card-400w-1f3a9c2e.webp');
@@ -35,6 +35,17 @@ describe('the missing-picture placeholder (R5-1, R5-5; media step 5)', () => {
 		const hero = picture('https://cdn.test/media/med_9/hero-1920w-aa.webp', 2100, 900);
 		hero.dispatchEvent(new Event('error'));
 		expect(hero.getAttribute('src')).toBe('assets/images/placeholder/placeholder-dark-21x9.svg');
+	});
+
+	it('swaps again when the app sets the Media address back after a swap (as hydration does)', () => {
+		stop = installPictureFallback(document, () => false);
+		const card = picture('https://cdn.test/media/med_7Hk2/red-card-400w-1f3a9c2e.webp');
+		card.dispatchEvent(new Event('error'));
+		card.src = 'https://cdn.test/media/med_7Hk2/red-card-400w-1f3a9c2e.webp';
+		card.setAttribute('srcset', 'https://cdn.test/media/med_7Hk2/red-card-400w-1f3a9c2e.webp 400w');
+		card.dispatchEvent(new Event('error'));
+		expect(card.getAttribute('src')).toBe('assets/images/placeholder/placeholder-light-3x4.svg');
+		expect(card.hasAttribute('srcset')).toBe(false);
 	});
 
 	it('leaves other pictures alone', () => {

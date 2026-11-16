@@ -37,7 +37,7 @@ const upload = async (
 	const done = await request.post(`${API_URL}/admin/media/library/files/${answer.assetId}/finalize`, {
 		headers: { 'x-csrf-token': csrf },
 	});
-	expect(done.ok()).toBe(true);
+	expect(done.ok(), await done.text()).toBe(true);
 	return { assetId: answer.assetId, name: answer.name };
 };
 

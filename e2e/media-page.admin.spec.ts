@@ -119,26 +119,6 @@ test.describe('Media page (step 1)', () => {
 		await shot(page, 'b08-tray-done');
 	});
 
-	test('Image details › Web file name · Change opens its own popup; Save waits for a new, valid name (option B)', async ({
-		page,
-	}) => {
-		await openRoot(page);
-		await card(page, RUN).dblclick();
-		await row(page, 'product-sample.png').click({ button: 'right' });
-		await page.locator('#fm_menu_details').click();
-		await expect(page.locator('#fm_details_web_name')).toContainText('product-sample');
-		await page.locator('#fm_details_web_name_change').click();
-		const save = page.locator('#fm_web_name_save');
-		await expect(save).toBeDisabled();
-		await page.locator('#fm_web_name_input').fill('Not Valid!');
-		await expect(save).toBeDisabled();
-		await page.locator('#fm_web_name_input').fill('product-sample-front');
-		await expect(save).toBeEnabled();
-		await expect(page.locator('ngb-modal-window').last()).toContainText('7 days');
-		await shot(page, 'web-name-popup');
-		await page.locator('ngb-modal-window').last().getByRole('button', { name: 'Cancel' }).click();
-	});
-
 	test('Download .zip: alone it floats as its own box with Cancel (A30); cancelling takes it away (A27, A48, step 5)', async ({
 		page,
 	}) => {
@@ -413,6 +393,26 @@ test.describe('Media page (step 1)', () => {
 		await page.locator('#fm_details_tab_text').click();
 		await expect(page.locator('#fm_text_alt')).toHaveValue('A sample product photo on a plain background');
 		await page.keyboard.press('Escape');
+	});
+
+	test('Image details › Web file name · Change opens its own popup; Save waits for a new, valid name (option B)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await card(page, RUN).dblclick();
+		await row(page, 'product-sample.png').click({ button: 'right' });
+		await page.locator('#fm_menu_details').click();
+		await expect(page.locator('#fm_details_web_name')).toContainText('product-sample');
+		await page.locator('#fm_details_web_name_change').click();
+		const save = page.locator('#fm_web_name_save');
+		await expect(save).toBeDisabled();
+		await page.locator('#fm_web_name_input').fill('Not Valid!');
+		await expect(save).toBeDisabled();
+		await page.locator('#fm_web_name_input').fill('product-sample-front');
+		await expect(save).toBeEnabled();
+		await expect(page.locator('ngb-modal-window').last()).toContainText('7 days');
+		await shot(page, 'web-name-popup');
+		await page.locator('ngb-modal-window').last().getByRole('button', { name: 'Cancel' }).click();
 	});
 
 	test('Share: a link with a password is shown once and listed with who made it; Stop asks first (A35)', async ({

@@ -1,0 +1,146 @@
+<div class="modal-header">
+	<h2 id="variant_grid_title">{{ 'variant_grid_title' | transloco: { name: product()?.title ?? '' } }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	@if (product(); as item) {
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-3">
+		<div class="d-flex align-items-center gap-2 text-start">
+			@if (item.imageUrl) {
+			<img
+				[src]="item.imageUrl"
+				alt=""
+				width="40"
+				height="52"
+				class="rounded"
+				style="object-fit: cover"
+			/>
+			}
+			<div>
+				<h6 class="mb-0">{{ item.title }}</h6>
+				<small class="text-muted">{{ item.sku }}</small>
+			</div>
+		</div>
+		<span class="small text-muted ms-auto">{{ 'variant_grid_price_note' | transloco }}</span>
+	</div>
+	}
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'variant' | transloco }}</th>
+					<th>{{ 'sku' | transloco }}</th>
+					<th class="text-end">{{ 'on_hand_now' | transloco }}</th>
+					<th
+						class="text-end"
+						style="width: 150px"
+					>
+						{{ 'qty_on_this_document' | transloco }}
+					</th>
+					<th
+						class="text-end"
+						style="width: 160px"
+					>
+						{{ priceLabel() | transloco }}
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.option.variantId; let i = $index) {
+				<tr>
+					<td>{{ row.option.optionsLabel || row.option.title }}</td>
+					<td>{{ row.option.sku }}</td>
+					<td class="text-end text-nowrap">{{ row.option.onHand | stockQty: row.option.soldBy }}</td>
+					<td class="text-end">
+						<div class="input-group input-group-sm justify-content-end">
+							<input
+								class="form-control text-end"
+								inputmode="decimal"
+								[attr.aria-label]="'qty_on_this_document' | transloco"
+								[class.is-invalid]="!!problemOf(i) && problemOf(i)?.startsWith('qty')"
+								[value]="row.quantity"
+								(input)="setQuantity(i, $any($event.target).value)"
+							/>
+							@if (row.option.soldBy === 'metre') {
+							<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+							}
+						</div>
+					</td>
+					<td class="text-end">
+						<input
+							class="form-control form-control-sm text-end"
+							inputmode="decimal"
+							[attr.aria-label]="priceLabel() | transloco"
+							[class.is-invalid]="problemOf(i) === 'payment_amount_invalid'"
+							[value]="row.price"
+							(input)="setPrice(i, $any($event.target).value)"
+						/>
+					</td>
+				</tr>
+				@if (problemOf(i); as problem) {
+				<tr>
+					<td
+						colspan="5"
+						class="text-danger small"
+					>
+						{{ problem | transloco }}
+					</td>
+				</tr>
+				} }
+				<tr>
+					<td colspan="5">
+						<a
+							class="text-decoration-underline"
+							target="_blank"
+							rel="noopener"
+							[href]="newVariantLink()"
+						>
+							<i class="ri-add-line"></i>
+							{{ 'new_variant_not_listed' | transloco }}
+						</a>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<p class="small text-muted mt-2 mb-0">
+		{{ 'variant_grid_summary' | transloco: { lines: summary().lines, value: (summary().value | rupees) } }} {{
+		'variant_grid_new_tab_note' | transloco }}
+	</p>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning mt-3 mb-0"
+		role="alert"
+	>
+		{{ problem }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="variant_grid_add"
+			[disabled]="hasProblem() || !picks().length"
+			(click)="add()"
+		>
+			{{ 'add_lines_count' | plural: picks().length }}
+		</button>
+	</div>
+</div>

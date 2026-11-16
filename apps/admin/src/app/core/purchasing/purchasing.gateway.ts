@@ -9,6 +9,7 @@ import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.intercepto
 
 import type {
 	DraftProductFromLine,
+	LabelSheetRequest,
 	PurchaseEntry,
 	PurchaseEntryListQuery,
 	PurchaseEntryListResponse,
@@ -165,6 +166,11 @@ export class PurchasingGateway {
 			},
 		);
 	}
+	itemsByVariant(variantIds: readonly string[], supplierId: string | null): Observable<PurchaseItemOption[]> {
+		return this.http.get<PurchaseItemOption[]>(this.api('purchases/items/by-variants'), {
+			params: queryParams({ ids: variantIds.join(','), supplierId }),
+		});
+	}
 	importRows(body: PurchaseImportRequest): Observable<PurchaseImportResult> {
 		return this.http.post<PurchaseImportResult>(this.api('purchases/items/import'), body, QUIET);
 	}
@@ -216,6 +222,13 @@ export class PurchasingGateway {
 			{ reason },
 			QUIET,
 		);
+	}
+	/** The goods receipt for a purchase entry (p01 "Print goods receipt"). */
+	entryReceiptPdf(id: string): Observable<Blob> {
+		return this.http.get(this.api(`purchases/entries/${this.id(id)}/receipt-pdf`), {
+			responseType: 'blob',
+			...QUIET,
+		});
 	}
 	entryActivity(id: string): Observable<ActivityRow[]> {
 		return this.http.get<ActivityRow[]>(this.api(`purchases/entries/${this.id(id)}/activity`));
@@ -291,6 +304,17 @@ export class PurchasingGateway {
 	}
 	settleReturn(id: string, body: PurchaseReturnSettle): Observable<PurchaseReturn> {
 		return this.http.post<PurchaseReturn>(this.api(`purchase-returns/${this.id(id)}/settle`), body, QUIET);
+	}
+	/** The debit note or the delivery challan of a sent return (r04). */
+	returnPdf(id: string, document: 'debit-note' | 'challan'): Observable<Blob> {
+		return this.http.get(this.api(`purchase-returns/${this.id(id)}/${document}-pdf`), {
+			responseType: 'blob',
+			...QUIET,
+		});
+	}
+	/** A sheet of barcode labels (l01), drawn to the sheet's exact sizes. */
+	labelsPdf(body: LabelSheetRequest): Observable<Blob> {
+		return this.http.post(this.api('purchases/labels/pdf'), body, { responseType: 'blob', ...QUIET });
 	}
 	returnActivity(id: string): Observable<ActivityRow[]> {
 		return this.http.get<ActivityRow[]>(this.api(`purchase-returns/${this.id(id)}/activity`));

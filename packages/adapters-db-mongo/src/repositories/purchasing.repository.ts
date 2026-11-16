@@ -263,6 +263,7 @@ export class MongoPurchaseOrderRepository implements PurchaseOrderRepository {
 
 	async list(filter: DocumentListFilter): Promise<ListPage<PurchaseOrder> & { counts: Record<string, number> }> {
 		const base: FilterQuery<AggregateDoc> = {};
+		if (filter.supplierId) base.supplierId = filter.supplierId;
 		if (filter.q) {
 			const pattern = new RegExp(escapeRegex(filter.q), 'i');
 			base.$or = [{ number: pattern }, { supplierName: pattern }, { 'lines.sku': pattern }];

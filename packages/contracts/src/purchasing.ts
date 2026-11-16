@@ -225,6 +225,18 @@ export const PurchaseItemSearchQuery = z.object({
 export type PurchaseItemSearchQuery = z.infer<typeof PurchaseItemSearchQuery>;
 
 export const VariantGridQuery = z.object({ supplierId: Id.optional() });
+
+/** Item details for lines that arrive as variant ids (an order's receive draft, a copied entry). */
+export const PurchaseItemsByVariantQuery = z.object({
+	ids: z
+		.string()
+		.trim()
+		.min(1)
+		.transform((value) => [...new Set(value.split(',').map((id) => id.trim()).filter(Boolean))])
+		.pipe(z.array(Id).min(1).max(200)),
+	supplierId: Id.optional(),
+});
+export type PurchaseItemsByVariantQuery = z.infer<typeof PurchaseItemsByVariantQuery>;
 export type VariantGridQuery = z.infer<typeof VariantGridQuery>;
 
 export const DraftProductDefaultsQuery = z.object({ categoryId: Id });
@@ -323,6 +335,8 @@ export type PurchaseOrderSend = z.infer<typeof PurchaseOrderSend>;
 export const PurchaseOrderListQuery = z.object({
 	q: z.string().trim().max(100).optional(),
 	filter: z.enum(['all', 'draft', 'sent', 'part_received', 'late', 'closed']).default('all'),
+	/** The purchase entry's order picker: one supplier's orders (p02, po04b). */
+	supplierId: Id.optional(),
 	page: z.coerce.number().int().min(1).default(1),
 	pageSize: z.coerce.number().int().min(1).max(100).default(15),
 });
@@ -610,6 +624,7 @@ export const PurchaseImportRow = z.object({
 	hsn: z.string().trim().max(10).default(''),
 	gstRatePct: z.number().nullable().default(null),
 });
+export type PurchaseImportRow = z.infer<typeof PurchaseImportRow>;
 export const PurchaseImportRequest = z.object({ supplierId: Id, rows: z.array(PurchaseImportRow).max(2000) });
 export type PurchaseImportRequest = z.infer<typeof PurchaseImportRequest>;
 
@@ -855,6 +870,35 @@ export const PurchaseReturnListResponse = z.object({
 	counts: z.record(z.string(), z.number().int()),
 });
 export type PurchaseReturnListResponse = z.infer<typeof PurchaseReturnListResponse>;
+
+/* ------------------------------------------------------------------ barcode labels (l01) */
+
+/** A4 label sheets (P10): 65, 40, 24 or 21 labels; a label printer can be added later. */
+export const LabelSheetKind = z.enum(['a4_65', 'a4_40', 'a4_24', 'a4_21']);
+export type LabelSheetKind = z.infer<typeof LabelSheetKind>;
+
+export const LabelField = z.enum(['name', 'sku', 'barcode', 'price', 'mrp']);
+export type LabelField = z.infer<typeof LabelField>;
+
+/** Labels to print: many items on one sheet, starting after labels already used on a part-used sheet. */
+export const LabelSheetRequest = z
+	.object({
+		sheet: LabelSheetKind,
+		/** The first free label on the first sheet, counted across then down from 1. */
+		startAt: z.number().int().min(1).max(65),
+		fields: z.array(LabelField).min(1).max(5),
+		items: z
+			.array(z.object({ variantId: Id, count: z.number().int().min(1).max(1000) }))
+			.min(1)
+			.max(200),
+		/** Where the labels came from, for the activity line (a posted entry). */
+		purchaseEntryId: Id.optional(),
+	})
+	.superRefine((value, ctx) => {
+		const total = value.items.reduce((sum, item) => sum + item.count, 0);
+		if (total > 2000) ctx.addIssue({ code: 'custom', path: ['items'], message: 'too_many_labels' });
+	});
+export type LabelSheetRequest = z.infer<typeof LabelSheetRequest>;
 
 /* ------------------------------------------------------------------ settings */
 

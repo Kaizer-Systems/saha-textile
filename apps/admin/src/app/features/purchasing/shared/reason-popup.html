@@ -1,0 +1,71 @@
+@if (ask(); as asking) {
+<div class="modal-header">
+	<h2 id="reason_popup_title">{{ asking.title | transloco: asking.params ?? {} }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	@if (asking.body) {
+	<p>{{ asking.body | transloco: asking.params ?? {} }}</p>
+	}
+	<div class="row align-items-start g-2 mb-2">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="reason_popup_text"
+		>
+			{{ asking.label | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<textarea
+				class="form-control"
+				id="reason_popup_text"
+				rows="3"
+				maxlength="500"
+				ngbAutofocus
+				[value]="reason()"
+				(input)="reason.set($any($event.target).value)"
+			></textarea>
+			@if (asking.help) {
+			<p class="help-text">{{ asking.help | transloco: asking.params ?? {} }}</p>
+			}
+		</div>
+	</div>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			id="reason_popup_confirm"
+			[class]="'btn ' + (asking.confirmClass ?? 'btn-theme')"
+			[disabled]="!canConfirm()"
+			(click)="confirm()"
+		>
+			{{ asking.confirm | transloco: asking.params ?? {} }}
+		</button>
+	</div>
+</div>
+}

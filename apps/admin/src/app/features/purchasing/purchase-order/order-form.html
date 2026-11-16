@@ -1,0 +1,323 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="order() ? 'edit_purchase_order' : 'new_purchase_order'"
+>
+	@if (order(); as current) {
+	<span
+		option
+		class="text-muted ms-2"
+	>
+		{{ current.number }}
+	</span>
+	} @if (conflict(); as message) {
+	<div
+		class="alert alert-warning d-flex align-items-start gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>
+			{{ message }}
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline ms-1"
+				(click)="reload()"
+			>
+				{{ 'reload_to_see_it' | transloco }}
+			</a>
+		</div>
+	</div>
+	}
+	<div class="theme-form theme-form-2 mega-form">
+		<div class="row">
+			<div class="col-xl-6">
+				<app-form-fields
+					[label]="'supplier'"
+					[for]="'po_supplier'"
+					[required]="true"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<select2
+						class="custom-select"
+						id="po_supplier"
+						[data]="supplierOptions()"
+						[value]="supplierId()"
+						[customSearchEnabled]="true"
+						[placeholder]="'pick_supplier' | transloco"
+						noResultMessage="{{ 'no_data_found' | transloco }}"
+						(search)="searchSuppliers($event)"
+						(update)="chooseSupplier($event)"
+					/>
+					@if (supplier(); as chosen) {
+					<p class="help-text">
+						{{ chosen.gstin ?? ('supplier_kind_unregistered' | transloco) }} · {{ chosen.stateName }} ·
+						<strong>
+							{{ (chosen.taxType === 'none' ? 'tax_none' : chosen.taxType === 'intra_state' ?
+							'tax_cgst_sgst' : 'tax_igst') | transloco }}
+						</strong>
+						· {{ 'supplier_terms_days' | plural: chosen.paymentTermsDays }}
+					</p>
+					} @else if (touched() && !supplierId()) {
+					<div class="invalid-feedback d-block">{{ 'po_supplier_required' | transloco }}</div>
+					}
+				</app-form-fields>
+				<app-form-fields
+					[label]="'expected_by'"
+					[for]="'po_expected'"
+					[required]="true"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<input
+						class="form-control"
+						id="po_expected"
+						type="date"
+						[min]="today"
+						[ngModel]="expectedBy()"
+						(ngModelChange)="expectedBy.set($event); changed()"
+					/>
+					<p class="help-text">{{ 'po_expected_help' | transloco }}</p>
+				</app-form-fields>
+				<app-form-fields
+					[label]="'deliver_to'"
+					[for]="'po_deliver_to'"
+					[required]="true"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<input
+						class="form-control"
+						id="po_deliver_to"
+						list="po_deliver_to_places"
+						maxlength="300"
+						[ngModel]="deliverTo()"
+						(ngModelChange)="deliverTo.set($event); changed()"
+					/>
+					<datalist id="po_deliver_to_places">
+						@for (place of addressOptions(); track place) {
+						<option [value]="place"></option>
+						}
+					</datalist>
+					@if (touched() && !deliverTo().trim()) {
+					<div class="invalid-feedback d-block">{{ 'po_deliver_to_required' | transloco }}</div>
+					}
+				</app-form-fields>
+			</div>
+			<div class="col-xl-6">
+				<app-form-fields
+					[label]="'note_to_supplier'"
+					[for]="'po_note'"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<textarea
+						class="form-control"
+						id="po_note"
+						rows="3"
+						maxlength="1000"
+						[ngModel]="noteToSupplier()"
+						(ngModelChange)="noteToSupplier.set($event); changed()"
+					></textarea>
+					<p class="help-text">{{ 'printed_on_the_order' | transloco }}</p>
+				</app-form-fields>
+				<app-form-fields
+					[label]="'internal_note'"
+					[for]="'po_internal_note'"
+					[labelClass]="'form-label-title col-sm-3 mb-0'"
+					[gridClass]="'col-sm-9'"
+				>
+					<textarea
+						class="form-control"
+						id="po_internal_note"
+						rows="2"
+						maxlength="1000"
+						[placeholder]="'only_for_staff' | transloco"
+						[ngModel]="internalNote()"
+						(ngModelChange)="internalNote.set($event); changed()"
+					></textarea>
+				</app-form-fields>
+			</div>
+		</div>
+	</div>
+
+	<h6 class="mt-2 mb-3">{{ 'lines_count' | plural: lines().length }}</h6>
+	<app-line-search
+		[supplierId]="supplierId() || null"
+		[forOrders]="true"
+		[placeholder]="'po_line_search_placeholder'"
+		(picked)="addOption($event)"
+		(pickedProduct)="openGrid($event)"
+	/>
+	<div class="mt-3"></div>
+	@if (lines().length) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th style="width: 300px">{{ 'item' | transloco }}</th>
+					<th class="text-end">{{ 'last_bought_at_head' | transloco }}</th>
+					<th
+						class="text-end"
+						style="width: 150px"
+					>
+						{{ 'qty' | transloco }}
+					</th>
+					<th
+						class="text-end"
+						style="width: 150px"
+					>
+						{{ 'agreed_price' | transloco }}
+					</th>
+					<th class="text-end">{{ 'line_value' | transloco }}</th>
+					<th style="width: 60px"></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (line of lines(); track line.variantId; let i = $index) {
+				<tr>
+					<td>
+						<div class="d-flex align-items-center gap-2 text-start">
+							@if (line.imageUrl) {
+							<img
+								[src]="line.imageUrl"
+								alt=""
+								width="40"
+								height="52"
+								class="rounded"
+								style="object-fit: cover"
+							/>
+							}
+							<div>
+								<h6 class="mb-0">{{ line.title }}</h6>
+								<small class="text-muted">
+									{{ line.sku }}@if (line.optionsLabel) { · {{ line.optionsLabel }} } @if (line.soldBy
+									=== 'metre') { · {{ 'sold_by_the_metre' | transloco }} }
+								</small>
+								@if (touched() && lineProblems()[i]; as problem) {
+								<div class="small text-danger mt-1">
+									<i class="ri-alert-line"></i>
+									{{ problem | transloco }}
+								</div>
+								}
+							</div>
+						</div>
+					</td>
+					<td class="text-end text-nowrap">
+						@if (line.lastCostINR !== null) { {{ line.lastCostINR | rupees }}@if (line.soldBy === 'metre') {
+						{{ 'per_m' | transloco }} } } @else { — }
+					</td>
+					<td class="text-end">
+						<div class="input-group input-group-sm justify-content-end">
+							<input
+								class="form-control text-end"
+								inputmode="decimal"
+								style="max-width: 90px"
+								[attr.aria-label]="'qty' | transloco"
+								[class.is-invalid]="touched() && !!lineProblems()[i] && lineProblems()[i]?.startsWith('qty')"
+								[value]="line.quantity"
+								(input)="setLine(i, 'quantity', $any($event.target).value)"
+							/>
+							@if (line.soldBy === 'metre') {
+							<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+							}
+						</div>
+					</td>
+					<td class="text-end">
+						<input
+							class="form-control form-control-sm text-end"
+							inputmode="decimal"
+							[attr.aria-label]="'agreed_price' | transloco"
+							[class.is-invalid]="touched() && lineProblems()[i] === 'payment_amount_invalid'"
+							[value]="line.price"
+							(input)="setLine(i, 'price', $any($event.target).value)"
+						/>
+					</td>
+					<td class="text-end text-nowrap">
+						{{ lineValue(line) === null ? '—' : (lineValue(line) | rupees) }}
+					</td>
+					<td>
+						<ul id="actions">
+							<li>
+								<a
+									href="javascript:void(0)"
+									[title]="'remove_line' | transloco"
+									[attr.aria-label]="'remove_line' | transloco"
+									(click)="removeLine(i)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</a>
+							</li>
+						</ul>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @else {
+	<div class="no-data-added text-muted py-5 text-center">
+		<i class="ri-barcode-line fs-1"></i>
+		<p class="mb-0">{{ 'po_no_lines_yet' | transloco }}</p>
+	</div>
+	}
+
+	<div class="row mt-3">
+		<div class="col-xl-7">
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-information-line mt-1"></i>
+				<div>{{ 'po_moves_nothing' | transloco }}</div>
+			</div>
+		</div>
+		<div class="col-xl-5">
+			<div class="tracking-total tracking-wrapper">
+				<ul>
+					<li>
+						{{ 'lines' | transloco }}
+						<span>{{ estimate().linesINR | rupees }}</span>
+					</li>
+					<li>
+						@if (estimate().rates.length === 1) { {{ 'gst_estimate_rate' | transloco: { rate:
+						estimate().rates[0] } }} } @else { {{ 'gst_estimate' | transloco }} }
+						<span>{{ estimate().gstINR | rupees }}</span>
+					</li>
+					<li>
+						{{ 'expected_total' | transloco }}
+						<span>{{ estimate().totalINR | rupees }}</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="cancel()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="po_save"
+			[disabled]="saving()"
+			(click)="save()"
+		>
+			{{ 'save_draft' | transloco }}
+		</button>
+		<button
+			*hasPermission="'purchase_order.send'"
+			type="button"
+			class="btn btn-theme"
+			id="po_send"
+			[disabled]="saving() || !lines().length"
+			(click)="send()"
+		>
+			{{ 'send_to_supplier' | transloco }}
+		</button>
+	</div>
+</app-page-wrapper>

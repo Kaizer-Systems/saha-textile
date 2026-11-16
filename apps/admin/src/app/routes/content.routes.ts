@@ -140,6 +140,14 @@ export const content: Routes = [
 		loadChildren: () => import('@features/refund/refund.routes'),
 	},
 	{
+		path: 'purchase-entries',
+		loadChildren: () => import('@features/purchasing/purchase-entry/entry.routes'),
+	},
+	{
+		path: 'purchase-orders',
+		loadChildren: () => import('@features/purchasing/purchase-order/order.routes'),
+	},
+	{
 		path: 'suppliers',
 		loadChildren: () => import('@features/purchasing/supplier/supplier.routes'),
 	},

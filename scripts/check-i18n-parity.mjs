@@ -39,6 +39,7 @@ const SHARED_WORDS = new Set([
 	'saha textile',
 	// Tax heads as printed on GST documents; Bengali keeps them in Latin letters (owner, 2026-11-17).
 	'cgst + sgst',
+	'gst {{rate}}%',
 	'simple',
 	'{{count}} images',
 	'action',

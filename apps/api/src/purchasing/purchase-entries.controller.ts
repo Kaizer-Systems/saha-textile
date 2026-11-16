@@ -8,6 +8,7 @@ import {
 	PurchaseGoodsCheck,
 	PurchaseImportRequest,
 	PurchaseItemSearchQuery,
+	PurchaseItemsByVariantQuery,
 	PurchasePost,
 	PurchaseVoid,
 	SupplierPaymentReverse,
@@ -39,6 +40,17 @@ export class PurchaseItemsController {
 	})
 	search(@Query(new ZodValidationPipe(PurchaseItemSearchQuery)) query: PurchaseItemSearchQuery) {
 		return this.items.search(query);
+	}
+
+	@Get('by-variants')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('purchase.index')
+	@ApiOperation({
+		operationId: 'purchaseItemsByVariant',
+		summary: 'Item details for lines that arrive as variant ids (receiving an order)',
+	})
+	byVariants(@Query(new ZodValidationPipe(PurchaseItemsByVariantQuery)) query: PurchaseItemsByVariantQuery) {
+		return this.items.byVariants(query.ids, query.supplierId ?? null);
 	}
 
 	@Get('products/:productId/variants')

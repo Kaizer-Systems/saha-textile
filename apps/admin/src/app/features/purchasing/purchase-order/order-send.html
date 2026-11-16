@@ -1,0 +1,181 @@
+@if (order(); as current) {
+<div class="modal-header">
+	<h2 id="order_send_title">
+		{{ 'po_send_title' | transloco: { number: current.number, supplier: current.supplierName } }}
+	</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div
+		class="btn-group mb-4 w-100"
+		role="group"
+	>
+		<button
+			type="button"
+			class="btn"
+			[class.btn-theme]="via() === 'email'"
+			[class.btn-outline]="via() !== 'email'"
+			[attr.aria-pressed]="via() === 'email'"
+			(click)="via.set('email'); ensureFrom()"
+		>
+			{{ 'po_send_email_with_pdf' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn"
+			[class.btn-theme]="via() === 'pdf'"
+			[class.btn-outline]="via() !== 'pdf'"
+			[attr.aria-pressed]="via() === 'pdf'"
+			(click)="via.set('pdf')"
+		>
+			{{ 'po_send_pdf_only' | transloco }}
+		</button>
+	</div>
+
+	@if (via() === 'email') {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="po_send_from"
+		>
+			{{ 'email_from' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			@if (senders().length) {
+			<select
+				class="form-select"
+				id="po_send_from"
+				[ngModel]="from()"
+				(ngModelChange)="from.set($event)"
+				(focus)="ensureFrom()"
+			>
+				@for (sender of senders(); track sender.mailboxId + sender.address) {
+				<option [value]="sender.mailboxId + '|' + sender.address">{{ sender.label }}</option>
+				}
+			</select>
+			<p class="help-text">{{ 'po_send_from_help' | transloco }}</p>
+			} @else {
+			<div
+				class="alert alert-warning mb-0"
+				role="alert"
+			>
+				{{ 'po_send_no_mailbox' | transloco }}
+			</div>
+			} @if (fieldErrors()['mailboxId']; as problem) {
+			<div class="invalid-feedback d-block">{{ problem }}</div>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="po_send_to"
+		>
+			{{ 'email_to' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="po_send_to"
+				type="text"
+				autocomplete="off"
+				[class.is-invalid]="badRecipients().length > 0 || !!fieldErrors()['to']"
+				[ngModel]="to()"
+				(ngModelChange)="to.set($event)"
+			/>
+			@if (badRecipients().length) {
+			<div class="invalid-feedback d-block">
+				{{ 'email_addresses_wrong' | transloco: { list: badRecipients().join(', ') } }}
+			</div>
+			} @else {
+			<p class="help-text">{{ 'po_send_to_help' | transloco }}</p>
+			}
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="po_send_subject"
+		>
+			{{ 'email_subject' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="po_send_subject"
+				maxlength="200"
+				[ngModel]="subject()"
+				(ngModelChange)="subject.set($event)"
+			/>
+		</div>
+	</div>
+	<div class="row align-items-start g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="po_send_message"
+		>
+			{{ 'email_message' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<textarea
+				class="form-control"
+				id="po_send_message"
+				rows="6"
+				maxlength="5000"
+				[ngModel]="message()"
+				(ngModelChange)="message.set($event)"
+			></textarea>
+		</div>
+	</div>
+	}
+	<div class="row align-items-center g-2 mb-2">
+		<span class="form-label-title col-sm-3 mb-0">{{ 'attachment' | transloco }}</span>
+		<div class="col-sm-9">
+			<span>
+				<i class="ri-file-pdf-2-line text-danger"></i>
+				{{ fileName() }}
+			</span>
+		</div>
+	</div>
+	<p class="small text-muted mb-0">{{ 'po_send_marks_sent' | transloco }}</p>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="po_send_confirm"
+			[disabled]="!canSend()"
+			(click)="send()"
+		>
+			{{ (via() === 'email' ? 'po_send_and_mark' : 'po_download_and_mark') | transloco }}
+		</button>
+	</div>
+</div>
+}

@@ -13,13 +13,13 @@ import { PurchasingGateway } from '@core/purchasing/purchasing.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import type { SupplierListRow, SupplierStatementRow } from '@saha-textile/contracts';
-
-import { PaymentPopup, parseRupees } from '../shared/payment-popup';
-import { linesQuantity, piecesOf, returnStatus, returnWhy } from '../shared/purchasing-labels';
 import { SupplierForm, cleanGstin, gstinVerdict } from './supplier-form';
 import { SupplierList, termsText, toSupplierRow } from './supplier-list';
 import { SupplierPage, statementLink } from './supplier-page';
+import { PaymentPopup, parseRupees } from '../shared/payment-popup';
+import { linesQuantity, piecesOf, returnStatus, returnWhy } from '../shared/purchasing-labels';
+
+import type { SupplierListRow, SupplierStatementRow } from '@saha-textile/contracts';
 
 const client = vi.hoisted(() => ({ invalidateQueries: vi.fn() }));
 const suppliers = signal<unknown>(undefined);
@@ -40,10 +40,15 @@ vi.mock('@core/purchasing/stock.gateway', () => ({
 	injectInventorySettingsQuery: () => ({ data: settings }),
 }));
 
-const translate = (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key);
+const translate = (key: string, params?: Record<string, unknown>) =>
+	params ? `${key} ${JSON.stringify(params)}` : key;
 const transloco = { translate, getActiveLang: () => 'en', getTranslation: () => ({}) };
 
-function render<T>(type: Type<T>, gateway: Partial<Record<keyof PurchasingGateway, unknown>>, routeId: string | null = null) {
+function render<T>(
+	type: Type<T>,
+	gateway: Partial<Record<keyof PurchasingGateway, unknown>>,
+	routeId: string | null = null,
+) {
 	const router = { navigate: vi.fn(), navigateByUrl: vi.fn() };
 	const toasts = { showError: vi.fn(), showSuccess: vi.fn() };
 	const modals = { open: vi.fn() };
@@ -51,8 +56,21 @@ function render<T>(type: Type<T>, gateway: Partial<Record<keyof PurchasingGatewa
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: Router, useValue: router },
-			{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(routeId ? { id: routeId } : {}) } } },
-			{ provide: PurchasingGateway, useValue: { states: () => of([{ code: '19', name: 'West Bengal' }, { code: '09', name: 'Uttar Pradesh' }]), ...gateway } },
+			{
+				provide: ActivatedRoute,
+				useValue: { snapshot: { paramMap: convertToParamMap(routeId ? { id: routeId } : {}) } },
+			},
+			{
+				provide: PurchasingGateway,
+				useValue: {
+					states: () =>
+						of([
+							{ code: '19', name: 'West Bengal' },
+							{ code: '09', name: 'Uttar Pradesh' },
+						]),
+					...gateway,
+				},
+			},
 			{ provide: QueryClient, useValue: client },
 			{ provide: NotificationService, useValue: toasts },
 			{ provide: TranslocoService, useValue: transloco },
@@ -110,7 +128,10 @@ describe('supplier rows (s01)', () => {
 	});
 
 	it('badges only non-regular suppliers, marks inactive ones, and dashes empty money and dates', () => {
-		const out = toSupplierRow(row({ kind: 'composition', active: false, owedINR: 0, lastPurchaseOn: null, gstin: null }), t);
+		const out = toSupplierRow(
+			row({ kind: 'composition', active: false, owedINR: 0, lastPurchaseOn: null, gstin: null }),
+			t,
+		);
 		expect(out.kind).toContain('badge bg-warning');
 		expect(out.kind).toContain('supplier_kind_composition');
 		expect(out.supplier).toContain('supplier_inactive');
@@ -188,7 +209,11 @@ describe('SupplierList', () => {
 			.mockReturnValueOnce(
 				throwError(() =>
 					httpError(400, [
-						{ code: 'supplier_has_documents', message: 'X has purchase entries or orders, so it stays for the books.', path: ['supplier_has_documents'] },
+						{
+							code: 'supplier_has_documents',
+							message: 'X has purchase entries or orders, so it stays for the books.',
+							path: ['supplier_has_documents'],
+						},
 					]),
 				),
 			);
@@ -216,7 +241,13 @@ describe('SupplierForm', () => {
 		const { page } = render(SupplierForm, {});
 		expect(page.form.controls.paymentTermsDays.value).toBe(15);
 		page.gstinValue.set('09AABCB4521R1Z6');
-		page.form.patchValue({ legalName: 'Banaras', line: 'Varanasi', pin: '221010', stateCode: '19', pan: 'WRONGPAN00' });
+		page.form.patchValue({
+			legalName: 'Banaras',
+			line: 'Varanasi',
+			pin: '221010',
+			stateCode: '19',
+			pan: 'WRONGPAN00',
+		});
 		const body = page.body();
 		expect(body.stateCode).toBe('09');
 		expect(body.pan).toBe('AABCB4521R');
@@ -225,7 +256,14 @@ describe('SupplierForm', () => {
 
 	it('lets an unregistered supplier keep a typed State and PAN', () => {
 		const { page } = render(SupplierForm, {});
-		page.form.patchValue({ kind: 'unregistered', legalName: 'Maa Durga Blouse Centre', line: 'Gariahat', pin: '700019', stateCode: '19', pan: 'abcde1234f' });
+		page.form.patchValue({
+			kind: 'unregistered',
+			legalName: 'Maa Durga Blouse Centre',
+			line: 'Gariahat',
+			pin: '700019',
+			stateCode: '19',
+			pan: 'abcde1234f',
+		});
 		expect(page.gstinRequired()).toBe(false);
 		const body = page.body();
 		expect(body.gstin).toBeNull();
@@ -237,11 +275,35 @@ describe('SupplierForm', () => {
 		const { page } = render(SupplierForm, {});
 		page.form.patchValue({ legalName: 'A', line: 'B', pin: '700001' });
 		page.gstinValue.set('19AAHFS7782K1Z4');
-		page.check.set({ problem: 'check_digit', expectedLastCharacter: '3', stateCode: null, pan: null, taxType: null, sameGstin: null, samePan: [] });
+		page.check.set({
+			problem: 'check_digit',
+			expectedLastCharacter: '3',
+			stateCode: null,
+			pan: null,
+			taxType: null,
+			sameGstin: null,
+			samePan: [],
+		});
 		expect(page.canSave()).toBe(false);
-		page.check.set({ problem: null, expectedLastCharacter: null, stateCode: '19', pan: 'AAHFS7782K', taxType: 'intra_state', sameGstin: { id: 's', name: 'S' }, samePan: [] });
+		page.check.set({
+			problem: null,
+			expectedLastCharacter: null,
+			stateCode: '19',
+			pan: 'AAHFS7782K',
+			taxType: 'intra_state',
+			sameGstin: { id: 's', name: 'S' },
+			samePan: [],
+		});
 		expect(page.canSave()).toBe(false);
-		page.check.set({ problem: null, expectedLastCharacter: null, stateCode: '19', pan: 'AAHFS7782K', taxType: 'intra_state', sameGstin: null, samePan: [{ id: 's2', name: 'Branch', gstin: '10AAHFS7782K1Z1' }] });
+		page.check.set({
+			problem: null,
+			expectedLastCharacter: null,
+			stateCode: '19',
+			pan: 'AAHFS7782K',
+			taxType: 'intra_state',
+			sameGstin: null,
+			samePan: [{ id: 's2', name: 'Branch', gstin: '10AAHFS7782K1Z1' }],
+		});
 		expect(page.canSave()).toBe(true);
 		expect(page.samePan()).toHaveLength(1);
 		expect(page.taxKey()).toBe('tax_cgst_sgst');
@@ -251,7 +313,11 @@ describe('SupplierForm', () => {
 		const saveSupplier = vi
 			.fn()
 			.mockReturnValueOnce(of({ id: 'sup_7' }))
-			.mockReturnValueOnce(throwError(() => httpError(400, [{ code: 'gstin_taken', message: 'Already saved as X.', path: ['gstin_taken'] }])));
+			.mockReturnValueOnce(
+				throwError(() =>
+					httpError(400, [{ code: 'gstin_taken', message: 'Already saved as X.', path: ['gstin_taken'] }]),
+				),
+			);
 		const { page, router, toasts } = render(SupplierForm, { saveSupplier });
 		page.form.patchValue({ kind: 'unregistered', legalName: 'A', line: 'B', pin: '700001' });
 		await page.save();
@@ -299,9 +365,36 @@ describe('supplier page (s03)', () => {
 			.mockReturnValueOnce(
 				of({
 					items: [
-						{ id: 'e2', number: 'PE/2', billNumber: 'B2', status: 'posted', dueOn: '2026-12-12', totalINR: 100, paidINR: 0, leftINR: 100 },
-						{ id: 'e1', number: 'PE/1', billNumber: 'B1', status: 'posted', dueOn: '2026-11-20', totalINR: 50, paidINR: 10, leftINR: 40 },
-						{ id: 'e3', number: null, billNumber: 'B3', status: 'draft', dueOn: '2026-11-01', totalINR: 9, paidINR: 0, leftINR: 0 },
+						{
+							id: 'e2',
+							number: 'PE/2',
+							billNumber: 'B2',
+							status: 'posted',
+							dueOn: '2026-12-12',
+							totalINR: 100,
+							paidINR: 0,
+							leftINR: 100,
+						},
+						{
+							id: 'e1',
+							number: 'PE/1',
+							billNumber: 'B1',
+							status: 'posted',
+							dueOn: '2026-11-20',
+							totalINR: 50,
+							paidINR: 10,
+							leftINR: 40,
+						},
+						{
+							id: 'e3',
+							number: null,
+							billNumber: 'B3',
+							status: 'draft',
+							dueOn: '2026-11-01',
+							totalINR: 9,
+							paidINR: 0,
+							leftINR: 0,
+						},
 					],
 				}),
 			)
@@ -321,7 +414,14 @@ describe('supplier page (s03)', () => {
 describe('PaymentPopup (p11)', () => {
 	const bills = [
 		{ id: 'e1', number: 'PE/26-27/000014', billNumber: 'BSW/0418', totalINR: 183750, paidINR: 0, leftINR: 183750 },
-		{ id: 'e2', number: 'PE/26-27/000012', billNumber: 'SFP-2588', totalINR: 91250, paidINR: 50000, leftINR: 41250 },
+		{
+			id: 'e2',
+			number: 'PE/26-27/000012',
+			billNumber: 'SFP-2588',
+			totalINR: 91250,
+			paidINR: 50000,
+			leftINR: 41250,
+		},
 	];
 
 	it('reads rupees as typed', () => {
@@ -349,7 +449,17 @@ describe('PaymentPopup (p11)', () => {
 		const recordPayment = vi
 			.fn()
 			.mockReturnValueOnce(of({ id: 'e1', paymentStatus: 'part_paid' }))
-			.mockReturnValueOnce(throwError(() => httpError(400, [{ code: 'books_closed', message: 'Books are closed up to 31 Oct 2026.', path: ['books_closed'] }])));
+			.mockReturnValueOnce(
+				throwError(() =>
+					httpError(400, [
+						{
+							code: 'books_closed',
+							message: 'Books are closed up to 31 Oct 2026.',
+							path: ['books_closed'],
+						},
+					]),
+				),
+			);
 		const { page } = render(PaymentPopup, { recordPayment });
 		const close = TestBed.inject(NgbActiveModal).close as ReturnType<typeof vi.fn>;
 		page.start(bills, 'e1');
@@ -357,7 +467,10 @@ describe('PaymentPopup (p11)', () => {
 		page.mode.set('upi');
 		page.reference.set('  UPI123  ');
 		await page.save();
-		expect(recordPayment).toHaveBeenCalledWith('e1', expect.objectContaining({ amountINR: 100000, mode: 'upi', reference: 'UPI123', proofAssetId: null }));
+		expect(recordPayment).toHaveBeenCalledWith(
+			'e1',
+			expect.objectContaining({ amountINR: 100000, mode: 'upi', reference: 'UPI123', proofAssetId: null }),
+		);
 		expect(close).toHaveBeenCalledWith({ id: 'e1', paymentStatus: 'part_paid' });
 		await page.save();
 		expect(page.error()).toBe('Books are closed up to 31 Oct 2026.');
@@ -385,7 +498,8 @@ describe('purchasing words', () => {
 		expect(returnStatus(ret({}), t).label).toBe('pr_status_waiting');
 		expect(returnStatus(ret({ settledINR: 10 }), t).label).toBe('pr_status_part_settled');
 		expect(
-			returnStatus(ret({ status: 'settled', settlements: [{ how: 'credit_note', reference: 'DHS-CN-14' }] }), t).label,
+			returnStatus(ret({ status: 'settled', settlements: [{ how: 'credit_note', reference: 'DHS-CN-14' }] }), t)
+				.label,
 		).toBe('pr_status_settled_how:{"how":"settled_how_credit_note DHS-CN-14"}');
 		expect(returnWhy(ret({ origin: 'goods_check', reason: 'damaged_on_arrival' }), t)).toBe(
 			'pr_reason_damaged_on_arrival · pr_made_by_goods_check',

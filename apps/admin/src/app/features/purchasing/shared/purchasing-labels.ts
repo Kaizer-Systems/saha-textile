@@ -35,6 +35,14 @@ export function linesQuantity(
 	return new Intl.ListFormat(lang === 'en' ? 'en-IN' : lang, { type: 'conjunction' }).format(parts);
 }
 
+/** A quantity column for mixed lines: "40", "120.0 m", or "40 · 120.0 m". */
+export function unitsText(lines: ReadonlyArray<{ quantity: number; soldBy: 'piece' | 'metre' }>, t: Translate): string {
+	const pieces = piecesOf(lines);
+	const tenths = lines.filter((line) => line.soldBy === 'metre').reduce((sum, line) => sum + line.quantity, 0);
+	if (!tenths) return String(pieces);
+	return pieces ? `${pieces} · ${metresText(tenths, t)}` : metresText(tenths, t);
+}
+
 /** Pieces only, for the Pieces column (metres are not pieces). */
 export function piecesOf(lines: ReadonlyArray<{ quantity: number; soldBy: 'piece' | 'metre' }>): number {
 	return lines.filter((line) => line.soldBy === 'piece').reduce((sum, line) => sum + line.quantity, 0);

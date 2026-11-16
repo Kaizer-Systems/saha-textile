@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, type ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -13,7 +13,11 @@ import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 import { fillKey } from '../../setting/image-profiles/profile-words';
 import { FmSidebar, type FmNav } from './fm-sidebar';
 import { fileExtension, fileKind } from './file-kinds';
+import { FmNewFolder } from './fm-new-folder';
 import { FmReprocess, type FmReprocessChoice } from './fm-reprocess';
+import { FmUploadFlow } from './fm-upload-flow';
+import { planUpload } from './fm-upload-plan';
+import { FmUploadPopups } from './fm-upload-popups';
 
 /** What an image field asks of the picker (R4-2, D01–D17). */
 export interface FmPickRules {
@@ -50,7 +54,9 @@ export const isRawFile = (row: Pick<MediaFileRow, 'name'>): boolean => RAW.has(f
 @Component({
 	selector: 'app-fm-picker',
 	templateUrl: './fm-picker.html',
-	imports: [FileSizePipe, FmSidebar, NgTemplateOutlet, PluralPipe, TranslocoModule],
+	imports: [FileSizePipe, FmSidebar, FmUploadPopups, NgTemplateOutlet, PluralPipe, TranslocoModule],
+	// D10: uploads started here run their own review popups over the picker.
+	providers: [FmUploadFlow],
 })
 export class FmPicker {
 	readonly modal = inject(NgbActiveModal);
@@ -58,6 +64,9 @@ export class FmPicker {
 	private readonly modals = inject(NgbModal);
 	private readonly gateway = inject(MediaLibraryGateway);
 	private readonly uploads = inject(MediaUploads);
+	readonly flow = inject(FmUploadFlow);
+	readonly uploadPopups = viewChild(FmUploadPopups);
+	readonly pickFilesInput = viewChild<ElementRef<HTMLInputElement>>('fmPickFiles');
 
 	readonly rules = signal<FmPickRules>({
 		title: 'fm_pick_title',
@@ -252,6 +261,52 @@ export class FmPicker {
 		} catch {
 			this.warning.set(this.transloco.translate('fm_action_failed'));
 		}
+	}
+
+	// --- D10: Upload and New folder inside the picker -------------------------------------------------------------
+
+	/** Uploads and new folders go into the folder shown; from Recent or Favourites, into My files. */
+	readonly targetId = computed(() => (this.nav() === 'folder' ? this.folderId() : null));
+	/** “My files › Product photos › Banarasi”: where they go, as the popups name it. */
+	readonly herePlace = computed(() => {
+		const steps = this.nav() === 'folder' && this.folderId() ? (this.data()?.breadcrumb ?? []) : [];
+		return [this.transloco.translate('fm_my_files'), ...steps.map((step) => step.name)].join(' › ');
+	});
+
+	sidebarUpload(choice: 'files' | 'folder' | 'new_folder'): void {
+		if (choice === 'new_folder') {
+			this.newFolder();
+			return;
+		}
+		this.pickFilesInput()?.nativeElement.click();
+	}
+
+	/**
+	 * The upload popups over the picker, with the place's profile ticked on every photo (D10). The new photos appear
+	 * here once their version is ready and can then be chosen (D07).
+	 */
+	filesPicked(input: HTMLInputElement): void {
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		const popups = this.uploadPopups()?.popups();
+		if (!files.length || !popups) return;
+		this.flow.open(
+			planUpload(files.map((file) => ({ file, path: [] as string[] }))),
+			this.targetId(),
+			this.herePlace(),
+			popups,
+			this.rules().profile?.key ?? null,
+		);
+	}
+
+	newFolder(): void {
+		const popup = this.modals.open(FmNewFolder, {
+			centered: true,
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'fm_new_folder_title',
+		});
+		(popup.componentInstance as FmNewFolder).start({ parentId: this.targetId(), place: this.herePlace() });
+		void popup.result.catch(() => undefined);
 	}
 
 	choose(): void {

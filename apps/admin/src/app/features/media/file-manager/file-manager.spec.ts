@@ -394,7 +394,7 @@ describe('selection, stars and New folder (A17, A23, A27)', () => {
 			],
 		});
 		TestBed.overrideComponent(FileManager, {
-			set: { imports: [], template: '<ng-template #fmNewFolder></ng-template>' },
+			set: { imports: [], template: '' },
 		});
 		const fixture = TestBed.createComponent(FileManager);
 		fixture.detectChanges();
@@ -420,23 +420,13 @@ describe('selection, stars and New folder (A17, A23, A27)', () => {
 		expect(gateway.star).toHaveBeenCalledWith({ targetType: 'file', targetId: 'med_1', starred: true });
 	});
 
-	it('creates a folder where the page is, and keeps the popup open with the reason when refused', async () => {
-		const { page, gateway, modals } = setup();
+	it('New folder opens its popup for the folder shown (A23)', () => {
+		const { page, modals } = setup();
+		const start = vi.fn();
+		modals.open.mockReturnValueOnce({ componentInstance: { start }, result: Promise.resolve(null) } as never);
 		page.openNewFolder();
 		expect(modals.open).toHaveBeenCalled();
-		const close = vi.fn();
-		await page.createFolder(close);
-		expect(gateway.createFolder).not.toHaveBeenCalled();
-		page.newFolderName.set('  Bridal 2027 ');
-		await page.createFolder(close);
-		expect(gateway.createFolder).toHaveBeenCalledWith({ name: 'Bridal 2027', parentId: 'fld_b' });
-		expect(close).toHaveBeenCalled();
-		const refused = setup(true);
-		refused.page.newFolderName.set('Bridal 2027');
-		const stay = vi.fn();
-		await refused.page.createFolder(stay);
-		expect(stay).not.toHaveBeenCalled();
-		expect(refused.page.newFolderError()).toBe('fm_action_failed');
+		expect(start).toHaveBeenCalledWith({ parentId: 'fld_b', place: expect.stringContaining('fm_my_files') });
 	});
 });
 

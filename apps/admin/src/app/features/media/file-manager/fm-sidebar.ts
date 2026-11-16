@@ -59,7 +59,7 @@ export class FmSidebar {
 	readonly folderId = input<string | null>(null);
 	readonly folders = input<readonly TreeRow[]>([]);
 	readonly storage = input<StorageSummary | null>(null);
-	/** In a picker (D01–D17): no upload menu, Trash, Clean up or storage box. */
+	/** In a picker (D01–D17): Upload and New folder buttons instead of the menu (D10); no Trash, Clean up or storage box. */
 	readonly picker = input(false);
 
 	readonly navigate = output<FmNav>();

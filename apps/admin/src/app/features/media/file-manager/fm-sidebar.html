@@ -55,6 +55,28 @@
 		</ul>
 		}
 	</div>
+	} @else {
+	<!-- D10: in a picker, Upload (files into the folder shown) and New folder, side by side in one column. -->
+	<div class="d-grid gap-2">
+		<button
+			type="button"
+			class="btn btn-theme d-flex align-items-center justify-content-center gap-2"
+			id="fm_pick_upload"
+			(click)="upload.emit('files')"
+		>
+			<i class="ri-upload-cloud-2-line"></i>
+			{{ 'fm_upload' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-outline d-flex align-items-center justify-content-center gap-2"
+			id="fm_pick_new_folder"
+			(click)="upload.emit('new_folder')"
+		>
+			<i class="ri-folder-add-line"></i>
+			{{ 'fm_new_folder' | transloco }}
+		</button>
+	</div>
 	}
 	<ul class="fm-nav">
 		<li [class.active]="nav() === 'folder' && !category()">

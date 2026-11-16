@@ -8,13 +8,22 @@ import { describe, expect, it, vi } from 'vitest';
 import { MediaLibraryGateway, type MediaFileRow } from '@core/media-library/media-library.gateway';
 import { MediaUploads } from '@core/media-library/media-uploads';
 
+import { FmNewFolder } from './fm-new-folder';
 import { FmPicker, isRawFile } from './fm-picker';
+import { FmUploadFlow } from './fm-upload-flow';
+import { FmUploadPopups } from './fm-upload-popups';
 
 vi.mock('@data-access/queries/media-library.queries', async (original) => ({
 	...(await original<object>()),
 	injectMediaBrowseQuery: () => ({ data: () => undefined }),
 	injectMediaTreeQuery: () => ({ data: () => undefined }),
+	injectMediaStorageQuery: () => ({ data: () => undefined }),
 }));
+
+/** The upload popups' templates, as FmUploadPopups reads them. */
+const POPUP_TEMPLATES = ['fmUploadReview', 'fmDuplicate', 'fmOnDemand', 'fmStorageRefused', 'fmOverLimit', 'fmNotes']
+	.map((name) => `<ng-template #${name}></ng-template>`)
+	.join('');
 
 const row = (id: string, extra: Partial<MediaFileRow> = {}): MediaFileRow =>
 	({
@@ -35,13 +44,15 @@ const row = (id: string, extra: Partial<MediaFileRow> = {}): MediaFileRow =>
 		...extra,
 	}) as MediaFileRow;
 
-const setup = (max = 6, already = 2) => {
+const setup = (max = 6, already = 2, withPopups = false) => {
 	const modal = { close: vi.fn(), dismiss: vi.fn() };
 	const gateway = { details: vi.fn(() => of({ versions: [] })), addVersions: vi.fn(() => of({ added: 1 })) };
 	const uploads = { watchVersions: vi.fn() };
+	const flow = { open: vi.fn() };
+	const folderPopup = { start: vi.fn() };
 	const modals = {
-		open: vi.fn(() => ({
-			componentInstance: { start: vi.fn() },
+		open: vi.fn((content: unknown) => ({
+			componentInstance: content === FmNewFolder ? folderPopup : { start: vi.fn() },
 			result: Promise.resolve({
 				versions: [{ profileKey: 'product_3x4', fill: 'white' }],
 				label: 'Product 3:4 · White padding',
@@ -58,8 +69,17 @@ const setup = (max = 6, already = 2) => {
 			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
 		],
 	});
-	TestBed.overrideComponent(FmPicker, { set: { imports: [], template: '' } });
-	const picker = TestBed.createComponent(FmPicker).componentInstance;
+	TestBed.overrideComponent(FmUploadPopups, { set: { imports: [], template: POPUP_TEMPLATES } });
+	TestBed.overrideComponent(FmPicker, {
+		set: {
+			imports: withPopups ? [FmUploadPopups] : [],
+			template: withPopups ? '<app-fm-upload-popups />' : '',
+			providers: [{ provide: FmUploadFlow, useValue: flow }],
+		},
+	});
+	const fixture = TestBed.createComponent(FmPicker);
+	fixture.detectChanges();
+	const picker = fixture.componentInstance;
 	picker.start({
 		title: 'fm_pick_title',
 		accept: 'image',
@@ -67,7 +87,7 @@ const setup = (max = 6, already = 2) => {
 		already,
 		profile: { key: 'product_3x4', name: 'Product 3:4', icon: false },
 	});
-	return { picker, modal, gateway, uploads };
+	return { picker, modal, modals, gateway, uploads, flow, folderPopup };
 };
 
 describe('the Media picker (R4-2, D01–D17; media step 4a)', () => {
@@ -144,5 +164,37 @@ describe('the Media picker (R4-2, D01–D17; media step 4a)', () => {
 		});
 		expect(uploads.watchVersions).toHaveBeenCalledWith('Product 3:4 · White padding', ['med_bare']);
 		expect(picker.note()).toEqual({ text: 'fm_pick_making', warn: true });
+	});
+
+	it('Upload inside the picker opens the upload popups over it, into the folder shown, asking for its profile (D10)', () => {
+		const { picker, flow } = setup(6, 2, true);
+		picker.openFolder('fld_banarasi');
+		const input = { files: [new File(['x'], 'front.jpg', { type: 'image/jpeg' })], value: 'C:/front.jpg' };
+		picker.filesPicked(input as unknown as HTMLInputElement);
+		expect(input.value).toBe('');
+		expect(flow.open).toHaveBeenCalledTimes(1);
+		const [plan, targetId, place, popups, asked] = flow.open.mock.calls[0] as unknown[];
+		expect((plan as { rows: { name: string }[] }).rows.map((row) => row.name)).toEqual(['front.jpg']);
+		expect(targetId).toBe('fld_banarasi');
+		expect(place).toBe('fm_my_files');
+		expect(Object.keys(popups as object)).toEqual(
+			expect.arrayContaining(['review', 'duplicate', 'onDemand', 'refused', 'overLimit', 'notes']),
+		);
+		expect(asked).toBe('product_3x4');
+
+		// From Recent the files go into My files; nothing picked, nothing opens.
+		picker.openNav('recent');
+		picker.filesPicked({ files: [new File(['x'], 'a.jpg')], value: '' } as unknown as HTMLInputElement);
+		expect(flow.open.mock.calls[1]?.[1]).toBeNull();
+		picker.filesPicked({ files: [], value: '' } as unknown as HTMLInputElement);
+		expect(flow.open).toHaveBeenCalledTimes(2);
+	});
+
+	it('New folder in the picker opens the shared popup for the folder shown (D10, A23)', () => {
+		const { picker, modals, folderPopup } = setup();
+		picker.openFolder('fld_banarasi');
+		picker.sidebarUpload('new_folder');
+		expect(modals.open).toHaveBeenCalledWith(FmNewFolder, expect.objectContaining({ windowClass: 'theme-modal' }));
+		expect(folderPopup.start).toHaveBeenCalledWith({ parentId: 'fld_banarasi', place: 'fm_my_files' });
 	});
 });

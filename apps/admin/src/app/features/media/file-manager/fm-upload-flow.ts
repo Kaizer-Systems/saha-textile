@@ -64,6 +64,8 @@ export interface FmReview {
 	targetId: string | null;
 	place: string;
 	checking: boolean;
+	/** D10: the profile the picker that opened this upload asks for; it is ticked on every photo. */
+	asked: string | null;
 }
 
 /** S6: one file that matches something already in Media (B10 same bytes, B11 same name). */
@@ -154,9 +156,15 @@ export class FmUploadFlow {
 	readonly foldersToMake = computed(() => foldersFor(this.going()).length);
 	readonly goingBytes = computed(() => this.going().reduce((sum, row) => sum + row.bytes, 0));
 
-	open(plan: FmUploadPlan, targetId: string | null, place: string, popups: FmUploadPopups): void {
+	open(
+		plan: FmUploadPlan,
+		targetId: string | null,
+		place: string,
+		popups: FmUploadPopups,
+		asked: string | null = null,
+	): void {
 		if (!plan.rows.length) return;
-		this.review.set({ plan, rows: plan.rows, skipped: new Set(), targetId, place, checking: false });
+		this.review.set({ plan, rows: plan.rows, skipped: new Set(), targetId, place, checking: false, asked });
 		void this.readSizes();
 		void this.show(popups.review, { size: 'xl', windowClass: 'theme-modal media-modal' }, 'fm_review_title').then(
 			() => this.dropThumbs(),
@@ -192,10 +200,17 @@ export class FmUploadFlow {
 					: {}),
 				size,
 				sizeRead: true,
-				picks: size ? suggestedPicks(this.profiles(), size) : [],
+				picks: size ? this.firstPicks(size) : [],
 			}));
 			this.reading.update((left) => Math.max(0, left - 1));
 		}
+	}
+
+	/** A picker's own profile (D10), else the one the photo's shape suggests (B01). */
+	private firstPicks(size: { width: number; height: number }) {
+		const asked = this.review()?.asked;
+		const profile = asked ? this.profiles().find((entry) => entry.key === asked) : undefined;
+		return profile ? [newPick(profile, size)] : suggestedPicks(this.profiles(), size);
 	}
 
 	private canGo(row: FmUploadRow): boolean {

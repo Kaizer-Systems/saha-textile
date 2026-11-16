@@ -44,11 +44,12 @@ import { FileSizePipe, PluralPipe, translateCount } from '@shared/pipes/language
 import { Button } from '@shared/ui/button/button';
 
 import { fileKind } from './file-kinds';
+import { FmCleanUp } from './fm-clean-up';
 import { FmDetails, type FmDetailsAction } from './fm-details';
 import { FmFileList, type FmItemEvent, type TrashItem } from './fm-file-list';
-import { FmCleanUp } from './fm-clean-up';
 import { FmFocal, type FmPoint } from './fm-focal';
 import { FmMenu, type FmMenuKey, type FmMenuLine } from './fm-menu';
+import { FmNewFolder } from './fm-new-folder';
 import { FmReplace } from './fm-replace';
 import { FmReplaceProgress } from './fm-replace-progress';
 import { FmReprocess, type FmReprocessChoice } from './fm-reprocess';
@@ -72,8 +73,8 @@ import { FM_CATEGORIES, FmSidebar, type FmNav } from './fm-sidebar';
 import { FmStorageDetails } from './fm-storage-details';
 import { FmUndoToast } from './fm-undo-toast';
 import { FmUploadFlow, type FmUploadPopups as FmUploadPopupRefs } from './fm-upload-flow';
-import { FmUploadPopups } from './fm-upload-popups';
 import { pastedName, planUpload, readDropped, readPhotoSize, readPickedFolder, sha256Hex } from './fm-upload-plan';
+import { FmUploadPopups } from './fm-upload-popups';
 
 const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash', 'clean'];
 /** The sort menu: what each choice asks the API for. */
@@ -852,19 +853,11 @@ export class FileManager {
 
 	// --- Stars, New folder, Rename (A17, A23, A24) ----------------------------------------------
 
-	readonly newFolderTemplate = viewChild<TemplateRef<unknown>>('fmNewFolder');
-	readonly newFolderName = signal('');
-	readonly newFolderError = signal<string | null>(null);
-	readonly creating = signal(false);
-	/** The folder a new folder goes into: the one shown, or the one whose menu said New folder inside. */
-	readonly newFolderParent = signal<{ id: string | null; place: string } | null>(null);
 	/** “My files › Product photos › Banarasi”: the folder shown, or My files in the other views. */
 	readonly herePlace = computed(() => {
 		const steps = this.nav() === 'folder' ? (this.result()?.breadcrumb ?? []) : [];
 		return [this.transloco.translate('fm_my_files'), ...steps.map((step) => step.name)].join(' › ');
 	});
-	/** Where a new folder goes: the folder shown, or My files. */
-	readonly newFolderPlace = computed(() => this.newFolderParent()?.place ?? this.herePlace());
 
 	async star(file: MediaFileRow): Promise<void> {
 		await this.run(
@@ -873,44 +866,24 @@ export class FileManager {
 		);
 	}
 
+	/** New folder (A23): in the folder shown, or in the folder whose menu said New folder inside. */
 	openNewFolder(inside: MediaFolderRow | null = null): void {
-		const template = this.newFolderTemplate();
-		if (!template) return;
-		this.newFolderName.set('');
-		this.newFolderError.set(null);
-		this.newFolderParent.set(
-			inside
-				? {
-						id: inside.id,
-						place: [this.transloco.translate('fm_my_files'), inside.location, inside.name]
-							.filter(Boolean)
-							.join(' › '),
-					}
-				: null,
-		);
-		this.modals.open(template, {
+		const popup = this.modals.open(FmNewFolder, {
 			centered: true,
 			windowClass: 'theme-modal',
 			ariaLabelledBy: 'fm_new_folder_title',
 		});
-	}
-
-	/** Creates the folder where the page is; a taken name becomes “(1)” on the server (A23). */
-	async createFolder(close: () => void): Promise<void> {
-		const name = this.newFolderName().trim();
-		if (!name || this.creating()) return;
-		this.creating.set(true);
-		try {
-			const parentId = this.newFolderParent() ? (this.newFolderParent()?.id ?? null) : (this.folderId() ?? null);
-			await lastValueFrom(this.gateway.createFolder({ name, parentId }));
-			close();
-			this.notifications.showSuccess(this.transloco.translate('fm_folder_created'));
-			void this.queries.invalidateQueries({ queryKey: MEDIA_LIBRARY_KEY });
-		} catch (error) {
-			this.newFolderError.set(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
-		} finally {
-			this.creating.set(false);
-		}
+		(popup.componentInstance as FmNewFolder).start(
+			inside
+				? {
+						parentId: inside.id,
+						place: [this.transloco.translate('fm_my_files'), inside.location, inside.name]
+							.filter(Boolean)
+							.join(' › '),
+					}
+				: { parentId: this.nav() === 'folder' ? (this.folderId() ?? null) : null, place: this.herePlace() },
+		);
+		void popup.result.catch(() => undefined);
 	}
 
 	readonly renameTemplate = viewChild<TemplateRef<unknown>>('fmRename');

@@ -60,6 +60,16 @@
 			[folders]="tree.data()?.folders ?? []"
 			(navigate)="openNav($event)"
 			(openFolder)="openFolder($event)"
+			(upload)="sidebarUpload($event)"
+		/>
+		<input
+			#fmPickFiles
+			type="file"
+			class="d-none"
+			multiple
+			id="fm_picker_files"
+			[attr.accept]="rules().accept === 'image' ? 'image/*,.heic,.heif' : null"
+			(change)="filesPicked(fmPickFiles)"
 		/>
 		<section class="fm-main position-relative">
 			<div class="fm-toolbar">
@@ -310,3 +320,6 @@
 		</div>
 	</div>
 </ng-template>
+
+<!-- D10: the upload popups (review, duplicates, storage) open over the picker. -->
+<app-fm-upload-popups />

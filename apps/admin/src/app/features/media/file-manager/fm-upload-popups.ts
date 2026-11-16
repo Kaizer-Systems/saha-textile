@@ -7,10 +7,10 @@ import { NgbDropdown, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/n
 import { injectMediaStorageQuery } from '@data-access/queries/media-library.queries';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
-import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-profiles/profile-words';
 import { fileKind, fileTypeLabel } from './file-kinds';
 import { FmUploadFlow, type FmUploadPopups as FmUploadPopupRefs } from './fm-upload-flow';
 import { type FmPhotoNote, type FmPick, type FmUploadRow, PHOTO_MAX_BYTES, photoShapeLabel } from './fm-upload-plan';
+import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-profiles/profile-words';
 
 /**
  * The upload popups (B03–B21: review with profiles and fills, over-25 MB list, notes, duplicates, Upload anyway with

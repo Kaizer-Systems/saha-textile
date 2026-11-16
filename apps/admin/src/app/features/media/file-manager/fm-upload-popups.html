@@ -55,6 +55,14 @@
 			</span>
 			}
 			<span class="fm-chip muted">{{ 'fm_total' | transloco: { size: (flow.goingBytes() | fileSize) } }}</span>
+			@if (current.asked) {
+			<span
+				class="fm-chip muted"
+				id="fm_review_asked"
+			>
+				{{ 'fm_pick_asked' | transloco: { profile: profileName(current.asked) } }}
+			</span>
+			}
 		</div>
 		@if (flow.photos().length) {
 		<div
@@ -317,6 +325,11 @@
 			<span class="fm-footer-note info">
 				<i class="ri-information-line"></i>
 				{{ 'fm_structure_kept' | transloco }}
+			</span>
+			} @else if (current.asked) {
+			<span class="fm-footer-note info">
+				<i class="ri-information-line"></i>
+				{{ 'fm_pick_upload_note' | transloco }}
 			</span>
 			}
 		</div>

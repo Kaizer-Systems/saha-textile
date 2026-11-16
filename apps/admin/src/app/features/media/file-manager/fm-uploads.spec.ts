@@ -515,7 +515,11 @@ describe('photos in the upload popup (media step 2d: B01, B02, B02b, B04, B05, B
 		notes: { name: 'notes' },
 	} as unknown as FmUploadPopups;
 
-	const run = async (sizes: Record<string, { width: number; height: number }>, files: File[]) => {
+	const run = async (
+		sizes: Record<string, { width: number; height: number }>,
+		files: File[],
+		asked: string | null = null,
+	) => {
 		profileData.list = PROFILES.map((entry) => ({ profile: entry, photos: 0 }));
 		vi.stubGlobal('createImageBitmap', async (blob: File) => ({ ...sizes[blob.name], close: () => undefined }));
 		const answers: unknown[] = [];
@@ -544,7 +548,7 @@ describe('photos in the upload popup (media step 2d: B01, B02, B02b, B04, B05, B
 			],
 		});
 		const flow = TestBed.inject(FmUploadFlow);
-		flow.open(planUpload(files.map((entry) => ({ file: entry, path: [] }))), 'fld_1', 'Banarasi', POPUPS);
+		flow.open(planUpload(files.map((entry) => ({ file: entry, path: [] }))), 'fld_1', 'Banarasi', POPUPS, asked);
 		await vi.waitFor(() => expect(flow.reading()).toBe(0));
 		return { flow, uploads, answers };
 	};
@@ -646,6 +650,20 @@ describe('photos in the upload popup (media step 2d: B01, B02, B02b, B04, B05, B
 			],
 			'res_1',
 		);
+	});
+
+	it('an upload from a picker ticks the profile the picker asks for, even on a photo of another shape (D10)', async () => {
+		const { flow } = await run(
+			{ 'tall.jpg': { width: 3000, height: 4000 }, 'wide.jpg': { width: 4800, height: 2400 } },
+			[photo('tall.jpg'), photo('wide.jpg')],
+			'product_3x4',
+		);
+		expect(flow.review()?.asked).toBe('product_3x4');
+		const [tall, wide] = flow.review()?.rows ?? [];
+		expect(tall?.picks).toEqual([{ profileKey: 'product_3x4', fills: ['as_is'] }]);
+		// A different shape gets the profile's first fill, as a tick by hand would (B21), and its yellow note.
+		expect(wide?.picks).toEqual([{ profileKey: 'product_3x4', fills: ['white'] }]);
+		expect(flow.notesFor(wide as never).map((note) => note.kind)).toContain('shape');
 	});
 
 	it('ticks a different-shape profile with its first fill, adds fills side by side, never leaves none (B21)', async () => {

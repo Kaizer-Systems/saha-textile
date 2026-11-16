@@ -1,0 +1,88 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'stock_counts'"
+>
+	<div
+		button
+		*hasPermission="'stock_count.create'"
+	>
+		<button
+			type="button"
+			class="align-items-center btn btn-theme d-flex"
+			(click)="start()"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'start_a_stock_count' | transloco }}
+		</button>
+	</div>
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		@for (item of filters; track item) {
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="filter() === item"
+			[class.btn-outline]="filter() !== item"
+			(click)="setFilter(item)"
+		>
+			{{ 'count_filter_' + item | transloco }}@if (item !== 'all' && counts()[item]) { {{ counts()[item] }} }
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'count_no' | transloco }}</th>
+					<th>{{ 'what' | transloco }}</th>
+					<th>{{ 'started' | transloco }}</th>
+					<th>{{ 'by' | transloco }}</th>
+					<th class="text-end">SKUs</th>
+					<th class="text-end">{{ 'counted' | transloco }}</th>
+					<th class="text-end">{{ 'differences' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (count of query.data()?.items ?? []; track count.id) {
+				<tr
+					class="cursor-pointer"
+					(click)="open(count)"
+				>
+					<td>
+						<h6 class="mb-0">{{ count.number }}</h6>
+					</td>
+					<td>{{ count.label || ('count_scope_' + count.scope.kind | transloco) }}</td>
+					<td>{{ count.startedAt | shortDate }}</td>
+					<td>{{ count.counterNames.join(', ') || '—' }}</td>
+					<td class="text-end">{{ count.totals.skus }}</td>
+					<td class="text-end">{{ count.totals.counted }}</td>
+					<td class="text-end">{{ count.status === 'counting' ? '—' : count.totals.differences }}</td>
+					<td>
+						<div [class]="'status-' + pills.count[count.status]">
+							<span>{{ 'count_status_' + count.status | transloco }}</span>
+						</div>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="8">
+						<div class="no-data-added">
+							<h4>{{ 'no_counts_yet' | transloco }}</h4>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((query.data()?.total ?? 0) > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="query.data()?.total ?? 0"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	}
+</app-page-wrapper>

@@ -1,0 +1,274 @@
+@if (count(); as current) {
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'stock_count'"
+>
+	<span
+		option
+		class="text-muted ms-2"
+	>
+		{{ current.number }} · {{ current.label || ('count_scope_' + current.scope.kind | transloco) }}
+	</span>
+	@if (current.status === 'counting') {
+	<p class="small text-muted mb-2">
+		{{ 'count_progress' | transloco: { counted: current.totals.counted, skus: current.totals.skus } }}@if
+		(current.blind) { · {{ 'blind_count' | transloco }} }
+	</p>
+	<div class="progress mb-3">
+		<div
+			class="progress-bar"
+			role="progressbar"
+			[style.width.%]="progress()"
+			[attr.aria-valuenow]="progress()"
+			aria-valuemin="0"
+			aria-valuemax="100"
+		></div>
+	</div>
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-theme"
+			(click)="scan()"
+		>
+			<i class="ri-barcode-line me-1"></i>
+			{{ 'scan_a_label' | transloco }}
+		</button>
+		<input
+			class="form-control flex-fill"
+			type="search"
+			style="max-width: 420px"
+			[placeholder]="'count_type_sku' | transloco"
+			[ngModel]="search()"
+			(ngModelChange)="search.set($event)"
+		/>
+	</div>
+	@for (line of shown(); track line.variantId) {
+	<div
+		class="mb-2 rounded border p-2"
+		[id]="'count-line-' + line.variantId"
+		[class.border-success]="highlighted() === line.variantId"
+		[class.border-warning]="line.recount"
+	>
+		<div class="d-flex align-items-center flex-wrap gap-3">
+			<div class="d-flex align-items-center flex-fill gap-2">
+				@if (line.imageUrl) {
+				<img
+					[src]="line.imageUrl"
+					alt=""
+					width="40"
+					height="52"
+					class="rounded"
+					style="object-fit: cover"
+				/>
+				}
+				<div>
+					<h6 class="mb-0">{{ line.title }}@if (line.optionsLabel) { · {{ line.optionsLabel }} }</h6>
+					<small class="text-muted">
+						{{ line.sku }}@if (!current.blind && line.expected !== null) { · {{ 'expected_n' | transloco: {
+						qty: (line.expected | stockQty: line.soldBy) } }} } @if (line.recount) { ·
+						<span class="text-warning">{{ 'count_again' | transloco }}</span>
+						}
+					</small>
+				</div>
+			</div>
+			<div style="min-width: 220px">
+				<label
+					class="small text-muted d-block"
+					[for]="'count-input-' + line.variantId"
+				>
+					{{ 'how_many_on_shelf' | transloco }}
+				</label>
+				<div class="input-group">
+					<button
+						type="button"
+						class="btn btn-outline"
+						[title]="'one_less' | transloco"
+						(click)="step(line, -1)"
+					>
+						−
+					</button>
+					<input
+						class="form-control fs-5 text-center"
+						inputmode="decimal"
+						[id]="'count-input-' + line.variantId"
+						[ngModel]="typedOf(line).text"
+						(ngModelChange)="type(line, 'text', $event)"
+					/>
+					@if (line.soldBy === 'metre') {
+					<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+					}
+					<button
+						type="button"
+						class="btn btn-outline"
+						[title]="'one_more' | transloco"
+						(click)="step(line, 1)"
+					>
+						+
+					</button>
+				</div>
+				<input
+					class="form-control form-control-sm mt-2"
+					maxlength="500"
+					[placeholder]="'note_optional' | transloco"
+					[ngModel]="typedOf(line).note"
+					(ngModelChange)="type(line, 'note', $event)"
+				/>
+			</div>
+		</div>
+	</div>
+	}
+	<h6 class="small text-muted mt-3">{{ 'not_counted_yet_n' | transloco: { count: notCounted().length } }}</h6>
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="count_save"
+			[disabled]="busy() || !pending().length"
+			(click)="saveCounts()"
+		>
+			{{ 'save_counts' | plural: pending().length }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="count_finish"
+			[disabled]="busy()"
+			(click)="finish()"
+		>
+			{{ 'done_counting' | transloco }}
+		</button>
+	</div>
+	} @else {
+	<p class="text-muted">
+		{{ 'count_review_line' | transloco: { skus: current.totals.skus, match: current.totals.skus -
+		current.totals.differences, differences: current.totals.differences } }}
+	</p>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					@if (current.status === 'review') {
+					<th class="sm-width"></th>
+					}
+					<th style="width: 280px">{{ 'item' | transloco }}</th>
+					<th class="text-end">{{ 'at_start' | transloco }}</th>
+					<th class="text-end">{{ 'sold_during' | transloco }}</th>
+					<th class="text-end">{{ 'expected' | transloco }}</th>
+					<th class="text-end">{{ 'counted' | transloco }}</th>
+					<th class="text-end">{{ 'difference' | transloco }}</th>
+					<th class="text-end">{{ 'value' | transloco }}</th>
+					<th>{{ 'counter_note' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (line of current.lines; track line.variantId) {
+				<tr
+					[class.table-danger]="(line.difference ?? 0) < 0"
+					[class.table-success]="(line.difference ?? 0) > 0"
+				>
+					@if (current.status === 'review') {
+					<td class="sm-width">
+						@if ((line.difference ?? 0) !== 0) {
+						<input
+							type="checkbox"
+							class="checkbox_animated"
+							[attr.aria-label]="'count_again' | transloco"
+							[checked]="recount().has(line.variantId)"
+							(change)="toggleRecount(line.variantId)"
+						/>
+						}
+					</td>
+					}
+					<td>
+						<h6 class="mb-0">{{ line.title }}</h6>
+						<small class="text-muted">
+							{{ line.sku }}@if (line.optionsLabel) { · {{ line.optionsLabel }} }
+						</small>
+					</td>
+					<td class="text-end text-nowrap">{{ line.atStart | stockQty: line.soldBy }}</td>
+					<td class="text-end text-nowrap">{{ line.soldDuring | stockQty: line.soldBy }}</td>
+					<td class="text-end text-nowrap">{{ line.expected | stockQty: line.soldBy }}</td>
+					<td class="text-end text-nowrap">{{ line.counted | stockQty: line.soldBy }}</td>
+					<td class="text-end text-nowrap">
+						<strong
+							[class]="(line.difference ?? 0) < 0 ? 'text-danger' : (line.difference ?? 0) > 0 ? 'text-success' : ''"
+						>
+							{{ (line.difference ?? 0) > 0 ? '+' : '' }}{{ line.difference ?? 0 }}
+						</strong>
+					</td>
+					<td class="text-end text-nowrap">{{ line.valueINR === null ? '—' : (line.valueINR | rupees) }}</td>
+					<td>{{ line.note }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div class="row mt-3">
+		<div class="col-xl-7">
+			@if (current.status === 'review' || current.status === 'awaiting_approval') {
+			<div
+				class="alert alert-warning d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-shield-user-line mt-1"></i>
+				<div>
+					{{ (canApprove() ? 'count_post_direct' : current.status === 'awaiting_approval' ?
+					'count_waiting_note' : 'count_post_request') | transloco }}
+				</div>
+			</div>
+			}
+		</div>
+		<div class="col-xl-5">
+			<div class="tracking-total tracking-wrapper">
+				<ul>
+					<li>
+						{{ 'missing' | transloco }}
+						<span>
+							{{ current.totals.missingUnits }}@if (current.totals.missingValueINR !== null) { · {{
+							current.totals.missingValueINR | rupees }} }
+						</span>
+					</li>
+					<li>
+						{{ 'found' | transloco }}
+						<span>
+							{{ current.totals.foundUnits }}@if (current.totals.foundValueINR !== null) { · {{
+							current.totals.foundValueINR | rupees }} }
+						</span>
+					</li>
+					<li>
+						{{ 'net' | transloco }}
+						<span>
+							{{ current.totals.netUnits }}@if (current.totals.netValueINR !== null) { · {{
+							current.totals.netValueINR | rupees }} }
+						</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+	@if (current.status === 'review' || (current.status === 'awaiting_approval' && canApprove())) {
+	<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+		@if (current.status === 'review') {
+		<button
+			type="button"
+			class="btn btn-outline"
+			[disabled]="busy() || !differing().length"
+			(click)="sendBack()"
+		>
+			{{ 'send_back_to_recount' | plural: (recount().size || differing().length) }}
+		</button>
+		} @if (canPost()) {
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="count_post"
+			[disabled]="busy()"
+			(click)="post()"
+		>
+			{{ (canApprove() ? 'approve_and_post' : 'post_for_approval') | transloco }}
+		</button>
+		}
+	</div>
+	} }
+</app-page-wrapper>
+}

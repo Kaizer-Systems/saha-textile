@@ -138,3 +138,26 @@ describe('reports (i07–i10)', () => {
 		expect(monthRange('2028-02')).toEqual({ from: '2028-02-01', to: '2028-02-29' });
 	});
 });
+
+describe('stock counts (c01–c03, g02)', () => {
+	it('reads typed counts and sends only what changed', async () => {
+		const { changedEntries, countedUnits } = await import('./count-page');
+		const { scopeReady } = await import('./count-start');
+		expect(countedUnits('7', 'piece')).toBe(7);
+		expect(countedUnits('4.5', 'metre')).toBe(45);
+		expect(countedUnits('', 'piece')).toBeNull();
+		const lines = [
+			{ variantId: 'a', soldBy: 'piece', counted: 7, note: null },
+			{ variantId: 'b', soldBy: 'piece', counted: null, note: null },
+			{ variantId: 'c', soldBy: 'metre', counted: 45, note: 'shelf' },
+		] as never;
+		const typed = new Map([
+			['a', { text: '7', note: '' }],
+			['b', { text: '3', note: 'Was on the hanger' }],
+			['c', { text: '4.5', note: 'shelf' }],
+		]);
+		expect(changedEntries(lines, typed)).toEqual([{ variantId: 'b', counted: 3, note: 'Was on the hanger' }]);
+		expect(scopeReady({ kind: 'categories', categoryIds: [], variantIds: [] })).toBe(false);
+		expect(scopeReady({ kind: 'all', categoryIds: [], variantIds: [] })).toBe(true);
+	});
+});

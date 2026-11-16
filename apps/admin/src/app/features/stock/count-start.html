@@ -1,0 +1,181 @@
+<div class="modal-header">
+	<h2 id="count_start_title">{{ 'start_a_stock_count' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="count_kind"
+		>
+			{{ 'what_to_count' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="count_kind"
+				[ngModel]="kind()"
+				(ngModelChange)="kind.set($event)"
+			>
+				<option value="all">{{ 'count_scope_all' | transloco }}</option>
+				<option value="categories">{{ 'count_scope_categories' | transloco }}</option>
+				<option value="skus">{{ 'count_scope_skus' | transloco }}</option>
+				<option value="last_differences">{{ 'count_scope_last_differences' | transloco }}</option>
+			</select>
+		</div>
+	</div>
+	@if (kind() === 'categories') {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="count_categories"
+		>
+			{{ 'categories' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select2
+				class="custom-select"
+				id="count_categories"
+				[data]="categoryOptions()"
+				[multiple]="true"
+				[value]="categoryIds()"
+				[placeholder]="'pick_category' | transloco"
+				(update)="chooseCategories($event)"
+			/>
+		</div>
+	</div>
+	} @if (kind() === 'skus') {
+	<div class="row align-items-start g-2 mb-4">
+		<span class="form-label-title col-sm-3 mb-0">
+			{{ 'items' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</span>
+		<div class="col-sm-9">
+			<app-line-search
+				[placeholder]="'labels_add_more'"
+				(picked)="add($event)"
+			/>
+			<ul class="list-unstyled mt-2 mb-0">
+				@for (item of items(); track item.variantId) {
+				<li class="d-flex align-items-center justify-content-between border-bottom small py-1">
+					<span>{{ item.sku }} · {{ item.title }}</span>
+					<a
+						href="javascript:void(0)"
+						[title]="'remove_line' | transloco"
+						[attr.aria-label]="'remove_line' | transloco"
+						(click)="remove(item.variantId)"
+					>
+						<i class="ri-close-line"></i>
+					</a>
+				</li>
+				}
+			</ul>
+		</div>
+	</div>
+	}
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="count_label"
+		>
+			{{ 'count_label' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<input
+				class="form-control"
+				id="count_label"
+				maxlength="120"
+				[placeholder]="'count_label_placeholder' | transloco"
+				[ngModel]="label()"
+				(ngModelChange)="label.set($event)"
+			/>
+		</div>
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="count_blind"
+		>
+			{{ 'blind_count' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="count_blind"
+						[checked]="blind()"
+						(change)="blind.set($any($event.target).checked)"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<p class="help-text">{{ 'blind_count_help' | transloco }}</p>
+		</div>
+	</div>
+	@if (staffOptions().length) {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="count_counters"
+		>
+			{{ 'counters' | transloco }}
+		</label>
+		<div class="col-sm-9">
+			<select2
+				class="custom-select"
+				id="count_counters"
+				[data]="staffOptions()"
+				[multiple]="true"
+				[value]="counterIds()"
+				(update)="chooseCounters($event)"
+			/>
+		</div>
+	</div>
+	}
+	<div class="row align-items-center g-2 mb-2">
+		<span class="form-label-title col-sm-3 mb-0">{{ 'sales_during_count' | transloco }}</span>
+		<div class="col-sm-9">
+			<p class="mb-0">{{ 'keep_selling' | transloco }}</p>
+			<p class="help-text">{{ 'keep_selling_help' | transloco }}</p>
+		</div>
+	</div>
+	@if (error(); as message) {
+	<div
+		class="alert alert-warning mt-3 mb-0"
+		role="alert"
+	>
+		{{ message }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="count_start"
+			[disabled]="!canStart()"
+			(click)="start()"
+		>
+			{{ 'start_count' | transloco }}
+		</button>
+	</div>
+</div>

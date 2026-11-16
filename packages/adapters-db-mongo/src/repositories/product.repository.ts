@@ -101,6 +101,11 @@ export class MongoProductRepository implements ProductRepository {
 		return toProduct(doc as ProductDoc);
 	}
 
+	async listByMainCategory(categoryId: string): Promise<Product[]> {
+		const docs = await ProductModel.find({ 'categoryIds.0': categoryId }).lean<ProductDoc[]>().exec();
+		return docs.map(toProduct);
+	}
+
 	async listWithVideos(): Promise<Product[]> {
 		const docs = await ProductModel.find({ 'videos.0': { $exists: true } })
 			.lean<ProductDoc[]>()

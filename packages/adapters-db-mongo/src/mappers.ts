@@ -95,6 +95,10 @@ export function toProduct(doc: ProductDoc): Product {
 		hsnCode: doc.hsnCode ?? null,
 		soldBy: doc.soldBy ?? 'piece',
 		returnable: doc.returnable ?? null,
+		shortestCutTenths: doc.shortestCutTenths ?? null,
+		quickLengths: doc.quickLengths ?? [],
+		widthInches: doc.widthInches ?? null,
+		weightPerMetreGrams: doc.weightPerMetreGrams ?? null,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	};

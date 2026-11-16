@@ -49,6 +49,10 @@ export class MongoOrderRepository implements OrderRepository {
 		}));
 	}
 
+	async hasLinesFor(productId: string): Promise<boolean> {
+		return (await OrderModel.exists({ 'lines.productId': productId }).exec()) !== null;
+	}
+
 	async listPaidLinesBetween(from: string, to: string, productIds: readonly string[]): Promise<PaidOrderLine[]> {
 		if (!productIds.length) return [];
 		const docs = await OrderModel.find({

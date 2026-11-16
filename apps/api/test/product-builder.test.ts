@@ -353,6 +353,7 @@ describe('TaxonomyService', () => {
 		const products = {
 			list: vi.fn(async (): Promise<unknown> => ({ items: [], total: 0 })),
 			save: vi.fn(async (row: unknown) => row),
+			listByMainCategory: vi.fn(async (): Promise<unknown[]> => []),
 		};
 		const service = new TaxonomyService(
 			catalog as never,
@@ -368,6 +369,41 @@ describe('TaxonomyService', () => {
 	beforeEach(() => {
 		rows = [category()];
 		spots = [placement()];
+	});
+
+	it('keeps HSN and returnability unless a save sets them, and refills only the products that follow (F03)', async () => {
+		const { service, categories, products, catalog } = repositories();
+		rows = [category({ hsnCode: '5007', returnable: true })];
+		await service.saveCategory('cat_1', body(), null);
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ hsnCode: '5007', returnable: true });
+		const followers = [
+			{ id: 'p1', sku: 'ST-1', title: { en: 'A' }, hsnCode: '5007' },
+			{ id: 'p2', sku: 'ST-2', title: { en: 'B' }, hsnCode: null },
+			{ id: 'p3', sku: 'ST-3', title: { en: 'C' }, hsnCode: '5208' },
+		];
+		products.listByMainCategory.mockResolvedValue(followers);
+		expect(await service.hsnImpact('cat_1')).toEqual({
+			categoryHsn: '5007',
+			using: 2,
+			own: [{ id: 'p3', sku: 'ST-3', title: 'C', hsnCode: '5208' }],
+		});
+		// Without the tick, products keep their HSN.
+		await service.saveCategory('cat_1', body({ hsnCode: '5407', returnable: false }), 'adm_1');
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ hsnCode: '5407', returnable: false });
+		expect(products.save).not.toHaveBeenCalled();
+		// With it, only the products on the old code (or none) move to the new one.
+		rows = [category({ hsnCode: '5007' })];
+		await service.saveCategory('cat_1', body({ hsnCode: '5208', updateProductsHsn: true }), 'adm_1');
+		expect(products.save.mock.calls.map((call) => call[0])).toEqual([
+			expect.objectContaining({ id: 'p1', hsnCode: '5208' }),
+			expect.objectContaining({ id: 'p2', hsnCode: '5208' }),
+		]);
+		expect(catalog.record.mock.lastCall).toEqual([
+			'adm_1',
+			'catalog.category.save',
+			'cat_1',
+			expect.objectContaining({ hsnFrom: '5007', hsnTo: '5208', productsUpdated: ['ST-1', 'ST-2'] }),
+		]);
 	});
 
 	it('lists categories with their address and product count', async () => {

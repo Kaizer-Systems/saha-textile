@@ -86,6 +86,8 @@ export const LOCALIZED_TEXT_REGISTRY: readonly LocalizedTextEntry[] = [
 			required('seo.description'),
 			required('optionGroups.$[].label'),
 			required('optionGroups.$[].terms.$[].label'),
+			// Quick-length buttons of fabric sold by the metre (shop brief A01, M5).
+			required('quickLengths.$[].label'),
 			followsEnglish('estimatedDeliveryText'),
 			// Older shapes the product form does not write: erase reaches them; they are never to-dos.
 			olderShape('attributes.$[].label'),

@@ -332,4 +332,60 @@ describe('admin product save', () => {
 		expect(current().replacementTarget).toEqual({ kind: 'product', path: '/product/live-saree' });
 		await expect(catalog.updateMerchandising('prd_kurti', form())).rejects.toThrow('discontinued');
 	});
+
+	it('fixes Sold by once the product has stock, and asks a metre product for its cut and weight (P11, A01)', async () => {
+		const { catalog, variants, current } = harness();
+		await expect(catalog.updateMerchandising('prd_kurti', form({ soldBy: 'metre' }))).rejects.toThrow(
+			'Sold by stays piece: it has stock',
+		);
+		for (const [id, row] of variants) variants.set(id, { ...row, stock: { ...row.stock, quantity: 0 } });
+		await expect(catalog.updateMerchandising('prd_kurti', form({ soldBy: 'metre' }))).rejects.toThrow(
+			'needs a shortest cut and a weight per metre',
+		);
+		await catalog.updateMerchandising(
+			'prd_kurti',
+			form({
+				soldBy: 'metre',
+				metre: {
+					shortestCutTenths: 10,
+					quickLengths: [{ tenths: 25, label: { en: 'suit', bn: 'সুট' } }],
+					widthInches: 44,
+					weightPerMetreGrams: 85,
+				},
+			}),
+		);
+		expect(current()).toMatchObject({
+			soldBy: 'metre',
+			shortestCutTenths: 10,
+			widthInches: 44,
+			weightPerMetreGrams: 85,
+			quickLengths: [{ tenths: 25, label: { en: 'suit', bn: 'সুট' } }],
+		});
+		// Left out, Sold by and the metre fields stay as saved.
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current()).toMatchObject({ soldBy: 'metre', shortestCutTenths: 10 });
+	});
+
+	it('keeps returnability following the category until it is set, and back again with null', async () => {
+		const { catalog, current } = harness();
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().returnable).toBeNull();
+		await catalog.updateMerchandising('prd_kurti', form({ returnable: false }));
+		expect(current().returnable).toBe(false);
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().returnable).toBe(false);
+		await catalog.updateMerchandising('prd_kurti', form({ returnable: null }));
+		expect(current().returnable).toBeNull();
+	});
+
+	it('refuses an HSN that is not 4, 6 or 8 digits, on the product and on a variant (F02C)', async () => {
+		const pipe = new ZodValidationPipe(ProductMerchandisingWrite);
+		const body = form();
+		expect(() => pipe.transform({ ...body, hsnCode: '54' })).toThrow(BadRequestException);
+		expect(() => pipe.transform({ ...body, hsnCode: '50071' })).toThrow(BadRequestException);
+		expect(() =>
+			pipe.transform({ ...body, variants: [{ ...body.variants[0], hsnCode: 'ABCD' }, body.variants[1]] }),
+		).toThrow(BadRequestException);
+		expect(pipe.transform({ ...body, hsnCode: '52081000' })).toMatchObject({ hsnCode: '52081000' });
+	});
 });

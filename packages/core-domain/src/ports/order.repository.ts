@@ -34,6 +34,8 @@ export interface OrderRepository {
 	listPurchased(): Promise<PurchasedOrder[]>;
 	/** The lines of paid orders placed in [from, to), for the products given. */
 	listPaidLinesBetween(from: string, to: string, productIds: readonly string[]): Promise<PaidOrderLine[]>;
+	/** True when any order, in any status, has a line for this product (Sold by is then fixed, P11). */
+	hasLinesFor(productId: string): Promise<boolean>;
 	save(order: Order, context?: TransactionContext): Promise<Order>;
 	updateStatus(id: string, status: OrderStatus, note?: string): Promise<Order>;
 }

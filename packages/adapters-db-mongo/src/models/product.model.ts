@@ -66,6 +66,10 @@ export interface ProductDoc {
 	hsnCode?: string | null;
 	soldBy?: 'piece' | 'metre';
 	returnable?: boolean | null;
+	shortestCutTenths?: number | null;
+	quickLengths?: Array<{ tenths: number; label: Record<string, string> }>;
+	widthInches?: number | null;
+	weightPerMetreGrams?: number | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -116,6 +120,11 @@ const ProductSchema = new Schema<ProductDoc>(
 		hsnCode: { type: String, default: null },
 		soldBy: { type: String, enum: ['piece', 'metre'], default: 'piece' },
 		returnable: { type: Boolean, default: null },
+		// Fabric by the metre (shop brief A01): quantities in tenths of a metre.
+		shortestCutTenths: { type: Number, default: null },
+		quickLengths: { type: [Schema.Types.Mixed], default: [] },
+		widthInches: { type: Number, default: null },
+		weightPerMetreGrams: { type: Number, default: null },
 	},
 	{ collection: 'products', timestamps: true },
 );

@@ -8,6 +8,7 @@ import {
 	CategoryPlacement,
 	type AdminAttributeWrite,
 	type AdminCategoryWrite,
+	type CategoryHsnImpact,
 	type Product,
 } from '@saha-textile/contracts';
 import type {
@@ -108,7 +109,32 @@ export class TaxonomyService {
 			image: shown(category.media?.bannerImage),
 			icon: shown(category.media?.iconImage),
 			imageVersions: category.media?.versions ?? {},
+			hsnCode: category.hsnCode ?? null,
+			returnable: category.returnable,
 		});
+	}
+
+	/**
+	 * F03: products whose main category this is follow its HSN when theirs is the category's
+	 * code or empty; any other code is the product's own and stays.
+	 */
+	async hsnImpact(id: string): Promise<CategoryHsnImpact> {
+		const category = await this.categories.findById(id);
+		if (!category) throw new NotFoundException(`Category not found: ${id}`);
+		const products = await this.products.listByMainCategory(id);
+		const follows = (code: string | null) => code === null || code === (category.hsnCode ?? null);
+		return {
+			categoryHsn: category.hsnCode ?? null,
+			using: products.filter((product) => follows(product.hsnCode)).length,
+			own: products
+				.filter((product) => !follows(product.hsnCode))
+				.map((product) => ({
+					id: product.id,
+					sku: product.sku,
+					title: product.title.en,
+					hsnCode: product.hsnCode ?? '',
+				})),
+		};
 	}
 
 	async saveCategory(id: string | null, body: AdminCategoryWrite, actorUserId: string | null) {
@@ -139,15 +165,34 @@ export class TaxonomyService {
 			description: body.description,
 			seo: { title: body.seoTitle, description: body.seoDescription },
 			media: categoryMedia(body, existing),
+			hsnCode: body.hsnCode === undefined ? (existing?.hsnCode ?? null) : body.hsnCode,
+			returnable: body.returnable ?? existing?.returnable ?? true,
 		});
+		const oldHsn = existing?.hsnCode ?? null;
+		const hsnChanged = Boolean(existing) && category.hsnCode !== oldHsn;
+		const followers =
+			hsnChanged && body.updateProductsHsn
+				? (await this.products.listByMainCategory(categoryId)).filter(
+						(product) => product.hsnCode === null || product.hsnCode === oldHsn,
+					)
+				: [];
 		const current = await this.placements.findCanonical(categoryId);
 		const oldPaths = current ? await this.subtreePaths(current.id) : new Map<string, string>();
 		await this.catalog.inTransaction(async () => {
 			await this.categories.save(category);
 			await this.syncPlacements(category, existing, body.alsoUnder);
+			for (const product of followers) await this.products.save({ ...product, hsnCode: category.hsnCode });
 		});
 		await this.forwardMovedPaths(category, oldPaths);
-		await this.catalog.record(actorUserId, 'catalog.category.save', categoryId, { slug: body.slug });
+		await this.catalog.record(actorUserId, 'catalog.category.save', categoryId, {
+			slug: body.slug,
+			...(hsnChanged
+				? { hsnFrom: oldHsn, hsnTo: category.hsnCode, productsUpdated: followers.map((product) => product.sku) }
+				: {}),
+			...(existing && existing.returnable !== category.returnable
+				? { returnableFrom: existing.returnable, returnableTo: category.returnable }
+				: {}),
+		});
 		return { id: categoryId };
 	}
 

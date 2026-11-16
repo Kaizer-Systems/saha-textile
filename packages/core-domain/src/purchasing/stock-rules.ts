@@ -277,3 +277,31 @@ export function scrapLeftover(input: { requested: number; available: number; sho
 	const left = input.available - input.requested;
 	return left > 0 && left < input.shortestCut ? left : null;
 }
+
+/* ------------------------------------------------------------------ sold by (P11) */
+
+/**
+ * F01: a product's unit is fixed once it has stock, stock history or orders, because every
+ * stored quantity (ledger, layers, order lines) is in that unit. Returns why, or null.
+ */
+export function soldByChangeProblem(input: {
+	from: SoldBy;
+	to: SoldBy;
+	hasStock: boolean;
+	hasMovements: boolean;
+	hasOrders: boolean;
+}): { code: 'sold_by_fixed'; detail: string } | null {
+	if (input.from === input.to) return null;
+	const why = input.hasStock
+		? 'it has stock'
+		: input.hasMovements
+			? 'it has stock history'
+			: input.hasOrders
+				? 'it has orders'
+				: null;
+	if (!why) return null;
+	return {
+		code: 'sold_by_fixed',
+		detail: `Sold by stays ${input.from === 'metre' ? 'metre' : 'piece'}: ${why}, all counted in that unit.`,
+	};
+}

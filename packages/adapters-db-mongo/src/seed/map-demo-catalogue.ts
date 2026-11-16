@@ -630,6 +630,10 @@ export function mapDemoCatalogue(input: {
 			hsnCode: null,
 			soldBy: 'piece',
 			returnable: null,
+			shortestCutTenths: null,
+			quickLengths: [],
+			widthInches: null,
+			weightPerMetreGrams: null,
 			createdAt: product.created_at,
 		};
 		productDocs.push(doc);

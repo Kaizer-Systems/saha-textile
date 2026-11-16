@@ -49,6 +49,8 @@ export interface ProductRepository {
 	categorySummaries(): Promise<CategorySummary[]>;
 	/** Every product with at least one YouTube video, whatever its status, for the weekly check. */
 	listWithVideos(): Promise<Product[]>;
+	/** Every product, any status, whose main (first) category is this one (F03 HSN refill, PD3). */
+	listByMainCategory(categoryId: string): Promise<Product[]>;
 	/** Replaces the weekly badges: every other product loses them. */
 	setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void>;
 }

@@ -4,6 +4,18 @@ import { CatalogRupee, I18nString, Id, IsoDateTime, LocalizedText, PriceINR, Seo
 import { ProductOptionGroupSet } from './product-options';
 import { ProductVideo } from './site-settings';
 
+/** One quick-length button of a metre product (M5): "2.5 m · suit". */
+export const QuickLength = z.object({
+	tenths: z.number().int().min(1).max(1000),
+	label: LocalizedText.default({}),
+});
+export type QuickLength = z.infer<typeof QuickLength>;
+
+/** The main category is the first one chosen; its HSN and returnability are the product's defaults (PD3). */
+export function mainCategoryId(categoryIds: readonly string[]): string | null {
+	return categoryIds[0] ?? null;
+}
+
 export const ProductType = z.enum(['simple', 'variable', 'bundle']);
 export type ProductType = z.infer<typeof ProductType>;
 
@@ -215,6 +227,14 @@ export const Product = z.object({
 	soldBy: z.enum(['piece', 'metre']).default('piece'),
 	/** Whether a buyer may return it: null follows the main category (owner, 2026-11-15). */
 	returnable: z.boolean().nullable().default(null),
+	/** Fabric by the metre (shop brief A01): the least a buyer may cut, in tenths (M2: 1.0 m = 10). */
+	shortestCutTenths: z.number().int().min(1).max(1000).nullable().default(null),
+	/** Up to four quick-length buttons (M5), each a length in tenths and a label in every language. */
+	quickLengths: z.array(QuickLength).max(4).default([]),
+	/** Cloth width in inches, shown in Product Information. */
+	widthInches: z.number().positive().max(200).nullable().default(null),
+	/** Delivery weight of one metre: an order line weighs length × this. */
+	weightPerMetreGrams: z.number().int().positive().max(100_000).nullable().default(null),
 	createdAt: z.string().optional(),
 	updatedAt: z.string().optional(),
 });

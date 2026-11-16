@@ -14,6 +14,7 @@ import {
 	type Product,
 	type ProductMerchandisingWrite,
 	type ProductVariant,
+	mainCategoryId,
 	type SeoRedirect,
 	type SeoRedirectWrite,
 } from '@saha-textile/contracts';
@@ -44,6 +45,9 @@ import {
 	type ProductVariantRepository,
 	type MediaJobQueuePort,
 	type SeoRedirectRepository,
+	type OrderRepository,
+	soldByChangeProblem,
+	type StockReadRepository,
 	type StoragePort,
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
@@ -69,7 +73,11 @@ import {
 	SEO_REDIRECT_REPOSITORY,
 	STOCK_ALERT_REPOSITORY,
 	STORAGE_PORT,
-	TRANSACTION_MANAGER, LANGUAGE_COVERAGE_REPOSITORY } from '../infra/tokens';
+	TRANSACTION_MANAGER,
+	LANGUAGE_COVERAGE_REPOSITORY,
+	ORDER_REPOSITORY,
+	STOCK_READ_REPOSITORY,
+} from '../infra/tokens';
 import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
 import { missingFilter } from '../languages/missing-filter';
 
@@ -107,8 +115,36 @@ export class CatalogService {
 		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
 		@Optional() @Inject(MEDIA_JOB_QUEUE) private readonly mediaJobs: MediaJobQueuePort | null = null,
 		@Optional() @Inject(SEARCH_OUTBOX) private readonly searchOutbox: SearchOutboxRepository | null = null,
-		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
+		@Optional()
+		@Inject(LANGUAGE_COVERAGE_REPOSITORY)
+		private readonly coverage: LanguageCoverageRepository | null = null,
+		@Optional() @Inject(STOCK_READ_REPOSITORY) private readonly stockRead: StockReadRepository | null = null,
+		@Optional() @Inject(ORDER_REPOSITORY) private readonly orders: OrderRepository | null = null,
 	) {}
+
+	/** P11: the unit is fixed once the product has stock, stock history or orders. */
+	private async soldByFacts(product: Product, rows: readonly ProductVariant[]) {
+		const hasStock = rows.some((row) => row.stock.quantity > 0 || (row.stock.held ?? 0) > 0);
+		const moved = this.stockRead
+			? await this.stockRead.withMovements(rows.map((row) => row.id))
+			: new Set<string>();
+		const hasOrders = this.orders ? await this.orders.hasLinesFor(product.id) : false;
+		return { hasStock, hasMovements: moved.size > 0, hasOrders };
+	}
+
+	/** The main category's HSN and returnability, the defaults the form shows (F02, PD3). */
+	private async mainCategoryOf(product: Product) {
+		const id = mainCategoryId(product.categoryIds);
+		const category = id ? await this.categories.findById(id) : null;
+		return category
+			? {
+					id: category.id,
+					name: category.name.en ?? Object.values(category.name)[0] ?? category.slug,
+					hsnCode: category.hsnCode ?? null,
+					returnable: category.returnable,
+				}
+			: null;
+	}
 
 	/** A product's own FAQ questions, any status, in display order (the form and Go Live). */
 	async productFaq(productId: string): Promise<FaqEntry[]> {
@@ -304,6 +340,7 @@ export class CatalogService {
 	async adminDetail(idOrSlug: string): Promise<AdminProductDetail> {
 		const product = await this.getProduct(idOrSlug, 'admin');
 		const variants = await this.variants.listForProduct(product.id, 'admin');
+		const facts = await this.soldByFacts(product, variants);
 		const relationIds = await this.manualRelationIds(product.id);
 		const termLabel = new Map(
 			product.optionGroups.flatMap((group) =>
@@ -328,6 +365,16 @@ export class CatalogService {
 			replacementPath: product.replacementTarget?.path ?? null,
 			shipping: product.shippingDefaults,
 			hsnCode: product.hsnCode,
+			soldBy: product.soldBy,
+			soldByLocked: facts.hasStock || facts.hasMovements || facts.hasOrders,
+			returnable: product.returnable,
+			mainCategory: await this.mainCategoryOf(product),
+			metre: {
+				shortestCutTenths: product.shortestCutTenths,
+				quickLengths: product.quickLengths,
+				widthInches: product.widthInches,
+				weightPerMetreGrams: product.weightPerMetreGrams,
+			},
 			content: {
 				title: product.title,
 				shortDescription: product.shortDescription,
@@ -369,6 +416,9 @@ export class CatalogService {
 				mrpINR: mrpPriceINR(row.priceINR, row.compareAtPriceINR, row.salePriceINR) ?? row.compareAtPriceINR,
 				sellingINR: sellingPriceINR(row.priceINR, row.salePriceINR),
 				quantity: row.stock.quantity,
+				held: row.stock.held ?? 0,
+				inOrders: 0,
+				freeToSell: row.stock.quantity - (row.stock.held ?? 0),
 				available: row.status === 'live',
 				weightGrams: row.shippingProfile?.weightGrams ?? null,
 				lengthCm: row.shippingProfile?.lengthCm ?? null,
@@ -417,6 +467,24 @@ export class CatalogService {
 			throw new BadRequestException('A published product keeps its SKU');
 		}
 		const rows = new Map((await this.variants.listForProduct(product.id, 'admin')).map((row) => [row.id, row]));
+		const soldBy = body.soldBy ?? product.soldBy;
+		if (soldBy !== product.soldBy) {
+			const problem = soldByChangeProblem({
+				from: product.soldBy,
+				to: soldBy,
+				...(await this.soldByFacts(product, [...rows.values()])),
+			});
+			if (problem) throw new BadRequestException(problem.detail);
+		}
+		const metre = body.metre ?? {
+			shortestCutTenths: product.shortestCutTenths,
+			quickLengths: product.quickLengths,
+			widthInches: product.widthInches,
+			weightPerMetreGrams: product.weightPerMetreGrams,
+		};
+		if (soldBy === 'metre' && (metre.shortestCutTenths === null || metre.weightPerMetreGrams === null)) {
+			throw new BadRequestException('Fabric sold by the metre needs a shortest cut and a weight per metre');
+		}
 		const nextRows: ProductVariant[] = body.variants.map((write) => {
 			const row = rows.get(write.id);
 			if (!row) throw new BadRequestException(`Unknown variant: ${write.id}`);
@@ -470,6 +538,16 @@ export class CatalogService {
 			addonPriceINR: body.addonPriceINR,
 			shippingDefaults: body.shipping,
 			hsnCode: body.hsnCode,
+			soldBy,
+			returnable: body.returnable === undefined ? product.returnable : body.returnable,
+			...(soldBy === 'metre'
+				? {
+						shortestCutTenths: metre.shortestCutTenths,
+						quickLengths: metre.quickLengths,
+						widthInches: metre.widthInches,
+						weightPerMetreGrams: metre.weightPerMetreGrams,
+					}
+				: {}),
 			basePriceINR: selling.length ? Math.min(...selling) : product.basePriceINR,
 			onSale: live.some((row) => row.salePriceINR !== null && row.salePriceINR < row.priceINR),
 			...(body.content ? applyProductContent(product, body.content) : {}),

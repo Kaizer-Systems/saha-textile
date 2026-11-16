@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AttributeDefinition } from './attribute';
 import { LocaleCode, Slug } from './common';
 import { BundleGroup, BundlePricePolicy, BundleType } from './product-bundle';
-import { ProductShippingDefaults, ProductStatus, ProductType } from './product';
+import { ProductShippingDefaults, ProductStatus, ProductType, QuickLength } from './product';
 import { ProductOptionGroupSet } from './product-options';
 import { ProductVideo, ProductVideos } from './site-settings';
 
@@ -22,6 +22,21 @@ export type CatalogBadgeCode = z.infer<typeof CatalogBadgeCode>;
 const WholeRupee = z.number().int().nonnegative();
 const Measure = z.number().nonnegative().nullable();
 const OptionalText = z.string().trim().min(1).max(64).nullable();
+/** An HSN has 4, 6 or 8 digits (F02C); checked in the form and again here. */
+const OptionalHsn = z
+	.string()
+	.trim()
+	.regex(/^(\d{4}|\d{6}|\d{8})$/, { message: 'hsn_digits' })
+	.nullable();
+
+/** The fields a product sold by the metre carries (A01). Ignored for products sold by the piece. */
+export const MetreFieldsWrite = z.object({
+	shortestCutTenths: z.number().int().min(1).max(1000),
+	quickLengths: z.array(QuickLength).max(4),
+	widthInches: z.number().positive().max(200).nullable(),
+	weightPerMetreGrams: z.number().int().positive().max(100_000),
+});
+export type MetreFieldsWrite = z.infer<typeof MetreFieldsWrite>;
 
 const TextByLocale = z.record(z.string(), z.string().max(20_000));
 
@@ -86,7 +101,7 @@ export const AdminVariantWrite = z
 		widthCm: Measure,
 		heightCm: Measure,
 		barcode: OptionalText,
-		hsnCode: OptionalText,
+		hsnCode: OptionalHsn,
 	})
 	.refine((row) => row.mrpINR === null || row.sellingINR <= row.mrpINR, {
 		path: ['sellingINR'],
@@ -112,7 +127,13 @@ export const ProductMerchandisingWrite = z
 		hiddenBadges: z.array(CatalogBadgeCode),
 		addonPriceINR: WholeRupee.nullable(),
 		shipping: ProductShippingDefaults,
-		hsnCode: OptionalText,
+		hsnCode: OptionalHsn,
+		/** Piece or metre (P11); refused once the product has stock, stock history or orders. Absent keeps it. */
+		soldBy: z.enum(['piece', 'metre']).optional(),
+		/** Null follows the main category; true or false overrides it. Absent keeps it. */
+		returnable: z.boolean().nullable().optional(),
+		/** Required when sold by the metre (shortest cut and weight per metre); absent keeps them. */
+		metre: MetreFieldsWrite.optional(),
 		variants: z.array(AdminVariantWrite).min(1),
 		/** Language-bound text, categories, options and images. Absent leaves them as they are. */
 		content: ProductContentWrite.optional(),
@@ -187,7 +208,14 @@ export const AdminVariantView = z.object({
 	isBase: z.boolean(),
 	mrpINR: z.number().int().nullable(),
 	sellingINR: z.number().int(),
+	/** On hand, in stock units (pieces, or tenths of a metre). */
 	quantity: z.number().int(),
+	/** On hand but not for sale (P3). */
+	held: z.number().int().nonnegative().default(0),
+	/** Paid, not yet shipped: 0 until DEC-STOCK-RESERVE is built. */
+	inOrders: z.number().int().nonnegative().default(0),
+	/** On hand − held − in orders: the only number the shop uses. */
+	freeToSell: z.number().int().default(0),
 	available: z.boolean(),
 	weightGrams: z.number().nullable(),
 	lengthCm: z.number().nullable(),
@@ -218,6 +246,24 @@ export const AdminProductDetail = z.object({
 	replacementPath: z.string().nullable(),
 	shipping: ProductShippingDefaults,
 	hsnCode: z.string().nullable(),
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	/** True once the product has stock, stock history or orders: Sold by is then fixed (P11). */
+	soldByLocked: z.boolean().default(false),
+	/** Null follows the main category. */
+	returnable: z.boolean().nullable().default(null),
+	/** The main category's defaults, for "From Tant (5208)" and the HSN popup (F02). */
+	mainCategory: z
+		.object({ id: z.string(), name: z.string(), hsnCode: z.string().nullable(), returnable: z.boolean() })
+		.nullable()
+		.default(null),
+	metre: z
+		.object({
+			shortestCutTenths: z.number().int().nullable(),
+			quickLengths: z.array(QuickLength),
+			widthInches: z.number().nullable(),
+			weightPerMetreGrams: z.number().int().nullable(),
+		})
+		.default({ shortestCutTenths: null, quickLengths: [], widthInches: null, weightPerMetreGrams: null }),
 	/** The form's language-bound text, options and images, as stored. */
 	content: ProductContentWrite,
 	/** Picture of each attached image, for the form's tiles. */
@@ -308,8 +354,25 @@ export const AdminCategoryWrite = z.object({
 	iconId: z.string().min(1).nullable().optional(),
 	/** The version each chosen picture shows, by photo id (R4-1; media step 4d). */
 	imageVersions: z.record(z.string(), z.string()).optional(),
+	/** The HSN its products inherit (F03). Left out, a saved category keeps it. */
+	hsnCode: OptionalHsn.optional(),
+	/** Whether its products can be returned by default (F03). Left out, a saved category keeps it. */
+	returnable: z.boolean().optional(),
+	/**
+	 * When the HSN changes: also give the new code to the products whose main category this is and
+	 * whose HSN is the category's old one (or empty). Products with their own HSN are left alone.
+	 */
+	updateProductsHsn: z.boolean().default(false),
 });
 export type AdminCategoryWrite = z.infer<typeof AdminCategoryWrite>;
+
+/** F03: which products a category HSN change would reach, and which keep their own code. */
+export const CategoryHsnImpact = z.object({
+	categoryHsn: z.string().nullable(),
+	using: z.number().int().nonnegative(),
+	own: z.array(z.object({ id: z.string(), sku: z.string(), title: z.string(), hsnCode: z.string() })),
+});
+export type CategoryHsnImpact = z.infer<typeof CategoryHsnImpact>;
 
 const CategoryImageRow = z.object({ id: z.string(), url: z.string() });
 
@@ -328,6 +391,8 @@ export const AdminCategoryRow = z.object({
 	icon: CategoryImageRow.nullable(),
 	/** The version each picture shows, by photo id (media step 4d). */
 	imageVersions: z.record(z.string(), z.string()).default({}),
+	hsnCode: z.string().nullable().default(null),
+	returnable: z.boolean().default(true),
 });
 export type AdminCategoryRow = z.infer<typeof AdminCategoryRow>;
 

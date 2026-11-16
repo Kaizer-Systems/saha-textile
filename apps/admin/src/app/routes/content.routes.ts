@@ -140,6 +140,10 @@ export const content: Routes = [
 		loadChildren: () => import('@features/refund/refund.routes'),
 	},
 	{
+		path: 'suppliers',
+		loadChildren: () => import('@features/purchasing/supplier/supplier.routes'),
+	},
+	{
 		path: 'qna',
 		loadChildren: () => import('@features/questions-answers/questions-answers.routes'),
 	},

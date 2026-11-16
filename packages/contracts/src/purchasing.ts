@@ -576,7 +576,12 @@ export const PurchaseEntryListRow = PurchaseEntry.pick({
 	dueOn: true,
 	paidINR: true,
 	createdAt: true,
-}).extend({ pieces: z.number().int(), totalINR: PriceINR });
+}).extend({
+	pieces: z.number().int(),
+	totalINR: PriceINR,
+	/** Still to pay after payments and settled debit notes (0 for drafts and void entries). */
+	leftINR: z.number(),
+});
 export type PurchaseEntryListRow = z.infer<typeof PurchaseEntryListRow>;
 
 export const PurchaseEntryListResponse = z.object({
@@ -837,6 +842,8 @@ export type ReturnableLine = z.infer<typeof ReturnableLine>;
 export const PurchaseReturnListQuery = z.object({
 	q: z.string().trim().max(100).optional(),
 	filter: z.enum(['all', 'draft', 'sent', 'waiting', 'settled']).default('all'),
+	/** The supplier page's Returns tab (s03). */
+	supplierId: Id.optional(),
 	page: z.coerce.number().int().min(1).default(1),
 	pageSize: z.coerce.number().int().min(1).max(100).default(15),
 });

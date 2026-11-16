@@ -31,6 +31,10 @@ export interface ITableColumn {
 	date_format?: string;
 	class?: string;
 	placeholder?: string;
+	/** Numbers sit right-aligned on one line (quantities, money). */
+	align?: 'end';
+	/** A set width in pixels: `theme-table` lays out fixed, so item columns need one. */
+	width?: number;
 }
 
 export interface ITableAction {

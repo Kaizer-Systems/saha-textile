@@ -11,6 +11,8 @@
 			}
 		</select>
 		<label>{{ 'items_per_page' | transloco }}</label>
+		<!-- A page's own filter buttons (All, Drafts, Late…), as the purchases and stock lists draw them. -->
+		<ng-content select="[tableFilters]"></ng-content>
 		@for (bulk of visibleBulkActions; track bulk.actionToPerform) {
 		<a
 			href="javascript:void(0)"
@@ -148,6 +150,7 @@
 			type="search"
 			class="form-control"
 			id="role-search"
+			[placeholder]="searchPlaceholder() ? (searchPlaceholder() | transloco) : ''"
 			[formControl]="term"
 		/>
 	</div>
@@ -185,6 +188,8 @@
 					} @for (columnHead of tableConfig.columns; track columnHead) {
 					<th
 						[class.sm-width]="columnHead?.type === 'no' || columnHead?.type === 'image'"
+						[class.text-end]="columnHead?.align === 'end'"
+						[style.width.px]="columnHead?.width"
 						[class.cursor-pointer]="columnHead?.sortable"
 						(click)="columnHead?.sortable && onChangeTable(columnHead, 'sort')"
 					>
@@ -231,6 +236,8 @@
 					} @for ( columnHead of tableConfig?.columns; track columnHead) {
 					<td
 						[class.sm-width]="columnHead?.type === 'no' || columnHead?.type === 'image'"
+						[class.text-end]="columnHead?.align === 'end'"
+						[class.text-nowrap]="columnHead?.align === 'end'"
 						class="cursor-pointer"
 						(click)="columnHead.type !== 'switch' && columnData['system_reserve'] !== '1' ? onRowClicked(columnData) : true"
 					>

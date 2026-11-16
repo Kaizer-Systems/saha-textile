@@ -37,6 +37,8 @@ const CATALOGUES = [
 const SHARED_VALUE = /^(?:[A-Z]{2,6}|\d+|[\s\p{P}]*)$/u;
 const SHARED_WORDS = new Set([
 	'saha textile',
+	// Tax heads as printed on GST documents; Bengali keeps them in Latin letters (owner, 2026-11-17).
+	'cgst + sgst',
 	'simple',
 	'{{count}} images',
 	'action',

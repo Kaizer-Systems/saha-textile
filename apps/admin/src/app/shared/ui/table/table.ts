@@ -78,6 +78,8 @@ export class Table {
 	readonly dateRange = input<boolean>(false);
 	/** Overrides the delete modal's "deleted permanently" text where a delete is really a soft one. */
 	readonly deleteMessage = input<string>('deleted_message');
+	/** What the search box looks for, as a translation key ("Name, GSTIN or city"). */
+	readonly searchPlaceholder = input<string>('');
 
 	readonly tableChanged = output<Params>();
 	readonly action = output<ITableClickedAction>();

@@ -1,0 +1,329 @@
+<app-page-wrapper [title]="id() ? 'edit_supplier' : 'add_supplier'">
+	<form
+		class="theme-form theme-form-2 mega-form"
+		[formGroup]="form"
+		(ngSubmit)="save()"
+	>
+		<app-form-fields
+			[label]="'gstin'"
+			[for]="'supplier_gstin'"
+			[required]="gstinRequired()"
+		>
+			<input
+				class="form-control text-uppercase"
+				id="supplier_gstin"
+				type="text"
+				maxlength="20"
+				autocomplete="off"
+				spellcheck="false"
+				formControlName="gstin"
+				[class.is-invalid]="verdict().kind === 'problem' || verdict().kind === 'taken' || !!serverErrors()['gstin']"
+				(input)="onGstinInput($any($event.target).value)"
+			/>
+			@switch (verdict().kind) { @case ('ok') {
+			<p class="help-text text-success">
+				<i class="ri-checkbox-circle-line"></i>
+				{{ 'gstin_ok_line' | transloco: { code: gstinState(), state: stateName(), tax: (taxKey() | transloco) }
+				}}
+			</p>
+			} @case ('problem') {
+			<div class="invalid-feedback d-block">{{ $any(verdict()).key | transloco: $any(verdict()).params }}</div>
+			} @case ('taken') {
+			<div class="invalid-feedback d-block">
+				{{ 'gstin_already_saved' | transloco: { name: $any(verdict()).name } }}
+				<a
+					class="text-decoration-underline"
+					[routerLink]="['/suppliers', $any(verdict()).id]"
+				>
+					{{ 'open_it' | transloco }}
+				</a>
+			</div>
+			} @case ('checking') {
+			<p class="help-text">{{ 'gstin_checking' | transloco }}</p>
+			} @case ('unchecked') {
+			<p class="help-text">{{ 'gstin_unchecked' | transloco }}</p>
+			} @case ('typing') {
+			<p class="help-text">{{ 'gstin_fifteen_characters' | transloco }}</p>
+			} @default { @if (gstinRequired() && form.controls.gstin.touched) {
+			<div class="invalid-feedback d-block">{{ 'gstin_required_for_kind' | transloco }}</div>
+			} } } @if (serverErrors()['gstin']; as problem) {
+			<div class="invalid-feedback d-block">{{ problem }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'supplier_type'"
+			[for]="'supplier_kind'"
+			[required]="true"
+		>
+			<select
+				class="form-select"
+				id="supplier_kind"
+				formControlName="kind"
+			>
+				<option value="regular">{{ 'supplier_kind_regular_long' | transloco }}</option>
+				<option value="composition">{{ 'supplier_kind_composition_long' | transloco }}</option>
+				<option value="unregistered">{{ 'supplier_kind_unregistered_long' | transloco }}</option>
+			</select>
+			<p class="help-text">{{ 'supplier_kind_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'legal_name'"
+			[for]="'supplier_legal_name'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="supplier_legal_name"
+				type="text"
+				formControlName="legalName"
+			/>
+			<p class="help-text">{{ 'supplier_legal_name_help' | transloco }}</p>
+			@if (form.controls.legalName.touched && form.controls.legalName.errors?.['required']) {
+			<div class="invalid-feedback d-block">{{ 'supplier_legal_name_required' | transloco }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'short_name'"
+			[for]="'supplier_short_name'"
+		>
+			<input
+				class="form-control"
+				id="supplier_short_name"
+				type="text"
+				formControlName="shortName"
+			/>
+			<p class="help-text">{{ 'supplier_short_name_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'address'"
+			[for]="'supplier_line'"
+			[required]="true"
+		>
+			<textarea
+				class="form-control"
+				id="supplier_line"
+				rows="2"
+				formControlName="line"
+			></textarea>
+			@if (form.controls.line.touched && form.controls.line.errors?.['required']) {
+			<div class="invalid-feedback d-block">{{ 'supplier_address_required' | transloco }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'city'"
+			[for]="'supplier_city'"
+		>
+			<input
+				class="form-control"
+				id="supplier_city"
+				type="text"
+				formControlName="city"
+			/>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'state'"
+			[for]="'supplier_state'"
+			[required]="true"
+		>
+			<select
+				class="form-select"
+				id="supplier_state"
+				formControlName="stateCode"
+			>
+				@for (state of states(); track state.code) {
+				<option [value]="state.code">{{ state.name }} ({{ state.code }})</option>
+				}
+			</select>
+			@if (form.controls.stateCode.disabled) {
+			<p class="help-text">{{ 'supplier_state_from_gstin' | transloco }}</p>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'pin_code'"
+			[for]="'supplier_pin'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="supplier_pin"
+				type="text"
+				inputmode="numeric"
+				maxlength="6"
+				formControlName="pin"
+				[class.is-invalid]="form.controls.pin.touched && form.controls.pin.invalid"
+			/>
+			@if (form.controls.pin.touched && form.controls.pin.invalid) {
+			<div class="invalid-feedback d-block">{{ 'pin_code_six_digits' | transloco }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'pan'"
+			[for]="'supplier_pan'"
+		>
+			<input
+				class="form-control text-uppercase"
+				id="supplier_pan"
+				type="text"
+				maxlength="10"
+				formControlName="pan"
+			/>
+			@if (form.controls.pan.disabled) {
+			<p class="help-text">{{ 'supplier_pan_from_gstin' | transloco }}</p>
+			} @if (serverErrors()['pan']; as problem) {
+			<div class="invalid-feedback d-block">{{ problem }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'contact_person'"
+			[for]="'supplier_contact'"
+		>
+			<input
+				class="form-control"
+				id="supplier_contact"
+				type="text"
+				formControlName="contactName"
+			/>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'phone'"
+			[for]="'supplier_phone'"
+		>
+			<input
+				class="form-control"
+				id="supplier_phone"
+				type="tel"
+				formControlName="phone"
+			/>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'email'"
+			[for]="'supplier_email'"
+		>
+			<input
+				class="form-control"
+				id="supplier_email"
+				type="email"
+				formControlName="email"
+				[class.is-invalid]="form.controls.email.touched && form.controls.email.invalid"
+			/>
+			@if (form.controls.email.touched && form.controls.email.invalid) {
+			<div class="invalid-feedback d-block">{{ 'enter_valid_email' | transloco }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'payment_terms'"
+			[for]="'supplier_terms'"
+			[required]="true"
+		>
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="supplier_terms"
+					type="number"
+					min="0"
+					max="365"
+					step="1"
+					formControlName="paymentTermsDays"
+				/>
+				<span class="input-group-text">{{ 'days_after_bill_date' | transloco }}</span>
+			</div>
+			<p class="help-text">{{ 'supplier_terms_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'their_item_codes'"
+			[for]="'supplier_codes'"
+		>
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="supplier_codes"
+						formControlName="usesItemCodes"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<p class="help-text">{{ 'their_item_codes_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'staff_notes'"
+			[for]="'supplier_notes'"
+		>
+			<textarea
+				class="form-control"
+				id="supplier_notes"
+				rows="2"
+				[placeholder]="'only_for_staff' | transloco"
+				formControlName="notes"
+			></textarea>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'active'"
+			[for]="'supplier_active'"
+		>
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="supplier_active"
+						formControlName="active"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<p class="help-text">{{ 'supplier_active_help' | transloco }}</p>
+		</app-form-fields>
+
+		@for (match of samePan(); track match.id) {
+		<div
+			class="alert alert-warning d-flex align-items-start gap-2"
+			role="alert"
+		>
+			<i class="ri-error-warning-line mt-1"></i>
+			<div>
+				<strong>{{ 'supplier_same_pan_title' | transloco }}</strong>
+				{{ 'supplier_same_pan_body' | transloco: { name: match.name, gstin: match.gstin } }}
+				<a
+					class="text-decoration-underline"
+					[routerLink]="['/suppliers', match.id]"
+				>
+					{{ 'open_existing_supplier' | transloco }}
+				</a>
+			</div>
+		</div>
+		}
+
+		<div class="d-flex justify-content-end flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="cancel()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="submit"
+				class="btn btn-theme"
+				id="supplier_save"
+				[disabled]="!canSave()"
+			>
+				{{ 'save_supplier' | transloco }}
+			</button>
+		</div>
+	</form>
+</app-page-wrapper>

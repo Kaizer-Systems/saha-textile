@@ -971,6 +971,7 @@ export class PurchaseEntriesService {
 					.filter((line) => line.soldBy === 'piece')
 					.reduce((total, line) => total + line.quantity, 0),
 				totalINR: entry.totals.totalINR,
+				leftINR: entry.status === 'posted' ? Math.max(0, entryOutstanding(entry)) : 0,
 			})),
 			total: page.total,
 			counts: page.counts,

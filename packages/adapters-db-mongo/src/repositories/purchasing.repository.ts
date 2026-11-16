@@ -542,6 +542,7 @@ export class MongoPurchaseReturnRepository implements PurchaseReturnRepository {
 
 	async list(filter: DocumentListFilter): Promise<ListPage<PurchaseReturn> & { counts: Record<string, number> }> {
 		const base: FilterQuery<AggregateDoc> = {};
+		if (filter.supplierId) base.supplierId = filter.supplierId;
 		if (filter.q) {
 			const pattern = new RegExp(escapeRegex(filter.q), 'i');
 			base.$or = [

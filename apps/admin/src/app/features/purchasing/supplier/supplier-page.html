@@ -1,0 +1,394 @@
+@if (summary.data(); as data) {
+<section class="dashboard-tiles">
+	<div class="container-fluid">
+		<div class="row g-3 mb-3">
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'supplier_we_owe_them' | transloco }}</h6>
+						<h3>{{ data.owedINR | rupees }}</h3>
+						<p class="small text-muted mb-0">
+							@if (data.owedBills > 0) { {{ 'supplier_bills_due' | plural: data.owedBills : { date:
+							(data.nextDueOn | shortDate) } }} } @else { {{ 'supplier_nothing_owed' | transloco }} }
+						</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-wallet-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'bought_this_year' | transloco }}</h6>
+						<h3>{{ data.boughtThisYearINR | rupees }}</h3>
+						<p class="small text-muted mb-0">
+							{{ 'purchase_entries_count' | plural: data.entriesThisYear }}
+						</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-shopping-bag-3-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'returned_this_year' | transloco }}</h6>
+						<h3>{{ data.returnedThisYearINR | rupees }}</h3>
+						<p class="small text-muted mb-0">{{ 'debit_notes_count' | plural: data.debitNotesThisYear }}</p>
+					</div>
+					<div class="icon-box">
+						<i class="ri-arrow-go-back-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'oldest_unpaid' | transloco }}</h6>
+						<h3>
+							@if (data.oldestUnpaidDays !== null) { {{ 'days_count' | plural: data.oldestUnpaidDays }} }
+							@else { — }
+						</h3>
+						@if (data.oldestUnpaidDays !== null && data.oldestUnpaidDays >= alertDays()) {
+						<p class="small text-danger mb-0">{{ 'bill_near_itc_limit' | transloco }}</p>
+						} @else {
+						<p class="small text-muted mb-0">{{ 'no_bill_near_itc_limit' | transloco }}</p>
+						}
+					</div>
+					<div class="icon-box">
+						<i class="ri-time-line"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<div class="row g-2">
+	<div class="col-xxl-9">
+		<app-page-wrapper
+			[gridClass]="'col-sm-12'"
+			[title]="data.supplier.shortName || data.supplier.legalName"
+		>
+			<ul
+				class="nav nav-tabs mb-3"
+				role="tablist"
+			>
+				@for (item of tabs; track item) {
+				<li class="nav-item">
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						role="tab"
+						[class.active]="tab() === item"
+						[attr.aria-selected]="tab() === item"
+						(click)="tab.set(item)"
+					>
+						{{ 'supplier_tab_' + item | transloco }}
+					</a>
+				</li>
+				}
+			</ul>
+
+			@switch (tab()) { @case ('statement') {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 120px">{{ 'date' | transloco }}</th>
+							<th style="width: 170px">{{ 'document' | transloco }}</th>
+							<th>{{ 'details' | transloco }}</th>
+							<th class="text-end">{{ 'bill_amount' | transloco }}</th>
+							<th class="text-end">{{ 'paid_or_credited' | transloco }}</th>
+							<th class="text-end">{{ 'balance' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of data.statement; track row.documentId + row.kind + $index; let last = $last) {
+						<tr>
+							<td>{{ row.date | shortDate }}</td>
+							<td>
+								@if (link(row); as target) {
+								<a [routerLink]="target">{{ row.documentNumber }}</a>
+								} @else { {{ row.documentNumber }} }
+							</td>
+							<td>{{ row.details }}</td>
+							<td class="text-end text-nowrap">{{ row.billINR ? (row.billINR | rupees) : '' }}</td>
+							<td class="text-end text-nowrap">
+								{{ row.paidOrCreditedINR ? (row.paidOrCreditedINR | rupees) : '' }}
+							</td>
+							<td class="text-end text-nowrap">
+								@if (last) {
+								<strong>{{ row.balanceINR | rupees }}</strong>
+								} @else { {{ row.balanceINR | rupees }} }
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="6">
+								<div class="no-data-added">
+									<h4>{{ 'supplier_statement_empty' | transloco }}</h4>
+								</div>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @case ('purchases') {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 170px">{{ 'entry_no' | transloco }}</th>
+							<th>{{ 'their_bill_no' | transloco }}</th>
+							<th>{{ 'bill_date' | transloco }}</th>
+							<th class="text-end">{{ 'pieces' | transloco }}</th>
+							<th class="text-end">{{ 'bill_total' | transloco }}</th>
+							<th style="width: 140px">{{ 'stock' | transloco }}</th>
+							<th style="width: 120px">{{ 'payment' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of entries.data()?.items ?? []; track row.id) {
+						<tr>
+							<td>
+								<a [routerLink]="['/purchase-entries', row.id]">
+									{{ row.number ?? ('gets_number_on_posting' | transloco) }}
+								</a>
+							</td>
+							<td>{{ row.billNumber }}</td>
+							<td>{{ row.billDate | shortDate }}</td>
+							<td class="text-end text-nowrap">{{ row.pieces }}</td>
+							<td class="text-end text-nowrap">{{ row.totalINR | rupees }}</td>
+							<td>
+								<div [class]="'status-' + pills.entry[row.status]">
+									<span>{{ 'pe_status_' + row.status | transloco }}</span>
+								</div>
+							</td>
+							<td>
+								@if (row.status === 'posted') {
+								<div [class]="'status-' + pills.payment[row.paymentStatus]">
+									<span>{{ 'pay_status_' + row.paymentStatus | transloco }}</span>
+								</div>
+								} @else {
+								<span class="text-muted">—</span>
+								}
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="7">
+								<div class="no-data-added">
+									<h4>{{ 'no_records_found' | transloco }}</h4>
+								</div>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @case ('payments') {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 120px">{{ 'date' | transloco }}</th>
+							<th style="width: 170px">{{ 'document' | transloco }}</th>
+							<th>{{ 'details' | transloco }}</th>
+							<th class="text-end">{{ 'amount' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of payments(); track row.documentId + row.kind + $index) {
+						<tr>
+							<td>{{ row.date | shortDate }}</td>
+							<td>
+								<a [routerLink]="['/purchase-entries', row.documentId]">{{ row.documentNumber }}</a>
+							</td>
+							<td>{{ row.details }}</td>
+							<td class="text-end text-nowrap">
+								{{ (row.kind === 'payment' ? row.paidOrCreditedINR : row.billINR) | rupees }}
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="4">
+								<div class="no-data-added">
+									<h4>{{ 'no_records_found' | transloco }}</h4>
+								</div>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @case ('returns') {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 170px">{{ 'debit_note' | transloco }}</th>
+							<th style="width: 170px">{{ 'from_entry' | transloco }}</th>
+							<th>{{ 'pr_why' | transloco }}</th>
+							<th class="text-end">{{ 'value' | transloco }}</th>
+							<th style="width: 220px">{{ 'status' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of returns.data()?.items ?? []; track row.id) {
+						<tr>
+							<td>
+								<a [routerLink]="['/purchase-returns', row.id]">
+									{{ row.number ?? ((row.kind === 'short_supply' ? 'pr_no_goods_to_send' :
+									'pr_number_on_sending') | transloco) }}
+								</a>
+							</td>
+							<td>{{ row.purchaseEntryNumber }}</td>
+							<td>{{ 'pr_reason_' + row.reason | transloco }}</td>
+							<td class="text-end text-nowrap">{{ row.totalINR | rupees }}</td>
+							<td>
+								<div [class]="'status-' + pills.returns[row.status]">
+									<span>{{ 'pr_status_' + row.status | transloco }}</span>
+								</div>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="5">
+								<div class="no-data-added">
+									<h4>{{ 'no_records_found' | transloco }}</h4>
+								</div>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} @case ('activity') {
+			<div class="table-responsive datatable-wrapper border-table">
+				<table class="all-package theme-table no-footer table">
+					<thead>
+						<tr>
+							<th style="width: 190px">{{ 'when' | transloco }}</th>
+							<th style="width: 140px">{{ 'who' | transloco }}</th>
+							<th>{{ 'what_happened' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of activity.data() ?? []; track row.id) {
+						<tr>
+							<td>{{ row.at | shortDateTime }}</td>
+							<td>{{ row.actorName }}</td>
+							<td>{{ row.text }}</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="3">
+								<div class="no-data-added">
+									<h4>{{ 'no_records_found' | transloco }}</h4>
+								</div>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			} }
+
+			<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+				<button
+					type="button"
+					class="btn btn-outline"
+					(click)="exportStatement()"
+				>
+					<i class="ri-download-2-line me-1"></i>
+					{{ 'export_statement' | transloco }}
+				</button>
+				<button
+					*hasPermission="'purchase.payment'"
+					type="button"
+					class="btn btn-theme"
+					(click)="recordPayment()"
+				>
+					<i class="ri-money-rupee-circle-line me-1"></i>
+					{{ 'record_payment' | transloco }}
+				</button>
+			</div>
+		</app-page-wrapper>
+	</div>
+	<div class="col-xxl-3">
+		<div class="sticky-top-sec">
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'supplier_details'"
+			>
+				<a
+					button
+					*hasPermission="'supplier.edit'"
+					href="javascript:void(0)"
+					class="btn btn-animation btn-sm ms-auto"
+					(click)="edit()"
+				>
+					{{ 'edit' | transloco }}
+				</a>
+				<div class="customer-detail tracking-wrapper">
+					<ul>
+						<li>
+							<label>{{ 'legal_name' | transloco }}:</label>
+							<h4>{{ data.supplier.legalName }}</h4>
+						</li>
+						<li>
+							<label>{{ 'gstin' | transloco }}:</label>
+							<h4>{{ data.supplier.gstin ?? '—' }}</h4>
+						</li>
+						<li>
+							<label>{{ 'type' | transloco }}:</label>
+							<h4>
+								{{ 'supplier_kind_' + data.supplier.kind | transloco }} · {{ taxKey() | transloco }}
+							</h4>
+						</li>
+						<li>
+							<label>{{ 'address' | transloco }}:</label>
+							<h4>
+								{{ data.supplier.address.line }}@if (data.supplier.address.city) {, {{
+								data.supplier.address.city }}}, {{ data.supplier.stateName }} {{
+								data.supplier.address.pin }}
+							</h4>
+						</li>
+						@if (data.supplier.contactName || data.supplier.phone || data.supplier.email) {
+						<li>
+							<label>{{ 'contact' | transloco }}:</label>
+							<h4>
+								{{ data.supplier.contactName }}@if (data.supplier.contactName && data.supplier.phone) {
+								· } {{ data.supplier.phone }} @if (data.supplier.email) {
+								<br />
+								{{ data.supplier.email }} }
+							</h4>
+						</li>
+						}
+						<li>
+							<label>{{ 'supplier_terms' | transloco }}:</label>
+							<h4>{{ terms() }}</h4>
+						</li>
+						@if (!data.supplier.active) {
+						<li>
+							<label>{{ 'status' | transloco }}:</label>
+							<h4>{{ 'supplier_inactive' | transloco }}</h4>
+						</li>
+						}
+					</ul>
+				</div>
+			</app-page-wrapper>
+		</div>
+	</div>
+</div>
+} @else if (summary.isError()) {
+<div class="container-fluid">
+	<div class="no-data-added">
+		<h4>{{ 'supplier_not_found' | transloco }}</h4>
+	</div>
+</div>
+}

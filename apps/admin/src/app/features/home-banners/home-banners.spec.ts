@@ -160,6 +160,16 @@ describe('BannerSlotForm', () => {
 		expect(page.previews().phone).toBeNull();
 	});
 
+	it('keeps the version each picture was chosen with, and sends it on save (R4-1, media step 4d)', async () => {
+		const { page, gateway } = await render();
+		page.pick('desktop', { id: 'd1', versionId: 'banner_keep_shape.as_is' } as never);
+		page.pick('phone', { id: 'p1', versionId: 'phone_banner_4x5.crop' } as never);
+		expect(page.imageVersions()).toEqual({ d1: 'banner_keep_shape.as_is', p1: 'phone_banner_4x5.crop' });
+		await page.save();
+		const sent = (gateway.save.mock.lastCall as unknown[])[0];
+		expect(sent).toMatchObject({ imageVersions: { d1: 'banner_keep_shape.as_is', p1: 'phone_banner_4x5.crop' } });
+	});
+
 	it('needs a desktop image', async () => {
 		const { page, gateway, notifications } = await render();
 		await page.save();

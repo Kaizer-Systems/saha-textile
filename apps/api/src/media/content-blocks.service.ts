@@ -91,7 +91,11 @@ export class ContentBlocksService {
 			}
 		}
 		const existing = await this.blocks.findByKey(key);
-		const block: ContentBlock = { ...input, id: existing?.id ?? `cbk_${randomUUID()}`, key };
+		// Only the block's own pictures keep a stored version.
+		const imageVersions = Object.fromEntries(
+			Object.entries(input.imageVersions ?? {}).filter(([assetId]) => ids.includes(assetId)),
+		);
+		const block: ContentBlock = { ...input, imageVersions, id: existing?.id ?? `cbk_${randomUUID()}`, key };
 		await this.blocks.save(block);
 		return block;
 	}
@@ -140,6 +144,7 @@ export class ContentBlocksService {
 						locale,
 						fallbackLocale: 'en',
 						altOverride: block.alt,
+						versionId: block.imageVersions?.[id as string] ?? null,
 					})
 				: null;
 		};

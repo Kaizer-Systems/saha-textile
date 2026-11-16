@@ -664,7 +664,12 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 		beforeAll(async () => {
 			await repo.save(block('b1'));
 			await repo.save(
-				block('b2', { startsAt: past, endsAt: future, images: { desktop: 'd', tablet: 't', phone: 'p' } }),
+				block('b2', {
+					startsAt: past,
+					endsAt: future,
+					images: { desktop: 'd', tablet: 't', phone: 'p' },
+					imageVersions: { d: 'banner_keep_shape.as_is' },
+				}),
 			);
 			await repo.save(block('b3', { startsAt: future }));
 			await repo.save(block('b4', { status: 'draft' }));
@@ -673,6 +678,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 		it('finds by key', async () => {
 			expect(await repo.findByKey(`${P}b2`)).toMatchObject({
 				images: { tablet: 't', phone: 'p' },
+				imageVersions: { d: 'banner_keep_shape.as_is' },
 				startsAt: past,
 				endsAt: future,
 			});
@@ -698,6 +704,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 				ownerId: null,
 				images: { tablet: null, phone: null },
 				localeImages: {},
+				imageVersions: {},
 				heading: {},
 				subheading: {},
 				ctaLabel: {},

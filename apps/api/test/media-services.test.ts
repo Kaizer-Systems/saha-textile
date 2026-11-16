@@ -747,6 +747,15 @@ describe('ContentBlocksService', () => {
 		expect((await statusOf(build().service.upsert(input({ status: 'active', alt: {} })))).status).toBe(422);
 	});
 
+	it('keeps the version each picture was chosen with, for its own pictures only (R4-1, step 4d)', async () => {
+		const { service, blocks } = build([banner()]);
+		const saved = await service.upsert(input({ imageVersions: { m1: 'banner_keep_shape.as_is', other: 'x.y' } }));
+		expect(saved.imageVersions).toEqual({ m1: 'banner_keep_shape.as_is' });
+		expect(blocks.save).toHaveBeenCalledWith(
+			expect.objectContaining({ imageVersions: { m1: 'banner_keep_shape.as_is' } }),
+		);
+	});
+
 	it('keeps the id of the block it replaces', async () => {
 		const saved = await build([banner()], { id: 'cbk_old' }).service.upsert(input());
 		expect(saved.id).toBe('cbk_old');

@@ -11,7 +11,7 @@ import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 
 type Band = 'desktop' | 'tablet' | 'phone';
 const WIDE_SLOTS = new Set([
@@ -56,6 +56,8 @@ export class BannerSlotForm implements OnInit {
 	readonly locales = inject(ActiveLanguages).list();
 	readonly bands: Band[] = ['desktop', 'tablet', 'phone'];
 	readonly previews = signal<Record<Band, IAttachment | null>>({ desktop: null, tablet: null, phone: null });
+	/** The version each chosen picture shows (R4-1; media step 4d), by photo id. */
+	readonly imageVersions = signal<Record<string, string>>({});
 	readonly saving = signal(false);
 
 	readonly form = new FormGroup({
@@ -97,10 +99,13 @@ export class BannerSlotForm implements OnInit {
 			startsAt: toLocal(block.startsAt),
 			endsAt: toLocal(block.endsAt),
 		});
+		this.imageVersions.set({ ...(block.imageVersions ?? {}) });
 		const previews = { ...this.previews() };
 		for (const band of this.bands) {
 			const id = block.images[band];
-			if (id) previews[band] = await firstValueFrom(this.media.get(id)).catch(() => null);
+			const versionId = id ? block.imageVersions?.[id] : undefined;
+			const image = id ? await firstValueFrom(this.media.get(id)).catch(() => null) : null;
+			if (image) previews[band] = versionId ? ({ ...image, versionId } as IAttachment) : image;
 		}
 		this.previews.set(previews);
 	}
@@ -109,6 +114,9 @@ export class BannerSlotForm implements OnInit {
 		const image = Array.isArray(selection) ? (selection[0] ?? null) : selection;
 		this.form.controls[band].setValue(image ? String(image.id) : null);
 		this.previews.update((current) => ({ ...current, [band]: image }));
+		const versionId = (image as PickedAttachment | null)?.versionId;
+		if (image && versionId)
+			this.imageVersions.update((versions) => ({ ...versions, [String(image.id)]: versionId }));
 	}
 
 	async save(): Promise<void> {
@@ -122,6 +130,7 @@ export class BannerSlotForm implements OnInit {
 			position: this.position(),
 			slot: this.slot(),
 			images: { desktop: value.desktop, tablet: value.tablet, phone: value.phone },
+			imageVersions: this.imageVersions(),
 			containsText: value.containsText,
 			localeImages: this.existing()?.localeImages ?? {},
 			heading: value.containsText ? {} : clean(value.heading),

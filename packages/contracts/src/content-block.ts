@@ -119,6 +119,8 @@ const ContentBlockFields = z.object({
 	 */
 	containsText: z.boolean().default(false),
 	localeImages: z.record(z.string(), BannerImageSet).default({}),
+	/** The version each picture shows, by photo id (R4-1; media step 4d). Empty: the shop's own pick. */
+	imageVersions: z.record(z.string(), z.string()).default({}),
 	heading: LocalizedText.default({}),
 	subheading: LocalizedText.default({}),
 	ctaLabel: LocalizedText.default({}),

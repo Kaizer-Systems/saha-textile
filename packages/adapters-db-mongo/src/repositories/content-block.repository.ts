@@ -16,6 +16,7 @@ const toBlock = (doc: ContentBlockDoc): ContentBlock =>
 		images: { desktop: doc.images.desktop, tablet: doc.images.tablet ?? null, phone: doc.images.phone ?? null },
 		containsText: doc.containsText,
 		localeImages: doc.localeImages ?? {},
+		imageVersions: doc.imageVersions ?? {},
 		heading: doc.heading ?? {},
 		subheading: doc.subheading ?? {},
 		ctaLabel: doc.ctaLabel ?? {},

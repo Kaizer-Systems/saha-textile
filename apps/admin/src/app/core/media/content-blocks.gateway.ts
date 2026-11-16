@@ -29,6 +29,8 @@ export interface ContentBlockInput {
 	images: { desktop: string; tablet: string | null; phone: string | null };
 	containsText: boolean;
 	localeImages: Record<string, { desktop: string; tablet: string | null; phone: string | null }>;
+	/** The version each picture shows, by photo id (R4-1; media step 4d). */
+	imageVersions?: Record<string, string>;
 	heading: Localized;
 	subheading: Localized;
 	ctaLabel: Localized;

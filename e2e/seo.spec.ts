@@ -1,11 +1,17 @@
 import { expect, test } from './support';
 
-const jsonLd = async (page: import('@playwright/test').Page) =>
-	page
+/**
+ * The page's structured data blocks by type. Every page also carries the shop's Organization block (Brand Kit), so
+ * a test asks for the type it means rather than the first block on the page.
+ */
+const jsonLd = async (page: import('@playwright/test').Page, ...types: (string | string[])[]) => {
+	const blocks = await page
 		.locator('script[type="application/ld+json"]')
 		.evaluateAll((scripts) =>
 			scripts.map((script) => JSON.parse(script.textContent ?? '{}') as Record<string, unknown>),
 		);
+	return types.map((type) => blocks.find((block) => [type].flat().includes(String(block['@type']))));
+};
 
 test.describe('search engine view', () => {
 	test('the sitemap lists absolute, indexable addresses only', async ({ request, baseURL }) => {
@@ -34,7 +40,8 @@ test.describe('search engine view', () => {
 		await page.goto('/bn/product/katan-banarasi-saree');
 		await expect(page.locator('app-buy-box')).toBeVisible();
 
-		const [product, crumbs] = await jsonLd(page);
+		// A product without options is a Product; one with options a ProductGroup.
+		const [product, crumbs] = await jsonLd(page, ['Product', 'ProductGroup'], 'BreadcrumbList');
 		expect(product?.['url']).toBe(`${baseURL}/bn/product/katan-banarasi-saree`);
 		expect(String(product?.['image'])).toMatch(/^https:\/\//);
 		const items = crumbs?.['itemListElement'] as Array<{ item: string }>;
@@ -46,7 +53,7 @@ test.describe('search engine view', () => {
 		await page.goto('/en/product/kurti-palazzo-set');
 		await expect(page.locator('app-buy-box')).toBeVisible();
 
-		const [group] = await jsonLd(page);
+		const [group] = await jsonLd(page, 'ProductGroup');
 		expect(group?.['@type']).toBe('ProductGroup');
 		expect(group?.['variesBy']).toContain('https://schema.org/size');
 	});

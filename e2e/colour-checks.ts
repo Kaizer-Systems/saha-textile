@@ -182,7 +182,10 @@ export function firstScreen(skip: string): Record<string, string> {
 	for (const element of document.body.querySelectorAll('*')) {
 		if (element.closest(`script, style, noscript, svg, ${skip}`)) continue;
 		const box = element.getBoundingClientRect();
-		if (box.width < 1 || box.height < 1 || box.top > innerHeight) continue;
+		// Only what the first screen shows: a carousel's copies parked off to the side load their pictures late (lazy),
+		// so their height says nothing about the mode.
+		if (box.width < 1 || box.height < 1 || box.top > innerHeight || box.right <= 0 || box.left >= innerWidth)
+			continue;
 		const style = getComputedStyle(element);
 		out[path(element)] =
 			`${Math.round(box.left)},${Math.round(box.top)},${Math.round(box.width)},${Math.round(box.height)}|` +

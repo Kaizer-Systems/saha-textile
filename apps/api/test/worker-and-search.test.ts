@@ -21,6 +21,10 @@ const hoisted = vi.hoisted(() => ({
 		close: vi.fn(async () => {}),
 	},
 	workerClose: vi.fn(async () => {}),
+	documentWorkerClose: vi.fn(async () => {}),
+	documentWorkerOn: vi.fn(),
+	rendererClose: vi.fn(async () => {}),
+	rendererConfigs: [] as unknown[],
 	storage: { deleteMany: vi.fn(async () => {}) },
 	purge: vi.fn(async () => {}),
 	reconcile: vi.fn(async () => [] as string[]),
@@ -66,6 +70,15 @@ vi.mock('@saha-textile/adapters-queue-bullmq', () => ({
 	startMediaWorker: (input: (typeof hoisted.started)[number]) => {
 		hoisted.started.push(input);
 		return { close: hoisted.workerClose };
+	},
+	startDocumentWorker: () => ({ close: hoisted.documentWorkerClose, on: hoisted.documentWorkerOn }),
+}));
+vi.mock('@saha-textile/adapters-pdf-chromium', () => ({
+	ChromiumDocumentRenderer: class {
+		close = hoisted.rendererClose;
+		constructor(config: unknown) {
+			hoisted.rendererConfigs.push(config);
+		}
 	},
 }));
 vi.mock('@saha-textile/adapters-storage-spaces', () => ({
@@ -149,6 +162,7 @@ const config = (overrides: Record<string, unknown> = {}) =>
 		notifications: { provider: 'console' },
 		search: { index: 'products' },
 		locales: ['en'],
+		documents: { chromiumChannel: undefined, chromiumExecutable: '/usr/local/bin/document-chromium', noSandbox: true, renderTimeoutMs: 30_000 },
 		...overrides,
 	}) as never;
 
@@ -182,6 +196,10 @@ describe('composeMediaWorker', () => {
 		await worker.close();
 		expect(hoisted.workerClose).toHaveBeenCalledTimes(1);
 		expect(hoisted.queue.close).toHaveBeenCalledTimes(1);
+		// Business documents: the PDF worker and its browser close with the rest.
+		expect(hoisted.documentWorkerClose).toHaveBeenCalledTimes(1);
+		expect(hoisted.rendererClose).toHaveBeenCalledTimes(1);
+		expect(hoisted.rendererConfigs.at(-1)).toMatchObject({ executablePath: '/usr/local/bin/document-chromium', noSandbox: true });
 	});
 
 	it('names a failed job, or says it does not know which', async () => {

@@ -266,6 +266,20 @@ const ConfigSchema = z.object({
 	 * nothing here is on the request path. Defaults point at a local instance because the
 	 * queue is infrastructure the API expects to find beside it, not an optional provider.
 	 */
+	/**
+	 * Business documents as PDF (owner decision 2026-11-17): headless Chromium in the worker.
+	 * Locally the installed Chrome (`PDF_CHROMIUM_CHANNEL=chrome`); in the image Alpine's own
+	 * Chromium (`PDF_CHROMIUM_EXECUTABLE`), sandbox off as containers require.
+	 */
+	documents: z.object({
+		chromiumChannel: z.string().optional(),
+		chromiumExecutable: z.string().optional(),
+		noSandbox: z
+			.enum(['true', 'false'])
+			.default('false')
+			.transform((value) => value === 'true'),
+		renderTimeoutMs: z.coerce.number().int().min(2_000).max(120_000).default(30_000),
+	}),
 	redis: z.object({
 		host: z.string().min(1).default('127.0.0.1'),
 		port: z.coerce.number().int().positive().default(6379),
@@ -472,6 +486,12 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 				baseUrl: env.CCAVENUE_BASE_URL || undefined,
 				apiUrl: env.CCAVENUE_API_URL || undefined,
 			},
+		},
+		documents: {
+			chromiumChannel: env.PDF_CHROMIUM_CHANNEL || undefined,
+			chromiumExecutable: env.PDF_CHROMIUM_EXECUTABLE || undefined,
+			noSandbox: env.PDF_CHROMIUM_NO_SANDBOX || undefined,
+			renderTimeoutMs: env.PDF_RENDER_TIMEOUT_MS || undefined,
 		},
 		redis: {
 			host: env.REDIS_HOST || undefined,

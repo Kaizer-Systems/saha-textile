@@ -18,5 +18,7 @@ import { MailboxesAdminService } from './mailboxes-admin.service';
 	imports: [AuthModule, CatalogModule],
 	controllers: [AdminMailboxesController, AdminInboxController, ContactMessagesController],
 	providers: [MailboxBookkeeping, MailboxesAdminService, InboxService, ContactMessagesService],
+	// Purchase orders are emailed through a connected mailbox (purchases brief, po03).
+	exports: [InboxService],
 })
 export class MailboxesModule {}

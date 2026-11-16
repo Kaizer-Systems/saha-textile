@@ -64,6 +64,8 @@ export interface ProductDoc {
 		heightCm: number | null;
 	} | null;
 	hsnCode?: string | null;
+	soldBy?: 'piece' | 'metre';
+	returnable?: boolean | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -112,6 +114,8 @@ const ProductSchema = new Schema<ProductDoc>(
 		onSale: { type: Boolean, default: false },
 		shippingDefaults: { type: Schema.Types.Mixed, default: null },
 		hsnCode: { type: String, default: null },
+		soldBy: { type: String, enum: ['piece', 'metre'], default: 'piece' },
+		returnable: { type: Boolean, default: null },
 	},
 	{ collection: 'products', timestamps: true },
 );

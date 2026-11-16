@@ -30,7 +30,13 @@ import {
 } from '@saha-textile/adapters-db-mongo';
 import { YazlZipArchive } from '@saha-textile/adapters-archive-zip';
 import { SharpImageCodec } from '@saha-textile/adapters-image-sharp';
-import { BullMqMediaJobQueue, type MediaJobHandlers, startMediaWorker } from '@saha-textile/adapters-queue-bullmq';
+import { ChromiumDocumentRenderer } from '@saha-textile/adapters-pdf-chromium';
+import {
+	BullMqMediaJobQueue,
+	type MediaJobHandlers,
+	startDocumentWorker,
+	startMediaWorker,
+} from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import {
@@ -360,10 +366,25 @@ export const composeMediaWorker = async (config: AppConfig) => {
 	});
 	logger.log(`Media worker consuming with concurrency ${config.media.workerConcurrency}`);
 
+	// Business documents (owner decision 2026-11-17): one browser, opened on the first PDF and
+	// closed after a minute without work, two documents at a time.
+	const documents = new ChromiumDocumentRenderer({
+		channel: config.documents.chromiumChannel,
+		executablePath: config.documents.chromiumExecutable,
+		noSandbox: config.documents.noSandbox,
+		timeoutMs: config.documents.renderTimeoutMs,
+		idleCloseMs: 60_000,
+		concurrency: 2,
+	});
+	const documentWorker = startDocumentWorker(config.redis, documents, 2);
+	documentWorker.on('failed', (job, error) => logger.warn(`Document ${job?.id ?? ''} failed: ${error.message}`));
+
 	return {
 		async close() {
 			languages.onModuleDestroy();
 			await worker.close();
+			await documentWorker.close();
+			await documents.close();
 			await queue.close();
 		},
 	};

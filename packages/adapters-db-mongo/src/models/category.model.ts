@@ -10,6 +10,8 @@ export interface CategoryDoc {
 	depth: number;
 	isBannerCollection: boolean;
 	displayOrder: number;
+	hsnCode?: string | null;
+	returnable?: boolean;
 	description?: Record<string, string>;
 	seo?: Record<string, unknown>;
 	media?: Record<string, unknown>;
@@ -28,6 +30,8 @@ const CategorySchema = new Schema<CategoryDoc>(
 		depth: { type: Number, default: 0 },
 		isBannerCollection: { type: Boolean, default: false },
 		displayOrder: { type: Number, default: 0 },
+		hsnCode: { type: String, default: null },
+		returnable: { type: Boolean, default: true },
 		description: { type: Schema.Types.Mixed, default: {} },
 		seo: { type: Schema.Types.Mixed },
 		media: { type: Schema.Types.Mixed },

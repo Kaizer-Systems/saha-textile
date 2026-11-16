@@ -72,9 +72,24 @@ import {
 	MongoSeoRedirectRepository,
 	MongoAddonTemplateRepository,
 	MongoStockAlertRepository,
+	MongoAdjustmentRequestRepository,
+	MongoInventoryCostLayerRepository,
+	MongoInventorySettingsRepository,
+	MongoNumberAllocator,
+	MongoOpeningStockRepository,
+	MongoPurchaseEntryRepository,
+	MongoPurchaseOrderRepository,
+	MongoPurchaseReturnRepository,
+	MongoStockCountRepository,
+	MongoStockHoldRepository,
+	MongoStockMovement,
+	MongoStockReadRepository,
+	MongoSupplierItemCodeRepository,
+	MongoSupplierPaymentRepository,
+	MongoSupplierRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
-import { BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
+import { BullMqDocumentRenderer, BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import type {
@@ -100,6 +115,21 @@ import { readinessProbes } from '../health/readiness-probe';
 import { MeilisearchListing } from '../search/meilisearch-listing';
 import { MeilisearchSearch } from '../search/meilisearch-search';
 import {
+	ADJUSTMENT_REQUEST_REPOSITORY,
+	INVENTORY_COST_LAYER_REPOSITORY,
+	INVENTORY_SETTINGS_REPOSITORY,
+	NUMBER_ALLOCATOR,
+	OPENING_STOCK_REPOSITORY,
+	PURCHASE_ENTRY_REPOSITORY,
+	PURCHASE_ORDER_REPOSITORY,
+	PURCHASE_RETURN_REPOSITORY,
+	STOCK_COUNT_REPOSITORY,
+	STOCK_HOLD_REPOSITORY,
+	STOCK_MOVEMENT,
+	STOCK_READ_REPOSITORY,
+	SUPPLIER_ITEM_CODE_REPOSITORY,
+	SUPPLIER_PAYMENT_REPOSITORY,
+	SUPPLIER_REPOSITORY,
 	AUTH_PORT,
 	CART_REPOSITORY,
 	ATTRIBUTE_DEFINITION_REPOSITORY,
@@ -182,6 +212,7 @@ import {
 	CDN_PURGE,
 	YOUTUBE_PORT,
 	INR_PAYMENT_GATEWAY,
+	DOCUMENT_RENDERER,
 } from './tokens';
 import { SaleAwareVariantRepository } from '../events/sale-aware-variant.repository';
 import { SalePriceBook } from '../events/sale-price-book';
@@ -354,6 +385,22 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: MAILBOX_TOKEN_STORE, useFactory: buildMailboxTokenStore, inject: [APP_CONFIG] },
 		{ provide: MAILBOX_PORT, useFactory: buildMailboxPort, inject: [APP_CONFIG] },
 		{ provide: WISHLIST_REPOSITORY, useClass: MongoWishlistRepository },
+		// Purchases and stock (brief revision 2, accepted 2026-11-15).
+		{ provide: SUPPLIER_REPOSITORY, useClass: MongoSupplierRepository },
+		{ provide: SUPPLIER_ITEM_CODE_REPOSITORY, useClass: MongoSupplierItemCodeRepository },
+		{ provide: PURCHASE_ORDER_REPOSITORY, useClass: MongoPurchaseOrderRepository },
+		{ provide: PURCHASE_ENTRY_REPOSITORY, useClass: MongoPurchaseEntryRepository },
+		{ provide: SUPPLIER_PAYMENT_REPOSITORY, useClass: MongoSupplierPaymentRepository },
+		{ provide: PURCHASE_RETURN_REPOSITORY, useClass: MongoPurchaseReturnRepository },
+		{ provide: STOCK_HOLD_REPOSITORY, useClass: MongoStockHoldRepository },
+		{ provide: ADJUSTMENT_REQUEST_REPOSITORY, useClass: MongoAdjustmentRequestRepository },
+		{ provide: STOCK_COUNT_REPOSITORY, useClass: MongoStockCountRepository },
+		{ provide: OPENING_STOCK_REPOSITORY, useClass: MongoOpeningStockRepository },
+		{ provide: NUMBER_ALLOCATOR, useClass: MongoNumberAllocator },
+		{ provide: INVENTORY_SETTINGS_REPOSITORY, useClass: MongoInventorySettingsRepository },
+		{ provide: STOCK_MOVEMENT, useClass: MongoStockMovement },
+		{ provide: STOCK_READ_REPOSITORY, useClass: MongoStockReadRepository },
+		{ provide: INVENTORY_COST_LAYER_REPOSITORY, useClass: MongoInventoryCostLayerRepository },
 		{ provide: SITE_SETTINGS_REPOSITORY, useClass: MongoSiteSettingsRepository },
 		// Search totals and result clicks, with no shopper detail (search suggestions, 2026-11-08).
 		{ provide: SEARCH_ANALYTICS_REPOSITORY, useClass: MongoSearchAnalyticsRepository },
@@ -370,6 +417,13 @@ import { LanguageStore } from '../languages/language-store';
 		{
 			provide: MEDIA_JOB_QUEUE,
 			useFactory: (config: AppConfig) => new BullMqMediaJobQueue(config.redis),
+			inject: [APP_CONFIG],
+		},
+		{
+			// PDFs are drawn by the worker's Chromium; the API only asks and waits (owner, 2026-11-17).
+			provide: DOCUMENT_RENDERER,
+			useFactory: (config: AppConfig) =>
+				new BullMqDocumentRenderer(config.redis, config.documents.renderTimeoutMs + 15_000),
 			inject: [APP_CONFIG],
 		},
 		{
@@ -477,6 +531,21 @@ import { LanguageStore } from '../languages/language-store';
 		MAILBOX_TOKEN_STORE,
 		CONTACT_MESSAGE_REPOSITORY,
 		WISHLIST_REPOSITORY,
+		SUPPLIER_REPOSITORY,
+		SUPPLIER_ITEM_CODE_REPOSITORY,
+		PURCHASE_ORDER_REPOSITORY,
+		PURCHASE_ENTRY_REPOSITORY,
+		SUPPLIER_PAYMENT_REPOSITORY,
+		PURCHASE_RETURN_REPOSITORY,
+		STOCK_HOLD_REPOSITORY,
+		ADJUSTMENT_REQUEST_REPOSITORY,
+		STOCK_COUNT_REPOSITORY,
+		OPENING_STOCK_REPOSITORY,
+		NUMBER_ALLOCATOR,
+		INVENTORY_SETTINGS_REPOSITORY,
+		STOCK_MOVEMENT,
+		STOCK_READ_REPOSITORY,
+		INVENTORY_COST_LAYER_REPOSITORY,
 		SITE_SETTINGS_REPOSITORY,
 		SEARCH_ANALYTICS_REPOSITORY,
 		SEARCH_TERM_REPOSITORY,
@@ -485,6 +554,7 @@ import { LanguageStore } from '../languages/language-store';
 		CDN_PURGE,
 		YOUTUBE_PORT,
 		INR_PAYMENT_GATEWAY,
+		DOCUMENT_RENDERER,
 	],
 })
 export class PersistenceModule implements OnApplicationBootstrap, OnApplicationShutdown {

@@ -444,6 +444,8 @@ export function mapDemoCatalogue(input: {
 			ancestors: pathIds.slice(0, -1),
 			depth: Math.max(0, slugs.length - 1),
 			isBannerCollection: false,
+			hsnCode: null,
+			returnable: true,
 			displayOrder: category.id,
 		};
 	});
@@ -626,6 +628,8 @@ export function mapDemoCatalogue(input: {
 			onSale,
 			shippingDefaults: { weightGrams: null, lengthCm: null, widthCm: null, heightCm: null },
 			hsnCode: null,
+			soldBy: 'piece',
+			returnable: null,
 			createdAt: product.created_at,
 		};
 		productDocs.push(doc);
@@ -664,6 +668,7 @@ export function mapDemoCatalogue(input: {
 				stock: {
 					tracked: true,
 					quantity: Math.max(0, Math.round(quantity)),
+					held: 0,
 					lowStockThreshold: null,
 					allowBackorder: false,
 				},

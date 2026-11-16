@@ -31,9 +31,9 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 89,
-		"existingModelCount": 65,
-		"targetOnlyCount": 24,
+		"nodeCount": 99,
+		"existingModelCount": 77,
+		"targetOnlyCount": 22,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
 	},
@@ -658,13 +658,22 @@
 			"id": "purchaseInvoices",
 			"label": "purchaseInvoices",
 			"cluster": "inventory-procurement",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["H"],
 			"blockingDecisions": ["DEC-NUMBERING"],
-			"purpose": "Supplier purchase-invoice intake for stock, cost provenance, and purchase and profit reporting.",
+			"purpose": "Posted supplier bills (staff call them purchase entries) with their lines embedded: GST split, freight share, cost per piece or metre, goods check, payment state and void trail. Posting creates cost layers and ledger rows in one transaction.",
 			"source": "catalog §7.34",
-			"references": ["sequences"]
+			"references": [
+				"suppliers",
+				"purchaseOrders",
+				"productVariants",
+				"products",
+				"sequences",
+				"inventoryCostLayers",
+				"inventoryLedger"
+			],
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts"
 		},
 		{
 			"id": "purchaseInvoiceLines",
@@ -674,7 +683,7 @@
 			"targetAction": "add",
 			"owningChunks": ["H"],
 			"blockingDecisions": [],
-			"purpose": "Supplier invoice line replication and stock intake per product or variant.",
+			"purpose": "Planned as its own collection; the lines now live inside each purchaseInvoices document, so this star stays unbuilt until the end-of-project clean-up decides it.",
 			"source": "catalog §7.35",
 			"references": ["purchaseInvoices", "products", "productVariants"]
 		},
@@ -689,7 +698,16 @@
 			"purpose": "Stock audit and adjustment provenance without introducing warehouse-management complexity.",
 			"source": "catalog §7.14",
 			"currentModel": "packages/adapters-db-mongo/src/models/inventory.model.ts",
-			"references": ["products", "productVariants", "orders", "returns", "purchaseInvoiceLines"]
+			"references": [
+				"products",
+				"productVariants",
+				"orders",
+				"returns",
+				"purchaseInvoiceLines",
+				"purchaseInvoices",
+				"stockAdjustments",
+				"purchaseReturns"
+			]
 		},
 		{
 			"id": "inventoryCostLayers",
@@ -702,7 +720,7 @@
 			"purpose": "FIFO unit-cost history for COGS, stock valuation, and margin reporting.",
 			"source": "catalog §7.36",
 			"currentModel": "packages/adapters-db-mongo/src/models/inventory.model.ts",
-			"references": ["productVariants", "purchaseInvoiceLines", "inventoryLedger"]
+			"references": ["productVariants", "purchaseInvoiceLines", "inventoryLedger", "purchaseInvoices"]
 		},
 		{
 			"id": "analyticsEvents",
@@ -1094,13 +1112,14 @@
 			"id": "sequences",
 			"label": "sequences",
 			"cluster": "platform-sequencing",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["G", "H"],
 			"blockingDecisions": ["DEC-NUMBERING"],
-			"purpose": "Transactional allocation state for order, tax-invoice, purchase-invoice, and future document numbers.",
+			"purpose": "Transactional document-number counters, one per series and Indian financial year (`PE:2026-27`), allocated inside the posting transaction; resets each 1 April.",
 			"source": "roadmap gates G-NUM-ORDER/G-NUM-PI",
-			"references": []
+			"references": [],
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts"
 		},
 		{
 			"id": "blogPosts",
@@ -1231,7 +1250,7 @@
 			"currentModel": "packages/adapters-db-mongo/src/models/legal-page.model.ts",
 			"purpose": "Every earlier version of a legal page, kept with no screen so the terms on any day can be looked up.",
 			"references": ["legalPages"]
-				},
+		},
 		{
 			"id": "mediaZips",
 			"label": "mediaZips",
@@ -1244,6 +1263,136 @@
 			"currentModel": "packages/adapters-db-mongo/src/models/media-library.model.ts",
 			"purpose": "Folder downloads as .zip: progress while the worker writes one, and its stored file for the 24 hours its link works.",
 			"references": ["mediaAssets", "mediaFolders"]
+		},
+		{
+			"id": "suppliers",
+			"label": "suppliers",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Supplier master: legal name, kind (regular, composition, unregistered), GSTIN with check digit, PAN, State, bank and payment terms; soft delete once documents exist.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": []
+		},
+		{
+			"id": "supplierItemCodes",
+			"label": "supplierItemCodes",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "A supplier's own item code mapped to one of our variants, learnt from purchase lines so the next bill finds it.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["suppliers", "productVariants"]
+		},
+		{
+			"id": "purchaseOrders",
+			"label": "purchaseOrders",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Orders sent to suppliers, lines embedded, with sent, part-received, received, closed-short and cancelled states.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["suppliers", "productVariants", "products", "sequences"]
+		},
+		{
+			"id": "supplierPayments",
+			"label": "supplierPayments",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Money paid against a posted purchase entry, reversible with a reason; drives paid, part-paid and unpaid.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["suppliers", "purchaseInvoices"]
+		},
+		{
+			"id": "purchaseReturns",
+			"label": "purchaseReturns",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Goods sent back to a supplier against a purchase entry: debit note or delivery challan, settlement by credit, refund or replacement.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["suppliers", "purchaseInvoices", "productVariants", "inventoryCostLayers", "sequences"]
+		},
+		{
+			"id": "stockHolds",
+			"label": "stockHolds",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Pieces set aside (photoshoot, display, waiting for supplier, damaged pending decision): on hand but not for sale, with a reminder age.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["productVariants", "products", "purchaseInvoices"]
+		},
+		{
+			"id": "stockAdjustments",
+			"label": "stockAdjustments",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Every manual stock change, applied or waiting for approval: add, remove (write-off), with a reason and note; the approvals queue and its record.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["productVariants", "products", "inventoryLedger"]
+		},
+		{
+			"id": "stockCounts",
+			"label": "stockCounts",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Stock counts (whole shop or chosen categories): counted figures, movement since start, differences and posting.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["productVariants", "inventoryLedger", "sequences"]
+		},
+		{
+			"id": "openingStocks",
+			"label": "openingStocks",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Posted opening-stock loads: rows, cost per unit, number and who posted, so each first-day figure is traceable.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": ["productVariants", "inventoryCostLayers", "sequences"]
+		},
+		{
+			"id": "inventorySettings",
+			"label": "inventorySettings",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "One document of purchases-and-stock settings: step rules, number formats, price-change and margin warnings, held reminder, books-closed date, payment terms.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": []
 		}
 	]
 }

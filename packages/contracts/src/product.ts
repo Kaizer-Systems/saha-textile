@@ -208,6 +208,13 @@ export const Product = z.object({
 	}),
 	/** Product-level HSN. A variant's empty HSN inherits it. */
 	hsnCode: z.string().min(1).nullable().default(null),
+	/**
+	 * Pieces, or fabric by the metre (P11). Metre stock and order quantities are whole tenths of
+	 * a metre. Fixed once the product has stock or orders.
+	 */
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	/** Whether a buyer may return it: null follows the main category (owner, 2026-11-15). */
+	returnable: z.boolean().nullable().default(null),
 	createdAt: z.string().optional(),
 	updatedAt: z.string().optional(),
 });

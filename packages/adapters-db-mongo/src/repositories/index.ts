@@ -44,3 +44,4 @@ export * from './language-coverage.repository';
 export * from './localized-text-registry';
 export * from './media-library.repository';
 export * from './media-zip.repository';
+export * from './purchasing.repository';

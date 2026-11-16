@@ -121,6 +121,26 @@ export function layersValue(layers: readonly CostLayerFact[]): number {
 	return Math.round(layers.reduce((sum, layer) => sum + layer.quantityRemaining * layer.unitCostINR * 100, 0)) / 100;
 }
 
+/**
+ * What the pieces on hand are worth at cost. FIFO sends the oldest pieces out first, so what is
+ * left is the newest: on-hand units are valued against the newest layers. This holds whether or
+ * not every sale has drawn its layer yet; units no layer covers are reported as uncosted.
+ */
+export function onHandValue(layers: readonly CostLayerFact[], onHand: number): { valueINR: number; uncosted: number } {
+	const newestFirst = [...layers]
+		.filter((layer) => layer.quantityRemaining > 0)
+		.sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+	let left = Math.max(0, onHand);
+	let paise = 0;
+	for (const layer of newestFirst) {
+		if (left <= 0) break;
+		const take = Math.min(left, layer.quantityRemaining);
+		paise += Math.round(take * layer.unitCostINR * 100);
+		left -= take;
+	}
+	return { valueINR: paise / 100, uncosted: left };
+}
+
 /** The age of the oldest piece still in stock, in days, or null with nothing in stock. */
 export function oldestPieceDays(layers: readonly CostLayerFact[], today: string): number | null {
 	const open = layers.filter((layer) => layer.quantityRemaining > 0);

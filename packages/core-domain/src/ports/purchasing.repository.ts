@@ -31,6 +31,17 @@ export class StaleVersionError extends Error {
 	}
 }
 
+/**
+ * Raised when a stock movement would leave held above on-hand or held below zero, or a cost
+ * layer no longer holds what was asked of it: someone else moved the stock meanwhile.
+ */
+export class StockMovementRefusedError extends Error {
+	constructor(readonly variantId: string) {
+		super(`stock movement refused for ${variantId}`);
+		this.name = 'StockMovementRefusedError';
+	}
+}
+
 export interface ListPage<T> {
 	items: T[];
 	total: number;
@@ -133,6 +144,8 @@ export interface PurchaseReturnRepository {
 	remove(id: string): Promise<void>;
 	forEntry(entryId: string): Promise<PurchaseReturn[]>;
 	forSupplier(supplierId: string): Promise<PurchaseReturn[]>;
+	/** Records the send request key so a repeated Send never sends twice (idempotency). */
+	claimSendKey(key: string, returnId: string, context?: TransactionContext): Promise<'claimed' | 'seen'>;
 }
 
 export interface StockHoldRecord {
@@ -173,7 +186,12 @@ export interface AdjustmentRequestRepository {
 		pageSize: number;
 	}): Promise<ListPage<AdjustmentRequest>>;
 	pendingCount(): Promise<number>;
-	save(request: AdjustmentRequest, context?: TransactionContext): Promise<void>;
+	/** A change already made with this request key (a repeated press of the same button). */
+	findByRequestKey(key: string): Promise<AdjustmentRequest | null>;
+	save(request: AdjustmentRequest, requestKey: string | null, context?: TransactionContext): Promise<void>;
+	/** Decisions on a requester's own requests they have not opened yet (the bell, i05b). */
+	unseenDecisions(requesterId: string): Promise<AdjustmentRequest[]>;
+	markSeen(requesterId: string, ids: readonly string[]): Promise<void>;
 }
 
 export interface StockCountRepository {
@@ -188,9 +206,38 @@ export interface StockCountRepository {
 	lastDifferences(): Promise<string[]>;
 }
 
+/** One posted opening-stock load (o01): every row with its cost, kept for audit. */
+export interface OpeningStockRecord {
+	id: string;
+	number: string;
+	requestKey: string;
+	postedAt: string;
+	postedBy: string | null;
+	rows: Array<{
+		variantId: string;
+		productId: string;
+		sku: string;
+		quantity: number;
+		unitCostINR: number;
+		receivedOn: string;
+		layerId: string;
+		note: string;
+	}>;
+	totalUnits: number;
+	totalValueINR: number;
+}
+
+export interface OpeningStockRepository {
+	findByRequestKey(key: string): Promise<OpeningStockRecord | null>;
+	save(record: OpeningStockRecord, context?: TransactionContext): Promise<void>;
+	list(): Promise<OpeningStockRecord[]>;
+}
+
 /** Document numbers: one counter per series and financial year, allocated in a transaction. */
 export interface NumberAllocatorPort {
 	next(series: string, fiscalYear: string, context?: TransactionContext): Promise<number>;
+	/** The number the next document would get, without taking it (the post confirmation, p09). */
+	peek(series: string, fiscalYear: string): Promise<number>;
 }
 
 export interface InventorySettingsRepository {
@@ -227,4 +274,128 @@ export interface StockMovementPort {
 	): Promise<{ ledgerId: string; onHandAfter: number; heldAfter: number }>;
 	/** Takes units out of one named layer; throws when the layer no longer holds them. */
 	consumeLayer(layerId: string, quantity: number, context?: TransactionContext): Promise<void>;
+}
+
+/** What purchase lines, stock rows and counts need to know about a variant and its product. */
+export interface StockItemFacts {
+	variantId: string;
+	productId: string;
+	sku: string;
+	barcode: string | null;
+	title: Record<string, string>;
+	optionsLabel: string;
+	galleryAssetId: string | null;
+	productType: 'simple' | 'variable' | 'bundle';
+	productStatus: 'draft' | 'live' | 'disabled' | 'discontinued';
+	soldBy: 'piece' | 'metre';
+	madeToOrder: boolean;
+	tracked: boolean;
+	hsnCode: string | null;
+	categoryIds: string[];
+	categoryName: string | null;
+	sellingPriceINR: number;
+	mrpINR: number | null;
+	onHand: number;
+	held: number;
+	lowStockLevel: number | null;
+	variantCount: number;
+}
+
+export interface StockLayerRow {
+	id: string;
+	variantId: string;
+	receivedAt: string;
+	sourceType: string;
+	sourceNumber: string | null;
+	purchaseInvoiceId: string | null;
+	sourceLineId: string | null;
+	quantityReceived: number;
+	quantityRemaining: number;
+	unitCostINR: number;
+}
+
+export interface StockLedgerRow {
+	id: string;
+	variantId: string;
+	productId: string;
+	quantityDelta: number;
+	heldDelta: number;
+	balanceAfter: number;
+	heldAfter: number;
+	source: string;
+	reasonCode: string | null;
+	note: string | null;
+	referenceType: string | null;
+	referenceId: string | null;
+	referenceNumber: string | null;
+	actorUserId: string | null;
+	approverUserId: string | null;
+	createdAt: string;
+}
+
+/**
+ * The read side of stock: item facts, search, list rows, layers, ledger history and the sums
+ * reports need. Writes stay with the aggregate repositories and `StockMovementPort`.
+ */
+export interface StockReadRepository {
+	items(variantIds: readonly string[]): Promise<Map<string, StockItemFacts>>;
+	/** Variants of a product, base variant first (the variant grid). */
+	variantsOfProduct(productId: string): Promise<StockItemFacts[]>;
+	/** SKU, barcode or title words; whole-word prefix match, live and draft products first. */
+	search(q: string, limit: number): Promise<StockItemFacts[]>;
+	bySku(skus: readonly string[]): Promise<Map<string, StockItemFacts>>;
+	list(filter: {
+		q?: string;
+		filter: 'all' | 'low' | 'out' | 'held' | 'older_180';
+		categoryId?: string;
+		page: number;
+		pageSize: number;
+		olderThan: string;
+	}): Promise<{
+		items: StockItemFacts[];
+		total: number;
+		counts: { low: number; out: number; held: number; older180: number };
+	}>;
+	totals(): Promise<{ pieces: number; metresTenths: number; low: number; out: number; held: number }>;
+	openLayers(variantIds: readonly string[]): Promise<StockLayerRow[]>;
+	layersOf(variantId: string): Promise<StockLayerRow[]>;
+	layersForEntry(entryId: string): Promise<StockLayerRow[]>;
+	ledger(filter: {
+		variantId?: string;
+		source?: string;
+		from?: string;
+		to?: string;
+		actorId?: string;
+		referenceIds?: readonly string[];
+		page: number;
+		pageSize: number;
+	}): Promise<{ items: StockLedgerRow[]; total: number }>;
+	/** Net units sold (orders placed less cancelled) per variant since an instant. */
+	soldSince(variantIds: readonly string[] | null, since: string): Promise<Map<string, number>>;
+	/** Net on-hand movement per variant since an instant, leaving out one reference (a count). */
+	movedSince(
+		variantIds: readonly string[],
+		since: string,
+		excludeReferenceId: string | null,
+	): Promise<Map<string, number>>;
+	/** Variants with any ledger row at all (opening stock refuses them). */
+	withMovements(variantIds: readonly string[]): Promise<Set<string>>;
+	lastSoldOn(variantIds: readonly string[]): Promise<Map<string, string>>;
+	/** Variants that have open layers older than an instant (ageing, "older than 180 days"). */
+	variantsWithLayersBefore(
+		before: string,
+		page: number,
+		pageSize: number,
+	): Promise<{ variantIds: string[]; total: number }>;
+	/**
+	 * Value at cost and units per variant as they stood at the end of a day (valuation report).
+	 * `uncostedUnits` are units no cost layer covers (stock typed in before the ledger existed).
+	 */
+	valuationAsOf(
+		endOfDay: string,
+	): Promise<Array<{ variantId: string; units: number; valueINR: number; uncostedUnits: number }>>;
+	/** Product SKUs in a category (the next SKU for a draft product, p05). */
+	productSkusInCategory(categoryId: string): Promise<string[]>;
+	/** Variants in categories (stock counts by category), or every tracked variant. */
+	variantIdsInScope(scope: { kind: 'all' | 'categories'; categoryIds: readonly string[] }): Promise<string[]>;
 }

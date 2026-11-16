@@ -44,6 +44,11 @@ RUN --mount=type=cache,id=saha-textile-pnpm,target=/pnpm/store \
 FROM ${NODE_IMAGE} AS api
 ENV NODE_ENV=production
 WORKDIR /app
+# Business documents as PDF (owner decision 2026-11-17): the worker drives Alpine's own Chromium
+# through playwright-core (Playwright's bundled builds need glibc). Documents carry their own
+# fonts, so no system font packs are needed. The sandbox needs kernel features containers lack.
+RUN apk add --no-cache chromium && ln -sf "$(command -v chromium || command -v chromium-browser)" /usr/local/bin/document-chromium
+ENV PDF_CHROMIUM_EXECUTABLE=/usr/local/bin/document-chromium PDF_CHROMIUM_NO_SANDBOX=true
 COPY --from=build --chown=node:node /out/api /app
 USER node
 EXPOSE 4000

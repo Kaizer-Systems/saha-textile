@@ -432,7 +432,9 @@ export class CatalogService {
 				compareAtPriceINR: write.mrpINR,
 				salePriceINR: discounted ? write.sellingINR : null,
 				barcode: write.barcode,
-				stock: { ...row.stock, quantity: write.quantity },
+				// Stock moves only through stock documents (purchases and stock brief, F01): the typed
+				// quantity the form still sends is ignored; held and on-hand stay as the ledger left them.
+				stock: row.stock,
 				shippingProfile: {
 					weightGrams: write.weightGrams,
 					lengthCm: write.lengthCm,

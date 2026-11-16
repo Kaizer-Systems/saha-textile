@@ -88,3 +88,21 @@ export const MAILBOX_ACCESS_REPOSITORY = Symbol('MailboxAccessRepository');
 export const MAILBOX_TOKEN_STORE = Symbol('MailboxTokenStore');
 export const CONTACT_MESSAGE_REPOSITORY = Symbol('ContactMessageRepository');
 export const WISHLIST_REPOSITORY = Symbol('WishlistRepository');
+/** Purchases and stock (brief revision 2, accepted 2026-11-15). */
+export const SUPPLIER_REPOSITORY = Symbol('SupplierRepository');
+export const SUPPLIER_ITEM_CODE_REPOSITORY = Symbol('SupplierItemCodeRepository');
+export const PURCHASE_ORDER_REPOSITORY = Symbol('PurchaseOrderRepository');
+export const PURCHASE_ENTRY_REPOSITORY = Symbol('PurchaseEntryRepository');
+export const SUPPLIER_PAYMENT_REPOSITORY = Symbol('SupplierPaymentRepository');
+export const PURCHASE_RETURN_REPOSITORY = Symbol('PurchaseReturnRepository');
+export const STOCK_HOLD_REPOSITORY = Symbol('StockHoldRepository');
+export const ADJUSTMENT_REQUEST_REPOSITORY = Symbol('AdjustmentRequestRepository');
+export const STOCK_COUNT_REPOSITORY = Symbol('StockCountRepository');
+export const OPENING_STOCK_REPOSITORY = Symbol('OpeningStockRepository');
+export const NUMBER_ALLOCATOR = Symbol('NumberAllocatorPort');
+export const INVENTORY_SETTINGS_REPOSITORY = Symbol('InventorySettingsRepository');
+export const STOCK_MOVEMENT = Symbol('StockMovementPort');
+export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
+export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');
+/** Business documents as PDF (owner decision 2026-11-17: Chromium through Playwright). */
+export const DOCUMENT_RENDERER = Symbol('DocumentRendererPort');

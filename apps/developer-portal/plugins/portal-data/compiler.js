@@ -24,8 +24,8 @@ const VALID_SCHEMA_COLLECTION_STATES = new Set(['existing', 'planned']);
 const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
-const SCHEMA_NEBULA_NODE_COUNT = 89;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 65;
+const SCHEMA_NEBULA_NODE_COUNT = 99;
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 77;
 const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['categoryPlacements', 'catalog-structure.model.ts'],
 	['categoryFacetConfigs', 'catalog-structure.model.ts'],
@@ -58,6 +58,18 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['contactMessages', 'mailbox.model.ts'],
 	['wishlistItems', 'wishlist-item.model.ts'],
 	['searchDictionary', 'search-dictionary.model.ts'],
+	['purchaseInvoices', 'purchasing.model.ts'],
+	['sequences', 'purchasing.model.ts'],
+	['suppliers', 'purchasing.model.ts'],
+	['supplierItemCodes', 'purchasing.model.ts'],
+	['purchaseOrders', 'purchasing.model.ts'],
+	['supplierPayments', 'purchasing.model.ts'],
+	['purchaseReturns', 'purchasing.model.ts'],
+	['stockHolds', 'purchasing.model.ts'],
+	['stockAdjustments', 'purchasing.model.ts'],
+	['stockCounts', 'purchasing.model.ts'],
+	['openingStocks', 'purchasing.model.ts'],
+	['inventorySettings', 'purchasing.model.ts'],
 	['faqEntries', 'content.model.ts'],
 	['reviews', 'content.model.ts'],
 	['productQuestions', 'content.model.ts'],

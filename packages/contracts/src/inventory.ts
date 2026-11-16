@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime, PriceINR } from './common';
+import { Id, IsoDateTime } from './common';
 
 /**
  * Manual stock-adjustment reason codes (owner lock — the list is fixed, not free text).
@@ -395,6 +395,7 @@ export const AdjustmentPreview = z.object({
 export type AdjustmentPreview = z.infer<typeof AdjustmentPreview>;
 
 export const AdjustmentDecision = z.object({ reason: NoteText.default('') });
+export type AdjustmentDecision = z.infer<typeof AdjustmentDecision>;
 export const AdjustmentRequestListQuery = z.object({
 	status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
 	q: z.string().trim().max(100).optional(),
@@ -491,6 +492,7 @@ export const StockCount = z.object({
 	postedAt: IsoDateTime.nullable(),
 	postedBy: Id.nullable(),
 	approvalRequestId: Id.nullable(),
+	updatedBy: Id.nullable().default(null),
 	version: z.number().int(),
 });
 export type StockCount = z.infer<typeof StockCount>;
@@ -522,6 +524,7 @@ export const StockCountListQuery = z.object({
 	page: z.coerce.number().int().min(1).default(1),
 	pageSize: z.coerce.number().int().min(1).max(100).default(15),
 });
+export type StockCountListQuery = z.infer<typeof StockCountListQuery>;
 
 /* ------------------------------------------------------------------ opening stock */
 
@@ -536,6 +539,7 @@ export const OpeningStockRow = z.object({
 export type OpeningStockRow = z.infer<typeof OpeningStockRow>;
 
 export const OpeningStockCheck = z.object({ rows: z.array(OpeningStockRow).min(1).max(20000) });
+export type OpeningStockCheck = z.infer<typeof OpeningStockCheck>;
 
 export const OpeningStockCheckResult = z.object({
 	rows: z.array(
@@ -565,6 +569,7 @@ export const OpeningStockCheckResult = z.object({
 export type OpeningStockCheckResult = z.infer<typeof OpeningStockCheckResult>;
 
 export const OpeningStockPost = OpeningStockCheck.extend({ requestKey: z.string().min(8).max(80) });
+export type OpeningStockPost = z.infer<typeof OpeningStockPost>;
 
 /* ------------------------------------------------------------------ reorder and reports */
 
@@ -588,10 +593,47 @@ export type ReorderRow = z.infer<typeof ReorderRow>;
 
 export const ReorderToOrders = z.object({
 	lines: z
-		.array(z.object({ variantId: Id, quantity: z.number().int().positive() }))
+		.array(
+			z.object({
+				variantId: Id,
+				quantity: z.number().int().positive(),
+				/** Needed only for items never bought before; otherwise the last supplier. */
+				supplierId: Id.optional(),
+			}),
+		)
 		.min(1)
 		.max(500),
 });
+export type ReorderToOrders = z.infer<typeof ReorderToOrders>;
+
+export const StockDetailQuery = z.object({
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type StockDetailQuery = z.infer<typeof StockDetailQuery>;
+
+export const AgeingQuery = z.object({
+	band: z.coerce.number().int().min(0).max(3).optional(),
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(100).default(15),
+});
+export type AgeingQuery = z.infer<typeof AgeingQuery>;
+
+export const ValuationQuery = z.object({
+	asOn: IsoDay,
+	groupBy: z.enum(['category', 'supplier', 'product']).default('category'),
+});
+export type ValuationQuery = z.infer<typeof ValuationQuery>;
+
+export const PurchaseRegisterQuery = z.object({ from: IsoDay, to: IsoDay });
+export type PurchaseRegisterQuery = z.infer<typeof PurchaseRegisterQuery>;
+
+/** Marks decisions on my own requests as seen (the bell). */
+export const StockAlertsSeen = z.object({ ids: z.array(Id).max(50) });
+export type StockAlertsSeen = z.infer<typeof StockAlertsSeen>;
+
+export const StockCountRecount = z.object({ variantIds: z.array(Id).min(1).max(500) });
+export type StockCountRecount = z.infer<typeof StockCountRecount>;
 
 export const AgeingRow = z.object({
 	variantId: Id,
@@ -637,6 +679,8 @@ export const ValuationReport = z.object({
 	),
 	totalUnits: z.number().int(),
 	totalValueINR: z.number(),
+	/** Units on hand with no cost layer behind them (typed in before purchases existed). */
+	uncostedUnits: z.number().int().nonnegative(),
 });
 
 export const PurchaseRegisterRow = z.object({

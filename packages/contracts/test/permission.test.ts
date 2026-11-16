@@ -36,7 +36,10 @@ describe('permission registry', () => {
 		// 98 → 104 on 2026-11-09 with `event.{cancel,create,destroy,edit,index,publish}` (launch and sale events).
 		// 104 → 106 on 2026-11-09 with `mailbox.{manage,use}` (Gmail mailboxes in the admin).
 		// 106 → 107 on 2026-11-15 with `language.manage` (Settings › Languages).
-		expect(PERMISSION_CODES).toHaveLength(107);
+		// 107 → 136 on 2026-11-17 with the seven purchases and stock groups the owner accepted in
+		// the purchases and stock brief (X01): supplier, purchase_order, purchase, purchase_return,
+		// stock, stock_count, stock_report.
+		expect(PERMISSION_CODES).toHaveLength(136);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

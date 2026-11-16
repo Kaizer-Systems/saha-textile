@@ -61,7 +61,7 @@ describe.skipIf(!hasMongoEnv())('inventory and media persistence (integration, r
 			priceINR: 1000,
 			compareAtPriceINR: null,
 			salePriceINR: null,
-			stock: { tracked: true, quantity, lowStockThreshold: null, allowBackorder: false, ...overrides },
+			stock: { tracked: true, quantity, held: 0, lowStockThreshold: null, allowBackorder: false, ...overrides },
 		});
 		return id;
 	};
@@ -167,6 +167,9 @@ describe.skipIf(!hasMongoEnv())('inventory and media persistence (integration, r
 			id: `${P}layer_${randomUUID()}`,
 			variantId,
 			purchaseInvoiceId: null,
+			sourceType: 'purchase_invoice' as const,
+			sourceLineId: null,
+			sourceNumber: null,
 			unitCostINR,
 			quantityReceived: quantity,
 			quantityRemaining: quantity,
@@ -272,7 +275,7 @@ describe.skipIf(!hasMongoEnv())('inventory and media persistence (integration, r
 				priceINR: 100,
 				compareAtPriceINR: null,
 				salePriceINR: null,
-				stock: { tracked: true, quantity: 1, lowStockThreshold: null, allowBackorder: false },
+				stock: { tracked: true, quantity: 1, held: 0, lowStockThreshold: null, allowBackorder: false },
 				media: { primaryAssetId: created.id },
 			});
 

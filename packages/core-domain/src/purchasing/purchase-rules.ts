@@ -206,9 +206,10 @@ export function voidBlockers(input: {
 }
 
 /**
- * The supplier's bill number as the duplicate check compares it: upper-case, spaces and
- * dashes ignored ("BSW/2026-27/0418" and "bsw/2026 27/0418" are the same bill).
+ * The supplier's bill number as the duplicate check compares it: upper-case letters and
+ * digits only, every separator ignored ("BSW/2026-27/0418", "bsw 2026 27 0418" and
+ * "BSW-2026-27-0418" are the same bill). Leading zeros stay: "0418" and "418" can differ.
  */
 export function normalizeBillNumber(value: string): string {
-	return value.toUpperCase().replace(/[\s-]+/g, '');
+	return value.toUpperCase().replace(/[^\p{L}\p{N}]+/gu, '');
 }

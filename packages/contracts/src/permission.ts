@@ -112,6 +112,20 @@ export const PermissionCode = z.enum([
 	'product.destroy',
 	'product.edit',
 	'product.index',
+	'purchase_order.cancel',
+	'purchase_order.create',
+	'purchase_order.index',
+	'purchase_order.send',
+	'purchase_return.create',
+	'purchase_return.index',
+	'purchase_return.send',
+	'purchase_return.settle',
+	'purchase.check',
+	'purchase.create',
+	'purchase.index',
+	'purchase.payment',
+	'purchase.post',
+	'purchase.void',
 	'question_and_answer.create',
 	'question_and_answer.destroy',
 	'question_and_answer.edit',
@@ -137,6 +151,21 @@ export const PermissionCode = z.enum([
 	'shipping.destroy',
 	'shipping.edit',
 	'shipping.index',
+	'stock_count.count',
+	'stock_count.create',
+	'stock_count.post',
+	'stock_report.export',
+	'stock_report.index',
+	'stock.adjust',
+	'stock.approve',
+	'stock.cost',
+	'stock.hold',
+	'stock.index',
+	'stock.opening',
+	'supplier.create',
+	'supplier.destroy',
+	'supplier.edit',
+	'supplier.index',
 	'tag.create',
 	'tag.destroy',
 	'tag.edit',
@@ -247,6 +276,45 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'product.destroy': 'Products table row Delete action (product.ts).',
 	'product.edit':
 		"Product row Edit action on the Products page and on the dashboard's product tables (product.ts, dashboard.ts). Navigation gates product.index and product.create only.",
+	'purchase.check':
+		'Check goods on a purchase entry (p08 desktop, g01 phone) and POST /admin/purchases/entries/:id/goods-check. Separate from create so godown staff can count a parcel without typing bills (brief X01).',
+	'purchase.create':
+		'New entry, Copy as new draft, Import lines and Make a draft product on the purchase entries screens (p01–p05, p13), and draft saves (POST/PUT /admin/purchases/entries). Navigation gates purchase.index only.',
+	'purchase.payment':
+		'Record payment on a purchase entry and on the supplier page (p11, s03), and reversing one (POST /admin/purchases/entries/:id/payments). Money out is its own grant.',
+	'purchase.post':
+		'Post to stock on a checked purchase entry (p09) and POST /admin/purchases/entries/:id/post: the step that moves stock, cost and what is owed.',
+	'purchase.void':
+		'Void on a posted purchase entry (p10, p12) and POST /admin/purchases/entries/:id/void. Restricted: it takes stock back out and cancels what is owed.',
+	'purchase_order.cancel':
+		'Close with what is short and Cancel order on a purchase order (po04) and POST /admin/purchase-orders/:id/close and /cancel.',
+	'purchase_order.create':
+		'New purchase order, Copy as new draft, edits to a draft, and the reorder list making draft orders (po01, po02, i07); POST/PUT /admin/purchase-orders.',
+	'purchase_order.send':
+		'Send to the supplier by email or PDF (po03) and POST /admin/purchase-orders/:id/send. Separate from create so an order can be prepared and sent by someone else.',
+	'purchase_return.create':
+		'New return from a posted entry, from Held stock and from the ageing report (r02, i06, i08); POST/PUT /admin/purchase-returns.',
+	'purchase_return.send':
+		'Send on a purchase return (r04) and POST /admin/purchase-returns/:id/send: gives the debit note its number and takes the goods out of stock.',
+	'purchase_return.settle':
+		'Settle on a sent purchase return (r04) and POST /admin/purchase-returns/:id/settle: records the credit note, refund, later-bill deduction or write-off.',
+	'stock.adjust':
+		'Adjust stock window from All stock, Stock history and the product Inventory tab (i04, f01) and POST /admin/stock/adjustments. Without stock.approve every write-off becomes a request (P2).',
+	'stock.cost':
+		'Every cost and stock-value column, the Cost layers tab, margin on purchase lines and report values (i01, i03, p06, i08, i09). The API leaves these fields out entirely without it (P8).',
+	'stock.hold':
+		'Move to held and Release in the Adjust window and on Held stock (i04, i06); POST /admin/stock/adjustments with hold or release. Holds never need approval.',
+	'stock_count.create':
+		'Start a count on the counts list (c01, c02) and POST /admin/stock-counts. Counting itself is stock_count.count.',
+	'stock_count.post':
+		'Review differences, Recount and Post on a count (c03) and POST /admin/stock-counts/:id/post. Without stock.approve a posted count waits for approval (P2).',
+	'stock_report.export':
+		'Excel and PDF downloads on the stock reports (i08, i09, i10) and GET /admin/stock-reports/*/export. Seeing a report and taking a copy away are separate grants.',
+	'supplier.create': 'Add supplier on the Suppliers list (s01, s02) and POST /admin/suppliers.',
+	'supplier.destroy':
+		'Suppliers table row Delete action (s01) and DELETE /admin/suppliers/:id: a soft delete, refused while the supplier has purchase entries.',
+	'supplier.edit':
+		'Suppliers table row Edit action and the supplier form Save (s01, s02) and PUT /admin/suppliers/:id.',
 	'question_and_answer.create':
 		'Reserved for the kept Questions & Answers page, which has no create surface or API yet. Retained so the code exists when that page is wired; nothing gates on it today.',
 	'question_and_answer.destroy':
@@ -288,8 +356,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 
 /** The resource half of a code — the noun a permission is about. */
 export const PermissionResource = z.enum([
-	'admin_user_role',
 	'admin_user',
+	'admin_user_role',
 	'attachment',
 	'attribute',
 	'audit',
@@ -309,6 +377,9 @@ export const PermissionResource = z.enum([
 	'permission',
 	'point',
 	'product',
+	'purchase',
+	'purchase_order',
+	'purchase_return',
 	'question_and_answer',
 	'refund',
 	'review',
@@ -316,6 +387,10 @@ export const PermissionResource = z.enum([
 	'search_term',
 	'setting',
 	'shipping',
+	'stock',
+	'stock_count',
+	'stock_report',
+	'supplier',
 	'tag',
 	'tax',
 	'theme_option',
@@ -338,26 +413,39 @@ export type PermissionResource = z.infer<typeof PermissionResource>;
  */
 export const PermissionAction = z.enum([
 	'action',
+	'adjust',
+	'approve',
 	'assign',
 	'cancel',
+	'check',
+	'cost',
+	'count',
 	'create',
 	'credit',
 	'customers',
 	'debit',
 	'destroy',
 	'edit',
+	'export',
+	'hold',
 	'index',
 	'manage',
+	'opening',
 	'orders',
+	'payment',
+	'post',
 	'publish',
 	'restore',
 	'revenue',
 	'reviews',
 	'revoke',
+	'send',
+	'settle',
 	'stock',
 	'top_products',
 	'update',
 	'use',
+	'void',
 ]);
 export type PermissionAction = z.infer<typeof PermissionAction>;
 

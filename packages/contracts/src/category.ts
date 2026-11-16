@@ -20,6 +20,14 @@ export const Category = z.object({
 	/** Distinguishes curated collections (e.g. "Wedding") from strict taxonomy. */
 	isBannerCollection: z.boolean().default(false),
 	displayOrder: z.number().int().default(0),
+	/** The HSN its products inherit (4, 6 or 8 digits); a product may override it (owner, 2026-11-15). */
+	hsnCode: z
+		.string()
+		.regex(/^(\d{4}|\d{6}|\d{8})$/, { message: 'hsn_digits' })
+		.nullable()
+		.default(null),
+	/** Whether its products can be returned by default; a product may override it (owner, 2026-11-15). */
+	returnable: z.boolean().default(true),
 	description: LocalizedText.default({}),
 	seo: SeoMeta.optional(),
 	media: z

@@ -34,6 +34,8 @@ const toLedgerEntry = (doc: InventoryLedgerDoc): InventoryLedgerEntry => ({
 	productId: doc.productId,
 	quantityDelta: doc.quantityDelta,
 	balanceAfter: doc.balanceAfter,
+	heldDelta: doc.heldDelta ?? 0,
+	heldAfter: doc.heldAfter ?? 0,
 	source: doc.source as InventoryLedgerEntry['source'],
 	reasonCode: (doc.reasonCode as InventoryLedgerEntry['reasonCode']) ?? null,
 	note: doc.note ?? null,
@@ -47,17 +49,18 @@ export class MongoInventoryRepository implements InventoryRepository {
 	async getSnapshot(variantId: string): Promise<VariantStockSnapshot | null> {
 		const doc = await ProductVariantModel.findById(variantId)
 			.select('stock')
-			.lean<{ _id: string; stock: { quantity: number; lowStockThreshold: number | null } }>()
+			.lean<{ _id: string; stock: { quantity: number; held?: number; lowStockThreshold: number | null } }>()
 			.exec();
 		if (!doc) return null;
 
 		return {
 			variantId: doc._id,
 			onHand: doc.stock?.quantity ?? 0,
+			held: doc.stock?.held ?? 0,
 			// Reservations are a seam (`DEC-STOCK-RESERVE`); until that engine exists,
-			// nothing is reserved and available equals on-hand.
+			// nothing is reserved and available is on-hand less held.
 			reserved: 0,
-			available: doc.stock?.quantity ?? 0,
+			available: (doc.stock?.quantity ?? 0) - (doc.stock?.held ?? 0),
 			lowStockThreshold: doc.stock?.lowStockThreshold ?? null,
 		};
 	}
@@ -65,14 +68,17 @@ export class MongoInventoryRepository implements InventoryRepository {
 	async getSnapshots(variantIds: readonly string[]): Promise<VariantStockSnapshot[]> {
 		const docs = await ProductVariantModel.find({ _id: { $in: [...variantIds] } })
 			.select('stock')
-			.lean<Array<{ _id: string; stock: { quantity: number; lowStockThreshold: number | null } }>>()
+			.lean<
+				Array<{ _id: string; stock: { quantity: number; held?: number; lowStockThreshold: number | null } }>
+			>()
 			.exec();
 
 		return docs.map((doc) => ({
 			variantId: doc._id,
 			onHand: doc.stock?.quantity ?? 0,
+			held: doc.stock?.held ?? 0,
 			reserved: 0,
-			available: doc.stock?.quantity ?? 0,
+			available: (doc.stock?.quantity ?? 0) - (doc.stock?.held ?? 0),
 			lowStockThreshold: doc.stock?.lowStockThreshold ?? null,
 		}));
 	}
@@ -82,16 +88,17 @@ export class MongoInventoryRepository implements InventoryRepository {
 	 *
 	 * The stock change is a SINGLE conditional `$inc`, not read-then-write: two concurrent
 	 * checkouts must not both read the same balance and each write it back, which is how
-	 * overselling happens. The condition (`quantity >= |delta|` for a tracked decrement
-	 * without backorder) lives in the query itself, so the guard cannot be raced either —
-	 * a decrement that would go negative matches no document and throws.
+	 * overselling happens. The condition (`quantity - held >= |delta|` for a tracked decrement
+	 * without backorder: held pieces are on hand but not for sale) lives in the query itself,
+	 * so the guard cannot be raced either — a decrement that would eat into held pieces or go
+	 * negative matches no document and throws.
 	 *
 	 * When a transaction context is supplied, the `$inc` and the ledger insert commit
 	 * together; without one the `$inc` is still atomic on its own, and the ledger row
 	 * follows immediately.
 	 */
 	async applyDelta(
-		entry: Omit<InventoryLedgerEntry, 'id' | 'balanceAfter'>,
+		entry: Omit<InventoryLedgerEntry, 'id' | 'balanceAfter' | 'heldDelta' | 'heldAfter'>,
 		context?: TransactionContext,
 	): Promise<InventoryLedgerEntry> {
 		const session = sessionFrom(context);
@@ -102,7 +109,14 @@ export class MongoInventoryRepository implements InventoryRepository {
 						$or: [
 							{ 'stock.tracked': false },
 							{ 'stock.allowBackorder': true },
-							{ 'stock.quantity': { $gte: Math.abs(entry.quantityDelta) } },
+							{
+								$expr: {
+									$gte: [
+										{ $subtract: ['$stock.quantity', { $ifNull: ['$stock.held', 0] }] },
+										Math.abs(entry.quantityDelta),
+									],
+								},
+							},
 						],
 					}
 				: {};
@@ -113,7 +127,7 @@ export class MongoInventoryRepository implements InventoryRepository {
 			{ returnDocument: 'after', session },
 		)
 			.select('stock')
-			.lean<{ _id: string; stock: { quantity: number } }>()
+			.lean<{ _id: string; stock: { quantity: number; held?: number } }>()
 			.exec();
 
 		if (!updated) throw new InsufficientStockError(entry.variantId);
@@ -124,6 +138,8 @@ export class MongoInventoryRepository implements InventoryRepository {
 			productId: entry.productId,
 			quantityDelta: entry.quantityDelta,
 			balanceAfter: updated.stock.quantity,
+			heldDelta: 0,
+			heldAfter: updated.stock.held ?? 0,
 			source: entry.source,
 			reasonCode: entry.reasonCode ?? null,
 			note: entry.note ?? null,
@@ -170,6 +186,9 @@ const toCostLayer = (doc: InventoryCostLayerDoc): InventoryCostLayer => ({
 	id: doc._id,
 	variantId: doc.variantId,
 	purchaseInvoiceId: doc.purchaseInvoiceId ?? null,
+	sourceType: (doc.sourceType as InventoryCostLayer['sourceType']) ?? 'purchase_invoice',
+	sourceLineId: doc.sourceLineId ?? null,
+	sourceNumber: doc.sourceNumber ?? null,
 	unitCostINR: doc.unitCostINR,
 	quantityReceived: doc.quantityReceived,
 	quantityRemaining: doc.quantityRemaining,

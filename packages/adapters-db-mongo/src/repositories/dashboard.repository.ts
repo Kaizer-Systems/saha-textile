@@ -108,7 +108,8 @@ export class MongoDashboardRepository implements DashboardRepository {
 			_id: string;
 			productId: string;
 			sku: string;
-			stock: { quantity: number; lowStockThreshold?: number | null };
+			stock: { quantity: number; held?: number; lowStockThreshold?: number | null };
+			free: number;
 			product: { title: I18nString; lowStockThreshold?: number | null; media?: { gallery?: string[] } };
 		}>([
 			{
@@ -118,7 +119,9 @@ export class MongoDashboardRepository implements DashboardRepository {
 					...(inCategory ? { productId: { $in: inCategory } } : {}),
 				},
 			},
-			{ $sort: { 'stock.quantity': 1, _id: 1 } },
+			// Free to sell (on hand − held) is the number the shop and its badges use.
+			{ $addFields: { free: { $subtract: ['$stock.quantity', { $ifNull: ['$stock.held', 0] }] } } },
+			{ $sort: { free: 1, _id: 1 } },
 			{ $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: 'product' } },
 			{ $unwind: '$product' },
 			{ $match: { 'product.status': 'live' } },
@@ -128,6 +131,7 @@ export class MongoDashboardRepository implements DashboardRepository {
 					productId: 1,
 					sku: 1,
 					stock: 1,
+					free: 1,
 					'product.title': 1,
 					'product.lowStockThreshold': 1,
 					'product.media.gallery': 1,
@@ -140,7 +144,7 @@ export class MongoDashboardRepository implements DashboardRepository {
 			sku: row.sku,
 			title: row.product.title,
 			galleryAssetId: row.product.media?.gallery?.[0] ?? null,
-			quantity: row.stock.quantity,
+			quantity: row.free,
 			variantThreshold: row.stock.lowStockThreshold ?? null,
 			productThreshold: row.product.lowStockThreshold ?? null,
 		}));

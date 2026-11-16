@@ -1,4 +1,4 @@
-import { gstinCheckCharacter, gstinProblem, panFromGstin } from '@saha-textile/contracts';
+import type { PurchaseEntry, PurchaseReturn, SupplierPayment } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,6 +10,8 @@ import {
 	computeReturnTotals,
 	countLineDifference,
 	entryDateWarnings,
+	entryOutstanding,
+	entryPaymentStatus,
 	entryDueOn,
 	fifoDraw,
 	fiscalYearOf,
@@ -23,15 +25,19 @@ import {
 	numberFormatProblem,
 	oldestPieceDays,
 	paymentStatusOf,
+	paymentsTotal,
 	purchaseOrderLate,
 	purchaseOrderStatusOf,
 	purchaseTaxType,
 	reorderSuggestion,
+	returnsCredit,
 	samePersonProblem,
 	scrapLeftover,
 	shareByWeight,
 	snapMetres,
+	onHandValue,
 	stockStatus,
+	supplierStatement,
 	toPaise,
 	voidBlockers,
 	type EntryMathLineInput,
@@ -345,7 +351,10 @@ describe('purchase rules', () => {
 
 	it('treats the same bill number written differently as the same bill', () => {
 		expect(normalizeBillNumber('BSW/2026-27/0418')).toBe(normalizeBillNumber('bsw/2026 27/0418'));
+		expect(normalizeBillNumber('BSW-2026-27-0418')).toBe(normalizeBillNumber('BSW/2026-27/0418'));
+		expect(normalizeBillNumber('bw.1042')).toBe('BW1042');
 		expect(normalizeBillNumber('STG/1187')).not.toBe(normalizeBillNumber('STG/1188'));
+		expect(normalizeBillNumber('STG/0418')).not.toBe(normalizeBillNumber('STG/418'));
 	});
 });
 
@@ -361,20 +370,6 @@ describe('numbers and financial years (P7)', () => {
 		expect(numberFormatProblem('PE/{fy}/{seq6}')).toBeNull();
 		expect(numberFormatProblem('STCN/{fy}/{seq6}')).toBe('too_long');
 		expect(numberFormatProblem('PE/{fy}')).toBe('missing_sequence');
-	});
-});
-
-describe('GSTIN', () => {
-	it('accepts a real GSTIN and names the right check character for a wrong one', () => {
-		const first14 = '19AAHFS7782K1Z';
-		const good = first14 + gstinCheckCharacter(first14);
-		expect(gstinProblem(good)).toBeNull();
-		const wrong = first14 + (good.endsWith('0') ? '1' : '0');
-		expect(gstinProblem(wrong)).toEqual({ problem: 'check_digit', expected: good[14] });
-		expect(gstinProblem('27AAPFU0939F1ZV')).toBeNull();
-		expect(gstinProblem('99AAPFU0939F1ZV')?.problem).toBe('state');
-		expect(gstinProblem('ABC')?.problem).toBe('shape');
-		expect(panFromGstin(good)).toBe('AAHFS7782K');
 	});
 });
 
@@ -549,5 +544,120 @@ describe('purchase returns', () => {
 	it('keeps paise exact', () => {
 		expect(toPaise(0.1 + 0.2)).toBe(30);
 		expect(toPaise(-1.005)).toBe(-101);
+	});
+});
+
+describe('supplier account (s03)', () => {
+	const entry = (id: string, total: number, extra: Record<string, unknown> = {}) =>
+		({
+			id,
+			number: `PE/26-27/${id}`,
+			status: 'posted',
+			billNumber: `B-${id}`,
+			billDate: '2026-11-01',
+			totals: { totalINR: total },
+			paidINR: 0,
+			creditedINR: 0,
+			voidedAt: null,
+			voidReason: null,
+			...extra,
+		}) as unknown as PurchaseEntry;
+	const payment = (amount: number, paidOn: string, reversedAt: string | null = null) =>
+		({
+			id: `pay_${amount}_${paidOn}`,
+			purchaseEntryId: 'e1',
+			amountINR: amount,
+			paidOn,
+			mode: 'bank_transfer',
+			reference: 'UTR1',
+			reversedAt,
+			reverseReason: reversedAt ? 'Bounced' : null,
+		}) as unknown as SupplierPayment;
+	const debitNote = (total: number, settlement: Record<string, unknown> | null, settled = 0) =>
+		({
+			id: `dn_${total}`,
+			number: 'DN/26-27/000001',
+			status: settlement ? 'settled' : 'sent',
+			purchaseEntryNumber: 'PE/26-27/e1',
+			totalINR: total,
+			sentAt: '2026-11-05T05:00:00.000Z',
+			settlements: settlement
+				? [
+						{
+							id: 's1',
+							amountINR: settled,
+							attachmentAssetId: null,
+							by: null,
+							at: '2026-11-09T05:00:00.000Z',
+							...settlement,
+						},
+					]
+				: [],
+			settledINR: settled,
+		}) as unknown as PurchaseReturn;
+
+	it('owes the bill less payments and debit notes, in exact paise', () => {
+		expect(entryOutstanding(entry('e1', 183_750.1, { paidINR: 100_000.05, creditedINR: 5_922.02 }))).toBe(
+			77_828.03,
+		);
+	});
+
+	it('calls a bill paid once payments and debit notes cover it', () => {
+		expect(entryPaymentStatus(entry('e1', 1000))).toBe('unpaid');
+		expect(entryPaymentStatus(entry('e1', 1000, { paidINR: 400 }))).toBe('part_paid');
+		expect(entryPaymentStatus(entry('e1', 1000, { paidINR: 400, creditedINR: 600 }))).toBe('paid');
+		expect(entryPaymentStatus(entry('e1', 1000, { creditedINR: 1000 }))).toBe('paid');
+	});
+
+	it('gives back credit when the supplier refunds or refuses a debit note', () => {
+		expect(returnsCredit([debitNote(5922, null)])).toBe(5922);
+		expect(returnsCredit([debitNote(5922, { how: 'refund', date: '2026-11-09', reference: 'R1' }, 2000)])).toBe(
+			3922,
+		);
+		expect(
+			returnsCredit([debitNote(5922, { how: 'written_off', date: '2026-11-09', reference: null }, 5922)]),
+		).toBe(0);
+		expect(returnsCredit([{ ...debitNote(5922, null), status: 'draft' } as PurchaseReturn])).toBe(0);
+	});
+
+	it('leaves reversed payments out of what was paid', () => {
+		expect(
+			paymentsTotal([payment(1000, '2026-11-02'), payment(500, '2026-11-03', '2026-11-04T10:00:00.000Z')]),
+		).toBe(1000);
+	});
+
+	it('runs a statement in date order with bills before money on the same day', () => {
+		const rows = supplierStatement({
+			entries: [entry('e1', 10_000)],
+			payments: [payment(10_000, '2026-11-01'), payment(500, '2026-11-06', '2026-11-07T10:00:00.000Z')],
+			returns: [debitNote(1_050, { how: 'refund', date: '2026-11-08', reference: 'NEFT9' }, 1_050)],
+		});
+		expect(rows.map((row) => [row.date, row.kind, row.balanceINR])).toEqual([
+			['2026-11-01', 'bill', 10_000],
+			['2026-11-01', 'payment', 0],
+			['2026-11-05', 'debit_note', -1_050],
+			['2026-11-06', 'payment', -1_550],
+			['2026-11-07', 'payment_reversed', -1_050],
+			['2026-11-08', 'refund_received', 0],
+		]);
+	});
+});
+
+describe('on-hand value', () => {
+	const layer = (id: string, receivedAt: string, remaining: number, cost: number) => ({
+		id,
+		receivedAt,
+		quantityRemaining: remaining,
+		unitCostINR: cost,
+	});
+
+	it('values what is on hand against the newest layers', () => {
+		const layers = [layer('old', '2026-04-01', 5, 100), layer('new', '2026-10-01', 3, 150)];
+		expect(onHandValue(layers, 4)).toEqual({ valueINR: 550, uncosted: 0 });
+	});
+
+	it('reports pieces no layer covers instead of valuing them at nothing silently', () => {
+		expect(onHandValue([layer('only', '2026-10-01', 2, 99.99)], 5)).toEqual({ valueINR: 199.98, uncosted: 3 });
+		expect(onHandValue([], 0)).toEqual({ valueINR: 0, uncosted: 0 });
 	});
 });

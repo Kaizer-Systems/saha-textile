@@ -53,5 +53,7 @@ import { ShareController } from './share.controller';
 		ReviewsService,
 		BrandService,
 	],
+	// Business documents print the Brand Kit logo (purchase orders, po05).
+	exports: [BrandService],
 })
 export class MediaModule {}

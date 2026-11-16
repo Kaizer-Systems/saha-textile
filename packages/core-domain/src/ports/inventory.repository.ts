@@ -30,7 +30,7 @@ export interface InventoryRepository {
 	 * Rejects rather than silently clamping when the move is not permitted.
 	 */
 	applyDelta(
-		entry: Omit<InventoryLedgerEntry, 'id' | 'balanceAfter'>,
+		entry: Omit<InventoryLedgerEntry, 'id' | 'balanceAfter' | 'heldDelta' | 'heldAfter'>,
 		context?: TransactionContext,
 	): Promise<InventoryLedgerEntry>;
 	listLedger(filter: InventoryLedgerFilter): Promise<Paginated<InventoryLedgerEntry>>;

@@ -614,27 +614,15 @@ describe('saving the product form', () => {
 		expect(search.removeProduct).toHaveBeenCalledWith('prd_1');
 	});
 
-	it('counts stock received, and notes a return to stock', async () => {
-		const { service, products } = build({ rows: [variant({ stock: { quantity: 0 } })] });
+	it('never changes stock from the form: stock moves only through stock documents (F01)', async () => {
+		const { service, products, variants } = build({ rows: [variant({ stock: { quantity: 0 } })] });
 		await service.updateMerchandising('red-saree', form({ variants: [write({ quantity: 5 })] }));
 		const saved = (products.save.mock.calls[0] as unknown as [Row])[0];
-		expect(saved.lifetimeUnitsReceived).toBe(5);
-		expect(saved.backInStockAt).toEqual(expect.any(String));
-	});
-
-	it('counts a row with no earlier stock as all new', async () => {
-		const { service, products } = build();
-		const realGet = Map.prototype.get;
-		const spy = vi.spyOn(Map.prototype, 'get').mockImplementation(function (
-			this: Map<unknown, unknown>,
-			key: unknown,
-		) {
-			const stack = new Error().stack ?? '';
-			return stack.includes('catalog.service') && stack.includes('reduce') ? undefined : realGet.call(this, key);
-		});
-		await service.updateMerchandising('red-saree', form({ variants: [write({ quantity: 3 })] }));
-		spy.mockRestore();
-		expect((products.save.mock.calls[0] as unknown as [Row])[0].lifetimeUnitsReceived).toBe(3);
+		// Receiving and the back-in-stock date belong to posting a purchase entry now.
+		expect(saved.lifetimeUnitsReceived).toBe(0);
+		expect(saved.backInStockAt).toBeNull();
+		const row = (variants.save.mock.calls[0] as unknown as [{ stock: { quantity: number } }])[0];
+		expect(row.stock.quantity).toBe(0);
 	});
 
 	it('counts nothing for stock going down', async () => {

@@ -18,7 +18,13 @@ export interface ProductVariantDoc {
 	priceINR: number;
 	compareAtPriceINR: number | null;
 	salePriceINR: number | null;
-	stock: { tracked: boolean; quantity: number; lowStockThreshold: number | null; allowBackorder: boolean };
+	stock: {
+		tracked: boolean;
+		quantity: number;
+		held?: number;
+		lowStockThreshold: number | null;
+		allowBackorder: boolean;
+	};
 	shippingProfile?: Record<string, number | null>;
 	taxProfile?: { hsnCode: string | null; taxClassId: string | null };
 	media?: { primaryAssetId: string | null };
@@ -45,6 +51,8 @@ const ProductVariantSchema = new Schema<ProductVariantDoc>(
 		stock: {
 			tracked: { type: Boolean, default: true },
 			quantity: { type: Number, default: 0 },
+			/** Pieces set aside (photoshoot, display, waiting for supplier): on hand, not for sale. */
+			held: { type: Number, default: 0 },
 			lowStockThreshold: { type: Number, default: null },
 			allowBackorder: { type: Boolean, default: false },
 		},

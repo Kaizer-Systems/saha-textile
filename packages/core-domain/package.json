@@ -43,13 +43,18 @@
       "types": "./dist/catalog/photo-header.d.ts",
       "import": "./dist/esm/photo-header.js",
       "default": "./dist/catalog/photo-header.js"
+    },
+    "./purchasing": {
+      "types": "./dist/purchasing/index.d.ts",
+      "import": "./dist/esm/purchasing/index.js",
+      "default": "./dist/purchasing/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

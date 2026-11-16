@@ -41,6 +41,8 @@ export function toCategory(doc: CategoryDoc): Category {
 		depth: doc.depth ?? 0,
 		isBannerCollection: doc.isBannerCollection ?? false,
 		displayOrder: doc.displayOrder ?? 0,
+		hsnCode: doc.hsnCode ?? null,
+		returnable: doc.returnable ?? true,
 		description: doc.description ?? {},
 		seo: doc.seo as Category['seo'],
 		media: doc.media as Category['media'],
@@ -91,6 +93,8 @@ export function toProduct(doc: ProductDoc): Product {
 		onSale: doc.onSale ?? false,
 		shippingDefaults: doc.shippingDefaults ?? { weightGrams: null, lengthCm: null, widthCm: null, heightCm: null },
 		hsnCode: doc.hsnCode ?? null,
+		soldBy: doc.soldBy ?? 'piece',
+		returnable: doc.returnable ?? null,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	};

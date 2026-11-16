@@ -1,0 +1,260 @@
+/*
+ * Business documents (purchase orders now; debit notes, challans and tax invoices later).
+ *
+ * Copied from the vendor's own invoice template (vendor/fastkart…/invoice-template, style.css,
+ * `theme-invoice-1`) as the owner approved for the order PDF (purchases brief, PO05), with the
+ * few Bootstrap utilities the layout uses. Screen-size `calc()` values are fixed for an A4 page,
+ * and the text fonts are the shop's own self-hosted ones (never Google Fonts).
+ */
+@font-face {
+	font-family: 'Public Sans';
+	font-style: normal;
+	font-weight: 100 900;
+	src: url('fonts/public-sans-normal-100-900-latin.woff2') format('woff2');
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+		U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Public Sans';
+	font-style: normal;
+	font-weight: 100 900;
+	src: url('fonts/public-sans-normal-100-900-latin-ext.woff2') format('woff2');
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+		U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Noto Sans Bengali';
+	font-style: normal;
+	font-weight: 400 600;
+	src: url('fonts/noto-sans-bengali-normal-400-600-bengali.woff2') format('woff2');
+	unicode-range:
+		U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2,
+		U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1;
+}
+
+@page {
+	size: A4;
+	margin: 14mm 12mm 16mm;
+	@bottom-right {
+		content: counter(page) ' / ' counter(pages);
+		font:
+			9pt 'Public Sans',
+			sans-serif;
+		color: #939393;
+	}
+}
+
+:root {
+	--theme-color: #0da487;
+}
+* {
+	box-sizing: border-box;
+}
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+body {
+	font-family: 'Public Sans', 'Noto Sans Bengali', sans-serif;
+	font-size: 14px;
+	color: #222;
+	background: #fff;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+ul {
+	padding-left: 0;
+	margin: 0;
+	list-style: none;
+}
+li {
+	display: inline-block;
+	font-size: 14px;
+}
+p {
+	font-size: 14px;
+	line-height: 18px;
+}
+h3,
+h5 {
+	margin: 0;
+	line-height: 1.2;
+}
+img {
+	max-width: 100%;
+}
+.theme-color {
+	color: var(--theme-color) !important;
+}
+.text-content {
+	color: #939393 !important;
+}
+.text-start {
+	text-align: left !important;
+}
+.mt-3 {
+	margin-top: 1rem !important;
+}
+.mb-0 {
+	margin-bottom: 0 !important;
+}
+.table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 1rem;
+}
+.table th,
+.table td {
+	border-bottom: 1px solid #e2e2e2;
+}
+thead {
+	display: table-header-group;
+}
+tr {
+	break-inside: avoid;
+}
+
+.invoice-wrapper {
+	background-color: #fff;
+}
+.theme-invoice-1 .invoice-wrapper {
+	padding: 0;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-header .header-image img {
+	max-width: 220px;
+	max-height: 64px;
+	width: auto;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-header .header-image .shop-name {
+	font-size: 22px;
+	font-weight: 700;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-header .header-content h3 {
+	font-weight: 700;
+	font-size: 22px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body {
+	margin-top: 23px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .top-sec .details-box {
+	display: flex;
+	align-items: stretch;
+	flex-wrap: nowrap;
+	gap: 24px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .top-sec .details-box .address-box {
+	background-color: #f7f7f7;
+	padding: 14px 22px;
+	width: 100%;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .top-sec .details-box .address-box ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .top-sec .details-box .address-box ul li {
+	font-size: 14px;
+	font-weight: 700;
+	color: #222;
+	width: 100%;
+	display: block;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table {
+	margin-top: 25px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table .table {
+	border: 1px solid #e2e2e2;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table .table thead tr th {
+	font-size: 14px;
+	font-weight: 700;
+	text-align: center;
+	border-left: 1px solid #e2e2e2;
+	padding: 10px;
+	white-space: nowrap;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table .table tbody tr td {
+	font-weight: 700;
+	font-size: 14px;
+	text-align: center;
+	color: #939393;
+	border-left: 1px solid #e2e2e2;
+	padding: 14px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 {
+	margin-top: 25px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table {
+	border: 1px solid #e2e2e2;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table thead tr th {
+	font-size: 14px;
+	font-weight: 700;
+	text-align: center;
+	background-color: var(--theme-color);
+	color: #fff;
+	padding: 10px 12px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table tbody tr:nth-child(even) td {
+	background-color: #f7f7f7;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table tbody tr td {
+	font-weight: 700;
+	vertical-align: middle;
+	font-size: 13px;
+	text-align: center;
+	color: #222;
+	border-left: 1px solid #e2e2e2;
+	border-bottom: none;
+	padding: 8px 12px;
+}
+/* Quantities, prices and amounts never break across lines ("120.0 m", "₹180 / m"). */
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table tbody tr td:not(:nth-child(2)),
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table thead tr th:not(:nth-child(2)) {
+	white-space: nowrap;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table tbody tr td .item-detail {
+	display: flex;
+	flex-wrap: wrap;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .invoice-table-2 .table tbody tr td .item-detail li {
+	width: 100%;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .price-box ul {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 40px;
+	padding: 0 10px;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-body .price-box ul li {
+	font-size: 15px;
+	font-weight: 800;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-footer {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	padding: 0;
+	margin-top: 32px;
+	break-inside: avoid;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-footer .signature-box {
+	display: inline-block;
+	margin-left: auto;
+}
+.theme-invoice-1 .invoice-wrapper .invoice-footer .signature-box h5 {
+	padding: 10px 10px 0;
+	text-align: center;
+	border-top: 1px solid #e2e2e2;
+	margin-top: 48px;
+	font-size: 15px;
+}

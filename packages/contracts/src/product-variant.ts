@@ -20,7 +20,10 @@ export type VariantOptionSelection = z.infer<typeof VariantOptionSelection>;
  */
 export const VariantStock = z.object({
 	tracked: z.boolean().default(true),
+	/** On hand. Moves only through stock documents (purchases, returns, adjustments, counts). */
 	quantity: z.number().int().default(0),
+	/** On hand but not for sale (photoshoot, display, waiting for the supplier). Free = quantity − held. */
+	held: z.number().int().nonnegative().default(0),
 	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
 	/** Seam — `DEC-BACKORDER`. */
 	allowBackorder: z.boolean().default(false),
@@ -82,7 +85,13 @@ export const ProductVariant = z
 		compareAtPriceINR: CatalogRupee.nullable().default(null),
 		salePriceINR: CatalogRupee.nullable().default(null),
 		barcode: z.string().min(1).nullable().optional(),
-		stock: VariantStock.default({ tracked: true, quantity: 0, lowStockThreshold: null, allowBackorder: false }),
+		stock: VariantStock.default({
+			tracked: true,
+			quantity: 0,
+			held: 0,
+			lowStockThreshold: null,
+			allowBackorder: false,
+		}),
 		shippingProfile: VariantShippingProfile.optional(),
 		taxProfile: VariantTaxProfile.optional(),
 		media: z

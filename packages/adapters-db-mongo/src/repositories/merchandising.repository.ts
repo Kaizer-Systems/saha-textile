@@ -41,7 +41,13 @@ const toVariant = (doc: ProductVariantDoc): ProductVariant => ({
 	priceINR: doc.priceINR,
 	compareAtPriceINR: doc.compareAtPriceINR ?? null,
 	salePriceINR: doc.salePriceINR ?? null,
-	stock: doc.stock ?? { tracked: true, quantity: 0, lowStockThreshold: null, allowBackorder: false },
+	stock: {
+		tracked: doc.stock?.tracked ?? true,
+		quantity: doc.stock?.quantity ?? 0,
+		held: doc.stock?.held ?? 0,
+		lowStockThreshold: doc.stock?.lowStockThreshold ?? null,
+		allowBackorder: doc.stock?.allowBackorder ?? false,
+	},
 	shippingProfile: doc.shippingProfile as ProductVariant['shippingProfile'],
 	taxProfile: doc.taxProfile as ProductVariant['taxProfile'],
 	media: doc.media as ProductVariant['media'],
@@ -49,6 +55,24 @@ const toVariant = (doc: ProductVariantDoc): ProductVariant => ({
 	createdAt: iso(doc.createdAt),
 	updatedAt: iso(doc.updatedAt),
 });
+
+/**
+ * A catalogue save of a variant. On-hand and held move only through stock documents (purchase
+ * entries, returns, adjustments, counts, opening stock) via the guarded ledger update, so a save
+ * from the product form never overwrites them: they are written once, when the row is created.
+ */
+function variantWrite(variant: ProductVariant) {
+	const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, stock, ...rest } = variant;
+	return {
+		$set: {
+			...rest,
+			'stock.tracked': stock.tracked,
+			'stock.lowStockThreshold': stock.lowStockThreshold,
+			'stock.allowBackorder': stock.allowBackorder,
+		},
+		$setOnInsert: { 'stock.quantity': stock.quantity, 'stock.held': 0 },
+	};
+}
 
 export class MongoProductVariantRepository implements ProductVariantRepository {
 	async findById(variantId: string, audience: CatalogAudience = 'public'): Promise<ProductVariant | null> {
@@ -94,10 +118,11 @@ export class MongoProductVariantRepository implements ProductVariantRepository {
 		const query: Record<string, unknown> = { ...statusClause(filter.audience) };
 		if (filter.productId) query.productId = filter.productId;
 		if (filter.purchasableOnly) {
-			// Purchasable = live AND (untracked OR has stock OR backorder is allowed).
+			// Purchasable = live AND (untracked OR free to sell OR backorder is allowed). Held
+			// pieces are on hand but not for sale.
 			query.$or = [
 				{ 'stock.tracked': false },
-				{ 'stock.quantity': { $gt: 0 } },
+				{ $expr: { $gt: [{ $subtract: ['$stock.quantity', { $ifNull: ['$stock.held', 0] }] }, 0] } },
 				{ 'stock.allowBackorder': true },
 			];
 		}
@@ -118,12 +143,11 @@ export class MongoProductVariantRepository implements ProductVariantRepository {
 	}
 
 	async save(variant: ProductVariant, context?: TransactionContext): Promise<ProductVariant> {
-		const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = variant;
-		await ProductVariantModel.findByIdAndUpdate(
-			id,
-			{ $set: rest },
-			{ upsert: true, setDefaultsOnInsert: true, session: sessionFrom(context) },
-		).exec();
+		await ProductVariantModel.findByIdAndUpdate(variant.id, variantWrite(variant), {
+			upsert: true,
+			setDefaultsOnInsert: true,
+			session: sessionFrom(context),
+		}).exec();
 		return variant;
 	}
 
@@ -134,10 +158,9 @@ export class MongoProductVariantRepository implements ProductVariantRepository {
 	 */
 	async saveMany(variants: readonly ProductVariant[], context?: TransactionContext): Promise<ProductVariant[]> {
 		const session = sessionFrom(context);
-		const operations = variants.map((variant) => {
-			const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = variant;
-			return { updateOne: { filter: { _id: id }, update: { $set: rest }, upsert: true } };
-		});
+		const operations = variants.map((variant) => ({
+			updateOne: { filter: { _id: variant.id }, update: variantWrite(variant), upsert: true },
+		}));
 		await ProductVariantModel.bulkWrite(operations as Parameters<typeof ProductVariantModel.bulkWrite>[0], {
 			session,
 		});

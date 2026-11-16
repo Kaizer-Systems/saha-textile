@@ -55,6 +55,8 @@ export const Supplier = z.object({
 	gstin: z.string().nullable(),
 	pan: z.string().nullable(),
 	stateCode: z.string(),
+	/** The State's name, from its code (shown in lists and on the supplier page). */
+	stateName: z.string(),
 	address: SupplierAddress,
 	contactName: z.string().nullable(),
 	phone: z.string().nullable(),
@@ -140,10 +142,30 @@ export const SupplierGstinCheck = z.object({
 });
 export type SupplierGstinCheck = z.infer<typeof SupplierGstinCheck>;
 
+export const SupplierGstinCheckQuery = z.object({
+	gstin: z.string().trim().min(1).max(20),
+	excludeId: Id.optional(),
+});
+export type SupplierGstinCheckQuery = z.infer<typeof SupplierGstinCheckQuery>;
+
+/** Links one of the supplier's own item codes to one of our variants. */
+export const SupplierItemCodeWrite = z.object({ code: z.string().trim().min(1).max(60), variantId: Id });
+export type SupplierItemCodeWrite = z.infer<typeof SupplierItemCodeWrite>;
+
 /** One row of a supplier's statement: bills, debit notes and payments with a running balance. */
 export const SupplierStatementRow = z.object({
 	date: IsoDate,
-	kind: z.enum(['bill', 'debit_note', 'credit_note', 'payment', 'payment_reversed']),
+	kind: z.enum([
+		'bill',
+		'debit_note',
+		'credit_note',
+		'payment',
+		'payment_reversed',
+		/** The supplier paid a debit note back in money. */
+		'refund_received',
+		/** The supplier refused a debit note and it was written off. */
+		'claim_written_off',
+	]),
 	documentId: Id,
 	documentNumber: z.string(),
 	details: z.string(),
@@ -202,6 +224,12 @@ export const PurchaseItemSearchQuery = z.object({
 });
 export type PurchaseItemSearchQuery = z.infer<typeof PurchaseItemSearchQuery>;
 
+export const VariantGridQuery = z.object({ supplierId: Id.optional() });
+export type VariantGridQuery = z.infer<typeof VariantGridQuery>;
+
+export const DraftProductDefaultsQuery = z.object({ categoryId: Id });
+export type DraftProductDefaultsQuery = z.infer<typeof DraftProductDefaultsQuery>;
+
 /* ------------------------------------------------------------------ purchase orders */
 
 export const PurchaseOrderStatus = z.enum(['draft', 'sent', 'part_received', 'received', 'closed_short', 'cancelled']);
@@ -218,8 +246,14 @@ export const PurchaseOrderLine = z.object({
 	supplierItemCode: z.string().nullable(),
 	quantity: PositiveUnits,
 	agreedPriceINR: PriceINR,
+	/** For the order's GST estimate only; the supplier's bill sets the real tax. */
+	gstRatePct: z.number().min(0).max(28),
 	lastCostINR: PriceINR.nullable(),
 	receivedQuantity: NonNegativeUnits,
+	/** The entries that brought this line's goods (po04 "Received on"). */
+	receivedOn: z
+		.array(z.object({ entryId: Id, number: z.string().nullable(), quantity: z.number().int() }))
+		.default([]),
 });
 export type PurchaseOrderLine = z.infer<typeof PurchaseOrderLine>;
 
@@ -246,6 +280,8 @@ export const PurchaseOrder = z.object({
 	createdBy: Id.nullable(),
 	createdAt: IsoDateTime,
 	updatedAt: IsoDateTime,
+	/** Who saved last: named when a stale save is refused. */
+	updatedBy: Id.nullable().default(null),
 	version: z.number().int(),
 });
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
@@ -255,6 +291,8 @@ export const PurchaseOrderLineWrite = z.object({
 	variantId: Id,
 	quantity: PositiveUnits,
 	agreedPriceINR: PriceINR,
+	/** For the estimate only (example rate until the CA's table, round 2 B2.4). */
+	gstRatePct: z.number().min(0).max(28).default(5),
 	supplierItemCode: OptionalText(60),
 });
 export type PurchaseOrderLineWrite = z.infer<typeof PurchaseOrderLineWrite>;
@@ -274,6 +312,8 @@ export type PurchaseOrderWrite = z.infer<typeof PurchaseOrderWrite>;
 export const PurchaseOrderSend = z.object({
 	via: z.enum(['email', 'pdf']),
 	mailboxId: Id.optional(),
+	/** One of the mailbox's send-as addresses. */
+	from: z.string().trim().email().optional(),
 	to: z.array(z.string().trim().email()).max(10).default([]),
 	subject: z.string().trim().max(200).default(''),
 	message: z.string().trim().max(5000).default(''),
@@ -287,6 +327,9 @@ export const PurchaseOrderListQuery = z.object({
 	pageSize: z.coerce.number().int().min(1).max(100).default(15),
 });
 export type PurchaseOrderListQuery = z.infer<typeof PurchaseOrderListQuery>;
+
+export const PurchaseOrderClose = z.object({ reason: z.string().trim().min(3).max(500) });
+export type PurchaseOrderClose = z.infer<typeof PurchaseOrderClose>;
 
 export const PurchaseOrderListResponse = z.object({
 	items: z.array(PurchaseOrder),
@@ -317,6 +360,8 @@ export const PurchaseWarning = z.object({
 		'not_ordered',
 		'date_order',
 		'bill_in_future',
+		/** P07: same supplier, same total and date, a different bill number. */
+		'lookalike_bill',
 	]),
 	lineId: Id.nullable(),
 	detail: z.string(),
@@ -356,7 +401,8 @@ export const PurchaseEntryLine = z.object({
 	taxINR: PriceINR,
 	lineTotalINR: PriceINR,
 	freightShareINR: PriceINR,
-	unitCostINR: z.number(),
+	/** Cost into stock per piece or metre; null for anyone without `stock.cost` (P8). */
+	unitCostINR: z.number().nullable(),
 	sellingPriceINR: PriceINR,
 	marginPct: z.number().nullable(),
 	lastCostINR: PriceINR.nullable(),
@@ -378,7 +424,8 @@ export const PurchaseEntryTotals = z.object({
 	matchesPrinted: z.boolean(),
 	differenceINR: z.number(),
 	pieces: z.number().int(),
-	costIntoStockINR: z.number(),
+	/** Null for anyone without `stock.cost` (P8). */
+	costIntoStockINR: z.number().nullable(),
 });
 export type PurchaseEntryTotals = z.infer<typeof PurchaseEntryTotals>;
 
@@ -411,6 +458,11 @@ export const PurchaseEntry = z.object({
 	itcClaimable: z.boolean(),
 	dueOn: IsoDate,
 	paidINR: PriceINR,
+	/**
+	 * Net credit from debit notes on this entry: sent debit notes, less refunds the supplier paid
+	 * back and claims written off. Left to pay = total − paid − credited.
+	 */
+	creditedINR: z.number().default(0),
 	createdBy: Id.nullable(),
 	checkedBy: Id.nullable(),
 	checkedAt: IsoDateTime.nullable(),
@@ -422,6 +474,7 @@ export const PurchaseEntry = z.object({
 	returnDraftIds: z.array(Id),
 	createdAt: IsoDateTime,
 	updatedAt: IsoDateTime,
+	updatedBy: Id.nullable().default(null),
 	version: z.number().int(),
 });
 export type PurchaseEntry = z.infer<typeof PurchaseEntry>;
@@ -584,6 +637,14 @@ export const DraftProductFromLine = z.object({
 	supplierId: Id.optional(),
 	supplierItemCode: OptionalText(60),
 	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	/** Typed only when the category has no numbered SKUs yet; otherwise its own prefix is used. */
+	skuPrefix: z
+		.string()
+		.trim()
+		.max(20)
+		.regex(/^[A-Za-z0-9-]*$/, { message: 'sku_prefix_shape' })
+		.nullable()
+		.default(null),
 });
 export type DraftProductFromLine = z.infer<typeof DraftProductFromLine>;
 
@@ -619,6 +680,7 @@ export const SupplierPaymentWrite = z.object({
 export type SupplierPaymentWrite = z.infer<typeof SupplierPaymentWrite>;
 
 export const SupplierPaymentReverse = z.object({ reason: z.string().trim().min(3).max(500) });
+export type SupplierPaymentReverse = z.infer<typeof SupplierPaymentReverse>;
 
 /* ------------------------------------------------------------------ purchase returns */
 
@@ -686,15 +748,19 @@ export const PurchaseReturn = z.object({
 	docket: z.string().nullable(),
 	sentAt: IsoDateTime.nullable(),
 	sentBy: Id.nullable(),
-	settlement: z
-		.object({
+	/** Each settlement in order: a part settlement leaves the rest open (r04). */
+	settlements: z.array(
+		z.object({
+			id: Id,
 			how: SettlementHow,
 			reference: z.string().nullable(),
 			date: IsoDate,
 			amountINR: PriceINR,
 			attachmentAssetId: Id.nullable(),
-		})
-		.nullable(),
+			by: Id.nullable(),
+			at: IsoDateTime,
+		}),
+	),
 	settledINR: PriceINR,
 	settledAt: IsoDateTime.nullable(),
 	settledBy: Id.nullable(),
@@ -702,6 +768,7 @@ export const PurchaseReturn = z.object({
 	createdBy: Id.nullable(),
 	createdAt: IsoDateTime,
 	updatedAt: IsoDateTime,
+	updatedBy: Id.nullable().default(null),
 	version: z.number().int(),
 });
 export type PurchaseReturn = z.infer<typeof PurchaseReturn>;
@@ -737,6 +804,14 @@ export const PurchaseReturnSettle = z.object({
 });
 export type PurchaseReturnSettle = z.infer<typeof PurchaseReturnSettle>;
 
+export const ReturnableQuery = z.object({
+	entryId: Id,
+	kind: PurchaseReturnKind.default('return_goods'),
+	holdId: Id.optional(),
+	excludeReturnId: Id.optional(),
+});
+export type ReturnableQuery = z.infer<typeof ReturnableQuery>;
+
 /** What a return may take per entry line (r02, r03): received, already returned, free now. */
 export const ReturnableLine = z.object({
 	entryLineId: Id,
@@ -754,6 +829,8 @@ export const ReturnableLine = z.object({
 	freeToReturn: z.number().int(),
 	unitCostINR: z.number(),
 	gstRatePct: z.number(),
+	/** Why the most that can go back is smaller than received less returned (r03), or null. */
+	capReason: z.string().nullable(),
 });
 export type ReturnableLine = z.infer<typeof ReturnableLine>;
 
@@ -805,6 +882,17 @@ export const InventorySettings = z.object({
 	unpaidAlertDays: z.number().int().min(1).max(365).default(150),
 	defaultPaymentTermsDays: z.number().int().min(0).max(365).default(30),
 	defaultDeliverTo: z.string().default(''),
+	/**
+	 * The shop's own identity as printed on purchase orders (and later on GST documents). Empty
+	 * until set: the order PDF then prints the Brand Kit's shop name and leaves the GSTIN out.
+	 */
+	business: z
+		.object({
+			legalName: z.string().trim().max(200).default(''),
+			gstin: z.string().trim().max(15).nullable().default(null),
+			addressLines: z.array(z.string().trim().max(200)).max(4).default([]),
+		})
+		.default({ legalName: '', gstin: null, addressLines: [] }),
 	numberFormats: NumberFormats.default({
 		purchaseEntry: 'PE/{fy}/{seq6}',
 		purchaseOrder: 'PO/{fy}/{seq6}',

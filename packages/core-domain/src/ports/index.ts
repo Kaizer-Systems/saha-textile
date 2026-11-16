@@ -50,3 +50,4 @@ export * from './media-library.repository';
 export * from './media-zip.repository';
 export * from './email-picture.repository';
 export * from './purchasing.repository';
+export * from './document-renderer.port';

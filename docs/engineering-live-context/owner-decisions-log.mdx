@@ -1523,3 +1523,28 @@ Brief: https://claude.ai/artifact/Uug8q6gFMQQVb8SdhEs9sL (every banner slot, whe
 - **Shown before deciding:** the Legal Pages removals (choice A's four parts, the eight page files) and the place
   of the web file name were drawn on the real admin for the owner
   (https://claude.ai/artifact/VF4CfdFBnArQynXvdWTGSs); the answers are recorded when given.
+
+## Owner decision round (2026-11-17) — PDF engine for business documents
+
+Asked while building purchase orders (PO03 email with the PDF attached, PO05 the order PDF from
+the vendor invoice template). Nothing in the repository made PDFs. Options researched and shown
+with for and against: Chromium through Playwright, Gotenberg, Typst, pdfmake, pdf-lib, WeasyPrint,
+Prince and DocRaptor.
+
+- **Decided: headless Chromium driven by Playwright** (owner, 2026-11-17) for every business
+  document: purchase orders now; debit notes, delivery challans, customer tax invoices, report
+  exports and A4 label sheets later. Reasons: it prints the approved vendor HTML template exactly,
+  shapes Bengali correctly (the browser's own text engine), supports `@page` margin boxes for page
+  numbers and running headers (Chrome 131+), and Playwright is already pinned in the repository
+  (1.64.1) for the browser tests.
+- **How it is built:** behind a document-renderer port in `core-domain` with a Chromium adapter
+  package, so a later move (Gotenberg for archival PDF/A or Word conversion) touches only the
+  adapter and one binding. The light `chromium-headless-shell` build runs in the existing background
+  worker, never in the shop. Every network request during a render is blocked except the
+  document's own fonts and pictures; one browser stays open with a fresh page per document and a
+  time limit. `@cantoo/pdf-lib` (the maintained pdf-lib fork) may set document details or merge
+  files later.
+- **Not chosen:** Gotenberg (a second service to patch; serious 2026 security advisories), Typst
+  (the template would be redrawn in its own language; Bengali unverified), pdfmake/PDFKit (code
+  layouts; known Bengali conjunct bugs), WeasyPrint (a Python service), Prince/DocRaptor (paid;
+  DocRaptor would send documents to a third party).

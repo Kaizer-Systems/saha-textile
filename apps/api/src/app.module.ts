@@ -7,6 +7,7 @@ import { BlogModule } from './blog/blog.module';
 import { LegalPagesModule } from './legal/legal-pages.module';
 import { EventsModule } from './events/events.module';
 import { MailboxesModule } from './mailboxes/mailboxes.module';
+import { PurchasingModule } from './purchasing/purchasing.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { LanguagesModule } from './languages/languages.module';
@@ -62,6 +63,7 @@ export class AppModule {
 				StoreLocationsModule,
 				CommunicationsModule,
 				MailboxesModule,
+				PurchasingModule,
 				WishlistModule,
 				LanguagesModule,
 			],

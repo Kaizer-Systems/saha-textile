@@ -28,6 +28,8 @@ export const API_TAGS = {
 	mailboxes: 'mailboxes',
 	wishlist: 'wishlist',
 	languages: 'languages',
+	purchases: 'purchases',
+	stock: 'stock',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -93,5 +95,15 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.languages,
 		description:
 			'The active languages, English first: the one list the admin and the shop both read. No authentication.',
+	},
+	{
+		name: API_TAGS.purchases,
+		description:
+			'Suppliers, purchase orders, purchase entries (supplier bills taken into stock), payments and purchase returns with debit notes. Admin only; every write is audited as a sentence.',
+	},
+	{
+		name: API_TAGS.stock,
+		description:
+			'Stock on hand, held and free to sell; history, cost layers (FIFO), adjustments with approval, holds, counts, opening stock, reorder list and reports. Cost and value fields are left out for anyone without stock.cost.',
 	},
 ];

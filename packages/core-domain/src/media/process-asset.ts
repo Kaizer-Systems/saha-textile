@@ -10,7 +10,7 @@ import type { StoragePort } from '../ports/storage.port';
 import { planDerivatives } from './derivative-plan';
 import { IMMUTABLE_CACHE_CONTROL, checkCaps, checkIngest } from './policy';
 import { PER_PHOTO_ROLES, assignExistingVersions } from './profiles';
-import { derivativeStorageKey, versionStorageKey } from './storage-keys';
+import { derivativeStorageKey, isEmailPictureKey, versionStorageKey } from './storage-keys';
 import { checkProfileMinSize, checkVersionRequest, planVersion } from './version-plan';
 
 export interface ProcessMediaAssetDeps {
@@ -403,7 +403,10 @@ const settle = async (
 	warnings: MediaWarning[],
 ): Promise<ProcessOutcome> => {
 	const kept = new Set(derivatives.map((derivative) => derivative.storageKey));
-	const dropped = asset.derivatives.filter((derivative) => !kept.has(derivative.storageKey));
+	// Email pictures are kept for good (R6-1), even when a reprocess drops them from the photo.
+	const dropped = asset.derivatives.filter(
+		(derivative) => !kept.has(derivative.storageKey) && !isEmailPictureKey(derivative.storageKey),
+	);
 	const discardOriginal = asset.purpose === 'review' && asset.originalStorageKey !== null;
 
 	await deps.assets.update({

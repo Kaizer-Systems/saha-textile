@@ -3,6 +3,7 @@
  *
  *   media/{assetId}/original.{ext}                          private regeneration master
  *   media/{assetId}/{slug}-{role}-{width}w-{hash8}.{ext}    derivative, immutable
+ *   email/{assetId}/{slug}-{width}w-{hash8}.jpg             email picture, kept for good (R4-3, R6-1)
  *
  * `assetId` first so one asset's objects share a prefix; the content hash makes every
  * derivative key immutable, which is what earns the one-year cache header.
@@ -31,6 +32,17 @@ export const plainFileStorageKey = (assetId: string, fileName: string): string =
 
 const DERIVATIVE_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' } as const;
 
+/** The role of the picture order emails show (JPEG, 150 and 300 px). */
+export const EMAIL_PICTURE_ROLE = 'email_thumb';
+
+/**
+ * Whether a stored file is an email picture: under its own `email/` prefix (media step 3f), or one made before it
+ * with the role in its name. Email pictures are kept for good, so emails already sent keep their pictures: Replace, a
+ * focal point, a new name, new versions and deleting the photo never remove them; only Clean up › Email pictures does.
+ */
+export const isEmailPictureKey = (key: string): boolean =>
+	key.startsWith('email/') || /-email-thumb-\d+w-[0-9a-f]{8}\.jpg$/.test(key);
+
 export const derivativeStorageKey = (input: {
 	assetId: string;
 	slug: string;
@@ -39,9 +51,11 @@ export const derivativeStorageKey = (input: {
 	sha256: string;
 	format: 'image/webp' | 'image/jpeg' | 'image/png';
 }): string =>
-	`media/${input.assetId}/${input.slug}-${input.role.replace(/_/g, '-')}-${input.width}w-${input.sha256.slice(0, 8)}.${
-		DERIVATIVE_EXTENSIONS[input.format]
-	}`;
+	input.role === EMAIL_PICTURE_ROLE
+		? `email/${input.assetId}/${input.slug}-${input.width}w-${input.sha256.slice(0, 8)}.${DERIVATIVE_EXTENSIONS[input.format]}`
+		: `media/${input.assetId}/${input.slug}-${input.role.replace(/_/g, '-')}-${input.width}w-${input.sha256.slice(0, 8)}.${
+				DERIVATIVE_EXTENSIONS[input.format]
+			}`;
 
 /**
  * A version's file (R4-1): under the version's own folder, so one photo's branches sit apart in Spaces —

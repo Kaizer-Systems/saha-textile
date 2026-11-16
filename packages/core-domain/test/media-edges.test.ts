@@ -333,12 +333,12 @@ describe('storage keys', () => {
 		const key = derivativeStorageKey({
 			assetId: 'med_1',
 			slug: 'red',
-			role: 'email_thumb',
-			width: 300,
+			role: 'share',
+			width: 1200,
 			sha256: 'abcdef0123',
 			format: 'image/jpeg',
 		});
-		expect(key).toBe('media/med_1/red-email-thumb-300w-abcdef01.jpg');
+		expect(key).toBe('media/med_1/red-share-1200w-abcdef01.jpg');
 	});
 });
 

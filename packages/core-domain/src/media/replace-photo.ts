@@ -5,6 +5,7 @@ import { ImageDecodeError } from '../ports/image-codec.port';
 import type { MediaAssetRepository } from '../ports/media.repository';
 import { checkCaps } from './policy';
 import { type ProcessMediaAssetDeps, type ProcessOutcome, renderPhoto } from './process-asset';
+import { isEmailPictureKey } from './storage-keys';
 import { checkVersionRequest } from './version-plan';
 
 /** Old files stay this long after a Replace, so pages already open keep their pictures (decision 11). */
@@ -71,7 +72,8 @@ export function keptAfterReplace(
 	reason: MediaKeptFiles['reason'] = 'replace',
 ): MediaKeptFiles | null {
 	const still = new Set([...fresh.derivatives.map((row) => row.storageKey), fresh.originalStorageKey]);
-	const files = old.derivatives.filter((row) => !still.has(row.storageKey));
+	// Email pictures are kept for good (R6-1): old emails still show them, so they are never among the files to delete.
+	const files = old.derivatives.filter((row) => !still.has(row.storageKey) && !isEmailPictureKey(row.storageKey));
 	const keys = files.map((row) => row.storageKey);
 	if (old.originalStorageKey && !still.has(old.originalStorageKey)) keys.push(old.originalStorageKey);
 	if (!keys.length) return null;
@@ -283,7 +285,7 @@ export const sweepKeptFiles = async (
 		const rows = (asset.keptFiles ?? []).filter((row) => row.deleteAfter <= before);
 		// A file the photo shows again (same bytes, same address) stays, whatever the list says.
 		const live = liveKeys(asset);
-		const keys = rows.flatMap((row) => row.keys).filter((key) => !live.has(key));
+		const keys = rows.flatMap((row) => row.keys).filter((key) => !live.has(key) && !isEmailPictureKey(key));
 		if (keys.length) {
 			const pictures = keys.filter((key) => !/\/original[.-]/.test(key));
 			await deps.queue.enqueue({

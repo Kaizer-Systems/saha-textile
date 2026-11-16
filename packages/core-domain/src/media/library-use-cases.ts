@@ -9,6 +9,7 @@ import type {
 } from '../ports/media-library.repository';
 import type { MediaAssetRepository } from '../ports/media.repository';
 import { TRASH_DAYS } from './library';
+import { isEmailPictureKey } from './storage-keys';
 
 /** What deleting for good needs; the API and the nightly worker both compose it. */
 export interface DeleteForeverDeps {
@@ -29,6 +30,7 @@ export type DeleteForeverResult =
 
 /** Every stored object of one file: its original, its picture sizes and its video files. */
 export function storedKeys(asset: MediaAsset): string[] {
+	// Email pictures are kept for good (R6-1): only Clean up › Email pictures deletes them.
 	return [
 		asset.originalStorageKey,
 		...asset.derivatives.map((row) => row.storageKey),
@@ -37,7 +39,7 @@ export function storedKeys(asset: MediaAsset): string[] {
 		// Files kept after a Replace (decision 11), and a replacement still on its way in (S7).
 		...(asset.keptFiles ?? []).flatMap((row) => row.keys),
 		asset.replacing?.key,
-	].filter((key): key is string => !!key);
+	].filter((key): key is string => !!key && !isEmailPictureKey(key));
 }
 
 /**
@@ -46,7 +48,7 @@ export function storedKeys(asset: MediaAsset): string[] {
  */
 export function publicKeys(asset: MediaAsset): string[] {
 	if (asset.visibility !== 'public') return [];
-	const keys = asset.derivatives.map((row) => row.storageKey);
+	const keys = asset.derivatives.map((row) => row.storageKey).filter((key) => !isEmailPictureKey(key));
 	if (asset.kind === 'file' && asset.originalStorageKey) keys.push(asset.originalStorageKey);
 	// Kept picture sizes from before a Replace are public too (an original is not, and is left out by its name).
 	for (const row of asset.keptFiles ?? []) keys.push(...row.keys.filter((key) => !/\/original[.-]/.test(key)));

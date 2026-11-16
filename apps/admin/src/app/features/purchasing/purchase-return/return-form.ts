@@ -143,7 +143,11 @@ export class ReturnForm {
 		if (reason && RETURN_REASONS.includes(reason)) this.reason.set(reason);
 		if (id) void this.loadExisting(id);
 		else if (entryId) void this.useEntry(entryId);
-		else void this.searchEntries({ search: '' } as Select2SearchEvent);
+		// From held stock (i06): look for the entry the pieces came on by their SKU.
+		else
+			void this.searchEntries({
+				search: this.route.snapshot.queryParamMap.get('sku') ?? '',
+			} as Select2SearchEvent);
 	}
 
 	private async loadExisting(id: string): Promise<void> {

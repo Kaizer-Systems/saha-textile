@@ -1,0 +1,240 @@
+@if (detail(); as d) {
+<section class="dashboard-tiles">
+	<div class="container-fluid">
+		<div class="row g-3 mb-3">
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'on_hand' | transloco }}</h6>
+						<h3>{{ d.row.onHand | stockQty: d.row.soldBy }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-stack-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'held' | transloco }}</h6>
+						<h3>{{ d.row.held | stockQty: d.row.soldBy }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-pause-circle-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'free_to_sell' | transloco }}</h6>
+						<h3>{{ d.row.freeToSell | stockQty: d.row.soldBy }}</h3>
+						@if (d.row.lowStockLevel !== null) {
+						<p class="small text-muted mb-0">
+							{{ 'low_stock_level_n' | transloco: { level: (d.row.lowStockLevel | stockQty: d.row.soldBy)
+							} }}
+						</p>
+						}
+					</div>
+					<div class="icon-box">
+						<i class="ri-shopping-cart-line"></i>
+					</div>
+				</div>
+			</div>
+			@if (canSeeCost()) {
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles h-100">
+					<div>
+						<h6>{{ 'value_at_cost' | transloco }}</h6>
+						<h3>{{ d.row.valueAtCostINR === null ? '—' : (d.row.valueAtCostINR | rupees) }}</h3>
+						@if (d.costBreakdown) {
+						<p class="small text-muted mb-0">{{ d.costBreakdown }}</p>
+						}
+					</div>
+					<div class="icon-box">
+						<i class="ri-safe-2-line"></i>
+					</div>
+				</div>
+			</div>
+			}
+		</div>
+	</div>
+</section>
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'stock_history'"
+>
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-3">
+		<div class="text-start">
+			<h6 class="mb-0">{{ d.row.title }}</h6>
+			<small class="text-muted">
+				{{ d.row.sku }}@if (d.row.optionsLabel) { · {{ d.row.optionsLabel }} } @if (d.barcode) { · {{ 'barcode'
+				| transloco }} {{ d.barcode }} }
+			</small>
+		</div>
+		<div class="d-flex ms-auto gap-2">
+			<button
+				*hasPermission="['stock.adjust', 'stock.approve', 'stock.hold']"
+				type="button"
+				class="btn btn-outline btn-sm"
+				(click)="adjust()"
+			>
+				<i class="ri-equalizer-line me-1"></i>
+				{{ 'adjust_stock' | transloco }}
+			</button>
+			<button
+				*hasPermission="'purchase.create'"
+				type="button"
+				class="btn btn-theme btn-sm"
+				(click)="receive()"
+			>
+				<i class="ri-inbox-archive-line me-1"></i>
+				{{ 'receive_stock' | transloco }}
+			</button>
+		</div>
+	</div>
+	<ul class="nav nav-tabs mb-3">
+		<li class="nav-item">
+			<a
+				href="javascript:void(0)"
+				class="nav-link"
+				[class.active]="tab() === 'movements'"
+				(click)="tab.set('movements')"
+			>
+				{{ 'movements' | transloco }}
+			</a>
+		</li>
+		@if (d.layers) {
+		<li class="nav-item">
+			<a
+				href="javascript:void(0)"
+				class="nav-link"
+				[class.active]="tab() === 'layers'"
+				(click)="tab.set('layers')"
+			>
+				{{ 'cost_layers' | transloco }}
+			</a>
+		</li>
+		}
+	</ul>
+	@if (tab() === 'movements') {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th style="width: 180px">{{ 'when' | transloco }}</th>
+					<th style="width: 170px">{{ 'what_happened' | transloco }}</th>
+					<th>{{ 'reference' | transloco }}</th>
+					<th>{{ 'who' | transloco }}</th>
+					<th class="text-end">{{ 'qty_change' | transloco }}</th>
+					<th class="text-end">{{ 'on_hand_after' | transloco }}</th>
+					<th>{{ 'note' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of d.history; track row.id) {
+				<tr>
+					<td>{{ row.at | shortDateTime }}</td>
+					<td>
+						<div [class]="'status-' + pill(row)">
+							<span>{{ 'movement_' + row.source | transloco }}</span>
+						</div>
+					</td>
+					<td>
+						@if (link(row); as target) {
+						<a [routerLink]="target">{{ row.documentNumber }}</a>
+						} @else { {{ row.documentNumber ?? (row.reasonCode ? ('reason_code_' + row.reasonCode |
+						transloco) : '—') }} }
+					</td>
+					<td>
+						{{ row.actorName ?? '—' }}@if (row.approverName && row.approverName !== row.actorName) { · {{
+						'approved_by' | transloco: { name: row.approverName } }} }
+					</td>
+					<td class="text-end text-nowrap">
+						<strong
+							[class]="row.quantityDelta > 0 ? 'text-success' : row.quantityDelta < 0 ? 'text-danger' : ''"
+						>
+							{{ row.quantityDelta === 0 ? '0' : (row.quantityDelta > 0 ? '+' : '−') + ((row.quantityDelta
+							< 0 ? -row.quantityDelta : row.quantityDelta) | stockQty: d.row.soldBy) }}
+						</strong>
+					</td>
+					<td class="text-end text-nowrap">{{ row.onHandAfter | stockQty: d.row.soldBy }}</td>
+					<td><span class="small">{{ row.note }}</span></td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="7">
+						<div class="no-data-added">
+							<h4>{{ 'no_movements_yet' | transloco }}</h4>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if (d.historyTotal > pageSize) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="d.historyTotal"
+			[currentPage]="page()"
+			[pageSize]="pageSize"
+			(setPage)="page.set($event)"
+		/>
+	</nav>
+	}
+	<p class="small text-muted mt-3 mb-0">{{ 'history_never_edited' | transloco }}</p>
+	} @else if (d.layers) {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'received' | transloco }}</th>
+					<th>{{ 'from' | transloco }}</th>
+					<th class="text-end">{{ 'pieces_in' | transloco }}</th>
+					<th class="text-end">{{ 'still_here' | transloco }}</th>
+					<th class="text-end">{{ 'cost_each' | transloco }}</th>
+					<th class="text-end">{{ 'value_still_here' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (layer of d.layers; track layer.id) {
+				<tr [class.text-muted]="layer.quantityRemaining === 0">
+					<td>{{ layer.receivedAt | shortDate }}</td>
+					<td>{{ 'layer_from_' + layer.sourceType | transloco }} {{ layer.sourceNumber }}</td>
+					<td class="text-end text-nowrap">{{ layer.quantityReceived | stockQty: d.row.soldBy }}</td>
+					<td class="text-end text-nowrap">{{ layer.quantityRemaining | stockQty: d.row.soldBy }}</td>
+					<td class="text-end text-nowrap">
+						{{ (d.row.soldBy === 'metre' ? layer.unitCostINR * 10 : layer.unitCostINR) | rupees }}@if
+						(d.row.soldBy === 'metre') { {{ 'per_m' | transloco }} }
+					</td>
+					<td class="text-end text-nowrap">{{ layer.valueRemainingINR | rupees }}</td>
+					<td>
+						@if (layer.quantityRemaining === 0) {
+						<div class="status-completed"><span>{{ 'used_up' | transloco }}</span></div>
+						} @else if (layer.sellsNext) {
+						<div class="status-pending"><span>{{ 'sells_next' | transloco }}</span></div>
+						}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	<div
+		class="alert alert-info d-flex align-items-start mt-3 gap-2"
+		role="alert"
+	>
+		<i class="ri-lock-line mt-1"></i>
+		<div>{{ 'cost_layers_note' | transloco }}</div>
+	</div>
+	}
+</app-page-wrapper>
+} @else if (query.isError()) {
+<div class="container-fluid">
+	<div class="no-data-added">
+		<h4>{{ 'stock_item_not_found' | transloco }}</h4>
+	</div>
+</div>
+}

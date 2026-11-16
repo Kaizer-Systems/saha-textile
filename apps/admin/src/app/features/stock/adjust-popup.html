@@ -1,0 +1,268 @@
+@if (row(); as item) {
+<div class="modal-header">
+	<h2 id="adjust_popup_title">{{ 'adjust_stock' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<div class="d-flex align-items-center mb-3 flex-wrap gap-3">
+		<div class="text-start">
+			<h6 class="mb-0">{{ item.title }}</h6>
+			<small class="text-muted">{{ item.sku }}@if (item.optionsLabel) { · {{ item.optionsLabel }} }</small>
+		</div>
+		<span class="small text-muted ms-auto">
+			{{ 'adjust_now_line' | transloco: { onHand: (item.onHand | stockQty: item.soldBy), held: (item.held |
+			stockQty: item.soldBy), free: (item.freeToSell | stockQty: item.soldBy) } }}
+		</span>
+	</div>
+	<div
+		class="btn-group mb-4 w-100"
+		role="group"
+	>
+		@for (choice of actions(); track choice) {
+		<button
+			type="button"
+			class="btn"
+			[class.btn-theme]="action() === choice"
+			[class.btn-outline]="action() !== choice"
+			[attr.aria-pressed]="action() === choice"
+			(click)="setAction(choice)"
+		>
+			{{ 'adjust_action_' + choice | transloco }}
+		</button>
+		}
+	</div>
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="adjust_qty"
+		>
+			{{ 'how_many' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<div class="input-group">
+				<input
+					class="form-control"
+					id="adjust_qty"
+					inputmode="decimal"
+					ngbAutofocus
+					[ngModel]="quantity()"
+					(ngModelChange)="quantity.set($event); changed()"
+				/>
+				@if (item.soldBy === 'metre') {
+				<span class="input-group-text">{{ 'unit_m' | transloco }}</span>
+				}
+			</div>
+		</div>
+	</div>
+	@if (action() === 'remove' || action() === 'add') {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="adjust_reason"
+		>
+			{{ 'reason' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="adjust_reason"
+				[ngModel]="reason()"
+				(ngModelChange)="reason.set($event); changed()"
+			>
+				@for (code of reasons(); track code) {
+				<option [value]="code">{{ 'reason_code_' + code | transloco }}</option>
+				}
+			</select>
+		</div>
+	</div>
+	} @if (action() === 'hold') {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="adjust_hold_reason"
+		>
+			{{ 'hold_why' | transloco }}
+			<span class="theme-color required-dot ms-2">*</span>
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="adjust_hold_reason"
+				[ngModel]="holdReason()"
+				(ngModelChange)="holdReason.set($event); changed()"
+			>
+				@for (code of holdReasons; track code) {
+				<option [value]="code">{{ 'hold_reason_' + code | transloco }}</option>
+				}
+			</select>
+		</div>
+	</div>
+	} @if ((action() === 'release' || action() === 'remove') && holds().length) {
+	<div class="row align-items-center g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="adjust_hold"
+		>
+			{{ (action() === 'release' ? 'which_hold' : 'from_held') | transloco }}@if (action() === 'release') {
+			<span class="theme-color required-dot ms-2">*</span>
+			}
+		</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select"
+				id="adjust_hold"
+				[ngModel]="holdId() ?? ''"
+				(ngModelChange)="holdId.set($event || null); changed()"
+			>
+				@if (action() === 'remove') {
+				<option value="">{{ 'not_from_held' | transloco }}</option>
+				} @for (hold of holds(); track hold.id) {
+				<option [value]="hold.id">
+					{{ hold.quantity | stockQty: item.soldBy }} · {{ 'hold_reason_' + hold.reason | transloco }} · {{
+					hold.note }}
+				</option>
+				}
+			</select>
+		</div>
+	</div>
+	}
+	<div class="row align-items-start g-2 mb-4">
+		<label
+			class="form-label-title col-sm-3 mb-0"
+			for="adjust_note"
+		>
+			{{ 'note' | transloco }}@if (action() === 'remove' || reason() === 'other') {
+			<span class="theme-color required-dot ms-2">*</span>
+			}
+		</label>
+		<div class="col-sm-9">
+			<textarea
+				class="form-control"
+				id="adjust_note"
+				rows="2"
+				maxlength="1000"
+				[ngModel]="note()"
+				(ngModelChange)="note.set($event); changed()"
+			></textarea>
+			<p class="help-text">
+				{{ (action() === 'remove' ? 'adjust_note_help_writeoff' : 'adjust_note_help') | transloco }}
+			</p>
+		</div>
+	</div>
+	@if (action() === 'remove') {
+	<div class="row align-items-center g-2 mb-4">
+		<span class="form-label-title col-sm-3 mb-0">{{ 'photos' | transloco }}</span>
+		<div class="col-sm-9">
+			<a
+				href="javascript:void(0)"
+				class="text-decoration-underline small"
+				(click)="addPhotos()"
+			>
+				<i class="ri-attachment-2"></i>
+				{{ (photos().length ? 'photos_count' : 'add_photos') | transloco: { count: photos().length } }}
+			</a>
+			<p class="help-text">{{ 'adjust_photos_help' | transloco }}</p>
+		</div>
+	</div>
+	} @if (preview(); as plan) {
+	<div class="row">
+		<div class="col-md-6">
+			<table class="table-sm mb-3 table">
+				<tbody>
+					<tr>
+						<td class="text-muted">{{ 'on_hand_after' | transloco }}</td>
+						<td class="text-end">{{ plan.onHandAfter | stockQty: item.soldBy }}</td>
+					</tr>
+					<tr>
+						<td class="text-muted">{{ 'free_to_sell_after' | transloco }}</td>
+						<td class="text-end">{{ plan.freeAfter | stockQty: item.soldBy }}</td>
+					</tr>
+					@if (plan.valueAtCostINR !== null && (action() === 'remove' || action() === 'add')) {
+					<tr>
+						<td class="text-muted">
+							{{ (action() === 'remove' ? 'value_written_off' : 'value_added') | transloco }}
+						</td>
+						<td class="text-end">
+							{{ plan.valueAtCostINR | rupees }}@if (plan.costBreakdown) {
+							<small class="text-muted d-block">{{ plan.costBreakdown }}</small>
+							}
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="col-md-6">
+			@if (plan.refusal) {
+			<div
+				class="alert alert-warning d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-error-warning-line mt-1"></i>
+				<div>{{ plan.refusal }}</div>
+			</div>
+			} @else if (action() === 'remove' || action() === 'add') { @if (needsApproval()) {
+			<div
+				class="alert alert-warning d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-shield-user-line mt-1"></i>
+				<div>
+					<strong>{{ 'needs_approval' | transloco }}</strong>
+					{{ 'needs_approval_body' | transloco }}
+				</div>
+			</div>
+			} @else {
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-shield-check-line mt-1"></i>
+				<div>
+					<strong>{{ 'you_can_approve' | transloco }}</strong>
+					{{ 'you_can_approve_body' | transloco }}
+				</div>
+			</div>
+			} }
+		</div>
+	</div>
+	} @if (error(); as message) {
+	<div
+		class="alert alert-warning mb-0"
+		role="alert"
+	>
+		{{ message }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			id="adjust_save"
+			[class]="'btn ' + (action() === 'remove' && !needsApproval() ? 'btn-danger' : 'btn-theme')"
+			[disabled]="!!problem() || busy() || !!preview()?.refusal"
+			(click)="save()"
+		>
+			{{ buttonKey() | transloco: { qty: ((units() ?? 0) | stockQty: item.soldBy) } }}
+		</button>
+	</div>
+</div>
+}

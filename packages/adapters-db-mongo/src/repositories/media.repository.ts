@@ -6,6 +6,7 @@ import {
 	type MediaBrowseRepository,
 	type Paginated,
 	mediaCategory,
+	searchWords,
 } from '@saha-textile/core-domain';
 
 import { MediaAssetModel, type MediaAssetDoc } from '../models/index';
@@ -440,16 +441,26 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 		} else if (filter.withoutVersionOf) {
 			query.versions = { $not: { $elemMatch: { profileKey: filter.withoutVersionOf, state: 'ready' } } };
 		}
-		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+		// Search (4e): every word must be in the name, the web file name, the alt text or caption in any language,
+		// or the name of the file's folder or a folder above it.
+		const words = searchWords(filter.search);
 		if (words.length) {
+			// Language codes become field names, so only plain codes are read (“en”, “bn”, “pt-BR”).
+			const locales = (filter.searchLocales?.length ? filter.searchLocales : ['en', 'bn']).filter((code) =>
+				/^[a-z]{2,8}(?:-[a-z0-9]{2,8})*$/i.test(code),
+			);
 			query.$and = words.map((word) => {
 				const pattern = new RegExp(escapeRegex(word), 'i');
+				const folders = filter.searchFolders?.[word.toLowerCase()] ?? [];
 				return {
 					$or: [
 						{ displayName: pattern },
 						{ slug: pattern },
-						{ 'text.alt.en': pattern },
-						{ 'text.alt.bn': pattern },
+						...locales.flatMap((locale) => [
+							{ [`text.alt.${locale}`]: pattern },
+							{ [`text.caption.${locale}`]: pattern },
+						]),
+						...(folders.length ? [{ folderId: { $in: [...folders] } }] : []),
 					],
 				};
 			});

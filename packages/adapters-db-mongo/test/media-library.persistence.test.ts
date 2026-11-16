@@ -138,6 +138,23 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 				(row) => row.id,
 			),
 		).toEqual(['med_red']);
+		// Search (4e): a caption in any language given, and the folder a file sits in.
+		const blue = await assets.findById('med_blue');
+		if (!blue) throw new Error('med_blue is missing');
+		await assets.update({
+			...blue,
+			text: { alt: { hi: 'नीली साड़ी' }, title: {}, caption: { bn: 'হাতে বোনা টাঙ্গাইল' } },
+		});
+		expect((await page({ search: 'টাঙ্গাইল' })).items.map((row) => row.id)).toEqual(['med_blue']);
+		expect((await page({ search: 'नीली' })).items).toEqual([]);
+		expect((await page({ search: 'नीली', searchLocales: ['en', 'bn', 'hi'] })).items.map((row) => row.id)).toEqual([
+			'med_blue',
+		]);
+		expect(
+			(await page({ search: 'wedding', searchFolders: { wedding: ['fld_bridal'] } })).items.map((row) => row.id),
+		).toEqual(['med_blue']);
+		// A language code is a field name, so anything else is never read.
+		expect((await page({ search: 'x', searchLocales: ['$where', 'a.b'] })).items).toEqual([]);
 		expect((await page({ category: 'documents' })).items.map((row) => row.id)).toEqual(['med_pdf']);
 		expect((await page({ sort: 'size', direction: 'desc' })).items[0]?.id).toBe('med_blue');
 		expect(await assets.findById('med_red')).toMatchObject({

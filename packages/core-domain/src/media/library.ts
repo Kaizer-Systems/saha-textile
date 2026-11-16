@@ -111,6 +111,34 @@ export function ancestorsUnder(parent: Pick<MediaFolder, 'id' | 'ancestors'> | n
 // --- Trash --------------------------------------------------------------------------------------
 
 /** Days left before an item in Trash is removed for good. */
+/** A Media search's words (media step 4e): at most eight, as typed; the API and the database read the same ones. */
+export function searchWords(search: string | null | undefined): string[] {
+	return (search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+}
+
+/**
+ * Search by folder (media step 4e): for each word (lower case), the folders whose name holds it and every folder
+ * under them, so “banarasi” finds the files in Product photos › Banarasi and in its sub-folders.
+ */
+export function foldersNamedBy(
+	words: readonly string[],
+	folders: readonly Pick<MediaFolder, 'id' | 'name' | 'ancestors' | 'trashedAt'>[],
+): Record<string, string[]> {
+	const live = folders.filter((folder) => !folder.trashedAt);
+	return Object.fromEntries(
+		words.map((word) => {
+			const lower = word.toLowerCase();
+			const named = new Set(
+				live.filter((folder) => folder.name.toLowerCase().includes(lower)).map((row) => row.id),
+			);
+			const ids = live
+				.filter((folder) => named.has(folder.id) || folder.ancestors.some((id) => named.has(id)))
+				.map((folder) => folder.id);
+			return [lower, ids];
+		}),
+	);
+}
+
 export function trashDaysLeft(trashedAt: string, now: Date): number {
 	const left = TRASH_DAYS - Math.floor((now.getTime() - new Date(trashedAt).getTime()) / DAY_MS);
 	return Math.max(0, left);

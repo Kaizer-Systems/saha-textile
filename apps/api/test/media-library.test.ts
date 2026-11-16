@@ -53,7 +53,9 @@ function harness() {
 		recount: vi.fn(async () => undefined),
 	};
 	const browseRepo = {
+		seen: [] as MediaBrowseFilter[],
 		browse: async (filter: MediaBrowseFilter) => {
+			browseRepo.seen.push(filter);
 			const items = [...files.values()].filter(
 				(asset) =>
 					live(asset) &&
@@ -1260,5 +1262,35 @@ describe('Reprocess: adding and removing versions (C01, C07, A31, step 3a)', () 
 		expect(await refusalCode(h.service.removeVersion('adm_1', 'med_one', 'product_3x4.as_is'))).toBe(
 			'last_version',
 		);
+	});
+});
+
+describe('Media search (media step 4e)', () => {
+	it('searches the alt text and caption in every added language, and the folders a word names', async () => {
+		const h = harness();
+		const photos = await h.service.createFolder('adm_1', { name: 'Product photos', parentId: null });
+		const banarasi = await h.service.createFolder('adm_1', { name: 'Banarasi', parentId: photos.id });
+		await h.service.browse('adm_1', {
+			view: 'folder',
+			search: 'banarasi front',
+			who: 'mine',
+			sort: 'name',
+			direction: 'asc',
+			page: 1,
+			pageSize: 60,
+		} as never);
+		const filter = h.browseRepo.seen.at(-1);
+		expect(filter?.searchLocales).toEqual(['en', 'bn']);
+		expect(filter?.searchFolders).toEqual({ banarasi: [banarasi.id], front: [] });
+		// No words, nothing extra.
+		await h.service.browse('adm_1', {
+			view: 'folder',
+			who: 'mine',
+			sort: 'name',
+			direction: 'asc',
+			page: 1,
+			pageSize: 60,
+		} as never);
+		expect(h.browseRepo.seen.at(-1)?.searchFolders).toBeUndefined();
 	});
 });

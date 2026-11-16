@@ -71,6 +71,8 @@ import {
 	trashDaysLeft,
 	versionIdOf,
 	waitsForImageProfiles,
+	foldersNamedBy,
+	searchWords,
 } from '@saha-textile/core-domain';
 
 import { domainRefusal } from '../auth/domain-refusal';
@@ -179,7 +181,13 @@ export class MediaLibraryService {
 
 		if (query.view === 'trash') {
 			const trashedFolders = await this.folders.listTrashed();
-			const result = await this.files.browse({ ...page, ...extra, trashed: true, search: query.search });
+			const result = await this.files.browse({
+				...page,
+				...extra,
+				trashed: true,
+				search: query.search,
+				...this.searchParts(query.search, allFolders),
+			});
 			return {
 				folder: null,
 				breadcrumb: [],
@@ -250,6 +258,7 @@ export class MediaLibraryService {
 			...extra,
 			trashed: false,
 			search: query.search,
+			...this.searchParts(query.search, allFolders),
 			category: query.category,
 			...(searching ? (within ? { withinFolders: within } : {}) : { folderId: folder?.id ?? null }),
 		};
@@ -914,6 +923,22 @@ export class MediaLibraryService {
 			...(asset.kind === 'image'
 				? { text: { alt: { ...asset.text.alt }, caption: { ...asset.text.caption } } }
 				: {}),
+		};
+	}
+
+	/**
+	 * Search (media step 4e): the words are looked for in the alt text and caption in every added language, and in
+	 * the names of folders, so a file is found by the folder it sits in (or any folder above it).
+	 */
+	private searchParts(
+		search: string | undefined,
+		folders: readonly MediaFolder[],
+	): Pick<MediaBrowseFilter, 'searchLocales' | 'searchFolders'> {
+		const words = searchWords(search);
+		if (!words.length) return {};
+		return {
+			searchLocales: this.languages?.content() ?? ['en', 'bn'],
+			searchFolders: foldersNamedBy(words, folders),
 		};
 	}
 

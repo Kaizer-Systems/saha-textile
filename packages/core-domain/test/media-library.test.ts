@@ -8,6 +8,7 @@ import {
 	cleanMediaName,
 	decideStorage,
 	folderMoveRefusal,
+	foldersNamedBy,
 	freeName,
 	mediaCategory,
 	onDemand,
@@ -18,6 +19,7 @@ import {
 	shareCreateRefusal,
 	shareExpiresAt,
 	shareLinkState,
+	searchWords,
 	shareOpenState,
 	splitExtension,
 	storageColour,
@@ -248,5 +250,33 @@ describe('storage', () => {
 		expect(decideStorage({ ...base, addBytes: 2 * GIB, othersMayUseOnDemand: true })).toBe('ask');
 		// Two uploads at once: what the other admin has running counts too.
 		expect(decideStorage({ ...base, addBytes: GIB, reservedBytes: GIB })).toBe('refused');
+	});
+});
+
+describe('Media search words and folders (media step 4e)', () => {
+	it('reads at most eight words, as typed', () => {
+		expect(searchWords('  red   Banarasi ')).toEqual(['red', 'Banarasi']);
+		expect(searchWords(undefined)).toEqual([]);
+		expect(searchWords('a b c d e f g h i j')).toHaveLength(8);
+	});
+
+	it('names, for each word, the folders it names and every live folder under them', () => {
+		const folder = (id: string, name: string, ancestors: string[] = [], trashedAt: string | null = null) => ({
+			id,
+			name,
+			ancestors,
+			trashedAt,
+		});
+		const all = [
+			folder('fld_photos', 'Product photos'),
+			folder('fld_banarasi', 'Banarasi', ['fld_photos']),
+			folder('fld_bridal', 'Bridal 2027', ['fld_photos', 'fld_banarasi']),
+			folder('fld_old', 'Banarasi old', [], '2026-11-01T00:00:00.000Z'),
+		];
+		expect(foldersNamedBy(['BANARASI', 'photos', 'nothing'], all)).toEqual({
+			banarasi: ['fld_banarasi', 'fld_bridal'],
+			photos: ['fld_photos', 'fld_banarasi', 'fld_bridal'],
+			nothing: [],
+		});
 	});
 });

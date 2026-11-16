@@ -62,7 +62,12 @@ export interface MediaBrowseFilter {
 	/** A search inside a folder covers that folder and below: these folder ids. */
 	withinFolders?: readonly string[];
 	trashed: boolean;
+	/** Words matched in the name, the web file name, and the alt text and caption in `searchLocales`. */
 	search?: string;
+	/** Search (4e): the languages whose alt text and caption are searched; English and বাংলা when absent. */
+	searchLocales?: readonly string[];
+	/** Search (4e): per search word (lower case), the folders it names and every folder under them. */
+	searchFolders?: Readonly<Record<string, readonly string[]>>;
 	category?: MediaCategory;
 	ids?: readonly string[];
 	/** Files left out, for “not used anywhere”. */

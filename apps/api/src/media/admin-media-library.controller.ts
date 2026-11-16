@@ -49,6 +49,9 @@ import {
 	type MediaReplaceStatus,
 	MediaFocalRequest,
 	type MediaReplaceUpload,
+	EmailPictureDelete,
+	EmailPictureQuery,
+	type EmailPictureList,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -56,6 +59,7 @@ import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { MediaLibraryService } from './media-library.service';
+import { EmailPicturesService } from './email-pictures.service';
 import { MediaReplaceService } from './media-replace.service';
 
 export const actor = (principal: AuthenticatedPrincipal | undefined): string => {
@@ -75,6 +79,7 @@ export class AdminMediaLibraryController {
 	constructor(
 		private readonly library: MediaLibraryService,
 		private readonly replace: MediaReplaceService,
+		private readonly emailPicturesService: EmailPicturesService,
 	) {}
 
 	@Get()
@@ -318,6 +323,32 @@ export class AdminMediaLibraryController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<MediaOperationResult> {
 		return this.library.restore(actor(principal), body);
+	}
+
+	@Get('email-pictures')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({
+		operationId: 'listEmailPictures',
+		summary: 'Clean up › Email pictures: email pictures whose photo was deleted or replaced, kept for good (A50)',
+	})
+	emailPictures(
+		@Query(new ZodValidationPipe(EmailPictureQuery)) query: EmailPictureQuery,
+	): Promise<EmailPictureList> {
+		return this.emailPicturesService.list(query);
+	}
+
+	@Post('email-pictures/delete')
+	@HttpCode(200)
+	@RequirePermissions('attachment.destroy')
+	@ApiOperation({
+		operationId: 'deleteEmailPictures',
+		summary: 'Delete chosen email pictures for good, after the warning that old order emails lose them (A51)',
+	})
+	deleteEmailPictures(
+		@Principal() principal: AuthenticatedPrincipal,
+		@Body(new ZodValidationPipe(EmailPictureDelete)) body: EmailPictureDelete,
+	): Promise<{ deleted: number; bytes: number }> {
+		return this.emailPicturesService.remove(principal.userId, body.keys);
 	}
 
 	@Post('delete-forever')

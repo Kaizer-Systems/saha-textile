@@ -348,6 +348,8 @@ The Media page works as a file manager. Every route below is under `/admin/media
 | `GET`    | `/files/:id/replace`             | `attachment.index`   | Where a Replace has got, for its three steps                                                     |
 | `DELETE` | `/files/:id/replace`             | `attachment.edit`    | Stop a Replace still uploading, or clear one that failed                                         |
 | `PUT`    | `/files/:id/focal`               | `attachment.edit`    | Set the point every crop keeps; the photo's Crop versions are remade around it                   |
+| `GET`    | `/email-pictures`                | `attachment.index`   | Clean up › Email pictures: email pictures whose photo was deleted or replaced, kept for good (A50) |
+| `POST`   | `/email-pictures/delete`         | `attachment.destroy` | Delete chosen email pictures for good after the warning (A51); recorded ones only, audited       |
 | `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                            |
 | `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                     |
 | `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                            |

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type {
 	AuditLog,
 	MediaAsset,
@@ -32,6 +32,7 @@ import type {
 	MediaVersionsStatus,
 } from '@saha-textile/contracts';
 import {
+	type EmailPictureRepository,
 	type AdminUserRepository,
 	type AuditLogRepository,
 	type MediaAssetRepository,
@@ -82,6 +83,7 @@ import {
 	MEDIA_FOLDER_REPOSITORY,
 	MEDIA_JOB_QUEUE,
 	MEDIA_PROFILE_REPOSITORY,
+	EMAIL_PICTURE_REPOSITORY,
 	SHARE_LINK_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
@@ -147,6 +149,8 @@ export class MediaLibraryService {
 		private readonly storageCheck: MediaStorageService,
 		@Inject(MEDIA_PROFILE_REPOSITORY) private readonly profiles: Pick<MediaProfileRepository, 'findByKey'>,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
+		/** Email pictures of photos deleted for good are recorded for Clean up, never deleted (media step 3f). */
+		@Optional() @Inject(EMAIL_PICTURE_REPOSITORY) private readonly emailPictures?: EmailPictureRepository,
 	) {}
 
 	// --- Reading ----------------------------------------------------------------------------------
@@ -435,6 +439,8 @@ export class MediaLibraryService {
 			queue: this.queue,
 			publicUrl: (key: string) => this.storage.getUrl(key),
 			record: (action: string, metadata: Record<string, unknown>) => this.record(actor, action, metadata),
+			...(this.emailPictures ? { emailPictures: this.emailPictures } : {}),
+			actor: actor === 'system' ? null : actor,
 		};
 	}
 

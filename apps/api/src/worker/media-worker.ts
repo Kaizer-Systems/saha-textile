@@ -12,6 +12,7 @@ import {
 	MongoMediaFavouriteRepository,
 	MongoMediaFolderRepository,
 	MongoMediaProfileRepository,
+	MongoEmailPictureRepository,
 	MongoMediaRoleRepository,
 	MongoShareLinkRepository,
 	MongoMessageOutboxRepository,
@@ -72,6 +73,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 	const assets = new MongoMediaAssetRepository();
 	const roles = new MongoMediaRoleRepository();
 	const profiles = new MongoMediaProfileRepository();
+	const emailPictures = new MongoEmailPictureRepository();
 	const settings = new MongoSiteSettingsRepository();
 	const audit = new MongoAuditLogRepository();
 	const storage = new SpacesStorageAdapter({ key, secret, bucket, region, endpoint, cdnUrl });
@@ -105,6 +107,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		profiles,
 		// An icon's Brand colour fill: the Brand Kit's theme colour.
 		brandColour: async () => (await settings.get('brand'))?.themeColor ?? null,
+		emailPictures,
 	};
 	// The worker reads Settings › Languages too: search documents carry every added language.
 	const languages = new LanguageStore(new MongoLanguageRepository(), config);
@@ -209,6 +212,8 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		'trash-purge': async () => {
 			const result = await purgeMediaTrash(
 				{
+					emailPictures,
+					actor: null,
 					folders: new MongoMediaFolderRepository(),
 					files: assets,
 					assets,

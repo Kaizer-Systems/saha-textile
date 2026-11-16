@@ -48,6 +48,18 @@ export interface ZipSourceDeps {
 /** A name safe as one part of a path inside a .zip: no slashes, nothing empty. */
 const part = (name: string): string => name.replace(/[\\/]+/g, '-').trim() || 'untitled';
 
+/**
+ * A file's name inside the .zip: its name in Media, with the stored file's ending added when the name lacks it. A
+ * photo's name in Media has no ending (“red-banarasi-front”), and a file without one does not open by double-click.
+ */
+export function zipEntryName(asset: Pick<MediaAsset, 'displayName' | 'slug' | 'originalStorageKey'>): string {
+	const name = part(asset.displayName ?? asset.slug);
+	const file = (asset.originalStorageKey ?? '').split('/').pop() ?? '';
+	const dot = file.lastIndexOf('.');
+	const ending = dot > 0 ? file.slice(dot).toLowerCase() : '';
+	return ending && !name.toLowerCase().endsWith(ending) ? `${name}${ending}` : name;
+}
+
 /** A file that can go in: not in Trash, and fully uploaded. */
 const takes = (asset: MediaAsset): asset is MediaAsset & { originalStorageKey: string } =>
 	!asset.trashedAt && !!asset.originalStorageKey && asset.processing?.state !== 'awaiting_upload';
@@ -103,7 +115,7 @@ export async function zipContents(
 			const folder = live.get(asset.folderId ?? '');
 			if (!folder) continue;
 			for (const id of [...folder.ancestors, folder.id]) holding.add(id);
-			const path = unique(`${pathOf(folder)}/${part(asset.displayName ?? asset.slug)}`, taken);
+			const path = unique(`${pathOf(folder)}/${zipEntryName(asset)}`, taken);
 			items.push({ assetId: asset.id, key: asset.originalStorageKey, path, bytes: asset.originalByteSize });
 		}
 		for (const folder of inside) if (!holding.has(folder.id)) emptyFolders.push(`${pathOf(folder)}/`);
@@ -112,7 +124,7 @@ export async function zipContents(
 		items.push({
 			assetId: asset.id,
 			key: asset.originalStorageKey,
-			path: unique(part(asset.displayName ?? asset.slug), taken),
+			path: unique(zipEntryName(asset), taken),
 			bytes: asset.originalByteSize,
 		});
 	}

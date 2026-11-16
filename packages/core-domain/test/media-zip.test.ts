@@ -6,6 +6,7 @@ import {
 	buildZip,
 	sweepZips,
 	zipContents,
+	zipEntryName,
 	zipPlan,
 	zipStorageKey,
 	type MediaZipRecord,
@@ -93,6 +94,24 @@ describe('zipContents — what a .zip holds (A30)', () => {
 		expect(inside.items.map((item) => item.path)).toEqual(['Red - gold/zari.jpg', 'front.jpg']);
 		const top = await zipContents(deps, { folderIds: [], fileIds: ['med_8', 'med_5'] }, 'My files');
 		expect(top).toMatchObject({ name: 'My files', items: [{ path: 'brief.pdf', key: 'media/med_8/original' }] });
+	});
+});
+
+describe('zipEntryName — a file opens from the .zip by double-click', () => {
+	const named = (displayName: string | null, key: string) =>
+		zipEntryName({ displayName, slug: 'fallback-slug', originalStorageKey: key } as MediaAsset);
+
+	it('adds the stored ending to a photo whose name has none, and keeps a name that has it', () => {
+		expect(named('local-home-banner-hero-right', 'media/med_1/original.jpg')).toBe(
+			'local-home-banner-hero-right.jpg',
+		);
+		expect(named('Red Banarasi FRONT.JPG', 'media/med_2/original.jpg')).toBe('Red Banarasi FRONT.JPG');
+		expect(named('size-chart.pdf', 'files/med_3/size-chart.pdf')).toBe('size-chart.pdf');
+		// A dot inside the name is not an ending.
+		expect(named('summer.collection', 'media/med_4/original.webp')).toBe('summer.collection.webp');
+		// No ending stored: nothing to add; no name: the web file name.
+		expect(named('README', 'files/med_5/README')).toBe('README');
+		expect(named(null, 'media/med_6/original.png')).toBe('fallback-slug.png');
 	});
 });
 

@@ -70,8 +70,14 @@ export const STOCK_KEYS = {
 /** The bell and the Stock menu badge (i05, i05b, po01, unpaid bills, held reminder). */
 export interface StockAlerts {
 	pendingApprovals: number;
+	/** Decisions on my own requests not yet seen: applied (approved) or rejected. */
 	decisions: Array<{
 		id: string;
+		kind: 'adjustment' | 'count';
+		action: 'remove' | 'add' | null;
+		variantId: string | null;
+		countId: string | null;
+		countNumber: string | null;
 		status: string;
 		sku: string | null;
 		quantity: number;
@@ -84,7 +90,6 @@ export interface StockAlerts {
 	heldOverdue: number;
 }
 
-/** A posted opening-stock load in the list; value only for `stock.cost` (P8). */
 export interface OpeningLoad {
 	id: string;
 	number: string;
@@ -277,6 +282,15 @@ export class StockGateway {
 		return this.http.post<InventorySettingsView>(this.api('settings/inventory'), body, QUIET);
 	}
 }
+
+/** Anyone holding one of these gets the stock alerts (the API sends each part only to who may act on it). */
+export const STOCK_ALERT_PERMISSIONS: readonly string[] = [
+	'stock.index',
+	'stock.approve',
+	'stock.adjust',
+	'purchase.index',
+	'purchase_order.index',
+];
 
 export function injectStockAlertsQuery(enabled: () => boolean) {
 	const gateway = inject(StockGateway);

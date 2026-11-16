@@ -28,6 +28,13 @@ import { AdjustPopup } from './adjust-popup';
 import type { AgeingRow, StockListRow } from '@saha-textile/contracts';
 
 export type ReportTab = 'ageing' | 'value' | 'movements' | 'register' | 'unpaid';
+const REPORT_TABS: readonly ReportTab[] = ['ageing', 'value', 'movements', 'register', 'unpaid'];
+
+/** The tab a link asks for (route data, or `?tab=` from the bell), else Ageing. */
+export function reportTabFrom(fromRoute: unknown, fromQuery: string | null): ReportTab {
+	const wanted = (fromRoute ?? fromQuery) as ReportTab | null;
+	return wanted && REPORT_TABS.includes(wanted) ? wanted : 'ageing';
+}
 
 /** The first and last day of a month as `YYYY-MM-DD`, from `YYYY-MM`. */
 export function monthRange(month: string): { from: string; to: string } {
@@ -88,8 +95,10 @@ export class Reports {
 	private readonly queryClient = inject(QueryClient);
 	private readonly auth = inject(AuthStore);
 
-	readonly tabs: readonly ReportTab[] = ['ageing', 'value', 'movements', 'register', 'unpaid'];
-	readonly tab = signal<ReportTab>((this.route.snapshot.data['tab'] as ReportTab | undefined) ?? 'ageing');
+	readonly tabs: readonly ReportTab[] = REPORT_TABS;
+	readonly tab = signal<ReportTab>(
+		reportTabFrom(this.route.snapshot.data['tab'], this.route.snapshot.queryParamMap.get('tab')),
+	);
 	readonly canSeeCost = computed(() => this.auth.permissions().includes('stock.cost'));
 	readonly today = istDay(new Date());
 

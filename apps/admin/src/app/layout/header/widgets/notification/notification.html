@@ -10,7 +10,8 @@
 		<span class="badge rounded-pill badge-theme">{{ unreadNotificationCount() }}</span>
 		}
 	</div>
-	@if (notifications().length || languageReminders().length || storageAlert() || missingPictures()) {
+	@if (notifications().length || languageReminders().length || storageAlert() || missingPictures() || stock().length)
+	{
 	<ul
 		class="notification-dropdown onhover-show-div"
 		[class.active]="active"
@@ -42,6 +43,19 @@
 				<p>
 					<i class="ri-record-circle-line txt-primary me-2"></i>
 					{{ 'fm_missing_title' | plural: missingPictures() }}
+				</p>
+			</a>
+		</li>
+		} @for (line of stock(); track line.id) {
+		<li>
+			<a
+				href="javascript:void(0)"
+				[id]="'stock_bell_' + line.id"
+				(click)="openStock(line)"
+			>
+				<p>
+					<i class="ri-record-circle-line txt-primary me-2"></i>
+					{{ stockText(line) }}
 				</p>
 			</a>
 		</li>

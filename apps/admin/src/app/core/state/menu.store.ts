@@ -42,6 +42,14 @@ export const MenuStore = signalStore(
 	{ providedIn: 'root' },
 	withState(initialState),
 	withMethods((store, navService = inject(NavService)) => ({
+		/** A menu group's number (groups have no path), such as Stock's approvals waiting. */
+		setGroupBadge(id: number, value: number) {
+			const menu = store.menu();
+			const group = menu.find((item) => item.id === id);
+			if (!group || group.badgeValue === value) return;
+			group.badgeValue = value;
+			patchState(store, { menu: [...menu] });
+		},
 		/** One menu entry's number, such as the Inbox's unread conversations. */
 		setBadge(path: string, value: number) {
 			const menu = store.menu();

@@ -515,6 +515,11 @@ export class StockService {
 			pendingApprovals: pending,
 			decisions: decisions.map((request) => ({
 				id: request.id,
+				kind: request.kind,
+				action: request.action,
+				variantId: request.variantId,
+				countId: request.countId,
+				countNumber: request.countNumber,
 				status: request.status,
 				sku: request.sku,
 				quantity: request.quantity,

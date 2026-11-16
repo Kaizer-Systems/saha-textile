@@ -3,9 +3,11 @@ import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { Subject } from 'rxjs';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { Subject, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { StockGateway } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { LoaderStore } from '@core/state/loader.store';
 import { MenuStore } from '@core/state/menu.store';
@@ -63,9 +65,41 @@ vi.mock('@data-access/queries/media-library.queries', async (original) => ({
 }));
 const nightly = signal<unknown>(undefined);
 
+const stockAlerts = signal<unknown>(undefined);
+const stockAsked = vi.hoisted(() => ({ enabled: [] as Array<() => boolean>, seen: [] as string[][] }));
+vi.mock('@core/purchasing/stock.gateway', async (original) => ({
+	...(await original<object>()),
+	injectStockAlertsQuery: (enabled: () => boolean) => {
+		stockAsked.enabled.push(enabled);
+		return { data: stockAlerts };
+	},
+}));
+
 const bare = <T>(type: new () => T, providers: unknown[] = []) => {
 	TestBed.resetTestingModule();
-	TestBed.configureTestingModule({ providers: providers as never[] });
+	TestBed.configureTestingModule({
+		providers: [
+			{
+				provide: TranslocoService,
+				useValue: {
+					translate: (key: string, params?: object) => (params ? `${key}:${JSON.stringify(params)}` : key),
+					getActiveLang: () => 'en',
+					getTranslation: () => ({}),
+				},
+			},
+			{ provide: QueryClient, useValue: { invalidateQueries: () => Promise.resolve() } },
+			{
+				provide: StockGateway,
+				useValue: {
+					markSeen: (ids: string[]) => {
+						stockAsked.seen.push(ids);
+						return of(undefined);
+					},
+				},
+			},
+			...(providers as never[]),
+		] as never[],
+	});
 	TestBed.overrideComponent(type, { set: { imports: [], template: '' } });
 	return TestBed.createComponent(type).componentInstance;
 };
@@ -91,7 +125,7 @@ describe('shell pieces', () => {
 	});
 
 	it('loads the badges and stops the sidebar skeleton', () => {
-		const menu = { loadBadges: vi.fn(), setBadge: vi.fn() };
+		const menu = { loadBadges: vi.fn(), setBadge: vi.fn(), setGroupBadge: vi.fn() };
 		const nav = { sidebarLoading: true };
 		const permissions = signal<string[]>([]);
 		const content = bare(Content, [
@@ -103,7 +137,8 @@ describe('shell pieces', () => {
 		expect(menu.loadBadges).toHaveBeenCalledOnce();
 		expect(nav.sidebarLoading).toBe(false);
 		TestBed.tick();
-		expect(menu.setBadge).toHaveBeenLastCalledWith('/inbox', 0);
+		expect(menu.setBadge).toHaveBeenCalledWith('/inbox', 0);
+		expect(menu.setGroupBadge).toHaveBeenCalledWith(24, 0);
 		expect(inbox.enabled()).toBe(false);
 		permissions.set(['mailbox.use']);
 		expect(inbox.enabled()).toBe(true);
@@ -111,6 +146,21 @@ describe('shell pieces', () => {
 		TestBed.tick();
 		expect(menu.setBadge).toHaveBeenLastCalledWith('/inbox', 5);
 		inboxData.set(undefined);
+		// i05: approvals waiting show on the Stock group and its Approvals item.
+		expect(stockAsked.enabled.at(-1)?.()).toBe(false);
+		permissions.set(['stock.approve']);
+		expect(stockAsked.enabled.at(-1)?.()).toBe(true);
+		stockAlerts.set({
+			pendingApprovals: 4,
+			decisions: [],
+			lateOrders: [],
+			billsNearCreditLimit: [],
+			heldOverdue: 0,
+		});
+		TestBed.tick();
+		expect(menu.setGroupBadge).toHaveBeenLastCalledWith(24, 4);
+		expect(menu.setBadge).toHaveBeenLastCalledWith('/stock/approvals', 4);
+		stockAlerts.set(undefined);
 	});
 
 	it('switches dark mode through the shared store, and remembers it', () => {
@@ -232,6 +282,46 @@ describe('Header notification', () => {
 		expect(widget.storageAlert()).toMatchObject({ percent: 88 });
 		expect(widget.unreadNotificationCount()).toBe(1);
 		storage.set(undefined);
+	});
+
+	it('lists stock alerts for people with a stock or purchases permission, and marks a decision seen when opened', async () => {
+		stockAsked.enabled = [];
+		stockAsked.seen = [];
+		bare(Notification, [{ provide: NavService, useValue: {} }, auth([])]);
+		const widget = bare(Notification, [
+			{ provide: NavService, useValue: {} },
+			auth(['stock.adjust']),
+			{ provide: Router, useValue: { navigate: vi.fn(() => Promise.resolve(true)) } },
+		]);
+		expect(stockAsked.enabled.map((enabled) => enabled())).toEqual([false, true]);
+		stockAlerts.set({
+			pendingApprovals: 0,
+			decisions: [
+				{
+					id: 'req_1',
+					kind: 'adjustment',
+					action: 'remove',
+					variantId: 'var_1',
+					countId: null,
+					countNumber: null,
+					status: 'applied',
+					sku: 'ST-BAN-0412',
+					quantity: 2,
+					soldBy: 'piece',
+					decidedByName: 'Moulik',
+					rejectReason: null,
+				},
+			],
+			lateOrders: [],
+			billsNearCreditLimit: [],
+			heldOverdue: 2,
+		});
+		expect(widget.stock().map((line) => line.id)).toEqual(['decision-req_1', 'held-overdue']);
+		expect(widget.unreadNotificationCount()).toBe(2);
+		expect(widget.stockText(widget.stock()[0]!)).toContain('bell_request_approved');
+		await widget.openStock(widget.stock()[0]!);
+		expect(stockAsked.seen).toEqual([['req_1']]);
+		stockAlerts.set(undefined);
 	});
 
 	it('says how many pictures the website uses are missing from storage (R5-5, step 5)', () => {

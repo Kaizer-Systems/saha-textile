@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { injectInboxSummaryQuery } from '@core/mailboxes/mailbox.gateway';
+import { STOCK_ALERT_PERMISSIONS, injectStockAlertsQuery } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { MenuStore } from '@core/state/menu.store';
 import { NavService } from '@data-access/services/nav.service';
@@ -12,6 +13,9 @@ import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { Sidebar } from '@layout/sidebar/sidebar';
 import { SidebarMenuSkeleton } from '@shared/ui/skeleton/sidebar-menu-skeleton/sidebar-menu-skeleton';
+
+/** The Stock group in the sidebar (shared/data/menu.ts). */
+const STOCK_MENU_ID = 24;
 
 @Component({
 	selector: 'app-content',
@@ -27,6 +31,10 @@ export class Content {
 
 	/** Unread conversations across the mailboxes this person may open, asked again every minute. */
 	private readonly inbox = injectInboxSummaryQuery(() => this.authStore.permissions().includes('mailbox.use'));
+	/** i05: write-offs and count differences waiting, on the Stock group and its Approvals item. */
+	private readonly stockAlerts = injectStockAlertsQuery(() =>
+		STOCK_ALERT_PERMISSIONS.some((code) => this.authStore.permissions().includes(code)),
+	);
 
 	public isBrowser: boolean;
 
@@ -40,6 +48,13 @@ export class Content {
 			const unread = (this.inbox.data() ?? []).reduce((total, mailbox) => total + mailbox.unread, 0);
 			// The menu is read and written inside setBadge; untracked keeps that from re-running this.
 			untracked(() => this.menuStore.setBadge('/inbox', unread));
+		});
+		effect(() => {
+			const waiting = this.stockAlerts.data()?.pendingApprovals ?? 0;
+			untracked(() => {
+				this.menuStore.setGroupBadge(STOCK_MENU_ID, waiting);
+				this.menuStore.setBadge('/stock/approvals', waiting);
+			});
 		});
 	}
 }

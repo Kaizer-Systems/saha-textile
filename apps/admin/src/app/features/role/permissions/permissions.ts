@@ -2,18 +2,40 @@ import { TitleCasePipe, AsyncPipe } from '@angular/common';
 import { Component, Input, SimpleChanges, output } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
 import { IModule } from '@data-access/interfaces/role.interface';
 import { injectRoleModulesQuery } from '@data-access/queries/role.queries';
 
+/** Groups and actions that have their own words (x01); the key is the registry resource or code. */
+const LABELLED_GROUPS = new Set([
+	'supplier',
+	'purchase_order',
+	'purchase',
+	'purchase_return',
+	'stock',
+	'stock_count',
+	'stock_report',
+]);
+
+/** The translation key for a group (`stock`) or an action (`stock.cost`), or null to keep the registry name. */
+export function permissionLabelKey(codeOrResource: string): string | null {
+	const resource = codeOrResource.split('.')[0] ?? '';
+	if (!LABELLED_GROUPS.has(resource)) return null;
+	return codeOrResource.includes('.') ? `perm_${codeOrResource.replace('.', '_')}` : `perm_group_${codeOrResource}`;
+}
+
 @Component({
 	selector: 'app-permissions',
 	templateUrl: './permissions.html',
 	styleUrls: ['./permissions.scss'],
-	imports: [TitleCasePipe, AsyncPipe],
+	imports: [TitleCasePipe, AsyncPipe, TranslocoModule],
 })
 export class Permissions {
+	/** x01: the purchases and stock groups and actions as drawn; other groups keep their registry names. */
+	readonly label = permissionLabelKey;
+
 	private roleModulesQuery = injectRoleModulesQuery();
 
 	modules$: Observable<IModule[] | undefined> = toObservable(this.roleModulesQuery.data);

@@ -257,6 +257,8 @@ export const MediaFileDetails = z.object({
 	focal: z.object({ x: z.number(), y: z.number() }).nullable().optional(),
 	/** A photo's own text (A42), per language: the default alt text and the caption. Saved with PATCH /admin/media/:id. */
 	text: z.object({ alt: LocalizedText, caption: LocalizedText }).optional(),
+	/** A photo's web file name, the start of every picture address (changed with Change, owner 16 Nov, option B). */
+	slug: z.string().optional(),
 });
 export type MediaFileDetails = z.infer<typeof MediaFileDetails>;
 export type MediaFileAddress = z.infer<typeof MediaFileAddress>;

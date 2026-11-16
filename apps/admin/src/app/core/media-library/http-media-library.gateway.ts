@@ -110,6 +110,12 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 	}
 
 	/** The photo's text is saved where every image field's old popup saves it (`PATCH /admin/media/:id`). */
+	override saveWebName(fileId: string, slug: string): Observable<void> {
+		return this.http
+			.patch(`${runtimeConfig.apiUrl}/admin/media/${id(fileId)}`, { slug }, quiet())
+			.pipe(map(() => undefined));
+	}
+
 	override saveText(fileId: string, text: MediaPhotoText): Observable<void> {
 		return this.http
 			.patch(`${runtimeConfig.apiUrl}/admin/media/${id(fileId)}`, text, quiet())

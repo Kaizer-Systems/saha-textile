@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaLibraryGateway } from '@core/media-library/media-library.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
 
 import { FmDetails, TEXT_BAR_AFTER_MS } from './fm-details';
 
@@ -93,6 +94,7 @@ const setup = (details: unknown, fails = false, confirm = true, save: () => unkn
 			{ provide: NgbActiveModal, useValue: modal },
 			{ provide: NgbModal, useValue: modals },
 			{ provide: ToastrService, useValue: notifications },
+			{ provide: MediaUploads, useValue: { followRename: vi.fn(async () => true) } },
 			{ provide: ActiveLanguages, useValue: { list: () => ['en', 'bn'], isDraft: () => false } },
 			{
 				provide: TranslocoService,

@@ -903,6 +903,7 @@ export class MediaLibraryService {
 		return {
 			id: asset.id,
 			name: fileName(asset),
+			...(asset.kind === 'image' ? { slug: asset.slug } : {}),
 			kind: asset.kind,
 			contentType: asset.originalFormat,
 			bytes: asset.originalByteSize,

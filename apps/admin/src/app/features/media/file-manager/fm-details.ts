@@ -14,6 +14,7 @@ import {
 	type MediaFileDetails,
 	type MediaPhotoText,
 } from '@core/media-library/media-library.gateway';
+import { MediaUploads } from '@core/media-library/media-uploads';
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
@@ -60,6 +61,9 @@ const familyKey = (role: string) => `profile_family_${role}`;
  * (R5-7). Built from existing pieces: the media popup, the theme's nav tabs and tree box, `fm-vnode`, `fm-activity`,
  * the form fields and the Language switch.
  */
+/** A web file name: lowercase words joined by hyphens, as the earlier Image details popup checked it. */
+const WEB_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 @Component({
 	selector: 'app-fm-details',
 	templateUrl: './fm-details.html',
@@ -72,6 +76,7 @@ export class FmDetails {
 	private readonly transloco = inject(TranslocoService);
 	/** Toasts straight from the theme's toastr: the shared notifier's success closes every popup, this one too. */
 	private readonly toastr = inject(ToastrService);
+	private readonly uploads = inject(MediaUploads);
 
 	readonly details = signal<MediaFileDetails | null>(null);
 	readonly activity = signal<MediaActivityPage['items']>([]);
@@ -84,6 +89,10 @@ export class FmDetails {
 	/** The version asked about in the Remove popup. */
 	readonly removing = signal<Version | null>(null);
 	readonly removeConfirm = viewChild<TemplateRef<unknown>>('fmRemoveVersion');
+	/** Option B (owner, 16 Nov): the web file name's own popup, the Media page's Rename popup with its warning. */
+	readonly webNamePopup = viewChild<TemplateRef<unknown>>('fmWebName');
+	readonly webName = signal('');
+	readonly webNameValid = computed(() => WEB_NAME.test(this.webName()));
 	/** The picture on the left: a middle-sized file of the first ready version, else nothing. */
 	readonly preview = computed(() => {
 		const version = this.details()?.versions.find((row) => row.state === 'ready');
@@ -135,6 +144,29 @@ export class FmDetails {
 	}
 
 	/** Set right after the popup opens; `tab` opens a photo on its Text tab (D14's Add text). */
+	/** Change: the new name in its own popup; Save makes every size again under it (step 3d's Replace, 'rename'). */
+	async changeWebName(): Promise<void> {
+		const file = this.details();
+		const template = this.webNamePopup();
+		if (!file?.slug || !template) return;
+		this.webName.set(file.slug);
+		const slug = await this.modals
+			.open(template, { centered: true, windowClass: 'theme-modal', ariaLabelledBy: 'fm_web_name_title' })
+			.result.then(
+				(answer: string) => answer,
+				() => null,
+			);
+		if (!slug || slug === file.slug) return;
+		try {
+			await lastValueFrom(this.gateway.saveWebName(file.id, slug));
+			this.toastr.success(this.transloco.translate('fm_web_name_saved'));
+			void this.uploads.followRename(file.id, file.name);
+			await this.start(file.id, this.tab());
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('fm_action_failed'));
+		}
+	}
+
 	async start(fileId: string, tab?: FmDetailsTab): Promise<void> {
 		try {
 			const details = await lastValueFrom(this.gateway.details(fileId));

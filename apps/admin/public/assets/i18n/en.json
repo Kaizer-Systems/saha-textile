@@ -2594,5 +2594,8 @@
 	"page_on_shop_line": "On the shop. Last saved {{date}} by {{name}}.",
 	"page_save_refused": "Not saved. Every language the shop shows needs its Title and Content:",
 	"page_address": "Address",
-	"pages_missing_note": "Only the pages still missing this language are listed."
+	"pages_missing_note": "Only the pages still missing this language are listed.",
+	"fm_web_name": "Web file name",
+	"fm_web_name_change": "Change",
+	"fm_web_name_saved": "The new web file name is saved; every size is being made again under it."
 }

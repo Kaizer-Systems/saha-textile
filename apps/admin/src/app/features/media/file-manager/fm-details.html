@@ -40,6 +40,22 @@
 			}
 			<table class="table-sm small mt-3 table">
 				<tbody>
+					@if (file.slug) {
+					<tr id="fm_details_web_name">
+						<td class="text-muted">{{ 'fm_web_name' | transloco }}</td>
+						<td>
+							<span class="text-break">{{ file.slug }}</span>
+							·
+							<a
+								href="javascript:void(0)"
+								id="fm_details_web_name_change"
+								(click)="changeWebName()"
+							>
+								{{ 'fm_web_name_change' | transloco }}
+							</a>
+						</td>
+					</tr>
+					}
 					<tr>
 						<td class="text-muted">{{ 'fm_size' | transloco }}</td>
 						<td>
@@ -405,6 +421,70 @@
 				(click)="confirm.close('yes')"
 			>
 				{{ 'fm_remove_version' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<ng-template
+	#fmWebName
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="fm_web_name_title">{{ 'fm_web_name' | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<div class="theme-form">
+			<p class="mb-2">{{ details()?.name }}</p>
+			<label
+				class="form-label-title mb-2"
+				for="fm_web_name_input"
+			>
+				{{ 'fm_web_name' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="fm_web_name_input"
+				maxlength="120"
+				[value]="webName()"
+				[class.is-invalid]="!webNameValid()"
+				(input)="webName.set($any($event.target).value.trim())"
+			/>
+			@if (!webNameValid()) {
+			<div class="invalid-feedback d-block">{{ 'file_name_invalid' | transloco }}</div>
+			}
+			<p class="help-text mt-2">{{ 'file_name_help' | transloco }}</p>
+			@if (webName() !== details()?.slug) {
+			<p class="help-text text-danger">{{ 'file_name_rename_warning' | transloco }}</p>
+			}
+		</div>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="fm_web_name_save"
+				[disabled]="!webNameValid() || webName() === details()?.slug"
+				(click)="modal.close(webName())"
+			>
+				{{ 'save' | transloco }}
 			</button>
 		</div>
 	</div>

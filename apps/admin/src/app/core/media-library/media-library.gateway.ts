@@ -146,6 +146,8 @@ export abstract class MediaLibraryGateway {
 	abstract removeVersion(id: string, versionId: string): Observable<void>;
 	/** A photo's own text (A42): the default alt text and the caption, per language. */
 	abstract saveText(id: string, text: MediaPhotoText): Observable<void>;
+	/** A photo's new web file name: every size is made again under it (a Replace, reason rename, step 3d). */
+	abstract saveWebName(id: string, slug: string): Observable<void>;
 	/** Replace a photo (S7, C08): start, finish the upload, follow it, or stop it. */
 	abstract startReplace(id: string, body: MediaReplaceRequest): Observable<MediaReplaceUpload>;
 	abstract finishReplace(id: string): Observable<MediaReplaceStatus>;

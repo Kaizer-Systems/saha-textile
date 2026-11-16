@@ -17,6 +17,7 @@ import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { estimateVersionBytes, looksLikeHeic } from '@saha-textile/core-domain/media-files';
+import { PHOTO_KIND_TYPES, type PhotoKind, photoKindOf } from '@saha-textile/core-domain/photo-header';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { type Observable, lastValueFrom } from 'rxjs';
@@ -75,7 +76,16 @@ import { FM_CATEGORIES, FmSidebar, type FmNav } from './fm-sidebar';
 import { FmStorageDetails } from './fm-storage-details';
 import { FmUndoToast } from './fm-undo-toast';
 import { FmUploadFlow, type FmUploadPopups as FmUploadPopupRefs } from './fm-upload-flow';
-import { pastedName, planUpload, readDropped, readPhotoSize, readPickedFolder, sha256Hex } from './fm-upload-plan';
+import {
+	PHOTO_PICKER_ACCEPT,
+	measurePhoto,
+	pastedName,
+	planUpload,
+	readDropped,
+	readPickedFolder,
+	sha256Hex,
+	sniffFile,
+} from './fm-upload-plan';
 import { FmUploadPopups } from './fm-upload-popups';
 
 const VIEWS: readonly FmNav[] = ['recent', 'favourites', 'trash', 'clean'];
@@ -570,7 +580,7 @@ export class FileManager {
 	pickReplacement(file: MediaFileRow): void {
 		const input = document.createElement('input');
 		input.type = 'file';
-		input.accept = 'image/jpeg,image/png,image/heic,image/heif,.heic,.heif';
+		input.accept = PHOTO_PICKER_ACCEPT;
 		input.addEventListener('change', () => {
 			const picked = input.files?.[0];
 			if (picked) void this.openReplace(file, picked);
@@ -587,15 +597,19 @@ export class FileManager {
 		let photo: File = picked;
 		const preview: { url: string | null } = { url: null };
 		try {
-			if (looksLikeHeic(picked.type, picked.name)) photo = await heicToJpeg(picked);
-			const size = await readPhotoSize(photo);
+			// The bytes say what it is (media step 5); a HEIC becomes a JPEG first.
+			const kind = (await sniffFile(picked)) ?? photoKindOf(picked.type, picked.name);
+			if (kind === 'heic' || looksLikeHeic(picked.type, picked.name)) photo = await heicToJpeg(picked);
+			const measured: PhotoKind | null = photo === picked ? kind : 'jpeg';
+			const size = await measurePhoto(photo, measured);
 			if (!size) {
 				this.notifications.showError(this.transloco.translate('fm_unreadable_photo'));
 				return;
 			}
 			const details = await lastValueFrom(this.gateway.details(file.id));
 			preview.url = URL.createObjectURL(photo);
-			const contentType = photo.type || 'image/jpeg';
+			const contentType =
+				measured && measured !== 'heic' ? PHOTO_KIND_TYPES[measured] : photo.type || 'image/jpeg';
 			const popup = this.modals.open(FmReplace, {
 				size: 'lg',
 				centered: true,

@@ -1,4 +1,5 @@
 import {
+	CAMERA_RAW,
 	type PhotoShape,
 	fitsShape,
 	isProcessedPhoto,
@@ -8,6 +9,17 @@ import {
 	suggestProfile,
 	waitsForImageProfiles,
 } from '@saha-textile/core-domain/media-files';
+import {
+	HEADER_MEASURED_KINDS,
+	PHOTO_FILE_ENDINGS,
+	PHOTO_KIND_TYPES,
+	SNIFF_BYTES,
+	type ByteReader,
+	type PhotoKind,
+	measureFromHeader,
+	photoKindOf,
+	sniffPhotoKind,
+} from '@saha-textile/core-domain/photo-header';
 
 import type { MediaFill, MediaProfile } from '@saha-textile/contracts';
 
@@ -33,11 +45,13 @@ export interface FmUploadRow {
 	name: string;
 	bytes: number;
 	contentType: string;
+	/** What kind of photo it is, from its type or name, then from its first bytes (media step 5); null for files. */
+	kind: PhotoKind | null;
 	/** Folders under the place the upload goes, as picked: kept on upload. */
 	folderPath: readonly string[];
 	/** A picture type the image worker does not read yet: listed as waiting, not sent. */
 	waits: boolean;
-	/** A JPEG or PNG photo: it uploads with the versions picked for it (media step 2). */
+	/** A photo the worker reads: it uploads with the versions picked for it (media step 2). */
 	photo: boolean;
 	/** The photo's size as the browser decoded it, once read. */
 	size: PhotoShape | null;
@@ -71,25 +85,26 @@ export function planUpload(picked: readonly FmPicked[]): FmUploadPlan {
 	const rows: FmUploadRow[] = [];
 	for (const [index, { file, path }] of picked.entries()) {
 		if (LEFT_BY_THE_COMPUTER.test(file.name) || path.some((part) => part.startsWith('.'))) continue;
-		const contentType = /^[\w.+-]+\/[\w.+-]+$/.test(file.type) ? file.type : UNKNOWN_TYPE;
-		rows.push({
+		const typed = /^[\w.+-]+\/[\w.+-]+$/.test(file.type) ? file.type : UNKNOWN_TYPE;
+		// Camera RAW files are stored as files, whatever their bytes look like (decision 3).
+		const kind = CAMERA_RAW.test(file.name) ? null : photoKindOf(typed, file.name);
+		const base: FmUploadRow = {
 			key: `${index}:${[...path, file.name].join('/')}`,
 			file,
 			name: file.name,
 			bytes: file.size,
-			contentType,
+			contentType: typed,
+			kind: null,
 			folderPath: path,
-			photo: isProcessedPhoto(contentType) || looksLikeHeic(contentType, file.name),
-			waits:
-				waitsForImageProfiles(contentType, file.name) &&
-				!isProcessedPhoto(contentType) &&
-				!looksLikeHeic(contentType, file.name),
+			photo: false,
+			waits: waitsForImageProfiles(typed, file.name),
 			size: null,
 			sizeRead: false,
 			picks: [],
-			heic: looksLikeHeic(contentType, file.name),
+			heic: false,
 			source: null,
-		});
+		};
+		rows.push(kind ? asPhotoKind(base, kind) : base);
 	}
 	const tops = new Set(rows.map((row) => row.folderPath[0] ?? ''));
 	const folderName = tops.size === 1 && !tops.has('') ? ([...tops][0] ?? null) : null;
@@ -189,6 +204,51 @@ export function readPickedFolder(files: readonly File[]): FmPicked[] {
 // --- Photos (media step 2d): sizes, suggested profiles, notes ----------------------------------------------------
 
 type Profile = Pick<MediaProfile, 'key' | 'shape' | 'fills' | 'minSize' | 'enabled' | 'mainPhotoOnly' | 'maxBytes'>;
+
+/**
+ * The row as a photo of this kind: the type the API is told is the kind's own, so a `.jpg` that is really a PNG
+ * uploads as a PNG and the worker does not refuse it. A HEIC keeps its type until it is converted (B02).
+ */
+export function asPhotoKind<R extends Pick<FmUploadRow, 'contentType' | 'kind' | 'photo' | 'waits' | 'heic' | 'name'>>(
+	row: R,
+	kind: PhotoKind,
+): R {
+	const heic = kind === 'heic' || looksLikeHeic(row.contentType, row.name);
+	const contentType = heic ? row.contentType : PHOTO_KIND_TYPES[kind];
+	const photo = heic || isProcessedPhoto(contentType);
+	return { ...row, kind, contentType, heic, photo, waits: !photo && waitsForImageProfiles(contentType, row.name) };
+}
+
+/** What a picked file's first bytes say it is; null when they are not a photo, or cannot be read. */
+export async function sniffFile(file: Blob): Promise<PhotoKind | null> {
+	try {
+		return sniffPhotoKind(new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer()));
+	} catch {
+		return null;
+	}
+}
+
+/** Slices of a picked file, read as they are asked for: a TIFF's header may sit at its end. */
+export const blobReader = (file: Blob): ByteReader => ({
+	size: file.size,
+	read: async (offset, length) => new Uint8Array(await file.slice(offset, offset + length).arrayBuffer()),
+});
+
+/** Kinds every browser shows in a picture tag; the others (TIFF, JPEG XL, JPEG 2000, PSD) get their type's icon. */
+export const BROWSERS_SHOW: readonly PhotoKind[] = ['jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'bmp', 'ico'];
+
+/** A photo's upright size: from its header for the kinds browsers can't open (an SVG as the picture made from it). */
+export async function measurePhoto(file: Blob, kind: PhotoKind | null): Promise<PhotoShape | null> {
+	if (kind && HEADER_MEASURED_KINDS.includes(kind)) return measureFromHeader(blobReader(file), kind);
+	return readPhotoSize(file);
+}
+
+/** What a file chooser for photos takes (Replace): every type the worker reads, by type and by name. */
+export const PHOTO_PICKER_ACCEPT = [
+	...new Set(Object.values(PHOTO_KIND_TYPES)),
+	'image/heif',
+	...PHOTO_FILE_ENDINGS,
+].join(',');
 
 /** The photo's upright size as the browser decodes it; null when it cannot be read here. */
 export async function readPhotoSize(file: Blob): Promise<PhotoShape | null> {

@@ -119,6 +119,35 @@ test.describe('Media page (step 1)', () => {
 		await shot(page, 'b08-tray-done');
 	});
 
+	test('photo types the browser cannot draw: a PSD with no type and an SVG are photos, measured from their header (step 5)', async ({
+		page,
+	}) => {
+		await openRoot(page);
+		await card(page, RUN).dblclick();
+		// A PSD header saying 3000 × 4000, sent with no type, as some computers do; an SVG drawn 4096 px long.
+		const psd = Buffer.alloc(26);
+		psd.write('8BPS', 0, 'latin1');
+		psd.writeUInt16BE(1, 4);
+		psd.writeUInt32BE(4000, 14);
+		psd.writeUInt32BE(3000, 18);
+		const svg = Buffer.from(
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><rect width="30" height="40"/></svg>',
+		);
+		await page.locator('#fm_pick_files').setInputFiles([
+			{ name: 'layered-cover.psd', mimeType: '', buffer: psd },
+			{ name: 'logo-mark.svg', mimeType: 'image/svg+xml', buffer: svg },
+		]);
+		const review = page.locator('#fm_review');
+		// Both are photos with Product 3:4 suggested (3:4 shapes), and neither is listed as waiting.
+		for (const name of ['layered-cover.psd', 'logo-mark.svg']) {
+			await expect(review.locator(`tr[data-row="${name}"] .fm-pchip`).first()).toContainText('Product 3:4');
+		}
+		// No picture tag can draw a PSD: its row shows the type's icon, not a broken picture.
+		await expect(review.locator('tr[data-row="layered-cover.psd"] .fm-type img')).toHaveCount(0);
+		await shot(page, 'b01-new-photo-types');
+		await review.locator('.modal-footer .btn-outline').first().click();
+	});
+
 	test('a photo gets a profile suggested from its shape, a note when it does not fit, and goes up to make its versions (B01, B05, step 2d)', async ({
 		page,
 	}) => {

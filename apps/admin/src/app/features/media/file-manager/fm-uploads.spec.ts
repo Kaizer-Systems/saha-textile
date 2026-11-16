@@ -43,7 +43,7 @@ beforeAll(() => vi.stubGlobal('crypto', webcrypto));
 const file = (name: string, type = 'application/pdf', size = 4) => new File(['x'.repeat(size)], name, { type });
 
 describe('planning an upload (B03)', () => {
-	it('keeps folder paths, takes JPEG and PNG as photos, lists other pictures as waiting, and leaves out what the computer left behind', () => {
+	it('keeps folder paths, takes the photo types the worker reads, lists other pictures as waiting, and leaves out what the computer left behind', () => {
 		const plan = planUpload([
 			{ file: file('shoot-brief.pdf'), path: ['Bridal 2027'] },
 			{ file: file('cover-front.jpg', 'image/jpeg'), path: ['Bridal 2027'] },
@@ -54,6 +54,8 @@ describe('planning an upload (B03)', () => {
 			{ file: file('secret.txt', 'text/plain'), path: ['Bridal 2027', '.git'] },
 			{ file: file('notes', ''), path: ['Bridal 2027'] },
 			{ file: file('look.tif', 'image/tiff'), path: ['Bridal 2027'] },
+			{ file: file('layered.psd', ''), path: ['Bridal 2027'] },
+			{ file: file('sketch.xcf', 'image/x-xcf'), path: ['Bridal 2027'] },
 		]);
 		expect(plan.folderName).toBe('Bridal 2027');
 		expect(plan.rows.map((row) => [row.name, row.waits, row.photo])).toEqual([
@@ -62,8 +64,12 @@ describe('planning an upload (B03)', () => {
 			['raw-dsc0099.nef', false, false],
 			['behind.mp4', false, false],
 			['notes', false, false],
-			['look.tif', true, false],
+			['look.tif', false, true],
+			['layered.psd', false, true],
+			['sketch.xcf', true, false],
 		]);
+		// A photo the computer gave no type gets its own type for the API (media step 5).
+		expect(plan.rows[6]).toMatchObject({ kind: 'psd', contentType: 'image/vnd.adobe.photoshop' });
 		// A browser that knows no type still sends one the API takes.
 		expect(plan.rows[4]?.contentType).toBe('application/octet-stream');
 		expect(foldersFor(plan.rows)).toEqual([
@@ -632,6 +638,23 @@ describe('photos in the upload popup (media step 2d: B01, B02, B02b, B04, B05, B
 		expect(asked).toEqual(['review', 'duplicate', 'anyway']);
 		expect(keeping.uploads.replacePhoto).not.toHaveBeenCalled();
 		expect(keeping.uploads.add).toHaveBeenCalledTimes(1);
+	});
+
+	it('goes by the first bytes: a photo the name missed, a .jpg that is a PNG, a PSD measured from its header (step 5)', async () => {
+		const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+		const psd = new Uint8Array(26);
+		psd.set([0x38, 0x42, 0x50, 0x53, 0, 1]);
+		new DataView(psd.buffer).setUint32(14, 4000);
+		new DataView(psd.buffer).setUint32(18, 3000);
+		const files = [new File([png], 'scan.jpg', { type: 'image/jpeg' }), new File([psd], 'cover', { type: '' })];
+		const { flow } = await run({ 'scan.jpg': { width: 3000, height: 4000 } }, files);
+		const [scan, cover] = flow.review()?.rows ?? [];
+		expect(scan).toMatchObject({ kind: 'png', contentType: 'image/png', photo: true });
+		// No picture tag can draw a PSD: its size comes from its header, and its row shows the type's icon.
+		expect(cover).toMatchObject({ kind: 'psd', contentType: 'image/vnd.adobe.photoshop', photo: true });
+		expect(cover?.size).toEqual({ width: 3000, height: 4000 });
+		expect(cover?.picks).toEqual([{ profileKey: 'product_3x4', fills: ['as_is'] }]);
+		expect(flow.thumb(cover?.key ?? '')).toBeNull();
 	});
 
 	it('suggests a profile from each photo’s shape, offers only switched-on chosen profiles, and sends versions', async () => {

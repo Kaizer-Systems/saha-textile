@@ -19,17 +19,23 @@ import {
 	type FmPhotoNote,
 	type FmUploadPlan,
 	type FmUploadRow,
+	BROWSERS_SHOW,
 	PHOTO_MAX_BYTES,
+	UNKNOWN_TYPE,
+	asPhotoKind,
 	choosable,
 	foldersFor,
 	isRefusal,
+	measurePhoto,
 	newPick,
 	photoNotes,
-	readPhotoSize,
 	sha256Hex,
+	sniffFile,
 	suggestedPicks,
 	versionsOf,
 } from './fm-upload-plan';
+
+import { CAMERA_RAW } from '@saha-textile/core-domain/media-files';
 
 import type { MediaFill, StorageOperation } from '@saha-textile/contracts';
 
@@ -171,18 +177,37 @@ export class FmUploadFlow {
 		);
 	}
 
+	/**
+	 * The first bytes of every file that may be a photo (media step 5): a photo the name or type missed becomes one, and
+	 * the type the API is told follows the bytes. Only a photo found is acted on; what the bytes don't name stays as
+	 * the name and type said, and the worker has the last word.
+	 */
+	private async sniffRows(): Promise<void> {
+		for (const row of this.review()?.rows ?? []) {
+			if (CAMERA_RAW.test(row.name)) continue;
+			if (!row.photo && !row.contentType.startsWith('image/') && row.contentType !== UNKNOWN_TYPE) continue;
+			const kind = await sniffFile(row.file);
+			if (kind && kind !== row.kind) this.updateRow(row.key, (current) => asPhotoKind(current, kind));
+		}
+	}
+
 	/** Each photo's size, read in the browser, then its suggested profile (B01). */
 	private async readSizes(): Promise<void> {
+		// Counted from the start, so the popup waits for the byte check as well as the sizes.
+		this.reading.set((this.review()?.rows ?? []).filter((row) => row.photo && !row.size).length);
+		await this.sniffRows();
 		const photos = (this.review()?.rows ?? []).filter((row) => row.photo && !row.size);
 		this.reading.set(photos.length);
 		if (typeof URL.createObjectURL === 'function') {
-			this.thumbs.set(new Map(photos.map((row) => [row.key, URL.createObjectURL(row.file)])));
+			// A TIFF, JPEG XL, JPEG 2000 or PSD can't be drawn by a browser: its row shows its type's icon instead.
+			const shown = photos.filter((row) => row.heic || !row.kind || BROWSERS_SHOW.includes(row.kind));
+			this.thumbs.set(new Map(shown.map((row) => [row.key, URL.createObjectURL(row.file)])));
 		}
 		for (const row of photos) {
 			// A HEIC becomes a full-size JPEG first, one at a time (phones have little memory).
 			const converted = row.heic ? await heicToJpeg(row.file).catch(() => null) : null;
 			const file = converted ?? row.file;
-			const size = row.heic && !converted ? null : await readPhotoSize(file);
+			const size = row.heic && !converted ? null : await measurePhoto(file, converted ? 'jpeg' : row.kind);
 			if (converted) {
 				const url = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(converted) : null;
 				if (url) this.thumbs.update((all) => new Map([...all, [row.key, url]]));
@@ -195,6 +220,7 @@ export class FmUploadFlow {
 							file: converted,
 							name: converted.name,
 							contentType: 'image/jpeg',
+							kind: 'jpeg' as const,
 							bytes: converted.size,
 						}
 					: {}),

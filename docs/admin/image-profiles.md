@@ -42,10 +42,10 @@ Changing anything needs `setting.edit`; seeing the list needs `attachment.index`
 | Smallest photo       | px wide or on the short side, and **Warn only** or **Refuse**; empty for no limit.                                                                                                                 |
 | Fills offered        | White padding, Blurred fill, Colour bars, Crop (focal point); icon profiles offer White background and Brand colour. Each card shows the fill at the profile's shape. Stretching is never offered. |
 | Max upload           | 1–25 MB.                                                                                                                                                                                           |
-| Accepted image types | JPEG and PNG are made into versions now; the others follow as their decoders arrive.                                                                                                               |
+| Accepted image types | Every type the worker reads (JPEG, PNG, WebP, AVIF, GIF, TIFF, SVG, JPEG XL, JPEG 2000, BMP, ICO, PSD); HEIC is turned into a JPEG in the browser. Changing the list keeps the profile's version.  |
 | Status               | On or off.                                                                                                                                                                                         |
 
-A new profile's key is made from its name (`Saree 2:3` → `saree_2x3`, a number added when taken) and never changes. Every real change raises the profile's `version`; versions record the version they were made under, so an edit applies to versions made from then on and no live picture moves. Remaking older versions on purpose comes with Reprocess.
+A new profile's key is made from its name (`Saree 2:3` → `saree_2x3`, a number added when taken) and never changes. A change to its shape, sizes or quality raises the profile's `version`; versions record the version they were made under, so such an edit applies to versions made from then on and no live picture moves. Other changes (name, fills offered, smallest photo, largest upload, accepted types, on or off) are saved without raising it, so **Bring older versions up to date** does not count photos for them. Remaking older versions on purpose comes with Reprocess.
 
 ## Rules the API keeps
 

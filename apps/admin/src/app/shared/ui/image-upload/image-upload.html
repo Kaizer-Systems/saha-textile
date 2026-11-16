@@ -3,9 +3,12 @@
 	<li
 		[title]="'add_image' | transloco"
 		class="choosefile-input"
-		(click)="MediaModal().openModal()"
+		(click)="openPicker()"
 	>
 		<i class="ri-add-line"></i>
+		@if (left !== null) {
+		<span class="fm-left">{{ 'fm_left' | transloco: { count: left } }}</span>
+		}
 	</li>
 	} @for (img of showImages; track img; let i = $index) {
 	<li>
@@ -14,6 +17,9 @@
 			alt="image"
 			class="img-fluid"
 		/>
+		@if (versionBadge(img); as badge) {
+		<span class="fm-vbadge">{{ badge }}</span>
+		}
 		<a
 			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
@@ -31,6 +37,9 @@
 			alt="image"
 			class="img-fluid"
 		/>
+		@if (versionBadge(showImage); as badge) {
+		<span class="fm-vbadge">{{ badge }}</span>
+		}
 		<a
 			[title]="'remove_image' | transloco"
 			href="javascript:void(0)"
@@ -61,10 +70,3 @@
 @if (helpText) {
 <p class="help-text">{{ helpText }}</p>
 }
-<app-media-modal
-	[multipleImage]="multipleImage()"
-	[purpose]="purpose()"
-	[url]="url()"
-	(selectImage)="selectImage($event, url())"
-	#mediaModal
-/>

@@ -96,6 +96,8 @@
 			[required]="false"
 		>
 			<app-image-upload
+				[profile]="'category_3x4'"
+				[pickTitle]="'fm_pick_title_category_image'"
 				[multipleImage]="false"
 				[image]="category?.category_image"
 				(selectedFiles)="selectCategoryImage($event)"
@@ -107,6 +109,8 @@
 			[required]="false"
 		>
 			<app-image-upload
+				[profile]="'square_1x1'"
+				[pickTitle]="'fm_pick_title_category_icon'"
 				[multipleImage]="false"
 				[image]="category?.category_icon"
 				(selectedFiles)="selectCategoryIcon($event)"

@@ -241,6 +241,9 @@
 									<!-- Several pictures, as on the store form: they slide in this order (owner, 2026-11-10). -->
 									<div id="popup_image">
 										<app-image-upload
+											[profile]="'phone_banner_4x5'"
+											[max]="maxPopupPictures"
+											[pickTitle]="'fm_pick_title_event_popup'"
 											[multipleImage]="true"
 											[purpose]="'banner'"
 											[images]="popupImages()"

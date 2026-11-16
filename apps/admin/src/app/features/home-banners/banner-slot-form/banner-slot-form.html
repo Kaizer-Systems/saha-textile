@@ -11,6 +11,7 @@
 		[required]="band === 'desktop' || (band === 'phone' && phoneRequired)"
 	>
 		<app-image-upload
+			[pickTitle]="'fm_pick_title_banner'"
 			[id]="slot() + '_' + band"
 			[image]="previews()[band]"
 			[purpose]="'banner'"

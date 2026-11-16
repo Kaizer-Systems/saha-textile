@@ -1,14 +1,14 @@
-import { Component, computed, effect, inject, input, model, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, model, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbAccordionModule, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
 
 import { MediaGateway } from '@core/media/media.gateway';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { MediaModal } from '@shared/ui/modal/media-modal/media-modal';
+import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 
 import type { IAttachment } from '@data-access/interfaces/attachment.interface';
 import type { AddonTemplateRow } from '@data-access/services/addon-template.service';
@@ -44,7 +44,7 @@ const PLACEHOLDER = 'assets/images/product.png';
 	templateUrl: './option-groups.html',
 	// The Images tab's tile and badge, reused as they are for the swatch pictures.
 	styleUrls: ['../product-images/product-images.scss'],
-	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields, MediaModal],
+	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields],
 })
 export class OptionGroups {
 	readonly groups = model.required<ProductOptionGroup[]>();
@@ -64,7 +64,7 @@ export class OptionGroups {
 	readonly tiles = model<ReadonlyMap<string, string>>(new Map());
 
 	private media = inject(MediaGateway);
-	readonly picker = viewChild<MediaModal>('swatchPicker');
+	private readonly modals = inject(NgbModal);
 	/** The value the media library is choosing a picture for. */
 	private target: { index: number; code: string } | null = null;
 	private requested = new Set<string>();
@@ -217,9 +217,24 @@ export class OptionGroups {
 		this.update(index, { terms });
 	}
 
-	openLibrary(index: number, code: string): void {
+	/** The Media picker (media step 4d): any photo, one at a time. */
+	async openLibrary(index: number, code: string): Promise<void> {
 		this.target = { index, code };
-		void this.picker()?.openModal();
+		const popup = this.modals.open(FmPicker, {
+			size: 'xl',
+			windowClass: 'theme-modal media-modal fm-picker',
+			scrollable: true,
+		});
+		(popup.componentInstance as FmPicker).start({
+			title: 'fm_pick_title_swatch',
+			accept: 'image',
+			max: 1,
+			already: 0,
+			profile: null,
+		});
+		const picked = (await popup.result.catch(() => null)) as FmPicked[] | null;
+		const row = picked?.[0];
+		if (row) this.fromLibrary({ id: row.assetId, original_url: row.thumbnailUrl ?? '' } as IAttachment);
 	}
 
 	/** A picture from the library: any image, such as a fabric close-up, or one just uploaded. */

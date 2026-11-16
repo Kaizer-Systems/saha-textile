@@ -65,6 +65,8 @@
 			[for]="'link_preview_picture'"
 		>
 			<app-image-upload
+				[profile]="'logo_keep_shape'"
+				[pickTitle]="'fm_pick_title_share'"
 				[id]="'link_preview_picture'"
 				[multipleImage]="false"
 				[purpose]="'brand'"
@@ -208,6 +210,7 @@
 			<div>
 				<p class="help-text mb-1">{{ 'logo_light' | transloco }}</p>
 				<app-image-upload
+					[pickTitle]="'fm_pick_title_logo'"
 					[id]="set + '_full_logo'"
 					[multipleImage]="false"
 					[purpose]="'brand'"
@@ -219,6 +222,7 @@
 			<div>
 				<p class="help-text mb-1">{{ 'logo_dark_optional' | transloco }}</p>
 				<app-image-upload
+					[pickTitle]="'fm_pick_title_logo'"
 					[id]="set + '_full_logo_dark'"
 					[multipleImage]="false"
 					[purpose]="'brand'"
@@ -240,6 +244,7 @@
 			<div>
 				<p class="help-text mb-1">{{ 'logo_light' | transloco }}</p>
 				<app-image-upload
+					[pickTitle]="'fm_pick_title_logo'"
 					[id]="set + '_seal'"
 					[multipleImage]="false"
 					[purpose]="'brand'"
@@ -251,6 +256,7 @@
 			<div>
 				<p class="help-text mb-1">{{ 'logo_dark_optional' | transloco }}</p>
 				<app-image-upload
+					[pickTitle]="'fm_pick_title_logo'"
 					[id]="set + '_seal_dark'"
 					[multipleImage]="false"
 					[purpose]="'brand'"
@@ -287,6 +293,8 @@
 		[for]="set + '_browser_icon'"
 	>
 		<app-image-upload
+			[profile]="'browser_icon_1x1'"
+			[pickTitle]="'fm_pick_title_icon'"
 			[id]="set + '_browser_icon'"
 			[multipleImage]="false"
 			[purpose]="'brand'"

@@ -126,6 +126,8 @@ function flatten(rows: readonly ICategory[] = []): ICategory[] {
 	],
 })
 export class FormEvent {
+	/** The most popup pictures the picker lets the field hold. */
+	readonly maxPopupPictures = MAX_POPUP_PICTURES;
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 	private events = inject(ShopEventService);

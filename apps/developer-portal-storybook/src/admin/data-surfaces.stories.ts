@@ -6,6 +6,7 @@ import type { IBaseRow, ITableConfig } from '../../../admin/src/app/data-access/
 import { NotificationService } from '../../../admin/src/app/data-access/services/notification.service';
 import { Alert } from '../../../admin/src/app/shared/ui/alert/alert';
 import { ImageUpload } from '../../../admin/src/app/shared/ui/image-upload/image-upload';
+import { MediaModal } from '../../../admin/src/app/shared/ui/modal/media-modal/media-modal';
 import { Link } from '../../../admin/src/app/shared/ui/link/link';
 import { MediaBox } from '../../../admin/src/app/shared/ui/media-box/media-box';
 import { Table } from '../../../admin/src/app/shared/ui/table/table';
@@ -78,7 +79,7 @@ const meta = {
 	tags: ['autodocs'],
 	decorators: [
 		moduleMetadata({
-			imports: [AdminAlertHost, Alert, ImageUpload, Link, MediaBox, Table],
+			imports: [AdminAlertHost, Alert, ImageUpload, Link, MediaBox, MediaModal, Table],
 			providers: [
 				{
 					provide: NotificationService,
@@ -119,6 +120,18 @@ export const ImageUploadField: Story = {
 		props: { attachment },
 		template:
 			'<section class="storybookComponentStage"><app-image-upload [image]="attachment" helpText="Use a square catalogue image." /></section>',
+	}),
+};
+
+/**
+ * The earlier Add Media popup. Image fields open the Media picker since media step 4d; this popup stays for the
+ * earlier Media page (/media/previous) until its removal is typed by the owner. It draws nothing until opened.
+ */
+export const EarlierMediaPopup: Story = {
+	render: () => ({
+		props: {},
+		template:
+			'<section class="storybookComponentStage"><p>The earlier Add Media popup opens from the earlier Media page.</p><app-media-modal [multipleImage]="false" /></section>',
 	}),
 };
 

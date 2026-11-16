@@ -1306,9 +1306,19 @@ describe('Taxonomy services', () => {
 describe('swatch pictures', () => {
 	const picture = (id: string) => ({ id, original_url: `${id}.webp` });
 	const gateway = { get: vi.fn((id: string) => of(picture(id))), details: vi.fn() };
+	const pickerStart = vi.fn();
+	const swatchModals = {
+		open: vi.fn(() => ({
+			componentInstance: { start: pickerStart },
+			result: Promise.resolve([
+				{ assetId: 'fabric', versionId: null, name: 'fabric.jpg', thumbnailUrl: 'fabric.webp' },
+			]),
+		})),
+	};
 	const providers = [
 		{ provide: TranslocoService, useValue: translate },
 		{ provide: MediaGateway, useValue: gateway },
+		{ provide: NgbModal, useValue: swatchModals },
 	];
 	const swatchGroup = (terms: Record<string, unknown>[]) =>
 		group({
@@ -1358,11 +1368,21 @@ describe('swatch pictures', () => {
 		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchAssetId');
 	});
 
+	it('the library opens the Media picker for any photo, and its choice goes to the value that asked (step 4d)', async () => {
+		const page = render([{}, {}]);
+		await page.openLibrary(0, 'v0');
+		expect(pickerStart).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'fm_pick_title_swatch', max: 1, profile: null }),
+		);
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('fabric');
+		expect(page.tiles().get('fabric')).toBe('fabric.webp');
+	});
+
 	it('takes a picture from the library for the value that asked', () => {
 		const page = render([{}, {}]);
 		page.fromLibrary(picture('nothing') as never);
 		expect(page.groups()[0]?.terms.every((term) => !term.swatchAssetId)).toBe(true);
-		page.openLibrary(0, 'v1');
+		void page.openLibrary(0, 'v1');
 		page.fromLibrary([picture('close-up')] as never);
 		expect(page.groups()[0]?.terms[1]?.swatchAssetId).toBe('close-up');
 		expect(page.tiles().get('close-up')).toBe('close-up.webp');

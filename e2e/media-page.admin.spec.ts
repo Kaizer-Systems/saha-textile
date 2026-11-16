@@ -327,6 +327,8 @@ test.describe('Media page (step 1)', () => {
 		await page.locator('#fm_menu_details').click();
 		await page.locator('#fm_details_tab_text').click();
 		await expect(page.locator('#fm_details')).toContainText('Saved on the image itself');
+		// The Text tab shows only its own fields: the Activity list belongs to its own tab.
+		await expect(page.locator('#fm_item_activity')).toHaveCount(0);
 		await page.locator('#fm_text_alt').fill('A sample product photo on a plain background');
 		// বাংলা still has no alt text: its button carries a red to-do until it is written.
 		const bengali = page.locator('app-language-switch').getByRole('button', { name: /বাংলা/ }).first();

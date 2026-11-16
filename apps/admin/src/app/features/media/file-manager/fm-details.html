@@ -164,7 +164,7 @@
 					{{ (savingSlow() ? 'fm_saving' : 'save') | transloco }}
 				</button>
 			</div>
-			} @if (tab() === 'versions' && isImage()) {
+			} @else if (tab() === 'versions' && isImage()) {
 			<div
 				class="theme-tree-box fm-sizes fm-scroll"
 				id="fm_versions_tree"

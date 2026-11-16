@@ -1,0 +1,304 @@
+<!-- D01–D17: the Media manager as a picker. -->
+<div class="modal-header">
+	<h2 id="fm_pick_title">{{ rules().title | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div
+	class="fm-rules"
+	id="fm_pick_rules"
+>
+	@if (rules().accept === 'image') {
+	<span class="fm-chip">
+		<i class="ri-image-line"></i>
+		{{ (one() ? 'fm_pick_rule_one' : 'fm_pick_rule_images') | transloco }}
+	</span>
+	} @else {
+	<span class="fm-chip">
+		<i class="ri-attachment-2"></i>
+		{{ 'fm_pick_rule_any' | transloco }}
+	</span>
+	} @if (!one()) {
+	<span class="fm-chip muted">
+		{{ 'fm_pick_rule_more' | transloco: { left: room(), done: rules().already, max: rules().max } }}
+	</span>
+	} @if (rules().profile; as profile) {
+	<span class="fm-chip muted">{{ 'fm_pick_rule_needs' | transloco: { profile: profile.name } }}</span>
+	<span class="fm-chip muted">
+		<i class="ri-filter-3-line"></i>
+		{{ (showWithout() ? 'fm_pick_showing_all' : 'fm_pick_showing_fit') | transloco: { profile: profile.name } }}
+	</span>
+	<span class="d-flex align-items-center ms-auto gap-2">
+		<span class="form-check form-switch mb-0 ps-0">
+			<label class="switch switch-sm">
+				<input
+					type="checkbox"
+					id="fm_pick_show_without"
+					[attr.aria-label]="'fm_pick_show_without' | transloco"
+					[checked]="showWithout()"
+					(change)="showWithout.set(!showWithout())"
+				/>
+				<span class="switch-state"></span>
+			</label>
+		</span>
+		<span class="small">{{ 'fm_pick_show_without' | transloco }}</span>
+	</span>
+	}
+</div>
+<div class="modal-body">
+	<div class="fm-wrap">
+		<app-fm-sidebar
+			[picker]="true"
+			[nav]="nav()"
+			[folderId]="folderId()"
+			[folders]="tree.data()?.folders ?? []"
+			(navigate)="openNav($event)"
+			(openFolder)="openFolder($event)"
+		/>
+		<section class="fm-main position-relative">
+			<div class="fm-toolbar">
+				<div class="fm-search">
+					<i class="ri-search-line"></i>
+					<input
+						class="form-control"
+						type="search"
+						id="fm_pick_search"
+						[value]="search()"
+						[attr.placeholder]="'fm_search_all' | transloco"
+						(change)="search.set($any($event.target).value.trim())"
+					/>
+				</div>
+			</div>
+
+			@if (recentRows().length) {
+			<div class="fm-heading">
+				<span>
+					{{ 'fm_recent' | transloco }}
+					<small>· {{ 'fm_pick_recent_hint' | transloco }}</small>
+				</span>
+				<a
+					href="javascript:void(0)"
+					class="small"
+					(click)="openNav('recent')"
+				>
+					{{ 'fm_pick_see_all' | transloco }}
+				</a>
+			</div>
+			<div class="fm-grid fm-recent">
+				@for (row of recentRows(); track row.id) {
+				<ng-container *ngTemplateOutlet="tileTpl; context: { $implicit: row }" />
+				}
+			</div>
+			}
+
+			<div class="fm-crumbs">
+				<nav>
+					<ol class="breadcrumb">
+						@if (nav() === 'folder') { @if (folderId()) {
+						<li class="breadcrumb-item">
+							<a
+								href="javascript:void(0)"
+								(click)="openFolder(null)"
+							>
+								<i class="ri-home-4-line me-1"></i>
+								{{ 'fm_my_files' | transloco }}
+							</a>
+						</li>
+						@for (step of data()?.breadcrumb ?? []; track step.id; let last = $last) { @if (last) {
+						<li class="breadcrumb-item active">{{ step.name }}</li>
+						} @else {
+						<li class="breadcrumb-item">
+							<a
+								href="javascript:void(0)"
+								(click)="openFolder(step.id)"
+							>
+								{{ step.name }}
+							</a>
+						</li>
+						} } } @else {
+						<li class="breadcrumb-item active">
+							<i class="ri-home-4-line me-1"></i>
+							{{ 'fm_my_files' | transloco }}
+						</li>
+						} } @else {
+						<li class="breadcrumb-item active">
+							{{ (nav() === 'recent' ? 'fm_recent' : 'fm_favourites') | transloco }}
+						</li>
+						}
+					</ol>
+				</nav>
+			</div>
+
+			@if (data(); as page) { @if (page.folders.length) {
+			<div class="fm-heading">
+				<span>
+					{{ 'fm_folders' | transloco }}
+					<small>· {{ page.folders.length }}</small>
+				</span>
+			</div>
+			<div class="fm-folders">
+				@for (folder of page.folders; track folder.id) {
+				<div
+					class="fm-folder"
+					role="button"
+					tabindex="0"
+					[attr.data-pick-folder]="folder.id"
+					(click)="openFolder(folder.id)"
+					(keydown.enter)="openFolder(folder.id)"
+				>
+					<div class="fm-folder-icon"><i class="ri-folder-3-fill"></i></div>
+					<div style="min-width: 0">
+						<h6>{{ folder.name }}</h6>
+						<p>{{ folder.bytes | fileSize }} · {{ 'fm_files' | plural: folder.files }}</p>
+					</div>
+				</div>
+				}
+			</div>
+			}
+			<div class="fm-heading">
+				<span>
+					{{ 'fm_pick_files' | transloco }}
+					<small>
+						· {{ page.files.length }} @if (page.hidden?.noVersion) { · {{ 'fm_pick_hidden_version' | plural:
+						page.hidden?.noVersion ?? 0 : { profile: rules().profile?.name ?? '' } }} } @if
+						(page.hidden?.notImage) { · {{ 'fm_pick_hidden_files' | plural: page.hidden?.notImage ?? 0 }} }
+					</small>
+				</span>
+			</div>
+			@if (page.files.length) {
+			<div
+				class="fm-grid"
+				id="fm_pick_grid"
+			>
+				@for (row of page.files; track row.id) {
+				<ng-container *ngTemplateOutlet="tileTpl; context: { $implicit: row }" />
+				}
+			</div>
+			} @else {
+			<div
+				class="no-data-added py-5 text-center"
+				id="fm_pick_empty"
+			>
+				<img
+					src="assets/svg/no-media.svg"
+					alt=""
+					style="max-width: 220px"
+				/>
+				<h4>{{ 'fm_pick_empty' | transloco }}</h4>
+			</div>
+			} }
+		</section>
+	</div>
+</div>
+<div class="modal-footer">
+	<div class="left-part">
+		<span
+			class="fm-footer-note"
+			id="fm_pick_note"
+			[class.warn]="note().warn"
+			[class.info]="!note().warn"
+		>
+			<i
+				[class]="note().warn ? 'ri-alert-line' : chosen().size ? 'ri-checkbox-circle-line text-success' : 'ri-information-line'"
+			></i>
+			{{ note().text }}
+		</span>
+	</div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="fm_pick_choose"
+			[disabled]="!chosen().size"
+			(click)="choose()"
+		>
+			@if (chosen().size) { {{ (rules().accept === 'image' ? 'fm_pick_choose_images' : 'fm_pick_choose_files') |
+			plural: chosen().size }} } @else { {{ 'fm_pick_choose' | transloco }} }
+		</button>
+	</div>
+</div>
+
+<ng-template
+	#tileTpl
+	let-row
+>
+	<div
+		class="fm-tile"
+		role="button"
+		tabindex="0"
+		[class.is-selected]="isChosen(row)"
+		[class.is-disabled]="!!refusal(row)"
+		[class.is-pending]="row.state !== 'ready'"
+		[attr.data-pick]="row.id"
+		(click)="toggle(row)"
+		(keydown.enter)="toggle(row)"
+	>
+		<div class="fm-thumb">
+			@if (row.thumbnailUrl) {
+			<img
+				[src]="row.thumbnailUrl"
+				alt=""
+			/>
+			} @else {
+			<div
+				class="fm-bigicon"
+				[class]="kind(row).cls"
+			>
+				<i [class]="kind(row).icon"></i>
+			</div>
+			}
+			<span class="fm-check">
+				@if (isChosen(row)) {
+				<i class="ri-check-line"></i>
+				}
+			</span>
+			@if (row.state !== 'ready') {
+			<div class="fm-overlay">
+				<span>{{ 'fm_making_sizes' | transloco }}</span>
+				<small>{{ 'fm_pick_not_ready_short' | transloco }}</small>
+			</div>
+			}
+		</div>
+		<div class="fm-cap">
+			<h6>{{ row.name }}</h6>
+			<p>{{ row.bytes | fileSize }}</p>
+			@if (chips(row).length > 1 || (rules().profile && chips(row).length)) {
+			<div class="fm-vchips">
+				@for (chip of chips(row); track chip.versionId) {
+				<span
+					class="fm-pchip"
+					role="button"
+					[class.is-on]="isChosen(row, chip.versionId)"
+					[attr.data-chip]="chip.versionId"
+					(click)="$event.stopPropagation(); toggle(row, chip.versionId)"
+				>
+					@if (isChosen(row, chip.versionId)) {
+					<i class="ri-check-line"></i>
+					} {{ chip.label }}
+				</span>
+				}
+			</div>
+			} @if (refusal(row) && rules().profile && row.kind === 'image' && row.state === 'ready') {
+			<p
+				class="text-warning"
+				style="white-space: normal"
+			>
+				{{ 'fm_pick_no_version_short' | transloco: { profile: rules().profile?.name ?? '' } }}
+			</p>
+			}
+		</div>
+	</div>
+</ng-template>

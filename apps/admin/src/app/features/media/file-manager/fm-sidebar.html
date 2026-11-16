@@ -1,4 +1,5 @@
 <aside class="fm-side">
+	@if (!picker()) {
 	<div class="dropdown fm-menu-host">
 		<button
 			type="button"
@@ -54,6 +55,7 @@
 		</ul>
 		}
 	</div>
+	}
 	<ul class="fm-nav">
 		<li [class.active]="nav() === 'folder' && !category()">
 			<a
@@ -85,6 +87,7 @@
 				{{ 'fm_favourites' | transloco }}
 			</a>
 		</li>
+		@if (!picker()) {
 		<li [class.active]="nav() === 'trash'">
 			<a
 				href="javascript:void(0)"
@@ -105,6 +108,7 @@
 				{{ 'fm_clean_up' | transloco }}
 			</a>
 		</li>
+		}
 	</ul>
 	@if (tree().length) {
 	<div class="fm-side-title">{{ 'fm_folders' | transloco }}</div>
@@ -169,7 +173,7 @@
 		</li>
 		}
 	</ul>
-	@if (storage(); as summary) {
+	@if (!picker() && storage(); as summary) {
 	<div
 		class="fm-storage"
 		id="fm_storage"

@@ -272,7 +272,9 @@ test.describe('Admin light and dark: menus, lists and popups', () => {
 			await check('an open select list');
 			await page.keyboard.press('Escape');
 
-			await page.goto(`${ADMIN}/media`, { waitUntil: 'networkidle' });
+			// The earlier Media page (moved to /media/previous in media step 2e): its Add Media popup is the one every
+			// image field's picker still opens until media step 4.
+			await page.goto(`${ADMIN}/media/previous`, { waitUntil: 'networkidle' });
 			await page.getByText('Add Media').first().click();
 			await expect(page.locator('.modal.show')).toBeVisible();
 			await check('the media upload popup');

@@ -127,3 +127,40 @@ StorageReservationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 export const StorageReservationModel: Model<StorageReservationDoc> =
 	(models.StorageReservation as Model<StorageReservationDoc>) ??
 	model<StorageReservationDoc>('StorageReservation', StorageReservationSchema);
+
+/**
+ * Email pictures that left their photo (deleted for good or replaced), kept for good so order emails already sent
+ * keep their pictures (Media brief R4-3, R6-1). Clean up › Email pictures lists them; only an admin deletes them.
+ */
+export interface EmailPictureDoc {
+	_id: string;
+	assetId: string;
+	photoName: string;
+	width: number;
+	bytes: number;
+	why: 'deleted' | 'replaced';
+	goneAt: Date;
+	goneBy: string | null;
+	sentCount: number;
+	lastSentAt: Date | null;
+}
+
+const EmailPictureSchema = new Schema<EmailPictureDoc>(
+	{
+		_id: { type: String, required: true },
+		assetId: { type: String, required: true },
+		photoName: { type: String, required: true },
+		width: { type: Number, required: true },
+		bytes: { type: Number, required: true },
+		why: { type: String, enum: ['deleted', 'replaced'], required: true },
+		goneAt: { type: Date, required: true },
+		goneBy: { type: String, default: null },
+		sentCount: { type: Number, default: 0 },
+		lastSentAt: { type: Date, default: null },
+	},
+	{ collection: 'emailPictures', timestamps: false },
+);
+EmailPictureSchema.index({ lastSentAt: 1 });
+
+export const EmailPictureModel: Model<EmailPictureDoc> =
+	(models.EmailPicture as Model<EmailPictureDoc>) ?? model<EmailPictureDoc>('EmailPicture', EmailPictureSchema);

@@ -120,6 +120,8 @@ export const COLLECTION_NAMES = {
 	MediaFolder: 'mediaFolders',
 	MediaFavourite: 'mediaFavourites',
 	MediaShareLink: 'mediaShareLinks',
+	/** Email pictures whose photo was deleted or replaced, kept for good for emails already sent (step 3f). */
+	EmailPicture: 'emailPictures',
 	/** Bytes held for running uploads; machinery, removed by its own expiry. */
 	StorageReservation: 'storageReservations',
 	/** Settings › Languages: every language ever added, English included (step 0d, 2026-11-15). */

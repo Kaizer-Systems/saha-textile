@@ -601,3 +601,53 @@ export type MediaFilePresignResponse = z.infer<typeof MediaFilePresignResponse>;
 /** Public gives a plain file a permanent CDN address; private stops it (copies already taken stay). */
 export const MediaFileVisibilityWrite = z.object({ visibility: z.enum(['public', 'private']) });
 export type MediaFileVisibilityWrite = z.infer<typeof MediaFileVisibilityWrite>;
+
+// --- Email pictures (Clean up, R6-1, A50, A51) --------------------------------------------------
+
+/**
+ * An email picture whose photo was deleted for good or replaced: kept for good so order emails already sent keep
+ * their picture, listed in Clean up › Email pictures, deleted only by an admin.
+ */
+export const EmailPicture = z.object({
+	key: z.string().min(1),
+	assetId: z.string().min(1),
+	/** The photo's name in Media when the picture left it. */
+	photoName: z.string(),
+	width: z.number().int().positive(),
+	bytes: z.number().int().nonnegative(),
+	why: z.enum(['deleted', 'replaced']),
+	goneAt: IsoDateTime,
+	goneBy: z.string().nullable().default(null),
+	/** Order emails that show it, and when one was last sent: filled once order emails are sent (Chunk G). */
+	sentCount: z.number().int().nonnegative().default(0),
+	lastSentAt: IsoDateTime.nullable().default(null),
+});
+export type EmailPicture = z.infer<typeof EmailPicture>;
+
+/** Which email pictures Clean up lists: by when one was last sent in an email. */
+export const EmailPictureSent = z.enum(['all', 'never', 'over_1y', 'over_2y']);
+export type EmailPictureSent = z.infer<typeof EmailPictureSent>;
+
+/** `GET /admin/media/library/email-pictures` */
+export const EmailPictureQuery = z.object({
+	sent: EmailPictureSent.default('all'),
+	after: z.string().min(1).optional(),
+});
+export type EmailPictureQuery = z.infer<typeof EmailPictureQuery>;
+
+export const EmailPictureRow = EmailPicture.extend({ url: z.string(), goneByName: z.string().nullable() });
+export type EmailPictureRow = z.infer<typeof EmailPictureRow>;
+
+export const EmailPictureList = z.object({
+	rows: z.array(EmailPictureRow),
+	/** Every email picture kept, whatever the filter: the note's “These N … (X MB in all)”. */
+	total: z.object({ count: z.number().int().nonnegative(), bytes: z.number().int().nonnegative() }),
+	/** How many the filter matches, for the select's “· 312”. */
+	matching: z.number().int().nonnegative(),
+	next: z.string().nullable(),
+});
+export type EmailPictureList = z.infer<typeof EmailPictureList>;
+
+/** `POST /admin/media/library/email-pictures/delete` (A51): only after the warning is accepted. */
+export const EmailPictureDelete = z.object({ keys: z.array(z.string().min(1)).min(1).max(1000) }).strict();
+export type EmailPictureDelete = z.infer<typeof EmailPictureDelete>;

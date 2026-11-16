@@ -5,6 +5,7 @@ export * from './profile-rules';
 export * from './version-plan';
 export * from './derivative-plan';
 export * from './storage-keys';
+export * from './email-pictures';
 export * from './process-asset';
 export * from './replace-photo';
 export * from './resolve-image';

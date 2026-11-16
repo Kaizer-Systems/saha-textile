@@ -5,6 +5,7 @@ import { ImageDecodeError } from '../ports/image-codec.port';
 import type { MediaAssetRepository } from '../ports/media.repository';
 import { checkCaps } from './policy';
 import { type ProcessMediaAssetDeps, type ProcessOutcome, renderPhoto } from './process-asset';
+import { emailPicturesLeaving } from './email-pictures';
 import { isEmailPictureKey } from './storage-keys';
 import { checkVersionRequest } from './version-plan';
 
@@ -263,6 +264,15 @@ export const replaceMediaAsset = async (
 		keptFiles,
 	});
 	if (!stored) return fail('replace_gone', rendered.added);
+	// The email pictures the old photo had stay for good, for emails already sent: Clean up lists them.
+	const leaving = emailPicturesLeaving(
+		asset,
+		new Set(derivatives.map((row) => row.storageKey)),
+		'replaced',
+		deps.now(),
+		next.by,
+	);
+	if (leaving.length) await deps.emailPictures?.keep(leaving);
 	return { status: 'ready', rendered: rendered.added.length, skipped: rendered.skipped };
 };
 

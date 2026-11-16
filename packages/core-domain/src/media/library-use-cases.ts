@@ -7,8 +7,10 @@ import type {
 	MediaFolderRepository,
 	ShareLinkRepository,
 } from '../ports/media-library.repository';
+import type { EmailPictureRepository } from '../ports/email-picture.repository';
 import type { MediaAssetRepository } from '../ports/media.repository';
 import { TRASH_DAYS } from './library';
+import { emailPicturesLeaving } from './email-pictures';
 import { isEmailPictureKey } from './storage-keys';
 
 /** What deleting for good needs; the API and the nightly worker both compose it. */
@@ -23,6 +25,10 @@ export interface DeleteForeverDeps {
 	publicUrl: (key: string) => string;
 	/** Writes the audit line (Activity) and returns its id. */
 	record: (action: string, metadata: Record<string, unknown>) => Promise<unknown>;
+	/** Email pictures of deleted photos are recorded for Clean up, never deleted (R6-1); absent in scripts. */
+	emailPictures?: Pick<EmailPictureRepository, 'keep'>;
+	/** Who is deleting (null for the nightly Trash purge), for Clean up's “Photo deleted … by”. */
+	actor?: string | null;
 }
 
 export type DeleteForeverResult =
@@ -79,6 +85,10 @@ export async function deleteMediaForever(
 
 	const keys = doomed.flatMap(storedKeys);
 	const urls = doomed.flatMap(publicKeys).map(deps.publicUrl);
+	const leaving = doomed.flatMap((asset) =>
+		emailPicturesLeaving(asset, new Set(), 'deleted', new Date(), deps.actor ?? null),
+	);
+	if (leaving.length) await deps.emailPictures?.keep(leaving);
 	for (const asset of doomed) await deps.assets.hardDelete(asset.id);
 	await deps.folders.hardDelete([...folderIds]);
 	if (keys.length) await deps.queue.enqueue({ type: 'delete-objects', keys, urls });

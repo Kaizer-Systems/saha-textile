@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 85,
-		"existingModelCount": 61,
+		"nodeCount": 86,
+		"existingModelCount": 62,
 		"targetOnlyCount": 24,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -334,6 +334,19 @@
 			"source": "decisions § Media (2026-11-02)",
 			"currentModel": "packages/adapters-db-mongo/src/models/media.model.ts",
 			"references": []
+		},
+		{
+			"id": "emailPictures",
+			"label": "emailPictures",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Email pictures whose photo was deleted for good or replaced, kept for good so order emails already sent keep their pictures; Clean up › Email pictures lists them and only an admin deletes them.",
+			"source": "decisions § Media file manager brief revision 6, R6-1 (2026-11-16)",
+			"currentModel": "packages/adapters-db-mongo/src/models/media-library.model.ts",
+			"references": ["mediaAssets"]
 		},
 		{
 			"id": "mediaProfiles",

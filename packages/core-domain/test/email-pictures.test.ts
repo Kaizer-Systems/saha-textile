@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { derivativeStorageKey, isEmailPictureKey, keptAfterReplace, publicKeys, storedKeys } from '../src/index';
+import {
+	derivativeStorageKey,
+	emailPictureCutoff,
+	emailPicturesLeaving,
+	isEmailPictureKey,
+	keptAfterReplace,
+	publicKeys,
+	storedKeys,
+} from '../src/index';
 
 import type { ImageDerivative, MediaAsset } from '@saha-textile/contracts';
 
@@ -74,5 +82,34 @@ describe('email pictures (media step 3f)', () => {
 			new Date(),
 		);
 		expect(kept?.keys).toEqual([CARD, 'media/med_e/original.jpg']);
+	});
+
+	it('are recorded when they leave their photo: all of them when it is deleted, the old ones when it is replaced', () => {
+		const now = new Date('2026-11-16T10:00:00.000Z');
+		const named = { ...photo, displayName: 'Red Banarasi.jpg', slug: 'red-banarasi' };
+		expect(emailPicturesLeaving(named, new Set(), 'deleted', now, 'adm_1')).toEqual([
+			expect.objectContaining({
+				key: EMAIL_NEW,
+				assetId: 'med_e',
+				photoName: 'Red Banarasi.jpg',
+				why: 'deleted',
+				goneBy: 'adm_1',
+				width: 300,
+				bytes: 20_000,
+				sentCount: 0,
+				lastSentAt: null,
+			}),
+			expect.objectContaining({ key: EMAIL_OLD, why: 'deleted' }),
+		]);
+		// A Replace that makes the same email picture again (same bytes, same address) leaves only the other one.
+		expect(
+			emailPicturesLeaving(named, new Set([EMAIL_NEW, CARD]), 'replaced', now, null).map((row) => row.key),
+		).toEqual([EMAIL_OLD]);
+	});
+
+	it('are filtered by when they were last sent', () => {
+		const now = new Date('2026-11-16T10:00:00.000Z');
+		expect(emailPictureCutoff('over_2y', now)).toBe('2024-11-16T10:00:00.000Z');
+		expect(emailPictureCutoff('over_1y', now)).toBe('2025-11-16T10:00:00.000Z');
 	});
 });

@@ -1,5 +1,6 @@
 import type { ImageDerivative, MediaAsset, MediaVersion, MediaWarning } from '@saha-textile/contracts';
 
+import type { EmailPictureRepository } from '../ports/email-picture.repository';
 import type { ImageCodecPort, ImageProbe } from '../ports/image-codec.port';
 import { ImageDecodeError } from '../ports/image-codec.port';
 import type { MediaJobQueuePort } from '../ports/media-job-queue.port';
@@ -26,6 +27,8 @@ export interface ProcessMediaAssetDeps {
 	profiles?: Pick<MediaProfileRepository, 'list'>;
 	/** The Brand Kit colour (`#rrggbb`) for an icon's Brand colour fill; null when there is none. */
 	brandColour?: () => Promise<string | null>;
+	/** Email pictures a Replace or a new name leaves behind are recorded for Clean up, never deleted (R6-1). */
+	emailPictures?: Pick<EmailPictureRepository, 'keep'>;
 }
 
 export type ProcessOutcome =

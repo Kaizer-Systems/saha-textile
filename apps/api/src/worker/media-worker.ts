@@ -26,7 +26,9 @@ import {
 	MongoSiteSettingsRepository,
 	MongoStockAlertRepository,
 	MongoStorageLedgerRepository,
+	MongoMediaZipRepository,
 } from '@saha-textile/adapters-db-mongo';
+import { YazlZipArchive } from '@saha-textile/adapters-archive-zip';
 import { SharpImageCodec } from '@saha-textile/adapters-image-sharp';
 import { BullMqMediaJobQueue, type MediaJobHandlers, startMediaWorker } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
@@ -47,6 +49,8 @@ import {
 	runMediaGarbageCollection,
 	runWeeklyInsight,
 	checkSpaces,
+	buildZip,
+	sweepZips,
 } from '@saha-textile/core-domain';
 
 import type { AppConfig } from '../config/app-config';
@@ -122,10 +126,38 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		() => languages.content(),
 	);
 
+	// Folder downloads as .zip (media step 5).
+	const zipRecords = new MongoMediaZipRepository();
+	const ledger = new MongoStorageLedgerRepository();
+	const zipDeps = {
+		zips: zipRecords,
+		folders: new MongoMediaFolderRepository(),
+		browse: assets,
+		assets,
+		storage,
+		archive: new YazlZipArchive(),
+		now,
+	};
+
 	const handlers: MediaJobHandlers = {
 		process: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: false }),
 		reprocess: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: true }),
 		replace: (job) => replaceMediaAsset(processDeps, { assetId: job.assetId }),
+		// A folder download (media step 5, A30): the .zip is written into Spaces file by file.
+		zip: async (job) => {
+			const outcome = await buildZip(zipDeps, { zipId: job.zipId });
+			logger.log(`.zip ${job.zipId}: ${outcome}`);
+		},
+		// Every hour: .zip files past their 24 hours, and cancelled or failed ones, are deleted and stop counting.
+		'zip-sweep': async () => {
+			const swept = await sweepZips({
+				zips: zipRecords,
+				storage,
+				releaseHold: (id) => ledger.release(id),
+				now,
+			});
+			if (swept) logger.log(`.zip sweep: ${swept} deleted`);
+		},
 		// The nightly Spaces check (R5-5): missing pictures the website uses, and files no record knows.
 		'spaces-check': async () => {
 			const result = await checkSpaces(

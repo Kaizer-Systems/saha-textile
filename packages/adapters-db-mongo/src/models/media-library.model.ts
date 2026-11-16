@@ -164,3 +164,49 @@ EmailPictureSchema.index({ lastSentAt: 1 });
 
 export const EmailPictureModel: Model<EmailPictureDoc> =
 	(models.EmailPicture as Model<EmailPictureDoc>) ?? model<EmailPictureDoc>('EmailPicture', EmailPictureSchema);
+
+/**
+ * A .zip someone asked for (media step 5, A30): its progress while the worker writes it, and where it is stored for the
+ * 24 hours its link works. `swept` is set once the hourly sweep has deleted its stored file.
+ */
+export interface MediaZipDoc {
+	_id: string;
+	userId: string;
+	name: string;
+	state: 'adding' | 'ready' | 'failed' | 'cancelled' | 'expired';
+	fileIds: string[];
+	folderIds: string[];
+	storageKey: string;
+	files: { done: number; total: number };
+	bytes: { done: number; total: number };
+	createdAt: Date;
+	readyAt: Date | null;
+	expiresAt: Date | null;
+	error: string | null;
+	swept: boolean;
+}
+
+const MediaZipSchema = new Schema<MediaZipDoc>(
+	{
+		_id: { type: String, required: true },
+		userId: { type: String, required: true },
+		name: { type: String, required: true },
+		state: { type: String, enum: ['adding', 'ready', 'failed', 'cancelled', 'expired'], required: true },
+		fileIds: { type: [String], default: [] },
+		folderIds: { type: [String], default: [] },
+		storageKey: { type: String, required: true },
+		files: { done: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+		bytes: { done: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+		createdAt: { type: Date, required: true },
+		readyAt: { type: Date, default: null },
+		expiresAt: { type: Date, default: null },
+		error: { type: String, default: null },
+		swept: { type: Boolean, default: false },
+	},
+	{ collection: 'mediaZips', timestamps: false },
+);
+MediaZipSchema.index({ userId: 1, createdAt: -1 });
+MediaZipSchema.index({ swept: 1, state: 1, expiresAt: 1 });
+
+export const MediaZipModel: Model<MediaZipDoc> =
+	(models.MediaZip as Model<MediaZipDoc>) ?? model<MediaZipDoc>('MediaZip', MediaZipSchema);

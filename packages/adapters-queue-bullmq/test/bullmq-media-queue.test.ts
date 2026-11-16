@@ -42,6 +42,8 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 					replace: async () => {},
 					'kept-files-sweep': async () => {},
 					'spaces-check': async () => {},
+					'zip-sweep': async () => {},
+					zip: async () => {},
 				},
 			});
 		});
@@ -87,6 +89,8 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 				replace: idle,
 				'kept-files-sweep': idle,
 				'spaces-check': idle,
+				'zip-sweep': idle,
+				zip: idle,
 			},
 		});
 		const ran = () => new Promise<void>((resolve) => (release = resolve));

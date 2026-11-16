@@ -78,6 +78,7 @@ export const MEDIA_FOLDER_REPOSITORY = Symbol('MediaFolderRepository');
 export const MEDIA_FAVOURITE_REPOSITORY = Symbol('MediaFavouriteRepository');
 export const SHARE_LINK_REPOSITORY = Symbol('ShareLinkRepository');
 export const STORAGE_LEDGER_REPOSITORY = Symbol('StorageLedgerRepository');
+export const MEDIA_ZIP_REPOSITORY = Symbol('MediaZipRepository');
 export const MEDIA_BROWSE_REPOSITORY = Symbol('MediaBrowseRepository');
 export const LANGUAGE_COVERAGE_REPOSITORY = Symbol('LanguageCoverageRepository');
 /** Gmail mailboxes in the admin and Contact Us delivery (owner log § stores, Contact Us and Gmail mailboxes). */

@@ -13,7 +13,9 @@ export type MediaJob =
 	| { type: 'delete-objects'; keys: string[]; urls: string[] }
 	| { type: 'purge'; urls: string[] }
 	/** Admin's "Refresh now": the daily YouTube refresh, run at once. */
-	| { type: 'youtube-refresh' };
+	| { type: 'youtube-refresh' }
+	/** A folder download (media step 5, A30): the .zip is written into Spaces, file by file. */
+	| { type: 'zip'; zipId: string };
 
 /**
  * Enqueue port for media jobs (`MediaJobQueuePort`), implemented with BullMQ + Redis at the

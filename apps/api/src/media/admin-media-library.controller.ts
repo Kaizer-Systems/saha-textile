@@ -54,6 +54,10 @@ import {
 	type EmailPictureList,
 	MediaCleanUpQuery,
 	type MediaCleanUpResponse,
+	type MediaZip,
+	type MediaZipList,
+	type MediaZipPlan,
+	MediaZipRequest,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -63,6 +67,7 @@ import { API_TAGS } from '../openapi-tags';
 import { MediaLibraryService } from './media-library.service';
 import { EmailPicturesService } from './email-pictures.service';
 import { MediaReplaceService } from './media-replace.service';
+import { MediaZipsService } from './media-zips.service';
 
 export const actor = (principal: AuthenticatedPrincipal | undefined): string => {
 	if (!principal) throw new UnauthorizedException('Authentication required');
@@ -82,7 +87,63 @@ export class AdminMediaLibraryController {
 		private readonly library: MediaLibraryService,
 		private readonly replace: MediaReplaceService,
 		private readonly emailPicturesService: EmailPicturesService,
+		private readonly zipsService: MediaZipsService,
 	) {}
+
+	// --- Folder downloads as .zip (media step 5, A30, A30B, A48) ------------------------------------------------
+
+	@Post('zips/plan')
+	@HttpCode(200)
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'planMediaZip', summary: 'What a .zip of these would hold, for the storage check' })
+	planZip(@Body(new ZodValidationPipe(MediaSelection)) body: MediaSelection): Promise<MediaZipPlan> {
+		return this.zipsService.plan(body);
+	}
+
+	@Post('zips')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'createMediaZip', summary: 'Start a .zip: the worker writes it, kept 24 hours' })
+	createZip(
+		@Body(new ZodValidationPipe(MediaZipRequest)) body: MediaZipRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaZip> {
+		return this.zipsService.create(actor(principal), body);
+	}
+
+	@Get('zips')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'listMediaZips', summary: 'Your own .zip files of the last day, newest first' })
+	listZips(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<MediaZipList> {
+		return this.zipsService.list(actor(principal));
+	}
+
+	@Get('zips/:id')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'getMediaZip', summary: 'One of your .zip files, with its real progress' })
+	getZip(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<MediaZip> {
+		return this.zipsService.get(actor(principal), id);
+	}
+
+	@Post('zips/:id/cancel')
+	@HttpCode(200)
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'cancelMediaZip', summary: 'Stop a .zip being made; nothing is kept' })
+	cancelZip(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<MediaZip> {
+		return this.zipsService.cancel(actor(principal), id);
+	}
+
+	@Get('zips/:id/link')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({ operationId: 'mediaZipLink', summary: 'A five-minute link that saves the ready .zip' })
+	zipLink(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaFileAddress> {
+		return this.zipsService.link(actor(principal), id);
+	}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')

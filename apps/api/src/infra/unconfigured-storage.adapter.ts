@@ -79,4 +79,12 @@ export class UnconfiguredStorageAdapter implements StoragePort {
 	async *listKeys(): AsyncIterable<{ key: string; bytes: number }> {
 		throw new Error(UnconfiguredStorageAdapter.MESSAGE);
 	}
+
+	readStream(): AsyncIterable<Uint8Array> {
+		throw new Error(UnconfiguredStorageAdapter.MESSAGE);
+	}
+
+	uploadStream(): Promise<{ bytes: number }> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
 }

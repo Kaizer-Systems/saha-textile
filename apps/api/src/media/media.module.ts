@@ -22,6 +22,7 @@ import { MediaReplaceService } from './media-replace.service';
 import { EmailPicturesService } from './email-pictures.service';
 import { MediaSharingService } from './media-sharing.service';
 import { MediaStorageService } from './media-storage.service';
+import { MediaZipsService } from './media-zips.service';
 import { ShareController } from './share.controller';
 
 /** Media pipeline HTTP surface (owner log § Media). The worker composes the same use cases. */
@@ -44,6 +45,7 @@ import { ShareController } from './share.controller';
 		EmailPicturesService,
 		MediaSharingService,
 		MediaStorageService,
+		MediaZipsService,
 		MediaProfilesService,
 		MediaService,
 		ContentBlocksService,

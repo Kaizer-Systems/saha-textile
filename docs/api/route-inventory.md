@@ -352,6 +352,12 @@ The Media page works as a file manager. Every route below is under `/admin/media
 | `GET`    | `/clean-up`                      | `attachment.index`   | Clean up: files not used for 90 days, the 50 largest, later copies of the same file; never used ones or backups (A44) |
 | `GET`    | `/email-pictures`                | `attachment.index`   | Clean up › Email pictures: email pictures whose photo was deleted or replaced, kept for good (A50)                    |
 | `POST`   | `/email-pictures/delete`         | `attachment.destroy` | Delete chosen email pictures for good after the warning (A51); recorded ones only, audited                            |
+| `POST`   | `/zips/plan`                     | `attachment.index`   | What a .zip of the chosen folders and files would hold (name, files, bytes), for the storage check                    |
+| `POST`   | `/zips`                          | `attachment.index`   | Start a .zip under the storage check's hold; the worker writes it into Spaces; kept 24 hours (A30)                    |
+| `GET`    | `/zips`                          | `attachment.index`   | Your own .zip files of the last day, newest first, with real progress (A48)                                           |
+| `GET`    | `/zips/:id`                      | `attachment.index`   | One of your .zip files; another admin's answers 404                                                                   |
+| `POST`   | `/zips/:id/cancel`               | `attachment.index`   | Stop a .zip being made; nothing is kept                                                                               |
+| `GET`    | `/zips/:id/link`                 | `attachment.index`   | A five-minute link that saves the ready .zip under its name (A30B); 410 before it is ready or after its 24 hours      |
 | `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                                                 |
 | `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                                          |
 | `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                                                 |

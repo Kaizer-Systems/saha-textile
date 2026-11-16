@@ -338,3 +338,89 @@ describe('listKeys (the nightly Spaces check, media step 5)', () => {
 		]);
 	});
 });
+
+describe('readStream and uploadStream (the .zip job, media step 5)', () => {
+	it('reads an object chunk by chunk', async () => {
+		async function* body() {
+			yield new Uint8Array([1, 2]);
+			yield new Uint8Array([3]);
+		}
+		const adapter = new SpacesStorageAdapter(
+			baseConfig,
+			fakeClient(async () => ({ Body: body() })),
+		);
+		const chunks: number[][] = [];
+		for await (const chunk of adapter.readStream('media/med_1/original.jpg')) chunks.push([...chunk]);
+		expect(chunks).toEqual([[1, 2], [3]]);
+	});
+
+	it('stores bytes in parts as they come, private, and completes with every part in order', async () => {
+		const sent: { name: string; input: Record<string, unknown> }[] = [];
+		const adapter = new SpacesStorageAdapter(
+			baseConfig,
+			fakeClient(async (command) => {
+				const name = (command as object).constructor.name;
+				const input = (command as { input: Record<string, unknown> }).input;
+				sent.push({ name, input });
+				if (name === 'CreateMultipartUploadCommand') return { UploadId: 'up_1' };
+				if (name === 'UploadPartCommand') return { ETag: `"e${String(input['PartNumber'])}"` };
+				return {};
+			}),
+		);
+		async function* zipBytes() {
+			yield new Uint8Array(10 * 1024 * 1024);
+			yield new Uint8Array(10 * 1024 * 1024);
+			yield new Uint8Array(3);
+		}
+		await expect(
+			adapter.uploadStream({ key: 'zips/zip_1.zip', contentType: 'application/zip', body: zipBytes() }),
+		).resolves.toEqual({ bytes: 20 * 1024 * 1024 + 3 });
+		expect(sent.map((entry) => entry.name)).toEqual([
+			'CreateMultipartUploadCommand',
+			'UploadPartCommand',
+			'UploadPartCommand',
+			'CompleteMultipartUploadCommand',
+		]);
+		expect(sent[0]?.input).toMatchObject({ Key: 'zips/zip_1.zip', ACL: 'private', ContentType: 'application/zip' });
+		expect(sent[3]?.input).toMatchObject({
+			MultipartUpload: {
+				Parts: [
+					{ ETag: '"e1"', PartNumber: 1 },
+					{ ETag: '"e2"', PartNumber: 2 },
+				],
+			},
+		});
+	});
+
+	it('a failure or a stop ends the upload, so nothing is left stored', async () => {
+		const names: string[] = [];
+		const adapter = new SpacesStorageAdapter(
+			baseConfig,
+			fakeClient(async (command) => {
+				names.push((command as object).constructor.name);
+				return { UploadId: 'up_2' };
+			}),
+		);
+		async function* broken() {
+			yield new Uint8Array(4);
+			throw new Error('the file could not be read');
+		}
+		await expect(
+			adapter.uploadStream({ key: 'zips/zip_2.zip', contentType: 'application/zip', body: broken() }),
+		).rejects.toBeInstanceOf(SpacesStorageError);
+		expect(names).toEqual(['CreateMultipartUploadCommand', 'AbortMultipartUploadCommand']);
+		names.length = 0;
+		async function* one() {
+			yield new Uint8Array(4);
+		}
+		await expect(
+			adapter.uploadStream({
+				key: 'zips/zip_3.zip',
+				contentType: 'application/zip',
+				body: one(),
+				signal: { aborted: true },
+			}),
+		).rejects.toThrow('stopped');
+		expect(names).toEqual(['CreateMultipartUploadCommand', 'AbortMultipartUploadCommand']);
+	});
+});

@@ -47,4 +47,5 @@ export * from './search-outbox.repository';
 export * from './communication-switch.repository';
 export * from './language.repository';
 export * from './media-library.repository';
+export * from './media-zip.repository';
 export * from './email-picture.repository';

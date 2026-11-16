@@ -115,6 +115,7 @@ describe('BullMqMediaJobQueue', () => {
 			'upload-sweep',
 			'kept-files-sweep',
 			'spaces-check',
+			'zip-sweep',
 			'weekly-insight',
 		]);
 	});

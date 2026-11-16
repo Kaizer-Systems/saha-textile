@@ -21,6 +21,8 @@ import { SpacesStorageError, type SpacesObjectAcl, type SpacesStorageConfig } fr
 const DEFAULT_UPLOAD_EXPIRY_SECONDS = 900;
 /** S3's DeleteObjects ceiling per request. */
 const DELETE_BATCH = 1000;
+/** Parts of a streamed upload: at least S3's 5 MB, and 16 MB like the browser's big uploads. */
+const STREAM_PART_BYTES = 16 * 1024 * 1024;
 
 const aclFor = (visibility: ObjectVisibility): SpacesObjectAcl => (visibility === 'public' ? 'public-read' : 'private');
 /** Spaces rejects presigned lifetimes beyond seven days; fail here rather than at upload. */
@@ -288,6 +290,98 @@ export class SpacesStorageAdapter implements StoragePort {
 			);
 		} catch (err) {
 			throw new SpacesStorageError(`Failed to presign part ${input.partNumber} of "${input.key}"`, err);
+		}
+	}
+
+	/** An object's bytes as they arrive (the .zip job): a file of any size, never held whole. */
+	async *readStream(key: string): AsyncIterable<Uint8Array> {
+		assertValidStorageKey(key);
+		let body: unknown;
+		try {
+			body = (await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }))).Body;
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to read object "${key}"`, err);
+		}
+		if (!body || typeof (body as AsyncIterable<unknown>)[Symbol.asyncIterator] !== 'function') {
+			throw new SpacesStorageError(`Object "${key}" has no readable body`);
+		}
+		for await (const chunk of body as AsyncIterable<Uint8Array | string>) {
+			yield typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
+		}
+	}
+
+	/**
+	 * Stores bytes as they are made, private, in parts of `STREAM_PART_BYTES` (the .zip job): S3 takes at most 10,000
+	 * parts, so up to about 160 GB. A failure or an abort ends the upload and leaves nothing stored.
+	 */
+	async uploadStream(input: {
+		key: string;
+		contentType: string;
+		body: AsyncIterable<Uint8Array>;
+		signal?: { readonly aborted: boolean };
+	}): Promise<{ bytes: number }> {
+		assertValidStorageKey(input.key);
+		const started = await this.client.send(
+			new CreateMultipartUploadCommand({
+				Bucket: this.bucket,
+				Key: input.key,
+				ContentType: input.contentType,
+				ACL: aclFor('private'),
+			}),
+		);
+		const uploadId = started.UploadId;
+		if (!uploadId) throw new SpacesStorageError(`No upload id for "${input.key}"`);
+		const parts: { ETag: string; PartNumber: number }[] = [];
+		let pending: Uint8Array[] = [];
+		let pendingBytes = 0;
+		let total = 0;
+		const send = async () => {
+			const body = new Uint8Array(pendingBytes);
+			let at = 0;
+			for (const chunk of pending) {
+				body.set(chunk, at);
+				at += chunk.byteLength;
+			}
+			pending = [];
+			pendingBytes = 0;
+			const partNumber = parts.length + 1;
+			const answer = await this.client.send(
+				new UploadPartCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: uploadId,
+					PartNumber: partNumber,
+					Body: body,
+				}),
+			);
+			if (!answer.ETag) throw new SpacesStorageError(`No ETag for part ${partNumber} of "${input.key}"`);
+			parts.push({ ETag: answer.ETag, PartNumber: partNumber });
+		};
+		try {
+			for await (const chunk of input.body) {
+				if (input.signal?.aborted) throw new SpacesStorageError(`Upload of "${input.key}" was stopped`);
+				pending.push(chunk);
+				pendingBytes += chunk.byteLength;
+				total += chunk.byteLength;
+				if (pendingBytes >= STREAM_PART_BYTES) await send();
+			}
+			if (pendingBytes > 0 || parts.length === 0) await send();
+			await this.client.send(
+				new CompleteMultipartUploadCommand({
+					Bucket: this.bucket,
+					Key: input.key,
+					UploadId: uploadId,
+					MultipartUpload: { Parts: parts },
+				}),
+			);
+			return { bytes: total };
+		} catch (err) {
+			await this.client
+				.send(new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: input.key, UploadId: uploadId }))
+				.catch(() => undefined);
+			throw err instanceof SpacesStorageError
+				? err
+				: new SpacesStorageError(`Failed to store "${input.key}"`, err);
 		}
 	}
 

@@ -122,6 +122,8 @@ export const COLLECTION_NAMES = {
 	MediaShareLink: 'mediaShareLinks',
 	/** Email pictures whose photo was deleted or replaced, kept for good for emails already sent (step 3f). */
 	EmailPicture: 'emailPictures',
+	/** Folder downloads as .zip while they are made and for the 24 hours their link works (media step 5). */
+	MediaZip: 'mediaZips',
 	/** The four legal pages and every earlier version of them (Legal Pages brief, 2026-11-16). */
 	LegalPage: 'legalPages',
 	LegalPageRevision: 'legalPageRevisions',

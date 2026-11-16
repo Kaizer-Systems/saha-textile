@@ -30,7 +30,9 @@ export type ScheduledMediaJob =
 	/** Deletes files kept after a Replace once their 7 days are over (decision 11). */
 	| { type: 'kept-files-sweep' }
 	/** The nightly Spaces check (R5-5): missing pictures the website uses, files no record knows. */
-	| { type: 'spaces-check' };
+	| { type: 'spaces-check' }
+	/** Deletes .zip downloads past their 24 hours, and cancelled or failed ones (media step 5). */
+	| { type: 'zip-sweep' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -190,6 +192,12 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'spaces-check',
 			{ pattern: '15 4 * * *', tz },
 			{ name: 'spaces-check', data: { type: 'spaces-check' } },
+		);
+		// .zip downloads end 24 hours after they are ready: checked every hour.
+		await this.queue.upsertJobScheduler(
+			'zip-sweep',
+			{ every: 60 * 60_000 },
+			{ name: 'zip-sweep', data: { type: 'zip-sweep' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

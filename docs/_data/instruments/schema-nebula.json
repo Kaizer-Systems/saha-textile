@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 88,
-		"existingModelCount": 64,
+		"nodeCount": 89,
+		"existingModelCount": 65,
 		"targetOnlyCount": 24,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -1231,6 +1231,19 @@
 			"currentModel": "packages/adapters-db-mongo/src/models/legal-page.model.ts",
 			"purpose": "Every earlier version of a legal page, kept with no screen so the terms on any day can be looked up.",
 			"references": ["legalPages"]
+				},
+		{
+			"id": "mediaZips",
+			"label": "mediaZips",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "add",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"source": "decisions § media step 5 answers (2026-11-16)",
+			"currentModel": "packages/adapters-db-mongo/src/models/media-library.model.ts",
+			"purpose": "Folder downloads as .zip: progress while the worker writes one, and its stored file for the 24 hours its link works.",
+			"references": ["mediaAssets", "mediaFolders"]
 		}
 	]
 }

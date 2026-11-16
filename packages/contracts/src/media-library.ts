@@ -700,3 +700,48 @@ export type EmailPictureList = z.infer<typeof EmailPictureList>;
 /** `POST /admin/media/library/email-pictures/delete` (A51): only after the warning is accepted. */
 export const EmailPictureDelete = z.object({ keys: z.array(z.string().min(1)).min(1).max(1000) }).strict();
 export type EmailPictureDelete = z.infer<typeof EmailPictureDelete>;
+
+// --- Folder downloads as .zip (media step 5, A30, A30B, A48; owner approved the zip library on 16 Nov) ----------
+
+/** What goes in a .zip: files and folders picked together, with their folders' contents. */
+export const MediaZipRequest = z
+	.object({
+		fileIds: z.array(Id).max(5000).default([]),
+		folderIds: z.array(Id).max(500).default([]),
+		/** The hold the storage check gave (R4-7): the .zip is stored for 24 hours. */
+		reservationId: Id.optional(),
+	})
+	.strict()
+	.refine((value) => value.fileIds.length + value.folderIds.length > 0, { message: 'nothing chosen' });
+export type MediaZipRequest = z.infer<typeof MediaZipRequest>;
+
+/** What a .zip would hold, before the storage check: its name, how many files and their bytes. */
+export const MediaZipPlan = z.object({
+	name: z.string(),
+	files: z.number().int().nonnegative(),
+	bytes: z.number().int().nonnegative(),
+});
+export type MediaZipPlan = z.infer<typeof MediaZipPlan>;
+
+export const MediaZipState = z.enum(['adding', 'ready', 'failed', 'cancelled', 'expired']);
+export type MediaZipState = z.infer<typeof MediaZipState>;
+
+/** One .zip being made or ready (A30, A30B): real counts from the worker, a link that works 24 hours once ready. */
+export const MediaZip = z.object({
+	id: Id,
+	/** The file's name, `Product photos.zip`. */
+	name: z.string(),
+	state: MediaZipState,
+	files: z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+	bytes: z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+	createdAt: IsoDateTime,
+	readyAt: IsoDateTime.nullable(),
+	/** When the stored .zip is deleted: 24 hours after it is ready. */
+	expiresAt: IsoDateTime.nullable(),
+	error: z.string().nullable(),
+});
+export type MediaZip = z.infer<typeof MediaZip>;
+
+/** The person's own .zip files of the last 24 hours, newest first (the tray follows them). */
+export const MediaZipList = z.object({ zips: z.array(MediaZip) });
+export type MediaZipList = z.infer<typeof MediaZipList>;

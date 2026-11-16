@@ -36,6 +36,7 @@ const WORKSPACES = {
 	'adapters-youtube': { dir: 'packages/adapters-youtube' },
 	'adapters-payments': { dir: 'packages/adapters-payments' },
 	'adapters-cdn-cloudflare': { dir: 'packages/adapters-cdn-cloudflare' },
+	'adapters-archive-zip': { dir: 'packages/adapters-archive-zip' },
 };
 
 const envFile = join(ROOT, 'apps/api/.env');

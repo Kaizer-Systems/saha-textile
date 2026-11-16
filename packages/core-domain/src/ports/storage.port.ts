@@ -88,4 +88,16 @@ export interface StoragePort {
 	abortMultipartUpload(input: { key: string; uploadId: string }): Promise<void>;
 	/** Every stored file under a prefix, page by page (the nightly Spaces check, media step 5). */
 	listKeys(prefix: string): AsyncIterable<{ key: string; bytes: number }>;
+	/** An object's bytes as they arrive, for files too big to hold whole (the .zip job, media step 5). */
+	readStream(key: string): AsyncIterable<Uint8Array>;
+	/**
+	 * Stores bytes as they are made, in parts, private (the .zip job): nothing is held whole in memory. A failure or
+	 * `signal` abort leaves nothing stored. Answers how many bytes were stored.
+	 */
+	uploadStream(input: {
+		key: string;
+		contentType: string;
+		body: AsyncIterable<Uint8Array>;
+		signal?: { readonly aborted: boolean };
+	}): Promise<{ bytes: number }>;
 }

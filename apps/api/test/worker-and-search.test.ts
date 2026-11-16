@@ -123,6 +123,10 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		},
 		MongoMediaProfileRepository: plain,
 		MongoEmailPictureRepository: plain,
+		// Folder downloads as .zip (media step 5): made when the worker starts.
+		MongoMediaZipRepository: plain,
+		MongoStorageLedgerRepository: plain,
+		MongoMediaFolderRepository: plain,
 	};
 });
 vi.mock('@saha-textile/core-domain', async (original) => ({

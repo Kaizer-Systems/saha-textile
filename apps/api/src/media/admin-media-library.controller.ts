@@ -52,6 +52,8 @@ import {
 	EmailPictureDelete,
 	EmailPictureQuery,
 	type EmailPictureList,
+	MediaCleanUpQuery,
+	type MediaCleanUpResponse,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -323,6 +325,19 @@ export class AdminMediaLibraryController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<MediaOperationResult> {
 		return this.library.restore(actor(principal), body);
+	}
+
+	@Get('clean-up')
+	@RequirePermissions('attachment.index')
+	@ApiOperation({
+		operationId: 'listCleanUp',
+		summary: 'Clean up: files not used for 90 days, the largest, the same file twice; never used or backups (A44)',
+	})
+	cleanUp(
+		@Query(new ZodValidationPipe(MediaCleanUpQuery)) query: MediaCleanUpQuery,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaCleanUpResponse> {
+		return this.library.cleanUp(actor(principal), query);
 	}
 
 	@Get('email-pictures')

@@ -127,7 +127,9 @@ export const MediaBrowseResponse = z.object({
 	/** Who starred what, for Favourites › Everyone's (A17B). */
 	starredBy: z.record(z.string(), z.array(z.string())).default({}),
 	/** In a picker: what this folder holds that isn't listed (D15: “2 photos hidden (no Product 3:4) · 2 files hidden”). */
-	hidden: z.object({ noVersion: z.number().int().nonnegative(), notImage: z.number().int().nonnegative() }).optional(),
+	hidden: z
+		.object({ noVersion: z.number().int().nonnegative(), notImage: z.number().int().nonnegative() })
+		.optional(),
 });
 export type MediaBrowseResponse = z.infer<typeof MediaBrowseResponse>;
 
@@ -643,6 +645,39 @@ export const EmailPictureSent = z.enum(['all', 'never', 'over_1y', 'over_2y']);
 export type EmailPictureSent = z.infer<typeof EmailPictureSent>;
 
 /** `GET /admin/media/library/email-pictures` */
+// --- Clean up (A44; media step 5) ----------------------------------------------------------------
+
+/** The Clean up lists besides Email pictures: never a file the website uses, never a backup. */
+export const MediaCleanUpList = z.enum(['unused', 'largest', 'duplicates']);
+export type MediaCleanUpList = z.infer<typeof MediaCleanUpList>;
+
+/** `GET /admin/media/library/clean-up`. */
+export const MediaCleanUpQuery = z.object({
+	list: MediaCleanUpList.default('unused'),
+	page: z.coerce.number().int().positive().max(1000).default(1),
+});
+export type MediaCleanUpQuery = z.infer<typeof MediaCleanUpQuery>;
+
+/** One file a Clean up list offers, with why it is there. */
+export const MediaCleanUpRow = z.object({
+	file: MediaFileRow,
+	/** Unused: when it was uploaded. Same file twice: the copy it repeats (uploaded first). */
+	uploadedAt: IsoDateTime.nullable(),
+	sameAs: z.object({ id: Id, name: z.string(), location: z.string() }).nullable(),
+});
+export type MediaCleanUpRow = z.infer<typeof MediaCleanUpRow>;
+
+export const MediaCleanUpResponse = z.object({
+	list: MediaCleanUpList,
+	rows: z.array(MediaCleanUpRow),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+	total: z.number().int().nonnegative(),
+	/** Each list's size, for the tabs. */
+	counts: z.object({ unused: z.number().int(), largest: z.number().int(), duplicates: z.number().int() }),
+});
+export type MediaCleanUpResponse = z.infer<typeof MediaCleanUpResponse>;
+
 export const EmailPictureQuery = z.object({
 	sent: EmailPictureSent.default('all'),
 	after: z.string().min(1).optional(),

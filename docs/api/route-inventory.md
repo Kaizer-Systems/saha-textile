@@ -296,86 +296,87 @@ Admin catalogue reads answer `no-store`.
 
 ## Admin media and content routes
 
-| Method   | Route                                 | Access               | Purpose                                                                                   |
-| -------- | ------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------- |
-| `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                             |
-| `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                                     |
-| `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                                           |
-| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                                    |
-| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Save logo sets, link preview picture, profiles, store links and colours                   |
-| `POST`   | `/admin/settings/brand/app-link`      | `setting.edit`       | Check that a Google Play or App Store address belongs to a real app                       |
-| `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                             |
-| `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                               |
-| `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                                     |
-| `GET`    | `/admin/youtube/settings`             | `setting.index`      | YouTube rail settings                                                                     |
-| `PUT`    | `/admin/youtube/settings`             | `setting.edit`       | Edit the rail: handle, display count, placements                                          |
-| `GET`    | `/admin/media`                        | `attachment.index`   | Media library page with previews, usage counts and stale roles                            |
-| `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                                     |
-| `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; new widths apply to files made afterwards                                    |
-| `GET`    | `/admin/media/profiles`               | `attachment.index`   | Image profiles, built-in first, each with how many photos hold a version of it            |
-| `GET`    | `/admin/media/profiles/:key`          | `attachment.index`   | One image profile with its photo count                                                    |
-| `GET`    | `/admin/media/profiles/:key/refresh` | `setting.edit` | Bring older versions up to date (F02): photos and versions made with earlier settings, bytes, runs under way |
-| `POST`   | `/admin/media/profiles/:key/refresh` | `setting.edit` | Start it: each photo remade like a Replace on its own original, busy photos left for later (step 3e) |
-| `POST`   | `/admin/media/profiles`               | `setting.edit`       | Add an image profile; its key is made from the name                                       |
-| `PUT`    | `/admin/media/profiles/:key`          | `setting.edit`       | Edit or switch an image profile on or off; applies to versions made afterwards            |
-| `DELETE` | `/admin/media/profiles/:key`          | `setting.edit`       | Delete an image profile no photo uses; built-in profiles are never deleted                |
-| `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy and storage checks, then a presigned PUT for the private original |
-| `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                                     |
-| `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                             |
-| `GET`    | `/admin/media/:assetId`               | `attachment.index`   | One library item                                                                          |
+| Method   | Route                                 | Access               | Purpose                                                                                                                       |
+| -------- | ------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                                                                 |
+| `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                                                                         |
+| `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                                                                               |
+| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                                                                        |
+| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Save logo sets, link preview picture, profiles, store links and colours                                                       |
+| `POST`   | `/admin/settings/brand/app-link`      | `setting.edit`       | Check that a Google Play or App Store address belongs to a real app                                                           |
+| `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                                                                 |
+| `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                                                                   |
+| `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                                                                         |
+| `GET`    | `/admin/youtube/settings`             | `setting.index`      | YouTube rail settings                                                                                                         |
+| `PUT`    | `/admin/youtube/settings`             | `setting.edit`       | Edit the rail: handle, display count, placements                                                                              |
+| `GET`    | `/admin/media`                        | `attachment.index`   | Media library page with previews, usage counts and stale roles                                                                |
+| `GET`    | `/admin/media/roles`                  | `attachment.index`   | The image size ladder                                                                                                         |
+| `PUT`    | `/admin/media/roles/:key`             | `setting.edit`       | Edit a role; new widths apply to files made afterwards                                                                        |
+| `GET`    | `/admin/media/profiles`               | `attachment.index`   | Image profiles, built-in first, each with how many photos hold a version of it                                                |
+| `GET`    | `/admin/media/profiles/:key`          | `attachment.index`   | One image profile with its photo count                                                                                        |
+| `GET`    | `/admin/media/profiles/:key/refresh`  | `setting.edit`       | Bring older versions up to date (F02): photos and versions made with earlier settings, bytes, runs under way                  |
+| `POST`   | `/admin/media/profiles/:key/refresh`  | `setting.edit`       | Start it: each photo remade like a Replace on its own original, busy photos left for later (step 3e)                          |
+| `POST`   | `/admin/media/profiles`               | `setting.edit`       | Add an image profile; its key is made from the name                                                                           |
+| `PUT`    | `/admin/media/profiles/:key`          | `setting.edit`       | Edit or switch an image profile on or off; applies to versions made afterwards                                                |
+| `DELETE` | `/admin/media/profiles/:key`          | `setting.edit`       | Delete an image profile no photo uses; built-in profiles are never deleted                                                    |
+| `POST`   | `/admin/media/presign`                | `attachment.create`  | Start an upload: policy and storage checks, then a presigned PUT for the private original                                     |
+| `POST`   | `/admin/media/:assetId/finalize`      | `attachment.create`  | The upload finished; queue processing                                                                                         |
+| `GET`    | `/admin/media/:assetId/status`        | `attachment.index`   | Processing state of an upload                                                                                                 |
+| `GET`    | `/admin/media/:assetId`               | `attachment.index`   | One library item                                                                                                              |
 | `PATCH`  | `/admin/media/:assetId`               | `attachment.edit`    | Edit slug, alt, title and caption; a new slug on a photo with versions runs like a Replace (step 3d), else queues a reprocess |
-| `POST`   | `/admin/media/:assetId/reprocess`     | `attachment.edit`    | Regenerate every role from the retained original                                          |
-| `DELETE` | `/admin/media/:assetId`               | `attachment.destroy` | Soft-delete an unused image; GC removes files after 30 days                               |
-| `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                                        |
-| `POST`   | `/admin/reviews/:reviewId/moderation` | `review.edit`        | Approve or reject a review and its photos                                                 |
+| `POST`   | `/admin/media/:assetId/reprocess`     | `attachment.edit`    | Regenerate every role from the retained original                                                                              |
+| `DELETE` | `/admin/media/:assetId`               | `attachment.destroy` | Soft-delete an unused image; GC removes files after 30 days                                                                   |
+| `GET`    | `/admin/reviews`                      | `review.index`       | Reviews with photo previews (signed while private)                                                                            |
+| `POST`   | `/admin/reviews/:reviewId/moderation` | `review.edit`        | Approve or reject a review and its photos                                                                                     |
 
 ## Admin Media page routes
 
 The Media page works as a file manager. Every route below is under `/admin/media/library` and needs an admin session.
 
-| Method   | Route                            | Access               | Purpose                                                                                          |
-| -------- | -------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------ |
-| `GET`    | `/`                              | `attachment.index`   | A folder, a search, a category, Recent, Favourites or Trash                                      |
-| `GET`    | `/tree`                          | `attachment.index`   | Every folder not in Trash, for the folder tree                                                   |
-| `GET`    | `/activity`                      | `attachment.index`   | Who did what on the Media page, newest first; `?entityId=` lists one file's or folder's trail    |
-| `GET`    | `/files/:id/details`             | `attachment.index`   | One file: facts, folder, uploader, where used, its versions with their files, per-photo pictures |
-| `POST`   | `/files/:id/versions`            | `attachment.edit`    | Reprocess one photo: add versions (a profile and a fill each), never twice; storage check first  |
-| `DELETE` | `/files/:id/versions/:versionId` | `attachment.edit`    | Remove a version the website does not show, with its files; never the last one                   |
-| `POST`   | `/versions`                      | `attachment.edit`    | The same versions for up to 200 photos; a fill is “As is” where a photo already fits             |
-| `POST`   | `/versions/status`               | `attachment.index`   | How many of these photos still have versions being made, for the tray                            |
-| `POST`   | `/files/:id/replace`             | `attachment.edit`    | Replace a photo: the new one is checked against every version, then uploads beside the old one   |
-| `POST`   | `/files/:id/replace/finish`      | `attachment.edit`    | The new photo is uploaded: its versions are remade, then it takes the old one's place everywhere |
-| `GET`    | `/files/:id/replace`             | `attachment.index`   | Where a Replace has got, for its three steps                                                     |
-| `DELETE` | `/files/:id/replace`             | `attachment.edit`    | Stop a Replace still uploading, or clear one that failed                                         |
-| `PUT`    | `/files/:id/focal`               | `attachment.edit`    | Set the point every crop keeps; the photo's Crop versions are remade around it                   |
-| `GET`    | `/email-pictures`                | `attachment.index`   | Clean up › Email pictures: email pictures whose photo was deleted or replaced, kept for good (A50) |
-| `POST`   | `/email-pictures/delete`         | `attachment.destroy` | Delete chosen email pictures for good after the warning (A51); recorded ones only, audited       |
-| `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                            |
-| `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                     |
-| `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                            |
-| `POST`   | `/move`                          | `attachment.edit`    | Move files and folders; never a folder into itself                                               |
-| `POST`   | `/trash/check`                   | `attachment.destroy` | Before Trash: the chosen images the website uses, folders included; nothing moves                |
-| `POST`   | `/trash`                         | `attachment.destroy` | Move to Trash; images the website uses stay, named with where they are used                      |
-| `POST`   | `/restore`                       | `attachment.edit`    | Restore from Trash to the old folder, or to My files                                             |
-| `POST`   | `/delete-forever`                | `attachment.destroy` | Delete what is in Trash for good; stored files go through a queued job                           |
-| `POST`   | `/undo/:undoId`                  | `attachment.edit`    | Undo your last move, rename or Trash, once                                                       |
-| `PUT`    | `/favourites`                    | `attachment.edit`    | Star or unstar a folder or a file for yourself                                                   |
-| `POST`   | `/duplicates`                    | `attachment.create`  | Before an upload: the same bytes in Media, or the same name                                      |
-| `POST`   | `/files/presign`                 | `attachment.create`  | Start an upload: a plain file, or a photo with the versions to make; held against the plan       |
-| `POST`   | `/files/:id/finalize`            | `attachment.create`  | The plain file is uploaded and ready                                                             |
-| `POST`   | `/files/:id/cancel`              | `attachment.create`  | Drop your own unfinished upload: its record, any stored bytes and its hold                       |
-| `POST`   | `/files/:id/multipart`           | `attachment.create`  | Start a big upload (100 MB and over) in parts                                                    |
-| `POST`   | `/files/:id/parts`               | `attachment.create`  | Signed addresses for the next parts, an hour each                                                |
-| `GET`    | `/files/:id/parts`               | `attachment.create`  | The parts already in Spaces, so a cut-off upload carries on                                      |
-| `PUT`    | `/files/:id/visibility`          | `attachment.edit`    | Public gives a plain file a permanent address; private takes it away                             |
-| `GET`    | `/files/:id/address`             | `attachment.index`   | Preview (`as=view`) or Download (`as=save`): the original for five minutes                       |
-| `GET`    | `/files/:id/links`               | `attachment.index`   | A file's share links, and its public address or website picture                                  |
-| `POST`   | `/files/:id/links`               | `attachment.edit`    | Make a share link; its code is in this answer only                                               |
-| `PATCH`  | `/links/:linkId`                 | `attachment.edit`    | Stop a link for good, or give a live link a new end                                              |
-| `GET`    | `/storage`                       | `attachment.index`   | The storage bar and its details                                                                  |
-| `POST`   | `/storage/check`                 | `attachment.create`  | Before work that adds stored data: go and hold the bytes, ask, or refuse                         |
-| `DELETE` | `/storage/holds/:holdId`         | `attachment.create`  | End your own storage hold early                                                                  |
-| `PUT`    | `/storage/settings`              | `attachment.edit`    | Super admins only: whether other admins may use on-demand storage                                |
+| Method   | Route                            | Access               | Purpose                                                                                                               |
+| -------- | -------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/`                              | `attachment.index`   | A folder, a search, a category, Recent, Favourites or Trash                                                           |
+| `GET`    | `/tree`                          | `attachment.index`   | Every folder not in Trash, for the folder tree                                                                        |
+| `GET`    | `/activity`                      | `attachment.index`   | Who did what on the Media page, newest first; `?entityId=` lists one file's or folder's trail                         |
+| `GET`    | `/files/:id/details`             | `attachment.index`   | One file: facts, folder, uploader, where used, its versions with their files, per-photo pictures                      |
+| `POST`   | `/files/:id/versions`            | `attachment.edit`    | Reprocess one photo: add versions (a profile and a fill each), never twice; storage check first                       |
+| `DELETE` | `/files/:id/versions/:versionId` | `attachment.edit`    | Remove a version the website does not show, with its files; never the last one                                        |
+| `POST`   | `/versions`                      | `attachment.edit`    | The same versions for up to 200 photos; a fill is “As is” where a photo already fits                                  |
+| `POST`   | `/versions/status`               | `attachment.index`   | How many of these photos still have versions being made, for the tray                                                 |
+| `POST`   | `/files/:id/replace`             | `attachment.edit`    | Replace a photo: the new one is checked against every version, then uploads beside the old one                        |
+| `POST`   | `/files/:id/replace/finish`      | `attachment.edit`    | The new photo is uploaded: its versions are remade, then it takes the old one's place everywhere                      |
+| `GET`    | `/files/:id/replace`             | `attachment.index`   | Where a Replace has got, for its three steps                                                                          |
+| `DELETE` | `/files/:id/replace`             | `attachment.edit`    | Stop a Replace still uploading, or clear one that failed                                                              |
+| `PUT`    | `/files/:id/focal`               | `attachment.edit`    | Set the point every crop keeps; the photo's Crop versions are remade around it                                        |
+| `GET`    | `/clean-up`                      | `attachment.index`   | Clean up: files not used for 90 days, the 50 largest, later copies of the same file; never used ones or backups (A44) |
+| `GET`    | `/email-pictures`                | `attachment.index`   | Clean up › Email pictures: email pictures whose photo was deleted or replaced, kept for good (A50)                    |
+| `POST`   | `/email-pictures/delete`         | `attachment.destroy` | Delete chosen email pictures for good after the warning (A51); recorded ones only, audited                            |
+| `POST`   | `/folders`                       | `attachment.create`  | A new folder; a taken name gets “(1)”                                                                                 |
+| `PATCH`  | `/folders/:id`                   | `attachment.edit`    | Rename a folder; file addresses never change                                                                          |
+| `PATCH`  | `/files/:id`                     | `attachment.edit`    | Rename a file; its extension and website address stay                                                                 |
+| `POST`   | `/move`                          | `attachment.edit`    | Move files and folders; never a folder into itself                                                                    |
+| `POST`   | `/trash/check`                   | `attachment.destroy` | Before Trash: the chosen images the website uses, folders included; nothing moves                                     |
+| `POST`   | `/trash`                         | `attachment.destroy` | Move to Trash; images the website uses stay, named with where they are used                                           |
+| `POST`   | `/restore`                       | `attachment.edit`    | Restore from Trash to the old folder, or to My files                                                                  |
+| `POST`   | `/delete-forever`                | `attachment.destroy` | Delete what is in Trash for good; stored files go through a queued job                                                |
+| `POST`   | `/undo/:undoId`                  | `attachment.edit`    | Undo your last move, rename or Trash, once                                                                            |
+| `PUT`    | `/favourites`                    | `attachment.edit`    | Star or unstar a folder or a file for yourself                                                                        |
+| `POST`   | `/duplicates`                    | `attachment.create`  | Before an upload: the same bytes in Media, or the same name                                                           |
+| `POST`   | `/files/presign`                 | `attachment.create`  | Start an upload: a plain file, or a photo with the versions to make; held against the plan                            |
+| `POST`   | `/files/:id/finalize`            | `attachment.create`  | The plain file is uploaded and ready                                                                                  |
+| `POST`   | `/files/:id/cancel`              | `attachment.create`  | Drop your own unfinished upload: its record, any stored bytes and its hold                                            |
+| `POST`   | `/files/:id/multipart`           | `attachment.create`  | Start a big upload (100 MB and over) in parts                                                                         |
+| `POST`   | `/files/:id/parts`               | `attachment.create`  | Signed addresses for the next parts, an hour each                                                                     |
+| `GET`    | `/files/:id/parts`               | `attachment.create`  | The parts already in Spaces, so a cut-off upload carries on                                                           |
+| `PUT`    | `/files/:id/visibility`          | `attachment.edit`    | Public gives a plain file a permanent address; private takes it away                                                  |
+| `GET`    | `/files/:id/address`             | `attachment.index`   | Preview (`as=view`) or Download (`as=save`): the original for five minutes                                            |
+| `GET`    | `/files/:id/links`               | `attachment.index`   | A file's share links, and its public address or website picture                                                       |
+| `POST`   | `/files/:id/links`               | `attachment.edit`    | Make a share link; its code is in this answer only                                                                    |
+| `PATCH`  | `/links/:linkId`                 | `attachment.edit`    | Stop a link for good, or give a live link a new end                                                                   |
+| `GET`    | `/storage`                       | `attachment.index`   | The storage bar and its details                                                                                       |
+| `POST`   | `/storage/check`                 | `attachment.create`  | Before work that adds stored data: go and hold the bytes, ask, or refuse                                              |
+| `DELETE` | `/storage/holds/:holdId`         | `attachment.create`  | End your own storage hold early                                                                                       |
+| `PUT`    | `/storage/settings`              | `attachment.edit`    | Super admins only: whether other admins may use on-demand storage                                                     |
 
 Rules the routes apply:
 

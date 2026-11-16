@@ -6,6 +6,8 @@ import type {
 	MediaAsset,
 	MediaBrowseQuery,
 	MediaBrowseResponse,
+	MediaCleanUpQuery,
+	MediaCleanUpResponse,
 	MediaDuplicateAnswer,
 	MediaDuplicateQuery,
 	MediaFavouriteWrite,
@@ -31,6 +33,7 @@ import type {
 	MediaAddVersionsResult,
 	MediaVersionsStatus,
 } from '@saha-textile/contracts';
+import { MediaCategory } from '@saha-textile/contracts';
 import {
 	type EmailPictureRepository,
 	type AdminUserRepository,
@@ -91,6 +94,12 @@ import {
 } from '../infra/tokens';
 import { LanguageStore } from '../languages/language-store';
 import { MediaStorageService } from './media-storage.service';
+
+/** Clean up (A44): a list's page size, the days a file must sit unused, the largest files shown, groups read. */
+const CLEAN_UP_PAGE = 50;
+const CLEAN_UP_UNUSED_DAYS = 90;
+const CLEAN_UP_LARGEST = 50;
+const CLEAN_UP_GROUPS = 500;
 
 /** English fallbacks; the Media page names each refusal in its own words. */
 const REFUSALS: Readonly<Record<string, string>> = {
@@ -939,6 +948,93 @@ export class MediaLibraryService {
 		return {
 			searchLocales: this.languages?.content() ?? ['en', 'bn'],
 			searchFolders: foldersNamedBy(words, folders),
+		};
+	}
+
+	// --- Clean up (A44; media step 5) ---------------------------------------------------------------
+
+	/**
+	 * Clean up's lists: files not used for 90 days (uploaded before then and on no page), the 50 largest files on no
+	 * page, and every copy of a file uploaded twice after the first. Files the website uses and backups never show.
+	 */
+	async cleanUp(userId: string, query: MediaCleanUpQuery, now = new Date()): Promise<MediaCleanUpResponse> {
+		const pageSize = CLEAN_UP_PAGE;
+		const used = await this.files.referencedIds();
+		const usedSet = new Set(used);
+		const base = {
+			trashed: false,
+			categories: MediaCategory.options.filter((category) => category !== 'backups'),
+			excludeIds: used,
+		};
+		const before = new Date(now.getTime() - CLEAN_UP_UNUSED_DAYS * 86_400_000).toISOString();
+		const unusedFilter = { ...base, createdBefore: before, sort: 'created' as const, direction: 'asc' as const };
+		const largestFilter = { ...base, sort: 'size' as const, direction: 'desc' as const };
+		const [unusedCount, largestCount, groups] = await Promise.all([
+			this.files.browse({ ...unusedFilter, page: 1, pageSize: 1 }).then((result) => result.total),
+			this.files.browse({ ...largestFilter, page: 1, pageSize: 1 }).then((result) => result.total),
+			this.files.sameFileGroups(CLEAN_UP_GROUPS),
+		]);
+		// Same file twice: the first upload stays; every later copy the website doesn't use is offered.
+		const copies = groups.flatMap((group) =>
+			group.ids.slice(1).flatMap((id) => (usedSet.has(id) ? [] : [{ id, first: group.ids[0] as string }])),
+		);
+		const counts = {
+			unused: unusedCount,
+			largest: Math.min(CLEAN_UP_LARGEST, largestCount),
+			duplicates: copies.length,
+		};
+		const allFolders = await this.folders.listAll();
+		const names = new Map(allFolders.map((row) => [row.id, row]));
+		const location = (folderId: string | null | undefined) => this.location(folderId ?? null, names);
+		const starred = new Set((await this.stars.listForUser(userId)).map((star) => `${star.type}:${star.id}`));
+
+		let assets: MediaAsset[];
+		let total: number;
+		let firsts = new Map<string, MediaAsset>();
+		const sameAs = new Map<string, string>();
+		if (query.list === 'duplicates') {
+			const pageCopies = copies.slice((query.page - 1) * pageSize, query.page * pageSize);
+			const found = await this.assets.findManyByIds([
+				...new Set(pageCopies.flatMap((copy) => [copy.id, copy.first])),
+			]);
+			const byId = new Map(found.map((asset) => [asset.id, asset]));
+			assets = pageCopies.flatMap((copy) => byId.get(copy.id) ?? []);
+			firsts = new Map(
+				pageCopies.flatMap((copy) =>
+					byId.get(copy.first) ? [[copy.id, byId.get(copy.first) as MediaAsset]] : [],
+				),
+			);
+			for (const copy of pageCopies) sameAs.set(copy.id, copy.first);
+			total = copies.length;
+		} else if (query.list === 'largest') {
+			const first = (query.page - 1) * pageSize;
+			const result =
+				first < CLEAN_UP_LARGEST
+					? await this.files.browse({ ...largestFilter, page: query.page, pageSize })
+					: { items: [] as MediaAsset[] };
+			assets = result.items.slice(0, Math.max(0, CLEAN_UP_LARGEST - first));
+			total = counts.largest;
+		} else {
+			const result = await this.files.browse({ ...unusedFilter, page: query.page, pageSize });
+			assets = result.items;
+			total = result.total;
+		}
+		const rows = await this.fileRows(assets, starred, location, now);
+		return {
+			list: query.list,
+			rows: rows.map((file, index) => {
+				const asset = assets[index] as MediaAsset;
+				const first = firsts.get(asset.id);
+				return {
+					file,
+					uploadedAt: asset.createdAt ?? null,
+					sameAs: first ? { id: first.id, name: fileName(first), location: location(first.folderId) } : null,
+				};
+			}),
+			page: query.page,
+			pageSize,
+			total,
+			counts,
 		};
 	}
 

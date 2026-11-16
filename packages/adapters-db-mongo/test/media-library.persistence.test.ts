@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
-import { MediaFolderModel, MediaShareLinkModel, StorageReservationModel } from '../src/models/index';
+import { MediaAssetModel, MediaFolderModel, MediaShareLinkModel, StorageReservationModel } from '../src/models/index';
 import {
 	MongoMediaFavouriteRepository,
 	MongoMediaFolderRepository,
@@ -153,6 +153,9 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 		expect(
 			(await page({ search: 'wedding', searchFolders: { wedding: ['fld_bridal'] } })).items.map((row) => row.id),
 		).toEqual(['med_blue']);
+		// Clean up (A44): uploaded before a date, and files sharing their bytes.
+		expect((await page({ createdBefore: '2000-01-01T00:00:00.000Z' })).items).toEqual([]);
+		expect((await page({ createdBefore: '2999-01-01T00:00:00.000Z' })).total).toBeGreaterThanOrEqual(3);
 		// A language code is a field name, so anything else is never read.
 		expect((await page({ search: 'x', searchLocales: ['$where', 'a.b'] })).items).toEqual([]);
 		expect((await page({ category: 'documents' })).items.map((row) => row.id)).toEqual(['med_pdf']);
@@ -163,6 +166,16 @@ describe.runIf(hasMongoEnv())('media library persistence (rs0)', () => {
 		});
 
 		expect((await assets.findBySha256(['a'.repeat(64)])).map((row) => row.id)).toEqual(['med_red']);
+		await assets.create(
+			file('med_red_copy', { folderId: null, displayName: 'red copy.jpg', sha256: 'a'.repeat(64) }),
+		);
+		const groups = await assets.sameFileGroups(10);
+		expect(groups.find((group) => group.sha256 === 'a'.repeat(64))?.ids.sort()).toEqual([
+			'med_red',
+			'med_red_copy',
+		]);
+		// The copy goes again, so the counts below are untouched.
+		await MediaAssetModel.deleteOne({ _id: 'med_red_copy' }).exec();
 		expect(await assets.namesIn('fld_banarasi')).toEqual(['Red Banarasi front.jpg']);
 		// S6: the same name, whatever the letter case, only in that folder.
 		expect((await assets.findNamedIn('fld_banarasi', ['red banarasi FRONT.jpg'])).map((row) => row.id)).toEqual([

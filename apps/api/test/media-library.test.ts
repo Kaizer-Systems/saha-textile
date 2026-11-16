@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { type AuditLog, MediaAsset, type MediaFolder, type MediaVersion } from '@saha-textile/contracts';
-import { type MediaBrowseFilter, SEEDED_MEDIA_PROFILES } from '@saha-textile/core-domain';
+import { type MediaBrowseFilter, SEEDED_MEDIA_PROFILES, mediaCategory } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { LanguageStore } from '../src/languages/language-store';
@@ -63,6 +63,12 @@ function harness() {
 					(filter.folderId === undefined || (asset.folderId ?? null) === filter.folderId) &&
 					(!filter.withinFolders || filter.withinFolders.includes(asset.folderId ?? '')) &&
 					(!filter.ids || filter.ids.includes(asset.id)) &&
+					(!filter.excludeIds || !filter.excludeIds.includes(asset.id)) &&
+					(!filter.categories ||
+						filter.categories.includes(
+							mediaCategory(asset.originalFormat, asset.displayName ?? asset.slug),
+						)) &&
+					(!filter.createdBefore || (asset.createdAt ?? '') < filter.createdBefore) &&
 					(!filter.search || (asset.displayName ?? '').toLowerCase().includes(filter.search.toLowerCase())) &&
 					(!filter.kinds || filter.kinds.includes(asset.kind)) &&
 					(!filter.withVersionOf ||
@@ -70,7 +76,30 @@ function harness() {
 					(!filter.withoutVersionOf ||
 						!asset.versions?.some((v) => v.profileKey === filter.withoutVersionOf && v.state === 'ready')),
 			);
-			return { items, total: items.length, page: filter.page, pageSize: filter.pageSize };
+			const sorted =
+				filter.sort === 'size'
+					? [...items].sort((a, b) => b.originalByteSize - a.originalByteSize)
+					: filter.sort === 'created'
+						? [...items].sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
+						: items;
+			const paged = Number.isInteger(filter.page) && Number.isInteger(filter.pageSize);
+			const start = paged ? (filter.page - 1) * filter.pageSize : 0;
+			return {
+				items: paged ? sorted.slice(start, start + filter.pageSize) : sorted,
+				total: items.length,
+				page: filter.page,
+				pageSize: filter.pageSize,
+			};
+		},
+		sameFileGroups: async () => {
+			const groups = new Map<string, string[]>();
+			for (const asset of [...files.values()].sort((a, b) =>
+				(a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
+			)) {
+				if (!asset.sha256 || asset.trashedAt || !live(asset)) continue;
+				groups.set(asset.sha256, [...(groups.get(asset.sha256) ?? []), asset.id]);
+			}
+			return [...groups].filter(([, ids]) => ids.length > 1).map(([sha256, ids]) => ({ sha256, ids }));
 		},
 		findBySha256: async (hashes: readonly string[]) =>
 			[...files.values()].filter((asset) => !asset.trashedAt && hashes.includes(asset.sha256 ?? '')),
@@ -1292,5 +1321,43 @@ describe('Media search (media step 4e)', () => {
 			pageSize: 60,
 		} as never);
 		expect(h.browseRepo.seen.at(-1)?.searchFolders).toBeUndefined();
+	});
+});
+
+describe('Clean up lists (A44, media step 5)', () => {
+	it('offers files not used for 90 days, the largest, and later copies of the same file; never used ones or backups', async () => {
+		const h = harness();
+		const now = new Date('2026-11-16T00:00:00.000Z');
+		const old = '2026-07-01T00:00:00.000Z';
+		const recent = '2026-11-10T00:00:00.000Z';
+		h.file('med_old', { createdAt: old, originalByteSize: 500, sha256: 'a'.repeat(64) });
+		h.file('med_copy', { createdAt: recent, originalByteSize: 500, sha256: 'a'.repeat(64) });
+		h.file('med_used', { createdAt: old, originalByteSize: 9000 });
+		h.file('med_big', { createdAt: recent, originalByteSize: 7000 });
+		h.file('med_backup', {
+			createdAt: old,
+			originalByteSize: 99_000,
+			kind: 'file',
+			originalFormat: 'application/gzip',
+			displayName: 'nightly-backup.archive.gz',
+		});
+		h.used.set('med_used', ['product gallery · Red Banarasi Silk']);
+		const list = (name: 'unused' | 'largest' | 'duplicates') =>
+			h.service.cleanUp('adm_1', { list: name, page: 1 }, now);
+
+		const unused = await list('unused');
+		expect(unused.rows.map((row) => row.file.id)).not.toContain('med_used');
+		expect(unused.rows.map((row) => row.file.id)).toContain('med_old');
+		expect(unused.rows.map((row) => row.file.id)).not.toContain('med_copy');
+		expect(unused.rows.find((row) => row.file.id === 'med_old')?.uploadedAt).toBe(old);
+
+		const largest = await list('largest');
+		expect(largest.rows[0]?.file.id).toBe('med_big');
+		expect(largest.rows.map((row) => row.file.id)).not.toContain('med_used');
+
+		const twice = await list('duplicates');
+		expect(twice.rows.map((row) => row.file.id)).toEqual(['med_copy']);
+		expect(twice.rows[0]?.sameAs).toMatchObject({ id: 'med_old' });
+		expect(twice.counts.duplicates).toBe(1);
 	});
 });

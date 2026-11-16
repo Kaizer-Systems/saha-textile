@@ -73,6 +73,8 @@ export interface MediaBrowseFilter {
 	/** Files left out, for “not used anywhere”. */
 	excludeIds?: readonly string[];
 	createdSince?: string;
+	/** Clean up (A44): uploaded before this moment. */
+	createdBefore?: string;
 	/** Filters (A11): several categories, processing states, and the uploaded size in bytes. */
 	categories?: readonly MediaCategory[];
 	states?: readonly MediaAsset['processing']['state'][];
@@ -93,6 +95,8 @@ export interface MediaBrowseRepository {
 	browse(filter: MediaBrowseFilter): Promise<Paginated<MediaAsset>>;
 	/** Every file the website uses somewhere (the owner registry), for the “used” filter. */
 	referencedIds(): Promise<string[]>;
+	/** Clean up › Same file twice (A44): files not in Trash that share their bytes, by sha256, most copies first. */
+	sameFileGroups(limit: number): Promise<{ sha256: string; ids: string[] }[]>;
 	/** Files with exactly these bytes (S6), not in Trash. */
 	findBySha256(hashes: readonly string[]): Promise<MediaAsset[]>;
 	/** Names of the files in one folder, not in Trash: for "(1)", "(2)". */

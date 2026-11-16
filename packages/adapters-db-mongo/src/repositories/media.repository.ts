@@ -434,7 +434,12 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 				...(filter.maxBytes !== undefined ? { $lt: filter.maxBytes } : {}),
 			};
 		}
-		if (filter.createdSince) query.createdAt = { $gte: new Date(filter.createdSince) };
+		if (filter.createdSince || filter.createdBefore) {
+			query.createdAt = {
+				...(filter.createdSince ? { $gte: new Date(filter.createdSince) } : {}),
+				...(filter.createdBefore ? { $lt: new Date(filter.createdBefore) } : {}),
+			};
+		}
 		if (filter.kinds?.length) query.kind = { $in: [...filter.kinds] };
 		if (filter.withVersionOf) {
 			query.versions = { $elemMatch: { profileKey: filter.withVersionOf, state: 'ready' } };
@@ -610,6 +615,19 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 			}
 		}
 		return [...found];
+	}
+
+	async sameFileGroups(limit: number): Promise<{ sha256: string; ids: string[] }[]> {
+		const groups = await MediaAssetModel.aggregate<{ _id: string; ids: string[] }>([
+			{ $match: { sha256: { $type: 'string' }, deletedAt: null, trashedAt: null } },
+			{ $sort: { createdAt: 1, _id: 1 } },
+			{ $group: { _id: '$sha256', ids: { $push: '$_id' } } },
+			{ $match: { 'ids.1': { $exists: true } } },
+			{ $addFields: { copies: { $size: '$ids' } } },
+			{ $sort: { copies: -1, _id: 1 } },
+			{ $limit: Math.max(1, limit) },
+		]).exec();
+		return groups.map((group) => ({ sha256: group._id, ids: group.ids }));
 	}
 
 	async whereUsed(ids: readonly string[]): Promise<Map<string, string[]>> {

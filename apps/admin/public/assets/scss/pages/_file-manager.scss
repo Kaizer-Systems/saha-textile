@@ -1886,3 +1886,10 @@ body.dark-only .fm-tile .fm-overlay small {
 		bottom: 12px;
 	}
 }
+
+/* Image details: a long Used on list opens in its own scroll box, so the popup keeps its size (phone included). */
+.fm-uses {
+	max-height: 160px;
+	overflow-y: auto;
+	scrollbar-width: thin;
+}

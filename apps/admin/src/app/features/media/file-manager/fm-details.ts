@@ -79,6 +79,9 @@ export class FmDetails {
 	private readonly uploads = inject(MediaUploads);
 
 	readonly details = signal<MediaFileDetails | null>(null);
+	/** A photo on hundreds of products lists the first few places; the rest open in a scroll box on request. */
+	readonly USES_SHOWN = 5;
+	readonly showAllUses = signal(false);
 	readonly activity = signal<MediaActivityPage['items']>([]);
 	readonly tab = signal<FmDetailsTab>('versions');
 	readonly error = signal(false);
@@ -170,6 +173,7 @@ export class FmDetails {
 	async start(fileId: string, tab?: FmDetailsTab): Promise<void> {
 		try {
 			const details = await lastValueFrom(this.gateway.details(fileId));
+			this.showAllUses.set(false);
 			this.details.set(details);
 			this.alt.set({ ...(details.text?.alt ?? {}) });
 			this.caption.set({ ...(details.text?.caption ?? {}) });

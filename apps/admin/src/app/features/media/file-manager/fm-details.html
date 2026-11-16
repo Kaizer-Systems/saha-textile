@@ -78,7 +78,20 @@
 					</tr>
 					<tr>
 						<td class="text-muted">{{ 'fm_used_on' | transloco }}</td>
-						<td>{{ file.usedOn.length ? file.usedOn.join(', ') : '—' }}</td>
+						<td id="fm_details_used_on">
+							@if (!file.usedOn.length) { — } @else if (showAllUses() || file.usedOn.length <= USES_SHOWN)
+							{
+							<div [class.fm-uses]="file.usedOn.length > USES_SHOWN">{{ file.usedOn.join(', ') }}</div>
+							} @else { {{ file.usedOn.slice(0, USES_SHOWN).join(', ') }} ·
+							<a
+								href="javascript:void(0)"
+								id="fm_details_used_more"
+								(click)="showAllUses.set(true)"
+							>
+								{{ 'fm_used_on_more' | transloco: { count: file.usedOn.length - USES_SHOWN } }}
+							</a>
+							}
+						</td>
 					</tr>
 				</tbody>
 			</table>

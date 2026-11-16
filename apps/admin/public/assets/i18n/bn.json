@@ -2599,5 +2599,6 @@
 	"fm_web_name_change": "বদলান",
 	"fm_web_name_saved": "নতুন ওয়েব ফাইলের নাম সেভ হয়েছে; প্রতিটি মাপ এই নামে আবার তৈরি হচ্ছে।",
 	"fm_storage_zips": ".zip ডাউনলোড",
-	"fm_storage_zips_note": "তৈরি হওয়ার 24 ঘণ্টা পরে মুছে ফেলা হয়।"
+	"fm_storage_zips_note": "তৈরি হওয়ার 24 ঘণ্টা পরে মুছে ফেলা হয়।",
+	"fm_used_on_more": "আরও {{count}}টি"
 }

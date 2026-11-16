@@ -2599,5 +2599,6 @@
 	"fm_web_name_change": "Change",
 	"fm_web_name_saved": "The new web file name is saved; every size is being made again under it.",
 	"fm_storage_zips": ".zip downloads",
-	"fm_storage_zips_note": "Deleted 24 hours after they are ready."
+	"fm_storage_zips_note": "Deleted 24 hours after they are ready.",
+	"fm_used_on_more": "+{{count}} more"
 }

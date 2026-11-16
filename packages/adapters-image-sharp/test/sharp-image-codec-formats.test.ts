@@ -15,10 +15,10 @@ describe('SharpImageCodec formats', () => {
 		expect((await codec.probe(await bytesOf(solid().webp()))).format).toBe('webp');
 	});
 
-	it('names AVIF and GIF, which the worker takes since media step 5, and anything else other', async () => {
+	it('names AVIF, GIF and TIFF, which the worker takes since media step 5', async () => {
 		expect((await codec.probe(await bytesOf(solid().avif()))).format).toBe('avif');
 		expect((await codec.probe(await bytesOf(solid().gif()))).format).toBe('gif');
-		expect((await codec.probe(await bytesOf(solid().tiff()))).format).toBe('other');
+		expect((await codec.probe(await bytesOf(solid().tiff()))).format).toBe('tiff');
 	});
 
 	it('makes versions from an animated GIF’s first frame, and from AVIF and WebP', async () => {

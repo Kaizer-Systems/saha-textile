@@ -1,7 +1,7 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
 import { seedLegalPages } from '../migrations/legal-pages';
-import { addProfileSizes, seedProfilesAndNameVersions } from '../migrations/media-versions';
+import { addProfileSizes, seedProfilesAndNameVersions, widenProfileTypes } from '../migrations/media-versions';
 
 /**
  * Every data migration, in id order. The release-steps runner applies each one once per
@@ -40,5 +40,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Legal pages (Legal Pages brief): the four pages, exactly as the shop showed them, written once into the database; a stored page is never overwritten',
 		half: 'expand',
 		up: () => seedLegalPages(),
+	},
+	{
+		id: '0004-media-photo-types',
+		description:
+			'Photo types (media step 5): built-in image profiles still taking only JPEG and PNG take every type the worker reads; a list an admin changed stays',
+		half: 'expand',
+		up: () => widenProfileTypes(),
 	},
 ];

@@ -614,7 +614,11 @@ describe('plain files', () => {
 		expect(await refusalCode(h.service.presignFile('adm_1', request('IMG_0412.HEIC', 'image/heic')))).toBe(
 			'photo_type_waits',
 		);
+		// TIFF is a photo since media step 5; a picture type the worker does not read still waits.
 		expect(await refusalCode(h.service.presignFile('adm_1', request('look.tif', 'image/tiff')))).toBe(
+			'photo_needs_profiles',
+		);
+		expect(await refusalCode(h.service.presignFile('adm_1', request('sketch.xcf', 'image/x-xcf')))).toBe(
 			'photo_type_waits',
 		);
 		expect(h.storageCheck.admit).not.toHaveBeenCalled();

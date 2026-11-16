@@ -9,12 +9,13 @@ import type {
 } from '@saha-textile/contracts';
 
 import type { MediaProfileRepository } from '../ports/media-profile.repository';
-import { fitsShape } from '../catalog/media-files';
+import { PROCESSED_PHOTO_TYPES, fitsShape } from '../catalog/media-files';
 import { MEDIA_INGEST_POLICY } from './policy';
 import { SEEDED_MEDIA_ROLES } from './seeded-roles';
 
 const MB = 1024 * 1024;
-const ACCEPTS = ['image/jpeg', 'image/png'];
+/** Every photo type the worker reads (media step 5); a profile can narrow its own list in Settings › Image profiles. */
+const ACCEPTS = [...PROCESSED_PHOTO_TYPES];
 
 /** Each family's widths as the seeded ladder has them, so a profile shows and edits its own sizes (F02). */
 export const seededWidths = (roles: readonly string[]): Record<string, number[]> =>

@@ -77,8 +77,11 @@ export const newProfile = (
 };
 
 /**
- * An edit. A built-in profile keeps its name (every screen and language names it the same); any real change
- * raises the profile's version, so new versions record the settings they were made under.
+ * An edit. A built-in profile keeps its name (every screen and language names it the same). A change to what a
+ * version's files are made with (shape, sizes, quality) raises the profile's version, so new versions record the
+ * settings they were made under and “Bring older versions up to date” finds the older ones. Other changes (name,
+ * fills offered, smallest photo, biggest file, accepted types, on or off) are saved without raising it: the files
+ * already made are what those settings would make today.
  */
 export const applyProfileUpdate = (
 	current: MediaProfile,
@@ -103,7 +106,10 @@ export const applyProfileUpdate = (
 	const { version: _v, updatedAt: _u, ...before } = current;
 	const { version: _v2, updatedAt: _u2, ...after } = next;
 	const changed = JSON.stringify(before) !== JSON.stringify(after);
-	return { profile: changed ? { ...next, version: current.version + 1 } : current, changed };
+	const making = (profile: MediaProfile) =>
+		JSON.stringify({ shape: profile.shape, widths: profile.widths, quality: profile.quality });
+	const remakes = making(current) !== making(next);
+	return { profile: changed ? { ...next, version: current.version + (remakes ? 1 : 0) } : current, changed };
 };
 
 /** F03: a built-in profile is never deleted; one that photos use is switched off instead. */

@@ -74,10 +74,23 @@ export type MediaPurpose = z.infer<typeof MediaPurpose>;
  * converts them to JPEG before presign, so the API still only ever accepts these two.
  */
 /**
- * Photo types made into versions: JPEG and PNG; WebP, GIF and AVIF since media step 5. AVIF is taken as an upload
- * (owner, 16 Nov); the versions made from it stay WebP, JPEG and PNG (the lock above).
+ * Photo types made into versions: JPEG and PNG; since media step 5 (owner, 16 Nov) WebP, GIF, AVIF, TIFF, SVG, JPEG XL,
+ * JPEG 2000, BMP, ICO and PSD. The versions made from any of them stay WebP, JPEG and PNG (the lock above).
  */
-export const ImageUploadFormat = z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
+export const ImageUploadFormat = z.enum([
+	'image/jpeg',
+	'image/png',
+	'image/webp',
+	'image/gif',
+	'image/avif',
+	'image/tiff',
+	'image/svg+xml',
+	'image/bmp',
+	'image/x-icon',
+	'image/jxl',
+	'image/jp2',
+	'image/vnd.adobe.photoshop',
+]);
 export type ImageUploadFormat = z.infer<typeof ImageUploadFormat>;
 
 /** Formats a derivative may be written in. */

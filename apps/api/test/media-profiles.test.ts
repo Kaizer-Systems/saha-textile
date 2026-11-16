@@ -114,9 +114,10 @@ describe('MediaProfilesService: adding, editing and deleting (F01–F03, step 2c
 
 	it('switches a profile off from the list, and refuses what a profile cannot be', async () => {
 		const service = new MediaProfilesService(repository(), audit());
+		// Switching off changes no file a version is made of: saved, and the version stays (16 Nov).
 		expect(await service.update('adm_1', 'square_1x1', { enabled: false })).toMatchObject({
 			enabled: false,
-			version: 2,
+			version: 1,
 		});
 		expect(await refusal(service.update('adm_1', 'product_3x4', { name: 'Saree 3:4' }))).toBe('built_in_name');
 		expect(await refusal(service.update('adm_1', 'hero_21x9', { shape: null }))).toBe('keep_shape_fills');

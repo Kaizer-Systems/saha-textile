@@ -69,7 +69,15 @@ describe('adding and editing', () => {
 	it('keeps a built-in name, offers Brand colour to icons only, and counts only real changes', () => {
 		expect(applyProfileUpdate(seed('product_3x4'), { name: 'Saree 3:4' })).toEqual({ refusal: 'built_in_name' });
 		expect(applyProfileUpdate(seed('product_3x4'), { name: 'Product 3:4' })).toMatchObject({ changed: false });
-		expect(applyProfileUpdate(seed('browser_icon_1x1'), { fills: ['brand'] })).toMatchObject({ changed: true });
+		expect(applyProfileUpdate(seed('browser_icon_1x1'), { fills: ['brand'] })).toMatchObject({
+			changed: true,
+			profile: { version: 1 },
+		});
+		// Accepting another type changes nothing a version's files are made with: saved, version unchanged (16 Nov).
+		expect(applyProfileUpdate(seed('product_3x4'), { accepts: ['image/jpeg', 'image/tiff'] })).toMatchObject({
+			changed: true,
+			profile: { version: 1, accepts: ['image/jpeg', 'image/tiff'] },
+		});
 		expect(applyProfileUpdate(seed('hero_21x9'), { maxBytes: 26 * 1024 * 1024 })).toEqual({ refusal: 'too_large' });
 		const edited = applyProfileUpdate(seed('product_3x4'), { widths: { zoom: [2400, 2000] } });
 		expect(edited).toMatchObject({

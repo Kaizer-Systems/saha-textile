@@ -3,14 +3,23 @@ import { createHash } from 'node:crypto';
 import {
 	BRAND_STRIP_HEIGHT,
 	ImageDecodeError,
+	SNIFF_BYTES,
 	STORY_LAYOUT,
+	bytesReader,
+	measureFromHeader,
+	sniffPhotoKind,
+	svgRasterSize,
+	svgSize,
 	type ImageCodecPort,
 	type ImageProbe,
 	type ImageRenderSpec,
+	type PhotoKind,
 	type RenderedImage,
 } from '@saha-textile/core-domain';
 import sharp, { type Sharp } from 'sharp';
 import { rgbaToThumbHash } from 'thumbhash';
+
+import { decodeExtra, isExtraKind } from './extra-decoders.js';
 
 const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
 
@@ -45,24 +54,38 @@ const THUMBHASH_EDGE = 100;
  */
 /** The format the bytes are: an AVIF reads as HEIF with AV1 compression; an HEIC (HEVC) is not one the worker takes. */
 function probeFormat(format: string | undefined, compression: string | undefined): ImageProbe['format'] {
-	if (format === 'jpeg' || format === 'png' || format === 'webp' || format === 'gif') return format;
+	if (format === 'jpeg' || format === 'png' || format === 'webp' || format === 'gif' || format === 'tiff')
+		return format;
 	if (format === 'heif' && compression === 'av1') return 'avif';
 	return 'other';
 }
 
+/** What the image library is handed for a photo: its own bytes, or a PNG made from a type it cannot read itself. */
+interface Readable {
+	bytes: Uint8Array;
+	kind: PhotoKind | null;
+}
+
 export class SharpImageCodec implements ImageCodecPort {
+	/** One readable copy per photo for the whole job: a JPEG XL or PSD is decoded once, not once per size. */
+	private readonly readables = new WeakMap<Uint8Array, Promise<Readable>>();
+
 	constructor(private readonly options: { maxInputPixels: number } = { maxInputPixels: 50_000_000 }) {}
 
 	async probe(bytes: Uint8Array): Promise<ImageProbe> {
 		try {
-			const meta = await sharp(bytes, { limitInputPixels: this.options.maxInputPixels }).metadata();
+			const source = await this.readable(bytes);
+			const meta = await sharp(source.bytes, { limitInputPixels: this.options.maxInputPixels }).metadata();
 			if (!meta.width || !meta.height) throw new Error('no dimensions');
 			// Orientations 5–8 swap the axes once the image is rotated upright.
 			const swapped = (meta.orientation ?? 1) >= 5;
 			return {
 				width: swapped ? meta.height : meta.width,
 				height: swapped ? meta.width : meta.height,
-				format: probeFormat(meta.format, meta.compression),
+				format:
+					source.kind === 'svg' || isExtraKind(source.kind)
+						? source.kind
+						: probeFormat(meta.format, meta.compression),
 				hasAlpha: meta.hasAlpha ?? false,
 			};
 		} catch (error) {
@@ -70,7 +93,48 @@ export class SharpImageCodec implements ImageCodecPort {
 		}
 	}
 
-	async render(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
+	private readable(bytes: Uint8Array): Promise<Readable> {
+		let entry = this.readables.get(bytes);
+		if (!entry) {
+			entry = this.makeReadable(bytes);
+			this.readables.set(bytes, entry);
+		}
+		return entry;
+	}
+
+	/**
+	 * An SVG becomes a picture `SVG_RASTER_LONG_EDGE` px on its long edge, the size the upload popup showed. JPEG XL,
+	 * JPEG 2000, BMP, ICO and PSD are decoded, once their header says the picture is within the pixel limit, so a
+	 * decompression bomb is refused before it is opened. Everything else goes on as it is.
+	 */
+	private async makeReadable(bytes: Uint8Array): Promise<Readable> {
+		const kind = sniffPhotoKind(bytes.subarray(0, SNIFF_BYTES));
+		if (kind === 'svg') return { bytes: await this.rasterizeSvg(bytes), kind };
+		if (!isExtraKind(kind)) return { bytes, kind };
+		const size = await measureFromHeader(bytesReader(bytes), kind);
+		if (!size) throw new ImageDecodeError(`a ${kind} file whose size cannot be read`);
+		if (size.width * size.height > this.options.maxInputPixels) {
+			throw new ImageDecodeError(`a ${kind} file with more pixels than the worker reads`);
+		}
+		return { bytes: await decodeExtra(bytes, kind), kind };
+	}
+
+	private async rasterizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
+		const meta = await sharp(bytes).metadata();
+		if (!meta.width || !meta.height) throw new ImageDecodeError('an SVG with no size');
+		const own = svgSize(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('latin1'));
+		const target = svgRasterSize(own ?? { width: meta.width, height: meta.height });
+		// sharp draws an SVG at 72 dpi by default; the density scales it to the target before the exact resize.
+		const density = Math.min(100_000, Math.max(1, (72 * target.width) / meta.width));
+		const png = await sharp(bytes, { density, limitInputPixels: this.options.maxInputPixels })
+			.resize(target.width, target.height, { fit: 'fill' })
+			.png()
+			.toBuffer();
+		return new Uint8Array(png.buffer, png.byteOffset, png.byteLength);
+	}
+
+	async render(original: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
+		const { bytes } = await this.readable(original);
 		if (spec.fit === 'blur') return this.renderBlurFill(bytes, spec);
 		if (spec.fit === 'story') return this.renderStory(bytes, spec);
 		if (spec.fit === 'pad' && spec.inset) return this.renderInset(bytes, spec);
@@ -219,7 +283,8 @@ export class SharpImageCodec implements ImageCodecPort {
 		};
 	}
 
-	async placeholder(bytes: Uint8Array): Promise<{ thumbHash: string; dominantColor: string }> {
+	async placeholder(original: Uint8Array): Promise<{ thumbHash: string; dominantColor: string }> {
+		const { bytes } = await this.readable(original);
 		const small = await this.base(bytes)
 			.resize({ width: THUMBHASH_EDGE, height: THUMBHASH_EDGE, fit: 'inside' })
 			.ensureAlpha()

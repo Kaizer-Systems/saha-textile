@@ -1,9 +1,9 @@
-import { SEEDED_MEDIA_PROFILES } from '@saha-textile/core-domain';
+import { PROCESSED_PHOTO_TYPES, SEEDED_MEDIA_PROFILES } from '@saha-textile/core-domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
-import { addProfileSizes, seedProfilesAndNameVersions } from '../src/migrations/media-versions';
+import { addProfileSizes, seedProfilesAndNameVersions, widenProfileTypes } from '../src/migrations/media-versions';
 import { MediaAssetModel, MediaProfileModel } from '../src/models/index';
 import { MongoMediaProfileRepository } from '../src/repositories/media-profile.repository';
 import { MongoMediaAssetRepository } from '../src/repositories/media.repository';
@@ -81,6 +81,27 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		expect(list.slice(firstOther).every((row) => !row.builtIn)).toBe(true);
 		expect(await profiles.findByKey('banner_keep_shape')).toMatchObject({ shape: null, fills: [], builtIn: true });
 		await profiles.save({ ...product, name: 'Product 3:4', version: 1 });
+	});
+
+	it('migration 0004: built-in profiles still on JPEG and PNG take every photo type; an admin’s list stays (step 5)', async () => {
+		const seeded = ['image/jpeg', 'image/png'];
+		const product = await profiles.findByKey('product_3x4');
+		const hero = await profiles.findByKey('hero_21x9');
+		if (!product || !hero) throw new Error('profiles missing');
+		await profiles.save({ ...product, accepts: seeded, version: 3 });
+		await profiles.save({ ...hero, accepts: ['image/jpeg'] });
+		await profiles.save({ ...product, key: 'own_4x5', name: 'Own 4:5', builtIn: false, accepts: seeded });
+		expect(await widenProfileTypes()).toMatch(/^let \d+ built-in image profiles? take/);
+		expect(await profiles.findByKey('product_3x4')).toMatchObject({
+			accepts: [...PROCESSED_PHOTO_TYPES],
+			version: 3,
+		});
+		expect(await profiles.findByKey('hero_21x9')).toMatchObject({ accepts: ['image/jpeg'] });
+		expect(await profiles.findByKey('own_4x5')).toMatchObject({ accepts: seeded });
+		expect(await widenProfileTypes()).toBe('let 0 built-in image profiles take every photo type the worker reads');
+		await profiles.save({ ...product, version: 1 });
+		await profiles.save(hero);
+		await profiles.delete('own_4x5');
 	});
 
 	it('names today’s photos’ versions once, without moving a file or the date modified', async () => {

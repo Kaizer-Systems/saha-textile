@@ -15,6 +15,13 @@ const ORIGINAL_EXTENSIONS: Readonly<Record<string, string>> = {
 	'image/webp': 'webp',
 	'image/gif': 'gif',
 	'image/avif': 'avif',
+	'image/tiff': 'tif',
+	'image/svg+xml': 'svg',
+	'image/bmp': 'bmp',
+	'image/x-icon': 'ico',
+	'image/jxl': 'jxl',
+	'image/jp2': 'jp2',
+	'image/vnd.adobe.photoshop': 'psd',
 };
 const originalExtension = (contentType: string): string => ORIGINAL_EXTENSIONS[contentType] ?? 'jpg';
 

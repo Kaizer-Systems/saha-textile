@@ -16,11 +16,11 @@ export function waitsForImageProfiles(contentType: string, name: string): boolea
 }
 
 /**
- * The photo types the image worker makes versions from, each with the name the image library gives the bytes: an
- * upload must decode as the type it was sent as. JPEG and PNG; since media step 5 WebP, GIF (its first frame) and
- * AVIF as an upload (owner, 16 Nov: the worker reads it; versions stay WebP, JPEG and PNG). HEIC is turned into a
- * JPEG in the browser first. TIFF, SVG and the types that need extra decoders (JPEG XL, JPEG 2000, BMP, ICO, PSD)
- * are stored as files until they are added.
+ * The photo types the image worker makes versions from, each with the name the worker gives the bytes: an upload
+ * must decode as the type it was sent as. JPEG and PNG; since media step 5 (owner, 16 Nov) WebP, GIF (its first
+ * frame), AVIF, TIFF (its first page), SVG (made into a picture 4096 px on its long edge), and with extra decoders
+ * JPEG XL, JPEG 2000, BMP, ICO (its largest picture) and PSD (its flattened picture). Versions stay WebP, JPEG and
+ * PNG. HEIC is turned into a JPEG in the browser first.
  */
 export const PHOTO_FORMATS: Readonly<Record<string, string>> = {
 	'image/jpeg': 'jpeg',
@@ -28,6 +28,13 @@ export const PHOTO_FORMATS: Readonly<Record<string, string>> = {
 	'image/webp': 'webp',
 	'image/gif': 'gif',
 	'image/avif': 'avif',
+	'image/tiff': 'tiff',
+	'image/svg+xml': 'svg',
+	'image/bmp': 'bmp',
+	'image/x-icon': 'ico',
+	'image/jxl': 'jxl',
+	'image/jp2': 'jp2',
+	'image/vnd.adobe.photoshop': 'psd',
 };
 
 export const PROCESSED_PHOTO_TYPES: readonly string[] = Object.keys(PHOTO_FORMATS);

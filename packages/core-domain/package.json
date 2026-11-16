@@ -38,6 +38,11 @@
       "types": "./dist/catalog/media-placeholder.d.ts",
       "import": "./dist/esm/media-placeholder.js",
       "default": "./dist/catalog/media-placeholder.js"
+    },
+    "./photo-header": {
+      "types": "./dist/catalog/photo-header.d.ts",
+      "import": "./dist/esm/photo-header.js",
+      "default": "./dist/catalog/photo-header.js"
     }
   },
   "files": [

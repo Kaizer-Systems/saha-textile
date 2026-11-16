@@ -172,9 +172,13 @@ describe('the checks before a version is made', () => {
 		expect(checkVersionRequest({ ...base, profile: profile('product_3x4'), byteSize: 26 * 1024 * 1024 })).toBe(
 			'too_large',
 		);
-		expect(checkVersionRequest({ ...base, profile: profile('product_3x4'), contentType: 'image/webp' })).toBe(
+		// HEIC is turned into a JPEG in the browser, so no profile takes it; the worker's own types are all taken.
+		expect(checkVersionRequest({ ...base, profile: profile('product_3x4'), contentType: 'image/heic' })).toBe(
 			'type_not_accepted',
 		);
+		for (const contentType of ['image/webp', 'image/avif', 'image/tiff', 'image/vnd.adobe.photoshop']) {
+			expect(checkVersionRequest({ ...base, profile: profile('product_3x4'), contentType })).toBeNull();
+		}
 		expect(checkVersionRequest({ ...base, profile: profile('product_3x4') })).toBeNull();
 	});
 

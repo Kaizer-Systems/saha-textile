@@ -1,5 +1,10 @@
 import type { ImageDerivative, MediaAsset, MediaVersion } from '@saha-textile/contracts';
-import { SEEDED_MEDIA_PROFILES, assignExistingVersions, seededWidths } from '@saha-textile/core-domain';
+import {
+	PROCESSED_PHOTO_TYPES,
+	SEEDED_MEDIA_PROFILES,
+	assignExistingVersions,
+	seededWidths,
+} from '@saha-textile/core-domain';
 
 import { MediaAssetModel, MediaProfileModel, type MediaAssetDoc } from '../models/index';
 import { MongoMediaProfileRepository } from '../repositories/media-profile.repository';
@@ -91,4 +96,23 @@ export async function seedProfilesAndNameVersions(now: () => Date = () => new Da
 	await flush();
 
 	return `added ${added} image profile${added === 1 ? '' : 's'}; named the versions of ${named} photo${named === 1 ? '' : 's'}`;
+}
+
+/** What every built-in profile accepted when it was seeded, before media step 5. */
+const FIRST_ACCEPTS = ['image/jpeg', 'image/png'];
+
+/**
+ * Release migration `0004-media-photo-types` (media step 5, expand): built-in profiles still accepting only JPEG and
+ * PNG, as they were seeded, accept every photo type the worker reads. A list an admin changed is left as it is, and
+ * so are profiles an admin made. The version stays: accepting more types changes no file already made. Safe to run
+ * again.
+ */
+export async function widenProfileTypes(): Promise<string> {
+	const result = await MediaProfileModel.updateMany(
+		{ builtIn: true, accepts: { $size: FIRST_ACCEPTS.length, $all: FIRST_ACCEPTS } },
+		{ $set: { accepts: [...PROCESSED_PHOTO_TYPES] } },
+		{ timestamps: false },
+	).exec();
+	const changed = result.modifiedCount;
+	return `let ${changed} built-in image profile${changed === 1 ? '' : 's'} take every photo type the worker reads`;
 }

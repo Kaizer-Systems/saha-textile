@@ -1,6 +1,6 @@
 import type { MediaPurpose } from '@saha-textile/contracts';
 
-import { VERSION_BYTES_SHARE } from '../catalog/media-files';
+import { VERSION_BYTES_SHARE, isProcessedPhoto } from '../catalog/media-files';
 
 /**
  * Ingest policy (`DEC-MEDIA-CAPS`, locked 2026-11-02). The presign handler refuses anything
@@ -69,8 +69,9 @@ export type IngestRefusal =
 export type IngestWarning = 'aspect_off_target' | 'below_recommended_size';
 
 /**
- * The limits every photo meets whatever it is for: JPEG or PNG, 25 MB, 8192 px on the long edge, 50 megapixels.
- * A photo uploaded with image profiles (media step 2) meets these here and each profile's own rules on top.
+ * The limits every photo uploaded with image profiles (media step 2) meets, whatever it is for: one of the types the
+ * worker reads (`PHOTO_FORMATS`), 25 MB, 8192 px on the long edge, 50 megapixels. Each profile's own rules come on
+ * top. Uploads without profiles (customer review photos) keep the shorter `acceptedTypes` list in `checkIngest`.
  */
 export const checkCaps = (input: {
 	contentType: string;
@@ -79,7 +80,7 @@ export const checkCaps = (input: {
 	height: number;
 }): Exclude<IngestRefusal, { code: 'below_minimum' }> | null => {
 	const policy = MEDIA_INGEST_POLICY;
-	if (!(policy.acceptedTypes as readonly string[]).includes(input.contentType)) return { code: 'type_not_accepted' };
+	if (!isProcessedPhoto(input.contentType)) return { code: 'type_not_accepted' };
 	if (input.byteSize > policy.maxBytes) return { code: 'too_large', maxBytes: policy.maxBytes };
 	if (
 		Math.max(input.width, input.height) > policy.maxLongEdge ||
@@ -102,6 +103,9 @@ export const checkIngest = (input: {
 	height: number;
 }): { refusal: IngestRefusal | null; warnings: IngestWarning[] } => {
 	const policy = MEDIA_INGEST_POLICY;
+	if (!(policy.acceptedTypes as readonly string[]).includes(input.contentType)) {
+		return { refusal: { code: 'type_not_accepted' }, warnings: [] };
+	}
 	const caps = checkCaps(input);
 	if (caps) return { refusal: caps, warnings: [] };
 	const longEdge = Math.max(input.width, input.height);

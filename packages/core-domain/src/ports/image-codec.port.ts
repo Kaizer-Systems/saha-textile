@@ -2,8 +2,8 @@
 export interface ImageProbe {
 	width: number;
 	height: number;
-	/** The format the BYTES actually are, whatever the upload claimed. */
-	format: 'jpeg' | 'png' | 'webp' | 'avif' | 'gif' | 'other';
+	/** The format the BYTES actually are, whatever the upload claimed (`PHOTO_FORMATS` names them). */
+	format: 'jpeg' | 'png' | 'webp' | 'avif' | 'gif' | 'tiff' | 'svg' | 'bmp' | 'ico' | 'jxl' | 'jp2' | 'psd' | 'other';
 	hasAlpha: boolean;
 }
 

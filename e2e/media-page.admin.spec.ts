@@ -442,6 +442,27 @@ test.describe('Media page (step 1)', () => {
 		await page.keyboard.press('Escape');
 	});
 
+	test('a category image and the Brand Kit icon open the picker with their own profile (R4-2, D17, step 4d)', async ({
+		page,
+	}) => {
+		await page.goto(`${ADMIN}/category`, { waitUntil: 'networkidle' });
+		await page.locator('app-form-category app-image-upload .choosefile-input').first().click();
+		await expect(page.locator('#fm_pick_title')).toHaveText('Choose the category image');
+		await expect(page.locator('#fm_pick_rules')).toContainText('Needs Category 3:4');
+		await page.keyboard.press('Escape');
+		await expect(page.locator('#fm_pick_title')).toHaveCount(0);
+		await page.goto(`${ADMIN}/setting/brand-kit`, { waitUntil: 'networkidle' });
+		const icon = page.locator(
+			'app-image-upload[id$="_browser_icon"] .choosefile-input, [id$="_browser_icon"] .choosefile-input',
+		);
+		test.skip((await icon.count()) === 0, 'the browser icon slot is hidden while the phone logo makes the icons');
+		await icon.first().click();
+		await expect(page.locator('#fm_pick_title')).toHaveText('Choose the browser and home-screen icon');
+		await expect(page.locator('#fm_pick_rules')).toContainText('Browser icon');
+		await shot(page, 'd17-icon-picker');
+		await page.keyboard.press('Escape');
+	});
+
 	test('a product photo opens E05: its version and alt text on this product (R4-6, step 4b)', async ({ page }) => {
 		await page.goto(`${ADMIN}/product/edit/prd_906`, { waitUntil: 'networkidle' });
 		await page

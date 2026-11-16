@@ -17,8 +17,10 @@
 		class="help-text mb-4"
 		id="page_on_shop"
 	>
-		{{ 'page_on_shop_line' | transloco: { date: (current.page.updatedAt | date: 'd MMM y'), name:
-		current.updatedByName ?? '—' } }}
+		@if (current.updatedByName; as name) { {{ 'page_on_shop_line' | transloco: { date: (current.page.updatedAt |
+		date: 'd MMM y'), name } }} } @else {
+		<!-- Written by the release step, not by a person. -->
+		{{ 'page_on_shop_line_unnamed' | transloco: { date: (current.page.updatedAt | date: 'd MMM y') } }} }
 	</p>
 	}
 	<app-form-fields

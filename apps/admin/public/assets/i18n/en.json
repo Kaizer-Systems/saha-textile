@@ -2592,6 +2592,7 @@
 	"page_saved": "The page is saved. Visitors see it on their next page load.",
 	"page_fixed_address_help": "This address never changes: the footer, the cookie box, checkout and search engines link to it.",
 	"page_on_shop_line": "On the shop. Last saved {{date}} by {{name}}.",
+	"page_on_shop_line_unnamed": "On the shop. Last saved {{date}}.",
 	"page_save_refused": "Not saved. Every language the shop shows needs its Title and Content:",
 	"page_address": "Address",
 	"pages_missing_note": "Only the pages still missing this language are listed.",

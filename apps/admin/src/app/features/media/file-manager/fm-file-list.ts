@@ -1,11 +1,12 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { fileKind, fileTypeLabel } from './file-kinds';
+import { FmPhone } from './fm-phone';
 import { timeLeft, uploadPercent, uploadSecondsLeft } from './fm-upload-plan';
 
 import type { FmItemRef } from './fm-selection';
@@ -29,13 +30,16 @@ export interface FmItemEvent {
 	anchor: HTMLElement | null;
 }
 
-/** The files of one view, as the theme table (A01) or as thumbnails (A02). */
+/** The files of one view, as the theme table (A01), as rows on a phone (G01) or as thumbnails (A02). */
 @Component({
 	selector: 'app-fm-file-list',
 	templateUrl: './fm-file-list.html',
 	imports: [DatePipe, NgTemplateOutlet, TranslocoModule, FileSizePipe, PluralPipe],
 })
 export class FmFileList {
+	/** G01: on a phone the list is rows rather than the wide table (Trash keeps its table with its two actions). */
+	readonly phone = inject(FmPhone).is;
+
 	/**
 	 * C03: versions are being added to a photo that already has a live copy, or it is being replaced (S7): the website
 	 * keeps showing the live copy meanwhile.

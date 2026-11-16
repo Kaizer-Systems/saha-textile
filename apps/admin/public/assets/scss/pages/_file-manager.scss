@@ -857,6 +857,14 @@ tr.is-disabled td:not(.fm-reason) {
 	font-size: 13px;
 	cursor: pointer;
 }
+/* The chip draws its own arrow; the theme's second caret on a dropdown toggle is left out. */
+.fm-pick.dropdown-toggle::after {
+	display: none;
+}
+/* The arrow takes the Media grey, light or dark, not the theme's button colour (dark on dark). */
+.fm-pick > i {
+	color: var(--fm-muted);
+}
 .fm-warn {
 	display: flex;
 	gap: 6px;
@@ -900,11 +908,12 @@ tr.is-disabled td:not(.fm-reason) {
 	display: block;
 	color: var(--fm-muted);
 }
+/* Shown only while open: the theme's dropdown-menu hides it, ngbDropdown adds .show. */
 .fm-profile-menu {
 	position: absolute;
 	z-index: 30;
-	display: block;
 	width: 300px;
+	max-width: calc(100vw - 32px);
 	padding: 8px 0;
 	box-shadow: 0 8px 28px rgba(16, 24, 40, 0.16);
 }
@@ -1167,6 +1176,45 @@ tr.is-disabled td:not(.fm-reason) {
 	.fm-phone-list .fm-row i.ri-more-2-fill {
 		font-size: 20px;
 		color: var(--fm-muted);
+	}
+	/* G01 rows: picked and still-coming, as the table's rows show them; a state line under the name. */
+	.fm-phone-list .fm-row {
+		cursor: pointer;
+	}
+	.fm-phone-list .fm-row.is-selected {
+		background: color-mix(in srgb, var(--theme-color) 6%, var(--fm-surface));
+	}
+	.fm-phone-list .fm-row.is-pending {
+		background: var(--fm-soft);
+	}
+	.fm-phone-list .fm-row .fm-live {
+		min-width: 0;
+		margin-top: 4px;
+	}
+	/* The breadcrumb keeps its line; the folder's own buttons go under it, side by side. */
+	.fm-crumbs {
+		flex-wrap: wrap;
+	}
+	.fm-crumbs .fm-crumb-actions {
+		width: 100%;
+	}
+	.fm-crumbs .fm-crumb-actions .btn {
+		flex: 1 1 0;
+		justify-content: center;
+	}
+	/* The selection bar wraps instead of pushing the page sideways. */
+	.fm-bulk {
+		flex-wrap: wrap;
+	}
+	/* G04: the picker's manager sits inside the popup's own margin; Recent shows three, See all opens the rest. */
+	.fm-picker .modal-body {
+		padding: 0 12px;
+	}
+	.fm-grid.fm-recent {
+		grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+	}
+	.fm-grid.fm-recent > :nth-child(n + 4) {
+		display: none;
 	}
 	.fm-tray,
 	.fm-toast {

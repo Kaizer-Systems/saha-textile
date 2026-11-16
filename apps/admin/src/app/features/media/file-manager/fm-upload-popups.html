@@ -101,7 +101,35 @@
 			</button>
 			<span class="text-muted small ms-auto">{{ 'fm_profiles_suggested' | transloco }}</span>
 		</div>
-		}
+		} @if (phone()) {
+		<!-- G03: on a phone each file is a card: tick, file and remove; size and shape with the checks; then profiles. -->
+		<div id="fm_review_cards">
+			@for (row of current.rows; track row.key) {
+			<div
+				class="fm-rcard"
+				[attr.data-row]="row.name"
+			>
+				<div class="fm-rcard-top">
+					<ng-container *ngTemplateOutlet="rvTick; context: { $implicit: row }" />
+					<div
+						class="flex-grow-1"
+						style="min-width: 0"
+					>
+						<ng-container *ngTemplateOutlet="rvFile; context: { $implicit: row }" />
+					</div>
+					<ng-container *ngTemplateOutlet="rvRemove; context: { $implicit: row }" />
+				</div>
+				<div class="d-flex align-items-center justify-content-between fm-dims mb-2 flex-wrap gap-2">
+					<span><ng-container *ngTemplateOutlet="rvShape; context: { $implicit: row }" /></span>
+					<ng-container *ngTemplateOutlet="rvCheck; context: { $implicit: row }" />
+				</div>
+				@if (flow.photos().length && row.photo) {
+				<ng-container *ngTemplateOutlet="rvProfiles; context: { $implicit: row }" />
+				}
+			</div>
+			}
+		</div>
+		} @else {
 		<div class="table-responsive datatable-wrapper border-table">
 			<table
 				class="all-package theme-table no-footer fm-table table"
@@ -133,181 +161,31 @@
 					@for (row of current.rows; track row.key) {
 					<tr [attr.data-row]="row.name">
 						<td class="sm-width">
-							<div class="custom-control custom-checkbox">
-								<input
-									type="checkbox"
-									class="custom-control-input checkbox_animated"
-									[attr.aria-label]="row.name"
-									[checked]="!row.waits && !current.skipped.has(row.key)"
-									[disabled]="row.waits"
-									(change)="flow.toggleRow(row.key)"
-								/>
-							</div>
+							<ng-container *ngTemplateOutlet="rvTick; context: { $implicit: row }" />
 						</td>
 						<td class="fm-namecol">
-							<div class="fm-file">
-								@if (flow.thumb(row.key); as thumb) {
-								<div class="fm-type">
-									<img
-										[src]="thumb"
-										alt=""
-									/>
-								</div>
-								} @else {
-								<div
-									class="fm-type"
-									[class]="rowKind(row).cls"
-								>
-									<i [class]="rowKind(row).icon"></i>
-								</div>
-								}
-								<div style="min-width: 0">
-									<h6>{{ row.name }}</h6>
-									<p>
-										{{ row.bytes | fileSize }} @if (row.heic) { ·
-										<span class="text-success">{{ 'fm_heic_as_jpeg' | transloco }}</span>
-										} @if (row.folderPath.length) { ·
-										<span class="fm-file-path">
-											<i class="ri-folder-3-line"></i>
-											{{ row.folderPath.join(' › ') }}
-										</span>
-										}
-									</p>
-								</div>
-							</div>
+							<ng-container *ngTemplateOutlet="rvFile; context: { $implicit: row }" />
 						</td>
 						<td class="fm-dims">
-							@if (row.size; as size) { {{ size.width }} × {{ size.height }}
-							<small>{{ shapeOf(row) }}</small>
-							} @else { {{ typeOf({ name: row.name, contentType: row.contentType }) || '—' }} }
+							<ng-container *ngTemplateOutlet="rvShape; context: { $implicit: row }" />
 						</td>
 						@if (flow.photos().length) {
 						<td>
-							@if (!row.photo) {
-							<span class="text-muted small">{{ 'fm_stored_as_is' | transloco }}</span>
-							} @else if (row.size) {
-							<div class="fm-profiles">
-								<div
-									ngbDropdown
-									container="body"
-									autoClose="outside"
-								>
-									<button
-										type="button"
-										class="fm-pick btn border-0 p-0"
-										ngbDropdownToggle
-										[attr.aria-label]="'fm_choose_profiles' | transloco"
-										[title]="'fm_choose_profiles' | transloco"
-									>
-										@for (pick of row.picks; track pick.profileKey) { @for (label of
-										pickLabels(pick); track label) {
-										<span class="fm-pchip">{{ label }}</span>
-										} } @empty {
-										<span class="fm-pchip">{{ 'fm_choose_profile' | transloco }}</span>
-										}
-										<i class="ri-arrow-down-s-line"></i>
-									</button>
-									<div
-										ngbDropdownMenu
-										class="fm-profile-menu"
-									>
-										@for (profile of flow.profiles(); track profile.key) {
-										<label>
-											<input
-												class="form-check-input mt-1"
-												type="checkbox"
-												[checked]="flow.isPicked(row, profile.key)"
-												(change)="flow.togglePick(row.key, profile.key)"
-											/>
-											<span>{{ profileName(profile.key) }}</span>
-										</label>
-										@if (flow.isPicked(row, profile.key) && fillChoices(row, profile.key).length) {
-										<div class="fm-subfills">
-											@for (choice of fillChoices(row, profile.key); track choice.fill) {
-											<label>
-												<input
-													class="form-check-input mt-1"
-													type="checkbox"
-													[checked]="flow.hasFill(row, profile.key, choice.fill)"
-													(change)="flow.toggleFill(row.key, profile.key, choice.fill)"
-												/>
-												<span>{{ choice.label }}</span>
-											</label>
-											}
-										</div>
-										} }
-									</div>
-								</div>
-								@for (note of flow.notesFor(row); track $index) {
-								<div [class]="note.kind === 'too_small' || note.kind === 'over' ? 'fm-err' : 'fm-warn'">
-									<i
-										[class]="note.kind === 'too_small' || note.kind === 'over' ? 'ri-close-circle-line' : 'ri-alert-line'"
-									></i>
-									<span>{{ noteText(note) }}</span>
-								</div>
-								}
-							</div>
-							} @else {
-							<span class="text-muted small">—</span>
-							}
+							<ng-container *ngTemplateOutlet="rvProfiles; context: { $implicit: row }" />
 						</td>
 						}
 						<td>
-							@if (row.waits) {
-							<span class="fm-status wait">
-								<i class="ri-time-line"></i>
-								{{ 'fm_type_waits' | transloco }}
-							</span>
-							} @else if (row.photo && row.bytes > photoMax) {
-							<div class="fm-err">
-								<i class="ri-close-circle-line"></i>
-								<span>{{ 'fm_over_25' | transloco }}</span>
-							</div>
-							} @else if (row.photo && !row.sizeRead) {
-							<span class="fm-status wait">
-								<i class="ri-time-line"></i>
-								{{ (row.heic ? 'fm_converting_heic' : 'fm_reading_photo') | transloco }}
-							</span>
-							} @else if (row.photo && !row.size) {
-							<div class="fm-err">
-								<i class="ri-close-circle-line"></i>
-								<span>{{ 'fm_unreadable_photo' | transloco }}</span>
-							</div>
-							} @else if (row.photo && !row.picks.length) {
-							<span class="fm-status warn">
-								<i class="ri-alert-line"></i>
-								{{ 'fm_needs_profile' | transloco }}
-							</span>
-							} @else if (row.photo && flow.notesFor(row).length) {
-							<span class="fm-status warn">
-								<i class="ri-alert-line"></i>
-								{{ 'fm_notes_count' | plural: flow.notesFor(row).length }}
-							</span>
-							} @else {
-							<span class="fm-ok">
-								<i class="ri-checkbox-circle-line"></i>
-								{{ (row.photo ? 'fm_ready_to_upload' : 'fm_ok') | transloco }}
-							</span>
-							}
+							<ng-container *ngTemplateOutlet="rvCheck; context: { $implicit: row }" />
 						</td>
 						<td>
-							<ul id="actions">
-								<li>
-									<a
-										href="javascript:void(0)"
-										[title]="'fm_remove_from_upload' | transloco"
-										(click)="flow.removeRow(row.key)"
-									>
-										<i class="ri-close-line"></i>
-									</a>
-								</li>
-							</ul>
+							<ng-container *ngTemplateOutlet="rvRemove; context: { $implicit: row }" />
 						</td>
 					</tr>
 					}
 				</tbody>
 			</table>
 		</div>
+		}
 	</div>
 	<div class="modal-footer">
 		<div class="left-part">
@@ -835,4 +713,202 @@
 		</div>
 	</div>
 	}
+</ng-template>
+
+<!-- Upload review cells (B03), shared by the table and the phone cards (G03): the row's tick. -->
+<ng-template
+	#rvTick
+	let-row
+>
+	<div class="custom-control custom-checkbox">
+		<input
+			type="checkbox"
+			class="custom-control-input checkbox_animated"
+			[attr.aria-label]="row.name"
+			[checked]="!row.waits && !flow.review()?.skipped?.has(row.key)"
+			[disabled]="row.waits"
+			(change)="flow.toggleRow(row.key)"
+		/>
+	</div>
+</ng-template>
+
+<!-- The file: its picture or type, name, size, HEIC note and folder. -->
+<ng-template
+	#rvFile
+	let-row
+>
+	<div class="fm-file">
+		@if (flow.thumb(row.key); as thumb) {
+		<div class="fm-type">
+			<img
+				[src]="thumb"
+				alt=""
+			/>
+		</div>
+		} @else {
+		<div
+			class="fm-type"
+			[class]="rowKind(row).cls"
+		>
+			<i [class]="rowKind(row).icon"></i>
+		</div>
+		}
+		<div style="min-width: 0">
+			<h6>{{ row.name }}</h6>
+			<p>
+				{{ row.bytes | fileSize }} @if (row.heic) { ·
+				<span class="text-success">{{ 'fm_heic_as_jpeg' | transloco }}</span>
+				} @if (row.folderPath.length) { ·
+				<span class="fm-file-path">
+					<i class="ri-folder-3-line"></i>
+					{{ row.folderPath.join(' › ') }}
+				</span>
+				}
+			</p>
+		</div>
+	</div>
+</ng-template>
+
+<!-- Size and shape, or the type for a plain file. -->
+<ng-template
+	#rvShape
+	let-row
+>
+	@if (row.size; as size) { {{ size.width }} × {{ size.height }}
+	<small>{{ shapeOf(row) }}</small>
+	} @else { {{ typeOf({ name: row.name, contentType: row.contentType }) || '—' }} }
+</ng-template>
+
+<!-- A photo's profiles and fills, with its notes. -->
+<ng-template
+	#rvProfiles
+	let-row
+>
+	@if (!row.photo) {
+	<span class="text-muted small">{{ 'fm_stored_as_is' | transloco }}</span>
+	} @else if (row.size) {
+	<div class="fm-profiles">
+		<div
+			ngbDropdown
+			container="body"
+			autoClose="outside"
+		>
+			<button
+				type="button"
+				class="fm-pick btn border-0 p-0"
+				ngbDropdownToggle
+				[attr.aria-label]="'fm_choose_profiles' | transloco"
+				[title]="'fm_choose_profiles' | transloco"
+			>
+				@for (pick of row.picks; track pick.profileKey) { @for (label of pickLabels(pick); track label) {
+				<span class="fm-pchip">{{ label }}</span>
+				} } @empty {
+				<span class="fm-pchip">{{ 'fm_choose_profile' | transloco }}</span>
+				}
+				<i class="ri-arrow-down-s-line"></i>
+			</button>
+			<div
+				ngbDropdownMenu
+				class="fm-profile-menu"
+			>
+				@for (profile of flow.profiles(); track profile.key) {
+				<label>
+					<input
+						class="form-check-input mt-1"
+						type="checkbox"
+						[checked]="flow.isPicked(row, profile.key)"
+						(change)="flow.togglePick(row.key, profile.key)"
+					/>
+					<span>{{ profileName(profile.key) }}</span>
+				</label>
+				@if (flow.isPicked(row, profile.key) && fillChoices(row, profile.key).length) {
+				<div class="fm-subfills">
+					@for (choice of fillChoices(row, profile.key); track choice.fill) {
+					<label>
+						<input
+							class="form-check-input mt-1"
+							type="checkbox"
+							[checked]="flow.hasFill(row, profile.key, choice.fill)"
+							(change)="flow.toggleFill(row.key, profile.key, choice.fill)"
+						/>
+						<span>{{ choice.label }}</span>
+					</label>
+					}
+				</div>
+				} }
+			</div>
+		</div>
+		@for (note of flow.notesFor(row); track $index) {
+		<div [class]="note.kind === 'too_small' || note.kind === 'over' ? 'fm-err' : 'fm-warn'">
+			<i
+				[class]="note.kind === 'too_small' || note.kind === 'over' ? 'ri-close-circle-line' : 'ri-alert-line'"
+			></i>
+			<span>{{ noteText(note) }}</span>
+		</div>
+		}
+	</div>
+	} @else {
+	<span class="text-muted small">—</span>
+	}
+</ng-template>
+
+<!-- What the checks found. -->
+<ng-template
+	#rvCheck
+	let-row
+>
+	@if (row.waits) {
+	<span class="fm-status wait">
+		<i class="ri-time-line"></i>
+		{{ 'fm_type_waits' | transloco }}
+	</span>
+	} @else if (row.photo && row.bytes > photoMax) {
+	<div class="fm-err">
+		<i class="ri-close-circle-line"></i>
+		<span>{{ 'fm_over_25' | transloco }}</span>
+	</div>
+	} @else if (row.photo && !row.sizeRead) {
+	<span class="fm-status wait">
+		<i class="ri-time-line"></i>
+		{{ (row.heic ? 'fm_converting_heic' : 'fm_reading_photo') | transloco }}
+	</span>
+	} @else if (row.photo && !row.size) {
+	<div class="fm-err">
+		<i class="ri-close-circle-line"></i>
+		<span>{{ 'fm_unreadable_photo' | transloco }}</span>
+	</div>
+	} @else if (row.photo && !row.picks.length) {
+	<span class="fm-status warn">
+		<i class="ri-alert-line"></i>
+		{{ 'fm_needs_profile' | transloco }}
+	</span>
+	} @else if (row.photo && flow.notesFor(row).length) {
+	<span class="fm-status warn">
+		<i class="ri-alert-line"></i>
+		{{ 'fm_notes_count' | plural: flow.notesFor(row).length }}
+	</span>
+	} @else {
+	<span class="fm-ok">
+		<i class="ri-checkbox-circle-line"></i>
+		{{ (row.photo ? 'fm_ready_to_upload' : 'fm_ok') | transloco }}
+	</span>
+	}
+</ng-template>
+
+<!-- Take the file out of this upload. -->
+<ng-template
+	#rvRemove
+	let-row
+>
+	<ul id="actions">
+		<li>
+			<a
+				href="javascript:void(0)"
+				[title]="'fm_remove_from_upload' | transloco"
+				(click)="flow.removeRow(row.key)"
+			>
+				<i class="ri-close-line"></i>
+			</a>
+		</li>
+	</ul>
 </ng-template>

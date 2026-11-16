@@ -37,6 +37,7 @@ const SCREENS = [
 	'/event',
 	'/blog',
 	'/page',
+	'/page/edit/privacy-policy',
 	'/faq',
 	'/qna',
 	'/review',
@@ -68,7 +69,16 @@ const UNSTABLE = 'ngx-loading-bar, .toast-container, #toast-container, .apexchar
 const CONTRAST: ContrastOptions = { blend: true, skipCovered: true, skip: '' };
 
 /** Screens also checked at phone size. */
-const PHONE_SCREENS = ['/dashboard', '/product', '/product/edit/prd_906', '/media', '/setting/brand', '/auth/login'];
+const PHONE_SCREENS = [
+	'/dashboard',
+	'/product',
+	'/product/edit/prd_906',
+	'/media',
+	'/media/files',
+	'/page/edit/privacy-policy',
+	'/setting/brand',
+	'/auth/login',
+];
 
 const STILL =
 	'*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}';

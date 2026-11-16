@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, NgTemplateOutlet } from '@angular/common';
 import { Component, type TemplateRef, computed, inject, viewChild } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -8,6 +8,7 @@ import { injectMediaStorageQuery } from '@data-access/queries/media-library.quer
 import { FileSizePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 import { fileKind, fileTypeLabel } from './file-kinds';
+import { FmPhone } from './fm-phone';
 import { FmUploadFlow, type FmUploadPopups as FmUploadPopupRefs } from './fm-upload-flow';
 import { type FmPhotoNote, type FmPick, type FmUploadRow, PHOTO_MAX_BYTES, photoShapeLabel } from './fm-upload-plan';
 import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-profiles/profile-words';
@@ -20,10 +21,21 @@ import { fillKey, isIconProfile, profileNameKey } from '../../setting/image-prof
 @Component({
 	selector: 'app-fm-upload-popups',
 	templateUrl: './fm-upload-popups.html',
-	imports: [CurrencyPipe, FileSizePipe, NgbDropdown, NgbDropdownMenu, NgbDropdownToggle, PluralPipe, TranslocoModule],
+	imports: [
+		CurrencyPipe,
+		FileSizePipe,
+		NgbDropdown,
+		NgbDropdownMenu,
+		NgbDropdownToggle,
+		NgTemplateOutlet,
+		PluralPipe,
+		TranslocoModule,
+	],
 })
 export class FmUploadPopups {
 	readonly flow = inject(FmUploadFlow);
+	/** G03: on a phone the review lists each file as a card instead of the wide table. */
+	readonly phone = inject(FmPhone).is;
 	private readonly transloco = inject(TranslocoService);
 
 	readonly reviewTemplate = viewChild<TemplateRef<unknown>>('fmUploadReview');

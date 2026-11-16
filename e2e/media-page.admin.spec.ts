@@ -594,6 +594,46 @@ test.describe('Media page (step 1)', () => {
 		await expect(page.locator('#fm_clean_table, #fm_clean_empty').first()).toBeVisible();
 	});
 
+	test('on a phone (390 px): rows with ⋮, a wrapping selection bar, the review as cards; nothing scrolls sideways (G01, G03)', async ({
+		page,
+	}) => {
+		const sideways = () =>
+			page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+		await page.setViewportSize({ width: 390, height: 844 });
+		await openRoot(page);
+		// G01: rows instead of the wide table, each with its ⋮ in reach.
+		await expect(page.locator('#fm_phone_list')).toBeVisible();
+		await expect(page.locator('#fm_table')).toHaveCount(0);
+		const first = page.locator('#fm_phone_list [data-file]').first();
+		await expect(first.locator('[data-action="more"]')).toBeVisible();
+		await first.click();
+		await expect(page.locator('.fm-bulk')).toBeVisible();
+		expect(await sideways()).toBe(0);
+		await shot(page, 'g01-phone-rows');
+		await page.keyboard.press('Escape');
+		// G03: the upload review lists each file as a card; a photo's profiles menu stays closed until it is opened.
+		await page.locator('#fm_pick_files').setInputFiles([
+			{
+				name: 'phone-review.png',
+				mimeType: 'image/png',
+				buffer: readFileSync('apps/admin/public/assets/images/product.png'),
+			},
+			pdf('phone-review.pdf'),
+		]);
+		const cards = page.locator('#fm_review_cards .fm-rcard');
+		await expect(cards).toHaveCount(2);
+		await expect(page.locator('#fm_review_table')).toHaveCount(0);
+		await expect(page.locator('.fm-profile-menu')).toBeHidden();
+		await page.locator('#fm_review_cards .fm-pick').first().click();
+		await expect(page.locator('.fm-profile-menu')).toBeVisible();
+		await page.keyboard.press('Escape');
+		expect(await sideways()).toBe(0);
+		await shot(page, 'g03-phone-review');
+		await page.locator('.modal-footer:has(#fm_review_upload) .btn-outline').click();
+		await expect(page.locator('#fm_review')).toHaveCount(0);
+		await page.setViewportSize({ width: 1440, height: 900 });
+	});
+
 	test('a folder goes to Trash after asking, comes back with Undo, and is deleted for good (A25, A18)', async ({
 		page,
 	}) => {

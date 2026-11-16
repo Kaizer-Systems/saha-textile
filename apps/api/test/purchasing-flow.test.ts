@@ -1127,10 +1127,72 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 			const rows = [
 				{ row: 1, sku: 'ST-TNT-1108-NEW', quantity: 4, unitCostINR: 1_000, receivedOn: null, note: '' },
 			];
+			const ready = await opening.check(rows);
+			expect(ready.counts).toMatchObject({ ready: 1, readyPieces: 4, readyTenths: 0 });
 			const load = await opening.post(rows, 'os-key-0002', OWNER);
 			expect(load.number).toMatch(/^OS\//);
+			expect(ready.nextNumber).toBe(load.number);
 			expect((await opening.post(rows, 'os-key-0002', OWNER)).id).toBe(load.id);
 			expect(await refusalCode(opening.post(rows, 'os-key-0003', OWNER))).toBe('rows_not_ready');
+			const listed = await opening.list(false);
+			expect(listed[0]).toMatchObject({ number: load.number, skus: 1, totalUnits: 4, totalValueINR: null });
+			expect((await opening.list(true))[0]?.totalValueINR).toBe(4_000);
+		});
+
+		it('takes received dates before the books-closed day (they only age the pieces) but not after today', async () => {
+			await ProductVariantModel.collection.insertOne(
+				variantDoc('var_it_old', ids.tant, 'ST-TNT-1108-OLD', 1_890) as never,
+			);
+			const future = new Date(Date.parse(`${today}T12:00:00Z`) + 2 * 86_400_000).toISOString().slice(0, 10);
+			const late = await opening.check([
+				{ row: 2, sku: 'ST-TNT-1108-OLD', quantity: 2, unitCostINR: 900, receivedOn: future, note: '' },
+			]);
+			expect(late.rows[0]?.result).toBe('date_invalid');
+			expect(late.counts.invalid).toBe(1);
+			const current = await settingsService.get();
+			const yesterday = new Date(Date.parse(`${today}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+			await settingsService.update({ ...current, booksClosedUpTo: yesterday }, OWNER);
+			try {
+				const load = await opening.post(
+					[
+						{
+							row: 2,
+							sku: 'ST-TNT-1108-OLD',
+							quantity: 2,
+							unitCostINR: 900,
+							receivedOn: '2026-03-14',
+							note: '',
+						},
+					],
+					'os-key-0004',
+					OWNER,
+				);
+				expect(load.rows[0]?.receivedOn).toBe('2026-03-14');
+				await settingsService.update({ ...current, booksClosedUpTo: today }, OWNER);
+				await ProductVariantModel.collection.insertOne(
+					variantDoc('var_it_closed', ids.tant, 'ST-TNT-1108-CLO', 1_890) as never,
+				);
+				expect(
+					await refusalCode(
+						opening.post(
+							[
+								{
+									row: 2,
+									sku: 'ST-TNT-1108-CLO',
+									quantity: 1,
+									unitCostINR: 900,
+									receivedOn: null,
+									note: '',
+								},
+							],
+							'os-key-0005',
+							OWNER,
+						),
+					),
+				).toBe('books_closed');
+			} finally {
+				await settingsService.update({ ...current, booksClosedUpTo: null }, OWNER);
+			}
 		});
 	});
 

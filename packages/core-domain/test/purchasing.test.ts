@@ -497,6 +497,9 @@ describe('stock rules', () => {
 		expect(classifyOpeningRow({ ...base, soldBy: 'metre', quantity: 42.5 })).toBe('ready');
 		expect(classifyOpeningRow({ ...base, soldBy: 'metre', quantity: 42.55 })).toBe('quantity_invalid');
 		expect(classifyOpeningRow({ ...base, repeated: true })).toBe('repeated');
+		expect(classifyOpeningRow({ ...base, receivedOn: '2026-11-18', today: '2026-11-17' })).toBe('date_invalid');
+		expect(classifyOpeningRow({ ...base, receivedOn: '2026-03-14', today: '2026-11-17' })).toBe('ready');
+		expect(classifyOpeningRow({ ...base, receivedOn: null, today: '2026-11-17' })).toBe('ready');
 	});
 
 	it('snaps metres to 0.1 and finds the scrap a cut would leave (M1, M3)', () => {

@@ -28,7 +28,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { InventorySettingsService } from './inventory-settings.service';
 import { OpeningStockService } from './opening-stock.service';
-import { actorOf, refuse } from './purchasing-support';
+import { actorOf, canSeeCost, refuse } from './purchasing-support';
 import { StockApprovalsService } from './stock-approvals.service';
 import { StockCountsService } from './stock-counts.service';
 import { StockReportsService } from './stock-reports.service';
@@ -269,8 +269,8 @@ export class OpeningStockController {
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('stock.opening')
 	@ApiOperation({ operationId: 'listOpeningStock', summary: 'Posted opening-stock loads' })
-	list() {
-		return this.opening.list();
+	list(@Principal() principal: AuthenticatedPrincipal | undefined) {
+		return this.opening.list(canSeeCost(principal));
 	}
 
 	@Post('check')

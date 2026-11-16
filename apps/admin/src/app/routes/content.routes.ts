@@ -148,6 +148,10 @@ export const content: Routes = [
 		loadChildren: () => import('@features/stock/count.routes'),
 	},
 	{
+		path: 'opening-stock',
+		loadChildren: () => import('@features/stock/opening.routes'),
+	},
+	{
 		path: 'stock',
 		loadChildren: () => import('@features/stock/stock.routes'),
 	},

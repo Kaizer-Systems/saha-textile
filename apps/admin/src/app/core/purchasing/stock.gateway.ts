@@ -84,13 +84,24 @@ export interface StockAlerts {
 	heldOverdue: number;
 }
 
+/** A posted opening-stock load in the list; value only for `stock.cost` (P8). */
 export interface OpeningLoad {
 	id: string;
 	number: string;
 	postedAt: string;
 	postedBy: string | null;
+	postedByName: string | null;
+	skus: number;
 	totalUnits: number;
-	totalValueINR: number;
+	totalValueINR: number | null;
+}
+
+/** What posting returns: the load with its rows (quantities in stock units). */
+export interface OpeningPosted {
+	id: string;
+	number: string;
+	postedAt: string;
+	totalUnits: number;
 	rows: Array<{ sku: string; quantity: number; unitCostINR: number; receivedOn: string }>;
 }
 
@@ -221,8 +232,8 @@ export class StockGateway {
 	checkOpening(rows: OpeningStockRow[]): Observable<OpeningStockCheckResult> {
 		return this.http.post<OpeningStockCheckResult>(this.api('opening-stock/check'), { rows }, QUIET);
 	}
-	postOpening(rows: OpeningStockRow[], requestKey: string): Observable<OpeningLoad> {
-		return this.http.post<OpeningLoad>(this.api('opening-stock'), { rows, requestKey }, QUIET);
+	postOpening(rows: OpeningStockRow[], requestKey: string): Observable<OpeningPosted> {
+		return this.http.post<OpeningPosted>(this.api('opening-stock'), { rows, requestKey }, QUIET);
 	}
 
 	/* reports */

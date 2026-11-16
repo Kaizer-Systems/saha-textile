@@ -554,18 +554,24 @@ export const OpeningStockCheckResult = z.object({
 				'unknown_sku',
 				'already_has_stock',
 				'quantity_invalid',
+				'date_invalid',
 				'repeated',
 			]),
 		}),
 	),
 	counts: z.object({
 		ready: z.number().int(),
-		readyUnits: z.number().int(),
+		/** Ready pieces, and ready metres in tenths, kept apart so they are never added together. */
+		readyPieces: z.number().int(),
+		readyTenths: z.number().int(),
 		costMissing: z.number().int(),
 		unknownSku: z.number().int(),
 		alreadyHasStock: z.number().int(),
+		/** Quantity off the step or below 1, a received date after today, or the SKU twice. */
 		invalid: z.number().int(),
 	}),
+	/** The number the load will get if posted now (OS/26-27/000001); a later post may take it first. */
+	nextNumber: z.string(),
 });
 export type OpeningStockCheckResult = z.infer<typeof OpeningStockCheckResult>;
 

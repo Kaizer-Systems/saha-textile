@@ -225,11 +225,13 @@ export function ageingBandOf(days: number): number {
 /* ------------------------------------------------------------------ opening stock */
 
 export type OpeningRowResult =
-	'ready' | 'cost_missing' | 'unknown_sku' | 'already_has_stock' | 'quantity_invalid' | 'repeated';
+	'ready' | 'cost_missing' | 'unknown_sku' | 'already_has_stock' | 'quantity_invalid' | 'date_invalid' | 'repeated';
 
 /**
  * o01: a row is ready only with a known SKU that has never had stock, a whole quantity above 0
- * (metres in steps of 0.1), and a cost. Posting stays off until every row is ready.
+ * (metres in steps of 0.1), a received date not after today, and a cost. Posting stays off until
+ * every row is ready. The received date only places the pieces in the ageing bands; the stock
+ * enters the books on the posting day.
  */
 export function classifyOpeningRow(input: {
 	known: boolean;
@@ -238,11 +240,14 @@ export function classifyOpeningRow(input: {
 	unitCostINR: number | null;
 	hasStockOrMovements: boolean;
 	repeated: boolean;
+	receivedOn?: string | null;
+	today?: string;
 }): OpeningRowResult {
 	if (!input.known) return 'unknown_sku';
 	if (input.repeated) return 'repeated';
 	const units = input.soldBy === 'metre' ? input.quantity * 10 : input.quantity;
 	if (!(input.quantity > 0) || Math.abs(units - Math.round(units)) > 1e-9) return 'quantity_invalid';
+	if (input.receivedOn && input.today && input.receivedOn > input.today) return 'date_invalid';
 	if (input.hasStockOrMovements) return 'already_has_stock';
 	if (input.unitCostINR === null || !(input.unitCostINR >= 0)) return 'cost_missing';
 	return 'ready';

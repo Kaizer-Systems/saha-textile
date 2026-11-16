@@ -55,15 +55,16 @@ export class OpeningStockService {
 		const today = this.support.today();
 		const checked = rows.map((row) => {
 			const fact = facts.get(row.sku.trim()) ?? null;
-			let result = classifyOpeningRow({
+			const result = classifyOpeningRow({
 				known: Boolean(fact) && fact?.productType !== 'bundle' && fact?.tracked !== false,
 				soldBy: fact?.soldBy ?? null,
 				quantity: row.quantity,
 				unitCostINR: row.unitCostINR,
 				hasStockOrMovements: fact ? moved.has(fact.variantId) : false,
 				repeated: (seen.get(row.sku.trim()) ?? 0) > 1,
+				receivedOn: row.receivedOn,
+				today,
 			});
-			if (result === 'ready' && row.receivedOn && row.receivedOn > today) result = 'quantity_invalid';
 			return {
 				...row,
 				variantId: fact?.variantId ?? null,
@@ -73,19 +74,27 @@ export class OpeningStockService {
 			};
 		});
 		const ready = checked.filter((row) => row.result === 'ready');
+		const settings = await this.support.settings();
+		const fiscalYear = fiscalYearOf(today);
 		return {
 			rows: checked,
 			counts: {
 				ready: ready.length,
-				readyUnits: ready.reduce(
-					(sum, row) => sum + (row.soldBy === 'metre' ? Math.round(row.quantity * 10) : row.quantity),
-					0,
-				),
+				readyPieces: ready.filter((row) => row.soldBy !== 'metre').reduce((sum, row) => sum + row.quantity, 0),
+				readyTenths: ready
+					.filter((row) => row.soldBy === 'metre')
+					.reduce((sum, row) => sum + Math.round(row.quantity * 10), 0),
 				costMissing: checked.filter((row) => row.result === 'cost_missing').length,
 				unknownSku: checked.filter((row) => row.result === 'unknown_sku').length,
 				alreadyHasStock: checked.filter((row) => row.result === 'already_has_stock').length,
-				invalid: checked.filter((row) => row.result === 'quantity_invalid' || row.result === 'repeated').length,
+				invalid: checked.filter((row) => ['quantity_invalid', 'date_invalid', 'repeated'].includes(row.result))
+					.length,
 			},
+			nextNumber: formatDocumentNumber(
+				settings.numberFormats.openingStock,
+				fiscalYear,
+				await this.numbers.peek('OS', fiscalYear),
+			),
 		};
 	}
 
@@ -106,8 +115,9 @@ export class OpeningStockService {
 		}
 		const today = this.support.today();
 		const settings = await this.support.settings();
-		const dates = checked.rows.map((row) => row.receivedOn ?? today);
-		const closed = booksClosedProblem(dates, settings.booksClosedUpTo);
+		// The load enters the books today; received dates are history that only place the pieces
+		// in the ageing bands, so they may lie before the books-closed date.
+		const closed = booksClosedProblem([today], settings.booksClosedUpTo);
 		if (closed) throw refuse(closed.code, closed.detail);
 		const facts = await this.stock.bySku(checked.rows.map((row) => row.sku.trim()));
 		const fiscalYear = fiscalYearOf(today);
@@ -218,7 +228,19 @@ export class OpeningStockService {
 		return record;
 	}
 
-	list() {
-		return this.loads.list();
+	/** Posted loads, newest first, with who posted them; cost and value only for `stock.cost` (P8). */
+	async list(seeCost: boolean) {
+		const loads = await this.loads.list();
+		const names = await this.support.names(loads.map((load) => load.postedBy));
+		return loads.map((load) => ({
+			id: load.id,
+			number: load.number,
+			postedAt: load.postedAt,
+			postedBy: load.postedBy,
+			postedByName: load.postedBy ? (names.get(load.postedBy) ?? null) : null,
+			skus: load.rows.length,
+			totalUnits: load.totalUnits,
+			totalValueINR: seeCost ? load.totalValueINR : null,
+		}));
 	}
 }

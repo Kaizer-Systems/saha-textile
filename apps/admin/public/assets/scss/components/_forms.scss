@@ -441,6 +441,16 @@
 		}
 	}
 
+	// Longer permission names (Page Builder's "Go Live and schedule on the Home page only", the purchase order
+	// actions) ran into the next one at 14% each: every action keeps at least that width and grows to fit its words,
+	// and the row wraps as it already does (17 Nov 2026).
+	ul li:not(:first-child) {
+		@media (min-width: 769px) {
+			width: auto;
+			min-width: 14%;
+		}
+	}
+
 	> div {
 		ul {
 			background-color: white;

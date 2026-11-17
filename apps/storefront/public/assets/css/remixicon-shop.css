@@ -13,7 +13,18 @@
  * Every rule after the two @font-face rules is the vendor file, unchanged. Only how the font loads differs:
  * the 102 icons the shop uses come from remixicon-shop.woff (8.9 KB, preloaded by index.html);
  * any other icon comes from the vendor font, which a page downloads only if it shows one of them.
+ *
+ * The small file is the family's default face (no unicode-range), declared first; the vendor font comes after it,
+ * for the other icons only. A browser tries the later face first for the characters it covers, so an icon the
+ * shop uses always comes from the small file and any other from the vendor font. Icons are drawn from CSS
+ * content, not page text, so a unicode-range on the small face would also make critical CSS tools judge it
+ * unused and leave it out of the first paint.
  */
+@font-face {
+	font-family: 'remixicon';
+	src: url('../fonts/remixicon/remixicon-shop.woff?v=0b4f29a9') format('woff');
+	font-display: swap;
+}
 @font-face {
 	font-family: 'remixicon';
 	src: url('../fonts/remixicon/remixicon.woff2?t=1690730386070') format('woff2');
@@ -30,20 +41,6 @@
 		U+F0D2-F0FD, U+F0FF-F103, U+F106, U+F108-F10C, U+F10E-F111, U+F113-F11D, U+F11F, U+F121-F159, U+F15B-F185,
 		U+F187-F1A4, U+F1A6-F1AD, U+F1B0-F1BE, U+F1C0-F1EE, U+F1F0-F20E, U+F210-F230, U+F232-F239, U+F23B-F254,
 		U+F256-F263, U+F265-F2AD, U+F2AF-F2BA, U+F2BC-F2C1, U+F2C3-F2D3, U+F2D5-F3DF, U+F3E1-F3E5, U+F3E7-F3E9;
-}
-@font-face {
-	font-family: 'remixicon';
-	src: url('../fonts/remixicon/remixicon-shop.woff?v=0b4f29a9') format('woff');
-	font-display: swap;
-	unicode-range:
-		U+EA12-EA13, U+EA27, U+EA44, U+EA4E, U+EA60, U+EA62, U+EA64, U+EA6B-EA6C, U+EA6E, U+EA78, U+EA94, U+EB0F,
-		U+EB4E, U+EB7B, U+EB80-EB81, U+EB98-EB99, U+EBB2, U+EC2A, U+EC52-EC54, U+EC82, U+ECA1, U+ECAF, U+ECB5, U+ECBC,
-		U+ED0F, U+ED22, U+ED33, U+ED3B, U+ED6A, U+EDBB, U+EDDF, U+EE0E-EE0F, U+EE1A, U+EE2B, U+EE59, U+EE65, U+EE8B,
-		U+EE90, U+EE95, U+EEB5, U+EEB8, U+EEDA, U+EEF3, U+EEF6, U+EF14, U+EF65, U+EF75, U+EF78, U+EF9A, U+EFC5, U+EFD7,
-		U+EFE0, U+EFEC, U+EFFF, U+F002, U+F009-F00A, U+F00C-F00D, U+F023, U+F038, U+F045, U+F048, U+F053-F054, U+F064,
-		U+F0A3, U+F0C3, U+F0D1, U+F0FE, U+F104-F105, U+F107, U+F10D, U+F112, U+F11E, U+F120, U+F15A, U+F186, U+F1A5,
-		U+F1AE-F1AF, U+F1BF, U+F1EF, U+F20F, U+F231, U+F23A, U+F255, U+F264, U+F2AE, U+F2BB, U+F2C2, U+F2D4, U+F3E0,
-		U+F3E6;
 }
 [class^='ri-'],
 [class*=' ri-'] {

@@ -52,16 +52,19 @@ describe('split icon font', () => {
 		expect(rules(shopCss)).toBe(rules(vendor));
 	});
 
-	it('gives every icon to exactly one file', () => {
-		const shop = rangeOf(shopFace);
+	it("draws the shop's icons from the small file and only the others from the vendor font", () => {
+		// The small file is the default face, first and without a unicode-range (critical CSS keeps it); the vendor
+		// font follows, for the other icons only, so the browser tries it first for exactly those.
+		expect(faces[0]).toContain('remixicon-shop.woff');
+		expect(shopFace).not.toContain('unicode-range');
 		const full = rangeOf(fullFace);
-		expect([...shop].filter((point) => full.has(point))).toEqual([]);
 		const all = new Set(icons.values());
-		expect([...all].filter((point) => !shop.has(point) && !full.has(point))).toEqual([]);
+		expect(full.size).toBeGreaterThan(0);
+		expect([...full].filter((point) => !all.has(point))).toEqual([]);
 	});
 
 	it('has every icon the shop names in the small file', () => {
-		const shop = rangeOf(shopFace);
+		const full = rangeOf(fullFace);
 		const sources = [
 			...files(join(APP, 'src/app'), (name) => /\.(html|ts)$/.test(name) && !name.endsWith('.spec.ts')),
 			...files(join(APP, 'public/assets/data'), (name) => name.endsWith('.json')),
@@ -70,7 +73,7 @@ describe('split icon font', () => {
 		for (const file of sources) {
 			for (const name of readFileSync(file, 'utf8').match(/\bri-[a-z0-9]+(?:-[a-z0-9]+)*/g) ?? []) {
 				const point = icons.get(name);
-				if (point !== undefined && !shop.has(point)) missing.add(name);
+				if (point !== undefined && full.has(point)) missing.add(name);
 			}
 		}
 		// Not empty: run `node scripts/split-icon-font.mjs` and commit what it writes.

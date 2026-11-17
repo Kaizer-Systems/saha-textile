@@ -372,7 +372,7 @@
 							class="form-control form-control-sm"
 							inputmode="numeric"
 							maxlength="8"
-							style="width: 96px"
+							style="width: 112px"
 							[attr.aria-label]="'hsn_on_bill' | transloco"
 							[class.is-invalid]="problems()[i] === 'hsn_digits'"
 							[value]="line.hsnOnBill"
@@ -380,7 +380,7 @@
 						/>
 						<select
 							class="form-select form-select-sm mt-1"
-							style="width: 96px"
+							style="width: 112px"
 							[attr.aria-label]="'gst_rate_on_bill' | transloco"
 							[ngModel]="line.gstRatePct"
 							(ngModelChange)="setRate(i, $event)"

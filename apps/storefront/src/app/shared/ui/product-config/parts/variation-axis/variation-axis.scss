@@ -24,12 +24,17 @@
 				background-color: rgba(65, 115, 148, 0.06);
 			}
 
+			// An out-of-stock option stays readable: muted, but at 5.3 : 1, and its label a deeper red (decision D3).
 			&.disabled {
-				color: var(--st-text-disabled);
+				color: var(--st-text-unavailable);
 
 				.price-cell,
 				.text-content {
-					color: var(--st-text-disabled);
+					color: var(--st-text-unavailable);
+				}
+
+				.text-danger {
+					color: var(--st-danger-text) !important;
 				}
 			}
 		}

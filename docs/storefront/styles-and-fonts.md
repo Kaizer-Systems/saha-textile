@@ -86,6 +86,37 @@ The theme's icons are Remix Icon, one font of about 2,500 icons (141 KB as WOFF2
 
 The page-language menu shows a flag beside each language (`languageFlag` in core: `us` for English, `in` for every other language). The theme draws `.iti-flag` from intl-tel-input's country sprite on cdnjs, which is 5,630 px wide and 161 KB at double density, and every page fetched it at high priority for two 20 px flags. The language widget's own stylesheet now points those two at `public/assets/images/flags/us.svg` and `in.svg` (2 to 7 KB, drawn to the flags' official proportions); the theme's box, shadow and grey backing are unchanged. Any other flag code still draws from the sprite, and the phone-number field on the sign-in pages keeps it, since it lists every country. `e2e/languages.spec.ts` checks that Home requests no sprite.
 
+## Heading levels and heading classes
+
+Screen readers and search engines read a page's headings as an outline, and Lighthouse fails a page whose headings skip a level. The theme chose heading tags for their look, so some levels were out of order: a hero's small line (`h6`) before its heading, product names (`h6`) under a section's `h2`, prices and stock lines as headings, footer column titles (`h4`) after `h2`. Each was changed to the right level, or to plain text, with exactly the same look (decision D4, 17 Nov 2026):
+
+| Where                                                                             | Was              | Now                                                                 |
+| --------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------- |
+| Home hero: the small line above a heading                                         | `h6`             | `div.h6`                                                            |
+| Product card name                                                                 | `h6`             | `h3.h6` (`h4.h6` under the product page's "Trending Products" `h3`) |
+| Product card price and stock line                                                 | `h5`, `h6`       | `div.h5`, `div.h6`                                                  |
+| Blog card date and title                                                          | `h6`, `h5`       | `p.h6`, `h3.h5`                                                     |
+| Category page: children's names and counts                                        | `h4`, `h6`       | `h2.h4`, `p.h6`                                                     |
+| Category page: "Sort By"                                                          | `h5`             | `p.h5`                                                              |
+| Product page: price, "Please hurry! Only 4 left", the sticky bar's name and price | `h3`, `h6`, `h5` | `p.h3`, `p.h6`, `p.h5`                                              |
+| Product options: "Attributes", each option's label, add-on and bundle headings    | `h4`             | `h2.h4`                                                             |
+| Product options: a bundle part's name, the order summary, the measurements title  | `h6`, `h5`       | `h3.h6`, `h3.h5`                                                    |
+| Product page: "Product Information", "Delivery Details"                           | `h4`             | `h2.h4`                                                             |
+| Product page: "Review this product", "Have doubts…?"                              | `h4`             | `h3.h4`                                                             |
+| Product page: rating counts, star rows, review dates, the Q and A labels          | `h5`, `h6`       | `div.h5`, `div.h6`                                                  |
+| Product page: a question                                                          | `h6`             | `h4.h6`                                                             |
+| Phone menu: "Menu"                                                                | `h5`             | `h2.h5`                                                             |
+| Footer column titles                                                              | `h4`             | `h3.h4`                                                             |
+| Footer contact labels and values                                                  | `h6`, `h5`       | `p.h6`, `p.h5`                                                      |
+| Footer "Stay connected" and copyright                                             | `h6`             | `div.h6`                                                            |
+| Newsletter subtitle; cookie box text                                              | `h5` (`h4`)      | `p.h5` (`p.h4`)                                                     |
+
+Text that is not a heading becomes a `p`, or a `div` where the theme styles `p` in that area (`.home-detail p`, `.product-box .product-detail p { display: none }`, `.sub-footer p`), so nothing new reaches it. Where a class rule and a theme rule now weigh the same and the theme's should win (the hero's `.ls-expanded` letter spacing and its `margin-right: -12px`), the theme's rule moved after the heading rules, as the cascade had it before; nothing else changed. An `h1` or `h2` that takes a smaller look drops the theme's capitalising of `h1`/`h2`. The proof: every text on Home, a category page and a product page (phone and computer, light and dark, English and বাংলা) was captured before and after, and only the colours of D2 and D3 differ.
+
+The look comes from the heading classes `.h3`–`.h6` (Bootstrap's names). `scss/components/_heading-classes.scss` builds them the way Bootstrap's own Sass does, with `@extend`, so a class gets every theme rule written for its tag, in every context: `.home-detail h6` also styles `.home-detail .h6`, and the Bengali line height and the dark colours follow. It is imported at the top level of `app.scss` and of `dark.scss` (after `shop-dark.scss`), so the dark copy and the shop's own `html.dark` rules get the classes too. Bootstrap's compiled CSS gives `.h1`–`.h6` only its own sizes, which is why the theme's look has to be extended here. Component styles are compiled on their own, so a component rule that names a tag (the card name's two-line rule) names the class instead. The classes add about 34 KB to the theme stylesheet before compression and nothing to the critical CSS of a page that does not use them. A section that needs a heading level that differs from its look uses the tag for the level and the class for the look.
+
+The same round gave Home's hero dots a 24 px tap area each (WCAG 2.5.8, decision D5): the dot is drawn in the middle of its button, so the dots look the same; two tap areas may not overlap, so the dots sit 24 px apart (the gap between two small dots grows from 8 to 15 px), and the row sits 7.5 px lower so each dot stays where it was.
+
 ## The product page's photo gallery
 
 The gallery (main photo carousel and thumbnail strip) is drawn by the server too, so hydration keeps the same picture: before, the server drew a single stand-in photo and the browser swapped in the gallery, which was 164 px taller on a phone, so the buy box jumped (CLS 0.037) and the main photo was found only after the scripts ran (LCP 11.5 s on a phone). Owl cannot measure on the server, so it writes every slide and the loop's copies at no width; `scss/components/_gallery-before-start.scss` lays that HTML out as the started carousels do (only the first real slide, as a full-width block so the photo's width and height attributes keep its box before the file arrives; three thumbnails, each (strip − 20 px) / 3 wide, with owl's own 10 px margin), until `ProductGallery` adds `.st-gallery-started` once every slide carries a pixel width. The first photo is preloaded from the head, as Home's first picture is. The thumbnail strip draws the small `card` files: the product-page answer carries them with each gallery photo (`GALLERY_FRAME_ROLES`); a photo sent without them falls back to the gallery's own smallest size. Measured: CLS 0.000 on phone and computer.
@@ -125,6 +156,8 @@ The shop's own screens use named colours instead of typed values, so they work i
 | `--st-border` and variants                    | `#eeeeee` …                     | white at 12–30 %                | Borders and lines                         |
 | `--st-success`, `--st-warning`, `--st-danger` | `#237032`, `#e8590c`, `#e03131` | `#51cf66`, `#ff922b`, `#ff6b6b` | Stock and status text                     |
 | `--st-accent-text`                            | `var(--theme-color)`            | `var(--theme-text-on-dark)`     | The shop colour as text in our components |
+| `--st-text-unavailable`                       | `#6b6b6b`                       | `#a8a8a8`                       | Words on an option that can't be chosen   |
+| `--st-danger-text`                            | `#d32f2f`                       | `#ff8a80`                       | Red words such as "Out of Stock"          |
 
 Light values live in `scss/utils/_shop-colours.scss` (part of the light theme) and dark values in `scss/shop-dark.scss`, which `dark.scss` imports, so they load only in dark mode. `shop-dark.scss` also holds the few dark fixes for the theme itself: Bootstrap tables, form labels, status pills, stock chips, the gallery arrows, the newsletter popup text, and hero text that keeps its light colours. Every rule in it is a colour.
 
@@ -136,6 +169,8 @@ A full audit measured every visible piece of text on 160 page-and-state combinat
 - Badges: dark text `#1d1d22` on the yellow "New" and "Featured" labels; `#c62828` instead of `#ff7272` for "Sale", the menu "New" label and the cart count.
 - Order and refund statuses darker in light mode, lighter in dark mode.
 - Grey hint text `#777` and `#999` now `#666` and `#6b6b6b`; the Facebook button `#166fe5`.
+- The phone's bottom bar labels (Category, Search, My Wish, Cart): full white instead of 80 % white over the shop blue, 5.1 : 1 instead of 3.9 : 1 (decision D2, 17 Nov 2026).
+- The product page's out-of-stock option row: `--st-text-unavailable` (5.3 : 1) instead of `#b0b0b0` (2.2 : 1), and its "Out of Stock" label `--st-danger-text` (4.98 : 1) instead of `#ff4f4f` (3.2 : 1). In dark mode the row's grey #8c8c8c measured 4.13 : 1 on the dark page, so it is the shop's dark grey #a8a8a8 (5.9 : 1); the red stays #ff8a80 (decision D3).
 
 `e2e/dark-mode.spec.ts` keeps it that way (see [Quality and Definition of Done](../frontend/quality-and-definition-of-done.md)).
 

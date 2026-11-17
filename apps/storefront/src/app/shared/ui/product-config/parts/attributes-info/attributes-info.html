@@ -1,7 +1,7 @@
 @if (attributes().length) {
 <div class="attributes-info product-package">
 	<div class="product-title">
-		<h4>{{ 'attributes' | transloco }}</h4>
+		<h2 class="h4">{{ 'attributes' | transloco }}</h2>
 	</div>
 	<ul class="attributes-pill-list">
 		@for (attr of attributes(); track attr.code) {

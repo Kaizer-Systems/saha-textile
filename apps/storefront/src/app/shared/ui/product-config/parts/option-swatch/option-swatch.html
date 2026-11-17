@@ -1,11 +1,11 @@
 <div class="option-swatch">
 	@if (label()) {
 	<div class="option-swatch-head">
-		<h4>
+		<h2 class="h4">
 			{{ label() }} @if (required()) {
 			<span class="req">*</span>
 			}
-		</h4>
+		</h2>
 		@if (selectedLabel()) {
 		<span class="selected-hint">{{ selectedLabel() }}</span>
 		}

@@ -17,6 +17,9 @@ html.dark {
 	--st-text-faint-2: #a8a8a8;
 	--st-text-disabled: #8c8c8c;
 	--st-text-disabled-2: #6f6f6f;
+	// An out-of-stock option's words: #8c8c8c measured 4.13 : 1 on the dark page (#2a2d2d), so the shop's dark grey,
+	// 5.9 : 1 and still clearly muted beside the white rows (D3, measured 17 Nov 2026).
+	--st-text-unavailable: #a8a8a8;
 	--st-border: rgba(255, 255, 255, 0.14);
 	--st-border-soft: rgba(255, 255, 255, 0.14);
 	--st-border-strong: rgba(255, 255, 255, 0.3);
@@ -25,6 +28,7 @@ html.dark {
 	--st-success: #51cf66;
 	--st-warning: #ff922b;
 	--st-danger: #ff6b6b;
+	--st-danger-text: #ff8a80;
 	--st-accent-text: var(--theme-text-on-dark);
 }
 

@@ -2,7 +2,7 @@
 <h1 class="name">{{ product().name }}</h1>
 
 <div class="price-rating">
-	<h3 class="theme-color price">
+	<p class="h3 theme-color price">
 		{{ displayPrice() | currencySymbol }}@if (rule()) {
 		<span class="text-content">{{ 'per_metre' | transloco }}</span>
 		} @if (discount()) {
@@ -10,7 +10,7 @@
 		} @if (discount()) {
 		<span class="offer-top">{{ discount() }}% {{ 'off' | transloco }}</span>
 		}
-	</h3>
+	</p>
 	<!-- Stars only from approved reviews, and only once there is one. -->
 	@if (product().reviews_count) {
 	<div class="product-rating custom-rate">

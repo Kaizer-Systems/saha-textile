@@ -13,3 +13,6 @@
 
 // The shop's own dark colours and fixes to the theme's dark mode, outside `.dark` (they use html.dark).
 @import 'shop-dark';
+
+// After every rule, at the top level: the heading classes follow the dark copy's and the shop's dark rules alike.
+@import 'components/heading-classes';

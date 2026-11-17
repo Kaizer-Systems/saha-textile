@@ -50,10 +50,6 @@
 			padding: 50px calc(15px + (30 - 15) * ((100vw - 320px) / (1920 - 320))) !important;
 		}
 
-		.ls-expanded {
-			letter-spacing: 2.2px;
-		}
-
 		// The banner block's heading is an h2 (one main heading per page), drawn as this h1.
 		h1,
 		&.p-center-left > div > h2 {
@@ -249,6 +245,12 @@
 					display: none;
 				}
 			}
+		}
+
+		// After the h6 rule, so the wide spacing still wins on the hero's small line now that it is a `.h6` text
+		// (heading classes, D4): the class form of the h6 rule weighs the same as this one, and the later rule wins.
+		.ls-expanded {
+			letter-spacing: 2.2px;
 		}
 
 		p {

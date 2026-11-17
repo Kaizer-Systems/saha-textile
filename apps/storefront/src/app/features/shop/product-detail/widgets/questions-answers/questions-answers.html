@@ -4,11 +4,11 @@
 		@for (item of skeletonItems; track item) {
 		<li>
 			<div class="question-box">
-				<h5></h5>
-				<h6 class="font-weight-bold que"></h6>
+				<div class="h5"></div>
+				<div class="h6 font-weight-bold que"></div>
 			</div>
 			<div class="answer-box">
-				<h5></h5>
+				<div class="h5"></div>
 				<div>
 					<p class="ans"></p>
 					<p class="ans"></p>
@@ -20,7 +20,7 @@
 </div>
 } @else {
 <div class="post-question-box">
-	<h4>
+	<h3 class="h4">
 		{{ 'have_doubts_regarding_this_product' | transloco }} ?
 		<a
 			href="javascript:void(0)"
@@ -29,7 +29,7 @@
 		>
 			{{ 'post_your_question' | transloco }}
 		</a>
-	</h4>
+	</h3>
 </div>
 <div class="question-answer">
 	@if (questionAnswers()?.length) {
@@ -37,11 +37,11 @@
 		@for (qna of questionAnswers(); track qna.id; let i = $index) {
 		<li>
 			<div class="question-box">
-				<h5>{{ 'q' | transloco }}{{ i + 1 }}</h5>
-				<h6 class="font-weight-bold que">{{ qna.question }}</h6>
+				<div class="h5">{{ 'q' | transloco }}{{ i + 1 }}</div>
+				<h4 class="h6 font-weight-bold que">{{ qna.question }}</h4>
 			</div>
 			<div class="answer-box">
-				<h5>{{ 'a' | transloco }}{{ i + 1 }}</h5>
+				<div class="h5">{{ 'a' | transloco }}{{ i + 1 }}</div>
 				<p class="ans">{{ qna.answer }}</p>
 			</div>
 			<p class="text-content mb-0">

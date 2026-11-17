@@ -2,7 +2,7 @@
 	@for (group of groups(); track group.code) {
 	<div class="addon-block">
 		<div class="addon-head">
-			<h4>{{ 'required_addon' | transloco }}: {{ group.label }}</h4>
+			<h2 class="h4">{{ 'required_addon' | transloco }}: {{ group.label }}</h2>
 		</div>
 		@if (group.help_text) {
 		<p class="addon-help text-content">{{ group.help_text }}</p>

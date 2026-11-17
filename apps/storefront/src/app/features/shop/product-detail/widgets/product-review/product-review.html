@@ -10,7 +10,7 @@
 							{{ summary().average | number: '1.1-1' }}
 							<i class="ri-star-fill"></i>
 						</h2>
-						<h5>{{ 'reviews_count' | transloco: { count: summary().count } }}</h5>
+						<div class="h5">{{ 'reviews_count' | transloco: { count: summary().count } }}</div>
 					</div>
 				</div>
 				<div class="col-xl-12">
@@ -18,10 +18,10 @@
 						@for (bar of bars(); track bar.stars) {
 						<li>
 							<div class="rating-product">
-								<h5>
+								<div class="h5">
 									{{ bar.stars }}
 									<i class="ri-star-fill"></i>
-								</h5>
+								</div>
 								<div
 									class="progress"
 									role="progressbar"
@@ -35,7 +35,7 @@
 										[style.width.%]="bar.percent"
 									></div>
 								</div>
-								<h5 class="total">{{ bar.total }}</h5>
+								<div class="h5 total">{{ bar.total }}</div>
 							</div>
 						</li>
 						}
@@ -44,7 +44,7 @@
 				}
 				<div class="col-xl-12">
 					<div class="review-title-2">
-						<h4 class="fw-bold">{{ 'review_this_product' | transloco }}</h4>
+						<h3 class="h4 fw-bold">{{ 'review_this_product' | transloco }}</h3>
 						<p>
 							{{ (summary().count ? 'let_other_customers_know_what_you_think' : 'be_the_first_to_review')
 							| transloco }}
@@ -82,7 +82,7 @@
 									| transloco }}
 								</span>
 								<div class="date-time">
-									<h6 class="text-content">{{ own.createdAt | shopDate }}</h6>
+									<div class="h6 text-content">{{ own.createdAt | shopDate }}</div>
 									<div class="product-rating">
 										<ngb-rating
 											[attr.aria-label]="'rating' | transloco"
@@ -118,7 +118,7 @@
 								<span class="name">{{ review.authorName || ('a_customer' | transloco) }}</span>
 								<span class="text-content ms-2">{{ 'verified_buyer' | transloco }}</span>
 								<div class="date-time">
-									<h6 class="text-content">{{ review.createdAt | shopDate }}</h6>
+									<div class="h6 text-content">{{ review.createdAt | shopDate }}</div>
 									<div class="product-rating">
 										<ngb-rating
 											[attr.aria-label]="'rating' | transloco"

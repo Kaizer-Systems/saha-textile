@@ -9,8 +9,8 @@
 					[routerLink]="'/collections/' + category.canonical_path"
 					class="category-name"
 				>
-					<h4>{{ category.name }}</h4>
-					<h6>{{ category.products_count }} {{ 'items' | transloco }}</h6>
+					<h2 class="h4">{{ category.name }}</h2>
+					<p class="h6">{{ category.products_count }} {{ 'items' | transloco }}</p>
 				</a>
 				<div class="category-box-view">
 					<a [routerLink]="'/collections/' + category.canonical_path">

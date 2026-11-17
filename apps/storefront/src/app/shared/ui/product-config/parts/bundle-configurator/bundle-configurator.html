@@ -6,10 +6,10 @@
 
 	<!-- Components -->
 	<div class="bundle-section">
-		<h4 class="bundle-heading">
+		<h2 class="h4 bundle-heading">
 			{{ 'bundle_components' | transloco }}
 			<span class="count">({{ components().length }})</span>
-		</h4>
+		</h2>
 		<ul class="bundle-components">
 			@for (comp of components(); track comp.code; let i = $index) {
 			<li class="bundle-component">
@@ -20,7 +20,7 @@
 					[alt]="comp.name"
 				/>
 				<div class="comp-main">
-					<h6 class="comp-name">{{ comp.name }}</h6>
+					<h3 class="h6 comp-name">{{ comp.name }}</h3>
 					<div class="comp-sku text-content">{{ 'sku' | transloco }}: {{ comp.sku }}</div>
 					@if (comp.attributes?.length) {
 					<div class="comp-attrs">
@@ -59,7 +59,7 @@
 	<!-- Options -->
 	@if (optionGroups().length) {
 	<div class="bundle-section">
-		<h4 class="bundle-heading">{{ 'choose_bundle_options' | transloco }}</h4>
+		<h2 class="h4 bundle-heading">{{ 'choose_bundle_options' | transloco }}</h2>
 		@for (group of optionGroups(); track group.code) {
 		<app-option-swatch
 			[label]="group.label"
@@ -83,7 +83,7 @@
 
 	<!-- Order summary snapshot -->
 	<div class="bundle-summary">
-		<h5>{{ 'order_summary_snapshot' | transloco }}</h5>
+		<h3 class="h5">{{ 'order_summary_snapshot' | transloco }}</h3>
 		<ul class="summary-lines">
 			@for (comp of components(); track comp.code) {
 			<li>

@@ -19,7 +19,7 @@
 									[class.show]="active"
 								>
 									<div class="offcanvas-header navbar-shadow">
-										<h5>{{ 'menu' | transloco }}</h5>
+										<h2 class="h5">{{ 'menu' | transloco }}</h2>
 										<!-- The light/dark switch lives in the top bar; with the top bar off it moves here. -->
 										@if (!data()?.header?.page_top_bar_enable && themeMode.switchShown()) {
 										<app-mode

@@ -80,7 +80,9 @@ test.describe('Browsing by category', () => {
 		await page.goto('/en/collections/sarees');
 		const tiles = page.locator('.category-box-list');
 		await expect(tiles).toHaveCount(7);
-		await expect(tiles.first().locator('h6')).toContainText(/\d+/);
+		await expect(tiles.first().locator('.category-name p.h6')).toContainText(/\d+/);
+		// The children are the page's sections under its H1: H2s with the theme's h4 look (decision D4).
+		await expect(tiles.first().locator('h2.h4')).toBeVisible();
 		await expect(tiles.first().locator('img')).toHaveAttribute('src', /^https?:/);
 		await expect(page.locator('app-collection-category-filter .category-list-box')).toHaveCount(7);
 		await tiles.first().locator('a').first().click();
@@ -105,7 +107,8 @@ test.describe('Browsing by category', () => {
 test.describe('Card names', () => {
 	test('a long name shows two lines, and cards stay level', async ({ page }) => {
 		await page.goto('/en/collections/sarees');
-		const name = page.locator('app-product-box h6.name').first();
+		// The card's heading (H3 under a section's H2, decision D4) keeps the theme's h6 look.
+		const name = page.locator('app-product-box h3.h6.name').first();
 		await expect(name).toBeVisible();
 		const style = await name.evaluate((node) => {
 			const css = getComputedStyle(node);

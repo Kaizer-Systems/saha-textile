@@ -1,6 +1,6 @@
 @for (attribute of attributes; track attribute; let i = $index) { @if (!isAllVariantStyleDropdown()) {
 <div class="product-title">
-	<h4>{{ attribute?.name }} : {{ attribute?.selected_value }}</h4>
+	<h2 class="h4">{{ attribute?.name }} : {{ attribute?.selected_value }}</h2>
 </div>
 } @if (attribute?.style === 'dropdown' || isAllVariantStyleDropdown()) {
 <select

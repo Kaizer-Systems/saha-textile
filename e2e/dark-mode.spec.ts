@@ -39,6 +39,10 @@ async function open(
 	const page = await context.newPage();
 	await page.goto(path, { waitUntil: 'networkidle' });
 	await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important}' });
+	// Far sections are drawn only near the screen (content-visibility), so a section at the edge of that distance
+	// may or may not be drawn yet at first and its height is then its placeholder's. Draw them all, as Back does,
+	// so the two modes are compared on their real layout.
+	await page.evaluate(() => document.documentElement.classList.add('st-render-all'));
 	await page.waitForTimeout(500);
 	return page;
 }

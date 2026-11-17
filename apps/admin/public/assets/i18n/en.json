@@ -4090,5 +4090,6 @@
 	"pb_words_fix_with": "Fix it with",
 	"pb_words_move_to": "Or move the words to",
 	"perm_page_builder_draft_home": "Build Home page drafts only",
-	"perm_page_builder_go_live_home": "Go Live and schedule on the Home page only"
+	"perm_page_builder_go_live_home": "Go Live and schedule on the Home page only",
+	"pb_fix_item_plain": "{{ink}} words, no backing ({{ratio}} : 1)"
 }

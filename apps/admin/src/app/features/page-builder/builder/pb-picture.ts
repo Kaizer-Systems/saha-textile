@@ -183,6 +183,12 @@ export class PbPicture {
 	}
 
 	fixLine(fix: { ink: Ink; backing: Backing; ratio: number }): string {
+		if (fix.backing === 'none') {
+			return this.transloco.translate('pb_fix_item_plain', {
+				ink: this.transloco.translate('pb_ink_' + fix.ink),
+				ratio: fix.ratio,
+			});
+		}
 		return this.transloco.translate('pb_fix_item', {
 			ink: this.transloco.translate('pb_ink_' + fix.ink),
 			backing: this.transloco.translate('pb_backing_' + fix.backing),

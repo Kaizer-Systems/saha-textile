@@ -443,11 +443,15 @@
 				class="form-select w-auto"
 				id="pb_hand_back"
 				[disabled]="!v.handBackTo.length"
-				[value]="handBackTo() ?? ''"
 				(change)="handBackTo.set($any($event.target).value || null)"
 			>
 				@for (row of v.handBackTo; track row.layoutId) {
-				<option [value]="row.layoutId">{{ row.name }}</option>
+				<option
+					[value]="row.layoutId"
+					[selected]="row.layoutId === handBackTo()"
+				>
+					{{ row.name }}
+				</option>
 				}
 			</select>
 		</div>

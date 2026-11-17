@@ -4090,5 +4090,6 @@
 	"pb_words_fix_with": "এভাবে ঠিক করুন",
 	"pb_words_move_to": "অথবা লেখাটা সরিয়ে দিন",
 	"perm_page_builder_draft_home": "শুধু হোম পেজের ড্রাফট বানানো",
-	"perm_page_builder_go_live_home": "শুধু হোম পেজে লাইভ করা আর শিডিউল"
+	"perm_page_builder_go_live_home": "শুধু হোম পেজে লাইভ করা আর শিডিউল",
+	"pb_fix_item_plain": "{{ink}} লেখা, পেছনে কিছু ছাড়াই ({{ratio}} : 1)"
 }

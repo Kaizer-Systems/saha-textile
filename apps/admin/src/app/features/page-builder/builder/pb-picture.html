@@ -81,11 +81,15 @@
 				<select
 					class="form-select"
 					id="pb_ink"
-					[value]="p.ink"
 					(change)="set('ink', $any($event.target).value)"
 				>
 					@for (option of inks; track option) {
-					<option [value]="option">{{ 'pb_ink_' + option | transloco }}</option>
+					<option
+						[value]="option"
+						[selected]="option === p.ink"
+					>
+						{{ 'pb_ink_' + option | transloco }}
+					</option>
 					}
 				</select>
 			</div>
@@ -99,11 +103,15 @@
 				<select
 					class="form-select"
 					id="pb_backing"
-					[value]="p.backing"
 					(change)="set('backing', $any($event.target).value)"
 				>
 					@for (option of backings; track option) {
-					<option [value]="option">{{ 'pb_backing_' + option | transloco }}</option>
+					<option
+						[value]="option"
+						[selected]="option === p.backing"
+					>
+						{{ 'pb_backing_' + option | transloco }}
+					</option>
 					}
 				</select>
 			</div>
@@ -148,7 +156,7 @@
 						</div>
 					</div>
 					<p
-						class="small mb-0"
+						class="small d-flex align-items-start mb-0 gap-1"
 						[class.fm-ok]="view.reads"
 						[class.fm-err]="!view.reads"
 					>
@@ -175,7 +183,7 @@
 				@for (fix of fixes(); track fix.ink + fix.backing) {
 				<button
 					type="button"
-					class="btn btn-outline btn-sm text-start"
+					class="btn btn-outline btn-sm text-start text-wrap"
 					[attr.data-fix]="fix.ink + '|' + fix.backing"
 					(click)="useFix(fix)"
 				>

@@ -165,11 +165,14 @@ export class PbGoLive {
 			needed: problem.needed,
 		});
 		const fixes = (problem.fixes ?? []).map((fix) =>
-			t('pb_fix_item', {
-				ink: t('pb_ink_' + fix.ink),
-				backing: t('pb_backing_' + fix.backing),
-				ratio: fix.ratio,
-			}),
+			// A fix without a backing reads "no backing", never "backing None".
+			fix.backing === 'none'
+				? t('pb_fix_item_plain', { ink: t('pb_ink_' + fix.ink), ratio: fix.ratio })
+				: t('pb_fix_item', {
+						ink: t('pb_ink_' + fix.ink),
+						backing: t('pb_backing_' + fix.backing),
+						ratio: fix.ratio,
+					}),
 		);
 		return fixes.length
 			? `${line} ${t('pb_words_fixes', { fixes: fixes.join('; ') })}`

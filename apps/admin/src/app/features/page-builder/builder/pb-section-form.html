@@ -113,11 +113,15 @@
 	<select
 		class="form-select mb-3"
 		id="pb_phone_sides"
-		[value]="s.phoneSides"
 		(change)="set('phoneSides', $any($event.target).value)"
 	>
 		@for (option of ['below_side_by_side', 'main_only', 'swipe_row']; track option) {
-		<option [value]="option">{{ 'pb_phone_sides_' + option | transloco }}</option>
+		<option
+			[value]="option"
+			[selected]="option === s.phoneSides"
+		>
+			{{ 'pb_phone_sides_' + option | transloco }}
+		</option>
 		}
 	</select>
 	} } @if (s.type === 'banner_arrangement' || s.type === 'promo_banners') {
@@ -239,11 +243,15 @@
 				<select
 					class="form-select form-select-sm"
 					[id]="'pb_controls_' + piece.name"
-					[value]="piece.slider.controls"
 					(change)="slider(p, 'controls', $any($event.target).value)"
 				>
 					@for (option of ['bottom_center', 'bottom_start', 'bottom_end']; track option) {
-					<option [value]="option">{{ 'pb_controls_' + option | transloco }}</option>
+					<option
+						[value]="option"
+						[selected]="option === piece.slider.controls"
+					>
+						{{ 'pb_controls_' + option | transloco }}
+					</option>
 					}
 				</select>
 			</div>
@@ -257,11 +265,15 @@
 				<select
 					class="form-select form-select-sm"
 					[id]="'pb_after_' + piece.name"
-					[value]="piece.slider.after"
 					(change)="slider(p, 'after', $any($event.target).value)"
 				>
 					@for (option of ['loop', 'stop']; track option) {
-					<option [value]="option">{{ 'pb_after_' + option | transloco }}</option>
+					<option
+						[value]="option"
+						[selected]="option === piece.slider.after"
+					>
+						{{ 'pb_after_' + option | transloco }}
+					</option>
 					}
 				</select>
 			</div>
@@ -278,11 +290,15 @@
 	<select
 		class="form-select mb-3"
 		id="pb_source"
-		[value]="s.source"
 		(change)="set('source', $any($event.target).value)"
 	>
 		@for (option of sources; track option) {
-		<option [value]="option">{{ 'pb_source_' + option | transloco }}</option>
+		<option
+			[value]="option"
+			[selected]="option === s.source"
+		>
+			{{ 'pb_source_' + option | transloco }}
+		</option>
 		}
 	</select>
 	@if (s.source === 'category' || s.source === 'tag' || s.source === 'picked') {

@@ -123,6 +123,8 @@ describe('the words map in the picture popup (P5)', () => {
 		expect(popup.fixLine({ ink: 'white', backing: 'soft_dark', ratio: 5.2 })).toBe(
 			'pb_fix_item(pb_ink_white,pb_backing_soft_dark,5.2)',
 		);
+		// Without a backing it says so plainly, never "backing None".
+		expect(popup.fixLine({ ink: 'brand', backing: 'none', ratio: 5 })).toBe('pb_fix_item_plain(pb_ink_brand,5)');
 		expect(popup.otherSpots()).toEqual(['top_end', 'middle_end', 'bottom_end']);
 		popup.useFix({ ink: 'white', backing: 'soft_dark' });
 		expect(popup.picture()).toMatchObject({ ink: 'white', backing: 'soft_dark' });

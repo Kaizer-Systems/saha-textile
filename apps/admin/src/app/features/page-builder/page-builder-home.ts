@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ToastrService } from '@damjantonkli/ngx-toastr';
@@ -14,7 +14,10 @@ import {
 	type AdminLayoutRow,
 	PageBuilderGateway,
 } from '@core/page-builder/page-builder.gateway';
+import { AuthStore } from '@core/state/auth.store';
+import { type ITableClickedAction } from '@data-access/interfaces/table.interface';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 
 import { PbNewLayout } from './pb-new-layout';
 import { PbThumb } from './pb-thumb';
@@ -24,25 +27,31 @@ interface WhenRow {
 	from: string | null;
 	name: string;
 	back: boolean;
-	status: 'live' | 'scheduled';
+	status: 'live' | 'scheduled' | 'waiting';
+	/** A switch still to come that can be cancelled, or a Go Live waiting for pictures that can be taken off. */
+	cancel: { revisionId: string; from: string } | null;
+	waitingLayoutId: string | null;
 }
 
 /** Badge classes per layout status (theme badges; the ended chip is the Media brief's muted chip). */
-export const STATUS_CLASS: Record<AdminLayoutRow['status'], string> = {
+export const STATUS_CLASS: Record<AdminLayoutRow['status'] | 'waiting', string> = {
 	live: 'badge bg-success',
 	scheduled: 'badge bg-info text-dark',
+	waiting: 'badge bg-warning text-dark',
 	draft: 'badge bg-warning text-dark',
 	ended: 'fm-chip muted',
 };
 
 /**
  * Page Builder › Home (brief A1): what shoppers see and when, the page's layouts as cards with their status, and
- * the page's templates (Q9 A). New layout, or Use this on a template, opens A2. The builder itself (Edit) and Go Live come with their own build steps.
+ * the page's templates (Q9 A). New layout, or Use this on a template, opens A2; Edit opens the builder. Those who may go
+ * live (Q10 A) also cancel a switch still to come, put back the previous layout (SG-15), take off a Go Live waiting for
+ * pictures (E5) and, as super admins, switch safe mode (SG-15); each asks first.
  */
 @Component({
 	selector: 'app-page-builder-home',
 	templateUrl: './page-builder-home.html',
-	imports: [DatePipe, PageWrapper, PbThumb, RouterLink, TranslocoModule],
+	imports: [ConfirmationModal, DatePipe, PageWrapper, PbThumb, RouterLink, TranslocoModule],
 })
 export class PageBuilderHome {
 	private readonly gateway = inject(PageBuilderGateway);
@@ -52,6 +61,10 @@ export class PageBuilderHome {
 	readonly pageType = (inject(ActivatedRoute).snapshot.paramMap.get('type') ?? 'home').toLowerCase();
 	readonly page = signal<AdminBuilderPage | null>(null);
 	readonly statusClass = STATUS_CLASS;
+	readonly confirm = viewChild<ConfirmationModal>('confirmationModal');
+	/** Q10 A: going live and changing the schedule are for the owner and super admins. */
+	private readonly auth = inject(AuthStore);
+	readonly canGoLive = computed(() => this.auth.permissions().includes('page_builder.go_live'));
 
 	/** Page settings each shop language still lacks (P3), with the language named in its own script. */
 	readonly settingsTodo = computed(() =>
@@ -69,7 +82,9 @@ export class PageBuilderHome {
 		const names = new Map(page.layouts.map((row) => [row.layout.id, row.layout.name]));
 		const rows: WhenRow[] = [];
 		const live = page.schedule.find((entry) => entry.revisionId === page.liveRevisionId);
-		if (live) rows.push({ from: live.from, name: names.get(live.layoutId) ?? '', back: false, status: 'live' });
+		const none = { cancel: null, waitingLayoutId: null };
+		if (live)
+			rows.push({ from: live.from, name: names.get(live.layoutId) ?? '', back: false, status: 'live', ...none });
 		const now = Date.now();
 		for (const entry of [...page.schedule].sort((a, b) => Date.parse(a.from) - Date.parse(b.from))) {
 			if (Date.parse(entry.from) > now)
@@ -78,10 +93,28 @@ export class PageBuilderHome {
 					name: names.get(entry.layoutId) ?? '',
 					back: false,
 					status: 'scheduled',
+					cancel: { revisionId: entry.revisionId, from: entry.from },
+					waitingLayoutId: null,
 				});
 			if (entry.until && Date.parse(entry.until) > now && live && entry.layoutId !== live.layoutId) {
-				rows.push({ from: entry.until, name: names.get(live.layoutId) ?? '', back: true, status: 'scheduled' });
+				rows.push({
+					from: entry.until,
+					name: names.get(live.layoutId) ?? '',
+					back: true,
+					status: 'scheduled',
+					...none,
+				});
 			}
+		}
+		for (const waiting of page.waiting) {
+			rows.push({
+				from: waiting.from,
+				name: waiting.layoutName,
+				back: false,
+				status: 'waiting',
+				cancel: null,
+				waitingLayoutId: waiting.layoutId,
+			});
 		}
 		return rows;
 	});
@@ -96,6 +129,30 @@ export class PageBuilderHome {
 			error: (error) =>
 				this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('pb_action_failed')),
 		});
+	}
+
+	/** Asks first (the admin's own confirmation), then changes the schedule or the safe mode. */
+	ask(action: 'cancel_switch' | 'cancel_waiting' | 'put_back' | 'safe_on' | 'safe_off', data?: unknown): void {
+		void this.confirm()?.openModal(action, data);
+	}
+
+	async confirmed(action: ITableClickedAction): Promise<void> {
+		const type = this.pageType;
+		const calls = {
+			cancel_switch: () => this.gateway.cancelSwitch(type, action.data as { revisionId: string; from: string }),
+			cancel_waiting: () => this.gateway.cancelWaiting(type, action.data as string),
+			put_back: () => this.gateway.putBack(type),
+			safe_on: () => this.gateway.safeMode(type, true),
+			safe_off: () => this.gateway.safeMode(type, false),
+		} as const;
+		const call = calls[action.actionToPerform as keyof typeof calls];
+		if (!call) return;
+		try {
+			this.page.set(await lastValueFrom(call()));
+			this.toastr.success(this.transloco.translate('pb_done_' + action.actionToPerform));
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('pb_action_failed'));
+		}
 	}
 
 	async newLayout(template: string | null = null): Promise<void> {

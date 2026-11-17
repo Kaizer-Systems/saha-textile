@@ -33,7 +33,40 @@
 
 	<div class="row g-4 mb-4">
 		<div class="col-xxl-8 col-12">
-			<h6 class="mb-2">{{ 'pb_when_title' | transloco }}</h6>
+			@if (page()?.safeMode; as safe) {
+			<div
+				class="alert alert-warning"
+				id="pb_safe_mode_on"
+			>
+				{{ 'pb_safe_mode_on' | transloco: { name: safe.byName ?? '—', when: (safe.at | date: 'd MMM y, h:mm a' :
+				'+0530') } }}
+			</div>
+			}
+			<div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+				<h6 class="mb-0">{{ 'pb_when_title' | transloco }}</h6>
+				@if (canGoLive()) {
+				<div class="d-flex flex-wrap gap-2">
+					@if (page()?.putBack; as back) {
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pb_put_back"
+						(click)="ask('put_back')"
+					>
+						{{ 'pb_put_back' | transloco: { name: back.layoutName } }}
+					</button>
+					}
+					<button
+						type="button"
+						class="btn btn-sm btn-outline"
+						id="pb_safe_mode"
+						(click)="ask(page()?.safeMode ? 'safe_off' : 'safe_on')"
+					>
+						{{ (page()?.safeMode ? 'pb_safe_mode_end' : 'pb_safe_mode_start') | transloco }}
+					</button>
+				</div>
+				}
+			</div>
 			<div class="table-responsive datatable-wrapper border-table">
 				<table
 					class="all-package theme-table no-footer fm-table mb-0 table"
@@ -44,6 +77,11 @@
 							<th>{{ 'pb_col_from' | transloco }}</th>
 							<th>{{ 'pb_col_layout' | transloco }}</th>
 							<th>{{ 'pb_col_status' | transloco }}</th>
+							@if (canGoLive()) {
+							<th>
+								<span class="visually-hidden">{{ 'actions' | transloco }}</span>
+							</th>
+							}
 						</tr>
 					</thead>
 					<tbody>
@@ -51,7 +89,9 @@
 						<tr>
 							<td>
 								@if (row.status === 'live') { {{ 'pb_now_since' | transloco: { when: (row.from | date:
-								'd MMM y' : '+0530') } }} } @else { {{ row.from | date: 'd MMM y, h:mm a' : '+0530' }} }
+								'd MMM y' : '+0530') } }} } @else if (row.status === 'waiting' && !row.from) { {{
+								'pb_when_ready' | transloco }} } @else { {{ row.from | date: 'd MMM y, h:mm a' : '+0530'
+								}} }
 							</td>
 							<td>
 								@if (row.back) { {{ 'pb_back_to' | transloco }} }
@@ -62,10 +102,43 @@
 									{{ 'pb_status_' + row.status | transloco }}
 								</span>
 							</td>
+							@if (canGoLive()) {
+							<td class="text-end">
+								@if (row.cancel; as cancel) {
+								<button
+									type="button"
+									class="btn btn-sm btn-link p-0"
+									[title]="'pb_cancel_switch' | transloco"
+									[attr.aria-label]="'pb_cancel_switch' | transloco"
+									[attr.data-cancel]="cancel.revisionId"
+									(click)="ask('cancel_switch', cancel)"
+								>
+									<i
+										class="ri-close-circle-line"
+										aria-hidden="true"
+									></i>
+								</button>
+								} @if (row.waitingLayoutId; as id) {
+								<button
+									type="button"
+									class="btn btn-sm btn-link p-0"
+									[title]="'pb_cancel_waiting' | transloco"
+									[attr.aria-label]="'pb_cancel_waiting' | transloco"
+									[attr.data-cancel-waiting]="id"
+									(click)="ask('cancel_waiting', id)"
+								>
+									<i
+										class="ri-close-circle-line"
+										aria-hidden="true"
+									></i>
+								</button>
+								}
+							</td>
+							}
 						</tr>
 						} @empty {
 						<tr>
-							<td colspan="3">{{ 'pb_showing_fixed' | transloco }}</td>
+							<td [attr.colspan]="canGoLive() ? 4 : 3">{{ 'pb_showing_fixed' | transloco }}</td>
 						</tr>
 						}
 					</tbody>
@@ -131,6 +204,14 @@
 				<div class="content-sec pb-content">
 					<h5 class="mb-0">{{ row.layout.name }}</h5>
 					<span [class]="statusClass[row.status]">{{ 'pb_status_' + row.status | transloco }}</span>
+					@if (row.layout.reviewRequest) {
+					<span
+						class="fm-chip"
+						[attr.data-review]="row.layout.id"
+					>
+						{{ 'pb_review_chip' | transloco }}
+					</span>
+					}
 					<span class="pb-card-actions">
 						<a
 							[routerLink]="['/page-builder', pageType, 'layouts', row.layout.id]"
@@ -201,3 +282,8 @@
 	</div>
 	}
 </app-page-wrapper>
+
+<app-confirmation-modal
+	#confirmationModal
+	(confirmed)="confirmed($event)"
+/>

@@ -1,0 +1,95 @@
+<div class="modal-header">
+	<h2 class="modal-title h5">{{ 'pb_history_title' | transloco: { name: name() } }}</h2>
+	<button
+		type="button"
+		class="btn-close"
+		[title]="'close' | transloco"
+		[attr.aria-label]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body">
+	<h3 class="h6 text-uppercase mb-2">{{ 'pb_history_session' | transloco }}</h3>
+	<ul
+		class="list-group mb-4"
+		id="pb_history_session"
+	>
+		@for (line of session(); track $index) {
+		<li class="list-group-item d-flex gap-3">
+			<span class="help-text text-nowrap">{{ line.at | date: 'HH:mm' }}</span>
+			<span>{{ line.key | transloco: line.params }}</span>
+		</li>
+		} @empty {
+		<li class="list-group-item help-text">{{ 'pb_history_session_empty' | transloco }}</li>
+		}
+	</ul>
+
+	<h3 class="h6 text-uppercase mb-2">{{ 'pb_history_saved' | transloco }}</h3>
+	@if (error(); as message) {
+	<p
+		class="fm-err"
+		role="alert"
+	>
+		{{ message }}
+	</p>
+	}
+	<ul
+		class="list-group mb-2"
+		id="pb_history_saved"
+	>
+		@for (row of revisions() ?? []; track row.id) {
+		<li
+			class="list-group-item d-flex align-items-center flex-wrap gap-2"
+			[attr.data-revision]="row.id"
+		>
+			<div class="me-auto">
+				<strong>
+					@if (row.isDraft) { {{ 'pb_history_draft' | transloco: { when: (row.createdAt | date: 'd MMM y, h:mm
+					a' : '+0530') } }} } @else if (row.wentLiveAt) { {{ 'pb_history_went_live' | transloco: { when:
+					(row.wentLiveAt | date: 'd MMM y, h:mm a' : '+0530') } }} } @else { {{ 'pb_history_saved_at' |
+					transloco: { when: (row.createdAt | date: 'd MMM y, h:mm a' : '+0530') } }} }
+				</strong>
+				@if (row.isLive) {
+				<span class="badge bg-success ms-1">{{ 'pb_status_live' | transloco }}</span>
+				}
+				<span class="help-text d-block">
+					{{ 'pb_history_by' | transloco: { name: row.createdByName ?? '—', count: row.sections } }} @if
+					(row.isDraft) { · {{ 'pb_history_editing' | transloco }} }
+				</span>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				[attr.data-look]="row.id"
+				(click)="look(row)"
+			>
+				{{ 'pb_history_look' | transloco }}
+			</button>
+			@if (!row.isDraft && !readOnly()) {
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				[attr.data-bring-back]="row.id"
+				(click)="bringBack(row)"
+			>
+				{{ 'pb_history_bring_back' | transloco }}
+			</button>
+			}
+		</li>
+		} @empty {
+		<li class="list-group-item help-text">
+			{{ (revisions() === null ? 'loading' : 'pb_history_none') | transloco }}
+		</li>
+		}
+	</ul>
+	<p class="help-text fst-italic mb-0">{{ 'pb_history_note' | transloco }}</p>
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'close' | transloco }}
+	</button>
+</div>

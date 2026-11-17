@@ -18,6 +18,7 @@ import { AuthStore } from '@core/state/auth.store';
 import { injectLanguageRemindersQuery } from '@data-access/queries/admin-languages.queries';
 import { injectMediaStorageQuery, injectNightlyCheckQuery } from '@data-access/queries/media-library.queries';
 import { injectNotificationsQuery } from '@data-access/queries/notification.queries';
+import { injectPageBuilderAlertsQuery } from '@data-access/queries/page-builder.queries';
 import { NavService } from '@data-access/services/nav.service';
 import { quantityText } from '@features/purchasing/shared/purchasing-labels';
 import { PluralPipe, pluralKey } from '@shared/pipes/language.pipes';
@@ -156,8 +157,16 @@ export class Notification {
 		STOCK_ALERT_PERMISSIONS.some((code) => this.authStore.permissions().includes(code)),
 	);
 	readonly stock = computed(() => stockBellLines(this.stockQuery.data()));
+	/** Page Builder (SG-12, SG-18): drafts waiting for review (for those who may go live) and the nightly check. */
+	private readonly pageBuilderQuery = injectPageBuilderAlertsQuery(() =>
+		this.authStore.permissions().includes('theme_option.index'),
+	);
+	readonly pageReviews = computed(() => this.pageBuilderQuery.data()?.reviews ?? []);
+	readonly pageChecks = computed(() => this.pageBuilderQuery.data()?.nightly?.layouts ?? []);
 	readonly unreadNotificationCount = computed(
 		() =>
+			this.pageReviews().length +
+			this.pageChecks().length +
 			this.languageReminders().length +
 			(this.storageAlert() ? 1 : 0) +
 			(this.missingPictures() ? 1 : 0) +

@@ -46,6 +46,12 @@ vi.mock('@data-access/queries/notification.queries', () => ({
 }));
 const reminders = signal<unknown>(undefined);
 const remindersAsked = vi.hoisted(() => ({ enabled: [] as boolean[] }));
+const pageBuilderAlerts = vi.hoisted(() => ({
+	value: null as null | { reviews: unknown[]; nightly: { checkedAt: string; layouts: unknown[] } | null },
+}));
+vi.mock('@data-access/queries/page-builder.queries', () => ({
+	injectPageBuilderAlertsQuery: () => ({ data: () => pageBuilderAlerts.value }),
+}));
 vi.mock('@data-access/queries/admin-languages.queries', () => ({
 	injectLanguageRemindersQuery: (enabled: () => boolean) => {
 		remindersAsked.enabled.push(enabled());
@@ -257,6 +263,21 @@ describe('Header notification', () => {
 		expect(widget.unreadNotificationCount()).toBe(1);
 		widget.clickHeaderOnMobile();
 		expect(widget.active).toBe(true);
+	});
+
+	it('lists Page Builder reviews asked and the nightly check’s layouts, and counts each (SG-12, SG-18)', () => {
+		pageBuilderAlerts.value = {
+			reviews: [{ layoutId: 'lay_1', pageType: 'home', layoutName: 'Puja', byName: 'Rina', at: 'x', note: '' }],
+			nightly: {
+				checkedAt: 'x',
+				layouts: [{ layoutId: 'lay_2', pageType: 'home', layoutName: 'Everyday', problems: 2 }],
+			},
+		};
+		const widget = bare(Notification, [{ provide: NavService, useValue: {} }, auth(['theme_option.index'])]);
+		expect(widget.pageReviews()).toHaveLength(1);
+		expect(widget.pageChecks()).toHaveLength(1);
+		expect(widget.unreadNotificationCount()).toBe(2);
+		pageBuilderAlerts.value = null;
 	});
 
 	it('reminds whoever manages languages about a deleted language’s stored text', () => {

@@ -1,7 +1,7 @@
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { isPlatformBrowser } from '@angular/common';
 import { Component, DestroyRef, HostListener, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -14,6 +14,8 @@ import { type AdminLayoutView, type PageSection, PageBuilderGateway } from '@cor
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 import { PbAddSection, type PbAddChoice } from './pb-add-section';
+import { type GoLiveOutcome, PbGoLive } from './pb-go-live';
+import { PbHistory, type SessionLine } from './pb-history';
 import { PbPreview } from './pb-preview';
 import { PbSectionForm } from './pb-section-form';
 import {
@@ -67,6 +69,7 @@ export class PbBuilder {
 	private readonly toastr = inject(ToastrService);
 	private readonly transloco = inject(TranslocoService);
 	private readonly route = inject(ActivatedRoute);
+	private readonly router = inject(Router);
 	private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 	readonly pageType = (this.route.snapshot.paramMap.get('type') ?? 'home').toLowerCase();
 	readonly layoutId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -104,6 +107,9 @@ export class PbBuilder {
 	readonly problemCount = computed(() => this.view()?.problems.length ?? 0);
 
 	private readonly history = new UndoHistory<PageSection[]>();
+	/** This session's changes, one per undo step (E3); undone steps wait here until redone or replaced. */
+	private steps: Omit<SessionLine, 'steps'>[] = [];
+	private undoneSteps: Omit<SessionLine, 'steps'>[] = [];
 	private draftId: string | null = null;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
 	private retryAt = 0;
@@ -162,18 +168,19 @@ export class PbBuilder {
 
 	// ── Changes ────────────────────────────────────────────────────────────────────────────────────────────
 
-	/** Every change goes through here: one undo step, then a save within a second. */
-	change(next: PageSection[]): void {
+	/** Every change goes through here: one undo step (named for History, E3), then a save within a second. */
+	change(next: PageSection[], key = 'pb_log_changed', params: Record<string, unknown> = {}): void {
 		if (this.readOnly()) return;
 		this.history.record(this.sections());
+		this.logStep(key, params);
 		this.sections.set(next);
 		this.syncHistory();
 		this.scheduleSave(SAVE_DELAY_MS);
 	}
 
-	updateSection(section: PageSection): void {
+	updateSection(section: PageSection, key = 'pb_log_changed'): void {
 		try {
-			this.change(replaceSection(this.sections(), section));
+			this.change(replaceSection(this.sections(), section), key, { name: this.sectionName(section) });
 		} catch {
 			this.toastr.error(this.transloco.translate('pb_value_refused'));
 		}
@@ -195,13 +202,18 @@ export class PbBuilder {
 						id: newSection(choice.block.section.type, ids).id,
 						block: { id: choice.block.id, linked: choice.linked },
 					};
-		this.change(insertSection(this.sections(), section as PageSection, this.selectedId()));
+		this.change(insertSection(this.sections(), section as PageSection, this.selectedId()), 'pb_log_added', {
+			name: this.sectionName(section as PageSection),
+		});
 		this.selectedId.set(section.id);
 		this.pane.set('settings');
 	}
 
 	move(from: number, to: number): void {
-		this.change(moveSection(this.sections(), from, to));
+		const moved = this.sections()[from];
+		this.change(moveSection(this.sections(), from, to), 'pb_log_moved', {
+			name: moved ? this.sectionName(moved) : '',
+		});
 	}
 
 	drop(event: CdkDragDrop<PageSection[]>): void {
@@ -210,17 +222,19 @@ export class PbBuilder {
 
 	duplicate(id: string): void {
 		const copy = duplicateSection(this.sections(), id);
-		this.change(copy.sections);
+		const source = this.sections().find((section) => section.id === id);
+		this.change(copy.sections, 'pb_log_duplicated', { name: source ? this.sectionName(source) : '' });
 		this.selectedId.set(copy.id);
 	}
 
 	toggleHidden(section: PageSection): void {
-		this.updateSection({ ...section, hidden: !section.hidden });
+		this.updateSection({ ...section, hidden: !section.hidden }, section.hidden ? 'pb_log_shown' : 'pb_log_hidden');
 	}
 
 	/** Delete with an Undo toast instead of a confirm dialog (Six points of view: UI/UX). */
 	remove(id: string): void {
-		this.change(removeSection(this.sections(), id));
+		const gone = this.sections().find((section) => section.id === id);
+		this.change(removeSection(this.sections(), id), 'pb_log_removed', { name: gone ? this.sectionName(gone) : '' });
 		if (this.selectedId() === id) this.selectedId.set(this.sections()[0]?.id ?? null);
 		const toast = this.toastr.info(this.transloco.translate('pb_section_removed'), '', { timeOut: 8000 });
 		toast.onTap.subscribe(() => this.undo());
@@ -242,6 +256,8 @@ export class PbBuilder {
 	undo(): void {
 		const previous = this.history.undo(this.sections());
 		if (!previous) return;
+		const step = this.steps.pop();
+		if (step) this.undoneSteps.push(step);
 		this.sections.set(previous);
 		this.afterHistory();
 	}
@@ -249,6 +265,8 @@ export class PbBuilder {
 	redo(): void {
 		const next = this.history.redo(this.sections());
 		if (!next) return;
+		const step = this.undoneSteps.pop();
+		if (step) this.steps.push(step);
 		this.sections.set(next);
 		this.afterHistory();
 	}
@@ -322,6 +340,7 @@ export class PbBuilder {
 	private liftedFrom: PageSection[] | null = null;
 
 	private dropLifted(): void {
+		const liftedId = this.lifted()?.id;
 		const before = this.liftedFrom;
 		this.liftedFrom = null;
 		this.lifted.set(null);
@@ -333,6 +352,8 @@ export class PbBuilder {
 				.join();
 		if (!moved) return;
 		this.history.record(before);
+		const lifted = this.sections().find((section) => section.id === liftedId);
+		this.logStep('pb_log_moved', { name: lifted ? this.sectionName(lifted) : '' });
 		this.syncHistory();
 		this.scheduleSave(SAVE_DELAY_MS);
 	}
@@ -411,6 +432,7 @@ export class PbBuilder {
 		this.forgetInTab();
 		this.saveState.set('saved');
 		this.history.record(this.sections());
+		this.logStep('pb_log_opened_newer', {});
 		void this.load();
 	}
 
@@ -447,6 +469,118 @@ export class PbBuilder {
 	choose(id: string): void {
 		this.selectedId.set(id);
 		this.pane.set('settings');
+	}
+
+	// ── History (E3) and Go Live (E1, E2, E5) ───────────────────────────────────────────────────────────
+
+	private logStep(key: string, params: Record<string, unknown>): void {
+		this.steps.push({ at: new Date(), key, params });
+		if (this.steps.length > 50) this.steps.shift();
+		this.undoneSteps = [];
+	}
+
+	/** This session's lines, oldest first; repeated edits of one section in a row show as one line. */
+	sessionLines(): SessionLine[] {
+		const lines: SessionLine[] = [];
+		for (const step of this.steps) {
+			const last = lines.at(-1);
+			if (last && last.key === step.key && JSON.stringify(last.params) === JSON.stringify(step.params)) {
+				last.at = step.at;
+				last.steps += 1;
+			} else lines.push({ ...step, steps: 1 });
+		}
+		return lines;
+	}
+
+	async openHistory(): Promise<void> {
+		const ref = this.modals.open(PbHistory, { centered: true, size: 'lg', scrollable: true });
+		(ref.componentInstance as PbHistory).start({
+			layoutId: this.layoutId,
+			pageType: this.pageType,
+			locale: this.locale(),
+			name: this.view()?.layout.name ?? '',
+			session: this.sessionLines(),
+			readOnly: this.readOnly(),
+		});
+		const result = (await ref.result.catch(() => null)) as { bringBack: string } | null;
+		if (result?.bringBack) await this.bringBack(result.bringBack);
+	}
+
+	/** E3 Bring back: the saved revision becomes the draft (one undo step back to what was here). */
+	private async bringBack(revisionId: string): Promise<void> {
+		if (this.saveTimer) {
+			clearTimeout(this.saveTimer);
+			await this.save();
+		}
+		try {
+			const before = this.sections();
+			const view = await lastValueFrom(
+				this.gateway.bringBack(this.layoutId, { revisionId, expectedDraftId: this.draftId }),
+			);
+			this.history.record(before);
+			this.logStep('pb_log_brought_back', { number: view.draft?.number ?? '' });
+			this.view.set(view);
+			this.draftId = view.draft?.id ?? null;
+			this.sections.set(view.draft?.sections ?? []);
+			this.afterBringBack();
+			this.toastr.success(this.transloco.translate('pb_brought_back'));
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('pb_action_failed'));
+		}
+	}
+
+	private afterBringBack(): void {
+		if (!this.sections().some((section) => section.id === this.selectedId())) {
+			this.selectedId.set(this.sections()[0]?.id ?? null);
+		}
+		this.syncHistory();
+	}
+
+	/** Go Live: saves first, so the checks run on what is on screen, then opens E1/E2 with the answer. */
+	async openGoLive(): Promise<void> {
+		if (this.saveTimer || this.saveState() === 'saving' || this.saveState() === 'retrying') {
+			if (this.saveTimer) clearTimeout(this.saveTimer);
+			await this.save();
+		}
+		if (this.saveState() !== 'saved' && this.saveState() !== 'locked') {
+			this.toastr.warning(this.transloco.translate('pb_save_first'));
+			return;
+		}
+		try {
+			const view = await lastValueFrom(this.gateway.goLiveView(this.layoutId));
+			const ref = this.modals.open(PbGoLive, { centered: true, size: 'lg', scrollable: true });
+			const names = Object.fromEntries(this.sections().map((section) => [section.id, this.sectionName(section)]));
+			(ref.componentInstance as PbGoLive).start(this.layoutId, view, this.locales, names);
+			const outcome = (await ref.result.catch(() => null)) as GoLiveOutcome | null;
+			if (outcome) this.afterGoLive(outcome);
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('pb_action_failed'));
+		}
+	}
+
+	private afterGoLive(outcome: GoLiveOutcome): void {
+		switch (outcome.kind) {
+			case 'went':
+				this.toastr.success(this.transloco.translate('pb_went_' + outcome.state));
+				void this.router.navigate(['/page-builder', this.pageType]);
+				break;
+			case 'reviewed':
+				this.toastr.success(this.transloco.translate('pb_review_asked'));
+				break;
+			case 'moved_on':
+				this.saveState.set('conflict');
+				break;
+			case 'go_to': {
+				const problem = outcome.problem;
+				if (problem.kind === 'page_settings') {
+					void this.router.navigate(['/page-builder', this.pageType, 'settings']);
+					return;
+				}
+				if (problem.locale && this.locales.includes(problem.locale)) this.locale.set(problem.locale);
+				if (problem.sectionId) this.choose(problem.sectionId);
+				break;
+			}
+		}
 	}
 
 	sectionName(section: PageSection): string {

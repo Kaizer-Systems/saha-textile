@@ -4,6 +4,8 @@ import { Injectable, inject } from '@angular/core';
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import type {
+	GoLiveBudgetLine,
+	LayoutProblemView,
 	BringBackRequest,
 	CancelSwitchRequest,
 	GoLiveRequest,
@@ -30,6 +32,8 @@ import type {
 import type { Observable } from 'rxjs';
 
 export type {
+	GoLiveBudgetLine,
+	LayoutProblemView,
 	BringBackRequest,
 	CancelSwitchRequest,
 	GoLiveRequest,

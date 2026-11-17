@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ActiveLanguages } from '@core/i18n/active-languages';
+import { AuthStore } from '@core/state/auth.store';
 import { type AdminBuilderPage, PageBuilderGateway } from '@core/page-builder/page-builder.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 
@@ -91,6 +92,7 @@ const setup = <T>(component: new (...args: never[]) => T, gateway: Partial<PageB
 				},
 			},
 			{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ type: 'home' }) } } },
+			{ provide: AuthStore, useValue: { permissions: () => ['theme_option.index', 'page_builder.go_live'] } },
 		],
 	});
 	TestBed.overrideComponent(component as never, { set: { imports: [], template: '' } });
@@ -301,5 +303,49 @@ describe('Page settings (P3, SG-6, SG-7)', () => {
 		expect(long.cut).toBe(true);
 		expect(long.text.endsWith('…')).toBe(true);
 		expect(long.text.length).toBeLessThanOrEqual(60);
+	});
+});
+
+describe('Page Builder › Home schedule actions (A1, E5, SG-15)', () => {
+	it('lists a Go Live waiting for pictures, and offers to cancel only switches still to come', () => {
+		const waiting = {
+			...page,
+			waiting: [
+				{ layoutId: 'lay_new', layoutName: 'New hero', from: null, requestedAt: '2026-11-17T10:00:00.000Z' },
+			],
+		};
+		const { page: home } = setup(PageBuilderHome, { page: vi.fn(() => of(waiting)) });
+		expect(home.canGoLive()).toBe(true);
+		const rows = home.when();
+		expect(rows.map((row) => [row.name, row.status])).toContainEqual(['New hero', 'waiting']);
+		expect(rows.find((row) => row.status === 'live')?.cancel).toBeNull();
+		expect(rows.find((row) => row.name === 'Winter weddings')?.cancel).toEqual({
+			revisionId: 'rev_winter',
+			from: '2099-12-01T00:00:00.000Z',
+		});
+		expect(rows.find((row) => row.back)?.cancel).toBeNull();
+		expect(rows.find((row) => row.status === 'waiting')?.waitingLayoutId).toBe('lay_new');
+	});
+
+	it('cancels, puts back and switches safe mode through the API once confirmed, and says so', async () => {
+		const after = { ...page, safeMode: { by: 'adm_1', byName: 'Moulik', at: '2026-11-17T10:00:00.000Z' } };
+		const gateway = {
+			page: vi.fn(() => of(page)),
+			cancelSwitch: vi.fn(() => of(page)),
+			putBack: vi.fn(() => of(page)),
+			safeMode: vi.fn(() => of(after)),
+			cancelWaiting: vi.fn(() => throwError(() => ({ status: 403 }))),
+		};
+		const { page: home, toastr } = setup(PageBuilderHome, gateway);
+		await home.confirmed({ actionToPerform: 'cancel_switch', data: { revisionId: 'rev_winter', from: 'x' } });
+		expect(gateway.cancelSwitch).toHaveBeenCalledWith('home', { revisionId: 'rev_winter', from: 'x' });
+		await home.confirmed({ actionToPerform: 'safe_on' });
+		expect(gateway.safeMode).toHaveBeenCalledWith('home', true);
+		expect(home.page()?.safeMode?.byName).toBe('Moulik');
+		expect(toastr.success).toHaveBeenCalledWith('pb_done_safe_on');
+		await home.confirmed({ actionToPerform: 'cancel_waiting', data: 'lay_new' });
+		expect(toastr.error).toHaveBeenCalled();
+		await home.confirmed({ actionToPerform: 'something_else' });
+		expect(gateway.putBack).not.toHaveBeenCalled();
 	});
 });

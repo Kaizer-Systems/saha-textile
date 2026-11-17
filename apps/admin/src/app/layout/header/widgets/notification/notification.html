@@ -10,8 +10,8 @@
 		<span class="badge rounded-pill badge-theme">{{ unreadNotificationCount() }}</span>
 		}
 	</div>
-	@if (notifications().length || languageReminders().length || storageAlert() || missingPictures() || stock().length)
-	{
+	@if (notifications().length || languageReminders().length || storageAlert() || missingPictures() || stock().length
+	|| pageReviews().length || pageChecks().length) {
 	<ul
 		class="notification-dropdown onhover-show-div"
 		[class.active]="active"
@@ -56,6 +56,30 @@
 				<p>
 					<i class="ri-record-circle-line txt-primary me-2"></i>
 					{{ stockText(line) }}
+				</p>
+			</a>
+		</li>
+		} @for (review of pageReviews(); track review.layoutId) {
+		<li>
+			<a
+				[routerLink]="['/page-builder', review.pageType, 'layouts', review.layoutId]"
+				[attr.data-page-review]="review.layoutId"
+			>
+				<p>
+					<i class="ri-record-circle-line txt-primary me-2"></i>
+					{{ 'pb_bell_review' | transloco: { name: review.byName ?? '—', layout: review.layoutName } }}
+				</p>
+			</a>
+		</li>
+		} @for (check of pageChecks(); track check.layoutId) {
+		<li>
+			<a
+				[routerLink]="['/page-builder', check.pageType, 'layouts', check.layoutId]"
+				[attr.data-page-check]="check.layoutId"
+			>
+				<p>
+					<i class="ri-record-circle-line txt-primary me-2"></i>
+					{{ 'pb_bell_nightly' | plural: check.problems : { layout: check.layoutName } }}
 				</p>
 			</a>
 		</li>

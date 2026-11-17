@@ -42,6 +42,19 @@
 					aria-hidden="true"
 				></i>
 			</button>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				id="pb_history"
+				[title]="'pb_history' | transloco"
+				[attr.aria-label]="'pb_history' | transloco"
+				(click)="openHistory()"
+			>
+				<i
+					class="ri-history-line"
+					aria-hidden="true"
+				></i>
+			</button>
 			<span
 				class="pb-save"
 				id="pb_save_state"
@@ -58,6 +71,14 @@
 				{{ 'pb_to_fix' | transloco: { count: problemCount() } }}
 			</span>
 			}
+			<button
+				type="button"
+				class="btn btn-sm btn-theme"
+				id="pb_go_live"
+				(click)="openGoLive()"
+			>
+				{{ 'pb_go_live_button' | transloco }}
+			</button>
 		</div>
 	</div>
 

@@ -13,13 +13,8 @@
 <!-- Layout Partial -->
 <app-header />
 <router-outlet />
-<!-- The footer is drawn by the server and wakes only when it comes near the screen, so its code is not part of
-     the first load (incremental hydration). -->
-@defer (on viewport; hydrate on viewport) {
+<!-- The footer stays awake from the start: its Cookie settings link must work at the first click. -->
 <app-footer [footer]="footerData" />
-} @placeholder {
-<div></div>
-}
 
 <!-- Widgets: none of them is on the first screen (popups, sticky bars, back to top, the cookie box overlay), so
      each loads in its own file once the page is idle, after the first paint (Angular @defer on idle). -->

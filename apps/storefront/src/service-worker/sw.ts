@@ -7,7 +7,8 @@
  * app and to tell open pages when a new build is live.
  *
  * Offline features are added here, in this file, as their own routes. Whatever is added must never
- * cache API responses, auth, account, cart or checkout data, signed URLs or `/config.json`.
+ * cache API responses, auth, account, cart or checkout data, signed URLs, `/config.json` or the Page Builder's
+ * `/{locale}/__preview/…` pages (a draft must never be served from a cache).
  */
 
 interface WorkerEvent {

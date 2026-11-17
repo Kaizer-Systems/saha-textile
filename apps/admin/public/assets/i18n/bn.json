@@ -3802,7 +3802,6 @@
 	"pb_phone_sides_main_only": "দেখাবে না: শুধু মূল ছবি",
 	"pb_phone_sides_swipe_row": "সোয়াইপ করার একটা সারি",
 	"pb_picture_fields": "এই ছবির লেখা ও লিংক",
-	"pb_preview_soon": "প্রিভিউ তৈরি হলে বাছাই করা স্ক্রিনের মাপে শপটাই এখানে দেখাবে (পেজ বিল্ডার ধাপ 6)।",
 	"pb_redo": "আবার করুন",
 	"pb_undo": "আগের মতো করুন",
 	"pb_save_as_block": "ব্লক হিসেবে সেভ করুন",
@@ -3909,5 +3908,14 @@
 	"pb_backing_none": "নেই",
 	"pb_backing_soft_light": "হালকা সাদাটে",
 	"pb_backing_soft_dark": "হালকা কালচে",
-	"pb_save_refused": "সেভ হয়নি: একটি মান চলবে না"
+	"pb_save_refused": "সেভ হয়নি: একটি মান চলবে না",
+	"pb_preview_size": "স্ক্রিনের মাপ",
+	"pb_preview_at": "{{width}} × {{height}}, {{percent}}% মাপে দেখানো",
+	"pb_preview_failed": "প্রিভিউ খোলা গেল না। সেভ করে আবার চেষ্টা করুন।",
+	"pb_size_phone": "ফোন",
+	"pb_size_phone_side": "ফোন আড়াআড়ি",
+	"pb_size_tablet": "ট্যাবলেট",
+	"pb_size_tablet_side": "ট্যাবলেট আড়াআড়ি",
+	"pb_size_desktop": "কম্পিউটার",
+	"pb_size_large": "বড় স্ক্রিন"
 }

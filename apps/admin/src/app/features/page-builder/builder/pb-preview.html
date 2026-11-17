@@ -1,0 +1,41 @@
+<div
+	class="btn-group btn-group-sm mb-2 flex-wrap"
+	role="group"
+	[attr.aria-label]="'pb_preview_size' | transloco"
+>
+	@for (option of sizes; track option.key) {
+	<button
+		type="button"
+		class="btn btn-outline"
+		[class.active]="size().key === option.key"
+		[attr.aria-pressed]="size().key === option.key"
+		[attr.data-size]="option.key"
+		(click)="size.set(option)"
+	>
+		{{ 'pb_size_' + option.key | transloco }}
+	</button>
+	}
+</div>
+<p class="help-text mb-2">
+	{{ 'pb_preview_at' | transloco: { width: size().width, height: size().height, percent: (scale() * 100 | number:
+	'1.0-0') } }}
+</p>
+@if (failed()) {
+<p class="fm-err">{{ 'pb_preview_failed' | transloco }}</p>
+} @else if (src(); as url) {
+<div
+	class="pb-frame-box"
+	[style.height.px]="size().height * scale()"
+>
+	<iframe
+		class="pb-frame"
+		id="pb_preview_frame"
+		[src]="url"
+		[title]="'pb_pane_preview' | transloco"
+		[style.width.px]="size().width"
+		[style.height.px]="size().height"
+		[style.transform]="'scale(' + scale() + ')'"
+		referrerpolicy="no-referrer"
+	></iframe>
+</div>
+}

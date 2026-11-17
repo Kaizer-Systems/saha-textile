@@ -284,3 +284,18 @@ body.dark-only .layout-selection-sec .theme-card .content-sec.pb-content .pb-car
 	grid-template-columns: repeat(3, 40px);
 	gap: 6px;
 }
+
+// The preview frame (brief C1–C6; approved custom: the device frame that shows the shop at an exact size and scales it).
+.pb-frame-box {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-soft);
+}
+
+.pb-frame {
+	display: block;
+	border: 0;
+	transform-origin: 0 0;
+}

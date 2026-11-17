@@ -13,8 +13,8 @@ import { ActiveLanguages } from '@core/i18n/active-languages';
 import { type AdminLayoutView, type PageSection, PageBuilderGateway } from '@core/page-builder/page-builder.gateway';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
-import { PbThumb } from '../pb-thumb';
 import { PbAddSection, type PbAddChoice } from './pb-add-section';
+import { PbPreview } from './pb-preview';
 import { PbSectionForm } from './pb-section-form';
 import {
 	UndoHistory,
@@ -55,8 +55,8 @@ const unsavedKey = (layoutId: string) => `pb_unsaved_${layoutId}`;
 		CdkDropList,
 		LanguageSwitch,
 		NgbDropdownModule,
+		PbPreview,
 		PbSectionForm,
-		PbThumb,
 		RouterLink,
 		TranslocoModule,
 	],

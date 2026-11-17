@@ -11,6 +11,7 @@ import type {
 	AdminSavedBlockRow,
 	ComingUpResponse,
 	LayoutLockResponse,
+	PreviewCodeResponse,
 	CreateLayoutRequest,
 	PageSection,
 	PageSettings,
@@ -28,6 +29,7 @@ export type {
 	AdminSavedBlockRow,
 	ComingUpResponse,
 	LayoutLockResponse,
+	PreviewCodeResponse,
 	CreateLayoutRequest,
 	PageSection,
 	PageSettings,
@@ -82,6 +84,11 @@ export class PageBuilderGateway {
 	/** E4: take or keep the editing lock; the builder calls it every 30 s while open. */
 	lock(id: string): Observable<LayoutLockResponse> {
 		return this.http.post<LayoutLockResponse>(this.url(`/layouts/${encodeURIComponent(id)}/lock`), {});
+	}
+
+	/** Step 6: a one-time code for the shop's /__preview address (a minute, used once). */
+	previewCode(id: string): Observable<PreviewCodeResponse> {
+		return this.http.post<PreviewCodeResponse>(this.url(`/layouts/${encodeURIComponent(id)}/preview-code`), {});
 	}
 
 	unlock(id: string): Observable<void> {

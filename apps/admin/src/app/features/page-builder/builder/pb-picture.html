@@ -14,7 +14,7 @@
 		class="theme-form"
 		[disabled]="readOnly()"
 	>
-		<div class="form-check form-switch ps-0 mb-3">
+		<div class="form-check form-switch mb-3 ps-0">
 			<label class="switch">
 				<input
 					type="checkbox"
@@ -27,15 +27,17 @@
 			<label
 				class="ms-2"
 				for="pb_contains_text"
-				>{{ 'banner_contains_text' | transloco }}</label
 			>
+				{{ 'banner_contains_text' | transloco }}
+			</label>
 		</div>
 		@if (!p.containsText) { @for (field of ['heading', 'subheading', 'ctaLabel']; track field) {
 		<label
 			class="form-label-title"
 			[for]="'pb_pic_' + field"
-			>{{ 'banner_' + field | transloco }}</label
 		>
+			{{ 'banner_' + field | transloco }}
+		</label>
 		<input
 			class="form-control mb-3"
 			type="text"
@@ -73,8 +75,9 @@
 				<label
 					class="form-label-title"
 					for="pb_ink"
-					>{{ 'pb_ink' | transloco }}</label
 				>
+					{{ 'pb_ink' | transloco }}
+				</label>
 				<select
 					class="form-select"
 					id="pb_ink"
@@ -90,8 +93,9 @@
 				<label
 					class="form-label-title"
 					for="pb_backing"
-					>{{ 'pb_backing' | transloco }}</label
 				>
+					{{ 'pb_backing' | transloco }}
+				</label>
 				<select
 					class="form-select"
 					id="pb_backing"
@@ -108,8 +112,9 @@
 		<label
 			class="form-label-title"
 			for="pb_pic_alt"
-			>{{ 'banner_alt' | transloco }}</label
 		>
+			{{ 'banner_alt' | transloco }}
+		</label>
 		<input
 			class="form-control mb-1"
 			id="pb_pic_alt"
@@ -124,8 +129,9 @@
 		<label
 			class="form-label-title mt-2"
 			for="pb_pic_link"
-			>{{ 'banner_link' | transloco }}</label
 		>
+			{{ 'banner_link' | transloco }}
+		</label>
 		<input
 			class="form-control mb-1"
 			id="pb_pic_link"
@@ -153,8 +159,9 @@
 			<label
 				class="form-check-label"
 				for="pb_decorative"
-				>{{ 'pb_decorative' | transloco }}</label
 			>
+				{{ 'pb_decorative' | transloco }}
+			</label>
 		</div>
 		}
 		<div class="row g-2 mt-2">
@@ -162,8 +169,9 @@
 				<label
 					class="form-label-title"
 					for="pb_pic_from"
-					>{{ 'pb_show_from' | transloco }}</label
 				>
+					{{ 'pb_show_from' | transloco }}
+				</label>
 				<input
 					class="form-control"
 					id="pb_pic_from"
@@ -176,8 +184,9 @@
 				<label
 					class="form-label-title"
 					for="pb_pic_until"
-					>{{ 'pb_show_until' | transloco }}</label
 				>
+					{{ 'pb_show_until' | transloco }}
+				</label>
 				<input
 					class="form-control"
 					id="pb_pic_until"

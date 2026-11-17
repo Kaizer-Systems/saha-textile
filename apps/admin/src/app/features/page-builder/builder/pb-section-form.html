@@ -35,8 +35,9 @@
 	<label
 		class="form-label-title"
 		for="pb_title"
-		>{{ 'pb_field_title' | transloco }} ({{ locale() }})</label
 	>
+		{{ 'pb_field_title' | transloco }} ({{ locale() }})
+	</label>
 	<input
 		class="form-control mb-3"
 		id="pb_title"
@@ -49,8 +50,9 @@
 	<label
 		class="form-label-title"
 		for="pb_description"
-		>{{ 'pb_field_description' | transloco }} ({{ locale() }})</label
 	>
+		{{ 'pb_field_description' | transloco }} ({{ locale() }})
+	</label>
 	<textarea
 		class="form-control mb-3"
 		id="pb_description"
@@ -63,8 +65,9 @@
 	<label
 		class="form-label-title"
 		for="pb_subtitle"
-		>{{ 'pb_field_subtitle' | transloco }} ({{ locale() }})</label
 	>
+		{{ 'pb_field_subtitle' | transloco }} ({{ locale() }})
+	</label>
 	<input
 		class="form-control mb-3"
 		id="pb_subtitle"
@@ -104,8 +107,9 @@
 	<label
 		class="form-label-title"
 		for="pb_phone_sides"
-		>{{ 'pb_phone_sides' | transloco }}</label
 	>
+		{{ 'pb_phone_sides' | transloco }}
+	</label>
 	<select
 		class="form-select mb-3"
 		id="pb_phone_sides"
@@ -212,8 +216,9 @@
 				<label
 					class="small"
 					[for]="'pb_seconds_' + piece.name"
-					>{{ 'pb_slide_seconds' | transloco }}</label
 				>
+					{{ 'pb_slide_seconds' | transloco }}
+				</label>
 				<input
 					class="form-control form-control-sm"
 					type="number"
@@ -228,8 +233,9 @@
 				<label
 					class="small"
 					[for]="'pb_controls_' + piece.name"
-					>{{ 'pb_slide_controls' | transloco }}</label
 				>
+					{{ 'pb_slide_controls' | transloco }}
+				</label>
 				<select
 					class="form-select form-select-sm"
 					[id]="'pb_controls_' + piece.name"
@@ -245,8 +251,9 @@
 				<label
 					class="small"
 					[for]="'pb_after_' + piece.name"
-					>{{ 'pb_slide_after' | transloco }}</label
 				>
+					{{ 'pb_slide_after' | transloco }}
+				</label>
 				<select
 					class="form-select form-select-sm"
 					[id]="'pb_after_' + piece.name"
@@ -265,8 +272,9 @@
 	<label
 		class="form-label-title"
 		for="pb_source"
-		>{{ 'pb_source' | transloco }}</label
 	>
+		{{ 'pb_source' | transloco }}
+	</label>
 	<select
 		class="form-select mb-3"
 		id="pb_source"
@@ -281,8 +289,9 @@
 	<label
 		class="form-label-title"
 		for="pb_source_ids"
-		>{{ 'pb_source_ids_' + s.source | transloco }}</label
 	>
+		{{ 'pb_source_ids_' + s.source | transloco }}
+	</label>
 	<input
 		class="form-control mb-1"
 		id="pb_source_ids"
@@ -295,8 +304,9 @@
 	<label
 		class="form-label-title"
 		for="pb_cards"
-		>{{ 'pb_cards' | transloco }}</label
 	>
+		{{ 'pb_cards' | transloco }}
+	</label>
 	<input
 		class="form-control mb-3"
 		id="pb_cards"
@@ -317,8 +327,9 @@
 		<label
 			class="form-check-label"
 			for="pb_sold_out"
-			>{{ 'pb_leave_out_sold_out' | transloco }}</label
 		>
+			{{ 'pb_leave_out_sold_out' | transloco }}
+		</label>
 	</div>
 	} } @else {
 	<!-- Look (SG-3): a few fixed steps; a background brings its own word and link colours. -->
@@ -360,7 +371,7 @@
 	</div>
 	}
 	<p class="form-label-title mb-1">{{ 'pb_screens' | transloco }}</p>
-	<div class="d-flex flex-wrap gap-3 mb-3">
+	<div class="d-flex mb-3 flex-wrap gap-3">
 		@for (band of ['phone', 'tablet', 'computer']; track band) {
 		<div class="form-check">
 			<input
@@ -373,8 +384,9 @@
 			<label
 				class="form-check-label"
 				[for]="'pb_screen_' + band"
-				>{{ 'pb_screen_' + band | transloco }}</label
 			>
+				{{ 'pb_screen_' + band | transloco }}
+			</label>
 		</div>
 		}
 	</div>
@@ -383,8 +395,9 @@
 			<label
 				class="form-label-title"
 				for="pb_from"
-				>{{ 'pb_show_from' | transloco }}</label
 			>
+				{{ 'pb_show_from' | transloco }}
+			</label>
 			<input
 				class="form-control"
 				id="pb_from"
@@ -397,8 +410,9 @@
 			<label
 				class="form-label-title"
 				for="pb_until"
-				>{{ 'pb_show_until' | transloco }}</label
 			>
+				{{ 'pb_show_until' | transloco }}
+			</label>
 			<input
 				class="form-control"
 				id="pb_until"
@@ -411,7 +425,7 @@
 	<p class="help-text">{{ 'pb_india_time' | transloco }}</p>
 	<!-- SG-21: a section for one language only. -->
 	<p class="form-label-title mb-1">{{ 'pb_languages' | transloco }}</p>
-	<div class="d-flex flex-wrap gap-3 mb-3">
+	<div class="d-flex mb-3 flex-wrap gap-3">
 		@for (code of shopLocales; track code) {
 		<div class="form-check">
 			<input
@@ -425,8 +439,9 @@
 				class="form-check-label"
 				[for]="'pb_language_' + code"
 				[attr.lang]="code"
-				>{{ code | languageName }}</label
 			>
+				{{ code | languageName }}
+			</label>
 		</div>
 		}
 	</div>

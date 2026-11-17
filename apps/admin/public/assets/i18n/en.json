@@ -3802,7 +3802,6 @@
 	"pb_phone_sides_main_only": "Not shown: the main picture only",
 	"pb_phone_sides_swipe_row": "One row to swipe",
 	"pb_picture_fields": "This picture's words and link",
-	"pb_preview_soon": "The shop itself shows here at the chosen screen size once Preview is built (Page Builder step 6).",
 	"pb_redo": "Redo",
 	"pb_undo": "Undo",
 	"pb_save_as_block": "Save as block",
@@ -3909,5 +3908,14 @@
 	"pb_backing_none": "None",
 	"pb_backing_soft_light": "Soft light",
 	"pb_backing_soft_dark": "Soft dark",
-	"pb_save_refused": "Not saved: a value is not allowed"
+	"pb_save_refused": "Not saved: a value is not allowed",
+	"pb_preview_size": "Screen size",
+	"pb_preview_at": "{{width}} × {{height}}, shown at {{percent}}%",
+	"pb_preview_failed": "The preview could not open. Save, then try again.",
+	"pb_size_phone": "Phone",
+	"pb_size_phone_side": "Phone on its side",
+	"pb_size_tablet": "Tablet",
+	"pb_size_tablet_side": "Tablet on its side",
+	"pb_size_desktop": "Computer",
+	"pb_size_large": "Large screen"
 }

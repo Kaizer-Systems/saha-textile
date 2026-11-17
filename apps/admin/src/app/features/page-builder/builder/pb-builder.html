@@ -3,8 +3,10 @@
 	<div class="pb-topbar">
 		<p class="pb-crumb mb-0">
 			<a routerLink="/page-builder">{{ 'page_builder' | transloco }}</a>
-			› <a [routerLink]="['/page-builder', pageType]">{{ 'pb_page_' + pageType | transloco }}</a>
-			› <strong>{{ view()?.layout?.name }}</strong>
+			›
+			<a [routerLink]="['/page-builder', pageType]">{{ 'pb_page_' + pageType | transloco }}</a>
+			›
+			<strong>{{ view()?.layout?.name }}</strong>
 		</p>
 		<app-language-switch
 			[locales]="locales"
@@ -68,7 +70,7 @@
 	</div>
 	} @if (saveState() === 'conflict') {
 	<div
-		class="alert alert-warning d-flex flex-wrap align-items-center gap-2"
+		class="alert alert-warning d-flex align-items-center flex-wrap gap-2"
 		id="pb_conflict"
 	>
 		{{ 'pb_conflict' | transloco: { name: blocker()?.name ?? '—' } }}
@@ -260,11 +262,12 @@
 			[attr.aria-label]="'pb_pane_preview' | transloco"
 		>
 			<div class="card-body">
-				<!-- Until the live shop frame (step 6), the layout's outline picture. -->
-				<div class="pb-canvas-outline">
-					<app-pb-thumb [outline]="outline()" />
-				</div>
-				<p class="help-text mt-2 mb-0">{{ 'pb_preview_soon' | transloco }}</p>
+				<app-pb-preview
+					[layoutId]="layoutId"
+					[pageType]="pageType"
+					[locale]="locale()"
+					[revision]="view()?.draft?.id ?? null"
+				/>
 			</div>
 		</section>
 

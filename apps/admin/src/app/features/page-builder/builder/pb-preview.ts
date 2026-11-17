@@ -1,5 +1,17 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, ElementRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+	Component,
+	DestroyRef,
+	ElementRef,
+	computed,
+	effect,
+	inject,
+	input,
+	output,
+	signal,
+	untracked,
+	viewChild,
+} from '@angular/core';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 
 import { TranslocoModule } from '@jsverse/transloco';
@@ -7,6 +19,8 @@ import { lastValueFrom } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 import { PageBuilderGateway } from '@core/page-builder/page-builder.gateway';
+
+import { outlineMessage, shopMessage } from './preview-messages';
 
 /** The screen sizes the preview offers (brief C1–C6), upright and on their side. */
 export const PREVIEW_SIZES = [
@@ -22,7 +36,8 @@ export type PreviewSize = (typeof PREVIEW_SIZES)[number];
 /**
  * The middle of the builder (brief C1–C6, Q1 A): the shop's own page at an exact screen size, scaled to fit, so its
  * own rules decide everything (which picture a band gets, the menu, the phone bar). Each load asks for a fresh
- * one-time code (FX-5); after every save the frame loads again with the new draft.
+ * one-time code (FX-5); after every save the frame loads again with the new draft. A click on a section in the frame
+ * chooses it here, and the section chosen here is outlined there (messages checked by window, origin and shape, C41).
  */
 @Component({
 	selector: 'app-pb-preview',
@@ -38,6 +53,11 @@ export class PbPreview {
 	readonly locale = input.required<string>();
 	/** Changes whenever a save lands, so the frame shows the new draft. */
 	readonly revision = input<string | null>(null);
+	/** The section chosen in the builder, outlined in the frame. */
+	readonly chosen = input<string | null>(null);
+	/** A section clicked in the frame. */
+	readonly choose = output<string>();
+	private readonly frame = viewChild<ElementRef<HTMLIFrameElement>>('frame');
 	readonly sizes = PREVIEW_SIZES;
 	readonly size = signal<PreviewSize>(PREVIEW_SIZES[4]);
 	readonly src = signal<SafeResourceUrl | null>(null);
@@ -54,10 +74,36 @@ export class PbPreview {
 			this.size();
 			untracked(() => void this.load());
 		});
+		effect(() => {
+			const chosen = this.chosen();
+			untracked(() => this.outline(chosen));
+		});
+		if (typeof window !== 'undefined') {
+			const onMessage = (event: MessageEvent) => this.heard(event);
+			window.addEventListener('message', onMessage);
+			inject(DestroyRef).onDestroy(() => window.removeEventListener('message', onMessage));
+		}
 		if (typeof ResizeObserver !== 'undefined') {
 			const observer = new ResizeObserver(([entry]) => this.paneWidth.set(entry?.contentRect.width ?? 800));
 			queueMicrotask(() => observer.observe(this.host.nativeElement));
 		}
+	}
+
+	/** The shop's origin: the only sender and receiver of preview messages. */
+	shopOrigin(): string {
+		return new URL(runtimeConfig.siteUrl).origin;
+	}
+
+	heard(event: MessageEvent): void {
+		const frame = this.frame()?.nativeElement;
+		if (!frame || event.source !== frame.contentWindow || event.origin !== this.shopOrigin()) return;
+		const message = shopMessage(event.data);
+		if (message?.type === 'ready') this.outline(this.chosen());
+		else if (message?.type === 'select') this.choose.emit(message.sectionId);
+	}
+
+	private outline(sectionId: string | null): void {
+		this.frame()?.nativeElement.contentWindow?.postMessage(outlineMessage(sectionId), this.shopOrigin());
 	}
 
 	async load(): Promise<void> {

@@ -1,5 +1,14 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
+import {
+	Component,
+	DestroyRef,
+	ElementRef,
+	PLATFORM_ID,
+	ViewEncapsulation,
+	afterNextRender,
+	computed,
+	inject,
+} from '@angular/core';
 import { isPlatformServer } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 
@@ -10,8 +19,10 @@ import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 
+import { previewAdminOrigin } from '../../../server/admin-origin';
 import { PageLayout } from './page-layout';
 import type { StorefrontPageLayoutView } from './page-builder.types';
+import { linkToBuilder } from './preview-messages';
 
 /** The session cookie the preview middleware sets (server/middleware/preview.ts). */
 export const PREVIEW_COOKIE = 'st_preview';
@@ -25,16 +36,43 @@ export function cookieValue(header: string | undefined, name: string): string | 
 	return null;
 }
 
+/** What the server hands the browser: the draft, and the one origin the page may talk to. */
+export interface PreviewPageData {
+	layout: StorefrontPageLayoutView | null;
+	adminOrigin: string | null;
+}
+
 /**
  * The builder's preview (Page Builder step 6): a layout's draft drawn by the shop's own section code, at
  * `/{locale}/__preview/{pageType}`. The session cookie can't be read by scripts, so the draft is fetched on the server
- * and reaches the browser in the page's data copy; the browser never asks again (a new draft is a reload).
+ * and reaches the browser in the page's data copy; the browser never asks again (a new draft is a reload). Inside the
+ * builder's frame, a click chooses a section there and the builder's choice is outlined here (preview-messages.ts).
  */
 @Component({
 	selector: 'app-page-preview',
-	template: `@if (sections(); as list) {
-		<app-page-layout [sections]="list" />
-	}`,
+	template: `
+		@if (sections(); as list) {
+			<app-page-layout
+				[sections]="list"
+				[preview]="true"
+			/>
+		}
+	`,
+	// Preview-only: these rules ship with this page's own file, never with the shop's pages.
+	styles: `
+		app-page-preview [data-pb-id] {
+			cursor: pointer;
+		}
+		app-page-preview [data-pb-id]:hover {
+			outline: 2px dashed var(--theme-color);
+			outline-offset: -2px;
+		}
+		app-page-preview [data-pb-id].pb-preview-chosen {
+			outline: 3px solid var(--theme-color);
+			outline-offset: -3px;
+		}
+	`,
+	encapsulation: ViewEncapsulation.None,
 	imports: [PageLayout],
 })
 export class PagePreview {
@@ -48,17 +86,29 @@ export class PagePreview {
 		queryKey: ['page-preview', this.pageType, this.locale],
 		enabled: this.onServer,
 		staleTime: Number.POSITIVE_INFINITY,
-		queryFn: async (): Promise<StorefrontPageLayoutView | null> => {
+		queryFn: async (): Promise<PreviewPageData> => {
 			await runtimeConfigReady;
+			const adminOrigin = previewAdminOrigin();
 			const token = cookieValue(this.request?.headers?.cookie, PREVIEW_COOKIE);
-			if (!token) return null;
-			return firstValueFrom(
+			if (!token) return { layout: null, adminOrigin };
+			const layout = await firstValueFrom(
 				this.http.get<StorefrontPageLayoutView>(`${runtimeConfig.apiUrl}/storefront/preview/layout`, {
 					params: { token, locale: this.locale },
 				}),
 			).catch(() => null);
+			return { layout, adminOrigin };
 		},
 	}));
 
-	readonly sections = computed(() => this.query.data()?.sections ?? null);
+	readonly sections = computed(() => this.query.data()?.layout?.sections ?? null);
+
+	constructor() {
+		const host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;
+		let unlink: (() => void) | null = null;
+		afterNextRender(() => {
+			const origin = this.query.data()?.adminOrigin;
+			if (origin && window.parent !== window) unlink = linkToBuilder(host, window, origin);
+		});
+		inject(DestroyRef).onDestroy(() => unlink?.());
+	}
 }

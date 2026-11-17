@@ -615,6 +615,33 @@ export const PreviewLayoutQuery = z.object({
 });
 export type PreviewLayoutQuery = z.infer<typeof PreviewLayoutQuery>;
 
+/**
+ * Messages between the builder and its preview frame (brief C41): each side checks the sender's origin and window,
+ * then this shape, and they carry section ids only. The frame says it is `ready` and which section a click `select`ed;
+ * the builder asks it to `outline` the chosen section (null clears it).
+ */
+export const PREVIEW_MESSAGE_SOURCE = { shop: 'st-preview', admin: 'pb-admin' } as const;
+const PreviewSectionId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/);
+export const PreviewShopMessage = z.discriminatedUnion('type', [
+	z.object({ source: z.literal(PREVIEW_MESSAGE_SOURCE.shop), type: z.literal('ready') }).strict(),
+	z
+		.object({
+			source: z.literal(PREVIEW_MESSAGE_SOURCE.shop),
+			type: z.literal('select'),
+			sectionId: PreviewSectionId,
+		})
+		.strict(),
+]);
+export type PreviewShopMessage = z.infer<typeof PreviewShopMessage>;
+export const PreviewAdminMessage = z
+	.object({
+		source: z.literal(PREVIEW_MESSAGE_SOURCE.admin),
+		type: z.literal('outline'),
+		sectionId: PreviewSectionId.nullable(),
+	})
+	.strict();
+export type PreviewAdminMessage = z.infer<typeof PreviewAdminMessage>;
+
 /** A saved block in the builder's list (P7): how many layouts use it, and whether linked copies follow it. */
 export const AdminSavedBlockRow = z.object({
 	block: SavedBlock,

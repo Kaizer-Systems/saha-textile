@@ -134,6 +134,13 @@ Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppIniti
 | `defaultLocale`    | `en`                     | `en`                                  | `en`                          |
 | `supportedLocales` | `["en","bn"]`            | same                                  | same                          |
 
+### Storefront server (container environment, never sent to the browser)
+
+| Variable          | LOCAL                                             | TEST-E2E / PROD-E2E                                               | Purpose                                                                                                                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_ORIGIN`    | unset (the local admin, `https://localhost:4300`) | `https://${ADMIN_HOST}` (set in `docker/production/compose.yaml`) | The one origin allowed to frame the Page Builder preview (`/{locale}/__preview/…`) and to exchange messages with it (`src/server/admin-origin.ts`). A deployment without a valid origin frames nothing. Every other shop page keeps `frame-ancestors 'none'` at the edge. |
+| `ST_CRITICAL_CSS` | unset (on)                                        | unset (on)                                                        | `off` stops the server from inlining critical CSS (`src/server/plugins/critical-css.ts`); for diagnosing only.                                                                                                                                                            |
+
 ## Admin (`apps/admin/public/config.json`) — public runtime config
 
 | Key (config.json) | LOCAL                    | TEST-E2E                              | PROD-E2E                      |

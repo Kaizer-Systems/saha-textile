@@ -1,16 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LOCAL_ADMIN_ORIGIN, previewAdminOrigin } from './admin-origin';
 import { serverApiUrl } from './api-url';
 import locale from './middleware/locale';
+import preview from './middleware/preview';
 import seoFiles from './middleware/seo-files';
 import webManifest from './middleware/web-manifest';
 
 const h3 = vi.hoisted(() => ({
 	getCookie: vi.fn(() => undefined as string | undefined),
+	createError: vi.fn((input: { statusCode: number }) => Object.assign(new Error('h3'), input)),
 	getQuery: vi.fn((): Record<string, unknown> => ({})),
 	getRequestURL: vi.fn(() => ({ protocol: 'https:', origin: 'https://origin.test' })),
 	send: vi.fn(async () => undefined),
 	sendRedirect: vi.fn(async () => undefined),
+	setCookie: vi.fn(),
 	setResponseHeaders: vi.fn(),
 }));
 
@@ -39,6 +43,8 @@ beforeEach(() => {
 afterEach(() => {
 	vi.unstubAllGlobals();
 	delete process.env['SAHA_TEXTILE_PUBLIC_CONFIG'];
+	delete process.env['ADMIN_ORIGIN'];
+	delete process.env['DEPLOY_ENV'];
 });
 
 describe('serverApiUrl', () => {
@@ -128,7 +134,9 @@ describe('locale middleware', () => {
 		address.storefrontAddress.mockReturnValue({ status: 301, location: '/en/product/x', cacheSeconds: 3600 });
 		h3.setResponseHeaders.mockClear();
 		expect(await run(event('/bn/product/x'))).toBe(true);
-		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), { 'Cache-Control': 'public, max-age=3600' });
+		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), {
+			'Cache-Control': 'public, max-age=3600',
+		});
 		expect(h3.sendRedirect).toHaveBeenLastCalledWith(expect.anything(), '/en/product/x', 301);
 	});
 
@@ -354,5 +362,78 @@ describe('web manifest middleware', () => {
 		);
 		expect(await run(event('/manifest.webmanifest'))).toBe(true);
 		expect(h3.setResponseHeaders).toHaveBeenLastCalledWith(expect.anything(), { 'Cache-Control': 'no-store' });
+	});
+});
+
+describe('preview middleware (Page Builder step 6)', () => {
+	const run = (input: unknown) => (preview as unknown as Handler)(input);
+	const code = 'c'.repeat(43);
+
+	it('leaves every other address alone', async () => {
+		for (const path of ['/en/', '/__preview/home', '/en/__preview/home/x', '/en/product/__preview']) {
+			expect(await run(event(path))).toBeUndefined();
+		}
+		expect(h3.setResponseHeaders).not.toHaveBeenCalled();
+	});
+
+	it('swaps a code for a session cookie on this language’s preview path, then drops the code', async () => {
+		h3.getQuery.mockReturnValue({ code });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: true, json: async () => ({ token: 't'.repeat(43) }) })),
+		);
+		expect(await run(event(`/bn/__preview/home?code=${code}`))).toBe(true);
+		expect(fetch).toHaveBeenCalledWith('https://api.test/storefront/preview/exchange', expect.anything());
+		expect(h3.setCookie).toHaveBeenCalledWith(expect.anything(), 'st_preview', 't'.repeat(43), {
+			path: '/bn/__preview',
+			httpOnly: true,
+			secure: true,
+			sameSite: 'none',
+			maxAge: 3600,
+		});
+		expect(h3.sendRedirect).toHaveBeenCalledWith(expect.anything(), '/bn/__preview/home', 302);
+		expect(h3.setResponseHeaders).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				'X-Robots-Tag': 'noindex, nofollow',
+				'Cache-Control': 'no-store',
+				'Referrer-Policy': 'no-referrer',
+				'Content-Security-Policy': `frame-ancestors ${LOCAL_ADMIN_ORIGIN}`,
+			}),
+		);
+	});
+
+	it('answers 404 to a refused code, and to a visit without a session', async () => {
+		h3.getQuery.mockReturnValue({ code });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: false })),
+		);
+		await expect(run(event('/en/__preview/home'))).rejects.toMatchObject({ statusCode: 404 });
+		h3.getQuery.mockReturnValue({});
+		await expect(run(event('/en/__preview/home'))).rejects.toMatchObject({ statusCode: 404 });
+		expect(h3.setCookie).not.toHaveBeenCalled();
+	});
+
+	it('passes a visit with a session on to the page', async () => {
+		h3.getCookie.mockReturnValue('t'.repeat(43));
+		expect(await run(event('/en/__preview/home'))).toBeUndefined();
+	});
+});
+
+describe('the admin origin that may frame the preview', () => {
+	it('is the deployment’s ADMIN_ORIGIN when it is an origin', () => {
+		process.env['ADMIN_ORIGIN'] = 'https://admin.shop.test';
+		expect(previewAdminOrigin()).toBe('https://admin.shop.test');
+	});
+
+	it('frames nothing in a deployment without a valid one, and the local admin locally', () => {
+		expect(previewAdminOrigin()).toBe(LOCAL_ADMIN_ORIGIN);
+		process.env['DEPLOY_ENV'] = 'production';
+		expect(previewAdminOrigin()).toBeNull();
+		for (const value of ["https://admin.shop.test 'unsafe-inline'", 'https://admin.shop.test/path', '*', '']) {
+			process.env['ADMIN_ORIGIN'] = value;
+			expect(previewAdminOrigin()).toBeNull();
+		}
 	});
 });

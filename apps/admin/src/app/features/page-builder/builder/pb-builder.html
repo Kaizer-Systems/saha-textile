@@ -267,6 +267,8 @@
 					[pageType]="pageType"
 					[locale]="locale()"
 					[revision]="view()?.draft?.id ?? null"
+					[chosen]="selectedId()"
+					(choose)="choose($event)"
 				/>
 			</div>
 		</section>

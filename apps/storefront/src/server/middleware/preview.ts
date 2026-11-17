@@ -1,5 +1,6 @@
 import { createError, defineEventHandler, getCookie, getQuery, sendRedirect, setCookie, setResponseHeaders } from 'h3';
 
+import { previewAdminOrigin } from '../admin-origin';
 import { serverApiUrl } from '../api-url';
 
 /**
@@ -9,7 +10,7 @@ import { serverApiUrl } from '../api-url';
  * session, keeps the session in a cookie limited to this language's preview path (an hour; never readable by
  * scripts), and sends the browser to the same address without the code, so no pass stays in an address that
  * history, logs or the Referer header keep. Without a live session the address is a plain 404. Every preview answer
- * is kept out of search engines and caches, sends no referrer, and may be framed only by the admin.
+ * is kept out of search engines and caches, sends no referrer, and may be framed only by the admin (admin-origin.ts).
  *
  * Keep this file free of TypeScript-only syntax: the dev server loads middleware without compiling it.
  */
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
 		'X-Robots-Tag': 'noindex, nofollow',
 		'Cache-Control': 'no-store',
 		'Referrer-Policy': 'no-referrer',
-		'Content-Security-Policy': `frame-ancestors ${process.env['ADMIN_ORIGIN'] || "'self'"}`,
+		'Content-Security-Policy': `frame-ancestors ${previewAdminOrigin() || "'none'"}`,
 	});
 
 	const code = getQuery(event)['code'];

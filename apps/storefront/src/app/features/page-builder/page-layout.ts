@@ -22,5 +22,7 @@ import { PbVideos } from './sections/pb-videos';
 })
 export class PageLayout {
 	readonly sections = input.required<ResolvedPageSectionView[]>();
+	/** Inside the builder's preview: each section carries its id, so a click can choose it (preview-messages.ts). */
+	readonly preview = input(false);
 	readonly classes = sectionClasses;
 }

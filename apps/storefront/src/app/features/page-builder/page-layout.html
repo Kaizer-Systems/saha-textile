@@ -2,6 +2,7 @@
 <section
 	[class]="classes(section)"
 	[attr.data-pb-section]="section.type"
+	[attr.data-pb-id]="preview() ? section.id : null"
 >
 	@if (first) {
 	<!-- The first section draws at once: it may hold the page's early picture. -->

@@ -19,6 +19,8 @@ source_of_truth:
     - scripts/font-fallback-metrics.mjs
     - apps/storefront/src/font-fallbacks.css
     - apps/storefront/src/app/layout/header/widgets/language/language.scss
+    - apps/storefront/src/scss/components/_gallery-before-start.scss
+    - apps/storefront/src/app/features/shop/product-detail/product-gallery/product-gallery.ts
     - scripts/split-icon-font.mjs
     - apps/storefront/public/assets/css/remixicon-shop.css
     - apps/storefront/src/icon-font.spec.ts
@@ -83,6 +85,10 @@ The theme's icons are Remix Icon, one font of about 2,500 icons (141 KB as WOFF2
 ## The language menu's flags
 
 The page-language menu shows a flag beside each language (`languageFlag` in core: `us` for English, `in` for every other language). The theme draws `.iti-flag` from intl-tel-input's country sprite on cdnjs, which is 5,630 px wide and 161 KB at double density, and every page fetched it at high priority for two 20 px flags. The language widget's own stylesheet now points those two at `public/assets/images/flags/us.svg` and `in.svg` (2 to 7 KB, drawn to the flags' official proportions); the theme's box, shadow and grey backing are unchanged. Any other flag code still draws from the sprite, and the phone-number field on the sign-in pages keeps it, since it lists every country. `e2e/languages.spec.ts` checks that Home requests no sprite.
+
+## The product page's photo gallery
+
+The gallery (main photo carousel and thumbnail strip) is drawn by the server too, so hydration keeps the same picture: before, the server drew a single stand-in photo and the browser swapped in the gallery, which was 164 px taller on a phone, so the buy box jumped (CLS 0.037) and the main photo was found only after the scripts ran (LCP 11.5 s on a phone). Owl cannot measure on the server, so it writes every slide and the loop's copies at no width; `scss/components/_gallery-before-start.scss` lays that HTML out as the started carousels do (only the first real slide, as a full-width block so the photo's width and height attributes keep its box before the file arrives; three thumbnails, each (strip − 20 px) / 3 wide, with owl's own 10 px margin), until `ProductGallery` adds `.st-gallery-started` once every slide carries a pixel width. The first photo is preloaded from the head, as Home's first picture is. The thumbnail strip draws the small `card` files: the product-page answer carries them with each gallery photo (`GALLERY_FRAME_ROLES`); a photo sent without them falls back to the gallery's own smallest size. Measured: CLS 0.000 on phone and computer.
 
 ## Pictures the theme drew as CSS backgrounds
 

@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, viewChild } from '@angular/core';
+import { Component, ElementRef, afterNextRender, computed, inject, input, signal, viewChild } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -48,12 +48,41 @@ export class ProductGallery {
 	/** About 120 px wide in the strip; the `card` widths (200 / 400) cover it at any density. */
 	readonly thumbSizes = '120px';
 
-	/** The strip uses the small `card` file, not the 900 px main photo it used to download three of. */
+	/**
+	 * The strip uses the small `card` file, not the 900 px main photo it used to download three of. A photo sent without
+	 * its card sizes falls back to the gallery's own sizes, so the browser still picks the smallest (600 px), never the
+	 * 900 px main file.
+	 */
 	thumb(image: IAttachment): { src: string; srcset: string | null } {
+		const role = image.image?.roles['card']?.length ? 'card' : 'gallery';
 		return {
-			src: image.image?.roles['card']?.[0]?.url ?? image.original_url,
-			srcset: roleSrcset(image.image, 'card'),
+			src: image.image?.roles[role]?.[0]?.url ?? image.original_url,
+			srcset: roleSrcset(image.image, role),
 		};
+	}
+
+	/**
+	 * False in the server's HTML and until the browser has started the carousels: owl cannot measure on the server,
+	 * so it writes every slide (and the loop's copies) at no width. Until then `.st-gallery-started` is missing and
+	 * scss/components/_gallery-before-start.scss lays that HTML out as the started carousels do, so nothing moves.
+	 */
+	readonly started = signal(false);
+	private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+	constructor() {
+		// Owl writes its measured widths a little after Angular's first render in the browser, so the gallery counts as
+		// started only once every carousel's slides carry a pixel width; before that the server's layout stays.
+		afterNextRender(() => {
+			const until = performance.now() + 3000;
+			const check = () => {
+				const slides = [...this.host.nativeElement.querySelectorAll<HTMLElement>('.owl-item')];
+				const measured =
+					slides.length > 0 && slides.every((slide) => /^\d+(\.\d+)?px$/.test(slide.style.width));
+				if (measured || performance.now() > until) this.started.set(true);
+				else requestAnimationFrame(check);
+			};
+			check();
+		});
 	}
 
 	public activeSlide: string = '0';

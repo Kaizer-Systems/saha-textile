@@ -16,6 +16,7 @@
 @import 'utils/shop-colours';
 @import 'components/page-builder';
 @import 'components/render-near-screen';
+@import 'components/gallery-before-start';
 
 // The theme's dark mode is built from dark.scss into a file of its own, which a page links only
 // when the shop's mode is dark, so light pages never download it.

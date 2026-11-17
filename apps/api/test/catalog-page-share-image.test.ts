@@ -49,6 +49,7 @@ const asset = (id: string, withShare: boolean) =>
 		slug: id.replace('_', '-'),
 		processing: { state: 'ready' },
 		derivatives: [
+			derivative('card', 200, 267),
 			derivative('gallery', 900, 1200),
 			derivative('zoom', 2000, 2667),
 			...(withShare ? [derivative('share', 1200, 630), derivative('story', 1080, 1920)] : []),
@@ -70,13 +71,14 @@ function service(withShare: boolean) {
 }
 
 describe('product page link-preview card', () => {
-	it('sends the main photo’s 1200×630 card on its own, keeping gallery photos to gallery and zoom', async () => {
+	it('sends the main photo’s 1200×630 card on its own, keeping gallery photos to their gallery, zoom and card sizes', async () => {
 		const page = await service(true).page('red-banarasi-saree');
 		expect(page.shareImageUrl).toBe('https://cdn.test/media/share-1200.jpg');
 		expect(page.shareStoryUrl).toBe('https://cdn.test/media/story-1080.jpg');
+		// The thumbnail strip's card size rides along; the share and story cards stay off the gallery photos.
 		expect(page.gallery.map((image) => Object.keys(image.roles).sort())).toEqual([
-			['gallery', 'zoom'],
-			['gallery', 'zoom'],
+			['card', 'gallery', 'zoom'],
+			['card', 'gallery', 'zoom'],
 		]);
 	});
 

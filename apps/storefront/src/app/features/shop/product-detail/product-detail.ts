@@ -161,6 +161,8 @@ export class ProductDetail {
 	readonly owlCar = computed(() => this.galleryRef()?.carousel());
 
 	public isBrowser: boolean;
+	/** The gallery is server-rendered (shop speed round 4); the browser-only stand-in waits for clean-up item SP1. */
+	readonly galleryOnServer = true;
 
 	constructor() {
 		this.isBrowser = isPlatformBrowser(this.platformId);

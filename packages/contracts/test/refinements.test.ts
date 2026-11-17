@@ -98,7 +98,7 @@ describe('catalogue image roles', () => {
 		);
 	});
 
-	it('needs the gallery role on a product image and allows zoom beside it', () => {
+	it('needs the gallery role on a product image and allows zoom and card beside it', () => {
 		const gallery = (frame: unknown) => ({ slug: 'red-saree', frames: [frame] });
 		expect(CatalogGallery.safeParse(gallery(image({ gallery: [source], zoom: [source] }))).success).toBe(true);
 		expect(messages(CatalogGallery.safeParse(gallery(image({ gallery: [] }))))).toContain(
@@ -107,8 +107,10 @@ describe('catalogue image roles', () => {
 		expect(messages(CatalogGallery.safeParse(gallery(image({ zoom: [source] }))))).toContain(
 			'a product image needs the gallery role',
 		);
-		expect(messages(CatalogGallery.safeParse(gallery(image({ gallery: [source], card: [source] }))))).toContain(
-			'a product image carries gallery and zoom only',
+		// The thumbnail strip's card size rides along; any other size is refused.
+		expect(CatalogGallery.safeParse(gallery(image({ gallery: [source], card: [source] }))).success).toBe(true);
+		expect(messages(CatalogGallery.safeParse(gallery(image({ gallery: [source], thumb: [source] }))))).toContain(
+			'a product image carries gallery, zoom and card only',
 		);
 	});
 

@@ -80,6 +80,9 @@ const NO_CATEGORY = 'no-such-category';
 /** "You may also like" shows at least this many when the category has them. */
 const RELATED_MINIMUM = 6;
 
+/** The sizes a product page's photos carry: the main photo, its hover zoom, and the thumbnail strip. */
+const GALLERY_FRAME_ROLES = ['gallery', 'zoom', 'card'];
+
 @Injectable()
 export class CatalogPublicService {
 	private readonly listings: ListingPort;
@@ -191,8 +194,10 @@ export class CatalogPublicService {
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
 		const assets = await this.assetsFor([...productGallery(product), ...swatchIds]);
 		const gallery = productGallery(product).flatMap((id) => {
-			const image = this.image(assets.get(id), ['gallery', 'zoom'], product.media.versions?.[id]);
-			return image ? [{ id, image }] : [];
+			// `card` is the thumbnail strip's size (about 120 px); without it the strip fell back to 900 px photos.
+			const image = this.image(assets.get(id), GALLERY_FRAME_ROLES, product.media.versions?.[id]);
+			// A frame is a photo with its gallery size; card sizes alone (the strip's) are not one.
+			return image?.roles['gallery']?.length ? [{ id, image }] : [];
 		});
 		// The main photo's link-preview card, once the main-photo sizes exist.
 		const mainPhoto = productGallery(product)[0];
@@ -549,8 +554,9 @@ export class CatalogPublicService {
 		const product = await this.requireLive(slug);
 		const assets = await this.assetsFor(productGallery(product));
 		const frames = productGallery(product).flatMap((id) => {
-			const image = this.image(assets.get(id), ['gallery', 'zoom'], product.media.versions?.[id]);
-			return image ? [image] : [];
+			// `card` is the thumbnail strip's size (about 120 px); without it the strip fell back to 900 px photos.
+			const image = this.image(assets.get(id), GALLERY_FRAME_ROLES, product.media.versions?.[id]);
+			return image?.roles['gallery']?.length ? [image] : [];
 		});
 		return CatalogGallery.parse({ slug: product.slug, frames });
 	}

@@ -77,9 +77,15 @@ const galleryImage = ResolvedImage.superRefine((image, ctx) => {
 	if (!image.roles['gallery']?.length) {
 		ctx.addIssue({ code: 'custom', message: 'a product image needs the gallery role', path: ['roles'] });
 	}
+	// The main photo, its hover zoom, and `card` for the page's thumbnail strip (about 120 px; without it the strip
+	// fell back to the 900 px photos). Nothing else, so the page answer stays lean.
 	const roles = Object.keys(image.roles);
-	if (roles.some((role) => role !== 'gallery' && role !== 'zoom')) {
-		ctx.addIssue({ code: 'custom', message: 'a product image carries gallery and zoom only', path: ['roles'] });
+	if (roles.some((role) => role !== 'gallery' && role !== 'zoom' && role !== 'card')) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'a product image carries gallery, zoom and card only',
+			path: ['roles'],
+		});
 	}
 });
 

@@ -47,6 +47,12 @@ Each line names the files, what replaced the piece, and what the removal also to
 | PS6 | The vendor Stock status select for a new simple product                    | `stock_status` in `form-product.ts` and its select on the Inventory tab (shown only before the first save)                                                                     | The read-only Stock status worked out from free to sell (brief F01); the select was never saved                         | The `stocks` option list in `form-product.ts`                              |
 | PS7 | The `HOME_GST_STATE` constant and the business block in purchases settings | `packages/contracts/src/gst.ts` (`HOME_GST_STATE = '19'`, read by the suppliers and register services), `InventorySettings.business` in `packages/contracts/src/purchasing.ts` | Settings › Shop details (purchases brief revision 3, waiting for the owner's approval)                                  | The order PDF reads `business`; move it to the shop details record first   |
 
+## Shop speed build
+
+| #   | Piece                                            | Files                                                                                                                                           | Replaced by                                                                                                         | The removal also touches                                         |
+| --- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| SP1 | The product page's browser-only gallery stand-in | `apps/storefront/src/app/features/shop/product-detail/product-detail.html` (the `@else` single photo), `galleryOnServer` in `product-detail.ts` | The gallery drawn by the server too, laid out before start by `scss/components/_gallery-before-start.scss` (17 Nov) | `leadSrcset()` in `product-detail.ts`, used only by the stand-in |
+
 ## Decided, so not on this list (2026-11-16)
 
 The owner chose to remove these with the Legal Pages build instead of keeping them for the end:

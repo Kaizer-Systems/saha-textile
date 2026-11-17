@@ -53,10 +53,7 @@
 						<div class="rightside-box">
 							<ul class="right-side-menu">
 								<li class="right-side search-icon search-full-icon">
-									<!-- Drawn by the server; its code (and the forms library) loads only when the shopper uses it. -->
-									@defer (on idle; hydrate on interaction) {
 									<app-search [style]="'berlin'" />
-									}
 								</li>
 								<li class="right-side">
 									<app-header-wishlist [style]="'basic'" />

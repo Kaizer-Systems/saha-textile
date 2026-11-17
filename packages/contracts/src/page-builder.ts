@@ -1,0 +1,410 @@
+import { z } from 'zod';
+
+import { Id, IsoDateTime, LocalizedText } from './common';
+import { BannerImageSet, ContentBlockLink, HomeHeroLayout } from './content-block';
+
+/**
+ * Page Builder (owner log § "Page Builder revision 2, every recommendation accepted", 17 Nov 2026).
+ *
+ * Pages are registered, not built: a page type names its address, slots and the section types each slot
+ * takes; everything else (layouts, revisions, schedules, checks, screens) is shared. Layouts are data the shop's
+ * server draws with section kinds shipped ahead of time, never stored HTML. Every setting is a choice or a
+ * bounded number, so the server knows every box's size before it draws (no layout shift, no custom code).
+ */
+
+// ── Page types ──────────────────────────────────────────────────────────────────────────────────────────
+
+/** Registered page types. Home is the first; others join by being added here and in core's registry. */
+export const PageTypeKey = z.enum(['home']);
+export type PageTypeKey = z.infer<typeof PageTypeKey>;
+
+/** What kind of page a type is: every section yours, a list with slots around it, or an item with slots. */
+export const PageTypeKind = z.enum(['whole_page', 'listing', 'item']);
+export type PageTypeKind = z.infer<typeof PageTypeKind>;
+
+/** The whole page, or (for listing and item pages, later) one category with "all" behind it. */
+export const PageTarget = z.string().min(1).max(120).default('page');
+export type PageTarget = z.infer<typeof PageTarget>;
+export const WHOLE_PAGE_TARGET = 'page';
+
+// ── Section types (defined once: SG-32) ───────────────────────────────────────────────────────────────────
+
+/** The sections the shop already has. Later types (rich text, own video, promo cards…) arrive with their brief. */
+export const SectionType = z.enum([
+	'banner_arrangement',
+	'promo_banners',
+	'product_row',
+	'recently_viewed',
+	'youtube_videos',
+	'blog_posts',
+	'newsletter',
+]);
+export type SectionType = z.infer<typeof SectionType>;
+
+/** Section budgets in KB (compressed HTML / first-load code), from the 17 Nov baseline and the brief's FX-13. */
+export interface SectionBudget {
+	/** Compressed HTML the section may add, before per-item allowances. */
+	readonly htmlKb: number;
+	readonly perPictureKb?: number;
+	readonly perItemKb?: number;
+	/** Code it may add at first load (KB, compressed); 0 = none before it is near the screen. */
+	readonly firstLoadCodeKb: number;
+	/** May its first picture be the page's one early picture? Only when it is the first section. */
+	readonly firstPicture: 'when_first' | 'never';
+	/** Filled in the browser after paint: only below the first screen, with its height reserved (FX-14). */
+	readonly browserFilled?: boolean;
+}
+
+export interface SectionDefinition {
+	readonly type: SectionType;
+	/** Bumped with a tested migration whenever the settings' shape changes (FX-11). */
+	readonly schemaVersion: number;
+	readonly budget: SectionBudget;
+}
+
+export const SECTION_DEFINITIONS: Readonly<Record<SectionType, SectionDefinition>> = {
+	banner_arrangement: {
+		type: 'banner_arrangement',
+		schemaVersion: 1,
+		budget: { htmlKb: 3, perPictureKb: 1, firstLoadCodeKb: 0, firstPicture: 'when_first' },
+	},
+	promo_banners: {
+		type: 'promo_banners',
+		schemaVersion: 1,
+		budget: { htmlKb: 2, perPictureKb: 1, firstLoadCodeKb: 0, firstPicture: 'when_first' },
+	},
+	product_row: {
+		type: 'product_row',
+		schemaVersion: 1,
+		budget: { htmlKb: 1, perItemKb: 1.2, firstLoadCodeKb: 0, firstPicture: 'never' },
+	},
+	recently_viewed: {
+		type: 'recently_viewed',
+		schemaVersion: 1,
+		budget: { htmlKb: 0.5, firstLoadCodeKb: 0, firstPicture: 'never', browserFilled: true },
+	},
+	youtube_videos: {
+		type: 'youtube_videos',
+		schemaVersion: 1,
+		budget: { htmlKb: 1, perItemKb: 1, firstLoadCodeKb: 0, firstPicture: 'never' },
+	},
+	blog_posts: {
+		type: 'blog_posts',
+		schemaVersion: 1,
+		budget: { htmlKb: 1, perItemKb: 1, firstLoadCodeKb: 0, firstPicture: 'never' },
+	},
+	newsletter: {
+		type: 'newsletter',
+		schemaVersion: 1,
+		budget: { htmlKb: 1.5, firstLoadCodeKb: 0, firstPicture: 'never' },
+	},
+};
+
+// ── Look (SG-3): a few fixed steps, never free values ────────────────────────────────────────────────────
+
+export const SectionSpace = z.enum(['none', 's', 'm', 'l', 'xl']);
+export const SectionWidth = z.enum(['page', 'full', 'narrow']);
+export const SectionAlign = z.enum(['start', 'center', 'end']);
+export const SectionBackground = z.enum(['none', 'soft', 'brand_tint', 'dark']);
+
+export const SectionLook = z.object({
+	spaceAbove: SectionSpace.default('none'),
+	spaceBelow: SectionSpace.default('m'),
+	width: SectionWidth.default('page'),
+	align: SectionAlign.default('start'),
+	background: SectionBackground.default('none'),
+});
+export type SectionLook = z.infer<typeof SectionLook>;
+
+/** Which screen bands draw a section: phone below 768 px, tablet 768–1199 px, computer from 1200 px. */
+export const SectionScreens = z.object({
+	phone: z.boolean().default(true),
+	tablet: z.boolean().default(true),
+	computer: z.boolean().default(true),
+});
+export type SectionScreens = z.infer<typeof SectionScreens>;
+
+// ── Pictures and pieces ─────────────────────────────────────────────────────────────────────────────────
+
+/** Where words sit on a picture: one of 9 spots. */
+export const WordSpot = z.enum([
+	'top_start',
+	'top_center',
+	'top_end',
+	'middle_start',
+	'middle_center',
+	'middle_end',
+	'bottom_start',
+	'bottom_center',
+	'bottom_end',
+]);
+export type WordSpot = z.infer<typeof WordSpot>;
+
+/** Named word colours over pictures (fixed in dark mode, as the pictures are) and their backings. */
+export const WordInk = z.enum(['brand', 'brand_dark', 'ink', 'white']);
+export const WordBacking = z.enum(['none', 'soft_light', 'soft_dark']);
+
+/** Most pictures one piece may hold (Q6 B). More than one makes the piece its own slider. */
+export const PIECE_MAX_PICTURES = 10;
+/** Slide timing in seconds (Q7 A). */
+export const SLIDE_SECONDS = { min: 3, max: 15, default: 6 } as const;
+
+/**
+ * A link a shopper can follow: a shop path ("/collections/…") or an https address (FX-22). Words and links
+ * are always drawn as text; a `javascript:` or other scheme never passes.
+ */
+export const PageLink = ContentBlockLink.extend({
+	href: z
+		.string()
+		.min(1)
+		.max(500)
+		.refine((href) => /^\/(?!\/)/.test(href) || /^https:\/\/[^\s/]+/.test(href), {
+			message: 'a link is a shop path starting with / or an https address',
+		}),
+});
+export type PageLink = z.infer<typeof PageLink>;
+
+export const PiecePicture = z
+	.object({
+		/** Picture per screen band, as banners have today (phone upright < 768 px, tablet, computer). */
+		images: BannerImageSet,
+		/** Art per language (empty falls back to `images`), as banners have today. */
+		localeImages: z.record(z.string(), BannerImageSet).default({}),
+		/** The version each photo shows, by photo id (R4-1). */
+		versions: z.record(z.string(), z.string()).default({}),
+		/** On: the art carries its own words; the live words below are not drawn and alt repeats them. */
+		containsText: z.boolean().default(false),
+		heading: LocalizedText.default({}),
+		subheading: LocalizedText.default({}),
+		ctaLabel: LocalizedText.default({}),
+		spot: WordSpot.default('middle_start'),
+		ink: WordInk.default('brand_dark'),
+		backing: WordBacking.default('none'),
+		link: PageLink.nullable().default(null),
+		alt: LocalizedText.default({}),
+		/** Patterns and dividers only; never for a picture that links somewhere (R4-6). */
+		decorative: z.boolean().default(false),
+		from: IsoDateTime.nullable().default(null),
+		until: IsoDateTime.nullable().default(null),
+	})
+	.superRefine((picture, ctx) => {
+		if (picture.decorative && picture.link) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'a picture that links somewhere cannot be decorative',
+				path: ['decorative'],
+			});
+		}
+		if (picture.from && picture.until && picture.from >= picture.until) {
+			ctx.addIssue({ code: 'custom', message: 'a picture must stop showing after it starts', path: ['until'] });
+		}
+	});
+export type PiecePicture = z.infer<typeof PiecePicture>;
+
+export const SliderControls = z.enum(['bottom_center', 'bottom_start', 'bottom_end']);
+export const SliderAfterLast = z.enum(['loop', 'stop']);
+
+export const PieceSlider = z.object({
+	seconds: z.number().int().min(SLIDE_SECONDS.min).max(SLIDE_SECONDS.max).default(SLIDE_SECONDS.default),
+	controls: SliderControls.default('bottom_center'),
+	after: SliderAfterLast.default('loop'),
+});
+export type PieceSlider = z.infer<typeof PieceSlider>;
+
+/** One picture place inside a banner section. One picture shows plainly; two or more make it a slider. */
+export const Piece = z.object({
+	name: z.string().min(1).max(40),
+	pictures: z.array(PiecePicture).max(PIECE_MAX_PICTURES).default([]),
+	slider: PieceSlider.default({ seconds: SLIDE_SECONDS.default, controls: 'bottom_center', after: 'loop' }),
+});
+export type Piece = z.infer<typeof Piece>;
+
+// ── Section settings, by type ───────────────────────────────────────────────────────────────────────────
+
+/** Today's hero arrangements become the banner section's arrangements (Q9 A). */
+export const BannerArrangement = HomeHeroLayout;
+export type BannerArrangement = z.infer<typeof BannerArrangement>;
+
+/** Pieces each arrangement draws, in reading (= source) order on every size (FX-4). */
+export const ARRANGEMENT_PIECES: Readonly<Record<BannerArrangement, readonly string[]>> = {
+	hero_full: ['main'],
+	hero_main_side: ['main', 'side'],
+	hero_main_stack: ['main', 'side_top', 'side_bottom'],
+	hero_center_sides: ['main', 'left', 'right'],
+};
+
+/** What phones held upright do with the side pieces (Q5 A: next to each other, below Main). */
+export const PhoneSides = z.enum(['below_side_by_side', 'main_only', 'swipe_row']);
+
+export const ProductRowSource = z.enum([
+	'new_arrivals',
+	'bestsellers',
+	'on_sale',
+	'featured',
+	'category',
+	'tag',
+	'picked',
+]);
+export type ProductRowSource = z.infer<typeof ProductRowSource>;
+export const PRODUCT_ROW_CARDS = { min: 4, max: 12, default: 8 } as const;
+
+const SectionCommon = {
+	/** Stable within a layout: the outline, undo and saved blocks name sections by it. */
+	id: z.string().min(1).max(40),
+	schemaVersion: z.number().int().positive().default(1),
+	/** Hidden sections are not in the shop's HTML at all (FX-12). */
+	hidden: z.boolean().default(false),
+	screens: SectionScreens.default({ phone: true, tablet: true, computer: true }),
+	/** Every shop language, or only some (SG-21). */
+	languages: z.union([z.literal('all'), z.array(z.string().min(2).max(12)).min(1)]).default('all'),
+	from: IsoDateTime.nullable().default(null),
+	until: IsoDateTime.nullable().default(null),
+	look: SectionLook.default({
+		spaceAbove: 'none',
+		spaceBelow: 'm',
+		width: 'page',
+		align: 'start',
+		background: 'none',
+	}),
+	/** A section reused from a saved block: copied (default, Q18 A) or linked. */
+	block: z.object({ id: Id, linked: z.boolean() }).nullable().default(null),
+};
+
+export const BannerArrangementSection = z.object({
+	...SectionCommon,
+	type: z.literal('banner_arrangement'),
+	arrangement: BannerArrangement.default('hero_full'),
+	phoneSides: PhoneSides.default('below_side_by_side'),
+	pieces: z.array(Piece).default([]),
+});
+
+export const PromoBannersSection = z.object({
+	...SectionCommon,
+	type: z.literal('promo_banners'),
+	pieces: z.array(Piece).max(2).default([]),
+});
+
+export const ProductRowSection = z.object({
+	...SectionCommon,
+	type: z.literal('product_row'),
+	title: LocalizedText.default({}),
+	source: ProductRowSource.default('new_arrivals'),
+	/** The category or tag id for those sources; the product ids for "picked". */
+	sourceIds: z.array(Id).max(PRODUCT_ROW_CARDS.max).default([]),
+	cards: z.number().int().min(PRODUCT_ROW_CARDS.min).max(PRODUCT_ROW_CARDS.max).default(PRODUCT_ROW_CARDS.default),
+	leaveOutSoldOut: z.boolean().default(true),
+});
+
+export const RecentlyViewedSection = z.object({
+	...SectionCommon,
+	type: z.literal('recently_viewed'),
+	title: LocalizedText.default({}),
+});
+
+export const YoutubeVideosSection = z.object({
+	...SectionCommon,
+	type: z.literal('youtube_videos'),
+	title: LocalizedText.default({}),
+	description: LocalizedText.default({}),
+});
+
+export const BlogPostsSection = z.object({
+	...SectionCommon,
+	type: z.literal('blog_posts'),
+	title: LocalizedText.default({}),
+	description: LocalizedText.default({}),
+	/** Empty: the newest live posts, sticky ones first. */
+	postIds: z.array(Id).max(12).default([]),
+});
+
+export const NewsletterSection = z.object({
+	...SectionCommon,
+	type: z.literal('newsletter'),
+	title: LocalizedText.default({}),
+	subtitle: LocalizedText.default({}),
+});
+
+export const PageSection = z.discriminatedUnion('type', [
+	BannerArrangementSection,
+	PromoBannersSection,
+	ProductRowSection,
+	RecentlyViewedSection,
+	YoutubeVideosSection,
+	BlogPostsSection,
+	NewsletterSection,
+]);
+export type PageSection = z.infer<typeof PageSection>;
+
+// ── Layouts, revisions, schedules ───────────────────────────────────────────────────────────────────────
+
+/** Most sections one layout holds; design notes warn from 15 (SG-35), the budget decides before that. */
+export const LAYOUT_MAX_SECTIONS = 40;
+
+/** A saved state of a layout that never changes once written (FX-11). Drafts, live and scheduled are pointers. */
+export const LayoutRevision = z.object({
+	id: Id,
+	layoutId: Id,
+	/** 1, 2, 3… within its layout. */
+	number: z.number().int().positive(),
+	sections: z.array(PageSection).max(LAYOUT_MAX_SECTIONS),
+	createdAt: IsoDateTime,
+	createdBy: Id.nullable(),
+	/** Set when this revision went live or was scheduled; Go Live revisions are kept (Q12: the last 20). */
+	wentLiveAt: IsoDateTime.nullable().default(null),
+});
+export type LayoutRevision = z.infer<typeof LayoutRevision>;
+
+export const PageLayout = z.object({
+	id: Id,
+	pageType: PageTypeKey,
+	target: PageTarget,
+	/** Seen by admins only. */
+	name: z.string().min(1).max(80),
+	/** Made from a template: its sections stay in place until "Make a custom copy" (Q8 A). */
+	template: z.string().min(1).max(60).nullable().default(null),
+	draftRevisionId: Id.nullable().default(null),
+	lastLiveRevisionId: Id.nullable().default(null),
+	createdAt: IsoDateTime,
+	updatedAt: IsoDateTime,
+	updatedBy: Id.nullable().default(null),
+});
+export type PageLayout = z.infer<typeof PageLayout>;
+
+/** One switch: from this time, this revision shows; with `until`, it hands back to what showed before. */
+export const ScheduleEntry = z
+	.object({
+		revisionId: Id,
+		layoutId: Id,
+		from: IsoDateTime,
+		until: IsoDateTime.nullable().default(null),
+		by: Id.nullable().default(null),
+	})
+	.superRefine((entry, ctx) => {
+		if (entry.until && entry.until <= entry.from) {
+			ctx.addIssue({ code: 'custom', message: 'a switch must end after it starts', path: ['until'] });
+		}
+	});
+export type ScheduleEntry = z.infer<typeof ScheduleEntry>;
+
+/** A page (type + target) and its schedule. The schedule is data, read on every request (FX-6). */
+export const BuilderPage = z.object({
+	pageType: PageTypeKey,
+	target: PageTarget,
+	schedule: z.array(ScheduleEntry).default([]),
+	updatedAt: IsoDateTime,
+});
+export type BuilderPage = z.infer<typeof BuilderPage>;
+
+/** A section kept on its own, copied or linked into layouts (SG-5). */
+export const SavedBlock = z.object({
+	id: Id,
+	name: z.string().min(1).max(80),
+	section: PageSection,
+	createdAt: IsoDateTime,
+	updatedAt: IsoDateTime,
+	updatedBy: Id.nullable().default(null),
+});
+export type SavedBlock = z.infer<typeof SavedBlock>;
+
+/** History kept (Q12 A): the last 20 Go Live revisions of each layout, and autosaved drafts for 30 days. */
+export const LAYOUT_HISTORY = { goLiveRevisions: 20, draftDays: 30 } as const;

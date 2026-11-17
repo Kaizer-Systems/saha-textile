@@ -13,3 +13,4 @@ export * from './events/index';
 export * from './release/index';
 export * from './communications/index';
 export * from './purchasing/index';
+export * from './page-builder/index';

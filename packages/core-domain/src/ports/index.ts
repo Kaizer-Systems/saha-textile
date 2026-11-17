@@ -51,3 +51,4 @@ export * from './media-zip.repository';
 export * from './email-picture.repository';
 export * from './purchasing.repository';
 export * from './document-renderer.port';
+export * from './page-layout.repository';

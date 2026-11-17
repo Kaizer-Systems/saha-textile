@@ -46,6 +46,7 @@ export * from './product-insight-set';
 export * from './dashboard';
 export * from './blog';
 export * from './legal-page';
+export * from './page-builder';
 export * from './store-location';
 export * from './mailbox';
 export * from './wishlist';

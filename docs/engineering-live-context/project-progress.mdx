@@ -453,6 +453,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 - 2026-11-17 [DONE] Page Builder SG-19 per-page permissions (dc4ee881): page_builder.draft_home and page_builder.go_live_home beside the every-page codes, checked on every draft and Go Live route; granted in Admin > Roles; run seed:system-roles after a pull.
 - 2026-11-17 [DONE] Page Builder FX-8 cache warming (ce9cfd60): page-warm jobs just after each switch (and now), nightly re-queue, worker asks SHOP_ORIGIN/{language}/; new optional env SHOP_ORIGIN (production: https://${STOREFRONT_HOST}).
 - 2026-11-17 [DONE] Speed gate extras (afd02bca): templates + stress layout on pull requests (speed:layouts), nightly full size table (speed-nightly.yml, light and dark, both orientations), PageSpeed Insights before releases (speed-release.yml, psi-check.mjs). All report only; not yet run in GitHub.
+- 2026-11-17 [DONE] Shop: header widgets load code when needed (first-load JS 1,149 to 1,101 KB), বাংলা pages preload the Bengali font (phone layout shift 0.002 to 0), video cards' headings in order (Accessibility back to 100). Local speed gate: A11y/BP/SEO 100 and layout shift 0 on all four rows; Performance 42/76 English, 46/76 বাংলা (no compression; Home now carries the video rail).
 - _(append)_
 
 ---

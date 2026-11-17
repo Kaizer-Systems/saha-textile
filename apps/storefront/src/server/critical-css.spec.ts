@@ -5,11 +5,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	BEASTIES_OPTIONS,
+	MAX_SAMPLES,
 	addedStyles,
+	covers,
 	criticalKey,
 	fontPreloads,
 	inlineCritical,
+	pageShape,
 	preloadedFontsOnly,
+	sampleBody,
+	samplesDocument,
 	stylesheetLinks,
 } from './critical-css';
 
@@ -126,5 +131,50 @@ describe('critical CSS (speed baseline, option A)', () => {
 		expect(out).toContain('<link rel="stylesheet" href="https://fonts.example/x.css">');
 		expect(out).toContain('<link rel="stylesheet" href="/late.css">');
 		expect(inlineCritical(html, '', links)).toBe(html);
+	});
+
+	it('keys category and product pages by type, so one answer serves every page of a type', () => {
+		const links = stylesheetLinks(page(HEAD));
+		const sarees = criticalKey('/en/collections/sarees', links);
+		expect(sarees).toMatch(/^collection:en\|/);
+		expect(criticalKey('/en/collections/sarees/pure-silk?color=red', links)).toBe(sarees);
+		const one = criticalKey('/bn/product/red-banarasi-saree', links);
+		expect(one).toMatch(/^product:bn\|/);
+		expect(criticalKey('/bn/product/blue-tant-saree/', links)).toBe(one);
+		expect(criticalKey('/en/product/a/reviews', links)).toBeNull();
+		expect(criticalKey('/en/collections', links)).toBeNull();
+	});
+
+	it("reads a page's shape: tags, classes and attribute names, never ids, values or scripts", () => {
+		const html = page(
+			'<link rel="stylesheet" href="/a.css">',
+			'<app-root _nghost-ng-c1=""><div id="add-to-cart123" class="product-box  sale" data-x="1"><h3 class="h6 name">A</h3></div>' +
+				'<script>var s = \'<p class="from-script">\';</script></app-root>',
+		);
+		const shape = pageShape(html);
+		for (const part of ['app-root', '@_nghost-ng-c1', 'div', '.product-box', '.sale', '@data-x', 'h3', '.h6', '.name'])
+			expect(shape).toContain(part);
+		expect([...shape].some((part) => part.includes('add-to-cart'))).toBe(false);
+		expect(shape.has('.from-script')).toBe(false);
+		// Another product: other id, other words, same shape.
+		const other = pageShape(html.replace('add-to-cart123', 'add-to-cart987').replace('>A<', '>B<'));
+		expect(covers(shape, other)).toBe(true);
+		// A product with a part the answer never saw is not covered.
+		expect(covers(shape, pageShape(html.replace('sale', 'sale metre-input')))).toBe(false);
+	});
+
+	it('works the answer out from every sample at once, in one document with this page head', () => {
+		const first = page('<link rel="stylesheet" href="/a.css">', '<app-root><i class="one"></i></app-root>');
+		const second = page('<link rel="stylesheet" href="/a.css">', '<app-root><i class="two"></i><script>x</script></app-root>');
+		const body = sampleBody(second);
+		expect(body).toContain('class="two"');
+		expect(body).not.toContain('<script');
+		const doc = samplesDocument(second, [sampleBody(first), body]);
+		expect(doc.startsWith('<!doctype html><html><head><link rel="stylesheet" href="/a.css"></head><body>')).toBe(true);
+		expect(doc).toContain('class="one"');
+		expect(doc).toContain('class="two"');
+		expect(doc.match(/<app-root>/g)).toHaveLength(2);
+		expect(doc.endsWith('</body></html>')).toBe(true);
+		expect(MAX_SAMPLES).toBeGreaterThan(1);
 	});
 });

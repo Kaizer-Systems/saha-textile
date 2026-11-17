@@ -1,5 +1,5 @@
 import { AsyncPipe, NgClass, NgStyle, isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, effect, inject, input, untracked } from '@angular/core';
+import { Component, PLATFORM_ID, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
@@ -50,6 +50,11 @@ export class Cart {
 	setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
 	readonly style = input<string>('basic');
+	/** The line whose options popup is asked for; the popup is drawn, and its code loaded, from then on. */
+	readonly editing = signal<ICart | null>(null);
+	readonly configModal = viewChild<ProductConfigModal>('configModal');
+	/** A popup asked for before its code had loaded opens as soon as it has. */
+	private opening: ICart | null = null;
 
 	public cartStyle: string = 'cart_sidebar';
 	public shippingFreeAmt: number = 0;
@@ -65,6 +70,16 @@ export class Cart {
 	public loader: boolean = false;
 
 	constructor() {
+		effect(() => {
+			const popup = this.configModal();
+			untracked(() => {
+				if (popup && this.opening) {
+					const line = this.opening;
+					this.opening = null;
+					popup.openModal(line);
+				}
+			});
+		});
 		// Signing in merges the guest cart on the server and signing out leaves it, so the cart is
 		// read again whenever the session changes. The server has no cookies for this read.
 		effect(() => {
@@ -92,6 +107,14 @@ export class Cart {
 				this.confetti = 0;
 			}
 		});
+	}
+
+	/** A line's Edit: its options popup, with the line's saved choices. */
+	edit(item: ICart) {
+		const popup = this.configModal();
+		if (popup && this.editing()?.id === item.id) return popup.openModal(item);
+		this.opening = item;
+		this.editing.set(item);
 	}
 
 	readonly isMetre = isMetreLine;

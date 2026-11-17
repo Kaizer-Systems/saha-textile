@@ -5,8 +5,16 @@
  * slow path (about 5 s here with the 1 MB theme stylesheet), so it runs once per page type, language and set of
  * stylesheets, in a worker thread off the request path, and the answer is cached and reused.
  *
- * These are the pure parts: which pages take part, the cache key, and how a page is rewritten. A page with no
- * cached answer yet is sent exactly as drawn, so the worst case is today's page.
+ * One answer serves every page of a type (every product page, every category page), so it must hold the rules of
+ * every element those pages can draw. Each answer therefore remembers the page shapes it was made from: the tags,
+ * classes and attribute names on them. A page whose shape adds nothing new is covered and gets the answer; a page
+ * with something new is sent as drawn, with its blocking stylesheets (today's page, so nothing moves), and its body
+ * joins the answer's samples. The answer is then worked out again from all the samples in one document, so its
+ * rules stay in the stylesheets' own order and the cascade is exactly the stylesheets'. A handful of shapes covers a
+ * whole catalogue, so the work is bounded by templates, not by products.
+ *
+ * These are the pure parts: which pages take part, the cache key, a page's shape, and how a page is rewritten. A
+ * page with no covering answer is sent exactly as drawn, so the worst case is today's page.
  */
 
 /** A stylesheet the page links in its head, as written in the HTML. */
@@ -42,8 +50,15 @@ export const BEASTIES_OPTIONS = {
 	logLevel: 'silent',
 } as const;
 
-/** Page types that get critical CSS, by path. Home first; others join as their samples are checked. */
-const PAGE_TYPES: readonly { key: string; path: RegExp }[] = [{ key: 'home', path: /^\/(en|bn)\/?$/ }];
+/** Page types that get critical CSS, by path (after the language prefix). */
+const PAGE_TYPES: readonly { key: string; path: RegExp }[] = [
+	{ key: 'home', path: /^\/[a-z]{2}\/?$/ },
+	{ key: 'collection', path: /^\/[a-z]{2}\/collections\/[^?]+$/ },
+	{ key: 'product', path: /^\/[a-z]{2}\/product\/[^/?]+\/?$/ },
+];
+
+/** At most this many page shapes are combined into one answer; a page beyond them keeps its blocking stylesheets. */
+export const MAX_SAMPLES = 8;
 
 /** Local, render-blocking stylesheets in the page: `<link rel="stylesheet" href="/…">` without a media query. */
 export function stylesheetLinks(html: string): StylesheetLink[] {
@@ -140,4 +155,51 @@ export function inlineCritical(html: string, css: string, links: readonly Styles
 		out = out.replace(link.tag, replacement);
 	});
 	return out;
+}
+
+/** The page's body without its scripts (the data copy and app scripts style nothing), as a sample for an answer. */
+export function sampleBody(html: string): string {
+	const open = /<body\b[^>]*>/i.exec(html);
+	const start = open ? open.index + open[0].length : 0;
+	const end = html.lastIndexOf('</body>');
+	return html.slice(start, end < 0 ? html.length : end).replace(/<script\b[\s\S]*?<\/script>/gi, '');
+}
+
+/**
+ * A page's shape: every tag name, class and attribute name on its body's elements, the parts a selector can match.
+ * Ids and attribute values are left out: they differ from product to product (`id="add-to-cart123"`) and would make
+ * every page look new. `_ngcontent`/`_nghost` names are kept, so a component the samples never drew counts as new.
+ */
+export function pageShape(html: string): Set<string> {
+	const shape = new Set<string>();
+	for (const match of sampleBody(html).matchAll(/<([a-zA-Z][\w-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g)) {
+		shape.add((match[1] ?? '').toLowerCase());
+		const attributes = match[2] ?? '';
+		for (const attribute of attributes.matchAll(/([^\s=/>"']+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s>]+))?/g)) {
+			const name = (attribute[1] ?? '').toLowerCase();
+			if (!name || name === 'id') continue;
+			shape.add(`@${name}`);
+			if (name !== 'class') continue;
+			const value = (attribute[2] ?? '').replace(/^["']|["']$/g, '');
+			for (const token of value.split(/\s+/)) if (token) shape.add(`.${token}`);
+		}
+	}
+	return shape;
+}
+
+/** Whether every part of a page's shape is already in an answer's shape. */
+export function covers(answer: ReadonlySet<string>, page: ReadonlySet<string>): boolean {
+	for (const part of page) if (!answer.has(part)) return false;
+	return true;
+}
+
+/**
+ * One document holding every sample body, with this page's head and `<html>` tag (its language, its mode and its
+ * stylesheets), for Beasties to work out the rules all of them need. The bodies follow one another directly, so a
+ * rule such as `body > app-root` still matches each.
+ */
+export function samplesDocument(html: string, samples: readonly string[]): string {
+	const open = /<body\b[^>]*>/i.exec(html);
+	const head = open ? html.slice(0, open.index + open[0].length) : html;
+	return `${head}${samples.join('\n')}</body></html>`;
 }

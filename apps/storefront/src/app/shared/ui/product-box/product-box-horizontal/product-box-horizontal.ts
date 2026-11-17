@@ -1,4 +1,4 @@
-import { Component, computed, inject, viewChild, input } from '@angular/core';
+import { Component, computed, effect, inject, viewChild, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
@@ -73,6 +73,10 @@ export class ProductBoxHorizontal {
 
 	readonly productDetailModal = viewChild<ProductDetailModal>('productDetailModal');
 	readonly configModal = viewChild<ProductConfigModal>('configModal');
+	/** The popups asked for so far: each is drawn, and its code loaded, the first time (see the template). */
+	readonly asked = signal({ detail: false, config: false });
+	/** A popup asked for before its code had loaded opens as soon as it has. */
+	private opening: 'detail' | 'config' | null = null;
 
 	public cartItem: ICart | null;
 	public currentDate: number | null;
@@ -83,6 +87,36 @@ export class ProductBoxHorizontal {
 
 		config.max = 5;
 		config.readonly = true;
+
+		effect(() => {
+			const detail = this.productDetailModal();
+			const options = this.configModal();
+			untracked(() => {
+				if (this.opening === 'detail' && detail) {
+					this.opening = null;
+					void detail.openModal();
+				} else if (this.opening === 'config' && options) {
+					this.opening = null;
+					options.openModal();
+				}
+			});
+		});
+	}
+
+	/** Quick view (and classified products): the product popup. */
+	openDetail() {
+		const popup = this.productDetailModal();
+		if (popup) return void popup.openModal();
+		this.opening = 'detail';
+		this.asked.update((asked) => ({ ...asked, detail: true }));
+	}
+
+	/** A product that needs choices: the options popup. */
+	openConfig() {
+		const popup = this.configModal();
+		if (popup) return popup.openModal();
+		this.opening = 'config';
+		this.asked.update((asked) => ({ ...asked, config: true }));
 	}
 
 	ngOnInit() {

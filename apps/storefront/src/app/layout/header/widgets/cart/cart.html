@@ -174,14 +174,19 @@
 								[class]="'delete-button'"
 								[id]="'cart_item_edit_btn'+item.product.id"
 								[spinner]="false"
-								(click)="configModal.openModal(item)"
+								(click)="edit(item)"
 							>
 								<i class="ri-pencil-line"></i>
 							</app-button>
+							<!-- The options popup loads when a line is first edited, so its code stays out of every page's
+							     first load. -->
+							@if (editing()?.id === item.id) {
+							@defer (on immediate) {
 							<app-product-config-modal
 								#configModal
 								[product]="item.product"
 							/>
+							} }
 							}
 							<app-button
 								[class]="'delete-button close_button'"

@@ -2,26 +2,40 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 
-import { type H3Event, getRequestURL, setResponseHeader } from 'h3';
+import { type H3Event, getRequestURL, getResponseStatus, setResponseHeader } from 'h3';
 
 import {
 	BEASTIES_OPTIONS,
+	MAX_SAMPLES,
 	addedStyles,
+	covers,
 	criticalKey,
 	fontPreloads,
 	inlineCritical,
+	pageShape,
 	preloadedFontsOnly,
+	sampleBody,
+	samplesDocument,
 	stylesheetLinks,
 } from '../critical-css';
 
-/** How long an answer is reused before it is worked out again in the background (content and pictures change). */
-const REFRESH_MS = 6 * 60 * 60 * 1000;
 /** At most this many answers are kept (page type × language × stylesheet set; a handful in practice). */
 const MAX_ENTRIES = 32;
 
+/**
+ * One answer: its CSS, and the shapes and sample bodies it was worked out from. It lasts as long as the build: its key
+ * holds the stylesheets' hashed names, and new content is handled by the shape check, not by time.
+ */
 interface Entry {
 	css: string;
-	at: number;
+	shape: Set<string>;
+	samples: string[];
+}
+
+interface Work {
+	input: string;
+	shape: Set<string>;
+	samples: string[];
 }
 
 /**
@@ -66,12 +80,12 @@ export default function criticalCss(nitroApp: NitroAppLike): void {
 	const folder = publicDir();
 	if (!folder || process.env['ST_CRITICAL_CSS'] === 'off') return;
 	const cache = new Map<string, Entry>();
-	const pending = new Map<string, string>();
+	const pending = new Map<string, Work>();
 	let worker: Worker | null = null;
 
-	const work = (key: string, html: string) => {
+	const work = (key: string, job: Work) => {
 		if (pending.has(key)) return;
-		pending.set(key, html);
+		pending.set(key, job);
 		worker ??= (() => {
 			const started = new Worker(WORKER_SOURCE, {
 				eval: true,
@@ -79,12 +93,12 @@ export default function criticalCss(nitroApp: NitroAppLike): void {
 			});
 			started.unref();
 			started.on('message', (answer: { key: string; html?: string; error?: string }) => {
-				const input = pending.get(answer.key) ?? '';
+				const job = pending.get(answer.key);
 				pending.delete(answer.key);
-				if (!answer.html) return;
-				const css = preloadedFontsOnly(addedStyles(input, answer.html), fontPreloads(input));
+				if (!answer.html || !job) return;
+				const css = preloadedFontsOnly(addedStyles(job.input, answer.html), fontPreloads(job.input));
 				if (!css) return;
-				cache.set(answer.key, { css, at: Date.now() });
+				cache.set(answer.key, { css, shape: job.shape, samples: job.samples });
 				while (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value as string);
 			});
 			started.on('error', () => {
@@ -93,23 +107,38 @@ export default function criticalCss(nitroApp: NitroAppLike): void {
 			});
 			return started;
 		})();
-		worker.postMessage({ key, html });
+		worker.postMessage({ key, html: job.input });
 	};
 
 	nitroApp.hooks.hook('beforeResponse', (event, response) => {
 		if (event.method !== 'GET' || typeof response.body !== 'string') return;
+		// Only real pages: a not-found or gone page must never become a sample of its type's answer.
+		if (getResponseStatus(event) !== 200) return;
 		const html = response.body;
 		if (!html.startsWith('<!') && !html.startsWith('<html')) return;
 		const links = stylesheetLinks(html);
 		const key = criticalKey(getRequestURL(event).pathname, links, html);
 		if (!key) return;
 		const entry = cache.get(key);
-		if (!entry || Date.now() - entry.at > REFRESH_MS) work(key, html);
-		if (!entry) {
-			setResponseHeader(event, 'x-st-critical', 'pending');
+		const shape = pageShape(html);
+		if (entry && covers(entry.shape, shape)) {
+			response.body = inlineCritical(html, entry.css, links);
+			setResponseHeader(event, 'x-st-critical', 'inlined');
 			return;
 		}
-		response.body = inlineCritical(html, entry.css, links);
-		setResponseHeader(event, 'x-st-critical', 'inlined');
+		// Something on this page is new to the answer: it keeps its blocking stylesheets, and its shape joins the
+		// samples, until the answer holds MAX_SAMPLES shapes.
+		const samples = entry?.samples ?? [];
+		if (samples.length >= MAX_SAMPLES) {
+			setResponseHeader(event, 'x-st-critical', 'uncovered');
+			return;
+		}
+		const joined = [...samples, sampleBody(html)];
+		work(key, {
+			input: samplesDocument(html, joined),
+			shape: new Set([...(entry?.shape ?? []), ...shape]),
+			samples: joined,
+		});
+		setResponseHeader(event, 'x-st-critical', 'pending');
 	});
 }

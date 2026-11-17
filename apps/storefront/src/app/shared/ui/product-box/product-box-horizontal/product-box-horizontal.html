@@ -88,7 +88,7 @@
 					[attr.aria-label]="'quick_view' | transloco"
 					[ngbTooltip]="'quick_view' | transloco"
 					triggers="hover"
-					(click)="productDetailModal.openModal()"
+					(click)="openDetail()"
 				>
 					<i
 						class="ri-eye-line"
@@ -168,7 +168,7 @@
 				[class]="'btn btn-add-cart addcart-button'"
 				[iconClass]="'ri-add-line'"
 				[spinner]="false"
-				(click)="isConfigurable(product()) ? configModal.openModal() : (product()?.type === 'classified' ? productDetailModal.openModal() : addToCart(product()!, 1))"
+				(click)="isConfigurable(product()) ? openConfig() : (product()?.type === 'classified' ? openDetail() : addToCart(product()!, 1))"
 			>
 				{{ 'add' | transloco }}
 				<span class="add-icon">
@@ -221,12 +221,20 @@
 		</div>
 	</div>
 </div>
+<!-- The card's popups load the first time they are asked for: their code (the product configurator) stays out of
+     the first load of every page that shows cards. -->
+@if (asked().detail) {
+@defer (on immediate) {
 <app-product-detail-modal
 	#productDetailModal
 	[product]="product()"
 />
+} }
+@if (asked().config) {
+@defer (on immediate) {
 <app-product-config-modal
 	#configModal
 	[product]="product()!"
 />
+} }
 }

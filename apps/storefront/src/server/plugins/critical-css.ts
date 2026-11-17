@@ -103,7 +103,7 @@ export default function criticalCss(nitroApp: NitroAppLike): void {
 		const html = response.body;
 		if (!html.startsWith('<!') && !html.startsWith('<html')) return;
 		const links = stylesheetLinks(html);
-		const key = criticalKey(getRequestURL(event).pathname, links);
+		const key = criticalKey(getRequestURL(event).pathname, links, html);
 		if (!key) return;
 		const entry = cache.get(key);
 		if (!entry || Date.now() - entry.at > REFRESH_MS) work(key, html);

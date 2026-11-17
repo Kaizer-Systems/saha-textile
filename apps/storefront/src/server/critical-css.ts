@@ -34,16 +34,26 @@ export function stylesheetLinks(html: string): StylesheetLink[] {
 }
 
 /**
- * The cache key for a page: its page type and language, and the stylesheets it links. A new build (new file names)
- * or dark mode (its own stylesheet) is a different key, so an answer never serves a page it was not made from.
+ * The cache key for a page: its page type and language, the stylesheets it links and its section outline. A new
+ * build (new file names), dark mode (its own stylesheet) or another layout is a different key, so an answer never
+ * serves a page it was not made from.
  * Null: the page takes no part.
  */
-export function criticalKey(path: string, links: readonly StylesheetLink[]): string | null {
+export function criticalKey(path: string, links: readonly StylesheetLink[], html = ''): string | null {
 	const clean = path.split('?')[0] ?? path;
 	const type = PAGE_TYPES.find((candidate) => candidate.path.test(clean));
 	if (!type || links.length === 0) return null;
 	const locale = /^\/([a-z]{2})\b/.exec(clean)?.[1] ?? 'en';
-	return `${type.key}:${locale}|${links.map((link) => link.href).join(',')}`;
+	return `${type.key}:${locale}|${links.map((link) => link.href).join(',')}|${outline(html)}`;
+}
+
+/**
+ * The page's outline: the Page Builder sections it draws, in order, or `fixed` for a page without a layout. Part of
+ * the key, so switching the builder on or a new layout going live never reuses an answer made for other elements.
+ */
+function outline(html: string): string {
+	const sections = [...html.matchAll(/data-pb-section="([a-z_]+)"/g)].map((match) => match[1]);
+	return sections.length ? sections.join('+') : 'fixed';
 }
 
 /** The `<style>` blocks of a page, in order (Angular's component styles, and anything inlined). */

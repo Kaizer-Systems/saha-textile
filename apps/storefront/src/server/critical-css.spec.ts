@@ -24,7 +24,11 @@ describe('critical CSS (speed baseline, option A)', () => {
 
 	it('keys Home by language and stylesheets, and leaves other pages out', () => {
 		const links = stylesheetLinks(page(HEAD));
-		expect(criticalKey('/en/', links)).toBe('home:en|/assets/index-AbC123.css,/assets/css/remixicon.css');
+		expect(criticalKey('/en/', links)).toBe('home:en|/assets/index-AbC123.css,/assets/css/remixicon.css|fixed');
+		// A builder layout is keyed by its outline: another layout, or the builder switched on, is another answer.
+		const drawn =
+			'<section data-pb-section="banner_arrangement"></section><section data-pb-section="newsletter"></section>';
+		expect(criticalKey('/en/', links, drawn)).toMatch(/\|banner_arrangement\+newsletter$/);
 		expect(criticalKey('/bn', links)).toMatch(/^home:bn\|/);
 		expect(criticalKey('/en/?utm_source=x', links)).toMatch(/^home:en\|/);
 		expect(criticalKey('/en/cart', links)).toBeNull();

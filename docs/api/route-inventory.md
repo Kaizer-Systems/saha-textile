@@ -533,21 +533,22 @@ The server enforces public visibility, not the caller. Public repository calls d
 
 ## Storefront media and review routes
 
-| Method  | Route                                          | Access                | Purpose                                                                    |
-| ------- | ---------------------------------------------- | --------------------- | -------------------------------------------------------------------------- |
-| `GET`   | `/media/upload-rules`                          | Public                | Size, type and count limits for uploads                                    |
-| `GET`   | `/storefront/banners`                          | Public                | A page's live banners, resolved for the locale                             |
-| `GET`   | `/storefront/brand`                            | Public                | Logo sets, icons, link preview picture, profiles, store links and colours  |
-| `GET`   | `/storefront/languages`                        | Public                | The shop's languages, the admin's own languages, and the 301s to English   |
-| `GET`   | `/share/:code`                                 | Public (rate-limited) | Check a Media share link; an admin session opens admins-only links         |
-| `POST`  | `/share/:code`                                 | Public (rate-limited) | Open a password link; wrong passwords are limited per link and address     |
-| `GET`   | `/storefront/youtube/rail`                     | Public                | Cached latest channel videos for a placement                               |
-| `POST`  | `/storefront/reviews/photos/presign`           | Storefront session    | Start a review photo upload (verified buyers only)                         |
-| `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session    | The photo upload finished; queue processing                                |
-| `GET`   | `/storefront/reviews/photos/:assetId/status`   | Storefront session    | Processing state of a review photo                                         |
-| `GET`   | `/storefront/reviews/mine`                     | Storefront session    | Whether you can review a product, are waiting for delivery, or your review |
-| `POST`  | `/storefront/reviews`                          | Storefront session    | Submit a review with up to five photos; held for moderation                |
-| `PATCH` | `/storefront/reviews/:reviewId`                | Storefront session    | Edit your review; it waits for approval again                              |
+| Method  | Route                                          | Access                | Purpose                                                                                        |
+| ------- | ---------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| `GET`   | `/media/upload-rules`                          | Public                | Size, type and count limits for uploads                                                        |
+| `GET`   | `/storefront/banners`                          | Public                | A page's live banners, resolved for the locale                                                 |
+| `GET`   | `/storefront/pages/:type/layout`               | Public                | A page's live Page Builder layout for one language; cached until its next change, at most 60 s |
+| `GET`   | `/storefront/brand`                            | Public                | Logo sets, icons, link preview picture, profiles, store links and colours                      |
+| `GET`   | `/storefront/languages`                        | Public                | The shop's languages, the admin's own languages, and the 301s to English                       |
+| `GET`   | `/share/:code`                                 | Public (rate-limited) | Check a Media share link; an admin session opens admins-only links                             |
+| `POST`  | `/share/:code`                                 | Public (rate-limited) | Open a password link; wrong passwords are limited per link and address                         |
+| `GET`   | `/storefront/youtube/rail`                     | Public                | Cached latest channel videos for a placement                                                   |
+| `POST`  | `/storefront/reviews/photos/presign`           | Storefront session    | Start a review photo upload (verified buyers only)                                             |
+| `POST`  | `/storefront/reviews/photos/:assetId/finalize` | Storefront session    | The photo upload finished; queue processing                                                    |
+| `GET`   | `/storefront/reviews/photos/:assetId/status`   | Storefront session    | Processing state of a review photo                                                             |
+| `GET`   | `/storefront/reviews/mine`                     | Storefront session    | Whether you can review a product, are waiting for delivery, or your review                     |
+| `POST`  | `/storefront/reviews`                          | Storefront session    | Submit a review with up to five photos; held for moderation                                    |
+| `PATCH` | `/storefront/reviews/:reviewId`                | Storefront session    | Edit your review; it waits for approval again                                                  |
 
 Uploads go directly to Spaces through a presigned PUT. The API does not proxy image bytes. Review photos stay private until a moderator approves them.
 

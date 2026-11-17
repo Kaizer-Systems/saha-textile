@@ -12,6 +12,7 @@ import { ARRANGEMENT_PIECE_NAMES, type PageLayoutRepository, SECTION_COMMON_DEFA
 import { describe, expect, it, vi } from 'vitest';
 
 import { LanguageStore } from '../src/languages/language-store';
+import { layoutMaxAge } from '../src/page-builder/page-builder.controller';
 import { PageBuilderService, pictureFacts } from '../src/page-builder/page-builder.service';
 
 /** An in-memory stand-in for the Page Builder store, with the same draft guard the Mongo adapter has. */
@@ -85,6 +86,9 @@ const asset = (state: 'ready' | 'making'): MediaAsset =>
 	({
 		id: 'med_1',
 		deletedAt: null,
+		visibility: 'public',
+		text: { alt: {}, caption: {} },
+		slug: 'hero-photo',
 		width: 3380,
 		height: 1000,
 		processing: { state: 'ready', attempts: 1, error: null, processedAt: null },
@@ -123,16 +127,19 @@ const asset = (state: 'ready' | 'making'): MediaAsset =>
 	}) as unknown as MediaAsset;
 
 const harness = (media: MediaAsset | null = null) => {
+	const switches: { value: { home: boolean } | null } = { value: { home: true } };
 	const store = memoryLayouts();
 	const audit = { append: vi.fn(async () => undefined) };
 	const service = new PageBuilderService(
 		store.repo,
 		LanguageStore.fixed(['en', 'bn']),
 		{ findById: async (id: string) => (id === 'adm_1' ? { displayName: 'Moulik' } : null) } as never,
-		{ findById: async () => media } as never,
+		{ findById: async () => media, findManyByIds: async () => (media ? [media] : []) } as never,
+		{ getUrl: (key: string) => `https://cdn/${key}` } as never,
+		{ get: async () => switches.value } as never,
 		audit as never,
 	);
-	return { service, store, audit };
+	return { service, store, audit, switches };
 };
 
 describe('Page Builder API (brief PG-1, PG-2, B)', () => {
@@ -259,5 +266,55 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 			expect.objectContaining({ action: 'page_layout.rename', metadata: { from: 'Old', to: 'New' } }),
 		);
 		await expect(service.rename(null, 'lay_none', { name: 'x' })).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('gives the shop the live layout in its language, and nothing when nothing is live', async () => {
+		const { service, store, switches } = harness(asset('ready'));
+		expect(await service.shopLayout('home', 'bn', new Date('2026-11-17T00:00:00Z'))).toEqual({
+			pageType: 'home',
+			revisionId: null,
+			sections: [],
+			refreshAt: null,
+		});
+		const created = await service.createLayout(null, 'home', { name: 'Hero', start: 'blank', copyOf: null });
+		const saved = await service.saveDraft(null, created.layout.id, {
+			sections: [banner('med_1', 'ver_1'), letter],
+			expectedDraftId: null,
+		});
+		await store.repo.goLive({
+			pageType: 'home',
+			target: 'page',
+			entry: {
+				revisionId: saved.draft?.id ?? '',
+				layoutId: created.layout.id,
+				from: '2026-11-01T00:00:00.000Z',
+				until: '2026-12-01T00:00:00.000Z',
+				by: null,
+			},
+			at: '2026-11-01T00:00:00.000Z',
+		});
+		const shop = await service.shopLayout('home', 'bn', new Date('2026-11-17T00:00:00Z'));
+		// The switch off: the shop keeps its fixed page whatever is scheduled.
+		switches.value = null;
+		expect((await service.shopLayout('home', 'bn', new Date('2026-11-17T00:00:00Z'))).revisionId).toBeNull();
+		switches.value = { home: true };
+		expect(shop.revisionId).toBe(saved.draft?.id);
+		expect(shop.refreshAt).toBe('2026-12-01T00:00:00.000Z');
+		expect(shop.sections.map((section) => [section.id, section.title])).toEqual([
+			['hero', null],
+			['news', 'যোগ দিন'],
+		]);
+		const picture = shop.sections[0]?.pieces[0]?.pictures[0];
+		expect(picture).toMatchObject({ key: 'hero:main:0', slot: 'main_0', alt: 'b' });
+		expect(picture?.images.desktop.roles['banner']?.[0]?.url).toContain('https://cdn/');
+		await expect(service.shopLayout('cart', 'en')).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('keeps a layout answer until its next change, and never more than a minute', () => {
+		const now = Date.parse('2026-11-17T00:00:00Z');
+		expect(layoutMaxAge(null, now)).toBe(60);
+		expect(layoutMaxAge('2026-11-17T00:00:20Z', now)).toBe(20);
+		expect(layoutMaxAge('2026-11-17T05:00:00Z', now)).toBe(60);
+		expect(layoutMaxAge('2026-11-16T23:59:00Z', now)).toBe(0);
 	});
 });

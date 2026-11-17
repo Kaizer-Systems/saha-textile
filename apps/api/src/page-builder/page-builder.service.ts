@@ -14,6 +14,7 @@ import type {
 	PageTypeKey,
 	RenameLayoutRequest,
 	SaveLayoutDraft,
+	StorefrontPageLayout,
 } from '@saha-textile/contracts';
 import {
 	type AdminUserRepository,
@@ -23,10 +24,15 @@ import {
 	type PictureFacts,
 	layoutProblems,
 	layoutStatus,
+	nextContentChangeAt,
 	liveEntry,
 	nextSwitchAt,
 	pageTypeRules,
 	registeredPageTypes,
+	resolveImage,
+	shopSections,
+	type SiteSettingsRepository,
+	type StoragePort,
 } from '@saha-textile/core-domain';
 
 import {
@@ -34,6 +40,8 @@ import {
 	AUDIT_LOG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	PAGE_LAYOUT_REPOSITORY,
+	SITE_SETTINGS_REPOSITORY,
+	STORAGE_PORT,
 } from '../infra/tokens';
 import { LanguageStore } from '../languages/language-store';
 
@@ -66,7 +74,10 @@ export class PageBuilderService {
 		@Inject(PAGE_LAYOUT_REPOSITORY) private readonly layouts: PageLayoutRepository,
 		private readonly languages: LanguageStore,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
-		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: Pick<MediaAssetRepository, 'findById'>,
+		@Inject(MEDIA_ASSET_REPOSITORY)
+		private readonly assets: Pick<MediaAssetRepository, 'findById' | 'findManyByIds'>,
+		@Inject(STORAGE_PORT) private readonly storage: Pick<StoragePort, 'getUrl'>,
+		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: Pick<SiteSettingsRepository, 'get'>,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
 	) {}
 
@@ -212,6 +223,56 @@ export class PageBuilderService {
 		await this.layouts.renameLayout(id, request.name, layout.template, actor, now.toISOString());
 		await this.record(actor, 'page_layout.rename', id, { from: layout.name, to: request.name });
 		return this.layoutView(id);
+	}
+
+	/**
+	 * The shop: a page's live layout for one language (brief, How the shop draws it). Read on every request, so the
+	 * schedule decides what shows without any job (FX-6); `refreshAt` is the next moment the answer may change.
+	 */
+	async shopLayout(type: string, locale: string, now = new Date()): Promise<StorefrontPageLayout> {
+		const pageType = this.requireType(type);
+		// Off (the default): the shop draws its fixed page, which is also the fallback and the safe mode (SG-15).
+		const switches = await this.settings.get('storefront.pageBuilder');
+		if (!switches?.[pageType]) return { pageType, revisionId: null, sections: [], refreshAt: null };
+		const schedule = (await this.layouts.page(pageType, WHOLE_PAGE))?.schedule ?? [];
+		const live = liveEntry(schedule, now);
+		const revision = live ? await this.layouts.revision(live.revisionId) : null;
+		const sections = revision?.sections ?? [];
+		const ids = new Set<string>();
+		for (const section of sections) {
+			if (!('pieces' in section)) continue;
+			for (const picture of section.pieces.flatMap((piece) => piece.pictures)) {
+				for (const set of [picture.images, ...Object.values(picture.localeImages)]) {
+					for (const id of [set.desktop, set.tablet, set.phone]) if (id) ids.add(id);
+				}
+			}
+		}
+		const assets = new Map((await this.assets.findManyByIds([...ids])).map((asset) => [asset.id, asset]));
+		const resolved = shopSections(sections, {
+			locale,
+			now,
+			image: (assetId, versionId) => {
+				const asset = assets.get(assetId);
+				if (!asset || asset.deletedAt) return null;
+				return resolveImage({
+					asset,
+					getUrl: (key) => this.storage.getUrl(key),
+					locale,
+					fallbackLocale: 'en',
+					versionId,
+				});
+			},
+		});
+		const moments = [nextSwitchAt(schedule, now), nextContentChangeAt(sections, now)].filter(
+			(moment): moment is Date => moment !== null,
+		);
+		const refreshAt = moments.length ? new Date(Math.min(...moments.map((moment) => moment.getTime()))) : null;
+		return {
+			pageType,
+			revisionId: revision?.id ?? null,
+			sections: resolved,
+			refreshAt: refreshAt ? refreshAt.toISOString() : null,
+		};
 	}
 
 	private requireType(type: string): PageTypeKey {

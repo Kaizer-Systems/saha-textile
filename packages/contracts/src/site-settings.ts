@@ -15,6 +15,15 @@ export const StorefrontHomeSettings = z.object({
 });
 export type StorefrontHomeSettings = z.infer<typeof StorefrontHomeSettings>;
 
+/**
+ * `storefront.pageBuilder` — which pages the shop draws from their Page Builder layout. Off: the shop keeps its fixed
+ * page, which is also the fallback and the super admin's safe mode (Page Builder SG-15).
+ */
+export const StorefrontPageBuilderSettings = z.object({
+	home: z.boolean().default(false),
+});
+export type StorefrontPageBuilderSettings = z.infer<typeof StorefrontPageBuilderSettings>;
+
 /** Long videos and Shorts kept by the daily refresh, newest first (owner, 2026-11-10). */
 export const YOUTUBE_FEED_VIDEOS = 24;
 export const YOUTUBE_FEED_SHORTS = 12;
@@ -312,6 +321,7 @@ export const SITE_SETTING_SCHEMAS = {
 	media_nightly_check: MediaNightlyCheck,
 	brand: BrandSettings,
 	'storefront.home': StorefrontHomeSettings,
+	'storefront.pageBuilder': StorefrontPageBuilderSettings,
 	youtube: YouTubeSettings,
 	'youtube.feed': YouTubeFeedCache,
 	'storefront.search': StorefrontSearchSettings,

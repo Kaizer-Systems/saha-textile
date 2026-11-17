@@ -9,6 +9,8 @@ import {
 	overlappingEntries,
 	pageTypeRules,
 	SECTION_COMMON_DEFAULTS,
+	shopSections,
+	nextContentChangeAt,
 	sectionAllowed,
 	todaysHomePage,
 	type LayoutCheckContext,
@@ -297,5 +299,79 @@ describe('layout status for the layout cards (A1)', () => {
 		});
 		expect(layoutStatus('new', schedule, now)).toEqual({ status: 'draft', from: null, until: null });
 		expect(layoutStatus('winter', schedule, new Date('2026-11-20T00:00:00Z')).status).toBe('scheduled');
+	});
+});
+
+describe('what the shop draws (shop layout)', () => {
+	const image = (id: string) =>
+		({ id, url: `https://cdn/${id}` }) as unknown as import('@saha-textile/contracts').ResolvedImage;
+	const context = (locale = 'bn', now = '2026-12-10T00:00:00Z') => ({
+		locale,
+		now: new Date(now),
+		image: (assetId: string) => (assetId === 'gone' ? null : image(assetId)),
+	});
+	const sections = [
+		banner([
+			picture('a', { heading: { en: 'Sale', bn: 'সেল' }, link: { href: '/offer', external: false } }),
+			picture('gone'),
+			picture('later', { from: '2027-01-01T00:00:00.000Z' }),
+			picture('art', {
+				containsText: true,
+				heading: { en: 'Ignored' },
+				localeImages: { bn: { desktop: 'art_bn', tablet: null, phone: null } },
+			}),
+		]),
+		titled('hidden', 'newsletter', both, { hidden: true }),
+		titled('en_only', 'newsletter', both, { languages: ['en'] }),
+		titled('ended', 'newsletter', both, { until: '2026-12-01T00:00:00.000Z' }),
+		titled(
+			'row',
+			'product_row',
+			{ en: 'New' },
+			{ source: 'on_sale', sourceIds: [], cards: 12, leaveOutSoldOut: false },
+		),
+		sec({
+			id: 'empty_banner',
+			type: 'promo_banners',
+			pieces: [
+				{
+					name: 'item_1',
+					pictures: [picture('gone')],
+					slider: { seconds: 6, controls: 'bottom_center', after: 'loop' },
+				},
+			],
+		}),
+	];
+
+	it('leaves out what is hidden, for another language, ended, or a banner with nothing to show (FX-12)', () => {
+		expect(shopSections(sections, context()).map((section) => section.id)).toEqual(['hero', 'row']);
+		expect(shopSections(sections, context('en')).map((section) => section.id)).toEqual(['hero', 'en_only', 'row']);
+	});
+
+	it('draws words in the page language with English behind, art per language, and pictures that show now', () => {
+		const [hero, row] = shopSections(sections, context());
+		const pictures = hero?.pieces[0]?.pictures ?? [];
+		expect(pictures.map((p) => [p.key, p.slot, p.heading])).toEqual([
+			['hero:main:0', 'main_0', 'সেল'],
+			['hero:main:3', 'main_3', null],
+		]);
+		expect(pictures[1]?.images.desktop).toEqual(image('art_bn'));
+		expect(pictures[0]).toMatchObject({ position: 'hero', alt: 'y', ink: 'brand_dark', link: { href: '/offer' } });
+		expect(row).toMatchObject({
+			type: 'product_row',
+			title: 'New',
+			source: 'on_sale',
+			cards: 12,
+			leaveOutSoldOut: false,
+		});
+	});
+
+	it('names the next moment a section or picture starts or ends, for the cache', () => {
+		expect(nextContentChangeAt(sections, new Date('2026-11-20T00:00:00Z'))?.toISOString()).toBe(
+			'2026-12-01T00:00:00.000Z',
+		);
+		expect(nextContentChangeAt(sections, new Date('2026-12-10T00:00:00Z'))?.toISOString()).toBe(
+			'2027-01-01T00:00:00.000Z',
+		);
 	});
 });

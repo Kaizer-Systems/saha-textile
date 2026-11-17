@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { Id, IsoDateTime, LocalizedText } from './common';
-import { BannerImageSet, ContentBlockLink, HomeHeroLayout } from './content-block';
+import { BannerImageSet, ContentBlockLink, HomeHeroLayout, ResolvedBanner } from './content-block';
 
 /**
  * Page Builder (owner log § "Page Builder revision 2, every recommendation accepted", 17 Nov 2026).
@@ -494,3 +494,64 @@ export type SaveLayoutDraft = z.infer<typeof SaveLayoutDraft>;
 /** `PATCH /admin/page-builder/layouts/:id` — rename (the name is seen by admins only). */
 export const RenameLayoutRequest = z.object({ name: z.string().trim().min(1).max(80) });
 export type RenameLayoutRequest = z.infer<typeof RenameLayoutRequest>;
+
+// ── What the shop draws (Page Builder build step 3) ─────────────────────────────────────────────────────
+
+/**
+ * One picture of a piece, ready for the shop: the banner shape the shop's picture link already draws, plus where
+ * its words sit and in which colours. `slot` is `{piece}_{index}`, never `main`: the renderer alone decides the one
+ * picture per screen band asked for early.
+ */
+export const ResolvedPiecePicture = ResolvedBanner.extend({
+	spot: WordSpot,
+	ink: WordInk,
+	backing: WordBacking,
+	decorative: z.boolean(),
+});
+export type ResolvedPiecePicture = z.infer<typeof ResolvedPiecePicture>;
+
+export const ResolvedPiece = z.object({
+	name: z.string(),
+	pictures: z.array(ResolvedPiecePicture),
+	slider: PieceSlider,
+});
+export type ResolvedPiece = z.infer<typeof ResolvedPiece>;
+
+/** A section as the shop draws it: only what shows now, in the page's language. */
+export const ResolvedPageSection = z.object({
+	id: z.string(),
+	type: SectionType,
+	look: SectionLook,
+	screens: SectionScreens,
+	arrangement: BannerArrangement.nullable(),
+	phoneSides: PhoneSides.nullable(),
+	pieces: z.array(ResolvedPiece),
+	title: z.string().nullable(),
+	description: z.string().nullable(),
+	subtitle: z.string().nullable(),
+	source: ProductRowSource.nullable(),
+	/** Category, tag or product ids for product rows; post ids for blog posts. */
+	sourceIds: z.array(Id),
+	cards: z.number().int().nullable(),
+	leaveOutSoldOut: z.boolean().nullable(),
+});
+export type ResolvedPageSection = z.infer<typeof ResolvedPageSection>;
+
+/** `GET /storefront/pages/:type/layout?locale=` query. */
+export const StorefrontPageLayoutQuery = z.object({
+	locale: z.string().min(2).max(12).default('en'),
+});
+export type StorefrontPageLayoutQuery = z.infer<typeof StorefrontPageLayoutQuery>;
+
+/**
+ * The page's live layout, drawn by the shop's server. `revisionId` null: nothing is live, the shop draws its fixed
+ * page. `refreshAt`: the next moment this answer may change by itself (a switch, a section or picture starting or
+ * ending); the answer is cached no longer than that, and never longer than a minute.
+ */
+export const StorefrontPageLayout = z.object({
+	pageType: PageTypeKey,
+	revisionId: Id.nullable(),
+	sections: z.array(ResolvedPageSection),
+	refreshAt: IsoDateTime.nullable(),
+});
+export type StorefrontPageLayout = z.infer<typeof StorefrontPageLayout>;

@@ -1,3 +1,4 @@
+import { type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 import { Component, computed, DOCUMENT, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -135,8 +136,12 @@ export class FormAttribute {
 		this.terms.update((rows) =>
 			rows.map((term, position) => {
 				if (position !== index) return term;
-				const { swatchAssetId: _dropped, ...rest } = term;
-				return row ? { ...rest, swatchAssetId: String(row.id) } : rest;
+				const { swatchAssetId: _dropped, swatchVersionId: _droppedVersion, ...rest } = term;
+				const versionId = (row as PickedAttachment | undefined)?.versionId;
+				// The swatch keeps the version chosen in the picker (media brief: a place stores the photo and its version).
+				return row
+					? { ...rest, swatchAssetId: String(row.id), ...(versionId ? { swatchVersionId: versionId } : {}) }
+					: rest;
 			}),
 		);
 	}

@@ -1159,11 +1159,12 @@ describe('FormAttribute', () => {
 		expect(page.picture(page.terms()[0]!)).toMatchObject({ id: 'a1', original_url: 'a.webp' });
 		page.form.patchValue({ style: 'image_tile' });
 		expect(page.isPicture).toBe(true);
-		page.setPicture(0, [{ id: 'b2', original_url: 'b.webp' }] as never);
-		expect(page.terms()[0]?.swatchAssetId).toBe('b2');
+		page.setPicture(0, [{ id: 'b2', original_url: 'b.webp', versionId: 'square_1x1.crop' }] as never);
+		expect(page.terms()[0]).toMatchObject({ swatchAssetId: 'b2', swatchVersionId: 'square_1x1.crop' });
 		expect(page.picture(page.terms()[0]!)?.original_url).toBe('b.webp');
 		page.setPicture(0, null);
 		expect(page.terms()[0]).not.toHaveProperty('swatchAssetId');
+		expect(page.terms()[0]).not.toHaveProperty('swatchVersionId');
 		expect(page.picture(page.terms()[0]!)).toBeNull();
 	});
 
@@ -1376,7 +1377,7 @@ describe('swatch pictures', () => {
 		open: vi.fn(() => ({
 			componentInstance: { start: pickerStart },
 			result: Promise.resolve([
-				{ assetId: 'fabric', versionId: null, name: 'fabric.jpg', thumbnailUrl: 'fabric.webp' },
+				{ assetId: 'fabric', versionId: 'square_1x1.as_is', name: 'fabric.jpg', thumbnailUrl: 'fabric.webp' },
 			]),
 		})),
 	};
@@ -1440,7 +1441,13 @@ describe('swatch pictures', () => {
 			expect.objectContaining({ title: 'fm_pick_title_swatch', max: 1, profile: null }),
 		);
 		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('fabric');
+		// The version chosen in the picker is kept with the swatch (media brief: a place stores photo + version).
+		expect(page.groups()[0]?.terms[0]?.swatchVersionId).toBe('square_1x1.as_is');
 		expect(page.tiles().get('fabric')).toBe('fabric.webp');
+		// One of the product's own photos stores no version: the shop draws the one its gallery stores.
+		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p1');
+		expect(page.groups()[0]?.terms[0]).toMatchObject({ swatchAssetId: 'p1' });
+		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchVersionId');
 	});
 
 	it('takes a picture from the library for the value that asked', () => {

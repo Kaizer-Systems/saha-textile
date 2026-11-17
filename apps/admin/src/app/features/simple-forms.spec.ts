@@ -305,7 +305,8 @@ describe('FormPage (Legal Pages brief, P3–P6)', () => {
 			content: { en: '<p>Text</p>', bn: '' },
 			metaTitle: {},
 			metaDescription: {},
-			metaImageAssetId: null,
+			metaImageAssetId: 'med_share',
+			metaImageVersionId: 'link_preview.blur',
 			version: 3,
 			updatedAt: '2026-11-15T10:00:00.000Z',
 			updatedBy: 'adm_1',
@@ -351,7 +352,24 @@ describe('FormPage (Legal Pages brief, P3–P6)', () => {
 		await page.submit();
 		expect(save).toHaveBeenCalledWith(
 			'privacy-policy',
-			expect.objectContaining({ title: row.page.title, metaImageAssetId: null }),
+			expect.objectContaining({
+				title: row.page.title,
+				metaImageAssetId: 'med_share',
+				metaImageVersionId: 'link_preview.blur',
+			}),
+		);
+		// A new share picture brings its own version; removing it clears both.
+		page.selectMetaImage({ id: 'med_new', versionId: 'link_preview.as_is' } as never);
+		await page.submit();
+		expect(save).toHaveBeenLastCalledWith(
+			'privacy-policy',
+			expect.objectContaining({ metaImageAssetId: 'med_new', metaImageVersionId: 'link_preview.as_is' }),
+		);
+		page.selectMetaImage(null);
+		await page.submit();
+		expect(save).toHaveBeenLastCalledWith(
+			'privacy-policy',
+			expect.objectContaining({ metaImageAssetId: null, metaImageVersionId: null }),
 		);
 		expect(page.refused()).toEqual([{ locale: 'bn', field: 'content' }]);
 		expect(page.gapLabel({ locale: 'bn', field: 'content' })).toBe('বাংলা: content');

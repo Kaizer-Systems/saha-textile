@@ -25,6 +25,7 @@ describe('legal pages (Legal Pages brief, approved 15 Nov)', () => {
 				metaTitle: {},
 				metaDescription: { en: 'What we keep' },
 				metaImageAssetId: null,
+				metaImageVersionId: null,
 			},
 			current: { version: 3 } as never,
 			actor: 'adm_1',
@@ -41,5 +42,25 @@ describe('legal pages (Legal Pages brief, approved 15 Nov)', () => {
 		expect(saved.content['en']).toContain('<p>Kept</p>');
 		expect(saved.content['en']).not.toContain('script');
 		expect(legalPageText({ en: 'English' }, 'bn')).toBe('English');
+	});
+
+	it('keeps the share picture’s version with the picture, and drops it when the picture is removed', () => {
+		const save = (metaImageAssetId: string | null) =>
+			legalPageToSave({
+				slug: 'privacy-policy',
+				write: {
+					title: { en: 'Privacy Policy' },
+					content: { en: '<p>Kept</p>' },
+					metaTitle: {},
+					metaDescription: {},
+					metaImageAssetId,
+					metaImageVersionId: 'ver_b',
+				},
+				current: null,
+				actor: 'adm_1',
+				now: new Date('2026-11-17T10:00:00.000Z'),
+			});
+		expect(save('med_1')).toMatchObject({ metaImageAssetId: 'med_1', metaImageVersionId: 'ver_b' });
+		expect(save(null)).toMatchObject({ metaImageAssetId: null, metaImageVersionId: null });
 	});
 });

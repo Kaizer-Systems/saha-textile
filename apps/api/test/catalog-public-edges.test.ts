@@ -255,6 +255,52 @@ describe('product page', () => {
 		expect(page.variants[0]?.selections).toEqual({ colour: 'red' });
 	});
 
+	it('draws a swatch from the version the product stored, not the one the website would pick', async () => {
+		const swatch = {
+			...asset('sw2', 'swatch_image'),
+			versions: [
+				{ id: 'ver_a', state: 'ready' },
+				{ id: 'ver_b', state: 'ready' },
+			],
+			derivatives: ['ver_a', 'ver_b'].map((versionId) => ({
+				role: 'swatch_image',
+				storageKey: `k/sw2-${versionId}`,
+				width: 96,
+				height: 96,
+				byteSize: 1,
+				format: 'image/webp',
+				roleVersion: 1,
+				versionId,
+			})),
+		};
+		const terms = (versionId?: string) => [
+			{
+				code: 'red',
+				label: { en: 'Red' },
+				swatchAssetId: 'sw2',
+				...(versionId ? { swatchVersionId: versionId } : {}),
+			},
+		];
+		const shown = async (versionId?: string) => {
+			const row = product({
+				optionGroups: [
+					{
+						attributeCode: 'colour',
+						label: { en: 'Colour' },
+						semanticRole: 'variation_axis',
+						displayStyle: 'image_swatch',
+						terms: terms(versionId),
+					},
+				],
+			});
+			const page = await build({ rows: [row], assets: [swatch] }).service.page('red-saree');
+			return page.optionGroups[0]?.terms[0]?.image?.roles['swatch_image']?.[0]?.url;
+		};
+		expect(await shown('ver_b')).toBe('https://cdn.test/k/sw2-ver_b');
+		// Without a stored version, the first ready one, as before.
+		expect(await shown()).toBe('https://cdn.test/k/sw2-ver_a');
+	});
+
 	it('finds a variant photo in the gallery, and copes when it is not there', async () => {
 		const row = product({
 			media: { gallery: ['m1', 'gone'] },
@@ -1115,7 +1161,14 @@ describe('addresses', () => {
 
 	it('follows the shop’s languages: one switched on joins, one switched off leaves', async () => {
 		const paths = await build({ routes, live: ['sarees'], languages: ['en', 'hi'] }).service.sitemapPaths();
-		expect(paths).toEqual(['/en/', '/en/about', '/en/collections/sarees', '/hi/', '/hi/about', '/hi/collections/sarees']);
+		expect(paths).toEqual([
+			'/en/',
+			'/en/about',
+			'/en/collections/sarees',
+			'/hi/',
+			'/hi/about',
+			'/hi/collections/sarees',
+		]);
 		expect(paths.some((path) => path.startsWith('/bn'))).toBe(false);
 	});
 });

@@ -274,7 +274,15 @@ export class CatalogPublicService {
 					label: localized(term.label),
 					isBase: term.isBase,
 					hex: term.hex ?? null,
-					image: term.swatchAssetId ? this.image(assets.get(term.swatchAssetId), ['swatch_image']) : null,
+					// The version stored with the swatch; a swatch made from one of the product's own photos draws
+					// the version its gallery stores.
+					image: term.swatchAssetId
+						? this.image(
+								assets.get(term.swatchAssetId),
+								['swatch_image'],
+								term.swatchVersionId ?? product.media.versions?.[term.swatchAssetId],
+							)
+						: null,
 					// An option that measures costs the template's amount unless this product overrides it.
 					priceDeltaINR:
 						term.priceDeltaINR ?? (term.requiresMeasurements ? (measurements?.priceINR ?? null) : null),

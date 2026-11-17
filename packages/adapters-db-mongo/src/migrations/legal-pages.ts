@@ -20,6 +20,7 @@ export async function seedLegalPages(now = new Date()): Promise<string> {
 			metaTitle: {},
 			metaDescription: {},
 			metaImageAssetId: null,
+			metaImageVersionId: null,
 			version: 1,
 			updatedAt: now.toISOString(),
 			updatedBy: null,

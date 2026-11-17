@@ -12,11 +12,10 @@ import { lastValueFrom } from 'rxjs';
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { type AdminLegalPage, LegalPagesGateway } from '@core/legal-pages/legal-pages.gateway';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { PickedAttachment, ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 const LANGUAGE_FIELDS = ['title', 'content', 'meta_title', 'meta_description'];
@@ -76,6 +75,8 @@ export class FormPage {
 	readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 	readonly editor: Editor | null = this.isBrowser ? new Editor() : null;
 	private metaImageAssetId: string | null = null;
+	/** The version chosen in the picker; the shop shows exactly this one (media brief). */
+	private metaImageVersionId: string | null = null;
 
 	constructor() {
 		const slug = this.route.snapshot.params['id'] as string | undefined;
@@ -87,6 +88,7 @@ export class FormPage {
 			const row = await lastValueFrom(this.gateway.get(slug));
 			this.row.set(row);
 			this.metaImageAssetId = row.page.metaImageAssetId;
+			this.metaImageVersionId = row.page.metaImageVersionId ?? null;
 			this.fields.load({
 				title: row.page.title,
 				content: row.page.content,
@@ -101,15 +103,20 @@ export class FormPage {
 		}
 	}
 
-	metaImage(): IAttachment | null {
+	metaImage(): PickedAttachment | null {
 		const row = this.row();
 		return row?.metaImageUrl && this.metaImageAssetId
-			? ({ id: this.metaImageAssetId, original_url: row.metaImageUrl } as IAttachment)
+			? ({
+					id: this.metaImageAssetId,
+					original_url: row.metaImageUrl,
+					versionId: this.metaImageVersionId,
+				} as unknown as PickedAttachment)
 			: null;
 	}
 
-	selectMetaImage(data: IAttachment | null): void {
+	selectMetaImage(data: PickedAttachment | null): void {
 		this.metaImageAssetId = data ? String(data.id) : null;
+		this.metaImageVersionId = data?.versionId ?? null;
 	}
 
 	switchLanguage(locale: string): void {
@@ -147,6 +154,7 @@ export class FormPage {
 					metaTitle: this.fields.text('meta_title'),
 					metaDescription: this.fields.text('meta_description'),
 					metaImageAssetId: this.metaImageAssetId,
+					metaImageVersionId: this.metaImageVersionId,
 				}),
 			);
 			this.row.set(saved);

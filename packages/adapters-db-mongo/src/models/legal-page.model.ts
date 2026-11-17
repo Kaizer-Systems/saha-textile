@@ -10,6 +10,7 @@ export interface LegalPageDoc {
 	metaTitle: Record<string, string>;
 	metaDescription: Record<string, string>;
 	metaImageAssetId: string | null;
+	metaImageVersionId?: string | null;
 	version: number;
 	updatedAt: Date;
 	updatedBy: string | null;
@@ -27,6 +28,7 @@ const fields = {
 	metaTitle: { type: Schema.Types.Mixed, default: {} },
 	metaDescription: { type: Schema.Types.Mixed, default: {} },
 	metaImageAssetId: { type: String, default: null },
+	metaImageVersionId: { type: String, default: null },
 	version: { type: Number, required: true },
 	updatedAt: { type: Date, required: true },
 	updatedBy: { type: String, default: null },

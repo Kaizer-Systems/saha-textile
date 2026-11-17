@@ -22,6 +22,8 @@ export const LegalPageWrite = z.object({
 	metaTitle: LocalizedText.default({}),
 	metaDescription: LocalizedText.default({}),
 	metaImageAssetId: Id.nullable().default(null),
+	/** The share picture's version (media brief: a place stores the photo and its version). */
+	metaImageVersionId: Id.nullable().default(null),
 });
 export type LegalPageWrite = z.infer<typeof LegalPageWrite>;
 

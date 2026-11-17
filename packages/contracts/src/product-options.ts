@@ -20,6 +20,8 @@ export const ProductOptionTerm = z.object({
 		.regex(/^#([0-9a-fA-F]{6})$/, 'must be a 6-digit hex colour')
 		.optional(),
 	swatchAssetId: Id.optional(),
+	/** The version of the swatch picture (media brief: a place stores the photo and its version). */
+	swatchVersionId: Id.optional(),
 	priceDeltaINR: CatalogRupee.optional(),
 	/** Seam — `DEC-ADDON-MEASUREMENTS`: which template collects the measurements. */
 	addonTemplateIds: z.array(Id).default([]),

@@ -91,7 +91,7 @@ export class LegalPagesService {
 			content: legalPageText(page.content, locale),
 			metaTitle: legalPageText(page.metaTitle, locale),
 			metaDescription: legalPageText(page.metaDescription, locale),
-			shareImageUrl: await this.shareImage(page.metaImageAssetId),
+			shareImageUrl: await this.shareImage(page.metaImageAssetId, page.metaImageVersionId),
 			updatedAt: page.updatedAt,
 		};
 	}
@@ -108,11 +108,11 @@ export class LegalPagesService {
 			page,
 			updatedByName: admin ? (admin.displayName ?? admin.username ?? admin.email ?? null) : null,
 			gaps: legalPageGaps(page, this.languages.content()),
-			metaImageUrl: await this.shareImage(page.metaImageAssetId),
+			metaImageUrl: await this.shareImage(page.metaImageAssetId, page.metaImageVersionId),
 		};
 	}
 
-	private async shareImage(assetId: string | null): Promise<string | null> {
+	private async shareImage(assetId: string | null, versionId: string | null = null): Promise<string | null> {
 		if (!assetId) return null;
 		const asset = await this.assets.findById(assetId).catch(() => null);
 		if (!asset || asset.deletedAt) return null;
@@ -121,6 +121,8 @@ export class LegalPagesService {
 			getUrl: (key) => this.storage.getUrl(key),
 			locale: 'en',
 			fallbackLocale: 'en',
+			// The version chosen in Admin › Pages, so the page never silently shows another one.
+			versionId,
 		});
 		// The link preview size when the photo has one, else its largest picture.
 		const sources = image ? [...(image.roles['share'] ?? []), ...Object.values(image.roles).flat()] : [];

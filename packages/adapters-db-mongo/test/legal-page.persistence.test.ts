@@ -15,6 +15,7 @@ const page = (version: number, en: string): LegalPage => ({
 	metaTitle: {},
 	metaDescription: {},
 	metaImageAssetId: null,
+	metaImageVersionId: null,
 	version,
 	updatedAt: `2026-11-16T10:0${version}:00.000Z`,
 	updatedBy: 'adm_1',
@@ -49,6 +50,18 @@ describe.runIf(hasMongoEnv())('legal pages persistence (rs0)', () => {
 			['shipping-policy:1', 1, '<p>First</p>'],
 		]);
 		expect((await pages.list()).map((row) => row.slug)).toContain('shipping-policy');
+	});
+
+	it('keeps the share picture with the version chosen for it', async () => {
+		const current = (await pages.find('shipping-policy')) as LegalPage;
+		await pages.save(
+			{ ...page(3, '<p>Third</p>'), metaImageAssetId: 'med_share', metaImageVersionId: 'ver_b' },
+			current,
+		);
+		expect(await pages.find('shipping-policy')).toMatchObject({
+			metaImageAssetId: 'med_share',
+			metaImageVersionId: 'ver_b',
+		});
 	});
 });
 

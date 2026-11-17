@@ -11,13 +11,40 @@ const stored = (): LegalPage => ({
 	metaTitle: {},
 	metaDescription: {},
 	metaImageAssetId: null,
+	metaImageVersionId: null,
 	version: 1,
 	updatedAt: '2026-11-15T00:00:00.000Z',
 	updatedBy: null,
 });
 
-const harness = () => {
-	const pages = new Map<string, LegalPage>([['privacy-policy', stored()]]);
+/** A share photo with two ready versions, each with its own link-preview file. */
+const sharePhoto = {
+	id: 'med_share',
+	visibility: 'public',
+	width: 1200,
+	height: 628,
+	dominantColor: null,
+	thumbHash: null,
+	deletedAt: null,
+	text: { alt: {}, caption: {} },
+	versions: [
+		{ id: 'ver_a', state: 'ready' },
+		{ id: 'ver_b', state: 'ready' },
+	],
+	derivatives: ['ver_a', 'ver_b'].map((versionId) => ({
+		role: 'share',
+		storageKey: `share-${versionId}.jpg`,
+		width: 1200,
+		height: 628,
+		byteSize: 1,
+		format: 'image/jpeg',
+		roleVersion: 1,
+		versionId,
+	})),
+};
+
+const harness = (page: LegalPage = stored()) => {
+	const pages = new Map<string, LegalPage>([['privacy-policy', page]]);
 	const repo = {
 		list: async () => [...pages.values()],
 		find: async (slug: string) => pages.get(slug) ?? null,
@@ -29,7 +56,7 @@ const harness = () => {
 		repo as never,
 		LanguageStore.fixed(['en', 'bn']),
 		{ findById: async () => ({ displayName: 'Moulik' }) } as never,
-		{ findById: async () => null } as never,
+		{ findById: async (id: string) => (id === sharePhoto.id ? sharePhoto : null) } as never,
 		{ getUrl: (key: string) => key } as never,
 		audit as never,
 	);
@@ -37,6 +64,14 @@ const harness = () => {
 };
 
 describe('legal pages (Legal Pages brief)', () => {
+	it('shares the version of the photo chosen in Admin › Pages, and the first ready one when none was stored', async () => {
+		const chosen = harness({ ...stored(), metaImageAssetId: sharePhoto.id, metaImageVersionId: 'ver_b' });
+		expect((await chosen.service.publicPage('privacy-policy', 'en')).shareImageUrl).toBe('share-ver_b.jpg');
+		expect((await chosen.service.get('privacy-policy')).metaImageUrl).toBe('share-ver_b.jpg');
+		const older = harness({ ...stored(), metaImageAssetId: sharePhoto.id, metaImageVersionId: null });
+		expect((await older.service.publicPage('privacy-policy', 'en')).shareImageUrl).toBe('share-ver_a.jpg');
+	});
+
 	it('refuses a save missing Title or Content in a shop language, and says which', async () => {
 		const { service, repo } = harness();
 		await expect(
@@ -46,6 +81,7 @@ describe('legal pages (Legal Pages brief)', () => {
 				metaTitle: {},
 				metaDescription: {},
 				metaImageAssetId: null,
+				metaImageVersionId: null,
 			}),
 		).rejects.toMatchObject({
 			response: { issues: [{ path: ['content', 'bn'], code: 'legal_page_incomplete' }] },
@@ -64,6 +100,7 @@ describe('legal pages (Legal Pages brief)', () => {
 				metaTitle: {},
 				metaDescription: {},
 				metaImageAssetId: null,
+				metaImageVersionId: null,
 			},
 			new Date('2026-11-16T10:00:00.000Z'),
 		);

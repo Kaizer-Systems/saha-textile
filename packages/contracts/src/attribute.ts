@@ -64,6 +64,8 @@ export const AttributeDefinitionTerm = z.object({
 		.optional(),
 	/** Required when rendered as `image_swatch`/`image_tile` (media library asset). */
 	swatchAssetId: Id.optional(),
+	/** The version of the swatch picture (media brief: a place stores the photo and its version). */
+	swatchVersionId: Id.optional(),
 	aliases: z.array(z.string()).default([]),
 	/** Base/material-only term (e.g. `no_stitching`, `no_blouse`) — maps to `isBaseVariant`. */
 	isBase: z.boolean().default(false),

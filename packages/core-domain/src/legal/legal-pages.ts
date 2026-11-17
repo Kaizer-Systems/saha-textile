@@ -49,6 +49,8 @@ export function legalPageToSave(input: {
 		metaTitle: text(input.write.metaTitle),
 		metaDescription: text(input.write.metaDescription),
 		metaImageAssetId: input.write.metaImageAssetId,
+		// No share picture means no version either; a picture keeps the version chosen for it.
+		metaImageVersionId: input.write.metaImageAssetId ? (input.write.metaImageVersionId ?? null) : null,
 		version: (input.current?.version ?? 0) + 1,
 		updatedAt: input.now.toISOString(),
 		updatedBy: input.actor,

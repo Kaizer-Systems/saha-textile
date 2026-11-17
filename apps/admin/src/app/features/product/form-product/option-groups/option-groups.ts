@@ -26,6 +26,7 @@ function termFrom(term: AttributeDefinition['terms'][number], position: number):
 		isBase: term.isBase,
 		...(term.hex ? { hex: term.hex } : {}),
 		...(term.swatchAssetId ? { swatchAssetId: term.swatchAssetId } : {}),
+		...(term.swatchAssetId && term.swatchVersionId ? { swatchVersionId: term.swatchVersionId } : {}),
 		addonTemplateIds: [],
 		requiresMeasurements: false,
 		sortOrder: position,
@@ -207,11 +208,14 @@ export class OptionGroups {
 		return ids.map((id) => ({ id, url: this.tiles().get(id) ?? PLACEHOLDER }));
 	}
 
-	/** Tapping a photo makes it the value's swatch; tapping the chosen one again clears it. */
+	/**
+	 * Tapping a photo makes it the value's swatch; tapping the chosen one again clears it. One of the product's own
+	 * photos stores no version of its own: the shop draws the version the product's gallery stores.
+	 */
 	chooseSwatch(index: number, group: ProductOptionGroup, code: string, assetId: string): void {
 		const terms = group.terms.map((term) => {
 			if (term.code !== code) return term;
-			const { swatchAssetId: current, ...rest } = term;
+			const { swatchAssetId: current, swatchVersionId: _version, ...rest } = term;
 			return current === assetId ? rest : { ...rest, swatchAssetId: assetId };
 		});
 		this.update(index, { terms });
@@ -234,18 +238,26 @@ export class OptionGroups {
 		});
 		const picked = (await popup.result.catch(() => null)) as FmPicked[] | null;
 		const row = picked?.[0];
-		if (row) this.fromLibrary({ id: row.assetId, original_url: row.thumbnailUrl ?? '' } as IAttachment);
+		if (row)
+			this.fromLibrary({ id: row.assetId, original_url: row.thumbnailUrl ?? '' } as IAttachment, row.versionId);
 	}
 
-	/** A picture from the library: any image, such as a fabric close-up, or one just uploaded. */
-	fromLibrary(picked: IAttachment | IAttachment[]): void {
+	/**
+	 * A picture from the library: any image, such as a fabric close-up, or one just uploaded. It keeps the version
+	 * chosen in the picker, so the swatch never silently changes version.
+	 */
+	fromLibrary(picked: IAttachment | IAttachment[], versionId: string | null = null): void {
 		const row = Array.isArray(picked) ? picked[0] : picked;
 		const target = this.target;
 		const group = target ? this.groups()[target.index] : undefined;
 		if (!row || !target || !group) return;
 		const id = String(row.id);
 		this.tiles.update((tiles) => new Map([...tiles, [id, row.original_url]]));
-		const terms = group.terms.map((term) => (term.code === target.code ? { ...term, swatchAssetId: id } : term));
+		const terms = group.terms.map((term) => {
+			if (term.code !== target.code) return term;
+			const { swatchVersionId: _version, ...rest } = term;
+			return { ...rest, swatchAssetId: id, ...(versionId ? { swatchVersionId: versionId } : {}) };
+		});
 		this.update(target.index, { terms });
 	}
 }

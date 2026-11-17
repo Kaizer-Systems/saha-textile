@@ -231,7 +231,8 @@ test.describe('Home far sections', () => {
 		const row = page.locator('app-home > section.product-section').nth(1);
 		await row.scrollIntoViewIfNeeded();
 		await expect(row.locator('a[href*="/product/"]').first()).toBeVisible();
-		const picture = row.locator('img').first();
+		// The row's carousel loops: its first pictures in the page are copies parked off-screen, rightly never loaded.
+		const picture = row.locator('.owl-item.active img').first();
 		await expect
 			.poll(() => picture.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))
 			.toBe(true);

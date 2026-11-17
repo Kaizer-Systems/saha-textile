@@ -51,6 +51,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-TRACING-SERVERS`       | Whether to switch on OpenTelemetry tracing on staging and production                                 | Server memory, Release Console traces         |
 | `DEC-PWA-OFFLINE`           | What the installed shop does offline, and the footer's app-store badges                              | Service worker, cart, footer                  |
 | `DEC-DISPLAY-FONT`          | Where, if anywhere, the shop uses the Russo One display font                                         | Storefront typography, Brand Kit              |
+| `DEC-METRE-SCRAP`           | What happens when a fabric cut would leave less than the shortest cut on the roll                    | Shop product page, cart, stock write-offs     |
 
 ---
 
@@ -907,3 +908,37 @@ Not recommended in any option: body text, menus, buttons, product names, or use 
 Answer (owner's own words, with date):
 
 Notes: the restore brief with samples is at https://claude.ai/artifact/CQCfTaL7ERzi9GfoK1EUeq.
+---
+
+## 30. `DEC-METRE-SCRAP` — A fabric cut that would leave a scrap
+
+### Decision needed
+
+Fabric sold by the metre has a shortest cut per product (1.0 m by default). When a shopper asks
+for a length that would leave less than that on the roll, decide what the shop does. Example:
+4.5 m left, the shopper asks for 4.0 m, and 0.5 m would remain, which nobody could then buy.
+
+Held for discussion by the owner on 2026-11-18 (purchases decisions brief, M3). The same question
+is O1 in `tax-compliance-questionnaire-round-2.mdx` for the business owner.
+
+### Options
+
+1. **Offer "Take all 4.5 m" or keep 4.0 m** (shop brief M05, recommended in the brief). The shopper
+   decides; scraps often sell. Some scraps remain for staff to hold or write off.
+2. **Refuse the cut; offer only "Take all".** No scraps ever; shoppers who wanted exactly 4.0 m may
+   leave.
+3. **Allow any leftover silently** (what the shop does today). Nothing more to build; unsellable
+   scraps pile up.
+
+### Why this matters
+
+Scraps either sell as remnants or end as write-offs at cost. Refusing cuts loses sales; allowing
+them silently grows held and written-off stock.
+
+### Owner answer
+
+Answer (owner's own words, with date):
+
+Notes: the leftover box was drawn as M05 in the fabric-by-the-metre brief
+(https://claude.ai/artifact/QrQRbrvj3d9DzLxFXnLzX8). Today the cart cuts what is asked; the
+leftover stays in stock for staff to hold or write off.

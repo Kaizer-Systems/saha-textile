@@ -484,7 +484,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-STOCK-RESERVE"],
+			"blockingDecisions": [],
 			"purpose": "Server-authoritative guest and user carts, merge state, selected configurations, and sliding guest expiry.",
 			"source": "roadmap Chunk G",
 			"currentModel": "packages/adapters-db-mongo/src/models/cart.model.ts",
@@ -499,7 +499,6 @@
 			"owningChunks": ["G"],
 			"blockingDecisions": [
 				"DEC-NUMBERING",
-				"DEC-STOCK-RESERVE",
 				"DEC-ORDER-SNAPSHOT",
 				"DEC-ADDRESS",
 				"DEC-RETURNS"
@@ -516,7 +515,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-PAYPAL-FX", "DEC-INR-GATEWAY-TIMING"],
+			"blockingDecisions": ["DEC-PAYPAL-FX"],
 			"purpose": "Gateway attempts, verification, capture, settlement, and failure data separated from orders.",
 			"source": "catalog §7.21",
 			"references": ["orders", "currencies", "paymentGatewayConfigs"]
@@ -613,7 +612,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-INR-GATEWAY-TIMING"],
+			"blockingDecisions": [],
 			"purpose": "Payment gateway routing and non-secret operational configuration; credentials stay in runtime secrets.",
 			"source": "catalog §7.30",
 			"references": ["currencies"]
@@ -694,7 +693,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["H"],
-			"blockingDecisions": ["DEC-STOCK-RESERVE"],
+			"blockingDecisions": [],
 			"purpose": "Stock audit and adjustment provenance without introducing warehouse-management complexity.",
 			"source": "catalog §7.14",
 			"currentModel": "packages/adapters-db-mongo/src/models/inventory.model.ts",

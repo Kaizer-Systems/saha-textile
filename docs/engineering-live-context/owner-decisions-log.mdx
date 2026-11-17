@@ -1607,3 +1607,37 @@ accepted with its recommended timing. The brief's list of genuinely custom parts
 - **Build order:** the brief's PG-8 plan: baseline, page-agnostic data and core, shop renderer behind a switch with
   the CI speed gate, admin list and layouts, builder, preview, Go Live, proof of generality with a test-only page
   type. Runs now that media steps 2 to 5 are built.
+
+## Owner decision round (2026-11-18) — purchases decisions brief: shop details, items built beyond the drawings, backorders, portal
+
+Answered on the purchases decisions brief (https://claude.ai/artifact/XdCdbE91mKaSVsGZvLfeBk):
+"accept all recommended", with two exceptions (H2, M3) below.
+
+- **S1 A — Shop details are read only for everyone else with Settings access.** Settings › Shop
+  details (X04) is editable only with the new `shop_details.edit` permission (the Administrator role
+  holds it); anyone with `setting.index` sees the same page read only, with a note naming the
+  permission (X04D). The API refuses a write without the permission and audits the attempt.
+- **S2 A — A new GSTIN or legal name asks for confirmation only (X04B).** No PIN or password step.
+  Address, phone and email save without the popup.
+- **G1 A — A GST % box on every purchase-entry line**, starting from the product's HSN rate; tax is
+  worked out per rate. Kept as built.
+- **H1 A — HSN and "Can be returned" sit on the product form's Setup tab, under Categories.** Kept as
+  built.
+- **H2 — not decided; the old Return switch stays.** The owner asked whether a product keeps its own
+  returnability once it follows a category. It does: "Can be returned" offers Follow category /
+  Yes / No and is saved with the product and frozen on each order line. The vendor Return switch on
+  the Status tab (never saved) stays until the owner types "remove the Return switch" (cleanup
+  list PS5).
+- **D1 A — "Default delivery place for orders" stays** in Settings › Purchases and stock.
+- **D2 A — Only the super admin changes the purchase-entry step rules and the books-closed date.**
+- **D3 A — Opening stock keeps both changes:** "Type it in the row, or fix the sheet" for a missing
+  cost, and a received date may lie before the books-closed date (a date after today is refused).
+- **M3 — held for discussion.** The scrap a metre cut would leave stays an open owner question:
+  `DEC-METRE-SCRAP` in `pending-decisions.mdx` (also round-2 O1). Nothing is built for it; the shop
+  cuts what is asked.
+- **B1 A — Both backorder drawings approved (BO01, BO02); Backorders sit under Orders.** Built with
+  the orders chunk (Chunk G), since backorder lines are order lines.
+- **P1 A — The portal check is fixed from this log:** the decision register count follows
+  `pending-decisions.mdx`, and Schema Nebula no longer names closed decisions as blocking.
+- **P2 A — The portal pages this build touched are re-read and corrected now;** the remaining pages
+  get one pass before deployment.

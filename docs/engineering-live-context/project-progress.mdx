@@ -450,6 +450,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 - 2026-11-17 — [DONE] **Page Builder: a scheduled Go Live no longer changes the shop early.** Found by the end-to-end run: Go Live switched the page to the builder at once, so a switch scheduled for later showed the release-time layout immediately. The shop now draws a page from its layouts once a switch someone made (Go Live, Put back) is showing, or when `storefront.pageBuilder` switches it on by hand; until then the fixed page stays and the answer refreshes at the next switch. Commit a653be38 (+ test cea8b171 for the new Languages area). API 1723 green; local API restarted on 4000.
 - 2026-11-17 [DONE] Product Meta image and variant Variation image now save with their versions (e3e42495): share picture override for link previews (real size stated), the variant's own picture leads the shop gallery when chosen; cleanup list SP2 resolved. Owner answer to message 69 (popup).
 - 2026-11-17 [DONE] Page Builder P5 words map in the picture popup (c9820640): computer and phone versions with the nine spots shaded where words fail, fixes and other spots applied with a click; GET /admin/page-builder/words-map.
+- 2026-11-17 [DONE] Page Builder SG-19 per-page permissions (dc4ee881): page_builder.draft_home and page_builder.go_live_home beside the every-page codes, checked on every draft and Go Live route; granted in Admin > Roles; run seed:system-roles after a pull.
 - _(append)_
 
 ---

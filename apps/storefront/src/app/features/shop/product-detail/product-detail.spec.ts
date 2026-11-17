@@ -365,7 +365,7 @@ describe('ProductDetail SEO', () => {
 				imageAlt: 'Red saree',
 				shareTitle: 'Red saree · ₹1,500',
 				inStock: true,
-				cardImage: false,
+				imageSize: undefined,
 			}),
 		);
 		expect(vi.mocked(seo.applyProduct).mock.lastCall?.[0].shareDescription).toMatch(/^Silk · Red\. /);

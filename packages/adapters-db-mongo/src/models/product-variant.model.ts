@@ -27,7 +27,7 @@ export interface ProductVariantDoc {
 	};
 	shippingProfile?: Record<string, number | null>;
 	taxProfile?: { hsnCode: string | null; taxClassId: string | null };
-	media?: { primaryAssetId: string | null };
+	media?: { primaryAssetId: string | null; primaryVersionId?: string | null };
 	barcode?: string | null;
 	createdAt?: Date;
 	updatedAt?: Date;

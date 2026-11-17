@@ -82,6 +82,8 @@ const RELATED_MINIMUM = 6;
 
 /** The sizes a product page's photos carry: the main photo, its hover zoom, and the thumbnail strip. */
 const GALLERY_FRAME_ROLES = ['gallery', 'zoom', 'card'];
+/** The width chat apps and search draw a link preview at (the Link preview 1.91:1 profile's size). */
+const SHARE_WIDTH = 1200;
 
 @Injectable()
 export class CatalogPublicService {
@@ -192,17 +194,48 @@ export class CatalogPublicService {
 		const read = productReadModel(product, rows, variant);
 		const groups = product.optionGroups.length ? product.optionGroups : groupsFromAttributes(product);
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
-		const assets = await this.assetsFor([...productGallery(product), ...swatchIds]);
+		const variantPhotos = rows.flatMap((row) => row.media?.primaryAssetId ?? []);
+		const assets = await this.assetsFor([...productGallery(product), ...swatchIds, ...variantPhotos]);
 		const gallery = productGallery(product).flatMap((id) => {
 			// `card` is the thumbnail strip's size (about 120 px); without it the strip fell back to 900 px photos.
 			const image = this.image(assets.get(id), GALLERY_FRAME_ROLES, product.media.versions?.[id]);
 			// A frame is a photo with its gallery size; card sizes alone (the strip's) are not one.
 			return image?.roles['gallery']?.length ? [{ id, image }] : [];
 		});
+		// A variant's own picture ("Variation image", owner 17 Nov) at the version stored with it: the gallery's frame
+		// when it is the same photo and version, else a frame of its own after the gallery, so choosing the variant
+		// shows it first. A compound product's variant leads with its own photo group instead (below).
+		const variantFrame = (row: ProductVariant): string | null => {
+			const photo = row.media?.primaryAssetId;
+			if (!photo) return null;
+			const grouped = product.media.compound.some(
+				(entry) => entry.selectionHash === row.optionSelectionHash && entry.gallery.length > 0,
+			);
+			if (product.imageMode === 'compound' && grouped) return photo;
+			const version = row.media?.primaryVersionId ?? null;
+			const inGallery = gallery.some((frame) => frame.id === photo);
+			if (inGallery && (version === null || version === (product.media.versions?.[photo] ?? null))) return photo;
+			const key = `${photo}@${version ?? ''}`;
+			if (gallery.some((frame) => frame.id === key)) return key;
+			const image = this.image(assets.get(photo), GALLERY_FRAME_ROLES, version);
+			if (!image?.roles['gallery']?.length) return null;
+			gallery.push({ id: key, image });
+			return key;
+		};
+		const variantFrames = new Map(rows.map((row) => [row.id, variantFrame(row)]));
 		// The main photo's link-preview card, once the main-photo sizes exist.
 		const mainPhoto = productGallery(product)[0];
 		const cards = mainPhoto ? this.image(assets.get(mainPhoto), ['share', 'story']) : null;
-		const shareImageUrl = cards?.roles['share']?.[0]?.url || null;
+		// "Meta image" (owner, 17 Nov): a chosen link-preview picture wins over the main photo's own card.
+		const chosenShare = await this.chosenShare(product);
+		const mainCard = cards?.roles['share']?.[0]?.url || null;
+		const shareImageUrl = chosenShare?.url ?? mainCard;
+		// The pipeline's share card is always a 1200×630 JPEG.
+		const shareImageSize = chosenShare
+			? { width: chosenShare.width, height: chosenShare.height, type: chosenShare.type }
+			: mainCard
+				? { width: 1200, height: 630, type: 'image/jpeg' }
+				: null;
 		// The tall Status/Story card; the shopper's phone writes the words into its band (share brief J1).
 		const shareStoryUrl = cards?.roles['story']?.[0]?.url || null;
 		const axisCodes = new Set(
@@ -258,6 +291,7 @@ export class CatalogPublicService {
 			unknownVariant: read.unknownVariant,
 			gallery: gallery.map((frame) => frame.image),
 			shareImageUrl,
+			shareImageSize,
 			shareStoryUrl,
 			code: product.sku,
 			// A video YouTube no longer plays (weekly check) is left off the page.
@@ -292,7 +326,7 @@ export class CatalogPublicService {
 			variants: axisCodes.size
 				? rows.map((row) => {
 						const priced = pricedRow(row, read.madeToOrder);
-						const photo = row.media?.primaryAssetId ?? null;
+						const photo = variantFrames.get(row.id) ?? null;
 						const own = product.imageMode === 'compound' ? framesOf(row) : [];
 						const found = photo ? gallery.findIndex((frame) => frame.id === photo) : -1;
 						const galleryIndex = own[0] ?? found;
@@ -759,6 +793,29 @@ export class CatalogPublicService {
 		if (!this.media || ids.length === 0) return new Map();
 		const assets = await this.media.findManyByIds([...new Set(ids)]);
 		return new Map(assets.map((asset) => [asset.id, asset]));
+	}
+
+	/** The product's chosen share picture: the widest file of the version chosen, or null when none is set or ready. */
+	private async chosenShare(
+		product: Product,
+	): Promise<{ url: string; width: number; height: number; type: string } | null> {
+		const chosen = product.media.shareImage;
+		if (!chosen || !this.storage) return null;
+		const asset = (await this.assetsFor([chosen.assetId])).get(chosen.assetId);
+		if (!asset || asset.deletedAt) return null;
+		// Link previews are drawn about 1200 wide: the widest size up to that, else the narrowest above it.
+		const fit = (width: number) => (width <= SHARE_WIDTH ? SHARE_WIDTH - width : width);
+		const files = asset.derivatives
+			.filter((file) => (chosen.versionId ? file.versionId === chosen.versionId : true))
+			// Chat apps read JPEG best, so a JPEG size wins.
+			.sort(
+				(a, b) =>
+					Number(b.format === 'image/jpeg') - Number(a.format === 'image/jpeg') || fit(a.width) - fit(b.width),
+			);
+		const best = files[0];
+		return best
+			? { url: this.storage.getUrl(best.storageKey), width: best.width, height: best.height, type: best.format }
+			: null;
 	}
 
 	private image(

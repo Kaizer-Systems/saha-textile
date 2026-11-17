@@ -1068,7 +1068,7 @@
 																	<app-image-upload
 																		[pickTitle]="'fm_pick_title_variant'"
 																		[multipleImage]="false"
-																		[image]="variation.get('variation_image')?.value"
+																		[image]="pictureTile(variantImages().get(variation.get('id')?.value))"
 																		(selectedFiles)="selectVariationImage($event, i)"
 																	/>
 																</app-form-fields>
@@ -1413,7 +1413,7 @@
 										[profile]="null"
 										[pickTitle]="'fm_pick_title_share'"
 										[multipleImage]="false"
-										[image]="product?.product_meta_image"
+										[image]="pictureTile(images().shareImage)"
 										(selectedFiles)="selectMetaImage($event)"
 									/>
 								</app-form-fields>

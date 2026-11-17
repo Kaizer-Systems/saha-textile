@@ -243,7 +243,7 @@ describe('LocaleSeo', () => {
 			shareTitle: 'Red saree · ₹2,400',
 			shareDescription: 'Silk · Zari border. Now 20% off',
 			inStock: false,
-			cardImage: true,
+			imageSize: { width: 1200, height: 630, type: 'image/jpeg' },
 		});
 		expect(content('og:title')).toEqual(['Red saree · ₹2,400']);
 		expect(content('og:description')).toEqual(['Silk · Zari border. Now 20% off']);
@@ -265,6 +265,10 @@ describe('LocaleSeo', () => {
 		navigate('/product/red-saree');
 		seo.applyProduct({ priceINR: 2400, inStock: true });
 		expect(doc.head.querySelector("meta[property='og:image:width']")).toBeNull();
+		// A chosen share picture states its own size and type.
+		seo.applyProduct({ priceINR: 2400, imageSize: { width: 1080, height: 1080, type: 'image/png' } });
+		expect(doc.head.querySelector("meta[property='og:image:width']")?.getAttribute('content')).toBe('1080');
+		expect(doc.head.querySelector("meta[property='og:image:type']")?.getAttribute('content')).toBe('image/png');
 		expect(doc.head.querySelector("meta[property='product:availability']")?.getAttribute('content')).toBe(
 			'in stock',
 		);

@@ -157,6 +157,8 @@ export const Product = z.object({
 			 * without one shows the version the website picks by itself (photos chosen before media step 4).
 			 */
 			versions: z.record(z.string(), z.string()).default({}),
+			/** The link-preview picture chosen in "Meta image", when not the main photo's own share card. */
+			shareImage: z.object({ assetId: Id, versionId: z.string().nullable() }).nullable().optional(),
 		})
 		.default({ gallery: [], compound: [], altOverrides: {}, versions: {} }),
 	attributes: z.array(Attribute).default([]),

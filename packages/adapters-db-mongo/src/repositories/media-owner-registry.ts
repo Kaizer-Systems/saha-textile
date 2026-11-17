@@ -43,6 +43,7 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('product gallery', as(ProductModel), 'media.gallery'),
 	entry('product gallery attachment', as(ProductModel), 'media.gallery.assetId'),
 	entry('variant image', as(ProductVariantModel), 'media.primaryAssetId'),
+	entry('product share picture (Meta image)', as(ProductModel), 'media.shareImage.assetId'),
 	entry('attribute swatch', as(AttributeDefinitionModel), 'terms.swatchAssetId'),
 	entry('category banner', as(CategoryModel), 'media.bannerAssetId'),
 	entry('category banner (legacy)', as(CategoryModel), 'media.bannerImage'),

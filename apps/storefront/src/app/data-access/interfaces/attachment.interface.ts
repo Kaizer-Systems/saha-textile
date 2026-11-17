@@ -18,6 +18,8 @@ export interface IAttachment {
 	original_url: string;
 	/** The pipeline's sizes for this image, cut to the roles its slot renders (card, or gallery + zoom). */
 	image?: ResolvedImage;
+	/** A link-preview picture's own size, stated in og:image:width and og:image:height. */
+	pixels?: { width: number; height: number };
 	created_by_id: number;
 	created_at?: string;
 	updated_at?: string;

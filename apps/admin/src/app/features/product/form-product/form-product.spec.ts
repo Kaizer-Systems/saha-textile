@@ -429,6 +429,31 @@ describe('FormProduct pickers', () => {
 		page.selectVariationImage(null as never, 0);
 		expect(page.variationControl.at(0).value.variation_image_id).toBe('');
 	});
+
+	it('keeps the Meta image as a share picture with its version, and shows its tile (owner, 17 Nov)', () => {
+		const { page } = render();
+		page.selectMetaImage({ id: 'ast_share', versionId: 'ver_2', original_url: 'https://cdn/share.jpg' } as never);
+		expect(page.images().shareImage).toEqual({ assetId: 'ast_share', versionId: 'ver_2' });
+		expect(page.pictureTile(page.images().shareImage)).toMatchObject({
+			id: 'ast_share',
+			original_url: 'https://cdn/share.jpg',
+			versionId: 'ver_2',
+		});
+		page.selectMetaImage(null);
+		expect(page.images().shareImage).toBeNull();
+		expect(page.pictureTile(null)).toBeNull();
+		expect(page.pictureTile({ assetId: 'unknown', versionId: null })).toBeNull();
+	});
+
+	it("keeps each variant's own picture with its version and sends it on save", () => {
+		const { page, service } = editing();
+		page.selectVariationImage({ id: 'ast_v', versionId: null, original_url: 'https://cdn/v.jpg' } as never, 0);
+		expect(page.variantImages().get('v1')).toEqual({ assetId: 'ast_v', versionId: null });
+		page.submit();
+		const calls = vi.mocked(service.saveCatalogProduct).mock.calls as unknown as unknown[][];
+		const sent = calls.at(-1)?.[1] as { variants: { id: string; image: unknown }[] };
+		expect(sent.variants.find((row) => row.id === 'v1')?.image).toEqual({ assetId: 'ast_v', versionId: null });
+	});
 });
 
 describe('FormProduct language to-do list', () => {
@@ -584,6 +609,7 @@ describe('FormProduct.submit', () => {
 					heightCm: 3,
 					barcode: '123',
 					hsnCode: '5007',
+					image: null,
 				},
 			],
 			content: {
@@ -603,6 +629,7 @@ describe('FormProduct.submit', () => {
 				compound: [],
 				altOverrides: {},
 				versions: {},
+				shareImage: null,
 				faqEnabled: false,
 				faq: [],
 			},

@@ -127,8 +127,8 @@ export class LocaleSeo {
 		shareTitle?: string;
 		shareDescription?: string;
 		inStock?: boolean;
-		/** The share image is the 1200×630 link-preview card, so its size can be stated. */
-		cardImage?: boolean;
+		/** The share picture's own size and type, when known, so link previews can draw it before fetching it. */
+		imageSize?: { width: number; height: number; type: string };
 	}): void {
 		this.meta.updateTag({ property: 'og:type', content: 'product' });
 		this.meta.updateTag({ property: 'product:price:amount', content: String(input.priceINR) });
@@ -146,10 +146,10 @@ export class LocaleSeo {
 		if (input.shareTitle) this.meta.updateTag({ property: 'og:title', content: input.shareTitle });
 		const description = input.shareDescription && plainText(input.shareDescription);
 		if (description) this.meta.updateTag({ property: 'og:description', content: description });
-		if (input.cardImage) {
-			this.meta.updateTag({ property: 'og:image:width', content: '1200' });
-			this.meta.updateTag({ property: 'og:image:height', content: '630' });
-			this.meta.updateTag({ property: 'og:image:type', content: 'image/jpeg' });
+		if (input.imageSize) {
+			this.meta.updateTag({ property: 'og:image:width', content: String(input.imageSize.width) });
+			this.meta.updateTag({ property: 'og:image:height', content: String(input.imageSize.height) });
+			this.meta.updateTag({ property: 'og:image:type', content: input.imageSize.type });
 		}
 	}
 

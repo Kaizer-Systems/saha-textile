@@ -570,7 +570,7 @@ export function finishShowcase(mapped: DemoCatalogue, showcase: Showcase, now: D
 			...row,
 			status,
 			stock: { ...row.stock, quantity: zero ? 0 : (quantity ?? row.stock.quantity) },
-			media: { primaryAssetId: note.photos[index % note.photos.length] as string },
+			media: { primaryAssetId: note.photos[index % note.photos.length] as string, primaryVersionId: null },
 		};
 	});
 	const compound = products.map((doc) => {

@@ -92,7 +92,7 @@ import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { YouTubeVideosField } from '@shared/ui/youtube-videos-field/youtube-videos-field';
 import { priceValidator } from '@shared/validators/price-validator';
@@ -122,6 +122,7 @@ import type {
 	ProductContentWrite,
 	ProductCreate,
 	ProductOptionGroup,
+	PictureRef,
 	ProductVideo,
 	QuickLength,
 } from '@saha-textile/contracts';
@@ -406,14 +407,17 @@ export class FormProduct {
 	/** The FAQ tab: the switch and this product's own questions, every language. */
 	readonly faq = signal<FaqValue>({ enabled: false, rows: [] });
 	readonly images = signal<
-		Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions'>
+		Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides' | 'versions' | 'shareImage'>
 	>({
 		imageMode: 'simple',
 		gallery: [],
 		compound: [],
 		altOverrides: {},
 		versions: {},
+		shareImage: null,
 	});
+	/** Each variant's own picture, by variant id (owner, 17 Nov: "Variation image"). */
+	readonly variantImages = signal<ReadonlyMap<string, PictureRef | null>>(new Map());
 	readonly tiles = signal<ReadonlyMap<string, string>>(new Map());
 	/** The product's photos in Images-tab order, offered as swatch pictures in the Options tab. */
 	readonly swatchPhotos = computed(() => {
@@ -658,7 +662,9 @@ export class FormProduct {
 			compound: content.compound,
 			altOverrides: content.altOverrides,
 			versions: content.versions ?? {},
+			shareImage: content.shareImage ?? null,
 		});
+		this.variantImages.set(new Map(detail.variants.map((row) => [row.id, row.image ?? null])));
 		this.tiles.set(new Map(detail.images.map((image) => [image.assetId, image.url])));
 		this.imageSizes.set(new Map(detail.images.map((image) => [image.assetId, [image.width, image.height]])));
 		this.savedAxes.set(
@@ -973,16 +979,42 @@ export class FormProduct {
 		}
 	}
 
-	selectMetaImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			this.form.controls['product_meta_image_id'].setValue(data ? data.id : null);
-		}
+	/** "Meta image": the link-preview picture and the version chosen, kept for the save (owner, 17 Nov). */
+	selectMetaImage(data: PickedAttachment | null) {
+		if (Array.isArray(data)) return;
+		this.form.controls['product_meta_image_id'].setValue(data ? data.id : null);
+		this.rememberTile(data);
+		this.images.update((images) => ({
+			...images,
+			shareImage: data ? { assetId: String(data.id), versionId: data.versionId ?? null } : null,
+		}));
 	}
 
-	selectVariationImage(data: IAttachment, index: number) {
+	/** "Variation image": the variant's own picture and version, shown first when it is chosen (owner, 17 Nov). */
+	selectVariationImage(data: PickedAttachment | null, index: number) {
 		const variationControl = this.form.get('variations') as FormArray;
 		const control = variationControl.at(+index);
 		control.patchValue({ variation_image_id: data ? data.id : '' });
+		const variantId = control.value?.id as string | undefined;
+		if (!variantId) return;
+		this.rememberTile(data);
+		const next = new Map(this.variantImages());
+		next.set(variantId, data ? { assetId: String(data.id), versionId: data.versionId ?? null } : null);
+		this.variantImages.set(next);
+	}
+
+	/** A picked picture's thumbnail, so its field shows it at once and after a save. */
+	private rememberTile(data: PickedAttachment | null) {
+		if (!data?.original_url) return;
+		this.tiles.set(new Map(this.tiles()).set(String(data.id), data.original_url));
+	}
+
+	/** A stored picture as its field shows it: the photo's thumbnail and the version chosen. */
+	pictureTile(ref: PictureRef | null | undefined): PickedAttachment | null {
+		if (!ref) return null;
+		const url = this.tiles().get(ref.assetId);
+		if (!url) return null;
+		return { id: ref.assetId, original_url: url, versionId: ref.versionId } as PickedAttachment;
 	}
 
 	switchLanguage(locale: string) {
@@ -1249,6 +1281,7 @@ export class FormProduct {
 					heightCm: blankToNull(row['height_cm']),
 					barcode: textOrNull(row['barcode']),
 					hsnCode: textOrNull(row['hsn']),
+					image: this.variantImages().get(String(row['id'])) ?? null,
 				};
 			}),
 			content: this.content(raw),

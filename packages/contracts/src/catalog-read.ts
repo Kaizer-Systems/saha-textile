@@ -353,8 +353,16 @@ export const CatalogProductPage = z.object({
 		.nullable(),
 	unknownVariant: z.boolean(),
 	gallery: z.array(galleryImage),
-	/** The main photo's 1200×630 link-preview card, once made; until then previews use the first photo. */
+	/**
+	 * The link-preview picture: the share picture chosen in the admin ("Meta image", owner 17 Nov) at its version, else
+	 * the main photo's 1200×630 card once made; until then previews use the first photo.
+	 */
 	shareImageUrl: z.string().min(1).nullable().default(null),
+	/** That picture's own size and type, so a page can state them; null when there is none. */
+	shareImageSize: z
+		.object({ width: z.number().int().positive(), height: z.number().int().positive(), type: z.string().min(1) })
+		.nullable()
+		.default(null),
 	/** The main photo's 1080×1920 Status/Story card with its empty word band, once made. */
 	shareStoryUrl: z.string().min(1).nullable().default(null),
 	optionGroups: z.array(CatalogPageOptionGroup),

@@ -99,8 +99,10 @@ export interface ApiProductPage {
 	madeToOrder: boolean;
 	/** When a running sale on this product ends; null with no sale. */
 	saleEndsAt?: string | null;
-	/** The main photo's 1200×630 link-preview card, once made. */
+	/** The link-preview picture: the one chosen in the admin, else the main photo's 1200×630 card, once made. */
 	shareImageUrl?: string | null;
+	/** That picture's own size and type. */
+	shareImageSize?: { width: number; height: number; type: string } | null;
 	/** The main photo's 1080×1920 Status/Story card, with its word band empty, once made. */
 	shareStoryUrl?: string | null;
 	/** The product code, behind the short `/p/<code>` address. */
@@ -199,10 +201,21 @@ export const galleryAttachment = (image: ApiImage, index: number): IAttachment =
 	return { id: index + 1, original_url: url, image } as unknown as IAttachment;
 };
 
-/** The link-preview card (1200×630) when the main-photo sizes exist, else the first gallery photo. */
-const shareAttachment = (url: string | null | undefined, fallback: IAttachment | undefined): IAttachment | undefined =>
-	// The pipeline's share card is always a 1200×630 JPEG; the type tells the page it can state that size.
-	url ? ({ id: 0, original_url: url, mime_type: 'image/jpeg' } as unknown as IAttachment) : fallback;
+/** The link-preview picture with its size when the API sends one, else the first gallery photo. */
+const shareAttachment = (
+	url: string | null | undefined,
+	size: ApiProductPage['shareImageSize'],
+	fallback: IAttachment | undefined,
+): IAttachment | undefined =>
+	// The size and type tell the page it can state them in og:image:width, og:image:height and og:image:type.
+	url
+		? ({
+				id: 0,
+				original_url: url,
+				mime_type: size?.type ?? '',
+				pixels: size ? { width: size.width, height: size.height } : undefined,
+			} as unknown as IAttachment)
+		: fallback;
 
 const swatchAttachment = (image: ApiImage | null, id: number): IAttachment | undefined => {
 	const url = image?.roles['swatch_image']?.at(-1)?.url;
@@ -482,7 +495,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				}
 			: undefined,
 		product_thumbnail: galleries[0],
-		product_meta_image: shareAttachment(page.shareImageUrl, ordered[0]),
+		product_meta_image: shareAttachment(page.shareImageUrl, page.shareImageSize, ordered[0]),
 		product_code: page.code || undefined,
 		share_story_image: page.shareStoryUrl
 			? ({ id: 0, original_url: page.shareStoryUrl, mime_type: 'image/jpeg' } as unknown as IAttachment)

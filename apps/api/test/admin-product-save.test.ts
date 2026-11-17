@@ -125,6 +125,29 @@ function row(id: string, sku: string) {
 }
 
 describe('admin product save', () => {
+	it("stores each variant's own picture with its version, keeps it when a save omits it, clears it on null", async () => {
+		const { catalog, variants } = harness();
+		const picked = { assetId: 'med_red', versionId: 'product.white' };
+		await catalog.updateMerchandising(
+			'prd_kurti',
+			form({
+				variants: [
+					{ ...row('var_s', 'KPS-1'), mrpINR: null, sellingINR: 2400, image: picked },
+					{ ...row('var_m', 'KPS-2'), mrpINR: null, sellingINR: 2400 },
+				],
+			}),
+		);
+		expect(variants.get('var_s')?.media).toEqual({ primaryAssetId: 'med_red', primaryVersionId: 'product.white' });
+		expect(variants.get('var_m')?.media).toBeUndefined();
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(variants.get('var_s')?.media).toEqual({ primaryAssetId: 'med_red', primaryVersionId: 'product.white' });
+		await catalog.updateMerchandising(
+			'prd_kurti',
+			form({ variants: [{ ...row('var_s', 'KPS-1'), mrpINR: null, sellingINR: 2400, image: null }] }),
+		);
+		expect(variants.get('var_s')?.media).toEqual({ primaryAssetId: null, primaryVersionId: null });
+	});
+
 	it('writes every variant, with the MRP and the selling price it was given', async () => {
 		const { catalog, variants, current } = harness();
 		await catalog.updateMerchandising('prd_kurti', form());

@@ -392,6 +392,7 @@ export class CatalogService {
 				compound: product.media.compound,
 				altOverrides: product.media.altOverrides,
 				versions: product.media.versions ?? {},
+				shareImage: product.media.shareImage ?? null,
 				faqEnabled: product.faqEnabled,
 				faq: (await this.productFaq(product.id)).map((entry) => ({
 					id: entry.id,
@@ -399,7 +400,7 @@ export class CatalogService {
 					answer: entry.answer,
 				})),
 			},
-			images: await this.imageTiles(product),
+			images: await this.imageTiles(product, variants.flatMap((row) => row.media?.primaryAssetId ?? [])),
 			relatedProductIds: relationIds.related,
 			upsellProductIds: relationIds.upsell,
 			crossSellProductIds: relationIds.cross_sell,
@@ -426,6 +427,9 @@ export class CatalogService {
 				heightCm: row.shippingProfile?.heightCm ?? null,
 				barcode: row.barcode ?? null,
 				hsnCode: row.taxProfile?.hsnCode ?? null,
+				image: row.media?.primaryAssetId
+					? { assetId: row.media.primaryAssetId, versionId: row.media.primaryVersionId ?? null }
+					: null,
 			})),
 		});
 	}
@@ -510,6 +514,11 @@ export class CatalogService {
 					heightCm: write.heightCm,
 				},
 				taxProfile: { hsnCode: write.hsnCode, taxClassId: row.taxProfile?.taxClassId ?? null },
+				// The variant's own picture, shown first when it is chosen (owner, 17 Nov).
+				media:
+					write.image === undefined
+						? row.media
+						: { primaryAssetId: write.image?.assetId ?? null, primaryVersionId: write.image?.versionId ?? null },
 			};
 		});
 		const now = new Date().toISOString();
@@ -709,12 +718,16 @@ export class CatalogService {
 		}
 	}
 
-	private async imageTiles(product: Product) {
-		// Swatch pictures too, so the Options tab can show each value's chosen picture.
+	private async imageTiles(product: Product, variantImages: readonly string[] = []) {
+		// Swatch pictures too, so the Options tab can show each value's chosen picture; and the share picture and
+		// each variant's own picture (owner, 17 Nov), so their fields show what was chosen.
 		const swatches = product.optionGroups.flatMap((group) =>
 			group.terms.flatMap((term) => term.swatchAssetId ?? []),
 		);
-		const ids = [...new Set([...product.media.gallery, ...productGallery(product), ...swatches])];
+		const share = product.media.shareImage?.assetId ? [product.media.shareImage.assetId] : [];
+		const ids = [
+			...new Set([...product.media.gallery, ...productGallery(product), ...swatches, ...share, ...variantImages]),
+		];
 		const assets = await this.assetsFor(ids);
 		return ids.flatMap((assetId) => {
 			const asset = assets.get(assetId);

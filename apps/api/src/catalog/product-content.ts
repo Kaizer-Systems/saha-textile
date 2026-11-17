@@ -25,6 +25,8 @@ export function applyProductContent(product: Product, content: ProductContentWri
 			compound: content.compound,
 			altOverrides: content.altOverrides,
 			versions: content.versions,
+			// Absent (an older form) keeps the share picture; null clears it.
+			shareImage: content.shareImage === undefined ? (product.media.shareImage ?? null) : content.shareImage,
 		},
 	};
 }

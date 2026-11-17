@@ -99,6 +99,8 @@ export const ProductVariant = z
 		media: z
 			.object({
 				primaryAssetId: Id.nullable().default(null),
+				/** The version that picture shows (media R4-1). */
+				primaryVersionId: z.string().nullable().default(null),
 			})
 			.optional(),
 		createdAt: IsoDateTime.optional(),

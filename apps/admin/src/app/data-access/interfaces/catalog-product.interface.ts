@@ -60,6 +60,8 @@ export interface CatalogVariantView extends CatalogShipping {
 	available: boolean;
 	barcode: string | null;
 	hsnCode: string | null;
+	/** The variant's own picture and its version (owner, 17 Nov: "Variation image"). */
+	image?: { assetId: string; versionId: string | null } | null;
 }
 
 /** The main category's defaults for HSN and returnability (F02). */

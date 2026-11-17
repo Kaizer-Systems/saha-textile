@@ -676,7 +676,7 @@ export function mapDemoCatalogue(input: {
 					lowStockThreshold: null,
 					allowBackorder: false,
 				},
-				media: { primaryAssetId: assetId },
+				media: { primaryAssetId: assetId, primaryVersionId: null },
 			});
 		};
 

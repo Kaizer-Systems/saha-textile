@@ -41,6 +41,10 @@ export type MetreFieldsWrite = z.infer<typeof MetreFieldsWrite>;
 const TextByLocale = z.record(z.string(), z.string().max(20_000));
 
 /** Everything on the product form that is not merchandising: the language-bound text and images. */
+/** A photo and the version a field shows (media R4-1): the product's share picture, a variant's own picture. */
+export const PictureRef = z.object({ assetId: z.string().min(1), versionId: z.string().min(1).nullable() });
+export type PictureRef = z.infer<typeof PictureRef>;
+
 export const ProductContentWrite = z.object({
 	title: TextByLocale,
 	shortDescription: TextByLocale,
@@ -60,6 +64,8 @@ export const ProductContentWrite = z.object({
 	altOverrides: z.record(z.string(), TextByLocale),
 	/** The version each photo shows on this product, per asset id (media step 4b). */
 	versions: z.record(z.string(), z.string().min(1)).default({}),
+	/** The link-preview picture when it isn't the main photo's own share card (owner, 17 Nov: "Meta image"). */
+	shareImage: PictureRef.nullable().optional(),
 	/** The FAQ tab: the switch, and this product's own questions in display order. */
 	faqEnabled: z.boolean().default(false),
 	faq: z
@@ -102,6 +108,8 @@ export const AdminVariantWrite = z
 		heightCm: Measure,
 		barcode: OptionalText,
 		hsnCode: OptionalHsn,
+		/** The variant's own picture, shown first when it is chosen (owner, 17 Nov: "Variation image"); absent keeps it. */
+		image: PictureRef.nullable().optional(),
 	})
 	.refine((row) => row.mrpINR === null || row.sellingINR <= row.mrpINR, {
 		path: ['sellingINR'],
@@ -223,6 +231,7 @@ export const AdminVariantView = z.object({
 	heightCm: z.number().nullable(),
 	barcode: z.string().nullable(),
 	hsnCode: z.string().nullable(),
+	image: PictureRef.nullable().default(null),
 });
 export type AdminVariantView = z.infer<typeof AdminVariantView>;
 

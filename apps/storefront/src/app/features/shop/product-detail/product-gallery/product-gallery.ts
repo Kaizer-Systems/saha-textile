@@ -33,14 +33,20 @@ export class ProductGallery {
 	private readonly modals = inject(NgbModal);
 
 	readonly product = input<IProduct>();
-	/** A variant with its own photos shows those, in its own order. */
+	/** A variant with its own photos shows those, in its own order; else its own picture leads the product's. */
 	readonly variation = input<IVariation | null>(null);
 
 	readonly carousel = viewChild<CarouselComponent>('owlCar');
 
 	readonly frames = computed(() => {
-		const own = this.variation()?.variation_galleries;
-		return own?.length ? own : (this.product()?.product_galleries ?? []);
+		const variation = this.variation();
+		const own = variation?.variation_galleries;
+		if (own?.length) return own;
+		const all = this.product()?.product_galleries ?? [];
+		// The variant's own picture ("Variation image", owner 17 Nov) comes first; the rest keep their order after it.
+		const picture = variation?.variation_image;
+		const lead = picture ? all.findIndex((frame) => frame.id === picture.id) : -1;
+		return lead > 0 ? [...all.slice(lead), ...all.slice(0, lead)] : all;
 	});
 
 	readonly images = computed<GalleryImage[]>(() => this.frames().map(toGalleryImage));

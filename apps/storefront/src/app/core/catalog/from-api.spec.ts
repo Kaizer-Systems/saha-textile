@@ -159,8 +159,10 @@ describe('pageToProduct link preview', () => {
 			...page,
 			gallery: [photo({ gallery: 'g.webp' })],
 			shareImageUrl: 'share.jpg',
+			shareImageSize: { width: 1200, height: 630, type: 'image/jpeg' },
 		} as ApiProductPage);
 		expect(product.product_meta_image?.original_url).toBe('share.jpg');
+		expect(product.product_meta_image).toMatchObject({ mime_type: 'image/jpeg', pixels: { width: 1200, height: 630 } });
 		expect(product.product_thumbnail?.original_url).toBe('g.webp');
 	});
 

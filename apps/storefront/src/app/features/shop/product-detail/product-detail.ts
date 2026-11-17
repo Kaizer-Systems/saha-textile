@@ -17,6 +17,7 @@ import { LocaleSeo } from '@core/i18n/locale-seo';
 import { roleSrcset } from '@core/media/resolved-image';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
@@ -64,6 +65,10 @@ const textOf = (html: string | undefined): string =>
 		.replace(/&nbsp;/g, ' ')
 		.replace(/\s+/g, ' ')
 		.trim();
+
+/** The share picture's size and type when the API sent them; a plain gallery photo states none. */
+const shareSize = (image: IAttachment | undefined): { width: number; height: number; type: string } | undefined =>
+	image?.pixels && image.mime_type ? { ...image.pixels, type: image.mime_type } : undefined;
 
 const uniqueCards = (cards: IProduct[]): IProduct[] =>
 	cards.filter((card, index) => cards.findIndex((other) => other.id === card.id) === index);
@@ -268,7 +273,7 @@ export class ProductDetail {
 					.filter(Boolean)
 					.join('. '),
 				inStock: product.stock_status !== 'out_of_stock',
-				cardImage: product.product_meta_image?.mime_type === 'image/jpeg',
+				imageSize: shareSize(product.product_meta_image),
 			});
 		});
 	}

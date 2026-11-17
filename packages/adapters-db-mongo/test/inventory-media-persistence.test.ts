@@ -276,7 +276,7 @@ describe.skipIf(!hasMongoEnv())('inventory and media persistence (integration, r
 				compareAtPriceINR: null,
 				salePriceINR: null,
 				stock: { tracked: true, quantity: 1, held: 0, lowStockThreshold: null, allowBackorder: false },
-				media: { primaryAssetId: created.id },
+				media: { primaryAssetId: created.id, primaryVersionId: null },
 			});
 
 			expect(await media.countReferences(created.id)).toBe(1);

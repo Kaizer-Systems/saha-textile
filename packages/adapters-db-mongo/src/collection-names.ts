@@ -139,6 +139,11 @@ export const COLLECTION_NAMES = {
 	/** The four legal pages and every earlier version of them (Legal Pages brief, 2026-11-16). */
 	LegalPage: 'legalPages',
 	LegalPageRevision: 'legalPageRevisions',
+	/** Page Builder: each page's schedule, its layouts, their append-only revisions, saved blocks (2026-11-17). */
+	BuilderPage: 'builderPages',
+	PageLayout: 'pageLayouts',
+	PageLayoutRevision: 'pageLayoutRevisions',
+	SavedBlock: 'savedBlocks',
 	/** Bytes held for running uploads; machinery, removed by its own expiry. */
 	StorageReservation: 'storageReservations',
 	/** Settings › Languages: every language ever added, English included (step 0d, 2026-11-15). */

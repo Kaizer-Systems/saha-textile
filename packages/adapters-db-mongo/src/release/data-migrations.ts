@@ -2,6 +2,7 @@ import type { DataMigration } from '@saha-textile/core-domain';
 
 import { seedLegalPages } from '../migrations/legal-pages';
 import { addProfileSizes, seedProfilesAndNameVersions, widenProfileTypes } from '../migrations/media-versions';
+import { seedTodaysHomePage } from '../migrations/todays-home-page';
 
 /**
  * Every data migration, in id order. The release-steps runner applies each one once per
@@ -47,5 +48,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Photo types (media step 5): built-in image profiles still taking only JPEG and PNG take every type the worker reads; a list an admin changed stays',
 		half: 'expand',
 		up: () => widenProfileTypes(),
+	},
+	{
+		id: '0005-page-builder-todays-home',
+		description:
+			'Page Builder (step 2): Home’s first layout, “Today’s home page”, made from today’s live home banners and fixed sections and put on Home’s schedule; the shop keeps its fixed home page until the builder’s renderer is switched on',
+		half: 'expand',
+		up: () => seedTodaysHomePage(),
 	},
 ];

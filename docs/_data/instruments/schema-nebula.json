@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 99,
-		"existingModelCount": 77,
+		"nodeCount": 103,
+		"existingModelCount": 81,
 		"targetOnlyCount": 22,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -1250,6 +1250,58 @@
 			"currentModel": "packages/adapters-db-mongo/src/models/legal-page.model.ts",
 			"purpose": "Every earlier version of a legal page, kept with no screen so the terms on any day can be looked up.",
 			"references": ["legalPages"]
+		},
+		{
+			"id": "builderPages",
+			"label": "builderPages",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"source": "decisions § Page Builder revision 2, every recommendation accepted (2026-11-17)",
+			"currentModel": "packages/adapters-db-mongo/src/models/page-layout.model.ts",
+			"purpose": "A page the Page Builder arranges (a page type and target, such as Home) and its schedule: which layout revision shows from when, read on every request.",
+			"references": ["pageLayouts", "pageLayoutRevisions"]
+		},
+		{
+			"id": "pageLayouts",
+			"label": "pageLayouts",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"source": "decisions § Page Builder revision 2, every recommendation accepted (2026-11-17)",
+			"currentModel": "packages/adapters-db-mongo/src/models/page-layout.model.ts",
+			"purpose": "One arrangement of a page, named for admins only, with pointers to its draft and last live revision.",
+			"references": ["builderPages", "pageLayoutRevisions"]
+		},
+		{
+			"id": "pageLayoutRevisions",
+			"label": "pageLayoutRevisions",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"source": "decisions § Page Builder revision 2, every recommendation accepted (2026-11-17)",
+			"currentModel": "packages/adapters-db-mongo/src/models/page-layout.model.ts",
+			"purpose": "A saved state of a layout that never changes once written: its sections, pieces and pictures (Media photos and their versions).",
+			"references": ["pageLayouts", "mediaAssets"]
+		},
+		{
+			"id": "savedBlocks",
+			"label": "savedBlocks",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"source": "decisions § Page Builder revision 2, every recommendation accepted (2026-11-17)",
+			"currentModel": "packages/adapters-db-mongo/src/models/page-layout.model.ts",
+			"purpose": "A section saved to reuse in other layouts, copied or linked.",
+			"references": ["pageLayouts", "mediaAssets"]
 		},
 		{
 			"id": "mediaZips",

@@ -5,6 +5,8 @@
  *   pnpm e2e:stack                     build, seed, start everything, test, stop
  *   pnpm e2e:stack -- --keep           leave the stack running afterwards, for inspection
  *   pnpm e2e:stack -- --serve          start the stack and wait; no tests
+ *   pnpm e2e:stack -- --speed          the speed gate (scripts/speed-gate.mjs) instead of the tests;
+ *                                      SPEED_GATE_ENFORCE=true makes a score below the floor fail
  *   pnpm e2e:stack -- e2e/admin.spec.ts --project=desktop
  *
  * Everything lands in `saha_textile_e2e` and the `products_e2e` search index, never in the
@@ -27,7 +29,8 @@ const STOREFRONT_PORT = '4210';
 const args = process.argv.slice(2).filter((arg) => arg !== '--');
 const keep = args.includes('--keep');
 const serveOnly = args.includes('--serve');
-const playwrightArgs = args.filter((arg) => arg !== '--keep' && arg !== '--serve');
+const speed = args.includes('--speed');
+const playwrightArgs = args.filter((arg) => arg !== '--keep' && arg !== '--serve' && arg !== '--speed');
 
 const envFile = resolve(ROOT, 'apps/api/.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
@@ -160,6 +163,20 @@ if (serveOnly) {
 	process.stdout.write(`Stack is up on ${DATABASE}. Press Ctrl+C to stop.\n`);
 	process.stdout.write(`E2E_ADMIN_EMAIL=${ADMIN_EMAIL}\nE2E_ADMIN_PASSWORD=${adminPassword}\n`);
 	await new Promise(() => {});
+}
+
+if (speed) {
+	const gate = spawnSync(
+		'node',
+		[
+			'scripts/speed-gate.mjs',
+			'https://localhost:4200',
+			...(env.SPEED_GATE_ENFORCE === 'true' ? ['--enforce'] : []),
+		],
+		{ cwd: ROOT, env, stdio: 'inherit' },
+	);
+	stopAll();
+	process.exit(gate.status ?? 1);
 }
 
 const tests = spawnSync('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs], {

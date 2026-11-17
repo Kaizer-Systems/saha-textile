@@ -162,6 +162,10 @@ The same answer carries "What will change on the shop" (SG-16: sections added, r
 
 A page joins the builder by being registered in core (`registerPageType` in `packages/core-domain/src/page-builder/registry.ts`): its key, kind, slots and the sections each takes, where its one main heading comes from, whether search engines list it, and its budget. The contract only checks a key's shape; the API answers 404 for a key the registry does not know. Nothing else is made per page: the same collections, routes, screens, checks, schedules, History and the `page_builder.go_live` permission serve every type. The shop then draws `app-page-layout` in the page's slots. `apps/api/test/page-builder-new-type.test.ts` proves it on every run with a test-only type (list, layouts, draft and its slot rules, preview, Go Live, the shop's answer, History), and the database test stores it in the same collections.
 
+## The speed gate in CI (SG-10)
+
+`scripts/speed-gate.mjs` runs Lighthouse 12.6.1 on the shop's Home in English and বাংলা, on a 390 × 844 phone and a 1440 × 900 computer, three runs each, and compares the medians with the floor: Performance 97 or more, Accessibility, Best Practices and SEO 100, layout shift 0. `pnpm e2e:stack -- --speed` starts the production builds on a throwaway database and runs it; the CI job **Speed gate** does that on every pull request and writes the table into the job summary. It reports only until the repository variable `SPEED_GATE_ENFORCE` is `true` (a GitHub setting for the owner to switch once phone scores reach the floor; they don't yet, see the numbers below), and then fails a pull request below the floor. CI's stack has no edge compression, so its numbers sit a little below the production edge's. Other pages go in through `SPEED_GATE_PAGES`. Not in the gate yet: Home with each template, two custom layouts and a stress layout; the nightly full size table; PageSpeed Insights before releases.
+
 ## Speed baseline
 
 Measured on 17 Nov 2026 on a production build behind compression, Lighthouse 12.6.1, median of three runs:

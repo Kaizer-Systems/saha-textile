@@ -1,4 +1,21 @@
-@if (product()?.quantity && product()!.quantity <= 10) {
+@if (product()?.sold_by === 'metre' && product()?.quantity && product()!.quantity <= 100) {
+<!-- M05: the same bar in metres for fabric ("Please hurry! Only 4.5 m left"); 10 m and under. -->
+<div class="progress-sec">
+	<div class="left-progressbar">
+		<h6>{{ 'only_length_left' | transloco: { length: lengthOf(product()!.quantity, 'unit_m' | transloco) } }}</h6>
+		<div
+			class="progress"
+			[class]="{ 'danger-progress': product()!.quantity <= 20, 'warning-progress': product()!.quantity > 20 && product()!.quantity <= 70 }"
+			aria-hidden="true"
+		>
+			<div
+				class="progress-bar progress-bar-striped progress-bar-animated"
+				[style.width]="product()!.quantity + '%'"
+			></div>
+		</div>
+	</div>
+</div>
+} @else if (product()?.quantity && product()!.quantity <= 10) {
 <div class="progress-sec">
 	<div class="left-progressbar">
 		<h6>{{ 'please_hurry_only' | transloco }} {{ product()?.quantity }} {{ 'left_in_stock' | transloco }}</h6>

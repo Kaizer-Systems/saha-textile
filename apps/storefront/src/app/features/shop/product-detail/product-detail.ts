@@ -301,10 +301,22 @@ export class ProductDetail {
 					worstRating: 1,
 				}
 			: undefined;
+		// Fabric by the metre: the price is per metre (unit code MTR), so search shows "₹180 / m".
+		const perMetre = product.sold_by === 'metre';
 		const offer = (price: number, inStock: boolean, offerUrl = url) => ({
 			'@type': 'Offer',
 			priceCurrency: 'INR',
 			price,
+			...(perMetre
+				? {
+						priceSpecification: {
+							'@type': 'UnitPriceSpecification',
+							price,
+							priceCurrency: 'INR',
+							referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MTR' },
+						},
+					}
+				: {}),
 			url: offerUrl,
 			itemCondition: 'https://schema.org/NewCondition',
 			availability: `https://schema.org/${inStock ? 'InStock' : 'OutOfStock'}`,

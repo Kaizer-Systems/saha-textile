@@ -1,3 +1,5 @@
+<!-- The metre unit in the reader's language, for the length box's change handler. -->
+@let metreUnit = 'unit_m' | transloco;
 <ng-template
 	#configModal
 	let-modal
@@ -22,7 +24,11 @@
 					{{ (isEdit() ? 'edit_configuration' : 'configure') | transloco }}: {{ product().name }}
 				</h2>
 				<div class="price-rating">
-					<h3 class="theme-color price">{{ unitPrice() | currencySymbol }}</h3>
+					<h3 class="theme-color price">
+						{{ unitPrice() | currencySymbol }}@if (rule()) {
+						<span class="text-content">{{ 'per_metre' | transloco }}</span>
+						}
+					</h3>
 				</div>
 
 				<div class="product-package">
@@ -35,6 +41,27 @@
 					/>
 				</div>
 
+				@if (rule(); as metre) { @if (metre.quickLengths.length) {
+				<div class="product-package">
+					<div class="product-title">
+						<h4>{{ 'length' | transloco }}</h4>
+					</div>
+					<ul class="select-package rectangle">
+						@for (quick of metre.quickLengths; track quick.tenths) {
+						<li [class.active]="productQty() === quick.tenths">
+							<app-button
+								[id]="'config-quick-length-' + quick.tenths"
+								[type]="'button'"
+								[spinner]="false"
+								(click)="pickLength(quick.tenths)"
+							>
+								{{ lengthOf(quick.tenths, 'unit_m' | transloco) }} · {{ quick.label }}
+							</app-button>
+						</li>
+						}
+					</ul>
+				</div>
+				} }
 				<div class="note-box">
 					<div class="cart_qty qty-box product-qty">
 						<div class="input-group">
@@ -47,6 +74,20 @@
 							>
 								<i class="ri-subtract-fill"></i>
 							</app-button>
+							@if (rule()) {
+							<input
+								#configLength
+								class="form-control input-number qty-input"
+								type="text"
+								inputmode="decimal"
+								name="length"
+								style="min-width: 64px"
+								[class.is-invalid]="lengthIssue() === 'below_cut'"
+								[value]="lengthOf(productQty(), 'unit_m' | transloco)"
+								[attr.aria-label]="'length' | transloco"
+								(change)="typeLength(configLength, metreUnit)"
+							/>
+							} @else {
 							<input
 								class="form-control input-number qty-input"
 								type="text"
@@ -55,6 +96,7 @@
 								readonly
 								[attr.aria-label]="'quantity' | transloco"
 							/>
+							}
 							<app-button
 								[class]="'btn qty-left-minus'"
 								[id]="'config_qty_plus'"
@@ -66,7 +108,12 @@
 							</app-button>
 						</div>
 					</div>
-					@if (purchasable()) {
+					@if (lengthIssue() === 'below_cut' && rule(); as metre) {
+					<p class="text-danger small mb-0 w-100">
+						{{ 'length_below_cut' | transloco: { cut: lengthOf(metre.shortestCutTenths, 'unit_m' |
+						transloco) } }}
+					</p>
+					} @if (purchasable()) {
 					<app-button
 						[id]="'config_confirm_btn'"
 						[class]="'btn btn-md theme-bg-color text-white fw-bold'"

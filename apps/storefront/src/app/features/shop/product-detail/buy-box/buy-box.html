@@ -3,7 +3,9 @@
 
 <div class="price-rating">
 	<h3 class="theme-color price">
-		{{ displayPrice() | currencySymbol }} @if (discount()) {
+		{{ displayPrice() | currencySymbol }}@if (rule()) {
+		<span class="text-content">{{ 'per_metre' | transloco }}</span>
+		} @if (discount()) {
 		<del class="text-content">{{ comparePrice() | currencySymbol }}</del>
 		} @if (discount()) {
 		<span class="offer-top">{{ discount() }}% {{ 'off' | transloco }}</span>
@@ -43,6 +45,39 @@
 	(summaryChange)="onSummary($event)"
 />
 
+@if (rule(); as metre) { @if (metre.quickLengths.length) {
+<!-- M02: quick lengths reuse the theme's option buttons (the ones used for sizes); Other types any length. -->
+<div class="product-package">
+	<div class="product-title">
+		<h4>{{ 'length' | transloco }}</h4>
+	</div>
+	<ul class="select-package rectangle">
+		@for (quick of metre.quickLengths; track quick.tenths) {
+		<li [class.active]="length() === quick.tenths">
+			<app-button
+				[id]="'quick-length-' + quick.tenths"
+				[type]="'button'"
+				[spinner]="false"
+				(click)="pickLength(quick.tenths)"
+			>
+				{{ lengthOf(quick.tenths) }} · {{ quick.label }}
+			</app-button>
+		</li>
+		}
+		<li [class.active]="!metre.quickLengths.some(isQuick)">
+			<app-button
+				[id]="'quick-length-other'"
+				[type]="'button'"
+				[spinner]="false"
+				(click)="focusLength()"
+			>
+				{{ 'other_length' | transloco }}
+			</app-button>
+		</li>
+	</ul>
+</div>
+} }
+
 <div class="note-box product-package">
 	<div class="cart_qty qty-box product-qty">
 		<div class="input-group">
@@ -55,6 +90,22 @@
 			>
 				<i class="ri-subtract-fill"></i>
 			</app-button>
+			@if (rule()) {
+			<!-- M02: the box shows the unit ("2.5 m"), so it is text and a little wider than the theme's. -->
+			<input
+				#lengthBox
+				class="form-control input-number qty-input"
+				type="text"
+				inputmode="decimal"
+				name="length"
+				style="min-width: 64px"
+				[id]="'length-' + product().id"
+				[class.is-invalid]="lengthIssue() === 'below_cut'"
+				[value]="lengthOf(length())"
+				[attr.aria-label]="'length' | transloco"
+				(change)="typeLength(lengthBox)"
+			/>
+			} @else {
 			<input
 				class="form-control input-number qty-input"
 				type="text"
@@ -63,6 +114,7 @@
 				readonly
 				[attr.aria-label]="'quantity' | transloco"
 			/>
+			}
 			<app-button
 				[class]="'btn qty-left-minus'"
 				[id]="'qty-plus-' + product().id"
@@ -136,6 +188,24 @@
 		</ng-template>
 	</div>
 </div>
+
+@if (rule(); as metre) {
+<!-- M02–M04: the sum in words, the snap note, and why a length cannot be bought. -->
+<div class="mb-3">
+	<p class="text-content mb-1">
+		{{ lengthOf(length()) }} × {{ displayPrice() | currencySymbol }} = {{ lineTotal() | currencySymbol }}
+	</p>
+	@if (snapped(); as note) {
+	<p class="text-content small mb-1">{{ 'length_snapped' | transloco: note }}</p>
+	} @if (lengthIssue() === 'below_cut') {
+	<p class="text-danger small mb-0">
+		{{ 'length_below_cut' | transloco: { cut: lengthOf(metre.shortestCutTenths) } }}
+	</p>
+	} @else if (lengthIssue() === 'over_stock') {
+	<p class="text-danger small mb-0">{{ 'length_over_stock' | transloco: { left: lengthOf(available() ?? 0) } }}</p>
+	}
+</div>
+}
 
 <div class="dynamic-checkout">
 	<app-button

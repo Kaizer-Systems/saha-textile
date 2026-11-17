@@ -12,9 +12,20 @@
 			<li>{{ 'blouse_piece' | transloco }}: {{ metres(piece) }}</li>
 			} @if (product()?.weight; as weight) {
 			<li>{{ 'weight' | transloco }}: {{ weight }} {{ 'gms' | transloco }}</li>
-			} @if (variation()?.stock_status ?? product()?.stock_status; as stockStatus) {
+			} @if (product()?.sold_by === 'metre') {
+			<li>{{ 'sold_by_unit' | transloco }}: {{ 'sold_by_metre' | transloco }}</li>
+			@if (product()?.metre_rule; as rule) {
+			<li>{{ 'shortest_cut' | transloco }}: {{ tenths(rule.shortestCutTenths) }}</li>
+			@if (rule.widthInches) {
+			<li>{{ 'cloth_width' | transloco }}: {{ rule.widthInches }} {{ 'unit_in' | transloco }}</li>
+			} } } @if (variation()?.stock_status ?? product()?.stock_status; as stockStatus) {
 			<li>{{ 'stock_status' | transloco }}: {{ stockStatus | titleCase }}</li>
-			} @if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0) {
+			} @if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0 && product()?.sold_by === 'metre') {
+			<li>
+				{{ 'in_stock_length' | transloco: { length: tenths(variation()?.quantity ?? product()?.quantity ?? 0) }
+				}}
+			</li>
+			} @else if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0) {
 			<li>
 				{{ 'quantity' | transloco }}: {{ variation()?.quantity ?? product()?.quantity }} {{ 'items_left' |
 				transloco }}

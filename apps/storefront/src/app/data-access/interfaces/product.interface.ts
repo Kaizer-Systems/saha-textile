@@ -9,6 +9,8 @@ import { ITag } from './tag.interface';
 import { ITax } from './tax.interface';
 import { IVideo } from './video.interface';
 
+import type { MetreRule } from '@core/catalog/metre-length';
+
 /** A real sale, as the popup shows it. Product and time only. */
 export interface IRecentPurchase {
 	product: IProduct;
@@ -46,6 +48,12 @@ export interface IProduct {
 	store_id?: number;
 	size_guide?: ISizeGuide;
 	saree_length_m?: number | null;
+	/** Piece, or fabric by the metre (shop brief): then every quantity is tenths of a metre. */
+	sold_by?: 'piece' | 'metre';
+	/** Made to order keeps selling whatever the stock (no length limit for fabric). */
+	made_to_order?: boolean;
+	/** The metre rules (shortest cut, step, quick lengths, width) of a metre product. */
+	metre_rule?: MetreRule | null;
 	/** YouTube videos and Shorts: photo-strip tiles after the photos, and the Description tab. */
 	videos?: IVideo[];
 	blouse_piece_m?: number | null;

@@ -52,8 +52,10 @@
 													</li>
 													@if (item.problem) {
 													<li class="text-danger">
-														{{ 'cart_line_' + item.problem | transloco: { count:
-														item.available } }}
+														{{ 'cart_line_' + item.problem + (isMetre(item) && item.problem
+														=== 'limited' ? '_metre' : '') | transloco: { count:
+														isMetre(item) ? lengthOf(item.available ?? 0) : item.available,
+														cut: lengthOf(item.shortest_cut_tenths ?? 0) } }}
 													</li>
 													} @if (item.line_config) {
 													<li><app-cart-line-config [config]="item.line_config" /></li>
@@ -62,7 +64,10 @@
 														<h5 class="text-content d-inline-block">
 															{{ 'price' | transloco }} :
 														</h5>
-														<span>{{ unitPrice(item) | currencySymbol }}</span>
+														<span>
+															{{ unitPrice(item) | currencySymbol }}@if (isMetre(item)) {
+															{{ 'per_m_short' | transloco }} }
+														</span>
 														@if (item.product.discount) {
 														<span class="text-content">
 															{{ (item.variation ? item.variation!.price :
@@ -91,14 +96,28 @@
 																	[class]="'btn qty-left-minus'"
 																	[id]="'minus_quantity'+item.product.id"
 																	[spinner]="false"
-																	(click)="updateQuantity(item, -1)"
+																	(click)="step(item, -1)"
 																>
-																	@if (item.quantity > 1) {
+																	@if (!minusDeletes(item)) {
 																	<i class="ri-subtract-line"></i>
-																	} @if (item.quantity <= 1) {
+																	} @else {
 																	<i class="ri-delete-bin-line"></i>
 																	}
 																</app-button>
+																@if (isMetre(item)) {
+																<!-- A metre line's box is text so it can show "2.5 m", and grows to fit it (M09). -->
+																<input
+																	#phoneLength
+																	class="form-control input-number qty-input"
+																	type="text"
+																	inputmode="decimal"
+																	name="quantity"
+																	style="min-width: 64px"
+																	[value]="qtyText(item)"
+																	[attr.aria-label]="'length' | transloco"
+																	(change)="typeLength(item, phoneLength)"
+																/>
+																} @else {
 																<input
 																	class="form-control input-number qty-input"
 																	type="number"
@@ -107,11 +126,12 @@
 																	readonly
 																	[attr.aria-label]="'quantity' | transloco"
 																/>
+																}
 																<app-button
 																	[class]="'btn qty-left-minus'"
 																	[id]="'qty-left-minus'+item.product.id"
 																	[spinner]="false"
-																	(click)="updateQuantity(item, 1)"
+																	(click)="step(item, 1)"
 																	[ariaLabel]="'increase_quantity' | transloco"
 																>
 																	<i class="ri-add-line"></i>
@@ -132,7 +152,9 @@
 									<td class="price">
 										<h4 class="table-title text-content">{{ 'price' | transloco }}</h4>
 										<h5>
-											{{ unitPrice(item) | currencySymbol }} @if (item.product.discount) {
+											{{ unitPrice(item) | currencySymbol }}@if (isMetre(item)) {
+											<span class="text-content">{{ 'per_m_short' | transloco }}</span>
+											} @if (item.product.discount) {
 											<del class="text-content">
 												{{ (item.variation ? item.variation.price : item.product.price) |
 												currencySymbol }}
@@ -157,11 +179,24 @@
 														[id]="'minus_quantity'"
 														[spinner]="false"
 														[type]="'button'"
-														(click)="updateQuantity(item, -1)"
+														(click)="step(item, -1)"
 														[ariaLabel]="'decrease_quantity' | transloco"
 													>
 														<i class="ri-subtract-fill ms-0"></i>
 													</app-button>
+													@if (isMetre(item)) {
+													<input
+														#wideLength
+														class="form-control input-number qty-input"
+														type="text"
+														inputmode="decimal"
+														name="quantity"
+														style="min-width: 64px"
+														[value]="qtyText(item)"
+														[attr.aria-label]="'length' | transloco"
+														(change)="typeLength(item, wideLength)"
+													/>
+													} @else {
 													<input
 														class="form-control input-number qty-input"
 														type="text"
@@ -170,12 +205,13 @@
 														readonly
 														[attr.aria-label]="'quantity' | transloco"
 													/>
+													}
 													<app-button
 														[class]="'btn qty-left-minus'"
 														[id]="'plus_quantity'"
 														[spinner]="false"
 														[type]="'button'"
-														(click)="updateQuantity(item, 1)"
+														(click)="step(item, 1)"
 														[ariaLabel]="'increase_quantity' | transloco"
 													>
 														<i class="ri-add-line ms-0"></i>
@@ -226,6 +262,9 @@
 							</tbody>
 						</table>
 					</div>
+					@if (hasMetre(items)) {
+					<p class="text-content mt-2 mb-0">{{ 'metre_step_note' | transloco }}</p>
+					}
 				</div>
 			</div>
 			<div class="col-xxl-3 col-xl-4">

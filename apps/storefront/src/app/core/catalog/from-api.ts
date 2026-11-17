@@ -11,6 +11,8 @@ import {
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { IVideo } from '@data-access/interfaces/video.interface';
 
+import type { MetreRule } from '@core/catalog/metre-length';
+
 interface ApiSource {
 	url: string;
 	width: number;
@@ -39,6 +41,7 @@ export interface ApiCard {
 	image: ApiImage | null;
 	inStock: boolean;
 	madeToOrder: boolean;
+	soldBy?: 'piece' | 'metre';
 }
 
 export interface ApiHome {
@@ -107,6 +110,8 @@ export interface ApiProductPage {
 	estimatedDeliveryText: string | null;
 	sareeLengthM: number | null;
 	blousePieceM: number | null;
+	soldBy?: 'piece' | 'metre';
+	metre?: MetreRule | null;
 	selected: { sku: string; sellingINR: number; mrpINR: number | null; quantity: number; buyable: boolean } | null;
 	unknownVariant: boolean;
 	gallery: ApiImage[];
@@ -260,6 +265,7 @@ export function cardToProduct(card: ApiCard): IProduct {
 		quantity: card.inStock ? 1 : 0,
 		stock_status: card.inStock ? 'in_stock' : 'out_of_stock',
 		product_thumbnail: attachment(card.image, card.id),
+		sold_by: card.soldBy ?? 'piece',
 		variations,
 		categories: [],
 		related_products: [],
@@ -466,6 +472,9 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		sale_expired_at: page.saleEndsAt ?? '',
 		saree_length_m: page.sareeLengthM,
 		blouse_piece_m: page.blousePieceM,
+		sold_by: page.soldBy ?? 'piece',
+		made_to_order: page.madeToOrder,
+		metre_rule: page.soldBy === 'metre' ? (page.metre ?? null) : null,
 		size_guide: page.measurements?.sizeGuide.length
 			? {
 					fields: page.measurements.fields.map(({ code, label, unit }) => ({ code, label, unit })),

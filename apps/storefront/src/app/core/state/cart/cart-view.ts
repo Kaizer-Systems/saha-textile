@@ -21,6 +21,8 @@ export interface ApiCartLine {
 	variantLabel: string | null;
 	quantity: number;
 	available: number | null;
+	soldBy?: 'piece' | 'metre';
+	shortestCutTenths?: number | null;
 	basePriceINR: number;
 	unitPriceINR: number;
 	mrpINR: number | null;
@@ -99,6 +101,8 @@ export function cartItem(line: ApiCartLine): ICart {
 		line_config: lineConfig(line),
 		problem: line.problem,
 		available: line.available,
+		sold_by: line.soldBy ?? 'piece',
+		shortest_cut_tenths: line.shortestCutTenths ?? null,
 	};
 }
 

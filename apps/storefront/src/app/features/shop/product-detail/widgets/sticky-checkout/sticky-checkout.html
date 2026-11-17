@@ -54,9 +54,11 @@
 								</app-button>
 								<input
 									class="form-control input-number qty-input"
+									[class.text-lowercase]="product.sold_by === 'metre'"
+									[style.min-width.px]="product.sold_by === 'metre' ? 64 : null"
 									type="text"
 									name="quantity"
-									value="{{productQty}}"
+									[value]="qtyText('unit_m' | transloco)"
 									readonly
 									[attr.aria-label]="'quantity' | transloco"
 								/>

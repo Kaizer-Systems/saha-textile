@@ -51,7 +51,7 @@ export interface ICartLineConfig {
 	raw?: ICartConfigRaw; // machine-readable snapshot for edit prefill (not displayed)
 }
 
-export type CartLineProblem = 'unavailable' | 'out_of_stock' | 'limited';
+export type CartLineProblem = 'unavailable' | 'out_of_stock' | 'limited' | 'below_shortest_cut';
 
 export interface ICart {
 	id: string;
@@ -69,6 +69,10 @@ export interface ICart {
 	problem?: CartLineProblem | null;
 	/** Units that can be bought now. Null means no limit. */
 	available?: number | null;
+	/** Fabric by the metre: `quantity` and `available` are tenths of a metre, the price is per metre. */
+	sold_by?: 'piece' | 'metre';
+	/** The least this line may be cut to, in tenths; null for pieces. */
+	shortest_cut_tenths?: number | null;
 	created_by_id?: number;
 	created_at?: string;
 	updated_at?: string;

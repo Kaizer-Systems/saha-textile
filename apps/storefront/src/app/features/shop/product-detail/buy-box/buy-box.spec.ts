@@ -175,3 +175,72 @@ describe('BuyBox stock alerts', () => {
 		expect((http.post.mock.calls[0] as unknown[])[1]).toEqual({ variantSku: 'SKU-7' });
 	});
 });
+
+describe('BuyBox fabric by the metre (M02–M04)', () => {
+	const fabric = {
+		sale_price: 180,
+		price: 180,
+		discount: 0,
+		quantity: 45,
+		sold_by: 'metre',
+		metre_rule: {
+			shortestCutTenths: 10,
+			stepTenths: 5,
+			quickLengths: [{ tenths: 25, label: 'suit' }],
+			widthInches: 44,
+		},
+	};
+
+	it('starts at the shortest cut, steps by 0.5 m and stops at what is left', () => {
+		const { box } = render(true, fabric);
+		expect(box.length()).toBe(10);
+		box.updateQuantity(1);
+		expect(box.length()).toBe(15);
+		box.updateQuantity(-1);
+		box.updateQuantity(-1);
+		expect(box.length()).toBe(10);
+		box.pickLength(43);
+		box.updateQuantity(1);
+		expect(box.length()).toBe(45);
+		expect(box.lineTotal()).toBe(810);
+	});
+
+	it('snaps a typed length and says so, and turns buying off below the cut', () => {
+		const { box } = render(true, fabric);
+		const input = document.createElement('input');
+		input.value = '2.55';
+		box.typeLength(input);
+		expect(box.length()).toBe(26);
+		expect(box.snapped()).toEqual({ typed: '2.55', length: '2.6 unit_m' });
+		expect(input.value).toBe('2.6 unit_m');
+		input.value = '0.5';
+		box.typeLength(input);
+		expect(box.lengthIssue()).toBe('below_cut');
+		expect(box.purchasable()).toBe(false);
+		input.value = '60';
+		box.typeLength(input);
+		expect(box.lengthIssue()).toBe('over_stock');
+		input.value = 'two';
+		box.typeLength(input);
+		expect(box.length()).toBe(600);
+	});
+
+	it('sends the length in tenths to the cart, and nothing while it cannot be bought', () => {
+		const { box, cart } = render(true, fabric);
+		const build = configured(box, { quantity: 25 });
+		box.pickLength(25);
+		box.addToCart();
+		expect(build).toHaveBeenCalledWith(25, null);
+		expect(cart.addToCart).toHaveBeenCalled();
+		build.mockClear();
+		box.pickLength(5);
+		box.addToCart();
+		expect(build).not.toHaveBeenCalled();
+	});
+
+	it('has no length limit for made to order', () => {
+		const { box } = render(true, { ...fabric, made_to_order: true });
+		box.pickLength(900);
+		expect(box.lengthIssue()).toBeNull();
+	});
+});

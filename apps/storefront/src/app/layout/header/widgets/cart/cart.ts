@@ -6,8 +6,10 @@ import { RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { lengthText } from '@core/catalog/metre-length';
 import { AuthStore } from '@core/state/auth.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
+import { isMetreLine, minusDeletes, stepLine, typedLineLength } from '@core/state/cart/metre-line';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
@@ -89,6 +91,37 @@ export class Cart {
 			} else {
 				this.confetti = 0;
 			}
+		});
+	}
+
+	readonly isMetre = isMetreLine;
+	readonly minusDeletes = minusDeletes;
+
+	/** "2.5 m" for a metre line's box (M10). */
+	qtyText(item: ICart, unit: string): string {
+		return isMetreLine(item) ? lengthText(item.quantity, unit) : String(item.quantity);
+	}
+
+	/** − and +: pieces by one, metres by 0.5 m; at the floor minus removes the line. */
+	step(item: ICart, direction: 1 | -1) {
+		const move = stepLine(item, direction);
+		if (move.kind === 'delete') this.delete(item.id);
+		else if (move.kind === 'change') this.updateQuantity(item, move.delta);
+	}
+
+	/** A length typed into a metre line's box, snapped to 0.1 m and set outright. */
+	typeLength(item: ICart, box: HTMLInputElement, unit: string) {
+		const tenths = typedLineLength(item, box.value);
+		box.value = this.qtyText(item, unit);
+		if (tenths === null) return;
+		this.cartFacade.editLine({
+			id: item.id,
+			product: item.product,
+			product_id: item.product.id,
+			variation: item.variation,
+			variation_id: item.variation_id ?? null,
+			quantity: tenths,
+			line_config: item.line_config,
 		});
 	}
 

@@ -4,6 +4,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { lengthText } from '@core/catalog/metre-length';
 import { AuthStore } from '@core/state/auth.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { IProduct } from '@data-access/interfaces/product.interface';
@@ -19,6 +20,11 @@ import { SizeChartModal } from '@shared/ui/modal/size-chart-modal/size-chart-mod
 	imports: [SizeChartModal, DeliveryReturnModal, QuestionModal, TranslocoModule],
 })
 export class ProductAction {
+	/** "4.5 m" for fabric sold by the metre (stock in tenths); the unit comes in translated. */
+	lengthOf(tenths: number, unit: string): string {
+		return lengthText(tenths, unit);
+	}
+
 	private authStore = inject(AuthStore);
 
 	// TODO: Skipped for migration because:

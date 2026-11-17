@@ -146,7 +146,9 @@
 			</span>
 			} @else {
 			<span class="theme-color price">{{ offer(product()!).selling | currencySymbol }}</span>
-			@if (offer(product()!).percentOff) {
+			@if (product()?.sold_by === 'metre') {
+			<span>{{ 'per_m_short' | transloco }}</span>
+			} @if (offer(product()!).percentOff) {
 			<del>{{ (offer(product()!).mrp ?? 0) | currencySymbol }}</del>
 			} }
 		</h5>

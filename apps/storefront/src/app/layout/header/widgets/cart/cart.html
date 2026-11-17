@@ -1,3 +1,5 @@
+<!-- The metre unit in the reader's language, for the length boxes' change handlers. -->
+@let metreUnit = 'unit_m' | transloco;
 <!-- Cart Style Basic -->
 @if (style() === 'basic') {
 <app-button
@@ -108,8 +110,12 @@
 					>
 						<h5>{{ item?.product?.name }}</h5>
 					</a>
+					@if (isMetre(item)) {
+					<!-- M10: the line reads "2.5 m × ₹180.00". -->
+					<h6>{{ qtyText(item, 'unit_m' | transloco) }} × {{ unitPrice(item) | currencySymbol }}</h6>
+					} @else {
 					<h6>{{ unitPrice(item) | currencySymbol }}</h6>
-					@if (item.line_config) {
+					} @if (item.line_config) {
 					<app-cart-line-config [config]="item.line_config" />
 					} @else if (item?.variation) {
 					<h5 class="gram">{{ item?.variation?.selected_variation }}</h5>
@@ -120,14 +126,27 @@
 								[class]="'btn qty-left-minus'"
 								[id]="'add-to-cart'+item.product.id"
 								[spinner]="false"
-								(click)="updateQuantity(item, -1)"
+								(click)="step(item, -1)"
 							>
-								@if (item.quantity > 1) {
+								@if (!minusDeletes(item)) {
 								<i class="ri-subtract-line"></i>
-								} @if (item.quantity <= 1) {
+								} @else {
 								<i class="ri-delete-bin-line"></i>
 								}
 							</app-button>
+							@if (isMetre(item)) {
+							<input
+								#miniLength
+								class="form-control input-number qty-input"
+								type="text"
+								inputmode="decimal"
+								name="quantity"
+								style="min-width: 64px"
+								[value]="qtyText(item, 'unit_m' | transloco)"
+								[attr.aria-label]="'length' | transloco"
+								(change)="typeLength(item, miniLength, metreUnit)"
+							/>
+							} @else {
 							<input
 								class="form-control input-number qty-input"
 								type="number"
@@ -136,11 +155,12 @@
 								readonly
 								[attr.aria-label]="'quantity' | transloco"
 							/>
+							}
 							<app-button
 								[class]="'btn qty-left-minus'"
 								[id]="'qty-left-minus'+item.product.id"
 								[spinner]="false"
-								(click)="updateQuantity(item, 1)"
+								(click)="step(item, 1)"
 								[ariaLabel]="'increase_quantity' | transloco"
 							>
 								<i class="ri-add-line"></i>

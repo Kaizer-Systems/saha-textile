@@ -93,7 +93,9 @@ export class ProductBoxHorizontal {
 		return (
 			!!(product.attributes?.length && product.variations?.length) ||
 			!!product.addon_groups?.length ||
-			!!product.bundle
+			!!product.bundle ||
+			// A length cannot be guessed: fabric by the metre always opens the popup (M01).
+			product.sold_by === 'metre'
 		);
 	}
 

@@ -4,6 +4,7 @@ import { Component, PLATFORM_ID, TemplateRef, computed, inject, input, signal, v
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
+import { lengthProblem, lengthText, readLength, stepLength } from '@core/catalog/metre-length';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
@@ -55,13 +56,50 @@ export class ProductConfigModal {
 		const p = this.fullProduct() ?? this.product();
 		return p ? (JSON.parse(JSON.stringify(p)) as IProduct) : p;
 	});
-	readonly purchasable = computed(() => this.summary()?.purchasable ?? false);
+	/** Fabric by the metre: the popup takes a length the same way as the product page (M01). */
+	readonly rule = computed(() => {
+		const p = this.fullProduct() ?? this.product();
+		return p?.sold_by === 'metre' ? (p.metre_rule ?? null) : null;
+	});
+	private readonly freeToSell = computed<number | null>(() => {
+		const p = this.fullProduct() ?? this.product();
+		if (!p || p.made_to_order) return null;
+		return this.summary()?.variation?.quantity ?? p.quantity ?? null;
+	});
+	readonly lengthIssue = computed(() => {
+		const rule = this.rule();
+		return rule ? lengthProblem(this.productQty(), rule, this.freeToSell()) : null;
+	});
+
+	lengthOf(tenths: number, unit: string): string {
+		return lengthText(tenths, unit);
+	}
+
+	pickLength(tenths: number) {
+		this.productQty.set(tenths);
+	}
+
+	typeLength(box: HTMLInputElement, unit: string) {
+		const read = readLength(box.value);
+		if (read) this.productQty.set(read.tenths);
+		box.value = this.lengthOf(this.productQty(), unit);
+	}
+
+	readonly purchasable = computed(() => (this.summary()?.purchasable ?? false) && !this.lengthIssue());
 	readonly soldOut = computed(() => this.summary()?.soldOut ?? false);
 	readonly unitPrice = computed(() => this.summary()?.unitPrice ?? this.product().sale_price);
 
 	openModal(line?: ICart | null) {
 		if (!isPlatformBrowser(this.platformId)) return;
 		if (!line) {
+			// A card carries no metre rules: read the product page first for fabric (M01).
+			if (this.product().sold_by === 'metre' && !this.product().metre_rule) {
+				this.productService.getProductPage(this.product().slug).subscribe((product) => {
+					this.fullProduct.set(product);
+					this.show(null);
+				});
+				return;
+			}
 			this.show(null);
 			return;
 		}
@@ -73,7 +111,7 @@ export class ProductConfigModal {
 
 	private show(line: ICart | null) {
 		this.editLine.set(line);
-		this.productQty.set(line?.quantity ?? 1);
+		this.productQty.set(line?.quantity ?? this.rule()?.shortestCutTenths ?? 1);
 		this.summary.set(null);
 		this.modalService.open(this.configModal(), {
 			ariaLabelledBy: 'product-config-modal',
@@ -90,6 +128,11 @@ export class ProductConfigModal {
 	}
 
 	updateQuantity(qty: number) {
+		const rule = this.rule();
+		if (rule) {
+			this.productQty.set(stepLength(this.productQty(), qty > 0 ? 1 : -1, rule, this.freeToSell()));
+			return;
+		}
 		const next = this.productQty() + qty;
 		if (next < 1) return;
 		this.productQty.set(next);

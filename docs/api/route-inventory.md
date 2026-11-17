@@ -259,6 +259,7 @@ A restore returns the customer to the previous status. It does not re-attach pro
 | `POST`   | `/admin/catalog/categories`                     | `category.create`             | Add a category                                                                     |
 | `POST`   | `/admin/catalog/categories/:id`                 | `category.edit`               | Save a category; a move or rename writes its redirects                             |
 | `DELETE` | `/admin/catalog/categories/:id`                 | `category.destroy`            | Delete an empty category                                                           |
+| `GET`    | `/admin/catalog/categories/:id/hsn-impact`      | `category.edit`               | Products whose HSN would follow a changed category HSN, and those with their own   |
 | `GET`    | `/admin/catalog/attributes`                     | `attribute.index`             | Every attribute and its values                                                     |
 | `POST`   | `/admin/catalog/attributes`                     | `attribute.edit`              | Add or save an attribute                                                           |
 | `DELETE` | `/admin/catalog/attributes/:code`               | `attribute.destroy`           | Delete an attribute no product uses                                                |
@@ -509,6 +510,105 @@ Rules the routes apply:
 | `POST` | `/admin/inbox/:mailboxId/threads/:threadId/modify`                      | `mailbox.use`    | Mark read or unread, archive, move to Inbox, trash or restore       |
 
 The Gmail token stays on the server. `mailbox.use` opens only the mailboxes whose access list names the operator.
+
+## Admin purchases and stock routes
+
+Suppliers, purchase orders, purchase entries, purchase returns, stock, counts, opening stock, reports and the two settings pages (Purchases and stock, Shop details). Cost and value fields are left out of every answer for an operator without `stock.cost`. The rules behind each route are in [Purchases and stock](/admin/purchases-and-stock).
+
+| Method   | Route                                                      | Access                                        | Purpose                                                                      |
+| -------- | ---------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET`    | `/admin/purchases/items/search`                            | `purchase.index`                              | Find by SKU, name, barcode or the supplier's own code                        |
+| `GET`    | `/admin/purchases/items/by-variants`                       | `purchase.index`                              | Item details for lines that arrive as variant ids (receiving an order)       |
+| `GET`    | `/admin/purchases/items/products/:productId/variants`      | `purchase.index`                              | Every colour or size of a product, for the variant grid                      |
+| `POST`   | `/admin/purchases/items/import`                            | `purchase.create`                             | Match a supplier spreadsheet's rows; only clean rows are ready               |
+| `GET`    | `/admin/purchases/items/draft-product-defaults`            | `purchase.create`, `product.create`           | Next SKU, HSN and returnability a draft product would get                    |
+| `POST`   | `/admin/purchases/items/draft-product`                     | `purchase.create`, `product.create`           | Make a draft product for a new design on the bill                            |
+| `GET`    | `/admin/purchases/entries`                                 | `purchase.index`                              | Entries with stock and payment status, and the tiles                         |
+| `GET`    | `/admin/purchases/entries/:id`                             | `purchase.index`                              | One entry; cost and margin only with stock.cost                              |
+| `POST`   | `/admin/purchases/entries`                                 | `purchase.create`                             | Save a new draft; the same bill twice is refused                             |
+| `PUT`    | `/admin/purchases/entries/:id`                             | `purchase.create`                             | Save a draft; a stale copy is refused with who changed it                    |
+| `DELETE` | `/admin/purchases/entries/:id`                             | `purchase.create`                             | Delete a draft (a posted entry is voided instead)                            |
+| `POST`   | `/admin/purchases/entries/:id/goods-check`                 | `purchase.check`                              | Good, damaged and missing per line                                           |
+| `GET`    | `/admin/purchases/entries/:id/post-preview`                | `purchase.post`                               | What posting will change, and the warnings to accept                         |
+| `POST`   | `/admin/purchases/entries/:id/post`                        | `purchase.post`                               | Post to stock; the same request key never posts twice                        |
+| `POST`   | `/admin/purchases/entries/:id/void`                        | `purchase.void`                               | Void while nothing from it has moved on                                      |
+| `GET`    | `/admin/purchases/entries/:id/payments`                    | `purchase.index`                              | Payments recorded against the entry                                          |
+| `POST`   | `/admin/purchases/entries/:id/payments`                    | `purchase.payment`                            | Record a full or part payment                                                |
+| `POST`   | `/admin/purchases/entries/:id/payments/:paymentId/reverse` | `purchase.payment`                            | Reverse a payment with a reason                                              |
+| `GET`    | `/admin/purchases/entries/:id/activity`                    | `purchase.index`                              | The audit trail in sentences (p10b)                                          |
+| `GET`    | `/admin/purchase-orders`                                   | `purchase_order.index`                        | Orders with late badges and filter counts                                    |
+| `GET`    | `/admin/purchase-orders/items/search`                      | `purchase_order.create`                       | Find by SKU, name, barcode or the supplier's own code                        |
+| `GET`    | `/admin/purchase-orders/:id`                               | `purchase_order.index`                        | One order: ordered, received and still to come                               |
+| `GET`    | `/admin/purchase-orders/:id/activity`                      | `purchase_order.index`                        | The audit trail in sentences                                                 |
+| `GET`    | `/admin/purchase-orders/:id/receive-draft`                 | `purchase.create`                             | A purchase entry filled with what is still to come                           |
+| `GET`    | `/admin/purchase-orders/:id/pdf`                           | `purchase_order.index`                        | The order as a PDF (vendor invoice template)                                 |
+| `POST`   | `/admin/purchase-orders`                                   | `purchase_order.create`                       | A new draft order with its number                                            |
+| `PUT`    | `/admin/purchase-orders/:id`                               | `purchase_order.create`                       | Change a draft order                                                         |
+| `DELETE` | `/admin/purchase-orders/:id`                               | `purchase_order.create`                       | Delete a draft order                                                         |
+| `POST`   | `/admin/purchase-orders/:id/copy`                          | `purchase_order.create`                       | Copy as a new draft                                                          |
+| `POST`   | `/admin/purchase-orders/:id/send`                          | `purchase_order.send`                         | Email with the PDF, or mark sent after a download                            |
+| `POST`   | `/admin/purchase-orders/:id/close`                         | `purchase_order.cancel`                       | Close with what is short                                                     |
+| `POST`   | `/admin/purchase-orders/:id/cancel`                        | `purchase_order.cancel`                       | Cancel before anything is received                                           |
+| `GET`    | `/admin/purchase-returns`                                  | `purchase_return.index`                       | Returns and debit notes, drafts made by the goods check included             |
+| `GET`    | `/admin/purchase-returns/returnable`                       | `purchase_return.index`                       | Per entry line: received, returned before, free to return and why            |
+| `GET`    | `/admin/purchase-returns/for-entry/:entryId`               | `purchase_return.index`                       | A purchase entry's returns (its Returns tab)                                 |
+| `GET`    | `/admin/purchase-returns/:id`                              | `purchase_return.index`                       | One return                                                                   |
+| `GET`    | `/admin/purchase-returns/:id/activity`                     | `purchase_return.index`                       | The audit trail in sentences                                                 |
+| `POST`   | `/admin/purchase-returns`                                  | `purchase_return.create`                      | A return draft from a posted entry; quantities are capped                    |
+| `PUT`    | `/admin/purchase-returns/:id`                              | `purchase_return.create`                      | Change a draft return                                                        |
+| `DELETE` | `/admin/purchase-returns/:id`                              | `purchase_return.create`                      | Delete a draft return                                                        |
+| `POST`   | `/admin/purchase-returns/:id/send`                         | `purchase_return.send`                        | Number the debit note, take goods out of stock; never twice                  |
+| `POST`   | `/admin/purchase-returns/:id/settle`                       | `purchase_return.settle`                      | Credit note, refund, later bill or written off; part settlements stay open   |
+| `GET`    | `/admin/purchases/entries/:id/receipt-pdf`                 | `purchase.index`                              | The goods receipt: what was counted, good, damaged, missing                  |
+| `GET`    | `/admin/purchase-returns/:id/debit-note-pdf`               | `purchase_return.index`                       | The debit note of a sent return                                              |
+| `GET`    | `/admin/purchase-returns/:id/challan-pdf`                  | `purchase_return.index`                       | The delivery challan of goods sent back                                      |
+| `POST`   | `/admin/purchases/labels/pdf`                              | `purchase.index`                              | Barcode labels on A4 sheets, many items per sheet                            |
+| `GET`    | `/admin/stock`                                             | `stock.index`                                 | All stock with tiles; value only with stock.cost                             |
+| `GET`    | `/admin/stock/alerts`                                      | Staff or admin session                        | The bell: approvals waiting, my decisions, late orders, bills near the limit |
+| `POST`   | `/admin/stock/alerts/seen`                                 | Staff or admin session                        | Mark decisions on my own requests as seen                                    |
+| `GET`    | `/admin/stock/held`                                        | `stock.index`                                 | Held pieces by reason, overdue past the reminder                             |
+| `GET`    | `/admin/stock/items/:variantId`                            | `stock.index`                                 | Stock history and cost layers of one item                                    |
+| `GET`    | `/admin/stock/items/:variantId/holds`                      | `stock.index`                                 | Open holds on one item                                                       |
+| `POST`   | `/admin/stock/adjustments/preview`                         | `stock.index`                                 | What a change would do, whether it waits for approval, and why not           |
+| `POST`   | `/admin/stock/adjustments`                                 | `stock.adjust`                                | Write off or add: applies for approvers, else a request                      |
+| `POST`   | `/admin/stock/holds`                                       | `stock.hold`                                  | Move to held or release; never needs approval                                |
+| `GET`    | `/admin/stock/approvals`                                   | `stock.approve`                               | Write-offs and count differences waiting, approved or rejected               |
+| `POST`   | `/admin/stock/approvals/:id/approve`                       | `stock.approve`                               | Approve; nobody decides their own request                                    |
+| `POST`   | `/admin/stock/approvals/:id/reject`                        | `stock.approve`                               | Reject with a reason the requester sees                                      |
+| `GET`    | `/admin/stock-counts`                                      | `stock_count.count`                           | Counting, to review, waiting for approval, posted                            |
+| `GET`    | `/admin/stock-counts/:id`                                  | `stock_count.count`                           | One count; a blind count hides expected figures from counters                |
+| `POST`   | `/admin/stock-counts`                                      | `stock_count.create`                          | Start a count; the shop keeps selling                                        |
+| `POST`   | `/admin/stock-counts/:id/entries`                          | `stock_count.count`                           | Counted figures from one phone or screen                                     |
+| `POST`   | `/admin/stock-counts/:id/finish`                           | `stock_count.post`                            | Counting done; the count goes to review                                      |
+| `POST`   | `/admin/stock-counts/:id/recount`                          | `stock_count.post`                            | Send differing lines back to the counters                                    |
+| `POST`   | `/admin/stock-counts/:id/post`                             | `stock_count.post`                            | Post the differences, or send them for approval                              |
+| `GET`    | `/admin/opening-stock`                                     | `stock.opening`                               | Posted opening-stock loads                                                   |
+| `POST`   | `/admin/opening-stock/check`                               | `stock.opening`                               | Ready, cost missing, unknown SKU, already has stock                          |
+| `POST`   | `/admin/opening-stock`                                     | `stock.opening`                               | Post when every row is ready; once per SKU                                   |
+| `GET`    | `/admin/stock-reports/reorder`                             | `stock_report.index`                          | What to reorder and from whom                                                |
+| `POST`   | `/admin/stock-reports/reorder/orders`                      | `stock_report.index`, `purchase_order.create` | Ticked lines become one draft order per supplier                             |
+| `GET`    | `/admin/stock-reports/ageing`                              | `stock_report.index`                          | Value in age bands, oldest first                                             |
+| `GET`    | `/admin/stock-reports/valuation`                           | `stock_report.index`, `stock.cost`            | Stock value at cost on any day                                               |
+| `GET`    | `/admin/stock-reports/purchase-register`                   | `stock_report.index`, `purchase.index`        | Posted bills for the CA                                                      |
+| `GET`    | `/admin/stock-reports/movements`                           | `stock_report.index`                          | Every stock movement, filtered                                               |
+| `GET`    | `/admin/stock-reports/unpaid-bills`                        | `stock_report.index`, `purchase.index`        | Unpaid bills, oldest first, near the 180-day rule                            |
+| `GET`    | `/admin/settings/inventory`                                | `setting.index`                               | Purchases and stock settings                                                 |
+| `POST`   | `/admin/settings/inventory`                                | `setting.edit`                                | Save; every change is audited                                                |
+| `GET`    | `/admin/settings/shop-details`                             | `setting.index`                               | The shop's name, GSTIN and address on documents                              |
+| `GET`    | `/admin/settings/shop-details/impact`                      | `shop_details.edit`                           | What a new GSTIN changes: State and suppliers                                |
+| `PUT`    | `/admin/settings/shop-details`                             | `setting.index`                               | Save; every change is audited with old and new values                        |
+| `GET`    | `/admin/suppliers`                                         | `supplier.index`                              | Suppliers with what is owed, filters All / Owed money / Inactive             |
+| `GET`    | `/admin/suppliers/states`                                  | `supplier.index`                              | GST State codes and names, for the supplier form                             |
+| `GET`    | `/admin/suppliers/gstin-check`                             | `supplier.index`                              | Check digit, State, PAN, and suppliers already using it                      |
+| `GET`    | `/admin/suppliers/:id`                                     | `supplier.index`                              | One supplier for the form                                                    |
+| `GET`    | `/admin/suppliers/:id/summary`                             | `supplier.index`                              | Supplier page tiles and statement                                            |
+| `GET`    | `/admin/suppliers/:id/activity`                            | `supplier.index`                              | The audit trail in sentences                                                 |
+| `POST`   | `/admin/suppliers`                                         | `supplier.create`                             | Add a supplier; the same GSTIN twice is refused                              |
+| `PUT`    | `/admin/suppliers/:id`                                     | `supplier.edit`                               | Change a supplier; posted bills keep their tax                               |
+| `POST`   | `/admin/suppliers/:id/item-codes`                          | `supplier.edit`                               | Link one of the supplier's own codes to a variant                            |
+| `DELETE` | `/admin/suppliers/:id`                                     | `supplier.destroy`                            | Soft delete; refused while it has entries or orders                          |
+
+The bell's two routes need only an operator session: each operator reads and clears their own lines. A save from Shop details reaches the server with `setting.index` so that a refusal for lacking `shop_details.edit` is written to the audit log.
 
 ## Public catalogue routes
 

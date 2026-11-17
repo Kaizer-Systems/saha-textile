@@ -51,6 +51,8 @@ sequenceDiagram
 
 Add-to-cart never requires sign-in. Checkout does.
 
+A line holds at most 99 pieces. For fabric sold by the metre the quantity is whole tenths of a metre (up to 999.9 m); the API refuses a length below the product's shortest cut (`below_shortest_cut`), and the cart's steppers and boxes show the length with its unit ("2.5 m"). See [Cart-line signature](/business-flows/discovery-and-product-configuration#cart-line-signature) for how metre lines are priced.
+
 ## Proceed-to-checkout journey
 
 ```mermaid

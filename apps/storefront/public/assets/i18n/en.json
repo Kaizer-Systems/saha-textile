@@ -935,5 +935,12 @@
 	"sold_by_metre": "metre",
 	"shortest_cut": "Shortest cut",
 	"cloth_width": "Width",
-	"in_stock_length": "In stock: {{length}}"
+	"in_stock_length": "In stock: {{length}}",
+	"pb_slider_label": "Pictures",
+	"pb_slide_label": "{{n}} of {{total}}",
+	"pb_pause": "Pause",
+	"pb_play": "Play",
+	"pb_previous": "Previous picture",
+	"pb_next": "Next picture",
+	"pb_go_to": "Show picture {{n}}"
 }

@@ -1,0 +1,44 @@
+@for (section of sections(); track section.id; let first = $first) {
+<section
+	[class]="classes(section)"
+	[attr.data-pb-section]="section.type"
+>
+	@if (first) {
+	<!-- The first section draws at once: it may hold the page's early picture. -->
+	@switch (section.type) { @case ('banner_arrangement') {
+	<app-pb-banner
+		[section]="section"
+		[early]="true"
+	/>
+	} @case ('promo_banners') {
+	<app-pb-promos
+		[section]="section"
+		[early]="true"
+	/>
+	} @case ('product_row') {
+	<app-pb-product-row [section]="section" />
+	} @case ('youtube_videos') {
+	<app-pb-videos [section]="section" />
+	} @case ('blog_posts') {
+	<app-pb-blog-posts [section]="section" />
+	} @case ('newsletter') {
+	<app-pb-newsletter [section]="section" />
+	} } } @else { @defer (on viewport; hydrate on viewport) { @switch (section.type) { @case ('banner_arrangement') {
+	<app-pb-banner [section]="section" />
+	} @case ('promo_banners') {
+	<app-pb-promos [section]="section" />
+	} @case ('product_row') {
+	<app-pb-product-row [section]="section" />
+	} @case ('recently_viewed') {
+	<app-pb-recently-viewed [section]="section" />
+	} @case ('youtube_videos') {
+	<app-pb-videos [section]="section" />
+	} @case ('blog_posts') {
+	<app-pb-blog-posts [section]="section" />
+	} @case ('newsletter') {
+	<app-pb-newsletter [section]="section" />
+	} } } @placeholder {
+	<div></div>
+	} }
+</section>
+}

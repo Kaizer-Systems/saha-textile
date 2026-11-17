@@ -935,5 +935,12 @@
 	"sold_by_metre": "মিটারে",
 	"shortest_cut": "সবচেয়ে কম কাটা",
 	"cloth_width": "চওড়া",
-	"in_stock_length": "স্টকে আছে: {{length}}"
+	"in_stock_length": "স্টকে আছে: {{length}}",
+	"pb_slider_label": "ছবিগুলো",
+	"pb_slide_label": "{{total}}টির মধ্যে {{n}}",
+	"pb_pause": "থামান",
+	"pb_play": "চালু করুন",
+	"pb_previous": "আগের ছবি",
+	"pb_next": "পরের ছবি",
+	"pb_go_to": "{{n}} নম্বর ছবি দেখুন"
 }

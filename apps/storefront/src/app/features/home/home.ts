@@ -9,9 +9,11 @@ import { readRecentViews } from '@core/catalog/recent-views';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
+import { injectPageLayoutQuery } from '@data-access/queries/page-layout.queries';
 import { injectHomeRailsQuery } from '@data-access/queries/product.queries';
 import { injectVideoRailQuery } from '@data-access/queries/youtube.queries';
 import { ProductService } from '@data-access/services/product.service';
+import { PageLayout } from '@features/page-builder/page-layout';
 import { Blog } from '@features/themes/widgets/blog/blog';
 import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
 import { Newsletter } from '@features/themes/widgets/newsletter/newsletter';
@@ -68,6 +70,7 @@ const HERO_LAYOUT_TILES: Record<StorefrontBanners['heroLayout'], [string | null,
 		TranslocoModule,
 		VideoCard,
 		VideoModal,
+		PageLayout,
 	],
 })
 export class Home {
@@ -133,6 +136,13 @@ export class Home {
 	};
 
 	private readonly bannersQuery = injectBannersQuery(() => 'home');
+
+	/** Home's live Page Builder layout; null while the builder's switch is off or nothing is live. */
+	private readonly layoutQuery = injectPageLayoutQuery(() => 'home');
+	readonly builderSections = computed(() => {
+		const layout = this.layoutQuery.data();
+		return layout?.revisionId && layout.sections.length ? layout.sections : null;
+	});
 
 	/** The channel's latest videos for the home rail, as many as admin set to show. */
 	private readonly railQuery = injectVideoRailQuery(() => 'home');

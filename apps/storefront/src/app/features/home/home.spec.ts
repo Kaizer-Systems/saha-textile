@@ -31,6 +31,13 @@ vi.mock('@data-access/queries/banner.queries', () => ({
 	},
 	bannerSrc: (image: { url: string }) => image.url,
 }));
+const layoutData = signal<unknown>(undefined);
+vi.mock('@data-access/queries/page-layout.queries', () => ({
+	injectPageLayoutQuery: (key: () => string) => {
+		key();
+		return { data: layoutData };
+	},
+}));
 vi.mock('@data-access/queries/youtube.queries', () => ({
 	injectVideoRailQuery: (placement: () => string) => {
 		railPlacement.value = placement();
@@ -65,6 +72,7 @@ const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }])), platform = 'bro
 };
 
 afterEach(() => {
+	layoutData.set(undefined);
 	homeData.set(undefined);
 	bannerData.set(undefined);
 	railData.set(undefined);
@@ -216,5 +224,17 @@ describe('Home hero', () => {
 			sub_banner_1: { image_url: 'https://cdn/l.webp', resolved: left },
 			sub_banner_2: { image_url: 'https://cdn/r.webp', resolved: right },
 		});
+	});
+});
+
+describe('Home and the Page Builder switch', () => {
+	it('draws the live layout only when the API answers one with sections', () => {
+		const { page } = render();
+		expect(page.builderSections()).toBeNull();
+		layoutData.set({ pageType: 'home', revisionId: null, sections: [], refreshAt: null });
+		expect(page.builderSections()).toBeNull();
+		const sections = [{ id: 'news', type: 'newsletter' }];
+		layoutData.set({ pageType: 'home', revisionId: 'rev_1', sections, refreshAt: null });
+		expect(page.builderSections()).toEqual(sections);
 	});
 });

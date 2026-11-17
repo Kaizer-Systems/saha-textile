@@ -100,37 +100,39 @@ With the switch on, Home draws `app-page-layout`: the first section at once, wit
 | -------- | ------------------------------------------ | -------------------- |
 | `GET`    | `/admin/page-builder/pages`                | `theme_option.index` |
 | `GET`    | `/admin/page-builder/pages/:type`          | `theme_option.index` |
-| `POST`   | `/admin/page-builder/pages/:type/layouts`  | `theme_option.edit`  |
+| `POST`   | `/admin/page-builder/pages/:type/layouts`  | draft code (below)   |
 | `GET`    | `/admin/page-builder/layouts/:id`          | `theme_option.index` |
-| `PUT`    | `/admin/page-builder/layouts/:id/draft`    | `theme_option.edit`  |
-| `PATCH`  | `/admin/page-builder/layouts/:id`          | `theme_option.edit`  |
-| `PUT`    | `/admin/page-builder/pages/:type/settings` | `theme_option.edit`  |
+| `PUT`    | `/admin/page-builder/layouts/:id/draft`    | draft code           |
+| `PATCH`  | `/admin/page-builder/layouts/:id`          | draft code           |
+| `PUT`    | `/admin/page-builder/pages/:type/settings` | draft code           |
 | `GET`    | `/admin/page-builder/coming-up`            | `theme_option.index` |
-| `POST`   | `/admin/page-builder/layouts/:id/lock`     | `theme_option.edit`  |
-| `DELETE` | `/admin/page-builder/layouts/:id/lock`     | `theme_option.edit`  |
+| `POST`   | `/admin/page-builder/layouts/:id/lock`     | draft code           |
+| `DELETE` | `/admin/page-builder/layouts/:id/lock`     | draft code           |
 | `GET`    | `/admin/page-builder/blocks`               | `theme_option.index` |
 | `POST`   | `/admin/page-builder/blocks`               | `theme_option.edit`  |
 | `PUT`    | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  |
 | `DELETE` | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  |
 
 | `GET` | `/admin/page-builder/layouts/:id/go-live` | `theme_option.index` |
-| `POST` | `/admin/page-builder/layouts/:id/go-live` | `page_builder.go_live` |
+| `POST` | `/admin/page-builder/layouts/:id/go-live` | Go Live code |
 | `GET` | `/admin/page-builder/layouts/:id/history` | `theme_option.index` |
-| `POST` | `/admin/page-builder/layouts/:id/bring-back` | `theme_option.edit` |
-| `POST` | `/admin/page-builder/layouts/:id/review-request` | `theme_option.edit` |
-| `DELETE` | `/admin/page-builder/layouts/:id/review-request` | `page_builder.go_live` |
-| `POST` | `/admin/page-builder/pages/:type/cancel-switch` | `page_builder.go_live` |
-| `DELETE` | `/admin/page-builder/pages/:type/waiting/:layoutId` | `page_builder.go_live` |
-| `POST` | `/admin/page-builder/pages/:type/put-back` | `page_builder.go_live` |
+| `POST` | `/admin/page-builder/layouts/:id/bring-back` | draft code |
+| `POST` | `/admin/page-builder/layouts/:id/review-request` | draft code |
+| `DELETE` | `/admin/page-builder/layouts/:id/review-request` | Go Live code |
+| `POST` | `/admin/page-builder/pages/:type/cancel-switch` | Go Live code |
+| `DELETE` | `/admin/page-builder/pages/:type/waiting/:layoutId` | Go Live code |
+| `POST` | `/admin/page-builder/pages/:type/put-back` | Go Live code |
 | `PUT` | `/admin/page-builder/pages/:type/safe-mode` | `page_builder.go_live` and a super admin |
 | `GET` | `/admin/page-builder/alerts` | `theme_option.index` |
 | `GET` | `/admin/page-builder/layouts/:id/export` | `theme_option.index` |
-| `POST` | `/admin/page-builder/pages/:type/import` | `theme_option.edit` |
+| `POST` | `/admin/page-builder/pages/:type/import` | draft code |
 | `GET` | `/admin/page-builder/pages/:type/sales` | `theme_option.index` and `dashboard.revenue` |
 
 ## Go Live
 
 Go Live changes what shoppers see, so it has its own permission, `page_builder.go_live` (Q10 A). The Administrator role holds every code (run `seed:system-roles` after a pull); the owner gives it to anyone else in Roles. Everyone with Store Front access builds drafts and asks for review.
+
+**Who may change each page (SG-19).** Two codes cover every page: `theme_option.edit` builds drafts and `page_builder.go_live` goes live. Each page type also has one code of each kind for that page alone, `page_builder.draft_<page>` and `page_builder.go_live_<page>` (Home: `page_builder.draft_home`, `page_builder.go_live_home`), so the owner can let a role build or go live on Home without the other pages, from the same Roles screen (core `mayDraftPage`, `mayGoLivePage`). The routes marked "draft code" and "Go Live code" above need `theme_option.index` at the door, then either code for the page in question; a layout's page is looked up from the layout. Saved blocks are shared by every page and stay on `theme_option.edit`; safe mode stays with super admins. Go Live's checks say whether this admin may go live on this page, and the bell shows each reviewer only the requests on pages they may go live on. A new page type adds its two codes to the permission registry when it is registered; a test holds the two together.
 
 **The checks** (`GET …/layouts/:id/go-live`, E1, P6) run on what would go live: the draft with every linked block's current content (SG-5). They are the builder's own list (every language filled, every picture ready and of one shape per piece, a phone picture for wide art with words) plus:
 

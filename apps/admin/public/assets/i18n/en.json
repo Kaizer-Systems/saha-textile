@@ -4057,7 +4057,7 @@
 	"pb_bell_nightly_one": "“{{layout}}” has 1 thing to fix (nightly check)",
 	"pb_bell_nightly_other": "“{{layout}}” has {{count}} things to fix (nightly check)",
 	"perm_group_page_builder": "Page Builder",
-	"perm_page_builder_go_live": "Go Live and schedule",
+	"perm_page_builder_go_live": "Go Live and schedule on every page",
 	"pb_budget_of_count": "{{value}} of {{limit}}",
 	"lang_area_page_builder": "Page Builder (page settings, and words in live and scheduled layouts)",
 	"pb_import": "Import a layout",
@@ -4088,5 +4088,7 @@
 	"pb_words_band_hard": "{{band}}: hard to read",
 	"pb_words_ratio": "{{field}} {{ratio}} : 1",
 	"pb_words_fix_with": "Fix it with",
-	"pb_words_move_to": "Or move the words to"
+	"pb_words_move_to": "Or move the words to",
+	"perm_page_builder_draft_home": "Build Home page drafts only",
+	"perm_page_builder_go_live_home": "Go Live and schedule on the Home page only"
 }

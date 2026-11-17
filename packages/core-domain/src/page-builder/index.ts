@@ -9,3 +9,4 @@ export * from './blocks';
 export * from './go-live';
 export * from './words';
 export * from './measure-words';
+export * from './access';

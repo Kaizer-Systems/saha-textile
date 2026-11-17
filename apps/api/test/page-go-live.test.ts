@@ -547,3 +547,51 @@ describe('words over pictures at Go Live (SG-1)', () => {
 		expect((await h.goLive.view(dark, OWNER, T0)).problems).toEqual([]);
 	});
 });
+
+describe('who may change each page (SG-19)', () => {
+	const HOME_ONLY_DRAFT = ['theme_option.index', 'page_builder.draft_home'];
+	const HOME_ONLY_GO_LIVE = ['theme_option.index', 'theme_option.edit', 'page_builder.go_live_home'];
+
+	it('names one draft code and one Go Live code for every registered page type, in the permission registry', async () => {
+		const { PermissionCode } = await import('@saha-textile/contracts');
+		const { pageDraftCode, pageGoLiveCode, registeredPageTypes } = await import('@saha-textile/core-domain');
+		for (const rules of registeredPageTypes()) {
+			expect(PermissionCode.options).toContain(pageDraftCode(rules.key));
+			expect(PermissionCode.options).toContain(pageGoLiveCode(rules.key));
+		}
+	});
+
+	it('lets a role build Home with the page’s own code, or every page with theme_option.edit; nobody else', async () => {
+		const h = harness();
+		const { id } = await h.layout('Everyday', [letter]);
+		await expect(h.builder.assertMayDraft(HOME_ONLY_DRAFT, { pageType: 'home' })).resolves.toBeUndefined();
+		await expect(h.builder.assertMayDraft(HOME_ONLY_DRAFT, { layoutId: id })).resolves.toBeUndefined();
+		await expect(h.builder.assertMayDraft(STAFF, { layoutId: id })).resolves.toBeUndefined();
+		await expect(h.builder.assertMayDraft(['theme_option.index'], { layoutId: id })).rejects.toMatchObject({
+			status: 403,
+		});
+		await expect(
+			h.builder.assertMayDraft(['theme_option.index', 'page_builder.draft_about'], { pageType: 'home' }),
+		).rejects.toMatchObject({ status: 403 });
+		await expect(h.builder.assertMayDraft(STAFF, { pageType: 'about_us' })).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('lets a role go live on Home with the page’s own code: the checks say so, and the switches are allowed', async () => {
+		const h = harness();
+		const { id } = await h.layout('Everyday', [letter]);
+		expect((await h.goLive.view(id, HOME_ONLY_GO_LIVE, T0)).canGoLive).toBe(true);
+		expect((await h.goLive.view(id, STAFF, T0)).canGoLive).toBe(false);
+		await expect(h.goLive.assertMayGoLive(HOME_ONLY_GO_LIVE, 'home')).resolves.toBeUndefined();
+		await expect(h.goLive.assertMayGoLive(OWNER, 'home')).resolves.toBeUndefined();
+		await expect(h.goLive.assertMayGoLive(STAFF, 'home')).rejects.toMatchObject({ status: 403 });
+		await expect(h.goLive.closeReview('adm_2', id, STAFF)).rejects.toMatchObject({ status: 403 });
+	});
+
+	it('shows each reviewer the review requests on the pages they may go live on', async () => {
+		const h = harness();
+		const { id } = await h.layout('Everyday', [letter]);
+		await h.goLive.askReview('adm_2', id, 'Please look', T0);
+		expect((await h.goLive.alerts(HOME_ONLY_GO_LIVE)).reviews.map((row) => row.layoutId)).toEqual([id]);
+		expect((await h.goLive.alerts(STAFF)).reviews).toEqual([]);
+	});
+});

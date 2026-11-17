@@ -64,9 +64,16 @@ export class PageBuilderHome {
 	readonly page = signal<AdminBuilderPage | null>(null);
 	readonly statusClass = STATUS_CLASS;
 	readonly confirm = viewChild<ConfirmationModal>('confirmationModal');
-	/** Q10 A: going live and changing the schedule are for the owner and super admins. */
+	/**
+	 * Q10 A: going live and changing the schedule are for the owner and super admins: `page_builder.go_live` on every
+	 * page, or this page's own code (SG-19).
+	 */
 	private readonly auth = inject(AuthStore);
-	readonly canGoLive = computed(() => this.auth.permissions().includes('page_builder.go_live'));
+	readonly canGoLive = computed(() =>
+		['page_builder.go_live', `page_builder.go_live_${this.pageType}`].some((code) =>
+			this.auth.permissions().includes(code),
+		),
+	);
 	/** SG-23 shows money, so it needs the revenue permission too. */
 	readonly canSeeSales = computed(() => this.auth.permissions().includes('dashboard.revenue'));
 	readonly sales = signal<PageSalesRow[] | null>(null);

@@ -4057,7 +4057,7 @@
 	"pb_bell_nightly_one": "“{{layout}}”-এ 1টি জিনিস ঠিক করতে হবে (রাতের পরীক্ষা)",
 	"pb_bell_nightly_other": "“{{layout}}”-এ {{count}}টি জিনিস ঠিক করতে হবে (রাতের পরীক্ষা)",
 	"perm_group_page_builder": "পেজ বিল্ডার",
-	"perm_page_builder_go_live": "লাইভ করা আর শিডিউল",
+	"perm_page_builder_go_live": "প্রতিটি পেজে লাইভ করা আর শিডিউল",
 	"pb_budget_of_count": "{{limit}}টির মধ্যে {{value}}",
 	"lang_area_page_builder": "পেজ বিল্ডার (পেজ সেটিংস, আর লাইভ ও শিডিউল করা লেআউটের লেখা)",
 	"pb_import": "লেআউট ইমপোর্ট করুন",
@@ -4088,5 +4088,7 @@
 	"pb_words_band_hard": "{{band}}: পড়তে কষ্ট হয়",
 	"pb_words_ratio": "{{field}}-এর অনুপাত {{ratio}} : 1",
 	"pb_words_fix_with": "এভাবে ঠিক করুন",
-	"pb_words_move_to": "অথবা লেখাটা সরিয়ে দিন"
+	"pb_words_move_to": "অথবা লেখাটা সরিয়ে দিন",
+	"perm_page_builder_draft_home": "শুধু হোম পেজের ড্রাফট বানানো",
+	"perm_page_builder_go_live_home": "শুধু হোম পেজে লাইভ করা আর শিডিউল"
 }

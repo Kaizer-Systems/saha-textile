@@ -100,7 +100,9 @@ export const PermissionCode = z.enum([
 	'order.edit',
 	'order.index',
 	'order.update',
+	'page_builder.draft_home',
 	'page_builder.go_live',
+	'page_builder.go_live_home',
 	'page.create',
 	'page.destroy',
 	'page.edit',
@@ -209,7 +211,11 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'dashboard.reviews':
 		'Latest Reviews panel on the admin home page (dashboard.html, GET /admin/dashboard/reviews). Read-only: moderating stays on review.edit.',
 	'page_builder.go_live':
-		'Go Live, Schedule, Put back and Cancel a switch in the Page Builder (pb-go-live.html, POST /admin/page-builder/layouts/:id/go-live). Drafts stay on theme_option.edit, so staff can build and Ask for review while only the owner and super admins change what shoppers see (Page Builder Q10 A).',
+		'Go Live, Schedule, Put back and Cancel a switch in the Page Builder (pb-go-live.html, POST /admin/page-builder/layouts/:id/go-live), on every page. Drafts stay on theme_option.edit, so staff can build and Ask for review while only the owner and super admins change what shoppers see (Page Builder Q10 A).',
+	'page_builder.draft_home':
+		'Build drafts of the Home page only in the Page Builder (layouts, the builder, Page settings, import, Ask for review), for a role without theme_option.edit, which drafts every page (Page Builder SG-19).',
+	'page_builder.go_live_home':
+		'Go Live, Schedule, Put back and Cancel a switch on the Home page only, for a role without page_builder.go_live, which covers every page (Page Builder SG-19).',
 	'dashboard.stock':
 		'Product Stock Report on the admin home page (dashboard.html, GET /admin/dashboard/stock). Row Edit still needs product.edit.',
 	'dashboard.top_products':
@@ -429,9 +435,11 @@ export const PermissionAction = z.enum([
 	'customers',
 	'debit',
 	'destroy',
+	'draft_home',
 	'edit',
 	'export',
 	'go_live',
+	'go_live_home',
 	'hold',
 	'index',
 	'manage',

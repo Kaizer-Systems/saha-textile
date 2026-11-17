@@ -78,16 +78,17 @@ export class AdminPageBuilderController {
 	}
 
 	@Put('pages/:type/settings')
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({
 		operationId: 'saveBuilderPageSettings',
 		summary: "A page's own settings: search title, description, main heading, share picture (P3)",
 	})
-	saveSettings(
+	async saveSettings(
 		@Param('type') type: string,
 		@Body(new ZodValidationPipe(PageSettings)) body: PageSettings,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminBuilderPage> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { pageType: type });
 		return this.builder.saveSettings(principal?.userId ?? null, type, body);
 	}
 
@@ -103,13 +104,14 @@ export class AdminPageBuilderController {
 	}
 
 	@Post('pages/:type/layouts')
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'createBuilderLayout', summary: 'New layout: blank or a copy of another (A2)' })
-	create(
+	async create(
 		@Param('type') type: string,
 		@Body(new ZodValidationPipe(CreateLayoutRequest)) body: CreateLayoutRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminLayoutView> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { pageType: type });
 		return this.builder.createLayout(principal?.userId ?? null, type, body);
 	}
 
@@ -129,37 +131,40 @@ export class AdminPageBuilderController {
 
 	@Post('layouts/:id/lock')
 	@HttpCode(200)
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({
 		operationId: 'lockBuilderLayout',
 		summary: 'Take or keep the editing lock (a heartbeat every 30 s; free after 2 minutes without one)',
 	})
-	lock(
+	async lock(
 		@Param('id') id: string,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<LayoutLockResponse> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { layoutId: id });
 		return this.builder.lock(principal?.userId ?? null, id);
 	}
 
 	@Delete('layouts/:id/lock')
 	@HttpCode(204)
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'unlockBuilderLayout', summary: 'Free the editing lock held by the asking admin' })
-	unlock(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
+	async unlock(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { layoutId: id });
 		return this.builder.unlock(principal?.userId ?? null, id);
 	}
 
 	@Put('layouts/:id/draft')
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({
 		operationId: 'saveBuilderDraft',
 		summary: 'Save the draft; refused (409 layout_moved_on) over a newer revision',
 	})
-	saveDraft(
+	async saveDraft(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(SaveLayoutDraft)) body: SaveLayoutDraft,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminLayoutView> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { layoutId: id });
 		return this.builder.saveDraft(principal?.userId ?? null, id, body);
 	}
 
@@ -174,13 +179,14 @@ export class AdminPageBuilderController {
 	}
 
 	@Patch('layouts/:id')
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'renameBuilderLayout', summary: 'Rename a layout (the name is seen by admins only)' })
-	rename(
+	async rename(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(RenameLayoutRequest)) body: RenameLayoutRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminLayoutView> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { layoutId: id });
 		return this.builder.rename(principal?.userId ?? null, id, body);
 	}
 }
@@ -190,7 +196,10 @@ export class AdminPageBuilderController {
 @Audience('admin')
 @Controller('admin/page-builder')
 export class AdminPageGoLiveController {
-	constructor(private readonly goLive: PageGoLiveService) {}
+	constructor(
+		private readonly goLive: PageGoLiveService,
+		private readonly builder: PageBuilderService,
+	) {}
 
 	@Get('layouts/:id/go-live')
 	@Header('Cache-Control', 'no-store')
@@ -205,7 +214,7 @@ export class AdminPageGoLiveController {
 
 	@Post('layouts/:id/go-live')
 	@HttpCode(200)
-	@RequirePermissions('page_builder.go_live')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({
 		operationId: 'builderGoLive',
 		summary:
@@ -229,31 +238,33 @@ export class AdminPageGoLiveController {
 
 	@Post('layouts/:id/bring-back')
 	@HttpCode(200)
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'builderBringBack', summary: 'A saved revision becomes the draft again (E3)' })
-	bringBack(
+	async bringBack(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(BringBackRequest)) body: BringBackRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminLayoutView> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { layoutId: id });
 		return this.goLive.bringBack(principal?.userId ?? null, id, body);
 	}
 
 	@Post('layouts/:id/review-request')
 	@HttpCode(204)
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'builderAskReview', summary: 'Ask the owner and super admins to review (SG-18)' })
 	async askReview(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(ReviewRequest)) body: ReviewRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<void> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { layoutId: id });
 		await this.goLive.askReview(principal?.userId ?? null, id, body.note);
 	}
 
 	@Delete('layouts/:id/review-request')
 	@HttpCode(204)
-	@RequirePermissions('page_builder.go_live')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'builderCloseReview', summary: 'Close a review without going live (SG-18)' })
 	async closeReview(
 		@Param('id') id: string,
@@ -264,35 +275,38 @@ export class AdminPageGoLiveController {
 
 	@Post('pages/:type/cancel-switch')
 	@HttpCode(200)
-	@RequirePermissions('page_builder.go_live')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'builderCancelSwitch', summary: 'Take a switch still to come off the schedule (A1)' })
-	cancelSwitch(
+	async cancelSwitch(
 		@Param('type') type: string,
 		@Body(new ZodValidationPipe(CancelSwitchRequest)) body: CancelSwitchRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminBuilderPage> {
+		await this.goLive.assertMayGoLive(principal?.permissions ?? [], type);
 		return this.goLive.cancelSwitch(principal?.userId ?? null, type, body);
 	}
 
 	@Delete('pages/:type/waiting/:layoutId')
-	@RequirePermissions('page_builder.go_live')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'builderCancelWaiting', summary: 'Take off a Go Live waiting for pictures (E5)' })
-	cancelWaiting(
+	async cancelWaiting(
 		@Param('type') type: string,
 		@Param('layoutId') layoutId: string,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminBuilderPage> {
+		await this.goLive.assertMayGoLive(principal?.permissions ?? [], type);
 		return this.goLive.cancelWaiting(principal?.userId ?? null, type, layoutId);
 	}
 
 	@Post('pages/:type/put-back')
 	@HttpCode(200)
-	@RequirePermissions('page_builder.go_live')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({ operationId: 'builderPutBack', summary: 'Bring back the layout that showed before (SG-15)' })
-	putBack(
+	async putBack(
 		@Param('type') type: string,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminBuilderPage> {
+		await this.goLive.assertMayGoLive(principal?.permissions ?? [], type);
 		return this.goLive.putBack(principal?.userId ?? null, type);
 	}
 
@@ -329,16 +343,17 @@ export class AdminPageGoLiveController {
 	}
 
 	@Post('pages/:type/import')
-	@RequirePermissions('theme_option.edit')
+	@RequirePermissions('theme_option.index')
 	@ApiOperation({
 		operationId: 'builderImport',
 		summary: 'A layout file from another environment becomes a new layout of this page (SG-22)',
 	})
-	importLayout(
+	async importLayout(
 		@Param('type') type: string,
 		@Body(new ZodValidationPipe(LayoutExport)) body: LayoutExport,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminLayoutView> {
+		await this.builder.assertMayDraft(principal?.permissions ?? [], { pageType: type });
 		return this.goLive.import(principal?.userId ?? null, type, body);
 	}
 

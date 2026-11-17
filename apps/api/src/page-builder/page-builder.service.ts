@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
 	BadRequestException,
 	ConflictException,
+	ForbiddenException,
 	HttpException,
 	HttpStatus,
 	Inject,
@@ -33,6 +34,7 @@ import type {
 	WordsMapQuery,
 } from '@saha-textile/contracts';
 import {
+	mayDraftPage,
 	type AdminUserRepository,
 	type AuditLogRepository,
 	type MediaAssetRepository,
@@ -388,6 +390,16 @@ export class PageBuilderService {
 			...layoutProblems(sections, { rules, slot: 'main', shopLocales: this.languages.shop(), picture: fact }),
 			...words,
 		];
+	}
+
+	/** Refuses a draft change on a page this admin may not build (SG-19): by page type, or by one of its layouts. */
+	async assertMayDraft(
+		permissions: readonly string[],
+		ref: { pageType: string } | { layoutId: string },
+	): Promise<void> {
+		const pageType = 'pageType' in ref ? ref.pageType : (await this.requireLayout(ref.layoutId)).pageType;
+		if (!pageTypeRules(pageType)) throw new NotFoundException('No such page');
+		if (!mayDraftPage(permissions, pageType)) throw new ForbiddenException('You may not build this page');
 	}
 
 	/**

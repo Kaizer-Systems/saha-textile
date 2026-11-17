@@ -28,6 +28,7 @@ import {
 	type ScheduleEntry,
 } from '@saha-textile/contracts';
 import {
+	mayGoLivePage,
 	SUPER_ADMIN_ROLE_KEY,
 	type AdminUserRoleAssignmentRepository,
 	type BlogPostRepository,
@@ -169,8 +170,16 @@ export class PageGoLiveService {
 		];
 	}
 
-	private async canGoLive(permissions: readonly string[]): Promise<boolean> {
-		return permissions.includes(GO_LIVE_PERMISSION);
+	/** SG-19: `page_builder.go_live` on every page, or this page type's own Go Live code. */
+	private async canGoLive(permissions: readonly string[], pageType: string): Promise<boolean> {
+		return mayGoLivePage(permissions, pageType);
+	}
+
+	/** Refuses a switch, a cancelled switch or a put-back on a page this admin may not go live on (SG-19). */
+	async assertMayGoLive(permissions: readonly string[], type: string): Promise<void> {
+		const pageType = this.requireType(type);
+		if (!(await this.canGoLive(permissions, pageType)))
+			throw new ForbiddenException('You may not change what shoppers see on this page');
 	}
 
 	/** E1, E2, P6: what Go Live would do, and what holds it. */
@@ -205,7 +214,7 @@ export class PageGoLiveService {
 				.filter((sibling) => sibling.id !== layout.id && sibling.lastLiveRevisionId)
 				.map((sibling) => ({ layoutId: sibling.id, name: sibling.name })),
 			naturalHandBack: live && live.layoutId !== layout.id ? live.layoutId : null,
-			canGoLive: await this.canGoLive(permissions),
+			canGoLive: await this.canGoLive(permissions, layout.pageType),
 		};
 	}
 
@@ -252,9 +261,9 @@ export class PageGoLiveService {
 		permissions: readonly string[],
 		now = new Date(),
 	): Promise<GoLiveResponse> {
-		if (!(await this.canGoLive(permissions)))
-			throw new ForbiddenException('Only the owner and super admins go live');
 		const layout = await this.requireLayout(id);
+		if (!(await this.canGoLive(permissions, layout.pageType)))
+			throw new ForbiddenException('Only the owner and super admins go live');
 		if (!layout.draftRevisionId || layout.draftRevisionId !== request.expectedDraftId) {
 			throw new ConflictException({
 				message: 'This layout was saved again since you checked it',
@@ -606,15 +615,18 @@ export class PageGoLiveService {
 
 	/** A reviewer clears a request without going live (the draft needs more work). */
 	async closeReview(actor: string | null, id: string, permissions: readonly string[]): Promise<void> {
-		if (!(await this.canGoLive(permissions))) throw new ForbiddenException('Only reviewers close a review');
-		await this.requireLayout(id);
+		const layout = await this.requireLayout(id);
+		if (!(await this.canGoLive(permissions, layout.pageType)))
+			throw new ForbiddenException('Only reviewers close a review');
 		await this.layouts.setReviewRequest(id, null);
 		await this.builder.record(actor, 'page_layout.review_closed', id, {});
 	}
 
 	async alerts(permissions: readonly string[]): Promise<PageBuilderAlerts> {
-		const reviewer = await this.canGoLive(permissions);
-		const requests = reviewer ? await this.layouts.reviewRequests() : [];
+		// Each reviewer sees the requests on the pages they may go live on (SG-19).
+		const requests = (await this.layouts.reviewRequests()).filter((layout) =>
+			mayGoLivePage(permissions, layout.pageType),
+		);
 		const nightly = await this.settings.get('page_builder_nightly_check');
 		return {
 			reviews: await Promise.all(

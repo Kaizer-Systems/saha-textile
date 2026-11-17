@@ -75,7 +75,11 @@ const page: AdminBuilderPage = {
 	],
 };
 
-const setup = <T>(component: new (...args: never[]) => T, gateway: Partial<PageBuilderGateway>) => {
+const setup = <T>(
+	component: new (...args: never[]) => T,
+	gateway: Partial<PageBuilderGateway>,
+	permissions: string[] = ['theme_option.index', 'page_builder.go_live', 'dashboard.revenue'],
+) => {
 	TestBed.resetTestingModule();
 	const toastr = { success: vi.fn(), error: vi.fn() };
 	const modals = { open: vi.fn() };
@@ -94,7 +98,7 @@ const setup = <T>(component: new (...args: never[]) => T, gateway: Partial<PageB
 			{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ type: 'home' }) } } },
 			{
 				provide: AuthStore,
-				useValue: { permissions: () => ['theme_option.index', 'page_builder.go_live', 'dashboard.revenue'] },
+				useValue: { permissions: () => permissions },
 			},
 		],
 	});
@@ -310,6 +314,19 @@ describe('Page settings (P3, SG-6, SG-7)', () => {
 });
 
 describe('Page Builder › Home schedule actions (A1, E5, SG-15)', () => {
+	it('offers the schedule actions with the page’s own Go Live code, and not without one (SG-19)', () => {
+		const homeOnly = setup(PageBuilderHome, { page: vi.fn(() => of(page)) }, [
+			'theme_option.index',
+			'page_builder.go_live_home',
+		]);
+		expect(homeOnly.page.canGoLive()).toBe(true);
+		const staff = setup(PageBuilderHome, { page: vi.fn(() => of(page)) }, [
+			'theme_option.index',
+			'theme_option.edit',
+		]);
+		expect(staff.page.canGoLive()).toBe(false);
+	});
+
 	it('lists a Go Live waiting for pictures, and offers to cancel only switches still to come', () => {
 		const waiting = {
 			...page,

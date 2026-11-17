@@ -9,6 +9,7 @@ import { manifestPath } from '@core/pwa/web-manifest';
 
 import { ACTIVE_LOCALE } from './active-locale';
 import { supportedLocales } from './locale';
+import { preloadLocaleFonts } from './locale-fonts';
 import { LocaleSeo } from './locale-seo';
 
 /**
@@ -32,6 +33,8 @@ export function provideLocaleRouting() {
 			const transloco = inject(TranslocoService);
 			const page = inject(DOCUMENT);
 			page.documentElement.lang = locale;
+			// The language's own text font, preloaded like the English one (no shift when it arrives).
+			preloadLocaleFonts(page, locale);
 			// An installed app opens in the language it was installed from, with no optional cookie.
 			page.head
 				.querySelector<HTMLLinkElement>('link[rel="manifest"]')

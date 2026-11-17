@@ -89,7 +89,7 @@
 			<app-theme-product
 				[supplied]="newArrivals()"
 				[loading]="railsLoading()"
-				[fold]="'first'"
+				[fold]="heroTheme() || heroSlides() || promoBanners() ? 'below' : 'first'"
 				[style]="'horizontal'"
 				[slider]="true"
 				[sliderOption]="productSlider"

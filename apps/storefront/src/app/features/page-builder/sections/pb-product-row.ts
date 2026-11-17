@@ -25,7 +25,7 @@ import { type ResolvedPageSectionView, sectionContainer } from '../page-builder.
 					<app-theme-product
 						[supplied]="products()"
 						[loading]="loading()"
-						[fold]="'below'"
+						[fold]="early() ? 'first' : 'below'"
 						[style]="'horizontal'"
 						[slider]="true"
 						[sliderOption]="slider"
@@ -39,6 +39,8 @@ import { type ResolvedPageSectionView, sectionContainer } from '../page-builder.
 })
 export class PbProductRow {
 	readonly section = input.required<ResolvedPageSectionView>();
+	/** The page's first section: its first card is then the early picture (FX-13). */
+	readonly early = input(false);
 	private readonly rails = injectHomeRailsQuery();
 	readonly slider = productSlider6ItemMarginNav;
 	readonly container = computed(() => sectionContainer(this.section()));

@@ -70,7 +70,9 @@ const setSwitch = (home: boolean) =>
 test.describe('Page Builder on the shop (step 3)', () => {
 	test.beforeAll(async () => {
 		await ensureHomeBanners();
-		const now = new Date(Date.now() - 60_000);
+		// Later than any switch already on Home's schedule (the release step puts Today's home page there when the
+		// stack starts), so this layout is the one showing: the later start wins.
+		const now = new Date(Date.now() - 1_000);
 		await withDatabase(async (db) => {
 			await db
 				.collection('pageLayouts')

@@ -4079,5 +4079,14 @@
 	"pb_words_no_fix": "No colour reads here: move the words to another spot, or put them in the picture.",
 	"pb_fix_item": "{{ink}} words, backing {{backing}} ({{ratio}} : 1)",
 	"pb_band_desktop": "computers and tablets",
-	"pb_band_phone": "phones"
+	"pb_band_phone": "phones",
+	"pb_words_map": "How the words read on this picture",
+	"pb_words_map_help": "Shaded boxes are where these words would be hard to read; the ringed box is where they sit. Measured on the version each screen shows, for the lines written in any language.",
+	"pb_words_map_measuring": "This picture is being measured. The map shows in a moment.",
+	"pb_words_map_unmeasurable": "This photo has no version, so it can't be measured. Choose it again from Media to check its words.",
+	"pb_words_band_reads": "{{band}}: reads well",
+	"pb_words_band_hard": "{{band}}: hard to read",
+	"pb_words_ratio": "{{field}} {{ratio}} : 1",
+	"pb_words_fix_with": "Fix it with",
+	"pb_words_move_to": "Or move the words to"
 }

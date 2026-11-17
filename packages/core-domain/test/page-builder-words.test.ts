@@ -11,6 +11,8 @@ import {
 	luminance,
 	neededRatio,
 	readability,
+	wordsChoiceKey,
+	wordsMap,
 	wordsProblems,
 } from '../src/page-builder/index';
 
@@ -162,5 +164,27 @@ describe('measuring a version for the words check (SG-1 worker job)', () => {
 		expect((await run(asset({ wordSpots: [] }))).outcome).toBe('skipped');
 		expect((await run(asset({ state: 'making' }))).outcome).toBe('skipped');
 		expect((await run(null)).outcome).toBe('skipped');
+	});
+});
+
+describe('the picture map (P5)', () => {
+	it('answers all twelve colour choices for each of the nine spots, with the needed ratio of the band', () => {
+		const spots = [flat(0.98), ...Array.from({ length: 8 }, () => flat(0.02))];
+		const desktop = wordsMap(spots, BRAND, 'desktop');
+		expect(Object.keys(desktop)).toHaveLength(12);
+		expect(desktop[wordsChoiceKey('white', 'none')]?.map((spot) => spot.heading.passes)).toEqual([
+			false,
+			...Array.from({ length: 8 }, () => true),
+		]);
+		expect(desktop[wordsChoiceKey('ink', 'none')]?.[0]?.subheading.passes).toBe(true);
+		// The same answer as the Go Live check gives for one spot.
+		const white = luminance(inkColours('white', BRAND).heading);
+		expect(desktop['white|none']?.[3]?.heading).toEqual(readability(spots[3] as SpotLuminance, white, 'none', 3));
+		// A phone heading needs 4.5 : 1, a computer heading 3 : 1.
+		const grey = [flat(0.35)];
+		const brand = wordsMap(grey, BRAND, 'desktop')['brand_dark|soft_light']?.[0]?.heading;
+		const phone = wordsMap(grey, BRAND, 'phone')['brand_dark|soft_light']?.[0]?.heading;
+		expect(brand?.ratio).toBe(phone?.ratio);
+		expect(neededRatio('heading', 'phone')).toBe(4.5);
 	});
 });

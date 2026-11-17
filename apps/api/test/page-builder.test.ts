@@ -565,3 +565,71 @@ describe('saved blocks (SG-5, P7)', () => {
 		});
 	});
 });
+
+describe('the words map in the picture popup (P5, SG-1)', () => {
+	const bins = (bin: number) => ({ hist: Array.from({ length: 32 }, (_, index) => (index === bin ? 1 : 0)) });
+	// The top-left ninth is near white; the rest near black.
+	const spots = [bins(31), ...Array.from({ length: 8 }, () => bins(1))];
+	const measured = (): MediaAsset => {
+		const photo = asset('ready');
+		const version = photo.versions?.[0] as NonNullable<MediaAsset['versions']>[number];
+		return { ...photo, versions: [{ ...version, wordSpots: spots }] };
+	};
+	const withQueue = (media: MediaAsset) => {
+		const queue = { enqueue: vi.fn(async () => undefined) };
+		const service = new PageBuilderService(
+			memoryLayouts().repo,
+			LanguageStore.fixed(['en', 'bn']),
+			{ findById: async () => null } as never,
+			{
+				findById: async (id: string) => (id === media.id ? media : null),
+				findManyByIds: async () => [],
+			} as never,
+			{ getUrl: (key: string) => `https://cdn/${key}` } as never,
+			{ get: async () => null } as never,
+			{ list: async () => [] } as never,
+			null,
+			queue as never,
+		);
+		return { service, queue };
+	};
+
+	it('answers each spot for every colour choice, on the computer and the phone version, over a small file', async () => {
+		const { service } = withQueue(measured());
+		const map = await service.wordsMap({ desktop: 'med_1', desktopVersion: 'ver_1' });
+		expect(map.bands.map((band) => [band.band, band.state, band.url])).toEqual([
+			['desktop', 'ready', 'https://cdn/k2'],
+			['phone', 'ready', 'https://cdn/k2'],
+		]);
+		const desktop = map.bands[0];
+		expect(Object.keys(desktop?.choices ?? {})).toHaveLength(12);
+		// White words read over the dark spots, not over the white one; dark ink the other way round.
+		expect(desktop?.choices['white|none']?.map((spot) => spot.heading.passes)).toEqual([
+			false,
+			true,
+			true,
+			true,
+			true,
+			true,
+			true,
+			true,
+			true,
+		]);
+		expect(desktop?.choices['ink|none']?.[0]?.subheading.passes).toBe(true);
+		expect(desktop?.choices['ink|none']?.[4]?.subheading.passes).toBe(false);
+		// A soft dark backing makes white words read over the white spot too.
+		expect(desktop?.choices['white|soft_dark']?.[0]?.heading.passes).toBe(true);
+	});
+
+	it('sends a version not measured yet to the worker, and a photo without a version is not measurable', async () => {
+		const { service, queue } = withQueue(asset('ready'));
+		const waiting = await service.wordsMap({ desktop: 'med_1', desktopVersion: 'ver_1' });
+		expect(waiting.bands.map((band) => band.state)).toEqual(['measuring', 'measuring']);
+		expect(waiting.bands[0]?.choices).toEqual({});
+		expect(queue.enqueue).toHaveBeenCalledWith({ type: 'word-spots', assetId: 'med_1', versionId: 'ver_1' });
+		const old = await service.wordsMap({ desktop: 'med_1' });
+		expect(old.bands[0]?.state).toBe('unmeasurable');
+		// A photo that is gone has no band.
+		expect((await service.wordsMap({ desktop: 'med_gone' })).bands).toEqual([]);
+	});
+});

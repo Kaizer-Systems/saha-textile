@@ -108,7 +108,100 @@
 				</select>
 			</div>
 		</div>
-		}
+		@if (fields().length && (mapViews().length || measuring() || unmeasurable())) {
+		<div
+			class="mb-3"
+			id="pb_words_map"
+		>
+			<p class="form-label-title mb-1">{{ 'pb_words_map' | transloco }}</p>
+			@if (measuring()) {
+			<p class="help-text mb-2">{{ 'pb_words_map_measuring' | transloco }}</p>
+			} @if (unmeasurable()) {
+			<p class="help-text mb-2">{{ 'pb_words_map_unmeasurable' | transloco }}</p>
+			} @if (mapViews().length) {
+			<div class="row g-2 mb-1">
+				@for (view of mapViews(); track view.band) {
+				<div class="col-6">
+					<div
+						class="pb-words-map mb-1"
+						[style.aspect-ratio]="view.ratio ?? 2"
+						[attr.data-band]="view.band"
+					>
+						@if (view.url) {
+						<img
+							[src]="view.url"
+							alt=""
+						/>
+						}
+						<div
+							class="pb-words-grid"
+							aria-hidden="true"
+						>
+							@for (cell of view.cells; track cell.spot) {
+							<span
+								class="pb-words-cell"
+								[class.is-hard]="!cell.reads"
+								[class.is-here]="cell.here"
+								[attr.data-spot]="cell.spot"
+							></span>
+							}
+						</div>
+					</div>
+					<p
+						class="small mb-0"
+						[class.fm-ok]="view.reads"
+						[class.fm-err]="!view.reads"
+					>
+						<i
+							[class]="view.reads ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'"
+							aria-hidden="true"
+						></i>
+						<span>
+							{{ bandLine(view) }} @for (line of view.ratios; track line.field) {
+							<span class="d-block text-muted">{{ ratioLine(line) }}</span>
+							}
+						</span>
+					</p>
+				</div>
+				}
+			</div>
+			<p class="help-text mb-2">{{ 'pb_words_map_help' | transloco }}</p>
+			} @if (failing()) { @if (fixes().length) {
+			<p class="form-label-title mb-1">{{ 'pb_words_fix_with' | transloco }}</p>
+			<div
+				class="d-grid mb-2 gap-1"
+				id="pb_words_fixes"
+			>
+				@for (fix of fixes(); track fix.ink + fix.backing) {
+				<button
+					type="button"
+					class="btn btn-outline btn-sm text-start"
+					[attr.data-fix]="fix.ink + '|' + fix.backing"
+					(click)="useFix(fix)"
+				>
+					{{ fixLine(fix) }}
+				</button>
+				}
+			</div>
+			} @if (otherSpots().length) {
+			<p class="form-label-title mb-1">{{ 'pb_words_move_to' | transloco }}</p>
+			<div class="d-flex mb-2 flex-wrap gap-1">
+				@for (spot of otherSpots(); track spot) {
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					[attr.data-move]="spot"
+					(click)="set('spot', spot)"
+				>
+					{{ 'pb_spot_' + spot | transloco }}
+				</button>
+				}
+			</div>
+			} @if (!fixes().length && !otherSpots().length) {
+			<p class="fm-err mb-2">{{ 'pb_words_no_fix' | transloco }}</p>
+			} }
+		</div>
+		} }
 		<label
 			class="form-label-title"
 			for="pb_pic_alt"

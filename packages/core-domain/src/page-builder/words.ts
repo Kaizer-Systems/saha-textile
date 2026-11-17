@@ -241,3 +241,31 @@ export function wordsProblems(sections: readonly PageSection[], brand: string, s
 	}
 	return problems;
 }
+
+/** How both lines read over one spot with one colour choice. */
+export interface SpotVerdict {
+	readonly heading: { ratio: number; weakest: number; passes: boolean };
+	readonly subheading: { ratio: number; weakest: number; passes: boolean };
+}
+
+/** The key the map files each colour choice under: `ink|backing`. */
+export const wordsChoiceKey = (ink: Ink, backing: Backing): string => `${ink}|${backing}`;
+
+/**
+ * The builder's picture map (P5): for one measured version shown at one band, how each line reads over each of the
+ * nine spots with every colour choice, so the builder redraws the map and its fixes at once as the colours or the spot
+ * change. Keys are `ink|backing`; each holds the nine spots in `WORD_SPOT_ORDER`.
+ */
+export function wordsMap(spots: readonly SpotLuminance[], brand: string, band: Band): Record<string, SpotVerdict[]> {
+	const map: Record<string, SpotVerdict[]> = {};
+	for (const backing of BACKING_STEPS) {
+		for (const ink of INKS) {
+			const colours = inkColours(ink, brand);
+			map[wordsChoiceKey(ink, backing)] = spots.map((spot) => ({
+				heading: readability(spot, luminance(colours.heading), backing, neededRatio('heading', band)),
+				subheading: readability(spot, luminance(colours.subheading), backing, neededRatio('subheading', band)),
+			}));
+		}
+	}
+	return map;
+}

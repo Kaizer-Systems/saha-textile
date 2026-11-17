@@ -28,6 +28,9 @@ import type {
 	RenameLayoutRequest,
 	SaveLayoutDraft,
 	StorefrontPageLayout,
+	WordsMap,
+	WordsMapBand,
+	WordsMapQuery,
 } from '@saha-textile/contracts';
 import {
 	type AdminUserRepository,
@@ -42,6 +45,7 @@ import {
 	shopPageSettings,
 	layoutProblems,
 	layoutStatus,
+	wordsMap,
 	wordsProblems,
 	type MediaJobQueuePort,
 	previousLiveEntry,
@@ -384,6 +388,49 @@ export class PageBuilderService {
 			...layoutProblems(sections, { rules, slot: 'main', shopLocales: this.languages.shop(), picture: fact }),
 			...words,
 		];
+	}
+
+	/**
+	 * The builder's picture map (P5): how the words read over each of the nine spots of the picture's computer and phone
+	 * versions, for every colour choice, so the popup redraws at once as the colours or the spot change. A version not
+	 * measured yet is sent to the worker and answers `measuring`; a photo stored without a version can't be measured.
+	 */
+	async wordsMap(query: WordsMapQuery): Promise<WordsMap> {
+		const brand = (await this.settings.get('brand'))?.themeColor ?? DEFAULT_BRAND_COLOUR;
+		const wanted = [
+			{ band: 'desktop' as const, assetId: query.desktop, versionId: query.desktopVersion ?? null },
+			...(query.phone
+				? [{ band: 'phone' as const, assetId: query.phone, versionId: query.phoneVersion ?? null }]
+				: [{ band: 'phone' as const, assetId: query.desktop, versionId: query.desktopVersion ?? null }]),
+		];
+		const bands: WordsMapBand[] = [];
+		for (const want of wanted) {
+			const asset = await this.assets.findById(want.assetId).catch(() => null);
+			const facts = pictureFacts(asset, want.versionId);
+			if (!asset || !facts) continue;
+			const files = asset.derivatives
+				.filter((file) => (want.versionId ? file.versionId === want.versionId : true))
+				.sort((a, b) => a.width - b.width);
+			// About 480 wide is enough to draw the map in the popup.
+			const file = files.find((each) => each.width >= 480) ?? files.at(-1);
+			const measured = facts.ready && facts.wordSpots ? facts.wordSpots : null;
+			const state = facts.wordSpots === false ? 'unmeasurable' : measured ? 'ready' : 'measuring';
+			if (state === 'measuring' && want.versionId && this.queue) {
+				await this.queue
+					.enqueue({ type: 'word-spots', assetId: want.assetId, versionId: want.versionId })
+					.catch(() => undefined);
+			}
+			bands.push({
+				band: want.band,
+				assetId: want.assetId,
+				versionId: want.versionId,
+				url: file ? this.storage.getUrl(file.storageKey) : null,
+				ratio: facts.ratio,
+				state,
+				choices: measured ? wordsMap(measured, brand, want.band) : {},
+			});
+		}
+		return { bands };
 	}
 
 	/** Sends each unmeasured version to the worker once per call (the job skips one already measured). */

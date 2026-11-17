@@ -285,6 +285,45 @@ body.dark-only .layout-selection-sec .theme-card .content-sec.pb-content .pb-car
 	gap: 6px;
 }
 
+// The words map (brief P5; approved custom): the picture's version with its nine word spots over it. A shaded box is
+// where the words chosen would be hard to read; the ringed one is where they sit. Pictures keep their colours in dark
+// mode, as on the shop, so only the ring and the shade follow the admin's named colours.
+.pb-words-map {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid var(--fm-line);
+	border-radius: 6px;
+	background: var(--fm-soft);
+
+	img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+}
+
+.pb-words-grid {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows: repeat(3, 1fr);
+}
+
+.pb-words-cell {
+	border: 1px dashed rgba(255, 255, 255, 0.55);
+
+	&.is-hard {
+		background: repeating-linear-gradient(45deg, rgba(214, 51, 108, 0.55) 0 6px, rgba(214, 51, 108, 0.25) 6px 12px);
+	}
+
+	&.is-here {
+		outline: 3px solid var(--fm-theme-ink);
+		outline-offset: -3px;
+	}
+}
+
 // The preview frame (brief C1–C6; approved custom: the device frame that shows the shop at an exact size and scales it).
 .pb-frame-box {
 	position: relative;

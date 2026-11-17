@@ -30,6 +30,8 @@ import {
 	SaveLayoutDraft,
 	type StorefrontPageLayout,
 	StorefrontPageLayoutQuery,
+	type WordsMap,
+	WordsMapQuery,
 } from '@saha-textile/contracts';
 import type { FastifyReply } from 'fastify';
 
@@ -159,6 +161,16 @@ export class AdminPageBuilderController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminLayoutView> {
 		return this.builder.saveDraft(principal?.userId ?? null, id, body);
+	}
+
+	@Get('words-map')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({
+		operationId: 'builderWordsMap',
+		summary: "How words read over each spot of a picture's computer and phone versions, per colour choice (P5)",
+	})
+	wordsMap(@Query(new ZodValidationPipe(WordsMapQuery)) query: WordsMapQuery): Promise<WordsMap> {
+		return this.builder.wordsMap(query);
 	}
 
 	@Patch('layouts/:id')

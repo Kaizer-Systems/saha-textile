@@ -499,6 +499,37 @@ export const LayoutProblemView = z.object({
 });
 export type LayoutProblemView = z.infer<typeof LayoutProblemView>;
 
+const WordsReading = z.object({ ratio: z.number(), weakest: z.number(), passes: z.boolean() });
+
+/** One screen band's picture in the builder's words map (P5, SG-1). */
+export const WordsMapBand = z.object({
+	band: z.enum(['desktop', 'phone']),
+	assetId: z.string(),
+	versionId: z.string().nullable(),
+	/** A small file of that version to draw the map over; null when it has none. */
+	url: z.string().nullable(),
+	/** Width over height of that version. */
+	ratio: z.number().positive().nullable(),
+	/** Measured; being measured (the worker was asked); or not measurable (a photo stored without a version). */
+	state: z.enum(['ready', 'measuring', 'unmeasurable']),
+	/** Per colour choice (`ink|backing`), the nine spots in reading order: how each line reads there. */
+	choices: z.record(z.string(), z.array(z.object({ heading: WordsReading, subheading: WordsReading }))),
+});
+export type WordsMapBand = z.infer<typeof WordsMapBand>;
+
+/** `GET /admin/page-builder/words-map` — the map for one picture's computer and phone versions. */
+export const WordsMap = z.object({ bands: z.array(WordsMapBand) });
+export type WordsMap = z.infer<typeof WordsMap>;
+
+/** Its query: the computer version, and the phone one when the picture has its own. */
+export const WordsMapQuery = z.object({
+	desktop: z.string().min(1).max(64),
+	desktopVersion: z.string().min(1).max(64).optional(),
+	phone: z.string().min(1).max(64).optional(),
+	phoneVersion: z.string().min(1).max(64).optional(),
+});
+export type WordsMapQuery = z.infer<typeof WordsMapQuery>;
+
 /** `GET /admin/page-builder/pages` — a row of the Page Builder list (P1). */
 export const AdminBuilderPageRow = z.object({
 	pageType: PageTypeKey,

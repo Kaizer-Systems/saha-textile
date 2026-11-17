@@ -17,6 +17,7 @@
 		@for (picture of piece().pictures; track picture.key; let i = $index) {
 		<div
 			class="pb-slide"
+			[class]="'pb-ink-' + picture.ink + ' pb-backing-' + picture.backing"
 			role="group"
 			aria-roledescription="slide"
 			[attr.aria-label]="'pb_slide_label' | transloco: { n: i + 1, total: count() }"

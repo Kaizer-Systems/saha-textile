@@ -18,12 +18,14 @@ import type { ResolvedPieceView } from '../page-builder.types';
 				[sizes]="sizes()"
 			/>
 		} @else if (piece().pictures[0]; as picture) {
-			<app-image-link
-				[image]="{ resolved: picture }"
-				[priority]="early()"
-				[sizes]="sizes()"
-				[class]="'home-contain rounded-0 p-0'"
-			/>
+			<div [class]="'pb-ink-' + picture.ink + ' pb-backing-' + picture.backing">
+				<app-image-link
+					[image]="{ resolved: picture }"
+					[priority]="early()"
+					[sizes]="sizes()"
+					[class]="'home-contain rounded-0 p-0'"
+				/>
+			</div>
 		}
 	`,
 })

@@ -1,0 +1,48 @@
+// Page Builder: words over pictures in named colours (SG-3 colour pairs; Q19 A for "Today's home page"). A picture's
+// words keep these colours in dark mode, as the picture does (the same rules sit in shop-dark.scss for that file).
+// Named colours only, never free ones, so the words check can measure them against the picture.
+$pb-brand-dark: color-mix(in srgb, var(--theme-color) 62%, #000);
+
+.pb-ink-brand .home-contain .home-detail h2 {
+	color: var(--theme-color);
+}
+
+.pb-ink-brand_dark .home-contain .home-detail {
+	h2 {
+		color: $pb-brand-dark;
+	}
+
+	h6 {
+		color: #2d3748;
+	}
+}
+
+.pb-ink-ink .home-contain .home-detail {
+	h2,
+	h6 {
+		color: #1f2328;
+	}
+}
+
+.pb-ink-white .home-contain .home-detail {
+	h2,
+	h6 {
+		color: #fff;
+	}
+}
+
+// A soft backing behind the words, sized to them, so the photo shows around it.
+.pb-backing-soft_light .home-contain .home-detail > div,
+.pb-backing-soft_dark .home-contain .home-detail > div {
+	width: fit-content;
+	padding: 14px 20px 16px;
+	border-radius: 8px;
+}
+
+.pb-backing-soft_light .home-contain .home-detail > div {
+	background: rgba(255, 255, 255, 0.86);
+}
+
+.pb-backing-soft_dark .home-contain .home-detail > div {
+	background: rgba(17, 17, 17, 0.6);
+}

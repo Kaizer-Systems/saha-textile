@@ -221,11 +221,12 @@ test.describe('Home far sections', () => {
 			'visible',
 		);
 		expect(await sections.last().evaluate((section) => getComputedStyle(section).contentVisibility)).toBe('auto');
+		// The footer draws at once: a skipped footer made Lighthouse misread its contrast.
 		expect(
 			await page
 				.locator('app-basic-footer > footer')
 				.evaluate((footer) => getComputedStyle(footer).contentVisibility),
-		).toBe('auto');
+		).toBe('visible');
 
 		// Deep in the page: the second product row draws its products, with their pictures, once near the screen.
 		const row = page.locator('app-home > section.product-section').nth(1);
@@ -238,5 +239,37 @@ test.describe('Home far sections', () => {
 			.toBe(true);
 		// Never left in the "draw everything" state that Back uses while it restores a position.
 		expect(await page.evaluate(() => document.documentElement.classList.contains('st-render-all'))).toBe(false);
+	});
+});
+
+test.describe('Scroll between pages', () => {
+	test('a product opens at its top, and Back returns to the same card on Home', async ({ page }) => {
+		await page.goto('/en/', { waitUntil: 'networkidle' });
+		const row = page.locator('app-home > section.product-section').nth(1);
+		await row.scrollIntoViewIfNeeded();
+		const card = row.locator('.owl-item.active a[href*="/product/"]').first();
+		await expect(card).toBeVisible();
+		await page.waitForTimeout(400);
+		const href = (await card.getAttribute('href')) ?? '';
+		const title = ((await row.locator('h2').first().textContent()) ?? '').trim();
+		const before = (await card.boundingBox())?.y ?? 0;
+		expect(await page.evaluate(() => scrollY)).toBeGreaterThan(300);
+
+		// Forward: the new page starts at its top, wherever Home was scrolled.
+		await card.dispatchEvent('click');
+		await page.waitForURL(/\/product\//);
+		await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+
+		// Back: the same card is where it was on screen, even though viewing the product added "Recently viewed" above.
+		await page.goBack();
+		await page.waitForURL(/\/en\/?$/);
+		// The opened product is now also in "Recently viewed" higher up: measure the card in the same row as before.
+		const sameRow = page
+			.locator('app-home > section.product-section')
+			.filter({ has: page.locator('h2', { hasText: title }) });
+		const same = sameRow.locator(`.owl-item.active a[href="${href}"]`).first();
+		await expect
+			.poll(async () => Math.abs(((await same.boundingBox())?.y ?? -9999) - before), { timeout: 5000 })
+			.toBeLessThanOrEqual(3);
 	});
 });

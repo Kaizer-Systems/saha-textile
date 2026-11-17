@@ -6,18 +6,18 @@
 // `contain-intrinsic-size: auto` keeps a section's real height once it has been drawn, so it never jumps when it is
 // drawn again; 500px is only the guess before the first time. Back and Forward land exactly where the shopper was:
 // ScrollMemory sets `html.st-render-all` while it restores a position, so every section has its real height then.
-// The first two sections of each Home (the hero and the promos) are the first screen and always draw at once.
+// The first two sections of each Home (the hero and the promos) are the first screen and always draw at once. The
+// footer is not held back: Lighthouse's contrast check cannot see a skipped element's background and read the dark
+// footer's grey text as failing against white (17 Nov).
 app-home > section:nth-of-type(n + 3),
-app-page-layout > section:nth-of-type(n + 3),
-app-basic-footer > footer {
+app-page-layout > section:nth-of-type(n + 3) {
 	content-visibility: auto;
 	contain-intrinsic-size: auto 500px;
 }
 
 html.st-render-all {
 	app-home > section,
-	app-page-layout > section,
-	app-basic-footer > footer {
+	app-page-layout > section {
 		content-visibility: visible;
 	}
 }

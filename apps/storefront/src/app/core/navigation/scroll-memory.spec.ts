@@ -89,6 +89,34 @@ describe('ScrollMemory', () => {
 		expect(document.documentElement.classList.contains('st-render-all')).toBe(false);
 	});
 
+	it('Back puts the same section back in place when a row appeared above it while the shopper was away', () => {
+		const { go, scrollTo, at } = setup();
+		Object.defineProperty(document.documentElement, 'scrollHeight', { value: 6000, configurable: true });
+		const scrollBy = vi.fn();
+		vi.stubGlobal('scrollBy', scrollBy);
+		const rows = [document.createElement('section'), document.createElement('section')];
+		document.body.append(...rows);
+		let tops = [-400, 240];
+		rows.forEach(
+			(row, index) =>
+				(row.getBoundingClientRect = () =>
+					({ top: tops[index], bottom: tops[index]! + 400, height: 400 }) as DOMRect),
+		);
+		go(1, '/');
+		at(2500);
+		go(2, '/en/product/red-saree');
+		// Away: a "Recently viewed" row (450 px) appeared above both rows.
+		const recent = document.createElement('section');
+		recent.getBoundingClientRect = () => ({ top: -900, bottom: -450, height: 450 }) as DOMRect;
+		document.body.prepend(recent);
+		tops = [50, 690];
+		go(3, '/', 1);
+		expect(scrollTo).toHaveBeenLastCalledWith({ top: 2500, left: 0, behavior: 'instant' });
+		// The section that was at 240 px is at 690 px: move down 450 px so it is at 240 px again.
+		expect(scrollBy).toHaveBeenCalledWith({ top: 450, left: 0, behavior: 'instant' });
+		[...rows, recent].forEach((row) => row.remove());
+	});
+
 	it('moves the very next page when it starts after the first page has loaded', () => {
 		const { go, scrollTo } = setup('browser', true);
 		go(2, '/product/a');

@@ -69,6 +69,8 @@ The registration route carries both guards. `guestOnlyGuard` keeps a signed-in c
 
 A restored position waits up to two seconds for content that loads after the route (product grids) before scrolling. Scrolls are instant, never smooth.
 
+Back lands on the same content, not just the same pixel. Before leaving a page, `ScrollMemory` also notes the section that fills most of the screen, counted from the last section, and how far it was from the top. On Back it restores the position, then moves the page so that section is where it was. Counting from the end keeps it right when a row appears higher up while the shopper was away (Home's "Recently viewed" row appears after a product was opened). For 1.5 s after a Back, rows the browser fills in later are followed the same way; the shopper's own scroll, tap or key ends that at once. Far sections are drawn only near the screen (`scss/components/_render-near-screen.scss`), so `html.st-render-all` draws them all while a position is restored and is removed two frames later, once their real heights are remembered. `e2e/home-restore.spec.ts` checks that a product opens at its top and that Back puts the opened card back in the same place.
+
 The router's own `withInMemoryScrolling` is set to `disabled`. Angular only scrolls once the application is stable after hydration, and the storefront keeps timers running inside Angular's zone (query cache clean-up, countdowns, refresh intervals), so that moment may never come. `ScrollPositionGuard` remains on the pages that list it and only makes sure `ScrollMemory` is running.
 
 ## Locale URLs

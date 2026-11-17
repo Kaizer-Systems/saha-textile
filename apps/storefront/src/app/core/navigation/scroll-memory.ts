@@ -20,6 +20,71 @@ function afterRender(work: () => void): void {
 /** How long a restored position waits for the page to grow tall enough (lists load after the route). */
 const RESTORE_WAIT_MS = 2000;
 
+/** Where the shopper was: the scroll position, and the page section on screen with its distance from the top. */
+interface Saved {
+	position: [number, number];
+	anchor: { fromEnd: number; top: number } | null;
+}
+
+/** The page's sections in order: the anchor is counted from the last one, so a row added higher up changes nothing. */
+const sections = (): HTMLElement[] =>
+	[...document.querySelectorAll<HTMLElement>('section')].filter(
+		(section) =>
+			!section.closest('header, footer, app-header, app-footer') && section.getBoundingClientRect().height > 0,
+	);
+
+/** The section that fills most of the screen, read before leaving the page. */
+function anchorOnScreen(): Saved['anchor'] {
+	const list = sections();
+	let best: Saved['anchor'] = null;
+	let most = 0;
+	list.forEach((section, index) => {
+		const box = section.getBoundingClientRect();
+		const shown = Math.min(box.bottom, window.innerHeight) - Math.max(box.top, 0);
+		if (shown > most) {
+			most = shown;
+			best = { fromEnd: list.length - 1 - index, top: box.top };
+		}
+	});
+	return best;
+}
+
+/** How far to move so that section is where it was on screen. */
+function anchorShift(anchor: NonNullable<Saved['anchor']>): number {
+	const list = sections();
+	const section = list[list.length - 1 - anchor.fromEnd];
+	if (!section) return 0;
+	const shift = section.getBoundingClientRect().top - anchor.top;
+	return Math.abs(shift) > 1 ? shift : 0;
+}
+
+/** How long after a Back the same link is kept in place while content fills in above it. */
+const KEEP_ANCHORED_MS = 1500;
+
+/**
+ * Rows the browser fills in after the page is drawn ("Recently viewed") can push the restored spot down after it was
+ * restored. For a short while, every change of the page's height lines the link up again; the shopper's own scroll,
+ * tap or key ends it at once, so it never fights them.
+ */
+function keepAnchored(anchor: NonNullable<Saved['anchor']>): void {
+	if (typeof ResizeObserver === 'undefined') return;
+	const stop = () => {
+		observer.disconnect();
+		clearTimeout(timer);
+		for (const type of STOP_ON) window.removeEventListener(type, stop);
+	};
+	const observer = new ResizeObserver(() => {
+		const shift = anchorShift(anchor);
+		if (shift) window.scrollBy({ top: shift, left: 0, behavior: 'instant' });
+	});
+	observer.observe(document.body);
+	const timer = setTimeout(stop, KEEP_ANCHORED_MS);
+	for (const type of STOP_ON) window.addEventListener(type, stop, { once: true, passive: true });
+}
+
+/** The shopper's own input, which ends `keepAnchored`. */
+const STOP_ON = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
+
 /** Draws every section that is otherwise drawn only near the screen (see `restore`). */
 const RENDER_ALL = 'st-render-all';
 
@@ -35,7 +100,7 @@ const RENDER_ALL = 'st-render-all';
 export class ScrollMemory {
 	private readonly router = inject(Router);
 	private readonly scroller = inject(ViewportScroller);
-	private readonly positions = new Map<number, [number, number]>();
+	private readonly positions = new Map<number, Saved>();
 	private started = false;
 
 	constructor() {
@@ -52,7 +117,10 @@ export class ScrollMemory {
 		let restoreFrom: number | null = null;
 		this.router.events.subscribe((event) => {
 			if (event instanceof NavigationStart) {
-				this.positions.set(currentId, this.scroller.getScrollPosition());
+				this.positions.set(currentId, {
+					position: this.scroller.getScrollPosition(),
+					anchor: anchorOnScreen(),
+				});
 				restoreFrom =
 					event.navigationTrigger === 'popstate' ? (event.restoredState?.navigationId ?? null) : null;
 			} else if (event instanceof NavigationEnd) {
@@ -79,7 +147,7 @@ export class ScrollMemory {
 	 * they have a guessed height; `st-render-all` draws them all while the position is restored, so the saved spot
 	 * lands on the same content. Each keeps its real height afterwards, so removing the class moves nothing.
 	 */
-	private restore([left, top]: [number, number]): void {
+	private restore({ position: [left, top], anchor }: Saved): void {
 		const root = document.documentElement;
 		root.classList.add(RENDER_ALL);
 		const until = performance.now() + RESTORE_WAIT_MS;
@@ -87,6 +155,11 @@ export class ScrollMemory {
 			const reachable = root.scrollHeight - window.innerHeight >= top;
 			if (reachable || performance.now() > until) {
 				window.scrollTo({ top, left, behavior: 'instant' });
+				// Content can change while the shopper is away (Home's "Recently viewed" row appears after a product was
+				// opened), so the same pixel can show other content: put the section that was on screen back in place.
+				const shift = anchor ? anchorShift(anchor) : 0;
+				if (shift) window.scrollBy({ top: shift, left: 0, behavior: 'instant' });
+				if (anchor) keepAnchored(anchor);
 				// A section's real height is remembered at the next rendering step, which runs after this frame's
 				// callbacks; the class goes one frame later, so every section keeps its real height and nothing moves.
 				requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove(RENDER_ALL)));

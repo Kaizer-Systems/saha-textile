@@ -89,10 +89,6 @@ async function main() {
 			...(await InventoryCostLayerModel.distinct('variantId', { variantId: { $in: ids } }).exec()).map(String),
 		]);
 		const typed = variants.filter((row) => !documented.has(row._id));
-		if (!typed.length) {
-			console.log('Nothing to move: every variant with stock already has stock history.');
-			return;
-		}
 		const products = new Map(
 			(
 				await ProductModel.find({ _id: { $in: [...new Set(typed.map((row) => row.productId))] } })
@@ -101,6 +97,13 @@ async function main() {
 					.exec()
 			).map((row) => [row._id, row]),
 		);
+		const bundles = typed.filter((row) => products.get(row.productId)?.type === 'bundle').length;
+		if (typed.length === bundles) {
+			console.log(
+				`Nothing to move: every variant with stock already has stock history${bundles ? ` (${bundles} bundle rows left alone: bundles hold no stock of their own)` : ''}.`,
+			);
+			return;
+		}
 		const today = new Date().toISOString().slice(0, 10);
 		const rows: OpeningStockRow[] = typed
 			.filter((row) => products.get(row.productId)?.type !== 'bundle')

@@ -4058,5 +4058,6 @@
 	"pb_bell_nightly_other": "“{{layout}}” has {{count}} things to fix (nightly check)",
 	"perm_group_page_builder": "Page Builder",
 	"perm_page_builder_go_live": "Go Live and schedule",
-	"pb_budget_of_count": "{{value}} of {{limit}}"
+	"pb_budget_of_count": "{{value}} of {{limit}}",
+	"lang_area_page_builder": "Page Builder (page settings, and words in live and scheduled layouts)"
 }

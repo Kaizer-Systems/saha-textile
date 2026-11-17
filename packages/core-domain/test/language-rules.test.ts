@@ -147,23 +147,31 @@ describe('the Admin switch (the admin’s own words)', () => {
 
 describe('the Shop switch', () => {
 	it('switches on only with nothing left to do, and remembers the shop showed it', () => {
-		expect(decideLanguageChange(draft(), { kind: 'shop', code: 'hi', on: true }, facts({ todo: 3 }), null, NOW)).toEqual({
+		expect(
+			decideLanguageChange(draft(), { kind: 'shop', code: 'hi', on: true }, facts({ todo: 3 }), null, NOW),
+		).toEqual({
 			ok: false,
 			reason: 'todo_left',
 		});
-		expect(decideLanguageChange(draft(), { kind: 'shop', code: 'hi', on: true }, facts(), null, NOW)).toMatchObject({
-			ok: true,
-			next: { shop: 'on', everOn: true },
-		});
+		expect(decideLanguageChange(draft(), { kind: 'shop', code: 'hi', on: true }, facts(), null, NOW)).toMatchObject(
+			{
+				ok: true,
+				next: { shop: 'on', everOn: true },
+			},
+		);
 	});
 
 	it('switches off a shown language, and leaves a draft a draft', () => {
-		expect(decideLanguageChange(bangla, { kind: 'shop', code: 'bn', on: false }, facts(), null, NOW)).toMatchObject({
-			ok: true,
-			changed: true,
-			next: { shop: 'off', everOn: true },
-		});
-		expect(decideLanguageChange(draft(), { kind: 'shop', code: 'hi', on: false }, facts(), null, NOW)).toMatchObject({
+		expect(decideLanguageChange(bangla, { kind: 'shop', code: 'bn', on: false }, facts(), null, NOW)).toMatchObject(
+			{
+				ok: true,
+				changed: true,
+				next: { shop: 'off', everOn: true },
+			},
+		);
+		expect(
+			decideLanguageChange(draft(), { kind: 'shop', code: 'hi', on: false }, facts(), null, NOW),
+		).toMatchObject({
 			ok: true,
 			changed: false,
 			next: { shop: 'draft' },
@@ -176,7 +184,13 @@ describe('the Shop switch', () => {
 			reason: 'english_fixed',
 		});
 		expect(
-			decideLanguageChange({ ...draft(), deletedAt: NOW }, { kind: 'shop', code: 'hi', on: true }, facts(), null, NOW),
+			decideLanguageChange(
+				{ ...draft(), deletedAt: NOW },
+				{ kind: 'shop', code: 'hi', on: true },
+				facts(),
+				null,
+				NOW,
+			),
 		).toEqual({ ok: false, reason: 'unknown_language' });
 		expect(decideLanguageChange(null, { kind: 'shop', code: 'hi', on: true }, facts(), null, NOW)).toEqual({
 			ok: false,
@@ -222,7 +236,9 @@ describe('delete, the reminder and erase', () => {
 			ok: true,
 			next: { remindedAt: NOW },
 		});
-		expect(decideLanguageChange(deleted, { kind: 'erase', code: 'bn', typed: 'Bangla' }, facts(), null, NOW)).toEqual({
+		expect(
+			decideLanguageChange(deleted, { kind: 'erase', code: 'bn', typed: 'Bangla' }, facts(), null, NOW),
+		).toEqual({
 			ok: false,
 			reason: 'name_mismatch',
 		});
@@ -230,12 +246,20 @@ describe('delete, the reminder and erase', () => {
 			decideLanguageChange(deleted, { kind: 'erase', code: 'bn', typed: '  বাংলা ' }, facts(), null, NOW),
 		).toMatchObject({ ok: true, next: { erasedAt: NOW } });
 		expect(
-			decideLanguageChange({ ...deleted, erasedAt: NOW }, { kind: 'erase', code: 'bn', typed: 'বাংলা' }, facts(), null, NOW),
+			decideLanguageChange(
+				{ ...deleted, erasedAt: NOW },
+				{ kind: 'erase', code: 'bn', typed: 'বাংলা' },
+				facts(),
+				null,
+				NOW,
+			),
 		).toEqual({ ok: false, reason: 'already_erased' });
-		expect(decideLanguageChange(bangla, { kind: 'erase', code: 'bn', typed: 'বাংলা' }, facts(), null, NOW)).toEqual({
-			ok: false,
-			reason: 'not_deleted',
-		});
+		expect(decideLanguageChange(bangla, { kind: 'erase', code: 'bn', typed: 'বাংলা' }, facts(), null, NOW)).toEqual(
+			{
+				ok: false,
+				reason: 'not_deleted',
+			},
+		);
 	});
 
 	it('matches a typed name in its own script, case and spaces aside', () => {
@@ -266,6 +290,7 @@ describe('the to-do list', () => {
 			'search_words',
 			'addon_templates',
 			'pages',
+			'page_builder',
 		]);
 		expect(lines.find((line) => line.area === 'admin_text')).toEqual({
 			area: 'admin_text',

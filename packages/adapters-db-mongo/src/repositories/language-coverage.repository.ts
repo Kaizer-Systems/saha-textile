@@ -1,7 +1,13 @@
-import { WRITTEN_LANGUAGE_AREAS, type WrittenLanguageArea } from '@saha-textile/contracts';
-import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
+import { WRITTEN_LANGUAGE_AREAS, type PageSection, type WrittenLanguageArea } from '@saha-textile/contracts';
+import { type LanguageCoverageRepository, layoutProblems, liveEntry, pageTypeRules } from '@saha-textile/core-domain';
 
-import { ProductModel } from '../models/index';
+import {
+	BuilderPageModel,
+	PageLayoutRevisionModel,
+	ProductModel,
+	type BuilderPageDoc,
+	type LayoutRevisionDoc,
+} from '../models/index';
 import {
 	LOCALIZED_TEXT_REGISTRY,
 	eraseUpdate,
@@ -61,6 +67,43 @@ export class MongoLanguageCoverageRepository implements LanguageCoverageReposito
 		return [...found];
 	}
 
+	/**
+	 * Page Builder layouts the shop shows now or will show (live and scheduled revisions) whose words are missing in
+	 * `code`, by layout id. Their sections are checked by the builder's own rules, so a language can't go on the shop
+	 * while a layout it would show lacks its words.
+	 */
+	private async layoutsMissing(code: string, now = new Date()): Promise<string[]> {
+		const pages = await BuilderPageModel.find({}, { pageType: 1, schedule: 1 }).lean<BuilderPageDoc[]>().exec();
+		const found = new Set<string>();
+		for (const page of pages) {
+			const rules = pageTypeRules(page.pageType);
+			if (!rules) continue;
+			const schedule = (page.schedule ?? []).map((entry) => ({
+				revisionId: entry.revisionId,
+				layoutId: entry.layoutId,
+				from: new Date(entry.from).toISOString(),
+				until: entry.until ? new Date(entry.until).toISOString() : null,
+				by: entry.by ?? null,
+			}));
+			const live = liveEntry(schedule, now);
+			const shown = schedule.filter((entry) => entry === live || Date.parse(entry.from) > now.getTime());
+			for (const entry of shown) {
+				if (found.has(entry.layoutId)) continue;
+				const revision = await PageLayoutRevisionModel.findById(entry.revisionId, { sections: 1 })
+					.lean<Pick<LayoutRevisionDoc, 'sections'>>()
+					.exec();
+				const problems = layoutProblems((revision?.sections ?? []) as PageSection[], {
+					rules,
+					slot: 'main',
+					shopLocales: [code],
+					picture: () => ({ ready: true, ratio: null }),
+				});
+				if (problems.some((problem) => problem.kind === 'words')) found.add(entry.layoutId);
+			}
+		}
+		return [...found];
+	}
+
 	private async missingFilter(entry: LocalizedTextEntry, code: string): Promise<TextFilter> {
 		return missingTextFilter(
 			entry,
@@ -78,6 +121,7 @@ export class MongoLanguageCoverageRepository implements LanguageCoverageReposito
 			if (!entry.area) continue;
 			counts[entry.area] += await entry.model.collection.countDocuments(await this.missingFilter(entry, code));
 		}
+		counts.page_builder += (await this.layoutsMissing(code)).length;
 		return counts;
 	}
 
@@ -90,6 +134,7 @@ export class MongoLanguageCoverageRepository implements LanguageCoverageReposito
 				.toArray();
 			found.push(...rows.map((row) => String(row[field])));
 		}
+		if (area === 'page_builder') found.push(...(await this.layoutsMissing(code)));
 		return found;
 	}
 

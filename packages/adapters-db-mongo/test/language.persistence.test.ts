@@ -6,9 +6,11 @@ import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
 import {
 	AddonTemplateModel,
 	BlogPostModel,
+	BuilderPageModel,
 	ContentBlockModel,
 	LanguageModel,
 	MediaAssetModel,
+	PageLayoutRevisionModel,
 	ProductModel,
 	SearchTermModel,
 	StoreLocationModel,
@@ -146,6 +148,75 @@ describe.runIf(hasMongoEnv())('languages persistence (rs0)', () => {
 		expect(counts.products).toBe(3);
 		expect(counts.blog_posts).toBe(1);
 		expect(Object.keys(counts)).toEqual(expect.arrayContaining(['photos', 'blog_tags', 'addon_templates']));
+	});
+
+	it('counts Page Builder page settings and live or scheduled layouts missing a language, never ended ones', async () => {
+		const words = (value: string) => ({ en: value, [code]: `${code} ${value}` });
+		const section = (title: Record<string, string>) => ({
+			id: 'news',
+			type: 'newsletter',
+			schemaVersion: 1,
+			hidden: false,
+			screens: { phone: true, tablet: true, computer: true },
+			languages: 'all',
+			from: null,
+			until: null,
+			look: { spaceAbove: 'none', spaceBelow: 'm', width: 'page', align: 'start', background: 'none' },
+			block: null,
+			title,
+			subtitle: {},
+		});
+		const revision = (name: string, title: Record<string, string>) =>
+			insertRaw(PageLayoutRevisionModel, {
+				_id: id(name),
+				layoutId: id(`lay_${name}`),
+				number: 1,
+				sections: [section(title)],
+				assetIds: [],
+				createdAt: now,
+				createdBy: null,
+				wentLiveAt: now,
+			});
+		await revision('live_full', words('Join'));
+		await revision('coming_short', { en: 'Join' });
+		await revision('ended_short', { en: 'Join' });
+		const before = await coverage.missing(code);
+		const entry = (name: string, from: Date, until: Date | null) => ({
+			revisionId: id(name),
+			layoutId: id(`lay_${name}`),
+			from,
+			until,
+			by: null,
+		});
+		await insertRaw(BuilderPageModel, {
+			_id: 'home:page',
+			pageType: 'home',
+			target: 'page',
+			settings: {
+				title: words('t'),
+				description: { en: 'd' },
+				heading: words('h'),
+				headingShown: false,
+				shareImage: null,
+			},
+			schedule: [
+				entry('ended_short', new Date('2020-01-01T00:00:00.000Z'), new Date('2020-02-01T00:00:00.000Z')),
+				entry('live_full', new Date('2021-01-01T00:00:00.000Z'), null),
+				entry('coming_short', new Date('2999-01-01T00:00:00.000Z'), null),
+			],
+			pending: [],
+			updatedAt: now,
+		});
+		const after = await coverage.missing(code);
+		// The page's description lacks the language, and so does the layout still to come; the ended one doesn't count.
+		expect(after.page_builder - before.page_builder).toBe(2);
+		expect(await coverage.missingIds('page_builder', code)).toEqual(
+			expect.arrayContaining(['home:page', id('lay_coming_short')]),
+		);
+		expect(await coverage.missingIds('page_builder', code)).not.toContain(id('lay_ended_short'));
+		// English is filled everywhere here.
+		expect((await coverage.missing('en')).page_builder).toBe(0);
+		await BuilderPageModel.deleteOne({ _id: 'home:page' }).exec();
 	});
 
 	it('counts only photos the shop shows, never unused or deleted ones', async () => {

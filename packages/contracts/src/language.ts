@@ -73,6 +73,7 @@ export const LanguageArea = z.enum([
 	'search_words',
 	'addon_templates',
 	'pages',
+	'page_builder',
 ]);
 export type LanguageArea = z.infer<typeof LanguageArea>;
 
@@ -92,6 +93,7 @@ export const WRITTEN_LANGUAGE_AREAS = [
 	'search_words',
 	'addon_templates',
 	'pages',
+	'page_builder',
 ] as const satisfies readonly LanguageArea[];
 export type WrittenLanguageArea = (typeof WRITTEN_LANGUAGE_AREAS)[number];
 /** One written area, as a route parameter. */

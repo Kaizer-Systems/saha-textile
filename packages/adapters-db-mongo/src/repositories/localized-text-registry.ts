@@ -1,8 +1,10 @@
 import type { WrittenLanguageArea } from '@saha-textile/contracts';
+import { registeredPageTypes } from '@saha-textile/core-domain';
 import type { Model, mongo } from 'mongoose';
 
 import {
 	AddonTemplateModel,
+	BuilderPageModel,
 	AttributeDefinitionModel,
 	BlogCategoryModel,
 	BlogPostModel,
@@ -62,6 +64,11 @@ export interface LocalizedTextEntry {
 }
 
 const as = <T>(model: Model<T>): Model<never> => model as unknown as Model<never>;
+
+/** Page types whose main heading comes from Page settings (Home today), from core's registry. */
+const PAGE_SETTINGS_TYPES = registeredPageTypes()
+	.filter((rules) => rules.mainHeading === 'page_settings')
+	.map((rules) => rules.key);
 const required = (path: string, html = false): TextField => ({ path, rule: 'required', ...(html ? { html } : {}) });
 const followsEnglish = (path: string, html = false): TextField => ({
 	path,
@@ -195,6 +202,15 @@ export const LOCALIZED_TEXT_REGISTRY: readonly LocalizedTextEntry[] = [
 	{
 		// The four legal pages (Legal Pages brief): always on the shop, so Title and Content are needed in every
 		// language; the search title and description follow English.
+		owner: 'page builder pages',
+		model: as(BuilderPageModel),
+		// A page's own search title, description and main heading (Page Builder P3). Only page types whose one H1
+		// comes from Page settings; layout words are counted beside this (language-coverage.repository.ts).
+		area: 'page_builder',
+		live: { pageType: { $in: PAGE_SETTINGS_TYPES } },
+		fields: [required('settings.title'), required('settings.description'), required('settings.heading')],
+	},
+	{
 		owner: 'legal pages',
 		model: as(LegalPageModel),
 		// Settings › Languages counts them from the database (Legal Pages brief).

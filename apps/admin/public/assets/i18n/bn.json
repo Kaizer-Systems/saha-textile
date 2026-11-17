@@ -4058,5 +4058,6 @@
 	"pb_bell_nightly_other": "“{{layout}}”-এ {{count}}টি জিনিস ঠিক করতে হবে (রাতের পরীক্ষা)",
 	"perm_group_page_builder": "পেজ বিল্ডার",
 	"perm_page_builder_go_live": "লাইভ করা আর শিডিউল",
-	"pb_budget_of_count": "{{limit}}টির মধ্যে {{value}}"
+	"pb_budget_of_count": "{{limit}}টির মধ্যে {{value}}",
+	"lang_area_page_builder": "পেজ বিল্ডার (পেজ সেটিংস, আর লাইভ ও শিডিউল করা লেআউটের লেখা)"
 }

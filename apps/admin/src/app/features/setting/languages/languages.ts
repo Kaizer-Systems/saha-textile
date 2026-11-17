@@ -59,6 +59,7 @@ export const AREA_LISTS: Readonly<Partial<Record<LanguageArea, string>>> = {
 	search_words: '/search-term',
 	addon_templates: '/addon-template',
 	pages: '/page',
+	page_builder: '/page-builder',
 	photos: '/media/files',
 };
 

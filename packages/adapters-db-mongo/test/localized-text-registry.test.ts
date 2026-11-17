@@ -42,8 +42,6 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 	'LegalPageRevision.metaTitle': 'an earlier version, kept with no screen (Legal Pages choice 3)',
 	'LegalPageRevision.metaDescription': 'an earlier version, kept with no screen (Legal Pages choice 3)',
 	'ContentBlock.link': 'an address',
-	'BuilderPage.settings':
-		'Page settings (Page Builder P3): saved only with every shop language filled (pageSettingsGaps); their to-dos show on Page Builder › Home',
 	'BuilderPage.pending':
 		'Go Lives waiting for pictures (Page Builder E5): schedule entries pointing at revisions, no words of their own',
 	'PageLayoutRevision.sections':

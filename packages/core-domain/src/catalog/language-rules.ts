@@ -39,6 +39,7 @@ const AREA_ORDER: readonly LanguageArea[] = [
 	'search_words',
 	'addon_templates',
 	'pages',
+	'page_builder',
 ];
 
 /** The lists every app reads, from the stored languages. English is in each and always first. */

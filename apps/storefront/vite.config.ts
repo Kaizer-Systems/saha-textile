@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from 'node:url';
 import analog from '@analogjs/platform';
 import { defineConfig, type Plugin } from 'vite';
 
+import { scriptPriorityPlugin } from './script-priority.vite.ts';
 import { serviceWorkerPlugins } from './service-worker.vite.ts';
 
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
@@ -133,6 +134,8 @@ export default defineConfig(({ command }) => ({
 	plugins: [
 		// Production only: development has no `sw.js`, so a page there is never held by an old one.
 		...(command === 'build' ? serviceWorkerPlugins() : []),
+		// Application scripts at low fetch priority: the server-drawn page, its first picture and styles go first.
+		scriptPriorityPlugin(),
 		angularServerMode(),
 		analog({
 			ssr: true,

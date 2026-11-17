@@ -77,6 +77,10 @@ Store Front › Page Builder is the first item under Store Front (`/page-builder
 
 The outline picture (`app-pb-thumb`) and the card text around it are the only styles of their own (`pages/_page-builder.scss`); colours come from the Media screens' tokens, which carry their dark values.
 
+## Preview
+
+The builder never puts a pass in an address (FX-5). It asks the API for a one-time code (`POST /admin/page-builder/layouts/:id/preview-code`, a minute); the shop's server swaps it once for a session (`POST /storefront/preview/exchange`, an hour) and keeps the session in a cookie limited to `/__preview`; the draft is drawn by the shop's own code from `GET /storefront/preview/layout` (never cached, `noindex`). Only hashes of codes and sessions are stored, on the layout's record; a used, expired or unknown code or session answers a plain 404.
+
 ## The shop
 
 `GET /storefront/pages/:type/layout?locale=` answers the revision the schedule shows now, for one language. While the `storefront.pageBuilder` switch is off (the default) the answer is empty and Home draws its fixed page, which is also the fallback and the super admin's safe mode.

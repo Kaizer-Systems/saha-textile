@@ -73,3 +73,17 @@ export interface SavedBlockRepository {
 	save(block: SavedBlock): Promise<void>;
 	remove(id: string): Promise<void>;
 }
+
+/**
+ * Preview codes and sessions (Page Builder step 6, FX-5). Only hashes are stored. A code is used once within its
+ * minute and becomes a session the shop keeps in a cookie limited to /__preview; a session lasts an hour.
+ */
+export interface PreviewTokenRepository {
+	createCode(input: { codeHash: string; layoutId: string; by: string | null; expiresAt: string }): Promise<void>;
+	/** Uses a code: answers its layout when it exists, is unused and has not expired at `now`, and marks it used. */
+	useCode(codeHash: string, now: string): Promise<{ layoutId: string } | null>;
+	createSession(input: { tokenHash: string; layoutId: string; expiresAt: string }): Promise<void>;
+	/** The layout a live session previews, or null. */
+	findSession(tokenHash: string, now: string): Promise<{ layoutId: string } | null>;
+}
+

@@ -58,6 +58,8 @@ export const EMAIL_PICTURE_REPOSITORY = Symbol('EmailPictureRepository');
 export const LEGAL_PAGE_REPOSITORY = Symbol('LegalPageRepository');
 /** Page Builder: pages' schedules, layouts and their revisions; saved blocks (2026-11-17). */
 export const PAGE_LAYOUT_REPOSITORY = Symbol('PageLayoutRepository');
+/** Preview codes and sessions (Page Builder step 6), kept on the layout records by the same adapter. */
+export const PREVIEW_TOKEN_REPOSITORY = Symbol('PreviewTokenRepository');
 export const SAVED_BLOCK_REPOSITORY = Symbol('SavedBlockRepository');
 export const CONTENT_BLOCK_REPOSITORY = Symbol('ContentBlockRepository');
 export const SITE_SETTINGS_REPOSITORY = Symbol('SiteSettingsRepository');

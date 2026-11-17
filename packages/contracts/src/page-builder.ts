@@ -588,6 +588,33 @@ export type SaveLayoutDraft = z.infer<typeof SaveLayoutDraft>;
 export const LayoutLockResponse = z.object({ granted: z.boolean(), lock: LayoutLock });
 export type LayoutLockResponse = z.infer<typeof LayoutLockResponse>;
 
+// ── Preview (step 6, FX-5): a one-time code swapped for a cookie limited to /__preview ─────────────────────
+
+/** How long a preview code may be swapped (seconds) and how long the preview it opens lasts. */
+export const PREVIEW_CODE_SECONDS = 60;
+export const PREVIEW_SESSION_SECONDS = 3600;
+
+/** `POST /admin/page-builder/layouts/:id/preview-code` — a code for the shop's /__preview address, used once. */
+export const PreviewCodeResponse = z.object({ code: z.string().min(32), expiresAt: IsoDateTime });
+export type PreviewCodeResponse = z.infer<typeof PreviewCodeResponse>;
+
+/** `POST /storefront/preview/exchange` (the shop's server only) — the code swapped for a preview session. */
+export const PreviewExchangeRequest = z.object({ code: z.string().min(32).max(128) });
+export type PreviewExchangeRequest = z.infer<typeof PreviewExchangeRequest>;
+export const PreviewExchangeResponse = z.object({
+	token: z.string().min(32),
+	pageType: PageTypeKey,
+	expiresAt: IsoDateTime,
+});
+export type PreviewExchangeResponse = z.infer<typeof PreviewExchangeResponse>;
+
+/** `GET /storefront/preview/layout?token=&locale=` — the draft as the shop draws it, never cached. */
+export const PreviewLayoutQuery = z.object({
+	token: z.string().min(32).max(128),
+	locale: z.string().min(2).max(12).default('en'),
+});
+export type PreviewLayoutQuery = z.infer<typeof PreviewLayoutQuery>;
+
 /** A saved block in the builder's list (P7): how many layouts use it, and whether linked copies follow it. */
 export const AdminSavedBlockRow = z.object({
 	block: SavedBlock,

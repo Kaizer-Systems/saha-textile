@@ -189,6 +189,7 @@ import {
 	BLOG_POST_REPOSITORY,
 	LEGAL_PAGE_REPOSITORY,
 	PAGE_LAYOUT_REPOSITORY,
+	PREVIEW_TOKEN_REPOSITORY,
 	SAVED_BLOCK_REPOSITORY,
 	BLOG_CATEGORY_REPOSITORY,
 	BLOG_TAG_REPOSITORY,
@@ -371,6 +372,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: LEGAL_PAGE_REPOSITORY, useClass: MongoLegalPageRepository },
 		// Page Builder (brief revision 2, 2026-11-17).
 		{ provide: PAGE_LAYOUT_REPOSITORY, useClass: MongoPageLayoutRepository },
+		{ provide: PREVIEW_TOKEN_REPOSITORY, useExisting: PAGE_LAYOUT_REPOSITORY },
 		{ provide: SAVED_BLOCK_REPOSITORY, useClass: MongoSavedBlockRepository },
 		{ provide: BLOG_CATEGORY_REPOSITORY, useClass: MongoBlogCategoryRepository },
 		{ provide: BLOG_TAG_REPOSITORY, useClass: MongoBlogTagRepository },
@@ -520,6 +522,7 @@ import { LanguageStore } from '../languages/language-store';
 		BLOG_POST_REPOSITORY,
 		LEGAL_PAGE_REPOSITORY,
 		PAGE_LAYOUT_REPOSITORY,
+	PREVIEW_TOKEN_REPOSITORY,
 		SAVED_BLOCK_REPOSITORY,
 		BLOG_CATEGORY_REPOSITORY,
 		BLOG_TAG_REPOSITORY,

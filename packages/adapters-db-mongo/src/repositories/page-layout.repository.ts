@@ -11,7 +11,12 @@ import {
 	type SavedBlock,
 	type ScheduleEntry,
 } from '@saha-textile/contracts';
-import type { HeldLock, PageLayoutRepository, SavedBlockRepository } from '@saha-textile/core-domain';
+import type {
+	HeldLock,
+	PageLayoutRepository,
+	PreviewTokenRepository,
+	SavedBlockRepository,
+} from '@saha-textile/core-domain';
 
 import {
 	BuilderPageModel,
@@ -96,7 +101,7 @@ const toRevision = (doc: LayoutRevisionDoc): LayoutRevision => ({
 });
 
 /** Page Builder layouts, their append-only revisions and each page's schedule (Page Builder brief PG-4, FX-11). */
-export class MongoPageLayoutRepository implements PageLayoutRepository {
+export class MongoPageLayoutRepository implements PageLayoutRepository, PreviewTokenRepository {
 	async page(pageType: PageTypeKey, target: string): Promise<BuilderPage | null> {
 		const doc = await BuilderPageModel.findById(pageId(pageType, target)).lean<BuilderPageDoc>().exec();
 		return doc ? toPage(doc) : null;
@@ -253,6 +258,51 @@ export class MongoPageLayoutRepository implements PageLayoutRepository {
 		// Held by someone else.
 		doc ??= await PageLayoutModel.findById(input.layoutId).lean<PageLayoutDoc>().exec();
 		return doc?.lock ? toLock(doc.lock) : null;
+	}
+
+	async createCode(input: { codeHash: string; layoutId: string; by: string | null; expiresAt: string }): Promise<void> {
+		await this.pushToken(input.layoutId, { hash: input.codeHash, kind: 'code', expiresAt: input.expiresAt });
+	}
+
+	async useCode(codeHash: string, now: string): Promise<{ layoutId: string } | null> {
+		const at = new Date(now);
+		const doc = await PageLayoutModel.findOneAndUpdate(
+			{ previewTokens: { $elemMatch: { hash: codeHash, kind: 'code', usedAt: null, expiresAt: { $gt: at } } } },
+			{ $set: { 'previewTokens.$.usedAt': at } },
+			{ projection: { _id: 1 } },
+		)
+			.lean<{ _id: string }>()
+			.exec();
+		return doc ? { layoutId: doc._id } : null;
+	}
+
+	async createSession(input: { tokenHash: string; layoutId: string; expiresAt: string }): Promise<void> {
+		await this.pushToken(input.layoutId, { hash: input.tokenHash, kind: 'session', expiresAt: input.expiresAt });
+	}
+
+	async findSession(tokenHash: string, now: string): Promise<{ layoutId: string } | null> {
+		const doc = await PageLayoutModel.findOne(
+			{ previewTokens: { $elemMatch: { hash: tokenHash, kind: 'session', expiresAt: { $gt: new Date(now) } } } },
+			{ _id: 1 },
+		)
+			.lean<{ _id: string }>()
+			.exec();
+		return doc ? { layoutId: doc._id } : null;
+	}
+
+	/** Keeps the 20 newest preview codes and sessions on a layout; older ones have expired long before. */
+	private async pushToken(layoutId: string, token: { hash: string; kind: 'code' | 'session'; expiresAt: string }) {
+		await PageLayoutModel.updateOne(
+			{ _id: layoutId },
+			{
+				$push: {
+					previewTokens: {
+						$each: [{ ...token, expiresAt: new Date(token.expiresAt), usedAt: null }],
+						$slice: -20,
+					},
+				},
+			},
+		).exec();
 	}
 
 	async unlock(layoutId: string, by: string): Promise<void> {

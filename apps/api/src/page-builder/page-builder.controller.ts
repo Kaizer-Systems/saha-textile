@@ -7,6 +7,10 @@ import {
 	type AdminSavedBlockRow,
 	type ComingUpResponse,
 	type LayoutLockResponse,
+	type PreviewCodeResponse,
+	type PreviewExchangeResponse,
+	PreviewExchangeRequest,
+	PreviewLayoutQuery,
 	SaveBlockRequest,
 	CreateLayoutRequest,
 	PageSettings,
@@ -22,6 +26,7 @@ import { type AuthenticatedPrincipal, Audience, Public, RequirePermissions } fro
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { PageBlocksService } from './page-blocks.service';
+import { PagePreviewService } from './page-preview.service';
 import { PageBuilderService } from './page-builder.service';
 
 /**
@@ -199,6 +204,55 @@ export class AdminPageBlocksController {
 	@ApiOperation({ operationId: 'deleteBuilderBlock', summary: 'Delete a block no layout links (409 block_in_use)' })
 	remove(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
 		return this.blocks.remove(principal?.userId ?? null, id);
+	}
+}
+
+/** Preview (Page Builder step 6, FX-5): a one-time code, swapped by the shop's server for a session. */
+@ApiTags(API_TAGS.media)
+@Audience('admin')
+@Controller('admin/page-builder/layouts')
+export class AdminPagePreviewController {
+	constructor(private readonly preview: PagePreviewService) {}
+
+	@Post(':id/preview-code')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({ operationId: 'builderPreviewCode', summary: 'A code for /__preview, used once within a minute' })
+	code(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<PreviewCodeResponse> {
+		return this.preview.code(principal?.userId ?? null, id);
+	}
+}
+
+/** The shop's server swaps a preview code and reads the draft it opens (never cached). */
+@ApiTags(API_TAGS.media)
+@Public()
+@Controller('storefront/preview')
+export class StorefrontPreviewController {
+	constructor(private readonly preview: PagePreviewService) {}
+
+	@Post('exchange')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@ApiOperation({ operationId: 'storefrontPreviewExchange', summary: 'Swap a one-time preview code for a session' })
+	exchange(
+		@Body(new ZodValidationPipe(PreviewExchangeRequest)) body: PreviewExchangeRequest,
+	): Promise<PreviewExchangeResponse> {
+		return this.preview.exchange(body.code);
+	}
+
+	@Get('layout')
+	@Header('Cache-Control', 'no-store')
+	@Header('X-Robots-Tag', 'noindex')
+	@ApiOperation({
+		operationId: 'storefrontPreviewLayout',
+		summary: 'A draft as the shop draws it, for a preview session',
+	})
+	layout(@Query(new ZodValidationPipe(PreviewLayoutQuery)) query: PreviewLayoutQuery): Promise<StorefrontPageLayout> {
+		return this.preview.layout(query.token, query.locale);
 	}
 }
 

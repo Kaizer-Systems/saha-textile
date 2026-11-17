@@ -433,6 +433,21 @@ export class PageBuilderService {
 		const schedule = page?.schedule ?? [];
 		const live = liveEntry(schedule, now);
 		const revision = live ? await this.layouts.revision(live.revisionId) : null;
+		return this.drawn(pageType, revision, schedule, locale, now, pageSettings);
+	}
+
+	/**
+	 * A revision as the shop draws it in one language: every picture resolved to its stored version, and the next
+	 * moment the answer may change. Shared by the live page and the preview of a draft (step 6).
+	 */
+	async drawn(
+		pageType: PageTypeKey,
+		revision: { id: string; sections: PageSection[] } | null,
+		schedule: AdminBuilderPage['schedule'],
+		locale: string,
+		now: Date,
+		pageSettings: StorefrontPageLayout['settings'],
+	): Promise<StorefrontPageLayout> {
 		const sections = revision?.sections ?? [];
 		const ids = new Set<string>();
 		for (const section of sections) {

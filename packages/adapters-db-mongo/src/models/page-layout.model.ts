@@ -31,6 +31,8 @@ export interface PageLayoutDoc {
 	revisionCount: number;
 	/** Who is editing it (FX-11): a heartbeat every 30 s keeps it; older than 2 minutes, anyone may take it. */
 	lock?: { holder: string; since: Date; heartbeatAt: Date } | null;
+	/** Preview codes (used once within a minute) and the sessions they open (an hour), hashed (step 6, FX-5). */
+	previewTokens?: Array<{ hash: string; kind: 'code' | 'session'; expiresAt: Date; usedAt: Date | null }>;
 	createdAt: Date;
 	updatedAt: Date;
 	updatedBy: string | null;
@@ -99,6 +101,18 @@ const PageLayoutSchema = new Schema<PageLayoutDoc>(
 			),
 			default: null,
 		},
+		previewTokens: {
+			type: [
+				{
+					_id: false,
+					hash: { type: String, required: true },
+					kind: { type: String, enum: ['code', 'session'], required: true },
+					expiresAt: { type: Date, required: true },
+					usedAt: { type: Date, default: null },
+				},
+			],
+			default: [],
+		},
 		createdAt: { type: Date, required: true },
 		updatedAt: { type: Date, required: true },
 		updatedBy: { type: String, default: null },
@@ -106,6 +120,7 @@ const PageLayoutSchema = new Schema<PageLayoutDoc>(
 	{ collection: COLLECTION_NAMES.PageLayout, timestamps: false },
 );
 PageLayoutSchema.index({ pageType: 1, target: 1, updatedAt: -1 });
+PageLayoutSchema.index({ 'previewTokens.hash': 1 }, { sparse: true });
 
 const LayoutRevisionSchema = new Schema<LayoutRevisionDoc>(
 	{

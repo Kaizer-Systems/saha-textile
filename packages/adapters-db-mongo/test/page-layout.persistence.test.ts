@@ -189,6 +189,19 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 		expect(await layouts.lock({ layoutId: 'lay_pb_test_none', by: 'adm_1', at: at(9), staleBefore: stale(9) })).toBeNull();
 	});
 
+	it('uses a preview code once within its minute, and opens a session that lasts until it expires (step 6, FX-5)', async () => {
+		await create();
+		await layouts.createCode({ codeHash: 'h_code', layoutId: LAYOUT, by: 'adm_1', expiresAt: at(2) });
+		expect(await layouts.useCode('h_code', at(3))).toBeNull();
+		await layouts.createCode({ codeHash: 'h_code2', layoutId: LAYOUT, by: 'adm_1', expiresAt: at(5) });
+		expect(await layouts.useCode('h_code2', at(4))).toEqual({ layoutId: LAYOUT });
+		expect(await layouts.useCode('h_code2', at(4))).toBeNull();
+		await layouts.createSession({ tokenHash: 'h_session', layoutId: LAYOUT, expiresAt: at(40) });
+		expect(await layouts.findSession('h_session', at(10))).toEqual({ layoutId: LAYOUT });
+		expect(await layouts.findSession('h_session', at(41))).toBeNull();
+		expect(await layouts.findSession('h_code2', at(10))).toBeNull();
+	});
+
 	it("keeps a page's own settings beside its schedule, empty words included, and reads back defaults before (P3)", async () => {
 		await layouts.setSchedule('home', 'pb_test_target', [], at(1));
 		expect((await layouts.page('home', 'pb_test_target'))?.settings).toEqual({

@@ -170,7 +170,7 @@ describe('a test-only page type through the whole flow (PG-8)', () => {
 			T0,
 		);
 		expect(went).toMatchObject({ state: 'live', page: { pageType: 'pb_test', builderOn: true } });
-		expect(settings.get('storefront.pageBuilder')).toEqual({ home: false, pb_test: true });
+		expect(settings.get('storefront.pageBuilder')).toBeUndefined();
 
 		// The shop's call draws it, from the same schedule rules.
 		const shop = await builder.shopLayout('pb_test', 'bn', new Date(T0.getTime() + 1_000));

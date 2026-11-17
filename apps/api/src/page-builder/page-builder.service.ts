@@ -75,6 +75,21 @@ import { LanguageStore } from '../languages/language-store';
 
 const WHOLE_PAGE = 'page';
 
+/**
+ * Whether the shop draws a page from its layouts: not in safe mode (SG-15), and either switched on by hand
+ * (`storefront.pageBuilder`) or showing a switch someone made with Go Live or Put back. The release-time switch of
+ * "Today's home page" (made by no one) leaves the fixed page until then, and a Go Live scheduled for later changes
+ * nothing before it starts.
+ */
+export function drawsBuilder(
+	switchedOn: boolean | undefined,
+	live: { by: string | null } | null,
+	safeMode: unknown,
+): boolean {
+	if (safeMode) return false;
+	return !!switchedOn || (live !== null && live.by !== null);
+}
+
 /** The shop's theme colour when the Brand Kit has none (`scss/theme-color.css`). */
 const DEFAULT_BRAND_COLOUR = '#417394';
 
@@ -167,7 +182,7 @@ export class PageBuilderService {
 			settings,
 			settingsGaps: pageSettingsGaps(settings, this.languages.shop()),
 			shareImageUrl: await this.shareImageUrl(settings),
-			builderOn: !!switches?.[pageType] && !page?.safeMode,
+			builderOn: drawsBuilder(switches?.[pageType], live, page?.safeMode ?? null),
 			safeMode: page?.safeMode ? { ...page.safeMode, byName: await this.adminName(page.safeMode.by) } : null,
 			putBack:
 				previous && names.has(previous.layoutId)
@@ -485,13 +500,20 @@ export class PageBuilderService {
 		const pageSettings = page?.settings
 			? shopPageSettings(page.settings, locale, await this.shareImageUrl(page.settings))
 			: null;
-		// Off (the default): the shop draws its fixed page, which is also the fallback and the safe mode (SG-15).
-		const switches = await this.settings.get('storefront.pageBuilder');
-		if (!switches?.[pageType] || page?.safeMode) {
-			return { pageType, revisionId: null, sections: [], refreshAt: null, settings: pageSettings };
-		}
 		const schedule = page?.schedule ?? [];
 		const live = liveEntry(schedule, now);
+		// The fixed page (also the fallback and the safe mode, SG-15) until someone's Go Live has started.
+		const switches = await this.settings.get('storefront.pageBuilder');
+		if (!drawsBuilder(switches?.[pageType], live, page?.safeMode ?? null)) {
+			const next = nextSwitchAt(schedule, now);
+			return {
+				pageType,
+				revisionId: null,
+				sections: [],
+				refreshAt: next ? next.toISOString() : null,
+				settings: pageSettings,
+			};
+		}
 		const revision = live ? await this.layouts.revision(live.revisionId) : null;
 		return this.drawn(pageType, revision, schedule, locale, now, pageSettings);
 	}

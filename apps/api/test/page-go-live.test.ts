@@ -229,7 +229,8 @@ describe('Go Live (E2, Q10 A)', () => {
 		);
 		expect(done.state).toBe('live');
 		expect(done.page).toMatchObject({ builderOn: true, liveRevisionId: draft });
-		expect(h.settings.get('storefront.pageBuilder')).toEqual({ home: true });
+		// The stored switch stays as it was: someone's Go Live is what puts the page on the builder.
+		expect(h.settings.get('storefront.pageBuilder')).toBeUndefined();
 		expect((await h.store.repo.revision(draft))?.wentLiveAt).toBe(T0.toISOString());
 		expect((await h.goLive.alerts(OWNER)).reviews).toEqual([]);
 		expect(h.audit.append).toHaveBeenCalledWith(
@@ -237,6 +238,23 @@ describe('Go Live (E2, Q10 A)', () => {
 		);
 		// The shop draws it.
 		expect((await h.builder.shopLayout('home', 'en', later(1))).revisionId).toBe(draft);
+	});
+
+	it('changes nothing on the shop before a scheduled Go Live starts, then draws it', async () => {
+		const h = harness();
+		await h.filledSettings();
+		const { id, draft } = await h.layout('Winter weddings', [letter]);
+		await h.goLive.goLive(
+			'adm_1',
+			id,
+			{ expectedDraftId: draft, from: later(60).toISOString(), until: null, handBackTo: null, whenReady: false },
+			OWNER,
+			T0,
+		);
+		const before = await h.builder.shopLayout('home', 'en', later(30));
+		expect(before).toMatchObject({ revisionId: null, sections: [], refreshAt: later(60).toISOString() });
+		expect((await h.builder.page('home', later(30))).builderOn).toBe(false);
+		expect((await h.builder.shopLayout('home', 'en', later(61))).revisionId).toBe(draft);
 	});
 
 	it('schedules a switch with an end that hands back to the chosen layout, and refuses a start in the past', async () => {

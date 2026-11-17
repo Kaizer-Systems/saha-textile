@@ -73,7 +73,7 @@ import {
 	SITE_SETTINGS_REPOSITORY,
 } from '../infra/tokens';
 import { LanguageStore } from '../languages/language-store';
-import { PageBuilderService } from './page-builder.service';
+import { PageBuilderService, drawsBuilder } from './page-builder.service';
 
 const WHOLE_PAGE = 'page';
 
@@ -186,7 +186,7 @@ export class PageGoLiveService {
 			this.problems(layout.pageType, sections, now),
 		]);
 		const schedule = page?.schedule ?? [];
-		const live = (await this.builderOn(layout.pageType, page)) ? liveEntry(schedule, now) : null;
+		const live = (await this.builderOn(layout.pageType, page, now)) ? liveEntry(schedule, now) : null;
 		const liveRevision = live ? await this.layouts.revision(live.revisionId) : null;
 		const names = new Map(siblings.map((sibling) => [sibling.id, sibling.name]));
 		return {
@@ -229,9 +229,13 @@ export class PageGoLiveService {
 			}));
 	}
 
-	private async builderOn(pageType: PageTypeKey, page: { safeMode: unknown } | null): Promise<boolean> {
+	private async builderOn(
+		pageType: PageTypeKey,
+		page: { safeMode: unknown; schedule: ScheduleEntry[] } | null,
+		now: Date,
+	): Promise<boolean> {
 		const switches = await this.settings.get('storefront.pageBuilder');
-		return !!switches?.[pageType] && !page?.safeMode;
+		return drawsBuilder(switches?.[pageType], liveEntry(page?.schedule ?? [], now), page?.safeMode ?? null);
 	}
 
 	// ── Go Live ─────────────────────────────────────────────────────────────────────────────────────
@@ -318,7 +322,7 @@ export class PageGoLiveService {
 		return { state, page: await this.builder.page(layout.pageType, now) };
 	}
 
-	/** The schedule gains the switch (and its hand-back), and the page is drawn by the builder from now on. */
+	/** The schedule gains the switch (and its hand-back) in one transaction. */
 	private async commit(
 		pageType: PageTypeKey,
 		entry: ScheduleEntry,
@@ -337,13 +341,8 @@ export class PageGoLiveService {
 						},
 					]
 				: [];
+		// The page is drawn by the builder from the moment this switch starts (drawsBuilder): now, or at its time.
 		await this.layouts.goLive({ pageType, target: WHOLE_PAGE, entry, also, at: now.toISOString() });
-		const switches = await this.settings.get('storefront.pageBuilder');
-		if (!switches?.[pageType]) {
-			const next: Record<string, boolean> & { home: boolean } = { home: false, ...switches };
-			next[pageType] = true;
-			await this.settings.set('storefront.pageBuilder', next);
-		}
 	}
 
 	/** E2 "then back to": the chosen layout's last live revision, from the end of this switch. */
@@ -487,7 +486,9 @@ export class PageGoLiveService {
 	async history(id: string, now = new Date()): Promise<LayoutHistoryResponse> {
 		const layout = await this.requireLayout(id);
 		const page = await this.layouts.page(layout.pageType, WHOLE_PAGE);
-		const showing = (await this.builderOn(layout.pageType, page)) ? liveEntry(page?.schedule ?? [], now) : null;
+		const showing = (await this.builderOn(layout.pageType, page, now))
+			? liveEntry(page?.schedule ?? [], now)
+			: null;
 		const revisions = await this.layouts.revisions(id, 60);
 		return {
 			revisions: await Promise.all(

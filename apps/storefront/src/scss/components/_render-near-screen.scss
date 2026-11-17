@@ -1,0 +1,23 @@
+// Sections far down a page are laid out and painted only when they come near the screen (web.dev "content-visibility:
+// the new CSS property that boosts your rendering performance"). Their pictures, background shapes and layout work
+// wait until then, so a phone spends its line and its first second on what it shows first. The HTML is unchanged:
+// search engines, screen readers, find-in-page and printing see everything.
+//
+// `contain-intrinsic-size: auto` keeps a section's real height once it has been drawn, so it never jumps when it is
+// drawn again; 500px is only the guess before the first time. Back and Forward land exactly where the shopper was:
+// ScrollMemory sets `html.st-render-all` while it restores a position, so every section has its real height then.
+// The first two sections of each Home (the hero and the promos) are the first screen and always draw at once.
+app-home > section:nth-of-type(n + 3),
+app-page-layout > section:nth-of-type(n + 3),
+app-basic-footer > footer {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 500px;
+}
+
+html.st-render-all {
+	app-home > section,
+	app-page-layout > section,
+	app-basic-footer > footer {
+		content-visibility: visible;
+	}
+}

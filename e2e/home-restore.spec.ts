@@ -211,3 +211,31 @@ test.describe('Home blog posts', () => {
 		if ((page.viewportSize()?.width ?? 0) < 580) expect(chosen).not.toMatch(/-1600w-/);
 	});
 });
+
+test.describe('Home far sections', () => {
+	test('wait until they are near the screen, then draw in full', async ({ page }) => {
+		await page.goto('/en/', { waitUntil: 'networkidle' });
+		const sections = page.locator('app-home > section');
+		// The first screen (hero, promos) draws at once; sections further down wait until they are near it.
+		expect(await sections.first().evaluate((section) => getComputedStyle(section).contentVisibility)).toBe(
+			'visible',
+		);
+		expect(await sections.last().evaluate((section) => getComputedStyle(section).contentVisibility)).toBe('auto');
+		expect(
+			await page
+				.locator('app-basic-footer > footer')
+				.evaluate((footer) => getComputedStyle(footer).contentVisibility),
+		).toBe('auto');
+
+		// Deep in the page: the second product row draws its products, with their pictures, once near the screen.
+		const row = page.locator('app-home > section.product-section').nth(1);
+		await row.scrollIntoViewIfNeeded();
+		await expect(row.locator('a[href*="/product/"]').first()).toBeVisible();
+		const picture = row.locator('img').first();
+		await expect
+			.poll(() => picture.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))
+			.toBe(true);
+		// Never left in the "draw everything" state that Back uses while it restores a position.
+		expect(await page.evaluate(() => document.documentElement.classList.contains('st-render-all'))).toBe(false);
+	});
+});

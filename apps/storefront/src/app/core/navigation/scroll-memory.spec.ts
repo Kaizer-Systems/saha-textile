@@ -69,6 +69,26 @@ describe('ScrollMemory', () => {
 		expect(scrollTo).toHaveBeenLastCalledWith({ top: 2500, left: 0, behavior: 'instant' });
 	});
 
+	it('draws every section while it restores a position, then lets far sections wait again', () => {
+		const { go, at } = setup();
+		Object.defineProperty(document.documentElement, 'scrollHeight', { value: 6000, configurable: true });
+		const frames: FrameRequestCallback[] = [];
+		const seen: boolean[] = [];
+		vi.stubGlobal('scrollTo', () => seen.push(document.documentElement.classList.contains('st-render-all')));
+		go(1, '/');
+		at(2500);
+		go(2, '/product/a');
+		vi.stubGlobal('requestAnimationFrame', (run: FrameRequestCallback) => frames.push(run));
+		go(3, '/', 1);
+		// The saved spot is scrolled to with every section drawn at its real height.
+		expect(seen.at(-1)).toBe(true);
+		// Still drawn after the first frame: real heights are remembered at the rendering step after it.
+		frames.shift()?.(0);
+		expect(document.documentElement.classList.contains('st-render-all')).toBe(true);
+		while (frames.length) frames.shift()?.(0);
+		expect(document.documentElement.classList.contains('st-render-all')).toBe(false);
+	});
+
 	it('moves the very next page when it starts after the first page has loaded', () => {
 		const { go, scrollTo } = setup('browser', true);
 		go(2, '/product/a');

@@ -20,6 +20,9 @@ function afterRender(work: () => void): void {
 /** How long a restored position waits for the page to grow tall enough (lists load after the route). */
 const RESTORE_WAIT_MS = 2000;
 
+/** Draws every section that is otherwise drawn only near the screen (see `restore`). */
+const RENDER_ALL = 'st-render-all';
+
 /**
  * Where the page sits after a navigation. A new page opens at its top; Back and Forward return to
  * where the shopper was on that page; a `#fragment` scrolls to its element.
@@ -70,13 +73,24 @@ export class ScrollMemory {
 		});
 	}
 
-	/** Waits briefly for content that loads after the route, then goes back to the saved spot. */
+	/**
+	 * Waits briefly for content that loads after the route, then goes back to the saved spot. Sections far down a page
+	 * are drawn only near the screen (`content-visibility`, scss/components/_render-near-screen.scss), so until then
+	 * they have a guessed height; `st-render-all` draws them all while the position is restored, so the saved spot
+	 * lands on the same content. Each keeps its real height afterwards, so removing the class moves nothing.
+	 */
 	private restore([left, top]: [number, number]): void {
+		const root = document.documentElement;
+		root.classList.add(RENDER_ALL);
 		const until = performance.now() + RESTORE_WAIT_MS;
 		const attempt = () => {
-			const reachable = document.documentElement.scrollHeight - window.innerHeight >= top;
-			if (reachable || performance.now() > until) window.scrollTo({ top, left, behavior: 'instant' });
-			else setTimeout(attempt, 16);
+			const reachable = root.scrollHeight - window.innerHeight >= top;
+			if (reachable || performance.now() > until) {
+				window.scrollTo({ top, left, behavior: 'instant' });
+				// A section's real height is remembered at the next rendering step, which runs after this frame's
+				// callbacks; the class goes one frame later, so every section keeps its real height and nothing moves.
+				requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove(RENDER_ALL)));
+			} else setTimeout(attempt, 16);
 		};
 		attempt();
 	}

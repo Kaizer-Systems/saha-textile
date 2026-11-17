@@ -70,6 +70,10 @@ Store Front › Page Builder is the first item under Store Front (`/page-builder
 - **The list** shows the registered pages. Home is Ready, with the layout showing now, how many layouts it has and the next switch; the ten pages that join later say what you would arrange there and what each needs first. A note names the pages never arranged here.
 - **Page Builder › Home** (`/page-builder/home`) shows what shoppers see and when (the live layout, each switch to come, and the hand-back), the page's address, and the page's layouts as cards: an outline picture drawn from the layout's sections, its status (Live, Scheduled, Draft, Ended), when, and Duplicate.
 - **New layout** asks for a name only admins see and where to start: blank, or a copy of one of the page's layouts with its sections and pictures.
+- **Coming up, across every page** (SG-17), under the list, names every switch still ahead on every page, soonest first: a layout showing now with an end still to come, and each one still to start (`GET /admin/page-builder/coming-up`).
+- **Page settings** (P3, `/page-builder/home/settings`) hold the page's own search title, search description, main heading (shown above the sections, or for search engines and screen readers only, as today) and share picture (the Link preview profile). They belong to the page, not to a layout (Q17 A), so a seasonal layout never changes how the page reads in search results. One Language switch changes the three word fields; a save needs all three in every language the shop shows, and a refusal lists each missing language and field (`400 page_settings_incomplete`). Below the form, how a search result would read in the language shown (SG-7): about 60 characters of the title and 160 of the description, cut at a word with "…". Page Builder › Home shows each language's to-dos and links here. The shop's Home uses them whichever page is drawn, the fixed one included, and falls back to its own words for a language without them.
+- **The builder** (`/page-builder/home/layouts/:id`, Edit on a layout card; step 5) has three panes, which become tabs on a phone (B9). The outline lists the sections in order: drag a row (on a touch screen after a short hold), use Move up and Move down in its ⋮ menu, or press Space on it, move it with ↑ ↓ and press Space again (Esc puts it back), each step read out to screen readers (SG-8). The eye hides a section (a hidden section is not in the shop's HTML); the ⋮ menu also has Duplicate, Save as block and Delete (with an Undo toast). **Add section** offers only the sections this page allows, each with its outline picture and a line on what it is for, then the saved blocks, as a copy or linked (Q18 A). The settings pane has Content and Look (SG-4): a banner section's arrangement and what phones held upright do with its side pictures (Q5), each piece's pictures from the Media picker (Banner keep shape, up to 10, in slide order; two or more make the piece a slider with its own seconds, controls and end), and each picture's words, alt text, link (a shop path or an https address), word spot (9), word colour and backing, decorative, and when it shows (B6). Look is a few fixed steps: space above and below, width, alignment, background, which screens show the section, when it shows (SG-20) and which languages (SG-21). Every change saves within a second over the revision it started from; a save that fails says "Not saved, retrying", keeps the changes in the tab and tries again, and a save over a newer revision says who saved it (FX-23, FX-11). ⌘/Ctrl + Z and ⌘/Ctrl + Shift + Z undo and redo every change (E3). One admin edits a layout at a time (E4): the builder takes the lock on opening and keeps it with a heartbeat every 30 seconds; another admin can look while it is held, and a closed laptop frees it within 2 minutes.
+- **Saved blocks** (P7, SG-5): any section saved on its own (`/admin/page-builder/blocks`). A copy is an ordinary section; a linked section draws its block's current content, so a change to the block reaches every layout linked to it at that layout's next Go Live. A block a layout links to cannot be deleted (`409 block_in_use`).
 
 The outline picture (`app-pb-thumb`) and the card text around it are the only styles of their own (`pages/_page-builder.scss`); colours come from the Media screens' tokens, which carry their dark values.
 
@@ -81,14 +85,22 @@ With the switch on, Home draws `app-page-layout`: the first section at once, wit
 
 ## API
 
-| Method  | Route                                     | Access               |
-| ------- | ----------------------------------------- | -------------------- |
-| `GET`   | `/admin/page-builder/pages`               | `theme_option.index` |
-| `GET`   | `/admin/page-builder/pages/:type`         | `theme_option.index` |
-| `POST`  | `/admin/page-builder/pages/:type/layouts` | `theme_option.edit`  |
-| `GET`   | `/admin/page-builder/layouts/:id`         | `theme_option.index` |
-| `PUT`   | `/admin/page-builder/layouts/:id/draft`   | `theme_option.edit`  |
-| `PATCH` | `/admin/page-builder/layouts/:id`         | `theme_option.edit`  |
+| Method   | Route                                      | Access               |
+| -------- | ------------------------------------------ | -------------------- |
+| `GET`    | `/admin/page-builder/pages`                | `theme_option.index` |
+| `GET`    | `/admin/page-builder/pages/:type`          | `theme_option.index` |
+| `POST`   | `/admin/page-builder/pages/:type/layouts`  | `theme_option.edit`  |
+| `GET`    | `/admin/page-builder/layouts/:id`          | `theme_option.index` |
+| `PUT`    | `/admin/page-builder/layouts/:id/draft`    | `theme_option.edit`  |
+| `PATCH`  | `/admin/page-builder/layouts/:id`          | `theme_option.edit`  |
+| `PUT`    | `/admin/page-builder/pages/:type/settings` | `theme_option.edit`  |
+| `GET`    | `/admin/page-builder/coming-up`            | `theme_option.index` |
+| `POST`   | `/admin/page-builder/layouts/:id/lock`     | `theme_option.edit`  |
+| `DELETE` | `/admin/page-builder/layouts/:id/lock`     | `theme_option.edit`  |
+| `GET`    | `/admin/page-builder/blocks`               | `theme_option.index` |
+| `POST`   | `/admin/page-builder/blocks`               | `theme_option.edit`  |
+| `PUT`    | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  |
+| `DELETE` | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  |
 
 Go Live and schedules come with their own permission: the owner and super admins go live; other admins with Store Front access save drafts and ask for review.
 

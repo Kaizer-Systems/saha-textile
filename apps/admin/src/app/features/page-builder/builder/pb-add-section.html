@@ -1,0 +1,85 @@
+<div class="modal-header">
+	<h2
+		class="modal-title h5"
+		id="pb_add_title"
+	>
+		{{ 'pb_add_section' | transloco }}
+	</h2>
+	<button
+		type="button"
+		class="btn-close"
+		[title]="'close' | transloco"
+		[attr.aria-label]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body">
+	<div
+		class="row row-cols-md-3 row-cols-2 g-3 layout-selection-sec"
+		id="pb_add_types"
+	>
+		@for (type of types(); track type) {
+		<div>
+			<button
+				type="button"
+				class="theme-card pb-add-card w-100"
+				[attr.data-type]="type"
+				(click)="pickType(type)"
+			>
+				<span class="library-box pb-lib">
+					<app-pb-thumb [outline]="outline(type)" />
+				</span>
+				<span class="content-sec pb-content">
+					<strong>{{ 'pb_section_' + type | transloco }}</strong>
+					<span class="pb-when">{{ 'pb_section_' + type + '_hint' | transloco }}</span>
+				</span>
+			</button>
+		</div>
+		}
+	</div>
+
+	@if (blocks().length) {
+	<h3 class="h5 mt-4 mb-2">{{ 'pb_saved_blocks' | transloco }}</h3>
+	<div class="form-check form-switch ps-0 mb-2">
+		<label class="switch">
+			<input
+				type="checkbox"
+				id="pb_add_linked"
+				[checked]="linked()"
+				(change)="linked.set($any($event.target).checked)"
+			/>
+			<span class="switch-state"></span>
+		</label>
+		<label
+			class="ms-2"
+			for="pb_add_linked"
+		>
+			{{ 'pb_add_linked' | transloco }}
+		</label>
+	</div>
+	<p class="help-text">{{ 'pb_add_linked_help' | transloco }}</p>
+	<ul
+		class="list-group"
+		id="pb_add_blocks"
+	>
+		@for (row of blocks(); track row.block.id) {
+		<li class="list-group-item d-flex align-items-center justify-content-between gap-2">
+			<span>
+				<strong>{{ row.block.name }}</strong>
+				<span class="help-text d-block">
+					{{ 'pb_section_' + row.block.section.type | transloco }} · {{ 'pb_block_uses' | transloco: { count:
+					row.linkedUses } }}
+				</span>
+			</span>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				(click)="pickBlock(row)"
+			>
+				{{ 'pb_add' | transloco }}
+			</button>
+		</li>
+		}
+	</ul>
+	}
+</div>

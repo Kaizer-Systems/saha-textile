@@ -14,6 +14,8 @@ export interface BuilderPageDoc {
 	pageType: string;
 	target: string;
 	schedule: Array<{ revisionId: string; layoutId: string; from: Date; until: Date | null; by: string | null }>;
+	/** The page's own settings (P3), as the contract validated them; null until first saved. */
+	settings?: unknown;
 	updatedAt: Date;
 }
 
@@ -27,6 +29,8 @@ export interface PageLayoutDoc {
 	lastLiveRevisionId: string | null;
 	/** The draft's revision number, so the next save takes the next one atomically. */
 	revisionCount: number;
+	/** Who is editing it (FX-11): a heartbeat every 30 s keeps it; older than 2 minutes, anyone may take it. */
+	lock?: { holder: string; since: Date; heartbeatAt: Date } | null;
 	createdAt: Date;
 	updatedAt: Date;
 	updatedBy: string | null;
@@ -72,9 +76,10 @@ const BuilderPageSchema = new Schema<BuilderPageDoc>(
 			],
 			default: [],
 		},
+		settings: { type: Schema.Types.Mixed, default: null },
 		updatedAt: { type: Date, required: true },
 	},
-	{ collection: COLLECTION_NAMES.BuilderPage, timestamps: false },
+	{ collection: COLLECTION_NAMES.BuilderPage, timestamps: false, minimize: false },
 );
 
 const PageLayoutSchema = new Schema<PageLayoutDoc>(
@@ -87,6 +92,13 @@ const PageLayoutSchema = new Schema<PageLayoutDoc>(
 		draftRevisionId: { type: String, default: null },
 		lastLiveRevisionId: { type: String, default: null },
 		revisionCount: { type: Number, default: 0 },
+		lock: {
+			type: new Schema(
+				{ holder: { type: String, required: true }, since: { type: Date, required: true }, heartbeatAt: { type: Date, required: true } },
+				{ _id: false },
+			),
+			default: null,
+		},
 		createdAt: { type: Date, required: true },
 		updatedAt: { type: Date, required: true },
 		updatedBy: { type: String, default: null },

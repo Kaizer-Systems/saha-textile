@@ -98,6 +98,49 @@
 			</tbody>
 		</table>
 	</div>
+	<!-- SG-17: one list of every scheduled switch, across every page. -->
+	<h5 class="mt-4 mb-3">{{ 'pb_coming_up' | transloco }}</h5>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table
+			class="all-package theme-table no-footer fm-table mb-0 table"
+			id="pb_coming_up"
+		>
+			<thead>
+				<tr>
+					<th>{{ 'pb_col_from' | transloco }}</th>
+					<th>{{ 'pb_col_until' | transloco }}</th>
+					<th>{{ 'pb_col_page' | transloco }}</th>
+					<th>{{ 'pb_col_layout' | transloco }}</th>
+					<th>{{ 'pb_col_status' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of comingUp(); track row.layoutId + row.from) {
+				<tr>
+					<td class="text-nowrap">{{ row.from | date: 'd MMM y, h:mm a' : '+0530' }}</td>
+					<td class="text-nowrap">{{ row.until ? (row.until | date: 'd MMM y, h:mm a' : '+0530') : '—' }}</td>
+					<td>
+						<a [routerLink]="['/page-builder', row.pageType]">
+							{{ 'pb_page_' + row.pageType | transloco }}
+						</a>
+					</td>
+					<td><strong>{{ row.layoutName }}</strong></td>
+					<td>
+						@if (row.state === 'showing') {
+						<span class="badge bg-success">{{ 'pb_status_live' | transloco }}</span>
+						} @else {
+						<span class="badge bg-info text-dark">{{ 'pb_status_scheduled' | transloco }}</span>
+						}
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="5">{{ 'pb_coming_up_empty' | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
 	<div class="fm-note mt-4">
 		<i
 			class="ri-lock-line"

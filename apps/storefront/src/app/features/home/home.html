@@ -6,7 +6,14 @@
 
 <!-- The page's one main heading, for search engines and screen readers. The slide headings
      below are second-level, so the carousel's copies of them never add main headings. -->
+<!-- Its words and whether it shows come from Page settings (Page Builder P3) when they are set. -->
+@if (pageSettings(); as settings) {
+<h1 [class]="settings.headingShown ? 'container-fluid-lg h3 pt-3 mb-0' : 'visually-hidden'">
+	{{ settings.heading ?? ('home_page_heading' | transloco) }}
+</h1>
+} @else {
 <h1 class="visually-hidden">{{ 'home_page_heading' | transloco }}</h1>
+}
 
 <!-- Page Builder: with the builder's switch on and a layout live, the page is drawn from it; otherwise (and as the
      fallback and safe mode) the fixed page below. -->

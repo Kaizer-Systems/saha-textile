@@ -159,6 +159,59 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 		expect((await layouts.page('home', 'pb_test_target'))?.schedule).toEqual([]);
 	});
 
+	it('gives the editing lock to one admin at a time, keeps it on a heartbeat, and frees it when the beats stop (E4)', async () => {
+		await create();
+		const stale = (minute: number) => new Date(Date.parse(at(minute)) - 120_000).toISOString();
+		expect(await layouts.lock({ layoutId: LAYOUT, by: 'adm_1', at: at(1), staleBefore: stale(1) })).toEqual({
+			holder: 'adm_1',
+			since: at(1),
+			heartbeatAt: at(1),
+		});
+		// Another admin while the first is beating: still the first's.
+		expect((await layouts.lock({ layoutId: LAYOUT, by: 'adm_2', at: at(2), staleBefore: stale(2) }))?.holder).toBe(
+			'adm_1',
+		);
+		expect(await layouts.lock({ layoutId: LAYOUT, by: 'adm_1', at: at(2), staleBefore: stale(2) })).toMatchObject({
+			since: at(1),
+			heartbeatAt: at(2),
+		});
+		expect((await layouts.currentLock(LAYOUT, stale(3)))?.holder).toBe('adm_1');
+		// The first stops beating for more than two minutes: the second takes it.
+		expect(await layouts.currentLock(LAYOUT, stale(9))).toBeNull();
+		expect(await layouts.lock({ layoutId: LAYOUT, by: 'adm_2', at: at(9), staleBefore: stale(9) })).toMatchObject({
+			holder: 'adm_2',
+			since: at(9),
+		});
+		await layouts.unlock(LAYOUT, 'adm_1');
+		expect((await layouts.currentLock(LAYOUT, stale(9)))?.holder).toBe('adm_2');
+		await layouts.unlock(LAYOUT, 'adm_2');
+		expect(await layouts.currentLock(LAYOUT, stale(9))).toBeNull();
+		expect(await layouts.lock({ layoutId: 'lay_pb_test_none', by: 'adm_1', at: at(9), staleBefore: stale(9) })).toBeNull();
+	});
+
+	it("keeps a page's own settings beside its schedule, empty words included, and reads back defaults before (P3)", async () => {
+		await layouts.setSchedule('home', 'pb_test_target', [], at(1));
+		expect((await layouts.page('home', 'pb_test_target'))?.settings).toEqual({
+			title: {},
+			description: {},
+			heading: {},
+			headingShown: false,
+			shareImage: null,
+		});
+		const settings = {
+			title: { en: 'Sarees from Kolkata', bn: 'কলকাতার শাড়ি' },
+			description: { en: 'Woven by hand.' },
+			heading: {},
+			headingShown: true,
+			shareImage: { assetId: 'med_share', versionId: 'link_preview_1_91x1.blur' },
+		};
+		await layouts.saveSettings('home', 'pb_test_target', settings, at(2));
+		const page = await layouts.page('home', 'pb_test_target');
+		expect(page?.settings).toEqual(settings);
+		expect(page?.schedule).toEqual([]);
+		expect(page?.updatedAt).toBe(at(2));
+	});
+
 	it('keeps the last Go Live revisions and recent drafts, and never what a schedule or layout points at (Q12)', async () => {
 		await create();
 		let previous: string | null = null;

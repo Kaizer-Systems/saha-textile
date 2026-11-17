@@ -1,10 +1,15 @@
-import { Body, Controller, Get, Header, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	type AdminBuilderPage,
 	type AdminBuilderPageRow,
 	type AdminLayoutView,
+	type AdminSavedBlockRow,
+	type ComingUpResponse,
+	type LayoutLockResponse,
+	SaveBlockRequest,
 	CreateLayoutRequest,
+	PageSettings,
 	RenameLayoutRequest,
 	SaveLayoutDraft,
 	type StorefrontPageLayout,
@@ -16,6 +21,7 @@ import { Principal } from '../auth/ownership';
 import { type AuthenticatedPrincipal, Audience, Public, RequirePermissions } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
+import { PageBlocksService } from './page-blocks.service';
 import { PageBuilderService } from './page-builder.service';
 
 /**
@@ -50,6 +56,31 @@ export class AdminPageBuilderController {
 		return this.builder.page(type);
 	}
 
+	@Put('pages/:type/settings')
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({
+		operationId: 'saveBuilderPageSettings',
+		summary: "A page's own settings: search title, description, main heading, share picture (P3)",
+	})
+	saveSettings(
+		@Param('type') type: string,
+		@Body(new ZodValidationPipe(PageSettings)) body: PageSettings,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminBuilderPage> {
+		return this.builder.saveSettings(principal?.userId ?? null, type, body);
+	}
+
+	@Get('coming-up')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({
+		operationId: 'builderComingUp',
+		summary: 'Every scheduled switch still ahead, on every page (SG-17)',
+	})
+	comingUp(): Promise<ComingUpResponse> {
+		return this.builder.comingUp();
+	}
+
 	@Post('pages/:type/layouts')
 	@RequirePermissions('theme_option.edit')
 	@ApiOperation({ operationId: 'createBuilderLayout', summary: 'New layout: blank or a copy of another (A2)' })
@@ -68,8 +99,33 @@ export class AdminPageBuilderController {
 		operationId: 'getBuilderLayout',
 		summary: 'A layout open in the builder, with what holds its Go Live',
 	})
-	layout(@Param('id') id: string): Promise<AdminLayoutView> {
-		return this.builder.layoutView(id);
+	layout(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminLayoutView> {
+		return this.builder.layoutView(id, principal?.userId ?? null);
+	}
+
+	@Post('layouts/:id/lock')
+	@HttpCode(200)
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({
+		operationId: 'lockBuilderLayout',
+		summary: 'Take or keep the editing lock (a heartbeat every 30 s; free after 2 minutes without one)',
+	})
+	lock(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<LayoutLockResponse> {
+		return this.builder.lock(principal?.userId ?? null, id);
+	}
+
+	@Delete('layouts/:id/lock')
+	@HttpCode(204)
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({ operationId: 'unlockBuilderLayout', summary: 'Free the editing lock held by the asking admin' })
+	unlock(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
+		return this.builder.unlock(principal?.userId ?? null, id);
 	}
 
 	@Put('layouts/:id/draft')
@@ -95,6 +151,54 @@ export class AdminPageBuilderController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminLayoutView> {
 		return this.builder.rename(principal?.userId ?? null, id, body);
+	}
+}
+
+/** Saved blocks (Page Builder SG-5, P7): sections kept on their own, reused as copies or linked. */
+@ApiTags(API_TAGS.media)
+@Audience('admin')
+@Controller('admin/page-builder/blocks')
+export class AdminPageBlocksController {
+	constructor(private readonly blocks: PageBlocksService) {}
+
+	@Get()
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({ operationId: 'listBuilderBlocks', summary: 'Saved blocks, with how many layouts link each (P7)' })
+	list(): Promise<AdminSavedBlockRow[]> {
+		return this.blocks.list();
+	}
+
+	@Post()
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({ operationId: 'createBuilderBlock', summary: 'Save a section as a block (P7)' })
+	create(
+		@Body(new ZodValidationPipe(SaveBlockRequest)) body: SaveBlockRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminSavedBlockRow> {
+		return this.blocks.create(principal?.userId ?? null, body);
+	}
+
+	@Put(':id')
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({
+		operationId: 'updateBuilderBlock',
+		summary: 'Change a block; linked layouts take it at their next Go Live',
+	})
+	update(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(SaveBlockRequest)) body: SaveBlockRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminSavedBlockRow> {
+		return this.blocks.update(principal?.userId ?? null, id, body);
+	}
+
+	@Delete(':id')
+	@HttpCode(204)
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({ operationId: 'deleteBuilderBlock', summary: 'Delete a block no layout links (409 block_in_use)' })
+	remove(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<void> {
+		return this.blocks.remove(principal?.userId ?? null, id);
 	}
 }
 

@@ -13,13 +13,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { LanguageStore } from '../src/languages/language-store';
 import { layoutMaxAge } from '../src/page-builder/page-builder.controller';
+import { PageBlocksService } from '../src/page-builder/page-blocks.service';
 import { PageBuilderService, pictureFacts } from '../src/page-builder/page-builder.service';
+
+const NO_SETTINGS = { title: {}, description: {}, heading: {}, headingShown: false, shareImage: null };
 
 /** An in-memory stand-in for the Page Builder store, with the same draft guard the Mongo adapter has. */
 function memoryLayouts() {
 	const pages = new Map<string, BuilderPage>();
 	const layouts = new Map<string, PageLayout & { count: number }>();
 	const revisions = new Map<string, LayoutRevision>();
+	const locks = new Map<string, { holder: string; since: string; heartbeatAt: string }>();
 	const repo: PageLayoutRepository = {
 		page: async (type, target) => pages.get(`${type}:${target}`) ?? null,
 		layouts: async (type, target) =>
@@ -56,14 +60,37 @@ function memoryLayouts() {
 		},
 		goLive: async ({ pageType, target, entry, at }) => {
 			const key = `${pageType}:${target}`;
-			const page = pages.get(key) ?? { pageType, target, schedule: [], updatedAt: at };
+			const page = pages.get(key) ?? { pageType, target, schedule: [], settings: NO_SETTINGS, updatedAt: at };
 			pages.set(key, { ...page, schedule: [...page.schedule, entry], updatedAt: at });
 		},
-		setSchedule: async (pageType, target, schedule, at) =>
-			void pages.set(`${pageType}:${target}`, { pageType, target, schedule, updatedAt: at }),
+		setSchedule: async (pageType, target, schedule, at) => {
+			const key = `${pageType}:${target}`;
+			const settings = pages.get(key)?.settings ?? NO_SETTINGS;
+			pages.set(key, { pageType, target, schedule, settings, updatedAt: at });
+		},
+		saveSettings: async (pageType, target, settings, at) => {
+			const key = `${pageType}:${target}`;
+			const schedule = pages.get(key)?.schedule ?? [];
+			pages.set(key, { pageType, target, schedule, settings, updatedAt: at });
+		},
+		lock: async ({ layoutId, by, at, staleBefore }) => {
+			if (!layouts.has(layoutId)) return null;
+			const held = locks.get(layoutId);
+			if (held && held.holder !== by && held.heartbeatAt >= staleBefore) return held;
+			const next = { holder: by, since: held?.holder === by ? held.since : at, heartbeatAt: at };
+			locks.set(layoutId, next);
+			return next;
+		},
+		unlock: async (layoutId, by) => {
+			if (locks.get(layoutId)?.holder === by) locks.delete(layoutId);
+		},
+		currentLock: async (layoutId, staleBefore) => {
+			const held = locks.get(layoutId);
+			return held && held.heartbeatAt >= staleBefore ? held : null;
+		},
 		prune: async () => 0,
 	};
-	return { repo, pages, layouts, revisions };
+	return { repo, pages, layouts, revisions, locks };
 }
 
 const section = (fields: Record<string, unknown>) => PageSection.parse(fields);
@@ -323,6 +350,7 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 			revisionId: null,
 			sections: [],
 			refreshAt: null,
+			settings: null,
 		});
 		const created = await service.createLayout(null, 'home', {
 			name: 'Hero',
@@ -405,5 +433,211 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 				bringPictures: true,
 			}),
 		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('saves Page settings only with every shop language filled, lists what is missing, and the shop reads them (P3)', async () => {
+		const { service, store, audit, switches } = harness();
+		const page = await service.page('home');
+		expect(page.settingsGaps).toEqual({
+			en: ['title', 'description', 'heading'],
+			bn: ['title', 'description', 'heading'],
+		});
+		const settings = {
+			title: { en: 'Sarees from Kolkata', bn: 'কলকাতার শাড়ি' },
+			description: { en: 'Woven by hand.', bn: '' },
+			heading: { en: 'Saha Textile', bn: 'সাহা টেক্সটাইল' },
+			headingShown: false,
+			shareImage: null,
+		};
+		await expect(service.saveSettings('adm_1', 'home', settings)).rejects.toMatchObject({
+			response: { issues: [{ path: ['description', 'bn'], code: 'page_settings_incomplete' }] },
+		});
+		expect(store.pages.get('home:page')).toBeUndefined();
+		const saved = await service.saveSettings('adm_1', 'home', {
+			...settings,
+			description: { en: '  Woven  by hand. ', bn: 'হাতে বোনা।' },
+		});
+		expect(saved.settings.description).toEqual({ en: 'Woven by hand.', bn: 'হাতে বোনা।' });
+		expect(saved.settingsGaps).toEqual({});
+		expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'page_builder.settings.save' }));
+		// The shop reads them in its language, whichever page is drawn: the fixed one too.
+		switches.value = { home: false };
+		const shop = await service.shopLayout('home', 'bn');
+		expect(shop.revisionId).toBeNull();
+		expect(shop.settings).toEqual({
+			title: 'কলকাতার শাড়ি',
+			description: 'হাতে বোনা।',
+			heading: 'সাহা টেক্সটাইল',
+			headingShown: false,
+			shareImageUrl: null,
+		});
+	});
+
+	it('shares the version of the photo the settings chose', async () => {
+		const { service } = harness({
+			...asset('ready'),
+			derivatives: [
+				{
+					role: 'share',
+					storageKey: 's1',
+					width: 1200,
+					height: 628,
+					byteSize: 1,
+					format: 'jpeg',
+					roleVersion: 1,
+					versionId: 'ver_1',
+				},
+			],
+		} as unknown as MediaAsset);
+		const words = { en: 'x', bn: 'y' };
+		const saved = await service.saveSettings(null, 'home', {
+			title: words,
+			description: words,
+			heading: words,
+			headingShown: true,
+			shareImage: { assetId: 'med_1', versionId: 'ver_1' },
+		});
+		expect(saved.shareImageUrl).toBe('https://cdn/s1');
+		expect((await service.shopLayout('home', 'en')).settings).toMatchObject({
+			headingShown: true,
+			shareImageUrl: 'https://cdn/s1',
+		});
+	});
+
+	it('lists every switch still ahead, on every page, soonest first (SG-17)', async () => {
+		const { service, store } = harness();
+		const now = new Date('2026-11-20T00:00:00.000Z');
+		const made = await service.createLayout(null, 'home', {
+			name: 'Winter weddings',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: false,
+		});
+		await store.repo.setSchedule(
+			'home',
+			'page',
+			[
+				{
+					revisionId: 'r1',
+					layoutId: made.layout.id,
+					from: '2026-12-01T00:00:00.000Z',
+					until: '2027-02-15T00:00:00.000Z',
+					by: null,
+				},
+				{
+					revisionId: 'r0',
+					layoutId: made.layout.id,
+					from: '2026-10-01T00:00:00.000Z',
+					until: '2026-10-10T00:00:00.000Z',
+					by: null,
+				},
+			],
+			now.toISOString(),
+		);
+		const { rows } = await service.comingUp(now);
+		expect(rows).toEqual([
+			{
+				pageType: 'home',
+				target: 'page',
+				layoutId: made.layout.id,
+				layoutName: 'Winter weddings',
+				from: '2026-12-01T00:00:00.000Z',
+				until: '2027-02-15T00:00:00.000Z',
+				state: 'coming',
+			},
+		]);
+	});
+
+	it('gives the editing lock to one admin; the other may look but not save over them, until two quiet minutes (E4)', async () => {
+		const { service } = harness();
+		const made = await service.createLayout('adm_1', 'home', {
+			name: 'Winter weddings',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: false,
+		});
+		const id = made.layout.id;
+		expect(made.allowedSections).toContain('banner_arrangement');
+		const t0 = new Date('2026-11-17T10:00:00.000Z');
+		expect(await service.lock('adm_1', id, t0)).toMatchObject({
+			granted: true,
+			lock: { holderId: 'adm_1', holderName: 'Moulik', mine: true },
+		});
+		const later = new Date('2026-11-17T10:01:00.000Z');
+		expect(await service.lock('adm_2', id, later)).toMatchObject({
+			granted: false,
+			lock: { holderId: 'adm_1', mine: false },
+		});
+		await expect(
+			service.saveDraft('adm_2', id, { sections: [letter], expectedDraftId: null }, later),
+		).rejects.toMatchObject({ status: 423, response: { code: 'layout_locked', holderName: 'Moulik' } });
+		expect((await service.layoutView(id, 'adm_2', later)).lock).toMatchObject({ holderId: 'adm_1', mine: false });
+		// The holder saves; after two minutes without a beat the other admin may take it.
+		await service.saveDraft('adm_1', id, { sections: [letter], expectedDraftId: null }, later);
+		const quiet = new Date('2026-11-17T10:03:00.000Z');
+		expect((await service.lock('adm_2', id, quiet)).granted).toBe(true);
+		await service.unlock('adm_2', id);
+		expect((await service.layoutView(id, 'adm_1', quiet)).lock).toBeNull();
+	});
+});
+
+describe('saved blocks (SG-5, P7)', () => {
+	const blockHarness = () => {
+		const store = memoryLayouts();
+		const saved = new Map<string, import('@saha-textile/contracts').SavedBlock>();
+		const blocks = {
+			list: async () => [...saved.values()],
+			find: async (id: string) => saved.get(id) ?? null,
+			save: async (block: import('@saha-textile/contracts').SavedBlock) => void saved.set(block.id, block),
+			remove: async (id: string) => void saved.delete(id),
+		};
+		const audit = { append: vi.fn(async () => undefined) };
+		const service = new PageBlocksService(
+			blocks,
+			store.repo,
+			{ findById: async () => ({ displayName: 'Moulik' }) } as never,
+			audit as never,
+		);
+		return { service, store, saved, audit };
+	};
+
+	it('saves a section as a block, counts the layouts linked to it, and refuses to delete one in use', async () => {
+		const { service, store } = blockHarness();
+		const made = await service.create('adm_1', { name: 'Join the list', section: letter });
+		expect(made.block.section).toMatchObject({ id: made.block.id, type: 'newsletter', block: null });
+		await store.repo.createLayout({
+			id: 'lay_1',
+			pageType: 'home',
+			target: 'page',
+			name: 'A',
+			template: null,
+			draftRevisionId: null,
+			lastLiveRevisionId: null,
+			createdAt: '2026-11-17T00:00:00.000Z',
+			updatedAt: '2026-11-17T00:00:00.000Z',
+			updatedBy: null,
+		});
+		await store.repo.saveDraft({
+			layoutId: 'lay_1',
+			sections: [{ ...letter, block: { id: made.block.id, linked: true } }],
+			expectedDraftId: null,
+			by: null,
+			at: '2026-11-17T00:00:00.000Z',
+		});
+		expect((await service.list())[0]).toMatchObject({ linkedUses: 1, updatedByName: 'Moulik' });
+		await expect(service.remove('adm_1', made.block.id)).rejects.toMatchObject({
+			status: 409,
+			response: { code: 'block_in_use', linkedUses: 1 },
+		});
+		const changed = await service.update('adm_1', made.block.id, {
+			name: 'Join us',
+			section: section({ id: 'news', type: 'newsletter', title: { en: 'Join us', bn: 'যোগ দিন' } }),
+		});
+		expect(changed).toMatchObject({ linkedUses: 1, block: { name: 'Join us' } });
+		await expect(service.update(null, 'blk_none', { name: 'x', section: letter })).rejects.toMatchObject({
+			status: 404,
+		});
 	});
 });

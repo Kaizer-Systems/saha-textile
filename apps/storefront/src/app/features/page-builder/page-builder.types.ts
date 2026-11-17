@@ -49,11 +49,22 @@ export interface ResolvedPageSectionView {
 	leaveOutSoldOut: boolean | null;
 }
 
+/** A page's own settings in the page's language (Page Builder P3); null fields keep the shop's own words. */
+export interface PageSettingsView {
+	title: string | null;
+	description: string | null;
+	heading: string | null;
+	headingShown: boolean;
+	shareImageUrl: string | null;
+}
+
 export interface StorefrontPageLayoutView {
 	pageType: string;
 	revisionId: string | null;
 	sections: ResolvedPageSectionView[];
 	refreshAt: string | null;
+	/** Applies whichever page is drawn, the fixed one included. */
+	settings?: PageSettingsView | null;
 }
 
 const SPACE: Record<ResolvedPageSectionView['look']['spaceBelow'], string> = {

@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { languageName } from '@saha-textile/core-domain/languages';
 import { readApiErrorMessage } from '@saha-textile/http-transport';
 import { lastValueFrom } from 'rxjs';
 
@@ -51,6 +52,15 @@ export class PageBuilderHome {
 	readonly pageType = (inject(ActivatedRoute).snapshot.paramMap.get('type') ?? 'home').toLowerCase();
 	readonly page = signal<AdminBuilderPage | null>(null);
 	readonly statusClass = STATUS_CLASS;
+
+	/** Page settings each shop language still lacks (P3), with the language named in its own script. */
+	readonly settingsTodo = computed(() =>
+		Object.entries(this.page()?.settingsGaps ?? {}).map(([locale, fields]) => ({
+			locale,
+			language: languageName(locale),
+			count: fields.length,
+		})),
+	);
 
 	/** The schedule from now on, with layout names: the live entry, then each switch to come. */
 	readonly when = computed<WhenRow[]>(() => {

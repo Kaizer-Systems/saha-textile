@@ -1,0 +1,210 @@
+@if (picture(); as p) {
+<div class="modal-header">
+	<h2 class="modal-title h5">{{ 'pb_picture_fields' | transloco }} ({{ locale() }})</h2>
+	<button
+		type="button"
+		class="btn-close"
+		[title]="'close' | transloco"
+		[attr.aria-label]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body">
+	<fieldset
+		class="theme-form"
+		[disabled]="readOnly()"
+	>
+		<div class="form-check form-switch ps-0 mb-3">
+			<label class="switch">
+				<input
+					type="checkbox"
+					id="pb_contains_text"
+					[checked]="p.containsText"
+					(change)="set('containsText', $any($event.target).checked)"
+				/>
+				<span class="switch-state"></span>
+			</label>
+			<label
+				class="ms-2"
+				for="pb_contains_text"
+				>{{ 'banner_contains_text' | transloco }}</label
+			>
+		</div>
+		@if (!p.containsText) { @for (field of ['heading', 'subheading', 'ctaLabel']; track field) {
+		<label
+			class="form-label-title"
+			[for]="'pb_pic_' + field"
+			>{{ 'banner_' + field | transloco }}</label
+		>
+		<input
+			class="form-control mb-3"
+			type="text"
+			maxlength="120"
+			[id]="'pb_pic_' + field"
+			[value]="text($any(field))"
+			(change)="setText($any(field), $any($event.target).value)"
+		/>
+		}
+		<p class="form-label-title mb-1">{{ 'pb_word_spot' | transloco }}</p>
+		<div
+			class="pb-spots mb-3"
+			role="group"
+			[attr.aria-label]="'pb_word_spot' | transloco"
+		>
+			@for (spot of spots; track spot) {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				[class.active]="p.spot === spot"
+				[attr.aria-pressed]="p.spot === spot"
+				[title]="'pb_spot_' + spot | transloco"
+				[attr.aria-label]="'pb_spot_' + spot | transloco"
+				(click)="set('spot', spot)"
+			>
+				<i
+					class="ri-text"
+					aria-hidden="true"
+				></i>
+			</button>
+			}
+		</div>
+		<div class="row g-2 mb-3">
+			<div class="col-6">
+				<label
+					class="form-label-title"
+					for="pb_ink"
+					>{{ 'pb_ink' | transloco }}</label
+				>
+				<select
+					class="form-select"
+					id="pb_ink"
+					[value]="p.ink"
+					(change)="set('ink', $any($event.target).value)"
+				>
+					@for (option of inks; track option) {
+					<option [value]="option">{{ 'pb_ink_' + option | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-6">
+				<label
+					class="form-label-title"
+					for="pb_backing"
+					>{{ 'pb_backing' | transloco }}</label
+				>
+				<select
+					class="form-select"
+					id="pb_backing"
+					[value]="p.backing"
+					(change)="set('backing', $any($event.target).value)"
+				>
+					@for (option of backings; track option) {
+					<option [value]="option">{{ 'pb_backing_' + option | transloco }}</option>
+					}
+				</select>
+			</div>
+		</div>
+		}
+		<label
+			class="form-label-title"
+			for="pb_pic_alt"
+			>{{ 'banner_alt' | transloco }}</label
+		>
+		<input
+			class="form-control mb-1"
+			id="pb_pic_alt"
+			type="text"
+			maxlength="200"
+			[value]="text('alt')"
+			(change)="setText('alt', $any($event.target).value)"
+		/>
+		@if (p.containsText) {
+		<p class="help-text">{{ 'banner_alt_repeat_text_help' | transloco }}</p>
+		}
+		<label
+			class="form-label-title mt-2"
+			for="pb_pic_link"
+			>{{ 'banner_link' | transloco }}</label
+		>
+		<input
+			class="form-control mb-1"
+			id="pb_pic_link"
+			type="text"
+			placeholder="/collections/sarees"
+			[value]="p.link?.href ?? ''"
+			(change)="setLink($any($event.target).value)"
+		/>
+		@if (linkError()) {
+		<p
+			class="fm-err"
+			id="pb_pic_link_error"
+		>
+			{{ 'pb_link_refused' | transloco }}
+		</p>
+		} @if (!p.link) {
+		<div class="form-check mt-2">
+			<input
+				class="form-check-input"
+				type="checkbox"
+				id="pb_decorative"
+				[checked]="p.decorative"
+				(change)="set('decorative', $any($event.target).checked)"
+			/>
+			<label
+				class="form-check-label"
+				for="pb_decorative"
+				>{{ 'pb_decorative' | transloco }}</label
+			>
+		</div>
+		}
+		<div class="row g-2 mt-2">
+			<div class="col-6">
+				<label
+					class="form-label-title"
+					for="pb_pic_from"
+					>{{ 'pb_show_from' | transloco }}</label
+				>
+				<input
+					class="form-control"
+					id="pb_pic_from"
+					type="datetime-local"
+					[value]="when('from')"
+					(change)="setWhen('from', $any($event.target).value)"
+				/>
+			</div>
+			<div class="col-6">
+				<label
+					class="form-label-title"
+					for="pb_pic_until"
+					>{{ 'pb_show_until' | transloco }}</label
+				>
+				<input
+					class="form-control"
+					id="pb_pic_until"
+					type="datetime-local"
+					[value]="when('until')"
+					(change)="setWhen('until', $any($event.target).value)"
+				/>
+			</div>
+		</div>
+	</fieldset>
+</div>
+<div class="modal-footer">
+	<button
+		type="button"
+		class="btn btn-outline"
+		(click)="modal.dismiss()"
+	>
+		{{ 'cancel' | transloco }}
+	</button>
+	<button
+		type="button"
+		class="btn btn-theme"
+		id="pb_picture_done"
+		[disabled]="readOnly() || linkError()"
+		(click)="done()"
+	>
+		{{ 'pb_done' | transloco }}
+	</button>
+</div>
+}

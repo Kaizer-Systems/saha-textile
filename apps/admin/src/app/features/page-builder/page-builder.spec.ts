@@ -4,14 +4,17 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ActiveLanguages } from '@core/i18n/active-languages';
 import { type AdminBuilderPage, PageBuilderGateway } from '@core/page-builder/page-builder.gateway';
+import { NotificationService } from '@data-access/services/notification.service';
 
 import { PageBuilderHome, STATUS_CLASS } from './page-builder-home';
 import { LATER_PAGES, PageBuilderPages } from './page-builder-pages';
 import { PbNewLayout } from './pb-new-layout';
+import { PbPageSettings, refusedSettings, searchCut } from './pb-page-settings';
 import { PbThumb } from './pb-thumb';
 
 const layout = (id: string, name: string) => ({
@@ -43,6 +46,9 @@ const page: AdminBuilderPage = {
 		},
 	],
 	templates: [],
+	settings: { title: {}, description: {}, heading: {}, headingShown: false, shareImage: null },
+	settingsGaps: { bn: ['title', 'description', 'heading'] },
+	shareImageUrl: null,
 	layouts: [
 		{
 			layout: layout('lay_today', 'Today’s home page'),
@@ -100,8 +106,22 @@ describe('Page Builder list (P1)', () => {
 				layoutCount: 2,
 			},
 		];
-		const { page: list } = setup(PageBuilderPages, { pages: vi.fn(() => of(rows)) });
+		const coming = {
+			pageType: 'home' as const,
+			target: 'page',
+			layoutId: 'lay_winter',
+			layoutName: 'Winter weddings',
+			from: '2099-12-01T00:00:00.000Z',
+			until: null,
+			state: 'coming' as const,
+		};
+		const { page: list } = setup(PageBuilderPages, {
+			pages: vi.fn(() => of(rows)),
+			comingUp: vi.fn(() => of({ rows: [coming] })),
+		});
 		expect(list.pages()).toEqual(rows);
+		// SG-17: every scheduled switch, across every page.
+		expect(list.comingUp()).toEqual([coming]);
 		expect(LATER_PAGES).toHaveLength(10);
 	});
 });
@@ -115,6 +135,8 @@ describe('Page Builder › Home (A1)', () => {
 			['Today’s home page', 'scheduled', true],
 		]);
 		expect(STATUS_CLASS.ended).toBe('fm-chip muted');
+		// P3: what each language still lacks in Page settings, named in its own script.
+		expect(home.settingsTodo()).toEqual([{ locale: 'bn', language: 'বাংলা', count: 3 }]);
 	});
 
 	it('duplicates a layout as a copy named for it, and reloads', async () => {
@@ -202,5 +224,77 @@ describe('layout outline picture (A1)', () => {
 		expect(thumb.boxes().filter((box) => box.kind === 'crd')).toHaveLength(5);
 		expect(thumb.height()).toBe(8 + 44 + 27 + 2);
 		expect(fixture.nativeElement.querySelectorAll('rect').length).toBe(1 + thumb.boxes().length);
+	});
+});
+
+describe('Page settings (P3, SG-6, SG-7)', () => {
+	const render = (gateway: Partial<PageBuilderGateway>) => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: PageBuilderGateway, useValue: gateway },
+				{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+				{ provide: ActiveLanguages, useValue: { list: () => ['en', 'bn'] } },
+				{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ type: 'home' }) } } },
+			],
+		});
+		TestBed.overrideComponent(PbPageSettings, { set: { imports: [], template: '' } });
+		return TestBed.createComponent(PbPageSettings).componentInstance;
+	};
+	const saved = {
+		...page,
+		settings: {
+			title: { en: 'Handloom and Silk Sarees from Kolkata | Saha Textile', bn: 'কলকাতার তাঁত ও সিল্ক শাড়ি' },
+			description: { en: 'Sarees woven by hand in Bengal.', bn: 'বাংলার হাতে বোনা শাড়ি।' },
+			heading: { en: 'Saha Textile', bn: 'সাহা টেক্সটাইল' },
+			headingShown: false,
+			shareImage: { assetId: 'med_share', versionId: 'link_preview.blur' },
+		},
+		settingsGaps: {},
+		shareImageUrl: 'https://cdn/share.jpg',
+	};
+
+	it('loads each language, shows the search result as it would read, and switches language', async () => {
+		const settings = render({ page: vi.fn(() => of(saved)) });
+		await vi.waitFor(() => expect(settings.page()).not.toBeNull());
+		expect(settings.form.value.title).toBe(saved.settings.title.en);
+		expect(settings.preview().title).toEqual({ text: saved.settings.title.en, cut: false });
+		expect(settings.shareImageTile()).toMatchObject({ id: 'med_share', versionId: 'link_preview.blur' });
+		settings.switchLanguage('bn');
+		expect(settings.preview()).toMatchObject({
+			address: 'sahatextile.com › bn',
+			title: { text: 'কলকাতার তাঁত ও সিল্ক শাড়ি' },
+		});
+	});
+
+	it('saves every language at once with the share picture; a refusal lists each missing language and field', async () => {
+		const refusal = {
+			error: { error: { issues: [{ code: 'page_settings_incomplete', path: ['heading', 'bn'], message: 'x' }] } },
+		};
+		const saveSettings = vi.fn(() => throwError(() => refusal));
+		const settings = render({ page: vi.fn(() => of(saved)), saveSettings });
+		await vi.waitFor(() => expect(settings.page()).not.toBeNull());
+		settings.selectShareImage({ id: 'med_new', versionId: 'link_preview.as_is' } as never);
+		await settings.submit();
+		expect(saveSettings).toHaveBeenCalledWith(
+			'home',
+			expect.objectContaining({
+				title: saved.settings.title,
+				headingShown: false,
+				shareImage: { assetId: 'med_new', versionId: 'link_preview.as_is' },
+			}),
+		);
+		expect(settings.refused()).toEqual([{ locale: 'bn', field: 'heading' }]);
+		expect(settings.gapLabel({ locale: 'bn', field: 'heading' })).toBe('বাংলা: pb_settings_heading');
+		expect(refusedSettings(new Error('down'))).toEqual([]);
+	});
+
+	it('cuts a long title at a word with "…", as a search result does', () => {
+		expect(searchCut('Short', 60)).toEqual({ text: 'Short', cut: false });
+		const long = searchCut('Handloom and silk sarees from Kolkata, woven by hand in Bengal since 1952', 60);
+		expect(long.cut).toBe(true);
+		expect(long.text.endsWith('…')).toBe(true);
+		expect(long.text.length).toBeLessThanOrEqual(60);
 	});
 });

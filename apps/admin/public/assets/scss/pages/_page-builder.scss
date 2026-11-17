@@ -96,3 +96,191 @@ body.dark-only .layout-selection-sec .theme-card .content-sec.pb-content .pb-car
 		color: var(--fm-theme-ink);
 	}
 }
+
+// SG-7 (approved custom): how a search result would read, in Page settings. A few lines of text in a box, in the
+// Media screens' colour tokens (light and dark). The title is the shop colour as text, the address and words muted.
+.pb-serp {
+	display: grid;
+	gap: 2px;
+	max-width: 600px;
+	padding: 12px 14px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-surface);
+
+	.pb-serp-address {
+		font-size: 12.5px;
+		color: var(--fm-muted);
+	}
+
+	.pb-serp-title {
+		font-size: 18px;
+		line-height: 1.3;
+		color: var(--fm-theme-ink);
+	}
+
+	.pb-serp-text {
+		font-size: 13.5px;
+		line-height: 1.45;
+		color: var(--fm-muted);
+	}
+}
+
+// The builder (brief B1, B9; approved custom: the frame, its three panes, the outline rows, the piece tiles and the
+// word-spot grid). Colours from the Media tokens, so dark mode needs nothing of its own.
+.pb-topbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 16px;
+	margin-bottom: 12px;
+}
+
+.pb-topbar-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: auto;
+}
+
+.pb-save {
+	font-size: 13px;
+	color: var(--fm-muted);
+
+	&[data-state='retrying'],
+	&[data-state='conflict'] {
+		color: var(--fm-warn-ink);
+	}
+}
+
+.pb-panes {
+	display: grid;
+	grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(280px, 360px);
+	gap: 16px;
+	align-items: start;
+
+	@media (max-width: 991.98px) {
+		grid-template-columns: minmax(0, 1fr);
+
+		.pb-pane-hidden {
+			display: none;
+		}
+	}
+}
+
+.pb-rows {
+	display: grid;
+	gap: 6px;
+}
+
+.pb-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-surface);
+	cursor: pointer;
+
+	&.active {
+		border-color: var(--theme-color);
+		box-shadow: inset 3px 0 0 var(--theme-color);
+	}
+
+	&.lifted {
+		outline: 2px dashed var(--theme-color);
+		outline-offset: 2px;
+	}
+
+	&.muted .pb-row-name {
+		color: var(--fm-muted);
+		text-decoration: line-through;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--theme-color);
+		outline-offset: 2px;
+	}
+
+	.pb-handle {
+		cursor: grab;
+		color: var(--fm-muted);
+	}
+
+	.pb-row-name {
+		flex: 1;
+		min-width: 0;
+		font-size: 14px;
+	}
+}
+
+.pb-canvas-outline {
+	max-width: 520px;
+	margin: 0 auto;
+	aspect-ratio: 4 / 3;
+}
+
+.pb-arrangements li {
+	width: calc(50% - 8px);
+}
+
+.pb-pictures {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding: 0;
+	list-style: none;
+
+	> li {
+		width: 104px;
+	}
+}
+
+.pb-picture-tile {
+	display: grid;
+	gap: 4px;
+}
+
+.pb-picture-open,
+.pb-picture-add {
+	position: relative;
+	display: grid;
+	place-items: center;
+	gap: 2px;
+	width: 104px;
+	height: 78px;
+	padding: 4px;
+	border: 1px solid var(--fm-line);
+	border-radius: 8px;
+	background: var(--fm-soft);
+	color: var(--fm-muted);
+	font-size: 12px;
+}
+
+.pb-picture-number {
+	position: absolute;
+	top: 4px;
+	left: 6px;
+	font-weight: 600;
+	color: var(--fm-theme-ink);
+}
+
+.pb-picture-words {
+	max-width: 96px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pb-picture-actions {
+	display: flex;
+	justify-content: center;
+	gap: 6px;
+}
+
+.pb-spots {
+	display: grid;
+	grid-template-columns: repeat(3, 40px);
+	gap: 6px;
+}

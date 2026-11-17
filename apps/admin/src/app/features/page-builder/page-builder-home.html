@@ -74,7 +74,10 @@
 		</div>
 		<div class="col-xxl-4 col-12">
 			<h6 class="mb-2">{{ 'pb_page_settings' | transloco }}</h6>
-			<ul class="list-unstyled d-grid mb-0 gap-1">
+			<ul
+				class="list-unstyled d-grid mb-0 gap-1"
+				id="pb_settings_summary"
+			>
 				<li class="fm-ok">
 					<i
 						class="ri-checkbox-circle-line"
@@ -82,8 +85,32 @@
 					></i>
 					<span>{{ 'pb_settings_address' | transloco: { address: '/en/ · /bn/' } }}</span>
 				</li>
+				@for (gap of settingsTodo(); track gap.locale) {
+				<li class="fm-warn">
+					<i
+						class="ri-error-warning-line"
+						aria-hidden="true"
+					></i>
+					<span>{{ 'pb_settings_todo' | transloco: { language: gap.language, count: gap.count } }}</span>
+				</li>
+				} @empty {
+				<li class="fm-ok">
+					<i
+						class="ri-checkbox-circle-line"
+						aria-hidden="true"
+					></i>
+					<span>{{ 'pb_settings_done' | transloco }}</span>
+				</li>
+				}
 			</ul>
-			<p class="help-text mt-2 mb-0">{{ 'pb_settings_help' | transloco }}</p>
+			<p class="help-text mt-2 mb-2">{{ 'pb_settings_help' | transloco }}</p>
+			<a
+				class="btn btn-sm btn-outline"
+				id="pb_settings_open"
+				[routerLink]="['/page-builder', pageType, 'settings']"
+			>
+				{{ 'pb_settings_edit' | transloco }}
+			</a>
 		</div>
 	</div>
 
@@ -105,6 +132,17 @@
 					<h5 class="mb-0">{{ row.layout.name }}</h5>
 					<span [class]="statusClass[row.status]">{{ 'pb_status_' + row.status | transloco }}</span>
 					<span class="pb-card-actions">
+						<a
+							[routerLink]="['/page-builder', pageType, 'layouts', row.layout.id]"
+							[title]="'edit' | transloco"
+							[attr.aria-label]="'edit' | transloco"
+							[attr.data-edit]="row.layout.id"
+						>
+							<i
+								class="ri-pencil-line"
+								aria-hidden="true"
+							></i>
+						</a>
 						<a
 							href="javascript:void(0)"
 							role="button"

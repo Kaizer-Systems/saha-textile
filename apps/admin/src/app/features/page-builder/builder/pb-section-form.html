@@ -1,0 +1,434 @@
+@let s = section();
+<h2 class="h5 mb-2">{{ 'pb_section_' + s.type | transloco }}</h2>
+<ul class="nav nav-tabs mb-3">
+	<li class="nav-item">
+		<button
+			type="button"
+			class="nav-link"
+			id="pb_tab_content"
+			[class.active]="tab() === 'content'"
+			(click)="tab.set('content')"
+		>
+			{{ 'pb_tab_content' | transloco }}
+		</button>
+	</li>
+	<li class="nav-item">
+		<button
+			type="button"
+			class="nav-link"
+			id="pb_tab_look"
+			[class.active]="tab() === 'look'"
+			(click)="tab.set('look')"
+		>
+			{{ 'pb_tab_look' | transloco }}
+		</button>
+	</li>
+</ul>
+
+<fieldset
+	class="theme-form"
+	[disabled]="readOnly()"
+>
+	@if (tab() === 'content') {
+	<!-- Words every section with a title has, in the language the top bar shows. -->
+	@if ('title' in s) {
+	<label
+		class="form-label-title"
+		for="pb_title"
+		>{{ 'pb_field_title' | transloco }} ({{ locale() }})</label
+	>
+	<input
+		class="form-control mb-3"
+		id="pb_title"
+		type="text"
+		maxlength="120"
+		[value]="text('title')"
+		(change)="setText('title', $any($event.target).value)"
+	/>
+	} @if ('description' in s) {
+	<label
+		class="form-label-title"
+		for="pb_description"
+		>{{ 'pb_field_description' | transloco }} ({{ locale() }})</label
+	>
+	<textarea
+		class="form-control mb-3"
+		id="pb_description"
+		rows="2"
+		maxlength="320"
+		[value]="text('description')"
+		(change)="setText('description', $any($event.target).value)"
+	></textarea>
+	} @if ('subtitle' in s) {
+	<label
+		class="form-label-title"
+		for="pb_subtitle"
+		>{{ 'pb_field_subtitle' | transloco }} ({{ locale() }})</label
+	>
+	<input
+		class="form-control mb-3"
+		id="pb_subtitle"
+		type="text"
+		maxlength="200"
+		[value]="text('subtitle')"
+		(change)="setText('subtitle', $any($event.target).value)"
+	/>
+	} @if (s.type === 'banner_arrangement') {
+	<p class="form-label-title mb-2">{{ 'pb_arrangement' | transloco }}</p>
+	<ul class="radio-type-sec pb-arrangements mb-3">
+		@for (option of arrangements; track option) {
+		<li>
+			<div class="selection-box">
+				<input
+					type="radio"
+					name="pb_arrangement"
+					[id]="'pb_arrangement_' + option"
+					[checked]="s.arrangement === option"
+					(change)="arrangement(option)"
+				/>
+				<label [for]="'pb_arrangement_' + option">
+					<div>
+						<img
+							[src]="'assets/images/theme-option/hero/' + option + '.svg'"
+							class="img-fluid"
+							[alt]="'hero_layout_' + option | transloco"
+						/>
+					</div>
+					<span>{{ 'hero_layout_' + option | transloco }}</span>
+				</label>
+			</div>
+		</li>
+		}
+	</ul>
+	@if (s.arrangement !== 'hero_full') {
+	<label
+		class="form-label-title"
+		for="pb_phone_sides"
+		>{{ 'pb_phone_sides' | transloco }}</label
+	>
+	<select
+		class="form-select mb-3"
+		id="pb_phone_sides"
+		[value]="s.phoneSides"
+		(change)="set('phoneSides', $any($event.target).value)"
+	>
+		@for (option of ['below_side_by_side', 'main_only', 'swipe_row']; track option) {
+		<option [value]="option">{{ 'pb_phone_sides_' + option | transloco }}</option>
+		}
+	</select>
+	} } @if (s.type === 'banner_arrangement' || s.type === 'promo_banners') {
+	<!-- B3/B4: each piece has its own picture picker; two or more pictures make that piece a slider. -->
+	@for (piece of pieces(); track piece.name; let p = $index) {
+	<div
+		class="pb-piece mb-3"
+		[attr.data-piece]="piece.name"
+	>
+		<p class="form-label-title mb-1">
+			{{ 'pb_piece_' + piece.name | transloco }} @if (piece.pictures.length > 1) {
+			<span class="fm-chip">{{ 'pb_slider' | transloco }}</span>
+			}
+		</p>
+		<ul class="image-select-list pb-pictures">
+			@for (picture of piece.pictures; track $index; let i = $index, first = $first, last = $last) {
+			<li class="pb-picture-tile">
+				<button
+					type="button"
+					class="pb-picture-open"
+					[title]="'pb_picture_fields' | transloco"
+					[attr.aria-label]="'pb_picture_fields' | transloco"
+					(click)="editPicture(p, i)"
+				>
+					<span class="pb-picture-number">{{ i + 1 }}</span>
+					<i
+						class="ri-image-line"
+						aria-hidden="true"
+					></i>
+					<span class="pb-picture-words">{{ picture.heading[locale()] || picture.images.desktop }}</span>
+				</button>
+				<span class="pb-picture-actions">
+					<button
+						type="button"
+						class="btn btn-sm p-0"
+						[disabled]="first"
+						[title]="'move_up' | transloco"
+						[attr.aria-label]="'move_up' | transloco"
+						(click)="movePicture(p, i, i - 1)"
+					>
+						<i
+							class="ri-arrow-left-s-line"
+							aria-hidden="true"
+						></i>
+					</button>
+					<button
+						type="button"
+						class="btn btn-sm p-0"
+						[disabled]="last"
+						[title]="'move_down' | transloco"
+						[attr.aria-label]="'move_down' | transloco"
+						(click)="movePicture(p, i, i + 1)"
+					>
+						<i
+							class="ri-arrow-right-s-line"
+							aria-hidden="true"
+						></i>
+					</button>
+					<button
+						type="button"
+						class="btn btn-sm p-0"
+						[title]="'delete' | transloco"
+						[attr.aria-label]="'delete' | transloco"
+						(click)="removePicture(p, i)"
+					>
+						<i
+							class="ri-delete-bin-line"
+							aria-hidden="true"
+						></i>
+					</button>
+				</span>
+			</li>
+			} @if (piece.pictures.length < maxPictures) {
+			<li>
+				<button
+					type="button"
+					class="pb-picture-add"
+					[id]="'pb_add_picture_' + piece.name"
+					[title]="'pb_add_pictures' | transloco"
+					[attr.aria-label]="'pb_add_pictures' | transloco"
+					(click)="addPictures(p)"
+				>
+					<i
+						class="ri-add-line"
+						aria-hidden="true"
+					></i>
+					<span>{{ 'pb_left' | transloco: { count: maxPictures - piece.pictures.length } }}</span>
+				</button>
+			</li>
+			}
+		</ul>
+		@if (piece.pictures.length > 1) {
+		<!-- B3 2: this piece's slider. -->
+		<div class="row g-2 mt-1">
+			<div class="col-4">
+				<label
+					class="small"
+					[for]="'pb_seconds_' + piece.name"
+					>{{ 'pb_slide_seconds' | transloco }}</label
+				>
+				<input
+					class="form-control form-control-sm"
+					type="number"
+					[id]="'pb_seconds_' + piece.name"
+					[min]="seconds.min"
+					[max]="seconds.max"
+					[value]="piece.slider.seconds"
+					(change)="slider(p, 'seconds', +$any($event.target).value)"
+				/>
+			</div>
+			<div class="col-4">
+				<label
+					class="small"
+					[for]="'pb_controls_' + piece.name"
+					>{{ 'pb_slide_controls' | transloco }}</label
+				>
+				<select
+					class="form-select form-select-sm"
+					[id]="'pb_controls_' + piece.name"
+					[value]="piece.slider.controls"
+					(change)="slider(p, 'controls', $any($event.target).value)"
+				>
+					@for (option of ['bottom_center', 'bottom_start', 'bottom_end']; track option) {
+					<option [value]="option">{{ 'pb_controls_' + option | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-4">
+				<label
+					class="small"
+					[for]="'pb_after_' + piece.name"
+					>{{ 'pb_slide_after' | transloco }}</label
+				>
+				<select
+					class="form-select form-select-sm"
+					[id]="'pb_after_' + piece.name"
+					[value]="piece.slider.after"
+					(change)="slider(p, 'after', $any($event.target).value)"
+				>
+					@for (option of ['loop', 'stop']; track option) {
+					<option [value]="option">{{ 'pb_after_' + option | transloco }}</option>
+					}
+				</select>
+			</div>
+		</div>
+		}
+	</div>
+	} } @if (s.type === 'product_row') {
+	<label
+		class="form-label-title"
+		for="pb_source"
+		>{{ 'pb_source' | transloco }}</label
+	>
+	<select
+		class="form-select mb-3"
+		id="pb_source"
+		[value]="s.source"
+		(change)="set('source', $any($event.target).value)"
+	>
+		@for (option of sources; track option) {
+		<option [value]="option">{{ 'pb_source_' + option | transloco }}</option>
+		}
+	</select>
+	@if (s.source === 'category' || s.source === 'tag' || s.source === 'picked') {
+	<label
+		class="form-label-title"
+		for="pb_source_ids"
+		>{{ 'pb_source_ids_' + s.source | transloco }}</label
+	>
+	<input
+		class="form-control mb-1"
+		id="pb_source_ids"
+		type="text"
+		[value]="idsText()"
+		(change)="setIds($any($event.target).value)"
+	/>
+	<p class="help-text">{{ 'pb_source_ids_help' | transloco }}</p>
+	}
+	<label
+		class="form-label-title"
+		for="pb_cards"
+		>{{ 'pb_cards' | transloco }}</label
+	>
+	<input
+		class="form-control mb-3"
+		id="pb_cards"
+		type="number"
+		[min]="cards.min"
+		[max]="cards.max"
+		[value]="s.cards"
+		(change)="set('cards', +$any($event.target).value)"
+	/>
+	<div class="form-check mb-3">
+		<input
+			class="form-check-input"
+			type="checkbox"
+			id="pb_sold_out"
+			[checked]="s.leaveOutSoldOut"
+			(change)="set('leaveOutSoldOut', $any($event.target).checked)"
+		/>
+		<label
+			class="form-check-label"
+			for="pb_sold_out"
+			>{{ 'pb_leave_out_sold_out' | transloco }}</label
+		>
+	</div>
+	} } @else {
+	<!-- Look (SG-3): a few fixed steps; a background brings its own word and link colours. -->
+	@for (field of ['spaceAbove', 'spaceBelow']; track field) {
+	<p class="form-label-title mb-1">{{ 'pb_look_' + field | transloco }}</p>
+	<div
+		class="btn-group btn-group-sm mb-3"
+		role="group"
+	>
+		@for (step of steps.space; track step) {
+		<button
+			type="button"
+			class="btn btn-outline"
+			[class.active]="$any(s.look)[field] === step"
+			[attr.aria-pressed]="$any(s.look)[field] === step"
+			(click)="look($any(field), step)"
+		>
+			{{ 'pb_space_' + step | transloco }}
+		</button>
+		}
+	</div>
+	} @for (field of ['width', 'align', 'background']; track field) {
+	<p class="form-label-title mb-1">{{ 'pb_look_' + field | transloco }}</p>
+	<div
+		class="btn-group btn-group-sm mb-3 flex-wrap"
+		role="group"
+	>
+		@for (step of $any(steps)[field]; track step) {
+		<button
+			type="button"
+			class="btn btn-outline"
+			[class.active]="$any(s.look)[field] === step"
+			[attr.aria-pressed]="$any(s.look)[field] === step"
+			(click)="look($any(field), step)"
+		>
+			{{ 'pb_' + field + '_' + step | transloco }}
+		</button>
+		}
+	</div>
+	}
+	<p class="form-label-title mb-1">{{ 'pb_screens' | transloco }}</p>
+	<div class="d-flex flex-wrap gap-3 mb-3">
+		@for (band of ['phone', 'tablet', 'computer']; track band) {
+		<div class="form-check">
+			<input
+				class="form-check-input"
+				type="checkbox"
+				[id]="'pb_screen_' + band"
+				[checked]="$any(s.screens)[band]"
+				(change)="screen($any(band), $any($event.target).checked)"
+			/>
+			<label
+				class="form-check-label"
+				[for]="'pb_screen_' + band"
+				>{{ 'pb_screen_' + band | transloco }}</label
+			>
+		</div>
+		}
+	</div>
+	<div class="row g-2 mb-3">
+		<div class="col-6">
+			<label
+				class="form-label-title"
+				for="pb_from"
+				>{{ 'pb_show_from' | transloco }}</label
+			>
+			<input
+				class="form-control"
+				id="pb_from"
+				type="datetime-local"
+				[value]="when('from')"
+				(change)="setWhen('from', $any($event.target).value)"
+			/>
+		</div>
+		<div class="col-6">
+			<label
+				class="form-label-title"
+				for="pb_until"
+				>{{ 'pb_show_until' | transloco }}</label
+			>
+			<input
+				class="form-control"
+				id="pb_until"
+				type="datetime-local"
+				[value]="when('until')"
+				(change)="setWhen('until', $any($event.target).value)"
+			/>
+		</div>
+	</div>
+	<p class="help-text">{{ 'pb_india_time' | transloco }}</p>
+	<!-- SG-21: a section for one language only. -->
+	<p class="form-label-title mb-1">{{ 'pb_languages' | transloco }}</p>
+	<div class="d-flex flex-wrap gap-3 mb-3">
+		@for (code of shopLocales; track code) {
+		<div class="form-check">
+			<input
+				class="form-check-input"
+				type="checkbox"
+				[id]="'pb_language_' + code"
+				[checked]="languageOn(code)"
+				(change)="toggleLanguage(code, shopLocales)"
+			/>
+			<label
+				class="form-check-label"
+				[for]="'pb_language_' + code"
+				[attr.lang]="code"
+				>{{ code | languageName }}</label
+			>
+		</div>
+		}
+	</div>
+	}
+</fieldset>

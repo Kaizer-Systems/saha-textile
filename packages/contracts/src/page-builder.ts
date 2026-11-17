@@ -386,11 +386,49 @@ export const ScheduleEntry = z
 	});
 export type ScheduleEntry = z.infer<typeof ScheduleEntry>;
 
-/** A page (type + target) and its schedule. The schedule is data, read on every request (FX-6). */
+// ── Page settings (P3, SG-6, Q17 A): the page's own, the same whichever layout shows ──────────────────────
+
+/** Longest values a field takes. A search result shows about 60 characters of a title and 160 of a description. */
+export const PAGE_SETTINGS_LIMITS = { title: 120, description: 320, heading: 160 } as const;
+/** Shown in full in a search result (SG-7's preview marks what is cut). */
+export const SEARCH_RESULT_LENGTHS = { title: 60, description: 160 } as const;
+
+/** The fields every shop language must fill before Page settings save (as the legal pages do). */
+export const PAGE_SETTINGS_FIELDS = ['title', 'description', 'heading'] as const;
+export type PageSettingsField = (typeof PAGE_SETTINGS_FIELDS)[number];
+
+const limited = (max: number) => z.record(z.string(), z.string().max(max));
+
+export const PageShareImage = z.object({ assetId: Id, versionId: Id.nullable().default(null) });
+export type PageShareImage = z.infer<typeof PageShareImage>;
+
+export const PageSettings = z.object({
+	/** The title in search results and the browser tab, per language. */
+	title: limited(PAGE_SETTINGS_LIMITS.title).default({}),
+	description: limited(PAGE_SETTINGS_LIMITS.description).default({}),
+	/** The page's one H1 (FX-12), per language. */
+	heading: limited(PAGE_SETTINGS_LIMITS.heading).default({}),
+	/** Home's H1 is for search engines and screen readers today (visually hidden); on: drawn above the sections. */
+	headingShown: z.boolean().default(false),
+	/** The link preview picture (Link preview 1.91:1); none: the site's default. */
+	shareImage: PageShareImage.nullable().default(null),
+});
+export type PageSettings = z.infer<typeof PageSettings>;
+
+export const EMPTY_PAGE_SETTINGS: PageSettings = {
+	title: {},
+	description: {},
+	heading: {},
+	headingShown: false,
+	shareImage: null,
+};
+
+/** A page (type + target), its schedule and its own settings. The schedule is data, read on every request (FX-6). */
 export const BuilderPage = z.object({
 	pageType: PageTypeKey,
 	target: PageTarget,
 	schedule: z.array(ScheduleEntry).default([]),
+	settings: PageSettings.default(EMPTY_PAGE_SETTINGS),
 	updatedAt: IsoDateTime,
 });
 export type BuilderPage = z.infer<typeof BuilderPage>;
@@ -460,6 +498,10 @@ export const AdminBuilderPage = z.object({
 	liveRevisionId: Id.nullable(),
 	nextSwitchAt: IsoDateTime.nullable(),
 	layouts: z.array(AdminLayoutRow),
+	/** The page's own settings (P3), what each shop language still lacks, and the share picture's address. */
+	settings: PageSettings,
+	settingsGaps: z.record(z.string(), z.array(z.enum(PAGE_SETTINGS_FIELDS))),
+	shareImageUrl: z.string().nullable(),
 	/** The page type's templates, with an outline for their cards (A1, Q9 A). */
 	templates: z.array(
 		z.object({
@@ -469,6 +511,23 @@ export const AdminBuilderPage = z.object({
 	),
 });
 export type AdminBuilderPage = z.infer<typeof AdminBuilderPage>;
+
+/** One scheduled switch on any page, for "Coming up, across every page" (P1, SG-17). */
+export const ComingUpRow = z.object({
+	pageType: PageTypeKey,
+	target: PageTarget,
+	layoutId: Id,
+	layoutName: z.string(),
+	from: IsoDateTime,
+	until: IsoDateTime.nullable(),
+	/** Showing now (with an end still to come), or still to start. */
+	state: z.enum(['showing', 'coming']),
+});
+export type ComingUpRow = z.infer<typeof ComingUpRow>;
+
+/** `GET /admin/page-builder/coming-up` — every switch still ahead, soonest first. */
+export const ComingUpResponse = z.object({ rows: z.array(ComingUpRow) });
+export type ComingUpResponse = z.infer<typeof ComingUpResponse>;
 
 /** `POST /admin/page-builder/pages/:type/layouts` — New layout (A2): blank, or a copy of a layout. */
 export const CreateLayoutRequest = z
@@ -491,12 +550,30 @@ export const CreateLayoutRequest = z
 	});
 export type CreateLayoutRequest = z.infer<typeof CreateLayoutRequest>;
 
+/** How long an editing lock lasts without a heartbeat (FX-11): a closed laptop frees it within 2 minutes. */
+export const LAYOUT_LOCK_SECONDS = 120;
+
+/** Who is editing a layout (E4): the second admin can look and preview; editing waits until the lock is free. */
+export const LayoutLock = z.object({
+	holderId: Id,
+	holderName: z.string().nullable(),
+	since: IsoDateTime,
+	heartbeatAt: IsoDateTime,
+	/** The lock is the asking admin's own. */
+	mine: z.boolean(),
+});
+export type LayoutLock = z.infer<typeof LayoutLock>;
+
 /** `GET /admin/page-builder/layouts/:id` — a layout open in the builder, with what holds its Go Live. */
 export const AdminLayoutView = z.object({
 	layout: PageLayout,
 	draft: LayoutRevision.nullable(),
 	problems: z.array(LayoutProblemView),
 	updatedByName: z.string().nullable(),
+	/** The section types the page's slot takes, in the order Add section lists them (B2). */
+	allowedSections: z.array(SectionType).default([]),
+	/** Who is editing it now, if anyone (E4). */
+	lock: LayoutLock.nullable().default(null),
 });
 export type AdminLayoutView = z.infer<typeof AdminLayoutView>;
 
@@ -506,6 +583,26 @@ export const SaveLayoutDraft = z.object({
 	expectedDraftId: Id.nullable(),
 });
 export type SaveLayoutDraft = z.infer<typeof SaveLayoutDraft>;
+
+/** `POST /admin/page-builder/layouts/:id/lock` — take or keep the editing lock (a heartbeat every 30 s). */
+export const LayoutLockResponse = z.object({ granted: z.boolean(), lock: LayoutLock });
+export type LayoutLockResponse = z.infer<typeof LayoutLockResponse>;
+
+/** A saved block in the builder's list (P7): how many layouts use it, and whether linked copies follow it. */
+export const AdminSavedBlockRow = z.object({
+	block: SavedBlock,
+	/** Layouts whose draft or live revision holds a linked copy. */
+	linkedUses: z.number().int().nonnegative(),
+	updatedByName: z.string().nullable(),
+});
+export type AdminSavedBlockRow = z.infer<typeof AdminSavedBlockRow>;
+
+/** `POST /admin/page-builder/blocks` — save a section as a block (P7). */
+export const SaveBlockRequest = z.object({
+	name: z.string().trim().min(1).max(80),
+	section: PageSection,
+});
+export type SaveBlockRequest = z.infer<typeof SaveBlockRequest>;
 
 /** `PATCH /admin/page-builder/layouts/:id` — rename (the name is seen by admins only). */
 export const RenameLayoutRequest = z.object({ name: z.string().trim().min(1).max(80) });
@@ -559,15 +656,27 @@ export const StorefrontPageLayoutQuery = z.object({
 });
 export type StorefrontPageLayoutQuery = z.infer<typeof StorefrontPageLayoutQuery>;
 
+/** The page's own settings in one language (P3); null fields fall back to the shop's own words for the page. */
+export const ResolvedPageSettings = z.object({
+	title: z.string().nullable(),
+	description: z.string().nullable(),
+	heading: z.string().nullable(),
+	headingShown: z.boolean(),
+	shareImageUrl: z.string().nullable(),
+});
+export type ResolvedPageSettings = z.infer<typeof ResolvedPageSettings>;
+
 /**
  * The page's live layout, drawn by the shop's server. `revisionId` null: nothing is live, the shop draws its fixed
  * page. `refreshAt`: the next moment this answer may change by itself (a switch, a section or picture starting or
- * ending); the answer is cached no longer than that, and never longer than a minute.
+ * ending); the answer is cached no longer than that, and never longer than a minute. `settings` apply whichever
+ * page is drawn, the fixed one included.
  */
 export const StorefrontPageLayout = z.object({
 	pageType: PageTypeKey,
 	revisionId: Id.nullable(),
 	sections: z.array(ResolvedPageSection),
 	refreshAt: IsoDateTime.nullable(),
+	settings: ResolvedPageSettings.nullable().default(null),
 });
 export type StorefrontPageLayout = z.infer<typeof StorefrontPageLayout>;

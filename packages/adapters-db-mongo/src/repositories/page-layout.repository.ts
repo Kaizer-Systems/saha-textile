@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
-import type {
-	BuilderPage,
-	LayoutRevision,
-	PageLayout,
-	PageSection,
-	PageTypeKey,
-	SavedBlock,
-	ScheduleEntry,
+import {
+	EMPTY_PAGE_SETTINGS,
+	PageSettings,
+	type BuilderPage,
+	type LayoutRevision,
+	type PageLayout,
+	type PageSection,
+	type PageTypeKey,
+	type SavedBlock,
+	type ScheduleEntry,
 } from '@saha-textile/contracts';
-import type { PageLayoutRepository, SavedBlockRepository } from '@saha-textile/core-domain';
+import type { HeldLock, PageLayoutRepository, SavedBlockRepository } from '@saha-textile/core-domain';
 
 import {
 	BuilderPageModel,
@@ -60,7 +62,14 @@ const toPage = (doc: BuilderPageDoc): BuilderPage => ({
 	pageType: doc.pageType as PageTypeKey,
 	target: doc.target,
 	schedule: (doc.schedule ?? []).map(toEntry),
+	settings: PageSettings.parse(doc.settings ?? EMPTY_PAGE_SETTINGS),
 	updatedAt: new Date(doc.updatedAt).toISOString(),
+});
+
+const toLock = (lock: NonNullable<PageLayoutDoc['lock']>): HeldLock => ({
+	holder: lock.holder,
+	since: new Date(lock.since).toISOString(),
+	heartbeatAt: new Date(lock.heartbeatAt).toISOString(),
 });
 
 const toLayout = (doc: PageLayoutDoc): PageLayout => ({
@@ -221,6 +230,50 @@ export class MongoPageLayoutRepository implements PageLayoutRepository {
 		} finally {
 			await session.endSession();
 		}
+	}
+
+	async lock(input: { layoutId: string; by: string; at: string; staleBefore: string }): Promise<HeldLock | null> {
+		const now = new Date(input.at);
+		// Kept: the holder's heartbeat moves on.
+		let doc = await PageLayoutModel.findOneAndUpdate(
+			{ _id: input.layoutId, 'lock.holder': input.by },
+			{ $set: { 'lock.heartbeatAt': now } },
+			{ new: true },
+		)
+			.lean<PageLayoutDoc>()
+			.exec();
+		// Taken: free, or its holder stopped beating; one atomic update, so two admins never both get it.
+		doc ??= await PageLayoutModel.findOneAndUpdate(
+			{ _id: input.layoutId, $or: [{ lock: null }, { 'lock.heartbeatAt': { $lt: new Date(input.staleBefore) } }] },
+			{ $set: { lock: { holder: input.by, since: now, heartbeatAt: now } } },
+			{ new: true },
+		)
+			.lean<PageLayoutDoc>()
+			.exec();
+		// Held by someone else.
+		doc ??= await PageLayoutModel.findById(input.layoutId).lean<PageLayoutDoc>().exec();
+		return doc?.lock ? toLock(doc.lock) : null;
+	}
+
+	async unlock(layoutId: string, by: string): Promise<void> {
+		await PageLayoutModel.updateOne({ _id: layoutId, 'lock.holder': by }, { $set: { lock: null } }).exec();
+	}
+
+	async currentLock(layoutId: string, staleBefore: string): Promise<HeldLock | null> {
+		const doc = await PageLayoutModel.findById(layoutId, { lock: 1 }).lean<PageLayoutDoc>().exec();
+		if (!doc?.lock || new Date(doc.lock.heartbeatAt) < new Date(staleBefore)) return null;
+		return toLock(doc.lock);
+	}
+
+	async saveSettings(pageType: PageTypeKey, target: string, settings: PageSettings, at: string): Promise<void> {
+		await BuilderPageModel.updateOne(
+			{ _id: pageId(pageType, target) },
+			{
+				$setOnInsert: { pageType, target, schedule: [] },
+				$set: { settings, updatedAt: new Date(at) },
+			},
+			{ upsert: true },
+		).exec();
 	}
 
 	async setSchedule(pageType: PageTypeKey, target: string, schedule: ScheduleEntry[], at: string): Promise<void> {

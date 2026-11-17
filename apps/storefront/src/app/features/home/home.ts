@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { afterNextRender, Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
+import { afterNextRender, Component, computed, effect, inject, PLATFORM_ID, signal, untracked } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { CarouselModule } from 'ngx-owl-carousel-o';
@@ -75,15 +75,29 @@ const HERO_LAYOUT_TILES: Record<StorefrontBanners['heroLayout'], [string | null,
 })
 export class Home {
 	constructor() {
-		// The home page's search title and description, in the page's language (sent by the server).
+		// The home page's search title, description and share picture, in the page's language (sent by the server):
+		// Page settings from Page Builder › Home when they have them (P3), else the shop's own words.
 		const seo = inject(LocaleSeo);
 		const transloco = inject(TranslocoService);
+		const words = signal<{ title: string; description: string } | null>(null);
 		combineLatest([
 			transloco.selectTranslate('home_page_title'),
 			transloco.selectTranslate('home_page_description'),
 		])
 			.pipe(take(1))
-			.subscribe(([title, description]) => seo.applyDocument({ title, description }));
+			.subscribe(([title, description]) => words.set({ title, description }));
+		effect(() => {
+			const own = words();
+			if (!own) return;
+			const settings = this.pageSettings();
+			untracked(() =>
+				seo.applyDocument({
+					title: settings?.title ?? own.title,
+					description: settings?.description ?? own.description,
+					...(settings?.shareImageUrl ? { image: settings.shareImageUrl } : {}),
+				}),
+			);
+		});
 
 		// The server renderer runs this hook too, and it has no storage: the rail fills in the browser.
 		const isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -143,6 +157,8 @@ export class Home {
 		const layout = this.layoutQuery.data();
 		return layout?.revisionId && layout.sections.length ? layout.sections : null;
 	});
+	/** Home's own settings from Page Builder (P3): they apply to the fixed page too. */
+	readonly pageSettings = computed(() => this.layoutQuery.data()?.settings ?? null);
 
 	/** The channel's latest videos for the home rail, as many as admin set to show. */
 	private readonly railQuery = injectVideoRailQuery(() => 'home');

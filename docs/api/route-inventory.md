@@ -405,14 +405,22 @@ Rules the routes apply:
 
 ## Admin Page Builder routes
 
-| Method  | Route                                     | Access               | Purpose                                                                      |
-| ------- | ----------------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
-| `GET`   | `/admin/page-builder/pages`               | `theme_option.index` | The pages the builder arranges, with what shows now and the next switch (P1) |
-| `GET`   | `/admin/page-builder/pages/:type`         | `theme_option.index` | One page: its schedule and its layouts with their status (A1)                |
-| `POST`  | `/admin/page-builder/pages/:type/layouts` | `theme_option.edit`  | New layout: blank or a copy of another layout (A2)                           |
-| `GET`   | `/admin/page-builder/layouts/:id`         | `theme_option.index` | A layout open in the builder, with what holds its Go Live                    |
-| `PUT`   | `/admin/page-builder/layouts/:id/draft`   | `theme_option.edit`  | Save the draft; refused with `409 layout_moved_on` over a newer revision     |
-| `PATCH` | `/admin/page-builder/layouts/:id`         | `theme_option.edit`  | Rename a layout (the name is seen by admins only)                            |
+| Method   | Route                                      | Access               | Purpose                                                                                                    |
+| -------- | ------------------------------------------ | -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/admin/page-builder/pages`                | `theme_option.index` | The pages the builder arranges, with what shows now and the next switch (P1)                               |
+| `GET`    | `/admin/page-builder/pages/:type`          | `theme_option.index` | One page: its schedule and its layouts with their status (A1)                                              |
+| `POST`   | `/admin/page-builder/pages/:type/layouts`  | `theme_option.edit`  | New layout: blank or a copy of another layout (A2)                                                         |
+| `PUT`    | `/admin/page-builder/pages/:type/settings` | `theme_option.edit`  | A page's own settings (P3); refused with `400 page_settings_incomplete` until every shop language has them |
+| `GET`    | `/admin/page-builder/coming-up`            | `theme_option.index` | Every scheduled switch still ahead, on every page, soonest first (SG-17)                                   |
+| `POST`   | `/admin/page-builder/layouts/:id/lock`     | `theme_option.edit`  | Take or keep the editing lock (heartbeat every 30 s; free after 2 minutes without one)                     |
+| `DELETE` | `/admin/page-builder/layouts/:id/lock`     | `theme_option.edit`  | Free the lock the asking admin holds                                                                       |
+| `GET`    | `/admin/page-builder/blocks`               | `theme_option.index` | Saved blocks, with how many layouts link each (P7)                                                         |
+| `POST`   | `/admin/page-builder/blocks`               | `theme_option.edit`  | Save a section as a block                                                                                  |
+| `PUT`    | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  | Change a block; linked layouts take it at their next Go Live                                               |
+| `DELETE` | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  | Delete a block no layout links; refused with `409 block_in_use`                                            |
+| `GET`    | `/admin/page-builder/layouts/:id`          | `theme_option.index` | A layout open in the builder, with what holds its Go Live                                                  |
+| `PUT`    | `/admin/page-builder/layouts/:id/draft`    | `theme_option.edit`  | Save the draft; refused with `409 layout_moved_on` over a newer revision                                   |
+| `PATCH`  | `/admin/page-builder/layouts/:id`          | `theme_option.edit`  | Rename a layout (the name is seen by admins only)                                                          |
 
 ## Admin blog routes
 

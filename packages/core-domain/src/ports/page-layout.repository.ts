@@ -3,6 +3,7 @@ import type {
 	LayoutRevision,
 	PageLayout,
 	PageSection,
+	PageSettings,
 	PageTypeKey,
 	SavedBlock,
 	ScheduleEntry,
@@ -41,10 +42,28 @@ export interface PageLayoutRepository {
 	 * whatever else must change with it (Media use counts), so a Go Live never half-happens.
 	 */
 	goLive(input: { pageType: PageTypeKey; target: string; entry: ScheduleEntry; at: string }): Promise<void>;
+	/** The page's own settings (P3): search title, description, main heading and share picture. */
+	saveSettings(pageType: PageTypeKey, target: string, settings: PageSettings, at: string): Promise<void>;
 	/** Replaces a page's schedule (cancelling or moving a switch). */
 	setSchedule(pageType: PageTypeKey, target: string, schedule: ScheduleEntry[], at: string): Promise<void>;
+	/**
+	 * The editing lock (FX-11, E4): taken when free, when its last heartbeat is older than `staleBefore`, or kept
+	 * when it is already `by`'s (the heartbeat moves on). Answers who holds it after the call; null for no layout.
+	 */
+	lock(input: { layoutId: string; by: string; at: string; staleBefore: string }): Promise<HeldLock | null>;
+	/** Frees the lock if `by` holds it. */
+	unlock(layoutId: string, by: string): Promise<void>;
+	/** Who holds the lock now (a heartbeat after `staleBefore`), or null. */
+	currentLock(layoutId: string, staleBefore: string): Promise<HeldLock | null>;
 	/** Keeps the last `keepGoLive` revisions that went live per layout, and drafts newer than `draftsAfter` (Q12). */
 	prune(input: { keepGoLive: number; draftsAfter: string }): Promise<number>;
+}
+
+/** Who holds a layout's editing lock, since when, and their last heartbeat (ISO times). */
+export interface HeldLock {
+	holder: string;
+	since: string;
+	heartbeatAt: string;
 }
 
 /** Saved blocks (SG-5): a section kept on its own, copied into layouts or linked. */

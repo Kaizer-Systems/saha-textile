@@ -4,3 +4,5 @@ export * from './schedule';
 export * from './shop-layout';
 export * from './templates';
 export * from './todays-home';
+export * from './settings';
+export * from './blocks';

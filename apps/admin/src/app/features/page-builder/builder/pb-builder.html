@@ -1,0 +1,291 @@
+<div class="pb-builder">
+	<!-- Top bar (B1): which page, the layout's name, the language shown, undo and redo, the save line, what holds Go Live. -->
+	<div class="pb-topbar">
+		<p class="pb-crumb mb-0">
+			<a routerLink="/page-builder">{{ 'page_builder' | transloco }}</a>
+			› <a [routerLink]="['/page-builder', pageType]">{{ 'pb_page_' + pageType | transloco }}</a>
+			› <strong>{{ view()?.layout?.name }}</strong>
+		</p>
+		<app-language-switch
+			[locales]="locales"
+			[active]="locale()"
+			(changed)="locale.set($event)"
+		/>
+		<div class="pb-topbar-actions">
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				id="pb_undo"
+				[disabled]="!canUndo() || readOnly()"
+				[title]="'pb_undo' | transloco"
+				[attr.aria-label]="'pb_undo' | transloco"
+				(click)="undo()"
+			>
+				<i
+					class="ri-arrow-go-back-line"
+					aria-hidden="true"
+				></i>
+			</button>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				id="pb_redo"
+				[disabled]="!canRedo() || readOnly()"
+				[title]="'pb_redo' | transloco"
+				[attr.aria-label]="'pb_redo' | transloco"
+				(click)="redo()"
+			>
+				<i
+					class="ri-arrow-go-forward-line"
+					aria-hidden="true"
+				></i>
+			</button>
+			<span
+				class="pb-save"
+				id="pb_save_state"
+				[attr.data-state]="saveState()"
+				role="status"
+			>
+				{{ 'pb_save_' + saveState() | transloco }}
+			</span>
+			@if (problemCount()) {
+			<span
+				class="fm-chip warn"
+				id="pb_problems"
+			>
+				{{ 'pb_to_fix' | transloco: { count: problemCount() } }}
+			</span>
+			}
+		</div>
+	</div>
+
+	@if (saveState() === 'locked') {
+	<div
+		class="alert alert-warning"
+		id="pb_locked"
+	>
+		{{ 'pb_locked_by' | transloco: { name: blocker()?.name ?? '—' } }}
+	</div>
+	} @if (saveState() === 'conflict') {
+	<div
+		class="alert alert-warning d-flex flex-wrap align-items-center gap-2"
+		id="pb_conflict"
+	>
+		{{ 'pb_conflict' | transloco: { name: blocker()?.name ?? '—' } }}
+		<button
+			type="button"
+			class="btn btn-sm btn-theme"
+			(click)="reload()"
+		>
+			{{ 'pb_open_newer' | transloco }}
+		</button>
+	</div>
+	} @if (saveState() === 'retrying') {
+	<div
+		class="alert alert-warning"
+		id="pb_retrying"
+		role="alert"
+	>
+		{{ 'pb_not_saved_retrying' | transloco }}
+	</div>
+	}
+
+	<!-- Phone (B9): one pane at a time. -->
+	<ul class="nav nav-tabs pb-pane-tabs d-lg-none mb-3">
+		@for (name of ['outline', 'settings', 'preview']; track name) {
+		<li class="nav-item">
+			<button
+				type="button"
+				class="nav-link"
+				[class.active]="pane() === name"
+				(click)="pane.set($any(name))"
+			>
+				{{ 'pb_pane_' + name | transloco }}
+			</button>
+		</li>
+		}
+	</ul>
+
+	<div class="pb-panes">
+		<!-- 1 · Outline -->
+		<section
+			class="pb-outline card"
+			[class.pb-pane-hidden]="pane() !== 'outline'"
+			[attr.aria-label]="'pb_pane_outline' | transloco"
+		>
+			<div class="card-body">
+				<div class="d-flex align-items-center justify-content-between mb-2">
+					<h2 class="h5 mb-0">{{ 'pb_pane_outline' | transloco }}</h2>
+					<button
+						type="button"
+						class="btn btn-sm btn-theme"
+						id="pb_add_section"
+						[disabled]="readOnly()"
+						(click)="addSection()"
+					>
+						<i
+							class="ri-add-line"
+							aria-hidden="true"
+						></i>
+						{{ 'pb_add_section' | transloco }}
+					</button>
+				</div>
+				<p class="help-text mb-2">{{ 'pb_outline_help' | transloco }}</p>
+				<ul
+					class="pb-rows list-unstyled mb-0"
+					cdkDropList
+					[cdkDropListData]="sections()"
+					[cdkDropListDisabled]="readOnly()"
+					(cdkDropListDropped)="drop($event)"
+				>
+					@for (section of sections(); track section.id; let i = $index, first = $first, last = $last) {
+					<li
+						class="pb-row"
+						cdkDrag
+						cdkDragLockAxis="y"
+						[cdkDragStartDelay]="{ touch: 300, mouse: 0 }"
+						[class.active]="selectedId() === section.id"
+						[class.lifted]="lifted()?.id === section.id"
+						[class.muted]="section.hidden"
+						[attr.data-outline]="section.id"
+						tabindex="0"
+						role="button"
+						[attr.aria-pressed]="selectedId() === section.id"
+						(click)="choose(section.id)"
+						(keydown)="outlineKey($event, section, i)"
+						(blur)="outlineBlur()"
+					>
+						<i
+							class="ri-draggable pb-handle"
+							cdkDragHandle
+							[title]="'drag_to_reorder' | transloco"
+							aria-hidden="true"
+						></i>
+						<span class="pb-row-name">
+							{{ sectionName(section) }} @if (section.block) {
+							<i
+								[class]="section.block.linked ? 'ri-links-line' : 'ri-file-copy-line'"
+								[title]="(section.block.linked ? 'pb_block_linked' : 'pb_block_copy') | transloco"
+								aria-hidden="true"
+							></i>
+							}
+						</span>
+						<button
+							type="button"
+							class="btn btn-sm p-0"
+							[disabled]="readOnly()"
+							[title]="(section.hidden ? 'pb_show' : 'pb_hide') | transloco"
+							[attr.aria-label]="(section.hidden ? 'pb_show' : 'pb_hide') | transloco"
+							(click)="$event.stopPropagation(); toggleHidden(section)"
+						>
+							<i
+								[class]="section.hidden ? 'ri-eye-off-line' : 'ri-eye-line'"
+								aria-hidden="true"
+							></i>
+						</button>
+						<div
+							ngbDropdown
+							container="body"
+							class="d-inline-block"
+						>
+							<button
+								type="button"
+								class="btn btn-sm p-0"
+								ngbDropdownToggle
+								[disabled]="readOnly()"
+								[title]="'pb_more' | transloco"
+								[attr.aria-label]="'pb_more' | transloco"
+								(click)="$event.stopPropagation()"
+							>
+								<i
+									class="ri-more-2-fill"
+									aria-hidden="true"
+								></i>
+							</button>
+							<div ngbDropdownMenu>
+								<button
+									ngbDropdownItem
+									[disabled]="first"
+									(click)="move(i, i - 1)"
+								>
+									{{ 'move_up' | transloco }}
+								</button>
+								<button
+									ngbDropdownItem
+									[disabled]="last"
+									(click)="move(i, i + 1)"
+								>
+									{{ 'move_down' | transloco }}
+								</button>
+								<button
+									ngbDropdownItem
+									(click)="duplicate(section.id)"
+								>
+									{{ 'pb_duplicate' | transloco }}
+								</button>
+								<button
+									ngbDropdownItem
+									(click)="saveAsBlock(section)"
+								>
+									{{ 'pb_save_as_block' | transloco }}
+								</button>
+								<button
+									ngbDropdownItem
+									class="text-danger"
+									(click)="remove(section.id)"
+								>
+									{{ 'delete' | transloco }}
+								</button>
+							</div>
+						</div>
+					</li>
+					} @empty {
+					<li class="help-text">{{ 'pb_outline_empty' | transloco }}</li>
+					}
+				</ul>
+				<p
+					class="visually-hidden"
+					aria-live="assertive"
+					id="pb_announce"
+				>
+					{{ announcement() }}
+				</p>
+			</div>
+		</section>
+
+		<!-- 2 · The shop at the chosen size (preview: Page Builder step 6). -->
+		<section
+			class="pb-canvas card"
+			[class.pb-pane-hidden]="pane() !== 'preview'"
+			[attr.aria-label]="'pb_pane_preview' | transloco"
+		>
+			<div class="card-body">
+				<!-- Until the live shop frame (step 6), the layout's outline picture. -->
+				<div class="pb-canvas-outline">
+					<app-pb-thumb [outline]="outline()" />
+				</div>
+				<p class="help-text mt-2 mb-0">{{ 'pb_preview_soon' | transloco }}</p>
+			</div>
+		</section>
+
+		<!-- 3 · Settings of what is chosen: Content and Look (SG-4). -->
+		<section
+			class="pb-settings card"
+			[class.pb-pane-hidden]="pane() !== 'settings'"
+			[attr.aria-label]="'pb_pane_settings' | transloco"
+		>
+			<div class="card-body">
+				@if (selected(); as section) {
+				<app-pb-section-form
+					[section]="section"
+					[locale]="locale()"
+					[readOnly]="readOnly()"
+					(changed)="updateSection($event)"
+				/>
+				} @else {
+				<p class="help-text mb-0">{{ 'pb_choose_section' | transloco }}</p>
+				}
+			</div>
+		</section>
+	</div>
+</div>

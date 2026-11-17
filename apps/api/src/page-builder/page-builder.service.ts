@@ -1,16 +1,29 @@
 import { randomUUID } from 'node:crypto';
 
-import { ConflictException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import {
+	BadRequestException,
+	ConflictException,
+	HttpException,
+	HttpStatus,
+	Inject,
+	Injectable,
+	NotFoundException,
+	Optional,
+} from '@nestjs/common';
 import type {
 	AdminBuilderPage,
 	AdminBuilderPageRow,
 	AdminLayoutRow,
 	AdminLayoutView,
 	AuditLog,
+	ComingUpResponse,
+	LayoutLock,
+	LayoutLockResponse,
 	CreateLayoutRequest,
 	MediaAsset,
 	PageLayout,
 	PageSection,
+	PageSettings,
 	PageTypeKey,
 	RenameLayoutRequest,
 	SaveLayoutDraft,
@@ -20,8 +33,13 @@ import {
 	type AdminUserRepository,
 	type AuditLogRepository,
 	type MediaAssetRepository,
+	type HeldLock,
 	type PageLayoutRepository,
 	type PictureFacts,
+	comingUp,
+	pageSettingsGaps,
+	pageSettingsToSave,
+	shopPageSettings,
 	layoutProblems,
 	layoutStatus,
 	nextContentChangeAt,
@@ -51,6 +69,11 @@ import {
 import { LanguageStore } from '../languages/language-store';
 
 const WHOLE_PAGE = 'page';
+
+/** A lock with no heartbeat for this long is free (FX-11: a closed laptop frees it within 2 minutes). */
+const LOCK_MS = 120_000;
+
+const NO_SETTINGS: PageSettings = { title: {}, description: {}, heading: {}, headingShown: false, shareImage: null };
 
 /** A photo version's facts for the Go Live checks: ready to show, and its shape from the files it made. */
 export function pictureFacts(asset: MediaAsset | null, versionId: string | null): PictureFacts | null {
@@ -119,6 +142,7 @@ export class PageBuilderService {
 		]);
 		const schedule = page?.schedule ?? [];
 		const next = nextSwitchAt(schedule, now);
+		const settings = page?.settings ?? NO_SETTINGS;
 		return {
 			pageType,
 			target: WHOLE_PAGE,
@@ -126,8 +150,82 @@ export class PageBuilderService {
 			liveRevisionId: liveEntry(schedule, now)?.revisionId ?? null,
 			nextSwitchAt: next ? next.toISOString() : null,
 			layouts: await Promise.all(layouts.map((layout) => this.row(layout, schedule, now))),
+			settings,
+			settingsGaps: pageSettingsGaps(settings, this.languages.shop()),
+			shareImageUrl: await this.shareImageUrl(settings),
 			templates: pageType === 'home' ? await this.homeTemplates() : [],
 		};
+	}
+
+	/**
+	 * P3: the page's own settings. Like the legal pages, they save only when every language the shop shows has its
+	 * search title, description and main heading; a refusal lists each missing language and field.
+	 */
+	async saveSettings(
+		actor: string | null,
+		type: string,
+		write: PageSettings,
+		now = new Date(),
+	): Promise<AdminBuilderPage> {
+		const pageType = this.requireType(type);
+		const settings = pageSettingsToSave(write);
+		const missing = Object.entries(pageSettingsGaps(settings, this.languages.shop())).flatMap(([locale, fields]) =>
+			fields.map((field) => ({ locale, field })),
+		);
+		if (missing.length) {
+			throw new BadRequestException({
+				message: 'Validation failed',
+				issues: missing.map(({ locale, field }) => ({
+					path: [field, locale],
+					message:
+						'The search title, description and main heading are needed in every language the shop shows',
+					code: 'page_settings_incomplete',
+				})),
+			});
+		}
+		await this.layouts.saveSettings(pageType, WHOLE_PAGE, settings, now.toISOString());
+		await this.record(actor, 'page_builder.settings.save', `${pageType}:${WHOLE_PAGE}`, {
+			pageType,
+			headingShown: settings.headingShown,
+			shareImage: settings.shareImage?.assetId ?? null,
+		});
+		return this.page(pageType, now);
+	}
+
+	/** SG-17: every switch still ahead, on every page, soonest first. */
+	async comingUp(now = new Date()): Promise<ComingUpResponse> {
+		const rows = await Promise.all(
+			registeredPageTypes().map(async (rules) => {
+				const pageType = rules.key as PageTypeKey;
+				const [page, layouts] = await Promise.all([
+					this.layouts.page(pageType, WHOLE_PAGE),
+					this.layouts.layouts(pageType, WHOLE_PAGE),
+				]);
+				return comingUp({ pageType, target: WHOLE_PAGE, schedule: page?.schedule ?? [] }, layouts, now);
+			}),
+		);
+		const moment = (row: ComingUpResponse['rows'][number]) =>
+			Date.parse(row.state === 'showing' ? (row.until ?? row.from) : row.from);
+		return { rows: rows.flat().sort((a, b) => moment(a) - moment(b)) };
+	}
+
+	/** The page's share picture: its link preview size when the photo has one, else its largest picture. */
+	private async shareImageUrl(settings: PageSettings): Promise<string | null> {
+		const share = settings.shareImage;
+		if (!share) return null;
+		const asset = await this.assets.findById(share.assetId).catch(() => null);
+		if (!asset || asset.deletedAt) return null;
+		const image = resolveImage({
+			asset,
+			getUrl: (key) => this.storage.getUrl(key),
+			locale: 'en',
+			fallbackLocale: 'en',
+			versionId: share.versionId,
+		});
+		if (!image) return null;
+		const best =
+			image.roles['share']?.at(-1) ?? [...Object.values(image.roles).flat()].sort((a, b) => b.width - a.width)[0];
+		return best?.url ?? null;
 	}
 
 	/** Home's templates with their outlines (A1, Q9 A), drawn from today's banners where a template uses them. */
@@ -202,9 +300,10 @@ export class PageBuilderService {
 		return this.layoutView(layout.id);
 	}
 
-	/** A layout open in the builder: its draft and what holds its Go Live. */
-	async layoutView(id: string): Promise<AdminLayoutView> {
+	/** A layout open in the builder: its draft, what holds its Go Live, what Add section offers and who is editing. */
+	async layoutView(id: string, viewer: string | null = null, now = new Date()): Promise<AdminLayoutView> {
 		const layout = await this.requireLayout(id);
+		const held = await this.layouts.currentLock(id, new Date(now.getTime() - LOCK_MS).toISOString());
 		const draft = layout.draftRevisionId ? await this.layouts.revision(layout.draftRevisionId) : null;
 		const rules = pageTypeRules(layout.pageType);
 		const sections = draft?.sections ?? [];
@@ -217,7 +316,45 @@ export class PageBuilderService {
 					picture: (assetId, versionId) => facts.get(`${assetId}|${versionId ?? ''}`) ?? null,
 				})
 			: [];
-		return { layout, draft, problems, updatedByName: await this.adminName(layout.updatedBy) };
+		return {
+			layout,
+			draft,
+			problems,
+			updatedByName: await this.adminName(layout.updatedBy),
+			allowedSections: [...(rules?.slots['main'] ?? [])],
+			lock: held ? await this.lockView(held, viewer) : null,
+		};
+	}
+
+	/**
+	 * E4: takes or keeps the editing lock. The builder beats every 30 s; a second admin gets `granted: false` with who
+	 * holds it and since when, and can look and preview until it is free.
+	 */
+	async lock(actor: string | null, id: string, now = new Date()): Promise<LayoutLockResponse> {
+		if (!actor) throw new NotFoundException('No such layout');
+		await this.requireLayout(id);
+		const held = await this.layouts.lock({
+			layoutId: id,
+			by: actor,
+			at: now.toISOString(),
+			staleBefore: new Date(now.getTime() - LOCK_MS).toISOString(),
+		});
+		if (!held) throw new NotFoundException('No such layout');
+		return { granted: held.holder === actor, lock: await this.lockView(held, actor) };
+	}
+
+	async unlock(actor: string | null, id: string): Promise<void> {
+		if (actor) await this.layouts.unlock(id, actor);
+	}
+
+	private async lockView(held: HeldLock, viewer: string | null): Promise<LayoutLock> {
+		return {
+			holderId: held.holder,
+			holderName: await this.adminName(held.holder),
+			since: held.since,
+			heartbeatAt: held.heartbeatAt,
+			mine: held.holder === viewer,
+		};
 	}
 
 	/**
@@ -231,6 +368,19 @@ export class PageBuilderService {
 		now = new Date(),
 	): Promise<AdminLayoutView> {
 		const layout = await this.requireLayout(id);
+		// Another admin is editing (E4): this one may look and preview, not save over them.
+		const held = await this.layouts.currentLock(id, new Date(now.getTime() - LOCK_MS).toISOString());
+		if (held && held.holder !== actor) {
+			throw new HttpException(
+				{
+					message: 'Someone else is editing this layout',
+					code: 'layout_locked',
+					holderName: await this.adminName(held.holder),
+					since: held.since,
+				},
+				HttpStatus.LOCKED,
+			);
+		}
 		const saved = await this.layouts.saveDraft({
 			layoutId: id,
 			sections: request.sections,
@@ -249,7 +399,7 @@ export class PageBuilderService {
 			});
 		}
 		await this.record(actor, 'page_layout.save_draft', layout.id, { revision: saved.number });
-		return this.layoutView(id);
+		return this.layoutView(id, actor, now);
 	}
 
 	async rename(
@@ -270,10 +420,17 @@ export class PageBuilderService {
 	 */
 	async shopLayout(type: string, locale: string, now = new Date()): Promise<StorefrontPageLayout> {
 		const pageType = this.requireType(type);
+		const page = await this.layouts.page(pageType, WHOLE_PAGE);
+		// The page's own settings apply whichever page is drawn, the fixed one included (P3).
+		const pageSettings = page?.settings
+			? shopPageSettings(page.settings, locale, await this.shareImageUrl(page.settings))
+			: null;
 		// Off (the default): the shop draws its fixed page, which is also the fallback and the safe mode (SG-15).
 		const switches = await this.settings.get('storefront.pageBuilder');
-		if (!switches?.[pageType]) return { pageType, revisionId: null, sections: [], refreshAt: null };
-		const schedule = (await this.layouts.page(pageType, WHOLE_PAGE))?.schedule ?? [];
+		if (!switches?.[pageType]) {
+			return { pageType, revisionId: null, sections: [], refreshAt: null, settings: pageSettings };
+		}
+		const schedule = page?.schedule ?? [];
 		const live = liveEntry(schedule, now);
 		const revision = live ? await this.layouts.revision(live.revisionId) : null;
 		const sections = revision?.sections ?? [];
@@ -311,6 +468,7 @@ export class PageBuilderService {
 			revisionId: revision?.id ?? null,
 			sections: resolved,
 			refreshAt: refreshAt ? refreshAt.toISOString() : null,
+			settings: pageSettings,
 		};
 	}
 

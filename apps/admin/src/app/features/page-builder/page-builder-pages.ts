@@ -4,7 +4,11 @@ import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
-import { type AdminBuilderPageRow, PageBuilderGateway } from '@core/page-builder/page-builder.gateway';
+import {
+	type AdminBuilderPageRow,
+	type ComingUpResponse,
+	PageBuilderGateway,
+} from '@core/page-builder/page-builder.gateway';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { PluralPipe } from '@shared/pipes/language.pipes';
 
@@ -114,12 +118,18 @@ export const LATER_PAGES: readonly LaterPage[] = [
 export class PageBuilderPages {
 	private readonly gateway = inject(PageBuilderGateway);
 	readonly pages = signal<AdminBuilderPageRow[] | null>(null);
+	/** SG-17: every scheduled switch still ahead, on every page. */
+	readonly comingUp = signal<ComingUpResponse['rows']>([]);
 	readonly later = LATER_PAGES;
 
 	constructor() {
 		this.gateway.pages().subscribe({
 			next: (rows) => this.pages.set(rows),
 			error: () => this.pages.set([]),
+		});
+		this.gateway.comingUp().subscribe({
+			next: (answer) => this.comingUp.set(answer.rows),
+			error: () => this.comingUp.set([]),
 		});
 	}
 }

@@ -33,7 +33,7 @@ export function injectPageLayoutQuery(pageType: () => string) {
 					),
 				);
 			} catch {
-				return { pageType: pageType(), revisionId: null, sections: [], refreshAt: null };
+				return { pageType: pageType(), revisionId: null, sections: [], refreshAt: null, settings: null };
 			}
 		},
 		staleTime: 60_000,

@@ -89,6 +89,31 @@ describe('Home head', () => {
 			description: 't:home_page_description',
 		});
 	});
+
+	it("uses the page's own settings from Page Builder when it has them, the fixed page too (P3)", () => {
+		layoutData.set({
+			pageType: 'home',
+			revisionId: null,
+			sections: [],
+			refreshAt: null,
+			settings: {
+				title: 'Sarees from Kolkata | Saha Textile',
+				description: null,
+				heading: 'Saha Textile sarees',
+				headingShown: true,
+				shareImageUrl: 'https://cdn/share.jpg',
+			},
+		});
+		const { fixture, page } = render();
+		fixture.detectChanges();
+		expect(page.builderSections()).toBeNull();
+		expect(page.pageSettings()?.heading).toBe('Saha Textile sarees');
+		expect(seo.applyDocument).toHaveBeenLastCalledWith({
+			title: 'Sarees from Kolkata | Saha Textile',
+			description: 't:home_page_description',
+			image: 'https://cdn/share.jpg',
+		});
+	});
 });
 
 describe('Home YouTube rail', () => {

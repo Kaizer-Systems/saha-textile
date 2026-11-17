@@ -15,7 +15,9 @@ export type MediaJob =
 	/** Admin's "Refresh now": the daily YouTube refresh, run at once. */
 	| { type: 'youtube-refresh' }
 	/** A folder download (media step 5, A30): the .zip is written into Spaces, file by file. */
-	| { type: 'zip'; zipId: string };
+	| { type: 'zip'; zipId: string }
+	/** Page Builder words check (SG-1): measure the nine word spots of one photo version, once. */
+	| { type: 'word-spots'; assetId: string; versionId: string };
 
 /**
  * Enqueue port for media jobs (`MediaJobQueuePort`), implemented with BullMQ + Redis at the

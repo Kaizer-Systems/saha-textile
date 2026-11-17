@@ -148,3 +148,32 @@ describe('Go Live popup (E1, E2, E5, P6)', () => {
 		expect(modal.close).toHaveBeenCalledWith({ kind: 'reviewed' });
 	});
 });
+
+describe('words over pictures in Go Live (SG-1)', () => {
+	it('names each unreadable line with its screens, how well it reads, and the fixes that pass', () => {
+		const { popup } = setup();
+		popup.start(
+			'lay_winter',
+			view({
+				problems: [
+					{
+						kind: 'words_unreadable',
+						sectionId: 'hero',
+						piece: 'main',
+						picture: 2,
+						band: 'phone',
+						field: 'heading',
+						ratio: 2.85,
+						needed: 4.5,
+						fixes: [{ ink: 'brand_dark', backing: 'none', ratio: 5.4 }],
+					},
+				],
+			}),
+			['en'],
+			{ hero: 'Three pieces' },
+		);
+		expect(popup.wordProblems()).toHaveLength(1);
+		expect(popup.wordsLine(popup.wordProblems()[0] as never)).toBe('pb_words_line pb_words_fixes');
+		expect(popup.canGo()).toBe(false);
+	});
+});

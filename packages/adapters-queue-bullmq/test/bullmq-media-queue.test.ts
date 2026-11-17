@@ -45,6 +45,7 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 					'zip-sweep': async () => {},
 					zip: async () => {},
 					'page-go-live-waiting': async () => {},
+					'word-spots': async () => {},
 					'page-builder-nightly': async () => {},
 				},
 			});
@@ -94,6 +95,7 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 				'zip-sweep': idle,
 				zip: idle,
 				'page-go-live-waiting': idle,
+				'word-spots': idle,
 				'page-builder-nightly': idle,
 			},
 		});

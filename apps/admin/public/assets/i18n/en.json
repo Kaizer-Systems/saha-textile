@@ -4069,5 +4069,15 @@
 	"pb_col_orders": "Orders",
 	"pb_col_total": "Total",
 	"pb_sales_now": "Showing now",
-	"pb_sales_none": "No layout has shown yet."
+	"pb_sales_none": "No layout has shown yet.",
+	"pb_words_ok": "Words over pictures read at AA on every screen size, in every language",
+	"pb_words_measuring": "Words over pictures: the pictures are being measured",
+	"pb_words_todo_one": "1 line of words over a picture is hard to read",
+	"pb_words_todo_other": "{{count}} lines of words over pictures are hard to read",
+	"pb_words_line": "{{where}} · {{band}} · {{field}}: {{ratio}} : 1, needs {{needed}} : 1.",
+	"pb_words_fixes": "Reads with: {{fixes}}.",
+	"pb_words_no_fix": "No colour reads here: move the words to another spot, or put them in the picture.",
+	"pb_fix_item": "{{ink}} words, backing {{backing}} ({{ratio}} : 1)",
+	"pb_band_desktop": "computers and tablets",
+	"pb_band_phone": "phones"
 }

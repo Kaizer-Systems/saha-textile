@@ -29,7 +29,7 @@ import {
 	MongoMediaZipRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { YazlZipArchive } from '@saha-textile/adapters-archive-zip';
-import { SharpImageCodec } from '@saha-textile/adapters-image-sharp';
+import { SharpImageAnalysis, SharpImageCodec } from '@saha-textile/adapters-image-sharp';
 import { ChromiumDocumentRenderer } from '@saha-textile/adapters-pdf-chromium';
 import {
 	BullMqMediaJobQueue,
@@ -57,6 +57,7 @@ import {
 	checkSpaces,
 	buildZip,
 	sweepZips,
+	measureWordSpots,
 } from '@saha-textile/core-domain';
 
 import type { AppConfig } from '../config/app-config';
@@ -154,6 +155,14 @@ export const composeMediaWorker = async (config: AppConfig) => {
 			const went = await pageBuilder.waiting();
 			if (went) logger.log(`Page Builder: ${went} waiting Go Live went live`);
 			return { went };
+		},
+		// The words check (Page Builder SG-1): one version's word spots, measured once.
+		'word-spots': async (job) => {
+			const outcome = await measureWordSpots(
+				{ assets, storage, analysis: new SharpImageAnalysis(), spots: assets },
+				{ assetId: job.assetId, versionId: job.versionId },
+			);
+			return { outcome };
 		},
 		'page-builder-nightly': async () => {
 			const result = await pageBuilder.nightly();

@@ -173,6 +173,35 @@
 			></i>
 			<span>{{ 'pb_phone_done' | transloco }}</span>
 		</li>
+		} @if (wordProblems().length) {
+		<li
+			class="alert alert-danger mb-0"
+			data-check="words"
+		>
+			<strong>{{ 'pb_words_todo' | plural: wordProblems().length }}</strong>
+			<ul class="list-unstyled mt-1 mb-0">
+				@for (problem of wordProblems(); track $index) {
+				<li>
+					{{ wordsLine(problem) }}
+					<button
+						type="button"
+						class="btn btn-link p-0 align-baseline"
+						(click)="goTo(problem)"
+					>
+						{{ 'pb_go_to_it' | transloco }}
+					</button>
+				</li>
+				}
+			</ul>
+		</li>
+		} @else {
+		<li class="fm-ok">
+			<i
+				class="ri-checkbox-circle-line"
+				aria-hidden="true"
+			></i>
+			<span>{{ (v.waitingPictures ? 'pb_words_measuring' : 'pb_words_ok') | transloco }}</span>
+		</li>
 		} @for (problem of layoutProblems(); track $index) {
 		<li class="alert alert-danger mb-0">
 			{{ 'pb_problem_' + problem.kind | transloco: { name: sectionName(problem.sectionId, problem.type) } }}

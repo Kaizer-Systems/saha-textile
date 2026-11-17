@@ -14,6 +14,7 @@ export * from './inventory.repository';
 export * from './governance.repository';
 export * from './storage.port';
 export * from './image-codec.port';
+export * from './image-analysis.port';
 export * from './cdn-purge.port';
 export * from './media-job-queue.port';
 export * from './media-role.repository';

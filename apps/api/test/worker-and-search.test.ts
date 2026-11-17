@@ -86,7 +86,7 @@ vi.mock('@saha-textile/adapters-storage-spaces', () => ({
 		deleteMany = hoisted.storage.deleteMany;
 	},
 }));
-vi.mock('@saha-textile/adapters-image-sharp', () => ({ SharpImageCodec: class {} }));
+vi.mock('@saha-textile/adapters-image-sharp', () => ({ SharpImageCodec: class {}, SharpImageAnalysis: class {} }));
 vi.mock('@saha-textile/adapters-cdn-cloudflare', () => ({
 	CloudflareCdnPurge: class {
 		purgeUrls = hoisted.purge;
@@ -171,7 +171,12 @@ const config = (overrides: Record<string, unknown> = {}) =>
 		notifications: { provider: 'console' },
 		search: { index: 'products' },
 		locales: ['en'],
-		documents: { chromiumChannel: undefined, chromiumExecutable: '/usr/local/bin/document-chromium', noSandbox: true, renderTimeoutMs: 30_000 },
+		documents: {
+			chromiumChannel: undefined,
+			chromiumExecutable: '/usr/local/bin/document-chromium',
+			noSandbox: true,
+			renderTimeoutMs: 30_000,
+		},
 		...overrides,
 	}) as never;
 
@@ -208,7 +213,10 @@ describe('composeMediaWorker', () => {
 		// Business documents: the PDF worker and its browser close with the rest.
 		expect(hoisted.documentWorkerClose).toHaveBeenCalledTimes(1);
 		expect(hoisted.rendererClose).toHaveBeenCalledTimes(1);
-		expect(hoisted.rendererConfigs.at(-1)).toMatchObject({ executablePath: '/usr/local/bin/document-chromium', noSandbox: true });
+		expect(hoisted.rendererConfigs.at(-1)).toMatchObject({
+			executablePath: '/usr/local/bin/document-chromium',
+			noSandbox: true,
+		});
 	});
 
 	it('names a failed job, or says it does not know which', async () => {

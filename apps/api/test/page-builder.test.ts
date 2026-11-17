@@ -243,7 +243,9 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 	});
 
 	it('reads a version’s shape from its widest file, and a missing version as gone', () => {
-		expect(pictureFacts(asset('ready'), 'ver_1')).toEqual({ ready: true, ratio: 3.38 });
+		// Not measured for the words check yet (SG-1): null until the worker has.
+		expect(pictureFacts(asset('ready'), 'ver_1')).toEqual({ ready: true, ratio: 3.38, wordSpots: null });
+		expect(pictureFacts(asset('ready'), null)?.wordSpots).toBe(false);
 		expect(pictureFacts(asset('ready'), 'ver_gone')).toBeNull();
 		expect(pictureFacts(null, null)).toBeNull();
 	});

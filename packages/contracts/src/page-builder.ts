@@ -491,6 +491,11 @@ export const LayoutProblemView = z.object({
 	measure: z.string().optional(),
 	value: z.number().optional(),
 	limit: z.number().optional(),
+	/** Words over a picture (SG-1): the ratio 95% of the picture reaches, the one needed, and the fixes that pass. */
+	ratio: z.number().optional(),
+	needed: z.number().optional(),
+	fixes: z.array(z.object({ ink: WordInk, backing: WordBacking, ratio: z.number() })).optional(),
+	versionId: z.string().nullable().optional(),
 });
 export type LayoutProblemView = z.infer<typeof LayoutProblemView>;
 

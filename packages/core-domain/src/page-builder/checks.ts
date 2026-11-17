@@ -1,6 +1,7 @@
-import type { PageSection, PiecePicture } from '@saha-textile/contracts';
+import type { PageSection, PiecePicture, SpotLuminance } from '@saha-textile/contracts';
 
 import { sectionAllowed, type PageTypeRules } from './registry';
+import type { WordsProblem } from './words';
 
 /**
  * What stops a layout revision going live (Page Builder brief E1, P6). Save draft always works; Go Live waits until
@@ -18,12 +19,15 @@ export type LayoutProblem =
 	| { kind: 'shape'; sectionId: string; piece: string; picture: number; band: 'desktop' | 'phone' }
 	| { kind: 'link_gone'; sectionId: string; piece: string; picture: number; href: string }
 	| { kind: 'page_settings'; locale: string; field: string }
-	| { kind: 'budget'; measure: string; value: number; limit: number };
+	| { kind: 'budget'; measure: string; value: number; limit: number }
+	| WordsProblem;
 
 /** What the checks need to know about one photo version: ready to show, and its shape (width ÷ height). */
 export interface PictureFacts {
 	readonly ready: boolean;
 	readonly ratio: number | null;
+	/** The version's measured word spots (SG-1): null until measured, false for a photo with no version. */
+	readonly wordSpots?: SpotLuminance[] | null | false;
 }
 
 export interface LayoutCheckContext {

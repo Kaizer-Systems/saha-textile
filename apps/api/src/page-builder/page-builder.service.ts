@@ -42,6 +42,8 @@ import {
 	shopPageSettings,
 	layoutProblems,
 	layoutStatus,
+	wordsProblems,
+	type MediaJobQueuePort,
 	previousLiveEntry,
 	type LayoutProblem,
 	nextContentChangeAt,
@@ -64,6 +66,7 @@ import {
 	AUDIT_LOG_REPOSITORY,
 	CONTENT_BLOCK_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
+	MEDIA_JOB_QUEUE,
 	PAGE_LAYOUT_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 	STORAGE_PORT,
@@ -71,6 +74,9 @@ import {
 import { LanguageStore } from '../languages/language-store';
 
 const WHOLE_PAGE = 'page';
+
+/** The shop's theme colour when the Brand Kit has none (`scss/theme-color.css`). */
+const DEFAULT_BRAND_COLOUR = '#417394';
 
 /** A lock with no heartbeat for this long is free (FX-11: a closed laptop frees it within 2 minutes). */
 const LOCK_MS = 120_000;
@@ -83,6 +89,7 @@ export function pictureFacts(asset: MediaAsset | null, versionId: string | null)
 	const version = versionId ? (asset.versions ?? []).find((candidate) => candidate.id === versionId) : null;
 	if (versionId && !version) return null;
 	const ready = version ? version.state === 'ready' : asset.processing.state === 'ready';
+	const wordSpots = version ? (version.wordSpots ?? null) : false;
 	const files = asset.derivatives.filter((file) => (versionId ? file.versionId === versionId : true));
 	const widest = [...files].sort((a, b) => b.width - a.width)[0];
 	const ratio = widest
@@ -90,7 +97,7 @@ export function pictureFacts(asset: MediaAsset | null, versionId: string | null)
 		: asset.width && asset.height
 			? asset.width / asset.height
 			: null;
-	return { ready, ratio };
+	return { ready, ratio, wordSpots };
 }
 
 /**
@@ -110,6 +117,7 @@ export class PageBuilderService {
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: Pick<SiteSettingsRepository, 'get'>,
 		@Inject(CONTENT_BLOCK_REPOSITORY) private readonly banners: Pick<ContentBlockRepository, 'list'>,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional() @Inject(MEDIA_JOB_QUEUE) private readonly queue: Pick<MediaJobQueuePort, 'enqueue'> | null = null,
 	) {}
 
 	/** P1: every registered page type, with what shows now and the next switch. */
@@ -341,17 +349,41 @@ export class PageBuilderService {
 		};
 	}
 
-	/** What holds a revision's Go Live in the builder's own list: languages, pictures, shapes, sections (E1). */
+	/**
+	 * What holds a revision's Go Live in the builder's own list: languages, pictures, shapes, sections (E1), and words
+	 * over pictures (SG-1). A version not measured yet is sent to the worker; it waits until measured.
+	 */
 	async problemsFor(pageType: PageTypeKey, sections: readonly PageSection[]): Promise<LayoutProblem[]> {
 		const rules = pageTypeRules(pageType);
 		if (!rules) return [];
 		const facts = await this.pictureFactsFor(sections);
-		return layoutProblems(sections, {
-			rules,
-			slot: 'main',
-			shopLocales: this.languages.shop(),
-			picture: (assetId, versionId) => facts.get(`${assetId}|${versionId ?? ''}`) ?? null,
+		const fact = (assetId: string, versionId: string | null) => facts.get(`${assetId}|${versionId ?? ''}`) ?? null;
+		const brand = (await this.settings.get('brand'))?.themeColor ?? DEFAULT_BRAND_COLOUR;
+		const words = wordsProblems(sections, brand, (assetId, versionId) => {
+			const known = fact(assetId, versionId);
+			// A photo that is gone or not ready is already a problem of its own.
+			return known && known.ready ? known.wordSpots : false;
 		});
+		await this.measure(words);
+		return [
+			...layoutProblems(sections, { rules, slot: 'main', shopLocales: this.languages.shop(), picture: fact }),
+			...words,
+		];
+	}
+
+	/** Sends each unmeasured version to the worker once per call (the job skips one already measured). */
+	private async measure(words: readonly LayoutProblem[]): Promise<void> {
+		if (!this.queue) return;
+		const asked = new Set<string>();
+		for (const problem of words) {
+			if (problem.kind !== 'words_unmeasured' || !problem.versionId) continue;
+			const key = `${problem.assetId}|${problem.versionId}`;
+			if (asked.has(key)) continue;
+			asked.add(key);
+			await this.queue
+				.enqueue({ type: 'word-spots', assetId: problem.assetId, versionId: problem.versionId })
+				.catch(() => undefined);
+		}
 	}
 
 	/**

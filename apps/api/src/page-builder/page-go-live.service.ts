@@ -82,8 +82,9 @@ export const GO_LIVE_PERMISSION = 'page_builder.go_live';
 
 const same = (a: readonly PageSection[], b: readonly PageSection[]): boolean => JSON.stringify(a) === JSON.stringify(b);
 
-/** Problems that only wait for time: a picture still being made (E5). */
-const waits = (problem: LayoutProblem): boolean => problem.kind === 'picture_not_ready';
+/** Problems that only wait for time: a picture still being made (E5), or its word spots being measured (SG-1). */
+const waits = (problem: LayoutProblem): boolean =>
+	problem.kind === 'picture_not_ready' || problem.kind === 'words_unmeasured';
 
 /**
  * Go Live (Page Builder build step 7): the checks with what will change and the speed budget (E1, E2, P6, SG-9,
@@ -661,7 +662,8 @@ export class PageGoLiveService {
 					layoutId: entry.layoutId,
 					pageType,
 					layoutName: layout?.name ?? entry.layoutId,
-					problems: revision ? problems.length : 1,
+					// Measurements still on their way are not something to fix.
+					problems: revision ? problems.filter((problem) => !waits(problem)).length : 1,
 				});
 			}
 		}

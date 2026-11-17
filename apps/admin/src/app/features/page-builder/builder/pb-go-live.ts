@@ -84,6 +84,8 @@ export class PbGoLive {
 	readonly pictureProblems = computed(() => this.problems().filter((problem) => PICTURES.has(problem.kind)));
 	readonly phoneProblems = computed(() => this.problems().filter((problem) => problem.kind === 'phone_picture'));
 	readonly linkProblems = computed(() => this.problems().filter((problem) => problem.kind === 'link_gone'));
+	/** SG-1: lines of words over a picture that don't reach AA, per screen band. */
+	readonly wordProblems = computed(() => this.problems().filter((problem) => problem.kind === 'words_unreadable'));
 	readonly budgetProblems = computed(() => this.problems().filter((problem) => problem.kind === 'budget'));
 	/** Sections the page type does not take, repeated ids, an empty layout. */
 	readonly layoutProblems = computed(() =>
@@ -150,6 +152,28 @@ export class PbGoLive {
 		if (problem.picture !== undefined)
 			parts.push(this.transloco.translate('pb_picture_n', { n: problem.picture + 1 }));
 		return parts.filter(Boolean).join(' · ');
+	}
+
+	/** One unreadable line: where, on which screens, how well it reads, and the fixes that pass on that picture. */
+	wordsLine(problem: LayoutProblemView): string {
+		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
+		const line = t('pb_words_line', {
+			where: this.where(problem),
+			band: t('pb_band_' + (problem.band ?? 'desktop')),
+			field: this.fieldName(problem.field),
+			ratio: problem.ratio,
+			needed: problem.needed,
+		});
+		const fixes = (problem.fixes ?? []).map((fix) =>
+			t('pb_fix_item', {
+				ink: t('pb_ink_' + fix.ink),
+				backing: t('pb_backing_' + fix.backing),
+				ratio: fix.ratio,
+			}),
+		);
+		return fixes.length
+			? `${line} ${t('pb_words_fixes', { fixes: fixes.join('; ') })}`
+			: `${line} ${t('pb_words_no_fix')}`;
 	}
 
 	goTo(problem: LayoutProblemView): void {

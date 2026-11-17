@@ -4069,5 +4069,15 @@
 	"pb_col_orders": "অর্ডার",
 	"pb_col_total": "মোট",
 	"pb_sales_now": "এখন দেখাচ্ছে",
-	"pb_sales_none": "এখনও কোনো লেআউট দেখানো হয়নি।"
+	"pb_sales_none": "এখনও কোনো লেআউট দেখানো হয়নি।",
+	"pb_words_ok": "প্রতিটি স্ক্রিনে, প্রতিটি ভাষায় ছবির ওপরের লেখা AA মানে পড়া যায়",
+	"pb_words_measuring": "ছবির ওপরের লেখা: ছবিগুলো মাপা হচ্ছে",
+	"pb_words_todo_one": "ছবির ওপরের 1টি লাইন পড়তে কষ্ট হয়",
+	"pb_words_todo_other": "ছবির ওপরের {{count}}টি লাইন পড়তে কষ্ট হয়",
+	"pb_words_line": "{{where}} · {{band}} · {{field}}: {{ratio}} : 1, দরকার {{needed}} : 1।",
+	"pb_words_fixes": "এভাবে পড়া যাবে: {{fixes}}।",
+	"pb_words_no_fix": "এখানে কোনো রঙেই পড়া যায় না: লেখা অন্য জায়গায় সরান, বা ছবির মধ্যেই লিখুন।",
+	"pb_fix_item": "{{ink}} লেখা, পেছনে {{backing}} ({{ratio}} : 1)",
+	"pb_band_desktop": "কম্পিউটার আর ট্যাবলেট",
+	"pb_band_phone": "ফোন"
 }

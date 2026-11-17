@@ -72,6 +72,28 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await disconnectMongo();
 	});
 
+	it('keeps the words check measurement on one version only (Page Builder SG-1)', async () => {
+		const version = (id: string) => ({
+			id,
+			profileKey: 'banner_keep_shape',
+			profileVersion: 1,
+			fill: 'as_is',
+			state: 'ready',
+			createdAt: '2026-11-02T00:00:00.000Z',
+		});
+		await raw('med_words', { versions: [version('ver_a'), version('ver_b')] });
+		const spots = Array.from({ length: 9 }, () => ({ hist: [0.25, 0.25, 0.25, 0.25] }));
+		await assets.setWordSpots('med_words', 'ver_b', spots);
+		const found = await assets.findById('med_words');
+		expect(found?.versions?.find((v) => v.id === 'ver_b')?.wordSpots).toEqual(spots);
+		expect(found?.versions?.find((v) => v.id === 'ver_a')?.wordSpots).toBeUndefined();
+		// A version that isn't there changes nothing.
+		await assets.setWordSpots('med_words', 'ver_none', spots);
+		expect((await assets.findById('med_words'))?.versions).toHaveLength(2);
+		// Out of the way of the counts the next tests make.
+		await MediaAssetModel.deleteOne({ _id: 'med_words' }).exec();
+	});
+
 	it('inserts missing profiles without overwriting an admin’s edit, and lists built-in first', async () => {
 		await expect(profiles.insertMissing(SEEDED_MEDIA_PROFILES)).resolves.toBe(12);
 		const product = await profiles.findByKey('product_3x4');

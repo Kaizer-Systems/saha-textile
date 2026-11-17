@@ -378,6 +378,13 @@ export type MediaVersionState = z.infer<typeof MediaVersionState>;
  * derivatives that carry its id; derivatives without one are made once per photo (link preview, status card,
  * feed square, email pictures).
  */
+/**
+ * One ninth of a picture as the words check sees it (Page Builder SG-1): a histogram of WCAG relative luminance,
+ * `hist[i]` the share of pixels in [i/n, (i+1)/n). Measured once per version by the image worker.
+ */
+export const SpotLuminance = z.object({ hist: z.array(z.number().min(0).max(1)).min(4).max(64) });
+export type SpotLuminance = z.infer<typeof SpotLuminance>;
+
 export const MediaVersion = z.object({
 	id: MediaVersionId,
 	profileKey: MediaProfileKey,
@@ -387,6 +394,8 @@ export const MediaVersion = z.object({
 	state: MediaVersionState.default('ready'),
 	/** Why a version failed (a refusal code or `render_failed`), shown beside Retry; null otherwise. */
 	error: z.string().max(80).nullable().optional(),
+	/** The nine spots words can sit in, row by row (Page Builder SG-1); absent until the worker measures them. */
+	wordSpots: z.array(SpotLuminance).length(9).nullable().optional(),
 	createdAt: IsoDateTime,
 });
 export type MediaVersion = z.infer<typeof MediaVersion>;

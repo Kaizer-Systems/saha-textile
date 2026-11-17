@@ -1,7 +1,8 @@
-import type { MediaAsset, MediaReplacement } from '@saha-textile/contracts';
+import type { MediaAsset, MediaReplacement, SpotLuminance } from '@saha-textile/contracts';
 import {
 	type MediaAssetFilter,
 	type MediaAssetRepository,
+	type WordSpotsRepository,
 	type MediaBrowseFilter,
 	type MediaBrowseRepository,
 	type Paginated,
@@ -93,7 +94,15 @@ const olderVersionsFilter = (profileKey: string, version: number) => ({
 	versions: { $elemMatch: { profileKey, state: 'ready', profileVersion: { $lt: version } } },
 });
 
-export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBrowseRepository {
+export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBrowseRepository, WordSpotsRepository {
+	/** The words check's measurement on one version (Page Builder SG-1); the rest of the photo is left as it is. */
+	async setWordSpots(assetId: string, versionId: string, spots: SpotLuminance[]): Promise<void> {
+		await MediaAssetModel.collection.updateOne(
+			{ _id: assetId as never, 'versions.id': versionId },
+			{ $set: { 'versions.$.wordSpots': spots } },
+		);
+	}
+
 	async findById(assetId: string): Promise<MediaAsset | null> {
 		const doc = await MediaAssetModel.findById(assetId).lean<MediaAssetDoc>().exec();
 		return doc ? toAsset(doc) : null;

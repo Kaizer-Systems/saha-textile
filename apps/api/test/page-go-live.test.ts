@@ -50,6 +50,7 @@ function harness(options: { superAdmin?: boolean; blocks?: SavedBlock[] } = {}) 
 	const photos = new Map<string, MediaAsset>([['med_ready', photo('med_ready', 'ready')]]);
 	const settings = new Map<string, unknown>();
 	const audit = { append: vi.fn(async () => undefined) };
+	const queue = { enqueue: vi.fn(async () => undefined) };
 	const settingsRepo = {
 		get: vi.fn(async (key: string) =>
 			settings.has(key) ? settings.get(key) : key === 'storefront.home' ? {} : null,
@@ -70,6 +71,7 @@ function harness(options: { superAdmin?: boolean; blocks?: SavedBlock[] } = {}) 
 		settingsRepo as never,
 		{ list: async () => [] } as never,
 		audit as never,
+		queue,
 	);
 	const goLive = new PageGoLiveService(
 		store.repo,
@@ -123,7 +125,7 @@ function harness(options: { superAdmin?: boolean; blocks?: SavedBlock[] } = {}) 
 		const saved = await builder.saveDraft('adm_2', created.layout.id, { sections, expectedDraftId: null }, T0);
 		return { id: created.layout.id, draft: saved.draft?.id ?? '' };
 	};
-	return { store, builder, goLive, settings, photos, audit, filledSettings, layout };
+	return { store, builder, goLive, settings, photos, audit, queue, filledSettings, layout };
 }
 
 describe('Go Live checks (E1, P6, SG-9, SG-13, SG-16)', () => {
@@ -469,5 +471,61 @@ describe('export, import and sales by schedule (SG-22, SG-23)', () => {
 			['Puja', 3, 7500, null],
 			['Today’s home page', 2, 5000, later(120).toISOString()],
 		]);
+	});
+});
+
+describe('words over pictures at Go Live (SG-1)', () => {
+	const worded = (assetId: string, ink = 'brand') =>
+		section({
+			id: 'hero',
+			type: 'banner_arrangement',
+			pieces: [
+				{
+					name: 'main',
+					pictures: [
+						{
+							images: { desktop: assetId },
+							versions: { [assetId]: 'ver_1' },
+							alt: { en: 'a', bn: 'b' },
+							heading: { en: 'Made for evenings', bn: 'সন্ধ্যার জন্য' },
+							ink,
+						},
+					],
+				},
+			],
+		});
+	/** Nine spots, every pixel at this luminance. */
+	const spots = (value: number) =>
+		Array.from({ length: 9 }, () => {
+			const hist = new Array<number>(32).fill(0);
+			hist[Math.floor(value * 32)] = 1;
+			return { hist };
+		});
+	const measured = (id: string, value: number) =>
+		({ ...photo(id, 'ready'), versions: [{ id: 'ver_1', state: 'ready', wordSpots: spots(value) }] }) as MediaAsset;
+
+	it('sends an unmeasured version to the worker and waits for it, never blocking as a fault', async () => {
+		const h = harness();
+		await h.filledSettings();
+		const { id } = await h.layout('Words', [worded('med_ready')]);
+		const view = await h.goLive.view(id, OWNER, T0);
+		expect(view.problems).toEqual([]);
+		expect(view.waitingPictures).toBe(1);
+		expect(h.queue.enqueue).toHaveBeenCalledWith({ type: 'word-spots', assetId: 'med_ready', versionId: 'ver_1' });
+	});
+
+	it('holds Go Live when the words can’t be read, and offers only fixes that pass', async () => {
+		const h = harness();
+		await h.filledSettings();
+		h.photos.set('med_pale', measured('med_pale', 0.55));
+		const { id } = await h.layout('Pale', [worded('med_pale')]);
+		const view = await h.goLive.view(id, OWNER, T0);
+		const phone = view.problems.find((problem) => problem.kind === 'words_unreadable' && problem.band === 'phone');
+		expect(phone).toMatchObject({ field: 'heading', needed: 4.5 });
+		expect(phone?.fixes?.length).toBeGreaterThan(0);
+		expect(phone?.fixes?.every((fix) => fix.ratio >= 4.5)).toBe(true);
+		// Dark words on the same picture read everywhere.
+		const { id: dark } = await h.layout('Dark', [worded('med_pale', 'ink')]);
+		expect((await h.goLive.view(dark, OWNER, T0)).problems).toEqual([]);
 	});
 });

@@ -154,6 +154,8 @@ The same answer carries "What will change on the shop" (SG-16: sections added, r
 
 **Sales by schedule (SG-23)** on Page Builder › Home, for those who also hold `dashboard.revenue`: the timeline of who was live when (cut at every start and end; the later start wins), newest first, each stretch with the paid orders placed during it and their total in INR, from the shop's own orders. Nothing tracks shoppers on the shop.
 
+**Words over pictures (SG-1, Q14 A).** Lighthouse and the shop's contrast test can't see words drawn over a photo, so the builder measures them. The image worker cuts each photo version into nine spots (three rows of three, the word spots of the picture fields) and keeps a luminance histogram of each on the version (`wordSpots`, job `word-spots`, `SharpImageAnalysis`; asked for the first time the builder or Go Live meets an unmeasured version, which waits meanwhile). Go Live then checks every line of live words (heading and the line under it; not art with words in it) on every band against the version that band shows, in the shop's own colours (`inkColours`: brand, darker brand, dark ink, white; soft light and soft dark backings), with the Brand Kit colour: a line passes when 95% of the picture under it reaches 4.5 : 1, or 3 : 1 for the heading on computers and tablets, where it is drawn large. A failing line lists the fixes that pass on that picture (other colours first, then a backing) with the ratio each reaches. A photo stored without a version is left out.
+
 **The nightly check (SG-12)** runs every live and scheduled revision through the same checks again (a collection that went off the shop, a photo gone, a language switched on) and keeps the result for the bell (`page_builder_nightly_check`).
 
 ## Adding a page type

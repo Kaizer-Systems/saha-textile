@@ -637,6 +637,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'shop_details',
+				path: '/setting/shop-details',
+				type: 'link',
+				level: 2,
+				permission: ['setting.index'],
+			},
+			{
+				parent_id: 19,
 				title: 'notification_settings',
 				path: '/setting/notifications',
 				type: 'link',

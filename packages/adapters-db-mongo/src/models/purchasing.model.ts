@@ -261,6 +261,16 @@ export const InventorySettingsModel: Model<AggregateDoc> =
 	(models.InventorySettings as Model<AggregateDoc>) ??
 	model<AggregateDoc>('InventorySettings', InventorySettingsSchema);
 
+/** One document, `_id: 'shop'`: Settings › Shop details. */
+const ShopDetailsSchema = new Schema<AggregateDoc>(
+	// `updatedAt` is declared so the stale-save filter keeps it (strict queries drop undeclared paths).
+	{ _id: { type: String, required: true }, updatedAt: { type: String, default: null } },
+	{ ...loose, collection: COLLECTION_NAMES.ShopDetails },
+);
+
+export const ShopDetailsModel: Model<AggregateDoc> =
+	(models.ShopDetails as Model<AggregateDoc>) ?? model<AggregateDoc>('ShopDetails', ShopDetailsSchema);
+
 /** Document number counters (`sequences`): `_id` is `{series}:{financialYear}`. */
 export interface SequenceDoc {
 	_id: string;

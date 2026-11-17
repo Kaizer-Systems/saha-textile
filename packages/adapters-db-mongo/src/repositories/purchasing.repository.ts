@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
 	type AdjustmentRequest,
 	InventorySettings,
+	ShopDetails,
 	type PurchaseEntry,
 	type PurchaseOrder,
 	type PurchaseReturn,
@@ -14,6 +15,7 @@ import {
 	type AdjustmentRequestRepository,
 	type DocumentListFilter,
 	type InventorySettingsRepository,
+	type ShopDetailsRepository,
 	type LastPurchaseFact,
 	type ListPage,
 	type NumberAllocatorPort,
@@ -53,6 +55,7 @@ import {
 	InventoryCostLayerModel,
 	InventoryLedgerModel,
 	InventorySettingsModel,
+	ShopDetailsModel,
 	OpeningStockModel,
 	ProductModel,
 	ProductVariantModel,
@@ -827,6 +830,40 @@ export class MongoInventorySettingsRepository implements InventorySettingsReposi
 
 	async save(settings: InventorySettings): Promise<void> {
 		await InventorySettingsModel.updateOne({ _id: 'inventory' }, { $set: settings }, { upsert: true }).exec();
+	}
+}
+
+export class MongoShopDetailsRepository implements ShopDetailsRepository {
+	async get(): Promise<ShopDetails | null> {
+		const doc = await ShopDetailsModel.findById('shop').lean<AggregateDoc>().exec();
+		if (!doc) return null;
+		const { _id, ...rest } = doc;
+		void _id;
+		return ShopDetails.parse(rest);
+	}
+
+	/**
+	 * Writes only over the copy the editor read. A first save (`expectedUpdatedAt` null) inserts;
+	 * if someone saved first, the insert hits the existing `_id` and is refused the same way.
+	 */
+	async save(details: ShopDetails, expectedUpdatedAt: string | null): Promise<void> {
+		const filter = { _id: 'shop', updatedAt: expectedUpdatedAt };
+		try {
+			const result = await ShopDetailsModel.updateOne(
+				filter,
+				{ $set: details },
+				{ upsert: expectedUpdatedAt === null },
+			).exec();
+			if (result.matchedCount === 1 || result.upsertedCount === 1) return;
+		} catch (error) {
+			if ((error as { code?: number }).code !== 11000) throw error;
+		}
+		const current = await this.get();
+		throw new StaleVersionError('shop_details', 'shop', {
+			version: 0,
+			updatedAt: current?.updatedAt ?? '',
+			updatedBy: current?.updatedBy ?? null,
+		});
 	}
 }
 

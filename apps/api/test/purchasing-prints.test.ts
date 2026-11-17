@@ -1,12 +1,16 @@
-import type { InventorySettings, PurchaseEntry, PurchaseReturn, Supplier } from '@saha-textile/contracts';
+import { type PurchaseEntry, type PurchaseReturn, ShopDetails, type Supplier } from '@saha-textile/contracts';
 import type { DocumentRenderRequest } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PurchasingPrints } from '../src/purchasing/purchasing-prints';
 
-const settings = {
-	business: { legalName: 'Saha Textile', gstin: '19AAPFS4821K1ZM', addressLines: ['14 Hazra Road, Kolkata 700026'] },
-} as unknown as InventorySettings;
+const settings = ShopDetails.parse({
+	legalName: 'Saha Textile',
+	gstin: '19AAPFS4821K1ZM',
+	address: '14 Hazra Road',
+	city: 'Kolkata',
+	pin: '700026',
+});
 const brand = { hasLogo: false, shopName: 'Saha Textile', themeColor: null };
 
 const supplier = {
@@ -76,7 +80,7 @@ function prints(overrides: { entry?: PurchaseEntry | null; ret?: PurchaseReturn 
 			]),
 			logo: vi.fn(async () => ({ asset: null, shopName: 'Saha Textile', themeColor: null })),
 		} as never,
-		{ settings: vi.fn(async () => settings), record, nameOf: vi.fn(async () => 'Rina') } as never,
+		{ shopDetails: vi.fn(async () => settings), record, nameOf: vi.fn(async () => 'Rina') } as never,
 		{
 			renderPdf: vi.fn(
 				async (request: DocumentRenderRequest) => (requests.push(request), new Uint8Array([37, 80, 68, 70])),

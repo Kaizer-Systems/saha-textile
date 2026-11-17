@@ -56,6 +56,10 @@ export default [
 		loadComponent: () => import('./purchases/purchase-settings').then((m) => m.PurchaseSettings),
 	},
 	{
+		path: 'shop-details',
+		loadComponent: () => import('./shop-details/shop-details').then((m) => m.ShopDetailsSettings),
+	},
+	{
 		path: 'notifications',
 		loadComponent: () =>
 			import('./notification-settings/notification-settings').then((m) => m.NotificationSettings),

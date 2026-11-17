@@ -114,6 +114,8 @@ export const COLLECTION_NAMES = {
 	StockCount: 'stockCounts',
 	OpeningStock: 'openingStocks',
 	InventorySettings: 'inventorySettings',
+	/** Settings › Shop details (purchases brief R3-1): the shop's own name, GSTIN and address on documents. */
+	ShopDetails: 'shopDetails',
 	Sequence: 'sequences',
 	// --- Content -------------------------------------------------------------
 	FaqEntry: 'faqEntries',

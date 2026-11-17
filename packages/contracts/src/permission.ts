@@ -154,6 +154,7 @@ export const PermissionCode = z.enum([
 	'shipping.destroy',
 	'shipping.edit',
 	'shipping.index',
+	'shop_details.edit',
 	'stock_count.count',
 	'stock_count.create',
 	'stock_count.post',
@@ -350,6 +351,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'setting.edit':
 		'Every write on the settings surfaces: the Save control on the main Settings page, and the two audited notification mutations (PATCH /admin/notifications/channels, PUT /admin/notifications/templates). Reads use setting.index, which is the navigation code; writes deliberately do not.',
 	'shipping.create': 'Add-shipping button on the Shipping page. No Shipping navigation entry exists.',
+	'shop_details.edit':
+		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
 	'shipping.destroy': 'Delete control on a shipping rule row (shipping.html).',
 	'shipping.edit': 'Edit control on a shipping rule row (shipping.html).',
 	'tag.create': 'Add-tag button on the Tags page, reached from Products rather than from navigation.',
@@ -397,6 +400,7 @@ export const PermissionResource = z.enum([
 	'search_term',
 	'setting',
 	'shipping',
+	'shop_details',
 	'stock',
 	'stock_count',
 	'stock_report',

@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Header, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AdjustmentDecision,
 	AdjustmentRequestListQuery,
 	AgeingQuery,
 	InventorySettingsWrite,
+	ShopDetailsWrite,
 	MovementReportQuery,
 	OpeningStockCheck,
 	OpeningStockPost,
@@ -27,6 +28,7 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { InventorySettingsService } from './inventory-settings.service';
+import { ShopDetailsService } from './shop-details.service';
 import { OpeningStockService } from './opening-stock.service';
 import { actorOf, canSeeCost, refuse } from './purchasing-support';
 import { StockApprovalsService } from './stock-approvals.service';
@@ -390,3 +392,45 @@ export class InventorySettingsController {
 		return this.settings.view(principal?.role === 'admin');
 	}
 }
+
+/** Settings › Shop details (X04–X04D, R3-1): read with Settings access, changed with Edit shop details. */
+@ApiTags(API_TAGS.stock)
+@Audience('admin')
+@Controller('admin/settings/shop-details')
+export class ShopDetailsController {
+	constructor(private readonly shop: ShopDetailsService) {}
+
+	@Get()
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('setting.index')
+	@ApiOperation({ operationId: 'getShopDetails', summary: "The shop's name, GSTIN and address on documents" })
+	get(@Principal() principal: AuthenticatedPrincipal | undefined) {
+		return this.shop.view(canEditShop(principal));
+	}
+
+	@Get('impact')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('shop_details.edit')
+	@ApiOperation({ operationId: 'shopDetailsImpact', summary: 'What a new GSTIN changes: State and suppliers' })
+	impact(@Query('gstin') gstin: string | undefined) {
+		return this.shop.impact(gstin ?? '');
+	}
+
+	/**
+	 * Gated on Settings access, not on the edit permission, so that a refused change reaches the
+	 * service and is written to the audit log as an attempt.
+	 */
+	@Put()
+	@RequirePermissions('setting.index')
+	@ApiOperation({ operationId: 'saveShopDetails', summary: 'Save; every change is audited with old and new values' })
+	async save(
+		@Body(new ZodValidationPipe(ShopDetailsWrite)) body: ShopDetailsWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		await this.shop.update(body, actorOf(principal), { canEdit: canEditShop(principal) });
+		return this.shop.view(canEditShop(principal));
+	}
+}
+
+const canEditShop = (principal: AuthenticatedPrincipal | undefined): boolean =>
+	!!principal?.permissions.includes('shop_details.edit');

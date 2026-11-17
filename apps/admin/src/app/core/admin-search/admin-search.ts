@@ -92,6 +92,7 @@ const KEYWORDS: Record<string, string[]> = {
 	setting_mailboxes: ['gmail', 'email', 'google', 'mail'],
 	setting_communications: ['message', 'channel', 'sms', 'whatsapp', 'email', 'otp'],
 	setting_purchases: ['books', 'closed', 'margin', 'approval', 'steps', 'terms', 'gst'],
+	setting_shop_details: ['gstin', 'legal', 'address', 'pan', 'letterhead', 'company', 'documents'],
 	setting_notifications: ['sms', 'whatsapp', 'email', 'otp', 'msg91', 'template'],
 };
 

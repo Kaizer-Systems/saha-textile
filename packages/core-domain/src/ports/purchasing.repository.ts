@@ -1,6 +1,7 @@
 import type {
 	AdjustmentRequest,
 	InventorySettings,
+	ShopDetails,
 	PurchaseEntry,
 	PurchaseOrder,
 	PurchaseReturn,
@@ -243,6 +244,16 @@ export interface NumberAllocatorPort {
 export interface InventorySettingsRepository {
 	get(): Promise<InventorySettings>;
 	save(settings: InventorySettings): Promise<void>;
+}
+
+/**
+ * Settings › Shop details (R3-1): one record for the shop. `get` is null until the first save.
+ * `save` writes only over the copy the editor read (`expectedUpdatedAt`, null for the first save)
+ * and throws `StaleVersionError` naming the newer copy otherwise.
+ */
+export interface ShopDetailsRepository {
+	get(): Promise<ShopDetails | null>;
+	save(details: ShopDetails, expectedUpdatedAt: string | null): Promise<void>;
 }
 
 /**

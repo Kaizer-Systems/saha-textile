@@ -106,5 +106,20 @@
 		</app-form-fields>
 		<app-button [id]="'assign_role_btn'">{{ 'add' | transloco }}</app-button>
 	</div>
+	<!-- X05: one permission for one person is a small role holding only it, added here. -->
+	<div
+		class="alert alert-info d-flex align-items-start mt-4 mb-0 gap-2"
+		role="note"
+		id="one_permission_note"
+	>
+		<i
+			class="ri-information-line"
+			aria-hidden="true"
+		></i>
+		<span>
+			<strong>{{ 'one_permission_title' | transloco }}</strong>
+			{{ 'one_permission_body' | transloco }}
+		</span>
+	</div>
 </form>
 }

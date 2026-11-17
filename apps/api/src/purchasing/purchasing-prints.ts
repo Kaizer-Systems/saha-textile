@@ -1,12 +1,13 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type {
-	InventorySettings,
+	ShopDetails,
 	LabelField,
 	LabelSheetRequest,
 	PurchaseEntry,
 	PurchaseReturn,
 	Supplier,
 } from '@saha-textile/contracts';
+import { shopOnDocument } from '@saha-textile/contracts';
 import {
 	type DocumentAsset,
 	type DocumentRenderRequest,
@@ -31,7 +32,7 @@ import {
 	STOCK_READ_REPOSITORY,
 	SUPPLIER_REPOSITORY,
 } from '../infra/tokens';
-import { PurchaseOrderDocument, escapeHtml, longDate } from './purchase-order-document';
+import { PurchaseOrderDocument, escapeHtml, longDate, shopLines } from './purchase-order-document';
 import { PurchasingSupport, missing, refuse } from './purchasing-support';
 
 /** Most labels one print may hold (P10: many items on as few sheets as possible). */
@@ -39,18 +40,10 @@ export const MAX_LABELS = 2000;
 
 type Brand = { hasLogo: boolean; shopName: string; themeColor: string | null };
 
-/** Our own name, address and GSTIN at the top of a document (shop details, R3-1; until then the PO's block). */
-function ourBlock(settings: InventorySettings, brand: Brand): { name: string; html: string } {
-	const business = settings.business;
-	const name = business.legalName || brand.shopName;
-	return {
-		name,
-		html: [
-			`<li><strong>${escapeHtml(name)}</strong></li>`,
-			...business.addressLines.filter(Boolean).map((line) => `<li>${escapeHtml(line)}</li>`),
-			business.gstin ? `<li>GSTIN ${escapeHtml(business.gstin)}</li>` : '',
-		].join(''),
-	};
+/** Our own name, address and GSTIN at the top of a document (Settings › Shop details, R3-1). */
+function ourBlock(details: ShopDetails, brand: Brand): { name: string; html: string } {
+	const shop = shopOnDocument(details, brand.shopName);
+	return { name: shop.legalName, html: shopLines(shop, shop.legalName) };
 }
 
 function theirBlock(name: string, supplier: Supplier | null): string {
@@ -102,22 +95,22 @@ export class PurchasingPrints {
 	) {}
 
 	private async print(
-		build: (brand: Brand, settings: InventorySettings) => { html: string; title: string },
+		build: (brand: Brand, details: ShopDetails) => { html: string; title: string },
 		extra: DocumentAsset[] = [],
 	) {
 		if (!this.renderer) throw refuse('pdf_unavailable', 'PDFs cannot be made on this server yet.');
-		const [assets, logo, settings] = await Promise.all([
+		const [assets, logo, shop] = await Promise.all([
 			this.orderDocument.loadStatic(),
 			this.orderDocument.logo(),
-			this.support.settings(),
+			this.support.shopDetails(),
 		]);
 		const brand: Brand = { hasLogo: Boolean(logo.asset), shopName: logo.shopName, themeColor: logo.themeColor };
-		const { html, title } = build(brand, settings);
+		const { html, title } = build(brand, shop);
 		const request: DocumentRenderRequest = {
 			html,
 			assets: [...assets, ...(logo.asset ? [logo.asset] : []), ...extra],
 			title,
-			author: settings.business.legalName || logo.shopName,
+			author: shop.legalName || logo.shopName,
 			page: { size: 'A4', landscape: false, marginMm: { top: 14, right: 12, bottom: 16, left: 12 } },
 		};
 		return this.renderer.renderPdf(request);
@@ -125,8 +118,8 @@ export class PurchasingPrints {
 
 	/* ------------------------------------------------------------ goods receipt (p01) */
 
-	receiptHtml(entry: PurchaseEntry, supplier: Supplier | null, settings: InventorySettings, brand: Brand): string {
-		const ours = ourBlock(settings, brand);
+	receiptHtml(entry: PurchaseEntry, supplier: Supplier | null, shop: ShopDetails, brand: Brand): string {
+		const ours = ourBlock(shop, brand);
 		const lines = entry.lines
 			.map((line, index) =>
 				row([
@@ -153,8 +146,8 @@ export class PurchasingPrints {
 		if (entry.status === 'draft')
 			throw refuse('goods_not_checked', 'Check the goods first: the receipt shows what was counted.');
 		const supplier = await this.suppliers.findById(entry.supplierId);
-		const data = await this.print((brand, settings) => ({
-			html: this.receiptHtml(entry, supplier, settings, brand),
+		const data = await this.print((brand, shop) => ({
+			html: this.receiptHtml(entry, supplier, shop, brand),
 			title: `Goods receipt ${entry.number ?? entry.billNumber}`,
 		}));
 		return {
@@ -170,10 +163,10 @@ export class PurchasingPrints {
 		doc: PurchaseReturn,
 		entry: PurchaseEntry | null,
 		supplier: Supplier | null,
-		settings: InventorySettings,
+		shop: ShopDetails,
 		brand: Brand,
 	): string {
-		const ours = ourBlock(settings, brand);
+		const ours = ourBlock(shop, brand);
 		const heading = kind === 'challan' ? 'Delivery challan' : 'Debit note';
 		const number = kind === 'challan' ? doc.challanNumber : doc.number;
 		const taxHead = doc.taxType === 'intra_state' ? 'CGST + SGST' : doc.taxType === 'inter_state' ? 'IGST' : 'GST';
@@ -229,8 +222,8 @@ export class PurchasingPrints {
 			this.suppliers.findById(doc.supplierId),
 		]);
 		const number = (kind === 'challan' ? doc.challanNumber : doc.number) ?? doc.id;
-		const data = await this.print((brand, settings) => ({
-			html: this.returnHtml(kind, doc, entry, supplier, settings, brand),
+		const data = await this.print((brand, shop) => ({
+			html: this.returnHtml(kind, doc, entry, supplier, shop, brand),
 			title: `${kind === 'challan' ? 'Delivery challan' : 'Debit note'} ${number}`,
 		}));
 		return { fileName: `${number.replace(/\//g, '-')}.pdf`, data };

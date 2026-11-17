@@ -16,6 +16,9 @@ import type {
 	AgeingRow,
 	InventorySettingsView,
 	InventorySettingsWrite,
+	ShopDetailsImpact,
+	ShopDetailsView,
+	ShopDetailsWrite,
 	OpeningStockCheckResult,
 	OpeningStockRow,
 	PurchaseOrder,
@@ -64,6 +67,7 @@ export const STOCK_KEYS = {
 	alerts: ['stock', 'alerts'] as const,
 	reports: ['stock-reports'] as const,
 	settings: ['inventory-settings'] as const,
+	shopDetails: ['shop-details'] as const,
 	opening: ['opening-stock'] as const,
 };
 
@@ -280,6 +284,20 @@ export class StockGateway {
 	}
 	saveSettings(body: InventorySettingsWrite): Observable<InventorySettingsView> {
 		return this.http.post<InventorySettingsView>(this.api('settings/inventory'), body, QUIET);
+	}
+
+	/* shop details (x04–x04d) */
+	shopDetails(): Observable<ShopDetailsView> {
+		return this.http.get<ShopDetailsView>(this.api('settings/shop-details'));
+	}
+	shopDetailsImpact(gstin: string): Observable<ShopDetailsImpact> {
+		return this.http.get<ShopDetailsImpact>(this.api('settings/shop-details/impact'), {
+			...QUIET,
+			params: { gstin },
+		});
+	}
+	saveShopDetails(body: ShopDetailsWrite): Observable<ShopDetailsView> {
+		return this.http.put<ShopDetailsView>(this.api('settings/shop-details'), body, QUIET);
 	}
 }
 

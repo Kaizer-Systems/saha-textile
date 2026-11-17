@@ -106,6 +106,7 @@ export const STOCK_COUNT_REPOSITORY = Symbol('StockCountRepository');
 export const OPENING_STOCK_REPOSITORY = Symbol('OpeningStockRepository');
 export const NUMBER_ALLOCATOR = Symbol('NumberAllocatorPort');
 export const INVENTORY_SETTINGS_REPOSITORY = Symbol('InventorySettingsRepository');
+export const SHOP_DETAILS_REPOSITORY = Symbol('ShopDetailsRepository');
 export const STOCK_MOVEMENT = Symbol('StockMovementPort');
 export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');

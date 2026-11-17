@@ -1,7 +1,22 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AuditLog, InventorySettings, MediaAsset, PermissionCode, PurchaseStep } from '@saha-textile/contracts';
+import {
+	BadRequestException,
+	ConflictException,
+	Inject,
+	Injectable,
+	NotFoundException,
+	Optional,
+} from '@nestjs/common';
+import {
+	type AuditLog,
+	type InventorySettings,
+	type MediaAsset,
+	type PermissionCode,
+	type PurchaseStep,
+	ShopDetails,
+	homeGstStateOf,
+} from '@saha-textile/contracts';
 import {
 	type AdminUserRepository,
 	type AdminUserRoleAssignmentRepository,
@@ -9,6 +24,7 @@ import {
 	type InventorySettingsRepository,
 	type MediaAssetRepository,
 	type RoleRepository,
+	type ShopDetailsRepository,
 	StaleVersionError,
 	type StoragePort,
 	type TransactionContext,
@@ -25,6 +41,7 @@ import {
 	INVENTORY_SETTINGS_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	ROLE_REPOSITORY,
+	SHOP_DETAILS_REPOSITORY,
 	STORAGE_PORT,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
@@ -117,6 +134,9 @@ export class PurchasingSupport {
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
 		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY)
 		private readonly assignments: AdminUserRoleAssignmentRepository,
+		@Optional()
+		@Inject(SHOP_DETAILS_REPOSITORY)
+		private readonly shop: ShopDetailsRepository | null = null,
 	) {}
 
 	/**
@@ -164,6 +184,26 @@ export class PurchasingSupport {
 
 	settings(): Promise<InventorySettings> {
 		return this.settingsRepository.get();
+	}
+
+	/**
+	 * Settings › Shop details (R3-1). Until they are first saved, the name, GSTIN and address
+	 * kept in the purchases settings during the build (never on a screen) still print.
+	 */
+	async shopDetails(): Promise<ShopDetails> {
+		const saved = await this.shop?.get();
+		if (saved) return saved;
+		const business = (await this.settings()).business;
+		return ShopDetails.parse({
+			legalName: business.legalName,
+			gstin: business.gstin,
+			address: business.addressLines.filter(Boolean).join('\n'),
+		});
+	}
+
+	/** The State purchase tax is worked out from: the shop GSTIN's, or West Bengal (19) until one is saved. */
+	async homeState(): Promise<string> {
+		return homeGstStateOf(await this.shopDetails());
 	}
 
 	inTransaction<T>(work: (context: TransactionContext) => Promise<T>): Promise<T> {

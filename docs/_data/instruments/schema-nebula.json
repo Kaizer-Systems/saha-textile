@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 103,
-		"existingModelCount": 81,
+		"nodeCount": 104,
+		"existingModelCount": 82,
 		"targetOnlyCount": 22,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -497,12 +497,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["G"],
-			"blockingDecisions": [
-				"DEC-NUMBERING",
-				"DEC-ORDER-SNAPSHOT",
-				"DEC-ADDRESS",
-				"DEC-RETURNS"
-			],
+			"blockingDecisions": ["DEC-NUMBERING", "DEC-ORDER-SNAPSHOT", "DEC-ADDRESS", "DEC-RETURNS"],
 			"purpose": "Commerce record with immutable purchase-time snapshots and customer-facing order lifecycle.",
 			"source": "catalog §7.20",
 			"currentModel": "packages/adapters-db-mongo/src/models/order.model.ts",
@@ -1441,6 +1436,19 @@
 			"owningChunks": ["H"],
 			"blockingDecisions": [],
 			"purpose": "One document of purchases-and-stock settings: step rules, number formats, price-change and margin warnings, held reminder, books-closed date, payment terms.",
+			"source": "decisions 2026-11-15 purchases and stock",
+			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": []
+		},
+		{
+			"id": "shopDetails",
+			"label": "shopDetails",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "One document: the shop's legal name, GSTIN, address, phone and email printed on business documents; its GSTIN's State is the home State for purchase tax.",
 			"source": "decisions 2026-11-15 purchases and stock",
 			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
 			"references": []

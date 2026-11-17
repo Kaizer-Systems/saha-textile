@@ -6,6 +6,7 @@ import {
 	PERMISSION_CODES,
 	type PurchaseEntry,
 	type PurchaseEntryWrite,
+	type ShopDetailsWrite,
 	type StockAdjustmentWrite,
 	type SupplierWrite,
 } from '@saha-textile/contracts';
@@ -28,6 +29,7 @@ import {
 	MongoPurchaseOrderRepository,
 	MongoPurchaseReturnRepository,
 	MongoRoleRepository,
+	MongoShopDetailsRepository,
 	MongoStockCountRepository,
 	MongoStockHoldRepository,
 	MongoStockMovement,
@@ -56,6 +58,7 @@ import { PurchaseOrderDocument } from '../src/purchasing/purchase-order-document
 import { PurchaseOrdersService } from '../src/purchasing/purchase-orders.service';
 import { PurchaseReturnsService } from '../src/purchasing/purchase-returns.service';
 import { PurchasingSupport } from '../src/purchasing/purchasing-support';
+import { ShopDetailsService } from '../src/purchasing/shop-details.service';
 import { StockApprovalsService } from '../src/purchasing/stock-approvals.service';
 import { StockCountsService } from '../src/purchasing/stock-counts.service';
 import { StockWriter } from '../src/purchasing/stock-writer';
@@ -157,6 +160,7 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		new MongoTransactionManager(),
 		roleRepository,
 		assignmentRepository,
+		new MongoShopDetailsRepository(),
 	);
 	const outbox = { request: async () => undefined } as never;
 	const categories = {
@@ -246,6 +250,12 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 		support,
 	);
 	const settingsService = new InventorySettingsService(repos.settings, support);
+	const shop = new ShopDetailsService(
+		new MongoShopDetailsRepository(),
+		repos.suppliers,
+		new PurchaseOrderDocument(null),
+		support,
+	);
 	const inventory = new MongoInventoryRepository();
 
 	const today = support.today();
@@ -1403,5 +1413,143 @@ describe.skipIf(!hasMongoEnv())('purchases and stock, end to end (rs0)', () => {
 			/Moulik posted PE\/\d{2}-\d{2}\/000001 from Banaras Silk Weavers Co-op/,
 		);
 		expect(randomUUID()).toBeTruthy();
+	});
+
+	describe('shop details (R3-1)', () => {
+		const shopWrite = (overrides: Partial<ShopDetailsWrite> = {}): ShopDetailsWrite => ({
+			legalName: 'Saha Textile',
+			tradeName: '',
+			gstin: gstin('19', 'AAPFS4821K'),
+			address: '14 Hazra Road, Kalighat',
+			city: 'Kolkata',
+			pin: '700026',
+			phone: '+91 33 4000 0000',
+			email: 'accounts@shop.example.test',
+			expectedUpdatedAt: null,
+			...overrides,
+		});
+		let saved = '';
+
+		it('reads home State 19 and lists what is missing until the details are saved', async () => {
+			const view = await shop.view(true);
+			expect(view.homeStateCode).toBe('19');
+			expect(view.homeStateName).toBe('West Bengal');
+			expect(view.missing).toEqual(expect.arrayContaining(['gstin', 'city', 'pin']));
+			expect((await shop.view(false)).canEdit).toBe(false);
+		});
+
+		it('refuses a change without Edit shop details and logs the attempt', async () => {
+			expect(await refusalCode(shop.update(shopWrite(), STAFF, { canEdit: false }))).toBe(
+				'shop_details_edit_only',
+			);
+			const trail = await support.activity('shop_details', ['shop']);
+			expect(trail.map((row) => row.text).join('\n')).toMatch(/tried to change the shop details/);
+		});
+
+		it('refuses a GSTIN with a wrong check digit, naming the right last character', async () => {
+			const right = gstin('19', 'AAPFS4821K');
+			const wrong = right.slice(0, 14) + (right.endsWith('A') ? 'B' : 'A');
+			expect(await refusalCode(shop.update(shopWrite({ gstin: wrong }), OWNER, { canEdit: true }))).toBe(
+				'gstin_check_digit',
+			);
+			expect(await shop.impact(wrong)).toMatchObject({
+				problem: 'check_digit',
+				expectedLastCharacter: right.slice(-1),
+				stateTo: null,
+			});
+			expect((await shop.impact('19AAPF')).problem).toBe('shape');
+		});
+
+		it('saves with old and new values in the audit log, then refuses a save over a newer copy', async () => {
+			const first = await shop.update(shopWrite(), OWNER, { canEdit: true });
+			saved = first.updatedAt ?? '';
+			expect(saved).not.toBe('');
+			const trail = (await support.activity('shop_details', ['shop'])).map((row) => row.text).join('\n');
+			expect(trail).toMatch(
+				/Moulik changed the shop's GSTIN from empty to "19AAPFS4821K1Z."; the shop's legal name/,
+			);
+			expect(trail).toMatch(/PIN code from empty to "700026".*State unchanged \(West Bengal\)\./);
+			// A second editor still holding the empty page saves late: refused, naming who saved first.
+			expect(await refusalCode(shop.update(shopWrite({ city: 'Howrah' }), STAFF, { canEdit: true }))).toBe(
+				'stale_version',
+			);
+			const view = await shop.view(true);
+			expect(view.city).toBe('Kolkata');
+			expect(view.missing).toEqual([]);
+			expect(view.pan).toBe('AAPFS4821K');
+		});
+
+		it('keeps the letterhead a purchase order was sent with when the details change', async () => {
+			const later = new Date(Date.parse(`${today}T12:00:00Z`) + 5 * 86_400_000).toISOString().slice(0, 10);
+			const order = await orders.create(
+				{
+					supplierId: shantipur,
+					expectedBy: later,
+					deliverTo: 'Godown, Hazra Road',
+					noteToSupplier: null,
+					internalNote: null,
+					lines: [
+						{
+							variantId: ids.tantBw,
+							quantity: 4,
+							agreedPriceINR: 1_050,
+							gstRatePct: 5,
+							supplierItemCode: null,
+							backorderLineIds: [],
+						},
+					],
+				},
+				OWNER,
+			);
+			expect(order.shopSnapshot).toBeNull();
+			const sent = await orders.send(order.id, { via: 'pdf', to: [], subject: '', message: '' }, OWNER);
+			expect(sent.shopSnapshot?.legalName).toBe('Saha Textile');
+			const next = await shop.update(
+				shopWrite({ legalName: 'Saha Textile Private Limited', expectedUpdatedAt: saved }),
+				OWNER,
+				{
+					canEdit: true,
+				},
+			);
+			saved = next.updatedAt ?? '';
+			const reread = await orders.get(order.id);
+			expect(reread.shopSnapshot?.legalName).toBe('Saha Textile');
+			expect(reread.shopSnapshot?.addressLines).toEqual([
+				'14 Hazra Road, Kalighat',
+				'Kolkata, West Bengal 700026',
+			]);
+			const html = new PurchaseOrderDocument(null).html(reread, null, reread.shopSnapshot!, {
+				hasLogo: false,
+				shopName: 'Saha Textile',
+				themeColor: null,
+			});
+			expect(html).toContain('<strong>Saha Textile</strong>');
+			expect(html).not.toContain('Private Limited');
+		});
+
+		it('moves suppliers between CGST + SGST and IGST when the GSTIN moves the State, and back', async () => {
+			const maharashtra = gstin('27', 'AAPFS4821K');
+			const impact = await shop.impact(maharashtra);
+			expect(impact.stateChanges).toBe(true);
+			expect(impact.stateTo).toEqual({ code: '27', name: 'Maharashtra' });
+			expect(impact.toInterState.map((row) => row.id)).toContain(shantipur);
+			expect(impact.toInterState.map((row) => row.id)).not.toContain(banaras);
+			const moved = await shop.update(shopWrite({ gstin: maharashtra, expectedUpdatedAt: saved }), OWNER, {
+				canEdit: true,
+			});
+			expect((await repos.suppliers.findById(shantipur))?.taxType).toBe('inter_state');
+			expect((await repos.suppliers.findById(banaras))?.taxType).toBe('inter_state');
+			expect(await support.homeState()).toBe('27');
+			const trail = (await support.activity('shop_details', ['shop'])).map((row) => row.text).join('\n');
+			expect(trail).toMatch(/State West Bengal → Maharashtra\./);
+			expect(trail).toMatch(/now charge IGST|now charges IGST/);
+			// Back to West Bengal: the same suppliers return to CGST + SGST.
+			expect((await shop.impact(gstin('19', 'AAPFS4821K'))).toIntraState.map((row) => row.id)).toContain(
+				shantipur,
+			);
+			await shop.update(shopWrite({ expectedUpdatedAt: moved.updatedAt }), OWNER, { canEdit: true });
+			expect((await repos.suppliers.findById(shantipur))?.taxType).toBe('intra_state');
+			expect((await shop.impact(gstin('19', 'AAPFS4821K'))).stateChanges).toBe(false);
+		});
 	});
 });

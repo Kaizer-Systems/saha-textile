@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
 import {
-	HOME_GST_STATE,
 	type Supplier,
 	type SupplierGstinCheck,
 	type SupplierListQuery,
@@ -160,7 +159,7 @@ export class SuppliersService {
 			expectedLastCharacter: null,
 			stateCode,
 			pan,
-			taxType: purchaseTaxType('regular', stateCode, HOME_GST_STATE),
+			taxType: purchaseTaxType('regular', stateCode, await this.support.homeState()),
 			sameGstin: same && same.id !== excludeId ? { id: same.id, name: same.legalName } : null,
 			samePan: panMatches
 				.filter((row) => row.id !== excludeId && row.gstin !== value && row.gstin)
@@ -176,7 +175,7 @@ export class SuppliersService {
 		}
 	}
 
-	private build(id: string, body: SupplierWrite, previous: Supplier | null): Supplier {
+	private build(id: string, body: SupplierWrite, previous: Supplier | null, homeState: string): Supplier {
 		const now = new Date().toISOString();
 		// A registered supplier's State and PAN always come from the GSTIN (locked on the form).
 		const stateCode = body.gstin ? body.gstin.slice(0, 2) : body.stateCode;
@@ -197,7 +196,7 @@ export class SuppliersService {
 			usesItemCodes: body.usesItemCodes,
 			notes: body.notes,
 			active: body.active,
-			taxType: purchaseTaxType(body.kind, stateCode, HOME_GST_STATE),
+			taxType: purchaseTaxType(body.kind, stateCode, homeState),
 			createdAt: previous?.createdAt ?? now,
 			updatedAt: now,
 		};
@@ -205,7 +204,7 @@ export class SuppliersService {
 
 	async create(body: SupplierWrite, actor: string | null): Promise<Supplier> {
 		await this.refuseDuplicateGstin(body, null);
-		const supplier = this.build(`sup_${randomUUID()}`, body, null);
+		const supplier = this.build(`sup_${randomUUID()}`, body, null, await this.support.homeState());
 		await this.suppliers.save(supplier);
 		await this.support.record({
 			actor,
@@ -220,7 +219,7 @@ export class SuppliersService {
 	async update(id: string, body: SupplierWrite, actor: string | null): Promise<Supplier> {
 		const previous = await this.get(id);
 		await this.refuseDuplicateGstin(body, id);
-		const next = this.build(id, body, previous);
+		const next = this.build(id, body, previous, await this.support.homeState());
 		// Bills already posted keep the tax they were entered with; only new bills change.
 		await this.suppliers.save(next);
 		const changed = (['legalName', 'kind', 'gstin', 'stateCode', 'paymentTermsDays', 'active'] as const)

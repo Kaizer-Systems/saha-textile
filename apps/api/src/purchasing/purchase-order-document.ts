@@ -2,7 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import type { InventorySettings, PurchaseOrder, Supplier } from '@saha-textile/contracts';
+import {
+	type PurchaseOrder,
+	type ShopDetails,
+	type ShopOnDocument,
+	type Supplier,
+	shopOnDocument,
+} from '@saha-textile/contracts';
 import {
 	type DocumentAsset,
 	type DocumentRenderRequest,
@@ -49,6 +55,18 @@ export const safeColour = (value: string | undefined): string | null =>
  * the Brand Kit logo, the supplier and the lines with agreed prices before GST. The supplier adds
  * GST on their bill.
  */
+/** Our own block at the top of a document: name, trade name, address, GSTIN, phone and email, as typed. */
+export function shopLines(shop: ShopOnDocument, name: string): string {
+	return [
+		`<li><strong>${escapeHtml(name)}</strong></li>`,
+		shop.tradeName ? `<li>${escapeHtml(shop.tradeName)}</li>` : '',
+		...shop.addressLines.filter(Boolean).map((line) => `<li>${escapeHtml(line)}</li>`),
+		shop.gstin ? `<li>GSTIN ${escapeHtml(shop.gstin)}</li>` : '',
+		shop.phone ? `<li>${escapeHtml(shop.phone)}</li>` : '',
+		shop.email ? `<li>${escapeHtml(shop.email)}</li>` : '',
+	].join('');
+}
+
 @Injectable()
 export class PurchaseOrderDocument {
 	private readonly logger = new Logger(PurchaseOrderDocument.name);
@@ -78,6 +96,12 @@ export class PurchaseOrderDocument {
 		return this.staticAssets;
 	}
 
+	/** The Brand Kit's shop name and full-logo address (Settings › Shop details shows both; documents fall back to the name). */
+	async brandFacts(): Promise<{ shopName: string; logoUrl: string | null }> {
+		const brand = await this.brand?.storefront().catch(() => null);
+		return { shopName: brand?.shopName || 'Saha Textile', logoUrl: brand?.logo?.url ?? null };
+	}
+
 	/** The Brand Kit logo's bytes, fetched here because the renderer itself never reaches the network. */
 	async logo(): Promise<{ asset: DocumentAsset | null; shopName: string; themeColor: string | null }> {
 		const brand = await this.brand?.storefront().catch(() => null);
@@ -105,16 +129,11 @@ export class PurchaseOrderDocument {
 	html(
 		order: PurchaseOrder,
 		supplier: Supplier | null,
-		settings: InventorySettings,
+		shop: ShopOnDocument,
 		brand: { hasLogo: boolean; shopName: string; themeColor: string | null },
 	): string {
-		const business = settings.business;
-		const ourName = business.legalName || brand.shopName;
-		const ours = [
-			`<li><strong>${escapeHtml(ourName)}</strong></li>`,
-			...business.addressLines.filter(Boolean).map((line) => `<li>${escapeHtml(line)}</li>`),
-			business.gstin ? `<li>GSTIN ${escapeHtml(business.gstin)}</li>` : '',
-		].join('');
+		const ourName = shop.legalName || brand.shopName;
+		const ours = shopLines(shop, ourName);
 		const theirs = [
 			`<li class="theme-color">To : <span class="text-content">${escapeHtml(order.supplierName)}</span></li>`,
 			supplier?.gstin
@@ -162,21 +181,26 @@ export class PurchaseOrderDocument {
 </div></section></body></html>`;
 	}
 
+	/**
+	 * The PDF. A sent order prints the shop details it was sent with (kept on the order); a draft
+	 * prints today's.
+	 */
 	async render(
 		order: PurchaseOrder,
 		supplier: Supplier | null,
-		settings: InventorySettings,
+		details: ShopDetails,
 	): Promise<DocumentRenderRequest> {
 		const [assets, logo] = await Promise.all([this.loadStatic(), this.logo()]);
+		const shop = order.shopSnapshot ?? shopOnDocument(details, logo.shopName);
 		return {
-			html: this.html(order, supplier, settings, {
+			html: this.html(order, supplier, shop, {
 				hasLogo: Boolean(logo.asset),
 				shopName: logo.shopName,
 				themeColor: logo.themeColor,
 			}),
 			assets: logo.asset ? [...assets, logo.asset] : assets,
 			title: `Purchase order ${order.number}`,
-			author: settings.business.legalName || logo.shopName,
+			author: shop.legalName || logo.shopName,
 			page: { size: 'A4', landscape: false, marginMm: { top: 14, right: 12, bottom: 16, left: 12 } },
 		};
 	}

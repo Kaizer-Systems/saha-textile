@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { Id, IsoDateTime, PriceINR } from './common';
 import { Gstin, GstStateCode, HsnCode, Pan } from './gst';
+import { ShopOnDocument } from './shop-details';
 
 /**
  * Purchases: suppliers, purchase orders, purchase entries (a supplier's bill taken into stock),
@@ -298,6 +299,8 @@ export const PurchaseOrder = z.object({
 	sentAt: IsoDateTime.nullable(),
 	sentVia: z.enum(['email', 'pdf']).nullable(),
 	sentBy: Id.nullable(),
+	/** The shop details printed when it was sent (R3-1): its PDF always shows these. */
+	shopSnapshot: ShopOnDocument.nullable().default(null),
 	closedAt: IsoDateTime.nullable(),
 	closedReason: z.string().nullable(),
 	linkedEntryIds: z.array(Id),

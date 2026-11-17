@@ -18,6 +18,7 @@ const LABELLED_GROUPS = new Set([
 	'stock_count',
 	'stock_report',
 	'page_builder',
+	'shop_details',
 ]);
 
 /** The translation key for a group (`stock`) or an action (`stock.cost`), or null to keep the registry name. */

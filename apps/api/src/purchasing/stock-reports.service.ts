@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
 	GST_STATES,
-	HOME_GST_STATE,
 	type MovementReportQuery,
 	type PurchaseOrder,
 	type PurchaseRegisterRow,
@@ -285,7 +284,8 @@ export class StockReportsService {
 	/** i10: posted bills between two days, in the columns the CA asked for on 21 Aug 2026. */
 	async purchaseRegister(from: string, to: string): Promise<{ rows: PurchaseRegisterRow[] }> {
 		if (from > to) throw refuse('dates_reversed', 'The start day is after the end day.', 'from');
-		const home = GST_STATES.find((state) => state.code === HOME_GST_STATE);
+		const homeCode = await this.support.homeState();
+		const home = GST_STATES.find((state) => state.code === homeCode);
 		const entries = await this.entries.postedBetween(from, to);
 		return {
 			rows: entries.map((entry) => ({
@@ -293,7 +293,7 @@ export class StockReportsService {
 				supplierName: entry.supplierName,
 				gstin: entry.supplierGstin,
 				billNumber: entry.billNumber,
-				placeOfSupply: `${HOME_GST_STATE}-${home?.name ?? ''}`,
+				placeOfSupply: `${homeCode}-${home?.name ?? ''}`,
 				taxableINR: entry.totals.taxableINR,
 				cgstINR: entry.totals.cgstINR,
 				sgstINR: entry.totals.sgstINR,

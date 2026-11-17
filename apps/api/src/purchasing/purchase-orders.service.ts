@@ -9,6 +9,7 @@ import type {
 	PurchaseOrderSend,
 	PurchaseOrderWrite,
 } from '@saha-textile/contracts';
+import { shopOnDocument } from '@saha-textile/contracts';
 import {
 	type DocumentRendererPort,
 	type NumberAllocatorPort,
@@ -172,6 +173,7 @@ export class PurchaseOrdersService {
 			sentAt: null,
 			sentVia: null,
 			sentBy: null,
+			shopSnapshot: null,
 			closedAt: null,
 			closedReason: null,
 			linkedEntryIds: [],
@@ -364,8 +366,7 @@ export class PurchaseOrdersService {
 		if (!this.renderer) throw refuse('pdf_unavailable', 'PDFs cannot be made on this server yet.');
 		const order = await this.load(id);
 		const supplier = await this.suppliers.findById(order.supplierId);
-		const settings = await this.support.settings();
-		const request = await this.document.render(order, supplier, settings);
+		const request = await this.document.render(order, supplier, await this.support.shopDetails());
 		return { fileName: `${order.number.replace(/\//g, '-')}.pdf`, data: await this.renderer.renderPdf(request) };
 	}
 
@@ -379,6 +380,12 @@ export class PurchaseOrdersService {
 			throw refuse('wrong_status', 'Goods have arrived or the order is closed: it cannot be sent again.');
 		}
 		if (order.lines.length === 0) throw refuse('no_lines', 'Add at least one line before sending.');
+		// The shop details this order goes out with: its PDF prints them from now on (R3-1).
+		// A re-send keeps the first copy, so the supplier never gets two different letterheads.
+		if (!order.shopSnapshot) {
+			const brand = await this.document.brandFacts();
+			order.shopSnapshot = shopOnDocument(await this.support.shopDetails(), brand.shopName);
+		}
 		if (body.via === 'email') {
 			if (!this.inbox) throw refuse('mailbox_unavailable', 'Mailboxes are not set up on this server.');
 			if (!body.mailboxId || !body.from)

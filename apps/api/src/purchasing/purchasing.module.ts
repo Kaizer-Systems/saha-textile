@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { MailboxesModule } from '../mailboxes/mailboxes.module';
 import { MediaModule } from '../media/media.module';
 import { InventorySettingsService } from './inventory-settings.service';
+import { ShopDetailsService } from './shop-details.service';
 import { OpeningStockService } from './opening-stock.service';
 import { PurchaseEntriesController, PurchaseItemsController } from './purchase-entries.controller';
 import { PurchaseEntriesService } from './purchase-entries.service';
@@ -26,6 +27,7 @@ import {
 	OpeningStockController,
 	StockController,
 	StockCountsController,
+	ShopDetailsController,
 	StockReportsController,
 } from './stock.controller';
 import { StockService } from './stock.service';
@@ -51,6 +53,7 @@ import { SuppliersService } from './suppliers.service';
 		OpeningStockController,
 		StockReportsController,
 		InventorySettingsController,
+		ShopDetailsController,
 	],
 	providers: [
 		PurchasingSupport,
@@ -69,6 +72,8 @@ import { SuppliersService } from './suppliers.service';
 		OpeningStockService,
 		StockReportsService,
 		InventorySettingsService,
+		ShopDetailsService,
 	],
+	exports: [ShopDetailsService],
 })
 export class PurchasingModule {}

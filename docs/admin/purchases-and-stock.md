@@ -1,12 +1,13 @@
 ---
 title: Purchases and stock
 wide: true
-description: Suppliers, purchase orders, purchase entries, purchase returns, stock with held pieces and approvals, counts, opening stock, reports, the settings page, the product and category form rules, and fabric sold by the metre in the admin, the API and the shop.
+description: Suppliers, purchase orders, purchase entries, purchase returns, stock with held pieces and approvals, counts, opening stock, reports, the settings pages (purchases and shop details), the product and category form rules, and fabric sold by the metre in the admin, the API and the shop.
 status: implemented
 audience: [beginner, frontend, backend]
-last_verified: '2026-11-17'
+last_verified: '2026-11-18'
 source_of_truth:
     - packages/contracts/src/purchasing.ts
+    - packages/contracts/src/shop-details.ts
     - packages/contracts/src/inventory.ts
     - packages/contracts/src/catalog-write.ts
     - packages/contracts/src/cart.ts
@@ -20,6 +21,7 @@ source_of_truth:
     - apps/admin/src/app/features/purchasing
     - apps/admin/src/app/features/stock
     - apps/admin/src/app/features/setting/purchases
+    - apps/admin/src/app/features/setting/shop-details
     - apps/admin/src/app/features/product/form-product
     - apps/storefront/src/app/core/catalog/metre-length.ts
 ---
@@ -72,6 +74,23 @@ Internal numbers come from `numberCounters`, one counter per series and financia
 | Default delivery place | `setting.edit`    | Fills Deliver to on a new purchase order                                                                     |
 
 "Super admin" is the `admin` operator tier. A change to the step rules or the books-closed date from anyone else is refused (403) and written to the audit log. A step role must hold the step's permission. A step whose role was deleted is closed until the super admin chooses again, so a deleted role never opens a step to everyone.
+
+## Settings › Shop details
+
+`GET`, `PUT /admin/settings/shop-details` and `GET /admin/settings/shop-details/impact?gstin=`. One record (`shopDetails`, `_id: 'shop'`) holds how the shop names itself on business documents: legal name, trade name, GSTIN, address, city, PIN code, phone and email. Purchase orders, goods receipts and debit notes print it; tax invoices and delivery challans will. Names and addresses print as typed, never translated.
+
+| Who                                                   | What they get                                                                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `shop_details.edit` (the Administrator role holds it) | Open boxes, Save and Cancel                                                                                                          |
+| `setting.index` without it                            | The same page read only, with a note naming the permission. A `PUT` from them is refused (403) and written to the audit log          |
+| One person who needs it without the rest of a role    | A small role holding only `shop_details.edit`, added on the user's page (the Roles block explains this); the same works for any code |
+
+- **Checks.** GSTIN format, State code and check digit (the wrong last character is named), a 6-digit PIN code that does not start with 0, a phone of 8 to 15 digits, and an email that reads as one. The page checks as it is typed; the API checks again.
+- **Home State.** The GSTIN's State is the home State for purchase tax: suppliers in the same State charge CGST + SGST, the rest IGST. Until a GSTIN is saved it is West Bengal (19). When a save moves the State, every supplier's tax type is worked out again at once, draft entries take it on their next save, and posted entries never change.
+- **Confirmation.** A new GSTIN or legal name asks first, showing old → new, the State, which suppliers move between CGST + SGST and IGST (from the impact call), and that documents already sent keep their details. A first GSTIN in the home State saves without asking. Address, phone and email never ask.
+- **Saving over a newer copy.** Each save carries the `updatedAt` it was read with; a save over a newer copy is refused (409) naming who saved and when.
+- **Documents keep what they printed.** A purchase order stores the shop lines it was sent with (`shopSnapshot`); its PDF always prints that copy, and a re-send keeps the first one. Drafts print today's details. Until shop details are first saved, documents print the Brand Kit's shop name and whatever the purchases settings held.
+- **Audit.** Each save writes one sentence with every field's old and new value and whether the State changed; a State change adds a sentence naming how many suppliers moved.
 
 ## Opening stock
 

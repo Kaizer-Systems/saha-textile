@@ -5,6 +5,12 @@
  */
 export const COOKIE_POLICY_VERSION = '2026-11-10';
 
+/**
+ * Set on `<html>` by the page head, before the first paint, for a visitor with no decision under this policy: the
+ * cookie box, drawn hidden by the server, shows at once (consent-ask.vite.ts; decision D1, 17 Nov 2026).
+ */
+export const CONSENT_ASK_CLASS = 'st-consent-ask';
+
 export type OptionalCategory = 'functional' | 'analytics' | 'targeting' | 'marketing' | 'promotional';
 
 export interface CookieItem {

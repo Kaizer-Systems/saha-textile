@@ -1,10 +1,13 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
+import { provideTransloco } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ConsentStore } from '@core/consent/consent.store';
+import { CONSENT_ASK_CLASS } from '@core/consent/cookie-catalogue';
 import { AuthStore } from '@core/state/auth.store';
 
 import { Cookie } from './cookie';
@@ -125,5 +128,42 @@ describe('Cookie', () => {
 		isAuthenticated.set(true);
 		TestBed.tick();
 		expect(consent.syncAccount).toHaveBeenCalledTimes(2);
+	});
+
+	it("takes over from the page head's mark once it has drawn, so the box follows the decision alone (D1)", () => {
+		document.documentElement.classList.add(CONSENT_ASK_CLASS);
+		setup();
+		TestBed.tick();
+		expect(document.documentElement.classList.contains(CONSENT_ASK_CLASS)).toBe(false);
+	});
+});
+
+describe('Cookie box markup (D1)', () => {
+	const render = (open: boolean) => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: ConsentStore, useValue: { ...consentDouble(), boxOpen: signal(open), openSettings: vi.fn() } },
+				{ provide: AuthStore, useValue: { isAuthenticated: signal(false) } },
+				{ provide: NgbModal, useValue: { open: vi.fn() } },
+				provideRouter([]),
+				provideTransloco({ config: { availableLangs: ['en'], defaultLang: 'en' }, loader: undefined }),
+			],
+		});
+		TestBed.overrideComponent(CookieSettings, {
+			set: { imports: [], template: '<ng-template #cookieSettings></ng-template>' },
+		});
+		const fixture = TestBed.createComponent(Cookie);
+		fixture.detectChanges();
+		return fixture.nativeElement as HTMLElement;
+	};
+
+	it('is always drawn, hidden until the visitor has to decide', () => {
+		const closed = render(false).querySelector<HTMLElement>('.cookie-bar-box');
+		expect(closed?.hidden).toBe(true);
+		const open = render(true).querySelector<HTMLElement>('.cookie-bar-box');
+		expect(open?.hidden).toBe(false);
+		expect(open?.querySelector('p.h5.text-content')).not.toBeNull();
+		expect(open?.querySelector('img')?.getAttribute('loading')).toBe('lazy');
 	});
 });

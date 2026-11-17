@@ -51,7 +51,8 @@ function parseChoice(value: string | undefined): ConsentChoice | null {
 /**
  * The shopper's cookie decision. The browser's `st_consent` cookie is the live answer, because the
  * shop must know before any request returns; the API keeps the add-only history. Nothing optional
- * runs until `allows` says so. The server never shows the box, so returning visitors see no flash.
+ * runs until `allows` says so. The server draws the box hidden in every page and the page head shows it to a visitor
+ * who has not decided (consent-ask.vite.ts), so returning visitors never see it, not even for a moment.
  */
 @Injectable({ providedIn: 'root' })
 export class ConsentStore {
@@ -62,7 +63,7 @@ export class ConsentStore {
 
 	readonly choice = signal<ConsentChoice | null>(this.isBrowser ? this.readCookie() : null);
 	readonly decided = computed(() => this.choice() !== null);
-	/** Browser only: the first HTML never carries the box. */
+	/** Browser only: the server's HTML always draws the box hidden; the page head decides its first paint. */
 	readonly boxOpen = computed(() => this.isBrowser && !this.decided());
 	/** Goes up each time something asks for Cookie settings. */
 	readonly settingsRequests = signal(0);

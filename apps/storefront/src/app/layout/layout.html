@@ -16,8 +16,8 @@
 <!-- The footer stays awake from the start: its Cookie settings link must work at the first click. -->
 <app-footer [footer]="footerData" />
 
-<!-- Widgets: none of them is on the first screen (popups, sticky bars, back to top, the cookie box overlay), so
-     each loads in its own file once the page is idle, after the first paint (Angular @defer on idle). -->
+<!-- Widgets: none of them is on the first screen (popups, sticky bars, back to top), so each loads in its own file
+     once the page is idle, after the first paint (Angular @defer on idle). -->
 @defer (on idle) {
 <app-recent-purchase-popup />
 @if ((siteConfig$ | async)?.general?.cart_style === 'cart_mini') {
@@ -31,5 +31,12 @@
 </div>
 <app-event-modal />
 <app-newsletter-modal />
+}
+
+<!-- The cookie box: drawn by the server (hidden) in every page, so a first-time visitor sees it with the page; the
+     page head decides whether it shows before the first paint (decision D1). Its code loads and wakes up once the page
+     is idle, or at once when it is tapped first: that first tap is replayed once it is awake (incremental hydration
+     with event replay). -->
+@defer (on idle; hydrate on idle; hydrate on interaction) {
 <app-cookie />
 }

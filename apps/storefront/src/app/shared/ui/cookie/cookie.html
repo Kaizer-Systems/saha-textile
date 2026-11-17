@@ -1,8 +1,10 @@
-@if (consent.boxOpen()) {
+<!-- In every page from the server, hidden; the page head shows it before the first paint to a visitor who has not
+     decided (consent-ask.vite.ts), and once this code runs, `boxOpen` decides (decision D1). -->
 <div
 	class="cookie-bar-box"
 	role="region"
 	[attr.aria-label]="'cookies' | transloco"
+	[hidden]="!consent.boxOpen()"
 >
 	<div class="cookie-box">
 		<div class="cookie-image">
@@ -10,14 +12,16 @@
 				src="assets/images/cookie-bar.png"
 				class="blur-up lazyloaded"
 				alt=""
+				loading="lazy"
+				decoding="async"
 			/>
 			<h2>{{ 'cookies' | transloco }}</h2>
 		</div>
 		<div class="cookie-contain">
-			<h5 class="text-content">
+			<p class="h5 text-content">
 				{{ 'cookie_box_text' | transloco }}
 				<a [routerLink]="['/privacy-policy']">{{ 'cookie_read_policy' | transloco }}</a>
-			</h5>
+			</p>
 		</div>
 	</div>
 
@@ -51,5 +55,4 @@
 		</button>
 	</div>
 </div>
-}
 <app-cookie-settings />

@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from 'node:url';
 import analog from '@analogjs/platform';
 import { defineConfig, type Plugin } from 'vite';
 
+import { consentAskPlugin } from './consent-ask.vite.ts';
 import { scriptPriorityPlugin } from './script-priority.vite.ts';
 import { serviceWorkerPlugins } from './service-worker.vite.ts';
 
@@ -136,6 +137,8 @@ export default defineConfig(({ command }) => ({
 		...(command === 'build' ? serviceWorkerPlugins() : []),
 		// Application scripts at low fetch priority: the server-drawn page, its first picture and styles go first.
 		scriptPriorityPlugin(),
+		// A first-time visitor's cookie box shows with the page: a tiny script in the page head (decision D1).
+		consentAskPlugin(),
 		angularServerMode(),
 		analog({
 			ssr: true,

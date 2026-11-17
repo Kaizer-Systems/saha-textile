@@ -105,7 +105,9 @@ To add a menu entry, add it to `shared/data/menu.ts` with a translation key in b
 
 ## Cookie box
 
-`shared/ui/cookie` holds the first-visit box and the Cookie settings popup. `core/consent/consent.store.ts` keeps the choice in the `st_consent` cookie, and optional features check `ConsentStore.allows(category)` before they run. The box is never rendered on the server, so a returning visitor sees no flash.
+`shared/ui/cookie` holds the first-visit box and the Cookie settings popup. `core/consent/consent.store.ts` keeps the choice in the `st_consent` cookie, and optional features check `ConsentStore.allows(category)` before they run.
+
+The box is drawn with the page (decision D1, 17 Nov 2026). The server draws it in every page with `hidden`, so the HTML is the same for every visitor and can be cached. A small script in the page head (`consent-ask.vite.ts`, added to `index.html` at build) runs before the first paint: when the visitor has no `st_consent` decision for the current `COOKIE_POLICY_VERSION`, it adds `st-consent-ask` to `<html>`, and the box's own style shows it. A first-time visitor therefore sees the page and the box together, and a returning visitor never sees the box, not even for a moment. The script sits right after the charset line, before any stylesheet, so it never waits for one. The box is in its own `@defer (on idle; hydrate on idle)` block in `layout.html`: the server draws it, its code loads once the page is idle, a tap before then is replayed, and once it has run it removes the mark so `[hidden]` follows `ConsentStore.boxOpen` alone. Before this, the box was drawn by the browser after the scripts; on the category page it was the largest thing on a phone's first screen and set Largest Contentful Paint (7.5 s in Lighthouse's phone test). `e2e/consent.spec.ts` checks the first paint with every app script blocked.
 
 The layout in `scss/components/_cookie_bar.scss` keeps every button label whole at any screen size, language and browser text size:
 

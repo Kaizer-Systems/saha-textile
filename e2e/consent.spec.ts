@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { FUNCTIONAL_ITEMS } from '../apps/storefront/src/app/core/consent/cookie-catalogue';
+import { COOKIE_POLICY_VERSION, FUNCTIONAL_ITEMS } from '../apps/storefront/src/app/core/consent/cookie-catalogue';
 
 const box = (page: Page) => page.locator('.cookie-bar-box');
 const home = async (page: Page) => {
@@ -17,9 +17,37 @@ test.describe('Cookie box', () => {
 		await page.addInitScript(() => sessionStorage.setItem('st_newsletter_shown', '1'));
 	});
 
-	test('the first HTML never carries the box, so a returning visitor sees no flash', async ({ request }) => {
+	test('the page carries the box hidden for everyone; its head shows it before any app script, only when undecided (D1)', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
 		const html = await (await request.get('/en/')).text();
-		expect(html).not.toContain('cookie-bar-box');
+		expect(html).toMatch(/<div[^>]*class="cookie-bar-box"[^>]*\bhidden\b/);
+		expect(html).toContain('st-consent-ask');
+		// With every app script blocked, only the page and its head script run: the first paint as a phone sees it.
+		const firstPaint = async (decided: boolean) => {
+			const context = await browser.newContext({ baseURL });
+			if (decided) {
+				const value = encodeURIComponent(
+					JSON.stringify({
+						id: 'c0ffee00-0000-4000-8000-0000000000d1',
+						version: COOKIE_POLICY_VERSION,
+						savedAt: '2026-11-17T00:00:00.000Z',
+						categories: { functional: false, analytics: false, targeting: false, marketing: false, promotional: false },
+					}),
+				);
+				await context.addCookies([{ name: 'st_consent', value, url: baseURL ?? '' }]);
+			}
+			const page = await context.newPage();
+			await page.route(/\.m?js(\?|$)/, (route) => route.abort());
+			await page.goto('/en/', { waitUntil: 'domcontentloaded' });
+			const shown = await box(page).isVisible();
+			await context.close();
+			return shown;
+		};
+		expect(await firstPaint(false)).toBe(true);
+		expect(await firstPaint(true)).toBe(false);
 	});
 
 	test('refusing takes one click, is recorded, and stops optional storage', async ({ page }) => {
@@ -27,17 +55,26 @@ test.describe('Cookie box', () => {
 		const saved = page.waitForResponse((row) => row.url().includes('/privacy/consent'));
 		await page.locator('#cookie_necessary_btn').click();
 		expect((await saved).status()).toBe(201);
-		await expect(box(page)).toHaveCount(0);
+		await expect(box(page)).toBeHidden();
 		expect((await consentCookie(page))?.categories).toMatchObject({ functional: false, marketing: false });
 		await page.reload();
 		await expect(page.locator('app-header')).toBeVisible();
-		await expect(box(page)).toHaveCount(0);
+		await expect(box(page)).toBeHidden();
+	});
+
+	test('a tap on the box the moment the page appears still counts (D1: the box wakes on its first tap)', async ({
+		page,
+	}) => {
+		await page.goto('/en/', { waitUntil: 'domcontentloaded' });
+		await page.locator('#cookie_accept_btn').click();
+		await expect(box(page)).toBeHidden();
+		await expect.poll(async () => (await consentCookie(page))?.categories?.['functional']).toBe(true);
 	});
 
 	test('accepting turns on only what is in use', async ({ page }) => {
 		await home(page);
 		await page.locator('#cookie_accept_btn').click();
-		await expect(box(page)).toHaveCount(0);
+		await expect(box(page)).toBeHidden();
 		expect((await consentCookie(page))?.categories).toMatchObject({ functional: true, analytics: false });
 	});
 

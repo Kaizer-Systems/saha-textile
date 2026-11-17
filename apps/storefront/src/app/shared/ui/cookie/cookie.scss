@@ -1,0 +1,8 @@
+// The server draws the box in every page with `hidden`. The page head marks a visitor who has not decided yet with
+// `html.st-consent-ask` before the first paint (consent-ask.vite.ts), and this rule shows the box then, so it appears
+// with the page. Bootstrap's `[hidden]` rule is `!important`, hence the same here. The theme draws the box fixed in a
+// corner, so showing it moves nothing on the page. Once the component runs it removes the mark, and `[hidden]`
+// follows the visitor's decision alone (decision D1, 17 Nov 2026).
+:host-context(html.st-consent-ask) .cookie-bar-box[hidden] {
+	display: block !important;
+}

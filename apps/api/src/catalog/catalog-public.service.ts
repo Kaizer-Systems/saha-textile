@@ -20,6 +20,7 @@ import {
 	productGallery,
 	resolveImage,
 	liveRelations,
+	stepperStep,
 	type AddonTemplateRepository,
 	type CategoryPlacementRepository,
 	type CategoryRepository,
@@ -226,6 +227,20 @@ export class CatalogPublicService {
 			estimatedDeliveryText: product.estimatedDeliveryText ? localized(product.estimatedDeliveryText) : null,
 			sareeLengthM: product.sareeLengthM ?? null,
 			blousePieceM: product.blousePieceM ?? null,
+			soldBy: product.soldBy,
+			metre:
+				product.soldBy === 'metre'
+					? {
+							// M2: a metre product saved before its cut was set still sells from 1.0 m.
+							shortestCutTenths: product.shortestCutTenths ?? 10,
+							stepTenths: stepperStep('metre'),
+							quickLengths: product.quickLengths.map((row) => ({
+								tenths: row.tenths,
+								label: localized(row.label),
+							})),
+							widthInches: product.widthInches,
+						}
+					: null,
 			selected: selected
 				? {
 						sku: selected.sku,
@@ -722,6 +737,7 @@ export class CatalogPublicService {
 			image: primary ? this.image(assets.get(primary), ['card'], product.media.versions?.[primary]) : null,
 			inStock: read.sellable > 0 || read.madeToOrder,
 			madeToOrder: read.madeToOrder,
+			soldBy: product.soldBy,
 		});
 	}
 

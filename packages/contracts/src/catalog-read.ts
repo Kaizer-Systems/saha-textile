@@ -37,6 +37,8 @@ export const CatalogCard = z
 		image: ResolvedImage.nullable(),
 		inStock: z.boolean(),
 		madeToOrder: z.boolean(),
+		/** Fabric by the metre shows "/ m" after its price (M6). */
+		soldBy: z.enum(['piece', 'metre']).default('piece'),
 	})
 	.superRefine((card, ctx) => {
 		const roles = Object.keys(card.image?.roles ?? {});
@@ -302,6 +304,16 @@ export const CatalogMenuCategory = z.object({
 export type CatalogMenuCategory = z.infer<typeof CatalogMenuCategory>;
 
 /** The product page read model. Prices are whole rupees from Mongo; images are resolved URLs. */
+/** Fabric by the metre on the product page (shop brief M02–M04); lengths in tenths of a metre. */
+export const CatalogPageMetre = z.object({
+	shortestCutTenths: z.number().int().positive(),
+	/** What − and + change the length by (M1: 0.5 m). */
+	stepTenths: z.number().int().positive(),
+	quickLengths: z.array(z.object({ tenths: z.number().int().positive(), label: z.string() })),
+	widthInches: z.number().nullable(),
+});
+export type CatalogPageMetre = z.infer<typeof CatalogPageMetre>;
+
 export const CatalogProductPage = z.object({
 	id: Id,
 	slug: Slug,
@@ -321,6 +333,9 @@ export const CatalogProductPage = z.object({
 	estimatedDeliveryText: z.string().nullable(),
 	sareeLengthM: z.number().nullable(),
 	blousePieceM: z.number().nullable(),
+	/** Piece or metre; for metre, every quantity on the page is tenths of a metre. */
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	metre: CatalogPageMetre.nullable().default(null),
 	selected: z
 		.object({
 			sku: z.string(),

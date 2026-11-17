@@ -10,7 +10,13 @@ import {
 	type CartViewLine,
 	type UpdateCartLineRequest,
 } from '@saha-textile/contracts';
-import { type CartRepository, type PricedCartLine, priceCartLine } from '@saha-textile/core-domain';
+import {
+	type CartRepository,
+	type PricedCartLine,
+	cartLineTotalINR,
+	cartQuantityProblem,
+	priceCartLine,
+} from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import { CatalogPublicService } from '../catalog/catalog-public.service';
@@ -29,7 +35,7 @@ export interface CartWrite {
 }
 
 /** Problems that keep a line out of the total. A short line still counts, at what it holds. */
-const UNSELLABLE = new Set<CartViewLine['problem']>(['unavailable', 'out_of_stock']);
+const UNSELLABLE = new Set<CartViewLine['problem']>(['unavailable', 'out_of_stock', 'below_shortest_cut']);
 
 /**
  * The shopper's own cart, always priced here. The browser sends choices, never prices: every read
@@ -60,6 +66,7 @@ export class CartLinesService {
 		line.addons = savedChoices(priced);
 		const same = cart.lines.find((row) => lineKey(row) === lineKey(line));
 		const quantity = line.quantity + (same?.quantity ?? 0);
+		assertQuantity(priced, quantity);
 		assertStock(priced, quantity);
 		if (same) same.quantity = quantity;
 		else cart.lines.push(line);
@@ -81,10 +88,9 @@ export class CartLinesService {
 		next.addons = savedChoices(priced);
 		const twin = cart.lines.find((row) => row.id !== lineId && lineKey(row) === lineKey(next));
 		next.quantity += twin?.quantity ?? 0;
+		assertQuantity(priced, next.quantity);
 		assertStock(priced, next.quantity);
-		cart.lines = cart.lines
-			.filter((row) => row.id !== twin?.id)
-			.map((row) => (row.id === lineId ? next : row));
+		cart.lines = cart.lines.filter((row) => row.id !== twin?.id).map((row) => (row.id === lineId ? next : row));
 		return this.view(await this.carts.save(cart));
 	}
 
@@ -139,7 +145,8 @@ export class CartLinesService {
 			subtotalINR: lines
 				.filter((line) => !UNSELLABLE.has(line.problem))
 				.reduce((sum, line) => sum + line.lineTotalINR, 0),
-			count: lines.reduce((sum, line) => sum + line.quantity, 0),
+			// A metre line is one thing in the bag, however long the cut.
+			count: lines.reduce((sum, line) => sum + (line.soldBy === 'metre' ? 1 : line.quantity), 0),
 		});
 	}
 
@@ -163,6 +170,8 @@ export class CartLinesService {
 				variationId: line.variationId,
 				variantLabel: null,
 				available: 0,
+				soldBy: 'piece' as const,
+				shortestCutTenths: null,
 				basePriceINR: 0,
 				unitPriceINR: 0,
 				mrpINR: null,
@@ -185,10 +194,15 @@ export class CartLinesService {
 			basePriceINR,
 			unitPriceINR,
 			mrpINR,
-			lineTotalINR: unitPriceINR * line.quantity,
+			soldBy: row.soldBy,
+			shortestCutTenths: row.shortestCutTenths,
+			lineTotalINR: cartLineTotalINR(row, line.quantity),
 			options,
 			measurements,
-			problem: lineProblem(row, line.quantity),
+			problem:
+				cartQuantityProblem(row, line.quantity) === 'below_shortest_cut'
+					? 'below_shortest_cut'
+					: lineProblem(row, line.quantity),
 		};
 	}
 }
@@ -211,4 +225,22 @@ function assertStock({ available, buyable }: PricedCartLine, quantity: number): 
 function lineProblem(row: PricedCartLine, quantity: number): CartViewLine['problem'] {
 	if (!row.buyable) return 'out_of_stock';
 	return row.available !== null && quantity > row.available ? 'limited' : null;
+}
+
+/** Too many pieces, or a cut below the product's shortest (M04): refused before the cart changes. */
+function assertQuantity(row: PricedCartLine, quantity: number): void {
+	const problem = cartQuantityProblem(row, quantity);
+	if (!problem) return;
+	throw new BadRequestException({
+		issues: [
+			{
+				path: 'quantity',
+				message:
+					problem === 'below_shortest_cut'
+						? `The shortest cut is ${((row.shortestCutTenths ?? 0) / 10).toFixed(1)} m`
+						: 'Up to 99 pieces on one line',
+				code: problem,
+			},
+		],
+	});
 }

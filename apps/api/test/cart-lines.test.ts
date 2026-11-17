@@ -266,7 +266,9 @@ describe('CartLinesService', () => {
 			const falseChoice = { ...add, addons: [{ code: 'free_gift', value: 'yes' }] };
 			const refused = await h.service.add(falseChoice, {}).catch((error: unknown) => error);
 			expect(refused).toBeInstanceOf(BadRequestException);
-			expect((refused as BadRequestException).getResponse()).toMatchObject({ issues: [{ code: 'unknown_option' }] });
+			expect((refused as BadRequestException).getResponse()).toMatchObject({
+				issues: [{ code: 'unknown_option' }],
+			});
 		});
 
 		it('treats a default left alone and the same choice made by hand as one line', async () => {
@@ -335,13 +337,17 @@ describe('CartLinesService', () => {
 
 		it('refuses more than the stock', async () => {
 			h.carts.findByUserId.mockResolvedValue(owned());
-			await expect(h.service.update('line_1', { quantity: 4 }, signedIn)).rejects.toBeInstanceOf(ConflictException);
+			await expect(h.service.update('line_1', { quantity: 4 }, signedIn)).rejects.toBeInstanceOf(
+				ConflictException,
+			);
 		});
 
 		it('hides a line that is not in this shopper cart', async () => {
 			await expect(h.service.update('line_1', { quantity: 1 }, {})).rejects.toBeInstanceOf(NotFoundException);
 			h.carts.findByUserId.mockResolvedValue(owned());
-			await expect(h.service.update('other', { quantity: 1 }, signedIn)).rejects.toBeInstanceOf(NotFoundException);
+			await expect(h.service.update('other', { quantity: 1 }, signedIn)).rejects.toBeInstanceOf(
+				NotFoundException,
+			);
 			await expect(h.service.remove('other', signedIn)).rejects.toBeInstanceOf(NotFoundException);
 			await expect(h.service.remove('line_1', {})).rejects.toBeInstanceOf(NotFoundException);
 		});
@@ -371,7 +377,9 @@ describe('CartLinesService', () => {
 			expect(folded.lines).toHaveLength(1);
 			expect(folded.lines[0]).toMatchObject({ id: 'a', variationId: 'v2', quantity: 5 });
 
-			h.carts.findByUserId.mockResolvedValue(owned([stored({ id: 'a', variationId: 'v1' }), stored({ id: 'c', variationId: 'v2' })]));
+			h.carts.findByUserId.mockResolvedValue(
+				owned([stored({ id: 'a', variationId: 'v1' }), stored({ id: 'c', variationId: 'v2' })]),
+			);
 			const kept = await h.service.update('a', { quantity: 1 }, signedIn);
 			expect(kept.lines).toHaveLength(2);
 		});
@@ -438,5 +446,68 @@ describe('CartController', () => {
 			guestToken: 'g',
 			allowReadPermissions: ['cart.index'],
 		});
+	});
+});
+
+describe('fabric by the metre in the cart (M02–M04, M08–M10)', () => {
+	const fabric = () =>
+		page({
+			title: 'Mulmul',
+			soldBy: 'metre',
+			metre: { shortestCutTenths: 10, stepTenths: 5, quickLengths: [], widthInches: 44 },
+			selected: { sku: 'ST-FAB-0007', sellingINR: 180, mrpINR: null, quantity: 45, buyable: true },
+		});
+
+	it('prices length × price per metre, counts the line once, and says it is sold by the metre', async () => {
+		const { service, carts, catalog } = harness();
+		catalog.cartRead.mockResolvedValue({ slug: 'mulmul', title: 'Mulmul', page: fabric() });
+		carts.findByUserId.mockResolvedValue(owned([stored({ quantity: 25 })]));
+		const view = await service.current({ principal: shopper });
+		expect(view.lines[0]).toMatchObject({
+			quantity: 25,
+			soldBy: 'metre',
+			shortestCutTenths: 10,
+			unitPriceINR: 180,
+			lineTotalINR: 450,
+			available: 45,
+			problem: null,
+		});
+		expect(view.count).toBe(1);
+		expect(view.subtotalINR).toBe(450);
+	});
+
+	it('refuses a cut below the shortest, and more than what is free to sell', async () => {
+		const { service, carts, catalog } = harness();
+		catalog.cartRead.mockResolvedValue({ slug: 'mulmul', title: 'Mulmul', page: fabric() });
+		carts.findByUserId.mockResolvedValue(owned([]));
+		await expect(
+			service.add({ productId: 'p1', quantity: 5, addons: [] }, { principal: shopper }),
+		).rejects.toBeInstanceOf(BadRequestException);
+		await expect(
+			service.add({ productId: 'p1', quantity: 46, addons: [] }, { principal: shopper }),
+		).rejects.toBeInstanceOf(ConflictException);
+		const added = await service.add({ productId: 'p1', quantity: 45, addons: [] }, { principal: shopper });
+		expect(added.view.lines[0]).toMatchObject({ quantity: 45, lineTotalINR: 810 });
+	});
+
+	it('marks a line left below a raised shortest cut, and leaves it out of the total', async () => {
+		const { service, carts, catalog } = harness();
+		catalog.cartRead.mockResolvedValue({
+			slug: 'mulmul',
+			title: 'Mulmul',
+			page: { ...fabric(), metre: { shortestCutTenths: 20, stepTenths: 5, quickLengths: [], widthInches: null } },
+		});
+		carts.findByUserId.mockResolvedValue(owned([stored({ quantity: 15 })]));
+		const view = await service.current({ principal: shopper });
+		expect(view.lines[0]?.problem).toBe('below_shortest_cut');
+		expect(view.subtotalINR).toBe(0);
+	});
+
+	it('keeps a piece line to 99', async () => {
+		const { service, carts } = harness();
+		carts.findByUserId.mockResolvedValue(owned([]));
+		await expect(
+			service.add({ productId: 'p1', quantity: 100, addons: [] }, { principal: shopper }),
+		).rejects.toBeInstanceOf(BadRequestException);
 	});
 });

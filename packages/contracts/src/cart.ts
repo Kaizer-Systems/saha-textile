@@ -3,8 +3,11 @@ import { z } from 'zod';
 import { Id, IsoDateTime } from './common';
 import { ResolvedImage } from './media';
 
-/** A shop line, not a wholesale order. */
-const LineQuantity = z.number().int().positive().max(99);
+/**
+ * A shop line, not a wholesale order: pieces, or tenths of a metre for fabric by the metre
+ * (P11). The server holds piece lines to 99 and metre lines to the product's shortest cut.
+ */
+const LineQuantity = z.number().int().positive().max(9999);
 
 /** Captured value for a tailoring add-on on a cart line. */
 export const CartAddonValue = z.object({
@@ -70,7 +73,7 @@ export const UpdateCartLineRequest = z.object({
 export type UpdateCartLineRequest = z.infer<typeof UpdateCartLineRequest>;
 
 /** Why a line cannot be bought as it stands. */
-export const CartLineProblem = z.enum(['unavailable', 'out_of_stock', 'limited']);
+export const CartLineProblem = z.enum(['unavailable', 'out_of_stock', 'limited', 'below_shortest_cut']);
 export type CartLineProblem = z.infer<typeof CartLineProblem>;
 
 const money = z.number().nonnegative();
@@ -85,7 +88,11 @@ export const CartViewLine = z.object({
 	sku: z.string(),
 	variationId: Id.nullable(),
 	variantLabel: z.string().nullable(),
+	/** Pieces, or tenths of a metre when `soldBy` is metre. */
 	quantity: z.number().int().positive(),
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	/** The least a buyer may cut, in tenths; null for pieces. */
+	shortestCutTenths: z.number().int().positive().nullable().default(null),
 	/** Units that can be bought now. Null means no limit. */
 	available: z.number().int().nonnegative().nullable(),
 	basePriceINR: money,

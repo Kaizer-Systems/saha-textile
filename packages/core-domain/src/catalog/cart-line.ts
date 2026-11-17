@@ -26,6 +26,9 @@ export interface PricedCartLine {
 	/** Units that can be bought now. Null means no limit, as for made to order. */
 	available: number | null;
 	buyable: boolean;
+	/** Pieces, or fabric by the metre: then quantities are tenths and `basePriceINR` is per metre. */
+	soldBy: 'piece' | 'metre';
+	shortestCutTenths: number | null;
 	options: PricedCartOption[];
 	measurements: { code: string; label: string; value: number; unit: 'in' | 'cm' }[];
 }
@@ -131,9 +134,36 @@ export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice):
 		ok: true,
 		line: {
 			...base,
+			soldBy: page.soldBy ?? 'piece',
+			shortestCutTenths: page.metre?.shortestCutTenths ?? null,
 			unitPriceINR: options.reduce((sum, option) => sum + option.priceDeltaINR, basePriceINR),
 			options,
 			measurements,
 		},
 	};
+}
+
+/** The most pieces one shop line may hold (a boutique, not wholesale). */
+export const MAX_PIECES_PER_LINE = 99;
+
+/**
+ * A line's total. Pieces: unit price (variant plus add-ons) × pieces. Metres: price per metre ×
+ * length, rounded to the paisa, plus add-ons once (shop brief: "charged once per line, not per
+ * metre", as blouse stitching on a fabric line).
+ */
+export function cartLineTotalINR(line: PricedCartLine, quantity: number): number {
+	if (line.soldBy !== 'metre') return line.unitPriceINR * quantity;
+	const addOns = line.options.reduce((sum, option) => sum + option.priceDeltaINR, 0);
+	// Whole paise first, so 2.3 m of ₹175.50 a metre is ₹403.65, never a float like 403.6499.
+	const paise = Math.round((Math.round(line.basePriceINR * 100) * quantity) / 10);
+	return paise / 100 + addOns;
+}
+
+/** Why a quantity cannot go on the line: too many pieces, or a cut below the shortest (M04). */
+export function cartQuantityProblem(
+	line: Pick<PricedCartLine, 'soldBy' | 'shortestCutTenths'>,
+	quantity: number,
+): 'too_many_pieces' | 'below_shortest_cut' | null {
+	if (line.soldBy !== 'metre') return quantity > MAX_PIECES_PER_LINE ? 'too_many_pieces' : null;
+	return line.shortestCutTenths !== null && quantity < line.shortestCutTenths ? 'below_shortest_cut' : null;
 }

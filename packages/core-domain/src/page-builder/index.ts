@@ -6,3 +6,4 @@ export * from './templates';
 export * from './todays-home';
 export * from './settings';
 export * from './blocks';
+export * from './go-live';

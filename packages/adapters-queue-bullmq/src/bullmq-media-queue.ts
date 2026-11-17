@@ -32,7 +32,11 @@ export type ScheduledMediaJob =
 	/** The nightly Spaces check (R5-5): missing pictures the website uses, files no record knows. */
 	| { type: 'spaces-check' }
 	/** Deletes .zip downloads past their 24 hours, and cancelled or failed ones (media step 5). */
-	| { type: 'zip-sweep' };
+	| { type: 'zip-sweep' }
+	/** Page Builder Go Lives waiting for pictures still being made (E5): each goes once they are ready. */
+	| { type: 'page-go-live-waiting' }
+	/** Page Builder nightly check (SG-12) and History upkeep (Q12: last 20 Go Lives, drafts for 30 days). */
+	| { type: 'page-builder-nightly' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -203,6 +207,19 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'weekly-insight',
 			{ pattern: '0 4 * * 1', tz },
 			{ name: 'weekly-insight', data: { type: 'weekly-insight' } },
+		);
+		// A Go Live waiting for a picture goes within a minute of it being ready (Page Builder E5).
+		await this.queue.upsertJobScheduler(
+			'page-go-live-waiting',
+			{ every: 60_000 },
+			{ name: 'page-go-live-waiting', data: { type: 'page-go-live-waiting' } },
+		);
+		// Live and scheduled layouts checked again, then History kept to its limits (04:30 IST, after the
+		// nightly Spaces check, so a picture it found gone is caught too).
+		await this.queue.upsertJobScheduler(
+			'page-builder-nightly',
+			{ pattern: '30 4 * * *', tz },
+			{ name: 'page-builder-nightly', data: { type: 'page-builder-nightly' } },
 		);
 	}
 

@@ -42,6 +42,8 @@ import {
 	shopPageSettings,
 	layoutProblems,
 	layoutStatus,
+	previousLiveEntry,
+	type LayoutProblem,
 	nextContentChangeAt,
 	liveEntry,
 	nextSwitchAt,
@@ -143,16 +145,36 @@ export class PageBuilderService {
 		const schedule = page?.schedule ?? [];
 		const next = nextSwitchAt(schedule, now);
 		const settings = page?.settings ?? NO_SETTINGS;
+		const names = new Map(layouts.map((layout) => [layout.id, layout.name]));
+		const live = liveEntry(schedule, now);
+		const previous = previousLiveEntry(schedule, live);
+		const switches = await this.settings.get('storefront.pageBuilder');
 		return {
 			pageType,
 			target: WHOLE_PAGE,
 			schedule,
-			liveRevisionId: liveEntry(schedule, now)?.revisionId ?? null,
+			liveRevisionId: live?.revisionId ?? null,
 			nextSwitchAt: next ? next.toISOString() : null,
 			layouts: await Promise.all(layouts.map((layout) => this.row(layout, schedule, now))),
 			settings,
 			settingsGaps: pageSettingsGaps(settings, this.languages.shop()),
 			shareImageUrl: await this.shareImageUrl(settings),
+			builderOn: !!switches?.[pageType] && !page?.safeMode,
+			safeMode: page?.safeMode ? { ...page.safeMode, byName: await this.adminName(page.safeMode.by) } : null,
+			putBack:
+				previous && names.has(previous.layoutId)
+					? {
+							layoutId: previous.layoutId,
+							layoutName: names.get(previous.layoutId) as string,
+							revisionId: previous.revisionId,
+						}
+					: null,
+			waiting: (page?.pending ?? []).map((row) => ({
+				layoutId: row.entry.layoutId,
+				layoutName: names.get(row.entry.layoutId) ?? '',
+				from: row.entry.from,
+				requestedAt: row.requestedAt,
+			})),
 			templates: pageType === 'home' ? await this.homeTemplates() : [],
 		};
 	}
@@ -286,6 +308,7 @@ export class PageBuilderService {
 			createdAt: at,
 			updatedAt: at,
 			updatedBy: actor,
+			reviewRequest: null,
 		};
 		await this.layouts.createLayout(layout);
 		if (sections.length) {
@@ -307,15 +330,7 @@ export class PageBuilderService {
 		const draft = layout.draftRevisionId ? await this.layouts.revision(layout.draftRevisionId) : null;
 		const rules = pageTypeRules(layout.pageType);
 		const sections = draft?.sections ?? [];
-		const facts = await this.pictureFactsFor(sections);
-		const problems = rules
-			? layoutProblems(sections, {
-					rules,
-					slot: 'main',
-					shopLocales: this.languages.shop(),
-					picture: (assetId, versionId) => facts.get(`${assetId}|${versionId ?? ''}`) ?? null,
-				})
-			: [];
+		const problems = await this.problemsFor(layout.pageType, sections);
 		return {
 			layout,
 			draft,
@@ -324,6 +339,19 @@ export class PageBuilderService {
 			allowedSections: [...(rules?.slots['main'] ?? [])],
 			lock: held ? await this.lockView(held, viewer) : null,
 		};
+	}
+
+	/** What holds a revision's Go Live in the builder's own list: languages, pictures, shapes, sections (E1). */
+	async problemsFor(pageType: PageTypeKey, sections: readonly PageSection[]): Promise<LayoutProblem[]> {
+		const rules = pageTypeRules(pageType);
+		if (!rules) return [];
+		const facts = await this.pictureFactsFor(sections);
+		return layoutProblems(sections, {
+			rules,
+			slot: 'main',
+			shopLocales: this.languages.shop(),
+			picture: (assetId, versionId) => facts.get(`${assetId}|${versionId ?? ''}`) ?? null,
+		});
 	}
 
 	/**
@@ -427,7 +455,7 @@ export class PageBuilderService {
 			: null;
 		// Off (the default): the shop draws its fixed page, which is also the fallback and the safe mode (SG-15).
 		const switches = await this.settings.get('storefront.pageBuilder');
-		if (!switches?.[pageType]) {
+		if (!switches?.[pageType] || page?.safeMode) {
 			return { pageType, revisionId: null, sections: [], refreshAt: null, settings: pageSettings };
 		}
 		const schedule = page?.schedule ?? [];
@@ -539,13 +567,13 @@ export class PageBuilderService {
 		return facts;
 	}
 
-	private async adminName(id: string | null): Promise<string | null> {
+	async adminName(id: string | null): Promise<string | null> {
 		if (!id) return null;
 		const admin = await this.admins.findById(id).catch(() => null);
 		return admin ? (admin.displayName ?? admin.username ?? admin.email ?? null) : null;
 	}
 
-	private async record(
+	async record(
 		actor: string | null,
 		action: string,
 		entityId: string,

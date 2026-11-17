@@ -6,9 +6,19 @@ import {
 	type AdminLayoutView,
 	type AdminSavedBlockRow,
 	type ComingUpResponse,
+	type GoLiveResponse,
+	type GoLiveView,
+	type LayoutHistoryResponse,
 	type LayoutLockResponse,
+	type PageBuilderAlerts,
+	BringBackRequest,
+	CancelSwitchRequest,
+	GoLiveRequest,
+	ReviewRequest,
+	SafeModeRequest,
 	type PreviewCodeResponse,
 	type PreviewExchangeResponse,
+	PreviewCodeRequest,
 	PreviewExchangeRequest,
 	PreviewLayoutQuery,
 	SaveBlockRequest,
@@ -26,12 +36,14 @@ import { type AuthenticatedPrincipal, Audience, Public, RequirePermissions } fro
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { PageBlocksService } from './page-blocks.service';
+import { PageGoLiveService } from './page-go-live.service';
 import { PagePreviewService } from './page-preview.service';
 import { PageBuilderService } from './page-builder.service';
 
 /**
  * Store Front › Page Builder (brief PG-1, PG-2, B). Read with Store Front access (`theme_option.index`); drafts are
- * saved with `theme_option.edit`. Go Live and schedules come with their own permission in the Go Live step (Q10).
+ * saved with `theme_option.edit`. Go Live, schedules and Put back need `page_builder.go_live` (Q10 A: the owner and
+ * super admins); safe mode is for super admins only (SG-15).
  */
 @ApiTags(API_TAGS.media)
 @Audience('admin')
@@ -159,6 +171,143 @@ export class AdminPageBuilderController {
 	}
 }
 
+/** Go Live, schedules, History, Put back, safe mode, Ask for review and the bell (Page Builder build step 7). */
+@ApiTags(API_TAGS.media)
+@Audience('admin')
+@Controller('admin/page-builder')
+export class AdminPageGoLiveController {
+	constructor(private readonly goLive: PageGoLiveService) {}
+
+	@Get('layouts/:id/go-live')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({
+		operationId: 'builderGoLiveChecks',
+		summary: 'What Go Live would change, its checks and speed budget, and who may go live (E1, P6)',
+	})
+	checks(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined): Promise<GoLiveView> {
+		return this.goLive.view(id, principal?.permissions ?? []);
+	}
+
+	@Post('layouts/:id/go-live')
+	@HttpCode(200)
+	@RequirePermissions('page_builder.go_live')
+	@ApiOperation({
+		operationId: 'builderGoLive',
+		summary:
+			'Go live now, at a time, or by itself once pictures are ready (E2, E5); 400 go_live_refused lists what holds it',
+	})
+	go(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(GoLiveRequest)) body: GoLiveRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<GoLiveResponse> {
+		return this.goLive.goLive(principal?.userId ?? null, id, body, principal?.permissions ?? []);
+	}
+
+	@Get('layouts/:id/history')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({ operationId: 'builderHistory', summary: "A layout's saved revisions, newest first (E3, Q12)" })
+	history(@Param('id') id: string): Promise<LayoutHistoryResponse> {
+		return this.goLive.history(id);
+	}
+
+	@Post('layouts/:id/bring-back')
+	@HttpCode(200)
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({ operationId: 'builderBringBack', summary: 'A saved revision becomes the draft again (E3)' })
+	bringBack(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(BringBackRequest)) body: BringBackRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminLayoutView> {
+		return this.goLive.bringBack(principal?.userId ?? null, id, body);
+	}
+
+	@Post('layouts/:id/review-request')
+	@HttpCode(204)
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({ operationId: 'builderAskReview', summary: 'Ask the owner and super admins to review (SG-18)' })
+	async askReview(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(ReviewRequest)) body: ReviewRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<void> {
+		await this.goLive.askReview(principal?.userId ?? null, id, body.note);
+	}
+
+	@Delete('layouts/:id/review-request')
+	@HttpCode(204)
+	@RequirePermissions('page_builder.go_live')
+	@ApiOperation({ operationId: 'builderCloseReview', summary: 'Close a review without going live (SG-18)' })
+	async closeReview(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<void> {
+		await this.goLive.closeReview(principal?.userId ?? null, id, principal?.permissions ?? []);
+	}
+
+	@Post('pages/:type/cancel-switch')
+	@HttpCode(200)
+	@RequirePermissions('page_builder.go_live')
+	@ApiOperation({ operationId: 'builderCancelSwitch', summary: 'Take a switch still to come off the schedule (A1)' })
+	cancelSwitch(
+		@Param('type') type: string,
+		@Body(new ZodValidationPipe(CancelSwitchRequest)) body: CancelSwitchRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminBuilderPage> {
+		return this.goLive.cancelSwitch(principal?.userId ?? null, type, body);
+	}
+
+	@Delete('pages/:type/waiting/:layoutId')
+	@RequirePermissions('page_builder.go_live')
+	@ApiOperation({ operationId: 'builderCancelWaiting', summary: 'Take off a Go Live waiting for pictures (E5)' })
+	cancelWaiting(
+		@Param('type') type: string,
+		@Param('layoutId') layoutId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminBuilderPage> {
+		return this.goLive.cancelWaiting(principal?.userId ?? null, type, layoutId);
+	}
+
+	@Post('pages/:type/put-back')
+	@HttpCode(200)
+	@RequirePermissions('page_builder.go_live')
+	@ApiOperation({ operationId: 'builderPutBack', summary: 'Bring back the layout that showed before (SG-15)' })
+	putBack(
+		@Param('type') type: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminBuilderPage> {
+		return this.goLive.putBack(principal?.userId ?? null, type);
+	}
+
+	@Put('pages/:type/safe-mode')
+	@RequirePermissions('page_builder.go_live')
+	@ApiOperation({
+		operationId: 'builderSafeMode',
+		summary: "Put a page on the shop's fixed code, or back on its layouts; super admins only (SG-15)",
+	})
+	safeMode(
+		@Param('type') type: string,
+		@Body(new ZodValidationPipe(SafeModeRequest)) body: SafeModeRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminBuilderPage> {
+		return this.goLive.safeMode(principal?.userId ?? null, type, body.on);
+	}
+
+	@Get('alerts')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({
+		operationId: 'builderAlerts',
+		summary: "The bell's Page Builder lines: reviews asked, nightly check (SG-12, SG-18)",
+	})
+	alerts(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<PageBuilderAlerts> {
+		return this.goLive.alerts(principal?.permissions ?? []);
+	}
+}
+
 /** Saved blocks (Page Builder SG-5, P7): sections kept on their own, reused as copies or linked. */
 @ApiTags(API_TAGS.media)
 @Audience('admin')
@@ -221,9 +370,10 @@ export class AdminPagePreviewController {
 	@ApiOperation({ operationId: 'builderPreviewCode', summary: 'A code for /__preview, used once within a minute' })
 	code(
 		@Param('id') id: string,
+		@Body(new ZodValidationPipe(PreviewCodeRequest)) body: PreviewCodeRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<PreviewCodeResponse> {
-		return this.preview.code(principal?.userId ?? null, id);
+		return this.preview.code(principal?.userId ?? null, id, body.revisionId);
 	}
 }
 

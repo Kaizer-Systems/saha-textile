@@ -100,6 +100,7 @@ export const PermissionCode = z.enum([
 	'order.edit',
 	'order.index',
 	'order.update',
+	'page_builder.go_live',
 	'page.create',
 	'page.destroy',
 	'page.edit',
@@ -207,6 +208,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Total Revenue tile and Monthly Revenue chart on the admin home page (dashboard.html, GET /admin/dashboard/revenue and /revenue/monthly). Its own code so money can be hidden from staff who still see order counts.',
 	'dashboard.reviews':
 		'Latest Reviews panel on the admin home page (dashboard.html, GET /admin/dashboard/reviews). Read-only: moderating stays on review.edit.',
+	'page_builder.go_live':
+		'Go Live, Schedule, Put back and Cancel a switch in the Page Builder (pb-go-live.html, POST /admin/page-builder/layouts/:id/go-live). Drafts stay on theme_option.edit, so staff can build and Ask for review while only the owner and super admins change what shoppers see (Page Builder Q10 A).',
 	'dashboard.stock':
 		'Product Stock Report on the admin home page (dashboard.html, GET /admin/dashboard/stock). Row Edit still needs product.edit.',
 	'dashboard.top_products':
@@ -374,6 +377,7 @@ export const PermissionResource = z.enum([
 	'mailbox',
 	'order',
 	'page',
+	'page_builder',
 	'permission',
 	'point',
 	'product',
@@ -427,6 +431,7 @@ export const PermissionAction = z.enum([
 	'destroy',
 	'edit',
 	'export',
+	'go_live',
 	'hold',
 	'index',
 	'manage',

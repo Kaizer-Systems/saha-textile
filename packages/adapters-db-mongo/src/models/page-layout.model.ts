@@ -16,6 +16,10 @@ export interface BuilderPageDoc {
 	schedule: Array<{ revisionId: string; layoutId: string; from: Date; until: Date | null; by: string | null }>;
 	/** The page's own settings (P3), as the contract validated them; null until first saved. */
 	settings?: unknown;
+	/** SG-15: on the shop's fixed code since a super admin said so. */
+	safeMode?: { by: string | null; at: Date } | null;
+	/** E5: Go Lives waiting for pictures, as the contract validated them (times as ISO text). */
+	pending?: unknown[];
 	updatedAt: Date;
 }
 
@@ -32,7 +36,16 @@ export interface PageLayoutDoc {
 	/** Who is editing it (FX-11): a heartbeat every 30 s keeps it; older than 2 minutes, anyone may take it. */
 	lock?: { holder: string; since: Date; heartbeatAt: Date } | null;
 	/** Preview codes (used once within a minute) and the sessions they open (an hour), hashed (step 6, FX-5). */
-	previewTokens?: Array<{ hash: string; kind: 'code' | 'session'; expiresAt: Date; usedAt: Date | null }>;
+	previewTokens?: Array<{
+		hash: string;
+		kind: 'code' | 'session';
+		/** A saved revision to show instead of the draft (History's Look); null for the draft. */
+		revisionId?: string | null;
+		expiresAt: Date;
+		usedAt: Date | null;
+	}>;
+	/** SG-18: someone asked for a review of this layout. */
+	reviewRequest?: { by: string | null; at: Date; note: string } | null;
 	createdAt: Date;
 	updatedAt: Date;
 	updatedBy: string | null;
@@ -79,6 +92,14 @@ const BuilderPageSchema = new Schema<BuilderPageDoc>(
 			default: [],
 		},
 		settings: { type: Schema.Types.Mixed, default: null },
+		safeMode: {
+			type: new Schema(
+				{ by: { type: String, default: null }, at: { type: Date, required: true } },
+				{ _id: false },
+			),
+			default: null,
+		},
+		pending: { type: [Schema.Types.Mixed], default: [] },
 		updatedAt: { type: Date, required: true },
 	},
 	{ collection: COLLECTION_NAMES.BuilderPage, timestamps: false, minimize: false },
@@ -96,7 +117,11 @@ const PageLayoutSchema = new Schema<PageLayoutDoc>(
 		revisionCount: { type: Number, default: 0 },
 		lock: {
 			type: new Schema(
-				{ holder: { type: String, required: true }, since: { type: Date, required: true }, heartbeatAt: { type: Date, required: true } },
+				{
+					holder: { type: String, required: true },
+					since: { type: Date, required: true },
+					heartbeatAt: { type: Date, required: true },
+				},
 				{ _id: false },
 			),
 			default: null,
@@ -107,11 +132,23 @@ const PageLayoutSchema = new Schema<PageLayoutDoc>(
 					_id: false,
 					hash: { type: String, required: true },
 					kind: { type: String, enum: ['code', 'session'], required: true },
+					revisionId: { type: String, default: null },
 					expiresAt: { type: Date, required: true },
 					usedAt: { type: Date, default: null },
 				},
 			],
 			default: [],
+		},
+		reviewRequest: {
+			type: new Schema(
+				{
+					by: { type: String, default: null },
+					at: { type: Date, required: true },
+					note: { type: String, default: '' },
+				},
+				{ _id: false },
+			),
+			default: null,
 		},
 		createdAt: { type: Date, required: true },
 		updatedAt: { type: Date, required: true },
@@ -119,6 +156,7 @@ const PageLayoutSchema = new Schema<PageLayoutDoc>(
 	},
 	{ collection: COLLECTION_NAMES.PageLayout, timestamps: false },
 );
+PageLayoutSchema.index({ 'reviewRequest.at': -1 }, { sparse: true });
 PageLayoutSchema.index({ pageType: 1, target: 1, updatedAt: -1 });
 PageLayoutSchema.index({ 'previewTokens.hash': 1 }, { sparse: true });
 

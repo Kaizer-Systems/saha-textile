@@ -1,97 +1,18 @@
 import {
 	ARRANGEMENT_PIECES,
-	type BuilderPage,
-	type LayoutRevision,
 	type MediaAsset,
 	PageSection,
-	type PageLayout,
 	type PageTypeKey,
 	type ScheduleEntry,
 } from '@saha-textile/contracts';
-import { ARRANGEMENT_PIECE_NAMES, type PageLayoutRepository, SECTION_COMMON_DEFAULTS } from '@saha-textile/core-domain';
+import { ARRANGEMENT_PIECE_NAMES, SECTION_COMMON_DEFAULTS } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { LanguageStore } from '../src/languages/language-store';
 import { layoutMaxAge } from '../src/page-builder/page-builder.controller';
 import { PageBlocksService } from '../src/page-builder/page-blocks.service';
 import { PageBuilderService, pictureFacts } from '../src/page-builder/page-builder.service';
-
-const NO_SETTINGS = { title: {}, description: {}, heading: {}, headingShown: false, shareImage: null };
-
-/** An in-memory stand-in for the Page Builder store, with the same draft guard the Mongo adapter has. */
-function memoryLayouts() {
-	const pages = new Map<string, BuilderPage>();
-	const layouts = new Map<string, PageLayout & { count: number }>();
-	const revisions = new Map<string, LayoutRevision>();
-	const locks = new Map<string, { holder: string; since: string; heartbeatAt: string }>();
-	const repo: PageLayoutRepository = {
-		page: async (type, target) => pages.get(`${type}:${target}`) ?? null,
-		layouts: async (type, target) =>
-			[...layouts.values()].filter((l) => l.pageType === type && l.target === target),
-		layout: async (id) => layouts.get(id) ?? null,
-		revision: async (id) => revisions.get(id) ?? null,
-		revisions: async (layoutId) => [...revisions.values()].filter((r) => r.layoutId === layoutId).reverse(),
-		createLayout: async (layout) => void layouts.set(layout.id, { ...layout, count: 0 }),
-		renameLayout: async (id, name, template, by, at) => {
-			const layout = layouts.get(id);
-			if (layout) layouts.set(id, { ...layout, name, template, updatedBy: by, updatedAt: at });
-		},
-		saveDraft: async ({ layoutId, sections, expectedDraftId, by, at }) => {
-			const layout = layouts.get(layoutId);
-			if (!layout || layout.draftRevisionId !== expectedDraftId) return null;
-			const revision: LayoutRevision = {
-				id: `rev_${layout.count + 1}_${layoutId}`,
-				layoutId,
-				number: layout.count + 1,
-				sections,
-				createdAt: at,
-				createdBy: by,
-				wentLiveAt: null,
-			};
-			revisions.set(revision.id, revision);
-			layouts.set(layoutId, {
-				...layout,
-				count: layout.count + 1,
-				draftRevisionId: revision.id,
-				updatedBy: by,
-				updatedAt: at,
-			});
-			return revision;
-		},
-		goLive: async ({ pageType, target, entry, at }) => {
-			const key = `${pageType}:${target}`;
-			const page = pages.get(key) ?? { pageType, target, schedule: [], settings: NO_SETTINGS, updatedAt: at };
-			pages.set(key, { ...page, schedule: [...page.schedule, entry], updatedAt: at });
-		},
-		setSchedule: async (pageType, target, schedule, at) => {
-			const key = `${pageType}:${target}`;
-			const settings = pages.get(key)?.settings ?? NO_SETTINGS;
-			pages.set(key, { pageType, target, schedule, settings, updatedAt: at });
-		},
-		saveSettings: async (pageType, target, settings, at) => {
-			const key = `${pageType}:${target}`;
-			const schedule = pages.get(key)?.schedule ?? [];
-			pages.set(key, { pageType, target, schedule, settings, updatedAt: at });
-		},
-		lock: async ({ layoutId, by, at, staleBefore }) => {
-			if (!layouts.has(layoutId)) return null;
-			const held = locks.get(layoutId);
-			if (held && held.holder !== by && held.heartbeatAt >= staleBefore) return held;
-			const next = { holder: by, since: held?.holder === by ? held.since : at, heartbeatAt: at };
-			locks.set(layoutId, next);
-			return next;
-		},
-		unlock: async (layoutId, by) => {
-			if (locks.get(layoutId)?.holder === by) locks.delete(layoutId);
-		},
-		currentLock: async (layoutId, staleBefore) => {
-			const held = locks.get(layoutId);
-			return held && held.heartbeatAt >= staleBefore ? held : null;
-		},
-		prune: async () => 0,
-	};
-	return { repo, pages, layouts, revisions, locks };
-}
+import { memoryLayouts } from './page-builder-memory';
 
 const section = (fields: Record<string, unknown>) => PageSection.parse(fields);
 const letter = section({ id: 'news', type: 'newsletter', title: { en: 'Join', bn: 'যোগ দিন' } });
@@ -618,6 +539,7 @@ describe('saved blocks (SG-5, P7)', () => {
 			createdAt: '2026-11-17T00:00:00.000Z',
 			updatedAt: '2026-11-17T00:00:00.000Z',
 			updatedBy: null,
+			reviewRequest: null,
 		});
 		await store.repo.saveDraft({
 			layoutId: 'lay_1',

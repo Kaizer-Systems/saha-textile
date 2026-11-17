@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
 	EMPTY_PAGE_SETTINGS,
 	PageSettings,
+	PendingGoLive,
 	type BuilderPage,
 	type LayoutRevision,
 	type PageLayout,
@@ -68,6 +69,12 @@ const toPage = (doc: BuilderPageDoc): BuilderPage => ({
 	target: doc.target,
 	schedule: (doc.schedule ?? []).map(toEntry),
 	settings: PageSettings.parse(doc.settings ?? EMPTY_PAGE_SETTINGS),
+	safeMode: doc.safeMode ? { by: doc.safeMode.by ?? null, at: new Date(doc.safeMode.at).toISOString() } : null,
+	// Stored as the contract validated them; a row that no longer parses is dropped rather than breaking the page.
+	pending: (doc.pending ?? []).flatMap((row) => {
+		const parsed = PendingGoLive.safeParse(row);
+		return parsed.success ? [parsed.data] : [];
+	}),
 	updatedAt: new Date(doc.updatedAt).toISOString(),
 });
 
@@ -88,6 +95,13 @@ const toLayout = (doc: PageLayoutDoc): PageLayout => ({
 	createdAt: new Date(doc.createdAt).toISOString(),
 	updatedAt: new Date(doc.updatedAt).toISOString(),
 	updatedBy: doc.updatedBy ?? null,
+	reviewRequest: doc.reviewRequest
+		? {
+				by: doc.reviewRequest.by ?? null,
+				at: new Date(doc.reviewRequest.at).toISOString(),
+				note: doc.reviewRequest.note ?? '',
+			}
+		: null,
 });
 
 const toRevision = (doc: LayoutRevisionDoc): LayoutRevision => ({
@@ -207,7 +221,13 @@ export class MongoPageLayoutRepository implements PageLayoutRepository, PreviewT
 		}
 	}
 
-	async goLive(input: { pageType: PageTypeKey; target: string; entry: ScheduleEntry; at: string }): Promise<void> {
+	async goLive(input: {
+		pageType: PageTypeKey;
+		target: string;
+		entry: ScheduleEntry;
+		also?: ScheduleEntry[];
+		at: string;
+	}): Promise<void> {
 		const session = await PageLayoutModel.db.startSession();
 		try {
 			await session.withTransaction(async () => {
@@ -216,7 +236,7 @@ export class MongoPageLayoutRepository implements PageLayoutRepository, PreviewT
 					{ _id: pageId(input.pageType, input.target) },
 					{
 						$setOnInsert: { pageType: input.pageType, target: input.target },
-						$push: { schedule: fromEntry(input.entry) },
+						$push: { schedule: { $each: [input.entry, ...(input.also ?? [])].map(fromEntry) } },
 						$set: { updatedAt: at },
 					},
 					{ upsert: true, session },
@@ -249,7 +269,10 @@ export class MongoPageLayoutRepository implements PageLayoutRepository, PreviewT
 			.exec();
 		// Taken: free, or its holder stopped beating; one atomic update, so two admins never both get it.
 		doc ??= await PageLayoutModel.findOneAndUpdate(
-			{ _id: input.layoutId, $or: [{ lock: null }, { 'lock.heartbeatAt': { $lt: new Date(input.staleBefore) } }] },
+			{
+				_id: input.layoutId,
+				$or: [{ lock: null }, { 'lock.heartbeatAt': { $lt: new Date(input.staleBefore) } }],
+			},
 			{ $set: { lock: { holder: input.by, since: now, heartbeatAt: now } } },
 			{ new: true },
 		)
@@ -260,38 +283,62 @@ export class MongoPageLayoutRepository implements PageLayoutRepository, PreviewT
 		return doc?.lock ? toLock(doc.lock) : null;
 	}
 
-	async createCode(input: { codeHash: string; layoutId: string; by: string | null; expiresAt: string }): Promise<void> {
-		await this.pushToken(input.layoutId, { hash: input.codeHash, kind: 'code', expiresAt: input.expiresAt });
+	async createCode(input: {
+		codeHash: string;
+		layoutId: string;
+		revisionId?: string | null;
+		by: string | null;
+		expiresAt: string;
+	}): Promise<void> {
+		await this.pushToken(input.layoutId, {
+			hash: input.codeHash,
+			kind: 'code',
+			revisionId: input.revisionId ?? null,
+			expiresAt: input.expiresAt,
+		});
 	}
 
-	async useCode(codeHash: string, now: string): Promise<{ layoutId: string } | null> {
+	async useCode(codeHash: string, now: string): Promise<{ layoutId: string; revisionId: string | null } | null> {
 		const at = new Date(now);
 		const doc = await PageLayoutModel.findOneAndUpdate(
 			{ previewTokens: { $elemMatch: { hash: codeHash, kind: 'code', usedAt: null, expiresAt: { $gt: at } } } },
 			{ $set: { 'previewTokens.$.usedAt': at } },
-			{ projection: { _id: 1 } },
+			{ projection: { _id: 1, previewTokens: { $elemMatch: { hash: codeHash } } } },
 		)
-			.lean<{ _id: string }>()
+			.lean<Pick<PageLayoutDoc, '_id' | 'previewTokens'>>()
 			.exec();
-		return doc ? { layoutId: doc._id } : null;
+		return doc ? { layoutId: doc._id, revisionId: doc.previewTokens?.[0]?.revisionId ?? null } : null;
 	}
 
-	async createSession(input: { tokenHash: string; layoutId: string; expiresAt: string }): Promise<void> {
-		await this.pushToken(input.layoutId, { hash: input.tokenHash, kind: 'session', expiresAt: input.expiresAt });
+	async createSession(input: {
+		tokenHash: string;
+		layoutId: string;
+		revisionId?: string | null;
+		expiresAt: string;
+	}): Promise<void> {
+		await this.pushToken(input.layoutId, {
+			hash: input.tokenHash,
+			kind: 'session',
+			revisionId: input.revisionId ?? null,
+			expiresAt: input.expiresAt,
+		});
 	}
 
-	async findSession(tokenHash: string, now: string): Promise<{ layoutId: string } | null> {
+	async findSession(tokenHash: string, now: string): Promise<{ layoutId: string; revisionId: string | null } | null> {
 		const doc = await PageLayoutModel.findOne(
 			{ previewTokens: { $elemMatch: { hash: tokenHash, kind: 'session', expiresAt: { $gt: new Date(now) } } } },
-			{ _id: 1 },
+			{ _id: 1, previewTokens: { $elemMatch: { hash: tokenHash } } },
 		)
-			.lean<{ _id: string }>()
+			.lean<Pick<PageLayoutDoc, '_id' | 'previewTokens'>>()
 			.exec();
-		return doc ? { layoutId: doc._id } : null;
+		return doc ? { layoutId: doc._id, revisionId: doc.previewTokens?.[0]?.revisionId ?? null } : null;
 	}
 
 	/** Keeps the 20 newest preview codes and sessions on a layout; older ones have expired long before. */
-	private async pushToken(layoutId: string, token: { hash: string; kind: 'code' | 'session'; expiresAt: string }) {
+	private async pushToken(
+		layoutId: string,
+		token: { hash: string; kind: 'code' | 'session'; revisionId: string | null; expiresAt: string },
+	) {
 		await PageLayoutModel.updateOne(
 			{ _id: layoutId },
 			{
@@ -335,6 +382,55 @@ export class MongoPageLayoutRepository implements PageLayoutRepository, PreviewT
 			},
 			{ upsert: true },
 		).exec();
+	}
+
+	async setSafeMode(
+		pageType: PageTypeKey,
+		target: string,
+		safeMode: BuilderPage['safeMode'],
+		at: string,
+	): Promise<void> {
+		await BuilderPageModel.updateOne(
+			{ _id: pageId(pageType, target) },
+			{
+				$setOnInsert: { pageType, target },
+				$set: {
+					safeMode: safeMode ? { by: safeMode.by, at: new Date(safeMode.at) } : null,
+					updatedAt: new Date(at),
+				},
+			},
+			{ upsert: true },
+		).exec();
+	}
+
+	async setPending(pageType: PageTypeKey, target: string, pending: PendingGoLive[], at: string): Promise<void> {
+		await BuilderPageModel.updateOne(
+			{ _id: pageId(pageType, target) },
+			{
+				$setOnInsert: { pageType, target },
+				$set: { pending: pending.map((row) => PendingGoLive.parse(row)), updatedAt: new Date(at) },
+			},
+			{ upsert: true },
+		).exec();
+	}
+
+	async setReviewRequest(layoutId: string, request: PageLayout['reviewRequest']): Promise<void> {
+		await PageLayoutModel.updateOne(
+			{ _id: layoutId },
+			{
+				$set: {
+					reviewRequest: request ? { by: request.by, at: new Date(request.at), note: request.note } : null,
+				},
+			},
+		).exec();
+	}
+
+	async reviewRequests(): Promise<PageLayout[]> {
+		const docs = await PageLayoutModel.find({ reviewRequest: { $ne: null } })
+			.sort({ 'reviewRequest.at': -1 })
+			.lean<PageLayoutDoc[]>()
+			.exec();
+		return docs.map(toLayout);
 	}
 
 	async prune(input: { keepGoLive: number; draftsAfter: string }): Promise<number> {

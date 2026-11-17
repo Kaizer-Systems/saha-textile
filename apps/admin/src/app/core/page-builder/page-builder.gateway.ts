@@ -4,6 +4,14 @@ import { Injectable, inject } from '@angular/core';
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import type {
+	BringBackRequest,
+	CancelSwitchRequest,
+	GoLiveRequest,
+	GoLiveResponse,
+	GoLiveView,
+	LayoutHistoryResponse,
+	PageBuilderAlerts,
+	RevisionRow,
 	AdminBuilderPage,
 	AdminBuilderPageRow,
 	AdminLayoutRow,
@@ -22,6 +30,14 @@ import type {
 import type { Observable } from 'rxjs';
 
 export type {
+	BringBackRequest,
+	CancelSwitchRequest,
+	GoLiveRequest,
+	GoLiveResponse,
+	GoLiveView,
+	LayoutHistoryResponse,
+	PageBuilderAlerts,
+	RevisionRow,
 	AdminBuilderPage,
 	AdminBuilderPageRow,
 	AdminLayoutRow,
@@ -86,9 +102,63 @@ export class PageBuilderGateway {
 		return this.http.post<LayoutLockResponse>(this.url(`/layouts/${encodeURIComponent(id)}/lock`), {});
 	}
 
-	/** Step 6: a one-time code for the shop's /__preview address (a minute, used once). */
-	previewCode(id: string): Observable<PreviewCodeResponse> {
-		return this.http.post<PreviewCodeResponse>(this.url(`/layouts/${encodeURIComponent(id)}/preview-code`), {});
+	/** Step 6: a one-time code for the shop's /__preview address (a minute, used once); a saved revision for Look. */
+	previewCode(id: string, revisionId: string | null = null): Observable<PreviewCodeResponse> {
+		return this.http.post<PreviewCodeResponse>(this.url(`/layouts/${encodeURIComponent(id)}/preview-code`), {
+			revisionId,
+		});
+	}
+
+	/** E1, P6: what Go Live would change, its checks and speed budget, and whether this admin may go live. */
+	goLiveView(id: string): Observable<GoLiveView> {
+		return this.http.get<GoLiveView>(this.url(`/layouts/${encodeURIComponent(id)}/go-live`));
+	}
+
+	/** E2, E5: refused with 400 `go_live_refused` (and the problems) or 409 `layout_moved_on`. */
+	goLive(id: string, body: GoLiveRequest): Observable<GoLiveResponse> {
+		return this.http.post<GoLiveResponse>(this.url(`/layouts/${encodeURIComponent(id)}/go-live`), body);
+	}
+
+	history(id: string): Observable<LayoutHistoryResponse> {
+		return this.http.get<LayoutHistoryResponse>(this.url(`/layouts/${encodeURIComponent(id)}/history`));
+	}
+
+	bringBack(id: string, body: BringBackRequest): Observable<AdminLayoutView> {
+		return this.http.post<AdminLayoutView>(this.url(`/layouts/${encodeURIComponent(id)}/bring-back`), body);
+	}
+
+	/** SG-18: ask the owner and super admins to review this draft. */
+	askReview(id: string, note: string): Observable<void> {
+		return this.http.post<void>(this.url(`/layouts/${encodeURIComponent(id)}/review-request`), { note });
+	}
+
+	closeReview(id: string): Observable<void> {
+		return this.http.delete<void>(this.url(`/layouts/${encodeURIComponent(id)}/review-request`));
+	}
+
+	cancelSwitch(type: string, body: CancelSwitchRequest): Observable<AdminBuilderPage> {
+		return this.http.post<AdminBuilderPage>(this.url(`/pages/${encodeURIComponent(type)}/cancel-switch`), body);
+	}
+
+	cancelWaiting(type: string, layoutId: string): Observable<AdminBuilderPage> {
+		return this.http.delete<AdminBuilderPage>(
+			this.url(`/pages/${encodeURIComponent(type)}/waiting/${encodeURIComponent(layoutId)}`),
+		);
+	}
+
+	/** SG-15: bring back the layout that showed before the one showing now. */
+	putBack(type: string): Observable<AdminBuilderPage> {
+		return this.http.post<AdminBuilderPage>(this.url(`/pages/${encodeURIComponent(type)}/put-back`), {});
+	}
+
+	/** SG-15: super admins only; others are refused (403). */
+	safeMode(type: string, on: boolean): Observable<AdminBuilderPage> {
+		return this.http.put<AdminBuilderPage>(this.url(`/pages/${encodeURIComponent(type)}/safe-mode`), { on });
+	}
+
+	/** The bell's Page Builder lines (SG-12, SG-18). */
+	alerts(): Observable<PageBuilderAlerts> {
+		return this.http.get<PageBuilderAlerts>(this.url('/alerts'));
 	}
 
 	unlock(id: string): Observable<void> {

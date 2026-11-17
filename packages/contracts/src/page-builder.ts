@@ -367,6 +367,11 @@ export const PageLayout = z.object({
 	createdAt: IsoDateTime,
 	updatedAt: IsoDateTime,
 	updatedBy: Id.nullable().default(null),
+	/** Ask for review (SG-18): who asked, when, and their note; cleared by Go Live or by a reviewer. */
+	reviewRequest: z
+		.object({ by: Id.nullable(), at: IsoDateTime, note: z.string().max(300).default('') })
+		.nullable()
+		.default(null),
 });
 export type PageLayout = z.infer<typeof PageLayout>;
 
@@ -423,12 +428,24 @@ export const EMPTY_PAGE_SETTINGS: PageSettings = {
 	shareImage: null,
 };
 
+/** A Go Live asked for while a picture was still being made (E5): the switch it will make, and its hand-back. */
+export const PendingGoLive = z.object({
+	entry: ScheduleEntry,
+	handBack: z.object({ revisionId: Id, layoutId: Id }).nullable().default(null),
+	requestedAt: IsoDateTime,
+});
+export type PendingGoLive = z.infer<typeof PendingGoLive>;
+
 /** A page (type + target), its schedule and its own settings. The schedule is data, read on every request (FX-6). */
 export const BuilderPage = z.object({
 	pageType: PageTypeKey,
 	target: PageTarget,
 	schedule: z.array(ScheduleEntry).default([]),
 	settings: PageSettings.default(EMPTY_PAGE_SETTINGS),
+	/** SG-15: a super admin put the page back on the shop's fixed code; Go Live does not undo it. */
+	safeMode: z.object({ by: Id.nullable(), at: IsoDateTime }).nullable().default(null),
+	/** E5: Go Lives waiting for pictures still being made; each joins the schedule the moment they are ready. */
+	pending: z.array(PendingGoLive).default([]),
 	updatedAt: IsoDateTime,
 });
 export type BuilderPage = z.infer<typeof BuilderPage>;
@@ -464,6 +481,12 @@ export const LayoutProblemView = z.object({
 	picture: z.number().int().optional(),
 	assetId: z.string().optional(),
 	band: z.string().optional(),
+	/** A link that opens no live page (SG-13). */
+	href: z.string().optional(),
+	/** A speed-budget line over its limit (SG-9). */
+	measure: z.string().optional(),
+	value: z.number().optional(),
+	limit: z.number().optional(),
 });
 export type LayoutProblemView = z.infer<typeof LayoutProblemView>;
 
@@ -502,6 +525,17 @@ export const AdminBuilderPage = z.object({
 	settings: PageSettings,
 	settingsGaps: z.record(z.string(), z.array(z.enum(PAGE_SETTINGS_FIELDS))),
 	shareImageUrl: z.string().nullable(),
+	/** Drawn by the builder at all: switched on at the first Go Live, off in safe mode (SG-15). */
+	builderOn: z.boolean().default(false),
+	safeMode: z.object({ by: Id.nullable(), byName: z.string().nullable(), at: IsoDateTime }).nullable().default(null),
+	/** What "Put back" would bring back now: the layout that showed before the one showing (SG-15). */
+	putBack: z.object({ layoutId: Id, layoutName: z.string(), revisionId: Id }).nullable().default(null),
+	/** Go Lives waiting for a picture to be ready (E5). */
+	waiting: z
+		.array(
+			z.object({ layoutId: Id, layoutName: z.string(), from: IsoDateTime.nullable(), requestedAt: IsoDateTime }),
+		)
+		.default([]),
 	/** The page type's templates, with an outline for their cards (A1, Q9 A). */
 	templates: z.array(
 		z.object({
@@ -588,11 +622,158 @@ export type SaveLayoutDraft = z.infer<typeof SaveLayoutDraft>;
 export const LayoutLockResponse = z.object({ granted: z.boolean(), lock: LayoutLock });
 export type LayoutLockResponse = z.infer<typeof LayoutLockResponse>;
 
+// ── Go Live (step 7): checks, what will change, schedules, history, put back ────────────────────────────
+
+/** One line of the speed budget in Go Live (P6, SG-9): an estimate from the section budgets against its limit. */
+export const GoLiveBudgetKey = z.enum(['early_pictures', 'first_load_code', 'html', 'later_code']);
+export type GoLiveBudgetKey = z.infer<typeof GoLiveBudgetKey>;
+export const GoLiveBudgetLine = z.object({
+	key: GoLiveBudgetKey,
+	value: z.number().nonnegative(),
+	/** Null: shown for information only (code that loads later, near the screen). */
+	limit: z.number().nonnegative().nullable(),
+});
+export type GoLiveBudgetLine = z.infer<typeof GoLiveBudgetLine>;
+
+/** One section's change between what shoppers see now and the draft (SG-16). */
+export const LayoutChangeKind = z.enum(['added', 'removed', 'moved', 'changed', 'hidden', 'shown']);
+export const LayoutChange = z.object({ kind: LayoutChangeKind, sectionId: z.string(), type: SectionType });
+export type LayoutChange = z.infer<typeof LayoutChange>;
+export const LayoutChanges = z.object({
+	/** Nothing of this page is drawn by the builder yet: everything is new. */
+	firstTime: z.boolean(),
+	list: z.array(LayoutChange),
+	newPictures: z.number().int().nonnegative(),
+});
+export type LayoutChanges = z.infer<typeof LayoutChanges>;
+
+/** Design notes that warn and never block (SG-35). */
+export const DesignNote = z.enum(['many_sections', 'many_sliders', 'dark_in_a_row']);
+export type DesignNote = z.infer<typeof DesignNote>;
+
+/** `GET /admin/page-builder/layouts/:id/go-live` — what Go Live would do and what holds it (E1, E2, P6). */
+export const GoLiveView = z.object({
+	layoutId: Id,
+	layoutName: z.string(),
+	draftRevisionId: Id.nullable(),
+	/** What holds Go Live; empty means it may go. Pictures still being made are counted apart (E5). */
+	problems: z.array(LayoutProblemView),
+	waitingPictures: z.number().int().nonnegative(),
+	/** Against the layout showing now; null when the builder draws nothing yet. */
+	liveLayoutName: z.string().nullable(),
+	changes: LayoutChanges,
+	budget: z.array(GoLiveBudgetLine),
+	summary: z.object({
+		sections: z.number().int(),
+		sliders: z.number().int(),
+		sliderPictures: z.number().int(),
+		earlyPictures: z.number().int(),
+	}),
+	notes: z.array(DesignNote),
+	/** Linked blocks in the draft: their latest saved content goes live with it (SG-5, C43). */
+	linkedBlocks: z.array(z.object({ blockId: Id, name: z.string(), layouts: z.array(z.string()) })),
+	/** Layouts an ending switch may hand back to: those that have gone live before (E2). */
+	handBackTo: z.array(z.object({ layoutId: Id, name: z.string() })),
+	/** The one the shop would show after the end by itself (the earlier switch still running), if any. */
+	naturalHandBack: Id.nullable(),
+	/** Whether this admin may go live and schedule (Q10 A); others save drafts and Ask for review. */
+	canGoLive: z.boolean(),
+});
+export type GoLiveView = z.infer<typeof GoLiveView>;
+
+/** `POST /admin/page-builder/layouts/:id/go-live` — now or at a time, ending at a time or when another goes live. */
+export const GoLiveRequest = z
+	.object({
+		/** The draft the admin checked; a newer one is refused (409), never published unseen. */
+		expectedDraftId: Id,
+		/** Null: now. */
+		from: IsoDateTime.nullable().default(null),
+		/** Null: until another layout goes live. */
+		until: IsoDateTime.nullable().default(null),
+		/** At the end, show this layout's last live revision (E2: "then back to"). */
+		handBackTo: Id.nullable().default(null),
+		/** E5: pictures still being made: go live by itself the moment they are ready. */
+		whenReady: z.boolean().default(false),
+	})
+	.superRefine((request, ctx) => {
+		if (request.until && request.from && request.until <= request.from) {
+			ctx.addIssue({ code: 'custom', message: 'a switch must end after it starts', path: ['until'] });
+		}
+	});
+export type GoLiveRequest = z.infer<typeof GoLiveRequest>;
+
+export const GoLiveResponse = z.object({
+	state: z.enum(['live', 'scheduled', 'waiting']),
+	page: AdminBuilderPage,
+});
+export type GoLiveResponse = z.infer<typeof GoLiveResponse>;
+
+/** A saved revision in History (E3, Q12 A). */
+export const RevisionRow = z.object({
+	id: Id,
+	number: z.number().int().positive(),
+	createdAt: IsoDateTime,
+	createdByName: z.string().nullable(),
+	wentLiveAt: IsoDateTime.nullable(),
+	sections: z.number().int().nonnegative(),
+	isDraft: z.boolean(),
+	/** Showing on the shop now. */
+	isLive: z.boolean(),
+});
+export type RevisionRow = z.infer<typeof RevisionRow>;
+export const LayoutHistoryResponse = z.object({ revisions: z.array(RevisionRow) });
+export type LayoutHistoryResponse = z.infer<typeof LayoutHistoryResponse>;
+
+/** `POST /admin/page-builder/layouts/:id/bring-back` — a saved revision becomes the draft again (E3). */
+export const BringBackRequest = z.object({ revisionId: Id, expectedDraftId: Id.nullable() });
+export type BringBackRequest = z.infer<typeof BringBackRequest>;
+
+/** `DELETE`-like cancel of a switch still to come (A1): named by its revision and start. */
+export const CancelSwitchRequest = z.object({ revisionId: Id, from: IsoDateTime });
+export type CancelSwitchRequest = z.infer<typeof CancelSwitchRequest>;
+
+/** `PUT /admin/page-builder/pages/:type/safe-mode` — super admins only (SG-15). */
+export const SafeModeRequest = z.object({ on: z.boolean() });
+export type SafeModeRequest = z.infer<typeof SafeModeRequest>;
+
+/** `POST /admin/page-builder/layouts/:id/review-request` — Ask for review (SG-18), with an optional note. */
+export const ReviewRequest = z.object({ note: z.string().trim().max(300).default('') });
+export type ReviewRequest = z.infer<typeof ReviewRequest>;
+
+/** `GET /admin/page-builder/alerts` — the bell's Page Builder lines (SG-12, SG-18). */
+export const PageBuilderAlerts = z.object({
+	/** Drafts waiting for someone who may go live (only for them). */
+	reviews: z.array(
+		z.object({
+			layoutId: Id,
+			pageType: PageTypeKey,
+			layoutName: z.string(),
+			byName: z.string().nullable(),
+			at: IsoDateTime,
+			note: z.string(),
+		}),
+	),
+	/** The last nightly check: live and scheduled layouts with something to fix (SG-12). */
+	nightly: z
+		.object({
+			checkedAt: IsoDateTime,
+			layouts: z.array(
+				z.object({ layoutId: Id, pageType: PageTypeKey, layoutName: z.string(), problems: z.number().int() }),
+			),
+		})
+		.nullable(),
+});
+export type PageBuilderAlerts = z.infer<typeof PageBuilderAlerts>;
+
 // ── Preview (step 6, FX-5): a one-time code swapped for a cookie limited to /__preview ─────────────────────
 
 /** How long a preview code may be swapped (seconds) and how long the preview it opens lasts. */
 export const PREVIEW_CODE_SECONDS = 60;
 export const PREVIEW_SESSION_SECONDS = 3600;
+
+/** The preview-code request: the draft (default), or one saved revision of the layout ("Look" in History, E3). */
+export const PreviewCodeRequest = z.object({ revisionId: Id.nullable().default(null) });
+export type PreviewCodeRequest = z.infer<typeof PreviewCodeRequest>;
 
 /** `POST /admin/page-builder/layouts/:id/preview-code` — a code for the shop's /__preview address, used once. */
 export const PreviewCodeResponse = z.object({ code: z.string().min(32), expiresAt: IsoDateTime });

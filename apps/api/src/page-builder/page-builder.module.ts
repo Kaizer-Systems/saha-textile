@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { PageBlocksService } from './page-blocks.service';
+import { PageGoLiveService } from './page-go-live.service';
 import { PagePreviewService } from './page-preview.service';
 import {
 	AdminPageBlocksController,
 	AdminPageBuilderController,
+	AdminPageGoLiveController,
 	AdminPagePreviewController,
 	StorefrontPageLayoutController,
 	StorefrontPreviewController,
@@ -18,10 +20,12 @@ import { PageBuilderService } from './page-builder.service';
 	controllers: [
 		AdminPageBuilderController,
 		AdminPageBlocksController,
+		AdminPageGoLiveController,
 		AdminPagePreviewController,
 		StorefrontPageLayoutController,
 		StorefrontPreviewController,
 	],
-	providers: [PageBuilderService, PageBlocksService, PagePreviewService],
+	providers: [PageBuilderService, PageBlocksService, PagePreviewService, PageGoLiveService],
+	exports: [PageGoLiveService],
 })
 export class PageBuilderModule {}

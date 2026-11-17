@@ -96,6 +96,7 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 			createdAt: at(0),
 			updatedAt: at(0),
 			updatedBy: 'adm_1',
+			reviewRequest: null,
 		});
 
 	it('writes revisions append-only, numbered, and refuses a save over a newer draft', async () => {
@@ -186,7 +187,9 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 		expect((await layouts.currentLock(LAYOUT, stale(9)))?.holder).toBe('adm_2');
 		await layouts.unlock(LAYOUT, 'adm_2');
 		expect(await layouts.currentLock(LAYOUT, stale(9))).toBeNull();
-		expect(await layouts.lock({ layoutId: 'lay_pb_test_none', by: 'adm_1', at: at(9), staleBefore: stale(9) })).toBeNull();
+		expect(
+			await layouts.lock({ layoutId: 'lay_pb_test_none', by: 'adm_1', at: at(9), staleBefore: stale(9) }),
+		).toBeNull();
 	});
 
 	it('uses a preview code once within its minute, and opens a session that lasts until it expires (step 6, FX-5)', async () => {
@@ -194,12 +197,28 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 		await layouts.createCode({ codeHash: 'h_code', layoutId: LAYOUT, by: 'adm_1', expiresAt: at(2) });
 		expect(await layouts.useCode('h_code', at(3))).toBeNull();
 		await layouts.createCode({ codeHash: 'h_code2', layoutId: LAYOUT, by: 'adm_1', expiresAt: at(5) });
-		expect(await layouts.useCode('h_code2', at(4))).toEqual({ layoutId: LAYOUT });
+		expect(await layouts.useCode('h_code2', at(4))).toEqual({ layoutId: LAYOUT, revisionId: null });
 		expect(await layouts.useCode('h_code2', at(4))).toBeNull();
 		await layouts.createSession({ tokenHash: 'h_session', layoutId: LAYOUT, expiresAt: at(40) });
-		expect(await layouts.findSession('h_session', at(10))).toEqual({ layoutId: LAYOUT });
+		expect(await layouts.findSession('h_session', at(10))).toEqual({ layoutId: LAYOUT, revisionId: null });
 		expect(await layouts.findSession('h_session', at(41))).toBeNull();
 		expect(await layouts.findSession('h_code2', at(10))).toBeNull();
+		// History's Look (E3): a code for one saved revision opens a session for that revision.
+		await layouts.createCode({
+			codeHash: 'h_look',
+			layoutId: LAYOUT,
+			revisionId: 'rev_1',
+			by: 'adm_1',
+			expiresAt: at(5),
+		});
+		expect(await layouts.useCode('h_look', at(4))).toEqual({ layoutId: LAYOUT, revisionId: 'rev_1' });
+		await layouts.createSession({
+			tokenHash: 'h_look_s',
+			layoutId: LAYOUT,
+			revisionId: 'rev_1',
+			expiresAt: at(40),
+		});
+		expect(await layouts.findSession('h_look_s', at(10))).toEqual({ layoutId: LAYOUT, revisionId: 'rev_1' });
 	});
 
 	it("keeps a page's own settings beside its schedule, empty words included, and reads back defaults before (P3)", async () => {
@@ -223,6 +242,44 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 		expect(page?.settings).toEqual(settings);
 		expect(page?.schedule).toEqual([]);
 		expect(page?.updatedAt).toBe(at(2));
+	});
+
+	it('keeps safe mode and the Go Lives waiting for pictures on the page, and drops a waiting row that no longer reads (SG-15, E5)', async () => {
+		await layouts.setSchedule('home', 'pb_test_target', [], at(1));
+		expect(await layouts.page('home', 'pb_test_target')).toMatchObject({ safeMode: null, pending: [] });
+		await layouts.setSafeMode('home', 'pb_test_target', { by: 'adm_1', at: at(2) }, at(2));
+		const waiting = {
+			entry: { revisionId: 'rev_1', layoutId: LAYOUT, from: at(5), until: null, by: 'adm_1' },
+			handBack: null,
+			requestedAt: at(3),
+		};
+		await layouts.setPending('home', 'pb_test_target', [waiting], at(3));
+		let page = await layouts.page('home', 'pb_test_target');
+		expect(page?.safeMode).toEqual({ by: 'adm_1', at: at(2) });
+		expect(page?.pending).toEqual([waiting]);
+		await BuilderPageModel.updateOne(
+			{ _id: 'home:pb_test_target' },
+			{ $push: { pending: { entry: 'broken' } } },
+		).exec();
+		expect((await layouts.page('home', 'pb_test_target'))?.pending).toEqual([waiting]);
+		await layouts.setSafeMode('home', 'pb_test_target', null, at(4));
+		await layouts.setPending('home', 'pb_test_target', [], at(4));
+		page = await layouts.page('home', 'pb_test_target');
+		expect(page).toMatchObject({ safeMode: null, pending: [] });
+	});
+
+	it('keeps who asked for a review of a layout, lists those waiting newest first, and clears it (SG-18)', async () => {
+		await create();
+		expect((await layouts.layout(LAYOUT))?.reviewRequest).toBeNull();
+		await layouts.setReviewRequest(LAYOUT, { by: 'adm_2', at: at(4), note: 'Puja banners ready' });
+		expect((await layouts.layout(LAYOUT))?.reviewRequest).toEqual({
+			by: 'adm_2',
+			at: at(4),
+			note: 'Puja banners ready',
+		});
+		expect((await layouts.reviewRequests()).map((layout) => layout.id)).toContain(LAYOUT);
+		await layouts.setReviewRequest(LAYOUT, null);
+		expect((await layouts.reviewRequests()).map((layout) => layout.id)).not.toContain(LAYOUT);
 	});
 
 	it('keeps the last Go Live revisions and recent drafts, and never what a schedule or layout points at (Q12)', async () => {

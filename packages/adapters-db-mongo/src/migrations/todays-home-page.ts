@@ -35,6 +35,7 @@ export async function seedTodaysHomePage(now = new Date()): Promise<string> {
 		createdAt: at,
 		updatedAt: at,
 		updatedBy: null,
+		reviewRequest: null,
 	});
 	const revision = await layouts.saveDraft({
 		layoutId: TODAYS_HOME_LAYOUT_ID,

@@ -28,6 +28,7 @@ const layout = (id: string, name: string) => ({
 	createdAt: '2026-11-01T00:00:00.000Z',
 	updatedAt: '2026-11-01T00:00:00.000Z',
 	updatedBy: null,
+	reviewRequest: null,
 });
 
 const page: AdminBuilderPage = {
@@ -49,6 +50,10 @@ const page: AdminBuilderPage = {
 	settings: { title: {}, description: {}, heading: {}, headingShown: false, shareImage: null },
 	settingsGaps: { bn: ['title', 'description', 'heading'] },
 	shareImageUrl: null,
+	builderOn: true,
+	safeMode: null,
+	putBack: null,
+	waiting: [],
 	layouts: [
 		{
 			layout: layout('lay_today', 'Today’s home page'),

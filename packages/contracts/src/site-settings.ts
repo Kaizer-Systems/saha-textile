@@ -19,9 +19,12 @@ export type StorefrontHomeSettings = z.infer<typeof StorefrontHomeSettings>;
  * `storefront.pageBuilder` — which pages the shop draws from their Page Builder layout. Off: the shop keeps its fixed
  * page, which is also the fallback and the super admin's safe mode (Page Builder SG-15).
  */
-export const StorefrontPageBuilderSettings = z.object({
-	home: z.boolean().default(false),
-});
+export const StorefrontPageBuilderSettings = z
+	.object({
+		home: z.boolean().default(false),
+	})
+	// Any other registered page type, by its key: the switch is page-agnostic (Page Builder PG-4).
+	.catchall(z.boolean());
 export type StorefrontPageBuilderSettings = z.infer<typeof StorefrontPageBuilderSettings>;
 
 /** Long videos and Shorts kept by the daily refresh, newest first (owner, 2026-11-10). */
@@ -316,9 +319,28 @@ export const MediaNightlyCheck = z.object({
 });
 export type MediaNightlyCheck = z.infer<typeof MediaNightlyCheck>;
 
+/**
+ * `page_builder_nightly_check` — the last nightly Page Builder check (SG-12): every live and scheduled layout run
+ * through the Go Live checks again (languages, pictures, links, page settings, budget). The bell lists those with
+ * something to fix.
+ */
+export const PageBuilderNightlyCheck = z.object({
+	checkedAt: IsoDateTime,
+	layouts: z.array(
+		z.object({
+			layoutId: z.string().min(1),
+			pageType: z.string().min(1),
+			layoutName: z.string(),
+			problems: z.number().int().nonnegative(),
+		}),
+	),
+});
+export type PageBuilderNightlyCheck = z.infer<typeof PageBuilderNightlyCheck>;
+
 export const SITE_SETTING_SCHEMAS = {
 	media_storage: MediaStorageSettings,
 	media_nightly_check: MediaNightlyCheck,
+	page_builder_nightly_check: PageBuilderNightlyCheck,
 	brand: BrandSettings,
 	'storefront.home': StorefrontHomeSettings,
 	'storefront.pageBuilder': StorefrontPageBuilderSettings,

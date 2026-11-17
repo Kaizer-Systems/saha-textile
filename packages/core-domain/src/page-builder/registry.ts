@@ -12,6 +12,11 @@ export interface PageBudget {
 	readonly firstLoadCodeKb: number;
 	/** Header, footer, data copy and the rest of the page around the sections, KB compressed (baseline). */
 	readonly surroundHtmlKb: number;
+	/**
+	 * The page's HTML in section allowances (KB, each section at its budget, plus the surround): Go Live waits above
+	 * it (SG-9, Q15 A). Allowances are ceilings, well above what sections really send.
+	 */
+	readonly pageHtmlKb: number;
 }
 
 export interface PageTypeRules {
@@ -42,7 +47,9 @@ const HOME: PageTypeRules = {
 	mainHeading: 'page_settings',
 	indexable: true,
 	// 17 Nov baseline (production build, brotli): the home page is 27–30 KB, of which about 16 KB is not sections.
-	budget: { earlyPicturesPerBand: 1, firstLoadCodeKb: 10, surroundHtmlKb: 16 },
+	// "Today's home page" comes to about 83 KB in section allowances (the brief's ceilings, roughly 2.8 times what
+	// its sections really send); 100 leaves room for one more product row and a promo pair, never a second page.
+	budget: { earlyPicturesPerBand: 1, firstLoadCodeKb: 10, surroundHtmlKb: 16, pageHtmlKb: 100 },
 };
 
 const REGISTRY = new Map<string, PageTypeRules>([[HOME.key, HOME]]);

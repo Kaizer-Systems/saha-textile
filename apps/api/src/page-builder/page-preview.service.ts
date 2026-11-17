@@ -30,11 +30,20 @@ export class PagePreviewService {
 		private readonly builder: PageBuilderService,
 	) {}
 
-	async code(actor: string | null, layoutId: string, now = new Date()): Promise<PreviewCodeResponse> {
+	async code(
+		actor: string | null,
+		layoutId: string,
+		revisionId: string | null = null,
+		now = new Date(),
+	): Promise<PreviewCodeResponse> {
 		if (!(await this.layouts.layout(layoutId))) throw new NotFoundException('No such layout');
+		// History's Look (E3): only a revision of this layout.
+		if (revisionId && (await this.layouts.revision(revisionId))?.layoutId !== layoutId) {
+			throw new NotFoundException('No such revision');
+		}
 		const code = newToken();
 		const expiresAt = new Date(now.getTime() + PREVIEW_CODE_SECONDS * 1000).toISOString();
-		await this.tokens.createCode({ codeHash: tokenHash(code), layoutId, by: actor, expiresAt });
+		await this.tokens.createCode({ codeHash: tokenHash(code), layoutId, revisionId, by: actor, expiresAt });
 		return { code, expiresAt };
 	}
 
@@ -45,7 +54,12 @@ export class PagePreviewService {
 		if (!layout) throw new NotFoundException('No such preview');
 		const token = newToken();
 		const expiresAt = new Date(now.getTime() + PREVIEW_SESSION_SECONDS * 1000).toISOString();
-		await this.tokens.createSession({ tokenHash: tokenHash(token), layoutId: layout.id, expiresAt });
+		await this.tokens.createSession({
+			tokenHash: tokenHash(token),
+			layoutId: layout.id,
+			revisionId: used?.revisionId ?? null,
+			expiresAt,
+		});
 		return { token, pageType: layout.pageType, expiresAt };
 	}
 
@@ -54,7 +68,9 @@ export class PagePreviewService {
 		const session = await this.tokens.findSession(tokenHash(token), now.toISOString());
 		const layout = session ? await this.layouts.layout(session.layoutId) : null;
 		if (!layout) throw new NotFoundException('No such preview');
-		const revision = await this.layouts.revision(layout.draftRevisionId ?? layout.lastLiveRevisionId ?? '');
+		const revision = await this.layouts.revision(
+			session?.revisionId ?? layout.draftRevisionId ?? layout.lastLiveRevisionId ?? '',
+		);
 		const shop = await this.builder.shopLayout(layout.pageType, locale, now);
 		return this.builder.drawn(layout.pageType, revision, [], locale, now, shop.settings ?? null);
 	}

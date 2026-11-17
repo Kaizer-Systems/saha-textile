@@ -117,6 +117,8 @@ describe('BullMqMediaJobQueue', () => {
 			'spaces-check',
 			'zip-sweep',
 			'weekly-insight',
+			'page-go-live-waiting',
+			'page-builder-nightly',
 		]);
 	});
 

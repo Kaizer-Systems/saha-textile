@@ -44,6 +44,8 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 	'ContentBlock.link': 'an address',
 	'BuilderPage.settings':
 		'Page settings (Page Builder P3): saved only with every shop language filled (pageSettingsGaps); their to-dos show on Page Builder › Home',
+	'BuilderPage.pending':
+		'Go Lives waiting for pictures (Page Builder E5): schedule entries pointing at revisions, no words of their own',
 	'PageLayoutRevision.sections':
 		'Page Builder sections: their words per language are checked by the builder’s own Go Live checks (layoutProblems)',
 	'SavedBlock.section': 'a Page Builder section kept to reuse; checked when placed in a layout',

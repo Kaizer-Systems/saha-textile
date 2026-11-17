@@ -128,6 +128,15 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoProductVariantRepository: plain,
 		MongoSiteSettingsRepository: plain,
 		MongoStockAlertRepository: plain,
+		// Page Builder (step 7): the waiting Go Lives and the nightly check are composed when the worker starts.
+		MongoAdminUserRepository: plain,
+		MongoAdminUserRoleAssignmentRepository: plain,
+		MongoBlogPostRepository: plain,
+		MongoCategoryPlacementRepository: plain,
+		MongoContentBlockRepository: plain,
+		MongoPageLayoutRepository: plain,
+		MongoRoleRepository: plain,
+		MongoSavedBlockRepository: plain,
 		MongoMediaAssetRepository: class {
 			listStaleForRole = hoisted.stale;
 		},

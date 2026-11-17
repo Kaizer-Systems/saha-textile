@@ -65,6 +65,7 @@ import { LogOnlyCdnPurgeAdapter } from '../infra/log-only-cdn-purge.adapter';
 import { buildNotificationPort } from '../infra/notification-factory';
 import { MeilisearchSearch, noProductsLoaded } from '../search/meilisearch-search';
 import { catchUpSearch, drainSearchQueue, nightlySearchCheck } from '../search/search-release';
+import { composePageBuilderJobs } from '../page-builder/page-go-live.worker';
 
 /** Batch size for the 15-minute stale sweep: bounded work per tick, never one giant job. */
 const STALE_BATCH = 50;
@@ -145,7 +146,22 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		now,
 	};
 
+	// Page Builder (step 7): Go Lives waiting for pictures, the nightly check and History upkeep.
+	const pageBuilder = composePageBuilderJobs(languages, storage);
+
 	const handlers: MediaJobHandlers = {
+		'page-go-live-waiting': async () => {
+			const went = await pageBuilder.waiting();
+			if (went) logger.log(`Page Builder: ${went} waiting Go Live went live`);
+			return { went };
+		},
+		'page-builder-nightly': async () => {
+			const result = await pageBuilder.nightly();
+			logger.log(
+				`Page Builder nightly: ${result.withProblems} layouts to fix, ${result.pruned} old revisions removed`,
+			);
+			return result;
+		},
 		process: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: false }),
 		reprocess: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: true }),
 		replace: (job) => replaceMediaAsset(processDeps, { assetId: job.assetId }),

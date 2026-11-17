@@ -15,7 +15,10 @@ export type LayoutProblem =
 	| { kind: 'picture_missing'; sectionId: string; piece: string; picture: number }
 	| { kind: 'picture_not_ready'; sectionId: string; piece: string; picture: number; assetId: string }
 	| { kind: 'phone_picture'; sectionId: string; piece: string; picture: number }
-	| { kind: 'shape'; sectionId: string; piece: string; picture: number; band: 'desktop' | 'phone' };
+	| { kind: 'shape'; sectionId: string; piece: string; picture: number; band: 'desktop' | 'phone' }
+	| { kind: 'link_gone'; sectionId: string; piece: string; picture: number; href: string }
+	| { kind: 'page_settings'; locale: string; field: string }
+	| { kind: 'budget'; measure: string; value: number; limit: number };
 
 /** What the checks need to know about one photo version: ready to show, and its shape (width ÷ height). */
 export interface PictureFacts {

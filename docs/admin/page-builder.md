@@ -108,7 +108,41 @@ With the switch on, Home draws `app-page-layout`: the first section at once, wit
 | `PUT`    | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  |
 | `DELETE` | `/admin/page-builder/blocks/:id`           | `theme_option.edit`  |
 
-Go Live and schedules come with their own permission: the owner and super admins go live; other admins with Store Front access save drafts and ask for review.
+| `GET` | `/admin/page-builder/layouts/:id/go-live` | `theme_option.index` |
+| `POST` | `/admin/page-builder/layouts/:id/go-live` | `page_builder.go_live` |
+| `GET` | `/admin/page-builder/layouts/:id/history` | `theme_option.index` |
+| `POST` | `/admin/page-builder/layouts/:id/bring-back` | `theme_option.edit` |
+| `POST` | `/admin/page-builder/layouts/:id/review-request` | `theme_option.edit` |
+| `DELETE` | `/admin/page-builder/layouts/:id/review-request` | `page_builder.go_live` |
+| `POST` | `/admin/page-builder/pages/:type/cancel-switch` | `page_builder.go_live` |
+| `DELETE` | `/admin/page-builder/pages/:type/waiting/:layoutId` | `page_builder.go_live` |
+| `POST` | `/admin/page-builder/pages/:type/put-back` | `page_builder.go_live` |
+| `PUT` | `/admin/page-builder/pages/:type/safe-mode` | `page_builder.go_live` and a super admin |
+| `GET` | `/admin/page-builder/alerts` | `theme_option.index` |
+
+## Go Live
+
+Go Live changes what shoppers see, so it has its own permission, `page_builder.go_live` (Q10 A). The Administrator role holds every code (run `seed:system-roles` after a pull); the owner gives it to anyone else in Roles. Everyone with Store Front access builds drafts and asks for review.
+
+**The checks** (`GET …/layouts/:id/go-live`, E1, P6) run on what would go live: the draft with every linked block's current content (SG-5). They are the builder's own list (every language filled, every picture ready and of one shape per piece, a phone picture for wide art with words) plus:
+
+- **Links (SG-13).** Every picture link that is a shop path must open a live page: a fixed page (the list is `SHOP_FIXED_PATHS` in core, checked against the shop's page files by `go-live-paths.spec.ts`), a live product, a live collection or a published blog post. The language prefix, query and hash are ignored. Outside `https` addresses are not fetched.
+- **The main heading.** Home's one H1 comes from Page settings, so Go Live waits until the title, description and main heading are filled in every shop language; "Go to it" opens Page settings.
+- **The speed budget (SG-9, Q15 A).** One picture loads with the page (the first section's, when it is a banner); builder code at first load stays within 10 KB (the slider's 2.1 KB when the first section has a slider); the page's HTML, counted in the brief's section allowances plus the 16 KB around the sections, stays within the page type's limit (Home: 100 KB; Today's home page comes to about 83). Code each section loads near the screen is shown, never counted. Nobody can override a budget.
+
+The same answer carries "What will change on the shop" (SG-16: sections added, removed, moved, changed, hidden or shown, and new pictures, against the layout showing now; "moved" names the fewest sections that explain the new order), the summary line, design notes that warn and never block (SG-35: more than 15 sections, more than 3 sliders, two dark sections in a row), the linked blocks with every layout that links them (C43), and the layouts an ending switch may hand back to.
+
+**Going live** (`POST …/layouts/:id/go-live`, E2) names the draft the admin checked; a newer one is refused with `409 layout_moved_on`, so nothing goes live unseen. When linked blocks change the content, that content is saved as a revision of its own first, and that revision goes live. Now, or at a time (a start more than a minute in the past is refused); ending when another layout goes live, or at a time, then handing back to a chosen layout's last live revision. The schedule entry, the revision's Go Live mark and the layout's pointer change in one transaction. The first Go Live of a page switches it to the builder (`storefront.pageBuilder`); a review request on the layout is cleared; the audit log keeps the revision, start, end and hand-back.
+
+**Pictures still being made (E5).** When the only thing holding Go Live is a picture still being made, "Go Live when it is ready" stores the switch on the page as waiting. The worker checks waiting switches every minute: one goes live once nothing holds it (a start already past becomes now), stays while pictures are still being made, and is dropped (and audited) if something else now holds it. "Wait" takes it off.
+
+**The schedule (A1).** A switch still to come can be cancelled; the one showing cannot. **Put back** (SG-15) brings back, in one step, the layout that showed before the one showing now. **Safe mode** (SG-15) is for super admins only: the page goes back to the shop's fixed code, and Go Live never undoes it; only a super admin takes it off.
+
+**History (E3, Q12).** A layout's revisions, newest first, with who saved each, when it went live and which one shoppers see. Bring back makes a saved revision the draft again as a new revision; nothing is overwritten. The worker keeps the last 20 Go Live revisions of each layout and drafts for 30 days, never what a schedule or a layout points at.
+
+**Ask for review (SG-18)** stores who asked, when and their note on the layout. The bell shows it to everyone who may go live; Go Live or "Close review" clears it.
+
+**The nightly check (SG-12)** runs every live and scheduled revision through the same checks again (a collection that went off the shop, a photo gone, a language switched on) and keeps the result for the bell (`page_builder_nightly_check`).
 
 ## Speed baseline
 

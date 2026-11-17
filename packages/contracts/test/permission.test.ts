@@ -39,7 +39,8 @@ describe('permission registry', () => {
 		// 107 → 136 on 2026-11-17 with the seven purchases and stock groups the owner accepted in
 		// the purchases and stock brief (X01): supplier, purchase_order, purchase, purchase_return,
 		// stock, stock_count, stock_report.
-		expect(PERMISSION_CODES).toHaveLength(136);
+		// 136 → 137 on 2026-11-17 with `page_builder.go_live` (Page Builder Q10 A, accepted with the brief).
+		expect(PERMISSION_CODES).toHaveLength(137);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

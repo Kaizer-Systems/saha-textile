@@ -5,6 +5,7 @@ import type {
 	PageSection,
 	PageSettings,
 	PageTypeKey,
+	PendingGoLive,
 	SavedBlock,
 	ScheduleEntry,
 } from '@saha-textile/contracts';
@@ -41,11 +42,26 @@ export interface PageLayoutRepository {
 	 * Go Live: the schedule gains the entry and the revision is marked as gone live, in one transaction with
 	 * whatever else must change with it (Media use counts), so a Go Live never half-happens.
 	 */
-	goLive(input: { pageType: PageTypeKey; target: string; entry: ScheduleEntry; at: string }): Promise<void>;
+	goLive(input: {
+		pageType: PageTypeKey;
+		target: string;
+		entry: ScheduleEntry;
+		/** More entries written with it, such as the hand-back at its end (E2). */
+		also?: ScheduleEntry[];
+		at: string;
+	}): Promise<void>;
 	/** The page's own settings (P3): search title, description, main heading and share picture. */
 	saveSettings(pageType: PageTypeKey, target: string, settings: PageSettings, at: string): Promise<void>;
 	/** Replaces a page's schedule (cancelling or moving a switch). */
 	setSchedule(pageType: PageTypeKey, target: string, schedule: ScheduleEntry[], at: string): Promise<void>;
+	/** SG-15: puts the page on the shop's fixed code (a value) or back on its layouts (null). */
+	setSafeMode(pageType: PageTypeKey, target: string, safeMode: BuilderPage['safeMode'], at: string): Promise<void>;
+	/** E5: the Go Lives waiting for pictures, replaced as a whole. */
+	setPending(pageType: PageTypeKey, target: string, pending: PendingGoLive[], at: string): Promise<void>;
+	/** SG-18: who asked for a review of a layout, or null once reviewed or gone live. */
+	setReviewRequest(layoutId: string, request: PageLayout['reviewRequest']): Promise<void>;
+	/** Every layout someone asked to review, newest first. */
+	reviewRequests(): Promise<PageLayout[]>;
 	/**
 	 * The editing lock (FX-11, E4): taken when free, when its last heartbeat is older than `staleBefore`, or kept
 	 * when it is already `by`'s (the heartbeat moves on). Answers who holds it after the call; null for no layout.
@@ -79,11 +95,22 @@ export interface SavedBlockRepository {
  * minute and becomes a session the shop keeps in a cookie limited to /__preview; a session lasts an hour.
  */
 export interface PreviewTokenRepository {
-	createCode(input: { codeHash: string; layoutId: string; by: string | null; expiresAt: string }): Promise<void>;
+	createCode(input: {
+		codeHash: string;
+		layoutId: string;
+		/** A saved revision to show instead of the draft (E3 "Look"); null for the draft. */
+		revisionId?: string | null;
+		by: string | null;
+		expiresAt: string;
+	}): Promise<void>;
 	/** Uses a code: answers its layout when it exists, is unused and has not expired at `now`, and marks it used. */
-	useCode(codeHash: string, now: string): Promise<{ layoutId: string } | null>;
-	createSession(input: { tokenHash: string; layoutId: string; expiresAt: string }): Promise<void>;
+	useCode(codeHash: string, now: string): Promise<{ layoutId: string; revisionId: string | null } | null>;
+	createSession(input: {
+		tokenHash: string;
+		layoutId: string;
+		revisionId?: string | null;
+		expiresAt: string;
+	}): Promise<void>;
 	/** The layout a live session previews, or null. */
-	findSession(tokenHash: string, now: string): Promise<{ layoutId: string } | null>;
+	findSession(tokenHash: string, now: string): Promise<{ layoutId: string; revisionId: string | null } | null>;
 }
-

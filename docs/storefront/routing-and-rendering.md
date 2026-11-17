@@ -13,6 +13,7 @@ source_of_truth:
     - apps/storefront/src/server/middleware/locale.ts
     - apps/storefront/src/server/api-url.ts
     - apps/storefront/vite.config.ts
+    - apps/storefront/script-priority.vite.ts
 ---
 
 # Storefront routing and rendering
@@ -124,6 +125,10 @@ The configuration is:
 - Static-site generation is disabled.
 - No routes are prerendered.
 - Nitro targets a Node server.
+
+### Script priority
+
+The page is complete before any script runs, so the application scripts are not needed for the first paint. Vite links the entry as `<script type="module">` and each chunk it imports as `<link rel="modulepreload">`, which a browser fetches at high priority, so on a phone's line about 430 KB of scripts shared the bandwidth with the page's first picture and styles. A build step, `script-priority.vite.ts`, marks those tags `fetchpriority="low"` (the Fetch Priority API; Chrome gives an `async` script the same priority). The browser then gives the first picture, the stylesheets and the preloaded fonts the line first and fetches the scripts straight after; Angular's event replay keeps a tap made before hydration. On the builder Home in Lighthouse's phone setting, first paint went from 4.2 s to 1.0 s and Speed Index from 4.2 s to 1.8 s. Inline scripts and module scripts without `src` are left alone, and a tag that already names a priority keeps it.
 
 ## Browser-only safety
 

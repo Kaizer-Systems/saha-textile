@@ -53,18 +53,26 @@
 						<div class="rightside-box">
 							<ul class="right-side-menu">
 								<li class="right-side search-icon search-full-icon">
+									<!-- Drawn by the server; its code (and the forms library) loads only when the shopper uses it. -->
+									@defer (on idle; hydrate on interaction) {
 									<app-search [style]="'berlin'" />
+									}
 								</li>
 								<li class="right-side">
 									<app-header-wishlist [style]="'basic'" />
 								</li>
 								<li class="right-side">
 									<div class="onhover-dropdown header-badge">
+										<!-- Drawn by the server; its code loads after the first paint, so the count still follows the cart. -->
+										@defer (on idle; hydrate on idle; hydrate on interaction) {
 										<app-header-cart [style]="'basic'" />
+										}
 									</div>
 								</li>
 								<li class="right-side onhover-dropdown">
+									@defer (on idle; hydrate on idle; hydrate on interaction) {
 									<app-my-account [style]="'basic'" />
+									}
 								</li>
 							</ul>
 						</div>

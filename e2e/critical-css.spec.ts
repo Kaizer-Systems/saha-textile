@@ -67,8 +67,14 @@ test.describe('critical CSS on Home', () => {
 		}
 		const critical = /<style data-st-critical>([\s\S]*?)<\/style>/.exec(html)?.[1] ?? '';
 		expect(critical).toContain('Public Sans Fallback');
-		// The Bengali font is not preloaded, so it comes with the full stylesheets, as before critical CSS.
-		expect(critical).not.toContain('noto-sans-bengali');
+		// বাংলা pages preload their Bengali text font (17 Nov), so the critical CSS keeps its face; every font file it
+		// names is one the page already preloads, so it starts no download of its own.
+		const preloaded = new Set(
+			[...html.matchAll(/<link rel="preload" href="([^"]+)" as="font"/g)].map((match) => match[1]),
+		);
+		const named = [...critical.matchAll(/url\(['"]?(\/assets\/fonts\/text\/[^'")?]+)/g)].map((match) => match[1]);
+		expect(named).toContain('/assets/fonts/text/noto-sans-bengali-normal-400-600-bengali.woff2');
+		for (const file of named) expect(preloaded).toContain(file);
 	});
 
 	test("the measured fallback takes Public Sans' room, so text keeps its place while the font loads", async ({

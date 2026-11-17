@@ -135,6 +135,8 @@ run('Seed reference data', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo
 run('Seed the demo catalogue', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo', 'seed:demo-catalogue']);
 const adminPassword = createTestAdmin();
 run('Fill the search index', 'pnpm', ['--filter', '@saha-textile/api', 'search:rebuild']);
+// The same release steps a deployment runs (legal pages, Today's home page, picture versions…), each once.
+run('Release steps', 'node', ['dist/release-steps.js'], { cwd: resolve(ROOT, 'apps/api') });
 
 start('API', 'node', ['dist/main.js'], { cwd: resolve(ROOT, 'apps/api') });
 start('Storefront', 'node', ['dist/analog/server/index.mjs'], {

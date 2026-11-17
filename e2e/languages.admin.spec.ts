@@ -103,7 +103,9 @@ test.describe('Settings › Languages', () => {
 		await expect(page.locator('#language_shop_bn')).toBeChecked();
 		const todo = await page.request.get(`${API_URL}/admin/languages/bn/todo`, { ignoreHTTPSErrors: true });
 		const { total, lines } = (await todo.json()) as { total: number; lines: { area: string; count: number }[] };
-		expect(lines).toHaveLength(16);
+		// Sixteen areas, and Page Builder since 17 Nov (page settings and live and scheduled layouts' words).
+		expect(lines).toHaveLength(17);
+		expect(lines.map((line) => line.area)).toContain('page_builder');
 		if (!total) {
 			await expect(page.locator('tr[data-language="bn"] .badge.bg-success').last()).toBeVisible();
 			return;
@@ -120,7 +122,9 @@ test.describe('Settings › Languages', () => {
 		await expect(page).not.toHaveURL(/missing=/);
 	});
 
-	test('Add offers only what this release ships; বাংলা cannot be deleted while the shop shows it', async ({ page }) => {
+	test('Add offers only what this release ships; বাংলা cannot be deleted while the shop shows it', async ({
+		page,
+	}) => {
 		await page.goto(`${ADMIN}/setting/languages`, { waitUntil: 'networkidle' });
 		await page.locator('#add_language_btn').click();
 		await expect(page.locator('.modal.show')).toContainText('Every language in this release is already added.');
@@ -193,7 +197,10 @@ test.describe('Settings › Languages', () => {
 		await expect
 			.poll(
 				async () => {
-					const answer = await request.get(`${SHOP}/ta/faq?x=1`, { maxRedirects: 0, ignoreHTTPSErrors: true });
+					const answer = await request.get(`${SHOP}/ta/faq?x=1`, {
+						maxRedirects: 0,
+						ignoreHTTPSErrors: true,
+					});
 					return [answer.status(), answer.headers()['location'], answer.headers()['cache-control']];
 				},
 				{ timeout: 80_000, intervals: [2_000] },
@@ -220,11 +227,15 @@ test.describe('Settings › Languages', () => {
 		await page.locator('#language_erase_input').fill(TAMIL);
 		await page.locator('#language_erase_btn').click();
 		await expect(page.locator('.modal.show')).toHaveCount(0);
-		const stored = await withDatabase((db) => db.collection('faqEntries').findOne({ _id: 'faq_e2e_tamil' as never }));
+		const stored = await withDatabase((db) =>
+			db.collection('faqEntries').findOne({ _id: 'faq_e2e_tamil' as never }),
+		);
 		expect(stored?.['question']).toEqual({ en: 'Do you ship abroad?' });
 		expect(stored?.['answer']).toEqual({ en: '<p>Yes.</p>' });
 		const audit = await withDatabase((db) =>
-			db.collection('auditLogs').findOne({ action: 'language.erase', entityId: 'ta' }, { sort: { createdAt: -1 } }),
+			db
+				.collection('auditLogs')
+				.findOne({ action: 'language.erase', entityId: 'ta' }, { sort: { createdAt: -1 } }),
 		);
 		expect(audit?.['metadata']).toMatchObject({ erasedItems: 1 });
 	});

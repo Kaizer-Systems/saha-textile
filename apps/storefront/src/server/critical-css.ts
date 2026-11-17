@@ -15,6 +15,33 @@ export interface StylesheetLink {
 	href: string;
 }
 
+/**
+ * How Beasties picks the critical rules (passed to its worker). `inlineFonts` carries the `@font-face` rules of the
+ * faces the first screen uses (a face with a `unicode-range` only when the page has those letters); without them the
+ * first paint falls back to another font, and the header's text moves when the stylesheets arrive (a layout shift).
+ * `preloadedFontsOnly` then keeps only the faces whose file the page already preloads, plus faces drawn from a font
+ * on the device, so the critical CSS never starts a font download of its own. The source stylesheets are never cut
+ * (`pruneSource: false`).
+ */
+export const BEASTIES_OPTIONS = {
+	/*
+	 * Beasties 0.5.4's quick class lookup reads a selector made of one bare attribute test, such as `[class^="ri-"]`,
+	 * as "has the class ri-" and drops it (a selector with more parts goes to the full matcher and is judged right).
+	 * So the icon font's base rule, which sets its font-family, never reached the first paint, and the icon
+	 * `@font-face` was judged unused. `allowRules`, Beasties' option for rules its matcher cannot judge, keeps exactly
+	 * the shop's three such selectors: the icon font's two and the cart's confetti pieces (in every page's HTML).
+	 */
+	allowRules: [/^\[class\^=(['"]?)ri-\1\]$/, /^\[class\*=(['"]?) ri-\1\]$/, /^\[class\|=(['"]?)confetti\1\]$/],
+	preload: false,
+	mergeStylesheets: false,
+	pruneSource: false,
+	inlineFonts: true,
+	preloadFonts: false,
+	reduceInlineStyles: false,
+	compress: true,
+	logLevel: 'silent',
+} as const;
+
 /** Page types that get critical CSS, by path. Home first; others join as their samples are checked. */
 const PAGE_TYPES: readonly { key: string; path: RegExp }[] = [{ key: 'home', path: /^\/(en|bn)\/?$/ }];
 
@@ -54,6 +81,34 @@ export function criticalKey(path: string, links: readonly StylesheetLink[], html
 function outline(html: string): string {
 	const sections = [...html.matchAll(/data-pb-section="([a-z_]+)"/g)].map((match) => match[1]);
 	return sections.length ? sections.join('+') : 'fixed';
+}
+
+/** The font files a page preloads in its head (`<link rel="preload" as="font">`), with their addresses as written. */
+export function fontPreloads(html: string): Set<string> {
+	const head = html.slice(0, Math.max(html.indexOf('</head>'), 0));
+	const hrefs = new Set<string>();
+	for (const match of head.matchAll(/<link\b[^>]*>/gi)) {
+		const tag = match[0];
+		if (!/\brel=["']?preload\b/i.test(tag) || !/\bas=["']?font\b/i.test(tag)) continue;
+		const href = /\bhref=["']([^"']+)["']/i.exec(tag)?.[1];
+		if (href) hrefs.add(href);
+	}
+	return hrefs;
+}
+
+/**
+ * The critical CSS with only the font faces the first paint may use: a face whose file the page already preloads
+ * (Public Sans' English letters and the icon font), and a face drawn from a font on the device (`local()` only, as the
+ * measured Public Sans fallback is). Any other face (বাংলা letters, italic, the ₹ sign's subset) would make the
+ * browser fetch its file at top priority before the first paint, competing with the page's first picture; those
+ * faces arrive with the full stylesheets, and the measured fallback keeps the text's room until then.
+ */
+export function preloadedFontsOnly(css: string, preloads: ReadonlySet<string>): string {
+	return css.replace(/@font-face\s*\{[^}]*\}/g, (face) => {
+		const files = [...face.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)].map((match) => match[2] ?? '');
+		if (files.length === 0) return face;
+		return files.some((file) => preloads.has(file)) ? face : '';
+	});
 }
 
 /** The `<style>` blocks of a page, in order (Angular's component styles, and anything inlined). */

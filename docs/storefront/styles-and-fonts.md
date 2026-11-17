@@ -16,6 +16,8 @@ source_of_truth:
     - apps/storefront/index.html
     - apps/admin/src/styles.scss
     - scripts/self-host-fonts.mjs
+    - scripts/font-fallback-metrics.mjs
+    - apps/storefront/src/font-fallbacks.css
     - scripts/build-fallback-pages.mjs
     - docker/production/nginx/edge.conf.template
 ---
@@ -31,11 +33,12 @@ The storefront keeps its template theme's look. Its styles reach the browser as 
 | Order | File                                   | What it holds                                                                       |
 | ----- | -------------------------------------- | ----------------------------------------------------------------------------------- |
 | 1     | `src/fonts.css`                        | The `@font-face` rules for the self-hosted text fonts                               |
-| 2     | `bootstrap/dist/css/bootstrap.min.css` | Bootstrap 5                                                                         |
-| 3     | `@damjantonkli/ngx-toastr/toastr`      | Toast messages                                                                      |
-| 4     | `swiper/swiper-bundle.css`             | Swiper's core rules plus arrows, dots and zoom, for the full-screen product gallery |
-| 5     | `src/scss/app.gen.css`                 | The theme, compiled from `src/scss/app.scss`                                        |
-| 6     | `src/scss/theme-color.css`             | The shop's theme colour, which overrides the theme's default                        |
+| 2     | `src/font-fallbacks.css`               | The measured Public Sans fallback (see Fonts)                                       |
+| 3     | `bootstrap/dist/css/bootstrap.min.css` | Bootstrap 5                                                                         |
+| 4     | `@damjantonkli/ngx-toastr/toastr`      | Toast messages                                                                      |
+| 5     | `swiper/swiper-bundle.css`             | Swiper's core rules plus arrows, dots and zoom, for the full-screen product gallery |
+| 6     | `src/scss/app.gen.css`                 | The theme, compiled from `src/scss/app.scss`                                        |
+| 7     | `src/scss/theme-color.css`             | The shop's theme colour, which overrides the theme's default                        |
 
 `swiper-bundle.css` already contains every rule in `swiper/css`, so the core file is not imported separately.
 
@@ -54,7 +57,8 @@ The theme stylesheet is about 1 MB (100 KB compressed). Linked normally it block
 
 - **What works it out.** Beasties (the successor of Google's Critters, used by Angular and Nuxt) reads a page's own HTML and keeps the rules its elements need, media queries included, so one answer serves phones and computers.
 - **When.** Working it out takes about 5 s on this stylesheet, so it never runs on a shopper's request. The first visit to a page after a release is sent as drawn; a worker thread then works out that page's critical CSS once, and later visits get it. The answer is reused for six hours, then worked out again in the background.
-- **Which pages.** Pages are grouped by type and language (Home in English, Home in বাংলা). The key also holds the stylesheets the page links, so a new build or dark mode (which links its own stylesheet) never reuses an answer made for something else.
+- **Fonts.** The first paint must draw text in the room it will finally take, or the header moves when the fonts apply (a layout shift). So the inlined block declares the faces whose file the page already preloads (`index.html` preloads Public Sans' English letters and the icon font) and the measured Public Sans fallback below; every other face (বাংলা, italic, the subset with the ₹ sign) is left to the full stylesheets, so the critical CSS never starts a font download of its own (`preloadedFontsOnly`). Two details: Beasties 0.5.4 drops a selector made of one bare attribute test, such as the icon font's `[class^='ri-']`, so `allowRules` keeps the shop's three such selectors (a unit test lists them); and the inlined icon-font address is rewritten to the same file `index.html` preloads. The options are `BEASTIES_OPTIONS` in `src/server/critical-css.ts`.
+- **Which pages.** Pages are grouped by type and language (Home in English, Home in বাংলা). The key also holds the stylesheets the page links and the page's Page Builder section outline, so a new build, dark mode (which links its own stylesheet) or another layout never reuses an answer made for something else.
 - **How the page changes.** A `<style data-st-critical>` block goes before the first stylesheet, and each local stylesheet becomes `media="print"` switched to `all` once it has loaded, with a `<noscript>` link for browsers without JavaScript. The shop's CSP allows both.
 - **Seeing it.** The page answer carries `x-st-critical: pending` or `inlined`. `ST_CRITICAL_CSS=off` turns it off.
 - **Pages that take part.** Home first (`PAGE_TYPES` in `src/server/critical-css.ts`); other page types join once their pages are checked with it.
@@ -156,6 +160,12 @@ Every text font is served from the app's own address. No page contacts Google Fo
 Each `@font-face` rule names one language subset through `unicode-range`. A browser downloads a file only when the page shows a character in that range in that family and style, so the Bengali files load only on pages with Bengali text, and Russo One loads only where something uses it. Public Sans is a variable font: one file per subset and style covers all nine weights.
 
 The storefront and the admin preload `public-sans-normal-100-900-latin.woff2`, the face every page draws first, so text does not reflow when the font arrives.
+
+### The measured fallback (storefront)
+
+Until Public Sans has arrived, a browser draws text in the next font of the stack, and a plain fallback is wider or narrower and sits higher or lower, so the text moves when Public Sans swaps in. The storefront's stack is `'Public Sans', 'Public Sans Fallback', 'Noto Sans Bengali', sans-serif`. `Public Sans Fallback` (`src/font-fallbacks.css`, imported right after `fonts.css`) is the Arial every computer has, scaled with `size-adjust` to Public Sans' average letter width and given Public Sans' ascent, descent and line gap with `ascent-override`, `descent-override` and `line-gap-override`. This is what Next.js (`next/font`) and Nuxt (fontaine) generate. There are four faces (regular and bold, upright and italic, each over the matching Arial face), for Latin letters only, so বাংলা text still goes on to Noto Sans Bengali. Safari applies `size-adjust` but not the three overrides, so there only the widths match.
+
+`node scripts/font-fallback-metrics.mjs` writes the file. It measures the shop's own Public Sans files and the installed Arial in Chrome, the way the browser reads them: average width per character over a sample of the shop's kind of English, ascent, descent and line gap. Size-adjust is Public Sans' average width divided by Arial's; each override is Public Sans' metric divided by size-adjust (Capsize's formulas). Run it on a Mac after taking a new Public Sans release with `self-host-fonts.mjs`, and commit the result. `e2e/critical-css.spec.ts` loads Home with Public Sans blocked and again with it, and checks that every text box keeps its height and the words keep their total width within 3%.
 
 ### Updating the fonts
 

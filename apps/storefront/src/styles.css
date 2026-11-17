@@ -3,11 +3,12 @@
  * dev server as well as in production. Do not import these from main.ts: on the dev server Vite
  * then adds them from JavaScript, so the server-rendered page paints unstyled first.
  *
- * Order matters: our self-hosted fonts first, then vendor, theme next, colour override last.
+ * Order matters: our self-hosted fonts and their measured fallback first, then vendor, theme next, colour override last.
  * app.gen.css is compiled by the
  * `styles` script, because the Analog dev server cannot resolve the theme's scss imports.
  */
 @import './fonts.css';
+@import './font-fallbacks.css';
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import '@damjantonkli/ngx-toastr/toastr';
 /* swiper-bundle.css already holds swiper/css (the core), so the core is not imported twice. */

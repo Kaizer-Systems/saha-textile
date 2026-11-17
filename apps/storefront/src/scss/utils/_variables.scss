@@ -45,7 +45,9 @@ $card-footer-bg-color: $white;
 $card-hover-box-shadow: 0 0 40px rgba(8, 21, 66, 0.05);
 
 // font family
-$public-sans: 'Public Sans', 'Noto Sans Bengali', sans-serif;
+// 'Public Sans Fallback' is Arial sized to Public Sans (src/font-fallbacks.css), so text keeps its room while
+// Public Sans loads.
+$public-sans: 'Public Sans', 'Public Sans Fallback', 'Noto Sans Bengali', sans-serif;
 $exo-sarif: 'Exo 2', sans-serif;
 $russo-sarif: 'Russo One', sans-serif;
 $pacifico: 'Pacifico', cursive;

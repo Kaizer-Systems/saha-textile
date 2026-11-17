@@ -1,6 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { addedStyles, criticalKey, inlineCritical, stylesheetLinks } from './critical-css';
+import {
+	BEASTIES_OPTIONS,
+	addedStyles,
+	criticalKey,
+	fontPreloads,
+	inlineCritical,
+	preloadedFontsOnly,
+	stylesheetLinks,
+} from './critical-css';
 
 const page = (head: string, body = '<main>x</main>') =>
 	`<!doctype html><html><head>${head}</head><body>${body}<link rel="stylesheet" href="/late.css"></body></html>`;
@@ -36,6 +47,63 @@ describe('critical CSS (speed baseline, option A)', () => {
 		// A dark page links one more stylesheet, so it never shares a light page's answer.
 		const dark = stylesheetLinks(page(HEAD + '<link rel="stylesheet" href="/assets/css/theme-dark.gen.css">'));
 		expect(criticalKey('/en/', dark)).not.toBe(criticalKey('/en/', links));
+	});
+
+	it('carries the first screen fonts, adds no font download and never cuts the stylesheets', () => {
+		// Without the @font-face rules the first paint uses another font and the header moves when they arrive.
+		expect(BEASTIES_OPTIONS.inlineFonts).toBe(true);
+		// index.html decides which fonts are preloaded; nothing new competes with the first picture.
+		expect(BEASTIES_OPTIONS.preloadFonts).toBe(false);
+		expect(BEASTIES_OPTIONS.pruneSource).toBe(false);
+		expect(BEASTIES_OPTIONS.preload).toBe(false);
+	});
+
+	it("keeps the bare attribute rules Beasties' quick lookup misjudges, and only those", () => {
+		const kept = (selector: string) => BEASTIES_OPTIONS.allowRules.some((rule) => rule.test(selector));
+		// The icon font's base rules, as its stylesheet writes them (they set font-family: remixicon).
+		const iconCss = readFileSync(resolve(__dirname, '../../public/assets/css/remixicon.css'), 'utf8');
+		const bare = [...iconCss.matchAll(/^(\[class[^\]]*\])[,\s{]/gm)].map((match) => match[1] ?? '');
+		expect(bare).toEqual(["[class^='ri-']", "[class*=' ri-']"]);
+		expect(bare.every(kept)).toBe(true);
+		// The confetti rule, as the theme build writes it, and either quote style.
+		expect(kept('[class|=confetti]')).toBe(true);
+		expect(kept('[class^="ri-"]')).toBe(true);
+		// Nothing else rides along: rules with more parts, other prefixes and real class selectors are judged normally.
+		for (const selector of ['[class*=owl-]', '[class^=status-] span', "[class^='ri-']:before", '.ri-search-line']) {
+			expect(kept(selector)).toBe(false);
+		}
+	});
+
+	it('keeps only the font faces whose file the page preloads, and faces from the device', () => {
+		const head =
+			'<link rel="preload" href="/assets/fonts/text/public-sans-normal-100-900-latin.woff2" as="font" type="font/woff2" crossorigin>' +
+			'<link rel="preload" href="/assets/fonts/remixicon/remixicon.woff2?t=1" as="font" crossorigin>' +
+			'<link rel="preload" as="image" href="/hero.webp">';
+		const preloads = fontPreloads(page(head));
+		expect([...preloads]).toEqual([
+			'/assets/fonts/text/public-sans-normal-100-900-latin.woff2',
+			'/assets/fonts/remixicon/remixicon.woff2?t=1',
+		]);
+		const css = [
+			'.a{color:red}',
+			"@font-face{font-family:'Public Sans';src:url(/assets/fonts/text/public-sans-normal-100-900-latin.woff2) format('woff2')}",
+			"@font-face{font-family:'Public Sans';src:url(/assets/fonts/text/public-sans-normal-100-900-latin-ext.woff2) format('woff2')}",
+			"@font-face{font-family:'Noto Sans Bengali';src:url('/assets/fonts/text/noto-sans-bengali-normal-400-600-bengali.woff2')}",
+			// Beasties writes the icon stylesheet's face with a space and keeps its comments.
+			"@font-face {font-family:'remixicon';src:url('/assets/fonts/remixicon/remixicon.eot?t=1');src:url('/assets/fonts/remixicon/remixicon.eot?t=1#iefix') format('embedded-opentype'), /* IE6-IE8 */ url('/assets/fonts/remixicon/remixicon.woff2?t=1') format('woff2')}",
+			"@font-face{font-family:'Public Sans Fallback';src:local('Arial');size-adjust:103.21%}",
+			'.b{font-family:remixicon}',
+		].join('');
+		const kept = preloadedFontsOnly(css, preloads);
+		expect(kept).toContain('public-sans-normal-100-900-latin.woff2');
+		expect(kept).toContain('remixicon.woff2?t=1');
+		expect(kept).toContain("local('Arial')");
+		expect(kept).not.toContain('latin-ext');
+		expect(kept).not.toContain('noto-sans-bengali');
+		expect(kept.startsWith('.a{color:red}')).toBe(true);
+		expect(kept.endsWith('.b{font-family:remixicon}')).toBe(true);
+		// A page with no font preloads gets only the faces from the device.
+		expect(preloadedFontsOnly(css, new Set())).not.toContain('url(');
 	});
 
 	it('finds what Beasties added, not the styles the page already had', () => {

@@ -4,7 +4,15 @@ import { Worker } from 'node:worker_threads';
 
 import { type H3Event, getRequestURL, setResponseHeader } from 'h3';
 
-import { addedStyles, criticalKey, inlineCritical, stylesheetLinks } from '../critical-css';
+import {
+	BEASTIES_OPTIONS,
+	addedStyles,
+	criticalKey,
+	fontPreloads,
+	inlineCritical,
+	preloadedFontsOnly,
+	stylesheetLinks,
+} from '../critical-css';
 
 /** How long an answer is reused before it is worked out again in the background (content and pictures change). */
 const REFRESH_MS = 6 * 60 * 60 * 1000;
@@ -27,17 +35,7 @@ const { createRequire } = require('node:module');
 const load = createRequire(workerData.base);
 const mod = load('beasties');
 const Beasties = mod.default ?? mod;
-const beasties = new Beasties({
-	path: workerData.publicDir,
-	publicPath: '/',
-	preload: false,
-	mergeStylesheets: false,
-	pruneSource: false,
-	inlineFonts: false,
-	reduceInlineStyles: false,
-	compress: true,
-	logLevel: 'silent',
-});
+const beasties = new Beasties({ ...workerData.options, path: workerData.publicDir, publicPath: '/' });
 parentPort.on('message', async ({ key, html }) => {
 	try {
 		parentPort.postMessage({ key, html: await beasties.process(html) });
@@ -77,14 +75,14 @@ export default function criticalCss(nitroApp: NitroAppLike): void {
 		worker ??= (() => {
 			const started = new Worker(WORKER_SOURCE, {
 				eval: true,
-				workerData: { base: import.meta.url, publicDir: folder },
+				workerData: { base: import.meta.url, publicDir: folder, options: BEASTIES_OPTIONS },
 			});
 			started.unref();
 			started.on('message', (answer: { key: string; html?: string; error?: string }) => {
 				const input = pending.get(answer.key) ?? '';
 				pending.delete(answer.key);
 				if (!answer.html) return;
-				const css = addedStyles(input, answer.html);
+				const css = preloadedFontsOnly(addedStyles(input, answer.html), fontPreloads(input));
 				if (!css) return;
 				cache.set(answer.key, { css, at: Date.now() });
 				while (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value as string);

@@ -72,3 +72,44 @@ export function layoutStatus(
 	const last = [...mine].sort((a, b) => at(b.from) - at(a.from))[0] as ScheduleEntry;
 	return { status: 'ended', from: last.from, until: last.until };
 }
+
+/** One stretch of time during which one schedule entry was what shoppers saw (SG-23). */
+export interface LivePeriod {
+	readonly entry: ScheduleEntry;
+	readonly from: string;
+	/** Null: still showing at `now`. */
+	readonly until: string | null;
+}
+
+/**
+ * Who was live when, up to `now`, newest first (SG-23 "sales by schedule"): the timeline cut at every start and end,
+ * each piece given to the entry showing then (the later start wins), and neighbouring pieces of the same entry
+ * joined. Stretches with nothing showing are left out; `limit` keeps the newest.
+ */
+export function livePeriods(schedule: readonly ScheduleEntry[], now: Date, limit = 20): LivePeriod[] {
+	const time = now.getTime();
+	const cuts = [
+		...new Set(
+			schedule
+				.flatMap((entry) => [at(entry.from), entry.until === null ? Number.NaN : at(entry.until)])
+				.filter((moment) => Number.isFinite(moment) && moment <= time),
+		),
+	].sort((a, b) => a - b);
+	const periods: { entry: ScheduleEntry; from: number; until: number | null }[] = [];
+	cuts.forEach((start, index) => {
+		const end = cuts[index + 1] ?? null;
+		const entry = liveEntry(schedule, new Date(start));
+		if (!entry) return;
+		const last = periods.at(-1);
+		if (last && last.entry === entry && last.until === start) last.until = end;
+		else periods.push({ entry, from: start, until: end });
+	});
+	return periods
+		.reverse()
+		.slice(0, limit)
+		.map((period) => ({
+			entry: period.entry,
+			from: new Date(period.from).toISOString(),
+			until: period.until === null ? null : new Date(period.until).toISOString(),
+		}));
+}

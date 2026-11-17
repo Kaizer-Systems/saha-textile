@@ -49,6 +49,19 @@ export class MongoOrderRepository implements OrderRepository {
 		}));
 	}
 
+	async paidTotalsBetween(from: string, to: string): Promise<{ orders: number; totalINR: number }> {
+		const [row] = await OrderModel.aggregate<{ orders: number; totalINR: number }>([
+			{
+				$match: {
+					status: { $in: [...PURCHASED_ORDER_STATUSES] },
+					createdAt: { $gte: new Date(from), $lt: new Date(to) },
+				},
+			},
+			{ $group: { _id: null, orders: { $sum: 1 }, totalINR: { $sum: '$totalINR' } } },
+		]).exec();
+		return { orders: row?.orders ?? 0, totalINR: row?.totalINR ?? 0 };
+	}
+
 	async hasLinesFor(productId: string): Promise<boolean> {
 		return (await OrderModel.exists({ 'lines.productId': productId }).exec()) !== null;
 	}

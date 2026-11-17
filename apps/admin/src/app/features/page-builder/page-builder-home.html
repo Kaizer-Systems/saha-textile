@@ -5,6 +5,28 @@
 	<button
 		button
 		type="button"
+		class="btn btn-outline d-flex align-items-center me-2 gap-1"
+		id="pb_import"
+		(click)="importFile.click()"
+	>
+		<i
+			class="ri-upload-2-line"
+			aria-hidden="true"
+		></i>
+		{{ 'pb_import' | transloco }}
+	</button>
+	<input
+		#importFile
+		class="d-none"
+		type="file"
+		id="pb_import_file"
+		accept=".json,application/json"
+		[attr.aria-label]="'pb_import' | transloco"
+		(change)="importLayout(importFile)"
+	/>
+	<button
+		button
+		type="button"
 		class="btn btn-theme d-flex align-items-center gap-1"
 		id="pb_new_layout"
 		(click)="newLayout(null)"
@@ -236,6 +258,19 @@
 								aria-hidden="true"
 							></i>
 						</a>
+						<a
+							href="javascript:void(0)"
+							role="button"
+							[title]="'pb_export' | transloco"
+							[attr.aria-label]="'pb_export' | transloco"
+							[attr.data-export]="row.layout.id"
+							(click)="exportLayout(row)"
+						>
+							<i
+								class="ri-download-2-line"
+								aria-hidden="true"
+							></i>
+						</a>
 					</span>
 					<span class="pb-when">
 						@switch (row.status) { @case ('live') { {{ 'pb_when_live' | transloco: { when: (row.from | date:
@@ -251,7 +286,44 @@
 		}
 	</div>
 
-	@if (page()?.templates?.length) {
+	@if (canSeeSales()) {
+	<h5 class="mt-5 mb-3">{{ 'pb_sales_title' | transloco }}</h5>
+	<p class="help-text">{{ 'pb_sales_help' | transloco }}</p>
+	<div class="table-responsive datatable-wrapper border-table mb-4">
+		<table
+			class="all-package theme-table no-footer fm-table mb-0 table"
+			id="pb_sales"
+		>
+			<thead>
+				<tr>
+					<th>{{ 'pb_col_layout' | transloco }}</th>
+					<th>{{ 'pb_col_from' | transloco }}</th>
+					<th>{{ 'pb_col_until' | transloco }}</th>
+					<th class="text-end">{{ 'pb_col_orders' | transloco }}</th>
+					<th class="text-end">{{ 'pb_col_total' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of sales() ?? []; track $index) {
+				<tr>
+					<td>{{ row.layoutName }}</td>
+					<td>{{ row.from | date: 'd MMM y, h:mm a' : '+0530' }}</td>
+					<td>
+						@if (row.until) { {{ row.until | date: 'd MMM y, h:mm a' : '+0530' }} } @else { {{
+						'pb_sales_now' | transloco }} }
+					</td>
+					<td class="text-end">{{ row.orders }}</td>
+					<td class="text-end">₹{{ row.totalINR | number: '1.0-0' : 'en-IN' }}</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td colspan="5">{{ 'pb_sales_none' | transloco }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @if (page()?.templates?.length) {
 	<h5 class="mt-5 mb-3">{{ 'pb_templates_for' | transloco: { page: ('pb_page_' + pageType | transloco) } }}</h5>
 	<div
 		class="row row-cols-xxl-4 row-cols-xl-4 row-cols-lg-3 row-cols-md-2 row-cols-1 g-4 layout-selection-sec"

@@ -34,6 +34,8 @@ export interface OrderRepository {
 	listPurchased(): Promise<PurchasedOrder[]>;
 	/** The lines of paid orders placed in [from, to), for the products given. */
 	listPaidLinesBetween(from: string, to: string, productIds: readonly string[]): Promise<PaidOrderLine[]>;
+	/** How many paid orders were placed in [from, to), and their total in INR (Page Builder SG-23). */
+	paidTotalsBetween(from: string, to: string): Promise<{ orders: number; totalINR: number }>;
 	/** True when any order, in any status, has a line for this product (Sold by is then fixed, P11). */
 	hasLinesFor(productId: string): Promise<boolean>;
 	save(order: Order, context?: TransactionContext): Promise<Order>;

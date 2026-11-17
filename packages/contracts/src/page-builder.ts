@@ -744,6 +744,35 @@ export type SafeModeRequest = z.infer<typeof SafeModeRequest>;
 export const ReviewRequest = z.object({ note: z.string().trim().max(300).default('') });
 export type ReviewRequest = z.infer<typeof ReviewRequest>;
 
+/**
+ * A layout as a file, to move between dev, staging and production (SG-22). The same section schema checks it on the
+ * way in; pictures are named by their Media ids, so a picture the other environment lacks shows as a Go Live check.
+ */
+export const LAYOUT_EXPORT_FORMAT = 'saha-textile.page-layout';
+export const LayoutExport = z.object({
+	format: z.literal(LAYOUT_EXPORT_FORMAT),
+	version: z.literal(1),
+	pageType: PageTypeKey,
+	name: z.string().trim().min(1).max(80),
+	sections: z.array(PageSection).max(LAYOUT_MAX_SECTIONS),
+	exportedAt: IsoDateTime,
+});
+export type LayoutExport = z.infer<typeof LayoutExport>;
+
+/** `GET /admin/page-builder/pages/:type/sales` — paid orders while each layout showed (SG-23), newest first. */
+export const PageSalesRow = z.object({
+	layoutId: Id,
+	layoutName: z.string(),
+	from: IsoDateTime,
+	/** Null: still showing. */
+	until: IsoDateTime.nullable(),
+	orders: z.number().int().nonnegative(),
+	totalINR: z.number().nonnegative(),
+});
+export type PageSalesRow = z.infer<typeof PageSalesRow>;
+export const PageSalesResponse = z.object({ rows: z.array(PageSalesRow) });
+export type PageSalesResponse = z.infer<typeof PageSalesResponse>;
+
 /** `GET /admin/page-builder/alerts` — the bell's Page Builder lines (SG-12, SG-18). */
 export const PageBuilderAlerts = z.object({
 	/** Drafts waiting for someone who may go live (only for them). */

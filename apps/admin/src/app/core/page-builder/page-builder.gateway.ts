@@ -4,6 +4,9 @@ import { Injectable, inject } from '@angular/core';
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import type {
+	PageSalesRow,
+	LayoutExport,
+	PageSalesResponse,
 	GoLiveBudgetLine,
 	LayoutProblemView,
 	BringBackRequest,
@@ -32,6 +35,9 @@ import type {
 import type { Observable } from 'rxjs';
 
 export type {
+	PageSalesRow,
+	LayoutExport,
+	PageSalesResponse,
 	GoLiveBudgetLine,
 	LayoutProblemView,
 	BringBackRequest,
@@ -158,6 +164,21 @@ export class PageBuilderGateway {
 	/** SG-15: super admins only; others are refused (403). */
 	safeMode(type: string, on: boolean): Observable<AdminBuilderPage> {
 		return this.http.put<AdminBuilderPage>(this.url(`/pages/${encodeURIComponent(type)}/safe-mode`), { on });
+	}
+
+	/** SG-22: a layout as a file for another environment. */
+	exportLayout(id: string): Observable<LayoutExport> {
+		return this.http.get<LayoutExport>(this.url(`/layouts/${encodeURIComponent(id)}/export`));
+	}
+
+	/** SG-22: a layout file from another environment becomes a new layout of this page. */
+	importLayout(type: string, file: LayoutExport): Observable<AdminLayoutView> {
+		return this.http.post<AdminLayoutView>(this.url(`/pages/${encodeURIComponent(type)}/import`), file);
+	}
+
+	/** SG-23: paid orders while each layout showed. */
+	sales(type: string): Observable<PageSalesResponse> {
+		return this.http.get<PageSalesResponse>(this.url(`/pages/${encodeURIComponent(type)}/sales`));
 	}
 
 	/** The bell's Page Builder lines (SG-12, SG-18). */

@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -12,6 +12,8 @@ import { lastValueFrom } from 'rxjs';
 import {
 	type AdminBuilderPage,
 	type AdminLayoutRow,
+	type LayoutExport,
+	type PageSalesRow,
 	PageBuilderGateway,
 } from '@core/page-builder/page-builder.gateway';
 import { AuthStore } from '@core/state/auth.store';
@@ -51,7 +53,7 @@ export const STATUS_CLASS: Record<AdminLayoutRow['status'] | 'waiting', string> 
 @Component({
 	selector: 'app-page-builder-home',
 	templateUrl: './page-builder-home.html',
-	imports: [ConfirmationModal, DatePipe, PageWrapper, PbThumb, RouterLink, TranslocoModule],
+	imports: [ConfirmationModal, DatePipe, DecimalPipe, PageWrapper, PbThumb, RouterLink, TranslocoModule],
 })
 export class PageBuilderHome {
 	private readonly gateway = inject(PageBuilderGateway);
@@ -65,6 +67,9 @@ export class PageBuilderHome {
 	/** Q10 A: going live and changing the schedule are for the owner and super admins. */
 	private readonly auth = inject(AuthStore);
 	readonly canGoLive = computed(() => this.auth.permissions().includes('page_builder.go_live'));
+	/** SG-23 shows money, so it needs the revenue permission too. */
+	readonly canSeeSales = computed(() => this.auth.permissions().includes('dashboard.revenue'));
+	readonly sales = signal<PageSalesRow[] | null>(null);
 
 	/** Page settings each shop language still lacks (P3), with the language named in its own script. */
 	readonly settingsTodo = computed(() =>
@@ -129,6 +134,47 @@ export class PageBuilderHome {
 			error: (error) =>
 				this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('pb_action_failed')),
 		});
+		if (this.canSeeSales()) {
+			this.gateway.sales(this.pageType).subscribe({
+				next: (answer) => this.sales.set(answer.rows),
+				error: () => this.sales.set([]),
+			});
+		}
+	}
+
+	/** SG-22: the layout as a file, saved by the browser. */
+	async exportLayout(row: AdminLayoutRow): Promise<void> {
+		try {
+			const file = await lastValueFrom(this.gateway.exportLayout(row.layout.id));
+			const blob = new Blob([JSON.stringify(file, null, '\t')], { type: 'application/json' });
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = `${
+				row.layout.name
+					.toLowerCase()
+					.replace(/[^a-z0-9]+/g, '-')
+					.replace(/^-|-$/g, '') || 'layout'
+			}.layout.json`;
+			link.click();
+			setTimeout(() => URL.revokeObjectURL(link.href), 1_000);
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('pb_action_failed'));
+		}
+	}
+
+	/** SG-22: a layout file from another environment becomes a new layout; the API checks every section. */
+	async importLayout(input: HTMLInputElement): Promise<void> {
+		const chosen = input.files?.[0];
+		input.value = '';
+		if (!chosen) return;
+		try {
+			const file = JSON.parse(await chosen.text()) as LayoutExport;
+			await lastValueFrom(this.gateway.importLayout(this.pageType, file));
+			this.toastr.success(this.transloco.translate('pb_imported'));
+			this.load();
+		} catch (error) {
+			this.toastr.error(readApiErrorMessage(error) ?? this.transloco.translate('pb_import_refused'));
+		}
 	}
 
 	/** Asks first (the admin's own confirmation), then changes the schedule or the safe mode. */

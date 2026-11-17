@@ -89,6 +89,14 @@ function harness(options: { superAdmin?: boolean; blocks?: SavedBlock[] } = {}) 
 		{ findByKey: async () => ({ id: 'role_admin' }) as never },
 		{ findActive: async () => (options.superAdmin ? ({ id: 'as_1' } as never) : null) },
 		{ listLivePaths: async () => ['sarees', 'sarees/banarasi'] },
+		{
+			paidTotalsBetween: async (from: string, to: string) =>
+				// One paid order of ₹2,500 an hour in this stand-in.
+				({
+					orders: Math.floor((Date.parse(to) - Date.parse(from)) / 3_600_000),
+					totalINR: 2500 * Math.floor((Date.parse(to) - Date.parse(from)) / 3_600_000),
+				}),
+		},
 	);
 	const filledSettings = () =>
 		store.repo.saveSettings(
@@ -423,5 +431,43 @@ describe('the nightly check (SG-12)', () => {
 			checkedAt: later(2).toISOString(),
 			layouts: [{ layoutId: id, pageType: 'home', layoutName: 'Everyday', problems: 1 }],
 		});
+	});
+});
+
+describe('export, import and sales by schedule (SG-22, SG-23)', () => {
+	it('exports the draft as a file and imports it as a new layout of the same page only', async () => {
+		const h = harness();
+		const { id } = await h.layout('Winter weddings', [letter]);
+		const file = await h.goLive.export(id, T0);
+		expect(file).toMatchObject({
+			format: 'saha-textile.page-layout',
+			version: 1,
+			pageType: 'home',
+			name: 'Winter weddings',
+		});
+		const imported = await h.goLive.import('adm_1', 'home', file, later(1));
+		expect(imported.layout.id).not.toBe(id);
+		expect(imported.draft?.sections).toEqual([letter]);
+		await expect(
+			h.goLive.import('adm_1', 'home', { ...file, pageType: 'about_us' }, later(2)),
+		).rejects.toMatchObject({
+			status: 400,
+			response: { code: 'import_other_page' },
+		});
+	});
+
+	it('totals paid orders for each stretch a layout showed, newest first', async () => {
+		const h = harness();
+		await h.filledSettings();
+		const base = { from: null, until: null, handBackTo: null, whenReady: false };
+		const today = await h.layout('Today’s home page', [letter]);
+		await h.goLive.goLive('adm_1', today.id, { ...base, expectedDraftId: today.draft }, OWNER, T0);
+		const puja = await h.layout('Puja', [row('new'), letter]);
+		await h.goLive.goLive('adm_1', puja.id, { ...base, expectedDraftId: puja.draft }, OWNER, later(120));
+		const sales = await h.goLive.sales('home', later(300));
+		expect(sales.rows.map((r) => [r.layoutName, r.orders, r.totalINR, r.until])).toEqual([
+			['Puja', 3, 7500, null],
+			['Today’s home page', 2, 5000, later(120).toISOString()],
+		]);
 	});
 });

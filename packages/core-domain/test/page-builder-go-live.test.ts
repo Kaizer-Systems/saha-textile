@@ -11,6 +11,7 @@ import {
 	layoutLinks,
 	layoutSummary,
 	linkProblems,
+	livePeriods,
 	pageSettingsProblems,
 	pageTypeRules,
 	previousLiveEntry,
@@ -268,5 +269,39 @@ describe('the schedule behind Go Live, Put back and Cancel', () => {
 		expect(scheduleWithout([today, coming], { revisionId: 'rev_winter', from: coming.from }, now)).toEqual([today]);
 		expect(scheduleWithout([today, coming], { revisionId: 'rev_today', from: today.from }, now)).toBeNull();
 		expect(scheduleWithout([today], { revisionId: 'nope', from: today.from }, now)).toBeNull();
+	});
+});
+
+describe('who was live when (SG-23)', () => {
+	const entry = (revisionId: string, from: string, until: string | null = null): ScheduleEntry => ({
+		revisionId,
+		layoutId: `lay_${revisionId}`,
+		from,
+		until,
+		by: null,
+	});
+
+	it('cuts the timeline at every start and end, newest first, and leaves the future out', () => {
+		const today = entry('today', '2026-11-01T00:00:00.000Z');
+		const puja = entry('puja', '2026-11-10T00:00:00.000Z', '2026-11-15T00:00:00.000Z');
+		const winter = entry('winter', '2026-12-01T00:00:00.000Z');
+		const now = new Date('2026-11-20T00:00:00.000Z');
+		expect(livePeriods([today, puja, winter], now).map((p) => [p.entry.revisionId, p.from, p.until])).toEqual([
+			['today', '2026-11-15T00:00:00.000Z', null],
+			['puja', '2026-11-10T00:00:00.000Z', '2026-11-15T00:00:00.000Z'],
+			['today', '2026-11-01T00:00:00.000Z', '2026-11-10T00:00:00.000Z'],
+		]);
+		expect(livePeriods([], now)).toEqual([]);
+		expect(livePeriods([today, puja], now, 1)).toHaveLength(1);
+	});
+
+	it('joins the pieces of one entry, and skips stretches with nothing showing', () => {
+		const first = entry('a', '2026-11-01T00:00:00.000Z', '2026-11-05T00:00:00.000Z');
+		const later = entry('b', '2026-11-08T00:00:00.000Z', '2026-11-09T00:00:00.000Z');
+		const now = new Date('2026-11-20T00:00:00.000Z');
+		expect(livePeriods([first, later], now).map((p) => [p.entry.revisionId, p.from, p.until])).toEqual([
+			['b', '2026-11-08T00:00:00.000Z', '2026-11-09T00:00:00.000Z'],
+			['a', '2026-11-01T00:00:00.000Z', '2026-11-05T00:00:00.000Z'],
+		]);
 	});
 });

@@ -124,6 +124,9 @@ With the switch on, Home draws `app-page-layout`: the first section at once, wit
 | `POST` | `/admin/page-builder/pages/:type/put-back` | `page_builder.go_live` |
 | `PUT` | `/admin/page-builder/pages/:type/safe-mode` | `page_builder.go_live` and a super admin |
 | `GET` | `/admin/page-builder/alerts` | `theme_option.index` |
+| `GET` | `/admin/page-builder/layouts/:id/export` | `theme_option.index` |
+| `POST` | `/admin/page-builder/pages/:type/import` | `theme_option.edit` |
+| `GET` | `/admin/page-builder/pages/:type/sales` | `theme_option.index` and `dashboard.revenue` |
 
 ## Go Live
 
@@ -146,6 +149,10 @@ The same answer carries "What will change on the shop" (SG-16: sections added, r
 **History (E3, Q12).** A layout's revisions, newest first, with who saved each, when it went live and which one shoppers see. Bring back makes a saved revision the draft again as a new revision; nothing is overwritten. The worker keeps the last 20 Go Live revisions of each layout and drafts for 30 days, never what a schedule or a layout points at.
 
 **Ask for review (SG-18)** stores who asked, when and their note on the layout. The bell shows it to everyone who may go live; Go Live or "Close review" clears it.
+
+**Export and import (SG-22).** A layout card's download button saves the layout (its draft) as a file (`saha-textile.page-layout`, version 1); Import a layout on the page's screen makes it a new layout of the same page in another environment. The same section schema checks it on the way in, and a file for another page is refused. Pictures are named by their Media ids, so a picture the other environment lacks shows in that layout's Go Live checks until it is chosen again there.
+
+**Sales by schedule (SG-23)** on Page Builder › Home, for those who also hold `dashboard.revenue`: the timeline of who was live when (cut at every start and end; the later start wins), newest first, each stretch with the paid orders placed during it and their total in INR, from the shop's own orders. Nothing tracks shoppers on the shop.
 
 **The nightly check (SG-12)** runs every live and scheduled revision through the same checks again (a collection that went off the shop, a photo gone, a language switched on) and keeps the result for the bell (`page_builder_nightly_check`).
 

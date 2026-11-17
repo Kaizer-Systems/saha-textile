@@ -81,7 +81,7 @@ const setup = <T>(component: new (...args: never[]) => T, gateway: Partial<PageB
 	const modals = { open: vi.fn() };
 	TestBed.configureTestingModule({
 		providers: [
-			{ provide: PageBuilderGateway, useValue: gateway },
+			{ provide: PageBuilderGateway, useValue: { sales: () => of({ rows: [] }), ...gateway } },
 			{ provide: ToastrService, useValue: toastr },
 			{ provide: NgbModal, useValue: modals },
 			{
@@ -92,7 +92,10 @@ const setup = <T>(component: new (...args: never[]) => T, gateway: Partial<PageB
 				},
 			},
 			{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ type: 'home' }) } } },
-			{ provide: AuthStore, useValue: { permissions: () => ['theme_option.index', 'page_builder.go_live'] } },
+			{
+				provide: AuthStore,
+				useValue: { permissions: () => ['theme_option.index', 'page_builder.go_live', 'dashboard.revenue'] },
+			},
 		],
 	});
 	TestBed.overrideComponent(component as never, { set: { imports: [], template: '' } });
@@ -347,5 +350,42 @@ describe('Page Builder › Home schedule actions (A1, E5, SG-15)', () => {
 		expect(toastr.error).toHaveBeenCalled();
 		await home.confirmed({ actionToPerform: 'something_else' });
 		expect(gateway.putBack).not.toHaveBeenCalled();
+	});
+});
+
+describe('Page Builder › Home export, import and sales (SG-22, SG-23)', () => {
+	const salesRow = {
+		layoutId: 'lay_today',
+		layoutName: 'Today’s home page',
+		from: '2026-11-01T00:00:00.000Z',
+		until: null,
+		orders: 3,
+		totalINR: 7500,
+	};
+
+	it('loads the sales by schedule for those who may see revenue', () => {
+		const { page: home } = setup(PageBuilderHome, {
+			page: vi.fn(() => of(page)),
+			sales: vi.fn(() => of({ rows: [salesRow] })),
+		});
+		expect(home.canSeeSales()).toBe(true);
+		expect(home.sales()).toEqual([salesRow]);
+	});
+
+	it('imports a layout file and reloads; a broken file is refused with a message', async () => {
+		const gateway = {
+			page: vi.fn(() => of(page)),
+			sales: vi.fn(() => of({ rows: [] })),
+			importLayout: vi.fn(() => of({})),
+		};
+		const { page: home, toastr } = setup(PageBuilderHome, gateway as unknown as Partial<PageBuilderGateway>);
+		const file = { format: 'saha-textile.page-layout', version: 1, pageType: 'home', name: 'X', sections: [] };
+		const input = (text: string) =>
+			({ files: [{ text: async () => text }], value: 'x' }) as unknown as HTMLInputElement;
+		await home.importLayout(input(JSON.stringify(file)));
+		expect(gateway.importLayout).toHaveBeenCalledWith('home', file);
+		expect(toastr.success).toHaveBeenCalledWith('pb_imported');
+		await home.importLayout(input('not json'));
+		expect(toastr.error).toHaveBeenCalledWith('pb_import_refused');
 	});
 });

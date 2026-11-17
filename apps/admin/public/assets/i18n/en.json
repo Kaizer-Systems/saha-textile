@@ -4059,5 +4059,15 @@
 	"perm_group_page_builder": "Page Builder",
 	"perm_page_builder_go_live": "Go Live and schedule",
 	"pb_budget_of_count": "{{value}} of {{limit}}",
-	"lang_area_page_builder": "Page Builder (page settings, and words in live and scheduled layouts)"
+	"lang_area_page_builder": "Page Builder (page settings, and words in live and scheduled layouts)",
+	"pb_import": "Import a layout",
+	"pb_imported": "Imported as a new layout. Check its Go Live list: pictures this site does not have show there.",
+	"pb_import_refused": "That file could not be imported. Use a layout file exported from Page Builder for this page.",
+	"pb_export": "Export as a file",
+	"pb_sales_title": "Sales by schedule",
+	"pb_sales_help": "Paid orders placed while each layout was showing, from the shop's own orders. Other things change too (prices, sales, seasons), so read it as a guide.",
+	"pb_col_orders": "Orders",
+	"pb_col_total": "Total",
+	"pb_sales_now": "Showing now",
+	"pb_sales_none": "No layout has shown yet."
 }

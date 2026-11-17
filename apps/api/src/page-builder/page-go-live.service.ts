@@ -16,7 +16,10 @@ import {
 	type GoLiveRequest,
 	type GoLiveResponse,
 	type GoLiveView,
+	type LayoutExport,
 	type LayoutHistoryResponse,
+	LAYOUT_EXPORT_FORMAT,
+	type PageSalesResponse,
 	type PageBuilderAlerts,
 	type PageLayout,
 	type PageSection,
@@ -30,6 +33,7 @@ import {
 	type BlogPostRepository,
 	type CategoryPlacementRepository,
 	type LayoutProblem,
+	type OrderRepository,
 	type PageLayoutRepository,
 	type ProductRepository,
 	type RoleRepository,
@@ -44,6 +48,7 @@ import {
 	linkProblems,
 	linkedBlockIds,
 	liveEntry,
+	livePeriods,
 	pageSettingsGaps,
 	pageSettingsProblems,
 	pageTypeRules,
@@ -60,6 +65,7 @@ import {
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	BLOG_POST_REPOSITORY,
 	CATEGORY_PLACEMENT_REPOSITORY,
+	ORDER_REPOSITORY,
 	PAGE_LAYOUT_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	ROLE_REPOSITORY,
@@ -101,6 +107,9 @@ export class PageGoLiveService {
 		@Optional()
 		@Inject(CATEGORY_PLACEMENT_REPOSITORY)
 		private readonly placements: Pick<CategoryPlacementRepository, 'listLivePaths'> | null = null,
+		@Optional()
+		@Inject(ORDER_REPOSITORY)
+		private readonly orders: Pick<OrderRepository, 'paidTotalsBetween'> | null = null,
 	) {}
 
 	// ── Checks ──────────────────────────────────────────────────────────────────────────────────────
@@ -512,6 +521,77 @@ export class PageGoLiveService {
 		);
 		await this.builder.record(actor, 'page_layout.bring_back', id, { from: revision.number });
 		return view;
+	}
+
+	// ── Export and import (SG-22), sales by schedule (SG-23) ───────────────────────────────────────────
+
+	/** The draft (or, without one, the last live revision) as a file another environment can import. */
+	async export(id: string, now = new Date()): Promise<LayoutExport> {
+		const layout = await this.requireLayout(id);
+		const revision = await this.layouts.revision(layout.draftRevisionId ?? layout.lastLiveRevisionId ?? '');
+		return {
+			format: LAYOUT_EXPORT_FORMAT,
+			version: 1,
+			pageType: layout.pageType,
+			name: layout.name,
+			sections: revision?.sections ?? [],
+			exportedAt: now.toISOString(),
+		};
+	}
+
+	/**
+	 * A layout from another environment becomes a new layout of this page with that draft. Its sections passed the
+	 * same schema on the way in; a picture this environment lacks shows in its Go Live checks.
+	 */
+	async import(actor: string | null, type: string, file: LayoutExport, now = new Date()): Promise<AdminLayoutView> {
+		const pageType = this.requireType(type);
+		if (file.pageType !== pageType) {
+			throw new BadRequestException({ message: 'That file is for another page', code: 'import_other_page' });
+		}
+		const created = await this.builder.createLayout(
+			actor,
+			pageType,
+			{ name: file.name, start: 'blank', copyOf: null, template: null, bringPictures: false },
+			now,
+		);
+		const view = await this.builder.saveDraft(
+			actor,
+			created.layout.id,
+			{ sections: file.sections, expectedDraftId: null },
+			now,
+		);
+		await this.builder.record(actor, 'page_layout.import', created.layout.id, {
+			sections: file.sections.length,
+			exportedAt: file.exportedAt,
+		});
+		return view;
+	}
+
+	/** SG-23: paid orders while each layout showed, from our own orders; no tracking on the shop. */
+	async sales(type: string, now = new Date()): Promise<PageSalesResponse> {
+		const pageType = this.requireType(type);
+		const [page, layouts] = await Promise.all([
+			this.layouts.page(pageType, WHOLE_PAGE),
+			this.layouts.layouts(pageType, WHOLE_PAGE),
+		]);
+		const names = new Map(layouts.map((layout) => [layout.id, layout.name]));
+		const periods = livePeriods(page?.schedule ?? [], now);
+		return {
+			rows: await Promise.all(
+				periods.map(async (period) => {
+					const totals = this.orders
+						? await this.orders.paidTotalsBetween(period.from, period.until ?? now.toISOString())
+						: { orders: 0, totalINR: 0 };
+					return {
+						layoutId: period.entry.layoutId,
+						layoutName: names.get(period.entry.layoutId) ?? period.entry.layoutId,
+						from: period.from,
+						until: period.until,
+						...totals,
+					};
+				}),
+			),
+		};
 	}
 
 	// ── Ask for review (SG-18) and the bell (SG-12) ─────────────────────────────────────────────────

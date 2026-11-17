@@ -11,6 +11,8 @@ import {
 	type LayoutHistoryResponse,
 	type LayoutLockResponse,
 	type PageBuilderAlerts,
+	type PageSalesResponse,
+	LayoutExport,
 	BringBackRequest,
 	CancelSwitchRequest,
 	GoLiveRequest,
@@ -294,6 +296,46 @@ export class AdminPageGoLiveController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<AdminBuilderPage> {
 		return this.goLive.safeMode(principal?.userId ?? null, type, body.on);
+	}
+
+	@Get('layouts/:id/export')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index')
+	@ApiOperation({ operationId: 'builderExport', summary: 'A layout as a file for another environment (SG-22)' })
+	async exportLayout(
+		@Param('id') id: string,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<LayoutExport> {
+		const file = await this.goLive.export(id);
+		const name =
+			file.name
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-|-$/g, '') || 'layout';
+		reply.header('Content-Disposition', `attachment; filename="${name}.layout.json"`);
+		return file;
+	}
+
+	@Post('pages/:type/import')
+	@RequirePermissions('theme_option.edit')
+	@ApiOperation({
+		operationId: 'builderImport',
+		summary: 'A layout file from another environment becomes a new layout of this page (SG-22)',
+	})
+	importLayout(
+		@Param('type') type: string,
+		@Body(new ZodValidationPipe(LayoutExport)) body: LayoutExport,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminLayoutView> {
+		return this.goLive.import(principal?.userId ?? null, type, body);
+	}
+
+	@Get('pages/:type/sales')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('theme_option.index', 'dashboard.revenue')
+	@ApiOperation({ operationId: 'builderSales', summary: 'Paid orders while each layout showed (SG-23)' })
+	sales(@Param('type') type: string): Promise<PageSalesResponse> {
+		return this.goLive.sales(type);
 	}
 
 	@Get('alerts')

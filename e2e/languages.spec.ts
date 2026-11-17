@@ -25,3 +25,19 @@ test('the sitemap lists each page in every language', async ({ request }) => {
 	expect(sitemap).toContain('/bn/contact-us');
 	expect(sitemap).toContain('hreflang="bn"');
 });
+
+test("the menu's flags are the shop's own small files, not the 161 KB country sprite", async ({ page }) => {
+	const sprites: string[] = [];
+	page.on('request', (request) => {
+		if (/intl-tel-input|flags(@2x)?\.png/.test(request.url())) sprites.push(request.url());
+	});
+	await page.goto(`${SHOP}/en/`, { waitUntil: 'networkidle' });
+	const flag = page.locator('app-language .iti-flag').first();
+	await expect(flag).toHaveCSS('background-image', /\/assets\/images\/flags\/(us|in)\.svg/);
+	// The open menu shows both languages' flags from the same files.
+	const images = await page
+		.locator('app-language .dropdown-item .iti-flag')
+		.evaluateAll((flags) => flags.map((element) => getComputedStyle(element).backgroundImage));
+	expect(images.every((image) => /\/assets\/images\/flags\/(us|in)\.svg/.test(image))).toBe(true);
+	expect(sprites).toEqual([]);
+});

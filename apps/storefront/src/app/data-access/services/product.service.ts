@@ -56,14 +56,15 @@ export class ProductService {
 	}
 
 	home(): Observable<{ newArrivals: IProduct[]; bestsellers: IProduct[]; featured: IProduct[]; sale: IProduct[] }> {
-		return this.http.get<ApiHome>(`${environment.apiUrl}/catalog/home`, { context: backgroundRequest() }).pipe(
-			map((home) => ({
-				newArrivals: home.newArrivals.map(cardToProduct),
-				bestsellers: home.bestsellers.map(cardToProduct),
-				featured: home.featured.map(cardToProduct),
-				sale: home.sale.map(cardToProduct),
-			})),
-		);
+		return this.homeCards().pipe(map(homeProducts));
+	}
+
+	/**
+	 * The home rows as the API sends them: lean cards. The home query keeps these in its cache (and so in the page's
+	 * data copy) and maps them to products only when read, so the copy carries the cards, not the expanded products.
+	 */
+	homeCards(): Observable<ApiHome> {
+		return this.http.get<ApiHome>(`${environment.apiUrl}/catalog/home`, { context: backgroundRequest() });
 	}
 
 	/** Real sales from the last day. Empty until there are paid orders, which keeps the popup hidden. */
@@ -164,3 +165,13 @@ export class ProductService {
 			.pipe(map((body) => body.frames.map(galleryAttachment)));
 	}
 }
+
+/** The home rows' cards as the shop's product shape. */
+export const homeProducts = (
+	home: ApiHome,
+): { newArrivals: IProduct[]; bestsellers: IProduct[]; featured: IProduct[]; sale: IProduct[] } => ({
+	newArrivals: home.newArrivals.map(cardToProduct),
+	bestsellers: home.bestsellers.map(cardToProduct),
+	featured: home.featured.map(cardToProduct),
+	sale: home.sale.map(cardToProduct),
+});

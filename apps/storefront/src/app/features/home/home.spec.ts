@@ -59,7 +59,8 @@ const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }])), platform = 'bro
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
-			{ provide: ProductService, useValue: { home, cardsFor: cards } },
+			// The rails query asks for the lean cards; `home` stands in for that call.
+			{ provide: ProductService, useValue: { home, homeCards: home, cardsFor: cards } },
 			{ provide: PLATFORM_ID, useValue: platform },
 			{ provide: LocaleSeo, useValue: seo },
 			{ provide: TranslocoService, useValue: transloco },

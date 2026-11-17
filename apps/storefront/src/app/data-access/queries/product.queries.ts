@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { ProductService } from '@data-access/services/product.service';
+import { homeProducts, ProductService } from '@data-access/services/product.service';
 
 const RECENT_PURCHASES_REFRESH_MS = 5 * 60 * 1000;
 
@@ -27,8 +27,10 @@ function toCatalogParams(f?: Params): Params {
 export function injectHomeRailsQuery() {
 	const productService = inject(ProductService);
 	return injectQuery(() => ({
-		queryKey: ['catalog', 'home'],
-		queryFn: () => firstValueFrom(productService.home()),
+		// The cache (and the page's data copy) holds the API's lean cards; products are made from them when read.
+		queryKey: ['catalog', 'home', 'cards'],
+		queryFn: () => firstValueFrom(productService.homeCards()),
+		select: homeProducts,
 	}));
 }
 

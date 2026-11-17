@@ -163,6 +163,8 @@ jobs:
       MEILISEARCH_HOST: http://127.0.0.1:7700
       MEILISEARCH_API_KEY: ci-only-search-key
       SPEED_GATE_ENFORCE: ${{ vars.SPEED_GATE_ENFORCE }}
+      # Home with each template and the stress layout, each made live in turn (SG-10).
+      SPEED_GATE_LAYOUTS: '1'
     services:
       meilisearch:
         image: getmeili/meilisearch:v1.16.0

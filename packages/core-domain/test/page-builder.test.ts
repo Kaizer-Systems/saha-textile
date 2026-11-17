@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	layoutProblems,
+	layoutStatus,
 	liveEntry,
 	nextSwitchAt,
 	overlappingEntries,
@@ -264,5 +265,37 @@ describe("Today's home page", () => {
 		expect(hero.arrangement).toBe('hero_center_sides');
 		expect(hero.pieces.map((p) => p.name)).toEqual(['main', 'left', 'right']);
 		expect(todaysHomePage([], 'hero_full', titles)[0]?.id).toBe('new_arrivals');
+	});
+});
+
+describe('layout status for the layout cards (A1)', () => {
+	const entry = (layoutId: string, from: string, until: string | null = null): ScheduleEntry => ({
+		revisionId: `r_${layoutId}`,
+		layoutId,
+		from,
+		until,
+		by: null,
+	});
+	const schedule = [
+		entry('today', '2026-11-01T00:00:00.000Z'),
+		entry('winter', '2026-11-30T18:30:00.000Z', '2027-02-15T18:29:00.000Z'),
+		entry('diwali', '2026-10-15T00:00:00.000Z', '2026-10-31T00:00:00.000Z'),
+	];
+	const now = new Date('2026-12-10T00:00:00Z');
+
+	it('names the live one, the one that hands back later, the ended one and the never-scheduled one', () => {
+		expect(layoutStatus('winter', schedule, now)).toEqual({
+			status: 'live',
+			from: '2026-11-30T18:30:00.000Z',
+			until: '2027-02-15T18:29:00.000Z',
+		});
+		expect(layoutStatus('today', schedule, now).status).toBe('scheduled');
+		expect(layoutStatus('diwali', schedule, now)).toEqual({
+			status: 'ended',
+			from: '2026-10-15T00:00:00.000Z',
+			until: '2026-10-31T00:00:00.000Z',
+		});
+		expect(layoutStatus('new', schedule, now)).toEqual({ status: 'draft', from: null, until: null });
+		expect(layoutStatus('winter', schedule, new Date('2026-11-20T00:00:00Z')).status).toBe('scheduled');
 	});
 });

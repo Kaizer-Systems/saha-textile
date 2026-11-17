@@ -5,6 +5,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
 import { LegalPagesModule } from './legal/legal-pages.module';
+import { PageBuilderModule } from './page-builder/page-builder.module';
 import { EventsModule } from './events/events.module';
 import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { PurchasingModule } from './purchasing/purchasing.module';
@@ -59,6 +60,7 @@ export class AppModule {
 				MediaModule,
 				BlogModule,
 				LegalPagesModule,
+				PageBuilderModule,
 				EventsModule,
 				StoreLocationsModule,
 				CommunicationsModule,

@@ -408,3 +408,89 @@ export type SavedBlock = z.infer<typeof SavedBlock>;
 
 /** History kept (Q12 A): the last 20 Go Live revisions of each layout, and autosaved drafts for 30 days. */
 export const LAYOUT_HISTORY = { goLiveRevisions: 20, draftDays: 30 } as const;
+
+// ── Admin API shapes (Page Builder build steps 2 and 4) ─────────────────────────────────────────────────
+
+/** Where a layout stands at a moment, from the page's schedule: what Home's layout cards show (A1). */
+export const LayoutStatus = z.enum(['live', 'scheduled', 'draft', 'ended']);
+export type LayoutStatus = z.infer<typeof LayoutStatus>;
+
+/** A problem that holds Go Live, as the builder lists it with "Go to it" (core `LayoutProblem`). */
+export const LayoutProblemView = z.object({
+	kind: z.string(),
+	sectionId: z.string().optional(),
+	type: z.string().optional(),
+	locale: z.string().optional(),
+	field: z.string().optional(),
+	piece: z.string().optional(),
+	picture: z.number().int().optional(),
+	assetId: z.string().optional(),
+	band: z.string().optional(),
+});
+export type LayoutProblemView = z.infer<typeof LayoutProblemView>;
+
+/** `GET /admin/page-builder/pages` — a row of the Page Builder list (P1). */
+export const AdminBuilderPageRow = z.object({
+	pageType: PageTypeKey,
+	kind: PageTypeKind,
+	target: PageTarget,
+	liveLayoutName: z.string().nullable(),
+	nextSwitchAt: IsoDateTime.nullable(),
+	layoutCount: z.number().int().nonnegative(),
+});
+export type AdminBuilderPageRow = z.infer<typeof AdminBuilderPageRow>;
+
+export const AdminLayoutRow = z.object({
+	layout: PageLayout,
+	status: LayoutStatus,
+	/** When it shows (live or scheduled), and when it hands back. */
+	from: IsoDateTime.nullable(),
+	until: IsoDateTime.nullable(),
+	updatedByName: z.string().nullable(),
+});
+export type AdminLayoutRow = z.infer<typeof AdminLayoutRow>;
+
+/** `GET /admin/page-builder/pages/:type` — one page: what shows when, and its layouts (A1). */
+export const AdminBuilderPage = z.object({
+	pageType: PageTypeKey,
+	target: PageTarget,
+	schedule: z.array(ScheduleEntry),
+	liveRevisionId: Id.nullable(),
+	nextSwitchAt: IsoDateTime.nullable(),
+	layouts: z.array(AdminLayoutRow),
+});
+export type AdminBuilderPage = z.infer<typeof AdminBuilderPage>;
+
+/** `POST /admin/page-builder/pages/:type/layouts` — New layout (A2): blank, or a copy of a layout. */
+export const CreateLayoutRequest = z
+	.object({
+		name: z.string().trim().min(1).max(80),
+		start: z.enum(['blank', 'copy']).default('blank'),
+		copyOf: Id.nullable().default(null),
+	})
+	.superRefine((request, ctx) => {
+		if (request.start === 'copy' && !request.copyOf) {
+			ctx.addIssue({ code: 'custom', message: 'a copy names the layout it copies', path: ['copyOf'] });
+		}
+	});
+export type CreateLayoutRequest = z.infer<typeof CreateLayoutRequest>;
+
+/** `GET /admin/page-builder/layouts/:id` — a layout open in the builder, with what holds its Go Live. */
+export const AdminLayoutView = z.object({
+	layout: PageLayout,
+	draft: LayoutRevision.nullable(),
+	problems: z.array(LayoutProblemView),
+	updatedByName: z.string().nullable(),
+});
+export type AdminLayoutView = z.infer<typeof AdminLayoutView>;
+
+/** `PUT /admin/page-builder/layouts/:id/draft` — save the draft over the one the editor started from. */
+export const SaveLayoutDraft = z.object({
+	sections: z.array(PageSection).max(LAYOUT_MAX_SECTIONS),
+	expectedDraftId: Id.nullable(),
+});
+export type SaveLayoutDraft = z.infer<typeof SaveLayoutDraft>;
+
+/** `PATCH /admin/page-builder/layouts/:id` — rename (the name is seen by admins only). */
+export const RenameLayoutRequest = z.object({ name: z.string().trim().min(1).max(80) });
+export type RenameLayoutRequest = z.infer<typeof RenameLayoutRequest>;

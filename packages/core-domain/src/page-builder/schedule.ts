@@ -46,3 +46,29 @@ export function overlappingEntries(schedule: readonly ScheduleEntry[]): Schedule
 		),
 	);
 }
+
+export type LayoutScheduleStatus = 'live' | 'scheduled' | 'draft' | 'ended';
+
+/**
+ * Where a layout stands at `now`, as Home's layout cards show it (A1): live (what shoppers see), scheduled (it shows
+ * later, or again after a switch hands back), ended (it showed and nothing brings it back), or draft (never on the
+ * schedule). `from`/`until` are the times of the entry that decides it.
+ */
+export function layoutStatus(
+	layoutId: string,
+	schedule: readonly ScheduleEntry[],
+	now: Date,
+): { status: LayoutScheduleStatus; from: string | null; until: string | null } {
+	const mine = schedule.filter((entry) => entry.layoutId === layoutId);
+	if (mine.length === 0) return { status: 'draft', from: null, until: null };
+	const live = liveEntry(schedule, now);
+	if (live?.layoutId === layoutId) return { status: 'live', from: live.from, until: live.until };
+	const time = now.getTime();
+	const coming = mine
+		.filter((entry) => at(entry.from) > time || entry.until === null || at(entry.until) > time)
+		.sort((a, b) => at(a.from) - at(b.from));
+	const next = coming[0];
+	if (next) return { status: 'scheduled', from: next.from, until: next.until };
+	const last = [...mine].sort((a, b) => at(b.from) - at(a.from))[0] as ScheduleEntry;
+	return { status: 'ended', from: last.from, until: last.until };
+}

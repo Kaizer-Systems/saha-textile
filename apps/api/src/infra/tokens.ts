@@ -56,6 +56,9 @@ export const MEDIA_PROFILE_REPOSITORY = Symbol('MediaProfileRepository');
 export const EMAIL_PICTURE_REPOSITORY = Symbol('EmailPictureRepository');
 /** The four legal pages and their earlier versions (Legal Pages brief). */
 export const LEGAL_PAGE_REPOSITORY = Symbol('LegalPageRepository');
+/** Page Builder: pages' schedules, layouts and their revisions; saved blocks (2026-11-17). */
+export const PAGE_LAYOUT_REPOSITORY = Symbol('PageLayoutRepository');
+export const SAVED_BLOCK_REPOSITORY = Symbol('SavedBlockRepository');
 export const CONTENT_BLOCK_REPOSITORY = Symbol('ContentBlockRepository');
 export const SITE_SETTINGS_REPOSITORY = Symbol('SiteSettingsRepository');
 export const SEARCH_ANALYTICS_REPOSITORY = Symbol('SearchAnalyticsRepository');

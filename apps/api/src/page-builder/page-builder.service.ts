@@ -1,0 +1,294 @@
+import { randomUUID } from 'node:crypto';
+
+import { ConflictException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import type {
+	AdminBuilderPage,
+	AdminBuilderPageRow,
+	AdminLayoutRow,
+	AdminLayoutView,
+	AuditLog,
+	CreateLayoutRequest,
+	MediaAsset,
+	PageLayout,
+	PageSection,
+	PageTypeKey,
+	RenameLayoutRequest,
+	SaveLayoutDraft,
+} from '@saha-textile/contracts';
+import {
+	type AdminUserRepository,
+	type AuditLogRepository,
+	type MediaAssetRepository,
+	type PageLayoutRepository,
+	type PictureFacts,
+	layoutProblems,
+	layoutStatus,
+	liveEntry,
+	nextSwitchAt,
+	pageTypeRules,
+	registeredPageTypes,
+} from '@saha-textile/core-domain';
+
+import {
+	ADMIN_USER_REPOSITORY,
+	AUDIT_LOG_REPOSITORY,
+	MEDIA_ASSET_REPOSITORY,
+	PAGE_LAYOUT_REPOSITORY,
+} from '../infra/tokens';
+import { LanguageStore } from '../languages/language-store';
+
+const WHOLE_PAGE = 'page';
+
+/** A photo version's facts for the Go Live checks: ready to show, and its shape from the files it made. */
+export function pictureFacts(asset: MediaAsset | null, versionId: string | null): PictureFacts | null {
+	if (!asset || asset.deletedAt) return null;
+	const version = versionId ? (asset.versions ?? []).find((candidate) => candidate.id === versionId) : null;
+	if (versionId && !version) return null;
+	const ready = version ? version.state === 'ready' : asset.processing.state === 'ready';
+	const files = asset.derivatives.filter((file) => (versionId ? file.versionId === versionId : true));
+	const widest = [...files].sort((a, b) => b.width - a.width)[0];
+	const ratio = widest
+		? widest.width / widest.height
+		: asset.width && asset.height
+			? asset.width / asset.height
+			: null;
+	return { ready, ratio };
+}
+
+/**
+ * Page Builder, admin side (brief PG-1, PG-2, B): the list of pages, one page's schedule and layouts, a layout open
+ * in the builder with what holds its Go Live, and draft saves that never land over a newer revision. Every page
+ * type goes through the same calls; nothing here is about Home.
+ */
+@Injectable()
+export class PageBuilderService {
+	constructor(
+		@Inject(PAGE_LAYOUT_REPOSITORY) private readonly layouts: PageLayoutRepository,
+		private readonly languages: LanguageStore,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
+		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: Pick<MediaAssetRepository, 'findById'>,
+		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+	) {}
+
+	/** P1: every registered page type, with what shows now and the next switch. */
+	async pages(now = new Date()): Promise<AdminBuilderPageRow[]> {
+		return Promise.all(
+			registeredPageTypes().map(async (rules) => {
+				const pageType = rules.key as PageTypeKey;
+				const [page, layouts] = await Promise.all([
+					this.layouts.page(pageType, WHOLE_PAGE),
+					this.layouts.layouts(pageType, WHOLE_PAGE),
+				]);
+				const live = liveEntry(page?.schedule ?? [], now);
+				const next = nextSwitchAt(page?.schedule ?? [], now);
+				return {
+					pageType,
+					kind: rules.kind,
+					target: WHOLE_PAGE,
+					liveLayoutName: layouts.find((layout) => layout.id === live?.layoutId)?.name ?? null,
+					nextSwitchAt: next ? next.toISOString() : null,
+					layoutCount: layouts.length,
+				};
+			}),
+		);
+	}
+
+	/** A1: what shoppers see and when, and the page's layouts with their status. */
+	async page(type: string, now = new Date()): Promise<AdminBuilderPage> {
+		const pageType = this.requireType(type);
+		const [page, layouts] = await Promise.all([
+			this.layouts.page(pageType, WHOLE_PAGE),
+			this.layouts.layouts(pageType, WHOLE_PAGE),
+		]);
+		const schedule = page?.schedule ?? [];
+		const next = nextSwitchAt(schedule, now);
+		return {
+			pageType,
+			target: WHOLE_PAGE,
+			schedule,
+			liveRevisionId: liveEntry(schedule, now)?.revisionId ?? null,
+			nextSwitchAt: next ? next.toISOString() : null,
+			layouts: await Promise.all(layouts.map((layout) => this.row(layout, schedule, now))),
+		};
+	}
+
+	/** A2: a new layout, blank or a copy of another layout's draft (or its last live revision). */
+	async createLayout(
+		actor: string | null,
+		type: string,
+		request: CreateLayoutRequest,
+		now = new Date(),
+	): Promise<AdminLayoutView> {
+		const pageType = this.requireType(type);
+		const at = now.toISOString();
+		let sections: PageSection[] = [];
+		if (request.start === 'copy') {
+			const source = await this.requireLayout(request.copyOf ?? '');
+			if (source.pageType !== pageType) throw new NotFoundException('No such layout on this page');
+			const revision = await this.layouts.revision(source.draftRevisionId ?? source.lastLiveRevisionId ?? '');
+			sections = revision?.sections ?? [];
+		}
+		const layout: PageLayout = {
+			id: `lay_${randomUUID()}`,
+			pageType,
+			target: WHOLE_PAGE,
+			name: request.name,
+			template: null,
+			draftRevisionId: null,
+			lastLiveRevisionId: null,
+			createdAt: at,
+			updatedAt: at,
+			updatedBy: actor,
+		};
+		await this.layouts.createLayout(layout);
+		if (sections.length) {
+			await this.layouts.saveDraft({ layoutId: layout.id, sections, expectedDraftId: null, by: actor, at });
+		}
+		await this.record(actor, 'page_layout.create', layout.id, {
+			pageType,
+			start: request.start,
+			copyOf: request.copyOf,
+		});
+		return this.layoutView(layout.id);
+	}
+
+	/** A layout open in the builder: its draft and what holds its Go Live. */
+	async layoutView(id: string): Promise<AdminLayoutView> {
+		const layout = await this.requireLayout(id);
+		const draft = layout.draftRevisionId ? await this.layouts.revision(layout.draftRevisionId) : null;
+		const rules = pageTypeRules(layout.pageType);
+		const sections = draft?.sections ?? [];
+		const facts = await this.pictureFactsFor(sections);
+		const problems = rules
+			? layoutProblems(sections, {
+					rules,
+					slot: 'main',
+					shopLocales: this.languages.shop(),
+					picture: (assetId, versionId) => facts.get(`${assetId}|${versionId ?? ''}`) ?? null,
+				})
+			: [];
+		return { layout, draft, problems, updatedByName: await this.adminName(layout.updatedBy) };
+	}
+
+	/**
+	 * Saves the draft over the revision the editor started from. A save over a newer one (another admin, another
+	 * tab) is refused with who saved it and when (FX-11); nothing is lost, the editor keeps its changes.
+	 */
+	async saveDraft(
+		actor: string | null,
+		id: string,
+		request: SaveLayoutDraft,
+		now = new Date(),
+	): Promise<AdminLayoutView> {
+		const layout = await this.requireLayout(id);
+		const saved = await this.layouts.saveDraft({
+			layoutId: id,
+			sections: request.sections,
+			expectedDraftId: request.expectedDraftId,
+			by: actor,
+			at: now.toISOString(),
+		});
+		if (!saved) {
+			const current = await this.requireLayout(id);
+			throw new ConflictException({
+				message: 'This layout was saved by someone else since you opened it',
+				code: 'layout_moved_on',
+				savedBy: await this.adminName(current.updatedBy),
+				savedAt: current.updatedAt,
+				draftRevisionId: current.draftRevisionId,
+			});
+		}
+		await this.record(actor, 'page_layout.save_draft', layout.id, { revision: saved.number });
+		return this.layoutView(id);
+	}
+
+	async rename(
+		actor: string | null,
+		id: string,
+		request: RenameLayoutRequest,
+		now = new Date(),
+	): Promise<AdminLayoutView> {
+		const layout = await this.requireLayout(id);
+		await this.layouts.renameLayout(id, request.name, layout.template, actor, now.toISOString());
+		await this.record(actor, 'page_layout.rename', id, { from: layout.name, to: request.name });
+		return this.layoutView(id);
+	}
+
+	private requireType(type: string): PageTypeKey {
+		if (!pageTypeRules(type)) throw new NotFoundException('No such page');
+		return type as PageTypeKey;
+	}
+
+	private async requireLayout(id: string): Promise<PageLayout> {
+		const layout = id ? await this.layouts.layout(id) : null;
+		if (!layout) throw new NotFoundException('No such layout');
+		return layout;
+	}
+
+	private async row(layout: PageLayout, schedule: AdminBuilderPage['schedule'], now: Date): Promise<AdminLayoutRow> {
+		const { status, from, until } = layoutStatus(layout.id, schedule, now);
+		return { layout, status, from, until, updatedByName: await this.adminName(layout.updatedBy) };
+	}
+
+	private async pictureFactsFor(sections: readonly PageSection[]): Promise<Map<string, PictureFacts | null>> {
+		const wanted = new Map<string, string | null>();
+		for (const section of sections) {
+			if (!('pieces' in section)) continue;
+			for (const piece of section.pieces) {
+				for (const picture of piece.pictures) {
+					for (const assetId of [picture.images.desktop, picture.images.tablet, picture.images.phone]) {
+						if (assetId)
+							wanted.set(
+								`${assetId}|${picture.versions[assetId] ?? ''}`,
+								picture.versions[assetId] ?? null,
+							);
+					}
+				}
+			}
+		}
+		const assets = new Map<string, MediaAsset | null>();
+		await Promise.all(
+			[...new Set([...wanted.keys()].map((key) => key.split('|')[0] as string))].map(async (assetId) => {
+				assets.set(assetId, await this.assets.findById(assetId).catch(() => null));
+			}),
+		);
+		const facts = new Map<string, PictureFacts | null>();
+		for (const [key, versionId] of wanted) {
+			facts.set(key, pictureFacts(assets.get(key.split('|')[0] as string) ?? null, versionId));
+		}
+		return facts;
+	}
+
+	private async adminName(id: string | null): Promise<string | null> {
+		if (!id) return null;
+		const admin = await this.admins.findById(id).catch(() => null);
+		return admin ? (admin.displayName ?? admin.username ?? admin.email ?? null) : null;
+	}
+
+	private async record(
+		actor: string | null,
+		action: string,
+		entityId: string,
+		metadata: Record<string, unknown>,
+	): Promise<void> {
+		if (!this.audit) return;
+		const entry: AuditLog = {
+			id: `audit_${randomUUID()}`,
+			actorUserId: actor,
+			targetUserId: null,
+			audience: 'admin',
+			action,
+			entityType: 'page_layout',
+			entityId,
+			severity: 'info',
+			retentionTier: 'catalog_admin',
+			diffs: [],
+			metadata,
+			requestId: null,
+			ipHash: null,
+			userAgentHash: null,
+			createdAt: new Date().toISOString(),
+		};
+		await this.audit.append(entry);
+	}
+}

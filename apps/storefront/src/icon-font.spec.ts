@@ -72,8 +72,11 @@ describe('split icon font', () => {
 		const missing = new Set<string>();
 		for (const file of sources) {
 			for (const name of readFileSync(file, 'utf8').match(/\bri-[a-z0-9]+(?:-[a-z0-9]+)*/g) ?? []) {
-				const point = icons.get(name);
-				if (point !== undefined && full.has(point)) missing.add(name);
+				// A base name also stands for its two styles: templates build `{{ icon }}-line` and `{{ icon }}-fill`.
+				for (const candidate of [name, `${name}-line`, `${name}-fill`]) {
+					const point = icons.get(candidate);
+					if (point !== undefined && full.has(point)) missing.add(candidate);
+				}
 			}
 		}
 		// Not empty: run `node scripts/split-icon-font.mjs` and commit what it writes.

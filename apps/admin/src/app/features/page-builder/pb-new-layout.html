@@ -1,0 +1,110 @@
+<!-- A2: a new layout, blank or a copy of one of the page's layouts. -->
+<div class="modal-header">
+	<h2 id="pb_new_layout_title">{{ 'pb_new_layout' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body">
+	<div class="theme-form mb-3">
+		<label
+			class="form-label-title mb-2"
+			for="pb_new_layout_name"
+		>
+			{{ 'pb_layout_name' | transloco }}
+		</label>
+		<input
+			class="form-control"
+			id="pb_new_layout_name"
+			maxlength="80"
+			ngbAutofocus
+			[value]="name()"
+			[class.is-invalid]="!!error()"
+			(input)="name.set($any($event.target).value); error.set(null)"
+			(keydown.enter)="create()"
+		/>
+		@if (error(); as error) {
+		<div class="invalid-feedback d-block">{{ error }}</div>
+		}
+		<p class="help-text mt-2">{{ 'pb_layout_name_help' | transloco }}</p>
+	</div>
+	<span class="form-label-title d-block mb-2">{{ 'pb_start_from' | transloco }}</span>
+	<div class="row row-cols-md-3 row-cols-1 g-3 layout-selection-sec">
+		<div>
+			<div
+				class="theme-card"
+				[class.active]="copyOf() === null"
+			>
+				<div class="library-box pb-lib">
+					<app-pb-thumb [outline]="[{ type: 'newsletter', arrangement: null }]" />
+				</div>
+				<div class="content-sec pb-content">
+					<label class="d-flex align-items-center mb-0 gap-2">
+						<input
+							class="form-check-input mt-0"
+							type="radio"
+							name="pb_start"
+							id="pb_start_blank"
+							[checked]="copyOf() === null"
+							(change)="copyOf.set(null)"
+						/>
+						<strong>{{ 'pb_start_blank' | transloco }}</strong>
+					</label>
+					<span class="pb-when">{{ 'pb_start_blank_help' | transloco }}</span>
+				</div>
+			</div>
+		</div>
+		@for (row of layouts(); track row.layout.id) {
+		<div>
+			<div
+				class="theme-card"
+				[class.active]="copyOf() === row.layout.id"
+			>
+				<div class="library-box pb-lib">
+					<app-pb-thumb [outline]="row.outline" />
+				</div>
+				<div class="content-sec pb-content">
+					<label class="d-flex align-items-center mb-0 gap-2">
+						<input
+							class="form-check-input mt-0"
+							type="radio"
+							name="pb_start"
+							[attr.data-copy]="row.layout.id"
+							[checked]="copyOf() === row.layout.id"
+							(change)="copyOf.set(row.layout.id)"
+						/>
+						<strong>{{ 'pb_start_copy' | transloco: { name: row.layout.name } }}</strong>
+					</label>
+					<span class="pb-when">{{ 'pb_start_copy_help' | transloco }}</span>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="pb_create_layout"
+			[disabled]="!name().trim() || creating()"
+			(click)="create()"
+		>
+			{{ 'pb_create_layout' | transloco }}
+		</button>
+	</div>
+</div>

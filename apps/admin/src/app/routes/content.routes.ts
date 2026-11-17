@@ -116,6 +116,10 @@ export const content: Routes = [
 		loadChildren: () => import('@features/theme-option/theme-option.routes'),
 	},
 	{
+		path: 'page-builder',
+		loadChildren: () => import('@features/page-builder/page-builder.routes'),
+	},
+	{
 		path: 'home-banners',
 		loadChildren: () => import('@features/home-banners/home-banners.routes'),
 	},

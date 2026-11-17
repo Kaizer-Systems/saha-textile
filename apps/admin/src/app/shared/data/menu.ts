@@ -530,6 +530,14 @@ export const menu: IMenu[] = [
 		children: [
 			{
 				parent_id: 18,
+				title: 'page_builder',
+				path: '/page-builder',
+				type: 'link',
+				level: 2,
+				permission: ['theme_option.index'],
+			},
+			{
+				parent_id: 18,
 				title: 'theme options',
 				path: '/theme-option',
 				type: 'link',

@@ -1,0 +1,134 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'pb_page_' + pageType"
+>
+	<button
+		button
+		type="button"
+		class="btn btn-theme d-flex align-items-center gap-1"
+		id="pb_new_layout"
+		(click)="newLayout()"
+	>
+		<i
+			class="ri-add-line"
+			aria-hidden="true"
+		></i>
+		{{ 'pb_new_layout' | transloco }}
+	</button>
+
+	<p class="pb-crumb">
+		<a routerLink="/page-builder">{{ 'page_builder' | transloco }}</a>
+		› {{ 'pb_page_' + pageType | transloco }}
+	</p>
+	<div class="fm-note mb-4">
+		<i
+			class="ri-information-line"
+			aria-hidden="true"
+		></i>
+		<div>
+			<strong>{{ 'pb_one_layout_title' | transloco }}</strong>
+			{{ 'pb_one_layout' | transloco }}
+		</div>
+	</div>
+
+	<div class="row g-4 mb-4">
+		<div class="col-xxl-8 col-12">
+			<h6 class="mb-2">{{ 'pb_when_title' | transloco }}</h6>
+			<div class="table-responsive datatable-wrapper border-table">
+				<table
+					class="all-package theme-table no-footer fm-table mb-0 table"
+					id="pb_when"
+				>
+					<thead>
+						<tr>
+							<th>{{ 'pb_col_from' | transloco }}</th>
+							<th>{{ 'pb_col_layout' | transloco }}</th>
+							<th>{{ 'pb_col_status' | transloco }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of when(); track $index) {
+						<tr>
+							<td>
+								@if (row.status === 'live') { {{ 'pb_now_since' | transloco: { when: (row.from | date:
+								'd MMM y' : '+0530') } }} } @else { {{ row.from | date: 'd MMM y, h:mm a' : '+0530' }} }
+							</td>
+							<td>
+								@if (row.back) { {{ 'pb_back_to' | transloco }} }
+								<strong>{{ row.name }}</strong>
+							</td>
+							<td>
+								<span [class]="statusClass[row.status]">
+									{{ 'pb_status_' + row.status | transloco }}
+								</span>
+							</td>
+						</tr>
+						} @empty {
+						<tr>
+							<td colspan="3">{{ 'pb_showing_fixed' | transloco }}</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="col-xxl-4 col-12">
+			<h6 class="mb-2">{{ 'pb_page_settings' | transloco }}</h6>
+			<ul class="list-unstyled d-grid mb-0 gap-1">
+				<li class="fm-ok">
+					<i
+						class="ri-checkbox-circle-line"
+						aria-hidden="true"
+					></i>
+					<span>{{ 'pb_settings_address' | transloco: { address: '/en/ · /bn/' } }}</span>
+				</li>
+			</ul>
+			<p class="help-text mt-2 mb-0">{{ 'pb_settings_help' | transloco }}</p>
+		</div>
+	</div>
+
+	<h5 class="mb-3">{{ 'pb_your_layouts' | transloco }}</h5>
+	<div
+		class="row row-cols-xxl-4 row-cols-xl-4 row-cols-lg-3 row-cols-md-2 row-cols-1 g-4 layout-selection-sec"
+		id="pb_layouts"
+	>
+		@for (row of page()?.layouts ?? []; track row.layout.id) {
+		<div [attr.data-layout]="row.layout.id">
+			<div
+				class="theme-card"
+				[class.active]="row.status === 'live'"
+			>
+				<div class="library-box pb-lib">
+					<app-pb-thumb [outline]="row.outline" />
+				</div>
+				<div class="content-sec pb-content">
+					<h5 class="mb-0">{{ row.layout.name }}</h5>
+					<span [class]="statusClass[row.status]">{{ 'pb_status_' + row.status | transloco }}</span>
+					<span class="pb-card-actions">
+						<a
+							href="javascript:void(0)"
+							role="button"
+							[title]="'pb_duplicate' | transloco"
+							[attr.aria-label]="'pb_duplicate' | transloco"
+							(click)="duplicate(row)"
+						>
+							<i
+								class="ri-file-copy-line"
+								aria-hidden="true"
+							></i>
+						</a>
+					</span>
+					<span class="pb-when">
+						@switch (row.status) { @case ('live') { {{ 'pb_when_live' | transloco: { when: (row.from | date:
+						'd MMM y' : '+0530') } }} } @case ('scheduled') { {{ 'pb_when_scheduled' | transloco: { when:
+						(row.from | date: 'd MMM y, h:mm a' : '+0530') } }} } @case ('ended') { {{ 'pb_when_ended' |
+						transloco: { from: (row.from | date: 'd MMM y' : '+0530'), until: (row.until | date: 'd MMM y' :
+						'+0530') } }} } @default { {{ 'pb_when_draft' | transloco: { when: (row.layout.updatedAt | date:
+						'd MMM y' : '+0530'), name: row.updatedByName ?? '—' } }} } }
+					</span>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</app-page-wrapper>

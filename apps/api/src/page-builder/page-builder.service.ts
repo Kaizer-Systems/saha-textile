@@ -288,7 +288,14 @@ export class PageBuilderService {
 
 	private async row(layout: PageLayout, schedule: AdminBuilderPage['schedule'], now: Date): Promise<AdminLayoutRow> {
 		const { status, from, until } = layoutStatus(layout.id, schedule, now);
-		return { layout, status, from, until, updatedByName: await this.adminName(layout.updatedBy) };
+		const draft = await this.layouts.revision(layout.draftRevisionId ?? layout.lastLiveRevisionId ?? '');
+		const outline = (draft?.sections ?? [])
+			.filter((section) => !section.hidden)
+			.map((section) => ({
+				type: section.type,
+				arrangement: section.type === 'banner_arrangement' ? section.arrangement : null,
+			}));
+		return { layout, status, from, until, updatedByName: await this.adminName(layout.updatedBy), outline };
 	}
 
 	private async pictureFactsFor(sections: readonly PageSection[]): Promise<Map<string, PictureFacts | null>> {

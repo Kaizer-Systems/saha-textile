@@ -82,6 +82,7 @@ const KEYWORDS: Record<string, string[]> = {
 	refund: ['return', 'money', 'back'],
 	review: ['rating', 'star', 'photo', 'moderation'],
 	faq: ['question', 'answer', 'help'],
+	page_builder: ['layout', 'home', 'banner', 'slider', 'schedule', 'template'],
 	theme_option: ['theme', 'layout', 'header', 'footer'],
 	home_banners: ['banner', 'hero', 'slider', 'newsletter', 'popup'],
 	storefront_setting: ['shop', 'website', 'settings'],

@@ -447,6 +447,8 @@ export const AdminLayoutRow = z.object({
 	from: IsoDateTime.nullable(),
 	until: IsoDateTime.nullable(),
 	updatedByName: z.string().nullable(),
+	/** The draft's sections in order, for the card's outline picture (A1). */
+	outline: z.array(z.object({ type: SectionType, arrangement: BannerArrangement.nullable() })),
 });
 export type AdminLayoutRow = z.infer<typeof AdminLayoutRow>;
 

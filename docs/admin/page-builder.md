@@ -63,6 +63,22 @@ Each revision and saved block lists every photo it shows (`assetIds`), so Media 
 
 Release step `0005-page-builder-todays-home` makes Home's first layout, "Today's home page", from the live home banners and the fixed home sections in today's order, and puts it on Home's schedule. The hero's words become darker brand words and the two promos get darker words on a soft light backing, the lightest change that makes every line readable on computer and phone. The banner records stay as they are. The shop keeps drawing its fixed home page until the builder's renderer is switched on.
 
+## Admin screens
+
+Store Front › Page Builder is the first item under Store Front (`/page-builder`, `theme_option.index`).
+
+- **The list** shows the registered pages. Home is Ready, with the layout showing now, how many layouts it has and the next switch; the ten pages that join later say what you would arrange there and what each needs first. A note names the pages never arranged here.
+- **Page Builder › Home** (`/page-builder/home`) shows what shoppers see and when (the live layout, each switch to come, and the hand-back), the page's address, and the page's layouts as cards: an outline picture drawn from the layout's sections, its status (Live, Scheduled, Draft, Ended), when, and Duplicate.
+- **New layout** asks for a name only admins see and where to start: blank, or a copy of one of the page's layouts with its sections and pictures.
+
+The outline picture (`app-pb-thumb`) and the card text around it are the only styles of their own (`pages/_page-builder.scss`); colours come from the Media screens' tokens, which carry their dark values.
+
+## The shop
+
+`GET /storefront/pages/:type/layout?locale=` answers the revision the schedule shows now, for one language. While the `storefront.pageBuilder` switch is off (the default) the answer is empty and Home draws its fixed page, which is also the fallback and the super admin's safe mode.
+
+With the switch on, Home draws `app-page-layout`: the first section at once, with the page's one early picture; every later section in its own `@defer (hydrate on viewport)` block. A piece with two or more pictures is the builder's slider: the browser's scroll-snap moves it, every picture is in the page once, and one control pill sits inside the picture with pause first, previous, a bar per picture and next (no arrows on phones; compact in the corner on short screens). It turns by itself only when the visitor has not asked for less motion, and stops while hovered or focused.
+
 ## API
 
 | Method  | Route                                     | Access               |

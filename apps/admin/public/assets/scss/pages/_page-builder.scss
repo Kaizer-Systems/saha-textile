@@ -1,0 +1,75 @@
+// Store Front › Page Builder (brief revision 2, accepted 17 Nov 2026). Only what the brief lists as custom: the
+// layout outline pictures and the card text around them. Colours come from the Media screens' tokens, which carry
+// their own dark values, so nothing here needs the dark file.
+.pb-crumb {
+	font-size: 13px;
+	color: var(--fm-muted);
+	margin-bottom: 8px;
+
+	a {
+		color: var(--fm-theme-ink);
+		text-decoration: underline;
+	}
+}
+
+.pb-thumb {
+	display: block;
+	width: 100%;
+	height: 100%;
+
+	.bg {
+		fill: var(--fm-soft);
+	}
+
+	.bar {
+		fill: var(--fm-line);
+	}
+
+	.hi {
+		fill: var(--theme-color);
+		opacity: 0.85;
+	}
+
+	.lo {
+		fill: var(--theme-color);
+		opacity: 0.45;
+	}
+
+	.crd {
+		fill: var(--fm-surface);
+		stroke: var(--fm-line);
+	}
+}
+
+.layout-selection-sec .theme-card {
+	.library-box.pb-lib {
+		aspect-ratio: 4 / 3;
+		padding: 12px;
+		overflow: hidden;
+	}
+
+	.content-sec.pb-content {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px 8px;
+	}
+}
+
+.pb-card-actions {
+	display: flex;
+	gap: 4px;
+	margin-left: auto;
+
+	a {
+		padding: 2px 4px;
+		font-size: 17px;
+		color: var(--fm-muted);
+	}
+}
+
+.pb-when {
+	width: 100%;
+	font-size: 12.5px;
+	color: var(--fm-muted);
+}

@@ -186,7 +186,11 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 			layoutCount: 1,
 		});
 		const page = await service.page('home', new Date('2026-11-17T00:00:00Z'));
-		expect(page.layouts[0]).toMatchObject({ status: 'live', updatedByName: 'Moulik' });
+		expect(page.layouts[0]).toMatchObject({
+			status: 'live',
+			updatedByName: 'Moulik',
+			outline: [{ type: 'newsletter', arrangement: null }],
+		});
 		await expect(service.page('cart')).rejects.toMatchObject({ status: 404 });
 	});
 

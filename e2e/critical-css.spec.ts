@@ -20,13 +20,14 @@ test.describe('critical CSS on Home', () => {
 
 		await page.goto('/en/');
 		await expect(page.locator('style[data-st-critical]')).toHaveCount(1);
-		// The first paint draws with the faces whose file the page preloads (Public Sans' English letters, the icon
-		// font) and the measured Public Sans fallback (a font on the device). No other face is declared early, so the
+		// The first paint draws with the faces whose file the page preloads (Public Sans' English letters, the shop's
+		// icons) and the measured Public Sans fallback (a font on the device). No other face is declared early, so the
 		// critical CSS never starts a font download of its own; those arrive with the full stylesheets.
 		const critical = (await page.locator('style[data-st-critical]').textContent()) ?? '';
 		expect(critical).toContain('/assets/fonts/text/public-sans-normal-100-900-latin.woff2');
 		expect(critical).toMatch(/@font-face\s*\{[^}]*font-family:\s*["']?remixicon/);
-		expect(critical).toContain('/assets/fonts/remixicon/remixicon.woff2?t=1690730386070');
+		expect(critical).toMatch(/\/assets\/fonts\/remixicon\/remixicon-shop\.woff\?v=[0-9a-f]+/);
+		expect(critical).not.toContain('remixicon.woff2');
 		expect(critical).toMatch(
 			/@font-face\s*\{[^}]*font-family:\s*["']?Public Sans Fallback["']?;[^}]*src:\s*local\(/,
 		);
@@ -124,6 +125,37 @@ test.describe('critical CSS on Home', () => {
 			expect(Math.abs(box.height - (fallback[index]?.height ?? 0))).toBeLessThanOrEqual(1),
 		);
 		expect(Math.abs(total(fallback) / total(real) - 1)).toBeLessThan(0.03);
+	});
+
+	test("Home's icons come from the shop's small icon file, and every one draws", async ({ page }) => {
+		const fonts: string[] = [];
+		page.on('request', (request) => {
+			if (request.url().includes('/assets/fonts/remixicon/')) fonts.push(new URL(request.url()).pathname);
+		});
+		await page.goto('/en/', { waitUntil: 'networkidle' });
+		await page.evaluate(() => document.fonts.ready);
+		expect(fonts).toContain('/assets/fonts/remixicon/remixicon-shop.woff');
+		// The full font (every other icon) is never needed on Home.
+		expect(fonts).not.toContain('/assets/fonts/remixicon/remixicon.woff2');
+		const icons = await page.evaluate(() => {
+			const shown = [...document.querySelectorAll('[class^="ri-"], [class*=" ri-"]')].filter(
+				(element) => element.getBoundingClientRect().width > 0,
+			);
+			return shown.map((element) => {
+				const before = getComputedStyle(element, '::before');
+				return {
+					content: before.content,
+					family: before.fontFamily,
+					width: element.getBoundingClientRect().width,
+				};
+			});
+		});
+		expect(icons.length).toBeGreaterThan(5);
+		for (const icon of icons) {
+			expect(icon.family).toContain('remixicon');
+			expect(icon.content).not.toBe('none');
+			expect(icon.width).toBeGreaterThan(0);
+		}
 	});
 
 	test('leaves pages that take no part as they are', async ({ request }) => {

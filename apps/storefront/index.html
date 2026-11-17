@@ -50,16 +50,20 @@
 			crossorigin
 		/>
 
-		<!-- Remix Icon: the font is preloaded so icons do not reflow text when it arrives. -->
+		<!--
+			Remix Icon: the icons the shop uses are preloaded so they do not reflow text when they arrive. They are a
+			small part of the font (scripts/split-icon-font.mjs); any other icon loads from the full font only if a
+			page shows it. remixicon-shop.css is the vendor's remixicon.css with only its @font-face replaced.
+		-->
 		<link
 			rel="preload"
-			href="/assets/fonts/remixicon/remixicon.woff2?t=1690730386070"
+			href="/assets/fonts/remixicon/remixicon-shop.woff?v=0b4f29a9"
 			as="font"
-			type="font/woff2"
+			type="font/woff"
 			crossorigin
 		/>
 		<link
-			href="/assets/css/remixicon.css"
+			href="/assets/css/remixicon-shop.css"
 			rel="stylesheet"
 		/>
 		<link

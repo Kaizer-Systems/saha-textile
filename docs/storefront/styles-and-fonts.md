@@ -18,6 +18,10 @@ source_of_truth:
     - scripts/self-host-fonts.mjs
     - scripts/font-fallback-metrics.mjs
     - apps/storefront/src/font-fallbacks.css
+    - apps/storefront/src/app/layout/header/widgets/language/language.scss
+    - scripts/split-icon-font.mjs
+    - apps/storefront/public/assets/css/remixicon-shop.css
+    - apps/storefront/src/icon-font.spec.ts
     - scripts/build-fallback-pages.mjs
     - docker/production/nginx/edge.conf.template
 ---
@@ -57,13 +61,27 @@ The theme stylesheet is about 1 MB (100 KB compressed). Linked normally it block
 
 - **What works it out.** Beasties (the successor of Google's Critters, used by Angular and Nuxt) reads a page's own HTML and keeps the rules its elements need, media queries included, so one answer serves phones and computers.
 - **When.** Working it out takes about 5 s on this stylesheet, so it never runs on a shopper's request. The first visit to a page after a release is sent as drawn; a worker thread then works out that page's critical CSS once, and later visits get it. The answer is reused for six hours, then worked out again in the background.
-- **Fonts.** The first paint must draw text in the room it will finally take, or the header moves when the fonts apply (a layout shift). So the inlined block declares the faces whose file the page already preloads (`index.html` preloads Public Sans' English letters and the icon font) and the measured Public Sans fallback below; every other face (বাংলা, italic, the subset with the ₹ sign) is left to the full stylesheets, so the critical CSS never starts a font download of its own (`preloadedFontsOnly`). Two details: Beasties 0.5.4 drops a selector made of one bare attribute test, such as the icon font's `[class^='ri-']`, so `allowRules` keeps the shop's three such selectors (a unit test lists them); and the inlined icon-font address is rewritten to the same file `index.html` preloads. The options are `BEASTIES_OPTIONS` in `src/server/critical-css.ts`.
+- **Fonts.** The first paint must draw text in the room it will finally take, or the header moves when the fonts apply (a layout shift). So the inlined block declares the faces whose file the page already preloads (`index.html` preloads Public Sans' English letters and the shop's icons) and the measured Public Sans fallback below; every other face (বাংলা, italic, the subset with the ₹ sign) is left to the full stylesheets, so the critical CSS never starts a font download of its own (`preloadedFontsOnly`). Two details: Beasties 0.5.4 drops a selector made of one bare attribute test, such as the icon font's `[class^='ri-']`, so `allowRules` keeps the shop's three such selectors (a unit test lists them); and the inlined icon-font address resolves to the same file `index.html` preloads. The options are `BEASTIES_OPTIONS` in `src/server/critical-css.ts`.
 - **Which pages.** Pages are grouped by type and language (Home in English, Home in বাংলা). The key also holds the stylesheets the page links and the page's Page Builder section outline, so a new build, dark mode (which links its own stylesheet) or another layout never reuses an answer made for something else.
 - **How the page changes.** A `<style data-st-critical>` block goes before the first stylesheet, and each local stylesheet becomes `media="print"` switched to `all` once it has loaded, with a `<noscript>` link for browsers without JavaScript. The shop's CSP allows both.
 - **Seeing it.** The page answer carries `x-st-critical: pending` or `inlined`. `ST_CRITICAL_CSS=off` turns it off.
 - **Pages that take part.** Home first (`PAGE_TYPES` in `src/server/critical-css.ts`); other page types join once their pages are checked with it.
 
 `ST_BUILD_DIR=<folder> pnpm build` builds the shop into that folder instead of `dist/`, so a build can be measured beside a running shop without replacing the files it serves.
+
+## The icon font
+
+The theme's icons are Remix Icon, one font of about 2,500 icons (141 KB as WOFF2). Every page used to preload all of it at high priority, competing with the page's first picture on a phone, while the shop's templates use about a hundred. The font is now split by `unicode-range`, the technique Google Fonts uses for large fonts: the same family is declared twice, each declaration covering different characters, and a browser downloads a file only when the page shows one of its characters.
+
+- `remixicon-shop.woff` holds the icons the shop names (templates, code and demo data) and the code points the theme's own styles draw: 102 icons, about 9 KB. `index.html` preloads it, so icons still never reflow text.
+- Every other icon is declared from the vendor's own `remixicon.woff2`, unchanged, for the other characters only, so a page fetches it only if it ever shows one of them. Nothing is removed and every icon still works.
+- `index.html` links `public/assets/css/remixicon-shop.css`, which is the vendor's `remixicon.css` with only its `@font-face` replaced; every icon rule is the vendor's, byte for byte. The vendor stylesheet stays in the repository as the source, and the service worker does not precache it.
+
+`node scripts/split-icon-font.mjs` writes the WOFF, the stylesheet and the preload's `?v=` version. It needs HarfBuzz's `hb-subset` (`brew install harfbuzz`) and packs the subset as WOFF 1.0 with Node's zlib. Run it after adding an icon to a template: `src/icon-font.spec.ts` fails until then, and also checks that the stylesheet still matches the vendor file, that every icon belongs to exactly one file and that `index.html` preloads the right address. A one-off check drew all 102 icons from the new file and from the full font in Chrome and found them pixel-identical; `e2e/critical-css.spec.ts` checks that Home fetches only the small file and that every icon on it draws.
+
+## The language menu's flags
+
+The page-language menu shows a flag beside each language (`languageFlag` in core: `us` for English, `in` for every other language). The theme draws `.iti-flag` from intl-tel-input's country sprite on cdnjs, which is 5,630 px wide and 161 KB at double density, and every page fetched it at high priority for two 20 px flags. The language widget's own stylesheet now points those two at `public/assets/images/flags/us.svg` and `in.svg` (2 to 7 KB, drawn to the flags' official proportions); the theme's box, shadow and grey backing are unchanged. Any other flag code still draws from the sprite, and the phone-number field on the sign-in pages keeps it, since it lists every country. `e2e/languages.spec.ts` checks that Home requests no sprite.
 
 ## Dark mode
 

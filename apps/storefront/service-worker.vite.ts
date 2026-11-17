@@ -58,8 +58,9 @@ export function serviceWorkerPlugins(): Plugin[] {
 			manifest: false,
 			injectManifest: {
 				globPatterns: ['**/*.{js,css}'],
-				// The dark theme loads only when the shop's mode is dark, so light shoppers never download it.
-				globIgnores: ['**/theme-dark.gen.css'],
+				// The dark theme loads only when the shop's mode is dark, so light shoppers never download it. The vendor's
+				// remixicon.css is the source of remixicon-shop.css (scripts/split-icon-font.mjs); no page links it.
+				globIgnores: ['**/theme-dark.gen.css', '**/assets/css/remixicon.css'],
 				maximumFileSizeToCacheInBytes: 16 * 1024 * 1024,
 				manifestTransforms: [buildMarker],
 			},

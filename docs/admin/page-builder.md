@@ -149,6 +149,10 @@ The same answer carries "What will change on the shop" (SG-16: sections added, r
 
 **The nightly check (SG-12)** runs every live and scheduled revision through the same checks again (a collection that went off the shop, a photo gone, a language switched on) and keeps the result for the bell (`page_builder_nightly_check`).
 
+## Adding a page type
+
+A page joins the builder by being registered in core (`registerPageType` in `packages/core-domain/src/page-builder/registry.ts`): its key, kind, slots and the sections each takes, where its one main heading comes from, whether search engines list it, and its budget. The contract only checks a key's shape; the API answers 404 for a key the registry does not know. Nothing else is made per page: the same collections, routes, screens, checks, schedules, History and the `page_builder.go_live` permission serve every type. The shop then draws `app-page-layout` in the page's slots. `apps/api/test/page-builder-new-type.test.ts` proves it on every run with a test-only type (list, layouts, draft and its slot rules, preview, Go Live, the shop's answer, History), and the database test stores it in the same collections.
+
 ## Speed baseline
 
 Measured on 17 Nov 2026 on a production build behind compression, Lighthouse 12.6.1, median of three runs:

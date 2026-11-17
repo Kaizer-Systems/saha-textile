@@ -70,7 +70,7 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 	const clean = async () => {
 		await PageLayoutModel.deleteMany({ _id: /^lay_pb_test/ }).exec();
 		await PageLayoutRevisionModel.deleteMany({ layoutId: /^lay_pb_test/ }).exec();
-		await BuilderPageModel.deleteMany({ _id: 'home:pb_test_target' }).exec();
+		await BuilderPageModel.deleteMany({ _id: { $in: ['home:pb_test_target', 'pb_test:page'] } }).exec();
 		await SavedBlockModel.deleteMany({ _id: /^blk_pb_test/ }).exec();
 	};
 
@@ -266,6 +266,40 @@ describe.runIf(hasMongoEnv())('Page Builder persistence (rs0)', () => {
 		await layouts.setPending('home', 'pb_test_target', [], at(4));
 		page = await layouts.page('home', 'pb_test_target');
 		expect(page).toMatchObject({ safeMode: null, pending: [] });
+	});
+
+	it('stores a second page type in the same collections, with nothing made for it (PG-8)', async () => {
+		await layouts.createLayout({
+			id: `${LAYOUT}_type`,
+			pageType: 'pb_test',
+			target: 'page',
+			name: 'Test page type',
+			template: null,
+			draftRevisionId: null,
+			lastLiveRevisionId: null,
+			createdAt: at(0),
+			updatedAt: at(0),
+			updatedBy: null,
+			reviewRequest: null,
+		});
+		const revision = await layouts.saveDraft({
+			layoutId: `${LAYOUT}_type`,
+			sections: [hero],
+			expectedDraftId: null,
+			by: null,
+			at: at(1),
+		});
+		const entry = {
+			revisionId: revision?.id ?? '',
+			layoutId: `${LAYOUT}_type`,
+			from: at(2),
+			until: null,
+			by: null,
+		};
+		await layouts.goLive({ pageType: 'pb_test', target: 'page', entry, at: at(2) });
+		expect((await layouts.page('pb_test', 'page'))?.schedule).toEqual([entry]);
+		expect((await layouts.layouts('pb_test', 'page')).map((layout) => layout.id)).toEqual([`${LAYOUT}_type`]);
+		expect((await layouts.layouts('home', 'page')).some((layout) => layout.id === `${LAYOUT}_type`)).toBe(false);
 	});
 
 	it('keeps who asked for a review of a layout, lists those waiting newest first, and clears it (SG-18)', async () => {

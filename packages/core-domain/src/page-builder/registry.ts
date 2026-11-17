@@ -54,6 +54,17 @@ const HOME: PageTypeRules = {
 
 const REGISTRY = new Map<string, PageTypeRules>([[HOME.key, HOME]]);
 
+/**
+ * Registers a page type: its address rules, slots, heading and budget. Everything else (store, API, screens, checks,
+ * schedules, permission) is shared, which is what the test-only page type proves (PG-8). Answers a function that
+ * takes it off again. A key already registered is refused.
+ */
+export function registerPageType(rules: PageTypeRules): () => void {
+	if (REGISTRY.has(rules.key)) throw new Error(`Page type ${rules.key} is already registered`);
+	REGISTRY.set(rules.key, rules);
+	return () => void REGISTRY.delete(rules.key);
+}
+
 /** The rules of a registered page type, or null for an unknown key. */
 export function pageTypeRules(key: string): PageTypeRules | null {
 	return REGISTRY.get(key) ?? null;

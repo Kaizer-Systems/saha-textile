@@ -14,8 +14,12 @@ import { BannerImageSet, ContentBlockLink, HomeHeroLayout, ResolvedBanner } from
 
 // ── Page types ──────────────────────────────────────────────────────────────────────────────────────────
 
-/** Registered page types. Home is the first; others join by being added here and in core's registry. */
-export const PageTypeKey = z.enum(['home']);
+/**
+ * A page type's key, as core's registry names it ('home' first). The shape is all the contract knows: which keys
+ * exist is the registry's business, so a new page joins by being registered there, with no change here (PG-4,
+ * PG-8); the API answers 404 for a key the registry does not know.
+ */
+export const PageTypeKey = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/);
 export type PageTypeKey = z.infer<typeof PageTypeKey>;
 
 /** What kind of page a type is: every section yours, a list with slots around it, or an item with slots. */

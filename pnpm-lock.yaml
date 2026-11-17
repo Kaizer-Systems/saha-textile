@@ -917,6 +917,9 @@ importers:
       '@videojs/youtube-video':
         specifier: 10.3.0
         version: 10.3.0
+      beasties:
+        specifier: 0.5.4
+        version: 0.5.4
       bootstrap:
         specifier: ^5.3.8
         version: 5.3.8(@popperjs/core@2.11.8)

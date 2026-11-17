@@ -38,7 +38,8 @@ function forClientBuildOnly(plugins: Plugin[]): Plugin[] {
 			...plugin,
 			applyToEnvironment: isClient,
 			configResolved(this: unknown, config) {
-				if (config.build.outDir.endsWith('dist/client')) return resolved.call(this as never, config);
+				// The client build's folder: `dist/client`, or `<ST_BUILD_DIR>/client` for a side-by-side build.
+				if (/[\\/]client$/.test(config.build.outDir)) return resolved.call(this as never, config);
 			},
 		};
 	});

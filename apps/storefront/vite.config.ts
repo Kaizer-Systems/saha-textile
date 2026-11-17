@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 
 import analog from '@analogjs/platform';
@@ -51,6 +52,13 @@ const angularServerMode = (): Plugin => ({
 	},
 });
 
+/**
+ * `ST_BUILD_DIR=<folder>` builds into that folder (client, server render and Nitro output under it) instead of
+ * `dist/`, so a build can be measured beside a running shop without replacing the files that shop serves. Unset
+ * (every normal build), nothing changes.
+ */
+const buildDir = process.env['ST_BUILD_DIR'] ? appPath(`./${process.env['ST_BUILD_DIR']}`) : null;
+
 export default defineConfig(({ command }) => ({
 	// Pin the project root to this file's dir (as the Analog template does) so
 	// Vite behaves identically regardless of the launch cwd — otherwise resolution
@@ -98,6 +106,7 @@ export default defineConfig(({ command }) => ({
 	},
 	build: {
 		target: ['es2020'],
+		...(buildDir ? { outDir: `${buildDir}/client` } : {}),
 	},
 	resolve: {
 		mainFields: ['module'],
@@ -127,6 +136,7 @@ export default defineConfig(({ command }) => ({
 		angularServerMode(),
 		analog({
 			ssr: true,
+			...(buildDir ? { ssrBuildDir: `${buildDir}/ssr` } : {}),
 			static: false,
 			// No prerendering: the shop is fully dynamic — every route self-fetches
 			// i18n + mock data over HTTP, which has no server to hit at build time.
@@ -143,7 +153,11 @@ export default defineConfig(({ command }) => ({
 				// the built server without affecting the client bundle.
 				externals: {
 					inline: ['tslib'],
+					// The critical-CSS worker loads Beasties by name (server/plugins/critical-css.ts), so the server
+					// output must carry it although no bundled module imports it.
+					traceInclude: [createRequire(import.meta.url).resolve('beasties')],
 				},
+				...(buildDir ? { output: { dir: `${buildDir}/analog`, publicDir: `${buildDir}/analog/public` } } : {}),
 				prerender: {
 					crawlLinks: false,
 					routes: [],

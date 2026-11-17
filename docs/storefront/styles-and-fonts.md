@@ -3,13 +3,16 @@ title: Styles, Dark Mode and Fonts
 description: How the storefront's global stylesheet is built and ordered, how the theme's dark mode loads only when it is switched on, and how every text font is served from the apps' own addresses.
 status: implemented
 audience: [beginner, frontend, operations]
-last_verified: '2026-11-10'
+last_verified: '2026-11-17'
 source_of_truth:
     - apps/storefront/src/styles.css
     - apps/storefront/src/scss/app.scss
     - apps/storefront/src/scss/dark.scss
     - apps/storefront/src/app/core/brand/theme-mode.ts
     - apps/storefront/service-worker.vite.ts
+    - apps/storefront/src/server/critical-css.ts
+    - apps/storefront/src/server/plugins/critical-css.ts
+    - apps/storefront/vite.config.ts
     - apps/storefront/index.html
     - apps/admin/src/styles.scss
     - scripts/self-host-fonts.mjs
@@ -44,6 +47,19 @@ The Analog dev server cannot resolve the theme's relative SCSS imports, so dart-
 - `public/assets/css/theme-dark.gen.css`: the dark mode's colour changes, described below. Sass first compiles `src/scss/dark.scss` to `src/scss/dark-copy.gen.css`, then `scripts/build-dark-theme.mjs` reduces it.
 
 The script runs before `dev`, `build` and `lint`. A running dev server does not recompile SCSS, so run `styles` after changing a theme file. `styles:watch` recompiles only the light theme; run `styles` once more to refresh the dark file. Both outputs are generated and ignored by git. The admin works the same way with its own `styles` script.
+
+## Critical CSS
+
+The theme stylesheet is about 1 MB (100 KB compressed). Linked normally it blocks the first paint until it has downloaded, which on a phone took about 4 s of the home page's first paint. The shop therefore inlines the CSS a page's first paint needs and loads the full stylesheets without blocking, as Google's guidance on critical CSS describes.
+
+- **What works it out.** Beasties (the successor of Google's Critters, used by Angular and Nuxt) reads a page's own HTML and keeps the rules its elements need, media queries included, so one answer serves phones and computers.
+- **When.** Working it out takes about 5 s on this stylesheet, so it never runs on a shopper's request. The first visit to a page after a release is sent as drawn; a worker thread then works out that page's critical CSS once, and later visits get it. The answer is reused for six hours, then worked out again in the background.
+- **Which pages.** Pages are grouped by type and language (Home in English, Home in বাংলা). The key also holds the stylesheets the page links, so a new build or dark mode (which links its own stylesheet) never reuses an answer made for something else.
+- **How the page changes.** A `<style data-st-critical>` block goes before the first stylesheet, and each local stylesheet becomes `media="print"` switched to `all` once it has loaded, with a `<noscript>` link for browsers without JavaScript. The shop's CSP allows both.
+- **Seeing it.** The page answer carries `x-st-critical: pending` or `inlined`. `ST_CRITICAL_CSS=off` turns it off.
+- **Pages that take part.** Home first (`PAGE_TYPES` in `src/server/critical-css.ts`); other page types join once their pages are checked with it.
+
+`ST_BUILD_DIR=<folder> pnpm build` builds the shop into that folder instead of `dist/`, so a build can be measured beside a running shop without replacing the files it serves.
 
 ## Dark mode
 

@@ -74,43 +74,39 @@ test.describe('Page Builder on the shop (step 3)', () => {
 		// stack starts), so this layout is the one showing: the later start wins.
 		const now = new Date(Date.now() - 1_000);
 		await withDatabase(async (db) => {
-			await db
-				.collection('pageLayouts')
-				.updateOne(
-					{ _id: LAYOUT as never },
-					{
-						$set: {
-							pageType: 'home',
-							target: 'page',
-							name: 'e2e',
-							template: null,
-							draftRevisionId: REVISION,
-							lastLiveRevisionId: REVISION,
-							revisionCount: 1,
-							createdAt: now,
-							updatedAt: now,
-							updatedBy: null,
-						},
+			await db.collection('pageLayouts').updateOne(
+				{ _id: LAYOUT as never },
+				{
+					$set: {
+						pageType: 'home',
+						target: 'page',
+						name: 'e2e',
+						template: null,
+						draftRevisionId: REVISION,
+						lastLiveRevisionId: REVISION,
+						revisionCount: 1,
+						createdAt: now,
+						updatedAt: now,
+						updatedBy: null,
 					},
-					{ upsert: true },
-				);
-			await db
-				.collection('pageLayoutRevisions')
-				.updateOne(
-					{ _id: REVISION as never },
-					{
-						$set: {
-							layoutId: LAYOUT,
-							number: 1,
-							sections,
-							assetIds: [],
-							createdAt: now,
-							createdBy: null,
-							wentLiveAt: now,
-						},
+				},
+				{ upsert: true },
+			);
+			await db.collection('pageLayoutRevisions').updateOne(
+				{ _id: REVISION as never },
+				{
+					$set: {
+						layoutId: LAYOUT,
+						number: 1,
+						sections,
+						assetIds: [],
+						createdAt: now,
+						createdBy: null,
+						wentLiveAt: now,
 					},
-					{ upsert: true },
-				);
+				},
+				{ upsert: true },
+			);
 			await db.collection('builderPages').updateOne(
 				{ _id: 'home:page' as never },
 				{
@@ -166,7 +162,9 @@ test.describe('Page Builder on the shop (step 3)', () => {
 
 		// Changing slides moves nothing else on the page.
 		const below = page.locator('[data-pb-section="newsletter"]');
-		const before = await below.boundingBox();
+		// Measured on the page, not the window: clicking a bar may scroll the window, which is not a layout shift.
+		const top = () => below.evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+		const before = await top();
 		for (const n of [2, 3, 1]) {
 			await slider
 				.locator('.pb-bar')
@@ -174,7 +172,7 @@ test.describe('Page Builder on the shop (step 3)', () => {
 				.click();
 			await expect(slider.locator('.pb-bar').nth(n - 1)).toHaveAttribute('aria-current', 'true');
 		}
-		expect(await below.boundingBox()).toEqual(before);
+		expect(await top()).toBe(before);
 	});
 
 	test('switch on, in বাংলা: the words come in the page language', async ({ page }) => {

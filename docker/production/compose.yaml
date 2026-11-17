@@ -134,6 +134,8 @@ services:
     env_file: ./public/storefront.env
     environment:
       DEPLOY_ENV: ${DEPLOY_ENV}
+      # The only page the admin may frame: the Page Builder's preview (server/middleware/preview.ts).
+      ADMIN_ORIGIN: https://${ADMIN_HOST}
       # The server calls the API through the edge, which presents the Origin Certificate.
       NODE_EXTRA_CA_CERTS: /certs/origin-ca.pem
     volumes:

@@ -9,6 +9,9 @@ import {
 	overlappingEntries,
 	pageTypeRules,
 	SECTION_COMMON_DEFAULTS,
+	HOME_TEMPLATES,
+	isHomeTemplate,
+	templateSections,
 	shopSections,
 	nextContentChangeAt,
 	sectionAllowed,
@@ -373,5 +376,70 @@ describe('what the shop draws (shop layout)', () => {
 		expect(nextContentChangeAt(sections, new Date('2026-12-10T00:00:00Z'))?.toISOString()).toBe(
 			'2027-01-01T00:00:00.000Z',
 		);
+	});
+});
+
+describe("Home's templates (Q9 A)", () => {
+	const both2 = { en: 'x', bn: 'y' };
+	const block = (position: ContentBlock['position'], slot: string): ContentBlock => ({
+		id: `${position}-${slot}`,
+		key: `home:-:${position}:${slot}`,
+		ownerType: 'home',
+		ownerId: null,
+		position,
+		slot,
+		images: { desktop: `med_${slot}`, tablet: null, phone: null },
+		containsText: false,
+		localeImages: {},
+		imageVersions: {},
+		heading: {},
+		subheading: {},
+		ctaLabel: {},
+		link: null,
+		alt: both2,
+		status: 'active',
+		startsAt: null,
+		endsAt: null,
+	});
+	const banners = [block('hero', 'main'), block('hero', 'slide_2'), block('promo_wide', 'item_1')];
+
+	it('offers today’s page and the four arrangements, each a whole page', () => {
+		expect(HOME_TEMPLATES.map((template) => template.key)).toEqual([
+			'today',
+			'full_width_slides',
+			'main_side_tile',
+			'main_two_stacked',
+			'centre_side_tiles',
+		]);
+		expect(isHomeTemplate('main_side_tile')).toBe(true);
+		expect(isHomeTemplate('rome_page')).toBe(false);
+	});
+
+	it('starts an arrangement with empty pieces, or with today’s pictures in the pieces of the same name', () => {
+		const empty = templateSections('centre_side_tiles', { banners, heroLayout: 'hero_full', bringPictures: false });
+		const hero = empty[0];
+		if (hero?.type !== 'banner_arrangement') throw new Error('hero first');
+		expect(hero.arrangement).toBe('hero_center_sides');
+		expect(hero.pieces.map((p) => [p.name, p.pictures.length])).toEqual([
+			['main', 0],
+			['left', 0],
+			['right', 0],
+		]);
+		const promos = empty[1];
+		if (promos?.type !== 'promo_banners') throw new Error('promos second');
+		expect(promos.pieces.map((p) => p.name)).toEqual(['item_1', 'item_2']);
+
+		const filled = templateSections('main_side_tile', { banners, heroLayout: 'hero_full', bringPictures: true });
+		const main = filled[0];
+		if (main?.type !== 'banner_arrangement') throw new Error('hero first');
+		// Only `main` matches by name: the full-width slides are not this arrangement's pieces.
+		expect(main.pieces.map((p) => [p.name, p.pictures.length])).toEqual([
+			['main', 1],
+			['side', 0],
+		]);
+		const today = templateSections('today', { banners, heroLayout: 'hero_full', bringPictures: false });
+		const todayHero = today[0];
+		if (todayHero?.type !== 'banner_arrangement') throw new Error('hero first');
+		expect(todayHero.pieces[0]?.pictures).toHaveLength(2);
 	});
 });

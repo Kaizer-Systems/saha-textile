@@ -38,7 +38,7 @@
 		<div>
 			<div
 				class="theme-card"
-				[class.active]="copyOf() === null"
+				[class.active]="copyOf() === null && template() === null"
 			>
 				<div class="library-box pb-lib">
 					<app-pb-thumb [outline]="[{ type: 'newsletter', arrangement: null }]" />
@@ -50,8 +50,8 @@
 							type="radio"
 							name="pb_start"
 							id="pb_start_blank"
-							[checked]="copyOf() === null"
-							(change)="copyOf.set(null)"
+							[checked]="copyOf() === null && template() === null"
+							(change)="choose(null)"
 						/>
 						<strong>{{ 'pb_start_blank' | transloco }}</strong>
 					</label>
@@ -76,7 +76,7 @@
 							name="pb_start"
 							[attr.data-copy]="row.layout.id"
 							[checked]="copyOf() === row.layout.id"
-							(change)="copyOf.set(row.layout.id)"
+							(change)="choose({ copyOf: row.layout.id })"
 						/>
 						<strong>{{ 'pb_start_copy' | transloco: { name: row.layout.name } }}</strong>
 					</label>
@@ -84,8 +84,52 @@
 				</div>
 			</div>
 		</div>
+		} @for (item of templates(); track item.key) {
+		<div>
+			<div
+				class="theme-card"
+				[class.active]="template() === item.key"
+			>
+				<div class="library-box pb-lib">
+					<app-pb-thumb [outline]="item.outline" />
+				</div>
+				<div class="content-sec pb-content">
+					<label class="d-flex align-items-center mb-0 gap-2">
+						<input
+							class="form-check-input mt-0"
+							type="radio"
+							name="pb_start"
+							[attr.data-template]="item.key"
+							[checked]="template() === item.key"
+							(change)="choose({ template: item.key })"
+						/>
+						<strong>{{ 'pb_template_' + item.key | transloco }}</strong>
+					</label>
+					<span class="pb-when">{{ 'pb_template_locked' | transloco }}</span>
+				</div>
+			</div>
+		</div>
 		}
 	</div>
+	@if (template() && template() !== 'today') {
+	<div class="form-check form-switch d-flex align-items-center mt-3 gap-2 ps-0">
+		<label class="switch mb-0">
+			<input
+				type="checkbox"
+				id="pb_bring_pictures"
+				[checked]="bringPictures()"
+				(change)="bringPictures.set($any($event.target).checked)"
+			/>
+			<span class="switch-state"></span>
+		</label>
+		<label
+			class="mb-0"
+			for="pb_bring_pictures"
+		>
+			{{ 'pb_bring_pictures' | transloco }}
+		</label>
+	</div>
+	}
 </div>
 <div class="modal-footer">
 	<div class="left-part"></div>

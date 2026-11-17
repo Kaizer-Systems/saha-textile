@@ -2,4 +2,5 @@ export * from './checks';
 export * from './registry';
 export * from './schedule';
 export * from './shop-layout';
+export * from './templates';
 export * from './todays-home';

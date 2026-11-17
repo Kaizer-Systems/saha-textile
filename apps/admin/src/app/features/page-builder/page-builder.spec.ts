@@ -42,6 +42,7 @@ const page: AdminBuilderPage = {
 			by: null,
 		},
 	],
+	templates: [],
 	layouts: [
 		{
 			layout: layout('lay_today', 'Today’s home page'),
@@ -125,6 +126,8 @@ describe('Page Builder › Home (A1)', () => {
 			name: 'pb_copy_name:Winter weddings',
 			start: 'copy',
 			copyOf: 'lay_winter',
+			template: null,
+			bringPictures: true,
 		});
 		expect(toastr.success).toHaveBeenCalledWith('pb_layout_created');
 		expect(load).toHaveBeenCalledTimes(2);
@@ -158,13 +161,27 @@ describe('New layout (A2)', () => {
 			name: 'Winter weddings',
 			start: 'blank',
 			copyOf: null,
+			template: null,
+			bringPictures: true,
 		});
-		popup.copyOf.set('lay_today');
+		popup.choose({ copyOf: 'lay_today' });
 		await popup.create();
 		expect(createLayout).toHaveBeenLastCalledWith('home', {
 			name: 'Winter weddings',
 			start: 'copy',
 			copyOf: 'lay_today',
+			template: null,
+			bringPictures: true,
+		});
+		popup.choose({ template: 'main_side_tile' });
+		popup.bringPictures.set(false);
+		await popup.create();
+		expect(createLayout).toHaveBeenLastCalledWith('home', {
+			name: 'Winter weddings',
+			start: 'template',
+			copyOf: null,
+			template: 'main_side_tile',
+			bringPictures: false,
 		});
 		expect(close).toHaveBeenCalled();
 	});

@@ -460,6 +460,13 @@ export const AdminBuilderPage = z.object({
 	liveRevisionId: Id.nullable(),
 	nextSwitchAt: IsoDateTime.nullable(),
 	layouts: z.array(AdminLayoutRow),
+	/** The page type's templates, with an outline for their cards (A1, Q9 A). */
+	templates: z.array(
+		z.object({
+			key: z.string(),
+			outline: z.array(z.object({ type: SectionType, arrangement: BannerArrangement.nullable() })),
+		}),
+	),
 });
 export type AdminBuilderPage = z.infer<typeof AdminBuilderPage>;
 
@@ -467,12 +474,19 @@ export type AdminBuilderPage = z.infer<typeof AdminBuilderPage>;
 export const CreateLayoutRequest = z
 	.object({
 		name: z.string().trim().min(1).max(80),
-		start: z.enum(['blank', 'copy']).default('blank'),
+		start: z.enum(['blank', 'copy', 'template']).default('blank'),
 		copyOf: Id.nullable().default(null),
+		/** A template of the page's type (Q9 A); its sections then stay in place (Q8 A). */
+		template: z.string().min(1).max(60).nullable().default(null),
+		/** A2's switch: today's live banners fill the template's pieces with the same name. */
+		bringPictures: z.boolean().default(true),
 	})
 	.superRefine((request, ctx) => {
 		if (request.start === 'copy' && !request.copyOf) {
 			ctx.addIssue({ code: 'custom', message: 'a copy names the layout it copies', path: ['copyOf'] });
+		}
+		if (request.start === 'template' && !request.template) {
+			ctx.addIssue({ code: 'custom', message: 'a template start names the template', path: ['template'] });
 		}
 	});
 export type CreateLayoutRequest = z.infer<typeof CreateLayoutRequest>;

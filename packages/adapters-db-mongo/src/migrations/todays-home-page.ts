@@ -1,39 +1,15 @@
-import { todaysHomePage, type TodaysHomeTitles } from '@saha-textile/core-domain';
+import { TODAYS_HOME_TITLES, todaysHomePage } from '@saha-textile/core-domain';
 
 import { PageLayoutModel } from '../models/index';
 import { MongoContentBlockRepository } from '../repositories/content-block.repository';
 import { MongoPageLayoutRepository } from '../repositories/page-layout.repository';
 import { MongoSiteSettingsRepository } from '../repositories/site-settings.repository';
 
+/** Home's section titles as shipped, kept in core with the templates (re-exported for the release step's users). */
+export { TODAYS_HOME_TITLES };
+
 /** The layout's fixed id, so the step can tell it already ran and never makes a second one. */
 export const TODAYS_HOME_LAYOUT_ID = 'lay_home_today';
-
-/**
- * The fixed home page's section titles as the shop's language files held them on 17 Nov 2026 (copied, because the
- * API never reads the shop's files). From here on they are the layout's own words, changed in the builder.
- */
-export const TODAYS_HOME_TITLES: TodaysHomeTitles = {
-	newArrivals: { en: 'New Arrivals', bn: 'নতুন এসেছে' },
-	recentlyViewed: { en: 'Recently Viewed', bn: 'সম্প্রতি দেখেছেন' },
-	bestsellers: { en: 'Bestsellers', bn: 'বেস্টসেলার' },
-	featured: { en: 'Featured', bn: 'বাছাই করা' },
-	onSale: { en: 'Sale', bn: 'সেল' },
-	videos: { en: 'Watch on YouTube', bn: 'YouTube-এ দেখুন' },
-	videosDescription: {
-		en: 'New collections from our Kolkata shop, on our YouTube channel.',
-		bn: 'আমাদের কলকাতার দোকানের নতুন কালেকশন, আমাদের YouTube চ্যানেলে।',
-	},
-	blog: { en: 'Featured Blog', bn: 'বাছাই করা ব্লগ' },
-	blogDescription: {
-		en: 'Uncover Intriguing Highlights in Our Featured Blog',
-		bn: 'আমাদের বাছাই করা ব্লগের আকর্ষণীয় লেখাগুলি পড়ুন',
-	},
-	newsletter: { en: 'Join Our Newsletter', bn: 'আমাদের নিউজলেটারে যোগ দিন' },
-	newsletterSubtitle: {
-		en: 'New arrivals and offers, straight to your inbox',
-		bn: 'নতুন পণ্য আর অফারের খবর, সরাসরি আপনার ইনবক্সে',
-	},
-};
 
 /**
  * Migration 0005 (Page Builder, build step 2): Home's first layout, "Today's home page", made from today's live

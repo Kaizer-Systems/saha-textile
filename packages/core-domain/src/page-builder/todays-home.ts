@@ -109,13 +109,14 @@ export function todaysHomePage(
 	banners: readonly ContentBlock[],
 	heroLayout: HomeHeroLayout,
 	titles: TodaysHomeTitles,
+	options: { keepEmptyBanners?: boolean } = {},
 ): PageSection[] {
 	const live = banners.filter((block) => block.ownerType === 'home' && block.status === 'active');
 	const hero = live.filter((block) => block.position === 'hero');
 	const promos = live.filter((block) => block.position === 'promo_wide');
 	const sections: PageSection[] = [];
 
-	if (hero.length > 0) {
+	if (hero.length > 0 || options.keepEmptyBanners) {
 		const bySlot = (slot: string) => hero.filter((block) => block.slot === slot);
 		// hero_full's slides become Main's pictures (a slider); the other arrangements' tiles become their pieces.
 		const pieces = ARRANGEMENT_PIECE_NAMES[heroLayout].map((name) =>
@@ -135,7 +136,7 @@ export function todaysHomePage(
 			pieces,
 		});
 	}
-	if (promos.length > 0) {
+	if (promos.length > 0 || options.keepEmptyBanners) {
 		const pieces = ['item_1', 'item_2']
 			.map((slot) =>
 				piece(
@@ -143,7 +144,7 @@ export function todaysHomePage(
 					promos.filter((block) => block.slot === slot).map((block) => pictureOf(block, 'promo')),
 				),
 			)
-			.filter((item) => item.pictures.length > 0);
+			.filter((item) => item.pictures.length > 0 || options.keepEmptyBanners);
 		sections.push({ ...SECTION_COMMON_DEFAULTS, id: 'promos', type: 'promo_banners', pieces });
 	}
 	sections.push(

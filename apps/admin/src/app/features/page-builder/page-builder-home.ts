@@ -35,8 +35,8 @@ export const STATUS_CLASS: Record<AdminLayoutRow['status'], string> = {
 };
 
 /**
- * Page Builder › Home (brief A1): what shoppers see and when, and the page's layouts as cards with their status.
- * New layout opens A2. The builder itself (Edit) and Go Live come with their own build steps.
+ * Page Builder › Home (brief A1): what shoppers see and when, the page's layouts as cards with their status, and
+ * the page's templates (Q9 A). New layout, or Use this on a template, opens A2. The builder itself (Edit) and Go Live come with their own build steps.
  */
 @Component({
 	selector: 'app-page-builder-home',
@@ -88,9 +88,14 @@ export class PageBuilderHome {
 		});
 	}
 
-	async newLayout(): Promise<void> {
+	async newLayout(template: string | null = null): Promise<void> {
 		const ref = this.modals.open(PbNewLayout, { centered: true, size: 'lg' });
-		(ref.componentInstance as PbNewLayout).start(this.pageType, this.page()?.layouts ?? []);
+		(ref.componentInstance as PbNewLayout).start(
+			this.pageType,
+			this.page()?.layouts ?? [],
+			this.page()?.templates ?? [],
+			template,
+		);
 		const made = await ref.result.catch(() => null);
 		if (made) this.load();
 	}
@@ -102,6 +107,8 @@ export class PageBuilderHome {
 					name: this.transloco.translate('pb_copy_name', { name: row.layout.name }),
 					start: 'copy',
 					copyOf: row.layout.id,
+					template: null,
+					bringPictures: true,
 				}),
 			);
 			this.toastr.success(this.transloco.translate('pb_layout_created'));

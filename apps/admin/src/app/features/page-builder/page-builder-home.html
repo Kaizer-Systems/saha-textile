@@ -7,7 +7,7 @@
 		type="button"
 		class="btn btn-theme d-flex align-items-center gap-1"
 		id="pb_new_layout"
-		(click)="newLayout()"
+		(click)="newLayout(null)"
 	>
 		<i
 			class="ri-add-line"
@@ -131,4 +131,35 @@
 		</div>
 		}
 	</div>
+
+	@if (page()?.templates?.length) {
+	<h5 class="mt-5 mb-3">{{ 'pb_templates_for' | transloco: { page: ('pb_page_' + pageType | transloco) } }}</h5>
+	<div
+		class="row row-cols-xxl-4 row-cols-xl-4 row-cols-lg-3 row-cols-md-2 row-cols-1 g-4 layout-selection-sec"
+		id="pb_templates"
+	>
+		@for (item of page()?.templates ?? []; track item.key) {
+		<div [attr.data-template]="item.key">
+			<div class="theme-card">
+				<div class="library-box pb-lib">
+					<app-pb-thumb [outline]="item.outline" />
+				</div>
+				<div class="content-sec pb-content">
+					<h5 class="mb-0">{{ 'pb_template_' + item.key | transloco }}</h5>
+					<span class="pb-card-actions">
+						<button
+							type="button"
+							class="btn btn-sm btn-outline"
+							(click)="newLayout(item.key)"
+						>
+							{{ 'pb_use_this' | transloco }}
+						</button>
+					</span>
+					<span class="pb-when">{{ 'pb_template_' + item.key + '_help' | transloco }}</span>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+	}
 </app-page-wrapper>

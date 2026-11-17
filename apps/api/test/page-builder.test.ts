@@ -136,7 +136,11 @@ const harness = (media: MediaAsset | null = null) => {
 		{ findById: async (id: string) => (id === 'adm_1' ? { displayName: 'Moulik' } : null) } as never,
 		{ findById: async () => media, findManyByIds: async () => (media ? [media] : []) } as never,
 		{ getUrl: (key: string) => `https://cdn/${key}` } as never,
-		{ get: async () => switches.value } as never,
+		{
+			get: async (key: string) =>
+				key === 'storefront.pageBuilder' ? switches.value : { heroLayout: 'hero_full' },
+		} as never,
+		{ list: async () => [] } as never,
 		audit as never,
 	);
 	return { service, store, audit, switches };
@@ -157,6 +161,8 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 			name: 'Today’s home page',
 			start: 'blank',
 			copyOf: null,
+			template: null,
+			bringPictures: true,
 		});
 		const draft = await service.saveDraft('adm_1', created.layout.id, {
 			sections: [letter],
@@ -196,12 +202,20 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 
 	it('makes a new layout as a copy of another’s draft, or blank (A2)', async () => {
 		const { service, audit } = harness();
-		const source = await service.createLayout('adm_1', 'home', { name: 'Source', start: 'blank', copyOf: null });
+		const source = await service.createLayout('adm_1', 'home', {
+			name: 'Source',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: true,
+		});
 		await service.saveDraft('adm_1', source.layout.id, { sections: [letter], expectedDraftId: null });
 		const copy = await service.createLayout('adm_1', 'home', {
 			name: 'Winter weddings',
 			start: 'copy',
 			copyOf: source.layout.id,
+			template: null,
+			bringPictures: true,
 		});
 		expect(copy.draft?.sections).toEqual([letter]);
 		expect(copy.layout).toMatchObject({
@@ -210,7 +224,13 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 			target: 'page',
 			template: null,
 		});
-		const blank = await service.createLayout(null, 'home', { name: 'Empty', start: 'blank', copyOf: null });
+		const blank = await service.createLayout(null, 'home', {
+			name: 'Empty',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: true,
+		});
 		expect(blank.draft).toBeNull();
 		expect(blank.problems).toEqual([{ kind: 'empty' }]);
 		expect(audit.append).toHaveBeenCalledWith(
@@ -220,7 +240,13 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 
 	it('refuses a draft saved over a newer one, saying who saved it and when (FX-11)', async () => {
 		const { service } = harness();
-		const layout = await service.createLayout('adm_1', 'home', { name: 'Two tabs', start: 'blank', copyOf: null });
+		const layout = await service.createLayout('adm_1', 'home', {
+			name: 'Two tabs',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: true,
+		});
 		const first = await service.saveDraft('adm_1', layout.layout.id, { sections: [letter], expectedDraftId: null });
 		await service
 			.saveDraft('adm_1', layout.layout.id, {
@@ -235,7 +261,13 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 
 	it('lists what holds Go Live, with the pictures’ real state and shape', async () => {
 		const making = harness(asset('making'));
-		const one = await making.service.createLayout(null, 'home', { name: 'Hero', start: 'blank', copyOf: null });
+		const one = await making.service.createLayout(null, 'home', {
+			name: 'Hero',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: true,
+		});
 		const view = await making.service.saveDraft(null, one.layout.id, {
 			sections: [banner('med_1', 'ver_1')],
 			expectedDraftId: null,
@@ -245,7 +277,13 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 		]);
 
 		const ready = harness(asset('ready'));
-		const two = await ready.service.createLayout(null, 'home', { name: 'Hero', start: 'blank', copyOf: null });
+		const two = await ready.service.createLayout(null, 'home', {
+			name: 'Hero',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: true,
+		});
 		expect(
 			(
 				await ready.service.saveDraft(null, two.layout.id, {
@@ -264,7 +302,13 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 
 	it('renames a layout and records who did it', async () => {
 		const { service, audit } = harness();
-		const layout = await service.createLayout('adm_1', 'home', { name: 'Old', start: 'blank', copyOf: null });
+		const layout = await service.createLayout('adm_1', 'home', {
+			name: 'Old',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: true,
+		});
 		expect((await service.rename('adm_1', layout.layout.id, { name: 'New' })).layout.name).toBe('New');
 		expect(audit.append).toHaveBeenCalledWith(
 			expect.objectContaining({ action: 'page_layout.rename', metadata: { from: 'Old', to: 'New' } }),
@@ -280,7 +324,13 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 			sections: [],
 			refreshAt: null,
 		});
-		const created = await service.createLayout(null, 'home', { name: 'Hero', start: 'blank', copyOf: null });
+		const created = await service.createLayout(null, 'home', {
+			name: 'Hero',
+			start: 'blank',
+			copyOf: null,
+			template: null,
+			bringPictures: true,
+		});
 		const saved = await service.saveDraft(null, created.layout.id, {
 			sections: [banner('med_1', 'ver_1'), letter],
 			expectedDraftId: null,
@@ -320,5 +370,40 @@ describe('Page Builder API (brief PG-1, PG-2, B)', () => {
 		expect(layoutMaxAge('2026-11-17T00:00:20Z', now)).toBe(20);
 		expect(layoutMaxAge('2026-11-17T05:00:00Z', now)).toBe(60);
 		expect(layoutMaxAge('2026-11-16T23:59:00Z', now)).toBe(0);
+	});
+
+	it('lists Home’s templates and makes a layout from one, marked as a template so its sections stay (Q8, Q9)', async () => {
+		const { service } = harness();
+		const page = await service.page('home', new Date('2026-11-17T00:00:00Z'));
+		expect(page.templates.map((template) => template.key)).toEqual([
+			'today',
+			'full_width_slides',
+			'main_side_tile',
+			'main_two_stacked',
+			'centre_side_tiles',
+		]);
+		expect(page.templates[3]?.outline[0]).toEqual({ type: 'banner_arrangement', arrangement: 'hero_main_stack' });
+		const made = await service.createLayout(null, 'home', {
+			name: 'Paris',
+			start: 'template',
+			copyOf: null,
+			template: 'main_two_stacked',
+			bringPictures: false,
+		});
+		expect(made.layout.template).toBe('main_two_stacked');
+		expect(made.draft?.sections.map((section) => section.id).slice(0, 3)).toEqual([
+			'hero',
+			'promos',
+			'new_arrivals',
+		]);
+		await expect(
+			service.createLayout(null, 'home', {
+				name: 'x',
+				start: 'template',
+				copyOf: null,
+				template: 'rome_page',
+				bringPictures: true,
+			}),
+		).rejects.toMatchObject({ status: 404 });
 	});
 });

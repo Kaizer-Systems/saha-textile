@@ -29,6 +29,10 @@ import {
 	nextSwitchAt,
 	pageTypeRules,
 	registeredPageTypes,
+	HOME_TEMPLATES,
+	isHomeTemplate,
+	templateSections,
+	type ContentBlockRepository,
 	resolveImage,
 	shopSections,
 	type SiteSettingsRepository,
@@ -38,6 +42,7 @@ import {
 import {
 	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
+	CONTENT_BLOCK_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	PAGE_LAYOUT_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
@@ -78,6 +83,7 @@ export class PageBuilderService {
 		private readonly assets: Pick<MediaAssetRepository, 'findById' | 'findManyByIds'>,
 		@Inject(STORAGE_PORT) private readonly storage: Pick<StoragePort, 'getUrl'>,
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: Pick<SiteSettingsRepository, 'get'>,
+		@Inject(CONTENT_BLOCK_REPOSITORY) private readonly banners: Pick<ContentBlockRepository, 'list'>,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
 	) {}
 
@@ -120,10 +126,31 @@ export class PageBuilderService {
 			liveRevisionId: liveEntry(schedule, now)?.revisionId ?? null,
 			nextSwitchAt: next ? next.toISOString() : null,
 			layouts: await Promise.all(layouts.map((layout) => this.row(layout, schedule, now))),
+			templates: pageType === 'home' ? await this.homeTemplates() : [],
 		};
 	}
 
-	/** A2: a new layout, blank or a copy of another layout's draft (or its last live revision). */
+	/** Home's templates with their outlines (A1, Q9 A), drawn from today's banners where a template uses them. */
+	private async homeTemplates(): Promise<AdminBuilderPage['templates']> {
+		const context = await this.templateContext(true);
+		return HOME_TEMPLATES.map((template) => ({
+			key: template.key,
+			outline: templateSections(template.key, context).map((section) => ({
+				type: section.type,
+				arrangement: section.type === 'banner_arrangement' ? section.arrangement : null,
+			})),
+		}));
+	}
+
+	private async templateContext(bringPictures: boolean) {
+		const [banners, home] = await Promise.all([
+			this.banners.list({ ownerType: 'home', status: 'active' }),
+			this.settings.get('storefront.home'),
+		]);
+		return { banners, heroLayout: home?.heroLayout ?? ('hero_full' as const), bringPictures };
+	}
+
+	/** A2: a new layout: blank, a copy of another layout's draft (or last live revision), or a template (Q8, Q9). */
 	async createLayout(
 		actor: string | null,
 		type: string,
@@ -139,12 +166,23 @@ export class PageBuilderService {
 			const revision = await this.layouts.revision(source.draftRevisionId ?? source.lastLiveRevisionId ?? '');
 			sections = revision?.sections ?? [];
 		}
+		let template: string | null = null;
+		if (request.start === 'template') {
+			if (pageType !== 'home' || !isHomeTemplate(request.template ?? '')) {
+				throw new NotFoundException('No such template on this page');
+			}
+			template = request.template;
+			sections = templateSections(
+				request.template as Parameters<typeof templateSections>[0],
+				await this.templateContext(request.bringPictures),
+			);
+		}
 		const layout: PageLayout = {
 			id: `lay_${randomUUID()}`,
 			pageType,
 			target: WHOLE_PAGE,
 			name: request.name,
-			template: null,
+			template,
 			draftRevisionId: null,
 			lastLiveRevisionId: null,
 			createdAt: at,
@@ -159,6 +197,7 @@ export class PageBuilderService {
 			pageType,
 			start: request.start,
 			copyOf: request.copyOf,
+			template,
 		});
 		return this.layoutView(layout.id);
 	}

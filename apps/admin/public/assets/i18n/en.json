@@ -3725,5 +3725,19 @@
 	"pb_start_copy": "A copy of {{name}}",
 	"pb_start_copy_help": "Custom, with its sections and pictures",
 	"pb_create_layout": "Create layout",
-	"search_hint_page_builder": "Arrange the shop’s pages from layouts: what shows on Home, and when."
+	"search_hint_page_builder": "Arrange the shop’s pages from layouts: what shows on Home, and when.",
+	"pb_templates_for": "Templates for {{page}}",
+	"pb_use_this": "Use this",
+	"pb_template_locked": "Template · sections stay in place",
+	"pb_bring_pictures": "Bring today's pictures into pieces with the same name (main, sides, promo banners)",
+	"pb_template_today": "Today's home page",
+	"pb_template_today_help": "The home page as it is today, with today's pictures",
+	"pb_template_full_width_slides": "Full-width slides",
+	"pb_template_full_width_slides_help": "A full-width slider, two promo banners, product rows",
+	"pb_template_main_side_tile": "Main + side tile",
+	"pb_template_main_side_tile_help": "A main picture with one tall picture beside it",
+	"pb_template_main_two_stacked": "Main + two stacked tiles",
+	"pb_template_main_two_stacked_help": "A main picture with two pictures stacked beside it",
+	"pb_template_centre_side_tiles": "Main + two tall tiles",
+	"pb_template_centre_side_tiles_help": "The three-piece banner: a main picture and two tall pictures"
 }

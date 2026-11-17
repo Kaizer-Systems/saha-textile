@@ -3725,5 +3725,19 @@
 	"pb_start_copy": "{{name}}-এর কপি",
 	"pb_start_copy_help": "নিজস্ব, এর সেকশন আর ছবিসহ",
 	"pb_create_layout": "লেআউট তৈরি করুন",
-	"search_hint_page_builder": "লেআউট দিয়ে দোকানের পেজ সাজান: হোমে কী দেখাবে, আর কখন।"
+	"search_hint_page_builder": "লেআউট দিয়ে দোকানের পেজ সাজান: হোমে কী দেখাবে, আর কখন।",
+	"pb_templates_for": "{{page}}-এর টেমপ্লেট",
+	"pb_use_this": "এটি নিন",
+	"pb_template_locked": "টেমপ্লেট · সেকশনগুলো জায়গায় থাকে",
+	"pb_bring_pictures": "আজকের ছবিগুলো একই নামের অংশে আনুন (মূল, পাশের, প্রোমো ব্যানার)",
+	"pb_template_today": "আজকের হোম পেজ",
+	"pb_template_today_help": "আজকের মতো হোম পেজ, আজকের ছবিসহ",
+	"pb_template_full_width_slides": "পুরো চওড়া স্লাইড",
+	"pb_template_full_width_slides_help": "পুরো চওড়া স্লাইডার, দুটি প্রোমো ব্যানার, পণ্যের সারি",
+	"pb_template_main_side_tile": "মূল + পাশের টাইল",
+	"pb_template_main_side_tile_help": "মূল ছবির পাশে একটি লম্বা ছবি",
+	"pb_template_main_two_stacked": "মূল + ওপর-নিচে দুটি টাইল",
+	"pb_template_main_two_stacked_help": "মূল ছবির পাশে ওপর-নিচে দুটি ছবি",
+	"pb_template_centre_side_tiles": "মূল + দুটি লম্বা টাইল",
+	"pb_template_centre_side_tiles_help": "তিন অংশের ব্যানার: একটি মূল ছবি আর দুটি লম্বা ছবি"
 }

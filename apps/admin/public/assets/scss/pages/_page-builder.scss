@@ -42,17 +42,35 @@
 }
 
 .layout-selection-sec .theme-card {
+	// The theme box has a fixed height; here the width leads and the 4:3 shape follows, so it never spills.
 	.library-box.pb-lib {
+		width: 100%;
+		height: auto;
 		aspect-ratio: 4 / 3;
-		padding: 12px;
+		padding: 12px 12px 0;
 		overflow: hidden;
 	}
 
+	// Layout names and dates read as written: the theme capitalises every word in this strip.
 	.content-sec.pb-content {
-		display: flex;
 		flex-wrap: wrap;
-		align-items: center;
 		gap: 6px 8px;
+		text-transform: none;
+	}
+
+	// Icon actions are plain icons (A1), not the theme's outlined link buttons, in every card state.
+	.content-sec.pb-content .pb-card-actions a,
+	&.active .content-sec.pb-content .pb-card-actions a {
+		padding: 2px 4px;
+		border: 0;
+		background: none;
+		font-size: 17px;
+		color: var(--fm-muted);
+
+		&:hover {
+			background: none;
+			color: var(--fm-theme-ink);
+		}
 	}
 }
 
@@ -60,16 +78,21 @@
 	display: flex;
 	gap: 4px;
 	margin-left: auto;
-
-	a {
-		padding: 2px 4px;
-		font-size: 17px;
-		color: var(--fm-muted);
-	}
 }
 
 .pb-when {
 	width: 100%;
 	font-size: 12.5px;
 	color: var(--fm-muted);
+}
+
+// The theme's dark file styles card links as filled buttons too; the card's plain icons stay plain in dark mode.
+body.dark-only .layout-selection-sec .theme-card .content-sec.pb-content .pb-card-actions a {
+	background: none;
+	color: var(--fm-muted);
+
+	&:hover {
+		background: none;
+		color: var(--fm-theme-ink);
+	}
 }

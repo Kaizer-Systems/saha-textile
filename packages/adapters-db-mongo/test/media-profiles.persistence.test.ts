@@ -3,7 +3,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
-import { addProfileSizes, seedProfilesAndNameVersions, widenProfileTypes } from '../src/migrations/media-versions';
+import {
+	addCardWidth600,
+	addProfileSizes,
+	seedProfilesAndNameVersions,
+	widenProfileTypes,
+} from '../src/migrations/media-versions';
 import { MediaAssetModel, MediaProfileModel } from '../src/models/index';
 import { MongoMediaProfileRepository } from '../src/repositories/media-profile.repository';
 import { MongoMediaAssetRepository } from '../src/repositories/media.repository';
@@ -102,6 +107,34 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await profiles.save({ ...product, version: 1 });
 		await profiles.save(hero);
 		await profiles.delete('own_4x5');
+	});
+
+	it('migration 0006: built-in profiles on the seeded card sizes gain 600 px and a new version; others stay', async () => {
+		const before = [200, 400, 700, 960];
+		const product = await profiles.findByKey('product_3x4');
+		const category = await profiles.findByKey('category_3x4');
+		if (!product || !category) throw new Error('profiles missing');
+		await profiles.save({ ...product, widths: { ...product.widths, card: before }, version: 2 });
+		await profiles.save({ ...category, widths: { ...category.widths, card: [200, 500] }, version: 1 });
+		await profiles.save({
+			...product,
+			key: 'own_card',
+			name: 'Own card',
+			builtIn: false,
+			widths: { ...product.widths, card: before },
+		});
+		expect(await addCardWidth600()).toMatch(/^gave \d+ built-in image profiles? a 600 px product-card size$/);
+		const after = await profiles.findByKey('product_3x4');
+		expect(after?.widths['card']).toEqual([200, 400, 600, 700, 960]);
+		// A new version, so "Bring older versions up to date" adds the 600 px files to photos made before.
+		expect(after?.version).toBe(3);
+		// An admin's own sizes, and a profile an admin made, stay as they are.
+		expect((await profiles.findByKey('category_3x4'))?.widths['card']).toEqual([200, 500]);
+		expect((await profiles.findByKey('own_card'))?.widths['card']).toEqual(before);
+		expect(await addCardWidth600()).toBe('gave 0 built-in image profiles a 600 px product-card size');
+		await profiles.save({ ...product, version: 1 });
+		await profiles.save(category);
+		await profiles.delete('own_card');
 	});
 
 	it('names today’s photos’ versions once, without moving a file or the date modified', async () => {

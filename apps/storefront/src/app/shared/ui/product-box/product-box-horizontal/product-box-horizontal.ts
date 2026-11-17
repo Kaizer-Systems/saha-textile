@@ -19,8 +19,12 @@ import { ProductDetailModal } from '@shared/ui/modal/product-detail-modal/produc
 
 import { Button } from '../../button/button';
 
-/** Rendered card width per breakpoint: 2 columns on phones, ~206 px in desktop rails and grids. */
-const CARD_SIZES = '(max-width: 575px) 48vw, (max-width: 991px) 33vw, 240px';
+/**
+ * Rendered card width per breakpoint (2 columns on phones), measured 17 Nov 2026 on Home rows and category grids from
+ * 360 to 1920 px: phones 126-185 px (up to 44vw), tablets up to 245 px (43vw; the old 33vw made tablets pick a file too
+ * small), computers up to 247 px. With the card sizes' 600 px step, a phone's two-up card takes 600 px, not 700.
+ */
+const CARD_SIZES = '(max-width: 575px) 44vw, (max-width: 991px) 43vw, 250px';
 
 @Component({
 	selector: 'app-product-box-horizontal',

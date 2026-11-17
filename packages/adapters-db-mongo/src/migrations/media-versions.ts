@@ -116,3 +116,25 @@ export async function widenProfileTypes(): Promise<string> {
 	const changed = result.modifiedCount;
 	return `let ${changed} built-in image profile${changed === 1 ? '' : 's'} take every photo type the worker reads`;
 }
+
+/** The product-card sizes every built-in profile was seeded with before the 600 px size (17 Nov 2026). */
+const CARD_BEFORE_600 = [200, 400, 700, 960];
+const CARD_WITH_600 = [200, 400, 600, 700, 960];
+
+/**
+ * Release migration `0006-media-card-600` (shop speed round 4, expand): built-in profiles whose product-card sizes
+ * are still the seeded 200, 400, 700 and 960 px gain a 600 px size, and their version goes up, so "Bring older
+ * versions up to date" adds the 600 px files to photos made before (pages keep their files until then; nothing is
+ * removed). Sizes an admin changed are left as they are, and so are profiles an admin made. Safe to run again.
+ */
+export async function addCardWidth600(): Promise<string> {
+	const result = await MediaProfileModel.updateMany(
+		// `$eq`, not a bare array: on a Mixed path Mongoose turns a bare array into `$in`, which also matched an admin's
+		// own sizes that merely contain 200 (caught by the test).
+		{ builtIn: true, 'widths.card': { $eq: CARD_BEFORE_600 } },
+		{ $set: { 'widths.card': CARD_WITH_600 }, $inc: { version: 1 } },
+		{ timestamps: false },
+	).exec();
+	const changed = result.modifiedCount;
+	return `gave ${changed} built-in image profile${changed === 1 ? '' : 's'} a 600 px product-card size`;
+}

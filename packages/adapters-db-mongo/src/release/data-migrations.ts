@@ -1,7 +1,12 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
 import { seedLegalPages } from '../migrations/legal-pages';
-import { addProfileSizes, seedProfilesAndNameVersions, widenProfileTypes } from '../migrations/media-versions';
+import {
+	addCardWidth600,
+	addProfileSizes,
+	seedProfilesAndNameVersions,
+	widenProfileTypes,
+} from '../migrations/media-versions';
 import { seedTodaysHomePage } from '../migrations/todays-home-page';
 
 /**
@@ -55,5 +60,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Page Builder (step 2): Home’s first layout, “Today’s home page”, made from today’s live home banners and fixed sections and put on Home’s schedule; the shop keeps its fixed home page until the builder’s renderer is switched on',
 		half: 'expand',
 		up: () => seedTodaysHomePage(),
+	},
+	{
+		id: '0006-media-card-600',
+		description:
+			'Product-card size (shop speed round 4): built-in image profiles still on the seeded card sizes gain a 600 px size and a new version, so "Bring older versions up to date" adds it to existing photos; sizes an admin changed stay',
+		half: 'expand',
+		up: () => addCardWidth600(),
 	},
 ];

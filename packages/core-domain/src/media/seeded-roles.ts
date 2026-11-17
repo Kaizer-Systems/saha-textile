@@ -37,7 +37,9 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		key: 'card',
 		label: 'Product card and PDP thumbnail strip',
 		purposes: ['product', 'category'],
-		widths: [200, 400, 700, 960],
+		// 600 covers a phone's two-up card (about 175-195 px at 2.6-3x) and a computer card at 2x; before it, those
+		// took the 700 file (17 Nov 2026, shop speed round 4; release step 0006 adds it to stored profiles).
+		widths: [200, 400, 600, 700, 960],
 		aspect: null,
 		fit: 'inside',
 		format: 'image/webp',

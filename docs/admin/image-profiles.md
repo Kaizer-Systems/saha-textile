@@ -63,6 +63,10 @@ A new profile's key is made from its name (`Saree 2:3` → `saree_2x3`, a number
 
 Each add, edit and delete is audited (`media.profile.create`, `.update`, `.delete`, entity type `mediaProfile`). Release migration `0002-media-profile-sizes` gave profiles stored before this screen their family sizes and “each family's own” quality.
 
+## The product-card sizes (17 Nov 2026)
+
+The card family (shop cards and the product page's thumbnail strip) has 200, 400, 600, 700 and 960 px. The 600 px size was added for phones: a two-up card is shown 126–185 px wide, so at 2.6–3× a phone needed about 500–560 px and took the 700 px file. Release step `0006-media-card-600` gives built-in profiles still on the seeded 200, 400, 700 and 960 px the new size and a new version, so **Bring older versions up to date** adds 600 px files to photos made before; card sizes an admin changed, and profiles an admin made, are left as they are. The step matches the old list exactly with `$eq`: on a free-form field Mongoose turns a bare array into `$in`, which would also match an admin's own sizes. The shop's card `sizes` was measured at the same time (`product-box-horizontal.ts`).
+
 ## Tests
 
 Rule tests in `core-domain/test/media-profile-rules.test.ts`, contract tests in `contracts/test/media-versions.test.ts`, API tests in `apps/api/test/media-profiles.test.ts`, the store and migrations on the test database in `adapters-db-mongo/test/media-profiles.persistence.test.ts`, the two screens in `image-profiles.spec.ts` and `image-profile-form.spec.ts`, and the real screens in `e2e/image-profiles.admin.spec.ts` (list, built-in form, add → edit → switch off → delete, a refused setting). The three pages are in the admin's light and dark layout and contrast check.

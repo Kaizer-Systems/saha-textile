@@ -93,7 +93,7 @@ describe('planDerivatives — the locked ladder', () => {
 			roles: SEEDED_MEDIA_ROLES,
 			servesAsPrimary: false,
 		});
-		expect(widthsOf(plan, 'card')).toEqual([200, 400, 700, 960]);
+		expect(widthsOf(plan, 'card')).toEqual([200, 400, 600, 700, 960]);
 		expect(widthsOf(plan, 'gallery')).toEqual([600, 900, 1200, 1600]);
 		expect(widthsOf(plan, 'zoom')).toEqual([2000]);
 		expect(widthsOf(plan, 'swatch_image')).toEqual([80, 160, 240]);

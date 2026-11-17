@@ -3633,5 +3633,6 @@
 	"category_hsn_body_own": "{{count}} products use this category's HSN ({{from}}). Give them {{to}} as well? These {{own}} have their own HSN and stay as they are:",
 	"category_hsn_update": "Update {{count}} products",
 	"category_hsn_only": "Only the category",
-	"and_n_more": "and {{count}} more"
+	"and_n_more": "and {{count}} more",
+	"books_closed_label": "Books closed up to"
 }

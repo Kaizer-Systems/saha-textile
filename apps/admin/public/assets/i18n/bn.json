@@ -3633,5 +3633,6 @@
 	"category_hsn_body_own": "{{count}}টি প্রোডাক্ট এই ক্যাটাগরির HSN ({{from}}) নেয়। ওদেরও {{to}} দেবেন? এই {{own}}টির নিজের HSN আছে, সেগুলো যেমন আছে থাকবে:",
 	"category_hsn_update": "{{count}}টি প্রোডাক্ট বদলান",
 	"category_hsn_only": "শুধু ক্যাটাগরি",
-	"and_n_more": "আরও {{count}}টি"
+	"and_n_more": "আরও {{count}}টি",
+	"books_closed_label": "খাতা বন্ধ যে তারিখ পর্যন্ত"
 }

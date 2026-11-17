@@ -165,3 +165,37 @@ test.describe('Home banners', () => {
 		await expect(page.locator('.col-xxl-4 app-image-link picture img')).toBeVisible();
 	});
 });
+
+test.describe('Home blog posts', () => {
+	test('their pictures are real pictures that load near the screen, at the card width', async ({ page }) => {
+		const blogPictures: string[] = [];
+		page.on('request', (request) => {
+			if (/-blog-\d+w-/.test(request.url())) blogPictures.push(request.url());
+		});
+		await page.goto('/en/', { waitUntil: 'networkidle' });
+		// Nothing from the blog section loads with the first screen: it is far below it.
+		expect(blogPictures).toEqual([]);
+
+		const pictures = page.locator('.slider-3-blog .blog-box-image img');
+		expect(await pictures.count()).toBeGreaterThan(0);
+		const first = pictures.first();
+		await expect(first).toHaveAttribute('loading', 'lazy');
+		await expect(first).toHaveAttribute('srcset', /\d+w/);
+		// The link keeps its name for screen readers; the picture inside it is part of the link.
+		await expect(page.locator('.slider-3-blog .blog-image').first()).toHaveAttribute('aria-label', /.+/);
+
+		await first.scrollIntoViewIfNeeded();
+		await expect
+			.poll(() => first.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))
+			.toBe(true);
+		// The picture fills the theme's 65% box, as the background did.
+		const box = await page.locator('.slider-3-blog .blog-image').first().boundingBox();
+		const picture = await first.boundingBox();
+		expect(Math.abs((picture?.width ?? 0) - (box?.width ?? 0))).toBeLessThanOrEqual(1);
+		expect(Math.abs((picture?.height ?? 0) - (box?.height ?? 0))).toBeLessThanOrEqual(1);
+		expect(Math.abs((box?.height ?? 0) / (box?.width ?? 1) - 0.65)).toBeLessThan(0.02);
+		// A file near the card's width, never the 1600 px original on a phone.
+		const chosen = await first.evaluate((image: HTMLImageElement) => image.currentSrc);
+		if ((page.viewportSize()?.width ?? 0) < 580) expect(chosen).not.toMatch(/-1600w-/);
+	});
+});

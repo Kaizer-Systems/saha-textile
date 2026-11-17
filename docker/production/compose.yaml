@@ -21,6 +21,8 @@ x-app: &app
   image: ${API_IMAGE}
   environment:
     DOTENV_CONFIG_PATH: /run/secrets/api.env
+    # Page Builder FX-8: just after each switch the worker asks the shop for the page in every shop language.
+    SHOP_ORIGIN: https://${STOREFRONT_HOST}
   secrets:
     - source: api_env
       target: api.env

@@ -595,3 +595,40 @@ describe('who may change each page (SG-19)', () => {
 		expect((await h.goLive.alerts(STAFF)).reviews).toEqual([]);
 	});
 });
+
+describe('cache warming at each switch (FX-8)', () => {
+	it('queues a warm now for a Go Live that shows at once, and one just after each later switch', async () => {
+		const queue = { enqueue: vi.fn(async () => undefined) };
+		const store = memoryLayouts();
+		const builder = new PageBuilderService(
+			store.repo,
+			LanguageStore.fixed(['en', 'bn']),
+			{ findById: async () => null } as never,
+			{ findById: async () => null, findManyByIds: async () => [] } as never,
+			{ getUrl: (key: string) => key } as never,
+			{ get: async () => null } as never,
+			{ list: async () => [] } as never,
+			null,
+			queue as never,
+		);
+		await store.repo.goLive({
+			pageType: 'home',
+			target: 'page',
+			entry: {
+				revisionId: 'rev_a',
+				layoutId: 'lay_a',
+				from: later(60).toISOString(),
+				until: later(120).toISOString(),
+				by: 'adm_1',
+			},
+			at: T0.toISOString(),
+		});
+		expect(await builder.warmSwitches('home', T0, true)).toBe(3);
+		const calls = queue.enqueue.mock.calls as unknown as [{ at: string }, { delayMs: number }][];
+		expect(calls.map(([job, options]) => [job.at, options.delayMs])).toEqual([
+			[T0.toISOString(), 2_000],
+			[later(60).toISOString(), 60 * 60_000 + 2_000],
+			[later(120).toISOString(), 120 * 60_000 + 2_000],
+		]);
+	});
+});

@@ -101,6 +101,16 @@ describe('BullMqMediaJobQueue', () => {
 		expect(queueApi.add).toHaveBeenNthCalledWith(2, 'purge', job, { delay: 500 });
 	});
 
+	it('keeps one warm per page and switch moment, delayed to just after it (Page Builder FX-8)', async () => {
+		const queue = new BullMqMediaJobQueue(connection);
+		const job = { type: 'page-warm' as const, pageType: 'home', at: '2026-11-18T04:30:00.000Z' };
+		await queue.enqueue(job, { delayMs: 60_000 });
+		expect(queueApi.add).toHaveBeenLastCalledWith('page-warm', job, {
+			jobId: `page-warm-home-${Date.parse(job.at)}`,
+			delay: 60_000,
+		});
+	});
+
 	it('registers every recurring job', async () => {
 		await new BullMqMediaJobQueue(connection).registerSchedules();
 		expect(queueApi.upsertJobScheduler.mock.calls.map((call: unknown[]) => call[0])).toEqual([

@@ -34,6 +34,8 @@ import type {
 	WordsMapQuery,
 } from '@saha-textile/contracts';
 import {
+	WARM_AFTER_MS,
+	switchesWithin,
 	mayDraftPage,
 	type AdminUserRepository,
 	type AuditLogRepository,
@@ -390,6 +392,27 @@ export class PageBuilderService {
 			...layoutProblems(sections, { rules, slot: 'main', shopLocales: this.languages.shop(), picture: fact }),
 			...words,
 		];
+	}
+
+	/**
+	 * FX-8: queues a warm just after each switch on this page in the next day (and one now, after a change that
+	 * shows at once). One job per page and moment, however often the schedule is saved; the nightly check queues the
+	 * next day's again, in case the queue lost one. Without a queue (tests, scripts) nothing is queued.
+	 */
+	async warmSwitches(pageType: string, now = new Date(), includeNow = false): Promise<number> {
+		if (!this.queue) return 0;
+		const page = await this.layouts.page(pageType as PageTypeKey, WHOLE_PAGE);
+		const moments = switchesWithin(page?.schedule ?? [], now);
+		if (includeNow) moments.unshift(now);
+		for (const moment of moments) {
+			await this.queue
+				.enqueue(
+					{ type: 'page-warm', pageType, at: moment.toISOString() },
+					{ delayMs: Math.max(0, moment.getTime() - now.getTime()) + WARM_AFTER_MS },
+				)
+				.catch(() => undefined);
+		}
+		return moments.length;
 	}
 
 	/** Refuses a draft change on a page this admin may not build (SG-19): by page type, or by one of its layouts. */

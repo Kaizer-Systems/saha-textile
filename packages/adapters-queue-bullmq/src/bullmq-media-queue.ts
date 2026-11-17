@@ -66,6 +66,8 @@ const DEFAULT_JOB_OPTIONS = {
 const jobIdFor = (job: MediaQueueJob): string | undefined => {
 	if (job.type === 'process') return `process-${job.assetId}`;
 	if (job.type === 'reprocess') return `reprocess-${job.assetId}-${job.reason}`;
+	// One warm per page and switch moment, however often the schedule is saved (Page Builder FX-8).
+	if (job.type === 'page-warm') return `page-warm-${job.pageType}-${Date.parse(job.at)}`;
 	return undefined;
 };
 

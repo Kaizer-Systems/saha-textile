@@ -17,7 +17,9 @@ export type MediaJob =
 	/** A folder download (media step 5, A30): the .zip is written into Spaces, file by file. */
 	| { type: 'zip'; zipId: string }
 	/** Page Builder words check (SG-1): measure the nine word spots of one photo version, once. */
-	| { type: 'word-spots'; assetId: string; versionId: string };
+	| { type: 'word-spots'; assetId: string; versionId: string }
+	/** Page Builder FX-8: just after a switch at `at`, ask the shop for the page in each shop language. */
+	| { type: 'page-warm'; pageType: string; at: string };
 
 /**
  * Enqueue port for media jobs (`MediaJobQueuePort`), implemented with BullMQ + Redis at the

@@ -352,6 +352,8 @@ export class PageGoLiveService {
 				: [];
 		// The page is drawn by the builder from the moment this switch starts (drawsBuilder): now, or at its time.
 		await this.layouts.goLive({ pageType, target: WHOLE_PAGE, entry, also, at: now.toISOString() });
+		// FX-8: the shop is asked for the page just after each switch, and now when this one shows at once.
+		await this.builder.warmSwitches(pageType, now, Date.parse(entry.from) <= now.getTime());
 	}
 
 	/** E2 "then back to": the chosen layout's last live revision, from the end of this switch. */
@@ -463,6 +465,7 @@ export class PageGoLiveService {
 			by: actor,
 		};
 		await this.layouts.goLive({ pageType, target: WHOLE_PAGE, entry, at: now.toISOString() });
+		await this.builder.warmSwitches(pageType, now, true);
 		await this.builder.record(actor, 'page_layout.put_back', previous.layoutId, {
 			revisionId: previous.revisionId,
 		});

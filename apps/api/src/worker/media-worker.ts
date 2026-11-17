@@ -67,6 +67,7 @@ import { buildNotificationPort } from '../infra/notification-factory';
 import { MeilisearchSearch, noProductsLoaded } from '../search/meilisearch-search';
 import { catchUpSearch, drainSearchQueue, nightlySearchCheck } from '../search/search-release';
 import { composePageBuilderJobs } from '../page-builder/page-go-live.worker';
+import { warmPage } from '../page-builder/page-warm';
 
 /** Batch size for the 15-minute stale sweep: bounded work per tick, never one giant job. */
 const STALE_BATCH = 50;
@@ -148,7 +149,7 @@ export const composeMediaWorker = async (config: AppConfig) => {
 	};
 
 	// Page Builder (step 7): Go Lives waiting for pictures, the nightly check and History upkeep.
-	const pageBuilder = composePageBuilderJobs(languages, storage);
+	const pageBuilder = composePageBuilderJobs(languages, storage, queue);
 
 	const handlers: MediaJobHandlers = {
 		'page-go-live-waiting': async () => {
@@ -163,6 +164,17 @@ export const composeMediaWorker = async (config: AppConfig) => {
 				{ assetId: job.assetId, versionId: job.versionId },
 			);
 			return { outcome };
+		},
+		// FX-8: just after a switch, the shop is asked for the page in each shop language.
+		'page-warm': async (job) => {
+			const result = await warmPage(
+				{ origin: config.media.shopOrigin ?? null, locales: languages.shop(), fetch },
+				job.pageType,
+			);
+			logger.log(
+				`Page Builder warm ${job.pageType} (${job.at}): ${result.skipped ?? result.statuses.join(', ')}`,
+			);
+			return result;
 		},
 		'page-builder-nightly': async () => {
 			const result = await pageBuilder.nightly();

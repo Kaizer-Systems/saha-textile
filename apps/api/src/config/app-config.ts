@@ -358,6 +358,8 @@ const ConfigSchema = z.object({
 			cloudflareZoneId: z.string().min(1).optional(),
 			cloudflarePurgeToken: z.string().min(1).optional(),
 			youtubeApiKey: z.string().min(1).optional(),
+			/** The shop's own address (`SHOP_ORIGIN`), which the worker asks for pages just after a Page Builder switch (FX-8). */
+			shopOrigin: AbsoluteUrl.optional(),
 		})
 		.superRefine((media, ctx) => {
 			if (!media.cloudflareZoneId !== !media.cloudflarePurgeToken) {
@@ -514,6 +516,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			cloudflareZoneId: env.CLOUDFLARE_ZONE_ID || undefined,
 			cloudflarePurgeToken: env.CLOUDFLARE_PURGE_TOKEN || undefined,
 			youtubeApiKey: env.YOUTUBE_API_KEY || undefined,
+			shopOrigin: env.SHOP_ORIGIN || undefined,
 		},
 	});
 }

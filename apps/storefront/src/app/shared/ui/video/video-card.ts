@@ -53,10 +53,16 @@ import { posterFor, watchUrl } from './video-links';
 				[href]="link()"
 				(click)="pick($event)"
 			>
+				<!-- Headings in order under the section's H2 (the blog card's markup); the classes keep the look. -->
 				@if (video().publishedAt; as published) {
-					<h6>{{ published | shopDate }}</h6>
+					<p class="h6">{{ published | shopDate }}</p>
 				}
-				<h5 lang="en">{{ video().title }}</h5>
+				<h3
+					class="h5"
+					lang="en"
+				>
+					{{ video().title }}
+				</h3>
 			</a>
 		</div>
 	`,

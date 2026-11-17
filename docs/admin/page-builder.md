@@ -187,3 +187,14 @@ Measured on 17 Nov 2026 on a production build behind compression, Lighthouse 12.
 | Computer 1440 × 900, English | 93          | 95            | 100            | 100 | 1.0 s       | 1.5 s         | 0            |
 
 On phones the whole stylesheet blocks the first paint (no critical styles are inlined), the hero picture is found late, product pictures in the first row load at once with the carousel's copies, and the icon font is 141 KB. The builder adds nothing before the first paint; these page-wide fixes come with the shop step, where the speed gate goes on (Performance under 97 fails; Accessibility, Best Practices and SEO under 100 fail; any layout shift fails).
+
+**17 Nov 2026, night (local production build, no compression, median of three):**
+
+| Home page                    | Performance | Accessibility | Best Practices | SEO | Layout shift |
+| ---------------------------- | ----------- | ------------- | -------------- | --- | ------------ |
+| Phone 390 × 844, English     | 42          | 100           | 100            | 100 | 0.000        |
+| Computer 1440 × 900, English | 76          | 100           | 100            | 100 | 0.000        |
+| Phone 390 × 844, বাংলা       | 46          | 100           | 100            | 100 | 0.000        |
+| Computer 1440 × 900, বাংলা   | 76          | 100           | 100            | 100 | 0.000        |
+
+Changes behind it: the header's search, cart and account load their code only when touched (search) or after the first paint (cart and account, so the count still follows the cart), which cut first-load JavaScript from 44 files and 1,149 KB to 36 files and 1,101 KB (357 to 341 KB gzip); বাংলা pages preload their Bengali text font (`core/i18n/locale-fonts.ts`), so the cookie box's heading no longer moves when it arrives (layout shift 0.002 to 0); and the video cards' date and title use the blog card's heading markup (`p.h6`, `h3.h5`), so headings stay in order now that Home draws the restored video rail. Performance is lower than in the morning on every row because Home now carries that rail (the uncompressed HTML grew to 941 KB locally); the Bengali preload adds about 106 KB to the phone's simulated first load, a cost taken for layout shift 0.

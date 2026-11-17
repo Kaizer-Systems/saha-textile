@@ -216,15 +216,15 @@
 														[href]="link(video)"
 														(click)="pick(video, $event)"
 													>
-														<h5
-															class="recent-name"
+														<h3
+															class="h5 recent-name"
 															lang="en"
 														>
 															{{ video.title }}
-														</h5>
+														</h3>
 													</a>
 													@if (video.publishedAt; as published) {
-													<h6>{{ published | shopDate }}</h6>
+													<p class="h6">{{ published | shopDate }}</p>
 													}
 												</div>
 											</div>

@@ -42,6 +42,8 @@ export type PreviewSize = (typeof PREVIEW_SIZES)[number];
 @Component({
 	selector: 'app-pb-preview',
 	templateUrl: './pb-preview.html',
+	// A block, so the pane's width can be measured (an inline host measures 0 and the frame would scale to nothing).
+	host: { class: 'd-block' },
 	imports: [DecimalPipe, TranslocoModule],
 })
 export class PbPreview {
@@ -84,7 +86,10 @@ export class PbPreview {
 			inject(DestroyRef).onDestroy(() => window.removeEventListener('message', onMessage));
 		}
 		if (typeof ResizeObserver !== 'undefined') {
-			const observer = new ResizeObserver(([entry]) => this.paneWidth.set(entry?.contentRect.width ?? 800));
+			const observer = new ResizeObserver(([entry]) => {
+				const width = entry?.contentRect.width ?? 0;
+				if (width > 0) this.paneWidth.set(width);
+			});
 			queueMicrotask(() => observer.observe(this.host.nativeElement));
 		}
 	}

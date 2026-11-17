@@ -3960,7 +3960,7 @@
 	"pb_problem_duplicate_id": "{{name}} appears twice",
 	"pb_phone_done": "Every wide picture with words in it has a phone picture",
 	"pb_phone_todo": "Wide pictures with words in them need a phone picture",
-	"pb_summary": "{{sections}} sections · {{sliders}} sliders with {{sliderPictures}} pictures · {{earlyPictures}} picture loads first (the rest wait)",
+	"pb_summary": "{{sections}} sections · sliders: {{sliders}}, holding {{sliderPictures}} pictures · pictures that load first: {{earlyPictures}} (the rest wait)",
 	"pb_note_many_sections": "More than 15 sections: shoppers rarely scroll that far. Consider fewer.",
 	"pb_note_many_sliders": "More than 3 sliders: moving pictures compete for attention.",
 	"pb_note_dark_in_a_row": "Two dark sections in a row read as one block.",

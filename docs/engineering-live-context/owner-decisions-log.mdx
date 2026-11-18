@@ -995,7 +995,7 @@ Closed: `DEC-SECRETS-DELIVERY`. The full design is in `production-deployment-pla
 - **Merging to `main` starts the deploy, then it waits for the owner's approval in GitHub.**
 - **Every release passes the staging droplet,** with a logged emergency switch for a broken shop. CI and approval still apply.
 - **Staging create and destroy scripts run from the owner's Mac for now.** They move to a GitHub pipeline once secrets are stored more securely, so they stop depending on one device.
-- **Secrets are GitHub Environment secrets written to mounted read-only files,** with the option to move to a secrets service later. The master copy is in NordPass, the owner's primary password manager, with a second copy of the backup key in Bitwarden (corrected the same day; NordPass replaces Bitwarden as the main copy).
+- **Secrets are written to mounted read-only files.** The source was revised on 2026-11-17 to Infisical Cloud Free; see that decision round below. The master copy is in NordPass, the owner's primary password manager, with a second copy of the backup key in Bitwarden (corrected the same day; NordPass replaces Bitwarden as the main copy).
 - **The Recovery Console is the break-glass route,** with the admin user's password in NordPass.
 - **Reboots are the owner's call.** Security patches install automatically, an email says when a reboot is pending, and after 7 days the server reboots itself at 4 am IST. A super admin screen will show patch status and trigger the reboot with a PIN, with manual fallbacks.
 - **Data stays on the droplet's own disk.** No separate block volume.
@@ -1110,6 +1110,22 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 - **Head of every page.** Each navigation clears the last page's description, share title, share picture and robots tag. Info pages carry their own title, description (English and Bengali) and BreadcrumbList. Categories get a generated description until a stored one exists. About Us and Offer stay `noindex` while they hold the theme's demo content, an empty FAQ is `noindex`, and the maintenance page is `noindex`. The sitemap lists the shop's own pages in both languages, and FAQ once it has questions.
 - **Gmail runs on a second, free Google Cloud project.** The owner never planned on Google Cloud and does not want a paid service. Any Gmail API access needs an OAuth client from the Google Cloud console, as the customer Google sign-in already has. The mailbox client lives in its own project with **Internal** consent (only sahatextile.com staff), because the customer sign-in project must stay External and full-mailbox access on an External app needs Google's paid security review. **No Pub/Sub and no billing account**: the API reads each mailbox's change list about once a minute instead of Gmail push.
 - **DNS waits for staging.** Adding Google to the SPF record and adding a DMARC record are done when staging is set up, not now.
+
+### Follow-up (2026-11-19) — Gmail projects and mailbox capabilities
+
+- **One separate company-owned Internal Mail project per environment:** dev, staging and
+  production. Keep these apart from the External customer-sign-in projects. Each has its own
+  Web OAuth client, secret and exact environment API callback; credentials are created and
+  saved privately by the owner, with the agent stopping before the credential-generating Create.
+- **Mailbox behavior requested:** normal read/write/compose/send/reply/forward, archive,
+  spam, Bin and restore, plus basic Gmail settings such as filters and vacation replies.
+  Delete outside Bin moves the message to Bin; Delete inside Bin permanently deletes only
+  after an explicit confirmation. The requested extensions still need implementation and
+  permission/confirmation proof; credential preparation does not establish feature completion.
+- **Automatic-forwarding administration stays in Gmail/Workspace.** Keep individual mailbox
+  authorization and the no-domain-wide-delegation design. This does not exclude the normal
+  Forward button for a selected message. The owner approved this recommendation after the
+  difference between message forwarding and mailbox-wide automatic forwarding was explained.
 
 ## Owner decision round (2026-11-10) — speed targets and nothing removed without a written say-so
 
@@ -1563,6 +1579,100 @@ Prince and DocRaptor.
   screen is drawn in a brief for approval before it is built.
 - **Commits:** the build commits as it goes (Conventional Commits, own hunks only).
 
+## Owner decision round (2026-11-17, orders) — stock hold, backorders, the stores' company, cancellation, invoices, gateways, product origin
+
+Ten of the 31 questions in the Orders Decision Round (https://claude.ai/artifact/6sDuRMWyHjopdS9ee1Us9h)
+were answered in chat on 2026-11-17, then the owner answered the points raised on them the same
+day. The other 21 stay open on that page. Closed here: `DEC-STOCK-RESERVE` and
+`DEC-INR-GATEWAY-TIMING`. `DEC-BACKORDER` (closed 2026-11-04 as "oversell stays off") is replaced.
+Round-2 CA items settled by a Final answer leave that document only once the answer is built:
+B5.7 (OD12), D8.3 and D8.5 (OD19).
+
+- **OD1, `DEC-STOCK-RESERVE` — the hold starts at Pay and lasts 15 minutes.** The pieces are held
+  when the buyer presses Pay. The hold is released the moment the payment fails or is cancelled,
+  and becomes a sale when it succeeds. A "still pending" answer from the bank keeps the hold until
+  the 15 minutes run out. A payment that succeeds after the hold ended, for a piece sold meanwhile,
+  follows OD2 when backorders are on for that piece; otherwise that line is refunded at once and the
+  buyer sees a popup on the cart screen with the out-of-stock lines marked. In an order where only
+  some pieces were sold meanwhile, the whole order is refunded and the buyer is sent back to the cart
+  with the sold lines marked, to pay again for the rest (owner, 2026-11-17). The buyer is emailed
+  as well, because a late UPI approval often arrives after the tab is closed. The popup is drawn
+  in a brief before it is built.
+- **OD2, replaces `DEC-BACKORDER` — backorders per product, open to every shopper.**
+    - Staff switch backorders on per product, with a limit on how many pieces may be owed. A variant
+      may override both, as the 2026-11-04 variant rule does for price and stock. Products start
+      switched off, so one-of-a-kind pieces are never oversold.
+    - Where it is on, the product page shows "On backorder" with a dispatch estimate, and any shopper
+      may buy up to the limit. A late payment (OD1) joins the same list.
+    - Backorders off, or the limit reached: full refund at once, an apology email with similar pieces,
+      and a staff alert.
+    - The buyer is emailed that the piece is on backorder, with the dispatch date and free
+      cancellation until packing.
+    - **Backorders screen:** every backorder line from every order in one list. Staff bulk-select
+      lines and send them to the purchase-order screen, choose the supplier and quantity for each line
+      there, and may split them across several purchase orders for several suppliers.
+    - **Purchase-order product picker:** backorder lines are listed first. Picking one fills the line
+      with the owed quantity (2 owed gives 2). A larger quantity is fine; a smaller one puts the
+      remainder back in the picker at once. A line counts against the backorder as soon as it is
+      saved; deleting the line or cancelling the purchase order returns the quantity to the picker.
+    - Arriving stock fills waiting backorders first, oldest order first, before it goes on sale.
+    - The two screens are not in the 55-screen purchases brief. They are drawn as a brief for the
+      owner's approval before they are built (`DEC-UI-REUSE`).
+- **OD3 — the stores are a separate company and a normal supplier.** The website business and the
+  Kolkata stores trade under the same brand, Saha Textile, but are two separate legal entities. The
+  website has its own stock, and store counter sales never touch it. When the website needs stock
+  from the stores, the stores' company is a normal B2B supplier: the website company sends a
+  purchase order and receives the stores' purchase invoice, or staff enter a direct purchase invoice
+  without a purchase order, as with any supplier. No transfer screen is built. GST credit needs the
+  stores' tax invoice; a proforma invoice alone is not enough. Website orders cannot be collected or
+  returned at a store counter. A CA confirmation question on purchases between the two companies
+  waits for the owner's approval of its wording.
+- **OD12 — cancellation.** Free from the customer's account, with no cancellation charge anywhere.
+  Ready pieces can be cancelled until the line is Packed; after that the return policy applies.
+  Made-to-order and stitched pieces can be cancelled until staff mark the line Processing, which
+  counts as work started; after that they cannot be cancelled. "Accepted" and "Processing" are one
+  status, set per line or for the whole order, and shown in the customer's account. Made-to-order
+  and stitched lines say they cannot be cancelled once work starts, on the product page and at
+  checkout.
+- **OD19 — the invoice and order emails.** The invoice is in English only. It reaches the buyer as a
+  PDF attached to the Tax invoice email at dispatch (the invoice is issued when the goods leave), in
+  the customer's account, and as a printed copy in the parcel. The Order confirmed email carries a
+  rich, cart-style view of the ordered items, as large shops send. Emails are in English at launch
+  (2026-11-13 rule).
+    - **How the emails are built (owner, 2026-11-17, option B):** our own designs, kept in the
+      repository and registered with MSG91 as templates through its template API; MSG91 still sends
+      every email. MSG91's send call needs a registered template (no one-off HTML body), templates
+      are full HTML with Handlebars variables, `if`/`else`/`unless` and `each` only, and each new
+      template or version is approved by MSG91 (usually 10–30 minutes). The owner's conditions: no
+      added cost, no template rejections, and every email under Gmail's ~102 KB clipping limit. So:
+      open-source tooling only, no paid certificate or service; transactional content only, no
+      promotions, each template proven in development before launch; an automatic size check on the
+      largest realistic order. The invoice PDF is attached as the file itself, never as a public
+      link. Template names carry a version so a development change never reaches customers (one
+      MSG91 account serves all three environments). The designs are drawn as a brief for approval
+      before they are built (`DEC-UI-REUSE`).
+- **OD20, `DEC-INR-GATEWAY-TIMING` — CCAvenue at launch; gateways switchable in the admin.**
+  CCAvenue at launch. Razorpay when HDFC gives the timeline, the kit, and merchant fees equal to or
+  better than CCAvenue's. All payment code is provider-neutral. Both INR adapters stay built and
+  ready, and the admin chooses which one is the active INR gateway. Shoppers never see a gateway
+  name or choice: they see Add to cart and Buy now on the product page and Pay at checkout. The
+  currency decides the gateway: rupees go to the admin's active INR gateway, every other currency
+  to PayPal. There is no automatic switching by success rate. Switching a gateway off stops new
+  payments only; refunds and payment updates for payments it already took keep working. Gateway
+  keys stay in server settings and are never typed into the admin.
+- **PD1 — country of origin.** The shop default is India, overridable per category and per product.
+  The admin picks countries from a full world list, stored as the standard two-letter country code
+  so reports stay consistent. Names show in the page's language (ভারত on Bengali pages), taken from
+  the browser's built-in country names the same way language names are shown, so there is nothing
+  to translate (owner, 2026-11-17).
+- **PD2 — back-in-stock date.** A field on each variant's Inventory tab. It clears itself when stock
+  for sale goes above zero, not when arriving stock all goes to waiting backorders.
+- **PD3 — HSN for a product in several categories.** The main category's HSN wins. A product's own
+  HSN still beats its category's (2026-11-15 rule).
+- **FX6 — currencies at launch.** US$, £, €, C$, A$, S$ and NZ$, besides rupees. Shoppers choose the
+  currency in the shop's picker while browsing. **Open:** what checkout does when the delivery
+  address and the chosen currency do not fit together (question FX7, 2026-11-17).
+
 ## Owner decision round (2026-11-17) — Page Builder revision 2: every recommendation accepted
 
 Brief: https://claude.ai/artifact/6ozbXGKre7WzFyumRB4ctX (revision 2: PG pages, FX fixes, SG suggestions). The
@@ -1607,6 +1717,22 @@ accepted with its recommended timing. The brief's list of genuinely custom parts
 - **Build order:** the brief's PG-8 plan: baseline, page-agnostic data and core, shop renderer behind a switch with
   the CI speed gate, admin list and layouts, builder, preview, Go Live, proof of generality with a test-only page
   type. Runs now that media steps 2 to 5 are built.
+
+## Owner decision round (2026-11-17) — Infisical Cloud secrets source
+
+- **Use Infisical Cloud Free with three separate projects:** `saha-textile-dev` uses Development
+  (`dev`), `saha-textile-staging` uses Staging (`staging`), and `saha-textile-production` uses
+  Production (`prod`). Other default environments stay empty. Separate projects provide the
+  intended deployment-tier boundary when project-level automation access is configured.
+- **Prepare names only; the owner enters values.** The owner explicitly requested that the agent
+  avoid reading secret values. Names come from committed templates, runtime configuration source
+  and deployment documentation. All 363 entries were verified empty after creation. Personal MCP
+  and local-only portal credentials are outside these application deployment projects.
+- **This revises the source in `DEC-SECRETS-DELIVERY`, not runtime consumption.** Infisical replaces
+  the previously chosen GitHub Environment value store. Root-owned files mounted read-only remain
+  the application interface; secrets stay out of Docker images and browser bundles. Value entry,
+  machine identities, permissions and pipeline authentication/fetching are separate work and have
+  not been implemented. See `docker/infisical/README.md` and `variable-names.json` for handover.
 
 ## Owner decision round (2026-11-18) — purchases decisions brief: shop details, items built beyond the drawings, backorders, portal
 

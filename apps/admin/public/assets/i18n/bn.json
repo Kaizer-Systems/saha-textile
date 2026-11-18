@@ -3610,9 +3610,6 @@
 	"hsn_changed_from": "আগে ছিল {{code}}।",
 	"hsn_own_code": "এই প্রোডাক্টের নিজের কোড; {{category}}-এর কোড {{code}}।",
 	"can_be_returned": "ফেরত দেওয়া যায়",
-	"returnable_yes_from": "হ্যাঁ ({{category}} থেকে)",
-	"returnable_no_from": "না ({{category}} থেকে)",
-	"can_be_returned_help": "এখানে না দিলে মূল ক্যাটাগরি মেনে চলে। নিয়মগুলো দোকানের Refund & Returns পেজে আছে।",
 	"gap_quick_length": "চটজলদি মাপের লেবেল",
 	"hsn_popup_title": "ক্যাটাগরি বদলেছে: HSN দেখে নিন",
 	"hsn_popup_body": "মূল ক্যাটাগরি এখন {{category}}, তাই HSN-এ এখন {{code}} দেখাচ্ছে, {{category}} থেকে নেওয়া। আগে ছিল {{old}} ({{oldCategory}} থেকে)।",
@@ -4143,5 +4140,13 @@
 	"perm_shop_details_edit": "দোকানের বিবরণ বদলানো",
 	"one_permission_title": "একজনকে একটা পারমিশন দেওয়া।",
 	"one_permission_body": "শুধু সেই পারমিশনটা নিয়ে একটা ছোট রোল বানান (যেমন রাইট-অফ অনুমোদনকারী, যাতে শুধু রাইট-অফ অনুমোদনের পারমিশন) আর সেটা ইউজারকে যোগ করুন। ওঁর নিজের রোল থেকেই যায়; ছোট রোলটা সরালে পারমিশনও চলে যায়। “দোকানের বিবরণ বদলানো”-র জন্যও একই কাজ চলে।",
-	"search_hint_setting_shop_details": "পারচেজ অর্ডার আর অন্য কাগজে ছাপা দোকানের আইনি নাম, GSTIN আর ঠিকানা।"
+	"search_hint_setting_shop_details": "পারচেজ অর্ডার আর অন্য কাগজে ছাপা দোকানের আইনি নাম, GSTIN আর ঠিকানা।",
+	"returnable_follows_yes": "{{category}} অনুযায়ী: ফেরত দেওয়া যায়।",
+	"returnable_follows_no": "{{category}} অনুযায়ী: ফেরত দেওয়া যায় না।",
+	"returnable_follows_none": "এখনো কোনো ক্যাটাগরি বাছা হয়নি: ফেরত দেওয়া যায়।",
+	"returnable_set_cat_yes": "এই প্রোডাক্টের জন্য আলাদা করে ঠিক করা ({{category}}: ফেরত দেওয়া যায়)।",
+	"returnable_set_cat_no": "এই প্রোডাক্টের জন্য আলাদা করে ঠিক করা ({{category}}: ফেরত দেওয়া যায় না)।",
+	"returnable_set_none": "এই প্রোডাক্টের জন্য আলাদা করে ঠিক করা।",
+	"returnable_follow_again": "আবার {{category}} অনুযায়ী করুন",
+	"returnable_follow_again_none": "আবার মূল ক্যাটাগরি অনুযায়ী করুন"
 }

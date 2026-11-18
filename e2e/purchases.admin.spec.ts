@@ -152,6 +152,25 @@ test.describe('Product and category forms (F01–F03)', () => {
 		await expect(page.getByText('An HSN has 4, 6 or 8 digits.')).toHaveCount(0);
 	});
 
+	test('Can be returned is a switch that follows the main category until flipped; the Status tab has none (H2)', async ({
+		page,
+	}) => {
+		const item = await copyProduct('ret', 0);
+		await page.goto(`${ADMIN}/product/edit/${item.id}?tab=setup`);
+		const note = page.locator('#can_be_returned_note');
+		await expect(note).toContainText('Follows');
+		await expect(page.locator('#returnable_follow_again')).toHaveCount(0);
+		const before = await page.locator('#can_be_returned').isChecked();
+		await page.locator('label.switch:has(#can_be_returned)').click();
+		await expect(page.locator('#can_be_returned')).toBeChecked({ checked: !before });
+		await expect(note).toContainText('Set for this product');
+		await page.locator('#returnable_follow_again').click();
+		await expect(note).toContainText('Follows');
+		await expect(page.locator('#can_be_returned')).toBeChecked({ checked: before });
+		await page.goto(`${ADMIN}/product/edit/${item.id}?tab=status`);
+		await expect(page.getByText('Enable to make the product eligible for returns')).toHaveCount(0);
+	});
+
 	test('a metre product asks for its cut and weight per metre', async ({ page }) => {
 		const item = await copyProduct('metre-form', 0);
 		await page.goto(`${ADMIN}/product/edit/${item.id}?tab=inventory`);

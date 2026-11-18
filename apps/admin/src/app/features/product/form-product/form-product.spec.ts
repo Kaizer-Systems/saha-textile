@@ -810,4 +810,22 @@ describe('FormProduct inventory and HSN (F01, F02, A01)', () => {
 		page.submit();
 		expect(service.saveCatalogProduct).toHaveBeenCalledWith('p1', expect.objectContaining({ returnable: null }));
 	});
+
+	it('the switch follows the category until flipped; flipping saves the product’s own answer (H2)', () => {
+		const { page, service } = editing({ returnable: null });
+		expect(page.returnableChoice()).toBe('');
+		const following = page.returnableNow();
+		page.setReturnable(!following);
+		expect(page.returnableChoice()).toBe(following ? 'no' : 'yes');
+		expect(page.returnableNow()).toBe(!following);
+		page.submit();
+		expect(service.saveCatalogProduct).toHaveBeenCalledWith(
+			'p1',
+			expect.objectContaining({ returnable: !following }),
+		);
+		// Flipping back to the category's answer is still the product's own choice until "Follow … again".
+		page.setReturnable(following);
+		expect(page.returnableChoice()).toBe(following ? 'yes' : 'no');
+		expect(page.form.contains('is_return')).toBe(false);
+	});
 });

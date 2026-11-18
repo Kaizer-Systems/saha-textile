@@ -503,7 +503,6 @@ export class FormProduct {
 			addon_price_inr: new FormControl(null),
 			return_policy_text: new FormControl(),
 			is_featured: new FormControl(0),
-			is_return: new FormControl(1),
 			status: new FormControl<string>('disabled'),
 		});
 		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, ['estimated_delivery_text']);
@@ -895,6 +894,11 @@ export class FormProduct {
 		if (!code || !hsnValid(code)) return;
 		this.form.get('hsn_code')?.setValue(code);
 		this.hsnChangedFrom.set(code === change.oldHsn ? null : change.oldHsn);
+	}
+
+	/** Flipping the switch makes it this product's own answer; "Follow … again" clears it (null = follow). */
+	setReturnable(on: boolean): void {
+		this.returnableChoice.set(on ? 'yes' : 'no');
 	}
 
 	/** Whether buyers can return it now: the product's own answer, else the main category's. */

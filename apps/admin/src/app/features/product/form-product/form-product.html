@@ -1175,33 +1175,42 @@
 									[label]="'can_be_returned'"
 									[for]="'can_be_returned'"
 								>
-									<select
-										class="form-select"
-										id="can_be_returned"
-										(change)="returnableChoice.set($any($event.target).value)"
-									>
-										<option
-											value=""
-											[selected]="returnableChoice() === ''"
+									<!-- H2 (owner 2026-11-18): the theme's switch, moved from the Status tab. It shows what applies:
+									     the main category's answer until staff flip it, then this product's own (null = follow). -->
+									@let main = mainCategory();
+									<div class="form-check form-switch ps-0">
+										<label class="switch">
+											<input
+												type="checkbox"
+												id="can_be_returned"
+												[checked]="returnableNow()"
+												(change)="setReturnable($any($event.target).checked)"
+											/>
+											<span class="switch-state"></span>
+										</label>
+										<p
+											class="help-text"
+											id="can_be_returned_note"
 										>
-											{{ (mainCategory()?.returnable ?? true ? 'returnable_yes_from' :
-											'returnable_no_from') | transloco: { category: mainCategory()?.name ?? '—' }
-											}}
-										</option>
-										<option
-											value="yes"
-											[selected]="returnableChoice() === 'yes'"
-										>
-											{{ 'yes' | transloco }}
-										</option>
-										<option
-											value="no"
-											[selected]="returnableChoice() === 'no'"
-										>
-											{{ 'no' | transloco }}
-										</option>
-									</select>
-									<p class="help-text">{{ 'can_be_returned_help' | transloco }}</p>
+											@if (returnableChoice() === '') { @if (main) { {{ (main.returnable ?
+											'returnable_follows_yes' : 'returnable_follows_no') | transloco: { category:
+											main.name } }} } @else { {{ 'returnable_follows_none' | transloco }} } }
+											@else { @if (main) { {{ (main.returnable ? 'returnable_set_cat_yes' :
+											'returnable_set_cat_no') | transloco: { category: main.name } }} } @else {
+											{{ 'returnable_set_none' | transloco }} }
+											<br />
+											<a
+												href="javascript:void(0)"
+												class="theme-color text-decoration-underline fw-semibold"
+												id="returnable_follow_again"
+												(click)="returnableChoice.set('')"
+											>
+												{{ main ? ('returnable_follow_again' | transloco: { category: main.name
+												}) : ('returnable_follow_again_none' | transloco) }}
+											</a>
+											}
+										</p>
+									</div>
 								</app-form-fields>
 
 								<app-form-fields
@@ -1728,27 +1737,6 @@
 										<p class="help-text">
 											{{ '*this feature encourages users to view products by presenting engaging
 											content or prompts.' }}
-										</p>
-									</div>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'return'"
-									[for]="'return'"
-									[required]="false"
-								>
-									<div class="form-check form-switch ps-0">
-										<label class="switch">
-											<input
-												type="checkbox"
-												id="return"
-												formControlName="is_return"
-											/>
-											<span class="switch-state"></span>
-										</label>
-										<p class="help-text">
-											{{ '*Enable to make the product eligible for returns.' }}
 										</p>
 									</div>
 								</app-form-fields>

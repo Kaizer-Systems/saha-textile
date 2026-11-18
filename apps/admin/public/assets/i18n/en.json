@@ -3610,9 +3610,6 @@
 	"hsn_changed_from": "Changed from {{code}}.",
 	"hsn_own_code": "This product's own code; {{category}} has {{code}}.",
 	"can_be_returned": "Can be returned",
-	"returnable_yes_from": "Yes (from {{category}})",
-	"returnable_no_from": "No (from {{category}})",
-	"can_be_returned_help": "Follows the main category unless set here. The shop's Refund & Returns page explains the rules.",
 	"gap_quick_length": "Quick length label",
 	"hsn_popup_title": "Category changed: check the HSN",
 	"hsn_popup_body": "The main category is now {{category}}, so the HSN field now shows {{code}}, taken from {{category}}. It was {{old}} before (from {{oldCategory}}).",
@@ -4143,5 +4140,13 @@
 	"perm_shop_details_edit": "Edit shop details",
 	"one_permission_title": "Giving one permission to one person.",
 	"one_permission_body": "Make a small role that holds only that permission (for example Write-off approver, holding Approve write-offs) and add it to the user. They keep their own role; taking the small role away takes the permission away. The same works for Edit shop details.",
-	"search_hint_setting_shop_details": "The shop's legal name, GSTIN and address printed on purchase orders and other documents."
+	"search_hint_setting_shop_details": "The shop's legal name, GSTIN and address printed on purchase orders and other documents.",
+	"returnable_follows_yes": "Follows {{category}}: can be returned.",
+	"returnable_follows_no": "Follows {{category}}: cannot be returned.",
+	"returnable_follows_none": "No category chosen yet: can be returned.",
+	"returnable_set_cat_yes": "Set for this product ({{category}}: can be returned).",
+	"returnable_set_cat_no": "Set for this product ({{category}}: cannot be returned).",
+	"returnable_set_none": "Set for this product.",
+	"returnable_follow_again": "Follow {{category}} again",
+	"returnable_follow_again_none": "Follow the main category again"
 }

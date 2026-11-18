@@ -1623,11 +1623,13 @@ Answered on the purchases decisions brief (https://claude.ai/artifact/XdCdbE91mK
   worked out per rate. Kept as built.
 - **H1 A — HSN and "Can be returned" sit on the product form's Setup tab, under Categories.** Kept as
   built.
-- **H2 — not decided; the old Return switch stays.** The owner asked whether a product keeps its own
-  returnability once it follows a category. It does: "Can be returned" offers Follow category /
-  Yes / No and is saved with the product and frozen on each order line. The vendor Return switch on
-  the Status tab (never saved) stays until the owner types "remove the Return switch" (cleanup
-  list PS5).
+- **H2 — decided later the same day: one switch on the Setup tab.** The theme's Return switch moves from the
+  Status tab to replace the "Can be returned" dropdown under Categories and HSN (owner: "take that return switcher
+  from the status tab to the setup tab and replace the drop down", then "Build it" after annotated screenshots).
+  It shows the main category's answer with "Follows Sarees: can be returned." beside it; flipping it makes it the
+  product's own answer ("Set for this product", with a "Follow Sarees again" link). Data: the product's
+  `returnable` is `null` (follow, read live from the main category by id, nothing copied), `true` or `false`;
+  "Follow again" sets `null`; an order line freezes the answer at purchase.
 - **D1 A — "Default delivery place for orders" stays** in Settings › Purchases and stock.
 - **D2 A — Only the super admin changes the purchase-entry step rules and the books-closed date.**
 - **D3 A — Opening stock keeps both changes:** "Type it in the row, or fix the sheet" for a missing

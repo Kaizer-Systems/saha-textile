@@ -132,6 +132,10 @@ test.describe('Settings › Shop details (x04–x04d)', () => {
 		await save(page).click();
 		await expect(popup(page)).toContainText("Change the shop's legal name?");
 		await popup(page).getByRole('button', { name: 'Cancel' }).click();
+		// Cancel in the question keeps the typing; the page's own Cancel puts the saved name back.
+		await expect(page.locator('#shop_legal_name')).toHaveValue('Saha Textile Private Limited');
+		await page.locator('#shop_details_cancel').click();
+		await expect(page.locator('#shop_legal_name')).toHaveValue('Saha Textile');
 
 		// A second tab saves first; this page, still holding the older copy, is then refused.
 		const other = await browser.newPage({ storageState: await page.context().storageState() });

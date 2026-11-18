@@ -112,7 +112,11 @@ const row = (over: Partial<SupplierListRow> = {}): SupplierListRow => ({
 });
 
 const httpError = (status: number, issues: Array<{ code: string; message: string; path: string[] }>) =>
-	new HttpErrorResponse({ status, error: { message: issues[0]?.code, issues } });
+	// The API's exception filter wraps every refusal like this (apps/api/src/common/http-exception.filter.ts).
+	new HttpErrorResponse({
+		status,
+		error: { error: { code: 'validation_failed', message: 'Request validation failed.', issues } },
+	});
 
 describe('supplier rows (s01)', () => {
 	const t = (key: string, count?: number) => (count === undefined ? key : `${key}:${count}`);

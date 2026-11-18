@@ -145,9 +145,15 @@ export interface ApiIssue {
 	target: string | null;
 }
 
-/** Every refusal in an API error, in order. Plain network failures give an empty list. */
+/**
+ * Every refusal in an API error, in order. Plain network failures give an empty list. The API's
+ * exception filter wraps every refusal as `{ error: { code, message, issues } }`; a bare
+ * `{ issues }` body is read too.
+ */
 export function apiIssues(error: unknown): ApiIssue[] {
-	const body = (error as { error?: unknown } | null)?.error;
+	const outer = (error as { error?: unknown } | null)?.error;
+	const wrapped = outer && typeof outer === 'object' ? (outer as { error?: unknown }).error : undefined;
+	const body = wrapped && typeof wrapped === 'object' ? wrapped : outer;
 	if (!body || typeof body !== 'object') return [];
 	const issues = (body as { issues?: unknown }).issues;
 	if (!Array.isArray(issues)) {

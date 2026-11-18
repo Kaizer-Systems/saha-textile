@@ -157,6 +157,7 @@ test.describe('Product and category forms (F01–F03)', () => {
 	}) => {
 		const item = await copyProduct('ret', 0);
 		await page.goto(`${ADMIN}/product/edit/${item.id}?tab=setup`);
+		await page.waitForLoadState('networkidle');
 		const note = page.locator('#can_be_returned_note');
 		await expect(note).toContainText('Follows');
 		await expect(page.locator('#returnable_follow_again')).toHaveCount(0);
@@ -174,6 +175,8 @@ test.describe('Product and category forms (F01–F03)', () => {
 	test('a metre product asks for its cut and weight per metre', async ({ page }) => {
 		const item = await copyProduct('metre-form', 0);
 		await page.goto(`${ADMIN}/product/edit/${item.id}?tab=inventory`);
+		// Choose only once the saved product has loaded: its arrival fills every field again.
+		await page.waitForLoadState('networkidle');
 		await page.locator('#sold_by').selectOption('metre');
 		await expect(page.locator('#shortest_cut')).toHaveValue('1.0');
 		await expect(page.locator('#weight_per_metre')).toBeVisible();

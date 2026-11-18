@@ -16,13 +16,15 @@ async function metreProduct(): Promise<string> {
 		const base = await products.findOne({ status: 'live', type: 'simple' });
 		if (!base) throw new Error('The demo catalogue has no live simple product to copy.');
 		const variant = await variants.findOne({ productId: base['_id'] });
-		const id = `prd_e2e_fabric_${run}`;
-		const slug = `e2e-fabric-${run}`;
+		// One copy per call: the desktop and phone runs can start in the same millisecond.
+		const key = `${run}${Math.random().toString(36).slice(2, 7)}`;
+		const id = `prd_e2e_fabric_${key}`;
+		const slug = `e2e-fabric-${key}`;
 		await products.insertOne({
 			...base,
 			_id: id as never,
 			slug,
-			sku: `E2E-FAB-${run}`.toUpperCase(),
+			sku: `E2E-FAB-${key}`.toUpperCase(),
 			title: { en: 'E2E Mulmul fabric', bn: 'E2E মলমল কাপড়' },
 			soldBy: 'metre',
 			shortestCutTenths: 10,
@@ -32,9 +34,9 @@ async function metreProduct(): Promise<string> {
 		});
 		await variants.insertOne({
 			...variant,
-			_id: `var_e2e_fabric_${run}` as never,
+			_id: `var_e2e_fabric_${key}` as never,
 			productId: id,
-			sku: `E2E-FAB-${run}`.toUpperCase(),
+			sku: `E2E-FAB-${key}`.toUpperCase(),
 			stock: { tracked: true, quantity: 45, held: 0, lowStockThreshold: null, allowBackorder: false },
 		});
 		return slug;

@@ -1192,23 +1192,27 @@
 											class="help-text"
 											id="can_be_returned_note"
 										>
-											@if (returnableChoice() === '') { @if (main) { {{ (main.returnable ?
-											'returnable_follows_yes' : 'returnable_follows_no') | transloco: { category:
-											main.name } }} } @else { {{ 'returnable_follows_none' | transloco }} } }
-											@else { @if (main) { {{ (main.returnable ? 'returnable_set_cat_yes' :
-											'returnable_set_cat_no') | transloco: { category: main.name } }} } @else {
-											{{ 'returnable_set_none' | transloco }} }
-											<br />
-											<a
-												href="javascript:void(0)"
-												class="theme-color text-decoration-underline fw-semibold"
-												id="returnable_follow_again"
-												(click)="returnableChoice.set('')"
-											>
-												{{ main ? ('returnable_follow_again' | transloco: { category: main.name
-												}) : ('returnable_follow_again_none' | transloco) }}
-											</a>
-											}
+											<!-- One span: the theme lays the switch's note out as a row, so the link sits under the words. -->
+											<span>
+												@if (returnableChoice() === '') { @if (main) { {{ (main.returnable ?
+												'returnable_follows_yes' : 'returnable_follows_no') | transloco: {
+												category: main.name } }} } @else { {{ 'returnable_follows_none' |
+												transloco }} } } @else { @if (main) { {{ (main.returnable ?
+												'returnable_set_cat_yes' : 'returnable_set_cat_no') | transloco: {
+												category: main.name } }} } @else { {{ 'returnable_set_none' | transloco
+												}} }
+												<br />
+												<a
+													href="javascript:void(0)"
+													class="theme-color text-decoration-underline fw-semibold"
+													id="returnable_follow_again"
+													(click)="returnableChoice.set('')"
+												>
+													{{ main ? ('returnable_follow_again' | transloco: { category:
+													main.name }) : ('returnable_follow_again_none' | transloco) }}
+												</a>
+												}
+											</span>
 										</p>
 									</div>
 								</app-form-fields>

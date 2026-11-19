@@ -3,7 +3,7 @@ title: Inbox and Mailboxes
 description: How staff read and answer the shop's Gmail mailboxes in the admin, how mailboxes are connected and shared, and how Contact Us messages reach them.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-19'
 source_of_truth:
     - packages/contracts/src/mailbox.ts
     - packages/core-domain/src/mailbox
@@ -45,32 +45,42 @@ flowchart LR
 
 ### Connecting a mailbox
 
-A holder of `mailbox.manage` connects a mailbox once through Google's own sign-in, using the `gmail.modify` scope. That scope reads, sends, labels and trashes. It never deletes permanently and never changes Gmail settings.
+A super admin connects a mailbox once through Google's own sign-in. Every Settings › Mailboxes route needs `mailbox.manage` and the system Administrator role (`SUPER_ADMIN_ROLE_KEY`); the permission alone is not enough.
 
-- **Sign-in state.** The OAuth `state` is signed with a key derived from `MAILBOX_TOKEN_KEY` and expires after 10 minutes. The callback trusts the state, not the session cookie, because the access cookie can expire while someone reads Google's consent screen.
+- **Scopes.** The sign-in asks for `gmail.modify` (read, send, label, Bin), `gmail.settings.basic` (filters, vacation reply, signature) and full mail access (`https://mail.google.com/`), which Gmail requires for permanent delete. The scopes Google granted are stored per mailbox. A mailbox connected with fewer scopes keeps working; `needsReconnectFor` lists the features it cannot use until a super admin connects it again, and those routes answer 409 `mailbox_reconnect_for_feature`.
+- **Sign-in state.** The OAuth `state` is signed with a key derived from `MAILBOX_TOKEN_KEY`, expires after 10 minutes, and its nonce is stored hashed in `oauthStates` so it works once. The callback trusts the state, not the session cookie, because the access cookie can expire while someone reads Google's consent screen. It then checks that the admin who started it is still an active super admin.
 - **Allowed addresses.** Only addresses on `MAILBOX_DOMAIN` are accepted.
 - **Tokens.** The refresh token is encrypted before it is stored. See [Mailbox tokens](../backend/security-and-identity#mailbox-tokens).
-- **Aliases.** The mailbox's Gmail send-as addresses, with their display names and signatures, are read at connection. **Refresh** reads them again. An alias that Gmail refuses during a send is dropped from the stored list.
-- **Disconnecting.** **Disconnect** withdraws the grant at Google and forgets the token.
+- **Aliases.** The mailbox's Gmail send-as addresses, with their display names and signatures, are read at connection. **Refresh aliases** reads them again; it is separate from the Inbox's Refresh. An alias that Gmail refuses during a send is dropped from the stored list.
+- **Disconnecting.** **Disconnect** stops the mailbox at once, then asks Google to withdraw the grant. When Google confirms, the token is forgotten (`revocation: done`). When it does not, the encrypted token is kept only so **Try again** (`withdraw-again`) can ask once more (`revocation: failed`); the mailbox cannot be used either way.
 - **Withdrawn grants.** When Google withdraws a grant, the mailbox is marked as needing reconnection and its calls answer 409.
 
 ### Access
 
-Each mailbox has its own access list. An operator's right in one mailbox is `none`, `read` or `send`, and `mailboxRight()` in `packages/core-domain/src/mailbox` is checked on every Inbox call.
+Each mailbox has its own access list. A person's rights in one mailbox come from `mailboxRights()` in `packages/core-domain/src/mailbox`, and every Inbox call checks the right it needs. No row means no access.
 
-| Right  | Allows                                                                              |
-| ------ | ----------------------------------------------------------------------------------- |
-| `read` | Open the mailbox, read conversations, download attachments, mark read or unread     |
-| `send` | Everything `read` allows, plus write, reply, forward, archive, move, trash and spam |
+| Right            | Allows                                                              |
+| ---------------- | ------------------------------------------------------------------- |
+| `read`           | Open the mailbox, read, download attachments, mark read or unread   |
+| `send`           | Write, reply and forward                                            |
+| `organise`       | Archive, move to Inbox, spam, star, important, add or remove labels |
+| `bin`            | Move to the Bin and restore                                         |
+| `delete_forever` | Delete from the Bin for good, and Empty Bin                         |
+| `labels`         | Create, rename and delete labels                                    |
+| `settings`       | Basic Gmail settings and the mailbox's shared saved replies         |
 
-- **Unknown mailboxes.** A mailbox the operator has no right in answers 404, so its existence is not revealed.
+- **Needed rights.** Each right brings the ones it cannot work without (`withNeededRights`): everything needs `read`, and `delete_forever` needs `bin`.
+- **Older rows.** Data migration `0007-mailbox-rights` turns Read into `read` and Read-and-send into `read`, `send`, `organise` and `bin`. It grants nobody `delete_forever`, `labels` or `settings`. `canSend` is still written for older builds.
+- **Unknown mailboxes.** A mailbox the operator has no right in answers 404, so its existence is not revealed. A missing right answers 403.
 - **Super admin.** The super admin manages mailboxes but reads one only when its access list names them.
-- **Access changes.** Every access change is written to the audit trail and kept as long as security records.
+- **Editing the list.** The Access popup lists the people the server names, then adds people found by `GET /admin/mailboxes/people`, which searches every page of the admin directory. Save sends the list with the version it was read at; a newer version answers 409 and nothing is written. Save stays off until the current list has loaded.
+- **Access changes.** Every access change is written to the audit trail with counts, and kept as long as security records.
 
 ### Reading
 
 - **Layout.** The Inbox shows folders, the conversation list and the reading pane side by side on a wide screen, and one column at a time on a phone.
-- **Folders.** Inbox, Sent, All mail, Spam and Trash map to Gmail labels in `FOLDER_LABELS`.
+- **Folders.** Inbox, Starred, Important, Sent, All mail, Spam and Bin map to Gmail labels in `FOLDER_LABELS`.
+- **Labels and categories.** The sidebar lists the mailbox's own labels, nested by "/" in their names, and the category tabs the mailbox uses, each with its unread count. Labels hidden in Gmail stay hidden. A conversation can carry several labels; they are shown as chips, not as folders it lives in. Nothing about labels is stored here.
 - **Search.** Search runs over All mail with Gmail's own query syntax.
 
 The page address names the place the operator is in:
@@ -79,13 +89,26 @@ The page address names the place the operator is in:
 | ---------------------------------------------------- | ------------------------------------------------ |
 | `/inbox`                                             | The last mailbox and folder used in this browser |
 | `/inbox/<mailbox>/<folder>`                          | One folder of one mailbox                        |
+| `/inbox/<mailbox>/<labelId>`                         | One label (`Label_…`) or category (`CATEGORY_…`) |
 | `/inbox/<mailbox>/<folder>/<threadId>`               | One open conversation                            |
 | `…?draft=reply` (also `reply_all`, `forward`, `new`) | The compose box                                  |
 | `…?q=<words>`                                        | Search results                                   |
 
 `<mailbox>` is the part of the address before `@`. One matcher route (`inboxMatcher` in `inbox.routes.ts`) serves every form, so moving between them keeps the page. **Back** steps out one level at a time. A shared link opens the same conversation for a colleague, still checked against that colleague's own access. An address that names a mailbox the operator cannot open moves them to one they can open and says why.
 
-The list refreshes every minute (`INBOX_REFRESH_MS`). New conversations do not reshuffle the list under the pointer: they wait behind a "new conversations · Show" line. Changes to rows already shown apply in place.
+The counts, labels, list and open conversation are read again every minute (`INBOX_REFRESH_MS`). **Refresh** asks for all of them at once and shows when Gmail last answered; a second click while one runs does nothing.
+
+- **New conversations.** At the top of the first page of a folder, with no search, nothing ticked and nothing open, they slide into place with a short tint (none with reduced motion). Anywhere else they wait behind "N new · Show".
+- **New replies in the open conversation.** They wait behind "N new replies · Show" and stay unread in Gmail until shown. Folded messages, quotes, pictures and message frames already on screen are kept.
+- **Read state.** Opening a conversation marks exactly the unread messages shown (`POST …/messages/read`), never the conversation as a whole. A failed mark is tried again the next time they show; **Mark unread** is respected.
+- **Unread counts.** When Gmail does not answer for a mailbox, its count is unknown (`unread: null`) and shows as "—", never 0.
+
+### Selection, labels and the Bin
+
+- **Selection.** Each row has a checkbox; Select all ticks the current page and shows a mixed state for part of it. "Select all about N" acts on every conversation that matches, read on the server when the action runs (up to 5,000). With rows ticked, the toolbar offers the actions the folder and the person's rights allow. Changing mailbox, folder, label, search or page clears the selection, and a refresh never ticks new arrivals.
+- **Bulk results.** `POST …/bulk` reports each conversation as done or failed with a reason. Failed ones stay ticked with a **Retry** for just those.
+- **Labels.** People with `labels` create, rename and delete labels. Deleting a label keeps every conversation's mail and other labels. A link to a label Gmail has since deleted lands on the Inbox with a note.
+- **Delete.** Outside the Bin, Delete moves to the Bin. Inside the Bin it asks before deleting for good. **Empty Bin** has its own question with Gmail's counts. The API reads each conversation's labels from Gmail when the action runs and deletes only messages in the Bin; a conversation partly in the Bin keeps its other messages and is reported as partly kept.
 
 ### Showing a message
 
@@ -107,6 +130,7 @@ Mail HTML passes two barriers before anyone sees it.
 - **Quote.** When the operator keeps the quote, the API builds it from the answered message as Gmail holds it, never from text sent by the browser.
 - **Forwards.** A forward can carry the original attachments, which the API copies from Gmail on the server.
 - **Limits.** Uploaded attachments may total 10 MB (`MAX_SEND_ATTACHMENT_BYTES`), with at most 10 files. A forward with copied attachments may total 25 MB (`MAX_FORWARD_BYTES`).
+- **Signing out.** `forgetMailboxData` removes every Inbox and Mailboxes query and the tab's unsent drafts whenever the admin session ends, so the next person on the same browser sees none of it.
 - **Collision check.** Before sending a reply, the admin reads the conversation again. If someone answered after the reply was started, sending stops and names who answered. The operator can read what arrived and keep their reply, or choose **Send anyway**. The check runs in the admin because the API's error filter returns only standard error bodies.
 - **Unsent text.** Drafts are kept in `sessionStorage` per mailbox, conversation and mode. Closing the tab with unsent text asks first, and **Discard** asks when there is text to lose.
 
@@ -125,6 +149,8 @@ Every send writes a `mailbox.message_sent` audit record with Gmail's message and
 | Conversation-line cache | A list line is reused while that conversation's `historyId` is unchanged (5,000 lines kept)       |
 | Errors                  | A withdrawn grant answers 409, Gmail's rate limit 429, any other Gmail failure 502 with no detail |
 | Last checked            | Written at most every 5 minutes per mailbox, however many people have it open                     |
+| Label list              | Reused while the mailbox's `historyId` is unchanged; counts read once per label otherwise         |
+| Batch changes           | `messages.batchModify` and `messages.batchDelete`, at most 1,000 ids per call                     |
 
 The API checks for new mail by reading on request. It uses no push notifications and no Google Cloud billing.
 
@@ -163,14 +189,16 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
     ```
 
 2. Run the browser journey. `e2e/inbox.admin.spec.ts` answers the admin's `/admin/inbox` calls itself and runs in the `admin` Playwright project. It covers the list, the page address and Back, folded messages, a reply's address and quote, and the collision stop. `pnpm e2e:stack` runs it with the rest of the admin journeys against a throwaway database. Set `E2E_ADMIN_URL` to point it at an admin on another address.
-3. After changing the admin's global SCSS, run `pnpm --filter @saha-textile/admin styles`. A running dev server does not rebuild `app.gen.css` by itself.
+3. Docker mode (`pnpm stack:up`) receives Google's mailbox callback on `https://localhost:4000/admin/mailboxes/oauth/callback`, the dev client's registered address: the stack edge answers only that path on port 4000. See `docker/stack/README.md`.
+4. After changing the admin's global SCSS, run `pnpm --filter @saha-textile/admin styles`. A running dev server does not rebuild `app.gen.css` by itself.
 
 ## Limitations
 
-- The browser journey and unit tests do not reach Gmail. Sign-in, sending and import need a real Workspace mailbox to verify.
+- The browser journey and unit tests do not reach Gmail. Sign-in, sending, import, labels and permanent delete need a real Workspace mailbox to verify.
 - Very large messages are cleaned and sent whole; there is no plain-text-first view for them.
-- A sent message cannot be recalled, there are no saved replies, and actions apply to one conversation at a time.
-- Only the five folders are shown. Other Gmail labels stay in Gmail.
+- Unsent text is kept in the browser tab, not in Gmail drafts. A sent message cannot be recalled, and there are no saved replies or Bcc.
+- Gmail settings (filters, vacation reply, signature) are managed in Gmail.
+- Whether Gmail's own filters run on mail placed by import (Contact Us) is unconfirmed until it is tried on a real mailbox.
 
 ## Related pages
 

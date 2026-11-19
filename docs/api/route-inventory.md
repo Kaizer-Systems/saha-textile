@@ -492,24 +492,36 @@ Rules the routes apply:
 
 ## Admin mailbox and inbox routes
 
-| Method | Route                                                                   | Access           | Purpose                                                             |
-| ------ | ----------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------- |
-| `GET`  | `/admin/mailboxes`                                                      | `mailbox.manage` | Connected mailboxes, their reader counts and the Contact Us mailbox |
-| `POST` | `/admin/mailboxes/connect`                                              | `mailbox.manage` | Google's sign-in address for connecting a mailbox                   |
-| `GET`  | `/admin/mailboxes/oauth/callback`                                       | Public           | Google's answer; returns to the admin's Mailboxes tab               |
-| `PUT`  | `/admin/mailboxes/contact-target`                                       | `mailbox.manage` | Choose where Contact Us messages go                                 |
-| `GET`  | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Who may read or send from one mailbox                               |
-| `PUT`  | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Replace one mailbox's access list                                   |
-| `POST` | `/admin/mailboxes/:id/refresh`                                          | `mailbox.manage` | Re-read the mailbox's send-as addresses from Gmail                  |
-| `POST` | `/admin/mailboxes/:id/disconnect`                                       | `mailbox.manage` | Withdraw access at Google and forget the token                      |
-| `GET`  | `/admin/inbox`                                                          | `mailbox.use`    | The mailboxes the operator may open, with unread counts             |
-| `GET`  | `/admin/inbox/:mailboxId/threads`                                       | `mailbox.use`    | One folder of a mailbox, a page at a time                           |
-| `GET`  | `/admin/inbox/:mailboxId/threads/:threadId`                             | `mailbox.use`    | A whole conversation, cleaned for display                           |
-| `GET`  | `/admin/inbox/:mailboxId/messages/:messageId/attachments/:attachmentId` | `mailbox.use`    | One attachment, always as a download                                |
-| `POST` | `/admin/inbox/:mailboxId/send`                                          | `mailbox.use`    | Reply, forward or write, from the mailbox or one of its aliases     |
-| `POST` | `/admin/inbox/:mailboxId/threads/:threadId/modify`                      | `mailbox.use`    | Mark read or unread, archive, move to Inbox, trash or restore       |
+Every `/admin/mailboxes` route except the callback also needs a super admin (the system Administrator role).
 
-The Gmail token stays on the server. `mailbox.use` opens only the mailboxes whose access list names the operator.
+| Method   | Route                                                                   | Access           | Purpose                                                                              |
+| -------- | ----------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `GET`    | `/admin/mailboxes`                                                      | `mailbox.manage` | Connected mailboxes, people counts, Contact Us mailbox, features needing a reconnect |
+| `POST`   | `/admin/mailboxes/connect`                                              | `mailbox.manage` | Google's sign-in address for connecting a mailbox                                    |
+| `GET`    | `/admin/mailboxes/oauth/callback`                                       | Public           | Google's answer; single-use state; returns to the admin's Mailboxes page             |
+| `GET`    | `/admin/mailboxes/people`                                               | `mailbox.manage` | Admin users to add to an access list, searched across every page                     |
+| `PUT`    | `/admin/mailboxes/contact-target`                                       | `mailbox.manage` | Choose where Contact Us messages go                                                  |
+| `GET`    | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Who may use one mailbox, with rights, names and the list's version                   |
+| `PUT`    | `/admin/mailboxes/:id/access`                                           | `mailbox.manage` | Replace one mailbox's access list from the version read; 409 if it changed           |
+| `POST`   | `/admin/mailboxes/:id/refresh`                                          | `mailbox.manage` | Re-read the mailbox's send-as addresses from Gmail                                   |
+| `POST`   | `/admin/mailboxes/:id/disconnect`                                       | `mailbox.manage` | Stop the mailbox here, then withdraw access at Google                                |
+| `POST`   | `/admin/mailboxes/:id/withdraw-again`                                   | `mailbox.manage` | Ask Google again when it did not confirm a withdrawal                                |
+| `GET`    | `/admin/inbox`                                                          | `mailbox.use`    | The mailboxes the operator may open, with rights and unread counts                   |
+| `GET`    | `/admin/inbox/:mailboxId/threads`                                       | Read             | One folder, label or category of a mailbox, a page at a time                         |
+| `GET`    | `/admin/inbox/:mailboxId/threads/:threadId`                             | Read             | A whole conversation, cleaned for display                                            |
+| `GET`    | `/admin/inbox/:mailboxId/messages/:messageId/attachments/:attachmentId` | Read             | One attachment, always as a download                                                 |
+| `POST`   | `/admin/inbox/:mailboxId/messages/read`                                 | Read             | Mark exactly these messages read or unread                                           |
+| `GET`    | `/admin/inbox/:mailboxId/labels`                                        | Read             | The mailbox's Gmail labels and the categories it uses                                |
+| `POST`   | `/admin/inbox/:mailboxId/labels`                                        | Labels           | Create a label                                                                       |
+| `PATCH`  | `/admin/inbox/:mailboxId/labels/:labelId`                               | Labels           | Rename a label                                                                       |
+| `DELETE` | `/admin/inbox/:mailboxId/labels/:labelId`                               | Labels           | Delete a label; its conversations keep their mail                                    |
+| `POST`   | `/admin/inbox/:mailboxId/send`                                          | Send             | Reply, forward or write, from the mailbox or one of its aliases                      |
+| `POST`   | `/admin/inbox/:mailboxId/threads/:threadId/modify`                      | By action        | Read state, archive, move, spam, star, important, labels, Bin or restore             |
+| `POST`   | `/admin/inbox/:mailboxId/bulk`                                          | By action        | One action on chosen or matching conversations, each reported done or failed         |
+| `GET`    | `/admin/inbox/:mailboxId/bin`                                           | Delete forever   | What Empty Bin would delete, counted by Gmail now                                    |
+| `POST`   | `/admin/inbox/:mailboxId/bin/empty`                                     | Delete forever   | Delete everything in the Bin for good                                                |
+
+The Gmail token stays on the server. `mailbox.use` opens only the mailboxes whose access list names the operator, and each route also checks the named per-mailbox right. Deleting for good acts only on what Gmail says is in the Bin at that moment.
 
 ## Admin purchases and stock routes
 

@@ -1,15 +1,4 @@
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Header,
-	Param,
-	Post,
-	Put,
-	Req,
-	UnauthorizedException,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Post, Put, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	type ActiveLocaleConfig,
@@ -130,7 +119,10 @@ export class AdminLanguagesController {
 
 	@Put(':code/admin')
 	@RequirePermissions('language.manage')
-	@ApiOperation({ operationId: 'switchLanguageAdmin', summary: 'Let staff use the admin in this language, or stop (audited)' })
+	@ApiOperation({
+		operationId: 'switchLanguageAdmin',
+		summary: 'Let staff use the admin in this language, or stop (audited)',
+	})
 	admin(
 		@Param('code', codePipe) code: string,
 		@Body(new ZodValidationPipe(LanguageSwitchWrite)) body: LanguageSwitchWrite,

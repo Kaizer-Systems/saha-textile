@@ -154,7 +154,9 @@ export class PurchaseItemsService {
 	/** Lines that arrive as variant ids (an order's receive draft): the same details as a search result, in the order asked. */
 	async byVariants(variantIds: readonly string[], supplierId: string | null): Promise<PurchaseItemOption[]> {
 		const found = await this.stock.items(variantIds);
-		const facts = variantIds.map((id) => found.get(id)).filter((fact): fact is StockItemFacts => fact !== undefined);
+		const facts = variantIds
+			.map((id) => found.get(id))
+			.filter((fact): fact is StockItemFacts => fact !== undefined);
 		return this.options(facts, supplierId);
 	}
 

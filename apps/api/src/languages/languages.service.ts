@@ -168,7 +168,11 @@ export class LanguagesService {
 		return { reminders };
 	}
 
-	async change(actorUserId: string, change: LanguageChange, requestId: string | null): Promise<LanguageSettingsResponse> {
+	async change(
+		actorUserId: string,
+		change: LanguageChange,
+		requestId: string | null,
+	): Promise<LanguageSettingsResponse> {
 		await this.store.refresh();
 		const current = await this.languages.find(change.code);
 		const shipped = shippedFrom(this.shipped()).find((row) => row.code === change.code) ?? null;

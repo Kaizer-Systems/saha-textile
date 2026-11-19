@@ -32,7 +32,9 @@ import {
 	PRODUCT_REPOSITORY,
 	SEARCH_PORT,
 	SEARCH_TERM_REPOSITORY,
-	SITE_SETTINGS_REPOSITORY, LANGUAGE_COVERAGE_REPOSITORY } from '../infra/tokens';
+	SITE_SETTINGS_REPOSITORY,
+	LANGUAGE_COVERAGE_REPOSITORY,
+} from '../infra/tokens';
 import { CatalogPublicService } from './catalog-public.service';
 import { CatalogService } from './catalog.service';
 import { SearchVocabularyService } from './search-vocabulary.service';
@@ -82,7 +84,9 @@ export class SearchTermsService {
 		private readonly vocabulary: SearchVocabularyService,
 		@Optional() @Inject(SEARCH_PORT) private readonly search: SearchPort | null = null,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
-		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage: LanguageCoverageRepository | null = null,
+		@Optional()
+		@Inject(LANGUAGE_COVERAGE_REPOSITORY)
+		private readonly coverage: LanguageCoverageRepository | null = null,
 	) {}
 
 	// ── Search words ───────────────────────────────────────────────────────────

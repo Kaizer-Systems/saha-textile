@@ -35,7 +35,6 @@ export const CONTACT_SWEEP_MS = 5 * 60 * 1000;
 export const CONTACT_RETRY_FOR_MS = 72 * 60 * 60 * 1000;
 const SWEEP_BATCH = 20;
 
-
 /**
  * Contact Us (owner log § stores, Contact Us and Gmail mailboxes). A message is stored first, so
  * none is lost while Gmail is unreachable or no mailbox is chosen, then placed in the chosen

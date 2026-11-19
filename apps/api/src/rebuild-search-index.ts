@@ -17,7 +17,9 @@ async function main(): Promise<void> {
 	try {
 		const languages = releaseLanguages();
 		await languages.refresh();
-		const done = await prepareSearchIndex(releaseSearch(languages), { release: process.argv.includes('--release') });
+		const done = await prepareSearchIndex(releaseSearch(languages), {
+			release: process.argv.includes('--release'),
+		});
 		process.stdout.write(`${done}\n`);
 	} finally {
 		await disconnectMongo();

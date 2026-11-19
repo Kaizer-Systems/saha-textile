@@ -42,7 +42,9 @@ export class LanguageStore implements OnApplicationBootstrap, OnModuleDestroy {
 		this.current = languageSets(this.stored);
 		// Saved redirects strip a language prefix before comparing addresses: every language whose
 		// addresses the shop serves or once served.
-		setLocalePrefixTest((segment) => this.current.shop.includes(segment) || this.current.redirect.includes(segment));
+		setLocalePrefixTest(
+			(segment) => this.current.shop.includes(segment) || this.current.redirect.includes(segment),
+		);
 	}
 
 	/** A store fixed to some languages, all on in both apps: tests and one-off scripts. */

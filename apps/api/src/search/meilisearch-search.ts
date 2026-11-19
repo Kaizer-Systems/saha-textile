@@ -89,7 +89,9 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		if (!entries.length) return;
 		await this.ensureSettings();
 		for (let start = 0; start < entries.length; start += BATCH) {
-			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales()));
+			const documents = entries
+				.slice(start, start + BATCH)
+				.map((entry) => listingDocument(entry, this.locales()));
 			await this.send(`/indexes/${this.index}/documents`, 'POST', documents);
 		}
 	}
@@ -140,7 +142,9 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		this.settingsFor = this.locales().join(',');
 		let task = await this.send<{ taskUid: number }>(`/indexes/${next}/documents`, 'DELETE');
 		for (let start = 0; start < entries.length; start += BATCH) {
-			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales()));
+			const documents = entries
+				.slice(start, start + BATCH)
+				.map((entry) => listingDocument(entry, this.locales()));
 			task = await this.send<{ taskUid: number }>(`/indexes/${next}/documents`, 'POST', documents);
 		}
 		await this.waitFor(task.taskUid);
@@ -203,7 +207,9 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		await this.ensureSettings();
 		let last: number | null = null;
 		for (let start = 0; start < entries.length; start += BATCH) {
-			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales()));
+			const documents = entries
+				.slice(start, start + BATCH)
+				.map((entry) => listingDocument(entry, this.locales()));
 			last = (await this.send<{ taskUid: number }>(`/indexes/${this.index}/documents`, 'POST', documents))
 				.taskUid;
 		}

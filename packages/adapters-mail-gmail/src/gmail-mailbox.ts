@@ -11,6 +11,7 @@ import {
 	onDomain,
 	type ImportedMail,
 	type MailboxCredentials,
+	type MailboxFeature,
 	type MailboxGrant,
 	type MailboxPort,
 	type OutgoingMail,
@@ -24,8 +25,19 @@ const AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN = 'https://oauth2.googleapis.com/token';
 const REVOKE = 'https://oauth2.googleapis.com/revoke';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
-/** Read, send, label and trash; never permanent delete or settings changes. */
-const SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
+/** Read, send, label and trash. */
+const MODIFY = 'https://www.googleapis.com/auth/gmail.modify';
+/** Filters, vacation reply and the main address's signature. */
+const SETTINGS = 'https://www.googleapis.com/auth/gmail.settings.basic';
+/** Full access: the only scope Gmail accepts for deleting mail for good (threads.delete, messages.batchDelete). */
+const FULL = 'https://mail.google.com/';
+/**
+ * What a sign-in asks for (owner log § admin Inbox upgrade, 2026-11-19). A mailbox connected before
+ * these were added keeps working with what it granted; the features below wait for a reconnect.
+ */
+const SCOPES = [MODIFY, SETTINGS, FULL];
+/** The scope each optional feature needs. */
+const FEATURE_SCOPE: Readonly<Record<MailboxFeature, string>> = { delete_forever: FULL, settings: SETTINGS };
 /**
  * Conversations per page. Each line costs one metadata read (10 quota units) and Gmail allows
  * 250 units per mailbox per second, so 20 keeps a page inside one second's allowance.
@@ -47,6 +59,8 @@ const TokenResponse = z.object({
 	access_token: z.string(),
 	expires_in: z.number(),
 	refresh_token: z.string().optional(),
+	/** Space-separated scopes Google actually granted. */
+	scope: z.string().optional(),
 });
 const Profile = z.object({ emailAddress: z.string(), historyId: z.string().optional() });
 const ThreadList = z.object({
@@ -163,7 +177,7 @@ export class GmailMailbox implements MailboxPort {
 			client_id: this.config.clientId,
 			redirect_uri: this.config.redirectUri,
 			response_type: 'code',
-			scope: SCOPE,
+			scope: SCOPES.join(' '),
 			access_type: 'offline',
 			// Always ask, so Google always returns a refresh token, even on a reconnect.
 			prompt: 'consent select_account',
@@ -188,14 +202,23 @@ export class GmailMailbox implements MailboxPort {
 		const profile = Profile.parse(await this.call(grant.access_token, 'GET', '/profile'));
 		const address = profile.emailAddress.toLowerCase();
 		if (!onDomain(address, this.config.domain)) {
-			await this.revokeToken(grant.refresh_token);
+			// The token is never stored, so a failed withdrawal leaves nothing we can use; the
+			// person is still told their address is outside the shop's domain.
+			await this.revokeToken(grant.refresh_token).catch(() => undefined);
 			throw new GmailApiError(`Only ${this.config.domain} mailboxes can be connected`, 403);
 		}
 		this.tokens.set(grant.refresh_token, {
 			token: grant.access_token,
 			expiresAt: this.now() + grant.expires_in * 1000 - EARLY_MS,
 		});
-		return { address, refreshToken: grant.refresh_token };
+		const scopes = grant.scope ? grant.scope.split(' ').filter(Boolean) : [MODIFY];
+		return { address, refreshToken: grant.refresh_token, scopes };
+	}
+
+	featuresMissing(grantedScopes: readonly string[]): MailboxFeature[] {
+		// Full access includes everything the settings scope allows.
+		const has = (scope: string) => grantedScopes.includes(scope) || grantedScopes.includes(FULL);
+		return (Object.keys(FEATURE_SCOPE) as MailboxFeature[]).filter((feature) => !has(FEATURE_SCOPE[feature]));
 	}
 
 	async revoke(credentials: MailboxCredentials): Promise<void> {
@@ -428,13 +451,20 @@ export class GmailMailbox implements MailboxPort {
 		return response.json();
 	}
 
+	/**
+	 * Google answers 400 for a token that is already invalid: the outcome wanted either way. Any
+	 * other answer (or no answer) means Google may still trust the grant, so it throws and the
+	 * caller records that the withdrawal needs trying again.
+	 */
 	private async revokeToken(token: string): Promise<void> {
-		// Google answers 400 for a token that is already invalid: the outcome wanted either way.
-		await this.fetchImpl(REVOKE, {
+		const response = await this.fetchImpl(REVOKE, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: new URLSearchParams({ token }),
 		});
+		if (!response.ok && response.status !== 400) {
+			throw new GmailApiError('Google did not confirm the withdrawal', response.status);
+		}
 	}
 }
 

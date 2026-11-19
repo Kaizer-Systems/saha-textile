@@ -1,19 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
 import { MailboxAccessRevoked } from '../src/ports/mailbox.port';
-import { FOLDER_LABELS, labelChange, mailboxRight, onDomain, replySubject } from '../src/mailbox/mailbox-rules';
+import {
+	ACTION_RIGHT,
+	FOLDER_LABELS,
+	labelChange,
+	legacyMailboxRights,
+	mailboxRights,
+	onDomain,
+	replySubject,
+	withNeededRights,
+} from '../src/mailbox/mailbox-rules';
 
 describe('mailbox rules', () => {
 	const access = [
-		{ mailboxId: 'm1', adminUserId: 'riya', canSend: true },
-		{ mailboxId: 'm1', adminUserId: 'arup', canSend: false },
+		{ mailboxId: 'm1', adminUserId: 'riya', rights: legacyMailboxRights(true) },
+		{ mailboxId: 'm1', adminUserId: 'arup', rights: legacyMailboxRights(false) },
 	];
 
-	it('gives each admin user only the right they were given, mailbox by mailbox', () => {
-		expect(mailboxRight(access, 'riya', 'm1')).toBe('send');
-		expect(mailboxRight(access, 'arup', 'm1')).toBe('read');
-		expect(mailboxRight(access, 'arup', 'm2')).toBe('none');
-		expect(mailboxRight(access, 'owner', 'm1')).toBe('none');
+	it('gives each admin user only the rights they were given, mailbox by mailbox', () => {
+		expect([...mailboxRights(access, 'riya', 'm1')]).toEqual(['read', 'send', 'organise', 'bin']);
+		expect([...mailboxRights(access, 'arup', 'm1')]).toEqual(['read']);
+		expect(mailboxRights(access, 'arup', 'm2').size).toBe(0);
+		expect(mailboxRights(access, 'owner', 'm1').size).toBe(0);
+	});
+
+	it('adds what each right needs, once, in a fixed order', () => {
+		expect(withNeededRights(['delete_forever'])).toEqual(['read', 'bin', 'delete_forever']);
+		expect(withNeededRights(['settings', 'send', 'send'])).toEqual(['read', 'send', 'settings']);
+		expect(ACTION_RIGHT.trash).toBe('bin');
+		expect(ACTION_RIGHT.archive).toBe('organise');
 	});
 
 	it('maps folders, actions and reply subjects', () => {

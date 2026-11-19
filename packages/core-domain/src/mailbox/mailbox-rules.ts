@@ -1,17 +1,65 @@
-import type { InboxFolder, MailboxAccess } from '@saha-textile/contracts';
+import type { InboxFolder, InboxModifyRequest, MailboxAccess, MailboxRight } from '@saha-textile/contracts';
 
-/** What an admin user may do in one mailbox: nothing, read, or read and send. */
-export type MailboxRight = 'none' | 'read' | 'send';
+/** The fixed order rights are listed and stored in. */
+const ORDER: readonly MailboxRight[] = ['read', 'send', 'organise', 'bin', 'delete_forever', 'labels', 'settings'];
+
+/** What each right cannot work without: everything needs Read, Delete forever needs Bin. */
+const NEEDS: Readonly<Record<MailboxRight, readonly MailboxRight[]>> = {
+	read: [],
+	send: ['read'],
+	organise: ['read'],
+	bin: ['read'],
+	delete_forever: ['bin', 'read'],
+	labels: ['read'],
+	settings: ['read'],
+};
+
+/** The rights with everything they need added, once each, in the fixed order. */
+export function withNeededRights(rights: readonly MailboxRight[]): MailboxRight[] {
+	const all = new Set<MailboxRight>();
+	const add = (right: MailboxRight) => {
+		if (all.has(right)) return;
+		all.add(right);
+		NEEDS[right].forEach(add);
+	};
+	rights.forEach(add);
+	return ORDER.filter((right) => all.has(right));
+}
 
 /**
- * The per-mailbox check every inbox call makes (object-level authorisation): the super admin
- * manages mailboxes but reads one only when given access like anyone else.
+ * The rights a stored access row from before 2026-11-19 meant (owner log § admin Inbox upgrade):
+ * Read stays Read; Read-and-send allowed writing, archiving and the Bin, so it keeps exactly those.
+ * Nobody gets Delete forever, Labels or Settings without a super admin ticking them.
  */
-export function mailboxRight(access: readonly MailboxAccess[], adminUserId: string, mailboxId: string): MailboxRight {
-	const row = access.find((entry) => entry.adminUserId === adminUserId && entry.mailboxId === mailboxId);
-	if (!row) return 'none';
-	return row.canSend ? 'send' : 'read';
+export function legacyMailboxRights(canSend: boolean): MailboxRight[] {
+	return canSend ? ['read', 'send', 'organise', 'bin'] : ['read'];
 }
+
+/**
+ * The per-mailbox check every inbox call makes (object-level authorisation). An empty set means no
+ * access at all. The super admin manages mailboxes but reads one only when given access like
+ * anyone else.
+ */
+export function mailboxRights(
+	access: readonly MailboxAccess[],
+	adminUserId: string,
+	mailboxId: string,
+): ReadonlySet<MailboxRight> {
+	const row = access.find((entry) => entry.adminUserId === adminUserId && entry.mailboxId === mailboxId);
+	return new Set(row ? withNeededRights(row.rights) : []);
+}
+
+/** The right each conversation action needs. */
+export const ACTION_RIGHT: Readonly<Record<InboxModifyRequest['action'], MailboxRight>> = {
+	mark_read: 'read',
+	mark_unread: 'read',
+	archive: 'organise',
+	move_to_inbox: 'organise',
+	spam: 'organise',
+	not_spam: 'organise',
+	trash: 'bin',
+	untrash: 'bin',
+};
 
 /** Gmail's label for each admin folder. */
 export const FOLDER_LABELS: Readonly<Record<InboxFolder, string | null>> = {

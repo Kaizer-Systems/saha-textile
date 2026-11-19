@@ -35,6 +35,8 @@ const mailbox = (id: string, overrides: Partial<Mailbox> = {}): Mailbox => ({
 		{ address: `${id}@shop.test`, displayName: 'Care', signature: '<b>Team</b>', isPrimary: true },
 		{ address: `orders@shop.test`, displayName: 'Orders', signature: '', isPrimary: false },
 	],
+	grantedScopes: [],
+	revocation: null,
 	...overrides,
 });
 
@@ -45,6 +47,9 @@ const world = () => {
 	const tokenMap = new Map<string, string>();
 	const settingMap = new Map<string, unknown>();
 	const contacts = new Map<string, ContactMessage>();
+	const versions = new Map<string, number>();
+	const states = new Set<string>();
+	const superAdmins = new Set<string>(['admin_1', 'admin', 'u1']);
 	const audit: Array<{
 		action: string;
 		entityId: string | null;
@@ -69,15 +74,35 @@ const world = () => {
 				return box;
 			},
 		},
+		versions,
 		access: {
 			listForMailbox: async (id: string) => rows.filter((row) => row.mailboxId === id),
 			listForAdminUser: async (id: string) => rows.filter((row) => row.adminUserId === id),
-			replaceForMailbox: async (id: string, entries: readonly MailboxAccess[]) => {
+			version: async (id: string) => versions.get(id) ?? 0,
+			replaceForMailbox: async (id: string, entries: readonly MailboxAccess[], expected?: number) => {
+				const current = versions.get(id) ?? 0;
+				if (expected !== undefined && expected !== current) return null;
 				for (let index = rows.length - 1; index >= 0; index--)
 					if (rows[index]?.mailboxId === id) rows.splice(index, 1);
 				rows.push(...entries);
+				versions.set(id, current + 1);
+				return current + 1;
 			},
 		},
+		states,
+		signInStates: {
+			create: async (state: { stateHash: string }) => {
+				states.add(state.stateHash);
+				return state as never;
+			},
+			consume: async (hash: string) => (states.delete(hash) ? ({ stateHash: hash } as never) : null),
+		},
+		roles: { findByKey: async (key: string) => (key === 'administrator' ? ({ id: 'role_admin' } as never) : null) },
+		assignments: {
+			findActive: async (userId: string, roleId: string) =>
+				roleId === 'role_admin' && superAdmins.has(userId) ? ({ userId } as never) : null,
+		},
+		superAdmins,
 		tokens: {
 			put: async (id: string, token: string) => void tokenMap.set(id, token),
 			get: async (id: string) => tokenMap.get(id) ?? null,
@@ -89,7 +114,9 @@ const world = () => {
 		},
 		adminUsers: {
 			findById: async (id: string) =>
-				id.startsWith('u') ? ({ id, displayName: id === 'u_riya' ? 'Riya' : undefined } as never) : null,
+				id.startsWith('u') || id.startsWith('admin')
+					? ({ id, displayName: id === 'u_riya' ? 'Riya' : undefined, status: 'active' } as never)
+					: null,
 		},
 		contactRepo: {
 			save: async (message: ContactMessage) => {
@@ -124,8 +151,9 @@ const world = () => {
 const gmailStub = (overrides: Partial<Record<keyof MailboxPort, unknown>> = {}) =>
 	({
 		signInUrl: vi.fn((state: string) => `https://accounts.test/?state=${state}`),
-		completeSignIn: vi.fn(async () => ({ address: 'care@shop.test', refreshToken: 'r1' })),
+		completeSignIn: vi.fn(async () => ({ address: 'care@shop.test', refreshToken: 'r1', scopes: [] })),
 		revoke: vi.fn(async () => undefined),
+		featuresMissing: vi.fn(() => []),
 		listThreads: vi.fn(async () => ({ threads: [], nextPageToken: null })),
 		getThread: vi.fn(async () => ({ id: 't1', subject: 'S', messages: [], unread: false })),
 		getAttachment: vi.fn(async () => ({ data: new Uint8Array([1, 2]) })),
@@ -148,16 +176,18 @@ describe('MailboxSignInState', () => {
 
 	it('names the admin who started the sign-in, until it expires', () => {
 		const issued = state.issue('admin_1', 1_000);
-		expect(state.verify(issued, 1_001)).toBe('admin_1');
-		expect(state.verify(issued, 1_000 + STATE_TTL_MS + 1)).toBeNull();
+		expect(state.verify(issued.state, 1_001)).toEqual({ adminUserId: 'admin_1', nonce: issued.nonce });
+		expect(state.verify(issued.state, 1_000 + STATE_TTL_MS + 1)).toBeNull();
 	});
 
 	it('refuses a forged, altered or malformed state', () => {
-		const [payload, signature] = state.issue('admin_1').split('.');
+		const [payload, signature] = state.issue('admin_1').state.split('.');
 		expect(state.verify(`${payload}.${signature?.slice(1)}x`)).toBeNull();
 		expect(state.verify(`${payload}x.${signature}`)).toBeNull();
 		expect(state.verify('nothing')).toBeNull();
-		expect(new MailboxSignInState(Buffer.alloc(32, 1).toString('base64')).verify(state.issue('a'))).toBeNull();
+		expect(
+			new MailboxSignInState(Buffer.alloc(32, 1).toString('base64')).verify(state.issue('a').state),
+		).toBeNull();
 		const other = new MailboxSignInState(KEY);
 		// A signed body that is not JSON, or lacks its fields.
 		const forge = (body: string) => {
@@ -214,10 +244,14 @@ describe('MailboxesAdminService', () => {
 			w.tokens as never,
 			w.settings as never,
 			w.adminUsers as never,
+			w.roles as never,
+			w.assignments as never,
+			w.signInStates as never,
 			config,
 			books(w),
 		);
-	const callbackState = () => new URL(service.connectUrl('admin_1').url).searchParams.get('state') ?? '';
+	const callbackState = async () =>
+		new URL((await service.connectUrl('admin_1')).url).searchParams.get('state') ?? '';
 
 	beforeEach(() => {
 		w = world();
@@ -226,7 +260,7 @@ describe('MailboxesAdminService', () => {
 	});
 
 	it('connects a mailbox: stores the token, reads its aliases and returns to the Mailboxes tab', async () => {
-		const url = await service.completeSignIn({ code: 'code', state: callbackState() });
+		const url = await service.completeSignIn({ code: 'code', state: await callbackState() });
 		expect(url).toBe('https://admin.test/setting/mailboxes?connected=care%40shop.test');
 		const saved = [...w.boxes.values()][0];
 		expect(saved).toMatchObject({ address: 'care@shop.test', status: 'connected', connectedBy: 'admin_1' });
@@ -238,7 +272,7 @@ describe('MailboxesAdminService', () => {
 	it('reconnects the same address in place, keeping its aliases if Gmail cannot list them', async () => {
 		await w.mailboxes.save(mailbox('care', { status: 'needs_reconnect' }));
 		gmail.listSendAs.mockRejectedValueOnce(new Error('down'));
-		await service.completeSignIn({ code: 'code', state: callbackState() });
+		await service.completeSignIn({ code: 'code', state: await callbackState() });
 		expect(w.boxes.size).toBe(1);
 		expect(w.boxes.get('care')).toMatchObject({ status: 'connected', sendAs: [] });
 		expect(w.audit.map((entry) => entry.action)).toEqual(['mailbox.reconnected']);
@@ -246,19 +280,21 @@ describe('MailboxesAdminService', () => {
 
 	it('returns with a reason when the state is bad, the admin cancelled, or Google refused', async () => {
 		expect(await service.completeSignIn({ code: 'c', state: 'forged' })).toContain('error=expired');
-		expect(await service.completeSignIn({ state: callbackState(), error: 'access_denied' })).toContain(
+		expect(await service.completeSignIn({ state: await callbackState(), error: 'access_denied' })).toContain(
 			'error=cancelled',
 		);
-		expect(await service.completeSignIn({ state: callbackState() })).toContain('error=cancelled');
+		expect(await service.completeSignIn({ state: await callbackState() })).toContain('error=cancelled');
 		gmail.completeSignIn.mockRejectedValueOnce({ status: 403 });
-		expect(await service.completeSignIn({ code: 'c', state: callbackState() })).toContain('error=not_on_domain');
+		expect(await service.completeSignIn({ code: 'c', state: await callbackState() })).toContain(
+			'error=not_on_domain',
+		);
 		gmail.completeSignIn.mockRejectedValueOnce(new Error('boom'));
-		expect(await service.completeSignIn({ code: 'c', state: callbackState() })).toContain('error=failed');
+		expect(await service.completeSignIn({ code: 'c', state: await callbackState() })).toContain('error=failed');
 	});
 
-	it('says it is not set up without a key or an admin address', () => {
+	it('says it is not set up without a key or an admin address', async () => {
 		expect(make(mailConfig({ tokenKey: undefined })).configured).toBe(false);
-		expect(() => make(mailConfig({ adminUrl: undefined })).connectUrl('a')).toThrow('not set up');
+		await expect(make(mailConfig({ adminUrl: undefined })).connectUrl('a')).rejects.toThrow('not set up');
 		expect(service.configured).toBe(true);
 	});
 
@@ -266,8 +302,8 @@ describe('MailboxesAdminService', () => {
 		await w.mailboxes.save(mailbox('care'));
 		await w.mailboxes.save(mailbox('orders'));
 		await w.access.replaceForMailbox('care', [
-			{ mailboxId: 'care', adminUserId: 'u1', canSend: true },
-			{ mailboxId: 'care', adminUserId: 'u2', canSend: false },
+			{ mailboxId: 'care', adminUserId: 'u1', rights: ['read', 'send', 'organise', 'bin'] },
+			{ mailboxId: 'care', adminUserId: 'u2', rights: ['read'] },
 		]);
 		await w.settings.set('mailboxes.contact', { mailboxId: 'care' });
 		const list = await service.list();
@@ -282,11 +318,18 @@ describe('MailboxesAdminService', () => {
 
 	it('replaces the access list, refusing people who are not admin users', async () => {
 		await w.mailboxes.save(mailbox('care'));
-		const saved = await service.setAccess('care', { entries: [{ adminUserId: 'u1', canSend: true }] }, 'admin');
-		expect(saved).toEqual([{ mailboxId: 'care', adminUserId: 'u1', canSend: true }]);
-		expect(await service.getAccess('care')).toHaveLength(1);
+		const saved = await service.setAccess(
+			'care',
+			{ version: 0, entries: [{ adminUserId: 'u1', rights: ['send'] }] },
+			'admin',
+		);
+		expect(saved).toEqual({
+			version: 1,
+			entries: [{ adminUserId: 'u1', rights: ['read', 'send'], name: 'u1', email: '', active: true }],
+		});
+		expect((await service.getAccess('care')).entries).toHaveLength(1);
 		await expect(
-			service.setAccess('care', { entries: [{ adminUserId: 'ghost', canSend: false }] }, 'admin'),
+			service.setAccess('care', { version: 1, entries: [{ adminUserId: 'ghost', rights: ['read'] }] }, 'admin'),
 		).rejects.toMatchObject({ status: 400 });
 		await expect(service.getAccess('missing')).rejects.toMatchObject({ status: 404 });
 	});
@@ -303,10 +346,11 @@ describe('MailboxesAdminService', () => {
 	it('disconnects: withdraws at Google, forgets the token, keeps who may open it', async () => {
 		await w.mailboxes.save(mailbox('care'));
 		await w.tokens.put('care', 'r1');
-		await w.access.replaceForMailbox('care', [{ mailboxId: 'care', adminUserId: 'u1', canSend: true }]);
-		gmail.revoke.mockRejectedValueOnce(new Error('already gone'));
+		await w.access.replaceForMailbox('care', [
+			{ mailboxId: 'care', adminUserId: 'u1', rights: ['read', 'send', 'organise', 'bin'] },
+		]);
 		const saved = await service.disconnect('care', 'admin');
-		expect(saved).toMatchObject({ status: 'disconnected', sendAs: [] });
+		expect(saved).toMatchObject({ status: 'disconnected', sendAs: [], revocation: 'done' });
 		expect(w.tokenMap.has('care')).toBe(false);
 		expect(w.rows).toHaveLength(1);
 		await w.mailboxes.save(mailbox('notoken'));
@@ -335,17 +379,17 @@ describe('InboxService', () => {
 		await w.mailboxes.save(mailbox('care'));
 		await w.tokens.put('care', 'r1');
 		await w.access.replaceForMailbox('care', [
-			{ mailboxId: 'care', adminUserId: 'sender', canSend: true },
-			{ mailboxId: 'care', adminUserId: 'reader', canSend: false },
+			{ mailboxId: 'care', adminUserId: 'sender', rights: ['read', 'send', 'organise', 'bin'] },
+			{ mailboxId: 'care', adminUserId: 'reader', rights: ['read'] },
 		]);
 	});
 
 	it('lists only the mailboxes a person may open, with live unread counts', async () => {
 		await w.mailboxes.save(mailbox('off', { status: 'disconnected' }));
 		await w.mailboxes.save(mailbox('lost'));
-		await w.access.replaceForMailbox('off', [{ mailboxId: 'off', adminUserId: 'reader', canSend: false }]);
-		await w.access.replaceForMailbox('lost', [{ mailboxId: 'lost', adminUserId: 'reader', canSend: false }]);
-		await w.access.replaceForMailbox('gone', [{ mailboxId: 'gone', adminUserId: 'reader', canSend: false }]);
+		await w.access.replaceForMailbox('off', [{ mailboxId: 'off', adminUserId: 'reader', rights: ['read'] }]);
+		await w.access.replaceForMailbox('lost', [{ mailboxId: 'lost', adminUserId: 'reader', rights: ['read'] }]);
+		await w.access.replaceForMailbox('gone', [{ mailboxId: 'gone', adminUserId: 'reader', rights: ['read'] }]);
 		const summary = await inbox.summary('reader');
 		expect(summary.map((row) => [row.address, row.status, row.unread, row.sendAs.length])).toEqual([
 			['care@shop.test', 'connected', 3, 0],
@@ -387,7 +431,7 @@ describe('InboxService', () => {
 		await expect(inbox.threads('stranger', 'care', { folder: 'inbox' })).rejects.toMatchObject({ status: 404 });
 		const request = { from: 'care@shop.test', to: ['a@x.test'], cc: [], subject: 'Hi', body: 'x', attachments: [] };
 		await expect(inbox.send('reader', 'care', request)).rejects.toMatchObject({ status: 403 });
-		await w.access.replaceForMailbox('ghost', [{ mailboxId: 'ghost', adminUserId: 'reader', canSend: false }]);
+		await w.access.replaceForMailbox('ghost', [{ mailboxId: 'ghost', adminUserId: 'reader', rights: ['read'] }]);
 		await expect(inbox.threads('reader', 'ghost', { folder: 'inbox' })).rejects.toMatchObject({ status: 404 });
 	});
 
@@ -478,8 +522,8 @@ describe('InboxService after the review (brief revision 2)', () => {
 		await w.mailboxes.save(mailbox('care'));
 		await w.tokens.put('care', 'r1');
 		await w.access.replaceForMailbox('care', [
-			{ mailboxId: 'care', adminUserId: 'u_riya', canSend: true },
-			{ mailboxId: 'care', adminUserId: 'reader', canSend: false },
+			{ mailboxId: 'care', adminUserId: 'u_riya', rights: ['read', 'send', 'organise', 'bin'] },
+			{ mailboxId: 'care', adminUserId: 'reader', rights: ['read'] },
 		]);
 	});
 
@@ -845,7 +889,9 @@ describe('mailbox controllers', () => {
 	it('passes the signed-in admin through, and refuses without one', async () => {
 		const service = {
 			list: vi.fn(async () => ({ rows: [] })),
-			connectUrl: vi.fn(() => ({ url: 'https://accounts.test' })),
+			connectUrl: vi.fn(async () => ({ url: 'https://accounts.test' })),
+			requireSuperAdmin: vi.fn(async () => undefined),
+			retryRevocation: vi.fn(async () => mailbox('care')),
 			completeSignIn: vi.fn(async () => 'https://admin.test/setting/mailboxes'),
 			setContactTarget: vi.fn(async () => ({ mailboxId: null })),
 			getAccess: vi.fn(async () => []),
@@ -854,22 +900,23 @@ describe('mailbox controllers', () => {
 			disconnect: vi.fn(async () => mailbox('care')),
 		};
 		const controller = new AdminMailboxesController(service as never);
-		await controller.list();
-		expect(controller.connect(principal)).toEqual({ url: 'https://accounts.test' });
-		expect(() => controller.connect(undefined)).toThrow();
+		await controller.list(principal);
+		expect(await controller.connect(principal)).toEqual({ url: 'https://accounts.test' });
+		await expect(controller.connect(undefined)).rejects.toThrow();
 		expect(await controller.callback({ state: 's' })).toEqual({
 			url: 'https://admin.test/setting/mailboxes',
 			statusCode: 302,
 		});
-		await controller.contactTarget({ mailboxId: null }, undefined);
-		expect(service.setContactTarget).toHaveBeenCalledWith(null, null);
+		await expect(controller.contactTarget({ mailboxId: null }, undefined)).rejects.toThrow();
 		await controller.contactTarget({ mailboxId: 'care' }, principal);
 		expect(service.setContactTarget).toHaveBeenLastCalledWith('care', 'u1');
-		await controller.getAccess('care');
-		await controller.setAccess('care', { entries: [] }, principal);
-		expect(service.setAccess).toHaveBeenCalledWith('care', { entries: [] }, 'u1');
-		await controller.refresh('care');
+		await controller.getAccess('care', principal);
+		await controller.setAccess('care', { version: 0, entries: [] }, principal);
+		expect(service.setAccess).toHaveBeenCalledWith('care', { version: 0, entries: [] }, 'u1');
+		await controller.refresh('care', principal);
 		await controller.disconnect('care', principal);
+		await controller.withdrawAgain('care', principal);
+		expect(service.requireSuperAdmin).toHaveBeenCalledTimes(8);
 	});
 
 	it('serves the Inbox as the signed-in admin, attachments always as downloads', async () => {

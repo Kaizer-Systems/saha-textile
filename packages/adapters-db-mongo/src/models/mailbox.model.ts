@@ -13,6 +13,10 @@ export interface MailboxDoc {
 	connectedAt: Date | null;
 	lastSyncAt: Date | null;
 	sendAs: { address: string; displayName: string; signature: string; isPrimary: boolean }[];
+	grantedScopes?: string[];
+	revocation?: string | null;
+	/** Bumped by every access-list save, so two editors cannot overwrite each other. */
+	accessVersion?: number;
 	token: { iv: string; tag: string; data: string } | null;
 	createdAt?: Date;
 	updatedAt?: Date;
@@ -37,6 +41,9 @@ const MailboxSchema = new Schema<MailboxDoc>(
 		connectedAt: { type: Date, default: null },
 		lastSyncAt: { type: Date, default: null },
 		sendAs: { type: [SendAsSchema], default: [] },
+		grantedScopes: { type: [String], default: [] },
+		revocation: { type: String, default: null },
+		accessVersion: { type: Number, default: 0 },
 		token: { type: Schema.Types.Mixed, default: null, select: false },
 	},
 	{ collection: 'mailboxes', timestamps: true, minimize: false },
@@ -48,11 +55,16 @@ MailboxSchema.index({ address: 1 }, { unique: true });
 export const MailboxModel: Model<MailboxDoc> =
 	(models.Mailbox as Model<MailboxDoc>) ?? model<MailboxDoc>('Mailbox', MailboxSchema);
 
-/** Who may open which mailbox; no row means no access. */
+/**
+ * Who may open which mailbox; no row means no access. `rights` replaced `canSend` on 2026-11-19;
+ * a row without rights is read through `legacyMailboxRights`, and `canSend` is still written
+ * (true when the rights include send) so an older API build reads the same access.
+ */
 export interface MailboxAccessDoc {
 	_id: string;
 	mailboxId: string;
 	adminUserId: string;
+	rights?: string[];
 	canSend: boolean;
 }
 
@@ -61,6 +73,7 @@ const MailboxAccessSchema = new Schema<MailboxAccessDoc>(
 		_id: { type: String, required: true },
 		mailboxId: { type: String, required: true },
 		adminUserId: { type: String, required: true },
+		rights: { type: [String], default: undefined },
 		canSend: { type: Boolean, default: false },
 	},
 	{ collection: 'mailboxAccess', timestamps: true },

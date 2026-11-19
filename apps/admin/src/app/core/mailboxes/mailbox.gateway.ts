@@ -16,7 +16,9 @@ import type {
 	InboxThread,
 	InboxThreadPage,
 	Mailbox,
-	MailboxAccess,
+	MailboxAccessList,
+	MailboxPeoplePage,
+	MailboxRight,
 } from '@saha-textile/contracts';
 
 /** What Settings › Mailboxes reads in one call. */
@@ -49,12 +51,36 @@ export class MailboxGateway {
 		return this.http.post<{ url: string }>(this.admin('/connect'), {});
 	}
 
-	access(mailboxId: string): Observable<MailboxAccess[]> {
-		return this.http.get<MailboxAccess[]>(this.admin(`/${this.id(mailboxId)}/access`));
+	/** Everyone on the mailbox's list, named by the server, with the list's version. */
+	access(mailboxId: string): Observable<MailboxAccessList> {
+		return this.http.get<MailboxAccessList>(this.admin(`/${this.id(mailboxId)}/access`));
 	}
 
-	saveAccess(mailboxId: string, entries: { adminUserId: string; canSend: boolean }[]): Observable<MailboxAccess[]> {
-		return this.http.put<MailboxAccess[]>(this.admin(`/${this.id(mailboxId)}/access`), { entries });
+	/**
+	 * Saves the whole list from the version it was read at. A 409 means someone saved first; the
+	 * popup explains it itself, so the global error toast stays quiet.
+	 */
+	saveAccess(
+		mailboxId: string,
+		version: number,
+		entries: { adminUserId: string; rights: MailboxRight[] }[],
+	): Observable<MailboxAccessList> {
+		return this.http.put<MailboxAccessList>(
+			this.admin(`/${this.id(mailboxId)}/access`),
+			{ version, entries },
+			{ context: quiet() },
+		);
+	}
+
+	/** Admin users to add, searched across the whole directory on the server. */
+	people(q: string, page: number): Observable<MailboxPeoplePage> {
+		const params = new HttpParams().set('q', q).set('page', String(page));
+		return this.http.get<MailboxPeoplePage>(this.admin('/people'), { params });
+	}
+
+	/** Asks Google again to withdraw a disconnected mailbox's access. */
+	withdrawAgain(mailboxId: string): Observable<Mailbox> {
+		return this.http.post<Mailbox>(this.admin(`/${this.id(mailboxId)}/withdraw-again`), {});
 	}
 
 	setContactTarget(mailboxId: string | null): Observable<{ mailboxId: string | null }> {

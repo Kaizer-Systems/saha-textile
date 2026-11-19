@@ -1,4 +1,4 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { ConflictException, HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import type { AuditLog, Mailbox } from '@saha-textile/contracts';
@@ -30,8 +30,9 @@ export const STATE_TTL_MS = 10 * 60 * 1000;
 /**
  * The OAuth `state`: who started the sign-in, a nonce and an expiry, signed with a key derived
  * from `MAILBOX_TOKEN_KEY`. The callback trusts it instead of the session cookie, because the
- * short-lived access cookie can expire while someone reads Google's consent screen. Google's
- * codes are single-use, so a replayed state carries nothing.
+ * short-lived access cookie can expire while someone reads Google's consent screen. The nonce is
+ * also stored (hashed) when the sign-in starts and used up by the callback, so a state works once;
+ * the callback then checks the admin user is still active and still a super admin.
  */
 export class MailboxSignInState {
 	private readonly key: Buffer;
@@ -40,26 +41,40 @@ export class MailboxSignInState {
 		this.key = createHmac('sha256', Buffer.from(tokenKey, 'base64')).update('mailbox-oauth-state').digest();
 	}
 
-	issue(adminUserId: string, now = Date.now()): string {
-		const payload = Buffer.from(
-			JSON.stringify({ u: adminUserId, n: randomUUID(), e: now + STATE_TTL_MS }),
-		).toString('base64url');
-		return `${payload}.${this.sign(payload)}`;
+	issue(adminUserId: string, now = Date.now()): { state: string; nonce: string; expiresAt: number } {
+		const nonce = randomUUID();
+		const expiresAt = now + STATE_TTL_MS;
+		const payload = Buffer.from(JSON.stringify({ u: adminUserId, n: nonce, e: expiresAt })).toString('base64url');
+		return { state: `${payload}.${this.sign(payload)}`, nonce, expiresAt };
 	}
 
-	/** The admin user who started the sign-in, or null for a forged, altered or expired state. */
-	verify(state: string, now = Date.now()): string | null {
+	/** Who started the sign-in and its nonce, or null for a forged, altered or expired state. */
+	verify(state: string, now = Date.now()): { adminUserId: string; nonce: string } | null {
 		const [payload, signature] = state.split('.');
 		if (!payload || !signature) return null;
 		const expected = Buffer.from(this.sign(payload));
 		const given = Buffer.from(signature);
 		if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
 		try {
-			const body = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { u?: unknown; e?: unknown };
-			return typeof body.u === 'string' && typeof body.e === 'number' && body.e > now ? body.u : null;
+			const body = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
+				u?: unknown;
+				n?: unknown;
+				e?: unknown;
+			};
+			return typeof body.u === 'string' &&
+				typeof body.n === 'string' &&
+				typeof body.e === 'number' &&
+				body.e > now
+				? { adminUserId: body.u, nonce: body.n }
+				: null;
 		} catch {
 			return null;
 		}
+	}
+
+	/** The stored form of a nonce: a hash, so the database never holds a usable state. */
+	static nonceHash(nonce: string): string {
+		return createHash('sha256').update(nonce).digest('hex');
 	}
 
 	private sign(payload: string): string {

@@ -1,6 +1,7 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
 import { seedLegalPages } from '../migrations/legal-pages';
+import { giveMailboxAccessRights } from '../migrations/mailbox-rights';
 import {
 	addCardWidth600,
 	addProfileSizes,
@@ -67,5 +68,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Product-card size (shop speed round 4): built-in image profiles still on the seeded card sizes gain a 600 px size and a new version, so "Bring older versions up to date" adds it to existing photos; sizes an admin changed stay',
 		half: 'expand',
 		up: () => addCardWidth600(),
+	},
+	{
+		id: '0007-mailbox-rights',
+		description:
+			'Mailbox rights (admin Inbox upgrade): each access row gets its seven-right list; Read stays Read, Read-and-send becomes Read, Send, Organise and Bin; nobody gains Delete forever, Labels or Settings',
+		half: 'expand',
+		up: () => giveMailboxAccessRights(),
 	},
 ];

@@ -19,32 +19,21 @@ import {
 	type InboxThread,
 	type InboxThreadPage,
 	type Mailbox,
+	type MailboxRight,
 } from '@saha-textile/contracts';
 import {
 	type MailboxAccessRepository,
 	type MailboxCredentials,
 	type MailboxPort,
 	type MailboxRepository,
-	type MailboxRight,
 	type MailboxTokenStore,
+	ACTION_RIGHT,
 	labelChange,
-	mailboxRight,
+	mailboxRights,
 } from '@saha-textile/core-domain';
 
 import { MAILBOX_ACCESS_REPOSITORY, MAILBOX_PORT, MAILBOX_REPOSITORY, MAILBOX_TOKEN_STORE } from '../infra/tokens';
 import { MESSAGE_SENT, MailboxBookkeeping, needsReconnect, type SentFromAdmin } from './mailbox-support';
-
-/** What each inbox action needs: reading actions are open to readers, the rest to senders. */
-const ACTION_RIGHT: Readonly<Record<InboxModifyRequest['action'], Exclude<MailboxRight, 'none'>>> = {
-	mark_read: 'read',
-	mark_unread: 'read',
-	archive: 'send',
-	move_to_inbox: 'send',
-	trash: 'send',
-	untrash: 'send',
-	spam: 'send',
-	not_spam: 'send',
-};
 
 /** "Last checked" is written at most this often per mailbox, however many people have it open. */
 export const SYNC_WRITE_MS = 5 * 60 * 1000;
@@ -102,11 +91,14 @@ export class InboxService {
 			rows.map(async (row): Promise<InboxMailboxSummary | null> => {
 				const mailbox = await this.mailboxes.findById(row.mailboxId);
 				if (!mailbox) return null;
+				const rights = [...mailboxRights([row], adminUserId, mailbox.id)];
+				const canSend = rights.includes('send');
 				const base = {
 					mailboxId: mailbox.id,
 					address: mailbox.address,
-					canSend: row.canSend,
-					sendAs: row.canSend ? mailbox.sendAs : [],
+					rights,
+					canSend,
+					sendAs: canSend ? mailbox.sendAs : [],
 				};
 				if (mailbox.status !== 'connected') return { ...base, status: mailbox.status, unread: 0 };
 				try {
@@ -302,12 +294,13 @@ export class InboxService {
 
 	/**
 	 * The access check, then the mailbox's credentials. No access at all answers 404, so a
-	 * mailbox's existence is not revealed; read-only access answers 403 for sending.
+	 * mailbox's existence is not revealed; access without the needed right answers 403. Rights are
+	 * read fresh on every call, so a removed right stops working on the next request.
 	 */
-	private async open(adminUserId: string, mailboxId: string, need: 'read' | 'send'): Promise<Opened> {
-		const right = mailboxRight(await this.access.listForAdminUser(adminUserId), adminUserId, mailboxId);
-		if (right === 'none') throw new NotFoundException('Mailbox not found');
-		if (need === 'send' && right !== 'send') throw new ForbiddenException({ code: 'read_only_mailbox' });
+	private async open(adminUserId: string, mailboxId: string, need: MailboxRight): Promise<Opened> {
+		const rights = mailboxRights(await this.access.listForAdminUser(adminUserId), adminUserId, mailboxId);
+		if (!rights.size) throw new NotFoundException('Mailbox not found');
+		if (!rights.has(need)) throw new ForbiddenException({ code: 'mailbox_right_missing', right: need });
 		const mailbox = await this.mailboxes.findById(mailboxId);
 		if (!mailbox) throw new NotFoundException('Mailbox not found');
 		if (mailbox.status !== 'connected') throw needsReconnect(mailbox.address);

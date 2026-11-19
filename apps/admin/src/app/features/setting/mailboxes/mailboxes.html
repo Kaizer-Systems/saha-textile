@@ -44,7 +44,13 @@
 					</td>
 					<td>
 						<span [class]="statusClass(row)">{{ 'mailbox_status_' + row.mailbox.status | transloco }}</span>
-						@if (row.mailbox.lastSyncAt) {
+						@if (row.mailbox.status === 'disconnected' && row.mailbox.revocation === 'failed') {
+						<div class="text-danger small">{{ 'mailbox_withdraw_failed' | transloco }}</div>
+						} @if (row.needsReconnectFor.length) {
+						<div class="text-content small">
+							{{ 'mailbox_reconnect_for' | transloco: { features: reconnectFor(row) } }}
+						</div>
+						} @if (row.mailbox.lastSyncAt) {
 						<div class="text-content small">
 							{{ 'mailbox_checked' | transloco }} {{ row.mailbox.lastSyncAt | date: 'd MMM, HH:mm' }}
 						</div>
@@ -61,7 +67,24 @@
 							>
 								{{ 'mailbox_access' | transloco }}
 							</button>
-							@if (row.mailbox.status === 'connected') {
+							@if (row.mailbox.status === 'connected' && row.needsReconnectFor.length) {
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								[disabled]="!configured()"
+								(click)="connect()"
+							>
+								{{ 'mailbox_reconnect' | transloco }}
+							</button>
+							} @if (row.mailbox.status === 'disconnected' && row.mailbox.revocation === 'failed') {
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								(click)="withdrawAgain(row)"
+							>
+								{{ 'mailbox_withdraw_again' | transloco }}
+							</button>
+							} @if (row.mailbox.status === 'connected') {
 							<button
 								[title]="'mailbox_refresh_aliases' | transloco"
 								type="button"
@@ -148,50 +171,179 @@
 		</button>
 	</div>
 	<div class="modal-body">
+		@if (accessState() === 'failed') {
+		<div
+			class="alert alert-danger"
+			role="alert"
+		>
+			{{ 'mailbox_access_load_failed' | transloco }}
+		</div>
+		} @if (accessTheirs()) {
+		<div
+			class="alert alert-warning d-flex align-items-center flex-wrap gap-2"
+			role="status"
+		>
+			<span>{{ 'mailbox_access_changed' | transloco }}</span>
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				(click)="showTheirs()"
+			>
+				{{ 'mailbox_show_their_version' | transloco }}
+			</button>
+		</div>
+		}
 		<div class="table-responsive rounded-3 border">
 			<table class="all-package theme-table no-footer mb-0 table">
 				<thead>
 					<tr>
 						<th class="text-start">{{ 'mailbox_admin_user' | transloco }}</th>
-						<th>{{ 'mailbox_can_read' | transloco }}</th>
-						<th>{{ 'mailbox_can_send' | transloco }}</th>
+						@for (right of rights; track right) {
+						<th [title]="'mailbox_right_' + right + '_help' | transloco">
+							{{ 'mailbox_right_' + right | transloco }}
+						</th>
+						}
+						<th><span class="visually-hidden">{{ 'remove' | transloco }}</span></th>
 					</tr>
 				</thead>
 				<tbody>
-					@for (line of accessLines(); track line.adminUserId) {
+					@if (accessState() === 'loading') {
 					<tr>
-						<td class="text-start">{{ line.name }}</td>
-						<td>
-							<div class="form-check form-switch ps-0">
-								<label class="switch switch-sm">
-									<input
-										type="checkbox"
-										[attr.aria-label]="('mailbox_can_read' | transloco) + ': ' + line.name"
-										[checked]="line.read"
-										(change)="setAccess(line.adminUserId, 'read', $any($event.target).checked)"
-									/>
-									<span class="switch-state"></span>
-								</label>
-							</div>
-						</td>
-						<td>
-							<div class="form-check form-switch ps-0">
-								<label class="switch switch-sm">
-									<input
-										type="checkbox"
-										[attr.aria-label]="('mailbox_can_send' | transloco) + ': ' + line.name"
-										[checked]="line.send"
-										(change)="setAccess(line.adminUserId, 'send', $any($event.target).checked)"
-									/>
-									<span class="switch-state"></span>
-								</label>
-							</div>
+						<td
+							[attr.colspan]="rights.length + 2"
+							class="text-content text-center"
+						>
+							{{ 'mailbox_access_loading' | transloco }}
 						</td>
 					</tr>
-					}
+					} @for (line of accessLines(); track line.adminUserId) {
+					<tr [attr.data-person]="line.adminUserId">
+						<td class="text-start">
+							<div>{{ line.name }}</div>
+							<div class="text-content small">
+								{{ line.email }} @if (!line.active) {
+								<span class="badge bg-secondary ms-1">{{ 'mailbox_account_off' | transloco }}</span>
+								}
+							</div>
+						</td>
+						@for (right of rights; track right) {
+						<td>
+							<div class="custom-control custom-checkbox">
+								<input
+									type="checkbox"
+									class="custom-control-input checkbox_animated"
+									[id]="'right_' + line.adminUserId + '_' + right"
+									[attr.aria-label]="('mailbox_right_' + right | transloco) + ': ' + line.name"
+									[checked]="line.rights.includes(right)"
+									(change)="setRight(line.adminUserId, right, $any($event.target).checked)"
+								/>
+								<label
+									class="custom-control-label"
+									[for]="'right_' + line.adminUserId + '_' + right"
+								>
+									&nbsp;
+								</label>
+							</div>
+						</td>
+						}
+						<td>
+							<button
+								[title]="'mailbox_remove_person' | transloco: { name: line.name }"
+								type="button"
+								class="btn btn-sm"
+								[attr.aria-label]="'mailbox_remove_person' | transloco: { name: line.name }"
+								(click)="removePerson(line.adminUserId)"
+							>
+								<i class="ri-close-line"></i>
+							</button>
+						</td>
+					</tr>
+					} @empty { @if (accessState() === 'ready') {
+					<tr>
+						<td
+							[attr.colspan]="rights.length + 2"
+							class="text-content text-center"
+						>
+							{{ 'mailbox_access_empty' | transloco }}
+						</td>
+					</tr>
+					} }
 				</tbody>
 			</table>
 		</div>
+
+		<div class="theme-form theme-form-2 mt-3">
+			<label
+				class="form-label-title"
+				for="mailbox_people_search"
+			>
+				{{ 'mailbox_add_person' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="mailbox_people_search"
+				type="search"
+				autocomplete="off"
+				[placeholder]="'mailbox_find_person' | transloco"
+				[value]="peopleQuery()"
+				(input)="searchPeople($any($event.target).value)"
+			/>
+			@if (peopleFailed()) {
+			<p class="text-danger small mt-2">{{ 'mailbox_people_failed' | transloco }}</p>
+			} @if (people(); as found) {
+			<ul class="list-group mt-2">
+				@for (person of found.items; track person.adminUserId) {
+				<li class="list-group-item d-flex align-items-center justify-content-between gap-2">
+					<span>
+						{{ person.name }}
+						<span class="text-content small">{{ person.email }}</span>
+					</span>
+					@if (isListed(person.adminUserId)) {
+					<span class="text-content small">{{ 'mailbox_already_added' | transloco }}</span>
+					} @else {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="addPerson(person)"
+					>
+						{{ 'mailbox_add' | transloco }}
+					</button>
+					}
+				</li>
+				} @empty {
+				<li class="list-group-item text-content">{{ 'mailbox_no_people_found' | transloco }}</li>
+				}
+			</ul>
+			@if (found.total > found.pageSize) {
+			<div class="d-flex align-items-center justify-content-end mt-2 gap-2">
+				<span class="text-content small">
+					{{ 'mailbox_people_range' | transloco: { from: (found.page - 1) * found.pageSize + 1, to:
+					(found.page - 1) * found.pageSize + found.items.length, total: found.total } }}
+				</span>
+				<button
+					[title]="'previous_page' | transloco"
+					type="button"
+					class="btn btn-outline btn-sm"
+					[disabled]="found.page <= 1"
+					[attr.aria-label]="'previous_page' | transloco"
+					(click)="pagePeople(-1)"
+				>
+					<i class="ri-arrow-left-s-line"></i>
+				</button>
+				<button
+					[title]="'next_page' | transloco"
+					type="button"
+					class="btn btn-outline btn-sm"
+					[disabled]="found.page * found.pageSize >= found.total"
+					[attr.aria-label]="'next_page' | transloco"
+					(click)="pagePeople(1)"
+				>
+					<i class="ri-arrow-right-s-line"></i>
+				</button>
+			</div>
+			} }
+		</div>
+
 		<div class="button-box justify-content-end mt-3">
 			<button
 				type="button"
@@ -203,6 +355,7 @@
 			<button
 				type="button"
 				class="btn btn-md btn-theme fw-bold"
+				[disabled]="!canSaveAccess()"
 				(click)="saveAccess(modal)"
 			>
 				{{ 'mailbox_save_access' | transloco }}

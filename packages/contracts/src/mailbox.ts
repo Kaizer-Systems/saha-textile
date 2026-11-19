@@ -37,17 +37,40 @@ export const Mailbox = z.object({
 	/** Last time the API reached the mailbox at Gmail. */
 	lastSyncAt: IsoDateTime.nullable().default(null),
 	sendAs: z.array(MailboxSendAs).default([]),
+	/** The Google permissions this mailbox's sign-in granted, as Google listed them. */
+	grantedScopes: z.array(z.string()).default([]),
+	/**
+	 * After a disconnect: whether Google confirmed the withdrawal. `failed` keeps the encrypted
+	 * token only so the withdrawal can be tried again; the mailbox is unusable either way.
+	 */
+	revocation: z.enum(['done', 'failed']).nullable().default(null),
 	createdAt: IsoDateTime.nullish(),
 	updatedAt: IsoDateTime.nullish(),
 });
 export type Mailbox = z.infer<typeof Mailbox>;
 
+/**
+ * What one person may do in one mailbox (owner log § admin Inbox upgrade, 2026-11-19). Each right
+ * brings the ones it needs (`withNeededRights` in core): everything needs `read`, and
+ * `delete_forever` needs `bin`.
+ *
+ * - `read`: open the mailbox, read, download attachments, mark read or unread.
+ * - `send`: write, reply, forward, drafts, saved replies, Undo Send.
+ * - `organise`: archive, move to Inbox, spam, star, important, add or remove labels.
+ * - `bin`: move to the Bin and restore from it.
+ * - `delete_forever`: delete from the Bin for good, and Empty Bin.
+ * - `labels`: create, rename and delete labels.
+ * - `settings`: filters, vacation reply, signature and the mailbox's shared saved replies.
+ */
+export const MailboxRight = z.enum(['read', 'send', 'organise', 'bin', 'delete_forever', 'labels', 'settings']);
+export type MailboxRight = z.infer<typeof MailboxRight>;
+export const MAILBOX_RIGHTS: readonly MailboxRight[] = MailboxRight.options;
+
 /** One admin user's access to one mailbox. No row means no access. */
 export const MailboxAccess = z.object({
 	mailboxId: Id,
 	adminUserId: Id,
-	/** Read is implied by a row; send also allows reply, forward, compose, archive and trash. */
-	canSend: z.boolean().default(false),
+	rights: z.array(MailboxRight).min(1),
 });
 export type MailboxAccess = z.infer<typeof MailboxAccess>;
 
@@ -59,14 +82,58 @@ export const AdminMailboxRow = z.object({
 	senders: z.number().int().nonnegative(),
 	/** True for the mailbox Contact Us messages go to. */
 	contactTarget: z.boolean(),
+	/** Features this mailbox cannot use until a super admin connects it again. */
+	needsReconnectFor: z.array(z.enum(['delete_forever', 'settings'])).default([]),
 });
 export type AdminMailboxRow = z.infer<typeof AdminMailboxRow>;
 
-/** `PUT /admin/mailboxes/:id/access`: the whole access list for one mailbox. */
+/** The most people one mailbox's access list may hold. */
+export const MAX_MAILBOX_ACCESS_ENTRIES = 500;
+
+/**
+ * `GET /admin/mailboxes/:id/access`: everyone who may use the mailbox, with their names, read from
+ * the server so nobody is dropped when the user directory is long. `version` goes back with the save.
+ */
+export const MailboxAccessList = z.object({
+	version: z.number().int().nonnegative(),
+	entries: z.array(
+		z.object({
+			adminUserId: Id,
+			rights: z.array(MailboxRight).min(1),
+			name: z.string(),
+			email: z.string(),
+			/** A disabled or locked account keeps its row, so re-enabling it restores the access. */
+			active: z.boolean(),
+		}),
+	),
+});
+export type MailboxAccessList = z.infer<typeof MailboxAccessList>;
+
+/** `GET /admin/mailboxes/people`: admin users to add to an access list, searched on the server. */
+export const MailboxPeopleQuery = z.object({
+	/** Part of a name, email or username; empty lists everyone. */
+	q: z.string().trim().max(100).default(''),
+	page: z.coerce.number().int().min(1).max(1_000).default(1),
+});
+export type MailboxPeopleQuery = z.infer<typeof MailboxPeopleQuery>;
+
+export const MailboxPeoplePage = z.object({
+	items: z.array(z.object({ adminUserId: Id, name: z.string(), email: z.string(), active: z.boolean() })),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().min(1),
+	pageSize: z.number().int().positive(),
+});
+export type MailboxPeoplePage = z.infer<typeof MailboxPeoplePage>;
+
+/**
+ * `PUT /admin/mailboxes/:id/access`: the whole access list for one mailbox. `version` is the one
+ * the editor loaded; when someone saved since, the API answers 409 and keeps the stored list.
+ */
 export const MailboxAccessWrite = z.object({
+	version: z.number().int().nonnegative(),
 	entries: z
-		.array(z.object({ adminUserId: Id, canSend: z.boolean() }))
-		.max(200)
+		.array(z.object({ adminUserId: Id, rights: z.array(MailboxRight).min(1) }))
+		.max(MAX_MAILBOX_ACCESS_ENTRIES)
 		.refine((rows) => new Set(rows.map((row) => row.adminUserId)).size === rows.length, {
 			message: 'Each admin user may appear once',
 		}),
@@ -157,10 +224,7 @@ export const InboxMessage = z.object({
 	/** References header: the chain a reply must carry on. */
 	references: z.string().default(''),
 	/** Set when the website's Contact Us form placed this message in the mailbox. */
-	contactForm: z
-		.object({ replyTo: z.string(), locale: LocaleCode.nullable() })
-		.nullable()
-		.default(null),
+	contactForm: z.object({ replyTo: z.string(), locale: LocaleCode.nullable() }).nullable().default(null),
 	/** The admin user who sent this message from the admin, when one did. */
 	sentBy: z.string().nullable().default(null),
 });
@@ -220,6 +284,9 @@ export const InboxMailboxSummary = z.object({
 	mailboxId: Id,
 	address: z.string(),
 	status: MailboxStatus,
+	/** What this person may do here; the API checks the same list on every call. */
+	rights: z.array(MailboxRight).default(['read']),
+	/** `rights` includes `send`; kept for purchase-order sending, which reads only this. */
 	canSend: z.boolean(),
 	unread: z.number().int().nonnegative(),
 	sendAs: z.array(MailboxSendAs),

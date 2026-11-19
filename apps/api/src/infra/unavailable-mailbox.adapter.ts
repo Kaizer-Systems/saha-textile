@@ -26,6 +26,10 @@ export class UnavailableMailboxAdapter implements MailboxPort {
 	importMessage = refuse;
 	unreadCount = refuse;
 	listSendAs = refuse;
+	/** Nothing can be used without the settings, so nothing is singled out as missing. */
+	featuresMissing(): [] {
+		return [];
+	}
 }
 
 /** Without a key nothing can be stored or read: every mailbox reads as needing reconnection. */

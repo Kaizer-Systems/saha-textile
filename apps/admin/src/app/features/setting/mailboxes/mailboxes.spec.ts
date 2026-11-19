@@ -18,19 +18,13 @@ vi.mock('@core/mailboxes/mailbox.gateway', async (original) => ({
 	...(await original<object>()),
 	injectMailboxesQuery: () => ({ data: query.data, isPending: () => query.pending }),
 }));
-const users = vi.hoisted(() => ({ data: undefined as unknown as () => unknown }));
-vi.mock('@data-access/queries/admin-users.queries', () => ({
-	injectAdminUsersQuery: (params: () => unknown) => {
-		params();
-		return { data: users.data };
-	},
-}));
 
 const row = (id: string, status = 'connected', contactTarget = false) => ({
 	mailbox: { id, address: `${id}@shop.test`, status, sendAs: [], lastSyncAt: null, connectedAt: null },
 	readers: 2,
 	senders: 1,
 	contactTarget,
+	needsReconnectFor: [] as string[],
 });
 
 const setup = (
@@ -42,23 +36,23 @@ const setup = (
 	params: Record<string, string> = {},
 ) => {
 	query.data = signal<unknown>(overview);
-	users.data = signal<unknown>({
-		items: [
-			{ id: 'u1', displayName: 'Riya' },
-			{ id: 'u2', email: 'arup@shop.test' },
-			{ id: 'u3', username: 'packing' },
-			{ id: 'u4' },
-		],
-	});
+	const person = (adminUserId: string, name: string) => ({ adminUserId, name, email: '', active: true });
 	const gateway = {
 		connect: vi.fn(() => of({ url: 'https://accounts.test/o' })),
 		access: vi.fn(() =>
-			of([
-				{ mailboxId: 'care', adminUserId: 'u1', canSend: true },
-				{ mailboxId: 'care', adminUserId: 'u2', canSend: false },
-			]),
+			of({
+				version: 4,
+				entries: [
+					{ ...person('u1', 'Riya'), rights: ['read', 'send', 'organise', 'bin'] },
+					{ ...person('u2', 'arup@shop.test'), rights: ['read'] },
+				],
+			}),
 		),
-		saveAccess: vi.fn(() => of([])),
+		people: vi.fn(() =>
+			of({ items: [person('u2', 'arup@shop.test'), person('u3', 'packing')], total: 2, page: 1, pageSize: 20 }),
+		),
+		withdrawAgain: vi.fn(() => of({ revocation: 'done' })),
+		saveAccess: vi.fn(() => of({ version: 5, entries: [] })),
 		setContactTarget: vi.fn(() => of({ mailboxId: null })),
 		refresh: vi.fn(() => of({})),
 		disconnect: vi.fn(() => of({})),
@@ -160,37 +154,45 @@ describe('MailboxesSettings', () => {
 		expect(notifier.showSuccess).toHaveBeenLastCalledWith('mailbox_disconnected:{"address":"care@shop.test"}');
 	});
 
-	it('opens Access with every admin user, keeps Send within Read, and saves only readers', async () => {
+	it('opens Access with the server list, adds needed rights, and saves from the version read', async () => {
 		const { page, gateway, modals } = setup();
 		await page.openAccess(row('care') as never, {} as never);
 		expect(modals.open).toHaveBeenCalled();
-		expect(page.accessLines().map((line) => [line.name, line.read, line.send])).toEqual([
-			['Riya', true, true],
-			['arup@shop.test', true, false],
-			['packing', false, false],
-			['u4', false, false],
+		expect(page.accessLines().map((line) => [line.name, line.rights.join('+')])).toEqual([
+			['Riya', 'read+send+organise+bin'],
+			['arup@shop.test', 'read'],
 		]);
-		page.setAccess('u3', 'send', true);
-		page.setAccess('u1', 'read', false);
-		page.setAccess('u2', 'send', false);
-		page.setAccess('u4', 'read', true);
+		page.addPerson({ adminUserId: 'u3', name: 'packing', email: '', active: true });
+		page.addPerson({ adminUserId: 'u3', name: 'packing', email: '', active: true });
+		page.setRight('u3', 'delete_forever', true);
+		page.setRight('u1', 'bin', false);
+		page.setRight('u2', 'read', false);
 		const modal = { close: vi.fn() };
 		await page.saveAccess(modal as never);
-		expect(gateway.saveAccess).toHaveBeenCalledWith('care', [
-			{ adminUserId: 'u2', canSend: false },
-			{ adminUserId: 'u3', canSend: true },
-			{ adminUserId: 'u4', canSend: false },
+		expect(gateway.saveAccess).toHaveBeenCalledWith('care', 4, [
+			{ adminUserId: 'u1', rights: ['read', 'send', 'organise'] },
+			{ adminUserId: 'u3', rights: ['read', 'bin', 'delete_forever'] },
 		]);
 		expect(modal.close).toHaveBeenCalled();
 	});
 
-	it('saves nothing without an open mailbox, and lists nobody before users load', async () => {
+	it('keeps Save off until the list loads, and keeps edits when someone saved first', async () => {
 		const { page, gateway } = setup();
 		await page.saveAccess({ close: vi.fn() } as never);
 		expect(gateway.saveAccess).not.toHaveBeenCalled();
-		const later = setup();
-		(users.data as ReturnType<typeof signal<unknown>>).set(undefined);
-		await later.page.openAccess(row('care') as never, {} as never);
-		expect(later.page.accessLines()).toEqual([]);
+		gateway.access.mockReturnValueOnce(throwError(() => ({ status: 500 })) as never);
+		await page.openAccess(row('care') as never, {} as never);
+		expect(page.accessState()).toBe('failed');
+		expect(page.canSaveAccess()).toBe(false);
+		await page.openAccess(row('care') as never, {} as never);
+		page.removePerson('u2');
+		gateway.saveAccess.mockReturnValueOnce(throwError(() => ({ status: 409 })) as never);
+		const modal = { close: vi.fn() };
+		await page.saveAccess(modal as never);
+		expect(modal.close).not.toHaveBeenCalled();
+		expect(page.accessTheirs()?.entries).toHaveLength(2);
+		expect(page.accessLines()).toHaveLength(1);
+		page.showTheirs();
+		expect(page.accessLines()).toHaveLength(2);
 	});
 });

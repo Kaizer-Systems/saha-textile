@@ -42,15 +42,22 @@ describe('ContactMessageRequest', () => {
 
 describe('mailbox requests', () => {
 	it('lists each admin user once in an access list', () => {
-		expect(MailboxAccessWrite.safeParse({ entries: [{ adminUserId: 'a', canSend: true }] }).success).toBe(true);
+		expect(
+			MailboxAccessWrite.safeParse({ version: 0, entries: [{ adminUserId: 'a', rights: ['send'] }] }).success,
+		).toBe(true);
 		expect(
 			MailboxAccessWrite.safeParse({
+				version: 0,
 				entries: [
-					{ adminUserId: 'a', canSend: true },
-					{ adminUserId: 'a', canSend: false },
+					{ adminUserId: 'a', rights: ['send'] },
+					{ adminUserId: 'a', rights: ['read'] },
 				],
 			}).success,
 		).toBe(false);
+		expect(MailboxAccessWrite.safeParse({ entries: [] }).success).toBe(false);
+		expect(MailboxAccessWrite.safeParse({ version: 0, entries: [{ adminUserId: 'a', rights: [] }] }).success).toBe(
+			false,
+		);
 	});
 
 	it('reads the inbox folder, a send and the sign-in answer', () => {

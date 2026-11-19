@@ -93,21 +93,46 @@ describe.runIf(hasMongoEnv())('mailbox persistence (rs0)', () => {
 		expect(await tokens.get(`${prefix}missing`)).toBeNull();
 	});
 
-	it("replaces a mailbox's access list as a whole", async () => {
+	it("replaces a mailbox's access list as a whole, only from the version it was read at", async () => {
 		const id = `${prefix}access`;
-		await access.replaceForMailbox(id, [
-			{ mailboxId: id, adminUserId: 'u1', canSend: true },
-			{ mailboxId: id, adminUserId: 'u2', canSend: false },
-		]);
-		await access.replaceForMailbox(id, [
-			{ mailboxId: id, adminUserId: 'u2', canSend: true },
-			{ mailboxId: id, adminUserId: 'u3', canSend: false },
-		]);
+		await mailboxes.save(Mailbox.parse({ id, address: `${id}@shop.test`, status: 'connected' }));
+		expect(await access.version(id)).toBe(0);
+		expect(
+			await access.replaceForMailbox(
+				id,
+				[
+					{ mailboxId: id, adminUserId: 'u1', rights: ['send'] },
+					{ mailboxId: id, adminUserId: 'u2', rights: ['read'] },
+				],
+				0,
+			),
+		).toBe(1);
+		expect(
+			await access.replaceForMailbox(
+				id,
+				[
+					{ mailboxId: id, adminUserId: 'u2', rights: ['delete_forever'] },
+					{ mailboxId: id, adminUserId: 'u3', rights: ['read'] },
+				],
+				1,
+			),
+		).toBe(2);
+		// A save made from an older version writes nothing.
+		expect(await access.replaceForMailbox(id, [], 1)).toBeNull();
 		const rows = await access.listForMailbox(id);
-		expect(rows.map((row) => `${row.adminUserId}:${row.canSend}`).sort()).toEqual(['u2:true', 'u3:false']);
+		expect(rows.map((row) => `${row.adminUserId}:${row.rights.join('+')}`).sort()).toEqual([
+			'u2:read+bin+delete_forever',
+			'u3:read',
+		]);
 		expect((await access.listForAdminUser('u3')).some((row) => row.mailboxId === id)).toBe(true);
-		await access.replaceForMailbox(id, []);
+		expect(await access.replaceForMailbox(id, [], 2)).toBe(3);
 		expect(await access.listForMailbox(id)).toEqual([]);
+	});
+
+	it('reads a row saved before rights existed as what it allowed then', async () => {
+		const id = `${prefix}legacy`;
+		await MailboxAccessModel.create({ _id: `${id}:u9`, mailboxId: id, adminUserId: 'u9', canSend: true });
+		expect((await access.listForMailbox(id))[0]?.rights).toEqual(['read', 'send', 'organise', 'bin']);
 	});
 
 	it('stores Contact Us messages, finds a recent repeat and lists those still to deliver', async () => {

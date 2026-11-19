@@ -311,7 +311,7 @@ describe('GmailMailbox sign-in', () => {
 		expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
 		expect(Object.fromEntries(url.searchParams)).toMatchObject({
 			client_id: 'client',
-			scope: 'https://www.googleapis.com/auth/gmail.modify',
+			scope: 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.settings.basic https://mail.google.com/',
 			access_type: 'offline',
 			prompt: 'consent select_account',
 			hd: 'shop.test',
@@ -328,7 +328,17 @@ describe('GmailMailbox sign-in', () => {
 			[/\/profile$/, () => json({ emailAddress: 'Care@Shop.test' })],
 			[/\/labels\/INBOX$/, () => json({ threadsUnread: 4 })],
 		]);
-		expect(await gmail.completeSignIn('code')).toEqual({ address: 'care@shop.test', refreshToken: 'r1' });
+		expect(await gmail.completeSignIn('code')).toEqual({
+			address: 'care@shop.test',
+			refreshToken: 'r1',
+			// Google listed no scopes in this answer, so only the base one is assumed.
+			scopes: ['https://www.googleapis.com/auth/gmail.modify'],
+		});
+		expect(gmail.featuresMissing(['https://www.googleapis.com/auth/gmail.modify'])).toEqual([
+			'delete_forever',
+			'settings',
+		]);
+		expect(gmail.featuresMissing(['https://mail.google.com/'])).toEqual([]);
 		expect(String(calls[0]?.init.body)).toContain('grant_type=authorization_code');
 		expect(await gmail.unreadCount({ address: 'care@shop.test', refreshToken: 'r1' })).toBe(4);
 		expect(calls.filter((call) => call.url.includes('/token'))).toHaveLength(1);

@@ -37,21 +37,29 @@ describe('MailboxGateway', () => {
 		await firstValueFrom(gateway.overview());
 		await firstValueFrom(gateway.connect());
 		await firstValueFrom(gateway.access('a b'));
-		await firstValueFrom(gateway.saveAccess('m1', [{ adminUserId: 'u1', canSend: true }]));
+		await firstValueFrom(gateway.saveAccess('m1', 3, [{ adminUserId: 'u1', rights: ['read', 'send'] }]));
 		await firstValueFrom(gateway.setContactTarget(null));
 		await firstValueFrom(gateway.refresh('m1'));
 		await firstValueFrom(gateway.disconnect('m1'));
+		await firstValueFrom(gateway.people('riya', 2));
+		await firstValueFrom(gateway.withdrawAgain('m1'));
 		expect(http.get.mock.calls.map((call) => call[0])).toEqual([
 			'https://api.test/admin/mailboxes',
 			'https://api.test/admin/mailboxes/a%20b/access',
+			'https://api.test/admin/mailboxes/people',
 		]);
+		expect(String((http.get.mock.calls[2]?.[1] as { params?: unknown } | undefined)?.params)).toBe('q=riya&page=2');
 		expect(http.post.mock.calls.map((call) => call[0])).toEqual([
 			'https://api.test/admin/mailboxes/connect',
 			'https://api.test/admin/mailboxes/m1/refresh',
 			'https://api.test/admin/mailboxes/m1/disconnect',
+			'https://api.test/admin/mailboxes/m1/withdraw-again',
 		]);
-		expect(http.put.mock.calls).toEqual([
-			['https://api.test/admin/mailboxes/m1/access', { entries: [{ adminUserId: 'u1', canSend: true }] }],
+		expect(http.put.mock.calls.map((call) => [call[0], call[1]])).toEqual([
+			[
+				'https://api.test/admin/mailboxes/m1/access',
+				{ version: 3, entries: [{ adminUserId: 'u1', rights: ['read', 'send'] }] },
+			],
 			['https://api.test/admin/mailboxes/contact-target', { mailboxId: null }],
 		]);
 	});

@@ -18,7 +18,12 @@ export interface MailboxCredentials {
 export interface MailboxGrant {
 	address: string;
 	refreshToken: string;
+	/** The permissions the provider granted, in its own names. */
+	scopes: string[];
 }
+
+/** Optional features a mailbox needs an extra provider permission for. */
+export type MailboxFeature = 'delete_forever' | 'settings';
 
 /** A message ready to send: raw RFC 822, built by the adapter from the admin's form. */
 export interface OutgoingMail {
@@ -67,8 +72,13 @@ export interface MailboxPort {
 	signInUrl(state: string): string;
 	/** Exchanges the callback code; refuses an address outside the shop's Workspace domain. */
 	completeSignIn(code: string): Promise<MailboxGrant>;
-	/** Withdraws the grant at Google, so the token stops working everywhere. */
+	/**
+	 * Withdraws the grant at Google, so the token stops working everywhere. Throws when Google did
+	 * not confirm it, so the caller can say so and try again.
+	 */
 	revoke(credentials: MailboxCredentials): Promise<void>;
+	/** Features a mailbox with these granted permissions cannot use until it is connected again. */
+	featuresMissing(grantedScopes: readonly string[]): MailboxFeature[];
 	listThreads(
 		credentials: MailboxCredentials,
 		folder: InboxFolder,
@@ -106,8 +116,17 @@ export interface MailboxRepository {
 export interface MailboxAccessRepository {
 	listForMailbox(mailboxId: string): Promise<MailboxAccess[]>;
 	listForAdminUser(adminUserId: string): Promise<MailboxAccess[]>;
-	/** Replaces the whole list for one mailbox. */
-	replaceForMailbox(mailboxId: string, entries: readonly MailboxAccess[]): Promise<void>;
+	/** How many times the mailbox's list was saved; 0 before the first save. */
+	version(mailboxId: string): Promise<number>;
+	/**
+	 * Replaces the whole list for one mailbox, only if it is still at `expectedVersion`. Returns the
+	 * new version, or null when someone else saved first (nothing is written then).
+	 */
+	replaceForMailbox(
+		mailboxId: string,
+		entries: readonly MailboxAccess[],
+		expectedVersion: number,
+	): Promise<number | null>;
 }
 
 /**

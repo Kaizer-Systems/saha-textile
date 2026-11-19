@@ -1,11 +1,13 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
-import { ContactMessage, Mailbox, MailboxAccess } from '@saha-textile/contracts';
-import type {
-	ContactMessageRepository,
-	MailboxAccessRepository,
-	MailboxRepository,
-	MailboxTokenStore,
+import { ContactMessage, Mailbox, MailboxAccess, MailboxRight } from '@saha-textile/contracts';
+import {
+	legacyMailboxRights,
+	withNeededRights,
+	type ContactMessageRepository,
+	type MailboxAccessRepository,
+	type MailboxRepository,
+	type MailboxTokenStore,
 } from '@saha-textile/core-domain';
 
 import {
@@ -29,6 +31,8 @@ const toMailbox = (doc: MailboxDoc): Mailbox =>
 		connectedAt: iso(doc.connectedAt),
 		lastSyncAt: iso(doc.lastSyncAt),
 		sendAs: doc.sendAs,
+		grantedScopes: doc.grantedScopes ?? [],
+		revocation: doc.revocation ?? null,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	});
@@ -62,6 +66,8 @@ export class MongoMailboxRepository implements MailboxRepository {
 					connectedAt: date(parsed.connectedAt),
 					lastSyncAt: date(parsed.lastSyncAt),
 					sendAs: parsed.sendAs,
+					grantedScopes: parsed.grantedScopes,
+					revocation: parsed.revocation,
 				},
 			},
 			{ upsert: true },
@@ -71,8 +77,14 @@ export class MongoMailboxRepository implements MailboxRepository {
 }
 
 const accessId = (mailboxId: string, adminUserId: string): string => `${mailboxId}:${adminUserId}`;
+/** Stored rights, or what a row from before rights existed meant; unknown names are dropped. */
+export const storedMailboxRights = (doc: Pick<MailboxAccessDoc, 'rights' | 'canSend'>): MailboxRight[] => {
+	const known = (doc.rights ?? []).filter((name): name is MailboxRight => MailboxRight.safeParse(name).success);
+	return known.length ? withNeededRights(known) : legacyMailboxRights(Boolean(doc.canSend));
+};
+
 const toAccess = (doc: MailboxAccessDoc): MailboxAccess =>
-	MailboxAccess.parse({ mailboxId: doc.mailboxId, adminUserId: doc.adminUserId, canSend: doc.canSend });
+	MailboxAccess.parse({ mailboxId: doc.mailboxId, adminUserId: doc.adminUserId, rights: storedMailboxRights(doc) });
 
 export class MongoMailboxAccessRepository implements MailboxAccessRepository {
 	async listForMailbox(mailboxId: string): Promise<MailboxAccess[]> {
@@ -85,19 +97,54 @@ export class MongoMailboxAccessRepository implements MailboxAccessRepository {
 		return docs.map(toAccess);
 	}
 
-	async replaceForMailbox(mailboxId: string, entries: readonly MailboxAccess[]): Promise<void> {
+	async version(mailboxId: string): Promise<number> {
+		const doc = await MailboxModel.findById(mailboxId).select('accessVersion').lean<MailboxDoc>().exec();
+		return doc?.accessVersion ?? 0;
+	}
+
+	/**
+	 * The version bump is the lock: only one of two saves made from the same version moves it, and
+	 * the loser writes nothing. A crash after the bump leaves the old list under a new version,
+	 * which the next editor simply reloads.
+	 */
+	async replaceForMailbox(
+		mailboxId: string,
+		entries: readonly MailboxAccess[],
+		expectedVersion: number,
+	): Promise<number | null> {
+		const current =
+			expectedVersion === 0
+				? { $or: [{ accessVersion: 0 }, { accessVersion: { $exists: false } }] }
+				: { accessVersion: expectedVersion };
+		const bumped = await MailboxModel.updateOne(
+			{ _id: mailboxId, ...current },
+			{ $set: { accessVersion: expectedVersion + 1 } },
+		).exec();
+		if (bumped.modifiedCount !== 1) return null;
 		const keep = entries.map((entry) => accessId(mailboxId, entry.adminUserId));
 		await MailboxAccessModel.deleteMany({ mailboxId, _id: { $nin: keep } }).exec();
-		if (!entries.length) return;
-		await MailboxAccessModel.bulkWrite(
-			entries.map((entry) => ({
-				updateOne: {
-					filter: { _id: accessId(mailboxId, entry.adminUserId) },
-					update: { $set: { mailboxId, adminUserId: entry.adminUserId, canSend: entry.canSend } },
-					upsert: true,
-				},
-			})),
-		);
+		if (entries.length) {
+			await MailboxAccessModel.bulkWrite(
+				entries.map((entry) => {
+					const rights = withNeededRights(entry.rights);
+					return {
+						updateOne: {
+							filter: { _id: accessId(mailboxId, entry.adminUserId) },
+							update: {
+								$set: {
+									mailboxId,
+									adminUserId: entry.adminUserId,
+									rights,
+									canSend: rights.includes('send'),
+								},
+							},
+							upsert: true,
+						},
+					};
+				}),
+			);
+		}
+		return expectedVersion + 1;
 	}
 }
 

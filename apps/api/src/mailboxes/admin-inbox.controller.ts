@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	InboxAllQuery,
 	InboxBulkRequest,
 	InboxDraftWrite,
 	InboxLabelId,
@@ -117,6 +118,20 @@ export class AdminInboxController {
 	@ApiOperation({ operationId: 'listInboxMailboxes', summary: 'The mailboxes I may open, with unread counts' })
 	summary(@Principal() principal: AuthenticatedPrincipal | undefined) {
 		return this.inbox.summary(me(principal));
+	}
+
+	@Get('all/threads')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({
+		operationId: 'listAllInboxThreads',
+		summary: 'The newest conversations of every mailbox I may read, each naming its mailbox',
+	})
+	allThreads(
+		@Query(new ZodValidationPipe(InboxAllQuery)) query: InboxAllQuery,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.inbox.allThreads(me(principal), query);
 	}
 
 	@Get(':mailboxId/threads')

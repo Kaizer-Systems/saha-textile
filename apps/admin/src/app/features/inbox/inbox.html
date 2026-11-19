@@ -101,8 +101,10 @@
 						<a
 							class="nav-link"
 							[routerLink]="listLink(entry.id)"
-							[class.active]="!q() && !labelId() && !draftsView() && folder() === entry.id"
-							[attr.aria-current]="!q() && !labelId() && !draftsView() && folder() === entry.id ? 'page' : null"
+							[class.active]="!q() && !labelId() && !draftsView() && !allView() && folder() === entry.id"
+							[attr.aria-current]="
+								!q() && !labelId() && !draftsView() && !allView() && folder() === entry.id ? 'page' : null
+							"
 						>
 							<i [class]="entry.icon"></i>
 							{{ 'inbox_folder_' + entry.id | transloco }} @if (entry.id === 'inbox' && mailbox()?.unread)
@@ -118,7 +120,21 @@
 							}
 						</a>
 					</li>
-					@if (entry.id === 'sent' && canSend()) {
+					@if (entry.id === 'inbox' && mailboxes().length > 1) {
+					<!-- Every mailbox's newest Inbox conversations together (F1); never the default. -->
+					<li class="nav-item">
+						<a
+							class="nav-link"
+							id="inbox_folder_all_mailboxes"
+							[routerLink]="allLink()"
+							[class.active]="allView()"
+							[attr.aria-current]="allView() ? 'page' : null"
+						>
+							<i class="ri-stack-line"></i>
+							{{ 'inbox_all_mailboxes' | transloco }}
+						</a>
+					</li>
+					} @if (entry.id === 'sent' && canSend()) {
 					<!-- Drafts saved to Gmail as they are typed (C2); only people who may send see them. -->
 					<li class="nav-item">
 						<a
@@ -286,7 +302,60 @@
 						<i class="ri-close-line"></i>
 					</button>
 				</div>
-				} @if (draftsView()) {
+				} @if (allView()) {
+				<!-- All mailboxes (F1): each row names its mailbox and opens there, under that mailbox's rights. -->
+				<p class="help-text">{{ 'inbox_all_mailboxes_help' | transloco }}</p>
+				@for (skip of allThreads().skipped; track skip.mailboxId) {
+				<div class="alert alert-warning small py-2">
+					{{ (skip.reason === 'reconnect' ? 'inbox_all_skipped_reconnect' : 'inbox_all_skipped') | transloco:
+					{ address: skip.address } }}
+				</div>
+				} @if (loadingAll()) {
+				<div class="table-loader position-static">
+					<span>{{ 'please_wait' | transloco }}...</span>
+				</div>
+				} @else if (allFailed()) {
+				<div class="alert alert-warning">{{ 'inbox_gmail_unavailable' | transloco }}</div>
+				} @else {
+				<ul class="notification-setting inbox-list">
+					@for (row of allThreads().threads; track row.mailboxId + row.id) {
+					<li
+						class="d-flex align-items-start gap-2"
+						[class.unread]="row.unread"
+					>
+						<a
+							class="d-block text-reset min-w-0 flex-grow-1"
+							[id]="'inbox_all_' + row.mailboxId + '_' + row.id"
+							[routerLink]="allRowLink(row)"
+						>
+							<div class="d-flex justify-content-between align-items-start gap-2">
+								<h4
+									class="text-truncate"
+									[class.fw-bold]="row.unread"
+								>
+									{{ row.participants.length ? row.participants.join(', ') : senderName(row.from) }}
+								</h4>
+								<h5
+									class="small text-nowrap"
+									[title]="row.date | date: 'd MMM y, HH:mm'"
+								>
+									{{ row.date | date: listDateFormat(row.date) }}
+								</h5>
+							</div>
+							<h5 class="mb-1">
+								<span class="badge bg-light text-dark me-1 border">
+									{{ mailboxKey(row.mailboxAddress) }}@
+								</span>
+								{{ row.subject || ('inbox_no_subject' | transloco) }}
+							</h5>
+							<p class="text-content small text-truncate mb-1">{{ row.snippet }}</p>
+						</a>
+					</li>
+					} @empty {
+					<li class="text-content">{{ 'inbox_empty_inbox' | transloco }}</li>
+					}
+				</ul>
+				} } @else if (draftsView()) {
 				<!-- Drafts (C2): Gmail's own drafts, newest first; one opens in the compose box. -->
 				<div class="d-flex align-items-center mb-2 flex-wrap gap-2">
 					<button

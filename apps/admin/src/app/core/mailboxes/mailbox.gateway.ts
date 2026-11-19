@@ -9,6 +9,7 @@ import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.intercepto
 
 import type {
 	AdminMailboxRow,
+	InboxAllThreads,
 	InboxBinSummary,
 	InboxBulkRequest,
 	InboxBulkResult,
@@ -217,6 +218,14 @@ export class MailboxGateway {
 		return draftId
 			? this.http.put<InboxDraftSaved>(url, body, { context: quiet() })
 			: this.http.post<InboxDraftSaved>(url, body, { context: quiet() });
+	}
+
+	/** All mailboxes (F1): quiet, because the list says which mailbox could not be read. */
+	allThreads(): Observable<InboxAllThreads> {
+		return this.http.get<InboxAllThreads>(this.inbox('/all/threads'), {
+			params: new HttpParams().set('folder', 'inbox'),
+			context: quiet(),
+		});
 	}
 
 	/** A mailbox's Gmail settings (G1). Quiet: the settings screen says what failed. */

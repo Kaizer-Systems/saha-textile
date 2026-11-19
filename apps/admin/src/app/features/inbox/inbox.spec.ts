@@ -1214,3 +1214,28 @@ describe('Inbox mailbox settings (G1)', () => {
 		expect(tools.page.draftsLink()).toEqual(['/inbox', 'care', 'drafts']);
 	});
 });
+
+describe('Inbox all mailboxes (F1)', () => {
+	it('lists every mailbox together, opening each row in its own mailbox', async () => {
+		const tools = setup({ mailbox: 'care', folder: 'all-mailboxes' }, {});
+		tools.summary([box('care'), box('orders')]);
+		expect(tools.page.allView()).toBe(true);
+		expect(tools.threadsQuery.options().enabled).toBe(false);
+		const all = state.queries.find((entry) => entry.options().queryKey.includes('all-mailboxes')) as Query;
+		expect(all.options().enabled).toBe(true);
+		tools.gateway.allThreads = vi.fn(() => of({ threads: [], skipped: [] }));
+		await all.options().queryFn();
+		expect(tools.gateway.allThreads).toHaveBeenCalled();
+		expect(tools.page.allThreads()).toEqual({ threads: [], skipped: [] });
+		expect(tools.page.allLink()).toEqual(['/inbox', 'care', 'all-mailboxes']);
+		expect(tools.page.allRowLink({ mailboxAddress: 'orders@shop.test', id: 't9' })).toEqual([
+			'/inbox',
+			'orders',
+			'inbox',
+			't9',
+		]);
+		all.result.set({ error: new HttpErrorResponse({ status: 502 }) });
+		tools.flush();
+		expect(tools.page.allFailed()).toBe(true);
+	});
+});

@@ -107,6 +107,9 @@ type ComposeMode = DraftMode | 'open';
 /** The Drafts folder's address segment; Gmail drafts are listed by the drafts API, not as conversations. */
 export const DRAFTS_FOLDER = 'drafts';
 
+/** All mailboxes (F1): every readable mailbox's newest Inbox conversations, never the default. */
+export const ALL_FOLDER = 'all-mailboxes';
+
 /** The settings screen's address segment (G1), for people with the mailbox's Settings right. */
 export const SETTINGS_FOLDER = 'settings';
 
@@ -244,6 +247,8 @@ export class Inbox {
 	readonly openDraftId = computed(() => (this.draftMode() === 'open' ? this.queryParams().get('d') : null));
 	/** The Drafts folder lists Gmail drafts instead of conversations. */
 	readonly draftsView = computed(() => this.params().get('folder') === DRAFTS_FOLDER);
+	/** The combined list of every mailbox (F1). */
+	readonly allView = computed(() => this.params().get('folder') === ALL_FOLDER);
 	/** The mailbox's Gmail settings take the list and reading columns (G1). */
 	readonly settingsView = computed(() => this.params().get('folder') === SETTINGS_FOLDER);
 
@@ -325,7 +330,8 @@ export class Inbox {
 		return {
 			queryKey: [...INBOX_KEY, mailboxId, 'threads', folder, label ?? '', q, pageToken ?? ''],
 			queryFn: () => firstValueFrom(this.gateway.threads(mailboxId, folder, q || undefined, pageToken, label)),
-			enabled: Boolean(mailboxId) && this.connected() && !this.draftsView() && !this.settingsView(),
+			enabled:
+				Boolean(mailboxId) && this.connected() && !this.draftsView() && !this.settingsView() && !this.allView(),
 			refetchInterval: INBOX_REFRESH_MS,
 			retry: 1,
 		};
@@ -350,6 +356,28 @@ export class Inbox {
 		};
 	});
 	readonly drafts = computed<InboxDraftSummary[]>(() => this.draftsQuery.data()?.drafts ?? []);
+
+	// ── All mailboxes (F1) ────────────────────────────────────────────────────────
+
+	private readonly allQuery = injectQuery(() => ({
+		queryKey: [...INBOX_KEY, 'all-mailboxes'],
+		queryFn: () => firstValueFrom(this.gateway.allThreads()),
+		enabled: this.allView(),
+		refetchInterval: INBOX_REFRESH_MS,
+		retry: 1,
+	}));
+	readonly allThreads = computed(() => this.allQuery.data() ?? { threads: [], skipped: [] });
+	readonly loadingAll = computed(() => this.allQuery.isPending());
+	readonly allFailed = computed(() => this.allQuery.isError() && !this.allQuery.data());
+
+	allLink(): string[] {
+		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), ALL_FOLDER];
+	}
+
+	/** A row of the combined list opens in its own mailbox, where its actions and rights apply. */
+	allRowLink(row: { mailboxAddress: string; id: string }): string[] {
+		return ['/inbox', mailboxKey(row.mailboxAddress), 'inbox', row.id];
+	}
 
 	// ── Saved replies (C3) ────────────────────────────────────────────────────────
 
@@ -670,6 +698,7 @@ export class Inbox {
 			this.folder();
 			this.draftsView();
 			this.settingsView();
+			this.allView();
 			this.labelId();
 			this.q();
 			untracked(() => {

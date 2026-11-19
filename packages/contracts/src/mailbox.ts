@@ -429,6 +429,27 @@ export const InboxBulkResult = z.object({
 });
 export type InboxBulkResult = z.infer<typeof InboxBulkResult>;
 
+// ── All mailboxes (F1) ───────────────────────────────────────────────────────────
+
+/** `GET /admin/inbox/all/threads`: one folder of every mailbox the asker may read. */
+export const InboxAllQuery = z.object({ folder: InboxFolder.default('inbox') });
+export type InboxAllQuery = z.infer<typeof InboxAllQuery>;
+
+/** At most this many conversations in the combined list; older mail is read in its own mailbox. */
+export const MAX_ALL_MAILBOX_THREADS = 50;
+
+/**
+ * The newest conversations of every readable mailbox, newest first, each naming its mailbox; a
+ * mailbox that could not be read is named in `skipped`, never silently left out.
+ */
+export const InboxAllThreads = z.object({
+	threads: z.array(InboxThreadSummary.extend({ mailboxId: z.string(), mailboxAddress: z.string() })),
+	skipped: z.array(
+		z.object({ mailboxId: z.string(), address: z.string(), reason: z.enum(['reconnect', 'gmail_error']) }),
+	),
+});
+export type InboxAllThreads = z.infer<typeof InboxAllThreads>;
+
 /** `GET /admin/inbox/:mailboxId/bin`: what Empty Bin would delete, counted by Gmail now. */
 export const InboxBinSummary = z.object({
 	threads: z.number().int().nonnegative(),

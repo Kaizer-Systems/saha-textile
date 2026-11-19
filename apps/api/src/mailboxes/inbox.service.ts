@@ -12,10 +12,13 @@ import {
 	PreconditionFailedException,
 } from '@nestjs/common';
 import {
+	MAX_ALL_MAILBOX_THREADS,
 	MAX_BULK_MATCHES,
 	MAX_FORWARD_BYTES,
 	MAX_SEND_ATTACHMENT_BYTES,
 	UNDO_SEND_SECONDS,
+	type InboxAllQuery,
+	type InboxAllThreads,
 	type InboxBinSummary,
 	type InboxBulkRequest,
 	type InboxBulkResult,
@@ -163,6 +166,44 @@ export class InboxService {
 	}
 
 	/** One page of a folder, each line naming the admin user who sent its newest reply from here. */
+	/**
+	 * All mailboxes (F1): the first page of one folder from every mailbox this person may read,
+	 * merged newest first. Each mailbox goes through the same access check as opening it alone;
+	 * one that cannot be read is reported, and the others still show.
+	 */
+	async allThreads(adminUserId: string, query: InboxAllQuery): Promise<InboxAllThreads> {
+		const rows = await this.access.listForAdminUser(adminUserId);
+		const readable = rows.filter((row) => mailboxRights([row], adminUserId, row.mailboxId).has('read'));
+		const results = await Promise.all(
+			readable.map(async (row) => {
+				const mailbox = await this.mailboxes.findById(row.mailboxId);
+				if (!mailbox) return null;
+				try {
+					const page = await this.threads(adminUserId, mailbox.id, { folder: query.folder });
+					return { ok: true as const, mailbox, threads: page.threads };
+				} catch (error) {
+					const reason: 'reconnect' | 'gmail_error' =
+						error instanceof ConflictException ? 'reconnect' : 'gmail_error';
+					return { ok: false as const, mailbox, reason };
+				}
+			}),
+		);
+		const threads: InboxAllThreads['threads'] = [];
+		const skipped: InboxAllThreads['skipped'] = [];
+		for (const result of results) {
+			if (!result) continue;
+			if (!result.ok) {
+				skipped.push({ mailboxId: result.mailbox.id, address: result.mailbox.address, reason: result.reason });
+				continue;
+			}
+			for (const thread of result.threads) {
+				threads.push({ ...thread, mailboxId: result.mailbox.id, mailboxAddress: result.mailbox.address });
+			}
+		}
+		threads.sort((a, b) => b.date.localeCompare(a.date));
+		return { threads: threads.slice(0, MAX_ALL_MAILBOX_THREADS), skipped };
+	}
+
 	async threads(adminUserId: string, mailboxId: string, query: InboxListQuery): Promise<InboxThreadPage> {
 		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'read');
 		const page = await this.books.guard(mailbox, () =>

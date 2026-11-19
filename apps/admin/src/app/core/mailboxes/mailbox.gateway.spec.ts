@@ -115,6 +115,13 @@ describe('MailboxGateway', () => {
 		expect(http.delete.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/drafts/d1');
 	});
 
+	it('reads every mailbox together (F1)', async () => {
+		const { gateway, http } = setup();
+		await firstValueFrom(gateway.allThreads());
+		expect(http.get.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/all/threads');
+		expect(String((http.get.mock.calls[0]?.[1] as { params?: unknown }).params)).toBe('folder=inbox');
+	});
+
 	it('calls the mailbox settings routes (G1)', async () => {
 		const { gateway, http } = setup();
 		await firstValueFrom(gateway.mailboxSettings('m1'));

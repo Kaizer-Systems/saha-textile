@@ -92,6 +92,7 @@ The page address names the place the operator is in:
 | `/inbox/<mailbox>/<labelId>`                         | One label (`Label_…`) or category (`CATEGORY_…`) |
 | `/inbox/<mailbox>/<folder>/<threadId>`               | One open conversation                            |
 | `/inbox/<mailbox>/drafts`                            | The mailbox's Gmail drafts                       |
+| `/inbox/<mailbox>/all-mailboxes`                     | Every mailbox's newest Inbox conversations       |
 | `/inbox/<mailbox>/settings`                          | The mailbox's Gmail settings (Settings right)    |
 | `…?draft=reply` (also `reply_all`, `forward`, `new`) | The compose box                                  |
 | `…?draft=open&d=<draftId>`                           | A Gmail draft, reopened in the compose box       |
@@ -105,6 +106,10 @@ The counts, labels, list and open conversation are read again every minute (`INB
 - **New replies in the open conversation.** They wait behind "N new replies · Show" and stay unread in Gmail until shown. Folded messages, quotes, pictures and message frames already on screen are kept.
 - **Read state.** Opening a conversation marks exactly the unread messages shown (`POST …/messages/read`), never the conversation as a whole. A failed mark is tried again the next time they show; **Mark unread** is respected.
 - **Unread counts.** When Gmail does not answer for a mailbox, its count is unknown (`unread: null`) and shows as "—", never 0.
+
+### All mailboxes
+
+People with two or more mailboxes see **All mailboxes** under Inbox. It shows the newest Inbox conversations of every mailbox they may read, up to 50 (`MAX_ALL_MAILBOX_THREADS`), newest first, each marked with its mailbox. Each mailbox goes through the same access check as opening it alone. A conversation opens in its own mailbox, so every action runs there under the person's rights in that mailbox. A mailbox that needs reconnecting or did not answer is named above the list; the others still show. Older mail, folders and search are read in each mailbox. The Inbox never opens on this view by itself.
 
 ### Selection, labels and the Bin
 

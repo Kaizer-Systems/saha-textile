@@ -1464,6 +1464,60 @@ describe('Saved replies (C3)', () => {
 	});
 });
 
+describe('All mailboxes (F1)', () => {
+	it('merges the newest conversations of every readable mailbox, naming each and any it could not read', async () => {
+		const w = world();
+		const gmail = gmailStub({
+			listThreads: vi.fn(async (credentials: { address: string }) => ({
+				threads:
+					credentials.address === 'care@shop.test'
+						? [
+								{ id: 'c1', date: '2026-11-19T10:00:00.000Z' },
+								{ id: 'c2', date: '2026-11-17T10:00:00.000Z' },
+							]
+						: [{ id: 'o1', date: '2026-11-18T10:00:00.000Z' }],
+				nextPageToken: 'more',
+			})),
+		});
+		const inbox = new InboxService(
+			gmail,
+			w.mailboxes as never,
+			w.access as never,
+			w.tokens as never,
+			books(w),
+			w.outbox as never,
+		);
+		for (const id of ['care', 'orders', 'old', 'secret']) {
+			await w.mailboxes.save(mailbox(id, id === 'old' ? { status: 'needs_reconnect' } : {}));
+			await w.tokens.put(id, 'r1');
+		}
+		await w.access.replaceForMailbox('care', [{ mailboxId: 'care', adminUserId: 'riya', rights: ['read'] }]);
+		await w.access.replaceForMailbox('orders', [
+			{ mailboxId: 'orders', adminUserId: 'riya', rights: ['read', 'send'] },
+		]);
+		await w.access.replaceForMailbox('old', [{ mailboxId: 'old', adminUserId: 'riya', rights: ['read'] }]);
+		const all = await inbox.allThreads('riya', { folder: 'inbox' });
+		expect(all.threads.map((row) => [row.id, row.mailboxAddress])).toEqual([
+			['c1', 'care@shop.test'],
+			['o1', 'orders@shop.test'],
+			['c2', 'care@shop.test'],
+		]);
+		expect(all.skipped).toEqual([{ mailboxId: 'old', address: 'old@shop.test', reason: 'reconnect' }]);
+		expect(gmail.listThreads).toHaveBeenCalledTimes(2);
+
+		gmail.listThreads.mockRejectedValue(Object.assign(new Error('down'), { status: 503 }));
+		const failing = await inbox.allThreads('riya', { folder: 'inbox' });
+		expect(failing.skipped.map((row) => row.reason)).toEqual(['gmail_error', 'gmail_error', 'reconnect']);
+		expect(await inbox.allThreads('nobody', { folder: 'inbox' })).toEqual({ threads: [], skipped: [] });
+		const controller = new AdminInboxController(
+			{ allThreads: vi.fn(async () => ({})) } as never,
+			{} as never,
+			{} as never,
+		);
+		await controller.allThreads({ folder: 'sent' }, { userId: 'riya' } as never);
+	});
+});
+
 describe('Mailbox settings (G1)', () => {
 	let w: ReturnType<typeof world>;
 	let gmail: ReturnType<typeof gmailStub>;

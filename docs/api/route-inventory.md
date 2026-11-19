@@ -507,6 +507,7 @@ Every `/admin/mailboxes` route except the callback also needs a super admin (the
 | `POST`   | `/admin/mailboxes/:id/disconnect`                                       | `mailbox.manage` | Stop the mailbox here, then withdraw access at Google                                |
 | `POST`   | `/admin/mailboxes/:id/withdraw-again`                                   | `mailbox.manage` | Ask Google again when it did not confirm a withdrawal                                |
 | `GET`    | `/admin/inbox`                                                          | `mailbox.use`    | The mailboxes the operator may open, with rights and unread counts                   |
+| `GET`    | `/admin/inbox/all/threads`                                              | Read (each)      | The newest Inbox conversations of every readable mailbox, each naming its mailbox    |
 | `GET`    | `/admin/inbox/:mailboxId/threads`                                       | Read             | One folder, label or category of a mailbox, a page at a time                         |
 | `GET`    | `/admin/inbox/:mailboxId/threads/:threadId`                             | Read             | A whole conversation, cleaned for display                                            |
 | `GET`    | `/admin/inbox/:mailboxId/messages/:messageId/attachments/:attachmentId` | Read             | One attachment, always as a download                                                 |

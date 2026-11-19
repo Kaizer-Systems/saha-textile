@@ -195,7 +195,11 @@ const harness = (premadeKeys?: readonly string[]) => {
 	const categories = {
 		findById: async (id: string) => (id === 'bridal' ? { id } : null),
 		tree: async () => [
-			{ id: 'sarees', ancestors: [], shipping: { weightGrams: 650, lengthCm: null, widthCm: null, heightCm: null } },
+			{
+				id: 'sarees',
+				ancestors: [],
+				shipping: { weightGrams: 650, lengthCm: null, widthCm: null, heightCm: null },
+			},
 			{ id: 'silk', ancestors: ['sarees'], shipping: null },
 			{ id: 'bridal', ancestors: [], shipping: null },
 		],
@@ -251,7 +255,7 @@ describe('rule sets', () => {
 		);
 		await expect(stale).rejects.toBeInstanceOf(ConflictException);
 		await stale.catch((error: ConflictException) =>
-			expect(error.getResponse()).toMatchObject({ code: 'stale_revision', updatedBy: 'admin-1' }),
+			expect(error.getResponse()).toMatchObject({ issues: [{ path: 'revision', code: 'stale_revision' }] }),
 		);
 		expect(audit.append).toHaveBeenCalledWith(
 			expect.objectContaining({ action: 'shipping_rule_set.save', entityType: 'shipping' }),

@@ -41,6 +41,7 @@ import {
 	ROLE_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 } from '../infra/tokens';
+import { codedRefusal } from '../common/coded-refusal';
 import { fetchRatesNow, readFxSettings } from './fx-fetch';
 
 export const FX_RATE_PORT = Symbol('FxRatePort');
@@ -135,16 +136,13 @@ export class FxAdminService {
 	async saveSettings(input: FxSettingsWrite, actor: string | null): Promise<AdminFxOverview> {
 		const current = await readFxSettings(this.settings);
 		if (input.revision !== current.revision)
-			throw new ConflictException({
-				code: 'stale_revision',
-				updatedBy: current.updatedBy,
-				updatedAt: current.updatedAt,
-			});
+			throw new ConflictException(
+				codedRefusal('stale_revision', 'Someone else changed these settings first', 'revision'),
+			);
 		if (input.paypalMarkupPercent !== current.paypalMarkupPercent && !(await this.isSuperAdmin(actor)))
-			throw new ForbiddenException({
-				code: 'super_admin_only',
-				message: 'Only a super admin can change the markup',
-			});
+			throw new ForbiddenException(
+				codedRefusal('super_admin_only', 'Only a super admin can change the markup', 'paypalMarkupPercent'),
+			);
 		if (input.source === 'paypalFxaas' && !current.paypalFxaas.approved)
 			throw refuse('fxaas_not_approved', 'source', 'PayPal has not approved its own rates for this account yet');
 		const at = new Date().toISOString();

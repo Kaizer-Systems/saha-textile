@@ -9,6 +9,7 @@ import {
 } from '@saha-textile/contracts';
 import { type AuditLogRepository, type GatewayRouting, type SiteSettingsRepository } from '@saha-textile/core-domain';
 
+import { codedRefusal } from '../common/coded-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { AUDIT_LOG_REPOSITORY, SITE_SETTINGS_REPOSITORY } from '../infra/tokens';
 
@@ -60,11 +61,9 @@ export class PaymentRoutingService {
 	async save(input: PaymentRoutingWrite, actor: string | null): Promise<AdminPaymentRouting> {
 		const current = await this.current();
 		if (input.revision !== current.revision)
-			throw new ConflictException({
-				code: 'stale_revision',
-				updatedBy: current.updatedBy,
-				updatedAt: current.updatedAt,
-			});
+			throw new ConflictException(
+				codedRefusal('stale_revision', 'Someone else changed these settings first', 'revision'),
+			);
 		if (input.activeInrGateway !== null && !BUILT[input.activeInrGateway])
 			throw new BadRequestException({
 				issues: [

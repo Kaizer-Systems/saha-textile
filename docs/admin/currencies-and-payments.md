@@ -16,6 +16,7 @@ source_of_truth:
     - apps/admin/src/app/core/fx/fx.gateway.ts
     - apps/admin/src/app/features/currency/currency.ts
     - apps/admin/src/app/features/setting/payment-routing/payment-routing.ts
+    - apps/api/src/common/coded-refusal.ts
 ---
 
 # Admin › Currencies and Payment method
@@ -35,7 +36,7 @@ The chosen card has the theme-coloured border.
 
 ### PayPal markup
 
-One percentage for every currency (6 at launch), applied to the whole PayPal payment including shipping. PayPal's fixed fee per payment is absorbed. Only a super admin can change it; other admins see it read-only with a lock icon, and the API refuses the change with `super_admin_only`.
+One percentage for every currency (6 at launch), applied to the whole PayPal payment including shipping. PayPal's fixed fee per payment is absorbed. Only the super admin (an account holding the system Administrator role) can change it. Other admins see it read-only with a lock icon whose hover name says so, and the API refuses the change with `super_admin_only`. They can still change the rate source, the daily fetch and the rates, which follow the currency permission.
 
 ### Daily automatic fetch
 
@@ -88,6 +89,10 @@ This tab saves through the Settings page's own Save button, and only when someth
 | `POST /admin/payments/routing`    | `setting.edit`                  | Saves routing; refuses a gateway that isn't built                          |
 
 Every change is written to the audit log.
+
+### Refusals
+
+A refusal the page explains in its own words travels as `issues[0].code`: the envelope's own `code` is only the transport outcome (`validation_failed`), because the API's exception filter keeps nothing else from an exception (`apps/api/src/common/coded-refusal.ts`). The codes are `stale_revision` (409, someone else saved first), `super_admin_only` (403), `fxaas_not_approved`, `rate_required`, `home_currency` and `gateway_not_built` (400). The admin reads them with `refusalCodes` and shows its own translated words; these saves are marked `QUIET_ERRORS`, so the global error toast doesn't add a second notice.
 
 ## Data
 

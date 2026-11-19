@@ -5,6 +5,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, Observable } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
+import { PAGE_EXPLAINS_ERRORS } from '@core/shipping/shipping.gateway';
 
 import type {
 	AdminFxOverview,
@@ -61,15 +62,19 @@ export class FxGateway {
 	}
 
 	saveSettings(body: FxSettingsWrite): Observable<AdminFxOverview> {
-		return this.http.post<AdminFxOverview>(this.base('/admin/fx/settings'), body);
+		return this.http.post<AdminFxOverview>(this.base('/admin/fx/settings'), body, PAGE_EXPLAINS_ERRORS);
 	}
 
 	setRate(code: string, body: CurrencyRateWrite): Observable<AdminFxOverview> {
-		return this.http.post<AdminFxOverview>(this.base(`/admin/fx/currencies/${encodeURIComponent(code)}`), body);
+		return this.http.post<AdminFxOverview>(
+			this.base(`/admin/fx/currencies/${encodeURIComponent(code)}`),
+			body,
+			PAGE_EXPLAINS_ERRORS,
+		);
 	}
 
 	fetchNow(): Observable<FxFetchResult> {
-		return this.http.post<FxFetchResult>(this.base('/admin/fx/fetch-now'), {});
+		return this.http.post<FxFetchResult>(this.base('/admin/fx/fetch-now'), {}, PAGE_EXPLAINS_ERRORS);
 	}
 
 	routing(): Observable<AdminPaymentRouting> {
@@ -77,7 +82,7 @@ export class FxGateway {
 	}
 
 	saveRouting(body: PaymentRoutingWrite): Observable<AdminPaymentRouting> {
-		return this.http.post<AdminPaymentRouting>(this.base('/admin/payments/routing'), body);
+		return this.http.post<AdminPaymentRouting>(this.base('/admin/payments/routing'), body, PAGE_EXPLAINS_ERRORS);
 	}
 }
 

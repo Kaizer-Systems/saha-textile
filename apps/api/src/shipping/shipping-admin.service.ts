@@ -50,6 +50,7 @@ import {
 	validateShippingRuleSet,
 } from '@saha-textile/core-domain';
 
+import { codedRefusal } from '../common/coded-refusal';
 import {
 	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
@@ -246,11 +247,7 @@ export class ShippingAdminService {
 		const [settings, exceptions] = await Promise.all([this.settings(), this.rules.listExceptions()]);
 		const usage = usageOf(id, settings, exceptions);
 		if (usage.zones.length > 0 || usage.exceptionIds.length > 0) {
-			throw new ConflictException({
-				code: 'rule_set_in_use',
-				message: 'Change where this rule set is used first',
-				usage,
-			});
+			throw new ConflictException(codedRefusal('rule_set_in_use', 'Change where this rule set is used first'));
 		}
 		if (revision !== current.revision || !(await this.rules.deleteRuleSet(id, revision)))
 			throw this.clash(await this.require(id));
@@ -316,7 +313,8 @@ export class ShippingAdminService {
 	/** The category form's "Used by N products: X inherit these values, Y set their own" (brief cat01). */
 	async categoryUsage(id: string): Promise<{ products: number; ownCharges: number }> {
 		const categories = await this.categories.tree();
-		if (!categories.some((c) => c.id === id)) throw new NotFoundException({ code: 'unknown_category' });
+		if (!categories.some((c) => c.id === id))
+			throw new NotFoundException(codedRefusal('unknown_category', 'Category not found', 'categoryId'));
 		// Products whose main category is this one or one beneath it read its charges unless they set their own.
 		const ids = categories.filter((c) => c.id === id || c.ancestors.includes(id)).map((c) => c.id);
 		return this.rules.chargeUsage(ids);
@@ -345,7 +343,11 @@ export class ShippingAdminService {
 		const lines = views.slice(0, TRY_LINES_SHOWN).map((view) => {
 			const route = outcome.routes[view.lineId];
 			const ruleSetId =
-				route?.kind === 'ruleSet' ? route.ruleSetId : route?.kind === 'courier' ? route.fallbackRuleSetId : null;
+				route?.kind === 'ruleSet'
+					? route.ruleSetId
+					: route?.kind === 'courier'
+						? route.fallbackRuleSetId
+						: null;
 			return {
 				...view,
 				route: route?.kind ?? 'noMethod',
@@ -403,11 +405,7 @@ export class ShippingAdminService {
 		const stored = await this.rules.getSettings();
 		const revision = stored?.revision ?? 0;
 		if (input.revision !== revision)
-			throw new ConflictException({
-				code: 'stale_revision',
-				updatedBy: stored?.updatedBy ?? null,
-				updatedAt: stored?.updatedAt ?? null,
-			});
+			throw new ConflictException(codedRefusal('stale_revision', 'Someone else saved this first', 'revision'));
 		if (!(BUILT_ABROAD_ORDER_POLICIES as readonly string[]).includes(input.abroadPolicy)) {
 			throw new BadRequestException({
 				issues: [
@@ -431,7 +429,8 @@ export class ShippingAdminService {
 			updatedAt: new Date().toISOString(),
 			updatedBy: actor,
 		};
-		if (!(await this.rules.saveSettings(next, revision))) throw new ConflictException({ code: 'stale_revision' });
+		if (!(await this.rules.saveSettings(next, revision)))
+			throw new ConflictException(codedRefusal('stale_revision', 'Someone else saved this first', 'revision'));
 		await this.record(actor, 'shipping_settings.save', 'zones', {
 			domestic: input.domestic,
 			international: input.international,
@@ -574,21 +573,21 @@ export class ShippingAdminService {
 	private async requireOwn(id: string): Promise<ShippingRuleSet> {
 		const ruleSet = await this.require(id);
 		if (ruleSet.kind === 'premade')
-			throw new ForbiddenException({
-				code: 'premade_locked',
-				message: 'Pre-made rule sets can’t be changed; make a copy',
-			});
+			throw new ForbiddenException(
+				codedRefusal('premade_locked', 'Pre-made rule sets can’t be changed; make a copy'),
+			);
 		return ruleSet;
 	}
 
-	/** The second save over newer work: who changed it and when, nothing overwritten. */
+	/** The second save over newer work is refused; nothing is overwritten. */
 	private clash(current: ShippingRuleSet): ConflictException {
-		return new ConflictException({
-			code: 'stale_revision',
-			revision: current.revision,
-			updatedBy: current.updatedBy,
-			updatedAt: current.updatedAt ?? null,
-		});
+		return new ConflictException(
+			codedRefusal(
+				'stale_revision',
+				`Someone else saved this first (now at revision ${current.revision})`,
+				'revision',
+			),
+		);
 	}
 
 	private async record(
@@ -709,7 +708,5 @@ export function categoriesWithBox(categories: readonly Category[]): string[] {
 		if (!box) return false;
 		return box.weightGrams != null || (box.lengthCm != null && box.widthCm != null && box.heightCm != null);
 	};
-	return categories
-		.filter((c) => gives(c) || c.ancestors.some((id) => gives(byId.get(id))))
-		.map((c) => c.id);
+	return categories.filter((c) => gives(c) || c.ancestors.some((id) => gives(byId.get(id)))).map((c) => c.id);
 }

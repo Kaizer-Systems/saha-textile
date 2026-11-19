@@ -105,6 +105,12 @@ describe('Admin › Currencies (brief fx01–fx03)', () => {
 		await expect(plain.service.saveSettings(write({ paypalMarkupPercent: 7 }), 'admin-1')).rejects.toBeInstanceOf(
 			ForbiddenException,
 		);
+		// The code travels in issues, the one channel the exception filter keeps (common/coded-refusal.ts).
+		await plain.service
+			.saveSettings(write({ paypalMarkupPercent: 7 }), 'admin-1')
+			.catch((error: ForbiddenException) =>
+				expect(error.getResponse()).toMatchObject({ issues: [{ code: 'super_admin_only' }] }),
+			);
 		await expect(plain.service.saveSettings(write({ source: 'paypalFxaas' }), 'admin-1')).rejects.toBeInstanceOf(
 			BadRequestException,
 		);

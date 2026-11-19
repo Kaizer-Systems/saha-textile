@@ -8,7 +8,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { currencyDisplayName, FETCH_TIME_PATTERN, FX_KEY, FxGateway, injectFxOverviewQuery } from '@core/fx/fx.gateway';
-import { shippingProblemKey } from '@core/shipping/shipping.gateway';
+import { refusalCodes, shippingProblemKey } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -240,12 +240,7 @@ export class Currency {
 
 /** The server's refusal as words: `fx_err_<code>`, else the shipping pages' general line. */
 export function fxProblemKey(error: unknown): string {
-	const outer = (error as { error?: unknown } | null)?.error;
-	const body = (outer && typeof outer === 'object' ? outer : {}) as {
-		code?: unknown;
-		issues?: Array<{ code?: unknown }>;
-	};
-	const code = typeof body.code === 'string' ? body.code : body.issues?.[0]?.code;
 	const known = ['stale_revision', 'super_admin_only', 'fxaas_not_approved', 'rate_required', 'home_currency'];
-	return typeof code === 'string' && known.includes(code) ? `fx_err_${code}` : shippingProblemKey(error);
+	const code = refusalCodes(error).find((candidate) => known.includes(candidate));
+	return code ? `fx_err_${code}` : shippingProblemKey(error);
 }

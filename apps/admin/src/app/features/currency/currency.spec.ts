@@ -212,6 +212,19 @@ describe('Admin › Currencies (brief fx01–fx03)', () => {
 		expect(fxProblemKey(new Error('offline'))).not.toMatch(/^fx_err_/);
 	});
 
+	it('reads the code from issues on the API’s real envelope (outer code is only the transport outcome)', () => {
+		// HttpErrorResponse.error is the body: { error: { code, message, issues, requestId } }.
+		const envelope = (code: string, issue: string) => ({
+			error: { error: { code, message: 'x', issues: [{ path: ['request'], message: 'x', code: issue }] } },
+		});
+		expect(fxProblemKey(envelope('validation_failed', 'super_admin_only'))).toBe('fx_err_super_admin_only');
+		expect(fxProblemKey(envelope('validation_failed', 'stale_revision'))).toBe('fx_err_stale_revision');
+		expect(fxProblemKey(envelope('validation_failed', 'rate_required'))).toBe('fx_err_rate_required');
+		// Shipping's codes fall through to the shipping pages' words.
+		expect(fxProblemKey(envelope('validation_failed', 'unknown_product'))).toBe('ship_err_unknown_product');
+		expect(fxProblemKey({ error: { error: { code: 'forbidden', issues: [] } } })).toBe('ship_err_general');
+	});
+
 	it('shows a failed save and puts the saved value back', async () => {
 		const { page, gateway, notifier } = await setup(Currency);
 		gateway.saveSettings.mockReturnValueOnce(throwError(() => ({ error: { code: 'super_admin_only' } })));

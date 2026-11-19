@@ -11,6 +11,7 @@ source_of_truth:
     - apps/api/src/shipping
     - packages/core-domain/src/shipping
     - packages/contracts/src/shipping-rules.ts
+    - apps/api/src/common/coded-refusal.ts
 ---
 
 # Admin › Shipping
@@ -70,3 +71,7 @@ For the export-off path, three switches follow: **Ask for an Indian invoice addr
 The category form has a **Shipping** section with three fields: the domestic charge per unit, the international first-unit charge and the international charge for each further unit. It also sets a default weight and box. An empty field follows the parent category, then the shop-wide default; a top-level category's empty fields say they follow the shop default. The **Shipping rules** row shows the category's own exception per zone, or "Same as site-wide · Add an exception". Under it, "Used by N products: X inherit these values, Y set their own" counts the products whose main category is this one or one beneath it (`GET /admin/shipping/category-usage/:id`).
 
 The product form's **Shipping & tax** tab shows each charge with a "use the category's value" switch and the value it follows: the nearest category that sets one (named), else the shop default. Turning a switch off sets the product's own amount, starting from that value. The existing **Free shipping** switch ships the product free in both zones, whatever the rule sets say. **Weight and box** shows the weight (the same field as the Inventory tab) and the box on one row with the volumetric and chargeable weight beside it. **Shipping rules** names the exception that decides each zone for the product (its own, its main category's, or a parent's), or says it follows its main category. Rule sets read these values through "the product's own charge".
+
+## Refusals
+
+A refused save names its reason in the page's own words. The reason travels as `issues[0].code` (the envelope's `code` is only the transport outcome), built with `codedRefusal` in `apps/api/src/common/coded-refusal.ts`: `stale_revision` (409, someone else saved first; nothing is overwritten), `rule_set_in_use` (409), `premade_locked` (403), `unknown_category` (404), and the 400 codes such as `unknown_product`, `unknown_variant` and `courier_not_connected`. The admin reads them with `refusalCodes` and `shippingProblemKey` (`ship_err_<code>`); these saves are marked `QUIET_ERRORS`, so the global error toast doesn't add a second notice.

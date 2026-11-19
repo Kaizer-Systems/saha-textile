@@ -216,7 +216,11 @@ describe('drafts inside a conversation', () => {
 		labelIds,
 		internalDate: '1700000000000',
 		snippet: id,
-		payload: { mimeType: 'text/plain', headers: [{ name: 'From', value: `${id}@x.test` }], body: { data: b64(id) } },
+		payload: {
+			mimeType: 'text/plain',
+			headers: [{ name: 'From', value: `${id}@x.test` }],
+			body: { data: b64(id) },
+		},
 	});
 
 	it('leaves a reply being written out of the conversation and its list line', async () => {
@@ -250,7 +254,9 @@ describe('formatted writing (C1)', () => {
 		expect(clean).toContain('<ul><li>one</li></ul><ol><li>two</li></ol><blockquote>q</blockquote>');
 		expect(clean).toContain('<a href="https://shop.test/o/1">order</a>');
 		expect(clean).toContain('<a href="mailto:care@shop.test">mail</a>');
-		expect(clean).not.toMatch(/onclick|style=|<script|alert\(1\)<\/script>|<img|<iframe|javascript:|<h1|<form|<input|target=/);
+		expect(clean).not.toMatch(
+			/onclick|style=|<script|alert\(1\)<\/script>|<img|<iframe|javascript:|<h1|<form|<input|target=/,
+		);
 	});
 
 	it('writes the text part from the cleaned formatting, with the signature after it', () => {

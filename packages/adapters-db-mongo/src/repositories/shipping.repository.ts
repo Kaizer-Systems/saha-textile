@@ -2,6 +2,7 @@ import { ShippingException, ShippingRuleSet, ShippingRuleSetVersion, ShippingSet
 import type { ShippingRuleRepository } from '@saha-textile/core-domain';
 
 import {
+	ProductModel,
 	ShippingExceptionModel,
 	ShippingProviderConfigModel,
 	ShippingRuleSetModel,
@@ -244,5 +245,35 @@ export class MongoShippingRuleRepository implements ShippingRuleRepository {
 	async deleteException(id: string): Promise<boolean> {
 		const result = await ShippingExceptionModel.deleteOne({ _id: id }).exec();
 		return result.deletedCount > 0;
+	}
+
+	async countProductsWithoutBox(categoryIdsWithBox: readonly string[]): Promise<number> {
+		// `field: null` matches a missing field too; `categoryIds.0` is the main category.
+		return ProductModel.countDocuments({
+			status: 'live',
+			'categoryIds.0': { $nin: [...categoryIdsWithBox] },
+			'shippingDefaults.weightGrams': null,
+			$or: [
+				{ 'shippingDefaults.lengthCm': null },
+				{ 'shippingDefaults.widthCm': null },
+				{ 'shippingDefaults.heightCm': null },
+			],
+		}).exec();
+	}
+
+	async chargeUsage(mainCategoryIds: readonly string[]): Promise<{ products: number; ownCharges: number }> {
+		const base = { status: { $ne: 'discontinued' as const }, 'categoryIds.0': { $in: [...mainCategoryIds] } };
+		const [products, ownCharges] = await Promise.all([
+			ProductModel.countDocuments(base).exec(),
+			ProductModel.countDocuments({
+				...base,
+				$or: [
+					{ 'shippingCharges.domesticINR': { $ne: null } },
+					{ 'shippingCharges.internationalFirstINR': { $ne: null } },
+					{ 'shippingCharges.internationalFurtherINR': { $ne: null } },
+				],
+			}).exec(),
+		]);
+		return { products, ownCharges };
 	}
 }

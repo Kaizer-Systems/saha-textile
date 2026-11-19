@@ -91,14 +91,21 @@ export function decideInvoiceAddress(input: InvoiceAddressInput): InvoiceAddress
 	return { status: 'needed', partial, missing: missingInvoiceFields(partial) };
 }
 
-/** Whether checkout shows the optional "Address in India" step: only when no address there exists yet. */
+/**
+ * Whether checkout shows the optional "Address in India" step: only when no address there exists yet,
+ * and the shop's "Ask for an address in the home country" switch is on (brief io01, on by default).
+ */
 export function asksForAddressInHomeCountry(
 	policy: AbroadOrderPolicy,
 	homeCountry: string,
 	billingCountry: string,
 	deliveryCountry: string,
+	askForHomeAddress = true,
 ): boolean {
 	return (
-		policy === 'exportOffIndianInvoice' && !same(billingCountry, homeCountry) && !same(deliveryCountry, homeCountry)
+		askForHomeAddress &&
+		policy === 'exportOffIndianInvoice' &&
+		!same(billingCountry, homeCountry) &&
+		!same(deliveryCountry, homeCountry)
 	);
 }

@@ -1,30 +1,70 @@
-<div class="card">
-	<div class="card-body">
+<div [class.card]="mode() === 'ruleSet'">
+	<div [class.card-body]="mode() === 'ruleSet'">
+		@if (mode() === 'ruleSet') {
 		<div class="title-header">
 			<div class="d-flex align-items-center">
 				<h5>{{ 'ship_try_it' | transloco }}</h5>
 			</div>
 		</div>
+		}
+		<div class="row g-2 mb-3">
+			<div class="col-6">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_destination"
+				>
+					{{ 'ship_deliver_to' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="ship_try_destination"
+					[ngModel]="destination()"
+					(ngModelChange)="destination.set($event)"
+				>
+					@for (place of destinations; track place.key) {
+					<option [value]="place.key">{{ destinationLabel(place) }}</option>
+					}
+					<option value="other">{{ 'ship_try_other_address' | transloco }}</option>
+				</select>
+			</div>
+			<div class="col-6">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_currency"
+				>
+					{{ 'ship_shopper_pays_in' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="ship_try_currency"
+					[ngModel]="currency()"
+					(ngModelChange)="currency.set($event)"
+				>
+					<option value="INR">₹ {{ 'ship_currency_name_INR' | transloco }}</option>
+				</select>
+			</div>
+		</div>
+		@if (destination() === 'other') {
 		<div class="row g-2 mb-3">
 			<div class="col-6">
 				<label
 					class="form-label small mb-1"
 					for="ship_try_country"
 				>
-					{{ 'ship_deliver_to' | transloco }}
+					{{ 'country' | transloco }}
 				</label>
 				<select
 					class="form-select"
 					id="ship_try_country"
-					[ngModel]="country()"
-					(ngModelChange)="country.set($event)"
+					[ngModel]="otherCountry()"
+					(ngModelChange)="otherCountry.set($event)"
 				>
 					@for (code of countries; track code) {
 					<option [value]="code">{{ countryName(code) }}</option>
 					}
 				</select>
 			</div>
-			@if (country() === 'IN') {
+			@if (otherCountry() === 'IN') {
 			<div class="col-3">
 				<label
 					class="form-label small mb-1"
@@ -35,8 +75,8 @@
 				<input
 					class="form-control"
 					id="ship_try_state"
-					[ngModel]="state()"
-					(ngModelChange)="state.set($event)"
+					[ngModel]="otherState()"
+					(ngModelChange)="otherState.set($event)"
 				/>
 			</div>
 			<div class="col-3">
@@ -50,17 +90,19 @@
 					class="form-control"
 					id="ship_try_pin"
 					inputmode="numeric"
-					[ngModel]="pincode()"
-					(ngModelChange)="pincode.set($event)"
+					[ngModel]="otherPincode()"
+					(ngModelChange)="otherPincode.set($event)"
 				/>
 			</div>
 			}
 		</div>
+		} @if (editing()) {
 		<input
 			class="form-control mb-2"
 			type="search"
 			id="ship_try_search"
 			autocomplete="off"
+			#searchBox
 			[placeholder]="'ship_try_add_product' | transloco"
 			(input)="search($any($event.target).value)"
 		/>
@@ -77,34 +119,41 @@
 			</button>
 			}
 		</div>
-		}
+		} }
 		<ul class="srb-trace mb-3">
-			@for (line of lines(); track line.productId; let i = $index) { @let view = outcome()?.lines?.[i]; @let
-			amount = lineAmount('line-' + (i + 1));
+			@for (line of lines(); track line.productId; let i = $index) { @let view = views()[i];
 			<li>
-				<span>
-					<b>{{ line.title }}</b>
-					×
-					<input
-						class="form-control d-inline-block srb-amt"
-						type="number"
-						min="1"
-						max="99"
-						[attr.aria-label]="'quantity' | transloco"
-						[ngModel]="line.quantity"
-						(ngModelChange)="setQuantity(i, $event)"
+				<span class="d-flex gap-2 align-items-center">
+					@if (view?.imageUrl) {
+					<img
+						class="rounded"
+						width="30"
+						height="38"
+						style="object-fit: cover"
+						alt=""
+						[src]="view?.imageUrl"
 					/>
-					@if (view) {
-					<br />
-					<small class="text-muted">
-						{{ (view.discounted ? 'ship_try_discounted' : 'ship_try_full_price') | transloco }} · {{
-						'ship_try_charges' | transloco: { domestic: view.charges.domestic, first:
-						view.charges.internationalFirst, further: view.charges.internationalFurther } }}
-					</small>
 					}
+					<span>
+						<b>{{ view?.title ?? line.title }}</b>
+						× @if (editing()) {
+						<input
+							class="form-control d-inline-block srb-amt"
+							type="number"
+							min="1"
+							max="99"
+							[attr.aria-label]="'quantity' | transloco"
+							[ngModel]="line.quantity"
+							(ngModelChange)="setQuantity(i, $event)"
+						/>
+						} @else { {{ line.quantity }} } @if (view) {
+						<br />
+						<small class="text-muted">{{ subline(view) }}</small>
+						}
+					</span>
 				</span>
 				<span class="d-flex align-items-center gap-2">
-					{{ amount === null ? '—' : '₹' + amount.toLocaleString('en-IN') }}
+					{{ view ? lineAmount(view) : '' }} @if (editing()) {
 					<a
 						href="javascript:void(0)"
 						[title]="'remove' | transloco"
@@ -113,36 +162,72 @@
 					>
 						<i class="ri-close-line"></i>
 					</a>
+					}
 				</span>
 			</li>
 			} @empty {
-			<li class="text-muted small">{{ 'ship_try_empty' | transloco }}</li>
+			<li class="text-muted small">
+				{{ (mode() === 'live' ? 'ship_tester_empty' : 'ship_try_empty') | transloco }}
+			</li>
+			} @if (lines().length) {
+			<li>
+				<span><b>{{ 'shipping' | transloco }}</b></span>
+				<span>
+					<b>{{ total() === null || blocked() || pending() ? '—' : rupees(total() ?? 0) }}</b>
+				</span>
+			</li>
 			}
 		</ul>
 		@if (problem(); as key) {
 		<div class="text-danger small mb-2">{{ key | transloco }}</div>
-		} @if (outcome(); as result) {
+		} @if (lines().length && pending() && mode() === 'ruleSet') {
+		<p
+			class="text-muted small mb-0"
+			id="ship_try_result"
+		>
+			{{ 'ship_try_pending' | transloco }}
+		</p>
+		} @else if (lines().length && blocked() && mode() === 'ruleSet') {
+		<div
+			class="srb-result"
+			id="ship_try_result"
+		>
+			<span>{{ 'ship_try_blocked' | transloco }}</span>
+			<strong>—</strong>
+		</div>
+		} @else if (outcome(); as result) {
 		<div
 			class="srb-result"
 			id="ship_try_result"
 		>
 			<span>
-				@switch (result.status) { @case ('priced') { {{ why() }} } @case ('noResult') { {{ 'ship_try_no_result'
-				| transloco }} } @case ('cantShip') { {{ 'ship_try_cant_ship' | transloco: { message:
-				result.cantShip[0]?.message?.['en'] ?? '' } }} } @case ('needsQuote') { {{ 'ship_try_needs_quote' |
-				transloco }} } } @if (result.moreLines) {
+				@if (mode() === 'live') {
+				<small class="d-block text-muted">
+					{{ 'ship_zone_is' | transloco: { zone: ('ship_zone_' + result.zone | transloco) } }}
+				</small>
+				} {{ why() }} @if (result.moreLines) {
 				<br />
 				<small class="text-muted">{{ 'ship_try_more_lines' | transloco: { count: result.moreLines } }}</small>
 				}
 			</span>
-			<strong>{{ result.amountINR === null ? '—' : '₹' + result.amountINR.toLocaleString('en-IN') }}</strong>
+			<strong>{{ result.amountINR === null ? '—' : rupees(result.amountINR) }}</strong>
 		</div>
-		<p class="help-text mt-1 mb-0">
-			{{ 'ship_zone_is' | transloco: { zone: ('ship_zone_' + result.zone | transloco) } }}
-		</p>
-		} @if (!readOnly() && lines().length) {
+		}
 		<div class="d-flex align-items-center mt-3 flex-wrap gap-2">
-			@if (naming()) {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				id="ship_try_edit"
+				[disabled]="lines().length === 0"
+				(click)="editing.set(!editing())"
+			>
+				<i
+					class="ri-shopping-bag-line me-1"
+					aria-hidden="true"
+				></i>
+				{{ (editing() ? 'ship_try_done' : 'ship_edit_cart') | transloco }}
+			</button>
+			@if (mode() === 'ruleSet' && !readOnly() && lines().length) { @if (naming()) {
 			<input
 				class="form-control w-auto"
 				maxlength="80"
@@ -173,8 +258,7 @@
 				></i>
 				{{ 'ship_save_test_cart' | transloco }}
 			</button>
-			}
+			} }
 		</div>
-		}
 	</div>
 </div>

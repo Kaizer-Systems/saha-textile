@@ -49,10 +49,30 @@ vi.mock('@data-access/queries/tax.queries', () => ({
 vi.mock('@data-access/queries/attribute.queries', () => ({
 	injectAttributesQuery: (p: () => unknown) => (p(), { data: empty, refetch }),
 }));
-vi.mock('@core/shipping/shipping.gateway', () => ({
-	injectShippingOverviewQuery: () => ({ data: empty }),
-	injectShippingExceptionsQuery: () => ({ data: empty }),
-}));
+vi.mock('@core/shipping/shipping.gateway', async () => {
+	const { of } = await import('rxjs');
+	const { Injectable } = await import('@angular/core');
+	@Injectable({ providedIn: 'root' })
+	class ShippingGateway {
+		categoryUsage = () => of({ products: 214, ownCharges: 5 });
+		exceptions = () =>
+			of([
+				{
+					id: 'ex-1',
+					target: { kind: 'category', categoryId: 'cat_1', includeSubcategories: true },
+					domestic: { kind: 'siteWide' },
+					international: { kind: 'cantShip' },
+					note: '',
+				},
+			]);
+		overview = () => of({ ruleSets: [] });
+	}
+	return {
+		ShippingGateway,
+		injectShippingOverviewQuery: () => ({ data: empty }),
+		injectShippingExceptionsQuery: () => ({ data: empty }),
+	};
+});
 
 const translate = { translate: (key: string) => key, selectTranslation: () => of({}) };
 const both = { en: 'Red', bn: 'লাল' };
@@ -900,6 +920,11 @@ describe('FormCategory', () => {
 		expect(page.form.value).toMatchObject({ category_image_id: 'a1', category_icon_id: '' });
 		expect(page.category.category_image?.original_url).toBe('https://cdn.test/a1');
 		expect(page.category.category_icon).toBeUndefined();
+		// Shipping (brief cat01): who reads its charges, and its own exception per zone.
+		expect(page.shippingUsage()).toEqual({ products: 214, ownCharges: 5 });
+		expect(page.zoneExceptions()).toEqual([
+			{ zone: 'international', label: 'ship_choice_cantShip', cantShip: true },
+		]);
 		expect(render('nope').page.id).toBeUndefined();
 	});
 

@@ -2,7 +2,7 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'ship_orders_abroad'"
 >
-	<p class="text-muted">{{ 'ship_orders_abroad_intro' | transloco }}</p>
+	<p class="text-muted">{{ 'ship_orders_abroad_intro' | transloco: { country: homeCountryName() } }}</p>
 	<div
 		class="row g-3 mb-4"
 		role="radiogroup"
@@ -13,6 +13,7 @@
 			<label
 				class="card mb-0 h-100"
 				[class.opacity-50]="!open"
+				[style.border]="on ? '2px solid var(--theme-color)' : null"
 				[attr.data-policy]="policy"
 			>
 				<div class="card-body">
@@ -37,6 +38,32 @@
 	</div>
 
 	@if (chosen() === 'exportOffIndianInvoice') {
+	<div class="theme-form theme-form-2 mega-form mb-3">
+		@for (option of switches; track option) {
+		<app-form-fields
+			[label]="'ship_abroad_' + option"
+			[for]="'abroad_' + option"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="d-flex align-items-center gap-3">
+				<div class="form-check form-switch ps-0">
+					<label class="switch">
+						<input
+							type="checkbox"
+							[id]="'abroad_' + option"
+							[checked]="isOn(option)"
+							[disabled]="option === 'keepBilling' || !canEdit()"
+							(change)="setOption(option, $any($event.target).checked)"
+						/>
+						<span class="switch-state"></span>
+					</label>
+				</div>
+				<span class="small text-muted">{{ 'ship_abroad_' + option + '_help' | transloco }}</span>
+			</div>
+		</app-form-fields>
+		}
+	</div>
 	<div class="table-responsive datatable-wrapper border-table mb-3">
 		<table class="all-package theme-table no-footer table">
 			<thead>
@@ -58,16 +85,6 @@
 				}
 			</tbody>
 		</table>
-	</div>
-	<div
-		class="alert alert-info d-flex align-items-start gap-2"
-		role="note"
-	>
-		<i
-			class="ri-information-line mt-1"
-			aria-hidden="true"
-		></i>
-		<div>{{ 'ship_abroad_rules_note' | transloco }}</div>
 	</div>
 	} @if (canEdit()) {
 	<div class="d-flex justify-content-end">

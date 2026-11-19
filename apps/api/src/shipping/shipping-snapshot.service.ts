@@ -1,7 +1,10 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
 	type Category,
+	type CatalogProductPage,
 	type ShippingCartSnapshot,
+	type ShippingChargeKind,
+	type ShippingChargeSourceView,
 	type ShippingCharges,
 	type ShippingSnapshotDelivery,
 	type ShippingSnapshotLine,
@@ -69,7 +72,9 @@ export class ShippingSnapshotService {
 						{ path: `lines.${index}`, message: 'That product is not on sale', code: 'unknown_product' },
 					],
 				});
-			const priced = priceCartLine(read.page, { variationId: input.variationId, addons: [] });
+			// A product with options and none chosen is priced with its first buyable option, as its card shows.
+			const variationId = input.variationId ?? defaultVariationId(read.page) ?? null;
+			const priced = priceCartLine(read.page, { variationId, addons: [] });
 			if (!priced.ok)
 				throw new BadRequestException({
 					issues: [
@@ -81,7 +86,7 @@ export class ShippingSnapshotService {
 					],
 				});
 			const row = priced.line;
-			const variant = input.variationId ? await this.variants.findById(input.variationId, 'admin') : null;
+			const variant = variationId ? await this.variants.findById(variationId, 'admin') : null;
 
 			const mainId = mainCategoryId(product.categoryIds);
 			const main = mainId ? await category(mainId) : null;
@@ -93,7 +98,7 @@ export class ShippingSnapshotService {
 				: [];
 			const chain = main ? [main, ...parents] : [];
 
-			const { charges } = resolveShippingCharges(
+			const { charges, sources } = resolveShippingCharges(
 				product.shippingCharges ?? null,
 				chain.map((c) => ({ id: c.id, shipping: c.shipping ?? null })),
 				defaults,
@@ -139,8 +144,41 @@ export class ShippingSnapshotService {
 				discounted: isDiscounted(line),
 				charges,
 				chargeableWeightGrams: grams,
+				variantLabel: row.variantLabel ?? null,
+				imageUrl: thumbnailOf(read.page),
+				chargeSources: sourceViews(sources, chain),
+				box: metre ? null : box,
 			});
 		}
 		return { snapshot: { lines: built, delivery, shopper }, views };
 	}
+}
+
+/** The first option a shopper can buy, else the first one; undefined for a product without options. */
+export function defaultVariationId(page: CatalogProductPage): string | undefined {
+	if (page.variants.length === 0) return undefined;
+	return (page.variants.find((v) => v.buyable) ?? page.variants[0])?.id;
+}
+
+function thumbnailOf(page: CatalogProductPage): string | null {
+	const first = page.gallery[0];
+	if (!first) return null;
+	return first.roles['card']?.[0]?.url ?? first.roles['gallery']?.[0]?.url ?? null;
+}
+
+function sourceViews(
+	sources: Record<ShippingChargeKind, { from: string; categoryId: string | null }>,
+	chain: readonly Category[],
+): Record<ShippingChargeKind, ShippingChargeSourceView> {
+	const view = (source: { from: string; categoryId: string | null }): ShippingChargeSourceView => {
+		if (source.from === 'product') return { from: 'product', name: null };
+		if (source.categoryId === null) return { from: 'shopDefault', name: null };
+		const category = chain.find((c) => c.id === source.categoryId);
+		return { from: 'category', name: category ? (category.name['en'] ?? Object.values(category.name)[0] ?? null) : null };
+	};
+	return {
+		domestic: view(sources.domestic),
+		internationalFirst: view(sources.internationalFirst),
+		internationalFurther: view(sources.internationalFurther),
+	};
 }

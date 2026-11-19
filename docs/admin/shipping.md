@@ -25,7 +25,11 @@ Shows how each zone is priced: domestic (delivery inside the home country) and i
 - what happens when one cart's lines fall under different rule sets (add their charges up, or take only the highest);
 - the shop-wide default charges, used when neither a product nor any of its categories sets one.
 
-The checks list names each gap before a shopper meets it: a zone with no rule set, a rule set still in draft, all default charges at ₹0, or an exception pointing at a missing rule set.
+Each zone card names its rule set, the rule set's short description and its active version.
+
+The **Checks** card names each gap before a shopper meets it: a zone with no rule set, a rule set still in draft, all default charges at ₹0, or an exception pointing at a missing rule set. It also counts the categories and products with their own rules, and the live products with no weight or box on themselves or their categories. That count is a warning while no rule set in use reads weight, and an error once one does or a courier is chosen.
+
+The **Try any cart** card opens the cart tester. It prices a cart of real products the way checkout will: the Free shipping switch, exceptions, each zone's site-wide rule set and its active version. Each line says which rule set, switch or exception decided it. It calls `POST /admin/shipping/try-cart`.
 
 ## Rule sets and the rule builder
 
@@ -40,7 +44,7 @@ The builder edits one rule set:
 - **Adjust the total** adds a minimum, a maximum, rounding up, or free above a cart value.
 - **Undo** and **Redo** step through every change of the blocks.
 - The checks run as the blocks change. Each problem is listed in plain words and its block is outlined. **Save and make active** stays off until none is left; **Save as draft** keeps unfinished work.
-- **Try it** builds a cart from real products and a delivery country. It prices the blocks on the server and explains each line. A cart can be kept as a **saved test cart**.
+- **Try it** builds a cart from real products, sent to a saved destination (or another address) for a shopper paying in a chosen currency. It prices the blocks on the server. Each line shows its MRP, price and whether it is discounted, the charge it used and the category that charge came from, or its unit numbers when the whole cart is counted, or its weight and box when the blocks read weight. The box under the lines explains the result in a sentence. A product with options and none chosen is priced with its first option a shopper can buy. A cart can be kept as a **saved test cart**.
 - **Saved test carts** show the accepted amount beside what the blocks give now. When making a version active changes an amount, the change is listed and must be accepted. A cart that would stop pricing blocks activation.
 - **In plain words** writes the rule set out as sentences from its blocks, in the admin's language.
 - On a phone, rule sets open read only: Try it and the plain words still work.
@@ -53,14 +57,16 @@ Chooses the rule set each zone uses site-wide. It also lists **exceptions**: a c
 
 ## Couriers
 
-Lists the courier adapters (Shiprocket, Delhivery, Blue Dart, DHL Express) and shows how each zone is priced. A courier can't be chosen until its adapter is connected.
+Lists the courier adapters (Shiprocket, Delhivery, Blue Dart, DHL Express). For each zone, **Price with** chooses a rule set or a courier quote; **If a quote fails** names the rule set used when a quote times out or errors; **On top of a quote** adds a percentage of the quote, then an amount. A courier can't be chosen until its adapter is connected.
 
 ## Orders sent abroad
 
-Chooses the named path for orders delivered outside the home country. The paths are export off with the invoice to an address in India, standard export (not available to choose), or India only. For the export-off path, a table shows where the invoice goes in each of the four billing and delivery cases.
+Chooses the named path for orders delivered outside the home country. The paths are export off with the invoice to an address in India, standard export (not available to choose), or India only. The chosen path's card has the theme-coloured border.
+
+For the export-off path, three switches follow: **Ask for an Indian invoice address** at checkout when billing and delivery are both abroad (`abroadOptions.askForHomeAddress`); **Hold packing until it is complete** (`abroadOptions.holdPackingUntilComplete`); and **Keep the billing address as entered**, which is always on. A table shows where the invoice goes in each of the four billing and delivery cases.
 
 ## Charges on categories and products
 
-The category form has a **Shipping** section with three fields: the domestic charge per unit, the international first-unit charge and the international charge for each further unit. It also sets a default weight and box. An empty field follows the parent category, then the shop-wide default.
+The category form has a **Shipping** section with three fields: the domestic charge per unit, the international first-unit charge and the international charge for each further unit. It also sets a default weight and box. An empty field follows the parent category, then the shop-wide default; a top-level category's empty fields say they follow the shop default. The **Shipping rules** row shows the category's own exception per zone, or "Same as site-wide · Add an exception". Under it, "Used by N products: X inherit these values, Y set their own" counts the products whose main category is this one or one beneath it (`GET /admin/shipping/category-usage/:id`).
 
-The product form's **Shipping & tax** tab shows each charge with a "use the category's value" switch. Turning it off sets the product's own amount. The existing **Free shipping** switch ships the product free in both zones, whatever the rule sets say. Under the weight and box, the tab shows the volumetric and chargeable weight. Rule sets read these values through "the product's own charge".
+The product form's **Shipping & tax** tab shows each charge with a "use the category's value" switch and the value it follows: the nearest category that sets one (named), else the shop default. Turning a switch off sets the product's own amount, starting from that value. The existing **Free shipping** switch ships the product free in both zones, whatever the rule sets say. **Weight and box** shows the weight (the same field as the Inventory tab) and the box on one row with the volumetric and chargeable weight beside it. **Shipping rules** names the exception that decides each zone for the product (its own, its main category's, or a parent's), or says it follows its main category. Rule sets read these values through "the product's own charge".

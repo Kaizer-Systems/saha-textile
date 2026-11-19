@@ -34,8 +34,9 @@
 		</div>
 		}
 	</div>
+	@if (form(); as current) {
 	<div class="row g-3 mb-3">
-		@for (zone of zones; track zone) { @let name = ruleSetName(zone);
+		@for (zone of zones; track zone) { @let courier = courierChosen(zone); @let onTop = extra(zone);
 		<div class="col-lg-6">
 			<div class="card mb-0">
 				<div class="card-body">
@@ -44,20 +45,102 @@
 							<h5>{{ 'ship_zone_' + zone | transloco }}</h5>
 						</div>
 					</div>
-					<p class="mb-1">
-						@if (name) { {{ 'ship_zone_uses' | transloco: { name } }} } @else {
-						<span class="text-danger">{{ 'ship_zone_unset' | transloco }}</span>
-						}
-					</p>
-					<p class="small text-muted mb-0">
-						{{ 'ship_courier_zone_help' | transloco }}
-						<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_where_rules_apply' | transloco }}</a>
-					</p>
+					<div class="theme-form theme-form-2 mega-form">
+						<app-form-fields
+							[label]="'ship_price_with'"
+							[for]="'ship_price_with_' + zone"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<select
+								class="form-select"
+								[id]="'ship_price_with_' + zone"
+								[disabled]="!canEdit()"
+								[ngModel]="priceWith(zone)"
+								(ngModelChange)="setPriceWith(zone, $event)"
+							>
+								@if (!current[zone].kind || priceWith(zone) === 'ruleSet:') {
+								<option value="ruleSet:">{{ 'ship_zone_unset' | transloco }}</option>
+								} @for (ruleSet of ruleSetsFor(zone); track ruleSet.id) {
+								<option [value]="'ruleSet:' + ruleSet.id">
+									{{ 'ship_zone_uses' | transloco: { name: ruleSet.name } }}
+								</option>
+								} @for (option of couriers; track option.key) {
+								<option
+									disabled
+									[value]="'courier:' + option.key"
+								>
+									{{ 'ship_courier_quote_from' | transloco: { name: option.name } }}
+								</option>
+								}
+							</select>
+						</app-form-fields>
+						<app-form-fields
+							[label]="'ship_if_quote_fails'"
+							[for]="'ship_fallback_' + zone"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<select
+								class="form-select"
+								[id]="'ship_fallback_' + zone"
+								[disabled]="!courier"
+								[ngModel]="fallbackId(zone)"
+							>
+								@for (ruleSet of ruleSetsFor(zone); track ruleSet.id) {
+								<option [value]="ruleSet.id">
+									{{ 'ship_use_rule_set' | transloco: { name: ruleSet.name } }}
+								</option>
+								}
+							</select>
+							<p class="help-text">{{ 'ship_if_quote_fails_help' | transloco }}</p>
+						</app-form-fields>
+						<app-form-fields
+							[label]="'ship_on_top_of_quote'"
+							[for]="'ship_on_top_amount_' + zone"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<div class="d-flex gap-2">
+								<div
+									class="input-group flex-nowrap"
+									style="width: 150px"
+								>
+									<span class="input-group-text">₹</span>
+									<input
+										class="form-control"
+										type="number"
+										min="0"
+										[id]="'ship_on_top_amount_' + zone"
+										[disabled]="!courier"
+										[value]="onTop.amountINR"
+									/>
+								</div>
+								<span class="pt-2">{{ 'ship_and' | transloco }}</span>
+								<div
+									class="input-group flex-nowrap"
+									style="width: 120px"
+								>
+									<input
+										class="form-control"
+										type="number"
+										min="0"
+										max="100"
+										[attr.aria-label]="'ship_on_top_percent' | transloco"
+										[disabled]="!courier"
+										[value]="onTop.percent"
+									/>
+									<span class="input-group-text">%</span>
+								</div>
+							</div>
+						</app-form-fields>
+					</div>
 				</div>
 			</div>
 		</div>
 		}
 	</div>
+	}
 	<div
 		class="alert alert-info d-flex align-items-start gap-2"
 		role="note"
@@ -68,4 +151,17 @@
 		></i>
 		<div>{{ 'ship_couriers_note' | transloco }}</div>
 	</div>
+	@if (canEdit()) {
+	<div class="d-flex justify-content-end">
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="ship_couriers_save"
+			[disabled]="saving()"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+	}
 </app-page-wrapper>

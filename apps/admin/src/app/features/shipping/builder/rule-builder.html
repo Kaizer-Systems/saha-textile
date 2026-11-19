@@ -151,7 +151,7 @@
 								</button>
 								}
 							</div>
-							<p class="help-text">{{ 'ship_used_for_help' | transloco }}</p>
+							<p class="help-text">{{ 'ship_used_for_help' | transloco: { country: homeCountryName() } }}</p>
 						</app-form-fields>
 						<app-form-fields
 							[label]="'ship_amounts_in'"
@@ -179,9 +179,9 @@
 								</div>
 								<span class="text-muted small">
 									@if (current.ruleSet.activeVersion !== null) { {{ 'ship_status_active' | transloco:
-									{ version: current.ruleSet.activeVersion } }} @if (current.ruleSet.hasDraftChanges
-									|| dirty()) { · {{ 'ship_status_unsaved' | transloco }} } } @else { {{
-									'ship_status_draft' | transloco }} }
+									{ version: current.ruleSet.activeVersion } }} · {{ usageWords() }} @if
+									(current.ruleSet.hasDraftChanges || dirty()) { · {{ 'ship_status_unsaved' | transloco }} }
+									} @else { {{ 'ship_status_draft' | transloco }} }
 								</span>
 							</div>
 						</app-form-fields>
@@ -472,7 +472,10 @@
 			<div class="sticky-top-sec">
 				<app-srb-try
 					[body]="body()"
+					[use]="use()"
 					[readOnly]="readOnly()"
+					[pending]="!hasResult()"
+					[blocked]="errors().length > 0"
 					(saveTestCart)="addTestCart($event)"
 				/>
 				<div class="card">

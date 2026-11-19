@@ -12,6 +12,7 @@ import {
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 import type { AbroadOrderPolicy } from '@saha-textile/contracts';
 
@@ -31,7 +32,7 @@ const CASES = [
 @Component({
 	selector: 'app-orders-abroad',
 	templateUrl: './orders-abroad.html',
-	imports: [PageWrapper, TranslocoModule],
+	imports: [PageWrapper, FormFields, TranslocoModule],
 })
 export class OrdersAbroad {
 	private readonly gateway = inject(ShippingGateway);
@@ -46,12 +47,31 @@ export class OrdersAbroad {
 	readonly cases = CASES;
 	readonly chosen = signal<AbroadOrderPolicy | null>(null);
 	readonly saving = signal(false);
+	/** The switches under the export-off path (brief io01); keeping the billing address is always on. */
+	readonly switches = ['askForHomeAddress', 'holdPackingUntilComplete', 'keepBilling'] as const;
+	readonly options = signal({ askForHomeAddress: true, holdPackingUntilComplete: true });
+	readonly homeCountryName = computed(() => {
+		const data = this.query.data();
+		return this.transloco.translate(`ship_country_${(data?.settings ?? data?.defaults)?.homeCountry ?? 'IN'}`);
+	});
 
 	constructor() {
 		effect(() => {
 			const data = this.query.data();
-			if (data) this.chosen.set((data.settings ?? data.defaults).abroadPolicy);
+			if (!data) return;
+			const settings = data.settings ?? data.defaults;
+			this.chosen.set(settings.abroadPolicy);
+			this.options.set({ ...settings.abroadOptions });
 		});
+	}
+
+	isOn(option: (typeof this.switches)[number]): boolean {
+		return option === 'keepBilling' ? true : this.options()[option];
+	}
+
+	setOption(option: (typeof this.switches)[number], on: boolean) {
+		if (option === 'keepBilling') return;
+		this.options.update((current) => ({ ...current, [option]: on }));
 	}
 
 	available(policy: AbroadOrderPolicy): boolean {
@@ -66,7 +86,7 @@ export class OrdersAbroad {
 		void _at;
 		void _by;
 		this.saving.set(true);
-		this.gateway.saveSettings({ ...current, abroadPolicy: policy }).subscribe({
+		this.gateway.saveSettings({ ...current, abroadPolicy: policy, abroadOptions: this.options() }).subscribe({
 			next: () => {
 				this.saving.set(false);
 				this.notifier.showSuccess(this.transloco.translate('ship_settings_saved'));

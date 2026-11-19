@@ -38,4 +38,13 @@ export interface ShippingRuleRepository {
 	listExceptions(): Promise<ShippingException[]>;
 	saveException(exception: ShippingException): Promise<void>;
 	deleteException(id: string): Promise<boolean>;
+
+	/**
+	 * Live products with no weight and no full box of their own whose main category is not one of
+	 * `categoryIdsWithBox` (categories that give a weight or box themselves or through a parent).
+	 * Variants that set their own are not looked at; the overview check says "no weight or box size".
+	 */
+	countProductsWithoutBox(categoryIdsWithBox: readonly string[]): Promise<number>;
+	/** Products (any status but discontinued) whose main category is one of these, and how many set a charge. */
+	chargeUsage(mainCategoryIds: readonly string[]): Promise<{ products: number; ownCharges: number }>;
 }

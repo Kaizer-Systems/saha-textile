@@ -13,7 +13,10 @@
 				<div class="card-body">
 					<div class="d-flex justify-content-between align-items-start gap-2">
 						<div>
-							<h6 class="text-muted mb-1">{{ 'ship_zone_card_' + zone | transloco }}</h6>
+							<h6 class="text-muted mb-1">
+								{{ 'ship_zone_card_' + zone | transloco: { country: ('ship_country_' + current.homeCountry |
+								transloco) } }}
+							</h6>
 							@if (notNeeded(zone)) {
 							<h5 class="mb-1">{{ 'ship_zone_not_needed' | transloco }}</h5>
 							<p class="small text-muted mb-2">{{ 'ship_zone_not_needed_help' | transloco }}</p>
@@ -78,7 +81,10 @@
 				<option value="sum">{{ 'ship_mixed_sum' | transloco }}</option>
 				<option value="highest">{{ 'ship_mixed_highest' | transloco }}</option>
 			</select>
-			<p class="help-text">{{ 'ship_mixed_rule_sets_help' | transloco }}</p>
+			<p class="help-text">
+				{{ 'ship_mixed_rule_sets_help' | transloco }} {{ 'ship_mixed_rule_sets_other' | transloco: { other:
+				('ship_mixed_' + (current.mixedRuleSets === 'sum' ? 'highest' : 'sum') | transloco).toLowerCase() } }}
+			</p>
 		</app-form-fields>
 		<app-form-fields
 			[label]="'ship_default_charges'"
@@ -92,9 +98,12 @@
 						class="form-label small"
 						[for]="'ship_default_' + kind"
 					>
-						{{ 'ship_charge_' + kind | transloco }}
+						{{ 'ship_default_' + kind | transloco }}
 					</label>
-					<div class="input-group flex-nowrap">
+					<div
+						class="input-group flex-nowrap"
+						style="width: 150px"
+					>
 						<span class="input-group-text">₹</span>
 						<input
 							class="form-control"
@@ -127,55 +136,107 @@
 		}
 	</div>
 
-	<h5 class="mt-4 mb-3">{{ 'ship_checks' | transloco }}</h5>
-	<ul
-		class="list-unstyled mb-0"
-		id="ship_checks"
-	>
-		@for (check of data?.checks ?? []; track $index) {
-		<li class="d-flex mb-2 gap-2">
-			<i
-				[class]="checkIcon(check)"
-				aria-hidden="true"
-			></i>
-			<span>
-				{{ 'ship_check_' + check.code | transloco: { zone: ('ship_zone_' + check.params['zone'] | transloco),
-				name: check.params['name'] ?? '' } }}
-			</span>
-		</li>
-		} @empty {
-		<li class="d-flex mb-2 gap-2">
-			<i
-				class="ri-checkbox-circle-line text-success"
-				aria-hidden="true"
-			></i>
-			<span>{{ 'ship_check_all_good' | transloco }}</span>
-		</li>
-		}
-		<li class="d-flex mb-2 gap-2">
-			<i
-				class="ri-information-line text-muted"
-				aria-hidden="true"
-			></i>
-			<span>
-				{{ 'ship_check_exceptions' | transloco: { count: data?.exceptionCount ?? 0 } }}
-				<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_where_rules_apply' | transloco }}</a>
-			</span>
-		</li>
-		<li class="d-flex mb-2 gap-2">
-			<i
-				class="ri-information-line text-muted"
-				aria-hidden="true"
-			></i>
-			<span>
-				{{ 'ship_check_abroad' | transloco: { path: ('ship_abroad_' + current.abroadPolicy | transloco) } }}
-				<a [routerLink]="['/shipping/orders-abroad']">{{ 'ship_change' | transloco }}</a>
-			</span>
-		</li>
-	</ul>
+
 	} @else {
 	<div class="table-loader">
 		<span>{{ 'please_wait' | transloco }}...</span>
 	</div>
 	}
 </app-page-wrapper>
+@if (form(); as current) { @let data = query.data();
+<div class="container-fluid">
+	<div class="row g-3">
+		<div class="col-lg-6">
+			<div class="card h-100">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'ship_checks' | transloco }}</h5>
+						</div>
+					</div>
+					<ul
+						class="list-unstyled mb-0"
+						id="ship_checks"
+					>
+						@for (check of data?.checks ?? []; track $index) {
+						<li class="d-flex mb-2 gap-2">
+							<i
+								[class]="checkIcon(check)"
+								aria-hidden="true"
+							></i>
+							<span>
+								{{ 'ship_check_' + check.code | transloco: { zone: ('ship_zone_' + check.params['zone'] |
+								transloco), name: check.params['name'] ?? '' } }}
+							</span>
+						</li>
+						} @if (!zeroDefaults()) {
+						<li class="d-flex mb-2 gap-2">
+							<i
+								class="ri-checkbox-circle-line text-success"
+								aria-hidden="true"
+							></i>
+							<span>{{ 'ship_check_every_product' | transloco }}</span>
+						</li>
+						} @if (data?.productsWithoutBox) {
+						<li class="d-flex mb-2 gap-2">
+							<i
+								[class]="data?.weightInUse ? 'ri-error-warning-line text-danger' : 'ri-alert-line text-warning'"
+								aria-hidden="true"
+							></i>
+							<span>
+								{{ (data?.weightInUse ? 'ship_check_no_box_needed' : 'ship_check_no_box') | transloco: {
+								count: data?.productsWithoutBox ?? 0 } }}
+							</span>
+						</li>
+						}
+						<li class="d-flex mb-2 gap-2">
+							<i
+								class="ri-information-line text-muted"
+								aria-hidden="true"
+							></i>
+							<span>
+								{{ ownRules() }}
+								<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_see_where_rules_apply' | transloco }}</a>
+							</span>
+						</li>
+						<li class="d-flex mb-2 gap-2">
+							<i
+								class="ri-information-line text-muted"
+								aria-hidden="true"
+							></i>
+							<span>
+								{{ 'ship_check_abroad' | transloco: { path: ('ship_abroad_' + current.abroadPolicy | transloco) } }}
+								<a [routerLink]="['/shipping/orders-abroad']">{{ 'ship_change' | transloco }}</a>
+							</span>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-6">
+			<div class="card h-100">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'ship_try_any_cart' | transloco }}</h5>
+						</div>
+					</div>
+					<p class="small text-muted">{{ 'ship_try_any_cart_help' | transloco }}</p>
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="ship_open_tester"
+						(click)="openTester()"
+					>
+						<i
+							class="ri-flask-line me-1"
+							aria-hidden="true"
+						></i>
+						{{ 'ship_open_cart_tester' | transloco }}
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+}

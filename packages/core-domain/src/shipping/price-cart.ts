@@ -221,8 +221,8 @@ export function priceShipping(input: ShippingPricingInput): ShippingPricingOutco
 	if (courierLines.length > 0) {
 		const method = zone === 'domestic' ? settings.domestic : settings.international;
 		let amount = input.courierQuoteINR ?? 0;
-		if (method.kind === 'courier' && method.extra)
-			amount += method.extra.kind === 'amount' ? method.extra.value : (amount * method.extra.value) / 100;
+		// On top of a quote (brief cr01): a percentage of the quote, then a fixed amount.
+		if (method.kind === 'courier') amount += (amount * method.extra.percent) / 100 + method.extra.amountINR;
 		groups.push({
 			kind: 'courier',
 			ruleSetId: null,

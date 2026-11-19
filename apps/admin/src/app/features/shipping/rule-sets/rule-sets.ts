@@ -78,15 +78,25 @@ export class ShippingRuleSets {
 		);
 		if (row.usage.exceptionIds.length)
 			parts.push(this.transloco.translate('ship_used_exceptions', { count: row.usage.exceptionIds.length }));
-		return parts.length ? parts.join(' · ') : '—';
+		if (parts.length) return parts.join(' · ');
+		// A courier quote can't be used until a courier is connected (brief rl01).
+		return row.ruleSet.premadeKey === 'courier-quote' ? this.transloco.translate('ship_needs_courier') : '—';
 	}
 
 	inUse(row: AdminShippingRuleSetRow): boolean {
 		return row.usage.zones.length > 0 || row.usage.exceptionIds.length > 0;
 	}
 
+	/** "19 Nov · Moulik": the day it was last saved and who saved it (brief rl01). */
 	edited(row: AdminShippingRuleSetRow): string {
-		return row.ruleSet.kind === 'premade' || !row.ruleSet.updatedAt ? '—' : row.ruleSet.updatedAt.slice(0, 10);
+		if (row.ruleSet.kind === 'premade' || !row.ruleSet.updatedAt) return '—';
+		const day = new Date(row.ruleSet.updatedAt).toLocaleDateString('en-IN', {
+			timeZone: 'Asia/Kolkata',
+			day: 'numeric',
+			month: 'short',
+		});
+		const who = row.updatedByName?.trim().split(/\s+/)[0];
+		return who ? `${day} · ${who}` : day;
 	}
 
 	async copy(row: AdminShippingRuleSetRow) {

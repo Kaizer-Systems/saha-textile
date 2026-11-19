@@ -14,6 +14,9 @@ import {
 	type AdminShippingRuleSetDetail,
 	type AdminShippingRuleSetRow,
 	type AuditLog,
+	type Category,
+	type ShippingCartTryRequest,
+	type ShippingCartTryResult,
 	BUILT_ABROAD_ORDER_POLICIES,
 	type ShippingException,
 	type ShippingExceptionWrite,
@@ -33,17 +36,22 @@ import {
 	type ShippingZoneMethod,
 } from '@saha-textile/contracts';
 import {
+	type ActiveRuleSet,
+	type AdminUserRepository,
 	type AuditLogRepository,
 	type CategoryRepository,
 	type ProductRepository,
 	type ShippingRuleRepository,
 	PREMADE_RULE_SETS,
 	evaluateShippingRuleSet,
+	priceShipping,
+	ruleSetReadsWeight,
 	shippingZoneFor,
 	validateShippingRuleSet,
 } from '@saha-textile/core-domain';
 
 import {
+	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	CATEGORY_REPOSITORY,
 	PRODUCT_REPOSITORY,
@@ -78,6 +86,9 @@ export class ShippingAdminService {
 		private readonly snapshots: ShippingSnapshotService,
 		private readonly languages: LanguageStore,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional()
+		@Inject(ADMIN_USER_REPOSITORY)
+		private readonly admins: Pick<AdminUserRepository, 'findById'> | null = null,
 	) {}
 
 	/* ------------------------------------------------------------------ rule sets */
@@ -88,9 +99,12 @@ export class ShippingAdminService {
 			this.settings(),
 			this.rules.listExceptions(),
 		]);
-		return [...ruleSets]
-			.sort(byListOrder)
-			.map((ruleSet) => ({ ruleSet, usage: usageOf(ruleSet.id, settings, exceptions) }));
+		const names = await this.names(ruleSets.map((r) => r.updatedBy));
+		return [...ruleSets].sort(byListOrder).map((ruleSet) => ({
+			ruleSet,
+			usage: usageOf(ruleSet.id, settings, exceptions),
+			updatedByName: ruleSet.updatedBy ? (names.get(ruleSet.updatedBy) ?? null) : null,
+		}));
 	}
 
 	async detail(id: string): Promise<AdminShippingRuleSetDetail> {
@@ -270,19 +284,118 @@ export class ShippingAdminService {
 	/* ------------------------------------------------------------------ settings and overview */
 
 	async overview(): Promise<AdminShippingOverview> {
-		const [stored, ruleSets, exceptions] = await Promise.all([
+		const [stored, ruleSets, exceptions, categories] = await Promise.all([
 			this.rules.getSettings(),
 			this.rules.listRuleSets(),
 			this.rules.listExceptions(),
+			this.categories.tree(),
 		]);
 		const settings = stored ?? DEFAULT_SHIPPING_SETTINGS;
+		const inUse = ruleSetIdsInUse(settings, exceptions);
+		const [active, productsWithoutBox] = await Promise.all([
+			this.rules.activeVersions(inUse),
+			this.rules.countProductsWithoutBox(categoriesWithBox(categories)),
+		]);
+		const courierChosen = settings.domestic.kind === 'courier' || settings.international.kind === 'courier';
 		return {
 			settings: stored,
 			defaults: DEFAULT_SHIPPING_SETTINGS,
 			ruleSets: ruleSets.map((r) => ({ id: r.id, name: r.name, use: r.use, activeVersion: r.activeVersion })),
 			exceptionCount: exceptions.length,
+			exceptionTargets: {
+				categories: exceptions.filter((e) => e.target.kind === 'category').length,
+				products: exceptions.filter((e) => e.target.kind === 'product').length,
+			},
+			productsWithoutBox,
+			weightInUse: courierChosen || active.some((version) => ruleSetReadsWeight(version.body)),
 			checks: overviewChecks(settings, ruleSets, exceptions),
 			abroadPolicies: [...BUILT_ABROAD_ORDER_POLICIES],
+		};
+	}
+
+	/** The category form's "Used by N products: X inherit these values, Y set their own" (brief cat01). */
+	async categoryUsage(id: string): Promise<{ products: number; ownCharges: number }> {
+		const categories = await this.categories.tree();
+		if (!categories.some((c) => c.id === id)) throw new NotFoundException({ code: 'unknown_category' });
+		// Products whose main category is this one or one beneath it read its charges unless they set their own.
+		const ids = categories.filter((c) => c.id === id || c.ancestors.includes(id)).map((c) => c.id);
+		return this.rules.chargeUsage(ids);
+	}
+
+	/** Prices a cart the way checkout will: live settings, exceptions, the Free shipping switch, active versions. */
+	async tryCart(input: ShippingCartTryRequest): Promise<ShippingCartTryResult> {
+		const [settings, exceptions, ruleSets] = await Promise.all([
+			this.settings(),
+			this.rules.listExceptions(),
+			this.rules.listRuleSets(),
+		]);
+		const { snapshot, views } = await this.snapshots.build(
+			input.lines,
+			input.delivery,
+			input.shopper,
+			settings.defaultCharges,
+		);
+		const versions = await this.rules.activeVersions(ruleSetIdsInUse(settings, exceptions));
+		const active = new Map<string, ActiveRuleSet>(
+			versions.map((v) => [v.ruleSetId, { ruleSetId: v.ruleSetId, version: v.version, body: v.body }]),
+		);
+		const outcome = priceShipping({ snapshot, settings, exceptions, ruleSets: active, courierQuoteINR: null });
+		const nameOf = (id: string | null): string | null =>
+			id ? (ruleSets.find((r) => r.id === id)?.name ?? null) : null;
+		const lines = views.slice(0, TRY_LINES_SHOWN).map((view) => {
+			const route = outcome.routes[view.lineId];
+			const ruleSetId =
+				route?.kind === 'ruleSet' ? route.ruleSetId : route?.kind === 'courier' ? route.fallbackRuleSetId : null;
+			return {
+				...view,
+				route: route?.kind ?? 'noMethod',
+				via: route?.via.kind ?? 'siteWide',
+				ruleSetId,
+				ruleSetName: nameOf(ruleSetId),
+			};
+		});
+		const base = { zone: outcome.zone, lines, moreLines: Math.max(0, views.length - TRY_LINES_SHOWN) };
+		if (outcome.status === 'priced') {
+			return {
+				...base,
+				status: 'priced',
+				amountINR: outcome.amountINR,
+				groups: outcome.groups.map((g) => ({
+					kind: g.kind,
+					ruleSetId: g.ruleSetId,
+					ruleSetName: nameOf(g.ruleSetId),
+					version: g.version,
+					body: g.ruleSetId ? (active.get(g.ruleSetId)?.body ?? null) : null,
+					lineIds: g.lineIds,
+					amountINR: g.amountINR,
+					trace: g.trace,
+					usedFallback: g.usedFallback,
+				})),
+				problems: [],
+				cantShip: [],
+			};
+		}
+		if (outcome.status === 'cantShip') {
+			return {
+				...base,
+				status: 'cantShip',
+				amountINR: null,
+				groups: [],
+				problems: [],
+				cantShip: outcome.lines.map((l) => ({ lineId: l.lineId, message: l.message })),
+			};
+		}
+		return {
+			...base,
+			status: 'unpriced',
+			amountINR: null,
+			groups: [],
+			problems: outcome.problems.map((p) => ({
+				kind: p.kind,
+				ruleSetId: 'ruleSetId' in p ? p.ruleSetId : null,
+				lineIds: 'lineIds' in p ? p.lineIds : p.where.flatMap((w) => w.lineIds),
+			})),
+			cantShip: [],
 		};
 	}
 
@@ -388,6 +501,21 @@ export class ShippingAdminService {
 	}
 
 	/* ------------------------------------------------------------------ helpers */
+
+	/** The names people know each other by, for "19 Nov · Moulik"; unknown ids are left out. */
+	private async names(ids: ReadonlyArray<string | null>): Promise<Map<string, string>> {
+		const out = new Map<string, string>();
+		if (!this.admins) return out;
+		const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+		await Promise.all(
+			wanted.map(async (id) => {
+				const admin = await this.admins?.findById(id).catch(() => null);
+				const name = admin?.displayName?.trim() || admin?.username || admin?.email?.split('@')[0];
+				if (name) out.set(id, name);
+			}),
+		);
+		return out;
+	}
 
 	private async settings(): Promise<ShippingSettings> {
 		return (await this.rules.getSettings()) ?? DEFAULT_SHIPPING_SETTINGS;
@@ -558,4 +686,30 @@ export function overviewChecks(
 		}
 	}
 	return checks;
+}
+
+/** Every rule set a zone or an exception points at (site-wide, courier fallback, exception choices). */
+export function ruleSetIdsInUse(settings: ShippingSettings, exceptions: readonly ShippingException[]): string[] {
+	const ids = new Set<string>();
+	for (const method of [settings.domestic, settings.international]) {
+		const id = method.kind === 'ruleSet' ? method.ruleSetId : method.fallbackRuleSetId;
+		if (id) ids.add(id);
+	}
+	for (const exception of exceptions)
+		for (const choice of [exception.domestic, exception.international])
+			if (choice.kind === 'ruleSet') ids.add(choice.ruleSetId);
+	return [...ids];
+}
+
+/** Categories that give their products a weight or a full box, themselves or through a parent. */
+export function categoriesWithBox(categories: readonly Category[]): string[] {
+	const byId = new Map(categories.map((c) => [c.id, c]));
+	const gives = (c: Category | undefined): boolean => {
+		const box = c?.shipping;
+		if (!box) return false;
+		return box.weightGrams != null || (box.lengthCm != null && box.widthCm != null && box.heightCm != null);
+	};
+	return categories
+		.filter((c) => gives(c) || c.ancestors.some((id) => gives(byId.get(id))))
+		.map((c) => c.id);
 }

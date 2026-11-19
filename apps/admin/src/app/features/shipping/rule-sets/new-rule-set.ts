@@ -9,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import {
 	SHIPPING_KEY,
 	ShippingGateway,
+	injectShippingOverviewQuery,
 	injectShippingRuleSetsQuery,
 	shippingProblemKey,
 } from '@core/shipping/shipping.gateway';
@@ -46,6 +47,15 @@ export class NewRuleSet {
 	private readonly router = inject(Router);
 
 	readonly query = injectShippingRuleSetsQuery();
+	private readonly overview = injectShippingOverviewQuery();
+	/** The chosen card's border, as drawn in the brief (rb01): the theme colour, 2 px. */
+	readonly chosenBorder = '2px solid var(--theme-color)';
+	/** "the shop's home country (India)" in the Used-for help. */
+	readonly homeCountryName = computed(() => {
+		const data = this.overview.data();
+		const code = (data?.settings ?? data?.defaults)?.homeCountry ?? 'IN';
+		return this.transloco.translate(`ship_country_${code}`);
+	});
 	readonly name = signal('');
 	readonly use = signal<ShippingRuleSetUse>('domestic');
 	/** The rule set to copy; null starts blank. */

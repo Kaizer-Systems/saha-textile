@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import {
@@ -16,6 +17,8 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+
+import { ShippingCartTester } from './cart-tester';
 
 import type {
 	AdminShippingOverview,
@@ -40,6 +43,7 @@ export class ShippingOverview {
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
 	private readonly auth = inject(AuthStore);
+	private readonly modals = inject(NgbModal);
 
 	readonly query = injectShippingOverviewQuery();
 	readonly ruleSetsQuery = injectShippingRuleSetsQuery();
@@ -88,6 +92,33 @@ export class ShippingOverview {
 
 	setMixed(value: 'sum' | 'highest') {
 		this.form.update((form) => (form ? { ...form, mixedRuleSets: value } : form));
+	}
+
+	/** "Every live product resolves…" holds unless all the shop defaults are ₹0 (that check warns instead). */
+	readonly zeroDefaults = computed(() =>
+		(this.query.data()?.checks ?? []).some((check) => check.code === 'default_charges_zero'),
+	);
+
+	/** "1 category and 1 product have their own rules." (brief ov01), or that none do. */
+	ownRules(): string {
+		const t = (key: string, params?: Record<string, string | number>) => this.transloco.translate(key, params);
+		const { categories, products } = this.query.data()?.exceptionTargets ?? { categories: 0, products: 0 };
+		if (categories === 0 && products === 0) return t('ship_check_no_own_rules');
+		const parts = [
+			categories ? t(categories === 1 ? 'ship_count_category_one' : 'ship_count_category_many', { n: categories }) : '',
+			products ? t(products === 1 ? 'ship_count_product_one' : 'ship_count_product_many', { n: products }) : '',
+		].filter(Boolean);
+		const list = parts.join(` ${t('ship_and')} `);
+		return t(categories + products === 1 ? 'ship_check_own_rules_one' : 'ship_check_own_rules_many', { list });
+	}
+
+	openTester() {
+		this.modals.open(ShippingCartTester, {
+			centered: true,
+			size: 'lg',
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'ship_tester_title',
+		});
 	}
 
 	checkIcon(check: AdminShippingOverview['checks'][number]): string {

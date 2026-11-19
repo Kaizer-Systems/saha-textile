@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type {
 	ShippingCartSnapshot,
 	ShippingException,
@@ -74,13 +74,14 @@ const DOMESTIC: ShippingRuleSetBody = {
 };
 
 /** In-memory twin of the Mongo repository, with the same revision rules. */
-function memoryRepository(): ShippingRuleRepository & { versions: Map<string, ShippingRuleSetVersion> } {
+function memoryRepository(
+	premadeKeys: readonly string[] = ['highest-only'],
+): ShippingRuleRepository & { versions: Map<string, ShippingRuleSetVersion> } {
 	const sets = new Map<string, ShippingRuleSet>();
 	const versions = new Map<string, ShippingRuleSetVersion>();
 	const exceptions = new Map<string, ShippingException>();
 	let settings: ShippingSettings | null = null;
-	const premade = PREMADE_RULE_SETS[1];
-	if (premade) {
+	for (const premade of PREMADE_RULE_SETS.filter((p) => premadeKeys.includes(p.key))) {
 		const id = premadeRuleSetId(premade.key);
 		sets.set(id, {
 			id,
@@ -122,13 +123,18 @@ function memoryRepository(): ShippingRuleRepository & { versions: Map<string, Sh
 		findVersion: async (id, version) => versions.get(`${id}:${version}`) ?? null,
 		listVersions: async (id) =>
 			[...versions.values()].filter((v) => v.ruleSetId === id).sort((a, b) => b.version - a.version),
-		activeVersions: async () => [],
+		activeVersions: async (ids) =>
+			[...versions.values()].filter(
+				(v) => ids.includes(v.ruleSetId) && sets.get(v.ruleSetId)?.activeVersion === v.version,
+			),
 		createPremadeIfMissing: async () => false,
 		getSettings: async () => settings,
 		saveSettings: async (s, expected) => ((settings?.revision ?? 0) === expected ? ((settings = s), true) : false),
 		listExceptions: async () => [...exceptions.values()],
 		saveException: async (e) => void exceptions.set(e.id, e),
 		deleteException: async (id) => exceptions.delete(id),
+		countProductsWithoutBox: vi.fn(async (_withBox: readonly string[]) => 14),
+		chargeUsage: vi.fn(async (_ids: readonly string[]) => ({ products: 214, ownCharges: 5 })),
 	};
 }
 
@@ -183,10 +189,17 @@ const snapshots = {
 	),
 };
 
-const harness = () => {
-	const repo = memoryRepository();
+const harness = (premadeKeys?: readonly string[]) => {
+	const repo = memoryRepository(premadeKeys);
 	const audit = { append: vi.fn(async (_entry: { action: string }) => undefined) };
-	const categories = { findById: async (id: string) => (id === 'bridal' ? { id } : null) };
+	const categories = {
+		findById: async (id: string) => (id === 'bridal' ? { id } : null),
+		tree: async () => [
+			{ id: 'sarees', ancestors: [], shipping: { weightGrams: 650, lengthCm: null, widthCm: null, heightCm: null } },
+			{ id: 'silk', ancestors: ['sarees'], shipping: null },
+			{ id: 'bridal', ancestors: [], shipping: null },
+		],
+	};
 	const products = { findById: async (id: string) => (id.startsWith('p-') ? { id } : null) };
 	const service = new ShippingAdminService(
 		repo,
@@ -195,6 +208,7 @@ const harness = () => {
 		snapshots as never,
 		LanguageStore.fixed(['en', 'bn']),
 		audit as never,
+		{ findById: async (id: string) => (id === 'admin-1' ? { displayName: 'Moulik Patra' } : null) } as never,
 	);
 	return { service, repo, audit };
 };
@@ -421,7 +435,7 @@ describe('zone settings', () => {
 						kind: 'courier',
 						courierId: 'shiprocket',
 						fallbackRuleSetId: premadeId,
-						extra: null,
+						extra: { amountINR: 0, percent: 0 },
 					},
 				}),
 				null,
@@ -513,6 +527,8 @@ describe('the snapshot built from real products', () => {
 					id,
 					saleEndsAt: id === 'p-sale' ? '2026-11-30T00:00:00.000Z' : null,
 					madeToOrder: id === 'p-own',
+					variants: [],
+					gallery: [],
 				},
 			}),
 		};
@@ -544,11 +560,13 @@ describe('the snapshot built from real products', () => {
 				({
 					tant: {
 						id: 'tant',
+						name: { en: 'Tant' },
 						ancestors: ['root', 'sarees'],
 						shipping: shipping({ internationalFurtherINR: 800, lengthCm: 30, widthCm: 25, heightCm: 4 }),
 					},
 					sarees: {
 						id: 'sarees',
+						name: { en: 'Sarees' },
 						ancestors: ['root'],
 						shipping: shipping({
 							domesticINR: 100,
@@ -556,7 +574,7 @@ describe('the snapshot built from real products', () => {
 							internationalFurtherINR: 900,
 						}),
 					},
-					root: { id: 'root', ancestors: [], shipping: null },
+					root: { id: 'root', name: { en: 'Root' }, ancestors: [], shipping: null },
 				})[id] ?? null,
 		};
 		priced.set('p-sale', { basePriceINR: 900, unitPriceINR: 1400, mrpINR: 1000, soldBy: 'piece' });
@@ -591,8 +609,92 @@ describe('the snapshot built from real products', () => {
 			chargeableWeightGrams: 650,
 		});
 		expect(views[0]).toMatchObject({ title: 'Title p-sale', discounted: true });
+		// Where each charge came from, for "charge ₹100 (Sarees)" in Try it.
+		expect(views[0]?.chargeSources).toEqual({
+			domestic: { from: 'category', name: 'Sarees' },
+			internationalFirst: { from: 'category', name: 'Sarees' },
+			internationalFurther: { from: 'category', name: 'Tant' },
+		});
 		expect(own).toMatchObject({ freeShipping: true, madeToOrder: true, charges: { domestic: 150 } });
 		expect(views[1]?.discounted).toBe(false);
 		expect(metre).toMatchObject({ units: 1, soldBy: 'metre', sellingPriceINR: 1250, chargeableWeightGrams: 500 });
+	});
+});
+
+describe('overview counts, category usage and the cart tester (brief ov01, rl01, cat01)', () => {
+	it('names who saved a rule set last', async () => {
+		const { service } = harness();
+		const { ruleSet } = await service.create(
+			{ name: 'Domestic', description: '', use: 'domestic', copyFromId: null },
+			'admin-1',
+		);
+		const row = (await service.list()).find((r) => r.ruleSet.id === ruleSet.id);
+		expect(row?.updatedByName).toBe('Moulik Patra');
+	});
+
+	it('counts exceptions by kind, products without weight, and whether weight is in use', async () => {
+		const { service, repo } = harness(['highest-only', 'weight-bands']);
+		const premadeId = premadeRuleSetId('highest-only');
+		const weightId = premadeRuleSetId('weight-bands');
+		await service.saveSettings(settingsWrite({ domestic: { kind: 'ruleSet', ruleSetId: premadeId } }), null);
+		await service.saveException(
+			null,
+			{
+				target: { kind: 'category', categoryId: 'bridal', includeSubcategories: true },
+				domestic: { kind: 'free' },
+				international: { kind: 'siteWide' },
+				note: '',
+			},
+			null,
+		);
+		let overview = await service.overview();
+		expect(overview.exceptionTargets).toEqual({ categories: 1, products: 0 });
+		expect(overview.productsWithoutBox).toBe(14);
+		// Sarees gives a weight, and Silk inherits it; Bridal gives none.
+		expect(repo.countProductsWithoutBox).toHaveBeenLastCalledWith(['sarees', 'silk']);
+		expect(overview.weightInUse).toBe(false);
+
+		await service.saveSettings(
+			settingsWrite({ revision: 1, domestic: { kind: 'ruleSet', ruleSetId: weightId } }),
+			null,
+		);
+		overview = await service.overview();
+		expect(overview.weightInUse).toBe(true);
+	});
+
+	it('counts the products that read a category’s charges, the category and those beneath it', async () => {
+		const { service, repo } = harness();
+		expect(await service.categoryUsage('sarees')).toEqual({ products: 214, ownCharges: 5 });
+		expect(repo.chargeUsage).toHaveBeenLastCalledWith(['sarees', 'silk']);
+		await expect(service.categoryUsage('nope')).rejects.toBeInstanceOf(NotFoundException);
+	});
+
+	it('prices a cart with the live settings, and refuses delivery abroad on "India only"', async () => {
+		const { service } = harness(['flat-per-order']);
+		const premadeId = premadeRuleSetId('flat-per-order');
+		await service.saveSettings(
+			settingsWrite({
+				domestic: { kind: 'ruleSet', ruleSetId: premadeId },
+				defaultCharges: { domestic: 100, internationalFirst: 2000, internationalFurther: 900 },
+			}),
+			null,
+		);
+		const cart = { lines: [{ productId: 'p-1', variationId: null, quantity: 2 }], delivery: IN };
+		const priced = await service.tryCart({ ...cart, shopper: { signedIn: true, groups: [], firstOrder: false } });
+		expect(priced).toMatchObject({
+			status: 'priced',
+			zone: 'domestic',
+			lines: [{ route: 'ruleSet', via: 'siteWide', ruleSetId: premadeId, ruleSetName: 'Flat per order' }],
+			groups: [{ kind: 'ruleSet', ruleSetName: 'Flat per order' }],
+		});
+		expect(priced.amountINR).not.toBeNull();
+
+		const abroad = await service.tryCart({
+			...cart,
+			delivery: { country: 'GB', state: null, pincode: null },
+			shopper: { signedIn: true, groups: [], firstOrder: false },
+		});
+		// India only: the shop doesn't send abroad.
+		expect(abroad).toMatchObject({ status: 'cantShip', zone: 'international', lines: [{ via: 'indiaOnly' }] });
 	});
 });

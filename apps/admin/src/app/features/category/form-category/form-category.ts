@@ -6,11 +6,12 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2 } from 'ng-select2-component';
-import { Subject, firstValueFrom, of } from 'rxjs';
+import { Subject, firstValueFrom, forkJoin, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
 import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
 import { ActiveLanguages } from '@core/i18n/active-languages';
+import { ShippingGateway } from '@core/shipping/shipping.gateway';
 import { focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
@@ -68,6 +69,13 @@ export class FormCategory {
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
 	private modals = inject(NgbModal);
+	private shipping = inject(ShippingGateway);
+	/** "Used by 214 products: 209 inherit these values, 5 set their own" (brief cat01); null when unknown. */
+	readonly shippingUsage = signal<{ products: number; ownCharges: number } | null>(null);
+	/** This category's own exception per zone, for the "Shipping rules" row (brief cat01). */
+	readonly zoneExceptions = signal<Array<{ zone: 'domestic' | 'international'; label: string; cantShip: boolean }>>(
+		[],
+	);
 
 	readonly type = input<string>(undefined);
 	readonly categories = input<ICategory[]>(undefined);
@@ -188,8 +196,40 @@ export class FormCategory {
 					seo_description: row.seoDescription,
 				});
 				this.refreshMissing();
+				this.loadShipping(row.id);
 			});
 		this.refreshMissing();
+	}
+
+	/** Who reads this category's charges, and its own exception; both need the shipping permission. */
+	private loadShipping(id: string) {
+		this.shipping.categoryUsage(id).subscribe({
+			next: (usage) => this.shippingUsage.set(usage),
+			error: () => this.shippingUsage.set(null),
+		});
+		forkJoin([this.shipping.exceptions(), this.shipping.overview()]).subscribe({
+			next: ([exceptions, overview]) => {
+				const own = exceptions.find((e) => e.target.kind === 'category' && e.target.categoryId === id);
+				const nameOf = (ruleSetId: string) => overview.ruleSets.find((r) => r.id === ruleSetId)?.name ?? ruleSetId;
+				const zones = ['domestic', 'international'] as const;
+				this.zoneExceptions.set(
+					own
+						? zones
+								.map((zone) => ({ zone, choice: own[zone] }))
+								.filter((item) => item.choice.kind !== 'siteWide')
+								.map((item) => ({
+									zone: item.zone,
+									label:
+										item.choice.kind === 'ruleSet'
+											? nameOf(item.choice.ruleSetId)
+											: this.transloco.translate(`ship_choice_${item.choice.kind}`),
+									cantShip: item.choice.kind === 'cantShip',
+								}))
+						: [],
+				);
+			},
+			error: () => this.zoneExceptions.set([]),
+		});
 	}
 
 	private loadBlog(row: BlogCategory) {

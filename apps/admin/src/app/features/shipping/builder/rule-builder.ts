@@ -23,7 +23,13 @@ import { Subject, catchError, debounceTime, firstValueFrom, forkJoin, map, of, s
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { duplicateStep, newAdjust, newStep } from '@core/shipping/blocks';
 import { plainWords } from '@core/shipping/plain-words';
-import { SHIPPING_KEY, SHIPPING_STALE_MS, ShippingGateway, shippingProblemKey } from '@core/shipping/shipping.gateway';
+import {
+	SHIPPING_KEY,
+	SHIPPING_STALE_MS,
+	ShippingGateway,
+	injectShippingOverviewQuery,
+	shippingProblemKey,
+} from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -87,6 +93,7 @@ export class RuleBuilder {
 	private readonly languagesService = inject(ActiveLanguages);
 	readonly phone = inject(FmPhone);
 
+	private readonly overview = injectShippingOverviewQuery();
 	readonly query = injectQuery(() => ({
 		queryKey: [...SHIPPING_KEY, 'rule-set', this.id()],
 		queryFn: () => firstValueFrom(this.gateway.ruleSet(this.id())),
@@ -143,6 +150,22 @@ export class RuleBuilder {
 			(id) => names.get(id) ?? id,
 		);
 	});
+	/** "used site-wide", "used by 2 exception(s)" or "not used yet", after the active version (brief rb02). */
+	readonly usageWords = computed(() => {
+		const usage = this.detail()?.usage;
+		if (usage?.zones.some((z) => z.as === 'siteWide')) return this.transloco.translate('ship_status_used_site_wide');
+		if (usage?.exceptionIds.length)
+			return this.transloco.translate('ship_status_used_exceptions', { count: usage.exceptionIds.length });
+		return this.transloco.translate('ship_status_not_used');
+	});
+	/** "the shop's home country (India)" in the Used-for help. */
+	readonly homeCountryName = computed(() => {
+		const data = this.overview.data();
+		const code = (data?.settings ?? data?.defaults)?.homeCountry ?? 'IN';
+		return this.transloco.translate(`ship_country_${code}`);
+	});
+	/** Whether any block gives a result yet; until one does, Try it asks for a charge (brief rb05). */
+	readonly hasResult = computed(() => JSON.stringify(this.body()).includes('"kind":"result"'));
 	readonly canUndo = computed(() => this.past().length > 0);
 	readonly canRedo = computed(() => this.future().length > 0);
 

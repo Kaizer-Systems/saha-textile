@@ -18,6 +18,8 @@ import type {
 	ShippingRuleSetCreate,
 	ShippingRuleSetSave,
 	ShippingSettingsWrite,
+	ShippingCartTryRequest,
+	ShippingCartTryResult,
 	ShippingTryRequest,
 	ShippingTryResult,
 } from '@saha-textile/contracts';
@@ -71,6 +73,18 @@ export class ShippingGateway {
 
 	tryIt(body: ShippingTryRequest): Observable<ShippingTryResult> {
 		return this.http.post<ShippingTryResult>(this.base('/try'), body);
+	}
+
+	/** Overview › Try any cart: priced with the live settings, the way checkout prices it. */
+	tryCart(body: ShippingCartTryRequest): Observable<ShippingCartTryResult> {
+		return this.http.post<ShippingCartTryResult>(this.base('/try-cart'), body);
+	}
+
+	/** Category form: how many products read this category's charges, and how many set their own. */
+	categoryUsage(categoryId: string): Observable<{ products: number; ownCharges: number }> {
+		return this.http.get<{ products: number; ownCharges: number }>(
+			this.base(`/category-usage/${this.id(categoryId)}`),
+		);
 	}
 
 	exceptions(): Observable<ShippingException[]> {

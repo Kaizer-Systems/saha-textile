@@ -16,6 +16,7 @@ import {
 	ShippingRuleSetActivate,
 	ShippingRuleSetCreate,
 	ShippingRuleSetSave,
+	ShippingCartTryRequest,
 	ShippingSettingsWrite,
 	ShippingTryRequest,
 } from '@saha-textile/contracts';
@@ -106,6 +107,28 @@ export class AdminShippingController {
 	})
 	tryIt(@Body(new ZodValidationPipe(ShippingTryRequest)) body: ShippingTryRequest) {
 		return this.shipping.tryRuleSet(body);
+	}
+
+	@Post('try-cart')
+	@HttpCode(200)
+	@RequirePermissions('shipping.index')
+	@ApiOperation({
+		operationId: 'tryShippingCart',
+		summary: 'Price a cart with the live settings, exceptions and active versions (the cart tester)',
+	})
+	tryCart(@Body(new ZodValidationPipe(ShippingCartTryRequest)) body: ShippingCartTryRequest) {
+		return this.shipping.tryCart(body);
+	}
+
+	@Get('category-usage/:id')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('shipping.index')
+	@ApiOperation({
+		operationId: 'getShippingCategoryUsage',
+		summary: 'How many products use a category’s charges, and how many set their own',
+	})
+	categoryUsage(@Param('id') id: string) {
+		return this.shipping.categoryUsage(id);
 	}
 
 	@Get('rule-sets/:id')

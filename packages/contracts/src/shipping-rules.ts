@@ -453,14 +453,13 @@ export const ShippingZoneMethod = z.discriminatedUnion('kind', [
 		kind: z.literal('courier'),
 		courierId: z.string().min(1).max(40),
 		fallbackRuleSetId: Id.nullable(),
-		/** Added on top of the courier's quote. */
+		/** Added on top of the courier's quote (brief cr01): a percentage of the quote, then an amount. */
 		extra: z
-			.discriminatedUnion('kind', [
-				z.object({ kind: z.literal('amount'), value: ShippingAmountINR }),
-				z.object({ kind: z.literal('percent'), value: z.number().finite().min(0).max(100) }),
-			])
-			.nullable()
-			.default(null),
+			.object({
+				amountINR: ShippingAmountINR.default(0),
+				percent: z.number().finite().min(0).max(100).default(0),
+			})
+			.default({ amountINR: 0, percent: 0 }),
 	}),
 ]);
 export type ShippingZoneMethod = z.infer<typeof ShippingZoneMethod>;
@@ -492,6 +491,17 @@ export const ShippingSettings = z.object({
 	defaultCharges: ShippingCharges,
 	/** A new shop starts on `indiaOnly`; Saha Textile chooses `exportOffIndianInvoice` in the admin. */
 	abroadPolicy: AbroadOrderPolicy.default('indiaOnly'),
+	/**
+	 * The switches under "Export off — invoice to an address in the home country" (brief io01): ask for
+	 * that address at checkout when billing and delivery are both abroad, and hold packing until it is
+	 * complete. Keeping every address the shopper typed is always on, so it has no switch here.
+	 */
+	abroadOptions: z
+		.object({
+			askForHomeAddress: z.boolean().default(true),
+			holdPackingUntilComplete: z.boolean().default(true),
+		})
+		.default({ askForHomeAddress: true, holdPackingUntilComplete: true }),
 	revision: z.number().int().nonnegative().default(0),
 	updatedAt: IsoDateTime.optional(),
 	updatedBy: z.string().nullable().default(null),
@@ -584,6 +594,13 @@ export const ShippingIssueView = z.object({
 });
 export type ShippingIssueView = z.infer<typeof ShippingIssueView>;
 
+/** Where one charge came from: the product itself, a category (by name), or the shop-wide default. */
+export const ShippingChargeSourceView = z.object({
+	from: z.enum(['product', 'category', 'shopDefault']),
+	name: z.string().nullable(),
+});
+export type ShippingChargeSourceView = z.infer<typeof ShippingChargeSourceView>;
+
 export const ShippingTryLineView = z.object({
 	lineId: z.string(),
 	productId: Id,
@@ -594,6 +611,27 @@ export const ShippingTryLineView = z.object({
 	discounted: z.boolean(),
 	charges: ShippingCharges,
 	chargeableWeightGrams: z.number().nonnegative().nullable(),
+	/** The option the line was priced with; a product with options and none chosen uses its first buyable one. */
+	variantLabel: z.string().nullable().default(null),
+	imageUrl: z.string().nullable().default(null),
+	/** Where each charge came from, for "charge ₹100 (Sarees)" (brief rb02). */
+	chargeSources: z
+		.object({
+			domestic: ShippingChargeSourceView,
+			internationalFirst: ShippingChargeSourceView,
+			internationalFurther: ShippingChargeSourceView,
+		})
+		.optional(),
+	/** The weight and box the line was priced with, for weight bands (brief rb10). */
+	box: z
+		.object({
+			weightGrams: z.number().nonnegative().nullable(),
+			lengthCm: z.number().nonnegative().nullable(),
+			widthCm: z.number().nonnegative().nullable(),
+			heightCm: z.number().nonnegative().nullable(),
+		})
+		.nullable()
+		.default(null),
 });
 export type ShippingTryLineView = z.infer<typeof ShippingTryLineView>;
 
@@ -613,6 +651,57 @@ export const ShippingTryResult = z.object({
 });
 export type ShippingTryResult = z.infer<typeof ShippingTryResult>;
 
+/**
+ * Overview › "Try any cart" (brief ov01): a cart priced with the live settings, the way checkout will
+ * price it: the Free shipping switch, exceptions, each zone's site-wide rule set and its active version.
+ */
+export const ShippingCartTryRequest = z.object({
+	lines: z.array(ShippingTryLine).min(1).max(50),
+	delivery: ShippingSnapshotDelivery,
+	shopper: ShippingSnapshotShopper.default({ signedIn: true, groups: [], firstOrder: false }),
+});
+export type ShippingCartTryRequest = z.infer<typeof ShippingCartTryRequest>;
+
+export const ShippingCartTryResult = z.object({
+	status: z.enum(['priced', 'cantShip', 'unpriced']),
+	zone: ShippingZone,
+	amountINR: z.number().nonnegative().nullable(),
+	lines: z.array(
+		ShippingTryLineView.extend({
+			/** How checkout routes the line: a rule set, free, can't ship, a courier, or nothing chosen. */
+			route: z.enum(['ruleSet', 'free', 'cantShip', 'courier', 'noMethod']),
+			via: z.enum(['siteWide', 'productException', 'categoryException', 'freeShippingSwitch', 'indiaOnly']),
+			ruleSetId: Id.nullable(),
+			ruleSetName: z.string().nullable(),
+		}),
+	),
+	groups: z.array(
+		z.object({
+			kind: z.enum(['ruleSet', 'free', 'courier']),
+			ruleSetId: Id.nullable(),
+			ruleSetName: z.string().nullable(),
+			version: z.number().int().positive().nullable(),
+			/** The active version's blocks, so the tester can say what each line was charged and why. */
+			body: ShippingRuleSetBody.nullable(),
+			lineIds: z.array(z.string()),
+			amountINR: z.number().nonnegative(),
+			trace: z.array(ShippingTraceEntry),
+			usedFallback: z.boolean(),
+		}),
+	),
+	/** Why the cart couldn't be priced: no rule set chosen, a rule set missing, no result, a quote needed. */
+	problems: z.array(
+		z.object({
+			kind: z.enum(['noMethod', 'missingRuleSet', 'noResult', 'needsQuote']),
+			ruleSetId: Id.nullable(),
+			lineIds: z.array(z.string()),
+		}),
+	),
+	cantShip: z.array(z.object({ lineId: z.string(), message: LocalizedText.nullable() })),
+	moreLines: z.number().int().nonnegative(),
+});
+export type ShippingCartTryResult = z.infer<typeof ShippingCartTryResult>;
+
 /** Where a rule set is used: a zone's site-wide choice or fallback, or exceptions. */
 export const ShippingRuleSetUsage = z.object({
 	zones: z.array(z.object({ zone: ShippingZone, as: z.enum(['siteWide', 'fallback']) })),
@@ -623,6 +712,8 @@ export type ShippingRuleSetUsage = z.infer<typeof ShippingRuleSetUsage>;
 export const AdminShippingRuleSetRow = z.object({
 	ruleSet: ShippingRuleSet,
 	usage: ShippingRuleSetUsage,
+	/** The name of whoever saved it last, for "19 Nov · Moulik" (brief rl01). */
+	updatedByName: z.string().nullable().default(null),
 });
 export type AdminShippingRuleSetRow = z.infer<typeof AdminShippingRuleSetRow>;
 
@@ -693,6 +784,14 @@ export const AdminShippingOverview = z.object({
 		z.object({ id: Id, name: z.string(), use: ShippingRuleSetUse, activeVersion: z.number().int().nullable() }),
 	),
 	exceptionCount: z.number().int().nonnegative(),
+	/** How many categories and products have their own exception (brief ov01 checks). */
+	exceptionTargets: z
+		.object({ categories: z.number().int().nonnegative(), products: z.number().int().nonnegative() })
+		.default({ categories: 0, products: 0 }),
+	/** Live products with no weight or box on themselves or their categories; null when not counted. */
+	productsWithoutBox: z.number().int().nonnegative().nullable().default(null),
+	/** True when a rule set in use reads weight (bands, per kg, chargeable weight) or a courier is chosen. */
+	weightInUse: z.boolean().default(false),
 	checks: z.array(ShippingOverviewCheck),
 	/** Paths for orders sent abroad that can be chosen today. */
 	abroadPolicies: z.array(AbroadOrderPolicy),

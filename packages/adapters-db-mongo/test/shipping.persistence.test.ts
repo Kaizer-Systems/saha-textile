@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { connectMongo, disconnectMongo } from '../src/connection';
 import { seedPremadeShippingRuleSets } from '../src/migrations/shipping-premade';
 import {
+	ProductModel,
 	ShippingExceptionModel,
 	ShippingProviderConfigModel,
 	ShippingRuleSetModel,
@@ -162,6 +163,7 @@ describe.runIf(hasMongoEnv())('shipping rule persistence (rs0)', () => {
 			mixedRuleSets: 'sum' as const,
 			defaultCharges: { domestic: 100, internationalFirst: 2000, internationalFurther: 900 },
 			abroadPolicy: 'exportOffIndianInvoice' as const,
+			abroadOptions: { askForHomeAddress: true, holdPackingUntilComplete: false },
 			revision: revision + 1,
 			updatedAt: at,
 			updatedBy: 'admin-1',
@@ -170,6 +172,7 @@ describe.runIf(hasMongoEnv())('shipping rule persistence (rs0)', () => {
 		expect(await repository.saveSettings({ ...settings, revision: revision + 2 }, revision)).toBe(false);
 		expect(await repository.getSettings()).toMatchObject({
 			domestic: { ruleSetId: `${prefix}b` },
+			abroadOptions: { askForHomeAddress: true, holdPackingUntilComplete: false },
 			revision: revision + 1,
 		});
 		if (existing) await repository.saveSettings({ ...existing, revision: revision + 2 }, revision + 1);
@@ -187,5 +190,42 @@ describe.runIf(hasMongoEnv())('shipping rule persistence (rs0)', () => {
 		expect(mine).toEqual([expect.objectContaining({ id: `${prefix}e1`, international: { kind: 'cantShip' } })]);
 		expect(await repository.deleteException(`${prefix}e1`)).toBe(true);
 		expect(await repository.deleteException(`${prefix}e1`)).toBe(false);
+	});
+
+	it('counts live products with no weight or box, and the products that read a category’s charges', async () => {
+		const cat = (name: string) => `${prefix}cat-${name}`;
+		const product = (id: string, over: Record<string, unknown>) => ({
+			_id: `${prefix}${id}`,
+			slug: `${prefix}${id}`,
+			sku: `${prefix}${id}`,
+			status: 'live',
+			categoryIds: [cat('sarees')],
+			shippingDefaults: null,
+			shippingCharges: null,
+			...over,
+		});
+		const docs = [
+			product('bare', {}),
+			product('weighed', { shippingDefaults: { weightGrams: 600, lengthCm: null, widthCm: null, heightCm: null } }),
+			product('boxed', { shippingDefaults: { weightGrams: null, lengthCm: 35, widthCm: 25, heightCm: 5 } }),
+			product('half-box', { shippingDefaults: { weightGrams: null, lengthCm: 35, widthCm: null, heightCm: 5 } }),
+			product('from-category', { categoryIds: [cat('boxed')] }),
+			product('draft', { status: 'draft' }),
+			product('own-charge', {
+				status: 'draft',
+				shippingCharges: { domesticINR: 150, internationalFirstINR: null, internationalFurtherINR: null },
+			}),
+			product('retired', { status: 'discontinued' }),
+		];
+		for (const doc of docs) await insertRaw(ProductModel, doc);
+		try {
+			// Only this run's products: everything else in the test database has another main category.
+			const counted = await repository.countProductsWithoutBox([cat('boxed')]);
+			const others = await repository.countProductsWithoutBox([cat('boxed'), cat('sarees')]);
+			expect(counted - others).toBe(2);
+			expect(await repository.chargeUsage([cat('sarees')])).toEqual({ products: 6, ownCharges: 1 });
+		} finally {
+			await ProductModel.deleteMany({ _id: { $regex: `^${prefix}` } }).exec();
+		}
 	});
 });

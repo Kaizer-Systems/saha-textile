@@ -19,6 +19,7 @@ import {
 	resolveShippingCharges,
 	routePaymentGateway,
 	routeShippingLine,
+	ruleSetReadsWeight,
 	validateShippingRuleSet,
 	volumetricGrams,
 	PREMADE_RULE_SETS,
@@ -718,13 +719,14 @@ describe('which rule set prices each line', () => {
 				kind: 'courier',
 				courierId: 'shiprocket',
 				fallbackRuleSetId: 'saha-textile-intl',
-				extra: { kind: 'percent', value: 10 },
+				extra: { amountINR: 20, percent: 10 },
 			},
 		};
 		const snapshot = cart([line('a', { units: 2 })], 'GB');
+		// ₹1,800 quote + 10% (₹180) + ₹20 on top.
 		expect(
 			priceShipping({ snapshot, settings: courier, exceptions: [], ruleSets, courierQuoteINR: 1800 }),
-		).toMatchObject({ status: 'priced', amountINR: 1980 });
+		).toMatchObject({ status: 'priced', amountINR: 2000 });
 		const fallback = priceShipping({
 			snapshot,
 			settings: courier,
@@ -876,6 +878,8 @@ describe('the invoice address (export off, invoice to an address in India)', () 
 		expect(asksForAddressInHomeCountry('exportOffIndianInvoice', 'IN', 'GB', 'GB')).toBe(true);
 		expect(asksForAddressInHomeCountry('exportOffIndianInvoice', 'IN', 'GB', 'IN')).toBe(false);
 		expect(asksForAddressInHomeCountry('indiaOnly', 'IN', 'GB', 'GB')).toBe(false);
+		// The shop's "Ask for an Indian invoice address" switch turned off (brief io01).
+		expect(asksForAddressInHomeCountry('exportOffIndianInvoice', 'IN', 'GB', 'GB', false)).toBe(false);
 	});
 
 	it('other paths: India only refuses delivery abroad; standard export is not built', () => {
@@ -985,5 +989,27 @@ describe('discounted compares the price before add-ons with MRP', () => {
 			zone: 'domestic',
 		});
 		expect(priced(outcome)).toBe(100);
+	});
+});
+
+describe('which rule sets need weight', () => {
+	it('finds weight conditions, weight bands and charges per kg; Saha Textile’s rule sets need none', () => {
+		expect(ruleSetReadsWeight(SAHA_TEXTILE_DOMESTIC)).toBe(false);
+		expect(ruleSetReadsWeight(SAHA_TEXTILE_INTERNATIONAL)).toBe(false);
+		const bands = PREMADE_RULE_SETS.find((r) => r.key === 'weight-bands');
+		expect(bands && ruleSetReadsWeight(bands.body)).toBe(true);
+		expect(
+			ruleSetReadsWeight({
+				steps: [
+					{
+						id: 's',
+						scope: 'wholeCart',
+						combine: 'sum',
+						node: { kind: 'result', id: 'r', result: { kind: 'amount', amount: 40, per: 'kg' } },
+					},
+				],
+				adjust: [],
+			}),
+		).toBe(true);
 	});
 });

@@ -467,21 +467,27 @@
 									}
 									<p class="help-text">{{ 'event_sale_products_help' | transloco }}</p>
 								</app-form-fields>
+								<!-- Brief 4d: cells never wrap; on a narrow screen the table scrolls inside its box. -->
 								<div class="table-responsive">
-									<table class="all-package theme-table no-footer table">
+									<table
+										class="all-package theme-table no-footer table text-nowrap"
+										style="min-width: 760px"
+									>
 										<thead>
 											<tr>
 												<th class="text-start">{{ 'event_applies_to' | transloco }}</th>
-												<th>{{ 'event_rule' | transloco }}</th>
-												<th>{{ 'event_value' | transloco }}</th>
-												<th>{{ 'event_exceptions' | transloco }}</th>
-												<th></th>
+												<th [style.width.px]="190">{{ 'event_rule' | transloco }}</th>
+												<th [style.width.px]="190">{{ 'event_value' | transloco }}</th>
+												<th [style.width.px]="170">{{ 'event_exceptions' | transloco }}</th>
+												<th [style.width.px]="64"></th>
 											</tr>
 										</thead>
 										<tbody>
 											@for (line of saleCategories(); track line.categoryId) {
 											<tr>
-												<td class="text-start">{{ categoryName(line.categoryId) }}</td>
+												<td class="text-start text-wrap">
+													{{ categoryName(line.categoryId) }}
+												</td>
 												<td>
 													<select
 														class="form-select"
@@ -541,7 +547,7 @@
 											</tr>
 											} @for (line of saleProducts(); track line.productId) {
 											<tr>
-												<td class="text-start">{{ productName(line.productId) }}</td>
+												<td class="text-start text-wrap">{{ productName(line.productId) }}</td>
 												<td>
 													<select
 														class="form-select"
@@ -561,6 +567,27 @@
 													</select>
 												</td>
 												<td>
+													@if (skuPrices(line).length) { @for (row of skuPrices(line); track
+													row.sku) {
+													<div class="input-group input-group-sm mb-1">
+														<span
+															class="input-group-text"
+															[title]="row.sku"
+														>
+															₹
+														</span>
+														<input
+															class="form-control"
+															type="number"
+															min="0"
+															[attr.aria-label]="row.sku"
+															[title]="row.sku"
+															[value]="row.price"
+															[readonly]="readOnly()"
+															(change)="setProductSkuPrice(line.productId, row.sku, +$any($event.target).value)"
+														/>
+													</div>
+													} } @else {
 													<div class="input-group">
 														<span class="input-group-text">
 															{{ line.rule.kind === 'percent' ? '%' : '₹' }}
@@ -574,8 +601,16 @@
 															(change)="setProductRule(line.productId, { value: +$any($event.target).value })"
 														/>
 													</div>
+													}
 												</td>
-												<td>{{ 'event_own_rule' | transloco }}</td>
+												<td>
+													{{ 'event_own_rule' | transloco }} @if (skuPrices(line).length) {
+													<span class="help-text d-block">
+														{{ 'sale_colours' | transloco: { count: skuPrices(line).length }
+														}}
+													</span>
+													}
+												</td>
 												<td>
 													@if (!readOnly()) {
 													<a

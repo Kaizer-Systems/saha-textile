@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, viewChild } from '@angular/core';
 
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
 import { FormProduct } from '../form-product/form-product';
+import { HoldsProductForm } from '../product-leave.guard';
 
 @Component({
 	selector: 'app-create-product',
@@ -10,4 +11,6 @@ import { FormProduct } from '../form-product/form-product';
 	styleUrls: ['./create-product.scss'],
 	imports: [PageWrapper, FormProduct],
 })
-export class CreateProduct {}
+export class CreateProduct implements HoldsProductForm {
+	readonly form = viewChild(FormProduct);
+}

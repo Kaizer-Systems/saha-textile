@@ -193,9 +193,15 @@ export class Blog {
 			});
 	}
 
-	/** The ticked rows on any page, as last seen, in the order they were ticked. */
+	/** The ticked rows on any page, as last seen (the page's own rows first), in the order given. */
 	private ticked(ids: (string | number)[]): IBlog[] {
-		return this.table()?.pickedRows<IBlog>(ids ?? []) ?? [];
+		const rows = new Map(
+			[...(this.table()?.pickedRows<IBlog>() ?? []), ...(this.tableConfig().data ?? [])].map((row) => [
+				String(row.id),
+				row,
+			]),
+		);
+		return (ids ?? []).map((id) => rows.get(String(id))).filter((row): row is IBlog => !!row);
 	}
 
 	private finishBulk() {

@@ -461,7 +461,29 @@ export class FormEvent {
 
 	setProductRule(productId: string, patch: Partial<SaleRule>) {
 		this.saleProducts.update((lines) =>
-			lines.map((line) => (line.productId === productId ? { ...line, rule: { ...line.rule, ...patch } } : line)),
+			lines.map((line) => {
+				if (line.productId !== productId) return line;
+				const rule = { ...line.rule, ...patch };
+				// Per-colour prices belong to a fixed price only.
+				return { ...line, rule: rule.kind === 'fixed' ? rule : { ...rule, skuPrices: {} } };
+			}),
+		);
+	}
+
+	/** A product priced per colour from the product list (brief 4b): its SKU prices, edited here too. */
+	skuPrices(line: SaleProductLine): { sku: string; price: number }[] {
+		return line.rule.kind === 'fixed'
+			? Object.entries(line.rule.skuPrices).map(([sku, price]) => ({ sku, price }))
+			: [];
+	}
+
+	setProductSkuPrice(productId: string, sku: string, price: number) {
+		this.saleProducts.update((lines) =>
+			lines.map((line) =>
+				line.productId === productId
+					? { ...line, rule: { ...line.rule, skuPrices: { ...line.rule.skuPrices, [sku]: price } } }
+					: line,
+			),
 		);
 	}
 

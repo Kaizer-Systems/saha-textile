@@ -1,10 +1,11 @@
-import { isPlatformBrowser, AsyncPipe } from '@angular/common';
+import { isPlatformBrowser, AsyncPipe, DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
 	Component,
 	computed,
 	DOCUMENT,
 	effect,
+	forwardRef,
 	inject,
 	input,
 	PLATFORM_ID,
@@ -86,7 +87,9 @@ import { injectTaxesQuery } from '@data-access/queries/tax.queries';
 import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { ProductService } from '@data-access/services/product.service';
+import { askConfirm } from '@features/purchasing/shared/popups';
 import { metresText } from '@features/purchasing/shared/purchasing-labels';
 import { AdjustPopup } from '@features/stock/adjust-popup';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
@@ -99,6 +102,8 @@ import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { YouTubeVideosField } from '@shared/ui/youtube-videos-field/youtube-videos-field';
 import { priceValidator } from '@shared/validators/price-validator';
 
+import { DRAFT_MARKS, DraftMarkDirective, type DraftMarks } from './draft-mark';
+import { type DraftConflict, type LeaveChoice, ProductConflictPopup, ProductLeavePopup } from './draft-popups';
 import { HsnPopup, hsnValid } from './hsn-popup';
 import {
 	type CategoryDefaults,
@@ -115,12 +120,26 @@ import { ProductBundleForm } from './product-bundle/product-bundle';
 import { FaqValue, ProductFaq } from './product-faq/product-faq';
 import { ImageCombination, ProductImages } from './product-images/product-images';
 import { categoryChain, inheritedCharge, type InheritedCharge, productExceptions } from './shipping-tab';
+import {
+	DRAFT_VERSION,
+	changedPaths,
+	describeValue,
+	draftTab,
+	fingerprint,
+	flattenSnapshot,
+	type ProductFormSnapshot,
+	stable,
+} from './product-draft-state';
 import { variantCombinations } from './variant-combinations';
 import { environment } from '../../../../../public/environments/environment';
+
+import { MenuStore } from '@core/state/menu.store';
+import { languageName } from '@saha-textile/core-domain/languages';
 
 import type {
 	AttributeDefinition,
 	GoLiveGap,
+	ProductDraft,
 	ProductBundleWrite,
 	ProductContentWrite,
 	ProductCreate,
@@ -226,12 +245,16 @@ function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
 		NgbNavOutlet,
 		TranslocoModule,
 		AsyncPipe,
+		DatePipe,
 		CurrencySymbolPipe,
 		HasPermissionDirective,
 		RouterLink,
+		DraftMarkDirective,
 	],
+	providers: [{ provide: DRAFT_MARKS, useExisting: forwardRef(() => FormProduct) }],
+	host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
 })
-export class FormProduct {
+export class FormProduct implements DraftMarks {
 	private productService = inject(ProductService);
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
@@ -247,6 +270,27 @@ export class FormProduct {
 	private notifier = inject(NotificationService);
 	private modals = inject(NgbModal);
 	private stockGateway = inject(StockGateway);
+	private drafts = inject(ProductDraftService);
+	private menu = inject(MenuStore);
+
+	// ── Save as draft (product bulk actions brief § 7) ──────────────────────────────────────
+	/** The draft open on the form, if any. */
+	readonly draft = signal<{ id: string; kind: 'new' | 'edit'; savedAt: string; createdAt: string } | null>(null);
+	/** A draft of this product that is not open: yours (Continue or Discard) or a colleague's (a note). */
+	readonly waitingDraft = signal<{ id: string; mine: boolean; updatedAt: string; changed: number } | null>(null);
+	/** Fields both you and someone else changed after your draft began: asked on Update Product. */
+	readonly conflicts = signal<DraftConflict[]>([]);
+	/** The changed fields of a draft of changes, with their values in the product. */
+	readonly changes = signal<ReadonlyMap<string, unknown>>(new Map());
+	readonly changedTabs = computed(() =>
+		this.draft()?.kind === 'edit' ? new Set([...this.changes().keys()].map(draftTab)) : new Set<string>(),
+	);
+	/** The product as it was when the form opened: what a draft of changes is compared with. */
+	private base: ProductFormSnapshot | null = null;
+	/** The form as last saved (or opened), for "anything unsaved?". */
+	private savedPrint: string | null = null;
+	/** Set on the way out after a save, so the leave question is not asked. */
+	private leaving = false;
 
 	readonly type = input<string>(undefined);
 
@@ -598,6 +642,23 @@ export class FormProduct {
 			this.soldBy();
 			untracked(() => this.refreshMissing());
 		});
+		// A draft of changes follows the lists and choices kept beside the form too.
+		effect(() => {
+			this.optionGroups();
+			this.faq();
+			this.images();
+			this.bundle();
+			this.quickLengths();
+			this.soldBy();
+			this.returnableChoice();
+			this.ownCharges();
+			this.metreCut();
+			this.metreWidth();
+			this.metreWeight();
+			this.variantImages();
+			this.addonTemplateCode();
+			untracked(() => this.recomputeChanges());
+		});
 
 		this.transloco.selectTranslation().subscribe(() => this.buildOptions());
 	}
@@ -820,8 +881,18 @@ export class FormProduct {
 				takeUntil(this.destroy$),
 			)
 			.subscribe((detail) => {
-				if (detail) this.applyCatalogProduct(detail);
+				if (!detail) return;
+				this.applyCatalogProduct(detail);
+				this.afterProductLoaded();
 			});
+		const draftId = this.route.snapshot?.queryParamMap?.get('draft') ?? null;
+		if (this.type() === 'create') {
+			if (draftId) void this.openNewDraft(draftId);
+			else setTimeout(() => this.markClean());
+		}
+		this.form.valueChanges
+			.pipe(debounceTime(250), takeUntil(this.destroy$))
+			.subscribe(() => this.recomputeChanges());
 		this.attributes
 			.getDefinitions()
 			.pipe(takeUntil(this.destroy$))
@@ -1231,10 +1302,23 @@ export class FormProduct {
 	private leaveAfterSave() {
 		const next = this.afterSave;
 		this.afterSave = null;
-		void this.router.navigateByUrl(next ? `/product/edit/${next}` : '/product');
+		this.leaving = true;
+		// A saved product ends its draft; the product now holds everything the draft held.
+		const draft = this.draft();
+		if (draft) {
+			this.drafts.discard(draft.id).subscribe({ next: () => this.refreshDraftBadge(), error: () => undefined });
+			this.draft.set(null);
+		}
+		void Promise.resolve(this.router.navigateByUrl(next ? `/product/edit/${next}` : '/product')).then((moved) => {
+			if (moved === false) this.leaving = false;
+		});
 	}
 
 	submit() {
+		if (this.conflicts().length) {
+			void this.resolveConflicts();
+			return;
+		}
 		this.form.markAllAsTouched();
 		const raw = this.form.getRawValue() as Record<string, unknown>;
 		if (!this.fields.text('name')['en']?.trim()) {
@@ -1273,7 +1357,7 @@ export class FormProduct {
 		}
 		if (this.isDiscontinuing) {
 			this.productService.discontinueCatalogProduct(product.id, textOrNull(raw['replacement_path'])).subscribe({
-				next: () => void this.router.navigateByUrl('/product'),
+				next: () => this.leaveAfterSave(),
 			});
 			return;
 		}
@@ -1414,5 +1498,397 @@ export class FormProduct {
 			this.nav()?.select(tab);
 			this.tabError = tab;
 		}
+	}
+
+	// ── Save as draft (product bulk actions brief § 7) ──────────────────────────────────────
+
+	/** Everything on the form, unchecked: what Save as draft keeps. */
+	snapshot(): ProductFormSnapshot {
+		return {
+			v: DRAFT_VERSION,
+			raw: this.form.getRawValue() as Record<string, unknown>,
+			text: Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, { ...this.fields.text(field) }])),
+			state: {
+				soldBy: this.soldBy(),
+				returnable: this.returnableChoice(),
+				metreCut: this.metreCut(),
+				metreWidth: this.metreWidth(),
+				metreWeight: this.metreWeight(),
+				quickLengths: this.quickLengths(),
+				ownCharges: this.ownCharges(),
+				optionGroups: this.optionGroups(),
+				faq: this.faq(),
+				addonTemplateCode: this.addonTemplateCode(),
+				images: this.images(),
+				bundle: this.bundle(),
+				variantImages: Object.fromEntries(this.variantImages()),
+				tiles: Object.fromEntries(this.tiles()),
+				imageSizes: Object.fromEntries(this.imageSizes()),
+			},
+		};
+	}
+
+	/** Puts a draft's values back on the form: all of them, or only the paths named. */
+	private restore(snapshot: ProductFormSnapshot, only?: ReadonlySet<string>): void {
+		const wanted = (path: string) => !only || only.has(path);
+		const raw = snapshot.raw ?? {};
+		// The type first: on a new product it adds or removes the price boxes the rest fills.
+		if (!this.catalogProduct && wanted('raw.type') && typeof raw['type'] === 'string') {
+			this.form.get('type')?.setValue(raw['type']);
+		}
+		for (const [key, value] of Object.entries(raw)) {
+			if (key === 'type' || key === 'variations' || LANGUAGE_FIELDS.includes(key)) continue;
+			if (wanted(`raw.${key}`)) this.form.get(key)?.setValue(value, { emitEvent: false });
+		}
+		if (Array.isArray(raw['variations'])) {
+			for (const row of raw['variations'] as Record<string, unknown>[]) {
+				const id = String(row?.['id'] ?? '');
+				const group = this.variationControl.controls.find((control) => control.value?.id === id);
+				if (!group) continue;
+				for (const [field, value] of Object.entries(row)) {
+					if (field !== 'id' && wanted(`raw.variations.${id}.${field}`)) {
+						group.get(field)?.setValue(value, { emitEvent: false });
+					}
+				}
+			}
+		}
+		if (wanted('raw.categories')) {
+			const ids = Array.isArray(raw['categories']) ? raw['categories'].map(String) : [];
+			this.selectedCategories = ids;
+			this.chosenCategories.set(ids);
+		}
+		if (wanted('raw.tags')) this.selectedTags = Array.isArray(raw['tags']) ? (raw['tags'] as Number[]) : [];
+		const text = Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, this.fields.text(field)]));
+		for (const [field, byLocale] of Object.entries(snapshot.text ?? {})) {
+			for (const [locale, value] of Object.entries(byLocale ?? {})) {
+				if (wanted(`text.${field}.${locale}`) && text[field]) text[field][locale] = value;
+			}
+		}
+		this.fields.load(text);
+		const state = snapshot.state ?? {};
+		const take = <T>(name: string, apply: (value: T) => void) => {
+			if (name in state && wanted(`state.${name}`)) apply(state[name] as T);
+		};
+		take<SoldBy>('soldBy', (value) => this.soldBy.set(value));
+		take<'' | 'yes' | 'no'>('returnable', (value) => this.returnableChoice.set(value));
+		take<string>('metreCut', (value) => this.metreCut.set(value));
+		take<string>('metreWidth', (value) => this.metreWidth.set(value));
+		take<string>('metreWeight', (value) => this.metreWeight.set(value));
+		take<Array<{ length: string; label: Record<string, string> }>>('quickLengths', (value) =>
+			this.quickLengths.set(value),
+		);
+		take<Record<ShippingChargeKind, number | null>>('ownCharges', (value) => this.ownCharges.set(value));
+		take<ProductOptionGroup[]>('optionGroups', (value) => this.optionGroups.set(value));
+		take<FaqValue>('faq', (value) => this.faq.set(value));
+		take<string | null>('addonTemplateCode', (value) => this.addonTemplateCode.set(value));
+		take<ReturnType<typeof this.images>>('images', (value) => this.images.set(value));
+		take<ProductBundleWrite>('bundle', (value) => this.bundle.set(value));
+		take<Record<string, PictureRef | null>>('variantImages', (value) =>
+			this.variantImages.set(new Map(Object.entries(value ?? {}))),
+		);
+		const tiles = state['tiles'] as Record<string, string> | undefined;
+		if (tiles) this.tiles.set(new Map([...this.tiles(), ...Object.entries(tiles)]));
+		const sizes = state['imageSizes'] as Record<string, readonly [number, number]> | undefined;
+		if (sizes) this.imageSizes.set(new Map([...this.imageSizes(), ...Object.entries(sizes)]));
+		this.form.updateValueAndValidity();
+		this.refreshMissing();
+	}
+
+	/** What still stops Save, counted for the Drafts list ("4 things to fix before Save"). */
+	private countToFix(): number {
+		let count = this.fields.text('name')['en']?.trim() ? 0 : 1;
+		const walk = (control: AbstractControl) => {
+			if (control instanceof FormGroup || control instanceof FormArray) {
+				Object.values(control.controls).forEach(walk);
+			} else if (control.invalid && control.enabled) count += 1;
+		};
+		walk(this.form);
+		if (
+			this.soldBy() === 'metre' &&
+			metreProblem({
+				shortestCut: this.metreCut(),
+				weightPerMetre: this.metreWeight(),
+				width: this.metreWidth(),
+				quickLengths: this.quickLengths(),
+			})
+		) {
+			count += 1;
+		}
+		return count;
+	}
+
+	/** The product as it opened is what a draft of changes is compared with. */
+	private afterProductLoaded(): void {
+		this.base = this.snapshot();
+		this.changes.set(new Map());
+		this.conflicts.set([]);
+		this.draft.set(null);
+		this.waitingDraft.set(null);
+		this.markClean();
+		const draftId = this.route.snapshot?.queryParamMap?.get('draft') ?? null;
+		if (draftId) void this.openEditDraft(draftId);
+		else void this.lookForDrafts();
+	}
+
+	private markClean(): void {
+		this.savedPrint = fingerprint(this.snapshot());
+	}
+
+	/** Anything on the form not saved anywhere yet. */
+	isDirty(): boolean {
+		return this.savedPrint !== null && fingerprint(this.snapshot()) !== this.savedPrint;
+	}
+
+	private recomputeChanges(): void {
+		if (!this.base || !this.catalogProduct) return;
+		this.changes.set(new Map(changedPaths(this.base, this.snapshot()).map((change) => [change.path, change.from])));
+	}
+
+	/** DraftMarks: the "Changed · was: …" line under a field of a draft of changes. */
+	wasFor(path: readonly string[] | null): string | null {
+		if (this.draft()?.kind !== 'edit' || !path?.length) return null;
+		const key = this.pathKey(path);
+		const changes = this.changes();
+		if (!key || !changes.has(key)) return null;
+		return this.transloco.translate('draft_was', { value: describeValue(changes.get(key)) });
+	}
+
+	private pathKey(path: readonly string[]): string | null {
+		const [head = '', index, field] = path;
+		if (head === 'variations') {
+			const id = this.variationControl.at(Number(index))?.value?.id;
+			return id && field ? `raw.variations.${id}.${field}` : null;
+		}
+		if (LANGUAGE_FIELDS.includes(head)) return `text.${head}.${this.fields.locale()}`;
+		return `raw.${head}`;
+	}
+
+	/** A field's name in words, with its language and tab, for the conflict question. */
+	private fieldLabel(path: string): string {
+		const t = (key: string) => this.transloco.translate(key);
+		const [part, name = '', first = '', second = ''] = path.split('.');
+		const tab = t(draftTab(path));
+		if (part === 'text') return `${t(name)} · ${languageName(first)} · ${tab}`;
+		if (part === 'raw' && name === 'variations') {
+			const row = this.variationControl.controls.find((control) => control.value?.id === first);
+			return `${row?.value?.variation_name ?? first} · ${t(second)} · ${tab}`;
+		}
+		return part === 'raw' ? `${t(name)} · ${tab}` : tab;
+	}
+
+	/** Save as draft: keeps whatever is on the form, mistakes included; runs no checks. */
+	async saveDraft(updateUrl = true): Promise<boolean> {
+		const t = (key: string) => this.transloco.translate(key);
+		const product = this.catalogProduct;
+		const snapshot = this.snapshot();
+		const changes = product && this.base ? changedPaths(this.base, snapshot) : [];
+		if (product && !changes.length && !this.draft()) {
+			this.notifier.showError(t('draft_nothing_changed'));
+			return false;
+		}
+		const current = this.draft();
+		try {
+			const saved: ProductDraft = await firstValueFrom(
+				this.drafts.save(current?.id ?? null, {
+					kind: product ? 'edit' : 'new',
+					productId: product?.id ?? null,
+					title: this.fields.text('name')['en']?.trim() ?? '',
+					imageAssetId: this.swatchPhotos()[0] ?? null,
+					form: snapshot as unknown as Record<string, unknown>,
+					changes,
+					toFix: this.countToFix(),
+					baseSavedAt: product?.updatedAt ?? null,
+				}),
+			);
+			this.draft.set({ id: saved.id, kind: saved.kind, savedAt: saved.updatedAt, createdAt: saved.createdAt });
+			this.waitingDraft.set(null);
+			this.markClean();
+			this.recomputeChanges();
+			if (updateUrl) {
+				// The address becomes the draft's own, so refreshing or bookmarking keeps it (brief 7b).
+				void this.router.navigate([], {
+					relativeTo: this.route,
+					queryParams: { draft: saved.id },
+					queryParamsHandling: 'merge',
+					replaceUrl: true,
+				});
+			}
+			this.notifier.showSuccess(t('draft_saved'));
+			this.refreshDraftBadge();
+			return true;
+		} catch {
+			this.notifier.showError(t('draft_not_saved'));
+			return false;
+		}
+	}
+
+	private async openNewDraft(id: string): Promise<void> {
+		const draft = await firstValueFrom(this.drafts.get(id)).catch(() => null);
+		if (!draft || draft.kind !== 'new') {
+			this.notifier.showError(this.transloco.translate('draft_not_found'));
+			return;
+		}
+		this.restore(draft.form as unknown as ProductFormSnapshot);
+		this.draft.set({ id: draft.id, kind: 'new', savedAt: draft.updatedAt, createdAt: draft.createdAt });
+		setTimeout(() => this.markClean());
+	}
+
+	/** A draft of changes: the product as it is now, with the draft's changed fields laid on top. */
+	private async openEditDraft(id: string): Promise<void> {
+		const product = this.catalogProduct;
+		const draft = await firstValueFrom(this.drafts.get(id)).catch(() => null);
+		if (!draft || draft.kind !== 'edit' || !product || draft.productId !== product.id || !this.base) {
+			this.notifier.showError(this.transloco.translate('draft_not_found'));
+			return;
+		}
+		const mine = draft.form as unknown as ProductFormSnapshot;
+		const now = flattenSnapshot(this.base);
+		const drafted = flattenSnapshot(mine);
+		// Someone saved the field after the draft began, and to something other than the draft's value.
+		this.conflicts.set(
+			draft.changes
+				.filter(
+					(change) =>
+						stable(now.get(change.path)) !== stable(change.from) &&
+						stable(now.get(change.path)) !== stable(drafted.get(change.path)),
+				)
+				.map((change) => ({
+					path: change.path,
+					label: this.fieldLabel(change.path),
+					theirs: describeValue(now.get(change.path)),
+					mine: describeValue(drafted.get(change.path)),
+				})),
+		);
+		this.restore(mine, new Set(draft.changes.map((change) => change.path)));
+		this.draft.set({ id: draft.id, kind: 'edit', savedAt: draft.updatedAt, createdAt: draft.createdAt });
+		this.waitingDraft.set(null);
+		this.recomputeChanges();
+		setTimeout(() => this.markClean());
+	}
+
+	/** Brief 7f: a product with a draft says so, and the draft is never applied without asking. */
+	private async lookForDrafts(): Promise<void> {
+		const product = this.catalogProduct;
+		if (!product || !this.isBrowser) return;
+		let list: Awaited<ReturnType<typeof this.loadProductDrafts>> = null;
+		try {
+			list = await this.loadProductDrafts(product.id);
+		} catch {
+			// The note is a help, not a step: without it the form works as before.
+		}
+		const row = list?.items.find((item) => item.mine) ?? list?.items[0];
+		if (row)
+			this.waitingDraft.set({ id: row.id, mine: row.mine, updatedAt: row.updatedAt, changed: row.changedCount });
+	}
+
+	private loadProductDrafts(productId: string) {
+		return firstValueFrom(this.drafts.list({ scope: 'everyone', productId, pageSize: 10 })).catch(() => null);
+	}
+
+	continueDraft(): void {
+		const waiting = this.waitingDraft();
+		if (!waiting?.mine) return;
+		void this.router.navigate([], {
+			relativeTo: this.route,
+			queryParams: { draft: waiting.id },
+			queryParamsHandling: 'merge',
+			replaceUrl: true,
+		});
+		void this.openEditDraft(waiting.id);
+	}
+
+	/** Discard draft: the copy only; the product stays exactly as it is. */
+	async discardDraft(): Promise<void> {
+		const open = this.draft();
+		const waiting = this.waitingDraft();
+		const id = open?.id ?? (waiting?.mine ? waiting.id : null);
+		if (!id) return;
+		const yes = await askConfirm(this.modals, {
+			icon: 'ri-delete-bin-line',
+			title: 'draft_discard_title',
+			body: 'draft_discard_body',
+			yes: 'draft_discard',
+		});
+		if (!yes) return;
+		try {
+			await firstValueFrom(this.drafts.discard(id));
+		} catch {
+			this.notifier.showError(this.transloco.translate('draft_not_saved'));
+			return;
+		}
+		this.waitingDraft.set(null);
+		this.refreshDraftBadge();
+		this.notifier.showSuccess(this.transloco.translate('draft_discarded'));
+		if (open?.id !== id) return;
+		this.draft.set(null);
+		this.leaving = true;
+		const product = this.catalogProduct;
+		void this.router.navigateByUrl(product ? `/product/edit/${product.id}` : '/product/drafts', {
+			onSameUrlNavigation: 'reload',
+		});
+		if (product) {
+			const fresh = await firstValueFrom(this.productService.getCatalogProduct(product.id)).catch(() => null);
+			if (fresh) {
+				this.applyCatalogProduct(fresh);
+				this.afterProductLoaded();
+			}
+			this.leaving = false;
+		}
+	}
+
+	/** The menu's count of your drafts. */
+	private refreshDraftBadge(): void {
+		try {
+			this.drafts.list({ scope: 'mine', pageSize: 1 }).subscribe({
+				next: (list) => this.menu.setBadge('/product/drafts', list.mine),
+				error: () => undefined,
+			});
+		} catch {
+			// The count catches up on the next visit to the list.
+		}
+	}
+
+	/** Brief 7g: the fields both changed are asked about; "theirs" puts the product's value back. */
+	private async resolveConflicts(): Promise<void> {
+		const popup = this.modals.open(ProductConflictPopup, {
+			centered: true,
+			size: 'lg',
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'product_conflict_title',
+		});
+		(popup.componentInstance as ProductConflictPopup).conflicts.set(this.conflicts());
+		const choice = (await popup.result.catch(() => null)) as Record<string, 'mine' | 'theirs'> | null;
+		if (!choice) return;
+		const theirs = new Set(
+			Object.entries(choice)
+				.filter(([, side]) => side === 'theirs')
+				.map(([path]) => path),
+		);
+		if (theirs.size && this.base) this.restore(this.base, theirs);
+		this.conflicts.set([]);
+		this.recomputeChanges();
+		this.submit();
+	}
+
+	/** The route's leave guard asks this first: unsaved work is kept, left or saved (brief 7c). */
+	async confirmLeave(): Promise<boolean> {
+		if (this.leaving || !this.isDirty()) return true;
+		const popup = this.modals.open(ProductLeavePopup, {
+			centered: true,
+			windowClass: 'theme-modal',
+			ariaLabelledBy: 'product_leave_title',
+		});
+		(popup.componentInstance as ProductLeavePopup).name.set(this.fields.text('name')['en'] ?? '');
+		const choice = (await popup.result.catch(() => 'stay')) as LeaveChoice;
+		if (choice === 'leave') return true;
+		if (choice === 'draft') return this.saveDraft(false);
+		return false;
+	}
+
+	/** Closing the tab with unsaved work: the browser's own "Leave site?" box, as the Inbox does. */
+	onBeforeUnload(event: BeforeUnloadEvent): void {
+		if (this.leaving || !this.isDirty()) return;
+		event.preventDefault();
+		event.returnValue = '';
 	}
 }

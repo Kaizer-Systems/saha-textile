@@ -6,11 +6,16 @@ import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
 import { FormEvent } from './form-event/form-event';
 
-/** New launch, new sale, or an existing event: one page around the one form. */
+/** New launch, new sale, or an existing event: one page around the one form, full width like the product form (brief 4d). */
 @Component({
 	selector: 'app-edit-event',
 	template: `
-		<app-page-wrapper [title]="title()"><app-form-event /></app-page-wrapper>
+		<app-page-wrapper
+			[gridClass]="'col-sm-12'"
+			[title]="title()"
+		>
+			<app-form-event />
+		</app-page-wrapper>
 	`,
 	imports: [PageWrapper, FormEvent],
 })

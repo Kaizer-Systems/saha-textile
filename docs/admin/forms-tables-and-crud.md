@@ -26,7 +26,7 @@ The shared table coordinates:
 - page size and page number;
 - sort field and direction;
 - optional date-range filters;
-- checkbox selection and bulk-item output, plus `bulkActions` buttons shown while a ticked row is on the page and the operator holds each button's permission;
+- checkbox selection that stays through search, page, sort and page-size changes (a tick belongs to the row; with `selectionKey` it is also kept for the browser tab), the selection bar, chips and picked list, and `bulkActions` buttons shown while anything is ticked and the operator holds each button's permission (see [Product list bulk actions and drafts](./product-bulk-actions-and-drafts.md));
 - row-action output;
 - rating/date/currency presentation;
 - loading-state resets;
@@ -107,7 +107,7 @@ Every real mutation UI should make these states explicit:
 
 ## Bulk actions
 
-The blog list's **Go Live** and **Take off shop** buttons follow this pattern. Bulk delete, approval, publish, and status actions require more than a selected-ID array:
+The blog list's **Go Live** and **Take off shop** buttons follow this pattern, and the product list's six actions follow it end to end ([Product list bulk actions and drafts](./product-bulk-actions-and-drafts.md)). Bulk delete, approval, publish, and status actions require more than a selected-ID array:
 
 - explicit scope and item count;
 - confirmation for destructive operations;

@@ -113,6 +113,7 @@ const sidebars: SidebarsConfig = {
 						'admin/state-and-data',
 						'admin/home-dashboard',
 						'admin/forms-tables-and-crud',
+						'admin/product-bulk-actions-and-drafts',
 						'admin/inbox-and-mailboxes',
 						'admin/contributor-recipes',
 					],

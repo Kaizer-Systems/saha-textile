@@ -8,6 +8,7 @@ import { STOCK_ALERT_PERMISSIONS, injectStockAlertsQuery } from '@core/purchasin
 import { AuthStore } from '@core/state/auth.store';
 import { MenuStore } from '@core/state/menu.store';
 import { NavService } from '@data-access/services/nav.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { FmTray } from '@features/media/file-manager/fm-tray';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
@@ -48,6 +49,19 @@ export class Content {
 			const unread = (this.inbox.data() ?? []).reduce((total, mailbox) => total + (mailbox.unread ?? 0), 0);
 			// The menu is read and written inside setBadge; untracked keeps that from re-running this.
 			untracked(() => this.menuStore.setBadge('/inbox', unread));
+		});
+		// Products › Drafts: how many drafts you have (product bulk actions brief 7e), once signed in.
+		const drafts = inject(ProductDraftService);
+		let draftsCounted = false;
+		effect(() => {
+			if (draftsCounted || !this.isBrowser || !this.authStore.permissions().includes('product.index')) return;
+			draftsCounted = true;
+			untracked(() =>
+				drafts.list({ scope: 'mine', pageSize: 1 }).subscribe({
+					next: (list) => this.menuStore.setBadge('/product/drafts', list.mine),
+					error: () => undefined,
+				}),
+			);
 		});
 		effect(() => {
 			const waiting = this.stockAlerts.data()?.pendingApprovals ?? 0;

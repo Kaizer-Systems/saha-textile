@@ -290,7 +290,7 @@ export class Table {
 	/** The rows on this page that can be ticked. */
 	private pageRows(): IBaseRow[] {
 		return (this.tableConfig?.data ?? []).filter(
-			(row) => (row as Record<string, unknown>)['system_reserve'] !== '1',
+			(row) => (row as unknown as Record<string, unknown>)['system_reserve'] !== '1',
 		);
 	}
 

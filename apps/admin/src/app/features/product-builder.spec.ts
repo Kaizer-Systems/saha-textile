@@ -18,6 +18,7 @@ import { AttributeService } from '@data-access/services/attribute.service';
 import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { ProductService } from '@data-access/services/product.service';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
@@ -1321,7 +1322,11 @@ describe('Product list Go Live', () => {
 			{ provide: Router, useValue: {} },
 			{ provide: ProductService, useValue: service },
 			{ provide: NotificationService, useValue: toasts },
-			{ provide: TranslocoService, useValue: translate },
+			{
+				provide: TranslocoService,
+				useValue: { ...translate, langChanges$: of('en'), getActiveLang: () => 'en' },
+			},
+			{ provide: ProductDraftService, useValue: { list: () => of({ items: [], mine: 0 }) } },
 		]);
 		page.onActionClicked({ actionToPerform: 'go_live', data: { id: 'p1' } } as never);
 		expect(service.goLive).toHaveBeenCalledWith('p1');

@@ -13,6 +13,7 @@ import { LoaderStore } from '@core/state/loader.store';
 import { MenuStore } from '@core/state/menu.store';
 import { SettingStore } from '@core/state/setting.store';
 import { NavService } from '@data-access/services/nav.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 
 import { Content } from './content/content';
 import { Footer } from './footer/footer';
@@ -135,6 +136,7 @@ describe('shell pieces', () => {
 		const nav = { sidebarLoading: true };
 		const permissions = signal<string[]>([]);
 		const content = bare(Content, [
+			{ provide: ProductDraftService, useValue: { list: () => of({ items: [], mine: 3 }) } },
 			{ provide: MenuStore, useValue: menu },
 			{ provide: NavService, useValue: nav },
 			{ provide: AuthStore, useValue: { permissions } },
@@ -167,6 +169,10 @@ describe('shell pieces', () => {
 		expect(menu.setGroupBadge).toHaveBeenLastCalledWith(24, 4);
 		expect(menu.setBadge).toHaveBeenLastCalledWith('/stock/approvals', 4);
 		stockAlerts.set(undefined);
+		// Products › Drafts: your drafts, counted once you may see products.
+		permissions.set(['product.index']);
+		TestBed.tick();
+		expect(menu.setBadge).toHaveBeenCalledWith('/product/drafts', 3);
 	});
 
 	it('switches dark mode through the shared store, and remembers it', () => {

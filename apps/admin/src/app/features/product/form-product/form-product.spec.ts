@@ -6,12 +6,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbDate, NgbDateParserFormatter, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { MenuStore } from '@core/state/menu.store';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { ProductService } from '@data-access/services/product.service';
 
 import { FormProduct } from './form-product';
@@ -98,7 +100,15 @@ const detail = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const render = (
-	options: { params?: Record<string, unknown>; type?: string; product?: unknown; platform?: string } = {},
+	options: {
+		params?: Record<string, unknown>;
+		type?: string;
+		product?: unknown;
+		platform?: string;
+		query?: Record<string, string>;
+		drafts?: Record<string, unknown>;
+		modals?: unknown;
+	} = {},
 ) => {
 	const service = {
 		getCatalogProduct: vi.fn(() => of(options.product ?? detail())),
@@ -116,7 +126,22 @@ const render = (
 		saveBundle: vi.fn(() => of({})),
 	};
 	const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
-	const router = { navigateByUrl: vi.fn() };
+	const router = { navigateByUrl: vi.fn(), navigate: vi.fn(() => Promise.resolve(true)) };
+	const drafts = {
+		list: vi.fn(() => of({ items: [], mine: 0 })),
+		get: vi.fn(() => of(null)),
+		save: vi.fn((id: string | null, body: Record<string, unknown>) =>
+			of({
+				...body,
+				id: id ?? 'pdr_1',
+				updatedAt: '2026-11-19T09:35:00.000Z',
+				createdAt: '2026-11-19T08:44:00.000Z',
+			}),
+		),
+		discard: vi.fn(() => of(undefined)),
+		...options.drafts,
+	};
+	const menu = { setBadge: vi.fn() };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
@@ -124,7 +149,16 @@ const render = (
 			{ provide: Router, useValue: router },
 			{ provide: HttpClient, useValue: {} },
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
-			{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(options.params ?? {}) } },
+			{
+				provide: ActivatedRoute,
+				useValue: {
+					params: new BehaviorSubject(options.params ?? {}),
+					snapshot: { queryParamMap: { get: (key: string) => options.query?.[key] ?? null } },
+				},
+			},
+			{ provide: ProductDraftService, useValue: drafts },
+			{ provide: MenuStore, useValue: menu },
+			...(options.modals ? [{ provide: NgbModal, useValue: options.modals }] : []),
 			{ provide: AttributeService, useValue: { getDefinitions: () => of([]) } },
 			{ provide: AddonTemplateService, useValue: { list: () => of([]) } },
 			{ provide: NotificationService, useValue: toasts },
@@ -142,7 +176,7 @@ const render = (
 	fixture.componentRef.setInput('type', options.type ?? 'edit');
 	fixture.detectChanges();
 	TestBed.tick();
-	return { fixture, page: fixture.componentInstance, service, router, toasts };
+	return { fixture, page: fixture.componentInstance, service, router, toasts, drafts, menu };
 };
 const editing = (overrides: Record<string, unknown> = {}) =>
 	render({ params: { id: 'p1' }, product: detail(overrides) });
@@ -857,5 +891,191 @@ describe('FormProduct shipping charges (shipping brief prd01)', () => {
 		TestBed.tick();
 		expect(page.exceptionLabel({ kind: 'ruleSet', ruleSetId: 'rs1' })).toBe('Heavy parcels');
 		expect(page.exceptionLabel({ kind: 'cantShip' })).toBe('ship_choice_cantShip');
+	});
+});
+
+describe('FormProduct Save as draft (brief § 7)', () => {
+	const flush = async () => {
+		for (let i = 0; i < 10; i += 1) await Promise.resolve();
+	};
+	const popups = (...answers: unknown[]) => ({
+		open: vi.fn(() => ({
+			componentInstance: { start: vi.fn(), name: { set: vi.fn() }, conflicts: { set: vi.fn() } },
+			result: Promise.resolve(answers.shift()),
+		})),
+	});
+
+	it('keeps a new product as a draft with its mistakes, and gives it its own address', async () => {
+		const { page, drafts, router, toasts, menu } = render({ type: 'create' });
+		page.form.get('name')?.setValue('Kantha');
+		page.form.get('short_description')?.setValue('x'.repeat(400));
+		expect(await page.saveDraft()).toBe(true);
+		const [id, body] = drafts.save.mock.calls[0] as [string | null, Record<string, unknown>];
+		expect(id).toBeNull();
+		expect(body).toMatchObject({ kind: 'new', productId: null, title: 'Kantha', changes: [] });
+		expect(body['toFix']).toBeGreaterThan(0);
+		expect((body['form'] as { text: { name: { en: string } } }).text.name.en).toBe('Kantha');
+		expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { draft: 'pdr_1' } }));
+		expect(toasts.showSuccess).toHaveBeenCalledWith('draft_saved');
+		expect(page.draft()).toMatchObject({ id: 'pdr_1', kind: 'new' });
+		expect(menu.setBadge).toHaveBeenCalledWith('/product/drafts', 0);
+		expect(page.isDirty()).toBe(false);
+		drafts.save.mockReturnValueOnce(throwError(() => new Error('down')) as never);
+		expect(await page.saveDraft()).toBe(false);
+		expect(toasts.showError).toHaveBeenCalledWith('draft_not_saved');
+	});
+
+	it('opens a new-product draft from its address, exactly as it was left', async () => {
+		const saved = render({ type: 'create' });
+		saved.page.form.get('name')?.setValue('Kantha');
+		saved.page.form.get('sku')?.setValue('KAN-1');
+		saved.page.setSoldBy('metre');
+		const form = saved.page.snapshot();
+		const { page } = render({
+			type: 'create',
+			query: { draft: 'pdr_1' },
+			drafts: { get: vi.fn(() => of({ id: 'pdr_1', kind: 'new', form, updatedAt: 'u', createdAt: 'c' })) },
+		});
+		await flush();
+		expect(page.form.get('name')?.value).toBe('Kantha');
+		expect(page.form.get('sku')?.value).toBe('KAN-1');
+		expect(page.soldBy()).toBe('metre');
+		expect(page.draft()?.kind).toBe('new');
+		const missing = render({ type: 'create', query: { draft: 'gone' } });
+		await flush();
+		expect(missing.toasts.showError).toHaveBeenCalledWith('draft_not_found');
+	});
+
+	it('keeps a draft of changes apart, marks the changed fields, and ends it on Update', async () => {
+		const { page, drafts, service, toasts } = editing();
+		await flush();
+		expect(await page.saveDraft()).toBe(false);
+		expect(toasts.showError).toHaveBeenCalledWith('draft_nothing_changed');
+		page.form.get('weight')?.setValue(650);
+		page.switchLanguage('bn');
+		page.form.get('name')?.setValue('সিল্ক শাড়ি');
+		expect(await page.saveDraft()).toBe(true);
+		const body = drafts.save.mock.calls[0]?.[1] as { kind: string; changes: { path: string; from: unknown }[] };
+		expect(body.kind).toBe('edit');
+		expect(body.changes).toEqual([
+			{ path: 'raw.weight', from: 500 },
+			{ path: 'text.name.bn', from: 'সিল্ক' },
+		]);
+		expect(page.wasFor(['weight'])).toBe('draft_was:500');
+		expect(page.wasFor(['name'])).toBe('draft_was:সিল্ক');
+		expect(page.wasFor(['sku'])).toBeNull();
+		expect(page.wasFor(['variations', '0', 'price'])).toBeNull();
+		expect(page.wasFor(null)).toBeNull();
+		expect([...page.changedTabs()].sort()).toEqual(['general', 'inventory']);
+		page.submit();
+		expect(service.saveCatalogProduct).toHaveBeenCalled();
+		expect(drafts.discard).toHaveBeenCalledWith('pdr_1');
+		expect(page.draft()).toBeNull();
+	});
+
+	it('lays a draft of changes over the product as it is now, and asks where both changed', async () => {
+		const mine = editing();
+		await flush();
+		mine.page.form.get('weight')?.setValue(650);
+		mine.page.form.get('low_stock_threshold')?.setValue(9);
+		const form = mine.page.snapshot();
+		const modals = popups({ 'raw.weight': 'theirs' });
+		const { page, service } = render({
+			params: { id: 'p1' },
+			product: detail({ shipping: { weightGrams: 700, lengthCm: 1, widthCm: 2, heightCm: 3 } }),
+			query: { draft: 'pdr_2' },
+			modals,
+			drafts: {
+				get: vi.fn(() =>
+					of({
+						id: 'pdr_2',
+						kind: 'edit',
+						productId: 'p1',
+						form,
+						changes: [
+							{ path: 'raw.weight', from: 500 },
+							{ path: 'raw.low_stock_threshold', from: 2 },
+						],
+						updatedAt: 'u',
+						createdAt: 'c',
+					}),
+				),
+			},
+		});
+		await flush();
+		expect(page.form.get('low_stock_threshold')?.value).toBe(9);
+		expect(page.conflicts()).toEqual([expect.objectContaining({ path: 'raw.weight', theirs: '700', mine: '650' })]);
+		page.submit();
+		await flush();
+		expect(modals.open).toHaveBeenCalled();
+		expect(page.form.get('weight')?.value).toBe(700);
+		expect(page.conflicts()).toEqual([]);
+		expect(service.saveCatalogProduct).toHaveBeenCalled();
+	});
+
+	it('names a waiting draft: yours to continue or discard, a colleague’s as a note', async () => {
+		const row = (mine: boolean) => ({ id: 'pdr_3', mine, updatedAt: '2026-11-18T10:00:00.000Z', changedCount: 2 });
+		const theirs = render({
+			params: { id: 'p1' },
+			drafts: { list: vi.fn(() => of({ items: [row(false)], mine: 0 })) },
+		});
+		await flush();
+		expect(theirs.page.waitingDraft()).toMatchObject({ mine: false });
+		theirs.page.continueDraft();
+		expect(theirs.router.navigate).not.toHaveBeenCalled();
+		const modals = popups(true);
+		const yours = render({
+			params: { id: 'p1' },
+			modals,
+			drafts: { list: vi.fn(() => of({ items: [row(true)], mine: 1 })) },
+		});
+		await flush();
+		expect(yours.page.waitingDraft()).toMatchObject({ id: 'pdr_3', mine: true, changed: 2 });
+		await yours.page.discardDraft();
+		expect(yours.drafts.discard).toHaveBeenCalledWith('pdr_3');
+		expect(yours.page.waitingDraft()).toBeNull();
+		yours.page.continueDraft();
+		await yours.page.discardDraft();
+		const broken = render({
+			params: { id: 'p1' },
+			drafts: { list: vi.fn(() => throwError(() => new Error('down'))) },
+		});
+		await flush();
+		expect(broken.page.waitingDraft()).toBeNull();
+	});
+
+	it('discards an open draft of changes and shows the product as it is', async () => {
+		const modals = popups(false, true);
+		const { page, drafts, service } = render({ params: { id: 'p1' }, modals });
+		await flush();
+		page.form.get('weight')?.setValue(650);
+		await page.saveDraft();
+		await page.discardDraft();
+		expect(drafts.discard).not.toHaveBeenCalled();
+		await page.discardDraft();
+		await flush();
+		expect(drafts.discard).toHaveBeenCalledWith('pdr_1');
+		expect(service.getCatalogProduct).toHaveBeenCalledTimes(2);
+		expect(page.form.get('weight')?.value).toBe(500);
+	});
+
+	it('asks before leaving with unsaved work, and the browser asks on closing the tab', async () => {
+		const modals = popups('stay', 'leave', 'draft');
+		const { page, drafts } = render({ type: 'create', modals });
+		await flush();
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(await page.confirmLeave()).toBe(true);
+		const quiet = { preventDefault: vi.fn() } as unknown as BeforeUnloadEvent;
+		page.onBeforeUnload(quiet);
+		expect(quiet.preventDefault).not.toHaveBeenCalled();
+		page.form.get('name')?.setValue('Kantha');
+		expect(page.isDirty()).toBe(true);
+		const closing = { preventDefault: vi.fn() } as unknown as BeforeUnloadEvent;
+		page.onBeforeUnload(closing);
+		expect(closing.preventDefault).toHaveBeenCalled();
+		expect(await page.confirmLeave()).toBe(false);
+		expect(await page.confirmLeave()).toBe(true);
+		expect(await page.confirmLeave()).toBe(true);
+		expect(drafts.save).toHaveBeenCalledTimes(1);
 	});
 });

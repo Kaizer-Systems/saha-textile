@@ -44,6 +44,7 @@ const KEYWORDS: Record<string, string[]> = {
 	customer_ledger: ['balance', 'wallet', 'history'],
 	product_create: ['new', 'saree', 'item'],
 	product: ['saree', 'item', 'stock', 'catalogue', 'catalog'],
+	product_drafts: ['draft', 'unfinished', 'resume', 'continue', 'unsaved'],
 	attribute: ['colour', 'color', 'size', 'swatch', 'variant', 'option'],
 	measurement: ['size', 'chart', 'blouse'],
 	addon_template: ['addon', 'extra', 'fall', 'pico', 'stitching'],

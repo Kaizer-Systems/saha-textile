@@ -3,6 +3,69 @@
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	<!-- Save as draft (brief § 7): Bootstrap's own alerts, as the missing-language notice and the Inbox use. -->
+	@if (draft(); as open) { @if (open.kind === 'edit') {
+	<div
+		class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2"
+		id="product_draft_banner"
+		role="status"
+	>
+		<span>
+			<strong>{{ 'draft_of_changes' | transloco }}</strong>
+			· {{ 'draft_started' | transloco: { when: (open.createdAt | date: 'd MMM, h:mm a') } }} · {{
+			'draft_fields_changed' | transloco: { count: changes().size } }}
+			<span class="d-block">{{ 'draft_shop_unchanged' | transloco }}</span>
+		</span>
+		<button
+			type="button"
+			class="btn btn-outline btn-sm"
+			id="product_draft_discard"
+			(click)="discardDraft()"
+		>
+			{{ 'draft_discard' | transloco }}
+		</button>
+	</div>
+	} @else {
+	<p
+		class="help-text"
+		id="product_draft_saved"
+	>
+		{{ 'draft_label' | transloco }} · {{ 'draft_last_saved' | transloco: { when: (open.savedAt | date: 'h:mm a') }
+		}}
+	</p>
+	} } @else if (waitingDraft(); as waiting) {
+	<div
+		class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2"
+		id="product_draft_waiting"
+		role="status"
+	>
+		@if (waiting.mine) {
+		<span>
+			{{ 'draft_you_have' | transloco: { when: (waiting.updatedAt | date: 'd MMM, h:mm a'), count: waiting.changed
+			} }}
+		</span>
+		<span class="d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				(click)="discardDraft()"
+			>
+				{{ 'draft_discard' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme btn-sm"
+				id="product_draft_continue"
+				(click)="continueDraft()"
+			>
+				{{ 'draft_continue' | transloco }}
+			</button>
+		</span>
+		} @else {
+		<span>{{ 'draft_someone_has' | transloco: { when: (waiting.updatedAt | date: 'd MMM') } }}</span>
+		}
+	</div>
+	}
 	<app-language-switch
 		[locales]="locales"
 		[active]="fields.locale()"
@@ -27,7 +90,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-settings-line"></i>
-							{{ 'general' | transloco }}
+							{{ 'general' | transloco }} @if (changedTabs().has('general')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -105,7 +173,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-stack-line"></i>
-							{{ 'bundle' | transloco }}
+							{{ 'bundle' | transloco }} @if (changedTabs().has('bundle')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -128,7 +201,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-file-list-line"></i>
-							{{ 'inventory' | transloco }}
+							{{ 'inventory' | transloco }} @if (changedTabs().has('inventory')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1093,7 +1171,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-tools-line"></i>
-							{{ 'setup' | transloco }}
+							{{ 'setup' | transloco }} @if (changedTabs().has('setup')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1321,7 +1404,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-image-line"></i>
-							{{ 'images' | transloco }}
+							{{ 'images' | transloco }} @if (changedTabs().has('images')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1354,7 +1442,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-earth-line"></i>
-							{{ 'seo' | transloco }}
+							{{ 'seo' | transloco }} @if (changedTabs().has('seo')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1440,7 +1533,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-question-answer-line"></i>
-							{{ 'faqs' | transloco }}
+							{{ 'faqs' | transloco }} @if (changedTabs().has('faq')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1461,7 +1559,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-truck-line"></i>
-							{{ 'shipping_&_tax' | transloco }}
+							{{ 'shipping_&_tax' | transloco }} @if (changedTabs().has('shipping')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1705,7 +1808,12 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-checkbox-circle-line"></i>
-							{{ 'status' | transloco }}
+							{{ 'status' | transloco }} @if (changedTabs().has('status')) {
+							<span
+								class="bg-warning rounded-circle ms-auto p-1"
+								[title]="'draft_tab_changed' | transloco"
+							></span>
+							}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1930,6 +2038,14 @@
 				{{ 'save_and_next' | transloco }}
 			</app-button>
 			}
+			<app-button
+				[id]="'product_draft_btn'"
+				[class]="'btn btn-secondary'"
+				[type]="'button'"
+				(click)="saveDraft()"
+			>
+				{{ 'save_as_draft' | transloco }}
+			</app-button>
 			<app-button [id]="'product_btn'">
 				{{ (type() === 'create' ? 'save_product' : 'update_product') | transloco }}
 			</app-button>

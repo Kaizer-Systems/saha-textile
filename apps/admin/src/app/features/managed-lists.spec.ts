@@ -17,6 +17,7 @@ import { AddonTemplateService } from '@data-access/services/addon-template.servi
 import { BlogService } from '@data-access/services/blog.service';
 import { FaqService } from '@data-access/services/faq.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { ProductDraftService } from '@data-access/services/product-draft.service';
 import { ProductService } from '@data-access/services/product.service';
 import { RedirectService } from '@data-access/services/redirect.service';
 
@@ -426,7 +427,24 @@ describe('Blog list', () => {
 const productDeps = () => [
 	{ provide: ProductService, useValue: { goLive: vi.fn() } },
 	{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
-	{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+	{
+		provide: TranslocoService,
+		useValue: { translate: (key: string) => key, langChanges$: of('en'), getActiveLang: () => 'en' },
+	},
+	{
+		provide: ProductDraftService,
+		useValue: {
+			list: vi.fn(() =>
+				of({
+					items: [
+						{ kind: 'edit', productId: 'p2' },
+						{ kind: 'new', productId: null },
+					],
+					mine: 2,
+				}),
+			),
+		},
+	},
 ];
 
 describe('Product list', () => {
@@ -484,10 +502,24 @@ describe('Product list', () => {
 			total: 2,
 		});
 		TestBed.tick();
-		expect(page.tableConfig().data![0]).toMatchObject({ product_thumbnail: { original_url: 'u' }, status: 1 });
+		expect(page.tableConfig().data![0]).toMatchObject({
+			product_thumbnail: { original_url: 'u' },
+			status: 'live',
+			status_switch: '1',
+			status_label: 'product_state_live',
+		});
 		expect(page.tableConfig().data![0]?.stock).toContain('in stock');
-		expect(page.tableConfig().data![1]).toMatchObject({ product_thumbnail: null, status: 0 });
+		// Q4 = A: a product never live reads "Not live yet"; your draft of changes shows as a chip.
+		expect(page.tableConfig().data![1]).toMatchObject({
+			product_thumbnail: null,
+			status_switch: '0',
+			status_label: 'product_state_not_live_yet',
+		});
+		expect(page.tableConfig().data![1]?.name).toContain('product_draft_of_changes');
 		expect(page.tableConfig().data![1]?.stock).toContain('out of stock');
+		// Q3 = B: no Approve or Store column.
+		expect(page.tableConfig().columns?.map((column) => column.dataField)).not.toContain('store_name');
+		expect(page.tableConfig().columns?.map((column) => column.dataField)).not.toContain('is_approved');
 	});
 
 	it('opens a row, and passes the table state to the query', () => {
@@ -496,7 +528,7 @@ describe('Product list', () => {
 		TestBed.tick();
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 'p1' } } as never);
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/product/edit/p1');
-		for (const actionToPerform of ['is_approved', 'status', 'delete', 'deleteAll', 'duplicate', 'other']) {
+		for (const actionToPerform of ['other', undefined]) {
 			page.onActionClicked({ actionToPerform, data: {} } as never);
 		}
 	});

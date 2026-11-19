@@ -14,7 +14,18 @@ import { IProductModel } from '@data-access/interfaces/product.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
-import type { GoLiveResult, ProductBundle, ProductBundleWrite, ProductCreate } from '@saha-textile/contracts';
+import type {
+	GoLiveResult,
+	ProductBulkResult,
+	ProductBundle,
+	ProductBundleWrite,
+	ProductCreate,
+	ProductSaleResult,
+	ProductSaleWrite,
+} from '@saha-textile/contracts';
+
+/** The product list's bulk actions, by their API path (product bulk actions brief, 2026-11-19). */
+export type ProductBulkAction = 'go-live' | 'take-off' | 'discontinue' | 'duplicate' | 'delete';
 
 @Injectable({
 	providedIn: 'root',
@@ -83,6 +94,25 @@ export class ProductService {
 			`${environment.apiUrl}/admin/catalog/products/${encodeURIComponent(idOrSlug)}/bundle`,
 			body,
 		);
+	}
+
+	/** One bulk action for up to 200 products; `dryRun` says what would happen and changes nothing. */
+	bulk(
+		action: ProductBulkAction,
+		ids: readonly string[],
+		dryRun: boolean,
+		replacementPath: string | null = null,
+	): Observable<ProductBulkResult> {
+		return this.http.post<ProductBulkResult>(`${environment.apiUrl}/admin/catalog/products/bulk/${action}`, {
+			ids,
+			dryRun,
+			...(action === 'discontinue' ? { replacementPath } : {}),
+		});
+	}
+
+	/** Put on sale: products join a sale that has not ended, or a new draft sale. */
+	addToSale(body: ProductSaleWrite): Observable<ProductSaleResult> {
+		return this.http.post<ProductSaleResult>(`${environment.apiUrl}/admin/events/sale-products`, body);
 	}
 
 	discontinueCatalogProduct(idOrSlug: string, replacementPath: string | null) {

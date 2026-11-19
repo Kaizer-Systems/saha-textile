@@ -164,7 +164,12 @@ export class SearchTermList {
 			const key = status === 'live' ? 'search_word_bulk_live' : 'search_word_bulk_taken_down';
 			this.notifier.showSuccess(this.transloco.translate(key, { count: result.updated.length }));
 		}
-		const names = new Map((this.table()?.pickedRows<ISearchTermRow>() ?? []).map((row) => [row.id, row.name]));
+		const names = new Map(
+			[...(this.tableConfig().data ?? []), ...(this.table()?.pickedRows<ISearchTermRow>() ?? [])].map((row) => [
+				row.id,
+				row.name,
+			]),
+		);
 		for (const { id, gaps } of result.refused) {
 			this.notifier.showError(
 				`${names.get(id) ?? id}: ${goLiveLabels(gaps, translate, SEARCH_TERM_GO_LIVE_WORDS).join(', ')}`,

@@ -126,6 +126,17 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 3,
+				title: 'drafts',
+				path: '/product/drafts',
+				type: 'link',
+				// Your drafts: unfinished product work saved with Save as draft (product bulk actions brief 7e).
+				badgeType: 'badge bg-warning text-dark ml-3',
+				badgeValue: 0,
+				level: 2,
+				permission: ['product.index'],
+			},
+			{
+				parent_id: 3,
 				title: 'attributes',
 				path: '/attribute',
 				type: 'link',

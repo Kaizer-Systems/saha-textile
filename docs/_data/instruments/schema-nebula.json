@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 108,
-		"existingModelCount": 87,
+		"nodeCount": 109,
+		"existingModelCount": 88,
 		"targetOnlyCount": 21,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map, as is mailboxOutbox, the Inbox's Undo Send queue."
@@ -206,6 +206,19 @@
 			"source": "catalog §7.7",
 			"currentModel": "packages/adapters-db-mongo/src/models/product.model.ts",
 			"references": ["categories", "tags", "attributeDefinitions", "addonTemplates", "mediaAssets", "taxClasses"]
+		},
+		{
+			"id": "productDrafts",
+			"label": "productDrafts",
+			"cluster": "catalog-merchandising",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["F"],
+			"blockingDecisions": [],
+			"source": "decisions § product bulk actions and product drafts brief approved (2026-11-19)",
+			"currentModel": "packages/adapters-db-mongo/src/models/product-draft.model.ts",
+			"purpose": "Unfinished product-form work saved with Save as draft: a new product not created yet, or one person's draft of changes to an existing product. Never read by the shop, search, sales or stock.",
+			"references": ["products", "mediaAssets", "adminUsers"]
 		},
 		{
 			"id": "productVariants",

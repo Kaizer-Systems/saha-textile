@@ -34,6 +34,8 @@ export interface CatalogProductRow {
 	stock: number;
 	variantCount: number;
 	thumbnailUrl: string | null;
+	/** True once the product has been live: "Off shop" rather than "Not live yet" when it isn't. */
+	wasLive?: boolean;
 }
 
 export interface CatalogProductList {
@@ -94,6 +96,8 @@ export interface CatalogProductDetail {
 	slug: string;
 	sku: string;
 	title: string;
+	/** The product's last save, for a draft of changes' conflict check. */
+	updatedAt?: string | null;
 	type: 'simple' | 'variable' | 'bundle';
 	status: CatalogProductStatus;
 	published: boolean;

@@ -50,7 +50,7 @@ it in `apps/api/.env` (`MONGODB_PORT`).
 
 ### Environment & config (locked model)
 
-- **Server secrets → API only.** `cp apps/api/.env.example apps/api/.env` and fill. In deploys, secrets are injected via GitHub Actions encrypted secrets → droplet env / Compose secrets. Secrets never reach the Angular apps or the browser bundle.
+- **Server secrets → API only.** Values live in Infisical, one project per tier (`docker/infisical/README.md`). Locally, `pnpm secrets:pull` writes `apps/api/.env` from the dev project, and `pnpm dev` refreshes it before each run; without Infisical access, `cp apps/api/.env.example apps/api/.env` and fill. Deploys receive the same values as root-only files mounted read-only. Secrets never reach the Angular apps or the browser bundle.
 - **Public runtime config → Angular `config.json`.** Storefront and admin fetch `public/config.json` at app init (`runtime-config.ts` + `provideAppInitializer`) — no build-time `fileReplacements` for deploy URLs. Committed `config.json` holds localhost defaults only; deploys write the real one at container start.
 - MCP credentials (Cursor tooling): `cp .env.mcp.example .env.mcp`, fill the LOCAL block, restart Cursor. See [`.cursor/rules/mcp-tools.mdc`](./.cursor/rules/mcp-tools.mdc).
 - Full variable catalogue: [`docs/engineering-live-context/environment-variables.mdx`](./docs/engineering-live-context/environment-variables.mdx).

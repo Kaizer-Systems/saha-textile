@@ -26,6 +26,17 @@ export class SecretsError extends Error {
 }
 
 /**
+ * What may be printed about an error. Our own messages name settings and never carry a value; any
+ * other error (a JSON parse error, for one) can quote its input, so only its kind is shown.
+ * @param {unknown} error
+ */
+export function describeError(error) {
+	if (error instanceof SecretsError) return error.message;
+	const { name, code } = /** @type {NodeJS.ErrnoException} */ (error ?? {});
+	return `Unexpected failure (${code ?? name ?? 'unknown'}).`;
+}
+
+/**
  * @typedef {object} Project
  * @property {string} name        e.g. `saha-textile-staging`
  * @property {string} environment the Infisical environment slug, e.g. `staging`

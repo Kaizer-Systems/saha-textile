@@ -51,6 +51,9 @@ certs/
 # Throwaway root of scripts/production-proof.sh: it holds generated secrets and certificates.
 .production-proof/
 
-# Mode-3 stack runtime env (secrets copied from apps/api/.env) — never commit.
+# Mode-3 stack runtime env (written by pnpm stack:env from the Infisical dev project) — never commit.
 docker/stack/env/*.env
 docker/stack/env/*.config.json
+docker/stack/env/redis-password
+docker/stack/env/meilisearch.toml
+docker/stack/env/*.tmp

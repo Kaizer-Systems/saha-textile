@@ -18,6 +18,9 @@
 certs
 .production-proof
 docker/stack/env/*.env
+docker/stack/env/redis-password
+docker/stack/env/meilisearch.toml
+docker/stack/env/*.tmp
 .claude
 .cursor
 .vscode

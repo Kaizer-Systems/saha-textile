@@ -9,7 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "build:product-apps": "turbo run build --filter=@saha-textile/storefront --filter=@saha-textile/admin --filter=@saha-textile/api",
-    "dev": "turbo run dev",
+    "dev": "node scripts/secrets/cli.mjs pull --auto && turbo run dev",
     "dev:storefront": "pnpm --filter @saha-textile/storefront dev",
     "dev:admin": "pnpm --filter @saha-textile/admin dev",
     "start:storefront": "node scripts/serve-built-frontend.mjs --app storefront",
@@ -28,6 +28,7 @@
     "check:infisical-names": "node scripts/check-infisical-names.mjs",
     "test:scripts": "node --test scripts/secrets/*.test.mjs",
     "secrets:status": "node scripts/secrets/cli.mjs status",
+    "secrets:pull": "node scripts/secrets/cli.mjs pull",
     "check:e2e-types": "tsc --noEmit -p e2e/tsconfig.json",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

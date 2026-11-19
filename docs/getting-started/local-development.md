@@ -73,11 +73,22 @@ Each script documents its allow marker for deliberate exceptions. Run the root l
 
 ### API environment file
 
-The real `.env` is gitignored; copy the template and fill it for local use:
+The real `.env` is gitignored. Its values come from the `saha-textile-dev` Infisical project, folder `/api`. Install the Infisical CLI, sign in once, then write the file:
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+brew install infisical/get-cli/infisical
+infisical login
+pnpm secrets:pull
 ```
+
+`pnpm dev` refreshes the file the same way before it starts. When Infisical cannot be reached, the CLI's copy from its last successful read is used; when the CLI is missing or signed out, the existing file is used as it is.
+
+- **Personal changes** go in `apps/api/.env.overrides` (gitignored), laid on top after each refresh. A line with an empty value, such as `CSRF_SECRET=`, removes that setting.
+- **The previous file** is kept as `apps/api/.env.previous` after each refresh.
+- **A hand-written file** is never replaced silently. `pnpm secrets:pull --dry-run` lists the setting names that would be added, removed or changed. When the file has settings that the dev project leaves blank, the pull stops and names them; `pnpm secrets:pull --replace` switches anyway and keeps the old file as `apps/api/.env.before-infisical`.
+- **Names only:** every `secrets:*` command prints setting names and counts, never a value. `pnpm secrets:status` shows which names are still blank in each project.
+
+Without access to the Infisical project, copy the template and fill it by hand instead: `cp apps/api/.env.example apps/api/.env`.
 
 Local defaults target the Docker MongoDB replica set below, `console` notifications (no real sends), and CORS for the storefront (`:4200`), admin (`:4300`), and persistent developer portal (`127.0.0.1:3457` / `localhost:3457`) so approved Scalar Test Requests can reach the local API.
 

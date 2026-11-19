@@ -4,10 +4,11 @@
 #  Same images (docker/images/Dockerfile) that are published as private GHCR
 #  packages for staging/prod, behind an Nginx edge that terminates HTTPS with the
 #  machine-local mkcert certificate and forwards the client IP the way Cloudflare
-#  does. Secrets come from gitignored env files at runtime, never from an image.
+#  does. Secrets come from gitignored files mounted read-only at runtime, the way a
+#  droplet's release folder is, never from an image or an environment variable.
 #
 #    pnpm stack:certs   issue the stack certificate (mkcert, once)
-#    pnpm stack:env     write docker/stack/env/*.env from apps/api/.env (once)
+#    pnpm stack:env     write docker/stack/env/ from the Infisical dev project
 #    pnpm stack:up      build + start everything, wait until healthy
 #    pnpm stack:down    stop (volumes kept)
 #
@@ -29,10 +30,14 @@ x-logging: &logging
   logging:
     driver: local
 
+# As on a droplet: the API and worker read their settings from a file mounted read-only, so no value
+# shows in `docker inspect`. Every entry point imports dotenv/config, which reads this path.
 x-app-env: &app-env
-  env_file:
-    - ./env/stack.env
-    - ./env/api.env
+  environment:
+    DOTENV_CONFIG_PATH: /run/secrets/api.env
+  secrets:
+    - source: api_env
+      target: api.env
 
 services:
   mongo:
@@ -54,18 +59,24 @@ services:
   redis:
     <<: *logging
     image: redis:8.8.4-alpine
-    env_file: ./env/stack.env
-    # BullMQ needs every job kept: never evict, and persist each second.
+    # BullMQ needs every job kept: never evict, and persist each second. As on a droplet, the
+    # password goes through a config file so it never shows on a command line.
     command:
-      [
-        'sh',
-        '-c',
-        'exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"',
-      ]
+      - sh
+      - -c
+      - >-
+        umask 077 &&
+        printf 'requirepass %s\n' "$$(cat /run/secrets/redis-password)" > /tmp/redis.conf &&
+        exec redis-server /tmp/redis.conf --appendonly yes --appendfsync everysec
+        --maxmemory-policy noeviction
+    secrets:
+      - redis-password
     volumes:
       - saha_textile_stack_redis_data:/data
     healthcheck:
-      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$(cat /run/secrets/redis-password)" redis-cli ping | grep -q PONG
       interval: 5s
       timeout: 5s
       retries: 20
@@ -74,10 +85,11 @@ services:
   meilisearch:
     <<: *logging
     image: getmeili/meilisearch:v1.16.0
+    # The master key comes from a mounted config file, as on a droplet.
     environment:
-      MEILI_ENV: development
-      MEILI_NO_ANALYTICS: 'true'
-      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-local-saha-textile-meili}
+      MEILI_CONFIG_FILE_PATH: /run/secrets/meilisearch.toml
+    secrets:
+      - meilisearch.toml
     ports:
       - '127.0.0.1:7700:7700'
     volumes:
@@ -153,6 +165,14 @@ services:
           - admin-local.saha-textile.localhost
           - api-local.saha-textile.localhost
     restart: unless-stopped
+
+secrets:
+  api_env:
+    file: ./env/api.env
+  redis-password:
+    file: ./env/redis-password
+  meilisearch.toml:
+    file: ./env/meilisearch.toml
 
 volumes:
   saha_textile_stack_mongo_data:

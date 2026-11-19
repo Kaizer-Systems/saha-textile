@@ -164,6 +164,41 @@ export function buildDevEnv(api, { inventory, source, overrides = new Map() }) {
 }
 
 /**
+ * The API file of the full local Docker stack (mode 3), from the dev project's `/api` folder. Local
+ * development settings and every setting the stack owns are dropped, then the stack's own values are
+ * laid on top, so the stack runs the dev project's keys with its own hostnames and services.
+ * @param {Folder} api
+ * @param {object} options
+ * @param {Inventory} options.inventory
+ * @param {string} options.source        where the values came from, for the header
+ * @param {RegExp} options.owned         names the stack sets itself
+ * @param {Folder} options.settings      the stack's own values
+ * @param {'refuse' | 'drop'} [options.unknown]  a name the inventory does not know: refused (values
+ *                                       read from Infisical) or dropped with a note (a hand-written file)
+ */
+export function buildStackEnv(api, { inventory, source, owned, settings, unknown = 'refuse' }) {
+	const problems = [];
+	const notes = [];
+	const known = new Set([...inventory.api, ...settings.keys()]);
+	if (unknown === 'refuse') checkUnknown('api', api, known, { problems, notes });
+	if (problems.length > 0) refuse('The stack files were not written:', problems);
+
+	const values = new Map();
+	const dropped = [];
+	for (const [name, value] of api) {
+		if (isBlank(value) || owned.test(name) || inventory.developmentOnly.has(name)) continue;
+		if (known.has(name)) values.set(name, value);
+		else dropped.push(name);
+	}
+	if (dropped.length > 0) notes.push(`Left out, not in the inventory: ${dropped.sort().join(', ')}.`);
+	for (const [name, value] of settings) values.set(name, value);
+	const header = [`Written by pnpm stack:env from ${source}.`, 'Change values there, never here.'];
+	const text = renderCollecting(sorted(values), { header, plainNames: SHELL_READ_API_NAMES }, problems);
+	if (problems.length > 0) refuse('The stack files were not written:', problems);
+	return { text, names: [...values.keys()].sort(), notes };
+}
+
+/**
  * The files of one release folder, keyed by their path inside it:
  * `secrets/api.env`, `secrets/backup.env`, one file per `/infrastructure` entry, the files written
  * from `/api` settings (`derivedSecretFiles`, owner decision L3), and `release.env`.
@@ -321,8 +356,13 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 }
 
 /**
- * Writes rendered files under `dir`: folders 0700, files 0600, and never over an existing file, so a
- * release folder is written once.
+ * Writes rendered files under `dir`, and never over an existing file, so a release folder is written
+ * once.
+ *
+ * Folders are 0700 and files 0644. On a Linux droplet each file is mounted into a container whose
+ * process is not root (the API runs as `node`, MongoDB reads its `_FILE` settings as `mongodb`), so a
+ * root-owned 0600 file could not be read there. The 0700 folders are what keep every other account
+ * on the host out; `pnpm production:proof` runs with the same modes.
  * @param {string} dir
  * @param {Map<string, string>} files
  */
@@ -331,7 +371,7 @@ export function writeFiles(dir, files) {
 		const target = join(dir, path);
 		mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
 		try {
-			writeFileSync(target, content, { mode: 0o600, flag: 'wx' });
+			writeFileSync(target, content, { mode: 0o644, flag: 'wx' });
 		} catch (error) {
 			if (/** @type {NodeJS.ErrnoException} */ (error).code === 'EEXIST') {
 				throw new SecretsError(

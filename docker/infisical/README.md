@@ -63,9 +63,28 @@ component MongoDB settings. For that deployment path, fill the component setting
 ## Renderer and checks (`scripts/secrets/`)
 
 One renderer turns a project's four folders into the files each place reads, so a file is the same
-on the Mac, in a deploy job and on a droplet. It is built and tested; wiring it into `pnpm dev`,
-the Docker stack, the local pipeline and the deploy jobs follows the plan in the owner decisions
-log (2026-11-19).
+on the Mac, in a deploy job and on a droplet. `pnpm dev` and the Docker stack use it; the local
+pipeline and the deploy jobs follow the plan in the owner decisions log (2026-11-19).
+
+- `pnpm secrets:pull` writes `apps/api/.env` from the dev project's `/api` folder, with the
+  gitignored `apps/api/.env.overrides` laid on top (an empty value there removes a setting). It
+  keeps the previous file as `apps/api/.env.previous`, and reports added, removed and changed
+  names. A hand-written file is not replaced while it holds settings the dev project leaves blank:
+  the pull names them, and `--replace` switches anyway, keeping the old file as
+  `apps/api/.env.before-infisical`. `--dry-run` writes nothing.
+- `pnpm dev` runs the same pull first and never stops on it: offline, signed out or refused, it says
+  so in one line and the existing file is used. A hand-written file is left alone until
+  `pnpm secrets:pull` has run once.
+- `pnpm stack:env` writes `docker/stack/env/` from the dev project's `/api` folder: `api.env` with
+  the stack's own hosts and services on top, plus `redis-password` and `meilisearch.toml`. The API
+  and worker read `api.env` mounted read-only at `/run/secrets/api.env` through
+  `DOTENV_CONFIG_PATH`, as on a droplet. The stack's Redis password and search key are made on the
+  Mac once and kept in `docker/stack/env/stack.env`; they guard services only that Mac can reach.
+  When Infisical cannot be read it uses `apps/api/.env`, and it names any setting the previous
+  `api.env` had and the new one lacks.
+- A release folder's files are 0644 inside 0700 folders: containers whose process is not root (the
+  API as `node`, MongoDB's `_FILE` settings as `mongodb`) must read their mounted file on a Linux
+  host, and the folder keeps every other account out.
 
 - `pnpm secrets:status` (or `pnpm secrets:status -- staging`) reads each project through the
   Infisical CLI and prints, per folder, how many entries are filled, which names are missing,
@@ -80,6 +99,11 @@ log (2026-11-19).
   inventory lacks, when the inventory lists one nothing reads, or when `required-secrets.txt`,
   Compose and `deploy.sh` disagree with it.
 - `pnpm test:scripts` runs the renderer's tests with made-up values.
+
+Checked against Infisical CLI 0.45.12 on 2026-11-19: `infisical export --format json` prints an array
+of `{ key, value, … }` entries, and each entry carries `secretValueHidden`. A hidden value stops the
+read rather than being taken as blank. When Infisical cannot be reached, the CLI answers from its
+copy of the last successful read (exit 0, a warning on standard error), and the commands say so.
 
 ## Inventory sources
 

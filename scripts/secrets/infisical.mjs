@@ -9,6 +9,15 @@ import { spawnSync } from 'node:child_process';
 
 import { SecretsError } from './inventory.mjs';
 
+/** How long one folder may take. Offline, the CLI answers from its own cache well within this. */
+export const EXPORT_TIMEOUT_MS = 30_000;
+
+/** What the CLI (0.45) writes to standard error when it answers from its copy of the last read. */
+const SERVED_FROM_CACHE = /serving secrets from last successful fetch/i;
+
+/** Said when the CLI could not reach Infisical and answered from its own copy instead. */
+export const CACHE_NOTE = 'Infisical could not be reached, so the CLI used its copy from the last successful read.';
+
 /**
  * Turns `infisical export --format json` output into a Map. Accepts the array of `{ key, value }`
  * the CLI prints, and a plain `{ NAME: value }` object.
@@ -30,6 +39,13 @@ export function parseExport(stdout) {
 			if (typeof key !== 'string' || typeof value !== 'string') {
 				throw new SecretsError(
 					'Infisical answered with an entry that has no name or value. Update the Infisical CLI.',
+				);
+			}
+			// An identity allowed to list names but not to read values gets every value hidden. Taking
+			// those as blank would quietly drop settings, so it stops here instead.
+			if (item.secretValueHidden === true) {
+				throw new SecretsError(
+					`Infisical hid the value of ${key}: whoever is signed in may see names but not values. Give it read access to values.`,
 				);
 			}
 			values.set(key, value);
@@ -58,7 +74,8 @@ function lastLine(stderr) {
 		.map((text) => text.trim())
 		.filter(Boolean)
 		.pop();
-	return line ? ` Infisical said: ${line.slice(0, 200)}` : '';
+	// The CLI names the signed-in account (an email address) in some messages; a deploy job's log is public.
+	return line ? ` Infisical said: ${line.slice(0, 200).replace(/[^\s@]+@[^\s@]+/g, '<account>')}` : '';
 }
 
 /**
@@ -68,9 +85,10 @@ function lastLine(stderr) {
  * @param {string} options.folder        api, backup, infrastructure or deployment
  * @param {typeof spawnSync} [options.run]
  * @param {NodeJS.ProcessEnv} [options.env]
+ * @param {Set<string>} [options.notes]  collects CACHE_NOTE when the CLI answered from its own copy
  * @returns {Map<string, string>}
  */
-export function exportFolder({ projectId, environment, folder, run = spawnSync, env = process.env }) {
+export function exportFolder({ projectId, environment, folder, run = spawnSync, env = process.env, notes }) {
 	const args = [
 		'export',
 		'--projectId',
@@ -83,12 +101,21 @@ export function exportFolder({ projectId, environment, folder, run = spawnSync, 
 		'json',
 		'--silent',
 	];
-	const result = run('infisical', args, { encoding: 'utf8', env, maxBuffer: 16 * 1024 * 1024 });
+	const result = run('infisical', args, {
+		encoding: 'utf8',
+		env,
+		maxBuffer: 16 * 1024 * 1024,
+		timeout: EXPORT_TIMEOUT_MS,
+	});
 	if (result.error) {
-		if (/** @type {NodeJS.ErrnoException} */ (result.error).code === 'ENOENT') {
+		const { code } = /** @type {NodeJS.ErrnoException} */ (result.error);
+		if (code === 'ENOENT') {
 			throw new SecretsError(
 				'The Infisical CLI is not installed. Install it with: brew install infisical/get-cli/infisical',
 			);
+		}
+		if (code === 'ETIMEDOUT') {
+			throw new SecretsError(`Infisical did not answer within ${EXPORT_TIMEOUT_MS / 1000} seconds.`);
 		}
 		throw new SecretsError(`The Infisical CLI could not start (${result.error.message}).`);
 	}
@@ -97,16 +124,17 @@ export function exportFolder({ projectId, environment, folder, run = spawnSync, 
 			`Infisical could not read /${folder} (exit ${result.status}). Sign in with: infisical login.${lastLine(String(result.stderr ?? ''))}`,
 		);
 	}
+	if (SERVED_FROM_CACHE.test(String(result.stderr ?? ''))) notes?.add(CACHE_NOTE);
 	return parseExport(String(result.stdout));
 }
 
 /**
  * All four folders of one project.
  * @param {import('./inventory.mjs').Project} project
- * @param {{ run?: typeof spawnSync, env?: NodeJS.ProcessEnv }} [options]
+ * @param {{ run?: typeof spawnSync, env?: NodeJS.ProcessEnv, notes?: Set<string> }} [options]
  * @returns {Record<string, Map<string, string>>}
  */
-export function exportProject(project, { run, env } = {}) {
+export function exportProject(project, { run, env, notes } = {}) {
 	/** @type {Record<string, Map<string, string>>} */
 	const folders = {};
 	for (const folder of ['api', 'backup', 'infrastructure', 'deployment']) {
@@ -116,6 +144,7 @@ export function exportProject(project, { run, env } = {}) {
 			folder,
 			run,
 			env,
+			notes,
 		});
 	}
 	return folders;

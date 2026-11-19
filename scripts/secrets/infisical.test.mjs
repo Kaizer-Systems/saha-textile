@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { exportFolder, exportProject, parseExport } from './infisical.mjs';
+import { CACHE_NOTE, exportFolder, exportProject, parseExport } from './infisical.mjs';
 import { SecretsError, TIERS, loadInventory } from './inventory.mjs';
 
 const MARK = 'zz-made-up-';
@@ -96,6 +96,12 @@ test('exportFolder explains a missing CLI, a failed start and a refusal, never r
 		),
 		/not installed\. Install it with: brew install/,
 	);
+	const slow = recorder({ error: Object.assign(new Error('spawnSync infisical ETIMEDOUT'), { code: 'ETIMEDOUT' }) });
+	assert.match(
+		messageOf(() => exportFolder({ projectId: 'p', environment: 'dev', folder: 'api', run: slow.run })),
+		/did not answer within 30 seconds/,
+	);
+	assert.equal(slow.calls[0].options.timeout, 30_000);
 	const other = Object.assign(new Error('EACCES'), { code: 'EACCES' });
 	assert.match(
 		messageOf(() =>
@@ -169,4 +175,38 @@ test('the inventory names a project for each tier', () => {
 	assert.equal(inventory.projects.production.environment, 'prod');
 	for (const name of inventory.requiredForRelease) assert.ok(inventory.api.has(name), name);
 	for (const name of Object.values(inventory.derivedFiles)) assert.ok(inventory.api.has(name), name);
+});
+
+test('a hidden value stops the read, and an account name never reaches a message', () => {
+	assert.match(
+		messageOf(() => parseExport(JSON.stringify([{ key: 'CSRF_SECRET', value: '', secretValueHidden: true }]))),
+		/hid the value of CSRF_SECRET: whoever is signed in may see names but not values/,
+	);
+	const refused = recorder({ status: 1, stdout: '', stderr: 'error: profile owner.name@example.com is not valid\n' });
+	assert.match(
+		messageOf(() => exportFolder({ projectId: 'p', environment: 'dev', folder: 'api', run: refused.run })),
+		/Infisical said: error: profile <account> is not valid$/,
+	);
+});
+
+test("an answer from the CLI's own copy is read, and noted once", () => {
+	const notes = new Set();
+	const cached = recorder({
+		status: 0,
+		stdout: JSON.stringify([{ key: 'PORT', value: '4000' }]),
+		stderr: 'Warning: Unable to fetch the latest secret(s) due to connection error, serving secrets from last successful fetch.\n',
+	});
+	const project = { name: 'p', projectId: 'id', environment: 'dev' };
+	const folders = exportProject(project, { run: cached.run, notes });
+	assert.equal(folders.api.get('PORT'), '4000');
+	assert.deepEqual([...notes], [CACHE_NOTE]);
+	const fresh = new Set();
+	exportFolder({
+		projectId: 'p',
+		environment: 'dev',
+		folder: 'api',
+		run: recorder({ status: 0, stdout: '[]' }).run,
+		notes: fresh,
+	});
+	assert.equal(fresh.size, 0);
 });

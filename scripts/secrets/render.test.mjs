@@ -288,7 +288,7 @@ test('buildRelease: backups are optional outside production, and overrides reach
 	assert.equal(apiEnv.OTP_LOCAL_FIXED_CODE, undefined);
 });
 
-test('writeFiles: owner-only folders and files, never over an existing file', () => {
+test('writeFiles: owner-only folders, files a container user can read, never over an existing file', () => {
 	const dir = mkdtempSync(join(tmpdir(), 'secrets-render-'));
 	try {
 		const files = new Map([
@@ -297,7 +297,7 @@ test('writeFiles: owner-only folders and files, never over an existing file', ()
 		]);
 		writeFiles(join(dir, 'r1'), files);
 		assert.equal(readFileSync(join(dir, 'r1/secrets/api.env'), 'utf8'), 'A=1\n');
-		assert.equal(statSync(join(dir, 'r1/secrets/api.env')).mode & 0o777, 0o600);
+		assert.equal(statSync(join(dir, 'r1/secrets/api.env')).mode & 0o777, 0o644);
 		assert.equal(statSync(join(dir, 'r1/secrets')).mode & 0o777, 0o700);
 		assert.match(
 			refusal(() => writeFiles(join(dir, 'r1'), files)),

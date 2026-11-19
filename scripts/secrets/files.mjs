@@ -1,0 +1,43 @@
+/**
+ * Reading and replacing the local env files that `pnpm secrets:pull` and `pnpm stack:env` keep.
+ */
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+import { ROOT } from './inventory.mjs';
+
+// The API's own dotenv, so a file is read exactly the way the API will read it.
+const dotenv = createRequire(join(ROOT, 'apps/api/package.json'))('dotenv');
+
+/**
+ * @param {string} text
+ * @returns {Map<string, string>}
+ */
+export function parseEnvText(text) {
+	return new Map(Object.entries(dotenv.parse(text)));
+}
+
+/**
+ * The file's text, or null when there is none.
+ * @param {string} path
+ */
+export function readIfPresent(path) {
+	return existsSync(path) ? readFileSync(path, 'utf8') : null;
+}
+
+/**
+ * Replaces a file in one step: a reader sees the old file or the new one, never half of either.
+ * @param {string} path
+ * @param {string} text
+ * @param {number} mode
+ */
+export function replaceFile(path, text, mode) {
+	const temporary = `${path}.${process.pid}.tmp`;
+	try {
+		writeFileSync(temporary, text, { mode, flag: 'w' });
+		renameSync(temporary, path);
+	} finally {
+		rmSync(temporary, { force: true });
+	}
+}

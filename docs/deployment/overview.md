@@ -45,7 +45,7 @@ Use `pnpm build:product-apps` for product builds. It targets only the storefront
 
 ```bash
 pnpm stack:certs   # once: create the local certificate
-pnpm stack:env     # once: write the runtime environment file
+pnpm stack:env     # write docker/stack/env/ from the Infisical dev project
 pnpm stack:up      # build, start and wait until healthy
 pnpm stack:logs api
 pnpm stack:down
@@ -58,6 +58,8 @@ pnpm stack:down
 | `https://api-local.saha-textile.localhost`   | API        |
 
 `STACK_HTTPS_PORT` moves the edge off port 443. The stack runs production images with development secrets, so `stack:env` sets `DEPLOY_ENV=local` to opt out of the startup checks. Media uses the development Spaces bucket. See `docker/stack/README.md`.
+
+The stack reads secrets the way a droplet does. The API and worker read `api.env`, mounted read-only at `/run/secrets/api.env`, through `DOTENV_CONFIG_PATH`. Redis and Meilisearch read their password and master key from mounted files. No secret appears in a container's environment or command line. `stack:env` takes the values from the dev project's `/api` folder, or from `apps/api/.env` when Infisical cannot be read. The stack's own Redis password and search key are made on the machine once and kept in `docker/stack/env/stack.env`.
 
 ## The production stack
 

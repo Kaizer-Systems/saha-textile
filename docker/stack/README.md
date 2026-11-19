@@ -9,7 +9,7 @@ worker as its own container.
 
 ```
 pnpm stack:certs    # once: mkcert certificate for the three stack hosts
-pnpm stack:env      # once (and after editing apps/api/.env): runtime env, gitignored
+pnpm stack:env      # runtime files from the Infisical dev project, gitignored
 pnpm stack:up       # build, start, wait until healthy
 pnpm stack:logs api # follow one service
 pnpm stack:down     # stop; data volumes are kept
@@ -28,9 +28,21 @@ and Firefox resolve `*.localhost` themselves; Safari needs the `/etc/hosts` line
 
 **Media is not local**: like modes 1 and 2, the stack uses the dev Spaces bucket.
 
-**Secrets** are copied from `apps/api/.env` into `docker/stack/env/api.env` (gitignored and
-excluded from the Docker build context). Images never contain a secret; staging and
-production inject the same variables from GitHub encrypted secrets at deploy time.
+**Secrets** reach the containers the way a droplet's release folder delivers them. `pnpm stack:env`
+writes `docker/stack/env/` (gitignored and excluded from the Docker build context):
+
+| File               | Read by                                                                  | From                                            |
+| ------------------ | ------------------------------------------------------------------------ | ----------------------------------------------- |
+| `api.env`          | API and worker, mounted at `/run/secrets/api.env` (`DOTENV_CONFIG_PATH`) | dev project `/api`, with the stack's own on top |
+| `redis-password`   | Redis, read into its config file at start                                | `stack.env`                                     |
+| `meilisearch.toml` | Meilisearch (`MEILI_CONFIG_FILE_PATH`)                                   | `stack.env`                                     |
+| `stack.env`        | `scripts/stack.sh` and `pnpm stack:env` only                             | made on this Mac once                           |
+
+No secret shows in `docker inspect` or on a command line. The dev project's own settings for local
+development (the fixed OTP, certificate paths, localhost database and Redis, `SHOP_ORIGIN`) are
+left out. When Infisical cannot be read, `apps/api/.env` is used instead, and the command names any
+setting the previous `api.env` had and the new one lacks. Run `pnpm stack:env` again after
+changing values in Infisical. Images never contain a secret.
 
 **Gmail mailbox sign-in**: Google refuses `.localhost` sub-domains as OAuth callbacks, so the stack
 reuses the dev client's registered callback, `https://localhost:4000/admin/mailboxes/oauth/callback`.

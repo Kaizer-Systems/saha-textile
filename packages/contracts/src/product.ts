@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { CatalogRupee, I18nString, Id, IsoDateTime, LocalizedText, PriceINR, SeoMeta, Slug } from './common';
 import { ProductOptionGroupSet } from './product-options';
+import { ProductShippingCharges } from './shipping-rules';
 import { ProductVideo } from './site-settings';
 
 /** One quick-length button of a metre product (M5): "2.5 m · suit". */
@@ -214,6 +215,10 @@ export const Product = z.object({
 	addonPriceINR: CatalogRupee.nullable().default(null),
 	/** True when a live variant is selling below its MRP. Home's Sale rail reads this. */
 	onSale: z.boolean().default(false),
+	/** The product's own shipping charges; empty uses its main category's (owner, 2026-11-19). */
+	shippingCharges: ProductShippingCharges.optional(),
+	/** Ships free in both zones, whatever the rule sets say. */
+	freeShipping: z.boolean().optional(),
 	shippingDefaults: ProductShippingDefaults.default({
 		weightGrams: null,
 		lengthCm: null,

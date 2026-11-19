@@ -290,6 +290,11 @@ export const ShippingSnapshotLine = z.object({
 	/** Per unit, after any sale event, before coupons. */
 	sellingPriceINR: z.number().nonnegative(),
 	mrpINR: z.number().nonnegative().nullable(),
+	/**
+	 * Per unit before add-ons such as stitching, after any sale event: what "discounted" compares
+	 * with MRP. Absent, the selling price is used. For fabric by the metre, both are per metre.
+	 */
+	basePriceINR: z.number().nonnegative().optional(),
 	onSaleEvent: z.boolean(),
 	soldBy: z.enum(['piece', 'metre']),
 	madeToOrder: z.boolean(),

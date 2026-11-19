@@ -49,6 +49,7 @@ const DECLARED_FAMILIES = [
 	'languages',
 	'purchases',
 	'stock',
+	'shipping',
 ];
 
 const ROUTE_DECORATOR = /@(Get|Post|Put|Patch|Delete)\s*\(/g;

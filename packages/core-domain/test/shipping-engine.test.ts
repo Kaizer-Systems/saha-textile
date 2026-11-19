@@ -974,3 +974,16 @@ describe("can't-ship messages", () => {
 		]);
 	});
 });
+
+describe('discounted compares the price before add-ons with MRP', () => {
+	it('a discounted saree with paid stitching stays discounted; a full-price one with stitching stays full price', () => {
+		const stitchedSale = line('a', { sellingPriceINR: 12300, basePriceINR: 11800, mrpINR: 12000 });
+		const stitchedFull = line('b', { sellingPriceINR: 2950, basePriceINR: 2450, mrpINR: 2450 });
+		const outcome = evaluateShippingRuleSet({
+			body: SAHA_TEXTILE_DOMESTIC,
+			snapshot: cart([stitchedSale, stitchedFull]),
+			zone: 'domestic',
+		});
+		expect(priced(outcome)).toBe(100);
+	});
+});

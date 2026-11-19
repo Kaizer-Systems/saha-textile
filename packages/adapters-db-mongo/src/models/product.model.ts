@@ -63,6 +63,12 @@ export interface ProductDoc {
 		widthCm: number | null;
 		heightCm: number | null;
 	} | null;
+	shippingCharges?: {
+		domesticINR: number | null;
+		internationalFirstINR: number | null;
+		internationalFurtherINR: number | null;
+	} | null;
+	freeShipping?: boolean;
 	hsnCode?: string | null;
 	soldBy?: 'piece' | 'metre';
 	returnable?: boolean | null;
@@ -117,6 +123,18 @@ const ProductSchema = new Schema<ProductDoc>(
 		addonPriceINR: { type: Number, default: null },
 		onSale: { type: Boolean, default: false },
 		shippingDefaults: { type: Schema.Types.Mixed, default: null },
+		shippingCharges: {
+			type: new Schema(
+				{
+					domesticINR: { type: Number, default: null },
+					internationalFirstINR: { type: Number, default: null },
+					internationalFurtherINR: { type: Number, default: null },
+				},
+				{ _id: false },
+			),
+			default: null,
+		},
+		freeShipping: { type: Boolean, default: false },
 		hsnCode: { type: String, default: null },
 		soldBy: { type: String, enum: ['piece', 'metre'], default: 'piece' },
 		returnable: { type: Boolean, default: null },

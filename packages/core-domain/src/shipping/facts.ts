@@ -49,13 +49,15 @@ export const SHIPPING_FIELD_TYPES: Readonly<Record<ShippingConditionField, Shipp
 export const isLineField = (field: string): boolean => field.startsWith('line.');
 
 /** A price below MRP by more than rounding noise: the owner's "discounted" (sale events included). */
-export function isDiscounted(line: Pick<ShippingSnapshotLine, 'sellingPriceINR' | 'mrpINR'>): boolean {
-	return line.mrpINR !== null && line.mrpINR - line.sellingPriceINR > 0.004;
+export function isDiscounted(line: Pick<ShippingSnapshotLine, 'sellingPriceINR' | 'mrpINR' | 'basePriceINR'>): boolean {
+	return line.mrpINR !== null && line.mrpINR - (line.basePriceINR ?? line.sellingPriceINR) > 0.004;
 }
 
-export function discountPercent(line: Pick<ShippingSnapshotLine, 'sellingPriceINR' | 'mrpINR'>): number {
+export function discountPercent(
+	line: Pick<ShippingSnapshotLine, 'sellingPriceINR' | 'mrpINR' | 'basePriceINR'>,
+): number {
 	if (line.mrpINR === null || line.mrpINR <= 0 || !isDiscounted(line)) return 0;
-	return ((line.mrpINR - line.sellingPriceINR) / line.mrpINR) * 100;
+	return ((line.mrpINR - (line.basePriceINR ?? line.sellingPriceINR)) / line.mrpINR) * 100;
 }
 
 export function chargeFor(line: ShippingSnapshotLine, kind: ShippingChargeKind): number {

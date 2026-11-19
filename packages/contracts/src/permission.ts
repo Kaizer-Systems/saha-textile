@@ -350,11 +350,11 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		"Search word form Save, and the list's bulk Go Live and Take off shop (POST /admin/search-terms/status).",
 	'setting.edit':
 		'Every write on the settings surfaces: the Save control on the main Settings page, and the two audited notification mutations (PATCH /admin/notifications/channels, PUT /admin/notifications/templates). Reads use setting.index, which is the navigation code; writes deliberately do not.',
-	'shipping.create': 'Add-shipping button on the Shipping page. No Shipping navigation entry exists.',
+	'shipping.create': 'New rule set and Add exception on Admin › Shipping; POST /admin/shipping/rule-sets and /exceptions.',
 	'shop_details.edit':
 		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
-	'shipping.destroy': 'Delete control on a shipping rule row (shipping.html).',
-	'shipping.edit': 'Edit control on a shipping rule row (shipping.html).',
+	'shipping.destroy': 'Delete an own rule set not used anywhere, or remove an exception (Admin › Shipping).',
+	'shipping.edit': 'Save and make active a rule set, change an exception, save the zone settings (Admin › Shipping).',
 	'tag.create': 'Add-tag button on the Tags page, reached from Products rather than from navigation.',
 	'tag.destroy': 'Tags table row Delete action (tag.ts).',
 	'tag.edit': 'Tags table row Edit action (tag.ts).',

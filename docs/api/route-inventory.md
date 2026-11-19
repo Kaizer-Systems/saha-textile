@@ -490,6 +490,26 @@ Rules the routes apply:
 | `POST`   | `/admin/store-locations/:id`        | `setting.edit`  | Save the store form                                  |
 | `DELETE` | `/admin/store-locations/:id`        | `setting.edit`  | Delete a store; its photos stay in the media library |
 
+## Admin shipping routes
+
+| Method   | Route                                    | Access             | Purpose                                                                  |
+| -------- | ---------------------------------------- | ------------------ | ------------------------------------------------------------------------ |
+| `GET`    | `/admin/shipping/overview`               | `shipping.index`   | Zone settings, rule sets, exception count and the checks                 |
+| `POST`   | `/admin/shipping/settings`               | `shipping.edit`    | Save how each zone is priced and the path for orders sent abroad         |
+| `GET`    | `/admin/shipping/rule-sets`              | `shipping.index`   | Every rule set, pre-made and own, with where each is used                |
+| `POST`   | `/admin/shipping/rule-sets`              | `shipping.create`  | Start a rule set: blank, or a copy of another                            |
+| `POST`   | `/admin/shipping/try`                    | `shipping.index`   | Price rule blocks on real products without saving anything               |
+| `GET`    | `/admin/shipping/rule-sets/:id`          | `shipping.index`   | One rule set with its versions, where it is used and its checks          |
+| `POST`   | `/admin/shipping/rule-sets/:id`          | `shipping.edit`    | Save the working copy; the active version keeps pricing checkout         |
+| `POST`   | `/admin/shipping/rule-sets/:id/activate` | `shipping.edit`    | Make the saved working copy the new active version                       |
+| `DELETE` | `/admin/shipping/rule-sets/:id`          | `shipping.destroy` | Delete an own rule set that is not used anywhere (`?revision=` required) |
+| `GET`    | `/admin/shipping/exceptions`             | `shipping.index`   | Category and product exceptions, per zone                                |
+| `POST`   | `/admin/shipping/exceptions`             | `shipping.create`  | Add a category or product exception                                      |
+| `POST`   | `/admin/shipping/exceptions/:id`         | `shipping.edit`    | Change an exception                                                      |
+| `DELETE` | `/admin/shipping/exceptions/:id`         | `shipping.destroy` | Remove an exception; the site-wide choice applies again                  |
+
+Every write names the revision it started from; a stale write answers `409` with who changed it and when. Pre-made rule sets answer `403` to a save, an activation or a delete.
+
 ## Admin mailbox and inbox routes
 
 Every `/admin/mailboxes` route except the callback also needs a super admin (the system Administrator role).

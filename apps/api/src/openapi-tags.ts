@@ -30,6 +30,7 @@ export const API_TAGS = {
 	languages: 'languages',
 	purchases: 'purchases',
 	stock: 'stock',
+	shipping: 'shipping',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -105,5 +106,10 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.stock,
 		description:
 			'Stock on hand, held and free to sell; history, cost layers (FIFO), adjustments with approval, holds, counts, opening stock, reorder list and reports. Cost and value fields are left out for anyone without stock.cost.',
+	},
+	{
+		name: API_TAGS.shipping,
+		description:
+			'Shipping rule sets built in the admin rule builder, their versions and saved test carts, Try it on real products, where rule sets apply (site-wide per zone, category and product exceptions), and the zone settings. Admin only; every write names its revision and is audited.',
 	},
 ];

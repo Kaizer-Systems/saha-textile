@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { I18nString, Id, LocalizedText, SeoMeta, Slug } from './common';
+import { CategoryShipping } from './shipping-rules';
 
 /**
  * Taxonomy node. Arbitrary nesting via adjacency-list + materialized path.
@@ -28,6 +29,11 @@ export const Category = z.object({
 		.default(null),
 	/** Whether its products can be returned by default; a product may override it (owner, 2026-11-15). */
 	returnable: z.boolean().default(true),
+	/**
+	 * Shipping charges, weight and box its products inherit (owner, 2026-11-19); an empty value
+	 * comes from the parent category, then the shop default. Absent on older rows: all empty.
+	 */
+	shipping: CategoryShipping.optional(),
 	description: LocalizedText.default({}),
 	seo: SeoMeta.optional(),
 	media: z

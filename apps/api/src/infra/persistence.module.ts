@@ -31,6 +31,7 @@ import {
 	MongoShopEventRepository,
 	MongoBlogTagRepository,
 	MongoStoreLocationRepository,
+	MongoShippingRuleRepository,
 	MongoCommunicationSwitchRepository,
 	MongoLanguageCoverageRepository,
 	MongoMediaFavouriteRepository,
@@ -198,6 +199,7 @@ import {
 	BLOG_CATEGORY_REPOSITORY,
 	BLOG_TAG_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
+	SHIPPING_RULE_REPOSITORY,
 	COMMUNICATION_SWITCH_REPOSITORY,
 	LANGUAGE_COVERAGE_REPOSITORY,
 	LANGUAGE_REPOSITORY,
@@ -383,6 +385,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: BLOG_CATEGORY_REPOSITORY, useClass: MongoBlogCategoryRepository },
 		{ provide: BLOG_TAG_REPOSITORY, useClass: MongoBlogTagRepository },
 		{ provide: STORE_LOCATION_REPOSITORY, useClass: MongoStoreLocationRepository },
+		{ provide: SHIPPING_RULE_REPOSITORY, useClass: MongoShippingRuleRepository },
 		// Settings › Communications (owner decision round 2026-11-13).
 		{ provide: COMMUNICATION_SWITCH_REPOSITORY, useClass: MongoCommunicationSwitchRepository },
 		// Settings › Languages (step 0d, 2026-11-15): the stored list, read once and kept in memory.
@@ -536,6 +539,7 @@ import { LanguageStore } from '../languages/language-store';
 		BLOG_CATEGORY_REPOSITORY,
 		BLOG_TAG_REPOSITORY,
 		STORE_LOCATION_REPOSITORY,
+		SHIPPING_RULE_REPOSITORY,
 		COMMUNICATION_SWITCH_REPOSITORY,
 		LANGUAGE_REPOSITORY,
 		LANGUAGE_COVERAGE_REPOSITORY,

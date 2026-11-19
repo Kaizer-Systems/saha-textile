@@ -91,3 +91,11 @@ The currency decides the gateway: rupees go to the one INR gateway the admin has
 | `shippingProviderConfigs` | One document: home country, how each zone is priced, how mixed rule sets combine, shop-wide default charges, and the path for orders sent abroad |
 
 Every save names the revision it started from, so a second admin's save over newer work is refused rather than overwriting it. Stored bodies are parsed with the contracts on every read. The release step `0008-shipping-premade-rule-sets` writes the seven pre-made rule sets once: Add up per unit, Highest charge only, First and further units, Free above an amount, Weight bands, Flat per order, and Courier quote. Zone settings are not seeded; until a shop sets them, checkout reports that shipping isn't set up. A new shop's path for orders sent abroad is India only.
+
+## Admin API
+
+The admin reads and writes rule sets under `/admin/shipping` (see the [route inventory](../api/route-inventory#admin-shipping-routes)). Reading and _Try it_ need `shipping.index`; adding needs `shipping.create`; saving, making active and the zone settings need `shipping.edit`; deleting needs `shipping.destroy`. Every write is audited.
+
+_Try it_ and saved test carts price real products through one snapshot builder: the live price after any sale event, MRP, the price before add-ons, the main category and its parents, the resolved charges, and the chargeable weight (for fabric by the metre, the weight per metre times the length cut). Making a rule set active runs the checks in every shop language, then every saved test cart; an amount that would change is returned by name and must be accepted with that exact amount. A test cart that would stop pricing (can't ship, no result, or a courier quote) blocks activation until it is changed or removed.
+
+Zone settings refuse a courier until one is connected, a path for orders sent abroad that is not available, and a rule set that is not active or is made for the other zone.

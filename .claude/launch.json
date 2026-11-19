@@ -4,11 +4,7 @@
 		{
 			"name": "api",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": [
-				"--filter",
-				"@saha-textile/api",
-				"dev"
-			],
+			"runtimeArgs": ["--filter", "@saha-textile/api", "dev"],
 			"port": 4000,
 			"autoPort": false,
 			"url": "https://localhost:4000"
@@ -16,11 +12,7 @@
 		{
 			"name": "admin",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": [
-				"--filter",
-				"@saha-textile/admin",
-				"dev"
-			],
+			"runtimeArgs": ["--filter", "@saha-textile/admin", "dev"],
 			"port": 4300,
 			"autoPort": false,
 			"url": "https://localhost:4300"
@@ -28,11 +20,7 @@
 		{
 			"name": "storefront",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": [
-				"--filter",
-				"@saha-textile/storefront",
-				"dev"
-			],
+			"runtimeArgs": ["--filter", "@saha-textile/storefront", "dev"],
 			"port": 4200,
 			"autoPort": false,
 			"url": "https://localhost:4200",
@@ -43,11 +31,7 @@
 		{
 			"name": "storefront-prod",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": [
-				"--filter",
-				"@saha-textile/storefront",
-				"start"
-			],
+			"runtimeArgs": ["--filter", "@saha-textile/storefront", "start"],
 			"port": 4200,
 			"autoPort": false,
 			"url": "https://localhost:4200",
@@ -88,11 +72,7 @@
 		{
 			"name": "release-console",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": [
-				"--filter",
-				"@saha-textile/release-console",
-				"dev"
-			],
+			"runtimeArgs": ["--filter", "@saha-textile/release-console", "dev"],
 			"port": 4400
 		},
 		{

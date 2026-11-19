@@ -279,13 +279,13 @@ accept-invitation page and the browser PIN proof.
 - `DEC-TAX-HSN`
 - `DEC-SHIPPING`
 - `DEC-PROMO-STACK`
-- `DEC-STOCK-RESERVE`
-- `DEC-BACKORDER`
+- ~~`DEC-STOCK-RESERVE`~~ — resolved 2026-11-17 (owner log § orders round)
+- ~~`DEC-BACKORDER`~~ — resolved 2026-11-04, replaced 2026-11-17 (owner log § orders round)
 - `DEC-ORDER-SNAPSHOT`
 - `DEC-ADDRESS`
 - `DEC-RETURNS`
 - `DEC-PAYPAL-FX`
-- `DEC-INR-GATEWAY-TIMING`
+- ~~`DEC-INR-GATEWAY-TIMING`~~ — resolved 2026-11-17 (owner log § orders round)
 
 #### Definition of Done
 
@@ -428,6 +428,98 @@ show as a placeholder tile; the review page shows them via signed URLs).
 - Backup restore is drilled.
 - Staging E2E covers auth, checkout, webhook, notification, and rollback paths.
 - Human approval precedes production promotion.
+
+#### OPEN — Google integrations at deployment (J-GOOGLE-DEPLOY, 2026-11-18)
+
+Credential gathering is complete for company projects `saha-textile-staging` and
+`saha-textile-production`: each Credentials list shows its environment's YouTube key and
+Storefront Auth Web client. Staging consent is External / Testing; production is External /
+In production. **This deployment checklist remains OPEN until the deployed checks pass.**
+The staging droplet still waits until full development is complete; no deployed provider
+E2E proof or production brand verification is claimed by credential creation.
+
+- [ ] **Deliver each environment's configuration.** Have the owner populate the matching
+      Infisical project's `/api` entries `YOUTUBE_API_KEY`, `GOOGLE_OAUTH_CLIENT_ID` and
+      `GOOGLE_OAUTH_CLIENT_SECRET`; use the owner's replacement staging OAuth secret,
+      not the disabled original. Complete the authorized identity/fetch/runtime-file
+      delivery described in `production-deployment-plan.mdx`. Keep secrets server-side;
+      deliver the matching public `googleClientId` through edge-served `/config.json`
+      and storefront SSR `SAHA_TEXTILE_PUBLIC_CONFIG`. Verify effective configuration
+      without printing secrets or baking them into images/browser bundles.
+- [ ] **Restrict YouTube callers after server addresses exist.** Record the actual public
+      outbound IPs of each environment's API and media worker, then apply IP-address
+      application restrictions to that environment's YouTube key while retaining its
+      YouTube Data API v3 API restriction. Application restrictions are currently None.
+      Use outbound server addresses, not website/referrer restrictions, Cloudflare proxy
+      addresses or private addresses; prove both API Validate and worker refresh still work.
+- [ ] **Prove the deployed hosts and OAuth origin configuration.** Bring up DNS/HTTPS and
+      the staging Access protection from the deployment plan. Staging sign-in must use
+      `https://staging.sahatextile.com`; production must use `https://sahatextile.com`, with
+      `www` redirecting to the apex. Production has no localhost or staging origin. The
+      current Google JavaScript-callback flow has no redirect URIs; re-evaluate only if
+      that flow changes. Check CSP, CORS and cookie/session behavior on the real hosts.
+- [ ] **Complete launch branding and public-policy checks.** Once the rebuilt shop is
+      live, validate the configured homepage, `/en/privacy-policy` and
+      `/en/terms-conditions` on each environment's storefront. Cross-reference Chunk K's
+      open privacy rewrite for accurate Google identity-data disclosures. For production,
+      confirm the company account's Search Console ownership association, finalize the
+      customer-facing name/logo and complete Google's applicable brand-verification steps;
+      record their outcome. Production publishing is already done; brand verification is
+      not. Keep staging in Testing and keep its access wall separate from consent status.
+- [ ] **Record real-provider release evidence.** Exercise Google sign-in, token audience
+      and nonce validation, session/CSRF behavior and wrong-environment rejection; exercise
+      YouTube Validate and scheduled worker refresh with each environment's own key.
+      Record sanitized results and outstanding failures in `project-progress.mdx`.
+      Close this checklist only after the relevant staging/deployment proofs pass and
+      retain Chunk J's human approval before production promotion.
+
+#### OPEN — Gmail mailboxes at deployment (J-GMAIL-DEPLOY, 2026-11-19)
+
+The owner approved separate company-owned Internal Mail projects for dev, staging and
+production after discussing project-wide consent and environment isolation. Credential
+generation/storage remains a private owner action; setup does not prove mailbox access.
+
+- [ ] **Finish environment-specific Gmail setup and runtime delivery.** Use the matching
+      Internal Mail project's Web client for `GOOGLE_MAIL_CLIENT_ID` and
+      `GOOGLE_MAIL_CLIENT_SECRET`, with its exact API callback in
+      `GOOGLE_MAIL_REDIRECT_URI`. Supply each environment's own `MAILBOX_TOKEN_KEY`,
+      matching `ADMIN_APP_URL` and `MAILBOX_DOMAIN=sahatextile.com` through the API's
+      server-side runtime configuration. Keep the customer-sign-in clients separate.
+- [ ] **Verify callback routing before mailbox connection.** Register and exercise
+      `/admin/mailboxes/oauth/callback` on the actual API host: development localhost,
+      staging `api-staging.sahatextile.com`, production `api.sahatextile.com`. Confirm the
+      chosen local execution mode's callback routing too; the Docker stack uses a different
+      API hostname from direct local development. On 2026-11-19 Google accepted the prepared
+      direct-dev callback `https://localhost:4000/admin/mailboxes/oauth/callback` but rejected
+      `https://api-local.saha-textile.localhost/admin/mailboxes/oauth/callback` because its
+      hostname does not end in a public top-level domain. The rejected entry was removed;
+      **Docker-mode Google mailbox callback routing remains OPEN**, with no host/proxy/code
+      workaround implemented. Production must have only its own callback.
+- [ ] **Resolve Workspace approval and authorize each mailbox privately.** Check the
+      organization's Gmail API app-access policy, obtain any required administrator
+      approval, then have the owner authorize each intended mailbox through Settings >
+      Mailboxes. Internal consent does not grant domain-wide mailbox access. Keep real
+      production mailboxes out of development/staging unless the owner explicitly approves.
+- [ ] **Prove mailbox isolation and ongoing operation.** On staging, verify allowed-domain
+      connection, rejection of outside-domain addresses, per-admin Read/Read-and-send
+      permissions, verified aliases, refresh after access-token expiry and reconnect after
+      revocation. Prove Contact Us import and approved send/reply behavior with designated
+      test mailboxes; retain sanitized evidence and the production connection/runbook steps
+      before human-approved promotion. No mailbox messages or tokens belong in evidence.
+- [ ] **Implement and prove the approved Gmail capability extensions before claiming parity.**
+      Owner decision on 2026-11-19: normal mailbox actions plus basic settings (for example,
+      filters and vacation replies); Delete outside Bin moves to Bin, and Delete inside Bin
+      permanently deletes only after confirmation. Automatic-forwarding administration stays
+      in Gmail/Workspace; retain individual mailbox authorization and no domain-wide delegation.
+      All three Mail projects declare `gmail.modify`, `https://mail.google.com/` and
+      `gmail.settings.basic`; **the adapter still requests only `gmail.modify`**, with no new
+      app functionality implemented by this credential task. Add permanent-delete and basic
+      settings support through the normal ports/contracts/adapters and approved UI brief,
+      define/enforce the relevant per-mailbox admin rights, and prove confirmation, denial and
+      audit behavior with test mailboxes. Change runtime scope requests only as the matching
+      features are implemented; have owners reauthorize existing mailbox connections for new
+      scopes. Server-side Gmail drafts and custom label management remain part of the broader
+      parity review; do not claim an entire Gmail dashboard from scope declarations alone.
 
 #### Current developer-portal status — 2026-07-26
 
@@ -668,8 +760,8 @@ for the owner.
 Recommended order for the fastest reduction of blocked behavior:
 
 1. `DEC-NUMBERING`
-2. `DEC-STOCK-RESERVE`
-3. `DEC-BACKORDER`
+2. ~~`DEC-STOCK-RESERVE`~~ — resolved 2026-11-17 (owner log § orders round)
+3. ~~`DEC-BACKORDER`~~ — resolved 2026-11-04, replaced 2026-11-17 (owner log § orders round)
 4. `DEC-TAX-HSN`
 5. `DEC-SHIPPING`
 6. `DEC-RETURNS`

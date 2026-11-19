@@ -11,7 +11,7 @@ search_keywords: 'environment variables secrets local test production deployment
 
 Master reference of every environment variable across the three phases. **No secret values appear here** — only names, purpose, and where each is set. This doubles as the handover env catalogue (KB §10).
 
-> Phases: **LOCAL** (local dev → Docker MongoDB 9.0.4 replica set), **TEST-E2E** (short-lived real infra → test droplet with Docker MongoDB), **PROD-E2E** (production droplet with Docker MongoDB). Real values live only in gitignored files locally, and in **GitHub Actions encrypted secrets → root-owned env files / Docker Compose secrets** in deployed environments (roadmap §0b/0d). Never commit real values (repo is public).
+> Phases: **LOCAL** (local dev → Docker MongoDB 9.0.4 replica set), **TEST-E2E** (short-lived real infra → test droplet with Docker MongoDB), **PROD-E2E** (production droplet with Docker MongoDB). Local real values stay in gitignored files; deployed values are supplied through **root-owned env files / Docker Compose secrets**. The owner selected Infisical Cloud Free on 2026-11-17 to replace the previously planned GitHub Environment value store. Three separate projects have empty name entries only; value entry and pipeline fetching remain pending. Names, grouping and filling guidance are in `docker/infisical/README.md`. Never commit real values (repo is public).
 
 ## Where values live
 

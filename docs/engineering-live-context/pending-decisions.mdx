@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-11-03
+**Last reconciled:** 2026-11-17
 
 ## How this file works
 
@@ -38,13 +38,11 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-SHIPPING`              | Launch shipping-rate policy — **partly settled 2026-08-21**                                          | Checkout, Shiprocket seam, promotions         |
 | `DEC-RETURNS`               | Return/refund policy — **partly settled 2026-08-21**                                                 | Orders, returns, refunds, customer support    |
 | `DEC-PROMO-STACK`           | Promotion and coupon stacking                                                                        | Pricing engine, checkout                      |
-| `DEC-STOCK-RESERVE`         | Stock reservation timing and TTL                                                                     | Inventory, checkout, payment recovery         |
 | `DEC-ORDER-SNAPSHOT`        | Immutable order-line snapshot fields — **partly settled 2026-08-21**                                 | Orders, invoices, analytics, support          |
 | `DEC-ADDRESS`               | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                  |
 | `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                  |
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
 | `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
-| `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 | `DEC-PERF-TRIM`             | Which unused styles, icons and font weights to remove once development is finished                   | Storefront speed, theme, design system        |
 | `DEC-SHORTS-PRODUCT-LINK`   | Whether a Short's on-screen episode code links it to a product, and how                              | Shorts popup, product page, admin             |
@@ -328,47 +326,6 @@ Notes:
 
 ---
 
-## 06. `DEC-STOCK-RESERVE` — Stock reservation timing
-
-### Decision needed
-
-Choose when inventory is reserved and when it is permanently decremented.
-
-### Recommended route
-
-Do not reserve on add-to-cart. Create a short checkout reservation and finalize inventory only at the locked order/payment transition.
-
-### Options
-
-#### Option A — Reserve at checkout start (recommended)
-
-- Pros: protects serious buyers without letting long-lived carts lock stock.
-- Cons: requires TTL release and payment-failure recovery.
-
-#### Option B — Decrement only at order/payment
-
-- Pros: simpler.
-- Cons: higher last-item oversell risk.
-
-#### Option C — Reserve on add-to-cart
-
-- Pros: strongest cart-holder protection.
-- Cons: abandoned guest carts block stock.
-
-### Owner answer
-
-Choice:
-
-Reservation TTL:
-
-Extension rule:
-
-Final decrement transition:
-
-Notes:
-
----
-
 ## 08. `DEC-ORDER-SNAPSHOT` — Immutable order-line fields
 
 ### Decision needed
@@ -625,47 +582,6 @@ Notes:
 
 ---
 
-## 21. `DEC-INR-GATEWAY-TIMING` — INR gateway succession
-
-### Decision needed
-
-Choose when the operational preference changes from CCAvenue to Razorpay. The application remains vendor-neutral through `PaymentGatewayPort` regardless.
-
-### Recommended route
-
-Ship the port and stub first. Bind whichever approved sandbox/live credentials are available for launch. Treat a later switch as an adapter plus DI/config change.
-
-### Options
-
-#### Option A — CCAvenue launch, Razorpay later (recommended if CCAvenue credentials arrive first)
-
-- Pros: follows the current operational preference.
-- Cons: requires a later migration/acceptance pass.
-
-#### Option B — Razorpay before launch
-
-- Pros: avoids post-launch provider migration.
-- Cons: depends on timely onboarding and credentials.
-
-#### Option C — Build both before launch
-
-- Pros: immediate operational fallback.
-- Cons: doubles provider verification and webhook work.
-
-### Owner answer
-
-Choice:
-
-Launch INR adapter:
-
-Trigger/date for successor:
-
-Build both before launch:
-
-Notes:
-
----
-
 ## 24. `DEC-PORTAL-PRIVATE-ACCESS` — Developer-portal private-access design
 
 ### Decision needed
@@ -908,6 +824,7 @@ Not recommended in any option: body text, menus, buttons, product names, or use 
 Answer (owner's own words, with date):
 
 Notes: the restore brief with samples is at https://claude.ai/artifact/CQCfTaL7ERzi9GfoK1EUeq.
+
 ---
 
 ## 30. `DEC-METRE-SCRAP` — A fabric cut that would leave a scrap

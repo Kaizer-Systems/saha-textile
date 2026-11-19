@@ -56,15 +56,15 @@ GitHub's docs name only a classic token outside Actions, so this is proved on th
 
 ## 4. Secrets
 
-`DEC-SECRETS-DELIVERY` is closed: **GitHub Environment secrets written to mounted read-only files.**
+`DEC-SECRETS-DELIVERY` is closed: **Infisical Cloud Free is the selected source; deployment still uses mounted read-only files.** The source choice was revised by the owner on 2026-11-17. Three isolated projects and their empty name entries exist; values, machine authentication and pipeline fetching are not configured yet. See `docker/infisical/README.md` for the names-only handover.
 
-- One GitHub secret per value, per environment. The job renders the files and refuses to start if a name is missing.
+- One Infisical project per deployment tier: `saha-textile-dev` / `dev`, `saha-textile-staging` / `staging`, and `saha-textile-production` / `prod`. A future job fetches only its project's values, renders the existing files, omits blank optional settings and refuses to start if a required value is missing. The current deployment scripts still take files; they do not fetch Infisical yet.
 - Each release folder keeps its own `secrets/` and `public/`, so a rollback returns to the settings it ran with. The folder is root-only, and files mount read-only into the containers that need them. `docker/production/README.md` lists every file.
 - API and worker set `DOTENV_CONFIG_PATH=/run/secrets/api.env`. No code change is needed: every entry point imports `dotenv/config`. Tested on 2026-11-07 in the real API image as its non-root user with dotenv 18.0.9.
 - MongoDB uses `MONGO_INITDB_ROOT_PASSWORD_FILE`. Redis reads its password from its file at start. Meilisearch uses a mounted config file. The API's search key is not a stored secret: each deploy reads the Default Admin API Key from the search server, using the master key.
-- A secrets service can replace GitHub later. The deploy job would fetch the values and write the same files, so nothing changes on the droplet.
+- Infisical replaces the previously selected GitHub Environment value store. The fetch integration must write the same runtime files, so the droplet's secret-consumption interface stays the same.
 - The master copy lives in the owner's **NordPass** vault (secure notes; Premium allows file attachments). The backup private key has a second copy in the owner's free Bitwarden account, because backups are unreadable without it. Both need two-factor sign-in.
-- Rotation: new value, GitHub, redeploy, check, revoke the old one. `CSRF_SECRET` rotates only after a leak: it signs everyone out and strands guest carts.
+- Rotation after the fetch integration is wired: new value, Infisical, redeploy, check, revoke the old one. `CSRF_SECRET` rotates only after a leak: it signs everyone out and strands guest carts.
 
 **The repository is public, so any signed-in GitHub user can read Actions logs.** Deploy output prints pass or fail only. It never prints the droplet's IP, container logs or a credential. First-admin creation runs by hand over SSH.
 

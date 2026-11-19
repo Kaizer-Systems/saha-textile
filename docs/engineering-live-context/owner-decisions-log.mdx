@@ -1814,3 +1814,32 @@ Answered on the purchases decisions brief (https://claude.ai/artifact/XdCdbE91mK
 - **Two order messages added to Settings › Communications** from the 2026-11-17 orders round
   (OD1, OD2): an item on backorder, and an item sold out before payment (order refunded). Both
   start on for every channel, like the other order messages (commit 741b9e3e).
+
+## Owner decision round (2026-11-19) — Infisical in every way the shop runs
+
+Answered on the Infisical secrets plan (https://claude.ai/artifact/5tzzYYLGeDSh2dMXcYJH9B, v2).
+Each mode reads only its own project: the Mac reads `saha-textile-dev`, each GitHub deploy job reads
+only its own project after the owner's approval, droplets receive finished files and never talk to
+Infisical, and pull-request checks keep made-up values. One renderer turns Infisical values into
+files for every caller and prints names, never values.
+
+- **L1 — `pnpm dev` refreshes the file.** Before a run, `apps/api/.env` is rewritten from the dev
+  project; offline or signed out, one line says so and the last copy is used. A gitignored
+  `apps/api/.env.overrides` is laid on top. No entry point changes.
+- **L2 — local runner A+.** `pnpm pipeline:local` runs the same stage scripts as GitHub: checks,
+  the production proof on throwaway values, images built once into a local registry. Stage 4 writes
+  the full release folder from the real dev values and runs `deploy.sh --check-only` (the release
+  check, nothing started); then the browsable Docker stack runs those digests with the dev values.
+  `act` and a self-hosted runner were rejected (no environments/OIDC; unsafe on a public repo).
+- **L3 — each shared password is stored once.** The owner deletes `/infrastructure/mongo-app-password`
+  and `/infrastructure/redis-password` in all three projects (six entries); the renderer writes both
+  files from `/api/MONGODB_PASSWORD` and `/api/REDIS_PASSWORD`. Root username, root password,
+  keyfile and `meilisearch.toml` stay. Compose and `deploy.sh` are unchanged.
+- **L4 — four of the five free identities.** The owner, `github-deploy-staging` and
+  `github-deploy-production` (GitHub OIDC, each a read-only member of its own project only, bound to
+  its GitHub environment), and a read-only dev-project key for unattended local runs whose secret
+  lives in the macOS Keychain.
+- **Mode 3 matches the droplet.** The stack's API and worker read a read-only file mounted at
+  `/run/secrets/api.env` through `DOTENV_CONFIG_PATH`, instead of `env_file`.
+- The renderer, `pnpm secrets:status` and `pnpm check:infisical-names` were built the same day
+  (`scripts/secrets/`); the rest follows the plan page's order. Hand-over: `.claude/infisical-plan/HANDOVER.md`.

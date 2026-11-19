@@ -39,6 +39,10 @@ jobs:
       - name: Lint and repository guards
         run: pnpm lint:shop
 
+      # The Infisical renderer and its checks, tested with made-up values only.
+      - name: Script tests
+        run: pnpm test:scripts
+
       - name: Typecheck
         run: pnpm typecheck:shop
 

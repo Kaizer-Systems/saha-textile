@@ -1,6 +1,6 @@
 {
 	"verifiedOn": "2026-11-17",
-	"status": "names-only; all values empty; pipeline integration pending",
+	"status": "names-only; owner fills values; renderer in scripts/secrets (2026-11-19); wiring into each mode pending",
 	"projects": [
 		{
 			"name": "saha-textile-dev",
@@ -108,6 +108,7 @@
 		"SHIPROCKET_EMAIL",
 		"SHIPROCKET_PASSWORD",
 		"SHIPROCKET_PICKUP_PINCODE",
+		"SHOP_ORIGIN",
 		"SIGNUP_COOKIE_NAME",
 		"SMTP_HOST",
 		"SMTP_PASSWORD",
@@ -123,6 +124,7 @@
 		"YOUTUBE_API_KEY"
 	],
 	"developmentOnlyApiVariables": ["OTP_LOCAL_FIXED_CODE", "TLS_CERT_FILE", "TLS_KEY_FILE"],
+	"composeProvidedApiVariables": ["SHOP_ORIGIN"],
 	"requiredApiVariablesByCurrentDeploymentValidator": [
 		"NODE_ENV",
 		"DEPLOY_ENV",
@@ -161,12 +163,14 @@
 	],
 	"infrastructureSecretFileNames": [
 		"meilisearch.toml",
-		"mongo-app-password",
 		"mongo-keyfile",
 		"mongo-root-password",
-		"mongo-root-username",
-		"redis-password"
+		"mongo-root-username"
 	],
+	"derivedSecretFiles": {
+		"mongo-app-password": "MONGODB_PASSWORD",
+		"redis-password": "REDIS_PASSWORD"
+	},
 	"deploymentVariables": [
 		"ADMIN_HOST",
 		"ADMIN_URL",
@@ -187,5 +191,9 @@
 		"emptyValuesChecked": 363,
 		"missingNames": 0,
 		"unexpectedNames": 0
-	}
+	},
+	"changesSinceVerification": [
+		"2026-11-19: owner decision L3 — mongo-app-password and redis-password are written from /api/MONGODB_PASSWORD and /api/REDIS_PASSWORD; the owner deletes both /infrastructure entries in all three projects.",
+		"2026-11-19: SHOP_ORIGIN added (read by the API since FX-8). Add it to the dev project /api; Compose sets it in staging and production."
+	]
 }

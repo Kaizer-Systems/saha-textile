@@ -1309,6 +1309,16 @@ describe('Drafts and Undo Send (C2, C4)', () => {
 		expect(gmail.getAttachment).not.toHaveBeenCalled();
 	});
 
+	it('passes the formatting on, to the draft and to the queued send (C1)', async () => {
+		await inbox.saveDraft('u_riya', 'care', null, { ...request, html: '<p><b>Hi</b></p>', keepAttachments: false });
+		expect(gmail.createDraft.mock.calls[0]?.[1]).toMatchObject({ html: '<p><b>Hi</b></p>', signatureHtml: '' });
+		await inbox.queueSend('u_riya', 'care', { ...request, html: '<p><b>Hi</b></p>' });
+		expect(gmail.createDraft.mock.calls[1]?.[1]).toMatchObject({
+			html: '<p><b>Hi</b></p>',
+			signatureHtml: '<b>Team</b>',
+		});
+	});
+
 	it('answers 412 when someone saved the draft since, and 404 when it is gone', async () => {
 		gmail.getDraft.mockResolvedValueOnce(draft('v5'));
 		await expect(

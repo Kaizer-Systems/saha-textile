@@ -129,6 +129,7 @@ Mail HTML passes two barriers before anyone sees it.
 ### Sending
 
 - **From address.** A reply goes out from the alias the customer wrote to, so the conversation stays on one address. It goes to the message's Reply-To when there is one. Contact Us messages carry the customer's address there.
+- **Formatting.** The compose box uses the blog form's editor (ngx-editor) with bold, italic, bulleted and numbered lists, links and Clear formatting. It sends the formatted version as `html` beside the plain `body`. The Gmail adapter cleans it on the server (`cleanComposedHtml`): only those tags, quotes and line breaks stay, a link keeps only an `http`, `https` or `mailto` address, and pasted styles, scripts, pictures and forms go. The text part is written from the cleaned version.
 - **Signature and threading.** The API adds the chosen address's Gmail signature and the conversation's full `References` chain.
 - **Quote.** When the operator keeps the quote, the API builds it from the answered message as Gmail holds it, never from text sent by the browser.
 - **Forwards.** A forward can carry the original attachments, which the API copies from Gmail on the server.

@@ -29,7 +29,10 @@ export interface Draft {
 	/** Hidden copies (C1). Reply and Reply all always start it empty. */
 	bcc: string;
 	subject: string;
+	/** The words as plain text: what the checks read, and what is sent when there is no formatting. */
 	body: string;
+	/** The same words with the editor's formatting (C1); the API cleans it before sending. */
+	html?: string;
 	threadId?: string;
 	inReplyTo?: string;
 	/** Gmail id of the answered message; the API quotes it below the reply (review E3). */
@@ -46,6 +49,25 @@ export interface Draft {
 	version?: string;
 	/** Files already saved in the Gmail draft; Gmail keeps them, so they are not sent again. */
 	savedFiles?: { name: string; size: number }[];
+}
+
+/** The compose box's formatting buttons (C1): the brief's bold, italic, lists, link and clear. */
+export const EDITOR_TOOLBAR = [['bold', 'italic'], ['bullet_list', 'ordered_list'], ['link'], ['format_clear']];
+
+/** Plain text as editor paragraphs: a blank line starts a paragraph, a single line break stays. */
+export function textAsEditorHtml(text: string): string {
+	const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	return text
+		.split(/\n{2,}/)
+		.map((paragraph) => `<p>${escape(paragraph).replace(/\n/g, '<br>')}</p>`)
+		.join('');
+}
+
+/** The words of the editor's HTML, line by line, for everything that reads plain text. */
+export function editorText(html: string): string {
+	const marked = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|li|blockquote)>/gi, '\n');
+	const doc = new DOMParser().parseFromString(marked, 'text/html');
+	return (doc.body.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /** How long the compose box waits after the last keystroke before it saves to Gmail. */
@@ -71,6 +93,7 @@ export function draftFromGmail(saved: InboxDraft): Draft {
 		bcc: addresses(saved.bcc).join(', '),
 		subject: saved.subject,
 		body: saved.text,
+		...(saved.html ? { html: saved.html } : {}),
 		...(saved.threadId ? { threadId: saved.threadId } : {}),
 		...(saved.inReplyTo ? { inReplyTo: saved.inReplyTo } : {}),
 		...(saved.quoteMessageId ? { quoteMessageId: saved.quoteMessageId } : {}),
@@ -95,6 +118,7 @@ export async function draftWrite(draft: Draft, files: readonly File[], overwrite
 		bcc: request.bcc,
 		subject: request.subject,
 		body: request.body,
+		html: request.html,
 		threadId: request.threadId,
 		inReplyTo: request.inReplyTo,
 		quoteMessageId: request.quoteMessageId,
@@ -378,6 +402,7 @@ export async function sendRequest(draft: Draft, files: readonly File[], sendAnyw
 		bcc: addresses(draft.bcc),
 		subject: draft.subject.trim(),
 		body: draft.body,
+		...(draft.html ? { html: draft.html } : {}),
 		// The API repeats the "someone replied meanwhile" check when it sends (C5).
 		...(draft.threadId && draft.mode !== 'forward' && draft.knownIds.length
 			? { knownMessageIds: draft.knownIds }

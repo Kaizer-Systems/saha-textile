@@ -230,3 +230,50 @@ describe('drafts inside a conversation', () => {
 		expect(toInboxThread(onlyDraft as never).messages).toHaveLength(1);
 	});
 });
+
+describe('formatted writing (C1)', () => {
+	const bodiesOf = (raw: string) =>
+		[...raw.matchAll(/Content-Transfer-Encoding: base64\r\n(?:[^\r\n]+\r\n)*\r\n([A-Za-z0-9+/=\r\n]+)/g)].map((m) =>
+			Buffer.from((m[1] ?? '').replace(/\r\n/g, ''), 'base64').toString('utf8'),
+		);
+
+	it('keeps the editor formatting and drops everything else, on the server', async () => {
+		const { cleanComposedHtml } = await import('../src/index.js');
+		const clean = cleanComposedHtml(
+			'<p onclick="steal()" style="color:red"><strong>Hi</strong> <em>there</em> <u>u</u> <s>s</s></p>' +
+				'<script>alert(1)</script><img src="https://x.test/p.png"><iframe src="https://x.test"></iframe>' +
+				'<ul><li>one</li></ul><ol><li>two</li></ol><blockquote>q</blockquote>' +
+				'<a href="javascript:alert(1)">bad</a> <a href="https://shop.test/o/1" target="_blank">order</a>' +
+				' <a href="mailto:care@shop.test">mail</a><h1>big</h1><form><input></form>',
+		);
+		expect(clean).toContain('<strong>Hi</strong> <em>there</em> <u>u</u> <s>s</s>');
+		expect(clean).toContain('<ul><li>one</li></ul><ol><li>two</li></ol><blockquote>q</blockquote>');
+		expect(clean).toContain('<a href="https://shop.test/o/1">order</a>');
+		expect(clean).toContain('<a href="mailto:care@shop.test">mail</a>');
+		expect(clean).not.toMatch(/onclick|style=|<script|alert\(1\)<\/script>|<img|<iframe|javascript:|<h1|<form|<input|target=/);
+	});
+
+	it('writes the text part from the cleaned formatting, with the signature after it', () => {
+		const raw = buildOutgoing({
+			...mail,
+			to: ['a@x.test'],
+			bcc: ['hidden@x.test'],
+			text: 'ignored when formatting is given',
+			html: '<p><strong>Your order</strong> ships today.</p><script>x()</script>',
+			signatureHtml: '<b>Team</b>',
+		});
+		const [text, html] = bodiesOf(raw);
+		expect(text?.trim()).toBe('Your order ships today.');
+		expect(html).toContain('<div dir="auto"><p><strong>Your order</strong> ships today.</p></div>');
+		expect(html).toContain('<div class="gmail_signature"><b>Team</b></div>');
+		expect(html).not.toContain('<script');
+		// Bcc stays in the envelope Gmail reads; it is never part of the visible text.
+		expect(raw).toContain('Bcc: hidden@x.test');
+		expect(text).not.toContain('hidden@x.test');
+	});
+
+	it('falls back to the plain text when the formatting cleans away to nothing', () => {
+		const raw = buildOutgoing({ ...mail, to: ['a@x.test'], text: 'Plain words', html: '<script>x()</script>' });
+		expect(bodiesOf(raw)[0]?.trim()).toBe('Plain words');
+	});
+});

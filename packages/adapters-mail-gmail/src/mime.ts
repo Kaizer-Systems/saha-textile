@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { ImportedMail, OutgoingMail } from '@saha-textile/core-domain';
 
+import { cleanComposedHtml, htmlToText } from './clean-html.js';
+
 /**
  * RFC 822 messages for Gmail's `send` and `import`. Every header value has its line breaks
  * removed first, so a subject or name typed into a form can never add a header of its own.
@@ -47,10 +49,12 @@ const escapeHtml = (text: string): string =>
 	text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** The admin's plain text as HTML, with the address's Gmail signature underneath. */
+const signatureBlock = (signatureHtml: string): string =>
+	signatureHtml ? `<br><br><div class="gmail_signature">${signatureHtml}</div>` : '';
+
 export const textToHtml = (text: string, signatureHtml: string): string => {
 	const body = escapeHtml(text).replace(/\r?\n/g, '<br>');
-	const signature = signatureHtml ? `<br><br><div class="gmail_signature">${signatureHtml}</div>` : '';
-	return `<div dir="auto">${body}</div>${signature}`;
+	return `<div dir="auto">${body}</div>${signatureBlock(signatureHtml)}`;
 };
 
 const angle = (messageId: string): string => {
@@ -122,10 +126,15 @@ export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): strin
 	const mixed = `mixed_${randomUUID()}`;
 	const alternative = `alt_${randomUUID()}`;
 	const quote = mail.quote;
-	const text = quote ? `${mail.text}\n\n${quoteText(quote.attribution, quote.text)}` : mail.text;
-	const html = quote
-		? `${textToHtml(mail.text, mail.signatureHtml)}<br>${quoteHtml(quote.attribution, quote.html)}`
+	// Formatted writing (C1) is cleaned here, on the server, whatever the browser sent; its text
+	// part is read from the cleaned version, so both parts say the same thing.
+	const composed = mail.html ? cleanComposedHtml(mail.html) : '';
+	const ownText = composed ? htmlToText(composed).trim() || mail.text : mail.text;
+	const ownHtml = composed
+		? `<div dir="auto">${composed}</div>${signatureBlock(mail.signatureHtml)}`
 		: textToHtml(mail.text, mail.signatureHtml);
+	const text = quote ? `${ownText}\n\n${quoteText(quote.attribution, quote.text)}` : ownText;
+	const html = quote ? `${ownHtml}<br>${quoteHtml(quote.attribution, quote.html)}` : ownHtml;
 	const headers = [
 		`From: ${mailbox(mail.fromName ?? '', mail.from)}`,
 		...(mail.to.length ? [`To: ${mail.to.map(headerSafe).join(', ')}`] : []),

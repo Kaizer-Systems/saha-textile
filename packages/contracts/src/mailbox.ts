@@ -305,6 +305,11 @@ export const InboxSendRequest = z.object({
 	subject: z.string().trim().min(1).max(300),
 	/** Plain text; the API writes the HTML part and appends the address's signature. */
 	body: z.string().max(100_000),
+	/**
+	 * The same message with its formatting (C1): bold, italic, lists, links. The API cleans it and
+	 * writes the text part from it; without it, `body` is sent as plain text.
+	 */
+	html: z.string().max(300_000).optional(),
 	/** Reply in this conversation; absent for a new message. */
 	threadId: z.string().max(100).optional(),
 	/** The Message-ID being answered, for the In-Reply-To and References headers. */
@@ -452,6 +457,8 @@ export const InboxDraft = z.object({
 	bcc: z.string(),
 	subject: z.string(),
 	text: z.string(),
+	/** The formatted version, cleaned, when the draft has one. */
+	html: z.string().nullable(),
 	attachments: z.array(InboxAttachment),
 	date: IsoDateTime,
 	/** The Message-ID a reply answers. */

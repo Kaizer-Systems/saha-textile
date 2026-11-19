@@ -268,3 +268,18 @@ export function textAsHtml(text: string): string {
 		.replace(/"/g, '&quot;')
 		.replace(/\r?\n/g, '<br>');
 }
+
+/**
+ * What the admin's compose box may send (C1): the editor's own formatting and nothing else. Bold,
+ * italic, underline, strike, lists, quotes and web or email links stay; every other tag, every
+ * attribute but a link's address, and anything pasted in (styles, scripts, pictures, forms) goes.
+ */
+export function cleanComposedHtml(html: string): string {
+	return sanitizeHtml(html, {
+		allowedTags: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'ul', 'ol', 'li', 'a', 'blockquote'],
+		allowedAttributes: { a: ['href'] },
+		allowedSchemes: ['http', 'https', 'mailto'],
+		allowedSchemesAppliedToAttributes: ['href'],
+		disallowedTagsMode: 'discard',
+	});
+}

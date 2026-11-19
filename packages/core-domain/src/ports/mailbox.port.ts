@@ -39,6 +39,8 @@ export interface OutgoingMail {
 	bcc?: readonly string[];
 	subject: string;
 	text: string;
+	/** The writer's formatting (C1), as the compose box sent it; the adapter cleans it before use. */
+	html?: string;
 	signatureHtml: string;
 	threadId?: string;
 	inReplyTo?: string;

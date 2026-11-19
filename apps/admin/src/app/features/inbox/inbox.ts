@@ -27,7 +27,8 @@ import {
 } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { Select2, type Select2Data, type Select2UpdateEvent } from 'ng-select2-component';
-import { firstValueFrom } from 'rxjs';
+import { Editor, NgxEditorModule, type Toolbar, toHTML } from 'ngx-editor';
+import { type Subscription, firstValueFrom } from 'rxjs';
 
 import { INBOX_KEY, INBOX_REFRESH_MS, MailboxGateway, injectInboxSummaryQuery } from '@core/mailboxes/mailbox.gateway';
 import { AuthStore } from '@core/state/auth.store';
@@ -38,6 +39,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 import {
 	AUTOSAVE_MS,
+	EDITOR_TOOLBAR,
 	type Draft,
 	type DraftMode,
 	addressProblems,
@@ -47,6 +49,7 @@ import {
 	draftKey,
 	draftProblem,
 	draftWrite,
+	editorText,
 	firstWords,
 	forgetDraft,
 	frameDocument,
@@ -63,6 +66,7 @@ import {
 	newDraft,
 	primaryAddress,
 	sendRequest,
+	textAsEditorHtml,
 } from './inbox-drafts';
 import { CATEGORY_KEYS, LABEL_ID, bulkReport, labelTree, pageSelection } from './inbox-labels';
 // The theme's toast with one action link, as the file manager's Undo uses it (DEC-UI-REUSE).
@@ -178,6 +182,7 @@ const statusOf = (error: unknown): number => (error instanceof HttpErrorResponse
 		NgbDropdownMenu,
 		NgbDropdownItem,
 		NgbDropdownButtonItem,
+		NgxEditorModule,
 	],
 	host: { '(window:beforeunload)': 'warnBeforeLeaving($event)' },
 })
@@ -553,6 +558,10 @@ export class Inbox {
 	readonly toProblems = computed(() => addressProblems(this.draft()?.to ?? ''));
 	readonly ccProblems = computed(() => addressProblems(this.draft()?.cc ?? ''));
 	readonly bccProblems = computed(() => addressProblems(this.draft()?.bcc ?? ''));
+	/** The formatting editor for the open draft (C1), the blog form's ngx-editor. */
+	readonly editor = signal<Editor | null>(null);
+	readonly editorToolbar = EDITOR_TOOLBAR as Toolbar;
+	private editorWatch: Subscription | null = null;
 	/** Bcc opens on request; a kept draft that has one shows it. */
 	readonly bccOpen = signal(false);
 	/** Phones show one column at a time: the list, or the open conversation or draft. */
@@ -578,6 +587,7 @@ export class Inbox {
 			this.destroyed = true;
 			// Leaving the Inbox mid-sentence still saves what was typed.
 			this.flushSave();
+			this.stopEditor();
 		});
 
 		// `/inbox` alone opens the mailbox and folder used last; a mailbox the person no longer has
@@ -1257,6 +1267,7 @@ export class Inbox {
 			const draft = { ...draftFromGmail(saved), knownIds: this.draft()?.knownIds ?? [] };
 			this.files.set([]);
 			this.draft.set(draft);
+			this.startEditor(draft);
 			const key = this.draftId();
 			if (key) keepDraft(key, draft);
 			this.saveState.set('saved');
@@ -1301,6 +1312,7 @@ export class Inbox {
 		const id = this.draftId();
 		if (id) forgetDraft(id);
 		this.files.set([]);
+		this.stopEditor();
 		this.draft.set(null);
 		this.draftId.set(null);
 		this.saveState.set('idle');
@@ -1353,6 +1365,7 @@ export class Inbox {
 			const id = this.draftId();
 			if (id) forgetDraft(id);
 			this.files.set([]);
+			this.stopEditor();
 			this.draft.set(null);
 			this.draftId.set(null);
 			this.closeDraft();
@@ -1425,6 +1438,11 @@ export class Inbox {
 
 	/** Puts a saved reply's text where the cursor is in the message, ready to change before sending. */
 	insertSavedReply(reply: SavedReply) {
+		const editor = this.editor();
+		if (editor) {
+			editor.commands.focus().insertText(reply.body).exec();
+			return;
+		}
 		const body = this.draft()?.body ?? '';
 		const box = document.getElementById('inbox_body') as HTMLTextAreaElement | null;
 		const at = box && document.activeElement === box ? box.selectionStart : body.length;
@@ -1641,6 +1659,7 @@ export class Inbox {
 	) {
 		if (!mode || !mailbox || !this.canSend() || (mode !== 'new' && !thread)) {
 			if (!mode) {
+				this.stopEditor();
 				this.draft.set(null);
 				this.draftId.set(null);
 				this.collision.set(null);
@@ -1702,6 +1721,33 @@ export class Inbox {
 		this.draftId.set(id);
 		this.draft.set(draft);
 		keepDraft(id, draft);
+		this.startEditor(draft);
+	}
+
+	/**
+	 * A fresh editor holding the draft's words. Its first answer is the content just set, not
+	 * typing, so opening a draft never saves it; every change after that goes through the draft.
+	 */
+	private startEditor(draft: Draft) {
+		this.stopEditor();
+		if (typeof document === 'undefined') return;
+		const editor = new Editor();
+		editor.setContent(draft.html ?? textAsEditorHtml(draft.body));
+		let ready = false;
+		this.editorWatch = editor.valueChanges.subscribe((doc) => {
+			if (!ready) return;
+			const html = toHTML(doc);
+			if (html !== this.draft()?.html) this.updateDraft({ html, body: editorText(html) });
+		});
+		ready = true;
+		this.editor.set(editor);
+	}
+
+	private stopEditor() {
+		this.editorWatch?.unsubscribe();
+		this.editorWatch = null;
+		this.editor()?.destroy();
+		this.editor.set(null);
 	}
 
 	/** Marks exactly the messages shown; on failure they are forgotten so the next view tries again. */

@@ -221,6 +221,7 @@ export function toInboxDraft(draftId: string, message: GmailMessage): InboxDraft
 		bcc: header(message.payload, 'Bcc'),
 		subject: header(message.payload, 'Subject'),
 		text: read.text,
+		html: read.html || null,
 		attachments: read.attachments,
 		date: read.date,
 		inReplyTo: header(message.payload, 'In-Reply-To') || null,

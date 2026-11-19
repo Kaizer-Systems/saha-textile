@@ -1359,14 +1359,31 @@
 			[label]="'message'"
 			[for]="'inbox_body'"
 		>
-			<textarea
-				class="form-control keep-case"
+			<!-- Formatting with the blog form's editor and wrapper (C1); the API cleans what it sends. -->
+			<div
+				class="custom-editor"
 				id="inbox_body"
-				rows="8"
-				[placeholder]="'inbox_write_reply' | transloco"
-				[value]="d.body"
-				(input)="editDraft('body', $any($event.target).value)"
-			></textarea>
+			>
+				@if (editor(); as ed) {
+				<ngx-editor-menu
+					[editor]="ed"
+					[toolbar]="editorToolbar"
+				/>
+				<ngx-editor
+					[editor]="ed"
+					[placeholder]="'inbox_write_reply' | transloco"
+				/>
+				} @else {
+				<textarea
+					class="form-control keep-case"
+					rows="8"
+					[attr.aria-label]="'message' | transloco"
+					[placeholder]="'inbox_write_reply' | transloco"
+					[value]="d.body"
+					(input)="editDraft('body', $any($event.target).value)"
+				></textarea>
+				}
+			</div>
 			<!-- The signature the From address adds, as it will look (review E11). -->
 			@if (signature(); as sig) {
 			<p class="help-text mt-2 mb-1">{{ 'inbox_signature_of' | transloco: { address: d.from } }}</p>

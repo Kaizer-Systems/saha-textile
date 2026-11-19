@@ -269,6 +269,7 @@ export class InboxService {
 			bcc: request.bcc,
 			subject: request.subject,
 			text: request.body,
+			html: request.html,
 			signatureHtml: purpose === 'send' ? from.signature : '',
 			threadId: request.threadId,
 			inReplyTo: request.inReplyTo,

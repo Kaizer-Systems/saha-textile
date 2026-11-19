@@ -12,6 +12,7 @@ import {
 	draftKey,
 	draftProblem,
 	draftWrite,
+	editorText,
 	firstWords,
 	forgetDraft,
 	frameDocument,
@@ -29,6 +30,7 @@ import {
 	primaryAddress,
 	readAsBase64,
 	sendRequest,
+	textAsEditorHtml,
 	withPictures,
 } from './inbox-drafts';
 
@@ -486,5 +488,33 @@ describe('Gmail drafts in the compose box (C2)', () => {
 		const key = gmailDraftKey('mbx', 'd1');
 		keepDraft(key, draftFromGmail(saved as never));
 		expect(keptDraft(key, null)?.gmailDraftId).toBe('d1');
+	});
+});
+
+describe('formatting helpers (C1)', () => {
+	it('turns plain text into editor paragraphs, escaped', () => {
+		expect(textAsEditorHtml('Hi <you> & me\nline two\n\nNext')).toBe(
+			'<p>Hi &lt;you&gt; &amp; me<br>line two</p><p>Next</p>',
+		);
+	});
+
+	it('reads the words back line by line', () => {
+		expect(editorText('<p><strong>Hi</strong> &amp; bye</p><ul><li>one</li><li>two</li></ul><p>a<br>b</p>')).toBe(
+			'Hi & bye\none\ntwo\na\nb',
+		);
+		expect(editorText('<p></p><p></p><p></p><p>x</p>')).toBe('x');
+	});
+
+	it('sends and saves the formatting with the words', async () => {
+		const draft = {
+			...newDraft('care@shop.test'),
+			to: 'a@x.test',
+			subject: 'S',
+			body: 'Hi',
+			html: '<p><em>Hi</em></p>',
+		};
+		expect((await sendRequest(draft, [])).html).toBe('<p><em>Hi</em></p>');
+		expect((await draftWrite(draft, [])).html).toBe('<p><em>Hi</em></p>');
+		expect(await sendRequest({ ...draft, html: undefined }, [])).not.toHaveProperty('html');
 	});
 });

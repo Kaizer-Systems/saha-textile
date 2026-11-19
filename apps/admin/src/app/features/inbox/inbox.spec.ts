@@ -7,6 +7,7 @@ import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
+import { toHTML } from 'ngx-editor';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -1074,9 +1075,20 @@ describe('Inbox saved replies (C3)', () => {
 		expect(query.options().enabled).toBe(false);
 	});
 
-	it('inserts a saved reply where the cursor is, ready to change', () => {
+	it('inserts a saved reply at the cursor in the formatting editor, ready to change', () => {
+		const { page } = composing();
+		const editor = page.editor();
+		expect(editor).not.toBeNull();
+		editor?.commands.insertText('Dear Ananya, ').exec();
+		page.insertSavedReply(reply('r1', { body: 'It ships today.' }) as never);
+		expect(page.draft()?.body).toBe('Dear Ananya, It ships today.');
+		expect(page.draft()?.html).toBe('<p>Dear Ananya, It ships today.</p>');
+	});
+
+	it('inserts at the cursor in the plain box when no editor runs', () => {
 		vi.useFakeTimers();
 		const { page } = composing();
+		(page as unknown as { stopEditor: () => void }).stopEditor();
 		const box = document.createElement('textarea');
 		box.id = 'inbox_body';
 		document.body.append(box);
@@ -1086,7 +1098,6 @@ describe('Inbox saved replies (C3)', () => {
 		box.setSelectionRange(13, 13);
 		page.insertSavedReply(reply('r1', { body: 'It ships today.' }) as never);
 		expect(page.draft()?.body).toBe('Dear Ananya, It ships today. Thanks');
-		// The real template writes the new text into the box before the cursor moves.
 		box.value = page.draft()?.body ?? '';
 		vi.runAllTimers();
 		expect(box.selectionStart).toBe(28);
@@ -1149,5 +1160,46 @@ describe('Inbox saved replies (C3)', () => {
 		gateway.deleteSavedReply.mockReturnValueOnce(throwError(() => notFound));
 		await page.deleteReply(reply('r1') as never);
 		expect(page.replyToDelete()).toBeNull();
+	});
+});
+
+describe('Inbox formatting (C1)', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('opens a draft in the editor without saving it, then saves and sends what is typed with its formatting', async () => {
+		vi.useFakeTimers();
+		const tools = setup({ mailbox: 'care', folder: 'inbox', thread: 't1' }, { draft: 'reply' });
+		tools.summary([box('care')]);
+		tools.threadQuery.result.set({ data: conversation('m1') });
+		tools.flush();
+		const editor = tools.page.editor();
+		expect(editor).not.toBeNull();
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(tools.gateway.saveDraft).not.toHaveBeenCalled();
+		editor?.commands.toggleBold().insertText('Thanks').exec();
+		expect(tools.page.draft()).toMatchObject({ body: 'Thanks', html: '<p><strong>Thanks</strong></p>' });
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(tools.gateway.saveDraft).toHaveBeenCalledWith(
+			'mbx-care',
+			null,
+			expect.objectContaining({ html: '<p><strong>Thanks</strong></p>', body: 'Thanks' }),
+		);
+		vi.useRealTimers();
+		await tools.page.send();
+		expect(tools.gateway.send).toHaveBeenCalledWith(
+			'mbx-care',
+			expect.objectContaining({ html: '<p><strong>Thanks</strong></p>', body: 'Thanks' }),
+		);
+		expect(tools.page.editor()).toBeNull();
+	});
+
+	it('reopens a forward with its text as paragraphs', () => {
+		const tools = setup({ mailbox: 'care', folder: 'inbox', thread: 't1' }, { draft: 'forward' });
+		tools.summary([box('care')]);
+		tools.threadQuery.result.set({ data: conversation('m1') });
+		tools.flush();
+		const html = toHTML(tools.page.editor()?.view.state.doc.toJSON() ?? {});
+		expect(html).toContain('---------- Forwarded message ----------');
+		expect(html.startsWith('<p></p>')).toBe(true);
 	});
 });

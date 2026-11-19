@@ -1,13 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-	BadRequestException,
-	ConflictException,
-	ForbiddenException,
-	Inject,
-	Injectable,
-	Optional,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Optional } from '@nestjs/common';
 import {
 	type AdminCurrencyRow,
 	type AdminFxOverview,
@@ -41,7 +34,8 @@ import {
 	ROLE_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 } from '../infra/tokens';
-import { codedRefusal } from '../common/coded-refusal';
+import { adminNames } from '../common/admin-names';
+import { codedRefusal, staleSaveRefusal } from '../common/coded-refusal';
 import { fetchRatesNow, readFxSettings } from './fx-fetch';
 
 export const FX_RATE_PORT = Symbol('FxRatePort');
@@ -135,10 +129,15 @@ export class FxAdminService {
 
 	async saveSettings(input: FxSettingsWrite, actor: string | null): Promise<AdminFxOverview> {
 		const current = await readFxSettings(this.settings);
-		if (input.revision !== current.revision)
-			throw new ConflictException(
-				codedRefusal('stale_revision', 'Someone else changed these settings first', 'revision'),
+		if (input.revision !== current.revision) {
+			const by = current.updatedBy;
+			const byName = by ? ((await this.names([by])).get(by) ?? null) : null;
+			throw staleSaveRefusal(
+				'Someone else changed these settings first',
+				{ by, byName, at: current.updatedAt ?? null },
+				actor,
 			);
+		}
 		if (input.paypalMarkupPercent !== current.paypalMarkupPercent && !(await this.isSuperAdmin(actor)))
 			throw new ForbiddenException(
 				codedRefusal('super_admin_only', 'Only a super admin can change the markup', 'paypalMarkupPercent'),
@@ -205,17 +204,7 @@ export class FxAdminService {
 	}
 
 	private async names(ids: ReadonlyArray<string | null | undefined>): Promise<Map<string, string>> {
-		const out = new Map<string, string>();
-		if (!this.admins) return out;
-		const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))];
-		await Promise.all(
-			wanted.map(async (id) => {
-				const admin = await this.admins?.findById(id).catch(() => null);
-				const name = admin?.displayName?.trim() || admin?.username || admin?.email?.split('@')[0];
-				if (name) out.set(id, name);
-			}),
-		);
-		return out;
+		return adminNames(this.admins, ids);
 	}
 
 	private async record(

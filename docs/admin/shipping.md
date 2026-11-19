@@ -4,7 +4,7 @@ wide: true
 description: Shipping Overview, Rule sets and the rule builder, Where rules apply, Couriers, and Orders sent abroad — how staff set up how shipping is charged.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-19'
+last_verified: '2026-11-20'
 source_of_truth:
     - apps/admin/src/app/features/shipping
     - apps/admin/src/app/core/shipping
@@ -74,4 +74,4 @@ The product form's **Shipping & tax** tab shows each charge with a "use the cate
 
 ## Refusals
 
-A refused save names its reason in the page's own words. The reason travels as `issues[0].code` (the envelope's `code` is only the transport outcome), built with `codedRefusal` in `apps/api/src/common/coded-refusal.ts`: `stale_revision` (409, someone else saved first; nothing is overwritten), `rule_set_in_use` (409), `premade_locked` (403), `unknown_category` (404), and the 400 codes such as `unknown_product`, `unknown_variant` and `courier_not_connected`. The admin reads them with `refusalCodes` and `shippingProblemKey` (`ship_err_<code>`); these saves are marked `QUIET_ERRORS`, so the global error toast doesn't add a second notice.
+A refused save names its reason in the page's own words. The reason travels as `issues[0].code` (the envelope's `code` is only the transport outcome), built with `codedRefusal` in `apps/api/src/common/coded-refusal.ts`: `stale_revision` (409, someone else saved first; nothing is overwritten. `staleSaveRefusal` adds `params.changedBy` (the admin's name), `params.changedAt` and `params.changedByYou`, and the toast says "Manager saved this first, at 01:02" or "You saved this in another tab at 01:02"; the filter passes only short strings and numbers in `params`), `rule_set_in_use` (409), `premade_locked` (403), `unknown_category` (404), and the 400 codes such as `unknown_product`, `unknown_variant` and `courier_not_connected`. The admin reads them with `refusalCodes` and `shippingProblemKey` (`ship_err_<code>`); these saves are marked `QUIET_ERRORS`, so the global error toast doesn't add a second notice. A refused CSRF token (another tab signed in again) is recovered once by the auth interceptor and is never toasted; only the replay's own failure is (`CSRF_REPLAY`).

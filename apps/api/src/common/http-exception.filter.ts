@@ -34,20 +34,40 @@ const SAFE_MESSAGE: Record<ApiErrorCode, string> = {
 
 interface ValidationPayload {
 	message?: unknown;
-	issues: Array<{ path?: unknown; message?: unknown; code?: unknown }>;
+	issues: Array<{ path?: unknown; message?: unknown; code?: unknown; params?: unknown }>;
 }
 
+/**
+ * A coded refusal's own values (`codedRefusal`'s `params`): only short strings and finite numbers
+ * pass, at most eight, so nothing but what the refusing code chose can ride along.
+ */
+const toParams = (params: unknown): Record<string, string | number> | undefined => {
+	if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
+	const kept = Object.entries(params as Record<string, unknown>)
+		.filter(
+			(entry): entry is [string, string | number] =>
+				(typeof entry[1] === 'string' && entry[1].length <= 120) ||
+				(typeof entry[1] === 'number' && Number.isFinite(entry[1])),
+		)
+		.slice(0, 8);
+	return kept.length > 0 ? Object.fromEntries(kept) : undefined;
+};
+
 const toFieldIssues = (payload: ValidationPayload): FieldIssue[] =>
-	payload.issues.map((issue) => ({
-		path:
-			typeof issue.path === 'string'
-				? issue.path.split('.').filter(Boolean)
-				: Array.isArray(issue.path)
-					? (issue.path as Array<string | number>)
-					: [],
-		message: typeof issue.message === 'string' ? issue.message : 'Invalid value',
-		...(typeof issue.code === 'string' ? { code: issue.code } : {}),
-	}));
+	payload.issues.map((issue) => {
+		const params = toParams(issue.params);
+		return {
+			path:
+				typeof issue.path === 'string'
+					? issue.path.split('.').filter(Boolean)
+					: Array.isArray(issue.path)
+						? (issue.path as Array<string | number>)
+						: [],
+			message: typeof issue.message === 'string' ? issue.message : 'Invalid value',
+			...(typeof issue.code === 'string' ? { code: issue.code } : {}),
+			...(params ? { params } : {}),
+		};
+	});
 
 /**
  * The single place an error becomes an HTTP response.

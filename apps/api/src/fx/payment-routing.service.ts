@@ -1,17 +1,23 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, ConflictException, Inject, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Optional } from '@nestjs/common';
 import {
 	type AdminPaymentRouting,
 	type AuditLog,
 	PaymentRoutingSettings,
 	type PaymentRoutingWrite,
 } from '@saha-textile/contracts';
-import { type AuditLogRepository, type GatewayRouting, type SiteSettingsRepository } from '@saha-textile/core-domain';
+import {
+	type AdminUserRepository,
+	type AuditLogRepository,
+	type GatewayRouting,
+	type SiteSettingsRepository,
+} from '@saha-textile/core-domain';
 
-import { codedRefusal } from '../common/coded-refusal';
+import { adminNames } from '../common/admin-names';
+import { staleSaveRefusal } from '../common/coded-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { AUDIT_LOG_REPOSITORY, SITE_SETTINGS_REPOSITORY } from '../infra/tokens';
+import { ADMIN_USER_REPOSITORY, AUDIT_LOG_REPOSITORY, SITE_SETTINGS_REPOSITORY } from '../infra/tokens';
 
 /**
  * The gateways each adapter is built for. CCAvenue's adapter is built (bound, not yet tried on
@@ -40,6 +46,9 @@ export class PaymentRoutingService {
 		@Inject(SITE_SETTINGS_REPOSITORY) private readonly settings: SiteSettingsRepository,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional()
+		@Inject(ADMIN_USER_REPOSITORY)
+		private readonly admins: Pick<AdminUserRepository, 'findById'> | null = null,
 	) {}
 
 	async current(): Promise<PaymentRoutingSettings> {
@@ -60,10 +69,15 @@ export class PaymentRoutingService {
 
 	async save(input: PaymentRoutingWrite, actor: string | null): Promise<AdminPaymentRouting> {
 		const current = await this.current();
-		if (input.revision !== current.revision)
-			throw new ConflictException(
-				codedRefusal('stale_revision', 'Someone else changed these settings first', 'revision'),
+		if (input.revision !== current.revision) {
+			const by = current.updatedBy;
+			const byName = by ? ((await adminNames(this.admins, [by])).get(by) ?? null) : null;
+			throw staleSaveRefusal(
+				'Someone else changed these settings first',
+				{ by, byName, at: current.updatedAt ?? null },
+				actor,
 			);
+		}
 		if (input.activeInrGateway !== null && !BUILT[input.activeInrGateway])
 			throw new BadRequestException({
 				issues: [

@@ -251,6 +251,11 @@ export const FieldIssue = z.object({
 	path: z.array(z.union([z.string(), z.number()])).default([]),
 	message: z.string().min(1),
 	code: z.string().optional(),
+	/**
+	 * Plain values a coded refusal hands the screen for its own words, set only by server code that
+	 * chose them (a stale save's `changedBy` name and `changedAt` time). Never a raw error payload.
+	 */
+	params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
 export type FieldIssue = z.infer<typeof FieldIssue>;
 

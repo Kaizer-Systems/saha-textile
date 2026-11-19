@@ -7,9 +7,9 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { FxGateway, LAUNCH_SYMBOLS, PAYMENT_ROUTING_KEY, injectPaymentRoutingQuery } from '@core/fx/fx.gateway';
+import { staleSave, staleSaveText } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
-import { fxProblemKey } from '@features/currency/currency';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 import type { PaymentGatewayId, PaymentRoutingWrite } from '@saha-textile/contracts';
@@ -106,9 +106,11 @@ export class PaymentRouting {
 			this.queryClient.setQueryData([...PAYMENT_ROUTING_KEY], saved);
 			this.notifier.showSuccess(this.transloco.translate('pay_saved'));
 		} catch (error) {
-			const key = fxProblemKey(error);
+			const stale = staleSave(error);
 			this.notifier.showError(
-				this.transloco.translate(key === 'fx_err_stale_revision' ? key : 'pay_save_failed'),
+				stale
+					? staleSaveText(stale, 'fx_err', (key, params) => this.transloco.translate(key, params))
+					: this.transloco.translate('pay_save_failed'),
 			);
 		} finally {
 			this.saving.set(false);

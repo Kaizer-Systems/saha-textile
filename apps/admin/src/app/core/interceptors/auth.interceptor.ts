@@ -1,4 +1,5 @@
 import {
+	HttpContext,
 	HttpErrorResponse,
 	HttpEvent,
 	HttpEventType,
@@ -26,6 +27,8 @@ import { CsrfTokens } from '@core/auth/csrf-tokens';
 import { SESSION_REFRESH_LOCK } from '@core/auth/session-refresh-lock';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
+
+import { CSRF_REPLAY } from './global-error-handler.interceptor';
 
 /**
  * Session transport for admin API calls.
@@ -97,6 +100,13 @@ import { NotificationService } from '@data-access/services/notification.service'
  * missing or mismatched — which is precisely the recoverable case. A missing session answers
  * 401 and must not be retried.
  */
+/** A copy of the request's context marked as the CSRF replay; the first attempt's context is left as it was. */
+function replayContext(context: HttpContext): HttpContext {
+	const copy = new HttpContext();
+	for (const token of context.keys()) copy.set(token, context.get(token));
+	return copy.set(CSRF_REPLAY, true);
+}
+
 function isCsrfRefusal(error: unknown): boolean {
 	return error instanceof HttpErrorResponse && isForbidden({ status: error.status });
 }
@@ -181,7 +191,8 @@ export class AuthInterceptor implements HttpInterceptor {
 	): Observable<HttpEvent<T>> {
 		return from(this.csrfTokens.acquire(() => firstValueFrom(this.gateway.ensureCsrfToken()))).pipe(
 			catchError(() => throwError(() => original)),
-			switchMap(() => this.send(req, next, false)),
+			// Marked so the error toast stays quiet for the first refusal and speaks for this one.
+			switchMap(() => this.send(req.clone({ context: replayContext(req.context) }), next, false)),
 		);
 	}
 

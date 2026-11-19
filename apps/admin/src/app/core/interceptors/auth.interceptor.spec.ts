@@ -18,6 +18,7 @@ import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { AuthInterceptor } from './auth.interceptor';
+import { CSRF_REPLAY } from './global-error-handler.interceptor';
 
 /**
  * Behaviour of the admin session transport: the CSRF contract (pass 3b) and 401 recovery
@@ -302,6 +303,9 @@ describe('admin AuthInterceptor', () => {
 			const [first, replay] = handler.forwarded();
 			expect(first?.headers.get('x-csrf-token')).toBe('stale-token');
 			expect(replay?.headers.get('x-csrf-token')).toBe('acquired-token');
+			// The error toast stays quiet for the first refusal and speaks only for the replay.
+			expect(first?.context.get(CSRF_REPLAY)).toBe(false);
+			expect(replay?.context.get(CSRF_REPLAY)).toBe(true);
 			expect(csrfCalls).toBe(1);
 			expect(refreshCalls).toBe(0);
 		});

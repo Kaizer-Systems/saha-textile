@@ -172,13 +172,80 @@ export function injectShippingExceptionsQuery() {
  * `issues[].code` (API `common/coded-refusal.ts`). So the issues are read first, then the envelope.
  */
 export function refusalCodes(error: unknown): string[] {
-	// The API's error body, sometimes wrapped once more under `error` by the exception filter.
-	const outer = (error as { error?: unknown } | null)?.error;
-	const inner = outer && typeof outer === 'object' ? (outer as { error?: unknown }).error : undefined;
-	const body = (inner && typeof inner === 'object' ? inner : outer) as
-		{ code?: unknown; issues?: Array<{ code?: unknown }> } | undefined;
+	const body = refusalBody(error);
 	const issues = Array.isArray(body?.issues) ? body.issues.map((issue) => issue?.code) : [];
 	return [...issues, body?.code].filter((code): code is string => typeof code === 'string');
+}
+
+interface RefusalIssue {
+	code?: unknown;
+	params?: Record<string, unknown>;
+}
+
+/** The API's error body, sometimes wrapped once more under `error` by the exception filter. */
+function refusalBody(error: unknown): { code?: unknown; issues?: RefusalIssue[] } | undefined {
+	const outer = (error as { error?: unknown } | null)?.error;
+	const inner = outer && typeof outer === 'object' ? (outer as { error?: unknown }).error : undefined;
+	return (inner && typeof inner === 'object' ? inner : outer) as
+		{ code?: unknown; issues?: RefusalIssue[] } | undefined;
+}
+
+/** Who saved first and when, as a `stale_revision` refusal says (API `staleSaveRefusal`). */
+export interface StaleSave {
+	changedAt: string | null;
+	changedBy: string | null;
+	/** The same admin, from another tab or window. */
+	byYou: boolean;
+}
+
+/** The stale-save details in a failed call, or null when it was refused for another reason. */
+export function staleSave(error: unknown): StaleSave | null {
+	const body = refusalBody(error);
+	const issue = Array.isArray(body?.issues)
+		? body.issues.find((candidate) => candidate?.code === 'stale_revision')
+		: undefined;
+	if (!issue) return null;
+	const params = issue.params ?? {};
+	return {
+		changedAt: typeof params['changedAt'] === 'string' ? params['changedAt'] : null,
+		changedBy: typeof params['changedBy'] === 'string' ? params['changedBy'] : null,
+		byYou: params['changedByYou'] === 1,
+	};
+}
+
+/** "00:58" for today, "19 Nov, 18:00" for another day: India time, English digits in both languages. */
+export function savedAtWords(iso: string, now = new Date()): string {
+	const at = new Date(iso);
+	const zone = { timeZone: 'Asia/Kolkata' } as const;
+	const sameDay =
+		at.toLocaleDateString('en-IN', { ...zone, dateStyle: 'short' }) ===
+		now.toLocaleDateString('en-IN', { ...zone, dateStyle: 'short' });
+	const time = at.toLocaleTimeString('en-IN', { ...zone, hour: '2-digit', minute: '2-digit', hour12: false });
+	if (sameDay) return time;
+	return `${at.toLocaleDateString('en-IN', { ...zone, day: 'numeric', month: 'short' })}, ${time}`;
+}
+
+type Translate = (key: string, params?: Record<string, string>) => string;
+
+/**
+ * A save refused over someone else's newer work, in words: who saved first and when (shipping rules
+ * brief, edge cases), "You … in another tab" for the same admin, and the plain line when the server
+ * did not say. `prefix` picks the page's wording: `ship_err` (shipping pages) or `fx_err` (Currencies,
+ * Payment method).
+ */
+export function staleSaveText(stale: StaleSave, prefix: 'ship_err' | 'fx_err', translate: Translate): string {
+	if (!stale.changedAt) return translate(`${prefix}_stale_revision`);
+	const when = savedAtWords(stale.changedAt);
+	if (stale.byYou) return translate(`${prefix}_stale_revision_you`, { when });
+	const name = stale.changedBy?.trim().split(/\s+/)[0] || translate('ship_someone_else');
+	return translate(`${prefix}_stale_revision_by`, { name, when });
+}
+
+/** The words for a failed shipping call: who and when on a stale save, else `shippingProblemKey`. */
+export function shippingProblemText(error: unknown, transloco: { translate: Translate }): string {
+	const stale = staleSave(error);
+	const translate: Translate = (key, params) => transloco.translate(key, params);
+	return stale ? staleSaveText(stale, 'ship_err', translate) : translate(shippingProblemKey(error));
 }
 
 /**

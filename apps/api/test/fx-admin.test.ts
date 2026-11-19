@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import type { Currency, FxSettings, PaymentRoutingSettings } from '@saha-textile/contracts';
-import { routePaymentGateway } from '@saha-textile/core-domain';
+import { type SiteSettingsRepository, routePaymentGateway } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 
 import { FxAdminService } from '../src/fx/fx-admin.service';
@@ -24,6 +24,10 @@ const currency = (code: string, inrPerUnit: number, over: Partial<Currency> = {}
 function memory(initial: Currency[] = []) {
 	const rows = new Map(initial.map((c) => [c.code, c]));
 	const store = new Map<string, unknown>();
+	const settings = {
+		get: vi.fn(async (key: string) => store.get(key) ?? null),
+		set: vi.fn(async (key: string, value: unknown) => void store.set(key, value)),
+	};
 	return {
 		currencies: {
 			listAll: async () => [...rows.values()],
@@ -31,10 +35,8 @@ function memory(initial: Currency[] = []) {
 			findByCode: async (code: string) => rows.get(code) ?? null,
 			upsert: vi.fn(async (c: Currency) => (rows.set(c.code, c), c)),
 		},
-		settings: {
-			get: vi.fn(async (key: string) => store.get(key) ?? null),
-			set: vi.fn(async (key: string, value: unknown) => void store.set(key, value)),
-		},
+		// The port's methods are generic over the setting key; the test store is not.
+		settings: settings as typeof settings & Pick<SiteSettingsRepository, 'get' | 'set'>,
 		rows,
 		store,
 	};
@@ -120,7 +122,16 @@ describe('Admin › Currencies (brief fx01–fx03)', () => {
 			revision: 1,
 			updatedBy: 'admin-1',
 		});
-		await expect(plain.service.saveSettings(write(), 'admin-1')).rejects.toBeInstanceOf(ConflictException);
+		const stale = plain.service.saveSettings(write(), 'admin-2');
+		await expect(stale).rejects.toBeInstanceOf(ConflictException);
+		// Brief edge case: refused with who changed it and when.
+		await stale.catch((error: ConflictException) =>
+			expect(error.getResponse()).toMatchObject({
+				issues: [
+					{ code: 'stale_revision', params: { changedBy: 'Moulik Patra', changedAt: expect.any(String) } },
+				],
+			}),
+		);
 
 		const boss = harness([], { superAdmin: true });
 		const saved = await boss.service.saveSettings(write({ paypalMarkupPercent: 7 }), 'admin-2');
@@ -185,7 +196,16 @@ describe('Settings › Payment method (brief pay01)', () => {
 		const repo = memory();
 		const audit = { append: vi.fn(async () => undefined) };
 		const config = { payments: { ccavenue: { merchantId } } };
-		return { service: new PaymentRoutingService(repo.settings as never, config as never, audit as never), audit };
+		const admins = { findById: async (id: string) => (id === 'admin-1' ? { displayName: 'Moulik Patra' } : null) };
+		return {
+			service: new PaymentRoutingService(
+				repo.settings as never,
+				config as never,
+				audit as never,
+				admins as never,
+			),
+			audit,
+		};
 	};
 
 	it('starts on CCAvenue for rupees and PayPal for the rest, and says only whether keys are set', async () => {
@@ -212,7 +232,13 @@ describe('Settings › Payment method (brief pay01)', () => {
 		const saved = await service.save({ ...write, paypalTakesNewPayments: false }, 'admin-1');
 		expect(saved.settings).toMatchObject({ paypalTakesNewPayments: false, revision: 1 });
 		expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'payments.routing.update' }));
-		await expect(service.save(write, null)).rejects.toBeInstanceOf(ConflictException);
+		const stale = service.save(write, 'admin-1');
+		await expect(stale).rejects.toBeInstanceOf(ConflictException);
+		await stale.catch((error: ConflictException) =>
+			expect(error.getResponse()).toMatchObject({
+				issues: [{ code: 'stale_revision', params: { changedBy: 'Moulik Patra', changedByYou: 1 } }],
+			}),
+		);
 
 		const routing = gatewayRoutingOf(saved.settings as PaymentRoutingSettings);
 		expect(routePaymentGateway('INR', routing)).toEqual({ gateway: 'ccavenue' });

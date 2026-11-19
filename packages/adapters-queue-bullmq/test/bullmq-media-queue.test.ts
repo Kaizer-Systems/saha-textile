@@ -48,6 +48,7 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 					'word-spots': async () => {},
 					'page-builder-nightly': async () => {},
 					'page-warm': async () => {},
+					'fx-fetch-due': async () => {},
 				},
 			});
 		});
@@ -99,6 +100,7 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 				'word-spots': idle,
 				'page-builder-nightly': idle,
 				'page-warm': idle,
+				'fx-fetch-due': idle,
 			},
 		});
 		const ran = () => new Promise<void>((resolve) => (release = resolve));

@@ -7,10 +7,10 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import {
+	injectShippingRuleSetsQuery,
 	SHIPPING_KEY,
 	ShippingGateway,
-	injectShippingRuleSetsQuery,
-	shippingProblemKey,
+	shippingProblemText,
 } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -112,7 +112,7 @@ export class ShippingRuleSets {
 			void this.queryClient.invalidateQueries({ queryKey: SHIPPING_KEY });
 			void this.router.navigate(['/shipping/rule-sets', copy.ruleSet.id]);
 		} catch (error) {
-			this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));
+			this.notifier.showError(shippingProblemText(error, this.transloco));
 		}
 	}
 
@@ -130,7 +130,7 @@ export class ShippingRuleSets {
 				this.notifier.showSuccess(this.transloco.translate('ship_rule_set_deleted'));
 				void this.queryClient.invalidateQueries({ queryKey: SHIPPING_KEY });
 			},
-			error: (error: unknown) => this.notifier.showError(this.transloco.translate(shippingProblemKey(error))),
+			error: (error: unknown) => this.notifier.showError(shippingProblemText(error, this.transloco)),
 		});
 	}
 }

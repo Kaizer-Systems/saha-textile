@@ -119,7 +119,8 @@ describe('settings, exceptions and test carts', () => {
 			homeCountry: 'IN',
 			mixedRuleSets: 'sum',
 			abroadPolicy: 'indiaOnly',
-			international: { extra: null },
+			international: { extra: { amountINR: 0, percent: 0 } },
+			abroadOptions: { askForHomeAddress: true, holdPackingUntilComplete: true },
 		});
 	});
 

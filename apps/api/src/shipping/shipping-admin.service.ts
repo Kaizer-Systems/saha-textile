@@ -50,7 +50,8 @@ import {
 	validateShippingRuleSet,
 } from '@saha-textile/core-domain';
 
-import { codedRefusal } from '../common/coded-refusal';
+import { adminNames } from '../common/admin-names';
+import { codedRefusal, staleSaveRefusal } from '../common/coded-refusal';
 import {
 	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
@@ -157,7 +158,7 @@ export class ShippingAdminService {
 	/** Saves the working copy. The active version, if any, keeps pricing checkout until the next activation. */
 	async save(id: string, input: ShippingRuleSetSave, actor: string | null): Promise<AdminShippingRuleSetDetail> {
 		const current = await this.requireOwn(id);
-		if (input.revision !== current.revision) throw this.clash(current);
+		if (input.revision !== current.revision) throw await this.clash(current, actor);
 		const active = current.activeVersion === null ? null : await this.rules.findVersion(id, current.activeVersion);
 		const next: ShippingRuleSet = {
 			...current,
@@ -171,7 +172,8 @@ export class ShippingAdminService {
 			updatedAt: new Date().toISOString(),
 			updatedBy: actor,
 		};
-		if (!(await this.rules.saveRuleSet(next, current.revision))) throw this.clash(await this.require(id));
+		if (!(await this.rules.saveRuleSet(next, current.revision)))
+			throw await this.clash(await this.require(id), actor);
 		await this.record(actor, 'shipping_rule_set.save', id, { revision: next.revision });
 		return this.detail(id);
 	}
@@ -187,7 +189,7 @@ export class ShippingAdminService {
 		actor: string | null,
 	): Promise<ShippingRuleSetActivateResult> {
 		const current = await this.requireOwn(id);
-		if (input.revision !== current.revision) throw this.clash(current);
+		if (input.revision !== current.revision) throw await this.clash(current, actor);
 		const check = validateShippingRuleSet(current.draft, current.use, { languages: this.languages.shop() });
 		if (!check.canActivate) return { outcome: 'invalid', issues: check.issues };
 
@@ -237,7 +239,7 @@ export class ShippingAdminService {
 			{ ruleSetId: id, version, body: current.draft, activatedAt: now, activatedBy: actor, acceptedChanges },
 			current.revision,
 		);
-		if (!saved) throw this.clash(await this.require(id));
+		if (!saved) throw await this.clash(await this.require(id), actor);
 		await this.record(actor, 'shipping_rule_set.activate', id, { version, acceptedChanges });
 		return { outcome: 'activated', version, detail: await this.detail(id) };
 	}
@@ -250,7 +252,7 @@ export class ShippingAdminService {
 			throw new ConflictException(codedRefusal('rule_set_in_use', 'Change where this rule set is used first'));
 		}
 		if (revision !== current.revision || !(await this.rules.deleteRuleSet(id, revision)))
-			throw this.clash(await this.require(id));
+			throw await this.clash(await this.require(id), actor);
 		await this.record(actor, 'shipping_rule_set.delete', id, { name: current.name });
 	}
 
@@ -404,8 +406,7 @@ export class ShippingAdminService {
 	async saveSettings(input: ShippingSettingsWrite, actor: string | null): Promise<AdminShippingOverview> {
 		const stored = await this.rules.getSettings();
 		const revision = stored?.revision ?? 0;
-		if (input.revision !== revision)
-			throw new ConflictException(codedRefusal('stale_revision', 'Someone else saved this first', 'revision'));
+		if (input.revision !== revision) throw await this.settingsClash(actor);
 		if (!(BUILT_ABROAD_ORDER_POLICIES as readonly string[]).includes(input.abroadPolicy)) {
 			throw new BadRequestException({
 				issues: [
@@ -429,8 +430,7 @@ export class ShippingAdminService {
 			updatedAt: new Date().toISOString(),
 			updatedBy: actor,
 		};
-		if (!(await this.rules.saveSettings(next, revision)))
-			throw new ConflictException(codedRefusal('stale_revision', 'Someone else saved this first', 'revision'));
+		if (!(await this.rules.saveSettings(next, revision))) throw await this.settingsClash(actor);
 		await this.record(actor, 'shipping_settings.save', 'zones', {
 			domestic: input.domestic,
 			international: input.international,
@@ -503,17 +503,7 @@ export class ShippingAdminService {
 
 	/** The names people know each other by, for "19 Nov · Moulik"; unknown ids are left out. */
 	private async names(ids: ReadonlyArray<string | null>): Promise<Map<string, string>> {
-		const out = new Map<string, string>();
-		if (!this.admins) return out;
-		const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))];
-		await Promise.all(
-			wanted.map(async (id) => {
-				const admin = await this.admins?.findById(id).catch(() => null);
-				const name = admin?.displayName?.trim() || admin?.username || admin?.email?.split('@')[0];
-				if (name) out.set(id, name);
-			}),
-		);
-		return out;
+		return adminNames(this.admins, ids);
 	}
 
 	private async settings(): Promise<ShippingSettings> {
@@ -579,14 +569,29 @@ export class ShippingAdminService {
 		return ruleSet;
 	}
 
-	/** The second save over newer work is refused; nothing is overwritten. */
-	private clash(current: ShippingRuleSet): ConflictException {
-		return new ConflictException(
-			codedRefusal(
-				'stale_revision',
-				`Someone else saved this first (now at revision ${current.revision})`,
-				'revision',
-			),
+	/** The second save over newer work is refused, naming who saved it and when; nothing is overwritten. */
+	private async clash(current: ShippingRuleSet, actor: string | null): Promise<ConflictException> {
+		const names = await this.names([current.updatedBy]);
+		return staleSaveRefusal(
+			`Someone else saved this first (now at revision ${current.revision})`,
+			{
+				by: current.updatedBy,
+				byName: current.updatedBy ? (names.get(current.updatedBy) ?? null) : null,
+				at: current.updatedAt ?? null,
+			},
+			actor,
+		);
+	}
+
+	/** The same refusal for the zone settings, read fresh so it names the save that won. */
+	private async settingsClash(actor: string | null): Promise<ConflictException> {
+		const stored = await this.rules.getSettings();
+		const by = stored?.updatedBy ?? null;
+		const names = await this.names([by]);
+		return staleSaveRefusal(
+			'Someone else saved this first',
+			{ by, byName: by ? (names.get(by) ?? null) : null, at: stored?.updatedAt ?? null },
+			actor,
 		);
 	}
 

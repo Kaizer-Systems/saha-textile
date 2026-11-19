@@ -254,8 +254,27 @@ describe('rule sets', () => {
 			'admin-2',
 		);
 		await expect(stale).rejects.toBeInstanceOf(ConflictException);
+		// Brief edge case: the second save is refused with who changed it and when.
 		await stale.catch((error: ConflictException) =>
-			expect(error.getResponse()).toMatchObject({ issues: [{ path: 'revision', code: 'stale_revision' }] }),
+			expect(error.getResponse()).toMatchObject({
+				issues: [
+					{
+						path: 'revision',
+						code: 'stale_revision',
+						params: { changedBy: 'Moulik Patra', changedAt: saved.ruleSet.updatedAt },
+					},
+				],
+			}),
+		);
+		// The same admin in a second tab is told it was them, not shown their own name as a stranger.
+		const mine = service.save(
+			id,
+			{ name: 'Other', description: '', use: 'domestic', draft: DOMESTIC, testCarts: [], revision: 0 },
+			'admin-1',
+		);
+		await expect(mine).rejects.toBeInstanceOf(ConflictException);
+		await mine.catch((error: ConflictException) =>
+			expect(error.getResponse()).toMatchObject({ issues: [{ params: { changedByYou: 1 } }] }),
 		);
 		expect(audit.append).toHaveBeenCalledWith(
 			expect.objectContaining({ action: 'shipping_rule_set.save', entityType: 'shipping' }),

@@ -10,7 +10,7 @@ import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { GlobalErrorHandlerInterceptor, QUIET_ERRORS } from './global-error-handler.interceptor';
+import { CSRF_REPLAY, GlobalErrorHandlerInterceptor, QUIET_ERRORS } from './global-error-handler.interceptor';
 import { LoaderInterceptor } from './loader.interceptor';
 
 const request = new HttpRequest('GET', '/x');
@@ -46,6 +46,28 @@ describe('GlobalErrorHandlerInterceptor', () => {
 		const { stream, notifier } = run(new HttpErrorResponse({ status: 502 }), quiet);
 		await expect(firstValueFrom(stream)).rejects.toMatchObject({ status: 502 });
 		expect(notifier.showError).not.toHaveBeenCalled();
+		vi.restoreAllMocks();
+	});
+
+	it('leaves a refused CSRF token to the auth interceptor, and speaks for the replay', async () => {
+		const refused = () =>
+			new HttpErrorResponse({
+				status: 403,
+				error: { error: { code: 'forbidden', message: 'x', issues: [], reason: 'csrf_rejected' } },
+			});
+		const first = run(refused());
+		await expect(firstValueFrom(first.stream)).rejects.toMatchObject({ status: 403 });
+		expect(first.notifier.showError).not.toHaveBeenCalled();
+
+		const replay = new HttpRequest('POST', '/x', null, { context: new HttpContext().set(CSRF_REPLAY, true) });
+		const again = run(refused(), replay);
+		await expect(firstValueFrom(again.stream)).rejects.toMatchObject({ status: 403 });
+		expect(again.notifier.showError).toHaveBeenCalledWith('Readable');
+
+		// A plain 403 (no access) is still shown.
+		const plain = run(new HttpErrorResponse({ status: 403, error: { error: { code: 'forbidden', issues: [] } } }));
+		await expect(firstValueFrom(plain.stream)).rejects.toMatchObject({ status: 403 });
+		expect(plain.notifier.showError).toHaveBeenCalledWith('Readable');
 		vi.restoreAllMocks();
 	});
 

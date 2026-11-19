@@ -7,11 +7,12 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { FxGateway } from '@core/fx/fx.gateway';
+import { savedAtWords, shippingProblemText, staleSave } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PaymentRouting } from '@features/setting/payment-routing/payment-routing';
 
-import { Currency, fxProblemKey } from './currency';
+import { Currency, fxProblemKey, fxProblemText } from './currency';
 
 import type {
 	AdminFxOverview,
@@ -223,6 +224,66 @@ describe('Admin › Currencies (brief fx01–fx03)', () => {
 		// Shipping's codes fall through to the shipping pages' words.
 		expect(fxProblemKey(envelope('validation_failed', 'unknown_product'))).toBe('ship_err_unknown_product');
 		expect(fxProblemKey({ error: { error: { code: 'forbidden', issues: [] } } })).toBe('ship_err_general');
+	});
+
+	it('names who saved first and when (brief edge case), or "you" from another tab', () => {
+		const translate = (key: string, params?: Record<string, string>) =>
+			params ? `${key}:${JSON.stringify(params)}` : key;
+		const stale = (params?: Record<string, string | number>) => ({
+			error: {
+				error: {
+					code: 'validation_failed',
+					message: 'x',
+					issues: [
+						{ path: ['revision'], message: 'x', code: 'stale_revision', ...(params ? { params } : {}) },
+					],
+				},
+			},
+		});
+		const now = new Date();
+		const at = now.toISOString();
+		const time = savedAtWords(at, now);
+		expect(time).toMatch(/^\d{2}:\d{2}$/);
+		expect(fxProblemText(stale({ changedAt: at, changedBy: 'Store Manager' }), { translate })).toBe(
+			`fx_err_stale_revision_by:${JSON.stringify({ name: 'Store', when: time })}`,
+		);
+		expect(fxProblemText(stale({ changedAt: at, changedBy: 'Moulik', changedByYou: 1 }), { translate })).toBe(
+			`fx_err_stale_revision_you:${JSON.stringify({ when: time })}`,
+		);
+		// A gone account still gets a time; no time at all keeps the plain line.
+		expect(shippingProblemText(stale({ changedAt: at }), { translate })).toBe(
+			`ship_err_stale_revision_by:${JSON.stringify({ name: 'ship_someone_else', when: time })}`,
+		);
+		expect(shippingProblemText(stale(), { translate })).toBe('ship_err_stale_revision');
+		expect(staleSave(stale({ changedAt: at }))).toEqual({ changedAt: at, changedBy: null, byYou: false });
+		expect(
+			staleSave({ error: { error: { code: 'forbidden', issues: [{ code: 'super_admin_only' }] } } }),
+		).toBeNull();
+		// Another day shows the date too, India time, English digits.
+		expect(savedAtWords('2026-11-19T12:30:00.000Z', new Date('2026-11-20T12:00:00.000Z'))).toBe('19 Nov, 18:00');
+	});
+
+	it('names who saved first in the toast after a refused save', async () => {
+		const { page, gateway, notifier } = await setup(Currency);
+		gateway.saveSettings.mockReturnValueOnce(
+			throwError(() => ({
+				error: {
+					error: {
+						code: 'validation_failed',
+						issues: [
+							{
+								code: 'stale_revision',
+								params: { changedAt: '2026-11-19T12:30:00.000Z', changedBy: 'Manager' },
+							},
+						],
+					},
+				},
+			})),
+		);
+		page.patch({ fetchTime: '12:45' });
+		await flush();
+		expect(notifier.showError).toHaveBeenCalledWith(expect.stringMatching(/^fx_err_stale_revision_by:.*"Manager"/));
+		expect(page.draft()?.fetchTime).toBe('12:30');
 	});
 
 	it('shows a failed save and puts the saved value back', async () => {

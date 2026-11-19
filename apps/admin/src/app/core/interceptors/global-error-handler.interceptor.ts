@@ -8,6 +8,7 @@ import {
 } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import { readRefusalReason } from '@saha-textile/http-transport';
 import { Observable, catchError, throwError } from 'rxjs';
 
 import { ErrorService } from '@data-access/services/error.service';
@@ -19,6 +20,12 @@ import { NotificationService } from '@data-access/services/notification.service'
  * would otherwise stack one notice per attempt). The error still reaches the caller.
  */
 export const QUIET_ERRORS = new HttpContextToken<boolean>(() => false);
+
+/**
+ * Set by `AuthInterceptor` on the one replay it sends after fetching a fresh CSRF token. Only that
+ * replay's failure is shown: the first refusal is recovered, like a 401.
+ */
+export const CSRF_REPLAY = new HttpContextToken<boolean>(() => false);
 
 @Injectable()
 export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
@@ -42,6 +49,13 @@ export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
 				// An unrecoverable 401 is not silent: the auth interceptor clears the session
 				// and the app returns the user to login.
 				if (error.status === 401 || request.context.get(QUIET_ERRORS)) return throwError(() => error);
+
+				// A refused CSRF token is the same kind of outcome: another tab signed in or rotated
+				// it, and `AuthInterceptor` fetches a fresh one and sends the request once more. Shown
+				// here, the first refusal put "You do not have access to this resource" beside a save
+				// that then went through (or that its page explained). The replay's own failure is shown.
+				if (readRefusalReason(error.error) === 'csrf_rejected' && !request.context.get(CSRF_REPLAY))
+					return throwError(() => error);
 
 				// Handle HTTP errors here
 				console.error('HTTP Error:', error.error);

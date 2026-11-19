@@ -129,6 +129,7 @@ describe('BullMqMediaJobQueue', () => {
 			'weekly-insight',
 			'page-go-live-waiting',
 			'page-builder-nightly',
+			'fx-fetch-due',
 		]);
 	});
 

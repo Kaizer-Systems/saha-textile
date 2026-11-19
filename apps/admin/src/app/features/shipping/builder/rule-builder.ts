@@ -24,11 +24,11 @@ import { ActiveLanguages } from '@core/i18n/active-languages';
 import { duplicateStep, newAdjust, newStep } from '@core/shipping/blocks';
 import { plainWords, type ChargeAmount, type ChargeAmounts } from '@core/shipping/plain-words';
 import {
+	injectShippingOverviewQuery,
 	SHIPPING_KEY,
 	SHIPPING_STALE_MS,
 	ShippingGateway,
-	injectShippingOverviewQuery,
-	shippingProblemKey,
+	shippingProblemText,
 } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { CategoryService } from '@data-access/services/category.service';
@@ -435,7 +435,7 @@ export class RuleBuilder {
 			}
 			return true;
 		} catch (error) {
-			this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));
+			this.notifier.showError(shippingProblemText(error, this.transloco));
 			return false;
 		} finally {
 			this.busy.set(false);
@@ -478,7 +478,7 @@ export class RuleBuilder {
 				this.notifier.showError(this.transloco.translate('ship_fix_first'));
 			}
 		} catch (error) {
-			this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));
+			this.notifier.showError(shippingProblemText(error, this.transloco));
 		} finally {
 			this.busy.set(false);
 		}
@@ -578,7 +578,7 @@ export class RuleBuilder {
 			void this.queryClient.invalidateQueries({ queryKey: SHIPPING_KEY });
 			void this.router.navigate(['/shipping/rule-sets', copy.ruleSet.id]);
 		} catch (error) {
-			this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));
+			this.notifier.showError(shippingProblemText(error, this.transloco));
 		}
 	}
 

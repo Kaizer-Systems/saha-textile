@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, NotFoundException } from '@nestj
 import type { ArgumentsHost } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
-import { codedRefusal } from '../src/common/coded-refusal';
+import { codedRefusal, staleSaveRefusal } from '../src/common/coded-refusal';
 import { HttpExceptionFilter } from '../src/common/http-exception.filter';
 
 /** What the filter actually puts on the wire. */
@@ -52,6 +52,51 @@ describe('coded refusals reach the admin (shipping rules brief: stale saves, sup
 		);
 		expect(missing.status).toBe(404);
 		expect(missing.error.issues).toMatchObject([{ code: 'unknown_category' }]);
+	});
+
+	it('names who saved first and when on a stale save, and keeps only plain values', () => {
+		const clash = render(
+			staleSaveRefusal(
+				'Someone else saved this first',
+				{ by: 'adm_2', byName: 'Manager', at: '2026-11-19T19:28:00.000Z' },
+				'adm_1',
+			),
+		);
+		expect(clash.status).toBe(409);
+		expect(clash.error.issues).toEqual([
+			{
+				path: ['revision'],
+				message: 'Someone else saved this first',
+				code: 'stale_revision',
+				params: { changedAt: '2026-11-19T19:28:00.000Z', changedBy: 'Manager' },
+			},
+		]);
+
+		const self = render(
+			staleSaveRefusal('Someone else saved this first', { by: 'adm_1', byName: 'Moulik', at: null }, 'adm_1'),
+		);
+		expect(self.error.issues).toMatchObject([{ params: { changedBy: 'Moulik', changedByYou: 1 } }]);
+
+		const unknown = render(
+			staleSaveRefusal('Someone else saved this first', { by: null, byName: null, at: null }, 'adm_1'),
+		);
+		expect((unknown.error.issues as Array<Record<string, unknown>>)[0]).not.toHaveProperty('params');
+
+		// Only short strings and finite numbers pass; anything else a body carries is dropped.
+		const odd = render(
+			new ConflictException({
+				issues: [
+					{
+						path: 'revision',
+						message: 'x',
+						code: 'stale_revision',
+						params: { nested: { a: 1 }, list: [1], long: 'x'.repeat(121), ok: 'yes', n: Number.NaN },
+					},
+				],
+			}),
+		);
+		expect(odd.error.issues).toMatchObject([{ params: { ok: 'yes' } }]);
+		expect((odd.error.issues as Array<{ params: Record<string, unknown> }>)[0]?.params).toEqual({ ok: 'yes' });
 	});
 
 	it('is why a bare top-level code was not enough: the filter drops it', () => {

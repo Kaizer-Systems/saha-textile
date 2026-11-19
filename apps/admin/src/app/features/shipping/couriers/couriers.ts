@@ -5,10 +5,10 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import {
+	injectShippingOverviewQuery,
 	SHIPPING_KEY,
 	ShippingGateway,
-	injectShippingOverviewQuery,
-	shippingProblemKey,
+	shippingProblemText,
 } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -108,7 +108,7 @@ export class ShippingCouriers {
 			},
 			error: (error: unknown) => {
 				this.saving.set(false);
-				this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));
+				this.notifier.showError(shippingProblemText(error, this.transloco));
 			},
 		});
 	}

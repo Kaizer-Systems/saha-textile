@@ -8,7 +8,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { currencyDisplayName, FETCH_TIME_PATTERN, FX_KEY, FxGateway, injectFxOverviewQuery } from '@core/fx/fx.gateway';
-import { refusalCodes, shippingProblemKey } from '@core/shipping/shipping.gateway';
+import { refusalCodes, shippingProblemKey, staleSave, staleSaveText } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -172,7 +172,7 @@ export class Currency {
 		} catch (error) {
 			this.saveAgain = false;
 			this.draft.set(this.draftOf(data.settings));
-			this.notifier.showError(this.transloco.translate(fxProblemKey(error)));
+			this.notifier.showError(fxProblemText(error, this.transloco));
 		} finally {
 			this.saving.set(false);
 		}
@@ -193,7 +193,7 @@ export class Currency {
 			else
 				this.notifier.showError(this.transloco.translate('fx_fetch_failed', { problem: result.problem ?? '' }));
 		} catch (error) {
-			this.notifier.showError(this.transloco.translate(fxProblemKey(error)));
+			this.notifier.showError(fxProblemText(error, this.transloco));
 		} finally {
 			this.fetching.set(false);
 		}
@@ -231,7 +231,7 @@ export class Currency {
 			this.openPopup?.close();
 			this.notifier.showSuccess(this.transloco.translate('fx_rate_saved', { code: current.row.code }));
 		} catch (error) {
-			this.notifier.showError(this.transloco.translate(fxProblemKey(error)));
+			this.notifier.showError(fxProblemText(error, this.transloco));
 		} finally {
 			this.saving.set(false);
 		}
@@ -243,4 +243,15 @@ export function fxProblemKey(error: unknown): string {
 	const known = ['stale_revision', 'super_admin_only', 'fxaas_not_approved', 'rate_required', 'home_currency'];
 	const code = refusalCodes(error).find((candidate) => known.includes(candidate));
 	return code ? `fx_err_${code}` : shippingProblemKey(error);
+}
+
+/** The words for a failed Currencies or Payment method call: who and when on a stale save, else `fxProblemKey`. */
+export function fxProblemText(
+	error: unknown,
+	transloco: { translate: (key: string, params?: Record<string, string>) => string },
+): string {
+	const stale = staleSave(error);
+	return stale
+		? staleSaveText(stale, 'fx_err', (key, params) => transloco.translate(key, params))
+		: transloco.translate(fxProblemKey(error));
 }

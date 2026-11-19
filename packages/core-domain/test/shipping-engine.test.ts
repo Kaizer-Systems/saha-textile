@@ -556,6 +556,7 @@ describe('which rule set prices each line', () => {
 		mixedRuleSets: 'sum',
 		defaultCharges: SAHA_TEXTILE_CHARGES,
 		abroadPolicy: 'exportOffIndianInvoice',
+		abroadOptions: { askForHomeAddress: true, holdPackingUntilComplete: true },
 		revision: 0,
 		updatedBy: null,
 	};

@@ -4,7 +4,7 @@ wide: true
 description: Exchange rates (PayPal's own rates or the stored rates), the PayPal markup, the daily rate fetch, and which payment gateway takes each currency.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-19'
+last_verified: '2026-11-20'
 source_of_truth:
     - packages/contracts/src/fx.ts
     - packages/core-domain/src/fx/rates.ts
@@ -43,6 +43,16 @@ One percentage for every currency (6 at launch), applied to the whole PayPal pay
 A switch and a time, in India time, written as 24-hour `HH:MM` (for example `12:30`). When the switch is on, the worker checks every 15 minutes and fetches once a day after that time (`fx-fetch-due` job). **Fetch now** fetches straight away. A failed fetch keeps the stored rates and shows the reason under the switch; the worker tries again in 15 minutes. Rates are never adjusted from past payments.
 
 The fetch uses ExchangeRate-API. Without a key it calls the open endpoint (`https://open.er-api.com/v6/latest/INR`); with `EXCHANGERATE_API_KEY` set on the server it calls the keyed endpoint. The page says which one is in use. The fetch writes every launch currency (US$, £, €, C$, A$, S$, NZ$) and any other stored currency, and marks each rate "Daily fetch".
+
+ExchangeRate-API publishes indicative mid-market rates, blended from central-bank and commercial sources and updated once a day on the free tiers. PayPal converts with its own rate, which is less favourable than mid-market; the PayPal markup covers that gap.
+
+| Tier          | Key                    | Calls                                                        | Updates    | Attribution                                                                   |
+| ------------- | ---------------------- | ------------------------------------------------------------ | ---------- | ----------------------------------------------------------------------------- |
+| Open endpoint | none                   | rate limited (HTTP 429 for 20 minutes when called too often) | once a day | required: a "Rates By Exchange Rate API" link on every page showing the rates |
+| Free plan     | `EXCHANGERATE_API_KEY` | 1,500 a month                                                | once a day | none                                                                          |
+| Pro (paid)    | `EXCHANGERATE_API_KEY` | 30,000 a month                                               | every hour | none                                                                          |
+
+The shop shows no attribution link, so staging and production set the free plan's key. The daily fetch plus occasional **Fetch now** presses use about 30 to 60 calls a month. On the free tiers a second press the same day returns the same rates.
 
 ### Save behaviour
 
@@ -92,7 +102,7 @@ Every change is written to the audit log.
 
 ### Refusals
 
-A refusal the page explains in its own words travels as `issues[0].code`: the envelope's own `code` is only the transport outcome (`validation_failed`), because the API's exception filter keeps nothing else from an exception (`apps/api/src/common/coded-refusal.ts`). The codes are `stale_revision` (409, someone else saved first), `super_admin_only` (403), `fxaas_not_approved`, `rate_required`, `home_currency` and `gateway_not_built` (400). The admin reads them with `refusalCodes` and shows its own translated words; these saves are marked `QUIET_ERRORS`, so the global error toast doesn't add a second notice.
+A refusal the page explains in its own words travels as `issues[0].code`: the envelope's own `code` is only the transport outcome (`validation_failed`), because the API's exception filter keeps nothing else from an exception (`apps/api/src/common/coded-refusal.ts`). The codes are `stale_revision` (409, someone else saved first; built with `staleSaveRefusal`, it carries `params.changedBy`, `params.changedAt` and `params.changedByYou`, so the toast reads "Manager changed these settings at 01:01" or "You changed these settings in another tab at 01:01"), `super_admin_only` (403), `fxaas_not_approved`, `rate_required`, `home_currency` and `gateway_not_built` (400). The admin reads them with `refusalCodes` and shows its own translated words; these saves are marked `QUIET_ERRORS`, so the global error toast doesn't add a second notice.
 
 ## Data
 

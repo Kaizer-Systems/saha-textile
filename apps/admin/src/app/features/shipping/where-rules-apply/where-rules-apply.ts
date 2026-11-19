@@ -7,12 +7,12 @@ import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import {
+	injectShippingExceptionsQuery,
+	injectShippingOverviewQuery,
 	SHIPPING_KEY,
 	SHIPPING_STALE_MS,
 	ShippingGateway,
-	injectShippingExceptionsQuery,
-	injectShippingOverviewQuery,
-	shippingProblemKey,
+	shippingProblemText,
 } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { CategoryService } from '@data-access/services/category.service';
@@ -285,6 +285,6 @@ export class WhereRulesApply {
 
 	private failed(error: unknown) {
 		this.saving.set(false);
-		this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));
+		this.notifier.showError(shippingProblemText(error, this.transloco));
 	}
 }

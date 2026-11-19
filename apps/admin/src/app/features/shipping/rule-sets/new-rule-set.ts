@@ -7,11 +7,11 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import {
-	SHIPPING_KEY,
-	ShippingGateway,
 	injectShippingOverviewQuery,
 	injectShippingRuleSetsQuery,
-	shippingProblemKey,
+	SHIPPING_KEY,
+	ShippingGateway,
+	shippingProblemText,
 } from '@core/shipping/shipping.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -82,7 +82,7 @@ export class NewRuleSet {
 			void this.queryClient.invalidateQueries({ queryKey: SHIPPING_KEY });
 			void this.router.navigate(['/shipping/rule-sets', created.ruleSet.id]);
 		} catch (error) {
-			this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));
+			this.notifier.showError(shippingProblemText(error, this.transloco));
 		} finally {
 			this.busy.set(false);
 		}

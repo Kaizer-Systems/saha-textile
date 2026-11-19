@@ -129,6 +129,41 @@ MailboxOutboxSchema.index({ createdAt: 1 }, { expireAfterSeconds: OUTBOX_RETENTI
 export const MailboxOutboxModel: Model<MailboxOutboxDoc> =
 	(models.MailboxOutbox as Model<MailboxOutboxDoc>) ?? model<MailboxOutboxDoc>('MailboxOutbox', MailboxOutboxSchema);
 
+/** Saved replies (C3): shared per mailbox, or one admin user's own. */
+export interface SavedReplyDoc {
+	_id: string;
+	scope: string;
+	mailboxId: string | null;
+	ownerAdminUserId: string | null;
+	title: string;
+	body: string;
+	createdBy: string;
+	updatedBy: string;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+const SavedReplySchema = new Schema<SavedReplyDoc>(
+	{
+		_id: { type: String, required: true },
+		scope: { type: String, required: true },
+		mailboxId: { type: String, default: null },
+		ownerAdminUserId: { type: String, default: null },
+		title: { type: String, required: true },
+		body: { type: String, required: true },
+		createdBy: { type: String, required: true },
+		updatedBy: { type: String, required: true },
+		createdAt: { type: Date, required: true },
+		updatedAt: { type: Date, required: true },
+	},
+	{ collection: 'savedReplies' },
+);
+SavedReplySchema.index({ mailboxId: 1, scope: 1, title: 1 });
+SavedReplySchema.index({ ownerAdminUserId: 1, scope: 1, title: 1 });
+
+export const SavedReplyModel: Model<SavedReplyDoc> =
+	(models.SavedReply as Model<SavedReplyDoc>) ?? model<SavedReplyDoc>('SavedReply', SavedReplySchema);
+
 /** How long a Contact Us message is kept: twelve months, then the database deletes it. */
 export const CONTACT_MESSAGE_RETENTION_SECONDS = 365 * 24 * 60 * 60;
 

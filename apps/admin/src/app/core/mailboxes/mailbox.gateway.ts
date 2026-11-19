@@ -30,6 +30,10 @@ import type {
 	MailboxAccessList,
 	MailboxPeoplePage,
 	MailboxRight,
+	SavedReply,
+	SavedReplyCreate,
+	SavedReplyList,
+	SavedReplyWrite,
 } from '@saha-textile/contracts';
 
 /** What Settings › Mailboxes reads in one call. */
@@ -208,6 +212,31 @@ export class MailboxGateway {
 		return draftId
 			? this.http.put<InboxDraftSaved>(url, body, { context: quiet() })
 			: this.http.post<InboxDraftSaved>(url, body, { context: quiet() });
+	}
+
+	/** Saved replies (C3): this mailbox's shared ones, then the signed-in person's own. */
+	savedReplies(mailboxId: string): Observable<SavedReplyList> {
+		return this.http.get<SavedReplyList>(this.inbox(`/${this.id(mailboxId)}/saved-replies`), { context: quiet() });
+	}
+
+	createSavedReply(mailboxId: string, body: SavedReplyCreate): Observable<SavedReply> {
+		return this.http.post<SavedReply>(this.inbox(`/${this.id(mailboxId)}/saved-replies`), body, {
+			context: quiet(),
+		});
+	}
+
+	updateSavedReply(mailboxId: string, replyId: string, body: SavedReplyWrite): Observable<SavedReply> {
+		return this.http.patch<SavedReply>(
+			this.inbox(`/${this.id(mailboxId)}/saved-replies/${this.id(replyId)}`),
+			body,
+			{ context: quiet() },
+		);
+	}
+
+	deleteSavedReply(mailboxId: string, replyId: string): Observable<void> {
+		return this.http.delete<void>(this.inbox(`/${this.id(mailboxId)}/saved-replies/${this.id(replyId)}`), {
+			context: quiet(),
+		});
 	}
 
 	deleteDraft(mailboxId: string, draftId: string): Observable<void> {

@@ -93,6 +93,7 @@ export const MAILBOX_ACCESS_REPOSITORY = Symbol('MailboxAccessRepository');
 export const MAILBOX_TOKEN_STORE = Symbol('MailboxTokenStore');
 export const CONTACT_MESSAGE_REPOSITORY = Symbol('ContactMessageRepository');
 export const MAILBOX_OUTBOX_REPOSITORY = Symbol('MailboxOutboxRepository');
+export const SAVED_REPLY_REPOSITORY = Symbol('SavedReplyRepository');
 export const WISHLIST_REPOSITORY = Symbol('WishlistRepository');
 /** Purchases and stock (brief revision 2, accepted 2026-11-15). */
 export const SUPPLIER_REPOSITORY = Symbol('SupplierRepository');

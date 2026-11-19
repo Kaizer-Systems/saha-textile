@@ -151,6 +151,10 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 			of({ draftId: 'd1', version: 'v1', savedAt: '2026-11-19T10:41:00.000Z' }),
 		),
 		deleteDraft: vi.fn((..._args: unknown[]) => of(undefined)),
+		savedReplies: vi.fn((..._args: unknown[]) => of({ shared: [], personal: [], canEditShared: false })),
+		createSavedReply: vi.fn((..._args: unknown[]) => of({})),
+		updateSavedReply: vi.fn((..._args: unknown[]) => of({})),
+		deleteSavedReply: vi.fn((..._args: unknown[]) => of(undefined)),
 		attachmentUrl: vi.fn((...args: unknown[]) => args.join('/')),
 	};
 	const client = {
@@ -180,7 +184,8 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 	TestBed.overrideComponent(Inbox, {
 		set: {
 			imports: [],
-			template: '<ng-template #discardModal>d</ng-template><ng-template #runnableModal>r</ng-template>',
+			template:
+				'<ng-template #discardModal>d</ng-template><ng-template #runnableModal>r</ng-template><ng-template #repliesModal>s</ng-template>',
 		},
 	});
 	fixture = TestBed.createComponent(Inbox);
@@ -1039,5 +1044,110 @@ describe('Inbox Gmail drafts and Undo Send (C2, C4)', () => {
 		await page.discardNow();
 		expect(gateway.deleteDraft).toHaveBeenLastCalledWith('mbx-care', 'd1');
 		expect(page.draft()).toBeNull();
+	});
+});
+
+describe('Inbox saved replies (C3)', () => {
+	const reply = (id: string, fields: Record<string, unknown> = {}) => ({
+		id,
+		scope: 'personal',
+		title: `Title ${id}`,
+		body: `Text ${id}`,
+		updatedAt: '2026-11-19T10:00:00.000Z',
+		editable: true,
+		...fields,
+	});
+	const composing = () => {
+		const tools = setup({ mailbox: 'care', folder: 'inbox' }, { draft: 'new' });
+		tools.summary([box('care')]);
+		const query = state.queries.find((entry) => entry.options().queryKey.includes('saved-replies')) as Query;
+		return { ...tools, query };
+	};
+
+	it('reads them only while writing, for people who may send', async () => {
+		const { query, gateway, page, go } = composing();
+		expect(query.options().enabled).toBe(true);
+		await query.options().queryFn();
+		expect(gateway.savedReplies).toHaveBeenCalledWith('mbx-care');
+		expect(page.savedReplies()).toEqual({ shared: [], personal: [], canEditShared: false });
+		go({ mailbox: 'care', folder: 'inbox' }, {});
+		expect(query.options().enabled).toBe(false);
+	});
+
+	it('inserts a saved reply where the cursor is, ready to change', () => {
+		vi.useFakeTimers();
+		const { page } = composing();
+		const box = document.createElement('textarea');
+		box.id = 'inbox_body';
+		document.body.append(box);
+		page.editDraft('body', 'Dear Ananya,  Thanks');
+		box.value = 'Dear Ananya,  Thanks';
+		box.focus();
+		box.setSelectionRange(13, 13);
+		page.insertSavedReply(reply('r1', { body: 'It ships today.' }) as never);
+		expect(page.draft()?.body).toBe('Dear Ananya, It ships today. Thanks');
+		// The real template writes the new text into the box before the cursor moves.
+		box.value = page.draft()?.body ?? '';
+		vi.runAllTimers();
+		expect(box.selectionStart).toBe(28);
+		box.blur();
+		page.insertSavedReply(reply('r2', { body: '!' }) as never);
+		expect(page.draft()?.body).toBe('Dear Ananya, It ships today. Thanks!');
+		box.remove();
+		vi.useRealTimers();
+	});
+
+	it('adds, changes and deletes saved replies in the popup', async () => {
+		const { page, gateway, modals, query } = composing();
+		page.manageReplies();
+		expect(modals.open).toHaveBeenCalled();
+		page.openReplyEditor(null);
+		expect(page.replyEdit()).toEqual({ id: null, scope: 'personal', title: '', body: '' });
+		await page.saveReply();
+		expect(gateway.createSavedReply).not.toHaveBeenCalled();
+		page.editReply('title', 'Delivery');
+		page.editReply('body', ' Three days. ');
+		page.editReply('scope', 'shared');
+		await page.saveReply();
+		expect(gateway.createSavedReply).toHaveBeenCalledWith('mbx-care', {
+			title: 'Delivery',
+			body: 'Three days.',
+			scope: 'shared',
+		});
+		expect(page.replyEdit()).toBeNull();
+		expect(page.announcement()).toBe('inbox_reply_saved');
+		expect(query.refetch).toHaveBeenCalled();
+
+		page.openReplyEditor(reply('r1') as never);
+		page.editReply('title', 'Renamed');
+		await page.saveReply();
+		expect(gateway.updateSavedReply).toHaveBeenCalledWith('mbx-care', 'r1', { title: 'Renamed', body: 'Text r1' });
+
+		page.replyToDelete.set(reply('r1') as never);
+		await page.deleteReply(reply('r1') as never);
+		expect(gateway.deleteSavedReply).toHaveBeenCalledWith('mbx-care', 'r1');
+		expect(page.replyToDelete()).toBeNull();
+		expect(page.announcement()).toBe('inbox_reply_deleted');
+	});
+
+	it('says when a reply could not be saved or deleted, and keeps what was typed', async () => {
+		const { page, gateway } = composing();
+		page.openReplyEditor(null);
+		page.editReply('title', 'A');
+		page.editReply('body', 'B');
+		gateway.createSavedReply.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409 })));
+		await page.saveReply();
+		expect(page.replyProblem()).toBe('inbox_reply_too_many');
+		expect(page.replyEdit()?.title).toBe('A');
+		gateway.createSavedReply.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+		await page.saveReply();
+		expect(page.replyProblem()).toBe('inbox_reply_failed');
+		gateway.deleteSavedReply.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+		page.replyToDelete.set(reply('r1') as never);
+		await page.deleteReply(reply('r1') as never);
+		expect(page.replyToDelete()?.id).toBe('r1');
+		gateway.deleteSavedReply.mockReturnValueOnce(throwError(() => notFound));
+		await page.deleteReply(reply('r1') as never);
+		expect(page.replyToDelete()).toBeNull();
 	});
 });

@@ -1465,6 +1465,60 @@
 						<i class="ri-attachment-2"></i>
 						{{ 'inbox_attach' | transloco }}
 					</button>
+					<!-- Saved replies (C3): shared ones for this mailbox, then the person's own; inserted at the cursor. -->
+					<div
+						ngbDropdown
+						#replyMenu="ngbDropdown"
+						class="d-inline-block"
+						placement="top-start"
+					>
+						<button
+							type="button"
+							class="btn btn-outline btn-md fw-bold"
+							id="inbox_saved_replies_btn"
+							ngbDropdownAnchor
+							(click)="replyMenu.toggle()"
+						>
+							<i class="ri-chat-quote-line"></i>
+							{{ 'inbox_saved_replies' | transloco }}
+						</button>
+						<div ngbDropdownMenu>
+							@if (savedReplies().shared.length) {
+							<h6 class="dropdown-header">{{ 'inbox_replies_shared' | transloco }}</h6>
+							@for (reply of savedReplies().shared; track reply.id) {
+							<button
+								ngbDropdownItem
+								type="button"
+								(click)="insertSavedReply(reply)"
+							>
+								{{ reply.title }}
+							</button>
+							} } @if (savedReplies().personal.length) {
+							<h6 class="dropdown-header">{{ 'inbox_replies_yours' | transloco }}</h6>
+							@for (reply of savedReplies().personal; track reply.id) {
+							<button
+								ngbDropdownItem
+								type="button"
+								(click)="insertSavedReply(reply)"
+							>
+								{{ reply.title }}
+							</button>
+							} } @if (!savedReplies().shared.length && !savedReplies().personal.length) {
+							<span class="dropdown-item-text text-content small">
+								{{ 'inbox_no_saved_replies' | transloco }}
+							</span>
+							}
+							<div class="dropdown-divider"></div>
+							<button
+								ngbDropdownItem
+								type="button"
+								id="inbox_manage_replies"
+								(click)="manageReplies()"
+							>
+								{{ 'inbox_manage_replies' | transloco }}
+							</button>
+						</div>
+					</div>
 					<!-- Autosave to Gmail (C2): said only once the API has answered. -->
 					<span
 						class="text-content small"
@@ -1708,6 +1762,170 @@
 				{{ 'save' | transloco }}
 			</button>
 		</div>
+	</div>
+</ng-template>
+
+<!-- Saved replies (C3): the list, or one reply being written, in the theme's own popup and form. -->
+<ng-template
+	#repliesModal
+	let-modal
+>
+	<div class="modal-header">
+		<h3 class="fw-semibold mb-1">{{ 'inbox_saved_replies' | transloco }}</h3>
+		<button
+			[title]="'close' | transloco"
+			type="button"
+			class="btn btn-close"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		@if (replyProblem(); as problem) {
+		<div
+			class="alert alert-warning"
+			role="alert"
+		>
+			{{ problem | transloco }}
+		</div>
+		} @if (replyEdit(); as edit) { @if (!edit.id && savedReplies().canEditShared) {
+		<label
+			class="form-label-title"
+			for="inbox_reply_scope"
+		>
+			{{ 'inbox_reply_scope' | transloco }}
+		</label>
+		<select
+			class="form-select mb-3"
+			id="inbox_reply_scope"
+			[value]="edit.scope"
+			(change)="editReply('scope', $any($event.target).value)"
+		>
+			<option value="personal">{{ 'inbox_reply_scope_personal' | transloco }}</option>
+			<option value="shared">
+				{{ 'inbox_reply_scope_shared' | transloco: { address: mailbox()?.address } }}
+			</option>
+		</select>
+		}
+		<label
+			class="form-label-title"
+			for="inbox_reply_title"
+		>
+			{{ 'inbox_reply_title' | transloco }}
+		</label>
+		<input
+			class="form-control keep-case"
+			id="inbox_reply_title"
+			maxlength="80"
+			[value]="edit.title"
+			(input)="editReply('title', $any($event.target).value)"
+		/>
+		<p class="help-text mt-2">{{ 'inbox_reply_title_help' | transloco }}</p>
+		<label
+			class="form-label-title mt-2"
+			for="inbox_reply_body"
+		>
+			{{ 'inbox_reply_text' | transloco }}
+		</label>
+		<textarea
+			class="form-control keep-case"
+			id="inbox_reply_body"
+			rows="6"
+			maxlength="5000"
+			[value]="edit.body"
+			(input)="editReply('body', $any($event.target).value)"
+		></textarea>
+		<div class="button-box justify-content-end mt-3">
+			<button
+				type="button"
+				class="btn btn-md btn-secondary fw-bold"
+				(click)="replyEdit.set(null)"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-md btn-theme fw-bold"
+				id="inbox_reply_save"
+				[disabled]="!edit.title.trim() || !edit.body.trim()"
+				(click)="saveReply()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+		} @else { @for (group of [ { key: 'inbox_replies_shared', replies: savedReplies().shared }, { key:
+		'inbox_replies_yours', replies: savedReplies().personal } ]; track group.key) { @if (group.replies.length) {
+		<h6 class="text-content small mt-2 mb-1">{{ group.key | transloco }}</h6>
+		<ul class="list-unstyled mb-3">
+			@for (reply of group.replies; track reply.id) {
+			<li class="d-flex justify-content-between align-items-start border-bottom gap-2 py-2">
+				<div class="min-w-0">
+					<b class="d-block text-break">{{ reply.title }}</b>
+					<p class="text-content small text-truncate mb-0">{{ reply.body }}</p>
+					@if (replyToDelete()?.id === reply.id) {
+					<div class="d-flex align-items-center mt-2 flex-wrap gap-2">
+						<span class="small">
+							{{ (reply.scope === 'shared' ? 'inbox_reply_delete_shared' : 'inbox_reply_delete_own') |
+							transloco: { title: reply.title } }}
+						</span>
+						<button
+							type="button"
+							class="btn btn-sm btn-danger"
+							id="inbox_reply_delete_confirm"
+							(click)="deleteReply(reply)"
+						>
+							{{ 'delete' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-sm btn-outline"
+							(click)="replyToDelete.set(null)"
+						>
+							{{ 'cancel' | transloco }}
+						</button>
+					</div>
+					}
+				</div>
+				@if (reply.editable) {
+				<div class="d-flex gap-1">
+					<button
+						type="button"
+						class="btn btn-sm p-1"
+						[title]="'edit' | transloco"
+						[attr.aria-label]="('edit' | transloco) + ': ' + reply.title"
+						(click)="openReplyEditor(reply)"
+					>
+						<i class="ri-pencil-line"></i>
+					</button>
+					<button
+						type="button"
+						class="btn btn-sm p-1"
+						[title]="'delete' | transloco"
+						[attr.aria-label]="('delete' | transloco) + ': ' + reply.title"
+						(click)="replyToDelete.set(reply)"
+					>
+						<i class="ri-delete-bin-line"></i>
+					</button>
+				</div>
+				}
+			</li>
+			}
+		</ul>
+		} } @if (!savedReplies().shared.length && !savedReplies().personal.length) {
+		<p class="text-content">{{ 'inbox_no_saved_replies' | transloco }}</p>
+		}
+		<div class="button-box justify-content-end mt-3">
+			<button
+				type="button"
+				class="btn btn-md btn-theme fw-bold"
+				id="inbox_reply_new"
+				(click)="openReplyEditor(null)"
+			>
+				{{ 'inbox_new_reply' | transloco }}
+			</button>
+		</div>
+		}
 	</div>
 </ng-template>
 

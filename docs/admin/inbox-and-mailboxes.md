@@ -150,6 +150,15 @@ Mail HTML passes two barriers before anyone sees it.
 - **Lost answers.** A message gets its own `Message-ID`. When Gmail's answer to a send is lost, the API looks for that id in Sent, then for the draft, before anything is tried again: found in Sent means sent, a draft still there means try again (three tries in all), neither for a minute means gone. A message is never sent twice on a guess. The admin reports the outcome once: sent, not sent (still in Drafts), gone, or unconfirmed.
 - **Purchase orders.** Purchase orders are emailed at once through `InboxService.send()`, without the wait.
 
+### Saved replies
+
+Saved replies are short answers written once, such as delivery times or return steps. **Saved replies** in the compose box puts one at the cursor, ready to change before sending; nothing is sent by choosing one.
+
+- **Shared** replies belong to one mailbox. Everyone with the Send right there can use them; only people with that mailbox's Settings right can add, change or delete them.
+- **Personal** replies belong to one admin user, who can use them in any mailbox they may send from. Nobody else sees them.
+- The Send right in the mailbox named is needed for every call. Another person's reply, or another mailbox's shared reply, answers 404.
+- Each mailbox and each person can keep up to 100 (`MAX_SAVED_REPLIES`). They are plain text, in the `savedReplies` collection. Every change writes a `mailbox.saved_reply_changed` audit record with the reply's id and scope, never its text.
+
 Every send writes a `mailbox.message_sent` audit record with Gmail's message and thread ids. Gmail records only that the mailbox sent a message; the Inbox reads these records to show which operator sent each reply from the admin.
 
 ### Gmail calls
@@ -192,6 +201,7 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
 | Inbox screen                         | `apps/admin/src/app/features/inbox/inbox.ts`                                            |
 | Reply addressing and drafts          | `apps/admin/src/app/features/inbox/inbox-drafts.ts`                                     |
 | Undo Send outbox                     | `apps/api/src/mailboxes/undo-send.dispatcher.ts`                                        |
+| Saved replies                        | `apps/api/src/mailboxes/saved-replies.service.ts`                                       |
 | Mailboxes settings                   | `apps/admin/src/app/features/setting/mailboxes/mailboxes.ts`                            |
 | Routes                               | [Admin mailbox and inbox routes](../api/route-inventory#admin-mailbox-and-inbox-routes) |
 
@@ -215,7 +225,8 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
 - Files already saved in a draft are removed together, by discarding the draft, or one at a time in Gmail.
 - A reply reopened from Drafts sends without the collision check, because the compose box cannot know which messages its writer had read.
 - Finding a send whose answer was lost relies on Gmail keeping the message's own `Message-ID`, which is unconfirmed until it is tried on a real mailbox. Without it such a send ends as unconfirmed, never as a second copy.
-- A sent message cannot be recalled after the ten seconds, and there are no saved replies.
+- A sent message cannot be recalled after the ten seconds.
+- Saved replies are plain text; formatting in them is not kept.
 - Gmail settings (filters, vacation reply, signature) are managed in Gmail.
 - Whether Gmail's own filters run on mail placed by import (Contact Us) is unconfirmed until it is tried on a real mailbox.
 

@@ -518,6 +518,10 @@ Every `/admin/mailboxes` route except the callback also needs a super admin (the
 | `POST`   | `/admin/inbox/:mailboxId/send`                                          | Send             | Reply, forward or write; the message waits ten seconds in Drafts so it can be undone |
 | `GET`    | `/admin/inbox/:mailboxId/outbox/:outboxId`                              | Send             | Whether a message the operator sent has gone; the sender only                        |
 | `POST`   | `/admin/inbox/:mailboxId/outbox/:outboxId/cancel`                       | Send             | Undo Send: keep the message in Drafts; 409 once it is on its way                     |
+| `GET`    | `/admin/inbox/:mailboxId/saved-replies`                                 | Send             | This mailbox's shared saved replies, then the operator's own                         |
+| `POST`   | `/admin/inbox/:mailboxId/saved-replies`                                 | Send / Settings  | Add a personal reply, or a shared one with the Settings right                        |
+| `PATCH`  | `/admin/inbox/:mailboxId/saved-replies/:replyId`                        | Send / Settings  | Change one's own reply, or this mailbox's shared one with the Settings right         |
+| `DELETE` | `/admin/inbox/:mailboxId/saved-replies/:replyId`                        | Send / Settings  | Delete one's own reply, or this mailbox's shared one with the Settings right         |
 | `GET`    | `/admin/inbox/:mailboxId/drafts`                                        | Send             | The mailbox's Gmail drafts, newest first, a page at a time                           |
 | `GET`    | `/admin/inbox/:mailboxId/drafts/:draftId`                               | Send             | One draft, to carry on writing it                                                    |
 | `POST`   | `/admin/inbox/:mailboxId/drafts`                                        | Send             | Save the compose box as a new Gmail draft                                            |

@@ -44,7 +44,7 @@ This page maps the models, repositories and mappers in `packages/adapters-db-mon
 | Blog                     | `blogPosts`, `blogCategories`, `blogTags`                                                                                                                                     | Admin blog screens and the shop's blog               |
 | Events                   | `shopEvents`                                                                                                                                                                  | Launch and sale events and their sale prices         |
 | Stores                   | `storeLocations`                                                                                                                                                              | Settings › Stores and Contact Us                     |
-| Mailboxes                | `mailboxes`, `mailboxAccess`, `contactMessages`                                                                                                                               | Settings › Mailboxes, the admin inbox and Contact Us |
+| Mailboxes                | `mailboxes`, `mailboxAccess`, `contactMessages`, `mailboxOutbox`, `savedReplies`                                                                                              | Settings › Mailboxes, the admin inbox and Contact Us |
 | Wishlist                 | `wishlistItems`                                                                                                                                                               | A signed-in customer's saved products                |
 
 ### Declared collection names
@@ -94,6 +94,7 @@ A manual adjustment needs a reason code, and `other` also needs a note. FIFO cos
 | `mailboxes`                               | One row per mailbox address                                                                                                                                 |
 | `wishlistItems`                           | The id is `customerId:productId`, so saving twice is one row                                                                                                |
 | `contactMessages`                         | A TTL index deletes each message twelve months after it arrives                                                                                             |
+| `mailboxOutbox`                           | One row per queued Inbox message, claimed in one atomic step; a TTL index deletes each row seven days after it was written                                  |
 
 Sessions expire on their absolute limit. Audit logs, consent events and the stock ledger have no TTL.
 

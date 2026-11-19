@@ -31,11 +31,11 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 104,
-		"existingModelCount": 82,
+		"nodeCount": 105,
+		"existingModelCount": 83,
 		"targetOnlyCount": 22,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
-		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
+		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map, as is mailboxOutbox, the Inbox's Undo Send queue."
 	},
 	"clusters": [
 		{
@@ -1201,7 +1201,7 @@
 			"targetAction": "refactor",
 			"owningChunks": ["I"],
 			"blockingDecisions": [],
-			"purpose": "Which admin users may open which mailbox, and whether they may also send. No row means no access; every inbox call checks it.",
+			"purpose": "Which admin users may open which mailbox, and their rights there: read, send, organise, Bin, delete forever, labels and settings. No row means no access; every inbox call checks it, and each save names the list's version.",
 			"source": "decisions § stores, Contact Us and Gmail mailboxes (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/mailbox.model.ts",
 			"references": ["mailboxes", "adminUsers"]
@@ -1218,6 +1218,19 @@
 			"source": "decisions § stores, Contact Us and Gmail mailboxes (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/mailbox.model.ts",
 			"references": ["mailboxes"]
+		},
+		{
+			"id": "savedReplies",
+			"label": "savedReplies",
+			"cluster": "governance-messaging",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Saved replies for the admin Inbox: shared ones belong to a mailbox and are edited with its Settings right; personal ones belong to one admin user. Plain text typed by staff, never mail content.",
+			"source": "decisions § admin Inbox upgrade (2026-11-19)",
+			"currentModel": "packages/adapters-db-mongo/src/models/mailbox.model.ts",
+			"references": ["mailboxes", "adminUsers"]
 		},
 		{
 			"id": "legalPages",

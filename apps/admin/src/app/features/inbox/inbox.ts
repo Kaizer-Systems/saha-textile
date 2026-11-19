@@ -72,6 +72,9 @@ import type {
 	InboxAttachment,
 	InboxDraftSummary,
 	InboxSendQueued,
+	SavedReply,
+	SavedReplyList,
+	SavedReplyScope,
 	InboxBulkRequest,
 	InboxFolder,
 	InboxMailboxSummary,
@@ -204,6 +207,7 @@ export class Inbox {
 	private readonly emptyBinModal = viewChild<TemplateRef<unknown>>('emptyBinModal');
 	private readonly labelModal = viewChild<TemplateRef<unknown>>('labelModal');
 	private readonly labelDeleteModal = viewChild<TemplateRef<unknown>>('labelDeleteModal');
+	private readonly repliesModal = viewChild<TemplateRef<unknown>>('repliesModal');
 	readonly categoryKeys = CATEGORY_KEYS;
 
 	// ── The page address ──────────────────────────────────────────────────────────
@@ -334,6 +338,28 @@ export class Inbox {
 		};
 	});
 	readonly drafts = computed<InboxDraftSummary[]>(() => this.draftsQuery.data()?.drafts ?? []);
+
+	// ── Saved replies (C3) ────────────────────────────────────────────────────────
+
+	private readonly savedRepliesQuery = injectQuery(() => {
+		const mailboxId = this.mailbox()?.mailboxId ?? '';
+		return {
+			queryKey: [...INBOX_KEY, mailboxId, 'saved-replies'],
+			queryFn: () => firstValueFrom(this.gateway.savedReplies(mailboxId)),
+			enabled: Boolean(mailboxId) && this.canSend() && Boolean(this.draftMode()),
+			retry: 1,
+		};
+	});
+	readonly savedReplies = computed<SavedReplyList>(
+		() => this.savedRepliesQuery.data() ?? { shared: [], personal: [], canEditShared: false },
+	);
+	/** The saved reply being written in the manage popup; null shows the list. */
+	readonly replyEdit = signal<{ id: string | null; scope: SavedReplyScope; title: string; body: string } | null>(
+		null,
+	);
+	/** The saved reply waiting for "Delete it?" in the manage popup. */
+	readonly replyToDelete = signal<SavedReply | null>(null);
+	readonly replyProblem = signal<string | null>(null);
 	readonly loadingDrafts = computed(() => this.connected() && this.draftsQuery.isPending());
 	readonly draftsFailed = computed(() => this.draftsQuery.isError() && !this.draftsQuery.data());
 	readonly estimate = computed(() => this.threadsQuery.data()?.estimate ?? null);
@@ -1393,6 +1419,85 @@ export class Inbox {
 		const id = this.draftId();
 		if (id) keepDraft(id, next);
 		if (typed) this.scheduleSave();
+	}
+
+	// ── Saved replies (C3) ────────────────────────────────────────────────────────
+
+	/** Puts a saved reply's text where the cursor is in the message, ready to change before sending. */
+	insertSavedReply(reply: SavedReply) {
+		const body = this.draft()?.body ?? '';
+		const box = document.getElementById('inbox_body') as HTMLTextAreaElement | null;
+		const at = box && document.activeElement === box ? box.selectionStart : body.length;
+		const next = body.slice(0, at) + reply.body + body.slice(at);
+		this.editDraft('body', next);
+		const end = at + reply.body.length;
+		setTimeout(() => {
+			box?.focus();
+			box?.setSelectionRange(end, end);
+		});
+	}
+
+	manageReplies() {
+		this.replyEdit.set(null);
+		this.replyToDelete.set(null);
+		this.replyProblem.set(null);
+		const template = this.repliesModal();
+		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal' });
+	}
+
+	openReplyEditor(reply: SavedReply | null) {
+		this.replyToDelete.set(null);
+		this.replyProblem.set(null);
+		this.replyEdit.set(
+			reply
+				? { id: reply.id, scope: reply.scope, title: reply.title, body: reply.body }
+				: { id: null, scope: 'personal', title: '', body: '' },
+		);
+	}
+
+	editReply(field: 'title' | 'body' | 'scope', value: string) {
+		const edit = this.replyEdit();
+		if (edit) this.replyEdit.set({ ...edit, [field]: value });
+	}
+
+	async saveReply() {
+		const mailboxId = this.mailbox()?.mailboxId;
+		const edit = this.replyEdit();
+		const title = edit?.title.trim() ?? '';
+		const body = edit?.body.trim() ?? '';
+		if (!mailboxId || !edit || !title || !body) return;
+		try {
+			await firstValueFrom(
+				edit.id
+					? this.gateway.updateSavedReply(mailboxId, edit.id, { title, body })
+					: this.gateway.createSavedReply(mailboxId, { title, body, scope: edit.scope }),
+			);
+		} catch (error) {
+			this.replyProblem.set(statusOf(error) === 409 ? 'inbox_reply_too_many' : 'inbox_reply_failed');
+			return;
+		}
+		this.replyEdit.set(null);
+		this.replyProblem.set(null);
+		// Said quietly: a toast would close the popup the person is still working in.
+		this.announcement.set(this.transloco.translate('inbox_reply_saved'));
+		await this.savedRepliesQuery.refetch();
+	}
+
+	async deleteReply(reply: SavedReply) {
+		const mailboxId = this.mailbox()?.mailboxId;
+		if (!mailboxId) return;
+		try {
+			await firstValueFrom(this.gateway.deleteSavedReply(mailboxId, reply.id));
+		} catch (error) {
+			if (statusOf(error) !== 404) {
+				this.replyProblem.set('inbox_reply_failed');
+				return;
+			}
+		}
+		this.replyToDelete.set(null);
+		// Said quietly: a toast would close the popup the person is still working in.
+		this.announcement.set(this.transloco.translate('inbox_reply_deleted'));
+		await this.savedRepliesQuery.refetch();
 	}
 
 	// ── Autosave and Undo Send (C2, C4) ───────────────────────────────────────────

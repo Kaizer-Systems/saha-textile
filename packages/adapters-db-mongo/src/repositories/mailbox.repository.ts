@@ -11,6 +11,8 @@ import {
 	type OutboxItem,
 	type OutboxStatus,
 	type MailboxTokenStore,
+	type SavedReplyRepository,
+	type StoredSavedReply,
 } from '@saha-textile/core-domain';
 
 import {
@@ -18,10 +20,12 @@ import {
 	MailboxAccessModel,
 	MailboxModel,
 	MailboxOutboxModel,
+	SavedReplyModel,
 	type ContactMessageDoc,
 	type MailboxAccessDoc,
 	type MailboxDoc,
 	type MailboxOutboxDoc,
+	type SavedReplyDoc,
 } from '../models/index';
 
 const iso = (value: Date | null | undefined): string | null => (value ? new Date(value).toISOString() : null);
@@ -348,5 +352,77 @@ export class MongoMailboxOutboxRepository implements MailboxOutboxRepository {
 			.lean<MailboxOutboxDoc[]>()
 			.exec();
 		return docs.map(toOutbox);
+	}
+}
+
+const toSavedReply = (doc: SavedReplyDoc): StoredSavedReply => ({
+	id: doc._id,
+	scope: doc.scope === 'personal' ? 'personal' : 'shared',
+	mailboxId: doc.mailboxId ?? null,
+	ownerAdminUserId: doc.ownerAdminUserId ?? null,
+	title: doc.title,
+	body: doc.body,
+	createdBy: doc.createdBy,
+	updatedBy: doc.updatedBy,
+	createdAt: new Date(doc.createdAt).toISOString(),
+	updatedAt: new Date(doc.updatedAt).toISOString(),
+});
+
+/** Saved replies (C3), listed by title. */
+export class MongoSavedReplyRepository implements SavedReplyRepository {
+	async listShared(mailboxId: string): Promise<StoredSavedReply[]> {
+		const docs = await SavedReplyModel.find({ mailboxId, scope: 'shared' })
+			.sort({ title: 1 })
+			.lean<SavedReplyDoc[]>()
+			.exec();
+		return docs.map(toSavedReply);
+	}
+
+	async listPersonal(adminUserId: string): Promise<StoredSavedReply[]> {
+		const docs = await SavedReplyModel.find({ ownerAdminUserId: adminUserId, scope: 'personal' })
+			.sort({ title: 1 })
+			.lean<SavedReplyDoc[]>()
+			.exec();
+		return docs.map(toSavedReply);
+	}
+
+	async findById(id: string): Promise<StoredSavedReply | null> {
+		const doc = await SavedReplyModel.findById(id).lean<SavedReplyDoc>().exec();
+		return doc ? toSavedReply(doc) : null;
+	}
+
+	async create(reply: StoredSavedReply): Promise<StoredSavedReply> {
+		await SavedReplyModel.create({
+			_id: reply.id,
+			scope: reply.scope,
+			mailboxId: reply.mailboxId,
+			ownerAdminUserId: reply.ownerAdminUserId,
+			title: reply.title,
+			body: reply.body,
+			createdBy: reply.createdBy,
+			updatedBy: reply.updatedBy,
+			createdAt: new Date(reply.createdAt),
+			updatedAt: new Date(reply.updatedAt),
+		});
+		return reply;
+	}
+
+	async update(
+		id: string,
+		change: Pick<StoredSavedReply, 'title' | 'body' | 'updatedBy' | 'updatedAt'>,
+	): Promise<StoredSavedReply | null> {
+		const doc = await SavedReplyModel.findOneAndUpdate(
+			{ _id: id },
+			{ $set: { ...change, updatedAt: new Date(change.updatedAt) } },
+			{ new: true },
+		)
+			.lean<SavedReplyDoc>()
+			.exec();
+		return doc ? toSavedReply(doc) : null;
+	}
+
+	async delete(id: string): Promise<boolean> {
+		const result = await SavedReplyModel.deleteOne({ _id: id }).exec();
+		return result.deletedCount > 0;
 	}
 }

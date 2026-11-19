@@ -223,6 +223,33 @@ export interface ContactMessageRepository {
 	listPending(limit: number): Promise<ContactMessage[]>;
 }
 
+/** A saved reply as stored (C3): shared ones carry a mailbox, personal ones an owner. */
+export interface StoredSavedReply {
+	id: string;
+	scope: 'shared' | 'personal';
+	mailboxId: string | null;
+	ownerAdminUserId: string | null;
+	title: string;
+	body: string;
+	createdBy: string;
+	updatedBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/** Saved replies (`savedReplies`). Content typed by staff; never mail content. */
+export interface SavedReplyRepository {
+	listShared(mailboxId: string): Promise<StoredSavedReply[]>;
+	listPersonal(adminUserId: string): Promise<StoredSavedReply[]>;
+	findById(id: string): Promise<StoredSavedReply | null>;
+	create(reply: StoredSavedReply): Promise<StoredSavedReply>;
+	update(
+		id: string,
+		change: Pick<StoredSavedReply, 'title' | 'body' | 'updatedBy' | 'updatedAt'>,
+	): Promise<StoredSavedReply | null>;
+	delete(id: string): Promise<boolean>;
+}
+
 /** Where a message waiting for Undo Send stands (C4). */
 export type OutboxStatus = 'queued' | 'sending' | 'sent' | 'cancelled' | 'uncertain' | 'failed' | 'gone';
 

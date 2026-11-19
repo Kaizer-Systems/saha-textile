@@ -9,6 +9,7 @@ import { AdminInboxController } from './admin-inbox.controller';
 import { AdminMailboxesController } from './admin-mailboxes.controller';
 import { ContactMessagesController } from './contact-messages.controller';
 import { MailboxesAdminService } from './mailboxes-admin.service';
+import { SavedRepliesService } from './saved-replies.service';
 import { UndoSendDispatcher } from './undo-send.dispatcher';
 
 /**
@@ -18,7 +19,14 @@ import { UndoSendDispatcher } from './undo-send.dispatcher';
 @Module({
 	imports: [AuthModule, CatalogModule],
 	controllers: [AdminMailboxesController, AdminInboxController, ContactMessagesController],
-	providers: [MailboxBookkeeping, MailboxesAdminService, InboxService, ContactMessagesService, UndoSendDispatcher],
+	providers: [
+		MailboxBookkeeping,
+		MailboxesAdminService,
+		InboxService,
+		ContactMessagesService,
+		UndoSendDispatcher,
+		SavedRepliesService,
+	],
 	// Purchase orders are emailed through a connected mailbox (purchases brief, po03).
 	exports: [InboxService],
 })

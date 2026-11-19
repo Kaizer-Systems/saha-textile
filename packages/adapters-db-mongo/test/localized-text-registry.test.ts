@@ -42,6 +42,7 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 	'LegalPageRevision.metaTitle': 'an earlier version, kept with no screen (Legal Pages choice 3)',
 	'LegalPageRevision.metaDescription': 'an earlier version, kept with no screen (Legal Pages choice 3)',
 	'ContentBlock.link': 'an address',
+	'MailboxOutbox.meta': 'the From address and counts for the audit record once an Inbox message is sent',
 	'BuilderPage.pending':
 		'Go Lives waiting for pictures (Page Builder E5): schedule entries pointing at revisions, no words of their own',
 	'PageLayoutRevision.sections':

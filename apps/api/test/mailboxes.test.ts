@@ -1,6 +1,11 @@
 import { HttpException } from '@nestjs/common';
 import type { ContactMessage, Mailbox, MailboxAccess } from '@saha-textile/contracts';
-import { type MailboxPort, MailboxAccessRevoked, type OutboxItem } from '@saha-textile/core-domain';
+import {
+	type MailboxPort,
+	MailboxAccessRevoked,
+	type OutboxItem,
+	type StoredSavedReply,
+} from '@saha-textile/core-domain';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { UnavailableMailboxAdapter, UnavailableMailboxTokenStore } from '../src/infra/unavailable-mailbox.adapter';
@@ -15,6 +20,7 @@ import { ContactMessagesController } from '../src/mailboxes/contact-messages.con
 import { InboxService } from '../src/mailboxes/inbox.service';
 import { MailboxBookkeeping, MailboxSignInState, STATE_TTL_MS } from '../src/mailboxes/mailbox-support';
 import { MailboxesAdminService } from '../src/mailboxes/mailboxes-admin.service';
+import { SAVED_REPLY_CHANGED, SavedRepliesService } from '../src/mailboxes/saved-replies.service';
 import { LanguageStore } from '../src/languages/language-store';
 
 const KEY = Buffer.alloc(32, 9).toString('base64');
@@ -1021,7 +1027,7 @@ describe('mailbox controllers', () => {
 			queueSend: vi.fn(async () => ({ outboxId: 'o', draftId: 'd', sendAt: '' })),
 			modify: vi.fn(async () => undefined),
 		};
-		const controller = new AdminInboxController(service as never);
+		const controller = new AdminInboxController(service as never, {} as never);
 		await controller.summary(principal);
 		expect(() => controller.summary(undefined)).toThrow();
 		await controller.threads('care', { folder: 'inbox' }, principal);
@@ -1328,5 +1334,121 @@ describe('Drafts and Undo Send (C2, C4)', () => {
 		await inbox.deleteDraft('u_riya', 'care', 'd1');
 		expect(gmail.deleteDraft).toHaveBeenCalledWith(expect.anything(), 'd1');
 		expect(w.audit.at(-1)).toMatchObject({ action: 'mailbox.draft_deleted', actorUserId: 'u_riya' });
+	});
+});
+
+describe('Saved replies (C3)', () => {
+	const store = () => {
+		const rows = new Map<string, StoredSavedReply>();
+		return {
+			rows,
+			listShared: async (mailboxId: string) =>
+				[...rows.values()].filter((row) => row.scope === 'shared' && row.mailboxId === mailboxId),
+			listPersonal: async (adminUserId: string) =>
+				[...rows.values()].filter((row) => row.scope === 'personal' && row.ownerAdminUserId === adminUserId),
+			findById: async (id: string) => rows.get(id) ?? null,
+			create: async (reply: StoredSavedReply) => {
+				rows.set(reply.id, reply);
+				return reply;
+			},
+			update: async (id: string, change: Partial<StoredSavedReply>) => {
+				const row = rows.get(id);
+				if (!row) return null;
+				Object.assign(row, change);
+				return row;
+			},
+			delete: async (id: string) => rows.delete(id),
+		};
+	};
+	let w: ReturnType<typeof world>;
+	let replies: ReturnType<typeof store>;
+	let service: SavedRepliesService;
+	const write = { title: 'Where is my order', body: 'Your order ships in 3 days.' };
+
+	beforeEach(async () => {
+		w = world();
+		replies = store();
+		service = new SavedRepliesService(replies as never, w.access as never, books(w));
+		await w.access.replaceForMailbox('care', [
+			{ mailboxId: 'care', adminUserId: 'boss', rights: ['read', 'send', 'settings'] },
+			{ mailboxId: 'care', adminUserId: 'riya', rights: ['read', 'send'] },
+			{ mailboxId: 'care', adminUserId: 'reader', rights: ['read'] },
+		]);
+		await w.access.replaceForMailbox('orders', [
+			{ mailboxId: 'orders', adminUserId: 'boss', rights: ['read', 'send', 'settings'] },
+		]);
+	});
+
+	it('lets everyone who may send use shared replies, and only the Settings right change them', async () => {
+		const shared = await service.create('boss', 'care', { ...write, scope: 'shared' });
+		expect(shared).toMatchObject({ scope: 'shared', editable: true });
+		const seen = await service.list('riya', 'care');
+		expect(seen).toMatchObject({ canEditShared: false, personal: [] });
+		expect(seen.shared).toEqual([expect.objectContaining({ id: shared.id, editable: false })]);
+		await expect(service.create('riya', 'care', { ...write, scope: 'shared' })).rejects.toMatchObject({
+			status: 403,
+		});
+		await expect(service.update('riya', 'care', shared.id, write)).rejects.toMatchObject({ status: 403 });
+		await expect(service.remove('riya', 'care', shared.id)).rejects.toMatchObject({ status: 403 });
+		expect(await service.update('boss', 'care', shared.id, { ...write, title: 'Delivery time' })).toMatchObject({
+			title: 'Delivery time',
+		});
+	});
+
+	it('keeps shared replies to their own mailbox', async () => {
+		const shared = await service.create('boss', 'care', { ...write, scope: 'shared' });
+		expect((await service.list('boss', 'orders')).shared).toEqual([]);
+		await expect(service.update('boss', 'orders', shared.id, write)).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('gives each person their own personal replies, in any mailbox they send from', async () => {
+		const own = await service.create('riya', 'care', { ...write, scope: 'personal' });
+		expect((await service.list('riya', 'care')).personal).toEqual([
+			expect.objectContaining({ id: own.id, editable: true }),
+		]);
+		expect((await service.list('boss', 'care')).personal).toEqual([]);
+		await expect(service.update('boss', 'care', own.id, write)).rejects.toMatchObject({ status: 404 });
+		await expect(service.remove('boss', 'care', own.id)).rejects.toMatchObject({ status: 404 });
+		await service.remove('riya', 'care', own.id);
+		expect(replies.rows.size).toBe(0);
+		await expect(service.remove('riya', 'care', own.id)).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('needs the Send right in the mailbox named, and hides mailboxes not given', async () => {
+		await expect(service.list('reader', 'care')).rejects.toMatchObject({ status: 403 });
+		await expect(service.list('riya', 'orders')).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('stops at 100 per mailbox or person, and audits changes without their text', async () => {
+		for (let index = 0; index < 100; index += 1) {
+			await service.create('riya', 'care', { ...write, scope: 'personal' });
+		}
+		await expect(service.create('riya', 'care', { ...write, scope: 'personal' })).rejects.toMatchObject({
+			status: 409,
+		});
+		expect(await service.create('riya', 'care', { ...write, scope: 'personal' }).catch(() => null)).toBeNull();
+		const entry = w.audit.find((row) => row.action === SAVED_REPLY_CHANGED);
+		expect(entry).toMatchObject({ actorUserId: 'riya', entityId: 'care' });
+		expect(JSON.stringify(entry)).not.toContain('ships in 3 days');
+		replies.update = async () => null;
+		const first = [...replies.rows.values()][0];
+		await expect(service.update('riya', 'care', first?.id ?? '', write)).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('serves the routes as the signed-in admin', async () => {
+		const saved = {
+			list: vi.fn(async () => ({})),
+			create: vi.fn(async () => ({})),
+			update: vi.fn(async () => ({})),
+			remove: vi.fn(async () => undefined),
+		};
+		const controller = new AdminInboxController({} as never, saved as never);
+		const principal = { userId: 'riya' } as never;
+		await controller.listSavedReplies('care', principal);
+		await controller.createSavedReply('care', { ...write, scope: 'personal' }, principal);
+		await controller.updateSavedReply('care', 'srp_1', write, principal);
+		await controller.deleteSavedReply('care', 'srp_1', principal);
+		expect(saved.list).toHaveBeenCalledWith('riya', 'care');
+		expect(saved.remove).toHaveBeenCalledWith('riya', 'care', 'srp_1');
 	});
 });

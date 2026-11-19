@@ -521,6 +521,48 @@ export const InboxOutboxStatus = z.object({
 });
 export type InboxOutboxStatus = z.infer<typeof InboxOutboxStatus>;
 
+// ── Saved replies (C3) ───────────────────────────────────────────────────────────
+
+/**
+ * `shared`: one mailbox's, used by everyone who may send from it and edited with its Settings right.
+ * `personal`: one admin user's own, used in any mailbox they may send from (owner, 2026-11-19).
+ */
+export const SavedReplyScope = z.enum(['shared', 'personal']);
+export type SavedReplyScope = z.infer<typeof SavedReplyScope>;
+
+/** At most this many saved replies per mailbox (shared) and per admin user (personal). */
+export const MAX_SAVED_REPLIES = 100;
+
+export const SavedReply = z.object({
+	id: z.string(),
+	scope: SavedReplyScope,
+	title: z.string(),
+	/** Plain text, inserted at the cursor; nothing is sent by choosing one. */
+	body: z.string(),
+	updatedAt: IsoDateTime,
+	/** Whether the person asking may change it: their own, or shared with the Settings right. */
+	editable: z.boolean(),
+});
+export type SavedReply = z.infer<typeof SavedReply>;
+
+/** `GET /admin/inbox/:mailboxId/saved-replies`: this mailbox's shared replies, then the asker's own. */
+export const SavedReplyList = z.object({
+	shared: z.array(SavedReply),
+	personal: z.array(SavedReply),
+	/** Whether the asker may add or change shared replies here. */
+	canEditShared: z.boolean(),
+});
+export type SavedReplyList = z.infer<typeof SavedReplyList>;
+
+export const SavedReplyWrite = z.object({
+	title: z.string().trim().min(1).max(80),
+	body: z.string().trim().min(1).max(5_000),
+});
+export type SavedReplyWrite = z.infer<typeof SavedReplyWrite>;
+
+export const SavedReplyCreate = SavedReplyWrite.extend({ scope: SavedReplyScope });
+export type SavedReplyCreate = z.infer<typeof SavedReplyCreate>;
+
 /** Largest total a forward may carry, the original attachments included (Gmail's own limit). */
 export const MAX_FORWARD_BYTES = 25 * 1024 * 1024;
 

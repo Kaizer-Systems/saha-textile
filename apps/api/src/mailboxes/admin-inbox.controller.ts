@@ -23,6 +23,8 @@ import {
 	InboxMarkMessagesRequest,
 	InboxModifyRequest,
 	InboxSendRequest,
+	SavedReplyCreate,
+	SavedReplyWrite,
 } from '@saha-textile/contracts';
 import type { FastifyReply } from 'fastify';
 
@@ -31,6 +33,7 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { InboxService } from './inbox.service';
+import { SavedRepliesService } from './saved-replies.service';
 
 const me = (principal: AuthenticatedPrincipal | undefined): string => {
 	if (!principal) throw new UnauthorizedException();
@@ -42,7 +45,10 @@ const me = (principal: AuthenticatedPrincipal | undefined): string => {
 @Audience('admin')
 @Controller('admin/inbox')
 export class AdminInboxController {
-	constructor(private readonly inbox: InboxService) {}
+	constructor(
+		private readonly inbox: InboxService,
+		private readonly savedReplies: SavedRepliesService,
+	) {}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')
@@ -135,6 +141,55 @@ export class AdminInboxController {
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
 		return this.inbox.cancelSend(me(principal), mailboxId, outboxId);
+	}
+
+	@Get(':mailboxId/saved-replies')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({
+		operationId: 'listSavedReplies',
+		summary: "This mailbox's shared saved replies, then my own",
+	})
+	listSavedReplies(
+		@Param('mailboxId') mailboxId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.savedReplies.list(me(principal), mailboxId);
+	}
+
+	@Post(':mailboxId/saved-replies')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'createSavedReply', summary: 'Add a shared (Settings right) or personal saved reply' })
+	createSavedReply(
+		@Param('mailboxId') mailboxId: string,
+		@Body(new ZodValidationPipe(SavedReplyCreate)) body: SavedReplyCreate,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.savedReplies.create(me(principal), mailboxId, body);
+	}
+
+	@Patch(':mailboxId/saved-replies/:replyId')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'updateSavedReply', summary: 'Change a saved reply I may edit' })
+	updateSavedReply(
+		@Param('mailboxId') mailboxId: string,
+		@Param('replyId') replyId: string,
+		@Body(new ZodValidationPipe(SavedReplyWrite)) body: SavedReplyWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.savedReplies.update(me(principal), mailboxId, replyId, body);
+	}
+
+	@Delete(':mailboxId/saved-replies/:replyId')
+	@HttpCode(204)
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'deleteSavedReply', summary: 'Delete a saved reply I may edit' })
+	async deleteSavedReply(
+		@Param('mailboxId') mailboxId: string,
+		@Param('replyId') replyId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<void> {
+		await this.savedReplies.remove(me(principal), mailboxId, replyId);
 	}
 
 	@Get(':mailboxId/drafts')

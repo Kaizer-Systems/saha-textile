@@ -156,6 +156,10 @@ export const COLLECTION_NAMES = {
 	Mailbox: 'mailboxes',
 	MailboxAccess: 'mailboxAccess',
 	ContactMessage: 'contactMessages',
+	/** Inbox messages waiting out Undo Send; machinery, removed by its own expiry (2026-11-19). */
+	MailboxOutbox: 'mailboxOutbox',
+	/** Inbox saved replies: shared per mailbox, or one admin user's own (2026-11-19). */
+	SavedReply: 'savedReplies',
 	/** Typed site settings: home hero layout, YouTube rail settings and cache. */
 	SiteSetting: 'siteSettings',
 	SeoRedirect: 'seoRedirects',
@@ -195,6 +199,7 @@ const RUNTIME_ONLY_COLLECTIONS = [
 	'searchChecks',
 	'releaseMarkers',
 	'storageReservations',
+	'mailboxOutbox',
 ] as const;
 
 /**

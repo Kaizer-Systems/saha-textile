@@ -26,6 +26,7 @@ const setup = () => {
 		post: vi.fn((..._args: unknown[]) => of('posted')),
 		put: vi.fn((..._args: unknown[]) => of('put')),
 		delete: vi.fn((..._args: unknown[]) => of(null)),
+		patch: vi.fn((..._args: unknown[]) => of('patched')),
 	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({ providers: [{ provide: HttpClient, useValue: http }] });
@@ -112,6 +113,19 @@ describe('MailboxGateway', () => {
 		]);
 		expect(http.put.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/drafts/d1');
 		expect(http.delete.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/drafts/d1');
+	});
+
+	it('calls the saved-reply routes (C3)', async () => {
+		const { gateway, http } = setup();
+		const write = { title: 't', body: 'b' };
+		await firstValueFrom(gateway.savedReplies('m1'));
+		await firstValueFrom(gateway.createSavedReply('m1', { ...write, scope: 'personal' }));
+		await firstValueFrom(gateway.updateSavedReply('m1', 'r/1', write));
+		await firstValueFrom(gateway.deleteSavedReply('m1', 'r1'));
+		expect(http.get.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/saved-replies');
+		expect(http.post.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/saved-replies');
+		expect(http.patch.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/saved-replies/r%2F1');
+		expect(http.delete.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/saved-replies/r1');
 	});
 
 	it('reads the overview and the unread counts through their queries, the counts every minute', async () => {

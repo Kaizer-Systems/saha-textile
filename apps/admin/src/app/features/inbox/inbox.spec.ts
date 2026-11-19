@@ -1203,3 +1203,14 @@ describe('Inbox formatting (C1)', () => {
 		expect(html.startsWith('<p></p>')).toBe(true);
 	});
 });
+
+describe('Inbox mailbox settings (G1)', () => {
+	it('shows the settings screen instead of conversations, for its own address', () => {
+		const tools = setup({ mailbox: 'care', folder: 'settings' }, {});
+		tools.summary([box('care')]);
+		expect(tools.page.settingsView()).toBe(true);
+		expect(tools.threadsQuery.options().enabled).toBe(false);
+		expect(tools.page.settingsLink()).toEqual(['/inbox', 'care', 'settings']);
+		expect(tools.page.draftsLink()).toEqual(['/inbox', 'care', 'drafts']);
+	});
+});

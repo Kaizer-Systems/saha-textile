@@ -29,7 +29,12 @@ import type {
 	Mailbox,
 	MailboxAccessList,
 	MailboxPeoplePage,
+	MailboxFilter,
+	MailboxFilterWrite,
 	MailboxRight,
+	MailboxSettings,
+	MailboxSignature,
+	MailboxVacation,
 	SavedReply,
 	SavedReplyCreate,
 	SavedReplyList,
@@ -212,6 +217,37 @@ export class MailboxGateway {
 		return draftId
 			? this.http.put<InboxDraftSaved>(url, body, { context: quiet() })
 			: this.http.post<InboxDraftSaved>(url, body, { context: quiet() });
+	}
+
+	/** A mailbox's Gmail settings (G1). Quiet: the settings screen says what failed. */
+	mailboxSettings(mailboxId: string): Observable<MailboxSettings> {
+		return this.http.get<MailboxSettings>(this.inbox(`/${this.id(mailboxId)}/settings`), { context: quiet() });
+	}
+
+	addFilter(mailboxId: string, body: MailboxFilterWrite): Observable<MailboxFilter> {
+		return this.http.post<MailboxFilter>(this.inbox(`/${this.id(mailboxId)}/settings/filters`), body, {
+			context: quiet(),
+		});
+	}
+
+	deleteFilter(mailboxId: string, filterId: string): Observable<void> {
+		return this.http.delete<void>(this.inbox(`/${this.id(mailboxId)}/settings/filters/${this.id(filterId)}`), {
+			context: quiet(),
+		});
+	}
+
+	saveVacation(mailboxId: string, body: MailboxVacation): Observable<MailboxVacation> {
+		return this.http.put<MailboxVacation>(this.inbox(`/${this.id(mailboxId)}/settings/vacation`), body, {
+			context: quiet(),
+		});
+	}
+
+	saveSignature(mailboxId: string, html: string): Observable<MailboxSignature> {
+		return this.http.put<MailboxSignature>(
+			this.inbox(`/${this.id(mailboxId)}/settings/signature`),
+			{ html },
+			{ context: quiet() },
+		);
 	}
 
 	/** Saved replies (C3): this mailbox's shared ones, then the signed-in person's own. */

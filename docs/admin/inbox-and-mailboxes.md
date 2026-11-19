@@ -92,6 +92,7 @@ The page address names the place the operator is in:
 | `/inbox/<mailbox>/<labelId>`                         | One label (`Label_…`) or category (`CATEGORY_…`) |
 | `/inbox/<mailbox>/<folder>/<threadId>`               | One open conversation                            |
 | `/inbox/<mailbox>/drafts`                            | The mailbox's Gmail drafts                       |
+| `/inbox/<mailbox>/settings`                          | The mailbox's Gmail settings (Settings right)    |
 | `…?draft=reply` (also `reply_all`, `forward`, `new`) | The compose box                                  |
 | `…?draft=open&d=<draftId>`                           | A Gmail draft, reopened in the compose box       |
 | `…?q=<words>`                                        | Search results                                   |
@@ -160,6 +161,16 @@ Saved replies are short answers written once, such as delivery times or return s
 - The Send right in the mailbox named is needed for every call. Another person's reply, or another mailbox's shared reply, answers 404.
 - Each mailbox and each person can keep up to 100 (`MAX_SAVED_REPLIES`). They are plain text, in the `savedReplies` collection. Every change writes a `mailbox.saved_reply_changed` audit record with the reply's id and scope, never its text.
 
+### Mailbox settings
+
+People with a mailbox's Settings right see **Mailbox settings** in the Inbox sidebar. The screen reads Gmail live and needs Google's basic-settings permission; a mailbox connected before that permission was asked for answers "needs reconnecting".
+
+- **Filters.** Filters are listed, added and deleted. They match on From, To, Subject, Gmail search words and attachments, and can skip the Inbox, mark read, star, mark important or never important, never send to spam, move to the Bin, or apply one of the mailbox's labels. Gmail has no way to edit a filter, so **Change** adds the new filter and then deletes the old one; when Gmail refuses the new one, the old one keeps working.
+- **Forwarding filters.** Filters that forward mail are shown with where they forward to, and are never made, changed or deleted here. Automatic forwarding stays in Gmail and Workspace.
+- **Vacation reply.** The automatic reply's subject, message, first and last day (India time), and whether it answers only contacts or only the mailbox's own domain.
+- **Signature.** Only the main address's signature can be changed by an app; alias signatures are changed in Gmail. The signature is edited with the compose box's editor and cleaned like composed mail. A signature with pictures is shown as it is and changed in Gmail, because the cleaning would drop the pictures.
+- Every change writes a `mailbox.settings_changed` audit record naming what changed, never its text.
+
 Every send writes a `mailbox.message_sent` audit record with Gmail's message and thread ids. Gmail records only that the mailbox sent a message; the Inbox reads these records to show which operator sent each reply from the admin.
 
 ### Gmail calls
@@ -203,6 +214,8 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
 | Reply addressing and drafts          | `apps/admin/src/app/features/inbox/inbox-drafts.ts`                                     |
 | Undo Send outbox                     | `apps/api/src/mailboxes/undo-send.dispatcher.ts`                                        |
 | Saved replies                        | `apps/api/src/mailboxes/saved-replies.service.ts`                                       |
+| Gmail settings                       | `apps/api/src/mailboxes/mailbox-settings.service.ts`                                    |
+| Settings screen                      | `apps/admin/src/app/features/inbox/mailbox-settings.ts`                                 |
 | Mailboxes settings                   | `apps/admin/src/app/features/setting/mailboxes/mailboxes.ts`                            |
 | Routes                               | [Admin mailbox and inbox routes](../api/route-inventory#admin-mailbox-and-inbox-routes) |
 
@@ -228,7 +241,7 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
 - Finding a send whose answer was lost relies on Gmail keeping the message's own `Message-ID`, which is unconfirmed until it is tried on a real mailbox. Without it such a send ends as unconfirmed, never as a second copy.
 - A sent message cannot be recalled after the ten seconds.
 - Saved replies are plain text; formatting in them is not kept.
-- Gmail settings (filters, vacation reply, signature) are managed in Gmail.
+- Alias signatures, forwarding filters and signatures with pictures are changed in Gmail.
 - Whether Gmail's own filters run on mail placed by import (Contact Us) is unconfirmed until it is tried on a real mailbox.
 
 ## Related pages

@@ -518,6 +518,11 @@ Every `/admin/mailboxes` route except the callback also needs a super admin (the
 | `POST`   | `/admin/inbox/:mailboxId/send`                                          | Send             | Reply, forward or write; the message waits ten seconds in Drafts so it can be undone |
 | `GET`    | `/admin/inbox/:mailboxId/outbox/:outboxId`                              | Send             | Whether a message the operator sent has gone; the sender only                        |
 | `POST`   | `/admin/inbox/:mailboxId/outbox/:outboxId/cancel`                       | Send             | Undo Send: keep the message in Drafts; 409 once it is on its way                     |
+| `GET`    | `/admin/inbox/:mailboxId/settings`                                      | Settings         | The mailbox's filters, vacation reply and main signature, read live from Gmail       |
+| `POST`   | `/admin/inbox/:mailboxId/settings/filters`                              | Settings         | Add a filter, or replace one (new first, then the old deleted); never forwarding     |
+| `DELETE` | `/admin/inbox/:mailboxId/settings/filters/:filterId`                    | Settings         | Delete a filter that does not forward                                                |
+| `PUT`    | `/admin/inbox/:mailboxId/settings/vacation`                             | Settings         | Turn the vacation reply on or off, or change it                                      |
+| `PUT`    | `/admin/inbox/:mailboxId/settings/signature`                            | Settings         | Change the main address's signature; refused when it has pictures                    |
 | `GET`    | `/admin/inbox/:mailboxId/saved-replies`                                 | Send             | This mailbox's shared saved replies, then the operator's own                         |
 | `POST`   | `/admin/inbox/:mailboxId/saved-replies`                                 | Send / Settings  | Add a personal reply, or a shared one with the Settings right                        |
 | `PATCH`  | `/admin/inbox/:mailboxId/saved-replies/:replyId`                        | Send / Settings  | Change one's own reply, or this mailbox's shared one with the Settings right         |

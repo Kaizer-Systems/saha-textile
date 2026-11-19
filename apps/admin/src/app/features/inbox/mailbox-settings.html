@@ -1,0 +1,349 @@
+<!-- Mailbox settings (G1): the theme's tabs; each tab reads and saves straight to Gmail. -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+	<h4 class="mb-0">{{ 'inbox_mailbox_settings' | transloco }}</h4>
+	<span class="text-content small text-break">{{ address() }}</span>
+</div>
+<ul class="nav nav-tabs mb-3">
+	@for (name of ['filters', 'vacation', 'signature']; track name) {
+	<li class="nav-item">
+		<a
+			href="javascript:void(0)"
+			class="nav-link"
+			[id]="'inbox_settings_tab_' + name"
+			[class.active]="tab() === name"
+			[attr.aria-current]="tab() === name ? 'page' : null"
+			(click)="tab.set($any(name)); problem.set(null)"
+		>
+			{{ 'inbox_settings_' + name | transloco }}
+		</a>
+	</li>
+	}
+</ul>
+@if (problem(); as key) {
+<div
+	class="alert alert-warning"
+	role="alert"
+>
+	{{ key | transloco }}
+</div>
+} @if (loading()) {
+<div class="table-loader position-static">
+	<span>{{ 'please_wait' | transloco }}...</span>
+</div>
+} @else if (failure(); as key) {
+<div class="alert alert-warning">{{ key | transloco }}</div>
+} @else if (settings(); as s) { @switch (tab()) { @case ('filters') {
+<p class="help-text">{{ 'inbox_filters_help' | transloco }}</p>
+@if (filterEdit(); as form) {
+<div class="theme-form theme-form-2">
+	<h5 class="mb-2">{{ (form.replaces ? 'inbox_filter_change' : 'inbox_filter_new') | transloco }}</h5>
+	<h6 class="text-content small mb-2">{{ 'inbox_filter_matches' | transloco }}</h6>
+	@for (field of ['from', 'to', 'subject', 'query']; track field) {
+	<label
+		class="form-label-title"
+		[for]="'inbox_filter_' + field"
+	>
+		{{ 'inbox_filter_' + field | transloco }}
+	</label>
+	<input
+		class="form-control keep-case mb-2"
+		maxlength="500"
+		[id]="'inbox_filter_' + field"
+		[value]="$any(form)[field]"
+		(input)="editFilter($any(field), $any($event.target).value)"
+	/>
+	}
+	<div class="custom-control custom-checkbox mb-3">
+		<input
+			type="checkbox"
+			class="custom-control-input checkbox_animated"
+			id="inbox_filter_hasAttachment"
+			[checked]="form.hasAttachment"
+			(change)="editFilter('hasAttachment', $any($event.target).checked)"
+		/>
+		<label
+			class="custom-control-label"
+			for="inbox_filter_hasAttachment"
+		>
+			{{ 'inbox_filter_has_attachment' | transloco }}
+		</label>
+	</div>
+	<h6 class="text-content small mb-2">{{ 'inbox_filter_then' | transloco }}</h6>
+	@for (action of ['skipInbox', 'markRead', 'star', 'important', 'neverImportant', 'neverSpam', 'bin']; track action)
+	{
+	<div class="custom-control custom-checkbox mb-1">
+		<input
+			type="checkbox"
+			class="custom-control-input checkbox_animated"
+			[id]="'inbox_filter_' + action"
+			[checked]="$any(form)[action]"
+			(change)="editFilter($any(action), $any($event.target).checked)"
+		/>
+		<label
+			class="custom-control-label"
+			[for]="'inbox_filter_' + action"
+		>
+			{{ 'inbox_filter_do_' + action | transloco }}
+		</label>
+	</div>
+	}
+	<label
+		class="form-label-title mt-2"
+		for="inbox_filter_label"
+	>
+		{{ 'inbox_filter_label' | transloco }}
+	</label>
+	<select
+		class="form-select"
+		id="inbox_filter_label"
+		[value]="form.labelId"
+		(change)="editFilter('labelId', $any($event.target).value)"
+	>
+		<option value="">{{ 'inbox_filter_no_label' | transloco }}</option>
+		@for (label of userLabels(); track label.id) {
+		<option [value]="label.id">{{ label.name }}</option>
+		}
+	</select>
+	@if (form.replaces) {
+	<p class="help-text mt-2">{{ 'inbox_filter_change_help' | transloco }}</p>
+	}
+	<div class="button-box justify-content-end mt-3">
+		<button
+			type="button"
+			class="btn btn-md btn-secondary fw-bold"
+			(click)="filterEdit.set(null); problem.set(null)"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-md btn-theme fw-bold"
+			id="inbox_filter_save"
+			[disabled]="busy()"
+			(click)="saveFilter()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+</div>
+} @else {
+<ul class="list-unstyled mb-3">
+	@for (filter of s.filters; track filter.id) {
+	<li class="d-flex justify-content-between align-items-start border-bottom gap-2 py-2">
+		<div class="min-w-0">
+			<code class="d-block text-break">{{ filterMatch(filter) }}</code>
+			<p
+				class="small mb-0"
+				[class.text-content]="filter.forwardTo"
+			>
+				@for (action of actionsOf(filter); track $index) {
+				<span class="me-2">→ {{ action.key | transloco: action.params ?? {} }}</span>
+				}
+			</p>
+			@if (filterToDelete()?.id === filter.id) {
+			<div class="d-flex align-items-center mt-2 flex-wrap gap-2">
+				<span class="small">{{ 'inbox_filter_delete_ask' | transloco }}</span>
+				<button
+					type="button"
+					class="btn btn-sm btn-danger"
+					id="inbox_filter_delete_confirm"
+					[disabled]="busy()"
+					(click)="deleteFilter(filter)"
+				>
+					{{ 'delete' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline"
+					(click)="filterToDelete.set(null)"
+				>
+					{{ 'cancel' | transloco }}
+				</button>
+			</div>
+			}
+		</div>
+		@if (filter.forwardTo) {
+		<i
+			class="ri-lock-line text-content"
+			[title]="'inbox_filter_forwarding' | transloco"
+		></i>
+		} @else {
+		<div class="d-flex gap-1">
+			<button
+				type="button"
+				class="btn btn-sm p-1"
+				[title]="'edit' | transloco"
+				[attr.aria-label]="('edit' | transloco) + ': ' + filterMatch(filter)"
+				(click)="startFilter(filter)"
+			>
+				<i class="ri-pencil-line"></i>
+			</button>
+			<button
+				type="button"
+				class="btn btn-sm p-1"
+				[title]="'delete' | transloco"
+				[attr.aria-label]="('delete' | transloco) + ': ' + filterMatch(filter)"
+				(click)="filterToDelete.set(filter)"
+			>
+				<i class="ri-delete-bin-line"></i>
+			</button>
+		</div>
+		}
+	</li>
+	} @empty {
+	<li class="text-content">{{ 'inbox_filters_none' | transloco }}</li>
+	}
+</ul>
+<div class="button-box justify-content-end">
+	<button
+		type="button"
+		class="btn btn-md btn-theme fw-bold"
+		id="inbox_filter_new"
+		(click)="startFilter(null)"
+	>
+		{{ 'inbox_filter_new' | transloco }}
+	</button>
+</div>
+} } @case ('vacation') { @if (vacation(); as v) {
+<div class="theme-form theme-form-2">
+	<div class="form-check form-switch mb-3 ps-0">
+		<label class="switch">
+			<input
+				type="checkbox"
+				id="inbox_vacation_on"
+				[checked]="v.enabled"
+				(change)="editVacation('enabled', $any($event.target).checked)"
+			/>
+			<span class="switch-state"></span>
+		</label>
+		<label
+			class="ms-2"
+			for="inbox_vacation_on"
+		>
+			{{ 'inbox_vacation_on' | transloco }}
+		</label>
+	</div>
+	<label
+		class="form-label-title"
+		for="inbox_vacation_subject"
+	>
+		{{ 'inbox_subject' | transloco }}
+	</label>
+	<input
+		class="form-control keep-case mb-2"
+		id="inbox_vacation_subject"
+		maxlength="200"
+		[value]="v.subject"
+		(input)="editVacation('subject', $any($event.target).value)"
+	/>
+	<label
+		class="form-label-title"
+		for="inbox_vacation_message"
+	>
+		{{ 'message' | transloco }}
+	</label>
+	<textarea
+		class="form-control keep-case mb-2"
+		id="inbox_vacation_message"
+		rows="6"
+		maxlength="10000"
+		[value]="v.message"
+		(input)="editVacation('message', $any($event.target).value)"
+	></textarea>
+	<div class="row g-2">
+		<div class="col-sm-6">
+			<label
+				class="form-label-title"
+				for="inbox_vacation_first"
+			>
+				{{ 'inbox_vacation_first_day' | transloco }}
+			</label>
+			<input
+				type="date"
+				class="form-control"
+				id="inbox_vacation_first"
+				[value]="istDay(v.startTime)"
+				(change)="setDay('startTime', $any($event.target).value)"
+			/>
+		</div>
+		<div class="col-sm-6">
+			<label
+				class="form-label-title"
+				for="inbox_vacation_last"
+			>
+				{{ 'inbox_vacation_last_day' | transloco }}
+			</label>
+			<input
+				type="date"
+				class="form-control"
+				id="inbox_vacation_last"
+				[value]="istDay(v.endTime)"
+				(change)="setDay('endTime', $any($event.target).value)"
+			/>
+		</div>
+	</div>
+	@for (option of ['contactsOnly', 'domainOnly']; track option) {
+	<div class="custom-control custom-checkbox mt-2">
+		<input
+			type="checkbox"
+			class="custom-control-input checkbox_animated"
+			[id]="'inbox_vacation_' + option"
+			[checked]="$any(v)[option]"
+			(change)="editVacation($any(option), $any($event.target).checked)"
+		/>
+		<label
+			class="custom-control-label"
+			[for]="'inbox_vacation_' + option"
+		>
+			{{ 'inbox_vacation_' + option | transloco: { domain: domain() } }}
+		</label>
+	</div>
+	}
+	<p class="help-text mt-2">{{ 'inbox_vacation_help' | transloco }}</p>
+	<div class="button-box justify-content-end mt-3">
+		<button
+			type="button"
+			class="btn btn-md btn-theme fw-bold"
+			id="inbox_vacation_save"
+			[disabled]="busy()"
+			(click)="saveVacation()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+</div>
+} } @case ('signature') {
+<p class="help-text">{{ 'inbox_signature_help' | transloco: { address: s.signature.address } }}</p>
+@if (editor(); as ed) {
+<div
+	class="custom-editor"
+	id="inbox_signature"
+>
+	<ngx-editor-menu
+		[editor]="ed"
+		[toolbar]="editorToolbar"
+	/>
+	<ngx-editor [editor]="ed" />
+</div>
+<div class="button-box justify-content-end mt-3">
+	<button
+		type="button"
+		class="btn btn-md btn-theme fw-bold"
+		id="inbox_signature_save"
+		[disabled]="busy()"
+		(click)="saveSignature()"
+	>
+		{{ 'save' | transloco }}
+	</button>
+</div>
+} @else if (signaturePreview(); as preview) {
+<div class="alert alert-info">{{ 'inbox_signature_pictures' | transloco }}</div>
+<iframe
+	class="inbox-frame rounded-3 border"
+	sandbox="allow-same-origin"
+	referrerpolicy="no-referrer"
+	[title]="'inbox_settings_signature' | transloco"
+	[srcdoc]="preview"
+	(load)="fitFrame($event)"
+></iframe>
+} } } }

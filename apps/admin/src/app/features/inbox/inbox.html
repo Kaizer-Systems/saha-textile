@@ -222,8 +222,34 @@
 					<li class="text-content small px-3">{{ 'inbox_no_labels' | transloco }}</li>
 					}
 				</ul>
+				@if (can('settings')) {
+				<!-- Gmail settings for this mailbox (G1): filters, vacation reply, signature. -->
+				<ul class="nav nav-pills flex-column mt-3">
+					<li class="nav-item">
+						<a
+							class="nav-link"
+							id="inbox_settings_link"
+							[routerLink]="settingsLink()"
+							[class.active]="settingsView()"
+							[attr.aria-current]="settingsView() ? 'page' : null"
+						>
+							<i class="ri-settings-3-line"></i>
+							{{ 'inbox_mailbox_settings' | transloco }}
+						</a>
+					</li>
+				</ul>
+				}
 			</div>
 
+			@if (settingsView() && can('settings')) {
+			<div class="col-xl-10 col-lg-9">
+				<app-mailbox-settings
+					[mailboxId]="mailbox()?.mailboxId ?? ''"
+					[address]="mailbox()?.address ?? ''"
+					[labels]="mailboxLabels()"
+				/>
+			</div>
+			} @else {
 			<!-- Conversation list -->
 			<div
 				class="col-xl-4 col-lg-4 d-lg-block"
@@ -1182,6 +1208,7 @@
 				<p class="text-content py-5 text-center">{{ 'inbox_pick_conversation' | transloco }}</p>
 				}
 			</div>
+			}
 		</div>
 	</div>
 	} }

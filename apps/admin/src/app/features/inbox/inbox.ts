@@ -69,6 +69,7 @@ import {
 	textAsEditorHtml,
 } from './inbox-drafts';
 import { CATEGORY_KEYS, LABEL_ID, bulkReport, labelTree, pageSelection } from './inbox-labels';
+import { MailboxSettingsPanel } from './mailbox-settings';
 // The theme's toast with one action link, as the file manager's Undo uses it (DEC-UI-REUSE).
 import { FmUndoToast } from '../media/file-manager/fm-undo-toast';
 
@@ -105,6 +106,9 @@ type ComposeMode = DraftMode | 'open';
 
 /** The Drafts folder's address segment; Gmail drafts are listed by the drafts API, not as conversations. */
 export const DRAFTS_FOLDER = 'drafts';
+
+/** The settings screen's address segment (G1), for people with the mailbox's Settings right. */
+export const SETTINGS_FOLDER = 'settings';
 
 /** What a queued message's final state says, as a translation key (C4). */
 const SEND_OUTCOME: Readonly<Record<string, string>> = {
@@ -183,6 +187,7 @@ const statusOf = (error: unknown): number => (error instanceof HttpErrorResponse
 		NgbDropdownItem,
 		NgbDropdownButtonItem,
 		NgxEditorModule,
+		MailboxSettingsPanel,
 	],
 	host: { '(window:beforeunload)': 'warnBeforeLeaving($event)' },
 })
@@ -239,6 +244,8 @@ export class Inbox {
 	readonly openDraftId = computed(() => (this.draftMode() === 'open' ? this.queryParams().get('d') : null));
 	/** The Drafts folder lists Gmail drafts instead of conversations. */
 	readonly draftsView = computed(() => this.params().get('folder') === DRAFTS_FOLDER);
+	/** The mailbox's Gmail settings take the list and reading columns (G1). */
+	readonly settingsView = computed(() => this.params().get('folder') === SETTINGS_FOLDER);
 
 	// ── Mailboxes ─────────────────────────────────────────────────────────────────
 
@@ -318,7 +325,7 @@ export class Inbox {
 		return {
 			queryKey: [...INBOX_KEY, mailboxId, 'threads', folder, label ?? '', q, pageToken ?? ''],
 			queryFn: () => firstValueFrom(this.gateway.threads(mailboxId, folder, q || undefined, pageToken, label)),
-			enabled: Boolean(mailboxId) && this.connected() && !this.draftsView(),
+			enabled: Boolean(mailboxId) && this.connected() && !this.draftsView() && !this.settingsView(),
 			refetchInterval: INBOX_REFRESH_MS,
 			retry: 1,
 		};
@@ -384,6 +391,7 @@ export class Inbox {
 		};
 	});
 	readonly labelLists = computed(() => labelTree(this.labelsQuery.data() ?? []));
+	readonly mailboxLabels = computed(() => this.labelsQuery.data() ?? []);
 	private readonly labelNames = computed(
 		() => new Map(this.labelLists().labels.map((label) => [label.id, label.name] as const)),
 	);
@@ -661,6 +669,7 @@ export class Inbox {
 			this.mailbox();
 			this.folder();
 			this.draftsView();
+			this.settingsView();
 			this.labelId();
 			this.q();
 			untracked(() => {
@@ -766,6 +775,10 @@ export class Inbox {
 
 	draftsLink(): string[] {
 		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), DRAFTS_FOLDER];
+	}
+
+	settingsLink(): string[] {
+		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), SETTINGS_FOLDER];
 	}
 
 	labelLink(labelId: string): string[] {

@@ -48,13 +48,18 @@
       "types": "./dist/purchasing/index.d.ts",
       "import": "./dist/esm/purchasing/index.js",
       "default": "./dist/purchasing/index.js"
+    },
+    "./shipping": {
+      "types": "./dist/shipping/index.d.ts",
+      "import": "./dist/esm/shipping/index.js",
+      "default": "./dist/shipping/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json && tsc -p tsconfig.purchasing-esm.json && tsc -p tsconfig.shipping-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

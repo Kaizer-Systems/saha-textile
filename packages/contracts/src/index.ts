@@ -28,6 +28,7 @@ export * from './admin-role';
 export * from './permission';
 export * from './role';
 export * from './shipping';
+export * from './shipping-rules';
 export * from './session';
 export * from './auth';
 // After './auth': the contact-change bodies build on `OtpCode`.

@@ -384,17 +384,22 @@ export function writeFiles(dir, files) {
 }
 
 /**
- * Which names a refresh of an env file adds, removes or changes. Names only.
+ * Which names a refresh of an env file adds, removes and changes. Names only. A blank line in the
+ * current file counts as unset, so a name blank on both sides is not reported as removed: it is only
+ * counted in `blankDropped`.
  * @param {Folder | null} current   the file as it is now, or null when there is none
  * @param {Folder} next
  */
 export function planEnvFileChange(current, next) {
-	const before = current ?? new Map();
+	const before = new Map([...(current ?? new Map())].filter(([, value]) => !isBlank(value)));
 	const added = [...next.keys()].filter((name) => !before.has(name)).sort();
 	const removed = [...before.keys()].filter((name) => !next.has(name)).sort();
 	const changed = [...next.keys()].filter((name) => before.has(name) && before.get(name) !== next.get(name)).sort();
 	const same = [...next.keys()].filter((name) => before.get(name) === next.get(name)).length;
-	return { added, removed, changed, same };
+	const blankDropped = [...(current ?? new Map())].filter(
+		([name, value]) => isBlank(value) && !next.has(name),
+	).length;
+	return { added, removed, changed, same, blankDropped };
 }
 
 /**

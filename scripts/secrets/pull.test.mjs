@@ -190,7 +190,11 @@ test('pnpm dev goes on when Infisical cannot be read, or fails in a way we did n
 });
 
 test('describeChange and describeError say only names and kinds', () => {
-	assert.equal(describeChange({ added: [], removed: [], changed: [], same: 4 }), '4 unchanged.');
+	assert.equal(describeChange({ added: [], removed: [], changed: [], same: 4, blankDropped: 0 }), '4 unchanged.');
+	assert.equal(
+		describeChange({ added: ['A'], removed: [], changed: [], same: 0, blankDropped: 2 }),
+		'1 added (A); 0 unchanged; 2 blank lines left out.',
+	);
 	const coded = Object.assign(new Error(`${MARK}x`), { code: 'EACCES' });
 	assert.equal(describeError(coded), 'Unexpected failure (EACCES).');
 	assert.equal(describeError(undefined), 'Unexpected failure (unknown).');

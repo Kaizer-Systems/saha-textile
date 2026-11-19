@@ -17,7 +17,7 @@ import { join } from 'node:path';
 
 import { parseEnvText, readIfPresent, replaceFile } from './files.mjs';
 import { describeError } from './inventory.mjs';
-import { buildDevEnv, isBlank, planEnvFileChange } from './render.mjs';
+import { buildDevEnv, planEnvFileChange } from './render.mjs';
 
 export const DEV_ENV = 'apps/api/.env';
 export const OVERRIDES = 'apps/api/.env.overrides';
@@ -39,6 +39,7 @@ export function describeChange(change) {
 	if (change.removed.length > 0) parts.push(`${change.removed.length} removed${listed(change.removed)}`);
 	if (change.changed.length > 0) parts.push(`${change.changed.length} changed${listed(change.changed)}`);
 	parts.push(`${change.same} unchanged`);
+	if (change.blankDropped > 0) parts.push(`${change.blankDropped} blank lines left out`);
 	return `${parts.join('; ')}.`;
 }
 
@@ -93,7 +94,7 @@ export function pullDevEnv({ root, inventory, readApi, auto = false, replace = f
 	}
 	// A hand-written file may hold settings nobody has put in Infisical yet. Switching it over would
 	// drop them silently, so the first switch stops and names them unless told to go ahead.
-	const lost = change.removed.filter((name) => !isBlank(currentValues?.get(name)));
+	const lost = change.removed;
 	if (handWritten && lost.length > 0 && !replace) {
 		return {
 			outcome: 'kept',

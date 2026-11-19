@@ -329,8 +329,42 @@ test('planEnvFileChange names what a refresh adds, removes and changes', () => {
 		['B', 'x'],
 		['D', '4'],
 	]);
-	assert.deepEqual(planEnvFileChange(before, after), { added: ['D'], removed: ['C'], changed: ['B'], same: 1 });
-	assert.deepEqual(planEnvFileChange(null, after), { added: ['A', 'B', 'D'], removed: [], changed: [], same: 0 });
+	assert.deepEqual(planEnvFileChange(before, after), {
+		added: ['D'],
+		removed: ['C'],
+		changed: ['B'],
+		same: 1,
+		blankDropped: 0,
+	});
+	assert.deepEqual(planEnvFileChange(null, after), {
+		added: ['A', 'B', 'D'],
+		removed: [],
+		changed: [],
+		same: 0,
+		blankDropped: 0,
+	});
+	// A name blank in the file is unset: blank on both sides is only counted, and filling it is an addition.
+	const blanks = new Map([
+		['A', '1'],
+		['E', ''],
+		['F', ' '],
+	]);
+	assert.deepEqual(
+		planEnvFileChange(
+			blanks,
+			new Map([
+				['A', '1'],
+				['F', 'filled'],
+			]),
+		),
+		{
+			added: ['F'],
+			removed: [],
+			changed: [],
+			same: 1,
+			blankDropped: 1,
+		},
+	);
 });
 
 test('projectReport and formatReport: a complete project is ready', () => {

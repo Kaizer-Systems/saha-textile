@@ -8,6 +8,10 @@ export interface CurrencyDoc {
 	paypalActive: boolean;
 	paypalPct: number;
 	paypalFixed: number;
+	/** Who set the rate last (brief fx01): the daily fetch or staff, and when. */
+	rateSetBy?: 'fetch' | 'staff' | null;
+	rateSetById?: string | null;
+	rateSetAt?: Date | null;
 	updatedAt?: Date;
 	createdAt?: Date;
 }
@@ -21,6 +25,9 @@ const CurrencySchema = new Schema<CurrencyDoc>(
 		paypalActive: { type: Boolean, default: false },
 		paypalPct: { type: Number, default: 0 },
 		paypalFixed: { type: Number, default: 0 },
+		rateSetBy: { type: String, enum: ['fetch', 'staff', null], default: null },
+		rateSetById: { type: String, default: null },
+		rateSetAt: { type: Date, default: null },
 	},
 	{ collection: 'currencies', timestamps: true },
 );

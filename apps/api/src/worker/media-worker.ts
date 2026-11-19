@@ -5,6 +5,7 @@ import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
 import {
 	MongoAuditLogRepository,
 	MongoCommunicationSwitchRepository,
+	MongoCurrencyRepository,
 	MongoConsentRepository,
 	MongoCustomerRepository,
 	MongoLanguageRepository,
@@ -39,6 +40,7 @@ import {
 } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
+import { ExchangeRateApiFxAdapter } from '@saha-textile/adapters-fx';
 import {
 	type CdnPurgePort,
 	brandStripLogo,
@@ -67,6 +69,7 @@ import { buildNotificationPort } from '../infra/notification-factory';
 import { MeilisearchSearch, noProductsLoaded } from '../search/meilisearch-search';
 import { catchUpSearch, drainSearchQueue, nightlySearchCheck } from '../search/search-release';
 import { composePageBuilderJobs } from '../page-builder/page-go-live.worker';
+import { fetchRatesIfDue } from '../fx/fx-fetch';
 import { warmPage } from '../page-builder/page-warm';
 
 /** Batch size for the 15-minute stale sweep: bounded work per tick, never one giant job. */
@@ -174,6 +177,17 @@ export const composeMediaWorker = async (config: AppConfig) => {
 			logger.log(
 				`Page Builder warm ${job.pageType} (${job.at}): ${result.skipped ?? result.statuses.join(', ')}`,
 			);
+			return result;
+		},
+		'fx-fetch-due': async () => {
+			const result = await fetchRatesIfDue({
+				settings,
+				currencies: new MongoCurrencyRepository(),
+				fx: new ExchangeRateApiFxAdapter({ apiKey: config.fx.exchangeRateApiKey ?? null }),
+			});
+			if (result && !result.ok)
+				logger.warn(`Exchange rates: the daily fetch failed (${result.problem ?? 'no reason'})`);
+			else if (result) logger.log(`Exchange rates: updated ${result.updated.join(', ') || 'nothing'}`);
 			return result;
 		},
 		'page-builder-nightly': async () => {

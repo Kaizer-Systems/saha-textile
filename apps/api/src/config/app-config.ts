@@ -259,6 +259,8 @@ const ConfigSchema = z.object({
 	}),
 	spaces: SpacesConfigSchema,
 	payments: z.object({ ccavenue: CcavenueConfigSchema }),
+	/** The daily exchange-rate fetch (shipping rules brief fx01): the open tier needs no key. Never logged. */
+	fx: z.object({ exchangeRateApiKey: z.string().min(1).optional() }).default({}),
 	/**
 	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
 	 *
@@ -489,6 +491,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 				apiUrl: env.CCAVENUE_API_URL || undefined,
 			},
 		},
+		fx: { exchangeRateApiKey: env.EXCHANGERATE_API_KEY || undefined },
 		documents: {
 			chromiumChannel: env.PDF_CHROMIUM_CHANNEL || undefined,
 			chromiumExecutable: env.PDF_CHROMIUM_EXECUTABLE || undefined,

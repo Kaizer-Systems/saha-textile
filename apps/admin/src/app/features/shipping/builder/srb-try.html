@@ -41,6 +41,9 @@
 					(ngModelChange)="currency.set($event)"
 				>
 					<option value="INR">₹ {{ 'ship_currency_name_INR' | transloco }}</option>
+					@for (option of shopperCurrencies(); track option.code) {
+					<option [value]="option.code">{{ option.symbol }} {{ currencyName(option.code) }}</option>
+					}
 				</select>
 			</div>
 		</div>
@@ -205,7 +208,8 @@
 				<small class="d-block text-muted">
 					{{ 'ship_zone_is' | transloco: { zone: ('ship_zone_' + result.zone | transloco) } }}
 				</small>
-				} {{ why() }} @if (result.moreLines) {
+				} {{ why() }} @if (shownAs(); as shown) { {{ 'ship_shown_as' | transloco: { amount: shown } }} } @if
+				(result.moreLines) {
 				<br />
 				<small class="text-muted">{{ 'ship_try_more_lines' | transloco: { count: result.moreLines } }}</small>
 				}

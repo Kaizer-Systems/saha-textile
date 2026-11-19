@@ -13,11 +13,14 @@ import {
 import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { foreignAmountFromINR } from '@saha-textile/core-domain/shipping';
 import { Observable, Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 
+import { currencyDisplayName, injectFxOverviewQuery } from '@core/fx/fx.gateway';
 import { blockId } from '@core/shipping/blocks';
 import { ShippingGateway, shippingProblemKey } from '@core/shipping/shipping.gateway';
 import { lineFigures, lineSubline, rupees, tryExplanation, type TryLineFigures } from '@core/shipping/try-words';
+import { AuthStore } from '@core/state/auth.store';
 
 import type {
 	AdminProductRow,
@@ -95,8 +98,23 @@ export class SrbTry {
 	readonly otherCountry = signal('IN');
 	readonly otherState = signal('');
 	readonly otherPincode = signal('');
-	/** Rupees until the exchange rates exist; the shopper's currency is added with them (4b). */
+	/** The shopper's currency: rupees, or a currency with a stored rate (Admin › Currencies). */
 	readonly currency = signal('INR');
+	private readonly auth = inject(AuthStore);
+	private readonly fx = injectFxOverviewQuery(() => this.auth.permissions().includes('currency.index'));
+	/** The currencies a shopper can pay in besides rupees: switched on, with a rate. */
+	readonly shopperCurrencies = computed(() =>
+		(this.fx.data()?.currencies ?? []).filter((c) => c.stored && c.enabled && c.inrPerUnit !== null),
+	);
+	/** "Shown to this shopper as £34.44 at checkout" (brief rb03): the active rate with the PayPal markup. */
+	readonly shownAs = computed<string | null>(() => {
+		const total = this.outcome()?.amountINR;
+		const chosen = this.shopperCurrencies().find((c) => c.code === this.currency());
+		const markup = this.fx.data()?.settings.paypalMarkupPercent;
+		if (total === null || total === undefined || !chosen?.inrPerUnit || markup === undefined) return null;
+		const amount = foreignAmountFromINR(total, 1 / chosen.inrPerUnit, markup);
+		return `${chosen.symbol}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+	});
 	readonly lines = signal<TryLine[]>([]);
 	readonly editing = signal(true);
 	readonly results = signal<AdminProductRow[]>([]);
@@ -175,6 +193,10 @@ export class SrbTry {
 		} catch {
 			return code;
 		}
+	}
+
+	currencyName(code: string): string {
+		return currencyDisplayName(code, this.transloco.getActiveLang(), (key) => this.transloco.translate(key));
 	}
 
 	destinationLabel(d: Destination): string {

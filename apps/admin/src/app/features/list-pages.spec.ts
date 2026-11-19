@@ -7,7 +7,6 @@ import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Coupon } from './coupon/coupon';
-import { Currency } from './currency/currency';
 import { Order } from './order/order';
 import { OrderStatus } from './order-status/order-status';
 import { Page } from './page/page';
@@ -51,7 +50,6 @@ afterEach(() => data.set(undefined));
 
 describe.each<{ name: string; type: Type<unknown>; edit: string | null; rows: unknown[] }>([
 	{ name: 'Coupon', type: Coupon, edit: '/coupon/edit/1', rows: [{ id: 1 }] },
-	{ name: 'Currency', type: Currency, edit: '/currency/edit/1', rows: [{ id: 1 }] },
 	{ name: 'Tax', type: Tax, edit: '/tax/edit/1', rows: [{ id: 1 }] },
 	{ name: 'OrderStatus', type: OrderStatus, edit: null, rows: [{ id: 1 }] },
 ])('$name list', ({ type, edit, rows }) => {

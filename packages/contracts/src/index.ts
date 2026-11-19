@@ -1,5 +1,6 @@
 export * from './common';
 export * from './currency';
+export * from './fx';
 export * from './catalog';
 export * from './catalog-read';
 export * from './catalog-write';

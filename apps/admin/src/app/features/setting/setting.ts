@@ -1,5 +1,5 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
-import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
+import { Component, computed, inject, PLATFORM_ID, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -29,6 +29,8 @@ import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 
+import { PaymentRouting } from './payment-routing/payment-routing';
+
 @Component({
 	selector: 'app-setting',
 	templateUrl: './setting.html',
@@ -50,9 +52,16 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 		HasPermissionDirective,
 		TranslocoModule,
 		AsyncPipe,
+		PaymentRouting,
 	],
 })
 export class Setting {
+	/**
+	 * The theme's gateway key fields in Payment method (shipping rules brief pay01). Keys live in
+	 * server settings and are never typed in the admin, so the fields stay switched off until the
+	 * owner types their removal (end-of-project cleanup list).
+	 */
+	readonly legacyGatewayKeys = false;
 	private settingService = inject(SettingService);
 	private settingStore = inject(SettingStore);
 	private formBuilder = inject(FormBuilder);
@@ -352,7 +361,11 @@ export class Setting {
 		this.sameDayIntervals.removeAt(index);
 	}
 
+	/** Settings › Payment method (brief pay01) saves through this page's one Save button. */
+	private readonly paymentRouting = viewChild(PaymentRouting);
+
 	submit() {
+		void this.paymentRouting()?.save();
 		this.form.markAllAsTouched();
 		if (this.form.valid) {
 			// Update has no backend yet — the store's mock update keeps the seam.

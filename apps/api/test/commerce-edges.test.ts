@@ -468,12 +468,26 @@ describe('currency', () => {
 		await expect(build(null).convert(Number.NaN, 'USD')).rejects.toBeInstanceOf(BadRequestException);
 		await expect(build(null).convert(-1, 'USD')).rejects.toBeInstanceOf(BadRequestException);
 		await expect(build(null).convert(1, 'usd')).rejects.toBeInstanceOf(NotFoundException);
+		// Another currency carries the PayPal markup (6% by default; brief fx01).
 		expect(await build({ code: 'USD', rateFromINR: 0.5 }).convert(100, 'usd')).toEqual({
 			amountINR: 100,
 			currency: 'USD',
 			rateFromINR: 0.5,
-			amount: 50,
+			markupPercent: 6,
+			amount: 53,
 		});
+		// Rupees never do.
+		expect(await build({ code: 'INR', rateFromINR: 1 }).convert(100, 'INR')).toMatchObject({
+			amount: 100,
+			markupPercent: 0,
+		});
+		// The markup set in Admin › Currencies.
+		const repo = {
+			listEnabled: vi.fn(),
+			findByCode: vi.fn(async () => ({ code: 'GBP', rateFromINR: 1 / 116.95 })),
+		};
+		const settings = { get: vi.fn(async () => ({ paypalMarkupPercent: 6 })) };
+		expect((await new CurrencyService(repo as never, settings as never).convert(10_000, 'GBP')).amount).toBe(90.64);
 	});
 
 	it('serves the controller, defaulting to rupees', async () => {

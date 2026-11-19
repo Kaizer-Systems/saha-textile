@@ -1,5 +1,6 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
+import { writeLaunchCurrencySymbols } from '../migrations/fx-launch-symbols';
 import { seedLegalPages } from '../migrations/legal-pages';
 import { giveMailboxAccessRights } from '../migrations/mailbox-rights';
 import {
@@ -83,5 +84,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Shipping rule sets (shipping rules brief): the seven locked pre-made rule sets, each with an active version 1, written once; a stored one is never overwritten; zone settings are left for Shipping › Overview',
 		half: 'expand',
 		up: () => seedPremadeShippingRuleSets(),
+	},
+	{
+		id: '0009-fx-launch-currency-symbols',
+		description:
+			'Exchange rates (shipping rules brief fx01): the launch currencies written as the brief writes them (US$, C$, A$, S$, NZ$); only a stored bare "$" changes',
+		half: 'expand',
+		up: () => writeLaunchCurrencySymbols(),
 	},
 ];

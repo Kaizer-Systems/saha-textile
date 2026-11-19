@@ -23,6 +23,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import type { AppConfig } from './config/app-config';
 import { ConfigModule } from './config/config.module';
 import { CurrencyModule } from './currency/currency.module';
+import { FxModule } from './fx/fx.module';
 import { HealthModule } from './health/health.module';
 import { MediaModule } from './media/media.module';
 import { PersistenceModule } from './infra/persistence.module';
@@ -50,6 +51,7 @@ export class AppModule {
 				HealthModule,
 				CatalogModule,
 				CurrencyModule,
+				FxModule,
 				PromotionsModule,
 				CartLinesModule,
 				OrdersModule,

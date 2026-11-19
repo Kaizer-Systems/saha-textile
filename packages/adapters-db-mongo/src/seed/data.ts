@@ -58,7 +58,7 @@ export const seedCurrencies: Currency[] = [
 	Currency.parse({ code: 'INR', symbol: '₹', enabled: true, rateFromINR: 1 }),
 	Currency.parse({
 		code: 'USD',
-		symbol: '$',
+		symbol: 'US$', // as the shipping rules brief writes it (fx01)
 		enabled: true,
 		rateFromINR: 0.012,
 		paypalActive: true,

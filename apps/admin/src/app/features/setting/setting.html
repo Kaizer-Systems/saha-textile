@@ -810,6 +810,10 @@
 								{{ 'payment_method' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
+								<!-- Shipping rules brief pay01: which gateway takes each currency. The theme's key fields
+									below stay in the code, switched off (keys live in server settings; cleanup list). -->
+								<app-payment-routing />
+								@if (legacyGatewayKeys) {
 								<div formGroupName="payment_methods">
 									<div class="inside-horizontal-tabs">
 										<ul
@@ -1072,6 +1076,7 @@
 										></div>
 									</div>
 								</div>
+								}
 							</ng-template>
 						</li>
 						<li ngbNavItem="analytics">
@@ -1279,7 +1284,8 @@
 						</li>
 					</ul>
 				</div>
-				<div class="col-xl-7 col-lg-8">
+				<!-- Payment method is drawn at the wider column in the shipping rules brief (pay01). -->
+				<div [class]="active === 'payment_method' ? 'col-xl-9 col-lg-8' : 'col-xl-7 col-lg-8'">
 					<div [ngbNavOutlet]="nav"></div>
 				</div>
 			</div>

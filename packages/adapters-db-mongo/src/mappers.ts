@@ -116,6 +116,9 @@ export function toCurrency(doc: CurrencyDoc): Currency {
 		paypalActive: doc.paypalActive ?? false,
 		paypalPct: doc.paypalPct ?? 0,
 		paypalFixed: doc.paypalFixed ?? 0,
+		rateSetBy: doc.rateSetBy ?? null,
+		rateSetById: doc.rateSetById ?? null,
+		rateSetAt: doc.rateSetAt ? new Date(doc.rateSetAt).toISOString() : null,
 		updatedAt: iso(doc.updatedAt),
 	};
 }

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { HomeHeroLayout } from './content-block';
 import { IsoDateTime } from './common';
+import { FxSettings, PaymentRoutingSettings } from './fx';
 import { StorefrontSearchSettings } from './search-term';
 
 /**
@@ -349,6 +350,10 @@ export const SITE_SETTING_SCHEMAS = {
 	'storefront.search': StorefrontSearchSettings,
 	'storefront.share': StorefrontShareSettings,
 	'mailboxes.contact': ContactMailboxSettings,
+	/** Exchange rates and the PayPal markup (shipping rules brief fx01). */
+	fx: FxSettings,
+	/** Which gateway takes each currency (brief pay01). */
+	'payments.routing': PaymentRoutingSettings,
 } as const;
 export type SiteSettingKey = keyof typeof SITE_SETTING_SCHEMAS;
 export type SiteSettingValue<K extends SiteSettingKey> = z.infer<(typeof SITE_SETTING_SCHEMAS)[K]>;

@@ -104,6 +104,8 @@ const sidebars: SidebarsConfig = {
 						'admin/brand-kit',
 						'admin/communications',
 						'admin/purchases-and-stock',
+						'admin/shipping',
+						'admin/currencies-and-payments',
 						'admin/languages',
 						'admin/media-page',
 						'admin/image-profiles',

@@ -36,7 +36,9 @@ export type ScheduledMediaJob =
 	/** Page Builder Go Lives waiting for pictures still being made (E5): each goes once they are ready. */
 	| { type: 'page-go-live-waiting' }
 	/** Page Builder nightly check (SG-12) and History upkeep (Q12: last 20 Go Lives, drafts for 30 days). */
-	| { type: 'page-builder-nightly' };
+	| { type: 'page-builder-nightly' }
+	/** The daily exchange-rate fetch, checked every 15 minutes against the time set in Admin › Currencies. */
+	| { type: 'fx-fetch-due' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -222,6 +224,13 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'page-builder-nightly',
 			{ pattern: '30 4 * * *', tz },
 			{ name: 'page-builder-nightly', data: { type: 'page-builder-nightly' } },
+		);
+		// Exchange rates (shipping rules brief fx01): the fetch time is set in the admin, so the job only
+		// checks every 15 minutes whether today's fetch is due; a missed time catches up.
+		await this.queue.upsertJobScheduler(
+			'fx-fetch-due',
+			{ every: 15 * 60_000 },
+			{ name: 'fx-fetch-due', data: { type: 'fx-fetch-due' } },
 		);
 	}
 

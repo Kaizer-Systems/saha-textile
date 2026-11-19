@@ -19,6 +19,10 @@ export const Currency = z.object({
 	paypalPct: z.number().min(0).max(1).default(0),
 	/** PayPal fixed fee in this currency (e.g. 0.30 USD). */
 	paypalFixed: z.number().min(0).default(0),
+	/** Who set the rate last (brief fx01): the daily fetch, or staff typing it. */
+	rateSetBy: z.enum(['fetch', 'staff']).nullable().default(null),
+	rateSetById: z.string().nullable().default(null),
+	rateSetAt: IsoDateTime.nullable().default(null),
 	updatedAt: IsoDateTime.optional(),
 });
 export type Currency = z.infer<typeof Currency>;

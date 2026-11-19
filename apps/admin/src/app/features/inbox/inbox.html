@@ -1163,6 +1163,52 @@
 			</div>
 			}
 		</app-form-fields>
+		@if (bccOpen()) {
+		<app-form-fields
+			[labelClass]="'form-label-title col-sm-2 mb-0'"
+			[gridClass]="'col-sm-10'"
+			[label]="'inbox_bcc'"
+			[for]="'inbox_bcc'"
+		>
+			<input
+				class="form-control keep-case"
+				type="text"
+				id="inbox_bcc"
+				autocomplete="off"
+				[class.is-invalid]="bccProblems().length"
+				[attr.aria-invalid]="bccProblems().length > 0"
+				[attr.aria-describedby]="bccProblems().length ? 'inbox_bcc_problem' : 'inbox_bcc_help'"
+				[value]="d.bcc"
+				(input)="editDraft('bcc', $any($event.target).value)"
+			/>
+			@if (bccProblems().length) {
+			<div
+				class="invalid-feedback d-block"
+				id="inbox_bcc_problem"
+			>
+				{{ 'inbox_not_an_address' | transloco: { list: bccProblems().join(', ') } }}
+			</div>
+			} @else {
+			<p
+				class="help-text mt-1 mb-0"
+				id="inbox_bcc_help"
+			>
+				{{ 'inbox_bcc_help' | transloco }}
+			</p>
+			}
+		</app-form-fields>
+		} @else {
+		<div class="mb-2 text-end">
+			<button
+				type="button"
+				class="btn btn-link btn-sm p-0"
+				id="inbox_add_bcc"
+				(click)="bccOpen.set(true)"
+			>
+				{{ 'inbox_add_bcc' | transloco }}
+			</button>
+		</div>
+		}
 		<app-form-fields
 			[labelClass]="'form-label-title col-sm-2 mb-0'"
 			[gridClass]="'col-sm-10'"

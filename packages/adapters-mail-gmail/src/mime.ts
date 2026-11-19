@@ -110,6 +110,8 @@ export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): strin
 		`From: ${mailbox(mail.fromName ?? '', mail.from)}`,
 		`To: ${mail.to.map(headerSafe).join(', ')}`,
 		...(mail.cc.length ? [`Cc: ${mail.cc.map(headerSafe).join(', ')}`] : []),
+		// Gmail sends to Bcc addresses and strips the header from every copy but the sender's.
+		...(mail.bcc?.length ? [`Bcc: ${mail.bcc.map(headerSafe).join(', ')}`] : []),
 		`Subject: ${encodeWord(mail.subject)}`,
 		`Date: ${now.toUTCString()}`,
 		'MIME-Version: 1.0',

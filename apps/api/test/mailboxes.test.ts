@@ -430,7 +430,16 @@ describe('InboxService', () => {
 
 	it('hides a mailbox from people without access, and refuses sending to readers', async () => {
 		await expect(inbox.threads('stranger', 'care', { folder: 'inbox' })).rejects.toMatchObject({ status: 404 });
-		const request = { from: 'care@shop.test', to: ['a@x.test'], cc: [], subject: 'Hi', body: 'x', attachments: [] };
+		const request = {
+			from: 'care@shop.test',
+			to: ['a@x.test'],
+			cc: [],
+			bcc: [],
+			sendAnyway: false,
+			subject: 'Hi',
+			body: 'x',
+			attachments: [],
+		};
 		await expect(inbox.send('reader', 'care', request)).rejects.toMatchObject({ status: 403 });
 		await w.access.replaceForMailbox('ghost', [{ mailboxId: 'ghost', adminUserId: 'reader', rights: ['read'] }]);
 		await expect(inbox.threads('reader', 'ghost', { folder: 'inbox' })).rejects.toMatchObject({ status: 404 });
@@ -450,6 +459,8 @@ describe('InboxService', () => {
 			from: 'Orders@shop.test',
 			to: ['a@x.test'],
 			cc: ['b@x.test'],
+			bcc: [],
+			sendAnyway: false,
 			subject: 'Re: Hi',
 			body: 'Thanks',
 			threadId: 't1',
@@ -464,7 +475,15 @@ describe('InboxService', () => {
 	});
 
 	it('refuses an address the mailbox cannot send as, and attachments over the limit', async () => {
-		const base = { to: ['a@x.test'], cc: [], subject: 'Hi', body: 'x', attachments: [] };
+		const base = {
+			to: ['a@x.test'],
+			cc: [],
+			bcc: [],
+			sendAnyway: false,
+			subject: 'Hi',
+			body: 'x',
+			attachments: [],
+		};
 		await expect(inbox.send('sender', 'care', { ...base, from: 'evil@x.test' })).rejects.toMatchObject({
 			status: 400,
 		});
@@ -632,6 +651,8 @@ describe('InboxService after the review (brief revision 2)', () => {
 			from: 'care@shop.test',
 			to: ['priya@x.test'],
 			cc: [],
+			bcc: [],
+			sendAnyway: false,
 			subject: 'Re: Blouse',
 			body: 'Yes',
 			threadId: 't1',
@@ -654,6 +675,8 @@ describe('InboxService after the review (brief revision 2)', () => {
 				from: 'care@shop.test',
 				to: ['priya@x.test'],
 				cc: [],
+				bcc: [],
+				sendAnyway: false,
 				subject: 'Re: Blouse',
 				body: 'Yes',
 				threadId: 'gone',
@@ -677,6 +700,8 @@ describe('InboxService after the review (brief revision 2)', () => {
 			from: 'care@shop.test',
 			to: ['accounts@shop.test'],
 			cc: [],
+			bcc: [],
+			sendAnyway: false,
 			subject: 'Fwd: Bill',
 			body: 'See below',
 			forwardAttachmentsFrom: { threadId: 't1', messageId: 'm1' },
@@ -703,6 +728,8 @@ describe('InboxService after the review (brief revision 2)', () => {
 			from: 'orders@shop.test',
 			to: ['a@x.test'],
 			cc: [],
+			bcc: [],
+			sendAnyway: false,
 			subject: 'Hi',
 			body: 'x',
 			attachments: [],
@@ -953,7 +980,16 @@ describe('mailbox controllers', () => {
 		expect(headers['Content-Disposition']).toBe('attachment; filename="attachment"');
 		await controller.send(
 			'care',
-			{ from: 'care@shop.test', to: [], cc: [], subject: 's', body: '', attachments: [] },
+			{
+				from: 'care@shop.test',
+				to: [],
+				cc: [],
+				bcc: [],
+				sendAnyway: false,
+				subject: 's',
+				body: '',
+				attachments: [],
+			},
 			principal,
 		);
 		expect(await controller.modify('care', 't1', { action: 'mark_read' }, principal)).toEqual({ ok: true });

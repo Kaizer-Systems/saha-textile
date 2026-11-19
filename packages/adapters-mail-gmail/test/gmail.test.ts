@@ -418,6 +418,7 @@ describe('GmailMailbox reading', () => {
 		expect(await gmail.listThreads(credentials, 'all', undefined, undefined)).toEqual({
 			threads: [],
 			nextPageToken: null,
+			estimate: null,
 		});
 		await gmail.listThreads(credentials, 'trash', undefined, undefined);
 		const [all, trash] = calls

@@ -397,6 +397,8 @@ export class PurchaseOrdersService {
 				from: body.from,
 				to: body.to,
 				cc: [],
+				bcc: [],
+				sendAnyway: false,
 				subject: body.subject || `Purchase order ${order.number}`,
 				body: body.message,
 				attachments: [

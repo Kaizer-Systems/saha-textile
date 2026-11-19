@@ -33,6 +33,8 @@ export interface OutgoingMail {
 	fromName?: string;
 	to: readonly string[];
 	cc: readonly string[];
+	/** Hidden copies; Gmail delivers them and leaves the header out of what others receive. */
+	bcc?: readonly string[];
 	subject: string;
 	text: string;
 	signatureHtml: string;

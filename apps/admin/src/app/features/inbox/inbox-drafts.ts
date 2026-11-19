@@ -13,12 +13,14 @@ export const MAX_ATTACHMENTS = 10;
 /** What the compose box is doing. */
 export type DraftMode = 'new' | 'reply' | 'reply_all' | 'forward';
 
-/** The compose box's starting values. To and Cc are comma-separated, as people type them. */
+/** The compose box's starting values. To, Cc and Bcc are comma-separated, as people type them. */
 export interface Draft {
 	mode: DraftMode;
 	from: string;
 	to: string;
 	cc: string;
+	/** Hidden copies (C1). Reply and Reply all always start it empty. */
+	bcc: string;
 	subject: string;
 	body: string;
 	threadId?: string;
@@ -40,6 +42,7 @@ export function newDraft(from: string): Draft {
 		from,
 		to: '',
 		cc: '',
+		bcc: '',
 		subject: '',
 		body: '',
 		includeQuote: false,
@@ -96,6 +99,7 @@ export function draftFor(
 			from,
 			to: '',
 			cc: '',
+			bcc: '',
 			subject: prefixed('Fwd', thread.subject),
 			body: `\n\n---------- Forwarded message ----------\nFrom: ${message.from}\nDate: ${message.date}\nSubject: ${message.subject}\nTo: ${message.to}\n\n${message.text}`,
 			includeQuote: false,
@@ -117,6 +121,7 @@ export function draftFor(
 		from,
 		to: primary.join(', '),
 		cc: others.join(', '),
+		bcc: '',
 		subject: prefixed('Re', thread.subject),
 		body: '',
 		threadId: thread.id,
@@ -259,7 +264,9 @@ function sessionStore(): Storage | null {
 /** Why a draft cannot be sent yet, as a translation key; null when it can. */
 export function draftProblem(draft: Draft, files: readonly File[]): string | null {
 	if (!addresses(draft.to).length) return 'inbox_need_recipient';
-	if (addressProblems(draft.to).length || addressProblems(draft.cc).length) return 'inbox_check_addresses';
+	if (addressProblems(draft.to).length || addressProblems(draft.cc).length || addressProblems(draft.bcc).length) {
+		return 'inbox_check_addresses';
+	}
 	if (!draft.subject.trim()) return 'inbox_need_subject';
 	if (files.length > MAX_ATTACHMENTS) return 'inbox_too_many_files';
 	if (files.reduce((total, file) => total + file.size, 0) > MAX_ATTACHMENT_BYTES) return 'inbox_files_too_big';
@@ -277,7 +284,7 @@ export function readAsBase64(file: File): Promise<string> {
 }
 
 /** The request body the API takes, with the files read. */
-export async function sendRequest(draft: Draft, files: readonly File[]): Promise<InboxSendRequest> {
+export async function sendRequest(draft: Draft, files: readonly File[], sendAnyway = false): Promise<InboxSendRequest> {
 	const attachments = await Promise.all(
 		files.map(async (file) => ({
 			filename: file.name,
@@ -289,8 +296,14 @@ export async function sendRequest(draft: Draft, files: readonly File[]): Promise
 		from: draft.from,
 		to: addresses(draft.to),
 		cc: addresses(draft.cc),
+		bcc: addresses(draft.bcc),
 		subject: draft.subject.trim(),
 		body: draft.body,
+		// The API repeats the "someone replied meanwhile" check when it sends (C5).
+		...(draft.threadId && draft.mode !== 'forward' && draft.knownIds.length
+			? { knownMessageIds: draft.knownIds }
+			: {}),
+		sendAnyway,
 		threadId: draft.threadId,
 		inReplyTo: draft.inReplyTo,
 		...(draft.includeQuote && draft.quoteMessageId ? { quoteMessageId: draft.quoteMessageId } : {}),

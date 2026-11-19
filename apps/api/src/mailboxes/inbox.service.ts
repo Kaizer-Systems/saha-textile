@@ -7,6 +7,7 @@ import {
 	Injectable,
 	NotFoundException,
 	PayloadTooLargeException,
+	PreconditionFailedException,
 } from '@nestjs/common';
 import {
 	MAX_BULK_MATCHES,
@@ -202,6 +203,14 @@ export class InboxService {
 			? await this.books.guard(mailbox, () => this.gmail.getThread(credentials, request.threadId ?? ''))
 			: null;
 		if (request.threadId && !conversation) throw new NotFoundException('Conversation not found');
+		// Someone replied after the writer last looked (C5): checked here at the moment of sending,
+		// not only in the browser, so two people cannot both answer without knowing.
+		if (conversation && request.knownMessageIds && !request.sendAnyway) {
+			const seen = new Set(request.knownMessageIds);
+			if (conversation.messages.some((message) => !seen.has(message.id))) {
+				throw new PreconditionFailedException({ code: 'conversation_moved_on' });
+			}
+		}
 		const answered = conversation?.messages.find((message) => message.messageId === request.inReplyTo);
 		const quoted = conversation?.messages.find((message) => message.id === request.quoteMessageId);
 
@@ -229,6 +238,7 @@ export class InboxService {
 					fromName: from.displayName,
 					to: request.to,
 					cc: request.cc,
+					bcc: request.bcc,
 					subject: request.subject,
 					text: request.body,
 					signatureHtml: from.signature,
@@ -247,7 +257,7 @@ export class InboxService {
 		}
 		await this.books.record(adminUserId, MESSAGE_SENT, mailboxId, {
 			from: from.address,
-			recipients: request.to.length + request.cc.length,
+			recipients: request.to.length + request.cc.length + request.bcc.length,
 			reply: Boolean(request.threadId),
 			gmailMessageId: sent.id,
 			threadId: sent.threadId,

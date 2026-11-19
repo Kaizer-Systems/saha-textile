@@ -191,6 +191,8 @@ describe('sendRequest', () => {
 			from: 'care@shop.test',
 			to: ['rahul@example.com'],
 			cc: ['ria@example.com'],
+			bcc: [],
+			sendAnyway: false,
 			subject: 'Re: Order',
 			body: 'Thanks',
 			threadId: 't1',
@@ -245,12 +247,16 @@ describe('review revision 2 helpers', () => {
 			from: 'care@shop.test',
 			to: '',
 			cc: '',
+			bcc: '',
 			subject: '',
 			body: '',
 			includeQuote: false,
 			includeAttachments: false,
 			knownIds: [],
 		});
+		// Reply all never fills Bcc (C1), and a reply sends what it had seen for the API's check (C5).
+		const replyAll = draftFor('reply_all', thread(message({ id: 'm1' })), sendAs, 'care@shop.test');
+		expect(replyAll.bcc).toBe('');
 		const files = [{ id: 'a1', filename: 'bill.pdf', mimeType: 'application/pdf', size: 2 }];
 		const withFiles = thread(message({ id: 'm1', attachments: files }), message({ id: 'm2' }));
 		const reply = draftFor('reply', withFiles, sendAs, 'care@shop.test');

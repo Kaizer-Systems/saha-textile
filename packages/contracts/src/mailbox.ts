@@ -295,6 +295,8 @@ export const InboxSendRequest = z.object({
 	from: z.string().email(),
 	to: z.array(z.string().email()).min(1).max(50),
 	cc: z.array(z.string().email()).max(50).default([]),
+	/** Hidden copies: delivered, never shown to the other recipients. Reply all never fills it. */
+	bcc: z.array(z.string().email()).max(50).default([]),
 	subject: z.string().trim().min(1).max(300),
 	/** Plain text; the API writes the HTML part and appends the address's signature. */
 	body: z.string().max(100_000),
@@ -304,6 +306,12 @@ export const InboxSendRequest = z.object({
 	inReplyTo: z.string().max(1_000).optional(),
 	/** Gmail id of the message to quote below the reply; the API reads it from Gmail itself. */
 	quoteMessageId: z.string().max(100).optional(),
+	/**
+	 * The conversation's messages the writer had seen (C5). If Gmail holds others when the API sends,
+	 * someone replied meanwhile and the API answers 412 instead of sending, unless `sendAnyway`.
+	 */
+	knownMessageIds: z.array(z.string().min(1).max(100)).max(500).optional(),
+	sendAnyway: z.boolean().default(false),
 	/** The message whose attachments a forward carries; the API copies them from Gmail itself. */
 	forwardAttachmentsFrom: z.object({ threadId: z.string().max(100), messageId: z.string().max(100) }).optional(),
 	attachments: z

@@ -462,6 +462,9 @@ export class Inbox {
 	});
 	readonly toProblems = computed(() => addressProblems(this.draft()?.to ?? ''));
 	readonly ccProblems = computed(() => addressProblems(this.draft()?.cc ?? ''));
+	readonly bccProblems = computed(() => addressProblems(this.draft()?.bcc ?? ''));
+	/** Bcc opens on request; a kept draft that has one shows it. */
+	readonly bccOpen = signal(false);
 	/** Phones show one column at a time: the list, or the open conversation or draft. */
 	readonly reading = computed(() => Boolean(this.openId() || this.draftMode()));
 
@@ -1105,7 +1108,7 @@ export class Inbox {
 
 	// ── Draft actions ─────────────────────────────────────────────────────────────
 
-	editDraft(field: 'to' | 'cc' | 'subject' | 'body', value: string) {
+	editDraft(field: 'to' | 'cc' | 'bcc' | 'subject' | 'body', value: string) {
 		this.updateDraft({ [field]: value });
 	}
 
@@ -1179,7 +1182,7 @@ export class Inbox {
 					return;
 				}
 			}
-			await firstValueFrom(this.gateway.send(mailboxId, await sendRequest(draft, this.files())));
+			await firstValueFrom(this.gateway.send(mailboxId, await sendRequest(draft, this.files(), this.forceSend)));
 			const sent = this.transloco.translate('inbox_sent');
 			this.notifier.showSuccess(sent);
 			this.announcement.set(sent);
@@ -1195,6 +1198,23 @@ export class Inbox {
 		} catch (error) {
 			// The reply stays as typed: "Not sent. Your text is kept." with the reason.
 			const status = statusOf(error);
+			// The API saw a reply the browser had not (C5): show who, exactly as the browser check does.
+			if (status === 412 && draft.threadId) {
+				const latest = await this.queryClient
+					.fetchQuery({
+						queryKey: [...INBOX_KEY, mailboxId, 'thread', draft.threadId],
+						queryFn: () => firstValueFrom(this.gateway.thread(mailboxId, draft.threadId ?? '')),
+						staleTime: 0,
+					})
+					.catch(() => null);
+				const last = latest?.messages.filter((message) => !draft.knownIds.includes(message.id)).at(-1);
+				this.collision.set(
+					last
+						? { name: last.sentBy ?? senderName(last.from), minutes: minutesSince(last.date) }
+						: { name: '', minutes: 0 },
+				);
+				return;
+			}
 			this.sendProblem.set(SEND_FAILED[status] ?? 'inbox_not_sent');
 			if (status === 400 || status === 404) await this.reload();
 		} finally {
@@ -1257,6 +1277,7 @@ export class Inbox {
 				: draftFor(mode, thread, mailbox.sendAs, mailbox.address));
 		this.files.set([]);
 		this.quoteOpen.set(false);
+		this.bccOpen.set(Boolean(draft.bcc));
 		this.collision.set(null);
 		this.sendProblem.set(null);
 		this.forceSend = false;

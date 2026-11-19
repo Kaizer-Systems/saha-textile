@@ -570,6 +570,95 @@ export type SavedReplyWrite = z.infer<typeof SavedReplyWrite>;
 export const SavedReplyCreate = SavedReplyWrite.extend({ scope: SavedReplyScope });
 export type SavedReplyCreate = z.infer<typeof SavedReplyCreate>;
 
+// ── Mailbox settings (G1): filters, vacation reply, the main address's signature ──────────
+
+/** Labels a filter may add: the mailbox's own labels, a category, Starred, Important or the Bin. */
+export const FILTER_ADD_LABEL = /^(Label_[A-Za-z0-9_-]{1,90}|CATEGORY_[A-Z]{1,20}|STARRED|IMPORTANT|TRASH)$/;
+/** Labels a filter may take away: skip the Inbox, mark as read, never important, never spam. */
+export const FILTER_REMOVE_LABELS = ['INBOX', 'UNREAD', 'IMPORTANT', 'SPAM'] as const;
+
+export const MailboxFilterCriteria = z.object({
+	from: z.string().trim().max(500).optional(),
+	to: z.string().trim().max(500).optional(),
+	subject: z.string().trim().max(500).optional(),
+	/** Gmail's own search words, such as `has:attachment invoice`. */
+	query: z.string().trim().max(1_000).optional(),
+	hasAttachment: z.boolean().optional(),
+});
+export type MailboxFilterCriteria = z.infer<typeof MailboxFilterCriteria>;
+
+export const MailboxFilter = z.object({
+	id: z.string(),
+	criteria: MailboxFilterCriteria,
+	addLabelIds: z.array(z.string()),
+	removeLabelIds: z.array(z.string()),
+	/** Where a forwarding filter sends mail. Such filters are shown here and managed in Gmail only. */
+	forwardTo: z.string().nullable(),
+});
+export type MailboxFilter = z.infer<typeof MailboxFilter>;
+
+/** A new filter. There is no forwarding here: forwarding stays in Gmail and Workspace. */
+export const MailboxFilterWrite = z
+	.object({
+		criteria: MailboxFilterCriteria.refine(
+			(criteria) =>
+				Boolean(criteria.from || criteria.to || criteria.subject || criteria.query || criteria.hasAttachment),
+			{ message: 'criteria_needed' },
+		),
+		addLabelIds: z.array(z.string().regex(FILTER_ADD_LABEL)).max(10).default([]),
+		removeLabelIds: z.array(z.enum(FILTER_REMOVE_LABELS)).max(4).default([]),
+		/** The filter this one replaces: Gmail cannot edit a filter, so the old one is deleted after. */
+		replaces: z.string().max(200).optional(),
+	})
+	.refine((filter) => filter.addLabelIds.length + filter.removeLabelIds.length > 0, {
+		message: 'action_needed',
+	});
+export type MailboxFilterWrite = z.infer<typeof MailboxFilterWrite>;
+
+export const MailboxVacation = z.object({
+	enabled: z.boolean(),
+	subject: z.string().max(200),
+	/** Plain text; Gmail sends it as the automatic answer. */
+	message: z.string().max(10_000),
+	contactsOnly: z.boolean(),
+	/** Answer only people on the mailbox's own domain. */
+	domainOnly: z.boolean(),
+	startTime: IsoDateTime.nullable(),
+	endTime: IsoDateTime.nullable(),
+});
+export type MailboxVacation = z.infer<typeof MailboxVacation>;
+
+export const MailboxVacationWrite = MailboxVacation.refine(
+	(vacation) => !vacation.enabled || vacation.message.trim().length > 0,
+	{ message: 'message_needed', path: ['message'] },
+).refine((vacation) => !vacation.startTime || !vacation.endTime || vacation.startTime < vacation.endTime, {
+	message: 'end_before_start',
+	path: ['endTime'],
+});
+export type MailboxVacationWrite = z.infer<typeof MailboxVacationWrite>;
+
+/**
+ * The main address's signature. Google lets an app change only that one; alias signatures stay in
+ * Gmail. A signature with pictures is shown and changed in Gmail, so nothing here drops them.
+ */
+export const MailboxSignature = z.object({
+	address: z.string(),
+	html: z.string(),
+	editable: z.boolean(),
+});
+export type MailboxSignature = z.infer<typeof MailboxSignature>;
+
+export const MailboxSignatureWrite = z.object({ html: z.string().max(10_000) });
+export type MailboxSignatureWrite = z.infer<typeof MailboxSignatureWrite>;
+
+/** `GET /admin/inbox/:mailboxId/settings`: everything the settings screen shows, read live from Gmail. */
+export const MailboxSettings = z.object({
+	filters: z.array(MailboxFilter),
+	vacation: MailboxVacation,
+	signature: MailboxSignature,
+});
+export type MailboxSettings = z.infer<typeof MailboxSettings>;
+
 /** Largest total a forward may carry, the original attachments included (Gmail's own limit). */
 export const MAX_FORWARD_BYTES = 25 * 1024 * 1024;
 

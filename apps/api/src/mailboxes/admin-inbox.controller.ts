@@ -23,6 +23,9 @@ import {
 	InboxMarkMessagesRequest,
 	InboxModifyRequest,
 	InboxSendRequest,
+	MailboxFilterWrite,
+	MailboxSignatureWrite,
+	MailboxVacationWrite,
 	SavedReplyCreate,
 	SavedReplyWrite,
 } from '@saha-textile/contracts';
@@ -33,6 +36,7 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { InboxService } from './inbox.service';
+import { MailboxSettingsService } from './mailbox-settings.service';
 import { SavedRepliesService } from './saved-replies.service';
 
 const me = (principal: AuthenticatedPrincipal | undefined): string => {
@@ -48,7 +52,64 @@ export class AdminInboxController {
 	constructor(
 		private readonly inbox: InboxService,
 		private readonly savedReplies: SavedRepliesService,
+		private readonly settings: MailboxSettingsService,
 	) {}
+
+	@Get(':mailboxId/settings')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'getMailboxSettings', summary: "A mailbox's filters, vacation reply and signature" })
+	readSettings(@Param('mailboxId') mailboxId: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
+		return this.settings.read(me(principal), mailboxId);
+	}
+
+	@Post(':mailboxId/settings/filters')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'addMailboxFilter', summary: 'Add a Gmail filter, or replace one (no forwarding)' })
+	addFilter(
+		@Param('mailboxId') mailboxId: string,
+		@Body(new ZodValidationPipe(MailboxFilterWrite)) body: MailboxFilterWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.settings.addFilter(me(principal), mailboxId, body);
+	}
+
+	@Delete(':mailboxId/settings/filters/:filterId')
+	@HttpCode(204)
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'deleteMailboxFilter', summary: 'Delete a Gmail filter that does not forward' })
+	async deleteFilter(
+		@Param('mailboxId') mailboxId: string,
+		@Param('filterId') filterId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<void> {
+		await this.settings.deleteFilter(me(principal), mailboxId, filterId);
+	}
+
+	@Put(':mailboxId/settings/vacation')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({
+		operationId: 'saveMailboxVacation',
+		summary: "Turn the mailbox's vacation reply on, off or change it",
+	})
+	saveVacation(
+		@Param('mailboxId') mailboxId: string,
+		@Body(new ZodValidationPipe(MailboxVacationWrite)) body: MailboxVacationWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.settings.saveVacation(me(principal), mailboxId, body);
+	}
+
+	@Put(':mailboxId/settings/signature')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'saveMailboxSignature', summary: "Change the mailbox's main address signature" })
+	saveSignature(
+		@Param('mailboxId') mailboxId: string,
+		@Body(new ZodValidationPipe(MailboxSignatureWrite)) body: MailboxSignatureWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.settings.saveSignature(me(principal), mailboxId, body.html);
+	}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')

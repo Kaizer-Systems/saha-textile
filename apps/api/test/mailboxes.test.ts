@@ -20,6 +20,7 @@ import { ContactMessagesController } from '../src/mailboxes/contact-messages.con
 import { InboxService } from '../src/mailboxes/inbox.service';
 import { MailboxBookkeeping, MailboxSignInState, STATE_TTL_MS } from '../src/mailboxes/mailbox-support';
 import { MailboxesAdminService } from '../src/mailboxes/mailboxes-admin.service';
+import { MailboxSettingsService, SETTINGS_CHANGED } from '../src/mailboxes/mailbox-settings.service';
 import { SAVED_REPLY_CHANGED, SavedRepliesService } from '../src/mailboxes/saved-replies.service';
 import { LanguageStore } from '../src/languages/language-store';
 
@@ -1460,5 +1461,162 @@ describe('Saved replies (C3)', () => {
 		await controller.deleteSavedReply('care', 'srp_1', principal);
 		expect(saved.list).toHaveBeenCalledWith('riya', 'care');
 		expect(saved.remove).toHaveBeenCalledWith('riya', 'care', 'srp_1');
+	});
+});
+
+describe('Mailbox settings (G1)', () => {
+	let w: ReturnType<typeof world>;
+	let gmail: ReturnType<typeof gmailStub>;
+	let service: MailboxSettingsService;
+	const filter = (id: string, fields: Record<string, unknown> = {}) => ({
+		id,
+		criteria: { from: '@courier.in' },
+		addLabelIds: ['Label_1'],
+		removeLabelIds: ['INBOX'],
+		forwardTo: null,
+		...fields,
+	});
+	const vacation = {
+		enabled: true,
+		subject: 'Closed for Puja',
+		message: 'We reply after 25 October.',
+		contactsOnly: false,
+		domainOnly: false,
+		startTime: '2026-10-20T00:00:00.000Z',
+		endTime: '2026-10-25T00:00:00.000Z',
+	};
+
+	beforeEach(async () => {
+		w = world();
+		gmail = gmailStub({
+			listFilters: vi.fn(async () => [filter('f1'), filter('fwd', { forwardTo: 'accounts@shop.test' })]),
+			createFilter: vi.fn(async () => filter('f2')),
+			deleteFilter: vi.fn(async () => true),
+			getVacation: vi.fn(async () => ({ ...vacation, enabled: false })),
+			updateVacation: vi.fn(async (_c: unknown, value: unknown) => value),
+			updateSignature: vi.fn(async () => undefined),
+			listSendAs: vi.fn(async () => [
+				{ address: 'care@shop.test', displayName: 'Care', signature: '<b>Team</b>', isPrimary: true },
+				{ address: 'orders@shop.test', displayName: 'Orders', signature: '', isPrimary: false },
+			]),
+		});
+		service = new MailboxSettingsService(
+			gmail,
+			w.mailboxes as never,
+			w.access as never,
+			w.tokens as never,
+			books(w),
+		);
+		await w.mailboxes.save(mailbox('care'));
+		await w.tokens.put('care', 'r1');
+		await w.access.replaceForMailbox('care', [
+			{ mailboxId: 'care', adminUserId: 'boss', rights: ['read', 'settings'] },
+			{ mailboxId: 'care', adminUserId: 'riya', rights: ['read', 'send'] },
+		]);
+	});
+
+	it('needs the Settings right, a connection and Google permission for settings', async () => {
+		await expect(service.read('riya', 'care')).rejects.toMatchObject({ status: 403 });
+		await expect(service.read('stranger', 'care')).rejects.toMatchObject({ status: 404 });
+		gmail.featuresMissing.mockReturnValueOnce(['settings']);
+		await expect(service.read('boss', 'care')).rejects.toMatchObject({ status: 409 });
+		await w.mailboxes.save(mailbox('care', { status: 'needs_reconnect' }));
+		await expect(service.read('boss', 'care')).rejects.toMatchObject({ status: 409 });
+		await w.mailboxes.save(mailbox('care'));
+		w.tokenMap.clear();
+		await expect(service.read('boss', 'care')).rejects.toMatchObject({ status: 409 });
+		expect(w.boxes.get('care')?.status).toBe('needs_reconnect');
+		w.boxes.delete('care');
+		await expect(service.read('boss', 'care')).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('reads filters, the vacation reply and the main address signature live', async () => {
+		const settings = await service.read('boss', 'care');
+		expect(settings.filters.map((entry) => entry.id)).toEqual(['f1', 'fwd']);
+		expect(settings.vacation.enabled).toBe(false);
+		expect(settings.signature).toEqual({ address: 'care@shop.test', html: '<b>Team</b>', editable: true });
+		gmail.listSendAs.mockResolvedValueOnce([
+			{ address: 'care@shop.test', displayName: '', signature: '<img src="logo.png">', isPrimary: true },
+		]);
+		expect((await service.read('boss', 'care')).signature.editable).toBe(false);
+	});
+
+	it('adds a filter, and changes one by adding the new before deleting the old', async () => {
+		const write = {
+			criteria: { from: '@courier.in' },
+			addLabelIds: ['Label_1'],
+			removeLabelIds: ['INBOX' as const],
+		};
+		expect(await service.addFilter('boss', 'care', write)).toMatchObject({ id: 'f2' });
+		expect(gmail.deleteFilter).not.toHaveBeenCalled();
+		await service.addFilter('boss', 'care', { ...write, replaces: 'f1' });
+		expect(gmail.createFilter.mock.invocationCallOrder[1]).toBeLessThan(
+			gmail.deleteFilter.mock.invocationCallOrder[0] ?? 0,
+		);
+		expect(gmail.deleteFilter).toHaveBeenCalledWith(expect.anything(), 'f1');
+		gmail.createFilter.mockRejectedValueOnce(Object.assign(new Error('bad'), { status: 400 }));
+		await expect(service.addFilter('boss', 'care', { ...write, replaces: 'f1' })).rejects.toMatchObject({
+			status: 502,
+		});
+		expect(gmail.deleteFilter).toHaveBeenCalledTimes(1);
+		await expect(service.addFilter('boss', 'care', { ...write, replaces: 'gone' })).rejects.toMatchObject({
+			status: 404,
+		});
+		await expect(service.addFilter('boss', 'care', { ...write, replaces: 'fwd' })).rejects.toMatchObject({
+			status: 403,
+		});
+	});
+
+	it('deletes filters, but never one that forwards', async () => {
+		await service.deleteFilter('boss', 'care', 'f1');
+		expect(gmail.deleteFilter).toHaveBeenCalledWith(expect.anything(), 'f1');
+		await expect(service.deleteFilter('boss', 'care', 'fwd')).rejects.toMatchObject({ status: 403 });
+		await expect(service.deleteFilter('boss', 'care', 'nope')).rejects.toMatchObject({ status: 404 });
+		expect(w.audit.filter((row) => row.action === SETTINGS_CHANGED).map((row) => row.metadata?.what)).toEqual([
+			'filter_deleted',
+		]);
+	});
+
+	it('saves the vacation reply and the signature, auditing neither text', async () => {
+		expect(await service.saveVacation('boss', 'care', vacation)).toEqual(vacation);
+		const signature = await service.saveSignature('boss', 'care', '<p>Saha Textile care</p>');
+		expect(gmail.updateSignature).toHaveBeenCalledWith(
+			expect.anything(),
+			'care@shop.test',
+			'<p>Saha Textile care</p>',
+		);
+		expect(signature).toMatchObject({ address: 'care@shop.test', editable: true });
+		expect(w.boxes.get('care')?.sendAs).toHaveLength(2);
+		const audited = JSON.stringify(w.audit.filter((row) => row.action === SETTINGS_CHANGED));
+		expect(audited).not.toContain('We reply after');
+		expect(audited).not.toContain('Saha Textile care');
+		gmail.listSendAs.mockResolvedValueOnce([
+			{ address: 'care@shop.test', displayName: '', signature: '<img src="logo.png">', isPrimary: true },
+		]);
+		await expect(service.saveSignature('boss', 'care', 'x')).rejects.toMatchObject({ status: 409 });
+		gmail.listSendAs.mockResolvedValueOnce([]);
+		await expect(service.saveSignature('boss', 'care', 'x')).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('serves the settings routes as the signed-in admin', async () => {
+		const settings = {
+			read: vi.fn(async () => ({})),
+			addFilter: vi.fn(async () => ({})),
+			deleteFilter: vi.fn(async () => undefined),
+			saveVacation: vi.fn(async () => ({})),
+			saveSignature: vi.fn(async () => ({})),
+		};
+		const controller = new AdminInboxController({} as never, {} as never, settings as never);
+		const principal = { userId: 'boss' } as never;
+		await controller.readSettings('care', principal);
+		await controller.addFilter(
+			'care',
+			{ criteria: { from: 'a' }, addLabelIds: [], removeLabelIds: ['INBOX'] },
+			principal,
+		);
+		await controller.deleteFilter('care', 'f1', principal);
+		await controller.saveVacation('care', vacation, principal);
+		await controller.saveSignature('care', { html: '<p>x</p>' }, principal);
+		expect(settings.saveSignature).toHaveBeenCalledWith('boss', 'care', '<p>x</p>');
 	});
 });

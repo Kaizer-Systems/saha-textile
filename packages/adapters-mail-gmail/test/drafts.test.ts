@@ -283,3 +283,121 @@ describe('formatted writing (C1)', () => {
 		expect(bodiesOf(raw)[0]?.trim()).toBe('Plain words');
 	});
 });
+
+describe('Gmail settings (G1)', () => {
+	it('reads filters, marking the ones that forward', async () => {
+		const { gmail } = make([
+			[
+				'GET',
+				/\/settings\/filters$/,
+				() =>
+					json({
+						filter: [
+							{
+								id: 'f1',
+								criteria: { from: '@courier.in', size: 10 },
+								action: { addLabelIds: ['Label_1'], removeLabelIds: ['INBOX'] },
+							},
+							{
+								id: 'f2',
+								criteria: { subject: 'invoice', hasAttachment: true },
+								action: { forward: 'accounts@shop.test' },
+							},
+						],
+					}),
+			],
+		]);
+		expect(await gmail.listFilters(credentials)).toEqual([
+			{
+				id: 'f1',
+				criteria: { from: '@courier.in' },
+				addLabelIds: ['Label_1'],
+				removeLabelIds: ['INBOX'],
+				forwardTo: null,
+			},
+			{
+				id: 'f2',
+				criteria: { subject: 'invoice', hasAttachment: true },
+				addLabelIds: [],
+				removeLabelIds: [],
+				forwardTo: 'accounts@shop.test',
+			},
+		]);
+	});
+
+	it('creates a filter with only what was filled in, and deletes one quietly when gone', async () => {
+		const { gmail, calls } = make([
+			[
+				'POST',
+				/\/settings\/filters$/,
+				() => json({ id: 'f9', criteria: { from: 'a@x.test' }, action: { addLabelIds: ['STARRED'] } }),
+			],
+			['DELETE', /\/settings\/filters\/f9$/, () => new Response(null, { status: 204 })],
+			['DELETE', /\/settings\/filters\/gone$/, () => new Response('', { status: 404 })],
+		]);
+		const made = await gmail.createFilter(credentials, {
+			criteria: { from: 'a@x.test', subject: '', hasAttachment: false },
+			addLabelIds: ['STARRED'],
+			removeLabelIds: [],
+		});
+		expect(made.id).toBe('f9');
+		expect(calls[0]?.body).toEqual({
+			criteria: { from: 'a@x.test' },
+			action: { addLabelIds: ['STARRED'], removeLabelIds: [] },
+		});
+		expect(await gmail.deleteFilter(credentials, 'f9')).toBe(true);
+		expect(await gmail.deleteFilter(credentials, 'gone')).toBe(false);
+	});
+
+	it('reads and writes the vacation reply, with its days as Gmail milliseconds', async () => {
+		const { gmail, calls } = make([
+			[
+				'GET',
+				/\/settings\/vacation$/,
+				() =>
+					json({
+						enableAutoReply: true,
+						responseSubject: 'Away',
+						responseBodyHtml: '<p>Back <b>soon</b></p>',
+						startTime: '1792454400000',
+					}),
+			],
+			['PUT', /\/settings\/vacation$/, (call) => json(call.body)],
+		]);
+		expect(await gmail.getVacation(credentials)).toEqual({
+			enabled: true,
+			subject: 'Away',
+			message: 'Back soon',
+			contactsOnly: false,
+			domainOnly: false,
+			startTime: new Date(1792454400000).toISOString(),
+			endTime: null,
+		});
+		const saved = await gmail.updateVacation(credentials, {
+			enabled: false,
+			subject: '',
+			message: 'Off',
+			contactsOnly: true,
+			domainOnly: false,
+			startTime: null,
+			endTime: '2026-10-25T00:00:00.000Z',
+		});
+		expect(calls[1]?.body).toMatchObject({
+			enableAutoReply: false,
+			responseBodyPlainText: 'Off',
+			endTime: String(Date.parse('2026-10-25T00:00:00.000Z')),
+		});
+		expect(calls[1]?.body).not.toHaveProperty('startTime');
+		expect(saved).toMatchObject({ enabled: false, contactsOnly: true });
+	});
+
+	it('cleans a signature before Gmail sees it', async () => {
+		const { gmail, calls } = make([['PATCH', /\/settings\/sendAs\/care%40shop\.test$/, () => json({})]]);
+		await gmail.updateSignature(
+			credentials,
+			'care@shop.test',
+			'<p onclick="x()"><b>Team</b></p><script>bad()</script>',
+		);
+		expect(calls[0]?.body).toEqual({ signature: '<p><b>Team</b></p>' });
+	});
+});

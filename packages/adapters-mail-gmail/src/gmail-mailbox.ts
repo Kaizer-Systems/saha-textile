@@ -6,7 +6,10 @@ import type {
 	InboxThread,
 	InboxThreadPage,
 	InboxThreadSummary,
+	MailboxFilter,
+	MailboxFilterWrite,
 	MailboxSendAs,
+	MailboxVacation,
 } from '@saha-textile/contracts';
 import {
 	FOLDER_LABELS,
@@ -31,6 +34,7 @@ import {
 	toInboxThread,
 	toThreadSummary,
 } from './gmail-message.js';
+import { cleanComposedHtml, htmlToText } from './clean-html.js';
 import { buildImport, buildOutgoing, toRaw } from './mime.js';
 
 const AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -106,6 +110,65 @@ const CATEGORIES = ['CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES'
 const ID_PAGE = 500;
 /** Gmail's own limit for one batch change or batch delete. */
 export const GMAIL_BATCH = 1_000;
+const GmailFilter = z.object({
+	id: z.string(),
+	criteria: z
+		.object({
+			from: z.string().optional(),
+			to: z.string().optional(),
+			subject: z.string().optional(),
+			query: z.string().optional(),
+			hasAttachment: z.boolean().optional(),
+		})
+		.passthrough()
+		.default({}),
+	action: z
+		.object({
+			addLabelIds: z.array(z.string()).default([]),
+			removeLabelIds: z.array(z.string()).default([]),
+			forward: z.string().optional(),
+		})
+		.default({ addLabelIds: [], removeLabelIds: [] }),
+});
+const FilterList = z.object({ filter: z.array(GmailFilter).default([]) });
+const GmailVacation = z.object({
+	enableAutoReply: z.boolean().default(false),
+	responseSubject: z.string().default(''),
+	responseBodyPlainText: z.string().default(''),
+	responseBodyHtml: z.string().default(''),
+	restrictToContacts: z.boolean().default(false),
+	restrictToDomain: z.boolean().default(false),
+	startTime: z.string().optional(),
+	endTime: z.string().optional(),
+});
+
+const toFilter = (filter: z.infer<typeof GmailFilter>): MailboxFilter => ({
+	id: filter.id,
+	criteria: {
+		...(filter.criteria.from ? { from: filter.criteria.from } : {}),
+		...(filter.criteria.to ? { to: filter.criteria.to } : {}),
+		...(filter.criteria.subject ? { subject: filter.criteria.subject } : {}),
+		...(filter.criteria.query ? { query: filter.criteria.query } : {}),
+		...(filter.criteria.hasAttachment ? { hasAttachment: true } : {}),
+	},
+	addLabelIds: filter.action.addLabelIds,
+	removeLabelIds: filter.action.removeLabelIds,
+	forwardTo: filter.action.forward ?? null,
+});
+
+const msTime = (value: string | undefined): string | null =>
+	value && /^\d+$/.test(value) ? new Date(Number(value)).toISOString() : null;
+
+const toVacation = (vacation: z.infer<typeof GmailVacation>): MailboxVacation => ({
+	enabled: vacation.enableAutoReply,
+	subject: vacation.responseSubject,
+	message: vacation.responseBodyPlainText || htmlToText(vacation.responseBodyHtml).trim(),
+	contactsOnly: vacation.restrictToContacts,
+	domainOnly: vacation.restrictToDomain,
+	startTime: msTime(vacation.startTime),
+	endTime: msTime(vacation.endTime),
+});
+
 const SendAsList = z.object({
 	sendAs: z
 		.array(
@@ -622,6 +685,55 @@ export class GmailMailbox implements MailboxPort {
 				signature: entry.signature,
 				isPrimary: entry.isPrimary,
 			}));
+	}
+
+	async listFilters(credentials: MailboxCredentials): Promise<MailboxFilter[]> {
+		const list = FilterList.parse(await this.authorised(credentials, 'GET', '/settings/filters'));
+		return list.filter.map(toFilter);
+	}
+
+	async createFilter(credentials: MailboxCredentials, filter: MailboxFilterWrite): Promise<MailboxFilter> {
+		const criteria = Object.fromEntries(
+			Object.entries(filter.criteria).filter(
+				([, value]) => value !== undefined && value !== '' && value !== false,
+			),
+		);
+		const body = await this.authorised(credentials, 'POST', '/settings/filters', {
+			json: { criteria, action: { addLabelIds: filter.addLabelIds, removeLabelIds: filter.removeLabelIds } },
+		});
+		return toFilter(GmailFilter.parse(body));
+	}
+
+	async deleteFilter(credentials: MailboxCredentials, filterId: string): Promise<boolean> {
+		const body = await this.authorised(credentials, 'DELETE', `/settings/filters/${encodeURIComponent(filterId)}`, {
+			missing: true,
+		});
+		return body !== null;
+	}
+
+	async getVacation(credentials: MailboxCredentials): Promise<MailboxVacation> {
+		return toVacation(GmailVacation.parse(await this.authorised(credentials, 'GET', '/settings/vacation')));
+	}
+
+	async updateVacation(credentials: MailboxCredentials, vacation: MailboxVacation): Promise<MailboxVacation> {
+		const body = await this.authorised(credentials, 'PUT', '/settings/vacation', {
+			json: {
+				enableAutoReply: vacation.enabled,
+				responseSubject: vacation.subject,
+				responseBodyPlainText: vacation.message,
+				restrictToContacts: vacation.contactsOnly,
+				restrictToDomain: vacation.domainOnly,
+				...(vacation.startTime ? { startTime: String(Date.parse(vacation.startTime)) } : {}),
+				...(vacation.endTime ? { endTime: String(Date.parse(vacation.endTime)) } : {}),
+			},
+		});
+		return toVacation(GmailVacation.parse(body));
+	}
+
+	async updateSignature(credentials: MailboxCredentials, address: string, html: string): Promise<void> {
+		await this.authorised(credentials, 'PATCH', `/settings/sendAs/${encodeURIComponent(address)}`, {
+			json: { signature: cleanComposedHtml(html) },
+		});
 	}
 
 	/** A fresh access token for the mailbox, from memory or from its refresh token. */

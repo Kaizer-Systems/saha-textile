@@ -9,6 +9,7 @@ import { AdminInboxController } from './admin-inbox.controller';
 import { AdminMailboxesController } from './admin-mailboxes.controller';
 import { ContactMessagesController } from './contact-messages.controller';
 import { MailboxesAdminService } from './mailboxes-admin.service';
+import { MailboxSettingsService } from './mailbox-settings.service';
 import { SavedRepliesService } from './saved-replies.service';
 import { UndoSendDispatcher } from './undo-send.dispatcher';
 
@@ -26,6 +27,7 @@ import { UndoSendDispatcher } from './undo-send.dispatcher';
 		ContactMessagesService,
 		UndoSendDispatcher,
 		SavedRepliesService,
+		MailboxSettingsService,
 	],
 	// Purchase orders are emailed through a connected mailbox (purchases brief, po03).
 	exports: [InboxService],

@@ -24,6 +24,12 @@ export class UnavailableMailboxAdapter implements MailboxPort {
 	modifyThread = refuse;
 	trashThread = refuse;
 	importMessage = refuse;
+	listFilters = refuse;
+	createFilter = refuse;
+	deleteFilter = refuse;
+	getVacation = refuse;
+	updateVacation = refuse;
+	updateSignature = refuse;
 	unreadCount = refuse;
 	listSendAs = refuse;
 	listThreadIds = refuse;

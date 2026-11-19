@@ -8,7 +8,10 @@ import type {
 	InboxThreadPage,
 	Mailbox,
 	MailboxAccess,
+	MailboxFilter,
+	MailboxFilterWrite,
 	MailboxSendAs,
+	MailboxVacation,
 } from '@saha-textile/contracts';
 
 /** A mailbox the API may act on: its address and a way to get a fresh access token. */
@@ -178,6 +181,15 @@ export interface MailboxPort {
 	importMessage(credentials: MailboxCredentials, mail: ImportedMail): Promise<{ id: string }>;
 	unreadCount(credentials: MailboxCredentials): Promise<number>;
 	listSendAs(credentials: MailboxCredentials): Promise<MailboxSendAs[]>;
+	/** Gmail settings (G1), with the basic-settings permission. */
+	listFilters(credentials: MailboxCredentials): Promise<MailboxFilter[]>;
+	createFilter(credentials: MailboxCredentials, filter: MailboxFilterWrite): Promise<MailboxFilter>;
+	/** False when it was already gone. */
+	deleteFilter(credentials: MailboxCredentials, filterId: string): Promise<boolean>;
+	getVacation(credentials: MailboxCredentials): Promise<MailboxVacation>;
+	updateVacation(credentials: MailboxCredentials, vacation: MailboxVacation): Promise<MailboxVacation>;
+	/** The main address's signature; the adapter cleans it like composed mail. */
+	updateSignature(credentials: MailboxCredentials, address: string, html: string): Promise<void>;
 }
 
 /** Mailboxes (`mailboxes`). The refresh token is not here: see `MailboxTokenStore`. */

@@ -21,6 +21,7 @@ docker/stack/env/*.env
 docker/stack/env/redis-password
 docker/stack/env/meilisearch.toml
 docker/stack/env/*.tmp
+docker/dev-secrets
 .claude
 .cursor
 .vscode

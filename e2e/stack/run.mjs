@@ -38,6 +38,9 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 const env = {
 	...process.env,
 	MONGODB_DB_NAME: DATABASE,
+	// The shop's own database login (apps/api/.env) belongs to its own database, not to this one.
+	MONGODB_USERNAME: '',
+	MONGODB_PASSWORD: '',
 	MEILISEARCH_INDEX: SEARCH_INDEX,
 	OTP_LOCAL_FIXED_CODE: process.env.OTP_LOCAL_FIXED_CODE || '123456',
 	NOTIFICATION_PROVIDER: 'console',

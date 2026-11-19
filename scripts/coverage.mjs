@@ -47,7 +47,12 @@ function writeDenominator(cwd) {
 	const imports = listed.stdout
 		.split('\n')
 		.filter((file) => /\.ts$/.test(file))
-		.filter((file) => !/\.spec\.ts$|\.d\.ts$|test-setup|main\.ts$|main\.server|\/server\/|service-worker\/|interfaces\//.test(file))
+		.filter(
+			(file) =>
+				!/\.spec\.ts$|\.d\.ts$|test-setup|main\.ts$|main\.server|\/server\/|service-worker\/|interfaces\//.test(
+					file,
+				),
+		)
 		.filter((file) => existsSync(join(cwd, file)))
 		.map((file) => `import './${file.replace(/^src\//, '').replace(/\.ts$/, '')}';`);
 	writeFileSync(
@@ -80,6 +85,9 @@ function measure(name, { dir, angular, mongo }) {
 					RUN_DB_IT: '1',
 					MONGODB_HOST: process.env.MONGODB_HOST || '127.0.0.1',
 					MONGODB_DB_NAME: 'saha_textile_it',
+					// The shop's own database login (apps/api/.env) belongs to its own database, not to this one.
+					MONGODB_USERNAME: '',
+					MONGODB_PASSWORD: '',
 					MONGODB_REPLICA_SET: process.env.MONGODB_REPLICA_SET || 'rs0',
 				}
 			: {}),

@@ -94,6 +94,10 @@ async function main() {
 	// The Mongo adapter reads its connection settings from `process.env` at connect time, so
 	// the database name is the one value that still has to go through the environment.
 	process.env.MONGODB_DB_NAME = E2E_DB_NAME;
+	// The shop's own database login (apps/api/.env) belongs to its own database, not to this one.
+	// Set before dotenv loads, which never replaces a name already set.
+	process.env.MONGODB_USERNAME = '';
+	process.env.MONGODB_PASSWORD = '';
 
 	const { createApp } = await import('../dist/bootstrap.js');
 	const { loadConfig } = await import('../dist/config/app-config.js');

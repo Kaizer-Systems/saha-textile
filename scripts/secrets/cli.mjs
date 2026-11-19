@@ -6,6 +6,7 @@
  *   pnpm secrets:status -- staging       one project: dev, staging or production
  *   pnpm secrets:pull                    rewrite apps/api/.env from the dev project (see pull.mjs)
  *   pnpm stack:env                       write docker/stack/env/ from the dev project (see stack.mjs)
+ *   pnpm secrets:setup-local             real logins for this Mac's services (see local-setup.mjs)
  *
  * `status` prints, per project and folder, how many settings are filled, which names are missing,
  * misspelt or due for deletion, and whether the project is ready for a release. Every command prints
@@ -15,6 +16,7 @@
  */
 import { exportFolder, exportProject } from './infisical.mjs';
 import { ROOT, SecretsError, TIERS, describeError, loadInventory } from './inventory.mjs';
+import { setupLocal } from './local-setup.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatReport, projectReport } from './render.mjs';
 import { writeStackEnv } from './stack.mjs';
@@ -75,14 +77,18 @@ function stackEnv() {
 	console.log(writeStackEnv({ root: ROOT, inventory, readApi: devApiReader(inventory) }).join('\n'));
 }
 
-const commands = { status, pull, 'stack-env': stackEnv };
+function setupLocalCommand() {
+	console.log(setupLocal({ root: ROOT }).join('\n'));
+}
+
+const commands = { status, pull, 'stack-env': stackEnv, 'setup-local': setupLocalCommand };
 
 function main() {
 	const [command, ...args] = process.argv.slice(2);
 	const run = commands[/** @type {keyof typeof commands} */ (command)];
 	if (!run) {
 		console.error(
-			'Usage: node scripts/secrets/cli.mjs status [dev|staging|production] | pull [--dry-run|--replace] | stack-env',
+			'Usage: node scripts/secrets/cli.mjs status [dev|staging|production] | pull [--dry-run|--replace] | stack-env | setup-local',
 		);
 		process.exit(2);
 	}

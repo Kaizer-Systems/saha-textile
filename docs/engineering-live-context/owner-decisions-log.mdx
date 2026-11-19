@@ -1127,6 +1127,36 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
   Forward button for a selected message. The owner approved this recommendation after the
   difference between message forwarding and mailbox-wide automatic forwarding was explained.
 
+### Follow-up (2026-11-19) — admin Inbox upgrade
+
+- **Brief approved as a whole:** Gmail Workspace Upgrade (https://claude.ai/artifact/CdmMcQmpgPt9cwAcCqnrJW,
+  revision 3). It covers Gmail labels and categories in the sidebar, a Refresh button, new mail sliding
+  in, new replies inside an open conversation, selection and bulk actions, Bin with Delete forever
+  and Empty Bin, star and important, Bcc and formatting, drafts kept in Gmail, Undo Send, saved
+  replies, basic Gmail settings, per-mailbox rights, and the security fixes listed there. Its six
+  custom pieces are approved: the new-row tint, the mixed checkbox state, label chips, the star
+  toggle, an action button in a toast, and the rights grid in the Access popup.
+- **Only super admins manage mailboxes.** Connecting, reconnecting, disconnecting, changing access
+  and choosing the Contact Us mailbox need the system Administrator role as well as
+  `mailbox.manage`. Managing a mailbox still does not let anyone read it.
+- **Seven rights per person per mailbox:** Read, Send, Organise, Bin, Delete forever, Labels,
+  Settings. Existing Read stays Read; existing Read-and-send becomes Read, Send, Organise and Bin.
+  Nobody gets Delete forever, Labels or Settings until a super admin ticks it. The API checks the
+  right on every call.
+- **Undo Send waits 10 seconds,** fixed. The message waits as a Gmail draft and the server sends
+  it, so closing the tab does not cancel it.
+- **Saved replies:** shared replies per mailbox, usable by everyone who can send from it and
+  editable only by people with that mailbox's Settings right, plus each admin's own personal
+  replies.
+- **Docker mode mailbox callback:** the stack's HTTPS front also answers
+  `https://localhost:4000`, for the mailbox callback path only, reusing the dev client's registered
+  callback. The Docker stack and the direct-dev API cannot run at the same time.
+- **Refresh stays at 60 seconds.** The app asks Google for `gmail.modify`, `gmail.settings.basic`
+  and full mail access, the last only for permanent delete and Empty Bin; each mailbox is
+  reconnected once to grant them.
+- **Bengali** for the new Inbox text follows the plain-words balance and is accepted in advance.
+  The review of Bengali stored in the database still waits for real content.
+
 ## Owner decision round (2026-11-10) — speed targets and nothing removed without a written say-so
 
 - **Nothing is removed without the owner's own written words.** No style, theme rule, icon, font, file, page section or library is stripped, dropped, purged or subset unless the owner asks for that specific removal in their own chat message. Accepting a plan or brief through a button is not that consent, even when the plan lists the removal. Removal is the last step of any speed work, never the first, and waits until development is finished (`DEC-PERF-TRIM`).

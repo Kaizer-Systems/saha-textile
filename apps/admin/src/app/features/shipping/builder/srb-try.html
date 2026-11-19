@@ -123,7 +123,7 @@
 		<ul class="srb-trace mb-3">
 			@for (line of lines(); track line.productId; let i = $index) { @let view = views()[i];
 			<li>
-				<span class="d-flex gap-2 align-items-center">
+				<span class="d-flex align-items-center gap-2">
 					@if (view?.imageUrl) {
 					<img
 						class="rounded"
@@ -214,11 +214,11 @@
 		</div>
 		}
 		<div class="d-flex align-items-center mt-3 flex-wrap gap-2">
+			@if (lines().length) {
 			<button
 				type="button"
 				class="btn btn-outline btn-sm"
 				id="ship_try_edit"
-				[disabled]="lines().length === 0"
 				(click)="editing.set(!editing())"
 			>
 				<i
@@ -227,7 +227,7 @@
 				></i>
 				{{ (editing() ? 'ship_try_done' : 'ship_edit_cart') | transloco }}
 			</button>
-			@if (mode() === 'ruleSet' && !readOnly() && lines().length) { @if (naming()) {
+			} @if (mode() === 'ruleSet' && !readOnly() && lines().length) { @if (naming()) {
 			<input
 				class="form-control w-auto"
 				maxlength="80"

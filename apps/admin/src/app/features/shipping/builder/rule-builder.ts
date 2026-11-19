@@ -16,13 +16,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbDropdownModule, NgbModal, type NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { validateShippingRuleSet, type ShippingIssue } from '@saha-textile/core-domain/shipping';
+import { ruleSetReadsWeight, validateShippingRuleSet, type ShippingIssue } from '@saha-textile/core-domain/shipping';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { Subject, catchError, debounceTime, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { duplicateStep, newAdjust, newStep } from '@core/shipping/blocks';
-import { plainWords } from '@core/shipping/plain-words';
+import { plainWords, type ChargeAmount, type ChargeAmounts } from '@core/shipping/plain-words';
 import {
 	SHIPPING_KEY,
 	SHIPPING_STALE_MS,
@@ -34,6 +34,7 @@ import { AuthStore } from '@core/state/auth.store';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { FmPhone } from '@features/media/file-manager/fm-phone';
+import { askConfirm } from '@features/purchasing/shared/popups';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 import { SrbNode } from './srb-node';
@@ -41,6 +42,7 @@ import { SrbTry } from './srb-try';
 
 import type {
 	ShippingAdjust,
+	ShippingChargeKind,
 	ShippingRuleSetBody,
 	ShippingRuleSetUse,
 	ShippingStep,
@@ -136,6 +138,65 @@ export class RuleBuilder {
 	readonly categories = computed(() =>
 		(this.categoryRows.data() ?? []).map((row) => ({ id: row.id, label: row.path ?? row.name['en'] ?? row.id })),
 	);
+	/**
+	 * "₹100 on every category" beside a product charge (brief rb02, rb03): each category's value,
+	 * through its parents and then the shop default, gathered into one amount or a range.
+	 */
+	readonly chargeAmounts = computed<ChargeAmounts>(() => {
+		const rows = this.categoryRows.data() ?? [];
+		const overview = this.overview.data();
+		const shop = (overview?.settings ?? overview?.defaults)?.defaultCharges;
+		if (rows.length === 0 || !shop) return {};
+		const byId = new Map(rows.map((row) => [row.id, row]));
+		const keys = {
+			domestic: 'domesticINR',
+			internationalFirst: 'internationalFirstINR',
+			internationalFurther: 'internationalFurtherINR',
+		} as const;
+		const amounts: ChargeAmounts = {};
+		for (const kind of ['domestic', 'internationalFirst', 'internationalFurther'] as const) {
+			const resolve = (id: string): number => {
+				const seen = new Set<string>();
+				let row = byId.get(id);
+				while (row && !seen.has(row.id)) {
+					seen.add(row.id);
+					const value = row.shipping?.[keys[kind]];
+					if (value !== null && value !== undefined) return value;
+					row = row.parentId ? byId.get(row.parentId) : undefined;
+				}
+				return shop[kind];
+			};
+			const values = [...new Set(rows.map((row) => resolve(row.id)))].sort((a, b) => a - b);
+			const low = values[0] ?? 0;
+			const high = values[values.length - 1] ?? 0;
+			amounts[kind] =
+				low === high
+					? { amount: this.rupees(low), every: true }
+					: { amount: `${this.rupees(low)}–${this.rupees(high)}`, every: false };
+		}
+		return amounts;
+	});
+	readonly chargeHints = computed<Partial<Record<ShippingChargeKind, string>>>(() => {
+		const hints: Partial<Record<ShippingChargeKind, string>> = {};
+		for (const [kind, known] of Object.entries(this.chargeAmounts()) as Array<[ShippingChargeKind, ChargeAmount]>)
+			hints[kind] = this.transloco.translate(known.every ? 'ship_hint_every_category' : 'ship_hint_by_category', {
+				amount: known.amount,
+			});
+		return hints;
+	});
+	/** A step that reads weight says how chargeable weight is worked out (brief rb10). */
+	stepReadsWeight(step: ShippingStep): boolean {
+		return ruleSetReadsWeight({ steps: [step], adjust: [] });
+	}
+	/** The other two ways a loop's results can combine, for the hint beside the select (brief rb02). */
+	otherCombines(step: ShippingStep): string {
+		const all = ['sum', 'highest', 'lowest'] as const;
+		const list = all
+			.filter((choice) => choice !== step.combine)
+			.map((choice) => this.transloco.translate(`ship_combine_${choice}_${step.scope}`).toLocaleLowerCase())
+			.join(', ');
+		return this.transloco.translate('ship_other_choices', { list });
+	}
 	readonly check = computed(() =>
 		validateShippingRuleSet(this.body(), this.use(), { languages: this.shopLanguages() }),
 	);
@@ -148,12 +209,14 @@ export class RuleBuilder {
 			this.body(),
 			(key, params) => this.transloco.translate(key, params),
 			(id) => names.get(id) ?? id,
+			this.chargeAmounts(),
 		);
 	});
 	/** "used site-wide", "used by 2 exception(s)" or "not used yet", after the active version (brief rb02). */
 	readonly usageWords = computed(() => {
 		const usage = this.detail()?.usage;
-		if (usage?.zones.some((z) => z.as === 'siteWide')) return this.transloco.translate('ship_status_used_site_wide');
+		if (usage?.zones.some((z) => z.as === 'siteWide'))
+			return this.transloco.translate('ship_status_used_site_wide');
 		if (usage?.exceptionIds.length)
 			return this.transloco.translate('ship_status_used_exceptions', { count: usage.exceptionIds.length });
 		return this.transloco.translate('ship_status_not_used');
@@ -395,6 +458,7 @@ export class RuleBuilder {
 			);
 			if (result.outcome === 'activated') {
 				this.openPopup?.close();
+				this.accepted.set(null);
 				this.loaded = -1;
 				this.dirty.set(false);
 				this.queryClient.setQueryData([...SHIPPING_KEY, 'rule-set', this.id()], result.detail);
@@ -418,6 +482,69 @@ export class RuleBuilder {
 		} finally {
 			this.busy.set(false);
 		}
+	}
+
+	/** Saved test carts whose amount now differs from the one accepted (brief rb08). */
+	readonly changedCarts = computed(() => {
+		const now = this.testCartNow();
+		return this.testCarts().filter((cart) => {
+			const amount = now[cart.id];
+			return amount !== undefined && amount !== cart.expectedINR;
+		});
+	});
+	readonly changesAllPriced = computed(() =>
+		this.changedCarts().every((cart) => typeof this.testCartNow()[cart.id] === 'number'),
+	);
+	/** New amounts accepted with "Accept new amounts", sent when the version is made active. */
+	readonly accepted = signal<ShippingTestCartChange[] | null>(null);
+
+	/** An accepted list is for the blocks it was accepted against; any edit asks again. */
+	private readonly forgetAccepted = effect(() => {
+		this.body();
+		this.testCarts();
+		untracked(() => this.accepted.set(null));
+	});
+
+	acceptNewAmounts() {
+		const now = this.testCartNow();
+		this.accepted.set(
+			this.changedCarts().map((cart) => ({
+				testCartId: cart.id,
+				name: cart.name,
+				fromINR: cart.expectedINR,
+				toINR: now[cart.id] ?? null,
+				status: 'priced' as const,
+			})),
+		);
+	}
+
+	/** "Make version N active?" (brief rb11): the theme's confirmation, naming how the test carts stand. */
+	async confirmActivate() {
+		const detail = this.detail();
+		if (!detail || !this.check().canActivate) return;
+		const changed = this.changedCarts();
+		const accepted = this.accepted();
+		if (changed.length > 0 && !accepted) {
+			// Not accepted yet: the server lists the changes and asks for them (the changes popup).
+			await this.activate();
+			return;
+		}
+		const version = Math.max(0, ...detail.versions.map((v) => v.version)) + 1;
+		const count = this.testCarts().length;
+		const line =
+			changed.length === 0
+				? this.transloco.translate(count ? 'ship_all_carts_match' : 'ship_no_carts_to_check', { count })
+				: this.transloco.translate('ship_carts_accepted', { count: changed.length });
+		const yes = await askConfirm(this.modals, {
+			icon: 'ri-refresh-line',
+			title: 'ship_make_active_title',
+			body: 'ship_make_active_body',
+			params: { version },
+			yes: 'ship_make_active',
+			cancel: 'ship_not_yet',
+			items: [line],
+		});
+		if (yes) await this.activate(accepted ?? []);
 	}
 
 	/** Whether every changed test cart can be accepted (each still prices). */

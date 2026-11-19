@@ -48,11 +48,61 @@ const SAHA_TEXTILE_DOMESTIC: ShippingRuleSetBody = {
 };
 
 describe('plain words', () => {
-	it('writes Saha Textile’s domestic rule set as sentences', () => {
-		expect(plainWords(SAHA_TEXTILE_DOMESTIC, en)).toEqual([
-			'For each line in the cart: if “Is discounted” is Yes: charge the product’s domestic charge for each unit; otherwise: free',
-			'Add up every result.',
-			'No adjustment.',
+	it('writes Saha Textile’s domestic rule set as the brief does (rb02)', () => {
+		expect(plainWords(SAHA_TEXTILE_DOMESTIC, en, undefined, { domestic: { amount: '₹100', every: true } })).toEqual(
+			[
+				'For each line in the cart: if the piece is discounted, charge the product’s domestic charge for each unit (₹100, set on every category; a product may set its own).',
+				'Otherwise the line ships free.',
+				'Add up every line. No adjustment.',
+			],
+		);
+	});
+
+	it('writes the and / or example as the brief does (rb06)', () => {
+		const body: ShippingRuleSetBody = {
+			steps: [
+				{
+					id: 's',
+					scope: 'wholeCart',
+					combine: 'sum',
+					node: {
+						kind: 'if',
+						id: 'if',
+						when: {
+							kind: 'group',
+							id: 'g',
+							join: 'all',
+							items: [
+								{ kind: 'condition', id: 'c1', field: 'cart.subtotal', op: 'atLeast', value: 4999 },
+								{
+									kind: 'group',
+									id: 'g2',
+									join: 'any',
+									items: [
+										{
+											kind: 'condition',
+											id: 'c2',
+											field: 'delivery.state',
+											op: 'isOneOf',
+											value: ['West Bengal', 'Odisha', 'Jharkhand'],
+										},
+										{ kind: 'condition', id: 'c3', field: 'shopper.group', op: 'is', value: 'VIP' },
+									],
+								},
+								{ kind: 'condition', id: 'c4', field: 'cart.hasMadeToOrder', op: 'is', value: false },
+							],
+						},
+						then: { kind: 'result', id: 'r1', result: { kind: 'free' } },
+						otherwise: { kind: 'result', id: 'r2', result: { kind: 'amount', amount: 149, per: 'once' } },
+					},
+				},
+			],
+			adjust: [{ kind: 'roundUp', id: 'round', to: 10 }],
+		};
+		expect(plainWords(body, en)).toEqual([
+			'If the cart is ₹4,999 or more, and the delivery is in West Bengal, Odisha or Jharkhand or the shopper is VIP, and nothing is made to order: free.',
+			'Otherwise ₹149 once per order.',
+			'Round up to the nearest ₹10.',
 		]);
 	});
 
@@ -81,10 +131,15 @@ describe('plain words', () => {
 				{ kind: 'freeAbove', id: 'free', subtotal: 4999 },
 			],
 		};
-		expect(plainWords(body, en)).toEqual([
-			'For the whole cart: charge the highest international first-unit charge among the products once, then that unit’s own international further-unit charge for each further unit, counting every unit in the cart',
-			'For each line in the cart: no result (to be filled in)',
-			'Take only the highest result.',
+		const amounts = {
+			internationalFirst: { amount: '₹2,000', every: true },
+			internationalFurther: { amount: '₹900', every: true },
+		};
+		expect(plainWords(body, en, undefined, amounts)).toEqual([
+			'Count every unit in the cart, across all products.',
+			'Charge the highest first-unit charge among the products once (₹2,000), then each further unit’s own further-unit charge (₹900).',
+			'For each line in the cart: no result (to be filled in).',
+			'Keep only the highest line, once.',
 			'Round up to the nearest ₹10.',
 			'Free when the cart is ₹4,999 or more.',
 		]);

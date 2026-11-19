@@ -105,7 +105,9 @@ export class ShippingOverview {
 		const { categories, products } = this.query.data()?.exceptionTargets ?? { categories: 0, products: 0 };
 		if (categories === 0 && products === 0) return t('ship_check_no_own_rules');
 		const parts = [
-			categories ? t(categories === 1 ? 'ship_count_category_one' : 'ship_count_category_many', { n: categories }) : '',
+			categories
+				? t(categories === 1 ? 'ship_count_category_one' : 'ship_count_category_many', { n: categories })
+				: '',
 			products ? t(products === 1 ? 'ship_count_product_one' : 'ship_count_product_many', { n: products }) : '',
 		].filter(Boolean);
 		const list = parts.join(` ${t('ship_and')} `);

@@ -2,33 +2,7 @@
 <div class="container-fluid">
 	<div class="row g-2">
 		<div class="col-xxl-8">
-			@if (premade()) {
-			<div
-				class="alert alert-info d-flex align-items-start gap-2"
-				role="note"
-				id="ship_premade_locked"
-			>
-				<i
-					class="ri-lock-line mt-1"
-					aria-hidden="true"
-				></i>
-				<div class="flex-grow-1">{{ 'ship_premade_locked' | transloco }}</div>
-				@if (canCreate()) {
-				<button
-					type="button"
-					class="btn btn-theme btn-sm"
-					id="ship_make_copy"
-					(click)="makeCopy()"
-				>
-					<i
-						class="ri-file-copy-line me-1"
-						aria-hidden="true"
-					></i>
-					{{ 'ship_make_copy' | transloco }}
-				</button>
-				}
-			</div>
-			} @else if (phone.is()) {
+			@if (!premade() && phone.is()) {
 			<div
 				class="alert alert-info d-flex align-items-start gap-2"
 				role="note"
@@ -58,6 +32,21 @@
 					</ul>
 				</div>
 			</div>
+			} @if (!readOnly() && changedCarts().length && !accepted()) {
+			<div
+				class="alert alert-warning d-flex align-items-start gap-2"
+				role="note"
+				id="ship_carts_changed"
+			>
+				<i
+					class="ri-alert-line mt-1"
+					aria-hidden="true"
+				></i>
+				<div>
+					<b>{{ 'ship_carts_changed_title' | transloco: { count: changedCarts().length } }}</b>
+					{{ 'ship_carts_changed_body' | transloco }}
+				</div>
+			</div>
 			} @if (!readOnly() && warnings().length) {
 			<div
 				class="alert alert-warning d-flex align-items-start gap-2"
@@ -80,11 +69,24 @@
 					<div class="title-header">
 						<div class="d-flex align-items-center">
 							<h5>
-								{{ (premade() || readOnly() ? 'ship_view_rule_set' : 'ship_edit_rule_set') | transloco
-								}}
+								{{ (premade() ? 'ship_premade_rule_set' : readOnly() ? 'ship_view_rule_set' :
+								'ship_edit_rule_set') | transloco }}
 							</h5>
 						</div>
-						@if (current.versions.length) {
+						@if (premade()) { @if (canCreate()) {
+						<button
+							type="button"
+							class="btn btn-theme btn-sm"
+							id="ship_make_copy"
+							(click)="makeCopy()"
+						>
+							<i
+								class="ri-file-copy-line me-1"
+								aria-hidden="true"
+							></i>
+							{{ 'ship_make_copy' | transloco }}
+						</button>
+						} } @else if (current.versions.length) {
 						<button
 							type="button"
 							class="btn btn-outline btn-sm"
@@ -99,6 +101,19 @@
 						</button>
 						}
 					</div>
+					@if (premade()) {
+					<div
+						class="alert alert-info d-flex align-items-start gap-2"
+						role="note"
+						id="ship_premade_locked"
+					>
+						<i
+							class="ri-lock-line mt-1"
+							aria-hidden="true"
+						></i>
+						<div>{{ 'ship_premade_locked' | transloco }}</div>
+					</div>
+					}
 					<div class="theme-form theme-form-2 mega-form">
 						<app-form-fields
 							[label]="'name'"
@@ -151,7 +166,9 @@
 								</button>
 								}
 							</div>
-							<p class="help-text">{{ 'ship_used_for_help' | transloco: { country: homeCountryName() } }}</p>
+							<p class="help-text">
+								{{ 'ship_used_for_help' | transloco: { country: homeCountryName() } }}
+							</p>
 						</app-form-fields>
 						<app-form-fields
 							[label]="'ship_amounts_in'"
@@ -180,8 +197,8 @@
 								<span class="text-muted small">
 									@if (current.ruleSet.activeVersion !== null) { {{ 'ship_status_active' | transloco:
 									{ version: current.ruleSet.activeVersion } }} · {{ usageWords() }} @if
-									(current.ruleSet.hasDraftChanges || dirty()) { · {{ 'ship_status_unsaved' | transloco }} }
-									} @else { {{ 'ship_status_draft' | transloco }} }
+									(current.ruleSet.hasDraftChanges || dirty()) { · {{ 'ship_status_unsaved' |
+									transloco }} } } @else { {{ 'ship_status_draft' | transloco }} }
 								</span>
 							</div>
 						</app-form-fields>
@@ -291,7 +308,8 @@
 										}
 									</select>
 									<span class="text-muted small">
-										{{ 'ship_scope_' + step.scope + '_help' | transloco }}
+										{{ (stepReadsWeight(step) ? 'ship_scope_weight_help' : 'ship_scope_' +
+										step.scope + '_help') | transloco }}
 									</span>
 								</div>
 								<div class="srb-branch">
@@ -304,6 +322,7 @@
 										[languages]="allLanguages()"
 										[slot]="'ship_kw_charge'"
 										[slotId]="step.id"
+										[hints]="chargeHints()"
 										(nodeChange)="setStep(i, { node: $event })"
 									/>
 								</div>
@@ -312,20 +331,23 @@
 							<div class="srb-step">
 								<div class="srb-step-head">
 									<span class="srb-num">{{ stepNumber(i) + 1 }}</span>
-									<h6>{{ 'ship_combine_title' | transloco }}</h6>
+									<h6>{{ 'ship_combine_title_' + step.scope | transloco }}</h6>
 								</div>
 								<div class="srb-line">
 									<select
 										class="form-select"
-										[attr.aria-label]="'ship_combine_title' | transloco"
+										[attr.aria-label]="'ship_combine_title_' + step.scope | transloco"
 										[disabled]="readOnly()"
 										[ngModel]="step.combine"
 										(ngModelChange)="setStep(i, { combine: $event })"
 									>
-										<option value="sum">{{ 'ship_combine_sum' | transloco }}</option>
-										<option value="highest">{{ 'ship_combine_highest' | transloco }}</option>
-										<option value="lowest">{{ 'ship_combine_lowest' | transloco }}</option>
+										@for (choice of ['sum', 'highest', 'lowest']; track choice) {
+										<option [value]="choice">
+											{{ 'ship_combine_' + choice + '_' + step.scope | transloco }}
+										</option>
+										}
 									</select>
+									<span class="text-muted small">{{ otherCombines(step) }}</span>
 								</div>
 							</div>
 							}
@@ -403,37 +425,40 @@
 								</a>
 								}
 							</div>
-							} @empty {
-							<div class="srb-line text-muted small">{{ 'ship_no_adjust' | transloco }}</div>
-							} @if (!readOnly()) {
-							<div
-								ngbDropdown
-								container="body"
-							>
-								<button
-									type="button"
-									class="btn btn-outline btn-sm srb-add"
-									ngbDropdownToggle
-								>
-									<i
-										class="ri-add-line me-1"
-										aria-hidden="true"
-									></i>
-									{{ 'ship_add_adjust' | transloco }}
-								</button>
-								<div ngbDropdownMenu>
-									@for (kind of adjustKinds; track kind) {
-									<button
-										ngbDropdownItem
-										type="button"
-										(click)="addAdjust(kind)"
-									>
-										{{ 'ship_adjust_' + kind | transloco }}
-									</button>
-									}
-								</div>
-							</div>
 							}
+							<div class="srb-line">
+								@if (!body().adjust.length) {
+								<span class="text-muted small">{{ 'ship_no_adjust' | transloco }}</span>
+								} @if (!readOnly()) {
+								<div
+									ngbDropdown
+									container="body"
+								>
+									<button
+										type="button"
+										class="btn btn-outline btn-sm srb-add"
+										ngbDropdownToggle
+									>
+										<i
+											class="ri-add-line me-1"
+											aria-hidden="true"
+										></i>
+										{{ 'ship_add_adjust' | transloco }}
+									</button>
+									<div ngbDropdownMenu>
+										@for (kind of adjustKinds; track kind) {
+										<button
+											ngbDropdownItem
+											type="button"
+											(click)="addAdjust(kind)"
+										>
+											{{ 'ship_adjust_' + kind | transloco }}
+										</button>
+										}
+									</div>
+								</div>
+								}
+							</div>
 						</div>
 					</div>
 					@if (!readOnly()) {
@@ -458,7 +483,7 @@
 							class="btn btn-theme"
 							id="ship_save_activate"
 							[disabled]="busy() || !check().canActivate || !name().trim()"
-							(click)="activate()"
+							(click)="confirmActivate()"
 						>
 							{{ 'ship_save_activate' | transloco }}
 						</button>
@@ -485,6 +510,17 @@
 								<h5>{{ 'ship_test_carts' | transloco }}</h5>
 							</div>
 						</div>
+						@if (!readOnly() && changedCarts().length) {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm mb-3"
+							id="ship_accept_amounts"
+							[disabled]="!!accepted() || !changesAllPriced()"
+							(click)="acceptNewAmounts()"
+						>
+							{{ (accepted() ? 'ship_amounts_accepted' : 'ship_accept_new_amounts') | transloco }}
+						</button>
+						}
 						<div class="table-responsive datatable-wrapper border-table">
 							<table class="all-package theme-table no-footer table">
 								<thead>

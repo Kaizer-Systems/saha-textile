@@ -16,6 +16,8 @@ export interface ConfirmAsk {
 	items?: readonly string[];
 	/** A note under the list, e.g. "and 12 more". */
 	more?: string;
+	/** The way out's words when "Cancel" isn't right, e.g. "Not yet" (shipping brief rb11). */
+	cancel?: string;
 }
 
 /**
@@ -54,7 +56,7 @@ export interface ConfirmAsk {
 						class="btn-md fw-bold btn btn-secondary"
 						(click)="modal.dismiss()"
 					>
-						{{ 'cancel' | transloco }}
+						{{ current.cancel ?? 'cancel' | transloco }}
 					</button>
 					@if (current.no) {
 						<button

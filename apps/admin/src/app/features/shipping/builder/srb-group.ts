@@ -40,6 +40,8 @@ export class SrbGroup {
 	readonly categories = input<readonly SrbCategoryOption[]>([]);
 	/** True for the top group of an "If" (its first condition says IF; nested groups say Group). */
 	readonly top = input(true);
+	/** The add-condition and and/or controls; the top group of an "If" shows them at the block's bottom. */
+	readonly controls = input(true);
 	readonly groupChange = output<ShippingConditionGroup>();
 	readonly removed = output<void>();
 
@@ -47,6 +49,11 @@ export class SrbGroup {
 	readonly fieldKey = fieldKey;
 	readonly operatorKey = operatorKey;
 	readonly joinLabel = computed(() => (this.group().join === 'all' ? 'ship_and' : 'ship_or'));
+
+	/** "line", "cart", "delivery" or "shopper": the closed picker reads "Line › Is discounted" (brief rb04). */
+	groupOf(field: ShippingConditionField): string {
+		return field.split('.')[0] ?? '';
+	}
 
 	operators(field: ShippingConditionField | null): readonly ShippingOperator[] {
 		return field ? SHIPPING_OPERATORS_BY_TYPE[SHIPPING_FIELD_TYPES[field]] : [];

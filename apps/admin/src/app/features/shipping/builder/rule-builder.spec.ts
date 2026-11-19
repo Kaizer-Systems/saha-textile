@@ -139,7 +139,12 @@ describe('RuleBuilder', () => {
 		expect(page.errors().map((issue) => issue.code)).toEqual(['step_empty']);
 		page.edit(DOMESTIC);
 		expect(page.check().canActivate).toBe(true);
-		expect(page.words()).toEqual(['ship_pw_scope_eachLine ship_pw_if', 'ship_pw_combine_sum', 'ship_pw_no_adjust']);
+		// The decision, its "Otherwise" line, then the combine and "No adjustment" on one line (brief rb02).
+		expect(page.words()).toEqual([
+			'Ship_pw_scope_eachLine ship_pw_if_then.',
+			'Ship_pw_otherwise.',
+			'ship_pw_combine_sum_eachLine ship_pw_no_adjust',
+		]);
 		expect(page.dirty()).toBe(true);
 	});
 

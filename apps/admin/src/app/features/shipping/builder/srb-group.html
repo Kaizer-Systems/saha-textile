@@ -38,33 +38,49 @@
 	[attr.data-block-id]="condition.id"
 >
 	<span class="srb-kw if">{{ (first ? (top() ? 'ship_kw_if' : 'ship_kw_group') : joinLabel()) | transloco }}</span>
-	<select
-		class="form-select"
-		[class.srb-err]="errorIds().has(condition.id) && !condition.field"
-		[attr.aria-label]="'ship_condition_fact' | transloco"
-		[disabled]="readOnly()"
-		[ngModel]="condition.field"
-		(ngModelChange)="setField(i, condition, $event)"
+	<div
+		ngbDropdown
+		container="body"
+		#fieldMenu="ngbDropdown"
 	>
-		<option
-			[ngValue]="null"
-			disabled
+		<button
+			type="button"
+			class="form-select text-start"
+			ngbDropdownAnchor
+			[class.srb-err]="errorIds().has(condition.id) && !condition.field"
+			[attr.aria-label]="'ship_condition_fact' | transloco"
+			[disabled]="readOnly()"
+			(click)="fieldMenu.toggle()"
 		>
-			{{ 'ship_choose' | transloco }}
-		</option>
-		@for (fieldGroup of fieldGroups; track fieldGroup.group) {
-		<optgroup [label]="'ship_fg_' + fieldGroup.group | transloco">
+			@if (condition.field) { {{ 'ship_fg_' + groupOf(condition.field) | transloco }} › {{
+			fieldKey(condition.field) | transloco }} } @else { {{ 'ship_choose' | transloco }} }
+		</button>
+		<div
+			ngbDropdownMenu
+			class="srb-menu"
+			style="width: min(820px, 92vw); column-count: 3; column-gap: 16px"
+		>
+			@for (fieldGroup of fieldGroups; track fieldGroup.group) {
+			<h6
+				class="dropdown-header"
+				style="break-after: avoid"
+			>
+				{{ 'ship_fg_' + fieldGroup.group | transloco }}
+			</h6>
 			@for (field of fieldGroup.fields; track field) {
-			<option
-				[ngValue]="field"
+			<button
+				ngbDropdownItem
+				type="button"
+				style="break-inside: avoid"
 				[disabled]="!lineFacts() && field.startsWith('line.')"
+				(click)="setField(i, condition, field)"
 			>
 				{{ fieldKey(field) | transloco }}
-			</option>
-			}
-		</optgroup>
-		}
-	</select>
+				<small>{{ fieldKey(field) + '_help' | transloco }}</small>
+			</button>
+			} }
+		</div>
+	</div>
 	@if (condition.field) {
 	<select
 		class="form-select"
@@ -229,7 +245,7 @@
 	</a>
 	}
 </div>
-} } @if (!readOnly()) {
+} } @if (!readOnly() && controls()) {
 <div class="srb-line">
 	<div
 		ngbDropdown

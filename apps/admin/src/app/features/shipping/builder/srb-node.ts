@@ -9,6 +9,8 @@ import {
 	NODE_MENU,
 	blockId,
 	fieldKey,
+	newCondition,
+	newGroup,
 	newNode,
 	newResult,
 	type NodeKind,
@@ -52,20 +54,15 @@ export class SrbNode {
 	readonly slot = input('ship_kw_then');
 	/** The id the checks use for this slot when it is empty (`if-x:then`, a band id, a step id). */
 	readonly slotId = input('');
+	/** "₹100 on every category" beside a product charge (brief rb02, rb03), by charge. */
+	readonly hints = input<Partial<Record<ShippingChargeKind, string>>>({});
 	readonly nodeChange = output<ShippingNode | null>();
 
 	readonly menu = NODE_MENU;
 	readonly bandFields = BAND_FIELDS;
 	readonly fieldKey = fieldKey;
-	readonly resultKinds: ResultKind[] = [
-		'amount',
-		'productCharge',
-		'firstAndFurther',
-		'percent',
-		'free',
-		'cantShip',
-		'courierQuote',
-	];
+	/** What the "Then" select offers (brief rb02): "Charge" covers an amount and the product's own charge. */
+	readonly kindChoices = ['charge', 'firstAndFurther', 'percent', 'free', 'cantShip', 'courierQuote'] as const;
 	readonly charges: ShippingChargeKind[] = ['domestic', 'internationalFirst', 'internationalFurther'];
 
 	add(kind: NodeKind) {
@@ -103,6 +100,29 @@ export class SrbNode {
 		this.patchBands(node, { bands: [...node.bands, { id: blockId('band'), from, to: null, then: null }] });
 	}
 
+	/** The unit a band field is measured in, for "From (g)" (brief rb10). */
+	bandUnit(node: ShippingBandsNode): string {
+		const field = node.field ?? '';
+		if (field.endsWith('chargeableWeight')) return 'g';
+		if (field === 'cart.subtotal' || field.endsWith('sellingPrice') || field.endsWith('mrp')) return '₹';
+		if (field.endsWith('discountPercent')) return '%';
+		return '#';
+	}
+
+	/** A band whose charge is a plain amount shows just the ₹ box in its row (brief rb10). */
+	simpleAmount(node: ShippingNode | null): { amount: number | null; per: 'once' | 'unit' | 'kg' } | null {
+		if (node?.kind !== 'result' || node.result.kind !== 'amount') return null;
+		return { amount: node.result.amount, per: node.result.per };
+	}
+
+	setBandAmount(node: ShippingBandsNode, index: number, current: { per: 'once' | 'unit' | 'kg' }, value: unknown) {
+		const band = node.bands[index];
+		if (!band || band.then?.kind !== 'result') return;
+		this.patchBand(node, index, {
+			then: { ...band.then, result: { kind: 'amount', amount: this.numberOrNull(value), per: current.per } },
+		});
+	}
+
 	removeBand(node: ShippingBandsNode, index: number) {
 		this.patchBands(node, { bands: node.bands.filter((_, i) => i !== index) });
 	}
@@ -114,6 +134,48 @@ export class SrbNode {
 
 	setKind(node: ShippingResultNode, kind: ResultKind) {
 		this.nodeChange.emit({ ...node, result: newResult(kind) });
+	}
+
+	kindOf(result: ShippingResult): (typeof this.kindChoices)[number] {
+		return result.kind === 'amount' || result.kind === 'productCharge' ? 'charge' : result.kind;
+	}
+
+	setKindChoice(node: ShippingResultNode, choice: (typeof this.kindChoices)[number]) {
+		if (choice === this.kindOf(node.result)) return;
+		this.setKind(node, choice === 'charge' ? 'productCharge' : choice);
+	}
+
+	/** "the product's domestic charge" … or "an amount" (brief rb02, rb06). */
+	chargeSource(result: ShippingResult): string {
+		return result.kind === 'productCharge' ? `product:${result.charge}` : 'amount';
+	}
+
+	setChargeSource(node: ShippingResultNode, value: string) {
+		const per = 'per' in node.result ? node.result.per : 'unit';
+		if (value === 'amount') {
+			const amount = node.result.kind === 'amount' ? node.result.amount : null;
+			this.nodeChange.emit({ ...node, result: { kind: 'amount', amount, per } });
+			return;
+		}
+		const charge = value.replace('product:', '') as ShippingChargeKind;
+		this.nodeChange.emit({
+			...node,
+			result: { kind: 'productCharge', charge, per: per === 'kg' ? 'unit' : per },
+		});
+	}
+
+	/** "Add condition (and / or)" sits at the bottom of the decision (brief rb02). */
+	addCondition(node: ShippingIfNode) {
+		this.patchIf(node, { when: { ...node.when, items: [...node.when.items, newCondition()] } });
+	}
+
+	addGroup(node: ShippingIfNode) {
+		const join = node.when.join === 'all' ? 'any' : 'all';
+		this.patchIf(node, { when: { ...node.when, items: [...node.when.items, newGroup(join)] } });
+	}
+
+	setJoin(node: ShippingIfNode, join: 'all' | 'any') {
+		this.patchIf(node, { when: { ...node.when, join } });
 	}
 
 	patchResult(node: ShippingResultNode, change: Partial<ShippingResult>) {

@@ -1,4 +1,4 @@
-import type { InboxFolder, InboxModifyRequest, MailboxAccess, MailboxRight } from '@saha-textile/contracts';
+import type { InboxAction, InboxFolder, MailboxAccess, MailboxRight } from '@saha-textile/contracts';
 
 /** The fixed order rights are listed and stored in. */
 const ORDER: readonly MailboxRight[] = ['read', 'send', 'organise', 'bin', 'delete_forever', 'labels', 'settings'];
@@ -49,14 +49,20 @@ export function mailboxRights(
 	return new Set(row ? withNeededRights(row.rights) : []);
 }
 
-/** The right each conversation action needs. */
-export const ACTION_RIGHT: Readonly<Record<InboxModifyRequest['action'], MailboxRight>> = {
+/** The right each conversation action needs. Deleting for good is separate: `delete_forever`. */
+export const ACTION_RIGHT: Readonly<Record<InboxAction, MailboxRight>> = {
 	mark_read: 'read',
 	mark_unread: 'read',
 	archive: 'organise',
 	move_to_inbox: 'organise',
 	spam: 'organise',
 	not_spam: 'organise',
+	star: 'organise',
+	unstar: 'organise',
+	important: 'organise',
+	not_important: 'organise',
+	add_label: 'organise',
+	remove_label: 'organise',
 	trash: 'bin',
 	untrash: 'bin',
 };
@@ -64,6 +70,8 @@ export const ACTION_RIGHT: Readonly<Record<InboxModifyRequest['action'], Mailbox
 /** Gmail's label for each admin folder. */
 export const FOLDER_LABELS: Readonly<Record<InboxFolder, string | null>> = {
 	inbox: 'INBOX',
+	starred: 'STARRED',
+	important: 'IMPORTANT',
 	sent: 'SENT',
 	all: null,
 	spam: 'SPAM',
@@ -76,11 +84,14 @@ export function onDomain(address: string, domain: string): boolean {
 	return at > 0 && address.slice(at + 1).toLowerCase() === domain.toLowerCase();
 }
 
-/** Label changes for each inbox action. */
-export function labelChange(action: 'mark_read' | 'mark_unread' | 'archive' | 'move_to_inbox' | 'spam' | 'not_spam'): {
-	add: string[];
-	remove: string[];
-} {
+/**
+ * Label changes for each inbox action. Only the label named changes: a conversation keeps every
+ * other label it carries. `labelId` is needed for adding or removing a label.
+ */
+export function labelChange(
+	action: Exclude<InboxAction, 'trash' | 'untrash'>,
+	labelId?: string,
+): { add: string[]; remove: string[] } {
 	switch (action) {
 		case 'mark_read':
 			return { add: [], remove: ['UNREAD'] };
@@ -95,7 +106,31 @@ export function labelChange(action: 'mark_read' | 'mark_unread' | 'archive' | 'm
 			return { add: ['SPAM'], remove: ['INBOX'] };
 		case 'not_spam':
 			return { add: ['INBOX'], remove: ['SPAM'] };
+		case 'star':
+			return { add: ['STARRED'], remove: [] };
+		case 'unstar':
+			return { add: [], remove: ['STARRED'] };
+		case 'important':
+			return { add: ['IMPORTANT'], remove: [] };
+		case 'not_important':
+			return { add: [], remove: ['IMPORTANT'] };
+		case 'add_label':
+			return { add: labelId ? [labelId] : [], remove: [] };
+		case 'remove_label':
+			return { add: [], remove: labelId ? [labelId] : [] };
 	}
+}
+
+/**
+ * Which messages of a conversation may be deleted for good: only those already in the Bin. A
+ * conversation entirely in the Bin is deleted whole; one only partly there keeps its other messages.
+ */
+export function deletableForever(messages: readonly { id: string; labelIds: readonly string[] }[]): {
+	whole: boolean;
+	messageIds: string[];
+} {
+	const binned = messages.filter((message) => message.labelIds.includes('TRASH')).map((message) => message.id);
+	return { whole: binned.length > 0 && binned.length === messages.length, messageIds: binned };
 }
 
 /** Reply subject: "Re: " once, however many times a thread was answered. */

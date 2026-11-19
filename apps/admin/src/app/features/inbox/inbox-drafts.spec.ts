@@ -53,9 +53,17 @@ const message = (fields: Partial<InboxMessage>): InboxMessage => ({
 	references: '',
 	contactForm: null,
 	sentBy: null,
+	labelIds: [],
+	starred: false,
 	...fields,
 });
-const thread = (...messages: InboxMessage[]): InboxThread => ({ id: 't1', subject: 'Order', messages, unread: false });
+const thread = (...messages: InboxMessage[]): InboxThread => ({
+	id: 't1',
+	subject: 'Order',
+	messages,
+	unread: false,
+	labelIds: [],
+});
 
 describe('addresses', () => {
 	it('pulls bare, lower-case, unique addresses out of a header', () => {

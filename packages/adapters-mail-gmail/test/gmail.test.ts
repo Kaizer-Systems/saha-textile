@@ -259,6 +259,7 @@ describe('Gmail message parsing', () => {
 			subject: '',
 			messages: [],
 			unread: false,
+			labelIds: [],
 		});
 	});
 });

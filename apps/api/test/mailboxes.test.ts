@@ -418,6 +418,7 @@ describe('InboxService', () => {
 			'inbox',
 			undefined,
 			undefined,
+			undefined,
 		);
 		expect((await inbox.thread('reader', 'care', 't1')).id).toBe('t1');
 		expect(await inbox.attachment('reader', 'care', 'm1', 'a1')).toEqual(new Uint8Array([1, 2]));

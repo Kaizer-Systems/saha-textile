@@ -158,16 +158,54 @@ export type MailboxOAuthCallbackQuery = z.infer<typeof MailboxOAuthCallbackQuery
 
 // ── Inbox ──────────────────────────────────────────────────────────────────────
 
-export const InboxFolder = z.enum(['inbox', 'sent', 'all', 'spam', 'trash']);
+export const InboxFolder = z.enum(['inbox', 'starred', 'important', 'sent', 'all', 'spam', 'trash']);
 export type InboxFolder = z.infer<typeof InboxFolder>;
+
+/** A Gmail label id as Gmail writes it (`Label_123`, `CATEGORY_PROMOTIONS`, `INBOX`). */
+export const InboxLabelId = z
+	.string()
+	.min(1)
+	.max(100)
+	.regex(/^[A-Za-z0-9_-]+$/);
+export type InboxLabelId = z.infer<typeof InboxLabelId>;
 
 export const InboxListQuery = z.object({
 	folder: InboxFolder.default('inbox'),
+	/** A custom label or a category; when given it is the list instead of `folder`. */
+	label: InboxLabelId.optional(),
 	/** Gmail's own search words (`from:`, `has:attachment`). */
 	q: z.string().max(200).optional(),
 	pageToken: z.string().max(200).optional(),
 });
 export type InboxListQuery = z.infer<typeof InboxListQuery>;
+
+/**
+ * One of the mailbox's own Gmail labels (owner log § admin Inbox upgrade, 2026-11-19), read live and
+ * never stored here. A conversation can carry several labels; they are not folders it lives in.
+ * Nested labels are written with "/" in `name`, as Gmail does ("Orders/Returns").
+ */
+export const InboxLabel = z.object({
+	id: InboxLabelId,
+	name: z.string(),
+	/** `category`: Gmail's Social, Promotions, Updates and Forums tabs. `label`: made by people. */
+	kind: z.enum(['category', 'label']),
+	threadsUnread: z.number().int().nonnegative(),
+	threadsTotal: z.number().int().nonnegative(),
+});
+export type InboxLabel = z.infer<typeof InboxLabel>;
+
+/** `POST /admin/inbox/:mailboxId/labels` and `PATCH …/labels/:labelId`: a label's name. */
+export const InboxLabelWrite = z.object({
+	name: z
+		.string()
+		.trim()
+		.min(1)
+		.max(225)
+		.refine((name) => !name.startsWith('/') && !name.endsWith('/') && !name.includes('//'), {
+			message: 'label_name_slashes',
+		}),
+});
+export type InboxLabelWrite = z.infer<typeof InboxLabelWrite>;
 
 export const InboxThreadSummary = z.object({
 	id: z.string(),
@@ -185,6 +223,12 @@ export const InboxThreadSummary = z.object({
 	fromContactForm: z.boolean().default(false),
 	/** The admin user who sent the newest reply from the admin, when one did. */
 	lastReplyBy: z.string().nullable().default(null),
+	/** Every label any message in the conversation carries, Gmail's own ids. */
+	labelIds: z.array(z.string()).default([]),
+	/** Messages still unread in the conversation. */
+	unreadCount: z.number().int().nonnegative().default(0),
+	starred: z.boolean().default(false),
+	important: z.boolean().default(false),
 });
 export type InboxThreadSummary = z.infer<typeof InboxThreadSummary>;
 
@@ -227,6 +271,8 @@ export const InboxMessage = z.object({
 	contactForm: z.object({ replyTo: z.string(), locale: LocaleCode.nullable() }).nullable().default(null),
 	/** The admin user who sent this message from the admin, when one did. */
 	sentBy: z.string().nullable().default(null),
+	labelIds: z.array(z.string()).default([]),
+	starred: z.boolean().default(false),
 });
 export type InboxMessage = z.infer<typeof InboxMessage>;
 
@@ -235,6 +281,7 @@ export const InboxThread = z.object({
 	subject: z.string(),
 	messages: z.array(InboxMessage),
 	unread: z.boolean(),
+	labelIds: z.array(z.string()).default([]),
 });
 export type InboxThread = z.infer<typeof InboxThread>;
 
@@ -271,10 +318,107 @@ export const InboxSendRequest = z.object({
 });
 export type InboxSendRequest = z.infer<typeof InboxSendRequest>;
 
-export const InboxModifyRequest = z.object({
-	action: z.enum(['mark_read', 'mark_unread', 'archive', 'move_to_inbox', 'trash', 'untrash', 'spam', 'not_spam']),
-});
+/** What can be done to a conversation without deleting it for good. */
+export const InboxAction = z.enum([
+	'mark_read',
+	'mark_unread',
+	'archive',
+	'move_to_inbox',
+	'trash',
+	'untrash',
+	'spam',
+	'not_spam',
+	'star',
+	'unstar',
+	'important',
+	'not_important',
+	'add_label',
+	'remove_label',
+]);
+export type InboxAction = z.infer<typeof InboxAction>;
+
+export const InboxModifyRequest = z
+	.object({
+		action: InboxAction,
+		/** The label for `add_label` and `remove_label`; ignored otherwise. */
+		labelId: InboxLabelId.optional(),
+	})
+	.refine((body) => !['add_label', 'remove_label'].includes(body.action) || Boolean(body.labelId), {
+		message: 'label_needed',
+		path: ['labelId'],
+	});
 export type InboxModifyRequest = z.infer<typeof InboxModifyRequest>;
+
+/**
+ * `POST /admin/inbox/:mailboxId/messages/read`: marks exactly these messages read or unread, so
+ * a reply that arrived after the conversation was opened is never marked read by accident.
+ */
+export const InboxMarkMessagesRequest = z.object({
+	messageIds: z.array(z.string().min(1).max(100)).min(1).max(100),
+	read: z.boolean(),
+});
+export type InboxMarkMessagesRequest = z.infer<typeof InboxMarkMessagesRequest>;
+
+/** The most conversations one bulk request may name; "every match" is paged on the server. */
+export const MAX_BULK_THREADS = 100;
+/** The most conversations "every conversation that matches" will act on in one go. */
+export const MAX_BULK_MATCHES = 5_000;
+
+/**
+ * `POST /admin/inbox/:mailboxId/bulk`: one action on the selected conversations, or on every
+ * conversation matching a folder, label and search, read on the server at the time of the click.
+ * `delete_forever` acts only on what is in the Bin, whatever the request says.
+ */
+export const InboxBulkRequest = z
+	.object({
+		action: z.union([InboxAction, z.literal('delete_forever')]),
+		labelId: InboxLabelId.optional(),
+		threadIds: z.array(z.string().min(1).max(100)).min(1).max(MAX_BULK_THREADS).optional(),
+		/** Every conversation that matches, instead of `threadIds`. */
+		matching: z
+			.object({ folder: InboxFolder, label: InboxLabelId.optional(), q: z.string().max(200).optional() })
+			.optional(),
+	})
+	.refine((body) => Boolean(body.threadIds) !== Boolean(body.matching), {
+		message: 'threads_or_matching',
+	})
+	.refine((body) => !['add_label', 'remove_label'].includes(body.action) || Boolean(body.labelId), {
+		message: 'label_needed',
+		path: ['labelId'],
+	});
+export type InboxBulkRequest = z.infer<typeof InboxBulkRequest>;
+
+/** What a bulk action did: each conversation either done or failed with a reason, never silent. */
+export const InboxBulkResult = z.object({
+	done: z.array(z.string()),
+	failed: z.array(
+		z.object({
+			threadId: z.string(),
+			/** `gone`: deleted or moved away meanwhile. `not_in_bin`: nothing of it was in the Bin. */
+			reason: z.enum(['gone', 'not_in_bin', 'gmail_error']),
+		}),
+	),
+	/** Conversations kept partly: messages outside the Bin stayed when the rest was deleted forever. */
+	partlyKept: z.array(z.string()).default([]),
+	/** True when "every match" stopped at the safety limit and more were left. */
+	truncated: z.boolean().default(false),
+});
+export type InboxBulkResult = z.infer<typeof InboxBulkResult>;
+
+/** `GET /admin/inbox/:mailboxId/bin`: what Empty Bin would delete, counted by Gmail now. */
+export const InboxBinSummary = z.object({
+	threads: z.number().int().nonnegative(),
+	messages: z.number().int().nonnegative(),
+});
+export type InboxBinSummary = z.infer<typeof InboxBinSummary>;
+
+/** `POST /admin/inbox/:mailboxId/bin/empty`: deletes everything in the Bin for good. */
+export const InboxEmptyBinResult = z.object({
+	deletedMessages: z.number().int().nonnegative(),
+	/** True when Gmail stopped answering part way; what was deleted stays deleted. */
+	incomplete: z.boolean(),
+});
+export type InboxEmptyBinResult = z.infer<typeof InboxEmptyBinResult>;
 
 /** Largest total a forward may carry, the original attachments included (Gmail's own limit). */
 export const MAX_FORWARD_BYTES = 25 * 1024 * 1024;

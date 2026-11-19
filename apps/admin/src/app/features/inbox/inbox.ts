@@ -89,6 +89,12 @@ const DONE: Readonly<Record<InboxModifyRequest['action'], string>> = {
 	untrash: 'inbox_untrashed',
 	spam: 'inbox_reported_spam',
 	not_spam: 'inbox_not_spam_done',
+	star: 'inbox_starred',
+	unstar: 'inbox_unstarred',
+	important: 'inbox_marked_important',
+	not_important: 'inbox_marked_not_important',
+	add_label: 'inbox_label_added',
+	remove_label: 'inbox_label_removed',
 };
 
 /** Why a send failed, by the API's HTTP status, as a translation key. The text is always kept. */

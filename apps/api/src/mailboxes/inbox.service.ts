@@ -9,9 +9,17 @@ import {
 	PayloadTooLargeException,
 } from '@nestjs/common';
 import {
+	MAX_BULK_MATCHES,
 	MAX_FORWARD_BYTES,
 	MAX_SEND_ATTACHMENT_BYTES,
+	type InboxBinSummary,
+	type InboxBulkRequest,
+	type InboxBulkResult,
+	type InboxEmptyBinResult,
+	type InboxLabel,
+	type InboxLabelWrite,
 	type InboxListQuery,
+	type InboxMarkMessagesRequest,
 	type InboxMessage,
 	type InboxMailboxSummary,
 	type InboxModifyRequest,
@@ -28,12 +36,17 @@ import {
 	type MailboxRepository,
 	type MailboxTokenStore,
 	ACTION_RIGHT,
+	type MailboxFeature,
+	deletableForever,
 	labelChange,
 	mailboxRights,
 } from '@saha-textile/core-domain';
 
 import { MAILBOX_ACCESS_REPOSITORY, MAILBOX_PORT, MAILBOX_REPOSITORY, MAILBOX_TOKEN_STORE } from '../infra/tokens';
 import { MESSAGE_SENT, MailboxBookkeeping, needsReconnect, type SentFromAdmin } from './mailbox-support';
+
+/** The audit action for archive, move, spam, star, important, labels and the Bin. */
+export const CONVERSATION_CHANGED = 'mailbox.conversation_changed';
 
 /** "Last checked" is written at most this often per mailbox, however many people have it open. */
 export const SYNC_WRITE_MS = 5 * 60 * 1000;
@@ -127,7 +140,7 @@ export class InboxService {
 	async threads(adminUserId: string, mailboxId: string, query: InboxListQuery): Promise<InboxThreadPage> {
 		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'read');
 		const page = await this.books.guard(mailbox, () =>
-			this.gmail.listThreads(credentials, query.folder, query.q, query.pageToken),
+			this.gmail.listThreads(credentials, query.folder, query.q, query.pageToken, query.label),
 		);
 		const since = oldest(page.threads.map((thread) => thread.date));
 		if (!since) return page;
@@ -244,11 +257,204 @@ export class InboxService {
 
 	async modify(adminUserId: string, mailboxId: string, threadId: string, request: InboxModifyRequest): Promise<void> {
 		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, ACTION_RIGHT[request.action]);
+		await this.books.guard(mailbox, () => this.change(credentials, threadId, request.action, request.labelId));
+		if (!['mark_read', 'mark_unread'].includes(request.action)) {
+			await this.books.record(adminUserId, CONVERSATION_CHANGED, mailboxId, {
+				action: request.action,
+				threads: 1,
+				labelId: request.labelId ?? null,
+			});
+		}
+	}
+
+	/**
+	 * Marks exactly these messages read or unread (R6): opening a conversation marks only the
+	 * messages shown, never a reply that arrived afterwards and has not been seen.
+	 */
+	async markMessages(adminUserId: string, mailboxId: string, request: InboxMarkMessagesRequest): Promise<void> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'read');
 		await this.books.guard(mailbox, () =>
-			request.action === 'trash' || request.action === 'untrash'
-				? this.gmail.trashThread(credentials, threadId, request.action === 'untrash')
-				: this.gmail.modifyThread(credentials, threadId, labelChange(request.action)),
+			this.gmail.modifyMessages(
+				credentials,
+				request.messageIds,
+				request.read ? { add: [], remove: ['UNREAD'] } : { add: ['UNREAD'], remove: [] },
+			),
 		);
+	}
+
+	/** The mailbox's own labels and the categories it uses, read live from Gmail. */
+	async labels(adminUserId: string, mailboxId: string): Promise<InboxLabel[]> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'read');
+		return this.books.guard(mailbox, () => this.gmail.listLabels(credentials));
+	}
+
+	async createLabel(adminUserId: string, mailboxId: string, write: InboxLabelWrite): Promise<InboxLabel> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'labels');
+		const label = await this.books.guard(mailbox, () => this.gmail.createLabel(credentials, write.name));
+		await this.books.record(adminUserId, 'mailbox.label_created', mailboxId, { labelId: label.id });
+		return label;
+	}
+
+	async renameLabel(
+		adminUserId: string,
+		mailboxId: string,
+		labelId: string,
+		write: InboxLabelWrite,
+	): Promise<InboxLabel> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'labels');
+		const label = await this.books.guard(mailbox, () => this.gmail.renameLabel(credentials, labelId, write.name));
+		if (!label) throw new NotFoundException('Label not found');
+		await this.books.record(adminUserId, 'mailbox.label_renamed', mailboxId, { labelId });
+		return label;
+	}
+
+	/** Deletes the label only: every conversation it was on keeps its mail and other labels. */
+	async deleteLabel(adminUserId: string, mailboxId: string, labelId: string): Promise<void> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'labels');
+		await this.books.guard(mailbox, () => this.gmail.deleteLabel(credentials, labelId));
+		await this.books.record(adminUserId, 'mailbox.label_deleted', mailboxId, { labelId });
+	}
+
+	/**
+	 * One action on the chosen conversations, or on every conversation that matches, each reported
+	 * as done or failed. Deleting for good touches only what Gmail says is in the Bin at that moment,
+	 * whatever the request names: a conversation partly in the Bin keeps its other messages.
+	 */
+	async bulk(adminUserId: string, mailboxId: string, request: InboxBulkRequest): Promise<InboxBulkResult> {
+		const forever = request.action === 'delete_forever';
+		const { mailbox, credentials } = await this.open(
+			adminUserId,
+			mailboxId,
+			forever
+				? 'delete_forever'
+				: ACTION_RIGHT[request.action as Exclude<typeof request.action, 'delete_forever'>],
+		);
+		if (forever) this.requireFeature(mailbox, 'delete_forever');
+		const { ids, truncated } = request.threadIds
+			? { ids: request.threadIds, truncated: false }
+			: await this.matchingIds(mailbox, credentials, request.matching ?? { folder: 'inbox' });
+		const result: InboxBulkResult = { done: [], failed: [], partlyKept: [], truncated };
+		await Promise.all(
+			ids.map(async (threadId) => {
+				try {
+					await this.books.guard(mailbox, async () => {
+						if (!forever) {
+							await this.change(
+								credentials,
+								threadId,
+								request.action as Exclude<typeof request.action, 'delete_forever'>,
+								request.labelId,
+							);
+							result.done.push(threadId);
+							return;
+						}
+						const messages = await this.gmail.threadMessageLabels(credentials, threadId);
+						if (!messages) {
+							result.failed.push({ threadId, reason: 'gone' });
+							return;
+						}
+						const target = deletableForever(messages);
+						if (!target.messageIds.length) {
+							result.failed.push({ threadId, reason: 'not_in_bin' });
+							return;
+						}
+						if (target.whole) await this.gmail.deleteThreadForever(credentials, threadId);
+						else {
+							await this.gmail.deleteMessagesForever(credentials, target.messageIds);
+							result.partlyKept.push(threadId);
+						}
+						result.done.push(threadId);
+					});
+				} catch (error) {
+					// A mailbox that lost its access stops the whole request; anything else fails one line.
+					if (error instanceof ConflictException) throw error;
+					result.failed.push({ threadId, reason: 'gmail_error' });
+				}
+			}),
+		);
+		await this.books.record(adminUserId, forever ? 'mailbox.deleted_forever' : CONVERSATION_CHANGED, mailboxId, {
+			action: request.action,
+			threads: ids.length,
+			done: result.done.length,
+			failed: result.failed.length,
+			partlyKept: result.partlyKept.length,
+			labelId: request.labelId ?? null,
+			matching: Boolean(request.matching),
+		});
+		return result;
+	}
+
+	/** What Empty Bin would delete, counted by Gmail now, for the confirmation. */
+	async binSummary(adminUserId: string, mailboxId: string): Promise<InboxBinSummary> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'delete_forever');
+		return this.books.guard(mailbox, () => this.gmail.binCount(credentials));
+	}
+
+	/**
+	 * Deletes everything in the Bin for good, a page of message ids at a time. When Gmail stops
+	 * answering part way, what was deleted stays deleted and the answer says it is incomplete.
+	 */
+	async emptyBin(adminUserId: string, mailboxId: string): Promise<InboxEmptyBinResult> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'delete_forever');
+		this.requireFeature(mailbox, 'delete_forever');
+		let deletedMessages = 0;
+		let incomplete = false;
+		try {
+			for (;;) {
+				// Always the first page: what was just deleted is no longer listed.
+				const page = await this.books.guard(mailbox, () =>
+					this.gmail.listBinMessageIds(credentials, undefined),
+				);
+				if (!page.ids.length) break;
+				await this.books.guard(mailbox, () => this.gmail.deleteMessagesForever(credentials, page.ids));
+				deletedMessages += page.ids.length;
+			}
+		} catch (error) {
+			if (error instanceof ConflictException) throw error;
+			incomplete = true;
+		}
+		await this.books.record(adminUserId, 'mailbox.bin_emptied', mailboxId, { deletedMessages, incomplete });
+		return { deletedMessages, incomplete };
+	}
+
+	private change(
+		credentials: MailboxCredentials,
+		threadId: string,
+		action: Exclude<InboxBulkRequest['action'], 'delete_forever'>,
+		labelId: string | undefined,
+	): Promise<void> {
+		return action === 'trash' || action === 'untrash'
+			? this.gmail.trashThread(credentials, threadId, action === 'untrash')
+			: this.gmail.modifyThread(credentials, threadId, labelChange(action, labelId));
+	}
+
+	/** Conversation ids matching a folder, label and search, read now, up to the safety limit. */
+	private async matchingIds(
+		mailbox: Mailbox,
+		credentials: MailboxCredentials,
+		matching: NonNullable<InboxBulkRequest['matching']>,
+	): Promise<{ ids: string[]; truncated: boolean }> {
+		const ids: string[] = [];
+		let pageToken: string | undefined;
+		do {
+			const page = await this.books.guard(mailbox, () =>
+				this.gmail.listThreadIds(
+					credentials,
+					{ folder: matching.folder, label: matching.label, query: matching.q },
+					pageToken,
+				),
+			);
+			ids.push(...page.ids);
+			pageToken = page.nextPageToken ?? undefined;
+		} while (pageToken && ids.length < MAX_BULK_MATCHES);
+		return { ids: ids.slice(0, MAX_BULK_MATCHES), truncated: Boolean(pageToken) || ids.length > MAX_BULK_MATCHES };
+	}
+
+	/** A feature Google has not been given permission for answers 409 with what to reconnect for. */
+	private requireFeature(mailbox: Mailbox, feature: MailboxFeature): void {
+		if (this.gmail.featuresMissing(mailbox.grantedScopes).includes(feature)) {
+			throw new ConflictException({ code: 'mailbox_reconnect_for_feature', feature });
+		}
 	}
 
 	private async namedThread(

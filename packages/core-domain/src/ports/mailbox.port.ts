@@ -1,6 +1,7 @@
 import type {
 	ContactMessage,
 	InboxFolder,
+	InboxLabel,
 	InboxThread,
 	InboxThreadPage,
 	Mailbox,
@@ -79,12 +80,48 @@ export interface MailboxPort {
 	revoke(credentials: MailboxCredentials): Promise<void>;
 	/** Features a mailbox with these granted permissions cannot use until it is connected again. */
 	featuresMissing(grantedScopes: readonly string[]): MailboxFeature[];
+	/** One page of a folder, or of a label or category when `label` is given. */
 	listThreads(
 		credentials: MailboxCredentials,
 		folder: InboxFolder,
 		query: string | undefined,
 		pageToken: string | undefined,
+		label?: string,
 	): Promise<InboxThreadPage>;
+	/** Conversation ids only, a page at a time, for acting on "every conversation that matches". */
+	listThreadIds(
+		credentials: MailboxCredentials,
+		place: { folder: InboxFolder; label?: string; query?: string },
+		pageToken: string | undefined,
+	): Promise<{ ids: string[]; nextPageToken: string | null }>;
+	/** The labels people see in the mailbox's own list, and categories the mailbox uses. */
+	listLabels(credentials: MailboxCredentials): Promise<InboxLabel[]>;
+	createLabel(credentials: MailboxCredentials, name: string): Promise<InboxLabel>;
+	renameLabel(credentials: MailboxCredentials, labelId: string, name: string): Promise<InboxLabel | null>;
+	/** Removes the label from every message and deletes it; the mail itself stays. */
+	deleteLabel(credentials: MailboxCredentials, labelId: string): Promise<void>;
+	/** Conversations and messages in the Bin, counted by Gmail now. */
+	binCount(credentials: MailboxCredentials): Promise<{ threads: number; messages: number }>;
+	/** Each message of a conversation with its labels, or null when the conversation is gone. */
+	threadMessageLabels(
+		credentials: MailboxCredentials,
+		threadId: string,
+	): Promise<{ id: string; labelIds: string[] }[] | null>;
+	/** Changes labels on exactly these messages, nothing else in their conversations. */
+	modifyMessages(
+		credentials: MailboxCredentials,
+		messageIds: readonly string[],
+		change: { add: readonly string[]; remove: readonly string[] },
+	): Promise<void>;
+	/** Deletes a whole conversation for good; the caller has checked it is all in the Bin. */
+	deleteThreadForever(credentials: MailboxCredentials, threadId: string): Promise<void>;
+	/** Deletes these messages for good (at most 1,000); the caller has checked they are in the Bin. */
+	deleteMessagesForever(credentials: MailboxCredentials, messageIds: readonly string[]): Promise<void>;
+	/** Message ids in the Bin, a page at a time, for Empty Bin. */
+	listBinMessageIds(
+		credentials: MailboxCredentials,
+		pageToken: string | undefined,
+	): Promise<{ ids: string[]; nextPageToken: string | null }>;
 	getThread(credentials: MailboxCredentials, threadId: string): Promise<InboxThread | null>;
 	getAttachment(
 		credentials: MailboxCredentials,

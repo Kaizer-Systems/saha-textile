@@ -1,5 +1,6 @@
 import type {
 	InboxFolder,
+	InboxLabel,
 	InboxThread,
 	InboxThreadPage,
 	InboxThreadSummary,
@@ -69,7 +70,30 @@ const ThreadList = z.object({
 });
 const Attachment = z.object({ data: z.string() });
 const SentMessage = z.object({ id: z.string(), threadId: z.string() });
-const Label = z.object({ threadsUnread: z.number().default(0) });
+const Label = z.object({
+	id: z.string().default(''),
+	name: z.string().default(''),
+	type: z.string().default('user'),
+	labelListVisibility: z.string().optional(),
+	threadsUnread: z.number().default(0),
+	threadsTotal: z.number().default(0),
+	messagesTotal: z.number().default(0),
+});
+const LabelList = z.object({ labels: z.array(Label).default([]) });
+const IdList = z.object({
+	messages: z.array(z.object({ id: z.string() })).optional(),
+	threads: z.array(z.object({ id: z.string() })).optional(),
+	nextPageToken: z.string().optional(),
+});
+const MinimalThread = z.object({
+	messages: z.array(z.object({ id: z.string(), labelIds: z.array(z.string()).default([]) })).default([]),
+});
+/** Gmail's category tabs shown under Categories, when the mailbox uses them. Primary is the Inbox itself. */
+const CATEGORIES = ['CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'];
+/** Ids per page when only ids are wanted (Gmail allows 500). */
+const ID_PAGE = 500;
+/** Gmail's own limit for one batch change or batch delete. */
+export const GMAIL_BATCH = 1_000;
 const SendAsList = z.object({
 	sendAs: z
 		.array(
@@ -109,6 +133,10 @@ class Recent<V> {
 			this.entries.set(key, value);
 		}
 		return value;
+	}
+
+	delete(key: string): void {
+		this.entries.delete(key);
 	}
 
 	set(key: string, value: V): void {
@@ -165,6 +193,8 @@ export class GmailMailbox implements MailboxPort {
 	private readonly pages = new Recent<{ historyId: string; page: InboxThreadPage }>(MAX_PAGES);
 	/** Each conversation's list line, with the conversation's own history id. */
 	private readonly summaries = new Recent<{ historyId: string; summary: InboxThreadSummary }>(MAX_SUMMARIES);
+	/** Each mailbox's label list, reused while nothing in the mailbox changed. */
+	private readonly labelLists = new Recent<{ historyId: string; labels: InboxLabel[] }>(MAX_PAGES);
 
 	constructor(private readonly config: GmailMailboxConfig) {
 		this.fetchImpl = config.fetch ?? fetch;
@@ -236,18 +266,15 @@ export class GmailMailbox implements MailboxPort {
 		folder: InboxFolder,
 		query: string | undefined,
 		pageToken: string | undefined,
+		labelId?: string,
 	): Promise<InboxThreadPage> {
-		const key = [credentials.address, folder, query ?? '', pageToken ?? ''].join('\u0000');
+		const key = [credentials.address, folder, labelId ?? '', query ?? '', pageToken ?? ''].join('\u0000');
 		const profile = Profile.parse(await this.authorised(credentials, 'GET', '/profile'));
 		const cached = this.pages.get(key);
 		if (cached && profile.historyId && cached.historyId === profile.historyId) return cached.page;
 
-		const label = FOLDER_LABELS[folder];
-		const params = new URLSearchParams({ maxResults: String(PAGE_SIZE) });
-		if (label) params.set('labelIds', label);
-		if (query) params.set('q', query);
+		const params = placeParams({ folder, label: labelId, query }, PAGE_SIZE);
 		if (pageToken) params.set('pageToken', pageToken);
-		if (folder === 'spam' || folder === 'trash') params.set('includeSpamTrash', 'true');
 		const list = ThreadList.parse(await this.authorised(credentials, 'GET', `/threads?${params.toString()}`));
 		const metadata = new URLSearchParams({ format: 'metadata' });
 		for (const name of ['From', 'To', 'Subject', 'Date', 'Message-ID']) metadata.append('metadataHeaders', name);
@@ -272,6 +299,125 @@ export class GmailMailbox implements MailboxPort {
 		const page = { threads, nextPageToken: list.nextPageToken ?? null };
 		if (profile.historyId) this.pages.set(key, { historyId: profile.historyId, page });
 		return page;
+	}
+
+	async listThreadIds(
+		credentials: MailboxCredentials,
+		place: { folder: InboxFolder; label?: string; query?: string },
+		pageToken: string | undefined,
+	): Promise<{ ids: string[]; nextPageToken: string | null }> {
+		const params = placeParams(place, ID_PAGE);
+		if (pageToken) params.set('pageToken', pageToken);
+		const list = IdList.parse(await this.authorised(credentials, 'GET', `/threads?${params.toString()}`));
+		return { ids: (list.threads ?? []).map((thread) => thread.id), nextPageToken: list.nextPageToken ?? null };
+	}
+
+	/**
+	 * The labels Gmail shows in the mailbox's own list (hidden ones stay hidden), and the category
+	 * tabs the mailbox actually uses, with conversation counts. Gmail lists labels without counts,
+	 * so each is asked for once; the whole list is reused while nothing in the mailbox changed.
+	 */
+	async listLabels(credentials: MailboxCredentials): Promise<InboxLabel[]> {
+		const profile = Profile.parse(await this.authorised(credentials, 'GET', '/profile'));
+		const cached = this.labelLists.get(credentials.address);
+		if (cached && profile.historyId && cached.historyId === profile.historyId) return cached.labels;
+		const all = LabelList.parse(await this.authorised(credentials, 'GET', '/labels')).labels;
+		const wanted = all.filter((label) =>
+			label.type === 'user' ? label.labelListVisibility !== 'labelHide' : CATEGORIES.includes(label.id),
+		);
+		const counted = await Promise.all(
+			wanted.map(async (label) =>
+				Label.parse(await this.authorised(credentials, 'GET', `/labels/${encodeURIComponent(label.id)}`)),
+			),
+		);
+		const labels = counted
+			.filter((label) => label.type === 'user' || label.threadsTotal > 0)
+			.map(toInboxLabel)
+			.sort((a, b) => a.name.localeCompare(b.name));
+		if (profile.historyId) this.labelLists.set(credentials.address, { historyId: profile.historyId, labels });
+		return labels;
+	}
+
+	async createLabel(credentials: MailboxCredentials, name: string): Promise<InboxLabel> {
+		this.labelLists.delete(credentials.address);
+		const body = await this.authorised(credentials, 'POST', '/labels', {
+			json: { name, labelListVisibility: 'labelShow', messageListVisibility: 'show' },
+		});
+		return toInboxLabel(Label.parse(body));
+	}
+
+	async renameLabel(credentials: MailboxCredentials, labelId: string, name: string): Promise<InboxLabel | null> {
+		this.labelLists.delete(credentials.address);
+		const body = await this.authorised(credentials, 'PATCH', `/labels/${encodeURIComponent(labelId)}`, {
+			json: { name },
+			missing: true,
+		});
+		return body === null ? null : toInboxLabel(Label.parse(body));
+	}
+
+	async deleteLabel(credentials: MailboxCredentials, labelId: string): Promise<void> {
+		this.labelLists.delete(credentials.address);
+		await this.authorised(credentials, 'DELETE', `/labels/${encodeURIComponent(labelId)}`, { missing: true });
+	}
+
+	async binCount(credentials: MailboxCredentials): Promise<{ threads: number; messages: number }> {
+		const bin = Label.parse(await this.authorised(credentials, 'GET', '/labels/TRASH'));
+		return { threads: bin.threadsTotal, messages: bin.messagesTotal };
+	}
+
+	async threadMessageLabels(
+		credentials: MailboxCredentials,
+		threadId: string,
+	): Promise<{ id: string; labelIds: string[] }[] | null> {
+		const body = await this.authorised(
+			credentials,
+			'GET',
+			`/threads/${encodeURIComponent(threadId)}?format=minimal`,
+			{ missing: true },
+		);
+		return body === null ? null : MinimalThread.parse(body).messages;
+	}
+
+	async modifyMessages(
+		credentials: MailboxCredentials,
+		messageIds: readonly string[],
+		change: { add: readonly string[]; remove: readonly string[] },
+	): Promise<void> {
+		for (let start = 0; start < messageIds.length; start += GMAIL_BATCH) {
+			await this.authorised(credentials, 'POST', '/messages/batchModify', {
+				json: {
+					ids: messageIds.slice(start, start + GMAIL_BATCH),
+					addLabelIds: change.add,
+					removeLabelIds: change.remove,
+				},
+			});
+		}
+	}
+
+	async deleteThreadForever(credentials: MailboxCredentials, threadId: string): Promise<void> {
+		await this.authorised(credentials, 'DELETE', `/threads/${encodeURIComponent(threadId)}`, { missing: true });
+	}
+
+	async deleteMessagesForever(credentials: MailboxCredentials, messageIds: readonly string[]): Promise<void> {
+		for (let start = 0; start < messageIds.length; start += GMAIL_BATCH) {
+			await this.authorised(credentials, 'POST', '/messages/batchDelete', {
+				json: { ids: messageIds.slice(start, start + GMAIL_BATCH) },
+			});
+		}
+	}
+
+	async listBinMessageIds(
+		credentials: MailboxCredentials,
+		pageToken: string | undefined,
+	): Promise<{ ids: string[]; nextPageToken: string | null }> {
+		const params = new URLSearchParams({
+			labelIds: 'TRASH',
+			includeSpamTrash: 'true',
+			maxResults: String(ID_PAGE),
+		});
+		if (pageToken) params.set('pageToken', pageToken);
+		const list = IdList.parse(await this.authorised(credentials, 'GET', `/messages?${params.toString()}`));
+		return { ids: (list.messages ?? []).map((message) => message.id), nextPageToken: list.nextPageToken ?? null };
 	}
 
 	/** A whole conversation, with pictures sent inside its mails (under 1 MB) shown in place. */
@@ -396,7 +542,7 @@ export class GmailMailbox implements MailboxPort {
 	/** A Gmail call as the mailbox; a 401 drops the cached token and is retried once. */
 	private async authorised(
 		credentials: MailboxCredentials,
-		method: 'GET' | 'POST',
+		method: Method,
 		path: string,
 		options: { json?: unknown; missing?: boolean } = {},
 	): Promise<unknown> {
@@ -414,7 +560,7 @@ export class GmailMailbox implements MailboxPort {
 	 */
 	private async call(
 		accessToken: string,
-		method: 'GET' | 'POST',
+		method: Method,
 		path: string,
 		options: { json?: unknown; missing?: boolean } = {},
 	): Promise<unknown> {
@@ -469,6 +615,31 @@ export class GmailMailbox implements MailboxPort {
 }
 
 const UNAUTHORISED = Symbol('unauthorised');
+
+type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+
+/** List parameters for a folder, or a label or category instead of it, with Gmail search words. */
+function placeParams(
+	place: { folder: InboxFolder; label?: string; query?: string },
+	pageSize: number,
+): URLSearchParams {
+	const params = new URLSearchParams({ maxResults: String(pageSize) });
+	const label = place.label ?? FOLDER_LABELS[place.folder];
+	if (label) params.set('labelIds', label);
+	if (place.query) params.set('q', place.query);
+	if (!place.label && (place.folder === 'spam' || place.folder === 'trash')) params.set('includeSpamTrash', 'true');
+	return params;
+}
+
+function toInboxLabel(label: z.infer<typeof Label>): InboxLabel {
+	return {
+		id: label.id,
+		name: label.name,
+		kind: label.type === 'user' ? 'label' : 'category',
+		threadsUnread: label.threadsUnread,
+		threadsTotal: label.threadsTotal,
+	};
+}
 
 /** Gmail's "slow down": 429, or 403 whose reason is a rate limit (not a refused permission). */
 async function tooFast(response: Response): Promise<boolean> {

@@ -139,6 +139,8 @@ export function toInboxMessage(message: GmailMessage, inline: ReadonlyMap<string
 		references: header(message.payload, 'References'),
 		contactForm: CONTACT_ID.test(messageId.trim()) ? { replyTo, locale: LANGUAGES[language] ?? null } : null,
 		sentBy: null,
+		labelIds: message.labelIds,
+		starred: message.labelIds.includes('STARRED'),
 	};
 }
 
@@ -162,6 +164,10 @@ export function toThreadSummary(thread: GmailThread): InboxThreadSummary {
 		participants,
 		fromContactForm: first ? CONTACT_ID.test(header(first.payload, 'Message-ID').trim()) : false,
 		lastReplyBy: null,
+		labelIds: labelsOf(messages),
+		unreadCount: messages.filter((message) => message.labelIds.includes('UNREAD')).length,
+		starred: messages.some((message) => message.labelIds.includes('STARRED')),
+		important: messages.some((message) => message.labelIds.includes('IMPORTANT')),
 	};
 }
 
@@ -173,5 +179,11 @@ export function toInboxThread(thread: GmailThread, inline: ReadonlyMap<string, s
 		subject: messages[0]?.subject ?? '',
 		messages,
 		unread: thread.messages.some((message) => message.labelIds.includes('UNREAD')),
+		labelIds: labelsOf(thread.messages),
 	};
+}
+
+/** Every label any of the messages carries, once each. */
+function labelsOf(messages: readonly { labelIds: readonly string[] }[]): string[] {
+	return [...new Set(messages.flatMap((message) => message.labelIds))];
 }

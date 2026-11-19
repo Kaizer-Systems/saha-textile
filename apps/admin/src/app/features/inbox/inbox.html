@@ -485,6 +485,7 @@
 					<li
 						class="d-flex align-items-start gap-2"
 						[class.unread]="row.unread"
+						[class.inbox-arrived]="arrived().has(row.id)"
 						[class.inbox-open]="openId() === row.id"
 					>
 						<div class="d-flex flex-column align-items-center gap-1 pt-1">
@@ -944,6 +945,7 @@
 							sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
 							referrerpolicy="no-referrer"
 							[title]="message.subject"
+							[id]="'inbox_frame_' + message.id"
 							[srcdoc]="frames().get(message.id)"
 							(load)="fitFrame($event)"
 						></iframe>
@@ -976,7 +978,17 @@
 						</div>
 						}
 					</div>
-					} } @if (canSend() && !draft()) {
+					} } @if (newReplies()) {
+					<!-- Replies that arrived while this was open wait here, still unread (R5). -->
+					<button
+						type="button"
+						class="btn btn-outline btn-sm mb-3 w-100"
+						id="inbox_show_replies"
+						(click)="showNewReplies()"
+					>
+						{{ 'inbox_new_replies' | transloco: { count: newReplies() } }}
+					</button>
+					} @if (canSend() && !draft()) {
 					<div class="d-flex flex-wrap gap-2">
 						<button
 							type="button"

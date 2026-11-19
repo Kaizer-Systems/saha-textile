@@ -352,7 +352,24 @@ describe('Inbox list', () => {
 		expect(page.searchText()).toBe('');
 	});
 
-	it('holds the rows shown when new mail arrives, until Show (T7)', () => {
+	it('slides new mail in when nothing would be disturbed, and tints it for a moment (R3)', () => {
+		vi.useFakeTimers();
+		const { page, summary, threadsQuery, flush } = setup();
+		summary([box('care')]);
+		threadsQuery.result.set({ data: { threads: [row('t1')], nextPageToken: null } });
+		flush();
+		threadsQuery.result.set({ data: { threads: [row('t9'), row('t1')], nextPageToken: null } });
+		flush();
+		expect(page.threads().map((entry) => entry.id)).toEqual(['t9', 't1']);
+		expect(page.waiting()).toBe(0);
+		expect(page.arrived().has('t9')).toBe(true);
+		expect(page.announcement()).toBe('inbox_new_arrived');
+		vi.advanceTimersByTime(4000);
+		expect(page.arrived().size).toBe(0);
+		vi.useRealTimers();
+	});
+
+	it('holds the rows shown when new mail arrives while rows are ticked, until Show (T7)', () => {
 		const { page, summary, threadsQuery, flush } = setup();
 		summary([box('care')]);
 		expect(page.threads()).toEqual([]);
@@ -360,6 +377,7 @@ describe('Inbox list', () => {
 		threadsQuery.result.set({ data: { threads: [row('t1'), row('t2')], nextPageToken: null } });
 		flush();
 		expect(page.threads().map((entry) => entry.id)).toEqual(['t1', 't2']);
+		page.toggleRow('t2', true);
 		threadsQuery.result.set({
 			data: { threads: [row('t9'), row('t1', { unread: true }), row('t2')], nextPageToken: null },
 		});
@@ -446,9 +464,16 @@ describe('Inbox conversation', () => {
 		threadQuery.result.set({ data: unread('m1', 'm2', 'm3') });
 		flush();
 		expect(gateway.markMessages).toHaveBeenCalledTimes(1);
-		// A reply that arrives later is marked when it shows; the ones already marked are not sent again.
+		// A reply that arrives while it is open waits behind Show, still unread (R5); once shown it is
+		// marked, and the ones already marked are not sent again.
 		threadQuery.result.set({ data: unread('m1', 'm2', 'm3', 'm4') });
 		flush();
+		expect(page.newReplies()).toBe(1);
+		expect(page.thread()?.messages.map((entry) => entry.id)).toEqual(['m1', 'm2', 'm3']);
+		expect(gateway.markMessages).toHaveBeenCalledTimes(1);
+		page.showNewReplies();
+		flush();
+		expect(page.newReplies()).toBe(0);
 		await vi.waitFor(() => expect(gateway.markMessages).toHaveBeenLastCalledWith('mbx-care', ['m4'], true));
 		// Marked unread on purpose, then opened again: read again, as in Gmail.
 		await page.act('mark_unread');

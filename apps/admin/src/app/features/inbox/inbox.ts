@@ -369,10 +369,32 @@ export class Inbox {
 			queryKey: [...INBOX_KEY, mailboxId, 'thread', threadId],
 			queryFn: () => firstValueFrom(this.gateway.thread(mailboxId, threadId)),
 			enabled: Boolean(mailboxId && threadId) && this.connected(),
+			// The open conversation is checked as often as the list, so new replies show (R5).
+			refetchInterval: INBOX_REFRESH_MS,
 			retry: (count: number, error: unknown) => statusOf(error) !== 404 && count < 1,
 		};
 	});
-	readonly thread = computed(() => (this.openId() ? (this.threadQuery.data() ?? null) : null));
+	/** The open conversation as Gmail has it now, new replies included. */
+	private readonly fullThread = computed(() => (this.openId() ? (this.threadQuery.data() ?? null) : null));
+	/**
+	 * The messages on screen (R5). A reply that arrives while the conversation is open waits behind
+	 * "1 new reply · Show": it stays unread in Gmail, and nothing already shown moves or reloads.
+	 */
+	private readonly shownIds = signal<{ threadId: string; ids: ReadonlySet<string> } | null>(null);
+	readonly thread = computed(() => {
+		const thread = this.fullThread();
+		const shown = this.shownIds();
+		if (!thread || !shown || shown.threadId !== thread.id) return thread;
+		return { ...thread, messages: thread.messages.filter((message) => shown.ids.has(message.id)) };
+	});
+	readonly newReplies = computed(() => {
+		const thread = this.fullThread();
+		const shown = this.shownIds();
+		if (!thread || !shown || shown.threadId !== thread.id) return 0;
+		return thread.messages.filter((message) => !shown.ids.has(message.id)).length;
+	});
+	/** Rows that just slid in at the top of the list (R3), tinted for a moment. */
+	readonly arrived = signal<ReadonlySet<string>>(new Set());
 	readonly loadingThread = computed(() => Boolean(this.openId()) && this.threadQuery.isPending());
 	readonly threadGone = computed(() => this.threadQuery.isError() && statusOf(this.threadQuery.error()) === 404);
 	readonly threadFailed = computed(() => this.threadQuery.isError() && !this.threadGone());
@@ -389,22 +411,31 @@ export class Inbox {
 	private readonly quotesShown = signal<ReadonlySet<string>>(new Set());
 	/** Messages whose pictures someone asked to see. */
 	private readonly pictures = signal<ReadonlySet<string>>(new Set());
-	/** Each message's frame document, built once per message and choice so frames do not reload. */
+	/**
+	 * Each message's frame document, built once per message and choice and then reused, so a refresh
+	 * or a newly shown reply never reloads the frames already on screen (R5).
+	 */
+	private readonly frameCache = new Map<string, SafeHtml>();
 	readonly frames = computed(() => {
 		const shown = this.pictures();
 		const quotes = this.quotesShown();
 		return new Map<string, SafeHtml>(
-			(this.thread()?.messages ?? []).map((message) => [
-				message.id,
-				// The API cleaned this HTML, and it renders inside a sandbox with no scripts and its
-				// own content policy, so Angular's own cleaning (which would strip its styles) is skipped.
-				this.sanitizer.bypassSecurityTrustHtml(
-					frameDocument(
-						quotes.has(message.id) ? message.html + message.quoteHtml : message.html,
-						shown.has(message.id),
-					),
-				),
-			]),
+			(this.thread()?.messages ?? []).map((message) => {
+				const key = `${message.id}|${shown.has(message.id)}|${quotes.has(message.id)}`;
+				let frame = this.frameCache.get(key);
+				if (!frame) {
+					// The API cleaned this HTML, and it renders inside a sandbox with no scripts and its
+					// own content policy, so Angular's own cleaning (which would strip its styles) is skipped.
+					frame = this.sanitizer.bypassSecurityTrustHtml(
+						frameDocument(
+							quotes.has(message.id) ? message.html + message.quoteHtml : message.html,
+							shown.has(message.id),
+						),
+					);
+					this.frameCache.set(key, frame);
+				}
+				return [message.id, frame] as const;
+			}),
 		);
 	});
 
@@ -538,10 +569,23 @@ export class Inbox {
 			untracked(() => {
 				const held = this.held();
 				const shown = new Set(held?.key === key ? held.ids : []);
-				const added = data.threads.some((row) => !shown.has(row.id));
-				if (this.adoptNext || held?.key !== key || !added) {
+				const fresh = data.threads.map((row) => row.id);
+				const added = fresh.filter((id) => !shown.has(id));
+				// New mail slides in only where it cannot disturb anyone (R3): top of the first page of a
+				// folder, no search, nothing ticked, nothing open. Otherwise it waits behind the pill.
+				const calm =
+					held?.key === key &&
+					this.firstPage() &&
+					!this.q() &&
+					!this.selected().size &&
+					!this.allMatching() &&
+					!this.openId() &&
+					!this.draftMode() &&
+					(typeof window === 'undefined' || window.scrollY < 120);
+				if (this.adoptNext || held?.key !== key || !added.length || calm) {
+					if (calm && !this.adoptNext && added.length) this.slideIn(added);
 					this.adoptNext = false;
-					this.held.set({ key, ids: data.threads.map((row) => row.id) });
+					this.held.set({ key, ids: fresh });
 				}
 			});
 		});
@@ -549,14 +593,29 @@ export class Inbox {
 		// A conversation that opens: fold its older messages, mark it read as Gmail does, and move
 		// focus to its subject.
 		effect(() => {
+			const full = this.fullThread();
+			if (full) {
+				untracked(() => {
+					const shown = this.shownIds();
+					if (!shown || shown.threadId !== full.id) {
+						this.shownIds.set({
+							threadId: full.id,
+							ids: new Set(full.messages.map((message) => message.id)),
+						});
+					}
+				});
+			}
 			const thread = this.thread();
 			if (!thread) return;
 			untracked(() => {
-				this.opened.set(new Set());
-				this.allOpen.set(false);
-				this.quotesShown.set(new Set());
-				this.lastOpened = thread.id;
-				setTimeout(() => document.getElementById('inbox_subject')?.focus());
+				// A refresh of the same conversation keeps what was unfolded, its quotes and pictures.
+				if (this.lastOpened !== thread.id) {
+					this.opened.set(new Set());
+					this.allOpen.set(false);
+					this.quotesShown.set(new Set());
+					this.lastOpened = thread.id;
+					setTimeout(() => document.getElementById('inbox_subject')?.focus());
+				}
 				const mailboxId = this.mailbox()?.mailboxId;
 				if (!mailboxId) return;
 				const unseen = thread.messages
@@ -870,6 +929,25 @@ export class Inbox {
 	newer() {
 		this.adoptNext = true;
 		this.pages.update((pages) => pages.slice(0, -1));
+	}
+
+	/** Reveals replies that arrived while the conversation was open, and moves to the first one. */
+	showNewReplies() {
+		const full = this.fullThread();
+		const shown = this.shownIds();
+		if (!full || !shown) return;
+		const first = full.messages.find((message) => !shown.ids.has(message.id));
+		this.shownIds.set({ threadId: full.id, ids: new Set(full.messages.map((message) => message.id)) });
+		const note = this.transloco.translate('inbox_new_replies_shown');
+		this.announcement.set(note);
+		if (first) setTimeout(() => document.getElementById(`inbox_frame_${first.id}`)?.focus());
+	}
+
+	/** Tints rows that just slid in, for a moment (approved custom piece 1). */
+	private slideIn(ids: readonly string[]) {
+		this.arrived.set(new Set(ids));
+		this.announcement.set(this.transloco.translate('inbox_new_arrived', { count: ids.length }));
+		setTimeout(() => this.arrived.set(new Set()), 4000);
 	}
 
 	/** Shows the conversations that arrived while the list was held. */

@@ -14,6 +14,24 @@
 	}
 }
 
+// Approved custom piece 1 (Gmail Workspace Upgrade brief, R3): a row that just slid in at the top
+// of the list is tinted for a moment and eases into place. Still for reduced motion.
+.inbox-list li.inbox-arrived {
+	background-color: color-mix(in srgb, var(--theme-color) 8%, transparent);
+	box-shadow: inset 3px 0 0 var(--theme-color);
+
+	@media (prefers-reduced-motion: no-preference) {
+		animation: inbox-arrive 0.4s ease-out;
+	}
+}
+
+@keyframes inbox-arrive {
+	from {
+		opacity: 0.4;
+		transform: translateY(-6px);
+	}
+}
+
 // Approved custom piece 2 (Gmail Workspace Upgrade brief): the Select all box's mixed state. The
 // theme draws its tick as a rotated corner in :before; here it lies flat as a short bar.
 .checkbox_animated:indeterminate:before {

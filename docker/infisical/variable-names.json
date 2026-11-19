@@ -171,6 +171,10 @@
 		"mongo-app-password": "MONGODB_PASSWORD",
 		"redis-password": "REDIS_PASSWORD"
 	},
+	"derivedDeploymentVariables": {
+		"FACEBOOK_APP_ID": "FACEBOOK_OAUTH_APP_ID",
+		"GOOGLE_CLIENT_ID": "GOOGLE_OAUTH_CLIENT_ID"
+	},
 	"deploymentVariables": [
 		"ADMIN_HOST",
 		"ADMIN_URL",
@@ -178,8 +182,6 @@
 		"API_URL",
 		"CCAVENUE_HOST",
 		"CDN_HOST",
-		"FACEBOOK_APP_ID",
-		"GOOGLE_CLIENT_ID",
 		"PAYMENT_RETURN_PATH",
 		"SITE_URL",
 		"SPACES_HOST",
@@ -194,6 +196,7 @@
 	},
 	"changesSinceVerification": [
 		"2026-11-19: owner decision L3 — mongo-app-password and redis-password are written from /api/MONGODB_PASSWORD and /api/REDIS_PASSWORD; the owner deletes both /infrastructure entries in all three projects.",
-		"2026-11-19: SHOP_ORIGIN added (read by the API since FX-8). Add it to the dev project /api; Compose sets it in staging and production."
+		"2026-11-19: SHOP_ORIGIN added (read by the API since FX-8). Add it to the dev project /api; Compose sets it in staging and production.",
+		"2026-11-20: owner decision D2 — the public sign-in IDs are kept once, in /api: release.env gets GOOGLE_CLIENT_ID and FACEBOOK_APP_ID from /api/GOOGLE_OAUTH_CLIENT_ID and /api/FACEBOOK_OAUTH_APP_ID; the owner deletes both /deployment entries in all three projects."
 	]
 }

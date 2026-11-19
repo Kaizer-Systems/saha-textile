@@ -1908,6 +1908,25 @@ files for every caller and prints names, never values.
 - The renderer, `pnpm secrets:status` and `pnpm check:infisical-names` were built the same day
   (`scripts/secrets/`); the rest follows the plan page's order. Hand-over: `.claude/infisical-plan/HANDOVER.md`.
 
+## Owner decision round (2026-11-20) — values stored twice in Infisical
+
+Answered on the Dev Secrets Checklist (https://claude.ai/artifact/6wVEWhFonbSuCG3egWfEN6), after a
+names-only audit of the dev project against the files on the Mac.
+
+- **D2 — the public sign-in IDs are kept once, in `/api`.** The owner deletes
+  `/deployment/GOOGLE_CLIENT_ID` and `/deployment/FACEBOOK_APP_ID` in all three projects (six
+  entries); the renderer writes both into `release.env` from `/api/GOOGLE_OAUTH_CLIENT_ID` and
+  `/api/FACEBOOK_OAUTH_APP_ID`, as the Docker stack already did. Checked first: every filled copy
+  equalled its `/api` value.
+- **D3 — addresses stored as a URL and as a host stay.** `SITE_URL`/`STOREFRONT_HOST`,
+  `ADMIN_URL`/`ADMIN_HOST`, `API_URL`/`API_HOST`, and `CDN_HOST`, `CCAVENUE_HOST`,
+  `PAYMENT_RETURN_PATH` beside the `/api` addresses they come from. The release step checks that each
+  pair agrees, built with the local pipeline (plan step 6).
+- **The owner copies values in Infisical by hand** (D1), and the agent checks them with a names-only
+  trial fetch into a temporary folder that is deleted afterwards.
+- **`SHOP_ORIGIN` stays in the dev project only.** In staging and production Compose sets it from
+  `STOREFRONT_HOST`.
+
 ## Owner decision round (2026-11-19) — shipping rules brief approved
 
 - **The Shipping Rules Brief is approved as drawn (owner, 2026-11-19: "Approved").**

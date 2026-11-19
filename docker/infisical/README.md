@@ -32,6 +32,19 @@ every way the shop runs"). Two changes to the entries follow from it:
 After both, `/infrastructure` holds four entries per project and `/api` holds 100 in development,
 96 in staging and production.
 
+### Changes on 2026-11-20 (owner to apply in Infisical)
+
+- **Delete six more entries:** `/deployment/GOOGLE_CLIENT_ID` and `/deployment/FACEBOOK_APP_ID` in
+  each of the three projects (owner decision D2). They repeated `/api/GOOGLE_OAUTH_CLIENT_ID` and
+  `/api/FACEBOOK_OAUTH_APP_ID`: the shop's sign-in buttons and the API's token check must use the
+  same ID. The renderer now writes both names into `release.env` from `/api`
+  (`derivedDeploymentVariables` in `variable-names.json`), so `deploy.sh` is unchanged. Checked
+  before the change: in all three projects the filled `GOOGLE_CLIENT_ID` equalled its `/api` copy
+  and `FACEBOOK_APP_ID` was blank. Until the entries are gone, `pnpm secrets:status` lists them
+  under "delete", and a release refuses one whose value differs from `/api`.
+
+After this, `/deployment` holds ten entries per project.
+
 ## Filling values
 
 - `/api`: supported API settings. Optional providers, fallbacks and features can remain unset.
@@ -45,8 +58,11 @@ After both, `/infrastructure` holds four entries per project and `/api` holds 10
   must contain a `master_key = "…"` line. The app's database and Redis passwords are not stored
   here; they come from `/api` (see the 2026-11-19 changes above).
 - `/deployment`: non-secret hosts and public runtime settings. Image digests are generated release
-  metadata and are intentionally absent. `GOOGLE_CLIENT_ID` and `FACEBOOK_APP_ID` are the public
-  aliases of the matching API OAuth app IDs.
+  metadata and are intentionally absent. The public sign-in IDs are not stored here: `release.env`
+  gets `GOOGLE_CLIENT_ID` and `FACEBOOK_APP_ID` from `/api/GOOGLE_OAUTH_CLIENT_ID` and
+  `/api/FACEBOOK_OAUTH_APP_ID` (see the 2026-11-20 changes above). Some addresses appear both as a
+  full URL and as a bare host (`SITE_URL` and `STOREFRONT_HOST`, for example); both stay, and the
+  release step is to check that they agree (owner decision D3, built with the local pipeline).
 
 `OTP_LOCAL_FIXED_CODE`, `TLS_CERT_FILE` and `TLS_KEY_FILE` exist only in the development inventory.
 Leave the fixed OTP unset for the full Docker stack running in production mode. Local certificate

@@ -43,8 +43,6 @@ function completeProject(tier = 'staging') {
 		['mongo-root-username', 'saha_textile_root'],
 	]);
 	const deployment = new Map(inventory.deployment.map((name) => [name, `${MARK}${name.toLowerCase()}`]));
-	deployment.set('GOOGLE_CLIENT_ID', api.get('GOOGLE_OAUTH_CLIENT_ID'));
-	deployment.set('FACEBOOK_APP_ID', api.get('FACEBOOK_OAUTH_APP_ID'));
 	return { api, backup, infrastructure, deployment };
 }
 
@@ -196,6 +194,9 @@ test('buildRelease: a complete project gives every file deploy.sh checks', () =>
 	const releaseEnv = dotenv.parse(files.get('release.env'));
 	assert.equal(releaseEnv.API_IMAGE, release.get('API_IMAGE'));
 	assert.equal(releaseEnv.STOREFRONT_HOST, project.deployment.get('STOREFRONT_HOST'));
+	// Owner decision D2: the public sign-in IDs are kept once, in /api, and copied into the release.
+	assert.equal(releaseEnv.GOOGLE_CLIENT_ID, project.api.get('GOOGLE_OAUTH_CLIENT_ID'));
+	assert.equal(releaseEnv.FACEBOOK_APP_ID, project.api.get('FACEBOOK_OAUTH_APP_ID'));
 	// deploy.sh reads these with sed, so they must be unquoted.
 	assert.match(files.get('secrets/api.env'), /^MONGODB_DB_NAME=zz-made-up-mongodb_db_name$/m);
 	assert.match(
@@ -211,8 +212,12 @@ test('buildRelease: notes for settings a release leaves out, with no values in t
 	project.api.set('MEILISEARCH_API_KEY', `${MARK}key`);
 	project.infrastructure.set('mongo-app-password', '');
 	project.infrastructure.set('redis-password', project.api.get('REDIS_PASSWORD'));
+	project.deployment.set('GOOGLE_CLIENT_ID', project.api.get('GOOGLE_OAUTH_CLIENT_ID'));
+	project.deployment.set('FACEBOOK_APP_ID', '');
 	const { notes } = buildRelease(project, { tier: 'staging', inventory, source: 's', release });
 	assert.deepEqual(notes.sort(), [
+		'/deployment/FACEBOOK_APP_ID is no longer used (it is written from /api/FACEBOOK_OAUTH_APP_ID): delete it.',
+		'/deployment/GOOGLE_CLIENT_ID repeats /api/GOOGLE_OAUTH_CLIENT_ID: delete it.',
 		'/infrastructure/mongo-app-password is no longer used (it is written from /api/MONGODB_PASSWORD): delete it.',
 		'/infrastructure/redis-password repeats /api/REDIS_PASSWORD: delete it.',
 		'MEILISEARCH_API_KEY is left out: the deploy reads it from the search server.',
@@ -260,7 +265,7 @@ test('buildRelease: refuses, naming every problem at once and no value', () => {
 		/\/infrastructure\/mongo-app-password differs from \/api\/MONGODB_PASSWORD/,
 		/STOREFRONT_HOST is set both in \/deployment and by the release step/,
 		/DEPLOY_ENV in \/api differs/,
-		/\/deployment\/GOOGLE_CLIENT_ID must equal \/api\/GOOGLE_OAUTH_CLIENT_ID/,
+		/\/deployment\/GOOGLE_CLIENT_ID differs from \/api\/GOOGLE_OAUTH_CLIENT_ID/,
 		/CDN_HOST contains a space/,
 	]) {
 		assert.match(message, expected);
@@ -384,10 +389,13 @@ test('projectReport and formatReport: what is missing, misspelt or due for delet
 	project.backup.set('BACKUP_BUCKET', '');
 	project.infrastructure.set('mongo-keyfile', '');
 	project.infrastructure.set('redis-password', '');
+	project.deployment.set('GOOGLE_CLIENT_ID', `${MARK}client`);
 	const report = projectReport(project, { tier: 'production', inventory });
 	const text = formatReport(report, 'saha-textile-production (prod)');
 	assert.match(text, /not in the inventory \(misspelt\?\): JWT_ACESS_SECRET/);
-	assert.match(text, /delete \(now written from \/api, owner decision L3\): redis-password/);
+	assert.match(text, /delete \(now written from \/api, owner decisions L3 and D2\): redis-password/);
+	assert.match(text, /delete \(now written from \/api, owner decisions L3 and D2\): GOOGLE_CLIENT_ID/);
+	assert.ok(!/misspelt[^\n]*GOOGLE_CLIENT_ID/.test(text));
 	assert.match(text, /Blank, but a deploy needs it in \/api: JWT_ACCESS_SECRET/);
 	assert.match(text, /Blank, but a deploy needs it in \/infrastructure: mongo-keyfile/);
 	assert.match(text, /Blank, but production backups need it in \/backup: BACKUP_BUCKET/);

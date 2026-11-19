@@ -52,6 +52,8 @@ export function describeError(error) {
  * @property {string[]} infrastructureFiles          stored whole in `/infrastructure`
  * @property {Record<string, string>} derivedFiles   secret file name → the `/api` setting it is written from
  * @property {string[]} deployment
+ * @property {Record<string, string>} derivedDeployment  `release.env` name → the `/api` setting it is
+ *                                                    written from (owner decision D2)
  */
 
 /**
@@ -86,6 +88,7 @@ export function loadInventory(root = ROOT) {
 		infrastructureFiles: json.infrastructureSecretFileNames,
 		derivedFiles: json.derivedSecretFiles ?? {},
 		deployment: json.deploymentVariables,
+		derivedDeployment: json.derivedDeploymentVariables ?? {},
 	};
 }
 

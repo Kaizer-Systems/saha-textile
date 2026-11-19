@@ -37,9 +37,6 @@ export const SHELL_READ_API_NAMES = new Set([
 /** The deploy reads this key from the search server, so a release never carries it. */
 const DERIVED_AT_DEPLOY = 'MEILISEARCH_API_KEY';
 
-/** The `/deployment` names that repeat a public API setting, and the setting they repeat. */
-const PUBLIC_ALIASES = { GOOGLE_CLIENT_ID: 'GOOGLE_OAUTH_CLIENT_ID', FACEBOOK_APP_ID: 'FACEBOOK_OAUTH_APP_ID' };
-
 /** No whitespace, quotes, `#`, backslash or `$`: safe unquoted for dotenv, Docker, Compose and sed. */
 const PLAIN = /^[^\s'"`#\\$]*$/;
 
@@ -115,6 +112,44 @@ function sorted(entries) {
 /** @param {string[]} problems */
 function refuse(heading, problems) {
 	throw new SecretsError([heading, ...problems.map((problem) => `  - ${problem}`)].join('\n'));
+}
+
+/**
+ * The names a release writes from an `/api` setting, per folder they used to be stored in: the two
+ * password files (owner decision L3) and the two public sign-in IDs (owner decision D2). An entry
+ * left behind in Infisical is not unknown; it is due for deletion.
+ * @param {Inventory} inventory
+ * @returns {Record<string, Set<string>>}
+ */
+export function derivedNames(inventory) {
+	return {
+		infrastructure: new Set(Object.keys(inventory.derivedFiles)),
+		deployment: new Set(Object.keys(inventory.derivedDeployment)),
+	};
+}
+
+/**
+ * A note or problem for an entry still stored in `folder` although a release now writes it from
+ * `/api/<apiName>`. Names only, never a value.
+ * @param {string} folder
+ * @param {string} name
+ * @param {string} apiName
+ * @param {Record<string, Folder>} folders
+ * @param {string | undefined} value   the `/api` value
+ * @param {{ problems: string[], notes: string[] }} sink
+ */
+function checkLeftover(folder, name, apiName, folders, value, { problems, notes }) {
+	const stored = folders[folder]?.get(name);
+	if (stored === undefined) return;
+	if (isBlank(stored)) {
+		notes.push(`/${folder}/${name} is no longer used (it is written from /api/${apiName}): delete it.`);
+	} else if (stored === value) {
+		notes.push(`/${folder}/${name} repeats /api/${apiName}: delete it.`);
+	} else {
+		problems.push(
+			`/${folder}/${name} differs from /api/${apiName}. Keep the right value in /api/${apiName} and delete /${folder}/${name}.`,
+		);
+	}
 }
 
 /**
@@ -217,12 +252,12 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 	const problems = [];
 	const notes = [];
 	const allowed = folderNames(inventory);
-	const derivedFiles = new Set(Object.keys(inventory.derivedFiles));
+	const derived = derivedNames(inventory);
 	for (const folder of FOLDERS) {
 		checkUnknown(folder, folders[folder] ?? new Map(), allowed[folder], {
 			problems,
 			notes,
-			skip: folder === 'infrastructure' ? derivedFiles : new Set(),
+			skip: derived[folder] ?? new Set(),
 		});
 	}
 
@@ -315,17 +350,7 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 	for (const [file, apiName] of Object.entries(inventory.derivedFiles)) {
 		const value = api.get(apiName);
 		if (!isBlank(value)) files.set(`secrets/${file}`, /** @type {string} */ (value));
-		const stored = folders.infrastructure?.get(file);
-		if (stored === undefined) continue;
-		if (isBlank(stored)) {
-			notes.push(`/infrastructure/${file} is no longer used (it is written from /api/${apiName}): delete it.`);
-		} else if (stored === value) {
-			notes.push(`/infrastructure/${file} repeats /api/${apiName}: delete it.`);
-		} else {
-			problems.push(
-				`/infrastructure/${file} differs from /api/${apiName}. Keep the right password in /api/${apiName} and delete /infrastructure/${file}.`,
-			);
-		}
+		checkLeftover('infrastructure', file, apiName, folders, value, { problems, notes });
 	}
 
 	// ---- release.env: Compose and sed both read it, so values stay unquoted.
@@ -339,12 +364,12 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 		}
 		releaseValues.set(name, value);
 	}
-	for (const [alias, apiName] of Object.entries(PUBLIC_ALIASES)) {
-		const own = releaseValues.get(alias);
-		const fromApi = api.get(apiName);
-		if (!isBlank(own) && !isBlank(fromApi) && own !== fromApi) {
-			problems.push(`/deployment/${alias} must equal /api/${apiName}.`);
-		}
+	// The public sign-in IDs, kept once in /api (owner decision D2). The shop's buttons and the API's
+	// token check must use the same ID, so a release copies it rather than storing it twice.
+	for (const [name, apiName] of Object.entries(inventory.derivedDeployment)) {
+		const value = api.get(apiName);
+		if (!isBlank(value)) releaseValues.set(name, /** @type {string} */ (value));
+		checkLeftover('deployment', name, apiName, folders, value, { problems, notes });
 	}
 	files.set(
 		'release.env',
@@ -409,7 +434,7 @@ export function planEnvFileChange(current, next) {
  */
 export function projectReport(folders, { tier, inventory }) {
 	const allowed = folderNames(inventory);
-	const derivedFiles = new Set(Object.keys(inventory.derivedFiles));
+	const derived = derivedNames(inventory);
 	/** @type {Record<string, Set<string>>} */
 	const expected = {
 		...allowed,
@@ -432,17 +457,12 @@ export function projectReport(folders, { tier, inventory }) {
 			missing: [...expected[folder]].filter((name) => !values.has(name)).sort(),
 			unknown: entries
 				.map(([name]) => name)
-				.filter(
-					(name) => !allowed[folder].has(name) && !(folder === 'infrastructure' && derivedFiles.has(name)),
-				)
+				.filter((name) => !allowed[folder].has(name) && !derived[folder]?.has(name))
 				.sort(),
-			toDelete:
-				folder === 'infrastructure'
-					? entries
-							.map(([name]) => name)
-							.filter((name) => derivedFiles.has(name))
-							.sort()
-					: [],
+			toDelete: entries
+				.map(([name]) => name)
+				.filter((name) => derived[folder]?.has(name))
+				.sort(),
 		};
 	});
 	const api = folders.api ?? new Map();
@@ -467,7 +487,9 @@ export function formatReport(report, title) {
 		if (folder.unknown.length > 0)
 			lines.push(`      not in the inventory (misspelt?): ${folder.unknown.join(', ')}`);
 		if (folder.toDelete.length > 0) {
-			lines.push(`      delete (now written from /api, owner decision L3): ${folder.toDelete.join(', ')}`);
+			lines.push(
+				`      delete (now written from /api, owner decisions L3 and D2): ${folder.toDelete.join(', ')}`,
+			);
 		}
 	}
 	const release = report.tier === 'dev' ? 'the local pipeline' : 'a deploy';

@@ -4,7 +4,7 @@ wide: true
 description: The Settings › Communications screen, the approved list of messages and channels, the rules the API applies to each switch, and how every sender obeys them.
 status: implemented
 audience: [beginner, frontend, backend]
-last_verified: '2026-11-14'
+last_verified: '2026-11-19'
 source_of_truth:
     - packages/contracts/src/communication-use.ts
     - packages/core-domain/src/communications/communication-rules.ts
@@ -24,7 +24,7 @@ Reading needs `setting.index`; changing a switch needs `setting.edit`. The route
 
 ## The list of messages
 
-`COMMUNICATION_USES` in `packages/contracts/src/communication-use.ts` holds the twenty approved messages. The list is fixed in code because each row is a message the code actually sends; the admin only switches channels on and off. Each cell has:
+`COMMUNICATION_USES` in `packages/contracts/src/communication-use.ts` holds the twenty-two approved messages: the twenty approved on 2026-11-13, plus an item on backorder and an item sold out before payment (order refunded), added from the 2026-11-17 orders decisions. The list is fixed in code because each row is a message the code actually sends; the admin only switches channels on and off. Each cell has:
 
 | Field       | Meaning                                                                                   |
 | ----------- | ----------------------------------------------------------------------------------------- |

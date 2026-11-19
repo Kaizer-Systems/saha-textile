@@ -1857,6 +1857,8 @@
 	"comm_use_staff_invitation": "অ্যাডমিনে কর্মীর আমন্ত্রণ",
 	"comm_use_order_confirmed": "অর্ডার নিশ্চিত",
 	"comm_use_payment_failed": "পেমেন্ট সম্পূর্ণ হয়নি",
+	"comm_use_order_on_backorder": "পণ্য ব্যাকঅর্ডারে, ডিসপ্যাচের তারিখসহ",
+	"comm_use_order_refunded_sold_out": "পেমেন্টের আগেই পণ্য বিক্রি হয়ে গেছে, অর্ডার রিফান্ড",
 	"comm_use_order_shipped": "অর্ডার পাঠানো হয়েছে, ট্র্যাকিং লিংকসহ",
 	"comm_use_order_delivered": "অর্ডার পৌঁছে গেছে",
 	"comm_use_order_cancelled": "অর্ডার বাতিল",

@@ -1857,6 +1857,8 @@
 	"comm_use_staff_invitation": "Staff invitation to the admin",
 	"comm_use_order_confirmed": "Order confirmed",
 	"comm_use_payment_failed": "Payment did not go through",
+	"comm_use_order_on_backorder": "Item on backorder, with dispatch date",
+	"comm_use_order_refunded_sold_out": "Item sold out before payment, order refunded",
 	"comm_use_order_shipped": "Order shipped, with tracking link",
 	"comm_use_order_delivered": "Order delivered",
 	"comm_use_order_cancelled": "Order cancelled",

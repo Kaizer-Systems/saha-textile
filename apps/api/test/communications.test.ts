@@ -49,7 +49,7 @@ describe('Settings › Communications service', () => {
 	it('serves the approved list in its recommended state when nothing is stored', async () => {
 		const { service } = setup();
 		const view = await service.view();
-		expect(view.items).toHaveLength(20);
+		expect(view.items).toHaveLength(22);
 		expect(view.channels).toEqual(['email', 'sms', 'whatsapp']);
 		expect(await cellOf(service, 'password_reset', 'sms')).toMatchObject({
 			on: false,

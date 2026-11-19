@@ -89,6 +89,10 @@ export const COMMUNICATION_USES: readonly CommunicationUse[] = [
 		group: 'orders',
 		cells: { email: ON, sms: warning('comm_reason_payment_link_texts'), whatsapp: ON },
 	},
+	// Owner, 2026-11-17 (orders round OD1/OD2): a piece owed on backorder, and a payment that
+	// arrived after the piece sold out, which refunds the whole order.
+	{ key: 'order_on_backorder', group: 'orders', cells: all() },
+	{ key: 'order_refunded_sold_out', group: 'orders', cells: all() },
 	{ key: 'order_shipped', group: 'orders', cells: all() },
 	{ key: 'order_delivered', group: 'orders', cells: all() },
 	{ key: 'order_cancelled', group: 'orders', cells: all() },

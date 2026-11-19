@@ -155,7 +155,7 @@
 					(change)="setFetchTime($any($event.target).value)"
 				/>
 				<span class="small">
-					{{ (data.fetchUsesKey ? 'fx_from_provider_key' : 'fx_from_provider') | transloco }}
+					{{ (data.fetchUsesKey ? 'fx_from_provider' : 'fx_from_provider_open') | transloco }}
 				</span>
 				@if (canEdit()) {
 				<button

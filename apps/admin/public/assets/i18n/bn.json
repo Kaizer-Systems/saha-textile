@@ -437,7 +437,7 @@
 	"fx_at": "সময়",
 	"fx_fetch_time": "হার আনার সময়, ভারত",
 	"fx_from_provider": "IST, ExchangeRate-API থেকে",
-	"fx_from_provider_key": "IST, ExchangeRate-API থেকে, সার্ভারে রাখা কি দিয়ে",
+	"fx_from_provider_open": "IST, ExchangeRate-API-এর খোলা এন্ডপয়েন্ট থেকে: সার্ভারে API কি রাখা নেই, তাই এই হার দেখানো পাতায় ওদের ক্রেডিট লিংক দিতে হবে",
 	"fx_fetch_now": "এখনই আনুন",
 	"fx_daily_fetch_help": "কিছুদিন বা পাকাপাকি বন্ধ রাখতে পারেন; শেষ রাখা হারই চলবে। আগের পেমেন্ট দেখে হার কখনো বদলায় না।",
 	"fx_last_fetch_failed": "শেষবার হার আনা যায়নি: {{problem}}। রাখা হারই চলছে; 15 মিনিট পরে আবার চেষ্টা হবে।",

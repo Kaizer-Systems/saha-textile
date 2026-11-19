@@ -42,7 +42,7 @@ One percentage for every currency (6 at launch), applied to the whole PayPal pay
 
 A switch and a time, in India time, written as 24-hour `HH:MM` (for example `12:30`). When the switch is on, the worker checks every 15 minutes and fetches once a day after that time (`fx-fetch-due` job). **Fetch now** fetches straight away. A failed fetch keeps the stored rates and shows the reason under the switch; the worker tries again in 15 minutes. Rates are never adjusted from past payments.
 
-The fetch uses ExchangeRate-API. Without a key it calls the open endpoint (`https://open.er-api.com/v6/latest/INR`); with `EXCHANGERATE_API_KEY` set on the server it calls the keyed endpoint. The page says which one is in use. The fetch writes every launch currency (US$, £, €, C$, A$, S$, NZ$) and any other stored currency, and marks each rate "Daily fetch".
+The fetch uses ExchangeRate-API. Without a key it calls the open endpoint (`https://open.er-api.com/v6/latest/INR`); with `EXCHANGERATE_API_KEY` set on the server it calls the keyed endpoint. With the key the row reads "IST from ExchangeRate-API", as the brief draws it; without one it says the open endpoint is in use and that pages showing the rates need its credit link. The fetch writes every launch currency (US$, £, €, C$, A$, S$, NZ$) and any other stored currency, and marks each rate "Daily fetch".
 
 ExchangeRate-API publishes indicative mid-market rates, blended from central-bank and commercial sources and updated once a day on the free tiers. PayPal converts with its own rate, which is less favourable than mid-market; the PayPal markup covers that gap.
 

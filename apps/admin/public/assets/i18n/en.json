@@ -437,7 +437,7 @@
 	"fx_at": "at",
 	"fx_fetch_time": "Fetch time, India",
 	"fx_from_provider": "IST from ExchangeRate-API",
-	"fx_from_provider_key": "IST from ExchangeRate-API, with the key set on the server",
+	"fx_from_provider_open": "IST from ExchangeRate-API’s open endpoint: no key on the server, so pages showing these rates need its credit link",
 	"fx_fetch_now": "Fetch now",
 	"fx_daily_fetch_help": "Turn it off for a while or for good; the last stored rates stay in use. Rates are never adjusted from past payments.",
 	"fx_last_fetch_failed": "The last fetch failed: {{problem}}. The stored rates stay in use; it tries again in 15 minutes.",

@@ -32,6 +32,11 @@ vi.mock('@data-access/queries/tag.queries', () => ({
 vi.mock('@data-access/queries/tax.queries', () => ({
 	injectTaxesQuery: (p: () => unknown) => (p(), { data: taxes }),
 }));
+const shippingOverview = signal<unknown>(undefined);
+vi.mock('@core/shipping/shipping.gateway', () => ({
+	injectShippingOverviewQuery: () => ({ data: shippingOverview }),
+	injectShippingExceptionsQuery: () => ({ data: signal(undefined) }),
+}));
 
 const variant = (overrides: Record<string, unknown> = {}) => ({
 	id: 'v1',
@@ -144,7 +149,7 @@ const editing = (overrides: Record<string, unknown> = {}) =>
 const day = (value: number) => new NgbDate(2026, 11, value);
 
 afterEach(() => {
-	for (const value of [catalog, categories, taxes]) value.set(undefined);
+	for (const value of [catalog, categories, taxes, shippingOverview]) value.set(undefined);
 	vi.useRealTimers();
 	document.body.classList.remove('loader-none');
 	document.body.innerHTML = '';
@@ -829,5 +834,28 @@ describe('FormProduct inventory and HSN (F01, F02, A01)', () => {
 		page.setReturnable(following);
 		expect(page.returnableChoice()).toBe(following ? 'yes' : 'no');
 		expect(page.form.contains('is_return')).toBe(false);
+	});
+});
+
+describe('FormProduct shipping charges (shipping brief prd01)', () => {
+	it('follows the shop default when no category sets a charge, and starts an own value from it', () => {
+		const { page } = editing();
+		const charges = { domestic: 100, internationalFirst: 2000, internationalFurther: 900 };
+		shippingOverview.set({ settings: null, defaults: { defaultCharges: charges }, ruleSets: [] });
+		TestBed.tick();
+		expect(page.inheritedCharge('internationalFirst')).toEqual({ amountINR: 2000, fromCategory: null });
+		expect(page.rupees(2000)).toBe('₹2,000');
+		page.followCategoryCharge('internationalFirst', false);
+		expect(page.ownCharges().internationalFirst).toBe(2000);
+		page.followCategoryCharge('internationalFirst', true);
+		expect(page.ownCharges().internationalFirst).toBeNull();
+	});
+
+	it('names a rule set exception by the rule set’s name', () => {
+		const { page } = editing();
+		shippingOverview.set({ settings: null, defaults: {}, ruleSets: [{ id: 'rs1', name: 'Heavy parcels' }] });
+		TestBed.tick();
+		expect(page.exceptionLabel({ kind: 'ruleSet', ruleSetId: 'rs1' })).toBe('Heavy parcels');
+		expect(page.exceptionLabel({ kind: 'cantShip' })).toBe('ship_choice_cantShip');
 	});
 });

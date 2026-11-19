@@ -1509,60 +1509,9 @@
 									<div class="invalid-feedback">{{ 'tax_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'length_cm'"
-									[for]="'length_cm'"
-									[required]="false"
-								>
-									<input
-										class="form-control"
-										id="length_cm"
-										type="number"
-										formControlName="length_cm"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'width_cm'"
-									[for]="'width_cm'"
-									[required]="false"
-								>
-									<input
-										class="form-control"
-										id="width_cm"
-										type="number"
-										formControlName="width_cm"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'height_cm'"
-									[for]="'height_cm'"
-									[required]="false"
-								>
-									<input
-										class="form-control"
-										id="height_cm"
-										type="number"
-										formControlName="height_cm"
-									/>
-								</app-form-fields>
-								@if (shippingWeights(); as weights) { @if (weights.volumetric !== null) {
-								<p
-									class="help-text"
-									id="ship_weights"
-								>
-									{{ 'ship_weights_line' | transloco: { volumetric: weights.volumetric, chargeable:
-									weights.chargeable ?? 0 } }}
-								</p>
-								} }
 								<h5 class="mt-4 mb-3">{{ 'ship_product_charges' | transloco }}</h5>
-								@for (kind of chargeKinds; track kind) { @let own = ownCharges()[kind]; @let
-								fromCategory = categoryCharge(kind);
+								@for (kind of chargeKinds; track kind) { @let own = ownCharges()[kind]; @let inherited =
+								inheritedCharge(kind);
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -1584,14 +1533,19 @@
 										</div>
 										@if (own === null) {
 										<span class="small">
-											{{ (mainCategory() ? 'ship_use_category_value' : 'ship_use_shop_value') |
-											transloco: { category: mainCategory()?.name ?? '' } }}
+											{{ (inherited.fromCategory !== null ? 'ship_use_category_value' :
+											inherited.amountINR !== null ? 'ship_use_shop_default' :
+											'ship_use_shop_value') | transloco: { category: inherited.fromCategory ?? ''
+											} }}
 										</span>
-										@if (fromCategory !== null) {
-										<span class="text-muted">₹{{ fromCategory }}</span>
+										@if (inherited.amountINR !== null) {
+										<span class="text-muted">{{ rupees(inherited.amountINR) }}</span>
 										} } @else {
 										<span class="small">{{ 'ship_own_value' | transloco }}</span>
-										<div class="input-group w-auto flex-nowrap">
+										<div
+											class="input-group flex-nowrap"
+											style="width: 150px"
+										>
 											<span class="input-group-text">₹</span>
 											<input
 												class="form-control"
@@ -1607,18 +1561,93 @@
 									</div>
 								</app-form-fields>
 								}
+								<h5 class="mt-4 mb-3">{{ 'ship_weight_and_box' | transloco }}</h5>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'weight'"
+									[for]="'ship_weight'"
+									[required]="false"
+								>
+									<div
+										class="input-group flex-nowrap"
+										style="width: 200px"
+									>
+										<input
+											class="form-control"
+											id="ship_weight"
+											type="number"
+											min="0"
+											formControlName="weight"
+										/>
+										<span class="input-group-text">g</span>
+									</div>
+									<p class="help-text">{{ 'ship_weight_also_inventory' | transloco }}</p>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'ship_box_lwh'"
+									[for]="'length_cm'"
+									[required]="false"
+								>
+									<div class="d-flex align-items-center flex-wrap gap-2">
+										@for (side of ['length_cm', 'width_cm', 'height_cm']; track side; let last =
+										$last) {
+										<input
+											class="form-control"
+											style="width: 90px"
+											type="number"
+											min="0"
+											[id]="side"
+											[formControlName]="side"
+											[attr.aria-label]="side | transloco"
+										/>
+										@if (!last) {
+										<span>×</span>
+										} }
+										<span>cm</span>
+										@if (shippingWeights(); as weights) { @if (weights.volumetric !== null) {
+										<span
+											class="small text-muted ms-2"
+											id="ship_weights"
+										>
+											{{ 'ship_weights_line' | transloco: { volumetric:
+											weights.volumetric.toLocaleString('en-IN'), chargeable: (weights.chargeable
+											?? 0).toLocaleString('en-IN') } }}
+										</span>
+										} }
+									</div>
+								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
 									[label]="'ship_product_rules'"
 									[required]="false"
 								>
+									@if (zoneExceptions().length) {
+									<div class="d-flex flex-column gap-1 pt-1">
+										@for (item of zoneExceptions(); track item.zone) {
+										<span>
+											{{ 'ship_zone_' + item.zone | transloco }}:
+											<span [class.text-danger]="item.choice.kind === 'cantShip'">
+												{{ exceptionLabel(item.choice) }}
+											</span>
+											({{ 'ship_exception_tag' | transloco }}) ·
+											<a [routerLink]="['/shipping/where-rules-apply']">
+												{{ 'ship_change' | transloco }}
+											</a>
+										</span>
+										}
+									</div>
+									} @else {
 									<span class="pt-1">
 										{{ 'ship_product_rules_text' | transloco }}
 										<a [routerLink]="['/shipping/where-rules-apply']">
 											{{ 'ship_where_rules_apply' | transloco }}
 										</a>
 									</span>
+									}
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"

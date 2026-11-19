@@ -67,6 +67,7 @@ import {
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
 import { StockGateway } from '@core/purchasing/stock.gateway';
+import { injectShippingExceptionsQuery, injectShippingOverviewQuery } from '@core/shipping/shipping.gateway';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import {
 	CATALOG_BADGE_CODES,
@@ -113,6 +114,7 @@ import { OptionGroups } from './option-groups/option-groups';
 import { ProductBundleForm } from './product-bundle/product-bundle';
 import { FaqValue, ProductFaq } from './product-faq/product-faq';
 import { ImageCombination, ProductImages } from './product-images/product-images';
+import { categoryChain, inheritedCharge, type InheritedCharge, productExceptions } from './shipping-tab';
 import { variantCombinations } from './variant-combinations';
 import { environment } from '../../../../../public/environments/environment';
 
@@ -127,6 +129,7 @@ import type {
 	ProductVideo,
 	QuickLength,
 	ShippingChargeKind,
+	ShippingExceptionChoice,
 } from '@saha-textile/contracts';
 
 const LANGUAGE_FIELDS = [
@@ -279,6 +282,7 @@ export class FormProduct {
 					name: row.name,
 					hsnCode: row.row?.hsnCode ?? null,
 					returnable: row.row?.returnable ?? true,
+					parentId: row.row?.parentId ?? row.parent_id ?? null,
 					shipping: row.row?.shipping ?? null,
 				},
 			]),
@@ -297,20 +301,50 @@ export class FormProduct {
 	});
 	readonly chargeKinds: ShippingChargeKind[] = ['domestic', 'internationalFirst', 'internationalFurther'];
 
-	/** The main category's own value for a charge, for "Use Sarees's value: ₹100"; null when set higher up. */
-	categoryCharge(kind: ShippingChargeKind): number | null {
-		const shipping = this.mainCategory()?.shipping;
-		if (!shipping) return null;
-		return kind === 'domestic'
-			? shipping.domesticINR
-			: kind === 'internationalFirst'
-				? shipping.internationalFirstINR
-				: shipping.internationalFurtherINR;
+	/** Shop-wide default charges and the exceptions, for what this product inherits (shipping brief prd01). */
+	private readonly shippingOverview = injectShippingOverviewQuery();
+	private readonly shippingExceptions = injectShippingExceptionsQuery();
+	/** The main category, then its parents nearest first. */
+	private readonly shippingChain = computed(() =>
+		categoryChain(
+			this.chosenCategories()[0] ?? this.catalogProduct?.mainCategory?.id ?? null,
+			this.categoryDefaults(),
+		),
+	);
+
+	/** What a charge follows while its switch is on: the nearest category's value, else the shop default. */
+	inheritedCharge(kind: ShippingChargeKind): InheritedCharge {
+		const overview = this.shippingOverview.data();
+		const shopDefault = overview ? (overview.settings ?? overview.defaults).defaultCharges : null;
+		return inheritedCharge(kind, this.shippingChain(), this.categoryDefaults(), shopDefault);
+	}
+
+	/** The zones an exception decides for this product, for the "Shipping rules" row. */
+	readonly zoneExceptions = computed(() => {
+		const overview = this.shippingOverview.data();
+		return productExceptions(
+			this.id ?? null,
+			this.shippingChain(),
+			overview ? (overview.settings ?? overview.defaults) : null,
+			this.shippingExceptions.data() ?? [],
+		);
+	});
+
+	exceptionLabel(choice: ShippingExceptionChoice): string {
+		if (choice.kind !== 'ruleSet') return this.transloco.translate(`ship_choice_${choice.kind}`);
+		return this.shippingOverview.data()?.ruleSets.find((r) => r.id === choice.ruleSetId)?.name ?? choice.ruleSetId;
+	}
+
+	rupees(amountINR: number): string {
+		return `₹${amountINR.toLocaleString('en-IN')}`;
 	}
 
 	/** The "use the category's value" switch: on clears the product's own value; off starts from the category's. */
 	followCategoryCharge(kind: ShippingChargeKind, follow: boolean) {
-		this.ownCharges.update((own) => ({ ...own, [kind]: follow ? null : (this.categoryCharge(kind) ?? 0) }));
+		this.ownCharges.update((own) => ({
+			...own,
+			[kind]: follow ? null : (this.inheritedCharge(kind).amountINR ?? 0),
+		}));
 		this.form.markAsDirty();
 	}
 

@@ -56,6 +56,8 @@ export interface CategoryDefaults {
 	name: string;
 	hsnCode: string | null;
 	returnable: boolean;
+	/** The parent category, for charges a sub-category inherits (shipping brief prd01). */
+	parentId?: string | null;
 	/** The category's own shipping values (shipping brief prd01); null when it sets none. */
 	shipping?: {
 		domesticINR: number | null;

@@ -226,6 +226,12 @@ export class FormCategory {
 			.map((row) => ({ value: row.id, label: row.name }));
 	}
 
+	/** A top-level category inherits charges from the shop defaults, not a parent. */
+	hasParent(): boolean {
+		const parent: unknown = this.form.controls['parent_id'].value;
+		return typeof parent === 'string' && parent !== '';
+	}
+
 	selectItem(data: string[]) {
 		if (Array.isArray(data) && data.length) {
 			this.form.controls['parent_id'].setValue(data[0]);

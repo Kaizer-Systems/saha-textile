@@ -49,6 +49,10 @@ vi.mock('@data-access/queries/tax.queries', () => ({
 vi.mock('@data-access/queries/attribute.queries', () => ({
 	injectAttributesQuery: (p: () => unknown) => (p(), { data: empty, refetch }),
 }));
+vi.mock('@core/shipping/shipping.gateway', () => ({
+	injectShippingOverviewQuery: () => ({ data: empty }),
+	injectShippingExceptionsQuery: () => ({ data: empty }),
+}));
 
 const translate = { translate: (key: string) => key, selectTranslation: () => of({}) };
 const both = { en: 'Red', bn: 'লাল' };
@@ -920,8 +924,11 @@ describe('FormCategory', () => {
 		page.ngOnChanges();
 		page.selectItem(['cat_2']);
 		expect(page.form.value.parent_id).toBe('cat_2');
+		expect(page.hasParent()).toBe(true);
 		page.selectItem([]);
 		expect(page.form.value.parent_id).toBe('');
+		// A top-level category's empty shipping fields follow the shop default, not a parent.
+		expect(page.hasParent()).toBe(false);
 		page.selectItem('x' as never);
 		page.selectCategoryImage({ id: 3 } as never);
 		page.selectCategoryImage(null as never);

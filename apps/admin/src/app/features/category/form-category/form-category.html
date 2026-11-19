@@ -132,7 +132,10 @@
 			[for]="'category_' + field[0]"
 			[required]="false"
 		>
-			<div class="input-group w-auto flex-nowrap">
+			<div
+				class="input-group flex-nowrap"
+				style="width: 150px"
+			>
 				<span class="input-group-text">₹</span>
 				<input
 					class="form-control"
@@ -141,7 +144,7 @@
 					step="1"
 					[id]="'category_' + field[0]"
 					[formControlName]="field[0]"
-					[placeholder]="'ship_inherit' | transloco"
+					[placeholder]="(hasParent() ? 'ship_inherit' : 'ship_inherit_shop') | transloco"
 				/>
 			</div>
 			@if (first) {
@@ -154,14 +157,17 @@
 			[for]="'category_ship_weight'"
 			[required]="false"
 		>
-			<div class="input-group w-auto flex-nowrap">
+			<div
+				class="input-group flex-nowrap"
+				style="width: 200px"
+			>
 				<input
 					class="form-control"
 					type="number"
 					min="0"
 					id="category_ship_weight"
 					formControlName="ship_weight"
-					[placeholder]="'ship_inherit' | transloco"
+					[placeholder]="hasParent() ? ('ship_inherit' | transloco) : ''"
 				/>
 				<span class="input-group-text">g</span>
 			</div>
@@ -176,6 +182,7 @@
 				@for (side of ['ship_length', 'ship_width', 'ship_height']; track side; let last = $last) {
 				<input
 					class="form-control"
+					style="width: 90px"
 					type="number"
 					min="0"
 					[id]="'category_' + side"

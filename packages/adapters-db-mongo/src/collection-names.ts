@@ -141,6 +141,8 @@ export const COLLECTION_NAMES = {
 	/** The four legal pages and every earlier version of them (Legal Pages brief, 2026-11-16). */
 	LegalPage: 'legalPages',
 	LegalPageRevision: 'legalPageRevisions',
+	/** Unfinished product-form work, kept apart from products (product bulk actions brief § 7, 2026-11-19). */
+	ProductDraft: 'productDrafts',
 	/** Page Builder: each page's schedule, its layouts, their append-only revisions, saved blocks (2026-11-17). */
 	BuilderPage: 'builderPages',
 	PageLayout: 'pageLayouts',

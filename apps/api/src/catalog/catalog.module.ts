@@ -5,6 +5,9 @@ import { BlogModule } from '../blog/blog.module';
 import { AdminAddonTemplatesController } from './admin-addon-templates.controller';
 import { AdminFaqController, AdminQuestionsController, FaqController, QuestionsController } from './content.controller';
 import { AdminProductsController } from './admin-products.controller';
+import { AdminProductDraftsController } from './admin-product-drafts.controller';
+import { ProductBulkService } from './product-bulk.service';
+import { ProductDraftsService } from './product-drafts.service';
 import { AdminRedirectsController } from './admin-redirects.controller';
 import { AdminSearchTermsController, AdminStorefrontSettingsController } from './admin-search-terms.controller';
 import { AdminTaxonomyController } from './admin-taxonomy.controller';
@@ -34,6 +37,7 @@ import { TaxonomyService } from './taxonomy.service';
 		AdminSearchTermsController,
 		AdminStorefrontSettingsController,
 		AdminProductsController,
+		AdminProductDraftsController,
 		AdminTaxonomyController,
 		AdminAddonTemplatesController,
 		StorefrontCatalogController,
@@ -46,6 +50,8 @@ import { TaxonomyService } from './taxonomy.service';
 	],
 	providers: [
 		ProductBuilderService,
+		ProductBulkService,
+		ProductDraftsService,
 		TaxonomyService,
 		CatalogService,
 		CatalogPublicService,

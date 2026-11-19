@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Inject, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AdminShopEventListQuery, ShopEventCreate, ShopEventWrite } from '@saha-textile/contracts';
+import { AdminShopEventListQuery, ProductSaleWrite, ShopEventCreate, ShopEventWrite } from '@saha-textile/contracts';
 import type { AdminUserRepository } from '@saha-textile/core-domain';
 
 import { Principal } from '../auth/ownership';
@@ -8,6 +8,7 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { ADMIN_USER_REPOSITORY } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
+import { EventProductsService } from './event-products.service';
 import { EventsAdminService } from './events-admin.service';
 
 const actor = (principal: AuthenticatedPrincipal | undefined) => principal?.userId ?? null;
@@ -23,7 +24,25 @@ export class AdminEventsController {
 	constructor(
 		private readonly events: EventsAdminService,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: AdminUserRepository,
+		private readonly saleProducts: EventProductsService,
 	) {}
+
+	/**
+	 * Put on sale from the product list: products join a sale that has not ended, or a new draft
+	 * sale made for them. Joining a sale needs the right to edit events; a new sale, to add them.
+	 * `dryRun` shows every price and every product left out, and changes nothing.
+	 */
+	@Post('sale-products')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('event.index', 'product.index')
+	@ApiOperation({ operationId: 'addProductsToSale', summary: 'Put products on sale from the product list' })
+	addProducts(
+		@Body(new ZodValidationPipe(ProductSaleWrite)) body: ProductSaleWrite,
+		@Principal() principal: AuthenticatedPrincipal,
+	) {
+		return this.saleProducts.addProducts(body, principal);
+	}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')

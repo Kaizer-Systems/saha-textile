@@ -4,6 +4,8 @@ export * from './fx';
 export * from './catalog';
 export * from './catalog-read';
 export * from './catalog-write';
+export * from './product-bulk';
+export * from './product-draft';
 export * from './category';
 export * from './category-placement';
 export * from './attribute';

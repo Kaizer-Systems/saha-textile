@@ -26,6 +26,7 @@ import {
 	MongoBlogCategoryRepository,
 	MongoBlogPostRepository,
 	MongoLegalPageRepository,
+	MongoProductDraftRepository,
 	MongoPageLayoutRepository,
 	MongoSavedBlockRepository,
 	MongoShopEventRepository,
@@ -193,6 +194,7 @@ import {
 	CONTENT_BLOCK_REPOSITORY,
 	BLOG_POST_REPOSITORY,
 	LEGAL_PAGE_REPOSITORY,
+	PRODUCT_DRAFT_REPOSITORY,
 	PAGE_LAYOUT_REPOSITORY,
 	PREVIEW_TOKEN_REPOSITORY,
 	SAVED_BLOCK_REPOSITORY,
@@ -378,6 +380,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: BLOG_POST_REPOSITORY, useClass: MongoBlogPostRepository },
 		// The four legal pages (Legal Pages brief, 2026-11-15).
 		{ provide: LEGAL_PAGE_REPOSITORY, useClass: MongoLegalPageRepository },
+		{ provide: PRODUCT_DRAFT_REPOSITORY, useClass: MongoProductDraftRepository },
 		// Page Builder (brief revision 2, 2026-11-17).
 		{ provide: PAGE_LAYOUT_REPOSITORY, useClass: MongoPageLayoutRepository },
 		{ provide: PREVIEW_TOKEN_REPOSITORY, useExisting: PAGE_LAYOUT_REPOSITORY },
@@ -533,6 +536,7 @@ import { LanguageStore } from '../languages/language-store';
 		CONTENT_BLOCK_REPOSITORY,
 		BLOG_POST_REPOSITORY,
 		LEGAL_PAGE_REPOSITORY,
+		PRODUCT_DRAFT_REPOSITORY,
 		PAGE_LAYOUT_REPOSITORY,
 		PREVIEW_TOKEN_REPOSITORY,
 		SAVED_BLOCK_REPOSITORY,

@@ -55,6 +55,7 @@ export * from './pending-signup.model';
 export * from './pending-contact-change.model';
 export * from './blog.model';
 export * from './legal-page.model';
+export * from './product-draft.model';
 export * from './shipping.model';
 export * from './page-layout.model';
 export * from './store-location.model';

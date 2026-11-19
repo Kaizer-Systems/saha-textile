@@ -31,6 +31,7 @@ export * from './stock-alert.repository';
 export * from './dashboard.repository';
 export * from './blog.repository';
 export * from './legal-page.repository';
+export * from './product-draft.repository';
 export * from './shipping.repository';
 export * from './page-layout.repository';
 export * from './store-location.repository';

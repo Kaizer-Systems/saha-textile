@@ -28,7 +28,7 @@ import {
 	PRODUCT_VARIANT_REPOSITORY,
 } from '../infra/tokens';
 
-const slugFrom = (title: string): string =>
+export const slugFrom = (title: string): string =>
 	title
 		.toLowerCase()
 		.normalize('NFKD')
@@ -82,7 +82,8 @@ export class ProductBuilderService {
 		return { id, slug };
 	}
 
-	private async freeSlug(base: string): Promise<string> {
+	/** The first free address from this base: `saree`, then `saree-2`, `saree-3`… */
+	async freeSlug(base: string): Promise<string> {
 		if (!base) throw new BadRequestException('A product needs an English name');
 		for (let attempt = 1; ; attempt += 1) {
 			const slug = attempt === 1 ? base : `${base}-${attempt}`;

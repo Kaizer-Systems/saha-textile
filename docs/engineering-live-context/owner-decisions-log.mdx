@@ -1926,3 +1926,33 @@ files for every caller and prints names, never values.
 - **Build order:** contracts → core rule engine → adapters → API → admin → shop. Still open and not
   decided by the brief: foreign-price rounding (FX3), repricing threshold (FX5), refunds in foreign
   currency (FX8), and the CA's C2 questions on how the delivery charge is taxed.
+
+## Owner decision round (2026-11-19) — product bulk actions and product drafts brief approved
+
+- **The Product Bulk Actions brief (round 3) is approved with the recommended answers (owner,
+  2026-11-19: "A few was recommended with question three also taking your recommendation of
+  removing them." — dictated; read as "Approve as recommended", Q3 = remove).**
+  https://claude.ai/artifact/LR2dRNgmXPWss4N8HGHTac. Approval covers the screens, the logic lists and
+  the reuse table; the only new styling is placing the copied picked-list under the bar and pinning
+  the bar to the bottom on phones (`DEC-UI-REUSE`).
+- **Scope:** ticks that stay through search, page, sort and page size on every shared admin table
+  (kept for the browser tab); the selection bar, chips with ✕ and the "Show list" panel; bulk Go Live,
+  Take off shop, Discontinue, Put on sale, Duplicate and Delete on Products, all working on the
+  server; the row Status switch made true and working; the sale form's Discounts table at full width
+  without wrapping; Save as draft on the product form for new products and for changes to existing
+  ones, with one Products › Drafts screen.
+- **Q1 = A — Delete only for products that never went live.** A product that has been live, sold or
+  stocked is discontinued, never deleted (fits the hard-delete-for-exceptions rule). The row bin icon
+  follows the same rule.
+- **Q2 = A — "Discount" means a timed sale only.** Bulk Put on sale adds products to a sale from
+  Events (% off, ₹ off, or a fixed sale price typed per product, per colour where needed). No
+  permanent "Change price" bulk action.
+- **Q3 = B — remove the Approve and Store columns from the product list (the owner's written
+  say-so).** Both came from the Fastkart marketplace template; Saha Textile is one shop. The physical
+  stores on the Stores screen are unaffected.
+- **Q4 = A — the product status `draft` shows as "Not live yet"** in the admin; "Draft" means only
+  unfinished work saved with Save as draft. Only the label changes; the stored status stays `draft`.
+- **Product drafts live apart from products** (own collection): never seen by the shop, search,
+  sitemap, sales or stock; never deleted automatically; one draft of changes per product per person;
+  Update Product runs every check and writes only the changed fields, asking per field when the
+  product was saved by someone else after the draft began.

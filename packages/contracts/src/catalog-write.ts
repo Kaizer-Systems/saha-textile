@@ -203,6 +203,8 @@ export const AdminProductRow = z.object({
 	stock: z.number().int(),
 	variantCount: z.number().int().nonnegative(),
 	thumbnailUrl: z.string().nullable(),
+	/** True once the product has been live: "Off shop" rather than "Not live yet" when it isn't. */
+	wasLive: z.boolean().default(false),
 });
 export type AdminProductRow = z.infer<typeof AdminProductRow>;
 
@@ -296,6 +298,8 @@ export const AdminProductDetail = z.object({
 	crossSellProductIds: z.array(z.string()),
 	variants: z.array(AdminVariantView),
 	videos: z.array(ProductVideo).default([]),
+	/** The product's last save, for a draft of changes' conflict check. */
+	updatedAt: z.string().nullable().default(null),
 });
 export type AdminProductDetail = z.infer<typeof AdminProductDetail>;
 

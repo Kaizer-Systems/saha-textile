@@ -132,6 +132,75 @@ export class CatalogService {
 		return { hasStock, hasMovements: moved.size > 0, hasOrders };
 	}
 
+	/** Stock, stock history and orders: what keeps a product from ever being deleted (bulk Delete, Q1 = A). */
+	async deletionFacts(product: Product) {
+		return this.soldByFacts(product, await this.variants.listForProduct(product.id, 'admin'));
+	}
+
+	/**
+	 * Take off shop: a live product stays saved with everything in it, but the shop and search stop
+	 * showing it until it goes live again. Its old links answer "not found" meanwhile.
+	 */
+	async takeOff(product: Product, actorUserId: string | null): Promise<Product> {
+		const next: Product = {
+			...product,
+			status: 'disabled',
+			lifecycle: { ...product.lifecycle, disabledAt: new Date().toISOString() },
+		};
+		await this.inTransaction(async () => {
+			await this.products.save(next);
+			await this.searchOutbox?.request([product.id], new Date());
+		});
+		await this.syncSearch(next);
+		await this.record(actorUserId, 'catalog.product.take-off', product.id, { sku: product.sku });
+		return next;
+	}
+
+	/**
+	 * Deletes a product that never went live, was never stocked and is on no order, with its rows,
+	 * its own questions and the links it offers. The caller has checked that it may.
+	 */
+	async removeNeverLive(product: Product, actorUserId: string | null): Promise<void> {
+		const variants = await this.variants.listForProduct(product.id, 'admin');
+		const faq = this.faqs ? await this.faqs.listForProduct(product.id) : [];
+		const relations: ProductRelation[] = [];
+		if (this.relations) {
+			for (const relationType of RELATION_TYPES) {
+				relations.push(
+					...(await this.relations.listForProduct({
+						sourceProductId: product.id,
+						relationType,
+						audience: 'admin',
+						pageSize: 100,
+					})),
+				);
+			}
+		}
+		await this.inTransaction(async () => {
+			for (const row of variants) await this.variants.deleteById(row.id);
+			for (const row of relations) await this.relations?.deleteById(row.id);
+			// Others stop offering it as related, upsell or cross-sell.
+			await this.relations?.disableForTarget(product.id);
+			await this.products.deleteById(product.id);
+		});
+		for (const entry of faq) if (entry.productIds.length === 1) await this.faqs?.deleteById(entry.id);
+		await this.record(actorUserId, 'catalog.product.delete', product.id, {
+			sku: product.sku,
+			title: product.title.en,
+		});
+	}
+
+	/** A copy gets the original's own questions and the products it offers (related, upsell, cross-sell). */
+	async copyExtras(fromId: string, toId: string): Promise<void> {
+		const ids = await this.manualRelationIds(fromId);
+		for (const relationType of RELATION_TYPES)
+			await this.replaceManualRelations(toId, relationType, ids[relationType]);
+		if (!this.faqs) return;
+		for (const { createdAt: _created, updatedAt: _updated, ...entry } of await this.faqs.listForProduct(fromId)) {
+			await this.faqs.save(FaqEntry.parse({ ...entry, id: `faq_${randomUUID()}`, productIds: [toId] }));
+		}
+	}
+
 	/** The main category's HSN and returnability, the defaults the form shows (F02, PD3). */
 	private async mainCategoryOf(product: Product) {
 		const id = mainCategoryId(product.categoryIds);
@@ -288,7 +357,8 @@ export class CatalogService {
 		return { slug: product.slug, statusCode: redirect.statusCode, targetPath: replacement?.path ?? null };
 	}
 
-	private async liveReplacement(path: string, ownSlug: string): Promise<Product['replacementTarget']> {
+	/** Refuses a replacement that is not a live product or collection, or is the product itself. */
+	async liveReplacement(path: string, ownSlug: string): Promise<Product['replacementTarget']> {
 		const [, kind, ...rest] = path.split('/');
 		if (kind === 'product') {
 			const slug = rest[0] ?? '';
@@ -331,6 +401,7 @@ export class CatalogService {
 				stock: variants.reduce((sum, row) => sum + row.stock.quantity, 0),
 				variantCount: variants.length,
 				thumbnailUrl: this.thumbnail(assets.get(product.media.gallery[0] ?? '')),
+				wasLive: isPublished(product),
 			})),
 			total: page.total,
 			page: page.page,
@@ -411,6 +482,7 @@ export class CatalogService {
 			upsellProductIds: relationIds.upsell,
 			crossSellProductIds: relationIds.cross_sell,
 			videos: product.videos,
+			updatedAt: product.updatedAt ?? null,
 			variants: variants.map((row) => ({
 				id: row.id,
 				sku: row.sku,
@@ -752,6 +824,12 @@ export class CatalogService {
 		if (!this.media || wanted.length === 0) return new Map();
 		const assets = await this.media.findManyByIds(wanted);
 		return new Map(assets.map((asset) => [asset.id, asset]));
+	}
+
+	/** List-size pictures for these photos, by photo id (Products › Drafts). */
+	async thumbnailsFor(ids: readonly string[]): Promise<Map<string, string | null>> {
+		const assets = await this.assetsFor([...ids]);
+		return new Map([...ids].map((id) => [id, this.thumbnail(assets.get(id))]));
 	}
 
 	private thumbnail(asset: MediaAsset | undefined): string | null {

@@ -14,6 +14,15 @@
 	}
 }
 
+// Approved custom piece 2 (Gmail Workspace Upgrade brief): the Select all box's mixed state. The
+// theme draws its tick as a rotated corner in :before; here it lies flat as a short bar.
+.checkbox_animated:indeterminate:before {
+	transform: rotate(0) scale(1, 1);
+	height: 0;
+	border-left-style: none;
+	top: 8px;
+}
+
 // Each message body sits in a locked-down frame, grown to its content so the conversation scrolls
 // as one page.
 .inbox-frame {

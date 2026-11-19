@@ -235,6 +235,8 @@ export type InboxThreadSummary = z.infer<typeof InboxThreadSummary>;
 export const InboxThreadPage = z.object({
 	threads: z.array(InboxThreadSummary),
 	nextPageToken: z.string().nullable(),
+	/** Gmail's own rough count of every conversation in this list, for "Select all about 130". */
+	estimate: z.number().int().nonnegative().nullable().default(null),
 });
 export type InboxThreadPage = z.infer<typeof InboxThreadPage>;
 

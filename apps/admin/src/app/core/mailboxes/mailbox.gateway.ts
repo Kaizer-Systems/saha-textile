@@ -9,7 +9,12 @@ import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.intercepto
 
 import type {
 	AdminMailboxRow,
+	InboxBinSummary,
+	InboxBulkRequest,
+	InboxBulkResult,
+	InboxEmptyBinResult,
 	InboxFolder,
+	InboxLabel,
 	InboxMailboxSummary,
 	InboxModifyRequest,
 	InboxSendRequest,
@@ -99,8 +104,15 @@ export class MailboxGateway {
 		return this.http.get<InboxMailboxSummary[]>(this.inbox(), { context: quiet() });
 	}
 
-	threads(mailboxId: string, folder: InboxFolder, q?: string, pageToken?: string): Observable<InboxThreadPage> {
+	threads(
+		mailboxId: string,
+		folder: InboxFolder,
+		q?: string,
+		pageToken?: string,
+		label?: string,
+	): Observable<InboxThreadPage> {
 		let params = new HttpParams().set('folder', folder);
+		if (label) params = params.set('label', label);
 		if (q) params = params.set('q', q);
 		if (pageToken) params = params.set('pageToken', pageToken);
 		return this.http.get<InboxThreadPage>(this.inbox(`/${this.id(mailboxId)}/threads`), {
@@ -129,13 +141,54 @@ export class MailboxGateway {
 		});
 	}
 
-	modify(mailboxId: string, threadId: string, action: InboxModifyRequest['action']): Observable<{ ok: boolean }> {
+	modify(
+		mailboxId: string,
+		threadId: string,
+		action: InboxModifyRequest['action'],
+		labelId?: string,
+	): Observable<{ ok: boolean }> {
 		return this.http.post<{ ok: boolean }>(
 			this.inbox(`/${this.id(mailboxId)}/threads/${this.id(threadId)}/modify`),
-			{
-				action,
-			},
+			labelId ? { action, labelId } : { action },
 		);
+	}
+
+	/** Marks exactly these messages; quiet, because a failure is retried the next time they show. */
+	markMessages(mailboxId: string, messageIds: readonly string[], read: boolean): Observable<{ ok: boolean }> {
+		return this.http.post<{ ok: boolean }>(
+			this.inbox(`/${this.id(mailboxId)}/messages/read`),
+			{ messageIds, read },
+			{ context: quiet() },
+		);
+	}
+
+	labels(mailboxId: string): Observable<InboxLabel[]> {
+		return this.http.get<InboxLabel[]>(this.inbox(`/${this.id(mailboxId)}/labels`), { context: quiet() });
+	}
+
+	createLabel(mailboxId: string, name: string): Observable<InboxLabel> {
+		return this.http.post<InboxLabel>(this.inbox(`/${this.id(mailboxId)}/labels`), { name });
+	}
+
+	renameLabel(mailboxId: string, labelId: string, name: string): Observable<InboxLabel> {
+		return this.http.patch<InboxLabel>(this.inbox(`/${this.id(mailboxId)}/labels/${this.id(labelId)}`), { name });
+	}
+
+	deleteLabel(mailboxId: string, labelId: string): Observable<{ ok: boolean }> {
+		return this.http.delete<{ ok: boolean }>(this.inbox(`/${this.id(mailboxId)}/labels/${this.id(labelId)}`));
+	}
+
+	/** Quiet: the Inbox reports what was done and what failed itself. */
+	bulk(mailboxId: string, body: InboxBulkRequest): Observable<InboxBulkResult> {
+		return this.http.post<InboxBulkResult>(this.inbox(`/${this.id(mailboxId)}/bulk`), body, { context: quiet() });
+	}
+
+	binSummary(mailboxId: string): Observable<InboxBinSummary> {
+		return this.http.get<InboxBinSummary>(this.inbox(`/${this.id(mailboxId)}/bin`));
+	}
+
+	emptyBin(mailboxId: string): Observable<InboxEmptyBinResult> {
+		return this.http.post<InboxEmptyBinResult>(this.inbox(`/${this.id(mailboxId)}/bin/empty`), {});
 	}
 }
 

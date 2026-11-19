@@ -32,6 +32,7 @@ import { INBOX_KEY, INBOX_REFRESH_MS, MailboxGateway, injectInboxSummaryQuery } 
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { LanguageNamePipe, PluralPipe } from '@shared/pipes/language.pipes';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 import {
@@ -57,19 +58,23 @@ import {
 	primaryAddress,
 	sendRequest,
 } from './inbox-drafts';
+import { CATEGORY_KEYS, LABEL_ID, bulkReport, labelTree, pageSelection } from './inbox-labels';
 
 import type {
 	InboxAttachment,
+	InboxBulkRequest,
 	InboxFolder,
 	InboxMailboxSummary,
 	InboxMessage,
 	InboxModifyRequest,
 	InboxThreadSummary,
+	MailboxRight,
 } from '@saha-textile/contracts';
-import { LanguageNamePipe, PluralPipe } from '@shared/pipes/language.pipes';
 
 export const FOLDERS: readonly { id: InboxFolder; icon: string }[] = [
 	{ id: 'inbox', icon: 'ri-inbox-line' },
+	{ id: 'starred', icon: 'ri-star-line' },
+	{ id: 'important', icon: 'ri-bookmark-line' },
 	{ id: 'sent', icon: 'ri-send-plane-line' },
 	{ id: 'all', icon: 'ri-mail-line' },
 	{ id: 'spam', icon: 'ri-spam-2-line' },
@@ -170,6 +175,11 @@ export class Inbox {
 
 	private readonly discardModal = viewChild<TemplateRef<unknown>>('discardModal');
 	private readonly runnableModal = viewChild<TemplateRef<unknown>>('runnableModal');
+	private readonly foreverModal = viewChild<TemplateRef<unknown>>('foreverModal');
+	private readonly emptyBinModal = viewChild<TemplateRef<unknown>>('emptyBinModal');
+	private readonly labelModal = viewChild<TemplateRef<unknown>>('labelModal');
+	private readonly labelDeleteModal = viewChild<TemplateRef<unknown>>('labelDeleteModal');
+	readonly categoryKeys = CATEGORY_KEYS;
 
 	// ── The page address ──────────────────────────────────────────────────────────
 
@@ -179,6 +189,11 @@ export class Inbox {
 	readonly folder = computed<InboxFolder>(() => {
 		const folder = this.params().get('folder') ?? 'inbox';
 		return FOLDER_IDS.has(folder) ? (folder as InboxFolder) : 'inbox';
+	});
+	/** A custom label or category named where a folder would be (`/inbox/wecare/Label_123`). */
+	readonly labelId = computed(() => {
+		const segment = this.params().get('folder') ?? '';
+		return !FOLDER_IDS.has(segment) && LABEL_ID.test(segment) ? segment : null;
 	});
 	readonly openId = computed(() => this.params().get('thread'));
 	readonly q = computed(() => (this.queryParams().get('q') ?? '').trim());
@@ -204,8 +219,15 @@ export class Inbox {
 		return all.find((entry) => mailboxKey(entry.address) === key) ?? all[0] ?? null;
 	});
 	readonly connected = computed(() => this.mailbox()?.status === 'connected');
-	readonly canSend = computed(() => Boolean(this.mailbox()?.canSend) && this.connected());
-	readonly readOnly = computed(() => this.connected() && !this.mailbox()?.canSend);
+	/** This person's rights in the open mailbox; buttons follow them, and the API checks them again. */
+	private readonly rights = computed(() => {
+		const mailbox = this.mailbox();
+		// A summary from before rights existed meant read, or read-and-send (migration 0007).
+		const legacy: MailboxRight[] = mailbox?.canSend ? ['read', 'send', 'organise', 'bin'] : ['read'];
+		return new Set<MailboxRight>(mailbox?.rights ?? (mailbox ? legacy : []));
+	});
+	readonly canSend = computed(() => this.connected() && this.rights().has('send'));
+	readonly readOnly = computed(() => this.connected() && !this.rights().has('send'));
 	/** Each choice says what it is before it is opened (review U1). */
 	readonly mailboxChoices = computed<Select2Data>(() =>
 		this.mailboxes().map((entry) => ({
@@ -240,23 +262,59 @@ export class Inbox {
 	readonly firstPage = computed(() => this.pages().length === 0);
 	readonly searchText = signal('');
 	private readonly listKey = computed(() =>
-		[this.mailbox()?.mailboxId ?? '', this.folder(), this.q(), this.pages().at(-1) ?? ''].join('|'),
+		[
+			this.mailbox()?.mailboxId ?? '',
+			this.folder(),
+			this.labelId() ?? '',
+			this.q(),
+			this.pages().at(-1) ?? '',
+		].join('|'),
 	);
 
 	private readonly threadsQuery = injectQuery(() => {
 		const mailboxId = this.mailbox()?.mailboxId ?? '';
 		const folder = this.folder();
+		const label = this.labelId() ?? undefined;
 		const q = this.q();
 		const pageToken = this.pages().at(-1);
 		return {
-			queryKey: [...INBOX_KEY, mailboxId, 'threads', folder, q, pageToken ?? ''],
-			queryFn: () => firstValueFrom(this.gateway.threads(mailboxId, folder, q || undefined, pageToken)),
+			queryKey: [...INBOX_KEY, mailboxId, 'threads', folder, label ?? '', q, pageToken ?? ''],
+			queryFn: () => firstValueFrom(this.gateway.threads(mailboxId, folder, q || undefined, pageToken, label)),
 			enabled: Boolean(mailboxId) && this.connected(),
 			refetchInterval: INBOX_REFRESH_MS,
 			retry: 1,
 		};
 	});
 	readonly nextPage = computed(() => this.threadsQuery.data()?.nextPageToken ?? null);
+	readonly estimate = computed(() => this.threadsQuery.data()?.estimate ?? null);
+	/** When Gmail last answered for this list: what "Checked 10:42" shows. */
+	readonly checkedAt = computed(() => this.threadsQuery.dataUpdatedAt() || null);
+
+	// ── Labels ────────────────────────────────────────────────────────────────────
+
+	private readonly labelsQuery = injectQuery(() => {
+		const mailboxId = this.mailbox()?.mailboxId ?? '';
+		return {
+			queryKey: [...INBOX_KEY, mailboxId, 'labels'],
+			queryFn: () => firstValueFrom(this.gateway.labels(mailboxId)),
+			enabled: Boolean(mailboxId) && this.connected(),
+			refetchInterval: INBOX_REFRESH_MS,
+			retry: 1,
+		};
+	});
+	readonly labelLists = computed(() => labelTree(this.labelsQuery.data() ?? []));
+	private readonly labelNames = computed(
+		() => new Map(this.labelLists().labels.map((label) => [label.id, label.name] as const)),
+	);
+	/** The label or category the list shows, for its heading and empty text. */
+	readonly currentLabel = computed(() => {
+		const id = this.labelId();
+		if (!id) return null;
+		const lists = this.labelLists();
+		return [...lists.labels, ...lists.categories].find((label) => label.id === id) ?? null;
+	});
+	readonly labelEdit = signal<{ id: string | null; name: string } | null>(null);
+	readonly labelToDelete = signal<{ id: string; name: string } | null>(null);
 	readonly loadingThreads = computed(() => this.connected() && this.threadsQuery.isPending());
 	readonly listFailed = computed(() => this.threadsQuery.isError() && !this.threadsQuery.data());
 
@@ -274,6 +332,27 @@ export class Inbox {
 		const byId = new Map(fresh.map((row) => [row.id, row]));
 		return held.ids.flatMap((id) => byId.get(id) ?? []);
 	});
+	// ── Selection ─────────────────────────────────────────────────────────────────
+
+	/** Ticked conversations on this list. A refresh never ticks new arrivals; moving away clears it. */
+	readonly selected = signal<ReadonlySet<string>>(new Set());
+	/** "Select all about 130": the action goes to every conversation that matches, read on the server. */
+	readonly allMatching = signal(false);
+	readonly selection = computed(() =>
+		pageSelection(
+			this.threads().map((row) => row.id),
+			this.selected(),
+		),
+	);
+	readonly selectedRows = computed(() => this.threads().filter((row) => this.selected().has(row.id)));
+	readonly selectionHasUnread = computed(() => this.selectedRows().some((row) => row.unread));
+	readonly selectionHasRead = computed(() => this.selectedRows().some((row) => !row.unread));
+	readonly bulkBusy = signal(false);
+	readonly bulkNote = signal<{ key: string; params: Record<string, number>; retry: string[] } | null>(null);
+	private lastBulk: { action: InboxBulkRequest['action']; labelId?: string } | null = null;
+	readonly binCount = signal<{ threads: number; messages: number } | null>(null);
+	readonly refreshing = signal(false);
+
 	readonly waiting = computed(() => {
 		const held = this.held();
 		if (!held || held.key !== this.listKey()) return 0;
@@ -358,6 +437,11 @@ export class Inbox {
 	/** Read out by screen readers when it changes (review T12). */
 	readonly announcement = signal('');
 	private lastOpened: string | null = null;
+	/**
+	 * Messages already marked read from here, as `mailbox:message` (R6). Keyed by message, not by
+	 * conversation, so a reply that arrives later is marked when it is shown; a failed mark is
+	 * forgotten so it is tried again.
+	 */
 	private readonly markedRead = new Set<string>();
 	private runnableUrl = '';
 	private noAccessShownAt = '';
@@ -413,10 +497,31 @@ export class Inbox {
 			this.remember(mailboxKey(mailbox.address), this.folder());
 		});
 
+		// Moving to another list (mailbox, folder, label, search or page) clears the selection.
+		effect(() => {
+			this.listKey();
+			untracked(() => {
+				this.selected.set(new Set());
+				this.allMatching.set(false);
+			});
+		});
+
+		// A label deleted or renamed away in Gmail: its old address lands on the Inbox with a note.
+		effect(() => {
+			const id = this.labelId();
+			const loaded = this.labelsQuery.isSuccess();
+			if (!id || !loaded || this.currentLabel()) return;
+			untracked(() => {
+				this.notifier.showError(this.transloco.translate('inbox_label_gone'));
+				void this.router.navigate(this.listLink('inbox'), { replaceUrl: true });
+			});
+		});
+
 		// A new mailbox, folder or search starts from its first page, with the list taken fresh.
 		effect(() => {
 			this.mailbox();
 			this.folder();
+			this.labelId();
 			this.q();
 			untracked(() => {
 				this.pages.set([]);
@@ -453,10 +558,11 @@ export class Inbox {
 				this.lastOpened = thread.id;
 				setTimeout(() => document.getElementById('inbox_subject')?.focus());
 				const mailboxId = this.mailbox()?.mailboxId;
-				if (thread.unread && mailboxId && !this.markedRead.has(thread.id)) {
-					this.markedRead.add(thread.id);
-					void this.mark(mailboxId, thread.id);
-				}
+				if (!mailboxId) return;
+				const unseen = thread.messages
+					.filter((message) => message.unread && !this.markedRead.has(`${mailboxId}:${message.id}`))
+					.map((message) => message.id);
+				if (unseen.length) void this.markShown(mailboxId, unseen);
 			});
 		});
 
@@ -479,9 +585,257 @@ export class Inbox {
 
 	// ── Navigation ────────────────────────────────────────────────────────────────
 
-	/** The list's address: mailbox and folder, keeping a search. */
-	listLink(folder: InboxFolder = this.folder()): string[] {
-		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), folder];
+	/** The list's address: mailbox and folder (or label), keeping a search. */
+	listLink(folder: InboxFolder | null = null): string[] {
+		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), folder ?? this.labelId() ?? this.folder()];
+	}
+
+	labelLink(labelId: string): string[] {
+		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), labelId];
+	}
+
+	/** The custom labels a row carries, by name; categories and system labels are not chips. */
+	rowLabels(row: InboxThreadSummary): string[] {
+		const names = this.labelNames();
+		return row.labelIds.flatMap((id) => (id === this.labelId() ? [] : (names.get(id) ?? [])));
+	}
+
+	can(right: MailboxRight): boolean {
+		return this.connected() && this.rights().has(right);
+	}
+
+	// ── Refresh ───────────────────────────────────────────────────────────────────
+
+	/**
+	 * Asks Gmail now for the counts, labels, this list and the open conversation (R1). The API
+	 * checks Gmail's change marker first, so unchanged mail still costs almost nothing. A second
+	 * click while one runs does nothing; a manual failure says so once.
+	 */
+	async refresh() {
+		if (this.refreshing()) return;
+		this.refreshing.set(true);
+		this.adoptNext = true;
+		try {
+			const results = await Promise.all([
+				this.summary.refetch(),
+				this.labelsQuery.refetch(),
+				this.threadsQuery.refetch(),
+				...(this.openId() ? [this.threadQuery.refetch()] : []),
+			]);
+			const failed = results.some((result) => result.isError);
+			const note = this.transloco.translate(failed ? 'inbox_refresh_failed' : 'inbox_refreshed');
+			if (failed) this.notifier.showError(note);
+			this.announcement.set(note);
+		} finally {
+			this.refreshing.set(false);
+		}
+	}
+
+	// ── Selection and bulk actions ────────────────────────────────────────────────
+
+	toggleRow(threadId: string, on: boolean) {
+		this.allMatching.set(false);
+		this.bulkNote.set(null);
+		this.selected.update((selected) => {
+			const next = new Set(selected);
+			if (on) next.add(threadId);
+			else next.delete(threadId);
+			return next;
+		});
+	}
+
+	/** The Select all box: ticks this page only; a second step reaches every match. */
+	toggleAll() {
+		this.allMatching.set(false);
+		this.bulkNote.set(null);
+		this.selected.set(this.selection() === 'all' ? new Set() : new Set(this.threads().map((row) => row.id)));
+	}
+
+	selectAllMatching() {
+		this.allMatching.set(true);
+	}
+
+	clearSelection() {
+		this.selected.set(new Set());
+		this.allMatching.set(false);
+	}
+
+	/**
+	 * One action on the ticked conversations, or on every match. What failed stays ticked with a
+	 * Retry for just those; what moved out of view disappears on the refresh that follows.
+	 */
+	async bulk(action: InboxBulkRequest['action'], labelId?: string, threadIds?: readonly string[]) {
+		const mailboxId = this.mailbox()?.mailboxId;
+		if (!mailboxId || this.bulkBusy()) return;
+		const ids = threadIds ?? [...this.selected()];
+		const matching = !threadIds && this.allMatching();
+		if (!matching && !ids.length) return;
+		this.bulkBusy.set(true);
+		this.lastBulk = { action, labelId };
+		try {
+			const result = await firstValueFrom(
+				this.gateway.bulk(mailboxId, {
+					action,
+					...(labelId ? { labelId } : {}),
+					...(matching
+						? {
+								matching: {
+									folder: this.folder(),
+									label: this.labelId() ?? undefined,
+									q: this.q() || undefined,
+								},
+							}
+						: { threadIds: [...ids] }),
+				}),
+			);
+			const report = bulkReport(result);
+			this.bulkNote.set(report.retry.length || result.failed.length ? report : null);
+			this.selected.set(new Set(report.retry));
+			this.allMatching.set(false);
+			const message = this.transloco.translate(report.key, report.params);
+			if (result.failed.length) this.notifier.showError(message);
+			else this.notifier.showSuccess(message);
+			if (result.partlyKept.length) {
+				this.notifier.showSuccess(
+					this.transloco.translate('inbox_bulk_partly_kept', { count: result.partlyKept.length }),
+				);
+			}
+			if (result.truncated)
+				this.notifier.showError(this.transloco.translate('inbox_bulk_truncated', { count: 5000 }));
+			this.announcement.set(message);
+			const openGone = this.openId() && result.done.includes(this.openId() ?? '');
+			if (
+				openGone &&
+				!['mark_read', 'mark_unread', 'star', 'unstar', 'important', 'not_important'].includes(action)
+			) {
+				this.back();
+			}
+		} catch (error) {
+			this.notifier.showError(
+				this.transloco.translate(
+					statusOf(error) === 409 ? 'inbox_reconnect_needed_for' : 'inbox_refresh_failed',
+				),
+			);
+		} finally {
+			this.bulkBusy.set(false);
+			await this.reload();
+		}
+	}
+
+	retryBulk() {
+		const last = this.lastBulk;
+		const retry = this.bulkNote()?.retry ?? [];
+		if (last && retry.length) void this.bulk(last.action, last.labelId, retry);
+	}
+
+	/** Mark read or unread for the selection: one choice, or both when it is mixed. */
+	markSelection(read: boolean) {
+		void this.bulk(read ? 'mark_read' : 'mark_unread');
+	}
+
+	/** Adds a label to the selection, or removes it when every ticked row already has it. */
+	labelSelection(labelId: string) {
+		const all =
+			this.selectedRows().length > 0 && this.selectedRows().every((row) => row.labelIds.includes(labelId));
+		void this.bulk(all ? 'remove_label' : 'add_label', labelId);
+	}
+
+	/** Delete outside the Bin moves to the Bin; inside the Bin it asks before deleting for good. */
+	deleteSelection() {
+		if (this.folder() !== 'trash' || this.labelId()) {
+			void this.bulk('trash');
+			return;
+		}
+		const template = this.foreverModal();
+		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+	}
+
+	/** How many the Delete forever popup names: the ticked rows, or Gmail's count of every match. */
+	foreverCount(): number {
+		return this.allMatching() ? (this.estimate() ?? this.selected().size) : this.selected().size || 1;
+	}
+
+	deleteForeverNow() {
+		this.modals.dismissAll();
+		const open = this.openId();
+		void this.bulk(
+			'delete_forever',
+			undefined,
+			this.selected().size || this.allMatching() ? undefined : open ? [open] : [],
+		);
+	}
+
+	/** Star or unstar one row without opening it. */
+	async toggleStar(event: Event, row: InboxThreadSummary) {
+		event.preventDefault();
+		event.stopPropagation();
+		const mailboxId = this.mailbox()?.mailboxId;
+		if (!mailboxId || !this.can('organise')) return;
+		await firstValueFrom(this.gateway.modify(mailboxId, row.id, row.starred ? 'unstar' : 'star'));
+		await this.reload();
+	}
+
+	// ── The Bin ───────────────────────────────────────────────────────────────────
+
+	/** Empty Bin asks with Gmail's own count of what will go. */
+	async askEmptyBin() {
+		const mailboxId = this.mailbox()?.mailboxId;
+		const template = this.emptyBinModal();
+		if (!mailboxId || !template) return;
+		this.binCount.set(await firstValueFrom(this.gateway.binSummary(mailboxId)));
+		this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+	}
+
+	async emptyBinNow() {
+		const mailboxId = this.mailbox()?.mailboxId;
+		this.modals.dismissAll();
+		if (!mailboxId) return;
+		const result = await firstValueFrom(this.gateway.emptyBin(mailboxId));
+		const key = result.incomplete ? 'inbox_bin_partly_emptied' : 'inbox_bin_emptied';
+		const message = this.transloco.translate(key, { count: result.deletedMessages });
+		if (result.incomplete) this.notifier.showError(message);
+		else this.notifier.showSuccess(message);
+		this.announcement.set(message);
+		if (this.openId()) this.back();
+		await this.reload();
+	}
+
+	// ── Label management ──────────────────────────────────────────────────────────
+
+	openLabelEditor(label: { id: string; name: string } | null) {
+		this.labelEdit.set(label ? { ...label } : { id: null, name: '' });
+		const template = this.labelModal();
+		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal' });
+	}
+
+	async saveLabel() {
+		const mailboxId = this.mailbox()?.mailboxId;
+		const edit = this.labelEdit();
+		const name = edit?.name.trim() ?? '';
+		if (!mailboxId || !edit || !name) return;
+		await firstValueFrom(
+			edit.id ? this.gateway.renameLabel(mailboxId, edit.id, name) : this.gateway.createLabel(mailboxId, name),
+		);
+		this.modals.dismissAll();
+		this.notifier.showSuccess(this.transloco.translate('inbox_label_saved'));
+		await this.reload();
+	}
+
+	askDeleteLabel(label: { id: string; name: string }) {
+		this.labelToDelete.set(label);
+		const template = this.labelDeleteModal();
+		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
+	}
+
+	async deleteLabelNow() {
+		const mailboxId = this.mailbox()?.mailboxId;
+		const label = this.labelToDelete();
+		this.modals.dismissAll();
+		if (!mailboxId || !label) return;
+		await firstValueFrom(this.gateway.deleteLabel(mailboxId, label.id));
+		this.notifier.showSuccess(this.transloco.translate('inbox_label_deleted'));
+		if (this.labelId() === label.id) void this.router.navigate(this.listLink('inbox'));
+		await this.reload();
 	}
 
 	listQuery(): Record<string, string> | null {
@@ -567,18 +921,28 @@ export class Inbox {
 	// ── Conversation actions ──────────────────────────────────────────────────────
 
 	/** Archive, trash, restore, spam or mark unread. Anything that moves it out of view closes it. */
-	async act(action: InboxModifyRequest['action']) {
+	async act(action: InboxModifyRequest['action'], labelId?: string) {
 		const mailboxId = this.mailbox()?.mailboxId;
 		const threadId = this.openId();
 		if (!mailboxId || !threadId) return;
-		await firstValueFrom(this.gateway.modify(mailboxId, threadId, action));
+		await firstValueFrom(this.gateway.modify(mailboxId, threadId, action, labelId));
 		// Marked unread on purpose: opening it again marks it read, as Gmail does.
-		if (action === 'mark_unread') this.markedRead.delete(threadId);
+		if (action === 'mark_unread') {
+			for (const message of this.thread()?.messages ?? []) this.markedRead.delete(`${mailboxId}:${message.id}`);
+		}
 		const done = this.transloco.translate(DONE[action]);
 		this.notifier.showSuccess(done);
 		this.announcement.set(done);
-		if (action !== 'mark_read') this.back();
+		const stays = ['mark_read', 'star', 'unstar', 'important', 'not_important', 'add_label', 'remove_label'];
+		if (!stays.includes(action)) this.back();
 		await this.reload();
+	}
+
+	/** Delete forever for the open conversation, inside the Bin, after the same question. */
+	deleteOpenForever() {
+		this.clearSelection();
+		const template = this.foreverModal();
+		if (template) this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
 	}
 
 	isFolded(message: InboxMessage): boolean {
@@ -823,8 +1187,16 @@ export class Inbox {
 		keepDraft(id, draft);
 	}
 
-	private async mark(mailboxId: string, threadId: string) {
-		await firstValueFrom(this.gateway.modify(mailboxId, threadId, 'mark_read'));
+	/** Marks exactly the messages shown; on failure they are forgotten so the next view tries again. */
+	private async markShown(mailboxId: string, messageIds: readonly string[]) {
+		const keys = messageIds.map((id) => `${mailboxId}:${id}`);
+		keys.forEach((key) => this.markedRead.add(key));
+		try {
+			await firstValueFrom(this.gateway.markMessages(mailboxId, messageIds, true));
+		} catch {
+			keys.forEach((key) => this.markedRead.delete(key));
+			return;
+		}
 		await this.reload();
 	}
 

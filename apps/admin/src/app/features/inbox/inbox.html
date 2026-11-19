@@ -101,8 +101,8 @@
 						<a
 							class="nav-link"
 							[routerLink]="listLink(entry.id)"
-							[class.active]="!q() && folder() === entry.id"
-							[attr.aria-current]="!q() && folder() === entry.id ? 'page' : null"
+							[class.active]="!q() && !labelId() && folder() === entry.id"
+							[attr.aria-current]="!q() && !labelId() && folder() === entry.id ? 'page' : null"
 						>
 							<i [class]="entry.icon"></i>
 							{{ 'inbox_folder_' + entry.id | transloco }} @if (entry.id === 'inbox' && mailbox()?.unread)
@@ -111,6 +111,94 @@
 							}
 						</a>
 					</li>
+					}
+				</ul>
+				@if (labelLists().categories.length) {
+				<h6 class="text-content small mt-3 mb-1 px-3">{{ 'inbox_categories' | transloco }}</h6>
+				<ul class="nav nav-pills flex-column">
+					@for (label of labelLists().categories; track label.id) {
+					<li class="nav-item">
+						<a
+							class="nav-link"
+							[routerLink]="labelLink(label.id)"
+							[class.active]="!q() && labelId() === label.id"
+							[attr.aria-current]="!q() && labelId() === label.id ? 'page' : null"
+						>
+							{{ categoryKeys[label.id] | transloco }} @if (label.unread) {
+							<span class="badge bg-light text-dark ms-1">{{ label.unread }}</span>
+							}
+						</a>
+					</li>
+					}
+				</ul>
+				}
+				<div class="d-flex align-items-center justify-content-between mt-3 mb-1 px-3">
+					<h6 class="text-content small mb-0">{{ 'inbox_labels' | transloco }}</h6>
+					@if (can('labels')) {
+					<button
+						type="button"
+						class="btn btn-sm p-0"
+						id="inbox_new_label"
+						[title]="'inbox_new_label' | transloco"
+						[attr.aria-label]="'inbox_new_label' | transloco"
+						(click)="openLabelEditor(null)"
+					>
+						<i class="ri-add-line"></i>
+					</button>
+					}
+				</div>
+				<ul class="nav nav-pills flex-column">
+					@for (label of labelLists().labels; track label.id) {
+					<li class="nav-item d-flex align-items-center">
+						<a
+							[class]="'nav-link flex-grow-1 text-truncate ps-' + (label.depth > 1 ? 5 : label.depth + 3)"
+							[routerLink]="labelLink(label.id)"
+							[title]="label.name"
+							[class.active]="!q() && labelId() === label.id"
+							[attr.aria-current]="!q() && labelId() === label.id ? 'page' : null"
+						>
+							{{ label.leaf }} @if (label.unread) {
+							<span class="badge bg-light text-dark ms-1">{{ label.unread }}</span>
+							}
+						</a>
+						@if (can('labels')) {
+						<div
+							ngbDropdown
+							#labelMenu="ngbDropdown"
+							class="d-inline-block"
+							placement="bottom-end"
+						>
+							<button
+								type="button"
+								class="btn btn-sm p-1"
+								ngbDropdownAnchor
+								[title]="'inbox_label_actions' | transloco"
+								[attr.aria-label]="('inbox_label_actions' | transloco) + ': ' + label.name"
+								(click)="labelMenu.toggle()"
+							>
+								<i class="ri-more-2-fill"></i>
+							</button>
+							<div ngbDropdownMenu>
+								<button
+									ngbDropdownItem
+									type="button"
+									(click)="openLabelEditor(label)"
+								>
+									{{ 'inbox_rename_label' | transloco }}
+								</button>
+								<button
+									ngbDropdownItem
+									type="button"
+									(click)="askDeleteLabel(label)"
+								>
+									{{ 'inbox_delete_label' | transloco }}
+								</button>
+							</div>
+						</div>
+						}
+					</li>
+					} @empty {
+					<li class="text-content small px-3">{{ 'inbox_no_labels' | transloco }}</li>
 					}
 				</ul>
 			</div>
@@ -151,6 +239,214 @@
 						<i class="ri-close-line"></i>
 					</button>
 				</div>
+				}
+				<!-- The list's toolbar: Refresh normally; the selection's actions once a row is ticked (A3). -->
+				<div
+					class="d-flex align-items-center mb-2 flex-wrap gap-2"
+					id="inbox_toolbar"
+				>
+					<div class="custom-control custom-checkbox">
+						<input
+							type="checkbox"
+							class="custom-control-input checkbox_animated"
+							id="inbox_select_all"
+							[checked]="selection() === 'all'"
+							[indeterminate]="selection() === 'some'"
+							[disabled]="!threads().length"
+							[attr.aria-label]="'inbox_select_all' | transloco"
+							(change)="toggleAll()"
+						/>
+						<label
+							class="custom-control-label"
+							for="inbox_select_all"
+							[title]="'inbox_select_all' | transloco"
+						>
+							&nbsp;
+						</label>
+					</div>
+					@if (selected().size || allMatching()) {
+					<span class="fw-semibold">
+						{{ 'inbox_selected' | transloco: { count: allMatching() ? (estimate() ?? selected().size) :
+						selected().size } }}
+					</span>
+					@if (can('read')) { @if (selectionHasUnread() || allMatching()) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="bulkBusy()"
+						[title]="'inbox_mark_read' | transloco"
+						[attr.aria-label]="'inbox_mark_read' | transloco"
+						(click)="markSelection(true)"
+					>
+						<i class="ri-mail-open-line"></i>
+					</button>
+					} @if (selectionHasRead() || allMatching()) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="bulkBusy()"
+						[title]="'inbox_mark_unread' | transloco"
+						[attr.aria-label]="'inbox_mark_unread' | transloco"
+						(click)="markSelection(false)"
+					>
+						<i class="ri-mail-unread-line"></i>
+					</button>
+					} } @if (can('organise') && folder() === 'inbox' && !labelId()) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="bulkBusy()"
+						[title]="'inbox_archive' | transloco"
+						[attr.aria-label]="'inbox_archive' | transloco"
+						(click)="bulk('archive')"
+					>
+						<i class="ri-archive-line"></i>
+					</button>
+					} @if (can('organise') && labelLists().labels.length) {
+					<div
+						ngbDropdown
+						#bulkLabels="ngbDropdown"
+						class="d-inline-block"
+					>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							ngbDropdownAnchor
+							[disabled]="bulkBusy() || allMatching()"
+							[title]="'inbox_labels' | transloco"
+							[attr.aria-label]="'inbox_labels' | transloco"
+							(click)="bulkLabels.toggle()"
+						>
+							<i class="ri-price-tag-3-line"></i>
+						</button>
+						<div ngbDropdownMenu>
+							@for (label of labelLists().labels; track label.id) {
+							<button
+								ngbDropdownItem
+								type="button"
+								(click)="labelSelection(label.id)"
+							>
+								{{ label.name }}
+							</button>
+							}
+						</div>
+					</div>
+					} @if (can('organise') && folder() !== 'spam' && folder() !== 'trash') {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="bulkBusy()"
+						[title]="'inbox_report_spam' | transloco"
+						[attr.aria-label]="'inbox_report_spam' | transloco"
+						(click)="bulk('spam')"
+					>
+						<i class="ri-spam-2-line"></i>
+					</button>
+					} @if (folder() === 'trash' && !labelId() && can('bin')) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="bulkBusy()"
+						[title]="'inbox_untrash' | transloco"
+						[attr.aria-label]="'inbox_untrash' | transloco"
+						(click)="bulk('untrash')"
+					>
+						<i class="ri-arrow-go-back-line"></i>
+					</button>
+					} @if (folder() === 'trash' && !labelId() ? can('delete_forever') : can('bin')) {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						id="inbox_bulk_delete"
+						[disabled]="bulkBusy()"
+						[title]="(folder() === 'trash' && !labelId() ? 'inbox_delete_forever' : 'inbox_trash') | transloco"
+						[attr.aria-label]="(folder() === 'trash' && !labelId() ? 'inbox_delete_forever' : 'inbox_trash') | transloco"
+						(click)="deleteSelection()"
+					>
+						<i class="ri-delete-bin-line"></i>
+					</button>
+					}
+					<button
+						type="button"
+						class="btn btn-sm ms-auto"
+						[title]="'inbox_clear_selection' | transloco"
+						[attr.aria-label]="'inbox_clear_selection' | transloco"
+						(click)="clearSelection()"
+					>
+						<i class="ri-close-line"></i>
+					</button>
+					} @else {
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						id="inbox_refresh"
+						[disabled]="refreshing()"
+						[title]="'inbox_refresh' | transloco"
+						[attr.aria-label]="'inbox_refresh' | transloco"
+						(click)="refresh()"
+					>
+						<i class="ri-refresh-line"></i>
+					</button>
+					@if (refreshing()) {
+					<span class="text-content small">{{ 'inbox_working' | transloco }}</span>
+					} @else if (checkedAt(); as at) {
+					<span class="text-content small">
+						{{ 'inbox_checked_at' | transloco: { time: (at | date: 'HH:mm') } }}
+					</span>
+					} }
+				</div>
+				@if (selection() === 'all' && !allMatching() && nextPage()) {
+				<div class="alert alert-light small d-flex align-items-center flex-wrap gap-2 py-2">
+					<span>{{ 'inbox_page_selected' | transloco: { count: selected().size } }}</span>
+					<button
+						type="button"
+						class="btn btn-link btn-sm p-0"
+						id="inbox_select_matching"
+						(click)="selectAllMatching()"
+					>
+						{{ 'inbox_select_matching' | transloco: { count: estimate() ?? selected().size } }}
+					</button>
+				</div>
+				} @if (allMatching()) {
+				<div class="alert alert-light small d-flex align-items-center flex-wrap gap-2 py-2">
+					<span>{{ 'inbox_matching_selected' | transloco }}</span>
+					<button
+						type="button"
+						class="btn btn-link btn-sm p-0"
+						(click)="clearSelection()"
+					>
+						{{ 'inbox_clear_selection' | transloco }}
+					</button>
+				</div>
+				} @if (bulkNote(); as note) { @if (note.retry.length) {
+				<div
+					class="alert alert-warning small d-flex align-items-center flex-wrap gap-2 py-2"
+					role="status"
+				>
+					<span>{{ note.key | transloco: note.params }}</span>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="retryBulk()"
+					>
+						{{ 'inbox_bulk_retry' | transloco: { count: note.retry.length } }}
+					</button>
+				</div>
+				} } @if (folder() === 'trash' && !labelId()) {
+				<!-- The Bin says it empties itself (review E14). -->
+				<div class="alert alert-light small d-flex align-items-center flex-wrap gap-2 py-2">
+					<span>{{ 'inbox_bin_note' | transloco }}</span>
+					@if (can('delete_forever') && threads().length) {
+					<button
+						type="button"
+						class="btn btn-link btn-sm p-0"
+						id="inbox_empty_bin"
+						(click)="askEmptyBin()"
+					>
+						{{ 'inbox_empty_bin_now' | transloco }}
+					</button>
+					}
+				</div>
 				} @if (waiting()) {
 				<!-- New mail waits here instead of moving the rows under the pointer (review T7). -->
 				<button
@@ -180,11 +476,46 @@
 				<ul class="notification-setting inbox-list">
 					@for (row of threads(); track row.id) {
 					<li
+						class="d-flex align-items-start gap-2"
 						[class.unread]="row.unread"
 						[class.inbox-open]="openId() === row.id"
 					>
+						<div class="d-flex flex-column align-items-center gap-1 pt-1">
+							<div class="custom-control custom-checkbox">
+								<input
+									type="checkbox"
+									class="custom-control-input checkbox_animated"
+									[id]="'inbox_select_' + row.id"
+									[checked]="selected().has(row.id) || allMatching()"
+									[disabled]="allMatching()"
+									[attr.aria-label]="'inbox_select_row' | transloco: { name: row.subject || senderName(row.from) }"
+									(change)="toggleRow(row.id, $any($event.target).checked)"
+								/>
+								<label
+									class="custom-control-label"
+									[for]="'inbox_select_' + row.id"
+								>
+									&nbsp;
+								</label>
+							</div>
+							@if (can('organise')) {
+							<button
+								type="button"
+								class="btn btn-sm p-0"
+								[class.text-warning]="row.starred"
+								[title]="(row.starred ? 'inbox_unstar' : 'inbox_star') | transloco"
+								[attr.aria-label]="(row.starred ? 'inbox_unstar' : 'inbox_star') | transloco"
+								[attr.aria-pressed]="row.starred"
+								(click)="toggleStar($event, row)"
+							>
+								<i [class]="row.starred ? 'ri-star-fill' : 'ri-star-line'"></i>
+							</button>
+							} @else if (row.starred) {
+							<i class="ri-star-fill text-warning"></i>
+							}
+						</div>
 						<a
-							class="d-block text-reset"
+							class="d-block text-reset min-w-0 flex-grow-1"
 							[id]="'inbox_row_' + row.id"
 							[routerLink]="[...listLink(), row.id]"
 							[queryParams]="listQuery()"
@@ -215,6 +546,8 @@
 							<h5 class="mb-1">
 								{{ row.subject || ('inbox_no_subject' | transloco) }} @if (row.fromContactForm) {
 								<span class="badge badge-theme ms-1">{{ 'inbox_website' | transloco }}</span>
+								} @for (name of rowLabels(row); track name) {
+								<span class="badge bg-light text-dark ms-1 border">{{ name }}</span>
 								}
 							</h5>
 							<p class="text-content small text-truncate mb-1">{{ row.snippet }}</p>
@@ -228,8 +561,8 @@
 					</li>
 					} @empty {
 					<li class="text-content">
-						@if (q()) { {{ 'inbox_no_results' | transloco: { q: q() } }} } @else { {{ 'inbox_empty_' +
-						folder() | transloco }} }
+						@if (q()) { {{ 'inbox_no_results' | transloco: { q: q() } }} } @else if (labelId()) { {{
+						'inbox_empty_label' | transloco }} } @else { {{ 'inbox_empty_' + folder() | transloco }} }
 					</li>
 					}
 				</ul>
@@ -355,7 +688,19 @@
 							<i class="ri-share-forward-line"></i>
 							<span class="d-none d-md-inline">{{ 'inbox_forward' | transloco }}</span>
 						</button>
-						@if (folder() === 'trash') {
+						} @if (can('organise')) {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							[class.text-warning]="t.labelIds.includes('STARRED')"
+							[title]="(t.labelIds.includes('STARRED') ? 'inbox_unstar' : 'inbox_star') | transloco"
+							[attr.aria-label]="(t.labelIds.includes('STARRED') ? 'inbox_unstar' : 'inbox_star') | transloco"
+							[attr.aria-pressed]="t.labelIds.includes('STARRED')"
+							(click)="act(t.labelIds.includes('STARRED') ? 'unstar' : 'star')"
+						>
+							<i [class]="t.labelIds.includes('STARRED') ? 'ri-star-fill' : 'ri-star-line'"></i>
+						</button>
+						} @if (folder() === 'trash' && !labelId()) { @if (can('bin')) {
 						<button
 							type="button"
 							class="btn btn-outline btn-sm"
@@ -365,7 +710,18 @@
 						>
 							<i class="ri-arrow-go-back-line"></i>
 						</button>
-						} @else { @if (folder() === 'inbox') {
+						} @if (can('delete_forever')) {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							id="inbox_delete_forever"
+							[title]="'inbox_delete_forever' | transloco"
+							[attr.aria-label]="'inbox_delete_forever' | transloco"
+							(click)="deleteOpenForever()"
+						>
+							<i class="ri-delete-bin-2-line"></i>
+						</button>
+						} } @else { @if (folder() === 'inbox' && !labelId() && can('organise')) {
 						<button
 							type="button"
 							class="btn btn-outline btn-sm"
@@ -375,7 +731,7 @@
 						>
 							<i class="ri-archive-line"></i>
 						</button>
-						}
+						} @if (can('bin')) {
 						<button
 							type="button"
 							class="btn btn-outline btn-sm"
@@ -385,7 +741,40 @@
 						>
 							<i class="ri-delete-bin-line"></i>
 						</button>
-						} }
+						} } @if (can('organise') && labelLists().labels.length) {
+						<div
+							ngbDropdown
+							#threadLabels="ngbDropdown"
+							class="d-inline-block"
+							placement="bottom-end"
+						>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								ngbDropdownAnchor
+								[title]="'inbox_labels' | transloco"
+								[attr.aria-label]="'inbox_labels' | transloco"
+								(click)="threadLabels.toggle()"
+							>
+								<i class="ri-price-tag-3-line"></i>
+							</button>
+							<div ngbDropdownMenu>
+								@for (label of labelLists().labels; track label.id) {
+								<button
+									ngbDropdownItem
+									type="button"
+									[attr.aria-pressed]="t.labelIds.includes(label.id)"
+									(click)="act(t.labelIds.includes(label.id) ? 'remove_label' : 'add_label', label.id)"
+								>
+									<i
+										[class]="t.labelIds.includes(label.id) ? 'ri-checkbox-line' : 'ri-checkbox-blank-line'"
+									></i>
+									{{ label.name }}
+								</button>
+								}
+							</div>
+						</div>
+						}
 						<div
 							ngbDropdown
 							#more="ngbDropdown"
@@ -415,8 +804,17 @@
 									<i class="ri-mail-unread-line"></i>
 									{{ 'inbox_mark_unread' | transloco }}
 								</button>
-								@if (canSend()) { @if (folder() !== 'inbox' && folder() !== 'sent' && folder() !==
-								'trash') {
+								@if (can('organise')) {
+								<button
+									ngbDropdownItem
+									type="button"
+									(click)="act(t.labelIds.includes('IMPORTANT') ? 'not_important' : 'important')"
+								>
+									<i class="ri-bookmark-line"></i>
+									{{ (t.labelIds.includes('IMPORTANT') ? 'inbox_not_important' : 'inbox_important') |
+									transloco }}
+								</button>
+								@if (folder() !== 'inbox' && folder() !== 'sent' && folder() !== 'trash') {
 								<button
 									ngbDropdownItem
 									type="button"
@@ -964,6 +1362,149 @@
 				(click)="downloadAnyway()"
 			>
 				{{ 'inbox_download_anyway' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<!-- Delete forever, inside the Bin only, asks first and names the scope (A2). -->
+<ng-template
+	#foreverModal
+	let-modal
+>
+	<div class="modal-body">
+		<i class="ri-delete-bin-2-line icon-box wo-bg"></i>
+		<h5 class="modal-title">{{ 'inbox_forever_title' | transloco: { count: foreverCount() } }}</h5>
+		<p>{{ 'inbox_forever_body' | transloco: { address: mailbox()?.address } }}</p>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn btn-md btn-secondary fw-bold"
+				(click)="modal.dismiss('Cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-md btn-danger fw-bold"
+				id="inbox_forever_confirm"
+				(click)="deleteForeverNow()"
+			>
+				{{ 'inbox_delete_forever' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<!-- Empty Bin has its own question, with Gmail's own count (A2). -->
+<ng-template
+	#emptyBinModal
+	let-modal
+>
+	<div class="modal-body">
+		<i class="ri-delete-bin-2-line icon-box wo-bg"></i>
+		<h5 class="modal-title">{{ 'inbox_empty_bin_title' | transloco: { address: mailbox()?.address } }}</h5>
+		<p>
+			{{ 'inbox_empty_bin_body' | transloco: { threads: binCount()?.threads ?? 0, messages: binCount()?.messages
+			?? 0 } }}
+		</p>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn btn-md btn-secondary fw-bold"
+				(click)="modal.dismiss('Cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-md btn-danger fw-bold"
+				id="inbox_empty_bin_confirm"
+				[disabled]="!binCount()?.messages"
+				(click)="emptyBinNow()"
+			>
+				{{ 'inbox_empty_bin' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<!-- New label, or a new name for one (F4). -->
+<ng-template
+	#labelModal
+	let-modal
+>
+	<div class="modal-header">
+		<h3 class="fw-semibold mb-1">{{ (labelEdit()?.id ? 'inbox_rename_label' : 'inbox_new_label') | transloco }}</h3>
+		<button
+			[title]="'close' | transloco"
+			type="button"
+			class="btn btn-close"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		<label
+			class="form-label-title"
+			for="inbox_label_name"
+		>
+			{{ 'inbox_label_name' | transloco }}
+		</label>
+		<input
+			class="form-control keep-case"
+			id="inbox_label_name"
+			maxlength="225"
+			[value]="labelEdit()?.name ?? ''"
+			(input)="labelEdit.set({ id: labelEdit()?.id ?? null, name: $any($event.target).value })"
+		/>
+		<p class="help-text mt-2">{{ 'inbox_label_name_help' | transloco }}</p>
+		<div class="button-box justify-content-end mt-3">
+			<button
+				type="button"
+				class="btn btn-md btn-secondary fw-bold"
+				(click)="modal.dismiss('Cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-md btn-theme fw-bold"
+				id="inbox_label_save"
+				[disabled]="!labelEdit()?.name?.trim()"
+				(click)="saveLabel()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<!-- Deleting a label never deletes mail (F4). -->
+<ng-template
+	#labelDeleteModal
+	let-modal
+>
+	<div class="modal-body">
+		<i class="ri-price-tag-3-line icon-box wo-bg"></i>
+		<h5 class="modal-title">{{ 'inbox_delete_label_title' | transloco: { name: labelToDelete()?.name } }}</h5>
+		<p>{{ 'inbox_delete_label_body' | transloco }}</p>
+		<div class="button-box">
+			<button
+				type="button"
+				class="btn btn-md btn-secondary fw-bold"
+				(click)="modal.dismiss('Cancel')"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-md btn-theme fw-bold"
+				id="inbox_label_delete_confirm"
+				(click)="deleteLabelNow()"
+			>
+				{{ 'inbox_delete_label' | transloco }}
 			</button>
 		</div>
 	</div>

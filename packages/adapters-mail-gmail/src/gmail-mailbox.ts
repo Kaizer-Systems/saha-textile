@@ -67,6 +67,7 @@ const Profile = z.object({ emailAddress: z.string(), historyId: z.string().optio
 const ThreadList = z.object({
 	threads: z.array(z.object({ id: z.string(), historyId: z.string().optional() })).default([]),
 	nextPageToken: z.string().optional(),
+	resultSizeEstimate: z.number().optional(),
 });
 const Attachment = z.object({ data: z.string() });
 const SentMessage = z.object({ id: z.string(), threadId: z.string() });
@@ -296,7 +297,7 @@ export class GmailMailbox implements MailboxPort {
 				return summary;
 			}),
 		);
-		const page = { threads, nextPageToken: list.nextPageToken ?? null };
+		const page = { threads, nextPageToken: list.nextPageToken ?? null, estimate: list.resultSizeEstimate ?? null };
 		if (profile.historyId) this.pages.set(key, { historyId: profile.historyId, page });
 		return page;
 	}

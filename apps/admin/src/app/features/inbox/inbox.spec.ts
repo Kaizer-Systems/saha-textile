@@ -44,6 +44,8 @@ vi.mock('@tanstack/angular-query-experimental', async () => {
 				data: () => result().data,
 				isPending: () => Boolean(result().pending),
 				isError: () => Boolean(result().error),
+				isSuccess: () => result().data !== undefined && !result().error,
+				dataUpdatedAt: () => 0,
 				error: () => result().error ?? null,
 				refetch,
 			};
@@ -133,6 +135,8 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 		thread: vi.fn((..._args: unknown[]) => of(conversation('m1'))),
 		threads: vi.fn((..._args: unknown[]) => of({ threads: [], nextPageToken: null })),
 		modify: vi.fn((..._args: unknown[]) => of({ ok: true })),
+		markMessages: vi.fn((..._args: unknown[]) => of({ ok: true })),
+		labels: vi.fn((..._args: unknown[]) => of([])),
 		send: vi.fn((..._args: unknown[]) => of({ id: 's1', threadId: 't1' })),
 		attachmentUrl: vi.fn((...args: unknown[]) => args.join('/')),
 	};
@@ -165,8 +169,9 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 	});
 	fixture = TestBed.createComponent(Inbox);
 	const page = fixture.componentInstance;
-	const threadsQuery = state.queries[0] as Query;
-	const threadQuery = state.queries[1] as Query;
+	const keyed = (part: string) => state.queries.find((query) => query.options().queryKey.includes(part)) as Query;
+	const threadsQuery = keyed('threads');
+	const threadQuery = keyed('thread');
 	const flush = () => {
 		TestBed.tick();
 		fixture.detectChanges();
@@ -320,17 +325,17 @@ describe('Inbox list', () => {
 		);
 		summary([box('care')]);
 		const options = threadsQuery.options();
-		expect(options.queryKey).toEqual(['inbox', 'mbx-care', 'threads', 'all', 'from:rahul', '']);
+		expect(options.queryKey).toEqual(['inbox', 'mbx-care', 'threads', 'all', '', 'from:rahul', '']);
 		expect(options.enabled).toBe(true);
 		await options.queryFn();
-		expect(gateway.threads).toHaveBeenCalledWith('mbx-care', 'all', 'from:rahul', undefined);
+		expect(gateway.threads).toHaveBeenCalledWith('mbx-care', 'all', 'from:rahul', undefined, undefined);
 		expect(page.searchText()).toBe('from:rahul');
 		expect(page.listQuery()).toEqual({ q: 'from:rahul' });
 		go({ mailbox: 'care', folder: 'nonsense' });
 		expect(page.folder()).toBe('inbox');
 		expect(page.listQuery()).toBeNull();
 		await threadsQuery.options().queryFn();
-		expect(gateway.threads).toHaveBeenLastCalledWith('mbx-care', 'inbox', undefined, undefined);
+		expect(gateway.threads).toHaveBeenLastCalledWith('mbx-care', 'inbox', undefined, undefined, undefined);
 	});
 
 	it('searches All mail and clears back to the Inbox', () => {
@@ -425,22 +430,36 @@ describe('Inbox conversation', () => {
 		subject.id = 'inbox_subject';
 		subject.tabIndex = -1;
 		document.body.append(subject);
-		threadQuery.result.set({ data: { ...conversation('m1', 'm2', 'm3'), unread: true } });
+		const unread = (...ids: string[]) => {
+			const base = conversation(...ids);
+			return { ...base, unread: true, messages: base.messages.map((entry) => ({ ...entry, unread: true })) };
+		};
+		threadQuery.result.set({ data: unread('m1', 'm2', 'm3') });
 		flush();
 		vi.runAllTimers();
 		expect(document.activeElement).toBe(subject);
 		subject.remove();
-		await vi.waitFor(() => expect(gateway.modify).toHaveBeenCalledWith('mbx-care', 't1', 'mark_read'));
+		// Exactly the messages shown are marked, never the conversation as a whole (R6).
+		await vi.waitFor(() => expect(gateway.markMessages).toHaveBeenCalledWith('mbx-care', ['m1', 'm2', 'm3'], true));
+		expect(gateway.modify).not.toHaveBeenCalled();
 		expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['inbox'] });
-		threadQuery.result.set({ data: { ...conversation('m1', 'm2', 'm3'), unread: true } });
+		threadQuery.result.set({ data: unread('m1', 'm2', 'm3') });
 		flush();
-		expect(gateway.modify).toHaveBeenCalledTimes(1);
+		expect(gateway.markMessages).toHaveBeenCalledTimes(1);
+		// A reply that arrives later is marked when it shows; the ones already marked are not sent again.
+		threadQuery.result.set({ data: unread('m1', 'm2', 'm3', 'm4') });
+		flush();
+		await vi.waitFor(() => expect(gateway.markMessages).toHaveBeenLastCalledWith('mbx-care', ['m4'], true));
 		// Marked unread on purpose, then opened again: read again, as in Gmail.
 		await page.act('mark_unread');
-		threadQuery.result.set({ data: { ...conversation('m1', 'm2', 'm3', 'm4'), unread: true } });
+		threadQuery.result.set({ data: unread('m1', 'm2', 'm3', 'm4') });
 		flush();
-		await vi.waitFor(() => expect(gateway.modify).toHaveBeenLastCalledWith('mbx-care', 't1', 'mark_read'));
+		await vi.waitFor(() =>
+			expect(gateway.markMessages).toHaveBeenLastCalledWith('mbx-care', ['m1', 'm2', 'm3', 'm4'], true),
+		);
 
+		threadQuery.result.set({ data: conversation('m1', 'm2', 'm3', 'm4') });
+		flush();
 		const all = (page.thread()?.messages ?? []) as ReturnType<typeof message>[];
 		const [first] = all;
 		const last = all.at(-1);
@@ -512,7 +531,7 @@ describe('Inbox conversation', () => {
 		});
 		summary([box('care')]);
 		await page.act('spam');
-		expect(gateway.modify).toHaveBeenLastCalledWith('mbx-care', 't1', 'spam');
+		expect(gateway.modify).toHaveBeenLastCalledWith('mbx-care', 't1', 'spam', undefined);
 		expect(notifier.showSuccess).toHaveBeenLastCalledWith('inbox_reported_spam');
 		expect(page.announcement()).toBe('inbox_reported_spam');
 		expect(router.navigate).toHaveBeenLastCalledWith(['/inbox', 'care', 'inbox'], { queryParams: null });

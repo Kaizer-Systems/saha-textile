@@ -15,6 +15,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import {
 	NgbDropdown,
@@ -36,17 +37,22 @@ import { LanguageNamePipe, PluralPipe } from '@shared/pipes/language.pipes';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 import {
+	AUTOSAVE_MS,
 	type Draft,
 	type DraftMode,
 	addressProblems,
 	answeredMessage,
 	draftFor,
+	draftFromGmail,
 	draftKey,
 	draftProblem,
+	draftWrite,
 	firstWords,
 	forgetDraft,
 	frameDocument,
+	gmailDraftKey,
 	gmailLink,
+	hasContent,
 	isFolded,
 	isRunnable,
 	keepDraft,
@@ -59,9 +65,13 @@ import {
 	sendRequest,
 } from './inbox-drafts';
 import { CATEGORY_KEYS, LABEL_ID, bulkReport, labelTree, pageSelection } from './inbox-labels';
+// The theme's toast with one action link, as the file manager's Undo uses it (DEC-UI-REUSE).
+import { FmUndoToast } from '../media/file-manager/fm-undo-toast';
 
 import type {
 	InboxAttachment,
+	InboxDraftSummary,
+	InboxSendQueued,
 	InboxBulkRequest,
 	InboxFolder,
 	InboxMailboxSummary,
@@ -82,7 +92,20 @@ export const FOLDERS: readonly { id: InboxFolder; icon: string }[] = [
 ];
 
 const FOLDER_IDS: ReadonlySet<string> = new Set(FOLDERS.map((entry) => entry.id));
-const DRAFT_MODES: ReadonlySet<string> = new Set(['new', 'reply', 'reply_all', 'forward']);
+/** `?draft=open&d=<id>` reopens a Gmail draft from the Drafts folder (C2). */
+const DRAFT_MODES: ReadonlySet<string> = new Set(['new', 'reply', 'reply_all', 'forward', 'open']);
+type ComposeMode = DraftMode | 'open';
+
+/** The Drafts folder's address segment; Gmail drafts are listed by the drafts API, not as conversations. */
+export const DRAFTS_FOLDER = 'drafts';
+
+/** What a queued message's final state says, as a translation key (C4). */
+const SEND_OUTCOME: Readonly<Record<string, string>> = {
+	sent: 'inbox_sent',
+	failed: 'inbox_send_failed_drafts',
+	gone: 'inbox_send_gone',
+	uncertain: 'inbox_send_uncertain',
+};
 
 /** What each conversation button says once it has worked. */
 const DONE: Readonly<Record<InboxModifyRequest['action'], string>> = {
@@ -165,6 +188,8 @@ export class Inbox {
 	private readonly route = inject(ActivatedRoute);
 	private readonly modals = inject(NgbModal);
 	private readonly authStore = inject(AuthStore);
+	private readonly toastr = inject(ToastrService);
+	private destroyed = false;
 
 	readonly folders = FOLDERS;
 	readonly senderName = senderName;
@@ -197,10 +222,14 @@ export class Inbox {
 	});
 	readonly openId = computed(() => this.params().get('thread'));
 	readonly q = computed(() => (this.queryParams().get('q') ?? '').trim());
-	readonly draftMode = computed<DraftMode | null>(() => {
+	readonly draftMode = computed<ComposeMode | null>(() => {
 		const mode = this.queryParams().get('draft') ?? '';
-		return DRAFT_MODES.has(mode) ? (mode as DraftMode) : null;
+		return DRAFT_MODES.has(mode) ? (mode as ComposeMode) : null;
 	});
+	/** The Gmail draft named by `?d=` when one is reopened from Drafts. */
+	readonly openDraftId = computed(() => (this.draftMode() === 'open' ? this.queryParams().get('d') : null));
+	/** The Drafts folder lists Gmail drafts instead of conversations. */
+	readonly draftsView = computed(() => this.params().get('folder') === DRAFTS_FOLDER);
 
 	// ── Mailboxes ─────────────────────────────────────────────────────────────────
 
@@ -280,12 +309,33 @@ export class Inbox {
 		return {
 			queryKey: [...INBOX_KEY, mailboxId, 'threads', folder, label ?? '', q, pageToken ?? ''],
 			queryFn: () => firstValueFrom(this.gateway.threads(mailboxId, folder, q || undefined, pageToken, label)),
-			enabled: Boolean(mailboxId) && this.connected(),
+			enabled: Boolean(mailboxId) && this.connected() && !this.draftsView(),
 			refetchInterval: INBOX_REFRESH_MS,
 			retry: 1,
 		};
 	});
-	readonly nextPage = computed(() => this.threadsQuery.data()?.nextPageToken ?? null);
+	readonly nextPage = computed(() =>
+		this.draftsView()
+			? (this.draftsQuery.data()?.nextPageToken ?? null)
+			: (this.threadsQuery.data()?.nextPageToken ?? null),
+	);
+
+	// ── Drafts (C2) ───────────────────────────────────────────────────────────────
+
+	private readonly draftsQuery = injectQuery(() => {
+		const mailboxId = this.mailbox()?.mailboxId ?? '';
+		const pageToken = this.pages().at(-1);
+		return {
+			queryKey: [...INBOX_KEY, mailboxId, 'drafts', pageToken ?? ''],
+			queryFn: () => firstValueFrom(this.gateway.drafts(mailboxId, pageToken)),
+			enabled: Boolean(mailboxId) && this.connected() && this.draftsView() && this.canSend(),
+			refetchInterval: INBOX_REFRESH_MS,
+			retry: 1,
+		};
+	});
+	readonly drafts = computed<InboxDraftSummary[]>(() => this.draftsQuery.data()?.drafts ?? []);
+	readonly loadingDrafts = computed(() => this.connected() && this.draftsQuery.isPending());
+	readonly draftsFailed = computed(() => this.draftsQuery.isError() && !this.draftsQuery.data());
 	readonly estimate = computed(() => this.threadsQuery.data()?.estimate ?? null);
 	/** When Gmail last answered for this list: what "Checked 10:42" shows. */
 	readonly checkedAt = computed(() => this.threadsQuery.dataUpdatedAt() || null);
@@ -450,6 +500,16 @@ export class Inbox {
 	readonly files = signal<File[]>([]);
 	readonly sending = signal(false);
 	readonly sendProblem = signal<string | null>(null);
+	/** Autosave to Gmail (C2): what the line beside Send says. */
+	readonly saveState = signal<'idle' | 'saving' | 'saved' | 'offline' | 'failed' | 'conflict'>('idle');
+	readonly savedAt = signal<string | null>(null);
+	/** A draft reopened from Drafts is being read from Gmail. */
+	readonly openingDraft = signal(false);
+	private saveTimer: ReturnType<typeof setTimeout> | null = null;
+	private saving: Promise<void> | null = null;
+	private saveAgain = false;
+	/** Queued messages whose Undo was pressed, so their outcome is not announced. */
+	private readonly undone = new Set<string>();
 	/** Someone else answered after this reply was started (review E9). */
 	readonly collision = signal<{ name: string; minutes: number } | null>(null);
 	private forceSend = false;
@@ -487,7 +547,12 @@ export class Inbox {
 	readonly runnableName = signal('');
 
 	constructor() {
-		inject(DestroyRef).onDestroy(() => this.observers.forEach((observer) => observer.disconnect()));
+		inject(DestroyRef).onDestroy(() => {
+			this.observers.forEach((observer) => observer.disconnect());
+			this.destroyed = true;
+			// Leaving the Inbox mid-sentence still saves what was typed.
+			this.flushSave();
+		});
 
 		// `/inbox` alone opens the mailbox and folder used last; a mailbox the person no longer has
 		// falls back to the first one they do have.
@@ -559,6 +624,7 @@ export class Inbox {
 		effect(() => {
 			this.mailbox();
 			this.folder();
+			this.draftsView();
 			this.labelId();
 			this.q();
 			untracked(() => {
@@ -639,13 +705,19 @@ export class Inbox {
 			if (last) setTimeout(() => document.getElementById(`inbox_row_${last}`)?.focus());
 		});
 
-		// The draft follows `?draft=`: kept text comes back, otherwise a new one starts.
+		// The draft follows `?draft=`: kept text comes back, otherwise a new one starts. A draft
+		// reopened from Drafts (`?draft=open&d=`) is read from Gmail.
 		effect(() => {
 			const mode = this.draftMode();
 			const mailbox = this.mailbox();
 			const thread = this.thread();
 			const threadId = this.openId();
-			untracked(() => this.loadDraft(mode, mailbox, threadId, thread));
+			const gmailId = this.openDraftId();
+			untracked(() =>
+				mode === 'open'
+					? void this.openGmailDraft(mailbox, gmailId)
+					: this.loadDraft(mode, mailbox, threadId, thread),
+			);
 		});
 	}
 
@@ -654,6 +726,10 @@ export class Inbox {
 	/** The list's address: mailbox and folder (or label), keeping a search. */
 	listLink(folder: InboxFolder | null = null): string[] {
 		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), folder ?? this.labelId() ?? this.folder()];
+	}
+
+	draftsLink(): string[] {
+		return ['/inbox', mailboxKey(this.mailbox()?.address ?? ''), DRAFTS_FOLDER];
 	}
 
 	labelLink(labelId: string): string[] {
@@ -685,7 +761,7 @@ export class Inbox {
 			const results = await Promise.all([
 				this.summary.refetch(),
 				this.labelsQuery.refetch(),
-				this.threadsQuery.refetch(),
+				this.draftsView() ? this.draftsQuery.refetch() : this.threadsQuery.refetch(),
 				...(this.openId() ? [this.threadQuery.refetch()] : []),
 			]);
 			const failed = results.some((result) => result.isError);
@@ -982,11 +1058,12 @@ export class Inbox {
 		void this.threadQuery.refetch();
 	}
 
-	/** Leaves the draft; its text stays kept for this conversation. */
+	/** Leaves the draft; its text stays kept for this conversation, and waiting changes go to Gmail. */
 	closeDraft() {
+		this.flushSave();
 		void this.router.navigate([], {
 			relativeTo: this.route,
-			queryParams: { draft: null },
+			queryParams: { draft: null, d: null },
 			queryParamsHandling: 'merge',
 		});
 	}
@@ -1141,6 +1218,31 @@ export class Inbox {
 	pickFiles(event: Event) {
 		const input = event.target as HTMLInputElement;
 		this.files.set(Array.from(input.files ?? []));
+		this.scheduleSave();
+	}
+
+	/** Changed elsewhere: take the version saved in Gmail, dropping the text typed here. */
+	async useTheirs() {
+		const mailboxId = this.mailbox()?.mailboxId;
+		const gmailId = this.draft()?.gmailDraftId;
+		if (!mailboxId || !gmailId) return;
+		try {
+			const saved = await firstValueFrom(this.gateway.draft(mailboxId, gmailId));
+			const draft = { ...draftFromGmail(saved), knownIds: this.draft()?.knownIds ?? [] };
+			this.files.set([]);
+			this.draft.set(draft);
+			const key = this.draftId();
+			if (key) keepDraft(key, draft);
+			this.saveState.set('saved');
+			this.savedAt.set(new Date().toISOString());
+		} catch {
+			this.saveState.set('failed');
+		}
+	}
+
+	/** Changed elsewhere: save the text typed here over the other version. */
+	keepMine() {
+		void this.saveNow(true);
 	}
 
 	/** Discard asks first when there is text to lose (review T6). */
@@ -1150,17 +1252,34 @@ export class Inbox {
 			this.modals.open(template, { centered: true, windowClass: 'theme-modal text-center' });
 			return;
 		}
-		this.discardNow();
+		void this.discardNow();
 	}
 
-	discardNow() {
+	/** Discard deletes the Gmail draft too, once Gmail confirms; until then the text stays. */
+	async discardNow() {
 		this.modals.dismissAll();
+		this.cancelSave();
+		await this.saving;
+		const mailboxId = this.mailbox()?.mailboxId;
+		const gmailId = this.draft()?.gmailDraftId;
+		if (mailboxId && gmailId) {
+			try {
+				await firstValueFrom(this.gateway.deleteDraft(mailboxId, gmailId));
+			} catch (error) {
+				if (statusOf(error) !== 404) {
+					this.notifier.showError(this.transloco.translate('inbox_discard_failed'));
+					return;
+				}
+			}
+		}
 		const id = this.draftId();
 		if (id) forgetDraft(id);
 		this.files.set([]);
 		this.draft.set(null);
 		this.draftId.set(null);
+		this.saveState.set('idle');
 		this.closeDraft();
+		if (gmailId) await this.reload();
 	}
 
 	/**
@@ -1178,6 +1297,8 @@ export class Inbox {
 		}
 		this.sendProblem.set(null);
 		this.sending.set(true);
+		this.cancelSave();
+		await this.saving;
 		try {
 			if (draft.threadId && draft.mode !== 'forward' && draft.knownIds.length && !this.forceSend) {
 				const latest = await this.queryClient.fetchQuery({
@@ -1195,10 +1316,12 @@ export class Inbox {
 					return;
 				}
 			}
-			await firstValueFrom(this.gateway.send(mailboxId, await sendRequest(draft, this.files(), this.forceSend)));
-			const sent = this.transloco.translate('inbox_sent');
-			this.notifier.showSuccess(sent);
-			this.announcement.set(sent);
+			// The text as it is now, with the Gmail draft the autosave made meanwhile.
+			const latest = this.draft() ?? draft;
+			const queued = await firstValueFrom(
+				this.gateway.send(mailboxId, await sendRequest(latest, this.files(), this.forceSend)),
+			);
+			this.offerUndo(mailboxId, queued);
 			this.forceSend = false;
 			this.collision.set(null);
 			const id = this.draftId();
@@ -1226,6 +1349,11 @@ export class Inbox {
 						? { name: last.sentBy ?? senderName(last.from), minutes: minutesSince(last.date) }
 						: { name: '', minutes: 0 },
 				);
+				return;
+			}
+			if (status === 409 && this.draft()?.gmailDraftId) {
+				// A reconnect, or this draft is already on its way from another tab.
+				this.sendProblem.set('inbox_already_sending');
 				return;
 			}
 			this.sendProblem.set(SEND_FAILED[status] ?? 'inbox_not_sent');
@@ -1256,13 +1384,148 @@ export class Inbox {
 
 	// ── Internals ─────────────────────────────────────────────────────────────────
 
-	private updateDraft(change: Partial<Draft>) {
+	/** A change typed or chosen in the compose box: kept in this tab now, saved to Gmail shortly. */
+	private updateDraft(change: Partial<Draft>, typed = true) {
 		const draft = this.draft();
 		if (!draft) return;
 		const next = { ...draft, ...change };
 		this.draft.set(next);
 		const id = this.draftId();
 		if (id) keepDraft(id, next);
+		if (typed) this.scheduleSave();
+	}
+
+	// ── Autosave and Undo Send (C2, C4) ───────────────────────────────────────────
+
+	private scheduleSave() {
+		this.cancelSave();
+		this.saveTimer = setTimeout(() => {
+			this.saveTimer = null;
+			void this.saveNow();
+		}, AUTOSAVE_MS);
+	}
+
+	private cancelSave() {
+		if (this.saveTimer) clearTimeout(this.saveTimer);
+		this.saveTimer = null;
+	}
+
+	/** Leaving the compose box saves what is waiting at once instead of dropping it. */
+	private flushSave() {
+		if (!this.saveTimer) return;
+		this.cancelSave();
+		void this.saveNow();
+	}
+
+	/**
+	 * Saves the compose box to Gmail. One save at a time; a change made during one is saved right
+	 * after it. "Saved to Gmail" shows only once the API has answered.
+	 */
+	async saveNow(overwrite = false): Promise<void> {
+		if (this.saving) {
+			this.saveAgain = true;
+			return this.saving;
+		}
+		const mailboxId = this.mailbox()?.mailboxId;
+		const draft = this.draft();
+		const key = this.draftId();
+		if (!mailboxId || !draft || !key || !this.canSend() || this.sending()) return;
+		if (!draft.gmailDraftId && !hasContent(draft)) return;
+		const files = this.files();
+		this.saveState.set('saving');
+		this.saving = (async () => {
+			try {
+				const body = await draftWrite(draft, files, overwrite);
+				const saved = await firstValueFrom(this.gateway.saveDraft(mailboxId, draft.gmailDraftId ?? null, body));
+				const uploaded = files.map((file) => ({ name: file.name, size: file.size }));
+				const ids = {
+					gmailDraftId: saved.draftId,
+					version: saved.version,
+					savedFiles: [...(draft.savedFiles ?? []), ...uploaded],
+				};
+				if (this.draftId() !== key) {
+					// Saved after the person moved on: the kept copy learns its Gmail draft, so
+					// coming back carries on with it instead of starting a second one.
+					keepDraft(key, { ...(keptDraft(key, null) ?? draft), ...ids });
+					return;
+				}
+				this.files.update((list) => list.filter((file) => !files.includes(file)));
+				this.updateDraft(ids, false);
+				this.saveState.set('saved');
+				this.savedAt.set(saved.savedAt);
+			} catch (error) {
+				if (this.draftId() !== key) return;
+				const status = statusOf(error);
+				if (status === 412) this.saveState.set('conflict');
+				else if (status === 404) {
+					// Sent or deleted elsewhere: the next save starts a new Gmail draft with this text.
+					this.updateDraft({ gmailDraftId: undefined, version: undefined, savedFiles: [] }, false);
+					this.saveState.set('failed');
+				} else if (status === 0 || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+					this.saveState.set('offline');
+				} else this.saveState.set('failed');
+			}
+		})();
+		try {
+			await this.saving;
+		} finally {
+			this.saving = null;
+			if (this.saveAgain) {
+				this.saveAgain = false;
+				this.scheduleSave();
+			}
+		}
+	}
+
+	/** "Sending in 10 seconds. Undo": the theme's toast with one link, for as long as Undo works. */
+	private offerUndo(mailboxId: string, queued: InboxSendQueued) {
+		const wait = Math.max(1_000, Date.parse(queued.sendAt) - Date.now());
+		const seconds = Math.round(wait / 1_000);
+		const note = this.transloco.translate('inbox_sending_in', { seconds });
+		this.announcement.set(note);
+		const toast = this.toastr.info(note, undefined, {
+			toastComponent: FmUndoToast,
+			timeOut: wait,
+			payload: { action: this.transloco.translate('inbox_undo_send') },
+		});
+		toast.onAction.subscribe(() => void this.undoSend(mailboxId, queued));
+		void this.followSend(mailboxId, queued, wait);
+	}
+
+	async undoSend(mailboxId: string, queued: InboxSendQueued) {
+		this.undone.add(queued.outboxId);
+		try {
+			const { draftId } = await firstValueFrom(this.gateway.cancelSend(mailboxId, queued.outboxId));
+			this.notifier.showSuccess(this.transloco.translate('inbox_send_undone'));
+			const key = mailboxKey(this.mailbox()?.address ?? '');
+			void this.router.navigate(['/inbox', key, DRAFTS_FOLDER], { queryParams: { draft: 'open', d: draftId } });
+		} catch (error) {
+			this.undone.delete(queued.outboxId);
+			this.notifier.showError(
+				this.transloco.translate(statusOf(error) === 409 ? 'inbox_undo_too_late' : 'inbox_undo_failed'),
+			);
+		}
+	}
+
+	/** After the wait: says once whether it went, failed (it stays in Drafts) or is unconfirmed. */
+	private async followSend(mailboxId: string, queued: InboxSendQueued, wait: number) {
+		const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+		await pause(wait + 2_500);
+		for (let attempt = 0; attempt < 10 && !this.destroyed; attempt += 1) {
+			if (this.undone.has(queued.outboxId)) return;
+			const state = await firstValueFrom(this.gateway.outboxStatus(mailboxId, queued.outboxId)).catch(() => null);
+			if (state && !['queued', 'sending'].includes(state.status)) {
+				const key = SEND_OUTCOME[state.status];
+				if (!key) return;
+				const note = this.transloco.translate(key);
+				if (state.status === 'sent') this.notifier.showSuccess(note);
+				else this.notifier.showError(note);
+				this.announcement.set(note);
+				await this.reload();
+				return;
+			}
+			await pause(2_000);
+		}
 	}
 
 	private loadDraft(
@@ -1288,6 +1551,43 @@ export class Inbox {
 			(mode === 'new' || !thread
 				? newDraft(primaryAddress(mailbox.sendAs, mailbox.address))
 				: draftFor(mode, thread, mailbox.sendAs, mailbox.address));
+		this.showDraft(id, draft);
+	}
+
+	/** Reopens a Gmail draft; text kept in this tab since its last save wins over Gmail's copy. */
+	private async openGmailDraft(mailbox: InboxMailboxSummary | null, gmailId: string | null) {
+		if (!mailbox || !gmailId || !this.canSend()) return;
+		const id = gmailDraftKey(mailbox.mailboxId, gmailId);
+		if (this.draftId() === id) return;
+		this.flushSave();
+		const kept = keptDraft(id, null);
+		if (kept) {
+			this.showDraft(id, kept);
+			return;
+		}
+		this.openingDraft.set(true);
+		this.draft.set(null);
+		this.draftId.set(id);
+		try {
+			const saved = await firstValueFrom(this.gateway.draft(mailbox.mailboxId, gmailId));
+			if (this.draftId() === id) this.showDraft(id, draftFromGmail(saved));
+		} catch (error) {
+			if (this.draftId() !== id) return;
+			this.draftId.set(null);
+			this.notifier.showError(
+				this.transloco.translate(statusOf(error) === 404 ? 'inbox_draft_gone' : 'inbox_gmail_unavailable'),
+			);
+			this.closeDraft();
+			await this.reload();
+		} finally {
+			this.openingDraft.set(false);
+		}
+	}
+
+	private showDraft(id: string, draft: Draft) {
+		this.flushSave();
+		this.saveState.set(draft.gmailDraftId ? 'saved' : 'idle');
+		this.savedAt.set(null);
 		this.files.set([]);
 		this.quoteOpen.set(false);
 		this.bccOpen.set(Boolean(draft.bcc));

@@ -515,7 +515,14 @@ Every `/admin/mailboxes` route except the callback also needs a super admin (the
 | `POST`   | `/admin/inbox/:mailboxId/labels`                                        | Labels           | Create a label                                                                       |
 | `PATCH`  | `/admin/inbox/:mailboxId/labels/:labelId`                               | Labels           | Rename a label                                                                       |
 | `DELETE` | `/admin/inbox/:mailboxId/labels/:labelId`                               | Labels           | Delete a label; its conversations keep their mail                                    |
-| `POST`   | `/admin/inbox/:mailboxId/send`                                          | Send             | Reply, forward or write, from the mailbox or one of its aliases                      |
+| `POST`   | `/admin/inbox/:mailboxId/send`                                          | Send             | Reply, forward or write; the message waits ten seconds in Drafts so it can be undone |
+| `GET`    | `/admin/inbox/:mailboxId/outbox/:outboxId`                              | Send             | Whether a message the operator sent has gone; the sender only                        |
+| `POST`   | `/admin/inbox/:mailboxId/outbox/:outboxId/cancel`                       | Send             | Undo Send: keep the message in Drafts; 409 once it is on its way                     |
+| `GET`    | `/admin/inbox/:mailboxId/drafts`                                        | Send             | The mailbox's Gmail drafts, newest first, a page at a time                           |
+| `GET`    | `/admin/inbox/:mailboxId/drafts/:draftId`                               | Send             | One draft, to carry on writing it                                                    |
+| `POST`   | `/admin/inbox/:mailboxId/drafts`                                        | Send             | Save the compose box as a new Gmail draft                                            |
+| `PUT`    | `/admin/inbox/:mailboxId/drafts/:draftId`                               | Send             | Save over a draft from the version read; 412 if someone saved since                  |
+| `DELETE` | `/admin/inbox/:mailboxId/drafts/:draftId`                               | Send             | Discard a draft; refused while it is being sent                                      |
 | `POST`   | `/admin/inbox/:mailboxId/threads/:threadId/modify`                      | By action        | Read state, archive, move, spam, star, important, labels, Bin or restore             |
 | `POST`   | `/admin/inbox/:mailboxId/bulk`                                          | By action        | One action on chosen or matching conversations, each reported done or failed         |
 | `GET`    | `/admin/inbox/:mailboxId/bin`                                           | Delete forever   | What Empty Bin would delete, counted by Gmail now                                    |

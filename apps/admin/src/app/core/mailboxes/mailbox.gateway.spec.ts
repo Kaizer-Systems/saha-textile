@@ -25,6 +25,7 @@ const setup = () => {
 		get: vi.fn((..._args: unknown[]) => of('read')),
 		post: vi.fn((..._args: unknown[]) => of('posted')),
 		put: vi.fn((..._args: unknown[]) => of('put')),
+		delete: vi.fn((..._args: unknown[]) => of(null)),
 	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({ providers: [{ provide: HttpClient, useValue: http }] });
@@ -84,6 +85,33 @@ describe('MailboxGateway', () => {
 		expect(gateway.attachmentUrl('m1', 'msg', 'att', 'bill 1.pdf')).toBe(
 			'https://api.test/admin/inbox/m1/messages/msg/attachments/att?name=bill%201.pdf',
 		);
+	});
+
+	it('calls the drafts and Undo Send routes (C2, C4)', async () => {
+		const { gateway, http } = setup();
+		const write = { from: 'a@shop.test', to: [], cc: [], bcc: [], subject: '', body: 'x' } as never;
+		await firstValueFrom(gateway.outboxStatus('m1', 'o/1'));
+		await firstValueFrom(gateway.drafts('m1'));
+		await firstValueFrom(gateway.drafts('m1', 'next'));
+		await firstValueFrom(gateway.draft('m1', 'd1'));
+		await firstValueFrom(gateway.cancelSend('m1', 'o1'));
+		await firstValueFrom(gateway.saveDraft('m1', null, write));
+		await firstValueFrom(gateway.saveDraft('m1', 'd1', write));
+		await firstValueFrom(gateway.deleteDraft('m1', 'd1'));
+		expect(http.get.mock.calls.map((call) => call[0])).toEqual([
+			'https://api.test/admin/inbox/m1/outbox/o%2F1',
+			'https://api.test/admin/inbox/m1/drafts',
+			'https://api.test/admin/inbox/m1/drafts',
+			'https://api.test/admin/inbox/m1/drafts/d1',
+		]);
+		expect(String((http.get.mock.calls[1]?.[1] as { params?: unknown }).params)).toBe('');
+		expect(String((http.get.mock.calls[2]?.[1] as { params?: unknown }).params)).toBe('pageToken=next');
+		expect(http.post.mock.calls.map((call) => call[0])).toEqual([
+			'https://api.test/admin/inbox/m1/outbox/o1/cancel',
+			'https://api.test/admin/inbox/m1/drafts',
+		]);
+		expect(http.put.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/drafts/d1');
+		expect(http.delete.mock.calls[0]?.[0]).toBe('https://api.test/admin/inbox/m1/drafts/d1');
 	});
 
 	it('reads the overview and the unread counts through their queries, the counts every minute', async () => {

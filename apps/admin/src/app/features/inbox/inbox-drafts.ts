@@ -1,6 +1,13 @@
 import { DRAFT_STORE_PREFIX } from '@core/mailboxes/mailbox.gateway';
 
-import type { InboxMessage, InboxSendRequest, InboxThread, MailboxSendAs } from '@saha-textile/contracts';
+import type {
+	InboxDraft,
+	InboxDraftWrite,
+	InboxMessage,
+	InboxSendRequest,
+	InboxThread,
+	MailboxSendAs,
+} from '@saha-textile/contracts';
 
 /**
  * The contract's `MAX_SEND_ATTACHMENT_BYTES` (10 MB), repeated here because the admin takes only
@@ -33,6 +40,69 @@ export interface Draft {
 	includeAttachments: boolean;
 	/** The conversation's messages when the reply was started, for the collision check (E9). */
 	knownIds: string[];
+	/** The Gmail draft this is saved in (C2), once the first autosave has answered. */
+	gmailDraftId?: string;
+	/** That draft's version as last saved here; someone else's save since gets a choice. */
+	version?: string;
+	/** Files already saved in the Gmail draft; Gmail keeps them, so they are not sent again. */
+	savedFiles?: { name: string; size: number }[];
+}
+
+/** How long the compose box waits after the last keystroke before it saves to Gmail. */
+export const AUTOSAVE_MS = 3_000;
+
+/** Whether there is anything worth saving: an untouched Reply does not make a Gmail draft. */
+export function hasContent(draft: Draft): boolean {
+	return [draft.to, draft.cc, draft.bcc, draft.body].some((value) => value.trim().length > 0);
+}
+
+/**
+ * A saved Gmail draft as the compose box reopens it. A draft that answers a message reopens as a
+ * reply, one that carries a forward's files as a forward, anything else as a new message.
+ */
+export function draftFromGmail(saved: InboxDraft): Draft {
+	const forward = saved.forwardAttachmentsFrom;
+	const mode: DraftMode = forward ? 'forward' : saved.inReplyTo || saved.threadId ? 'reply' : 'new';
+	return {
+		mode,
+		from: addresses(saved.from)[0] ?? '',
+		to: addresses(saved.to).join(', '),
+		cc: addresses(saved.cc).join(', '),
+		bcc: addresses(saved.bcc).join(', '),
+		subject: saved.subject,
+		body: saved.text,
+		...(saved.threadId ? { threadId: saved.threadId } : {}),
+		...(saved.inReplyTo ? { inReplyTo: saved.inReplyTo } : {}),
+		...(saved.quoteMessageId ? { quoteMessageId: saved.quoteMessageId } : {}),
+		includeQuote: Boolean(saved.quoteMessageId),
+		// The original's file count is unknown until sent; one stands for "its attachments".
+		...(forward ? { forwardFrom: { ...forward, count: 1 } } : {}),
+		includeAttachments: Boolean(forward),
+		knownIds: [],
+		gmailDraftId: saved.draftId,
+		version: saved.version,
+		savedFiles: saved.attachments.map((file) => ({ name: file.filename, size: file.size })),
+	};
+}
+
+/** The autosave body. `overwrite` (Keep mine) leaves the version out, so the API saves over theirs. */
+export async function draftWrite(draft: Draft, files: readonly File[], overwrite = false): Promise<InboxDraftWrite> {
+	const request = await sendRequest(draft, files);
+	return {
+		from: request.from,
+		to: request.to,
+		cc: request.cc,
+		bcc: request.bcc,
+		subject: request.subject,
+		body: request.body,
+		threadId: request.threadId,
+		inReplyTo: request.inReplyTo,
+		quoteMessageId: request.quoteMessageId,
+		forwardAttachmentsFrom: request.forwardAttachmentsFrom,
+		attachments: request.attachments,
+		...(draft.version && !overwrite ? { version: draft.version } : {}),
+		keepAttachments: Boolean(draft.savedFiles?.length),
+	};
 }
 
 /** An empty new message from the mailbox's main address. */
@@ -233,13 +303,20 @@ export function keepDraft(key: string, draft: Draft, storage: Storage | null = s
 	}
 }
 
-export function keptDraft(key: string, mode: DraftMode, storage: Storage | null = sessionStore()): Draft | null {
+/** The kept copy of a draft opened from the Drafts folder, whatever kind it is. */
+export function gmailDraftKey(mailboxId: string, draftId: string): string {
+	return `${DRAFT_PREFIX}${mailboxId}:gmail:${draftId}`;
+}
+
+export function keptDraft(key: string, mode: DraftMode | null, storage: Storage | null = sessionStore()): Draft | null {
 	try {
 		const value: unknown = JSON.parse(storage?.getItem(key) ?? 'null');
 		if (!value || typeof value !== 'object') return null;
 		const draft = value as Partial<Draft>;
-		if (draft.mode !== mode || typeof draft.body !== 'string' || typeof draft.from !== 'string') return null;
-		return { ...newDraft(draft.from), ...draft, mode } as Draft;
+		if ((mode && draft.mode !== mode) || typeof draft.body !== 'string' || typeof draft.from !== 'string') {
+			return null;
+		}
+		return { ...newDraft(draft.from), ...draft, mode: draft.mode ?? mode ?? 'new' } as Draft;
 	} catch {
 		return null;
 	}
@@ -268,8 +345,10 @@ export function draftProblem(draft: Draft, files: readonly File[]): string | nul
 		return 'inbox_check_addresses';
 	}
 	if (!draft.subject.trim()) return 'inbox_need_subject';
-	if (files.length > MAX_ATTACHMENTS) return 'inbox_too_many_files';
-	if (files.reduce((total, file) => total + file.size, 0) > MAX_ATTACHMENT_BYTES) return 'inbox_files_too_big';
+	const saved = draft.savedFiles ?? [];
+	if (files.length + saved.length > MAX_ATTACHMENTS) return 'inbox_too_many_files';
+	const bytes = [...files, ...saved].reduce((total, file) => total + file.size, 0);
+	if (bytes > MAX_ATTACHMENT_BYTES) return 'inbox_files_too_big';
 	return null;
 }
 
@@ -304,6 +383,9 @@ export async function sendRequest(draft: Draft, files: readonly File[], sendAnyw
 			? { knownMessageIds: draft.knownIds }
 			: {}),
 		sendAnyway,
+		// Sent from the Gmail draft it was saved in, keeping the files already there (C2, C4).
+		...(draft.gmailDraftId ? { draftId: draft.gmailDraftId } : {}),
+		keepDraftAttachments: Boolean(draft.savedFiles?.length),
 		threadId: draft.threadId,
 		inReplyTo: draft.inReplyTo,
 		...(draft.includeQuote && draft.quoteMessageId ? { quoteMessageId: draft.quoteMessageId } : {}),

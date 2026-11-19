@@ -155,8 +155,18 @@ export function toInboxMessage(message: GmailMessage, inline: ReadonlyMap<string
 }
 
 /** A conversation's line in the list, from its metadata-only form. */
+/**
+ * A conversation's messages without its unsent drafts: a reply being written (and saved to Gmail
+ * as it is typed) is not a message of the conversation yet. A conversation of drafts only keeps
+ * them, so it still reads as something.
+ */
+function withoutDrafts<T extends { labelIds: readonly string[] }>(messages: readonly T[]): T[] {
+	const sent = messages.filter((message) => !message.labelIds.includes('DRAFT'));
+	return sent.length ? sent : [...messages];
+}
+
 export function toThreadSummary(thread: GmailThread): InboxThreadSummary {
-	const messages = thread.messages;
+	const messages = withoutDrafts(thread.messages);
 	const last = messages.at(-1);
 	const first = messages[0];
 	const participants = [
@@ -174,7 +184,7 @@ export function toThreadSummary(thread: GmailThread): InboxThreadSummary {
 		participants,
 		fromContactForm: first ? CONTACT_ID.test(header(first.payload, 'Message-ID').trim()) : false,
 		lastReplyBy: null,
-		labelIds: labelsOf(messages),
+		labelIds: labelsOf(thread.messages),
 		unreadCount: messages.filter((message) => message.labelIds.includes('UNREAD')).length,
 		starred: messages.some((message) => message.labelIds.includes('STARRED')),
 		important: messages.some((message) => message.labelIds.includes('IMPORTANT')),
@@ -183,7 +193,7 @@ export function toThreadSummary(thread: GmailThread): InboxThreadSummary {
 
 /** A whole conversation, oldest message first. */
 export function toInboxThread(thread: GmailThread, inline: ReadonlyMap<string, string> = new Map()): InboxThread {
-	const messages = thread.messages.map((message) => toInboxMessage(message, inline));
+	const messages = withoutDrafts(thread.messages).map((message) => toInboxMessage(message, inline));
 	return {
 		id: thread.id,
 		subject: messages[0]?.subject ?? '',

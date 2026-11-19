@@ -3,10 +3,11 @@ import { signal, type WritableSignal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, type Params } from '@angular/router';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MailboxGateway } from '@core/mailboxes/mailbox.gateway';
@@ -137,7 +138,19 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 		modify: vi.fn((..._args: unknown[]) => of({ ok: true })),
 		markMessages: vi.fn((..._args: unknown[]) => of({ ok: true })),
 		labels: vi.fn((..._args: unknown[]) => of([])),
-		send: vi.fn((..._args: unknown[]) => of({ id: 's1', threadId: 't1' })),
+		send: vi.fn((..._args: unknown[]) =>
+			of({ outboxId: 'o1', draftId: 'd1', sendAt: new Date(Date.now() + 10_000).toISOString() }),
+		),
+		outboxStatus: vi.fn((..._args: unknown[]) =>
+			of({ outboxId: 'o1', status: 'sent', draftId: 'd1', threadId: 't1', sentMessageId: 's1' }),
+		),
+		cancelSend: vi.fn((..._args: unknown[]) => of({ draftId: 'd1' })),
+		drafts: vi.fn((..._args: unknown[]) => of({ drafts: [], nextPageToken: null })),
+		draft: vi.fn((..._args: unknown[]) => of(gmailDraft())),
+		saveDraft: vi.fn((..._args: unknown[]) =>
+			of({ draftId: 'd1', version: 'v1', savedAt: '2026-11-19T10:41:00.000Z' }),
+		),
+		deleteDraft: vi.fn((..._args: unknown[]) => of(undefined)),
 		attachmentUrl: vi.fn((...args: unknown[]) => args.join('/')),
 	};
 	const client = {
@@ -145,6 +158,8 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 		fetchQuery: vi.fn(async (options: { queryFn: () => Promise<unknown> }) => options.queryFn()),
 	};
 	const notifier = { showSuccess: vi.fn(), showError: vi.fn() };
+	const undo = new Subject<void>();
+	const toastr = { info: vi.fn((..._args: unknown[]) => ({ onAction: undo, toastId: 1 })) };
 	const router = { navigate: vi.fn(async (..._args: unknown[]) => true) };
 	const modals = { open: vi.fn(), dismissAll: vi.fn() };
 	const permissions = signal<string[]>(['mailbox.use']);
@@ -154,6 +169,7 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 			{ provide: MailboxGateway, useValue: gateway },
 			{ provide: QueryClient, useValue: client },
 			{ provide: NotificationService, useValue: notifier },
+			{ provide: ToastrService, useValue: toastr },
 			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
 			{ provide: Router, useValue: router },
 			{ provide: ActivatedRoute, useValue: { paramMap: params, queryParamMap: query } },
@@ -190,6 +206,8 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 		gateway,
 		client,
 		notifier,
+		toastr,
+		undo,
 		router,
 		modals,
 		permissions,
@@ -202,6 +220,27 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 };
 
 const notFound = new HttpErrorResponse({ status: 404 });
+
+/** A Gmail draft as the API answers it. */
+function gmailDraft(fields: Record<string, unknown> = {}) {
+	return {
+		draftId: 'd1',
+		version: 'v1',
+		threadId: null,
+		from: 'care@shop.test',
+		to: 'ananya@example.com',
+		cc: '',
+		bcc: '',
+		subject: 'Saree sizes',
+		text: 'Dear Ananya,',
+		attachments: [],
+		date: '2026-11-19T10:40:00.000Z',
+		inReplyTo: null,
+		quoteMessageId: null,
+		forwardAttachmentsFrom: null,
+		...fields,
+	};
+}
 
 beforeEach(() => {
 	sessionStorage.clear();
@@ -641,7 +680,10 @@ describe('Inbox conversation', () => {
 			expect.objectContaining({ queryParams: { draft: 'reply' } }),
 		);
 		page.closeDraft();
-		expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { draft: null } }));
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({ queryParams: { draft: null, d: null } }),
+		);
 	});
 });
 
@@ -759,19 +801,26 @@ describe('Inbox drafts', () => {
 		expect(page.collision()?.name).toBe('Rahul');
 	});
 
-	it('sends, says so, forgets the kept text and closes the draft', async () => {
-		const { page, gateway, notifier, router, client } = replying();
+	it('sends with ten seconds to undo, forgets the kept text and closes the draft (C4)', async () => {
+		const { page, gateway, toastr, router, client } = replying();
 		page.editDraft('body', 'Hello');
 		await page.send();
 		expect(gateway.send).toHaveBeenCalledWith(
 			'mbx-care',
-			expect.objectContaining({ quoteMessageId: 'm1', threadId: 't1' }),
+			expect.objectContaining({ quoteMessageId: 'm1', threadId: 't1', keepDraftAttachments: false }),
 		);
-		expect(notifier.showSuccess).toHaveBeenCalledWith('inbox_sent');
-		expect(page.announcement()).toBe('inbox_sent');
+		expect(toastr.info).toHaveBeenCalledWith(
+			'inbox_sending_in',
+			undefined,
+			expect.objectContaining({ payload: { action: 'inbox_undo_send' } }),
+		);
+		expect(page.announcement()).toBe('inbox_sending_in');
 		expect(page.draft()).toBeNull();
 		expect(keptDraft(draftKey('mbx-care', 't1', 'reply'), 'reply')).toBeNull();
-		expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { draft: null } }));
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({ queryParams: { draft: null, d: null } }),
+		);
 		expect(client.invalidateQueries).toHaveBeenCalled();
 		page.sending.set(true);
 		await page.send();
@@ -804,15 +853,18 @@ describe('Inbox drafts', () => {
 		expect(gateway.send).toHaveBeenCalled();
 	});
 
-	it('asks before discarding written text, and discards an empty draft at once (T6)', () => {
+	it('asks before discarding written text, and discards an empty draft at once (T6)', async () => {
 		const { page, modals, router } = replying();
 		page.editDraft('body', 'Half written');
 		page.discard();
 		expect(modals.open).toHaveBeenCalled();
-		page.discardNow();
+		await page.discardNow();
 		expect(modals.dismissAll).toHaveBeenCalled();
 		expect(page.draft()).toBeNull();
-		expect(router.navigate).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { draft: null } }));
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({ queryParams: { draft: null, d: null } }),
+		);
 		modals.open.mockClear();
 		page.discard();
 		expect(modals.open).not.toHaveBeenCalled();
@@ -826,5 +878,166 @@ describe('Inbox drafts', () => {
 		page.editDraft('body', 'x');
 		page.warnBeforeLeaving(event);
 		expect(event.preventDefault).toHaveBeenCalled();
+	});
+});
+
+describe('Inbox Gmail drafts and Undo Send (C2, C4)', () => {
+	afterEach(() => vi.useRealTimers());
+
+	const replying = () => {
+		const tools = setup({ mailbox: 'care', folder: 'inbox', thread: 't1' }, { draft: 'reply' });
+		tools.summary([box('care')]);
+		tools.threadQuery.result.set({ data: conversation('m1') });
+		tools.flush();
+		return tools;
+	};
+
+	it('saves to Gmail a few seconds after typing stops, then says so', async () => {
+		vi.useFakeTimers();
+		const { page, gateway } = replying();
+		expect(gateway.saveDraft).not.toHaveBeenCalled();
+		page.editDraft('body', 'Dear');
+		page.editDraft('body', 'Dear Rahul');
+		await vi.advanceTimersByTimeAsync(2_999);
+		expect(gateway.saveDraft).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(gateway.saveDraft).toHaveBeenCalledTimes(1);
+		expect(gateway.saveDraft).toHaveBeenCalledWith(
+			'mbx-care',
+			null,
+			expect.objectContaining({ body: 'Dear Rahul', keepAttachments: false }),
+		);
+		expect(page.saveState()).toBe('saved');
+		expect(page.savedAt()).toBe('2026-11-19T10:41:00.000Z');
+		expect(page.draft()).toMatchObject({ gmailDraftId: 'd1', version: 'v1' });
+		// The next save updates the same draft, naming the version it saw.
+		page.editDraft('body', 'Dear Rahul, yes');
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(gateway.saveDraft).toHaveBeenLastCalledWith(
+			'mbx-care',
+			'd1',
+			expect.objectContaining({ version: 'v1' }),
+		);
+	});
+
+	it('makes no Gmail draft for a reply opened and left untouched, or emptied again', async () => {
+		vi.useFakeTimers();
+		const { page, gateway } = replying();
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(gateway.saveDraft).not.toHaveBeenCalled();
+		expect(page.saveState()).toBe('idle');
+		page.editDraft('to', '');
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(gateway.saveDraft).not.toHaveBeenCalled();
+	});
+
+	it('sends saved files once and keeps them in the draft afterwards', async () => {
+		vi.useFakeTimers();
+		const { page, gateway } = replying();
+		page.editDraft('body', 'See the chart');
+		page.files.set([new File(['%PDF'], 'chart.pdf', { type: 'application/pdf' })]);
+		await page.saveNow();
+		expect(page.files()).toEqual([]);
+		expect(page.draft()?.savedFiles).toEqual([{ name: 'chart.pdf', size: 4 }]);
+		await page.saveNow();
+		const body = gateway.saveDraft.mock.calls.at(-1)?.[2] as { attachments: unknown[]; keepAttachments: boolean };
+		expect(body.attachments).toEqual([]);
+		expect(body.keepAttachments).toBe(true);
+	});
+
+	it('offers a choice when someone saved the draft meanwhile, and says when it is offline', async () => {
+		const { page, gateway } = replying();
+		page.editDraft('body', 'Mine');
+		await page.saveNow();
+		gateway.saveDraft.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 412 })));
+		page.editDraft('body', 'Mine, longer');
+		await page.saveNow();
+		expect(page.saveState()).toBe('conflict');
+		page.keepMine();
+		await vi.waitFor(() => expect(page.saveState()).toBe('saved'));
+		expect(gateway.saveDraft.mock.calls.at(-1)?.[2]).not.toHaveProperty('version');
+		gateway.saveDraft.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 412 })));
+		await page.saveNow();
+		gateway.draft.mockReturnValueOnce(of(gmailDraft({ text: 'Theirs', version: 'v9', inReplyTo: '<m1@x>' })));
+		await page.useTheirs();
+		expect(page.draft()).toMatchObject({ body: 'Theirs', version: 'v9', knownIds: ['m1'] });
+		gateway.saveDraft.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 0 })));
+		await page.saveNow();
+		expect(page.saveState()).toBe('offline');
+		expect(page.draft()?.body).toBe('Theirs');
+	});
+
+	it('sends from the saved draft, and Undo reopens it in Drafts', async () => {
+		const { page, gateway, undo, notifier, router } = replying();
+		page.editDraft('body', 'Hello');
+		await page.saveNow();
+		await page.send();
+		expect(gateway.send).toHaveBeenCalledWith('mbx-care', expect.objectContaining({ draftId: 'd1' }));
+		undo.next();
+		await vi.waitFor(() => expect(gateway.cancelSend).toHaveBeenCalledWith('mbx-care', 'o1'));
+		await vi.waitFor(() => expect(notifier.showSuccess).toHaveBeenCalledWith('inbox_send_undone'));
+		expect(router.navigate).toHaveBeenLastCalledWith(['/inbox', 'care', 'drafts'], {
+			queryParams: { draft: 'open', d: 'd1' },
+		});
+		gateway.cancelSend.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409 })));
+		await page.undoSend('mbx-care', { outboxId: 'o2', draftId: 'd1', sendAt: '' });
+		expect(notifier.showError).toHaveBeenCalledWith('inbox_undo_too_late');
+	});
+
+	it('says once whether the message went, after the wait', async () => {
+		vi.useFakeTimers();
+		const { page, gateway, notifier } = replying();
+		page.editDraft('body', 'Hello');
+		await page.send();
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(gateway.outboxStatus).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(notifier.showSuccess).toHaveBeenCalledWith('inbox_sent');
+
+		const again = replying();
+		again.gateway.outboxStatus.mockReturnValue(
+			of({ outboxId: 'o1', status: 'failed', draftId: 'd1', threadId: null, sentMessageId: null }),
+		);
+		again.page.editDraft('body', 'Again');
+		await again.page.send();
+		await vi.advanceTimersByTimeAsync(13_000);
+		expect(again.notifier.showError).toHaveBeenCalledWith('inbox_send_failed_drafts');
+	});
+
+	it('lists Gmail drafts in Drafts and reopens one in the compose box', async () => {
+		const tools = setup({ mailbox: 'care', folder: 'drafts' }, {});
+		tools.summary([box('care')]);
+		expect(tools.page.draftsView()).toBe(true);
+		const draftsQuery = state.queries.find((entry) => entry.options().queryKey.includes('drafts')) as Query;
+		expect(draftsQuery.options().enabled).toBe(true);
+		expect(tools.threadsQuery.options().enabled).toBe(false);
+		await draftsQuery.options().queryFn();
+		expect(tools.gateway.drafts).toHaveBeenCalledWith('mbx-care', undefined);
+		tools.go({ mailbox: 'care', folder: 'drafts' }, { draft: 'open', d: 'd1' });
+		await vi.waitFor(() => expect(tools.page.draft()).toMatchObject({ body: 'Dear Ananya,', gmailDraftId: 'd1' }));
+		expect(tools.gateway.draft).toHaveBeenCalledWith('mbx-care', 'd1');
+		expect(tools.page.saveState()).toBe('saved');
+	});
+
+	it('says when a draft was sent or deleted elsewhere', async () => {
+		const tools = setup({ mailbox: 'care', folder: 'drafts' }, {});
+		tools.summary([box('care')]);
+		tools.gateway.draft.mockReturnValueOnce(throwError(() => notFound));
+		tools.go({ mailbox: 'care', folder: 'drafts' }, { draft: 'open', d: 'gone' });
+		await vi.waitFor(() => expect(tools.notifier.showError).toHaveBeenCalledWith('inbox_draft_gone'));
+		expect(tools.page.draft()).toBeNull();
+	});
+
+	it('Discard deletes the Gmail draft, and keeps the text when Gmail refuses', async () => {
+		const { page, gateway, notifier } = replying();
+		page.editDraft('body', 'Never mind');
+		await page.saveNow();
+		gateway.deleteDraft.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 502 })));
+		await page.discardNow();
+		expect(notifier.showError).toHaveBeenCalledWith('inbox_discard_failed');
+		expect(page.draft()?.body).toBe('Never mind');
+		await page.discardNow();
+		expect(gateway.deleteDraft).toHaveBeenLastCalledWith('mbx-care', 'd1');
+		expect(page.draft()).toBeNull();
 	});
 });

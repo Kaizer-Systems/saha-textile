@@ -91,7 +91,9 @@ The page address names the place the operator is in:
 | `/inbox/<mailbox>/<folder>`                          | One folder of one mailbox                        |
 | `/inbox/<mailbox>/<labelId>`                         | One label (`Label_…`) or category (`CATEGORY_…`) |
 | `/inbox/<mailbox>/<folder>/<threadId>`               | One open conversation                            |
+| `/inbox/<mailbox>/drafts`                            | The mailbox's Gmail drafts                       |
 | `…?draft=reply` (also `reply_all`, `forward`, `new`) | The compose box                                  |
+| `…?draft=open&d=<draftId>`                           | A Gmail draft, reopened in the compose box       |
 | `…?q=<words>`                                        | Search results                                   |
 
 `<mailbox>` is the part of the address before `@`. One matcher route (`inboxMatcher` in `inbox.routes.ts`) serves every form, so moving between them keeps the page. **Back** steps out one level at a time. A shared link opens the same conversation for a colleague, still checked against that colleague's own access. An address that names a mailbox the operator cannot open moves them to one they can open and says why.
@@ -121,6 +123,7 @@ Mail HTML passes two barriers before anyone sees it.
 
 - **Plain-text form.** A message sent as HTML only gets a plain-text form from `htmlToText()`, used for folded lines, forwards and the plain-text quote in a reply.
 - **Folded messages.** Older read messages in a conversation fold to one line.
+- **Very large mail.** A message with over 1 MB of formatted mail (`LARGE_MESSAGE_HTML_CHARS`) opens as plain text first, with **Show formatted version**.
 - **Attachments.** Attachments always download. Files that can run programs ask before downloading.
 
 ### Sending
@@ -132,7 +135,20 @@ Mail HTML passes two barriers before anyone sees it.
 - **Limits.** Uploaded attachments may total 10 MB (`MAX_SEND_ATTACHMENT_BYTES`), with at most 10 files. A forward with copied attachments may total 25 MB (`MAX_FORWARD_BYTES`).
 - **Signing out.** `forgetMailboxData` removes every Inbox and Mailboxes query and the tab's unsent drafts whenever the admin session ends, so the next person on the same browser sees none of it.
 - **Collision check.** Before sending a reply, the admin reads the conversation again. If someone answered after the reply was started, sending stops and names who answered. The operator can read what arrived and keep their reply, or choose **Send anyway**. The check runs in the admin because the API's error filter returns only standard error bodies.
-- **Unsent text.** Drafts are kept in `sessionStorage` per mailbox, conversation and mode. Closing the tab with unsent text asks first, and **Discard** asks when there is text to lose.
+- **Unsent text.** The tab also keeps a copy of each draft in `sessionStorage`, per mailbox, conversation and mode, so a reload or a lost connection keeps the text. Closing the tab with unsent text asks first.
+
+### Drafts and Undo Send
+
+- **Saved to Gmail.** The compose box saves to a Gmail draft three seconds after typing stops (`AUTOSAVE_MS`). A reply opened and left untouched makes no draft. The line beside **Send** says **Saved to Gmail** with the time only after the API has answered, and says when a save failed or the browser is offline.
+- **What a draft holds.** A draft holds the typed text, the addresses and the uploaded files. The signature, the quote and a forward's original files are added when it is sent. Two headers, `X-Saha-Textile-Quote` and `X-Saha-Textile-Forward`, record the quote and forward choices so a draft reopens as it was left; a sent message carries neither.
+- **Files.** A file is uploaded with the first save after it is picked. Later saves ask the API to keep the files already in the draft (`keepAttachments`), and the API copies them from Gmail into the new version.
+- **Two writers.** Each save names the draft version it last saw. When someone saved the draft since, the API answers `412 draft_changed` and the compose box offers **Use theirs** or **Keep mine**.
+- **Drafts folder.** People with the Send right see the mailbox's Gmail drafts, including ones written in Gmail itself, and reopen them in the compose box. A reply being written is left out of its conversation, so it never counts as someone else's reply.
+- **Discard.** **Discard** deletes the Gmail draft, after asking when there is text to lose. When Gmail refuses, the text stays.
+- **Undo Send.** **Send** saves the finished message, with its signature and quote, as a Gmail draft and answers at once. The message goes ten seconds later (`UNDO_SEND_SECONDS`); a toast offers **Undo** until then. **Undo** leaves the message in Drafts and reopens it. Closing the tab does not stop the send.
+- **The outbox.** Each waiting message is a row in `mailboxOutbox` (ids and counts only, removed after seven days). `UndoSendDispatcher` in the API sends what is due every two seconds, so a restart loses nothing. Each row is claimed in one atomic step, so several API instances never send it twice, and the writer's Send right is checked again at that moment.
+- **Lost answers.** A message gets its own `Message-ID`. When Gmail's answer to a send is lost, the API looks for that id in Sent, then for the draft, before anything is tried again: found in Sent means sent, a draft still there means try again (three tries in all), neither for a minute means gone. A message is never sent twice on a guess. The admin reports the outcome once: sent, not sent (still in Drafts), gone, or unconfirmed.
+- **Purchase orders.** Purchase orders are emailed at once through `InboxService.send()`, without the wait.
 
 Every send writes a `mailbox.message_sent` audit record with Gmail's message and thread ids. Gmail records only that the mailbox sent a message; the Inbox reads these records to show which operator sent each reply from the admin.
 
@@ -175,6 +191,7 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
 | Contact Us delivery                  | `apps/api/src/mailboxes/contact-messages.service.ts`                                    |
 | Inbox screen                         | `apps/admin/src/app/features/inbox/inbox.ts`                                            |
 | Reply addressing and drafts          | `apps/admin/src/app/features/inbox/inbox-drafts.ts`                                     |
+| Undo Send outbox                     | `apps/api/src/mailboxes/undo-send.dispatcher.ts`                                        |
 | Mailboxes settings                   | `apps/admin/src/app/features/setting/mailboxes/mailboxes.ts`                            |
 | Routes                               | [Admin mailbox and inbox routes](../api/route-inventory#admin-mailbox-and-inbox-routes) |
 
@@ -195,8 +212,10 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
 ## Limitations
 
 - The browser journey and unit tests do not reach Gmail. Sign-in, sending, import, labels and permanent delete need a real Workspace mailbox to verify.
-- Very large messages (over 1 MB of formatted mail) open as plain text first, with "Show formatted version".
-- Unsent text is kept in the browser tab, not in Gmail drafts. A sent message cannot be recalled, and there are no saved replies or Bcc.
+- Files already saved in a draft are removed together, by discarding the draft, or one at a time in Gmail.
+- A reply reopened from Drafts sends without the collision check, because the compose box cannot know which messages its writer had read.
+- Finding a send whose answer was lost relies on Gmail keeping the message's own `Message-ID`, which is unconfirmed until it is tried on a real mailbox. Without it such a send ends as unconfirmed, never as a second copy.
+- A sent message cannot be recalled after the ten seconds, and there are no saved replies.
 - Gmail settings (filters, vacation reply, signature) are managed in Gmail.
 - Whether Gmail's own filters run on mail placed by import (Contact Us) is unconfirmed until it is tried on a real mailbox.
 

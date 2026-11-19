@@ -101,8 +101,8 @@
 						<a
 							class="nav-link"
 							[routerLink]="listLink(entry.id)"
-							[class.active]="!q() && !labelId() && folder() === entry.id"
-							[attr.aria-current]="!q() && !labelId() && folder() === entry.id ? 'page' : null"
+							[class.active]="!q() && !labelId() && !draftsView() && folder() === entry.id"
+							[attr.aria-current]="!q() && !labelId() && !draftsView() && folder() === entry.id ? 'page' : null"
 						>
 							<i [class]="entry.icon"></i>
 							{{ 'inbox_folder_' + entry.id | transloco }} @if (entry.id === 'inbox' && mailbox()?.unread)
@@ -118,7 +118,21 @@
 							}
 						</a>
 					</li>
-					}
+					@if (entry.id === 'sent' && canSend()) {
+					<!-- Drafts saved to Gmail as they are typed (C2); only people who may send see them. -->
+					<li class="nav-item">
+						<a
+							class="nav-link"
+							id="inbox_folder_drafts"
+							[routerLink]="draftsLink()"
+							[class.active]="draftsView()"
+							[attr.aria-current]="draftsView() ? 'page' : null"
+						>
+							<i class="ri-draft-line"></i>
+							{{ 'inbox_folder_drafts' | transloco }}
+						</a>
+					</li>
+					} }
 				</ul>
 				@if (labelLists().categories.length) {
 				<h6 class="text-content small mt-3 mb-1 px-3">{{ 'inbox_categories' | transloco }}</h6>
@@ -246,7 +260,91 @@
 						<i class="ri-close-line"></i>
 					</button>
 				</div>
-				}
+				} @if (draftsView()) {
+				<!-- Drafts (C2): Gmail's own drafts, newest first; one opens in the compose box. -->
+				<div class="d-flex align-items-center mb-2 flex-wrap gap-2">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						id="inbox_drafts_refresh"
+						[disabled]="refreshing()"
+						(click)="refresh()"
+					>
+						<i class="ri-refresh-line"></i>
+						{{ 'inbox_refresh' | transloco }}
+					</button>
+				</div>
+				@if (loadingDrafts()) {
+				<div class="table-loader position-static">
+					<span>{{ 'please_wait' | transloco }}...</span>
+				</div>
+				} @else if (draftsFailed()) {
+				<div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+					<span>{{ 'inbox_gmail_unavailable' | transloco }}</span>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="refresh()"
+					>
+						{{ 'inbox_try_again' | transloco }}
+					</button>
+				</div>
+				} @else {
+				<ul class="notification-setting inbox-list">
+					@for (row of drafts(); track row.draftId) {
+					<li
+						class="d-flex align-items-start gap-2"
+						[class.inbox-open]="openDraftId() === row.draftId"
+					>
+						<a
+							class="d-block text-reset min-w-0 flex-grow-1"
+							[id]="'inbox_draft_' + row.draftId"
+							[routerLink]="draftsLink()"
+							[queryParams]="{ draft: 'open', d: row.draftId }"
+							[attr.aria-current]="openDraftId() === row.draftId ? 'true' : null"
+						>
+							<div class="d-flex justify-content-between align-items-start gap-2">
+								<h4 class="text-truncate">
+									<span class="text-danger">{{ 'inbox_draft_label' | transloco }}</span>
+									{{ row.to ? senderName(row.to) : ('inbox_no_recipient' | transloco) }}
+								</h4>
+								<h5
+									class="small text-nowrap"
+									[title]="row.date | date: 'd MMM y, HH:mm'"
+								>
+									{{ row.date | date: listDateFormat(row.date) }}
+								</h5>
+							</div>
+							<h5 class="mb-1">{{ row.subject || ('inbox_no_subject' | transloco) }}</h5>
+							<p class="text-content small text-truncate mb-1">{{ row.snippet }}</p>
+						</a>
+					</li>
+					} @empty {
+					<li class="text-content">{{ 'inbox_empty_drafts' | transloco }}</li>
+					}
+				</ul>
+				@if (!firstPage() || nextPage()) {
+				<div class="d-flex justify-content-between mt-3">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="firstPage()"
+						(click)="newer()"
+					>
+						<i class="ri-arrow-left-s-line"></i>
+						{{ 'inbox_newer' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						[disabled]="!nextPage()"
+						(click)="older()"
+					>
+						{{ 'inbox_older' | transloco }}
+						<i class="ri-arrow-right-s-line"></i>
+					</button>
+				</div>
+				} } } @else {
 				<!-- The list's toolbar: Refresh normally; the selection's actions once a row is ticked (A3). -->
 				<div
 					class="d-flex align-items-center mb-2 flex-wrap gap-2"
@@ -610,7 +708,7 @@
 						<i class="ri-arrow-right-s-line"></i>
 					</button>
 				</div>
-				} }
+				} } }
 			</div>
 
 			<!-- Reading pane -->
@@ -618,7 +716,11 @@
 				class="col-xl-6 col-lg-5 d-lg-block"
 				[class.d-none]="!reading()"
 			>
-				@if (draftMode() === 'new' && draft()) {
+				@if (openingDraft()) {
+				<div class="table-loader position-static">
+					<span>{{ 'please_wait' | transloco }}...</span>
+				</div>
+				} @else if ((draftMode() === 'new' || draftMode() === 'open') && draft()) {
 				<div class="d-flex align-items-center mb-3 gap-2">
 					<button
 						type="button"
@@ -629,7 +731,9 @@
 					>
 						<i class="ri-arrow-left-line"></i>
 					</button>
-					<h4 class="mb-0">{{ 'inbox_draft_new' | transloco }}</h4>
+					<h4 class="mb-0">
+						{{ (draftMode() === 'open' ? 'inbox_draft_label' : 'inbox_draft_new') | transloco }}
+					</h4>
 				</div>
 				<ng-container *ngTemplateOutlet="draftForm" />
 				} @else if (loadingThread()) {
@@ -1361,6 +1465,37 @@
 						<i class="ri-attachment-2"></i>
 						{{ 'inbox_attach' | transloco }}
 					</button>
+					<!-- Autosave to Gmail (C2): said only once the API has answered. -->
+					<span
+						class="text-content small"
+						id="inbox_save_state"
+						role="status"
+					>
+						@switch (saveState()) { @case ('saving') { {{ 'inbox_saving' | transloco }} } @case ('saved') {
+						@if (savedAt(); as at) { {{ 'inbox_saved_at' | transloco: { time: (at | date: 'HH:mm') } }} } }
+						@case ('offline') { {{ 'inbox_not_saved_offline' | transloco }} } @case ('failed') { {{
+						'inbox_not_saved' | transloco }} } @case ('conflict') {
+						<span class="d-inline-flex align-items-center flex-wrap gap-2">
+							{{ 'inbox_changed_elsewhere' | transloco }}
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								id="inbox_use_theirs"
+								(click)="useTheirs()"
+							>
+								{{ 'inbox_use_theirs' | transloco }}
+							</button>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								id="inbox_keep_mine"
+								(click)="keepMine()"
+							>
+								{{ 'inbox_keep_mine' | transloco }}
+							</button>
+						</span>
+						} }
+					</span>
 					<div class="d-flex ms-auto gap-3">
 						<button
 							type="button"
@@ -1382,9 +1517,14 @@
 						</button>
 					</div>
 				</div>
-				@if (files().length) {
+				@if (files().length || draft()?.savedFiles?.length) {
 				<p class="help-text d-flex column-gap-3 mt-2 mb-0 flex-wrap">
-					@for (file of files(); track $index) {
+					@for (file of draft()?.savedFiles ?? []; track $index) {
+					<span class="text-break">
+						<i class="ri-attachment-2"></i>
+						{{ file.name }} ({{ size(file.size) }})
+					</span>
+					} @for (file of files(); track $index) {
 					<span class="text-break">
 						<i class="ri-attachment-2"></i>
 						{{ file.name }} ({{ size(file.size) }})

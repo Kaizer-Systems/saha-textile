@@ -208,3 +208,25 @@ describe('Gmail drafts', () => {
 		expect(calls.map((call) => call.method)).toEqual(['DELETE', 'DELETE']);
 	});
 });
+
+describe('drafts inside a conversation', () => {
+	const message = (id: string, labelIds: string[]) => ({
+		id,
+		threadId: 't1',
+		labelIds,
+		internalDate: '1700000000000',
+		snippet: id,
+		payload: { mimeType: 'text/plain', headers: [{ name: 'From', value: `${id}@x.test` }], body: { data: b64(id) } },
+	});
+
+	it('leaves a reply being written out of the conversation and its list line', async () => {
+		const { toInboxThread, toThreadSummary } = await import('../src/index.js');
+		const thread = { id: 't1', messages: [message('m1', ['INBOX']), message('d1', ['DRAFT'])] };
+		expect(toInboxThread(thread as never).messages.map((entry) => entry.id)).toEqual(['m1']);
+		const row = toThreadSummary(thread as never);
+		expect(row).toMatchObject({ snippet: 'm1', messageCount: 1 });
+		expect(row.labelIds).toContain('DRAFT');
+		const onlyDraft = { id: 't2', messages: [message('d2', ['DRAFT'])] };
+		expect(toInboxThread(onlyDraft as never).messages).toHaveLength(1);
+	});
+});

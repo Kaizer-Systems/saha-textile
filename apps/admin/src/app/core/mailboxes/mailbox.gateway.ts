@@ -12,11 +12,17 @@ import type {
 	InboxBinSummary,
 	InboxBulkRequest,
 	InboxBulkResult,
+	InboxDraft,
+	InboxDraftPage,
+	InboxDraftSaved,
+	InboxDraftWrite,
 	InboxEmptyBinResult,
 	InboxFolder,
 	InboxLabel,
 	InboxMailboxSummary,
 	InboxModifyRequest,
+	InboxOutboxStatus,
+	InboxSendQueued,
 	InboxSendRequest,
 	InboxThread,
 	InboxThreadPage,
@@ -157,9 +163,55 @@ export class MailboxGateway {
 		);
 	}
 
-	/** Quiet: the compose box says why a send failed, and keeps the text. */
-	send(mailboxId: string, body: InboxSendRequest): Observable<{ id: string; threadId: string }> {
-		return this.http.post<{ id: string; threadId: string }>(this.inbox(`/${this.id(mailboxId)}/send`), body, {
+	/**
+	 * Quiet: the compose box says why a send failed, and keeps the text. The message waits ten
+	 * seconds in Gmail's drafts before it goes, so Undo can stop it (C4).
+	 */
+	send(mailboxId: string, body: InboxSendRequest): Observable<InboxSendQueued> {
+		return this.http.post<InboxSendQueued>(this.inbox(`/${this.id(mailboxId)}/send`), body, { context: quiet() });
+	}
+
+	/** Quiet: the Inbox says what became of the message itself. */
+	outboxStatus(mailboxId: string, outboxId: string): Observable<InboxOutboxStatus> {
+		return this.http.get<InboxOutboxStatus>(this.inbox(`/${this.id(mailboxId)}/outbox/${this.id(outboxId)}`), {
+			context: quiet(),
+		});
+	}
+
+	/** Undo Send. Quiet: "too late" is said by the Inbox. */
+	cancelSend(mailboxId: string, outboxId: string): Observable<{ draftId: string }> {
+		return this.http.post<{ draftId: string }>(
+			this.inbox(`/${this.id(mailboxId)}/outbox/${this.id(outboxId)}/cancel`),
+			{},
+			{ context: quiet() },
+		);
+	}
+
+	drafts(mailboxId: string, pageToken?: string): Observable<InboxDraftPage> {
+		let params = new HttpParams();
+		if (pageToken) params = params.set('pageToken', pageToken);
+		return this.http.get<InboxDraftPage>(this.inbox(`/${this.id(mailboxId)}/drafts`), {
+			params,
+			context: quiet(),
+		});
+	}
+
+	draft(mailboxId: string, draftId: string): Observable<InboxDraft> {
+		return this.http.get<InboxDraft>(this.inbox(`/${this.id(mailboxId)}/drafts/${this.id(draftId)}`), {
+			context: quiet(),
+		});
+	}
+
+	/** Autosave: a new Gmail draft, or the one being written. Quiet: the compose box shows the state. */
+	saveDraft(mailboxId: string, draftId: string | null, body: InboxDraftWrite): Observable<InboxDraftSaved> {
+		const url = this.inbox(`/${this.id(mailboxId)}/drafts${draftId ? `/${this.id(draftId)}` : ''}`);
+		return draftId
+			? this.http.put<InboxDraftSaved>(url, body, { context: quiet() })
+			: this.http.post<InboxDraftSaved>(url, body, { context: quiet() });
+	}
+
+	deleteDraft(mailboxId: string, draftId: string): Observable<void> {
+		return this.http.delete<void>(this.inbox(`/${this.id(mailboxId)}/drafts/${this.id(draftId)}`), {
 			context: quiet(),
 		});
 	}

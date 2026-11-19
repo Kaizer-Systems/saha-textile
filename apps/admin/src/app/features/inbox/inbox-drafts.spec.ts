@@ -8,12 +8,16 @@ import {
 	addresses,
 	answeredMessage,
 	draftFor,
+	draftFromGmail,
 	draftKey,
 	draftProblem,
+	draftWrite,
 	firstWords,
 	forgetDraft,
 	frameDocument,
+	gmailDraftKey,
 	gmailLink,
+	hasContent,
 	isFolded,
 	isRunnable,
 	keepDraft,
@@ -194,6 +198,7 @@ describe('sendRequest', () => {
 			cc: ['ria@example.com'],
 			bcc: [],
 			sendAnyway: false,
+			keepDraftAttachments: false,
 			subject: 'Re: Order',
 			body: 'Thanks',
 			threadId: 't1',
@@ -414,5 +419,72 @@ describe('review revision 2 helpers', () => {
 		expect(await sendRequest({ ...forward, includeAttachments: false }, [])).not.toHaveProperty(
 			'forwardAttachmentsFrom',
 		);
+	});
+});
+
+describe('Gmail drafts in the compose box (C2)', () => {
+	const saved = {
+		draftId: 'd1',
+		version: 'v3',
+		threadId: 't1',
+		from: 'Care <care@shop.test>',
+		to: 'Ananya <ananya@example.com>',
+		cc: '',
+		bcc: 'boss@shop.test',
+		subject: 'Re: Saree',
+		text: 'Yes',
+		attachments: [{ id: 'a1', filename: 'chart.pdf', mimeType: 'application/pdf', size: 4 }],
+		date: '2026-11-19T10:40:00.000Z',
+		inReplyTo: '<m1@x>',
+		quoteMessageId: 'm1',
+		forwardAttachmentsFrom: null,
+	};
+
+	it('reopens a saved reply as a reply, with its files kept in Gmail', () => {
+		expect(draftFromGmail(saved as never)).toMatchObject({
+			mode: 'reply',
+			from: 'care@shop.test',
+			to: 'ananya@example.com',
+			bcc: 'boss@shop.test',
+			threadId: 't1',
+			inReplyTo: '<m1@x>',
+			includeQuote: true,
+			gmailDraftId: 'd1',
+			version: 'v3',
+			savedFiles: [{ name: 'chart.pdf', size: 4 }],
+		});
+		const forward = {
+			...saved,
+			inReplyTo: null,
+			threadId: null,
+			forwardAttachmentsFrom: { threadId: 't1', messageId: 'm1' },
+		};
+		expect(draftFromGmail(forward as never)).toMatchObject({ mode: 'forward', includeAttachments: true });
+		expect(draftFromGmail({ ...saved, inReplyTo: null, threadId: null } as never).mode).toBe('new');
+	});
+
+	it('saves with the version seen, or over it when asked, keeping the saved files', async () => {
+		const draft = draftFromGmail(saved as never);
+		const body = await draftWrite(draft, []);
+		expect(body).toMatchObject({ version: 'v3', keepAttachments: true, to: ['ananya@example.com'] });
+		expect(body).not.toHaveProperty('sendAnyway');
+		expect(body).not.toHaveProperty('draftId');
+		expect(await draftWrite(draft, [], true)).not.toHaveProperty('version');
+		expect((await sendRequest(draft, [])).draftId).toBe('d1');
+	});
+
+	it('counts files already in the draft towards the limits', () => {
+		const draft = { ...draftFromGmail(saved as never), savedFiles: [{ name: 'big.zip', size: 10 * 1024 * 1024 }] };
+		expect(draftProblem(draft, [new File(['x'], 'x.txt')])).toBe('inbox_files_too_big');
+		const many = { ...draft, savedFiles: Array.from({ length: 10 }, (_, i) => ({ name: `${i}`, size: 1 })) };
+		expect(draftProblem(many, [new File(['x'], 'x.txt')])).toBe('inbox_too_many_files');
+	});
+
+	it('saves nothing for an untouched draft, and finds kept copies of reopened ones', () => {
+		expect(hasContent(newDraft('care@shop.test'))).toBe(false);
+		expect(hasContent({ ...newDraft('care@shop.test'), to: 'a@x.test' })).toBe(true);
+		const key = gmailDraftKey('mbx', 'd1');
+		keepDraft(key, draftFromGmail(saved as never));
+		expect(keptDraft(key, null)?.gmailDraftId).toBe('d1');
 	});
 });

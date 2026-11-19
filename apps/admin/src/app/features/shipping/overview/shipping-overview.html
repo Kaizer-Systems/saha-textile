@@ -1,0 +1,181 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'shipping'"
+>
+	@if (form(); as current) { @let data = query.data();
+	<div class="row g-3 mb-4">
+		@for (zone of zones; track zone) { @let ruleSet = ruleSetOf(zone);
+		<div class="col-lg-6">
+			<div
+				class="card mb-0 h-100"
+				[attr.data-zone]="zone"
+			>
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-start gap-2">
+						<div>
+							<h6 class="text-muted mb-1">{{ 'ship_zone_card_' + zone | transloco }}</h6>
+							@if (notNeeded(zone)) {
+							<h5 class="mb-1">{{ 'ship_zone_not_needed' | transloco }}</h5>
+							<p class="small text-muted mb-2">{{ 'ship_zone_not_needed_help' | transloco }}</p>
+							} @else if (ruleSet) {
+							<h5 class="mb-1">{{ 'ship_zone_uses' | transloco: { name: ruleSet.name } }}</h5>
+							<p class="small text-muted mb-2">{{ describe(zone) }}</p>
+							} @else {
+							<h5 class="text-danger mb-1">{{ 'ship_zone_unset' | transloco }}</h5>
+							<p class="small text-muted mb-2">{{ 'ship_zone_unset_help' | transloco }}</p>
+							}
+						</div>
+						@if (canEdit()) {
+						<a
+							class="btn btn-outline btn-sm"
+							[routerLink]="['/shipping/where-rules-apply']"
+						>
+							{{ 'ship_change' | transloco }}
+						</a>
+						}
+					</div>
+					@if (ruleSet && !notNeeded(zone)) {
+					<span class="fm-chip">
+						@if (ruleSet.activeVersion) { {{ 'ship_active_version' | transloco: { version:
+						ruleSet.activeVersion } }} } @else { {{ 'ship_draft' | transloco }} }
+					</span>
+					}
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+
+	<div class="theme-form theme-form-2 mega-form">
+		<app-form-fields
+			[label]="'ship_home_country'"
+			[for]="'ship_home_country'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<select
+				class="form-select"
+				id="ship_home_country"
+				disabled
+			>
+				<option>{{ 'ship_country_' + current.homeCountry | transloco }}</option>
+			</select>
+			<p class="help-text">{{ 'ship_home_country_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'ship_mixed_rule_sets'"
+			[for]="'ship_mixed_rule_sets'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<select
+				class="form-select"
+				id="ship_mixed_rule_sets"
+				[disabled]="!canEdit()"
+				[ngModel]="current.mixedRuleSets"
+				(ngModelChange)="setMixed($event)"
+			>
+				<option value="sum">{{ 'ship_mixed_sum' | transloco }}</option>
+				<option value="highest">{{ 'ship_mixed_highest' | transloco }}</option>
+			</select>
+			<p class="help-text">{{ 'ship_mixed_rule_sets_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'ship_default_charges'"
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+		>
+			<div class="row g-2">
+				@for (kind of ['domestic', 'internationalFirst', 'internationalFurther']; track kind) {
+				<div class="col-md-4">
+					<label
+						class="form-label small"
+						[for]="'ship_default_' + kind"
+					>
+						{{ 'ship_charge_' + kind | transloco }}
+					</label>
+					<div class="input-group flex-nowrap">
+						<span class="input-group-text">₹</span>
+						<input
+							class="form-control"
+							type="number"
+							min="0"
+							step="1"
+							[id]="'ship_default_' + kind"
+							[readonly]="!canEdit()"
+							[ngModel]="$any(current.defaultCharges)[kind]"
+							(ngModelChange)="setCharge($any(kind), $event)"
+						/>
+					</div>
+				</div>
+				}
+			</div>
+			<p class="help-text">{{ 'ship_default_charges_help' | transloco }}</p>
+		</app-form-fields>
+		@if (canEdit()) {
+		<div class="d-flex justify-content-end">
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="ship_overview_save"
+				[disabled]="saving()"
+				(click)="save()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+		</div>
+		}
+	</div>
+
+	<h5 class="mt-4 mb-3">{{ 'ship_checks' | transloco }}</h5>
+	<ul
+		class="list-unstyled mb-0"
+		id="ship_checks"
+	>
+		@for (check of data?.checks ?? []; track $index) {
+		<li class="d-flex mb-2 gap-2">
+			<i
+				[class]="checkIcon(check)"
+				aria-hidden="true"
+			></i>
+			<span>
+				{{ 'ship_check_' + check.code | transloco: { zone: ('ship_zone_' + check.params['zone'] | transloco),
+				name: check.params['name'] ?? '' } }}
+			</span>
+		</li>
+		} @empty {
+		<li class="d-flex mb-2 gap-2">
+			<i
+				class="ri-checkbox-circle-line text-success"
+				aria-hidden="true"
+			></i>
+			<span>{{ 'ship_check_all_good' | transloco }}</span>
+		</li>
+		}
+		<li class="d-flex mb-2 gap-2">
+			<i
+				class="ri-information-line text-muted"
+				aria-hidden="true"
+			></i>
+			<span>
+				{{ 'ship_check_exceptions' | transloco: { count: data?.exceptionCount ?? 0 } }}
+				<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_where_rules_apply' | transloco }}</a>
+			</span>
+		</li>
+		<li class="d-flex mb-2 gap-2">
+			<i
+				class="ri-information-line text-muted"
+				aria-hidden="true"
+			></i>
+			<span>
+				{{ 'ship_check_abroad' | transloco: { path: ('ship_abroad_' + current.abroadPolicy | transloco) } }}
+				<a [routerLink]="['/shipping/orders-abroad']">{{ 'ship_change' | transloco }}</a>
+			</span>
+		</li>
+	</ul>
+	} @else {
+	<div class="table-loader">
+		<span>{{ 'please_wait' | transloco }}...</span>
+	</div>
+	}
+</app-page-wrapper>

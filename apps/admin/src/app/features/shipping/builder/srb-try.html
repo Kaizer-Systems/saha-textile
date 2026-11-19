@@ -1,0 +1,180 @@
+<div class="card">
+	<div class="card-body">
+		<div class="title-header">
+			<div class="d-flex align-items-center">
+				<h5>{{ 'ship_try_it' | transloco }}</h5>
+			</div>
+		</div>
+		<div class="row g-2 mb-3">
+			<div class="col-6">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_country"
+				>
+					{{ 'ship_deliver_to' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="ship_try_country"
+					[ngModel]="country()"
+					(ngModelChange)="country.set($event)"
+				>
+					@for (code of countries; track code) {
+					<option [value]="code">{{ countryName(code) }}</option>
+					}
+				</select>
+			</div>
+			@if (country() === 'IN') {
+			<div class="col-3">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_state"
+				>
+					{{ 'state' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="ship_try_state"
+					[ngModel]="state()"
+					(ngModelChange)="state.set($event)"
+				/>
+			</div>
+			<div class="col-3">
+				<label
+					class="form-label small mb-1"
+					for="ship_try_pin"
+				>
+					{{ 'pincode' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="ship_try_pin"
+					inputmode="numeric"
+					[ngModel]="pincode()"
+					(ngModelChange)="pincode.set($event)"
+				/>
+			</div>
+			}
+		</div>
+		<input
+			class="form-control mb-2"
+			type="search"
+			id="ship_try_search"
+			autocomplete="off"
+			[placeholder]="'ship_try_add_product' | transloco"
+			(input)="search($any($event.target).value)"
+		/>
+		@if (results().length) {
+		<div class="list-group mb-2">
+			@for (row of results(); track row.id) {
+			<button
+				type="button"
+				class="list-group-item list-group-item-action"
+				(click)="pick(row)"
+			>
+				{{ row.title }}
+				<small class="text-muted">{{ row.sku }}</small>
+			</button>
+			}
+		</div>
+		}
+		<ul class="srb-trace mb-3">
+			@for (line of lines(); track line.productId; let i = $index) { @let view = outcome()?.lines?.[i]; @let
+			amount = lineAmount('line-' + (i + 1));
+			<li>
+				<span>
+					<b>{{ line.title }}</b>
+					×
+					<input
+						class="form-control d-inline-block srb-amt"
+						type="number"
+						min="1"
+						max="99"
+						[attr.aria-label]="'quantity' | transloco"
+						[ngModel]="line.quantity"
+						(ngModelChange)="setQuantity(i, $event)"
+					/>
+					@if (view) {
+					<br />
+					<small class="text-muted">
+						{{ (view.discounted ? 'ship_try_discounted' : 'ship_try_full_price') | transloco }} · {{
+						'ship_try_charges' | transloco: { domestic: view.charges.domestic, first:
+						view.charges.internationalFirst, further: view.charges.internationalFurther } }}
+					</small>
+					}
+				</span>
+				<span class="d-flex align-items-center gap-2">
+					{{ amount === null ? '—' : '₹' + amount.toLocaleString('en-IN') }}
+					<a
+						href="javascript:void(0)"
+						[title]="'remove' | transloco"
+						[attr.aria-label]="'remove' | transloco"
+						(click)="removeLine(i)"
+					>
+						<i class="ri-close-line"></i>
+					</a>
+				</span>
+			</li>
+			} @empty {
+			<li class="text-muted small">{{ 'ship_try_empty' | transloco }}</li>
+			}
+		</ul>
+		@if (problem(); as key) {
+		<div class="text-danger small mb-2">{{ key | transloco }}</div>
+		} @if (outcome(); as result) {
+		<div
+			class="srb-result"
+			id="ship_try_result"
+		>
+			<span>
+				@switch (result.status) { @case ('priced') { {{ why() }} } @case ('noResult') { {{ 'ship_try_no_result'
+				| transloco }} } @case ('cantShip') { {{ 'ship_try_cant_ship' | transloco: { message:
+				result.cantShip[0]?.message?.['en'] ?? '' } }} } @case ('needsQuote') { {{ 'ship_try_needs_quote' |
+				transloco }} } } @if (result.moreLines) {
+				<br />
+				<small class="text-muted">{{ 'ship_try_more_lines' | transloco: { count: result.moreLines } }}</small>
+				}
+			</span>
+			<strong>{{ result.amountINR === null ? '—' : '₹' + result.amountINR.toLocaleString('en-IN') }}</strong>
+		</div>
+		<p class="help-text mt-1 mb-0">
+			{{ 'ship_zone_is' | transloco: { zone: ('ship_zone_' + result.zone | transloco) } }}
+		</p>
+		} @if (!readOnly() && lines().length) {
+		<div class="d-flex align-items-center mt-3 flex-wrap gap-2">
+			@if (naming()) {
+			<input
+				class="form-control w-auto"
+				maxlength="80"
+				[placeholder]="'ship_test_cart_name' | transloco"
+				[attr.aria-label]="'ship_test_cart_name' | transloco"
+				[ngModel]="cartName()"
+				(ngModelChange)="cartName.set($event)"
+				(keydown.enter)="keep()"
+			/>
+			<button
+				type="button"
+				class="btn btn-theme btn-sm"
+				[disabled]="!cartName().trim()"
+				(click)="keep()"
+			>
+				{{ 'save' | transloco }}
+			</button>
+			} @else {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				id="ship_try_keep"
+				(click)="naming.set(true)"
+			>
+				<i
+					class="ri-bookmark-line me-1"
+					aria-hidden="true"
+				></i>
+				{{ 'ship_save_test_cart' | transloco }}
+			</button>
+			}
+		</div>
+		}
+	</div>
+</div>

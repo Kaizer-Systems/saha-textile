@@ -1,0 +1,135 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'ship_rule_sets'"
+>
+	@if (canCreate()) {
+	<div button>
+		<a
+			class="align-items-center btn btn-theme d-flex"
+			id="ship_new_rule_set"
+			[routerLink]="['/shipping/rule-sets/new']"
+		>
+			<i
+				class="ri-add-line"
+				aria-hidden="true"
+			></i>
+			{{ 'ship_new_rule_set' | transloco }}
+		</a>
+	</div>
+	}
+	<div class="d-flex mb-3 flex-wrap gap-2">
+		@for (item of filters; track item) {
+		<button
+			type="button"
+			class="align-items-center btn btn-sm d-flex"
+			[class.btn-theme]="filter() === item"
+			[class.btn-outline]="filter() !== item"
+			[attr.aria-pressed]="filter() === item"
+			(click)="filter.set(item)"
+		>
+			{{ 'ship_filter_' + item | transloco: { count: count(item) } }}
+		</button>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		@if (query.isPending()) {
+		<div class="table-loader">
+			<span>{{ 'please_wait' | transloco }}...</span>
+		</div>
+		}
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'name' | transloco }}</th>
+					<th>{{ 'ship_used_for' | transloco }}</th>
+					<th>{{ 'ship_kind' | transloco }}</th>
+					<th>{{ 'ship_where_it_applies' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th>{{ 'ship_edited' | transloco }}</th>
+					<th>{{ 'actions' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows(); track row.ruleSet.id) {
+				<tr [attr.data-rule-set-id]="row.ruleSet.id">
+					<td>
+						<b>
+							{{ row.ruleSet.kind === 'premade' ? ('ship_premade_' + row.ruleSet.premadeKey | transloco) :
+							row.ruleSet.name }}
+						</b>
+					</td>
+					<td>{{ 'ship_use_' + row.ruleSet.use | transloco }}</td>
+					<td>{{ 'ship_kind_' + row.ruleSet.kind | transloco }}</td>
+					<td>{{ whereUsed(row) }}</td>
+					<td>
+						@if (row.ruleSet.activeVersion === null) {
+						<div class="status-awaiting_for_approval">
+							<span>{{ 'ship_draft' | transloco }}</span>
+						</div>
+						} @else if (inUse(row)) {
+						<div class="status-success">
+							<span>{{ 'ship_active_version' | transloco: { version: row.ruleSet.activeVersion } }}</span>
+						</div>
+						} @else {
+						<div class="status-pending">
+							<span>{{ 'ship_not_used' | transloco }}</span>
+						</div>
+						}
+					</td>
+					<td>{{ edited(row) }}</td>
+					<td>
+						<ul id="actions">
+							<li>
+								<a
+									[routerLink]="['/shipping/rule-sets', row.ruleSet.id]"
+									[class.text-success]="row.ruleSet.kind === 'own' && canEdit()"
+									[title]="(row.ruleSet.kind === 'own' && canEdit() ? 'edit' : 'ship_view') | transloco"
+									[attr.aria-label]="(row.ruleSet.kind === 'own' && canEdit() ? 'edit' : 'ship_view') | transloco"
+								>
+									<i
+										[class]="row.ruleSet.kind === 'own' && canEdit() ? 'ri-pencil-line' : 'ri-eye-line'"
+									></i>
+								</a>
+							</li>
+							@if (canCreate()) {
+							<li>
+								<a
+									href="javascript:void(0)"
+									[title]="'ship_make_copy' | transloco"
+									[attr.aria-label]="'ship_make_copy' | transloco"
+									(click)="copy(row)"
+								>
+									<i class="ri-file-copy-line"></i>
+								</a>
+							</li>
+							} @if (row.ruleSet.kind === 'own' && canDelete()) {
+							<li>
+								<a
+									href="javascript:void(0)"
+									class="text-danger"
+									[class.opacity-50]="inUse(row)"
+									[title]="(inUse(row) ? 'ship_err_rule_set_in_use' : 'delete') | transloco"
+									[attr.aria-label]="'delete' | transloco"
+									(click)="remove(row)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</a>
+							</li>
+							}
+						</ul>
+					</td>
+				</tr>
+				} @empty { @if (!query.isPending()) {
+				<tr>
+					<td
+						colspan="7"
+						class="text-muted"
+					>
+						{{ 'ship_no_rule_sets' | transloco }}
+					</td>
+				</tr>
+				} }
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

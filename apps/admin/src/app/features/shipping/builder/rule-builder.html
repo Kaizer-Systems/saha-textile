@@ -1,0 +1,676 @@
+@if (detail(); as current) {
+<div class="container-fluid">
+	<div class="row g-2">
+		<div class="col-xxl-8">
+			@if (premade()) {
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="note"
+				id="ship_premade_locked"
+			>
+				<i
+					class="ri-lock-line mt-1"
+					aria-hidden="true"
+				></i>
+				<div class="flex-grow-1">{{ 'ship_premade_locked' | transloco }}</div>
+				@if (canCreate()) {
+				<button
+					type="button"
+					class="btn btn-theme btn-sm"
+					id="ship_make_copy"
+					(click)="makeCopy()"
+				>
+					<i
+						class="ri-file-copy-line me-1"
+						aria-hidden="true"
+					></i>
+					{{ 'ship_make_copy' | transloco }}
+				</button>
+				}
+			</div>
+			} @else if (phone.is()) {
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="note"
+			>
+				<i
+					class="ri-smartphone-line mt-1"
+					aria-hidden="true"
+				></i>
+				<div>{{ 'ship_phone_read_only' | transloco }}</div>
+			</div>
+			} @if (!readOnly() && errors().length) {
+			<div
+				class="alert alert-danger d-flex align-items-start gap-2"
+				role="alert"
+				id="ship_issues"
+			>
+				<i
+					class="ri-error-warning-line mt-1"
+					aria-hidden="true"
+				></i>
+				<div>
+					<b>{{ 'ship_issues_title' | transloco: { count: errors().length } }}</b>
+					<ul class="mt-1 mb-0">
+						@for (issue of errors(); track $index) {
+						<li>{{ issueText(issue) }}</li>
+						}
+					</ul>
+				</div>
+			</div>
+			} @if (!readOnly() && warnings().length) {
+			<div
+				class="alert alert-warning d-flex align-items-start gap-2"
+				role="note"
+			>
+				<i
+					class="ri-alert-line mt-1"
+					aria-hidden="true"
+				></i>
+				<ul class="mb-0">
+					@for (issue of warnings(); track $index) {
+					<li>{{ issueText(issue) }}</li>
+					}
+				</ul>
+			</div>
+			}
+
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>
+								{{ (premade() || readOnly() ? 'ship_view_rule_set' : 'ship_edit_rule_set') | transloco
+								}}
+							</h5>
+						</div>
+						@if (current.versions.length) {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							id="ship_versions"
+							(click)="showVersions()"
+						>
+							<i
+								class="ri-history-line me-1"
+								aria-hidden="true"
+							></i>
+							{{ 'ship_versions' | transloco: { count: current.versions.length } }}
+						</button>
+						}
+					</div>
+					<div class="theme-form theme-form-2 mega-form">
+						<app-form-fields
+							[label]="'name'"
+							[for]="'ship_rule_set_name'"
+							[required]="!readOnly()"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<input
+								class="form-control"
+								id="ship_rule_set_name"
+								maxlength="80"
+								[readonly]="readOnly()"
+								[ngModel]="name()"
+								(ngModelChange)="name.set($event); touch()"
+							/>
+						</app-form-fields>
+						<app-form-fields
+							[label]="'ship_description'"
+							[for]="'ship_rule_set_description'"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<input
+								class="form-control"
+								id="ship_rule_set_description"
+								maxlength="300"
+								[readonly]="readOnly()"
+								[ngModel]="description()"
+								(ngModelChange)="description.set($event); touch()"
+							/>
+						</app-form-fields>
+						<app-form-fields
+							[label]="'ship_used_for'"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<div class="d-flex gap-2">
+								@for (choice of uses; track choice) {
+								<button
+									type="button"
+									class="btn btn-sm"
+									[class.btn-theme]="use() === choice"
+									[class.btn-outline]="use() !== choice"
+									[disabled]="readOnly()"
+									[attr.aria-pressed]="use() === choice"
+									(click)="use.set(choice); touch()"
+								>
+									{{ 'ship_use_' + choice | transloco }}
+								</button>
+								}
+							</div>
+							<p class="help-text">{{ 'ship_used_for_help' | transloco }}</p>
+						</app-form-fields>
+						<app-form-fields
+							[label]="'ship_amounts_in'"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<div class="pt-1">{{ 'ship_amounts_in_rupees' | transloco }}</div>
+						</app-form-fields>
+						<app-form-fields
+							[label]="'status'"
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+						>
+							<div class="d-flex align-items-center gap-3">
+								<div class="form-check form-switch ps-0">
+									<label class="switch">
+										<input
+											type="checkbox"
+											disabled
+											[checked]="current.ruleSet.activeVersion !== null"
+											[attr.aria-label]="'status' | transloco"
+										/>
+										<span class="switch-state"></span>
+									</label>
+								</div>
+								<span class="text-muted small">
+									@if (current.ruleSet.activeVersion !== null) { {{ 'ship_status_active' | transloco:
+									{ version: current.ruleSet.activeVersion } }} @if (current.ruleSet.hasDraftChanges
+									|| dirty()) { · {{ 'ship_status_unsaved' | transloco }} } } @else { {{
+									'ship_status_draft' | transloco }} }
+								</span>
+							</div>
+						</app-form-fields>
+					</div>
+				</div>
+			</div>
+
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'ship_blocks' | transloco }}</h5>
+						</div>
+						@if (!readOnly()) {
+						<div class="d-flex gap-2">
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								[disabled]="!canUndo()"
+								[title]="'ship_undo' | transloco"
+								(click)="undo()"
+							>
+								<i
+									class="ri-arrow-go-back-line me-1"
+									aria-hidden="true"
+								></i>
+								{{ 'ship_undo' | transloco }}
+							</button>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								[disabled]="!canRedo()"
+								[title]="'ship_redo' | transloco"
+								(click)="redo()"
+							>
+								<i
+									class="ri-arrow-go-forward-line me-1"
+									aria-hidden="true"
+								></i>
+								{{ 'ship_redo' | transloco }}
+							</button>
+						</div>
+						}
+					</div>
+					<div
+						class="srb-canvas"
+						cdkDropList
+						[cdkDropListData]="body().steps"
+						[cdkDropListDisabled]="readOnly()"
+						(cdkDropListDropped)="drop($event)"
+					>
+						@for (step of body().steps; track step.id; let i = $index) {
+						<div
+							class="srb-canvas"
+							cdkDrag
+							cdkDragLockAxis="y"
+							[attr.data-step-id]="step.id"
+						>
+							<div
+								class="srb-step"
+								[class.srb-err]="errorIds().has(step.id)"
+							>
+								<div class="srb-step-head">
+									<span class="srb-num">{{ stepNumber(i) }}</span>
+									<h6>
+										{{ (step.scope === 'wholeCart' ? 'ship_for' : 'ship_for_each') | transloco }}
+									</h6>
+									@if (!readOnly()) {
+									<span class="d-flex ms-auto gap-2">
+										<a
+											href="javascript:void(0)"
+											cdkDragHandle
+											[title]="'drag_to_reorder' | transloco"
+											[attr.aria-label]="'drag_to_reorder' | transloco"
+										>
+											<i class="ri-draggable"></i>
+										</a>
+										<a
+											href="javascript:void(0)"
+											[title]="'duplicate' | transloco"
+											[attr.aria-label]="'duplicate' | transloco"
+											(click)="duplicate(i)"
+										>
+											<i class="ri-file-copy-line"></i>
+										</a>
+										<a
+											href="javascript:void(0)"
+											[title]="'delete' | transloco"
+											[attr.aria-label]="'delete' | transloco"
+											(click)="removeStep(i)"
+										>
+											<i class="ri-delete-bin-line"></i>
+										</a>
+									</span>
+									}
+								</div>
+								<div class="srb-line">
+									<select
+										class="form-select"
+										[attr.aria-label]="'ship_loop' | transloco"
+										[disabled]="readOnly()"
+										[ngModel]="step.scope"
+										(ngModelChange)="setStep(i, { scope: $event })"
+									>
+										@for (scope of scopes; track scope) {
+										<option [ngValue]="scope">{{ 'ship_scope_' + scope | transloco }}</option>
+										}
+									</select>
+									<span class="text-muted small">
+										{{ 'ship_scope_' + step.scope + '_help' | transloco }}
+									</span>
+								</div>
+								<div class="srb-branch">
+									<app-srb-node
+										[node]="step.node"
+										[scope]="step.scope"
+										[readOnly]="readOnly()"
+										[errorIds]="errorIds()"
+										[categories]="categories()"
+										[languages]="allLanguages()"
+										[slot]="'ship_kw_charge'"
+										[slotId]="step.id"
+										(nodeChange)="setStep(i, { node: $event })"
+									/>
+								</div>
+							</div>
+							@if (step.scope !== 'wholeCart') {
+							<div class="srb-step">
+								<div class="srb-step-head">
+									<span class="srb-num">{{ stepNumber(i) + 1 }}</span>
+									<h6>{{ 'ship_combine_title' | transloco }}</h6>
+								</div>
+								<div class="srb-line">
+									<select
+										class="form-select"
+										[attr.aria-label]="'ship_combine_title' | transloco"
+										[disabled]="readOnly()"
+										[ngModel]="step.combine"
+										(ngModelChange)="setStep(i, { combine: $event })"
+									>
+										<option value="sum">{{ 'ship_combine_sum' | transloco }}</option>
+										<option value="highest">{{ 'ship_combine_highest' | transloco }}</option>
+										<option value="lowest">{{ 'ship_combine_lowest' | transloco }}</option>
+									</select>
+								</div>
+							</div>
+							}
+						</div>
+						} @if (!readOnly()) {
+						<div
+							ngbDropdown
+							container="body"
+						>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm srb-add"
+								id="ship_add_step"
+								[class.srb-err]="errorIds().has('body')"
+								ngbDropdownToggle
+							>
+								<i
+									class="ri-add-line me-1"
+									aria-hidden="true"
+								></i>
+								{{ 'ship_add_step' | transloco }}
+							</button>
+							<div
+								ngbDropdownMenu
+								class="srb-menu"
+							>
+								<h6 class="dropdown-header">{{ 'ship_menu_loops' | transloco }}</h6>
+								@for (scope of scopes; track scope) {
+								<button
+									ngbDropdownItem
+									type="button"
+									[attr.data-add-scope]="scope"
+									(click)="addStep(scope)"
+								>
+									{{ 'ship_scope_' + scope | transloco }}
+									<small>{{ 'ship_scope_' + scope + '_help' | transloco }}</small>
+								</button>
+								}
+							</div>
+						</div>
+						}
+						<div class="srb-step">
+							<div class="srb-step-head">
+								<span class="srb-num">{{ adjustNumber() }}</span>
+								<h6>{{ 'ship_adjust_title' | transloco }}</h6>
+							</div>
+							@for (adjust of body().adjust; track adjust.id; let a = $index) {
+							<div
+								class="srb-line"
+								[attr.data-block-id]="adjust.id"
+							>
+								<span class="srb-kw">{{ 'ship_adjust_' + adjust.kind | transloco }}</span>
+								<div class="input-group w-auto flex-nowrap">
+									<span class="input-group-text">₹</span>
+									<input
+										class="form-control srb-amt"
+										type="number"
+										min="0"
+										[class.srb-err]="errorIds().has(adjust.id)"
+										[attr.aria-label]="'ship_adjust_' + adjust.kind | transloco"
+										[readonly]="readOnly()"
+										[ngModel]="adjustValue(adjust)"
+										(ngModelChange)="setAdjustValue(a, $event)"
+									/>
+								</div>
+								@if (!readOnly()) {
+								<a
+									href="javascript:void(0)"
+									class="small text-danger ms-auto"
+									[title]="'remove' | transloco"
+									[attr.aria-label]="'remove' | transloco"
+									(click)="removeAdjust(a)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</a>
+								}
+							</div>
+							} @empty {
+							<div class="srb-line text-muted small">{{ 'ship_no_adjust' | transloco }}</div>
+							} @if (!readOnly()) {
+							<div
+								ngbDropdown
+								container="body"
+							>
+								<button
+									type="button"
+									class="btn btn-outline btn-sm srb-add"
+									ngbDropdownToggle
+								>
+									<i
+										class="ri-add-line me-1"
+										aria-hidden="true"
+									></i>
+									{{ 'ship_add_adjust' | transloco }}
+								</button>
+								<div ngbDropdownMenu>
+									@for (kind of adjustKinds; track kind) {
+									<button
+										ngbDropdownItem
+										type="button"
+										(click)="addAdjust(kind)"
+									>
+										{{ 'ship_adjust_' + kind | transloco }}
+									</button>
+									}
+								</div>
+							</div>
+							}
+						</div>
+					</div>
+					@if (!readOnly()) {
+					<div class="d-flex justify-content-end mt-3 flex-wrap gap-2">
+						<a
+							class="btn btn-outline"
+							[routerLink]="['/shipping/rule-sets']"
+						>
+							{{ 'cancel' | transloco }}
+						</a>
+						<button
+							type="button"
+							class="btn btn-outline"
+							id="ship_save_draft"
+							[disabled]="busy() || !name().trim()"
+							(click)="save()"
+						>
+							{{ 'ship_save_draft' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-theme"
+							id="ship_save_activate"
+							[disabled]="busy() || !check().canActivate || !name().trim()"
+							(click)="activate()"
+						>
+							{{ 'ship_save_activate' | transloco }}
+						</button>
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+
+		<div class="col-xxl-4">
+			<div class="sticky-top-sec">
+				<app-srb-try
+					[body]="body()"
+					[readOnly]="readOnly()"
+					(saveTestCart)="addTestCart($event)"
+				/>
+				<div class="card">
+					<div class="card-body">
+						<div class="title-header">
+							<div class="d-flex align-items-center">
+								<h5>{{ 'ship_test_carts' | transloco }}</h5>
+							</div>
+						</div>
+						<div class="table-responsive datatable-wrapper border-table">
+							<table class="all-package theme-table no-footer table">
+								<thead>
+									<tr>
+										<th>{{ 'ship_cart' | transloco }}</th>
+										<th class="text-end">{{ 'ship_should_be' | transloco }}</th>
+										<th class="text-end">{{ 'ship_now' | transloco }}</th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									@for (cart of testCarts(); track cart.id) { @let now = testCartNow()[cart.id];
+									<tr [attr.data-test-cart]="cart.id">
+										<td>{{ cart.name }}</td>
+										<td class="text-end text-nowrap">
+											{{ cart.expectedINR === null ? ('ship_not_accepted' | transloco) :
+											rupees(cart.expectedINR) }}
+										</td>
+										<td class="text-end text-nowrap">
+											{{ now === undefined ? '…' : rupees(now) }}
+										</td>
+										<td class="text-nowrap">
+											@if (now !== undefined && now !== null && now === cart.expectedINR) {
+											<i
+												class="ri-checkbox-circle-fill text-success"
+												[title]="'ship_matches' | transloco"
+											></i>
+											} @else if (now !== undefined) {
+											<i
+												class="ri-error-warning-fill text-danger"
+												[title]="'ship_changed' | transloco"
+											></i>
+											} @if (!readOnly()) {
+											<a
+												href="javascript:void(0)"
+												class="ms-1"
+												[title]="'remove' | transloco"
+												[attr.aria-label]="'remove' | transloco"
+												(click)="removeTestCart(cart.id)"
+											>
+												<i class="ri-close-line"></i>
+											</a>
+											}
+										</td>
+									</tr>
+									} @empty {
+									<tr>
+										<td
+											colspan="4"
+											class="text-muted small"
+										>
+											{{ 'ship_no_test_carts' | transloco }}
+										</td>
+									</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+				<div class="card">
+					<div class="card-body">
+						<div class="title-header">
+							<div class="d-flex align-items-center">
+								<h5>{{ 'ship_plain_words' | transloco }}</h5>
+							</div>
+						</div>
+						<ol
+							class="srb-words"
+							id="ship_plain_words"
+						>
+							@for (line of words(); track $index) {
+							<li>{{ line }}</li>
+							}
+						</ol>
+						<p class="help-text mt-2 mb-0">{{ 'ship_plain_words_help' | transloco }}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+} @else {
+<div class="container-fluid">
+	<div class="table-loader">
+		<span>{{ 'please_wait' | transloco }}...</span>
+	</div>
+</div>
+}
+
+<ng-template
+	#changesPopup
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="ship_changes_title">{{ 'ship_changes_title' | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<p>{{ 'ship_changes_body' | transloco }}</p>
+		<div class="table-responsive datatable-wrapper border-table">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th>{{ 'ship_cart' | transloco }}</th>
+						<th class="text-end">{{ 'ship_was' | transloco }}</th>
+						<th class="text-end">{{ 'ship_becomes' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (change of changes(); track change.testCartId) {
+					<tr>
+						<td>{{ change.name }}</td>
+						<td class="text-end">
+							{{ change.fromINR === null ? ('ship_not_accepted' | transloco) : rupees(change.fromINR) }}
+						</td>
+						<td class="text-end">
+							@if (change.status === 'priced') { {{ rupees(change.toINR) }} } @else {
+							<span class="text-danger">{{ 'ship_cart_status_' + change.status | transloco }}</span>
+							}
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		@if (!changesAcceptable()) {
+		<p class="text-danger small mt-2 mb-0">{{ 'ship_changes_blocked' | transloco }}</p>
+		}
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="modal.dismiss()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="ship_accept_changes"
+				[disabled]="!changesAcceptable() || busy()"
+				(click)="activate(changes())"
+			>
+				{{ 'ship_accept_and_activate' | transloco }}
+			</button>
+		</div>
+	</div>
+</ng-template>
+
+<ng-template
+	#versionsPopup
+	let-modal
+>
+	<div class="modal-header">
+		<h2 id="ship_versions_title">{{ 'ship_versions_title' | transloco }}</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<ul class="list-unstyled mb-0">
+			@for (version of detail()?.versions ?? []; track version.version) {
+			<li class="mb-2">
+				<b>{{ 'ship_version_n' | transloco: { version: version.version } }}</b>
+				<span class="text-muted small">· {{ version.activatedAt.slice(0, 16).replace('T', ' ') }}</span>
+				@if (version.version === detail()?.ruleSet?.activeVersion) {
+				<span class="fm-chip ms-1">{{ 'ship_in_use' | transloco }}</span>
+				}
+			</li>
+			}
+		</ul>
+		<p class="help-text mb-0">{{ 'ship_versions_help' | transloco }}</p>
+	</div>
+</ng-template>

@@ -1,0 +1,71 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'ship_couriers'"
+>
+	<div class="row g-3 mb-4">
+		@for (courier of couriers; track courier.key) {
+		<div class="col-xl-3 col-md-6">
+			<div
+				class="card mb-0 h-100"
+				[attr.data-courier]="courier.key"
+			>
+				<div class="card-body">
+					<div class="d-flex justify-content-between gap-2">
+						<h6>{{ courier.name }}</h6>
+						<div class="status-pending">
+							<span>{{ 'ship_not_connected' | transloco }}</span>
+						</div>
+					</div>
+					<p class="small text-muted mb-3">{{ 'ship_courier_zones_' + courier.zones | transloco }}</p>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						disabled
+						[title]="'ship_courier_later' | transloco"
+					>
+						<i
+							class="ri-link me-1"
+							aria-hidden="true"
+						></i>
+						{{ 'ship_connect' | transloco }}
+					</button>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+	<div class="row g-3 mb-3">
+		@for (zone of zones; track zone) { @let name = ruleSetName(zone);
+		<div class="col-lg-6">
+			<div class="card mb-0">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'ship_zone_' + zone | transloco }}</h5>
+						</div>
+					</div>
+					<p class="mb-1">
+						@if (name) { {{ 'ship_zone_uses' | transloco: { name } }} } @else {
+						<span class="text-danger">{{ 'ship_zone_unset' | transloco }}</span>
+						}
+					</p>
+					<p class="small text-muted mb-0">
+						{{ 'ship_courier_zone_help' | transloco }}
+						<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_where_rules_apply' | transloco }}</a>
+					</p>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+	<div
+		class="alert alert-info d-flex align-items-start gap-2"
+		role="note"
+	>
+		<i
+			class="ri-plug-line mt-1"
+			aria-hidden="true"
+		></i>
+		<div>{{ 'ship_couriers_note' | transloco }}</div>
+	</div>
+</app-page-wrapper>

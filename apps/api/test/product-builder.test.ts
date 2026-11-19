@@ -697,7 +697,7 @@ describe('admin builder routes', () => {
 			bundle: vi.fn(async () => 'bundle'),
 			saveBundle: vi.fn(async () => 'saved'),
 		};
-		const controller = new AdminProductsController({} as never, builder as never);
+		const controller = new AdminProductsController({} as never, builder as never, {} as never);
 		expect(await controller.create({} as never, signedIn)).toBe('made');
 		expect(await controller.create({} as never, undefined)).toBe('made');
 		expect(await controller.goLive('p', signedIn)).toBe('live');

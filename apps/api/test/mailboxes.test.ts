@@ -499,6 +499,7 @@ describe('InboxService', () => {
 			cc: [],
 			bcc: [],
 			sendAnyway: false,
+			keepDraftAttachments: false,
 			subject: 'Hi',
 			body: 'x',
 			attachments: [],
@@ -524,6 +525,7 @@ describe('InboxService', () => {
 			cc: ['b@x.test'],
 			bcc: [],
 			sendAnyway: false,
+			keepDraftAttachments: false,
 			subject: 'Re: Hi',
 			body: 'Thanks',
 			threadId: 't1',
@@ -543,6 +545,7 @@ describe('InboxService', () => {
 			cc: [],
 			bcc: [],
 			sendAnyway: false,
+			keepDraftAttachments: false,
 			subject: 'Hi',
 			body: 'x',
 			attachments: [],
@@ -724,6 +727,7 @@ describe('InboxService after the review (brief revision 2)', () => {
 			cc: [],
 			bcc: [],
 			sendAnyway: false,
+			keepDraftAttachments: false,
 			subject: 'Re: Blouse',
 			body: 'Yes',
 			threadId: 't1',
@@ -748,6 +752,7 @@ describe('InboxService after the review (brief revision 2)', () => {
 				cc: [],
 				bcc: [],
 				sendAnyway: false,
+				keepDraftAttachments: false,
 				subject: 'Re: Blouse',
 				body: 'Yes',
 				threadId: 'gone',
@@ -773,6 +778,7 @@ describe('InboxService after the review (brief revision 2)', () => {
 			cc: [],
 			bcc: [],
 			sendAnyway: false,
+			keepDraftAttachments: false,
 			subject: 'Fwd: Bill',
 			body: 'See below',
 			forwardAttachmentsFrom: { threadId: 't1', messageId: 'm1' },
@@ -801,6 +807,7 @@ describe('InboxService after the review (brief revision 2)', () => {
 			cc: [],
 			bcc: [],
 			sendAnyway: false,
+			keepDraftAttachments: false,
 			subject: 'Hi',
 			body: 'x',
 			attachments: [],
@@ -1028,7 +1035,7 @@ describe('mailbox controllers', () => {
 			queueSend: vi.fn(async () => ({ outboxId: 'o', draftId: 'd', sendAt: '' })),
 			modify: vi.fn(async () => undefined),
 		};
-		const controller = new AdminInboxController(service as never, {} as never);
+		const controller = new AdminInboxController(service as never, {} as never, {} as never);
 		await controller.summary(principal);
 		expect(() => controller.summary(undefined)).toThrow();
 		await controller.threads('care', { folder: 'inbox' }, principal);
@@ -1453,7 +1460,7 @@ describe('Saved replies (C3)', () => {
 			update: vi.fn(async () => ({})),
 			remove: vi.fn(async () => undefined),
 		};
-		const controller = new AdminInboxController({} as never, saved as never);
+		const controller = new AdminInboxController({} as never, saved as never, {} as never);
 		const principal = { userId: 'riya' } as never;
 		await controller.listSavedReplies('care', principal);
 		await controller.createSavedReply('care', { ...write, scope: 'personal' }, principal);

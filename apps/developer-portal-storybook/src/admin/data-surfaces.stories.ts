@@ -34,7 +34,14 @@ interface StorybookProductRow extends IBaseRow {
 	status: string;
 }
 
-const tableConfig: ITableConfig<StorybookProductRow> = {
+const storyRows: StorybookProductRow[] = [
+	{ id: 1, name: 'Heritage Silk Saree', sku: 'ST-HS-001', status: 'Published' },
+	{ id: 2, name: 'Handloom Cotton Saree', sku: 'ST-HC-014', status: 'Draft' },
+	{ id: 3, name: 'Festive Blouse Piece', sku: 'ST-BP-006', status: 'Published' },
+];
+
+// The table input takes the base row type; the rows above keep the story row type.
+const tableConfig: ITableConfig = {
 	columns: [
 		{ title: 'Product', dataField: 'name', sortable: true },
 		{ title: 'SKU', dataField: 'sku', sortable: true },
@@ -44,11 +51,7 @@ const tableConfig: ITableConfig<StorybookProductRow> = {
 		{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line' },
 		{ label: 'Delete', actionToPerform: 'delete', icon: 'ri-delete-bin-line' },
 	],
-	data: [
-		{ id: 1, name: 'Heritage Silk Saree', sku: 'ST-HS-001', status: 'Published' },
-		{ id: 2, name: 'Handloom Cotton Saree', sku: 'ST-HC-014', status: 'Draft' },
-		{ id: 3, name: 'Festive Blouse Piece', sku: 'ST-BP-006', status: 'Published' },
-	],
+	data: storyRows,
 	total: 3,
 };
 

@@ -826,7 +826,7 @@ describe('catalogue controllers', () => {
 			discontinue: vi.fn(async () => 'gone'),
 			updateMerchandising: vi.fn(async () => 'saved'),
 		};
-		const controller = new AdminProductsController(catalog as never, {} as never);
+		const controller = new AdminProductsController(catalog as never, {} as never, {} as never);
 		expect(await controller.list({ page: 1 } as never)).toBe('list');
 		expect(await controller.replacementTargets()).toBe('targets');
 		expect(await controller.detail('p')).toBe('detail');

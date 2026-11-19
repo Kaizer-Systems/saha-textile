@@ -430,7 +430,7 @@ describe('the admin and shop controllers', () => {
 			get: (target, key: string) => (target[key] ??= vi.fn(async (...args: unknown[]) => ({ key, args }))),
 		});
 		const admins = { findById: vi.fn(async () => ({ email: 'owner@sahatextile.com' })) };
-		const controller = new AdminEventsController(service as never, admins as never);
+		const controller = new AdminEventsController(service as never, admins as never, {} as never);
 		const principal = { userId: 'admin_1' } as never;
 		const body = saleBody(Date.now() + HOUR, Date.now() + 2 * HOUR);
 		expect(await controller.list({ page: 1, pageSize: 20, direction: 'desc' })).toMatchObject({ key: 'list' });

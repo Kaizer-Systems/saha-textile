@@ -136,6 +136,7 @@ const setup = (url: Params = { mailbox: 'care', folder: 'inbox' }, queryParams: 
 	const gateway = {
 		thread: vi.fn((..._args: unknown[]) => of(conversation('m1'))),
 		threads: vi.fn((..._args: unknown[]) => of({ threads: [], nextPageToken: null })),
+		allThreads: vi.fn((..._args: unknown[]) => of({ threads: [] as unknown[], skipped: [] as unknown[] })),
 		modify: vi.fn((..._args: unknown[]) => of({ ok: true })),
 		markMessages: vi.fn((..._args: unknown[]) => of({ ok: true })),
 		labels: vi.fn((..._args: unknown[]) => of([])),

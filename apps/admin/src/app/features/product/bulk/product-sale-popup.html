@@ -1,5 +1,5 @@
 <div class="modal-header">
-	<h2 id="product_sale_title">{{ 'sale_put_title' | transloco: { count: picks().length } }}</h2>
+	<h2 id="product_sale_title">{{ 'sale_put_title' | plural: picks().length }}</h2>
 	<button
 		type="button"
 		class="btn btn-close"
@@ -46,9 +46,10 @@
 		>
 			{{ 'event_rule' | transloco }}
 		</label>
-		<div class="col-sm-9 d-flex flex-wrap align-items-center gap-2">
+		<div class="col-sm-9 d-flex align-items-center flex-wrap gap-2">
 			<select
-				class="form-select w-auto"
+				class="form-select"
+				style="max-width: 220px"
 				id="product_sale_rule"
 				[value]="kind()"
 				(change)="setKind($any($event.target).value)"
@@ -82,7 +83,7 @@
 		>
 			{{ 'sale_same_price' | transloco }}
 		</label>
-		<div class="col-sm-9 d-flex flex-wrap align-items-center gap-2">
+		<div class="col-sm-9 d-flex align-items-center flex-wrap gap-2">
 			<div class="input-group w-auto">
 				<span class="input-group-text">₹</span>
 				<input
@@ -110,14 +111,16 @@
 	} @else {
 	<div class="table-responsive">
 		<table
-			class="table align-middle text-nowrap mb-0"
+			class="mb-0 table align-middle text-nowrap"
 			id="product_sale_preview"
 		>
 			<thead>
 				<tr>
 					<th>{{ 'product' | transloco }}</th>
 					<th class="text-end">{{ 'sale_now' | transloco }}</th>
-					<th class="text-end">{{ (kind() === 'fixed' ? 'event_sale_price' : 'sale_on_sale') | transloco }}</th>
+					<th class="text-end">
+						{{ (kind() === 'fixed' ? 'event_sale_price' : 'sale_on_sale') | transloco }}
+					</th>
 					@if (kind() === 'fixed') {
 					<th class="text-end">{{ 'sale_off' | transloco }}</th>
 					}
@@ -134,13 +137,15 @@
 								alt=""
 								width="24"
 								height="30"
-								class="rounded flex-shrink-0"
+								class="flex-shrink-0 rounded"
 							/>
 							}
 							<div>
 								<div>
 									{{ row.pick.title }} @if (hasColours(row)) {
-									<span class="help-text">· {{ 'sale_colours' | transloco: { count: row.skus.length } }}</span>
+									<span class="help-text">
+										· {{ 'sale_colours' | transloco: { count: row.skus.length } }}
+									</span>
 									}
 								</div>
 								@if (row.result?.reason; as reason) {
@@ -158,28 +163,29 @@
 									class="small"
 									(click)="togglePerColour(row.pick.id)"
 								>
-									{{ (perColour().has(row.pick.id) ? 'sale_one_price' : 'sale_each_colour') | transloco }}
+									{{ (perColour().has(row.pick.id) ? 'sale_one_price' : 'sale_each_colour') |
+									transloco }}
 								</a>
 								}
 							</div>
 						</div>
 					</td>
-					<td class="text-end">{{ nowINR(row) === null ? '—' : '₹' + nowINR(row) }}</td>
+					<td class="text-end">{{ nowINR(row) === null ? '—' : inr(nowINR(row)) }}</td>
 					@if (kind() !== 'fixed') {
 					<td class="text-end">
 						@if (row.result?.outcome === 'done' && saleFrom(row) !== null) {
-						<strong>₹{{ saleFrom(row) }}</strong>
+						<strong>{{ inr(saleFrom(row)) }}</strong>
 						} @else { — }
 					</td>
 					} @else if (!usable(row)) {
 					<td class="text-end">—</td>
 					<td></td>
 					} @else if (perColour().has(row.pick.id)) {
-					<td class="text-end help-text">{{ 'sale_per_colour' | transloco }}</td>
+					<td class="help-text text-end">{{ 'sale_per_colour' | transloco }}</td>
 					<td></td>
 					} @else {
 					<td class="text-end">
-						<div class="input-group input-group-sm w-auto ms-auto">
+						<div class="input-group input-group-sm ms-auto w-auto">
 							<span class="input-group-text">₹</span>
 							<input
 								class="form-control"
@@ -208,10 +214,10 @@
 				@if (kind() === 'fixed' && usable(row) && perColour().has(row.pick.id)) { @for (sku of row.skus; track
 				sku.sku) {
 				<tr>
-					<td class="ps-5 help-text">{{ sku.label || sku.sku }} · {{ sku.sku }}</td>
-					<td class="text-end">₹{{ sku.normalINR }}</td>
+					<td class="help-text ps-5">{{ sku.label || sku.sku }} · {{ sku.sku }}</td>
+					<td class="text-end">{{ inr(sku.normalINR) }}</td>
 					<td class="text-end">
-						<div class="input-group input-group-sm w-auto ms-auto">
+						<div class="input-group input-group-sm ms-auto w-auto">
 							<span class="input-group-text">₹</span>
 							<input
 								class="form-control"
@@ -249,9 +255,7 @@
 	<div class="left-part help-text">
 		@if (toFix()) {
 		<span class="text-danger">{{ 'sale_prices_to_fix' | transloco: { count: toFix() } }}</span>
-		} @else {
-		{{ 'sale_joining' | transloco: { count: joining(), total: picks().length } }}
-		}
+		} @else { {{ 'sale_joining' | transloco: { count: joining(), total: picks().length } }} }
 	</div>
 	<div class="right-part d-flex gap-2">
 		<button

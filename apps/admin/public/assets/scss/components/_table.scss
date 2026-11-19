@@ -2164,6 +2164,10 @@ table {
 .pick-chips {
 	margin: 0 0 14px;
 }
+/* A ticked row wears the theme tint (Bootstrap's table-active, with the theme colour). */
+.theme-table > tbody > tr.table-active {
+	--bs-table-active-bg: color-mix(in srgb, var(--theme-color) 10%, transparent);
+}
 .pick-chips .fm-chip {
 	max-width: 280px;
 }

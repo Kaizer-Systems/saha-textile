@@ -5,8 +5,15 @@
 	role="region"
 	[attr.aria-label]="'picked_rows' | transloco"
 >
-	<strong id="table_picked_count">{{ 'n_selected' | transloco: { count: selected.length } }}</strong>
-	<small class="d-none d-sm-inline opacity-75">{{ 'n_on_this_page' | transloco: { count: pickedOnPage } }}</small>
+	<strong
+		class="text-nowrap"
+		id="table_picked_count"
+	>
+		{{ 'n_selected' | transloco: { count: selected.length } }}
+	</strong>
+	<small class="d-none d-sm-inline text-nowrap opacity-75">
+		{{ 'n_on_this_page' | transloco: { count: pickedOnPage } }}
+	</small>
 	@if (overLimit) {
 	<span class="small">{{ 'picks_over_limit' | transloco: { max: tableConfig.maxPicks } }}</span>
 	} @else {
@@ -101,7 +108,7 @@
 	<div class="d-flex align-items-center ms-auto gap-2">
 		<div
 			ngbDropdown
-			#pickList="ngbDropdown"
+			#pickMenu="ngbDropdown"
 			autoClose="outside"
 			[placement]="['bottom-end', 'top-end']"
 		>
@@ -124,7 +131,7 @@
 						<button
 							type="button"
 							class="btn btn-link btn-sm p-0 text-white"
-							(click)="clearPicks(); pickList.close()"
+							(click)="clearPicks(); pickMenu.close()"
 						>
 							{{ 'clear_all' | transloco }}
 						</button>
@@ -133,7 +140,7 @@
 							class="btn btn-link btn-sm p-0 text-white"
 							[title]="'close' | transloco"
 							[attr.aria-label]="'close' | transloco"
-							(click)="pickList.close()"
+							(click)="pickMenu.close()"
 						>
 							<i class="ri-close-line"></i>
 						</button>
@@ -154,7 +161,7 @@
 							<div>
 								<a
 									href="javascript:void(0)"
-									(click)="openPick(pick); pickList.close()"
+									(click)="openPick(pick); pickMenu.close()"
 								>
 									{{ pick.view.title }}
 								</a>
@@ -239,7 +246,7 @@
 	<button
 		type="button"
 		class="fm-chip muted border-0"
-		(click)="pickList.open()"
+		(click)="pickMenu.open()"
 	>
 		{{ 'n_more' | transloco: { count: chipOverflow } }}
 	</button>

@@ -8,6 +8,7 @@ import { Subject, debounceTime, firstValueFrom, of, switchMap, catchError } from
 
 import { ProductService } from '@data-access/services/product.service';
 import { ShopEventService } from '@data-access/services/shop-event.service';
+import { PluralPipe } from '@shared/pipes/language.pipes';
 
 import type {
 	ProductSaleLineWrite,
@@ -62,7 +63,7 @@ const whole = (value: string): number | null => {
 @Component({
 	selector: 'app-product-sale-popup',
 	templateUrl: './product-sale-popup.html',
-	imports: [TranslocoModule, DatePipe],
+	imports: [TranslocoModule, DatePipe, PluralPipe],
 })
 export class ProductSalePopup {
 	readonly modal = inject(NgbActiveModal);
@@ -124,7 +125,9 @@ export class ProductSalePopup {
 					const lines = this.lines();
 					if (!lines.length) return of(null);
 					this.checking.set(true);
-					return this.products.addToSale({ eventId: this.saleId(), lines, dryRun: true }).pipe(catchError(() => of(null)));
+					return this.products
+						.addToSale({ eventId: this.saleId(), lines, dryRun: true })
+						.pipe(catchError(() => of(null)));
 				}),
 				takeUntilDestroyed(this.destroyRef),
 			)
@@ -159,9 +162,19 @@ export class ProductSalePopup {
 		this.rows.update((rows) =>
 			(rows.length ? rows : this.picks().map((pick) => ({ pick, skus: [], result: null }))).map((row) => {
 				const answer = answers.get(row.pick.id);
-				if (probe) return { ...row, skus: answer?.prices ?? [], result: answer?.outcome === 'refused' ? answer : null };
+				if (probe)
+					return {
+						...row,
+						skus: answer?.prices ?? [],
+						result: answer?.outcome === 'refused' ? answer : null,
+					};
 				// A product left out of this dry run (an empty box) keeps its standing refusal only.
-				return { ...row, result: answer ?? (row.result?.outcome === 'refused' && row.result.reason !== 'bad_rule' ? row.result : null) };
+				return {
+					...row,
+					result:
+						answer ??
+						(row.result?.outcome === 'refused' && row.result.reason !== 'bad_rule' ? row.result : null),
+				};
 			}),
 		);
 	}
@@ -221,7 +234,8 @@ export class ProductSalePopup {
 		});
 		this.skuPrice.update((prices) => {
 			const next = { ...prices };
-			for (const row of this.rows()) for (const sku of row.skus) if (!next[sku.sku]?.trim()) next[sku.sku] = price;
+			for (const row of this.rows())
+				for (const sku of row.skus) if (!next[sku.sku]?.trim()) next[sku.sku] = price;
 			return next;
 		});
 		this.changed();
@@ -240,6 +254,11 @@ export class ProductSalePopup {
 	/** The lowest price now, for a product's "Now" column. */
 	nowINR(row: SaleRow): number | null {
 		return row.skus.length ? Math.min(...row.skus.map((sku) => sku.normalINR)) : null;
+	}
+
+	/** Rupees as the admin reads them: ₹2,500 (English digits in every language). */
+	inr(value: number | null): string {
+		return value === null ? '—' : `₹${value.toLocaleString('en-IN')}`;
 	}
 
 	/** The lowest sale price the last dry run gave this product. */
@@ -295,7 +314,10 @@ export class ProductSalePopup {
 				const skuPrices = Object.fromEntries(
 					row.skus.map((sku) => [sku.sku, whole(this.skuPrice()[sku.sku] ?? '') ?? 0]),
 				);
-				return { productId: row.pick.id, rule: { kind, value: Math.min(...Object.values(skuPrices)), skuPrices } };
+				return {
+					productId: row.pick.id,
+					rule: { kind, value: Math.min(...Object.values(skuPrices)), skuPrices },
+				};
 			});
 	}
 

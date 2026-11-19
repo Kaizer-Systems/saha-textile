@@ -53,6 +53,14 @@ describe('product draft state', () => {
 		expect(fingerprint(base)).not.toBe(fingerprint(next));
 	});
 
+	it('reads categories and tags as sets, since the picker reorders them on load', () => {
+		const base = snap();
+		const reordered = snap({ raw: { ...base.raw, categories: ['c2', 'c1'], tags: [3, 1] } });
+		const same = snap({ raw: { ...base.raw, categories: ['c1', 'c2'], tags: [1, 3] } });
+		expect(changedPaths(reordered, same)).toEqual([]);
+		expect(changedPaths(base, same).map((change) => change.path)).toEqual(['raw.categories', 'raw.tags']);
+	});
+
 	it('treats empty, missing and null as the same, and key order as nothing', () => {
 		expect(stable('')).toBe(stable(null));
 		expect(stable(undefined)).toBe('null');

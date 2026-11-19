@@ -5,6 +5,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Select2, Select2Data, Select2UpdateEvent } from 'ng-select2-component';
 
 import { goLiveLabels } from '@core/catalog/go-live-report';
+import { PluralPipe } from '@shared/pipes/language.pipes';
 import { ProductBulkAction } from '@data-access/services/product.service';
 
 import type { ProductBulkResult, ProductBulkRow } from '@saha-textile/contracts';
@@ -40,7 +41,7 @@ const PILL: Readonly<Record<ProductBulkRow['outcome'], string>> = {
 @Component({
 	selector: 'app-product-bulk-popup',
 	templateUrl: './product-bulk-popup.html',
-	imports: [TranslocoModule, Select2],
+	imports: [TranslocoModule, Select2, PluralPipe],
 })
 export class ProductBulkPopup {
 	readonly modal = inject(NgbActiveModal);

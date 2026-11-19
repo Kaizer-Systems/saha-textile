@@ -125,10 +125,10 @@ describe('Product list bulk actions', () => {
 
 	it('runs the row switch: on is Go Live, off is Take off shop', () => {
 		const { page, service, toasts } = make();
-		page.onActionClicked({ actionToPerform: 'status_switch', data: { id: 'p1' }, value: 1 });
+		page.onActionClicked({ actionToPerform: 'status_switch', data: { id: 'p1', status_switch: 1 } });
 		expect(service.goLive).toHaveBeenCalledWith('p1');
 		service.bulk.mockReturnValueOnce(of({ dryRun: false, rows: [bulkRow('p1', 'done')] }) as never);
-		page.onActionClicked({ actionToPerform: 'status_switch', data: { id: 'p1' }, value: 0 });
+		page.onActionClicked({ actionToPerform: 'status_switch', data: { id: 'p1', status_switch: 0 } });
 		expect(service.bulk).toHaveBeenLastCalledWith('take-off', ['p1'], false);
 		expect(toasts.showSuccess).toHaveBeenCalledWith('bulk_report_take_off');
 		service.bulk.mockReturnValueOnce(throwError(() => new Error('no')) as never);

@@ -244,7 +244,8 @@ export class Product {
 		const name = action.actionToPerform ?? '';
 		if (name == 'edit') this.edit(action.data);
 		else if (name == 'go_live') this.goLive(action.data);
-		else if (name == 'status_switch') this.statusSwitch(action.data, Number(action.value));
+		// The table puts the switch's new value on the row itself: 1 to go live, 0 to come off.
+		else if (name == 'status_switch') this.statusSwitch(action.data, Number(action.data?.status_switch));
 		else if (name == 'remove') void this.runBulk('delete', [String(action.data?.id)]);
 		else if (name == 'bulk_sale') void this.openSale(action.data);
 		else if (BULK[name]) void this.runBulk(BULK[name], (action.data ?? []).map(String));

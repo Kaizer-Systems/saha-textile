@@ -1,6 +1,6 @@
 @if (ask(); as asking) {
 <div class="modal-header">
-	<h2 id="product_bulk_title">{{ word('bulk_title_') | transloco: { count: rows().length } }}</h2>
+	<h2 id="product_bulk_title">{{ word('bulk_title_') | plural: rows().length }}</h2>
 	<button
 		type="button"
 		class="btn btn-close"
@@ -11,7 +11,7 @@
 	</button>
 </div>
 <div class="modal-body theme-form theme-form-2">
-	<div class="d-flex flex-wrap gap-2 mb-3">
+	<div class="d-flex mb-3 flex-wrap gap-2">
 		@for (group of pills(); track group.key) {
 		<div [class]="group.pill">
 			<span>{{ group.key | transloco: { count: group.count } }}</span>
@@ -104,7 +104,8 @@
 			[disabled]="!canConfirm()"
 			(click)="confirm()"
 		>
-			{{ word('bulk_confirm_') | transloco: { count: doneCount() } }}
+			@if (asking.action === 'duplicate') { {{ 'bulk_confirm_duplicate' | plural: doneCount() }} } @else { {{
+			word('bulk_confirm_') | transloco: { count: doneCount() } }} }
 		</button>
 	</div>
 </div>

@@ -19,6 +19,12 @@ export interface ProductFormSnapshot {
 /** Kept with the draft for showing it again, but never a change of its own. */
 const DERIVED_STATE = new Set(['tiles', 'imageSizes']);
 
+/**
+ * Lists whose order means nothing to a draft: the category picker hands back its picks in the
+ * category tree's order whenever it loads, which is not a change the admin made.
+ */
+const ORDERLESS = new Set(['categories', 'tags']);
+
 /** Variant row fields that only label the row. */
 const ROW_LABELS = new Set(['id', 'name', 'variation_name']);
 
@@ -125,7 +131,7 @@ export function flattenSnapshot(snapshot: ProductFormSnapshot): Map<string, unkn
 			}
 			continue;
 		}
-		flat.set(`raw.${key}`, value);
+		flat.set(`raw.${key}`, ORDERLESS.has(key) && Array.isArray(value) ? value.map(String).sort() : value);
 	}
 	for (const [field, byLocale] of Object.entries(snapshot.text ?? {})) {
 		for (const [locale, text] of Object.entries(byLocale ?? {})) flat.set(`text.${field}.${locale}`, text);

@@ -193,15 +193,13 @@ export class Blog {
 			});
 	}
 
-	/** The ticked rows on this page, in table order. */
+	/** The ticked rows on any page, as last seen, in the order they were ticked. */
 	private ticked(ids: (string | number)[]): IBlog[] {
-		const wanted = new Set((ids ?? []).map(String));
-		return (this.tableConfig().data ?? []).filter((row) => wanted.has(String(row.id)));
+		return this.table()?.pickedRows<IBlog>(ids ?? []) ?? [];
 	}
 
 	private finishBulk() {
-		const table = this.table();
-		if (table) table.selected = [];
+		this.table()?.clearPicks();
 		this.refresh();
 	}
 

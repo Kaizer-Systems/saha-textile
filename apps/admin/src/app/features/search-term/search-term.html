@@ -18,6 +18,7 @@
 	<app-table
 		[tableConfig]="tableConfig()"
 		[hasCheckbox]="true"
+		[selectionKey]="'search-terms'"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"

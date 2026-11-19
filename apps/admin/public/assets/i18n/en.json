@@ -5064,5 +5064,15 @@
 	"ship_pw_own_charge": "each further unit’s own {{charge}}",
 	"ship_pw_product_charge": "the product’s {{charge}}",
 	"fx_name_GBP": "Pound Sterling",
-	"fx_err_time": "Type the time as 24-hour hours and minutes, like 12:30."
+	"fx_err_time": "Type the time as 24-hour hours and minutes, like 12:30.",
+	"picked_rows": "Picked rows",
+	"n_selected": "{{count}} selected",
+	"n_on_this_page": "({{count}} on this page)",
+	"picks_over_limit": "One action takes up to {{max}}. Please act in two goes.",
+	"more": "More",
+	"show_list": "Show list",
+	"clear_all": "Clear all",
+	"picks_newest_first": "Newest pick first · click a name to open it",
+	"n_more": "+{{count}} more",
+	"pick_this_page": "Tick every row on this page"
 }

@@ -2,7 +2,7 @@ import { HttpContext, HttpErrorResponse, HttpRequest, HttpResponse } from '@angu
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { firstValueFrom, map, of, throwError, timer } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { LoaderStore } from '@core/state/loader.store';
@@ -59,7 +59,8 @@ describe('GlobalErrorHandlerInterceptor', () => {
 });
 
 describe('LoaderInterceptor', () => {
-	const run = async (method: 'GET' | 'POST') => {
+	/** `slow` answers after the loader's tick, as a real request does; otherwise the answer comes at once. */
+	const run = async (method: 'GET' | 'POST', slow = false) => {
 		const store = {
 			showLoader: vi.fn(),
 			showButtonSpinner: vi.fn(),
@@ -71,21 +72,27 @@ describe('LoaderInterceptor', () => {
 		await firstValueFrom(
 			TestBed.inject(LoaderInterceptor).intercept(
 				new HttpRequest(method as 'GET', '/x'),
-				handler(of({ type: 0 })),
+				handler(slow ? timer(0).pipe(map(() => ({ type: 0 }))) : of({ type: 0 })),
 			),
 		);
 		await Promise.resolve();
 		return store;
 	};
 
-	it('shows the page loader for a read, and the spinner for a write', async () => {
-		const read = await run('GET');
+	it('shows the page loader for a read, and the spinner for a write, then hides them', async () => {
+		const read = await run('GET', true);
 		expect(read.showLoader).toHaveBeenCalledWith(true);
 		expect(read.showButtonSpinner).toHaveBeenCalledWith(false);
 		expect(read.hideLoader).toHaveBeenCalledOnce();
 		expect(read.hideButtonSpinner).toHaveBeenCalledOnce();
-		const write = await run('POST');
+		const write = await run('POST', true);
 		expect(write.showLoader).toHaveBeenCalledWith(false);
 		expect(write.showButtonSpinner).toHaveBeenCalledWith(true);
+	});
+
+	it('never shows the loader for a request that ended before it could appear (answered at once or cancelled)', async () => {
+		const quick = await run('GET');
+		expect(quick.showLoader).not.toHaveBeenCalled();
+		expect(quick.hideLoader).not.toHaveBeenCalled();
 	});
 });

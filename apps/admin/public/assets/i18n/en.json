@@ -4737,8 +4737,8 @@
 	"ship_pw_product_unit": "charge the product’s {{charge}} for each unit",
 	"ship_pw_product_once": "charge the product’s {{charge}} once",
 	"ship_pw_product_once_highest": "charge the highest product {{charge}} in the cart, once",
-	"ship_pw_first_further_acrossCart": "charge {{first}} for the first unit and {{further}} for each further unit, counting every unit in the cart",
-	"ship_pw_first_further_perProduct": "charge {{first}} for each product’s first unit and {{further}} for each further unit",
+	"ship_pw_first_further_acrossCart": "charge {{first}} once, then {{further}} for each further unit, counting every unit in the cart",
+	"ship_pw_first_further_perProduct": "charge {{first}} for each product’s first unit, then {{further}} for each further unit",
 	"ship_pw_charge_domestic": "domestic charge",
 	"ship_pw_charge_internationalFirst": "international first-unit charge",
 	"ship_pw_charge_internationalFurther": "international further-unit charge",
@@ -4805,5 +4805,9 @@
 	"ship_own_value": "Own value",
 	"ship_product_rules": "Shipping rules",
 	"ship_product_rules_text": "Same as its main category unless an exception is set on",
-	"ship_free_shipping_help": "When on, this product ships free in both zones, whatever the rule sets say."
+	"ship_free_shipping_help": "When on, this product ships free in both zones, whatever the rule sets say.",
+	"ship_draft_saved_inactive": "Draft saved. It isn’t used at checkout until it is made active.",
+	"ship_pw_highest_charge": "the highest {{charge}} among the products",
+	"ship_pw_own_charge": "that unit’s own {{charge}}",
+	"ship_pw_product_charge": "the product’s {{charge}}"
 }

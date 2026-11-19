@@ -23,6 +23,11 @@ import type {
 } from '@saha-textile/contracts';
 
 /** Every shipping screen reads under this key, so a save refreshes them all. */
+/**
+ * Settings change only through these pages, and every save refreshes them, so a read stays fresh
+ * for half a minute: coming back to the tab doesn't cover the page with the loader again.
+ */
+export const SHIPPING_STALE_MS = 30_000;
 export const SHIPPING_KEY = ['shipping'] as const;
 
 /** Admin › Shipping (brief approved 2026-11-19): overview, rule sets, Try it, exceptions. */
@@ -82,12 +87,14 @@ export class ShippingGateway {
 
 	/** One product's title, for a product exception's row. */
 	productTitle(id: string): Observable<{ id: string; title: string }> {
-		return this.http.get<{ id: string; title: string }>(`${runtimeConfig.apiUrl}/admin/products/${this.id(id)}`);
+		return this.http.get<{ id: string; title: string }>(
+			`${runtimeConfig.apiUrl}/admin/catalog/products/${this.id(id)}`,
+		);
 	}
 
 	/** Live products by name or SKU, for building a cart to try a rule set on. */
 	searchProducts(search: string): Observable<AdminProductList> {
-		return this.http.get<AdminProductList>(`${runtimeConfig.apiUrl}/admin/products`, {
+		return this.http.get<AdminProductList>(`${runtimeConfig.apiUrl}/admin/catalog/products`, {
 			params: { search, status: 'live', pageSize: 10 },
 		});
 	}
@@ -98,6 +105,7 @@ export function injectShippingOverviewQuery() {
 	return injectQuery(() => ({
 		queryKey: [...SHIPPING_KEY, 'overview'],
 		queryFn: () => firstValueFrom(gateway.overview()),
+		staleTime: SHIPPING_STALE_MS,
 	}));
 }
 
@@ -106,6 +114,7 @@ export function injectShippingRuleSetsQuery() {
 	return injectQuery(() => ({
 		queryKey: [...SHIPPING_KEY, 'rule-sets'],
 		queryFn: () => firstValueFrom(gateway.ruleSets()),
+		staleTime: SHIPPING_STALE_MS,
 	}));
 }
 
@@ -114,6 +123,7 @@ export function injectShippingExceptionsQuery() {
 	return injectQuery(() => ({
 		queryKey: [...SHIPPING_KEY, 'exceptions'],
 		queryFn: () => firstValueFrom(gateway.exceptions()),
+		staleTime: SHIPPING_STALE_MS,
 	}));
 }
 

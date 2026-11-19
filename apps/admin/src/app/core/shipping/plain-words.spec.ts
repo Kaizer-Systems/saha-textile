@@ -82,7 +82,7 @@ describe('plain words', () => {
 			],
 		};
 		expect(plainWords(body, en)).toEqual([
-			'For the whole cart: charge international first-unit charge for the first unit and international further-unit charge for each further unit, counting every unit in the cart',
+			'For the whole cart: charge the highest international first-unit charge among the products once, then that unit’s own international further-unit charge for each further unit, counting every unit in the cart',
 			'For each line in the cart: no result (to be filled in)',
 			'Take only the highest result.',
 			'Round up to the nearest ₹10.',

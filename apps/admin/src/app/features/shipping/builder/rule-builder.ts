@@ -23,7 +23,7 @@ import { Subject, catchError, debounceTime, firstValueFrom, forkJoin, map, of, s
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { duplicateStep, newAdjust, newStep } from '@core/shipping/blocks';
 import { plainWords } from '@core/shipping/plain-words';
-import { SHIPPING_KEY, ShippingGateway, shippingProblemKey } from '@core/shipping/shipping.gateway';
+import { SHIPPING_KEY, SHIPPING_STALE_MS, ShippingGateway, shippingProblemKey } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -90,10 +90,12 @@ export class RuleBuilder {
 	readonly query = injectQuery(() => ({
 		queryKey: [...SHIPPING_KEY, 'rule-set', this.id()],
 		queryFn: () => firstValueFrom(this.gateway.ruleSet(this.id())),
+		staleTime: SHIPPING_STALE_MS,
 	}));
 	readonly categoryRows = injectQuery(() => ({
 		queryKey: ['shipping', 'category-rows'],
 		queryFn: () => firstValueFrom(this.categoriesService.getCategoryRows()),
+		staleTime: SHIPPING_STALE_MS,
 	}));
 
 	readonly name = signal('');
@@ -341,7 +343,10 @@ export class RuleBuilder {
 			this.revision.set(saved.ruleSet.revision);
 			this.queryClient.setQueryData([...SHIPPING_KEY, 'rule-set', this.id()], saved);
 			void this.queryClient.invalidateQueries({ queryKey: SHIPPING_KEY });
-			if (!quiet) this.notifier.showSuccess(this.transloco.translate('ship_draft_saved'));
+			if (!quiet) {
+				const key = saved.ruleSet.activeVersion === null ? 'ship_draft_saved_inactive' : 'ship_draft_saved';
+				this.notifier.showSuccess(this.transloco.translate(key));
+			}
 			return true;
 		} catch (error) {
 			this.notifier.showError(this.transloco.translate(shippingProblemKey(error)));

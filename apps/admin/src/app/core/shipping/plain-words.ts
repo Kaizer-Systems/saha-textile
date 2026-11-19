@@ -89,10 +89,6 @@ function condition(value: ShippingCondition, t: Translate, nameOf: NameOf): stri
 	return `“${t(fieldKey(value.field))}” ${t(operatorKey(value.op))} ${valueText}`;
 }
 
-function source(value: ShippingAmountSource, t: Translate): string {
-	return value.from === 'fixed' ? rupees(value.amount) : t(`ship_pw_charge_${value.charge}`);
-}
-
 function result(value: ShippingResult, step: ShippingStep, t: Translate): string {
 	const cart = step.scope === 'wholeCart';
 	switch (value.kind) {
@@ -106,11 +102,17 @@ function result(value: ShippingResult, step: ShippingStep, t: Translate): string
 			return t(`ship_pw_product_${value.per}${value.per === 'once' && cart ? '_highest' : ''}`, {
 				charge: t(`ship_pw_charge_${value.charge}`),
 			});
-		case 'firstAndFurther':
-			return t(`ship_pw_first_further_${cart ? value.count : 'perProduct'}`, {
-				first: source(value.first, t),
-				further: source(value.further, t),
+		case 'firstAndFurther': {
+			// Across the cart, the first unit is the highest product charge and each further unit
+			// pays its own (brief rb03); per product, each product starts again at its own first unit.
+			const across = cart && value.count === 'acrossCart';
+			const named = (side: ShippingAmountSource, key: string) =>
+				side.from === 'fixed' ? rupees(side.amount) : t(key, { charge: t(`ship_pw_charge_${side.charge}`) });
+			return t(`ship_pw_first_further_${across ? 'acrossCart' : 'perProduct'}`, {
+				first: named(value.first, across ? 'ship_pw_highest_charge' : 'ship_pw_product_charge'),
+				further: named(value.further, across ? 'ship_pw_own_charge' : 'ship_pw_product_charge'),
 			});
+		}
 		case 'free':
 			return t('ship_pw_free');
 		case 'cantShip':

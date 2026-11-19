@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
 	SHIPPING_KEY,
+	SHIPPING_STALE_MS,
 	ShippingGateway,
 	injectShippingExceptionsQuery,
 	injectShippingOverviewQuery,
@@ -72,6 +73,7 @@ export class WhereRulesApply {
 	readonly categoryRows = injectQuery(() => ({
 		queryKey: ['shipping', 'category-rows'],
 		queryFn: () => firstValueFrom(this.categories.getCategoryRows()),
+		staleTime: SHIPPING_STALE_MS,
 	}));
 	readonly canEdit = computed(() => this.auth.permissions().includes('shipping.edit'));
 	readonly canAdd = computed(() => this.auth.permissions().includes('shipping.create'));

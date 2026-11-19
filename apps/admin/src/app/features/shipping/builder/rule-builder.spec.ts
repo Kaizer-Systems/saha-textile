@@ -176,7 +176,7 @@ describe('RuleBuilder', () => {
 		);
 		expect(page.revision()).toBe(1);
 		expect(page.dirty()).toBe(false);
-		expect(notifier.showSuccess).toHaveBeenCalledWith('ship_draft_saved');
+		expect(notifier.showSuccess).toHaveBeenCalledWith('ship_draft_saved_inactive');
 	});
 
 	it('asks for changed test carts to be accepted, then activates with them', async () => {

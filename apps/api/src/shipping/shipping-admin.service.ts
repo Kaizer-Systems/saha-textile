@@ -37,6 +37,7 @@ import {
 	type CategoryRepository,
 	type ProductRepository,
 	type ShippingRuleRepository,
+	PREMADE_RULE_SETS,
 	evaluateShippingRuleSet,
 	shippingZoneFor,
 	validateShippingRuleSet,
@@ -87,7 +88,9 @@ export class ShippingAdminService {
 			this.settings(),
 			this.rules.listExceptions(),
 		]);
-		return ruleSets.map((ruleSet) => ({ ruleSet, usage: usageOf(ruleSet.id, settings, exceptions) }));
+		return [...ruleSets]
+			.sort(byListOrder)
+			.map((ruleSet) => ({ ruleSet, usage: usageOf(ruleSet.id, settings, exceptions) }));
 	}
 
 	async detail(id: string): Promise<AdminShippingRuleSetDetail> {
@@ -486,6 +489,15 @@ export class ShippingAdminService {
 		};
 		await this.audit.append(entry);
 	}
+}
+
+/** The list's order (brief rl01): the shop's own rule sets by name, then the pre-made ones as designed. */
+const PREMADE_ORDER = new Map(PREMADE_RULE_SETS.map((premade, index) => [premade.key, index] as const));
+export function byListOrder(a: ShippingRuleSet, b: ShippingRuleSet): number {
+	if (a.kind !== b.kind) return a.kind === 'own' ? -1 : 1;
+	if (a.kind === 'premade')
+		return (PREMADE_ORDER.get(a.premadeKey ?? '') ?? 99) - (PREMADE_ORDER.get(b.premadeKey ?? '') ?? 99);
+	return a.name.localeCompare(b.name);
 }
 
 export function usageOf(

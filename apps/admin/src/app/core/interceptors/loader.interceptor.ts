@@ -11,7 +11,14 @@ export class LoaderInterceptor implements HttpInterceptor {
 	private loader = inject(LoaderStore);
 
 	intercept<T>(req: HttpRequest<T>, next: HttpHandler): Observable<HttpEvent<T>> {
+		// The loader is shown a tick later (never mid change detection). A request that ends before
+		// that tick — answered at once, or cancelled when TanStack refetches — must not show it at
+		// all: showing after its hide left the page under "Loading" for good (shipping pages, 19 Nov).
+		let ended = false;
+		let shown = false;
 		void Promise.resolve(null).then(() => {
+			if (ended) return;
+			shown = true;
 			this.loader.showLoader(req.method === 'GET');
 			this.loader.showButtonSpinner(req.method !== 'GET');
 		});
@@ -22,6 +29,8 @@ export class LoaderInterceptor implements HttpInterceptor {
 		// `tap({complete})` would never fire and the loader would stick.
 		return next.handle(req).pipe(
 			finalize(() => {
+				ended = true;
+				if (!shown) return;
 				this.loader.hideLoader();
 				this.loader.hideButtonSpinner();
 			}),

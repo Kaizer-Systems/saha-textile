@@ -29,7 +29,7 @@ The checks list names each gap before a shopper meets it: a zone with no rule se
 
 ## Rule sets and the rule builder
 
-The list shows every rule set, pre-made and the shop's own, with where each is used and its status: Active with its version, Not used, or Draft. Pre-made rule sets open read only and offer **Make a copy**. A rule set that is used anywhere can't be deleted.
+The list shows every rule set, the shop's own first by name and then the pre-made ones, with where each is used and its status: Active with its version, Not used, or Draft. Pre-made rule sets open read only and offer **Make a copy**. A rule set that is used anywhere can't be deleted.
 
 **New rule set** asks for a name and what it is for (domestic, international or both). It then starts blank or from a copy of a pre-made rule set.
 

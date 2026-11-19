@@ -317,6 +317,10 @@ export const InboxSendRequest = z.object({
 	 */
 	knownMessageIds: z.array(z.string().min(1).max(100)).max(500).optional(),
 	sendAnyway: z.boolean().default(false),
+	/** The Gmail draft this was written in (C2); Undo Send reuses it instead of making another. */
+	draftId: z.string().max(100).optional(),
+	/** Keep the files already saved in that draft, so they are not uploaded again. */
+	keepDraftAttachments: z.boolean().default(false),
 	/** The message whose attachments a forward carries; the API copies them from Gmail itself. */
 	forwardAttachmentsFrom: z.object({ threadId: z.string().max(100), messageId: z.string().max(100) }).optional(),
 	attachments: z
@@ -434,6 +438,88 @@ export const InboxEmptyBinResult = z.object({
 	incomplete: z.boolean(),
 });
 export type InboxEmptyBinResult = z.infer<typeof InboxEmptyBinResult>;
+
+// ── Drafts and Undo Send (C2, C4) ───────────────────────────────────────────────
+
+/** A Gmail draft, read from Gmail. `version` is its current Gmail message id; it changes on every save. */
+export const InboxDraft = z.object({
+	draftId: z.string(),
+	version: z.string(),
+	threadId: z.string().nullable(),
+	from: z.string(),
+	to: z.string(),
+	cc: z.string(),
+	bcc: z.string(),
+	subject: z.string(),
+	text: z.string(),
+	attachments: z.array(InboxAttachment),
+	date: IsoDateTime,
+	/** The Message-ID a reply answers. */
+	inReplyTo: z.string().nullable(),
+	/** The message the compose box quotes below the text; the quote itself is added when sent. */
+	quoteMessageId: z.string().nullable(),
+	/** A forward's original message, whose files are copied from Gmail when it is sent. */
+	forwardAttachmentsFrom: z.object({ threadId: z.string(), messageId: z.string() }).nullable(),
+});
+export type InboxDraft = z.infer<typeof InboxDraft>;
+
+export const InboxDraftSummary = z.object({
+	draftId: z.string(),
+	threadId: z.string().nullable(),
+	to: z.string(),
+	subject: z.string(),
+	snippet: z.string(),
+	date: IsoDateTime,
+});
+export type InboxDraftSummary = z.infer<typeof InboxDraftSummary>;
+
+export const InboxDraftPage = z.object({
+	drafts: z.array(InboxDraftSummary),
+	nextPageToken: z.string().nullable(),
+});
+export type InboxDraftPage = z.infer<typeof InboxDraftPage>;
+
+/**
+ * `POST …/drafts` and `PUT …/drafts/:draftId`: the compose box, saved to Gmail. On an update,
+ * `version` is the one the writer last saw (412 `draft_changed` when someone saved since), and
+ * `keepAttachments` keeps the files already in the draft so they are not sent again each save.
+ */
+export const InboxDraftWrite = InboxSendRequest.omit({
+	knownMessageIds: true,
+	sendAnyway: true,
+	draftId: true,
+	keepDraftAttachments: true,
+}).extend({
+	to: z.array(z.string().email()).max(50).default([]),
+	subject: z.string().trim().max(300).default(''),
+	version: z.string().max(100).optional(),
+	keepAttachments: z.boolean().default(false),
+});
+export type InboxDraftWrite = z.infer<typeof InboxDraftWrite>;
+
+export const InboxDraftSaved = z.object({ draftId: z.string(), version: z.string(), savedAt: IsoDateTime });
+export type InboxDraftSaved = z.infer<typeof InboxDraftSaved>;
+
+/** How long a sent message waits before it really goes, so Undo can stop it (owner, 2026-11-19). */
+export const UNDO_SEND_SECONDS = 10;
+
+/** What `POST …/send` answers: the message waits in Gmail's drafts until `sendAt`, unless undone. */
+export const InboxSendQueued = z.object({ outboxId: z.string(), draftId: z.string(), sendAt: IsoDateTime });
+export type InboxSendQueued = z.infer<typeof InboxSendQueued>;
+
+/**
+ * `GET …/outbox/:outboxId`: what became of a queued message. `failed` and `gone` mean it was not
+ * sent (failed: the draft is still in Drafts); `uncertain` means Gmail did not answer and the API
+ * keeps checking Sent before it ever tries again.
+ */
+export const InboxOutboxStatus = z.object({
+	outboxId: z.string(),
+	status: z.enum(['queued', 'sending', 'sent', 'cancelled', 'uncertain', 'failed', 'gone']),
+	draftId: z.string(),
+	threadId: z.string().nullable(),
+	sentMessageId: z.string().nullable(),
+});
+export type InboxOutboxStatus = z.infer<typeof InboxOutboxStatus>;
 
 /** Largest total a forward may carry, the original attachments included (Gmail's own limit). */
 export const MAX_FORWARD_BYTES = 25 * 1024 * 1024;

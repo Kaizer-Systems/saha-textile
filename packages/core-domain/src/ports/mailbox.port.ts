@@ -1,6 +1,8 @@
 import type {
 	ContactMessage,
 	InboxFolder,
+	InboxDraft,
+	InboxDraftPage,
 	InboxLabel,
 	InboxThread,
 	InboxThreadPage,
@@ -45,6 +47,20 @@ export interface OutgoingMail {
 	/** The answered message, quoted below the reply as mail programs do. */
 	quote?: { attribution: string; html: string; text: string };
 	attachments: readonly { filename: string; mimeType: string; data: Uint8Array }[];
+	/** Our own Message-ID, so a send whose result was lost can be found again in Sent. */
+	messageId?: string;
+	/**
+	 * Only on a saved draft: what the compose box had chosen, so the draft reopens the same way.
+	 * The signature, the quote and forwarded files are added when it is sent, not stored in it.
+	 */
+	draftHints?: { quoteMessageId?: string; forwardFrom?: { threadId: string; messageId: string } };
+}
+
+/** A saved Gmail draft: its id, its current version (message id) and conversation. */
+export interface DraftRef {
+	draftId: string;
+	version: string;
+	threadId: string | null;
 }
 
 /** A message placed straight into a mailbox, never sent over the internet. */
@@ -119,6 +135,25 @@ export interface MailboxPort {
 	deleteThreadForever(credentials: MailboxCredentials, threadId: string): Promise<void>;
 	/** Deletes these messages for good (at most 1,000); the caller has checked they are in the Bin. */
 	deleteMessagesForever(credentials: MailboxCredentials, messageIds: readonly string[]): Promise<void>;
+	/** Saves a new draft in Gmail. */
+	createDraft(credentials: MailboxCredentials, mail: OutgoingMail): Promise<DraftRef>;
+	/** Replaces a draft's content; `keepAttachments` carries its current files over. Null when gone. */
+	updateDraft(
+		credentials: MailboxCredentials,
+		draftId: string,
+		mail: OutgoingMail,
+		keepAttachments: boolean,
+	): Promise<DraftRef | null>;
+	getDraft(credentials: MailboxCredentials, draftId: string): Promise<InboxDraft | null>;
+	listDrafts(credentials: MailboxCredentials, pageToken: string | undefined): Promise<InboxDraftPage>;
+	deleteDraft(credentials: MailboxCredentials, draftId: string): Promise<void>;
+	/** Sends a draft (Gmail removes it on success). Null when the draft no longer exists. */
+	sendDraft(credentials: MailboxCredentials, draftId: string): Promise<{ id: string; threadId: string } | null>;
+	/** A sent message found by the Message-ID we gave it, for reconciling an uncertain send. */
+	findByMessageId(
+		credentials: MailboxCredentials,
+		messageId: string,
+	): Promise<{ id: string; threadId: string } | null>;
 	/** Message ids in the Bin, a page at a time, for Empty Bin. */
 	listBinMessageIds(
 		credentials: MailboxCredentials,
@@ -186,4 +221,45 @@ export interface ContactMessageRepository {
 	findRecentByHash(contentHash: string, since: string): Promise<ContactMessage | null>;
 	/** Queued or failed messages due another delivery attempt, oldest first. */
 	listPending(limit: number): Promise<ContactMessage[]>;
+}
+
+/** Where a message waiting for Undo Send stands (C4). */
+export type OutboxStatus = 'queued' | 'sending' | 'sent' | 'cancelled' | 'uncertain' | 'failed' | 'gone';
+
+/** A message waiting in Gmail's drafts until `sendAt`, so Undo can stop it. No message content here. */
+export interface OutboxItem {
+	id: string;
+	mailboxId: string;
+	draftId: string;
+	adminUserId: string;
+	/** The Message-ID we gave the message, for finding it in Sent when a result was lost. */
+	messageId: string;
+	sendAt: string;
+	status: OutboxStatus;
+	attempts: number;
+	createdAt: string;
+	/** When a sender last took it to send; a row left `sending` long after this was interrupted. */
+	claimedAt: string | null;
+	sentMessageId: string | null;
+	threadId: string | null;
+	/** For the audit row once sent: counts and the From address, never addresses typed in mail. */
+	meta: { from: string; recipients: number; reply: boolean };
+}
+
+/**
+ * Messages waiting for Undo Send (`mailboxOutbox`). Every change of status is one atomic step, so
+ * two API instances never send the same message twice and Undo never races a send.
+ */
+export interface MailboxOutboxRepository {
+	create(item: OutboxItem): Promise<OutboxItem>;
+	findById(id: string): Promise<OutboxItem | null>;
+	/** Moves up to `limit` due rows from queued to sending, one at a time, and returns them. */
+	claimDue(now: string, limit: number): Promise<OutboxItem[]>;
+	/** queued → cancelled; null when it already left the queue. */
+	cancel(id: string): Promise<OutboxItem | null>;
+	markSent(id: string, sent: { id: string; threadId: string }): Promise<void>;
+	setStatus(id: string, status: Exclude<OutboxStatus, 'sent'>, attemptsDelta?: number): Promise<void>;
+	listByStatus(status: OutboxStatus, limit: number): Promise<OutboxItem[]>;
+	/** A row of this draft still waiting or being sent, so one draft is never queued twice. */
+	findActiveForDraft(mailboxId: string, draftId: string): Promise<OutboxItem | null>;
 }

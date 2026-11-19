@@ -9,6 +9,7 @@ import { AdminInboxController } from './admin-inbox.controller';
 import { AdminMailboxesController } from './admin-mailboxes.controller';
 import { ContactMessagesController } from './contact-messages.controller';
 import { MailboxesAdminService } from './mailboxes-admin.service';
+import { UndoSendDispatcher } from './undo-send.dispatcher';
 
 /**
  * Gmail mailboxes in the admin and the Contact Us form (owner log § stores, Contact Us and Gmail
@@ -17,7 +18,7 @@ import { MailboxesAdminService } from './mailboxes-admin.service';
 @Module({
 	imports: [AuthModule, CatalogModule],
 	controllers: [AdminMailboxesController, AdminInboxController, ContactMessagesController],
-	providers: [MailboxBookkeeping, MailboxesAdminService, InboxService, ContactMessagesService],
+	providers: [MailboxBookkeeping, MailboxesAdminService, InboxService, ContactMessagesService, UndoSendDispatcher],
 	// Purchase orders are emailed through a connected mailbox (purchases brief, po03).
 	exports: [InboxService],
 })

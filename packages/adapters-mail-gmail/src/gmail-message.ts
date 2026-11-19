@@ -1,6 +1,8 @@
 import {
 	LARGE_MESSAGE_HTML_CHARS,
 	type InboxAttachment,
+	type InboxDraft,
+	type InboxDraftSummary,
 	type InboxMessage,
 	type InboxThread,
 	type InboxThreadSummary,
@@ -8,6 +10,7 @@ import {
 import { z } from 'zod';
 
 import { cleanEmailHtml, htmlToText, splitTextQuote, textAsHtml } from './clean-html.js';
+import { DRAFT_FORWARD_HEADER, DRAFT_QUOTE_HEADER } from './mime.js';
 
 /** The parts of Gmail's message resource this adapter reads. */
 export interface GmailPart {
@@ -193,4 +196,42 @@ export function toInboxThread(thread: GmailThread, inline: ReadonlyMap<string, s
 /** Every label any of the messages carries, once each. */
 function labelsOf(messages: readonly { labelIds: readonly string[] }[]): string[] {
 	return [...new Set(messages.flatMap((message) => message.labelIds))];
+}
+
+/** A Gmail draft as the compose box reopens it: its addresses, words and files. */
+export function toInboxDraft(draftId: string, message: GmailMessage): InboxDraft {
+	const read = toInboxMessage(message);
+	return {
+		draftId,
+		version: message.id,
+		threadId: message.threadId || null,
+		from: header(message.payload, 'From'),
+		to: header(message.payload, 'To'),
+		cc: header(message.payload, 'Cc'),
+		bcc: header(message.payload, 'Bcc'),
+		subject: header(message.payload, 'Subject'),
+		text: read.text,
+		attachments: read.attachments,
+		date: read.date,
+		inReplyTo: header(message.payload, 'In-Reply-To') || null,
+		quoteMessageId: header(message.payload, DRAFT_QUOTE_HEADER) || null,
+		forwardAttachmentsFrom: forwardHint(header(message.payload, DRAFT_FORWARD_HEADER)),
+	};
+}
+
+function forwardHint(value: string): { threadId: string; messageId: string } | null {
+	const [threadId, messageId] = value.trim().split('/');
+	return threadId && messageId ? { threadId, messageId } : null;
+}
+
+/** A draft's line in the Drafts list. */
+export function toDraftSummary(draftId: string, message: GmailMessage): InboxDraftSummary {
+	return {
+		draftId,
+		threadId: message.threadId || null,
+		to: header(message.payload, 'To'),
+		subject: header(message.payload, 'Subject'),
+		snippet: message.snippet ?? '',
+		date: iso(message.internalDate),
+	};
 }

@@ -1,6 +1,6 @@
 import { HttpException } from '@nestjs/common';
 import type { ContactMessage, Mailbox, MailboxAccess } from '@saha-textile/contracts';
-import { type MailboxPort, MailboxAccessRevoked } from '@saha-textile/core-domain';
+import { type MailboxPort, MailboxAccessRevoked, type OutboxItem } from '@saha-textile/core-domain';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { UnavailableMailboxAdapter, UnavailableMailboxTokenStore } from '../src/infra/unavailable-mailbox.adapter';
@@ -49,6 +49,7 @@ const world = () => {
 	const contacts = new Map<string, ContactMessage>();
 	const versions = new Map<string, number>();
 	const states = new Set<string>();
+	const outboxRows = new Map<string, OutboxItem>();
 	const superAdmins = new Set<string>(['admin_1', 'admin', 'u1']);
 	const audit: Array<{
 		action: string;
@@ -88,6 +89,47 @@ const world = () => {
 				versions.set(id, current + 1);
 				return current + 1;
 			},
+		},
+		outboxRows,
+		outbox: {
+			create: async (item: OutboxItem) => {
+				outboxRows.set(item.id, { ...item });
+				return item;
+			},
+			findById: async (id: string) => (outboxRows.has(id) ? { ...outboxRows.get(id)! } : null),
+			claimDue: async (now: string, limit: number) => {
+				const due = [...outboxRows.values()]
+					.filter((row) => row.status === 'queued' && row.sendAt <= now)
+					.slice(0, limit);
+				for (const row of due) Object.assign(row, { status: 'sending', claimedAt: now });
+				return due.map((row) => ({ ...row }));
+			},
+			cancel: async (id: string) => {
+				const row = outboxRows.get(id);
+				if (row?.status !== 'queued') return null;
+				row.status = 'cancelled';
+				return { ...row };
+			},
+			markSent: async (id: string, sent: { id: string; threadId: string }) => {
+				Object.assign(outboxRows.get(id)!, { status: 'sent', sentMessageId: sent.id, threadId: sent.threadId });
+			},
+			setStatus: async (id: string, status: OutboxItem['status'], attemptsDelta = 0) => {
+				const row = outboxRows.get(id)!;
+				row.status = status;
+				row.attempts += attemptsDelta;
+			},
+			listByStatus: async (status: OutboxItem['status'], limit: number) =>
+				[...outboxRows.values()]
+					.filter((row) => row.status === status)
+					.slice(0, limit)
+					.map((row) => ({ ...row })),
+			findActiveForDraft: async (mailboxId: string, draftId: string) =>
+				[...outboxRows.values()].find(
+					(row) =>
+						row.mailboxId === mailboxId &&
+						row.draftId === draftId &&
+						(row.status === 'queued' || row.status === 'sending'),
+				) ?? null,
 		},
 		states,
 		signInStates: {
@@ -158,6 +200,13 @@ const gmailStub = (overrides: Partial<Record<keyof MailboxPort, unknown>> = {}) 
 		getThread: vi.fn(async () => ({ id: 't1', subject: 'S', messages: [], unread: false })),
 		getAttachment: vi.fn(async () => ({ data: new Uint8Array([1, 2]) })),
 		send: vi.fn(async () => ({ id: 'm1', threadId: 't1' })),
+		createDraft: vi.fn(async () => ({ draftId: 'd1', version: 'v1', threadId: null })),
+		updateDraft: vi.fn(async () => ({ draftId: 'd1', version: 'v2', threadId: null })),
+		getDraft: vi.fn(async () => null),
+		listDrafts: vi.fn(async () => ({ drafts: [], nextPageToken: null })),
+		deleteDraft: vi.fn(async () => undefined),
+		sendDraft: vi.fn(async () => ({ id: 'sent1', threadId: 't9' })),
+		findByMessageId: vi.fn(async () => null),
 		modifyThread: vi.fn(async () => undefined),
 		trashThread: vi.fn(async () => undefined),
 		importMessage: vi.fn(async () => ({ id: 'g1' })),
@@ -375,7 +424,14 @@ describe('InboxService', () => {
 	beforeEach(async () => {
 		w = world();
 		gmail = gmailStub();
-		inbox = new InboxService(gmail, w.mailboxes as never, w.access as never, w.tokens as never, books(w));
+		inbox = new InboxService(
+			gmail,
+			w.mailboxes as never,
+			w.access as never,
+			w.tokens as never,
+			books(w),
+			w.outbox as never,
+		);
 		await w.mailboxes.save(mailbox('care'));
 		await w.tokens.put('care', 'r1');
 		await w.access.replaceForMailbox('care', [
@@ -538,7 +594,14 @@ describe('InboxService after the review (brief revision 2)', () => {
 	beforeEach(async () => {
 		w = world();
 		gmail = gmailStub();
-		inbox = new InboxService(gmail, w.mailboxes as never, w.access as never, w.tokens as never, books(w));
+		inbox = new InboxService(
+			gmail,
+			w.mailboxes as never,
+			w.access as never,
+			w.tokens as never,
+			books(w),
+			w.outbox as never,
+		);
 		await w.mailboxes.save(mailbox('care'));
 		await w.tokens.put('care', 'r1');
 		await w.access.replaceForMailbox('care', [
@@ -608,6 +671,7 @@ describe('InboxService after the review (brief revision 2)', () => {
 			w.access as never,
 			w.tokens as never,
 			books(w, false),
+			w.outbox as never,
 		);
 		gmail.listThreads.mockResolvedValueOnce({
 			threads: [{ id: 't1', date: '2026-11-09T18:00:01.000Z' }],
@@ -954,6 +1018,7 @@ describe('mailbox controllers', () => {
 			thread: vi.fn(async () => ({})),
 			attachment: vi.fn(async () => new Uint8Array([1])),
 			send: vi.fn(async () => ({ id: 'm', threadId: 't' })),
+			queueSend: vi.fn(async () => ({ outboxId: 'o', draftId: 'd', sendAt: '' })),
 			modify: vi.fn(async () => undefined),
 		};
 		const controller = new AdminInboxController(service as never);
@@ -989,9 +1054,13 @@ describe('mailbox controllers', () => {
 				subject: 's',
 				body: '',
 				attachments: [],
+				keepDraftAttachments: false,
 			},
 			principal,
 		);
+		// The Inbox's Send waits for Undo; the immediate send is for purchase orders only.
+		expect(service.queueSend).toHaveBeenCalledTimes(1);
+		expect(service.send).not.toHaveBeenCalled();
 		expect(await controller.modify('care', 't1', { action: 'mark_read' }, principal)).toEqual({ ok: true });
 	});
 
@@ -1015,5 +1084,249 @@ describe('unconfigured Gmail', () => {
 		await expect(tokens.put()).rejects.toMatchObject({ status: 503 });
 		expect(await tokens.get()).toBeNull();
 		await expect(tokens.remove()).resolves.toBeUndefined();
+	});
+});
+
+describe('Drafts and Undo Send (C2, C4)', () => {
+	let w: ReturnType<typeof world>;
+	let gmail: ReturnType<typeof gmailStub>;
+	let inbox: InboxService;
+	const request = {
+		from: 'care@shop.test',
+		to: ['a@x.test'],
+		cc: [],
+		bcc: ['hidden@x.test'],
+		sendAnyway: false,
+		keepDraftAttachments: false,
+		subject: 'Hello',
+		body: 'Thanks',
+		attachments: [],
+	};
+	const later = (seconds: number) => new Date(Date.now() + seconds * 1000);
+	const draft = (version: string) => ({
+		draftId: 'd1',
+		version,
+		threadId: null,
+		from: 'care@shop.test',
+		to: 'a@x.test',
+		cc: '',
+		bcc: '',
+		subject: 'Hello',
+		text: 'Thanks',
+		attachments: [],
+		date: '2026-11-19T10:00:00.000Z',
+		inReplyTo: null,
+		quoteMessageId: null,
+		forwardAttachmentsFrom: null,
+	});
+
+	beforeEach(async () => {
+		w = world();
+		gmail = gmailStub();
+		inbox = new InboxService(
+			gmail,
+			w.mailboxes as never,
+			w.access as never,
+			w.tokens as never,
+			books(w),
+			w.outbox as never,
+		);
+		await w.mailboxes.save(mailbox('care'));
+		await w.tokens.put('care', 'r1');
+		await w.access.replaceForMailbox('care', [
+			{ mailboxId: 'care', adminUserId: 'u_riya', rights: ['read', 'send'] },
+			{ mailboxId: 'care', adminUserId: 'u_other', rights: ['read', 'send'] },
+			{ mailboxId: 'care', adminUserId: 'reader', rights: ['read'] },
+		]);
+	});
+
+	it('queues a send as a Gmail draft with its own Message-ID, and sends nothing yet', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		expect(gmail.send).not.toHaveBeenCalled();
+		expect(gmail.sendDraft).not.toHaveBeenCalled();
+		const mail = gmail.createDraft.mock.calls[0]?.[1];
+		expect(mail.messageId).toMatch(/^outbox-[0-9a-f-]+@shop\.test$/);
+		expect(mail.signatureHtml).toBe('<b>Team</b>');
+		const waited = Date.parse(queued.sendAt) - Date.now();
+		expect(waited).toBeGreaterThan(9_000);
+		expect(waited).toBeLessThanOrEqual(10_000);
+		expect(await inbox.dispatchDue()).toBe(0);
+		expect(gmail.sendDraft).not.toHaveBeenCalled();
+	});
+
+	it('sends after the wait, once, and records who sent it', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		expect(await inbox.dispatchDue(later(11))).toBe(1);
+		expect(await inbox.dispatchDue(later(13))).toBe(0);
+		expect(gmail.sendDraft).toHaveBeenCalledTimes(1);
+		expect(await inbox.outboxStatus('u_riya', 'care', queued.outboxId)).toMatchObject({
+			status: 'sent',
+			sentMessageId: 'sent1',
+		});
+		const sent = w.audit.at(-1);
+		expect(sent).toMatchObject({ action: 'mailbox.message_sent', actorUserId: 'u_riya', entityId: 'care' });
+		expect(JSON.stringify(sent)).not.toContain('a@x.test');
+		expect(JSON.stringify(sent)).not.toContain('Thanks');
+	});
+
+	it('Undo keeps the message in Drafts; too late answers 409', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		expect(await inbox.cancelSend('u_riya', 'care', queued.outboxId)).toEqual({ draftId: 'd1' });
+		expect(await inbox.dispatchDue(later(11))).toBe(0);
+		expect(gmail.sendDraft).not.toHaveBeenCalled();
+		const second = await inbox.queueSend('u_riya', 'care', request);
+		await inbox.dispatchDue(later(11));
+		await expect(inbox.cancelSend('u_riya', 'care', second.outboxId)).rejects.toMatchObject({ status: 409 });
+	});
+
+	it('lets only the writer see or undo a queued message', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		await expect(inbox.cancelSend('u_other', 'care', queued.outboxId)).rejects.toMatchObject({ status: 404 });
+		await expect(inbox.outboxStatus('u_other', 'care', queued.outboxId)).rejects.toMatchObject({ status: 404 });
+		await expect(inbox.cancelSend('reader', 'care', queued.outboxId)).rejects.toMatchObject({ status: 403 });
+		await expect(inbox.cancelSend('u_riya', 'other', queued.outboxId)).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('sends nothing when the Send right was removed during the wait', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		await w.access.replaceForMailbox('care', [{ mailboxId: 'care', adminUserId: 'u_riya', rights: ['read'] }]);
+		await inbox.dispatchDue(later(11));
+		expect(gmail.sendDraft).not.toHaveBeenCalled();
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('failed');
+	});
+
+	it('never resends blindly after an unanswered send: Sent is checked first', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		gmail.sendDraft.mockRejectedValueOnce(Object.assign(new Error('socket'), { status: 503 }));
+		await inbox.dispatchDue(later(11));
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('uncertain');
+		// It went after all: found in Sent by its Message-ID, never sent a second time.
+		gmail.findByMessageId.mockResolvedValueOnce({ id: 'found1', threadId: 't9' });
+		await inbox.dispatchDue(later(13));
+		expect(gmail.sendDraft).toHaveBeenCalledTimes(1);
+		expect(w.outboxRows.get(queued.outboxId)).toMatchObject({ status: 'sent', sentMessageId: 'found1' });
+	});
+
+	it('tries again only when the draft is still there, three times in all', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		gmail.sendDraft.mockRejectedValue(Object.assign(new Error('socket'), { status: 503 }));
+		gmail.getDraft.mockResolvedValue(draft('v1'));
+		for (let round = 0; round < 8; round += 1) await inbox.dispatchDue(later(11 + round * 2));
+		expect(gmail.sendDraft).toHaveBeenCalledTimes(3);
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('failed');
+	});
+
+	it('calls a send gone only when neither Sent nor Drafts has it after a minute', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		gmail.sendDraft.mockResolvedValueOnce(null);
+		await inbox.dispatchDue(later(11));
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('uncertain');
+		await inbox.dispatchDue(later(20));
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('uncertain');
+		await inbox.dispatchDue(later(90));
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('gone');
+	});
+
+	it('retries a busy Gmail safely, and looks up a send interrupted by a restart', async () => {
+		const queued = await inbox.queueSend('u_riya', 'care', request);
+		gmail.sendDraft.mockRejectedValueOnce(Object.assign(new Error('busy'), { status: 429 }));
+		await inbox.dispatchDue(later(11));
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('queued');
+		await inbox.dispatchDue(later(13));
+		expect(w.outboxRows.get(queued.outboxId)?.status).toBe('sent');
+
+		const stuck = await inbox.queueSend('u_riya', 'care', request);
+		Object.assign(w.outboxRows.get(stuck.outboxId)!, { status: 'sending', claimedAt: later(11).toISOString() });
+		await inbox.dispatchDue(later(60));
+		expect(w.outboxRows.get(stuck.outboxId)?.status).toBe('sending');
+		gmail.findByMessageId.mockResolvedValueOnce({ id: 'found2', threadId: 't9' });
+		await inbox.dispatchDue(later(200));
+		expect(w.outboxRows.get(stuck.outboxId)?.status).toBe('sent');
+	});
+
+	it('sends the draft it was written in, and never queues one draft twice', async () => {
+		await inbox.queueSend('u_riya', 'care', { ...request, draftId: 'd1', keepDraftAttachments: true });
+		expect(gmail.updateDraft.mock.calls[0]?.slice(2)).toEqual([expect.anything(), true]);
+		expect(gmail.createDraft).not.toHaveBeenCalled();
+		await expect(inbox.queueSend('u_riya', 'care', { ...request, draftId: 'd1' })).rejects.toMatchObject({
+			status: 409,
+		});
+		await expect(
+			inbox.saveDraft('u_riya', 'care', 'd1', { ...request, keepAttachments: false }),
+		).rejects.toMatchObject({ status: 409 });
+		await expect(inbox.deleteDraft('u_riya', 'care', 'd1')).rejects.toMatchObject({ status: 409 });
+	});
+
+	it('refuses to send a deleted draft whose saved files would be lost', async () => {
+		gmail.updateDraft.mockResolvedValueOnce(null);
+		await expect(
+			inbox.queueSend('u_riya', 'care', { ...request, draftId: 'gone', keepDraftAttachments: true }),
+		).rejects.toMatchObject({ status: 404 });
+		gmail.updateDraft.mockResolvedValueOnce(null);
+		await inbox.queueSend('u_riya', 'care', { ...request, draftId: 'gone' });
+		expect(gmail.createDraft).toHaveBeenCalledTimes(1);
+	});
+
+	it('saves a draft as typed text only: no signature or quote, hints kept to reopen it', async () => {
+		gmail.getThread.mockResolvedValue({
+			id: 't1',
+			subject: 'S',
+			unread: false,
+			messages: [
+				{
+					id: 'q1',
+					messageId: '<q1@x>',
+					references: '<r@x>',
+					html: '<p>old</p>',
+					quoteHtml: '',
+					text: 'old',
+					from: 'a',
+					date: '2026-11-19T09:00:00.000Z',
+					attachments: [],
+				},
+			],
+		});
+		const saved = await inbox.saveDraft('u_riya', 'care', null, {
+			...request,
+			to: [],
+			subject: '',
+			threadId: 't1',
+			inReplyTo: '<q1@x>',
+			quoteMessageId: 'q1',
+			forwardAttachmentsFrom: { threadId: 't1', messageId: 'q1' },
+			keepAttachments: false,
+		});
+		expect(saved).toMatchObject({ draftId: 'd1', version: 'v1' });
+		const mail = gmail.createDraft.mock.calls[0]?.[1];
+		expect(mail).toMatchObject({ signatureHtml: '', quote: undefined, references: '<r@x>' });
+		expect(mail.draftHints).toEqual({ quoteMessageId: 'q1', forwardFrom: { threadId: 't1', messageId: 'q1' } });
+		expect(gmail.getAttachment).not.toHaveBeenCalled();
+	});
+
+	it('answers 412 when someone saved the draft since, and 404 when it is gone', async () => {
+		gmail.getDraft.mockResolvedValueOnce(draft('v5'));
+		await expect(
+			inbox.saveDraft('u_riya', 'care', 'd1', { ...request, version: 'v1', keepAttachments: true }),
+		).rejects.toMatchObject({ status: 412 });
+		gmail.getDraft.mockResolvedValueOnce(draft('v5'));
+		expect(
+			await inbox.saveDraft('u_riya', 'care', 'd1', { ...request, version: 'v5', keepAttachments: true }),
+		).toMatchObject({ draftId: 'd1', version: 'v2' });
+		expect(gmail.updateDraft.mock.calls[0]?.[3]).toBe(true);
+		gmail.getDraft.mockResolvedValueOnce(null);
+		await expect(
+			inbox.saveDraft('u_riya', 'care', 'd1', { ...request, version: 'v5', keepAttachments: true }),
+		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('needs the Send right for drafts, and audits a discard', async () => {
+		await expect(inbox.listDrafts('reader', 'care')).rejects.toMatchObject({ status: 403 });
+		await expect(inbox.getDraft('u_riya', 'care', 'nope')).rejects.toMatchObject({ status: 404 });
+		gmail.getDraft.mockResolvedValueOnce(draft('v1'));
+		expect(await inbox.getDraft('u_riya', 'care', 'd1')).toMatchObject({ draftId: 'd1' });
+		expect(await inbox.listDrafts('u_riya', 'care')).toEqual({ drafts: [], nextPageToken: null });
+		await inbox.deleteDraft('u_riya', 'care', 'd1');
+		expect(gmail.deleteDraft).toHaveBeenCalledWith(expect.anything(), 'd1');
+		expect(w.audit.at(-1)).toMatchObject({ action: 'mailbox.draft_deleted', actorUserId: 'u_riya' });
 	});
 });

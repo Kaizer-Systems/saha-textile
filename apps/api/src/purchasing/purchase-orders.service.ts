@@ -399,6 +399,7 @@ export class PurchaseOrdersService {
 				cc: [],
 				bcc: [],
 				sendAnyway: false,
+				keepDraftAttachments: false,
 				subject: body.subject || `Purchase order ${order.number}`,
 				body: body.message,
 				attachments: [

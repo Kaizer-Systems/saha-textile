@@ -85,6 +85,50 @@ MailboxAccessSchema.index({ adminUserId: 1 });
 export const MailboxAccessModel: Model<MailboxAccessDoc> =
 	(models.MailboxAccess as Model<MailboxAccessDoc>) ?? model<MailboxAccessDoc>('MailboxAccess', MailboxAccessSchema);
 
+/** Undo Send rows are removed this long after they were created, whatever became of them. */
+export const OUTBOX_RETENTION_SECONDS = 7 * 24 * 60 * 60;
+
+/** Messages waiting in Gmail's drafts for Undo Send (C4). Holds ids and counts, never content. */
+export interface MailboxOutboxDoc {
+	_id: string;
+	mailboxId: string;
+	draftId: string;
+	adminUserId: string;
+	messageId: string;
+	sendAt: Date;
+	status: string;
+	attempts: number;
+	sentMessageId: string | null;
+	threadId: string | null;
+	meta: { from: string; recipients: number; reply: boolean };
+	createdAt: Date;
+	claimedAt?: Date | null;
+}
+
+const MailboxOutboxSchema = new Schema<MailboxOutboxDoc>(
+	{
+		_id: { type: String, required: true },
+		mailboxId: { type: String, required: true },
+		draftId: { type: String, required: true },
+		adminUserId: { type: String, required: true },
+		messageId: { type: String, required: true },
+		sendAt: { type: Date, required: true },
+		status: { type: String, required: true },
+		attempts: { type: Number, default: 0 },
+		sentMessageId: { type: String, default: null },
+		threadId: { type: String, default: null },
+		meta: { type: Schema.Types.Mixed, default: {} },
+		createdAt: { type: Date, required: true },
+		claimedAt: { type: Date, default: null },
+	},
+	{ collection: 'mailboxOutbox', minimize: false },
+);
+MailboxOutboxSchema.index({ status: 1, sendAt: 1 });
+MailboxOutboxSchema.index({ createdAt: 1 }, { expireAfterSeconds: OUTBOX_RETENTION_SECONDS });
+
+export const MailboxOutboxModel: Model<MailboxOutboxDoc> =
+	(models.MailboxOutbox as Model<MailboxOutboxDoc>) ?? model<MailboxOutboxDoc>('MailboxOutbox', MailboxOutboxSchema);
+
 /** How long a Contact Us message is kept: twelve months, then the database deletes it. */
 export const CONTACT_MESSAGE_RETENTION_SECONDS = 365 * 24 * 60 * 60;
 

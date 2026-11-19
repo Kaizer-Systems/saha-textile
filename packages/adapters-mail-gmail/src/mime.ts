@@ -97,6 +97,26 @@ const filenameParam = (filename: string): string => {
 	return /^[\x20-\x7e]*$/.test(safe) ? `filename="${safe}"` : `filename*=UTF-8''${encodeURIComponent(safe)}`;
 };
 
+/** Gmail ids are short letters, digits, - and _; anything else is dropped, never written into a header. */
+const GMAIL_ID = /^[A-Za-z0-9_-]{1,100}$/;
+
+/** The headers a saved draft carries so it reopens as it was left (never on a sent message). */
+export const DRAFT_QUOTE_HEADER = 'X-Saha-Textile-Quote';
+export const DRAFT_FORWARD_HEADER = 'X-Saha-Textile-Forward';
+
+function draftHintHeaders(hints: OutgoingMail['draftHints']): string[] {
+	if (!hints) return [];
+	const lines: string[] = [];
+	if (hints.quoteMessageId && GMAIL_ID.test(hints.quoteMessageId)) {
+		lines.push(`${DRAFT_QUOTE_HEADER}: ${hints.quoteMessageId}`);
+	}
+	const forward = hints.forwardFrom;
+	if (forward && GMAIL_ID.test(forward.threadId) && GMAIL_ID.test(forward.messageId)) {
+		lines.push(`${DRAFT_FORWARD_HEADER}: ${forward.threadId}/${forward.messageId}`);
+	}
+	return lines;
+}
+
 /** A reply or a new message, with an HTML and a text part, and any attachments. */
 export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): string {
 	const mixed = `mixed_${randomUUID()}`;
@@ -108,7 +128,9 @@ export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): strin
 		: textToHtml(mail.text, mail.signatureHtml);
 	const headers = [
 		`From: ${mailbox(mail.fromName ?? '', mail.from)}`,
-		`To: ${mail.to.map(headerSafe).join(', ')}`,
+		...(mail.to.length ? [`To: ${mail.to.map(headerSafe).join(', ')}`] : []),
+		// Our own id when given, so an Undo Send whose result was lost can be found in Sent.
+		...(mail.messageId ? [`Message-ID: ${angle(mail.messageId)}`] : []),
 		...(mail.cc.length ? [`Cc: ${mail.cc.map(headerSafe).join(', ')}`] : []),
 		// Gmail sends to Bcc addresses and strips the header from every copy but the sender's.
 		...(mail.bcc?.length ? [`Bcc: ${mail.bcc.map(headerSafe).join(', ')}`] : []),
@@ -118,6 +140,7 @@ export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): strin
 		...(mail.inReplyTo
 			? [`In-Reply-To: ${angle(mail.inReplyTo)}`, `References: ${referencesFor(mail.references, mail.inReplyTo)}`]
 			: []),
+		...draftHintHeaders(mail.draftHints),
 		`Content-Type: multipart/mixed; boundary="${mixed}"`,
 	];
 	const body = [

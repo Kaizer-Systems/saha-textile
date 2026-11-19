@@ -8,6 +8,7 @@ import {
 	Param,
 	Patch,
 	Post,
+	Put,
 	Query,
 	Res,
 	UnauthorizedException,
@@ -15,6 +16,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	InboxBulkRequest,
+	InboxDraftWrite,
 	InboxLabelId,
 	InboxLabelWrite,
 	InboxListQuery,
@@ -101,14 +103,98 @@ export class AdminInboxController {
 	@RequirePermissions('mailbox.use')
 	@ApiOperation({
 		operationId: 'sendInboxMessage',
-		summary: 'Reply, forward or write, from the mailbox or one of its aliases',
+		summary: 'Reply, forward or write; it waits 10 seconds in Drafts so it can be undone',
 	})
 	send(
 		@Param('mailboxId') mailboxId: string,
 		@Body(new ZodValidationPipe(InboxSendRequest)) body: InboxSendRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
-		return this.inbox.send(me(principal), mailboxId, body);
+		return this.inbox.queueSend(me(principal), mailboxId, body);
+	}
+
+	@Get(':mailboxId/outbox/:outboxId')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'getInboxOutboxItem', summary: 'Whether a message I sent has gone yet' })
+	outboxStatus(
+		@Param('mailboxId') mailboxId: string,
+		@Param('outboxId') outboxId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.inbox.outboxStatus(me(principal), mailboxId, outboxId);
+	}
+
+	@Post(':mailboxId/outbox/:outboxId/cancel')
+	@HttpCode(200)
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'undoInboxSend', summary: 'Undo Send: keep the message in Drafts instead' })
+	cancelSend(
+		@Param('mailboxId') mailboxId: string,
+		@Param('outboxId') outboxId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.inbox.cancelSend(me(principal), mailboxId, outboxId);
+	}
+
+	@Get(':mailboxId/drafts')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'listInboxDrafts', summary: "The mailbox's Gmail drafts, newest first" })
+	drafts(
+		@Param('mailboxId') mailboxId: string,
+		@Query('pageToken') pageToken: string | undefined,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.inbox.listDrafts(me(principal), mailboxId, pageToken?.slice(0, 200) || undefined);
+	}
+
+	@Get(':mailboxId/drafts/:draftId')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'getInboxDraft', summary: 'One draft, to carry on writing it' })
+	draft(
+		@Param('mailboxId') mailboxId: string,
+		@Param('draftId') draftId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.inbox.getDraft(me(principal), mailboxId, draftId);
+	}
+
+	@Post(':mailboxId/drafts')
+	@HttpCode(200)
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'createInboxDraft', summary: 'Save the compose box to Gmail as a new draft' })
+	createDraft(
+		@Param('mailboxId') mailboxId: string,
+		@Body(new ZodValidationPipe(InboxDraftWrite)) body: InboxDraftWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.inbox.saveDraft(me(principal), mailboxId, null, body);
+	}
+
+	@Put(':mailboxId/drafts/:draftId')
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'saveInboxDraft', summary: 'Save the compose box over its Gmail draft' })
+	saveDraft(
+		@Param('mailboxId') mailboxId: string,
+		@Param('draftId') draftId: string,
+		@Body(new ZodValidationPipe(InboxDraftWrite)) body: InboxDraftWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	) {
+		return this.inbox.saveDraft(me(principal), mailboxId, draftId, body);
+	}
+
+	@Delete(':mailboxId/drafts/:draftId')
+	@HttpCode(204)
+	@RequirePermissions('mailbox.use')
+	@ApiOperation({ operationId: 'deleteInboxDraft', summary: 'Discard a draft (deletes it in Gmail)' })
+	async deleteDraft(
+		@Param('mailboxId') mailboxId: string,
+		@Param('draftId') draftId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<void> {
+		await this.inbox.deleteDraft(me(principal), mailboxId, draftId);
 	}
 
 	@Post(':mailboxId/threads/:threadId/modify')

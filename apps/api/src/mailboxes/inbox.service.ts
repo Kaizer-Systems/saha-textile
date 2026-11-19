@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
 	BadRequestException,
 	ConflictException,
@@ -13,9 +15,16 @@ import {
 	MAX_BULK_MATCHES,
 	MAX_FORWARD_BYTES,
 	MAX_SEND_ATTACHMENT_BYTES,
+	UNDO_SEND_SECONDS,
 	type InboxBinSummary,
 	type InboxBulkRequest,
 	type InboxBulkResult,
+	type InboxDraft,
+	type InboxDraftPage,
+	type InboxDraftSaved,
+	type InboxDraftWrite,
+	type InboxOutboxStatus,
+	type InboxSendQueued,
 	type InboxEmptyBinResult,
 	type InboxLabel,
 	type InboxLabelWrite,
@@ -33,6 +42,9 @@ import {
 import {
 	type MailboxAccessRepository,
 	type MailboxCredentials,
+	type MailboxOutboxRepository,
+	type OutboxItem,
+	type OutgoingMail,
 	type MailboxPort,
 	type MailboxRepository,
 	type MailboxTokenStore,
@@ -43,11 +55,23 @@ import {
 	mailboxRights,
 } from '@saha-textile/core-domain';
 
-import { MAILBOX_ACCESS_REPOSITORY, MAILBOX_PORT, MAILBOX_REPOSITORY, MAILBOX_TOKEN_STORE } from '../infra/tokens';
+import {
+	MAILBOX_ACCESS_REPOSITORY,
+	MAILBOX_OUTBOX_REPOSITORY,
+	MAILBOX_PORT,
+	MAILBOX_REPOSITORY,
+	MAILBOX_TOKEN_STORE,
+} from '../infra/tokens';
 import { MESSAGE_SENT, MailboxBookkeeping, needsReconnect, type SentFromAdmin } from './mailbox-support';
 
 /** The audit action for archive, move, spam, star, important, labels and the Bin. */
 export const CONVERSATION_CHANGED = 'mailbox.conversation_changed';
+
+/** A row still `sending` this long after it was taken was interrupted; Gmail is asked what happened. */
+export const OUTBOX_STALE_MS = 2 * 60 * 1000;
+
+/** A send whose draft vanished and which Sent does not show after this long is called gone. */
+export const OUTBOX_GONE_AFTER_MS = 60 * 1000;
 
 /** "Last checked" is written at most this often per mailbox, however many people have it open. */
 export const SYNC_WRITE_MS = 5 * 60 * 1000;
@@ -93,6 +117,7 @@ export class InboxService {
 		@Inject(MAILBOX_ACCESS_REPOSITORY) private readonly access: MailboxAccessRepository,
 		@Inject(MAILBOX_TOKEN_STORE) private readonly tokens: MailboxTokenStore,
 		private readonly books: MailboxBookkeeping,
+		@Inject(MAILBOX_OUTBOX_REPOSITORY) private readonly outbox: MailboxOutboxRepository,
 	) {}
 
 	/**
@@ -181,11 +206,17 @@ export class InboxService {
 	 * the answered message as Gmail itself reads it (never text from the browser). A forward can
 	 * carry the original attachments, copied from Gmail on the server.
 	 */
-	async send(
+	/**
+	 * Checks rights, the From address, sizes and (for a send) the C5 reply check, and builds the
+	 * message. A draft is saved as the writer's own text only: the signature, the quote and a
+	 * forward's files are added when it is sent, so a reopened draft holds just what was typed.
+	 */
+	private async prepare(
 		adminUserId: string,
 		mailboxId: string,
 		request: InboxSendRequest,
-	): Promise<{ id: string; threadId: string }> {
+		purpose: 'send' | 'draft' = 'send',
+	): Promise<Opened & { from: Mailbox['sendAs'][number]; outgoing: OutgoingMail }> {
 		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'send');
 		const from = mailbox.sendAs.find((entry) => entry.address === request.from.toLowerCase());
 		if (!from) throw new BadRequestException({ code: 'from_not_allowed' });
@@ -205,7 +236,7 @@ export class InboxService {
 		if (request.threadId && !conversation) throw new NotFoundException('Conversation not found');
 		// Someone replied after the writer last looked (C5): checked here at the moment of sending,
 		// not only in the browser, so two people cannot both answer without knowing.
-		if (conversation && request.knownMessageIds && !request.sendAnyway) {
+		if (purpose === 'send' && conversation && request.knownMessageIds && !request.sendAnyway) {
 			const seen = new Set(request.knownMessageIds);
 			if (conversation.messages.some((message) => !seen.has(message.id))) {
 				throw new PreconditionFailedException({ code: 'conversation_moved_on' });
@@ -214,7 +245,7 @@ export class InboxService {
 		const answered = conversation?.messages.find((message) => message.messageId === request.inReplyTo);
 		const quoted = conversation?.messages.find((message) => message.id === request.quoteMessageId);
 
-		if (request.forwardAttachmentsFrom) {
+		if (purpose === 'send' && request.forwardAttachmentsFrom) {
 			const source = request.forwardAttachmentsFrom;
 			const original = await this.books.guard(mailbox, () => this.gmail.getThread(credentials, source.threadId));
 			const message = original?.messages.find((entry) => entry.id === source.messageId);
@@ -230,39 +261,310 @@ export class InboxService {
 			if (total > MAX_FORWARD_BYTES) throw new PayloadTooLargeException({ code: 'attachments_too_large' });
 		}
 
+		const outgoing: OutgoingMail = {
+			from: from.address,
+			fromName: from.displayName,
+			to: request.to,
+			cc: request.cc,
+			bcc: request.bcc,
+			subject: request.subject,
+			text: request.body,
+			signatureHtml: purpose === 'send' ? from.signature : '',
+			threadId: request.threadId,
+			inReplyTo: request.inReplyTo,
+			references: answered?.references,
+			quote:
+				purpose === 'send' && quoted
+					? { attribution: attribution(quoted), html: quoted.html + quoted.quoteHtml, text: quoted.text }
+					: undefined,
+			attachments,
+			draftHints:
+				purpose === 'draft'
+					? { quoteMessageId: request.quoteMessageId, forwardFrom: request.forwardAttachmentsFrom }
+					: undefined,
+		};
+		return { mailbox, credentials, from, outgoing };
+	}
+
+	/**
+	 * Sends at once, for callers that need Gmail's answer straight away (purchase orders). The
+	 * Inbox uses `queueSend`, which waits for Undo.
+	 */
+	async send(
+		adminUserId: string,
+		mailboxId: string,
+		request: InboxSendRequest,
+	): Promise<{ id: string; threadId: string }> {
+		const { mailbox, credentials, from, outgoing } = await this.prepare(adminUserId, mailboxId, request);
 		let sent: { id: string; threadId: string };
 		try {
-			sent = await this.books.guard(mailbox, () =>
-				this.gmail.send(credentials, {
-					from: from.address,
-					fromName: from.displayName,
-					to: request.to,
-					cc: request.cc,
-					bcc: request.bcc,
-					subject: request.subject,
-					text: request.body,
-					signatureHtml: from.signature,
-					threadId: request.threadId,
-					inReplyTo: request.inReplyTo,
-					references: answered?.references,
-					quote: quoted
-						? { attribution: attribution(quoted), html: quoted.html + quoted.quoteHtml, text: quoted.text }
-						: undefined,
-					attachments,
-				}),
-			);
+			sent = await this.books.guard(mailbox, () => this.gmail.send(credentials, outgoing));
 		} catch (error) {
 			await this.forgetRemovedAlias(mailbox, credentials, from.address, error);
 			throw error;
 		}
-		await this.books.record(adminUserId, MESSAGE_SENT, mailboxId, {
-			from: from.address,
+		await this.recordSent(adminUserId, mailboxId, from.address, request, sent);
+		return sent;
+	}
+
+	/**
+	 * Undo Send (C4, owner: 10 seconds). The finished message is saved as a Gmail draft (the one it
+	 * was written in, when there is one) and an outbox row says when to send it. The dispatcher
+	 * sends it then; Undo before that leaves it in Drafts. Nothing is sent from here.
+	 */
+	async queueSend(adminUserId: string, mailboxId: string, request: InboxSendRequest): Promise<InboxSendQueued> {
+		if (request.draftId && (await this.outbox.findActiveForDraft(mailboxId, request.draftId))) {
+			throw new ConflictException({ code: 'already_sending' });
+		}
+		const { mailbox, credentials, from, outgoing } = await this.prepare(adminUserId, mailboxId, request);
+		const messageId = `outbox-${randomUUID()}@${from.address.split('@')[1] ?? 'mail.invalid'}`;
+		const mail: OutgoingMail = { ...outgoing, messageId };
+		const draftId = request.draftId;
+		let draft: { draftId: string; threadId: string | null };
+		try {
+			draft = await this.books.guard(mailbox, async () => {
+				if (draftId) {
+					const updated = await this.gmail.updateDraft(
+						credentials,
+						draftId,
+						mail,
+						request.keepDraftAttachments,
+					);
+					if (updated) return updated;
+					// Deleted or sent elsewhere: its saved files went with it, so never send without them.
+					if (request.keepDraftAttachments) throw new NotFoundException({ code: 'draft_gone' });
+				}
+				return this.gmail.createDraft(credentials, mail);
+			});
+		} catch (error) {
+			await this.forgetRemovedAlias(mailbox, credentials, from.address, error);
+			throw error;
+		}
+		const now = new Date();
+		const item = await this.outbox.create({
+			id: `obx_${randomUUID()}`,
+			mailboxId,
+			draftId: draft.draftId,
+			adminUserId,
+			messageId,
+			sendAt: new Date(now.getTime() + UNDO_SEND_SECONDS * 1000).toISOString(),
+			status: 'queued',
+			attempts: 0,
+			createdAt: now.toISOString(),
+			claimedAt: null,
+			sentMessageId: null,
+			threadId: draft.threadId,
+			meta: {
+				from: from.address,
+				recipients: request.to.length + request.cc.length + request.bcc.length,
+				reply: Boolean(request.threadId),
+			},
+		});
+		return { outboxId: item.id, draftId: item.draftId, sendAt: item.sendAt };
+	}
+
+	/** Undo: stops a queued message; it stays in Drafts. 409 once it is on its way. Writer only. */
+	async cancelSend(adminUserId: string, mailboxId: string, outboxId: string): Promise<{ draftId: string }> {
+		await this.ownOutboxItem(adminUserId, mailboxId, outboxId);
+		const cancelled = await this.outbox.cancel(outboxId);
+		if (!cancelled) throw new ConflictException({ code: 'already_sent' });
+		await this.books.record(adminUserId, 'mailbox.send_undone', mailboxId, { outboxId });
+		return { draftId: cancelled.draftId };
+	}
+
+	/** What became of a queued message, for the "Sent" or "Not sent" note after the countdown. */
+	async outboxStatus(adminUserId: string, mailboxId: string, outboxId: string): Promise<InboxOutboxStatus> {
+		const item = await this.ownOutboxItem(adminUserId, mailboxId, outboxId);
+		return {
+			outboxId: item.id,
+			status: item.status,
+			draftId: item.draftId,
+			threadId: item.threadId,
+			sentMessageId: item.sentMessageId,
+		};
+	}
+
+	/** A queued message is seen and undone only by the person who sent it, while they may still send. */
+	private async ownOutboxItem(adminUserId: string, mailboxId: string, outboxId: string): Promise<OutboxItem> {
+		await this.requireRight(adminUserId, mailboxId, 'send');
+		const item = await this.outbox.findById(outboxId);
+		if (!item || item.mailboxId !== mailboxId || item.adminUserId !== adminUserId) {
+			throw new NotFoundException('Message not found');
+		}
+		return item;
+	}
+
+	/**
+	 * Sends what is due (every couple of seconds, from the dispatcher). Each row is claimed
+	 * atomically first, so it is sent once even with several API instances. A result that may have
+	 * been lost is never sent again blindly: Gmail is asked first whether it went.
+	 */
+	async dispatchDue(now = new Date()): Promise<number> {
+		let sent = 0;
+		for (const item of await this.outbox.claimDue(now.toISOString(), 20)) {
+			if (await this.deliver(item)) sent += 1;
+		}
+		// A sender that stopped part way (the API restarted): what happened is looked up, not guessed.
+		for (const item of await this.outbox.listByStatus('sending', 50)) {
+			const claimed = Date.parse(item.claimedAt ?? item.sendAt);
+			if (now.getTime() - claimed > OUTBOX_STALE_MS) await this.outbox.setStatus(item.id, 'uncertain');
+		}
+		for (const item of await this.outbox.listByStatus('uncertain', 20)) await this.reconcile(item, now);
+		return sent;
+	}
+
+	private async deliver(item: OutboxItem): Promise<boolean> {
+		let opened: Opened;
+		try {
+			// Rights are read again at the moment of sending: someone removed meanwhile sends nothing.
+			await this.requireRight(item.adminUserId, item.mailboxId, 'send');
+			opened = await this.credentialsFor(item.mailboxId);
+		} catch {
+			await this.outbox.setStatus(item.id, 'failed');
+			return false;
+		}
+		try {
+			const result = await this.books.guard(opened.mailbox, () =>
+				this.gmail.sendDraft(opened.credentials, item.draftId),
+			);
+			if (!result) {
+				// The draft is gone: sent already, or deleted in Gmail. Looked up on the next round.
+				await this.outbox.setStatus(item.id, 'uncertain');
+				return false;
+			}
+			await this.outbox.markSent(item.id, result);
+			await this.recordQueuedSent(item, result);
+			return true;
+		} catch (error) {
+			const status = error instanceof HttpException ? error.getStatus() : 502;
+			// Busy: Gmail refused before sending, so trying again is safe (three times at most).
+			if (status === 429) await this.outbox.setStatus(item.id, item.attempts >= 2 ? 'failed' : 'queued', 1);
+			// No answer: it may have gone. Checked in Sent before anything is tried again.
+			else if (status >= 500) await this.outbox.setStatus(item.id, 'uncertain', 1);
+			else await this.outbox.setStatus(item.id, 'failed', 1);
+			return false;
+		}
+	}
+
+	/**
+	 * An uncertain send: found in Sent means it went. A draft still there means Gmail never sent
+	 * it, so it is queued again (three tries in all). Neither, for a minute, means it is gone.
+	 */
+	private async reconcile(item: OutboxItem, now: Date): Promise<void> {
+		try {
+			const { mailbox, credentials } = await this.credentialsFor(item.mailboxId);
+			const found = await this.books.guard(mailbox, () =>
+				this.gmail.findByMessageId(credentials, item.messageId),
+			);
+			if (found) {
+				await this.outbox.markSent(item.id, found);
+				await this.recordQueuedSent(item, found);
+				return;
+			}
+			const draft = await this.books.guard(mailbox, () => this.gmail.getDraft(credentials, item.draftId));
+			if (draft) {
+				await this.outbox.setStatus(item.id, item.attempts >= 3 ? 'failed' : 'queued');
+				return;
+			}
+			// Gmail's search can lag a few seconds behind a send, so "gone" waits a minute.
+			if (now.getTime() - Date.parse(item.claimedAt ?? item.sendAt) > OUTBOX_GONE_AFTER_MS) {
+				await this.outbox.setStatus(item.id, 'gone');
+			}
+		} catch {
+			// Gmail is not answering: it stays uncertain and is looked at again on the next round.
+		}
+	}
+
+	private async credentialsFor(mailboxId: string): Promise<Opened> {
+		const mailbox = await this.mailboxes.findById(mailboxId);
+		if (!mailbox) throw new NotFoundException('Mailbox not found');
+		if (mailbox.status !== 'connected') throw needsReconnect(mailbox.address);
+		return this.credentials(mailbox);
+	}
+
+	private recordQueuedSent(item: OutboxItem, sent: { id: string; threadId: string }): Promise<void> {
+		return this.books.record(item.adminUserId, MESSAGE_SENT, item.mailboxId, {
+			...item.meta,
+			gmailMessageId: sent.id,
+			threadId: sent.threadId,
+			undoable: true,
+		});
+	}
+
+	private recordSent(
+		adminUserId: string,
+		mailboxId: string,
+		from: string,
+		request: InboxSendRequest,
+		sent: { id: string; threadId: string },
+	): Promise<void> {
+		return this.books.record(adminUserId, MESSAGE_SENT, mailboxId, {
+			from,
 			recipients: request.to.length + request.cc.length + request.bcc.length,
 			reply: Boolean(request.threadId),
 			gmailMessageId: sent.id,
 			threadId: sent.threadId,
 		});
-		return sent;
+	}
+
+	// ── Drafts (C2): kept in Gmail, so they follow the mailbox to any device and to Gmail itself ──
+
+	/** The mailbox's drafts, newest first, a page at a time. */
+	async listDrafts(adminUserId: string, mailboxId: string, pageToken?: string): Promise<InboxDraftPage> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'send');
+		return this.books.guard(mailbox, () => this.gmail.listDrafts(credentials, pageToken));
+	}
+
+	async getDraft(adminUserId: string, mailboxId: string, draftId: string): Promise<InboxDraft> {
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'send');
+		const draft = await this.books.guard(mailbox, () => this.gmail.getDraft(credentials, draftId));
+		if (!draft) throw new NotFoundException('Draft not found');
+		return draft;
+	}
+
+	/**
+	 * Saves the compose box to Gmail: a new draft, or an update of `draftId`. An update names the
+	 * version the writer last saw; when someone saved since, 412 `draft_changed` lets them choose.
+	 */
+	async saveDraft(
+		adminUserId: string,
+		mailboxId: string,
+		draftId: string | null,
+		write: InboxDraftWrite,
+	): Promise<InboxDraftSaved> {
+		if (draftId && (await this.outbox.findActiveForDraft(mailboxId, draftId))) {
+			throw new ConflictException({ code: 'already_sending' });
+		}
+		const request: InboxSendRequest = {
+			...write,
+			knownMessageIds: undefined,
+			sendAnyway: true,
+			draftId: undefined,
+			keepDraftAttachments: false,
+		};
+		const { mailbox, credentials, outgoing } = await this.prepare(adminUserId, mailboxId, request, 'draft');
+		const saved = await this.books.guard(mailbox, async () => {
+			if (!draftId) return this.gmail.createDraft(credentials, outgoing);
+			const current = await this.gmail.getDraft(credentials, draftId);
+			if (!current) throw new NotFoundException({ code: 'draft_gone' });
+			if (write.version && current.version !== write.version) {
+				throw new PreconditionFailedException({ code: 'draft_changed' });
+			}
+			const updated = await this.gmail.updateDraft(credentials, draftId, outgoing, write.keepAttachments);
+			if (!updated) throw new NotFoundException({ code: 'draft_gone' });
+			return updated;
+		});
+		return { draftId: saved.draftId, version: saved.version, savedAt: new Date().toISOString() };
+	}
+
+	/** Discard: deletes the Gmail draft. A draft on its way out (Undo running) is left alone. */
+	async deleteDraft(adminUserId: string, mailboxId: string, draftId: string): Promise<void> {
+		if (await this.outbox.findActiveForDraft(mailboxId, draftId)) {
+			throw new ConflictException({ code: 'already_sending' });
+		}
+		const { mailbox, credentials } = await this.open(adminUserId, mailboxId, 'send');
+		await this.books.guard(mailbox, () => this.gmail.deleteDraft(credentials, draftId));
+		await this.books.record(adminUserId, 'mailbox.draft_deleted', mailboxId, { draftId });
 	}
 
 	async modify(adminUserId: string, mailboxId: string, threadId: string, request: InboxModifyRequest): Promise<void> {
@@ -514,13 +816,18 @@ export class InboxService {
 	 * read fresh on every call, so a removed right stops working on the next request.
 	 */
 	private async open(adminUserId: string, mailboxId: string, need: MailboxRight): Promise<Opened> {
-		const rights = mailboxRights(await this.access.listForAdminUser(adminUserId), adminUserId, mailboxId);
-		if (!rights.size) throw new NotFoundException('Mailbox not found');
-		if (!rights.has(need)) throw new ForbiddenException({ code: 'mailbox_right_missing', right: need });
+		await this.requireRight(adminUserId, mailboxId, need);
 		const mailbox = await this.mailboxes.findById(mailboxId);
 		if (!mailbox) throw new NotFoundException('Mailbox not found');
 		if (mailbox.status !== 'connected') throw needsReconnect(mailbox.address);
 		return this.credentials(mailbox);
+	}
+
+	/** The access check alone, for calls that do not need Gmail (Undo, a queued message's state). */
+	private async requireRight(adminUserId: string, mailboxId: string, need: MailboxRight): Promise<void> {
+		const rights = mailboxRights(await this.access.listForAdminUser(adminUserId), adminUserId, mailboxId);
+		if (!rights.size) throw new NotFoundException('Mailbox not found');
+		if (!rights.has(need)) throw new ForbiddenException({ code: 'mailbox_right_missing', right: need });
 	}
 
 	private async credentials(mailbox: Mailbox): Promise<Opened> {

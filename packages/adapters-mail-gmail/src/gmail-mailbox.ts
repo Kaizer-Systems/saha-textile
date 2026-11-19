@@ -1,4 +1,6 @@
 import type {
+	InboxDraft,
+	InboxDraftPage,
 	InboxFolder,
 	InboxLabel,
 	InboxThread,
@@ -11,6 +13,7 @@ import {
 	MailboxAccessRevoked,
 	onDomain,
 	type ImportedMail,
+	type DraftRef,
 	type MailboxCredentials,
 	type MailboxFeature,
 	type MailboxGrant,
@@ -19,7 +22,15 @@ import {
 } from '@saha-textile/core-domain';
 import { z } from 'zod';
 
-import { GmailThread, inlinePictureParts, toInboxThread, toThreadSummary } from './gmail-message.js';
+import {
+	GmailMessage,
+	GmailThread,
+	inlinePictureParts,
+	toDraftSummary,
+	toInboxDraft,
+	toInboxThread,
+	toThreadSummary,
+} from './gmail-message.js';
 import { buildImport, buildOutgoing, toRaw } from './mime.js';
 
 const AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -407,6 +418,104 @@ export class GmailMailbox implements MailboxPort {
 		}
 	}
 
+	async createDraft(credentials: MailboxCredentials, mail: OutgoingMail): Promise<DraftRef> {
+		const raw = toRaw(buildOutgoing(mail, new Date(this.now())));
+		return toRef(
+			await this.authorised(credentials, 'POST', '/drafts', {
+				json: { message: { raw, ...(mail.threadId ? { threadId: mail.threadId } : {}) } },
+			}),
+		);
+	}
+
+	/**
+	 * Gmail replaces a draft whole, so files already in it are copied from Gmail into the new
+	 * version when asked; the browser sends each file once.
+	 */
+	async updateDraft(
+		credentials: MailboxCredentials,
+		draftId: string,
+		mail: OutgoingMail,
+		keepAttachments: boolean,
+	): Promise<DraftRef | null> {
+		const attachments = [...mail.attachments];
+		if (keepAttachments) {
+			const current = await this.getDraft(credentials, draftId);
+			if (!current) return null;
+			for (const file of current.attachments) {
+				const copy = await this.getAttachment(credentials, current.version, file.id);
+				if (copy) attachments.push({ filename: file.filename, mimeType: file.mimeType, data: copy.data });
+			}
+		}
+		const raw = toRaw(buildOutgoing({ ...mail, attachments }, new Date(this.now())));
+		const body = await this.authorised(credentials, 'PUT', `/drafts/${encodeURIComponent(draftId)}`, {
+			json: { id: draftId, message: { raw, ...(mail.threadId ? { threadId: mail.threadId } : {}) } },
+			missing: true,
+		});
+		return body === null ? null : toRef(body);
+	}
+
+	async getDraft(credentials: MailboxCredentials, draftId: string): Promise<InboxDraft | null> {
+		const body = await this.authorised(credentials, 'GET', `/drafts/${encodeURIComponent(draftId)}?format=full`, {
+			missing: true,
+		});
+		if (body === null) return null;
+		const draft = z.object({ id: z.string(), message: GmailMessage }).parse(body);
+		return toInboxDraft(draft.id, draft.message);
+	}
+
+	async listDrafts(credentials: MailboxCredentials, pageToken: string | undefined): Promise<InboxDraftPage> {
+		const params = new URLSearchParams({ maxResults: String(PAGE_SIZE) });
+		if (pageToken) params.set('pageToken', pageToken);
+		const list = DraftList.parse(await this.authorised(credentials, 'GET', `/drafts?${params.toString()}`));
+		const metadata = new URLSearchParams({ format: 'metadata' });
+		for (const name of ['To', 'Subject', 'Date']) metadata.append('metadataHeaders', name);
+		const drafts = await Promise.all(
+			(list.drafts ?? []).map(async ({ id }) => {
+				const body = await this.authorised(
+					credentials,
+					'GET',
+					`/drafts/${encodeURIComponent(id)}?${metadata.toString()}`,
+					{ missing: true },
+				);
+				if (body === null) return null;
+				const draft = z.object({ id: z.string(), message: GmailMessage }).parse(body);
+				return toDraftSummary(draft.id, draft.message);
+			}),
+		);
+		return {
+			drafts: drafts.filter((draft): draft is NonNullable<typeof draft> => draft !== null),
+			nextPageToken: list.nextPageToken ?? null,
+		};
+	}
+
+	async deleteDraft(credentials: MailboxCredentials, draftId: string): Promise<void> {
+		await this.authorised(credentials, 'DELETE', `/drafts/${encodeURIComponent(draftId)}`, { missing: true });
+	}
+
+	async sendDraft(
+		credentials: MailboxCredentials,
+		draftId: string,
+	): Promise<{ id: string; threadId: string } | null> {
+		const body = await this.authorised(credentials, 'POST', '/drafts/send', {
+			json: { id: draftId },
+			missing: true,
+		});
+		return body === null ? null : SentMessage.parse(body);
+	}
+
+	async findByMessageId(
+		credentials: MailboxCredentials,
+		messageId: string,
+	): Promise<{ id: string; threadId: string } | null> {
+		const params = new URLSearchParams({
+			q: `rfc822msgid:${messageId.replace(/[<>\s]/g, '')}`,
+			maxResults: '1',
+			includeSpamTrash: 'true',
+		});
+		const list = MessageList.parse(await this.authorised(credentials, 'GET', `/messages?${params.toString()}`));
+		return list.messages?.[0] ?? null;
+	}
+
 	async listBinMessageIds(
 		credentials: MailboxCredentials,
 		pageToken: string | undefined,
@@ -617,7 +726,23 @@ export class GmailMailbox implements MailboxPort {
 
 const UNAUTHORISED = Symbol('unauthorised');
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+const DraftBody = z.object({
+	id: z.string(),
+	message: z.object({ id: z.string(), threadId: z.string().optional() }).passthrough(),
+});
+const DraftList = z.object({
+	drafts: z.array(z.object({ id: z.string() })).optional(),
+	nextPageToken: z.string().optional(),
+});
+const MessageList = z.object({
+	messages: z.array(z.object({ id: z.string(), threadId: z.string() })).optional(),
+});
+const toRef = (body: unknown): DraftRef => {
+	const draft = DraftBody.parse(body);
+	return { draftId: draft.id, version: draft.message.id, threadId: draft.message.threadId ?? null };
+};
 
 /** List parameters for a folder, or a label or category instead of it, with Gmail search words. */
 function placeParams(

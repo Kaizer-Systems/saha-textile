@@ -6,7 +6,10 @@ import {
 	withNeededRights,
 	type ContactMessageRepository,
 	type MailboxAccessRepository,
+	type MailboxOutboxRepository,
 	type MailboxRepository,
+	type OutboxItem,
+	type OutboxStatus,
 	type MailboxTokenStore,
 } from '@saha-textile/core-domain';
 
@@ -14,9 +17,11 @@ import {
 	ContactMessageModel,
 	MailboxAccessModel,
 	MailboxModel,
+	MailboxOutboxModel,
 	type ContactMessageDoc,
 	type MailboxAccessDoc,
 	type MailboxDoc,
+	type MailboxOutboxDoc,
 } from '../models/index';
 
 const iso = (value: Date | null | undefined): string | null => (value ? new Date(value).toISOString() : null);
@@ -246,5 +251,102 @@ export class MongoContactMessageRepository implements ContactMessageRepository {
 			.lean<ContactMessageDoc[]>()
 			.exec();
 		return docs.map(toContactMessage);
+	}
+}
+
+const toOutbox = (doc: MailboxOutboxDoc): OutboxItem => ({
+	id: doc._id,
+	mailboxId: doc.mailboxId,
+	draftId: doc.draftId,
+	adminUserId: doc.adminUserId,
+	messageId: doc.messageId,
+	sendAt: new Date(doc.sendAt).toISOString(),
+	status: doc.status as OutboxStatus,
+	attempts: doc.attempts ?? 0,
+	createdAt: new Date(doc.createdAt).toISOString(),
+	claimedAt: doc.claimedAt ? new Date(doc.claimedAt).toISOString() : null,
+	sentMessageId: doc.sentMessageId ?? null,
+	threadId: doc.threadId ?? null,
+	meta: doc.meta,
+});
+
+/** Undo Send rows. Each status change is one `findOneAndUpdate` guarded by the current status. */
+export class MongoMailboxOutboxRepository implements MailboxOutboxRepository {
+	async create(item: OutboxItem): Promise<OutboxItem> {
+		await MailboxOutboxModel.create({
+			_id: item.id,
+			mailboxId: item.mailboxId,
+			draftId: item.draftId,
+			adminUserId: item.adminUserId,
+			messageId: item.messageId,
+			sendAt: new Date(item.sendAt),
+			status: item.status,
+			attempts: item.attempts,
+			sentMessageId: item.sentMessageId,
+			threadId: item.threadId,
+			meta: item.meta,
+			createdAt: new Date(item.createdAt),
+			claimedAt: item.claimedAt ? new Date(item.claimedAt) : null,
+		});
+		return item;
+	}
+
+	async findById(id: string): Promise<OutboxItem | null> {
+		const doc = await MailboxOutboxModel.findById(id).lean<MailboxOutboxDoc>().exec();
+		return doc ? toOutbox(doc) : null;
+	}
+
+	async claimDue(now: string, limit: number): Promise<OutboxItem[]> {
+		const claimed: OutboxItem[] = [];
+		for (let index = 0; index < limit; index += 1) {
+			const doc = await MailboxOutboxModel.findOneAndUpdate(
+				{ status: 'queued', sendAt: { $lte: new Date(now) } },
+				{ $set: { status: 'sending', claimedAt: new Date(now) } },
+				{ new: true, sort: { sendAt: 1 } },
+			)
+				.lean<MailboxOutboxDoc>()
+				.exec();
+			if (!doc) break;
+			claimed.push(toOutbox(doc));
+		}
+		return claimed;
+	}
+
+	async cancel(id: string): Promise<OutboxItem | null> {
+		const doc = await MailboxOutboxModel.findOneAndUpdate(
+			{ _id: id, status: 'queued' },
+			{ $set: { status: 'cancelled' } },
+			{ new: true },
+		)
+			.lean<MailboxOutboxDoc>()
+			.exec();
+		return doc ? toOutbox(doc) : null;
+	}
+
+	async markSent(id: string, sent: { id: string; threadId: string }): Promise<void> {
+		await MailboxOutboxModel.updateOne(
+			{ _id: id },
+			{ $set: { status: 'sent', sentMessageId: sent.id, threadId: sent.threadId } },
+		).exec();
+	}
+
+	async setStatus(id: string, status: Exclude<OutboxStatus, 'sent'>, attemptsDelta = 0): Promise<void> {
+		await MailboxOutboxModel.updateOne({ _id: id }, { $set: { status }, $inc: { attempts: attemptsDelta } }).exec();
+	}
+
+	async findActiveForDraft(mailboxId: string, draftId: string): Promise<OutboxItem | null> {
+		const doc = await MailboxOutboxModel.findOne({ mailboxId, draftId, status: { $in: ['queued', 'sending'] } })
+			.lean<MailboxOutboxDoc>()
+			.exec();
+		return doc ? toOutbox(doc) : null;
+	}
+
+	async listByStatus(status: OutboxStatus, limit: number): Promise<OutboxItem[]> {
+		const docs = await MailboxOutboxModel.find({ status })
+			.sort({ sendAt: 1 })
+			.limit(limit)
+			.lean<MailboxOutboxDoc[]>()
+			.exec();
+		return docs.map(toOutbox);
 	}
 }

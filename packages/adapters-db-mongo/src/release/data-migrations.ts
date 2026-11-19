@@ -8,6 +8,7 @@ import {
 	seedProfilesAndNameVersions,
 	widenProfileTypes,
 } from '../migrations/media-versions';
+import { seedPremadeShippingRuleSets } from '../migrations/shipping-premade';
 import { seedTodaysHomePage } from '../migrations/todays-home-page';
 
 /**
@@ -75,5 +76,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Mailbox rights (admin Inbox upgrade): each access row gets its seven-right list; Read stays Read, Read-and-send becomes Read, Send, Organise and Bin; nobody gains Delete forever, Labels or Settings',
 		half: 'expand',
 		up: () => giveMailboxAccessRights(),
+	},
+	{
+		id: '0008-shipping-premade-rule-sets',
+		description:
+			'Shipping rule sets (shipping rules brief): the seven locked pre-made rule sets, each with an active version 1, written once; a stored one is never overwritten; zone settings are left for Shipping › Overview',
+		half: 'expand',
+		up: () => seedPremadeShippingRuleSets(),
 	},
 ];

@@ -160,6 +160,11 @@ export const COLLECTION_NAMES = {
 	MailboxOutbox: 'mailboxOutbox',
 	/** Inbox saved replies: shared per mailbox, or one admin user's own (2026-11-19). */
 	SavedReply: 'savedReplies',
+	/** Shipping (brief approved 2026-11-19): rule sets, the versions made active, exceptions, zone settings. */
+	ShippingRuleSet: 'shippingRuleSets',
+	ShippingRuleSetVersion: 'shippingRuleSetVersions',
+	ShippingException: 'shippingExceptions',
+	ShippingProviderConfig: 'shippingProviderConfigs',
 	/** Typed site settings: home hero layout, YouTube rail settings and cache. */
 	SiteSetting: 'siteSettings',
 	SeoRedirect: 'seoRedirects',

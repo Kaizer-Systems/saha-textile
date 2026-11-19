@@ -6,3 +6,4 @@ export * from './charges';
 export * from './price-cart';
 export * from './invoice-address';
 export * from './gateway-route';
+export * from './premade';

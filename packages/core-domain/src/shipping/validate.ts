@@ -40,6 +40,7 @@ export type ShippingIssueCode =
 	| 'round_up_zero'
 	| 'minimum_above_maximum'
 	| 'duplicate_block_id'
+	| 'cant_ship_message_missing'
 	| 'charge_zone_mismatch'
 	| 'courier_needed';
 
@@ -59,9 +60,15 @@ export interface ShippingValidation {
 	canActivate: boolean;
 }
 
+export interface ShippingValidationOptions {
+	/** The shop's languages; a can't-ship message, which shoppers read, must be written in each. */
+	languages?: readonly string[];
+}
+
 export function validateShippingRuleSet(
 	body: ShippingRuleSetBody,
 	use: ShippingRuleSetUse = 'both',
+	options: ShippingValidationOptions = {},
 ): ShippingValidation {
 	const issues: ShippingIssue[] = [];
 	const ids = new Map<string, number>();
@@ -78,6 +85,18 @@ export function validateShippingRuleSet(
 			continue;
 		}
 		checkNode(step.node, step, issues, seeId, use);
+		for (const { id, message } of cantShipMessages(step.node)) {
+			const missing = (options.languages ?? ['en']).filter((code) => !(message[code] ?? '').trim());
+			for (const language of missing) {
+				issues.push({
+					code: 'cant_ship_message_missing',
+					severity: 'error',
+					blockId: id,
+					stepId: step.id,
+					params: { language },
+				});
+			}
+		}
 	}
 
 	const adjustById = new Map(body.adjust.map((a) => [a.kind, a] as const));
@@ -368,5 +387,18 @@ function checkResult(
 		case 'free':
 		case 'cantShip':
 			return;
+	}
+}
+
+/** Every can't-ship result under a node, with the message shoppers read. */
+function cantShipMessages(node: ShippingNode | null): Array<{ id: string; message: Record<string, string> }> {
+	if (node === null) return [];
+	switch (node.kind) {
+		case 'result':
+			return node.result.kind === 'cantShip' ? [{ id: node.id, message: node.result.message }] : [];
+		case 'if':
+			return [...cantShipMessages(node.then), ...cantShipMessages(node.otherwise)];
+		case 'bands':
+			return [...node.bands.flatMap((band) => cantShipMessages(band.then)), ...cantShipMessages(node.otherwise)];
 	}
 }

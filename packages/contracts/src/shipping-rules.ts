@@ -485,7 +485,8 @@ export const ShippingSettings = z.object({
 	mixedRuleSets: z.enum(['sum', 'highest']).default('sum'),
 	/** The last fallback for the three charges. */
 	defaultCharges: ShippingCharges,
-	abroadPolicy: AbroadOrderPolicy.default('exportOffIndianInvoice'),
+	/** A new shop starts on `indiaOnly`; Saha Textile chooses `exportOffIndianInvoice` in the admin. */
+	abroadPolicy: AbroadOrderPolicy.default('indiaOnly'),
 	revision: z.number().int().nonnegative().default(0),
 	updatedAt: IsoDateTime.optional(),
 	updatedBy: z.string().nullable().default(null),

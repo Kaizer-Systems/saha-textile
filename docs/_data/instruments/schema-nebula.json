@@ -31,9 +31,9 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 105,
-		"existingModelCount": 83,
-		"targetOnlyCount": 22,
+		"nodeCount": 108,
+		"existingModelCount": 87,
+		"targetOnlyCount": 21,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map, as is mailboxOutbox, the Inbox's Undo Send queue."
 	},
@@ -628,13 +628,53 @@
 			"id": "shippingProviderConfigs",
 			"label": "shippingProviderConfigs",
 			"cluster": "payments-fx-shipping",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-SHIPPING"],
-			"purpose": "Non-secret domestic and international shipping configuration behind the shipping port.",
-			"source": "catalog §7.32",
-			"references": []
+			"blockingDecisions": [],
+			"purpose": "The shipping zone settings: the home country, how each zone is priced (a rule set, or a courier quote with a rule set to fall back on), how mixed rule sets combine, the shop-wide default charges, and the named path for orders sent abroad. One document; each save names its revision.",
+			"source": "decisions § shipping rules brief approved (2026-11-19)",
+			"references": ["shippingRuleSets"],
+			"currentModel": "packages/adapters-db-mongo/src/models/shipping.model.ts"
+		},
+		{
+			"id": "shippingRuleSets",
+			"label": "shippingRuleSets",
+			"cluster": "payments-fx-shipping",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "Shipping rule sets built in the admin's rule builder: the working copy of the blocks, saved test carts, which version is active, and whether it is a locked pre-made one or the shop's own. Each save names its revision.",
+			"source": "decisions § shipping rules brief approved (2026-11-19)",
+			"currentModel": "packages/adapters-db-mongo/src/models/shipping.model.ts",
+			"references": ["shippingRuleSetVersions"]
+		},
+		{
+			"id": "shippingRuleSetVersions",
+			"label": "shippingRuleSetVersions",
+			"cluster": "payments-fx-shipping",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "Every version of a rule set made active, never changed afterwards, with the test-cart changes accepted when it went live. Orders point at the version that priced them.",
+			"source": "decisions § shipping rules brief approved (2026-11-19)",
+			"currentModel": "packages/adapters-db-mongo/src/models/shipping.model.ts",
+			"references": ["shippingRuleSets", "orders"]
+		},
+		{
+			"id": "shippingExceptions",
+			"label": "shippingExceptions",
+			"cluster": "payments-fx-shipping",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "Where rule sets apply beyond the site-wide choice: a category (with or without its sub-categories) or a product, and per zone another rule set, free shipping, can't ship, or the site-wide choice.",
+			"source": "decisions § shipping rules brief approved (2026-11-19)",
+			"currentModel": "packages/adapters-db-mongo/src/models/shipping.model.ts",
+			"references": ["shippingRuleSets", "categories", "products"]
 		},
 		{
 			"id": "shippingRateQuotes",

@@ -92,6 +92,15 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 	'ShopEvent.saleRecord': 'history',
 	'StoreLocation.geo': 'a map position',
 	'AddonTemplate.sizeGuide': 'measurements per size',
+	'ShippingRuleSet.draft':
+		'rule blocks; a can’t-ship message is checked in every shop language before the rule set goes live',
+	'ShippingRuleSet.testCarts': 'product ids, quantities and addresses',
+	'ShippingRuleSetVersion.body': 'rule blocks, frozen once active',
+	'ShippingRuleSetVersion.acceptedChanges': 'amounts',
+	'ShippingException.target': 'a category or product id',
+	'ShippingException.domestic': 'a choice and a rule set id',
+	'ShippingException.international': 'a choice and a rule set id',
+	'ShippingProviderConfig.settings': 'ids, amounts and choices',
 };
 
 const registered = (model: WalkableModel): string[] =>

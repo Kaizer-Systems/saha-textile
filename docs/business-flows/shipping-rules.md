@@ -80,3 +80,14 @@ The checkout step for the address in India asks only for an address; it does not
 ## Payment gateway and foreign amounts
 
 The currency decides the gateway: rupees go to the one INR gateway the admin has made active, every other currency goes to PayPal. Shoppers never choose or see a gateway. A foreign amount is the rupee amount converted at the active rate plus one flat PayPal markup on the whole payment, shipping included.
+
+## Storage
+
+| Collection                | Holds                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shippingRuleSets`        | Each rule set's working copy, saved test carts, active version number, and whether it is pre-made (locked) or the shop's own                     |
+| `shippingRuleSetVersions` | Every version made active, never changed afterwards, with the test-cart changes accepted when it went live                                       |
+| `shippingExceptions`      | Category and product exceptions, per zone                                                                                                        |
+| `shippingProviderConfigs` | One document: home country, how each zone is priced, how mixed rule sets combine, shop-wide default charges, and the path for orders sent abroad |
+
+Every save names the revision it started from, so a second admin's save over newer work is refused rather than overwriting it. Stored bodies are parsed with the contracts on every read. The release step `0008-shipping-premade-rule-sets` writes the seven pre-made rule sets once: Add up per unit, Highest charge only, First and further units, Free above an amount, Weight bands, Flat per order, and Courier quote. Zone settings are not seeded; until a shop sets them, checkout reports that shipping isn't set up. A new shop's path for orders sent abroad is India only.

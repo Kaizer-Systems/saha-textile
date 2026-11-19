@@ -100,7 +100,7 @@ describe('shipping rule set bodies', () => {
 });
 
 describe('settings, exceptions and test carts', () => {
-	it('default to the home country India, adding mixed rule sets up and the export-off path', () => {
+	it('default to the home country India, adding mixed rule sets up and India only', () => {
 		const settings = ShippingSettings.parse({
 			domestic: { kind: 'ruleSet', ruleSetId: 'rs-dom' },
 			international: { kind: 'courier', courierId: 'shiprocket', fallbackRuleSetId: 'rs-intl' },
@@ -109,7 +109,7 @@ describe('settings, exceptions and test carts', () => {
 		expect(settings).toMatchObject({
 			homeCountry: 'IN',
 			mixedRuleSets: 'sum',
-			abroadPolicy: 'exportOffIndianInvoice',
+			abroadPolicy: 'indiaOnly',
 			international: { extra: null },
 		});
 	});

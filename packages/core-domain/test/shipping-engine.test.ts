@@ -21,6 +21,7 @@ import {
 	routeShippingLine,
 	validateShippingRuleSet,
 	volumetricGrams,
+	PREMADE_RULE_SETS,
 	type ActiveRuleSet,
 } from '../src/shipping/index';
 
@@ -905,5 +906,71 @@ describe('gateways and foreign amounts', () => {
 		expect(foreignAmountFromINR(3800, 1 / 116.95, 6)).toBe(34.44);
 		expect(foreignAmountFromINR(10200, 1 / 116.95, 6)).toBe(92.45);
 		expect(() => foreignAmountFromINR(100, 0, 6)).toThrow(RangeError);
+	});
+});
+
+describe('pre-made rule sets', () => {
+	it('are all valid to make active, and price a cart in both zones from the product charges', () => {
+		const expected: Record<string, [number, number]> = {
+			'add-per-unit': [300, 6000],
+			'highest-only': [100, 2000],
+			'first-and-further': [300, 3800],
+			'free-above': [100, 2000],
+			'weight-bands': [120, 2500],
+			'flat-per-order': [100, 2000],
+		};
+		expect(PREMADE_RULE_SETS.map((r) => r.key)).toEqual([...Object.keys(expected), 'courier-quote']);
+		for (const premade of PREMADE_RULE_SETS) {
+			const check = validateShippingRuleSet(premade.body, premade.use);
+			expect(check.canActivate, premade.key).toBe(true);
+			const amounts = expected[premade.key];
+			if (!amounts) continue;
+			const lines = [
+				line('a', { units: 2, chargeableWeightGrams: 400, sellingPriceINR: 1000, mrpINR: 1000 }),
+				line('b', { chargeableWeightGrams: 400, sellingPriceINR: 1000, mrpINR: 1000 }),
+			];
+			expect(
+				priced(evaluateShippingRuleSet({ body: premade.body, snapshot: cart(lines), zone: 'domestic' })),
+				premade.key,
+			).toBe(amounts[0]);
+			expect(
+				priced(
+					evaluateShippingRuleSet({ body: premade.body, snapshot: cart(lines, 'GB'), zone: 'international' }),
+				),
+				premade.key,
+			).toBe(amounts[1]);
+		}
+	});
+});
+
+describe("can't-ship messages", () => {
+	it('must be written in every shop language before the rule set goes live', () => {
+		const body: ShippingRuleSetBody = {
+			steps: [
+				{
+					id: 's',
+					scope: 'eachLine',
+					combine: 'sum',
+					node: {
+						kind: 'result',
+						id: 'no',
+						result: { kind: 'cantShip', message: { en: 'Not sent abroad', bn: ' ' } },
+					},
+				},
+			],
+			adjust: [],
+		};
+		expect(validateShippingRuleSet(body, 'international').canActivate).toBe(true);
+		const both = validateShippingRuleSet(body, 'international', { languages: ['en', 'bn'] });
+		expect(both.canActivate).toBe(false);
+		expect(both.issues).toEqual([
+			{
+				code: 'cant_ship_message_missing',
+				severity: 'error',
+				blockId: 'no',
+				stepId: 's',
+				params: { language: 'bn' },
+			},
+		]);
 	});
 });

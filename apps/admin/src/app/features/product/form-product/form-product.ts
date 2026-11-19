@@ -49,6 +49,7 @@ import {
 	NgbNavOutlet,
 	NgbModal,
 } from '@ng-bootstrap/ng-bootstrap';
+import { chargeableGrams, volumetricGrams } from '@saha-textile/core-domain/shipping';
 import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { firstValueFrom, Observable, of, Subject } from 'rxjs';
@@ -125,6 +126,7 @@ import type {
 	PictureRef,
 	ProductVideo,
 	QuickLength,
+	ShippingChargeKind,
 } from '@saha-textile/contracts';
 
 const LANGUAGE_FIELDS = [
@@ -277,6 +279,7 @@ export class FormProduct {
 					name: row.name,
 					hsnCode: row.row?.hsnCode ?? null,
 					returnable: row.row?.returnable ?? true,
+					shipping: row.row?.shipping ?? null,
 				},
 			]),
 		);
@@ -286,6 +289,52 @@ export class FormProduct {
 		const id = this.chosenCategories()[0];
 		return (id ? this.categoryDefaults().get(String(id)) : null) ?? this.catalogProduct?.mainCategory ?? null;
 	});
+	/** The product's own shipping charges (shipping brief prd01); null follows its main category. */
+	readonly ownCharges = signal<Record<ShippingChargeKind, number | null>>({
+		domestic: null,
+		internationalFirst: null,
+		internationalFurther: null,
+	});
+	readonly chargeKinds: ShippingChargeKind[] = ['domestic', 'internationalFirst', 'internationalFurther'];
+
+	/** The main category's own value for a charge, for "Use Sarees's value: ₹100"; null when set higher up. */
+	categoryCharge(kind: ShippingChargeKind): number | null {
+		const shipping = this.mainCategory()?.shipping;
+		if (!shipping) return null;
+		return kind === 'domestic'
+			? shipping.domesticINR
+			: kind === 'internationalFirst'
+				? shipping.internationalFirstINR
+				: shipping.internationalFurtherINR;
+	}
+
+	/** The "use the category's value" switch: on clears the product's own value; off starts from the category's. */
+	followCategoryCharge(kind: ShippingChargeKind, follow: boolean) {
+		this.ownCharges.update((own) => ({ ...own, [kind]: follow ? null : (this.categoryCharge(kind) ?? 0) }));
+		this.form.markAsDirty();
+	}
+
+	setOwnCharge(kind: ShippingChargeKind, value: unknown) {
+		const n = Number(value);
+		this.ownCharges.update((own) => ({
+			...own,
+			[kind]: value === '' || value === null || !Number.isFinite(n) || n < 0 ? 0 : n,
+		}));
+		this.form.markAsDirty();
+	}
+
+	/** Volumetric and chargeable weight for the box and weight typed on this tab (grams). */
+	shippingWeights(): { volumetric: number | null; chargeable: number | null } {
+		const raw = this.form.getRawValue() as Record<string, unknown>;
+		const box = {
+			weightGrams: blankToNull(raw['weight']),
+			lengthCm: blankToNull(raw['length_cm']),
+			widthCm: blankToNull(raw['width_cm']),
+			heightCm: blankToNull(raw['height_cm']),
+		};
+		return { volumetric: volumetricGrams(box), chargeable: chargeableGrams(box) };
+	}
+
 	readonly totals = computed(() => stockFigures([...this.variantStock().values()]));
 	/** F01: In stock, Low stock or Out of stock, from free to sell; made to order keeps selling. */
 	stockStatus(): string {
@@ -619,6 +668,12 @@ export class FormProduct {
 		this.returnableChoice.set(
 			detail.returnable === null || detail.returnable === undefined ? '' : detail.returnable ? 'yes' : 'no',
 		);
+		this.form.patchValue({ is_free_shipping: detail.freeShipping ?? false }, { emitEvent: false });
+		this.ownCharges.set({
+			domestic: detail.shippingCharges?.domesticINR ?? null,
+			internationalFirst: detail.shippingCharges?.internationalFirstINR ?? null,
+			internationalFurther: detail.shippingCharges?.internationalFurtherINR ?? null,
+		});
 		this.metreCut.set(tenthsToMetres(detail.metre?.shortestCutTenths ?? 10));
 		this.metreWidth.set(
 			detail.metre?.widthInches === null || detail.metre?.widthInches === undefined
@@ -1252,6 +1307,12 @@ export class FormProduct {
 				widthCm: blankToNull(raw['width_cm']),
 				heightCm: blankToNull(raw['height_cm']),
 			},
+			shippingCharges: {
+				domesticINR: this.ownCharges().domestic,
+				internationalFirstINR: this.ownCharges().internationalFirst,
+				internationalFurtherINR: this.ownCharges().internationalFurther,
+			},
+			freeShipping: Boolean(raw['is_free_shipping']),
 			hsnCode: textOrNull(raw['hsn_code']),
 			...(product.soldByLocked ? {} : { soldBy: this.soldBy() }),
 			returnable: this.returnableChoice() === '' ? null : this.returnableChoice() === 'yes',

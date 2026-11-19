@@ -56,6 +56,12 @@ export interface CategoryDefaults {
 	name: string;
 	hsnCode: string | null;
 	returnable: boolean;
+	/** The category's own shipping values (shipping brief prd01); null when it sets none. */
+	shipping?: {
+		domesticINR: number | null;
+		internationalFirstINR: number | null;
+		internationalFurtherINR: number | null;
+	} | null;
 }
 
 /**

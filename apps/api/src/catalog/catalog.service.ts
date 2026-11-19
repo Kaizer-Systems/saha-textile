@@ -142,6 +142,7 @@ export class CatalogService {
 					name: category.name.en ?? Object.values(category.name)[0] ?? category.slug,
 					hsnCode: category.hsnCode ?? null,
 					returnable: category.returnable,
+					shipping: category.shipping ?? null,
 				}
 			: null;
 	}
@@ -364,6 +365,8 @@ export class CatalogService {
 			addonPriceINR: product.addonPriceINR,
 			replacementPath: product.replacementTarget?.path ?? null,
 			shipping: product.shippingDefaults,
+			shippingCharges: product.shippingCharges ?? null,
+			freeShipping: product.freeShipping ?? false,
 			hsnCode: product.hsnCode,
 			soldBy: product.soldBy,
 			soldByLocked: facts.hasStock || facts.hasMovements || facts.hasOrders,
@@ -400,7 +403,10 @@ export class CatalogService {
 					answer: entry.answer,
 				})),
 			},
-			images: await this.imageTiles(product, variants.flatMap((row) => row.media?.primaryAssetId ?? [])),
+			images: await this.imageTiles(
+				product,
+				variants.flatMap((row) => row.media?.primaryAssetId ?? []),
+			),
 			relatedProductIds: relationIds.related,
 			upsellProductIds: relationIds.upsell,
 			crossSellProductIds: relationIds.cross_sell,
@@ -518,7 +524,10 @@ export class CatalogService {
 				media:
 					write.image === undefined
 						? row.media
-						: { primaryAssetId: write.image?.assetId ?? null, primaryVersionId: write.image?.versionId ?? null },
+						: {
+								primaryAssetId: write.image?.assetId ?? null,
+								primaryVersionId: write.image?.versionId ?? null,
+							},
 			};
 		});
 		const now = new Date().toISOString();
@@ -546,6 +555,8 @@ export class CatalogService {
 			hiddenBadges: body.hiddenBadges,
 			addonPriceINR: body.addonPriceINR,
 			shippingDefaults: body.shipping,
+			shippingCharges: body.shippingCharges === undefined ? product.shippingCharges : body.shippingCharges,
+			freeShipping: body.freeShipping === undefined ? product.freeShipping : body.freeShipping,
 			hsnCode: body.hsnCode,
 			soldBy,
 			returnable: body.returnable === undefined ? product.returnable : body.returnable,

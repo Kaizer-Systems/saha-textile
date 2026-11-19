@@ -401,6 +401,25 @@ describe('admin product save', () => {
 		expect(current().returnable).toBeNull();
 	});
 
+	it('saves the product’s own shipping charges and Free shipping switch, and keeps them when a save leaves them out', async () => {
+		const { catalog, current } = harness();
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current().shippingCharges).toBeUndefined();
+		const charges = { domesticINR: null, internationalFirstINR: 3500, internationalFurtherINR: null };
+		await catalog.updateMerchandising('prd_kurti', form({ shippingCharges: charges, freeShipping: true }));
+		expect(current()).toMatchObject({ shippingCharges: charges, freeShipping: true });
+		await catalog.updateMerchandising('prd_kurti', form());
+		expect(current()).toMatchObject({ shippingCharges: charges, freeShipping: true });
+		await catalog.updateMerchandising('prd_kurti', form({ freeShipping: false }));
+		expect(current().freeShipping).toBe(false);
+		expect(() =>
+			new ZodValidationPipe(ProductMerchandisingWrite).transform({
+				...form(),
+				shippingCharges: { ...charges, domesticINR: -1 },
+			}),
+		).toThrow(BadRequestException);
+	});
+
 	it('refuses an HSN that is not 4, 6 or 8 digits, on the product and on a variant (F02C)', async () => {
 		const pipe = new ZodValidationPipe(ProductMerchandisingWrite);
 		const body = form();

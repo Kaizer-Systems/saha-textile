@@ -111,6 +111,7 @@ export class TaxonomyService {
 			imageVersions: category.media?.versions ?? {},
 			hsnCode: category.hsnCode ?? null,
 			returnable: category.returnable,
+			shipping: category.shipping ?? null,
 		});
 	}
 
@@ -167,6 +168,7 @@ export class TaxonomyService {
 			media: categoryMedia(body, existing),
 			hsnCode: body.hsnCode === undefined ? (existing?.hsnCode ?? null) : body.hsnCode,
 			returnable: body.returnable ?? existing?.returnable ?? true,
+			shipping: body.shipping === undefined ? existing?.shipping : body.shipping,
 		});
 		const oldHsn = existing?.hsnCode ?? null;
 		const hsnChanged = Boolean(existing) && category.hsnCode !== oldHsn;

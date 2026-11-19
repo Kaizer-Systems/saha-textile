@@ -58,3 +58,9 @@ Lists the courier adapters (Shiprocket, Delhivery, Blue Dart, DHL Express) and s
 ## Orders sent abroad
 
 Chooses the named path for orders delivered outside the home country. The paths are export off with the invoice to an address in India, standard export (not available to choose), or India only. For the export-off path, a table shows where the invoice goes in each of the four billing and delivery cases.
+
+## Charges on categories and products
+
+The category form has a **Shipping** section with three fields: the domestic charge per unit, the international first-unit charge and the international charge for each further unit. It also sets a default weight and box. An empty field follows the parent category, then the shop-wide default.
+
+The product form's **Shipping & tax** tab shows each charge with a "use the category's value" switch. Turning it off sets the product's own amount. The existing **Free shipping** switch ships the product free in both zones, whatever the rule sets say. Under the weight and box, the tab shows the volumetric and chargeable weight. Rule sets read these values through "the product's own charge".

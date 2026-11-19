@@ -1485,6 +1485,7 @@
 											<span class="switch-state"></span>
 										</label>
 									</div>
+									<p class="help-text">{{ 'ship_free_shipping_help' | transloco }}</p>
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -1549,6 +1550,75 @@
 										type="number"
 										formControlName="height_cm"
 									/>
+								</app-form-fields>
+								@if (shippingWeights(); as weights) { @if (weights.volumetric !== null) {
+								<p
+									class="help-text"
+									id="ship_weights"
+								>
+									{{ 'ship_weights_line' | transloco: { volumetric: weights.volumetric, chargeable:
+									weights.chargeable ?? 0 } }}
+								</p>
+								} }
+								<h5 class="mt-4 mb-3">{{ 'ship_product_charges' | transloco }}</h5>
+								@for (kind of chargeKinds; track kind) { @let own = ownCharges()[kind]; @let
+								fromCategory = categoryCharge(kind);
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'ship_charge_' + kind"
+									[for]="'ship_follow_' + kind"
+									[required]="false"
+								>
+									<div class="d-flex align-items-center flex-wrap gap-3">
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													[id]="'ship_follow_' + kind"
+													[checked]="own === null"
+													(change)="followCategoryCharge(kind, $any($event.target).checked)"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+										@if (own === null) {
+										<span class="small">
+											{{ (mainCategory() ? 'ship_use_category_value' : 'ship_use_shop_value') |
+											transloco: { category: mainCategory()?.name ?? '' } }}
+										</span>
+										@if (fromCategory !== null) {
+										<span class="text-muted">₹{{ fromCategory }}</span>
+										} } @else {
+										<span class="small">{{ 'ship_own_value' | transloco }}</span>
+										<div class="input-group w-auto flex-nowrap">
+											<span class="input-group-text">₹</span>
+											<input
+												class="form-control"
+												type="number"
+												min="0"
+												step="1"
+												[attr.aria-label]="'ship_charge_' + kind | transloco"
+												[value]="own"
+												(input)="setOwnCharge(kind, $any($event.target).value)"
+											/>
+										</div>
+										}
+									</div>
+								</app-form-fields>
+								}
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'ship_product_rules'"
+									[required]="false"
+								>
+									<span class="pt-1">
+										{{ 'ship_product_rules_text' | transloco }}
+										<a [routerLink]="['/shipping/where-rules-apply']">
+											{{ 'ship_where_rules_apply' | transloco }}
+										</a>
+									</span>
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"

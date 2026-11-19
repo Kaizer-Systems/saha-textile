@@ -1,6 +1,6 @@
 import { Component, DOCUMENT, inject, input, output, signal } from '@angular/core';
 import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -54,6 +54,7 @@ const picked = (id: unknown): string | null => (id ? String(id) : null);
 		ImageUpload,
 		Button,
 		TranslocoModule,
+		RouterLink,
 	],
 })
 export class FormCategory {
@@ -97,6 +98,14 @@ export class FormCategory {
 			also_under: new FormControl<string[]>([]),
 			hsn_code: new FormControl<string>('', [Validators.pattern(/^(\d{4}|\d{6}|\d{8})$/)]),
 			returnable: new FormControl<'yes' | 'no'>('yes'),
+			// Shipping (brief cat01): empty inherits from the parent category, then the shop default.
+			ship_domestic: new FormControl<number | null>(null, [Validators.min(0)]),
+			ship_first: new FormControl<number | null>(null, [Validators.min(0)]),
+			ship_further: new FormControl<number | null>(null, [Validators.min(0)]),
+			ship_weight: new FormControl<number | null>(null, [Validators.min(0)]),
+			ship_length: new FormControl<number | null>(null, [Validators.min(0)]),
+			ship_width: new FormControl<number | null>(null, [Validators.min(0)]),
+			ship_height: new FormControl<number | null>(null, [Validators.min(0)]),
 			type: new FormControl(this.categoryType(), []),
 			category_image_id: new FormControl(),
 			category_icon_id: new FormControl(),
@@ -156,6 +165,13 @@ export class FormCategory {
 					also_under: row.alsoUnder,
 					hsn_code: row.hsnCode ?? '',
 					returnable: row.returnable === false ? 'no' : 'yes',
+					ship_domestic: row.shipping?.domesticINR ?? null,
+					ship_first: row.shipping?.internationalFirstINR ?? null,
+					ship_further: row.shipping?.internationalFurtherINR ?? null,
+					ship_weight: row.shipping?.weightGrams ?? null,
+					ship_length: row.shipping?.lengthCm ?? null,
+					ship_width: row.shipping?.widthCm ?? null,
+					ship_height: row.shipping?.heightCm ?? null,
 					category_image_id: row.image?.id ?? '',
 					category_icon_id: row.icon?.id ?? '',
 				});
@@ -286,6 +302,15 @@ export class FormCategory {
 		const body: AdminCategoryWrite = {
 			hsnCode: hsn,
 			returnable: raw['returnable'] !== 'no',
+			shipping: {
+				domesticINR: shippingValue(raw['ship_domestic']),
+				internationalFirstINR: shippingValue(raw['ship_first']),
+				internationalFurtherINR: shippingValue(raw['ship_further']),
+				weightGrams: shippingValue(raw['ship_weight']),
+				lengthCm: shippingValue(raw['ship_length']),
+				widthCm: shippingValue(raw['ship_width']),
+				heightCm: shippingValue(raw['ship_height']),
+			},
 			updateProductsHsn: false,
 			name,
 			description: this.fields.text('description'),
@@ -364,4 +389,11 @@ export class FormCategory {
 		this.destroy$.next();
 		this.destroy$.complete();
 	}
+}
+
+/** A typed shipping value: empty means "inherit", anything else a non-negative number. */
+function shippingValue(value: unknown): number | null {
+	if (value === null || value === undefined || value === '') return null;
+	const n = Number(value);
+	return Number.isFinite(n) && n >= 0 ? n : null;
 }

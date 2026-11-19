@@ -124,6 +124,79 @@
 			</select>
 			<p class="help-text">{{ 'category_returnable_help' | transloco }}</p>
 		</app-form-fields>
+		<h5 class="mt-4 mb-3">{{ 'shipping' | transloco }}</h5>
+		@for (field of [['ship_domestic', 'ship_charge_domestic'], ['ship_first', 'ship_charge_internationalFirst'],
+		['ship_further', 'ship_charge_internationalFurther']]; track field[0]; let first = $first) {
+		<app-form-fields
+			[label]="field[1] | transloco"
+			[for]="'category_' + field[0]"
+			[required]="false"
+		>
+			<div class="input-group w-auto flex-nowrap">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					step="1"
+					[id]="'category_' + field[0]"
+					[formControlName]="field[0]"
+					[placeholder]="'ship_inherit' | transloco"
+				/>
+			</div>
+			@if (first) {
+			<p class="help-text">{{ 'ship_category_charge_help' | transloco }}</p>
+			}
+		</app-form-fields>
+		}
+		<app-form-fields
+			[label]="'ship_default_weight' | transloco"
+			[for]="'category_ship_weight'"
+			[required]="false"
+		>
+			<div class="input-group w-auto flex-nowrap">
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					id="category_ship_weight"
+					formControlName="ship_weight"
+					[placeholder]="'ship_inherit' | transloco"
+				/>
+				<span class="input-group-text">g</span>
+			</div>
+			<p class="help-text">{{ 'ship_default_weight_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'ship_default_box' | transloco"
+			[for]="'category_ship_length'"
+			[required]="false"
+		>
+			<div class="d-flex align-items-center gap-2">
+				@for (side of ['ship_length', 'ship_width', 'ship_height']; track side; let last = $last) {
+				<input
+					class="form-control"
+					type="number"
+					min="0"
+					[id]="'category_' + side"
+					[formControlName]="side"
+					[attr.aria-label]="side | transloco"
+				/>
+				@if (!last) {
+				<span>×</span>
+				} }
+				<span>cm</span>
+			</div>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'ship_category_rules' | transloco"
+			[required]="false"
+		>
+			<span class="pt-1">
+				{{ 'ship_category_rules_text' | transloco }}
+				<a [routerLink]="['/shipping/where-rules-apply']">{{ 'ship_where_rules_apply' | transloco }}</a>
+			</span>
+		</app-form-fields>
 		@if (id) {
 		<div
 			class="alert alert-info d-flex align-items-start gap-2"

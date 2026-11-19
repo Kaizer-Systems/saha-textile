@@ -4,6 +4,7 @@ import { AttributeDefinition } from './attribute';
 import { LocaleCode, Slug } from './common';
 import { BundleGroup, BundlePricePolicy, BundleType } from './product-bundle';
 import { ProductShippingDefaults, ProductStatus, ProductType, QuickLength } from './product';
+import { CategoryShipping, ProductShippingCharges } from './shipping-rules';
 import { ProductOptionGroupSet } from './product-options';
 import { ProductVideo, ProductVideos } from './site-settings';
 
@@ -135,6 +136,10 @@ export const ProductMerchandisingWrite = z
 		hiddenBadges: z.array(CatalogBadgeCode),
 		addonPriceINR: WholeRupee.nullable(),
 		shipping: ProductShippingDefaults,
+		/** The product's own shipping charges; empty uses the category's. Absent keeps them (shipping brief prd01). */
+		shippingCharges: ProductShippingCharges.optional(),
+		/** Ships free in both zones, whatever the rule sets say. Absent keeps it. */
+		freeShipping: z.boolean().optional(),
 		hsnCode: OptionalHsn,
 		/** Piece or metre (P11); refused once the product has stock, stock history or orders. Absent keeps it. */
 		soldBy: z.enum(['piece', 'metre']).optional(),
@@ -254,6 +259,8 @@ export const AdminProductDetail = z.object({
 	addonPriceINR: z.number().int().nullable(),
 	replacementPath: z.string().nullable(),
 	shipping: ProductShippingDefaults,
+	shippingCharges: ProductShippingCharges.nullable().default(null),
+	freeShipping: z.boolean().default(false),
 	hsnCode: z.string().nullable(),
 	soldBy: z.enum(['piece', 'metre']).default('piece'),
 	/** True once the product has stock, stock history or orders: Sold by is then fixed (P11). */
@@ -262,7 +269,14 @@ export const AdminProductDetail = z.object({
 	returnable: z.boolean().nullable().default(null),
 	/** The main category's defaults, for "From Tant (5208)" and the HSN popup (F02). */
 	mainCategory: z
-		.object({ id: z.string(), name: z.string(), hsnCode: z.string().nullable(), returnable: z.boolean() })
+		.object({
+			id: z.string(),
+			name: z.string(),
+			hsnCode: z.string().nullable(),
+			returnable: z.boolean(),
+			/** The category's own shipping values, for "Use Sarees's value" (prd01); null when it sets none. */
+			shipping: CategoryShipping.nullable().default(null),
+		})
 		.nullable()
 		.default(null),
 	metre: z
@@ -367,6 +381,8 @@ export const AdminCategoryWrite = z.object({
 	hsnCode: OptionalHsn.optional(),
 	/** Whether its products can be returned by default (F03). Left out, a saved category keeps it. */
 	returnable: z.boolean().optional(),
+	/** Shipping charges, weight and box its products inherit (shipping brief cat01). Left out, a saved category keeps them. */
+	shipping: CategoryShipping.optional(),
 	/**
 	 * When the HSN changes: also give the new code to the products whose main category this is and
 	 * whose HSN is the category's old one (or empty). Products with their own HSN are left alone.
@@ -402,6 +418,7 @@ export const AdminCategoryRow = z.object({
 	imageVersions: z.record(z.string(), z.string()).default({}),
 	hsnCode: z.string().nullable().default(null),
 	returnable: z.boolean().default(true),
+	shipping: CategoryShipping.nullable().default(null),
 });
 export type AdminCategoryRow = z.infer<typeof AdminCategoryRow>;
 

@@ -70,6 +70,8 @@ export interface CatalogMainCategory {
 	name: string;
 	hsnCode: string | null;
 	returnable: boolean;
+	/** The category's own shipping charges, for "Use Sarees's value" (prd01). */
+	shipping?: Pick<CatalogShippingCharges, 'domesticINR' | 'internationalFirstINR' | 'internationalFurtherINR'> | null;
 }
 
 /** A product sold by the metre (shop brief A01); lengths in tenths of a metre. */
@@ -78,6 +80,13 @@ export interface CatalogMetreFields {
 	quickLengths: QuickLength[];
 	widthInches: number | null;
 	weightPerMetreGrams: number | null;
+}
+
+/** A product's own shipping charges in rupees; null follows the category. */
+export interface CatalogShippingCharges {
+	domesticINR: number | null;
+	internationalFirstINR: number | null;
+	internationalFurtherINR: number | null;
 }
 
 export interface CatalogProductDetail {
@@ -97,6 +106,10 @@ export interface CatalogProductDetail {
 	addonPriceINR: number | null;
 	replacementPath: string | null;
 	shipping: CatalogShipping;
+	/** The product's own shipping charges; null follows its main category (shipping brief prd01). */
+	shippingCharges?: CatalogShippingCharges | null;
+	/** Ships free in both zones, whatever the rule sets say. */
+	freeShipping?: boolean;
 	hsnCode: string | null;
 	soldBy: 'piece' | 'metre';
 	/** True once it has stock, stock history or orders: Sold by is then fixed. */
@@ -137,6 +150,10 @@ export interface CatalogProductWrite {
 	hiddenBadges: CatalogBadgeCode[];
 	addonPriceINR: number | null;
 	shipping: CatalogShipping;
+	/** The product's own shipping charges; null follows its main category (shipping brief prd01). */
+	shippingCharges?: CatalogShippingCharges | null;
+	/** Ships free in both zones, whatever the rule sets say. */
+	freeShipping?: boolean;
 	hsnCode: string | null;
 	soldBy?: 'piece' | 'metre';
 	returnable?: boolean | null;

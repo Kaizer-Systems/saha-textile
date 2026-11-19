@@ -406,6 +406,24 @@ describe('TaxonomyService', () => {
 		]);
 	});
 
+	it('saves a category’s shipping charges, weight and box, and keeps them when a save leaves them out', async () => {
+		const { service, categories } = repositories();
+		const shipping = {
+			domesticINR: 100,
+			internationalFirstINR: 2000,
+			internationalFurtherINR: 900,
+			weightGrams: 650,
+			lengthCm: 35,
+			widthCm: 25,
+			heightCm: 5,
+		};
+		await service.saveCategory('cat_1', body({ shipping }), 'adm_1');
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ shipping });
+		rows = [category({ shipping })];
+		await service.saveCategory('cat_1', body(), 'adm_1');
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ shipping });
+	});
+
 	it('lists categories with their address and product count', async () => {
 		const { service, products } = repositories();
 		products.list.mockResolvedValue({ items: [], total: 3 });

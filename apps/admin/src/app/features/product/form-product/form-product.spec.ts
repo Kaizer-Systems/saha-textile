@@ -592,6 +592,8 @@ describe('FormProduct.submit', () => {
 			hiddenBadges: [],
 			addonPriceINR: null,
 			shipping: { weightGrams: null, lengthCm: 1, widthCm: 2, heightCm: 3 },
+			shippingCharges: { domesticINR: null, internationalFirstINR: null, internationalFurtherINR: null },
+			freeShipping: false,
 			hsnCode: null,
 			soldBy: 'piece',
 			returnable: null,

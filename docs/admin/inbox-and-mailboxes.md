@@ -195,7 +195,7 @@ The storefront's Contact Us form posts to `/storefront/contact-messages`. `Conta
 ## Limitations
 
 - The browser journey and unit tests do not reach Gmail. Sign-in, sending, import, labels and permanent delete need a real Workspace mailbox to verify.
-- Very large messages are cleaned and sent whole; there is no plain-text-first view for them.
+- Very large messages (over 1 MB of formatted mail) open as plain text first, with "Show formatted version".
 - Unsent text is kept in the browser tab, not in Gmail drafts. A sent message cannot be recalled, and there are no saved replies or Bcc.
 - Gmail settings (filters, vacation reply, signature) are managed in Gmail.
 - Whether Gmail's own filters run on mail placed by import (Contact Us) is unconfirmed until it is tried on a real mailbox.

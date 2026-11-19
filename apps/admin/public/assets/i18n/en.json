@@ -193,6 +193,8 @@
 	"inbox_empty_all": "No mail.",
 	"inbox_empty_spam": "No spam.",
 	"inbox_empty_trash": "The Bin is empty. Gmail empties it by itself after 30 days.",
+	"inbox_show_formatted": "Show formatted version",
+	"inbox_list_stale": "Gmail isn't answering. Showing what loaded at {{time}}.",
 	"inbox_bcc": "Bcc",
 	"inbox_add_bcc": "Add Bcc",
 	"inbox_bcc_help": "Hidden copies: the other recipients don't see these addresses.",

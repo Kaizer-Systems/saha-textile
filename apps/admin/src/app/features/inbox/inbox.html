@@ -454,6 +454,21 @@
 					</button>
 					}
 				</div>
+				} @if (listStale()) {
+				<!-- Automatic checks that fail say so here once, never as a toast every minute (X1). -->
+				<div
+					class="alert alert-warning small d-flex align-items-center flex-wrap gap-2 py-2"
+					role="status"
+				>
+					<span>{{ 'inbox_list_stale' | transloco: { time: (checkedAt() | date: 'HH:mm') } }}</span>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						(click)="retryList()"
+					>
+						{{ 'inbox_try_again' | transloco }}
+					</button>
+				</div>
 				} @if (waiting()) {
 				<!-- New mail waits here instead of moving the rows under the pointer (review T7). -->
 				<button
@@ -939,7 +954,17 @@
 								{{ 'inbox_show_pictures' | transloco }}
 							</button>
 						</div>
-						}
+						} @if (plainFirst(message)) {
+						<!-- Very large mail opens as its text first, so the page stays quick (E13). -->
+						<p class="text-content small inbox-quote mt-3 mb-1">{{ message.text }}</p>
+						<button
+							type="button"
+							class="btn btn-link btn-sm p-0"
+							(click)="showFormatted(message)"
+						>
+							{{ 'inbox_show_formatted' | transloco }}
+						</button>
+						} @else {
 						<iframe
 							class="inbox-frame mt-3"
 							sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
@@ -949,7 +974,7 @@
 							[srcdoc]="frames().get(message.id)"
 							(load)="fitFrame($event)"
 						></iframe>
-						@if (message.quoteHtml) {
+						} @if (message.quoteHtml) {
 						<!-- Quoted history folds behind one button per message (review E1). -->
 						<button
 							type="button"

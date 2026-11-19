@@ -55,6 +55,7 @@ const message = (fields: Partial<InboxMessage>): InboxMessage => ({
 	sentBy: null,
 	labelIds: [],
 	starred: false,
+	large: false,
 	...fields,
 });
 const thread = (...messages: InboxMessage[]): InboxThread => ({

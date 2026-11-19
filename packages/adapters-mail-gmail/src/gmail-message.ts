@@ -1,4 +1,10 @@
-import type { InboxAttachment, InboxMessage, InboxThread, InboxThreadSummary } from '@saha-textile/contracts';
+import {
+	LARGE_MESSAGE_HTML_CHARS,
+	type InboxAttachment,
+	type InboxMessage,
+	type InboxThread,
+	type InboxThreadSummary,
+} from '@saha-textile/contracts';
 import { z } from 'zod';
 
 import { cleanEmailHtml, htmlToText, splitTextQuote, textAsHtml } from './clean-html.js';
@@ -141,6 +147,7 @@ export function toInboxMessage(message: GmailMessage, inline: ReadonlyMap<string
 		sentBy: null,
 		labelIds: message.labelIds,
 		starred: message.labelIds.includes('STARRED'),
+		large: cleaned.html.length + cleaned.quoteHtml.length > LARGE_MESSAGE_HTML_CHARS,
 	};
 }
 

@@ -193,6 +193,8 @@
 	"inbox_empty_all": "কোনো মেল নেই।",
 	"inbox_empty_spam": "কোনো স্প্যাম নেই।",
 	"inbox_empty_trash": "বিন খালি। 30 দিন পরে Gmail নিজেই বিন খালি করে।",
+	"inbox_show_formatted": "ফরম্যাট করা রূপ দেখুন",
+	"inbox_list_stale": "Gmail উত্তর দিচ্ছে না। {{time}}-এ যা লোড হয়েছিল, তা দেখানো হচ্ছে।",
 	"inbox_bcc": "Bcc",
 	"inbox_add_bcc": "Bcc যোগ করুন",
 	"inbox_bcc_help": "গোপন কপি: অন্য প্রাপকেরা এই ঠিকানাগুলো দেখতে পান না।",

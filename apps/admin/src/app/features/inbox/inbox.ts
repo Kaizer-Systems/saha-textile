@@ -317,6 +317,8 @@ export class Inbox {
 	readonly labelToDelete = signal<{ id: string; name: string } | null>(null);
 	readonly loadingThreads = computed(() => this.connected() && this.threadsQuery.isPending());
 	readonly listFailed = computed(() => this.threadsQuery.isError() && !this.threadsQuery.data());
+	/** Gmail stopped answering after the list loaded: the rows stay, with when they were read (X1). */
+	readonly listStale = computed(() => this.threadsQuery.isError() && Boolean(this.threadsQuery.data()));
 
 	/**
 	 * The list as shown. A refresh that brings new conversations does not reshuffle it under the
@@ -409,6 +411,8 @@ export class Inbox {
 	readonly allOpen = signal(false);
 	/** Messages whose quoted history was unfolded (review E1). */
 	private readonly quotesShown = signal<ReadonlySet<string>>(new Set());
+	/** Very large messages someone asked to see formatted (E13); the rest of them open as text. */
+	private readonly formatted = signal<ReadonlySet<string>>(new Set());
 	/** Messages whose pictures someone asked to see. */
 	private readonly pictures = signal<ReadonlySet<string>>(new Set());
 	/**
@@ -1045,6 +1049,15 @@ export class Inbox {
 			if (!next.delete(message.id)) next.add(message.id);
 			return next;
 		});
+	}
+
+	/** A very large message shows its text until someone asks for the formatted version (E13). */
+	plainFirst(message: InboxMessage): boolean {
+		return message.large && !this.formatted().has(message.id);
+	}
+
+	showFormatted(message: InboxMessage) {
+		this.formatted.update((shown) => new Set([...shown, message.id]));
 	}
 
 	picturesShown(message: InboxMessage): boolean {

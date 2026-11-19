@@ -275,8 +275,13 @@ export const InboxMessage = z.object({
 	sentBy: z.string().nullable().default(null),
 	labelIds: z.array(z.string()).default([]),
 	starred: z.boolean().default(false),
+	/** Over 1 MB of formatted mail: the admin opens it as plain text first (E13). */
+	large: z.boolean().default(false),
 });
 export type InboxMessage = z.infer<typeof InboxMessage>;
+
+/** Formatted mail bigger than this opens as plain text first, with "Show formatted version". */
+export const LARGE_MESSAGE_HTML_CHARS = 1_000_000;
 
 export const InboxThread = z.object({
 	id: z.string(),

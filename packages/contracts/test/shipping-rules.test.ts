@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { ShippingException, ShippingRuleSetBody, ShippingSettings, ShippingTestCart } from '../src/shipping-rules';
+import {
+	ShippingException,
+	ShippingRuleSetActivate,
+	ShippingRuleSetActivateResult,
+	ShippingRuleSetBody,
+	ShippingSettings,
+	ShippingSettingsWrite,
+	ShippingTestCart,
+	ShippingTryRequest,
+} from '../src/shipping-rules';
 
 describe('shipping rule set bodies', () => {
 	it('parse nested and / or groups, bands and drafts with blank amounts', () => {
@@ -134,5 +143,30 @@ describe('settings, exceptions and test carts', () => {
 		});
 		expect(parsed.shopper).toEqual({ signedIn: true, groups: [], firstOrder: false });
 		expect(parsed.lines[0]?.variationId).toBeNull();
+	});
+});
+
+describe('admin shipping API shapes', () => {
+	it('activation answers activated, invalid, or the test carts that would change', () => {
+		const changed = ShippingRuleSetActivateResult.parse({
+			outcome: 'testCartsChanged',
+			changes: [{ testCartId: 'c1', name: 'Two discounted', fromINR: 200, toINR: 0, status: 'priced' }],
+		});
+		expect(changed.outcome).toBe('testCartsChanged');
+		expect(ShippingRuleSetActivate.parse({ revision: 3 }).acceptChanges).toEqual([]);
+	});
+
+	it('settings are written with the revision the page opened, never with who saved them', () => {
+		const write = ShippingSettingsWrite.parse({
+			domestic: { kind: 'ruleSet', ruleSetId: null },
+			international: { kind: 'ruleSet', ruleSetId: null },
+			defaultCharges: { domestic: 0, internationalFirst: 0, internationalFurther: 0 },
+			revision: 0,
+			updatedBy: 'someone',
+		});
+		expect(write).not.toHaveProperty('updatedBy');
+		expect(
+			ShippingTryRequest.safeParse({ body: { steps: [] }, lines: [], delivery: { country: 'IN' } }).success,
+		).toBe(false);
 	});
 });

@@ -517,3 +517,179 @@ export const ProductShippingCharges = z.object({
 	internationalFurtherINR: ShippingAmountINR.nullable().default(null),
 });
 export type ProductShippingCharges = z.infer<typeof ProductShippingCharges>;
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Admin API (Shipping › Rule sets, Where rules apply, Overview)                                  */
+/* ---------------------------------------------------------------------------------------------- */
+
+/** A line of a cart staff build to try a rule set on: a real product, and how many. */
+export const ShippingTryLine = z.object({
+	productId: Id,
+	variationId: Id.nullable().default(null),
+	quantity: z.number().int().positive().max(99),
+});
+export type ShippingTryLine = z.infer<typeof ShippingTryLine>;
+
+/** New rule set: blank, or a copy of another (a pre-made one or the shop's own). */
+export const ShippingRuleSetCreate = z.object({
+	name: z.string().trim().min(1).max(80),
+	description: z.string().trim().max(300).default(''),
+	use: ShippingRuleSetUse,
+	copyFromId: Id.nullable().default(null),
+});
+export type ShippingRuleSetCreate = z.infer<typeof ShippingRuleSetCreate>;
+
+/** Saves the working copy; `revision` is the one the editor opened. Never changes the active version. */
+export const ShippingRuleSetSave = z.object({
+	name: z.string().trim().min(1).max(80),
+	description: z.string().trim().max(300).default(''),
+	use: ShippingRuleSetUse,
+	draft: ShippingRuleSetBody,
+	testCarts: z.array(ShippingTestCart).max(20).default([]),
+	revision: z.number().int().nonnegative(),
+});
+export type ShippingRuleSetSave = z.infer<typeof ShippingRuleSetSave>;
+
+/** Makes the saved working copy the new active version. Changed test-cart amounts must be accepted by name. */
+export const ShippingRuleSetActivate = z.object({
+	revision: z.number().int().nonnegative(),
+	acceptChanges: z
+		.array(z.object({ testCartId: z.string(), toINR: z.number().nonnegative() }))
+		.max(20)
+		.default([]),
+});
+export type ShippingRuleSetActivate = z.infer<typeof ShippingRuleSetActivate>;
+
+/** Try it: price a body (saved or not) on real products, without saving anything. */
+export const ShippingTryRequest = z.object({
+	body: ShippingRuleSetBody,
+	lines: z.array(ShippingTryLine).min(1).max(50),
+	delivery: ShippingSnapshotDelivery,
+	shopper: ShippingSnapshotShopper.default({ signedIn: true, groups: [], firstOrder: false }),
+});
+export type ShippingTryRequest = z.infer<typeof ShippingTryRequest>;
+
+/** A problem the checks found in a rule set, for the builder to point at. */
+export const ShippingIssueView = z.object({
+	code: z.string(),
+	severity: z.enum(['error', 'warning']),
+	blockId: z.string(),
+	stepId: z.string().nullable(),
+	params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+});
+export type ShippingIssueView = z.infer<typeof ShippingIssueView>;
+
+export const ShippingTryLineView = z.object({
+	lineId: z.string(),
+	productId: Id,
+	title: z.string(),
+	units: z.number().int().nonnegative(),
+	sellingPriceINR: z.number().nonnegative(),
+	mrpINR: z.number().nonnegative().nullable(),
+	discounted: z.boolean(),
+	charges: ShippingCharges,
+	chargeableWeightGrams: z.number().nonnegative().nullable(),
+});
+export type ShippingTryLineView = z.infer<typeof ShippingTryLineView>;
+
+export const ShippingTryResult = z.object({
+	status: z.enum(['priced', 'cantShip', 'needsQuote', 'noResult']),
+	zone: ShippingZone,
+	amountINR: z.number().nonnegative().nullable(),
+	lines: z.array(ShippingTryLineView),
+	trace: z.array(ShippingTraceEntry),
+	adjustments: z.array(z.object({ adjustId: z.string(), kind: z.string(), fromINR: z.number(), toINR: z.number() })),
+	/** Lines that can't ship, and the message each would show. */
+	cantShip: z.array(z.object({ lineId: z.string(), message: LocalizedText })),
+	/** Where a branch gave no result. */
+	noResult: z.array(z.object({ stepId: z.string(), lineIds: z.array(z.string()), blockId: z.string() })),
+	/** More lines than Try it lists (a 50-line cart lists 20 and "and N more"). */
+	moreLines: z.number().int().nonnegative(),
+});
+export type ShippingTryResult = z.infer<typeof ShippingTryResult>;
+
+/** Where a rule set is used: a zone's site-wide choice or fallback, or exceptions. */
+export const ShippingRuleSetUsage = z.object({
+	zones: z.array(z.object({ zone: ShippingZone, as: z.enum(['siteWide', 'fallback']) })),
+	exceptionIds: z.array(Id),
+});
+export type ShippingRuleSetUsage = z.infer<typeof ShippingRuleSetUsage>;
+
+export const AdminShippingRuleSetRow = z.object({
+	ruleSet: ShippingRuleSet,
+	usage: ShippingRuleSetUsage,
+});
+export type AdminShippingRuleSetRow = z.infer<typeof AdminShippingRuleSetRow>;
+
+export const AdminShippingRuleSetDetail = z.object({
+	ruleSet: ShippingRuleSet,
+	usage: ShippingRuleSetUsage,
+	versions: z.array(
+		z.object({
+			version: z.number().int().positive(),
+			activatedAt: IsoDateTime,
+			activatedBy: z.string().nullable(),
+		}),
+	),
+	/** The checks on the saved working copy, in the shop's languages. */
+	issues: z.array(ShippingIssueView),
+	canActivate: z.boolean(),
+});
+export type AdminShippingRuleSetDetail = z.infer<typeof AdminShippingRuleSetDetail>;
+
+export const ShippingTestCartChange = z.object({
+	testCartId: z.string(),
+	name: z.string(),
+	fromINR: z.number().nullable(),
+	toINR: z.number().nullable(),
+	status: z.enum(['priced', 'cantShip', 'needsQuote', 'noResult']),
+});
+export type ShippingTestCartChange = z.infer<typeof ShippingTestCartChange>;
+
+export const ShippingRuleSetActivateResult = z.discriminatedUnion('outcome', [
+	z.object({
+		outcome: z.literal('activated'),
+		version: z.number().int().positive(),
+		detail: AdminShippingRuleSetDetail,
+	}),
+	z.object({ outcome: z.literal('invalid'), issues: z.array(ShippingIssueView) }),
+	/** Test carts whose amount would change; activate again with them in `acceptChanges`. */
+	z.object({ outcome: z.literal('testCartsChanged'), changes: z.array(ShippingTestCartChange) }),
+]);
+export type ShippingRuleSetActivateResult = z.infer<typeof ShippingRuleSetActivateResult>;
+
+/** Zone settings as written from Shipping › Overview; `revision` is the one the page opened (0: none yet). */
+export const ShippingSettingsWrite = ShippingSettings.omit({ updatedAt: true, updatedBy: true });
+export type ShippingSettingsWrite = z.infer<typeof ShippingSettingsWrite>;
+
+export const ShippingExceptionWrite = ShippingException.omit({ id: true, updatedAt: true, updatedBy: true });
+export type ShippingExceptionWrite = z.infer<typeof ShippingExceptionWrite>;
+
+/** Things the overview warns about before a shopper meets them. */
+export const ShippingOverviewCheck = z.object({
+	code: z.enum([
+		'zone_not_set',
+		'rule_set_not_active',
+		'rule_set_missing',
+		'default_charges_zero',
+		'exception_rule_set_missing',
+		'courier_not_connected',
+	]),
+	severity: z.enum(['error', 'warning']),
+	params: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
+});
+export type ShippingOverviewCheck = z.infer<typeof ShippingOverviewCheck>;
+
+export const AdminShippingOverview = z.object({
+	/** Null until the zone settings are first saved; `defaults` shows what a first save starts from. */
+	settings: ShippingSettings.nullable(),
+	defaults: ShippingSettings,
+	ruleSets: z.array(
+		z.object({ id: Id, name: z.string(), use: ShippingRuleSetUse, activeVersion: z.number().int().nullable() }),
+	),
+	exceptionCount: z.number().int().nonnegative(),
+	checks: z.array(ShippingOverviewCheck),
+	/** Paths for orders sent abroad that can be chosen today. */
+	abroadPolicies: z.array(AbroadOrderPolicy),
+});
+export type AdminShippingOverview = z.infer<typeof AdminShippingOverview>;

@@ -37,15 +37,15 @@ cmd_certs() {
 	mkcert -install
 	mkdir -p "$CERT_DIR"
 	mkcert -cert-file "$CERT_DIR/stack-cert.pem" -key-file "$CERT_DIR/stack-key.pem" \
-		"$STOREFRONT_HOST" "$ADMIN_HOST" "$API_HOST"
+		"$STOREFRONT_HOST" "$ADMIN_HOST" "$API_HOST" localhost
 	chmod 600 "$CERT_DIR/stack-key.pem"
 	# The CA's PUBLIC certificate, so SSR inside a container trusts the edge. Never the CA key.
 	cp "$(mkcert -CAROOT)/rootCA.pem" "$CERT_DIR/rootCA.pem"
-	echo "Stack certificate issued for $STOREFRONT_HOST, $ADMIN_HOST, $API_HOST"
+	echo "Stack certificate issued for $STOREFRONT_HOST, $ADMIN_HOST, $API_HOST and localhost (mailbox callback)"
 }
 
 # Keys from apps/api/.env that the stack sets itself.
-OVERRIDDEN='^(NODE_ENV|DEPLOY_ENV|PORT|CORS_ALLOWED_ORIGINS|TRUST_PROXY|CLIENT_IP_HEADER|MONGODB_[A-Z_]+|REDIS_[A-Z_]+|MEILISEARCH_HOST|COOKIE_DOMAIN|COOKIE_SECURE|TLS_CERT_FILE|TLS_KEY_FILE|OTP_LOCAL_FIXED_CODE)='
+OVERRIDDEN='^(NODE_ENV|DEPLOY_ENV|PORT|CORS_ALLOWED_ORIGINS|TRUST_PROXY|CLIENT_IP_HEADER|MONGODB_[A-Z_]+|REDIS_[A-Z_]+|MEILISEARCH_HOST|COOKIE_DOMAIN|COOKIE_SECURE|TLS_CERT_FILE|TLS_KEY_FILE|OTP_LOCAL_FIXED_CODE|ADMIN_APP_URL|GOOGLE_MAIL_REDIRECT_URI)='
 
 cmd_env() {
 	local source="$ROOT_DIR/apps/api/.env"
@@ -74,6 +74,8 @@ CORS_ALLOWED_ORIGINS=https://$STOREFRONT_HOST$PORT_SUFFIX,https://$ADMIN_HOST$PO
 TRUST_PROXY=true
 CLIENT_IP_HEADER=cf-connecting-ip
 COOKIE_SECURE=true
+ADMIN_APP_URL=https://$ADMIN_HOST$PORT_SUFFIX
+GOOGLE_MAIL_REDIRECT_URI=https://localhost:4000/admin/mailboxes/oauth/callback
 VARS
 	} >"$ENV_DIR/api.env"
 	chmod 600 "$ENV_DIR/api.env" "$ENV_DIR/stack.env"

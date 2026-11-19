@@ -493,8 +493,10 @@ generation/storage remains a private owner action; setup does not prove mailbox 
       direct-dev callback `https://localhost:4000/admin/mailboxes/oauth/callback` but rejected
       `https://api-local.saha-textile.localhost/admin/mailboxes/oauth/callback` because its
       hostname does not end in a public top-level domain. The rejected entry was removed;
-      **Docker-mode Google mailbox callback routing remains OPEN**, with no host/proxy/code
-      workaround implemented. Production must have only its own callback.
+      Docker-mode routing is built (2026-11-19, owner log § admin Inbox upgrade): the stack edge answers
+      only the registered `https://localhost:4000/admin/mailboxes/oauth/callback` and `pnpm stack:env`
+      points `GOOGLE_MAIL_REDIRECT_URI` and `ADMIN_APP_URL` at the stack; it still needs one live
+      connect on the dev mailbox. Production must have only its own callback.
 - [ ] **Resolve Workspace approval and authorize each mailbox privately.** Check the
       organization's Gmail API app-access policy, obtain any required administrator
       approval, then have the owner authorize each intended mailbox through Settings >

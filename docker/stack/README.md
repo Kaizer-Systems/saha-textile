@@ -32,6 +32,13 @@ and Firefox resolve `*.localhost` themselves; Safari needs the `/etc/hosts` line
 excluded from the Docker build context). Images never contain a secret; staging and
 production inject the same variables from GitHub encrypted secrets at deploy time.
 
+**Gmail mailbox sign-in**: Google refuses `.localhost` sub-domains as OAuth callbacks, so the stack
+reuses the dev client's registered callback, `https://localhost:4000/admin/mailboxes/oauth/callback`.
+The edge answers that one address on `127.0.0.1:4000` and refuses everything else on that port;
+`pnpm stack:env` sets `GOOGLE_MAIL_REDIRECT_URI` to it and `ADMIN_APP_URL` to the stack's admin.
+Run `pnpm stack:certs` once after this change so the certificate also names `localhost`. The plain
+dev API listens on 4000 too, so stop it before `pnpm stack:up`.
+
 **Release steps**: `pnpm stack:up` runs the same release steps as a deploy (system roles and
 their check, database indexes, data migrations, and the search index, built when its version is
 new), so a fresh stack starts with a filled index. Rebuild search by hand with

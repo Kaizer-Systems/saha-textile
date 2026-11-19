@@ -1800,6 +1800,70 @@ Answered on the purchases decisions brief (https://claude.ai/artifact/XdCdbE91mK
 - **P2 A — The portal pages this build touched are re-read and corrected now;** the remaining pages
   get one pass before deployment.
 
+## Owner decision round (2026-11-19) — shipping rule builder, international orders without export, PayPal rates
+
+Answers to the Orders Decision Round follow-ups (FX1, FX2, FX4, FX7, OD8, OD9 closed and removed
+from https://claude.ai/artifact/6sDuRMWyHjopdS9ee1Us9h). Closed: `DEC-PAYPAL-FX`. `DEC-SHIPPING`:
+the commercial policy is settled; its CA items (C2) stay open.
+
+- **Saha Textile's rules are named, configurable paths.** Every rule specific to Saha Textile below is a named
+  rule set or a named processing path chosen in settings. Other businesses follow the standard
+  paths (by-the-book invoicing, order processing and tax) unless they configure their own. The
+  hexagonal ports keep each path swappable.
+- **Export is off for Saha Textile.** It does not export and has no export registration. An "export
+  on" path is designed as a switch but not built; its CA questions moved to
+  `tax-compliance-future-expansion.mdx`, to be opened only when a business switches export on.
+- **Shipping is calculated by rule sets built in a rule builder.** Domestic and international each
+  choose a rule set or a courier-provider quote, independently and in any mix. Rule sets are
+  assigned site-wide, per category or per product, with exclusions; category shipping values are
+  inherited by products and overridable per product. Weight and box dimensions are stored for
+  volumetric quotes when a provider adapter is switched on later. Pre-made rule sets cover common
+  cases (sum per unit, highest charge only, first unit plus each further unit, free above an
+  amount). Every rule set, Saha Textile's included, is built in the builder, never coded. The
+  screens are drawn as a brief for approval first (`DEC-UI-REUSE`).
+- **Saha Textile's rule set.** Domestic: a piece sold at MRP ships free; each unit of a discounted
+  piece costs ₹100 (3 units of discounted pieces cost ₹300). Discounted means the selling price is
+  below MRP, either as set on the product or lowered by an active sale event; coupons never change
+  shipping. International: ₹2,000 for the first unit and ₹900 for each further unit across the
+  cart (3 units cost ₹3,800). The delivery country decides which rule applies; the currency only
+  decides the gateway. A buyer paying in ₹ for a parcel to Dubai pays the international charge; a
+  buyer paying in US$ for delivery in Kolkata gets the domestic rule.
+- **Addresses and the invoice (Saha Textile path, export off).** Billing and delivery in India: the
+  normal flow. Billing in India, delivery abroad: the normal invoice to the billing address.
+  Billing abroad, delivery in India: the invoice is made out to the Indian delivery address, and
+  the foreign billing address is kept on the order for reference. Billing and delivery both abroad:
+  checkout shows a small optional "Indian address for the invoice" form, every field optional; a
+  complete one becomes the invoice address. If it is missing or incomplete (name, street, city,
+  state and a 6-digit PIN code), the order carries an admin-only "Invoice address needed" flag,
+  staff get the address from the customer and enter it on the order, and the order cannot be
+  marked Packed until it is complete. The shopper never sees that flag. The admin order page shows
+  every address as entered and which one the invoice uses. The parcel abroad is sent by staff
+  outside the system.
+- **Payment routing.** Rupees go to the admin's active INR gateway; every other currency to PayPal.
+  A buyer with an Indian billing address paying in a foreign currency goes to PayPal. When a PayPal
+  attempt fails or comes back unpaid, the cart shows a popup asking the buyer to choose their
+  currency, so a payer inside India can switch to ₹. A buyer abroad who keeps ₹ pays through the
+  INR gateway once HDFC switches on international cards; if the gateway rejects the card and the
+  reason can be read, the cart shows a popup asking the buyer to switch to their region's currency.
+- **`DEC-PAYPAL-FX` — a flat 6% markup.** One number for every currency, applied to the whole PayPal
+  payment including shipping; PayPal's fixed fee per payment is absorbed. Only the super admin can
+  change it. Foreign prices start from the GST-inclusive shop price, since GST is always charged
+  while export is off.
+- **Exchange rates: one source chosen in the admin.** Either PayPal's own rates through its Foreign
+  Exchange as a Service API (`POST /v2/pricing/quote-exchange-rates`), if PayPal approves the
+  account, falling back to the stored rates whenever it is unavailable, down or returns nothing; or
+  the stored rates per currency, typed by the admin and, when switched on, refreshed daily by an
+  automatic market-rate fetch that the admin can turn off for a while or for good. Rates are never
+  adjusted from past payments. PayPal has no self-service form for FXaaS: its docs send merchants to
+  "Contact PayPal" (paypal.com/cshelp/contact-us) or their account manager. The request is sent,
+  with the owner's OK, when the PayPal build starts.
+- **Latest versions.** PayPal work targets Orders API v2 through `@paypal/paypal-server-sdk` 2.5.0
+  and the JavaScript SDK v6 through `@paypal/paypal-js` 11.3.0 (v5 is deprecated); every new
+  integration uses the newest API and SDK unless compatibility needs an older one.
+- **CA document reshaped (owner, 2026-11-19).** Round 2 now holds only the questions relevant
+  today; export items moved to the future-expansion document; export wording removed from the
+  others.
+
 ## Owner decision round (2026-11-19) — WhatsApp on hold
 
 - **WhatsApp is on hold (owner, 2026-11-19).** It is not built further and not registered with
@@ -1843,3 +1907,22 @@ files for every caller and prints names, never values.
   `/run/secrets/api.env` through `DOTENV_CONFIG_PATH`, instead of `env_file`.
 - The renderer, `pnpm secrets:status` and `pnpm check:infisical-names` were built the same day
   (`scripts/secrets/`); the rest follows the plan page's order. Hand-over: `.claude/infisical-plan/HANDOVER.md`.
+
+## Owner decision round (2026-11-19) — shipping rules brief approved
+
+- **The Shipping Rules Brief is approved as drawn (owner, 2026-11-19: "Approved").**
+  https://claude.ai/artifact/FzAxc1XfEyMr8dsWvVsmdE — 28 admin screens, 6 dark-mode versions,
+  8 shop scenes and the walkthrough GIF of both Saha Textile rule sets. Approval covers the screens, the
+  logic and edge-case tables, the reuse inventory, and the one custom piece: the rule builder's block
+  layout (the `srb-` classes). Every other part is assembled from existing elements (`DEC-UI-REUSE`).
+- **The shop never says why it asks for an Indian address (owner, 2026-11-19: "just ask for a local
+  indian address without giving the details away").** The checkout step is titled "Address in India
+  (optional)" and only says the shopper can add one (family, friends or an office) and that the parcel
+  still goes to the delivery address. No shop text mentions the invoice, GST or a follow-up contact;
+  the name field is "Full name". Staff screens may still call it the invoice address. Brief v2 shows
+  this wording.
+- **Made redundant, not removed** (end-of-project cleanup list): the theme's Shipping country pages,
+  the shipping rule form and its two modals, and the gateway key fields in Settings › Payment method.
+- **Build order:** contracts → core rule engine → adapters → API → admin → shop. Still open and not
+  decided by the brief: foreign-price rounding (FX3), repricing threshold (FX5), refunds in foreign
+  currency (FX8), and the CA's C2 questions on how the delivery charge is taxed.

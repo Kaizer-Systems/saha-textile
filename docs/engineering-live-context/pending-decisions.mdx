@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-11-17
+**Last reconciled:** 2026-11-19
 
 ## How this file works
 
@@ -42,7 +42,6 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-ADDRESS`               | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                  |
 | `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                  |
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
-| `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 | `DEC-PERF-TRIM`             | Which unused styles, icons and font weights to remove once development is finished                   | Storefront speed, theme, design system        |
 | `DEC-SHORTS-PRODUCT-LINK`   | Whether a Short's on-screen episode code links it to a product, and how                              | Shorts popup, product page, admin             |
@@ -207,7 +206,8 @@ Domestic zone-plus-weight tiers with a free-shipping threshold and a Shiprocket 
 
 - A delivery charge for delivering the goods sold forms part of the value of supply under Section 15(2); transport, packing and insurance form a composite supply with the goods as principal supply. Locked in `owner-decisions-log.mdx`.
 
-**Still open here:** the commercial rate policy below, plus whether the displayed shipping fee is
+**Settled 2026-11-19:** the commercial rate policy (rule builder and the Saha Textile rule set;
+owner log § 2026-11-19), so the options below are history. **Still open here:** whether the displayed shipping fee is
 itself tax-inclusive and how one delivery charge apportions across a cart holding more than one
 GST rate. Round-2 items `C2.1`–`C2.7`.
 
@@ -536,47 +536,6 @@ Build now:
 Seam only:
 
 Exclude:
-
-Notes:
-
----
-
-## 20. `DEC-PAYPAL-FX` — PayPal FX-conversion markup
-
-### Decision needed
-
-Choose whether foreign-currency prices gross up only PayPal transaction fees or also cover PayPal’s additional currency-conversion markup.
-
-### Recommended route
-
-Make the policy versioned and admin-configurable per currency, with a calculator preview. Start with transaction percentage plus fixed fee; add a separately visible FX-protection percentage only when settlement evidence confirms it.
-
-### Options
-
-#### Option A — Configurable transaction and FX protection (recommended)
-
-- Pros: transparent, adaptable, and margin-safe.
-- Cons: more configuration and disclosure discipline.
-
-#### Option B — Gross up transaction fees only
-
-- Pros: simpler prices.
-- Cons: Saha Textile absorbs conversion spread.
-
-#### Option C — Absorb all PayPal/FX costs
-
-- Pros: lowest displayed foreign price.
-- Cons: uncertain foreign-order margin.
-
-### Owner answer
-
-Choice:
-
-Default FX-protection percentage:
-
-Per-currency overrides:
-
-Customer-facing disclosure:
 
 Notes:
 

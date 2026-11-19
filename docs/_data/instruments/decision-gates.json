@@ -8,8 +8,8 @@
 		"docs/engineering-live-context/project-progress.mdx"
 	],
 	"decisionRegister": {
-		"openCount": 17,
-		"newlyLocked": ["DEC-SECRETS-DELIVERY", "DEC-SKU", "DEC-PRODUCT-RELATIONS", "DEC-BUNDLE-NESTING"]
+		"openCount": 16,
+		"newlyLocked": ["DEC-PAYPAL-FX", "DEC-STOCK-RESERVE", "DEC-INR-GATEWAY-TIMING", "DEC-BACKORDER"]
 	},
 	"gates": [
 		{

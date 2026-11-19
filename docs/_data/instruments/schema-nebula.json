@@ -510,7 +510,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-PAYPAL-FX"],
+			"blockingDecisions": [],
 			"purpose": "Gateway attempts, verification, capture, settlement, and failure data separated from orders.",
 			"source": "catalog §7.21",
 			"references": ["orders", "currencies", "paymentGatewayConfigs"]
@@ -595,7 +595,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-PAYPAL-FX"],
+			"blockingDecisions": [],
 			"purpose": "Exchange-rate history and audit records for INR-derived currency conversion.",
 			"source": "catalog §7.29",
 			"references": ["currencies"]
@@ -619,8 +619,8 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-PAYPAL-FX"],
-			"purpose": "Versioned, admin-editable PayPal percentage and fixed-fee gross-up settings per currency.",
+			"blockingDecisions": [],
+			"purpose": "The PayPal markup: one flat percentage on the whole payment, changed only by the super admin, versioned for audit.",
 			"source": "catalog §7.31",
 			"references": ["currencies"]
 		},

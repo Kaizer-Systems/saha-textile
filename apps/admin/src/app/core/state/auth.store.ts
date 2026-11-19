@@ -3,9 +3,11 @@ import { computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { AdminAuthGateway, type AdminUser } from '@core/auth/auth-gateway';
+import { forgetMailboxData } from '@core/mailboxes/mailbox.gateway';
 
 /**
  * Admin session facade.
@@ -86,156 +88,165 @@ export const AuthStore = signalStore(
 		/** Drives the login screen's default tab; never a policy decision. */
 		preferredLoginMethod: computed(() => store.user()?.preferredLoginMethod ?? 'password'),
 	})),
-	withMethods((store, gateway = inject(AdminAuthGateway), router = inject(Router)) => {
-		function applyAnonymous(error: string | null = null): void {
-			patchState(store, { status: 'anonymous', user: null, permissions: [], error, pending: false });
-		}
-
-		async function loadSession(): Promise<boolean> {
-			const me = await firstValueFrom(gateway.currentUser());
-			if (!me) {
-				applyAnonymous();
-				return false;
+	withMethods(
+		(
+			store,
+			gateway = inject(AdminAuthGateway),
+			router = inject(Router),
+			queries = inject(QueryClient, { optional: true }),
+		) => {
+			function applyAnonymous(error: string | null = null): void {
+				patchState(store, { status: 'anonymous', user: null, permissions: [], error, pending: false });
+				// Signed out, session over, or about to be someone else: no mail stays behind (S1).
+				if (queries) forgetMailboxData(queries);
 			}
-			patchState(store, {
-				status: 'authenticated',
-				user: me.user,
-				permissions: me.permissions,
-				error: null,
-				pending: false,
-			});
-			return true;
-		}
 
-		async function resumeWithProof(prove: () => Promise<unknown>): Promise<boolean> {
-			patchState(store, { pending: true, error: null });
-			try {
-				try {
-					await firstValueFrom(gateway.refreshSession());
-				} catch {
+			async function loadSession(): Promise<boolean> {
+				const me = await firstValueFrom(gateway.currentUser());
+				if (!me) {
 					applyAnonymous();
 					return false;
 				}
-				await prove();
-				// Re-read /me: role/permissions may have changed while the overlay was up.
-				return await loadSession();
-			} catch {
-				// Wrong PIN/password — session may still be live after the refresh above.
-				if (store.status() === 'authenticated') {
-					patchState(store, { pending: false, error: ERROR_KEYS.credentials });
-				} else {
-					applyAnonymous(ERROR_KEYS.credentials);
-				}
-				return false;
+				patchState(store, {
+					status: 'authenticated',
+					user: me.user,
+					permissions: me.permissions,
+					error: null,
+					pending: false,
+				});
+				return true;
 			}
-		}
 
-		return {
-			/** Resolves the admin session from cookies once per app load. */
-			async bootstrap(): Promise<void> {
-				await loadSession();
-				try {
-					await firstValueFrom(gateway.ensureCsrfToken());
-				} catch {
-					// A missing CSRF token must not block rendering; the first unsafe
-					// request fails closed and surfaces it, which is the safe order.
-				}
-			},
-
-			async loginWithPassword(input: { identifier: string; password: string }): Promise<boolean> {
+			async function resumeWithProof(prove: () => Promise<unknown>): Promise<boolean> {
 				patchState(store, { pending: true, error: null });
 				try {
-					await firstValueFrom(gateway.loginWithPassword(input));
-					await firstValueFrom(gateway.ensureCsrfToken());
-					// Re-read /me rather than trusting the login body: permissions and PIN
-					// state come from the server, and this is the shape the rest of the app
-					// consumes anyway.
+					try {
+						await firstValueFrom(gateway.refreshSession());
+					} catch {
+						applyAnonymous();
+						return false;
+					}
+					await prove();
+					// Re-read /me: role/permissions may have changed while the overlay was up.
 					return await loadSession();
-				} catch (error) {
-					applyAnonymous(loginFailureKey(error));
-					return false;
-				}
-			},
-
-			async loginWithPin(input: { identifier: string; pin: string }): Promise<boolean> {
-				patchState(store, { pending: true, error: null });
-				try {
-					await firstValueFrom(gateway.loginWithPin(input));
-					await firstValueFrom(gateway.ensureCsrfToken());
-					return await loadSession();
-				} catch (error) {
-					applyAnonymous(loginFailureKey(error));
-					return false;
-				}
-			},
-
-			/**
-			 * Quick-resume after the idle soft lock. Refreshes the CURRENT session rather
-			 * than creating one, so the mounted route and unsaved form state survive.
-			 *
-			 * A prior cookie rotation is intentional: soft-lock can outlast the access JWT
-			 * while the server idle window is still live; resume still needs a principal.
-			 * Rotation alone does not unlock the UI — PIN/password does.
-			 */
-			async resumeWithPin(pin: string): Promise<boolean> {
-				return resumeWithProof(() => firstValueFrom(gateway.resumeWithPin(pin)));
-			},
-
-			async resumeWithPassword(password: string): Promise<boolean> {
-				return resumeWithProof(() => firstValueFrom(gateway.resumeWithPassword(password)));
-			},
-
-			/**
-			 * Starts recovery. Resolves true whether or not the account exists — the API's
-			 * answer is generic by design, and branching here would rebuild the
-			 * enumeration oracle it removes.
-			 */
-			async requestPasswordReset(identifier: string): Promise<boolean> {
-				patchState(store, { pending: true, error: null });
-				try {
-					await firstValueFrom(gateway.requestPasswordReset(identifier));
-					patchState(store, { pending: false });
-					return true;
 				} catch {
-					patchState(store, { pending: false, error: ERROR_KEYS.generic });
+					// Wrong PIN/password — session may still be live after the refresh above.
+					if (store.status() === 'authenticated') {
+						patchState(store, { pending: false, error: ERROR_KEYS.credentials });
+					} else {
+						applyAnonymous(ERROR_KEYS.credentials);
+					}
 					return false;
 				}
-			},
+			}
 
-			async resetPassword(input: { token: string; newPassword: string }): Promise<boolean> {
-				patchState(store, { pending: true, error: null });
-				try {
-					await firstValueFrom(gateway.resetPassword(input));
-					// The server revoked every admin session and suspended PIN use, so this
-					// browser is signed out by definition; local state must follow rather
-					// than linger and look authenticated.
+			return {
+				/** Resolves the admin session from cookies once per app load. */
+				async bootstrap(): Promise<void> {
+					await loadSession();
+					try {
+						await firstValueFrom(gateway.ensureCsrfToken());
+					} catch {
+						// A missing CSRF token must not block rendering; the first unsafe
+						// request fails closed and surfaces it, which is the safe order.
+					}
+				},
+
+				async loginWithPassword(input: { identifier: string; password: string }): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.loginWithPassword(input));
+						await firstValueFrom(gateway.ensureCsrfToken());
+						// Re-read /me rather than trusting the login body: permissions and PIN
+						// state come from the server, and this is the shape the rest of the app
+						// consumes anyway.
+						return await loadSession();
+					} catch (error) {
+						applyAnonymous(loginFailureKey(error));
+						return false;
+					}
+				},
+
+				async loginWithPin(input: { identifier: string; pin: string }): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.loginWithPin(input));
+						await firstValueFrom(gateway.ensureCsrfToken());
+						return await loadSession();
+					} catch (error) {
+						applyAnonymous(loginFailureKey(error));
+						return false;
+					}
+				},
+
+				/**
+				 * Quick-resume after the idle soft lock. Refreshes the CURRENT session rather
+				 * than creating one, so the mounted route and unsaved form state survive.
+				 *
+				 * A prior cookie rotation is intentional: soft-lock can outlast the access JWT
+				 * while the server idle window is still live; resume still needs a principal.
+				 * Rotation alone does not unlock the UI — PIN/password does.
+				 */
+				async resumeWithPin(pin: string): Promise<boolean> {
+					return resumeWithProof(() => firstValueFrom(gateway.resumeWithPin(pin)));
+				},
+
+				async resumeWithPassword(password: string): Promise<boolean> {
+					return resumeWithProof(() => firstValueFrom(gateway.resumeWithPassword(password)));
+				},
+
+				/**
+				 * Starts recovery. Resolves true whether or not the account exists — the API's
+				 * answer is generic by design, and branching here would rebuild the
+				 * enumeration oracle it removes.
+				 */
+				async requestPasswordReset(identifier: string): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.requestPasswordReset(identifier));
+						patchState(store, { pending: false });
+						return true;
+					} catch {
+						patchState(store, { pending: false, error: ERROR_KEYS.generic });
+						return false;
+					}
+				},
+
+				async resetPassword(input: { token: string; newPassword: string }): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.resetPassword(input));
+						// The server revoked every admin session and suspended PIN use, so this
+						// browser is signed out by definition; local state must follow rather
+						// than linger and look authenticated.
+						applyAnonymous();
+						return true;
+					} catch {
+						patchState(store, { pending: false, error: ERROR_KEYS.resetToken });
+						return false;
+					}
+				},
+
+				async logout(): Promise<void> {
+					try {
+						await firstValueFrom(gateway.logout());
+					} finally {
+						// Clear locally even if the call failed: leaving a back office looking
+						// signed-in after the operator asked to leave is the worse outcome.
+						applyAnonymous();
+						void router.navigate(['/auth/login']);
+					}
+				},
+
+				/** Drops local session state after the API reports the session is gone (401). */
+				clear(): void {
 					applyAnonymous();
-					return true;
-				} catch {
-					patchState(store, { pending: false, error: ERROR_KEYS.resetToken });
-					return false;
-				}
-			},
+				},
 
-			async logout(): Promise<void> {
-				try {
-					await firstValueFrom(gateway.logout());
-				} finally {
-					// Clear locally even if the call failed: leaving a back office looking
-					// signed-in after the operator asked to leave is the worse outcome.
-					applyAnonymous();
-					void router.navigate(['/auth/login']);
-				}
-			},
-
-			/** Drops local session state after the API reports the session is gone (401). */
-			clear(): void {
-				applyAnonymous();
-			},
-
-			clearError(): void {
-				patchState(store, { error: null });
-			},
-		};
-	}),
+				clearError(): void {
+					patchState(store, { error: null });
+				},
+			};
+		},
+	),
 );

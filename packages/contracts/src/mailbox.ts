@@ -434,7 +434,8 @@ export const InboxMailboxSummary = z.object({
 	rights: z.array(MailboxRight).default(['read']),
 	/** `rights` includes `send`; kept for purchase-order sending, which reads only this. */
 	canSend: z.boolean(),
-	unread: z.number().int().nonnegative(),
+	/** Unread conversations in the Inbox; null when Gmail did not answer, never a made-up 0. */
+	unread: z.number().int().nonnegative().nullable(),
 	sendAs: z.array(MailboxSendAs),
 });
 export type InboxMailboxSummary = z.infer<typeof InboxMailboxSummary>;

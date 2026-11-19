@@ -108,6 +108,13 @@
 							{{ 'inbox_folder_' + entry.id | transloco }} @if (entry.id === 'inbox' && mailbox()?.unread)
 							{
 							<span class="badge bg-danger ms-1">{{ mailbox()?.unread }}</span>
+							} @else if (entry.id === 'inbox' && mailbox()?.unread === null) {
+							<span
+								class="badge bg-light text-dark ms-1"
+								[title]="'inbox_unread_unknown' | transloco"
+							>
+								—
+							</span>
 							}
 						</a>
 					</li>

@@ -393,19 +393,19 @@ describe('InboxService', () => {
 		const summary = await inbox.summary('reader');
 		expect(summary.map((row) => [row.address, row.status, row.unread, row.sendAs.length])).toEqual([
 			['care@shop.test', 'connected', 3, 0],
-			['lost@shop.test', 'needs_reconnect', 0, 0],
-			['off@shop.test', 'disconnected', 0, 0],
+			['lost@shop.test', 'needs_reconnect', null, 0],
+			['off@shop.test', 'disconnected', null, 0],
 		]);
 		expect(w.boxes.get('care')?.lastSyncAt).not.toBeNull();
 		expect((await inbox.summary('sender'))[0]?.sendAs).toHaveLength(2);
 		expect(await inbox.summary('nobody')).toEqual([]);
 	});
 
-	it('shows an unreachable mailbox with 0 unread, and one Google withdrew as needing reconnection', async () => {
+	it('shows an unreachable mailbox with an unknown count, and one Google withdrew as needing reconnection', async () => {
 		gmail.unreadCount.mockRejectedValueOnce(new Error('timeout'));
-		expect((await inbox.summary('reader'))[0]).toMatchObject({ status: 'connected', unread: 0 });
+		expect((await inbox.summary('reader'))[0]).toMatchObject({ status: 'connected', unread: null });
 		gmail.unreadCount.mockRejectedValueOnce(new MailboxAccessRevoked('care@shop.test'));
-		expect((await inbox.summary('reader'))[0]).toMatchObject({ status: 'needs_reconnect', unread: 0 });
+		expect((await inbox.summary('reader'))[0]).toMatchObject({ status: 'needs_reconnect', unread: null });
 	});
 
 	it('reads folders, conversations and attachments for anyone with access', async () => {

@@ -45,7 +45,7 @@ export class Content {
 		this.menuStore.loadBadges();
 		this.navServices.sidebarLoading = false;
 		effect(() => {
-			const unread = (this.inbox.data() ?? []).reduce((total, mailbox) => total + mailbox.unread, 0);
+			const unread = (this.inbox.data() ?? []).reduce((total, mailbox) => total + (mailbox.unread ?? 0), 0);
 			// The menu is read and written inside setBadge; untracked keeps that from re-running this.
 			untracked(() => this.menuStore.setBadge('/inbox', unread));
 		});

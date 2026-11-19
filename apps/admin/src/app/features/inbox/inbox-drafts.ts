@@ -1,3 +1,5 @@
+import { DRAFT_STORE_PREFIX } from '@core/mailboxes/mailbox.gateway';
+
 import type { InboxMessage, InboxSendRequest, InboxThread, MailboxSendAs } from '@saha-textile/contracts';
 
 /**
@@ -212,7 +214,7 @@ export function mailboxKey(address: string): string {
  * Unsent replies are kept in this browser tab until sent or discarded (review T6), one per
  * mailbox, conversation and kind of draft. Attached files cannot be kept and are picked again.
  */
-const DRAFT_PREFIX = 'inbox.draft.';
+const DRAFT_PREFIX = DRAFT_STORE_PREFIX;
 
 export function draftKey(mailboxId: string, threadId: string | null, mode: DraftMode): string {
 	return `${DRAFT_PREFIX}${mailboxId}:${threadId ?? 'new'}:${mode}`;

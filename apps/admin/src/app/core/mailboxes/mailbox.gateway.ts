@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { type QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, Observable } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
@@ -34,6 +34,29 @@ export interface MailboxesOverview {
 }
 
 export const MAILBOXES_KEY = ['mailboxes'] as const;
+/** Where the Inbox keeps unsent text in this tab, one key per mailbox, conversation and kind. */
+export const DRAFT_STORE_PREFIX = 'inbox.draft.';
+
+/**
+ * Forgets every mailbox list, conversation and unsent draft this browser holds (S1): on sign-out,
+ * when the session ends, and when another admin signs in here, so nobody sees the last person's mail.
+ */
+export function forgetMailboxData(
+	client: Pick<QueryClient, 'removeQueries' | 'cancelQueries'>,
+	storage?: Storage | null,
+) {
+	void client.cancelQueries({ queryKey: INBOX_KEY });
+	client.removeQueries({ queryKey: INBOX_KEY });
+	client.removeQueries({ queryKey: MAILBOXES_KEY });
+	const store = storage === undefined ? (typeof sessionStorage === 'undefined' ? null : sessionStorage) : storage;
+	if (!store) return;
+	try {
+		const keys = Array.from({ length: store.length }, (_, index) => store.key(index) ?? '');
+		keys.filter((key) => key.startsWith(DRAFT_STORE_PREFIX)).forEach((key) => store.removeItem(key));
+	} catch {
+		// A blocked store holds nothing to forget.
+	}
+}
 export const INBOX_KEY = ['inbox'] as const;
 /** How often the Inbox asks for unread counts: new mail shows within a minute, with no Gmail push. */
 export const INBOX_REFRESH_MS = 60_000;

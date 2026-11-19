@@ -113,7 +113,7 @@ export class InboxService {
 					canSend,
 					sendAs: canSend ? mailbox.sendAs : [],
 				};
-				if (mailbox.status !== 'connected') return { ...base, status: mailbox.status, unread: 0 };
+				if (mailbox.status !== 'connected') return { ...base, status: mailbox.status, unread: null };
 				try {
 					const opened = await this.credentials(mailbox);
 					const unread = await this.books.guard(mailbox, () => this.gmail.unreadCount(opened.credentials));
@@ -124,10 +124,10 @@ export class InboxService {
 					}
 					return { ...base, status: 'connected', unread };
 				} catch (error) {
-					// One unreachable mailbox must not hide the others: it shows 0 and, when Google
-					// withdrew access, that it needs reconnecting.
+					// One unreachable mailbox must not hide the others: its count is unknown (not 0) and,
+					// when Google withdrew access, it says it needs reconnecting.
 					const status = error instanceof ConflictException ? 'needs_reconnect' : mailbox.status;
-					return { ...base, status, unread: 0 };
+					return { ...base, status, unread: null };
 				}
 			}),
 		);

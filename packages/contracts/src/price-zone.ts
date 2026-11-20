@@ -7,57 +7,178 @@ import { Id, IsoDateTime } from './common';
  *
  * Every business with the customer role has exactly one zone: its buyer level. RETAIL is a system
  * zone with no rules that can't be deleted; a RETAIL business pays normal shop pricing, the same as
- * a shop customer, sale events included. Admins add more zones. Each holds a price list built like
- * a sale event: an all-products rule, category rules and product exceptions picked from a list.
- * A product exception beats a category rule, which beats the all-products rule.
+ * a shop customer, sale events included. Zones apply only to admin orders for businesses; they never
+ * change shop prices. An order keeps the zone, its version and the rule that priced each line.
  *
- * Zones apply only to admin orders for businesses; they never change shop prices. An order keeps
- * the zone, its version and the rule that priced each line.
- *
- * Still open with the owner (`pending-decisions.mdx` § DEC-B2B-ZONES): a shop sale against the zone
- * price, GST inside or on top, further rule kinds, two categories with different rules, coupons on
- * zone lines. Each is a named setting below with no value chosen on the owner's behalf; a zone that
- * needs an unchosen setting can't go live, and a line that meets one says which setting is missing.
+ * Owner's answers (2026-11-20): each owner writes the zone's rules in a rule builder with conditions
+ * and variables (the shipping rule builder's blocks); zone prices include GST; tiers stay fixed
+ * (product exceptions > category rules > all-products rules) and within a tier the first rule that
+ * matches wins, in the order the owner drags them into; a product no rule prices shows "Price not set
+ * for this zone". Coupons apply to zone prices only when the coupon says so.
  */
 
 export const RETAIL_ZONE_ID = 'zone_retail';
 export const RETAIL_ZONE_CODE = 'RETAIL';
 
-/** How a zone rule prices a piece. More kinds may follow (open question 3). */
-export const ZoneRuleAdjustment = z.discriminatedUnion('kind', [
-	/** An absolute price in whole rupees for each piece (or each metre for fabric by the metre). */
-	z.object({ kind: z.literal('flatPrice'), amountINR: z.number().int().nonnegative().max(100_000_000) }),
-	/** A percentage less than the retail price. */
-	z.object({ kind: z.literal('percentOffRetail'), percent: z.number().finite().gt(0).max(100) }),
+const RuleId = z.string().min(1).max(60);
+const Rupees = z.number().finite().nonnegative().max(100_000_000);
+
+/** The facts a zone rule can look at, for one line of a business order. */
+export const ZoneField = z.enum([
+	/** The piece's regular selling price, never touched by sales. */
+	'line.regularSellingINR',
+	/** The current sale price; empty when no sale is live. */
+	'line.currentSaleINR',
+	'line.isOnSale',
+	'line.mrpINR',
+	/** Purchase cost (seeing it needs the cost permission; a rule may still use it). */
+	'line.purchaseCostINR',
+	'line.quantity',
+	/** Fabric sold by the metre: the cut's length in metres. */
+	'line.metres',
+	'line.productId',
+	'line.categoryIds',
+	/** The value of the goods on the whole order (order-value breaks). */
+	'order.goodsINR',
 ]);
-export type ZoneRuleAdjustment = z.infer<typeof ZoneRuleAdjustment>;
+export type ZoneField = z.infer<typeof ZoneField>;
 
-/** One product picked out of a category rule: its own adjustment, or no price in this zone. */
-export const ZoneProductException = z.object({
-	productId: Id,
-	/** `own`: the product's own adjustment. `noPrice`: the product isn't sold in this zone. */
-	mode: z.enum(['own', 'noPrice']),
-	adjustment: ZoneRuleAdjustment.nullable().default(null),
-	/** A flat price per SKU, for a product with several price rows (`flatPrice` only). */
-	skuPrices: z.record(z.string(), z.number().int().nonnegative()).default({}),
-});
-export type ZoneProductException = z.infer<typeof ZoneProductException>;
+export const ZoneOperator = z.enum([
+	'is',
+	'isNot',
+	'isOneOf',
+	'moreThan',
+	'atLeast',
+	'lessThan',
+	'atMost',
+	'between',
+	'isEmpty',
+	'isNotEmpty',
+]);
+export type ZoneOperator = z.infer<typeof ZoneOperator>;
 
-export const ZoneCategoryRule = z.object({
-	id: Id,
-	categoryId: Id,
-	includeSubcategories: z.boolean().default(true),
-	adjustment: ZoneRuleAdjustment,
-});
-export type ZoneCategoryRule = z.infer<typeof ZoneCategoryRule>;
+export const ZoneConditionValue = z.union([
+	z.boolean(),
+	z.number().finite(),
+	z.string().max(200),
+	z.array(z.string().max(200)).max(200),
+	z.tuple([z.number().finite(), z.number().finite()]),
+]);
+export type ZoneConditionValue = z.infer<typeof ZoneConditionValue>;
 
-export const ZonePriceList = z.object({
-	/** Applies to every product not covered by a category rule or an exception; null = none. */
-	allProducts: ZoneRuleAdjustment.nullable().default(null),
-	categories: z.array(ZoneCategoryRule).max(200).default([]),
-	products: z.array(ZoneProductException).max(5_000).default([]),
+export const ZoneCondition = z.object({
+	kind: z.literal('condition'),
+	id: RuleId,
+	field: ZoneField,
+	op: ZoneOperator,
+	value: ZoneConditionValue.nullable().default(null),
 });
-export type ZonePriceList = z.infer<typeof ZonePriceList>;
+export type ZoneCondition = z.infer<typeof ZoneCondition>;
+
+export interface ZoneConditionGroup {
+	kind: 'group';
+	id: string;
+	join: 'all' | 'any';
+	items: Array<ZoneCondition | ZoneConditionGroup>;
+}
+export const ZoneConditionGroup: z.ZodType<ZoneConditionGroup> = z.object({
+	kind: z.literal('group'),
+	id: RuleId,
+	join: z.enum(['all', 'any']),
+	items: z.array(z.union([ZoneCondition, z.lazy(() => ZoneConditionGroup)])).max(30),
+});
+
+/** What a percentage or rupee amount is taken from. */
+export const ZoneBase = z.enum([
+	'regularSelling',
+	/** The sale price while a sale is live, otherwise the regular selling price. */
+	'currentSaleOrRegular',
+	'mrp',
+]);
+export type ZoneBase = z.infer<typeof ZoneBase>;
+
+export type ZonePriceFormula =
+	| { kind: 'flatPrice'; amountINR: number; skuPrices: Record<string, number> }
+	| { kind: 'percentOffBase'; base: ZoneBase; percent: number }
+	| { kind: 'amountOffBase'; base: ZoneBase; amountINR: number }
+	| { kind: 'percentAboveCost'; percent: number }
+	| { kind: 'pricePerMetre'; amountINR: number }
+	| { kind: 'quantityBreaks'; breaks: Array<{ minQuantity: number; formula: ZonePriceFormula }> }
+	| { kind: 'orderValueBreaks'; breaks: Array<{ minGoodsINR: number; formula: ZonePriceFormula }> }
+	| { kind: 'lowerOf'; formulas: ZonePriceFormula[] }
+	| { kind: 'higherOf'; formulas: ZonePriceFormula[] }
+	| { kind: 'noPrice' };
+
+/**
+ * How a rule prices a piece (owner: flat price, % less than a base, ₹ less than a base, % above purchase
+ * cost, quantity breaks; plus what a B2B pricing product offers: MRP or the sale price as a base, price
+ * per metre for cut fabric, order-value breaks, the lower or higher of two formulas, no price).
+ */
+export const ZonePriceFormula: z.ZodType<ZonePriceFormula> = z.lazy(() =>
+	z.discriminatedUnion('kind', [
+		z.object({
+			kind: z.literal('flatPrice'),
+			amountINR: Rupees,
+			skuPrices: z.record(z.string(), Rupees).default({}),
+		}),
+		z.object({ kind: z.literal('percentOffBase'), base: ZoneBase, percent: z.number().finite().gt(0).max(100) }),
+		z.object({ kind: z.literal('amountOffBase'), base: ZoneBase, amountINR: Rupees.positive() }),
+		z.object({ kind: z.literal('percentAboveCost'), percent: z.number().finite().min(0).max(1000) }),
+		z.object({ kind: z.literal('pricePerMetre'), amountINR: Rupees.positive() }),
+		z.object({
+			kind: z.literal('quantityBreaks'),
+			breaks: z
+				.array(z.object({ minQuantity: z.number().int().positive(), formula: ZonePriceFormula }))
+				.min(1)
+				.max(20),
+		}),
+		z.object({
+			kind: z.literal('orderValueBreaks'),
+			breaks: z
+				.array(z.object({ minGoodsINR: Rupees, formula: ZonePriceFormula }))
+				.min(1)
+				.max(20),
+		}),
+		z.object({ kind: z.literal('lowerOf'), formulas: z.array(ZonePriceFormula).min(2).max(4) }),
+		z.object({ kind: z.literal('higherOf'), formulas: z.array(ZonePriceFormula).min(2).max(4) }),
+		z.object({ kind: z.literal('noPrice') }),
+	]),
+) as z.ZodType<ZonePriceFormula>;
+
+export const ZoneRounding = z.enum(['none', 'upToTen', 'endingInNine']);
+export type ZoneRounding = z.infer<typeof ZoneRounding>;
+
+/** Which tier a rule sits in, and what it covers. */
+export const ZoneRuleScope = z.discriminatedUnion('tier', [
+	z.object({ tier: z.literal('product'), productIds: z.array(Id).min(1).max(2_000) }),
+	z.object({
+		tier: z.literal('category'),
+		categoryIds: z.array(Id).min(1).max(200),
+		includeSubcategories: z.boolean().default(true),
+	}),
+	z.object({ tier: z.literal('allProducts') }),
+]);
+export type ZoneRuleScope = z.infer<typeof ZoneRuleScope>;
+
+export const ZoneRule = z.object({
+	id: RuleId,
+	/** Admin only, shown in the list and in plain words. */
+	name: z.string().trim().max(80).default(''),
+	enabled: z.boolean().default(true),
+	scope: ZoneRuleScope,
+	/** Only when these hold; null = always. */
+	when: ZoneConditionGroup.nullable().default(null),
+	price: ZonePriceFormula,
+	rounding: ZoneRounding.default('none'),
+	/** Never below / above these, in rupees. */
+	floorINR: Rupees.nullable().default(null),
+	ceilingINR: Rupees.nullable().default(null),
+	/** The line must have at least this many pieces for the rule to apply. */
+	minQuantityPerLine: z.number().int().positive().nullable().default(null),
+	validFrom: IsoDateTime.nullable().default(null),
+	validUntil: IsoDateTime.nullable().default(null),
+});
+export type ZoneRule = z.infer<typeof ZoneRule>;
 
 export const PriceZone = z.object({
 	id: Id,
@@ -72,8 +193,9 @@ export const PriceZone = z.object({
 	system: z.boolean().default(false),
 	/** Draft zones price nothing; a business on a draft zone pays retail until it goes live. */
 	status: z.enum(['draft', 'live', 'archived']).default('draft'),
-	priceList: ZonePriceList.default({ allProducts: null, categories: [], products: [] }),
-	/** Raised on every saved change; the order keeps the version that priced it. */
+	/** In builder order; tiers are fixed, first match wins within a tier. */
+	rules: z.array(ZoneRule).max(300).default([]),
+	/** Raised on every saved change of the rules; the order keeps the version that priced it. */
 	version: z.number().int().positive().default(1),
 	revision: z.number().int().nonnegative().default(0),
 	createdAt: IsoDateTime.optional(),
@@ -86,57 +208,51 @@ export const PriceZoneWrite = z.object({
 	code: PriceZone.shape.code,
 	name: PriceZone.shape.name,
 	description: z.string().trim().max(300).default(''),
-	priceList: ZonePriceList,
+	rules: z.array(ZoneRule).max(300),
 	revision: z.number().int().nonnegative().optional(),
 });
 export type PriceZoneWrite = z.infer<typeof PriceZoneWrite>;
 
-/**
- * The open zone questions as settings. `null` means not chosen yet: a zone that would need the
- * setting can't go live, and the screens say which setting is missing.
- */
-export const ZonePricingSettings = z.object({
-	/** Q1: a zone customer's price for a piece the shop has on sale. */
-	saleMeetsZone: z.enum(['zonePrice', 'salePrice', 'lowerOfTheTwo']).nullable().default(null),
-	/** Q2: whether a zone price already includes GST, like shop prices, or GST is added on top. */
-	gstInZonePrice: z.enum(['included', 'addedOnTop']).nullable().default(null),
-	/** Q4: a product in two categories whose zone rules differ. */
-	categoryClash: z.enum(['lowerPrice', 'higherPrice', 'mainCategory']).nullable().default(null),
-	/** Q5: whether coupons apply to lines priced by a zone. */
-	couponsOnZoneLines: z.enum(['allowed', 'notAllowed']).nullable().default(null),
-	revision: z.number().int().nonnegative().default(0),
-	updatedAt: IsoDateTime.nullable().default(null),
-	updatedBy: z.string().nullable().default(null),
+/** Go live, back to draft, or archive a zone. */
+export const PriceZoneStatusWrite = z.object({
+	status: z.enum(['draft', 'live', 'archived']),
+	revision: z.number().int().nonnegative(),
 });
-export type ZonePricingSettings = z.infer<typeof ZonePricingSettings>;
+export type PriceZoneStatusWrite = z.infer<typeof PriceZoneStatusWrite>;
 
-export const ZonePricingSettingKey = z.enum(['saleMeetsZone', 'gstInZonePrice', 'categoryClash', 'couponsOnZoneLines']);
-export type ZonePricingSettingKey = z.infer<typeof ZonePricingSettingKey>;
+/** Mistakes the builder catches before a zone can go live. */
+export const ZoneRuleProblem = z.enum([
+	'impossible_condition',
+	'breaks_out_of_order',
+	'floor_above_ceiling',
+	'ends_before_start',
+	'value_missing',
+]);
+export type ZoneRuleProblem = z.infer<typeof ZoneRuleProblem>;
 
 /** Which rule priced a line (kept on the order). */
-export const ZoneRuleRef = z.discriminatedUnion('level', [
-	z.object({ level: z.literal('product'), productId: Id }),
-	z.object({ level: z.literal('category'), ruleId: Id, categoryId: Id }),
-	z.object({ level: z.literal('allProducts') }),
-	z.object({ level: z.literal('retail') }),
-]);
+export const ZoneRuleRef = z.object({
+	tier: z.enum(['product', 'category', 'allProducts', 'retail']),
+	ruleId: RuleId.nullable(),
+	ruleName: z.string().default(''),
+});
 export type ZoneRuleRef = z.infer<typeof ZoneRuleRef>;
 
-/** What a zone does to one SKU: a price, no price, or a setting it needs that isn't chosen. */
+/** What a zone does to one SKU: a price (GST included), or no price in this zone. */
 export const ZoneLinePrice = z.discriminatedUnion('kind', [
 	z.object({
 		kind: z.literal('priced'),
 		unitPriceINR: z.number().nonnegative(),
 		retailUnitPriceINR: z.number().nonnegative(),
 		rule: ZoneRuleRef,
-		adjustment: ZoneRuleAdjustment.nullable(),
-		/** True when a shop sale priced the line (RETAIL, or `saleMeetsZone` chose the sale). */
-		fromSale: z.boolean().default(false),
-		gstAddedOnTop: z.boolean().default(false),
+		/** The cost guard: the zone price is below the piece's purchase cost. */
+		belowCost: z.boolean().default(false),
 	}),
 	/** Shown in red as "Price not set for this zone"; the card is greyed and can't be picked. */
-	z.object({ kind: z.literal('noPrice') }),
-	z.object({ kind: z.literal('settingNeeded'), setting: ZonePricingSettingKey }),
+	z.object({
+		kind: z.literal('noPrice'),
+		reason: z.enum(['noRule', 'ruleSaysNoPrice', 'costUnknown']).default('noRule'),
+	}),
 ]);
 export type ZoneLinePrice = z.infer<typeof ZoneLinePrice>;
 
@@ -146,12 +262,6 @@ export const OrderZoneSnapshot = z.object({
 	code: z.string(),
 	name: z.string(),
 	version: z.number().int().positive(),
-	settings: ZonePricingSettings.pick({
-		saleMeetsZone: true,
-		gstInZonePrice: true,
-		categoryClash: true,
-		couponsOnZoneLines: true,
-	}),
 });
 export type OrderZoneSnapshot = z.infer<typeof OrderZoneSnapshot>;
 
@@ -166,18 +276,22 @@ export const AdminZoneRow = PriceZone.pick({
 	updatedAt: true,
 }).extend({
 	businessCount: z.number().int().nonnegative(),
-	categoryRuleCount: z.number().int().nonnegative(),
-	productExceptionCount: z.number().int().nonnegative(),
-	/** Settings this zone needs that aren't chosen yet (it can't go live until they are). */
-	settingsNeeded: z.array(ZonePricingSettingKey),
+	ruleCount: z.number().int().nonnegative(),
+	problems: z.array(z.object({ ruleId: RuleId, problem: ZoneRuleProblem })),
 });
 export type AdminZoneRow = z.infer<typeof AdminZoneRow>;
 
-/** Try it: what a zone does to a handful of products, line by line, in plain words on screen. */
+/** Try it: what a zone's rules do to a handful of products, line by line. */
 export const ZoneTryRequest = z.object({
-	priceList: ZonePriceList,
+	rules: z.array(ZoneRule).max(300),
 	items: z
-		.array(z.object({ productId: Id, variantId: Id.nullable().default(null) }))
+		.array(
+			z.object({
+				productId: Id,
+				variantId: Id.nullable().default(null),
+				quantity: z.number().positive().max(9999).default(1),
+			}),
+		)
 		.min(1)
 		.max(20),
 });
@@ -191,17 +305,9 @@ export const ZoneTryResult = z.object({
 			title: z.string(),
 			sku: z.string(),
 			price: ZoneLinePrice,
+			/** The plain-words trace of how the price was reached. */
+			trace: z.array(z.string()),
 		}),
 	),
 });
 export type ZoneTryResult = z.infer<typeof ZoneTryResult>;
-
-/** Go live, back to draft, or archive a zone. */
-export const PriceZoneStatusWrite = z.object({
-	status: z.enum(['draft', 'live', 'archived']),
-	revision: z.number().int().nonnegative(),
-});
-export type PriceZoneStatusWrite = z.infer<typeof PriceZoneStatusWrite>;
-
-export const ZonePricingSettingsWrite = ZonePricingSettings.omit({ updatedAt: true, updatedBy: true });
-export type ZonePricingSettingsWrite = z.infer<typeof ZonePricingSettingsWrite>;

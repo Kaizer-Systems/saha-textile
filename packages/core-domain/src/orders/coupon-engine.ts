@@ -16,7 +16,8 @@ import type {
  * - order of use: % off, then ₹ off, then free delivery; each on what is left, never below ₹0;
  * - pieces already on sale are left out unless the coupon includes them;
  * - pieces and their stitching only, never delivery (free delivery is its own kind);
- * - zone-priced lines follow the `couponsOnZoneLines` setting (not until it is chosen).
+ * - zone-priced lines take a coupon only when its "Usable on zone prices" switch is on (owner, 2026-11-20;
+ *   off by default).
  */
 
 const round2 = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100;
@@ -42,7 +43,6 @@ export interface CouponContext {
 	usesByThisBuyer: number;
 	usesInAll: number;
 	deliveryINR: number;
-	couponsOnZoneLines: 'allowed' | 'notAllowed' | null;
 }
 
 export interface CouponDefinition extends CouponFields {
@@ -76,17 +76,14 @@ export function couponRefusal(coupon: CouponDefinition, ctx: CouponContext): Cou
 	return null;
 }
 
-function lineReason(coupon: CouponDefinition, line: CouponLine, ctx: CouponContext): CouponLineReason {
+function lineReason(coupon: CouponDefinition, line: CouponLine): CouponLineReason {
 	if (coupon.excludedProductIds.includes(line.productId)) return 'excluded';
 	const scope = coupon.scope;
 	if (scope.kind === 'products' && !scope.productIds.includes(line.productId)) return 'notInScope';
 	if (scope.kind === 'categories' && !line.categoryIds.some((id) => scope.categoryIds.includes(id)))
 		return 'notInScope';
 	if (line.onSale && !coupon.includeSaleItems) return 'onSale';
-	if (line.zonePriced) {
-		if (ctx.couponsOnZoneLines === null) return 'zoneSettingNeeded';
-		if (ctx.couponsOnZoneLines === 'notAllowed') return 'zoneLineNotAllowed';
-	}
+	if (line.zonePriced && !coupon.usableOnZonePrices) return 'zoneLineNotAllowed';
 	return 'applied';
 }
 
@@ -138,8 +135,7 @@ export function applyCoupons(
 	const applied: AppliedCoupon[] = [];
 	let deliveryLeft = contexts.values().next().value?.deliveryINR ?? 0;
 	for (const coupon of ordered) {
-		const ctx = contexts.get(coupon.id) as CouponContext;
-		const reasons = lines.map((line) => ({ line, reason: lineReason(coupon, line, ctx) }));
+		const reasons = lines.map((line) => ({ line, reason: lineReason(coupon, line) }));
 		const eligible = reasons.filter((row) => row.reason === 'applied');
 		const eligibleTotal = round2(eligible.reduce((sum, row) => sum + (remaining.get(row.line.lineId) ?? 0), 0));
 		if (eligibleTotal < coupon.minOrderINR && coupon.kind !== 'freeDelivery') {

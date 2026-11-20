@@ -3,20 +3,16 @@ import { randomUUID } from 'node:crypto';
 import {
 	BadRequestException,
 	ConflictException,
+	ForbiddenException,
 	Inject,
 	Injectable,
 	NotFoundException,
 	Optional,
 } from '@nestjs/common';
+import { PriceZone, RETAIL_ZONE_ID, type AdminZoneRow, type PriceZoneWrite } from '@saha-textile/contracts';
 import {
-	PriceZone,
-	RETAIL_ZONE_ID,
-	ZonePricingSettings,
-	type AdminZoneRow,
-	type PriceZoneWrite,
-} from '@saha-textile/contracts';
-import {
-	settingsZoneNeeds,
+	zoneRuleProblems,
+	zoneRulesReadCost,
 	type AuditLogRepository,
 	type BusinessRepository,
 	type PriceZoneRepository,
@@ -28,9 +24,9 @@ import { auditOrdersChange, refuseStale } from './orders-audit';
 
 /**
  * Customers › Zones (`DEC-B2B-ZONES`, owner 2026-11-20). RETAIL is a system zone: shop pricing, no
- * rules, never edited or deleted. Other zones hold price lists built like sale events. A zone goes
- * live only when every zone setting it needs is chosen (the open questions are settings, never
- * guessed); zones never change shop prices.
+ * rules, never edited or deleted. Other zones hold rules written in the rule builder (tiers fixed,
+ * first match wins within a tier, in the order the owner drags them). A zone goes live only when
+ * the builder finds no mistake in its rules; zones never change shop prices.
  */
 @Injectable()
 export class ZonesService {
@@ -41,7 +37,7 @@ export class ZonesService {
 	) {}
 
 	async list(): Promise<AdminZoneRow[]> {
-		const [zones, settings] = await Promise.all([this.zones.list(), this.zones.getSettings()]);
+		const zones = await this.zones.list();
 		return Promise.all(
 			zones.map(async (zone) => ({
 				id: zone.id,
@@ -52,9 +48,8 @@ export class ZonesService {
 				version: zone.version,
 				updatedAt: zone.updatedAt,
 				businessCount: await this.businesses.countByZone(zone.id),
-				categoryRuleCount: zone.priceList.categories.length,
-				productExceptionCount: zone.priceList.products.length,
-				settingsNeeded: zone.system ? [] : settingsZoneNeeds(zone.priceList, settings),
+				ruleCount: zone.rules.length,
+				problems: zone.system ? [] : zoneRuleProblems(zone.rules),
 			})),
 		);
 	}
@@ -65,7 +60,8 @@ export class ZonesService {
 		return zone;
 	}
 
-	async create(input: PriceZoneWrite, actor: string | null): Promise<PriceZone> {
+	async create(input: PriceZoneWrite, actor: string | null, maySeeCost = false): Promise<PriceZone> {
+		ZonesService.refuseCostRules(input.rules, maySeeCost);
 		const now = new Date().toISOString();
 		const zone = PriceZone.parse({
 			id: `zone_${randomUUID()}`,
@@ -74,7 +70,7 @@ export class ZonesService {
 			description: input.description,
 			system: false,
 			status: 'draft',
-			priceList: input.priceList,
+			rules: input.rules,
 			version: 1,
 			revision: 0,
 			createdAt: now,
@@ -86,7 +82,7 @@ export class ZonesService {
 		return saved;
 	}
 
-	async update(id: string, input: PriceZoneWrite, actor: string | null): Promise<PriceZone> {
+	async update(id: string, input: PriceZoneWrite, actor: string | null, maySeeCost = false): Promise<PriceZone> {
 		const current = await this.get(id);
 		if (current.system)
 			throw new ConflictException(
@@ -96,14 +92,17 @@ export class ZonesService {
 			throw new BadRequestException(
 				codedRefusal('revision_required', 'Send the revision you edited', 'revision'),
 			);
-		const listChanged = JSON.stringify(current.priceList) !== JSON.stringify(input.priceList);
+		const rulesChanged = JSON.stringify(current.rules) !== JSON.stringify(input.rules);
+		if (rulesChanged) ZonesService.refuseCostRules(input.rules, maySeeCost);
+		const problems = zoneRuleProblems(input.rules);
+		if (current.status === 'live' && problems.length) throw this.problemsRefusal(problems);
 		const next = PriceZone.parse({
 			...current,
 			code: input.code,
 			name: input.name,
 			description: input.description,
-			priceList: input.priceList,
-			version: listChanged ? current.version + 1 : current.version,
+			rules: input.rules,
+			version: rulesChanged ? current.version + 1 : current.version,
 			updatedAt: new Date().toISOString(),
 			updatedBy: actor,
 		});
@@ -112,11 +111,11 @@ export class ZonesService {
 			() => this.uniqueCode(() => this.zones.save(next, revision), next.code),
 			'Someone else saved this zone first',
 		);
-		await auditOrdersChange(this.audit, actor, 'zone.update', 'zone', id, { version: saved.version, listChanged });
+		await auditOrdersChange(this.audit, actor, 'zone.update', 'zone', id, { version: saved.version, rulesChanged });
 		return saved;
 	}
 
-	/** Live: business orders on this zone are priced by it. Refused while a needed setting is unchosen. */
+	/** Live: business orders on this zone are priced by it. Refused while its rules have mistakes. */
 	async setStatus(
 		id: string,
 		status: 'draft' | 'live' | 'archived',
@@ -126,14 +125,8 @@ export class ZonesService {
 		const current = await this.get(id);
 		if (current.system) throw new ConflictException(codedRefusal('zone_system', 'RETAIL is always live', 'id'));
 		if (status === 'live') {
-			const needed = settingsZoneNeeds(current.priceList, await this.zones.getSettings());
-			if (needed.length) {
-				throw new ConflictException(
-					codedRefusal('zone_settings_needed', 'Choose the zone settings first', 'status', {
-						settings: needed.join(','),
-					}),
-				);
-			}
+			const problems = zoneRuleProblems(current.rules);
+			if (problems.length) throw this.problemsRefusal(problems);
 		}
 		const saved = await refuseStale(
 			() =>
@@ -160,23 +153,22 @@ export class ZonesService {
 		await auditOrdersChange(this.audit, actor, 'zone.delete', 'zone', id, { code: current.code });
 	}
 
-	getSettings(): Promise<ZonePricingSettings> {
-		return this.zones.getSettings();
+	/** Rules that read the purchase cost need the cost permission to write or try (P8). */
+	static refuseCostRules(rules: PriceZoneWrite['rules'], maySeeCost: boolean): void {
+		if (!maySeeCost && zoneRulesReadCost(rules)) {
+			throw new ForbiddenException(
+				codedRefusal('cost_permission_needed', 'Rules on the purchase cost need the cost permission', 'rules'),
+			);
+		}
 	}
 
-	async saveSettings(input: ZonePricingSettings, actor: string | null): Promise<ZonePricingSettings> {
-		const next = ZonePricingSettings.parse({ ...input, updatedAt: new Date().toISOString(), updatedBy: actor });
-		const saved = await refuseStale(
-			() => this.zones.saveSettings(next, input.revision),
-			'Someone else changed the zone settings first',
+	private problemsRefusal(problems: ReturnType<typeof zoneRuleProblems>): ConflictException {
+		return new ConflictException(
+			codedRefusal('zone_rule_problems', 'Fix the mistakes the builder names first', 'rules', {
+				rules: [...new Set(problems.map((row) => row.ruleId))].join(','),
+				problems: [...new Set(problems.map((row) => row.problem))].join(','),
+			}),
 		);
-		await auditOrdersChange(this.audit, actor, 'zone.settings', 'zone', null, {
-			saleMeetsZone: saved.saleMeetsZone,
-			gstInZonePrice: saved.gstInZonePrice,
-			categoryClash: saved.categoryClash,
-			couponsOnZoneLines: saved.couponsOnZoneLines,
-		});
-		return saved;
 	}
 
 	private async uniqueCode<T>(work: () => Promise<T>, code: string): Promise<T> {

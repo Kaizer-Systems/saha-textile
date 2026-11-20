@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { PhoneNumber, PostalAddressFields } from './address-book';
 import { AppliedCoupon } from './coupon';
 import { I18nString, Id, IsoDateTime, LocaleCode, PriceINR } from './common';
-import { OrderZoneSnapshot, ZoneRuleAdjustment, ZoneRuleRef } from './price-zone';
+import { OrderZoneSnapshot, ZoneRuleRef } from './price-zone';
 
 /**
  * Orders (orders and checkout brief v2.1, approved 2026-11-20; `DEC-ORDER-SNAPSHOT` A, 2026-11-15).
@@ -98,9 +98,8 @@ export const OrderLinePricing = z.object({
 	/** The sale price when a sale event priced the line; null otherwise. */
 	saleUnitINR: PriceINR.nullable().default(null),
 	saleEventId: Id.nullable().default(null),
-	/** Business orders: the zone rule that priced the line. */
+	/** Business orders: the zone rule that priced the line (tier, rule id and name). */
 	zoneRule: ZoneRuleRef.nullable().default(null),
-	zoneAdjustment: ZoneRuleAdjustment.nullable().default(null),
 	/** Whether the line counts as discounted for shipping rules (selling price below MRP; coupons never count). */
 	discounted: z.boolean().default(false),
 });

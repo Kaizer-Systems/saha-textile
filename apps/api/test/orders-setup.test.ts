@@ -1,7 +1,7 @@
 import {
 	DEFAULT_DOCUMENT_NUMBERING,
 	PriceZone,
-	ZonePricingSettings,
+	ZoneRule,
 	type Coupon,
 	type DocumentNumberingSettings,
 } from '@saha-textile/contracts';
@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { BusinessesService } from '../src/orders-setup/businesses.service';
 import { CouponsService } from '../src/orders-setup/coupons.service';
 import { OrderSettingsService } from '../src/orders-setup/order-settings.service';
+import { ZonePricingService } from '../src/orders-setup/zone-pricing.service';
 import { ZonesService } from '../src/orders-setup/zones.service';
 
 const coupon = (id: string, enabled = true): Coupon =>
@@ -62,17 +63,29 @@ describe('coupons: bulk actions (owner, 2026-11-20)', () => {
 });
 
 const retail = PriceZone.parse({ id: 'zone_retail', code: 'RETAIL', name: 'Retail', system: true, status: 'live' });
-const wholesale = PriceZone.parse({
-	id: 'zone_w',
-	code: 'WHOLESALE',
-	name: 'Wholesale',
-	priceList: { allProducts: { kind: 'percentOffRetail', percent: 20 }, categories: [], products: [] },
+const twentyOff = ZoneRule.parse({
+	id: 'r1',
+	scope: { tier: 'allProducts' },
+	price: { kind: 'percentOffBase', base: 'regularSelling', percent: 20 },
 });
+const costRule = ZoneRule.parse({
+	id: 'r2',
+	scope: { tier: 'allProducts' },
+	price: { kind: 'percentAboveCost', percent: 30 },
+});
+const broken = ZoneRule.parse({
+	id: 'r3',
+	scope: { tier: 'allProducts' },
+	price: { kind: 'noPrice' },
+	floorINR: 900,
+	ceilingINR: 500,
+});
+const wholesale = PriceZone.parse({ id: 'zone_w', code: 'WHOLESALE', name: 'Wholesale', rules: [twentyOff] });
 
-function zoneService(settings = ZonePricingSettings.parse({}), businesses = 0) {
+function zoneService(businesses = 0, stored: PriceZone = wholesale) {
 	const zones = new Map([
 		[retail.id, retail],
-		[wholesale.id, wholesale],
+		[stored.id, stored],
 	]);
 	const repo = {
 		list: async () => [...zones.values()],
@@ -82,40 +95,157 @@ function zoneService(settings = ZonePricingSettings.parse({}), businesses = 0) {
 			return zone;
 		},
 		delete: async (id: string) => void zones.delete(id),
-		getSettings: async () => settings,
 	};
 	return new ZonesService(repo as never, { countByZone: async () => businesses } as never);
 }
 
-describe('zones (DEC-B2B-ZONES)', () => {
+describe('zones (DEC-B2B-ZONES): rules from the builder', () => {
 	it('keeps RETAIL out of editing and deleting', async () => {
 		const service = zoneService();
 		await expect(
 			service.update(
 				'zone_retail',
-				{ code: 'RETAIL', name: 'x', description: '', priceList: wholesale.priceList, revision: 0 },
+				{ code: 'RETAIL', name: 'x', description: '', rules: [twentyOff], revision: 0 },
 				'adm',
 			),
 		).rejects.toThrow();
 		await expect(service.remove('zone_retail', 'adm')).rejects.toThrow();
 	});
 
-	it('refuses Go live while a zone setting is unchosen, and allows it once chosen', async () => {
-		await expect(zoneService().setStatus('zone_w', 'live', 0, 'adm')).rejects.toThrow();
-		const chosen = ZonePricingSettings.parse({ saleMeetsZone: 'lowerOfTheTwo', gstInZonePrice: 'included' });
-		await expect(zoneService(chosen).setStatus('zone_w', 'live', 0, 'adm')).resolves.toMatchObject({
-			status: 'live',
+	it('goes live only when the builder finds no mistake in the rules', async () => {
+		await expect(zoneService().setStatus('zone_w', 'live', 0, 'adm')).resolves.toMatchObject({ status: 'live' });
+		const bad = PriceZone.parse({ ...wholesale, rules: [broken] });
+		await expect(zoneService(0, bad).setStatus('zone_w', 'live', 0, 'adm')).rejects.toMatchObject({
+			response: { issues: [{ code: 'zone_rule_problems', params: { rules: 'r3' } }] },
 		});
 	});
 
-	it('lists the settings each zone still needs, none for RETAIL', async () => {
-		const rows = await zoneService().list();
-		expect(rows.find((row) => row.id === 'zone_retail')?.settingsNeeded).toEqual([]);
-		expect(rows.find((row) => row.id === 'zone_w')?.settingsNeeded).toEqual(['gstInZonePrice', 'saleMeetsZone']);
+	it('raises the version when the rules change, not for a new name', async () => {
+		const service = zoneService();
+		const renamed = await service.update(
+			'zone_w',
+			{ code: 'WHOLESALE', name: 'Wholesale A', description: '', rules: [twentyOff], revision: 0 },
+			'adm',
+		);
+		expect(renamed.version).toBe(1);
+		const changed = await service.update(
+			'zone_w',
+			{
+				code: 'WHOLESALE',
+				name: 'Wholesale A',
+				description: '',
+				rules: [{ ...twentyOff, rounding: 'upToTen' }],
+				revision: 0,
+			},
+			'adm',
+		);
+		expect(changed.version).toBe(2);
+	});
+
+	it('needs the cost permission for rules that read the purchase cost', async () => {
+		const write = { code: 'COST', name: 'Cost plus', description: '', rules: [costRule] };
+		await expect(zoneService().create(write, 'adm', false)).rejects.toMatchObject({
+			response: { issues: [{ code: 'cost_permission_needed' }] },
+		});
+		await expect(zoneService().create(write, 'adm', true)).resolves.toMatchObject({ status: 'draft' });
+	});
+
+	it('lists rule counts and mistakes, none for RETAIL', async () => {
+		const rows = await zoneService(0, PriceZone.parse({ ...wholesale, rules: [twentyOff, broken] })).list();
+		expect(rows.find((row) => row.id === 'zone_retail')).toMatchObject({ ruleCount: 0, problems: [] });
+		expect(rows.find((row) => row.id === 'zone_w')).toMatchObject({
+			ruleCount: 2,
+			problems: [{ ruleId: 'r3', problem: 'floor_above_ceiling' }],
+		});
 	});
 
 	it('refuses deleting a zone businesses use', async () => {
-		await expect(zoneService(ZonePricingSettings.parse({}), 2).remove('zone_w', 'adm')).rejects.toThrow();
+		await expect(zoneService(2).remove('zone_w', 'adm')).rejects.toThrow();
+	});
+});
+
+describe('zone Try it and the facts rules read', () => {
+	const product = (id: string, soldBy: 'piece' | 'metre') => ({
+		id,
+		title: { en: id === 'p_saree' ? 'Kanjivaram saree' : 'Cotton fabric' },
+		categoryIds: ['cat_kanjivaram'],
+		soldBy,
+	});
+	const variant = (productId: string, sku: string, priceINR: number, salePriceINR: number | null) => ({
+		id: `v_${sku}`,
+		productId,
+		sku,
+		isBaseVariant: true,
+		priceINR,
+		compareAtPriceINR: 12_000,
+		salePriceINR,
+	});
+	const rows = new Map([
+		['p_saree', [variant('p_saree', 'SAR-1', 12_000, 10_000)]],
+		['p_cloth', [variant('p_cloth', 'CLO-1', 500, null)]],
+	]);
+	const service = new ZonePricingService(
+		{ findById: async (id: string) => product(id, id === 'p_saree' ? 'piece' : 'metre') } as never,
+		{ listForProduct: async (id: string) => rows.get(id) ?? [] } as never,
+		{
+			tree: async () => [
+				{ id: 'cat_silk', path: ['cat_silk'], ancestors: [] },
+				{ id: 'cat_kanjivaram', path: ['cat_silk', 'cat_kanjivaram'], ancestors: ['cat_silk'] },
+			],
+		} as never,
+		{
+			priceFor: (row: { sku: string }) =>
+				row.sku === 'SAR-1' ? { saleINR: 8_500, eventId: 'e1', endsAt: 'x' } : null,
+		} as never,
+		{
+			listOpenLayers: async (variantId: string) =>
+				variantId === 'v_CLO-1'
+					? [{ unitCostINR: 30, quantityRemaining: 100 }]
+					: [{ unitCostINR: 6_000, quantityRemaining: 2 }],
+		} as never,
+	);
+
+	it('reads the regular price from the stored row and the sale price from the sale book', async () => {
+		const [saree, cloth] = await service.factsFor([
+			{ productId: 'p_saree', variantId: null, quantity: 2 },
+			{ productId: 'p_cloth', variantId: null, quantity: 2.5 },
+		]);
+		expect(saree?.facts).toMatchObject({
+			regularSellingINR: 10_000,
+			currentSaleINR: 8_500,
+			mrpINR: 12_000,
+			purchaseCostINR: 6_000,
+			categoryPaths: [['cat_kanjivaram', 'cat_silk']],
+			metres: null,
+		});
+		expect(cloth?.facts).toMatchObject({
+			regularSellingINR: 500,
+			currentSaleINR: null,
+			purchaseCostINR: 300,
+			metres: 2.5,
+		});
+		expect(saree?.facts.orderGoodsINR).toBe(8_500 * 2 + 500 * 2.5);
+	});
+
+	it('tries unsaved rules line by line, with the trace', async () => {
+		const result = await service.tryRules({
+			rules: [
+				ZoneRule.parse({
+					id: 'cat',
+					scope: { tier: 'category', categoryIds: ['cat_silk'] },
+					price: { kind: 'percentOffBase', base: 'regularSelling', percent: 20 },
+				}),
+			],
+			items: [
+				{ productId: 'p_saree', variantId: null, quantity: 1 },
+				{ productId: 'p_cloth', variantId: null, quantity: 1 },
+			],
+		});
+		expect(result.lines[0]).toMatchObject({
+			title: 'Kanjivaram saree',
+			price: { kind: 'priced', unitPriceINR: 8_000, retailUnitPriceINR: 8_500 },
+		});
+		expect(result.lines[0]?.trace).toEqual(['tier:category', 'rule:cat', 'formula:percentOffBase']);
 	});
 });
 

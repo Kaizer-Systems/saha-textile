@@ -76,7 +76,6 @@ export async function seedRetailZone(now = new Date().toISOString()): Promise<bo
 		description: 'Normal shop pricing, sale events included. Every business starts here.',
 		system: true,
 		status: 'live',
-		priceList: { allProducts: null, categories: [], products: [] },
 		version: 1,
 		revision: 0,
 		createdAt: now,

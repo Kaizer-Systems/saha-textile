@@ -136,7 +136,7 @@ export const AdminCartLine = z.object({
 	lineTotal: z.number().nonnegative(),
 	/** Business orders: how the zone priced the line. */
 	zonePrice: ZoneLinePrice.nullable(),
-	problem: z.enum(['out_of_stock', 'limited', 'unavailable', 'noZonePrice', 'zoneSettingNeeded']).nullable(),
+	problem: z.enum(['out_of_stock', 'limited', 'unavailable', 'noZonePrice']).nullable(),
 });
 export type AdminCartLine = z.infer<typeof AdminCartLine>;
 

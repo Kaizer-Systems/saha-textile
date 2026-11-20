@@ -30,7 +30,7 @@ import {
 	PriceZoneWrite,
 	SetOffSettingWrite,
 	SetOffWrite,
-	ZonePricingSettingsWrite,
+	ZoneTryRequest,
 } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
@@ -41,9 +41,12 @@ import { API_TAGS } from '../openapi-tags';
 import { BusinessesService } from './businesses.service';
 import { CouponsService } from './coupons.service';
 import { OrderSettingsService } from './order-settings.service';
+import { ZonePricingService } from './zone-pricing.service';
 import { ZonesService } from './zones.service';
 
 const actor = (principal: AuthenticatedPrincipal | undefined) => principal?.userId ?? null;
+const has = (principal: AuthenticatedPrincipal | undefined, code: string) =>
+	principal?.permissions?.includes(code) ?? false;
 
 /** Admin › Coupons (brief cp01–cp05; owner 2026-11-20: ticks, bulk Delete / Turn on / Turn off, row switch). */
 @ApiTags(API_TAGS.orders)
@@ -134,39 +137,41 @@ export class AdminCouponsController {
 @Audience('admin')
 @Controller('admin/zones')
 export class AdminZonesController {
-	constructor(private readonly zones: ZonesService) {}
+	constructor(
+		private readonly zones: ZonesService,
+		private readonly pricing: ZonePricingService,
+	) {}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('price_zone.index')
-	@ApiOperation({ operationId: 'listZones', summary: 'Zones with their businesses and the settings they still need' })
+	@ApiOperation({
+		operationId: 'listZones',
+		summary: 'Zones with their businesses, rule counts and any mistakes in their rules',
+	})
 	list() {
 		return this.zones.list();
 	}
 
-	@Get('settings')
-	@Header('Cache-Control', 'no-store')
-	@RequirePermissions('price_zone.index')
-	@ApiOperation({ operationId: 'getZoneSettings', summary: 'The zone settings (the open zone questions)' })
-	settings() {
-		return this.zones.getSettings();
-	}
-
-	@Post('settings')
+	@Post('try')
 	@HttpCode(200)
-	@RequirePermissions('price_zone.edit')
-	@ApiOperation({ operationId: 'saveZoneSettings', summary: 'Choose the zone settings' })
-	saveSettings(
-		@Body(new ZodValidationPipe(ZonePricingSettingsWrite)) body: ZonePricingSettingsWrite,
+	@RequirePermissions('price_zone.index')
+	@ApiOperation({
+		operationId: 'tryZoneRules',
+		summary: 'Try it: what these rules (saved or not) do to real products, line by line',
+	})
+	tryRules(
+		@Body(new ZodValidationPipe(ZoneTryRequest)) body: ZoneTryRequest,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
-		return this.zones.saveSettings({ ...body, updatedAt: null, updatedBy: null }, actor(principal));
+		ZonesService.refuseCostRules(body.rules, has(principal, 'stock.cost'));
+		return this.pricing.tryRules(body);
 	}
 
 	@Get(':id')
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('price_zone.index')
-	@ApiOperation({ operationId: 'getZone', summary: 'One zone and its price list' })
+	@ApiOperation({ operationId: 'getZone', summary: 'One zone and its rules' })
 	get(@Param('id') id: string) {
 		return this.zones.get(id);
 	}
@@ -178,21 +183,21 @@ export class AdminZonesController {
 		@Body(new ZodValidationPipe(PriceZoneWrite)) body: PriceZoneWrite,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
-		return this.zones.create(body, actor(principal));
+		return this.zones.create(body, actor(principal), has(principal, 'stock.cost'));
 	}
 
 	@Put(':id')
 	@RequirePermissions('price_zone.edit')
 	@ApiOperation({
 		operationId: 'updateZone',
-		summary: 'Save a zone’s price list (a new version when the list changes)',
+		summary: 'Save a zone’s rules (a new version when the rules change)',
 	})
 	update(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(PriceZoneWrite)) body: PriceZoneWrite,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
-		return this.zones.update(id, body, actor(principal));
+		return this.zones.update(id, body, actor(principal), has(principal, 'stock.cost'));
 	}
 
 	@Post(':id/status')
@@ -264,9 +269,6 @@ export class AdminOrderSettingsController {
 		return this.settings.saveNumbering(body, actor(principal));
 	}
 }
-
-const has = (principal: AuthenticatedPrincipal | undefined, code: string) =>
-	principal?.permissions?.includes(code) ?? false;
 
 /** Customers › Businesses (brief bz01–bz06, so01–so04): customers and suppliers in one record, two accounts. */
 @ApiTags(API_TAGS.orders)

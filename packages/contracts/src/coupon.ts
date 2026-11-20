@@ -73,6 +73,8 @@ export const CouponFields = z.object({
 	validUntil: IsoDateTime.nullable().default(null),
 	/** Combines with other coupons that also combine (the stacking switch). */
 	combines: z.boolean().default(false),
+	/** "Usable on zone prices" (owner, 2026-11-20): off by default; OD4 applies on top. */
+	usableOnZonePrices: z.boolean().default(false),
 });
 export type CouponFields = z.infer<typeof CouponFields>;
 
@@ -171,7 +173,6 @@ export const CouponLineReason = z.enum([
 	'excluded',
 	'nothingLeft',
 	'zoneLineNotAllowed',
-	'zoneSettingNeeded',
 ]);
 export type CouponLineReason = z.infer<typeof CouponLineReason>;
 

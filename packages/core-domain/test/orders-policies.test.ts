@@ -1,9 +1,4 @@
-import type {
-	DocumentNumberingSettings,
-	OrderBalance,
-	ZonePriceList,
-	ZonePricingSettings,
-} from '@saha-textile/contracts';
+import type { DocumentNumberingSettings, OrderBalance, ZoneRule } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -32,15 +27,18 @@ import {
 	renderSequencedOrderNumber,
 	renderSeriesNumber,
 	seriesFormatProblems,
-	settingsZoneNeeds,
 	statusAfterClose,
 	warnIndiaBillingForeignCurrency,
+	roundZonePrice,
 	zonePriceFor,
+	zoneRuleProblems,
+	zoneRulesReadCost,
 	type CouponContext,
 	type CouponDefinition,
 	type CouponLine,
 	type StatusMachineOrder,
 	type StatusMachineSettings,
+	type ZoneLineFacts,
 } from '../src/index';
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -338,123 +336,323 @@ describe('credit, set-off and receipts (K5, K9)', () => {
 /* Zones                                                                                           */
 /* ---------------------------------------------------------------------------------------------- */
 
-const chosen: ZonePricingSettings = {
-	saleMeetsZone: 'lowerOfTheTwo',
-	gstInZonePrice: 'included',
-	categoryClash: 'lowerPrice',
-	couponsOnZoneLines: 'notAllowed',
-	revision: 1,
-	updatedAt: null,
-	updatedBy: null,
-};
-const unchosen: ZonePricingSettings = {
-	...chosen,
-	saleMeetsZone: null,
-	gstInZonePrice: null,
-	categoryClash: null,
-	couponsOnZoneLines: null,
-};
-const list: ZonePriceList = {
-	allProducts: { kind: 'percentOffRetail', percent: 10 },
-	categories: [
-		{
-			id: 'r1',
-			categoryId: 'cat_silk',
-			includeSubcategories: true,
-			adjustment: { kind: 'percentOffRetail', percent: 25 },
-		},
-		{
-			id: 'r2',
-			categoryId: 'cat_bridal',
-			includeSubcategories: true,
-			adjustment: { kind: 'flatPrice', amountINR: 9_000 },
-		},
-	],
-	products: [
-		{ productId: 'prd_own', mode: 'own', adjustment: { kind: 'flatPrice', amountINR: 5_000 }, skuPrices: {} },
-		{ productId: 'prd_off', mode: 'noPrice', adjustment: null, skuPrices: {} },
-	],
-};
-const live = { retail: false, live: true, priceList: list };
-const sku = (over: Partial<Parameters<typeof zonePriceFor>[1]> = {}) => ({
-	productId: 'prd_1',
-	sku: 'S1',
-	normalINR: 10_000,
-	saleINR: null,
-	categoryPaths: [['cat_silk_kanjivaram', 'cat_silk']],
-	mainCategoryId: 'cat_silk_kanjivaram',
+const rule = (over: Partial<ZoneRule> & Pick<ZoneRule, 'id' | 'scope' | 'price'>): ZoneRule => ({
+	name: over.id,
+	enabled: true,
+	when: null,
+	rounding: 'none',
+	floorINR: null,
+	ceilingINR: null,
+	minQuantityPerLine: null,
+	validFrom: null,
+	validUntil: null,
 	...over,
 });
+const facts = (over: Partial<ZoneLineFacts> = {}): ZoneLineFacts => ({
+	productId: 'prd_1',
+	sku: 'S1',
+	categoryPaths: [['cat_silk_kanjivaram', 'cat_silk']],
+	regularSellingINR: 10_000,
+	currentSaleINR: null,
+	mrpINR: 12_000,
+	purchaseCostINR: 6_000,
+	quantity: 1,
+	metres: null,
+	orderGoodsINR: 10_000,
+	...over,
+});
+const rules: ZoneRule[] = [
+	rule({
+		id: 'p1',
+		scope: { tier: 'product', productIds: ['prd_own'] },
+		price: { kind: 'flatPrice', amountINR: 5_000, skuPrices: { 'OWN-RED': 4_800 } },
+	}),
+	rule({ id: 'p2', scope: { tier: 'product', productIds: ['prd_off'] }, price: { kind: 'noPrice' } }),
+	rule({
+		id: 'c1',
+		scope: { tier: 'category', categoryIds: ['cat_silk'], includeSubcategories: true },
+		price: { kind: 'percentOffBase', base: 'regularSelling', percent: 25 },
+	}),
+	rule({
+		id: 'c2',
+		scope: { tier: 'category', categoryIds: ['cat_bridal'], includeSubcategories: true },
+		price: { kind: 'flatPrice', amountINR: 9_000, skuPrices: {} },
+	}),
+	rule({
+		id: 'a1',
+		scope: { tier: 'allProducts' },
+		price: { kind: 'percentOffBase', base: 'regularSelling', percent: 10 },
+	}),
+];
+const live = { retail: false, live: true, rules };
+const NOW = new Date('2026-11-20T10:00:00Z');
+const unit = (zone: Parameters<typeof zonePriceFor>[0], line: ZoneLineFacts) => {
+	const { price } = zonePriceFor(zone, line, NOW);
+	return price.kind === 'priced' ? price.unitPriceINR : price.reason;
+};
 
-describe('zone pricing (DEC-B2B-ZONES)', () => {
-	it('gives RETAIL the shop price, sale included', () => {
-		const retail = { retail: true, live: true, priceList: { allProducts: null, categories: [], products: [] } };
-		expect(zonePriceFor(retail, sku({ saleINR: 8_000 }), unchosen)).toMatchObject({
+describe('zones (DEC-B2B-ZONES): rules from the builder', () => {
+	it('gives RETAIL, and a business on a zone not yet live, the shop price with the sale', () => {
+		const retail = { retail: true, live: true, rules: [] };
+		expect(zonePriceFor(retail, facts({ currentSaleINR: 8_000 }), NOW).price).toMatchObject({
 			kind: 'priced',
 			unitPriceINR: 8_000,
-			fromSale: true,
+			rule: { tier: 'retail' },
 		});
+		expect(unit({ ...live, live: false }, facts())).toBe(10_000);
 	});
 
-	it('prices by product exception, then category (sub-categories included), then all products', () => {
-		expect(zonePriceFor(live, sku({ productId: 'prd_own' }), chosen)).toMatchObject({
+	it('tries the product tier, then categories (sub-categories included), then all products', () => {
+		expect(zonePriceFor(live, facts({ productId: 'prd_own' }), NOW).price).toMatchObject({
 			unitPriceINR: 5_000,
-			rule: { level: 'product' },
+			rule: { tier: 'product', ruleId: 'p1' },
 		});
-		expect(zonePriceFor(live, sku(), chosen)).toMatchObject({
-			unitPriceINR: 7_500,
-			rule: { level: 'category', categoryId: 'cat_silk' },
-		});
-		expect(zonePriceFor(live, sku({ categoryPaths: [['cat_cotton']] }), chosen)).toMatchObject({
+		expect(unit(live, facts({ productId: 'prd_own', sku: 'OWN-RED' }))).toBe(4_800);
+		expect(zonePriceFor(live, facts(), NOW).price).toMatchObject({ unitPriceINR: 7_500, rule: { ruleId: 'c1' } });
+		expect(zonePriceFor(live, facts({ categoryPaths: [['cat_cotton']] }), NOW).price).toMatchObject({
 			unitPriceINR: 9_000,
-			rule: { level: 'allProducts' },
+			rule: { tier: 'allProducts', ruleId: 'a1' },
 		});
 	});
 
-	it('shows "Price not set for this zone" for an excluded product or one the list does not cover', () => {
-		expect(zonePriceFor(live, sku({ productId: 'prd_off' }), chosen)).toEqual({ kind: 'noPrice' });
-		const noAll = { ...live, priceList: { ...list, allProducts: null } };
-		expect(zonePriceFor(noAll, sku({ categoryPaths: [['cat_cotton']] }), chosen)).toEqual({ kind: 'noPrice' });
+	it('takes the first matching rule in builder order within a tier (owner: order in the builder)', () => {
+		const both = facts({ categoryPaths: [['cat_silk'], ['cat_bridal']] });
+		expect(unit(live, both)).toBe(7_500);
+		const dragged = { ...live, rules: [rules[0], rules[1], rules[3], rules[2], rules[4]] as ZoneRule[] };
+		expect(unit(dragged, both)).toBe(9_000);
 	});
 
-	it('asks for the setting instead of guessing the open questions', () => {
-		expect(zonePriceFor(live, sku(), unchosen)).toEqual({ kind: 'settingNeeded', setting: 'gstInZonePrice' });
-		const gst = { ...unchosen, gstInZonePrice: 'included' as const };
-		expect(zonePriceFor(live, sku({ saleINR: 7_000 }), gst)).toEqual({
-			kind: 'settingNeeded',
-			setting: 'saleMeetsZone',
-		});
-		const twoCategories = sku({ categoryPaths: [['cat_silk'], ['cat_bridal']] });
-		expect(zonePriceFor(live, twoCategories, gst)).toEqual({ kind: 'settingNeeded', setting: 'categoryClash' });
+	it('shows "Price not set for this zone" when a rule says so, when no rule matches, or when the cost is unknown', () => {
+		expect(unit(live, facts({ productId: 'prd_off' }))).toBe('ruleSaysNoPrice');
+		const noAll = { ...live, rules: rules.filter((row) => row.scope.tier !== 'allProducts') };
+		expect(unit(noAll, facts({ categoryPaths: [['cat_cotton']] }))).toBe('noRule');
+		const cost = {
+			...live,
+			rules: [
+				rule({ id: 'k', scope: { tier: 'allProducts' }, price: { kind: 'percentAboveCost', percent: 30 } }),
+			],
+		};
+		expect(unit(cost, facts())).toBe(7_800);
+		expect(unit(cost, facts({ purchaseCostINR: null }))).toBe('costUnknown');
 	});
 
-	it('follows the settings once chosen', () => {
-		expect(zonePriceFor(live, sku({ saleINR: 7_000 }), chosen)).toMatchObject({
-			unitPriceINR: 7_000,
-			fromSale: true,
+	it('reads the sale through its variables: lower of the sale price and retail −20%, otherwise retail −20%', () => {
+		const saleRule = rule({
+			id: 's',
+			scope: { tier: 'allProducts' },
+			when: {
+				kind: 'group',
+				id: 'g',
+				join: 'all',
+				items: [{ kind: 'condition', id: 'c', field: 'line.isOnSale', op: 'is', value: true }],
+			},
+			price: {
+				kind: 'lowerOf',
+				formulas: [
+					{ kind: 'percentOffBase', base: 'currentSaleOrRegular', percent: 0.0001 },
+					{ kind: 'percentOffBase', base: 'regularSelling', percent: 20 },
+				],
+			},
+			rounding: 'upToTen',
 		});
-		expect(zonePriceFor(live, sku({ categoryPaths: [['cat_silk'], ['cat_bridal']] }), chosen)).toMatchObject({
-			unitPriceINR: 7_500,
+		const otherwise = rule({
+			id: 'o',
+			scope: { tier: 'allProducts' },
+			price: { kind: 'percentOffBase', base: 'regularSelling', percent: 20 },
 		});
-		const higher = { ...chosen, categoryClash: 'higherPrice' as const };
-		expect(zonePriceFor(live, sku({ categoryPaths: [['cat_silk'], ['cat_bridal']] }), higher)).toMatchObject({
-			unitPriceINR: 9_000,
-		});
-		expect(zonePriceFor(live, sku(), { ...chosen, gstInZonePrice: 'addedOnTop' })).toMatchObject({
-			gstAddedOnTop: true,
-		});
+		const zone = { ...live, rules: [saleRule, otherwise] };
+		expect(unit(zone, facts({ currentSaleINR: 7_000 }))).toBe(7_000);
+		expect(unit(zone, facts({ currentSaleINR: 9_500 }))).toBe(8_000);
+		expect(unit(zone, facts())).toBe(8_000);
 	});
 
-	it('prices a business on a draft zone at retail', () => {
-		expect(zonePriceFor({ ...live, live: false }, sku(), unchosen)).toMatchObject({
-			unitPriceINR: 10_000,
-			rule: { level: 'retail' },
+	it('prices quantity breaks, order-value breaks, MRP bases, ₹ off, higher-of and per metre', () => {
+		const one = (price: ZoneRule['price'], extra: Partial<ZoneRule> = {}) => ({
+			...live,
+			rules: [rule({ id: 'x', scope: { tier: 'allProducts' }, price, ...extra })],
 		});
+		const breaks = one({
+			kind: 'quantityBreaks',
+			breaks: [
+				{ minQuantity: 1, formula: { kind: 'percentOffBase', base: 'regularSelling', percent: 10 } },
+				{ minQuantity: 10, formula: { kind: 'percentOffBase', base: 'regularSelling', percent: 20 } },
+			],
+		});
+		expect(unit(breaks, facts({ quantity: 3 }))).toBe(9_000);
+		expect(unit(breaks, facts({ quantity: 12 }))).toBe(8_000);
+		const value = one({
+			kind: 'orderValueBreaks',
+			breaks: [
+				{ minGoodsINR: 50_000, formula: { kind: 'amountOffBase', base: 'regularSelling', amountINR: 1_500 } },
+			],
+		});
+		expect(unit(value, facts({ orderGoodsINR: 60_000 }))).toBe(8_500);
+		expect(unit(value, facts({ orderGoodsINR: 20_000 }))).toBe('noRule');
+		expect(unit(one({ kind: 'percentOffBase', base: 'mrp', percent: 30 }), facts())).toBe(8_400);
+		expect(
+			unit(
+				one({
+					kind: 'higherOf',
+					formulas: [
+						{ kind: 'percentOffBase', base: 'regularSelling', percent: 40 },
+						{ kind: 'percentAboveCost', percent: 10 },
+					],
+				}),
+				facts(),
+			),
+		).toBe(6_600);
+		const metre = one({ kind: 'pricePerMetre', amountINR: 450 });
+		expect(unit(metre, facts({ metres: 2.5, quantity: 2.5 }))).toBe(450);
+		expect(unit(metre, facts())).toBe('noRule');
 	});
 
-	it('lists the settings a zone needs before it can go live', () => {
-		expect(settingsZoneNeeds(list, unchosen)).toEqual(['gstInZonePrice', 'saleMeetsZone', 'categoryClash']);
-		expect(settingsZoneNeeds(list, chosen)).toEqual([]);
+	it('rounds up to ₹10 or to an amount ending in 9, then applies the floor and ceiling', () => {
+		expect(roundZonePrice(7_501, 'upToTen')).toBe(7_510);
+		expect(roundZonePrice(1_993, 'endingInNine')).toBe(1_999);
+		expect(roundZonePrice(1_999, 'endingInNine')).toBe(1_999);
+		expect(roundZonePrice(2_000, 'endingInNine')).toBe(2_009);
+		const floor = {
+			...live,
+			rules: [
+				rule({
+					id: 'f',
+					scope: { tier: 'allProducts' },
+					price: { kind: 'percentOffBase', base: 'regularSelling', percent: 60 },
+					floorINR: 5_000,
+				}),
+			],
+		};
+		expect(zonePriceFor(floor, facts(), NOW)).toMatchObject({
+			price: { unitPriceINR: 5_000 },
+			trace: expect.arrayContaining(['floor']),
+		});
+		const ceiling = {
+			...live,
+			rules: [
+				rule({
+					id: 'f',
+					scope: { tier: 'allProducts' },
+					price: { kind: 'flatPrice', amountINR: 20_000, skuPrices: {} },
+					ceilingINR: 11_000,
+				}),
+			],
+		};
+		expect(unit(ceiling, facts())).toBe(11_000);
+	});
+
+	it('flags a price below the purchase cost (the cost guard)', () => {
+		const cheap = {
+			...live,
+			rules: [
+				rule({
+					id: 'q',
+					scope: { tier: 'allProducts' },
+					price: { kind: 'flatPrice', amountINR: 5_000, skuPrices: {} },
+				}),
+			],
+		};
+		expect(zonePriceFor(cheap, facts(), NOW).price).toMatchObject({ belowCost: true });
+		expect(zonePriceFor(live, facts(), NOW).price).toMatchObject({ belowCost: false });
+	});
+
+	it('skips rules that are off, out of their dates or under their minimum quantity', () => {
+		const gated = (extra: Partial<ZoneRule>) => ({
+			...live,
+			rules: [
+				rule({
+					id: 'g',
+					scope: { tier: 'allProducts' },
+					price: { kind: 'flatPrice', amountINR: 3_000, skuPrices: {} },
+					...extra,
+				}),
+				rules[4] as ZoneRule,
+			],
+		});
+		expect(unit(gated({ enabled: false }), facts())).toBe(9_000);
+		expect(unit(gated({ validFrom: '2026-12-01T00:00:00Z' }), facts())).toBe(9_000);
+		expect(unit(gated({ validUntil: '2026-11-01T00:00:00Z' }), facts())).toBe(9_000);
+		expect(unit(gated({ minQuantityPerLine: 5 }), facts({ quantity: 2 }))).toBe(9_000);
+		expect(unit(gated({ minQuantityPerLine: 5 }), facts({ quantity: 5 }))).toBe(3_000);
+		const subOff = {
+			...live,
+			rules: [
+				rule({
+					id: 'top',
+					scope: { tier: 'category', categoryIds: ['cat_silk'], includeSubcategories: false },
+					price: { kind: 'flatPrice', amountINR: 1, skuPrices: {} },
+				}),
+				rules[4] as ZoneRule,
+			],
+		};
+		expect(unit(subOff, facts())).toBe(9_000);
+		expect(unit(subOff, facts({ categoryPaths: [['cat_silk']] }))).toBe(1);
+	});
+
+	it('names the mistakes that keep a zone from going live, and which rules read the cost', () => {
+		const bad = [
+			rule({
+				id: 'v',
+				scope: { tier: 'allProducts' },
+				price: { kind: 'noPrice' },
+				when: {
+					kind: 'group',
+					id: 'g',
+					join: 'all',
+					items: [{ kind: 'condition', id: 'c', field: 'line.quantity', op: 'atLeast', value: null }],
+				},
+			}),
+			rule({
+				id: 'b',
+				scope: { tier: 'allProducts' },
+				price: { kind: 'noPrice' },
+				when: {
+					kind: 'group',
+					id: 'g',
+					join: 'all',
+					items: [{ kind: 'condition', id: 'c', field: 'line.quantity', op: 'between', value: [10, 2] }],
+				},
+			}),
+			rule({
+				id: 'q',
+				scope: { tier: 'allProducts' },
+				price: {
+					kind: 'quantityBreaks',
+					breaks: [
+						{ minQuantity: 5, formula: { kind: 'noPrice' } },
+						{ minQuantity: 5, formula: { kind: 'noPrice' } },
+					],
+				},
+			}),
+			rule({ id: 'fc', scope: { tier: 'allProducts' }, price: { kind: 'noPrice' }, floorINR: 9, ceilingINR: 5 }),
+			rule({
+				id: 'd',
+				scope: { tier: 'allProducts' },
+				price: { kind: 'noPrice' },
+				validFrom: '2026-12-01T00:00:00Z',
+				validUntil: '2026-11-01T00:00:00Z',
+			}),
+		];
+		expect(zoneRuleProblems(bad)).toEqual([
+			{ ruleId: 'v', problem: 'value_missing' },
+			{ ruleId: 'b', problem: 'impossible_condition' },
+			{ ruleId: 'q', problem: 'breaks_out_of_order' },
+			{ ruleId: 'fc', problem: 'floor_above_ceiling' },
+			{ ruleId: 'd', problem: 'ends_before_start' },
+		]);
+		expect(zoneRuleProblems(rules)).toEqual([]);
+		expect(zoneRulesReadCost(rules)).toBe(false);
+		expect(
+			zoneRulesReadCost([
+				rule({
+					id: 'k',
+					scope: { tier: 'allProducts' },
+					price: {
+						kind: 'lowerOf',
+						formulas: [{ kind: 'noPrice' }, { kind: 'percentAboveCost', percent: 5 }],
+					},
+				}),
+			]),
+		).toBe(true);
 	});
 });
 
@@ -480,6 +678,7 @@ const coupon = (over: Partial<CouponDefinition> = {}): CouponDefinition => ({
 	validFrom: null,
 	validUntil: null,
 	combines: false,
+	usableOnZonePrices: false,
 	enabled: true,
 	...over,
 });
@@ -490,7 +689,6 @@ const ctx: CouponContext = {
 	usesByThisBuyer: 0,
 	usesInAll: 0,
 	deliveryINR: 200,
-	couponsOnZoneLines: null,
 };
 const lines: CouponLine[] = [
 	{ lineId: 'l1', productId: 'p1', categoryIds: ['cat_silk'], amountINR: 10_000, onSale: false, zonePriced: false },
@@ -557,11 +755,12 @@ describe('coupon engine (OD4 + stacking)', () => {
 		);
 	});
 
-	it('gives zone-priced lines nothing until the setting is chosen', () => {
+	it('gives zone-priced lines money off only when the coupon is usable on zone prices (owner, 2026-11-20)', () => {
 		const zone: CouponLine[] = [{ ...(lines[0] as CouponLine), zonePriced: true }];
 		expect(applyCoupons([coupon()], zone, contexts('c1')).refused[0]?.refusal).toBe('nothingEligible');
-		const allowed = new Map([['c1', { ...ctx, couponsOnZoneLines: 'allowed' as const }]]);
-		expect(applyCoupons([coupon()], zone, allowed).applied[0]?.amountINR).toBe(1_000);
+		expect(applyCoupons([coupon({ usableOnZonePrices: true })], zone, contexts('c1')).applied[0]?.amountINR).toBe(
+			1_000,
+		);
 	});
 });
 

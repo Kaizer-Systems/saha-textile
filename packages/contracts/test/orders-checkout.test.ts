@@ -23,7 +23,6 @@ import {
 	SavedAddressWrite,
 	SetOffWrite,
 	StatusChangeWrite,
-	ZonePricingSettings,
 	formatPhoneNumber,
 } from '../src/index';
 
@@ -132,26 +131,51 @@ describe('document numbers (DEC-NUMBERING)', () => {
 	});
 });
 
-describe('zones (DEC-B2B-ZONES)', () => {
-	it('leaves every open question unchosen', () => {
-		expect(ZonePricingSettings.parse({})).toMatchObject({
-			saleMeetsZone: null,
-			gstInZonePrice: null,
-			categoryClash: null,
-			couponsOnZoneLines: null,
-		});
+describe('zones (DEC-B2B-ZONES): rules from the builder', () => {
+	const rule = {
+		id: 'r1',
+		scope: { tier: 'category', categoryIds: ['cat_silk'] },
+		when: {
+			kind: 'group',
+			id: 'g1',
+			join: 'all',
+			items: [{ kind: 'condition', id: 'c1', field: 'line.isOnSale', op: 'is', value: true }],
+		},
+		price: {
+			kind: 'lowerOf',
+			formulas: [
+				{ kind: 'percentOffBase', base: 'currentSaleOrRegular', percent: 5 },
+				{ kind: 'percentOffBase', base: 'regularSelling', percent: 20 },
+			],
+		},
+		rounding: 'endingInNine',
+	};
+	const base = { code: 'WHOLESALE-A', name: 'Wholesale A', rules: [rule] };
+
+	it('takes nested formulas, conditions on the owner’s variables, and rounding', () => {
+		const zone = PriceZoneWrite.parse(base);
+		expect(zone.rules[0]).toMatchObject({ enabled: true, floorINR: null, minQuantityPerLine: null });
 	});
 
-	it('takes a flat price or a percentage less than retail, nothing else yet', () => {
-		const base = { code: 'WHOLESALE-A', name: 'Wholesale A', priceList: { categories: [], products: [] } };
-		expect(
-			PriceZoneWrite.parse({ ...base, priceList: { allProducts: { kind: 'percentOffRetail', percent: 20 } } }),
-		).toBeTruthy();
+	it('refuses an unknown formula, field or base and a lower-case code', () => {
 		expect(() =>
-			PriceZoneWrite.parse({ ...base, priceList: { allProducts: { kind: 'percentOffRetail', percent: 0 } } }),
+			PriceZoneWrite.parse({ ...base, rules: [{ ...rule, price: { kind: 'markup', percent: 5 } }] }),
 		).toThrow();
+		const badField = {
+			...rule,
+			when: {
+				kind: 'group',
+				id: 'g',
+				join: 'all',
+				items: [{ kind: 'condition', id: 'c', field: 'line.colour', op: 'is', value: 'red' }],
+			},
+		};
+		expect(() => PriceZoneWrite.parse({ ...base, rules: [badField] })).toThrow();
 		expect(() =>
-			PriceZoneWrite.parse({ ...base, priceList: { allProducts: { kind: 'markup', percent: 5 } } }),
+			PriceZoneWrite.parse({
+				...base,
+				rules: [{ ...rule, price: { kind: 'percentOffBase', base: 'cost', percent: 5 } }],
+			}),
 		).toThrow();
 		expect(() => PriceZoneWrite.parse({ ...base, code: 'retail' })).toThrow();
 	});

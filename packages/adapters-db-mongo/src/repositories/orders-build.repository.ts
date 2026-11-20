@@ -9,7 +9,6 @@ import {
 	PaymentRequest,
 	PriceZone,
 	Shipment,
-	ZonePricingSettings,
 	type BusinessListQuery,
 	type CouponListQuery,
 	type CouponListResponse,
@@ -749,18 +748,6 @@ export class MongoPriceZoneRepository implements PriceZoneRepository {
 
 	async delete(id: string): Promise<void> {
 		await PriceZoneModel.deleteOne({ _id: id, system: { $ne: true } }).exec();
-	}
-
-	async getSettings(): Promise<ZonePricingSettings> {
-		return readSetting(
-			'zones.pricing',
-			(value) => ZonePricingSettings.parse(value),
-			() => ZonePricingSettings.parse({}),
-		);
-	}
-
-	async saveSettings(settings: ZonePricingSettings, expectedRevision: number): Promise<ZonePricingSettings> {
-		return writeSetting('zones.pricing', ZonePricingSettings.parse(settings), expectedRevision);
 	}
 }
 

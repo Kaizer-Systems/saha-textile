@@ -11,6 +11,7 @@ import {
 	AdminOrderSettingsController,
 	AdminZonesController,
 } from './orders-setup.controller';
+import { ZonePricingService } from './zone-pricing.service';
 import { ZonesService } from './zones.service';
 
 /** Coupons, zones, order settings and document numbers (orders and checkout brief, approved 2026-11-20). */
@@ -22,7 +23,21 @@ import { ZonesService } from './zones.service';
 		AdminOrderSettingsController,
 		AdminBusinessesController,
 	],
-	providers: [CouponsService, ZonesService, OrderSettingsService, DocumentNumbersService, BusinessesService],
-	exports: [CouponsService, ZonesService, OrderSettingsService, DocumentNumbersService, BusinessesService],
+	providers: [
+		CouponsService,
+		ZonesService,
+		ZonePricingService,
+		OrderSettingsService,
+		DocumentNumbersService,
+		BusinessesService,
+	],
+	exports: [
+		CouponsService,
+		ZonesService,
+		ZonePricingService,
+		OrderSettingsService,
+		DocumentNumbersService,
+		BusinessesService,
+	],
 })
 export class OrdersSetupModule {}

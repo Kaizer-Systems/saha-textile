@@ -19,7 +19,6 @@ import type {
 	PinLookup,
 	PriceZone,
 	Shipment,
-	ZonePricingSettings,
 } from '@saha-textile/contracts';
 
 import type { TransactionContext } from './transaction-manager.port';
@@ -150,11 +149,9 @@ export interface LedgerRepository {
 export interface PriceZoneRepository {
 	list(): Promise<PriceZone[]>;
 	findById(id: string): Promise<PriceZone | null>;
-	/** Saves with a revision check; a price-list change raises the version. */
+	/** Saves with a revision check; a change of the rules raises the version. */
 	save(zone: PriceZone, expectedRevision: number | null): Promise<PriceZone>;
 	delete(id: string): Promise<void>;
-	getSettings(): Promise<ZonePricingSettings>;
-	saveSettings(settings: ZonePricingSettings, expectedRevision: number): Promise<ZonePricingSettings>;
 }
 
 export interface CouponRepository {

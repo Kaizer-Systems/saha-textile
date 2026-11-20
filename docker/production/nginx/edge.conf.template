@@ -89,10 +89,16 @@ map $http_x_client_build $client_build {
 # test there keeps the three in step. A one-time token, code or key keeps its place in the address
 # but its value becomes a placeholder named after it (`/en/pay/{{token}}`,
 # `?token={{token}}&lang=en`), so the address keeps its shape and nothing logged can be replayed.
-# 1. The payment link carries its token as a path segment: /<locale>/pay/<token>, /storefront/pay/<token>.
-map $request_uri $log_uri_path {
+# 1. The payment link carries its token as a path segment: /<locale>/pay/<token>,
+#    /storefront/pay/<token>, and inside another address's query when the shop looks a path up
+#    (/catalog/seo-route?path=/pay/<token>), plain or URL-encoded. Two passes: path and query.
+map $request_uri $log_uri_pay {
 	default $request_uri;
-	"~^(?<log_pay_head>[^?]*?/pay/)[^/?]+(?<log_pay_tail>.*)$" "${log_pay_head}{{token}}${log_pay_tail}";
+	"~*^(?<log_p1_head>.*?(?:/|%2F)pay(?:/|%2F))(?!\{\{)[^/?&#%]+(?<log_p1_tail>.*)$" "${log_p1_head}{{token}}${log_p1_tail}";
+}
+map $log_uri_pay $log_uri_path {
+	default $log_uri_pay;
+	"~*^(?<log_p2_head>.*?(?:/|%2F)pay(?:/|%2F))(?!\{\{)[^/?&#%]+(?<log_p2_tail>.*)$" "${log_p2_head}{{token}}${log_p2_tail}";
 }
 # 2. Each secret query value becomes {{its name}}, one per pass; four passes cover any real link.
 map $log_uri_path $log_uri_1 {

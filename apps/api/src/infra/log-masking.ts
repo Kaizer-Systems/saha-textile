@@ -49,8 +49,12 @@ export const ADDRESS_SECRET_NAMES = [
 ] as const;
 
 const ADDRESS_SECRET_PARAM = new RegExp(`([?&])(${ADDRESS_SECRET_NAMES.join('|')})=[^&#]*`, 'gi');
-/** The payment link carries its token as a path segment: /<locale>/pay/<token>, /storefront/pay/<token>. */
-const PAY_LINK_TOKEN = /^([^?]*?\/pay\/)[^/?]+/;
+/**
+ * The payment link carries its token as a path segment: /<locale>/pay/<token>, /storefront/pay/<token>,
+ * and inside another address's query when the shop looks a path up (`?path=/pay/<token>`), plain or
+ * URL-encoded.
+ */
+const PAY_LINK_TOKEN = /((?:\/|%2F)pay(?:\/|%2F))(?!\{\{)[^/?&#%]+/gi;
 
 /**
  * An address as a log line may show it (owner, 2026-11-21): a one-time token, code or key keeps its

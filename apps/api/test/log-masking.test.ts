@@ -44,6 +44,9 @@ describe('maskAddress (owner, 2026-11-21: placeholders keep the address shape, n
 		],
 		['/storefront/pay/s3cr3t', '/storefront/pay/{{token}}'],
 		['/en/pay/s3cr3t?x=1', '/en/pay/{{token}}?x=1'],
+		['/catalog/seo-route?path=/pay/s3cr3t&locale=en', '/catalog/seo-route?path=/pay/{{token}}&locale=en'],
+		['/catalog/seo-route?path=%2Fen%2Fpay%2Fs3cr3t', '/catalog/seo-route?path=%2Fen%2Fpay%2F{{token}}'],
+		['/en/pay/s1?back=/pay/s2', '/en/pay/{{token}}?back=/pay/{{token}}'],
 		[
 			'/x?Token=a&access_token=b&mytoken=keep&token=',
 			'/x?Token={{Token}}&access_token={{access_token}}&mytoken=keep&token={{token}}',

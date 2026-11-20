@@ -14,7 +14,7 @@ import {
 	parseTopCpu,
 	parseVmStat,
 } from './mac-stats.mjs';
-import { commandFor, containerLogs, createRunner, ensureToken, tokenMatches } from './runner.mjs';
+import { commandFor, containerLogs, createRunner, ensureToken, shared, tokenMatches } from './runner.mjs';
 
 const VM = `Mach Virtual Memory Statistics: (page size of 16384 bytes)
 Pages free:                                    22900.
@@ -82,9 +82,25 @@ test('starts only commands on its list, and never the checks stage under running
 	assert.deepEqual(args, ['scripts/pipeline/local.mjs', '--json', '--only', 'deploy']);
 	const [, , , stop] = commandFor('stack-stop-apps');
 	assert.ok(!stop.includes('meilisearch'), 'the shared search server is never stopped');
+	assert.throws(() => commandFor('pipeline', {}, ['api']), /rebuilds the apps under the running dev servers \(api\)/);
+	assert.throws(() => commandFor('pipeline', { only: 'checks' }, ['storefront']), /storefront/);
+	assert.doesNotThrow(() => commandFor('pipeline', { from: 'proof' }, ['api', 'admin']));
 });
 
-test('reads logs of this project’s containers only', () => {
+test('shares one reading between requests that arrive together, and never keeps a failure', async () => {
+	let runs = 0;
+	const slow = () => new Promise((r) => setTimeout(() => r(++runs), 30));
+	const [a, b] = await Promise.all([shared('test-a', 1000, slow), shared('test-a', 1000, slow)]);
+	assert.equal(a, 1);
+	assert.equal(b, 1);
+	assert.equal(await shared('test-a', 1000, slow), 1, 'a fresh reading is reused');
+	assert.equal(await shared('test-b', 0, slow), 2);
+	assert.equal(await shared('test-b', 0, slow), 3, 'an old reading is taken again');
+	await assert.rejects(shared('test-c', 1000, () => Promise.reject(new Error('down'))));
+	assert.equal(await shared('test-c', 1000, slow), 4, 'a failed reading is not kept');
+});
+
+test('reads logs of this project’s containers only, refusing others at once', () => {
 	assert.throws(() => containerLogs('postgres'), /Unknown container/);
 	assert.throws(() => containerLogs('saha-textile-api; rm -rf /'), /Unknown container/);
 });

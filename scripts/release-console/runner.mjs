@@ -7,7 +7,7 @@
  * commands: read-only Mac and Docker figures, container logs, the local stack's own commands and
  * `pnpm pipeline:local`. It runs from the main checkout only, never from a worktree.
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { execFile, spawn, spawnSync } from 'node:child_process';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -38,41 +38,82 @@ export const PIPELINE_STAGES = ['checks', 'proof', 'images', 'release', 'deploy'
 export const DEV_PORTS = { api: 4000, storefront: 4200, admin: 4300 };
 const MAX_LINES = 5000;
 
-const sh = (cmd, args, timeout = 15_000) => {
-	const r = spawnSync(cmd, args, { encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024 });
-	return r.status === 0 ? String(r.stdout) : '';
-};
+/**
+ * Runs one of the helper's read-only tools without blocking: a slow `docker stats` must never hold up
+ * the next request. Answers the tool's output, or '' when it fails or takes too long.
+ */
+const sh = (cmd, args, timeout = 15_000) =>
+	new Promise((resolve) => {
+		execFile(cmd, args, { encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024 }, (error, stdout) =>
+			resolve(error ? '' : String(stdout)),
+		);
+	});
+
+/** @type {Map<string, { at: number, value: Promise<unknown> }>} */
+const recent = new Map();
+/**
+ * One reading shared by every request within `ttl` ms (the console's 5-second poll and an open
+ * screen ask at once), and one run at a time per reading.
+ */
+export function shared(key, ttl, read) {
+	const hit = recent.get(key);
+	if (hit && Date.now() - hit.at < ttl) return hit.value;
+	const value = Promise.resolve()
+		.then(read)
+		.finally(() => {
+			const now = recent.get(key);
+			if (now?.value === value) now.at = Date.now();
+		});
+	recent.set(key, { at: Number.POSITIVE_INFINITY, value });
+	value.catch(() => recent.delete(key));
+	return value;
+}
 
 /** The Mac now: CPU, memory, swap, load, start-up disk and network byte counters. */
-export function macNow() {
-	const vm = parseVmStat(sh('vm_stat', []));
+export async function macNow() {
+	const [vmText, top, memsize, swap, loadavg, df, netstat, ncpu] = await Promise.all([
+		sh('vm_stat', []),
+		sh('top', ['-l', '1', '-n', '0']),
+		sh('sysctl', ['-n', 'hw.memsize']),
+		sh('sysctl', ['-n', 'vm.swapusage']),
+		sh('sysctl', ['-n', 'vm.loadavg']),
+		sh('df', ['-k', '/']),
+		sh('netstat', ['-ib']),
+		sh('sysctl', ['-n', 'hw.ncpu']),
+	]);
+	const vm = parseVmStat(vmText);
 	return {
 		at: new Date().toISOString(),
-		cpu: parseTopCpu(sh('top', ['-l', '1', '-n', '0'])),
+		cpu: parseTopCpu(top),
 		memory: {
-			total: Number(sh('sysctl', ['-n', 'hw.memsize']).trim()) || null,
+			total: Number(memsize.trim()) || null,
 			used: memoryUsed(vm),
 			compressed: vm.compressed,
 			wired: vm.wired,
 		},
-		swapUsed: parseSwapUsed(sh('sysctl', ['-n', 'vm.swapusage'])),
-		load: parseLoad(sh('sysctl', ['-n', 'vm.loadavg'])),
-		disk: parseDf(sh('df', ['-k', '/'])),
-		network: parseNetstat(sh('netstat', ['-ib'])),
-		cpus: Number(sh('sysctl', ['-n', 'hw.ncpu']).trim()) || null,
+		swapUsed: parseSwapUsed(swap),
+		load: parseLoad(loadavg),
+		disk: parseDf(df),
+		network: parseNetstat(netstat),
+		cpus: Number(ncpu.trim()) || null,
 	};
 }
 
 /** Docker on this Mac: its VM's size, this project's containers, and each one's live figures. */
-export function dockerNow() {
+export async function dockerNow() {
+	const [infoText, ps, statsText] = await Promise.all([
+		sh('docker', ['info', '--format', '{{json .}}']),
+		sh('docker', ['ps', '-a', '--format', '{{json .}}']),
+		sh('docker', ['stats', '--no-stream', '--format', '{{json .}}'], 30_000),
+	]);
 	const info = (() => {
 		try {
-			return JSON.parse(sh('docker', ['info', '--format', '{{json .}}']) || '{}');
+			return JSON.parse(infoText || '{}');
 		} catch {
 			return {};
 		}
 	})();
-	const containers = jsonLines(sh('docker', ['ps', '-a', '--format', '{{json .}}']))
+	const containers = jsonLines(ps)
 		.filter((c) => String(c.Names ?? '').startsWith(STACK_PREFIX))
 		.map((c) => ({
 			name: String(c.Names),
@@ -82,7 +123,7 @@ export function dockerNow() {
 			ports: String(c.Ports ?? ''),
 		}));
 	const names = new Set(containers.map((c) => c.name));
-	const stats = jsonLines(sh('docker', ['stats', '--no-stream', '--format', '{{json .}}'], 30_000))
+	const stats = jsonLines(statsText)
 		.map(containerStats)
 		.filter((s) => names.has(s.name));
 	return {
@@ -96,7 +137,7 @@ export function dockerNow() {
 	};
 }
 
-/** Container logs, newest last; only this project's containers. */
+/** Container logs, newest last; only this project's containers (an unknown name throws at once). */
 export function containerLogs(container, { tail = 300, since = '' } = {}) {
 	if (!/^saha-textile[a-z0-9_.-]*$/.test(container))
 		throw Object.assign(new Error('Unknown container.'), { status: 400 });
@@ -104,13 +145,16 @@ export function containerLogs(container, { tail = 300, since = '' } = {}) {
 	const args = ['logs', '--timestamps', '--tail', String(n)];
 	if (since && /^\d+[smh]$/.test(since)) args.push('--since', since);
 	args.push(container);
-	const r = spawnSync('docker', args, { encoding: 'utf8', timeout: 20_000, maxBuffer: 32 * 1024 * 1024 });
-	return { container, lines: `${r.stdout ?? ''}${r.stderr ?? ''}`.split('\n').filter(Boolean).slice(-n) };
+	return new Promise((resolve) => {
+		execFile('docker', args, { encoding: 'utf8', timeout: 20_000, maxBuffer: 32 * 1024 * 1024 }, (_e, out, err) =>
+			resolve({ container, lines: `${out ?? ''}${err ?? ''}`.split('\n').filter(Boolean).slice(-n) }),
+		);
+	});
 }
 
 /** Which mode 1/2 servers answer on this Mac. */
-export function devServers() {
-	const out = sh('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN']);
+export async function devServers() {
+	const out = await sh('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN']);
 	return Object.fromEntries(
 		Object.entries(DEV_PORTS).map(([name, port]) => [name, new RegExp(`:${port} \\(LISTEN\\)`).test(out)]),
 	);
@@ -223,8 +267,11 @@ const publicJob = (j, after = 0) => ({
 	lines: j.lines.filter((l) => l.seq > after),
 });
 
-/** The commands the console may start; anything else is refused. */
-export function commandFor(action, body = {}) {
+/**
+ * The commands the console may start; anything else is refused. `busy` names the dev servers that
+ * answer now (from `devServers()`), which keep the checks stage from running under them.
+ */
+export function commandFor(action, body = {}, busy = []) {
 	switch (action) {
 		case 'stack-env':
 			return ['stack', 'Write the stack’s files from Infisical', 'bash', ['scripts/stack.sh', 'env']];
@@ -254,9 +301,6 @@ export function commandFor(action, body = {}) {
 			if (from) args.push('--from', from);
 			if (only) args.push('--only', only);
 			const runsChecks = only ? only === 'checks' : !from || from === 'checks';
-			const busy = Object.entries(devServers())
-				.filter(([, up]) => up)
-				.map(([n]) => n);
 			if (runsChecks && busy.length)
 				throw Object.assign(
 					new Error(
@@ -310,14 +354,15 @@ export function createRunner(token) {
 			const url = new URL(req.url ?? '/', 'http://runner');
 			const path = url.pathname;
 			if (req.method === 'GET' && path === '/health') return send(200, { ok: true, root: ROOT });
-			if (req.method === 'GET' && path === '/mac') return send(200, macNow());
-			if (req.method === 'GET' && path === '/docker') return send(200, dockerNow());
-			if (req.method === 'GET' && path === '/dev-servers') return send(200, devServers());
-			if (req.method === 'GET' && path === '/shop-health') return send(200, await shopHealth());
+			if (req.method === 'GET' && path === '/mac') return send(200, await shared('mac', 2000, macNow));
+			if (req.method === 'GET' && path === '/docker') return send(200, await shared('docker', 2000, dockerNow));
+			if (req.method === 'GET' && path === '/dev-servers') return send(200, await devServers());
+			if (req.method === 'GET' && path === '/shop-health')
+				return send(200, await shared('shop-health', 2000, shopHealth));
 			if (req.method === 'GET' && path === '/logs')
 				return send(
 					200,
-					containerLogs(url.searchParams.get('container') ?? '', {
+					await containerLogs(url.searchParams.get('container') ?? '', {
 						tail: url.searchParams.get('tail'),
 						since: url.searchParams.get('since') ?? '',
 					}),
@@ -346,7 +391,13 @@ export function createRunner(token) {
 				let raw = '';
 				for await (const chunk of req) raw += chunk;
 				const body = raw ? JSON.parse(raw) : {};
-				const [kind, label, cmd, args] = commandFor(action, body);
+				const busy =
+					action === 'pipeline'
+						? Object.entries(await devServers())
+								.filter(([, up]) => up)
+								.map(([n]) => n)
+						: [];
+				const [kind, label, cmd, args] = commandFor(action, body, busy);
 				return send(202, { ...publicJob(startJob(kind, label, cmd, args)), lines: [] });
 			}
 			return send(404, { message: 'Unknown request.' });

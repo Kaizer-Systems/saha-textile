@@ -298,6 +298,7 @@ export const INLINE_ICONS = [
 	'tabler/lock',
 	'tabler/logs',
 	'tabler/password',
+	'tabler/pencil',
 	'tabler/player-play',
 	'tabler/plug-connected',
 	'tabler/receipt',

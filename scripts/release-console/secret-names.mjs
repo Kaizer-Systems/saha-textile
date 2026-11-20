@@ -11,6 +11,7 @@ import { pathToFileURL } from 'node:url';
 
 import { describeError, folderNames, loadInventory, SecretsError, TIERS } from '../secrets/inventory.mjs';
 import { listFolderNames, secretsScreenPlan } from '../secrets/listing.mjs';
+import { writableNames } from '../secrets/write.mjs';
 
 /**
  * @typedef {'set' | 'empty' | 'missing' | 'unknown'} State
@@ -52,6 +53,7 @@ export function tierSecrets(inventory, tier, list = listFolderNames) {
 				(name) => tier === 'dev' || !inventory.developmentOnly.has(name),
 			);
 			const names = new Set([...expected, ...(values?.keys() ?? [])]);
+			const writable = writableNames(inventory, tier, folder) ?? new Set();
 			return {
 				folder,
 				rows: [...names].sort().map((name) => {
@@ -65,6 +67,8 @@ export function tierSecrets(inventory, tier, list = listFolderNames) {
 						expected: expected.includes(name),
 						devOnly: inventory.developmentOnly.has(name),
 						optional: optional.has(name),
+						/** Only names the inventory lists for this folder can take a new value. */
+						writable: writable.has(name),
 						state,
 					};
 				}),

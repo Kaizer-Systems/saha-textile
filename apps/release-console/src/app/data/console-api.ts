@@ -6,6 +6,9 @@ import {
 	alertsViewSchema,
 	type RequestsView,
 	requestsViewSchema,
+	type SaveSecrets,
+	type SaveSecretsResult,
+	saveSecretsResultSchema,
 	type SecretTier,
 	type SecretsView,
 	secretsViewSchema,
@@ -74,6 +77,7 @@ import {
 } from '@saha-textile/release-console-contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
+import { SecretDrafts } from './secret-drafts';
 import { ConsoleSession } from './session';
 
 import type { z } from 'zod';
@@ -102,6 +106,7 @@ type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 @Injectable({ providedIn: 'root' })
 export class ConsoleApi {
 	private readonly session = inject(ConsoleSession);
+	private readonly drafts = inject(SecretDrafts);
 	private readonly router = inject(Router);
 	private readonly queries = inject(QueryClient);
 
@@ -159,6 +164,7 @@ export class ConsoleApi {
 	}
 	private forget(): void {
 		this.session.clear();
+		this.drafts.clear();
 		this.queries.clear();
 		void this.router.navigate(['/lock']);
 	}
@@ -285,6 +291,10 @@ export class ConsoleApi {
 			undefined,
 			200_000,
 		);
+	}
+	/** Saves a batch of Secrets drafts after one PIN; values travel in this request body only. */
+	saveSecrets(body: SaveSecrets): Promise<SaveSecretsResult> {
+		return this.call('POST', '/api/local/secrets/save', saveSecretsResultSchema, body, 200_000);
 	}
 	alerts(): Promise<AlertsView> {
 		return this.call('GET', '/api/local/alerts', alertsViewSchema);

@@ -229,6 +229,8 @@ export const secretsViewSchema = z.object({
 					devOnly: z.boolean(),
 					/** May stay empty: optional, or one of an either-one pair. */
 					optional: z.boolean(),
+					/** Listed by the inventory for this folder, so it can take a new value. */
+					writable: z.boolean(),
 					state: secretStateSchema,
 				}),
 			),
@@ -237,3 +239,35 @@ export const secretsViewSchema = z.object({
 	errors: z.array(z.object({ folder: z.string(), message: z.string() })),
 });
 export type SecretsView = z.infer<typeof secretsViewSchema>;
+
+/** One draft: a new value for a name in a folder of the open tier. Sent in a request body only. */
+export const secretChangeSchema = z.object({
+	folder: z.string().regex(/^[a-z0-9-]+$/),
+	name: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+	value: z
+		.string()
+		.min(1)
+		.max(64 * 1024),
+});
+export type SecretChange = z.infer<typeof secretChangeSchema>;
+/**
+ * The Save of a batch of drafts (owner, 20 Nov: drafts saved together with one PIN). Staging and
+ * production also need the environment's name typed in `confirmName`.
+ */
+export const saveSecretsSchema = z.object({
+	tier: secretTierSchema,
+	projectId: z.string().nullable(),
+	pin: confirmation,
+	confirmName: z.string().default(''),
+	changes: z.array(secretChangeSchema).min(1).max(200),
+});
+export type SaveSecrets = z.infer<typeof saveSecretsSchema>;
+export const saveSecretsResultSchema = z.object({
+	tier: secretTierSchema,
+	project: z.string(),
+	environment: z.string(),
+	results: z.array(
+		z.object({ folder: z.string(), names: z.array(z.string()), saved: z.boolean(), error: z.string().nullable() }),
+	),
+});
+export type SaveSecretsResult = z.infer<typeof saveSecretsResultSchema>;

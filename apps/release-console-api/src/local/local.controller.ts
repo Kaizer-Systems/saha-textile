@@ -2,7 +2,9 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestj
 import {
 	type AlertsView,
 	type RequestsView,
+	type SaveSecretsResult,
 	type SecretsView,
+	saveSecretsSchema,
 	type DockerSnapshot,
 	type HelperStatus,
 	type Job,
@@ -142,6 +144,28 @@ export class LocalController {
 	job(@Param('id') id: string, @Query('after') after?: string): Promise<Job> {
 		if (!/^[a-z0-9-]+$/.test(id)) throw new HelperError('No such job.', 404);
 		return this.runner.call('GET', `/jobs/${id}?after=${Number(after ?? 0) || 0}`);
+	}
+
+	/**
+	 * Saves a batch of Secrets drafts into the open tier's Infisical project after one PIN (and, for
+	 * staging and production, the environment's name typed). Values pass straight through to the Mac
+	 * helper; the activity log gets the project, folder and names only.
+	 */
+	@Post('secrets/save')
+	@HttpCode(200)
+	async saveSecrets(@Req() req: Req, @Body() body: unknown): Promise<SaveSecretsResult> {
+		const { tier, projectId, pin, confirmName, changes } = parseBody(saveSecretsSchema, body);
+		if (tier !== 'dev' && confirmName.trim().toLowerCase() !== tier)
+			throw new HelperError(`Type ${tier} to confirm saving into ${tier}.`, 400);
+		this.lock.confirm(sessionOf(req), pin, `save secrets in ${tier}`);
+		const answer = await this.runner.call<SaveSecretsResult>('POST', '/secrets/save', { tier, changes }, 190_000);
+		for (const r of answer.results)
+			this.store.audit(
+				projectId,
+				r.saved ? 'secrets-saved' : 'secrets-not-saved',
+				`${answer.project} · ${answer.environment} · /${r.folder}: ${r.names.join(', ')}`,
+			);
+		return answer;
 	}
 
 	@Post('run/:action')

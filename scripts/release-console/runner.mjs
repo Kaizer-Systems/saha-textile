@@ -177,6 +177,39 @@ export function secretNames(tier) {
 	});
 }
 
+/**
+ * Saves one tier's Secrets drafts through `secret-save.mjs` in its own process. The batch, values
+ * included, goes to that process on stdin only; nothing here keeps or prints it.
+ */
+export function saveSecrets(body) {
+	return new Promise((resolve, reject) => {
+		const child = spawn(process.execPath, [join(ROOT, 'scripts/release-console/secret-save.mjs')], {
+			cwd: ROOT,
+			stdio: ['pipe', 'pipe', 'ignore'],
+		});
+		let out = '';
+		const timer = setTimeout(() => child.kill('SIGTERM'), 180_000);
+		child.stdout.setEncoding('utf8');
+		child.stdout.on('data', (chunk) => (out += chunk));
+		child.on('close', () => {
+			clearTimeout(timer);
+			try {
+				const answer = JSON.parse(out);
+				if (answer.error) reject(Object.assign(new Error(answer.error), { status: 422 }));
+				else resolve(answer);
+			} catch {
+				reject(Object.assign(new Error('Infisical could not be written.'), { status: 502 }));
+			}
+		});
+		child.stdin.end(JSON.stringify(body));
+	});
+}
+
+/** Drops kept readings whose key starts with `prefix`, so the next read is fresh. */
+export function forget(prefix) {
+	for (const key of recent.keys()) if (key.startsWith(prefix)) recent.delete(key);
+}
+
 /** Which mode 1/2 servers answer on this Mac. */
 export async function devServers() {
 	const out = await sh('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN']);
@@ -382,6 +415,21 @@ export function createRunner(token) {
 			if (req.method === 'GET' && path === '/mac') return send(200, await shared('mac', 2000, macNow));
 			if (req.method === 'GET' && path === '/docker') return send(200, await shared('docker', 2000, dockerNow));
 			if (req.method === 'GET' && path === '/dev-servers') return send(200, await devServers());
+			if (req.method === 'POST' && path === '/secrets/save') {
+				let raw = '';
+				for await (const chunk of req) {
+					raw += chunk;
+					if (raw.length > 512 * 1024) return send(413, { message: 'Too many changes at once.' });
+				}
+				const body = raw ? JSON.parse(raw) : {};
+				if (!SECRET_TIERS.includes(body.tier)) return send(400, { message: 'Unknown tier.' });
+				raw = '';
+				try {
+					return send(200, await saveSecrets(body));
+				} finally {
+					forget(`secrets:${body.tier}`);
+				}
+			}
 			if (req.method === 'GET' && path === '/secrets') {
 				const tier = url.searchParams.get('tier') ?? '';
 				if (!SECRET_TIERS.includes(tier)) return send(400, { message: 'Unknown tier.' });

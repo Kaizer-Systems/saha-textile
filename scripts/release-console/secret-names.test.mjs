@@ -26,6 +26,7 @@ test('reads only the asked tier’s project and folders, as set, empty or missin
 	assert.ok(!view.folders.some((f) => f.folder === 'release-console'), 'the console’s keys live in dev only');
 	const api = view.folders.find((f) => f.folder === 'api');
 	assert.equal(api.rows.find((r) => r.name === firstApi).state, 'set');
+	assert.equal(api.rows.find((r) => r.name === firstApi).writable, true, 'listed names can take a value');
 	assert.deepEqual(
 		api.rows.find((r) => r.name === 'EXTRA_NAME'),
 		{
@@ -33,6 +34,7 @@ test('reads only the asked tier’s project and folders, as set, empty or missin
 			expected: false,
 			devOnly: false,
 			optional: false,
+			writable: false,
 			state: 'empty',
 		},
 	);

@@ -3509,6 +3509,14 @@ figure.gif img {
 .rc-states > .rc-vlogo + .rc-vlogo {
 	margin-left: 0;
 }
+/* The console's dialogs (Secrets › Save) cover the window, not the scrolled page, so a long list
+   never pushes the dialog out of view (owner's write-mode brief, 20 Nov). */
+.rc-modal-back {
+	position: fixed;
+	z-index: 70;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
 /* A side-menu item with an icon: a long name wraps beside its icon, not under it. */
 .rc-nav:has(> .rc-icon, > .rc-vlogo) {
 	display: flex;

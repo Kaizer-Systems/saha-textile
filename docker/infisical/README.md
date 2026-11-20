@@ -68,6 +68,18 @@ steps:
 - The identity ids are on each identity's page in Infisical and in the hand-over notes; they are
   not secrets. Keep them as GitHub environment variables (`INFISICAL_IDENTITY_ID`) so the workflow
   holds no literal ids.
+- **Deploying with a provider key still blank** (owner, 2026-11-21, the Release Console's "deploy
+  with these blank"): `pnpm secrets:release -- <tier> … --allow-blank NAME`, once per name, lets a
+  staging or production server come up for browsing before that key exists. Only names tagged
+  `may-deploy-blank` in `docker/production/required-secrets.txt` qualify: `MSG91_AUTH_KEY`,
+  `SPACES_KEY`, `SPACES_SECRET`, `SPACES_BUCKET` (the three media keys together or not at all).
+  Any other name is refused before Infisical is read; a name that has a value after all is
+  deployed with it. The names really left blank go into the release folder's `allowed-blank.txt`
+  and the API's `RELEASE_ALLOWED_BLANK`, both written by the release, never stored in Infisical.
+  `deploy.sh` skips exactly those names and refuses a record naming anything untagged. The API
+  then starts, skips only those two start-up checks, and refuses that service's work instead:
+  every message is recorded as failed (no sign-in codes or emails go out) and every media call
+  fails (no uploads). `pnpm secrets:status` lists which blank names a deploy could allow.
 
 ### Changes on 2026-11-19 (owner to apply in Infisical)
 

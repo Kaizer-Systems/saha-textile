@@ -129,6 +129,7 @@
 	],
 	"developmentOnlyApiVariables": ["GEO_DATA_DIR", "OTP_LOCAL_FIXED_CODE", "TLS_CERT_FILE", "TLS_KEY_FILE"],
 	"composeProvidedApiVariables": ["SHOP_ORIGIN"],
+	"releaseWrittenApiVariables": ["RELEASE_ALLOWED_BLANK"],
 	"requiredApiVariablesByCurrentDeploymentValidator": [
 		"NODE_ENV",
 		"DEPLOY_ENV",
@@ -201,7 +202,8 @@
 	"changesSinceVerification": [
 		"2026-11-19: owner decision L3 — mongo-app-password and redis-password are written from /api/MONGODB_PASSWORD and /api/REDIS_PASSWORD; the owner deletes both /infrastructure entries in all three projects.",
 		"2026-11-19: SHOP_ORIGIN added (read by the API since FX-8). Add it to the dev project /api; Compose sets it in staging and production.",
-		"2026-11-20: owner decision D2 — the public sign-in IDs are kept once, in /api: release.env gets GOOGLE_CLIENT_ID and FACEBOOK_APP_ID from /api/GOOGLE_OAUTH_CLIENT_ID and /api/FACEBOOK_OAUTH_APP_ID; the owner deletes both /deployment entries in all three projects."
+		"2026-11-20: owner decision D2 — the public sign-in IDs are kept once, in /api: release.env gets GOOGLE_CLIENT_ID and FACEBOOK_APP_ID from /api/GOOGLE_OAUTH_CLIENT_ID and /api/FACEBOOK_OAUTH_APP_ID; the owner deletes both /deployment entries in all three projects.",
+		"2026-11-21: RELEASE_ALLOWED_BLANK is written by the release itself (names a server deploy was told to leave blank, from `--allow-blank`); it is never stored in Infisical, and an /api entry with that name is refused."
 	],
 	"otherFolders": {
 		"release-console": {

@@ -15,7 +15,7 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { FOLDERS, SecretsError, folderNames } from './inventory.mjs';
+import { FOLDERS, RELEASE_ALLOWED_BLANK, SecretsError, folderNames } from './inventory.mjs';
 
 /** @typedef {Map<string, string>} Folder */
 /** @typedef {import('./inventory.mjs').Inventory} Inventory */
@@ -33,6 +33,7 @@ export const SHELL_READ_API_NAMES = new Set([
 	'GOOGLE_OAUTH_CLIENT_ID',
 	'MONGODB_DB_NAME',
 	'MONGODB_USERNAME',
+	'RELEASE_ALLOWED_BLANK',
 	'SPACES_CDN_URL',
 	'SPACES_ENDPOINT',
 ]);
@@ -250,8 +251,15 @@ export function buildStackEnv(api, { inventory, source, owned, settings, unknown
  *                                              DEPLOY_ENV, the edge's port and network
  * @param {Folder} [options.apiOverrides]      settings the caller sets over `/api` (the local
  *                                              pipeline's hostnames, for example)
+ * @param {Set<string>} [options.allowBlank]   required names a server deploy may leave blank
+ *                                              (`--allow-blank`, owner 2026-11-21); only names tagged
+ *                                              `may-deploy-blank` in required-secrets.txt
+ * @returns {{ files: Map<string, string>, notes: string[], deployedBlank: string[] }}
  */
-export function buildRelease(folders, { tier, inventory, source, release = new Map(), apiOverrides = new Map() }) {
+export function buildRelease(
+	folders,
+	{ tier, inventory, source, release = new Map(), apiOverrides = new Map(), allowBlank = new Set() },
+) {
 	const problems = [];
 	const notes = [];
 	const allowed = folderNames(inventory);
@@ -260,8 +268,17 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 		checkUnknown(folder, folders[folder] ?? new Map(), allowed[folder], {
 			problems,
 			notes,
-			skip: derived[folder] ?? new Set(),
+			skip: folder === 'api' ? inventory.releaseWritten : (derived[folder] ?? new Set()),
 		});
+	}
+	for (const name of inventory.releaseWritten) {
+		if (!isBlank(folders.api?.get(name))) {
+			problems.push(
+				`/api/${name} is written by the release itself (from --allow-blank): delete it in Infisical.`,
+			);
+		} else if (folders.api?.has(name)) {
+			notes.push(`/api/${name} is written by the release itself: the blank entry can be deleted.`);
+		}
 	}
 
 	// ---- secrets/api.env
@@ -286,10 +303,19 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 	}
 	// On this computer (DEPLOY_ENV=local) the server-only names may stay blank (required-secrets.txt).
 	const local = (release.get('DEPLOY_ENV') ?? api.get('DEPLOY_ENV')) === 'local';
+	const deployedBlank = allowedBlankNames(allowBlank, api, { inventory, local, problems, notes });
 	const missing = inventory.requiredForRelease.filter(
-		(name) => isBlank(api.get(name)) && !(local && inventory.serverOnlyRequired.has(name)),
+		(name) =>
+			isBlank(api.get(name)) &&
+			!(local && inventory.serverOnlyRequired.has(name)) &&
+			!deployedBlank.includes(name),
 	);
 	if (missing.length > 0) problems.push(`Required for a release but blank in /api: ${missing.join(', ')}.`);
+	if (deployedBlank.length > 0) {
+		// The API reads this to skip exactly these checks at start, and refuses any other name in it.
+		apiEntries.push([RELEASE_ALLOWED_BLANK, deployedBlank.join(',')]);
+		apiEntries.sort(([a], [b]) => a.localeCompare(b));
+	}
 
 	const mongoPassword = api.get('MONGODB_PASSWORD');
 	if (mongoPassword !== undefined && mongoPassword !== mongoPassword.trim()) {
@@ -382,9 +408,55 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 		'release.env',
 		renderCollecting(sorted(releaseValues), { header: header('deployment'), plainOnly: true }, problems),
 	);
+	// Names only: deploy.sh checks it, and the Release Console shows "deployed with N blanks".
+	if (deployedBlank.length > 0) files.set(ALLOWED_BLANK_FILE, `${deployedBlank.join('\n')}\n`);
 
 	if (problems.length > 0) refuse('The release folder was not written:', problems);
-	return { files, notes };
+	return { files, notes, deployedBlank };
+}
+
+/** The release folder's record of the required names it deployed blank on purpose. */
+export const ALLOWED_BLANK_FILE = 'allowed-blank.txt';
+
+/** The API's media store takes all three or none: a partial store refuses to start. */
+const SPACES_KEYS = ['SPACES_KEY', 'SPACES_SECRET', 'SPACES_BUCKET'];
+
+/**
+ * Which `--allow-blank` names this release really deploys blank, sorted. A name that is not
+ * required, or not tagged `may-deploy-blank`, is refused; one that has a value after all is deployed
+ * with it and only earns a note. Names only in every message.
+ * @param {Set<string>} allowBlank
+ * @param {Folder} api
+ * @param {{ inventory: Inventory, local: boolean, problems: string[], notes: string[] }} context
+ * @returns {string[]}
+ */
+function allowedBlankNames(allowBlank, api, { inventory, local, problems, notes }) {
+	if (allowBlank.size === 0) return [];
+	if (local) {
+		problems.push('--allow-blank is for a server deploy, not a release on this computer.');
+		return [];
+	}
+	const blank = [];
+	for (const name of [...allowBlank].sort()) {
+		if (!inventory.requiredForRelease.includes(name)) {
+			problems.push(`${name} is not required for a release, so a deploy never stops on it: nothing to allow.`);
+		} else if (!inventory.mayDeployBlank.has(name)) {
+			problems.push(
+				`${name} can never be deployed blank. Only these can: ${[...inventory.mayDeployBlank].sort().join(', ')}.`,
+			);
+		} else if (isBlank(api.get(name))) {
+			blank.push(name);
+		} else {
+			notes.push(`${name} was allowed blank but has a value, so it is deployed with its value.`);
+		}
+	}
+	const spacesBlank = SPACES_KEYS.filter((name) => isBlank(api.get(name)));
+	if (SPACES_KEYS.some((name) => blank.includes(name)) && spacesBlank.length !== SPACES_KEYS.length) {
+		problems.push(
+			`${SPACES_KEYS.join(', ')} go together: the API refuses a media store with only some of them. Leave all three blank or fill all three.`,
+		);
+	}
+	return blank;
 }
 
 /**
@@ -491,7 +563,17 @@ export function projectReport(folders, { tier, inventory, setByPipeline = new Se
 	// Fine on this computer, but a server reading this project (a future dev server) would need them.
 	const serverOnlyBlank =
 		tier === 'dev' ? [...inventory.serverOnlyRequired].filter((name) => isBlank(api.get(name))) : [];
-	return { tier, folders: perFolder, requiredBlank, infrastructureBlank, backupBlank, serverOnlyBlank };
+	// A server deploy may still go ahead with these blank, if it names them (`--allow-blank`).
+	const mayDeployBlank = tier === 'dev' ? [] : requiredBlank.filter((name) => inventory.mayDeployBlank.has(name));
+	return {
+		tier,
+		folders: perFolder,
+		requiredBlank,
+		infrastructureBlank,
+		backupBlank,
+		serverOnlyBlank,
+		mayDeployBlank,
+	};
 }
 
 /**
@@ -570,6 +652,11 @@ export function formatReport(report, title) {
 	const release = report.tier === 'dev' ? 'the local pipeline' : 'a deploy';
 	if (report.requiredBlank.length > 0) {
 		lines.push(`  Blank, but ${release} needs it in /api: ${report.requiredBlank.join(', ')}`);
+	}
+	if (report.mayDeployBlank?.length > 0) {
+		lines.push(
+			`  Of these, a deploy may still go ahead with these blank if it names them (--allow-blank): ${report.mayDeployBlank.join(', ')}`,
+		);
 	}
 	if (report.infrastructureBlank.length > 0) {
 		lines.push(`  Blank, but ${release} needs it in /infrastructure: ${report.infrastructureBlank.join(', ')}`);

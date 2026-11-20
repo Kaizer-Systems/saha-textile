@@ -67,9 +67,21 @@ export function findNameProblems({ inventory, exampleNames, codeNames, requiredF
 	const problems = [];
 	const known = new Set([...inventory.apiVariables, ...inventory.developmentOnlyApiVariables]);
 	const used = new Set([...exampleNames, ...codeNames.keys()]);
+	// Written into api.env by the release itself, never stored in Infisical (RELEASE_ALLOWED_BLANK).
+	const releaseWritten = new Set(inventory.releaseWrittenApiVariables ?? []);
+	for (const name of [...releaseWritten].sort()) {
+		if (known.has(name)) {
+			problems.push(
+				`${name} is written by the release, so it must not also be an Infisical name in apiVariables.`,
+			);
+		}
+		if (!codeNames.has(name)) {
+			problems.push(`${name} is listed as written by the release, but no code reads it. Remove it.`);
+		}
+	}
 
 	for (const name of [...used].sort()) {
-		if (known.has(name) || TOOL_NAMES.has(name)) continue;
+		if (known.has(name) || releaseWritten.has(name) || TOOL_NAMES.has(name)) continue;
 		const where = codeNames.get(name)?.[0] ?? 'apps/api/.env.example';
 		problems.push(
 			`${name} is read by ${where} but is missing from docker/infisical/variable-names.json. Add it there and to Infisical.`,

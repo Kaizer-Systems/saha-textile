@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Product } from '@saha-textile/contracts';
 import { SearchUnavailableError, type StoragePort, type YouTubePort } from '@saha-textile/core-domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -5,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConsoleNotificationAdapter } from '../src/infra/console-notification.adapter';
 import { LogOnlyCdnPurgeAdapter } from '../src/infra/log-only-cdn-purge.adapter';
 import { buildNotificationPort } from '../src/infra/notification-factory';
+import { UnavailableNotificationAdapter } from '../src/infra/unavailable-notification.adapter';
 import { UnavailableYouTubeAdapter } from '../src/infra/unavailable-youtube.adapter';
 import { UnconfiguredStorageAdapter } from '../src/infra/unconfigured-storage.adapter';
 import { MeilisearchSearch } from '../src/search/meilisearch-search';
@@ -342,6 +344,74 @@ describe('buildNotificationPort', () => {
 		expect(
 			buildNotificationPort(notifications({ provider: 'console', msg91AuthKey: 'key' }), stores),
 		).toBeInstanceOf(ConsoleNotificationAdapter);
+	});
+
+	it('on a server deployed without the key, refuses messages instead of pretending to send them', () => {
+		const withoutKey = (deployEnv: string) =>
+			config({
+				nodeEnv: 'production',
+				deployEnv,
+				notifications: { msg91EmailFrom: { account: 'a@example.test' }, provider: 'msg91' },
+			});
+		for (const deployEnv of ['staging', 'production']) {
+			expect(buildNotificationPort(withoutKey(deployEnv), stores)).toBeInstanceOf(UnavailableNotificationAdapter);
+		}
+		expect(buildNotificationPort(withoutKey('local'), stores)).toBeInstanceOf(ConsoleNotificationAdapter);
+	});
+});
+
+describe('UnavailableNotificationAdapter', () => {
+	const message = {
+		channel: 'sms',
+		category: 'transactional',
+		templateKey: 'otp_login',
+		destination: '+919800000000',
+		variables: { code: '481516' },
+	} as const;
+
+	it('records every message as failed, and logs neither the destination nor the code', async () => {
+		const append = vi.fn(async (entry: unknown) => entry);
+		const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+		const port = new UnavailableNotificationAdapter(
+			{ append, findByIdempotencyKey: vi.fn() } as never,
+			() => new Date('2026-11-21T10:00:00.000Z'),
+		);
+		const result = await port.send(message as never);
+		expect(result).toMatchObject({ status: 'failed', providerMessageId: null });
+		expect(append).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: result.outboxEntryId,
+				status: 'failed',
+				templateKey: 'otp_login',
+				errorMessage: UnavailableNotificationAdapter.REASON,
+				createdAt: '2026-11-21T10:00:00.000Z',
+				idempotencyKey: null,
+			}),
+		);
+		const recorded = JSON.stringify(append.mock.calls);
+		expect(recorded).not.toContain('9800000000');
+		expect(recorded).not.toContain('481516');
+		const logged = JSON.stringify(warn.mock.calls);
+		expect(logged).toContain('otp_login');
+		expect(logged).not.toContain('9800000000');
+		expect(logged).not.toContain('481516');
+		expect(await port.isChannelEnabled('sms', 'transactional')).toBe(false);
+		warn.mockRestore();
+	});
+
+	it('answers a retry with the first attempt instead of recording it twice', async () => {
+		const prior = { id: 'outbox_1', status: 'failed', providerMessageId: null };
+		const append = vi.fn();
+		const port = new UnavailableNotificationAdapter({
+			append,
+			findByIdempotencyKey: vi.fn(async () => prior),
+		} as never);
+		await expect(port.send({ ...message, idempotencyKey: 'k1' } as never)).resolves.toEqual({
+			status: 'failed',
+			providerMessageId: null,
+			outboxEntryId: 'outbox_1',
+		});
+		expect(append).not.toHaveBeenCalled();
 	});
 });
 

@@ -9,6 +9,11 @@
  * `images.env` names the four images pinned by digest (API_IMAGE, STOREFRONT_IMAGE, ADMIN_IMAGE,
  * OPS_IMAGE). Every other release setting comes from the project's /deployment folder. Names only
  * in every message.
+ *
+ * `--allow-blank NAME` (repeatable) lets a server come up while a provider key is still missing
+ * (owner, 2026-11-21: the Release Console's "deploy with these blank"). Only names tagged
+ * `may-deploy-blank` in required-secrets.txt qualify; the release records the ones it really left
+ * blank in allowed-blank.txt and in the API's RELEASE_ALLOWED_BLANK.
  */
 import { cpSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -44,6 +49,32 @@ export function parseImagesFile(text) {
 	return images;
 }
 
+const RELEASE_USAGE =
+	'Usage: pnpm secrets:release -- <staging|production> --images <file> --out <empty folder> [--allow-blank NAME ...]';
+
+/**
+ * The release command's arguments: the tier first, then `--images`, `--out` and any number of
+ * `--allow-blank NAME`, each flag once except the last.
+ * @param {string[]} args
+ */
+export function parseReleaseArgs(args) {
+	const [tier, ...rest] = args.filter((arg) => arg !== '--');
+	/** @type {{ tier: string | undefined, imagesFile?: string, out?: string, allowBlank: string[] }} */
+	const parsed = { tier, allowBlank: [] };
+	for (let index = 0; index < rest.length; index += 2) {
+		const [flag, value] = [rest[index], rest[index + 1]];
+		if (value === undefined || value.startsWith('--')) throw new SecretsError(RELEASE_USAGE);
+		if (flag === '--allow-blank') parsed.allowBlank.push(value);
+		else if (flag === '--images' && parsed.imagesFile === undefined) parsed.imagesFile = value;
+		else if (flag === '--out' && parsed.out === undefined) parsed.out = value;
+		else throw new SecretsError(RELEASE_USAGE);
+	}
+	if ((tier !== 'staging' && tier !== 'production') || !parsed.imagesFile || !parsed.out) {
+		throw new SecretsError(RELEASE_USAGE);
+	}
+	return parsed;
+}
+
 /**
  * The settings a deploy job adds to the project's /deployment values.
  * @param {'staging' | 'production'} tier
@@ -76,18 +107,43 @@ export function tierReleaseSettings(tier, images) {
  * @param {'staging' | 'production'} options.tier
  * @param {Map<string, string>} options.images
  * @param {string} options.source
- * @returns {{ dir: string, notes: string[] }}
+ * @param {Set<string>} [options.allowBlank]   required names this deploy may leave blank (`--allow-blank`)
+ * @returns {{ dir: string, notes: string[], deployedBlank: string[] }}
  */
-export function writeTierRelease({ out, folders, inventory, tier, images, source }) {
+export function writeTierRelease({ out, folders, inventory, tier, images, source, allowBlank = new Set() }) {
 	if (existsSync(out) && readdirSync(out).length > 0) {
 		throw new SecretsError('The output folder must be empty: a release folder is written once.');
 	}
 	const release = tierReleaseSettings(tier, images);
-	const { files, notes } = buildRelease(folders, { tier, inventory, source, release });
+	const { files, notes, deployedBlank } = buildRelease(folders, { tier, inventory, source, release, allowBlank });
 	writeFiles(out, files);
 	const production = join(ROOT, 'docker/production');
 	for (const part of ['compose.yaml', 'nginx', 'required-secrets.txt', 'bin']) {
 		cpSync(join(production, part), join(out, part), { recursive: true });
 	}
-	return { dir: out, notes };
+	return { dir: out, notes, deployedBlank };
+}
+
+/**
+ * The names given with `--allow-blank`, checked against the name list before Infisical is asked for
+ * anything, so a wrong name costs no sign-in. Whether each is blank is known only after the read.
+ * @param {string[]} names
+ * @param {import('./inventory.mjs').Inventory} inventory
+ * @returns {Set<string>}
+ */
+export function checkAllowBlankNames(names, inventory) {
+	const problems = [];
+	for (const name of names) {
+		if (!/^[A-Z][A-Z0-9_]{1,63}$/.test(name)) problems.push('An --allow-blank name is not a setting name.');
+		else if (!inventory.requiredForRelease.includes(name)) {
+			problems.push(`${name} is not required for a release, so a deploy never stops on it: nothing to allow.`);
+		} else if (!inventory.mayDeployBlank.has(name)) {
+			problems.push(
+				`${name} can never be deployed blank. Only these can: ${[...inventory.mayDeployBlank].sort().join(', ')}.`,
+			);
+		}
+	}
+	if (new Set(names).size !== names.length) problems.push('An --allow-blank name is given twice.');
+	if (problems.length > 0) throw new SecretsError(problems.join('\n'));
+	return new Set(names);
 }

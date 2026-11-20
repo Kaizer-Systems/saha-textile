@@ -63,6 +63,12 @@ payment host, and the addresses kept both as a URL and as a host (`SITE_URL` and
 `SPACES_ENDPOINT` and `SPACES_HOST`, `ADMIN_APP_URL` and `ADMIN_URL`), which must agree. A real
 deploy runs the same checks first, plus the droplet's certificates.
 
+A required name may be blank on a server only when the release says so: `allowed-blank.txt` in the
+release folder (written by `pnpm secrets:release … --allow-blank NAME`) lists it, the name carries the
+`may-deploy-blank` tag in `required-secrets.txt`, and `secrets/api.env` names the same list in
+`RELEASE_ALLOWED_BLANK`. The check prints those names and refuses any record that breaks one of the
+three. Today only `MSG91_AUTH_KEY` and the three media keys carry the tag.
+
 The first administrator is the one step that stays manual, because it prints a credential. Run it
 over SSH, never from a workflow:
 

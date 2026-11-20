@@ -48,16 +48,43 @@ check_release() {
 		redis-password meilisearch.toml; do
 		[[ -s "$SECRETS/$name" ]] || die "secrets/$name is missing or empty."
 	done
-	local scope deploy_env
+	local tags deploy_env
 	deploy_env="$(release_value "$RELEASE" DEPLOY_ENV)"
-	while read -r name scope; do
+	read_allowed_blank
+	while read -r name tags; do
 		[[ -z "$name" || "$name" == \#* ]] && continue
 		# `server-only` names may stay blank on this computer, never on a server (required-secrets.txt).
-		[[ "$scope" == server-only && "$deploy_env" == local ]] && continue
+		[[ " $tags " == *' server-only '* && "$deploy_env" == local ]] && continue
+		# This server deploy was told to leave it blank (allowed-blank.txt).
+		[[ "$ALLOWED_BLANK" == *" $name "* ]] && continue
 		grep -q "^$name=." "$SECRETS/api.env" || die "$name has no value in secrets/api.env."
 	done <"$RELEASE/required-secrets.txt"
 	check_payment_host
 	check_addresses
+}
+
+# Required names this server deploy was told to leave blank: allowed-blank.txt, written by the
+# release from `--allow-blank` (owner, 2026-11-21, the Release Console's "deploy with these blank").
+# Only names tagged `may-deploy-blank` in required-secrets.txt qualify, and the API must have been
+# told the same list in RELEASE_ALLOWED_BLANK, or it would refuse to start. Names only in messages.
+ALLOWED_BLANK=' '
+read_allowed_blank() {
+	local file="$RELEASE/allowed-blank.txt" name list=''
+	[[ -f "$file" ]] || return 0
+	[[ "$(release_value "$RELEASE" DEPLOY_ENV)" != local ]] ||
+		die 'allowed-blank.txt is for a server deploy, not a release on this computer.'
+	while read -r name || [[ -n "$name" ]]; do
+		[[ -z "$name" ]] && continue
+		[[ "$name" =~ ^[A-Z][A-Z0-9_]{1,63}$ ]] || die 'allowed-blank.txt holds a line that is not a setting name.'
+		grep -Eq "^$name[[:space:]](.*[[:space:]])?may-deploy-blank([[:space:]]|\$)" "$RELEASE/required-secrets.txt" ||
+			die "$name may never be deployed blank (required-secrets.txt)."
+		list="${list:+$list,}$name"
+	done <"$file"
+	[[ -n "$list" ]] || die 'allowed-blank.txt is empty.'
+	[[ "$(api_value RELEASE_ALLOWED_BLANK)" == "$list" ]] ||
+		die 'RELEASE_ALLOWED_BLANK in secrets/api.env must list the names in allowed-blank.txt.'
+	ALLOWED_BLANK=" ${list//,/ } "
+	say "Deploying with these blank, as asked: ${list//,/, }"
 }
 
 api_value() { sed -n "s/^$1=//p" "$SECRETS/api.env" | tail -n 1; }

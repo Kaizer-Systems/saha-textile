@@ -394,6 +394,7 @@ test('projectReport and formatReport: what is missing, misspelt or due for delet
 	const project = completeProject('production');
 	project.api.delete('SHOP_ORIGIN');
 	project.api.set('JWT_ACCESS_SECRET', '');
+	project.api.set('MSG91_AUTH_KEY', '');
 	project.api.set('JWT_ACESS_SECRET', `${MARK}x`);
 	project.backup.set('BACKUP_BUCKET', '');
 	project.infrastructure.set('mongo-keyfile', '');
@@ -405,7 +406,11 @@ test('projectReport and formatReport: what is missing, misspelt or due for delet
 	assert.match(text, /delete \(now written from \/api, owner decisions L3 and D2\): redis-password/);
 	assert.match(text, /delete \(now written from \/api, owner decisions L3 and D2\): GOOGLE_CLIENT_ID/);
 	assert.ok(!/misspelt[^\n]*GOOGLE_CLIENT_ID/.test(text));
-	assert.match(text, /Blank, but a deploy needs it in \/api: JWT_ACCESS_SECRET/);
+	assert.match(text, /Blank, but a deploy needs it in \/api: JWT_ACCESS_SECRET, MSG91_AUTH_KEY/);
+	assert.match(
+		text,
+		/a deploy may still go ahead with these blank if it names them \(--allow-blank\): MSG91_AUTH_KEY\n/,
+	);
 	assert.match(text, /Blank, but a deploy needs it in \/infrastructure: mongo-keyfile/);
 	assert.match(text, /Blank, but production backups need it in \/backup: BACKUP_BUCKET/);
 	assert.match(text, /Not ready for a deploy yet\./);

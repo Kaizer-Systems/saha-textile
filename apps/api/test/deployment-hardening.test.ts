@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +8,7 @@ import { loadConfig } from '../src/config/app-config';
 import { exitOnDeploymentConfigError } from '../src/config/boot-failure';
 import {
 	DeploymentConfigError,
+	MAY_DEPLOY_BLANK,
 	deploymentHardeningProblems,
 	isStrictDeployment,
 } from '../src/config/deployment-hardening';
@@ -261,6 +264,60 @@ describe('deployment hardening', () => {
 			expect(problemsFor(deployment({ MSG91_AUTH_KEY: undefined }))).toEqual([
 				'MSG91_AUTH_KEY must be set when NOTIFICATION_PROVIDER=msg91.',
 			]);
+		});
+	});
+
+	describe('provider keys deployed blank on purpose (RELEASE_ALLOWED_BLANK, owner 2026-11-21)', () => {
+		const noSpaces = { SPACES_KEY: undefined, SPACES_SECRET: undefined, SPACES_BUCKET: undefined };
+
+		it('starts without the MSG91 key or the media keys when the release named them', () => {
+			expect(
+				problemsFor(deployment({ MSG91_AUTH_KEY: undefined, RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY' })),
+			).toEqual([]);
+			expect(
+				problemsFor(
+					deployment({
+						...noSpaces,
+						MSG91_AUTH_KEY: undefined,
+						RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY,SPACES_BUCKET,SPACES_KEY,SPACES_SECRET',
+					}),
+				),
+			).toEqual([]);
+		});
+
+		it('skips only the named check: the media store needs all three of its names', () => {
+			expect(problemsFor(deployment({ ...noSpaces, RELEASE_ALLOWED_BLANK: 'SPACES_KEY' }))).toEqual([
+				'Media storage must be configured: set SPACES_KEY, SPACES_SECRET and SPACES_BUCKET.',
+			]);
+			expect(problemsFor(deployment({ MSG91_AUTH_KEY: undefined, RELEASE_ALLOWED_BLANK: 'SPACES_KEY' }))).toEqual(
+				['MSG91_AUTH_KEY must be set when NOTIFICATION_PROVIDER=msg91.'],
+			);
+		});
+
+		it('never lets the list excuse a start-up secret, the provider choice or a data store', () => {
+			expect(
+				problemsFor(deployment({ JWT_ACCESS_SECRET: undefined, RELEASE_ALLOWED_BLANK: 'JWT_ACCESS_SECRET' })),
+			).toEqual([
+				'RELEASE_ALLOWED_BLANK may name only MSG91_AUTH_KEY, SPACES_KEY, SPACES_SECRET, SPACES_BUCKET.',
+				'JWT_ACCESS_SECRET must be set; a deployment never falls back to a built-in development value.',
+			]);
+			const leaked = problemsFor(deployment({ RELEASE_ALLOWED_BLANK: 'REDIS_PASSWORD=zzleak' }));
+			expect(leaked).toEqual([
+				'RELEASE_ALLOWED_BLANK may name only MSG91_AUTH_KEY, SPACES_KEY, SPACES_SECRET, SPACES_BUCKET.',
+			]);
+			expect(leaked.join('')).not.toContain('zzleak');
+			expect(
+				problemsFor(deployment({ NOTIFICATION_PROVIDER: 'console', RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY' })),
+			).toEqual(['NOTIFICATION_PROVIDER must be msg91: the console provider only logs codes and links.']);
+		});
+
+		it('names exactly the keys tagged may-deploy-blank in docker/production/required-secrets.txt', () => {
+			const tagged = readFileSync(resolve(__dirname, '../../../docker/production/required-secrets.txt'), 'utf8')
+				.split('\n')
+				.map((line) => line.trim().split(/\s+/))
+				.filter(([name, ...tags]) => name && !name.startsWith('#') && tags.includes('may-deploy-blank'))
+				.map(([name]) => name);
+			expect([...tagged].sort()).toEqual([...MAY_DEPLOY_BLANK].sort());
 		});
 	});
 

@@ -98,3 +98,18 @@ test('an inventory without the newer optional lists still checks', () => {
 	input.inventory.infrastructureSecretFileNames = ['mongo-keyfile', 'mongo-app-password', 'redis-password'];
 	assert.deepEqual(findNameProblems(input), []);
 });
+
+test('a setting the release writes itself is known without being an Infisical name, and must be read', () => {
+	const input = agreeing();
+	input.inventory.releaseWrittenApiVariables = ['RELEASE_ALLOWED_BLANK'];
+	input.codeNames.set('RELEASE_ALLOWED_BLANK', ['apps/api/src/config/deployment-hardening.ts']);
+	assert.deepEqual(findNameProblems(input), []);
+
+	input.codeNames.delete('RELEASE_ALLOWED_BLANK');
+	input.inventory.apiVariables.push('RELEASE_ALLOWED_BLANK');
+	input.exampleNames.add('RELEASE_ALLOWED_BLANK');
+	assert.deepEqual(findNameProblems(input), [
+		'RELEASE_ALLOWED_BLANK is written by the release, so it must not also be an Infisical name in apiVariables.',
+		'RELEASE_ALLOWED_BLANK is listed as written by the release, but no code reads it. Remove it.',
+	]);
+});

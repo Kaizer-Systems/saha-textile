@@ -13,7 +13,9 @@ import {
 } from '@saha-textile/core-domain';
 
 import type { AppConfig } from '../config/app-config';
+import { isStrictDeployment } from '../config/deployment-hardening';
 import { ConsoleNotificationAdapter } from './console-notification.adapter';
+import { UnavailableNotificationAdapter } from './unavailable-notification.adapter';
 
 export interface NotificationStores {
 	settings: NotificationSettingsRepository;
@@ -50,6 +52,15 @@ export function buildNotificationPort(config: AppConfig, stores: NotificationSto
 			consent: stores.consent,
 			gate,
 		});
+	}
+	if (wantMsg91 && !authKey && isStrictDeployment(config)) {
+		// Only reachable when the release left the key blank on purpose (RELEASE_ALLOWED_BLANK):
+		// deployment hardening refuses to start otherwise. Refuse every message, never "send" one.
+		Logger.warn(
+			'MSG91_AUTH_KEY was deployed blank on purpose: every message is refused and recorded as failed until it is set.',
+			'Notifications',
+		);
+		return new UnavailableNotificationAdapter(stores.outbox);
 	}
 	if (wantMsg91 && !authKey) {
 		Logger.warn(

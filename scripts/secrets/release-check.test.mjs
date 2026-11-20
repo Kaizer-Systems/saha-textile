@@ -66,6 +66,7 @@ function withRelease(change, fn) {
 		]) {
 			writeFileSync(join(release, 'secrets', name), `${MARK}\n`);
 		}
+		for (const [path, content] of Object.entries(change.files ?? {})) writeFileSync(join(release, path), content);
 		fn(release, join(dir, 'root'));
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -161,4 +162,71 @@ test('on a local machine the server-only MSG91_AUTH_KEY may be blank; on a serve
 	withRelease({ release: { DEPLOY_ENV: 'development' }, api: { MSG91_AUTH_KEY: '' } }, (release, root) =>
 		assert.match(check(release, root).output, /MSG91_AUTH_KEY has no value/),
 	);
+});
+
+test('a server deploy may leave a tagged name blank when allowed-blank.txt and the API both name it', () => {
+	const blankKeys = { MSG91_AUTH_KEY: '', SPACES_KEY: '', SPACES_SECRET: '', SPACES_BUCKET: '' };
+	const allowed = {
+		api: { ...blankKeys, RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY,SPACES_BUCKET,SPACES_KEY,SPACES_SECRET' },
+		files: { 'allowed-blank.txt': 'MSG91_AUTH_KEY\nSPACES_BUCKET\nSPACES_KEY\nSPACES_SECRET\n' },
+	};
+	withRelease(allowed, (release, root) => {
+		const ok = check(release, root);
+		assert.equal(ok.status, 0, ok.output);
+		assert.match(
+			ok.output,
+			/Deploying with these blank, as asked: MSG91_AUTH_KEY, SPACES_BUCKET, SPACES_KEY, SPACES_SECRET/,
+		);
+	});
+	// Without the record, the same blanks stop the deploy as before.
+	withRelease({ api: blankKeys }, (release, root) =>
+		assert.match(check(release, root).output, /MSG91_AUTH_KEY has no value/),
+	);
+	// Allowing one name does not allow the others.
+	withRelease(
+		{
+			api: { ...blankKeys, RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY' },
+			files: { 'allowed-blank.txt': 'MSG91_AUTH_KEY\n' },
+		},
+		(release, root) => assert.match(check(release, root).output, /SPACES_KEY has no value/),
+	);
+});
+
+test('allowed-blank.txt is refused for an untagged name, a mismatch with the API, or a release on this computer', () => {
+	const cases = [
+		[
+			{
+				api: { JWT_ACCESS_SECRET: '', RELEASE_ALLOWED_BLANK: 'JWT_ACCESS_SECRET' },
+				files: { 'allowed-blank.txt': 'JWT_ACCESS_SECRET\n' },
+			},
+			/JWT_ACCESS_SECRET may never be deployed blank/,
+		],
+		[
+			{
+				api: { MSG91_AUTH_KEY: '' },
+				files: { 'allowed-blank.txt': 'MSG91_AUTH_KEY\n' },
+			},
+			/RELEASE_ALLOWED_BLANK in secrets\/api\.env must list the names in allowed-blank\.txt/,
+		],
+		[
+			{ api: { RELEASE_ALLOWED_BLANK: 'x' }, files: { 'allowed-blank.txt': 'msg91 key\n' } },
+			/allowed-blank\.txt holds a line that is not a setting name/,
+		],
+		[{ files: { 'allowed-blank.txt': '\n' } }, /allowed-blank\.txt is empty/],
+		[
+			{
+				release: { DEPLOY_ENV: 'local' },
+				api: { MSG91_AUTH_KEY: '', RELEASE_ALLOWED_BLANK: 'MSG91_AUTH_KEY' },
+				files: { 'allowed-blank.txt': 'MSG91_AUTH_KEY\n' },
+			},
+			/allowed-blank\.txt is for a server deploy/,
+		],
+	];
+	for (const [change, message] of cases) {
+		withRelease(change, (release, root) => {
+			const result = check(release, root);
+			assert.equal(result.status, 1, result.output);
+			assert.match(result.output, message);
+		});
+	}
 });

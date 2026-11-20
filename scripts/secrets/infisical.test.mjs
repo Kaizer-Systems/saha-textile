@@ -156,6 +156,22 @@ test('loadInventory refuses an inventory without a project for every tier, and t
 		assert.deepEqual(inventory.requiredForRelease, ['PORT']);
 		assert.deepEqual(inventory.derivedFiles, {});
 		assert.equal(inventory.composeProvided.size, 0);
+		assert.equal(inventory.releaseWritten.size, 0);
+
+		// Tags after a name, any order; an unknown one is refused rather than ignored.
+		writeFileSync(
+			join(root, 'docker/production/required-secrets.txt'),
+			'PORT\nKEY_A may-deploy-blank server-only\nKEY_B server-only\n',
+		);
+		const tagged = loadInventory(root);
+		assert.deepEqual([...tagged.serverOnlyRequired], ['KEY_A', 'KEY_B']);
+		assert.deepEqual([...tagged.mayDeployBlank], ['KEY_A']);
+		writeFileSync(join(root, 'docker/production/required-secrets.txt'), 'PORT may-be-blank\n');
+		assert.match(
+			messageOf(() => loadInventory(root)),
+			/PORT has an unknown tag may-be-blank/,
+		);
+		writeFileSync(join(root, 'docker/production/required-secrets.txt'), 'PORT\n');
 
 		json.projects = json.projects.filter((project) => project.name !== 'saha-textile-production');
 		json.projects.push({ name: 'another-project', environment: 'x', projectId: 'x' });
@@ -175,6 +191,15 @@ test('the inventory names a project for each tier', () => {
 	assert.equal(inventory.projects.production.environment, 'prod');
 	for (const name of inventory.requiredForRelease) assert.ok(inventory.api.has(name), name);
 	for (const name of Object.values(inventory.derivedFiles)) assert.ok(inventory.api.has(name), name);
+	// Only provider keys whose absence the API turns into refused work, never a start-up secret.
+	assert.deepEqual([...inventory.mayDeployBlank].sort(), [
+		'MSG91_AUTH_KEY',
+		'SPACES_BUCKET',
+		'SPACES_KEY',
+		'SPACES_SECRET',
+	]);
+	assert.deepEqual([...inventory.releaseWritten], ['RELEASE_ALLOWED_BLANK']);
+	for (const name of inventory.releaseWritten) assert.ok(!inventory.api.has(name), name);
 });
 
 test('a hidden value stops the read, and an account name never reaches a message', () => {

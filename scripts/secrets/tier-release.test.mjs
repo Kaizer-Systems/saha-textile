@@ -8,7 +8,13 @@ import test from 'node:test';
 import { githubLogin } from './github-login.mjs';
 import { parseEnvText } from './files.mjs';
 import { ROOT, SecretsError, loadInventory } from './inventory.mjs';
-import { parseImagesFile, tierReleaseSettings, writeTierRelease } from './tier-release.mjs';
+import {
+	checkAllowBlankNames,
+	parseImagesFile,
+	parseReleaseArgs,
+	tierReleaseSettings,
+	writeTierRelease,
+} from './tier-release.mjs';
 
 const MARK = 'zzmadeup';
 const inventory = loadInventory();
@@ -100,59 +106,182 @@ test('the images file: four pinned names, comments and blank lines allowed, anyt
 	assert.throws(() => parseImagesFile('API_IMAGE=a\nAPI_IMAGE=b'), /API_IMAGE is given twice/);
 });
 
+/**
+ * Runs the deploy job's two steps the way deploy.yml does: a checkout with no node_modules anywhere
+ * above it, a stand-in Infisical CLI on PATH answering `export --path /<folder>` from `folders`, and
+ * `umask 077`. Returns both runs and the release folder.
+ */
+function runBareRelease(dir, folders, extraArgs = []) {
+	const repo = join(dir, 'repo');
+	for (const part of ['scripts/secrets', 'docker/infisical', 'docker/production']) {
+		cpSync(join(ROOT, part), join(repo, part), { recursive: true });
+	}
+	const exports = join(dir, 'exports');
+	mkdirSync(exports);
+	for (const [folder, values] of Object.entries(folders)) {
+		const entries = [...values].map(([key, value]) => ({ key, value }));
+		writeFileSync(join(exports, `${folder}.json`), JSON.stringify(entries));
+	}
+	const bin = join(dir, 'bin');
+	mkdirSync(bin);
+	writeFileSync(
+		join(bin, 'infisical'),
+		[
+			'#!/usr/bin/env node',
+			"const { existsSync, readFileSync } = require('node:fs');",
+			"const folder = process.argv[process.argv.indexOf('--path') + 1].slice(1);",
+			'const file = `${process.env.STAND_IN_EXPORTS}/${folder}.json`;',
+			"process.stdout.write(existsSync(file) ? readFileSync(file, 'utf8') : '[]');",
+			'',
+		].join('\n'),
+		{ mode: 0o755 },
+	);
+	const imagesFile = join(dir, 'images.env');
+	writeFileSync(imagesFile, [...images].map(([name, image]) => `${name}=${image}\n`).join(''));
+	const out = join(dir, 'release');
+	const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, STAND_IN_EXPORTS: exports };
+	delete env.NODE_PATH;
+	const write = spawnSync(
+		'bash',
+		[
+			'-c',
+			'umask 077 && mkdir "$2" && node "$1/scripts/secrets/cli.mjs" release staging --images "$3" --out "$2" "${@:4}"',
+			'job',
+			repo,
+			out,
+			imagesFile,
+			...extraArgs,
+		],
+		{ encoding: 'utf8', env },
+	);
+	const check = existsSync(join(out, 'bin/deploy.sh'))
+		? spawnSync('bash', [join(out, 'bin/deploy.sh'), '--check-only', out], { encoding: 'utf8', env })
+		: null;
+	for (const run of [write, check]) {
+		if (run) assert.ok(!`${run.stdout}${run.stderr}`.includes(MARK), 'a value reached the output');
+	}
+	return { write, check, out };
+}
+
 test("the deploy job's steps run in a bare checkout under umask 077: no packages, files the containers can read", () => {
 	withDir((dir) => {
-		// What the deploy job has: a checkout with no node_modules anywhere above it.
-		const repo = join(dir, 'repo');
-		for (const part of ['scripts/secrets', 'docker/infisical', 'docker/production']) {
-			cpSync(join(ROOT, part), join(repo, part), { recursive: true });
-		}
-		// A stand-in Infisical CLI on PATH, answering `export --path /<folder>` from made-up values.
-		const exports = join(dir, 'exports');
-		mkdirSync(exports);
-		for (const [folder, values] of Object.entries(project('staging'))) {
-			const entries = [...values].map(([key, value]) => ({ key, value }));
-			writeFileSync(join(exports, `${folder}.json`), JSON.stringify(entries));
-		}
-		const bin = join(dir, 'bin');
-		mkdirSync(bin);
-		writeFileSync(
-			join(bin, 'infisical'),
-			[
-				'#!/usr/bin/env node',
-				"const { existsSync, readFileSync } = require('node:fs');",
-				"const folder = process.argv[process.argv.indexOf('--path') + 1].slice(1);",
-				'const file = `${process.env.STAND_IN_EXPORTS}/${folder}.json`;',
-				"process.stdout.write(existsSync(file) ? readFileSync(file, 'utf8') : '[]');",
-				'',
-			].join('\n'),
-			{ mode: 0o755 },
-		);
-		const imagesFile = join(dir, 'images.env');
-		writeFileSync(imagesFile, [...images].map(([name, image]) => `${name}=${image}\n`).join(''));
-		const out = join(dir, 'release');
-		const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, STAND_IN_EXPORTS: exports };
-		delete env.NODE_PATH;
-		const write = spawnSync(
-			'bash',
-			[
-				'-c',
-				'umask 077 && mkdir "$2" && node "$1/scripts/secrets/cli.mjs" release staging --images "$3" --out "$2"',
-				'job',
-				repo,
-				out,
-				imagesFile,
-			],
-			{ encoding: 'utf8', env },
-		);
+		const { write, check, out } = runBareRelease(dir, project('staging'));
 		assert.equal(write.status, 0, `${write.stdout}${write.stderr}`);
-		assert.ok(!`${write.stdout}${write.stderr}`.includes(MARK));
 		assert.equal(statSync(join(out, 'secrets/api.env')).mode & 0o777, 0o644);
 		assert.equal(statSync(join(out, 'secrets')).mode & 0o777, 0o700);
-		const check = spawnSync('bash', [join(out, 'bin/deploy.sh'), '--check-only', out], { encoding: 'utf8', env });
-		assert.equal(check.status, 0, `${check.stdout}${check.stderr}`);
-		assert.ok(!`${check.stdout}${check.stderr}`.includes(MARK));
+		assert.equal(check?.status, 0, `${check?.stdout}${check?.stderr}`);
+		assert.ok(!existsSync(join(out, 'allowed-blank.txt')));
 	});
+});
+
+test('a deploy job with --allow-blank ships a server whose provider keys are still blank, and records them', () => {
+	withDir((dir) => {
+		const folders = project('staging');
+		for (const name of ['MSG91_AUTH_KEY', 'SPACES_KEY', 'SPACES_SECRET', 'SPACES_BUCKET'])
+			folders.api.set(name, '');
+		const allow = ['MSG91_AUTH_KEY', 'SPACES_KEY', 'SPACES_SECRET', 'SPACES_BUCKET'].flatMap((name) => [
+			'--allow-blank',
+			name,
+		]);
+		const { write, check, out } = runBareRelease(dir, folders, allow);
+		assert.equal(write.status, 0, `${write.stdout}${write.stderr}`);
+		assert.match(
+			write.stdout,
+			/Deployed blank, as asked: MSG91_AUTH_KEY, SPACES_BUCKET, SPACES_KEY, SPACES_SECRET \(recorded in allowed-blank\.txt\)/,
+		);
+		assert.equal(
+			readFileSync(join(out, 'allowed-blank.txt'), 'utf8'),
+			'MSG91_AUTH_KEY\nSPACES_BUCKET\nSPACES_KEY\nSPACES_SECRET\n',
+		);
+		const api = parseEnvText(readFileSync(join(out, 'secrets/api.env'), 'utf8'));
+		assert.equal(api.get('RELEASE_ALLOWED_BLANK'), 'MSG91_AUTH_KEY,SPACES_BUCKET,SPACES_KEY,SPACES_SECRET');
+		assert.ok(!api.has('MSG91_AUTH_KEY'));
+		assert.equal(check?.status, 0, `${check?.stdout}${check?.stderr}`);
+		assert.match(check?.stdout ?? '', /Deploying with these blank, as asked: MSG91_AUTH_KEY, SPACES_BUCKET/);
+	});
+	// A name that may never be blank is refused before Infisical is read, so the stand-in is never called.
+	withDir((dir) => {
+		const { write } = runBareRelease(dir, project('staging'), ['--allow-blank', 'JWT_ACCESS_SECRET']);
+		assert.equal(write.status, 1);
+		assert.match(
+			write.stderr,
+			/JWT_ACCESS_SECRET can never be deployed blank\. Only these can: MSG91_AUTH_KEY, SPACES_BUCKET/,
+		);
+	});
+});
+
+test('--allow-blank names: only required names tagged may-deploy-blank, each once, never echoing a bad one', () => {
+	assert.deepEqual(
+		parseReleaseArgs([
+			'--',
+			'production',
+			'--allow-blank',
+			'A_B',
+			'--images',
+			'i',
+			'--out',
+			'o',
+			'--allow-blank',
+			'C_D',
+		]),
+		{ tier: 'production', imagesFile: 'i', out: 'o', allowBlank: ['A_B', 'C_D'] },
+	);
+	for (const args of [
+		['staging', '--images', 'i'],
+		['staging', '--images', 'i', '--out', 'o', '--allow-blank'],
+		['staging', '--images', 'i', '--out', 'o', '--out', 'p'],
+		['staging', '--images', 'i', '--out', 'o', '--force', 'x'],
+		['staging', '--images', '--out', 'o'],
+		['dev', '--images', 'i', '--out', 'o'],
+	]) {
+		assert.throws(() => parseReleaseArgs(args), /Usage: pnpm secrets:release/, args.join(' '));
+	}
+	assert.deepEqual(
+		[...checkAllowBlankNames(['MSG91_AUTH_KEY', 'SPACES_KEY'], inventory)],
+		['MSG91_AUTH_KEY', 'SPACES_KEY'],
+	);
+	assert.throws(() => checkAllowBlankNames(['CCAVENUE_WORKING_KEY'], inventory), /not required for a release/);
+	for (const name of ['NOTIFICATION_PROVIDER', 'CLIENT_IP_HEADER', 'SPACES_CDN_URL', 'MONGODB_PASSWORD']) {
+		assert.throws(() => checkAllowBlankNames([name], inventory), /can never be deployed blank/, name);
+	}
+	assert.throws(() => checkAllowBlankNames(['MSG91_AUTH_KEY', 'MSG91_AUTH_KEY'], inventory), /given twice/);
+	assert.throws(
+		() => checkAllowBlankNames([`${MARK}=secret`], inventory),
+		(error) => /not a setting name/.test(error.message) && !error.message.includes(MARK),
+	);
+});
+
+test('the release builder deploys blank only what it was told, keeps the media keys together, and refuses a stored record', () => {
+	const write = (folders, allowBlank, tier = 'staging') => {
+		let result;
+		withDir((dir) => {
+			const out = join(dir, 'release');
+			result = writeTierRelease({ out, folders, inventory, tier, images, source: 't', allowBlank });
+		});
+		return /** @type {ReturnType<typeof writeTierRelease>} */ (result);
+	};
+	// Allowed but filled after all: deployed with its value, not recorded.
+	const filled = write(project('staging'), new Set(['MSG91_AUTH_KEY']));
+	assert.deepEqual(filled.deployedBlank, []);
+	assert.ok(
+		filled.notes.includes('MSG91_AUTH_KEY was allowed blank but has a value, so it is deployed with its value.'),
+	);
+
+	const partial = project('staging');
+	partial.api.set('SPACES_KEY', '');
+	assert.throws(
+		() => write(partial, new Set(['SPACES_KEY'])),
+		/SPACES_KEY, SPACES_SECRET, SPACES_BUCKET go together/,
+	);
+
+	const stored = project('production');
+	stored.api.set('RELEASE_ALLOWED_BLANK', 'MSG91_AUTH_KEY');
+	assert.throws(
+		() => write(stored, new Set(), 'production'),
+		/\/api\/RELEASE_ALLOWED_BLANK is written by the release itself/,
+	);
+
+	assert.throws(() => write(project('staging'), new Set(['CCAVENUE_WORKING_KEY'])), /not required for a release/);
 });
 
 test('a deploy release refuses another tier, unpinned images and a folder that is not empty', () => {

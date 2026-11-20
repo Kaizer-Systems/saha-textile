@@ -20,7 +20,7 @@ import { setupLocal } from './local-setup.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
 import { stackAddresses, stackApiSettings, writeStackEnv } from './stack.mjs';
-import { parseImagesFile, writeTierRelease } from './tier-release.mjs';
+import { checkAllowBlankNames, parseImagesFile, parseReleaseArgs, writeTierRelease } from './tier-release.mjs';
 import { readIfPresent } from './files.mjs';
 
 /** Notes from the Infisical CLI, said once at the end (for one, that it answered from its own copy). */
@@ -117,40 +117,34 @@ function setupLocalCommand() {
 /**
  * `pnpm secrets:release -- <staging|production> --images <file> --out <empty folder>` (plan step 8):
  * the deploy job's release folder, read with the job's deploy identity (INFISICAL_TOKEN).
+ * `--allow-blank NAME` (repeatable) lets the deploy go ahead with that required name blank.
  * @param {string[]} args
  */
 function release(args) {
-	const flags = args.filter((arg) => arg !== '--');
-	const tier = flags[0];
-	const value = (flag) => {
-		const index = flags.indexOf(flag);
-		return index === -1 ? undefined : flags[index + 1];
-	};
-	const imagesFile = value('--images');
-	const out = value('--out');
-	if ((tier !== 'staging' && tier !== 'production') || !imagesFile || !out) {
-		throw new SecretsError(
-			'Usage: pnpm secrets:release -- <staging|production> --images <file> --out <empty folder>',
-		);
-	}
-	const imagesText = readIfPresent(imagesFile);
+	const { tier, imagesFile, out, allowBlank: allowBlankNames } = parseReleaseArgs(args);
+	const imagesText = readIfPresent(/** @type {string} */ (imagesFile));
 	if (imagesText === null) throw new SecretsError('The images file is missing.');
-	// Read before Infisical is asked for anything, so a bad file costs no sign-in.
+	// Read before Infisical is asked for anything, so a bad file or name costs no sign-in.
 	const images = parseImagesFile(imagesText);
 	const inventory = loadInventory();
-	const project = inventory.projects[tier];
+	const allowBlank = checkAllowBlankNames(allowBlankNames, inventory);
+	const project = inventory.projects[/** @type {'staging' | 'production'} */ (tier)];
 	const folders = exportProject(project, { notes });
 	const result = writeTierRelease({
-		out,
+		out: /** @type {string} */ (out),
 		folders,
 		inventory,
-		tier,
+		tier: /** @type {'staging' | 'production'} */ (tier),
 		images,
 		source: `${project.name} (${project.environment})`,
+		allowBlank,
 	});
 	console.log(
 		[
 			`Release folder written for ${tier}. Next: bin/deploy.sh --check-only <folder>.`,
+			...(result.deployedBlank.length > 0
+				? [`  Deployed blank, as asked: ${result.deployedBlank.join(', ')} (recorded in allowed-blank.txt).`]
+				: []),
 			...result.notes.map((note) => `  ${note}`),
 		].join('\n'),
 	);

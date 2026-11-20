@@ -16,6 +16,12 @@ export const TIERS = ['dev', 'staging', 'production'];
 /** The Infisical folders every project uses. */
 export const FOLDERS = ['api', 'backup', 'infrastructure', 'deployment'];
 
+/** The tags a name in `required-secrets.txt` may carry (that file's header explains each). */
+export const REQUIRED_TAGS = ['server-only', 'may-deploy-blank'];
+
+/** The API setting a release writes to name the settings it deployed blank on purpose. */
+export const RELEASE_ALLOWED_BLANK = 'RELEASE_ALLOWED_BLANK';
+
 /** Thrown for anything the person running the command can fix. Messages name settings, never values. */
 export class SecretsError extends Error {
 	/** @param {string} message */
@@ -49,6 +55,9 @@ export function describeError(error) {
  * @property {Set<string>} composeProvided           set by Compose in a release, so left out of `api.env`
  * @property {string[]} requiredForRelease           `required-secrets.txt`
  * @property {Set<string>} serverOnlyRequired        required on a server, not on a local machine
+ * @property {Set<string>} mayDeployBlank            required, but a deploy may name it to go ahead blank
+ * @property {Set<string>} releaseWritten            API settings the release itself writes, never stored
+ *                                                    in Infisical (RELEASE_ALLOWED_BLANK)
  * @property {string[]} backup
  * @property {string[]} infrastructureFiles          stored whole in `/infrastructure`
  * @property {Record<string, string>} derivedFiles   secret file name → the `/api` setting it is written from
@@ -78,8 +87,17 @@ export function loadInventory(root = ROOT) {
 		.map((line) => line.trim())
 		.filter((line) => line !== '' && !line.startsWith('#'))
 		.map((line) => line.split(/\s+/));
+	for (const [name, ...tags] of requiredLines) {
+		const unknown = tags.filter((tag) => !REQUIRED_TAGS.includes(tag));
+		if (unknown.length > 0) {
+			throw new SecretsError(
+				`required-secrets.txt: ${name} has an unknown tag ${unknown[0]} (known: ${REQUIRED_TAGS.join(', ')}).`,
+			);
+		}
+	}
 	const required = requiredLines.map(([name]) => name);
-	const serverOnly = new Set(requiredLines.filter(([, scope]) => scope === 'server-only').map(([name]) => name));
+	const tagged = (tag) => new Set(requiredLines.filter(([, ...tags]) => tags.includes(tag)).map(([name]) => name));
+	const serverOnly = tagged('server-only');
 
 	/** @type {Record<string, Project>} */
 	const projects = {};
@@ -99,6 +117,8 @@ export function loadInventory(root = ROOT) {
 		composeProvided: new Set(json.composeProvidedApiVariables ?? []),
 		requiredForRelease: required,
 		serverOnlyRequired: serverOnly,
+		mayDeployBlank: tagged('may-deploy-blank'),
+		releaseWritten: new Set(json.releaseWrittenApiVariables ?? []),
 		backup: json.backupVariables,
 		infrastructureFiles: json.infrastructureSecretFileNames,
 		derivedFiles: json.derivedSecretFiles ?? {},

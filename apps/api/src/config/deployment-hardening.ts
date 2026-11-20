@@ -40,6 +40,36 @@ const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1', '0.0.0
 const CCAVENUE_TEST_HOSTS = new Set(['test.ccavenue.com', 'apitest.ccavenue.com']);
 
 /**
+ * Provider keys a server may be deployed without, on purpose, so it can come up for browsing before
+ * the key exists (owner, 2026-11-21: the Release Console's "deploy with these blank"). The release
+ * names the ones it left blank in `RELEASE_ALLOWED_BLANK`; then the API starts, and the service
+ * refuses its own work instead (no message sent, no upload). Must equal the names tagged
+ * `may-deploy-blank` in `docker/production/required-secrets.txt` (a test keeps the two in step).
+ * Start-up secrets, the browser boundary, the proxy and the data stores are never on this list.
+ */
+export const MAY_DEPLOY_BLANK = ['MSG91_AUTH_KEY', 'SPACES_KEY', 'SPACES_SECRET', 'SPACES_BUCKET'] as const;
+
+const SPACES_KEYS = ['SPACES_KEY', 'SPACES_SECRET', 'SPACES_BUCKET'] as const;
+
+/**
+ * The names in `RELEASE_ALLOWED_BLANK` (written by the release, never by hand), and a problem when
+ * it names anything outside {@link MAY_DEPLOY_BLANK}. The message never repeats the variable's text.
+ */
+export function releaseAllowedBlank(env: NodeJS.ProcessEnv): { names: Set<string>; problems: string[] } {
+	const names = new Set(
+		(env.RELEASE_ALLOWED_BLANK ?? '')
+			.split(',')
+			.map((name) => name.trim())
+			.filter(Boolean),
+	);
+	const allowed = new Set<string>(MAY_DEPLOY_BLANK);
+	const problems = [...names].some((name) => !allowed.has(name))
+		? [`RELEASE_ALLOWED_BLANK may name only ${MAY_DEPLOY_BLANK.join(', ')}.`]
+		: [];
+	return { names, problems };
+}
+
+/**
  * Raised at boot when a strict deployment is misconfigured.
  *
  * Lists EVERY problem at once, so an operator fixes the env file in one pass instead of
@@ -72,6 +102,10 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 		problems.push(`DEPLOY_ENV=${config.deployEnv} requires NODE_ENV=production.`);
 	}
 	if (!isStrictDeployment(config)) return problems;
+
+	// Provider keys this server was deployed without on purpose (`--allow-blank`).
+	const blank = releaseAllowedBlank(env);
+	problems.push(...blank.problems);
 
 	// --- Secrets ---------------------------------------------------------------------------
 	const secrets = [
@@ -120,9 +154,10 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 	// --- Delivery and one-time codes -------------------------------------------------------
 	if (config.notifications.provider !== 'msg91') {
 		problems.push('NOTIFICATION_PROVIDER must be msg91: the console provider only logs codes and links.');
-	} else if (!config.notifications.msg91AuthKey) {
-		// The composition root falls back to the console adapter here — fine on a laptop, a silent
-		// outage of every one-time code in a deployment.
+	} else if (!config.notifications.msg91AuthKey && !blank.names.has('MSG91_AUTH_KEY')) {
+		// Unless the release left it blank on purpose, a missing key is a mistake: every one-time
+		// code would silently fail. Left blank on purpose, the composition root uses a sender that
+		// refuses every message and records it as failed (`UnavailableNotificationAdapter`).
 		problems.push('MSG91_AUTH_KEY must be set when NOTIFICATION_PROVIDER=msg91.');
 	}
 	if (config.otp.localFixedCode) {
@@ -147,7 +182,9 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 		problems.push('MEILISEARCH_HOST must be set: without it search and typeahead stop working.');
 	}
 	problems.push(...searchKeyProblems(env.MEILISEARCH_API_KEY));
-	if (!config.spaces.configured) {
+	// A half-configured store is refused while parsing, so unconfigured here means all three blank.
+	// Left blank on purpose, the unconfigured storage adapter refuses every media call.
+	if (!config.spaces.configured && !SPACES_KEYS.every((name) => blank.names.has(name))) {
 		problems.push('Media storage must be configured: set SPACES_KEY, SPACES_SECRET and SPACES_BUCKET.');
 	}
 	if (!config.spaces.cdnUrl) {

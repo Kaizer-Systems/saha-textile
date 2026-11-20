@@ -14,7 +14,8 @@ import type {
  * Development/test implementation of `NotificationPort`.
  *
  * Used when `NOTIFICATION_PROVIDER=console`, or when provider is `msg91` but
- * `MSG91_AUTH_KEY` is unset (factory falls back here with a warn).
+ * `MSG91_AUTH_KEY` is unset on this computer (factory falls back here with a warn). Never on a
+ * server: there the factory uses `UnavailableNotificationAdapter`, which refuses every message.
  *
  * It logs that a message WOULD be sent, with the destination hashed and the variables
  * omitted entirely: OTP codes and reset tokens travel in `variables`, and the one thing

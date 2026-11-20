@@ -63,5 +63,5 @@ if (problems.length > 0) {
 }
 const others = Object.values(inventory.otherFolders ?? {}).reduce((sum, group) => sum + group.names.length, 0);
 console.log(
-	`Infisical inventory matches the code: ${inventory.apiVariables.length + inventory.developmentOnlyApiVariables.length} API settings${others > 0 ? `, ${others} in other folders` : ''}.`,
+	`Infisical inventory matches the code: ${inventory.apiVariables.length + inventory.developmentOnlyApiVariables.length} API settings${others > 0 ? `, ${others} in other folders` : ''}, ${(inventory.releaseWrittenApiVariables ?? []).length} written by the release.`,
 );

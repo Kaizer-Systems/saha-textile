@@ -7,15 +7,20 @@ import { join } from 'node:path';
 
 import { ROOT } from './inventory.mjs';
 
-// The API's own dotenv, so a file is read exactly the way the API will read it.
-const dotenv = createRequire(join(ROOT, 'apps/api/package.json'))('dotenv');
+/** @type {{ parse(text: string): Record<string, string> } | undefined} */
+let dotenv;
 
 /**
+ * Parses env text with the API's own dotenv, so a file is read exactly the way the API will read it.
+ * dotenv is loaded here, on first use, not when this module is imported: the deploy job runs
+ * `cli.mjs release` in a bare checkout with no packages installed, and that command never parses
+ * an env file (tier-release.mjs reads its images file itself).
  * @param {string} text
  * @returns {Map<string, string>}
  */
 export function parseEnvText(text) {
-	return new Map(Object.entries(dotenv.parse(text)));
+	dotenv ??= createRequire(join(ROOT, 'apps/api/package.json'))('dotenv');
+	return new Map(Object.entries(/** @type {NonNullable<typeof dotenv>} */ (dotenv).parse(text)));
 }
 
 /**

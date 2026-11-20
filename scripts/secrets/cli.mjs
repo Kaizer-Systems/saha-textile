@@ -20,8 +20,8 @@ import { setupLocal } from './local-setup.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
 import { stackAddresses, stackApiSettings, writeStackEnv } from './stack.mjs';
-import { writeTierRelease } from './tier-release.mjs';
-import { parseEnvText, readIfPresent } from './files.mjs';
+import { parseImagesFile, writeTierRelease } from './tier-release.mjs';
+import { readIfPresent } from './files.mjs';
 
 /** Notes from the Infisical CLI, said once at the end (for one, that it answered from its own copy). */
 const notes = new Set();
@@ -135,6 +135,8 @@ function release(args) {
 	}
 	const imagesText = readIfPresent(imagesFile);
 	if (imagesText === null) throw new SecretsError('The images file is missing.');
+	// Read before Infisical is asked for anything, so a bad file costs no sign-in.
+	const images = parseImagesFile(imagesText);
 	const inventory = loadInventory();
 	const project = inventory.projects[tier];
 	const folders = exportProject(project, { notes });
@@ -143,7 +145,7 @@ function release(args) {
 		folders,
 		inventory,
 		tier,
-		images: parseEnvText(imagesText),
+		images,
 		source: `${project.name} (${project.environment})`,
 	});
 	console.log(

@@ -304,6 +304,15 @@ test('writeFiles: owner-only folders, files a container user can read, never ove
 		assert.equal(readFileSync(join(dir, 'r1/secrets/api.env'), 'utf8'), 'A=1\n');
 		assert.equal(statSync(join(dir, 'r1/secrets/api.env')).mode & 0o777, 0o644);
 		assert.equal(statSync(join(dir, 'r1/secrets')).mode & 0o777, 0o700);
+		// The deploy job writes under umask 077; the files must still be readable by the containers.
+		const umask = process.umask(0o077);
+		try {
+			writeFiles(join(dir, 'r2'), files);
+		} finally {
+			process.umask(umask);
+		}
+		assert.equal(statSync(join(dir, 'r2/secrets/api.env')).mode & 0o777, 0o644);
+		assert.equal(statSync(join(dir, 'r2/secrets')).mode & 0o777, 0o700);
 		assert.match(
 			refusal(() => writeFiles(join(dir, 'r1'), files)),
 			/secrets\/api.env already exists/,

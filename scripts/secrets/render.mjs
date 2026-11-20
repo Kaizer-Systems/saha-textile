@@ -12,7 +12,7 @@
  * The repository and its Actions logs are public. No message, note or error built here may contain
  * a value: only setting names, file names and counts.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { FOLDERS, SecretsError, folderNames } from './inventory.mjs';
@@ -404,6 +404,10 @@ export function writeFiles(dir, files) {
 		mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
 		try {
 			writeFileSync(target, content, { mode: 0o644, flag: 'wx' });
+			// The mode above is cut by the umask (the deploy job's `umask 077` would leave 0600, and a
+			// root-owned 0600 file is unreadable to the containers' own users on the droplet), so
+			// set it outright. The 0700 folders keep everyone else out.
+			chmodSync(target, 0o644);
 		} catch (error) {
 			if (/** @type {NodeJS.ErrnoException} */ (error).code === 'EEXIST') {
 				throw new SecretsError(

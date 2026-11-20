@@ -21,6 +21,30 @@ import { buildRelease, writeFiles } from './render.mjs';
 export const DROPLET_ROOT = '/opt/saha-textile';
 
 /**
+ * Reads the deploy job's images file: one `NAME=<image>@sha256:<digest>` line per image, blank lines
+ * and `#` comments allowed. Needs no installed package, because the deploy job runs this in a bare
+ * checkout. Image references are not secrets, but messages still name the line, not its value.
+ * @param {string} text
+ * @returns {Map<string, string>}
+ */
+export function parseImagesFile(text) {
+	const images = new Map();
+	for (const [index, raw] of text.split('\n').entries()) {
+		const line = raw.trim();
+		if (line === '' || line.startsWith('#')) continue;
+		const match = /^([A-Z_]+)=(\S+)$/.exec(line);
+		if (!match) throw new SecretsError(`Images file line ${index + 1} is not NAME=<image>@sha256:<digest>.`);
+		const [, name, image] = match;
+		if (!IMAGE_NAMES.includes(name)) {
+			throw new SecretsError(`Images file line ${index + 1}: ${name} is not one of ${IMAGE_NAMES.join(', ')}.`);
+		}
+		if (images.has(name)) throw new SecretsError(`Images file: ${name} is given twice.`);
+		images.set(name, image);
+	}
+	return images;
+}
+
+/**
  * The settings a deploy job adds to the project's /deployment values.
  * @param {'staging' | 'production'} tier
  * @param {Map<string, string>} images

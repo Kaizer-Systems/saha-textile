@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
 import { githubLogin } from './github-login.mjs';
 import { parseEnvText } from './files.mjs';
-import { SecretsError, loadInventory } from './inventory.mjs';
-import { tierReleaseSettings, writeTierRelease } from './tier-release.mjs';
+import { ROOT, SecretsError, loadInventory } from './inventory.mjs';
+import { parseImagesFile, tierReleaseSettings, writeTierRelease } from './tier-release.mjs';
 
 const MARK = 'zzmadeup';
 const inventory = loadInventory();
@@ -88,6 +88,71 @@ test('a staging or production release folder passes the droplet check, with dige
 			assert.ok(!`${check.stdout}${check.stderr}`.includes(MARK));
 		});
 	}
+});
+
+test('the images file: four pinned names, comments and blank lines allowed, anything else refused', () => {
+	const text = ['# images for this commit', '', ...[...images].map(([name, image]) => `${name}=${image}`), ''].join(
+		'\n',
+	);
+	assert.deepEqual(parseImagesFile(text), images);
+	assert.throws(() => parseImagesFile('API_IMAGE = x'), /line 1 is not NAME=/);
+	assert.throws(() => parseImagesFile('\nWEB_IMAGE=x'), /line 2: WEB_IMAGE is not one of API_IMAGE/);
+	assert.throws(() => parseImagesFile('API_IMAGE=a\nAPI_IMAGE=b'), /API_IMAGE is given twice/);
+});
+
+test("the deploy job's steps run in a bare checkout under umask 077: no packages, files the containers can read", () => {
+	withDir((dir) => {
+		// What the deploy job has: a checkout with no node_modules anywhere above it.
+		const repo = join(dir, 'repo');
+		for (const part of ['scripts/secrets', 'docker/infisical', 'docker/production']) {
+			cpSync(join(ROOT, part), join(repo, part), { recursive: true });
+		}
+		// A stand-in Infisical CLI on PATH, answering `export --path /<folder>` from made-up values.
+		const exports = join(dir, 'exports');
+		mkdirSync(exports);
+		for (const [folder, values] of Object.entries(project('staging'))) {
+			const entries = [...values].map(([key, value]) => ({ key, value }));
+			writeFileSync(join(exports, `${folder}.json`), JSON.stringify(entries));
+		}
+		const bin = join(dir, 'bin');
+		mkdirSync(bin);
+		writeFileSync(
+			join(bin, 'infisical'),
+			[
+				'#!/usr/bin/env node',
+				"const { existsSync, readFileSync } = require('node:fs');",
+				"const folder = process.argv[process.argv.indexOf('--path') + 1].slice(1);",
+				'const file = `${process.env.STAND_IN_EXPORTS}/${folder}.json`;',
+				"process.stdout.write(existsSync(file) ? readFileSync(file, 'utf8') : '[]');",
+				'',
+			].join('\n'),
+			{ mode: 0o755 },
+		);
+		const imagesFile = join(dir, 'images.env');
+		writeFileSync(imagesFile, [...images].map(([name, image]) => `${name}=${image}\n`).join(''));
+		const out = join(dir, 'release');
+		const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, STAND_IN_EXPORTS: exports };
+		delete env.NODE_PATH;
+		const write = spawnSync(
+			'bash',
+			[
+				'-c',
+				'umask 077 && mkdir "$2" && node "$1/scripts/secrets/cli.mjs" release staging --images "$3" --out "$2"',
+				'job',
+				repo,
+				out,
+				imagesFile,
+			],
+			{ encoding: 'utf8', env },
+		);
+		assert.equal(write.status, 0, `${write.stdout}${write.stderr}`);
+		assert.ok(!`${write.stdout}${write.stderr}`.includes(MARK));
+		assert.equal(statSync(join(out, 'secrets/api.env')).mode & 0o777, 0o644);
+		assert.equal(statSync(join(out, 'secrets')).mode & 0o777, 0o700);
+		const check = spawnSync('bash', [join(out, 'bin/deploy.sh'), '--check-only', out], { encoding: 'utf8', env });
+		assert.equal(check.status, 0, `${check.stdout}${check.stderr}`);
+		assert.ok(!`${check.stdout}${check.stderr}`.includes(MARK));
+	});
 });
 
 test('a deploy release refuses another tier, unpinned images and a folder that is not empty', () => {

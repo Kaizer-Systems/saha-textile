@@ -48,13 +48,18 @@
 	}
 }
 
-// The slider draws its arrows as buttons inside the slide area; the theme shows them with
-// `.product-section .product-left-box .product-main-1 .owl-prev`, so phones hide them one class stronger.
+// Phones keep the theme's arrows beside the dots so the swipe is obvious (owner, 21 Nov 2026: "i want the arrows on
+// the phone too along with the dots so swiping intent is clear on phone"). The slider draws them as buttons inside the
+// slide area and the theme places them 1-5 px from the photo's edge; on a full-width phone photo that is the screen
+// edge, where the system back swipe lives, so they sit 8 px in. One class stronger than the theme's own rule.
 @include mq-max(md) {
 	.product-section .product-left-box .product-main-1.slider-dots {
-		.owl-prev,
+		.owl-prev {
+			left: 8px;
+		}
+
 		.owl-next {
-			display: none;
+			right: 8px;
 		}
 	}
 }

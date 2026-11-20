@@ -327,8 +327,9 @@ export const productMainThumbSlider: OwlOptions = {
 	// Stays on the photo while the pointer is over it (the hover zoom); moves on once it leaves.
 	autoplayHoverPause: true,
 	navSpeed: 300,
-	// Dots and arrows are both drawn; the screen width picks one in scss/components/_product-gallery.scss. Owl's own
-	// `responsive` reads the carousel's width, not the screen's, so a 438 px photo box on a laptop counted as a phone.
+	// Dots and arrows are both drawn; phones show both, laptops only the arrows (scss/components/_product-gallery.scss).
+	// Owl's own `responsive` reads the carousel's width, not the screen's, so a 438 px photo box on a laptop counted as a
+	// phone; that is why the screen width is decided in CSS.
 	dots: true,
 	responsive: {
 		0: {

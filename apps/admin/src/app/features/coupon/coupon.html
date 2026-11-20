@@ -17,6 +17,7 @@
 	<app-table
 		[tableConfig]="tableConfig"
 		[hasCheckbox]="true"
+		[selectionKey]="'coupons'"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"

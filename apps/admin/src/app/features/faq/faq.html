@@ -18,6 +18,7 @@
 	<app-table
 		[tableConfig]="tableConfig()"
 		[hasCheckbox]="true"
+		[selectionKey]="'faqs'"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"

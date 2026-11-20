@@ -50,9 +50,13 @@ export const opsMessagesSchema = z.object({
 export type OpsMessagesView = z.infer<typeof opsMessagesSchema>;
 export const opsMessagesAnswerSchema = vendorAnswer(opsMessagesSchema);
 
-/** Which console key reads an environment's `/ops`: this computer and a dev server read dev's. */
+/**
+ * Which console key reads an environment's `/ops`: this computer's stack has its own (it reads the
+ * saha-textile-local project), a development server reads development's (owner, 21 Nov).
+ */
 export function opsKeyName(env: { name: string; cloudId: string | null }): string | null {
-	if (env.cloudId === null || /dev/i.test(env.name)) return 'CONSOLE_OPS_TOKEN_DEV';
+	if (env.cloudId === null) return 'CONSOLE_OPS_TOKEN_LOCAL';
+	if (/dev/i.test(env.name)) return 'CONSOLE_OPS_TOKEN_DEV';
 	if (/stag/i.test(env.name)) return 'CONSOLE_OPS_TOKEN_STAGING';
 	if (/prod/i.test(env.name)) return 'CONSOLE_OPS_TOKEN_PRODUCTION';
 	return null;

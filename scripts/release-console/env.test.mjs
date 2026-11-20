@@ -29,6 +29,7 @@ test('lists the names the console API reads, and reports missing ones by name on
 		'CONSOLE_CF_WRITE_TOKEN',
 		'CONSOLE_DO_WRITE_TOKEN',
 		'CONSOLE_OPS_TOKEN_DEV',
+		'CONSOLE_OPS_TOKEN_LOCAL',
 		'CONSOLE_OPS_TOKEN_PRODUCTION',
 		'CONSOLE_OPS_TOKEN_STAGING',
 	]);

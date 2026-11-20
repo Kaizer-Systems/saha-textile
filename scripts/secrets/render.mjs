@@ -435,7 +435,7 @@ export function planEnvFileChange(current, next) {
  * @param {Record<string, Folder>} folders
  * @param {{ tier: 'dev' | 'staging' | 'production', inventory: Inventory }} options
  */
-export function projectReport(folders, { tier, inventory }) {
+export function projectReport(folders, { tier, inventory, setByPipeline = new Set() }) {
 	const allowed = folderNames(inventory);
 	const derived = derivedNames(inventory);
 	/** @type {Record<string, Set<string>>} */
@@ -469,7 +469,10 @@ export function projectReport(folders, { tier, inventory }) {
 		};
 	});
 	const api = folders.api ?? new Map();
-	const requiredBlank = inventory.requiredForRelease.filter((name) => isBlank(api.get(name)));
+	// The dev project's release is the local pipeline's, which sets the stack's own settings itself.
+	const requiredBlank = inventory.requiredForRelease.filter(
+		(name) => isBlank(api.get(name)) && !(tier === 'dev' && setByPipeline.has(name)),
+	);
 	const infrastructureBlank = inventory.infrastructureFiles.filter((file) =>
 		isBlank(folders.infrastructure?.get(file)),
 	);
@@ -482,6 +485,40 @@ export function projectReport(folders, { tier, inventory }) {
  * @param {ReturnType<typeof projectReport>} report
  * @param {string} title
  */
+/**
+ * One folder the shop never reads (inventory.otherFolders), for `pnpm secrets:status`. Names only.
+ * @param {import('./inventory.mjs').OtherFolder} group
+ * @param {Map<string, string> | null} values   null when the folder could not be read
+ */
+export function otherFolderReport(group, values) {
+	if (values === null) return { folder: group.folder, readable: false, count: group.names.length };
+	const listed = new Set(group.names);
+	const required = group.names.filter((name) => !group.optional.has(name));
+	return {
+		folder: group.folder,
+		readable: true,
+		filled: [...values].filter(([, value]) => !isBlank(value)).length,
+		missing: required.filter((name) => !values.has(name)),
+		blank: required.filter((name) => values.has(name) && isBlank(values.get(name))),
+		optionalBlank: [...group.optional].filter((name) => isBlank(values.get(name))),
+		unknown: [...values.keys()].filter((name) => !listed.has(name)).sort(),
+	};
+}
+
+/** @param {ReturnType<typeof otherFolderReport>} report */
+export function formatOtherFolder(report) {
+	const head = `  /${report.folder.padEnd(15)}`;
+	if (!report.readable) {
+		return `${head} could not be read (not created yet?); its ${report.count} names are in docker/infisical/variable-names.json`;
+	}
+	const lines = [`${head} ${report.filled} filled`];
+	if (report.missing.length > 0) lines.push(`      not in Infisical yet: ${report.missing.join(', ')}`);
+	if (report.blank.length > 0) lines.push(`      blank: ${report.blank.join(', ')}`);
+	if (report.optionalBlank.length > 0) lines.push(`      optional, blank: ${report.optionalBlank.join(', ')}`);
+	if (report.unknown.length > 0) lines.push(`      not in the inventory (misspelt?): ${report.unknown.join(', ')}`);
+	return lines.join('\n');
+}
+
 export function formatReport(report, title) {
 	const lines = [title];
 	for (const folder of report.folders) {

@@ -54,6 +54,14 @@ export function describeError(error) {
  * @property {string[]} deployment
  * @property {Record<string, string>} derivedDeployment  `release.env` name → the `/api` setting it is
  *                                                    written from (owner decision D2)
+ * @property {OtherFolder[]} otherFolders            folders the shop never reads (e.g. /release-console)
+ *
+ * @typedef {object} OtherFolder
+ * @property {string} folder          e.g. `release-console`
+ * @property {Set<string>} tiers      the projects that hold it
+ * @property {string} readBy          the one code folder that reads these names
+ * @property {string[]} names
+ * @property {Set<string>} optional   names that may stay blank
  */
 
 /**
@@ -89,7 +97,45 @@ export function loadInventory(root = ROOT) {
 		derivedFiles: json.derivedSecretFiles ?? {},
 		deployment: json.deploymentVariables,
 		derivedDeployment: json.derivedDeploymentVariables ?? {},
+		otherFolders: otherFolders(json, new Set([...json.apiVariables, ...json.developmentOnlyApiVariables])),
 	};
+}
+
+/**
+ * Folders kept in Infisical for something other than the shop, such as the Release Console's keys.
+ * The renderer never reads them; `pnpm secrets:status` reports them and the names check confirms
+ * the code named in `readBy` reads every name.
+ * @param {Record<string, any>} json
+ * @param {Set<string>} apiNames
+ * @returns {OtherFolder[]}
+ */
+function otherFolders(json, apiNames) {
+	const seen = new Set();
+	return Object.entries(json.otherFolders ?? {}).map(([folder, group]) => {
+		if (FOLDERS.includes(folder))
+			throw new SecretsError(`otherFolders may not reuse the shop's folder /${folder}.`);
+		const tiers = new Set(group.projects ?? []);
+		for (const tier of tiers) {
+			if (!TIERS.includes(tier))
+				throw new SecretsError(`otherFolders.${folder} names an unknown project: ${tier}.`);
+		}
+		if (typeof group.readBy !== 'string' || group.readBy === '') {
+			throw new SecretsError(`otherFolders.${folder} needs readBy: the code folder that reads its names.`);
+		}
+		const names = [...(group.names ?? [])];
+		for (const name of names) {
+			if (apiNames.has(name) || seen.has(name)) {
+				throw new SecretsError(`${name} is listed twice in variable-names.json (otherFolders.${folder}).`);
+			}
+			seen.add(name);
+		}
+		const optional = new Set(group.optional ?? []);
+		for (const name of optional) {
+			if (!names.includes(name))
+				throw new SecretsError(`otherFolders.${folder}.optional lists ${name}, not one of its names.`);
+		}
+		return { folder, tiers, readBy: group.readBy, names, optional };
+	});
 }
 
 /**

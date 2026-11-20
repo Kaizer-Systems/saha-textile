@@ -18,11 +18,19 @@ import { exportFolder, exportProject } from './infisical.mjs';
 import { ROOT, SecretsError, TIERS, describeError, loadInventory } from './inventory.mjs';
 import { setupLocal } from './local-setup.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
-import { formatReport, projectReport } from './render.mjs';
-import { writeStackEnv } from './stack.mjs';
+import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
+import { stackAddresses, stackApiSettings, writeStackEnv } from './stack.mjs';
 
 /** Notes from the Infisical CLI, said once at the end (for one, that it answered from its own copy). */
 const notes = new Set();
+// The API settings the local pipeline's release sets itself (the stack's services, hosts and proxy).
+const PIPELINE_SETS = new Set(
+	stackApiSettings(stackAddresses('443'), {
+		redisPassword: '-',
+		searchKey: '-',
+		mongo: { appUser: '-', appPassword: '-' },
+	}).keys(),
+);
 
 /** @param {string[]} args */
 function status(args) {
@@ -37,9 +45,28 @@ function status(args) {
 	for (const tier of /** @type {Array<'dev' | 'staging' | 'production'>} */ (tiers)) {
 		const project = inventory.projects[tier];
 		const folders = exportProject(project, { notes });
-		blocks.push(
-			formatReport(projectReport(folders, { tier, inventory }), `${project.name} (${project.environment})`),
-		);
+		const lines = [
+			formatReport(
+				projectReport(folders, { tier, inventory, setByPipeline: PIPELINE_SETS }),
+				`${project.name} (${project.environment})`,
+			),
+		];
+		// Folders the shop never reads, such as the Release Console's keys: reported, never rendered.
+		for (const group of inventory.otherFolders.filter((candidate) => candidate.tiers.has(tier))) {
+			let values = null;
+			try {
+				values = exportFolder({
+					projectId: project.projectId,
+					environment: project.environment,
+					folder: group.folder,
+					notes,
+				});
+			} catch (error) {
+				if (!(error instanceof SecretsError)) throw error;
+			}
+			lines.push(formatOtherFolder(otherFolderReport(group, values)));
+		}
+		blocks.push(lines.join('\n'));
 	}
 	console.log(blocks.join('\n\n'));
 }

@@ -128,3 +128,24 @@ export function findNameProblems({ inventory, exampleNames, codeNames, requiredF
 	}
 	return problems;
 }
+
+/**
+ * Folders the shop never reads (variable-names.json `otherFolders`): every listed name must be read
+ * somewhere in the code folder the group names as `readBy`, so a renamed or dropped key is caught.
+ * @param {Record<string, { readBy: string, names: string[] }>} otherFolders
+ * @param {Record<string, { path: string, text: string }[]>} filesByReader  readBy → its source files
+ * @returns {string[]}
+ */
+export function otherFolderProblems(otherFolders, filesByReader) {
+	const problems = [];
+	for (const [folder, group] of Object.entries(otherFolders ?? {})) {
+		const files = filesByReader[group.readBy] ?? [];
+		for (const name of group.names ?? []) {
+			const word = new RegExp(`\\b${name}\\b`);
+			if (!files.some((file) => word.test(file.text))) {
+				problems.push(`${name} is listed for /${folder}, but nothing in ${group.readBy} reads it.`);
+			}
+		}
+	}
+	return problems;
+}

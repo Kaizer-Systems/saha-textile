@@ -278,11 +278,11 @@ accept-invitation page and the browser PIN proof.
 
 - `DEC-TAX-HSN`
 - `DEC-SHIPPING`
-- `DEC-PROMO-STACK`
+- ~~`DEC-PROMO-STACK`~~ — resolved 2026-11-20 (owner log § orders brief answers)
 - ~~`DEC-STOCK-RESERVE`~~ — resolved 2026-11-17 (owner log § orders round)
 - ~~`DEC-BACKORDER`~~ — resolved 2026-11-04, replaced 2026-11-17 (owner log § orders round)
 - `DEC-ORDER-SNAPSHOT`
-- `DEC-ADDRESS`
+- ~~`DEC-ADDRESS`~~ — resolved 2026-11-20 (owner log § orders brief answers)
 - `DEC-RETURNS`
 - ~~`DEC-PAYPAL-FX`~~ — resolved 2026-11-19 (owner log § 2026-11-19)
 - ~~`DEC-INR-GATEWAY-TIMING`~~ — resolved 2026-11-17 (owner log § orders round)
@@ -303,11 +303,10 @@ accept-invitation page and the browser PIN proof.
   filtered page. Past the first page, totals, search and date filters are wrong. Fix by moving
   `q`/`startDate`/`endDate` into the repository query (index-backed) and returning the
   repository's own count. Owner: do it here, when real orders exist to page through.
-- **Coupons on sale items (launch and sale events, 2026-11-09).** The approved brief says coupons
-  don't apply to items in a running sale until `DEC-PROMO-STACK` is answered. Events lay the sale
-  price over shop reads, but checkout is closed, so no coupon code path exists yet to refuse.
-  When checkout opens, refuse a coupon on any line whose price comes from a running sale
-  (`SalePriceBook`), until the owner answers `DEC-PROMO-STACK`.
+- **Coupons on sale items (launch and sale events, 2026-11-09; answered 2026-11-20).** `DEC-PROMO-STACK` is
+  answered (owner log § orders brief answers): a coupon skips lines whose price comes from a running sale
+  (`SalePriceBook`) unless that coupon is set to include sale items; coupons that allow stacking combine.
+  Build it with checkout.
 - **A cart whose sale ended (2026-11-09).** The cart is priced by the server, so a line re-prices
   by itself when its sale ends. The brief also asks the cart to **say** the price changed; it
   doesn't yet. Add the notice with checkout. A payment already started keeps the price it started

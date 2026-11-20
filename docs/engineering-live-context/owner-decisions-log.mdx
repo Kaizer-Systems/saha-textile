@@ -1975,3 +1975,62 @@ names-only audit of the dev project against the files on the Mac.
   sitemap, sales or stock; never deleted automatically; one draft of changes per product per person;
   Update Product runs every check and writes only the changed fields, asking per field when the
   product was saved by someone else after the draft began.
+
+## Owner decision round (2026-11-20) — orders brief answers: open orders, payment requests, coupons, addresses, numbering
+
+Answers given in chat on the orders, checkout, businesses and payments brief (version 1,
+https://claude.ai/artifact/AbKBNhxsUbpZPkYxqW41eD). Closed here: `DEC-PROMO-STACK` (Orders round OD4) and
+`DEC-ADDRESS` (OD6). Removed from the round-2 CA document: B1.2, B1.7 and B6.1–B6.2. Added to it: B3.2
+(reworded) and B8.7 in the wording the owner accepted, and the rounding of foreign prices (Orders round
+FX3) as D19.1.
+
+- **Open orders for regular buyers (admin orders, shop customers and businesses alike).** Some buyers
+  collect pieces over two or three months and take them in one shipment. An admin order can be saved and
+  kept open: its pieces are held, staff add and remove pieces over time, and the order total follows.
+  An order can take several payments. A payment typed by hand (UPI, bank transfer, cash) opens with the
+  amount still due filled in; staff may change it: less leaves the rest due, more leaves the order paid
+  ahead. An online payment request (INR gateway or PayPal) can only be for the amount still due.
+- **Pieces on an unpaid admin order are held, whether or not a payment has started** (concern K7: "draft
+  orders will block inventory regardless whether payment initiated or not").
+- **Payment requests come from the gateway itself.** The owner meant the gateway's own payment request,
+  which the gateway emails and texts to the customer in its own format (CCAvenue's invoice service sends
+  email and SMS; PayPal's invoice is emailed by PayPal); we only pass the details it needs. Beside the
+  link in the admin: Copy, plus "Send as SMS" and "Send as email" buttons that use our MSG91 templates.
+  Those two are pressed by staff and never sent automatically.
+- **Businesses.** Business customers and suppliers are kept as companies in one collection, so the
+  business order screen offers them in one list. For Saha Textile the customer and supplier accounts stay
+  separate and each is settled by payment. For other businesses the system allows a set-off between the
+  two accounts, either as a standing setting backed by a written agreement or as a single entry with its
+  own agreement, built from a senior UI/UX, e-commerce and audit point of view and ready even though Saha
+  Textile will not use it. No CA question is added for it (the proposed D13.5 is dropped).
+- **OD4, `DEC-PROMO-STACK` — option A plus a stacking switch.** One coupon per order; a coupon skips items
+  already on sale unless it is set to include them; automatic offers never stack, and the lowest price
+  wins; coupons cover products and their stitching, never delivery (free delivery is its own coupon type);
+  once per customer unless set otherwise. A coupon whose type allows stacking may be used together with
+  other coupons that also allow it, under the same rules. A coupon builder replaces the theme's demo
+  coupon screens (in the spirit of the shipping rule builder), and coupons work in both the shop checkout
+  and the admin order checkout. How a coupon's discount is split across items at different GST rates stays
+  with the CA (round-2 D1).
+- **OD6, `DEC-ADDRESS` — option A plus country rules.** Several named addresses; mobile number required (10
+  digits in India, international format abroad); second number and landmark optional; the PIN code fills
+  city and State and checks a courier can deliver; billing the same as delivery unless the buyer unticks
+  it. Every address form: the chosen country limits the State list and sets the phone country code, which
+  staff or the buyer may still change for the phone only. Saved addresses are managed by staff for a
+  customer in the admin and by the customer in the shop account; both checkouts let billing and delivery
+  each be picked from saved addresses or typed new, with a "save this address" box that asks for the
+  address's name when ticked.
+- **B1.2 (relayed by the round-2 CA question chat, Final, 2026-11-20).** Checkout always takes both a billing
+  and a delivery address, with a "same as delivery" box; the admin order screens show both; the case of a
+  buyer abroad giving an Indian address for the invoice stays behind the named `exportOffIndianInvoice`
+  path. **D8.6 (open, owner and CA):** in which currency, and on how many documents, such an order is
+  invoiced; nothing is built for it until answered, only a seam.
+- **OD10 — import duty abroad.** Not for Saha Textile, whose export path is off. Kept as a setting under the
+  named orders-abroad paths for businesses that ship abroad, off for Saha Textile.
+- **OD18 and `DEC-NUMBERING` — the owner chooses every document number format** from the recommended table
+  in the brief; the CA has agreed to accept that choice, so B6.1–B6.2 leave the CA document.
+- **FX3** goes to the CA document (D19.1). **FX5** is not settled by the rate sources: it asks how often the
+  foreign prices shown in the shop change, and stays open in the Orders round.
+- **Admin lock screen.** The 15-minute lock must be held by the server, so a reload or a new tab cannot
+  skip it. A form being filled when the lock appears must keep its values after the password or PIN, and a
+  reload or tab close with unsaved changes, locked or not, must ask the browser's "leave this page?"
+  question. To be built and tested without pictures.

@@ -158,11 +158,6 @@ Coins are earned on purchases, issued by us, usable only on our store, never sol
 - **(b) The billing address, so place of supply is always the billing State.** For: follows the buyer. Against: differs from the shipment, harder to defend if questioned.
 - **(c) Another rule.** Please state which stored field decides it.
 
-**B1.2** Do we keep the billing address optional (defaulting to the delivery address)?
-
-- **(a) Optional, default = delivery (Recommended).** For: fewer checkout steps, better conversion. Against: none if B1.1 is (a).
-- **(b) Mandatory separate billing address.** For: always captured. Against: more friction for every buyer.
-
 **B1.3** A buyer in Delhi sends a saree as a gift to a relative in Assam. Which rule applies, and does it change if the buyer is GST-registered?
 
 - **(a) Our normal B2C rule from B1.1 (Recommended).** For: no special case in code. Against: please confirm Section 10(1)(b) does not apply.
@@ -182,11 +177,6 @@ Coins are earned on purchases, issued by us, usable only on our store, never sol
 
 - **(a) Confirmed (Recommended).** For: one official source. Against: none.
 - **(b) Use another list or rule.** Please name it, and the treatment of Ladakh, J&K, Chandigarh, Andaman and Nicobar, Lakshadweep, the merged Dadra/Daman UT and Puducherry.
-
-**B1.7** A customer gives no State, or an address we cannot resolve to a State.
-
-- **(a) Block the order (Recommended).** For: no invoice without a place of supply. Against: a few lost orders.
-- **(b) Default to West Bengal.** For: no lost orders. Against: wrong tax if the buyer is elsewhere.
 
 ### B2. HSN codes and rates
 
@@ -247,6 +237,14 @@ Coins are earned on purchases, issued by us, usable only on our store, never sol
 
 - **(a) We assign it through the category; you review a monthly list of new or overridden HSNs (Recommended).** For: no launch delay, still checked. Against: a wrong code can be live for a few weeks.
 - **(b) You approve every new product's HSN before it goes live.** For: nothing wrong ever goes live. Against: every launch waits on you.
+
+### B3. Paid parcels sent abroad (export off)
+
+**B3.2** A buyer abroad pays us and gives an Indian invoice address. We issue a normal GST invoice to that Indian address, as a domestic sale, and the courier takes the parcel to the buyer abroad, declared as a sample. Is this acceptable under GST and customs, and is there any risk in declaring a paid parcel as a sample?
+
+- **(a) Acceptable as described.** For: no change to today's practice. Against: a sample is normally free of charge, so customs may question a paid parcel declared as one.
+- **(b) Acceptable, but declare it as a gift or a commercial parcel, not a sample.** For: the declaration matches what happened. Against: a commercial declaration may bring export paperwork with it.
+- **(c) Not acceptable: it is an export and needs export paperwork (Recommended to ask).** For: fully by the book. Against: the export path is not built (export is off); it would have to be built first.
 
 ### B4. Gift cards and store credit
 
@@ -342,12 +340,6 @@ Gift cards may come later; store credit issued only on refunds may come at launc
 
 ### B6. Document numbering
 
-**B6.1–B6.2** Number series, each 16 characters or fewer, reset to 000001 on 1 April (FY 2026-27 shown). The earlier "STCN/26-27/000001" is 17 characters, so prefixes are shortened.
-
-- **(a) Two-letter prefixes (Recommended).** Tax invoice ST/26-27/000001 · Credit note CN/26-27/000001 · Debit note DN/26-27/000001 · Receipt voucher RV/26-27/000001 · Refund voucher RF/26-27/000001 · Delivery challan DC/26-27/000001 · RCM payment voucher PV/26-27/000001 · Order number (internal) SO/26-27/000001. For: all 15 characters, readable. Against: none.
-- **(b) Compact style, for example CN2627-000001.** For: shorter. Against: harder to read.
-- **(c) Amend any line.**
-
 **B6.4** Order cancelled after the invoice is made but before dispatch:
 
 - **(a) Cancel the invoice (number kept, marked cancelled in GSTR-1 Table 13) if GSTR-1 for that month is not yet filed; otherwise issue a credit note (Recommended).** For: no needless credit notes. Against: two paths.
@@ -427,6 +419,12 @@ Gift cards may come later; store credit issued only on refunds may come at launc
 
 - **(a) Your office, monthly, from an Excel export in GSTR-2B column order; unfiled suppliers flagged and their ITC held (Recommended).**
 - **(b) Our accountant, monthly.** Please give the export format.
+
+**B8.7** Buying from the Kolkata stores' company. The website company buys stock from the stores' company, a separate legal entity under the same brand, on the stores' tax invoice, with or without our purchase order. Do we claim input credit as with any supplier, and is a related-party valuation rule needed on the price?
+
+- **(a) Like any supplier, at the invoice price, with input credit (Recommended, if you agree).** For: no special path. Against: please confirm the related-person rules don't apply.
+- **(b) As (a), but at market value under the related-person rules.** For: safe if the two companies count as related persons. Against: a valuation step on every purchase from the stores.
+- **(c) Something else.** Please say.
 
 ### B9. Record retention
 
@@ -906,6 +904,14 @@ Round-off Rs 0.00; payable Rs 8,348 (eight thousand three hundred and forty-eigh
 
 **D18.1–D18.3** Please flag anything else an Indian online seller of its own goods (domestic, prepaid, a few orders a month paid from abroad through PayPal, with gift cards and loyalty coins) must comply with in 2026, any FY 2026-27 change that alters an answer here, and any fact about our business you have assumed rather than been told.
 
+### D19. Prices in other currencies
+
+**D19.1** Foreign-currency prices (US$, £, €, C$, A$, S$, NZ$) are worked out from the rupee price at the stored rate plus the 6% PayPal markup, so they are rarely round numbers (for example US$120.07). How are they rounded? Which currency the invoice itself is in is asked separately.
+
+- **(a) Exactly to the cent (US$120.07).** For: precise. Against: looks like a converted price.
+- **(b) Up to the next .99 (US$120.99).** For: familiar retail look. Against: reads as discount pricing.
+- **(c) Up to the next whole unit (US$121) (Recommended).** For: clean, never below the computed price, covers PayPal's fixed fee on most orders. Against: up to one unit more per item; please confirm the rounded amount is what the payment-currency documents show.
+
 ---
 
 ## O. For the business owner
@@ -926,4 +932,4 @@ Round-off Rs 0.00; payable Rs 8,348 (eight thousand three hundred and forty-eigh
 
 ---
 
-_Removed from round 2 because the owner answered them as final (2026-11-10 to 2026-11-15; recorded in the owner decisions log): coin hold-and-claw-back rule (old A1.3, business half), refund choice for card/UPI orders (old A2.3), non-returnable items (old A2.6), HSN by category with product override (old B2.7), and FIFO valuation with stock value on any date (D15.1). Pure cross-references (B7.7, C2.5, C2.7, C3.3, D7.5) were folded into the items they pointed to. Export questions (B3.1–B3.12, B6.3, B8.6, C3.4 and the export row of D14) moved on 2026-11-19 to `tax-compliance-future-expansion.mdx`: export is off for Saha Textile. Numbers are unchanged, so gaps mark removed items. The list of points already settled by your round-1 replies is kept in the owner decisions log, not here._
+_Removed on 2026-11-20 on the owner's instruction: B1.2 (billing and delivery addresses are both always taken, with a "same as delivery" box) and B1.7 (for an Indian address the State comes from the PIN code, and an Indian address without a State cannot be saved), and B6.1–B6.2 (the owner chooses the document number formats; the CA agreed to accept that choice). _Removed from round 2 because the owner answered them as final (2026-11-10 to 2026-11-15; recorded in the owner decisions log): coin hold-and-claw-back rule (old A1.3, business half), refund choice for card/UPI orders (old A2.3), non-returnable items (old A2.6), HSN by category with product override (old B2.7), and FIFO valuation with stock value on any date (D15.1). Pure cross-references (B7.7, C2.5, C2.7, C3.3, D7.5) were folded into the items they pointed to. Export questions (B3.1–B3.12, B6.3, B8.6, C3.4 and the export row of D14) moved on 2026-11-19 to `tax-compliance-future-expansion.mdx`: export is off for Saha Textile. Numbers are unchanged, so gaps mark removed items. The list of points already settled by your round-1 replies is kept in the owner decisions log, not here._

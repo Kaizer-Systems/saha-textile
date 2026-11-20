@@ -37,9 +37,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-TAX-HSN`               | Tax classes, GST slabs, and HSN granularity — **partly settled 2026-08-21**                          | Catalog, checkout, invoices, accounting       |
 | `DEC-SHIPPING`              | Launch shipping-rate policy — **partly settled 2026-08-21**                                          | Checkout, Shiprocket seam, promotions         |
 | `DEC-RETURNS`               | Return/refund policy — **partly settled 2026-08-21**                                                 | Orders, returns, refunds, customer support    |
-| `DEC-PROMO-STACK`           | Promotion and coupon stacking                                                                        | Pricing engine, checkout                      |
 | `DEC-ORDER-SNAPSHOT`        | Immutable order-line snapshot fields — **partly settled 2026-08-21**                                 | Orders, invoices, analytics, support          |
-| `DEC-ADDRESS`               | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                  |
 | `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                  |
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
@@ -285,47 +283,6 @@ Notes:
 
 ---
 
-## 05. `DEC-PROMO-STACK` — Promotion and coupon stacking
-
-### Decision needed
-
-Define how sale prices, automatic promotions, and coupons combine.
-
-### Recommended route
-
-Allow one coupon per order. Automatic promotions stack only when explicitly configured. Exclude sale/clearance items by default.
-
-### Options
-
-#### Option A — One coupon plus controlled automatic stacking (recommended)
-
-- Pros: flexible but bounded.
-- Cons: needs priority, eligibility, and explanation rules.
-
-#### Option B — No stacking
-
-- Pros: safest and simplest.
-- Cons: limits campaign flexibility.
-
-#### Option C — Multiple coupons and promotions
-
-- Pros: maximum campaign flexibility.
-- Cons: high discount-leak and testing risk.
-
-### Owner answer
-
-Choice:
-
-Coupons on sale items:
-
-Automatic promotions may stack:
-
-Per-user limits:
-
-Notes:
-
----
-
 ## 08. `DEC-ORDER-SNAPSHOT` — Immutable order-line fields
 
 ### Decision needed
@@ -377,60 +334,6 @@ Fields to add:
 Fields to remove:
 
 Notes:
-
----
-
-## 09. `DEC-ADDRESS` — Addresses and checkout phone
-
-### Decision needed
-
-Choose saved-address behavior and whether phone is mandatory for shipping.
-
-### Recommended route
-
-Multiple addresses per user, default shipping/billing flags, billing-same-as-shipping by default, and required shipping phone at checkout.
-
-### Options
-
-#### Option A — Multiple addresses with required shipping phone (recommended)
-
-- Pros: normal repeat-customer and courier experience.
-- Cons: more validation/default-state logic.
-
-#### Option B — One saved address
-
-- Pros: simpler.
-- Cons: poor repeat-order and billing flexibility.
-
-#### Option C — Fully separate billing/shipping workflow
-
-- Pros: most complete.
-- Cons: more checkout friction.
-
-### Settled by CA confirmation (2026-08-21) — no longer open
-
-- The address model must carry billing State and PIN separately from shipping State and PIN, and an optional GSTIN, because place of supply is determined from the recipient address recorded on the invoice rather than from the shipping PIN. Locked in `owner-decisions-log.mdx`.
-
-**Still open here:** the saved-address behaviour below, and — bearing directly on the
-billing-same-as-shipping default — which of the two addresses fills the recipient role when the
-States differ. Do not finalise that default before round-2 item `B1.1` is answered.
-
-### Owner answer
-
-Choice:
-
-Phone required:
-
-Alternate phone:
-
-Billing same as shipping by default:
-
-Address validation provider/manual:
-
-Notes: the 2026-08-12 account-separation lock (D9) added an optional `label` on the typed
-`Address` contract for named saved addresses. It did **not** answer checkout phone
-requirement, billing-same-as-shipping default, or address validation provider — those
-remain open here.
 
 ---
 

@@ -2055,9 +2055,85 @@ FX3) as D19.1.
   named orders-abroad paths for businesses that ship abroad, off for Saha Textile.
 - **OD18 and `DEC-NUMBERING` — the owner chooses every document number format** from the recommended table
   in the brief; the CA has agreed to accept that choice, so B6.1–B6.2 leave the CA document.
-- **FX3** goes to the CA document (D19.1). **FX5** is not settled by the rate sources: it asks how often the
+- **FX3** goes to the CA document (D19.1). **FX5** (answered in the next round, 2026-11-20) is not settled by the rate sources: it asks how often the
   foreign prices shown in the shop change, and stays open in the Orders round.
 - **Admin lock screen.** The 15-minute lock must be held by the server, so a reload or a new tab cannot
   skip it. A form being filled when the lock appears must keep its values after the password or PIN, and a
   reload or tab close with unsaved changes, locked or not, must ask the browser's "leave this page?"
   question. To be built and tested without pictures.
+
+## Owner decision round (2026-11-20) — orders and checkout brief approved, with changes
+
+The orders, checkout, businesses and payments brief v2.1 (https://claude.ai/artifact/AbKBNhxsUbpZPkYxqW41eD)
+is **approved with the recommendations** (owner, 2026-11-20: "rest of the brief is accepted with your
+recommendations. integrate the above decisions and start building the code in the background"). Approval covers
+every picture, the green side of concerns K1–K10, the named-settings table, the permissions table, the status
+table, the S1–S10 address × currency table, the 24 emails and the reuse inventory; the one custom piece is the
+email layout (`DEC-UI-REUSE`). The changes and additions below are built directly, without redrawing the brief.
+
+- **FX5 — foreign prices follow the active rate source, with no threshold (Final).** Owner: "change each day auto
+  fetch from API when enabled from api, or manually set by admin changed only when admin changes it or dynamic
+  rates per transaction when FXaaS is approved." The daily fetch, when switched on, changes foreign prices each
+  day; a rate typed by staff while the fetch is off changes only when staff change it; PayPal's own rate per
+  payment applies once FXaaS is approved. The brief's "only past a 1% move" idea is dropped. Carts are priced
+  again at checkout (existing rule). The built Currencies code already works this way (no threshold anywhere).
+- **fx03 — accepted as written; nothing to build now.** The "PayPal's rates unavailable" banner can appear only
+  when the source is PayPal's rates and PayPal's rate service fails; the PayPal choice stays greyed until PayPal
+  approves FXaaS.
+- **`PAYPAL_ENV` is set in Infisical by the owner** ("PAYPAL_ENV set in dev staging and prod in infisical as
+  sandbox for dev and staging and live for production"). It replaces "derive from `DEPLOY_ENV`": the PayPal
+  adapter reads `PAYPAL_ENV` (`sandbox` | `live`, required when the PayPal keys are set) and fails closed on a
+  mismatch (`live` outside production, or `sandbox` in production): PayPal is switched off with a clear
+  startup log line and the gateway page says PayPal isn't configured. Key values are never printed.
+- **Orders list — a date range filter** beside the drawn filters (ol02–ol04): "only a date range filter selection
+  should also be there along with your drawn filters." Server-side and index-backed.
+- **Create order — the buyer search uses the theme's search-select** already in the admin ("think the fastkart
+  theme might have such a search select dropdown as a plugin already available to re-use"). A shop customer is
+  found by anything typed — name, phone or email; a business by name, phone number or GSTIN. Server-side,
+  debounced and keyboard-friendly, with "Add customer" / "Add business" kept.
+- **Shop pay page, expired link (shop11):** the two buttons become normal-size **"Call us"** and **"Email us"**
+  anchors (`tel:` and `mailto:` from the store's contact settings), with no phone number or email address in
+  the button text ("that should be reduced to call us and email us with proper anchor links to trigger the
+  actions").
+- **`DEC-B2B-ZONES` — zones (buyer levels) for business customers.** Owner: "when B2B client is made they also
+  should have a zone attached with them which tells indicates what level of buyer they are and every zone will
+  have their individual pricing lists attached to them … for now default zone would be RETAIL which will not
+  contain any values but it will inherit normal customer shop pricing … only one zone per B2B client."
+    - Every business with the customer role has exactly one zone. **RETAIL** is a system zone with no rules that
+      can't be deleted; a RETAIL business pays normal shop pricing, the same as a shop customer, sale events
+      included.
+    - Admins add more named zones. Each holds a price list built like a sale event: all-products rules, several
+      category rules, and product-level exceptions picked and un-picked from a list. Rule kinds now: a **flat
+      price** (absolute ₹) or a **percentage less than retail**. Product exceptions beat category rules, which beat
+      all-products rules.
+    - The business form gains the Zone field; the business list shows it; assigning a zone has its own permission.
+    - Creating an order for a business: product cards are priced by the business's zone. A product with no price
+      in that zone shows, in red, **"Price not set for this zone"** in place of the price line, and the card is
+      greyed and disabled (no click, no quantity). Search and the category dropdowns work as now.
+    - The order keeps the zone, its version and the rule that priced each line. Zones never change shop prices;
+      they apply only to admin orders for businesses.
+    - Still open (`DEC-B2B-ZONES` in `pending-decisions.mdx`): a shop sale versus the zone price, whether zone
+      prices include GST, further rule kinds, a product in two categories with different zone rules, and coupons
+      on zone-priced lines.
+- **Coupons list:** row ticks with bulk **Delete**, **Turn on** and **Turn off**, and a row on/off switch.
+- **Every admin table keeps its ticks** through a search, clearing the search and a page change ("make sure all
+  tables in the backend admin panel follow this same rule for better UI/UX"). Bulk actions act on every pick,
+  not only the current page.
+- **`DEC-NUMBERING` — the document-number table is accepted for every row except the order number.** Accepted
+  as written in the brief: parcel/shipment, return, payment request, tax invoice, credit note, debit note,
+  receipt, refund voucher, delivery challan, payment voucher, self-invoice, purchase order, purchase entry,
+  purchase return note, journal, stock adjustment and stock count, e-way bill, e-invoice IRN, courier AWB,
+  gateway and bank references. Each format is a setting per document type (prefix, financial-year token,
+  digits, reset each financial year or never; at most 16 characters for GST documents; unique once separators
+  are stripped; locked after the first number is issued; allocated in the same save as the document; a
+  cancelled document keeps its number). **The order number format is still open**: the owner asked how
+  `ST-#####-#####` works (random or counted, which part identifies the order, year segregation, what large
+  businesses do); it stays a setting until answered.
+- **E-invoice IRN and e-way bill for business orders, before dispatch.** Fields for both on the order, filled by
+  hand until an integration exists, with standard **Raise e-invoice** and **Raise e-way bill** buttons. Each button
+  calls its integration; with none connected, it falls back to a popup with the manual entry fields (e-invoice:
+  IRN, acknowledgement number and date, signed QR optional; e-way bill: number, generated on, valid until,
+  transporter, vehicle or transport document number, distance). Stored with where it came from (typed or
+  integration), who and when. Whether Shipped is blocked until they are filled is still open.
+- **Country, State and phone data:** the owner asked where the monthly refresh script runs and where it fetches
+  from; still open. The data file is built by a script that runs locally first.

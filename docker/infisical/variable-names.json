@@ -202,5 +202,22 @@
 		"2026-11-19: owner decision L3 — mongo-app-password and redis-password are written from /api/MONGODB_PASSWORD and /api/REDIS_PASSWORD; the owner deletes both /infrastructure entries in all three projects.",
 		"2026-11-19: SHOP_ORIGIN added (read by the API since FX-8). Add it to the dev project /api; Compose sets it in staging and production.",
 		"2026-11-20: owner decision D2 — the public sign-in IDs are kept once, in /api: release.env gets GOOGLE_CLIENT_ID and FACEBOOK_APP_ID from /api/GOOGLE_OAUTH_CLIENT_ID and /api/FACEBOOK_OAUTH_APP_ID; the owner deletes both /deployment entries in all three projects."
-	]
+	],
+	"otherFolders": {
+		"release-console": {
+			"description": "The Release Console's own keys (owner, 2026-11-20: 'Yes, all recommended'). Stored once, in the dev project. Read by apps/release-console-api/src only; never rendered into the shop's files or a release.",
+			"projects": ["dev"],
+			"readBy": "apps/release-console-api/src",
+			"names": [
+				"CONSOLE_DO_READ_TOKEN",
+				"CONSOLE_DO_WRITE_TOKEN",
+				"CONSOLE_SPACES_ACCESS_KEY",
+				"CONSOLE_SPACES_SECRET_KEY",
+				"CONSOLE_CF_READ_TOKEN",
+				"CONSOLE_CF_WRITE_TOKEN",
+				"CONSOLE_GITHUB_TOKEN"
+			],
+			"optional": ["CONSOLE_DO_WRITE_TOKEN", "CONSOLE_CF_WRITE_TOKEN"]
+		}
+	}
 }

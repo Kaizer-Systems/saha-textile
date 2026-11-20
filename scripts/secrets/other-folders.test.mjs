@@ -35,6 +35,15 @@ const group = (extra = {}) => ({
 	...extra,
 });
 
+test('the release-console group is in the inventory: dev only, read by the console API, two optional names', () => {
+	const console = loadInventory().otherFolders.find((candidate) => candidate.folder === 'release-console');
+	assert.ok(console);
+	assert.deepEqual([...console.tiers], ['dev']);
+	assert.equal(console.readBy, 'apps/release-console-api/src');
+	assert.equal(console.names.length, 7);
+	assert.deepEqual([...console.optional].sort(), ['CONSOLE_CF_WRITE_TOKEN', 'CONSOLE_DO_WRITE_TOKEN']);
+});
+
 test('an other folder may not reuse a shop folder, name an unknown project, skip readBy or repeat a name', () => {
 	const refused = (otherFolders, message) =>
 		assert.throws(

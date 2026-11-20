@@ -24,6 +24,8 @@ export interface OrderDoc {
 	searchKeys?: string[];
 	idempotencyKey?: string;
 	attention?: string[];
+	buyer?: Record<string, unknown>;
+	balance?: Record<string, unknown>;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -59,6 +61,10 @@ const OrderSchema = new Schema<OrderDoc>(
 		idempotencyKey: { type: String },
 		/** Staff attention reasons (invoice address needed, a request expired unpaid…), kept in step with the order. */
 		attention: { type: [String], default: [] },
+		/** Who the order is for (kind, customer or business id…); declared so filters on its parts stay. */
+		buyer: { type: Schema.Types.Mixed },
+		/** Running money in rupees (due, paid ahead…); declared so filters on its parts stay. */
+		balance: { type: Schema.Types.Mixed },
 	},
 	{ collection: 'orders', timestamps: true, strict: false },
 );

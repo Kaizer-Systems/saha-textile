@@ -238,6 +238,7 @@ describe.runIf(hasMongoEnv())('orders build persistence (rs0)', () => {
 				_id: `${P}sup`,
 				legalName: `${P} Weavers`,
 				shortName: 'W',
+				kind: 'unregistered',
 				stateCode: '19',
 				stateName: 'West Bengal',
 				address: { line: 'x', city: 'y', pin: '700001' },

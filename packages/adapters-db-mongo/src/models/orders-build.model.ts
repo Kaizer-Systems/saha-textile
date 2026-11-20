@@ -8,7 +8,8 @@ import { COLLECTION_NAMES } from '../collection-names';
  *
  * Each record is stored in the shape of its contract (`@saha-textile/contracts`) with `_id` for
  * `id`, parsed with zod on read. The schemas name only the fields that queries and indexes use;
- * the rest of the shape is the contract's (`strict: false`, as the purchases module does).
+ * the rest of the shape is the contract's (`strict: false`, as the purchases module does). Every
+ * field a filter uses is declared: the connection sets `strictQuery`, which drops undeclared ones.
  */
 
 const loose = { strict: false, versionKey: false, timestamps: false } as const;
@@ -112,6 +113,8 @@ const PriceZoneSchema = new Schema<OrdersBuildDoc>(
 		_id: { type: String, required: true },
 		code: { type: String, required: true },
 		status: { type: String, required: true },
+		/** RETAIL: never deleted (declared because `strictQuery` drops undeclared filter fields). */
+		system: { type: Boolean, default: false },
 		revision: { type: Number, required: true },
 	},
 	{ ...loose, collection: COLLECTION_NAMES.PriceZone },
@@ -127,8 +130,12 @@ const CouponSchema = new Schema<OrdersBuildDoc>(
 	{
 		_id: { type: String, required: true },
 		code: { type: String, required: true },
+		title: { type: String, default: '' },
 		enabled: { type: Boolean, required: true },
+		/** `{ shop, admin }`: where the coupon can be used. */
+		channels: { type: Schema.Types.Mixed, default: { shop: true, admin: true } },
 		usedCount: { type: Number, default: 0 },
+		totalUses: { type: Number, default: null },
 		revision: { type: Number, required: true },
 		validFrom: { type: String, default: null },
 		validUntil: { type: String, default: null },

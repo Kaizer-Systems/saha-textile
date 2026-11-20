@@ -32,6 +32,14 @@ const SupplierSchema = new Schema<AggregateDoc>(
 		stateCode: { type: String, required: true },
 		active: { type: Boolean, default: true },
 		deletedAt: { type: String, default: null },
+		/* The business record (orders brief, 2026-11-20): declared because filters use them and the
+		   connection's `strictQuery` drops undeclared filter fields. */
+		phone: { type: String, default: null },
+		tradeName: { type: String },
+		roles: { type: Schema.Types.Mixed },
+		contacts: { type: Schema.Types.Mixed },
+		setOff: { type: Schema.Types.Mixed },
+		businessRevision: { type: Number },
 	},
 	{ ...loose, collection: COLLECTION_NAMES.Supplier },
 );

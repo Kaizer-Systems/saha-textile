@@ -40,7 +40,10 @@ describe('permission registry', () => {
 		// the purchases and stock brief (X01): supplier, purchase_order, purchase, purchase_return,
 		// stock, stock_count, stock_report.
 		// 136 → 137 on 2026-11-17 with `page_builder.go_live` (Page Builder Q10 A, accepted with the brief).
-		expect(PERMISSION_CODES).toHaveLength(140);
+		// 140 → 156 on 2026-11-20 with the orders brief's permissions table (approved 2026-11-20), as
+		// resource.action pairs: business.{approve,assign,create,credit,edit,hold,index,settle},
+		// order.{address,open,payment,send} and price_zone.{create,destroy,edit,index} (DEC-B2B-ZONES).
+		expect(PERMISSION_CODES).toHaveLength(156);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

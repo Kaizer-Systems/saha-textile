@@ -23,7 +23,7 @@ describe.skipIf(!hasMongoEnv())('recently purchased products (integration)', () 
 	const run = randomUUID();
 	const product = (name: string) => `prd_recent_${run}_${name}`;
 
-	const place = async (name: string, status: OrderStatus, paidAt?: string) => {
+	const place = async (name: string, status: OrderStatus | 'pending' | 'paid' | 'refunded', paidAt?: string) => {
 		const id = `order_recent_${randomUUID()}`;
 		const line = {
 			productId: product(name),

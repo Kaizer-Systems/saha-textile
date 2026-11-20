@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { Order } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
@@ -52,7 +53,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 
 		await transactions.withTransaction(async (context) => {
 			await orders.save(
-				{
+				Order.parse({
 					id: orderId,
 					orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 					userId: 'user_tx',
@@ -80,7 +81,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 					totalPaid: 100,
 					status: 'pending',
 					statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
-				},
+				}),
 				context,
 			);
 			await carts.deleteById(cartId, context);
@@ -118,7 +119,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 		await expect(
 			transactions.withTransaction(async (context) => {
 				await orders.save(
-					{
+					Order.parse({
 						id: orderId,
 						orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 						userId: 'user_tx',
@@ -132,7 +133,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 						totalPaid: 100,
 						status: 'pending',
 						statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
-					},
+					}),
 					context,
 				);
 				await carts.deleteById(cartId, context);
@@ -158,7 +159,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 		await expect(
 			transactions.withTransaction(async (context) => {
 				await orders.save(
-					{
+					Order.parse({
 						id: orderId,
 						orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 						userId: 'user_tx',
@@ -186,7 +187,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 						totalPaid: 100,
 						status: 'pending',
 						statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
-					},
+					}),
 					context,
 				);
 				throw new Error('failure before cart consume');

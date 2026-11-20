@@ -1,3 +1,4 @@
+import { LEGACY_ORDER_STATUS } from '@saha-textile/contracts';
 import type { AdminUser, Cart, Category, Currency, Customer, Order, Product, Promotion } from '@saha-textile/contracts';
 
 import type {
@@ -153,14 +154,35 @@ export function toCart(doc: CartDoc): Cart {
 	};
 }
 
+/** An older row's status read in today's words (pending → awaiting_payment, paid → placed, refunded → cancelled). */
+const orderStatusOf = (status: unknown): Order['status'] =>
+	(typeof status === 'string' && status in LEGACY_ORDER_STATUS
+		? LEGACY_ORDER_STATUS[status]
+		: status) as Order['status'];
+
+/**
+ * Fills what an older row lacks and maps its first-list status, without rewriting the row. Not a
+ * full parse: a row that predates a field must still read, so a malformed old row is not refused here.
+ */
 export function toOrder(doc: OrderDoc): Order {
+	const row = doc as OrderDoc & Partial<Record<keyof Order, unknown>>;
+	const lines = (doc.lines ?? []).map((line) =>
+		line && typeof line === 'object'
+			? { couponINR: 0, categoryIds: [], held: false, ...(line as Record<string, unknown>) }
+			: line,
+	);
+	const timeline = (doc.statusTimeline ?? []).map((event) =>
+		event && typeof event === 'object'
+			? { ...(event as Record<string, unknown>), status: orderStatusOf((event as { status?: unknown }).status) }
+			: event,
+	);
 	return {
 		id: doc._id,
 		orderNumber: doc.orderNumber,
 		userId: doc.userId ?? null,
 		currency: doc.currency,
 		locale: doc.locale ?? 'en',
-		lines: (doc.lines ?? []) as Order['lines'],
+		lines: lines as Order['lines'],
 		subtotalINR: doc.subtotalINR,
 		subtotalPaid: doc.subtotalPaid,
 		shipping: doc.shipping as Order['shipping'],
@@ -168,8 +190,23 @@ export function toOrder(doc: OrderDoc): Order {
 		totalINR: doc.totalINR,
 		totalPaid: doc.totalPaid,
 		gateway: doc.gateway as Order['gateway'],
-		status: doc.status as Order['status'],
-		statusTimeline: (doc.statusTimeline ?? []) as Order['statusTimeline'],
+		status: orderStatusOf(doc.status),
+		statusTimeline: timeline as Order['statusTimeline'],
+		channel: (row.channel ?? 'shop') as Order['channel'],
+		createdBy: (row.createdBy ?? null) as Order['createdBy'],
+		buyer: row.buyer as Order['buyer'],
+		addresses: row.addresses as Order['addresses'],
+		currencyRecord: row.currencyRecord as Order['currencyRecord'],
+		zone: (row.zone ?? null) as Order['zone'],
+		coupons: (row.coupons ?? []) as Order['coupons'],
+		balance: row.balance as Order['balance'],
+		paymentStatus: (row.paymentStatus ?? 'unpaid') as Order['paymentStatus'],
+		openedAt: (row.openedAt ?? null) as Order['openedAt'],
+		closedAt: (row.closedAt ?? null) as Order['closedAt'],
+		eInvoice: (row.eInvoice ?? null) as Order['eInvoice'],
+		eWayBill: (row.eWayBill ?? null) as Order['eWayBill'],
+		history: (row.history ?? []) as Order['history'],
+		revision: (row.revision ?? 0) as number,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	};

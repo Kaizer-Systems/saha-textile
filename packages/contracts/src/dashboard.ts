@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { I18nString, Id, IsoDateTime, PriceINR } from './common';
-import { OrderStatus } from './order';
+import { StoredOrderStatus } from './order';
 import { ReviewStatus } from './content';
 
 /**
@@ -113,7 +113,7 @@ export const DashboardRecentOrdersResponse = z.object({
 			placedAt: IsoDateTime.nullable(),
 			customerName: z.string().nullable(),
 			totalINR: PriceINR,
-			status: OrderStatus,
+			status: StoredOrderStatus,
 		}),
 	),
 });

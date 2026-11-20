@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
 	type AppliedPromotion,
 	type Order,
-	type OrderLine,
+	type OrderLineInput,
 	type OrderStatus,
 	Order as OrderSchema,
 } from '@saha-textile/contracts';
@@ -71,7 +71,7 @@ export class OrdersService {
 		const currencyCode = (input.currency ?? cart.currency ?? 'INR').toUpperCase();
 		const rateFromINR = await this.resolveRate(currencyCode);
 
-		const lines: OrderLine[] = [];
+		const lines: OrderLineInput[] = [];
 		for (const cartLine of cart.lines) {
 			const product = await this.products.findById(cartLine.productId);
 			if (!product) throw new BadRequestException(`Product not found: ${cartLine.productId}`);
@@ -117,8 +117,8 @@ export class OrdersService {
 			totalINR,
 			totalPaid: roundMoney(convertFromINR(totalINR, rateFromINR)),
 			gateway: input.gateway,
-			status: 'pending',
-			statusTimeline: [{ status: 'pending', at: new Date().toISOString() }],
+			status: 'awaiting_payment',
+			statusTimeline: [{ status: 'awaiting_payment', at: new Date().toISOString() }],
 		});
 
 		return this.transactions.withTransaction(async (context) => {

@@ -298,7 +298,8 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 
 		it('saves inside a transaction', async () => {
 			await new MongoTransactionManager().withTransaction((context) => repo.save(order('o2'), context));
-			expect((await repo.findById(`${P}o2`))?.status).toBe('paid');
+			// A row stored with the first status list reads in today's words (paid → placed).
+			expect((await repo.findById(`${P}o2`))?.status).toBe('placed');
 		});
 
 		it('pages by user with and without a page', async () => {

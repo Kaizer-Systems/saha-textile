@@ -118,7 +118,7 @@ describe('OrdersService', () => {
 			attributes: { size: 's' },
 			addons: [{ code: 'fall', value: 'yes' }],
 		});
-		expect(order).toMatchObject({ subtotalINR: 4300, totalINR: 4300, status: 'pending', currency: 'INR' });
+		expect(order).toMatchObject({ subtotalINR: 4300, totalINR: 4300, status: 'awaiting_payment', currency: 'INR' });
 		expect(h.carts.consumeCart).toHaveBeenCalledTimes(1);
 	});
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { PostalAddressFields } from './address-book';
 import { EnglishDeliveryText, EnglishName, Id, IsoDateTime, LatinDigits, LocaleCode, cleanText } from './common';
 
 /**
@@ -38,9 +39,9 @@ export type AuthIdentity = z.infer<typeof AuthIdentity>;
 /**
  * Named saved address (`DEC-ACCOUNT-SEPARATION` D9).
  *
- * `label` is the Home/Office name. `DEC-ADDRESS` was decided on 2026-11-20 (several named
- * addresses, country and State rules, a phone code per country); the fields it adds arrive
- * with the orders and checkout build.
+ * `label` is the Home/Office name. `DEC-ADDRESS` (2026-11-20) adds the country code, the State's
+ * code, a structured mobile and second number, and a landmark; new writes go through
+ * `SavedAddressWrite` in `address-book.ts`, which the server checks against the country data.
  */
 export const Address = z.object({
 	id: Id,
@@ -55,6 +56,13 @@ export const Address = z.object({
 	country: z.string().min(2),
 	phone: z.string().optional(),
 	isDefault: z.boolean().default(false),
+	/* DEC-ADDRESS fields (2026-11-20). Optional so older rows still read; new writes set them all. */
+	countryCode: PostalAddressFields.shape.countryCode,
+	subdivisionCode: PostalAddressFields.shape.subdivisionCode,
+	gstStateCode: PostalAddressFields.shape.gstStateCode,
+	landmark: PostalAddressFields.shape.landmark,
+	mobile: PostalAddressFields.shape.mobile,
+	altMobile: PostalAddressFields.shape.altMobile,
 });
 export type Address = z.infer<typeof Address>;
 

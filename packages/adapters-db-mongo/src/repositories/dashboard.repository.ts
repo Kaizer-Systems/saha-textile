@@ -2,7 +2,7 @@ import {
 	type DashboardRange,
 	type I18nString,
 	type Order,
-	PURCHASED_ORDER_STATUSES,
+	PURCHASED_STORED_ORDER_STATUSES,
 	type Review,
 } from '@saha-textile/contracts';
 import type {
@@ -32,7 +32,7 @@ const SHOP_TIME_ZONE = 'Asia/Kolkata';
 const CATEGORY_PRODUCT_CAP = 2000;
 
 const purchasedWithin = (range: DashboardRange) => ({
-	status: { $in: [...PURCHASED_ORDER_STATUSES] },
+	status: { $in: [...PURCHASED_STORED_ORDER_STATUSES] },
 	createdAt: { $gte: new Date(range.from), $lt: new Date(range.to) },
 });
 

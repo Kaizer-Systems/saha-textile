@@ -59,6 +59,14 @@ export const PermissionCode = z.enum([
 	'blog.destroy',
 	'blog.edit',
 	'blog.index',
+	'business.approve',
+	'business.assign',
+	'business.create',
+	'business.credit',
+	'business.edit',
+	'business.hold',
+	'business.index',
+	'business.settle',
 	'cart.index',
 	'category.create',
 	'category.destroy',
@@ -96,9 +104,13 @@ export const PermissionCode = z.enum([
 	'language.manage',
 	'mailbox.manage',
 	'mailbox.use',
+	'order.address',
 	'order.create',
 	'order.edit',
 	'order.index',
+	'order.open',
+	'order.payment',
+	'order.send',
 	'order.update',
 	'page_builder.draft_home',
 	'page_builder.go_live',
@@ -111,6 +123,10 @@ export const PermissionCode = z.enum([
 	'point.credit',
 	'point.debit',
 	'point.index',
+	'price_zone.create',
+	'price_zone.destroy',
+	'price_zone.edit',
+	'price_zone.index',
 	'product.create',
 	'product.destroy',
 	'product.edit',
@@ -203,6 +219,35 @@ export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.option
  * real answer. A template is not.
  */
 export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
+	'business.approve':
+		"Allow an order on account over a business's credit limit, once, with a reason (brief K9, ck06; POST /admin/orders with creditOverrideReason). Super admin by default; separate from business.credit so setting a limit and exceeding it are different grants.",
+	'business.assign':
+		'Zone field on the business form and the business list (DEC-B2B-ZONES, owner 2026-11-20: "permission to assign"); PUT /admin/businesses/:id/zone.',
+	'business.create': 'Add business on Customers › Businesses (brief bz02); POST /admin/businesses.',
+	'business.credit':
+		"Credit limit and credit days on the business form's Buys from us block (bz02); the fields are read-only without it.",
+	'business.edit':
+		'Business page Edit and the form Save (bz02), its addresses and contacts; PUT /admin/businesses/:id.',
+	'business.hold':
+		'Change standing on the business page (bz05): Active, Credit on hold, Blocked, with a reason; POST /admin/businesses/:id/standing.',
+	'business.index':
+		'Customers › Businesses list and the business page (bz01, bz03, bz04); GET /admin/businesses. Its navigation entry arrives with the admin screens.',
+	'business.settle':
+		"Record a set-off between a business's two accounts under a written agreement, and its reversal (so02–so04); POST /admin/businesses/:id/set-offs. Off for Saha Textile.",
+	'order.address':
+		'Add the invoice address on an order with "Invoice address needed" (od04); POST /admin/orders/:id/invoice-address.',
+	'order.open':
+		'Keep an admin order open, add and remove its pieces, and close it (brief oo01–oo08); the open-order routes under /admin/orders/:id/lines.',
+	'order.payment':
+		'Record payment on the order page and the admin checkout (ck03–ck05, oo03–oo05, od08); POST /admin/orders/:id/payments.',
+	'order.send':
+		'Request online payment, Resend, Cancel, Send as SMS and Send as email on a payment request (pl01–pl05, pr01, pr02, oo07); /admin/orders/:id/payment-requests.',
+	'price_zone.create': 'New zone on Customers › Zones (DEC-B2B-ZONES); POST /admin/zones.',
+	'price_zone.destroy':
+		'Delete on a zone that no business uses; RETAIL can never be deleted (DELETE /admin/zones/:id).',
+	'price_zone.edit': 'Zone price list editing, Go live and the zone settings (DEC-B2B-ZONES); PUT /admin/zones/:id.',
+	'price_zone.index':
+		'Customers › Zones list and a zone page (DEC-B2B-ZONES); GET /admin/zones. Its navigation entry arrives with the admin screens.',
 	'dashboard.customers':
 		'Total Customers tile on the admin home page (dashboard.html, GET /admin/dashboard/customers). The tile is a count only, so it is separate from customer.index, which opens personal records.',
 	'dashboard.orders':
@@ -350,7 +395,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		"Search word form Save, and the list's bulk Go Live and Take off shop (POST /admin/search-terms/status).",
 	'setting.edit':
 		'Every write on the settings surfaces: the Save control on the main Settings page, and the two audited notification mutations (PATCH /admin/notifications/channels, PUT /admin/notifications/templates). Reads use setting.index, which is the navigation code; writes deliberately do not.',
-	'shipping.create': 'New rule set and Add exception on Admin › Shipping; POST /admin/shipping/rule-sets and /exceptions.',
+	'shipping.create':
+		'New rule set and Add exception on Admin › Shipping; POST /admin/shipping/rule-sets and /exceptions.',
 	'shop_details.edit':
 		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
 	'shipping.destroy': 'Delete an own rule set not used anywhere, or remove an exception (Admin › Shipping).',
@@ -374,6 +420,7 @@ export const PermissionResource = z.enum([
 	'attribute',
 	'audit',
 	'blog',
+	'business',
 	'cart',
 	'category',
 	'coupon',
@@ -389,6 +436,7 @@ export const PermissionResource = z.enum([
 	'page_builder',
 	'permission',
 	'point',
+	'price_zone',
 	'product',
 	'purchase',
 	'purchase_order',
@@ -427,6 +475,7 @@ export type PermissionResource = z.infer<typeof PermissionResource>;
  */
 export const PermissionAction = z.enum([
 	'action',
+	'address',
 	'adjust',
 	'approve',
 	'assign',
@@ -447,6 +496,7 @@ export const PermissionAction = z.enum([
 	'hold',
 	'index',
 	'manage',
+	'open',
 	'opening',
 	'orders',
 	'payment',

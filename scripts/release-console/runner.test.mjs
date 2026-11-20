@@ -14,7 +14,7 @@ import {
 	parseTopCpu,
 	parseVmStat,
 } from './mac-stats.mjs';
-import { commandFor, containerLogs, createRunner, ensureToken, shared, tokenMatches } from './runner.mjs';
+import { commandFor, containerLogs, createRunner, ensureToken, placeFrom, shared, tokenMatches } from './runner.mjs';
 
 const VM = `Mach Virtual Memory Statistics: (page size of 16384 bytes)
 Pages free:                                    22900.
@@ -125,4 +125,22 @@ test('answers only requests carrying its token', async () => {
 	});
 	assert.equal(unknown.status, 404);
 	server.close();
+});
+
+test('takes an Infisical place only when every part is a plain name or path', () => {
+	assert.deepEqual(placeFrom({ project: 'client-shop-dev', environment: 'qa' }), {
+		project: 'client-shop-dev',
+		environment: 'qa',
+		folder: '/',
+	});
+	assert.deepEqual(placeFrom({ project: 'p', environment: 'dev', folder: '/backend/api' })?.folder, '/backend/api');
+	for (const bad of [
+		{ project: '-p', environment: 'dev' },
+		{ project: 'p', environment: '--env' },
+		{ project: 'p', environment: 'dev', folder: 'api' },
+		{ project: 'p', environment: 'dev', folder: '/a;b' },
+		{ project: 'p;rm', environment: 'dev' },
+		null,
+	])
+		assert.equal(placeFrom(bad), null, JSON.stringify(bad));
 });

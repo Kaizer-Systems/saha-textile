@@ -212,12 +212,27 @@ export type SecretTier = z.infer<typeof secretTierSchema>;
 /** `unknown`: Infisical could not read that folder. */
 export const secretStateSchema = z.enum(['set', 'empty', 'missing', 'unknown']);
 export type SecretState = z.infer<typeof secretStateSchema>;
+/** Which environment's Secrets tab to read: the API looks up that environment's own secrets place. */
+export const secretsQuerySchema = z.object({
+	projectId: z.string().regex(/^[a-z0-9-]+$/),
+	repositoryId: z.string().regex(/^[a-z0-9-]+$/),
+	environment: z.string().regex(/^[a-z0-9-]+$/),
+	fresh: z.string().optional(),
+});
+export type SecretsQuery = z.infer<typeof secretsQuerySchema>;
 export const secretsViewSchema = z.object({
 	at: z.string(),
-	tier: secretTierSchema,
+	/**
+	 * The name-list tier the place matches (its project and environment are one of the projects in
+	 * docker/infisical/variable-names.json), or `null`: then the names are read only, nothing is
+	 * expected, so nothing is marked missing and nothing takes a new value.
+	 */
+	tier: secretTierSchema.nullable(),
 	/** The Infisical project and environment read, for example `saha-textile-dev` and `dev`. */
 	project: z.string(),
 	environment: z.string(),
+	/** The place's folder: `/` for the whole environment. */
+	folder: z.string(),
 	folders: z.array(
 		z.object({
 			folder: z.string(),
@@ -251,12 +266,14 @@ export const secretChangeSchema = z.object({
 });
 export type SecretChange = z.infer<typeof secretChangeSchema>;
 /**
- * The Save of a batch of drafts (owner, 20 Nov: drafts saved together with one PIN). Staging and
- * production also need the environment's name typed in `confirmName`.
+ * The Save of a batch of drafts (owner, 20 Nov: drafts saved together with one PIN). An environment
+ * that runs on a server also needs its name typed in `confirmName`; one on this computer does not.
  */
 export const saveSecretsSchema = z.object({
-	tier: secretTierSchema,
-	projectId: z.string().nullable(),
+	/** The environment whose Secrets tab holds the drafts; the API looks up its place. */
+	projectId: z.string().regex(/^[a-z0-9-]+$/),
+	repositoryId: z.string().regex(/^[a-z0-9-]+$/),
+	environment: z.string().regex(/^[a-z0-9-]+$/),
 	pin: confirmation,
 	confirmName: z.string().default(''),
 	changes: z.array(secretChangeSchema).min(1).max(200),
@@ -271,3 +288,14 @@ export const saveSecretsResultSchema = z.object({
 	),
 });
 export type SaveSecretsResult = z.infer<typeof saveSecretsResultSchema>;
+
+/**
+ * The name list's places, for filling in an environment's place in one click: each tier's Infisical
+ * project and environment, and the repository (`owner/name`) of the checkout the Mac helper runs in,
+ * which is the repository that name list belongs to.
+ */
+export const secretsPlacesSchema = z.object({
+	repository: z.string().nullable(),
+	places: z.array(z.object({ tier: secretTierSchema, project: z.string(), environment: z.string() })),
+});
+export type SecretsPlaces = z.infer<typeof secretsPlacesSchema>;

@@ -9,8 +9,9 @@ import {
 	type SaveSecrets,
 	type SaveSecretsResult,
 	saveSecretsResultSchema,
-	type SecretTier,
+	type SecretsPlaces,
 	type SecretsView,
+	secretsPlacesSchema,
 	secretsViewSchema,
 	type AttentionCount,
 	type DockerSnapshot,
@@ -283,14 +284,18 @@ export class ConsoleApi {
 	requests(minutes: number): Promise<RequestsView> {
 		return this.call('GET', `/api/local/requests?minutes=${minutes}`, requestsViewSchema);
 	}
-	secrets(tier: SecretTier, fresh = false): Promise<SecretsView> {
-		return this.call(
-			'GET',
-			`/api/local/secrets?tier=${tier}${fresh ? '&fresh=1' : ''}`,
-			secretsViewSchema,
-			undefined,
-			200_000,
-		);
+	/** One environment's Secrets: the API reads the place that environment names in its repository. */
+	secrets(
+		where: { projectId: string; repositoryId: string; environment: string },
+		fresh = false,
+	): Promise<SecretsView> {
+		const q = new URLSearchParams(where);
+		if (fresh) q.set('fresh', '1');
+		return this.call('GET', `/api/local/secrets?${q.toString()}`, secretsViewSchema, undefined, 200_000);
+	}
+	/** The name list's places and the repository it belongs to. */
+	secretsPlaces(): Promise<SecretsPlaces> {
+		return this.call('GET', '/api/local/secrets/places', secretsPlacesSchema);
 	}
 	/** Saves a batch of Secrets drafts after one PIN; values travel in this request body only. */
 	saveSecrets(body: SaveSecrets): Promise<SaveSecretsResult> {

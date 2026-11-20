@@ -45,3 +45,4 @@ export type ConsoleApiHealth = z.infer<typeof consoleApiHealthSchema>;
 
 export * from './projects.js';
 export * from './local.js';
+export * from './secrets-place.js';

@@ -26,7 +26,8 @@ import {
 	parseTopCpu,
 	parseVmStat,
 } from './mac-stats.mjs';
-import { ROOT } from '../secrets/inventory.mjs';
+import { repositoryOf } from './infisical-places.mjs';
+import { loadInventory, ROOT, TIERS } from '../secrets/inventory.mjs';
 
 export const RUNNER_PORT = Number(process.env.CONSOLE_RUNNER_PORT ?? 4419);
 export const TOKEN_FILE = join(ROOT, 'docker/release-console/env/runner-token');
@@ -36,8 +37,23 @@ export const STACK_APP_SERVICES = ['edge', 'storefront', 'admin', 'api', 'worker
 export const PIPELINE_STAGES = ['checks', 'proof', 'images', 'release', 'deploy', 'record'];
 /** Mode 1 and 2 servers in this checkout; while one answers, the checks stage would rebuild under it. */
 export const DEV_PORTS = { api: 4000, storefront: 4200, admin: 4300 };
-/** The Infisical tiers the Secrets screen reads, one per console environment. */
-export const SECRET_TIERS = ['dev', 'staging', 'production'];
+/**
+ * An environment's place in Infisical, as the API sends it: checked again here before it becomes a
+ * command-line argument, so nothing can start with a dash or hold anything but a name or a path.
+ */
+export function placeFrom(input) {
+	const place = {
+		project: String(input?.project ?? ''),
+		environment: String(input?.environment ?? ''),
+		folder: String(input?.folder || '/'),
+	};
+	const ok =
+		/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(place.project) &&
+		/^[a-z0-9][a-z0-9-]{0,63}$/.test(place.environment) &&
+		/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?$/.test(place.folder);
+	return ok ? place : null;
+}
+const placeKey = (place) => `secrets:${place.project}|${place.environment}|`;
 const MAX_LINES = 5000;
 
 /**
@@ -155,14 +171,23 @@ export function containerLogs(container, { tail = 300, since = '' } = {}) {
 }
 
 /**
- * The Secrets screen's names and states, from Infisical with the owner's login. The CLI calls block,
- * so they run in their own process (`secret-names.mjs`); its output holds names only, never values.
+ * The Secrets screen's names and states for one environment's place, from Infisical with the owner's
+ * login. The CLI calls block, so they run in their own process (`secret-names.mjs`); its output holds
+ * names only, never values.
  */
-export function secretNames(tier) {
+export function secretNames(place) {
 	return new Promise((resolve, reject) => {
 		execFile(
 			process.execPath,
-			[join(ROOT, 'scripts/release-console/secret-names.mjs'), '--tier', tier],
+			[
+				join(ROOT, 'scripts/release-console/secret-names.mjs'),
+				'--project',
+				place.project,
+				'--environment',
+				place.environment,
+				'--folder',
+				place.folder,
+			],
 			{ cwd: ROOT, encoding: 'utf8', timeout: 180_000, maxBuffer: 8 * 1024 * 1024 },
 			(_error, stdout) => {
 				try {
@@ -178,7 +203,23 @@ export function secretNames(tier) {
 }
 
 /**
- * Saves one tier's Secrets drafts through `secret-save.mjs` in its own process. The batch, values
+ * The name list's places (each tier's Infisical project and environment) and the repository this
+ * checkout belongs to, so the console can offer to fill in an environment's place in one click.
+ */
+export async function secretPlaces() {
+	const inventory = loadInventory();
+	return {
+		repository: repositoryOf(await sh('git', ['-C', ROOT, 'remote', 'get-url', 'origin'])),
+		places: TIERS.map((tier) => ({
+			tier,
+			project: inventory.projects[tier].name,
+			environment: inventory.projects[tier].environment,
+		})),
+	};
+}
+
+/**
+ * Saves one place's Secrets drafts through `secret-save.mjs` in its own process. The batch, values
  * included, goes to that process on stdin only; nothing here keeps or prints it.
  */
 export function saveSecrets(body) {
@@ -422,19 +463,26 @@ export function createRunner(token) {
 					if (raw.length > 512 * 1024) return send(413, { message: 'Too many changes at once.' });
 				}
 				const body = raw ? JSON.parse(raw) : {};
-				if (!SECRET_TIERS.includes(body.tier)) return send(400, { message: 'Unknown tier.' });
 				raw = '';
+				const place = placeFrom(body.place);
+				if (!place) return send(400, { message: 'That is not a place in Infisical.' });
 				try {
-					return send(200, await saveSecrets(body));
+					return send(200, await saveSecrets({ place, changes: body.changes }));
 				} finally {
-					forget(`secrets:${body.tier}`);
+					forget(placeKey(place));
 				}
 			}
+			if (req.method === 'GET' && path === '/secrets/places')
+				return send(200, await shared('secrets-places', 600_000, secretPlaces));
 			if (req.method === 'GET' && path === '/secrets') {
-				const tier = url.searchParams.get('tier') ?? '';
-				if (!SECRET_TIERS.includes(tier)) return send(400, { message: 'Unknown tier.' });
-				const key = `secrets:${tier}${url.searchParams.get('fresh') ? `:${Date.now()}` : ''}`;
-				return send(200, await shared(key, 60_000, () => secretNames(tier)));
+				const place = placeFrom({
+					project: url.searchParams.get('project'),
+					environment: url.searchParams.get('environment'),
+					folder: url.searchParams.get('folder'),
+				});
+				if (!place) return send(400, { message: 'That is not a place in Infisical.' });
+				const key = `${placeKey(place)}${place.folder}${url.searchParams.get('fresh') ? `:${Date.now()}` : ''}`;
+				return send(200, await shared(key, 60_000, () => secretNames(place)));
 			}
 			if (req.method === 'GET' && path === '/shop-health')
 				return send(200, await shared('shop-health', 2000, shopHealth));

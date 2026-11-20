@@ -58,3 +58,17 @@
 		}
 	}
 }
+
+// Product page on phones: a little less space above the photo, with a healthy gap kept (owner, 21 Nov, rev 4 A2:
+// "keep a healthy balance, at least in the mobile UI"). Breadcrumb padding 9 -> 7 px; the gap under it 31 -> 16 px.
+@include mq-max(md) {
+	app-product-detail {
+		.breadcrumb-section .breadcrumb-contain {
+			padding: 7px 0;
+		}
+
+		section.product-section {
+			padding-top: 16px;
+		}
+	}
+}

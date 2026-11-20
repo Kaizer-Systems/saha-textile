@@ -10,6 +10,9 @@ import {
 	type SaveSecretsResult,
 	saveSecretsResultSchema,
 	type SecretsPlaces,
+	type ReviewServerDeploy,
+	type ServerDeployView,
+	serverDeployAnswerSchema,
 	type SecretsView,
 	secretsPlacesSchema,
 	secretsViewSchema,
@@ -283,6 +286,41 @@ export class ConsoleApi {
 	}
 	requests(minutes: number): Promise<RequestsView> {
 		return this.call('GET', `/api/local/requests?minutes=${minutes}`, requestsViewSchema);
+	}
+	/** A server environment's deploy runs on GitHub, and whether its GitHub environment is set up. */
+	serverDeploy(projectId: string, repoId: string, environment: string): Promise<VendorAnswer<ServerDeployView>> {
+		return this.call(
+			'GET',
+			`/api/projects/${projectId}/repos/${repoId}/server-deploy/${environment}`,
+			serverDeployAnswerSchema,
+			undefined,
+			60_000,
+		) as Promise<VendorAnswer<ServerDeployView>>;
+	}
+	/** Starts deploy.yml for a server environment after the PIN. */
+	startServerDeploy(projectId: string, repoId: string, environment: string, pin: string): Promise<unknown> {
+		return this.call(
+			'POST',
+			`/api/projects/${projectId}/repos/${repoId}/server-deploy/${environment}`,
+			okAnswerSchema,
+			{ pin },
+			60_000,
+		);
+	}
+	/** Approves or rejects the deploy job waiting on its GitHub environment, after the PIN. */
+	reviewServerDeploy(
+		projectId: string,
+		repoId: string,
+		environment: string,
+		body: ReviewServerDeploy,
+	): Promise<unknown> {
+		return this.call(
+			'POST',
+			`/api/projects/${projectId}/repos/${repoId}/server-deploy/${environment}/review`,
+			okAnswerSchema,
+			body,
+			60_000,
+		);
 	}
 	/** One environment's Secrets: the API reads the place that environment names in its repository. */
 	secrets(

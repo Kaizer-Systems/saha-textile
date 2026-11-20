@@ -265,6 +265,8 @@ export function serviceLogo(name: string): string {
 /** Icons named in templates rather than in the maps above (kept whole by a test). */
 export const INLINE_ICONS = [
 	'tabler/adjustments-horizontal',
+	'tabler/external-link',
+	'tabler/user-check',
 	'tabler/bell-ringing',
 	'tabler/brand-docker',
 	'tabler/brand-git',

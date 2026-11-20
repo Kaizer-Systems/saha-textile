@@ -68,6 +68,8 @@ export class PinBoxes {
 	private readonly boxes = viewChildren<ElementRef<HTMLInputElement>>('box');
 	readonly label = input('Console PIN');
 	readonly disabled = input(false);
+	/** Takes the keyboard when the boxes appear (lock screen, dialogs); off for a form inside a page. */
+	readonly autofocus = input(true);
 	/** The full PIN, once the sixth digit is typed. */
 	readonly complete = output<string>();
 	/** The digits typed so far, joined. */
@@ -77,10 +79,10 @@ export class PinBoxes {
 	readonly value = computed(() => this.digits().join(''));
 
 	constructor() {
-		// The first box takes the keyboard as soon as the boxes appear.
+		// The first box takes the keyboard as soon as the boxes appear, unless the page asks otherwise.
 		let focused = false;
 		effect(() => {
-			if (!focused && this.boxes().length) {
+			if (!focused && this.boxes().length && this.autofocus()) {
 				focused = true;
 				this.focus(0);
 			}

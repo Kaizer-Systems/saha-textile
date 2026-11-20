@@ -9,6 +9,7 @@ import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } fro
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
 import { SecretsScreen } from './secrets-screen';
+import { ServerDeployScreen } from './server-deploy-screen';
 import { ServicesScreen } from './services-screen';
 import {
 	CfDomainsScreen,
@@ -61,6 +62,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		Icon,
 		VendorLogo,
 		DeployScreen,
+		ServerDeployScreen,
 		ServerScreen,
 		InfraScreen,
 		TailScreen,
@@ -169,7 +171,11 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						<rc-cf-domains-screen />
 					}
 					@case ('deploy') {
-						<rc-deploy-screen />
+						@if (deployOnServer()) {
+							<rc-server-deploy-screen [environment]="tabKey()" />
+						} @else {
+							<rc-deploy-screen />
+						}
 					}
 					@case ('server') {
 						<rc-server-screen />
@@ -248,12 +254,15 @@ export class ScreenPage {
 	protected readonly live = computed(() => {
 		const tab = LIVE_TABS[this.screen()];
 		if (tab === null) return true;
-		// Live deploy is live on an environment that runs on this computer.
-		if (this.screen() === 'deploy')
-			return this.ctx.repo()?.environments.find((e) => e.name === this.tabKey())?.cloudId === null;
+		// Live deploy is live on every environment: this computer runs the local pipeline, a server deploy.yml.
+		if (this.screen() === 'deploy') return !!this.ctx.repo()?.environments.some((e) => e.name === this.tabKey());
 		if (tab === undefined) return false;
 		return Array.isArray(tab) ? tab.includes(this.tabKey()) : tab === this.tabKey();
 	});
+	/** The open Live deploy tab is an environment that runs on a server. */
+	protected readonly deployOnServer = computed(
+		() => (this.ctx.repo()?.environments.find((e) => e.name === this.tabKey())?.cloudId ?? null) !== null,
+	);
 	/** A repository whose source-code vendor has no screens yet shows the Ship screens with a note. */
 	protected readonly laterVendor = computed(() => {
 		const repo = this.ctx.repo();

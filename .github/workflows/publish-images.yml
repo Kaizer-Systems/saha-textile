@@ -7,6 +7,8 @@ name: Publish images
 on:
   push:
     branches: [staging]
+  # deploy.yml calls it when a commit it deploys has no images yet.
+  workflow_call:
 
 concurrency:
   group: publish-images

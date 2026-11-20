@@ -1,0 +1,228 @@
+name: Deploy
+
+# Deploys one commit to its server (production-deployment-plan.mdx §3, §4 and §7; build step 3).
+# Started by hand or by the Release Console (Ship › Live deploy, with the owner's PIN), on the branch
+# the target environment allows: `staging` for staging, `main` for production. Each GitHub
+# environment holds a required reviewer, so the deploy job waits for the owner's approval.
+#
+#   images   are this commit's images in GHCR? (found by the code fingerprint, the tree tag)
+#   publish  if not: CI, the production proof and the GHCR images (publish-images.yml). Never for
+#            production, which runs only images staging published first.
+#   resolve  the four image digests
+#   deploy   Infisical sign-in as this environment's deploy identity → release folder →
+#            deploy.sh --check-only → over the Cloudflare tunnel to the server's deploy user, which
+#            signs in to GHCR, pulls by digest, runs the release steps, switches the apps and checks
+#            health (docker/production/bin/receive-release.sh, deploy.sh) → health through Cloudflare
+#
+# The repository is public, so anyone signed in can read these logs. Every step prints its name and
+# pass or fail only: never a host, an address, a value or container logs.
+#
+# The environment needs, as variables: INFISICAL_IDENTITY_ID, SERVER_SSH_HOST (the tunnel's SSH
+# host), SERVER_SSH_KNOWN_HOSTS (the server's host key line) and API_HOST; and as secrets:
+# DEPLOY_SSH_KEY (the deploy user's private key), CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET
+# (the Cloudflare Access service token). docker/production/README.md, "A new server", lists them.
+
+run-name: Deploy ${{ inputs.environment }} · ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        required: true
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: Images for this commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      found: ${{ steps.find.outputs.found }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Look for this commit's images
+        id: find
+        run: bash scripts/deploy/find-images.sh >/dev/null
+
+      - name: Production runs only images staging published first
+        if: steps.find.outputs.found != 'true' && inputs.environment == 'production'
+        run: |
+          echo "FAILED: this commit's code has no published images. Deploy it to staging first." >&2
+          exit 1
+
+  publish:
+    name: Publish
+    needs: images
+    if: needs.images.outputs.found != 'true' && inputs.environment != 'production'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-images.yml
+
+  resolve:
+    name: Image digests
+    needs: [images, publish]
+    if: always() && needs.images.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      api: ${{ steps.find.outputs.api }}
+      storefront: ${{ steps.find.outputs.storefront }}
+      admin: ${{ steps.find.outputs.admin }}
+      ops: ${{ steps.find.outputs.ops }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read the four digests
+        id: find
+        run: |
+          bash scripts/deploy/find-images.sh >/dev/null
+          grep -q '^found=true$' "$GITHUB_OUTPUT" || { echo 'FAILED: the images are not in GHCR.' >&2; exit 1; }
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    needs: resolve
+    if: needs.resolve.result == 'success'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    env:
+      TIER: ${{ inputs.environment }}
+      RELEASE_DIR: ${{ runner.temp }}/release
+      SSH_DIR: ${{ runner.temp }}/ssh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check this environment is set up
+        env:
+          IDENTITY: ${{ vars.INFISICAL_IDENTITY_ID }}
+          SSH_HOST: ${{ vars.SERVER_SSH_HOST }}
+          KNOWN_HOSTS: ${{ vars.SERVER_SSH_KNOWN_HOSTS }}
+          API_HOST: ${{ vars.API_HOST }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          ACCESS_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          ACCESS_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          missing=''
+          for name in IDENTITY SSH_HOST KNOWN_HOSTS API_HOST DEPLOY_KEY ACCESS_ID ACCESS_SECRET; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          [ -z "$missing" ] || { echo "FAILED: this environment is missing:$missing (docker/production/README.md, A new server)." >&2; exit 1; }
+
+      - name: Install the Infisical CLI
+        run: bash scripts/deploy/install-infisical.sh
+
+      - name: Sign in to Infisical as this environment's deploy identity
+        run: node scripts/secrets/github-login.mjs "${{ vars.INFISICAL_IDENTITY_ID }}"
+
+      - name: Write the release folder
+        env:
+          API_IMAGE: ${{ needs.resolve.outputs.api }}
+          STOREFRONT_IMAGE: ${{ needs.resolve.outputs.storefront }}
+          ADMIN_IMAGE: ${{ needs.resolve.outputs.admin }}
+          OPS_IMAGE: ${{ needs.resolve.outputs.ops }}
+        run: |
+          umask 077
+          printf 'API_IMAGE=%s\nSTOREFRONT_IMAGE=%s\nADMIN_IMAGE=%s\nOPS_IMAGE=%s\n' \
+            "$API_IMAGE" "$STOREFRONT_IMAGE" "$ADMIN_IMAGE" "$OPS_IMAGE" > "$RUNNER_TEMP/images.env"
+          mkdir "$RELEASE_DIR"
+          node scripts/secrets/cli.mjs release "$TIER" --images "$RUNNER_TEMP/images.env" --out "$RELEASE_DIR" >/dev/null
+
+      - name: Check the release folder
+        run: bash "$RELEASE_DIR/bin/deploy.sh" --check-only "$RELEASE_DIR" >/dev/null
+
+      - name: Install cloudflared
+        run: |
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' |
+            sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
+          sudo apt-get update -qq >/dev/null && sudo apt-get install -y -qq cloudflared >/dev/null
+
+      - name: Open the way to the server
+        env:
+          SSH_HOST: ${{ vars.SERVER_SSH_HOST }}
+          KNOWN_HOSTS: ${{ vars.SERVER_SSH_KNOWN_HOSTS }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          ACCESS_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          ACCESS_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          umask 077
+          mkdir -p "$SSH_DIR"
+          printf '%s\n' "$DEPLOY_KEY" > "$SSH_DIR/deploy_key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$SSH_DIR/known_hosts"
+          {
+            echo 'Host server'
+            echo "  HostName $SSH_HOST"
+            echo '  User deploy'
+            echo "  IdentityFile $SSH_DIR/deploy_key"
+            echo '  IdentitiesOnly yes'
+            echo "  UserKnownHostsFile $SSH_DIR/known_hosts"
+            echo '  StrictHostKeyChecking yes'
+            echo '  LogLevel ERROR'
+            echo "  ProxyCommand cloudflared access ssh --hostname %h --service-token-id $ACCESS_ID --service-token-secret $ACCESS_SECRET"
+          } > "$SSH_DIR/config"
+
+      - name: Ship the release and deploy it on the server
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          id="$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::8}"
+          {
+            printf 'release %s\n%s\n%s\n' "$id" "$GHCR_USER" "$GHCR_TOKEN"
+            tar -C "$RELEASE_DIR" -czf - .
+          } | ssh -F "$SSH_DIR/config" server
+
+      - name: Health through Cloudflare
+        env:
+          API_HOST: ${{ vars.API_HOST }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            curl -fsS --max-time 20 -o /dev/null "https://$API_HOST/health/ready" && { echo 'Healthy.'; exit 0; }
+            sleep 10
+          done
+          echo 'FAILED: the API did not answer healthy through Cloudflare.' >&2
+          exit 1
+
+      - name: Remove the release folder and keys from the runner
+        if: always()
+        run: rm -rf "$RELEASE_DIR" "$SSH_DIR" "$RUNNER_TEMP/images.env"

@@ -16,6 +16,7 @@ import { SessionGuard } from './lock/session.guard.js';
 import { AttentionService } from './projects/attention.service.js';
 import { ProjectsController } from './projects/projects.controller.js';
 import { ProjectsService } from './projects/projects.service.js';
+import { ServerDeployController } from './projects/server-deploy.controller.js';
 import { VendorReadsService } from './projects/vendor-reads.service.js';
 import { HelperErrorFilter } from './runner/helper-error.filter.js';
 import { RunnerClient } from './runner/runner-client.js';
@@ -27,6 +28,7 @@ import { ConsoleStore } from './store/console-store.js';
 		LockController,
 		LocalStackController,
 		ProjectsController,
+		ServerDeployController,
 		LocalController,
 		AppFilesController,
 	],

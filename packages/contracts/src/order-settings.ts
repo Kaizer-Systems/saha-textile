@@ -35,10 +35,13 @@ export const OrderSettings = z.object({
 	/** Import duty notice at checkout (OD10): off for Saha Textile (export off). */
 	importDutyNotice: z.enum(['off', 'buyerPaysOnDelivery', 'wePay']).default('off'),
 	/**
-	 * E-invoice / e-way bill before Shipped on business orders (`DEC-EDOCS-GATE`, open). `off` is the
-	 * approved brief's behaviour (Shipped needs the courier and tracking number only).
+	 * E-invoice and e-way bill before Shipped (`DEC-EDOCS-GATE`, owner 2026-11-20: "Block when required").
+	 * Shipped stays off, with the reason, until the IRN is in while `eInvoiceRequired` is on (business
+	 * orders; the CA confirms the turnover test), and, for goods of `eWayBillThresholdINR` or more, the
+	 * e-way bill number (shop orders included).
 	 */
-	eDocumentsBeforeShipped: z.enum(['off', 'warn', 'block']).default('off'),
+	eInvoiceRequired: z.boolean().default(true),
+	eWayBillThresholdINR: z.number().int().nonnegative().default(50_000),
 	/** "Out for delivery" shows only when a connected courier reports it. */
 	outForDeliveryOnlyFromCourier: z.boolean().default(true),
 	revision: z.number().int().nonnegative().default(0),

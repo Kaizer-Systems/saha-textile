@@ -8,6 +8,7 @@ import {
 	orderSeriesKey,
 	renderChildNumber,
 	renderRandomOrderNumber,
+	renderYearMonthOrderNumber,
 	renderSequencedOrderNumber,
 	renderSeriesNumber,
 	type DocumentNumberingRepository,
@@ -52,13 +53,14 @@ export class DocumentNumbersService {
 	}
 
 	/**
-	 * A new order number in the current format (OD18 still open: the interim format is the brief's
-	 * recommendation). Random numbers are checked for uniqueness by the order's unique index; the
-	 * caller retries on a clash.
+	 * A new order number in the current format (OD18 Final: `ST-YYMM-NNNNNN`, the IST year and month the
+	 * record is created, then crypto-random digits). Uniqueness is the order's unique index on the
+	 * stripped form; the caller retries on a clash.
 	 */
 	async orderNumber(context?: TransactionContext, at = new Date()): Promise<string> {
 		const settings = await this.numbering.get();
 		const format = settings.order;
+		if (format.kind === 'yearMonthRandom') return renderYearMonthOrderNumber(format, at, () => randomInt(0, 10));
 		if (format.kind === 'randomGroups') return renderRandomOrderNumber(format, () => randomInt(0, 10));
 		const financialYear = fiscalYearOf(istDay(at));
 		const key = orderSeriesKey(format, financialYear);

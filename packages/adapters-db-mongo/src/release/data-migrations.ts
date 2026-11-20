@@ -2,6 +2,7 @@ import type { DataMigration } from '@saha-textile/core-domain';
 
 import { writeLaunchCurrencySymbols } from '../migrations/fx-launch-symbols';
 import { seedLegalPages } from '../migrations/legal-pages';
+import { setOwnerOrderNumberFormat } from '../migrations/order-number-format';
 import { prepareOrdersBusinessesAndZones } from '../migrations/orders-businesses-zones';
 import { giveMailboxAccessRights } from '../migrations/mailbox-rights';
 import {
@@ -99,5 +100,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Orders and checkout (brief approved 2026-11-20): every supplier becomes a business with the supplier role (same record); the RETAIL zone is written; document numbers start from the accepted table, keeping the format of any purchases series that already issued numbers',
 		half: 'expand',
 		up: () => prepareOrdersBusinessesAndZones(),
+	},
+	{
+		id: '0011-order-number-format',
+		description:
+			'Order numbers (OD18 Final, 2026-11-20): a numbering setting still on the interim ST-#####-##### shape moves to ST-YYMM-NNNNNN; a format staff chose is kept',
+		half: 'expand',
+		up: () => setOwnerOrderNumberFormat(),
 	},
 ];

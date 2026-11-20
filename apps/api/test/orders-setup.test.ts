@@ -136,7 +136,7 @@ describe('document numbers (DEC-NUMBERING)', () => {
 
 	it('shows an example of every row, the order row from the interim format', async () => {
 		const { rows } = await service(DEFAULT_DOCUMENT_NUMBERING).getNumbering();
-		expect(rows.find((row) => row.type === 'order')?.example).toMatch(/^ST-\d{5}-\d{5}$/);
+		expect(rows.find((row) => row.type === 'order')?.example).toMatch(/^ST-\d{4}-\d{6}$/);
 		expect(rows.find((row) => row.type === 'taxInvoice')).toMatchObject({
 			gst: true,
 			resetsEachYear: true,
@@ -145,14 +145,13 @@ describe('document numbers (DEC-NUMBERING)', () => {
 	});
 
 	it('refuses a GST format over 16 characters and a change to a locked series', async () => {
-		const { lockedTypes, updatedAt, updatedBy, orderFormatChosenByOwner, ...write } = {
+		const { lockedTypes, updatedAt, updatedBy, ...write } = {
 			...DEFAULT_DOCUMENT_NUMBERING,
 			lockedTypes: [],
 		};
 		void lockedTypes;
 		void updatedAt;
 		void updatedBy;
-		void orderFormatChosenByOwner;
 		const tooLong = {
 			...write,
 			series: { ...write.series, taxInvoice: { ...write.series.taxInvoice, prefix: 'TAXINV', digits: 8 } },

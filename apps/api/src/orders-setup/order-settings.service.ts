@@ -62,7 +62,6 @@ export class OrderSettingsService {
 			...current,
 			...input,
 			lockedTypes: current.lockedTypes,
-			orderFormatChosenByOwner: current.orderFormatChosenByOwner,
 			updatedAt: new Date().toISOString(),
 			updatedBy: actor,
 		});

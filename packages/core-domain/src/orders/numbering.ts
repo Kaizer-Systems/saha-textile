@@ -96,7 +96,20 @@ export function seriesFormatProblems(
 	return problems;
 }
 
-/** `ST-48213-90761`: random digits in fixed-width groups (the order format the brief recommends). */
+/** `ST-2611-482190` (OD18 Final): the IST year and month, then random digits (crypto random at the caller). */
+export function renderYearMonthOrderNumber(
+	format: Extract<OrderNumberFormat, { kind: 'yearMonthRandom' }>,
+	at: Date,
+	randomDigit: () => number,
+): string {
+	const ist = new Date(at.getTime() + 330 * 60_000);
+	const yymm = `${String(ist.getUTCFullYear()).slice(2)}${String(ist.getUTCMonth() + 1).padStart(2, '0')}`;
+	let digits = '';
+	for (let i = 0; i < format.randomDigits; i++) digits += String(Math.floor(randomDigit()) % 10);
+	return [format.prefix, yymm, digits].join(format.separator);
+}
+
+/** `ST-48213-90761`: random digits in fixed-width groups (an earlier recommended shape, kept as an option). */
 export function renderRandomOrderNumber(
 	format: Extract<OrderNumberFormat, { kind: 'randomGroups' }>,
 	randomDigit: () => number,
@@ -115,7 +128,7 @@ export function renderRandomOrderNumber(
 
 /** Order numbers from a counter (`SO/26-27/000001`, `ST10001`). */
 export function renderSequencedOrderNumber(
-	format: Exclude<OrderNumberFormat, { kind: 'randomGroups' }>,
+	format: Extract<OrderNumberFormat, { kind: 'financialYearSequence' | 'runningNumber' }>,
 	financialYear: string,
 	sequence: number,
 ): string {
@@ -132,7 +145,7 @@ export function orderSeriesKey(
 	format: OrderNumberFormat,
 	financialYear: string,
 ): { series: string; period: string } | null {
-	if (format.kind === 'randomGroups') return null;
+	if (format.kind === 'randomGroups' || format.kind === 'yearMonthRandom') return null;
 	return { series: 'doc:order', period: format.kind === 'financialYearSequence' ? financialYear : 'all' };
 }
 
@@ -144,17 +157,18 @@ export function renderChildNumber(orderNumber: string, format: OrderChildFormat,
 /** An example of every row, for the settings screen. */
 export function numberingExamples(settings: DocumentNumberingSettings, financialYear: string): Record<string, string> {
 	const out: Record<string, string> = {};
+	const fixedDigits = (() => {
+		const digits = [4, 8, 2, 1, 9, 0, 7, 6, 1, 3];
+		let at = 0;
+		return () => digits[at++ % digits.length] as number;
+	})();
+	const sample = new Date('2026-11-15T06:30:00Z');
 	const order =
-		settings.order.kind === 'randomGroups'
-			? renderRandomOrderNumber(
-					settings.order,
-					(() => {
-						const digits = [4, 8, 2, 1, 3, 9, 0, 7, 6, 1];
-						let at = 0;
-						return () => digits[at++ % digits.length] as number;
-					})(),
-				)
-			: renderSequencedOrderNumber(settings.order, financialYear, 1);
+		settings.order.kind === 'yearMonthRandom'
+			? renderYearMonthOrderNumber(settings.order, sample, fixedDigits)
+			: settings.order.kind === 'randomGroups'
+				? renderRandomOrderNumber(settings.order, fixedDigits)
+				: renderSequencedOrderNumber(settings.order, financialYear, 1);
 	out.order = order;
 	out.parcel = renderChildNumber(order, settings.parcel, 1);
 	out.return = renderChildNumber(order, settings.return, 1);

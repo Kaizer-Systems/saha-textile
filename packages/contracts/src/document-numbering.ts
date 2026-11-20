@@ -14,8 +14,8 @@ import { IsoDateTime } from './common';
  * - Every format is a setting, checked when set: at most 16 characters for GST types, still unique
  *   once separators are removed (the form an SMS carries), and locked once its first number is issued.
  * - Parcels, returns and payment requests hang off the order number (`ST-48213-90761/P1`).
- * - The order number's format is still the owner's to choose (asked 2026-11-20); it stays a setting
- *   with three shapes and is never locked, because it is not a GST document.
+ * - The order number is `ST-YYMM-NNNNNN` (OD18 Final, 2026-11-20): the IST year and month, then six random
+ *   digits. It stays a setting and is never locked, because it is not a GST document.
  */
 
 /** Every numbered document type the system issues or keeps beside its own. */
@@ -84,6 +84,16 @@ export type OrderChildFormat = z.infer<typeof OrderChildFormat>;
  * - `runningNumber`: `ST10001`, one count from a starting number.
  */
 export const OrderNumberFormat = z.discriminatedUnion('kind', [
+	/** OD18 Final (owner, 2026-11-20): `ST-2611-482190`, the IST year and month, then random digits; never restarts. */
+	z.object({
+		kind: z.literal('yearMonthRandom'),
+		prefix: z
+			.string()
+			.trim()
+			.regex(/^[A-Z][A-Z0-9]{0,5}$/, { message: 'prefix_shape' }),
+		separator: NumberSeparator.default('-'),
+		randomDigits: z.number().int().min(4).max(10).default(6),
+	}),
 	z.object({
 		kind: z.literal('randomGroups'),
 		prefix: z
@@ -115,10 +125,8 @@ export const OrderNumberFormat = z.discriminatedUnion('kind', [
 export type OrderNumberFormat = z.infer<typeof OrderNumberFormat>;
 
 export const DocumentNumberingSettings = z.object({
-	/** OD18 is open: this holds the brief's recommended shape until the owner chooses. */
+	/** OD18 Final: `ST-YYMM-NNNNNN`. Still a setting, never locked (an order number is not a GST document). */
 	order: OrderNumberFormat,
-	/** Set to the owner's answer when it arrives; false while the order format is the interim one. */
-	orderFormatChosenByOwner: z.boolean().default(false),
 	parcel: OrderChildFormat,
 	return: OrderChildFormat,
 	paymentRequest: OrderChildFormat,
@@ -131,10 +139,9 @@ export const DocumentNumberingSettings = z.object({
 });
 export type DocumentNumberingSettings = z.infer<typeof DocumentNumberingSettings>;
 
-/** The brief's table, as accepted on 2026-11-20 (order row: the recommended shape, pending). */
+/** The brief's table, as accepted on 2026-11-20, with the owner's order number (OD18 Final). */
 export const DEFAULT_DOCUMENT_NUMBERING: DocumentNumberingSettings = {
-	order: { kind: 'randomGroups', prefix: 'ST', separator: '-', groups: [5, 5] },
-	orderFormatChosenByOwner: false,
+	order: { kind: 'yearMonthRandom', prefix: 'ST', separator: '-', randomDigits: 6 },
 	parcel: { letter: 'P', separator: '/' },
 	return: { letter: 'R', separator: '/' },
 	paymentRequest: { letter: 'Q', separator: '/' },
@@ -174,7 +181,6 @@ export const DocumentNumberingWrite = DocumentNumberingSettings.omit({
 	lockedTypes: true,
 	updatedAt: true,
 	updatedBy: true,
-	orderFormatChosenByOwner: true,
 });
 export type DocumentNumberingWrite = z.infer<typeof DocumentNumberingWrite>;
 

@@ -120,8 +120,7 @@ describe('document numbers (DEC-NUMBERING)', () => {
 		for (const type of NumberedDocumentType.options) expect(settings.series[type]).toBeDefined();
 		expect(settings.series.taxInvoice).toMatchObject({ prefix: 'TI', digits: 6, reset: 'fy' });
 		expect(settings.series.purchaseEntry.digits).toBe(5);
-		expect(settings.order).toMatchObject({ kind: 'randomGroups', prefix: 'ST', groups: [5, 5] });
-		expect(settings.orderFormatChosenByOwner).toBe(false);
+		expect(settings.order).toMatchObject({ kind: 'yearMonthRandom', prefix: 'ST', randomDigits: 6 });
 	});
 
 	it('keeps every GST default within 16 characters', () => {
@@ -277,8 +276,8 @@ describe('admin order actions', () => {
 		expect(AdminOrderCreate.safeParse({ ...create, cart: { ...create.cart, buyer: null } }).success).toBe(false);
 	});
 
-	it('keeps the e-documents gate off by default, as the approved brief draws Shipped', () => {
-		expect(OrderSettings.parse({}).eDocumentsBeforeShipped).toBe('off');
+	it('turns the e-documents gate on by default (DEC-EDOCS-GATE: IRN switch on, e-way bill from ₹50,000)', () => {
+		expect(OrderSettings.parse({})).toMatchObject({ eInvoiceRequired: true, eWayBillThresholdINR: 50_000 });
 		expect(OrderSettings.parse({}).holdAdminOrderPieces).toBe('fromSave');
 		expect(OrderSettings.parse({}).paymentLinkDays).toBe(7);
 	});

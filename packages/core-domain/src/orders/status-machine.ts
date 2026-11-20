@@ -14,7 +14,8 @@ import type { AllowedNextStatus, OrderStatus, StatusBlockReason, StatusNeed } fr
  * - Packed needs a complete invoice address when the order needs one.
  * - Cancelled: never after Shipped; made-to-order pieces not after Processing; ready pieces not after
  *   Packed (OD12, Processing = Accepted).
- * - E-invoice / e-way bill before Shipped on business orders: a named setting (`DEC-EDOCS-GATE`).
+ * - E-invoice / e-way bill before Shipped (`DEC-EDOCS-GATE`, block when required): the IRN on business
+ *   orders while the e-invoice switch is on; the e-way bill for goods at or above the threshold.
  */
 
 /** What the machine needs to know about an order. */
@@ -29,11 +30,16 @@ export interface StatusMachineOrder {
 	placeable: boolean;
 	hasEInvoice: boolean;
 	hasEWayBill: boolean;
+	/** Value of the goods in rupees (the e-way bill threshold reads it). */
+	goodsINR: number;
 }
 
 export interface StatusMachineSettings {
 	outForDeliveryOnlyFromCourier: boolean;
-	eDocumentsBeforeShipped: 'off' | 'warn' | 'block';
+	/** Business orders need the e-invoice IRN before Shipped while this is on (default on). */
+	eInvoiceRequired: boolean;
+	/** Goods of this value or more need the e-way bill number before Shipped (₹50,000; shop orders too). */
+	eWayBillThresholdINR: number;
 	/** True when a courier adapter is connected (none now). */
 	courierConnected: boolean;
 }
@@ -96,6 +102,20 @@ const NEEDS: Readonly<Partial<Record<OrderStatus, readonly StatusNeed[]>>> = {
 	cancelled: ['cancelReason'],
 };
 
+/** Whether this order needs an e-invoice IRN or an e-way bill before it ships. */
+export function eDocumentsRequired(order: StatusMachineOrder, settings: StatusMachineSettings): boolean {
+	return (
+		(settings.eInvoiceRequired && order.buyerKind === 'business') || order.goodsINR >= settings.eWayBillThresholdINR
+	);
+}
+
+/** True while a required e-document is missing. */
+export function eDocumentsMissing(order: StatusMachineOrder, settings: StatusMachineSettings): boolean {
+	const irnMissing = settings.eInvoiceRequired && order.buyerKind === 'business' && !order.hasEInvoice;
+	const ewbMissing = order.goodsINR >= settings.eWayBillThresholdINR && !order.hasEWayBill;
+	return irnMissing || ewbMissing;
+}
+
 function blockFor(
 	to: OrderStatus,
 	order: StatusMachineOrder,
@@ -114,9 +134,7 @@ function blockFor(
 	if (to === 'packed' && order.invoiceAddressNeeded) return 'addInvoiceAddressFirst';
 	if (to === 'out_for_delivery' && settings.outForDeliveryOnlyFromCourier && !settings.courierConnected)
 		return 'onlyFromCourier';
-	if (to === 'shipped' && settings.eDocumentsBeforeShipped === 'block' && order.buyerKind === 'business') {
-		if (!order.hasEInvoice || !order.hasEWayBill) return 'eDocumentsMissing';
-	}
+	if (to === 'shipped' && eDocumentsMissing(order, settings)) return 'eDocumentsMissing';
 	if (to === 'cancelled') {
 		if (RANK[from] >= RANK.shipped) return 'alreadyShipped';
 		if (RANK[from] > RANK.processing && order.lines.some((line) => !line.madeToOrder)) return 'readyPastPacked';
@@ -140,15 +158,8 @@ export function allowedNextStatuses(order: StatusMachineOrder, settings: StatusM
 	return shown.map((to) => {
 		const reason = blockFor(to, order, settings);
 		const needs = [...(NEEDS[to] ?? [])];
-		const warning =
-			!reason &&
-			to === 'shipped' &&
-			order.buyerKind === 'business' &&
-			settings.eDocumentsBeforeShipped === 'warn' &&
-			(!order.hasEInvoice || !order.hasEWayBill)
-				? ('eDocumentsMissing' as const)
-				: null;
-		return { to, allowed: reason === null, reason, needs, warning, tells: [...STATUS_MESSAGES[to]] };
+		if (to === 'shipped' && eDocumentsRequired(order, settings)) needs.push('eDocuments');
+		return { to, allowed: reason === null, reason, needs, warning: null, tells: [...STATUS_MESSAGES[to]] };
 	});
 }
 

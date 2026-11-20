@@ -28,6 +28,7 @@ import {
 	orderBalance,
 	renderChildNumber,
 	renderRandomOrderNumber,
+	renderYearMonthOrderNumber,
 	renderSequencedOrderNumber,
 	renderSeriesNumber,
 	seriesFormatProblems,
@@ -48,7 +49,8 @@ import {
 
 const settings: StatusMachineSettings = {
 	outForDeliveryOnlyFromCourier: true,
-	eDocumentsBeforeShipped: 'off',
+	eInvoiceRequired: true,
+	eWayBillThresholdINR: 50_000,
 	courierConnected: false,
 };
 const order = (over: Partial<StatusMachineOrder> = {}): StatusMachineOrder => ({
@@ -59,6 +61,7 @@ const order = (over: Partial<StatusMachineOrder> = {}): StatusMachineOrder => ({
 	placeable: true,
 	hasEInvoice: false,
 	hasEWayBill: false,
+	goodsINR: 10_000,
 	...over,
 });
 
@@ -128,20 +131,23 @@ describe('order status machine (st01–st05, K4)', () => {
 		});
 	});
 
-	it('applies the e-documents gate on business orders only, as the setting says', () => {
+	it('blocks Shipped until the IRN (business orders) and the e-way bill (₹50,000 or more) are in (DEC-EDOCS-GATE)', () => {
 		const business = order({ status: 'packed', buyerKind: 'business' });
-		expect(canMoveTo(business, 'shipped', settings)).toEqual({ allowed: true });
-		expect(canMoveTo(business, 'shipped', { ...settings, eDocumentsBeforeShipped: 'block' })).toEqual({
+		expect(canMoveTo(business, 'shipped', settings)).toEqual({ allowed: false, reason: 'eDocumentsMissing' });
+		expect(canMoveTo({ ...business, hasEInvoice: true }, 'shipped', settings)).toEqual({ allowed: true });
+		expect(canMoveTo(business, 'shipped', { ...settings, eInvoiceRequired: false })).toEqual({ allowed: true });
+		const bigShopOrder = order({ status: 'packed', goodsINR: 50_000 });
+		expect(canMoveTo(bigShopOrder, 'shipped', settings)).toEqual({ allowed: false, reason: 'eDocumentsMissing' });
+		expect(canMoveTo({ ...bigShopOrder, hasEWayBill: true }, 'shipped', settings)).toEqual({ allowed: true });
+		expect(canMoveTo(order({ status: 'packed', goodsINR: 49_999 }), 'shipped', settings)).toEqual({
+			allowed: true,
+		});
+		const menu = allowedNextStatuses(business, settings).find((row) => row.to === 'shipped');
+		expect(menu).toMatchObject({
 			allowed: false,
 			reason: 'eDocumentsMissing',
+			needs: ['courier', 'trackingNumber', 'eDocuments'],
 		});
-		const warn = allowedNextStatuses(business, { ...settings, eDocumentsBeforeShipped: 'warn' }).find(
-			(row) => row.to === 'shipped',
-		);
-		expect(warn).toMatchObject({ allowed: true, warning: 'eDocumentsMissing' });
-		expect(
-			canMoveTo(order({ status: 'packed' }), 'shipped', { ...settings, eDocumentsBeforeShipped: 'block' }),
-		).toEqual({ allowed: true });
 	});
 });
 
@@ -573,8 +579,7 @@ describe('document numbering (DEC-NUMBERING)', () => {
 		reset: 'fy' as const,
 	});
 	const numbering: DocumentNumberingSettings = {
-		order: { kind: 'randomGroups', prefix: 'ST', separator: '-', groups: [5, 5] },
-		orderFormatChosenByOwner: false,
+		order: { kind: 'yearMonthRandom', prefix: 'ST', separator: '-', randomDigits: 6 },
 		parcel: { letter: 'P', separator: '/' },
 		return: { letter: 'R', separator: '/' },
 		paymentRequest: { letter: 'Q', separator: '/' },
@@ -609,7 +614,7 @@ describe('document numbering (DEC-NUMBERING)', () => {
 			stockCount: 'SC/26-27/001',
 			journal: 'JV/26-27/000001',
 		});
-		expect(examples.order).toMatch(/^ST-\d{5}-\d{5}$/);
+		expect(examples.order).toBe('ST-2611-482190');
 		expect(examples.parcel).toBe(`${examples.order}/P1`);
 	});
 
@@ -637,6 +642,13 @@ describe('document numbering (DEC-NUMBERING)', () => {
 				7,
 			),
 		).toBe('TI-000007');
+	});
+
+	it('builds ST-YYMM-NNNNNN from the IST month (OD18 Final)', () => {
+		const format = { kind: 'yearMonthRandom' as const, prefix: 'ST', separator: '-' as const, randomDigits: 6 };
+		// 31 Oct 2026 20:00 UTC is 1 Nov 01:30 in India.
+		expect(renderYearMonthOrderNumber(format, new Date('2026-10-31T20:00:00Z'), () => 7)).toBe('ST-2611-777777');
+		expect(messageForm('ST-2611-482190')).toBe('ST2611482190');
 	});
 
 	it('never starts a random group with 0', () => {

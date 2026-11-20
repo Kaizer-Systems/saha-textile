@@ -173,6 +173,109 @@ import { ConsoleContext } from '../data/console-context';
 							</div>
 						</form>
 					</div>
+					<form
+						class="rc-panel"
+						(submit)="savePassword($event)"
+					>
+						<div class="rc-ph">
+							<span class="rc-label">Sign in with a PIN or a password</span>
+						</div>
+						@if (lock.data(); as l) {
+							<div class="rc-kv">
+								<div>
+									<span>PIN</span>
+									<em class="ok">set</em>
+								</div>
+								<div>
+									<span>Password</span>
+									<em [class.ok]="l.passwordSet">{{ l.passwordSet ? 'set' : 'not set' }}</em>
+								</div>
+								<div>
+									<span>The lock screen opens with</span>
+									<em>
+										{{ l.passwordSet && l.preferred === 'password' ? 'the password' : 'the PIN' }}
+									</em>
+								</div>
+							</div>
+							<div class="rc-form">
+								<label>
+									PIN
+									<div class="rc-msearch">
+										<input
+											#pwPin
+											name="pin"
+											type="password"
+											inputmode="numeric"
+											maxlength="6"
+											autocomplete="off"
+											aria-label="Your PIN, to confirm"
+										/>
+									</div>
+								</label>
+								<label>
+									{{ l.passwordSet ? 'New password' : 'Password' }}
+									<div class="rc-msearch">
+										<input
+											name="password"
+											type="password"
+											autocomplete="new-password"
+											placeholder="12 or more characters"
+										/>
+									</div>
+								</label>
+								<label>
+									Again
+									<div class="rc-msearch">
+										<input
+											name="again"
+											type="password"
+											autocomplete="new-password"
+										/>
+									</div>
+								</label>
+							</div>
+							<div class="rc-row">
+								<button
+									type="submit"
+									class="rc-btn primary"
+								>
+									{{ l.passwordSet ? 'Change password' : 'Set password' }}
+								</button>
+								@if (l.passwordSet) {
+									<button
+										type="button"
+										class="rc-btn"
+										[class.on]="l.preferred === 'pin'"
+										(click)="choose('pin', pwPin.value)"
+									>
+										Open with the PIN
+									</button>
+									<button
+										type="button"
+										class="rc-btn"
+										[class.on]="l.preferred === 'password'"
+										(click)="choose('password', pwPin.value)"
+									>
+										Open with the password
+									</button>
+									<button
+										type="button"
+										class="rc-btn danger"
+										(click)="removePassword(pwPin.value)"
+									>
+										Remove password
+									</button>
+								}
+							</div>
+							@if (signInMessage()) {
+								<p class="rc-note">{{ signInMessage() }}</p>
+							}
+							<p class="rc-note">
+								Both are kept only as one-way hashes in the console's own database. Every change here
+								needs your PIN. Wrong tries of either count toward the same 15-minute lock.
+							</p>
+						}
+					</form>
 				</div>
 			}
 			@default {
@@ -246,6 +349,12 @@ export class ConsolePage {
 	readonly page = input('projects');
 	protected readonly when = when;
 	protected readonly pinMessage = signal('');
+	protected readonly signInMessage = signal('');
+	protected readonly lock = injectQuery(() => ({
+		queryKey: ['lock-status'],
+		queryFn: () => this.api.lockStatus(),
+		enabled: this.page() === 'settings',
+	}));
 
 	protected readonly counts = injectQuery(() => ({
 		queryKey: ['attention-counts'],
@@ -289,6 +398,35 @@ export class ConsolePage {
 	protected lockNow(): void {
 		void this.api.lockNow();
 	}
+	protected async savePassword(e: Event): Promise<void> {
+		e.preventDefault();
+		const form = e.target as HTMLFormElement;
+		const field = (name: string) => form.querySelector<HTMLInputElement>(`input[name=${name}]`)?.value ?? '';
+		const [pin, password, again] = [field('pin'), field('password'), field('again')];
+		if (password.length < 12) return this.signInMessage.set('Use 12 or more characters.');
+		if (password !== again) return this.signInMessage.set('The two passwords differ.');
+		await this.signIn(() => this.api.setPassword(pin, password), 'Password saved.', e.target as HTMLFormElement);
+	}
+	protected async removePassword(pin: string): Promise<void> {
+		await this.signIn(() => this.api.removePassword(pin), 'Password removed; the PIN stays the way in.');
+	}
+	protected async choose(method: 'pin' | 'password', pin: string): Promise<void> {
+		await this.signIn(
+			() => this.api.setPreferred(pin, method),
+			`The lock screen now opens with the ${method === 'pin' ? 'PIN' : 'password'}.`,
+		);
+	}
+	private async signIn(work: () => Promise<unknown>, done: string, form?: HTMLFormElement): Promise<void> {
+		try {
+			await work();
+			this.signInMessage.set(done);
+			form?.reset();
+			await this.lock.refetch();
+		} catch (err) {
+			this.signInMessage.set((err as Error).message);
+		}
+	}
+
 	protected async changePin(e: Event, current: string, next: string): Promise<void> {
 		e.preventDefault();
 		if (!/^\d{6}$/.test(current) || !/^\d{6}$/.test(next)) {

@@ -3,6 +3,15 @@ import { Router } from '@angular/router';
 
 import {
 	type AttentionCount,
+	type DockerSnapshot,
+	type HelperStatus,
+	type Job,
+	type LocalAction,
+	type Logs,
+	type MacSnapshot,
+	type PipelineStage,
+	type Series,
+	type ShopHealth,
 	type AttentionItem,
 	type AuditEntry,
 	type CloudAccount,
@@ -23,10 +32,20 @@ import {
 	type SlotKeys,
 	type KeySource,
 	type LinkKey,
+	type SignInMethod,
+	type Unlock,
 	type UnlockAnswer,
 	type VendorAnswer,
 	type WorkflowRun,
 	attentionCountsSchema,
+	dockerSnapshotSchema,
+	helperStatusSchema,
+	jobSchema,
+	jobsSchema,
+	logsSchema,
+	macSnapshotSchema,
+	seriesListSchema,
+	shopHealthSchema,
 	attentionItemsSchema,
 	auditEntriesSchema,
 	cloudAccountAnswerSchema,
@@ -53,10 +72,13 @@ import { ConsoleSession } from './session';
 import type { z } from 'zod';
 
 /**
- * The console's local API on this computer: the page's own port plus 10 (4400 → 4410), on
- * 127.0.0.1 only. Every answer is checked against the shared contracts.
+ * Where the console's API answers. In its Docker image one process serves the page and the API, so
+ * it is the page's own address. While developing (`pnpm console`), the API runs beside Vite on the
+ * page's port plus 10 (4400 → 4410), on 127.0.0.1. Every answer is checked against the shared contracts.
  */
-export const CONSOLE_API = `http://127.0.0.1:${Number(globalThis.location?.port || 4400) + 10}`;
+export const CONSOLE_API = import.meta.env.DEV
+	? `http://127.0.0.1:${Number(globalThis.location?.port || 4400) + 10}`
+	: (globalThis.location?.origin ?? '');
 
 /** An answer the API refused, with its reason. */
 export class ApiError extends Error {
@@ -110,8 +132,18 @@ export class ConsoleApi {
 	setupPin(pin: string): Promise<UnlockAnswer> {
 		return this.call('POST', '/api/lock/setup', unlockAnswerSchema, { pin });
 	}
-	unlock(pin: string): Promise<UnlockAnswer> {
-		return this.call('POST', '/api/lock/unlock', unlockAnswerSchema, { pin });
+	/** Unlocks with the PIN or the password. */
+	unlock(given: Unlock): Promise<UnlockAnswer> {
+		return this.call('POST', '/api/lock/unlock', unlockAnswerSchema, given);
+	}
+	setPassword(pin: string, password: string): Promise<unknown> {
+		return this.call('POST', '/api/lock/password', okAnswerSchema, { pin, password });
+	}
+	removePassword(pin: string): Promise<unknown> {
+		return this.call('POST', '/api/lock/password/remove', okAnswerSchema, { pin });
+	}
+	setPreferred(pin: string, method: SignInMethod): Promise<unknown> {
+		return this.call('POST', '/api/lock/preferred', okAnswerSchema, { pin, method });
 	}
 	/** Locks the console: ends the session on the API, forgets it and every cached answer here. */
 	async lockNow(): Promise<void> {
@@ -206,6 +238,50 @@ export class ConsoleApi {
 			`/api/projects/${p}/repos/${r}/edge/${slot}/zones/${encodeURIComponent(zone)}/dns`,
 			dnsRecordsAnswerSchema,
 		);
+	}
+
+	/* this Mac, through the Mac helper */
+	helper(): Promise<HelperStatus> {
+		return this.call('GET', '/api/local/helper', helperStatusSchema);
+	}
+	mac(): Promise<MacSnapshot> {
+		return this.call('GET', '/api/local/mac', macSnapshotSchema);
+	}
+	docker(): Promise<DockerSnapshot> {
+		return this.call('GET', '/api/local/docker', dockerSnapshotSchema, undefined, 40_000);
+	}
+	shopHealth(): Promise<ShopHealth> {
+		return this.call('GET', '/api/local/shop-health', shopHealthSchema);
+	}
+	logs(container: string, tail: number, since: string): Promise<Logs> {
+		return this.call(
+			'GET',
+			`/api/local/logs?container=${encodeURIComponent(container)}&tail=${tail}&since=${since}`,
+			logsSchema,
+		);
+	}
+	history(source: string, names: string[], minutes: number): Promise<Series[]> {
+		return this.call(
+			'GET',
+			`/api/local/history?source=${encodeURIComponent(source)}&names=${names.join(',')}&minutes=${minutes}`,
+			seriesListSchema,
+		);
+	}
+	jobs(): Promise<Job[]> {
+		return this.call('GET', '/api/local/jobs', jobsSchema);
+	}
+	job(id: string, after = 0): Promise<Job> {
+		return this.call('GET', `/api/local/jobs/${id}?after=${after}`, jobSchema);
+	}
+	runLocal(
+		action: LocalAction,
+		pin: string,
+		stages: { from?: PipelineStage; only?: PipelineStage } = {},
+	): Promise<Job> {
+		return this.call('POST', `/api/local/run/${action}`, jobSchema, { pin, ...stages }, 30_000);
+	}
+	stopJob(id: string, pin: string): Promise<Job> {
+		return this.call('POST', `/api/local/jobs/${id}/stop`, jobSchema, { pin });
 	}
 
 	/* local stack (this computer) */

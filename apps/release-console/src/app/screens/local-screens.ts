@@ -1,0 +1,1296 @@
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Router } from '@angular/router';
+
+import {
+	type ContainerStat,
+	type DockerSnapshot,
+	type Job,
+	type JobLine,
+	type LocalAction,
+	PIPELINE_STAGES,
+	type PipelineStage,
+} from '@saha-textile/release-console-contracts';
+import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
+
+import { formatBytes } from './format';
+import { Gauge, LocalGate, SparkLine, formatRate, levelColour, percent } from './local-parts';
+import { ConsoleApi } from '../data/console-api';
+import { when } from '../pages/format-time';
+
+const WINDOWS: [number, string][] = [
+	[15, '15 min'],
+	[60, '1 hour'],
+	[1440, '24 hours'],
+	[10080, '7 days'],
+];
+
+/** Rates per second between two Docker readings, by container. */
+export function containerRates(
+	prev: DockerSnapshot | null,
+	now: DockerSnapshot,
+): Map<string, { rx: number | null; tx: number | null; read: number | null; write: number | null }> {
+	const seconds = prev ? (Date.parse(now.at) - Date.parse(prev.at)) / 1000 : 0;
+	const before = new Map((prev?.stats ?? []).map((s) => [s.name, s]));
+	const r = (a: number | null | undefined, b: number | null | undefined) =>
+		seconds > 0 && typeof a === 'number' && typeof b === 'number' && b >= a ? (b - a) / seconds : null;
+	return new Map(
+		now.stats.map((s) => {
+			const p = before.get(s.name);
+			return [
+				s.name,
+				{
+					rx: r(p?.netRxBytes, s.netRxBytes),
+					tx: r(p?.netTxBytes, s.netTxBytes),
+					read: r(p?.blockReadBytes, s.blockReadBytes),
+					write: r(p?.blockWriteBytes, s.blockWriteBytes),
+				},
+			];
+		}),
+	);
+}
+
+/* ======================================================================= Server */
+
+/** Run › Server, Metrics tab, for an environment on this computer: the Mac itself. */
+@Component({
+	selector: 'rc-server-screen',
+	imports: [LocalGate, Gauge, SparkLine],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<rc-local-gate>
+			@if (mac.data(); as m) {
+				<div class="rc-g3">
+					<div class="rc-panel">
+						<div class="rc-ph"><span class="rc-label">This Mac · now</span></div>
+						<div class="rc-row">
+							<rc-gauge
+								[value]="m.cpu?.used ?? 0"
+								label="CPU"
+							/>
+							<rc-gauge
+								[value]="memPct()"
+								label="Memory"
+							/>
+							<rc-gauge
+								[value]="diskPct()"
+								label="Start-up disk"
+							/>
+						</div>
+					</div>
+					<div class="rc-panel">
+						<div class="rc-ph"><span class="rc-label">Load and memory</span></div>
+						<div class="rc-kv">
+							<div>
+								<span>Load (1, 5, 15 min)</span>
+								<em>{{ m.load ? m.load.one + ' · ' + m.load.five + ' · ' + m.load.fifteen : '—' }}</em>
+							</div>
+							<div>
+								<span>CPU cores</span>
+								<em>{{ m.cpus ?? '—' }}</em>
+							</div>
+							<div>
+								<span>Memory in use</span>
+								<em>{{ bytes(m.memory.used) }} of {{ bytes(m.memory.total) }}</em>
+							</div>
+							<div>
+								<span>Compressed · wired</span>
+								<em>{{ bytes(m.memory.compressed) }} · {{ bytes(m.memory.wired) }}</em>
+							</div>
+							<div>
+								<span>Swap in use</span>
+								<em [class.amber]="m.swapUsed > 2 * 1024 ** 3">{{ bytes(m.swapUsed) }}</em>
+							</div>
+							<div>
+								<span>Disk free</span>
+								<em [class.red]="diskPct() >= 90">
+									{{ bytes(m.disk?.free ?? null) }} of {{ bytes(m.disk?.total ?? null) }}
+								</em>
+							</div>
+						</div>
+					</div>
+					<div class="rc-panel">
+						<div class="rc-ph"><span class="rc-label">Docker on this Mac</span></div>
+						@if (docker.data(); as d) {
+							<div class="rc-kv">
+								<div>
+									<span>Docker</span>
+									<em
+										[class.ok]="d.reachable"
+										[class.red]="!d.reachable"
+									>
+										{{ d.reachable ? 'running · ' + d.version : 'not running' }}
+									</em>
+								</div>
+								<div>
+									<span>Its virtual machine</span>
+									<em>{{ d.cpus ?? '—' }} CPUs · {{ bytes(d.memoryTotal) }}</em>
+								</div>
+								<div>
+									<span>Saha Textile containers</span>
+									<em>{{ running(d) }} running of {{ d.containers.length }}</em>
+								</div>
+								<div>
+									<span>Their memory</span>
+									<em>{{ bytes(sum(d.stats, 'memoryBytes')) }}</em>
+								</div>
+								<div>
+									<span>Their CPU</span>
+									<em>{{ sum(d.stats, 'cpuPercent').toFixed(1) }}%</em>
+								</div>
+							</div>
+						} @else {
+							<p class="rc-p muted">Reading Docker…</p>
+						}
+					</div>
+				</div>
+				<div class="rc-panel">
+					<div class="rc-ph">
+						<span class="rc-label">History · every 5 seconds, minute averages beyond 2 hours</span>
+						<div class="rc-states">
+							@for (w of windows; track w[0]) {
+								<button
+									type="button"
+									class="rc-chip"
+									[class.on]="minutes() === w[0]"
+									(click)="minutes.set(w[0])"
+								>
+									{{ w[1] }}
+								</button>
+							}
+						</div>
+					</div>
+					<div class="rc-g2">
+						@for (s of charts(); track s.label) {
+							<div>
+								<span class="rc-label">{{ s.label }} · now {{ s.now }}</span>
+								<rc-spark-line
+									[values]="s.values"
+									[colour]="s.colour"
+									[max]="s.max"
+								/>
+							</div>
+						}
+					</div>
+					@if (!charts().length || !charts()[0]?.values?.length) {
+						<p class="rc-note">
+							The history fills as the console runs; the first points appear within seconds.
+						</p>
+					}
+				</div>
+			} @else if (mac.isError()) {
+				<p class="rc-p red">{{ mac.error().message }}</p>
+			} @else {
+				<p class="rc-p muted">Reading this Mac…</p>
+			}
+		</rc-local-gate>
+	`,
+})
+export class ServerScreen {
+	private readonly api = inject(ConsoleApi);
+	protected readonly windows = WINDOWS;
+	protected readonly minutes = signal(60);
+	protected readonly bytes = formatBytes;
+	protected readonly mac = injectQuery(() => ({
+		queryKey: ['mac'],
+		queryFn: () => this.api.mac(),
+		refetchInterval: 5000,
+	}));
+	protected readonly docker = injectQuery(() => ({
+		queryKey: ['docker'],
+		queryFn: () => this.api.docker(),
+		refetchInterval: 5000,
+	}));
+	private readonly hist = injectQuery(() => ({
+		queryKey: ['history', 'mac', this.minutes()],
+		queryFn: () => this.api.history('mac', ['cpu', 'mem_used', 'net_rx_rate', 'net_tx_rate'], this.minutes()),
+		refetchInterval: this.minutes() <= 60 ? 5000 : 60_000,
+	}));
+	protected readonly memPct = computed(() => percent(this.mac.data()?.memory.used, this.mac.data()?.memory.total));
+	protected readonly diskPct = computed(() => percent(this.mac.data()?.disk?.used, this.mac.data()?.disk?.total));
+	protected readonly charts = computed(() => {
+		const series = this.hist.data() ?? [];
+		const pick = (name: string) => series.find((s) => s.name === name)?.points.map(([, v]) => v) ?? [];
+		const last = (v: number[]) => v[v.length - 1];
+		const total = this.mac.data()?.memory.total ?? undefined;
+		return [
+			{
+				label: 'CPU',
+				values: pick('cpu'),
+				colour: levelColour(last(pick('cpu')) ?? 0),
+				max: 100,
+				now: `${(last(pick('cpu')) ?? 0).toFixed(1)}%`,
+			},
+			{
+				label: 'Memory',
+				values: pick('mem_used'),
+				colour: '#ffb547',
+				max: total,
+				now: formatBytes(last(pick('mem_used')) ?? null),
+			},
+			{
+				label: 'Network in',
+				values: pick('net_rx_rate'),
+				colour: '#5dffa8',
+				max: undefined,
+				now: formatRate(last(pick('net_rx_rate'))),
+			},
+			{
+				label: 'Network out',
+				values: pick('net_tx_rate'),
+				colour: '#c4b5fd',
+				max: undefined,
+				now: formatRate(last(pick('net_tx_rate'))),
+			},
+		];
+	});
+	protected running(d: DockerSnapshot): number {
+		return d.containers.filter((c) => c.state === 'running').length;
+	}
+	protected sum(stats: ContainerStat[], key: 'memoryBytes' | 'cpuPercent'): number {
+		return stats.reduce((n, s) => n + (s[key] ?? 0), 0);
+	}
+}
+
+/* ======================================================================= Infrastructure */
+
+/** Run › Infrastructure: every Saha Textile container on this Mac with its live figures and history. */
+@Component({
+	selector: 'rc-infra-screen',
+	imports: [LocalGate, SparkLine],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<rc-local-gate>
+			@if (docker.data(); as d) {
+				<div class="rc-panel">
+					<div class="rc-ph">
+						<span class="rc-label">Containers on this Mac · read {{ when(d.at) }} · every 5 s</span>
+					</div>
+					<div class="rc-tw">
+						<table class="rc-t">
+							<thead>
+								<tr>
+									<th>Container</th>
+									<th>State</th>
+									<th>CPU</th>
+									<th>Memory</th>
+									<th>Network in · out</th>
+									<th>Disk read · write</th>
+									<th>Processes</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (c of d.containers; track c.name) {
+									@let s = stat(c.name);
+									@let r = rates().get(c.name);
+									<tr
+										[class.on]="open() === c.name"
+										(click)="open.set(open() === c.name ? null : c.name)"
+									>
+										<td>
+											<span
+												class="rc-dot"
+												[class.ok]="c.state === 'running' && !c.status.includes('unhealthy')"
+												[class.red]="c.state !== 'running' || c.status.includes('unhealthy')"
+											></span>
+											<b>{{ c.name }}</b>
+											<br />
+											<span class="rc-mono">{{ c.image }}</span>
+										</td>
+										<td class="rc-mono">{{ c.status }}</td>
+										<td>
+											<span class="rc-bar">
+												<i
+													[class.amber]="(s?.cpuPercent ?? 0) >= 70"
+													[class.red]="(s?.cpuPercent ?? 0) >= 90"
+													[style.width.%]="bar(s?.cpuPercent ?? 0)"
+												></i>
+											</span>
+											<span class="rc-mono">
+												{{
+													s?.cpuPercent === null || s?.cpuPercent === undefined
+														? '—'
+														: s.cpuPercent + '%'
+												}}
+											</span>
+										</td>
+										<td>
+											<span class="rc-bar">
+												<i [style.width.%]="bar(pct(s?.memoryBytes, s?.memoryLimitBytes))"></i>
+											</span>
+											<span class="rc-mono">{{ bytes(s?.memoryBytes ?? null) }}</span>
+										</td>
+										<td class="rc-mono">{{ rate(r?.rx) }} · {{ rate(r?.tx) }}</td>
+										<td class="rc-mono">{{ rate(r?.read) }} · {{ rate(r?.write) }}</td>
+										<td class="rc-mono">{{ s?.pids ?? '—' }}</td>
+									</tr>
+								} @empty {
+									<tr><td colspan="7">No Saha Textile containers on this Mac.</td></tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<p class="rc-note">Click a container for its last hour.</p>
+				</div>
+				@if (open(); as name) {
+					<div class="rc-panel">
+						<div class="rc-ph">
+							<span class="rc-label">{{ name }} · last hour</span>
+						</div>
+						<div class="rc-g2">
+							<div>
+								<span class="rc-label">CPU %</span>
+								<rc-spark-line [values]="series('cpu')" />
+							</div>
+							<div>
+								<span class="rc-label">Memory</span>
+								<rc-spark-line
+									[values]="series('mem')"
+									colour="#ffb547"
+								/>
+							</div>
+							<div>
+								<span class="rc-label">Network in</span>
+								<rc-spark-line
+									[values]="series('net_rx_rate')"
+									colour="#5dffa8"
+								/>
+							</div>
+							<div>
+								<span class="rc-label">Disk write</span>
+								<rc-spark-line
+									[values]="series('block_write_rate')"
+									colour="#c4b5fd"
+								/>
+							</div>
+						</div>
+					</div>
+				}
+			} @else if (docker.isError()) {
+				<p class="rc-p red">{{ docker.error().message }}</p>
+			} @else {
+				<p class="rc-p muted">Reading Docker…</p>
+			}
+		</rc-local-gate>
+	`,
+})
+export class InfraScreen {
+	private readonly api = inject(ConsoleApi);
+	protected readonly when = when;
+	protected readonly bytes = formatBytes;
+	protected readonly rate = formatRate;
+	protected readonly pct = percent;
+	protected readonly open = signal<string | null>(null);
+	private readonly prev = signal<DockerSnapshot | null>(null);
+	protected readonly docker = injectQuery(() => ({
+		queryKey: ['docker'],
+		queryFn: () => this.api.docker(),
+		refetchInterval: 5000,
+	}));
+	private last: DockerSnapshot | null = null;
+	protected readonly rates = computed(() => {
+		const now = this.docker.data();
+		return now ? containerRates(this.prev(), now) : new Map();
+	});
+	private readonly hist = injectQuery(() => ({
+		queryKey: ['history', this.open()],
+		queryFn: () =>
+			this.api.history(`container:${this.open()}`, ['cpu', 'mem', 'net_rx_rate', 'block_write_rate'], 60),
+		enabled: !!this.open(),
+		refetchInterval: 5000,
+	}));
+
+	constructor() {
+		effect(() => {
+			const now = this.docker.data();
+			if (now && now !== this.last) {
+				this.prev.set(this.last);
+				this.last = now;
+			}
+		});
+	}
+
+	protected stat(name: string): ContainerStat | undefined {
+		return this.docker.data()?.stats.find((s) => s.name === name);
+	}
+	protected bar(pct: number): number {
+		return Math.max(2, Math.min(100, pct));
+	}
+	protected series(name: string): number[] {
+		return (
+			this.hist
+				.data()
+				?.find((s) => s.name === name)
+				?.points.map(([, v]) => v) ?? []
+		);
+	}
+}
+
+/* ======================================================================= Live logs */
+
+export interface LogLine {
+	time: string;
+	level: 'err' | 'warn' | 'ok' | 'dim' | '';
+	source: string;
+	message: string;
+	requestId: string;
+}
+
+/** One `docker logs --timestamps` line, reading the apps' JSON log lines where it can. */
+export function readLogLine(raw: string): LogLine {
+	const space = raw.indexOf(' ');
+	const stamp = space > 0 ? raw.slice(0, space) : '';
+	const rest = space > 0 ? raw.slice(space + 1) : raw;
+	const time = /^\d{4}-\d\d-\d\dT(\d\d:\d\d:\d\d)/.exec(stamp)?.[1] ?? '';
+	let level: LogLine['level'] = /\b(error|err|fatal|exception)\b/i.test(rest)
+		? 'err'
+		: /\bwarn(ing)?\b/i.test(rest)
+			? 'warn'
+			: '';
+	let message = rest;
+	let source = '';
+	let requestId =
+		/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32})\b/.exec(rest)?.[1] ?? '';
+	if (rest.startsWith('{')) {
+		try {
+			const j = JSON.parse(rest) as Record<string, unknown>;
+			const lvl = String(j['level'] ?? j['severity'] ?? '').toLowerCase();
+			level = /error|fatal/.test(lvl)
+				? 'err'
+				: /warn/.test(lvl)
+					? 'warn'
+					: /debug|verbose/.test(lvl)
+						? 'dim'
+						: '';
+			message = String(j['message'] ?? j['msg'] ?? rest);
+			source = String(j['context'] ?? j['kind'] ?? '');
+			requestId = String(j['requestId'] ?? j['request_id'] ?? requestId);
+			const status = Number(j['status']);
+			if (Number.isFinite(status) && j['uri']) {
+				message = `${String(j['method'] ?? '')} ${String(j['uri'])} → ${status} · ${String(j['request_time'] ?? '')}s`;
+				source = 'edge';
+				level = status >= 500 ? 'err' : status >= 400 ? 'warn' : '';
+			}
+		} catch {
+			/* not JSON: keep the line as it is */
+		}
+	}
+	return { time, level, source, message, requestId };
+}
+
+/** Run › Live logs: one container's log, followed live, filtered by words, errors or one request. */
+@Component({
+	selector: 'rc-tail-screen',
+	imports: [LocalGate],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<rc-local-gate>
+			<div class="rc-panel">
+				<div class="rc-ph">
+					<span class="rc-label">Live logs · this Mac's containers</span>
+					<div class="rc-states">
+						@for (n of [100, 300, 1000]; track n) {
+							<button
+								type="button"
+								class="rc-chip"
+								[class.on]="tail() === n"
+								(click)="tail.set(n)"
+							>
+								{{ n }} lines
+							</button>
+						}
+					</div>
+				</div>
+				<div class="rc-states">
+					@for (c of containers(); track c) {
+						<button
+							type="button"
+							class="rc-chip"
+							[class.on]="container() === c"
+							(click)="container.set(c)"
+						>
+							{{ c.replace('saha-textile-', '') }}
+						</button>
+					}
+				</div>
+				<div class="rc-form">
+					<label>
+						Find
+						<div class="rc-msearch">
+							<input
+								type="search"
+								autocomplete="off"
+								placeholder="words in the line"
+								[value]="find()"
+								(input)="find.set($any($event.target).value)"
+							/>
+						</div>
+					</label>
+					<label>
+						Request
+						<div class="rc-msearch">
+							<input
+								type="search"
+								autocomplete="off"
+								placeholder="request id"
+								[value]="request()"
+								(input)="request.set($any($event.target).value.trim())"
+							/>
+						</div>
+					</label>
+				</div>
+				@if (logs.isError()) {
+					<p class="rc-p red">{{ logs.error().message }}</p>
+				} @else if (container()) {
+					<p class="rc-note">
+						{{ shown().length }} of {{ lines().length }} lines{{
+							mode() === 'follow' ? ' · following, every 3 s' : ''
+						}}. Personal data is masked by the apps before it is logged.
+					</p>
+					<div class="rc-log">
+						@for (l of shown(); track $index) {
+							<div
+								class="l"
+								[class]="'l ' + l.level"
+							>
+								<span class="n">{{ l.time || $index + 1 }}</span>
+								@if (l.source) {
+									<span class="src">{{ l.source }}</span>
+								}
+								<span class="m">
+									@if (l.requestId) {
+										<button
+											type="button"
+											class="tag t-request"
+											[attr.title]="'Show request ' + l.requestId"
+											(click)="request.set(l.requestId)"
+										>
+											request
+										</button>
+									}
+									{{ l.message }}
+								</span>
+							</div>
+						}
+					</div>
+				} @else {
+					<p class="rc-p muted">Choose a container.</p>
+				}
+			</div>
+		</rc-local-gate>
+	`,
+})
+export class TailScreen {
+	private readonly api = inject(ConsoleApi);
+	readonly mode = input('follow');
+	protected readonly container = signal<string>('');
+	protected readonly tail = signal(300);
+	protected readonly find = signal('');
+	protected readonly request = signal('');
+	private readonly docker = injectQuery(() => ({
+		queryKey: ['docker'],
+		queryFn: () => this.api.docker(),
+		refetchInterval: 15_000,
+	}));
+	protected readonly containers = computed(() => (this.docker.data()?.containers ?? []).map((c) => c.name));
+	protected readonly logs = injectQuery(() => ({
+		queryKey: ['logs', this.container(), this.tail()],
+		queryFn: () => this.api.logs(this.container(), this.tail(), ''),
+		enabled: !!this.container(),
+		refetchInterval: this.mode() === 'follow' || this.mode() === 'errors' ? 3000 : false,
+	}));
+	protected readonly lines = computed(() => (this.logs.data()?.lines ?? []).map(readLogLine));
+	protected readonly shown = computed(() => {
+		const words = this.find().toLowerCase();
+		const req = this.request();
+		return this.lines().filter(
+			(l) =>
+				(this.mode() !== 'errors' || l.level === 'err' || l.level === 'warn') &&
+				(!words || `${l.source} ${l.message}`.toLowerCase().includes(words)) &&
+				(!req || l.requestId === req),
+		);
+	});
+
+	constructor() {
+		effect(() => {
+			const names = this.containers();
+			if (!this.container() && names.length)
+				this.container.set(names.find((n) => n.includes('api')) ?? names[0] ?? '');
+		});
+	}
+}
+
+/* ======================================================================= Health */
+
+/** Watch › Health for this Mac: one tile per part, green, amber or red. */
+@Component({
+	selector: 'rc-health-screen',
+	imports: [LocalGate],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<rc-local-gate>
+			<div class="rc-panel">
+				<div class="rc-ph"><span class="rc-label">Everything on this Mac · every 10 s</span></div>
+				<div class="rc-tiles">
+					@for (t of tiles(); track t.name) {
+						<div
+							class="rc-tile"
+							[class]="'rc-tile ' + t.cls"
+						>
+							<b>{{ t.name }}</b>
+							<span>{{ t.state }}</span>
+						</div>
+					}
+				</div>
+				<p class="rc-note">
+					Green: answering. Amber: running but not fully ready. Red: down or failing its check.
+				</p>
+			</div>
+		</rc-local-gate>
+	`,
+})
+export class HealthScreen {
+	private readonly api = inject(ConsoleApi);
+	private readonly docker = injectQuery(() => ({
+		queryKey: ['docker'],
+		queryFn: () => this.api.docker(),
+		refetchInterval: 10_000,
+	}));
+	private readonly shop = injectQuery(() => ({
+		queryKey: ['shop-health'],
+		queryFn: () => this.api.shopHealth(),
+		refetchInterval: 10_000,
+	}));
+	protected readonly tiles = computed(() => {
+		const tiles: { name: string; state: string; cls: 'g' | 'a' | 'r' }[] = [];
+		const d = this.docker.data();
+		tiles.push({
+			name: 'Docker',
+			state: d?.reachable ? `running · ${d.version}` : 'not running',
+			cls: d?.reachable ? 'g' : 'r',
+		});
+		for (const c of d?.containers ?? [])
+			tiles.push({
+				name: c.name.replace('saha-textile-', ''),
+				state: c.status,
+				cls:
+					c.state !== 'running' || c.status.includes('unhealthy')
+						? 'r'
+						: c.status.includes('starting')
+							? 'a'
+							: 'g',
+			});
+		const s = this.shop.data();
+		const ready = (label: string, a: { status?: number; body: unknown } | null | undefined) => {
+			const body = a?.body && typeof a.body === 'object' ? (a.body as Record<string, unknown>) : {};
+			const st = String(body['status'] ?? '');
+			tiles.push({
+				name: label,
+				state: !a ? 'not running' : (a.status ?? 500) >= 400 ? `answered ${a.status}` : st || 'ok',
+				cls: !a ? 'r' : (a.status ?? 500) >= 400 ? 'r' : st === 'degraded' ? 'a' : 'g',
+			});
+		};
+		if (s) {
+			ready('Shop API · pnpm dev', s.dev);
+			ready(`Shop API · stack (:${s.stackPort})`, s.stack);
+		}
+		return tiles;
+	});
+}
+
+/* ======================================================================= Live deploy */
+
+interface StageView {
+	stage: PipelineStage;
+	cls: 'ok' | 'red' | 'run' | 'wait' | 'skip';
+	time: string;
+}
+
+/** The lane of pipeline stages from a job's JSON events, in the brief's lane states. */
+export function stageLane(
+	job: Job | null,
+	lines: JobLine[],
+	plan: { from?: PipelineStage; only?: PipelineStage },
+): StageView[] {
+	const wanted = (s: PipelineStage) =>
+		plan.only
+			? s === plan.only
+			: plan.from
+				? PIPELINE_STAGES.indexOf(s) >= PIPELINE_STAGES.indexOf(plan.from)
+				: true;
+	const state = new Map<string, { status: string; seconds?: number }>();
+	for (const l of lines) {
+		const e = l.event;
+		if (!e || typeof e['stage'] !== 'string' || typeof e['status'] !== 'string' || e['stage'] === 'run') continue;
+		state.set(e['stage'], {
+			status: e['status'],
+			seconds: typeof e['seconds'] === 'number' ? e['seconds'] : undefined,
+		});
+	}
+	return PIPELINE_STAGES.map((stage) => {
+		const s = state.get(stage);
+		const time = s?.seconds !== undefined ? `${Math.round(s.seconds)}s` : '';
+		if (!wanted(stage)) return { stage, cls: 'skip', time: 'not in this run' };
+		if (!s) return { stage, cls: 'wait', time: job?.status === 'running' ? 'waiting' : '' };
+		if (s.status === 'passed') return { stage, cls: 'ok', time };
+		if (s.status === 'failed') return { stage, cls: 'red', time: time || 'failed' };
+		return {
+			stage,
+			cls: job?.status === 'running' ? 'run' : 'red',
+			time: job?.status === 'running' ? 'running…' : 'stopped',
+		};
+	});
+}
+
+const STAGE_NAMES: Record<PipelineStage, string> = {
+	checks: 'Checks (lint, tests, builds)',
+	proof: 'Production proof (made-up keys)',
+	images: 'Images to the local registry',
+	release: 'Release folder from dev values',
+	deploy: 'Deploy the local stack',
+	record: 'Record the run',
+};
+
+/** Ship › Live deploy, Local tab: run the local pipeline and the stack from here, and watch it. */
+@Component({
+	selector: 'rc-deploy-screen',
+	imports: [LocalGate],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<rc-local-gate>
+			@let lane = laneView();
+			<div class="rc-g3 deploy">
+				<div class="rc-panel">
+					<div class="rc-ph"><span class="rc-label">Pipeline</span></div>
+					<ul class="rc-lane">
+						@for (s of lane; track s.stage) {
+							<li [class]="s.cls">
+								<span
+									class="rc-dot"
+									[class.ok]="s.cls === 'ok'"
+									[class.red]="s.cls === 'red'"
+									[class.cy]="s.cls === 'run'"
+									[class.pulse]="s.cls === 'run'"
+								></span>
+								<span>{{ stageNames[s.stage] }}</span>
+								<span class="rc-mono">{{ s.time }}</span>
+							</li>
+						}
+					</ul>
+				</div>
+				<div class="rc-panel">
+					<div class="rc-ph"><span class="rc-label">Release</span></div>
+					<div class="rc-reactor">
+						<svg
+							viewBox="0 0 240 240"
+							aria-hidden="true"
+						>
+							<g [class.rc-spin]="running()">
+								<circle
+									cx="120"
+									cy="120"
+									r="112"
+									fill="none"
+									stroke="rgba(94,214,255,0.35)"
+									stroke-width="1"
+									stroke-dasharray="2 6"
+								/>
+							</g>
+							<g [class.rc-spin-r]="running()">
+								<circle
+									cx="120"
+									cy="120"
+									r="102"
+									fill="none"
+									stroke="rgba(94,214,255,0.25)"
+									stroke-width="6"
+									stroke-dasharray="40 14 8 14"
+								/>
+							</g>
+							<circle
+								cx="120"
+								cy="120"
+								r="86"
+								fill="none"
+								stroke="rgba(94,214,255,0.12)"
+								stroke-width="10"
+							/>
+							<circle
+								cx="120"
+								cy="120"
+								r="86"
+								fill="none"
+								[attr.stroke]="reactorColour()"
+								stroke-width="10"
+								pathLength="100"
+								[attr.stroke-dasharray]="progress() + ' 100'"
+								transform="rotate(-90 120 120)"
+							/>
+							<text
+								x="120"
+								y="122"
+								text-anchor="middle"
+								fill="#d9f4ff"
+								font-family="Chakra Petch, sans-serif"
+								font-size="38"
+								font-weight="600"
+							>
+								{{ progress() }}%
+							</text>
+							<text
+								x="120"
+								y="146"
+								text-anchor="middle"
+								fill="#7fa3b8"
+								font-family="IBM Plex Mono, monospace"
+								font-size="10.5"
+							>
+								{{ current()?.label ?? 'no run yet' }}
+							</text>
+						</svg>
+					</div>
+					<div class="rc-center">
+						<b
+							class="rc-big"
+							[class.ok]="current()?.status === 'passed'"
+							[class.red]="current()?.status === 'failed'"
+						>
+							{{ title() }}
+						</b>
+					</div>
+				</div>
+				<div class="rc-panel">
+					<div class="rc-ph"><span class="rc-label">Systems</span></div>
+					<div class="rc-kv">
+						@for (k of systems(); track k[0]) {
+							<div>
+								<span>{{ k[0] }}</span>
+								<em [class]="k[2]">{{ k[1] }}</em>
+							</div>
+						}
+					</div>
+					<div class="rc-label">Events</div>
+					<div class="rc-log">
+						@for (e of events(); track $index) {
+							<div
+								class="l"
+								[class]="'l ' + e.level"
+							>
+								<span class="n">{{ e.time }}</span>
+								<span class="src">{{ e.stage }}</span>
+								<span class="m">{{ e.text }}</span>
+							</div>
+						} @empty {
+							<div class="l dim">
+								<span class="n">—</span>
+								<span class="m">Events of the run appear here.</span>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+
+			<div class="rc-g2">
+				<form
+					class="rc-panel"
+					(submit)="start($event)"
+				>
+					<div class="rc-ph"><span class="rc-label">Deploy to local · the same stages as GitHub</span></div>
+					<div class="rc-states">
+						<button
+							type="button"
+							class="rc-chip"
+							[class.on]="!plan().from && !plan().only"
+							(click)="plan.set({})"
+						>
+							All stages
+						</button>
+						@for (s of stages; track s) {
+							<button
+								type="button"
+								class="rc-chip"
+								[class.on]="plan().from === s"
+								(click)="plan.set({ from: s })"
+							>
+								From {{ s }}
+							</button>
+						}
+					</div>
+					<div class="rc-states">
+						@for (s of stages; track s) {
+							<button
+								type="button"
+								class="rc-chip"
+								[class.on]="plan().only === s"
+								(click)="plan.set({ only: s })"
+							>
+								Only {{ s }}
+							</button>
+						}
+					</div>
+					@if (checksBlocked()) {
+						<div class="rc-banner amber small">
+							<span class="rc-dot amber"></span>
+							<div>
+								<b>Checks would rebuild under your running dev servers ({{ busyServers() }}).</b>
+								Stop them, or start from the proof stage.
+							</div>
+						</div>
+					}
+					<div class="rc-form">
+						<label>
+							PIN
+							<div class="rc-msearch">
+								<input
+									#pin
+									type="password"
+									inputmode="numeric"
+									maxlength="6"
+									autocomplete="off"
+									aria-label="Console PIN"
+								/>
+							</div>
+						</label>
+					</div>
+					<div class="rc-row">
+						<button
+							type="submit"
+							class="rc-btn primary"
+							[disabled]="busy() || running()"
+						>
+							Start the run
+						</button>
+						@if (running()) {
+							<button
+								type="button"
+								class="rc-btn danger"
+								[disabled]="busy()"
+								(click)="stop(pin.value)"
+							>
+								Stop the run
+							</button>
+						}
+					</div>
+					@if (message()) {
+						<p class="rc-note">{{ message() }}</p>
+					}
+					<p class="rc-note">
+						One run at a time. Proof uses made-up keys on purpose; the release and deploy stages use the
+						real dev values from Infisical.
+					</p>
+				</form>
+				<div class="rc-panel">
+					<div class="rc-ph"><span class="rc-label">The local stack</span></div>
+					<div class="rc-row">
+						@for (a of stackActions; track a[0]) {
+							<button
+								type="button"
+								class="rc-btn"
+								[class.danger]="a[0] === 'stack-stop-apps'"
+								[disabled]="busy() || running()"
+								(click)="stackAction(a[0], stackPin.value)"
+							>
+								{{ a[1] }}
+							</button>
+						}
+					</div>
+					<div class="rc-form">
+						<label>
+							PIN
+							<div class="rc-msearch">
+								<input
+									#stackPin
+									type="password"
+									inputmode="numeric"
+									maxlength="6"
+									autocomplete="off"
+									aria-label="Console PIN for the stack"
+								/>
+							</div>
+						</label>
+					</div>
+					<p class="rc-note">
+						Stopping touches only the stack's own services; the search server that pnpm dev also uses keeps
+						running.
+					</p>
+					<div class="rc-ph"><span class="rc-label">Recent runs</span></div>
+					<div class="rc-tw">
+						<table class="rc-t">
+							<thead>
+								<tr>
+									<th>Run</th>
+									<th>Started</th>
+									<th>State</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (j of jobs.data() ?? []; track j.id) {
+									<tr>
+										<td>{{ j.label }}</td>
+										<td class="rc-mono">{{ when(j.startedAt) }}</td>
+										<td>
+											<span
+												class="rc-pill"
+												[class.ok]="j.status === 'passed'"
+												[class.red]="j.status === 'failed'"
+												[class.cy]="j.status === 'running'"
+												[class.muted]="j.status === 'stopped'"
+											>
+												{{ j.status }}
+											</span>
+										</td>
+										<td>
+											<button
+												type="button"
+												class="rc-btn ghost"
+												(click)="watch(j.id)"
+											>
+												Show
+											</button>
+										</td>
+									</tr>
+								} @empty {
+									<tr><td colspan="4">No runs since the helper started.</td></tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+			@if (current(); as j) {
+				<div class="rc-panel">
+					<div class="rc-ph">
+						<span class="rc-label">Output · {{ j.label }}</span>
+						<div class="rc-states">
+							<button
+								type="button"
+								class="rc-chip"
+								[class.on]="!raw()"
+								(click)="raw.set(false)"
+							>
+								Events only
+							</button>
+							<button
+								type="button"
+								class="rc-chip"
+								[class.on]="raw()"
+								(click)="raw.set(true)"
+							>
+								Every line
+							</button>
+						</div>
+					</div>
+					<div class="rc-log">
+						@for (l of output(); track l.seq) {
+							<div
+								class="l"
+								[class]="'l ' + (l.stream === 'err' ? 'dim' : '')"
+							>
+								<span class="n">{{ l.seq }}</span>
+								<span class="m">{{ l.text }}</span>
+							</div>
+						}
+					</div>
+				</div>
+			}
+		</rc-local-gate>
+	`,
+})
+export class DeployScreen {
+	private readonly api = inject(ConsoleApi);
+	private readonly queries = inject(QueryClient);
+	private readonly router = inject(Router);
+	protected readonly when = when;
+	protected readonly stages = PIPELINE_STAGES;
+	protected readonly stageNames = STAGE_NAMES;
+	protected readonly stackActions: [LocalAction, string][] = [
+		['stack-env', 'Write stack files'],
+		['stack-up', 'Start the stack'],
+		['stack-start-apps', 'Start shop containers'],
+		['stack-stop-apps', 'Stop shop containers'],
+	];
+	protected readonly plan = signal<{ from?: PipelineStage; only?: PipelineStage }>({ from: 'proof' });
+	protected readonly busy = signal(false);
+	protected readonly message = signal('');
+	protected readonly raw = signal(false);
+	protected readonly watching = signal<string | null>(null);
+	private readonly lines = signal<JobLine[]>([]);
+	private readonly lineJob = signal<string | null>(null);
+
+	protected readonly jobs = injectQuery(() => ({
+		queryKey: ['jobs'],
+		queryFn: () => this.api.jobs(),
+		refetchInterval: 5000,
+	}));
+	private readonly helper = injectQuery(() => ({
+		queryKey: ['helper'],
+		queryFn: () => this.api.helper(),
+		refetchInterval: 10_000,
+	}));
+	private readonly docker = injectQuery(() => ({
+		queryKey: ['docker'],
+		queryFn: () => this.api.docker(),
+		refetchInterval: 10_000,
+	}));
+	private readonly shop = injectQuery(() => ({
+		queryKey: ['shop-health'],
+		queryFn: () => this.api.shopHealth(),
+		refetchInterval: 10_000,
+	}));
+
+	protected readonly currentId = computed(() => {
+		const list = this.jobs.data() ?? [];
+		return this.watching() ?? list.find((j) => j.status === 'running')?.id ?? list[list.length - 1]?.id ?? null;
+	});
+	private readonly detail = injectQuery(() => ({
+		queryKey: ['job', this.currentId(), this.lines().length],
+		queryFn: () =>
+			this.api.job(
+				this.currentId() ?? '',
+				this.lineJob() === this.currentId() ? (this.lines().at(-1)?.seq ?? 0) : 0,
+			),
+		enabled: !!this.currentId(),
+		refetchInterval: 2000,
+	}));
+	protected readonly current = computed<Job | null>(() => this.detail.data() ?? null);
+	protected readonly running = computed(
+		() => this.current()?.status === 'running' || this.current()?.status === 'stopping',
+	);
+
+	constructor() {
+		effect(() => {
+			const d = this.detail.data();
+			if (!d) return;
+			if (this.lineJob() !== d.id) {
+				this.lineJob.set(d.id);
+				this.lines.set(d.lines);
+			} else if (d.lines.length) {
+				const last = this.lines().at(-1)?.seq ?? 0;
+				const fresh = d.lines.filter((l) => l.seq > last);
+				if (fresh.length) this.lines.set([...this.lines(), ...fresh].slice(-5000));
+			}
+		});
+	}
+
+	private readonly runPlan = computed(() => {
+		const label = this.current()?.label ?? '';
+		const only = /\(only (\w+)\)/.exec(label)?.[1] as PipelineStage | undefined;
+		const from = /\(from (\w+)\)/.exec(label)?.[1] as PipelineStage | undefined;
+		return this.current()?.kind === 'pipeline' ? { only, from } : this.plan();
+	});
+	protected readonly laneView = computed(() =>
+		stageLane(this.current()?.kind === 'pipeline' ? this.current() : null, this.lines(), this.runPlan()),
+	);
+	protected readonly progress = computed(() => {
+		const lane = this.laneView().filter((s) => s.cls !== 'skip');
+		return lane.length ? Math.round((lane.filter((s) => s.cls === 'ok').length / lane.length) * 100) : 0;
+	});
+	protected readonly title = computed(() => {
+		const j = this.current();
+		if (!j) return 'Ready';
+		return { running: 'Running', stopping: 'Stopping', passed: 'Passed', failed: 'Failed', stopped: 'Stopped' }[
+			j.status
+		];
+	});
+	protected readonly reactorColour = computed(() =>
+		this.current()?.status === 'failed' ? '#ff5d5d' : this.current()?.status === 'passed' ? '#5dffa8' : '#5ed6ff',
+	);
+	protected readonly events = computed(() =>
+		this.lines()
+			.filter((l) => l.event && (l.event['note'] || l.event['step'] || l.event['status']))
+			.slice(-60)
+			.map((l) => {
+				const e = l.event ?? {};
+				const time = String(e['time'] ?? '').slice(11, 19);
+				const status = String(e['status'] ?? '');
+				const text = String(
+					e['note'] ??
+						e['step'] ??
+						`${status}${e['reason'] ? ` · ${String(e['reason'])}` : ''}${typeof e['seconds'] === 'number' ? ` in ${Math.round(e['seconds'])}s` : ''}`,
+				);
+				return {
+					time,
+					stage: String(e['stage'] ?? ''),
+					text,
+					level: status === 'failed' ? 'err' : status === 'passed' ? 'ok' : '',
+				};
+			}),
+	);
+	protected readonly output = computed(() =>
+		(this.raw()
+			? this.lines()
+			: this.lines().filter((l) => l.stream === 'out' || /error|fail/i.test(l.text))
+		).slice(-1500),
+	);
+	protected readonly busyServers = computed(() =>
+		Object.entries(this.helper.data()?.devServers ?? {})
+			.filter(([, up]) => up)
+			.map(([n]) => n)
+			.join(', '),
+	);
+	protected readonly checksBlocked = computed(() => {
+		const p = this.plan();
+		const runsChecks = p.only ? p.only === 'checks' : !p.from || p.from === 'checks';
+		return runsChecks && !!this.busyServers();
+	});
+	protected readonly systems = computed<[string, string, string][]>(() => {
+		const h = this.helper.data();
+		const d = this.docker.data();
+		const s = this.shop.data();
+		const up = (d?.containers ?? []).filter((c) => c.name.startsWith('saha-textile-stack-'));
+		const ready = (a: { status?: number; body: unknown } | null | undefined): [string, string] => {
+			const body = a?.body && typeof a.body === 'object' ? (a.body as Record<string, unknown>) : {};
+			if (!a) return ['not running', 'muted'];
+			if ((a.status ?? 500) >= 400) return [`answered ${a.status}`, 'red'];
+			return [String(body['status'] ?? 'ok'), body['status'] === 'degraded' ? 'amber' : 'ok'];
+		};
+		return [
+			['Mac helper', h?.reachable ? 'answering' : 'not answering', h?.reachable ? 'ok' : 'red'],
+			['Docker', d?.reachable ? `running · ${d.version}` : 'not running', d?.reachable ? 'ok' : 'red'],
+			[
+				'Stack containers',
+				`${up.filter((c) => c.state === 'running').length} running of ${up.length}`,
+				up.length && up.every((c) => c.state === 'running') ? 'ok' : 'amber',
+			],
+			['Shop API · stack', ...ready(s?.stack)],
+			['Shop API · pnpm dev', ...ready(s?.dev)],
+			['Dev servers', this.busyServers() || 'none running', this.busyServers() ? 'amber' : 'ok'],
+		];
+	});
+
+	protected watch(id: string): void {
+		this.watching.set(id);
+	}
+
+	protected async start(e: Event): Promise<void> {
+		e.preventDefault();
+		const pin = (e.target as HTMLFormElement).querySelector<HTMLInputElement>('input[type=password]');
+		await this.act(() => this.api.runLocal('pipeline', pin?.value ?? '', this.plan()), pin);
+	}
+
+	protected async stackAction(action: LocalAction, pin: string): Promise<void> {
+		await this.act(() => this.api.runLocal(action, pin));
+	}
+
+	protected async stop(pin: string): Promise<void> {
+		const id = this.currentId();
+		if (id) await this.act(() => this.api.stopJob(id, pin));
+	}
+
+	private async act(work: () => Promise<Job>, pinBox?: HTMLInputElement | null): Promise<void> {
+		this.busy.set(true);
+		this.message.set('');
+		try {
+			const job = await work();
+			this.watching.set(job.id);
+			this.message.set(`${job.label}: ${job.status}.`);
+			if (pinBox) pinBox.value = '';
+			await this.queries.invalidateQueries({ queryKey: ['jobs'] });
+		} catch (err) {
+			this.message.set((err as Error).message);
+		} finally {
+			this.busy.set(false);
+		}
+	}
+}

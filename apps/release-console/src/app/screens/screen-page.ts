@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { VENDOR_NAMES } from '@saha-textile/release-console-contracts';
 
+import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } from './local-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
 import { ServicesScreen } from './services-screen';
@@ -18,9 +19,14 @@ import { ConsoleContext } from '../data/console-context';
 import { placeOf } from '../menu/menu-search';
 
 /** Screens with live data, and the tab that shows it. Every other tab stays the planned screen. */
-export const LIVE_TABS: Record<string, string | null> = {
+export const LIVE_TABS: Record<string, string | string[] | null> = {
 	overview: null,
 	services: null,
+	deploy: 'local',
+	server: 'normal',
+	infra: 'map',
+	tail: ['follow', 'errors', 'request'],
+	health: 'normal',
 	pulls: 'list',
 	pipeline: 'list',
 	droplets: 'list',
@@ -42,6 +48,11 @@ export const LIVE_TABS: Record<string, string | null> = {
 		DoAccountScreen,
 		CfDomainsScreen,
 		DnsScreen,
+		DeployScreen,
+		ServerScreen,
+		InfraScreen,
+		TailScreen,
+		HealthScreen,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -126,6 +137,21 @@ export const LIVE_TABS: Record<string, string | null> = {
 					@case ('cfdomains') {
 						<rc-cf-domains-screen />
 					}
+					@case ('deploy') {
+						<rc-deploy-screen />
+					}
+					@case ('server') {
+						<rc-server-screen />
+					}
+					@case ('infra') {
+						<rc-infra-screen />
+					}
+					@case ('tail') {
+						<rc-tail-screen [mode]="tabKey()" />
+					}
+					@case ('health') {
+						<rc-health-screen />
+					}
 					@case ('dns') {
 						<rc-dns-screen />
 					}
@@ -174,7 +200,9 @@ export class ScreenPage {
 	});
 	protected readonly live = computed(() => {
 		const tab = LIVE_TABS[this.screen()];
-		return tab === null || (tab !== undefined && tab === this.tabKey());
+		if (tab === null) return true;
+		if (tab === undefined) return false;
+		return Array.isArray(tab) ? tab.includes(this.tabKey()) : tab === this.tabKey();
 	});
 	/** A repository whose source-code vendor has no screens yet shows the Ship screens with a note. */
 	protected readonly laterVendor = computed(() => {

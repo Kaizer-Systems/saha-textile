@@ -6,6 +6,7 @@ import {
 	effect,
 	inject,
 	signal,
+	viewChild,
 	viewChildren,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -32,8 +33,8 @@ export function fillDigits(digits: string[], start: number, typed: string): { di
 }
 
 /**
- * The lock screen: set the PIN on first run, then unlock with it. The PIN is typed straight into
- * the six boxes; the sixth digit submits. Five wrong tries lock the console for 15 minutes.
+ * The lock screen: set the PIN on first run, then unlock with the PIN or, once one is set, the
+ * password. The PIN is typed straight into the six boxes; the sixth digit submits. Five wrong tries lock the console for 15 minutes.
  */
 @Component({
 	selector: 'rc-lock-page',
@@ -71,39 +72,86 @@ export function fillDigits(digits: string[], start: number, typed: string): { di
 											: 'First time: choose a 6-digit console PIN.'
 									}}
 								} @else {
-									On this computer only. Enter your 6-digit console PIN.
+									On this computer only.
+									{{
+										method() === 'password'
+											? 'Enter your console password.'
+											: 'Enter your 6-digit console PIN.'
+									}}
 								}
 							</p>
-							<div
-								class="rc-pin"
-								role="group"
-								aria-labelledby="pin-help"
-							>
-								@for (i of slots; track i) {
-									<span [class.on]="!!digits()[i]">
-										<input
-											#box
-											type="password"
-											inputmode="numeric"
-											maxlength="6"
-											[attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
-											[attr.aria-label]="'PIN digit ' + (i + 1) + ' of 6'"
-											[value]="digits()[i]"
-											[disabled]="busy()"
-											(input)="type(i, box)"
-											(keydown)="key(i, $event)"
-											(focus)="box.select()"
-										/>
-									</span>
-								}
-							</div>
+							@if (s.passwordSet) {
+								<div
+									class="rc-states"
+									role="tablist"
+									aria-label="Sign in with"
+								>
+									<button
+										type="button"
+										class="rc-chip"
+										role="tab"
+										[class.on]="method() === 'pin'"
+										[attr.aria-selected]="method() === 'pin'"
+										(click)="useMethod('pin')"
+									>
+										PIN
+									</button>
+									<button
+										type="button"
+										class="rc-chip"
+										role="tab"
+										[class.on]="method() === 'password'"
+										[attr.aria-selected]="method() === 'password'"
+										(click)="useMethod('password')"
+									>
+										Password
+									</button>
+								</div>
+							}
+							@if (method() === 'password') {
+								<div class="rc-msearch">
+									<input
+										#passwordBox
+										type="password"
+										autocomplete="current-password"
+										aria-label="Console password"
+										placeholder="Console password"
+										[disabled]="busy()"
+										(input)="password.set(passwordBox.value)"
+									/>
+								</div>
+							} @else {
+								<div
+									class="rc-pin"
+									role="group"
+									aria-labelledby="pin-help"
+								>
+									@for (i of slots; track i) {
+										<span [class.on]="!!digits()[i]">
+											<input
+												#box
+												type="password"
+												inputmode="numeric"
+												maxlength="6"
+												[attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
+												[attr.aria-label]="'PIN digit ' + (i + 1) + ' of 6'"
+												[value]="digits()[i]"
+												[disabled]="busy()"
+												(input)="type(i, box)"
+												(keydown)="key(i, $event)"
+												(focus)="box.select()"
+											/>
+										</span>
+									}
+								</div>
+							}
 							@if (message()) {
 								<p class="rc-note">{{ message() }}</p>
 							}
 							<button
 								type="submit"
 								class="rc-btn primary"
-								[disabled]="pin().length !== 6 || busy()"
+								[disabled]="(method() === 'password' ? !password() : pin().length !== 6) || busy()"
 							>
 								<span
 									class="lock"
@@ -130,6 +178,7 @@ export class LockPage {
 	private readonly session = inject(ConsoleSession);
 	private readonly router = inject(Router);
 	private readonly boxes = viewChildren<ElementRef<HTMLInputElement>>('box');
+	private readonly passwordBox = viewChild<ElementRef<HTMLInputElement>>('passwordBox');
 	protected readonly slots = [0, 1, 2, 3, 4, 5];
 	protected readonly digits = signal<string[]>(Array<string>(LENGTH).fill(''));
 	protected readonly pin = computed(() => this.digits().join(''));
@@ -137,6 +186,9 @@ export class LockPage {
 	protected readonly confirming = computed(() => this.first() !== null);
 	protected readonly message = signal('');
 	protected readonly busy = signal(false);
+	protected readonly method = signal<'pin' | 'password'>('pin');
+	protected readonly password = signal('');
+	private methodChosen = false;
 	protected readonly status = injectQuery(() => ({
 		queryKey: ['lock-status'],
 		queryFn: () => this.api.lockStatus(),
@@ -153,6 +205,16 @@ export class LockPage {
 			},
 			() => undefined,
 		);
+		// Open with the method chosen in Console settings, until the owner picks the other one here.
+		effect(() => {
+			const s = this.status.data();
+			if (s && !this.methodChosen) this.method.set(s.passwordSet ? s.preferred : 'pin');
+		});
+		// The password box takes the keyboard whenever it appears.
+		effect(() => {
+			const box = this.passwordBox();
+			if (box) queueMicrotask(() => box.nativeElement.focus());
+		});
 		// The boxes appear once the lock status arrives; the first one takes the keyboard then.
 		let focused = false;
 		effect(() => {
@@ -190,10 +252,22 @@ export class LockPage {
 		this.focus(0);
 	}
 
+	protected useMethod(m: 'pin' | 'password'): void {
+		this.methodChosen = true;
+		this.method.set(m);
+		this.message.set('');
+		if (m === 'pin') this.clear();
+	}
+
 	protected async submit(e?: Event): Promise<void> {
 		e?.preventDefault();
 		if (this.busy()) return;
 		const s = this.status.data();
+		if (s?.pinSet && this.method() === 'password') {
+			if (!this.password()) return;
+			await this.send({ password: this.password() });
+			return;
+		}
 		if (!s || this.pin().length !== LENGTH) return;
 		if (!s.pinSet && this.first() === null) {
 			this.first.set(this.pin());
@@ -207,10 +281,14 @@ export class LockPage {
 			this.clear();
 			return;
 		}
+		if (s.pinSet) await this.send({ pin: this.pin() });
+		else await this.setup();
+	}
+
+	private async setup(): Promise<void> {
 		this.busy.set(true);
 		try {
-			const answer = s.pinSet ? await this.api.unlock(this.pin()) : await this.api.setupPin(this.pin());
-			this.session.set(answer.session);
+			this.session.set((await this.api.setupPin(this.pin())).session);
 			void this.router.navigate(['/']);
 		} catch (err) {
 			this.message.set((err as Error).message);
@@ -218,6 +296,21 @@ export class LockPage {
 		} finally {
 			this.busy.set(false);
 			if (this.message()) this.clear();
+		}
+	}
+
+	private async send(given: { pin: string } | { password: string }): Promise<void> {
+		this.busy.set(true);
+		try {
+			this.session.set((await this.api.unlock(given)).session);
+			void this.router.navigate(['/']);
+		} catch (err) {
+			this.message.set((err as Error).message);
+			this.password.set('');
+			void this.status.refetch();
+		} finally {
+			this.busy.set(false);
+			if (this.message() && 'pin' in given) this.clear();
 		}
 	}
 }

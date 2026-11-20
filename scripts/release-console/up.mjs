@@ -101,18 +101,34 @@ export async function up() {
 	throw new Error('The console container started but does not answer; see pnpm console:logs.');
 }
 
+/** The helper's process: from its pid file, or the process listening on its port if that is this checkout's runner. */
+function helperPid() {
+	const fromFile = existsSync(PID_FILE) ? Number(readFileSync(PID_FILE, 'utf8')) : 0;
+	const listening = Number(
+		(spawnSync('lsof', ['-nP', '-t', `-iTCP:${RUNNER_PORT}`, '-sTCP:LISTEN'], { encoding: 'utf8' }).stdout ?? '')
+			.trim()
+			.split('\n')[0],
+	);
+	for (const pid of [fromFile, listening]) {
+		if (!pid) continue;
+		const cmd = spawnSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8' }).stdout ?? '';
+		if (cmd.includes(join(ROOT, 'scripts/release-console/runner.mjs'))) return pid;
+	}
+	return 0;
+}
+
 export function down() {
 	spawnSync('docker', [...COMPOSE, 'down'], { cwd: ROOT, stdio: 'inherit' });
-	if (existsSync(PID_FILE)) {
-		const pid = Number(readFileSync(PID_FILE, 'utf8'));
+	const pid = helperPid();
+	if (pid) {
 		try {
 			process.kill(pid, 'SIGTERM');
 			say('Mac helper: stopped.');
-		} catch {
-			say('Mac helper: was not running.');
+		} catch (error) {
+			say(`Mac helper: could not be stopped (${error.code}); stop process ${pid} by hand.`);
 		}
-		rmSync(PID_FILE, { force: true });
-	}
+	} else say('Mac helper: was not running.');
+	rmSync(PID_FILE, { force: true });
 	say('Release Console stopped; its database volume is kept.');
 }
 

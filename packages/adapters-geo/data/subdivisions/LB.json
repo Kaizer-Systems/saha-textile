@@ -1,0 +1,42 @@
+[
+	{
+		"code": "AK",
+		"name": "Akkar",
+		"gstStateCode": null
+	},
+	{
+		"code": "BH",
+		"name": "Baalbek-Hermel",
+		"gstStateCode": null
+	},
+	{
+		"code": "BA",
+		"name": "Beirut",
+		"gstStateCode": null
+	},
+	{
+		"code": "BI",
+		"name": "Beqaa",
+		"gstStateCode": null
+	},
+	{
+		"code": "JL",
+		"name": "Mount Lebanon",
+		"gstStateCode": null
+	},
+	{
+		"code": "NA",
+		"name": "Nabatieh",
+		"gstStateCode": null
+	},
+	{
+		"code": "AS",
+		"name": "North",
+		"gstStateCode": null
+	},
+	{
+		"code": "JA",
+		"name": "South",
+		"gstStateCode": null
+	}
+]

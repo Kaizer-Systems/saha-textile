@@ -1,0 +1,217 @@
+[
+	{
+		"code": "BK",
+		"name": "Bács-Kiskun",
+		"gstStateCode": null
+	},
+	{
+		"code": "BA",
+		"name": "Baranya",
+		"gstStateCode": null
+	},
+	{
+		"code": "BE",
+		"name": "Békés",
+		"gstStateCode": null
+	},
+	{
+		"code": "BC",
+		"name": "Békéscsaba",
+		"gstStateCode": null
+	},
+	{
+		"code": "BZ",
+		"name": "Borsod-Abaúj-Zemplén",
+		"gstStateCode": null
+	},
+	{
+		"code": "BU",
+		"name": "Budapest",
+		"gstStateCode": null
+	},
+	{
+		"code": "CS",
+		"name": "Csongrád County",
+		"gstStateCode": null
+	},
+	{
+		"code": "DE",
+		"name": "Debrecen",
+		"gstStateCode": null
+	},
+	{
+		"code": "DU",
+		"name": "Dunaújváros",
+		"gstStateCode": null
+	},
+	{
+		"code": "EG",
+		"name": "Eger",
+		"gstStateCode": null
+	},
+	{
+		"code": "ER",
+		"name": "Érd",
+		"gstStateCode": null
+	},
+	{
+		"code": "FE",
+		"name": "Fejér County",
+		"gstStateCode": null
+	},
+	{
+		"code": "GY",
+		"name": "Győr",
+		"gstStateCode": null
+	},
+	{
+		"code": "GS",
+		"name": "Győr-Moson-Sopron County",
+		"gstStateCode": null
+	},
+	{
+		"code": "HB",
+		"name": "Hajdú-Bihar County",
+		"gstStateCode": null
+	},
+	{
+		"code": "HE",
+		"name": "Heves County",
+		"gstStateCode": null
+	},
+	{
+		"code": "HV",
+		"name": "Hódmezővásárhely",
+		"gstStateCode": null
+	},
+	{
+		"code": "JN",
+		"name": "Jász-Nagykun-Szolnok County",
+		"gstStateCode": null
+	},
+	{
+		"code": "KV",
+		"name": "Kaposvár",
+		"gstStateCode": null
+	},
+	{
+		"code": "KM",
+		"name": "Kecskemét",
+		"gstStateCode": null
+	},
+	{
+		"code": "KE",
+		"name": "Komárom-Esztergom",
+		"gstStateCode": null
+	},
+	{
+		"code": "MI",
+		"name": "Miskolc",
+		"gstStateCode": null
+	},
+	{
+		"code": "NK",
+		"name": "Nagykanizsa",
+		"gstStateCode": null
+	},
+	{
+		"code": "NO",
+		"name": "Nógrád County",
+		"gstStateCode": null
+	},
+	{
+		"code": "NY",
+		"name": "Nyíregyháza",
+		"gstStateCode": null
+	},
+	{
+		"code": "PS",
+		"name": "Pécs",
+		"gstStateCode": null
+	},
+	{
+		"code": "PE",
+		"name": "Pest County",
+		"gstStateCode": null
+	},
+	{
+		"code": "ST",
+		"name": "Salgótarján",
+		"gstStateCode": null
+	},
+	{
+		"code": "SO",
+		"name": "Somogy County",
+		"gstStateCode": null
+	},
+	{
+		"code": "SN",
+		"name": "Sopron",
+		"gstStateCode": null
+	},
+	{
+		"code": "SZ",
+		"name": "Szabolcs-Szatmár-Bereg County",
+		"gstStateCode": null
+	},
+	{
+		"code": "SD",
+		"name": "Szeged",
+		"gstStateCode": null
+	},
+	{
+		"code": "SF",
+		"name": "Székesfehérvár",
+		"gstStateCode": null
+	},
+	{
+		"code": "SS",
+		"name": "Szekszárd",
+		"gstStateCode": null
+	},
+	{
+		"code": "SK",
+		"name": "Szolnok",
+		"gstStateCode": null
+	},
+	{
+		"code": "SH",
+		"name": "Szombathely",
+		"gstStateCode": null
+	},
+	{
+		"code": "TB",
+		"name": "Tatabánya",
+		"gstStateCode": null
+	},
+	{
+		"code": "TO",
+		"name": "Tolna County",
+		"gstStateCode": null
+	},
+	{
+		"code": "VA",
+		"name": "Vas County",
+		"gstStateCode": null
+	},
+	{
+		"code": "VM",
+		"name": "Veszprém",
+		"gstStateCode": null
+	},
+	{
+		"code": "VE",
+		"name": "Veszprém County",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZA",
+		"name": "Zala County",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZE",
+		"name": "Zalaegerszeg",
+		"gstStateCode": null
+	}
+]

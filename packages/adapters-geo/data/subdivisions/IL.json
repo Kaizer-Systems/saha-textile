@@ -1,0 +1,32 @@
+[
+	{
+		"code": "M",
+		"name": "Central",
+		"gstStateCode": null
+	},
+	{
+		"code": "HA",
+		"name": "Haifa",
+		"gstStateCode": null
+	},
+	{
+		"code": "JM",
+		"name": "Jerusalem",
+		"gstStateCode": null
+	},
+	{
+		"code": "Z",
+		"name": "Northern",
+		"gstStateCode": null
+	},
+	{
+		"code": "D",
+		"name": "Southern",
+		"gstStateCode": null
+	},
+	{
+		"code": "TA",
+		"name": "Tel Aviv",
+		"gstStateCode": null
+	}
+]

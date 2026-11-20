@@ -1,0 +1,57 @@
+[
+	{
+		"code": "AG",
+		"name": "Aragatsotn",
+		"gstStateCode": null
+	},
+	{
+		"code": "AR",
+		"name": "Ararat",
+		"gstStateCode": null
+	},
+	{
+		"code": "AV",
+		"name": "Armavir",
+		"gstStateCode": null
+	},
+	{
+		"code": "GR",
+		"name": "Gegharkunik",
+		"gstStateCode": null
+	},
+	{
+		"code": "KT",
+		"name": "Kotayk",
+		"gstStateCode": null
+	},
+	{
+		"code": "LO",
+		"name": "Lori",
+		"gstStateCode": null
+	},
+	{
+		"code": "SH",
+		"name": "Shirak",
+		"gstStateCode": null
+	},
+	{
+		"code": "SU",
+		"name": "Syunik",
+		"gstStateCode": null
+	},
+	{
+		"code": "TV",
+		"name": "Tavush",
+		"gstStateCode": null
+	},
+	{
+		"code": "VD",
+		"name": "Vayots Dzor",
+		"gstStateCode": null
+	},
+	{
+		"code": "ER",
+		"name": "Yerevan",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,82 @@
+[
+	{
+		"code": "BW",
+		"name": "Baden-Württemberg",
+		"gstStateCode": null
+	},
+	{
+		"code": "BY",
+		"name": "Bavaria",
+		"gstStateCode": null
+	},
+	{
+		"code": "BE",
+		"name": "Berlin",
+		"gstStateCode": null
+	},
+	{
+		"code": "BB",
+		"name": "Brandenburg",
+		"gstStateCode": null
+	},
+	{
+		"code": "HB",
+		"name": "Bremen",
+		"gstStateCode": null
+	},
+	{
+		"code": "HH",
+		"name": "Hamburg",
+		"gstStateCode": null
+	},
+	{
+		"code": "HE",
+		"name": "Hessen",
+		"gstStateCode": null
+	},
+	{
+		"code": "NI",
+		"name": "Lower Saxony",
+		"gstStateCode": null
+	},
+	{
+		"code": "MV",
+		"name": "Mecklenburg-Vorpommern",
+		"gstStateCode": null
+	},
+	{
+		"code": "NW",
+		"name": "North Rhine-Westphalia",
+		"gstStateCode": null
+	},
+	{
+		"code": "RP",
+		"name": "Rhineland-Palatinate",
+		"gstStateCode": null
+	},
+	{
+		"code": "SL",
+		"name": "Saarland",
+		"gstStateCode": null
+	},
+	{
+		"code": "SN",
+		"name": "Saxony",
+		"gstStateCode": null
+	},
+	{
+		"code": "ST",
+		"name": "Saxony-Anhalt",
+		"gstStateCode": null
+	},
+	{
+		"code": "SH",
+		"name": "Schleswig-Holstein",
+		"gstStateCode": null
+	},
+	{
+		"code": "TH",
+		"name": "Thuringia",
+		"gstStateCode": null
+	}
+]

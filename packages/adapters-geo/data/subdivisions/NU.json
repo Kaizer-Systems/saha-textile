@@ -1,0 +1,72 @@
+[
+	{
+		"code": "14",
+		"name": "Alofi North",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Alofi South",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Avatele",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Hakupu",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Hikutavake",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Lakepa",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Liku",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Makefu",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Mutalau",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Namukulu",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Tamakautoga",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Toi",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Tuapa",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Vaiea",
+		"gstStateCode": null
+	}
+]

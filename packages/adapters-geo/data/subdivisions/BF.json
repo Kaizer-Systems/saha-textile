@@ -1,0 +1,67 @@
+[
+	{
+		"code": "01",
+		"name": "Boucle du Mouhoun",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Cascades",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Centre",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Centre-Est",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Centre-Nord",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Centre-Ouest",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Centre-Sud",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Est",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Hauts-Bassins",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Nord",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Plateau-Central",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Sahel",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Sud-Ouest",
+		"gstStateCode": null
+	}
+]

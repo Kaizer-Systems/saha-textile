@@ -1,0 +1,172 @@
+[
+	{
+		"code": "BDS",
+		"name": "Badakhshan",
+		"gstStateCode": null
+	},
+	{
+		"code": "BDG",
+		"name": "Badghis",
+		"gstStateCode": null
+	},
+	{
+		"code": "BGL",
+		"name": "Baghlan",
+		"gstStateCode": null
+	},
+	{
+		"code": "BAL",
+		"name": "Balkh",
+		"gstStateCode": null
+	},
+	{
+		"code": "BAM",
+		"name": "Bamyan",
+		"gstStateCode": null
+	},
+	{
+		"code": "DAY",
+		"name": "Daykundi",
+		"gstStateCode": null
+	},
+	{
+		"code": "FRA",
+		"name": "Farah",
+		"gstStateCode": null
+	},
+	{
+		"code": "FYB",
+		"name": "Faryab",
+		"gstStateCode": null
+	},
+	{
+		"code": "GHA",
+		"name": "Ghazni",
+		"gstStateCode": null
+	},
+	{
+		"code": "GHO",
+		"name": "Ghōr",
+		"gstStateCode": null
+	},
+	{
+		"code": "HEL",
+		"name": "Helmand",
+		"gstStateCode": null
+	},
+	{
+		"code": "HER",
+		"name": "Herat",
+		"gstStateCode": null
+	},
+	{
+		"code": "JOW",
+		"name": "Jowzjan",
+		"gstStateCode": null
+	},
+	{
+		"code": "KAB",
+		"name": "Kabul",
+		"gstStateCode": null
+	},
+	{
+		"code": "KAN",
+		"name": "Kandahar",
+		"gstStateCode": null
+	},
+	{
+		"code": "KAP",
+		"name": "Kapisa",
+		"gstStateCode": null
+	},
+	{
+		"code": "KHO",
+		"name": "Khost",
+		"gstStateCode": null
+	},
+	{
+		"code": "KNR",
+		"name": "Kunar",
+		"gstStateCode": null
+	},
+	{
+		"code": "KDZ",
+		"name": "Kunduz Province",
+		"gstStateCode": null
+	},
+	{
+		"code": "LAG",
+		"name": "Laghman",
+		"gstStateCode": null
+	},
+	{
+		"code": "LOG",
+		"name": "Logar",
+		"gstStateCode": null
+	},
+	{
+		"code": "NAN",
+		"name": "Nangarhar",
+		"gstStateCode": null
+	},
+	{
+		"code": "NIM",
+		"name": "Nimruz",
+		"gstStateCode": null
+	},
+	{
+		"code": "NUR",
+		"name": "Nuristan",
+		"gstStateCode": null
+	},
+	{
+		"code": "PIA",
+		"name": "Paktia",
+		"gstStateCode": null
+	},
+	{
+		"code": "PKA",
+		"name": "Paktika",
+		"gstStateCode": null
+	},
+	{
+		"code": "PAN",
+		"name": "Panjshir",
+		"gstStateCode": null
+	},
+	{
+		"code": "PAR",
+		"name": "Parwan",
+		"gstStateCode": null
+	},
+	{
+		"code": "SAM",
+		"name": "Samangan",
+		"gstStateCode": null
+	},
+	{
+		"code": "SAR",
+		"name": "Sar-e Pol",
+		"gstStateCode": null
+	},
+	{
+		"code": "TAK",
+		"name": "Takhar",
+		"gstStateCode": null
+	},
+	{
+		"code": "URU",
+		"name": "Urozgan",
+		"gstStateCode": null
+	},
+	{
+		"code": "WAR",
+		"name": "Wardak",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZAB",
+		"name": "Zabul",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,167 @@
+[
+	{
+		"code": "AMA",
+		"name": "Amazonas",
+		"gstStateCode": null
+	},
+	{
+		"code": "ANT",
+		"name": "Antioquia",
+		"gstStateCode": null
+	},
+	{
+		"code": "ARA",
+		"name": "Arauca",
+		"gstStateCode": null
+	},
+	{
+		"code": "ATL",
+		"name": "Atlántico",
+		"gstStateCode": null
+	},
+	{
+		"code": "DC",
+		"name": "Bogotá D.C.",
+		"gstStateCode": null
+	},
+	{
+		"code": "BOL",
+		"name": "Bolívar",
+		"gstStateCode": null
+	},
+	{
+		"code": "BOY",
+		"name": "Boyacá",
+		"gstStateCode": null
+	},
+	{
+		"code": "CAL",
+		"name": "Caldas",
+		"gstStateCode": null
+	},
+	{
+		"code": "CAQ",
+		"name": "Caquetá",
+		"gstStateCode": null
+	},
+	{
+		"code": "CAS",
+		"name": "Casanare",
+		"gstStateCode": null
+	},
+	{
+		"code": "CAU",
+		"name": "Cauca",
+		"gstStateCode": null
+	},
+	{
+		"code": "CES",
+		"name": "Cesar",
+		"gstStateCode": null
+	},
+	{
+		"code": "CHO",
+		"name": "Chocó",
+		"gstStateCode": null
+	},
+	{
+		"code": "COR",
+		"name": "Córdoba",
+		"gstStateCode": null
+	},
+	{
+		"code": "CUN",
+		"name": "Cundinamarca",
+		"gstStateCode": null
+	},
+	{
+		"code": "GUA",
+		"name": "Guainía",
+		"gstStateCode": null
+	},
+	{
+		"code": "GUV",
+		"name": "Guaviare",
+		"gstStateCode": null
+	},
+	{
+		"code": "HUI",
+		"name": "Huila",
+		"gstStateCode": null
+	},
+	{
+		"code": "LAG",
+		"name": "La Guajira",
+		"gstStateCode": null
+	},
+	{
+		"code": "MAG",
+		"name": "Magdalena",
+		"gstStateCode": null
+	},
+	{
+		"code": "MET",
+		"name": "Meta",
+		"gstStateCode": null
+	},
+	{
+		"code": "NAR",
+		"name": "Nariño",
+		"gstStateCode": null
+	},
+	{
+		"code": "NSA",
+		"name": "Norte de Santander",
+		"gstStateCode": null
+	},
+	{
+		"code": "PUT",
+		"name": "Putumayo",
+		"gstStateCode": null
+	},
+	{
+		"code": "QUI",
+		"name": "Quindío",
+		"gstStateCode": null
+	},
+	{
+		"code": "RIS",
+		"name": "Risaralda",
+		"gstStateCode": null
+	},
+	{
+		"code": "SAP",
+		"name": "San Andrés, Providencia y Santa Catalina",
+		"gstStateCode": null
+	},
+	{
+		"code": "SAN",
+		"name": "Santander",
+		"gstStateCode": null
+	},
+	{
+		"code": "SUC",
+		"name": "Sucre",
+		"gstStateCode": null
+	},
+	{
+		"code": "TOL",
+		"name": "Tolima",
+		"gstStateCode": null
+	},
+	{
+		"code": "VAC",
+		"name": "Valle del Cauca",
+		"gstStateCode": null
+	},
+	{
+		"code": "VAU",
+		"name": "Vaupés",
+		"gstStateCode": null
+	},
+	{
+		"code": "VID",
+		"name": "Vichada",
+		"gstStateCode": null
+	}
+]

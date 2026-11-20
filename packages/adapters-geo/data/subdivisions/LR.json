@@ -1,0 +1,77 @@
+[
+	{
+		"code": "BM",
+		"name": "Bomi",
+		"gstStateCode": null
+	},
+	{
+		"code": "BG",
+		"name": "Bong",
+		"gstStateCode": null
+	},
+	{
+		"code": "GP",
+		"name": "Gbarpolu",
+		"gstStateCode": null
+	},
+	{
+		"code": "GB",
+		"name": "Grand Bassa",
+		"gstStateCode": null
+	},
+	{
+		"code": "CM",
+		"name": "Grand Cape Mount",
+		"gstStateCode": null
+	},
+	{
+		"code": "GG",
+		"name": "Grand Gedeh",
+		"gstStateCode": null
+	},
+	{
+		"code": "GK",
+		"name": "Grand Kru",
+		"gstStateCode": null
+	},
+	{
+		"code": "LO",
+		"name": "Lofa",
+		"gstStateCode": null
+	},
+	{
+		"code": "MG",
+		"name": "Margibi",
+		"gstStateCode": null
+	},
+	{
+		"code": "MY",
+		"name": "Maryland",
+		"gstStateCode": null
+	},
+	{
+		"code": "MO",
+		"name": "Montserrado",
+		"gstStateCode": null
+	},
+	{
+		"code": "NI",
+		"name": "Nimba",
+		"gstStateCode": null
+	},
+	{
+		"code": "RI",
+		"name": "River Cess",
+		"gstStateCode": null
+	},
+	{
+		"code": "RG",
+		"name": "River Gee",
+		"gstStateCode": null
+	},
+	{
+		"code": "SI",
+		"name": "Sinoe",
+		"gstStateCode": null
+	}
+]

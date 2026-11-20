@@ -1,0 +1,132 @@
+[
+	{
+		"code": "BU",
+		"name": "Bas-Uélé",
+		"gstStateCode": null
+	},
+	{
+		"code": "EQ",
+		"name": "Équateur",
+		"gstStateCode": null
+	},
+	{
+		"code": "HK",
+		"name": "Haut-Katanga",
+		"gstStateCode": null
+	},
+	{
+		"code": "HL",
+		"name": "Haut-Lomami",
+		"gstStateCode": null
+	},
+	{
+		"code": "HU",
+		"name": "Haut-Uélé",
+		"gstStateCode": null
+	},
+	{
+		"code": "IT",
+		"name": "Ituri",
+		"gstStateCode": null
+	},
+	{
+		"code": "KS",
+		"name": "Kasaï",
+		"gstStateCode": null
+	},
+	{
+		"code": "KC",
+		"name": "Kasaï Central",
+		"gstStateCode": null
+	},
+	{
+		"code": "KE",
+		"name": "Kasaï Oriental",
+		"gstStateCode": null
+	},
+	{
+		"code": "KN",
+		"name": "Kinshasa",
+		"gstStateCode": null
+	},
+	{
+		"code": "BC",
+		"name": "Kongo Central",
+		"gstStateCode": null
+	},
+	{
+		"code": "KG",
+		"name": "Kwango",
+		"gstStateCode": null
+	},
+	{
+		"code": "KL",
+		"name": "Kwilu",
+		"gstStateCode": null
+	},
+	{
+		"code": "LO",
+		"name": "Lomami",
+		"gstStateCode": null
+	},
+	{
+		"code": "LU",
+		"name": "Lualaba",
+		"gstStateCode": null
+	},
+	{
+		"code": "MN",
+		"name": "Mai-Ndombe",
+		"gstStateCode": null
+	},
+	{
+		"code": "MA",
+		"name": "Maniema",
+		"gstStateCode": null
+	},
+	{
+		"code": "MO",
+		"name": "Mongala",
+		"gstStateCode": null
+	},
+	{
+		"code": "NK",
+		"name": "Nord-Kivu",
+		"gstStateCode": null
+	},
+	{
+		"code": "NU",
+		"name": "Nord-Ubangi",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Sankuru",
+		"gstStateCode": null
+	},
+	{
+		"code": "SK",
+		"name": "Sud-Kivu",
+		"gstStateCode": null
+	},
+	{
+		"code": "SU",
+		"name": "Sud-Ubangi",
+		"gstStateCode": null
+	},
+	{
+		"code": "TA",
+		"name": "Tanganyika",
+		"gstStateCode": null
+	},
+	{
+		"code": "TO",
+		"name": "Tshopo",
+		"gstStateCode": null
+	},
+	{
+		"code": "TU",
+		"name": "Tshuapa",
+		"gstStateCode": null
+	}
+]

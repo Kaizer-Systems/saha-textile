@@ -1,0 +1,52 @@
+[
+	{
+		"code": "AL",
+		"name": "Alytus",
+		"gstStateCode": null
+	},
+	{
+		"code": "KU",
+		"name": "Kaunas",
+		"gstStateCode": null
+	},
+	{
+		"code": "KL",
+		"name": "Klaipėda",
+		"gstStateCode": null
+	},
+	{
+		"code": "MR",
+		"name": "Marijampolė",
+		"gstStateCode": null
+	},
+	{
+		"code": "PN",
+		"name": "Panevėžys",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Šiauliai",
+		"gstStateCode": null
+	},
+	{
+		"code": "TA",
+		"name": "Tauragė",
+		"gstStateCode": null
+	},
+	{
+		"code": "TE",
+		"name": "Telšiai",
+		"gstStateCode": null
+	},
+	{
+		"code": "UT",
+		"name": "Utena",
+		"gstStateCode": null
+	},
+	{
+		"code": "VL",
+		"name": "Vilnius",
+		"gstStateCode": null
+	}
+]

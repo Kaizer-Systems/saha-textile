@@ -1,0 +1,72 @@
+[
+	{
+		"code": "01",
+		"name": "Blowing Point",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "East End",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "George Hill",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Island Harbour",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "North Hill",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "North Side",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Sandy Ground",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Sandy Hill",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "South Hill",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Stoney Ground",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "The Farrington",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "The Quarter",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "The Valley",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "West End",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,187 @@
+[
+	{
+		"code": "AB",
+		"name": "Abia",
+		"gstStateCode": null
+	},
+	{
+		"code": "FC",
+		"name": "Abuja Federal Capital Territory",
+		"gstStateCode": null
+	},
+	{
+		"code": "AD",
+		"name": "Adamawa",
+		"gstStateCode": null
+	},
+	{
+		"code": "AK",
+		"name": "Akwa Ibom",
+		"gstStateCode": null
+	},
+	{
+		"code": "AN",
+		"name": "Anambra",
+		"gstStateCode": null
+	},
+	{
+		"code": "BA",
+		"name": "Bauchi",
+		"gstStateCode": null
+	},
+	{
+		"code": "BY",
+		"name": "Bayelsa",
+		"gstStateCode": null
+	},
+	{
+		"code": "BE",
+		"name": "Benue",
+		"gstStateCode": null
+	},
+	{
+		"code": "BO",
+		"name": "Borno",
+		"gstStateCode": null
+	},
+	{
+		"code": "CR",
+		"name": "Cross River",
+		"gstStateCode": null
+	},
+	{
+		"code": "DE",
+		"name": "Delta",
+		"gstStateCode": null
+	},
+	{
+		"code": "EB",
+		"name": "Ebonyi",
+		"gstStateCode": null
+	},
+	{
+		"code": "ED",
+		"name": "Edo",
+		"gstStateCode": null
+	},
+	{
+		"code": "EK",
+		"name": "Ekiti",
+		"gstStateCode": null
+	},
+	{
+		"code": "EN",
+		"name": "Enugu",
+		"gstStateCode": null
+	},
+	{
+		"code": "GO",
+		"name": "Gombe",
+		"gstStateCode": null
+	},
+	{
+		"code": "IM",
+		"name": "Imo",
+		"gstStateCode": null
+	},
+	{
+		"code": "JI",
+		"name": "Jigawa",
+		"gstStateCode": null
+	},
+	{
+		"code": "KD",
+		"name": "Kaduna",
+		"gstStateCode": null
+	},
+	{
+		"code": "KN",
+		"name": "Kano",
+		"gstStateCode": null
+	},
+	{
+		"code": "KT",
+		"name": "Katsina",
+		"gstStateCode": null
+	},
+	{
+		"code": "KE",
+		"name": "Kebbi",
+		"gstStateCode": null
+	},
+	{
+		"code": "KO",
+		"name": "Kogi",
+		"gstStateCode": null
+	},
+	{
+		"code": "KW",
+		"name": "Kwara",
+		"gstStateCode": null
+	},
+	{
+		"code": "LA",
+		"name": "Lagos",
+		"gstStateCode": null
+	},
+	{
+		"code": "NA",
+		"name": "Nasarawa",
+		"gstStateCode": null
+	},
+	{
+		"code": "NI",
+		"name": "Niger",
+		"gstStateCode": null
+	},
+	{
+		"code": "OG",
+		"name": "Ogun",
+		"gstStateCode": null
+	},
+	{
+		"code": "ON",
+		"name": "Ondo",
+		"gstStateCode": null
+	},
+	{
+		"code": "OS",
+		"name": "Osun",
+		"gstStateCode": null
+	},
+	{
+		"code": "OY",
+		"name": "Oyo",
+		"gstStateCode": null
+	},
+	{
+		"code": "PL",
+		"name": "Plateau",
+		"gstStateCode": null
+	},
+	{
+		"code": "RI",
+		"name": "Rivers",
+		"gstStateCode": null
+	},
+	{
+		"code": "SO",
+		"name": "Sokoto",
+		"gstStateCode": null
+	},
+	{
+		"code": "TA",
+		"name": "Taraba",
+		"gstStateCode": null
+	},
+	{
+		"code": "YO",
+		"name": "Yobe",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZA",
+		"name": "Zamfara",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,72 @@
+[
+	{
+		"code": "AN",
+		"name": "Andijan",
+		"gstStateCode": null
+	},
+	{
+		"code": "BU",
+		"name": "Bukhara",
+		"gstStateCode": null
+	},
+	{
+		"code": "FA",
+		"name": "Fergana",
+		"gstStateCode": null
+	},
+	{
+		"code": "JI",
+		"name": "Jizzakh",
+		"gstStateCode": null
+	},
+	{
+		"code": "QR",
+		"name": "Karakalpakstan",
+		"gstStateCode": null
+	},
+	{
+		"code": "NG",
+		"name": "Namangan",
+		"gstStateCode": null
+	},
+	{
+		"code": "NW",
+		"name": "Navoiy",
+		"gstStateCode": null
+	},
+	{
+		"code": "QA",
+		"name": "Qashqadaryo",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Samarqand",
+		"gstStateCode": null
+	},
+	{
+		"code": "SI",
+		"name": "Sirdaryo",
+		"gstStateCode": null
+	},
+	{
+		"code": "SU",
+		"name": "Surxondaryo",
+		"gstStateCode": null
+	},
+	{
+		"code": "TK",
+		"name": "Tashkent",
+		"gstStateCode": null
+	},
+	{
+		"code": "TO",
+		"name": "Tashkent",
+		"gstStateCode": null
+	},
+	{
+		"code": "XO",
+		"name": "Xorazm",
+		"gstStateCode": null
+	}
+]

@@ -50,6 +50,7 @@
     "@saha-textile/adapters-cdn-cloudflare": "workspace:*",
     "@saha-textile/adapters-db-mongo": "workspace:*",
     "@saha-textile/adapters-fx": "workspace:*",
+    "@saha-textile/adapters-geo": "workspace:*",
     "@saha-textile/adapters-image-sharp": "workspace:*",
     "@saha-textile/adapters-mail-gmail": "workspace:*",
     "@saha-textile/adapters-notifications-msg91": "workspace:*",

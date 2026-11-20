@@ -1,0 +1,27 @@
+[
+	{
+		"code": "AV",
+		"name": "Avannaata",
+		"gstStateCode": null
+	},
+	{
+		"code": "KU",
+		"name": "Kujalleq",
+		"gstStateCode": null
+	},
+	{
+		"code": "QT",
+		"name": "Qeqertalik",
+		"gstStateCode": null
+	},
+	{
+		"code": "QE",
+		"name": "Qeqqata",
+		"gstStateCode": null
+	},
+	{
+		"code": "SM",
+		"name": "Sermersooq",
+		"gstStateCode": null
+	}
+]

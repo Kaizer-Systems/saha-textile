@@ -1,0 +1,32 @@
+[
+	{
+		"code": "R02",
+		"name": "Eastern Region",
+		"gstStateCode": null
+	},
+	{
+		"code": "R06",
+		"name": "Gozo Region",
+		"gstStateCode": null
+	},
+	{
+		"code": "R01",
+		"name": "Northern Region",
+		"gstStateCode": null
+	},
+	{
+		"code": "R04",
+		"name": "Port Region",
+		"gstStateCode": null
+	},
+	{
+		"code": "R05",
+		"name": "Southern Region",
+		"gstStateCode": null
+	},
+	{
+		"code": "R03",
+		"name": "Western Region",
+		"gstStateCode": null
+	}
+]

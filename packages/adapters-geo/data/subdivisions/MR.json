@@ -1,0 +1,77 @@
+[
+	{
+		"code": "07",
+		"name": "Adrar",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Assaba",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Brakna",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Dakhlet Nouadhibou",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Gorgol",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Guidimaka",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Hodh Ech Chargui",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Hodh El Gharbi",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Inchiri",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Nouakchott-Nord",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Nouakchott-Ouest",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Nouakchott-Sud",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Tagant",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Tiris Zemmour",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Trarza",
+		"gstStateCode": null
+	}
+]

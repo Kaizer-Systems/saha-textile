@@ -1,0 +1,112 @@
+[
+	{
+		"code": "BU",
+		"name": "Al Butnan",
+		"gstStateCode": null
+	},
+	{
+		"code": "WA",
+		"name": "Al Wahat",
+		"gstStateCode": null
+	},
+	{
+		"code": "BA",
+		"name": "Benghazi",
+		"gstStateCode": null
+	},
+	{
+		"code": "DR",
+		"name": "Derna",
+		"gstStateCode": null
+	},
+	{
+		"code": "GT",
+		"name": "Ghat",
+		"gstStateCode": null
+	},
+	{
+		"code": "JA",
+		"name": "Jabal al Akhdar",
+		"gstStateCode": null
+	},
+	{
+		"code": "JG",
+		"name": "Jabal al Gharbi",
+		"gstStateCode": null
+	},
+	{
+		"code": "JI",
+		"name": "Jafara",
+		"gstStateCode": null
+	},
+	{
+		"code": "JU",
+		"name": "Jufra",
+		"gstStateCode": null
+	},
+	{
+		"code": "KF",
+		"name": "Kufra",
+		"gstStateCode": null
+	},
+	{
+		"code": "MJ",
+		"name": "Marj",
+		"gstStateCode": null
+	},
+	{
+		"code": "MI",
+		"name": "Misrata",
+		"gstStateCode": null
+	},
+	{
+		"code": "MB",
+		"name": "Murqub",
+		"gstStateCode": null
+	},
+	{
+		"code": "MQ",
+		"name": "Murzuq",
+		"gstStateCode": null
+	},
+	{
+		"code": "NL",
+		"name": "Nalut",
+		"gstStateCode": null
+	},
+	{
+		"code": "NQ",
+		"name": "Nuqat al Khams",
+		"gstStateCode": null
+	},
+	{
+		"code": "SB",
+		"name": "Sabha",
+		"gstStateCode": null
+	},
+	{
+		"code": "SR",
+		"name": "Sirte",
+		"gstStateCode": null
+	},
+	{
+		"code": "TB",
+		"name": "Tripoli",
+		"gstStateCode": null
+	},
+	{
+		"code": "WD",
+		"name": "Wadi al Hayaa",
+		"gstStateCode": null
+	},
+	{
+		"code": "WS",
+		"name": "Wadi al Shatii",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZA",
+		"name": "Zawiya",
+		"gstStateCode": null
+	}
+]

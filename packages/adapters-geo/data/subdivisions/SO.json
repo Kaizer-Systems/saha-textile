@@ -1,0 +1,92 @@
+[
+	{
+		"code": "AW",
+		"name": "Awdal",
+		"gstStateCode": null
+	},
+	{
+		"code": "BK",
+		"name": "Bakool",
+		"gstStateCode": null
+	},
+	{
+		"code": "BN",
+		"name": "Banaadir",
+		"gstStateCode": null
+	},
+	{
+		"code": "BR",
+		"name": "Bari",
+		"gstStateCode": null
+	},
+	{
+		"code": "BY",
+		"name": "Bay",
+		"gstStateCode": null
+	},
+	{
+		"code": "GA",
+		"name": "Galguduud",
+		"gstStateCode": null
+	},
+	{
+		"code": "GE",
+		"name": "Gedo",
+		"gstStateCode": null
+	},
+	{
+		"code": "HI",
+		"name": "Hiran",
+		"gstStateCode": null
+	},
+	{
+		"code": "JH",
+		"name": "Lower Juba",
+		"gstStateCode": null
+	},
+	{
+		"code": "SH",
+		"name": "Lower Shebelle",
+		"gstStateCode": null
+	},
+	{
+		"code": "JD",
+		"name": "Middle Juba",
+		"gstStateCode": null
+	},
+	{
+		"code": "SD",
+		"name": "Middle Shebelle",
+		"gstStateCode": null
+	},
+	{
+		"code": "MU",
+		"name": "Mudug",
+		"gstStateCode": null
+	},
+	{
+		"code": "NU",
+		"name": "Nugal",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Sanaag",
+		"gstStateCode": null
+	},
+	{
+		"code": "SO",
+		"name": "Sool",
+		"gstStateCode": null
+	},
+	{
+		"code": "TO",
+		"name": "Togdheer",
+		"gstStateCode": null
+	},
+	{
+		"code": "WO",
+		"name": "Woqooyi Galbeed",
+		"gstStateCode": null
+	}
+]

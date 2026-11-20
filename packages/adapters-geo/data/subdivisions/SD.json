@@ -1,0 +1,92 @@
+[
+	{
+		"code": "GZ",
+		"name": "Al Jazirah",
+		"gstStateCode": null
+	},
+	{
+		"code": "GD",
+		"name": "Al Qadarif",
+		"gstStateCode": null
+	},
+	{
+		"code": "NB",
+		"name": "Blue Nile",
+		"gstStateCode": null
+	},
+	{
+		"code": "DC",
+		"name": "Central Darfur",
+		"gstStateCode": null
+	},
+	{
+		"code": "DE",
+		"name": "East Darfur",
+		"gstStateCode": null
+	},
+	{
+		"code": "KA",
+		"name": "Kassala",
+		"gstStateCode": null
+	},
+	{
+		"code": "KH",
+		"name": "Khartoum",
+		"gstStateCode": null
+	},
+	{
+		"code": "DN",
+		"name": "North Darfur",
+		"gstStateCode": null
+	},
+	{
+		"code": "KN",
+		"name": "North Kordofan",
+		"gstStateCode": null
+	},
+	{
+		"code": "NO",
+		"name": "Northern",
+		"gstStateCode": null
+	},
+	{
+		"code": "RS",
+		"name": "Red Sea",
+		"gstStateCode": null
+	},
+	{
+		"code": "NR",
+		"name": "River Nile",
+		"gstStateCode": null
+	},
+	{
+		"code": "SI",
+		"name": "Sennar",
+		"gstStateCode": null
+	},
+	{
+		"code": "DS",
+		"name": "South Darfur",
+		"gstStateCode": null
+	},
+	{
+		"code": "KS",
+		"name": "South Kordofan",
+		"gstStateCode": null
+	},
+	{
+		"code": "DW",
+		"name": "West Darfur",
+		"gstStateCode": null
+	},
+	{
+		"code": "GK",
+		"name": "West Kordofan",
+		"gstStateCode": null
+	},
+	{
+		"code": "NW",
+		"name": "White Nile",
+		"gstStateCode": null
+	}
+]

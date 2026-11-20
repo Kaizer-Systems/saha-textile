@@ -1,0 +1,37 @@
+[
+	{
+		"code": "AZ",
+		"name": "Abu Dhabi",
+		"gstStateCode": null
+	},
+	{
+		"code": "AJ",
+		"name": "Ajman",
+		"gstStateCode": null
+	},
+	{
+		"code": "DU",
+		"name": "Dubai",
+		"gstStateCode": null
+	},
+	{
+		"code": "FU",
+		"name": "Fujairah",
+		"gstStateCode": null
+	},
+	{
+		"code": "RK",
+		"name": "Ras Al Khaimah",
+		"gstStateCode": null
+	},
+	{
+		"code": "SH",
+		"name": "Sharjah",
+		"gstStateCode": null
+	},
+	{
+		"code": "UQ",
+		"name": "Umm Al Quwain",
+		"gstStateCode": null
+	}
+]

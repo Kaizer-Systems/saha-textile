@@ -1,0 +1,172 @@
+[
+	{
+		"code": "44",
+		"name": "An Giang",
+		"gstStateCode": null
+	},
+	{
+		"code": "56",
+		"name": "Bắc Ninh",
+		"gstStateCode": null
+	},
+	{
+		"code": "59",
+		"name": "Cà Mau",
+		"gstStateCode": null
+	},
+	{
+		"code": "CT",
+		"name": "Cần Thơ",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Cao Bằng",
+		"gstStateCode": null
+	},
+	{
+		"code": "DN",
+		"name": "Đà Nẵng",
+		"gstStateCode": null
+	},
+	{
+		"code": "33",
+		"name": "Đắk Lắk",
+		"gstStateCode": null
+	},
+	{
+		"code": "71",
+		"name": "Điện Biên",
+		"gstStateCode": null
+	},
+	{
+		"code": "39",
+		"name": "Đồng Nai",
+		"gstStateCode": null
+	},
+	{
+		"code": "45",
+		"name": "Đồng Tháp",
+		"gstStateCode": null
+	},
+	{
+		"code": "30",
+		"name": "Gia Lai",
+		"gstStateCode": null
+	},
+	{
+		"code": "HN",
+		"name": "Hà Nội",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Hà Tĩnh",
+		"gstStateCode": null
+	},
+	{
+		"code": "HP",
+		"name": "Hải Phòng",
+		"gstStateCode": null
+	},
+	{
+		"code": "SG",
+		"name": "Hồ Chí Minh",
+		"gstStateCode": null
+	},
+	{
+		"code": "26",
+		"name": "Huế",
+		"gstStateCode": null
+	},
+	{
+		"code": "66",
+		"name": "Hưng Yên",
+		"gstStateCode": null
+	},
+	{
+		"code": "34",
+		"name": "Khánh Hòa",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Lai Châu",
+		"gstStateCode": null
+	},
+	{
+		"code": "35",
+		"name": "Lâm Đồng",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Lạng Sơn",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Lào Cai",
+		"gstStateCode": null
+	},
+	{
+		"code": "22",
+		"name": "Nghệ An",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Ninh Bình",
+		"gstStateCode": null
+	},
+	{
+		"code": "68",
+		"name": "Phú Thọ",
+		"gstStateCode": null
+	},
+	{
+		"code": "29",
+		"name": "Quảng Ngãi",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Quảng Ninh",
+		"gstStateCode": null
+	},
+	{
+		"code": "25",
+		"name": "Quảng Trị",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Sơn La",
+		"gstStateCode": null
+	},
+	{
+		"code": "37",
+		"name": "Tây Ninh",
+		"gstStateCode": null
+	},
+	{
+		"code": "69",
+		"name": "Thái Nguyên",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Thanh Hóa",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Tuyên Quang",
+		"gstStateCode": null
+	},
+	{
+		"code": "49",
+		"name": "Vĩnh Long",
+		"gstStateCode": null
+	}
+]

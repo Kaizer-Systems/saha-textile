@@ -1,0 +1,72 @@
+[
+	{
+		"code": "ER",
+		"name": "Erongo",
+		"gstStateCode": null
+	},
+	{
+		"code": "HA",
+		"name": "Hardap",
+		"gstStateCode": null
+	},
+	{
+		"code": "KA",
+		"name": "Karas",
+		"gstStateCode": null
+	},
+	{
+		"code": "KE",
+		"name": "Kavango East",
+		"gstStateCode": null
+	},
+	{
+		"code": "KW",
+		"name": "Kavango West",
+		"gstStateCode": null
+	},
+	{
+		"code": "KH",
+		"name": "Khomas",
+		"gstStateCode": null
+	},
+	{
+		"code": "KU",
+		"name": "Kunene",
+		"gstStateCode": null
+	},
+	{
+		"code": "OW",
+		"name": "Ohangwena",
+		"gstStateCode": null
+	},
+	{
+		"code": "OH",
+		"name": "Omaheke",
+		"gstStateCode": null
+	},
+	{
+		"code": "OS",
+		"name": "Omusati",
+		"gstStateCode": null
+	},
+	{
+		"code": "ON",
+		"name": "Oshana",
+		"gstStateCode": null
+	},
+	{
+		"code": "OT",
+		"name": "Oshikoto",
+		"gstStateCode": null
+	},
+	{
+		"code": "OD",
+		"name": "Otjozondjupa",
+		"gstStateCode": null
+	},
+	{
+		"code": "CA",
+		"name": "Zambezi",
+		"gstStateCode": null
+	}
+]

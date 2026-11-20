@@ -1,0 +1,97 @@
+[
+	{
+		"code": "BGO",
+		"name": "Bengo",
+		"gstStateCode": null
+	},
+	{
+		"code": "BGU",
+		"name": "Benguela",
+		"gstStateCode": null
+	},
+	{
+		"code": "BIE",
+		"name": "Bié",
+		"gstStateCode": null
+	},
+	{
+		"code": "CAB",
+		"name": "Cabinda",
+		"gstStateCode": null
+	},
+	{
+		"code": "CUB",
+		"name": "Cuando",
+		"gstStateCode": null
+	},
+	{
+		"code": "CNO",
+		"name": "Cuanza Norte",
+		"gstStateCode": null
+	},
+	{
+		"code": "CUS",
+		"name": "Cuanza Sul",
+		"gstStateCode": null
+	},
+	{
+		"code": "CBG",
+		"name": "Cubango",
+		"gstStateCode": null
+	},
+	{
+		"code": "CNN",
+		"name": "Cunene",
+		"gstStateCode": null
+	},
+	{
+		"code": "HUA",
+		"name": "Huambo",
+		"gstStateCode": null
+	},
+	{
+		"code": "HUI",
+		"name": "Huíla",
+		"gstStateCode": null
+	},
+	{
+		"code": "LUA",
+		"name": "Luanda",
+		"gstStateCode": null
+	},
+	{
+		"code": "LNO",
+		"name": "Lunda Norte",
+		"gstStateCode": null
+	},
+	{
+		"code": "LSU",
+		"name": "Lunda Sul",
+		"gstStateCode": null
+	},
+	{
+		"code": "MAL",
+		"name": "Malanje",
+		"gstStateCode": null
+	},
+	{
+		"code": "MOX",
+		"name": "Moxico",
+		"gstStateCode": null
+	},
+	{
+		"code": "NAM",
+		"name": "Namibe",
+		"gstStateCode": null
+	},
+	{
+		"code": "UIG",
+		"name": "Uíge",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZAI",
+		"name": "Zaire",
+		"gstStateCode": null
+	}
+]

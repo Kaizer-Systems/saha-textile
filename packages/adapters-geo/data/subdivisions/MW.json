@@ -1,0 +1,17 @@
+[
+	{
+		"code": "C",
+		"name": "Central",
+		"gstStateCode": null
+	},
+	{
+		"code": "N",
+		"name": "Northern",
+		"gstStateCode": null
+	},
+	{
+		"code": "S",
+		"name": "Southern",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,32 @@
+[
+	{
+		"code": "05",
+		"name": "Grand Turk",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Middle Caicos",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "North Caicos",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Providenciales",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Salt Cay",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "South Caicos",
+		"gstStateCode": null
+	}
+]

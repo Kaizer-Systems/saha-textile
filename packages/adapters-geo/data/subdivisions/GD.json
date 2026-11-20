@@ -1,0 +1,37 @@
+[
+	{
+		"code": "10",
+		"name": "Carriacou",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Saint Andrew",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Saint David",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Saint George",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Saint John",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Saint Mark",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Saint Patrick",
+		"gstStateCode": null
+	}
+]

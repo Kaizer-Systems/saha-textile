@@ -1,0 +1,157 @@
+[
+	{
+		"code": "01",
+		"name": "Arusha",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Dar es Salaam",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Dodoma",
+		"gstStateCode": null
+	},
+	{
+		"code": "27",
+		"name": "Geita",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Iringa",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Kagera",
+		"gstStateCode": null
+	},
+	{
+		"code": "28",
+		"name": "Katavi",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Kigoma",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Kilimanjaro",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Lindi",
+		"gstStateCode": null
+	},
+	{
+		"code": "26",
+		"name": "Manyara",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Mara",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Mbeya",
+		"gstStateCode": null
+	},
+	{
+		"code": "16",
+		"name": "Morogoro",
+		"gstStateCode": null
+	},
+	{
+		"code": "17",
+		"name": "Mtwara",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Mwanza",
+		"gstStateCode": null
+	},
+	{
+		"code": "29",
+		"name": "Njombe",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Pemba North",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Pemba South",
+		"gstStateCode": null
+	},
+	{
+		"code": "19",
+		"name": "Pwani",
+		"gstStateCode": null
+	},
+	{
+		"code": "20",
+		"name": "Rukwa",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Ruvuma",
+		"gstStateCode": null
+	},
+	{
+		"code": "22",
+		"name": "Shinyanga",
+		"gstStateCode": null
+	},
+	{
+		"code": "30",
+		"name": "Simiyu",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Singida",
+		"gstStateCode": null
+	},
+	{
+		"code": "31",
+		"name": "Songwe",
+		"gstStateCode": null
+	},
+	{
+		"code": "24",
+		"name": "Tabora",
+		"gstStateCode": null
+	},
+	{
+		"code": "25",
+		"name": "Tanga",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Zanzibar North",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Zanzibar South",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Zanzibar West",
+		"gstStateCode": null
+	}
+]

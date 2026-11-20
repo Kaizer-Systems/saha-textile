@@ -1,0 +1,92 @@
+[
+	{
+		"code": "14",
+		"name": "Autonomous Region in Muslim Mindanao",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Bicol",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Cagayan Valley",
+		"gstStateCode": null
+	},
+	{
+		"code": "40",
+		"name": "Calabarzon",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Caraga",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Central Luzon",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Central Visayas",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Cordillera Administrative",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Davao",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Eastern Visayas",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Ilocos",
+		"gstStateCode": null
+	},
+	{
+		"code": "41",
+		"name": "Mimaropa",
+		"gstStateCode": null
+	},
+	{
+		"code": "00",
+		"name": "National Capital Region (Metro Manila)",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Negros Island Region",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Northern Mindanao",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Soccsksargen",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Western Visayas",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Zamboanga Peninsula",
+		"gstStateCode": null
+	}
+]

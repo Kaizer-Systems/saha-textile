@@ -1,0 +1,102 @@
+[
+	{
+		"code": "10",
+		"name": "Abai",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Akmola",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Aktobe",
+		"gstStateCode": null
+	},
+	{
+		"code": "19",
+		"name": "Almaty",
+		"gstStateCode": null
+	},
+	{
+		"code": "75",
+		"name": "Almaty",
+		"gstStateCode": null
+	},
+	{
+		"code": "71",
+		"name": "Astana",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Atyrau",
+		"gstStateCode": null
+	},
+	{
+		"code": "63",
+		"name": "East Kazakhstan",
+		"gstStateCode": null
+	},
+	{
+		"code": "31",
+		"name": "Jambyl",
+		"gstStateCode": null
+	},
+	{
+		"code": "33",
+		"name": "Jetisu",
+		"gstStateCode": null
+	},
+	{
+		"code": "35",
+		"name": "Karaganda",
+		"gstStateCode": null
+	},
+	{
+		"code": "39",
+		"name": "Kostanay",
+		"gstStateCode": null
+	},
+	{
+		"code": "43",
+		"name": "Kyzylorda",
+		"gstStateCode": null
+	},
+	{
+		"code": "47",
+		"name": "Mangystau",
+		"gstStateCode": null
+	},
+	{
+		"code": "59",
+		"name": "North Kazakhstan",
+		"gstStateCode": null
+	},
+	{
+		"code": "55",
+		"name": "Pavlodar",
+		"gstStateCode": null
+	},
+	{
+		"code": "79",
+		"name": "Shymkent",
+		"gstStateCode": null
+	},
+	{
+		"code": "61",
+		"name": "Turkistan",
+		"gstStateCode": null
+	},
+	{
+		"code": "62",
+		"name": "Ulytau",
+		"gstStateCode": null
+	},
+	{
+		"code": "27",
+		"name": "West Kazakhstan",
+		"gstStateCode": null
+	}
+]

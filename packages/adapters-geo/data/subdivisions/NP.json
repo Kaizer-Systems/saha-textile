@@ -1,0 +1,37 @@
+[
+	{
+		"code": "P3",
+		"name": "Bagmati",
+		"gstStateCode": null
+	},
+	{
+		"code": "P4",
+		"name": "Gandaki",
+		"gstStateCode": null
+	},
+	{
+		"code": "P6",
+		"name": "Karnali",
+		"gstStateCode": null
+	},
+	{
+		"code": "P1",
+		"name": "Koshi",
+		"gstStateCode": null
+	},
+	{
+		"code": "P5",
+		"name": "Lumbini",
+		"gstStateCode": null
+	},
+	{
+		"code": "P2",
+		"name": "Madhesh",
+		"gstStateCode": null
+	},
+	{
+		"code": "P7",
+		"name": "Sudurpashchim",
+		"gstStateCode": null
+	}
+]

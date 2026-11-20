@@ -1,0 +1,57 @@
+[
+	{
+		"code": "BKO",
+		"name": "Bamako",
+		"gstStateCode": null
+	},
+	{
+		"code": "7",
+		"name": "Gao",
+		"gstStateCode": null
+	},
+	{
+		"code": "1",
+		"name": "Kayes",
+		"gstStateCode": null
+	},
+	{
+		"code": "8",
+		"name": "Kidal",
+		"gstStateCode": null
+	},
+	{
+		"code": "2",
+		"name": "Koulikoro",
+		"gstStateCode": null
+	},
+	{
+		"code": "9",
+		"name": "Ménaka",
+		"gstStateCode": null
+	},
+	{
+		"code": "5",
+		"name": "Mopti",
+		"gstStateCode": null
+	},
+	{
+		"code": "4",
+		"name": "Ségou",
+		"gstStateCode": null
+	},
+	{
+		"code": "3",
+		"name": "Sikasso",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Taoudénit",
+		"gstStateCode": null
+	},
+	{
+		"code": "6",
+		"name": "Tombouctou",
+		"gstStateCode": null
+	}
+]

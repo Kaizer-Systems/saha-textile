@@ -1,0 +1,77 @@
+[
+	{
+		"code": "37",
+		"name": "Harju",
+		"gstStateCode": null
+	},
+	{
+		"code": "39",
+		"name": "Hiiu",
+		"gstStateCode": null
+	},
+	{
+		"code": "45",
+		"name": "Ida-Viru",
+		"gstStateCode": null
+	},
+	{
+		"code": "52",
+		"name": "Järva",
+		"gstStateCode": null
+	},
+	{
+		"code": "50",
+		"name": "Jõgeva",
+		"gstStateCode": null
+	},
+	{
+		"code": "56",
+		"name": "Lääne",
+		"gstStateCode": null
+	},
+	{
+		"code": "60",
+		"name": "Lääne-Viru",
+		"gstStateCode": null
+	},
+	{
+		"code": "68",
+		"name": "Pärnu",
+		"gstStateCode": null
+	},
+	{
+		"code": "64",
+		"name": "Põlva",
+		"gstStateCode": null
+	},
+	{
+		"code": "71",
+		"name": "Rapla",
+		"gstStateCode": null
+	},
+	{
+		"code": "74",
+		"name": "Saare",
+		"gstStateCode": null
+	},
+	{
+		"code": "79",
+		"name": "Tartu",
+		"gstStateCode": null
+	},
+	{
+		"code": "81",
+		"name": "Valga",
+		"gstStateCode": null
+	},
+	{
+		"code": "84",
+		"name": "Viljandi",
+		"gstStateCode": null
+	},
+	{
+		"code": "87",
+		"name": "Võru",
+		"gstStateCode": null
+	}
+]

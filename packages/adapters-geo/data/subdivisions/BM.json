@@ -1,0 +1,47 @@
+[
+	{
+		"code": "DEV",
+		"name": "Devonshire",
+		"gstStateCode": null
+	},
+	{
+		"code": "HA",
+		"name": "Hamilton",
+		"gstStateCode": null
+	},
+	{
+		"code": "PAG",
+		"name": "Paget",
+		"gstStateCode": null
+	},
+	{
+		"code": "PEM",
+		"name": "Pembroke",
+		"gstStateCode": null
+	},
+	{
+		"code": "SGE",
+		"name": "Saint George's",
+		"gstStateCode": null
+	},
+	{
+		"code": "SAN",
+		"name": "Sandys",
+		"gstStateCode": null
+	},
+	{
+		"code": "SMI",
+		"name": "Smith's",
+		"gstStateCode": null
+	},
+	{
+		"code": "SOU",
+		"name": "Southampton",
+		"gstStateCode": null
+	},
+	{
+		"code": "WAR",
+		"name": "Warwick",
+		"gstStateCode": null
+	}
+]

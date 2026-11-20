@@ -1,0 +1,212 @@
+[
+	{
+		"code": "AB",
+		"name": "Alba",
+		"gstStateCode": null
+	},
+	{
+		"code": "AR",
+		"name": "Arad",
+		"gstStateCode": null
+	},
+	{
+		"code": "AG",
+		"name": "Argeș",
+		"gstStateCode": null
+	},
+	{
+		"code": "BC",
+		"name": "Bacău",
+		"gstStateCode": null
+	},
+	{
+		"code": "BH",
+		"name": "Bihor",
+		"gstStateCode": null
+	},
+	{
+		"code": "BN",
+		"name": "Bistrița-Năsăud",
+		"gstStateCode": null
+	},
+	{
+		"code": "BT",
+		"name": "Botoșani",
+		"gstStateCode": null
+	},
+	{
+		"code": "BR",
+		"name": "Brăila",
+		"gstStateCode": null
+	},
+	{
+		"code": "BV",
+		"name": "Brașov",
+		"gstStateCode": null
+	},
+	{
+		"code": "B",
+		"name": "Bucharest",
+		"gstStateCode": null
+	},
+	{
+		"code": "BZ",
+		"name": "Buzău",
+		"gstStateCode": null
+	},
+	{
+		"code": "CL",
+		"name": "Călărași",
+		"gstStateCode": null
+	},
+	{
+		"code": "CS",
+		"name": "Caraș-Severin",
+		"gstStateCode": null
+	},
+	{
+		"code": "CJ",
+		"name": "Cluj",
+		"gstStateCode": null
+	},
+	{
+		"code": "CT",
+		"name": "Constanța",
+		"gstStateCode": null
+	},
+	{
+		"code": "CV",
+		"name": "Covasna",
+		"gstStateCode": null
+	},
+	{
+		"code": "DB",
+		"name": "Dâmbovița",
+		"gstStateCode": null
+	},
+	{
+		"code": "DJ",
+		"name": "Dolj",
+		"gstStateCode": null
+	},
+	{
+		"code": "GL",
+		"name": "Galați",
+		"gstStateCode": null
+	},
+	{
+		"code": "GR",
+		"name": "Giurgiu",
+		"gstStateCode": null
+	},
+	{
+		"code": "GJ",
+		"name": "Gorj",
+		"gstStateCode": null
+	},
+	{
+		"code": "HR",
+		"name": "Harghita",
+		"gstStateCode": null
+	},
+	{
+		"code": "HD",
+		"name": "Hunedoara",
+		"gstStateCode": null
+	},
+	{
+		"code": "IL",
+		"name": "Ialomița",
+		"gstStateCode": null
+	},
+	{
+		"code": "IS",
+		"name": "Iași",
+		"gstStateCode": null
+	},
+	{
+		"code": "IF",
+		"name": "Ilfov",
+		"gstStateCode": null
+	},
+	{
+		"code": "MM",
+		"name": "Maramureș",
+		"gstStateCode": null
+	},
+	{
+		"code": "MH",
+		"name": "Mehedinți",
+		"gstStateCode": null
+	},
+	{
+		"code": "MS",
+		"name": "Mureș",
+		"gstStateCode": null
+	},
+	{
+		"code": "NT",
+		"name": "Neamț",
+		"gstStateCode": null
+	},
+	{
+		"code": "OT",
+		"name": "Olt",
+		"gstStateCode": null
+	},
+	{
+		"code": "PH",
+		"name": "Prahova",
+		"gstStateCode": null
+	},
+	{
+		"code": "SJ",
+		"name": "Sălaj",
+		"gstStateCode": null
+	},
+	{
+		"code": "SM",
+		"name": "Satu Mare",
+		"gstStateCode": null
+	},
+	{
+		"code": "SB",
+		"name": "Sibiu",
+		"gstStateCode": null
+	},
+	{
+		"code": "SV",
+		"name": "Suceava",
+		"gstStateCode": null
+	},
+	{
+		"code": "TR",
+		"name": "Teleorman",
+		"gstStateCode": null
+	},
+	{
+		"code": "TM",
+		"name": "Timiș",
+		"gstStateCode": null
+	},
+	{
+		"code": "TL",
+		"name": "Tulcea",
+		"gstStateCode": null
+	},
+	{
+		"code": "VL",
+		"name": "Vâlcea",
+		"gstStateCode": null
+	},
+	{
+		"code": "VS",
+		"name": "Vaslui",
+		"gstStateCode": null
+	},
+	{
+		"code": "VN",
+		"name": "Vrancea",
+		"gstStateCode": null
+	}
+]

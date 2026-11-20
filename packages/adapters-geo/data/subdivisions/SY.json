@@ -1,0 +1,72 @@
+[
+	{
+		"code": "HA",
+		"name": "Al-Hasakah",
+		"gstStateCode": null
+	},
+	{
+		"code": "RA",
+		"name": "Al-Raqqah",
+		"gstStateCode": null
+	},
+	{
+		"code": "HL",
+		"name": "Aleppo",
+		"gstStateCode": null
+	},
+	{
+		"code": "SU",
+		"name": "As-Suwayda",
+		"gstStateCode": null
+	},
+	{
+		"code": "DI",
+		"name": "Damascus",
+		"gstStateCode": null
+	},
+	{
+		"code": "DR",
+		"name": "Daraa",
+		"gstStateCode": null
+	},
+	{
+		"code": "DY",
+		"name": "Deir ez-Zor",
+		"gstStateCode": null
+	},
+	{
+		"code": "HM",
+		"name": "Hama",
+		"gstStateCode": null
+	},
+	{
+		"code": "HI",
+		"name": "Homs",
+		"gstStateCode": null
+	},
+	{
+		"code": "ID",
+		"name": "Idlib",
+		"gstStateCode": null
+	},
+	{
+		"code": "LA",
+		"name": "Latakia",
+		"gstStateCode": null
+	},
+	{
+		"code": "QU",
+		"name": "Quneitra",
+		"gstStateCode": null
+	},
+	{
+		"code": "RD",
+		"name": "Rif Dimashq",
+		"gstStateCode": null
+	},
+	{
+		"code": "TA",
+		"name": "Tartus",
+		"gstStateCode": null
+	}
+]

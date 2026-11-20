@@ -1,0 +1,102 @@
+[
+	{
+		"code": "65",
+		"name": "Abruzzo",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Aosta Valley",
+		"gstStateCode": null
+	},
+	{
+		"code": "75",
+		"name": "Apulia",
+		"gstStateCode": null
+	},
+	{
+		"code": "77",
+		"name": "Basilicata",
+		"gstStateCode": null
+	},
+	{
+		"code": "78",
+		"name": "Calabria",
+		"gstStateCode": null
+	},
+	{
+		"code": "72",
+		"name": "Campania",
+		"gstStateCode": null
+	},
+	{
+		"code": "45",
+		"name": "Emilia-Romagna",
+		"gstStateCode": null
+	},
+	{
+		"code": "36",
+		"name": "Friuli–Venezia Giulia",
+		"gstStateCode": null
+	},
+	{
+		"code": "62",
+		"name": "Lazio",
+		"gstStateCode": null
+	},
+	{
+		"code": "42",
+		"name": "Liguria",
+		"gstStateCode": null
+	},
+	{
+		"code": "25",
+		"name": "Lombardy",
+		"gstStateCode": null
+	},
+	{
+		"code": "57",
+		"name": "Marche",
+		"gstStateCode": null
+	},
+	{
+		"code": "67",
+		"name": "Molise",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Piedmont",
+		"gstStateCode": null
+	},
+	{
+		"code": "88",
+		"name": "Sardinia",
+		"gstStateCode": null
+	},
+	{
+		"code": "82",
+		"name": "Sicily",
+		"gstStateCode": null
+	},
+	{
+		"code": "32",
+		"name": "Trentino-South Tyrol",
+		"gstStateCode": null
+	},
+	{
+		"code": "52",
+		"name": "Tuscany",
+		"gstStateCode": null
+	},
+	{
+		"code": "55",
+		"name": "Umbria",
+		"gstStateCode": null
+	},
+	{
+		"code": "34",
+		"name": "Veneto",
+		"gstStateCode": null
+	}
+]

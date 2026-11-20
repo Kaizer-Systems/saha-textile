@@ -1,0 +1,102 @@
+[
+	{
+		"code": "33",
+		"name": "Bumthang",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Chukha",
+		"gstStateCode": null
+	},
+	{
+		"code": "22",
+		"name": "Dagana",
+		"gstStateCode": null
+	},
+	{
+		"code": "GA",
+		"name": "Gasa",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Haa",
+		"gstStateCode": null
+	},
+	{
+		"code": "44",
+		"name": "Lhuntse",
+		"gstStateCode": null
+	},
+	{
+		"code": "42",
+		"name": "Mongar",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Paro",
+		"gstStateCode": null
+	},
+	{
+		"code": "43",
+		"name": "Pemagatshel",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Punakha",
+		"gstStateCode": null
+	},
+	{
+		"code": "45",
+		"name": "Samdrup Jongkhar",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Samtse",
+		"gstStateCode": null
+	},
+	{
+		"code": "31",
+		"name": "Sarpang",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Thimphu",
+		"gstStateCode": null
+	},
+	{
+		"code": "TY",
+		"name": "Trashi Yangtse",
+		"gstStateCode": null
+	},
+	{
+		"code": "41",
+		"name": "Trashigang",
+		"gstStateCode": null
+	},
+	{
+		"code": "32",
+		"name": "Trongsa",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Tsirang",
+		"gstStateCode": null
+	},
+	{
+		"code": "24",
+		"name": "Wangdue Phodrang",
+		"gstStateCode": null
+	},
+	{
+		"code": "34",
+		"name": "Zhemgang",
+		"gstStateCode": null
+	}
+]

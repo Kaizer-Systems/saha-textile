@@ -1,0 +1,92 @@
+[
+	{
+		"code": "HCW",
+		"name": "Central and Western",
+		"gstStateCode": null
+	},
+	{
+		"code": "HEA",
+		"name": "Eastern",
+		"gstStateCode": null
+	},
+	{
+		"code": "NIS",
+		"name": "Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "KKC",
+		"name": "Kowloon City",
+		"gstStateCode": null
+	},
+	{
+		"code": "NKT",
+		"name": "Kwai Tsing",
+		"gstStateCode": null
+	},
+	{
+		"code": "KKT",
+		"name": "Kwun Tong",
+		"gstStateCode": null
+	},
+	{
+		"code": "NNO",
+		"name": "North",
+		"gstStateCode": null
+	},
+	{
+		"code": "NSK",
+		"name": "Sai Kung",
+		"gstStateCode": null
+	},
+	{
+		"code": "NST",
+		"name": "Sha Tin",
+		"gstStateCode": null
+	},
+	{
+		"code": "KSS",
+		"name": "Sham Shui Po",
+		"gstStateCode": null
+	},
+	{
+		"code": "HSO",
+		"name": "Southern",
+		"gstStateCode": null
+	},
+	{
+		"code": "NTP",
+		"name": "Tai Po",
+		"gstStateCode": null
+	},
+	{
+		"code": "NTW",
+		"name": "Tsuen Wan",
+		"gstStateCode": null
+	},
+	{
+		"code": "NTM",
+		"name": "Tuen Mun",
+		"gstStateCode": null
+	},
+	{
+		"code": "HWC",
+		"name": "Wan Chai",
+		"gstStateCode": null
+	},
+	{
+		"code": "KWT",
+		"name": "Wong Tai Sin",
+		"gstStateCode": null
+	},
+	{
+		"code": "KYT",
+		"name": "Yau Tsim Mong",
+		"gstStateCode": null
+	},
+	{
+		"code": "NYL",
+		"name": "Yuen Long",
+		"gstStateCode": null
+	}
+]

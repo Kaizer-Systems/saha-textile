@@ -1,0 +1,137 @@
+[
+	{
+		"code": "AC",
+		"name": "Acre",
+		"gstStateCode": null
+	},
+	{
+		"code": "AL",
+		"name": "Alagoas",
+		"gstStateCode": null
+	},
+	{
+		"code": "AP",
+		"name": "Amapá",
+		"gstStateCode": null
+	},
+	{
+		"code": "AM",
+		"name": "Amazonas",
+		"gstStateCode": null
+	},
+	{
+		"code": "BA",
+		"name": "Bahia",
+		"gstStateCode": null
+	},
+	{
+		"code": "CE",
+		"name": "Ceará",
+		"gstStateCode": null
+	},
+	{
+		"code": "DF",
+		"name": "Distrito Federal",
+		"gstStateCode": null
+	},
+	{
+		"code": "ES",
+		"name": "Espírito Santo",
+		"gstStateCode": null
+	},
+	{
+		"code": "GO",
+		"name": "Goiás",
+		"gstStateCode": null
+	},
+	{
+		"code": "MA",
+		"name": "Maranhão",
+		"gstStateCode": null
+	},
+	{
+		"code": "MT",
+		"name": "Mato Grosso",
+		"gstStateCode": null
+	},
+	{
+		"code": "MS",
+		"name": "Mato Grosso do Sul",
+		"gstStateCode": null
+	},
+	{
+		"code": "MG",
+		"name": "Minas Gerais",
+		"gstStateCode": null
+	},
+	{
+		"code": "PA",
+		"name": "Pará",
+		"gstStateCode": null
+	},
+	{
+		"code": "PB",
+		"name": "Paraíba",
+		"gstStateCode": null
+	},
+	{
+		"code": "PR",
+		"name": "Paraná",
+		"gstStateCode": null
+	},
+	{
+		"code": "PE",
+		"name": "Pernambuco",
+		"gstStateCode": null
+	},
+	{
+		"code": "PI",
+		"name": "Piauí",
+		"gstStateCode": null
+	},
+	{
+		"code": "RJ",
+		"name": "Rio de Janeiro",
+		"gstStateCode": null
+	},
+	{
+		"code": "RN",
+		"name": "Rio Grande do Norte",
+		"gstStateCode": null
+	},
+	{
+		"code": "RS",
+		"name": "Rio Grande do Sul",
+		"gstStateCode": null
+	},
+	{
+		"code": "RO",
+		"name": "Rondônia",
+		"gstStateCode": null
+	},
+	{
+		"code": "RR",
+		"name": "Roraima",
+		"gstStateCode": null
+	},
+	{
+		"code": "SC",
+		"name": "Santa Catarina",
+		"gstStateCode": null
+	},
+	{
+		"code": "SP",
+		"name": "São Paulo",
+		"gstStateCode": null
+	},
+	{
+		"code": "SE",
+		"name": "Sergipe",
+		"gstStateCode": null
+	},
+	{
+		"code": "TO",
+		"name": "Tocantins",
+		"gstStateCode": null
+	}
+]

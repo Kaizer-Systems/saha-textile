@@ -1,0 +1,122 @@
+[
+	{
+		"code": "C",
+		"name": "Autonomous City of Buenos Aires",
+		"gstStateCode": null
+	},
+	{
+		"code": "B",
+		"name": "Buenos Aires",
+		"gstStateCode": null
+	},
+	{
+		"code": "K",
+		"name": "Catamarca",
+		"gstStateCode": null
+	},
+	{
+		"code": "H",
+		"name": "Chaco",
+		"gstStateCode": null
+	},
+	{
+		"code": "U",
+		"name": "Chubut",
+		"gstStateCode": null
+	},
+	{
+		"code": "X",
+		"name": "Córdoba",
+		"gstStateCode": null
+	},
+	{
+		"code": "W",
+		"name": "Corrientes",
+		"gstStateCode": null
+	},
+	{
+		"code": "E",
+		"name": "Entre Ríos",
+		"gstStateCode": null
+	},
+	{
+		"code": "P",
+		"name": "Formosa",
+		"gstStateCode": null
+	},
+	{
+		"code": "Y",
+		"name": "Jujuy",
+		"gstStateCode": null
+	},
+	{
+		"code": "L",
+		"name": "La Pampa",
+		"gstStateCode": null
+	},
+	{
+		"code": "F",
+		"name": "La Rioja",
+		"gstStateCode": null
+	},
+	{
+		"code": "M",
+		"name": "Mendoza",
+		"gstStateCode": null
+	},
+	{
+		"code": "N",
+		"name": "Misiones",
+		"gstStateCode": null
+	},
+	{
+		"code": "Q",
+		"name": "Neuquén",
+		"gstStateCode": null
+	},
+	{
+		"code": "R",
+		"name": "Río Negro",
+		"gstStateCode": null
+	},
+	{
+		"code": "A",
+		"name": "Salta",
+		"gstStateCode": null
+	},
+	{
+		"code": "J",
+		"name": "San Juan",
+		"gstStateCode": null
+	},
+	{
+		"code": "D",
+		"name": "San Luis",
+		"gstStateCode": null
+	},
+	{
+		"code": "Z",
+		"name": "Santa Cruz",
+		"gstStateCode": null
+	},
+	{
+		"code": "S",
+		"name": "Santa Fe",
+		"gstStateCode": null
+	},
+	{
+		"code": "G",
+		"name": "Santiago del Estero",
+		"gstStateCode": null
+	},
+	{
+		"code": "V",
+		"name": "Tierra del Fuego",
+		"gstStateCode": null
+	},
+	{
+		"code": "T",
+		"name": "Tucumán",
+		"gstStateCode": null
+	}
+]

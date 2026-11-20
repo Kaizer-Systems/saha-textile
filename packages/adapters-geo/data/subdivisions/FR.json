@@ -1,0 +1,132 @@
+[
+	{
+		"code": "ARA",
+		"name": "Auvergne-Rhône-Alpes",
+		"gstStateCode": null
+	},
+	{
+		"code": "BFC",
+		"name": "Bourgogne-Franche-Comté",
+		"gstStateCode": null
+	},
+	{
+		"code": "BRE",
+		"name": "Bretagne",
+		"gstStateCode": null
+	},
+	{
+		"code": "CVL",
+		"name": "Centre-Val de Loire",
+		"gstStateCode": null
+	},
+	{
+		"code": "CP",
+		"name": "Clipperton",
+		"gstStateCode": null
+	},
+	{
+		"code": "20R",
+		"name": "Corse",
+		"gstStateCode": null
+	},
+	{
+		"code": "973",
+		"name": "French Guiana",
+		"gstStateCode": null
+	},
+	{
+		"code": "PF",
+		"name": "French Polynesia",
+		"gstStateCode": null
+	},
+	{
+		"code": "TF",
+		"name": "French Southern and Antarctic Lands",
+		"gstStateCode": null
+	},
+	{
+		"code": "GES",
+		"name": "Grand-Est",
+		"gstStateCode": null
+	},
+	{
+		"code": "971",
+		"name": "Guadeloupe",
+		"gstStateCode": null
+	},
+	{
+		"code": "HDF",
+		"name": "Hauts-de-France",
+		"gstStateCode": null
+	},
+	{
+		"code": "IDF",
+		"name": "Île-de-France",
+		"gstStateCode": null
+	},
+	{
+		"code": "974",
+		"name": "La Réunion",
+		"gstStateCode": null
+	},
+	{
+		"code": "972",
+		"name": "Martinique",
+		"gstStateCode": null
+	},
+	{
+		"code": "976",
+		"name": "Mayotte",
+		"gstStateCode": null
+	},
+	{
+		"code": "NOR",
+		"name": "Normandie",
+		"gstStateCode": null
+	},
+	{
+		"code": "NAQ",
+		"name": "Nouvelle-Aquitaine",
+		"gstStateCode": null
+	},
+	{
+		"code": "NC",
+		"name": "Nouvelle-Calédonie",
+		"gstStateCode": null
+	},
+	{
+		"code": "OCC",
+		"name": "Occitanie",
+		"gstStateCode": null
+	},
+	{
+		"code": "PDL",
+		"name": "Pays-de-la-Loire",
+		"gstStateCode": null
+	},
+	{
+		"code": "PAC",
+		"name": "Provence-Alpes-Côte-d’Azur",
+		"gstStateCode": null
+	},
+	{
+		"code": "PM",
+		"name": "Saint Pierre and Miquelon",
+		"gstStateCode": null
+	},
+	{
+		"code": "BL",
+		"name": "Saint-Barthélemy",
+		"gstStateCode": null
+	},
+	{
+		"code": "MF",
+		"name": "Saint-Martin",
+		"gstStateCode": null
+	},
+	{
+		"code": "WF",
+		"name": "Wallis and Futuna",
+		"gstStateCode": null
+	}
+]

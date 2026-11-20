@@ -1,0 +1,82 @@
+[
+	{
+		"code": "BTH",
+		"name": "Bethlehem",
+		"gstStateCode": null
+	},
+	{
+		"code": "DEB",
+		"name": "Deir El Balah",
+		"gstStateCode": null
+	},
+	{
+		"code": "GZA",
+		"name": "Gaza",
+		"gstStateCode": null
+	},
+	{
+		"code": "HBN",
+		"name": "Hebron",
+		"gstStateCode": null
+	},
+	{
+		"code": "JEN",
+		"name": "Jenin",
+		"gstStateCode": null
+	},
+	{
+		"code": "JRH",
+		"name": "Jericho",
+		"gstStateCode": null
+	},
+	{
+		"code": "JEM",
+		"name": "Jerusalem (Quds)",
+		"gstStateCode": null
+	},
+	{
+		"code": "KYS",
+		"name": "Khan Yunis",
+		"gstStateCode": null
+	},
+	{
+		"code": "NBS",
+		"name": "Nablus",
+		"gstStateCode": null
+	},
+	{
+		"code": "NGZ",
+		"name": "North Gaza",
+		"gstStateCode": null
+	},
+	{
+		"code": "QQA",
+		"name": "Qalqilya",
+		"gstStateCode": null
+	},
+	{
+		"code": "RFH",
+		"name": "Rafah",
+		"gstStateCode": null
+	},
+	{
+		"code": "RBH",
+		"name": "Ramallah",
+		"gstStateCode": null
+	},
+	{
+		"code": "SLT",
+		"name": "Salfit",
+		"gstStateCode": null
+	},
+	{
+		"code": "TBS",
+		"name": "Tubas",
+		"gstStateCode": null
+	},
+	{
+		"code": "TKM",
+		"name": "Tulkarm",
+		"gstStateCode": null
+	}
+]

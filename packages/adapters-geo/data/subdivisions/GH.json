@@ -1,0 +1,82 @@
+[
+	{
+		"code": "AF",
+		"name": "Ahafo",
+		"gstStateCode": null
+	},
+	{
+		"code": "AH",
+		"name": "Ashanti",
+		"gstStateCode": null
+	},
+	{
+		"code": "BO",
+		"name": "Bono",
+		"gstStateCode": null
+	},
+	{
+		"code": "BE",
+		"name": "Bono East",
+		"gstStateCode": null
+	},
+	{
+		"code": "CP",
+		"name": "Central",
+		"gstStateCode": null
+	},
+	{
+		"code": "EP",
+		"name": "Eastern",
+		"gstStateCode": null
+	},
+	{
+		"code": "AA",
+		"name": "Greater Accra",
+		"gstStateCode": null
+	},
+	{
+		"code": "NE",
+		"name": "North East",
+		"gstStateCode": null
+	},
+	{
+		"code": "NP",
+		"name": "Northern",
+		"gstStateCode": null
+	},
+	{
+		"code": "OT",
+		"name": "Oti",
+		"gstStateCode": null
+	},
+	{
+		"code": "SV",
+		"name": "Savannah",
+		"gstStateCode": null
+	},
+	{
+		"code": "UE",
+		"name": "Upper East",
+		"gstStateCode": null
+	},
+	{
+		"code": "UW",
+		"name": "Upper West",
+		"gstStateCode": null
+	},
+	{
+		"code": "TV",
+		"name": "Volta",
+		"gstStateCode": null
+	},
+	{
+		"code": "WP",
+		"name": "Western",
+		"gstStateCode": null
+	},
+	{
+		"code": "WN",
+		"name": "Western North",
+		"gstStateCode": null
+	}
+]

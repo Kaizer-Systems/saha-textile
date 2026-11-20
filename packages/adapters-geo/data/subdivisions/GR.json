@@ -1,0 +1,72 @@
+[
+	{
+		"code": "I",
+		"name": "Attica",
+		"gstStateCode": null
+	},
+	{
+		"code": "H",
+		"name": "Central Greece",
+		"gstStateCode": null
+	},
+	{
+		"code": "B",
+		"name": "Central Macedonia",
+		"gstStateCode": null
+	},
+	{
+		"code": "M",
+		"name": "Crete",
+		"gstStateCode": null
+	},
+	{
+		"code": "A",
+		"name": "East Macedonia and Thrace",
+		"gstStateCode": null
+	},
+	{
+		"code": "D",
+		"name": "Epirus",
+		"gstStateCode": null
+	},
+	{
+		"code": "F",
+		"name": "Ionian Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "69",
+		"name": "Mount Athos",
+		"gstStateCode": null
+	},
+	{
+		"code": "K",
+		"name": "North Aegean",
+		"gstStateCode": null
+	},
+	{
+		"code": "J",
+		"name": "Peloponnese",
+		"gstStateCode": null
+	},
+	{
+		"code": "L",
+		"name": "South Aegean",
+		"gstStateCode": null
+	},
+	{
+		"code": "E",
+		"name": "Thessaly",
+		"gstStateCode": null
+	},
+	{
+		"code": "G",
+		"name": "West Greece",
+		"gstStateCode": null
+	},
+	{
+		"code": "C",
+		"name": "West Macedonia",
+		"gstStateCode": null
+	}
+]

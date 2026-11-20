@@ -1,0 +1,67 @@
+[
+	{
+		"code": "11",
+		"name": "Al Bahah",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Al Jawf",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Al Madinah",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Al-Qassim",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Asir",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Eastern Province",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Ha'il",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Jizan",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Makkah",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Najran",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Northern Borders",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Riyadh",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Tabuk",
+		"gstStateCode": null
+	}
+]

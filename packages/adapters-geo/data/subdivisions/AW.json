@@ -1,0 +1,47 @@
+[
+	{
+		"code": "01",
+		"name": "Noord",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Oranjestad",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Oranjestad East",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Oranjestad West",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Paradera",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "San Nicolaas Noord",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "San Nicolaas Zuid",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Santa Cruz",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Savaneta",
+		"gstStateCode": null
+	}
+]

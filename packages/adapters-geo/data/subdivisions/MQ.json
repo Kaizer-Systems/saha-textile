@@ -1,0 +1,22 @@
+[
+	{
+		"code": "01",
+		"name": "Fort-de-France",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "La Trinité",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Le Marin",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Saint-Pierre",
+		"gstStateCode": null
+	}
+]

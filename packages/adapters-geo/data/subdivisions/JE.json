@@ -1,0 +1,62 @@
+[
+	{
+		"code": "01",
+		"name": "Grouville",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "St Brelade",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "St Clement",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "St Helier",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "St John",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "St Lawrence",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "St Martin",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "St Mary",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "St Ouen",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "St Peter",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "St Saviour",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Trinity",
+		"gstStateCode": null
+	}
+]

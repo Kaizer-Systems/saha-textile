@@ -1,0 +1,57 @@
+[
+	{
+		"code": "P",
+		"name": "Cabo Delgado",
+		"gstStateCode": null
+	},
+	{
+		"code": "G",
+		"name": "Gaza",
+		"gstStateCode": null
+	},
+	{
+		"code": "I",
+		"name": "Inhambane",
+		"gstStateCode": null
+	},
+	{
+		"code": "B",
+		"name": "Manica",
+		"gstStateCode": null
+	},
+	{
+		"code": "L",
+		"name": "Maputo",
+		"gstStateCode": null
+	},
+	{
+		"code": "MPM",
+		"name": "Maputo",
+		"gstStateCode": null
+	},
+	{
+		"code": "N",
+		"name": "Nampula",
+		"gstStateCode": null
+	},
+	{
+		"code": "A",
+		"name": "Niassa",
+		"gstStateCode": null
+	},
+	{
+		"code": "S",
+		"name": "Sofala",
+		"gstStateCode": null
+	},
+	{
+		"code": "T",
+		"name": "Tete",
+		"gstStateCode": null
+	},
+	{
+		"code": "Q",
+		"name": "Zambezia",
+		"gstStateCode": null
+	}
+]

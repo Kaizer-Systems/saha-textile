@@ -1,0 +1,132 @@
+[
+	{
+		"code": "AMA",
+		"name": "Amazonas",
+		"gstStateCode": null
+	},
+	{
+		"code": "ANC",
+		"name": "Áncash",
+		"gstStateCode": null
+	},
+	{
+		"code": "APU",
+		"name": "Apurímac",
+		"gstStateCode": null
+	},
+	{
+		"code": "ARE",
+		"name": "Arequipa",
+		"gstStateCode": null
+	},
+	{
+		"code": "AYA",
+		"name": "Ayacucho",
+		"gstStateCode": null
+	},
+	{
+		"code": "CAJ",
+		"name": "Cajamarca",
+		"gstStateCode": null
+	},
+	{
+		"code": "CAL",
+		"name": "Callao",
+		"gstStateCode": null
+	},
+	{
+		"code": "CUS",
+		"name": "Cusco",
+		"gstStateCode": null
+	},
+	{
+		"code": "HUV",
+		"name": "Huancavelica",
+		"gstStateCode": null
+	},
+	{
+		"code": "HUC",
+		"name": "Huanuco",
+		"gstStateCode": null
+	},
+	{
+		"code": "ICA",
+		"name": "Ica",
+		"gstStateCode": null
+	},
+	{
+		"code": "JUN",
+		"name": "Junín",
+		"gstStateCode": null
+	},
+	{
+		"code": "LAL",
+		"name": "La Libertad",
+		"gstStateCode": null
+	},
+	{
+		"code": "LAM",
+		"name": "Lambayeque",
+		"gstStateCode": null
+	},
+	{
+		"code": "LIM",
+		"name": "Lima",
+		"gstStateCode": null
+	},
+	{
+		"code": "LOR",
+		"name": "Loreto",
+		"gstStateCode": null
+	},
+	{
+		"code": "MDD",
+		"name": "Madre de Dios",
+		"gstStateCode": null
+	},
+	{
+		"code": "MOQ",
+		"name": "Moquegua",
+		"gstStateCode": null
+	},
+	{
+		"code": "LMA",
+		"name": "Municipalidad Metropolitana de Lima",
+		"gstStateCode": null
+	},
+	{
+		"code": "PAS",
+		"name": "Pasco",
+		"gstStateCode": null
+	},
+	{
+		"code": "PIU",
+		"name": "Piura",
+		"gstStateCode": null
+	},
+	{
+		"code": "PUN",
+		"name": "Puno",
+		"gstStateCode": null
+	},
+	{
+		"code": "SAM",
+		"name": "San Martín",
+		"gstStateCode": null
+	},
+	{
+		"code": "TAC",
+		"name": "Tacna",
+		"gstStateCode": null
+	},
+	{
+		"code": "TUM",
+		"name": "Tumbes",
+		"gstStateCode": null
+	},
+	{
+		"code": "UCA",
+		"name": "Ucayali",
+		"gstStateCode": null
+	}
+]

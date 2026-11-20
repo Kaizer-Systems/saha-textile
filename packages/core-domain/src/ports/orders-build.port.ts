@@ -188,8 +188,11 @@ export interface OrderSettingsRepository {
 export interface GeoDataPort {
 	countries(): Promise<GeoCountry[]>;
 	country(code: string): Promise<GeoCountryDetail | null>;
-	/** India Post directory; `deliverable` is null while no courier is connected. */
-	pin(pin: string): Promise<PinLookup>;
+	/**
+	 * India Post directory; `deliverable` is null while no courier is connected. Null when the PIN
+	 * directory is not loaded yet (no data.gov.in key): address checks then skip the PIN checks.
+	 */
+	pin(pin: string): Promise<PinLookup | null>;
 	/** Mobile number lengths for a calling code (from libphonenumber's data). */
 	mobileLengths(callingCode: string): Promise<number[] | null>;
 	/** Full check of a phone number with libphonenumber's rules. */

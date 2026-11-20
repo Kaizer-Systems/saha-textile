@@ -1,0 +1,22 @@
+[
+	{
+		"code": "C",
+		"name": "Connacht",
+		"gstStateCode": null
+	},
+	{
+		"code": "L",
+		"name": "Leinster",
+		"gstStateCode": null
+	},
+	{
+		"code": "M",
+		"name": "Munster",
+		"gstStateCode": null
+	},
+	{
+		"code": "U",
+		"name": "Ulster",
+		"gstStateCode": null
+	}
+]

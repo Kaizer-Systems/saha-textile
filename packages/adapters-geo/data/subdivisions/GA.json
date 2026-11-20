@@ -1,0 +1,47 @@
+[
+	{
+		"code": "1",
+		"name": "Estuaire",
+		"gstStateCode": null
+	},
+	{
+		"code": "2",
+		"name": "Haut-Ogooué",
+		"gstStateCode": null
+	},
+	{
+		"code": "3",
+		"name": "Moyen-Ogooué",
+		"gstStateCode": null
+	},
+	{
+		"code": "4",
+		"name": "Ngounié",
+		"gstStateCode": null
+	},
+	{
+		"code": "5",
+		"name": "Nyanga",
+		"gstStateCode": null
+	},
+	{
+		"code": "6",
+		"name": "Ogooué-Ivindo",
+		"gstStateCode": null
+	},
+	{
+		"code": "7",
+		"name": "Ogooué-Lolo",
+		"gstStateCode": null
+	},
+	{
+		"code": "8",
+		"name": "Ogooué-Maritime",
+		"gstStateCode": null
+	},
+	{
+		"code": "9",
+		"name": "Woleu-Ntem",
+		"gstStateCode": null
+	}
+]

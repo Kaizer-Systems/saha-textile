@@ -1,0 +1,72 @@
+[
+	{
+		"code": "AH",
+		"name": "Ahuachapán",
+		"gstStateCode": null
+	},
+	{
+		"code": "CA",
+		"name": "Cabañas",
+		"gstStateCode": null
+	},
+	{
+		"code": "CH",
+		"name": "Chalatenango",
+		"gstStateCode": null
+	},
+	{
+		"code": "CU",
+		"name": "Cuscatlán",
+		"gstStateCode": null
+	},
+	{
+		"code": "LI",
+		"name": "La Libertad",
+		"gstStateCode": null
+	},
+	{
+		"code": "PA",
+		"name": "La Paz",
+		"gstStateCode": null
+	},
+	{
+		"code": "UN",
+		"name": "La Unión",
+		"gstStateCode": null
+	},
+	{
+		"code": "MO",
+		"name": "Morazán",
+		"gstStateCode": null
+	},
+	{
+		"code": "SM",
+		"name": "San Miguel",
+		"gstStateCode": null
+	},
+	{
+		"code": "SS",
+		"name": "San Salvador",
+		"gstStateCode": null
+	},
+	{
+		"code": "SV",
+		"name": "San Vicente",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Santa Ana",
+		"gstStateCode": null
+	},
+	{
+		"code": "SO",
+		"name": "Sonsonate",
+		"gstStateCode": null
+	},
+	{
+		"code": "US",
+		"name": "Usulután",
+		"gstStateCode": null
+	}
+]

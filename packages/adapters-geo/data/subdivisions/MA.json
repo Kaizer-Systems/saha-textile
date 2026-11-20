@@ -1,0 +1,62 @@
+[
+	{
+		"code": "05",
+		"name": "Béni Mellal-Khénifra",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Casablanca-Settat",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Dakhla-Oued Ed-Dahab (EH)",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Drâa-Tafilalet",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Fès-Meknès",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Guelmim-Oued Noun (EH-partial)",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "L'Oriental",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Laâyoune-Sakia El Hamra (EH-partial)",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Marrakesh-Safi",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Rabat-Salé-Kénitra",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Souss-Massa",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Tanger-Tétouan-Al Hoceïma",
+		"gstStateCode": null
+	}
+]

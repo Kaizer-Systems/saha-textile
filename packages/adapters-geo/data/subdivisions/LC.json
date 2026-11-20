@@ -1,0 +1,52 @@
+[
+	{
+		"code": "01",
+		"name": "Anse la Raye",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Canaries",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Castries",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Choiseul",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Dennery",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Gros Islet",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Laborie",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Micoud",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Soufrière",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Vieux Fort",
+		"gstStateCode": null
+	}
+]

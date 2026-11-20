@@ -1,0 +1,22 @@
+[
+	{
+		"code": "01",
+		"name": "Saint-Benoît",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Saint-Denis",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Saint-Paul",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Saint-Pierre",
+		"gstStateCode": null
+	}
+]

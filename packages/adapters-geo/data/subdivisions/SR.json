@@ -1,0 +1,52 @@
+[
+	{
+		"code": "BR",
+		"name": "Brokopondo",
+		"gstStateCode": null
+	},
+	{
+		"code": "CM",
+		"name": "Commewijne",
+		"gstStateCode": null
+	},
+	{
+		"code": "CR",
+		"name": "Coronie",
+		"gstStateCode": null
+	},
+	{
+		"code": "MA",
+		"name": "Marowijne",
+		"gstStateCode": null
+	},
+	{
+		"code": "NI",
+		"name": "Nickerie",
+		"gstStateCode": null
+	},
+	{
+		"code": "PR",
+		"name": "Para",
+		"gstStateCode": null
+	},
+	{
+		"code": "PM",
+		"name": "Paramaribo",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Saramacca",
+		"gstStateCode": null
+	},
+	{
+		"code": "SI",
+		"name": "Sipaliwini",
+		"gstStateCode": null
+	},
+	{
+		"code": "WA",
+		"name": "Wanica",
+		"gstStateCode": null
+	}
+]

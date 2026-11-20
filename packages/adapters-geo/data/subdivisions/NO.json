@@ -1,0 +1,87 @@
+[
+	{
+		"code": "42",
+		"name": "Agder",
+		"gstStateCode": null
+	},
+	{
+		"code": "32",
+		"name": "Akershus",
+		"gstStateCode": null
+	},
+	{
+		"code": "33",
+		"name": "Buskerud",
+		"gstStateCode": null
+	},
+	{
+		"code": "56",
+		"name": "Finnmark",
+		"gstStateCode": null
+	},
+	{
+		"code": "34",
+		"name": "Innlandet",
+		"gstStateCode": null
+	},
+	{
+		"code": "22",
+		"name": "Jan Mayen",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Møre og Romsdal",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Nordland",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Oslo",
+		"gstStateCode": null
+	},
+	{
+		"code": "31",
+		"name": "Østfold",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Rogaland",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Svalbard",
+		"gstStateCode": null
+	},
+	{
+		"code": "40",
+		"name": "Telemark",
+		"gstStateCode": null
+	},
+	{
+		"code": "55",
+		"name": "Troms",
+		"gstStateCode": null
+	},
+	{
+		"code": "50",
+		"name": "Trøndelag",
+		"gstStateCode": null
+	},
+	{
+		"code": "39",
+		"name": "Vestfold",
+		"gstStateCode": null
+	},
+	{
+		"code": "46",
+		"name": "Vestland",
+		"gstStateCode": null
+	}
+]

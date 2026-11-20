@@ -1,0 +1,137 @@
+[
+	{
+		"code": "43",
+		"name": "Autonomous Republic of Crimea",
+		"gstStateCode": null
+	},
+	{
+		"code": "71",
+		"name": "Cherkaska",
+		"gstStateCode": null
+	},
+	{
+		"code": "74",
+		"name": "Chernihivska",
+		"gstStateCode": null
+	},
+	{
+		"code": "77",
+		"name": "Chernivetska",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Dnipropetrovska",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Donetska",
+		"gstStateCode": null
+	},
+	{
+		"code": "26",
+		"name": "Ivano-Frankivska",
+		"gstStateCode": null
+	},
+	{
+		"code": "63",
+		"name": "Kharkivska",
+		"gstStateCode": null
+	},
+	{
+		"code": "65",
+		"name": "Khersonska",
+		"gstStateCode": null
+	},
+	{
+		"code": "68",
+		"name": "Khmelnytska",
+		"gstStateCode": null
+	},
+	{
+		"code": "35",
+		"name": "Kirovohradska",
+		"gstStateCode": null
+	},
+	{
+		"code": "30",
+		"name": "Kyiv",
+		"gstStateCode": null
+	},
+	{
+		"code": "32",
+		"name": "Kyivska",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Luhanska",
+		"gstStateCode": null
+	},
+	{
+		"code": "46",
+		"name": "Lvivska",
+		"gstStateCode": null
+	},
+	{
+		"code": "48",
+		"name": "Mykolaivska",
+		"gstStateCode": null
+	},
+	{
+		"code": "51",
+		"name": "Odeska",
+		"gstStateCode": null
+	},
+	{
+		"code": "53",
+		"name": "Poltavska",
+		"gstStateCode": null
+	},
+	{
+		"code": "56",
+		"name": "Rivnenska",
+		"gstStateCode": null
+	},
+	{
+		"code": "40",
+		"name": "Sevastopol",
+		"gstStateCode": null
+	},
+	{
+		"code": "59",
+		"name": "Sumska",
+		"gstStateCode": null
+	},
+	{
+		"code": "61",
+		"name": "Ternopilska",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Vinnytska",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Volynska",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Zakarpatska",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Zaporizka",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Zhytomyrska",
+		"gstStateCode": null
+	}
+]

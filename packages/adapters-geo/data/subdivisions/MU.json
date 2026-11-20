@@ -1,0 +1,62 @@
+[
+	{
+		"code": "AG",
+		"name": "Agalega Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "BL",
+		"name": "Black River",
+		"gstStateCode": null
+	},
+	{
+		"code": "FL",
+		"name": "Flacq",
+		"gstStateCode": null
+	},
+	{
+		"code": "GP",
+		"name": "Grand Port",
+		"gstStateCode": null
+	},
+	{
+		"code": "MO",
+		"name": "Moka",
+		"gstStateCode": null
+	},
+	{
+		"code": "PA",
+		"name": "Pamplemousses",
+		"gstStateCode": null
+	},
+	{
+		"code": "PW",
+		"name": "Plaines Wilhems",
+		"gstStateCode": null
+	},
+	{
+		"code": "PL",
+		"name": "Port Louis",
+		"gstStateCode": null
+	},
+	{
+		"code": "RR",
+		"name": "Rivière du Rempart",
+		"gstStateCode": null
+	},
+	{
+		"code": "RO",
+		"name": "Rodrigues Island",
+		"gstStateCode": null
+	},
+	{
+		"code": "CC",
+		"name": "Saint Brandon Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Savanne",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,142 @@
+[
+	{
+		"code": "01",
+		"name": "Blagoevgrad",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Burgas",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Dobrich",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Gabrovo",
+		"gstStateCode": null
+	},
+	{
+		"code": "26",
+		"name": "Haskovo",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Kardzhali",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Kyustendil",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Lovech",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Montana",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Pazardzhik",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Pernik",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Pleven",
+		"gstStateCode": null
+	},
+	{
+		"code": "16",
+		"name": "Plovdiv",
+		"gstStateCode": null
+	},
+	{
+		"code": "17",
+		"name": "Razgrad",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Ruse",
+		"gstStateCode": null
+	},
+	{
+		"code": "27",
+		"name": "Shumen",
+		"gstStateCode": null
+	},
+	{
+		"code": "19",
+		"name": "Silistra",
+		"gstStateCode": null
+	},
+	{
+		"code": "20",
+		"name": "Sliven",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Smolyan",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Sofia",
+		"gstStateCode": null
+	},
+	{
+		"code": "22",
+		"name": "Sofia City",
+		"gstStateCode": null
+	},
+	{
+		"code": "24",
+		"name": "Stara Zagora",
+		"gstStateCode": null
+	},
+	{
+		"code": "25",
+		"name": "Targovishte",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Varna",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Veliko Tarnovo",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Vidin",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Vratsa",
+		"gstStateCode": null
+	},
+	{
+		"code": "28",
+		"name": "Yambol",
+		"gstStateCode": null
+	}
+]

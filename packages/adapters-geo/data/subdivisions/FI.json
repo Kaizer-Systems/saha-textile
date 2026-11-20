@@ -1,0 +1,97 @@
+[
+	{
+		"code": "01",
+		"name": "Åland Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Central Finland",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Central Ostrobothnia",
+		"gstStateCode": null
+	},
+	{
+		"code": "19",
+		"name": "Finland Proper",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Kainuu",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Kymenlaakso",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Lapland",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "North Karelia",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Northern Ostrobothnia",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Northern Savonia",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Ostrobothnia",
+		"gstStateCode": null
+	},
+	{
+		"code": "16",
+		"name": "Päijänne Tavastia",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Pirkanmaa",
+		"gstStateCode": null
+	},
+	{
+		"code": "17",
+		"name": "Satakunta",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "South Karelia",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Southern Ostrobothnia",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Southern Savonia",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Tavastia Proper",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Uusimaa",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,112 @@
+[
+	{
+		"code": "16",
+		"name": "Alta Verapaz",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Baja Verapaz",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Chimaltenango",
+		"gstStateCode": null
+	},
+	{
+		"code": "20",
+		"name": "Chiquimula",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "El Progreso",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Escuintla",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Guatemala",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Huehuetenango",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Izabal",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Jalapa",
+		"gstStateCode": null
+	},
+	{
+		"code": "22",
+		"name": "Jutiapa",
+		"gstStateCode": null
+	},
+	{
+		"code": "17",
+		"name": "Petén",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Quetzaltenango",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Quiché",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Retalhuleu",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Sacatepéquez",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "San Marcos",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Santa Rosa",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Sololá",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Suchitepéquez",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Totonicapán",
+		"gstStateCode": null
+	},
+	{
+		"code": "19",
+		"name": "Zacapa",
+		"gstStateCode": null
+	}
+]

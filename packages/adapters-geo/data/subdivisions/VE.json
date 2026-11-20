@@ -1,0 +1,127 @@
+[
+	{
+		"code": "Z",
+		"name": "Amazonas",
+		"gstStateCode": null
+	},
+	{
+		"code": "B",
+		"name": "Anzoátegui",
+		"gstStateCode": null
+	},
+	{
+		"code": "C",
+		"name": "Apure",
+		"gstStateCode": null
+	},
+	{
+		"code": "D",
+		"name": "Aragua",
+		"gstStateCode": null
+	},
+	{
+		"code": "E",
+		"name": "Barinas",
+		"gstStateCode": null
+	},
+	{
+		"code": "F",
+		"name": "Bolívar",
+		"gstStateCode": null
+	},
+	{
+		"code": "G",
+		"name": "Carabobo",
+		"gstStateCode": null
+	},
+	{
+		"code": "H",
+		"name": "Cojedes",
+		"gstStateCode": null
+	},
+	{
+		"code": "Y",
+		"name": "Delta Amacuro",
+		"gstStateCode": null
+	},
+	{
+		"code": "A",
+		"name": "Distrito Capital",
+		"gstStateCode": null
+	},
+	{
+		"code": "I",
+		"name": "Falcón",
+		"gstStateCode": null
+	},
+	{
+		"code": "W",
+		"name": "Federal Dependencies",
+		"gstStateCode": null
+	},
+	{
+		"code": "J",
+		"name": "Guárico",
+		"gstStateCode": null
+	},
+	{
+		"code": "X",
+		"name": "La Guaira",
+		"gstStateCode": null
+	},
+	{
+		"code": "K",
+		"name": "Lara",
+		"gstStateCode": null
+	},
+	{
+		"code": "L",
+		"name": "Mérida",
+		"gstStateCode": null
+	},
+	{
+		"code": "M",
+		"name": "Miranda",
+		"gstStateCode": null
+	},
+	{
+		"code": "N",
+		"name": "Monagas",
+		"gstStateCode": null
+	},
+	{
+		"code": "O",
+		"name": "Nueva Esparta",
+		"gstStateCode": null
+	},
+	{
+		"code": "P",
+		"name": "Portuguesa",
+		"gstStateCode": null
+	},
+	{
+		"code": "R",
+		"name": "Sucre",
+		"gstStateCode": null
+	},
+	{
+		"code": "S",
+		"name": "Táchira",
+		"gstStateCode": null
+	},
+	{
+		"code": "T",
+		"name": "Trujillo",
+		"gstStateCode": null
+	},
+	{
+		"code": "U",
+		"name": "Yaracuy",
+		"gstStateCode": null
+	},
+	{
+		"code": "V",
+		"name": "Zulia",
+		"gstStateCode": null
+	}
+]

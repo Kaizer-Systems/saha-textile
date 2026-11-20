@@ -1,0 +1,112 @@
+[
+	{
+		"code": "AB",
+		"name": "Abyan",
+		"gstStateCode": null
+	},
+	{
+		"code": "DA",
+		"name": "Ad Dali'",
+		"gstStateCode": null
+	},
+	{
+		"code": "AD",
+		"name": "Adan",
+		"gstStateCode": null
+	},
+	{
+		"code": "BA",
+		"name": "Al Bayda'",
+		"gstStateCode": null
+	},
+	{
+		"code": "HU",
+		"name": "Al Hudaydah",
+		"gstStateCode": null
+	},
+	{
+		"code": "JA",
+		"name": "Al Jawf",
+		"gstStateCode": null
+	},
+	{
+		"code": "MR",
+		"name": "Al Mahrah",
+		"gstStateCode": null
+	},
+	{
+		"code": "MW",
+		"name": "Al Mahwit",
+		"gstStateCode": null
+	},
+	{
+		"code": "SA",
+		"name": "Amanat Al Asimah",
+		"gstStateCode": null
+	},
+	{
+		"code": "AM",
+		"name": "Amran",
+		"gstStateCode": null
+	},
+	{
+		"code": "DH",
+		"name": "Dhamar",
+		"gstStateCode": null
+	},
+	{
+		"code": "HD",
+		"name": "Hadhramaut",
+		"gstStateCode": null
+	},
+	{
+		"code": "HJ",
+		"name": "Hajjah",
+		"gstStateCode": null
+	},
+	{
+		"code": "IB",
+		"name": "Ibb",
+		"gstStateCode": null
+	},
+	{
+		"code": "LA",
+		"name": "Lahij",
+		"gstStateCode": null
+	},
+	{
+		"code": "MA",
+		"name": "Ma'rib",
+		"gstStateCode": null
+	},
+	{
+		"code": "RA",
+		"name": "Raymah",
+		"gstStateCode": null
+	},
+	{
+		"code": "SD",
+		"name": "Saada",
+		"gstStateCode": null
+	},
+	{
+		"code": "SN",
+		"name": "Sana'a",
+		"gstStateCode": null
+	},
+	{
+		"code": "SH",
+		"name": "Shabwah",
+		"gstStateCode": null
+	},
+	{
+		"code": "SU",
+		"name": "Socotra",
+		"gstStateCode": null
+	},
+	{
+		"code": "TA",
+		"name": "Ta'izz",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,37 @@
+[
+	{
+		"code": "A",
+		"name": "Alajuela",
+		"gstStateCode": null
+	},
+	{
+		"code": "C",
+		"name": "Cartago",
+		"gstStateCode": null
+	},
+	{
+		"code": "G",
+		"name": "Guanacaste",
+		"gstStateCode": null
+	},
+	{
+		"code": "H",
+		"name": "Heredia",
+		"gstStateCode": null
+	},
+	{
+		"code": "L",
+		"name": "Limón",
+		"gstStateCode": null
+	},
+	{
+		"code": "P",
+		"name": "Puntarenas",
+		"gstStateCode": null
+	},
+	{
+		"code": "SJ",
+		"name": "San José",
+		"gstStateCode": null
+	}
+]

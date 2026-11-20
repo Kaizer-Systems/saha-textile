@@ -1,0 +1,87 @@
+[
+	{
+		"code": "BB",
+		"name": "Bamingui-Bangoran",
+		"gstStateCode": null
+	},
+	{
+		"code": "BGF",
+		"name": "Bangui",
+		"gstStateCode": null
+	},
+	{
+		"code": "BK",
+		"name": "Basse-Kotto",
+		"gstStateCode": null
+	},
+	{
+		"code": "HM",
+		"name": "Haut-Mbomou",
+		"gstStateCode": null
+	},
+	{
+		"code": "HK",
+		"name": "Haute-Kotto",
+		"gstStateCode": null
+	},
+	{
+		"code": "KG",
+		"name": "Kémo",
+		"gstStateCode": null
+	},
+	{
+		"code": "LB",
+		"name": "Lobaye",
+		"gstStateCode": null
+	},
+	{
+		"code": "HS",
+		"name": "Mambéré-Kadéï",
+		"gstStateCode": null
+	},
+	{
+		"code": "MB",
+		"name": "Mbomou",
+		"gstStateCode": null
+	},
+	{
+		"code": "KB",
+		"name": "Nana-Grébizi",
+		"gstStateCode": null
+	},
+	{
+		"code": "NM",
+		"name": "Nana-Mambéré",
+		"gstStateCode": null
+	},
+	{
+		"code": "MP",
+		"name": "Ombella-M'Poko",
+		"gstStateCode": null
+	},
+	{
+		"code": "UK",
+		"name": "Ouaka",
+		"gstStateCode": null
+	},
+	{
+		"code": "AC",
+		"name": "Ouham",
+		"gstStateCode": null
+	},
+	{
+		"code": "OP",
+		"name": "Ouham-Pendé",
+		"gstStateCode": null
+	},
+	{
+		"code": "SE",
+		"name": "Sangha-Mbaéré",
+		"gstStateCode": null
+	},
+	{
+		"code": "VK",
+		"name": "Vakaga",
+		"gstStateCode": null
+	}
+]

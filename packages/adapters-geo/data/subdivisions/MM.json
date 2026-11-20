@@ -1,0 +1,77 @@
+[
+	{
+		"code": "07",
+		"name": "Ayeyarwady",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Bago",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Chin",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Kachin",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Kayah",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Kayin",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Magway",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Mandalay",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Mon State",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Naypyidaw",
+		"gstStateCode": null
+	},
+	{
+		"code": "16",
+		"name": "Rakhine",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Sagaing",
+		"gstStateCode": null
+	},
+	{
+		"code": "17",
+		"name": "Shan",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Tanintharyi",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Yangon",
+		"gstStateCode": null
+	}
+]

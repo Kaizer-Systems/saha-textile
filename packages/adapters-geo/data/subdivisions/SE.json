@@ -1,0 +1,107 @@
+[
+	{
+		"code": "K",
+		"name": "Blekinge",
+		"gstStateCode": null
+	},
+	{
+		"code": "W",
+		"name": "Dalarna",
+		"gstStateCode": null
+	},
+	{
+		"code": "X",
+		"name": "Gävleborg",
+		"gstStateCode": null
+	},
+	{
+		"code": "I",
+		"name": "Gotland",
+		"gstStateCode": null
+	},
+	{
+		"code": "N",
+		"name": "Halland",
+		"gstStateCode": null
+	},
+	{
+		"code": "Z",
+		"name": "Jämtland",
+		"gstStateCode": null
+	},
+	{
+		"code": "F",
+		"name": "Jönköping",
+		"gstStateCode": null
+	},
+	{
+		"code": "H",
+		"name": "Kalmar",
+		"gstStateCode": null
+	},
+	{
+		"code": "G",
+		"name": "Kronoberg",
+		"gstStateCode": null
+	},
+	{
+		"code": "BD",
+		"name": "Norrbotten",
+		"gstStateCode": null
+	},
+	{
+		"code": "T",
+		"name": "Örebro",
+		"gstStateCode": null
+	},
+	{
+		"code": "E",
+		"name": "Östergötland",
+		"gstStateCode": null
+	},
+	{
+		"code": "M",
+		"name": "Skåne",
+		"gstStateCode": null
+	},
+	{
+		"code": "D",
+		"name": "Södermanland",
+		"gstStateCode": null
+	},
+	{
+		"code": "AB",
+		"name": "Stockholm",
+		"gstStateCode": null
+	},
+	{
+		"code": "C",
+		"name": "Uppsala",
+		"gstStateCode": null
+	},
+	{
+		"code": "S",
+		"name": "Värmland",
+		"gstStateCode": null
+	},
+	{
+		"code": "AC",
+		"name": "Västerbotten",
+		"gstStateCode": null
+	},
+	{
+		"code": "Y",
+		"name": "Västernorrland",
+		"gstStateCode": null
+	},
+	{
+		"code": "U",
+		"name": "Västmanland",
+		"gstStateCode": null
+	},
+	{
+		"code": "O",
+		"name": "Västra Götaland",
+		"gstStateCode": null
+	}
+]

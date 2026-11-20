@@ -1,0 +1,32 @@
+[
+	{
+		"code": "T",
+		"name": "Antananarivo",
+		"gstStateCode": null
+	},
+	{
+		"code": "D",
+		"name": "Antsiranana",
+		"gstStateCode": null
+	},
+	{
+		"code": "F",
+		"name": "Fianarantsoa",
+		"gstStateCode": null
+	},
+	{
+		"code": "M",
+		"name": "Mahajanga",
+		"gstStateCode": null
+	},
+	{
+		"code": "A",
+		"name": "Toamasina",
+		"gstStateCode": null
+	},
+	{
+		"code": "U",
+		"name": "Toliara",
+		"gstStateCode": null
+	}
+]

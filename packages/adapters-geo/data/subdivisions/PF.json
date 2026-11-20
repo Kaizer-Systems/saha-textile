@@ -1,0 +1,27 @@
+[
+	{
+		"code": "01",
+		"name": "Austral Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Leeward Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Marquesas Islands",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Tuamotu-Gambier",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Windward Islands",
+		"gstStateCode": null
+	}
+]

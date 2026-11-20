@@ -1,0 +1,62 @@
+[
+	{
+		"code": "04",
+		"name": "Alderney",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Castel",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Forest",
+		"gstStateCode": null
+	},
+	{
+		"code": "07",
+		"name": "Sark",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "St Andrew",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "St Martin",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "St Peter Port",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "St Pierre du Bois",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "St Sampson",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "St Saviour",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Torteval",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Vale",
+		"gstStateCode": null
+	}
+]

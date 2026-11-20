@@ -1,0 +1,62 @@
+[
+	{
+		"code": "DR",
+		"name": "Drenthe",
+		"gstStateCode": null
+	},
+	{
+		"code": "FL",
+		"name": "Flevoland",
+		"gstStateCode": null
+	},
+	{
+		"code": "FR",
+		"name": "Friesland",
+		"gstStateCode": null
+	},
+	{
+		"code": "GE",
+		"name": "Gelderland",
+		"gstStateCode": null
+	},
+	{
+		"code": "GR",
+		"name": "Groningen",
+		"gstStateCode": null
+	},
+	{
+		"code": "LI",
+		"name": "Limburg",
+		"gstStateCode": null
+	},
+	{
+		"code": "NB",
+		"name": "North Brabant",
+		"gstStateCode": null
+	},
+	{
+		"code": "NH",
+		"name": "North Holland",
+		"gstStateCode": null
+	},
+	{
+		"code": "OV",
+		"name": "Overijssel",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZH",
+		"name": "South Holland",
+		"gstStateCode": null
+	},
+	{
+		"code": "UT",
+		"name": "Utrecht",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZE",
+		"name": "Zeeland",
+		"gstStateCode": null
+	}
+]

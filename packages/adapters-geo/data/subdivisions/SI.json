@@ -1,0 +1,1062 @@
+[
+	{
+		"code": "001",
+		"name": "Ajdovščina",
+		"gstStateCode": null
+	},
+	{
+		"code": "213",
+		"name": "Ankaran",
+		"gstStateCode": null
+	},
+	{
+		"code": "195",
+		"name": "Apače",
+		"gstStateCode": null
+	},
+	{
+		"code": "002",
+		"name": "Beltinci",
+		"gstStateCode": null
+	},
+	{
+		"code": "148",
+		"name": "Benedikt",
+		"gstStateCode": null
+	},
+	{
+		"code": "149",
+		"name": "Bistrica ob Sotli",
+		"gstStateCode": null
+	},
+	{
+		"code": "003",
+		"name": "Bled",
+		"gstStateCode": null
+	},
+	{
+		"code": "150",
+		"name": "Bloke",
+		"gstStateCode": null
+	},
+	{
+		"code": "004",
+		"name": "Bohinj",
+		"gstStateCode": null
+	},
+	{
+		"code": "005",
+		"name": "Borovnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "006",
+		"name": "Bovec",
+		"gstStateCode": null
+	},
+	{
+		"code": "151",
+		"name": "Braslovče",
+		"gstStateCode": null
+	},
+	{
+		"code": "007",
+		"name": "Brda",
+		"gstStateCode": null
+	},
+	{
+		"code": "009",
+		"name": "Brežice",
+		"gstStateCode": null
+	},
+	{
+		"code": "008",
+		"name": "Brezovica",
+		"gstStateCode": null
+	},
+	{
+		"code": "152",
+		"name": "Cankova",
+		"gstStateCode": null
+	},
+	{
+		"code": "011",
+		"name": "Celje",
+		"gstStateCode": null
+	},
+	{
+		"code": "012",
+		"name": "Cerklje na Gorenjskem",
+		"gstStateCode": null
+	},
+	{
+		"code": "013",
+		"name": "Cerknica",
+		"gstStateCode": null
+	},
+	{
+		"code": "014",
+		"name": "Cerkno",
+		"gstStateCode": null
+	},
+	{
+		"code": "153",
+		"name": "Cerkvenjak",
+		"gstStateCode": null
+	},
+	{
+		"code": "196",
+		"name": "Cirkulane",
+		"gstStateCode": null
+	},
+	{
+		"code": "015",
+		"name": "Črenšovci",
+		"gstStateCode": null
+	},
+	{
+		"code": "016",
+		"name": "Črna na Koroškem",
+		"gstStateCode": null
+	},
+	{
+		"code": "017",
+		"name": "Črnomelj",
+		"gstStateCode": null
+	},
+	{
+		"code": "018",
+		"name": "Destrnik",
+		"gstStateCode": null
+	},
+	{
+		"code": "019",
+		"name": "Divača",
+		"gstStateCode": null
+	},
+	{
+		"code": "154",
+		"name": "Dobje",
+		"gstStateCode": null
+	},
+	{
+		"code": "020",
+		"name": "Dobrepolje",
+		"gstStateCode": null
+	},
+	{
+		"code": "155",
+		"name": "Dobrna",
+		"gstStateCode": null
+	},
+	{
+		"code": "021",
+		"name": "Dobrova–Polhov Gradec",
+		"gstStateCode": null
+	},
+	{
+		"code": "156",
+		"name": "Dobrovnik",
+		"gstStateCode": null
+	},
+	{
+		"code": "022",
+		"name": "Dol pri Ljubljani",
+		"gstStateCode": null
+	},
+	{
+		"code": "157",
+		"name": "Dolenjske Toplice",
+		"gstStateCode": null
+	},
+	{
+		"code": "023",
+		"name": "Domžale",
+		"gstStateCode": null
+	},
+	{
+		"code": "024",
+		"name": "Dornava",
+		"gstStateCode": null
+	},
+	{
+		"code": "025",
+		"name": "Dravograd",
+		"gstStateCode": null
+	},
+	{
+		"code": "026",
+		"name": "Duplek",
+		"gstStateCode": null
+	},
+	{
+		"code": "027",
+		"name": "Gorenja Vas–Poljane",
+		"gstStateCode": null
+	},
+	{
+		"code": "028",
+		"name": "Gorišnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "207",
+		"name": "Gorje",
+		"gstStateCode": null
+	},
+	{
+		"code": "029",
+		"name": "Gornja Radgona",
+		"gstStateCode": null
+	},
+	{
+		"code": "030",
+		"name": "Gornji Grad",
+		"gstStateCode": null
+	},
+	{
+		"code": "031",
+		"name": "Gornji Petrovci",
+		"gstStateCode": null
+	},
+	{
+		"code": "158",
+		"name": "Grad",
+		"gstStateCode": null
+	},
+	{
+		"code": "032",
+		"name": "Grosuplje",
+		"gstStateCode": null
+	},
+	{
+		"code": "159",
+		"name": "Hajdina",
+		"gstStateCode": null
+	},
+	{
+		"code": "160",
+		"name": "Hoče–Slivnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "161",
+		"name": "Hodoš",
+		"gstStateCode": null
+	},
+	{
+		"code": "162",
+		"name": "Horjul",
+		"gstStateCode": null
+	},
+	{
+		"code": "034",
+		"name": "Hrastnik",
+		"gstStateCode": null
+	},
+	{
+		"code": "035",
+		"name": "Hrpelje–Kozina",
+		"gstStateCode": null
+	},
+	{
+		"code": "036",
+		"name": "Idrija",
+		"gstStateCode": null
+	},
+	{
+		"code": "037",
+		"name": "Ig",
+		"gstStateCode": null
+	},
+	{
+		"code": "038",
+		"name": "Ilirska Bistrica",
+		"gstStateCode": null
+	},
+	{
+		"code": "039",
+		"name": "Ivančna Gorica",
+		"gstStateCode": null
+	},
+	{
+		"code": "040",
+		"name": "Izola",
+		"gstStateCode": null
+	},
+	{
+		"code": "041",
+		"name": "Jesenice",
+		"gstStateCode": null
+	},
+	{
+		"code": "163",
+		"name": "Jezersko",
+		"gstStateCode": null
+	},
+	{
+		"code": "042",
+		"name": "Juršinci",
+		"gstStateCode": null
+	},
+	{
+		"code": "043",
+		"name": "Kamnik",
+		"gstStateCode": null
+	},
+	{
+		"code": "044",
+		"name": "Kanal ob Soči",
+		"gstStateCode": null
+	},
+	{
+		"code": "045",
+		"name": "Kidričevo",
+		"gstStateCode": null
+	},
+	{
+		"code": "046",
+		"name": "Kobarid",
+		"gstStateCode": null
+	},
+	{
+		"code": "047",
+		"name": "Kobilje",
+		"gstStateCode": null
+	},
+	{
+		"code": "048",
+		"name": "Kočevje",
+		"gstStateCode": null
+	},
+	{
+		"code": "049",
+		"name": "Komen",
+		"gstStateCode": null
+	},
+	{
+		"code": "164",
+		"name": "Komenda",
+		"gstStateCode": null
+	},
+	{
+		"code": "050",
+		"name": "Koper",
+		"gstStateCode": null
+	},
+	{
+		"code": "197",
+		"name": "Kostanjevica na Krki",
+		"gstStateCode": null
+	},
+	{
+		"code": "165",
+		"name": "Kostel",
+		"gstStateCode": null
+	},
+	{
+		"code": "051",
+		"name": "Kozje",
+		"gstStateCode": null
+	},
+	{
+		"code": "052",
+		"name": "Kranj",
+		"gstStateCode": null
+	},
+	{
+		"code": "053",
+		"name": "Kranjska Gora",
+		"gstStateCode": null
+	},
+	{
+		"code": "166",
+		"name": "Križevci",
+		"gstStateCode": null
+	},
+	{
+		"code": "054",
+		"name": "Krško",
+		"gstStateCode": null
+	},
+	{
+		"code": "055",
+		"name": "Kungota",
+		"gstStateCode": null
+	},
+	{
+		"code": "056",
+		"name": "Kuzma",
+		"gstStateCode": null
+	},
+	{
+		"code": "057",
+		"name": "Laško",
+		"gstStateCode": null
+	},
+	{
+		"code": "058",
+		"name": "Lenart",
+		"gstStateCode": null
+	},
+	{
+		"code": "059",
+		"name": "Lendava",
+		"gstStateCode": null
+	},
+	{
+		"code": "060",
+		"name": "Litija",
+		"gstStateCode": null
+	},
+	{
+		"code": "061",
+		"name": "Ljubljana",
+		"gstStateCode": null
+	},
+	{
+		"code": "062",
+		"name": "Ljubno",
+		"gstStateCode": null
+	},
+	{
+		"code": "063",
+		"name": "Ljutomer",
+		"gstStateCode": null
+	},
+	{
+		"code": "208",
+		"name": "Log–Dragomer",
+		"gstStateCode": null
+	},
+	{
+		"code": "064",
+		"name": "Logatec",
+		"gstStateCode": null
+	},
+	{
+		"code": "065",
+		"name": "Loška Dolina",
+		"gstStateCode": null
+	},
+	{
+		"code": "066",
+		"name": "Loški Potok",
+		"gstStateCode": null
+	},
+	{
+		"code": "167",
+		"name": "Lovrenc na Pohorju",
+		"gstStateCode": null
+	},
+	{
+		"code": "067",
+		"name": "Luče",
+		"gstStateCode": null
+	},
+	{
+		"code": "068",
+		"name": "Lukovica",
+		"gstStateCode": null
+	},
+	{
+		"code": "069",
+		"name": "Majšperk",
+		"gstStateCode": null
+	},
+	{
+		"code": "198",
+		"name": "Makole",
+		"gstStateCode": null
+	},
+	{
+		"code": "070",
+		"name": "Maribor",
+		"gstStateCode": null
+	},
+	{
+		"code": "168",
+		"name": "Markovci",
+		"gstStateCode": null
+	},
+	{
+		"code": "071",
+		"name": "Medvode",
+		"gstStateCode": null
+	},
+	{
+		"code": "072",
+		"name": "Mengeš",
+		"gstStateCode": null
+	},
+	{
+		"code": "073",
+		"name": "Metlika",
+		"gstStateCode": null
+	},
+	{
+		"code": "074",
+		"name": "Mežica",
+		"gstStateCode": null
+	},
+	{
+		"code": "169",
+		"name": "Miklavž na Dravskem Polju",
+		"gstStateCode": null
+	},
+	{
+		"code": "075",
+		"name": "Miren–Kostanjevica",
+		"gstStateCode": null
+	},
+	{
+		"code": "212",
+		"name": "Mirna",
+		"gstStateCode": null
+	},
+	{
+		"code": "170",
+		"name": "Mirna Peč",
+		"gstStateCode": null
+	},
+	{
+		"code": "076",
+		"name": "Mislinja",
+		"gstStateCode": null
+	},
+	{
+		"code": "199",
+		"name": "Mokronog–Trebelno",
+		"gstStateCode": null
+	},
+	{
+		"code": "077",
+		"name": "Moravče",
+		"gstStateCode": null
+	},
+	{
+		"code": "078",
+		"name": "Moravske Toplice",
+		"gstStateCode": null
+	},
+	{
+		"code": "079",
+		"name": "Mozirje",
+		"gstStateCode": null
+	},
+	{
+		"code": "080",
+		"name": "Murska Sobota",
+		"gstStateCode": null
+	},
+	{
+		"code": "081",
+		"name": "Muta",
+		"gstStateCode": null
+	},
+	{
+		"code": "082",
+		"name": "Naklo",
+		"gstStateCode": null
+	},
+	{
+		"code": "083",
+		"name": "Nazarje",
+		"gstStateCode": null
+	},
+	{
+		"code": "084",
+		"name": "Nova Gorica",
+		"gstStateCode": null
+	},
+	{
+		"code": "085",
+		"name": "Novo Mesto",
+		"gstStateCode": null
+	},
+	{
+		"code": "086",
+		"name": "Odranci",
+		"gstStateCode": null
+	},
+	{
+		"code": "171",
+		"name": "Oplotnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "087",
+		"name": "Ormož",
+		"gstStateCode": null
+	},
+	{
+		"code": "088",
+		"name": "Osilnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "089",
+		"name": "Pesnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "090",
+		"name": "Piran",
+		"gstStateCode": null
+	},
+	{
+		"code": "091",
+		"name": "Pivka",
+		"gstStateCode": null
+	},
+	{
+		"code": "092",
+		"name": "Podčetrtek",
+		"gstStateCode": null
+	},
+	{
+		"code": "172",
+		"name": "Podlehnik",
+		"gstStateCode": null
+	},
+	{
+		"code": "093",
+		"name": "Podvelka",
+		"gstStateCode": null
+	},
+	{
+		"code": "200",
+		"name": "Poljčane",
+		"gstStateCode": null
+	},
+	{
+		"code": "173",
+		"name": "Polzela",
+		"gstStateCode": null
+	},
+	{
+		"code": "094",
+		"name": "Postojna",
+		"gstStateCode": null
+	},
+	{
+		"code": "174",
+		"name": "Prebold",
+		"gstStateCode": null
+	},
+	{
+		"code": "095",
+		"name": "Preddvor",
+		"gstStateCode": null
+	},
+	{
+		"code": "175",
+		"name": "Prevalje",
+		"gstStateCode": null
+	},
+	{
+		"code": "096",
+		"name": "Ptuj",
+		"gstStateCode": null
+	},
+	{
+		"code": "097",
+		"name": "Puconci",
+		"gstStateCode": null
+	},
+	{
+		"code": "098",
+		"name": "Rače–Fram",
+		"gstStateCode": null
+	},
+	{
+		"code": "099",
+		"name": "Radeče",
+		"gstStateCode": null
+	},
+	{
+		"code": "100",
+		"name": "Radenci",
+		"gstStateCode": null
+	},
+	{
+		"code": "101",
+		"name": "Radlje ob Dravi",
+		"gstStateCode": null
+	},
+	{
+		"code": "102",
+		"name": "Radovljica",
+		"gstStateCode": null
+	},
+	{
+		"code": "103",
+		"name": "Ravne na Koroškem",
+		"gstStateCode": null
+	},
+	{
+		"code": "176",
+		"name": "Razkrižje",
+		"gstStateCode": null
+	},
+	{
+		"code": "209",
+		"name": "Rečica ob Savinji",
+		"gstStateCode": null
+	},
+	{
+		"code": "201",
+		"name": "Renče–Vogrsko",
+		"gstStateCode": null
+	},
+	{
+		"code": "104",
+		"name": "Ribnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "177",
+		"name": "Ribnica na Pohorju",
+		"gstStateCode": null
+	},
+	{
+		"code": "106",
+		"name": "Rogaška Slatina",
+		"gstStateCode": null
+	},
+	{
+		"code": "105",
+		"name": "Rogašovci",
+		"gstStateCode": null
+	},
+	{
+		"code": "107",
+		"name": "Rogatec",
+		"gstStateCode": null
+	},
+	{
+		"code": "108",
+		"name": "Ruše",
+		"gstStateCode": null
+	},
+	{
+		"code": "033",
+		"name": "Šalovci",
+		"gstStateCode": null
+	},
+	{
+		"code": "178",
+		"name": "Selnica ob Dravi",
+		"gstStateCode": null
+	},
+	{
+		"code": "109",
+		"name": "Semič",
+		"gstStateCode": null
+	},
+	{
+		"code": "183",
+		"name": "Šempeter–Vrtojba",
+		"gstStateCode": null
+	},
+	{
+		"code": "117",
+		"name": "Šenčur",
+		"gstStateCode": null
+	},
+	{
+		"code": "118",
+		"name": "Šentilj",
+		"gstStateCode": null
+	},
+	{
+		"code": "119",
+		"name": "Šentjernej",
+		"gstStateCode": null
+	},
+	{
+		"code": "120",
+		"name": "Šentjur",
+		"gstStateCode": null
+	},
+	{
+		"code": "211",
+		"name": "Šentrupert",
+		"gstStateCode": null
+	},
+	{
+		"code": "110",
+		"name": "Sevnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "111",
+		"name": "Sežana",
+		"gstStateCode": null
+	},
+	{
+		"code": "121",
+		"name": "Škocjan",
+		"gstStateCode": null
+	},
+	{
+		"code": "122",
+		"name": "Škofja Loka",
+		"gstStateCode": null
+	},
+	{
+		"code": "123",
+		"name": "Škofljica",
+		"gstStateCode": null
+	},
+	{
+		"code": "112",
+		"name": "Slovenj Gradec",
+		"gstStateCode": null
+	},
+	{
+		"code": "113",
+		"name": "Slovenska Bistrica",
+		"gstStateCode": null
+	},
+	{
+		"code": "114",
+		"name": "Slovenske Konjice",
+		"gstStateCode": null
+	},
+	{
+		"code": "124",
+		"name": "Šmarje pri Jelšah",
+		"gstStateCode": null
+	},
+	{
+		"code": "206",
+		"name": "Šmarješke Toplice",
+		"gstStateCode": null
+	},
+	{
+		"code": "125",
+		"name": "Šmartno ob Paki",
+		"gstStateCode": null
+	},
+	{
+		"code": "194",
+		"name": "Šmartno pri Litiji",
+		"gstStateCode": null
+	},
+	{
+		"code": "179",
+		"name": "Sodražica",
+		"gstStateCode": null
+	},
+	{
+		"code": "180",
+		"name": "Solčava",
+		"gstStateCode": null
+	},
+	{
+		"code": "126",
+		"name": "Šoštanj",
+		"gstStateCode": null
+	},
+	{
+		"code": "202",
+		"name": "Središče ob Dravi",
+		"gstStateCode": null
+	},
+	{
+		"code": "115",
+		"name": "Starše",
+		"gstStateCode": null
+	},
+	{
+		"code": "127",
+		"name": "Štore",
+		"gstStateCode": null
+	},
+	{
+		"code": "203",
+		"name": "Straža",
+		"gstStateCode": null
+	},
+	{
+		"code": "181",
+		"name": "Sveta Ana",
+		"gstStateCode": null
+	},
+	{
+		"code": "204",
+		"name": "Sveta Trojica v Slovenskih Goricah",
+		"gstStateCode": null
+	},
+	{
+		"code": "182",
+		"name": "Sveti Andraž v Slovenskih Goricah",
+		"gstStateCode": null
+	},
+	{
+		"code": "116",
+		"name": "Sveti Jurij ob Ščavnici",
+		"gstStateCode": null
+	},
+	{
+		"code": "210",
+		"name": "Sveti Jurij v Slovenskih Goricah",
+		"gstStateCode": null
+	},
+	{
+		"code": "205",
+		"name": "Sveti Tomaž",
+		"gstStateCode": null
+	},
+	{
+		"code": "184",
+		"name": "Tabor",
+		"gstStateCode": null
+	},
+	{
+		"code": "010",
+		"name": "Tišina",
+		"gstStateCode": null
+	},
+	{
+		"code": "128",
+		"name": "Tolmin",
+		"gstStateCode": null
+	},
+	{
+		"code": "129",
+		"name": "Trbovlje",
+		"gstStateCode": null
+	},
+	{
+		"code": "130",
+		"name": "Trebnje",
+		"gstStateCode": null
+	},
+	{
+		"code": "185",
+		"name": "Trnovska Vas",
+		"gstStateCode": null
+	},
+	{
+		"code": "131",
+		"name": "Tržič",
+		"gstStateCode": null
+	},
+	{
+		"code": "186",
+		"name": "Trzin",
+		"gstStateCode": null
+	},
+	{
+		"code": "132",
+		"name": "Turnišče",
+		"gstStateCode": null
+	},
+	{
+		"code": "133",
+		"name": "Velenje",
+		"gstStateCode": null
+	},
+	{
+		"code": "187",
+		"name": "Velika Polana",
+		"gstStateCode": null
+	},
+	{
+		"code": "134",
+		"name": "Velike Lašče",
+		"gstStateCode": null
+	},
+	{
+		"code": "188",
+		"name": "Veržej",
+		"gstStateCode": null
+	},
+	{
+		"code": "135",
+		"name": "Videm",
+		"gstStateCode": null
+	},
+	{
+		"code": "136",
+		"name": "Vipava",
+		"gstStateCode": null
+	},
+	{
+		"code": "137",
+		"name": "Vitanje",
+		"gstStateCode": null
+	},
+	{
+		"code": "138",
+		"name": "Vodice",
+		"gstStateCode": null
+	},
+	{
+		"code": "139",
+		"name": "Vojnik",
+		"gstStateCode": null
+	},
+	{
+		"code": "189",
+		"name": "Vransko",
+		"gstStateCode": null
+	},
+	{
+		"code": "140",
+		"name": "Vrhnika",
+		"gstStateCode": null
+	},
+	{
+		"code": "141",
+		"name": "Vuzenica",
+		"gstStateCode": null
+	},
+	{
+		"code": "142",
+		"name": "Zagorje ob Savi",
+		"gstStateCode": null
+	},
+	{
+		"code": "190",
+		"name": "Žalec",
+		"gstStateCode": null
+	},
+	{
+		"code": "143",
+		"name": "Zavrč",
+		"gstStateCode": null
+	},
+	{
+		"code": "146",
+		"name": "Železniki",
+		"gstStateCode": null
+	},
+	{
+		"code": "191",
+		"name": "Žetale",
+		"gstStateCode": null
+	},
+	{
+		"code": "147",
+		"name": "Žiri",
+		"gstStateCode": null
+	},
+	{
+		"code": "192",
+		"name": "Žirovnica",
+		"gstStateCode": null
+	},
+	{
+		"code": "144",
+		"name": "Zreče",
+		"gstStateCode": null
+	},
+	{
+		"code": "193",
+		"name": "Žužemberk",
+		"gstStateCode": null
+	}
+]

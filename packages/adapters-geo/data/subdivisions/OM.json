@@ -1,0 +1,57 @@
+[
+	{
+		"code": "DA",
+		"name": "Ad Dakhiliyah",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZA",
+		"name": "Ad Dhahirah",
+		"gstStateCode": null
+	},
+	{
+		"code": "BS",
+		"name": "Al Batinah North",
+		"gstStateCode": null
+	},
+	{
+		"code": "BJ",
+		"name": "Al Batinah South",
+		"gstStateCode": null
+	},
+	{
+		"code": "BU",
+		"name": "Al Buraimi",
+		"gstStateCode": null
+	},
+	{
+		"code": "WU",
+		"name": "Al Wusta",
+		"gstStateCode": null
+	},
+	{
+		"code": "SS",
+		"name": "Ash Sharqiyah North",
+		"gstStateCode": null
+	},
+	{
+		"code": "SJ",
+		"name": "Ash Sharqiyah South",
+		"gstStateCode": null
+	},
+	{
+		"code": "ZU",
+		"name": "Dhofar",
+		"gstStateCode": null
+	},
+	{
+		"code": "MU",
+		"name": "Musandam",
+		"gstStateCode": null
+	},
+	{
+		"code": "MA",
+		"name": "Muscat",
+		"gstStateCode": null
+	}
+]

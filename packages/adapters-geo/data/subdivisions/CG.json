@@ -1,0 +1,62 @@
+[
+	{
+		"code": "11",
+		"name": "Bouenza",
+		"gstStateCode": null
+	},
+	{
+		"code": "BZV",
+		"name": "Brazzaville",
+		"gstStateCode": null
+	},
+	{
+		"code": "8",
+		"name": "Cuvette",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Cuvette-Ouest",
+		"gstStateCode": null
+	},
+	{
+		"code": "5",
+		"name": "Kouilou",
+		"gstStateCode": null
+	},
+	{
+		"code": "2",
+		"name": "Lékoumou",
+		"gstStateCode": null
+	},
+	{
+		"code": "7",
+		"name": "Likouala",
+		"gstStateCode": null
+	},
+	{
+		"code": "9",
+		"name": "Niari",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Plateaux",
+		"gstStateCode": null
+	},
+	{
+		"code": "16",
+		"name": "Pointe-Noire",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Pool",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Sangha",
+		"gstStateCode": null
+	}
+]

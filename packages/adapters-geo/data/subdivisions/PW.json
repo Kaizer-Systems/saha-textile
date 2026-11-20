@@ -1,0 +1,82 @@
+[
+	{
+		"code": "002",
+		"name": "Aimeliik",
+		"gstStateCode": null
+	},
+	{
+		"code": "004",
+		"name": "Airai",
+		"gstStateCode": null
+	},
+	{
+		"code": "010",
+		"name": "Angaur",
+		"gstStateCode": null
+	},
+	{
+		"code": "050",
+		"name": "Hatohobei",
+		"gstStateCode": null
+	},
+	{
+		"code": "100",
+		"name": "Kayangel",
+		"gstStateCode": null
+	},
+	{
+		"code": "150",
+		"name": "Koror",
+		"gstStateCode": null
+	},
+	{
+		"code": "212",
+		"name": "Melekeok",
+		"gstStateCode": null
+	},
+	{
+		"code": "214",
+		"name": "Ngaraard",
+		"gstStateCode": null
+	},
+	{
+		"code": "218",
+		"name": "Ngarchelong",
+		"gstStateCode": null
+	},
+	{
+		"code": "222",
+		"name": "Ngardmau",
+		"gstStateCode": null
+	},
+	{
+		"code": "224",
+		"name": "Ngatpang",
+		"gstStateCode": null
+	},
+	{
+		"code": "226",
+		"name": "Ngchesar",
+		"gstStateCode": null
+	},
+	{
+		"code": "227",
+		"name": "Ngeremlengui",
+		"gstStateCode": null
+	},
+	{
+		"code": "228",
+		"name": "Ngiwal",
+		"gstStateCode": null
+	},
+	{
+		"code": "350",
+		"name": "Peleliu",
+		"gstStateCode": null
+	},
+	{
+		"code": "370",
+		"name": "Sonsorol",
+		"gstStateCode": null
+	}
+]

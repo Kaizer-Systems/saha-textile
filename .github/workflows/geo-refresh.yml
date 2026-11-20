@@ -1,0 +1,72 @@
+# Monthly refresh of the country, State, phone and PIN code data (owner decision DEC-GEO-REFRESH, 2026-11-20).
+#
+# Runs on GitHub's machines, never on our servers. It rebuilds packages/adapters-geo/data from the pinned
+# official sources (scripts/geo/build.mjs) and opens a pull request into `dev` only when a file changed; with no
+# change it ends quietly. A person reviews and merges. The PIN step needs the repository secret
+# DATA_GOV_IN_API_KEY (India Post's directory on data.gov.in); without it that step is skipped and the existing
+# PIN file is kept.
+name: Geo data refresh
+
+on:
+  schedule:
+    # 03:30 UTC on the 2nd of each month (09:00 IST).
+    - cron: '30 3 2 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: geo-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: dev
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install the geo package
+        run: pnpm install --frozen-lockfile --filter @saha-textile/adapters-geo
+
+      - name: Rebuild the data file
+        env:
+          DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
+        run: node scripts/geo/build.mjs
+
+      - name: Open a pull request when something changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- packages/adapters-geo/data && [ -z "$(git ls-files --others --exclude-standard packages/adapters-geo/data)" ]; then
+            echo "No change in the country, State, phone or PIN data."
+            exit 0
+          fi
+          branch="chore/geo-refresh-$(date -u +%Y-%m)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add packages/adapters-geo/data
+          git commit -m "chore(geo): monthly country, State, phone and PIN data refresh"
+          git push --force-with-lease origin "$branch"
+          if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
+            echo "The refresh pull request is already open; it now has this month's data."
+          else
+            gh pr create --base dev --head "$branch" \
+              --title "chore(geo): monthly country, State, phone and PIN data refresh" \
+              --body "Rebuilt by scripts/geo/build.mjs from the pinned sources (libphonenumber-js, dr5hn countries-states-cities, India Post via data.gov.in). Review the changed files and merge into dev."
+          fi

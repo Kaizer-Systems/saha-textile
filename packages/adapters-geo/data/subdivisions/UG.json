@@ -1,0 +1,22 @@
+[
+	{
+		"code": "C",
+		"name": "Central",
+		"gstStateCode": null
+	},
+	{
+		"code": "E",
+		"name": "Eastern",
+		"gstStateCode": null
+	},
+	{
+		"code": "N",
+		"name": "Northern",
+		"gstStateCode": null
+	},
+	{
+		"code": "W",
+		"name": "Western",
+		"gstStateCode": null
+	}
+]

@@ -1,0 +1,27 @@
+[
+	{
+		"code": "02",
+		"name": "Eastern",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Kigali",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Northern",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Southern",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Western",
+		"gstStateCode": null
+	}
+]

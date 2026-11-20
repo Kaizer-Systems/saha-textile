@@ -1,0 +1,127 @@
+[
+	{
+		"code": "1",
+		"name": "Banteay Meanchey",
+		"gstStateCode": null
+	},
+	{
+		"code": "2",
+		"name": "Battambang",
+		"gstStateCode": null
+	},
+	{
+		"code": "3",
+		"name": "Kampong Cham",
+		"gstStateCode": null
+	},
+	{
+		"code": "4",
+		"name": "Kampong Chhnang",
+		"gstStateCode": null
+	},
+	{
+		"code": "5",
+		"name": "Kampong Speu",
+		"gstStateCode": null
+	},
+	{
+		"code": "6",
+		"name": "Kampong Thom",
+		"gstStateCode": null
+	},
+	{
+		"code": "7",
+		"name": "Kampot",
+		"gstStateCode": null
+	},
+	{
+		"code": "8",
+		"name": "Kandal",
+		"gstStateCode": null
+	},
+	{
+		"code": "23",
+		"name": "Kep",
+		"gstStateCode": null
+	},
+	{
+		"code": "9",
+		"name": "Koh Kong",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Kratie",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Mondulkiri",
+		"gstStateCode": null
+	},
+	{
+		"code": "22",
+		"name": "Oddar Meanchey",
+		"gstStateCode": null
+	},
+	{
+		"code": "24",
+		"name": "Pailin",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Phnom Penh",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Preah Vihear",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Prey Veng",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Pursat",
+		"gstStateCode": null
+	},
+	{
+		"code": "16",
+		"name": "Ratanakiri",
+		"gstStateCode": null
+	},
+	{
+		"code": "17",
+		"name": "Siem Reap",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Sihanoukville",
+		"gstStateCode": null
+	},
+	{
+		"code": "19",
+		"name": "Stung Treng",
+		"gstStateCode": null
+	},
+	{
+		"code": "20",
+		"name": "Svay Rieng",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "Takeo",
+		"gstStateCode": null
+	},
+	{
+		"code": "25",
+		"name": "Tboung Khmum",
+		"gstStateCode": null
+	}
+]

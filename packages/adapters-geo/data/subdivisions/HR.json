@@ -1,0 +1,107 @@
+[
+	{
+		"code": "07",
+		"name": "Bjelovar-Bilogora",
+		"gstStateCode": null
+	},
+	{
+		"code": "12",
+		"name": "Brod-Posavina",
+		"gstStateCode": null
+	},
+	{
+		"code": "21",
+		"name": "City of Zagreb",
+		"gstStateCode": null
+	},
+	{
+		"code": "19",
+		"name": "Dubrovnik-Neretva",
+		"gstStateCode": null
+	},
+	{
+		"code": "18",
+		"name": "Istria",
+		"gstStateCode": null
+	},
+	{
+		"code": "04",
+		"name": "Karlovac",
+		"gstStateCode": null
+	},
+	{
+		"code": "06",
+		"name": "Koprivnica-Križevci",
+		"gstStateCode": null
+	},
+	{
+		"code": "02",
+		"name": "Krapina-Zagorje",
+		"gstStateCode": null
+	},
+	{
+		"code": "09",
+		"name": "Lika-Senj",
+		"gstStateCode": null
+	},
+	{
+		"code": "20",
+		"name": "Međimurje",
+		"gstStateCode": null
+	},
+	{
+		"code": "14",
+		"name": "Osijek-Baranja",
+		"gstStateCode": null
+	},
+	{
+		"code": "11",
+		"name": "Požega-Slavonia",
+		"gstStateCode": null
+	},
+	{
+		"code": "08",
+		"name": "Primorje-Gorski Kotar",
+		"gstStateCode": null
+	},
+	{
+		"code": "15",
+		"name": "Šibenik-Knin",
+		"gstStateCode": null
+	},
+	{
+		"code": "03",
+		"name": "Sisak-Moslavina",
+		"gstStateCode": null
+	},
+	{
+		"code": "17",
+		"name": "Split-Dalmatia",
+		"gstStateCode": null
+	},
+	{
+		"code": "05",
+		"name": "Varaždin",
+		"gstStateCode": null
+	},
+	{
+		"code": "10",
+		"name": "Virovitica-Podravina",
+		"gstStateCode": null
+	},
+	{
+		"code": "16",
+		"name": "Vukovar-Syrmia",
+		"gstStateCode": null
+	},
+	{
+		"code": "13",
+		"name": "Zadar",
+		"gstStateCode": null
+	},
+	{
+		"code": "01",
+		"name": "Zagreb",
+		"gstStateCode": null
+	}
+]

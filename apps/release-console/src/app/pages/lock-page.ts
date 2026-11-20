@@ -2,6 +2,8 @@ import {
 	ChangeDetectionStrategy,
 	Component,
 	type ElementRef,
+	Injector,
+	afterNextRender,
 	computed,
 	effect,
 	inject,
@@ -182,6 +184,7 @@ export class LockPage {
 	private readonly session = inject(ConsoleSession);
 	private readonly router = inject(Router);
 	private readonly boxes = viewChildren<ElementRef<HTMLInputElement>>('box');
+	private readonly injector = inject(Injector);
 	private readonly passwordBox = viewChild<ElementRef<HTMLInputElement>>('passwordBox');
 	protected readonly slots = [0, 1, 2, 3, 4, 5];
 	protected readonly digits = signal<string[]>(Array<string>(LENGTH).fill(''));
@@ -247,13 +250,18 @@ export class LockPage {
 		else if (e.key === 'ArrowRight' && i < LENGTH - 1) this.focus(i + 1);
 	}
 
+	/** Moves the keyboard to box `i` at once, so fast typing and pasting land in the right box. */
 	private focus(i: number): void {
 		queueMicrotask(() => this.boxes()[i]?.nativeElement.focus());
 	}
 
+	/**
+	 * Empties the boxes and puts the keyboard in the first one. The boxes are disabled while a PIN is
+	 * checked, and a disabled box cannot take the focus, so this waits for the render that enables them.
+	 */
 	private clear(): void {
 		this.digits.set(Array<string>(LENGTH).fill(''));
-		this.focus(0);
+		afterNextRender(() => this.boxes()[0]?.nativeElement.focus(), { injector: this.injector });
 	}
 
 	protected useMethod(m: 'pin' | 'password'): void {

@@ -24,7 +24,7 @@
  * Names and outcomes only: no value is printed. Stops at the first failing stage.
  */
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -233,8 +233,18 @@ const stages = {
 		const port = localPort();
 		const addresses = stackAddresses(port);
 		const fetch = (url) => {
-			const { hostname } = new URL(url);
-			return capture('curl', ['-fsSk', '--max-time', '20', '--resolve', `${hostname}:${port}:127.0.0.1`, url]);
+			const { hostname, pathname } = new URL(url);
+			const result = spawnSync(
+				'curl',
+				['-fsSk', '--max-time', '20', '--resolve', `${hostname}:${port}:127.0.0.1`, url],
+				{ encoding: 'utf8' },
+			);
+			if (result.status !== 0) {
+				throw new SecretsError(
+					`The stack did not answer ${pathname} on its edge (port ${port}). Is it running? pnpm stack:up, or the deploy stage.`,
+				);
+			}
+			return result.stdout;
 		};
 		report.step('record', 'Readiness through the edge');
 		const ready = JSON.parse(fetch(`${addresses.api}/health/ready`));
@@ -255,6 +265,54 @@ const stages = {
 		report.note('record', `Open the shop at ${addresses.shop} and the admin at ${addresses.admin}.`);
 	},
 };
+
+export const LOCK_FILE = `${LOCAL_RELEASE_DIR}/pipeline.lock`;
+
+/**
+ * One run at a time: two runs would share the registry, the proof's project and the stack. A lock
+ * left by a run that no longer exists (its process is gone) is taken over.
+ * @param {string} root
+ * @param {{ commit: string, isRunning?: (pid: number) => boolean }} options
+ * @returns {() => void} releases the lock
+ */
+export function acquireLock(root, { commit, isRunning = processRuns }) {
+	const path = join(root, LOCK_FILE);
+	mkdirSync(join(root, LOCAL_RELEASE_DIR), { recursive: true, mode: 0o700 });
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		try {
+			writeFileSync(path, JSON.stringify({ pid: process.pid, started: new Date().toISOString(), commit }), {
+				mode: 0o600,
+				flag: 'wx',
+			});
+			return () => rmSync(path, { force: true });
+		} catch (error) {
+			if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'EEXIST') throw error;
+			let held;
+			try {
+				held = JSON.parse(readFileSync(path, 'utf8'));
+			} catch {
+				held = {};
+			}
+			if (typeof held.pid === 'number' && isRunning(held.pid)) {
+				throw new SecretsError(
+					`Another pnpm pipeline:local run is in progress (process ${held.pid}, started ${held.started}). Wait for it, or stop it first.`,
+				);
+			}
+			rmSync(path, { force: true });
+		}
+	}
+	throw new SecretsError(`Could not take ${LOCK_FILE}.`);
+}
+
+/** @param {number} pid */
+function processRuns(pid) {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return /** @type {NodeJS.ErrnoException} */ (error).code === 'EPERM';
+	}
+}
 
 /** Says how many uncommitted changes a commit-built stage leaves out, and returns the count. */
 function reportDirty(report, stage, commit) {
@@ -296,6 +354,35 @@ async function main() {
 	// One commit for the whole run, so every stage proves the same code even if another chat commits
 	// meanwhile (this folder is shared).
 	const state = { release: undefined, commit: capture('git', ['rev-parse', 'HEAD']) };
+	let release;
+	try {
+		release = acquireLock(ROOT, { commit: state.commit });
+	} catch (error) {
+		report.stage('run', 'failed', { reason: error instanceof SecretsError ? error.message : String(error) });
+		process.exitCode = 1;
+		return;
+	}
+	process.once('SIGINT', () => {
+		release();
+		process.exit(130);
+	});
+	process.once('SIGTERM', () => {
+		release();
+		process.exit(143);
+	});
+	try {
+		await runStages(options, report, state);
+	} finally {
+		release();
+	}
+}
+
+/**
+ * @param {ReturnType<typeof parseArgs>} options
+ * @param {ReturnType<typeof reporter>} report
+ * @param {{ release: string | undefined, commit: string }} state
+ */
+async function runStages(options, report, state) {
 	report.note('run', `Commit ${state.commit.slice(0, 8)}.`);
 	const started = Date.now();
 	const results = {};

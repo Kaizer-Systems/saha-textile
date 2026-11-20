@@ -81,12 +81,14 @@
 		"MSG91_EMAIL_FROM_MARKETING",
 		"MSG91_EMAIL_FROM_ORDERS",
 		"MSG91_EMAIL_FROM_SHOP",
+		"MSG91_RECEIPT_TOKEN",
 		"MSG91_SENDER_ID",
 		"MSG91_TEMPLATE_OTP_EMAIL",
 		"MSG91_TEMPLATE_OTP_SMS",
 		"MSG91_WHATSAPP_NUMBER",
 		"NODE_ENV",
 		"NOTIFICATION_PROVIDER",
+		"OPS_TOKEN",
 		"OTP_MAX_ATTEMPTS",
 		"OTP_TTL_SECONDS",
 		"PAYPAL_CLIENT_ID",
@@ -203,7 +205,8 @@
 		"2026-11-19: owner decision L3 — mongo-app-password and redis-password are written from /api/MONGODB_PASSWORD and /api/REDIS_PASSWORD; the owner deletes both /infrastructure entries in all three projects.",
 		"2026-11-19: SHOP_ORIGIN added (read by the API since FX-8). Add it to the dev project /api; Compose sets it in staging and production.",
 		"2026-11-20: owner decision D2 — the public sign-in IDs are kept once, in /api: release.env gets GOOGLE_CLIENT_ID and FACEBOOK_APP_ID from /api/GOOGLE_OAUTH_CLIENT_ID and /api/FACEBOOK_OAUTH_APP_ID; the owner deletes both /deployment entries in all three projects.",
-		"2026-11-21: RELEASE_ALLOWED_BLANK is written by the release itself (names a server deploy was told to leave blank, from `--allow-blank`); it is never stored in Infisical, and an /api entry with that name is refused."
+		"2026-11-21: RELEASE_ALLOWED_BLANK is written by the release itself (names a server deploy was told to leave blank, from `--allow-blank`); it is never stored in Infisical, and an /api entry with that name is refused.",
+		"2026-11-21: OPS_TOKEN and MSG91_RECEIPT_TOKEN added (the Release Console's read-only /ops address and MSG91's delivery-receipt address; both optional, blank switches the address off). Add both to /api in all three projects; each environment gets its own values (`openssl rand -hex 32` and `openssl rand -hex 24`)."
 	],
 	"otherFolders": {
 		"release-console": {

@@ -76,6 +76,9 @@ function readTlsMaterial(config: AppConfig): { key: Buffer; cert: Buffer } | nul
 	};
 }
 
+/** The shop's or admin's build stamp; the edge logs it as client_build (Release Console screen 4). */
+export const CLIENT_BUILD_HEADER = 'x-client-build';
+
 /**
  * The request log (Fastify's pino): secrets redacted, the address masked, and the same line
  * shape as the application logger (ISO time, a level name, kind "request").
@@ -179,7 +182,11 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 		origin: config.corsAllowedOrigins,
 		credentials: true,
 		methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-		allowedHeaders: ['content-type', 'accept', config.cookies.csrfHeader, REQUEST_ID_HEADER],
+		// x-client-build (the Release Console's Client versions screen) is allowed, but a GET that
+		// carries it is no longer a simple request: the browser would send a preflight before each
+		// new address, and a read the CDN serves would cost a trip to this server. Send it only on
+		// requests that are preflighted anyway (writes), or on same-origin requests.
+		allowedHeaders: ['content-type', 'accept', config.cookies.csrfHeader, REQUEST_ID_HEADER, CLIENT_BUILD_HEADER],
 		exposedHeaders: [REQUEST_ID_HEADER],
 		maxAge: 600,
 	});

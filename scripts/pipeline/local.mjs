@@ -45,6 +45,12 @@ import { BRANCH_NAME } from '../release-console/git-branches.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const REGISTRY_CONTAINER = 'saha-textile-local-registry';
+
+/**
+ * How many characters of the source-tree hash make the build stamp (BUILD_ID, x-client-build). The
+ * tree, not the commit: the deploy finds images by tree, so the same code must build the same image.
+ */
+export const BUILD_ID_LENGTH = 12;
 const REGISTRY = `localhost:${process.env.LOCAL_REGISTRY_PORT || '5056'}`;
 const TARGETS = ['api', 'storefront', 'admin', 'ops'];
 
@@ -250,7 +256,7 @@ const stages = {
 			report.step('images', `Building ${target} from the commit`);
 			const name = `${REGISTRY}/saha-textile-${target}`;
 			sh(
-				`git archive --format=tar ${commit} | docker build --quiet -f docker/images/Dockerfile --target ${target} -t ${name}:sha-${commit} -t ${name}:tree-${tree} - >/dev/null`,
+				`git archive --format=tar ${commit} | docker build --quiet -f docker/images/Dockerfile --target ${target} --build-arg BUILD_ID=${tree.slice(0, BUILD_ID_LENGTH)} -t ${name}:sha-${commit} -t ${name}:tree-${tree} - >/dev/null`,
 				{ json },
 			);
 			sh(

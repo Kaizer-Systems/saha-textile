@@ -33,6 +33,11 @@ RUN --mount=type=cache,id=saha-textile-pnpm,target=/pnpm/store \
 		--filter "@saha-textile/storefront..." \
 		--filter "@saha-textile/admin..."
 ARG APPS="@saha-textile/api @saha-textile/storefront @saha-textile/admin"
+# The build stamp the shop and admin send as x-client-build (the Release Console's Client versions
+# screen), read at build time from process.env.BUILD_ID. It is the short SOURCE-TREE hash, not the
+# commit: the deploy finds images by tree, so every commit with the same code must build the same
+# image. "dev" when not given.
+ARG BUILD_ID=dev
 RUN for app in $APPS; do set -- "$@" --filter "$app"; done; pnpm turbo run build "$@"
 # The pages Nginx shows while an app cannot answer, styled by each app's own build.
 RUN node scripts/build-fallback-pages.mjs /out/fallback

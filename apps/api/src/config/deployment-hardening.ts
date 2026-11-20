@@ -193,6 +193,13 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 		problems.push('SPACES_CDN_URL must be an https URL.');
 	}
 
+	// --- Release Console reads (optional: blank switches the address off) --------------------
+	if (env.OPS_TOKEN) {
+		const problem = secretProblem('OPS_TOKEN', env.OPS_TOKEN);
+		if (problem) problems.push(problem);
+	}
+	if (env.MSG91_RECEIPT_TOKEN) problems.push(...receiptTokenProblems(env.MSG91_RECEIPT_TOKEN));
+
 	// --- Payments ---------------------------------------------------------------------------
 	problems.push(...ccavenueHostProblems(config));
 
@@ -227,6 +234,25 @@ function searchKeyProblems(key: string | undefined): string[] {
 	}
 	if (key.length < MIN_SEARCH_KEY_LENGTH) {
 		return [`MEILISEARCH_API_KEY must be at least ${MIN_SEARCH_KEY_LENGTH} characters.`];
+	}
+	return [];
+}
+
+/** MSG91 puts this in an address, so it is shorter than a signing secret: `openssl rand -hex 24` and up. */
+const MIN_RECEIPT_TOKEN_LENGTH = 48;
+
+function receiptTokenProblems(value: string): string[] {
+	const lower = value.toLowerCase();
+	if (PLACEHOLDER_MARKERS.some((marker) => lower.includes(marker))) {
+		return ['MSG91_RECEIPT_TOKEN looks like a placeholder; generate one with `openssl rand -hex 24`.'];
+	}
+	if (value.length < MIN_RECEIPT_TOKEN_LENGTH || !/^[A-Za-z0-9_-]+$/.test(value)) {
+		return [
+			`MSG91_RECEIPT_TOKEN must be at least ${MIN_RECEIPT_TOKEN_LENGTH} letters or digits; generate one with \`openssl rand -hex 24\`.`,
+		];
+	}
+	if (new Set(value).size < MIN_DISTINCT_SECRET_CHARACTERS) {
+		return ['MSG91_RECEIPT_TOKEN is too repetitive to be random; generate one with `openssl rand -hex 24`.'];
 	}
 	return [];
 }

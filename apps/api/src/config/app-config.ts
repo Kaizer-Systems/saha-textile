@@ -291,6 +291,14 @@ const ConfigSchema = z.object({
 	 */
 	geo: z.object({ dataDir: z.string().min(1).optional() }).default({}),
 	/**
+	 * The Release Console's read-only `/ops` address (approved manifest brief, screens 3 and 8).
+	 * `token` (OPS_TOKEN) is the bearer key the console sends; blank means `/ops` answers 404.
+	 * `msg91ReceiptToken` (MSG91_RECEIPT_TOKEN) is the secret in MSG91's delivery-receipt address,
+	 * sent as its `token` query value so every log shows it as `{{token}}`; blank turns that address
+	 * off. Both are never logged.
+	 */
+	ops: z.object({ token: z.string().min(1).optional(), msg91ReceiptToken: z.string().min(1).optional() }).default({}),
+	/**
 	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
 	 *
 	 * Not a cache and not a session store — sessions live in Mongo and are cookie-bound, so
@@ -533,6 +541,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 		},
 		fx: { exchangeRateApiKey: env.EXCHANGERATE_API_KEY || undefined },
 		geo: { dataDir: env.GEO_DATA_DIR || undefined },
+		ops: { token: env.OPS_TOKEN || undefined, msg91ReceiptToken: env.MSG91_RECEIPT_TOKEN || undefined },
 		documents: {
 			chromiumChannel: env.PDF_CHROMIUM_CHANNEL || undefined,
 			chromiumExecutable: env.PDF_CHROMIUM_EXECUTABLE || undefined,

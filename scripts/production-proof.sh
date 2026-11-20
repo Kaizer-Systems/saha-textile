@@ -326,7 +326,7 @@ expect 'the shop answers after the manual rollback' "$(with_pull_cert "$SITE_HOS
 echo 'Edge log'
 LOG_MARK="logcheck$RANDOM$RANDOM"
 with_pull_cert "$SITE_HOST" "/en/?$LOG_MARK&token=tokval$LOG_MARK&lang=en&Code=codval$LOG_MARK" \
-	-H "Referer: https://user:pw@www.google.com:443/search?q=refpath$LOG_MARK" >/dev/null
+	-H "Referer: https://user:pw@www.google.com:443/search?q=refpath$LOG_MARK" -H 'x-client-build: 3f9a2c1b7d4e-app' >/dev/null
 PAY_MARK="paycheck$RANDOM$RANDOM"
 with_pull_cert "$SITE_HOST" "/en/pay/payval$PAY_MARK?mark=$PAY_MARK" >/dev/null
 INVITE_MARK="invitecheck$RANDOM$RANDOM"
@@ -340,6 +340,8 @@ printf '%s' "$EDGE_LINES" | grep -q '"referer_host":"www.google.com"' && pass 't
 	fail 'the edge line does not name the referrer host'
 printf '%s' "$EDGE_LINES" | grep -q -e 'refpath' -e 'user:pw' && fail 'the referrer path, query or login reached the log' ||
 	pass 'only the referrer host reaches the log'
+printf '%s' "$EDGE_LINES" | grep -qF '"client_build":"3f9a2c1b7d4e-app"' && pass 'the edge line names the client build' ||
+	fail 'the edge line does not name the client build'
 # One-time tokens keep their place in the address as placeholders (owner, 2026-11-21).
 printf '%s' "$EDGE_LINES" | grep -qF "\"uri\":\"/en/?$LOG_MARK&token={{token}}&lang=en&Code={{Code}}\"" &&
 	pass 'secret query values are logged as placeholders, the rest kept' ||

@@ -267,6 +267,35 @@ describe('deployment hardening', () => {
 		});
 	});
 
+	describe('the Release Console reads (OPS_TOKEN, MSG91_RECEIPT_TOKEN): optional, strong when set', () => {
+		it('starts with neither set, and with real values', () => {
+			expect(problemsFor(deployment())).toEqual([]);
+			expect(
+				problemsFor(deployment({ OPS_TOKEN: secret(), MSG91_RECEIPT_TOKEN: randomBytes(24).toString('hex') })),
+			).toEqual([]);
+			expect(loadConfig(deployment({ OPS_TOKEN: secret() })).ops.token).toHaveLength(96);
+			expect(loadConfig(deployment()).ops).toEqual({});
+		});
+
+		it('refuses a weak or placeholder key', () => {
+			expect(problemsFor(deployment({ OPS_TOKEN: 'short' }))).toEqual([
+				'OPS_TOKEN must be at least 64 characters; generate one with `openssl rand -hex 48`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: randomBytes(8).toString('hex') }))).toEqual([
+				'MSG91_RECEIPT_TOKEN must be at least 48 letters or digits; generate one with `openssl rand -hex 24`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: `change-me-${secret()}` }))).toEqual([
+				'MSG91_RECEIPT_TOKEN looks like a placeholder; generate one with `openssl rand -hex 24`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: 'ab'.repeat(30) }))).toEqual([
+				'MSG91_RECEIPT_TOKEN is too repetitive to be random; generate one with `openssl rand -hex 24`.',
+			]);
+			expect(problemsFor(deployment({ MSG91_RECEIPT_TOKEN: `${secret()}/x?y` }))).toEqual([
+				'MSG91_RECEIPT_TOKEN must be at least 48 letters or digits; generate one with `openssl rand -hex 24`.',
+			]);
+		});
+	});
+
 	describe('provider keys deployed blank on purpose (RELEASE_ALLOWED_BLANK, owner 2026-11-21)', () => {
 		const noSpaces = { SPACES_KEY: undefined, SPACES_SECRET: undefined, SPACES_BUCKET: undefined };
 

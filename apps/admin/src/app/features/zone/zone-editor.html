@@ -1,0 +1,500 @@
+<div class="container-fluid">
+	<div class="row g-2">
+		<div class="col-xxl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center flex-wrap gap-2">
+							<h5>{{ (id() ? 'zone_edit_title' : 'zone_new_title') | transloco }}</h5>
+							@if (zone(); as z) {
+							<div
+								[class]="'status-' + (z.status === 'live' ? 'success' : z.status === 'archived' ? 'cancelled' : 'pending')"
+							>
+								<span>{{ 'zone_status_' + z.status | transloco }}</span>
+							</div>
+							<span class="small text-muted">
+								{{ 'zone_version' | transloco: { version: z.version } }}
+							</span>
+							}
+						</div>
+						<a
+							class="btn btn-outline btn-sm"
+							[routerLink]="['/zones']"
+						>
+							<i class="ri-arrow-left-line me-1"></i>
+							{{ 'zone_back' | transloco }}
+						</a>
+					</div>
+					@if (zone()?.system) {
+					<div
+						class="alert alert-info d-flex align-items-start gap-2"
+						role="status"
+					>
+						<i class="ri-information-line mt-1"></i>
+						<div>{{ 'zone_retail_note' | transloco }}</div>
+					</div>
+					}
+					<div class="row g-3 theme-form theme-form-2">
+						<div class="col-md-6">
+							<label
+								class="form-label"
+								for="zone_name"
+							>
+								{{ 'zone_name' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="zone_name"
+								maxlength="80"
+								[disabled]="readOnly()"
+								[value]="name()"
+								(input)="name.set($any($event.target).value)"
+							/>
+						</div>
+						<div class="col-md-6">
+							<label
+								class="form-label"
+								for="zone_code"
+							>
+								{{ 'zone_code' | transloco }}
+							</label>
+							<input
+								class="form-control text-uppercase"
+								id="zone_code"
+								maxlength="24"
+								[disabled]="readOnly() || !!zone()"
+								[value]="code()"
+								(input)="code.set($any($event.target).value.toUpperCase().replace(' ', '-'))"
+							/>
+							<p class="help-text mb-0">{{ 'zone_code_help' | transloco }}</p>
+						</div>
+						<div class="col-12">
+							<label
+								class="form-label"
+								for="zone_description"
+							>
+								{{ 'zone_description' | transloco }}
+								<span class="text-muted">({{ 'optional' | transloco }})</span>
+							</label>
+							<input
+								class="form-control"
+								id="zone_description"
+								maxlength="300"
+								[disabled]="readOnly()"
+								[value]="description()"
+								(input)="description.set($any($event.target).value)"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			@for (tier of tiers; track tier) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'zone_tier_' + tier | transloco }}</h5>
+						</div>
+						@if (!readOnly()) {
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="addRule(tier)"
+						>
+							<i class="ri-add-line me-1"></i>
+							{{ 'zone_add_rule' | transloco }}
+						</button>
+						}
+					</div>
+					<p class="help-text">{{ 'zone_tier_' + tier + '_help' | transloco }}</p>
+					<div
+						class="srb-canvas"
+						cdkDropList
+						[cdkDropListDisabled]="readOnly()"
+						(cdkDropListDropped)="drop(tier, $event)"
+					>
+						@for (rule of byTier()[tier]; track rule.id; let i = $index) {
+						<div
+							class="srb-step"
+							cdkDrag
+							[class.srb-err]="problemsOf(rule).length > 0"
+						>
+							<div class="srb-step-head">
+								<span class="srb-num">{{ i + 1 }}</span>
+								<input
+									class="form-control"
+									maxlength="80"
+									[attr.aria-label]="'zone_rule_name' | transloco"
+									[placeholder]="'zone_rule_name' | transloco"
+									[disabled]="readOnly()"
+									[value]="rule.name"
+									(change)="update(rule, { name: $any($event.target).value })"
+								/>
+								<label
+									class="switch mb-0"
+									[title]="(rule.enabled ? 'zone_rule_on' : 'zone_rule_off') | transloco"
+								>
+									<input
+										type="checkbox"
+										[attr.aria-label]="'zone_rule_switch' | transloco"
+										[checked]="rule.enabled"
+										[disabled]="readOnly()"
+										(change)="update(rule, { enabled: $any($event.target).checked })"
+									/>
+									<span class="switch-state"></span>
+								</label>
+								@if (!readOnly()) {
+								<span class="d-flex ms-auto gap-2">
+									<a
+										href="javascript:void(0)"
+										cdkDragHandle
+										[title]="'drag_to_reorder' | transloco"
+										[attr.aria-label]="'drag_to_reorder' | transloco"
+									>
+										<i class="ri-draggable"></i>
+									</a>
+									<a
+										href="javascript:void(0)"
+										[title]="'duplicate' | transloco"
+										[attr.aria-label]="'duplicate' | transloco"
+										(click)="duplicate(rule)"
+									>
+										<i class="ri-file-copy-line"></i>
+									</a>
+									<a
+										href="javascript:void(0)"
+										[title]="'delete' | transloco"
+										[attr.aria-label]="'delete' | transloco"
+										(click)="remove(rule)"
+									>
+										<i class="ri-delete-bin-line"></i>
+									</a>
+								</span>
+								}
+							</div>
+
+							@if (tier === 'product') {
+							<div class="srb-line">
+								<span class="srb-kw">{{ 'zone_for' | transloco }}</span>
+								<div class="flex-grow-1">
+									<select2
+										class="custom-select"
+										[data]="productOptions()"
+										[value]="productIdsOf(rule)"
+										[multiple]="true"
+										[customSearchEnabled]="true"
+										[disabled]="readOnly()"
+										[placeholder]="'zone_pick_products' | transloco"
+										[noResultMessage]="'no_data_found' | transloco"
+										(search)="searchProducts($event)"
+										(update)="setProducts(rule, $event)"
+									/>
+								</div>
+							</div>
+							} @else if (tier === 'category') {
+							<div class="srb-line">
+								<span class="srb-kw">{{ 'zone_for' | transloco }}</span>
+								<div class="flex-grow-1">
+									@if (categoryOptions().length) {
+									<select2
+										class="custom-select"
+										[data]="categoryOptions()"
+										[value]="categoryIdsOf(rule)"
+										[multiple]="true"
+										[disabled]="readOnly()"
+										[placeholder]="'zone_pick_categories' | transloco"
+										(update)="setCategories(rule, $event)"
+									/>
+									}
+								</div>
+								<div class="form-check mb-0">
+									<input
+										class="form-check-input"
+										type="checkbox"
+										[id]="'subs_' + rule.id"
+										[checked]="$any(rule.scope).includeSubcategories"
+										[disabled]="readOnly()"
+										(change)="setSubcategories(rule, $any($event.target).checked)"
+									/>
+									<label
+										class="form-check-label"
+										[for]="'subs_' + rule.id"
+									>
+										{{ 'zone_with_subcategories' | transloco }}
+									</label>
+								</div>
+							</div>
+							} @else {
+							<div class="srb-line">
+								<span class="srb-kw">{{ 'zone_for' | transloco }}</span>
+								<span>{{ 'zone_every_product' | transloco }}</span>
+							</div>
+							} @if (rule.when; as when) {
+							<div class="srb-branch">
+								<app-zone-conditions
+									[group]="when"
+									[categories]="categories()"
+									[readOnly]="readOnly()"
+									(groupChange)="update(rule, { when: $event })"
+									(removed)="update(rule, { when: null })"
+								/>
+							</div>
+							} @else if (!readOnly()) {
+							<div class="srb-line">
+								<button
+									type="button"
+									class="btn btn-link srb-add p-0"
+									(click)="addConditions(rule)"
+								>
+									<i class="ri-add-line"></i>
+									{{ 'zone_only_when' | transloco }}
+								</button>
+							</div>
+							}
+
+							<div class="srb-line">
+								<span class="srb-kw">{{ 'zone_price_is' | transloco }}</span>
+							</div>
+							<app-zone-formula
+								[formula]="rule.price"
+								[readOnly]="readOnly()"
+								(formulaChange)="update(rule, { price: $event })"
+							/>
+
+							<div class="srb-line">
+								<span class="srb-kw">{{ 'zone_then_adjust' | transloco }}</span>
+								<select
+									class="form-select"
+									[attr.aria-label]="'zone_rounding' | transloco"
+									[disabled]="readOnly()"
+									(change)="update(rule, { rounding: $any($event.target).value })"
+								>
+									@for (item of ['none', 'upToTen', 'endingInNine']; track item) {
+									<option
+										[value]="item"
+										[selected]="rule.rounding === item"
+									>
+										{{ 'zone_rounding_' + item | transloco }}
+									</option>
+									}
+								</select>
+								<div class="input-group">
+									<span class="input-group-text">{{ 'zone_floor' | transloco }} ₹</span>
+									<input
+										class="form-control srb-amt"
+										inputmode="decimal"
+										[attr.aria-label]="'zone_floor' | transloco"
+										[disabled]="readOnly()"
+										[value]="rule.floorINR ?? ''"
+										(change)="update(rule, { floorINR: amount($any($event.target).value) })"
+									/>
+								</div>
+								<div class="input-group">
+									<span class="input-group-text">{{ 'zone_ceiling' | transloco }} ₹</span>
+									<input
+										class="form-control srb-amt"
+										inputmode="decimal"
+										[attr.aria-label]="'zone_ceiling' | transloco"
+										[disabled]="readOnly()"
+										[value]="rule.ceilingINR ?? ''"
+										(change)="update(rule, { ceilingINR: amount($any($event.target).value) })"
+									/>
+								</div>
+							</div>
+							<div class="srb-line">
+								<span class="srb-kw">{{ 'zone_limits' | transloco }}</span>
+								<div class="input-group">
+									<span class="input-group-text">{{ 'zone_min_qty' | transloco }}</span>
+									<input
+										class="form-control srb-amt"
+										inputmode="numeric"
+										[attr.aria-label]="'zone_min_qty' | transloco"
+										[disabled]="readOnly()"
+										[value]="rule.minQuantityPerLine ?? ''"
+										(change)="update(rule, { minQuantityPerLine: amount($any($event.target).value) || null })"
+									/>
+								</div>
+								<div class="input-group">
+									<span class="input-group-text">{{ 'zone_valid_from' | transloco }}</span>
+									<input
+										class="form-control"
+										type="datetime-local"
+										[attr.aria-label]="'zone_valid_from' | transloco"
+										[disabled]="readOnly()"
+										[value]="toLocal(rule.validFrom)"
+										(change)="update(rule, { validFrom: fromLocal($any($event.target).value) })"
+									/>
+								</div>
+								<div class="input-group">
+									<span class="input-group-text">{{ 'zone_valid_until' | transloco }}</span>
+									<input
+										class="form-control"
+										type="datetime-local"
+										[attr.aria-label]="'zone_valid_until' | transloco"
+										[disabled]="readOnly()"
+										[value]="toLocal(rule.validUntil)"
+										(change)="update(rule, { validUntil: fromLocal($any($event.target).value) })"
+									/>
+								</div>
+							</div>
+							@for (problem of problemsOf(rule); track problem) {
+							<p class="srb-err small mb-0">
+								<i class="ri-error-warning-line"></i>
+								{{ 'zone_problem_' + problem | transloco }}
+							</p>
+							}
+						</div>
+						} @empty {
+						<p class="text-muted small mb-0">{{ 'zone_no_rules' | transloco }}</p>
+						}
+					</div>
+				</div>
+			</div>
+			} @if (error(); as problem) {
+			<div
+				class="alert alert-warning d-flex align-items-start gap-2"
+				role="alert"
+			>
+				<i class="ri-error-warning-line mt-1"></i>
+				<div>{{ problem }}</div>
+			</div>
+			} @if (!readOnly()) {
+			<div class="d-flex justify-content-end mb-3 flex-wrap gap-2">
+				@if (zone()?.status === 'live') {
+				<button
+					type="button"
+					class="btn btn-outline"
+					[disabled]="saving()"
+					(click)="setStatus('draft')"
+				>
+					{{ 'zone_back_to_draft' | transloco }}
+				</button>
+				}
+				<button
+					type="button"
+					class="btn btn-outline"
+					[disabled]="!canSave()"
+					(click)="save()"
+				>
+					{{ 'zone_save' | transloco }}
+				</button>
+				@if (zone()?.status !== 'live') {
+				<button
+					type="button"
+					class="btn btn-theme"
+					[disabled]="!canSave()"
+					(click)="setStatus('live')"
+				>
+					{{ 'zone_go_live' | transloco }}
+				</button>
+				}
+			</div>
+			}
+		</div>
+
+		<div class="col-xxl-4">
+			<div class="sticky-top-sec">
+				<div class="card">
+					<div class="card-body">
+						<div class="title-header">
+							<div class="d-flex align-items-center">
+								<h5>{{ 'zone_in_plain_words' | transloco }}</h5>
+							</div>
+						</div>
+						<div class="srb-words">
+							<p class="small text-muted">{{ 'zone_words_intro' | transloco }}</p>
+							<ol class="small mb-0 ps-3">
+								@for (line of words(); track line.id) {
+								<li class="mb-1">{{ line.text }}</li>
+								}
+							</ol>
+							<p class="small text-muted mt-2 mb-0">{{ 'zone_words_otherwise' | transloco }}</p>
+						</div>
+					</div>
+				</div>
+				<div class="card">
+					<div class="card-body">
+						<div class="title-header">
+							<div class="d-flex align-items-center">
+								<h5>{{ 'zone_try_it' | transloco }}</h5>
+							</div>
+						</div>
+						<p class="small text-muted">{{ 'zone_try_help' | transloco }}</p>
+						<select2
+							class="custom-select"
+							[data]="productOptions()"
+							[customSearchEnabled]="true"
+							[placeholder]="'zone_try_add_product' | transloco"
+							[noResultMessage]="'no_data_found' | transloco"
+							(search)="searchProducts($event)"
+							(update)="addTryItem($event)"
+						/>
+						@for (row of tryItems(); track row.productId) {
+						<div class="srb-line">
+							<span class="small flex-grow-1">{{ row.label }}</span>
+							<input
+								class="form-control srb-amt"
+								inputmode="numeric"
+								[attr.aria-label]="'ord_col_qty' | transloco"
+								[value]="row.quantity"
+								(change)="setTryQuantity(row.productId, $any($event.target).valueAsNumber)"
+							/>
+							<button
+								type="button"
+								class="btn btn-link text-danger p-0"
+								[title]="'zone_remove_try' | transloco"
+								[attr.aria-label]="'zone_remove_try' | transloco"
+								(click)="removeTryItem(row.productId)"
+							>
+								<i class="ri-close-circle-line"></i>
+							</button>
+						</div>
+						}
+						<button
+							type="button"
+							class="btn btn-theme btn-sm mt-2"
+							[disabled]="!tryItems().length || trying()"
+							(click)="tryIt()"
+						>
+							<i class="ri-play-line me-1"></i>
+							{{ 'zone_try_it' | transloco }}
+						</button>
+						@if (tryResult(); as result) {
+						<div class="srb-trace mt-3">
+							@for (line of result.lines; track $index) {
+							<div class="srb-result mb-2">
+								<div class="d-flex justify-content-between gap-2">
+									<b class="small">{{ line.title }}</b>
+									@if (line.price.kind === 'priced') {
+									<span class="small">
+										₹{{ line.price.unitPriceINR.toLocaleString('en-IN') }} @if
+										(line.price.belowCost) {
+										<span class="text-danger">· {{ 'zone_below_cost' | transloco }}</span>
+										}
+									</span>
+									} @else {
+									<span class="small text-danger">{{ 'ord_zone_no_price' | transloco }}</span>
+									}
+								</div>
+								@if (line.price.kind === 'priced') {
+								<div class="small text-muted">
+									{{ 'zone_retail_was' | transloco: { amount: '₹' +
+									line.price.retailUnitPriceINR.toLocaleString('en-IN') } }}
+								</div>
+								}
+								<ul class="small text-muted mb-0 ps-3">
+									@for (code of line.trace; track $index) {
+									<li>{{ traceWords(code) }}</li>
+									}
+								</ul>
+							</div>
+							}
+						</div>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

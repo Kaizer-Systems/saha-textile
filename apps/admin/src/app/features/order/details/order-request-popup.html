@@ -1,0 +1,224 @@
+<div class="modal-header">
+	<h2 id="order_request_popup_title">
+		{{ (previous() ? 'ord_request_again_title' : 'ord_request_online') | transloco }}
+	</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	@if (previous(); as old) {
+	<p class="mb-3">
+		{{ 'ord_request_again_intro' | transloco: { gateway: ('ord_gateway_' + old.gateway | transloco), status:
+		('ord_request_' + old.status | transloco) } }}
+	</p>
+	<div class="table-responsive datatable-wrapper border-table mb-3">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th></th>
+					<th class="text-end">{{ 'ord_request_old' | transloco }}</th>
+					<th class="text-end">{{ 'ord_request_new' | transloco }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (old.currency !== 'INR' || currency() !== 'INR') {
+				<tr>
+					<td>{{ 'ord_rate' | transloco }}</td>
+					<td class="text-end text-nowrap">
+						@if (oldRate(); as rate) { {{ rate | rupees }} / {{ old.currency }} } @else { — }
+					</td>
+					<td class="text-end text-nowrap">
+						@if (newRate(); as rate) { {{ rate | rupees }} / {{ currency() }} } @else { — }
+					</td>
+				</tr>
+				}
+				<tr>
+					<td>{{ 'ord_total' | transloco }}</td>
+					<td class="text-end text-nowrap">{{ money(old.amount, old.currency) }}</td>
+					<td class="text-end text-nowrap">
+						@if (preview(); as p) { {{ money(p.amount, p.currency) }} } @else { — }
+					</td>
+				</tr>
+				<tr>
+					<td>{{ 'ord_pieces' | transloco }}</td>
+					<td
+						class="text-end"
+						colspan="2"
+					>
+						{{ 'ord_request_pieces_held' | transloco: { count: heldPieces() } }}
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	}
+	<div class="row g-3">
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="req_amount"
+			>
+				{{ 'ord_col_amount' | transloco }}
+			</label>
+			<div class="input-group">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="req_amount"
+					inputmode="decimal"
+					autocomplete="off"
+					ngbAutofocus
+					[ngModel]="amount()"
+					(ngModelChange)="changeAmount($event)"
+				/>
+			</div>
+			@if (preview(); as p) {
+			<p class="help-text mb-0">{{ 'ord_request_at_most' | transloco: { amount: (p.dueINR | rupees) } }}</p>
+			}
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="req_currency"
+			>
+				{{ 'ord_currency' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="req_currency"
+				[ngModel]="currency()"
+				(ngModelChange)="changeCurrency($event)"
+			>
+				@for (row of preview()?.currencies ?? []; track row.code) {
+				<option
+					[value]="row.code"
+					[disabled]="!row.ready"
+				>
+					{{ row.symbol }} · {{ (row.gateway === 'ccavenue' ? 'ord_our_inr_gateway' : 'ord_gateway_paypal') |
+					transloco }}@if (!row.ready) { ({{ 'ord_gateway_not_set_up' | transloco }}) }
+				</option>
+				}
+			</select>
+			@if (preview(); as p) { @if (p.currency !== 'INR' && p.amount > 0 && newRate(); as rate) {
+			<p class="help-text mb-0">
+				{{ 'ord_request_foreign_amount' | transloco: { amount: money(p.amount, p.currency), rate: (rate |
+				rupees), code: p.currency, markup: p.markupPercent } }}
+			</p>
+			} }
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="req_days"
+			>
+				{{ 'ord_valid_for' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="req_days"
+				[ngModel]="validDays()"
+				(ngModelChange)="validDays.set($event)"
+			>
+				@for (days of dayChoices(); track days) {
+				<option [ngValue]="days">
+					{{ (days === 1 ? 'ord_days_one' : 'ord_days') | transloco: { days: days } }}
+				</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="req_to"
+			>
+				{{ 'ord_request_sent_to' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="req_to"
+				readonly
+				[value]="preview()?.sendTo?.email ?? preview()?.sendTo?.mobile ?? '—'"
+			/>
+			@if (preview(); as p) { @if (p.gateway === 'ccavenue' && p.sendTo.mobile && p.sendTo.email) {
+			<p class="help-text mb-0">{{ 'ord_request_and_mobile' | transloco: { mobile: p.sendTo.mobile } }}</p>
+			} }
+		</div>
+	</div>
+	@if (warnIndia()) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div class="flex-grow-1">
+			{{ 'ord_request_india_foreign' | transloco }}
+			<button
+				type="button"
+				class="btn btn-link btn-sm p-0 align-baseline"
+				(click)="changeCurrency('INR')"
+			>
+				{{ 'ord_request_switch_to_rupees' | transloco }}
+			</button>
+		</div>
+	</div>
+	} @if (preview()?.problem; as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ 'ord_request_problem_' + problem | transloco }}</div>
+	</div>
+	}
+	<ul class="list-unstyled small text-muted mt-3 mb-0">
+		<li class="mb-1">
+			<b>{{ 'ord_request_what_happens' | transloco }}:</b>
+			{{ (currency() === 'INR' ? 'ord_request_what_inr' : 'ord_request_what_paypal') | transloco: { name:
+			buyerName() } }}
+		</li>
+		<li class="mb-1">
+			<b>{{ 'ord_request_our_link' | transloco }}:</b>
+			{{ 'ord_request_our_link_note' | transloco }}
+		</li>
+		<li>
+			<b>{{ 'ord_request_after_payment' | transloco }}:</b>
+			{{ 'ord_request_after_payment_note' | transloco }}
+		</li>
+	</ul>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			[disabled]="!canSend()"
+			(click)="send()"
+		>
+			<i class="ri-send-plane-line me-1"></i>
+			{{ (previous() ? 'ord_request_payment' : 'ord_send_the_request') | transloco }}
+		</button>
+	</div>
+</div>

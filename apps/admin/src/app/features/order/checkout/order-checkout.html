@@ -1,0 +1,1100 @@
+<div class="checkout-section-2">
+	<div class="container-fluid">
+		<div class="row g-sm-4 g-3">
+			<div class="col-xxl-8 col-xl-7">
+				<div class="left-sidebar-checkout">
+					<div class="checkout-detail-box">
+						<ul>
+							<li>
+								<div class="checkout-icon">
+									<i [class]="buyer()?.kind === 'business' ? 'ri-building-line' : 'ri-user-line'"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>
+											{{ (buyer()?.kind === 'business' ? 'ord_business_chip' : 'ord_customer') |
+											transloco }}
+										</h4>
+										<a
+											class="d-flex align-items-center fw-bold"
+											[routerLink]="['/order/create']"
+										>
+											<i class="ri-arrow-left-line me-1"></i>
+											{{ 'ord_change' | transloco }}
+										</a>
+									</div>
+									<div class="checkout-detail">
+										<div class="form-control">{{ buyerWords() }}</div>
+										@if (standingNotice(); as notice) {
+										<div
+											class="alert d-flex align-items-start mt-2 mb-0 gap-2"
+											[class.alert-warning]="notice.kind === 'creditOnHold'"
+											[class.alert-danger]="notice.kind !== 'creditOnHold'"
+											role="alert"
+										>
+											<i
+												class="mt-1"
+												[class.ri-pause-circle-line]="notice.kind === 'creditOnHold'"
+												[class.ri-forbid-line]="notice.kind !== 'creditOnHold'"
+											></i>
+											<div>
+												<b>{{ 'ord_standing_' + notice.kind | transloco }}</b>
+												{{ notice.line }} {{ (notice.kind === 'creditOnHold' ?
+												'ord_standing_hold_help' : 'ord_standing_blocked_help') | transloco }}
+												<a
+													class="fw-bold"
+													[routerLink]="['/businesses', notice.id]"
+												>
+													{{ 'ord_open_the_account' | transloco }}
+												</a>
+											</div>
+										</div>
+										}
+									</div>
+								</div>
+							</li>
+
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-map-pin-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'ord_delivery_address' | transloco }}</h4>
+										<a
+											href="javascript:void(0)"
+											class="d-flex align-items-center fw-bold"
+											(click)="deliveryPick.set({ kind: 'new' })"
+										>
+											<i class="ri-add-line me-1"></i>
+											{{ 'ord_add_new' | transloco }}
+										</a>
+									</div>
+									<div class="checkout-detail">
+										@if (saved().length) {
+										<div class="row g-3 mb-3">
+											@for (row of saved(); track row.id) {
+											<div class="col-xxl-6 col-lg-12 col-md-6">
+												<label [for]="'delivery_' + row.id">
+													<div
+														class="delivery-address-box"
+														[class.is-chosen]="deliveryPick()?.kind === 'saved' && $any(deliveryPick()).id === row.id"
+													>
+														<div>
+															<div class="form-check">
+																<input
+																	class="form-check-input"
+																	type="radio"
+																	name="delivery_address"
+																	[id]="'delivery_' + row.id"
+																	[checked]="deliveryPick()?.kind === 'saved' && $any(deliveryPick()).id === row.id"
+																	(change)="deliveryPick.set({ kind: 'saved', id: row.id })"
+																/>
+															</div>
+															<ul class="delivery-address-detail">
+																<li>
+																	<h4 class="fw-semibold">
+																		{{ row.label || row.fullName }}
+																	</h4>
+																</li>
+																<li>
+																	<p class="text-content">
+																		<span class="text-title">
+																			{{ 'ord_address' | transloco }}:
+																		</span>
+																		{{ addressLine(row) }}
+																	</p>
+																</li>
+																@if (row.postalCode) {
+																<li>
+																	<h6 class="text-content">
+																		<span class="text-title">
+																			{{ postalKey(row) | transloco }}:
+																		</span>
+																		{{ row.postalCode }}
+																	</h6>
+																</li>
+																} @if (phoneOf(row)) {
+																<li>
+																	<h6 class="text-content mb-0">
+																		<span class="text-title">
+																			{{ 'ord_phone' | transloco }}:
+																		</span>
+																		{{ phoneOf(row) }}
+																	</h6>
+																</li>
+																}
+															</ul>
+														</div>
+													</div>
+												</label>
+											</div>
+											}
+										</div>
+										} @if (deliveryPick()?.kind === 'new') {
+										<!-- ad07: the new address is a chosen card of its own, with the form below it. -->
+										<div class="row g-3 mb-3">
+											<div class="col-xxl-6 col-lg-12 col-md-6">
+												<label for="delivery_new_pick">
+													<div class="delivery-address-box is-chosen">
+														<div>
+															<div class="form-check">
+																<input
+																	class="form-check-input"
+																	type="radio"
+																	name="delivery_address"
+																	id="delivery_new_pick"
+																	checked
+																/>
+															</div>
+															<ul class="delivery-address-detail">
+																<li>
+																	<h4 class="fw-semibold">
+																		<i class="ri-add-line"></i>
+																		{{ 'ord_new_address_for_order' | transloco }}
+																	</h4>
+																</li>
+																<li>
+																	<p class="text-content">
+																		{{ (buyer()?.kind === 'person' ?
+																		'ord_new_address_typed_below' :
+																		'ord_new_address_typed_below_business') |
+																		transloco: { name: buyerName() } }}
+																	</p>
+																</li>
+															</ul>
+														</div>
+													</div>
+												</label>
+											</div>
+										</div>
+										<div class="delivery-address-box">
+											<div class="d-block">
+												<app-postal-address-form
+													idPrefix="delivery_new"
+													[compact]="true"
+													(changed)="newDelivery.set($event)"
+												/>
+												@if (buyer()?.kind === 'person') {
+												<div class="form-check mt-3">
+													<input
+														class="form-check-input"
+														type="checkbox"
+														id="delivery_save"
+														[checked]="saveDelivery()"
+														(change)="saveDelivery.set($any($event.target).checked)"
+													/>
+													<label
+														class="form-check-label"
+														for="delivery_save"
+													>
+														{{ 'ord_save_to_named_addresses' | transloco: { name:
+														buyerName() } }}
+													</label>
+												</div>
+												@if (saveDelivery()) {
+												<div class="theme-form col-md-6 mt-2">
+													<label
+														class="form-label"
+														for="delivery_save_as"
+													>
+														{{ 'ord_name_this_address' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="delivery_save_as"
+														maxlength="80"
+														[value]="saveDeliveryAs()"
+														(input)="saveDeliveryAs.set($any($event.target).value)"
+													/>
+												</div>
+												} }
+											</div>
+										</div>
+										}
+									</div>
+								</div>
+							</li>
+
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-map-pin-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'ord_billing_address' | transloco }}</h4>
+										@if (!billingSame()) {
+										<a
+											href="javascript:void(0)"
+											class="d-flex align-items-center fw-bold"
+											(click)="billingPick.set({ kind: 'new' })"
+										>
+											<i class="ri-add-line me-1"></i>
+											{{ 'ord_add_new' | transloco }}
+										</a>
+										}
+									</div>
+									<div class="checkout-detail">
+										<div class="form-check">
+											<input
+												class="form-check-input"
+												type="checkbox"
+												id="billing_same"
+												[checked]="billingSame()"
+												(change)="billingSame.set($any($event.target).checked)"
+											/>
+											<label
+												class="form-check-label"
+												for="billing_same"
+											>
+												{{ 'ord_same_as_delivery_address' | transloco }}
+											</label>
+										</div>
+										@if (buyer()?.kind === 'business') {
+										<p class="small text-muted mt-2 mb-0">
+											{{ 'ord_business_invoice_note' | transloco }}
+										</p>
+										} @if (!billingSame()) {
+										<div class="row g-3 mt-1">
+											@for (row of saved(); track row.id) {
+											<div class="col-xxl-6 col-lg-12 col-md-6">
+												<label [for]="'billing_' + row.id">
+													<div
+														class="delivery-address-box"
+														[class.is-chosen]="billingPick()?.kind === 'saved' && $any(billingPick()).id === row.id"
+													>
+														<div>
+															<div class="form-check">
+																<input
+																	class="form-check-input"
+																	type="radio"
+																	name="billing_address"
+																	[id]="'billing_' + row.id"
+																	[checked]="billingPick()?.kind === 'saved' && $any(billingPick()).id === row.id"
+																	(change)="billingPick.set({ kind: 'saved', id: row.id })"
+																/>
+															</div>
+															<ul class="delivery-address-detail">
+																<li>
+																	<h4 class="fw-semibold">
+																		{{ row.label || row.fullName }}
+																	</h4>
+																</li>
+																<li>
+																	<p class="text-content">
+																		<span class="text-title">
+																			{{ 'ord_address' | transloco }}:
+																		</span>
+																		{{ addressLine(row) }}
+																	</p>
+																</li>
+																@if (row.postalCode) {
+																<li>
+																	<h6 class="text-content">
+																		<span class="text-title">
+																			{{ postalKey(row) | transloco }}:
+																		</span>
+																		{{ row.postalCode }}
+																	</h6>
+																</li>
+																} @if (phoneOf(row)) {
+																<li>
+																	<h6 class="text-content mb-0">
+																		<span class="text-title">
+																			{{ 'ord_phone' | transloco }}:
+																		</span>
+																		{{ phoneOf(row) }}
+																	</h6>
+																</li>
+																}
+															</ul>
+														</div>
+													</div>
+												</label>
+											</div>
+											}
+										</div>
+										@if (buyer()?.kind === 'person') {
+										<p class="help-text mt-2 mb-0">
+											{{ 'ord_billing_separately_help' | transloco: { name: buyerName() } }}
+										</p>
+										} @if (billingPick()?.kind === 'new') {
+										<div class="delivery-address-box mt-3">
+											<div class="d-block">
+												<app-postal-address-form
+													idPrefix="billing_new"
+													(changed)="newBilling.set($event)"
+												/>
+											</div>
+										</div>
+										} }
+									</div>
+								</div>
+							</li>
+
+							@if (bothAbroad()) {
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-file-list-3-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>
+											{{ 'ord_indian_invoice_address' | transloco }}
+											<span class="text-muted fw-normal small">
+												({{ 'optional' | transloco }})
+											</span>
+										</h4>
+									</div>
+									<div class="checkout-detail theme-form theme-form-2">
+										<p class="small text-muted mb-3">{{ 'ord_indian_invoice_help' | transloco }}</p>
+										<div class="row g-3">
+											<div class="col-md-6">
+												<label
+													class="form-label"
+													for="inv_ck_name"
+												>
+													{{ 'ord_invoice_name' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													id="inv_ck_name"
+													maxlength="120"
+													[value]="invoice().fullName"
+													(input)="setInvoice('fullName', $any($event.target).value)"
+												/>
+											</div>
+											<div class="col-md-6">
+												<label
+													class="form-label"
+													for="inv_ck_street"
+												>
+													{{ 'ord_street' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													id="inv_ck_street"
+													maxlength="200"
+													[placeholder]="'ord_street_placeholder' | transloco"
+													[value]="invoice().line1"
+													(input)="setInvoice('line1', $any($event.target).value)"
+												/>
+											</div>
+											<div class="col-md-4">
+												<label
+													class="form-label"
+													for="inv_ck_city"
+												>
+													{{ 'ord_city' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													id="inv_ck_city"
+													maxlength="80"
+													[value]="invoice().city"
+													(input)="setInvoice('city', $any($event.target).value)"
+												/>
+											</div>
+											<div class="col-md-4">
+												<label
+													class="form-label"
+													for="inv_ck_state"
+												>
+													{{ 'ord_state' | transloco }}
+												</label>
+												<select
+													class="form-select"
+													id="inv_ck_state"
+													(change)="setInvoice('subdivisionCode', $any($event.target).value)"
+												>
+													<option value="">{{ 'ord_choose' | transloco }}</option>
+													@for (state of india.data()?.subdivisions ?? []; track state.code) {
+													<option
+														[value]="state.code"
+														[selected]="state.code === invoice().subdivisionCode"
+													>
+														{{ state.name }}
+													</option>
+													}
+												</select>
+											</div>
+											<div class="col-md-4">
+												<label
+													class="form-label"
+													for="inv_ck_pin"
+												>
+													{{ 'ord_pin_code' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													id="inv_ck_pin"
+													inputmode="numeric"
+													[placeholder]="'ord_pin_placeholder' | transloco"
+													maxlength="6"
+													[value]="invoice().postalCode"
+													(input)="setInvoice('postalCode', $any($event.target).value)"
+												/>
+											</div>
+										</div>
+									</div>
+								</div>
+							</li>
+							}
+
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-truck-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'ord_delivery' | transloco }}</h4>
+									</div>
+									<div class="checkout-detail">
+										@if (quote.data(); as q) {
+										<p class="mb-1">
+											<b>
+												{{ q.shipping.chargeINR > 0 ? (q.shipping.chargeINR | rupees) :
+												('ord_free' | transloco) }}
+											</b>
+											· {{ 'ord_zone_' + q.shipping.zone | transloco }} @if (q.currency !== 'INR'
+											&& q.shipping.chargeINR > 0) { · {{ 'ord_shown_to_customer_as' | transloco
+											}}
+											<b>{{ money(q.shipping.charge) }}</b>
+											}
+										</p>
+										<p class="small text-muted mb-0">
+											@if (shipWhy()?.reason; as reason) { {{ reason }}. } @for (set of
+											q.shipping.ruleSets; track set.id) { {{ 'ord_priced_by_version' | transloco:
+											{ name: set.name || set.id, version: set.version } }} }
+										</p>
+										@for (row of q.shipping.cannotShip; track row.lineId) {
+										<p class="small text-danger mb-0">
+											<i class="ri-error-warning-line"></i>
+											{{ 'ord_cannot_ship_line' | transloco: { title: lineTitle(row.lineId) } }}
+										</p>
+										} } @else if (quote.isError()) {
+										<p class="small text-danger mb-0">{{ 'ord_quote_failed' | transloco }}</p>
+										} @else {
+										<p class="small text-muted mb-0">
+											{{ 'ord_choose_delivery_first' | transloco }}
+										</p>
+										}
+									</div>
+								</div>
+							</li>
+
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-bank-card-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'ord_payment' | transloco }}</h4>
+									</div>
+									<div class="checkout-detail">
+										<div class="row g-3">
+											@for (item of shownMethods(); track item) { @let off =
+											methodOff().get(item);
+											<div class="col-md-6">
+												<div
+													class="payment-option h-100"
+													[class.is-chosen]="method() === item"
+												>
+													<div
+														class="payment-category w-100 p-3"
+														[class.opacity-50]="off && !(item === 'onAccount' && off === 'overLimit')"
+													>
+														<div class="form-check custom-form-check hide-check-box w-100">
+															<input
+																class="form-check-input"
+																type="radio"
+																name="payment_method"
+																[id]="'pay_' + item"
+																[checked]="method() === item"
+																[disabled]="!!off && !(item === 'onAccount' && off === 'overLimit')"
+																(change)="method.set(item)"
+															/>
+															<label
+																class="form-check-label d-block"
+																[for]="'pay_' + item"
+															>
+																<b>
+																	<i [class]="methodIcon[item] + ' me-1'"></i>
+																	{{ 'ord_pay_' + item | transloco }}
+																</b>
+																<span
+																	class="d-block small fw-normal mt-1"
+																	[class.text-muted]="!off"
+																	[class.text-danger]="!!off"
+																>
+																	{{ off ? methodOffWords(item, off) : ('ord_pay_' +
+																	item + '_help' | transloco) }}
+																</span>
+															</label>
+														</div>
+													</div>
+												</div>
+											</div>
+											}
+										</div>
+
+										<!-- ck01–ck08: the chosen method's details, in the drawn order and words. -->
+										<div class="payment-option mt-3 p-3">
+											@switch (method()) { @case ('paymentLink') { @if (quote.data(); as q) {
+											<ul class="list-unstyled small mb-0">
+												<li class="mb-1">
+													<span class="text-muted">
+														{{ 'ord_payment_request' | transloco }}:
+													</span>
+													{{ (q.currency === 'INR' ? 'ord_link_route_inr' :
+													'ord_link_route_paypal') | transloco }}
+												</li>
+												<li class="mb-1">
+													<span class="text-muted">{{ 'ord_goes_to' | transloco }}:</span>
+													{{ linkGoesTo() }}
+												</li>
+												<li class="mb-1">
+													<span class="text-muted">{{ 'ord_valid_until' | transloco }}:</span>
+													{{ linkValidUntil() }}
+												</li>
+											</ul>
+											}
+											<p class="small mt-2 mb-0">
+												<i class="ri-lock-line"></i>
+												{{ 'ord_pieces_held_note' | transloco }}
+											</p>
+											} @case ('upi') {
+											<div class="row g-3 theme-form">
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="pay_amount_ck"
+													>
+														{{ 'ord_amount_received' | transloco }}
+													</label>
+													<div class="input-group">
+														<span class="input-group-text">₹</span>
+														<input
+															class="form-control"
+															id="pay_amount_ck"
+															inputmode="decimal"
+															[value]="amount()"
+															(input)="amount.set($any($event.target).value)"
+														/>
+													</div>
+												</div>
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="pay_ref_ck"
+													>
+														{{ 'ord_reference_upi' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="pay_ref_ck"
+														maxlength="120"
+														[value]="reference()"
+														(input)="reference.set($any($event.target).value)"
+													/>
+													<p class="help-text mb-0">{{ 'ord_upi_ref_help' | transloco }}</p>
+												</div>
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="pay_on_ck"
+													>
+														{{ 'ord_paid_on' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="pay_on_ck"
+														type="date"
+														[max]="today"
+														[value]="receivedOn()"
+														(input)="receivedOn.set($any($event.target).value)"
+													/>
+												</div>
+												<div class="col-12">
+													<label
+														class="form-label"
+														for="pay_note_ck"
+													>
+														{{ 'ord_proof_note' | transloco }}
+														<span class="text-muted">({{ 'optional' | transloco }})</span>
+													</label>
+													<input
+														class="form-control"
+														id="pay_note_ck"
+														maxlength="400"
+														[value]="note()"
+														(input)="note.set($any($event.target).value)"
+													/>
+												</div>
+											</div>
+											} @case ('bankTransfer') {
+											<div class="row g-3 theme-form">
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="pay_transfer"
+													>
+														{{ 'ord_transfer_type' | transloco }}
+													</label>
+													<select
+														class="form-select"
+														id="pay_transfer"
+														(change)="transferType.set($any($event.target).value)"
+													>
+														@for (type of ['NEFT', 'RTGS', 'IMPS']; track type) {
+														<option
+															[value]="type"
+															[selected]="transferType() === type"
+														>
+															{{ type }}
+														</option>
+														}
+													</select>
+												</div>
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="pay_amount_ck"
+													>
+														{{ 'ord_amount' | transloco }}
+													</label>
+													<div class="input-group">
+														<span class="input-group-text">₹</span>
+														<input
+															class="form-control"
+															id="pay_amount_ck"
+															inputmode="decimal"
+															[value]="amount()"
+															(input)="amount.set($any($event.target).value)"
+														/>
+													</div>
+												</div>
+												<div class="col-md-4">
+													<label
+														class="form-label"
+														for="pay_ref_ck"
+													>
+														{{ 'ord_reference_bankTransfer' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="pay_ref_ck"
+														maxlength="120"
+														[placeholder]="'ord_utr_placeholder' | transloco"
+														[value]="reference()"
+														(input)="reference.set($any($event.target).value)"
+													/>
+												</div>
+												<div class="col-12">
+													<label class="form-label">
+														{{ 'ord_received_question' | transloco }}
+													</label>
+													<div class="d-flex flex-wrap gap-4">
+														<div class="form-check">
+															<input
+																class="form-check-input"
+																type="radio"
+																id="ck_in"
+																name="ck_received"
+																[checked]="received()"
+																(change)="received.set(true)"
+															/>
+															<label
+																class="form-check-label"
+																for="ck_in"
+															>
+																{{ 'ord_transfer_in_checkout' | transloco }}
+															</label>
+														</div>
+														<div class="form-check">
+															<input
+																class="form-check-input"
+																type="radio"
+																id="ck_not_yet"
+																name="ck_received"
+																[checked]="!received()"
+																(change)="received.set(false)"
+															/>
+															<label
+																class="form-check-label"
+																for="ck_not_yet"
+															>
+																{{ 'ord_transfer_not_yet_checkout' | transloco }}
+															</label>
+														</div>
+													</div>
+													<p class="help-text mb-0">
+														{{ 'ord_transfer_later_help' | transloco }}
+													</p>
+												</div>
+											</div>
+											} @case ('cashOnDelivery') {
+											<div class="row g-3 theme-form">
+												<div class="col-md-6">
+													<label
+														class="form-label"
+														for="cod_collector"
+													>
+														{{ 'ord_collected_by' | transloco }}
+													</label>
+													<select
+														class="form-select"
+														id="cod_collector"
+														(change)="collector.set($any($event.target).value)"
+													>
+														<option
+															value="staff"
+															[selected]="collector() === 'staff'"
+														>
+															{{ 'ord_collector_staff' | transloco }}
+														</option>
+														<option
+															value="courier"
+															disabled
+														>
+															{{ 'ord_collector_courier' | transloco }}
+														</option>
+													</select>
+													<p class="help-text mb-0">
+														{{ 'ord_collector_courier_later' | transloco }}
+													</p>
+												</div>
+												<div class="col-md-6">
+													<label
+														class="form-label"
+														for="cod_amount"
+													>
+														{{ 'ord_amount_to_collect' | transloco }}
+													</label>
+													<div class="input-group">
+														<span class="input-group-text">₹</span>
+														<input
+															class="form-control"
+															id="cod_amount"
+															readonly
+															[value]="(quote.data()?.totals?.totalINR ?? 0).toLocaleString('en-IN')"
+														/>
+													</div>
+												</div>
+												<div class="col-12">
+													<label
+														class="form-label"
+														for="pay_note_ck"
+													>
+														{{ 'ord_note' | transloco }}
+														<span class="text-muted">({{ 'optional' | transloco }})</span>
+													</label>
+													<input
+														class="form-control"
+														id="pay_note_ck"
+														maxlength="400"
+														[value]="note()"
+														(input)="note.set($any($event.target).value)"
+													/>
+												</div>
+											</div>
+											<p class="small text-muted mt-3 mb-0">
+												<i class="ri-information-line"></i>
+												{{ 'ord_cod_note' | transloco }}
+											</p>
+											} @case ('onAccount') { @if (creditView(); as credit) { @let numbers =
+											quote.data()?.credit;
+											<div class="d-flex justify-content-between small mb-1">
+												<span>{{ credit.usedLine }}</span>
+												<span>{{ credit.limitLine }}</span>
+											</div>
+											@if (numbers) {
+											<div
+												class="progress"
+												role="progressbar"
+												[attr.aria-label]="'ord_credit' | transloco"
+											>
+												<div
+													class="progress-bar bg-warning"
+													[style.width.%]="(numbers.usedINR / numbers.limitINR) * 100"
+												></div>
+												<div
+													class="progress-bar"
+													[class.bg-success]="!overLimit()"
+													[class.bg-danger]="overLimit()"
+													[style.width.%]="(numbers.thisOrderINR / numbers.limitINR) * 100"
+												></div>
+											</div>
+											} @if (overLimit()) {
+											<div
+												class="alert alert-danger d-flex align-items-start mt-3 gap-2"
+												role="alert"
+											>
+												<i class="ri-error-warning-line mt-1"></i>
+												<div>
+													<b>
+														{{ 'ord_over_limit_by' | transloco: { amount: credit.over } }}
+													</b>
+													{{ 'ord_over_limit_help' | transloco: { available: credit.available
+													} }}
+												</div>
+											</div>
+											<div
+												class="row g-2 align-items-end theme-form"
+												*hasPermission="'business.approve'"
+											>
+												<div class="col-md-8">
+													<label
+														class="form-label"
+														for="credit_override"
+													>
+														{{ 'ord_credit_override_reason' | transloco }}
+													</label>
+													<input
+														class="form-control"
+														id="credit_override"
+														maxlength="500"
+														[placeholder]="'ord_credit_override_placeholder' | transloco"
+														[disabled]="overrideAllowed()"
+														[value]="overrideReason()"
+														(input)="overrideReason.set($any($event.target).value)"
+													/>
+												</div>
+												<div class="col-md-4">
+													<button
+														type="button"
+														class="btn btn-outline w-100"
+														[disabled]="overrideAllowed() || overrideReason().trim().length < 3"
+														(click)="allowOnce()"
+													>
+														@if (overrideAllowed()) {
+														<i class="ri-check-line"></i>
+														} {{ 'ord_allow_once' | transloco }}
+													</button>
+												</div>
+											</div>
+											} @else {
+											<ul class="list-unstyled small mt-3 mb-0">
+												<li class="mb-1">
+													<span class="text-muted">
+														{{ 'ord_after_this_order' | transloco }}:
+													</span>
+													<b>
+														{{ 'ord_amount_available' | transloco: { amount: credit.after }
+														}}
+													</b>
+												</li>
+												@if (credit.due) {
+												<li class="mb-1">
+													<span class="text-muted">{{ 'ord_payment_due' | transloco }}:</span>
+													{{ credit.due }}
+												</li>
+												}
+												<li class="mb-1">
+													<span class="text-muted">{{ 'ord_statement' | transloco }}:</span>
+													{{ 'ord_statement_line' | transloco: { name: credit.name } }}
+												</li>
+											</ul>
+											} } } }
+										</div>
+									</div>
+								</div>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-xxl-4 col-xl-5">
+				<div class="card pos-detail-card">
+					<div class="card-body">
+						<div class="title-header">
+							<div class="d-flex align-items-center">
+								<h5>{{ 'ord_checkout' | transloco }}</h5>
+							</div>
+						</div>
+						@if (quote.data(); as q) {
+						<div class="product-details">
+							<ul class="cart-listing">
+								@for (line of q.lines; track line.lineId) {
+								<li>
+									<img
+										[src]="line.imageUrl ?? 'assets/images/product.png'"
+										class="img-fluid"
+										alt=""
+									/>
+									<div class="cart-content">
+										<h4>{{ line.title }}</h4>
+										<h5 class="text-theme">
+											{{ money(line.unitPrice) }} × {{ line.soldBy === 'metre' ? (line.quantity /
+											10) + ' m' : line.quantity }}
+										</h5>
+										<h5 class="price">{{ money(line.lineTotal) }}</h5>
+										@if (mrpLine(line); as mrp) {
+										<p class="small text-muted mb-0">{{ mrp }}</p>
+										}
+									</div>
+								</li>
+								}
+							</ul>
+						</div>
+						<ul class="summary-total">
+							<li>
+								<h4>{{ 'subtotal' | transloco }}</h4>
+								<h4 class="price">{{ money(subtotal()) }}</h4>
+							</li>
+							@for (coupon of q.coupons; track coupon.code) { @if (coupon.kind !== 'freeDelivery') {
+							<li>
+								<h4>
+									{{ coupon.code }}
+									<a
+										href="javascript:void(0)"
+										class="fm-chip ms-1"
+										[title]="'ord_remove_coupon' | transloco"
+										(click)="removeCoupon(coupon.code)"
+									>
+										✕
+									</a>
+									<br />
+									<small class="text-muted fw-normal">{{ couponWhyOf(coupon) }}</small>
+								</h4>
+								<h4 class="price">−{{ coupon.amountINR | rupees }}</h4>
+							</li>
+							} }
+							<li>
+								<h4>
+									{{ 'shipping' | transloco }} @if (shipWhy()?.short; as short) {
+									<br />
+									<small class="text-muted fw-normal">{{ short }}</small>
+									}
+								</h4>
+								<h4 class="price">
+									{{ q.shipping.chargeINR > 0 || q.coupons.length ? money(q.shipping.charge) :
+									('ord_free' | transloco) }}
+								</h4>
+							</li>
+							@for (coupon of q.coupons; track coupon.code) { @if (coupon.kind === 'freeDelivery') {
+							<li>
+								<h4>
+									{{ coupon.code }}
+									<a
+										href="javascript:void(0)"
+										class="fm-chip ms-1"
+										[title]="'ord_remove_coupon' | transloco"
+										(click)="removeCoupon(coupon.code)"
+									>
+										✕
+									</a>
+									<br />
+									<small class="text-muted fw-normal">{{ couponWhyOf(coupon) }}</small>
+								</h4>
+								<h4 class="price">−{{ coupon.deliveryAmountINR | rupees }}</h4>
+							</li>
+							} }
+							<li>
+								<h4>{{ 'ord_gst' | transloco }}</h4>
+								<h4 class="price">{{ 'ord_gst_included' | transloco }}</h4>
+							</li>
+							<li class="list-total">
+								<h4>{{ 'total' | transloco }}</h4>
+								<h4 class="price">{{ money(q.totals.total) }}</h4>
+							</li>
+						</ul>
+						<!-- cp06–cp07: coupons are applied from the coupon popup; a refused one says what to do instead. -->
+						<div class="small mt-2">
+							<a
+								href="javascript:void(0)"
+								class="fw-bold"
+								(click)="openCoupons()"
+							>
+								{{ (q.coupons.length ? 'ord_add_another_coupon' : 'ord_apply_a_coupon') | transloco }}
+							</a>
+						</div>
+						@for (refused of q.couponRefusals; track refused.code) {
+						<div
+							class="alert alert-warning d-flex align-items-start mt-2 mb-0 gap-2"
+							role="alert"
+						>
+							<i class="ri-error-warning-line mt-1"></i>
+							<div>
+								{{ refusalWords(refused) }}
+								<a
+									href="javascript:void(0)"
+									class="ms-1"
+									[title]="'ord_remove_coupon' | transloco"
+									(click)="removeCoupon(refused.code)"
+								>
+									<i class="ri-close-line"></i>
+								</a>
+							</div>
+						</div>
+						} @if (q.currency !== 'INR') {
+						<p class="small text-muted mt-2 mb-0">
+							{{ 'ord_checkout_foreign_note' | transloco: { inr: (q.totals.totalINR | rupees) } }}
+						</p>
+						} @for (warning of q.warnings; track warning) {
+						<!-- mx01: what the payment step says for each address and currency case. -->
+						@if (warning === 'inrGatewayForeignCards') {
+						<div
+							class="alert alert-info d-flex align-items-start mt-3 mb-0 gap-2"
+							role="status"
+						>
+							<i class="ri-information-line mt-1"></i>
+							<div>{{ 'ord_warning_' + warning | transloco }}</div>
+						</div>
+						} @else {
+						<div
+							class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+							role="alert"
+						>
+							<i class="ri-alert-line mt-1"></i>
+							<div>
+								{{ 'ord_warning_' + warning | transloco }} @if (warning === 'indiaBillingForeignCurrency') {
+								<a
+									class="fw-bold"
+									href="javascript:void(0)"
+									(click)="switchToRupees()"
+								>
+									{{ 'ord_request_switch_to_rupees' | transloco }}
+								</a>
+								}
+							</div>
+						</div>
+						} } @if (q.shipping.cannotShip.length) {
+						<div
+							class="alert alert-danger d-flex align-items-start mt-3 mb-0 gap-2"
+							role="alert"
+						>
+							<i class="ri-forbid-line mt-1"></i>
+							<div>{{ 'ord_place_order_stays_off' | transloco }}</div>
+						</div>
+						} @if (q.invoiceAddress.needed) {
+						<p class="small text-danger mt-2 mb-0">{{ 'ord_invoice_needed_at_checkout' | transloco }}</p>
+						} @if (error(); as problem) {
+						<div
+							class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+							role="alert"
+						>
+							<i class="ri-error-warning-line mt-1"></i>
+							<div>{{ problem }}</div>
+						</div>
+						}
+						<ng-container *hasPermission="'order.create'">
+							<button
+								type="button"
+								class="btn btn-animation payment-btn mt-3 w-100"
+								[disabled]="!canPlace()"
+								(click)="place()"
+							>
+								{{ placeWords() }}
+							</button>
+						</ng-container>
+						} @else {
+						<p class="text-muted mb-0">{{ 'ord_choose_delivery_first' | transloco }}</p>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

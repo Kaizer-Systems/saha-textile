@@ -1,0 +1,598 @@
+<app-page-wrapper [title]="id() ? 'biz_edit_business' : 'biz_add_business'">
+	<form
+		class="theme-form theme-form-2 mega-form"
+		[formGroup]="form"
+		(ngSubmit)="save()"
+	>
+		<app-form-fields
+			[label]="'legal_name'"
+			[for]="'biz_legal_name'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="biz_legal_name"
+				type="text"
+				formControlName="legalName"
+			/>
+			<p class="help-text">{{ 'biz_legal_name_help' | transloco }}</p>
+			@if (form.controls.legalName.touched && form.controls.legalName.errors?.['required']) {
+			<div class="invalid-feedback d-block">{{ 'supplier_legal_name_required' | transloco }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_trade_name'"
+			[for]="'biz_trade_name'"
+		>
+			<input
+				class="form-control"
+				id="biz_trade_name"
+				type="text"
+				formControlName="tradeName"
+			/>
+			<p class="help-text">{{ 'biz_trade_name_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_type'"
+			[for]="'biz_type'"
+		>
+			<select
+				class="form-select"
+				id="biz_type"
+				formControlName="businessType"
+			>
+				@for (type of types; track type) {
+				<option [value]="type">{{ 'biz_type_' + type | transloco }}</option>
+				}
+			</select>
+			<p class="help-text mb-0">{{ 'biz_type_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_gst_registration'"
+			[for]="'biz_kind'"
+			[required]="true"
+		>
+			<select
+				class="form-select"
+				id="biz_kind"
+				formControlName="kind"
+			>
+				<option value="regular">{{ 'supplier_kind_regular_long' | transloco }}</option>
+				<option value="composition">{{ 'supplier_kind_composition_long' | transloco }}</option>
+				<option value="unregistered">{{ 'supplier_kind_unregistered_long' | transloco }}</option>
+			</select>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'gstin'"
+			[for]="'biz_gstin'"
+			[required]="gstinRequired()"
+		>
+			<input
+				class="form-control text-uppercase"
+				id="biz_gstin"
+				type="text"
+				maxlength="20"
+				autocomplete="off"
+				spellcheck="false"
+				formControlName="gstin"
+				[class.is-invalid]="verdict().kind === 'problem' || (verdict().kind === 'taken' && $any(verdict()).id !== id()) || !!serverErrors()['gstin']"
+				(input)="onGstinInput($any($event.target).value)"
+			/>
+			@switch (verdict().kind) { @case ('ok') {
+			<p class="help-text text-success">
+				<i class="ri-checkbox-circle-line"></i>
+				{{ 'biz_gstin_ok' | transloco: { code: gstinValue().slice(0, 2), state: stateName() } }}
+			</p>
+			} @case ('problem') {
+			<div class="invalid-feedback d-block">{{ $any(verdict()).key | transloco: $any(verdict()).params }}</div>
+			} @case ('taken') { @if ($any(verdict()).id !== id()) {
+			<div class="invalid-feedback d-block">
+				{{ 'gstin_already_saved' | transloco: { name: $any(verdict()).name } }}
+				<a
+					class="text-decoration-underline"
+					[routerLink]="['/businesses', $any(verdict()).id]"
+				>
+					{{ 'open_it' | transloco }}
+				</a>
+			</div>
+			} } @case ('checking') {
+			<p class="help-text">{{ 'gstin_checking' | transloco }}</p>
+			} @case ('typing') {
+			<p class="help-text">{{ 'gstin_fifteen_characters' | transloco }}</p>
+			} } @if (serverErrors()['gstin']; as problem) {
+			<div class="invalid-feedback d-block">{{ problem }}</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_pan'"
+			[for]="'biz_pan'"
+		>
+			<input
+				class="form-control text-uppercase"
+				id="biz_pan"
+				type="text"
+				maxlength="10"
+				formControlName="pan"
+			/>
+			<p class="help-text">{{ 'biz_pan_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_billing_address'"
+			[for]="'biz_line'"
+			[required]="true"
+		>
+			<input
+				class="form-control mb-2"
+				id="biz_line"
+				type="text"
+				formControlName="line"
+				[attr.aria-label]="'addr_line1' | transloco"
+			/>
+			<div class="row g-2">
+				<div class="col-md-5">
+					<input
+						class="form-control"
+						type="text"
+						formControlName="city"
+						[placeholder]="'addr_city' | transloco"
+						[attr.aria-label]="'addr_city' | transloco"
+					/>
+				</div>
+				<div class="col-md-4">
+					<select
+						class="form-select"
+						formControlName="stateCode"
+						[attr.aria-label]="'ord_state' | transloco"
+					>
+						@for (state of states(); track state.code) {
+						<option [value]="state.code">{{ state.name }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-3">
+					<input
+						class="form-control"
+						type="text"
+						inputmode="numeric"
+						maxlength="6"
+						formControlName="pin"
+						[placeholder]="'ord_pin_code' | transloco"
+						[attr.aria-label]="'ord_pin_code' | transloco"
+					/>
+				</div>
+			</div>
+			<!-- bz02: delivery addresses beside the billing address, the shared address popup and its country rules. -->
+			<a
+				class="small fw-bold d-inline-block mt-2"
+				href="javascript:void(0)"
+				(click)="openAddress()"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'biz_add_delivery_address' | transloco }}
+			</a>
+			@if (addressRows().length) {
+			<div class="row g-3 mt-1">
+				@for (row of addressRows(); track row.id) {
+				<div class="col-xxl-6 col-lg-12 col-md-6">
+					<div class="delivery-address-box">
+						<div>
+							<ul class="delivery-address-detail">
+								<li>
+									<h4 class="fw-semibold">
+										{{ row.label || ('untitled_address' | transloco) }} @if (row.isDefault) {
+										<span class="badge badge-theme ms-1">{{ 'cust_default' | transloco }}</span>
+										}
+									</h4>
+								</li>
+								<li>
+									<p class="text-content">
+										<span class="text-title">{{ 'cust_card_address' | transloco }}:</span>
+										{{ addressLine(row) }}
+									</p>
+								</li>
+								<li>
+									<h6 class="text-content">
+										<span class="text-title">{{ postalLabelKey(row) | transloco }}:</span>
+										{{ row.postalCode }}
+									</h6>
+								</li>
+								<li>
+									<h6 class="text-content mb-0">
+										<span class="text-title">{{ 'phone' | transloco }} :</span>
+										{{ phoneText(row) }}
+									</h6>
+								</li>
+								<li class="d-flex mt-2 gap-3">
+									<a
+										href="javascript:void(0)"
+										[title]="'cust_edit_address' | transloco"
+										(click)="openAddress(row)"
+									>
+										<i class="ri-pencil-line fs-5"></i>
+									</a>
+									<a
+										href="javascript:void(0)"
+										[title]="'delete_address' | transloco"
+										(click)="removeAddress(row)"
+									>
+										<i class="ri-delete-bin-line fs-5 text-danger"></i>
+									</a>
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+				}
+			</div>
+			}
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_contacts'"
+			[for]="'biz_contact_0'"
+		>
+			<div formArrayName="contacts">
+				@for (contact of contacts.controls; track $index; let i = $index) {
+				<div
+					class="row g-2 align-items-center mb-2"
+					[formGroupName]="i"
+				>
+					<div class="col-md-3">
+						<input
+							class="form-control"
+							type="text"
+							formControlName="name"
+							[id]="'biz_contact_' + i"
+							[placeholder]="'biz_contact_name' | transloco"
+							[attr.aria-label]="'biz_contact_name' | transloco"
+						/>
+					</div>
+					<div class="col-md-4">
+						<input
+							class="form-control"
+							type="email"
+							formControlName="email"
+							[placeholder]="'ord_email' | transloco"
+							[attr.aria-label]="'ord_email' | transloco"
+						/>
+					</div>
+					<div class="col-md-3">
+						<div class="input-group">
+							<span class="input-group-text">+</span>
+							<input
+								class="form-control w-25 flex-grow-0"
+								inputmode="numeric"
+								maxlength="4"
+								formControlName="callingCode"
+								[attr.aria-label]="'addr_calling_code' | transloco"
+							/>
+							<input
+								class="form-control"
+								inputmode="tel"
+								maxlength="20"
+								formControlName="mobile"
+								[attr.aria-label]="'addr_mobile' | transloco"
+							/>
+						</div>
+					</div>
+					<div class="col-md-2 d-flex align-items-center gap-2">
+						@if (contact.value.isAccounts) {
+						<span class="badge badge-theme">{{ 'biz_accounts' | transloco }}</span>
+						} @else {
+						<button
+							type="button"
+							class="btn btn-link btn-sm p-0"
+							(click)="setAccounts(i)"
+						>
+							{{ 'biz_make_accounts' | transloco }}
+						</button>
+						} @if (contacts.length > 1) {
+						<button
+							type="button"
+							class="btn btn-link text-danger p-0"
+							[title]="'biz_remove_contact' | transloco"
+							[attr.aria-label]="'biz_remove_contact' | transloco"
+							(click)="removeContact(i)"
+						>
+							<i class="ri-close-circle-line"></i>
+						</button>
+						}
+					</div>
+				</div>
+				}
+			</div>
+			<a
+				href="javascript:void(0)"
+				class="fw-bold small"
+				(click)="addContact()"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'biz_add_contact' | transloco }}
+			</a>
+			<p class="help-text">{{ 'biz_contacts_help' | transloco }}</p>
+		</app-form-fields>
+
+		<hr />
+
+		<app-form-fields
+			[label]="'biz_buys_from_us'"
+			[for]="'biz_buys'"
+		>
+			<label class="switch">
+				<input
+					type="checkbox"
+					id="biz_buys"
+					formControlName="buysFromUs"
+				/>
+				<span class="switch-state"></span>
+			</label>
+			<p class="help-text">{{ 'biz_buys_from_us_help' | transloco }}</p>
+		</app-form-fields>
+
+		@if (form.controls.buysFromUs.value) {
+		<app-form-fields
+			[label]="'ord_credit_limit'"
+			[for]="'biz_limit'"
+		>
+			<div class="input-group w-auto">
+				<span class="input-group-text">₹</span>
+				<input
+					class="form-control"
+					id="biz_limit"
+					type="number"
+					min="0"
+					formControlName="creditLimitINR"
+					[readonly]="!maySetCredit()"
+				/>
+			</div>
+			<p class="help-text">
+				{{ (maySetCredit() ? 'biz_credit_limit_help' : 'biz_credit_needs_permission') | transloco }}
+			</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'ord_credit_days'"
+			[for]="'biz_days'"
+		>
+			<div class="input-group w-auto">
+				<input
+					class="form-control"
+					id="biz_days"
+					type="number"
+					min="0"
+					max="365"
+					formControlName="creditDays"
+					[readonly]="!maySetCredit()"
+				/>
+				<span class="input-group-text">{{ 'biz_days' | transloco }}</span>
+			</div>
+			<p class="help-text">{{ 'biz_credit_days_help' | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_zone'"
+			[for]="'biz_zone'"
+		>
+			<select
+				class="form-select"
+				id="biz_zone"
+				formControlName="zoneId"
+				[attr.disabled]="mayAssignZone() ? null : true"
+			>
+				@for (zone of zoneRows(); track zone.id) {
+				<option [value]="zone.id">
+					{{ zone.name }}@if (zone.status !== 'live') { ({{ 'biz_zone_not_live' | transloco }}) }
+				</option>
+				} @empty {
+				<option [value]="form.controls.zoneId.value">{{ 'biz_zone_retail' | transloco }}</option>
+				}
+			</select>
+			<p class="help-text">{{ (mayAssignZone() ? 'biz_zone_help' : 'biz_zone_needs_permission') | transloco }}</p>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_standing'"
+			[for]="'biz_standing_select'"
+		>
+			<select
+				class="form-select"
+				id="biz_standing_select"
+				formControlName="standing"
+			>
+				<option value="active">{{ 'ord_standing_active' | transloco }}</option>
+				<option value="creditOnHold">{{ 'ord_standing_creditOnHold' | transloco }}</option>
+				<option value="blocked">{{ 'ord_standing_blocked' | transloco }}</option>
+			</select>
+			<p class="help-text">{{ 'biz_standing_help' | transloco }}</p>
+		</app-form-fields>
+		}
+
+		<hr />
+
+		<app-form-fields
+			[label]="'biz_sells_to_us'"
+			[for]="'biz_sells'"
+		>
+			<label class="switch">
+				<input
+					type="checkbox"
+					id="biz_sells"
+					formControlName="sellsToUs"
+				/>
+				<span class="switch-state"></span>
+			</label>
+			<p class="help-text">{{ 'biz_sells_to_us_help' | transloco }}</p>
+		</app-form-fields>
+
+		@if (form.controls.sellsToUs.value) {
+		<app-form-fields
+			[label]="'supplier_terms'"
+			[for]="'biz_terms'"
+		>
+			<div class="input-group w-auto">
+				<input
+					class="form-control"
+					id="biz_terms"
+					type="number"
+					min="0"
+					max="365"
+					formControlName="paymentTermsDays"
+				/>
+				<span class="input-group-text">{{ 'biz_days' | transloco }}</span>
+			</div>
+		</app-form-fields>
+
+		<app-form-fields
+			[label]="'biz_item_codes'"
+			[for]="'biz_item_codes'"
+		>
+			<label class="switch">
+				<input
+					type="checkbox"
+					id="biz_item_codes"
+					formControlName="usesItemCodes"
+				/>
+				<span class="switch-state"></span>
+			</label>
+		</app-form-fields>
+		} @if (!form.controls.buysFromUs.value && !form.controls.sellsToUs.value) {
+		<div
+			class="alert alert-warning d-flex align-items-start gap-2"
+			role="alert"
+		>
+			<i class="ri-error-warning-line mt-1"></i>
+			<div>{{ 'biz_needs_a_role' | transloco }}</div>
+		</div>
+		}
+
+		@if (form.controls.buysFromUs.value && form.controls.sellsToUs.value) {
+		<ng-container *hasPermission="'business.settle'">
+			<hr />
+			<!-- so01: set-off between the two accounts, off unless there is a written agreement (kept ready for others). -->
+			<app-form-fields
+				[label]="'biz_setoff_setting'"
+				[for]="'setoff_never'"
+			>
+				<div class="d-grid gap-2">
+					@for (mode of setOffModes; track mode) {
+					<div
+						class="rounded border p-2"
+						[class.is-chosen]="setOffMode() === mode"
+					>
+						<div class="form-check">
+							<input
+								class="form-check-input"
+								type="radio"
+								name="business_setoff"
+								[id]="'setoff_' + mode"
+								[checked]="setOffMode() === mode"
+								(change)="setOffMode.set(mode)"
+							/>
+							<label
+								class="form-check-label"
+								[for]="'setoff_' + mode"
+							>
+								<b>{{ 'biz_setoff_mode_' + mode | transloco }}</b>
+								<span class="d-block small text-muted">{{ 'biz_setoff_mode_' + mode + '_help' | transloco }}</span>
+							</label>
+						</div>
+					</div>
+					}
+				</div>
+			</app-form-fields>
+			@if (setOffMode() === 'agreement') {
+			<app-form-fields
+				[label]="'biz_setoff_agreement'"
+				[for]="'setoff_reference'"
+			>
+				<div class="row g-2">
+					<div class="col-md-5">
+						<input
+							class="form-control"
+							id="setoff_reference"
+							maxlength="80"
+							[placeholder]="'biz_setoff_reference' | transloco"
+							[attr.aria-label]="'biz_setoff_reference' | transloco"
+							[value]="setOffReference()"
+							(input)="setOffReference.set($any($event.target).value)"
+						/>
+					</div>
+					<div class="col-md-3">
+						<input
+							class="form-control"
+							type="date"
+							[attr.aria-label]="'biz_setoff_signed_on' | transloco"
+							[title]="'biz_setoff_signed_on' | transloco"
+							[value]="setOffSignedOn()"
+							(input)="setOffSignedOn.set($any($event.target).value)"
+						/>
+					</div>
+					<div class="col-md-4">
+						<input
+							class="form-control"
+							type="date"
+							[attr.aria-label]="'biz_setoff_valid_until' | transloco"
+							[title]="'biz_setoff_valid_until' | transloco"
+							[value]="setOffValidUntil()"
+							(input)="setOffValidUntil.set($any($event.target).value)"
+						/>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-2 gap-2">
+					@if (setOffCopy(); as copy) {
+					<span class="fm-chip">
+						<i class="ri-file-pdf-2-line"></i>
+						{{ copy.name }}
+					</span>
+					}
+					<a
+						class="small fw-bold"
+						href="javascript:void(0)"
+						(click)="pickSetOffCopy()"
+					>
+						{{ (setOffCopy() ? 'biz_replace' : 'biz_choose_signed_copy') | transloco }}
+					</a>
+				</div>
+				<p class="help-text">{{ 'biz_setoff_agreement_help' | transloco }}</p>
+			</app-form-fields>
+			}
+			<p class="small text-muted">{{ 'biz_setoff_kept_off_note' | transloco }}</p>
+		</ng-container>
+		}
+
+		<app-form-fields
+			[label]="'ord_note'"
+			[for]="'biz_notes'"
+		>
+			<textarea
+				class="form-control"
+				id="biz_notes"
+				rows="2"
+				formControlName="notes"
+			></textarea>
+		</app-form-fields>
+
+		<div class="d-flex justify-content-end gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				(click)="cancel()"
+			>
+				{{ 'cancel' | transloco }}
+			</button>
+			<button
+				type="submit"
+				class="btn btn-theme"
+				[disabled]="!canSave()"
+			>
+				{{ 'biz_save_business' | transloco }}
+			</button>
+		</div>
+	</form>
+</app-page-wrapper>

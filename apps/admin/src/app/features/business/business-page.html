@@ -1,0 +1,418 @@
+@if (query.isPending()) {
+<div class="container-fluid">
+	<div class="card">
+		<div class="card-body text-muted">{{ 'loading' | transloco }}</div>
+	</div>
+</div>
+} @else if (business(); as b) {
+<div class="container-fluid">
+	<div class="row g-2">
+		<div class="col-xxl-9">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>
+								{{ b.tradeName || b.legalName }}@if (b.tradeName && b.tradeName !== b.legalName) { · {{
+								b.legalName }} }
+							</h5>
+						</div>
+						<a
+							*hasPermission="'business.edit'"
+							class="btn btn-outline btn-sm"
+							[routerLink]="['/businesses', b.id, 'edit']"
+						>
+							<i class="ri-pencil-line me-1"></i>
+							{{ 'biz_edit' | transloco }}
+						</a>
+					</div>
+					<ul
+						class="nav nav-tabs mb-3"
+						role="tablist"
+					>
+						@for (item of ['details', 'customer', 'supplier', 'activity']; track item) { @if (item !==
+						'customer' || b.roles.customer) { @if (item !== 'supplier' || b.roles.supplier) {
+						<li
+							class="nav-item"
+							role="presentation"
+						>
+							<button
+								type="button"
+								class="nav-link"
+								role="tab"
+								[class.active]="tab() === item"
+								[attr.aria-selected]="tab() === item"
+								(click)="tab.set($any(item))"
+							>
+								{{ 'biz_tab_' + item | transloco }}
+							</button>
+						</li>
+						} } }
+					</ul>
+
+					@switch (tab()) { @case ('details') {
+					<div class="customer-detail tracking-wrapper">
+						<ul>
+							<li>
+								<label>{{ 'gstin' | transloco }}:</label>
+								<h4>{{ b.gstin ?? '—' }}</h4>
+							</li>
+							<li>
+								<label>{{ 'biz_type' | transloco }}:</label>
+								<h4>{{ 'biz_type_' + b.businessType | transloco }}</h4>
+							</li>
+							<li>
+								<label>{{ 'biz_billing_address' | transloco }}:</label>
+								<h4>
+									{{ b.registeredAddress.line }}, {{ b.registeredAddress.city }}, {{ b.stateName }} {{
+									b.registeredAddress.pin }}
+								</h4>
+							</li>
+							@for (contact of b.contacts; track contact.id) {
+							<li>
+								<label>
+									{{ 'biz_contact_name' | transloco }}@if (contact.isAccounts) { ({{ 'biz_accounts' |
+									transloco }}) }:
+								</label>
+								<h4>
+									{{ contact.name }}@if (contact.email) { · {{ contact.email }} } @if (contact.mobile)
+									{ · +{{ contact.mobile.countryCallingCode }} {{ contact.mobile.number }} }
+								</h4>
+							</li>
+							} @if (b.roles.customer) {
+							<li>
+								<label>{{ 'biz_zone' | transloco }}:</label>
+								<h4>{{ zoneName() }}</h4>
+							</li>
+							} @if (b.notes) {
+							<li>
+								<label>{{ 'ord_note' | transloco }}:</label>
+								<h4>{{ b.notes }}</h4>
+							</li>
+							}
+						</ul>
+					</div>
+					} @case ('customer') { @if (customer(); as c) {
+					<div class="row g-3 align-items-center mb-3">
+						<div class="col-md-5">
+							<ul class="list-unstyled mb-0">
+								<li class="d-flex justify-content-between border-bottom py-2">
+									<span class="text-muted">{{ 'ord_credit_limit' | transloco }}</span>
+									<span>{{ c.creditLimitINR | rupees }}</span>
+								</li>
+								<li class="d-flex justify-content-between border-bottom py-2">
+									<span class="text-muted">{{ 'ord_credit_days' | transloco }}</span>
+									<span>{{ c.creditDays }}</span>
+								</li>
+							</ul>
+						</div>
+						<div class="col-md-7">
+							<div class="d-flex justify-content-between small mb-1">
+								<span>{{ 'biz_used' | transloco: { amount: (owesUs() | rupees) } }}</span>
+								<span>{{ 'biz_available' | transloco: { amount: (available() | rupees) } }}</span>
+							</div>
+							<div
+								class="progress"
+								role="progressbar"
+								[attr.aria-label]="'biz_credit_used' | transloco"
+								[attr.aria-valuenow]="usedPercent()"
+								aria-valuemin="0"
+								aria-valuemax="100"
+							>
+								<div
+									class="progress-bar bg-warning"
+									[style.width.%]="usedPercent()"
+								></div>
+							</div>
+						</div>
+					</div>
+					@if (receivable.data(); as statement) {
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'biz_col_date' | transloco }}</th>
+									<th>{{ 'biz_col_document' | transloco }}</th>
+									<th class="text-end">{{ 'biz_col_debit' | transloco }}</th>
+									<th class="text-end">{{ 'biz_col_credit' | transloco }}</th>
+									<th class="text-end">{{ 'biz_col_balance' | transloco }}</th>
+									<th>{{ 'biz_col_due' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>—</td>
+									<td>{{ 'biz_opening_balance' | transloco }}</td>
+									<td></td>
+									<td></td>
+									<td class="text-end">{{ statement.openingINR | rupees }}</td>
+									<td></td>
+								</tr>
+								@for (row of statement.rows; track row.id) {
+								<tr>
+									<td>{{ day(row.at) }}</td>
+									<td>
+										@if (row.kind === 'setOff') {
+										<b>{{ documentWords(row) }}</b>
+										} @else { {{ documentWords(row) }} }
+									</td>
+									<td class="text-end">{{ row.amountINR > 0 ? money(row.amountINR) : '' }}</td>
+									<td class="text-end">{{ row.amountINR < 0 ? money(-row.amountINR) : '' }}</td>
+									<td class="fw-bold text-end">{{ row.balanceINR | rupees }}</td>
+									<td>{{ row.dueOn ? day(row.dueOn) : '' }}</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@if (setOffRows().length) {
+					<!-- so04: set-offs are never edited or deleted; a mistake is undone by a reversing entry. -->
+					<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+						<span class="small text-muted">{{ 'biz_setoff_never_edited' | transloco }}</span>
+						@for (row of setOffRows(); track row.id) {
+						<button
+							*hasPermission="'business.settle'"
+							type="button"
+							class="btn btn-outline btn-sm"
+							(click)="reverseSetOff(row)"
+						>
+							<i class="ri-arrow-go-back-line me-1"></i>
+							{{ 'biz_reverse_this_setoff' | transloco: { number: row.documentNumber ?? '' } }}
+						</button>
+						}
+					</div>
+					} } } } @case ('supplier') {
+					<p class="small text-muted">{{ 'biz_supplier_statement_note' | transloco }}</p>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'date' | transloco }}</th>
+									<th>{{ 'document' | transloco }}</th>
+									<th>{{ 'details' | transloco }}</th>
+									<th class="text-end">{{ 'bill_amount' | transloco }}</th>
+									<th class="text-end">{{ 'paid_or_credited' | transloco }}</th>
+									<th class="text-end">{{ 'balance' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of supplierSummary.data()?.statement ?? []; track row.documentId + row.kind + $index; let
+								last = $last) {
+								<tr>
+									<td>{{ row.date | shortDate }}</td>
+									<td>
+										@if (statementLink(row); as target) {
+										<a [routerLink]="target">{{ row.documentNumber }}</a>
+										} @else { {{ row.documentNumber }} }
+									</td>
+									<td>{{ row.details }}</td>
+									<td class="text-end text-nowrap">{{ row.billINR ? (row.billINR | rupees) : '' }}</td>
+									<td class="text-end text-nowrap">
+										{{ row.paidOrCreditedINR ? (row.paidOrCreditedINR | rupees) : '' }}
+									</td>
+									<td class="text-end text-nowrap">
+										@if (last) {
+										<strong>{{ row.balanceINR | rupees }}</strong>
+										} @else { {{ row.balanceINR | rupees }} }
+									</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td colspan="6">
+										<div class="no-data-added">
+											<h4>{{ 'supplier_statement_empty' | transloco }}</h4>
+										</div>
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@if (supplierEntries().length) {
+					<p class="small text-muted mt-3 mb-2">{{ 'biz_setoff_same_entry_supplier' | transloco }}</p>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'biz_col_date' | transloco }}</th>
+									<th>{{ 'biz_col_document' | transloco }}</th>
+									<th class="text-end">{{ 'biz_col_paid_set_off' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of supplierEntries(); track row.id) {
+								<tr>
+									<td>{{ day(row.at) }}</td>
+									<td>
+										<b>{{ documentWords(row) }}</b>
+									</td>
+									<td class="text-end">{{ -row.amountINR | rupees }}</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					} } @case ('activity') {
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'biz_col_date' | transloco }}</th>
+									<th>{{ 'biz_col_account' | transloco }}</th>
+									<th>{{ 'biz_col_document' | transloco }}</th>
+									<th class="text-end">{{ 'ord_col_amount' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of activity(); track row.id) {
+								<tr>
+									<td>{{ day(row.at) }}</td>
+									<td>{{ row.sideKey | transloco }}</td>
+									<td>{{ documentWords(row) }}</td>
+									<td class="text-end">{{ row.amountINR | rupees }}</td>
+								</tr>
+								} @empty {
+								<tr>
+									<td
+										colspan="4"
+										class="text-muted"
+									>
+										{{ 'biz_no_activity' | transloco }}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					} }
+				</div>
+			</div>
+		</div>
+
+		<div class="col-xxl-3">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'biz_where_things_stand' | transloco }}</h5>
+						</div>
+					</div>
+					<div class="customer-detail tracking-wrapper">
+						<ul>
+							@if (b.roles.customer) {
+							<li>
+								<label>{{ 'biz_they_owe_us' | transloco }}:</label>
+								<h4>{{ owesUs() | rupees }} ({{ 'biz_side_customer' | transloco }})</h4>
+							</li>
+							} @if (b.roles.supplier) {
+							<li>
+								<label>{{ 'biz_we_owe_them' | transloco }}:</label>
+								<h4>{{ weOwe() | rupees }} ({{ 'biz_side_supplier' | transloco }})</h4>
+							</li>
+							}
+						</ul>
+						<p class="small text-muted mb-0">{{ 'biz_where_help' | transloco }}</p>
+					</div>
+					<p class="small text-muted mb-0">{{ 'biz_never_set_off_here' | transloco }}</p>
+				</div>
+			</div>
+			@if (b.roles.supplier && tab() === 'supplier') {
+			<!-- bz04: the supplier account's own actions, the same as on Purchases › Suppliers. -->
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'biz_supplier_account' | transloco }}</h5>
+						</div>
+					</div>
+					<div class="d-grid gap-2">
+						<button
+							*hasPermission="'purchase.payment'"
+							type="button"
+							class="btn btn-theme"
+							(click)="recordSupplierPayment()"
+						>
+							<i class="ri-add-line me-1"></i>
+							{{ 'record_payment' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline"
+							[disabled]="!supplierSummary.data()"
+							(click)="exportSupplierStatement()"
+						>
+							<i class="ri-download-2-line me-1"></i>
+							{{ 'export_statement' | transloco }}
+						</button>
+					</div>
+				</div>
+			</div>
+			} @if (b.roles.customer && tab() !== 'supplier') {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'biz_customer_account' | transloco }}</h5>
+						</div>
+					</div>
+					<div class="d-grid gap-2">
+						<button
+							*hasPermission="'order.payment'"
+							type="button"
+							class="btn btn-theme"
+							(click)="recordReceipt()"
+						>
+							<i class="ri-add-line me-1"></i>
+							{{ 'biz_record_receipt' | transloco }}
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline"
+							[disabled]="!receivable.data()"
+							(click)="exportStatement()"
+						>
+							<i class="ri-download-2-line me-1"></i>
+							{{ 'biz_export_statement' | transloco }}
+						</button>
+						@if (b.roles.supplier) {
+						<button
+							*hasPermission="'business.settle'"
+							type="button"
+							class="btn btn-outline"
+							[disabled]="!balances.data()"
+							(click)="recordSetOff()"
+						>
+							<i class="ri-arrow-left-right-line me-1"></i>
+							{{ 'biz_record_setoff' | transloco }}
+						</button>
+						}
+						<button
+							*hasPermission="'business.hold'"
+							type="button"
+							class="btn btn-outline"
+							(click)="changeStanding()"
+						>
+							<i class="ri-shield-check-line me-1"></i>
+							{{ 'biz_change_standing' | transloco }}
+						</button>
+					</div>
+				</div>
+			</div>
+			}
+		</div>
+	</div>
+</div>
+} @else {
+<div class="container-fluid">
+	<div
+		class="alert alert-warning d-flex align-items-start gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>
+			{{ 'biz_not_found' | transloco }}
+			<a [routerLink]="['/businesses']">{{ 'biz_back_to_list' | transloco }}</a>
+		</div>
+	</div>
+</div>
+}

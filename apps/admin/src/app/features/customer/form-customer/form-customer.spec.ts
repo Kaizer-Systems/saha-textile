@@ -8,12 +8,15 @@ import { firstValueFrom, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminCustomersGateway } from '@core/admin-customers/admin-customers.gateway';
+import { CustomerAddressBookGateway } from '@core/admin-customers/customer-address-book.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { FormCustomer } from './form-customer';
 
 const client = vi.hoisted(() => ({ invalidateQueries: vi.fn() }));
 const customer = signal<unknown>(undefined);
+const customerOrders = signal<unknown>(undefined);
+const ordersAsked: Array<{ id: unknown; params: unknown }> = [];
 const countries = signal<unknown>([
 	{ id: 356, name: 'India', iso_3166_2: 'IN' },
 	{ id: 840, name: 'United States', iso_3166_2: 'US' },
@@ -44,6 +47,10 @@ vi.mock('@data-access/queries/admin-customers.queries', () => ({
 		id();
 		return { data: customer };
 	},
+	injectAdminCustomerOrdersQuery: (id: () => unknown, params: () => unknown) => {
+		ordersAsked.push({ id: id(), params: params() });
+		return { data: customerOrders };
+	},
 }));
 
 const setup = (type = 'create', id: string | null = null, template = '') => {
@@ -58,14 +65,16 @@ const setup = (type = 'create', id: string | null = null, template = '') => {
 	const router = { navigateByUrl: vi.fn() };
 	const modal = { open: vi.fn(), dismissAll: vi.fn() };
 	const notification = { showSuccess: vi.fn() };
+	const addressBook = { save: vi.fn(() => of({})) };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: AdminCustomersGateway, useValue: gateway },
 			{ provide: Router, useValue: router },
 			{ provide: NgbModal, useValue: modal },
+			{ provide: CustomerAddressBookGateway, useValue: addressBook },
 			{ provide: NotificationService, useValue: notification },
-			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
 			{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => id } } } },
 		],
 	});
@@ -74,7 +83,7 @@ const setup = (type = 'create', id: string | null = null, template = '') => {
 	fixture.componentRef.setInput('type', type);
 	fixture.detectChanges();
 	TestBed.tick();
-	return { fixture, page: fixture.componentInstance, gateway, router, modal, notification };
+	return { fixture, page: fixture.componentInstance, gateway, router, modal, notification, addressBook };
 };
 const settle = async () => {
 	for (let i = 0; i < 12; i += 1) await Promise.resolve();
@@ -387,19 +396,86 @@ describe('FormCustomer.resendActivation', () => {
 	});
 });
 
-describe('FormCustomer address dialog', () => {
+const checkedAddress = {
+	label: 'Home',
+	fullName: 'Kavita Iyer',
+	line1: '12 Rash Behari Avenue',
+	city: 'Kolkata',
+	state: 'West Bengal',
+	subdivisionCode: 'WB',
+	postalCode: '700026',
+	countryCode: 'IN',
+	mobile: { countryCallingCode: '91', number: '9831122334' },
+	isDefault: false,
+};
+
+describe('FormCustomer address popup (ad04–ad05)', () => {
+	const opened = (modal: { open: ReturnType<typeof vi.fn> }, result: Promise<unknown>) => {
+		const start = vi.fn();
+		modal.open.mockReturnValue({ componentInstance: { start }, result });
+		return start;
+	};
+
+	it('saves a saved customer’s address through the checked route and refreshes the page', async () => {
+		const { page, modal, notification } = setup('edit', 'c1');
+		customer.set(saved());
+		TestBed.tick();
+		const start = opened(modal, Promise.resolve(checkedAddress));
+		page.form.patchValue({ displayName: 'Kavita Iyer' });
+		page.openAddressModal();
+		expect(start).toHaveBeenCalledWith(
+			expect.objectContaining({ customerId: 'c1', customerName: 'Kavita Iyer', firstAddress: false }),
+		);
+		await settle();
+		expect(notification.showSuccess).toHaveBeenCalledWith('cust_address_saved');
+	});
+
+	it('opens a row for editing with that row', () => {
+		const { page, modal } = setup('edit', 'c1');
+		customer.set(saved());
+		TestBed.tick();
+		const start = opened(modal, new Promise(() => undefined));
+		page.openAddressModal(address());
+		expect(start).toHaveBeenCalledWith(expect.objectContaining({ row: address() }));
+	});
+
+	it('keeps a new customer’s address and saves it checked once the customer exists', async () => {
+		const { page, modal, gateway, addressBook } = setup();
+		opened(modal, Promise.resolve(checkedAddress));
+		page.openAddressModal();
+		await settle();
+		expect(page.addresses()).toMatchObject([
+			{ label: 'Home', country: 'IN', phone: '+91 9831122334', isDefault: true },
+		]);
+		page.form.patchValue(profile);
+		page.submit();
+		await settle();
+		expect(addressBook.save).toHaveBeenCalledWith('c9', null, { ...checkedAddress, isDefault: true });
+		expect(gateway.addAddress).not.toHaveBeenCalled();
+	});
+
+	it('a dismissed popup changes nothing', async () => {
+		const { page, modal } = setup();
+		opened(modal, Promise.reject(new Error('dismissed')));
+		page.openAddressModal();
+		await settle();
+		expect(page.addresses()).toEqual([]);
+	});
+});
+
+describe('FormCustomer theme address dialog (unused, cleanup list)', () => {
 	it('waits for its template', () => {
 		const { page, modal } = setup();
-		page.openAddressModal();
+		page.openThemeAddressModal();
 		expect(modal.open).not.toHaveBeenCalled();
 	});
 
 	it('opens on the chosen country', () => {
 		const { page, modal } = setup('create', null, '<ng-template #addAddressModal></ng-template>');
-		page.openAddressModal();
+		page.openThemeAddressModal();
 		expect(modal.open).toHaveBeenCalledOnce();
 		page.addressForm.patchValue({ country_id: '' });
-		page.openAddressModal();
+		page.openThemeAddressModal();
 		expect(modal.open).toHaveBeenCalledTimes(2);
 	});
 
@@ -585,5 +661,73 @@ describe('FormCustomer saved rows', () => {
 		const noId = setup('edit');
 		noId.page.onDeleteConfirmed({ actionToPerform: 'delete', data: { id: 'a1' } } as never);
 		expect(noId.gateway.deleteAddress).not.toHaveBeenCalled();
+	});
+});
+
+describe('FormCustomer tabs and address cards (ad04)', () => {
+	it('shows Login and security only when activation can be resent', () => {
+		const { page } = setup('edit', 'c1');
+		customer.set(saved({ status: 'active' }));
+		TestBed.tick();
+		const keys = page.tabs().map((tab) => tab.key);
+		expect(keys.slice(0, 3)).toEqual(['details', 'addresses', 'orders']);
+		expect(keys.includes('security')).toBe(page.canResendActivation());
+	});
+
+	it('asks for the orders only on the Orders tab, and draws them with the list’s pills', () => {
+		const { page, router } = setup('edit', 'c1');
+		customer.set(saved());
+		ordersAsked.length = 0;
+		customerOrders.set({
+			items: [
+				{
+					id: 'o1',
+					orderNumber: 'ST-2611-482190',
+					status: 'awaiting_payment',
+					totalAmount: 1500,
+					createdAt: '2026-11-20T10:00:00Z',
+				},
+			],
+			meta: { total: 1, page: 1, pageSize: 30, totalPages: 1, hasNext: false, hasPrev: false },
+		});
+		page.tab.set('orders');
+		page.onOrdersTableChange({ page: 2, paginate: 15 });
+		const table = page.ordersTable();
+		expect(table.total).toBe(1);
+		expect(table.data[0]).toMatchObject({ id: 'o1', number: '<b>ST-2611-482190</b>' });
+		expect(table.data[0]?.status).toContain('status-pending');
+		page.openOrder(table.data[0]!);
+		expect(router.navigateByUrl).toHaveBeenCalledWith('/order/details/o1');
+	});
+
+	it('writes the card lines: one address line, the postal label per country, the phone', () => {
+		const { page } = setup('edit', 'c1');
+		const row = address({ countryCode: 'IN', mobile: { countryCallingCode: '91', number: '9831122334' } });
+		expect(page.addressLine(row)).toBe('Line 1, Line 2, Kolkata, West Bengal, India');
+		expect(page.postalLabelKey(row)).toBe('addr_postal_pin');
+		expect(page.postalLabelKey(address({ country: 'GB' }))).toBe('addr_postal_postcode');
+		expect(page.postalLabelKey(address({ country: 'FR' }))).toBe('addr_postal_postal');
+		expect(page.phoneText(row)).toBe('+91 9831122334');
+		expect(page.phoneText(address())).toBe('+919000000000');
+	});
+
+	it('the radio makes an address the default', async () => {
+		const { page, gateway, notification } = setup('edit', 'c1');
+		customer.set(saved());
+		TestBed.tick();
+		page.makeDefaultAddress(address({ isDefault: true }));
+		expect(gateway.updateAddress).not.toHaveBeenCalled();
+		page.makeDefaultAddress(address({ id: 'a2', isDefault: false }));
+		await settle();
+		expect(gateway.updateAddress).toHaveBeenCalledWith('c1', 'a2', { isDefault: true });
+		expect(notification.showSuccess).toHaveBeenCalledWith('cust_address_saved');
+	});
+
+	it('the card’s delete asks first', () => {
+		const { page } = setup('edit', 'c1');
+		const openModal = vi.fn();
+		Object.defineProperty(page, 'DeleteModal', { value: () => ({ openModal }) });
+		page.confirmDeleteRow(address({ id: 'a7' }));
+		expect(openModal).toHaveBeenCalledWith('delete', { id: 'a7' });
 	});
 });

@@ -1,0 +1,176 @@
+<div class="modal-header">
+	<h2 id="order_invoice_address_popup_title">{{ 'ord_add_invoice_address' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	<p class="mb-3">{{ 'ord_invoice_address_popup_help' | transloco }}</p>
+	<div class="row g-3">
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="inv_name"
+			>
+				{{ 'ord_invoice_name' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="inv_name"
+				maxlength="120"
+				autocomplete="off"
+				ngbAutofocus
+				[ngModel]="fullName()"
+				(ngModelChange)="fullName.set($event)"
+			/>
+		</div>
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="inv_street"
+			>
+				{{ 'ord_street' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="inv_street"
+				maxlength="200"
+				autocomplete="off"
+				[ngModel]="line1()"
+				(ngModelChange)="line1.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label"
+				for="inv_city"
+			>
+				{{ 'ord_city' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="inv_city"
+				maxlength="80"
+				autocomplete="off"
+				[ngModel]="city()"
+				(ngModelChange)="city.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label"
+				for="inv_state"
+			>
+				{{ 'ord_state' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="inv_state"
+				[ngModel]="subdivisionCode()"
+				(ngModelChange)="subdivisionCode.set($event)"
+			>
+				<option value="">{{ 'ord_choose' | transloco }}</option>
+				@for (state of states(); track state.code) {
+				<option [value]="state.code">{{ state.name }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label"
+				for="inv_pin"
+			>
+				{{ 'ord_pin_code' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="inv_pin"
+				inputmode="numeric"
+				maxlength="6"
+				autocomplete="off"
+				[class.is-invalid]="pinShapeWrong() || pinNote() === 'unknown'"
+				[ngModel]="postalCode()"
+				(ngModelChange)="lookUpPin($event)"
+			/>
+			@if (pinShapeWrong()) {
+			<div class="invalid-feedback">{{ 'ord_pin_six_digits' | transloco }}</div>
+			} @else if (pinNote() === 'unknown') {
+			<div class="invalid-feedback">{{ 'ord_pin_unknown' | transloco }}</div>
+			}
+		</div>
+		@if (!mobile()) {
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="inv_mobile"
+			>
+				{{ 'ord_mobile' | transloco }}
+			</label>
+			<div class="input-group">
+				<span class="input-group-text">+91</span>
+				<input
+					class="form-control"
+					id="inv_mobile"
+					inputmode="tel"
+					maxlength="14"
+					autocomplete="off"
+					[ngModel]="mobileText()"
+					(ngModelChange)="mobileText.set($event)"
+				/>
+			</div>
+		</div>
+		}
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="inv_confirmed"
+			>
+				{{ 'ord_confirmed_how' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="inv_confirmed"
+				[ngModel]="confirmedHow()"
+				(ngModelChange)="confirmedHow.set($event)"
+			>
+				@for (choice of confirmedChoices; track choice) {
+				<option [value]="choice">{{ 'ord_confirmed_' + choice | transloco }}</option>
+				}
+			</select>
+		</div>
+	</div>
+	@if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			{{ 'ord_save_invoice_address' | transloco }}
+		</button>
+	</div>
+</div>

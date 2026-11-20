@@ -1,0 +1,43 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'biz_businesses'"
+>
+	<div
+		*hasPermission="'business.create'"
+		button
+	>
+		<a
+			[routerLink]="['/businesses/create']"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'biz_add_business' | transloco }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[searchPlaceholder]="'biz_search_placeholder'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="view($event)"
+		(action)="onAction($event)"
+	>
+		<div
+			tableFilters
+			class="d-flex flex-wrap gap-2"
+		>
+			@for (item of filters; track item.key) {
+			<button
+				type="button"
+				class="align-items-center btn btn-sm d-flex"
+				[class.btn-theme]="filter() === item.key"
+				[class.btn-outline]="filter() !== item.key"
+				[attr.aria-pressed]="filter() === item.key"
+				(click)="setFilter(item.key)"
+			>
+				{{ item.label | transloco }} ({{ counts()[item.key] }})
+			</button>
+			}
+		</div>
+	</app-table>
+	<p class="help-text mt-2 mb-0">{{ 'biz_list_note' | transloco }}</p>
+</app-page-wrapper>

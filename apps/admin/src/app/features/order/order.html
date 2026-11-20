@@ -7,7 +7,7 @@
 					<div>
 						<h6>{{ 'ord_tile_needs_attention' | transloco }}</h6>
 						<h3>{{ tile.needsAttention }}</h3>
-						<p class="small text-muted mb-0">{{ 'ord_tile_needs_attention_sub' | transloco }}</p>
+						<p class="small text-muted mb-0">{{ attentionLine() ?? ('ord_tile_needs_attention_sub' | transloco) }}</p>
 					</div>
 					<div class="icon-box">
 						<i class="ri-error-warning-line"></i>
@@ -126,5 +126,19 @@
 				<option value="admin">{{ 'ord_from_admin' | transloco }}</option>
 			</select>
 		</div>
+		@if (searchLine(); as line) {
+		<p
+			tableNote
+			class="small text-muted mb-2"
+		>
+			<i class="ri-search-line"></i>
+			{{ line }}
+		</p>
+		}
 	</app-table>
+	<!-- ol03, ol04, oo01: what the list is showing, under the table. -->
+	<p class="help-text mt-2 mb-0">
+		{{ (filter() === 'needsAttention' ? 'ord_list_help_attention' : filter() === 'open' ? 'ord_list_help_open' :
+		'ord_list_help_search') | transloco }}
+	</p>
 </app-page-wrapper>

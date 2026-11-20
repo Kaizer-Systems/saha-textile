@@ -1,6 +1,9 @@
 @let d = detail();
 <div class="modal-header">
-	<h2 id="order_status_popup_title">{{ 'ord_update_status' | transloco }}</h2>
+	<h2 id="order_status_popup_title">
+		@if (cancelView()) { {{ 'ord_cancel_order_title' | transloco: { number: detail()?.order?.orderNumber } }} }
+		@else { {{ 'ord_update_status' | transloco }} }
+	</h2>
 	<button
 		type="button"
 		class="btn btn-close"
@@ -39,6 +42,8 @@
 				</small>
 				} @else if (option.warning) {
 				<small class="text-muted ms-3">{{ 'ord_block_' + option.warning | transloco }}</small>
+				} @else if (option.to === 'cancelled' && cancelHint()) {
+				<small class="text-muted ms-3">{{ cancelHint() }}</small>
 				}
 			</button>
 		</li>
@@ -99,9 +104,17 @@
 				class="form-control"
 				id="ship_courier"
 				maxlength="80"
+				list="ship_courier_used"
+				autocomplete="off"
 				[ngModel]="courierName()"
 				(ngModelChange)="courierName.set($event)"
 			/>
+			<datalist id="ship_courier_used">
+				@for (name of detail()?.courierNames ?? []; track name) {
+				<option [value]="name"></option>
+				}
+			</datalist>
+			<p class="help-text mb-0">{{ 'ord_courier_help' | transloco }}</p>
 		</div>
 		<div class="col-md-6">
 			<label
@@ -224,7 +237,25 @@
 				(ngModelChange)="cancelNote.set($event)"
 			/>
 		</div>
-		<p class="small text-muted mb-0">{{ 'ord_cancel_help' | transloco }}</p>
+		@if (cancelView(); as view) {
+		<!-- st05: what cancelling does, before it is confirmed. -->
+		<ul class="list-unstyled small mb-0">
+			@if (view.refund) {
+			<li class="mb-1">
+				<span class="text-muted">{{ 'ord_cancel_refund' | transloco }}:</span>
+				{{ view.refund }}
+			</li>
+			}
+			<li class="mb-1">
+				<span class="text-muted">{{ 'ord_cancel_stock' | transloco }}:</span>
+				{{ view.stock }}
+			</li>
+			<li class="mb-1">
+				<span class="text-muted">{{ 'ord_cancel_told_label' | transloco }}:</span>
+				{{ view.told }}
+			</li>
+		</ul>
+		}
 	</div>
 	}
 	<div class="mb-3">
@@ -245,13 +276,10 @@
 			(ngModelChange)="comment.set($event)"
 		></textarea>
 	</div>
-	@if (chosen(); as option) {
+	@if (toldLine(); as told) {
 	<p class="small mb-0">
 		<i class="ri-notification-3-line"></i>
-		@if (option.tells.length) { {{ 'ord_customer_told' | transloco }} @for (template of option.tells; track
-		template) {
-		<span class="fm-chip ms-1">{{ 'ord_template_' + template | transloco }}</span>
-		} } @else { {{ 'ord_customer_told_nothing' | transloco }} }
+		{{ told }}
 	</p>
 	} @if (error(); as problem) {
 	<div
@@ -271,7 +299,7 @@
 			class="btn btn-outline"
 			(click)="modal.dismiss()"
 		>
-			{{ 'cancel' | transloco }}
+			{{ (cancelView() ? 'ord_keep_the_order' : 'cancel') | transloco }}
 		</button>
 		<button
 			type="button"
@@ -281,8 +309,9 @@
 			[disabled]="!canSave()"
 			(click)="save()"
 		>
-			@if (chosen(); as option) { {{ 'ord_mark_as' | transloco: { status: ('ord_status_' + option.to | transloco)
-			} }} } @else { {{ 'ord_choose_status' | transloco }} }
+			@if (cancelView(); as view) { {{ view.button }} } @else if (chosen(); as option) { {{ 'ord_mark_as' |
+			transloco: { status: ('ord_status_' + option.to | transloco) } }} } @else { {{ 'ord_choose_status' |
+			transloco }} }
 		</button>
 	</div>
 </div>

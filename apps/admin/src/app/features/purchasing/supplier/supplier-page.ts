@@ -6,14 +6,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
-import {
-	PILLS,
-	RupeesPipe,
-	ShortDatePipe,
-	ShortDateTimePipe,
-	downloadCsv,
-	shortDate,
-} from '@core/purchasing/purchasing-format';
+import { PILLS, RupeesPipe, ShortDatePipe, ShortDateTimePipe } from '@core/purchasing/purchasing-format';
 import { PURCHASING_KEYS, PurchasingGateway, injectSupplierSummaryQuery } from '@core/purchasing/purchasing.gateway';
 import { injectInventorySettingsQuery } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
@@ -23,7 +16,7 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 import { PluralPipe, translateCount } from '@shared/pipes/language.pipes';
 
 import { termsText } from './supplier-list';
-import { PaymentPopup, type PayableBill } from '../shared/payment-popup';
+import { exportSupplierStatement, recordSupplierPayment } from '../shared/supplier-actions';
 
 import type { SupplierStatementRow } from '@saha-textile/contracts';
 
@@ -130,59 +123,17 @@ export class SupplierPage {
 	/** The statement as a spreadsheet for the CA or the supplier (s03 Export statement). */
 	exportStatement(): void {
 		const summary = this.summary.data();
-		if (!summary) return;
-		const t = (key: string) => this.transloco.translate(key);
-		const name = summary.supplier.shortName || summary.supplier.legalName;
-		downloadCsv(
-			`statement-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`,
-			[t('date'), t('document'), t('details'), t('bill_amount'), t('paid_or_credited'), t('balance')],
-			summary.statement.map((row) => [
-				shortDate(row.date),
-				row.documentNumber,
-				row.details,
-				row.billINR || null,
-				row.paidOrCreditedINR || null,
-				row.balanceINR,
-			]),
-		);
+		if (summary) exportSupplierStatement(summary, (key) => this.transloco.translate(key));
 	}
 
 	/** Record payment (s03): the same popup as on a purchase entry, with the unpaid bills to pick from. */
 	async recordPayment(): Promise<void> {
-		try {
-			const page = await firstValueFrom(
-				this.gateway.entries({ supplierId: this.id(), filter: 'unpaid', pageSize: 100, page: 1 }),
-			);
-			const bills: PayableBill[] = page.items
-				.filter((row) => row.status === 'posted' && row.leftINR > 0.005)
-				// Oldest due first: that is the one to pay first.
-				.sort((a, b) => a.dueOn.localeCompare(b.dueOn))
-				.map((row) => ({
-					id: row.id,
-					number: row.number ?? '',
-					billNumber: row.billNumber,
-					totalINR: row.totalINR,
-					paidINR: row.paidINR,
-					leftINR: row.leftINR,
-				}));
-			if (!bills.length) {
-				this.notifier.showSuccess(this.transloco.translate('supplier_nothing_to_pay'));
-				return;
-			}
-			const popup = this.modals.open(PaymentPopup, {
-				centered: true,
-				windowClass: 'theme-modal',
-				ariaLabelledBy: 'payment_popup_title',
-			});
-			(popup.componentInstance as PaymentPopup).start(bills);
-			const saved = await popup.result.catch(() => null);
-			if (saved) {
-				this.notifier.showSuccess(this.transloco.translate('payment_saved'));
-				void this.queryClient.invalidateQueries({ queryKey: PURCHASING_KEYS.suppliers });
-				void this.queryClient.invalidateQueries({ queryKey: PURCHASING_KEYS.entries });
-			}
-		} catch {
-			// The list call failed; the global notice already said why.
-		}
+		await recordSupplierPayment(this.id(), {
+			gateway: this.gateway,
+			modals: this.modals,
+			notifier: this.notifier,
+			queryClient: this.queryClient,
+			t: (key) => this.transloco.translate(key),
+		});
 	}
 }

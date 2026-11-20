@@ -6,7 +6,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
 import { OrdersGateway } from '@core/orders/orders.gateway';
-import { apiProblem } from '@core/purchasing/purchasing-format';
+import { apiProblem, rupees } from '@core/purchasing/purchasing-format';
 
 import type { AdminOrderDetail, AllowedNextStatus, StatusChangeWrite } from '@saha-textile/contracts';
 
@@ -46,6 +46,52 @@ export class OrderStatusPopup {
 	readonly busy = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly today = indiaToday();
+
+	private readonly t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
+
+	/** The last line: what the customer is told for the chosen step (st01–st04). */
+	readonly toldLine = computed(() => {
+		const chosen = this.chosen();
+		if (!chosen) {
+			// st02: Packed waits for the invoice address.
+			return this.options().some((option) => option.reason === 'addInvoiceAddressFirst')
+				? this.t('ord_told_add_invoice_first')
+				: null;
+		}
+		if (chosen.to === 'cancelled') return null;
+		if (chosen.to === 'shipped') return this.t('ord_told_shipped');
+		if (chosen.to === 'delivered') return this.t('ord_told_delivered');
+		return this.t('ord_told_nothing_for', { status: this.t(`ord_status_${chosen.to}`) });
+	});
+
+	/** st01: on an order still before Packed, the Cancelled choice says until when it stays open. */
+	readonly cancelHint = computed(() => {
+		const status = this.detail()?.order.status;
+		return status === 'placed' || status === 'processing' ? this.t('ord_hint_cancel_until_packed') : null;
+	});
+
+	/** st05: what cancelling does — the refund, the stock and what the customer is told. */
+	readonly cancelView = computed(() => {
+		const detail = this.detail();
+		if (!detail || this.chosen()?.to !== 'cancelled') return null;
+		const received = detail.payments.filter((payment) => payment.state === 'received');
+		const paidINR = Math.round(received.reduce((sum, payment) => sum + payment.amountINR, 0) * 100) / 100;
+		const viaGateway = received.some((payment) => payment.method === 'gateway');
+		const pieces = detail.order.lines.reduce((sum, line) => sum + line.quantity, 0);
+		const amount = rupees(paidINR);
+		return {
+			refund:
+				paidINR > 0
+					? this.t(viaGateway ? 'ord_cancel_refund_gateway' : 'ord_cancel_refund_manual', { amount })
+					: null,
+			stock: this.t(
+				pieces === 1 ? 'ord_cancel_stock_one' : pieces === 2 ? 'ord_cancel_stock_two' : 'ord_cancel_stock_other',
+				{ count: pieces },
+			),
+			told: this.t(paidINR > 0 ? 'ord_cancel_told_refund' : 'ord_cancel_told_plain'),
+			button: paidINR > 0 ? this.t('ord_cancel_and_refund', { amount }) : this.t('ord_cancel_the_order'),
+		};
+	});
 	readonly cancelReasons: ReadonlyArray<NonNullable<StatusChangeWrite['cancel']>['reason']> = [
 		'customerAsked',
 		'outOfStock',

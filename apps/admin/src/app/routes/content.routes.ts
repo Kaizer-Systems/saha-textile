@@ -172,6 +172,14 @@ export const content: Routes = [
 		loadChildren: () => import('@features/purchasing/supplier/supplier.routes'),
 	},
 	{
+		path: 'businesses',
+		loadChildren: () => import('@features/business/business.routes'),
+	},
+	{
+		path: 'zones',
+		loadChildren: () => import('@features/zone/zone.routes'),
+	},
+	{
 		path: 'qna',
 		loadChildren: () => import('@features/questions-answers/questions-answers.routes'),
 	},

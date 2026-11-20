@@ -24,8 +24,13 @@ import {
 	type CustomerAddress,
 	type NotificationChannel,
 } from '@core/admin-customers/admin-customers.gateway';
-import { ITableClickedAction } from '@data-access/interfaces/table.interface';
-import { injectAdminCustomerQuery } from '@data-access/queries/admin-customers.queries';
+import { CustomerAddressBookGateway } from '@core/admin-customers/customer-address-book.gateway';
+import { ORDER_STATUS_PILL } from '@core/orders/order-format';
+import { escapeHtml, pill, rupees, shortDateTime } from '@core/purchasing/purchasing-format';
+import { tablePage } from '@core/purchasing/purchasing.gateway';
+import { Params } from '@data-access/interfaces/core.interface';
+import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectAdminCustomerOrdersQuery, injectAdminCustomerQuery } from '@data-access/queries/admin-customers.queries';
 import { injectCountriesQuery } from '@data-access/queries/country.queries';
 import { injectStatesQuery } from '@data-access/queries/state.queries';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -33,6 +38,28 @@ import * as data from '@shared/data/country-code';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
+import { Table } from '@shared/ui/table/table';
+
+import {
+	addressCardLine,
+	CustomerAddressPopup,
+	type CustomerAddressRow,
+	phoneTextOf,
+	postalLabelKeyOf,
+} from './customer-address-popup';
+
+import type { OrderStatus, SavedAddressWrite } from '@saha-textile/contracts';
+
+export type CustomerTab = 'details' | 'addresses' | 'orders' | 'security';
+
+/** One row of the customer's Orders tab. Values are escaped: they are drawn as HTML. */
+export interface CustomerOrderRow {
+	id: string;
+	number: string;
+	date: string;
+	status: string;
+	total: string;
+}
 
 function atLeastOneChannel(group: AbstractControl): ValidationErrors | null {
 	const email = group.get('channelEmail')?.value;
@@ -57,7 +84,7 @@ function channelsMatchContact(group: AbstractControl): ValidationErrors | null {
 	selector: 'app-form-customer',
 	templateUrl: './form-customer.html',
 	styleUrls: ['./form-customer.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2, Button, TranslocoModule, DeleteModal, AsyncPipe],
+	imports: [ReactiveFormsModule, FormFields, Select2, Button, TranslocoModule, DeleteModal, AsyncPipe, Table],
 })
 export class FormCustomer {
 	private readonly route = inject(ActivatedRoute);
@@ -97,6 +124,42 @@ export class FormCustomer {
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
 
 	private readonly draftAddresses = signal<CustomerAddress[]>([]);
+
+	/** Brief ad04: a saved customer's page is in tabs; a new customer is one page. */
+	readonly tab = signal<CustomerTab>('details');
+	readonly tabs = computed(() => [
+		{ key: 'details' as const, label: 'cust_tab_details' },
+		{ key: 'addresses' as const, label: 'cust_tab_addresses' },
+		{ key: 'orders' as const, label: 'cust_tab_orders' },
+		...(this.canResendActivation() ? [{ key: 'security' as const, label: 'cust_tab_security' }] : []),
+	]);
+	private readonly ordersParams = signal<Params>({});
+	private readonly ordersQuery = injectAdminCustomerOrdersQuery(
+		() => (this.type() === 'edit' && this.tab() === 'orders' ? this.customerId() : null),
+		() => {
+			const page = tablePage(this.ordersParams());
+			return { page: page.page, pageSize: page.pageSize, ...(page.q ? { q: page.q } : {}) };
+		},
+	);
+	readonly ordersTable = computed<ITableConfig<CustomerOrderRow>>(() => {
+		const data = this.ordersQuery.data();
+		return {
+			columns: [
+				{ title: 'ord_col_order', dataField: 'number' },
+				{ title: 'ord_col_date', dataField: 'date' },
+				{ title: 'ord_col_status', dataField: 'status' },
+				{ title: 'ord_col_total', dataField: 'total', align: 'end' },
+			],
+			data: (data?.items ?? []).map((order) => this.orderRow(order)),
+			total: data?.meta.total ?? 0,
+		};
+	});
+	private readonly addressBook = inject(CustomerAddressBookGateway);
+	/**
+	 * Addresses added through the address popup before the customer is saved: kept as typed, and saved
+	 * through the checked address-book route once the customer exists (brief ad04–ad05).
+	 */
+	private readonly draftWrites = new Map<string, SavedAddressWrite>();
 	private syncSignature = '';
 
 	readonly customer = computed(() => this.customerQuery.data() ?? null);
@@ -134,6 +197,7 @@ export class FormCustomer {
 				country: string;
 				phone: string;
 				isDefault: boolean;
+				checked: SavedAddressWrite | null;
 			}>;
 		}) => {
 			const customer = await lastValueFrom(
@@ -145,8 +209,12 @@ export class FormCustomer {
 					activationChannels: vars.activationChannels,
 				}),
 			);
-			for (const address of vars.draftAddresses) {
-				await lastValueFrom(this.gateway.addAddress(customer.id, address));
+			for (const { checked, ...address } of vars.draftAddresses) {
+				await lastValueFrom(
+					checked
+						? this.addressBook.save(customer.id, null, checked)
+						: this.gateway.addAddress(customer.id, address),
+				);
 			}
 			return customer;
 		},
@@ -481,6 +549,7 @@ export class FormCustomer {
 					country: address.country,
 					phone: address.phone,
 					isDefault: address.isDefault,
+					checked: this.draftWrites.get(address.id) ?? null,
 				})),
 			});
 			return;
@@ -518,7 +587,62 @@ export class FormCustomer {
 		this.resendMutation.mutate({ customerId: id, activationChannels: channels });
 	}
 
-	openAddressModal() {
+	/**
+	 * Add or edit a named address in the address popup (brief ad04–ad05), with the country rules.
+	 * The theme's own add-address modal below stays in the template, unused (cleanup list).
+	 */
+	openAddressModal(row?: CustomerAddressRow) {
+		const ref = this.modalService.open(CustomerAddressPopup, {
+			ariaLabelledBy: 'customer_address_popup_title',
+			centered: true,
+			windowClass: 'theme-modal modal-lg',
+		});
+		(ref.componentInstance as CustomerAddressPopup).start({
+			customerId: this.type() === 'create' ? null : this.customerId(),
+			customerName: String(this.form.get('displayName')?.value ?? '').trim(),
+			...(row ? { row } : {}),
+			firstAddress: this.addresses().length === 0,
+		});
+		ref.result.then(
+			(body: SavedAddressWrite) => this.addressPopupSaved(body, row),
+			() => undefined,
+		);
+	}
+
+	private addressPopupSaved(body: SavedAddressWrite, row?: CustomerAddressRow) {
+		if (this.type() !== 'create') {
+			this.notificationService.showSuccess(this.transloco.translate('cust_address_saved'));
+			void this.queryClient.invalidateQueries({ queryKey: ['admin-customer', this.customerId()] });
+			return;
+		}
+		const id = row?.id ?? `draft_${crypto.randomUUID()}`;
+		const shown: CustomerAddress = {
+			id,
+			label: body.label,
+			fullName: body.fullName,
+			line1: body.line1,
+			...(body.line2 ? { line2: body.line2 } : {}),
+			city: body.city,
+			state: body.state ?? '',
+			postalCode: body.postalCode,
+			country: body.countryCode,
+			phone: `+${body.mobile.countryCallingCode} ${body.mobile.number}`,
+			isDefault: body.isDefault || this.draftAddresses().length === 0,
+		};
+		this.draftWrites.set(id, { ...body, isDefault: shown.isDefault });
+		this.draftAddresses.update((rows) => {
+			const others = rows
+				.filter((existing) => existing.id !== id)
+				.map((existing) => (shown.isDefault ? { ...existing, isDefault: false } : existing));
+			const at = rows.findIndex((existing) => existing.id === id);
+			if (at < 0) return [...others, shown];
+			others.splice(at, 0, shown);
+			return others;
+		});
+	}
+
+	/** The theme's add-address modal, kept for the end-of-project cleanup; nothing opens it now. */
+	openThemeAddressModal() {
 		const tpl = this.AddAddressModal();
 		if (!tpl) return;
 		this.modalCountryId.set(
@@ -609,6 +733,8 @@ export class FormCustomer {
 		const addressId = String(group.get('id')?.value ?? '');
 
 		if (this.type() === 'create') {
+			// Edited in the inline fields: the popup's checked copy no longer matches what is shown.
+			this.draftWrites.delete(addressId);
 			this.draftAddresses.update((rows) =>
 				rows.map((row) => {
 					if (row.id !== addressId) {
@@ -641,6 +767,74 @@ export class FormCustomer {
 		this.saveAddressAt(index);
 	}
 
+	/** The address as one line on its card (brief ad04): street, area, landmark, city, State, country. */
+	addressLine(row: CustomerAddressRow): string {
+		return addressCardLine(row, this.transloco.getActiveLang());
+	}
+
+	/** What the country calls its postal code: PIN code in India, Postcode in the UK, ZIP code in the US. */
+	postalLabelKey(row: CustomerAddressRow): string {
+		return postalLabelKeyOf(row);
+	}
+
+	phoneText(row: CustomerAddressRow): string {
+		return phoneTextOf(row);
+	}
+
+	/** The card's radio: this address becomes the default delivery address. */
+	makeDefaultAddress(row: CustomerAddressRow) {
+		if (row.isDefault) return;
+		if (this.type() === 'create') {
+			this.draftAddresses.update((rows) =>
+				rows.map((existing) => ({ ...existing, isDefault: existing.id === row.id })),
+			);
+			for (const [id, write] of this.draftWrites)
+				this.draftWrites.set(id, { ...write, isDefault: id === row.id });
+			return;
+		}
+		const customerId = this.customerId();
+		if (!customerId) return;
+		void lastValueFrom(this.gateway.updateAddress(customerId, row.id, { isDefault: true })).then(
+			() => {
+				this.notificationService.showSuccess(this.transloco.translate('cust_address_saved'));
+				void this.queryClient.invalidateQueries({ queryKey: ['admin-customer', customerId] });
+			},
+			() => this.notificationService.showError(this.transloco.translate('cust_address_not_saved')),
+		);
+	}
+
+	confirmDeleteRow(row: CustomerAddressRow) {
+		void this.DeleteModal()?.openModal('delete', { id: row.id });
+	}
+
+	private orderRow(order: {
+		id: string;
+		orderNumber: string;
+		status: string;
+		totalAmount: number;
+		createdAt: string;
+	}) {
+		const status = order.status as OrderStatus;
+		const known = status in ORDER_STATUS_PILL;
+		return {
+			id: order.id,
+			number: `<b>${escapeHtml(order.orderNumber)}</b>`,
+			date: escapeHtml(shortDateTime(order.createdAt)),
+			status: known
+				? pill(ORDER_STATUS_PILL[status], this.transloco.translate(`ord_status_${status}`))
+				: escapeHtml(order.status),
+			total: escapeHtml(rupees(order.totalAmount)),
+		};
+	}
+
+	onOrdersTableChange(data?: Params) {
+		this.ordersParams.set({ ...data });
+	}
+
+	openOrder(row: CustomerOrderRow) {
+		void this.router.navigateByUrl(`/order/details/${encodeURIComponent(row.id)}`);
+	}
+
 	confirmDeleteAddress(index: number) {
 		const group = this.addressGroupAt(index);
 		const addressId = String(group.get('id')?.value ?? '');
@@ -655,6 +849,7 @@ export class FormCustomer {
 		if (!addressId) return;
 
 		if (this.type() === 'create') {
+			this.draftWrites.delete(addressId);
 			this.draftAddresses.update((rows) => rows.filter((row) => row.id !== addressId));
 			this.notificationService.showSuccess(this.transloco.translate('address_deleted_successfully'));
 			return;

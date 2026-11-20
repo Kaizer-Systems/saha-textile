@@ -35,6 +35,8 @@ import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { intlLocale } from '@core/i18n/localized-fields';
+import { ORDER_STATUS_PILL } from '@core/orders/order-format';
+import { pill } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
 import { injectStoreLocationsQuery } from '@core/stores/store-location.gateway';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
@@ -412,7 +414,11 @@ export class Dashboard {
 				created_at: order.placedAt,
 				consumer_name: order.customerName ?? '-',
 				total: order.totalINR,
-				order_payment_status: `<div class="status-${order.status}"><span>${order.status}</span></div>`,
+				// The orders list's own pill and wording for each status (brief ol02), so the two never differ.
+				order_payment_status: pill(
+					ORDER_STATUS_PILL[order.status],
+					this.transloco.translate(`ord_status_${order.status}`),
+				),
 			}));
 			this.orderTableConfig.update((config) => ({ ...config, data, total: items.length }));
 		});

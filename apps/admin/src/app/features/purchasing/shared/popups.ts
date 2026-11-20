@@ -41,3 +41,21 @@ export async function askYesNo(modals: NgbModal, ask: ConfirmAsk & { no: string 
 		() => null,
 	);
 }
+
+/** A question with an optional comment (orders brief oo06): the comment on yes, null when cancelled. */
+export async function askConfirmComment(
+	modals: NgbModal,
+	ask: ConfirmAsk & { comment: NonNullable<ConfirmAsk['comment']> },
+): Promise<{ comment: string } | null> {
+	const popup = modals.open(ConfirmPopup, {
+		centered: true,
+		windowClass: 'theme-modal text-center',
+		ariaLabelledBy: 'confirm_popup_title',
+	});
+	(popup.componentInstance as ConfirmPopup).start(ask);
+	return popup.result.then(
+		(answer: unknown) =>
+			answer && typeof answer === 'object' && 'comment' in answer ? (answer as { comment: string }) : null,
+		() => null,
+	);
+}

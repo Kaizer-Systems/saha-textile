@@ -69,7 +69,7 @@ export const menu: IMenu[] = [
 		icon: 'ri-user-heart-line',
 		type: 'sub',
 		level: 1,
-		acl_permission: ['customer.index', 'customer.create'],
+		acl_permission: ['customer.index', 'customer.create', 'business.index', 'price_zone.index'],
 		children: [
 			{
 				parent_id: 20,
@@ -94,6 +94,22 @@ export const menu: IMenu[] = [
 				type: 'link',
 				level: 2,
 				permission: ['customer.index'],
+			},
+			{
+				parent_id: 20,
+				title: 'biz_businesses',
+				path: '/businesses',
+				type: 'link',
+				level: 2,
+				permission: ['business.index'],
+			},
+			{
+				parent_id: 20,
+				title: 'zone_zones',
+				path: '/zones',
+				type: 'link',
+				level: 2,
+				permission: ['price_zone.index'],
 			},
 		],
 	},

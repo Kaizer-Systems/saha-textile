@@ -36,6 +36,8 @@ export class OrderPaymentPopup {
 	readonly receivedOn = signal(indiaToday());
 	readonly received = signal(true);
 	readonly note = signal('');
+	/** od08: who collected the cash on delivery. */
+	readonly collectedBy = signal('');
 	readonly busy = signal(false);
 	readonly error = signal<string | null>(null);
 	readonly today = indiaToday();
@@ -43,13 +45,26 @@ export class OrderPaymentPopup {
 
 	readonly amountValue = computed(() => parseRupees(this.amount()));
 	/** What recording this amount does to the balance (oo03–oo05). */
-	readonly outcome = computed<{ key: string; amount: string } | null>(() => {
+	readonly outcome = computed<{ tone: 'success' | 'info' | 'warning'; lead: string; rest: string } | null>(() => {
 		const value = this.amountValue();
 		if (value === null || value <= 0) return null;
 		const due = this.dueINR();
-		if (Math.abs(value - due) < 0.005) return { key: 'ord_pay_result_exact', amount: rupees(due) };
-		if (value < due) return { key: 'ord_pay_result_less', amount: rupees(due - value) };
-		return { key: 'ord_pay_result_more', amount: rupees(value - due) };
+		const order = this.order();
+		const open = !!order?.openedAt && !order.closedAt;
+		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
+		if (Math.abs(value - due) < 0.005)
+			return { tone: 'success', lead: t('ord_pay_lead_exact'), rest: open ? t('ord_pay_rest_exact_open') : '' };
+		if (value < due)
+			return {
+				tone: 'warning',
+				lead: t('ord_pay_lead_less', { amount: rupees(due - value) }),
+				rest: t('ord_pay_rest_less'),
+			};
+		return {
+			tone: 'info',
+			lead: t('ord_pay_lead_more', { amount: rupees(value - due) }),
+			rest: t(open ? 'ord_pay_rest_more_open' : 'ord_pay_rest_more'),
+		};
 	});
 
 	async start(order: Order): Promise<void> {
@@ -85,6 +100,7 @@ export class OrderPaymentPopup {
 					note: this.note().trim() || null,
 					proofMediaId: null,
 					collector: this.method() === 'cashOnDelivery' ? 'staff' : null,
+					collectedBy: this.method() === 'cashOnDelivery' ? this.collectedBy().trim() || null : null,
 					revision: order.revision,
 				}),
 			);

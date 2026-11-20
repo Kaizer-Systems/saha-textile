@@ -1,10 +1,11 @@
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
-import { toOrderTableRow, type OrderTableRow } from '@core/orders/order-format';
+import { attentionTileLine, toOrderTableRow, type OrderTableRow } from '@core/orders/order-format';
 import { injectAdminOrdersQuery, orderTablePage } from '@core/orders/orders.gateway';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableColumn, ITableConfig } from '@data-access/interfaces/table.interface';
@@ -22,6 +23,15 @@ const LIST_COLUMNS: ITableColumn[] = [
 	{ title: 'ord_col_total', dataField: 'total', align: 'end', width: 130 },
 	{ title: 'ord_col_payment', dataField: 'payment', width: 200 },
 	{ title: 'ord_col_status', dataField: 'status', width: 200 },
+];
+
+/** Needs attention (ol03): the reason each order waits on staff replaces where it goes and the money. */
+const ATTENTION_COLUMNS: ITableColumn[] = [
+	{ title: 'ord_col_order', dataField: 'number', width: 170 },
+	{ title: 'ord_col_date', dataField: 'date', width: 120 },
+	{ title: 'ord_col_buyer', dataField: 'buyer' },
+	{ title: 'ord_col_why', dataField: 'why', width: 330 },
+	{ title: 'ord_col_status', dataField: 'status', width: 190 },
 ];
 
 /** Open orders show how long pieces have been held and where the money stands (oo01). */
@@ -64,7 +74,22 @@ export class Order {
 		...(this.channel() ? { channel: this.channel() as OrderChannel } : {}),
 		...orderTablePage(this.params()),
 	}));
+	private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 	readonly tiles = computed(() => this.query.data()?.tiles ?? null);
+	/** ol02: what the Needs attention tile is made of; "Waiting on staff" when nothing is. */
+	readonly attentionLine = computed(() => {
+		this.lang();
+		return attentionTileLine(this.tiles()?.attentionBy, (key, params) => this.transloco.translate(key, params));
+	});
+	/** ol04: "1 order matches “4821390761” (the number as it appears in an SMS, without hyphens)." */
+	readonly searchLine = computed(() => {
+		this.lang();
+		const q = typeof this.params()['search'] === 'string' ? String(this.params()['search']).trim() : '';
+		const total = this.query.data()?.total;
+		if (!q || total === undefined) return null;
+		const count = this.transloco.translate(`ord_search_matches_${total === 1 ? 'one' : 'other'}`, { count: total, q });
+		return /^[A-Za-z]{0,3}\d{9,}$/.test(q.replace(/\s/g, '')) ? `${count} ${this.transloco.translate('ord_search_sms_form')}.` : `${count}.`;
+	});
 	readonly counts = computed<Partial<Record<OrderListFilter, number>>>(() => this.query.data()?.counts ?? {});
 
 	readonly filters: ReadonlyArray<{ key: OrderListFilter; label: string }> = [
@@ -109,7 +134,7 @@ export class Order {
 			const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
 			this.tableConfig.update((config) => ({
 				...config,
-				columns: open ? OPEN_COLUMNS : LIST_COLUMNS,
+				columns: open ? OPEN_COLUMNS : this.filter() === 'needsAttention' ? ATTENTION_COLUMNS : LIST_COLUMNS,
 				data: page ? page.items.map((row) => toOrderTableRow(row, t, locale)) : [],
 				total: page ? page.total : 0,
 			}));

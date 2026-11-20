@@ -4,6 +4,28 @@
 <div class="container-fluid">
 	<div class="row">
 		<div class="col-xxl-8">
+			@if (draft.addingTo(); as adding) {
+			<!-- oo02 "Add pieces": the buyer is the open order's; the cart joins that order. -->
+			<div
+				class="alert alert-info d-flex align-items-start gap-2"
+				role="status"
+			>
+				<i class="ri-inbox-archive-line mt-1"></i>
+				<div class="flex-grow-1">
+					<b>{{ 'ord_adding_to_lead' | transloco: { number: adding.orderNumber } }}</b>
+					{{ 'ord_adding_to_rest' | transloco: { name: adding.buyerName } }}
+					<a
+						class="fw-bold ms-1"
+						[routerLink]="['/order/details', adding.orderId]"
+						(click)="stopAdding()"
+					>
+						{{ 'ord_back_to_order' | transloco }}
+					</a>
+				</div>
+			</div>
+			} @else {
+			<app-order-buyer-card />
+			}
 			@if ((category$ | async)?.data?.length) {
 			<div class="card">
 				<div class="card-body">
@@ -28,6 +50,7 @@
 									<a
 										href="javascript:void(0)"
 										class="category-name"
+										(click)="selectCategory(category)"
 									>
 										<h6>{{ category.name }}</h6>
 									</a>
@@ -46,8 +69,9 @@
 							<div class="col-sm-6">
 								<input
 									class="form-control"
-									placeholder="{{ 'search_here' | transloco }}"
 									type="text"
+									[placeholder]="'ord_search_products' | transloco"
+									[attr.aria-label]="'ord_search_products' | transloco"
 									[formControl]="term"
 								/>
 							</div>
@@ -55,7 +79,7 @@
 								<app-advanced-dropdown
 									[position]="'bottom'"
 									[selectedOption]="selectedCategory"
-									[options]="(category$ | async )?.data ? (category$ | async )?.data : []"
+									[options]="(category$ | async)?.data ? (category$ | async)?.data : []"
 									[subArrayKey]="'subcategories'"
 									(selectedItem)="selectCategoryItem($event)"
 								/>
@@ -64,25 +88,30 @@
 					</form>
 					<div class="product-section custom-box-loader">
 						<div class="row g-4 row-cols-xxl-4 row-cols-md-3 row-cols-sm-2 row-cols-1">
-							@if (loading) { @for (item of skeletonItems; track item) {
+							@if (cards.isPending()) { @for (item of skeletonItems; track item) {
 							<div class="col">
 								<app-product-box-skeleton />
 							</div>
-							} } @else { @for (product of (product$ | async)?.data; track product) {
+							} } @else { @for (card of cards.data()?.items ?? []; track card.productId) {
 							<div class="col">
-								<app-product-box [product]="product" />
+								<app-order-product-card
+									[card]="card"
+									[currency]="draft.currency()"
+									(add)="add($event)"
+								/>
 							</div>
 							} }
 						</div>
+						@if ((cards.data()?.total ?? 0) > pageSize) {
 						<nav class="custom-pagination">
 							<app-pagination
-								[total]="totalItems"
-								[currentPage]="filter['page']"
-								[pageSize]="filter['paginate']"
+								[total]="cards.data()?.total ?? 0"
+								[currentPage]="page()"
+								[pageSize]="pageSize"
 								(setPage)="setPaginate($event)"
 							/>
 						</nav>
-						@if (!(product$ | async)?.data?.length && !loading) {
+						} @if (!cards.isPending() && !(cards.data()?.items?.length)) {
 						<app-no-data
 							[class]="'no-data-added shipping-no-data'"
 							[image]="'assets/svg/no-product.svg'"
@@ -102,56 +131,54 @@
 						</div>
 					</div>
 					<div class="product-details">
-						@if (!(cartItem$ | async)?.length) {
+						@if (!draft.count()) {
 						<app-no-data
 							[class]="'empty-cart'"
 							[image]="'assets/svg/empty-cart.svg'"
-							[text]="'No items in a cart'"
+							[text]="'ord_cart_empty'"
 						/>
-						} @if ((cartItem$ | async)?.length) {
+						} @else {
 						<ul class="cart-listing">
-							@for (item of cartItem$ | async; track item.id) {
+							@for (row of rows(); track row.key) {
 							<li>
 								<img
-									[src]="item?.variation && item?.variation?.variation_image 
-                                            ? item?.variation?.variation_image?.original_url
-                                            : item?.product?.product_thumbnail 
-                                            ? item?.product?.product_thumbnail?.original_url 
-                                            : 'assets/images/product.png'"
+									[src]="row.priced?.imageUrl ?? 'assets/images/product.png'"
 									class="img-fluid"
-									alt="product"
+									alt=""
 								/>
 								<div class="cart-content">
-									<h4>{{ item?.variation ? item?.variation?.name : item?.product?.name }}</h4>
+									<h4>{{ row.priced?.title ?? '…' }}</h4>
+									@if (row.priced?.problem; as problem) {
+									<p class="small text-danger mb-1">
+										{{ 'ord_cart_problem_' + problem | transloco }}
+									</p>
+									}
 									<div>
-										<h5>
-											{{ (item?.variation ? item?.variation.sale_price :
-											item?.product?.sale_price) | currencySymbol }}
-										</h5>
+										<h5>{{ row.priced ? money(row.priced.lineTotal) : '—' }}</h5>
 										<div class="qty-box cart_qty">
 											<div class="input-group">
 												<app-button
 													[title]="'decrease_quantity' | transloco"
 													[class]="'btn qty-left-minus'"
-													[id]="'add-to-cart'+item.product.id"
+													[id]="'order-less-' + row.key"
 													[spinner]="false"
-													(click)="updateQuantity(item, -1)"
+													(click)="change(row, -1)"
 												>
 													<i class="ri-subtract-line"></i>
 												</app-button>
 												<input
 													class="form-control input-number qty-input"
-													type="number"
-													name="quantity"
-													[value]="item?.quantity"
+													type="text"
 													readonly
+													[value]="quantityWords(row)"
+													[attr.aria-label]="'ord_col_qty' | transloco"
 												/>
 												<app-button
 													[title]="'increase_quantity' | transloco"
 													[class]="'btn qty-left-minus'"
-													[id]="'qty-left-minus'+item.product.id"
+													[id]="'order-more-' + row.key"
 													[spinner]="false"
-													(click)="updateQuantity(item, 1)"
+													(click)="change(row, 1)"
 												>
 													<i class="ri-add-line"></i>
 												</app-button>
@@ -164,37 +191,55 @@
 						</ul>
 						}
 					</div>
-					@if ((cartItem$ | async)?.length) {
+					@if (draft.count()) {
 					<ul class="summary-total">
 						<li>
 							<h4>{{ 'subtotal' | transloco }}</h4>
-							<h4 class="price">{{ (cartTotal$ | async) | currencySymbol}}</h4>
+							<h4 class="price">{{ subtotal() }}</h4>
 						</li>
 						<li>
 							<h4>{{ 'shipping' | transloco }}</h4>
-							<h4 class="price">{{ 'cost_at_checkout' | transloco }}</h4>
+							<h4 class="price">{{ 'ord_shipping_at_checkout' | transloco }}</h4>
 						</li>
 						<li>
-							<h4>{{ 'tax' | transloco }}</h4>
-							<h4 class="price">{{ 'cost_at_checkout' | transloco }}</h4>
+							<h4>{{ 'ord_gst' | transloco }}</h4>
+							<h4 class="price">{{ 'ord_gst_included' | transloco }}</h4>
 						</li>
 						<li class="list-total">
 							<h4>{{ 'total' | transloco }}</h4>
-							<h4 class="price">{{ (cartTotal$ | async) | currencySymbol}}</h4>
+							<h4 class="price">{{ subtotal() }}</h4>
 						</li>
 					</ul>
+					} @if (draft.count() && !draft.buyer()) {
+					<p class="help-text mt-3 mb-0">{{ 'ord_choose_buyer_first' | transloco }}</p>
 					}
+					@if (draft.addingTo(); as adding) {
+					<ng-container *hasPermission="'order.open'">
+						@if (draft.count()) {
+						<button
+							type="button"
+							class="btn btn-animation payment-btn mt-4 w-100"
+							[disabled]="!canCheckout() || addingBusy()"
+							(click)="addToOrder()"
+						>
+							{{ 'ord_add_to_order' | transloco: { number: adding.orderNumber } }}
+						</button>
+						}
+					</ng-container>
+					} @else {
 					<ng-container *hasPermission="'order.create'">
-						@if ((cartItem$ | async)?.length) {
+						@if (draft.count()) {
 						<a
-							[routerLink]="['/order/checkout']"
-							routerLinkActive="router-link-active"
 							class="btn btn-animation payment-btn mt-4"
+							[class.disabled]="!canCheckout()"
+							[attr.aria-disabled]="!canCheckout()"
+							[routerLink]="canCheckout() ? ['/order/checkout'] : null"
 						>
 							{{ 'proceed_to_checkout' | transloco }}
 						</a>
 						}
 					</ng-container>
+					}
 				</div>
 			</div>
 		</div>

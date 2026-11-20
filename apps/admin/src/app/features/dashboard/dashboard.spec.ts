@@ -195,9 +195,9 @@ describe('Dashboard data', () => {
 		expect(asked.inputs['orders']?.()).toEqual({ period: 'last_12_months' });
 	});
 
-	it('lays out the recent orders, with a guest as a dash', () => {
+	it('lays out the recent orders, with a guest as a dash and the orders list’s status pill', () => {
 		const { page } = render();
-		const order = { id: 'o', orderNumber: 'N1', placedAt: 'd', totalINR: 10, status: 'paid' };
+		const order = { id: 'o', orderNumber: 'N1', placedAt: 'd', totalINR: 10, status: 'awaiting_payment' };
 		recent.set({
 			items: [
 				{ ...order, customerName: 'Asha' },
@@ -211,7 +211,7 @@ describe('Dashboard data', () => {
 			order_id: '<span class="fw-bolder">#N1</span>',
 			consumer_name: 'Asha',
 			total: 10,
-			order_payment_status: '<div class="status-paid"><span>paid</span></div>',
+			order_payment_status: '<div class="status-pending"><span>t:ord_status_awaiting_payment</span></div>',
 		});
 		expect(page.orderTableConfig().data[1]).toMatchObject({ consumer_name: '-' });
 	});

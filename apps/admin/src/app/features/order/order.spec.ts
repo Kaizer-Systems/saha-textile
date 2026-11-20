@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Order } from './order';
@@ -36,12 +37,13 @@ const response = (over: Partial<OrderListResponse> = {}): OrderListResponse => (
 			paymentDetail: { kind: 'request', gateway: 'ccavenue', until: '2026-11-27T09:30:00.000Z' },
 			deliveryCountry: 'IN',
 			attention: [],
+			attentionAt: {},
 			open: null,
 		},
 	],
 	total: 1,
 	counts: { all: 1, awaitingPayment: 1 } as OrderListResponse['counts'],
-	tiles: { needsAttention: 0, awaitingPayment: 1, toPack: 0, shippedNotDelivered: 0 },
+	tiles: { needsAttention: 0, awaitingPayment: 1, toPack: 0, shippedNotDelivered: 0, attentionBy: {} },
 	...over,
 });
 
@@ -53,7 +55,12 @@ const render = () => {
 			{ provide: Router, useValue: router },
 			{
 				provide: TranslocoService,
-				useValue: { translate: (key: string) => key, getActiveLang: () => 'en' },
+				useValue: {
+					translate: (key: string, params?: Record<string, unknown>) =>
+						params ? `${key}(${Object.values(params).join(',')})` : key,
+					getActiveLang: () => 'en',
+					langChanges$: of('en'),
+				},
 			},
 		],
 	});
@@ -100,6 +107,36 @@ describe('orders list page (ol02–ol04, oo01)', () => {
 			from: '2026-11-01',
 			to: '2026-11-20',
 		});
+	});
+
+	it('words the Needs attention tile from its reasons, or "Waiting on staff" (ol02)', () => {
+		const { page } = render();
+		data.set(response());
+		expect(page.attentionLine()).toBeNull();
+		data.set(
+			response({
+				tiles: {
+					needsAttention: 3,
+					awaitingPayment: 2,
+					toPack: 5,
+					shippedNotDelivered: 4,
+					attentionBy: { invoiceAddressNeeded: 1, requestExpiredUnpaid: 1, pendingAtBank: 1 },
+				},
+			}),
+		);
+		expect(page.attentionLine()).toBe(
+			'ord_tile_part_invoiceAddressNeeded_one(1) · ord_tile_part_requestExpiredUnpaid_one(1) · ord_tile_part_pendingAtBank_one(1)',
+		);
+	});
+
+	it('says how many orders a search found, and names the SMS form of a number (ol04)', () => {
+		const { page } = render();
+		data.set(response());
+		expect(page.searchLine()).toBeNull();
+		page.onTableChange({ page: 1, paginate: 15, search: '4821390761' });
+		expect(page.searchLine()).toBe('ord_search_matches_one(1,4821390761) ord_search_sms_form.');
+		page.onTableChange({ page: 1, paginate: 15, search: 'Arjun' });
+		expect(page.searchLine()).toBe('ord_search_matches_one(1,Arjun).');
 	});
 
 	it('opens an order by its id', () => {

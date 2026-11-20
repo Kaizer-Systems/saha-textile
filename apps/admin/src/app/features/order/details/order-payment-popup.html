@@ -57,7 +57,7 @@
 				class="form-label"
 				for="pay_reference"
 			>
-				{{ 'ord_reference_' + method() | transloco }}
+				{{ (method() === 'cashOnDelivery' ? 'ord_reference' : 'ord_reference_' + method()) | transloco }}
 			</label>
 			<input
 				class="form-control"
@@ -67,6 +67,9 @@
 				[ngModel]="reference()"
 				(ngModelChange)="reference.set($event)"
 			/>
+			@if (method() === 'cashOnDelivery') {
+			<p class="help-text mb-0">{{ 'ord_reference_cod_help' | transloco }}</p>
+			}
 		</div>
 		<div class="col-md-6">
 			<label
@@ -84,7 +87,24 @@
 				(ngModelChange)="receivedOn.set($event)"
 			/>
 		</div>
-		@if (method() === 'bankTransfer') {
+		@if (method() === 'cashOnDelivery') {
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="pay_collected_by"
+			>
+				{{ 'ord_collected_by' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="pay_collected_by"
+				maxlength="120"
+				autocomplete="off"
+				[ngModel]="collectedBy()"
+				(ngModelChange)="collectedBy.set($event)"
+			/>
+		</div>
+		} @if (method() === 'bankTransfer') {
 		<div class="col-12">
 			<div class="d-flex flex-wrap gap-4">
 				<div class="form-check">
@@ -142,15 +162,21 @@
 	@if (outcome(); as result) {
 	<div
 		class="alert d-flex align-items-start mt-3 mb-0 gap-2"
-		[class.alert-success]="result.key === 'ord_pay_result_exact'"
-		[class.alert-info]="result.key !== 'ord_pay_result_exact'"
+		[class.alert-success]="result.tone === 'success'"
+		[class.alert-info]="result.tone === 'info'"
+		[class.alert-warning]="result.tone === 'warning'"
 		role="status"
 	>
 		<i class="ri-scales-3-line mt-1"></i>
-		<div>{{ result.key | transloco: { amount: result.amount } }}</div>
+		<div>
+			<b>{{ result.lead }}</b>
+			{{ result.rest }}
+		</div>
 	</div>
 	}
-	<p class="small text-muted mt-3 mb-0">{{ 'ord_manual_rupees_only' | transloco }}</p>
+	<p class="small text-muted mt-3 mb-0">
+		{{ (method() === 'cashOnDelivery' ? 'ord_manual_rupees_short' : 'ord_manual_rupees_only') | transloco }}
+	</p>
 	@if (error(); as problem) {
 	<div
 		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"

@@ -18,6 +18,10 @@ export interface ConfirmAsk {
 	more?: string;
 	/** The way out's words when "Cancel" isn't right, e.g. "Not yet" (shipping brief rb11). */
 	cancel?: string;
+	/** An optional comment box under the question (orders brief oo06); yes then closes with `{ comment }`. */
+	comment?: { label: string; placeholder?: string };
+	/** A red yes button, for removing something (oo06). */
+	danger?: boolean;
 }
 
 /**
@@ -50,6 +54,25 @@ export interface ConfirmAsk {
 						}
 					</ul>
 				}
+				@if (current.comment; as box) {
+					<div class="theme-form mb-3 text-start">
+						<label
+							class="form-label"
+							for="confirm_popup_comment"
+						>
+							{{ box.label | transloco }}
+						</label>
+						<input
+							class="form-control"
+							id="confirm_popup_comment"
+							maxlength="300"
+							autocomplete="off"
+							[placeholder]="box.placeholder ? (box.placeholder | transloco) : ''"
+							[value]="comment()"
+							(input)="comment.set($any($event.target).value)"
+						/>
+					</div>
+				}
 				<div class="button-box">
 					<button
 						type="button"
@@ -70,9 +93,11 @@ export interface ConfirmAsk {
 					}
 					<button
 						type="button"
-						class="btn-theme btn-md fw-bold btn"
+						class="btn-md fw-bold btn"
+						[class.btn-theme]="!current.danger"
+						[class.btn-danger]="current.danger"
 						id="confirm_popup_yes"
-						(click)="modal.close(true)"
+						(click)="yes()"
 					>
 						{{ current.yes | transloco: current.params ?? {} }}
 					</button>
@@ -85,8 +110,13 @@ export interface ConfirmAsk {
 export class ConfirmPopup {
 	readonly modal = inject(NgbActiveModal);
 	readonly ask = signal<ConfirmAsk | null>(null);
+	readonly comment = signal('');
 
 	start(ask: ConfirmAsk): void {
 		this.ask.set(ask);
+	}
+
+	yes(): void {
+		this.modal.close(this.ask()?.comment ? { comment: this.comment().trim() } : true);
 	}
 }

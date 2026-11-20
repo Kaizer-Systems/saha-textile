@@ -2137,3 +2137,38 @@ email layout (`DEC-UI-REUSE`). The changes and additions below are built directl
   integration), who and when. Whether Shipped is blocked until they are filled is still open.
 - **Country, State and phone data:** the owner asked where the monthly refresh script runs and where it fetches
   from; still open. The data file is built by a script that runs locally first.
+
+## Owner decision round (2026-11-20) — orders build: the pending questions answered
+
+The owner answered every question left open by the orders brief approval (question popups after message 21; exact
+words in the orders brief's notes). Closed here: the order row of `DEC-NUMBERING` (OD18), `DEC-B2B-ZONES`,
+`DEC-EDOCS-GATE` and `DEC-GEO-REFRESH`.
+
+- **OD18 Final — order number `ST-YYMM-NNNNNN`** ("Month + random (Recommended)"), e.g. `ST-2611-482190`: the year and
+  month (IST) the order record is created (an open order: the day it was opened), then six random digits. It never
+  restarts and the whole string is the order's id; it is unique once separators are removed (`ST2611482190`, the SMS
+  form), and search accepts both forms. Parcels, returns and payment requests hang off it (`/P1`, `/R1`, `/Q1`). The
+  format stays a setting.
+- **`DEC-B2B-ZONES` — zone prices are written by each owner in a rule builder** ("can we have this as configurable with
+  conditions and variables in the zone creation/setup screen in the same query builder as of the zone's rules builder?
+  so that each owner can make their own rules"). The zone builder reuses the shipping rule builder's blocks (if /
+  otherwise, variables, Try it, In plain words). Variables: the piece's regular selling price (never touched by sales),
+  its current sale price (empty when no sale is live), whether it is on sale, MRP, purchase cost and quantity.
+    - **Data rule (owner):** a product's selling price and its sale price are stored separately; a sale price (from a sale
+      event or a product's own sale) is cleared when the sale ends or is switched off and is never written over the
+      selling price.
+    - **Zone prices include GST**, like shop prices ("Include GST (Recommended)").
+    - **Rule kinds:** flat price, % less than a base, ₹ less than a base, % above purchase cost (no cost: "Price not set for
+      this zone"), quantity breaks, rounding, and a cost guard, "and any other flexible offerings you think a business
+      might need to become the most versatile software".
+    - **Clashes: order in the builder.** Tiers stay fixed (product exception > category rules > all-products rule); within a
+      tier the first matching rule wins and the owner drags rules into order.
+    - **Coupons on zone prices: a switch on each coupon**, "Usable on zone prices", off by default; OD4 applies on top.
+- **`DEC-EDOCS-GATE` — block when required** ("Block when required (Recommended)"). Mark as Shipped stays off, with the
+  reason, until the e-invoice IRN is in while the e-invoice switch is on (on by default for business orders; the CA
+  confirms the turnover test) and, for goods of ₹50,000 or more, the e-way bill number is in — shop orders of that value
+  included. The switch and the threshold are settings.
+- **`DEC-GEO-REFRESH` — a monthly GitHub Actions job** on GitHub's machines, never our servers: it downloads the official
+  releases, rebuilds the country, State and phone data file and opens a pull request into `dev` only when something
+  changed; with no change it ends quietly. A person reviews and merges. (Owner: "if no change in data … there wont be any
+  new PR opened if nothing changes, right?" — right.)

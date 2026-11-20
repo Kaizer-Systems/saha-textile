@@ -47,9 +47,6 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-PWA-OFFLINE`           | What the installed shop does offline, and the footer's app-store badges                              | Service worker, cart, footer                  |
 | `DEC-DISPLAY-FONT`          | Where, if anywhere, the shop uses the Russo One display font                                         | Storefront typography, Brand Kit              |
 | `DEC-METRE-SCRAP`           | What happens when a fabric cut would leave less than the shortest cut on the roll                    | Shop product page, cart, stock write-offs     |
-| `DEC-B2B-ZONES`             | Zones for business customers (buyer levels) — **partly settled 2026-11-20**                          | Admin business orders, pricing, invoices      |
-| `DEC-EDOCS-GATE`            | Whether a missing e-invoice IRN or e-way bill blocks Shipped on a business order, and its thresholds | Order status, GST compliance                  |
-| `DEC-GEO-REFRESH`           | Where the monthly country, State and phone data refresh runs and opens its change for review         | Addresses, repository data, CI                |
 
 ---
 
@@ -108,11 +105,7 @@ entry, purchase return note, journal, stock adjustment and stock count, e-way bi
 AWB, gateway and bank references. Gapless allocation in the posting save; cancelled documents keep their
 number.
 
-**Still open: the order number.** The owner asked (2026-11-20): "order - ST-#####-##### (random) with no
-reset. what is your logic of reset or numbering or financial year separation or is that not required? what do
-bigger businesses do? and should it not follow a certain counted order? … which is the identifier for the
-order? … can that middle numeric part section be of some use to use in terms of year wise segregation?"
-The order number stays a setting until answered.
+**Order number answered 2026-11-20 (OD18 Final):** `ST-YYMM-NNNNNN` (IST year and month, then six random digits), never restarting; see `owner-decisions-log.mdx`.
 
 ---
 
@@ -723,73 +716,3 @@ Answer (owner's own words, with date):
 Notes: the leftover box was drawn as M05 in the fabric-by-the-metre brief
 (https://claude.ai/artifact/QrQRbrvj3d9DzLxFXnLzX8). Today the cart cuts what is asked; the
 leftover stays in stock for staff to hold or write off.
-
----
-
-## 31. `DEC-B2B-ZONES` — Zones for business customers
-
-### Decision needed
-
-Settled on 2026-11-20 (see `owner-decisions-log.mdx`): every business customer has one zone; RETAIL is the
-default with shop pricing; other zones hold price lists built like sale events (all products, categories,
-product exceptions; a flat ₹ price or a percentage less than retail); product beats category beats all
-products; a product with no zone price shows "Price not set for this zone" on a greyed card. Still to decide:
-
-1. What a zone customer pays when the shop has a sale on that piece (zone price, sale price, or the lower).
-2. Whether zone prices include GST, like shop prices, or have GST added on top.
-3. Which further rule kinds a zone may use besides a flat price and a percentage less than retail.
-4. Which rule wins when a product sits in two categories with different zone rules.
-5. Whether coupons apply to zone-priced lines.
-
-### Why this matters
-
-Each answer changes the zone price engine's result for a business order and what its invoice shows.
-
-### Owner answer
-
-Answer (owner's own words, with date):
-
-Notes: until answered, the engine keeps each of these as a named setting with no default chosen on
-the owner's behalf; zone orders show which setting priced each line.
-
----
-
-## 32. `DEC-EDOCS-GATE` — E-invoice and e-way bill before Shipped
-
-### Decision needed
-
-Business orders carry an e-invoice IRN and an e-way bill, typed by hand until an integration exists
-(settled 2026-11-20). Decide whether Shipped is refused until both are filled, or only warned about, and
-from which order value or buyer type each one is required.
-
-### Why this matters
-
-Shipping goods without a required e-way bill or e-invoice is a compliance failure; blocking on orders that
-need neither slows dispatch.
-
-### Owner answer
-
-Answer (owner's own words, with date):
-
-Notes: built as a named setting (off / warn / block) so the answer is a settings change.
-
----
-
-## 33. `DEC-GEO-REFRESH` — Where the country and State data refresh runs
-
-### Decision needed
-
-The repository keeps one country, State and phone-code data file built from open sources (settled
-2026-11-20). The owner asked where the monthly refresh runs and where it fetches from: on a developer's
-machine, as a scheduled CI job that opens a pull request with the changes, or elsewhere.
-
-### Why this matters
-
-The refresh must show what changed before anything is committed, and must never run on the production
-server.
-
-### Owner answer
-
-Answer (owner's own words, with date):
-
-Notes: the build script runs locally first (`scripts/geo/build.mjs`).

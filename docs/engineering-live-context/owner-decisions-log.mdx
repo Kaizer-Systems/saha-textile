@@ -1927,6 +1927,21 @@ names-only audit of the dev project against the files on the Mac.
 - **`SHOP_ORIGIN` stays in the dev project only.** In staging and production Compose sets it from
   `STOREFRONT_HOST`.
 
+## Owner decision round (2026-11-20) — which address each customer email comes from
+
+The owner, answering a question about `MSG91_EMAIL_FROM` on the Dev Secrets Checklist.
+
+- **Sign-in and verification codes** come from `no-reply@sahatextile.com`. This is
+  `MSG91_EMAIL_FROM`, the API's only email sender setting today, and already its default.
+- **Order updates** come from `orders@sahatextile.com`, and **the newsletter** from
+  `newsletter@sahatextile.com` (singular), as decided on 2026-11-17. Each gets its own sender
+  setting when those emails are built; until then nothing reads them.
+- **All three are Google Workspace aliases of `wecare@sahatextile.com`,** not mailboxes, so a
+  customer's reply to any of them lands in the customer-care inbox.
+- **Still open:** MSG91 question 29, whether the From address may sit on `sahatextile.com` itself.
+  MSG91 sends on its own servers and checks only that the domain is verified with it; the aliases
+  decide only where replies go. If MSG91 requires a sending subdomain, these addresses are revisited.
+
 ## Owner decision round (2026-11-19) — shipping rules brief approved
 
 - **The Shipping Rules Brief is approved as drawn (owner, 2026-11-19: "Approved").**

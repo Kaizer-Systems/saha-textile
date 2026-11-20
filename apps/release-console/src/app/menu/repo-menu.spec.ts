@@ -64,7 +64,10 @@ describe('repository menu', () => {
 			'Secrets · GitHub Actions secrets',
 			'Governance',
 		]);
-		expect(m.screens[laterKey('infisical')]?.captions['list']).toContain('never their values');
+		// Infisical Cloud's group opens the built Secrets screen; GitHub's comes later.
+		expect(m.menu.find((g) => g.label === 'Secrets · Infisical Cloud')?.subs[0]?.items).toEqual(['secrets']);
+		expect(m.screens[laterKey('infisical')]).toBeUndefined();
+		expect(m.screens[laterKey('github-secrets')]?.captions['list']).toContain('never their values');
 	});
 
 	it('names Live deploy’s tabs after the repository’s environments', () => {

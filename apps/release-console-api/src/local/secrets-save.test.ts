@@ -97,7 +97,7 @@ describe('saving Secrets drafts', () => {
 	it('needs the name typed for an environment on a server, before anything else', async () => {
 		const { c, runner, lock } = controller();
 		await expect(c.saveSecrets(req, body({ confirmName: 'prod' }))).rejects.toThrow(
-			/Type staging to confirm saving into saha-textile-staging · staging/,
+			/Type staging to confirm saving into saha-textile-staging\/staging/,
 		);
 		expect(lock.confirm).not.toHaveBeenCalled();
 		expect(runner.call).not.toHaveBeenCalled();

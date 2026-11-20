@@ -21,7 +21,21 @@ const repo = repositorySchema.parse({
 });
 
 describe('secrets places', () => {
-	it('reads project, environment and an optional folder', () => {
+	it('reads project/environment and an optional folder, typed with slashes', () => {
+		expect(parseSecretsPlace('saha-textile-dev/dev')).toEqual({
+			project: 'saha-textile-dev',
+			environment: 'dev',
+			folder: '/',
+		});
+		expect(parseSecretsPlace(' saha-textile-dev / dev / api / payments / ')).toEqual({
+			project: 'saha-textile-dev',
+			environment: 'dev',
+			folder: '/api/payments',
+		});
+		expect(parseSecretsPlace('Example Project/Prod')?.environment).toBe('prod');
+	});
+
+	it('still reads the older dotted form', () => {
 		expect(parseSecretsPlace('saha-textile-dev · dev · /api')).toEqual({
 			project: 'saha-textile-dev',
 			environment: 'dev',
@@ -36,13 +50,27 @@ describe('secrets places', () => {
 	});
 
 	it('refuses text that could reach the command line oddly', () => {
-		for (const bad of ['', 'only-one', '-p · dev', 'p · --env', 'p · dev · api', 'p · dev · /a b', 'a·b·/c·d'])
+		for (const bad of [
+			'',
+			'only-one',
+			'only-one/',
+			'-p/dev',
+			'p/--env',
+			'p/dev/a b',
+			'-p · dev',
+			'p · --env',
+			'p · dev · api',
+			'p · dev · /a b',
+			'a·b·/c·d',
+		])
 			expect(parseSecretsPlace(bad), bad).toBeNull();
 	});
 
-	it('writes a place back the way the wizard shows it', () => {
-		expect(formatSecretsPlace({ project: 'p', environment: 'dev', folder: '/' })).toBe('p · dev');
-		expect(formatSecretsPlace({ project: 'p', environment: 'dev', folder: '/api' })).toBe('p · dev · /api');
+	it('writes a place back the way it is typed', () => {
+		expect(formatSecretsPlace({ project: 'p', environment: 'dev', folder: '/' })).toBe('p/dev');
+		expect(formatSecretsPlace({ project: 'p', environment: 'dev', folder: '/api/x' })).toBe('p/dev/api/x');
+		const place = { project: 'saha-textile-dev', environment: 'dev', folder: '/api' };
+		expect(parseSecretsPlace(formatSecretsPlace(place))).toEqual(place);
 	});
 
 	it('follows each environment’s own setting', () => {

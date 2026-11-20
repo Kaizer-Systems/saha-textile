@@ -41,6 +41,16 @@ export function pendingAsk(lines: Line[]): { id: string; question: string } | nu
 	return open;
 }
 
+/** How the run ended, from its last `{"result"}` line: connected, or signed in without access to the repository. */
+export function connectResult(lines: Line[]): { result: 'connected' | 'no-access'; account: string } | null {
+	for (const l of [...lines].reverse()) {
+		const e = l.event;
+		if (e && (e['result'] === 'connected' || e['result'] === 'no-access'))
+			return { result: e['result'], account: String(e['account'] ?? '') };
+	}
+	return null;
+}
+
 /** A line's colour in the terminal: step titles, done, failed, notices, skipped. */
 export function lineClass(text: string): string {
 	if (/^\d · /.test(text)) return 'i';
@@ -51,12 +61,14 @@ export function lineClass(text: string): string {
 }
 
 /**
- * The GitHub Connect terminal (owner, 20 Nov; brief QhMFJFyn5Gq1sosZ1AaTQG): a popup that runs the
- * console's Connect steps by itself on the machine the console runs on (this Mac, or the server it
- * is deployed to) and shows that machine's output: tools, an update check before gh and git are
- * used ("[y/N]", answered here), the browser sign-in or a pasted token, Git set up to use it, and
- * the repository check. When it is connected the page behind turns green (`signedIn`) and it asks
- * "Close the terminal? [Y/n]". It runs only the helper's fixed script, never a typed command.
+ * The GitHub Connect terminal (owner, 20 Nov; brief QhMFJFyn5Gq1sosZ1AaTQG): a popup that opens on
+ * every Connect ("let the terminal pop-up always be there") and runs the console's Connect steps by
+ * itself on the machine the console runs on (this Mac, or the server it is deployed to), showing
+ * that machine's output: tools with Git's and then gh's update check ("[y/N]", answered here), the
+ * saved sign-in named or the browser sign-in or a pasted token, Git set up to use it, and the
+ * repository check. Once signed in the page behind checks the repository and turns green
+ * (`signedIn`), and it asks "Close the terminal? [Y/n]". It runs only the helper's fixed script,
+ * never a typed command.
  */
 @Component({
 	selector: 'rc-github-sign-in',
@@ -114,7 +126,7 @@ export function lineClass(text: string): string {
 						</div>
 					}
 					@if (passed()) {
-						<div class="i">Connected. The page has turned green.</div>
+						<div class="i">{{ outcome() }}</div>
 						@if (asking()) {
 							<div>
 								Close the terminal? [Y/n]
@@ -268,6 +280,16 @@ export class GithubSignIn {
 	protected readonly ask = computed(() => (this.job()?.status === 'running' ? pendingAsk(this.lines()) : null));
 	/** The lines to print: the question and answer markers are shown as words, not as JSON. */
 	protected readonly shown = computed(() => this.lines().filter((l) => !l.event));
+	/** The closing words: what the page behind now shows. */
+	protected readonly outcome = computed(() => {
+		const token = this.tokenAccount();
+		if (token) return `Signed in as ${token}. The page now checks the repository.`;
+		const r = connectResult(this.lines());
+		if (r?.result === 'connected') return `Connected as ${r.account}. The page has turned green.`;
+		if (r?.result === 'no-access')
+			return `Signed in as ${r.account}, but it cannot open ${this.repository()}. The page says what to do.`;
+		return 'Signed in. The page shows the result.';
+	});
 	protected readonly passed = computed(() => this.job()?.status === 'passed' || this.tokenAccount() !== null);
 	protected readonly ended = computed(() => {
 		const s = this.job()?.status;

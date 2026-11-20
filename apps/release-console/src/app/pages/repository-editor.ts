@@ -60,7 +60,7 @@ export function toggleEdgeSlot(repo: Repository, vendor: EdgeVendor): Repository
 	};
 }
 
-/** Adds a secrets manager, or removes it and moves its environments back to files kept by hand. */
+/** Adds a secrets manager, or removes it and moves its environments back to no manager. */
 export function toggleSecretsSlot(repo: Repository, vendor: SecretsVendor): Repository {
 	if (!repo.secrets.some((x) => x.vendor === vendor))
 		return { ...repo, secrets: [...repo.secrets, { id: vendor, vendor, address: '', keyIds: [] }] };
@@ -256,7 +256,7 @@ export function newRepository(
 													[class.on]="e.secretsId === null"
 													(click)="setEnv(i, { secretsId: null, secretsPath: '' })"
 												>
-													files kept by hand
+													no manager
 												</button>
 												@for (x of d.secrets; track x.id) {
 													<button
@@ -276,7 +276,7 @@ export function newRepository(
 												<input
 													type="text"
 													autocomplete="off"
-													placeholder="project · environment · /folder"
+													placeholder="project/environment, e.g. saha-textile-dev/dev"
 													[value]="e.secretsPath"
 													[disabled]="e.secretsId === null"
 													(change)="
@@ -614,7 +614,7 @@ export class RepositoryEditor {
 	}
 
 	protected secretsOf(r: Repository): string {
-		return r.secrets.map((x) => VENDOR_NAMES[x.vendor]).join(' + ') || 'files kept by hand';
+		return r.secrets.map((x) => VENDOR_NAMES[x.vendor]).join(' + ') || 'no manager';
 	}
 	protected envLabels(r: Repository): string {
 		return r.environments.map((e) => e.label).join(' · ');

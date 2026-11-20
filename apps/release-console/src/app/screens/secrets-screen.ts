@@ -432,13 +432,13 @@ const needsOwner = (row: Row) => !row.optional && row.state !== 'set';
 						@if (u.text) {
 							“{{ u.text }}” is not a place.
 						}
-						Type the place as project · environment · /folder, leaving the folder out to read the whole
-						environment. For example:
-						<code>client-shop-dev · dev</code>
+						Type the place as project/environment for the whole environment, or project/environment/folder
+						for one folder. For example:
+						<code>client-shop-dev/dev</code>
 					} @else {
 						<b>{{ envLabel() }} reads no secrets manager.</b>
-						Its settings are files kept by hand, so there is nothing to read here. Choose where it reads its
-						secrets to see its names.
+						Its apps read env files written by hand, outside the console, so there is nothing to read here.
+						Choose where it reads its secrets to see its names.
 					}
 				</div>
 				<button
@@ -541,7 +541,7 @@ export class SecretsScreen {
 		const p = this.place();
 		return p ? formatSecretsPlace(p) : '';
 	});
-	/** The place as read: project · environment, and the folder when it is not the whole environment. */
+	/** The place as read: project/environment, and the folder when it is not the whole environment. */
 	protected readonly placeLabel = computed(() => {
 		const v = this.view.data();
 		const p = this.place();

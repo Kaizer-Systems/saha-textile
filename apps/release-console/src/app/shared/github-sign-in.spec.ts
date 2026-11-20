@@ -1,4 +1,4 @@
-import { lineClass, oneTimeCode, pendingAsk } from './github-sign-in';
+import { connectResult, lineClass, oneTimeCode, pendingAsk } from './github-sign-in';
 
 const line = (seq: number, text: string, event: Record<string, unknown> | null = null) => ({
 	seq,
@@ -14,6 +14,15 @@ describe('GitHub Connect terminal', () => {
 		expect(
 			oneTimeCode([{ text: 'Open this URL to continue in your web browser: https://github.com/login/device' }]),
 		).toBeNull();
+	});
+
+	it('reads how the run ended from its last result line', () => {
+		expect(connectResult([line(1, '4 · Repository')])).toBeNull();
+		expect(connectResult([line(1, '', { result: 'connected', account: 'kaizer03' })])).toEqual({
+			result: 'connected',
+			account: 'kaizer03',
+		});
+		expect(connectResult([line(1, '', { result: 'no-access', account: 'kaizer03' })])?.result).toBe('no-access');
 	});
 
 	it('knows which update question waits for an answer', () => {

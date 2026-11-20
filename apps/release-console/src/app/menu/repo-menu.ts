@@ -77,6 +77,15 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 	}
 	for (const slot of repo.secrets) {
 		const name = VENDOR_NAMES[slot.vendor];
+		// Infisical Cloud's screen is built: Run › Secrets, the same screen, under its own group too.
+		if (vendorScreens(slot.vendor) === 'full') {
+			groups.push({
+				label: `Secrets · ${name}`,
+				vendor: slot.vendor,
+				subs: [{ label: null, items: ['secrets'] }],
+			});
+			continue;
+		}
 		extra[laterKey(slot.id)] = laterScreen(
 			name,
 			'Each environment’s secret names, when each was last changed and which are missing show here, never their values.',

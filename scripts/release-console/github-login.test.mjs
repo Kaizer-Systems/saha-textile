@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { LOGIN_ARGS, argsOf, repositoryLine, signedInAs, whyLoginFailed } from './github-login.mjs';
+import { LOGIN_ARGS, argsOf, repositoryLine, resultEvent, signedInAs, whyLoginFailed } from './github-login.mjs';
 
 /** A stand-in gh: answers each command from `answers` by its first two words. */
 const gh = (answers) => (args) => answers[args.slice(0, 2).join(' ')] ?? { status: 1, stdout: '', stderr: '' };
@@ -66,6 +66,11 @@ test('reports the repository, a rename and single sign-on', () => {
 		/single sign-on/,
 	);
 	assert.match(repositoryLine('k', 'o/r', { status: 1, stdout: '', stderr: 'HTTP 404' }).text, /cannot open o\/r/);
+});
+
+test('ends with a result line the popup reads', () => {
+	assert.deepEqual(resultEvent('kaizer03', true), { result: 'connected', account: 'kaizer03' });
+	assert.deepEqual(resultEvent('kaizer03', false), { result: 'no-access', account: 'kaizer03' });
 });
 
 test('asks yes or no, and anything but y or yes is no', async () => {

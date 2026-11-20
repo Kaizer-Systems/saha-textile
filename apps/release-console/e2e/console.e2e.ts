@@ -50,7 +50,29 @@ test('the wizard adds a project with a GitHub repository and lands on its Connec
 	await page.getByPlaceholder('storefront, API, admin…').fill('monorepo');
 	await page.getByRole('button', { name: /Add repository/ }).click();
 	await expect(page.getByRole('cell', { name: 'Kaizer-Systems/saha-textile' })).toBeVisible();
-	for (let step = 0; step < 6; step++) await page.getByRole('button', { name: /^Next/ }).click();
+	const next = page.getByRole('button', { name: /^Next/ });
+	await next.click();
+	// Environments: Next waits until every environment has a domain (owner, 20 Nov).
+	await expect(next).toBeDisabled();
+	await expect(page.getByText('Give Staging at least one domain', { exact: false })).toBeVisible();
+	const domains = page.getByPlaceholder('shop.example.com, admin.example.com');
+	await domains.nth(1).fill('staging.example.com');
+	await domains.nth(2).fill('example.com, www.example.com');
+	await next.click();
+	// Cloud platforms: the cloud Staging and Production run on is ticked and stays ticked.
+	await expect(page.getByText('Staging and Production run here')).toBeVisible();
+	await page.getByRole('checkbox', { name: /DigitalOcean/ }).click();
+	await expect(page.getByText(/Move them on Environments first/)).toBeVisible();
+	await next.click();
+	// Edge and DNS: Cloudflare needs the domain it holds.
+	await expect(next).toBeDisabled();
+	await page.getByPlaceholder('example.com', { exact: true }).fill('example.com');
+	await next.click();
+	// Secrets: each environment chooses, here no manager.
+	await expect(next).toBeDisabled();
+	for (const chip of await page.getByRole('button', { name: 'no manager' }).all()) await chip.click();
+	await next.click();
+	await next.click();
 	await expect(page.getByRole('heading', { name: /Add a project · Done/i })).toBeVisible();
 	await page.getByRole('button', { name: 'Add project', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Connections' })).toBeVisible();

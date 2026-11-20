@@ -52,7 +52,8 @@ export const SECRETS_HOSTING: Record<SecretsVendor, 'managed' | 'self-hosted' | 
 };
 
 /** Vendors whose screens are built. Every other vendor can be chosen and shows “screens later”. */
-export const VENDORS_WITH_SCREENS: readonly Vendor[] = ['github', 'digitalocean', 'cloudflare'];
+/** Infisical Cloud's screen is Run › Secrets (names, missing names, write mode). */
+export const VENDORS_WITH_SCREENS: readonly Vendor[] = ['github', 'digitalocean', 'cloudflare', 'infisical'];
 export const vendorScreens = (vendor: Vendor): 'full' | 'later' =>
 	VENDORS_WITH_SCREENS.includes(vendor) ? 'full' : 'later';
 
@@ -251,7 +252,7 @@ export const environmentSchema = z.object({
 	/** Which of the repository's clouds it runs on; `null` means this computer. */
 	cloudId: slug.nullable().default(null),
 	domains: z.array(z.string()).default([]),
-	/** Which of the repository's secrets managers it reads; `null` means files kept by hand. */
+	/** Which of the repository's secrets managers it reads; `null` means no manager: env files written by hand. */
 	secretsId: slug.nullable().default(null),
 	/** Where its secrets sit inside that manager, e.g. `saha-textile-dev · dev · /api`. */
 	secretsPath: z.string().max(200).default(''),

@@ -401,7 +401,7 @@ import type { Repository } from '@saha-textile/release-console-contracts';
 														[size]="14"
 													/>
 												} @empty {
-													<span>files kept by hand</span>
+													<span>no manager</span>
 												}
 											</div>
 										</td>
@@ -473,7 +473,7 @@ import type { Repository } from '@saha-textile/release-console-contracts';
 													<span class="rc-mono">{{ row.secretsPath }}</span>
 												}
 											} @else {
-												files kept by hand
+												no manager
 											}
 										</td>
 									</tr>

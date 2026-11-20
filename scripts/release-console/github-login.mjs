@@ -5,15 +5,19 @@
  * console runs on: the owner's Mac today, a server once the console is deployed there, on macOS,
  * Linux or Windows. Nothing typed in the console reaches it except the checked repository name.
  *
- *   1 · Tools       git (installed when the console starts); gh: the machine's own, or a pinned
- *                   copy fetched and checked against GitHub's checksums (gh-tools.mjs)
- *   Before gh's and git's first use, an update check (tool-updates.mjs): with an update it asks
- *   "[y/N]" through the Connect terminal (an `{"ask": …}` line, answered on standard input) and
- *   updates on yes; without one it says so and goes on.
- *   2 · Sign in     the saved sign-in when it still answers (unless --mode another), else gh's
- *                   browser sign-in: a one-time code entered at github.com/login/device
+ *   1 · Tools       git (installed when the console starts), then its update check; gh: the
+ *                   machine's own, or a pinned copy fetched and checked against GitHub's checksums
+ *                   (gh-tools.mjs), then its update check. Each update check (tool-updates.mjs) asks
+ *                   "[y/N]" through the Connect terminal when there is an update (an `{"ask": …}`
+ *                   line, answered on standard input) and updates on yes; without one it says so
+ *                   and goes on. Git first, then gh (owner, 20 Nov).
+ *   2 · Sign in     the saved sign-in when it still answers, named (unless --mode another), else
+ *                   gh's browser sign-in: a one-time code entered at github.com/login/device
  *   3 · Git         `gh auth setup-git`, so Git uses the same sign-in and never asks for a token
  *   4 · Repository  whether the signed-in account can open owner/name
+ *
+ * The Connect terminal opens on every Connect, so all of this shows each time (owner, 20 Nov: "let
+ * the terminal pop-up always be there"). The last line is a `{"result": …}` event the popup reads.
  *
  *   node scripts/release-console/github-login.mjs --repository owner/name [--mode login|another]
  *
@@ -186,6 +190,9 @@ export async function main(argv = process.argv) {
 			? `✓ git ${gitVersion}`
 			: '! git not found: the console installs it when it starts. Step 3 is skipped.',
 	);
+	// Git's update check comes first, then gh's (owner, 20 Nov).
+	if (gitVersion) await updateStep(await gitUpdate());
+	if (stopping) return void (process.exitCode = 1);
 	let gh = findGh();
 	if (!gh) {
 		say(`! gh not found on this machine. Installing GitHub CLI ${GH_VERSION}…`);
@@ -206,7 +213,6 @@ export async function main(argv = process.argv) {
 	}
 	say(`✓ gh ${versionOf(runner(gh)(['--version']).stdout) ?? ''}`.trimEnd());
 
-	// gh's first use is the sign-in: check for an update first.
 	if (await updateStep(await ghUpdate({ gh }))) gh = findGh() ?? gh;
 	if (stopping) return void (process.exitCode = 1);
 	const run = runner(gh);
@@ -251,9 +257,6 @@ export async function main(argv = process.argv) {
 	say('3 · Git uses this sign-in');
 	if (!gitVersion) say('- skipped: git is not installed.');
 	else {
-		// git's first use: check for an update first.
-		await updateStep(await gitUpdate());
-		if (stopping) return void (process.exitCode = 1);
 		const setup = run(['auth', 'setup-git', '--hostname', 'github.com']);
 		say(
 			setup.status === 0
@@ -263,7 +266,14 @@ export async function main(argv = process.argv) {
 	}
 
 	say('4 · Repository');
-	say(repositoryLine(account, repository, run(['api', `repos/${repository}`, '--jq', '.full_name'])).text);
+	const line = repositoryLine(account, repository, run(['api', `repos/${repository}`, '--jq', '.full_name']));
+	say(line.text);
+	say(JSON.stringify(resultEvent(account, line.ok)));
+}
+
+/** The popup's last word: connected (the account can open the repository) or signed in without access. */
+export function resultEvent(account, reachable) {
+	return { result: reachable ? 'connected' : 'no-access', account };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

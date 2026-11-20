@@ -9,6 +9,7 @@ import {
 	type SourceCodeVendor,
 	VENDOR_NAMES,
 	newProjectSchema,
+	parseSecretsPlace,
 	vendorScreens,
 } from '@saha-textile/release-console-contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -58,6 +59,104 @@ export const SECRETS_NOTES: Record<SecretsVendor, string> = {
 };
 /** Self-hosted managers that need their server's address. */
 export const needsAddress = (v: SecretsVendor): boolean => v === 'infisical-self-hosted' || v === 'vault';
+/** What each manager's "where inside it" box takes, as its placeholder. Infisical's is checked; the rest come with their screens. */
+export const PLACE_HINTS: Record<SecretsVendor, string> = {
+	infisical: 'project/environment, e.g. saha-textile-dev/dev',
+	'infisical-self-hosted': 'project/environment, e.g. shop-dev/dev',
+	'aws-secrets-manager': 'secret name or prefix, e.g. shop/prod/',
+	'gcp-secret-manager': 'project id/prefix, e.g. shop-prod/api-',
+	'azure-key-vault': 'vault name, e.g. shop-prod-vault',
+	doppler: 'project/config, e.g. shop/prd',
+	vault: 'mount/path, e.g. secret/shop/prod',
+	'github-secrets': 'GitHub environment, e.g. production',
+	'server-files': 'folder on the server, e.g. /srv/shop/env',
+};
+const isInfisical = (v: SecretsVendor): boolean => v === 'infisical' || v === 'infisical-self-hosted';
+
+/** Under the place box: what an Infisical place reads, in words, or how to write one. */
+export function placeNote(vendor: SecretsVendor, text: string): string {
+	if (!isInfisical(vendor)) return 'Its screens come later; the console keeps this place for them.';
+	const place = parseSecretsPlace(text);
+	if (!place)
+		return 'Whole environment: saha-textile-dev/dev. One folder: saha-textile-dev/dev/api. Use the slugs Infisical shows.';
+	return `Reads project ${place.project}, environment ${place.environment}, ${
+		place.folder === '/' ? 'every folder' : `only ${place.folder}`
+	}.`;
+}
+
+/** Words or commas: `a.com, b.com` → `['a.com', 'b.com']`. */
+export const splitList = (text: string): string[] =>
+	text
+		.split(/[\s,]+/)
+		.map((t) => t.trim())
+		.filter(Boolean);
+const DOMAIN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+export const isDomain = (text: string): boolean => DOMAIN.test(text);
+/** `Staging`, `Staging and Production`, `Local, Staging and Production`. */
+export const andList = (items: string[]): string =>
+	items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+
+interface EnvRule {
+	label: string;
+	runsOn: CloudVendor | null;
+	domains: string;
+	secretsFrom: SecretsVendor | 'none' | null;
+	secretsPath: string;
+}
+
+/** Environments: at least one, and each with at least one domain name (owner, 20 Nov: Next waits for it). */
+export function envProblem(envs: EnvRule[]): string {
+	if (!envs.length) return 'Keep at least one environment.';
+	for (const e of envs) {
+		const domains = splitList(e.domains);
+		if (!domains.length)
+			return `Give ${e.label} at least one domain, such as shop.example.com (localhost on this computer).`;
+		const bad = domains.find((d) => !isDomain(d));
+		if (bad) return `“${bad}” in ${e.label} is not a domain name.`;
+	}
+	return '';
+}
+
+/**
+ * Edge and DNS: environments on a server need an edge platform; each chosen edge needs the domain
+ * it holds; each server environment's domains must sit under one of those domains.
+ */
+export function edgeProblem(envs: EnvRule[], edges: { vendor: EdgeVendor; zones: string }[]): string {
+	const onServer = envs.filter((e) => e.runsOn !== null);
+	if (onServer.length && !edges.length)
+		return `${andList(onServer.map((e) => e.label))} run on a server: choose the edge platform that holds their domains.`;
+	const zones: string[] = [];
+	for (const edge of edges) {
+		const own = splitList(edge.zones);
+		if (!own.length) return `Write the domain ${VENDOR_NAMES[edge.vendor]} holds, such as example.com.`;
+		const bad = own.find((z) => !isDomain(z));
+		if (bad) return `“${bad}” is not a domain name.`;
+		zones.push(...own.map((z) => z.toLowerCase()));
+	}
+	for (const e of onServer)
+		for (const d of splitList(e.domains).map((x) => x.toLowerCase()))
+			if (!zones.some((z) => d === z || d.endsWith(`.${z}`)))
+				return `${d} (${e.label}) is under none of the edge domains.`;
+	return '';
+}
+
+/** Secrets: each environment names its manager and where inside it, or says it uses no manager. */
+export function secretsProblem(envs: EnvRule[], managers: { vendor: SecretsVendor; address: string }[]): string {
+	const noAddress = managers.find((x) => needsAddress(x.vendor) && !/^https?:\/\/\S+$/.test(x.address));
+	if (noAddress) return `Give ${VENDOR_NAMES[noAddress.vendor]} its server's address, starting with https://.`;
+	for (const e of envs) {
+		const from = e.secretsFrom;
+		if (from === null || (from !== 'none' && !managers.some((m) => m.vendor === from)))
+			return `Choose where ${e.label} reads its secrets: a manager ticked on the left, or no manager.`;
+		if (from === 'none') continue;
+		const path = e.secretsPath.trim();
+		if (!path)
+			return `Write where ${e.label} reads inside ${VENDOR_NAMES[from]}: ${PLACE_HINTS[from].replace(/^.*e\.g\. /, 'for example ')}.`;
+		if (isInfisical(from) && !parseSecretsPlace(path))
+			return `${e.label}: write the place as project/environment, or project/environment/folder.`;
+	}
+	return '';
+}
 export const SOURCE_NOTES: Record<SourceCodeVendor, string> = {
 	github: 'pull requests, Actions, environments, packages',
 	gitlab: 'merge requests, GitLab CI',
@@ -92,7 +191,8 @@ interface EnvDraft {
 	label: string;
 	runsOn: CloudVendor | null;
 	domains: string;
-	secretsFrom: SecretsVendor | null;
+	/** A manager ticked on the left, `none` for env files written by hand, or null while not chosen yet. */
+	secretsFrom: SecretsVendor | 'none' | null;
 	secretsPath: string;
 }
 
@@ -294,76 +394,88 @@ interface EnvDraft {
 									<thead>
 										<tr>
 											<th>Repository</th>
-											<th>Vendor</th>
-											<th>Role</th>
-											<th>Own menus</th>
+											<th>Connection</th>
 											<th></th>
 										</tr>
 									</thead>
 									<tbody>
 										@for (r of repos(); track r.repository) {
 											<tr>
-												<td class="rc-mono">{{ r.repository }}</td>
 												<td>
-													<rc-vendor-logo
-														[vendor]="r.vendor"
-														[size]="16"
-													/>
+													<div class="rc-states">
+														<rc-vendor-logo
+															[vendor]="r.vendor"
+															[size]="14"
+														/>
+														<span class="rc-mono">{{ r.repository }}</span>
+													</div>
+													@if (r.role) {
+														<div class="rc-note">{{ r.role }}</div>
+													}
+													<div class="rc-note">Own menus: {{ r.file }}</div>
 												</td>
-												<td>{{ r.role || '—' }}</td>
 												<td>
-													<div class="rc-mono">{{ r.file }}</div>
 													@if (r.vendor === 'github') {
-														@switch (r.link) {
-															@case ('connected') {
-																<span class="rc-pill ok">
-																	connected as {{ r.linkNote }}
-																</span>
-																@if (r.renamedTo) {
-																	<div class="rc-note">
-																		GitHub now calls it {{ r.renamedTo }}.
+														<div class="rc-form">
+															@switch (r.link) {
+																@case ('connected') {
+																	<span class="rc-pill ok">
+																		connected as {{ r.linkNote }}
+																	</span>
+																	@if (r.renamedTo) {
+																		<div class="rc-note">
+																			GitHub now calls it {{ r.renamedTo }}.
+																		</div>
+																		<button
+																			type="button"
+																			class="rc-btn ghost"
+																			(click)="
+																				useNewName(r.repository, r.renamedTo)
+																			"
+																		>
+																			Use {{ r.renamedTo }}
+																		</button>
+																	}
+																}
+																@case ('checking') {
+																	<span class="rc-pill cy">connecting…</span>
+																}
+																@case ('failed') {
+																	<div class="rc-note red">{{ r.linkNote }}</div>
+																	<div class="rc-states">
+																		<button
+																			type="button"
+																			class="rc-btn"
+																			(click)="connect(r.repository, 'another')"
+																		>
+																			<rc-icon name="tabler/plug-connected" />
+																			Use another account
+																		</button>
+																		<button
+																			type="button"
+																			class="rc-btn ghost"
+																			(click)="connect(r.repository)"
+																		>
+																			Check again
+																		</button>
 																	</div>
-																	<button
-																		type="button"
-																		class="rc-btn ghost"
-																		(click)="useNewName(r.repository, r.renamedTo)"
-																	>
-																		Use {{ r.renamedTo }}
-																	</button>
+																}
+																@default {
+																	<div>
+																		<button
+																			type="button"
+																			class="rc-btn"
+																			(click)="connect(r.repository)"
+																		>
+																			<rc-icon name="tabler/plug-connected" />
+																			Connect
+																		</button>
+																	</div>
 																}
 															}
-															@case ('checking') {
-																<span class="rc-pill cy">checking…</span>
-															}
-															@case ('failed') {
-																<div class="rc-note red">{{ r.linkNote }}</div>
-																<button
-																	type="button"
-																	class="rc-btn"
-																	(click)="connect(r.repository, 'another')"
-																>
-																	<rc-icon name="tabler/plug-connected" />
-																	Use another account
-																</button>
-																<button
-																	type="button"
-																	class="rc-btn ghost"
-																	(click)="connect(r.repository)"
-																>
-																	Check again
-																</button>
-															}
-															@default {
-																<button
-																	type="button"
-																	class="rc-btn"
-																	(click)="connect(r.repository)"
-																>
-																	<rc-icon name="tabler/plug-connected" />
-																	Connect
-																</button>
-															}
-														}
+														</div>
+													} @else {
+														<span class="rc-note">on Connections, once added</span>
 													}
 												</td>
 												<td>
@@ -377,7 +489,7 @@ interface EnvDraft {
 												</td>
 											</tr>
 										} @empty {
-											<tr><td colspan="5">None yet.</td></tr>
+											<tr><td colspan="3">None yet.</td></tr>
 										}
 									</tbody>
 								</table>
@@ -508,11 +620,15 @@ interface EnvDraft {
 											<rc-vendor-logo [vendor]="c" />
 										</b>
 										<small>
-											{{
-												screens(c) === 'full'
-													? 'full console screens today'
-													: 'connect now; screens come later'
-											}}
+											@if (usedBy(c); as who) {
+												{{ who }} {{ who.includes(' and ') ? 'run' : 'runs' }} here
+											} @else {
+												{{
+													screens(c) === 'full'
+														? 'full console screens today'
+														: 'connect now; screens come later'
+												}}
+											}
 										</small>
 										<span
 											class="rc-pill"
@@ -541,8 +657,9 @@ interface EnvDraft {
 							</div>
 							<p class="rc-p">
 								Keys are added on the project's Connections screen after this wizard: a token paste, a
-								browser sign-in, or a cloud role, never a password. Environments that run on a cloud are
-								ticked here already.
+								browser sign-in, or a cloud role, never a password. A cloud an environment runs on is
+								ticked by itself and stays ticked until that environment moves (on Environments). Tick
+								another only if the project uses it without an environment, for storage say.
 							</p>
 						</div>
 					</div>
@@ -718,14 +835,6 @@ interface EnvDraft {
 												<td>
 													<div class="rc-form">
 														<div class="rc-states">
-															<button
-																type="button"
-																class="rc-chip"
-																[class.on]="e.secretsFrom === null"
-																(click)="setSecretsFrom(i, null)"
-															>
-																files kept by hand
-															</button>
 															@for (x of secretsList(); track x.vendor) {
 																<button
 																	type="button"
@@ -739,17 +848,44 @@ interface EnvDraft {
 																	/>
 																</button>
 															}
+															<button
+																type="button"
+																class="rc-chip"
+																[class.on]="e.secretsFrom === 'none'"
+																(click)="setSecretsFrom(i, 'none')"
+															>
+																no manager
+															</button>
 														</div>
-														<div class="rc-msearch">
-															<input
-																type="text"
-																autocomplete="off"
-																placeholder="project · environment · /folder"
-																[value]="e.secretsPath"
-																[disabled]="e.secretsFrom === null"
-																(input)="setSecretsPath(i, $any($event.target).value)"
-															/>
-														</div>
+														@if (managerOf(e); as v) {
+															<div class="rc-msearch">
+																<input
+																	type="text"
+																	autocomplete="off"
+																	spellcheck="false"
+																	[attr.aria-label]="e.label + ' reads from'"
+																	[placeholder]="placeHints[v]"
+																	[value]="e.secretsPath"
+																	(input)="
+																		setSecretsPath(i, $any($event.target).value)
+																	"
+																/>
+															</div>
+															<p class="rc-note">{{ placeNote(v, e.secretsPath) }}</p>
+														} @else if (e.secretsFrom === 'none') {
+															<p class="rc-note">
+																The console reads no secrets for {{ e.label }}: its apps
+																read env files written by hand, outside the console.
+															</p>
+														} @else {
+															<p class="rc-note">
+																{{
+																	secretsList().length
+																		? 'Choose a manager ticked on the left, or no manager.'
+																		: 'Tick a manager on the left first, or choose no manager.'
+																}}
+															</p>
+														}
 													</div>
 												</td>
 											</tr>
@@ -890,7 +1026,7 @@ interface EnvDraft {
 														[size]="14"
 													/>
 												} @empty {
-													<span>files kept by hand</span>
+													<span>no manager</span>
 												}
 											</div>
 										</td>
@@ -902,14 +1038,14 @@ interface EnvDraft {
 												@for (e of envs(); track e.name) {
 													<div class="rc-states">
 														<b>{{ e.label }}</b>
-														@if (e.secretsFrom) {
+														@if (managerOf(e); as v) {
 															<rc-vendor-logo
-																[vendor]="e.secretsFrom"
+																[vendor]="v"
 																[size]="14"
 															/>
 															<span class="rc-mono">{{ e.secretsPath }}</span>
 														} @else {
-															<span>files kept by hand</span>
+															<span>no manager</span>
 														}
 													</div>
 												}
@@ -934,10 +1070,14 @@ interface EnvDraft {
 				>
 					{{ at() ? '‹ Back' : 'Cancel' }}
 				</button>
+				<!-- Why Next waits sits between the buttons, so they never move when it clears. -->
+				@if (problem(); as why) {
+					<span class="rc-note">{{ why }}</span>
+				}
 				<button
 					type="button"
 					class="rc-btn primary"
-					[disabled]="busy()"
+					[disabled]="busy() || !!problem()"
 					(click)="next()"
 				>
 					{{ nextLabel() }}
@@ -969,6 +1109,8 @@ export class AddProject {
 	protected readonly secretsVendors = SECRETS;
 	protected readonly secretsNotes = SECRETS_NOTES;
 	protected readonly addressNeeded = needsAddress;
+	protected readonly placeHints = PLACE_HINTS;
+	protected readonly placeNote = placeNote;
 	protected readonly ownMenus = OWN_MENUS;
 	protected readonly screens = vendorScreens;
 
@@ -999,40 +1141,34 @@ export class AddProject {
 	}
 
 	/**
-	 * Connect (owner, 20 Nov): first checks, with no terminal, that a sign-in exists where the console
-	 * runs, that it still answers, and that it can open this repository; then the row turns green.
-	 * Otherwise the terminal popup opens and starts the sign-in by itself. A sign-in that answers but
-	 * cannot open the repository is said in the row: signing in again would not change that.
+	 * Connect (owner, 20 Nov: "let the terminal pop-up always be there"): the terminal popup opens on
+	 * every press and runs the steps in front of you: Git's and gh's update checks, then the saved
+	 * sign-in named, or a new sign-in. Use another account signs in a second account the same way.
 	 */
-	protected async connect(repository: string, mode: 'login' | 'another' = 'login'): Promise<void> {
+	protected connect(repository: string, mode: 'login' | 'another' = 'login'): void {
 		this.notice.set('');
-		if (mode === 'another') {
-			this.pending.set(repository);
-			this.signInMode.set('another');
-			this.setLink(repository, 'checking');
-			this.showSignIn.set(true);
-			return;
-		}
-		this.signInMode.set('login');
+		this.pending.set(repository);
+		this.signInMode.set(mode);
 		this.setLink(repository, 'checking');
+		this.showSignIn.set(true);
+	}
+
+	/**
+	 * After the terminal signs in: whether the sign-in still answers and can open this repository.
+	 * Green when it can; otherwise the row says why (another account, or Check again once access
+	 * is granted on GitHub).
+	 */
+	private async check(repository: string): Promise<void> {
 		try {
 			const c = await this.api.githubCheck(repository);
 			if (c.signedIn && c.account && c.reachable) {
 				const renamed = c.fullName && c.fullName.toLowerCase() !== repository.toLowerCase() ? c.fullName : '';
 				this.setLink(repository, 'connected', c.account, renamed);
 				void this.readFile(repository);
-				return;
-			}
-			if (c.signedIn && c.account) {
-				this.setLink(repository, 'failed', c.message);
-				return;
-			}
+			} else this.setLink(repository, 'failed', c.message || 'GitHub did not answer as signed in.');
 		} catch (err) {
 			this.setLink(repository, 'failed', (err as Error).message);
-			return;
 		}
-		this.pending.set(repository);
-		this.showSignIn.set(true);
 	}
 
 	/** The popup closed: before the connection finished, the page says it was cancelled. */
@@ -1046,10 +1182,10 @@ export class AddProject {
 		this.pending.set(null);
 	}
 
-	/** Connected in the terminal: the page checks the repository again at once and turns it green. */
+	/** Signed in in the terminal: the page checks the repository at once and turns it green. */
 	protected async afterSignIn(): Promise<void> {
 		const repository = this.pending();
-		if (repository) await this.connect(repository);
+		if (repository) await this.check(repository);
 	}
 	protected readonly name = signal('');
 	protected readonly workspace = signal('');
@@ -1068,7 +1204,13 @@ export class AddProject {
 			secretsPath: '',
 		},
 	]);
-	protected readonly cloudSet = signal<Set<CloudVendor>>(new Set(['digitalocean']));
+	/** Clouds ticked by hand that no environment runs on (storage, say). */
+	protected readonly extraClouds = signal<Set<CloudVendor>>(new Set());
+	/** Ticked clouds: every cloud an environment runs on, plus the ones ticked by hand (owner, 20 Nov). */
+	protected readonly cloudSet = computed(
+		() =>
+			new Set<CloudVendor>([...this.envs().flatMap((e) => (e.runsOn ? [e.runsOn] : [])), ...this.extraClouds()]),
+	);
 	protected readonly secretsList = signal<{ vendor: SecretsVendor; address: string }[]>([]);
 	protected readonly edgeList = signal<{ vendor: EdgeVendor; zones: string }[]>([
 		{ vendor: 'cloudflare', zones: '' },
@@ -1100,7 +1242,7 @@ export class AddProject {
 				repository,
 				role: role.value.trim(),
 				menus: [],
-				file: vendor === 'github' ? 'reading…' : 'add menus by hand',
+				file: vendor === 'github' ? 'reading…' : 'chosen on Project menus',
 				link: 'idle',
 				linkNote: '',
 				renamedTo: '',
@@ -1120,15 +1262,12 @@ export class AddProject {
 			);
 		try {
 			const a = await this.api.repositoryFile({ vendor: 'github', repository });
-			if (a.state === 'not-connected') set('Connect to read its own menus.');
+			if (a.state === 'not-connected') set('Connect to read them.');
 			else if (a.state !== 'ok') set(a.message);
 			else if (!a.data.found) set('no .release-console.json');
 			else {
 				const menus = a.data.menus.filter((m) => !!CONSOLE_MENU.screens[m]);
-				set(
-					`menus from .release-console.json: ${menus.map((m) => this.menuLabel(m)).join(', ') || 'none'}`,
-					menus,
-				);
+				set(`from .release-console.json: ${menus.map((m) => this.menuLabel(m)).join(', ') || 'none'}`, menus);
 			}
 		} catch (err) {
 			set((err as Error).message);
@@ -1139,7 +1278,14 @@ export class AddProject {
 	}
 	protected setRunsOn(i: number, cloud: CloudVendor | null): void {
 		this.envs.update((es) => es.map((e, n) => (n === i ? { ...e, runsOn: cloud } : e)));
-		if (cloud) this.cloudSet.update((s) => new Set([...s, cloud]));
+	}
+	/** The environments that run on a cloud, in words, or '' when none does. */
+	protected usedBy(c: CloudVendor): string {
+		return andList(
+			this.envs()
+				.filter((e) => e.runsOn === c)
+				.map((e) => e.label),
+		);
 	}
 	protected setDomains(i: number, domains: string): void {
 		this.envs.update((es) => es.map((e, n) => (n === i ? { ...e, domains } : e)));
@@ -1158,10 +1304,19 @@ export class AddProject {
 		this.envs.update((es) => es.filter((_, n) => n !== i));
 	}
 	protected toggleCloud(c: CloudVendor): void {
-		const next = new Set(this.cloudSet());
+		const who = this.usedBy(c);
+		if (who) {
+			const many = who.includes(' and ');
+			this.message.set(
+				`${who} ${many ? 'run' : 'runs'} on ${VENDOR_NAMES[c]}. Move ${many ? 'them' : 'it'} on Environments first.`,
+			);
+			return;
+		}
+		this.message.set('');
+		const next = new Set(this.extraClouds());
 		if (next.has(c)) next.delete(c);
 		else next.add(c);
-		this.cloudSet.set(next);
+		this.extraClouds.set(next);
 	}
 	protected edgeOn(v: EdgeVendor): boolean {
 		return this.edgeList().some((e) => e.vendor === v);
@@ -1188,10 +1343,16 @@ export class AddProject {
 	protected setSecretsAddress(i: number, address: string): void {
 		this.secretsList.update((list) => list.map((x, n) => (n === i ? { ...x, address: address.trim() } : x)));
 	}
-	protected setSecretsFrom(i: number, vendor: SecretsVendor | null): void {
+	protected setSecretsFrom(i: number, from: SecretsVendor | 'none'): void {
 		this.envs.update((es) =>
-			es.map((e, n) => (n === i ? { ...e, secretsFrom: vendor, secretsPath: vendor ? e.secretsPath : '' } : e)),
+			es.map((e, n) =>
+				n === i ? { ...e, secretsFrom: from, secretsPath: from === 'none' ? '' : e.secretsPath } : e,
+			),
 		);
+	}
+	/** The manager an environment reads, or null for no manager or not chosen yet. */
+	protected managerOf(e: EnvDraft): SecretsVendor | null {
+		return e.secretsFrom && e.secretsFrom !== 'none' ? e.secretsFrom : null;
 	}
 	protected setSecretsPath(i: number, secretsPath: string): void {
 		this.envs.update((es) => es.map((e, n) => (n === i ? { ...e, secretsPath } : e)));
@@ -1231,8 +1392,11 @@ export class AddProject {
 						label: e.label,
 						cloudId: e.runsOn && clouds.includes(e.runsOn) ? e.runsOn : null,
 						domains: list(e.domains),
-						secretsId: e.secretsFrom && secrets.includes(e.secretsFrom) ? e.secretsFrom : null,
-						secretsPath: e.secretsFrom ? e.secretsPath.trim() : '',
+						secretsId: (() => {
+							const v = this.managerOf(e);
+							return v && secrets.includes(v) ? v : null;
+						})(),
+						secretsPath: this.managerOf(e) ? e.secretsPath.trim() : '',
 					})),
 					cloud: clouds.map((c) => ({ id: c, vendor: c, account: '', keyIds: [] })),
 					edge: this.edgeList().map((e) => ({
@@ -1254,6 +1418,9 @@ export class AddProject {
 		};
 	}
 
+	/** Why Next waits on this step, live (owner, 20 Nov: Next stays off until the step is complete). */
+	protected readonly problem = computed(() => this.stepError());
+
 	private stepError(): string {
 		switch (this.at()) {
 			case 0:
@@ -1266,15 +1433,11 @@ export class AddProject {
 			case 1:
 				return this.repos().length ? '' : 'Add at least one repository.';
 			case 2:
-				return this.envs().length ? '' : 'Keep at least one environment.';
-			case 5: {
-				const missing = this.secretsList().find(
-					(x) => needsAddress(x.vendor) && !/^https?:\/\/\S+$/.test(x.address),
-				);
-				return missing
-					? `Give ${VENDOR_NAMES[missing.vendor]} its server's address, starting with https://.`
-					: '';
-			}
+				return envProblem(this.envs());
+			case 4:
+				return edgeProblem(this.envs(), this.edgeList());
+			case 5:
+				return secretsProblem(this.envs(), this.secretsList());
 			default:
 				return '';
 		}

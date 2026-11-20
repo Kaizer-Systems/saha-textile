@@ -271,6 +271,7 @@
 	"marketing_opt_in": "Send me offers and news by email",
 	"measurement_range": "Enter a measurement from {{min}} to {{max}} {{unit}}.",
 	"measurements": "Measurements",
+	"measurements_for": "Measurements for {{name}}",
 	"measurements_note": "Please provide accurate measurements to ensure the perfect fit.",
 	"measurements_required": "Measurements Required",
 	"measurements_required_for_selection": "Measurements Required for Selected Options",

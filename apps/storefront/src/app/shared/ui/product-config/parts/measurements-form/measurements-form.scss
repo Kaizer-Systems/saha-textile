@@ -5,6 +5,24 @@
 	background-color: var(--st-surface-subtle);
 	margin-bottom: 18px;
 
+	// The in / cm switch sits on the title row, saving a row (owner, 21 Nov, brief rev 4 P9).
+	.measurements-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 8px 12px;
+		margin-bottom: 14px;
+
+		.measurements-title {
+			margin-bottom: 0;
+		}
+
+		.select-package {
+			margin: 0;
+		}
+	}
+
 	.measurements-title {
 		display: flex;
 		align-items: center;

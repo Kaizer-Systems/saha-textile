@@ -2,7 +2,9 @@
 <!-- M05: the same bar in metres for fabric ("Please hurry! Only 4.5 m left"); 10 m and under. -->
 <div class="progress-sec">
 	<div class="left-progressbar">
-		<p class="h6">{{ 'only_length_left' | transloco: { length: lengthOf(product()!.quantity, 'unit_m' | transloco) } }}</p>
+		<p class="h6">
+			{{ 'only_length_left' | transloco: { length: lengthOf(product()!.quantity, 'unit_m' | transloco) } }}
+		</p>
 		<div
 			class="progress"
 			[class]="{ 'danger-progress': product()!.quantity <= 20, 'warning-progress': product()!.quantity > 20 && product()!.quantity <= 70 }"
@@ -18,7 +20,9 @@
 } @else if (product()?.quantity && product()!.quantity <= 10) {
 <div class="progress-sec">
 	<div class="left-progressbar">
-		<p class="h6">{{ 'please_hurry_only' | transloco }} {{ product()?.quantity }} {{ 'left_in_stock' | transloco }}</p>
+		<p class="h6">
+			{{ 'please_hurry_only' | transloco }} {{ product()?.quantity }} {{ 'left_in_stock' | transloco }}
+		</p>
 		<!-- The line above says how many are left; the bar only shows it (it claimed a fixed 75%). -->
 		<div
 			class="progress"
@@ -40,7 +44,10 @@
 		role="button"
 		(click)="SizeChartModal()?.openModal(guide)"
 	>
-		<i class="ri-ruler-line"></i>
+		<i
+			class="st-ico-tape"
+			aria-hidden="true"
+		></i>
 		{{ 'size_chart' | transloco }}
 	</a>
 	} @if (policy && product()?.is_return) {

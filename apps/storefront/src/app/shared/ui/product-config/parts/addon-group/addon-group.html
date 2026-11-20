@@ -19,6 +19,7 @@
 	<app-measurements-form
 		[fields]="product().measurement_fields || []"
 		[title]="'measurements_required_for_selection'"
+		[forName]="measuredLabel()"
 		[initialValues]="initialMeasurements()"
 		(valueChange)="onMeasurementsValue($event)"
 		(validChange)="onMeasurementsValid($event)"

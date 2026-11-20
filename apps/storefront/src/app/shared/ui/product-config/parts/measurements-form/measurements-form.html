@@ -1,26 +1,32 @@
 <div class="measurements-form">
-	<h3 class="h5 measurements-title">
-		<i class="ri-ruler-line"></i>
-		{{ title() | transloco }}
-	</h3>
-	<ul class="select-package">
-		<li [class.active]="displayUnit() === 'in'">
-			<button
-				type="button"
-				(click)="showUnit('in')"
-			>
-				in
-			</button>
-		</li>
-		<li [class.active]="displayUnit() === 'cm'">
-			<button
-				type="button"
-				(click)="showUnit('cm')"
-			>
-				cm
-			</button>
-		</li>
-	</ul>
+	<div class="measurements-head">
+		<h3 class="h5 measurements-title">
+			<i
+				class="st-ico-tape"
+				aria-hidden="true"
+			></i>
+			@if (forName()) { {{ 'measurements_for' | transloco: { name: forName() } }} } @else { {{ title() | transloco
+			}} }
+		</h3>
+		<ul class="select-package">
+			<li [class.active]="displayUnit() === 'in'">
+				<button
+					type="button"
+					(click)="showUnit('in')"
+				>
+					in
+				</button>
+			</li>
+			<li [class.active]="displayUnit() === 'cm'">
+				<button
+					type="button"
+					(click)="showUnit('cm')"
+				>
+					cm
+				</button>
+			</li>
+		</ul>
+	</div>
 	<form [formGroup]="form">
 		<div class="row g-3">
 			@for (field of fields(); track field.code) {

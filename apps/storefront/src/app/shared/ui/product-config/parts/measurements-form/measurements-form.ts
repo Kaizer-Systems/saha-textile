@@ -46,6 +46,8 @@ export class MeasurementsForm {
 
 	readonly fields = input<IMeasurementField[]>([]);
 	readonly title = input<string>('measurements_required');
+	/** The chosen add-on the form is for ("Measurements for Boat Neck Blouse"); empty keeps `title`. */
+	readonly forName = input<string>('');
 	/** Prefill values (field code -> value) when re-opening a saved line for editing. */
 	readonly initialValues = input<Record<string, number>>();
 

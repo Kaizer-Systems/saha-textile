@@ -18,3 +18,19 @@
 		background: radial-gradient(circle, var(--theme-color) 0 4px, var(--st-surface, #fff) 4.5px);
 	}
 }
+
+// The coiled measuring tape ("ফিতে", owner 21 Nov) for anything about measurements, in place of the ruler. The drawing
+// is Material Design Icons' `tape-measure` (Pictogrammers, Apache License 2.0), inlined so it costs no request or font;
+// as a mask it takes the text colour, so light and dark mode need nothing more.
+.st-ico-tape {
+	display: inline-block;
+	flex: none;
+	width: 1.25em;
+	height: 1.25em;
+	vertical-align: -0.25em;
+	background-color: currentColor;
+	-webkit-mask: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath d=%22M9,5A7,7 0 0,1 16,12H17V15H16V19H9A7,7 0 0,1 2,12A7,7 0 0,1 9,5M9,8A4,4 0 0,0 5,12A4,4 0 0,0 9,16A4,4 0 0,0 13,12A4,4 0 0,0 9,8M17,17H22V19L22,21H20V19H17V17Z%22 /%3E%3C/svg%3E')
+		center / contain no-repeat;
+	mask: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath d=%22M9,5A7,7 0 0,1 16,12H17V15H16V19H9A7,7 0 0,1 2,12A7,7 0 0,1 9,5M9,8A4,4 0 0,0 5,12A4,4 0 0,0 9,16A4,4 0 0,0 13,12A4,4 0 0,0 9,8M17,17H22V19L22,21H20V19H17V17Z%22 /%3E%3C/svg%3E')
+		center / contain no-repeat;
+}

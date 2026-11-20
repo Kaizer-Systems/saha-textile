@@ -54,6 +54,9 @@ export class AddonGroup implements OnInit {
 	readonly total = computed(() => this.base() + this.delta());
 	readonly needsMeasurements = computed(() => this.selectedTerms().some((t) => t?.requires_measurements));
 
+	/** The chosen add-on that needs measurements, named in the form's title (owner, 21 Nov, brief rev 4 P9). */
+	readonly measuredLabel = computed(() => this.selectedTerms().find((t) => t?.requires_measurements)?.label ?? '');
+
 	readonly valid = computed(() => !this.needsMeasurements() || this.measurementsValid());
 
 	ngOnInit() {

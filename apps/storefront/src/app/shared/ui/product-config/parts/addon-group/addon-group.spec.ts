@@ -77,3 +77,12 @@ describe('AddonGroup', () => {
 		expect(group.needsMeasurements()).toBe(false);
 	});
 });
+
+describe('AddonGroup measurement title', () => {
+	it('names the chosen add-on that needs measurements, and nothing while none does', () => {
+		const { group } = render();
+		expect(group.measuredLabel()).toBe('');
+		group.select(group.groups()[0], 'stitched');
+		expect(group.measuredLabel()).toBe('Stitched');
+	});
+});

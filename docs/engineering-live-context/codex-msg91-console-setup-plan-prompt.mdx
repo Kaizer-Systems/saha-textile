@@ -128,7 +128,8 @@ Report both readings before proceeding.
 2. Report the DNS records MSG91 asks for (SPF / DKIM / tracking CNAME) **verbatim** — the owner
    adds these at their DNS host; you do not have access.
 3. When the owner says DNS has propagated, run MSG91's verification and report the result.
-4. Set `MSG91_EMAIL_FROM` and `MSG91_EMAIL_DOMAIN` in `apps/api/.env` to match what was verified.
+4. Set the four `MSG91_EMAIL_FROM_*` senders and `MSG91_EMAIL_DOMAIN` in Infisical to match what was verified
+   (owner log § "which address each customer email comes from", 2026-11-20).
 
 ### Phase D — email templates
 

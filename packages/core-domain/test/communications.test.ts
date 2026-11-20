@@ -10,6 +10,7 @@ import {
 	CommunicationSendGate,
 	type CommunicationSwitchRepository,
 	communicationCellOn,
+	communicationGroupForTemplate,
 	communicationUseForTemplate,
 	decideCommunicationChange,
 	isCommunicationCellLocked,
@@ -31,6 +32,8 @@ const COMMUNICATION_USES: CommunicationUse[] = [
 	{ key: 'staff_invitation', group: 'account', cells: { email: ON, sms: danger, whatsapp: danger } },
 	{ key: 'order_shipped', group: 'orders', cells: { email: ON, sms: ON, whatsapp: ON } },
 	{ key: 'newsletter', group: 'marketing', cells: { email: ON, sms: unavailable, whatsapp: unavailable } },
+	{ key: 'back_in_stock', group: 'shop', cells: { email: ON, sms: ON, whatsapp: ON } },
+	{ key: 'sale_launch_announcement', group: 'marketing', cells: { email: ON, sms: warning, whatsapp: warning } },
 ];
 
 const use = (key: string) => {
@@ -65,6 +68,14 @@ describe('communication cells', () => {
 		expect(communicationUseForTemplate('otp_login')).toBe('signin_code');
 		expect(communicationUseForTemplate('shop_event_announcement')).toBe('sale_launch_announcement');
 		expect(communicationUseForTemplate('something_else')).toBeNull();
+	});
+
+	it('puts every sent template in its group, and anything else in account', () => {
+		expect(communicationGroupForTemplate('otp_login', COMMUNICATION_USES)).toBe('account');
+		expect(communicationGroupForTemplate('back_in_stock', COMMUNICATION_USES)).toBe('shop');
+		expect(communicationGroupForTemplate('shop_event_announcement', COMMUNICATION_USES)).toBe('marketing');
+		expect(communicationGroupForTemplate('something_else', COMMUNICATION_USES)).toBe('account');
+		expect(communicationGroupForTemplate('back_in_stock', [])).toBe('account');
 	});
 });
 

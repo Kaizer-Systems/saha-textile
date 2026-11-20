@@ -79,7 +79,7 @@ describe('Msg91NotificationAdapter', () => {
 		const adapter = new Msg91NotificationAdapter({
 			config: {
 				authKey: 'test-key',
-				emailFrom: 'no-reply@sahatextile.com',
+				emailFromFor: () => 'no-reply@sahatextile.com',
 			},
 			settings,
 			templates,
@@ -158,7 +158,7 @@ describe('Msg91NotificationAdapter', () => {
 		const adapter = new Msg91NotificationAdapter({
 			config: {
 				authKey: 'test-key',
-				emailFrom: 'no-reply@sahatextile.com',
+				emailFromFor: () => 'no-reply@sahatextile.com',
 				emailDomain: 'sahatextile.com',
 			},
 			settings,
@@ -265,7 +265,7 @@ describe('Msg91NotificationAdapter', () => {
 		};
 
 		const adapter = new Msg91NotificationAdapter({
-			config: { authKey: 'test-key', emailFrom: 'no-reply@sahatextile.com', senderId: 'SAHATX' },
+			config: { authKey: 'test-key', emailFromFor: () => 'no-reply@sahatextile.com', senderId: 'SAHATX' },
 			settings,
 			templates,
 			outbox,
@@ -298,7 +298,7 @@ describe('Msg91NotificationAdapter and Settings › Communications', () => {
 			incrementUsage: async () => 0,
 		};
 		const adapter = new Msg91NotificationAdapter({
-			config: { authKey: 'test-key', emailFrom: 'no-reply@example.test' },
+			config: { authKey: 'test-key', emailFromFor: () => 'no-reply@example.test' },
 			settings,
 			templates: { findByKey: async () => null, list: async () => [], upsert: async (t) => t },
 			outbox,

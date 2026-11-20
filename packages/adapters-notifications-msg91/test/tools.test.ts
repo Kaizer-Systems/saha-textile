@@ -14,10 +14,15 @@ const recorder = () => {
 	return { postJson, client: { postJson } as unknown as Msg91HttpClient };
 };
 
-const config: Msg91AdapterConfig = { authKey: 'test-key', emailFrom: 'no-reply@sahatextile.com' };
+const config: Msg91AdapterConfig = {
+	authKey: 'test-key',
+	emailFromFor: (templateKey) =>
+		templateKey === 'back_in_stock' ? 'notifications@sahatextile.com' : 'no-reply@sahatextile.com',
+};
 
 const dispatch = (overrides: Partial<Msg91ToolDispatch>): Msg91ToolDispatch => ({
 	tool: 'email.send',
+	templateKey: 'otp_login',
 	providerTemplateId: 'tpl_1',
 	destination: 'buyer@example.test',
 	variables: { code: 123456, name: 'Asha' },
@@ -36,6 +41,12 @@ describe('email tool', () => {
 			from: { email: 'no-reply@sahatextile.com' },
 			template_id: 'tpl_1',
 		});
+	});
+
+	it("sends from the address of the template's group", async () => {
+		const { client, postJson } = recorder();
+		await sendEmailViaMsg91(client, config, dispatch({ templateKey: 'back_in_stock' }));
+		expect(bodyOf(postJson)).toMatchObject({ from: { email: 'notifications@sahatextile.com' } });
 	});
 
 	it('adds the sender name and domain when configured', async () => {

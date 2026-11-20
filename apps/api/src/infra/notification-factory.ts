@@ -3,6 +3,7 @@ import { Msg91NotificationAdapter } from '@saha-textile/adapters-notifications-m
 import { COMMUNICATION_USES } from '@saha-textile/contracts';
 import {
 	CommunicationSendGate,
+	communicationGroupForTemplate,
 	type CommunicationSwitchRepository,
 	type ConsentRepository,
 	type MessageOutboxRepository,
@@ -23,6 +24,12 @@ export interface NotificationStores {
 	switches: CommunicationSwitchRepository;
 }
 
+/** Each email's From address: the sender of its template's group on Settings › Communications. */
+export const emailSenderFor =
+	(senders: AppConfig['notifications']['msg91EmailFrom']) =>
+	(templateKey: string): string =>
+		senders[communicationGroupForTemplate(templateKey, COMMUNICATION_USES)];
+
 /** One choice of provider, so the API and the worker can never disagree about how mail leaves. */
 export function buildNotificationPort(config: AppConfig, stores: NotificationStores): NotificationPort {
 	const gate = new CommunicationSendGate(COMMUNICATION_USES, stores.switches);
@@ -33,7 +40,7 @@ export function buildNotificationPort(config: AppConfig, stores: NotificationSto
 			config: {
 				authKey,
 				senderId: config.notifications.msg91SenderId,
-				emailFrom: config.notifications.msg91EmailFrom,
+				emailFromFor: emailSenderFor(config.notifications.msg91EmailFrom),
 				emailDomain: config.notifications.msg91EmailDomain,
 				whatsappNumber: config.notifications.msg91WhatsappNumber,
 			},

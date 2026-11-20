@@ -153,6 +153,7 @@ export class Msg91NotificationAdapter implements NotificationPort {
 
 		const toolResult = await dispatchMsg91Tool(this.client, this.config, {
 			tool: CHANNEL_TOOL[message.channel],
+			templateKey: message.templateKey,
 			providerTemplateId,
 			destination: message.destination,
 			variables: message.variables ?? {},

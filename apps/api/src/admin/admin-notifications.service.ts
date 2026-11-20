@@ -49,7 +49,9 @@ export class AdminNotificationsService {
 			provider: n.provider,
 			configured: n.provider === 'msg91' && Boolean(n.msg91AuthKey),
 			senderIdConfigured: Boolean(n.msg91SenderId),
-			emailFrom: n.msg91EmailFrom,
+			// The page shows the automatic sender (codes and account emails); orders, shop and
+			// marketing have their own (`MSG91_EMAIL_FROM_*`).
+			emailFrom: n.msg91EmailFrom.account,
 			emailDomainConfigured: Boolean(n.msg91EmailDomain),
 			whatsappNumberConfigured: Boolean(n.msg91WhatsappNumber),
 		};

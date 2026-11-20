@@ -1,5 +1,6 @@
 import type {
 	CommunicationChannel,
+	CommunicationGroup,
 	CommunicationSwitch,
 	CommunicationSwitchWrite,
 	CommunicationUse,
@@ -36,6 +37,19 @@ const TEMPLATE_USE: Readonly<Record<string, string>> = {
 
 export function communicationUseForTemplate(templateKey: string): string | null {
 	return TEMPLATE_USE[templateKey] ?? null;
+}
+
+/**
+ * The group a sent template belongs to, which decides the email's From address (owner decision
+ * round 2026-11-20: one sender per group). A template that belongs to no approved message sends
+ * as `account`, the automatic no-reply sender.
+ */
+export function communicationGroupForTemplate(
+	templateKey: string,
+	uses: readonly CommunicationUse[],
+): CommunicationGroup {
+	const key = communicationUseForTemplate(templateKey);
+	return uses.find((row) => row.key === key)?.group ?? 'account';
 }
 
 export const isCommunicationCodeUse = (use: string): boolean => CODE_USES.has(use);

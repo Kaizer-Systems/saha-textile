@@ -331,7 +331,7 @@ describe('composeMediaWorker', () => {
 describe('buildNotificationPort', () => {
 	const stores = {} as never;
 	const notifications = (values: Record<string, unknown>) =>
-		config({ notifications: { msg91EmailFrom: 'a@example.test', ...values } });
+		config({ notifications: { msg91EmailFrom: { account: 'a@example.test' }, ...values } });
 
 	it('uses MSG91 only with a key', () => {
 		const port = buildNotificationPort(notifications({ provider: 'msg91', msg91AuthKey: 'key' }), stores);

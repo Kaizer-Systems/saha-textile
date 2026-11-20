@@ -204,7 +204,15 @@ const ConfigSchema = z.object({
 		provider: z.enum(['console', 'msg91']).default('console'),
 		msg91AuthKey: z.string().optional(),
 		msg91SenderId: z.string().optional(),
-		msg91EmailFrom: z.string().default('no-reply@sahatextile.com'),
+		// One From address per group on Settings › Communications (owner decision round
+		// 2026-11-20). All four are Google Workspace aliases of wecare@sahatextile.com, so a reply to
+		// any of them reaches customer care. MSG91 must have the address's domain verified.
+		msg91EmailFrom: z.object({
+			account: z.email().default('no-reply@sahatextile.com'),
+			orders: z.email().default('orders@sahatextile.com'),
+			shop: z.email().default('notifications@sahatextile.com'),
+			marketing: z.email().default('newsletter@sahatextile.com'),
+		}),
 		msg91EmailDomain: z.string().optional(),
 		msg91WhatsappNumber: z.string().optional(),
 		emailFallbackProvider: z.enum(['disabled', 'resend', 'ses', 'smtp']).default('disabled'),
@@ -451,7 +459,12 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			provider: env.NOTIFICATION_PROVIDER || undefined,
 			msg91AuthKey: env.MSG91_AUTH_KEY || undefined,
 			msg91SenderId: env.MSG91_SENDER_ID || undefined,
-			msg91EmailFrom: env.MSG91_EMAIL_FROM,
+			msg91EmailFrom: {
+				account: env.MSG91_EMAIL_FROM_ACCOUNT || undefined,
+				orders: env.MSG91_EMAIL_FROM_ORDERS || undefined,
+				shop: env.MSG91_EMAIL_FROM_SHOP || undefined,
+				marketing: env.MSG91_EMAIL_FROM_MARKETING || undefined,
+			},
 			msg91EmailDomain: env.MSG91_EMAIL_DOMAIN || undefined,
 			msg91WhatsappNumber: env.MSG91_WHATSAPP_NUMBER || undefined,
 			emailFallbackProvider: env.EMAIL_FALLBACK_PROVIDER || undefined,

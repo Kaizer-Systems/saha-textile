@@ -1929,18 +1929,30 @@ names-only audit of the dev project against the files on the Mac.
 
 ## Owner decision round (2026-11-20) — which address each customer email comes from
 
-The owner, answering a question about `MSG91_EMAIL_FROM` on the Dev Secrets Checklist.
+The owner, answering questions about `MSG91_EMAIL_FROM` on the Dev Secrets Checklist and in chat.
 
-- **Sign-in and verification codes** come from `no-reply@sahatextile.com`. This is
-  `MSG91_EMAIL_FROM`, the API's only email sender setting today, and already its default.
-- **Order updates** come from `orders@sahatextile.com`, and **the newsletter** from
-  `newsletter@sahatextile.com` (singular), as decided on 2026-11-17. Each gets its own sender
-  setting when those emails are built; until then nothing reads them.
-- **All three are Google Workspace aliases of `wecare@sahatextile.com`,** not mailboxes, so a
-  customer's reply to any of them lands in the customer-care inbox.
-- **Still open:** MSG91 question 29, whether the From address may sit on `sahatextile.com` itself.
-  MSG91 sends on its own servers and checks only that the domain is verified with it; the aliases
-  decide only where replies go. If MSG91 requires a sending subdomain, these addresses are revisited.
+- **One sender setting per group on Settings › Communications.** `MSG91_EMAIL_FROM` is replaced
+  by four settings. Each email takes the sender of its template's group, so a new email needs no
+  new wiring.
+
+| Setting                      | Group     | Emails                                                                   | From address                                |
+| ---------------------------- | --------- | ------------------------------------------------------------------------ | ------------------------------------------- |
+| `MSG91_EMAIL_FROM_ACCOUNT`   | account   | sign-in and verification codes, activation, password reset, staff invite | `no-reply@sahatextile.com`                  |
+| `MSG91_EMAIL_FROM_ORDERS`    | orders    | order updates, invoices, payment links                                   | `orders@sahatextile.com` (2026-11-17)       |
+| `MSG91_EMAIL_FROM_SHOP`      | shop      | back in stock, question answered                                         | `notifications@sahatextile.com` (new alias) |
+| `MSG91_EMAIL_FROM_MARKETING` | marketing | newsletter, sale and launch announcements                                | `newsletter@sahatextile.com` (2026-11-17)   |
+
+- **All four are Google Workspace aliases of `wecare@sahatextile.com`,** not mailboxes, so a
+  customer's reply to any of them lands in the customer-care inbox. The owner adds
+  `notifications@` as a new alias.
+- A blank setting falls back to the address in the table. A template that is not on
+  Settings › Communications sends as `account`.
+- **The owner changes the names in Infisical by hand** in all three projects. Dev holds the four
+  addresses; staging and production stay blank until MSG91 answers question 29.
+- **Still open:** MSG91 question 29, whether the From address may sit on `sahatextile.com` itself
+  or must use a sending subdomain, and questions 39–40, which MSG91 product and domain the
+  newsletter must use. MSG91 sends on its own servers and checks only that the address's domain is
+  verified with it; the aliases decide only where replies go.
 
 ## Owner decision round (2026-11-19) — shipping rules brief approved
 

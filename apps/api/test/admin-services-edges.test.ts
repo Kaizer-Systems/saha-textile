@@ -262,7 +262,7 @@ describe('AdminNotificationsService', () => {
 		...overrides,
 	});
 	const harness = (
-		notifications: Record<string, unknown> = { provider: 'console', msg91EmailFrom: 'a@example.test' },
+		notifications: Record<string, unknown> = { provider: 'console', msg91EmailFrom: { account: 'a@example.test' } },
 	) => {
 		const stored: unknown[] = [];
 		const settings = {
@@ -294,7 +294,7 @@ describe('AdminNotificationsService', () => {
 			provider: 'msg91',
 			msg91AuthKey: 'key',
 			msg91SenderId: 'SAHATX',
-			msg91EmailFrom: 'a@example.test',
+			msg91EmailFrom: { account: 'a@example.test', orders: 'o@example.test' },
 			msg91EmailDomain: 'mail',
 			msg91WhatsappNumber: '91',
 		}).service.providerStatus();
@@ -306,7 +306,10 @@ describe('AdminNotificationsService', () => {
 			emailDomainConfigured: true,
 			whatsappNumberConfigured: true,
 		});
-		expect(harness({ provider: 'msg91' }).service.providerStatus().configured).toBe(false);
+		expect(
+			harness({ provider: 'msg91', msg91EmailFrom: { account: 'a@example.test' } }).service.providerStatus()
+				.configured,
+		).toBe(false);
 	});
 
 	it('creates missing channels once', async () => {

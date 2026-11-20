@@ -8,7 +8,11 @@
 export interface Msg91AdapterConfig {
 	authKey: string;
 	senderId?: string;
-	emailFrom: string;
+	/**
+	 * The From address for one of our templates. The API picks it by the template's group on
+	 * Settings › Communications (`MSG91_EMAIL_FROM_ACCOUNT`, `_ORDERS`, `_SHOP`, `_MARKETING`).
+	 */
+	emailFromFor: (templateKey: string) => string;
 	emailFromName?: string;
 	emailDomain?: string;
 	whatsappNumber?: string;
@@ -18,6 +22,8 @@ export type Msg91ToolName = 'email.send' | 'sms.flow' | 'whatsapp.outbound';
 
 export interface Msg91ToolDispatch {
 	tool: Msg91ToolName;
+	/** Our own template key; the email tool picks the From address by it. */
+	templateKey: string;
 	/** Provider template / flow / WhatsApp template id already resolved from DB. */
 	providerTemplateId: string;
 	destination: string;

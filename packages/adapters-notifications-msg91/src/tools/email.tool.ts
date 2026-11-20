@@ -15,7 +15,7 @@ export async function sendEmailViaMsg91(
 			},
 		],
 		from: {
-			email: config.emailFrom,
+			email: config.emailFromFor(dispatch.templateKey),
 			...(config.emailFromName ? { name: config.emailFromName } : {}),
 		},
 		template_id: dispatch.providerTemplateId,

@@ -345,10 +345,7 @@ export type SignInMethod = z.infer<typeof signInMethodSchema>;
 /** A console password: 12 to 200 characters. */
 export const consolePasswordSchema = z.string().min(12, 'at least 12 characters').max(200);
 /** Unlocking with the PIN or the password. */
-export const unlockSchema = z.union([
-	pinSchema,
-	z.object({ password: z.string().min(1).max(200) }),
-]);
+export const unlockSchema = z.union([pinSchema, z.object({ password: z.string().min(1).max(200) })]);
 export type Unlock = z.infer<typeof unlockSchema>;
 /** Setting or changing the password, or removing it, always needs the PIN. */
 export const setPasswordSchema = z.object({ pin: pinSchema.shape.pin, password: consolePasswordSchema });
@@ -380,7 +377,15 @@ export type AuditEntry = z.infer<typeof auditEntrySchema>;
 export const attentionItemSchema = z.object({
 	projectId: z.string(),
 	repositoryId: z.string().nullable(),
-	kind: z.enum(['key-expiring', 'key-expired', 'key-failed', 'key-missing', 'ci-failed', 'approval-waiting']),
+	kind: z.enum([
+		'key-expiring',
+		'key-expired',
+		'key-failed',
+		'key-missing',
+		'ci-failed',
+		'approval-waiting',
+		'local-alert',
+	]),
 	title: z.string(),
 	detail: z.string(),
 });

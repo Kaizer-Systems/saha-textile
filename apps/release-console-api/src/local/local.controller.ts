@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
 import {
+	type AlertsView,
 	type DockerSnapshot,
 	type HelperStatus,
 	type Job,
@@ -13,6 +14,7 @@ import {
 } from '@saha-textile/release-console-contracts';
 import { z } from 'zod';
 
+import { LocalAlerts } from './local-alerts.js';
 import { StatsCollector } from './stats-collector.js';
 import { parseBody } from '../common/parse.js';
 import { LockService } from '../lock/lock.service.js';
@@ -44,7 +46,14 @@ export class LocalController {
 		private readonly stats: StatsCollector,
 		private readonly lock: LockService,
 		private readonly store: ConsoleStore,
+		private readonly alerts: LocalAlerts,
 	) {}
+
+	/** Local alert rules, what fires now and what ended in the last 7 days. */
+	@Get('alerts')
+	alertsView(): AlertsView {
+		return this.alerts.view();
+	}
 
 	@Get('helper')
 	async helper(): Promise<HelperStatus> {

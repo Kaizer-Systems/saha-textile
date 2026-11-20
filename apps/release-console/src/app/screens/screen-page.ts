@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { VENDOR_NAMES } from '@saha-textile/release-console-contracts';
 
+import { AlertsScreen } from './alerts-screen';
 import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } from './local-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
@@ -31,6 +32,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 	infra: 'map',
 	tail: ['follow', 'errors', 'request'],
 	health: 'normal',
+	alerts: ['rules', 'firing'],
 	pulls: 'list',
 	pipeline: 'list',
 	droplets: 'list',
@@ -59,6 +61,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		InfraScreen,
 		TailScreen,
 		HealthScreen,
+		AlertsScreen,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -173,6 +176,9 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 					}
 					@case ('health') {
 						<rc-health-screen />
+					}
+					@case ('alerts') {
+						<rc-alerts-screen [tab]="tabKey()" />
 					}
 					@case ('dns') {
 						<rc-dns-screen />

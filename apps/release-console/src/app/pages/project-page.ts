@@ -70,7 +70,8 @@ import type { Repository } from '@saha-textile/release-console-contracts';
 															[class.red]="
 																a.kind === 'key-expired' ||
 																a.kind === 'key-failed' ||
-																a.kind === 'ci-failed'
+																a.kind === 'ci-failed' ||
+																a.kind === 'local-alert'
 															"
 															[class.amber]="
 																a.kind === 'key-expiring' ||
@@ -555,6 +556,7 @@ export class ProjectPage {
 		if (kind.startsWith('key')) return 'tabler/key';
 		if (kind.startsWith('ci')) return 'tabler/route-2';
 		if (kind.startsWith('approval')) return 'tabler/circle-check';
+		if (kind === 'local-alert') return 'tabler/alert-triangle';
 		return 'tabler/bell-ringing';
 	}
 	protected menusOf(r: Repository): string {

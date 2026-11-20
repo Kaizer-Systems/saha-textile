@@ -1,5 +1,8 @@
 import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import type { DockerSnapshot, MacSnapshot, Series } from '@saha-textile/release-console-contracts';
+import type { DockerSnapshot, Job, MacSnapshot, Series } from '@saha-textile/release-console-contracts';
+
+import { LocalAlerts, type Readings } from './local-alerts.js';
+import { ProjectsService } from '../projects/projects.service.js';
 
 import { RunnerClient } from '../runner/runner-client.js';
 import { ConsoleStore } from '../store/console-store.js';
@@ -39,6 +42,7 @@ export function samplesOf(
 		add('mac', 'mem_used', mac.memory.used);
 		add('mac', 'swap_used', mac.swapUsed);
 		add('mac', 'disk_used', mac.disk?.used);
+		add('mac', 'disk_total', mac.disk?.total);
 		add('mac', 'load1', mac.load?.one);
 		counted('mac', 'net_rx', mac.network.rx);
 		counted('mac', 'net_tx', mac.network.tx);
@@ -77,6 +81,8 @@ export class StatsCollector implements OnModuleInit, OnModuleDestroy {
 	constructor(
 		private readonly runner: RunnerClient,
 		private readonly store: ConsoleStore,
+		private readonly alerts: LocalAlerts,
+		private readonly projects: ProjectsService,
 	) {}
 
 	onModuleInit(): void {
@@ -93,19 +99,31 @@ export class StatsCollector implements OnModuleInit, OnModuleDestroy {
 		if (this.busy) return;
 		this.busy = true;
 		try {
-			const [mac, docker] = await Promise.all([
+			const [mac, docker, jobs] = await Promise.all([
 				this.runner.call<MacSnapshot>('GET', '/mac', undefined, 10_000),
 				this.runner.call<DockerSnapshot>('GET', '/docker', undefined, 30_000),
+				this.runner.call<Job[]>('GET', '/jobs', undefined, 10_000),
 			]);
 			this.latest = { mac, docker, at: now, helper: true };
 			const { rows, counters } = samplesOf(mac, docker, this.prev, (now - this.prevAt) / 1000);
 			this.prev = counters;
 			this.prevAt = now;
 			this.save(rows, now);
+			this.judge({ mac, docker, helper: true, jobs }, now);
 		} catch {
 			this.latest = { ...this.latest, helper: false };
+			this.judge({ mac: null, docker: null, helper: false, jobs: null }, now);
 		} finally {
 			this.busy = false;
+		}
+	}
+
+	/** Checks the local alert rules against this reading; a failure here never stops the readings. */
+	private judge(r: Omit<Readings, 'projects'>, now: number): void {
+		try {
+			this.alerts.evaluate({ ...r, projects: this.projects.view().projects }, now);
+		} catch {
+			// The next reading tries again.
 		}
 	}
 

@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import {
+	type AlertsView,
+	alertsViewSchema,
 	type AttentionCount,
 	type DockerSnapshot,
 	type HelperStatus,
@@ -266,6 +268,9 @@ export class ConsoleApi {
 			`/api/local/history?source=${encodeURIComponent(source)}&names=${names.join(',')}&minutes=${minutes}`,
 			seriesListSchema,
 		);
+	}
+	alerts(): Promise<AlertsView> {
+		return this.call('GET', '/api/local/alerts', alertsViewSchema);
 	}
 	jobs(): Promise<Job[]> {
 		return this.call('GET', '/api/local/jobs', jobsSchema);

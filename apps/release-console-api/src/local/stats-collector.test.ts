@@ -75,7 +75,7 @@ describe('stats', () => {
 	it('stores 5-second points, rolls up minutes and answers history', () => {
 		process.env['CONSOLE_DATA_DIR'] = mkdtempSync(join(tmpdir(), 'release-console-stats-'));
 		const store = new ConsoleStore();
-		const c = new StatsCollector({} as never, store);
+		const c = new StatsCollector({} as never, store, {} as never, {} as never);
 		const t0 = Date.UTC(2026, 10, 20, 10, 0, 0);
 		c.save([['mac', 'cpu', 10]], t0);
 		c.save([['mac', 'cpu', 30]], t0 + 30_000);

@@ -45,7 +45,12 @@ export const dockerSnapshotSchema = z.object({
 export type DockerSnapshot = z.infer<typeof dockerSnapshotSchema>;
 
 const healthAnswer = z.object({ status: z.number().optional(), body: z.unknown() }).nullable();
-export const shopHealthSchema = z.object({ at: z.string(), dev: healthAnswer, stack: healthAnswer, stackPort: z.number() });
+export const shopHealthSchema = z.object({
+	at: z.string(),
+	dev: healthAnswer,
+	stack: healthAnswer,
+	stackPort: z.number(),
+});
 export type ShopHealth = z.infer<typeof shopHealthSchema>;
 
 /** Whether the Mac helper answers, and from which checkout. */
@@ -98,6 +103,61 @@ export const logsSchema = z.object({ container: z.string(), lines: z.array(z.str
 export type Logs = z.infer<typeof logsSchema>;
 
 /** One figure over time: `[epoch ms, value]` pairs, 5-second points for 2 hours, minute averages after. */
-export const seriesSchema = z.object({ source: z.string(), name: z.string(), points: z.array(z.tuple([z.number(), z.number()])) });
+export const seriesSchema = z.object({
+	source: z.string(),
+	name: z.string(),
+	points: z.array(z.tuple([z.number(), z.number()])),
+});
 export type Series = z.infer<typeof seriesSchema>;
 export const seriesListSchema = z.array(seriesSchema);
+
+/* ----- local alerts ----- */
+
+/**
+ * The rules the console checks itself, every 5 seconds while it runs, for environments on this
+ * computer. A server's own rules come with its agent, which keeps alerting while the Mac is off.
+ */
+export const ALERT_RULES = [
+	'disk',
+	'container-down',
+	'helper-down',
+	'run-failed',
+	'key-expiring',
+	'errors-rising',
+] as const;
+export const alertRuleSchema = z.enum(ALERT_RULES);
+export type AlertRule = z.infer<typeof alertRuleSchema>;
+
+export const alertSchema = z.object({
+	id: z.number().int(),
+	rule: alertRuleSchema,
+	/** What the alert is about: a container, a run, a key, or the Mac itself. */
+	subject: z.string(),
+	level: z.enum(['amber', 'red']),
+	title: z.string(),
+	detail: z.string(),
+	firedAt: z.string(),
+	resolvedAt: z.string().nullable(),
+});
+export type Alert = z.infer<typeof alertSchema>;
+
+export const alertRuleStateSchema = z.object({
+	rule: alertRuleSchema,
+	label: z.string(),
+	watches: z.string(),
+	firesWhen: z.string(),
+	sendsTo: z.string(),
+	/** `waiting`: the rule has nothing to read yet (for example, no request log). */
+	state: z.enum(['ok', 'firing', 'waiting']),
+	note: z.string().nullable(),
+});
+export type AlertRuleState = z.infer<typeof alertRuleStateSchema>;
+
+export const alertsViewSchema = z.object({
+	checkedAt: z.string().nullable(),
+	rules: z.array(alertRuleStateSchema),
+	firing: z.array(alertSchema),
+	/** Alerts that ended in the last 7 days, newest first. */
+	recent: z.array(alertSchema),
+});
+export type AlertsView = z.infer<typeof alertsViewSchema>;

@@ -21,6 +21,8 @@ const MIGRATIONS = [
 	`CREATE TABLE samples (ts INTEGER NOT NULL, source TEXT NOT NULL, name TEXT NOT NULL, value REAL NOT NULL);
 	 CREATE INDEX samples_lookup ON samples (source, name, ts);
 	 CREATE TABLE runs (id TEXT PRIMARY KEY, kind TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, json TEXT NOT NULL);`,
+	`CREATE TABLE alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, rule TEXT NOT NULL, subject TEXT NOT NULL, level TEXT NOT NULL, title TEXT NOT NULL, detail TEXT NOT NULL, fired_at TEXT NOT NULL, resolved_at TEXT);
+	 CREATE INDEX alerts_open ON alerts (resolved_at, rule, subject);`,
 ];
 
 /**

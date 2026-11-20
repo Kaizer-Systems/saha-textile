@@ -40,6 +40,6 @@ import { PaymentRequestsService } from './payment-requests.service';
 		{ provide: EINVOICE_PORT, useValue: NOT_CONNECTED_EINVOICE },
 		{ provide: EWAYBILL_PORT, useValue: NOT_CONNECTED_EWAYBILL },
 	],
-	exports: [AdminCartService, AdminOrdersService],
+	exports: [AdminCartService, AdminOrdersService, PAYMENT_REQUEST_PORTS],
 })
 export class AdminOrdersModule {}

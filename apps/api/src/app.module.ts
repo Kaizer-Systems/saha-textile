@@ -26,6 +26,7 @@ import { CurrencyModule } from './currency/currency.module';
 import { FxModule } from './fx/fx.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { AdminOrdersModule } from './admin-orders/admin-orders.module';
+import { ShopCheckoutModule } from './shop-checkout/shop-checkout.module';
 import { GeoModule } from './geo/geo.module';
 import { OrdersSetupModule } from './orders-setup/orders-setup.module';
 import { HealthModule } from './health/health.module';
@@ -60,6 +61,7 @@ export class AppModule {
 				GeoModule,
 				AddressesModule,
 				AdminOrdersModule,
+				ShopCheckoutModule,
 				PromotionsModule,
 				CartLinesModule,
 				OrdersModule,

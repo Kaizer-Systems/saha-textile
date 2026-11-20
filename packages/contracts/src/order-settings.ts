@@ -26,6 +26,12 @@ export const OrderSettings = z.object({
 	paymentLinkDays: z.number().int().min(1).max(30).default(7),
 	/** Pieces on admin orders: held from save until removed or cancelled (K7), or only while a request is open. */
 	holdAdminOrderPieces: z.enum(['fromSave', 'whileRequestOpen']).default('fromSave'),
+	/**
+	 * Whether the INR gateway takes cards issued abroad (S5/S7, brief shop09). Off until HDFC confirms it
+	 * for the account: a buyer billed abroad who picks ₹ is shown the currency picker with their own
+	 * currency first.
+	 */
+	inrGatewayForeignCards: z.boolean().default(false),
 	/** Warn before a foreign-currency request to a buyer billed in India (K2). */
 	warnIndiaBillingForeignCurrency: z.boolean().default(true),
 	/** Open orders built up over weeks; an optional reminder after N days. */

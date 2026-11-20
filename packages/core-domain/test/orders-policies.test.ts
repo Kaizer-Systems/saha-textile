@@ -14,6 +14,7 @@ import {
 	couponRefusal,
 	currentRequest,
 	derivePaymentStatus,
+	firstCurrencyFor,
 	manualPaymentEffect,
 	manualPaymentPrefill,
 	messageForm,
@@ -975,5 +976,16 @@ describe('open orders (oo08)', () => {
 		expect(statusAfterClose(0, 'recordLater')).toBe('placed');
 		expect(statusAfterClose(500, 'toAccount')).toBe('placed');
 		expect(statusAfterClose(500, 'requestOnline')).toBe('awaiting_payment');
+	});
+});
+
+describe('the currency picker lists the buyer’s own currency first (S5/S7)', () => {
+	it('picks their currency when on sale, else US dollars, else the first foreign one', () => {
+		const enabled = ['INR', 'USD', 'GBP', 'EUR'];
+		expect(firstCurrencyFor('gb', enabled)).toBe('GBP');
+		expect(firstCurrencyFor('DE', enabled)).toBe('EUR');
+		expect(firstCurrencyFor('AE', enabled)).toBe('USD');
+		expect(firstCurrencyFor('AU', ['INR', 'GBP'])).toBe('GBP');
+		expect(firstCurrencyFor('AU', ['INR'])).toBeNull();
 	});
 });

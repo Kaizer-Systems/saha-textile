@@ -181,3 +181,47 @@ export function allocateReceipt(
 	}
 	return { allocations, unallocatedINR: round2(Math.max(0, left)) };
 }
+
+/** The euro countries among PayPal's payers. */
+const EURO_COUNTRIES = new Set([
+	'AT',
+	'BE',
+	'HR',
+	'CY',
+	'EE',
+	'FI',
+	'FR',
+	'DE',
+	'GR',
+	'IE',
+	'IT',
+	'LV',
+	'LT',
+	'LU',
+	'MT',
+	'NL',
+	'PT',
+	'SK',
+	'SI',
+	'ES',
+]);
+const COUNTRY_CURRENCY: Readonly<Record<string, string>> = {
+	US: 'USD',
+	GB: 'GBP',
+	CA: 'CAD',
+	AU: 'AUD',
+	SG: 'SGD',
+	NZ: 'NZD',
+};
+
+/**
+ * The currency the picker lists first for a buyer billed in this country (S5/S7; shop04, shop09):
+ * their own when the shop sells in it, else US dollars, else the first one on sale.
+ */
+export function firstCurrencyFor(countryCode: string, enabled: readonly string[]): string | null {
+	const code = countryCode.toUpperCase();
+	const own = EURO_COUNTRIES.has(code) ? 'EUR' : COUNTRY_CURRENCY[code];
+	if (own && enabled.includes(own)) return own;
+	if (enabled.includes('USD')) return 'USD';
+	return enabled.find((currency) => currency !== 'INR') ?? null;
+}

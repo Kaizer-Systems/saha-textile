@@ -19,8 +19,15 @@ import { ShippingModule } from '../shipping/shipping.module';
 import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
 import { AdminCartService } from './admin-cart.service';
 import { AdminOrderCreateService } from './admin-order-create.service';
-import { AdminOrdersController } from './admin-orders.controller';
+import {
+	AdminBusinessAddressesController,
+	AdminBusinessReceiptsController,
+	AdminCouponTryController,
+	AdminOrdersController,
+} from './admin-orders.controller';
 import { AdminOrdersService } from './admin-orders.service';
+import { BusinessAddressesService } from './business-addresses.service';
+import { BusinessReceiptsService } from './business-receipts.service';
 import { OrderStock } from './order-stock';
 import { OpenOrdersService } from './open-orders.service';
 import { PayPageController } from './pay-page.controller';
@@ -30,10 +37,18 @@ import { PaymentRequestsService } from './payment-requests.service';
 /** The admin ordering system (orders and checkout brief, approved 2026-11-20). */
 @Module({
 	imports: [AuthModule, CatalogModule, CurrencyModule, OrdersSetupModule, AddressesModule, ShippingModule],
-	controllers: [AdminOrdersController, PayPageController],
+	controllers: [
+		AdminOrdersController,
+		AdminCouponTryController,
+		AdminBusinessReceiptsController,
+		AdminBusinessAddressesController,
+		PayPageController,
+	],
 	providers: [
 		AdminCartService,
 		AdminOrdersService,
+		BusinessReceiptsService,
+		BusinessAddressesService,
 		AdminOrderCreateService,
 		OrderStock,
 		PaymentRequestsService,

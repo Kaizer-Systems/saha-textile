@@ -59,12 +59,48 @@ function service() {
 		p_saree: page(10_000),
 		p_off: page(5_000),
 		p_cloth: page(500, 'metre'),
+		p_colours: {
+			...page(9_000),
+			optionGroups: [
+				{
+					code: 'colour',
+					role: 'variation_axis',
+					label: 'Colour',
+					defaultTermCode: 'red',
+					terms: [
+						{ code: 'red', label: 'Red', priceDeltaINR: null, requiresMeasurements: false },
+						{ code: 'teal', label: 'Teal', priceDeltaINR: null, requiresMeasurements: false },
+					],
+				},
+			],
+			variants: [
+				{
+					id: 'v_red',
+					sku: 'SAR-R',
+					selections: { colour: 'red' },
+					sellingINR: 9_000,
+					quantity: 3,
+					buyable: true,
+					galleryIndex: null,
+				},
+				{
+					id: 'v_teal',
+					sku: 'SAR-T',
+					selections: { colour: 'teal' },
+					sellingINR: 9_000,
+					quantity: 0,
+					buyable: false,
+					galleryIndex: null,
+				},
+			],
+		} as unknown as ReturnType<typeof page>,
 	};
 	const facts = (productId: string, quantity: number): ZoneLineFacts => ({
 		productId,
 		sku: productId,
 		categoryPaths: [],
-		regularSellingINR: productId === 'p_cloth' ? 500 : productId === 'p_off' ? 5_000 : 10_000,
+		regularSellingINR:
+			productId === 'p_cloth' ? 500 : productId === 'p_off' ? 5_000 : productId === 'p_colours' ? 9_000 : 10_000,
 		currentSaleINR: null,
 		mrpINR: null,
 		purchaseCostINR: null,
@@ -148,5 +184,29 @@ describe('admin cart (create order, zone cards)', () => {
 		expect(view).toMatchObject({ currency: 'USD', markupPercent: 6, subtotalINR: 10_000 });
 		expect(view.lines[0]?.unitPrice).toBe(127.2);
 		expect(view.subtotal).toBe(127.2);
+	});
+
+	it('lists a product’s sellable variants with their options, priced by the business zone', async () => {
+		const choices = await service().variantChoices('p_colours', { businessId: 'biz_w', currency: 'INR' });
+		expect(choices).toMatchObject({ productId: 'p_colours', soldBy: 'piece' });
+		expect(choices.items).toEqual([
+			expect.objectContaining({
+				variationId: 'v_red',
+				sku: 'SAR-R',
+				label: 'Red',
+				stock: 3,
+				retailINR: 9_000,
+				price: 7_200,
+				zonePrice: expect.objectContaining({ kind: 'priced' }),
+			}),
+		]);
+		await expect(service().variantChoices('p_missing', { currency: 'INR' })).rejects.toMatchObject({
+			response: { issues: [{ code: 'product_missing' }] },
+		});
+	});
+
+	it('says a metre line counts tenths', async () => {
+		const view = await service().price({ buyer: null, currency: 'INR', lines: [line('p_cloth', 25)] });
+		expect(view.lines[0]).toMatchObject({ soldBy: 'metre', quantity: 25 });
 	});
 });

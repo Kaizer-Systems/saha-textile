@@ -72,6 +72,8 @@ export const OrderPayment = z.object({
 	paypal: PayPalReceivable.nullable().default(null),
 	/** Cash on delivery: who collects (our staff now; a courier's COD service later). */
 	collector: z.enum(['staff', 'courier']).nullable().default(null),
+	/** od08: the person who collected the cash ("Raju (delivery staff)"). */
+	collectedBy: z.string().max(120).nullable().default(null),
 	receivedOn: IsoDate.nullable(),
 	/** RC series number, once issued (receipt). */
 	receiptNumber: z.string().nullable().default(null),
@@ -93,6 +95,8 @@ export const ManualPaymentWrite = z.object({
 	note: z.string().trim().max(500).nullable().default(null),
 	proofMediaId: Id.nullable().default(null),
 	collector: z.enum(['staff', 'courier']).nullable().default(null),
+	/** od08: who collected the cash, typed by staff. */
+	collectedBy: z.string().trim().max(120).nullable().default(null),
 	revision: z.number().int().nonnegative(),
 });
 export type ManualPaymentWrite = z.infer<typeof ManualPaymentWrite>;
@@ -237,6 +241,53 @@ export const PaymentRequestWrite = z.object({
 	revision: z.number().int().nonnegative(),
 });
 export type PaymentRequestWrite = z.infer<typeof PaymentRequestWrite>;
+
+/** Ask the server what a request would be before it is sent (oo07, pl05). */
+export const PaymentRequestPreviewQuery = z.object({
+	currency: z.string().length(3).default('INR'),
+	/** Defaults to the amount due now. */
+	amountINR: z.coerce.number().positive().optional(),
+});
+export type PaymentRequestPreviewQuery = z.infer<typeof PaymentRequestPreviewQuery>;
+
+/** Why a request can't be sent as asked; the popup names it and keeps Send off. */
+export const PaymentRequestPreviewProblem = z.enum([
+	'method_off',
+	'nothing_due',
+	'more_than_due',
+	'gateway_not_configured',
+	'no_contact',
+	'currency_unknown',
+]);
+export type PaymentRequestPreviewProblem = z.infer<typeof PaymentRequestPreviewProblem>;
+
+/** The request as it would go out now: gateway, today's rate with the markup, and who the gateway sends it to. */
+export const PaymentRequestPreview = z.object({
+	dueINR: z.number().nonnegative(),
+	amountINR: z.number().nonnegative(),
+	currency: z.string().length(3),
+	gateway: PaymentGateway,
+	/** In the request's currency at today's rate (with the PayPal markup for a foreign currency). */
+	amount: z.number().nonnegative(),
+	rateFromINR: z.number().positive().nullable(),
+	markupPercent: z.number().nonnegative(),
+	sendTo: z.object({ email: z.string().nullable(), mobile: z.string().nullable() }),
+	/** Our own SMS goes only to Indian mobile numbers (pr01). */
+	smsReachable: z.boolean(),
+	validDays: z.number().int().min(1).max(30),
+	/** The currencies a request can be in: ₹ through the INR gateway, the rest through PayPal. */
+	currencies: z.array(
+		z.object({
+			code: z.string().length(3),
+			symbol: z.string(),
+			gateway: PaymentGateway,
+			/** False while that gateway isn't set up on this server. */
+			ready: z.boolean(),
+		}),
+	),
+	problem: PaymentRequestPreviewProblem.nullable(),
+});
+export type PaymentRequestPreview = z.infer<typeof PaymentRequestPreview>;
 
 /** What a status check found (pl02, pl03). */
 export const PaymentRequestCheck = z.object({

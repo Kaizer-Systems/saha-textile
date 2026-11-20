@@ -1,7 +1,7 @@
 import { Order, OrderSettings, type OrderPayment, type PaymentRequest } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { PaymentRequestsService, hashPayToken } from '../src/admin-orders/payment-requests.service';
+import { isIndianMobile, PaymentRequestsService, hashPayToken } from '../src/admin-orders/payment-requests.service';
 
 const order = Order.parse({
 	id: 'ord_1',
@@ -61,6 +61,7 @@ function harness(gatewayPayments: Array<{ gatewayReference: string; amountMinor:
 	const payments: OrderPayment[] = [];
 	const cancelled: string[] = [];
 	const settled: string[] = [];
+	const sent: Array<{ channel: string; destination: string; templateKey: string }> = [];
 	const ccavenue = {
 		gateway: 'ccavenue',
 		createPaymentRequest: async (input: { reference: string; amountMinor: number }) => ({
@@ -94,13 +95,20 @@ function harness(gatewayPayments: Array<{ gatewayReference: string; amountMinor:
 			issue: async () => 'RC/26-27/000009',
 		} as never,
 		{
-			convert: async (amountINR: number, code: string) => ({
-				currency: code,
-				amount: amountINR,
-				rateFromINR: 1,
-				markupPercent: 0,
-				amountINR,
-			}),
+			listEnabled: async () => [
+				{ code: 'USD', symbol: 'US$' },
+				{ code: 'INR', symbol: '₹' },
+			],
+			convert: async (amountINR: number, code: string) =>
+				code === 'USD'
+					? {
+							currency: code,
+							amount: Math.round(((amountINR * 1.06) / 94.1) * 100) / 100,
+							rateFromINR: 1 / 94.1,
+							markupPercent: 6,
+							amountINR,
+						}
+					: { currency: code, amount: amountINR, rateFromINR: 1, markupPercent: 0, amountINR },
 		} as never,
 		{
 			listByOrder: async () => requests,
@@ -123,8 +131,15 @@ function harness(gatewayPayments: Array<{ gatewayReference: string; amountMinor:
 		new Map([['ccavenue', ccavenue]]) as never,
 		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
 		{ media: { shopOrigin: 'https://localhost:4200/' } } as never,
+		{
+			isChannelEnabled: async (channel: string) => channel !== 'whatsapp',
+			send: async (message: { channel: string; destination: string; templateKey: string }) => {
+				sent.push(message);
+				return { status: 'sent', providerMessageId: 'm1', outboxEntryId: 'o1' };
+			},
+		} as never,
 	);
-	return { svc, requests, payments, cancelled, settled };
+	return { svc, requests, payments, cancelled, settled, sent };
 }
 
 const actor = { id: 'adm_1', name: null };
@@ -160,6 +175,37 @@ describe('payment requests and our pay link (pl01–pl05, oo07, K1)', () => {
 			payUrl: 'https://payit.cc/1',
 			deliveryCity: 'Kolkata',
 		});
+	});
+
+	it('previews a request before it is sent: gateway, today’s rate, recipient and why it can’t go', async () => {
+		const { svc, requests } = harness();
+		const rupees = await svc.preview('ord_1', { currency: 'INR' });
+		expect(rupees).toMatchObject({
+			dueINR: 30_000,
+			amountINR: 30_000,
+			gateway: 'ccavenue',
+			amount: 30_000,
+			sendTo: { email: 'ananya@example.test', mobile: '+91 9830012345' },
+			smsReachable: true,
+			validDays: 7,
+			problem: null,
+		});
+		// ₹ first; PayPal isn't set up here, so dollars are listed but not ready.
+		expect(rupees.currencies).toEqual([
+			{ code: 'INR', symbol: '₹', gateway: 'ccavenue', ready: true },
+			{ code: 'USD', symbol: 'US$', gateway: 'paypal', ready: false },
+		]);
+		const dollars = await svc.preview('ord_1', { currency: 'usd', amountINR: 20_000 });
+		expect(dollars).toMatchObject({
+			currency: 'USD',
+			gateway: 'paypal',
+			amount: 225.29,
+			markupPercent: 6,
+			problem: 'gateway_not_configured',
+		});
+		expect((await svc.preview('ord_1', { currency: 'INR', amountINR: 30_001 })).problem).toBe('more_than_due');
+		expect((await svc.preview('ord_1', { currency: 'JPY' })).problem).toBe('currency_unknown');
+		expect(requests).toHaveLength(0);
 	});
 
 	it('replaces and cancels the old request, and the old link forwards to the new one', async () => {
@@ -205,5 +251,19 @@ describe('payment requests and our pay link (pl01–pl05, oo07, K1)', () => {
 		expect((await svc.payPage(token, NOW)).state).toBe('expired');
 		await expect(svc.payPage('not-a-token', NOW)).rejects.toThrow('does not exist');
 		expect(hashPayToken(token)).toHaveLength(64);
+	});
+
+	it('shows our own SMS before sending, sends only when pressed, and records it (pr01, pr02)', async () => {
+		const { svc, sent, settled } = harness();
+		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
+		const sms = await svc.messagePreview('ord_1', request.id, 'sms');
+		expect(sms).toMatchObject({ to: '+91 9830012345', unavailable: null });
+		expect(sms.text).toMatch(/^Saha Textile: please pay for your order ST2611482190 here: https:\/\/.+ Thank you for shopping with us\.$/);
+		const out = await svc.sendMessage('ord_1', request.id, 'sms', actor, NOW);
+		expect(out.status).toBe('sent');
+		expect(sent).toMatchObject([{ channel: 'sms', templateKey: 'order_payment_link', destination: '+91 9830012345' }]);
+		expect(out.request.sends).toMatchObject([{ channel: 'sms', by: 'adm_1' }]);
+		expect(settled).toContain('message');
+		expect(isIndianMobile('+44 20 7946 0000')).toBe(false);
 	});
 });

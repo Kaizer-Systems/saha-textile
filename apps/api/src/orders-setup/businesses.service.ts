@@ -26,11 +26,14 @@ import {
 } from '@saha-textile/contracts';
 import {
 	checkSetOff,
+	entryOutstanding,
 	istDay,
 	type AuditLogRepository,
 	type BusinessRepository,
 	type LedgerRepository,
 	type PriceZoneRepository,
+	type PurchaseEntryRepository,
+	type TransactionContext,
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
 
@@ -40,6 +43,7 @@ import {
 	BUSINESS_REPOSITORY,
 	LEDGER_REPOSITORY,
 	PRICE_ZONE_REPOSITORY,
+	PURCHASE_ENTRY_REPOSITORY,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { DocumentNumbersService } from './document-numbers.service';
@@ -62,7 +66,25 @@ export class BusinessesService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		private readonly numbers: DocumentNumbersService,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional() @Inject(PURCHASE_ENTRY_REPOSITORY) private readonly purchases: PurchaseEntryRepository | null = null,
 	) {}
+
+	/**
+	 * What we owe a business that sells to us: its posted purchase bills still unpaid (Purchases ›
+	 * Suppliers) plus our own payable entries (set-offs and their reversals). One figure for the list,
+	 * the business page and the set-off check (so02).
+	 */
+	async receivableINR(id: string): Promise<number> {
+		return round2(await this.ledger.balance(id, 'receivable'));
+	}
+
+	async payableINR(id: string): Promise<number> {
+		const bills = this.purchases ? await this.purchases.forSupplier(id) : [];
+		const owed = bills
+			.filter((entry) => entry.status === 'posted')
+			.reduce((sum, entry) => sum + entryOutstanding(entry), 0);
+		return round2(owed + (await this.ledger.balance(id, 'payable')));
+	}
 
 	async list(query: BusinessListQuery): Promise<BusinessListResponse> {
 		const page = await this.businesses.list(query);
@@ -70,7 +92,7 @@ export class BusinessesService {
 		const items = await Promise.all(
 			page.items.map(async (business) => {
 				const owesUs = await this.ledger.balance(business.id, 'receivable');
-				const weOwe = await this.ledger.balance(business.id, 'payable');
+				const weOwe = business.roles.supplier ? await this.payableINR(business.id) : 0;
 				const customer = business.roles.customer;
 				const zone = customer ? zones.get(customer.zoneId) : undefined;
 				return {
@@ -99,6 +121,8 @@ export class BusinessesService {
 				customer: page.counts.customer ?? 0,
 				supplier: page.counts.supplier ?? 0,
 				both: page.counts.both ?? 0,
+				creditOnHold: page.counts.creditOnHold ?? 0,
+				blocked: page.counts.blocked ?? 0,
 			},
 		};
 	}
@@ -140,6 +164,7 @@ export class BusinessesService {
 						creditDays: customer.creditDays,
 						standingReason: customer.standingReason,
 						standingBy: customer.standingBy,
+						standingAt: customer.standingAt,
 					};
 				}),
 		);
@@ -314,22 +339,35 @@ export class BusinessesService {
 			page: query.page,
 			pageSize: query.pageSize,
 		});
-		let running = page.openingINR;
+		// The payable side starts from the unpaid purchase bills; our own entries are set-offs against them.
+		const openingINR =
+			query.side === 'payable'
+				? round2(page.openingINR + (await this.payableINR(id)) - (await this.ledger.balance(id, 'payable')))
+				: page.openingINR;
+		let running = openingINR;
 		const rows = page.rows.map((row) => {
 			running = round2(running + row.amountINR);
 			return { ...row, balanceINR: running };
 		});
-		return { side: query.side, openingINR: page.openingINR, rows, closingINR: running, total: page.total };
+		return { side: query.side, openingINR, rows, closingINR: running, total: page.total };
 	}
 
-	/** A receipt on account (bz06): one credit entry on the receivable side. */
-	async recordReceipt(id: string, input: BusinessReceiptWrite, actor: string | null): Promise<LedgerEntry> {
+	/**
+	 * A receipt on the customer account (RC number). The orders it settles (bz06) are recorded by the
+	 * caller in the same transaction when one is passed.
+	 */
+	async recordReceipt(
+		id: string,
+		input: BusinessReceiptWrite,
+		actor: string | null,
+		outer?: TransactionContext,
+	): Promise<LedgerEntry> {
 		const business = await this.get(id);
 		if (!business.roles.customer)
 			throw new ConflictException(
 				codedRefusal('not_a_customer', 'This business does not buy from us', 'amountINR'),
 			);
-		const entry = await this.transactions.withTransaction(async (context) => {
+		const write = async (context: TransactionContext) => {
 			const number = await this.numbers.issue('receipt', context);
 			return this.ledger.append(
 				LedgerEntry.parse({
@@ -347,12 +385,68 @@ export class BusinessesService {
 				}),
 				context,
 			);
-		});
+		};
+		const entry = outer ? await write(outer) : await this.transactions.withTransaction(write);
 		await auditOrdersChange(this.audit, actor, 'business.receipt', 'business', id, {
 			amountINR: input.amountINR,
 			number: entry.documentNumber,
 		});
 		return entry;
+	}
+
+	/**
+	 * Undoes a set-off (so04): never edited or deleted; a reversing journal entry with its own reason,
+	 * in both accounts. A set-off can be reversed once.
+	 */
+	async reverseSetOff(id: string, documentId: string, reason: string, actor: string | null): Promise<LedgerEntry[]> {
+		await this.get(id);
+		const [receivable, payable] = await Promise.all(
+			(['receivable', 'payable'] as const).map((side) =>
+				this.ledger.list(id, side, { page: 1, pageSize: 1000 }).then((page) => page.rows),
+			),
+		);
+		const all = [...(receivable ?? []), ...(payable ?? [])];
+		const originals = all.filter((row) => row.documentId === documentId && row.kind === 'setOff');
+		if (!originals.length) {
+			throw new NotFoundException(codedRefusal('setoff_missing', 'That set-off does not exist', 'documentId'));
+		}
+		if (all.some((row) => row.reversalOf && originals.some((original) => original.id === row.reversalOf))) {
+			throw new ConflictException(
+				codedRefusal('setoff_already_reversed', 'That set-off was already reversed', 'documentId'),
+			);
+		}
+		const entries = await this.transactions.withTransaction(async (context) => {
+			const number = await this.numbers.issue('journal', context);
+			const reversalId = `jv_${randomUUID()}`;
+			const at = new Date().toISOString();
+			return Promise.all(
+				originals.map((original) =>
+					this.ledger.append(
+						LedgerEntry.parse({
+							id: `led_${randomUUID()}`,
+							businessId: id,
+							side: original.side,
+							kind: 'reversal',
+							amountINR: -original.amountINR,
+							documentType: 'journal',
+							documentId: reversalId,
+							documentNumber: number,
+							note: reason,
+							reversalOf: original.id,
+							agreement: null,
+							at,
+							by: actor ?? 'system',
+						}),
+						context,
+					),
+				),
+			);
+		});
+		await auditOrdersChange(this.audit, actor, 'business.setoff_reversed', 'business', id, {
+			documentId,
+			number: entries[0]?.documentNumber,
+		});
+		return entries;
 	}
 
 	async setSetOff(id: string, input: SetOffSetting, actor: string | null): Promise<Business> {
@@ -372,10 +466,7 @@ export class BusinessesService {
 	/** One journal entry (JV) shown in both accounts, at most the smaller balance (so02, so03). */
 	async recordSetOff(id: string, input: SetOffWrite, actor: string | null): Promise<LedgerEntry[]> {
 		const business = await this.get(id);
-		const [receivable, payable] = await Promise.all([
-			this.ledger.balance(id, 'receivable'),
-			this.ledger.balance(id, 'payable'),
-		]);
+		const [receivable, payable] = await Promise.all([this.ledger.balance(id, 'receivable'), this.payableINR(id)]);
 		const refusal = checkSetOff({
 			setting:
 				business.setOff.mode === 'agreement'
@@ -401,7 +492,7 @@ export class BusinessesService {
 		const entries = await this.transactions.withTransaction(async (context) => {
 			const number = await this.numbers.issue('journal', context);
 			const documentId = `jv_${randomUUID()}`;
-			const at = new Date().toISOString();
+			const at = input.on ? new Date(`${input.on}T12:00:00+05:30`).toISOString() : new Date().toISOString();
 			const base = {
 				businessId: id,
 				kind: 'setOff' as const,

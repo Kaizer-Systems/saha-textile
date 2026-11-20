@@ -344,6 +344,24 @@ describe('mappers keep a complete row', () => {
 				createdAt: at,
 			} as never),
 		).toMatchObject({ userId: 'u', lines: ['l'], promotionsApplied: ['p'], statusTimeline: ['t'], createdAt: iso });
+		// The shop hold, a payment under review, how the admin placed it and its on-account due day survive a read.
+		const review = { attemptId: 'pa_1', reason: 'amount_mismatch', at: iso };
+		expect(
+			toOrder({
+				_id: 'o',
+				orderNumber: 'n',
+				holdUntil: iso,
+				paymentReview: review,
+				placedWith: 'onAccount',
+				onAccountDueOn: '2026-12-20',
+			} as never),
+		).toMatchObject({ holdUntil: iso, paymentReview: review, placedWith: 'onAccount', onAccountDueOn: '2026-12-20' });
+		expect(toOrder({ _id: 'o', orderNumber: 'n' } as never)).toMatchObject({
+			holdUntil: null,
+			paymentReview: null,
+			placedWith: null,
+			onAccountDueOn: null,
+		});
 	});
 
 	it('customer and admin user', () => {

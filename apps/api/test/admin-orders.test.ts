@@ -2,7 +2,7 @@ import { Order, OrderSettings, type OrderPayment, type Shipment } from '@saha-te
 import { NOT_CONNECTED_EINVOICE, NOT_CONNECTED_EWAYBILL } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
-import { AdminOrdersService } from '../src/admin-orders/admin-orders.service';
+import { AdminOrdersService, attentionTimesOf, paymentDetailOf } from '../src/admin-orders/admin-orders.service';
 
 const address = {
 	fullName: 'Ananya Das',
@@ -80,6 +80,7 @@ function service(order: Order) {
 		{ listByOrder: async () => [] } as never,
 		{
 			listByOrder: async () => shipments,
+			courierNames: async () => [...new Set(shipments.map((row) => row.courierName))],
 			save: async (shipment: Shipment) => {
 				const index = shipments.findIndex((row) => row.id === shipment.id);
 				if (index >= 0) shipments[index] = shipment;
@@ -270,6 +271,7 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 				note: null,
 				proofMediaId: null,
 				collector: null,
+				collectedBy: null,
 				revision: 0,
 			},
 			actor,
@@ -288,6 +290,7 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 				note: null,
 				proofMediaId: null,
 				collector: null,
+				collectedBy: null,
 				revision: 1,
 			},
 			actor,
@@ -327,6 +330,7 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 					note: null,
 					proofMediaId: null,
 					collector: null,
+					collectedBy: null,
 					revision: 0,
 				},
 				actor,
@@ -362,6 +366,7 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 				note: null,
 				proofMediaId: null,
 				collector: null,
+				collectedBy: null,
 				revision: 0,
 			},
 			actor,
@@ -370,5 +375,55 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 		expect(ledger).toEqual([
 			expect.objectContaining({ businessId: 'biz_1', side: 'receivable', kind: 'receipt', amountINR: -60_000 }),
 		]);
+	});
+});
+
+describe('admin orders: the list lines (ol02, ol03)', () => {
+	const at = '2026-11-19T13:14:00.000Z';
+	const payment = (over: Partial<OrderPayment> = {}): OrderPayment => ({
+		id: 'pay_1',
+		orderId: 'ord_1',
+		method: 'upi',
+		state: 'received',
+		amountINR: 9_800,
+		currency: 'INR',
+		amount: 9_800,
+		reference: '432198765012',
+		gateway: null,
+		paypal: null,
+		collector: null,
+		collectedBy: null,
+		receivedOn: '2026-11-20',
+		receiptNumber: null,
+		note: null,
+		proofMediaId: null,
+		recordedBy: 'adm_1',
+		recordedAt: at,
+		...over,
+	});
+
+	it('words the payment line: the whole reference, the gateway, cash on delivery and the on-account due day', () => {
+		const now = new Date('2026-11-20T10:00:00.000Z');
+		expect(paymentDetailOf([payment()], [], now)).toMatchObject({ kind: 'payment', reference: '432198765012' });
+		expect(
+			paymentDetailOf(
+				[payment({ method: 'gateway', reference: 'pp_9', gateway: { id: 'paypal', attemptId: 'a', reference: 'pp_9', requestId: null } })],
+				[],
+				now,
+			),
+		).toMatchObject({ kind: 'payment', gateway: 'paypal', reference: null });
+		expect(paymentDetailOf([], [], now, { paymentStatus: 'due_on_delivery', onAccountDueOn: null })).toEqual({
+			kind: 'cashOnDelivery',
+		});
+		expect(paymentDetailOf([], [], now, { paymentStatus: 'on_account', onAccountDueOn: '2026-12-20' })).toEqual({
+			kind: 'onAccount',
+			dueOn: '2026-12-20',
+		});
+	});
+
+	it('dates each reason an order waits on staff', () => {
+		const order = baseOrder({ status: 'awaiting_payment', paymentStatus: 'pending_at_bank' });
+		const times = attentionTimesOf(order, ['pendingAtBank', 'invoiceAddressNeeded'], [payment({ state: 'pending' })], []);
+		expect(times).toEqual({ pendingAtBank: at });
 	});
 });

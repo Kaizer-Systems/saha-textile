@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	ConflictException,
+	Inject,
+	Injectable,
+	NotFoundException,
+	Optional,
+} from '@nestjs/common';
 import {
 	type AdminOrderDetail,
-	type AttentionReason,
+	AttentionReason,
 	type EInvoiceWrite,
 	type EWayBillWrite,
 	type InvoiceAddressWrite,
@@ -31,6 +38,7 @@ import {
 	isRequestActive,
 	openTooLong,
 	type AdminOrderRepository,
+	type AdminUserRepository,
 	type BusinessRepository,
 	type EInvoicePort,
 	type EWayBillPort,
@@ -49,6 +57,7 @@ import { AddressBookService } from '../addresses/address-book.service';
 import { codedRefusal } from '../common/coded-refusal';
 import {
 	ADMIN_ORDER_REPOSITORY,
+	ADMIN_USER_REPOSITORY,
 	BUSINESS_REPOSITORY,
 	EINVOICE_PORT,
 	EWAYBILL_PORT,
@@ -130,17 +139,62 @@ export function attentionOf(
 	return reasons;
 }
 
-/** The line under the payment chip, as data: the live request, or the last payment received. */
+/**
+ * The line under the payment chip (ol02), as data: the live request, the last payment received, or
+ * how an unpaid order will be paid (cash on delivery, on account with its due day).
+ */
 export function paymentDetailOf(
 	payments: readonly OrderPayment[],
 	requests: readonly PaymentRequest[],
 	now: Date,
+	order?: Pick<Order, 'paymentStatus' | 'onAccountDueOn'>,
 ): OrderListRow['paymentDetail'] {
 	const live = requests.find((request) => isRequestActive(request, now));
 	if (live) return { kind: 'request', gateway: live.gateway, until: live.expiresAt };
+	if (order?.paymentStatus === 'due_on_delivery') return { kind: 'cashOnDelivery' };
+	if (order?.paymentStatus === 'on_account') return { kind: 'onAccount', dueOn: order.onAccountDueOn ?? null };
 	const last = [...payments].reverse().find((payment) => payment.state === 'received');
 	if (!last) return null;
-	return { kind: 'payment', method: last.method, referenceStart: last.reference ? last.reference.slice(0, 4) : null };
+	return {
+		kind: 'payment',
+		method: last.method,
+		referenceStart: last.reference ? last.reference.slice(0, 4) : null,
+		reference: last.method === 'gateway' ? null : last.reference,
+		gateway: last.gateway?.id ?? null,
+	};
+}
+
+/**
+ * When each reason started (ol03): the newest request that ran out unpaid, the payment the bank left
+ * pending, the gateway answer under review, the day an open order was opened.
+ */
+export function attentionTimesOf(
+	order: Order,
+	reasons: readonly AttentionReason[],
+	payments: readonly OrderPayment[],
+	requests: readonly PaymentRequest[],
+): OrderListRow['attentionAt'] {
+	const at: OrderListRow['attentionAt'] = {};
+	if (reasons.includes('requestExpiredUnpaid')) {
+		const last = [...requests]
+			.filter((request) => request.status !== 'paid')
+			.sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))
+			.pop();
+		if (last) at.requestExpiredUnpaid = last.expiresAt;
+	}
+	if (reasons.includes('pendingAtBank')) {
+		const pending = [
+			...payments.filter((payment) => payment.state === 'pending').map((payment) => payment.recordedAt),
+			...requests.flatMap((request) =>
+				request.attempts.filter((attempt) => attempt.state === 'pending').map((attempt) => attempt.at),
+			),
+		].sort();
+		const latest = pending.pop();
+		if (latest) at.pendingAtBank = latest;
+	}
+	if (reasons.includes('paymentReview') && order.paymentReview) at.paymentReview = order.paymentReview.at;
+	if (reasons.includes('openTooLong') && order.openedAt) at.openTooLong = order.openedAt;
+	return at;
 }
 
 /**
@@ -165,7 +219,67 @@ export class AdminOrdersService {
 		private readonly addressBook: AddressBookService,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		private readonly stock: OrderStock,
+		@Optional() @Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository | null = null,
 	) {}
+
+	/** Staff names by id for the order page; an unknown or removed account is simply left out. */
+	private async staffNames(ids: ReadonlyArray<string | null | undefined>): Promise<Record<string, string>> {
+		const names: Record<string, string> = {};
+		if (!this.adminUsers) return names;
+		for (const id of new Set(ids.filter((value): value is string => !!value))) {
+			const user = await this.adminUsers.findById(id).catch(() => null);
+			const name = user?.displayName?.trim() || user?.username?.trim() || user?.email?.split('@')[0];
+			if (name) names[id] = name;
+		}
+		return names;
+	}
+
+	/**
+	 * bz06: a business receipt's share of one order on account, recorded on the order as a payment with
+	 * the receipt's number and settled (the order moves on when nothing is left due).
+	 */
+	async settleFromReceipt(
+		orderId: string,
+		share: { amountINR: number; receiptNumber: string | null; reference: string; receivedOn: string },
+		actor: Actor,
+		context: TransactionContext,
+		now = new Date(),
+	): Promise<void> {
+		const order = await this.get(orderId);
+		const at = now.toISOString();
+		await this.payments.save(
+			{
+				id: `pay_${randomUUID()}`,
+				orderId,
+				method: 'onAccount',
+				state: 'received',
+				amountINR: share.amountINR,
+				currency: 'INR',
+				amount: share.amountINR,
+				reference: share.reference,
+				gateway: null,
+				paypal: null,
+				collector: null,
+				collectedBy: null,
+				receivedOn: share.receivedOn,
+				receiptNumber: share.receiptNumber,
+				note: null,
+				proofMediaId: null,
+				recordedBy: actor.id,
+				recordedAt: at,
+			},
+			context,
+		);
+		await this.settle(order, order.revision, actor, at, context, {
+			kind: 'payment',
+			detail: {
+				method: 'onAccount',
+				amountINR: share.amountINR,
+				reference: share.reference,
+				receipt: share.receiptNumber,
+			},
+		});
+	}
 
 	async list(query: OrderListQuery, now = new Date()): Promise<OrderListResponse> {
 		const [{ orders, total }, counts, settings] = await Promise.all([
@@ -197,6 +311,11 @@ export class AdminOrdersService {
 				awaitingPayment: count('awaitingPayment'),
 				toPack: count('toPack'),
 				shippedNotDelivered: count('shipped'),
+				attentionBy: Object.fromEntries(
+					AttentionReason.options
+						.map((reason) => [reason, count(`attention:${reason}`)] as const)
+						.filter(([, value]) => value > 0),
+				),
 			},
 		};
 	}
@@ -207,6 +326,7 @@ export class AdminOrdersService {
 			this.requests.listByOrder(order.id),
 		]);
 		const balance = order.balance;
+		const attention = attentionOf(order, requests, settings, now);
 		return {
 			id: order.id,
 			orderNumber: order.orderNumber,
@@ -219,13 +339,14 @@ export class AdminOrdersService {
 			totalINR: order.totalINR,
 			status: order.status,
 			paymentStatus: order.paymentStatus,
-			paymentDetail: paymentDetailOf(payments, requests, now),
+			paymentDetail: paymentDetailOf(payments, requests, now, order),
 			deliveryCountry:
 				order.addresses?.delivery.countryCode ??
 				order.addresses?.delivery.country ??
 				order.shipping?.deliveryCountry ??
 				null,
-			attention: attentionOf(order, requests, settings, now),
+			attention,
+			attentionAt: attentionTimesOf(order, attention, payments, requests),
 			open:
 				order.status === 'open' && order.openedAt
 					? {
@@ -250,11 +371,12 @@ export class AdminOrdersService {
 
 	async detail(id: string, now = new Date()): Promise<AdminOrderDetail> {
 		const order = await this.get(id);
-		const [payments, requests, shipments, settings] = await Promise.all([
+		const [payments, requests, shipments, settings, courierNames] = await Promise.all([
 			this.payments.listByOrder(id),
 			this.requests.listByOrder(id),
 			this.shipments.listByOrder(id),
 			this.settings.get(),
+			this.shipments.courierNames(20),
 		]);
 		const machine = machineOrder(order);
 		const rules = machineSettings(settings);
@@ -279,6 +401,13 @@ export class AdminOrdersService {
 					connected: this.eWayBill.connected,
 				},
 			},
+			courierNames,
+			staff: await this.staffNames([
+				order.createdBy,
+				...order.history.map((entry) => entry.by),
+				...payments.map((payment) => payment.recordedBy),
+				...requests.map((request) => request.createdBy),
+			]),
 		};
 	}
 
@@ -401,8 +530,23 @@ export class AdminOrdersService {
 						from: order.status,
 						to: input.to,
 						comment: input.comment ?? input.cancel?.note ?? null,
-						messages: (tells ?? []).map((template) => ({ channel: 'email' as const, template })),
-						detail: input.cancel ? { reason: input.cancel.reason } : {},
+						// od06: "Customer told · Email · SMS" (both go per Settings › Communications).
+						messages: (tells ?? []).flatMap((template) => [
+							{ channel: 'email' as const, template },
+							{ channel: 'sms' as const, template },
+						]),
+						detail: {
+							...(input.cancel ? { reason: input.cancel.reason } : {}),
+							...(input.shipped
+								? { courier: input.shipped.courierName, tracking: input.shipped.trackingNumber }
+								: {}),
+							...(input.delivered
+								? {
+										proof: input.delivered.receivedBy ?? input.delivered.podReference ?? null,
+										deliveredOn: input.delivered.deliveredOn,
+									}
+								: {}),
+						},
 					}),
 				],
 			};
@@ -562,6 +706,7 @@ export class AdminOrdersService {
 				gateway: null,
 				paypal: null,
 				collector: input.method === 'cashOnDelivery' ? (input.collector ?? 'staff') : null,
+				collectedBy: input.method === 'cashOnDelivery' ? (input.collectedBy ?? null) : null,
 				receivedOn: input.received ? input.receivedOn : null,
 				receiptNumber: input.received ? await this.numbers.issue('receipt', context, now) : null,
 				note: input.note,
@@ -733,4 +878,10 @@ export function historyEntry(
 		messages: extra.messages ?? [],
 		detail: extra.detail ?? {},
 	};
+}
+
+/** "3 × Blush Pink Georgette Saree, 1 × …" for the history (oo02); long lists end with "+N more". */
+export function linesSummary(lines: ReadonlyArray<Pick<Order['lines'][number], 'quantity' | 'title'>>): string {
+	const shown = lines.slice(0, 3).map((line) => `${line.quantity} × ${line.title.en}`);
+	return lines.length > 3 ? `${shown.join(', ')} +${lines.length - 3}` : shown.join(', ');
 }

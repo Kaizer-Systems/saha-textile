@@ -93,6 +93,10 @@ export const COMMUNICATION_USES: readonly CommunicationUse[] = [
 	// arrived after the piece sold out, which refunds the whole order.
 	{ key: 'order_on_backorder', group: 'orders', cells: all() },
 	{ key: 'order_refunded_sold_out', group: 'orders', cells: all() },
+	// Orders and checkout brief (approved 2026-11-20): our own message about a payment request (sent
+	// only when staff press Send as SMS / Send as email) and the receipt for a payment recorded later.
+	{ key: 'payment_request', group: 'orders', cells: all() },
+	{ key: 'payment_receipt', group: 'orders', cells: all() },
 	{ key: 'order_shipped', group: 'orders', cells: all() },
 	{ key: 'order_delivered', group: 'orders', cells: all() },
 	{ key: 'order_cancelled', group: 'orders', cells: all() },

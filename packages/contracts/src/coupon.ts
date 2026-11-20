@@ -211,6 +211,8 @@ export const AppliedCoupon = z.object({
 	deliveryAmountINR: PriceINR.default(0),
 	lines: z.array(AppliedCouponLine),
 	combines: z.boolean(),
+	/** Percent for `percentOff`, rupees for `amountOff`: "10% off Blush Pink Georgette Saree" (cp07). */
+	value: z.number().nonnegative().default(0),
 });
 export type AppliedCoupon = z.infer<typeof AppliedCoupon>;
 
@@ -244,7 +246,10 @@ export const CouponTryRequest = z.object({
 		)
 		.min(1)
 		.max(20),
+	/** 0: the server works out the home-country delivery charge for this cart. */
 	deliveryINR: PriceINR.default(0),
+	/** cp04: switched-on coupons that combine, tried together with this one ("Coupons used: A + B"). */
+	withCodes: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
 });
 export type CouponTryRequest = z.infer<typeof CouponTryRequest>;
 
@@ -260,8 +265,15 @@ export const CouponTryResult = z.object({
 			onSale: z.boolean(),
 			reason: CouponLineReason,
 			amountINR: PriceINR,
+			/** cp04: what each coupon took off this line ("WEDDING10: 10%"). */
+			byCoupon: z.array(z.object({ code: z.string(), amountINR: PriceINR })).default([]),
 		}),
 	),
+	/** The delivery charge tried, and what a free-delivery coupon took off it ("FREESHIP: free delivery"). */
+	deliveryINR: PriceINR.default(0),
+	deliveryOff: z.object({ code: z.string(), amountINR: PriceINR }).nullable().default(null),
+	/** Every coupon that applied, in order of use. */
+	used: z.array(z.object({ code: z.string(), amountINR: PriceINR })).default([]),
 	totalBeforeINR: PriceINR,
 	totalAfterINR: PriceINR,
 });

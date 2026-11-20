@@ -230,8 +230,6 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Business page Edit and the form Save (bz02), its addresses and contacts; PUT /admin/businesses/:id.',
 	'business.hold':
 		'Change standing on the business page (bz05): Active, Credit on hold, Blocked, with a reason; POST /admin/businesses/:id/standing.',
-	'business.index':
-		'Customers › Businesses list and the business page (bz01, bz03, bz04); GET /admin/businesses. Its navigation entry arrives with the admin screens.',
 	'business.settle':
 		"Record a set-off between a business's two accounts under a written agreement, and its reversal (so02–so04); POST /admin/businesses/:id/set-offs. Off for Saha Textile.",
 	'order.address':
@@ -246,8 +244,6 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'price_zone.destroy':
 		'Delete on a zone that no business uses; RETAIL can never be deleted (DELETE /admin/zones/:id).',
 	'price_zone.edit': 'Zone price list editing, Go live and the zone settings (DEC-B2B-ZONES); PUT /admin/zones/:id.',
-	'price_zone.index':
-		'Customers › Zones list and a zone page (DEC-B2B-ZONES); GET /admin/zones. Its navigation entry arrives with the admin screens.',
 	'dashboard.customers':
 		'Total Customers tile on the admin home page (dashboard.html, GET /admin/dashboard/customers). The tile is a count only, so it is separate from customer.index, which opens personal records.',
 	'dashboard.orders':

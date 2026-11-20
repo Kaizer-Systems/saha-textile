@@ -5,6 +5,7 @@ import type {
 	AdminOrderDetail,
 	OpenOrderAddLines,
 	OpenOrderClose,
+	OpenOrderClosePreview,
 	OpenOrderRemoveLine,
 	Order,
 	OrderLine,
@@ -34,7 +35,7 @@ import {
 import { ShippingAdminService } from '../shipping/shipping-admin.service';
 import { AdminCartService } from './admin-cart.service';
 import type { CheckoutRights } from './admin-order-create.service';
-import { AdminOrdersService, historyEntry, type Actor } from './admin-orders.service';
+import { AdminOrdersService, historyEntry, linesSummary, type Actor } from './admin-orders.service';
 import { OrderStock } from './order-stock';
 
 const istDay = (at: Date): string => new Date(at.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -115,6 +116,7 @@ export class OpenOrdersService {
 			attributes: {},
 			addons: [],
 			imageAssetId: null,
+			imageUrl: line.imageUrl,
 			unitPriceINR: line.unitPriceINR,
 			unitPricePaid: line.unitPriceINR,
 			lineTotalINR: line.lineTotalINR,
@@ -122,13 +124,14 @@ export class OpenOrdersService {
 			pricing: {
 				regularUnitINR:
 					line.zonePrice?.kind === 'priced' ? line.zonePrice.retailUnitPriceINR : line.unitPriceINR,
+				mrpUnitINR: line.mrpINR !== null && line.mrpINR > line.unitPriceINR ? line.mrpINR : null,
 				saleUnitINR: null,
 				saleEventId: null,
 				zoneRule:
 					line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail'
 						? line.zonePrice.rule
 						: null,
-				discounted: false,
+				discounted: line.mrpINR !== null && line.unitPriceINR < line.mrpINR,
 			},
 			couponINR: 0,
 			categoryIds: [],
@@ -144,7 +147,11 @@ export class OpenOrdersService {
 			};
 			await this.orders.settle(withLines, input.revision, actor, at, context, {
 				kind: 'lineAdded',
-				detail: { lines: added.length, skus: added.map((line) => line.sku).join(',') },
+				detail: {
+					lines: added.length,
+					skus: added.map((line) => line.sku).join(','),
+					items: linesSummary(added),
+				},
 			});
 		});
 		return this.orders.detail(id, now);
@@ -172,21 +179,22 @@ export class OpenOrdersService {
 				{
 					kind: 'lineRemoved',
 					comment: input.reason,
-					detail: { sku: line.sku, quantity: line.quantity },
+					detail: {
+						sku: line.sku,
+						quantity: line.quantity,
+						title: line.title.en,
+						amountINR: line.lineTotalINR,
+					},
 				},
 			);
 		});
 		return this.orders.detail(id, now);
 	}
 
-	/** Close (oo08): shipping for one parcel, then the rest by request, later, or on account. */
-	async close(id: string, input: OpenOrderClose, actor: Actor, now = new Date()): Promise<AdminOrderDetail> {
-		const order = await this.openOrder(id);
-		if (!order.lines.length)
-			throw new ConflictException(codedRefusal('nothing_to_close', 'Add pieces before closing', 'id'));
+	/** Shipping for the whole order as one parcel to its delivery address (oo08). */
+	private async parcelQuote(order: Order) {
 		const delivery = order.addresses?.delivery;
-		if (!delivery)
-			throw new ConflictException(codedRefusal('no_addresses', 'This order has no delivery address', 'id'));
+		if (!delivery) return { problem: 'no_addresses' as const, quote: null, delivery: null };
 		const quote = await this.shipping.tryCart({
 			lines: order.lines.map((line) => ({
 				productId: line.productId,
@@ -200,13 +208,78 @@ export class OpenOrdersService {
 			},
 			shopper: { signedIn: true, groups: [], firstOrder: false },
 		});
-		if (quote.status !== 'priced' || quote.amountINR === null) {
+		if (quote.status !== 'priced' || quote.amountINR === null)
+			return { problem: 'cannot_ship' as const, quote, delivery };
+		return { problem: null, quote: { ...quote, amountINR: quote.amountINR }, delivery };
+	}
+
+	/** Whether the buyer is a business that can take `dueINR` on its account now (K9). */
+	private async accountFor(order: Order, dueINR: number) {
+		const businessId = order.buyer?.kind === 'business' ? order.buyer.businessId : null;
+		const business = businessId ? await this.businesses.findById(businessId) : null;
+		const customer = business?.roles.customer;
+		if (!business || !customer) return null;
+		const check = checkCredit({
+			standing: customer.standing,
+			limitINR: customer.creditLimitINR,
+			outstandingINR: Math.max(0, await this.ledgers.balance(business.id, 'receivable')),
+			orderINR: dueINR,
+			businessAccounts: (await this.settings.get()).businessAccounts,
+		});
+		return { business, customer, refusal: check.refusal ?? null };
+	}
+
+	/** What closing would do (oo08): goods, one parcel's shipping, paid so far, due to close. */
+	async closePreview(id: string): Promise<OpenOrderClosePreview> {
+		const order = await this.openOrder(id);
+		const payments = await this.payments.listByOrder(id);
+		const parcel = order.lines.length ? await this.parcelQuote(order) : null;
+		const shippingINR = parcel?.problem === null ? parcel.quote.amountINR : null;
+		const balance = orderBalance({
+			lineTotalsINR: order.lines.map((line) => line.lineTotalINR),
+			couponINR: order.balance?.couponINR ?? 0,
+			shippingINR: shippingINR ?? 0,
+			payments,
+		});
+		const account = await this.accountFor(order, balance.dueINR);
+		return {
+			pieces: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+			goodsINR: balance.goodsINR,
+			shippingINR,
+			zone: parcel?.problem === null ? (parcel.quote.zone ?? null) : null,
+			shippingTrace:
+				parcel?.problem === null
+					? parcel.quote.groups.flatMap((group) => group.trace.map((entry) => JSON.stringify(entry))).slice(0, 40)
+					: [],
+			shippingPieces:
+				parcel?.problem === null
+					? parcel.quote.lines.map((line) => ({ lineId: line.lineId, units: line.units, discounted: line.discounted }))
+					: [],
+			totalINR: balance.totalINR,
+			paidINR: balance.paidINR,
+			dueINR: balance.dueINR,
+			paidAheadINR: balance.paidAheadINR,
+			toAccount: account ? { allowed: !account.refusal, reason: account.refusal } : null,
+			problem: !order.lines.length ? 'nothing_to_close' : (parcel?.problem ?? null),
+		};
+	}
+
+	/** Close (oo08): shipping for one parcel, then the rest by request, later, or on account. */
+	async close(id: string, input: OpenOrderClose, actor: Actor, now = new Date()): Promise<AdminOrderDetail> {
+		const order = await this.openOrder(id);
+		if (!order.lines.length)
+			throw new ConflictException(codedRefusal('nothing_to_close', 'Add pieces before closing', 'id'));
+		const parcel = await this.parcelQuote(order);
+		if (parcel.problem === 'no_addresses')
+			throw new ConflictException(codedRefusal('no_addresses', 'This order has no delivery address', 'id'));
+		if (parcel.problem === 'cannot_ship') {
 			throw new ConflictException(
 				codedRefusal('cannot_ship', 'The shipping for this parcel could not be worked out', 'id', {
-					status: quote.status,
+					status: parcel.quote.status,
 				}),
 			);
 		}
+		const { quote, delivery } = parcel;
 		const payments = await this.payments.listByOrder(id);
 		const balance = orderBalance({
 			lineTotalsINR: order.lines.map((line) => line.lineTotalINR),
@@ -216,25 +289,16 @@ export class OpenOrdersService {
 		});
 		let dueOn: string | null = null;
 		if (input.then === 'toAccount') {
-			const businessId = order.buyer?.kind === 'business' ? order.buyer.businessId : null;
-			const business = businessId ? await this.businesses.findById(businessId) : null;
-			const customer = business?.roles.customer;
-			if (!business || !customer)
+			const account = await this.accountFor(order, balance.dueINR);
+			if (!account)
 				throw new ConflictException(
 					codedRefusal('not_a_business', 'Only a business can take it on account', 'then'),
 				);
-			const check = checkCredit({
-				standing: customer.standing,
-				limitINR: customer.creditLimitINR,
-				outstandingINR: Math.max(0, await this.ledgers.balance(business.id, 'receivable')),
-				orderINR: balance.dueINR,
-				businessAccounts: (await this.settings.get()).businessAccounts,
-			});
-			if (check.refusal)
+			if (account.refusal)
 				throw new ConflictException(
-					codedRefusal('credit_refused', 'It cannot go on account', 'then', { reason: check.refusal }),
+					codedRefusal('credit_refused', 'It cannot go on account', 'then', { reason: account.refusal }),
 				);
-			dueOn = onAccountDueDate(istDay(now), customer.creditDays);
+			dueOn = onAccountDueDate(istDay(now), account.customer.creditDays);
 		}
 		const status = statusAfterClose(balance.dueINR, input.then);
 		const at = now.toISOString();
@@ -243,6 +307,7 @@ export class OpenOrdersService {
 			balance,
 			status,
 			placedWith: input.then === 'toAccount' ? 'onAccount' : order.placedWith,
+			onAccountDueOn: input.then === 'toAccount' ? dueOn : (order.onAccountDueOn ?? null),
 			paymentStatus: derivePaymentStatus({
 				balance,
 				cashOnDelivery: false,
@@ -256,11 +321,14 @@ export class OpenOrdersService {
 				chargeINR: quote.amountINR,
 				zone: quote.zone,
 				deliveryCountry: delivery.countryCode ?? delivery.country,
-				trace: [],
+				trace: quote.groups.flatMap((group) => group.trace.map((entry) => JSON.stringify(entry))).slice(0, 40),
 				ruleSets: quote.groups.flatMap((group) =>
-					group.ruleSetId && group.version ? [{ id: group.ruleSetId, version: group.version }] : [],
+					group.ruleSetId && group.version
+						? [{ id: group.ruleSetId, version: group.version, name: group.ruleSetName ?? '' }]
+						: [],
 				),
 				pending: false,
+				pieces: quote.lines.map((line) => ({ lineId: line.lineId, units: line.units, discounted: line.discounted })),
 			},
 			statusTimeline: [...order.statusTimeline, { status, at }],
 			history: [

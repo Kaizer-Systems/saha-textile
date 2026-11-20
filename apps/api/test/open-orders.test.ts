@@ -115,7 +115,8 @@ function harness(order: Order, payments: OrderPayment[] = [], limitINR = 500_000
 				status: 'priced',
 				zone: 'international',
 				amountINR: 2_000,
-				groups: [{ ruleSetId: 'rs2', version: 4 }],
+				groups: [{ ruleSetId: 'rs2', ruleSetName: 'Saha Textile — International', version: 4, trace: [] }],
+				lines: [],
 			}),
 		} as never,
 		{
@@ -187,6 +188,28 @@ describe('open orders (oo01–oo08)', () => {
 			paymentStatus: 'paid_ahead',
 			balance: { paidAheadINR: 3_000 },
 		});
+	});
+
+	it('previews the close without saving: one parcel’s shipping, what is due, and whether it can go on account', async () => {
+		const { svc, current, ledger } = harness(open(), [received(10_000)], 10_000);
+		expect(await svc.closePreview('ord_1')).toEqual({
+			pieces: 1,
+			goodsINR: 20_000,
+			shippingINR: 2_000,
+			zone: 'international',
+			shippingTrace: [],
+			shippingPieces: [],
+			totalINR: 22_000,
+			paidINR: 10_000,
+			dueINR: 12_000,
+			paidAheadINR: 0,
+			toAccount: { allowed: false, reason: expect.any(String) },
+			problem: null,
+		});
+		expect(current().status).toBe('open');
+		expect(ledger).toHaveLength(0);
+		const empty = harness(open({ lines: [] }));
+		expect((await empty.svc.closePreview('ord_1')).problem).toBe('nothing_to_close');
 	});
 
 	it('puts the rest on a business account within its credit, and refuses above it', async () => {

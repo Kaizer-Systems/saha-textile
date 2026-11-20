@@ -14,7 +14,6 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	BusinessListQuery,
-	BusinessReceiptWrite,
 	BusinessStandingWrite,
 	BusinessWrite,
 	BusinessZoneWrite,
@@ -29,6 +28,7 @@ import {
 	PriceZoneStatusWrite,
 	PriceZoneWrite,
 	SetOffSettingWrite,
+	SetOffReverseWrite,
 	SetOffWrite,
 	ZoneTryRequest,
 } from '@saha-textile/contracts';
@@ -374,16 +374,7 @@ export class AdminBusinessesController {
 		return this.businesses.statement(id, query);
 	}
 
-	@Post(':id/receipts')
-	@RequirePermissions('order.payment')
-	@ApiOperation({ operationId: 'recordBusinessReceipt', summary: 'Record a receipt on account (RC number issued)' })
-	receipt(
-		@Param('id') id: string,
-		@Body(new ZodValidationPipe(BusinessReceiptWrite)) body: BusinessReceiptWrite,
-		@Principal() principal?: AuthenticatedPrincipal,
-	) {
-		return this.businesses.recordReceipt(id, body, actor(principal));
-	}
+	// Receipts on account (bz06) live in the admin-orders module, which settles the orders they pay.
 
 	@Post(':id/set-off-setting')
 	@HttpCode(200)
@@ -409,5 +400,35 @@ export class AdminBusinessesController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.businesses.recordSetOff(id, body, actor(principal));
+	}
+
+	@Post(':id/set-offs/:documentId/reverse')
+	@HttpCode(200)
+	@RequirePermissions('business.settle')
+	@ApiOperation({
+		operationId: 'reverseSetOff',
+		summary: 'Reverse a set-off with its own reason (a reversing journal entry in both accounts)',
+	})
+	reverseSetOff(
+		@Param('id') id: string,
+		@Param('documentId') documentId: string,
+		@Body(new ZodValidationPipe(SetOffReverseWrite)) body: SetOffReverseWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.reverseSetOff(id, documentId, body.reason, actor(principal));
+	}
+
+	@Get(':id/balances')
+	@RequirePermissions('business.index')
+	@ApiOperation({
+		operationId: 'getBusinessBalances',
+		summary: 'Where things stand: what they owe us and what we owe them (bills plus set-offs)',
+	})
+	async balances(@Param('id') id: string) {
+		const business = await this.businesses.get(id);
+		return {
+			theyOweUsINR: business.roles.customer ? await this.businesses.receivableINR(id) : 0,
+			weOweThemINR: business.roles.supplier ? await this.businesses.payableINR(id) : 0,
+		};
 	}
 }

@@ -278,6 +278,14 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 		const out: Record<string, number> = Object.fromEntries(
 			filters.map((name, index) => [name, counts[index] ?? 0]),
 		);
+		// ol02: the Needs attention tile's line counts each stored reason.
+		const reasons = ['invoiceAddressNeeded', 'requestExpiredUnpaid', 'pendingAtBank', 'paymentReview'] as const;
+		const reasonCounts = await Promise.all(
+			reasons.map((reason) => OrderModel.countDocuments({ ...base, attention: reason }).exec()),
+		);
+		reasons.forEach((reason, index) => {
+			out[`attention:${reason}`] = reasonCounts[index] ?? 0;
+		});
 		out.toPack = await OrderModel.countDocuments({
 			...base,
 			status: { $in: ['placed', 'paid', 'processing'] },
@@ -285,19 +293,24 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 		return out;
 	}
 
-	async listOpenOnAccount(businessId: string): Promise<Array<{ orderId: string; dueINR: number; placedAt: string }>> {
+	async listOpenOnAccount(
+		businessId: string,
+	): Promise<Array<{ orderId: string; orderNumber: string; dueINR: number; placedAt: string; dueOn: string | null }>> {
 		const docs = await OrderModel.find({
 			'buyer.businessId': businessId,
 			'balance.dueINR': { $gt: 0 },
 			status: { $ne: 'cancelled' },
 		})
 			.sort({ createdAt: 1 })
-			.lean<Array<OrderDoc & { balance?: { dueINR?: number } }>>()
+			.session(joined())
+			.lean<Array<OrderDoc & { balance?: { dueINR?: number }; onAccountDueOn?: string | null }>>()
 			.exec();
 		return docs.map((doc) => ({
 			orderId: doc._id,
+			orderNumber: doc.orderNumber,
 			dueINR: Number(doc.balance?.dueINR ?? 0),
 			placedAt: (doc.createdAt ?? new Date(0)).toISOString(),
+			dueOn: doc.onAccountDueOn ?? null,
 		}));
 	}
 
@@ -567,7 +580,10 @@ export class MongoBusinessRepository implements BusinessRepository {
 		};
 		const filter = roleFilter(query.role);
 		const skip = (query.page - 1) * query.pageSize;
-		const [docs, total, all, customer, supplier, both] = await Promise.all([
+		// The standing filters' own counts ignore the standing chosen now (bz01: Credit on hold, Blocked).
+		const anyStanding: FilterQuery<OrdersBuildDoc> = { ...base };
+		delete anyStanding['roles.customer.standing'];
+		const [docs, total, all, customer, supplier, both, creditOnHold, blocked] = await Promise.all([
 			SupplierModel.find(filter)
 				.sort({ legalName: 1 })
 				.skip(skip)
@@ -579,8 +595,14 @@ export class MongoBusinessRepository implements BusinessRepository {
 			SupplierModel.countDocuments(roleFilter('customer')).exec(),
 			SupplierModel.countDocuments(roleFilter('supplier')).exec(),
 			SupplierModel.countDocuments(roleFilter('both')).exec(),
+			SupplierModel.countDocuments({ ...anyStanding, 'roles.customer.standing': 'creditOnHold' }).exec(),
+			SupplierModel.countDocuments({ ...anyStanding, 'roles.customer.standing': 'blocked' }).exec(),
 		]);
-		return { items: docs.map(toBusiness), total, counts: { all, customer, supplier, both } };
+		return {
+			items: docs.map(toBusiness),
+			total,
+			counts: { all, customer, supplier, both, creditOnHold, blocked },
+		};
 	}
 
 	async searchBuyers(q: string, limit: number): Promise<Business[]> {

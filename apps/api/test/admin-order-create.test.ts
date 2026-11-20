@@ -34,11 +34,13 @@ const view = (over: Partial<AdminCartView['lines'][number]> = {}): AdminCartView
 			title: 'Kanjivaram saree',
 			sku: 'SAR-1',
 			quantity: 2,
+			soldBy: 'piece',
 			imageUrl: null,
 			unitPriceINR: 20_000,
 			unitPrice: 20_000,
 			lineTotal: 40_000,
 			lineTotalINR: 40_000,
+			mrpINR: null,
 			zonePrice: {
 				kind: 'priced',
 				unitPriceINR: 20_000,
@@ -67,11 +69,37 @@ const input = (payment: AdminOrderCreate['payment'], key = 'key-0000000000000001
 	idempotencyKey: key,
 });
 
+const tenOff = {
+	id: 'cpn_ten',
+	code: 'TEN',
+	title: '10% off',
+	kind: 'percentOff',
+	value: 10,
+	capINR: null,
+	scope: { kind: 'wholeOrder' },
+	excludedProductIds: [],
+	includeSaleItems: false,
+	minOrderINR: 0,
+	audience: { kind: 'everyone' },
+	channels: { shop: true, admin: true },
+	usesPerCustomer: null,
+	totalUses: null,
+	validFrom: null,
+	validUntil: null,
+	combines: true,
+	usableOnZonePrices: true,
+	enabled: true,
+	usedCount: 0,
+};
+
+const freeShip = { ...tenOff, id: 'cpn_free', code: 'FREESHIP', title: 'Free delivery', kind: 'freeDelivery', value: 0 };
+
 function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
 	const created: Order[] = [];
 	const ledger: Array<Record<string, unknown>> = [];
 	const reserved: number[] = [];
 	const payments: unknown[] = [];
+	const saved: Array<[string, unknown]> = [];
 	const svc = new AdminOrderCreateService(
 		{
 			price: async () => cart,
@@ -81,7 +109,10 @@ function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
 			factsFor: async () => [{ facts: { categoryPaths: [['cat_silk']], currentSaleINR: null } }],
 		} as never,
 		{ convert: async () => ({ rateFromINR: 1 }) } as never,
-		{ check: async () => checked, add: async () => undefined } as never,
+		{
+			check: async () => checked,
+			add: async (id: string, address: unknown) => void saved.push([id, address]),
+		} as never,
 		{
 			tryCart: async () => ({
 				status: 'priced',
@@ -118,22 +149,131 @@ function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
 				},
 			}),
 		} as never,
-		{ findById: async () => null } as never,
+		{
+			findById: async (id: string) =>
+				id === 'cus_1' ? { id: 'cus_1', displayName: 'Kavita Iyer', status: 'active', addresses: [] } : null,
+			list: async (query: { q: string; pageSize: number }) => ({
+				items: [
+					{
+						id: 'cus_1',
+						displayName: 'Kavita Iyer',
+						email: 'kavita@example.test',
+						phone: '+91 9831122334',
+						status: 'active',
+						addresses: [{}, {}],
+					},
+					{
+						id: 'cus_2',
+						displayName: '',
+						email: 'gone@example.test',
+						phone: null,
+						status: 'blocked',
+						addresses: [],
+					},
+					{ id: 'cus_3', email: null, phone: '+91 9000000000', status: 'pending', addresses: [] },
+				].slice(0, query.pageSize),
+				meta: {},
+			}),
+		} as never,
 		{
 			balance: async () => outstanding,
 			append: async (entry: Record<string, unknown>) => ledger.push(entry),
 		} as never,
-		{ findByCode: async () => null, usesBy: async () => 0, recordUse: async () => undefined } as never,
+		{
+			findByCode: async (code: string) => (code === 'TEN' ? tenOff : code === 'FREESHIP' ? freeShip : null),
+			listUsable: async () => [tenOff],
+			usesBy: async () => 0,
+			recordUse: async () => undefined,
+		} as never,
 		{ getSettings: async () => ({ abroadPolicy: 'exportOffIndianInvoice', homeCountry: 'IN' }) } as never,
 		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
 	);
-	return { svc, created, ledger, reserved, payments };
+	return { svc, created, ledger, reserved, payments, saved };
 }
 
 const actor = { id: 'adm_1', name: null };
 const rights = { belowCost: false, creditOverride: false };
 
 describe('create order (oc01–oc03, ck01–ck08)', () => {
+	it('lists a business buyer’s saved addresses for the checkout, and refuses an unknown customer', async () => {
+		const { svc } = harness();
+		expect(await svc.buyerAddresses({ kind: 'business', businessId: 'biz_1' })).toEqual([]);
+		await expect(svc.buyerAddresses({ kind: 'person', customerId: 'cus_x' })).rejects.toMatchObject({
+			response: { issues: [{ code: 'customer_missing' }] },
+		});
+	});
+
+	it('saves a new address to the customer only when the order is placed, never on a quote', async () => {
+		const { svc, saved } = harness();
+		const body: AdminOrderCreate = {
+			...input({ method: 'paymentLink' }),
+			cart: { ...input({ method: 'paymentLink' }).cart, buyer: { kind: 'person', customerId: 'cus_1' } },
+			delivery: { kind: 'new', address: kolkata as never, saveAs: 'Home' },
+		};
+		await svc.quote(body, rights);
+		await svc.quote(body, rights);
+		expect(saved).toHaveLength(0);
+		await svc.create(body, actor, rights);
+		expect(saved).toEqual([['cus_1', expect.objectContaining({ label: 'Home', isDefault: false })]]);
+	});
+
+	it('tries an unsaved coupon on a real cart, line by line', async () => {
+		const { svc } = harness();
+		const { id: _id, enabled: _on, usedCount: _used, ...fields } = tenOff;
+		const result = await svc.couponTry({
+			coupon: { ...fields, audience: { kind: 'firstOrder' } } as never,
+			items: [{ productId: 'p1', variantId: 'v1', quantity: 2 }],
+			deliveryINR: 200,
+			withCodes: [],
+		});
+		expect(result).toMatchObject({
+			refusal: null,
+			applied: { code: 'TEN', amountINR: 4_000 },
+			lines: [{ reason: 'applied', amountINR: 4_000, onSale: false }],
+			totalBeforeINR: 40_200,
+			totalAfterINR: 36_200,
+		});
+	});
+
+	it('tries a combining coupon together with the others that combine (cp04)', async () => {
+		const { svc } = harness();
+		const { id: _id, enabled: _on, usedCount: _used, ...fields } = tenOff;
+		const result = await svc.couponTry({
+			coupon: { ...fields, code: 'WEDDING10' } as never,
+			items: [{ productId: 'p1', variantId: 'v1', quantity: 2 }],
+			deliveryINR: 100,
+			withCodes: ['FREESHIP'],
+		});
+		expect(result.used.map((row) => row.code)).toEqual(['WEDDING10', 'FREESHIP']);
+		expect(result.deliveryOff).toEqual({ code: 'FREESHIP', amountINR: 100 });
+		expect(result.lines[0]?.byCoupon).toEqual([{ code: 'WEDDING10', amountINR: 4_000 }]);
+		expect(result.totalAfterINR).toBe(36_000);
+	});
+
+	it('lists the coupons a checkout can use, with what each would take off', async () => {
+		const { svc } = harness();
+		expect(await svc.couponOptions(input({ method: 'paymentLink' }), rights)).toEqual([
+			expect.objectContaining({ code: 'TEN', wouldTakeINR: 4_000, refusal: null }),
+		]);
+		expect(await svc.couponOptions({ ...input({ method: 'paymentLink' }), couponCodes: ['TEN'] }, rights)).toEqual(
+			[],
+		);
+	});
+
+	it('finds shop customers for the picker by name, phone or email, leaving out blocked ones', async () => {
+		const { svc } = harness();
+		expect(await svc.searchCustomers('9831', 10)).toEqual([
+			{
+				id: 'cus_1',
+				name: 'Kavita Iyer',
+				email: 'kavita@example.test',
+				phone: '+91 9831122334',
+				addressCount: 2,
+			},
+			{ id: 'cus_3', name: '+91 9000000000', email: null, phone: '+91 9000000000', addressCount: 0 },
+		]);
+	});
+
 	it('places an order on account: zone snapshot, pieces kept, the account debited with its due date', async () => {
 		const { svc, ledger, reserved } = harness();
 		const order = await svc.create(
@@ -204,6 +344,7 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 					note: null,
 					proofMediaId: null,
 					collector: null,
+					collectedBy: null,
 				},
 			}),
 			actor,

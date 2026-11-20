@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	allocateReceipt,
+	checkReceiptSplit,
 	allowedNextStatuses,
 	applyCoupons,
 	canMoveTo,
@@ -987,5 +988,30 @@ describe('the currency picker lists the buyer’s own currency first (S5/S7)', (
 		expect(firstCurrencyFor('AE', enabled)).toBe('USD');
 		expect(firstCurrencyFor('AU', ['INR', 'GBP'])).toBe('GBP');
 		expect(firstCurrencyFor('AU', ['INR'])).toBeNull();
+	});
+});
+
+describe('a receipt split by hand (bz06)', () => {
+	const open = [
+		{ orderId: 'a', dueINR: 20_000 },
+		{ orderId: 'b', dueINR: 30_000 },
+	];
+	it('accepts shares within each order and the receipt; the rest stays on the account', () => {
+		expect(checkReceiptSplit(open, [{ orderId: 'b', amountINR: 18_400 }], 18_400)).toBeNull();
+		expect(checkReceiptSplit(open, [{ orderId: 'a', amountINR: 5_000 }], 18_400)).toBeNull();
+	});
+	it('refuses an order that is not open, a share above what it owes, and more than the receipt', () => {
+		expect(checkReceiptSplit(open, [{ orderId: 'z', amountINR: 1 }], 10)).toBe('unknownOrder');
+		expect(checkReceiptSplit(open, [{ orderId: 'a', amountINR: 20_001 }], 50_000)).toBe('moreThanDue');
+		expect(
+			checkReceiptSplit(
+				open,
+				[
+					{ orderId: 'a', amountINR: 10_000 },
+					{ orderId: 'b', amountINR: 10_000 },
+				],
+				15_000,
+			),
+		).toBe('moreThanReceipt');
 	});
 });

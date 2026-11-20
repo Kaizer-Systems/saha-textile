@@ -1,9 +1,15 @@
-import { Body, Controller, Get, Header, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	BusinessAddressWrite,
+	BusinessReceiptWrite,
 	AdminCartWrite,
 	AdminOrderCreate,
+	AdminOrderBuyerQuery,
 	AdminProductCardQuery,
+	AdminVariantChoiceQuery,
+	CouponTryRequest,
+	CustomerBuyerQuery,
 	EInvoiceWrite,
 	EWayBillWrite,
 	InvoiceAddressWrite,
@@ -14,6 +20,8 @@ import {
 	OpenOrderClose,
 	OpenOrderRemoveLine,
 	OrderListQuery,
+	PaymentRequestPreviewQuery,
+	PaymentRequestSendWrite,
 	PaymentRequestWrite,
 	StatusChangeWrite,
 } from '@saha-textile/contracts';
@@ -25,6 +33,8 @@ import { API_TAGS } from '../openapi-tags';
 import { AdminCartService } from './admin-cart.service';
 import { AdminOrderCreateService, type CheckoutRights } from './admin-order-create.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
+import { BusinessAddressesService } from './business-addresses.service';
+import { BusinessReceiptsService } from './business-receipts.service';
 import { OpenOrdersService } from './open-orders.service';
 import { PaymentRequestsService } from './payment-requests.service';
 
@@ -84,6 +94,60 @@ export class AdminOrdersController {
 	})
 	cards(@Query(new ZodValidationPipe(AdminProductCardQuery)) query: AdminProductCardQuery) {
 		return this.cart.cards(query);
+	}
+
+	@Get('cards/:productId/variants')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('order.create')
+	@ApiOperation({
+		operationId: 'listAdminVariantChoices',
+		summary: 'A product’s variants priced for the buyer, for the variant picker on Create order',
+	})
+	variantChoices(
+		@Param('productId') productId: string,
+		@Query(new ZodValidationPipe(AdminVariantChoiceQuery)) query: AdminVariantChoiceQuery,
+	) {
+		return this.cart.variantChoices(productId, query);
+	}
+
+	@Get('customers')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('order.create')
+	@ApiOperation({
+		operationId: 'searchOrderCustomers',
+		summary: 'Shop customers for the Create order picker, found by name, phone or email',
+	})
+	searchCustomers(@Query(new ZodValidationPipe(CustomerBuyerQuery)) query: CustomerBuyerQuery) {
+		return this.checkout.searchCustomers(query.q, query.limit);
+	}
+
+	@Get('buyer-addresses')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('order.create')
+	@ApiOperation({
+		operationId: 'listOrderBuyerAddresses',
+		summary: 'The chosen buyer’s saved addresses, for the checkout',
+	})
+	buyerAddresses(@Query(new ZodValidationPipe(AdminOrderBuyerQuery)) query: AdminOrderBuyerQuery) {
+		return this.checkout.buyerAddresses(
+			query.kind === 'person'
+				? { kind: 'person', customerId: query.id }
+				: { kind: 'business', businessId: query.id },
+		);
+	}
+
+	@Post('checkout/coupons')
+	@HttpCode(200)
+	@RequirePermissions('order.create')
+	@ApiOperation({
+		operationId: 'listCheckoutCoupons',
+		summary: 'Coupons this order can use, with what each would take off or why it cannot be used',
+	})
+	checkoutCoupons(
+		@Body(new ZodValidationPipe(AdminOrderCreate)) body: AdminOrderCreate,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.checkout.couponOptions(body, rightsOf(principal));
 	}
 
 	@Post('checkout/quote')
@@ -202,6 +266,20 @@ export class AdminOrdersController {
 		return this.orders.markReceived(id, paymentId, body, actorOf(principal));
 	}
 
+	@Get(':id/requests/preview')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('order.send')
+	@ApiOperation({
+		operationId: 'previewPaymentRequest',
+		summary: 'What a payment request would be if sent now: gateway, rate, recipient, and why it cannot go',
+	})
+	previewRequest(
+		@Param('id') id: string,
+		@Query(new ZodValidationPipe(PaymentRequestPreviewQuery)) query: PaymentRequestPreviewQuery,
+	) {
+		return this.paymentRequests.preview(id, query);
+	}
+
 	@Post(':id/requests')
 	@RequirePermissions('order.send')
 	@ApiOperation({
@@ -243,6 +321,36 @@ export class AdminOrdersController {
 		return this.paymentRequests.cancel(id, requestId, actorOf(principal));
 	}
 
+	@Get(':id/requests/:requestId/message')
+	@RequirePermissions('order.send')
+	@ApiOperation({
+		operationId: 'previewPaymentRequestMessage',
+		summary: 'The exact SMS or email before Send as SMS / Send as email (and why it can’t go)',
+	})
+	previewRequestMessage(
+		@Param('id') id: string,
+		@Param('requestId') requestId: string,
+		@Query(new ZodValidationPipe(PaymentRequestSendWrite)) query: PaymentRequestSendWrite,
+	) {
+		return this.paymentRequests.messagePreview(id, requestId, query.channel);
+	}
+
+	@Post(':id/requests/:requestId/send')
+	@HttpCode(200)
+	@RequirePermissions('order.send')
+	@ApiOperation({
+		operationId: 'sendPaymentRequestMessage',
+		summary: 'Send our own SMS or email about the request (only when pressed; never automatic)',
+	})
+	sendRequestMessage(
+		@Param('id') id: string,
+		@Param('requestId') requestId: string,
+		@Body(new ZodValidationPipe(PaymentRequestSendWrite)) body: PaymentRequestSendWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.paymentRequests.sendMessage(id, requestId, body.channel, actorOf(principal));
+	}
+
 	@Post(':id/open/lines')
 	@HttpCode(200)
 	@RequirePermissions('order.open')
@@ -268,6 +376,17 @@ export class AdminOrdersController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.openOrders.removeLine(id, body, actorOf(principal));
+	}
+
+	@Get(':id/open/close-preview')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('order.open')
+	@ApiOperation({
+		operationId: 'previewOpenOrderClose',
+		summary: 'What closing an open order would do: one parcel’s shipping and what is due',
+	})
+	closeOpenPreview(@Param('id') id: string) {
+		return this.openOrders.closePreview(id);
 	}
 
 	@Post(':id/open/close')
@@ -327,5 +446,92 @@ export class AdminOrdersController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.orders.setEWayBill(id, body, actorOf(principal));
+	}
+}
+
+/** Try it on the coupon builder (cp02): an unsaved coupon on a real cart at shop prices. */
+@ApiTags(API_TAGS.orders)
+@Audience('admin')
+@Controller('admin/coupons')
+export class AdminCouponTryController {
+	constructor(private readonly checkout: AdminOrderCreateService) {}
+
+	@Post('try')
+	@HttpCode(200)
+	@RequirePermissions('coupon.index')
+	@ApiOperation({
+		operationId: 'tryCoupon',
+		summary: 'What an unsaved coupon takes off a real cart, line by line, and why',
+	})
+	tryCoupon(@Body(new ZodValidationPipe(CouponTryRequest)) body: CouponTryRequest) {
+		return this.checkout.couponTry(body);
+	}
+}
+
+/**
+ * A business's receipts on account (brief bz06), here because a receipt settles orders: the open
+ * orders it can pay (oldest first) and recording it with its split.
+ */
+@ApiTags(API_TAGS.orders)
+@Audience('admin')
+@Controller('admin/businesses')
+export class AdminBusinessReceiptsController {
+	constructor(private readonly receipts: BusinessReceiptsService) {}
+
+	@Get(':id/open-orders')
+	@RequirePermissions('order.payment')
+	@ApiOperation({
+		operationId: 'listBusinessOpenOrders',
+		summary: 'Orders on account that still owe money, oldest first (the receipt’s Settles table)',
+	})
+	openOrders(@Param('id') id: string) {
+		return this.receipts.openOrders(id);
+	}
+
+	@Post(':id/receipts')
+	@RequirePermissions('order.payment')
+	@ApiOperation({
+		operationId: 'recordBusinessReceipt',
+		summary: 'Record a receipt on account (RC number) and settle the orders it pays',
+	})
+	receipt(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(BusinessReceiptWrite)) body: BusinessReceiptWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.receipts.record(id, body, actorOf(principal));
+	}
+}
+
+/** A business's delivery addresses (bz02), checked against the country rules like a customer's. */
+@ApiTags(API_TAGS.orders)
+@Audience('admin')
+@Controller('admin/businesses')
+export class AdminBusinessAddressesController {
+	constructor(private readonly addresses: BusinessAddressesService) {}
+
+	@Post(':id/addresses')
+	@RequirePermissions('business.edit')
+	@ApiOperation({ operationId: 'addBusinessAddress', summary: 'Add a delivery address to a business' })
+	add(@Param('id') id: string, @Body(new ZodValidationPipe(BusinessAddressWrite)) body: BusinessAddressWrite) {
+		return this.addresses.add(id, body);
+	}
+
+	@Put(':id/addresses/:addressId')
+	@RequirePermissions('business.edit')
+	@ApiOperation({ operationId: 'replaceBusinessAddress', summary: 'Change one of a business’s delivery addresses' })
+	replace(
+		@Param('id') id: string,
+		@Param('addressId') addressId: string,
+		@Body(new ZodValidationPipe(BusinessAddressWrite)) body: BusinessAddressWrite,
+	) {
+		return this.addresses.replace(id, addressId, body);
+	}
+
+	@Delete(':id/addresses/:addressId')
+	@RequirePermissions('business.edit')
+	@ApiOperation({ operationId: 'removeBusinessAddress', summary: 'Remove one of a business’s delivery addresses' })
+	remove(@Param('id') id: string, @Param('addressId') addressId: string) {
+		return this.addresses.remove(id, addressId);
 	}
 }

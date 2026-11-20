@@ -161,7 +161,9 @@ describe.runIf(hasMongoEnv())('orders build persistence (rs0)', () => {
 	});
 
 	it('lists by search, filter and date range', async () => {
-		const today = now.slice(0, 10);
+		// The list filters by India days, so "today" is the India date of `now` (the UTC date is a day
+		// behind between midnight and 05:30 IST).
+		const today = new Date(new Date(now).getTime() + 330 * 60_000).toISOString().slice(0, 10);
 		const page = await orders.list({
 			q: 'test buyer',
 			filter: 'placed',

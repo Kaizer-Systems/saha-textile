@@ -374,7 +374,12 @@ describe('businesses (bz02, bz05, so02; DEC-B2B-ZONES)', () => {
 	it('refuses a set-off while the setting is never, and records one in both accounts under an agreement', async () => {
 		const { service } = await setup({ receivable: 50000, payable: 20000 });
 		await service.create(write, 'adm', true, true);
-		const input = { amountINR: 20000, basis: { kind: 'standingAgreement' as const }, note: 'agreed in writing' };
+		const input = {
+			amountINR: 20000,
+			basis: { kind: 'standingAgreement' as const },
+			note: 'agreed in writing',
+			on: null,
+		};
 		await expect(service.recordSetOff('x', input, 'adm')).rejects.toThrow();
 		const withAgreement = await setup({ receivable: 50000, payable: 20000 });
 		const business = await withAgreement.service.create(write, 'adm', true, true);
@@ -393,5 +398,52 @@ describe('businesses (bz02, bz05, so02; DEC-B2B-ZONES)', () => {
 			['receivable', -20000, 'JV/26-27/000001'],
 			['payable', -20000, 'JV/26-27/000001'],
 		]);
+	});
+});
+
+describe('what we owe a business, and reversing a set-off (bz01, so02, so04)', () => {
+	const ledgerRows: Array<Record<string, unknown>> = [];
+	const service = new BusinessesService(
+		{ findById: async () => ({ id: 'biz_1', roles: { customer: null, supplier: true } }) } as never,
+		{
+			balance: async (_id: string, side: string) =>
+				ledgerRows.filter((row) => row.side === side).reduce((sum, row) => sum + (row.amountINR as number), 0),
+			list: async (_id: string, side: string) => ({
+				rows: ledgerRows.filter((row) => row.side === side),
+				total: 0,
+				openingINR: 0,
+			}),
+			append: async (entry: Record<string, unknown>) => (ledgerRows.push(entry), entry),
+		} as never,
+		{ list: async () => [] } as never,
+		{ withTransaction: (work: (context: object) => Promise<unknown>) => work({}) } as never,
+		{ issue: async () => 'JV/26-27/000002' } as never,
+		null,
+		{
+			forSupplier: async () => [
+				{ status: 'posted', totals: { totalINR: 84_500 }, paidINR: 0, creditedINR: 0 },
+				{ status: 'posted', totals: { totalINR: 40_000 }, paidINR: 0, creditedINR: 0 },
+				{ status: 'draft', totals: { totalINR: 9_999 }, paidINR: 0, creditedINR: 0 },
+			],
+		} as never,
+	);
+
+	it('counts the unpaid posted purchase bills and our set-off entries', async () => {
+		expect(await service.payableINR('biz_1')).toBe(124_500);
+		ledgerRows.push({ id: 'led_1', side: 'payable', kind: 'setOff', amountINR: -18_400, documentId: 'jv_1' });
+		ledgerRows.push({ id: 'led_2', side: 'receivable', kind: 'setOff', amountINR: -18_400, documentId: 'jv_1' });
+		expect(await service.payableINR('biz_1')).toBe(106_100);
+	});
+
+	it('reverses a set-off once, in both accounts', async () => {
+		const reversed = await service.reverseSetOff('biz_1', 'jv_1', 'Typed against the wrong business', 'adm');
+		expect(reversed.map((row) => [row.side, row.amountINR, row.reversalOf])).toEqual([
+			['receivable', 18_400, 'led_2'],
+			['payable', 18_400, 'led_1'],
+		]);
+		expect(await service.payableINR('biz_1')).toBe(124_500);
+		await expect(service.reverseSetOff('biz_1', 'jv_1', 'Again', 'adm')).rejects.toMatchObject({
+			response: { issues: [{ code: 'setoff_already_reversed' }] },
+		});
 	});
 });

@@ -33,6 +33,18 @@ const TEMPLATE_USE: Readonly<Record<string, string>> = {
 	product_question_answered: 'question_answered',
 	back_in_stock: 'back_in_stock',
 	shop_event_announcement: 'sale_launch_announcement',
+	// Orders (brief 2026-11-20): these send from the orders@ sender and obey their Communications row.
+	order_confirmed: 'order_confirmed',
+	order_payment_link: 'payment_request',
+	payment_receipt: 'payment_receipt',
+	payment_not_completed: 'payment_failed',
+	order_on_backorder: 'order_on_backorder',
+	order_refunded_sold_out: 'order_refunded_sold_out',
+	order_shipped: 'order_shipped',
+	order_delivered: 'order_delivered',
+	order_cancelled: 'order_cancelled',
+	refund_processed: 'refund_processed',
+	tax_invoice: 'tax_invoice',
 };
 
 export function communicationUseForTemplate(templateKey: string): string | null {

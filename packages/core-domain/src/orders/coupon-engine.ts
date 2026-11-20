@@ -76,7 +76,8 @@ export function couponRefusal(coupon: CouponDefinition, ctx: CouponContext): Cou
 	return null;
 }
 
-function lineReason(coupon: CouponDefinition, line: CouponLine): CouponLineReason {
+/** Why one line does or doesn't take a coupon (excluded, not in scope, on sale, zone line). */
+export function couponLineReason(coupon: CouponDefinition, line: CouponLine): CouponLineReason {
 	if (coupon.excludedProductIds.includes(line.productId)) return 'excluded';
 	const scope = coupon.scope;
 	if (scope.kind === 'products' && !scope.productIds.includes(line.productId)) return 'notInScope';
@@ -135,7 +136,7 @@ export function applyCoupons(
 	const applied: AppliedCoupon[] = [];
 	let deliveryLeft = contexts.values().next().value?.deliveryINR ?? 0;
 	for (const coupon of ordered) {
-		const reasons = lines.map((line) => ({ line, reason: lineReason(coupon, line) }));
+		const reasons = lines.map((line) => ({ line, reason: couponLineReason(coupon, line) }));
 		const eligible = reasons.filter((row) => row.reason === 'applied');
 		const eligibleTotal = round2(eligible.reduce((sum, row) => sum + (remaining.get(row.line.lineId) ?? 0), 0));
 		if (eligibleTotal < coupon.minOrderINR && coupon.kind !== 'freeDelivery') {
@@ -158,6 +159,7 @@ export function applyCoupons(
 				deliveryAmountINR: off,
 				lines: reasons.map(({ line }) => ({ lineId: line.lineId, reason: 'applied', amountINR: 0 })),
 				combines: coupon.combines,
+				value: coupon.value,
 			});
 			continue;
 		}
@@ -194,6 +196,7 @@ export function applyCoupons(
 			deliveryAmountINR: 0,
 			lines: lines.map((line) => shares.find((share) => share.lineId === line.lineId) as AppliedCouponLine),
 			combines: coupon.combines,
+			value: coupon.value,
 		});
 	}
 	return { applied, refused, remainingByLine: Object.fromEntries(remaining), deliveryLeftINR: round2(deliveryLeft) };

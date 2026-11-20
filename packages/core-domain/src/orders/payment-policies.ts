@@ -182,6 +182,27 @@ export function allocateReceipt(
 	return { allocations, unallocatedINR: round2(Math.max(0, left)) };
 }
 
+export type ReceiptSplitRefusal = 'unknownOrder' | 'moreThanDue' | 'moreThanReceipt';
+
+/**
+ * A split staff changed by hand (bz06): each share must be one of the business's open orders and no
+ * more than it owes, and together no more than the receipt. What is left stays on the account.
+ */
+export function checkReceiptSplit(
+	openOrders: ReadonlyArray<{ orderId: string; dueINR: number }>,
+	allocations: ReadonlyArray<{ orderId: string; amountINR: number }>,
+	amountINR: number,
+): ReceiptSplitRefusal | null {
+	const due = new Map(openOrders.map((order) => [order.orderId, order.dueINR]));
+	for (const share of allocations) {
+		const owed = due.get(share.orderId);
+		if (owed === undefined) return 'unknownOrder';
+		if (share.amountINR > owed + 0.005) return 'moreThanDue';
+	}
+	const total = allocations.reduce((sum, share) => sum + share.amountINR, 0);
+	return total > amountINR + 0.005 ? 'moreThanReceipt' : null;
+}
+
 /** The euro countries among PayPal's payers. */
 const EURO_COUNTRIES = new Set([
 	'AT',

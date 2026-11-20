@@ -5,10 +5,15 @@ import {
 	type AdminCartLine,
 	type AdminCheckoutQuote,
 	type AdminOrderAddressChoice,
+	type AdminOrderBuyerRef,
 	type AdminOrderCreate,
 	type AppliedCoupon,
 	type Business,
+	type CouponOption,
+	type CouponTryRequest,
+	type CouponTryResult,
 	type Customer,
+	type CustomerBuyerOption,
 	type Order,
 	type OrderAddress,
 	type OrderLine,
@@ -18,6 +23,7 @@ import {
 import {
 	DuplicateOrderKeyError,
 	applyCoupons,
+	couponLineReason,
 	canOrderAtAll,
 	checkCredit,
 	decideInvoiceAddress,
@@ -58,7 +64,7 @@ import { DocumentNumbersService } from '../orders-setup/document-numbers.service
 import { ZonePricingService } from '../orders-setup/zone-pricing.service';
 import { DEFAULT_SHIPPING_SETTINGS, ShippingAdminService } from '../shipping/shipping-admin.service';
 import { AdminCartService } from './admin-cart.service';
-import { historyEntry, metaOf, type Actor } from './admin-orders.service';
+import { historyEntry, linesSummary, metaOf, type Actor } from './admin-orders.service';
 import { OrderStock } from './order-stock';
 
 const round2 = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100;
@@ -115,6 +121,179 @@ export class AdminOrderCreateService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 	) {}
 
+	/** The shop-customer picker on Create order: name, phone or email, active customers only. */
+	async searchCustomers(q: string, limit: number): Promise<CustomerBuyerOption[]> {
+		const page = await this.customers.list({ q, page: 1, pageSize: limit });
+		return page.items
+			.filter((customer) => customer.status === 'active' || customer.status === 'pending')
+			.map((customer) => ({
+				id: customer.id,
+				name: customer.displayName?.trim() || customer.email || customer.phone || customer.id,
+				email: customer.email,
+				phone: customer.phone,
+				addressCount: customer.addresses.length,
+			}));
+	}
+
+	/**
+	 * The admin checkout's coupon popup (cp06): every coupon the admin can use now, with what it
+	 * would take off this order (on top of the coupons already applied) or why it can't be used.
+	 */
+	async couponOptions(input: AdminOrderCreate, rights: CheckoutRights, now = new Date()): Promise<CouponOption[]> {
+		const applied = new Set(input.couponCodes.map((code) => code.toUpperCase()));
+		const usable = (await this.couponRepo.listUsable('admin', now)).filter((coupon) => !applied.has(coupon.code));
+		const options: CouponOption[] = [];
+		for (const coupon of usable.slice(0, 30)) {
+			const quote = await this.quote({ ...input, couponCodes: [...input.couponCodes, coupon.code] }, rights, now);
+			const hit = quote.coupons.find((row) => row.code === coupon.code);
+			const refused = quote.couponRefusals.find((row) => row.code === coupon.code);
+			options.push({
+				couponId: coupon.id,
+				code: coupon.code,
+				title: coupon.title,
+				kind: coupon.kind,
+				value: coupon.value,
+				combines: coupon.combines,
+				wouldTakeINR: hit ? round2(hit.amountINR + (hit.deliveryAmountINR ?? 0)) : 0,
+				refusal: hit ? null : ((refused?.refusal as CouponOption['refusal']) ?? 'nothingEligible'),
+			});
+		}
+		return options.sort((a, b) => Number(!!a.refusal) - Number(!!b.refusal) || b.wouldTakeINR - a.wouldTakeINR);
+	}
+
+	/**
+	 * Try it on the coupon builder (cp02): the coupon as typed, unsaved, on a real cart at shop
+	 * prices, with why each line did or didn't get money off. Who may use it, its dates and its use
+	 * counts are left out here: Try it shows what the coupon does to the pieces.
+	 */
+	async couponTry(request: CouponTryRequest, now = new Date()): Promise<CouponTryResult> {
+		const view = await this.cart.price(
+			{
+				buyer: null,
+				currency: 'INR',
+				lines: request.items.map((item) => ({
+					productId: item.productId,
+					variationId: item.variantId,
+					quantity: item.quantity,
+					addons: [],
+				})),
+			},
+			now,
+		);
+		const facts = await this.zones.factsFor(
+			view.lines.map((line, index) => ({
+				productId: line.productId,
+				variantId: line.variationId,
+				quantity: request.items[index]?.quantity ?? line.quantity,
+			})),
+			now,
+		);
+		const lines: CouponLine[] = view.lines.map((line, index) => ({
+			lineId: line.lineId,
+			productId: line.productId,
+			categoryIds: [...new Set(facts[index]?.facts.categoryPaths.flat() ?? [])],
+			amountINR: line.lineTotalINR,
+			onSale: facts[index]?.facts.currentSaleINR !== null && facts[index]?.facts.currentSaleINR !== undefined,
+			zonePriced: false,
+		}));
+		const definition: CouponDefinition = {
+			...request.coupon,
+			id: 'coupon_try',
+			enabled: true,
+			audience: { kind: 'everyone' },
+			channels: { shop: true, admin: true },
+			usesPerCustomer: null,
+			totalUses: null,
+			validFrom: null,
+			validUntil: null,
+		};
+		// cp04: the switched-on coupons that combine, tried together with this one.
+		const others: CouponDefinition[] = [];
+		if (request.coupon.combines) {
+			for (const code of request.withCodes ?? []) {
+				const coupon = await this.couponRepo.findByCode(code);
+				if (coupon && coupon.enabled && coupon.combines && coupon.code !== request.coupon.code) others.push(coupon);
+			}
+		}
+		// The delivery charge for this cart in the home country, unless the caller gave one.
+		let deliveryINR = request.deliveryINR;
+		if (!deliveryINR) {
+			const settings = (await this.shippingRules.getSettings()) ?? DEFAULT_SHIPPING_SETTINGS;
+			const shipping = await this.shipping
+				.tryCart({
+					lines: request.items.map((item) => ({
+						productId: item.productId,
+						variationId: item.variantId,
+						quantity: item.quantity,
+					})),
+					delivery: { country: settings.homeCountry, state: null, pincode: null },
+					shopper: { signedIn: true, groups: [], firstOrder: false },
+				})
+				.catch(() => null);
+			deliveryINR = shipping?.status === 'priced' ? (shipping.amountINR ?? 0) : 0;
+		}
+		const context = {
+			channel: 'admin' as const,
+			now: now.toISOString(),
+			buyer: { kind: 'person' as const, customerId: null, isFirstOrder: true },
+			usesByThisBuyer: 0,
+			usesInAll: 0,
+			deliveryINR,
+		};
+		const all = [definition, ...others];
+		const run = applyCoupons(all, lines, new Map(all.map((row) => [row.id, context])));
+		const applied = run.applied.find((row) => row.couponId === definition.id) ?? null;
+		const before = round2(view.subtotalINR + deliveryINR);
+		const off = round2(
+			run.applied.reduce((sum, row) => sum + row.amountINR + (row.deliveryAmountINR ?? 0), 0),
+		);
+		const freeDelivery = run.applied.find((row) => (row.deliveryAmountINR ?? 0) > 0) ?? null;
+		return {
+			refusal: run.refused.find((row) => row.code === definition.code)?.refusal ?? null,
+			applied,
+			lines: view.lines.map((line, index) => {
+				const share = applied?.lines.find((row) => row.lineId === line.lineId);
+				const couponLine = lines[index] as CouponLine;
+				return {
+					lineId: line.lineId,
+					title: line.title,
+					unitPriceINR: line.unitPriceINR,
+					quantity: line.quantity,
+					onSale: couponLine.onSale,
+					reason: share?.reason ?? couponLineReason(definition, couponLine),
+					amountINR: round2(
+						run.applied.reduce(
+							(sum, row) => sum + (row.lines.find((part) => part.lineId === line.lineId)?.amountINR ?? 0),
+							0,
+						),
+					),
+					byCoupon: run.applied.flatMap((row) => {
+						const part = row.lines.find((piece) => piece.lineId === line.lineId);
+						return part && part.amountINR > 0 ? [{ code: row.code, amountINR: part.amountINR }] : [];
+					}),
+				};
+			}),
+			deliveryINR,
+			deliveryOff: freeDelivery
+				? { code: freeDelivery.code, amountINR: freeDelivery.deliveryAmountINR ?? 0 }
+				: null,
+			used: run.applied.map((row) => ({
+				code: row.code,
+				amountINR: round2(row.amountINR + (row.deliveryAmountINR ?? 0)),
+			})),
+			totalBeforeINR: before,
+			totalAfterINR: round2(before - off),
+		};
+	}
+
+	/** The buyer's saved addresses for the checkout's address boxes (ck01, ad07). */
+	async buyerAddresses(ref: AdminOrderBuyerRef): Promise<SavedAddressRow[]> {
+		const buyer = await this.buyer({ cart: { buyer: ref } } as AdminOrderCreate);
+		return buyer.kind === 'person'
+			? (buyer.customer.addresses as unknown as SavedAddressRow[])
+			: buyer.business.addresses;
+	}
+
 	async quote(input: AdminOrderCreate, rights: CheckoutRights, now = new Date()): Promise<AdminCheckoutQuote> {
 		return (await this.build(input, rights, now)).quote;
 	}
@@ -152,8 +331,9 @@ export class AdminOrderCreateService {
 				zone: quote.shipping.zone,
 				deliveryCountry: built.delivery.countryCode ?? built.delivery.country,
 				trace: quote.shipping.trace,
-				ruleSets: quote.shipping.ruleSets.map((row) => ({ id: row.id, version: row.version })),
+				ruleSets: quote.shipping.ruleSets.map((row) => ({ id: row.id, version: row.version, name: row.name })),
 				pending: false,
+				pieces: quote.shipping.pieces,
 			},
 			promotionsApplied: [],
 			totalINR: quote.totals.totalINR,
@@ -193,14 +373,19 @@ export class AdminOrderCreateService {
 			closedAt: null,
 			eInvoice: null,
 			eWayBill: null,
-			history: [historyEntry(actor, at, 'created', { comment: input.comment, detail: { method } })],
+			history: [
+				historyEntry(actor, at, 'created', {
+					comment: input.comment,
+					detail: { method, items: linesSummary(lines) },
+				}),
+			],
 			revision: 0,
 			createdAt: at,
 			updatedAt: at,
 		};
 		for (let attempt = 0; ; attempt += 1) {
 			try {
-				return await this.transactions.withTransaction(async (context) => {
+				const placed = await this.transactions.withTransaction(async (context) => {
 					const orderNumber = await this.numbers.orderNumber(context, now);
 					let order: Order = { ...base, id: `ord_${randomUUID()}`, orderNumber };
 					await this.stock.reserve(order, order.lines, actor.id, context, at);
@@ -219,6 +404,7 @@ export class AdminOrderCreateService {
 							gateway: null,
 							paypal: null,
 							collector: null,
+							collectedBy: null,
 							receivedOn: typed.received ? typed.receivedOn : null,
 							receiptNumber: typed.received ? await this.numbers.issue('receipt', context, now) : null,
 							note: typed.note,
@@ -250,6 +436,10 @@ export class AdminOrderCreateService {
 						status,
 						statusTimeline: [{ status, at }],
 						lines: order.lines.map((line) => ({ ...line, held: !line.madeToOrder })),
+						onAccountDueOn:
+							method === 'onAccount' && built.buyer.kind === 'business'
+								? onAccountDueDate(istDay(now), built.buyer.business.roles.customer?.creditDays ?? 0)
+								: null,
 					};
 					const saved = await this.orders.create(order, input.idempotencyKey, context, metaOf(order));
 					for (const payment of payments) await this.payments.save(payment, context);
@@ -280,6 +470,8 @@ export class AdminOrderCreateService {
 					}
 					return saved;
 				});
+				await this.saveNewAddresses(input, built.buyer);
+				return placed;
 			} catch (error) {
 				if (error instanceof DuplicateOrderKeyError && error.key === 'orderNumber' && attempt < 4) continue;
 				if (error instanceof DuplicateOrderKeyError && error.key === 'idempotencyKey') {
@@ -514,6 +706,11 @@ export class AdminOrderCreateService {
 						? [{ lineId: view.lines[index]?.lineId ?? line.lineId, reason: 'cantShip' }]
 						: [],
 				),
+				pieces: shippingResult.lines.map((line) => ({
+					lineId: line.lineId,
+					units: line.units,
+					discounted: line.discounted,
+				})),
 			},
 			totals: { goodsINR, couponINR, shippingINR, totalINR, total: convert(totalINR) },
 			gateway: view.currency === 'INR' ? 'ccavenue' : 'paypal',
@@ -521,6 +718,7 @@ export class AdminOrderCreateService {
 			invoiceAddress: { source: invoice.source, needed: invoice.needed },
 			credit,
 			methodsOff,
+			linkValidDays: settings.paymentLinkDays,
 		};
 		return {
 			quote,
@@ -542,7 +740,7 @@ export class AdminOrderCreateService {
 			built.rate.currency === 'INR'
 				? amountINR
 				: round2(amountINR * built.rate.rateFromINR * (1 + built.rate.markupPercent / 100));
-		return built.lines.map((line) => {
+		return built.lines.map((line, index) => {
 			const lineTotalINR = line.lineTotalINR;
 			const zoneRule =
 				line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail' ? line.zonePrice.rule : null;
@@ -556,6 +754,7 @@ export class AdminOrderCreateService {
 				attributes: {},
 				addons: [],
 				imageAssetId: null,
+				imageUrl: line.imageUrl,
 				unitPriceINR: line.unitPriceINR,
 				unitPricePaid: line.unitPrice,
 				lineTotalINR,
@@ -563,10 +762,12 @@ export class AdminOrderCreateService {
 				pricing: {
 					regularUnitINR:
 						line.zonePrice?.kind === 'priced' ? line.zonePrice.retailUnitPriceINR : line.unitPriceINR,
+					mrpUnitINR: line.mrpINR !== null && line.mrpINR > line.unitPriceINR ? line.mrpINR : null,
 					saleUnitINR: null,
 					saleEventId: null,
 					zoneRule,
-					discounted: false,
+					// The shipping try prices the lines in cart order, so its pieces line up by position.
+					discounted: built.quote.shipping.pieces[index]?.discounted ?? false,
 				},
 				couponINR: built.couponByLine.get(line.lineId) ?? 0,
 				categoryIds: [],
@@ -648,13 +849,22 @@ export class AdminOrderCreateService {
 			return { ...(row as unknown as CheckedPostalAddress), savedAddressId: row.id };
 		}
 		const checked = await this.addressBook.check(choice.address);
-		if (choice.saveAs && buyer.kind === 'person') {
+		return { ...checked, savedAddressId: null };
+	}
+
+	/**
+	 * "Save to the customer's addresses" (ad07) saves once the order is placed, never while the
+	 * checkout is only being priced (a quote runs on every change).
+	 */
+	private async saveNewAddresses(input: AdminOrderCreate, buyer: Built['buyer']): Promise<void> {
+		if (buyer.kind !== 'person') return;
+		for (const choice of [input.delivery, input.billing]) {
+			if (choice?.kind !== 'new' || !choice.saveAs) continue;
 			await this.addressBook.add(buyer.customer.id, {
 				...choice.address,
 				label: choice.saveAs,
 				isDefault: false,
 			});
 		}
-		return { ...checked, savedAddressId: null };
 	}
 }

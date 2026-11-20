@@ -9,6 +9,8 @@ import {
 	type AdminOrderBuyerRef,
 	type AdminProductCard,
 	type AdminProductCardQuery,
+	type AdminVariantChoiceQuery,
+	type AdminVariantChoices,
 	type CatalogProductPage,
 	type PriceZone,
 	type ZoneLinePrice,
@@ -107,6 +109,7 @@ export class AdminCartService {
 				title: entry.title,
 				sku: row?.sku ?? '',
 				quantity: line.quantity,
+				soldBy: row?.soldBy ?? page?.soldBy ?? 'piece',
 				imageUrl: page && row ? imageOf(page, row.galleryIndex) : null,
 			};
 			if (!row || !row.buyable) {
@@ -118,6 +121,7 @@ export class AdminCartService {
 					lineTotalINR: 0,
 					zonePrice: null,
 					problem: 'unavailable',
+					mrpINR: null,
 				};
 			}
 			const fact = factsByIndex.get(entry);
@@ -131,6 +135,7 @@ export class AdminCartService {
 					lineTotalINR: 0,
 					zonePrice,
 					problem: 'noZonePrice',
+					mrpINR: null,
 				};
 			}
 			const addOns = row.unitPriceINR - row.basePriceINR;
@@ -155,15 +160,11 @@ export class AdminCartService {
 				lineTotalINR,
 				zonePrice,
 				problem,
+				mrpINR: row.mrpINR,
 			};
 		});
 		const counted = lines.filter((line) => !UNSELLABLE.has(line.problem));
-		const subtotalINR = round2(
-			counted.reduce(
-				(sum, line) => sum + line.lineTotalINR,
-				0,
-			),
-		);
+		const subtotalINR = round2(counted.reduce((sum, line) => sum + line.lineTotalINR, 0));
 		return {
 			currency: rate.currency,
 			markupPercent: rate.markupPercent,
@@ -205,6 +206,8 @@ export class AdminCartService {
 				imageUrl: card?.image?.roles['card']?.[0]?.url ?? null,
 				categoryIds: product.categoryIds,
 				hasVariants: (fact?.variant.isBaseVariant ?? true) === false,
+				soldBy: product.soldBy,
+				shortestCutTenths: product.shortestCutTenths ?? null,
 				stock: fact
 					? Math.max(0, fact.variant.stock.quantity - fact.variant.stock.held - fact.variant.stock.reserved)
 					: null,
@@ -214,6 +217,57 @@ export class AdminCartService {
 			};
 		});
 		return { items, total: page.total };
+	}
+
+	/**
+	 * A product's variants (its colours, designs or sizes) priced for the buyer, for the variant
+	 * picker on Create order. Only variants the shop could sell are listed.
+	 */
+	async variantChoices(
+		productId: string,
+		query: AdminVariantChoiceQuery,
+		now = new Date(),
+	): Promise<AdminVariantChoices> {
+		const rate = await this.rate(query.currency);
+		const { pricing } = await this.buyerZone(
+			query.businessId ? { kind: 'business', businessId: query.businessId } : null,
+		);
+		const read = await this.catalog.cartRead(productId);
+		const page = read?.page;
+		if (!read || !page) {
+			throw new NotFoundException(codedRefusal('product_missing', 'That product is not on sale', 'productId'));
+		}
+		const variants = page.variants.filter((variant) => variant.buyable);
+		const facts = variants.length
+			? await this.zones.factsFor(
+					variants.map((variant) => ({ productId, variantId: variant.id, quantity: 1 })),
+					now,
+				)
+			: [];
+		const termLabel = (group: string, term: string): string =>
+			page.optionGroups.find((row) => row.code === group)?.terms.find((row) => row.code === term)?.label ?? term;
+		const items = variants.map((variant, index) => {
+			const fact = facts[index];
+			const retailINR = fact ? retailUnitINR(fact.facts) : variant.sellingINR;
+			const zonePrice = pricing.retail || !fact ? null : this.zones.price(pricing, fact.facts, now).price;
+			const priceINR = zonePrice ? (zonePrice.kind === 'priced' ? zonePrice.unitPriceINR : null) : retailINR;
+			return {
+				variationId: variant.id,
+				sku: variant.sku,
+				label:
+					Object.entries(variant.selections)
+						.map(([group, term]) => termLabel(group, term))
+						.join(' · ') || variant.sku,
+				imageUrl: imageOf(page, variant.galleryIndex),
+				stock: fact?.variant
+					? Math.max(0, fact.variant.stock.quantity - fact.variant.stock.held - fact.variant.stock.reserved)
+					: variant.quantity,
+				retailINR,
+				price: priceINR === null ? null : this.convert(priceINR, rate),
+				zonePrice,
+			};
+		});
+		return { productId, title: read.title, soldBy: page.soldBy, items };
 	}
 
 	private async rate(code: string): Promise<Rate> {

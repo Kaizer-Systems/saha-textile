@@ -82,12 +82,28 @@ export const OrderListRow = z.object({
 	paymentDetail: z
 		.discriminatedUnion('kind', [
 			z.object({ kind: z.literal('request'), gateway: PaymentGateway, until: IsoDateTime }),
-			z.object({ kind: z.literal('payment'), method: PaymentMethod, referenceStart: z.string().nullable() }),
+			z.object({
+				kind: z.literal('payment'),
+				method: PaymentMethod,
+				referenceStart: z.string().nullable(),
+				/** ol02: "UPI · ref 432198765012" shows the whole reference; a gateway payment names its gateway. */
+				reference: z.string().nullable().default(null),
+				gateway: PaymentGateway.nullable().default(null),
+			}),
+			/** ol02: "Due on delivery · Cash on delivery". */
+			z.object({ kind: z.literal('cashOnDelivery') }),
+			/** ol02: "On account · Due 20 Dec" (the order date plus the business's credit days). */
+			z.object({ kind: z.literal('onAccount'), dueOn: IsoDate.nullable() }),
 		])
 		.nullable(),
 	/** The delivery country (ISO code), for the list's "Delivers to" column. */
 	deliveryCountry: z.string().nullable().default(null),
 	attention: z.array(AttentionReason),
+	/**
+	 * ol03: when each reason started, for the sentence ("Payment link expired on 17 Nov…", "The bank
+	 * said “pending” at 18:44…"). A reason without a known time has no entry.
+	 */
+	attentionAt: z.partialRecord(AttentionReason, IsoDateTime).default({}),
 	/** Open orders: pieces held, goods so far, paid, balance. */
 	open: z
 		.object({
@@ -112,6 +128,8 @@ export const OrderListResponse = z.object({
 		awaitingPayment: z.number().int().nonnegative(),
 		toPack: z.number().int().nonnegative(),
 		shippedNotDelivered: z.number().int().nonnegative(),
+		/** ol02: the Needs attention tile's line, "1 invoice address · 1 link expired · 1 payment to check". */
+		attentionBy: z.partialRecord(AttentionReason, z.number().int().nonnegative()).default({}),
 	}),
 });
 export type OrderListResponse = z.infer<typeof OrderListResponse>;
@@ -150,6 +168,8 @@ export const AdminCartLine = z.object({
 	title: z.string(),
 	sku: z.string(),
 	quantity: z.number().int().positive(),
+	/** Fabric by the metre counts its quantity in tenths of a metre (P11). */
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
 	imageUrl: z.string().nullable(),
 	unitPriceINR: PriceINR,
 	unitPrice: z.number().nonnegative(),
@@ -162,6 +182,8 @@ export const AdminCartLine = z.object({
 	/** Business orders: how the zone priced the line. */
 	zonePrice: ZoneLinePrice.nullable(),
 	problem: z.enum(['out_of_stock', 'limited', 'unavailable', 'noZonePrice']).nullable(),
+	/** The piece's MRP, so checkout can say "MRP ₹9,800 · discounted" and word the shipping reason (ck01). */
+	mrpINR: PriceINR.nullable().default(null),
 });
 export type AdminCartLine = z.infer<typeof AdminCartLine>;
 
@@ -182,6 +204,9 @@ export const AdminProductCard = z.object({
 	imageUrl: z.string().nullable(),
 	categoryIds: z.array(Id),
 	hasVariants: z.boolean(),
+	/** Fabric by the metre: stock, quantities and the shortest cut are in tenths of a metre. */
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	shortestCutTenths: z.number().int().positive().nullable().default(null),
 	stock: z.number().int().nonnegative().nullable(),
 	/** Retail price in rupees (what a shop customer pays now, sale included). */
 	retailINR: PriceINR,
@@ -201,6 +226,49 @@ export const AdminProductCardQuery = z.object({
 	pageSize: z.coerce.number().int().min(1).max(60).default(24),
 });
 export type AdminProductCardQuery = z.infer<typeof AdminProductCardQuery>;
+
+/** A product's variants on Create order (its colours, designs or sizes), priced for the chosen buyer. */
+export const AdminVariantChoiceQuery = z.object({
+	businessId: Id.optional(),
+	currency: z.string().length(3).default('INR'),
+});
+export type AdminVariantChoiceQuery = z.infer<typeof AdminVariantChoiceQuery>;
+
+export const AdminVariantChoice = z.object({
+	variationId: Id,
+	sku: z.string(),
+	/** The variant's options in the page language, e.g. "Red · Design 2". */
+	label: z.string(),
+	imageUrl: z.string().nullable(),
+	stock: z.number().int().nonnegative().nullable(),
+	retailINR: PriceINR,
+	/** In the chosen currency; null when the buyer's zone has no price for it. */
+	price: z.number().nonnegative().nullable(),
+	zonePrice: ZoneLinePrice.nullable(),
+});
+export type AdminVariantChoice = z.infer<typeof AdminVariantChoice>;
+
+export const AdminVariantChoices = z.object({
+	productId: Id,
+	title: z.string(),
+	soldBy: z.enum(['piece', 'metre']),
+	items: z.array(AdminVariantChoice),
+});
+export type AdminVariantChoices = z.infer<typeof AdminVariantChoices>;
+
+/** Whose saved addresses the checkout lists. */
+export const AdminOrderBuyerQuery = z.object({
+	kind: z.enum(['person', 'business']),
+	id: Id,
+});
+export type AdminOrderBuyerQuery = z.infer<typeof AdminOrderBuyerQuery>;
+
+/** The shop-customer picker on Create order: found by name, phone or email (owner, 2026-11-20). */
+export const CustomerBuyerQuery = z.object({
+	q: z.string().trim().min(1).max(100),
+	limit: z.coerce.number().int().min(1).max(25).default(10),
+});
+export type CustomerBuyerQuery = z.infer<typeof CustomerBuyerQuery>;
 
 /** How the admin checkout takes the money (ck01–ck08). */
 export const AdminCheckoutPayment = z.discriminatedUnion('method', [
@@ -256,6 +324,10 @@ export const AdminCheckoutQuote = z.object({
 		trace: z.array(z.string()),
 		ruleSets: z.array(z.object({ id: Id, version: z.number().int(), name: z.string() })),
 		cannotShip: z.array(z.object({ lineId: Id, reason: z.string() })),
+		/** The rule engine's lines (ids as in `trace`): units and whether each is discounted, for the reason line. */
+		pieces: z
+			.array(z.object({ lineId: z.string(), units: z.number().int().nonnegative(), discounted: z.boolean() }))
+			.default([]),
 	}),
 	totals: z.object({
 		goodsINR: PriceINR,
@@ -280,6 +352,8 @@ export const AdminCheckoutQuote = z.object({
 		.nullable(),
 	/** Methods that can't be used for this order, with the reason. */
 	methodsOff: z.array(z.object({ method: z.string(), reason: z.string() })),
+	/** How long a payment request made at checkout lasts (Settings › Orders), for "Valid until" (ck01). */
+	linkValidDays: z.number().int().min(1).max(30).default(7),
 });
 export type AdminCheckoutQuote = z.infer<typeof AdminCheckoutQuote>;
 
@@ -397,6 +471,28 @@ export const OpenOrderClose = z.object({
 });
 export type OpenOrderClose = z.infer<typeof OpenOrderClose>;
 
+/** What closing would do (oo08), worked out before anything is saved. */
+export const OpenOrderClosePreview = z.object({
+	pieces: z.number().nonnegative(),
+	goodsINR: z.number().nonnegative(),
+	/** Shipping for one parcel; null when it can't be worked out (`problem` says why). */
+	shippingINR: z.number().nonnegative().nullable(),
+	zone: z.enum(['domestic', 'international']).nullable(),
+	/** The engine's explanation and each line's units, for "first ₹2,000, then 23 × ₹900" (oo08). */
+	shippingTrace: z.array(z.string()).default([]),
+	shippingPieces: z
+		.array(z.object({ lineId: z.string(), units: z.number().int().nonnegative(), discounted: z.boolean() }))
+		.default([]),
+	totalINR: z.number().nonnegative(),
+	paidINR: z.number().nonnegative(),
+	dueINR: z.number().nonnegative(),
+	paidAheadINR: z.number().nonnegative(),
+	/** "To its account" is offered only to a business that can take it on credit now. */
+	toAccount: z.object({ allowed: z.boolean(), reason: z.string().nullable() }).nullable(),
+	problem: z.enum(['nothing_to_close', 'no_addresses', 'cannot_ship']).nullable(),
+});
+export type OpenOrderClosePreview = z.infer<typeof OpenOrderClosePreview>;
+
 /* ---------------------------------------------------------------------------------------------- */
 /* E-invoice and e-way bill                                                                        */
 /* ---------------------------------------------------------------------------------------------- */
@@ -468,5 +564,9 @@ export const AdminOrderDetail = z.object({
 		eInvoice: z.object({ required: z.boolean(), present: z.boolean(), connected: z.boolean() }),
 		eWayBill: z.object({ required: z.boolean(), present: z.boolean(), connected: z.boolean() }),
 	}),
+	/** st03: couriers used before, suggested in the Shipped popup (any name can still be typed). */
+	courierNames: z.array(z.string()).default([]),
+	/** Staff names by id, for "by Moulik", "Recorded by" and "Created by" (pl01, od05). */
+	staff: z.record(z.string(), z.string()).default({}),
 });
 export type AdminOrderDetail = z.infer<typeof AdminOrderDetail>;

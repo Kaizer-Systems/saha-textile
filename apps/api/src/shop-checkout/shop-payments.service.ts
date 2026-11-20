@@ -406,7 +406,7 @@ export class ShopPaymentsService {
 			}
 			await this.orders.settle(current, current.revision, SYSTEM, at, context, {
 				kind: 'payment',
-				detail: { gateway: attempt.gateway, reference, attempt: attempt.id },
+				detail: { gateway: attempt.gateway, reference, attempt: attempt.id, amountINR: attempt.amountINR },
 			});
 			return savedAttempt;
 		});
@@ -448,6 +448,7 @@ export class ShopPaymentsService {
 					}
 				: null,
 			collector: null,
+			collectedBy: null,
 			receivedOn: istDay(now),
 			receiptNumber: await this.numbers.issue('receipt', context, now),
 			note: null,

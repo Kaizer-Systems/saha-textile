@@ -256,6 +256,16 @@ export const BusinessReceiptWrite = z.object({
 });
 export type BusinessReceiptWrite = z.infer<typeof BusinessReceiptWrite>;
 
+/** An order the business has on account and not settled, for the receipt's "Settles" table (bz06). */
+export const BusinessOpenOrder = z.object({
+	orderId: Id,
+	orderNumber: z.string(),
+	placedAt: IsoDateTime,
+	dueOn: IsoDate.nullable(),
+	dueINR: PriceINR,
+});
+export type BusinessOpenOrder = z.infer<typeof BusinessOpenOrder>;
+
 /** A set-off entry (so02, so03): at most the smaller balance; shown in both accounts as one journal. */
 export const SetOffWrite = z.object({
 	amountINR: PriceINR.positive(),
@@ -270,6 +280,8 @@ export const SetOffWrite = z.object({
 		}),
 	]),
 	note: z.string().trim().min(3).max(500),
+	/** The day of the entry (so02); today when left out. */
+	on: IsoDate.nullable().default(null),
 });
 export type SetOffWrite = z.infer<typeof SetOffWrite>;
 
@@ -318,6 +330,8 @@ export const BusinessListResponse = z.object({
 		customer: z.number().int(),
 		supplier: z.number().int(),
 		both: z.number().int(),
+		creditOnHold: z.number().int().default(0),
+		blocked: z.number().int().default(0),
 	}),
 });
 export type BusinessListResponse = z.infer<typeof BusinessListResponse>;
@@ -343,6 +357,8 @@ export const BusinessBuyerOption = z.object({
 	creditDays: z.number().int().nonnegative(),
 	standingReason: z.string().nullable(),
 	standingBy: z.string().nullable(),
+	/** When the standing was last changed: "Credit on hold since 12 Nov" (ck08). */
+	standingAt: IsoDateTime.nullable().default(null),
 });
 export type BusinessBuyerOption = z.infer<typeof BusinessBuyerOption>;
 

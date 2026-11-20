@@ -68,6 +68,8 @@ describe('communication cells', () => {
 		expect(communicationUseForTemplate('otp_login')).toBe('signin_code');
 		expect(communicationUseForTemplate('shop_event_announcement')).toBe('sale_launch_announcement');
 		expect(communicationUseForTemplate('something_else')).toBeNull();
+		expect(communicationUseForTemplate('order_payment_link')).toBe('payment_request');
+		expect(communicationUseForTemplate('payment_not_completed')).toBe('payment_failed');
 	});
 
 	it('puts every sent template in its group, and anything else in account', () => {

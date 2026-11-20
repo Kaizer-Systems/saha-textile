@@ -95,6 +95,8 @@ export type OrderLineAddon = z.infer<typeof OrderLineAddon>;
 export const OrderLinePricing = z.object({
 	/** The regular price (MRP or the product's own price) before any sale. */
 	regularUnitINR: PriceINR,
+	/** The printed MRP when it is above the price charged (od05: "MRP ₹9,800 · ₹8,900"). */
+	mrpUnitINR: PriceINR.nullable().default(null),
 	/** The sale price when a sale event priced the line; null otherwise. */
 	saleUnitINR: PriceINR.nullable().default(null),
 	saleEventId: Id.nullable().default(null),
@@ -127,6 +129,8 @@ export const OrderLine = z.object({
 	addons: z.array(OrderLineAddon).default([]),
 	/** Primary picture reference at the time of sale. */
 	imageAssetId: Id.nullable().optional(),
+	/** The card picture's address at the time of sale, for the order page's item rows (od05). */
+	imageUrl: z.string().nullable().optional(),
 	unitPriceINR: PriceINR,
 	unitPricePaid: z.number().nonnegative(),
 	lineTotalINR: PriceINR,
@@ -238,6 +242,10 @@ export const OrderShipping = z.object({
 		.default([]),
 	/** Open orders: worked out when the order is closed, for one parcel. */
 	pending: z.boolean().default(false),
+	/** Each line's units and whether it was discounted, so the order page can word the reason (od05). */
+	pieces: z
+		.array(z.object({ lineId: z.string(), units: z.number().int().nonnegative(), discounted: z.boolean() }))
+		.default([]),
 });
 export type OrderShipping = z.infer<typeof OrderShipping>;
 
@@ -357,6 +365,8 @@ export const Order = z.object({
 	paymentStatus: OrderPaymentStatus.default('unpaid'),
 	/** How the admin checkout chose to take the money (ck01–ck08); null for shop orders and older rows. */
 	placedWith: z.enum(['paymentLink', 'manual', 'cashOnDelivery', 'onAccount', 'keepOpen']).nullable().optional(),
+	/** On account: the day payment falls due (order day plus the business's credit days), for the list (ol02). */
+	onAccountDueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 	/**
 	 * Shop orders (OD1, `DEC-STOCK-RESERVE`): the pieces are held from Pay until this time, 15 minutes
 	 * later. Null once the hold became a sale or was let go (payment failed, cancelled, or time ran out).

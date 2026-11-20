@@ -11,6 +11,6 @@ import { ShippingSnapshotService } from './shipping-snapshot.service';
 	imports: [AuthModule, CatalogModule],
 	controllers: [AdminShippingController],
 	providers: [ShippingAdminService, ShippingSnapshotService],
-	exports: [ShippingSnapshotService],
+	exports: [ShippingSnapshotService, ShippingAdminService],
 })
 export class ShippingModule {}

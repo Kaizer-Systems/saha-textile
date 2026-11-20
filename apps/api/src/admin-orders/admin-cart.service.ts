@@ -196,7 +196,9 @@ export class AdminCartService {
 				imageUrl: card?.image?.roles['card']?.[0]?.url ?? null,
 				categoryIds: product.categoryIds,
 				hasVariants: (fact?.variant.isBaseVariant ?? true) === false,
-				stock: fact ? Math.max(0, fact.variant.stock.quantity - fact.variant.stock.held) : null,
+				stock: fact
+					? Math.max(0, fact.variant.stock.quantity - fact.variant.stock.held - fact.variant.stock.reserved)
+					: null,
 				retailINR,
 				price: priceINR === null ? null : this.convert(priceINR, rate),
 				zonePrice,

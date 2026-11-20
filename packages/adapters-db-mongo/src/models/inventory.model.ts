@@ -16,6 +16,8 @@ export interface InventoryLedgerDoc {
 	balanceAfter: number;
 	heldDelta?: number;
 	heldAfter?: number;
+	reservedDelta?: number;
+	reservedAfter?: number;
 	source: string;
 	reasonCode: string | null;
 	note: string | null;
@@ -36,6 +38,8 @@ const InventoryLedgerSchema = new Schema<InventoryLedgerDoc>(
 		balanceAfter: { type: Number, required: true },
 		heldDelta: { type: Number, default: 0 },
 		heldAfter: { type: Number, default: 0 },
+		reservedDelta: { type: Number, default: 0 },
+		reservedAfter: { type: Number, default: 0 },
 		source: {
 			type: String,
 			enum: InventoryMovementSource.options,

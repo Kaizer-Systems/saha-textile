@@ -262,8 +262,9 @@ export interface ShopDetailsRepository {
  */
 export interface StockMovementPort {
 	/**
-	 * Atomically moves on-hand and held for a variant and appends one ledger row. A decrement
-	 * that would take on-hand below held + reserved, or held below 0, matches nothing and throws.
+	 * Atomically moves on-hand, held and reserved for a variant and appends one ledger row. A change
+	 * that would take on-hand below held + reserved, or held or reserved below 0, matches nothing and
+	 * throws. `reservedDelta` keeps pieces for orders (`DEC-STOCK-RESERVE`); omitted, it is 0.
 	 */
 	move(
 		input: {
@@ -271,6 +272,7 @@ export interface StockMovementPort {
 			productId: string;
 			quantityDelta: number;
 			heldDelta: number;
+			reservedDelta?: number;
 			source: string;
 			reasonCode: string | null;
 			note: string | null;
@@ -308,6 +310,8 @@ export interface StockItemFacts {
 	mrpINR: number | null;
 	onHand: number;
 	held: number;
+	/** Pieces kept for orders (`DEC-STOCK-RESERVE`). */
+	reserved: number;
 	lowStockLevel: number | null;
 	variantCount: number;
 }

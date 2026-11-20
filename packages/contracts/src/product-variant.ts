@@ -24,8 +24,15 @@ export const VariantStock = z.object({
 	tracked: z.boolean().default(true),
 	/** On hand. Moves only through stock documents (purchases, returns, adjustments, counts). */
 	quantity: z.number().int().default(0),
-	/** On hand but not for sale (photoshoot, display, waiting for the supplier). Free = quantity − held. */
+	/** On hand but not for sale (photoshoot, display, waiting for the supplier). */
 	held: z.number().int().nonnegative().default(0),
+	/**
+	 * Pieces kept for orders (`DEC-STOCK-RESERVE`): an admin order's pieces from the moment it is saved
+	 * (K7, owner 2026-11-20), a shop order's from Pay (OD1). Free to sell = quantity − held − reserved.
+	 * They leave on-hand when the order ships, and come back to sale when a line is removed or the
+	 * order cancelled.
+	 */
+	reserved: z.number().int().nonnegative().default(0),
 	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
 	/** Backorders for this variant (OD2): off by default; the product's switch and limit, overridable here. */
 	allowBackorder: z.boolean().default(false),
@@ -91,6 +98,7 @@ export const ProductVariant = z
 			tracked: true,
 			quantity: 0,
 			held: 0,
+			reserved: 0,
 			lowStockThreshold: null,
 			allowBackorder: false,
 		}),

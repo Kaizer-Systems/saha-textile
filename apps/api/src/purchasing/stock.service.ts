@@ -109,7 +109,7 @@ export class StockService {
 		for (const layer of layers) byVariant.set(layer.variantId, [...(byVariant.get(layer.variantId) ?? []), layer]);
 		return facts.map((fact) => {
 			const own = byVariant.get(fact.variantId) ?? [];
-			const free = fact.onHand - fact.held;
+			const free = fact.onHand - fact.held - fact.reserved;
 			const lastReceived = own.reduce<string | null>(
 				(latest, layer) => (!latest || layer.receivedAt > latest ? layer.receivedAt : latest),
 				null,
@@ -125,7 +125,7 @@ export class StockService {
 				soldBy: fact.soldBy,
 				onHand: fact.onHand,
 				held: fact.held,
-				inOrders: 0,
+				inOrders: fact.reserved,
 				freeToSell: free,
 				lowStockLevel: fact.lowStockLevel,
 				status: stockStatus({ free, lowLevel: fact.lowStockLevel, madeToOrder: fact.madeToOrder }),
@@ -252,7 +252,7 @@ export class StockService {
 		const refusal = adjustmentRefusal({
 			action: write.action,
 			quantity: write.quantity,
-			facts: { onHand: fact.onHand, held: fact.held, reserved: 0 },
+			facts: { onHand: fact.onHand, held: fact.held, reserved: fact.reserved },
 			soldBy: fact.soldBy,
 			hold: hold ? { quantity: hold.quantity, status: hold.status } : null,
 			tracked: fact.tracked,
@@ -317,7 +317,7 @@ export class StockService {
 		const refusal = adjustmentRefusal({
 			action: write.action,
 			quantity: write.quantity,
-			facts: { onHand: fact.onHand, held: fact.held, reserved: 0 },
+			facts: { onHand: fact.onHand, held: fact.held, reserved: fact.reserved },
 			soldBy: fact.soldBy,
 			hold: hold ? { quantity: hold.quantity, status: hold.status } : null,
 			tracked: fact.tracked,

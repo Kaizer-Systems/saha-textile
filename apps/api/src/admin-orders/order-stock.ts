@@ -1,0 +1,153 @@
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import type { Order, OrderLine } from '@saha-textile/contracts';
+import {
+	StockMovementRefusedError,
+	type InventoryCostLayerRepository,
+	type ProductVariantRepository,
+	type StockMovementPort,
+	type TransactionContext,
+} from '@saha-textile/core-domain';
+
+import { codedRefusal } from '../common/coded-refusal';
+import { INVENTORY_COST_LAYER_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, STOCK_MOVEMENT } from '../infra/tokens';
+
+type Move = 'reserve' | 'release' | 'sell';
+
+const SOURCE: Record<Move, string> = {
+	reserve: 'reservation',
+	release: 'reservation_released',
+	sell: 'order_placed',
+};
+
+/**
+ * An order's pieces in stock (`DEC-STOCK-RESERVE`; K7, owner 2026-11-20: an admin order holds its
+ * pieces from the moment it is saved, paid or not, until a line is removed or the order cancelled).
+ * Kept pieces leave free-to-sell at once, so a one-of-a-kind saree can't sell in the shop meanwhile;
+ * at Shipped they leave on-hand, drawn from the oldest cost layers. Made-to-order lines have no stock
+ * to keep. Every move is a stock ledger row with the order number, inside the caller's transaction.
+ */
+@Injectable()
+export class OrderStock {
+	constructor(
+		@Inject(STOCK_MOVEMENT) private readonly stock: StockMovementPort,
+		@Inject(PRODUCT_VARIANT_REPOSITORY) private readonly variants: ProductVariantRepository,
+		@Inject(INVENTORY_COST_LAYER_REPOSITORY) private readonly layers: InventoryCostLayerRepository,
+	) {}
+
+	reserve(
+		order: Order,
+		lines: readonly OrderLine[],
+		actorId: string | null,
+		context: TransactionContext,
+		at: string,
+	) {
+		return this.move('reserve', order, lines, actorId, context, at);
+	}
+
+	release(
+		order: Order,
+		lines: readonly OrderLine[],
+		actorId: string | null,
+		context: TransactionContext,
+		at: string,
+	) {
+		return this.move('release', order, lines, actorId, context, at);
+	}
+
+	/** Shipped: kept pieces leave on-hand; returns each line's cost from the layers it drew on. */
+	async sell(
+		order: Order,
+		lines: readonly OrderLine[],
+		actorId: string | null,
+		context: TransactionContext,
+		at: string,
+	) {
+		await this.move('sell', order, lines, actorId, context, at);
+		const costs = new Map<string, number>();
+		for (const line of lines) {
+			if (!line.held || line.madeToOrder) continue;
+			const variantId = await this.variantIdOf(line);
+			const drawn = await this.layers
+				.consumeFifo({ variantId, quantity: line.quantity }, context)
+				.catch((error: unknown) => {
+					// Fewer costed pieces than are shipping: the purchases module refuses rather than cost them at ₹0.
+					if (error instanceof Error && error.message.startsWith('insufficient FIFO cost layers')) {
+						throw new ConflictException(
+							codedRefusal(
+								'cost_layers_missing',
+								`${line.sku} has stock with no recorded cost`,
+								'lines',
+								{
+									sku: line.sku,
+								},
+							),
+						);
+					}
+					throw error;
+				});
+			const units = drawn.reduce((sum, row) => sum + row.quantity, 0);
+			if (units > 0 && line.lineId) {
+				const value = drawn.reduce((sum, row) => sum + row.quantity * row.unitCostINR, 0);
+				costs.set(line.lineId, Math.round((value / units) * 100) / 100);
+			}
+		}
+		return costs;
+	}
+
+	private async move(
+		kind: Move,
+		order: Order,
+		lines: readonly OrderLine[],
+		actorId: string | null,
+		context: TransactionContext,
+		at: string,
+	): Promise<void> {
+		for (const line of lines) {
+			if (line.madeToOrder) continue;
+			// Only pieces this order actually keeps are released or sold.
+			if (kind !== 'reserve' && !line.held) continue;
+			const variantId = await this.variantIdOf(line);
+			const delta = kind === 'reserve' ? line.quantity : -line.quantity;
+			try {
+				await this.stock.move(
+					{
+						variantId,
+						productId: line.productId,
+						quantityDelta: kind === 'sell' ? -line.quantity : 0,
+						heldDelta: 0,
+						reservedDelta: delta,
+						source: SOURCE[kind],
+						reasonCode: null,
+						note: `Order ${order.orderNumber}`,
+						referenceType: 'order',
+						referenceId: order.id,
+						referenceNumber: order.orderNumber,
+						actorUserId: actorId,
+						approverUserId: null,
+						at,
+					},
+					context,
+				);
+			} catch (error) {
+				if (error instanceof StockMovementRefusedError) {
+					throw new ConflictException(
+						codedRefusal('out_of_stock', `Not enough free stock for ${line.sku}`, 'lines', {
+							sku: line.sku,
+						}),
+					);
+				}
+				throw error;
+			}
+		}
+	}
+
+	private async variantIdOf(line: OrderLine): Promise<string> {
+		if (line.variationId) return line.variationId;
+		const rows = await this.variants.listForProduct(line.productId, 'admin');
+		const base = rows.find((row) => row.isBaseVariant) ?? rows[0];
+		if (!base) {
+			throw new ConflictException(codedRefusal('variant_missing', `No stock record for ${line.sku}`, 'lines'));
+		}
+		return base.id;
+	}
+}

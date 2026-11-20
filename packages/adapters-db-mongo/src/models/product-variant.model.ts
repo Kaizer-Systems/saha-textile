@@ -22,6 +22,7 @@ export interface ProductVariantDoc {
 		tracked: boolean;
 		quantity: number;
 		held?: number;
+		reserved?: number;
 		lowStockThreshold: number | null;
 		allowBackorder: boolean;
 	};
@@ -53,6 +54,8 @@ const ProductVariantSchema = new Schema<ProductVariantDoc>(
 			quantity: { type: Number, default: 0 },
 			/** Pieces set aside (photoshoot, display, waiting for supplier): on hand, not for sale. */
 			held: { type: Number, default: 0 },
+			/** Pieces kept for orders (`DEC-STOCK-RESERVE`): admin orders from save, shop orders from Pay. */
+			reserved: { type: Number, default: 0 },
 			lowStockThreshold: { type: Number, default: null },
 			allowBackorder: { type: Boolean, default: false },
 		},

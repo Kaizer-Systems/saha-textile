@@ -58,6 +58,7 @@ function service(order: Order) {
 	const shipments: Shipment[] = [];
 	const payments: OrderPayment[] = [];
 	const ledger: unknown[] = [];
+	const stockMoves: Array<[string, number]> = [];
 	const svc = new AdminOrdersService(
 		{
 			findById: async () => stored,
@@ -97,8 +98,16 @@ function service(order: Order) {
 		} as never,
 		{ check: async () => ({ ...address, countryCode: 'IN', gstStateCode: '19' }) } as never,
 		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
+		{
+			reserve: async () => undefined,
+			release: async (_o: Order, lines: Order['lines']) => stockMoves.push(['release', lines.length]),
+			sell: async (_o: Order, lines: Order['lines']) => {
+				stockMoves.push(['sell', lines.length]);
+				return new Map([['l1', 41_000]]);
+			},
+		} as never,
 	);
-	return { svc, shipments, payments, ledger, current: () => stored };
+	return { svc, shipments, payments, ledger, stockMoves, current: () => stored };
 }
 
 const actor = { id: 'adm_1', name: 'Staff' };
@@ -137,7 +146,7 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 	});
 
 	it('records the documents typed by hand, then ships with a parcel number off the order number', async () => {
-		const { svc, shipments, current } = service(baseOrder());
+		const { svc, shipments, current } = service(baseOrder({ lines: [{ ...baseOrder().lines[0], held: true }] }));
 		expect(await svc.raise('ord_1', 'eInvoice', actor)).toEqual({ outcome: 'notConnected' });
 		await svc.setEInvoice(
 			'ord_1',
@@ -168,6 +177,7 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 		const detail = await svc.changeStatus('ord_1', { ...shipped, revision: 2 }, actor);
 		expect(detail.order.status).toBe('shipped');
 		expect(shipments[0]).toMatchObject({ number: 'ST-2611-482190/P1', courierName: 'DTDC', lineIds: ['l1'] });
+		expect(current().lines[0]).toMatchObject({ held: false, unitCostINR: 41_000 });
 		expect(current().history.at(-1)).toMatchObject({ kind: 'status', from: 'packed', to: 'shipped' });
 	});
 

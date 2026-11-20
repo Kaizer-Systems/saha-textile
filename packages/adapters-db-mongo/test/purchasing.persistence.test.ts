@@ -365,6 +365,32 @@ describe.skipIf(!hasMongoEnv())('purchases and stock persistence (integration, r
 			expect(after?.stock).toMatchObject({ quantity: 5, held: 5 });
 		});
 
+		it('keeps pieces for orders: never more than is free, released and sold with the ledger (DEC-STOCK-RESERVE)', async () => {
+			const variantId = await seedVariant(5, { held: 1 });
+			const keep = (quantityDelta: number, reservedDelta: number, source: string) => ({
+				...move(variantId, quantityDelta, 0, source),
+				reservedDelta,
+			});
+			// 5 on hand, 1 held: 4 free, so keeping 5 is refused and keeping 3 is not.
+			await expect(movement.move(keep(0, 5, 'reservation'))).rejects.toBeInstanceOf(StockMovementRefusedError);
+			await movement.move(keep(0, 3, 'reservation'));
+			// Removing 2 would leave 3 on hand under 1 held + 3 kept.
+			await expect(movement.move(move(variantId, -2, 0))).rejects.toBeInstanceOf(StockMovementRefusedError);
+			await expect(movement.move(keep(0, -4, 'reservation_released'))).rejects.toBeInstanceOf(
+				StockMovementRefusedError,
+			);
+			await movement.move(keep(0, -1, 'reservation_released'));
+			await movement.move(keep(-2, -2, 'order_placed'));
+			const after = await ProductVariantModel.findById(variantId).lean().exec();
+			expect(after?.stock).toMatchObject({ quantity: 3, held: 1, reserved: 0 });
+			const rows = await InventoryLedgerModel.find({ variantId }).sort({ createdAt: 1 }).lean().exec();
+			expect(rows.map((row) => [row.source, row.reservedDelta, row.reservedAfter])).toEqual([
+				['reservation', 3, 3],
+				['reservation_released', -1, 2],
+				['order_placed', -2, 0],
+			]);
+		});
+
 		it('moves untracked items without a guard', async () => {
 			const variantId = await seedVariant(0, { tracked: false });
 			expect((await movement.move(move(variantId, -2, 0))).onHandAfter).toBe(-2);

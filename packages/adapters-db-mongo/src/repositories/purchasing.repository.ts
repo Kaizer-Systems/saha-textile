@@ -872,15 +872,18 @@ export class MongoShopDetailsRepository implements ShopDetailsRepository {
 
 export class MongoStockMovement implements StockMovementPort {
 	/**
-	 * One conditional update moves on-hand and held together, so the guard cannot be raced: the
-	 * result must keep held ≥ 0 and on-hand ≥ held (held pieces are part of on-hand). Untracked
-	 * variants skip the guard. The ledger row commits with it inside the caller's transaction.
+	 * One conditional update moves on-hand, held and reserved together, so the guard cannot be raced:
+	 * the result must keep held ≥ 0, reserved ≥ 0 and on-hand ≥ held + reserved (held and reserved
+	 * pieces are part of on-hand). Untracked variants skip the guard. The ledger row commits with it
+	 * inside the caller's transaction.
 	 */
 	async move(input: Parameters<StockMovementPort['move']>[0], context?: TransactionContext) {
 		const session = sessionFrom(context);
+		const reservedDelta = input.reservedDelta ?? 0;
 		const heldAfter = { $add: [{ $ifNull: ['$stock.held', 0] }, input.heldDelta] };
+		const reservedAfter = { $add: [{ $ifNull: ['$stock.reserved', 0] }, reservedDelta] };
 		const guard =
-			input.quantityDelta < 0 || input.heldDelta !== 0
+			input.quantityDelta < 0 || input.heldDelta !== 0 || reservedDelta !== 0
 				? {
 						$or: [
 							{ 'stock.tracked': false },
@@ -888,7 +891,13 @@ export class MongoStockMovement implements StockMovementPort {
 								$expr: {
 									$and: [
 										{ $gte: [heldAfter, 0] },
-										{ $gte: [{ $add: ['$stock.quantity', input.quantityDelta] }, heldAfter] },
+										{ $gte: [reservedAfter, 0] },
+										{
+											$gte: [
+												{ $add: ['$stock.quantity', input.quantityDelta] },
+												{ $add: [heldAfter, reservedAfter] },
+											],
+										},
 									],
 								},
 							},
@@ -897,11 +906,17 @@ export class MongoStockMovement implements StockMovementPort {
 				: {};
 		const updated = await ProductVariantModel.findOneAndUpdate(
 			{ _id: input.variantId, ...guard },
-			{ $inc: { 'stock.quantity': input.quantityDelta, 'stock.held': input.heldDelta } },
+			{
+				$inc: {
+					'stock.quantity': input.quantityDelta,
+					'stock.held': input.heldDelta,
+					...(reservedDelta ? { 'stock.reserved': reservedDelta } : {}),
+				},
+			},
 			{ returnDocument: 'after', session },
 		)
 			.select('stock')
-			.lean<{ _id: string; stock: { quantity: number; held?: number } }>()
+			.lean<{ _id: string; stock: { quantity: number; held?: number; reserved?: number } }>()
 			.exec();
 		if (!updated) throw new StockMovementRefusedError(input.variantId);
 
@@ -916,6 +931,8 @@ export class MongoStockMovement implements StockMovementPort {
 					balanceAfter: updated.stock.quantity,
 					heldDelta: input.heldDelta,
 					heldAfter: updated.stock.held ?? 0,
+					reservedDelta,
+					reservedAfter: updated.stock.reserved ?? 0,
 					source: input.source,
 					reasonCode: input.reasonCode,
 					note: input.note,
@@ -957,7 +974,13 @@ interface ItemRow {
 	priceINR: number;
 	salePriceINR?: number | null;
 	compareAtPriceINR?: number | null;
-	stock?: { tracked?: boolean; quantity?: number; held?: number; lowStockThreshold?: number | null };
+	stock?: {
+		tracked?: boolean;
+		quantity?: number;
+		held?: number;
+		reserved?: number;
+		lowStockThreshold?: number | null;
+	};
 	media?: { primaryAssetId?: string | null };
 	taxProfile?: { hsnCode?: string | null };
 	p: {
@@ -1081,6 +1104,7 @@ export class MongoStockReadRepository implements StockReadRepository {
 				mrpINR: row.compareAtPriceINR ?? null,
 				onHand: row.stock?.quantity ?? 0,
 				held: row.stock?.held ?? 0,
+				reserved: row.stock?.reserved ?? 0,
 				lowStockLevel: row.stock?.lowStockThreshold ?? row.p.lowStockThreshold ?? SHOP_LOW_STOCK_THRESHOLD,
 				variantCount: row.variantCount ?? 1,
 			};

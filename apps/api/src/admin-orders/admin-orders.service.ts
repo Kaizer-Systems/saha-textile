@@ -60,6 +60,7 @@ import {
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
+import { OrderStock } from './order-stock';
 import { refuseStale } from '../orders-setup/orders-audit';
 
 export interface Actor {
@@ -88,6 +89,14 @@ export function machineSettings(settings: OrderSettings): StatusMachineSettings 
 		eWayBillThresholdINR: settings.eWayBillThresholdINR,
 		courierConnected: false,
 	};
+}
+
+/** What the list's "Needs attention" filter finds, stored with each save (time-based reasons are worked out on read). */
+export function metaOf(order: Order): { attention: AttentionReason[] } {
+	const attention: AttentionReason[] = [];
+	if (order.addresses?.invoice.needed) attention.push('invoiceAddressNeeded');
+	if (order.paymentStatus === 'pending_at_bank') attention.push('pendingAtBank');
+	return { attention };
 }
 
 /** Why an order waits on staff (ol03): worked out from the order, its payments and its requests. */
@@ -158,6 +167,7 @@ export class AdminOrdersService {
 		private readonly numbers: DocumentNumbersService,
 		private readonly addressBook: AddressBookService,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
+		private readonly stock: OrderStock,
 	) {}
 
 	async list(query: OrderListQuery, now = new Date()): Promise<OrderListResponse> {
@@ -313,66 +323,92 @@ export class AdminOrdersService {
 			throw new BadRequestException(codedRefusal('cancel_reason_needed', 'Give a reason', 'cancel'));
 		}
 		const at = now.toISOString();
-		if (input.shipped) {
-			const existing = await this.shipments.listByOrder(id);
-			await this.shipments.save({
-				id: `shp_${randomUUID()}`,
-				orderId: id,
-				number: await this.numbers.childNumber('parcel', order.orderNumber, existing.length + 1),
-				lineIds: input.shipped.lineIds ?? order.lines.flatMap((line) => (line.lineId ? [line.lineId] : [])),
-				mode: 'manual',
-				provider: null,
-				courierName: input.shipped.courierName,
-				trackingNumber: input.shipped.trackingNumber,
-				trackingUrl: input.shipped.trackingUrl,
-				shippedOn: input.shipped.shippedOn,
-				deliveredOn: null,
-				pod: null,
-				events: [{ at, status: 'shipped', note: input.comment }],
-				createdBy: actor.id,
-				createdAt: at,
-			});
-		}
-		if (input.delivered) {
-			const latest = (await this.shipments.listByOrder(id)).at(-1);
-			if (latest) {
-				await this.shipments.save({
-					...latest,
-					deliveredOn: input.delivered.deliveredOn,
-					pod: {
-						source: 'staff',
-						reference: input.delivered.podReference,
-						receivedBy: input.delivered.receivedBy,
-						url: null,
-						note: null,
-					},
-					events: [...latest.events, { at, status: 'delivered', note: input.comment }],
-				});
-			}
-		}
 		const tells = allowedNextStatuses(machineOrder(order), machineSettings(settings)).find(
 			(row) => row.to === input.to,
 		)?.tells;
-		const next: Order = {
-			...order,
-			status: input.to,
-			statusTimeline: [
-				...order.statusTimeline,
-				{ status: input.to, at, ...(input.comment ? { note: input.comment } : {}) },
-			],
-			closedAt: input.to === 'cancelled' || input.to === 'delivered' ? at : (order.closedAt ?? null),
-			history: [
-				...order.history,
-				historyEntry(actor, at, 'status', {
-					from: order.status,
-					to: input.to,
-					comment: input.comment ?? input.cancel?.note ?? null,
-					messages: (tells ?? []).map((template) => ({ channel: 'email' as const, template })),
-					detail: input.cancel ? { reason: input.cancel.reason } : {},
-				}),
-			],
-		};
-		await refuseStale(() => this.orders.update(next, input.revision), 'Someone else changed this order first');
+		await this.transactions.withTransaction(async (context) => {
+			let lines = order.lines;
+			if (input.to === 'cancelled') {
+				// Cancelled: the kept pieces go back on sale at once.
+				await this.stock.release(order, lines, actor.id, context, at);
+				lines = lines.map((line) => ({ ...line, held: false }));
+			}
+			if (input.shipped) {
+				// Shipped: the kept pieces leave on-hand, costed from the oldest layers.
+				const costs = await this.stock.sell(order, lines, actor.id, context, at);
+				lines = lines.map((line) => ({
+					...line,
+					held: false,
+					unitCostINR: (line.lineId ? costs.get(line.lineId) : undefined) ?? line.unitCostINR ?? null,
+				}));
+				const existing = await this.shipments.listByOrder(id);
+				await this.shipments.save(
+					{
+						id: `shp_${randomUUID()}`,
+						orderId: id,
+						number: await this.numbers.childNumber('parcel', order.orderNumber, existing.length + 1),
+						lineIds:
+							input.shipped.lineIds ?? order.lines.flatMap((line) => (line.lineId ? [line.lineId] : [])),
+						mode: 'manual',
+						provider: null,
+						courierName: input.shipped.courierName,
+						trackingNumber: input.shipped.trackingNumber,
+						trackingUrl: input.shipped.trackingUrl,
+						shippedOn: input.shipped.shippedOn,
+						deliveredOn: null,
+						pod: null,
+						events: [{ at, status: 'shipped', note: input.comment }],
+						createdBy: actor.id,
+						createdAt: at,
+					},
+					context,
+				);
+			}
+			if (input.delivered) {
+				const latest = (await this.shipments.listByOrder(id)).at(-1);
+				if (latest) {
+					await this.shipments.save(
+						{
+							...latest,
+							deliveredOn: input.delivered.deliveredOn,
+							pod: {
+								source: 'staff',
+								reference: input.delivered.podReference,
+								receivedBy: input.delivered.receivedBy,
+								url: null,
+								note: null,
+							},
+							events: [...latest.events, { at, status: 'delivered', note: input.comment }],
+						},
+						context,
+					);
+				}
+			}
+			const next: Order = {
+				...order,
+				lines,
+				status: input.to,
+				statusTimeline: [
+					...order.statusTimeline,
+					{ status: input.to, at, ...(input.comment ? { note: input.comment } : {}) },
+				],
+				closedAt: input.to === 'cancelled' || input.to === 'delivered' ? at : (order.closedAt ?? null),
+				history: [
+					...order.history,
+					historyEntry(actor, at, 'status', {
+						from: order.status,
+						to: input.to,
+						comment: input.comment ?? input.cancel?.note ?? null,
+						messages: (tells ?? []).map((template) => ({ channel: 'email' as const, template })),
+						detail: input.cancel ? { reason: input.cancel.reason } : {},
+					}),
+				],
+			};
+			await refuseStale(
+				() => this.orders.update(next, input.revision, context, metaOf(next)),
+				'Someone else changed this order first',
+			);
+		});
 		return this.detail(id, now);
 	}
 
@@ -388,7 +424,10 @@ export class AdminOrdersService {
 			...order,
 			history: [...order.history, historyEntry(actor, now.toISOString(), 'comment', { comment })],
 		};
-		await refuseStale(() => this.orders.update(next, revision), 'Someone else changed this order first');
+		await refuseStale(
+			() => this.orders.update(next, revision, undefined, metaOf(next)),
+			'Someone else changed this order first',
+		);
 		return this.detail(id, now);
 	}
 
@@ -420,7 +459,10 @@ export class AdminOrdersService {
 			},
 			history: [...order.history, historyEntry(actor, at, 'invoiceAddress', { comment: input.confirmedHow })],
 		};
-		await refuseStale(() => this.orders.update(next, input.revision), 'Someone else changed this order first');
+		await refuseStale(
+			() => this.orders.update(next, input.revision, undefined, metaOf(next)),
+			'Someone else changed this order first',
+		);
 		return this.detail(id, now);
 	}
 
@@ -444,7 +486,7 @@ export class AdminOrdersService {
 				: { eWayBill: record as Order['eWayBill'] }),
 			history: [...order.history, historyEntry(actor, at, 'eDocument', { detail: { kind, source: 'api' } })],
 		};
-		return { outcome: 'raised', order: await this.orders.update(next, order.revision) };
+		return { outcome: 'raised', order: await this.orders.update(next, order.revision, undefined, metaOf(next)) };
 	}
 
 	async setEInvoice(id: string, input: EInvoiceWrite, actor: Actor, now = new Date()) {
@@ -459,7 +501,10 @@ export class AdminOrdersService {
 				historyEntry(actor, at, 'eDocument', { detail: { kind: 'eInvoice', ackNo: input.ackNo } }),
 			],
 		};
-		await refuseStale(() => this.orders.update(next, revision), 'Someone else changed this order first');
+		await refuseStale(
+			() => this.orders.update(next, revision, undefined, metaOf(next)),
+			'Someone else changed this order first',
+		);
 		return this.detail(id, now);
 	}
 
@@ -475,7 +520,10 @@ export class AdminOrdersService {
 				historyEntry(actor, at, 'eDocument', { detail: { kind: 'eWayBill', number: input.number } }),
 			],
 		};
-		await refuseStale(() => this.orders.update(next, revision), 'Someone else changed this order first');
+		await refuseStale(
+			() => this.orders.update(next, revision, undefined, metaOf(next)),
+			'Someone else changed this order first',
+		);
 		return this.detail(id, now);
 	}
 
@@ -640,7 +688,10 @@ export class AdminOrdersService {
 				...(placeNow ? [historyEntry(actor, at, 'status', { from: order.status, to: 'placed' })] : []),
 			],
 		};
-		return refuseStale(() => this.orders.update(next, revision, context), 'Someone else changed this order first');
+		return refuseStale(
+			() => this.orders.update(next, revision, context, metaOf(next)),
+			'Someone else changed this order first',
+		);
 	}
 }
 

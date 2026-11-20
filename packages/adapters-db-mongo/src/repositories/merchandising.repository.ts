@@ -45,6 +45,7 @@ const toVariant = (doc: ProductVariantDoc): ProductVariant => ({
 		tracked: doc.stock?.tracked ?? true,
 		quantity: doc.stock?.quantity ?? 0,
 		held: doc.stock?.held ?? 0,
+		reserved: doc.stock?.reserved ?? 0,
 		lowStockThreshold: doc.stock?.lowStockThreshold ?? null,
 		allowBackorder: doc.stock?.allowBackorder ?? false,
 	},
@@ -70,7 +71,7 @@ function variantWrite(variant: ProductVariant) {
 			'stock.lowStockThreshold': stock.lowStockThreshold,
 			'stock.allowBackorder': stock.allowBackorder,
 		},
-		$setOnInsert: { 'stock.quantity': stock.quantity, 'stock.held': 0 },
+		$setOnInsert: { 'stock.quantity': stock.quantity, 'stock.held': 0, 'stock.reserved': 0 },
 	};
 }
 

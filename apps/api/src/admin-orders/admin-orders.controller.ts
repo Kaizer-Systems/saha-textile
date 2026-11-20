@@ -2,6 +2,7 @@ import { Body, Controller, Get, Header, HttpCode, Param, Post, Put, Query } from
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	AdminCartWrite,
+	AdminOrderCreate,
 	AdminProductCardQuery,
 	EInvoiceWrite,
 	EWayBillWrite,
@@ -18,11 +19,16 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { AdminCartService } from './admin-cart.service';
+import { AdminOrderCreateService, type CheckoutRights } from './admin-order-create.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
 
 const actorOf = (principal: AuthenticatedPrincipal | undefined): Actor => ({
 	id: principal?.userId ?? null,
 	name: null,
+});
+const rightsOf = (principal: AuthenticatedPrincipal | undefined): CheckoutRights => ({
+	belowCost: principal?.permissions.includes('stock.cost') ?? false,
+	creditOverride: principal?.permissions.includes('business.approve') ?? false,
 });
 
 /**
@@ -36,6 +42,7 @@ export class AdminOrdersController {
 	constructor(
 		private readonly cart: AdminCartService,
 		private readonly orders: AdminOrdersService,
+		private readonly checkout: AdminOrderCreateService,
 	) {}
 
 	@Get()
@@ -69,6 +76,34 @@ export class AdminOrdersController {
 	})
 	cards(@Query(new ZodValidationPipe(AdminProductCardQuery)) query: AdminProductCardQuery) {
 		return this.cart.cards(query);
+	}
+
+	@Post('checkout/quote')
+	@HttpCode(200)
+	@RequirePermissions('order.create')
+	@ApiOperation({
+		operationId: 'quoteAdminCheckout',
+		summary: 'The checkout summary before placing: totals, shipping with its reason, coupons, credit, methods off',
+	})
+	quote(
+		@Body(new ZodValidationPipe(AdminOrderCreate)) body: AdminOrderCreate,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.checkout.quote(body, rightsOf(principal));
+	}
+
+	@Post()
+	@RequirePermissions('order.create')
+	@ApiOperation({
+		operationId: 'createAdminOrder',
+		summary: 'Place an order for a shop customer or a business (its pieces are kept from now on)',
+	})
+	async create(
+		@Body(new ZodValidationPipe(AdminOrderCreate)) body: AdminOrderCreate,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		const order = await this.checkout.create(body, actorOf(principal), rightsOf(principal));
+		return this.orders.detail(order.id);
 	}
 
 	@Get(':id')

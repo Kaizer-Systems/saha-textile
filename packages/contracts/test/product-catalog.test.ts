@@ -132,7 +132,14 @@ describe('ProductVariant', () => {
 	it('applies stock and pricing defaults', () => {
 		const parsed = ProductVariant.parse(variant());
 		expect(parsed.status).toBe('draft');
-		expect(parsed.stock).toEqual({ tracked: true, quantity: 0, held: 0, lowStockThreshold: null, allowBackorder: false });
+		expect(parsed.stock).toEqual({
+			tracked: true,
+			quantity: 0,
+			held: 0,
+			reserved: 0,
+			lowStockThreshold: null,
+			allowBackorder: false,
+		});
 		expect(parsed.salePriceINR).toBeNull();
 		expect(parsed.compareAtPriceINR).toBeNull();
 	});

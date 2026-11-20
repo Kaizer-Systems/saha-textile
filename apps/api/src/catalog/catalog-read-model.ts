@@ -16,9 +16,9 @@ export interface PricedRow {
 	quantity: number;
 }
 
-/** Free to sell: on hand less held pieces. The only stock number the shop uses. */
+/** Free to sell: on hand less held pieces and pieces kept for orders. The only stock number the shop uses. */
 export function freeToSellOf(row: ProductVariant): number {
-	return row.stock.quantity - (row.stock.held ?? 0);
+	return row.stock.quantity - (row.stock.held ?? 0) - (row.stock.reserved ?? 0);
 }
 
 export function pricedRow(row: ProductVariant, madeToOrder: boolean): PricedRow {

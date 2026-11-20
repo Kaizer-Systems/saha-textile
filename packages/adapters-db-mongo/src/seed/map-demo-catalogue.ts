@@ -673,6 +673,7 @@ export function mapDemoCatalogue(input: {
 					tracked: true,
 					quantity: Math.max(0, Math.round(quantity)),
 					held: 0,
+					reserved: 0,
 					lowStockThreshold: null,
 					allowBackorder: false,
 				},

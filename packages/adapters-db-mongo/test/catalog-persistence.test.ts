@@ -66,7 +66,7 @@ const variant = (overrides: Record<string, unknown> = {}) => ({
 	priceINR: 1000,
 	compareAtPriceINR: null,
 	salePriceINR: null,
-	stock: { tracked: true, quantity: 5, held: 0, lowStockThreshold: null, allowBackorder: false },
+	stock: { tracked: true, quantity: 5, held: 0, reserved: 0, lowStockThreshold: null, allowBackorder: false },
 	...overrides,
 });
 
@@ -235,19 +235,19 @@ describe.skipIf(!hasMongoEnv())('catalog persistence (integration, rs0)', () => 
 			await variants.save(
 				variant({
 					productId,
-					stock: { tracked: true, quantity: 0, held: 0, lowStockThreshold: null, allowBackorder: false },
+					stock: { tracked: true, quantity: 0, held: 0, reserved: 0, lowStockThreshold: null, allowBackorder: false },
 				}),
 			);
 			await variants.save(
 				variant({
 					productId,
-					stock: { tracked: true, quantity: 3, held: 0, lowStockThreshold: null, allowBackorder: false },
+					stock: { tracked: true, quantity: 3, held: 0, reserved: 0, lowStockThreshold: null, allowBackorder: false },
 				}),
 			);
 			await variants.save(
 				variant({
 					productId,
-					stock: { tracked: true, quantity: 0, held: 0, lowStockThreshold: null, allowBackorder: true },
+					stock: { tracked: true, quantity: 0, held: 0, reserved: 0, lowStockThreshold: null, allowBackorder: true },
 				}),
 			);
 

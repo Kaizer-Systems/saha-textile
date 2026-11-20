@@ -76,7 +76,7 @@ export class StockApprovalsService {
 		const refusal = adjustmentRefusal({
 			action: request.action,
 			quantity: request.quantity,
-			facts: { onHand: fact.onHand, held: fact.held, reserved: 0 },
+			facts: { onHand: fact.onHand, held: fact.held, reserved: fact.reserved },
 			soldBy: fact.soldBy,
 			hold: hold ? { quantity: hold.quantity, status: hold.status } : null,
 			tracked: fact.tracked,

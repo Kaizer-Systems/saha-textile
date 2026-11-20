@@ -34,17 +34,27 @@
 				<div class="input-group">
 					<input
 						type="number"
+						inputmode="decimal"
 						class="form-control"
 						[id]="'meas-' + field.code"
-						[value]="draft()[field.code] ?? displayText(field.code, field.unit)"
+						[value]="boxText(field)"
 						[placeholder]="'enter' | transloco"
-						(input)="onDraft(field.code, $any($event.target).value)"
-						(change)="keep(field.code, field.unit, field.step ?? 0.5, field.min ?? 1, field.max ?? 200, $event)"
+						[attr.aria-invalid]="outOfRange(field) ? 'true' : null"
+						[attr.aria-describedby]="outOfRange(field) ? 'meas-' + field.code + '-range' : null"
+						(input)="onInput(field, $any($event.target).value)"
+						(blur)="onLeave(field.code)"
 					/>
 					<span class="input-group-text">{{ displayUnit() }}</span>
 				</div>
-				@if (preview(field.code, field.unit, field.step ?? 0.5, field.min ?? 1, field.max ?? 200); as snapped) {
-				<p class="text-content">{{ snapped }}</p>
+				@if (outOfRange(field); as limits) {
+				<div
+					class="invalid-feedback"
+					[id]="'meas-' + field.code + '-range'"
+				>
+					{{ 'measurement_range' | transloco: limits }}
+				</div>
+				} @else if (keptNote(field); as kept) {
+				<p class="text-content">{{ kept }}</p>
 				}
 			</div>
 			}

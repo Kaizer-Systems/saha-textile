@@ -269,6 +269,7 @@
 	"maintenance": "Maintenance",
 	"maintenance_message": "We are busy updating our store for you.",
 	"marketing_opt_in": "Send me offers and news by email",
+	"measurement_range": "Enter a measurement from {{min}} to {{max}} {{unit}}.",
 	"measurements": "Measurements",
 	"measurements_note": "Please provide accurate measurements to ensure the perfect fit.",
 	"measurements_required": "Measurements Required",

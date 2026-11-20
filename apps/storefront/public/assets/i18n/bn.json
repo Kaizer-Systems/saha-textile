@@ -269,6 +269,7 @@
 	"maintenance": "রক্ষণাবেক্ষণ",
 	"maintenance_message": "আপনার জন্য আমরা দোকানটি নতুন করে সাজাচ্ছি।",
 	"marketing_opt_in": "ইমেলে অফার ও খবর পাঠান",
+	"measurement_range": "{{min}} থেকে {{max}} {{unit}}-এর মধ্যে মাপ লিখুন।",
 	"measurements": "মাপ",
 	"measurements_note": "ঠিকঠাক ফিটিংয়ের জন্য অনুগ্রহ করে সঠিক মাপ দিন।",
 	"measurements_required": "মাপ লাগবে",

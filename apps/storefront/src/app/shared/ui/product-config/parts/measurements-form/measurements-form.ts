@@ -5,11 +5,35 @@ import { TranslocoModule } from '@jsverse/transloco';
 
 import { IMeasurementField } from '@data-access/interfaces/product-detail.interface';
 
+type Unit = 'in' | 'cm';
+
+/** What the shopper typed in one box, in the unit the box showed while they typed. */
+interface Entry {
+	text: string;
+	unit: Unit;
+}
+
+/** The allowed range of one field, written in the unit the shopper is looking at. */
+export interface MeasurementLimits {
+	min: string;
+	max: string;
+	unit: Unit;
+}
+
+const CM_PER_INCH = 2.54;
+
 /**
  * Reusable tailoring measurement inputs (Shoulder/Chest/Waist/Sleeve…). Built
  * from `IMeasurementField[]` via Reactive Forms; emits the values and validity
  * so the parent can gate Add-to-Cart. Shared by the add-on group and bundle
  * configurator. Labels are Transloco keys; every field is in the SSR DOM.
+ *
+ * A box always shows what the shopper typed while its unit is showing. The kept
+ * value is that number in the field's own unit, snapped to the field's step
+ * (owner log: "The value snaps to the field step"). Switching units shows the
+ * kept value converted, and switching back shows the shopper's own number again,
+ * so no figure drifts by being converted twice. A number outside the field's
+ * range stays in the box with a note naming the range; it is never wiped.
  */
 @Component({
 	selector: 'app-measurements-form',
@@ -28,13 +52,28 @@ export class MeasurementsForm {
 	readonly valueChange = output<Record<string, number>>();
 	readonly validChange = output<boolean>();
 
-	readonly displayUnit = signal<'in' | 'cm'>('in');
+	readonly displayUnit = signal<Unit>('in');
 	public form: FormGroup = this.fb.group({});
+
+	/** Each box's own text, by field code. */
+	readonly entries = signal<Record<string, Entry>>({});
+	/** Boxes the shopper has left, so a range note waits until they stop typing. */
+	readonly left = signal<Record<string, true>>({});
+
+	/** The fields and prefill the form was last built from; a repeat of the same keeps what was typed. */
+	private builtFrom = '';
 
 	constructor() {
 		effect(() => {
 			const fields = this.fields();
 			const initial = this.initialValues();
+			const builtFrom = JSON.stringify([
+				fields.map((f) => [f.code, f.unit, f.step, f.min, f.max]),
+				initial ?? null,
+			]);
+			if (builtFrom === this.builtFrom) return;
+			this.builtFrom = builtFrom;
+
 			const group: Record<string, unknown> = {};
 			for (const f of fields) {
 				group[f.code] = [
@@ -43,6 +82,8 @@ export class MeasurementsForm {
 				];
 			}
 			this.form = this.fb.group(group);
+			this.entries.set({});
+			this.left.set({});
 			this.form.statusChanges.subscribe(() => {
 				this.validChange.emit(this.form.valid);
 				this.valueChange.emit(this.form.value);
@@ -53,61 +94,85 @@ export class MeasurementsForm {
 		});
 	}
 
-	/** What the shopper is typing, before it is kept in the field's unit. */
-	readonly draft = signal<Record<string, string>>({});
-
-	showUnit(unit: 'in' | 'cm') {
-		this.draft.set({});
+	showUnit(unit: Unit) {
 		this.displayUnit.set(unit);
 	}
 
-	onDraft(code: string, value: string) {
-		this.draft.update((current) => ({ ...current, [code]: value }));
-	}
-
-	/**
-	 * Convert the typed number into the field's unit, snap it to the field's step,
-	 * and keep it only when it lands inside the field's range. The preview shows
-	 * that snapped figure before this runs.
-	 */
-	keep(code: string, storedUnit: string, step = 0.5, min = 1, max = 200, event: Event) {
-		const input = event.target as HTMLInputElement;
-		const snapped = snapMeasurement(input.value, this.displayUnit(), storedUnit, step, min, max);
-		const control = this.form.get(code);
-		if (snapped === null) {
-			control?.setValue(null);
-			control?.setErrors({ range: true });
-			control?.markAsTouched();
+	/** Keeps the shopper's text as typed, and the field's value as that number snapped in the field's unit. */
+	onInput(field: IMeasurementField, text: string) {
+		const unit = this.displayUnit();
+		this.entries.update((current) => ({ ...current, [field.code]: { text, unit } }));
+		const control = this.form.get(field.code);
+		if (!control) return;
+		if (text.trim() === '') {
+			control.setValue(null);
 			return;
 		}
-		control?.setValue(snapped);
-		control?.setErrors(null);
-		this.draft.update((current) => {
-			const next = { ...current };
-			delete next[code];
-			return next;
-		});
-		input.value = this.displayText(code, storedUnit);
+		const kept = snapMeasurement(text, unit, field.unit, field.step ?? 0.5, field.min ?? 1, field.max ?? 200);
+		control.setValue(kept);
+		if (kept === null) control.setErrors({ range: true });
 	}
 
-	displayText(code: string, storedUnit: string): string {
-		const raw = this.form.get(code)?.value;
-		if (raw === null || raw === undefined || raw === '') return '';
-		return convertForDisplay(Number(raw), storedUnit, this.displayUnit());
+	onLeave(code: string) {
+		this.left.update((current) => ({ ...current, [code]: true }));
+		this.form.get(code)?.markAsTouched();
 	}
 
-	preview(code: string, storedUnit: string, step = 0.5, min = 1, max = 200): string {
-		const typed = this.draft()[code];
-		if (typed === undefined || typed === '') return '';
-		const snapped = snapMeasurement(typed, this.displayUnit(), storedUnit, step, min, max);
-		if (snapped === null) return '';
-		const unit = storedUnit === 'cm' ? 'cm' : 'in';
-		return `${snapped} ${unit}`;
+	/** The text the box shows in the unit now chosen. */
+	boxText(field: IMeasurementField): string {
+		const unit = this.displayUnit();
+		const entry = this.entries()[field.code];
+		if (entry?.unit === unit) return entry.text;
+		const kept = this.form.get(field.code)?.value;
+		if (kept !== null && kept !== undefined && kept !== '') {
+			return unitOf(field.unit) === unit
+				? String(kept)
+				: oneDecimal(convert(Number(kept), unitOf(field.unit), unit));
+		}
+		// Nothing kept: an out-of-range number still shows, converted, beside its range note.
+		if (entry && entry.text.trim() !== '' && Number.isFinite(Number(entry.text))) {
+			return oneDecimal(convert(Number(entry.text), entry.unit, unit));
+		}
+		return '';
+	}
+
+	/** The field's range in the unit now chosen, once the shopper has left a box holding a number outside it. */
+	outOfRange(field: IMeasurementField): MeasurementLimits | null {
+		const entry = this.entries()[field.code];
+		if (!this.left()[field.code] || !entry || entry.text.trim() === '') return null;
+		if (!this.form.get(field.code)?.hasError('range')) return null;
+		const unit = this.displayUnit();
+		const from = unitOf(field.unit);
+		return {
+			min: oneDecimal(convert(field.min ?? 1, from, unit)),
+			max: oneDecimal(convert(field.max ?? 200, from, unit)),
+			unit,
+		};
+	}
+
+	/** The kept figure in the field's own unit, shown under a box whose number was typed in the other unit. */
+	keptNote(field: IMeasurementField): string {
+		const entry = this.entries()[field.code];
+		const unit = unitOf(field.unit);
+		if (!entry || entry.unit === unit || entry.unit !== this.displayUnit()) return '';
+		const kept = this.form.get(field.code)?.value;
+		if (kept === null || kept === undefined || kept === '') return '';
+		return `${kept} ${unit}`;
 	}
 }
 
-function unitOf(value: string): 'in' | 'cm' {
+function unitOf(value: string): Unit {
 	return value === 'cm' ? 'cm' : 'in';
+}
+
+function convert(value: number, from: Unit, to: Unit): number {
+	if (from === to) return value;
+	return from === 'in' ? value * CM_PER_INCH : value / CM_PER_INCH;
+}
+
+/** One decimal at most, with no trailing zero: 91.44 -> "91.4", 60.96 -> "61". */
+function oneDecimal(value: number): string {
+	return String(Number(value.toFixed(1)));
 }
 
 function decimalPlaces(step: number): number {
@@ -133,18 +198,7 @@ export function snapMeasurement(
 ): number | null {
 	const value = Number(typed);
 	if (!(step > 0) || !Number.isFinite(value)) return null;
-	const from = unitOf(displayUnit);
-	const to = unitOf(storedUnit);
-	const inFieldUnit = from === to ? value : from === 'in' ? value * 2.54 : value / 2.54;
-	const snapped = snapToStep(inFieldUnit, step);
+	const snapped = snapToStep(convert(value, unitOf(displayUnit), unitOf(storedUnit)), step);
 	if (snapped < min || snapped > max) return null;
 	return snapped;
-}
-
-function convertForDisplay(stored: number, storedUnit: string, displayUnit: string): string {
-	const from = unitOf(storedUnit);
-	const to = unitOf(displayUnit);
-	if (from === to) return String(stored);
-	const converted = from === 'in' ? stored * 2.54 : stored / 2.54;
-	return String(Number(converted.toFixed(2)));
 }

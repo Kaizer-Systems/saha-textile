@@ -20,6 +20,7 @@ source_of_truth:
     - docker/images/admin-nginx.conf
     - e2e/dark-mode.admin.spec.ts
     - e2e/colour-checks.ts
+    - apps/admin/public/assets/scss/components/_choice-box.scss
 ---
 
 # Admin styles and dark mode
@@ -57,6 +58,10 @@ Where the fixes live:
 - **The side menu's gradient** (`$sidebar-gradient` in `utils/_admin-colours.scss`) keeps its slow movement in three deep shades of the theme colour, so its white text reaches 4.5 : 1 at every moment. Dark mode keeps the theme's dark menu.
 - **`themes/_contrast.scss`** (loaded last) holds what has no theme source: Bootstrap's `.text-muted`, `.text-success`, `.text-danger`, `.text-warning`, `.help-text`, the breadcrumb's last step, select placeholders, yellow badges, and amber links on the warning banner.
 - **`themes/_dark-contrast.scss`** holds dark fixes with no dark rule of their own: light text in tables, popup titles, form labels, menus, select boxes (through ng-select2's `--select2-*-text-color` variables) and page numbers, and the warning banner as dark amber instead of purple.
+
+## Choice boxes
+
+A box picked with its radio (a saved address, a payment method at checkout) carries `is-chosen` when it is the choice: `components/_choice-box.scss` draws a 2 px ring in the theme colour as an outline, so nothing moves or resizes when the choice changes. A line needs only 3 : 1, so the same ring serves both modes and has no dark twin. Use the class on any new picked box rather than writing another border.
 
 ## Where the dark rules come from
 

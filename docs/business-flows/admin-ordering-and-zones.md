@@ -50,6 +50,10 @@ A variant counts the pieces kept for orders (`stock.reserved`). Free to sell is 
 
 The cart on Create order is priced exactly as the shop prices it; for a business on a live zone the zone prices the piece itself and add-ons such as stitching keep their listed price. The currency can be switched at any time: amounts convert at the stored rate plus the PayPal markup, while payments taken by hand stay in rupees at rupee prices.
 
+On the screen, **Order for** switches between a shop customer, found by name, phone or email (`GET /admin/orders/customers`), and a business, found by name, phone or GSTIN (`GET /admin/businesses/buyers`), searched on the server as staff type. A business shows its credit, standing, zone and the GSTIN its invoices go to. The product cards (`GET /admin/orders/cards`) are priced for that buyer and currency; a product its zone has no price for is greyed with "Price not set for this zone" and can't be added. A product with colours or designs opens a variant list priced the same way (`GET /admin/orders/cards/:productId/variants`). Fabric sold by the metre is added at its shortest cut and counted in tenths of a metre. The order being built is kept for the browser tab, so going to checkout and back, or reloading, keeps it; prices are never kept, the server prices the cart each time.
+
+At checkout staff pick the delivery address from the buyer's saved addresses (`GET /admin/orders/buyer-addresses`) or type a new one with the country's rules, saved to the customer's addresses when ticked, with its name. Billing is the same as delivery unless unticked. When both addresses are outside India the optional Indian invoice address appears. **Apply a coupon** opens a list of the coupons this order can use (`POST /admin/orders/checkout/coupons`), each with what it would take off now, and the others with why they can't be used; a code can also be typed. The quote then shows each coupon as its own line, and one that can't be used says why.
+
 Before placing, the checkout quote shows the totals in both currencies, the shipping charge with the rule set that priced it, the coupons and why any were refused, the business's credit, and the payment methods that can't be used with the reason. Placing:
 
 - checks every address against the country rules and works out the invoice address from the shop's abroad policy (an order with no complete Indian invoice address is flagged for staff and can't be packed);
@@ -67,12 +71,23 @@ The status machine offers only the next steps an order can take; a blocked step 
 - **Typed by hand:** UPI, bank transfer and cash on delivery, each with the reference the customer gave. The popup opens with the amount due; less leaves the rest due, more is paid ahead. A bank transfer that hasn't arrived waits as pending and is marked received later. Each received payment gets a receipt number.
 - **Payment requests:** the gateway sends its own request for no more than is due: rupees through the INR gateway's request service, other currencies through PayPal's invoicing, each priced at that day's rate with the markup. A new request replaces and cancels the old one. **Check payment status** asks the gateway and records each captured payment once.
 - **Our pay link:** `/pay/<token>` always shows the order's current request, or the paid page, or the expired page with **Call us** and **Email us** from the shop's details. The token is random and only its hash is stored.
+- **Request online payment** on the order page asks the server first (`GET /admin/orders/:id/requests/preview`): the amount due, the gateway the chosen currency goes to, today's rate with the markup, who the gateway sends the request to, and why it can't go (payment links switched off, nothing due, more than due, the gateway not set up, no email or mobile). A customer billed in India who is asked in another currency is warned, with a one-click switch to rupees, because PayPal India only takes payers outside India. **Request again** on an expired or cancelled request shows the old request's rate and total beside the new one.
 
 The order's balance and payment status are worked out again from every payment after each change; an order waiting for its money is placed once it is paid, on account or due on delivery.
 
 ## Open orders
 
 An open order lets a buyer collect pieces over weeks and take them in one shipment. Staff add pieces (kept at once, priced in rupees) and remove them (back on sale at once); payments come in as they come. **Close** works out the shipping for one parcel; the order then waits for what is due, is placed when it is already paid ahead, or goes on a business's account within its credit.
+
+On the order page, ✕ on a held line says what the goods and the amount due become before the pieces go back on sale, with an optional comment kept in the history. **Close the order** shows the server's preview first (`GET /admin/orders/:id/open/close-preview`): the goods, one parcel's shipping, the order total, what is paid and what is due to close. Then staff choose to request the rest online at once (the request popup opens straight after closing), to record it by hand later, or, for a business within its credit, to put it on the business's account.
+
+## A customer's saved addresses
+
+On **Admin › Customers**, a saved customer's page has four tabs: Details, Addresses, Orders (their orders, newest first; a row opens the order) and Login and security (shown when an activation can be sent again). The Addresses tab shows each named address as a card with its name, the address on one line, the postal code, the phone and a Default badge; the card's radio makes it the default. **Add address** and the pencil on each card open the address popup: a name for the address ("Home", "Office"), the same address form as both checkouts and the shop account, and **Use as the default delivery address**. The country sets the State list, the phone code and what the postal code is called; in India the PIN code fills the city and State. The popup saves through `POST` and `PUT /admin/customers/:customerId/address-book[/:addressId]`, which check the address against the country data before saving. On a customer not saved yet, the addresses wait and are saved the same way once the customer is created.
+
+## Invoice address
+
+An order whose billing and delivery addresses are both outside India, with no complete Indian address given at checkout, shows **Invoice address needed** to staff only and can't be packed. **Add invoice address** on that notice takes the name, street, city, State and 6-digit PIN code in India; a full PIN fills the State and the city from India Post's directory, and the server checks the address against the country data. How the address was confirmed (a phone call, an email, a chat message, in person) is kept in the order's history.
 
 ## Paying at the shop
 

@@ -20,6 +20,8 @@ import { setupLocal } from './local-setup.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
 import { stackAddresses, stackApiSettings, writeStackEnv } from './stack.mjs';
+import { writeTierRelease } from './tier-release.mjs';
+import { parseEnvText, readIfPresent } from './files.mjs';
 
 /** Notes from the Infisical CLI, said once at the end (for one, that it answered from its own copy). */
 const notes = new Set();
@@ -112,7 +114,47 @@ function setupLocalCommand() {
 	console.log(setupLocal({ root: ROOT }).join('\n'));
 }
 
-const commands = { status, pull, 'stack-env': stackEnv, 'setup-local': setupLocalCommand };
+/**
+ * `pnpm secrets:release -- <staging|production> --images <file> --out <empty folder>` (plan step 8):
+ * the deploy job's release folder, read with the job's deploy identity (INFISICAL_TOKEN).
+ * @param {string[]} args
+ */
+function release(args) {
+	const flags = args.filter((arg) => arg !== '--');
+	const tier = flags[0];
+	const value = (flag) => {
+		const index = flags.indexOf(flag);
+		return index === -1 ? undefined : flags[index + 1];
+	};
+	const imagesFile = value('--images');
+	const out = value('--out');
+	if ((tier !== 'staging' && tier !== 'production') || !imagesFile || !out) {
+		throw new SecretsError(
+			'Usage: pnpm secrets:release -- <staging|production> --images <file> --out <empty folder>',
+		);
+	}
+	const imagesText = readIfPresent(imagesFile);
+	if (imagesText === null) throw new SecretsError('The images file is missing.');
+	const inventory = loadInventory();
+	const project = inventory.projects[tier];
+	const folders = exportProject(project, { notes });
+	const result = writeTierRelease({
+		out,
+		folders,
+		inventory,
+		tier,
+		images: parseEnvText(imagesText),
+		source: `${project.name} (${project.environment})`,
+	});
+	console.log(
+		[
+			`Release folder written for ${tier}. Next: bin/deploy.sh --check-only <folder>.`,
+			...result.notes.map((note) => `  ${note}`),
+		].join('\n'),
+	);
+}
+
+const commands = { status, pull, 'stack-env': stackEnv, 'setup-local': setupLocalCommand, release };
 
 function main() {
 	const [command, ...args] = process.argv.slice(2);

@@ -41,6 +41,34 @@ local refresh uses the owner's own CLI login.
 - Infisical Free allows five identities, people and machines together: the organization's two
   people and these two make four.
 
+### The deploy job's Infisical steps (plan step 8)
+
+Built and tested on the Mac; the first staging deploy (Chunk J) proves them live. In the job that
+runs in the `staging` or `production` GitHub environment, after the owner approves it:
+
+```yaml
+permissions:
+    contents: read
+    id-token: write
+steps:
+    # Infisical CLI 0.45.12 installed (pinned), then:
+    - run: node scripts/secrets/github-login.mjs <identity id of this environment>
+    - run: pnpm secrets:release -- staging --images images.env --out "$RUNNER_TEMP/release"
+    - run: bash "$RUNNER_TEMP/release/bin/deploy.sh" --check-only "$RUNNER_TEMP/release"
+    # then ship the folder over the tunnel to /opt/saha-textile/releases/<id>/ and run deploy.sh there
+```
+
+- `github-login.mjs` asks GitHub for the job's token (audience `https://github.com/<owner>`),
+  exchanges it for a 15-minute Infisical token as the deploy identity, masks it in the log and
+  writes it to `$GITHUB_ENV` as `INFISICAL_TOKEN`, which the CLI reads in the later steps.
+- `pnpm secrets:release` writes the release folder from that project's four folders: the image
+  digests from `images.env` (the four `*_IMAGE` names, each `@sha256:`), `DEPLOY_ENV` set to the
+  tier, `EDGE_PORT=443`, `SAHA_TEXTILE_ROOT=/opt/saha-textile`, and every other release setting
+  from `/deployment`. It refuses a folder that is not empty and anything the renderer refuses.
+- The identity ids are on each identity's page in Infisical and in the hand-over notes; they are
+  not secrets. Keep them as GitHub environment variables (`INFISICAL_IDENTITY_ID`) so the workflow
+  holds no literal ids.
+
 ### Changes on 2026-11-19 (owner to apply in Infisical)
 
 The owner decided how every mode reads these projects (owner decisions log, round "Infisical in

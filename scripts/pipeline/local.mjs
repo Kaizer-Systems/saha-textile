@@ -24,7 +24,7 @@
  * Names and outcomes only: no value is printed. Stops at the first failing stage.
  */
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -121,25 +121,28 @@ const stages = {
 	},
 
 	proof({ json, report }) {
+		// In a clean copy of the last commit, as GitHub runs it: the proof builds its images from the
+		// folder it runs in, and this folder may hold uncommitted work (other chats share it).
+		const checkout = join(ROOT, LOCAL_RELEASE_DIR, 'checkout');
+		rmSync(checkout, { recursive: true, force: true });
+		mkdirSync(checkout, { recursive: true, mode: 0o700 });
+		sh(`git archive --format=tar HEAD | tar -x -C "${checkout}"`, { json });
+		reportDirty(report, 'proof');
 		report.step('proof', PROOF.name);
+		const inCheckout = `cd "${checkout}" && ${PROOF.run}`;
 		try {
-			sh(PROOF.run, { json });
+			sh(inCheckout, { json });
 		} finally {
 			// The proof leaves its stack running for inspection; this run removes it.
-			sh(`${PROOF.run} clean`, { json });
+			sh(`${inCheckout} clean`, { json });
+			rmSync(checkout, { recursive: true, force: true });
 		}
 	},
 
 	images({ json, report }) {
 		const commit = capture('git', ['rev-parse', 'HEAD']);
 		const tree = capture('git', ['rev-parse', 'HEAD^{tree}']);
-		const dirty = capture('git', ['status', '--porcelain']).split('\n').filter(Boolean).length;
-		if (dirty > 0) {
-			report.note(
-				'images',
-				`${dirty} uncommitted change(s) in this folder are NOT in the images: they are built from commit ${commit.slice(0, 8)}, as GitHub builds them.`,
-			);
-		}
+		const dirty = reportDirty(report, 'images');
 		const running = spawnSync('docker', ['inspect', REGISTRY_CONTAINER], { stdio: 'ignore' }).status === 0;
 		if (!running) {
 			report.step('images', 'Starting the registry on this Mac');
@@ -252,6 +255,19 @@ const stages = {
 		report.note('record', `Open the shop at ${addresses.shop} and the admin at ${addresses.admin}.`);
 	},
 };
+
+/** Says how many uncommitted changes the commit-built images leave out, and returns the count. */
+function reportDirty(report, stage) {
+	const dirty = capture('git', ['status', '--porcelain']).split('\n').filter(Boolean).length;
+	if (dirty > 0) {
+		const commit = capture('git', ['rev-parse', '--short=8', 'HEAD']);
+		report.note(
+			stage,
+			`${dirty} uncommitted change(s) in this folder are NOT used: this stage builds from commit ${commit}, as GitHub does.`,
+		);
+	}
+	return dirty;
+}
 
 /** The pinned images from stage 3. */
 function readImages() {

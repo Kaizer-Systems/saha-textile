@@ -43,7 +43,8 @@ map $http_accept_language $fallback_language {
 # by nobody. A map, because an add_header in a location would drop the server's other security headers.
 map $uri $storefront_frame_ancestors {
 	default "'none'";
-	~^/[a-z]{2,3}(-[a-z]{2})?/__preview/ "https://${ADMIN_HOST}";
+	# Quoted: Nginx reads an unquoted `{` as the start of a block.
+	"~^/[a-z]{2,3}(-[a-z]{2})?/__preview/" "https://${ADMIN_HOST}";
 }
 
 map $uri $storefront_fallback_language {

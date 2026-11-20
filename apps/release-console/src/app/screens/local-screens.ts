@@ -14,6 +14,7 @@ import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 
 import { formatBytes } from './format';
 import { Gauge, LocalGate, SparkLine, formatRate, levelColour, percent } from './local-parts';
+import { type Trouble, TroubleSteps, troubleFor } from './trouble';
 import { ConsoleApi } from '../data/console-api';
 import { when } from '../pages/format-time';
 import { BrandLogo, Icon, STAGE_ICONS, serviceLogo } from '../shared/icons';
@@ -702,7 +703,7 @@ export class TailScreen {
 /** Watch › Health for this Mac: one tile per part, green, amber or red. */
 @Component({
 	selector: 'rc-health-screen',
-	imports: [LocalGate, Icon, BrandLogo],
+	imports: [LocalGate, Icon, BrandLogo, TroubleSteps],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -733,11 +734,22 @@ export class TailScreen {
 				<p class="rc-note">
 					Green: answering. Amber: running but not fully ready. Red: down or failing its check.
 				</p>
+				<rc-trouble-steps [trouble]="trouble()" />
 			</div>
 		</rc-local-gate>
 	`,
 })
 export class HealthScreen {
+	/** Docker down, or the stack not answering: the steps to bring it back. */
+	protected readonly trouble = computed<Trouble | null>(() => {
+		const d = this.docker.data();
+		if (d && !d.reachable) return 'docker';
+		const stack = d?.containers.filter((c) => c.name.startsWith('saha-textile-stack-')) ?? [];
+		if (d && (!stack.length || stack.some((c) => c.state !== 'running'))) return 'stack-down';
+		const api = this.shop.data()?.stack;
+		if (stack.length && this.shop.data() && (!api || (api.status ?? 500) >= 400)) return 'stack-down';
+		return null;
+	});
 	/** Docker's own logo, or the product a container runs. */
 	protected logo(name: string): string {
 		return name === 'Docker' ? 'logos/docker-icon' : serviceLogo(name);
@@ -846,7 +858,7 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 /** Ship › Live deploy, Local tab: run the local pipeline and the stack from here, and watch it. */
 @Component({
 	selector: 'rc-deploy-screen',
-	imports: [LocalGate, Icon, BrandLogo],
+	imports: [LocalGate, Icon, BrandLogo, TroubleSteps],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -1097,6 +1109,7 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 					</div>
 					@if (message()) {
 						<p class="rc-note">{{ message() }}</p>
+						<rc-trouble-steps [trouble]="troubleFor(message())" />
 					}
 					<p class="rc-note">
 						One run at a time. Proof uses made-up keys on purpose; the release and deploy stages use the
@@ -1234,11 +1247,26 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 						}
 					</div>
 				</div>
+				@if (j.status === 'failed') {
+					<rc-trouble-steps [trouble]="failedTrouble(j)" />
+				}
 			}
 		</rc-local-gate>
 	`,
 })
 export class DeployScreen {
+	protected readonly troubleFor = troubleFor;
+	/** A failed run's steps: from what its last lines say, or the general ones. */
+	protected failedTrouble(j: Job): Trouble {
+		return (
+			troubleFor(
+				j.lines
+					.slice(-40)
+					.map((l) => l.text)
+					.join('\n'),
+			) ?? 'run-failed'
+		);
+	}
 	private readonly api = inject(ConsoleApi);
 	private readonly queries = inject(QueryClient);
 	private readonly router = inject(Router);

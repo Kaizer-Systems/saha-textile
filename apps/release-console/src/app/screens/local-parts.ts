@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { formatBytes } from './format';
+import { TroubleSteps } from './trouble';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
@@ -143,6 +144,7 @@ export class Gauge {
  */
 @Component({
 	selector: 'rc-local-gate',
+	imports: [TroubleSteps],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (!onThisComputer()) {
@@ -165,6 +167,7 @@ export class Gauge {
 						{{ h.message }} It runs beside the console and reads this Mac and Docker for it.
 					</div>
 				</div>
+				<rc-trouble-steps trouble="helper" />
 			}
 		} @else if (helper.isError()) {
 			<div class="rc-banner red small">

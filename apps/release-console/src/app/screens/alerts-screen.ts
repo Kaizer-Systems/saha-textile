@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { SparkLine } from './local-parts';
+import { type Trouble, TroubleSteps } from './trouble';
 import { ConsoleApi } from '../data/console-api';
 import { Icon } from '../shared/icons';
 
@@ -18,38 +19,14 @@ const RULE_ICONS: Record<AlertRule, string> = {
 	'errors-rising': 'tabler/alert-triangle',
 };
 
-/** What to do when an alert fires: the troubleshooting steps for its rule. */
-export const ALERT_STEPS: Record<AlertRule, string[]> = {
-	disk: [
-		'Empty the Trash; files moved there still take space.',
-		'In a terminal, `docker system df` shows what Docker keeps on disk.',
-		'`docker builder prune` frees build cache and `docker image prune` removes images no container uses; neither touches the stack’s data volumes.',
-		'Large caches are listed by `du -sh ~/Library/Caches/* | sort -h | tail`.',
-	],
-	'container-down': [
-		'Open Run › Live logs, choose the container and read its last lines.',
-		'On Ship › Live deploy, “Start shop containers” starts the stack’s own services again.',
-		'If it stops again, run `pnpm stack:up` from the main folder: it writes the stack’s files and starts everything in order.',
-	],
-	'helper-down': [
-		'From the main folder, run `pnpm console:up`; it starts the Mac helper beside the console.',
-		'If port 4419 is taken, `lsof -nP -iTCP:4419` names the program using it.',
-		'The helper refuses to start from a worktree; start it from the main folder.',
-	],
-	'run-failed': [
-		'Open Ship › Live deploy › Recent runs and read the output of the stage that failed.',
-		'Fix the cause, then start again from that stage with “From …” instead of running every stage.',
-		'The checks stage refuses to run while `pnpm dev` servers are up; stop them or start from the proof stage.',
-	],
-	'key-expiring': [
-		'Create a new key at the vendor (Project settings › Connections shows how for each kind).',
-		'Save it in Infisical under the same name, then run `pnpm console:env` on this Mac.',
-		'On Connections, “Check” confirms the new key at once.',
-	],
-	'errors-rising': [
-		'Open Run › Live logs › Errors only to see the failing requests.',
-		'Watch › APM shows which route is failing and since when.',
-	],
+/** Each rule's steps on Firing now, from the shared troubleshooting list. */
+const RULE_TROUBLE: Record<AlertRule, Trouble> = {
+	disk: 'disk',
+	'container-down': 'stack-down',
+	'helper-down': 'helper',
+	'run-failed': 'run-failed',
+	'key-expiring': 'key',
+	'errors-rising': 'errors',
 };
 
 const at = (iso: string | null) =>
@@ -66,7 +43,7 @@ const lasted = (a: Alert) => {
  */
 @Component({
 	selector: 'rc-alerts-screen',
-	imports: [Icon, SparkLine],
+	imports: [Icon, SparkLine, TroubleSteps],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (view.data(); as v) {
@@ -88,31 +65,7 @@ const lasted = (a: Alert) => {
 						</div>
 					</div>
 					<div class="rc-g2">
-						<div class="rc-panel">
-							<div class="rc-ph">
-								<span class="rc-label">
-									<rc-icon name="tabler/list-check" />
-									What to do
-								</span>
-							</div>
-							<ul class="rc-lane">
-								@for (s of steps[a.rule]; track $index) {
-									<li>
-										<span class="rc-dot cy"></span>
-										<span>
-											@for (part of parts(s); track $index) {
-												@if ($odd) {
-													<code>{{ part }}</code>
-												} @else {
-													{{ part }}
-												}
-											}
-										</span>
-										<span></span>
-									</li>
-								}
-							</ul>
-						</div>
+						<rc-trouble-steps [trouble]="troubles[a.rule]" />
 						@if (a.rule === 'disk') {
 							<div class="rc-panel">
 								<div class="rc-ph">
@@ -234,13 +187,9 @@ export class AlertsScreen {
 	private readonly api = inject(ConsoleApi);
 	readonly tab = input('rules');
 	protected readonly icons = RULE_ICONS;
-	protected readonly steps = ALERT_STEPS;
+	protected readonly troubles = RULE_TROUBLE;
 	protected readonly at = at;
 	protected readonly lasted = lasted;
-	/** A step split at its backticks: odd parts are commands, shown as code. */
-	protected parts(step: string): string[] {
-		return step.split('`');
-	}
 	protected readonly view = injectQuery(() => ({
 		queryKey: ['alerts'],
 		queryFn: () => this.api.alerts(),

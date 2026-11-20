@@ -7,6 +7,7 @@ import {
 } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
+import { BusinessesService } from '../src/orders-setup/businesses.service';
 import { CouponsService } from '../src/orders-setup/coupons.service';
 import { OrderSettingsService } from '../src/orders-setup/order-settings.service';
 import { ZonesService } from '../src/orders-setup/zones.service';
@@ -164,5 +165,104 @@ describe('document numbers (DEC-NUMBERING)', () => {
 		};
 		await expect(service(locked).saveNumbering(changed, 'adm')).rejects.toThrow();
 		await expect(service(locked).saveNumbering(write, 'adm')).resolves.toBeTruthy();
+	});
+});
+
+describe('businesses (bz02, bz05, so02; DEC-B2B-ZONES)', () => {
+	const write = {
+		legalName: 'Boutique Ltd',
+		tradeName: 'Boutique',
+		businessType: 'privateLimited' as const,
+		kind: 'regular' as const,
+		gstin: '27AAPFU0939F1ZV',
+		pan: null,
+		stateCode: '27',
+		registeredAddress: { line: '1 Road', city: 'Mumbai', pin: '400001' },
+		contacts: [],
+		sellsToUs: false,
+		customer: { zoneId: 'zone_w', creditLimitINR: 200000, creditDays: 30 },
+		supplier: null,
+		notes: null,
+		active: true,
+	};
+
+	async function setup(balances: { receivable: number; payable: number } = { receivable: 0, payable: 0 }) {
+		const saved: unknown[] = [];
+		const entries: unknown[] = [];
+		const zones = new Map([
+			['zone_retail', { id: 'zone_retail', code: 'RETAIL', name: 'Retail', status: 'live' }],
+			['zone_w', { id: 'zone_w', code: 'W', name: 'Wholesale', status: 'live' }],
+		]);
+		const service = new BusinessesService(
+			{
+				save: async (business: unknown) => (saved.push(business), business),
+				findById: async () => saved.at(-1) ?? null,
+			} as never,
+			{
+				balance: async (_id: string, side: 'receivable' | 'payable') => balances[side],
+				append: async (entry: unknown) => (entries.push(entry), entry),
+			} as never,
+			{ findById: async (id: string) => zones.get(id) ?? null, list: async () => [...zones.values()] } as never,
+			{ withTransaction: (work: (context: object) => Promise<unknown>) => work({}) } as never,
+			{ issue: async (type: string) => (type === 'journal' ? 'JV/26-27/000001' : 'RC/26-27/000001') } as never,
+		);
+		return { service, saved, entries };
+	}
+
+	it('puts a business on RETAIL unless the admin may assign zones', async () => {
+		const { service } = await setup();
+		await expect(service.create(write, 'adm', false, true)).rejects.toThrow();
+		const retail = await service.create(
+			{ ...write, customer: { ...write.customer, zoneId: 'zone_retail' } },
+			'adm',
+			false,
+			true,
+		);
+		expect(retail.roles.customer?.zoneId).toBe('zone_retail');
+		const assigned = await service.create(write, 'adm', true, false);
+		expect(assigned.roles.customer).toMatchObject({ zoneId: 'zone_w', creditLimitINR: 0 });
+	});
+
+	it('records a receipt as a credit on the receivable account with an RC number', async () => {
+		const { service, entries } = await setup();
+		await service.create({ ...write, customer: { ...write.customer, zoneId: 'zone_retail' } }, 'adm', false, true);
+		const entry = await service.recordReceipt(
+			'x',
+			{
+				method: 'upi',
+				amountINR: 5000,
+				reference: 'UTR1',
+				receivedOn: '2026-11-20',
+				note: null,
+				allocations: [],
+			},
+			'adm',
+		);
+		expect(entry).toMatchObject({ side: 'receivable', amountINR: -5000, documentNumber: 'RC/26-27/000001' });
+		expect(entries).toHaveLength(1);
+	});
+
+	it('refuses a set-off while the setting is never, and records one in both accounts under an agreement', async () => {
+		const { service } = await setup({ receivable: 50000, payable: 20000 });
+		await service.create(write, 'adm', true, true);
+		const input = { amountINR: 20000, basis: { kind: 'standingAgreement' as const }, note: 'agreed in writing' };
+		await expect(service.recordSetOff('x', input, 'adm')).rejects.toThrow();
+		const withAgreement = await setup({ receivable: 50000, payable: 20000 });
+		const business = await withAgreement.service.create(write, 'adm', true, true);
+		withAgreement.saved.push({
+			...business,
+			setOff: {
+				mode: 'agreement',
+				reference: 'SO-1',
+				signedOn: '2026-04-01',
+				validUntil: null,
+				mediaId: 'med_1',
+			},
+		});
+		const entries = await withAgreement.service.recordSetOff('x', input, 'adm');
+		expect(entries.map((entry) => [entry.side, entry.amountINR, entry.documentNumber])).toEqual([
+			['receivable', -20000, 'JV/26-27/000001'],
+			['payable', -20000, 'JV/26-27/000001'],
+		]);
 	});
 });

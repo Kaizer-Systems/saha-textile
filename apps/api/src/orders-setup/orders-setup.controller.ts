@@ -13,14 +13,23 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	BusinessListQuery,
+	BusinessReceiptWrite,
+	BusinessStandingWrite,
+	BusinessWrite,
+	BusinessZoneWrite,
+	BuyerSearchQuery,
 	CouponBulkAction,
 	CouponListQuery,
 	CouponSwitchWrite,
 	CouponWrite,
 	DocumentNumberingWrite,
+	LedgerQuery,
 	OrderSettingsWrite,
 	PriceZoneStatusWrite,
 	PriceZoneWrite,
+	SetOffSettingWrite,
+	SetOffWrite,
 	ZonePricingSettingsWrite,
 } from '@saha-textile/contracts';
 
@@ -29,6 +38,7 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { codedRefusal } from '../common/coded-refusal';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
+import { BusinessesService } from './businesses.service';
 import { CouponsService } from './coupons.service';
 import { OrderSettingsService } from './order-settings.service';
 import { ZonesService } from './zones.service';
@@ -252,5 +262,150 @@ export class AdminOrderSettingsController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.settings.saveNumbering(body, actor(principal));
+	}
+}
+
+const has = (principal: AuthenticatedPrincipal | undefined, code: string) =>
+	principal?.permissions?.includes(code) ?? false;
+
+/** Customers › Businesses (brief bz01–bz06, so01–so04): customers and suppliers in one record, two accounts. */
+@ApiTags(API_TAGS.orders)
+@Audience('admin')
+@Controller('admin/businesses')
+export class AdminBusinessesController {
+	constructor(private readonly businesses: BusinessesService) {}
+
+	@Get()
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('business.index')
+	@ApiOperation({ operationId: 'listBusinesses', summary: 'Businesses with roles, zone, both balances and standing' })
+	list(@Query(new ZodValidationPipe(BusinessListQuery)) query: BusinessListQuery) {
+		return this.businesses.list(query);
+	}
+
+	@Get('buyers')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('order.create')
+	@ApiOperation({
+		operationId: 'searchBusinessBuyers',
+		summary: 'Businesses that buy from us, by name, phone or GSTIN',
+	})
+	buyers(@Query(new ZodValidationPipe(BuyerSearchQuery)) query: BuyerSearchQuery) {
+		return this.businesses.searchBuyers(query.q, query.limit);
+	}
+
+	@Get(':id')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('business.index')
+	@ApiOperation({ operationId: 'getBusiness', summary: 'One business' })
+	get(@Param('id') id: string) {
+		return this.businesses.get(id);
+	}
+
+	@Post()
+	@RequirePermissions('business.create')
+	@ApiOperation({
+		operationId: 'createBusiness',
+		summary: 'Add a business (zone and credit need their own permissions)',
+	})
+	create(
+		@Body(new ZodValidationPipe(BusinessWrite)) body: BusinessWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.create(
+			body,
+			actor(principal),
+			has(principal, 'business.assign'),
+			has(principal, 'business.credit'),
+		);
+	}
+
+	@Put(':id')
+	@RequirePermissions('business.edit')
+	@ApiOperation({ operationId: 'updateBusiness', summary: 'Save a business (names the revision it was edited from)' })
+	update(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(BusinessWrite)) body: BusinessWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.update(
+			id,
+			body,
+			actor(principal),
+			has(principal, 'business.assign'),
+			has(principal, 'business.credit'),
+		);
+	}
+
+	@Post(':id/standing')
+	@HttpCode(200)
+	@RequirePermissions('business.hold')
+	@ApiOperation({ operationId: 'setBusinessStanding', summary: 'Active, credit on hold or blocked, with a reason' })
+	standing(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(BusinessStandingWrite)) body: BusinessStandingWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.setStanding(id, body, actor(principal));
+	}
+
+	@Post(':id/zone')
+	@HttpCode(200)
+	@RequirePermissions('business.assign')
+	@ApiOperation({ operationId: 'setBusinessZone', summary: 'Put a business in a zone (DEC-B2B-ZONES)' })
+	zone(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(BusinessZoneWrite)) body: BusinessZoneWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.setZone(id, body.zoneId, actor(principal));
+	}
+
+	@Get(':id/ledger')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('business.index')
+	@ApiOperation({
+		operationId: 'getBusinessLedger',
+		summary: 'One account (receivable or payable) with a running balance',
+	})
+	ledger(@Param('id') id: string, @Query(new ZodValidationPipe(LedgerQuery)) query: LedgerQuery) {
+		return this.businesses.statement(id, query);
+	}
+
+	@Post(':id/receipts')
+	@RequirePermissions('order.payment')
+	@ApiOperation({ operationId: 'recordBusinessReceipt', summary: 'Record a receipt on account (RC number issued)' })
+	receipt(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(BusinessReceiptWrite)) body: BusinessReceiptWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.recordReceipt(id, body, actor(principal));
+	}
+
+	@Post(':id/set-off-setting')
+	@HttpCode(200)
+	@RequirePermissions('business.settle')
+	@ApiOperation({
+		operationId: 'setBusinessSetOff',
+		summary: 'Set-off: never, or under a standing written agreement',
+	})
+	setOffSetting(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(SetOffSettingWrite)) body: SetOffSettingWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.setSetOff(id, body, actor(principal));
+	}
+
+	@Post(':id/set-offs')
+	@RequirePermissions('business.settle')
+	@ApiOperation({ operationId: 'recordSetOff', summary: 'Record a set-off (JV number) in both accounts' })
+	setOff(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(SetOffWrite)) body: SetOffWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.businesses.recordSetOff(id, body, actor(principal));
 	}
 }

@@ -68,7 +68,14 @@ export class ServerDeployController {
 			return {
 				state: 'ok',
 				readAt: new Date().toISOString(),
-				data: await serverDeployView(c.repo.sourceCode.repository, c.env.name, c.target, c.key),
+				data: await serverDeployView(
+					c.repo.sourceCode.repository,
+					c.env.name,
+					c.target,
+					c.key,
+					undefined,
+					c.env.branch || undefined,
+				),
 			};
 		} catch (err) {
 			if (err instanceof NotReady) return { state: 'not-connected', message: err.message };
@@ -90,7 +97,9 @@ export class ServerDeployController {
 		const { pin } = parseBody(startServerDeploySchema, body);
 		const c = await this.ready(p, r, env);
 		this.lock.confirm(sessionOf(req), pin, `deploy ${c.env.name}`);
-		await this.vendor(() => startServerDeploy(c.repo.sourceCode.repository, c.target, c.key));
+		await this.vendor(() =>
+			startServerDeploy(c.repo.sourceCode.repository, c.target, c.key, undefined, c.env.branch || undefined),
+		);
 		this.store.audit(
 			c.project.id,
 			'server-deploy-started',
@@ -113,7 +122,14 @@ export class ServerDeployController {
 		const c = await this.ready(p, r, env);
 		this.lock.confirm(sessionOf(req), pin, `${approve ? 'approve' : 'reject'} the ${c.env.name} deploy`);
 		const view = await this.vendor(() =>
-			serverDeployView(c.repo.sourceCode.repository, c.env.name, c.target, c.key),
+			serverDeployView(
+				c.repo.sourceCode.repository,
+				c.env.name,
+				c.target,
+				c.key,
+				undefined,
+				c.env.branch || undefined,
+			),
 		);
 		if (view.run?.id !== runId || !view.run.waiting.length)
 			throw new HelperError('That run is not waiting for an approval any more.', 409);

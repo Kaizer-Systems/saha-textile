@@ -121,6 +121,10 @@ export const serverDeployViewSchema = z.object({
 export type ServerDeployView = z.infer<typeof serverDeployViewSchema>;
 export const serverDeployAnswerSchema = vendorAnswer(serverDeployViewSchema);
 
+/**
+ * A server deploy runs on its environment's own branch (owner, 20 Nov: server branches are frozen
+ * on the deploy screen and change only in the wizard or Project settings › Repositories).
+ */
 export const startServerDeploySchema = z.object({ pin: confirmation });
 export const reviewServerDeploySchema = z.object({
 	pin: confirmation,

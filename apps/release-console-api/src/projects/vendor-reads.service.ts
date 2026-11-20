@@ -8,6 +8,8 @@ import {
 	type KeyRef,
 	type Project,
 	type PullRequest,
+	type Branches,
+	type BranchesQuery,
 	type RepositoryFileFound,
 	type RepositoryFileQuery,
 	repositoryFileSchema,
@@ -18,6 +20,7 @@ import {
 } from '@saha-textile/release-console-contracts';
 
 import { ProjectsService, githubCliToken } from './projects.service.js';
+import { RunnerClient } from '../runner/runner-client.js';
 import { cloudflareAdapter } from '../vendors/cloudflare.adapter.js';
 import { digitalOceanAdapter } from '../vendors/digitalocean.adapter.js';
 import { githubAdapter } from '../vendors/github.adapter.js';
@@ -28,7 +31,48 @@ const notConnected = <T>(message: string): VendorAnswer<T> => ({ state: 'not-con
 /** Reads vendor data for one repository's slot, always answering ok, not-connected or error. */
 @Injectable()
 export class VendorReadsService {
+	private readonly helper = new RunnerClient();
+
 	constructor(private readonly projects: ProjectsService) {}
+
+	/**
+	 * The branch pickers' list (owner, 20 Nov): GitHub's branches, merged with the ones this
+	 * computer's checkout has when it is this repository (a branch never pushed shows as "only on
+	 * this computer"). Either side may be missing; the answer says why GitHub's is.
+	 */
+	async branches(q: BranchesQuery): Promise<Branches> {
+		type Local = { checkout: boolean; current: string | null; local: string[]; remote: string[] };
+		const here = await this.helper
+			.call<Local>(
+				'GET',
+				`/git/branches?repository=${encodeURIComponent(q.repository)}${q.refresh ? '&fetch=1' : ''}`,
+				undefined,
+				60_000,
+			)
+			.catch(() => ({ checkout: false, current: null, local: [], remote: [] }) as Local);
+		let github: { defaultBranch: string | null; names: string[] } | null = null;
+		let note = '';
+		const key = await githubCliToken();
+		if (!key) note = 'GitHub is not connected yet: press Connect on the repository.';
+		else
+			github = await githubAdapter.branches(q.repository, key).catch((err: unknown) => {
+				note = err instanceof VendorError ? err.message : 'GitHub could not be asked for the branches.';
+				return null;
+			});
+		const onGitHub = new Set(github?.names ?? (here.checkout ? here.remote : []));
+		const onThisComputer = new Set(here.checkout ? here.local : []);
+		const names = [...new Set([...onGitHub, ...onThisComputer])].sort((a, b) => a.localeCompare(b));
+		return {
+			defaultBranch: github?.defaultBranch ?? null,
+			current: here.checkout ? here.current : null,
+			branches: names.map((name) => ({
+				name,
+				onGitHub: onGitHub.has(name),
+				onThisComputer: onThisComputer.has(name),
+			})),
+			note,
+		};
+	}
 
 	pulls(projectId: string, repoId: string): Promise<VendorAnswer<PullRequest[]>> {
 		return this.sourceCode(projectId, repoId, (repo, key) => githubAdapter.pulls(repo, key));
@@ -64,15 +108,35 @@ export class VendorReadsService {
 	async repositoryFile(q: RepositoryFileQuery): Promise<VendorAnswer<RepositoryFileFound>> {
 		if (q.vendor !== 'github')
 			return notConnected(`${VENDOR_NAMES[q.vendor]} screens come later; add its menus by hand.`);
+		const read = (text: string | null, ref?: string): VendorAnswer<RepositoryFileFound> => {
+			if (text === null)
+				return { state: 'ok', readAt: new Date().toISOString(), data: { found: false, menus: [], ref } };
+			const file = repositoryFileSchema.parse(JSON.parse(text));
+			return { state: 'ok', readAt: new Date().toISOString(), data: { found: true, menus: file.menus, ref } };
+		};
+		// A branch is read in this computer's checkout first, where a branch never pushed lives too.
+		if (q.ref) {
+			const here = await this.helper
+				.call<{ found: boolean; text: string }>(
+					'GET',
+					`/git/file?repository=${encodeURIComponent(q.repository)}&ref=${encodeURIComponent(q.ref)}`,
+					undefined,
+					20_000,
+				)
+				.catch(() => null);
+			if (here?.found) {
+				try {
+					return read(here.text, q.ref);
+				} catch (err) {
+					return { state: 'error', message: `The file could not be read: ${(err as Error).message}` };
+				}
+			}
+		}
 		const key = await githubCliToken();
 		if (!key)
 			return notConnected('The GitHub CLI is not signed in on this computer. Run gh auth login in a terminal.');
 		try {
-			const text = await githubAdapter.file(q.repository, '.release-console.json', key);
-			if (text === null)
-				return { state: 'ok', readAt: new Date().toISOString(), data: { found: false, menus: [] } };
-			const file = repositoryFileSchema.parse(JSON.parse(text));
-			return { state: 'ok', readAt: new Date().toISOString(), data: { found: true, menus: file.menus } };
+			return read(await githubAdapter.file(q.repository, '.release-console.json', key, q.ref), q.ref);
 		} catch (err) {
 			return {
 				state: 'error',

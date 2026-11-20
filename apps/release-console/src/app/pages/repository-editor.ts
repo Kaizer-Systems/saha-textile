@@ -6,6 +6,7 @@ import {
 	type EdgeVendor,
 	type Project,
 	type SecretsVendor,
+	type Branches,
 	type Repository,
 	type SourceCodeVendor,
 	VENDOR_NAMES,
@@ -27,6 +28,7 @@ import {
 } from './add-project';
 import { ConsoleApi } from '../data/console-api';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
+import { BranchPicker } from '../shared/branch-picker';
 import { Icon } from '../shared/icons';
 import { VendorLogo } from '../shared/vendor-logo';
 
@@ -90,7 +92,15 @@ export function newRepository(
 		sourceCode: { vendor, repository, keyId: null },
 		environments: structuredClone(
 			first?.environments ?? [
-				{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+				{
+					name: 'local',
+					label: 'Local',
+					cloudId: null,
+					domains: [],
+					secretsId: null,
+					secretsPath: '',
+					branch: '',
+				},
 			],
 		),
 		cloud: structuredClone(first?.cloud ?? []),
@@ -106,7 +116,7 @@ export function newRepository(
  */
 @Component({
 	selector: 'rc-repository-editor',
-	imports: [VendorLogo, Icon],
+	imports: [VendorLogo, Icon, BranchPicker],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@let p = project();
@@ -199,6 +209,7 @@ export function newRepository(
 							<tr>
 								<th>Environment</th>
 								<th>Runs on</th>
+								<th>Branch</th>
 								<th>Domains</th>
 								<th>Secrets from, and where inside it</th>
 								<th></th>
@@ -236,6 +247,24 @@ export function newRepository(
 												</button>
 											}
 										</div>
+									</td>
+									<td>
+										<!-- The environment's branch: changed here or in the wizard, never on Live deploy for a server (owner, 20 Nov). -->
+										@if (d.sourceCode.vendor === 'github') {
+											<rc-branch-picker
+												[context]="e.label"
+												[branches]="branchList()?.branches ?? []"
+												[defaultBranch]="branchList()?.defaultBranch ?? null"
+												[current]="branchList()?.current ?? null"
+												[value]="e.branch"
+												[waitingText]="branchList()?.note || 'loading branches…'"
+												[refreshing]="fetchingBranches()"
+												(picked)="setEnv(i, { branch: $event })"
+												(refresh)="readBranches(d.sourceCode.repository, true)"
+											/>
+										} @else {
+											<span class="rc-note">default branch</span>
+										}
 									</td>
 									<td>
 										<div class="rc-msearch">
@@ -606,11 +635,30 @@ export class RepositoryEditor {
 	protected readonly message = signal('');
 	private readonly opened = computed(() => this.project().repositories.find((r) => r.id === this.open()) ?? null);
 
+	/** The open repository's branches for its environments' pickers. */
+	protected readonly branchList = signal<Branches | null>(null);
+	protected readonly fetchingBranches = signal(false);
+
 	constructor() {
 		effect(() => {
 			const r = this.opened();
-			if (r && this.draft()?.id !== r.id) this.draft.set(structuredClone(r));
+			if (r && this.draft()?.id !== r.id) {
+				this.draft.set(structuredClone(r));
+				this.branchList.set(null);
+				if (r.sourceCode.vendor === 'github') void this.readBranches(r.sourceCode.repository);
+			}
 		});
+	}
+
+	protected async readBranches(repository: string, refresh = false): Promise<void> {
+		this.fetchingBranches.set(true);
+		try {
+			this.branchList.set(await this.api.repositoryBranches(repository, refresh));
+		} catch (err) {
+			this.branchList.set({ defaultBranch: null, current: null, branches: [], note: (err as Error).message });
+		} finally {
+			this.fetchingBranches.set(false);
+		}
 	}
 
 	protected secretsOf(r: Repository): string {
@@ -662,7 +710,7 @@ export class RepositoryEditor {
 		this.patch({
 			environments: [
 				...d.environments,
-				{ name, label, cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+				{ name, label, cloudId: null, domains: [], secretsId: null, secretsPath: '', branch: '' },
 			],
 		});
 		box.value = '';

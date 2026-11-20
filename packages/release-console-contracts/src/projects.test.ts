@@ -43,7 +43,9 @@ describe('projects contracts', () => {
 
 	it('links a key by its Infisical names, never a value', () => {
 		const ok = { id: 'do-read', kind: 'do-read', label: 'DigitalOcean API · read' };
-		expect(linkKeySchema.parse({ ...ok, envNames: ['CONSOLE_DO_READ_TOKEN'] }).envNames).toEqual(['CONSOLE_DO_READ_TOKEN']);
+		expect(linkKeySchema.parse({ ...ok, envNames: ['CONSOLE_DO_READ_TOKEN'] }).envNames).toEqual([
+			'CONSOLE_DO_READ_TOKEN',
+		]);
 		expect('value' in linkKeySchema.parse({ ...ok, value: 'never-kept' })).toBe(false);
 		for (const name of ['lower_case', '1STARTS_WITH_DIGIT', 'HAS-DASH', 'HAS SPACE'])
 			expect(() => linkKeySchema.parse({ ...ok, envNames: [name] })).toThrow();

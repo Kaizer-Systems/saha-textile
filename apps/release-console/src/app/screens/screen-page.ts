@@ -174,7 +174,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						@if (deployOnServer()) {
 							<rc-server-deploy-screen [environment]="tabKey()" />
 						} @else {
-							<rc-deploy-screen />
+							<rc-deploy-screen [environment]="tabKey()" />
 						}
 					}
 					@case ('server') {

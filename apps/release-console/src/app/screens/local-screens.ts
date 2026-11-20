@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { Router } from '@angular/router';
 
 import {
+	type Branches,
 	type ContainerStat,
 	type DockerSnapshot,
 	type Job,
@@ -16,7 +17,9 @@ import { formatBytes } from './format';
 import { Gauge, LocalGate, SparkLine, formatRate, levelColour, percent } from './local-parts';
 import { type Trouble, TroubleSteps, troubleFor } from './trouble';
 import { ConsoleApi } from '../data/console-api';
+import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
+import { BranchPicker } from '../shared/branch-picker';
 import { BrandLogo, Icon, STAGE_ICONS, serviceLogo } from '../shared/icons';
 
 const WINDOWS: [number, string][] = [
@@ -858,7 +861,7 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 /** Ship › Live deploy, Local tab: run the local pipeline and the stack from here, and watch it. */
 @Component({
 	selector: 'rc-deploy-screen',
-	imports: [LocalGate, Icon, BrandLogo, TroubleSteps],
+	imports: [LocalGate, Icon, BrandLogo, TroubleSteps, BranchPicker],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -1032,6 +1035,26 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 							Deploy to local · the same stages as GitHub
 						</span>
 					</div>
+					<!-- On this computer the branch can change for one run (owner, 20 Nov); the run starts with git pull. -->
+					@if (repository(); as repo) {
+						<rc-branch-picker
+							label="Branch"
+							context="this run"
+							[branches]="branchList()?.branches ?? []"
+							[defaultBranch]="branchList()?.defaultBranch ?? null"
+							[current]="branchList()?.current ?? null"
+							[value]="branch()"
+							[waitingText]="branchList()?.note || 'loading branches…'"
+							[refreshing]="fetchingBranches()"
+							(picked)="chosenBranch.set($event)"
+							(refresh)="readBranches(repo, true)"
+						/>
+						<p class="rc-note">
+							The run starts with a git pull of {{ branch() || 'this folder’s branch' }}: it fetches
+							GitHub and fast-forwards when GitHub's copy is ahead. It never switches this folder's
+							branch.
+						</p>
+					}
 					<div class="rc-states">
 						<button
 							type="button"
@@ -1288,6 +1311,38 @@ export class DeployScreen {
 		['stack-stop-apps', 'Stop shop containers'],
 	];
 	protected readonly plan = signal<{ from?: PipelineStage; only?: PipelineStage }>({ from: 'proof' });
+	private readonly ctx = inject(ConsoleContext);
+	/** The Live deploy tab: an environment on this computer. */
+	readonly environment = input('');
+	protected readonly repository = computed(() => {
+		const repo = this.ctx.repo();
+		return repo?.sourceCode.vendor === 'github' ? repo.sourceCode.repository : null;
+	});
+	protected readonly branchList = signal<Branches | null>(null);
+	protected readonly fetchingBranches = signal(false);
+	/** A branch chosen for this run only; the environment's own until then. */
+	protected readonly chosenBranch = signal('');
+	protected readonly branch = computed(
+		() =>
+			this.chosenBranch() ||
+			this.ctx.repo()?.environments.find((e) => e.name === this.environment())?.branch ||
+			this.branchList()?.current ||
+			'',
+	);
+	private readonly loadsBranches = effect(() => {
+		const repo = this.repository();
+		if (repo) void this.readBranches(repo);
+	});
+	protected async readBranches(repository: string, refresh = false): Promise<void> {
+		this.fetchingBranches.set(true);
+		try {
+			this.branchList.set(await this.api.repositoryBranches(repository, refresh));
+		} catch (err) {
+			this.branchList.set({ defaultBranch: null, current: null, branches: [], note: (err as Error).message });
+		} finally {
+			this.fetchingBranches.set(false);
+		}
+	}
 	protected readonly busy = signal(false);
 	protected readonly message = signal('');
 	protected readonly raw = signal(false);
@@ -1443,7 +1498,11 @@ export class DeployScreen {
 	protected async start(e: Event): Promise<void> {
 		e.preventDefault();
 		const pin = (e.target as HTMLFormElement).querySelector<HTMLInputElement>('input[type=password]');
-		await this.act(() => this.api.runLocal('pipeline', pin?.value ?? '', this.plan()), pin);
+		const branch = this.branch();
+		await this.act(
+			() => this.api.runLocal('pipeline', pin?.value ?? '', { ...this.plan(), ...(branch ? { branch } : {}) }),
+			pin,
+		);
 	}
 
 	protected async stackAction(action: LocalAction, pin: string): Promise<void> {

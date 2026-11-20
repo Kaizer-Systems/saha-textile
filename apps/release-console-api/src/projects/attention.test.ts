@@ -60,7 +60,15 @@ describe('attention', () => {
 					role: '',
 					sourceCode: { vendor: 'github', repository: 'o/r', keyId: null },
 					environments: [
-						{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+						{
+							name: 'local',
+							label: 'Local',
+							cloudId: null,
+							domains: [],
+							secretsId: null,
+							secretsPath: '',
+							branch: '',
+						},
 					],
 					cloud: [{ id: 'digitalocean', vendor: 'digitalocean', account: '', keyIds: [] }],
 					edge: [{ id: 'cloudflare', vendor: 'cloudflare', account: '', zones: [], keyIds: ['cf-read'] }],

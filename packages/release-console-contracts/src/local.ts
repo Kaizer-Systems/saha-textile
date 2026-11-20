@@ -4,6 +4,8 @@
  */
 import { z } from 'zod';
 
+import { branchNameSchema } from './projects.js';
+
 const num = z.number().nullable();
 
 export const macSnapshotSchema = z.object({
@@ -93,6 +95,8 @@ const confirmation = z.string().min(6).max(200);
 /** Starting a job needs the console PIN (or password) again, as every change does. */
 export const startLocalSchema = z.object({
 	pin: confirmation,
+	/** The branch this run builds; the checked-out branch when left out (owner, 20 Nov). */
+	branch: branchNameSchema.optional(),
 	from: pipelineStageSchema.optional(),
 	only: pipelineStageSchema.optional(),
 });

@@ -53,11 +53,14 @@ describe('server deploys from the console', () => {
 		});
 		vi.mocked(deploys.serverDeployView).mockResolvedValueOnce({ environment: 'staging' } as never);
 		expect(await c.view('saha-textile', 'saha-textile', 'staging')).toMatchObject({ state: 'ok' });
+		// No branch chosen for Staging: the target's own branch (undefined here) applies.
 		expect(deploys.serverDeployView).toHaveBeenCalledWith(
 			'Kaizer-Systems/saha-textile',
 			'staging',
 			'staging',
 			'github-key-not-real',
+			undefined,
+			undefined,
 		);
 	});
 
@@ -73,6 +76,8 @@ describe('server deploys from the console', () => {
 			'Kaizer-Systems/saha-textile',
 			'staging',
 			'github-key-not-real',
+			undefined,
+			undefined,
 		);
 		expect(right.store.audit).toHaveBeenCalledWith(
 			'saha-textile',

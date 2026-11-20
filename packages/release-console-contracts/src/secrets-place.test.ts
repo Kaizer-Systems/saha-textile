@@ -35,6 +35,17 @@ describe('secrets places', () => {
 		expect(parseSecretsPlace('Example Project/Prod')?.environment).toBe('prod');
 	});
 
+	it('takes Infisical’s environment names as well as their short names', () => {
+		expect(parseSecretsPlace('saha-textile-dev/Development')?.environment).toBe('dev');
+		expect(parseSecretsPlace('saha-textile-staging/Staging')?.environment).toBe('staging');
+		expect(parseSecretsPlace('saha-textile-production/Production/api')).toEqual({
+			project: 'saha-textile-production',
+			environment: 'prod',
+			folder: '/api',
+		});
+		expect(parseSecretsPlace('client-shop/qa')?.environment).toBe('qa');
+	});
+
 	it('still reads the older dotted form', () => {
 		expect(parseSecretsPlace('saha-textile-dev · dev · /api')).toEqual({
 			project: 'saha-textile-dev',

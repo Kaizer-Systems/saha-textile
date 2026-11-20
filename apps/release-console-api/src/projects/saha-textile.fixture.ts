@@ -19,6 +19,7 @@ export const SAHA_TEXTILE: NewProject = {
 					domains: ['localhost'],
 					secretsId: null,
 					secretsPath: '',
+					branch: '',
 				},
 				{
 					name: 'staging',
@@ -27,6 +28,7 @@ export const SAHA_TEXTILE: NewProject = {
 					domains: ['staging.sahatextile.com'],
 					secretsId: null,
 					secretsPath: '',
+					branch: '',
 				},
 				{
 					name: 'production',
@@ -35,6 +37,7 @@ export const SAHA_TEXTILE: NewProject = {
 					domains: ['sahatextile.com'],
 					secretsId: null,
 					secretsPath: '',
+					branch: '',
 				},
 			],
 			cloud: [{ id: 'digitalocean', vendor: 'digitalocean', account: '', keyIds: [] }],

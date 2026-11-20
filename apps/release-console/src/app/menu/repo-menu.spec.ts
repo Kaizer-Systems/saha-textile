@@ -10,7 +10,9 @@ const repo = (over: Partial<Repository>): Repository => ({
 	name: 'shop-web',
 	role: '',
 	sourceCode: { vendor: 'github', repository: 'acme/shop-web', keyId: null },
-	environments: [{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' }],
+	environments: [
+		{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '', branch: '' },
+	],
 	cloud: [],
 	edge: [],
 	secrets: [],
@@ -74,7 +76,15 @@ describe('repository menu', () => {
 		const m = repositoryMenu(
 			repo({
 				environments: [
-					{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+					{
+						name: 'local',
+						label: 'Local',
+						cloudId: null,
+						domains: [],
+						secretsId: null,
+						secretsPath: '',
+						branch: '',
+					},
 					{
 						name: 'staging',
 						label: 'Staging',
@@ -82,6 +92,7 @@ describe('repository menu', () => {
 						domains: [],
 						secretsId: null,
 						secretsPath: '',
+						branch: '',
 					},
 				],
 				cloud: [{ id: 'digitalocean', vendor: 'digitalocean', account: '', keyIds: [] }],

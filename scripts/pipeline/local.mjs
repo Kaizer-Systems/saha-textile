@@ -10,6 +10,13 @@
  *   pnpm pipeline:local -- --only release   one stage
  *   pnpm pipeline:local -- --json           one JSON event per line on stdout (commands' own output
  *                                           goes to stderr), for the Release Console later
+ *   pnpm pipeline:local -- --branch dev     build another branch than the one checked out here
+ *
+ * Every run starts with a pull (owner, 20 Nov: "should always start with a git pull so as latest
+ * code is there"): it fetches GitHub and fast-forwards the branch to GitHub's copy when that copy is
+ * ahead. It never merges, never switches this folder's branch, and a branch that exists only on
+ * this computer is built as it is. A branch other than the checked-out one is checked in a clean
+ * copy of its last commit, as GitHub checks it.
  *
  *   1 checks   the CI jobs' commands (scripts/pipeline/stages.mjs, kept in step with ci.yml)
  *   2 proof    deploy, rollback, backup and restore on throwaway values (pnpm production:proof)
@@ -34,6 +41,7 @@ import { loadInventory, SecretsError } from '../secrets/inventory.mjs';
 import { IMAGE_NAMES, IMAGES_FILE, LOCAL_RELEASE_DIR, writeLocalRelease } from '../secrets/release.mjs';
 import { stackAddresses, stackPort, STACK_ENV_DIR } from '../secrets/stack.mjs';
 import { CHECKS, PROOF, STAGES } from './stages.mjs';
+import { BRANCH_NAME } from '../release-console/git-branches.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const REGISTRY_CONTAINER = 'saha-textile-local-registry';
@@ -53,17 +61,20 @@ export function parseArgs(args) {
 	};
 	const from = value('--from');
 	const only = value('--only');
+	const branch = value('--branch');
+	if (flags.includes('--branch') && (branch === undefined || !BRANCH_NAME.test(branch)))
+		throw new SecretsError(`"${branch ?? ''}" is not a branch name.`);
 	for (const stage of [from, only]) {
 		if (stage !== undefined && !STAGES.includes(stage)) {
 			throw new SecretsError(`Unknown stage "${stage}". Use one of: ${STAGES.join(', ')}.`);
 		}
 	}
-	const known = new Set(['--json', '--from', '--only', from, only]);
+	const known = new Set(['--json', '--from', '--only', '--branch', from, only, branch]);
 	const unknown = flags.filter((flag) => !known.has(flag));
 	if (unknown.length > 0) throw new SecretsError(`Unknown option ${unknown[0]}.`);
 	if (from && only) throw new SecretsError('Use --from or --only, not both.');
 	const stages = only ? [only] : STAGES.slice(from ? STAGES.indexOf(from) : 0);
-	return { stages, json };
+	return branch ? { stages, json, branch } : { stages, json };
 }
 
 /** @param {{ json: boolean }} options */
@@ -112,11 +123,92 @@ function capture(command, args) {
 	return result.stdout.trim();
 }
 
+/** @typedef {(args: string[]) => { ok: boolean, out: string }} GitSync */
+/** @type {GitSync} */
+const gitSync = (args) => {
+	const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+	return { ok: r.status === 0, out: String(r.stdout ?? '').trim() };
+};
+
+/**
+ * The pull every run starts with. Fetches GitHub, then: a branch only on this computer is built as
+ * it is; one only on GitHub is built from GitHub's copy; one behind GitHub is fast-forwarded (in
+ * this folder when it is checked out here, else its ref only); one that has moved on both sides
+ * stops the run, because only a person should merge. Answers the commit to build and whether it is
+ * the checked-out branch.
+ * @param {string | undefined} wanted
+ * @param {{ note: (text: string) => void, git?: GitSync }} io
+ */
+export function pullBranch(wanted, { note, git = gitSync }) {
+	const head = git(['symbolic-ref', '--quiet', '--short', 'HEAD']);
+	const current = head.ok ? head.out : null;
+	const branch = wanted || current;
+	if (!branch) throw new SecretsError('This folder is on no branch: choose the branch to build.');
+	note(`git pull · ${branch}`);
+	if (!git(['fetch', '--prune', 'origin']).ok)
+		note('GitHub could not be reached; building the commits this computer has.');
+	const has = (ref) => git(['rev-parse', '--verify', '--quiet', ref]).ok;
+	const local = has(`refs/heads/${branch}`);
+	const remote = has(`refs/remotes/origin/${branch}`);
+	const commitOf = (ref) => git(['rev-parse', ref]).out;
+	const checkedOut = branch === current;
+	if (!local && !remote) throw new SecretsError(`There is no branch ${branch} on this computer or on GitHub.`);
+	if (!remote) {
+		note(`${branch} is only on this computer: nothing to pull.`);
+		return { commit: commitOf(`refs/heads/${branch}`), branch, checkedOut };
+	}
+	if (!local) {
+		note(`${branch} is only on GitHub: building GitHub's copy.`);
+		return { commit: commitOf(`refs/remotes/origin/${branch}`), branch, checkedOut: false };
+	}
+	const count = (range) => Number(git(['rev-list', '--count', range]).out) || 0;
+	const behind = count(`${branch}..origin/${branch}`);
+	const ahead = count(`origin/${branch}..${branch}`);
+	if (behind > 0 && ahead > 0)
+		throw new SecretsError(
+			`${branch} has ${ahead} commit(s) GitHub lacks and GitHub has ${behind} it lacks. Merge them in a terminal, then run again.`,
+		);
+	if (behind > 0) {
+		const pulled = checkedOut
+			? git(['merge', '--ff-only', `origin/${branch}`])
+			: git(['fetch', 'origin', `${branch}:${branch}`]);
+		if (!pulled.ok)
+			throw new SecretsError(
+				`The pull could not fast-forward ${branch}${checkedOut ? ' (uncommitted changes in the same files?)' : ''}. Pull it in a terminal, then run again.`,
+			);
+		note(`Pulled ${behind} commit(s) into ${branch}.`);
+	} else
+		note(
+			ahead
+				? `${branch} is ${ahead} commit(s) ahead of GitHub: nothing to pull.`
+				: `${branch} is up to date with GitHub.`,
+		);
+	return { commit: commitOf(`refs/heads/${branch}`), branch, checkedOut };
+}
+
 const stages = {
-	checks({ json, report }) {
-		for (const check of CHECKS) {
-			report.step('checks', check.name);
-			sh(check.run, { json });
+	checks({ json, report, state }) {
+		if (state.checkedOut) {
+			for (const check of CHECKS) {
+				report.step('checks', check.name);
+				sh(check.run, { json });
+			}
+			return;
+		}
+		// Another branch than this folder's: its last commit, in a clean copy, as GitHub checks it.
+		const copy = join(ROOT, LOCAL_RELEASE_DIR, 'checks-copy');
+		rmSync(copy, { recursive: true, force: true });
+		mkdirSync(copy, { recursive: true, mode: 0o700 });
+		try {
+			sh(`git archive --format=tar ${state.commit} | tar -x -C "${copy}"`, { json });
+			report.step('checks', `pnpm install in a clean copy of ${state.branch}`);
+			sh(`cd "${copy}" && pnpm install --frozen-lockfile --prefer-offline`, { json });
+			for (const check of CHECKS) {
+				report.step('checks', check.name);
+				sh(`cd "${copy}" && ${check.run}`, { json });
+			}
+		} finally {
+			rmSync(copy, { recursive: true, force: true });
 		}
 	},
 
@@ -357,7 +449,15 @@ async function main() {
 	const report = reporter(options);
 	// One commit for the whole run, so every stage proves the same code even if another chat commits
 	// meanwhile (this folder is shared).
-	const state = { release: undefined, commit: capture('git', ['rev-parse', 'HEAD']) };
+	let pulled;
+	try {
+		pulled = pullBranch(options.branch, { note: (text) => report.note('run', text) });
+	} catch (error) {
+		report.stage('run', 'failed', { reason: error instanceof SecretsError ? error.message : String(error) });
+		process.exitCode = 1;
+		return;
+	}
+	const state = { release: undefined, ...pulled };
 	let release;
 	try {
 		release = acquireLock(ROOT, { commit: state.commit });
@@ -384,10 +484,10 @@ async function main() {
 /**
  * @param {ReturnType<typeof parseArgs>} options
  * @param {ReturnType<typeof reporter>} report
- * @param {{ release: string | undefined, commit: string }} state
+ * @param {{ release: string | undefined, commit: string, branch: string, checkedOut: boolean }} state
  */
 async function runStages(options, report, state) {
-	report.note('run', `Commit ${state.commit.slice(0, 8)}.`);
+	report.note('run', `Commit ${state.commit.slice(0, 8)} on ${state.branch}.`);
 	const started = Date.now();
 	const results = {};
 	for (const stage of options.stages) {

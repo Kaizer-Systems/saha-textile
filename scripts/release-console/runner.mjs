@@ -27,6 +27,7 @@ import {
 	parseVmStat,
 } from './mac-stats.mjs';
 import { toolsGh } from './gh-tools.mjs';
+import { BRANCH_NAME, checkoutBranches, menusFileAt } from './git-branches.mjs';
 import { repositoryOf } from './infisical-places.mjs';
 import { loadInventory, ROOT, TIERS } from '../secrets/inventory.mjs';
 
@@ -506,7 +507,10 @@ export function commandFor(action, body = {}, busy = []) {
 		}
 		case 'pipeline': {
 			const args = ['scripts/pipeline/local.mjs', '--json'];
-			const { from, only } = body;
+			const { from, only, branch } = body;
+			if (branch !== undefined && (typeof branch !== 'string' || !BRANCH_NAME.test(branch)))
+				throw Object.assign(new Error('Not a branch name.'), { status: 400 });
+			if (branch) args.push('--branch', branch);
 			if (from && only) throw Object.assign(new Error('Choose “from” or “only”, not both.'), { status: 400 });
 			for (const s of [from, only])
 				if (s && !PIPELINE_STAGES.includes(s))
@@ -523,7 +527,7 @@ export function commandFor(action, body = {}, busy = []) {
 				);
 			return [
 				'pipeline',
-				`Local pipeline ${only ? `(only ${only})` : from ? `(from ${from})` : '(all stages)'}`,
+				`Local pipeline ${only ? `(only ${only})` : from ? `(from ${from})` : '(all stages)'}${branch ? ` · ${branch}` : ''}`,
 				'node',
 				args,
 			];
@@ -610,6 +614,19 @@ export function createRunner(token) {
 			// The CLI sign-in's token, for the console API in Docker (its own container has no gh).
 			// Only a caller holding the helper's token gets here; nothing logs it.
 			if (req.method === 'GET' && path === '/github/token') return send(200, { token: await githubToken() });
+			// Branch pickers: this checkout's branches, and the menus file at one of them (read only).
+			if (req.method === 'GET' && path === '/git/branches')
+				return send(
+					200,
+					await checkoutBranches(url.searchParams.get('repository') ?? '', undefined, {
+						fetch: url.searchParams.get('fetch') === '1',
+					}),
+				);
+			if (req.method === 'GET' && path === '/git/file')
+				return send(
+					200,
+					await menusFileAt(url.searchParams.get('repository') ?? '', url.searchParams.get('ref') ?? ''),
+				);
 			if (req.method === 'GET' && path === '/secrets/places')
 				return send(200, await shared('secrets-places', 600_000, secretPlaces));
 			if (req.method === 'GET' && path === '/secrets') {

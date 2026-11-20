@@ -81,6 +81,8 @@ import {
 	pullRequestsAnswerSchema,
 	readinessSchema,
 	repositoryFileAnswerSchema,
+	branchesSchema,
+	type Branches,
 	servicesSnapshotSchema,
 	unlockAnswerSchema,
 	workflowRunsAnswerSchema,
@@ -217,6 +219,11 @@ export class ConsoleApi {
 	/** A repository's own menus from its `.release-console.json`, read through the GitHub CLI sign-in. */
 	repositoryFile(q: RepositoryFileQuery): Promise<VendorAnswer<RepositoryFileFound>> {
 		return this.call('POST', '/api/repository-file', repositoryFileAnswerSchema, q);
+	}
+	/** A repository's branches for the pickers; `refresh` runs git fetch on this computer first. */
+	repositoryBranches(repository: string, refresh = false): Promise<Branches> {
+		const q = `repository=${encodeURIComponent(repository)}${refresh ? '&refresh=1' : ''}`;
+		return this.call('GET', `/api/repository-branches?${q}`, branchesSchema, undefined, 90_000);
 	}
 
 	/* attention and audit */
@@ -357,7 +364,7 @@ export class ConsoleApi {
 	runLocal(
 		action: LocalAction,
 		pin: string,
-		stages: { from?: PipelineStage; only?: PipelineStage } = {},
+		stages: { from?: PipelineStage; only?: PipelineStage; branch?: string } = {},
 	): Promise<Job> {
 		return this.call('POST', `/api/local/run/${action}`, jobSchema, { pin, ...stages }, 30_000);
 	}

@@ -19,7 +19,9 @@ const shopWeb: Repository = {
 	name: 'shop-web',
 	role: 'storefront',
 	sourceCode: { vendor: 'gitlab', repository: 'acme/shop-web', keyId: null },
-	environments: [{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' }],
+	environments: [
+		{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '', branch: '' },
+	],
 	cloud: [{ id: 'digitalocean', vendor: 'digitalocean', account: '', keyIds: ['do-read', 'not-in-project'] }],
 	edge: [],
 	secrets: [],

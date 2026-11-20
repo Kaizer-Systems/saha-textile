@@ -21,6 +21,62 @@ async function unlock(page: Page): Promise<void> {
 	await expect(page.getByRole('heading', { name: 'All projects' })).toBeVisible();
 }
 
+/**
+ * Sample GitHub answers for Connect and the branch list: this test runs without the Mac helper and
+ * without a GitHub sign-in, and never uses a real token.
+ */
+async function sampleGithub(page: Page): Promise<void> {
+	const at = new Date().toISOString();
+	const job = {
+		id: 'github-sample',
+		kind: 'github',
+		label: 'Connect to GitHub',
+		status: 'passed',
+		startedAt: at,
+		finishedAt: at,
+		exitCode: 0,
+		lines: [],
+	};
+	const answers: [string, unknown][] = [
+		['**/api/local/github/login', job],
+		['**/api/local/jobs/github-sample**', job],
+		[
+			'**/api/local/github/check**',
+			{
+				installed: true,
+				signedIn: true,
+				account: 'test-account',
+				repository: 'Kaizer-Systems/saha-textile',
+				fullName: 'Kaizer-Systems/saha-textile',
+				reachable: true,
+				message: '',
+			},
+		],
+		[
+			'**/api/repository-branches**',
+			{
+				defaultBranch: 'main',
+				current: null,
+				note: '',
+				branches: ['main', 'staging', 'dev'].map((name) => ({ name, onGitHub: true, onThisComputer: false })),
+			},
+		],
+		['**/api/repository-file', { state: 'ok', readAt: at, data: { found: false, menus: [] } }],
+	];
+	for (const [url, body] of answers)
+		await page.route(url, (route) => {
+			const origin = route.request().headers()['origin'] ?? '*';
+			const headers = {
+				'access-control-allow-origin': origin,
+				'access-control-allow-credentials': 'true',
+				'access-control-allow-headers': 'content-type, x-console-session',
+				'access-control-allow-methods': 'GET, POST, OPTIONS',
+			};
+			if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+			return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+		});
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test('the PIN is typed straight into the six boxes; a wrong one is refused; Lock closes the console', async ({
@@ -37,6 +93,7 @@ test('the PIN is typed straight into the six boxes; a wrong one is refused; Lock
 
 test('the wizard adds a project with a GitHub repository and lands on its Connections', async ({ page }, info) => {
 	const name = `Browser test ${info.project.name}`;
+	await sampleGithub(page);
 	await unlock(page);
 	await page
 		.getByRole('button', { name: /Add a project/ })
@@ -49,9 +106,17 @@ test('the wizard adds a project with a GitHub repository and lands on its Connec
 	await page.getByPlaceholder('Kaizer-Systems/shop-web').fill('Kaizer-Systems/saha-textile');
 	await page.getByPlaceholder('storefront, API, admin…').fill('monorepo');
 	await page.getByRole('button', { name: /Add repository/ }).click();
-	await expect(page.getByRole('cell', { name: 'Kaizer-Systems/saha-textile' })).toBeVisible();
+	await expect(page.getByRole('cell', { name: /Kaizer-Systems\/saha-textile/ })).toBeVisible();
 	const next = page.getByRole('button', { name: /^Next/ });
+	// Connect always opens its terminal; with the sample answers it signs in at once.
+	await page.getByRole('button', { name: 'Connect', exact: true }).click();
+	await expect(page.getByText('Close the terminal? [Y/n]')).toBeVisible();
+	await page.keyboard.press('y');
+	await expect(page.getByText('connected as test-account')).toBeVisible();
 	await next.click();
+	// Each environment gets a branch: Local and Production the default branch, Staging staging.
+	await expect(page.getByLabel('Branch for Staging')).toHaveValue('staging');
+	await expect(page.getByLabel('Branch for Production')).toHaveValue('main');
 	// Environments: Next waits until every environment has a domain (owner, 20 Nov).
 	await expect(next).toBeDisabled();
 	await expect(page.getByText('Give Staging at least one domain', { exact: false })).toBeVisible();

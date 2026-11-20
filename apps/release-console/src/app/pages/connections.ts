@@ -11,6 +11,7 @@ import {
 	VENDOR_NAMES,
 	CONSOLE_KEYS_FOLDER,
 	envNameSchema,
+	vendorScreens,
 } from '@saha-textile/release-console-contracts';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 
@@ -241,13 +242,20 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 								</td>
 								<td class="rc-mono">{{ row.runs }}</td>
 								<td>{{ row.envs }}</td>
-								<td><span class="rc-pill amber">screens later</span></td>
+								<td>
+									@if (screens(row.vendor) === 'full') {
+										<!-- Infisical Cloud is read on Run › Secrets with the owner's own Infisical login: no key here. -->
+										<span class="rc-pill cy">Run › Secrets · your login</span>
+									} @else {
+										<span class="rc-pill amber">screens later</span>
+									}
+								</td>
 							</tr>
 						} @empty {
 							<tr>
 								<td colspan="5">
-									No repository of this project names a secrets manager; its environments use files
-									kept by hand.
+									No repository of this project names a secrets manager; its environments read no
+									manager.
 								</td>
 							</tr>
 						}
@@ -563,6 +571,7 @@ export class Connections {
 	private readonly queries = inject(QueryClient);
 	readonly project = input.required<Project>();
 	protected readonly keysFolder = CONSOLE_KEYS_FOLDER;
+	protected readonly screens = vendorScreens;
 	protected readonly source = injectQuery(() => ({
 		queryKey: ['key-source'],
 		queryFn: () => this.api.keySource(),

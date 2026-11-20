@@ -17,6 +17,17 @@ export interface SecretsPlace {
 
 export const SECRETS_PLACE_HINT = 'project/environment, e.g. saha-textile-dev/dev';
 
+/**
+ * Infisical's three default environments by their names (owner, 20 Nov: the dashboard shows
+ * Development, Staging and Production), so either the name or the short name can be typed; the
+ * command line only takes the short name.
+ */
+export const INFISICAL_DEFAULT_ENVIRONMENTS: Readonly<Record<string, string>> = {
+	development: 'dev',
+	staging: 'staging',
+	production: 'prod',
+};
+
 const PROJECT = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/;
 const ENVIRONMENT = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const FOLDER = /^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?$/;
@@ -48,7 +59,8 @@ function parseOlder(text: string): SecretsPlace | null {
 }
 
 function checked(project: string, rawEnvironment: string, rawFolder: string): SecretsPlace | null {
-	const environment = rawEnvironment.toLowerCase();
+	const typed = rawEnvironment.toLowerCase();
+	const environment = INFISICAL_DEFAULT_ENVIRONMENTS[typed] ?? typed;
 	const folder = rawFolder.length > 1 ? rawFolder.replace(/\/+$/, '') : rawFolder;
 	if (!PROJECT.test(project) || !ENVIRONMENT.test(environment) || !FOLDER.test(folder)) return null;
 	return { project, environment, folder };

@@ -280,9 +280,9 @@ export class LocalController {
 	@HttpCode(202)
 	async run(@Req() req: Req, @Param('action') action: string, @Body() body: unknown): Promise<Job> {
 		const a = parseBody(localActionSchema, action);
-		const { pin, from, only } = parseBody(startLocalSchema, body);
+		const { pin, from, only, branch } = parseBody(startLocalSchema, body);
 		this.lock.confirm(sessionOf(req), pin, a);
-		const job = await this.runner.call<Job>('POST', `/run/${a}`, a === 'pipeline' ? { from, only } : {});
+		const job = await this.runner.call<Job>('POST', `/run/${a}`, a === 'pipeline' ? { from, only, branch } : {});
 		this.store.audit(null, 'local-job-started', job.label);
 		return job;
 	}

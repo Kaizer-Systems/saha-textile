@@ -10,7 +10,7 @@ const repo: Repository = {
 	role: 'monorepo',
 	sourceCode: { vendor: 'github', repository: 'Kaizer-Systems/saha-textile', keyId: 'github-cli' },
 	environments: [
-		{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+		{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '', branch: '' },
 		{
 			name: 'staging',
 			label: 'Staging',
@@ -18,6 +18,7 @@ const repo: Repository = {
 			domains: ['staging.example.com'],
 			secretsId: null,
 			secretsPath: '',
+			branch: '',
 		},
 	],
 	cloud: [{ id: 'digitalocean', vendor: 'digitalocean', account: '', keyIds: ['do-read'] }],

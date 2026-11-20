@@ -252,6 +252,12 @@ export function runTitle(run: DeployRun | null): string {
 								Deploy to {{ d.target }} · from {{ d.branch }}
 							</span>
 						</div>
+						<!-- A server environment's branch is fixed here; it changes only in the wizard or Project settings › Repositories (owner, 20 Nov). -->
+						<div class="rc-states">
+							<rc-icon name="tabler/git-branch" />
+							<span class="rc-mono">{{ d.branch }}</span>
+							<span class="rc-note">· set in Project settings › Repositories</span>
+						</div>
 						<p class="rc-note">
 							GitHub runs the checks, publishes the images to GHCR when this commit has none, then waits
 							for your approval before anything reaches the server.

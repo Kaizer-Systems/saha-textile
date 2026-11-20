@@ -5,10 +5,13 @@ import {
 	type CloudVendor,
 	type EdgeVendor,
 	type SecretsVendor,
+	type Branch,
+	type Branches,
 	type NewProject,
 	type SourceCodeVendor,
 	VENDOR_NAMES,
 	newProjectSchema,
+	formatSecretsPlace,
 	parseSecretsPlace,
 	vendorScreens,
 } from '@saha-textile/release-console-contracts';
@@ -18,6 +21,7 @@ import { PageHead } from './page-head';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
+import { BranchPicker } from '../shared/branch-picker';
 import { GithubSignIn } from '../shared/github-sign-in';
 import { Icon } from '../shared/icons';
 import { STEP_ICONS, VendorLogo } from '../shared/vendor-logo';
@@ -61,8 +65,8 @@ export const SECRETS_NOTES: Record<SecretsVendor, string> = {
 export const needsAddress = (v: SecretsVendor): boolean => v === 'infisical-self-hosted' || v === 'vault';
 /** What each manager's "where inside it" box takes, as its placeholder. Infisical's is checked; the rest come with their screens. */
 export const PLACE_HINTS: Record<SecretsVendor, string> = {
-	infisical: 'project/environment, e.g. saha-textile-dev/dev',
-	'infisical-self-hosted': 'project/environment, e.g. shop-dev/dev',
+	infisical: 'project/environment, e.g. saha-textile-dev/Development',
+	'infisical-self-hosted': 'project/environment, e.g. shop-dev/Development',
 	'aws-secrets-manager': 'secret name or prefix, e.g. shop/prod/',
 	'gcp-secret-manager': 'project id/prefix, e.g. shop-prod/api-',
 	'azure-key-vault': 'vault name, e.g. shop-prod-vault',
@@ -78,10 +82,20 @@ export function placeNote(vendor: SecretsVendor, text: string): string {
 	if (!isInfisical(vendor)) return 'Its screens come later; the console keeps this place for them.';
 	const place = parseSecretsPlace(text);
 	if (!place)
-		return 'Whole environment: saha-textile-dev/dev. One folder: saha-textile-dev/dev/api. Use the slugs Infisical shows.';
-	return `Reads project ${place.project}, environment ${place.environment}, ${
+		return 'Whole environment: saha-textile-dev/Development (or its short name, saha-textile-dev/dev). One folder: saha-textile-dev/Development/api.';
+	const typed = text.split(/[/·|]/)[1]?.trim() ?? '';
+	const env =
+		typed.toLowerCase() === place.environment ? place.environment : `${typed} (short name ${place.environment})`;
+	return `Reads project ${place.project}, environment ${env}, ${
 		place.folder === '/' ? 'every folder' : `only ${place.folder}`
-	}.`;
+	}. Saved as ${formatSecretsPlace(place)}.`;
+}
+
+/** The place as saved: an Infisical place in its short form (`saha-textile-dev/dev`), anything else as typed. */
+export function savedPlace(vendor: SecretsVendor | null, text: string): string {
+	if (!vendor) return '';
+	const place = isInfisical(vendor) ? parseSecretsPlace(text) : null;
+	return place ? formatSecretsPlace(place) : text.trim();
 }
 
 /** Words or commas: `a.com, b.com` → `['a.com', 'b.com']`. */
@@ -140,6 +154,41 @@ export function edgeProblem(envs: EnvRule[], edges: { vendor: EdgeVendor; zones:
 	return '';
 }
 
+/** The branch an environment most likely deploys from: a first suggestion, shown for the owner to check. */
+export function suggestBranch(env: { name: string; runsOn: CloudVendor | null }, list: Branches): string {
+	const has = (n: string | null | undefined): n is string => !!n && list.branches.some((b) => b.name === n);
+	if (env.runsOn === null && has(list.current)) return list.current;
+	const name = env.name.toLowerCase();
+	if (/^(prod|production|live|main)$/.test(name)) return has(list.defaultBranch) ? list.defaultBranch : '';
+	const guesses: Record<string, string[]> = {
+		staging: ['staging', 'stage'],
+		development: ['dev', 'develop', 'development'],
+		dev: ['dev', 'develop', 'development'],
+	};
+	for (const g of [name, ...(guesses[name] ?? [])]) if (has(g)) return g;
+	return env.runsOn === null && has(list.defaultBranch) ? list.defaultBranch : '';
+}
+
+/** Environments: a branch per GitHub repository, chosen from that repository's list, once it is connected. */
+export function branchProblem(
+	envs: { label: string; branches: Record<string, string> }[],
+	repos: { repository: string; connected: boolean }[],
+	lists: Record<string, Branches | undefined>,
+): string {
+	for (const r of repos) {
+		if (!r.connected) return `Connect ${r.repository} on Repositories to choose its branches.`;
+		const list = lists[r.repository];
+		if (!list) return `Reading ${r.repository}'s branches…`;
+		if (!list.branches.length) return list.note || `${r.repository} has no branches to choose from.`;
+		for (const e of envs) {
+			const b = e.branches[r.repository];
+			if (!b) return `Choose ${e.label}'s branch.`;
+			if (!list.branches.some((x) => x.name === b)) return `${b} is no longer a branch of ${r.repository}.`;
+		}
+	}
+	return '';
+}
+
 /** Secrets: each environment names its manager and where inside it, or says it uses no manager. */
 export function secretsProblem(envs: EnvRule[], managers: { vendor: SecretsVendor; address: string }[]): string {
 	const noAddress = managers.find((x) => needsAddress(x.vendor) && !/^https?:\/\/\S+$/.test(x.address));
@@ -194,12 +243,14 @@ interface EnvDraft {
 	/** A manager ticked on the left, `none` for env files written by hand, or null while not chosen yet. */
 	secretsFrom: SecretsVendor | 'none' | null;
 	secretsPath: string;
+	/** Its branch per GitHub repository (`owner/name` → branch); missing until chosen. */
+	branches: Record<string, string>;
 }
 
 /** Add a project: name, repositories (a vendor each), environments, clouds, edges, own menus. */
 @Component({
 	selector: 'rc-add-project',
-	imports: [PageHead, VendorLogo, Icon, GithubSignIn],
+	imports: [PageHead, VendorLogo, Icon, GithubSignIn, BranchPicker],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-page-head
@@ -393,6 +444,7 @@ interface EnvDraft {
 								<table class="rc-t">
 									<thead>
 										<tr>
+											<th>Vendor</th>
 											<th>Repository</th>
 											<th>Connection</th>
 											<th></th>
@@ -402,13 +454,13 @@ interface EnvDraft {
 										@for (r of repos(); track r.repository) {
 											<tr>
 												<td>
-													<div class="rc-states">
-														<rc-vendor-logo
-															[vendor]="r.vendor"
-															[size]="14"
-														/>
-														<span class="rc-mono">{{ r.repository }}</span>
-													</div>
+													<rc-vendor-logo
+														[vendor]="r.vendor"
+														[size]="14"
+													/>
+												</td>
+												<td>
+													<div class="rc-mono">{{ r.repository }}</div>
 													@if (r.role) {
 														<div class="rc-note">{{ r.role }}</div>
 													}
@@ -489,7 +541,7 @@ interface EnvDraft {
 												</td>
 											</tr>
 										} @empty {
-											<tr><td colspan="3">None yet.</td></tr>
+											<tr><td colspan="4">None yet.</td></tr>
 										}
 									</tbody>
 								</table>
@@ -511,6 +563,7 @@ interface EnvDraft {
 									<tr>
 										<th>Environment</th>
 										<th>Runs on</th>
+										<th>Branch</th>
 										<th>Domains</th>
 										<th></th>
 									</tr>
@@ -547,6 +600,27 @@ interface EnvDraft {
 														</button>
 													}
 												</div>
+											</td>
+											<td>
+												<!-- Each environment's branch per GitHub repository (owner, 20 Nov). -->
+												@for (r of githubRepos(); track r.repository) {
+													<rc-branch-picker
+														[label]="
+															githubRepos().length > 1 ? shortName(r.repository) : ''
+														"
+														[context]="e.label"
+														[branches]="branchesOf(r.repository)"
+														[defaultBranch]="listOf(r.repository)?.defaultBranch ?? null"
+														[current]="listOf(r.repository)?.current ?? null"
+														[value]="e.branches[r.repository] ?? ''"
+														[waitingText]="waitingFor(r.repository)"
+														[refreshing]="refreshing().has(r.repository)"
+														(picked)="setBranch(i, r.repository, $event)"
+														(refresh)="loadBranches(r.repository, true)"
+													/>
+												} @empty {
+													<span class="rc-note">the repository's default branch</span>
+												}
 											</td>
 											<td>
 												<div class="rc-msearch">
@@ -978,6 +1052,12 @@ interface EnvDraft {
 														} @else {
 															<span>this computer</span>
 														}
+														@for (r of githubRepos(); track r.repository) {
+															<rc-icon name="tabler/git-branch" />
+															<span class="rc-mono">
+																{{ e.branches[r.repository] || 'default branch' }}
+															</span>
+														}
 													</div>
 												}
 											</div>
@@ -1164,7 +1244,9 @@ export class AddProject {
 			if (c.signedIn && c.account && c.reachable) {
 				const renamed = c.fullName && c.fullName.toLowerCase() !== repository.toLowerCase() ? c.fullName : '';
 				this.setLink(repository, 'connected', c.account, renamed);
-				void this.readFile(repository);
+				const branch = this.menusBranch(repository);
+				void this.readFile(repository, branch || undefined);
+				void this.loadBranches(repository);
 			} else this.setLink(repository, 'failed', c.message || 'GitHub did not answer as signed in.');
 		} catch (err) {
 			this.setLink(repository, 'failed', (err as Error).message);
@@ -1193,8 +1275,24 @@ export class AddProject {
 	protected readonly repoVendor = signal<SourceCodeVendor>('github');
 	protected readonly repos = signal<RepoDraft[]>([]);
 	protected readonly envs = signal<EnvDraft[]>([
-		{ name: 'local', label: 'Local', runsOn: null, domains: 'localhost', secretsFrom: null, secretsPath: '' },
-		{ name: 'staging', label: 'Staging', runsOn: 'digitalocean', domains: '', secretsFrom: null, secretsPath: '' },
+		{
+			name: 'local',
+			label: 'Local',
+			runsOn: null,
+			domains: 'localhost',
+			secretsFrom: null,
+			secretsPath: '',
+			branches: {},
+		},
+		{
+			name: 'staging',
+			label: 'Staging',
+			runsOn: 'digitalocean',
+			domains: '',
+			secretsFrom: null,
+			secretsPath: '',
+			branches: {},
+		},
 		{
 			name: 'production',
 			label: 'Production',
@@ -1202,6 +1300,7 @@ export class AddProject {
 			domains: '',
 			secretsFrom: null,
 			secretsPath: '',
+			branches: {},
 		},
 	]);
 	/** Clouds ticked by hand that no environment runs on (storage, say). */
@@ -1215,6 +1314,67 @@ export class AddProject {
 	protected readonly edgeList = signal<{ vendor: EdgeVendor; zones: string }[]>([
 		{ vendor: 'cloudflare', zones: '' },
 	]);
+	/** Each GitHub repository's branches, once read (owner, 20 Nov: a branch per environment). */
+	protected readonly lists = signal<Record<string, Branches>>({});
+	protected readonly refreshing = signal<Set<string>>(new Set());
+	protected readonly githubRepos = computed(() => this.repos().filter((r) => r.vendor === 'github'));
+	protected shortName(repository: string): string {
+		return repository.split('/')[1] ?? repository;
+	}
+	protected listOf(repository: string): Branches | undefined {
+		return this.lists()[repository];
+	}
+	protected branchesOf(repository: string): Branch[] {
+		return this.lists()[repository]?.branches ?? [];
+	}
+	protected waitingFor(repository: string): string {
+		if (this.repos().find((r) => r.repository === repository)?.link !== 'connected')
+			return 'Connect it on Repositories first';
+		if (this.refreshing().has(repository)) return 'fetching branches…';
+		return this.lists()[repository]?.note || 'loading branches…';
+	}
+	/** The branch the menus file is read from: the first environment on this computer's, else the first one's. */
+	private menusBranch(repository: string): string {
+		const es = this.envs();
+		return (es.find((e) => e.runsOn === null) ?? es[0])?.branches[repository] ?? '';
+	}
+	/**
+	 * Reads a connected repository's branches (refresh: git fetch on this computer first), suggests a
+	 * branch for each environment that has none yet, and reads the menus file from the Local branch.
+	 */
+	protected async loadBranches(repository: string, refresh = false): Promise<void> {
+		if (this.repos().find((r) => r.repository === repository)?.link !== 'connected') return;
+		this.refreshing.update((set) => new Set([...set, repository]));
+		try {
+			const list = await this.api.repositoryBranches(repository, refresh);
+			this.lists.update((m) => ({ ...m, [repository]: list }));
+			const before = this.menusBranch(repository);
+			this.envs.update((es) =>
+				es.map((e) =>
+					e.branches[repository]
+						? e
+						: { ...e, branches: { ...e.branches, [repository]: suggestBranch(e, list) } },
+				),
+			);
+			const after = this.menusBranch(repository);
+			if (after && after !== before) void this.readFile(repository, after);
+		} catch (err) {
+			this.lists.update((m) => ({
+				...m,
+				[repository]: { defaultBranch: null, current: null, branches: [], note: (err as Error).message },
+			}));
+		} finally {
+			this.refreshing.update((set) => new Set([...set].filter((x) => x !== repository)));
+		}
+	}
+	protected setBranch(i: number, repository: string, branch: string): void {
+		const before = this.menusBranch(repository);
+		this.envs.update((es) =>
+			es.map((e, n) => (n === i ? { ...e, branches: { ...e.branches, [repository]: branch } } : e)),
+		);
+		const after = this.menusBranch(repository);
+		if (after && after !== before) void this.readFile(repository, after);
+	}
 	protected readonly workspaces = computed(() => this.ctx.projects.data()?.workspaces ?? []);
 
 	protected readonly nextLabel = computed(() =>
@@ -1242,7 +1402,8 @@ export class AddProject {
 				repository,
 				role: role.value.trim(),
 				menus: [],
-				file: vendor === 'github' ? 'reading…' : 'chosen on Project menus',
+				// Read only once Connect has signed in (owner, 20 Nov: "only after the connection is successful").
+				file: vendor === 'github' ? 'read after Connect' : 'tick them on Project menus',
 				link: 'idle',
 				linkNote: '',
 				renamedTo: '',
@@ -1251,23 +1412,31 @@ export class AddProject {
 		box.value = '';
 		role.value = '';
 		this.message.set('');
-		if (vendor === 'github') void this.readFile(repository);
 	}
 
-	/** Prefills the repository's own menus from its `.release-console.json`, read through the GitHub CLI sign-in. */
-	private async readFile(repository: string): Promise<void> {
+	/**
+	 * Prefills the repository's own menus from its `.release-console.json` on the default branch, read
+	 * through the sign-in Connect just checked. Present: its menus are ticked on Project menus.
+	 * Absent: nothing is ticked there, and the menus are ticked by hand; the project ends the same.
+	 */
+	private async readFile(repository: string, ref?: string): Promise<void> {
 		const set = (file: string, menus?: string[]) =>
 			this.repos.update((rs) =>
 				rs.map((r) => (r.repository !== repository ? r : { ...r, file, menus: menus ?? r.menus })),
 			);
+		set('reading…');
 		try {
-			const a = await this.api.repositoryFile({ vendor: 'github', repository });
+			const a = await this.api.repositoryFile({ vendor: 'github', repository, ...(ref ? { ref } : {}) });
+			const on = ref ? `on ${ref}` : 'on the default branch';
 			if (a.state === 'not-connected') set('Connect to read them.');
 			else if (a.state !== 'ok') set(a.message);
-			else if (!a.data.found) set('no .release-console.json');
+			else if (!a.data.found) set(`no .release-console.json ${on}; tick them on Project menus`);
 			else {
 				const menus = a.data.menus.filter((m) => !!CONSOLE_MENU.screens[m]);
-				set(`from .release-console.json: ${menus.map((m) => this.menuLabel(m)).join(', ') || 'none'}`, menus);
+				set(
+					`from .release-console.json ${on}: ${menus.map((m) => this.menuLabel(m)).join(', ') || 'none'}`,
+					menus,
+				);
 			}
 		} catch (err) {
 			set((err as Error).message);
@@ -1296,7 +1465,7 @@ export class AddProject {
 		if (!name || this.envs().some((e) => e.name === name)) return;
 		this.envs.update((es) => [
 			...es,
-			{ name, label, runsOn: null, domains: '', secretsFrom: null, secretsPath: '' },
+			{ name, label, runsOn: null, domains: '', secretsFrom: null, secretsPath: '', branches: {} },
 		]);
 		box.value = '';
 	}
@@ -1396,7 +1565,8 @@ export class AddProject {
 							const v = this.managerOf(e);
 							return v && secrets.includes(v) ? v : null;
 						})(),
-						secretsPath: this.managerOf(e) ? e.secretsPath.trim() : '',
+						secretsPath: savedPlace(this.managerOf(e), e.secretsPath),
+						branch: e.branches[r.repository] ?? '',
 					})),
 					cloud: clouds.map((c) => ({ id: c, vendor: c, account: '', keyIds: [] })),
 					edge: this.edgeList().map((e) => ({
@@ -1433,7 +1603,17 @@ export class AddProject {
 			case 1:
 				return this.repos().length ? '' : 'Add at least one repository.';
 			case 2:
-				return envProblem(this.envs());
+				return (
+					envProblem(this.envs()) ||
+					branchProblem(
+						this.envs(),
+						this.githubRepos().map((r) => ({
+							repository: r.repository,
+							connected: r.link === 'connected',
+						})),
+						this.lists(),
+					)
+				);
 			case 4:
 				return edgeProblem(this.envs(), this.edgeList());
 			case 5:

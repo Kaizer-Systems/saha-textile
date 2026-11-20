@@ -85,8 +85,10 @@ export async function serverDeployView(
 	target: ServerTarget,
 	key: string,
 	http: GithubHttp = live,
+	/** The environment's own branch (owner, 20 Nov); the target's when it names none. */
+	chosen?: string,
 ): Promise<ServerDeployView> {
-	const { branch } = SERVER_TARGETS[target];
+	const branch = chosen || SERVER_TARGETS[target].branch;
 	const base = `${API}/repos/${repository}`;
 	const repo = rec((await http.get(base, key, GH)).body);
 	const defaultBranch = str(repo['default_branch']) || 'main';
@@ -136,14 +138,19 @@ export async function serverDeployView(
 	};
 }
 
-/** Starts deploy.yml for one target, on the branch that target's GitHub environment allows. */
+/**
+ * Starts deploy.yml for one target on a branch: the one chosen for the run or the environment
+ * (owner, 20 Nov), else the target's own (staging, main). The target's GitHub environment may only
+ * allow some branches; GitHub then refuses and the console says so.
+ */
 export async function startServerDeploy(
 	repository: string,
 	target: ServerTarget,
 	key: string,
 	http: GithubHttp = live,
+	chosen?: string,
 ): Promise<void> {
-	const { branch } = SERVER_TARGETS[target];
+	const branch = chosen || SERVER_TARGETS[target].branch;
 	const a = await http.send(
 		'POST',
 		`${API}/repos/${repository}/actions/workflows/${DEPLOY_WORKFLOW}/dispatches`,
@@ -153,6 +160,11 @@ export async function startServerDeploy(
 	);
 	if (a.status === 404)
 		throw new VendorError(`deploy.yml is not on ${branch} and the default branch yet; merge it there first.`, 409);
+	if (a.status === 422)
+		throw new VendorError(
+			`GitHub would not start deploy.yml on ${branch}: the ${target} environment's rules may not allow that branch.`,
+			409,
+		);
 	if (a.status !== 204) throw failed('start the deploy', a.status);
 }
 

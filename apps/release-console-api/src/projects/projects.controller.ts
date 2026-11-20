@@ -15,6 +15,8 @@ import {
 	type PullRequest,
 	type RepositoryFileFound,
 	repositoryFileQuerySchema,
+	type Branches,
+	branchesQuerySchema,
 	repositorySchema,
 	slotKeysSchema,
 	linkKeySchema,
@@ -107,6 +109,11 @@ export class ProjectsController {
 		const project = this.projects.removeRepository(id, repoId);
 		this.attention.forget(id);
 		return project;
+	}
+
+	@Get('repository-branches')
+	repositoryBranches(@Query() query: unknown): Promise<Branches> {
+		return this.reads.branches(parseBody(branchesQuerySchema, query));
 	}
 
 	@Post('repository-file')

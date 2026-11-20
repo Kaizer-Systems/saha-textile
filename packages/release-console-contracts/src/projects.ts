@@ -246,6 +246,16 @@ export const secretsSlotSchema = z.object({
 });
 export type SecretsSlot = z.infer<typeof secretsSlotSchema>;
 
+/**
+ * A git branch name as `git check-ref-format --branch` allows it, kept to what is safe to hand to
+ * git and to GitHub's API: no spaces, no `..`, `~ ^ : ? * [ \`, no leading `-` or `/`, no trailing
+ * `/` or `.lock`.
+ */
+export const BRANCH_NAME =
+	// eslint-disable-next-line no-control-regex -- control characters are exactly what a branch name may not hold.
+	/^(?!-)(?!\/)(?!.*\/\/)(?!.*\.\.)(?!.*@\{)(?!.*\/$)(?!.*\.lock$)[^\s~^:?*[\\\x00-\x1f\x7f]{1,255}$/;
+export const branchNameSchema = z.string().regex(BRANCH_NAME, 'Not a branch name.');
+
 export const environmentSchema = z.object({
 	name: slug,
 	label: z.string().min(1).max(40),
@@ -254,8 +264,13 @@ export const environmentSchema = z.object({
 	domains: z.array(z.string()).default([]),
 	/** Which of the repository's secrets managers it reads; `null` means no manager: env files written by hand. */
 	secretsId: slug.nullable().default(null),
-	/** Where its secrets sit inside that manager, e.g. `saha-textile-dev · dev · /api`. */
+	/** Where its secrets sit inside that manager, e.g. `saha-textile-dev/dev/api`. */
 	secretsPath: z.string().max(200).default(''),
+	/**
+	 * The branch its deploys run from (owner, 20 Nov); `''` means the repository's default branch.
+	 * Live deploy offers it first and lets one run use another.
+	 */
+	branch: z.union([z.literal(''), branchNameSchema]).default(''),
 });
 export type Environment = z.infer<typeof environmentSchema>;
 
@@ -491,9 +506,43 @@ export const dnsRecordsAnswerSchema = vendorAnswer(z.array(dnsRecordSchema));
 export const repositoryFileQuerySchema = z.object({
 	vendor: sourceCodeVendorSchema,
 	repository: sourceCodeSlotSchema.shape.repository,
+	/** The branch to read it from; the default branch when left out. */
+	ref: branchNameSchema.optional(),
 });
 export type RepositoryFileQuery = z.infer<typeof repositoryFileQuerySchema>;
-export const repositoryFileFoundSchema = z.object({ found: z.boolean(), menus: z.array(z.string()) });
+export const repositoryFileFoundSchema = z.object({
+	found: z.boolean(),
+	menus: z.array(z.string()),
+	/** The branch it was read from, when the answer knows it. */
+	ref: z.string().optional(),
+});
+
+/**
+ * A repository's branches for the branch pickers (owner, 20 Nov): GitHub's, plus the ones that
+ * exist only on the computer the console runs on when that computer's checkout is this repository
+ * (a branch never pushed, such as a local integration branch).
+ */
+export const branchSchema = z.object({
+	name: z.string(),
+	onGitHub: z.boolean(),
+	onThisComputer: z.boolean(),
+});
+export type Branch = z.infer<typeof branchSchema>;
+export const branchesSchema = z.object({
+	defaultBranch: z.string().nullable(),
+	/** The branch checked out on this computer, when its checkout is this repository. */
+	current: z.string().nullable(),
+	branches: z.array(branchSchema),
+	/** Why GitHub's list is missing, when it is. */
+	note: z.string().default(''),
+});
+export type Branches = z.infer<typeof branchesSchema>;
+export const branchesQuerySchema = z.object({
+	repository: sourceCodeSlotSchema.shape.repository,
+	/** `1`: run `git fetch` on this computer first (the pickers' refresh button). */
+	refresh: z.literal('1').optional(),
+});
+export type BranchesQuery = z.infer<typeof branchesQuerySchema>;
 export type RepositoryFileFound = z.infer<typeof repositoryFileFoundSchema>;
 export const repositoryFileAnswerSchema = vendorAnswer(repositoryFileFoundSchema);
 

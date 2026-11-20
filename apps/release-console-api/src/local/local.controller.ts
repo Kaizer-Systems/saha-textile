@@ -2,6 +2,9 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestj
 import {
 	type AlertsView,
 	type GithubCheck,
+	type GithubTokenLoginResult,
+	githubLoginSchema,
+	githubTokenLoginSchema,
 	type GithubStatus,
 	type RequestsView,
 	type Environment,
@@ -140,10 +143,39 @@ export class LocalController {
 	 */
 	@Post('github/login')
 	@HttpCode(202)
-	async githubLogin(): Promise<Job> {
-		const job = await this.runner.call<Job>('POST', '/run/github-login', {});
+	async githubLogin(@Body() body: unknown): Promise<Job> {
+		const { repository, mode } = parseBody(githubLoginSchema, body ?? {});
+		const job = await this.runner.call<Job>('POST', '/run/github-login', { repository, mode });
 		this.store.audit(null, 'github-sign-in-started', job.label);
 		return job;
+	}
+
+	/**
+	 * Connect's second way in: a pasted token, passed through to gh on the console's machine on
+	 * standard input. Neither the API nor the helper keeps it; the activity log records the account.
+	 */
+	@Post('github/login-token')
+	@HttpCode(200)
+	async githubTokenLogin(@Body() body: unknown): Promise<GithubTokenLoginResult> {
+		const { token } = parseBody(githubTokenLoginSchema, body);
+		const answer = await this.runner.call<GithubTokenLoginResult>('POST', '/github/login-token', { token }, 45_000);
+		this.store.audit(
+			null,
+			answer.ok ? 'github-token-sign-in' : 'github-token-refused',
+			answer.account ?? 'no account',
+		);
+		return answer;
+	}
+
+	/** Answers the Connect terminal's yes/no question (an update), only for a GitHub Connect job. */
+	@Post('github/login/:id/answer')
+	@HttpCode(200)
+	async answerGithubLogin(@Param('id') id: string, @Body() body: unknown): Promise<Job> {
+		if (!/^[a-z0-9-]+$/.test(id)) throw new HelperError('No such job.', 404);
+		const { answer } = parseBody(z.object({ answer: z.enum(['yes', 'no']) }), body);
+		const job = await this.runner.call<Job>('GET', `/jobs/${id}?after=0`);
+		if (job.kind !== 'github') throw new HelperError('Only the GitHub Connect job takes answers.', 403);
+		return this.runner.call<Job>('POST', `/jobs/${id}/answer`, { answer });
 	}
 
 	/** Stops a GitHub sign-in that is still waiting (the popup closed before it finished). */

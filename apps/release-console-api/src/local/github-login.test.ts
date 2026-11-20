@@ -21,9 +21,33 @@ function controller(job = { id: 'j1', kind: 'github', label: 'Sign in to GitHub'
 describe('the GitHub sign-in from the console', () => {
 	it('starts the helper’s fixed sign-in job, without a PIN, and logs it', async () => {
 		const { c, runner, store } = controller();
-		await c.githubLogin();
-		expect(runner.call).toHaveBeenCalledWith('POST', '/run/github-login', {});
+		await c.githubLogin({ repository: 'Kaizer-Systems/saha-textile' });
+		expect(runner.call).toHaveBeenCalledWith('POST', '/run/github-login', {
+			repository: 'Kaizer-Systems/saha-textile',
+			mode: 'login',
+		});
+		await expect(c.githubLogin({ repository: 'a/b; rm -rf /' })).rejects.toThrow();
 		expect(store.audit).toHaveBeenCalledWith(null, 'github-sign-in-started', 'Sign in to GitHub');
+	});
+
+	it('passes a pasted token through and logs the account only', async () => {
+		const { c, runner, store } = controller();
+		runner.call.mockResolvedValueOnce({ ok: true, account: 'octocat', message: '' } as never);
+		const token = 'ghp_' + 'x'.repeat(36);
+		await c.githubTokenLogin({ token });
+		expect(runner.call).toHaveBeenCalledWith('POST', '/github/login-token', { token }, 45_000);
+		expect(store.audit).toHaveBeenCalledWith(null, 'github-token-sign-in', 'octocat');
+		expect(JSON.stringify(store.audit.mock.calls)).not.toContain(token);
+		await expect(c.githubTokenLogin({ token: 'not a token' })).rejects.toThrow();
+	});
+
+	it('passes yes or no to a GitHub Connect job only', async () => {
+		const ok = controller();
+		await ok.c.answerGithubLogin('j1', { answer: 'yes' });
+		expect(ok.runner.call).toHaveBeenLastCalledWith('POST', '/jobs/j1/answer', { answer: 'yes' });
+		await expect(ok.c.answerGithubLogin('j1', { answer: 'rm -rf /' })).rejects.toThrow();
+		const other = controller({ id: 'p1', kind: 'pipeline', label: 'Local pipeline' });
+		await expect(other.c.answerGithubLogin('p1', { answer: 'no' })).rejects.toThrow(/Only the GitHub Connect job/);
 	});
 
 	it('stops only a GitHub sign-in job', async () => {

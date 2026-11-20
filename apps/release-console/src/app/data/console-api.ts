@@ -24,6 +24,8 @@ import {
 	githubStatusSchema,
 	type GithubCheck,
 	githubCheckSchema,
+	type GithubTokenLoginResult,
+	githubTokenLoginResultSchema,
 	type LocalAction,
 	type Logs,
 	type MacSnapshot,
@@ -377,8 +379,16 @@ export class ConsoleApi {
 		);
 	}
 	/** Starts the GitHub CLI's browser sign-in where the console runs; its lines are read like any job's. */
-	githubLogin(): Promise<Job> {
-		return this.call('POST', '/api/local/github/login', jobSchema, {});
+	githubLogin(repository: string, mode: 'login' | 'another' = 'login'): Promise<Job> {
+		return this.call('POST', '/api/local/github/login', jobSchema, { repository, mode });
+	}
+	/** Connect's second way in: the token goes to gh on the console's machine and is kept nowhere. */
+	githubLoginToken(token: string): Promise<GithubTokenLoginResult> {
+		return this.call('POST', '/api/local/github/login-token', githubTokenLoginResultSchema, { token }, 50_000);
+	}
+	/** Answers the Connect terminal's yes/no question (an update). */
+	answerGithubLogin(id: string, answer: 'yes' | 'no'): Promise<Job> {
+		return this.call('POST', `/api/local/github/login/${id}/answer`, jobSchema, { answer });
 	}
 	stopGithubLogin(id: string): Promise<Job> {
 		return this.call('POST', `/api/local/github/login/${id}/stop`, jobSchema, {});

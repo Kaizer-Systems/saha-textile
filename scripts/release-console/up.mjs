@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { CONSOLE_ENV_FILE, writeConsoleEnv } from './env.mjs';
+import { ensureGit } from './ensure-git.mjs';
 import { RUNNER_PORT, ensureToken, isWorktree } from './runner.mjs';
 import { ROOT } from '../secrets/inventory.mjs';
 
@@ -66,6 +67,8 @@ export async function up() {
 			'Run pnpm console:up from the main folder, not a worktree: the Mac helper drives the stack in its own checkout.',
 		);
 	mkdirSync(ENV_DIR, { recursive: true, mode: 0o700 });
+	// Git is part of the console's start (brief QhMFJFyn5Gq1sosZ1AaTQG, Q3): installed or brought up to the minimum here.
+	ensureGit({ say });
 	const keys = writeConsoleEnv();
 	for (const line of keys.lines) say(line);
 	if (!existsSync(join(ROOT, CONSOLE_ENV_FILE))) {

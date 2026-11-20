@@ -311,7 +311,25 @@ export type GithubStatus = z.infer<typeof githubStatusSchema>;
 /** Connect's check before any terminal opens: signed in, still answering, and able to open the repository. */
 export const githubCheckSchema = githubStatusSchema.extend({
 	repository: z.string(),
+	/** GitHub's own name for it: differs from `repository` after a rename or a move. */
+	fullName: z.string().nullable(),
 	reachable: z.boolean(),
 	message: z.string(),
 });
 export type GithubCheck = z.infer<typeof githubCheckSchema>;
+
+const githubRepository = z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 'owner/name');
+/** Connect's terminal: which repository it checks in step 4, and whether to add another account. */
+export const githubLoginSchema = z.object({
+	repository: githubRepository,
+	mode: z.enum(['login', 'another']).default('login'),
+});
+export type GithubLogin = z.infer<typeof githubLoginSchema>;
+/** Connect's second way in: a pasted token, passed to gh and never kept by the console. */
+export const githubTokenLoginSchema = z.object({ token: z.string().regex(/^[A-Za-z0-9_]{20,255}$/, 'a GitHub token') });
+export const githubTokenLoginResultSchema = z.object({
+	ok: z.boolean(),
+	account: z.string().nullable(),
+	message: z.string(),
+});
+export type GithubTokenLoginResult = z.infer<typeof githubTokenLoginResultSchema>;

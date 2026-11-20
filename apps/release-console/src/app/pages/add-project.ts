@@ -84,6 +84,8 @@ interface RepoDraft {
 	/** Connect's state for a GitHub repository: not tried, being checked, connected (as whom), or failed (why). */
 	link: 'idle' | 'checking' | 'connected' | 'failed';
 	linkNote: string;
+	/** GitHub's own name for it when that differs (renamed or moved), offered in the row. */
+	renamedTo: string;
 }
 interface EnvDraft {
 	name: string;
@@ -310,21 +312,48 @@ interface EnvDraft {
 												</td>
 												<td>{{ r.role || '—' }}</td>
 												<td>
-													<span class="rc-mono">{{ r.file }}</span>
+													<div class="rc-mono">{{ r.file }}</div>
 													@if (r.vendor === 'github') {
 														@switch (r.link) {
 															@case ('connected') {
 																<span class="rc-pill ok">
 																	connected as {{ r.linkNote }}
 																</span>
+																@if (r.renamedTo) {
+																	<div class="rc-note">
+																		GitHub now calls it {{ r.renamedTo }}.
+																	</div>
+																	<button
+																		type="button"
+																		class="rc-btn ghost"
+																		(click)="useNewName(r.repository, r.renamedTo)"
+																	>
+																		Use {{ r.renamedTo }}
+																	</button>
+																}
 															}
 															@case ('checking') {
 																<span class="rc-pill cy">checking…</span>
 															}
+															@case ('failed') {
+																<div class="rc-note red">{{ r.linkNote }}</div>
+																<button
+																	type="button"
+																	class="rc-btn"
+																	(click)="connect(r.repository, 'another')"
+																>
+																	<rc-icon name="tabler/plug-connected" />
+																	Use another account
+																</button>
+																<button
+																	type="button"
+																	class="rc-btn ghost"
+																	(click)="connect(r.repository)"
+																>
+																	Check again
+																</button>
+															}
 															@default {
-																@if (r.link === 'failed') {
-																	<span class="rc-note red">{{ r.linkNote }}</span>
-																}
 																<button
 																	type="button"
 																	class="rc-btn"
@@ -917,6 +946,8 @@ interface EnvDraft {
 		</div>
 		@if (showSignIn()) {
 			<rc-github-sign-in
+				[repository]="pending() ?? ''"
+				[mode]="signInMode()"
 				(signedIn)="afterSignIn()"
 				(closed)="afterClose($event)"
 			/>
@@ -947,12 +978,24 @@ export class AddProject {
 	/** The terminal popup that connects GitHub where the console runs. */
 	protected readonly showSignIn = signal(false);
 	/** The repository whose Connect opened the popup. */
-	private readonly pending = signal<string | null>(null);
+	protected readonly pending = signal<string | null>(null);
+	/** login: the usual Connect; another: sign in a second GitHub account (the row's Use another account). */
+	protected readonly signInMode = signal<'login' | 'another'>('login');
 	/** A page-level notice, e.g. a connection closed before it finished. */
 	protected readonly notice = signal('');
 
-	private setLink(repository: string, link: RepoDraft['link'], linkNote = ''): void {
-		this.repos.update((rs) => rs.map((r) => (r.repository === repository ? { ...r, link, linkNote } : r)));
+	private setLink(repository: string, link: RepoDraft['link'], linkNote = '', renamedTo = ''): void {
+		this.repos.update((rs) =>
+			rs.map((r) => (r.repository === repository ? { ...r, link, linkNote, renamedTo } : r)),
+		);
+	}
+
+	/** Takes GitHub's new name for a renamed or moved repository and reads its menus again. */
+	protected useNewName(old: string, name: string): void {
+		this.repos.update((rs) =>
+			rs.map((r) => (r.repository === old ? { ...r, repository: name, renamedTo: '', file: 'reading…' } : r)),
+		);
+		void this.readFile(name);
 	}
 
 	/**
@@ -961,13 +1004,22 @@ export class AddProject {
 	 * Otherwise the terminal popup opens and starts the sign-in by itself. A sign-in that answers but
 	 * cannot open the repository is said in the row: signing in again would not change that.
 	 */
-	protected async connect(repository: string): Promise<void> {
+	protected async connect(repository: string, mode: 'login' | 'another' = 'login'): Promise<void> {
 		this.notice.set('');
+		if (mode === 'another') {
+			this.pending.set(repository);
+			this.signInMode.set('another');
+			this.setLink(repository, 'checking');
+			this.showSignIn.set(true);
+			return;
+		}
+		this.signInMode.set('login');
 		this.setLink(repository, 'checking');
 		try {
 			const c = await this.api.githubCheck(repository);
 			if (c.signedIn && c.account && c.reachable) {
-				this.setLink(repository, 'connected', c.account);
+				const renamed = c.fullName && c.fullName.toLowerCase() !== repository.toLowerCase() ? c.fullName : '';
+				this.setLink(repository, 'connected', c.account, renamed);
 				void this.readFile(repository);
 				return;
 			}
@@ -1051,6 +1103,7 @@ export class AddProject {
 				file: vendor === 'github' ? 'reading…' : 'add menus by hand',
 				link: 'idle',
 				linkNote: '',
+				renamedTo: '',
 			},
 		]);
 		box.value = '';

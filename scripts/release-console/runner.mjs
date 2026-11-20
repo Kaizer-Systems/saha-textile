@@ -26,6 +26,7 @@ import {
 	parseTopCpu,
 	parseVmStat,
 } from './mac-stats.mjs';
+import { toolsGh } from './gh-tools.mjs';
 import { repositoryOf } from './infisical-places.mjs';
 import { loadInventory, ROOT, TIERS } from '../secrets/inventory.mjs';
 
@@ -320,7 +321,8 @@ function startJob(kind, label, cmd, args) {
 	const child = spawn(cmd, args, {
 		cwd: ROOT,
 		env: { ...process.env, FORCE_COLOR: '0' },
-		stdio: ['ignore', 'pipe', 'pipe'],
+		// Only the GitHub Connect job takes answers (yes or no to an update), on standard input.
+		stdio: [kind === 'github' ? 'pipe' : 'ignore', 'pipe', 'pipe'],
 	});
 	job.child = child;
 	const take = (stream) => {
@@ -370,21 +372,29 @@ const publicJob = (j, after = 0) => ({
 const succeeds = (cmd, args, timeout = 10_000) =>
 	new Promise((resolve) => execFile(cmd, args, { timeout }, (error) => resolve(!error)));
 
+/** The gh to run, without blocking: the machine's own on PATH, else the copy Connect fetched, else null. */
+export async function ghPath() {
+	if (await succeeds('gh', ['--version'], 5000)) return 'gh';
+	return toolsGh();
+}
+
 /**
- * Whether the GitHub CLI on this Mac is installed and signed in, and as whom. Never the token.
- * `gh auth status` decides: `gh auth token` can still find a keychain entry for a config that has
- * no account, so it is not proof of a sign-in.
+ * Whether the GitHub CLI where the console runs is installed and signed in, and as whom. Never the
+ * token. `gh auth status` decides: `gh auth token` can still find a keychain entry for a config
+ * that has no account, so it is not proof of a sign-in.
  */
 export async function githubStatus() {
-	if (!(await succeeds('gh', ['--version'], 5000))) return { installed: false, signedIn: false, account: null };
-	const signedIn = await succeeds('gh', ['auth', 'status', '--hostname', 'github.com']);
-	const account = signedIn ? (await sh('gh', ['api', 'user', '--jq', '.login'], 10_000)).trim() || null : null;
+	const gh = await ghPath();
+	if (!gh) return { installed: false, signedIn: false, account: null };
+	const signedIn = await succeeds(gh, ['auth', 'status', '--hostname', 'github.com']);
+	const account = signedIn ? (await sh(gh, ['api', 'user', '--jq', '.login'], 10_000)).trim() || null : null;
 	return { installed: true, signedIn, account };
 }
 
 /**
  * Connect's check before any terminal opens: is gh signed in, does that sign-in still answer (an
- * expired or revoked token does not), and can it open this repository.
+ * expired or revoked token does not), and can it open this repository. `fullName` is GitHub's own
+ * name for it, which differs after a rename or a move.
  * @param {string} repository  owner/name, checked by the caller
  */
 export async function githubCheck(repository) {
@@ -393,24 +403,68 @@ export async function githubCheck(repository) {
 		return {
 			...status,
 			repository,
+			fullName: null,
 			reachable: false,
 			message: status.installed
 				? 'Not signed in, or the sign-in no longer answers.'
-				: 'The GitHub CLI is not installed on this machine.',
+				: 'The GitHub CLI is not on this machine yet.',
 		};
-	const name = (await sh('gh', ['api', `repos/${repository}`, '--jq', '.full_name'], 15_000)).trim();
+	const gh = (await ghPath()) ?? 'gh';
+	const name = (await sh(gh, ['api', `repos/${repository}`, '--jq', '.full_name'], 15_000)).trim();
 	return {
 		...status,
 		repository,
-		reachable: name.toLowerCase() === repository.toLowerCase(),
-		message: name ? '' : `Signed in as ${status.account}, but that account cannot open ${repository}.`,
+		fullName: name || null,
+		reachable: name !== '',
+		message: name ? '' : `${status.account} cannot open ${repository}. Ask for access, or use another account.`,
 	};
 }
 
 /** The CLI sign-in's token, only when `gh auth status` says it is signed in. */
 export async function githubToken() {
-	if (!(await succeeds('gh', ['auth', 'status', '--hostname', 'github.com']))) return null;
-	return (await sh('gh', ['auth', 'token', '--hostname', 'github.com'], 5000)).trim() || null;
+	const gh = await ghPath();
+	if (!gh || !(await succeeds(gh, ['auth', 'status', '--hostname', 'github.com']))) return null;
+	return (await sh(gh, ['auth', 'token', '--hostname', 'github.com'], 5000)).trim() || null;
+}
+
+/**
+ * Connect's second way in (brief Q2 = A): a pasted token, handed to `gh auth login --with-token` on
+ * standard input and never kept here; then Git is set up to use it. Answers names only.
+ * @param {string} token  checked by the caller
+ */
+export async function githubTokenLogin(token) {
+	const gh = await ghPath();
+	if (!gh)
+		return {
+			ok: false,
+			account: null,
+			message: 'The GitHub CLI is not on this machine yet: press Connect once to fetch it.',
+		};
+	const status = await new Promise((resolve) => {
+		const child = spawn(
+			gh,
+			['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--with-token'],
+			{
+				stdio: ['pipe', 'ignore', 'ignore'],
+			},
+		);
+		const timer = setTimeout(() => child.kill('SIGTERM'), 30_000);
+		child.on('error', () => resolve(1));
+		child.on('close', (code) => {
+			clearTimeout(timer);
+			resolve(code);
+		});
+		child.stdin.end(`${token}\n`);
+	});
+	if (status !== 0)
+		return {
+			ok: false,
+			account: null,
+			message: 'GitHub refused that token. Check that it is current and has the repo and read:org scopes.',
+		};
+	await succeeds(gh, ['auth', 'setup-git', '--hostname', 'github.com']);
+	const account = (await sh(gh, ['api', 'user', '--jq', '.login'], 10_000)).trim() || null;
+	return { ok: true, account, message: '' };
 }
 
 /**
@@ -437,9 +491,19 @@ export function commandFor(action, body = {}, busy = []) {
 				'docker',
 				['compose', '-f', 'docker/stack/compose.yaml', 'start', ...STACK_APP_SERVICES],
 			];
-		case 'github-login':
+		case 'github-login': {
 			// A Node script, so it runs wherever the console does: a Mac, Linux or Windows.
-			return ['github', 'Connect to GitHub', process.execPath, ['scripts/release-console/github-login.mjs']];
+			const repository = String(body.repository ?? '');
+			const mode = body.mode === 'another' ? 'another' : 'login';
+			if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))
+				throw Object.assign(new Error('Give the repository as owner/name.'), { status: 400 });
+			return [
+				'github',
+				'Connect to GitHub',
+				process.execPath,
+				['scripts/release-console/github-login.mjs', '--repository', repository, '--mode', mode],
+			];
+		}
 		case 'pipeline': {
 			const args = ['scripts/pipeline/local.mjs', '--json'];
 			const { from, only } = body;
@@ -528,6 +592,19 @@ export function createRunner(token) {
 					return send(400, { message: 'Write the repository as owner/name.' });
 				return send(200, await githubCheck(repository));
 			}
+			if (req.method === 'POST' && path === '/github/login-token') {
+				let raw = '';
+				for await (const chunk of req) {
+					raw += chunk;
+					if (raw.length > 4096) return send(413, { message: 'That is too long for a token.' });
+				}
+				const token = String((raw ? JSON.parse(raw) : {}).token ?? '').trim();
+				raw = '';
+				if (!/^[A-Za-z0-9_]{20,255}$/.test(token))
+					return send(400, { message: 'That does not look like a GitHub token.' });
+				forget('github-status');
+				return send(200, await githubTokenLogin(token));
+			}
 			if (req.method === 'GET' && path === '/github/status')
 				return send(200, await shared('github-status', 2000, githubStatus));
 			// The CLI sign-in's token, for the console API in Docker (its own container has no gh).
@@ -560,6 +637,20 @@ export function createRunner(token) {
 					200,
 					[...jobs.values()].map((j) => ({ ...publicJob(j), lines: [] })),
 				);
+			const answerMatch = /^\/jobs\/([a-z0-9-]+)\/answer$/.exec(path);
+			if (answerMatch && req.method === 'POST') {
+				const job = jobs.get(answerMatch[1]);
+				if (!job) return send(404, { message: 'No such job.' });
+				let raw = '';
+				for await (const chunk of req) raw += chunk;
+				const answer = (raw ? JSON.parse(raw) : {}).answer;
+				if (job.kind !== 'github') return send(403, { message: 'Only the GitHub Connect job takes answers.' });
+				if (answer !== 'yes' && answer !== 'no') return send(400, { message: 'Answer yes or no.' });
+				if (job.status !== 'running' || !job.child?.stdin?.writable)
+					return send(409, { message: 'That job is not waiting for an answer.' });
+				job.child.stdin.write(answer === 'yes' ? 'y\n' : 'n\n');
+				return send(200, { ...publicJob(job), lines: [] });
+			}
 			const jobMatch = /^\/jobs\/([a-z0-9-]+)(\/stop)?$/.exec(path);
 			if (jobMatch) {
 				const job = jobs.get(jobMatch[1]);

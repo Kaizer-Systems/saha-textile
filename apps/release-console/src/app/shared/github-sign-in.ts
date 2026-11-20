@@ -5,6 +5,7 @@ import {
 	type ElementRef,
 	computed,
 	inject,
+	input,
 	output,
 	signal,
 	viewChild,
@@ -18,6 +19,8 @@ import type { Job } from '@saha-textile/release-console-contracts';
 /** GitHub's device sign-in page, where the one-time code is entered. */
 export const DEVICE_PAGE = 'https://github.com/login/device';
 
+type Line = Job['lines'][number];
+
 /** The one-time code gh printed, from its lines (`… code (ABCD-1234) …` or `… code: ABCD-1234`). */
 export function oneTimeCode(lines: { text: string }[]): string | null {
 	for (const l of [...lines].reverse()) {
@@ -27,14 +30,33 @@ export function oneTimeCode(lines: { text: string }[]): string | null {
 	return null;
 }
 
+/** The question the job is waiting on: the last `{"ask"}` line not yet followed by its `{"answered"}`. */
+export function pendingAsk(lines: Line[]): { id: string; question: string } | null {
+	let open: { id: string; question: string } | null = null;
+	for (const l of lines) {
+		const e = l.event;
+		if (e && typeof e['ask'] === 'string') open = { id: e['ask'], question: String(e['question'] ?? '') };
+		else if (e && typeof e['answered'] === 'string' && open?.id === e['answered']) open = null;
+	}
+	return open;
+}
+
+/** A line's colour in the terminal: step titles, done, failed, notices, skipped. */
+export function lineClass(text: string): string {
+	if (/^\d · /.test(text)) return 'i';
+	if (text.startsWith('✓')) return 'p';
+	if (text.startsWith('✗') || text.startsWith('!')) return 'w';
+	if (text.startsWith('- ') || text.startsWith('  ')) return 'd';
+	return '';
+}
+
 /**
- * The GitHub connection terminal (owner, 20 Nov): a popup that runs the GitHub CLI's browser sign-in
- * by itself on the machine the console runs on (this Mac, or the server it is deployed to) and shows
- * its output. gh copies the one-time code and opens
- * github.com/login/device; the code and that page are also here. When gh is signed in (at once, if
- * it already was) the popup says so, tells the page behind it (`signedIn`), and asks "Close the
- * terminal? [Y/n]": Y or Enter closes it, N keeps it open to read. It runs only the Mac helper's
- * fixed sign-in script, never a typed command.
+ * The GitHub Connect terminal (owner, 20 Nov; brief QhMFJFyn5Gq1sosZ1AaTQG): a popup that runs the
+ * console's Connect steps by itself on the machine the console runs on (this Mac, or the server it
+ * is deployed to) and shows that machine's output: tools, an update check before gh and git are
+ * used ("[y/N]", answered here), the browser sign-in or a pasted token, Git set up to use it, and
+ * the repository check. When it is connected the page behind turns green (`signedIn`) and it asks
+ * "Close the terminal? [Y/n]". It runs only the helper's fixed script, never a typed command.
  */
 @Component({
 	selector: 'rc-github-sign-in',
@@ -72,22 +94,27 @@ export function oneTimeCode(lines: { text: string }[]): string | null {
 				>
 					<div>
 						<span class="p">$</span>
-						gh auth login --hostname github.com --web
+						release-console connect github {{ repository() }}
 					</div>
-					@for (l of lines(); track l.seq) {
-						<div [class.w]="l.stream === 'err' && !l.text.startsWith('!')">{{ l.text }}</div>
+					@for (l of shown(); track l.seq) {
+						<div [class]="lineClass(l.text)">{{ l.text }}</div>
 					}
 					@if (starting()) {
-						<div class="d">Asking the Mac helper…</div>
+						<div class="d">Asking the console's helper…</div>
 					}
-					@if (job()?.status === 'running') {
+					@if (ask(); as q) {
+						<div>
+							{{ q.question }}
+							<span class="cur"></span>
+						</div>
+					} @else if (job()?.status === 'running' && !pasting()) {
 						<div class="d">
-							Waiting for you on github.com…
+							Working…
 							<span class="cur"></span>
 						</div>
 					}
-					@if (job()?.status === 'passed') {
-						<div class="i">Signed in. This repository reads GitHub through this sign-in.</div>
+					@if (passed()) {
+						<div class="i">Connected. The page has turned green.</div>
 						@if (asking()) {
 							<div>
 								Close the terminal? [Y/n]
@@ -97,12 +124,27 @@ export function oneTimeCode(lines: { text: string }[]): string | null {
 							<div class="d">Kept open. Close it with Close or Esc.</div>
 						}
 					}
-					@if (job()?.status === 'failed' || job()?.status === 'stopped') {
-						<div class="w">The sign-in did not finish.</div>
-					}
 				</div>
+				@if (ask(); as q) {
+					<div class="rc-row end">
+						<button
+							type="button"
+							class="rc-btn ghost"
+							(click)="answer(false)"
+						>
+							N · continue as is
+						</button>
+						<button
+							type="button"
+							class="rc-btn primary"
+							(click)="answer(true)"
+						>
+							Y · update
+						</button>
+					</div>
+				}
 				@if (code(); as c) {
-					@if (job()?.status === 'running') {
+					@if (job()?.status === 'running' && !pasting()) {
 						<div class="rc-row">
 							<span class="rc-note">One-time code</span>
 							<button
@@ -125,11 +167,44 @@ export function oneTimeCode(lines: { text: string }[]): string | null {
 						</div>
 					}
 				}
+				@if (pasting() && !passed()) {
+					<form
+						class="rc-form"
+						(submit)="useToken($event, tokenBox)"
+					>
+						<label>
+							Token
+							<div class="rc-msearch">
+								<input
+									#tokenBox
+									type="password"
+									autocomplete="off"
+									spellcheck="false"
+									aria-label="GitHub token"
+									placeholder="github_pat_… or ghp_…"
+								/>
+							</div>
+						</label>
+						<p class="rc-note">
+							It goes straight to gh on the console's machine and is kept nowhere else. It needs the repo
+							and read:org scopes.
+						</p>
+						<div class="rc-row end">
+							<button
+								type="submit"
+								class="rc-btn primary"
+								[disabled]="busy()"
+							>
+								{{ busy() ? 'Signing in…' : 'Sign in with this token' }}
+							</button>
+						</div>
+					</form>
+				}
 				@if (message()) {
 					<p class="rc-note red">{{ message() }}</p>
 				}
 				<div class="rc-row end">
-					@if (job()?.status === 'passed' && asking()) {
+					@if (passed() && asking()) {
 						<button
 							type="button"
 							class="rc-btn ghost"
@@ -145,7 +220,16 @@ export function oneTimeCode(lines: { text: string }[]): string | null {
 							Y · close
 						</button>
 					}
-					@if (job()?.status === 'failed' || job()?.status === 'stopped' || message()) {
+					@if (!passed() && !pasting() && (code() || ended())) {
+						<button
+							type="button"
+							class="rc-btn ghost"
+							(click)="pasteInstead()"
+						>
+							Paste a token instead
+						</button>
+					}
+					@if (!passed() && (ended() || message())) {
 						<button
 							type="button"
 							class="rc-btn primary"
@@ -162,28 +246,42 @@ export function oneTimeCode(lines: { text: string }[]): string | null {
 export class GithubSignIn {
 	private readonly api = inject(ConsoleApi);
 	private readonly term = viewChild<ElementRef<HTMLElement>>('term');
-	/** The CLI is signed in; the page behind refreshes its repositories. */
+	readonly repository = input.required<string>();
+	readonly mode = input<'login' | 'another'>('login');
+	/** Connected: the page behind turns the row green. */
 	readonly signedIn = output<void>();
 	/** The popup closed: `true` when GitHub is connected, `false` when it was closed before that. */
 	readonly closed = output<boolean>();
 	protected readonly devicePage = DEVICE_PAGE;
+	protected readonly lineClass = lineClass;
 	protected readonly job = signal<Job | null>(null);
-	protected readonly lines = signal<Job['lines']>([]);
+	protected readonly lines = signal<Line[]>([]);
 	protected readonly starting = signal(false);
 	protected readonly asking = signal(true);
 	protected readonly copied = signal(false);
 	protected readonly message = signal('');
+	protected readonly pasting = signal(false);
+	protected readonly busy = signal(false);
+	/** The account a pasted token signed in as. */
+	private readonly tokenAccount = signal<string | null>(null);
 	protected readonly code = computed(() => oneTimeCode(this.lines()));
+	protected readonly ask = computed(() => (this.job()?.status === 'running' ? pendingAsk(this.lines()) : null));
+	/** The lines to print: the question and answer markers are shown as words, not as JSON. */
+	protected readonly shown = computed(() => this.lines().filter((l) => !l.event));
+	protected readonly passed = computed(() => this.job()?.status === 'passed' || this.tokenAccount() !== null);
+	protected readonly ended = computed(() => {
+		const s = this.job()?.status;
+		return s === 'failed' || s === 'stopped';
+	});
 	private timer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor() {
 		// Leaving the page also ends a sign-in still waiting on github.com.
 		inject(DestroyRef).onDestroy(() => {
 			this.halt();
-			const job = this.job();
-			if (job?.status === 'running') void this.api.stopGithubLogin(job.id).catch(() => undefined);
+			this.stopRunning();
 		});
-		void this.start();
+		queueMicrotask(() => void this.start());
 	}
 
 	protected async start(): Promise<void> {
@@ -192,13 +290,21 @@ export class GithubSignIn {
 		this.lines.set([]);
 		this.job.set(null);
 		this.asking.set(true);
+		this.pasting.set(false);
 		this.starting.set(true);
 		try {
-			const job = await this.api.githubLogin();
+			const job = await this.api.githubLogin(this.repository(), this.mode());
 			this.job.set(job);
 			this.follow(job.id);
 		} catch (err) {
-			this.message.set((err as Error).message);
+			// A Connect already running (another tab, or a second press): follow that one instead.
+			const running = /already running/i.test((err as Error).message)
+				? (await this.api.jobs().catch(() => [])).find((j) => j.kind === 'github' && j.status === 'running')
+				: undefined;
+			if (running) {
+				this.job.set(running);
+				this.follow(running.id);
+			} else this.message.set((err as Error).message);
 		} finally {
 			this.starting.set(false);
 		}
@@ -232,19 +338,74 @@ export class GithubSignIn {
 		this.timer = null;
 	}
 
+	private stopRunning(): void {
+		const job = this.job();
+		if (job?.status === 'running') void this.api.stopGithubLogin(job.id).catch(() => undefined);
+	}
+
+	/** Yes or no to the terminal's update question. */
+	protected async answer(yes: boolean): Promise<void> {
+		const job = this.job();
+		if (!job) return;
+		try {
+			await this.api.answerGithubLogin(job.id, yes ? 'yes' : 'no');
+		} catch (err) {
+			this.message.set((err as Error).message);
+		}
+	}
+
+	/** Switches to the token form; the browser sign-in waiting in the job is stopped. */
+	protected pasteInstead(): void {
+		this.halt();
+		this.stopRunning();
+		this.message.set('');
+		this.pasting.set(true);
+	}
+
+	protected async useToken(e: Event, box: HTMLInputElement): Promise<void> {
+		e.preventDefault();
+		const token = box.value.trim();
+		box.value = '';
+		if (!token) return;
+		this.busy.set(true);
+		this.message.set('');
+		try {
+			const r = await this.api.githubLoginToken(token);
+			if (r.ok) {
+				this.tokenAccount.set(r.account ?? 'your account');
+				this.signedIn.emit();
+			} else this.message.set(r.message);
+		} catch (err) {
+			this.message.set((err as Error).message);
+		} finally {
+			this.busy.set(false);
+		}
+	}
+
 	protected keep(): void {
 		this.asking.set(false);
 	}
 
 	/** Closes the popup; going away stops a sign-in still waiting on github.com (see the constructor). */
 	protected close(): void {
-		this.closed.emit(this.job()?.status === 'passed');
+		this.closed.emit(this.passed());
 	}
 
-	/** Y or Enter closes once signed in, N keeps it open; Esc always closes. */
+	/**
+	 * Keys: Esc closes. An update question takes y (update) or n / Enter (continue as is). Once
+	 * connected, y or Enter closes and n keeps it open. Typing in the token box is left alone.
+	 */
 	protected key(e: KeyboardEvent): void {
 		if (e.key === 'Escape') return this.close();
-		if (this.job()?.status !== 'passed' || !this.asking()) return;
+		if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
+		if (this.ask()) {
+			if (e.key === 'y' || e.key === 'Y') void this.answer(true);
+			else if (e.key === 'n' || e.key === 'N' || e.key === 'Enter') void this.answer(false);
+			else return;
+			e.preventDefault();
+			return;
+		}
+		if (!this.passed() || !this.asking()) return;
 		if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
 			e.preventDefault();
 			this.close();

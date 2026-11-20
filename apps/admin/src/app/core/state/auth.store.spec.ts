@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
 import { Observable, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -121,6 +121,12 @@ class FakeGateway extends AdminAuthGateway {
 	override refreshSession(): Observable<void> {
 		return of(undefined);
 	}
+	override lockSession(): Observable<void> {
+		return of(undefined);
+	}
+	override markActivity(): Observable<void> {
+		return of(undefined);
+	}
 	override isCredentialEndpoint(): boolean {
 		return false;
 	}
@@ -236,6 +242,56 @@ describe('admin AuthStore', () => {
 
 		expect(resumed).toBe(true);
 		expect(store.permissions()).toEqual([]);
+	});
+
+	it('fetches the rotated CSRF token after an unlock, so the first save is not refused once', async () => {
+		gateway.me = ME;
+		const store = TestBed.inject(AuthStore);
+		await store.bootstrap();
+		const order: string[] = [];
+		gateway.resumeWithPassword = () => {
+			order.push('resume');
+			return of(SESSION);
+		};
+		gateway.ensureCsrfToken = () => {
+			order.push('csrf');
+			return of(undefined);
+		};
+
+		expect(await store.resumeWithPassword('a-real-password')).toBe(true);
+		expect(order).toEqual(['resume', 'csrf']);
+	});
+
+	it('still unlocks when fetching the new CSRF token fails', async () => {
+		gateway.me = ME;
+		const store = TestBed.inject(AuthStore);
+		await store.bootstrap();
+		gateway.ensureCsrfToken = () => throwError(() => new Error('offline'));
+
+		expect(await store.resumeWithPin('135790')).toBe(true);
+		expect(store.isAuthenticated()).toBe(true);
+	});
+
+	it('keeps the lock screen and the session after a mistyped password', async () => {
+		gateway.me = ME;
+		const store = TestBed.inject(AuthStore);
+		await store.bootstrap();
+		gateway.accept = false;
+
+		expect(await store.resumeWithPassword('a-typo')).toBe(false);
+		expect(store.isAuthenticated()).toBe(true);
+		expect(store.error()).toBe('invalid_credentials');
+	});
+
+	it('signs out after a refused unlock when the server says the session is gone', async () => {
+		gateway.me = ME;
+		const store = TestBed.inject(AuthStore);
+		await store.bootstrap();
+		gateway.accept = false;
+		gateway.me = null;
+
+		expect(await store.resumeWithPin('135790')).toBe(false);
+		expect(store.isAuthenticated()).toBe(false);
 	});
 
 	it('clears the session when resume cannot rotate cookies (idle already dead)', async () => {

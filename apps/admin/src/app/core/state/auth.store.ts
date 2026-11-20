@@ -40,9 +40,18 @@ interface AuthStateModel {
 	/** Transloco key for the last failure, cleared on the next attempt. Never a raw sentence. */
 	error: string | null;
 	pending: boolean;
+	/** The server says this session is behind the 15-minute lock (it holds the lock, not the tab). */
+	sessionLocked: boolean;
 }
 
-const INITIAL: AuthStateModel = { status: 'unknown', user: null, permissions: [], error: null, pending: false };
+const INITIAL: AuthStateModel = {
+	status: 'unknown',
+	user: null,
+	permissions: [],
+	error: null,
+	pending: false,
+	sessionLocked: false,
+};
 
 /**
  * Failure states are Transloco keys, and one shared message covers password and PIN alike.
@@ -96,7 +105,14 @@ export const AuthStore = signalStore(
 			queries = inject(QueryClient, { optional: true }),
 		) => {
 			function applyAnonymous(error: string | null = null): void {
-				patchState(store, { status: 'anonymous', user: null, permissions: [], error, pending: false });
+				patchState(store, {
+					status: 'anonymous',
+					user: null,
+					permissions: [],
+					error,
+					pending: false,
+					sessionLocked: false,
+				});
 				// Signed out, session over, or about to be someone else: no mail stays behind (S1).
 				if (queries) forgetMailboxData(queries);
 			}
@@ -113,6 +129,7 @@ export const AuthStore = signalStore(
 					permissions: me.permissions,
 					error: null,
 					pending: false,
+					sessionLocked: me.session?.locked === true,
 				});
 				return true;
 			}
@@ -127,11 +144,28 @@ export const AuthStore = signalStore(
 						return false;
 					}
 					await prove();
+					// The server rotates the session on resume, and with it the CSRF token. Fetch the
+					// new one now, as sign-in does, so the first save after unlocking isn't refused
+					// once with the old token. A failed fetch is not a failed resume: the next unsafe
+					// request recovers the token itself.
+					try {
+						await firstValueFrom(gateway.ensureCsrfToken());
+					} catch {
+						// See above.
+					}
 					// Re-read /me: role/permissions may have changed while the overlay was up.
 					return await loadSession();
 				} catch {
-					// Wrong PIN/password — session may still be live after the refresh above.
-					if (store.status() === 'authenticated') {
+					// Refused: usually a mistyped PIN or password, and the session lives on behind the
+					// server's lock (the transport no longer signs out on this refusal). Ask the server:
+					// alive keeps the lock screen, the page and its form, with the error; gone signs out.
+					let alive = false;
+					try {
+						alive = store.status() === 'authenticated' && (await loadSession());
+					} catch {
+						alive = false;
+					}
+					if (alive) {
 						patchState(store, { pending: false, error: ERROR_KEYS.credentials });
 					} else {
 						applyAnonymous(ERROR_KEYS.credentials);

@@ -31,6 +31,7 @@ import {
 	shippingProblemText,
 } from '@core/shipping/shipping.gateway';
 import { AuthStore } from '@core/state/auth.store';
+import { UnsavedChanges } from '@core/unsaved/unsaved-changes';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { FmPhone } from '@features/media/file-manager/fm-phone';
@@ -237,6 +238,8 @@ export class RuleBuilder {
 	private readonly recheck = new Subject<{ body: ShippingRuleSetBody; carts: ShippingTestCart[] }>();
 
 	constructor() {
+		// Reload or close with unsaved blocks: the browser asks first (the builder is not a form).
+		inject(DestroyRef).onDestroy(inject(UnsavedChanges).register(() => this.dirty()));
 		const sub = this.recheck
 			.pipe(
 				debounceTime(500),

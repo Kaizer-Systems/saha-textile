@@ -8,7 +8,7 @@
 		"docs/engineering-live-context/project-progress.mdx"
 	],
 	"decisionRegister": {
-		"openCount": 16,
+		"openCount": 14,
 		"newlyLocked": ["DEC-PAYPAL-FX", "DEC-STOCK-RESERVE", "DEC-INR-GATEWAY-TIMING", "DEC-BACKORDER"]
 	},
 	"gates": [

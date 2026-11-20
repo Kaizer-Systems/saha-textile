@@ -243,6 +243,11 @@ export const AuthRefusalReason = z.enum([
 	'account_inactive',
 	/** The CSRF token was missing or stale (403). Fetch a new one and retry once. */
 	'csrf_rejected',
+	/**
+	 * Admin only: the session is behind the 15-minute lock. Not recoverable by rotation, and not
+	 * a sign-out: the operator proves presence with the PIN or password, then the request can run.
+	 */
+	'session_locked',
 ]);
 export type AuthRefusalReason = z.infer<typeof AuthRefusalReason>;
 

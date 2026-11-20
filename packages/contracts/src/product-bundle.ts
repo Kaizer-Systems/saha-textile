@@ -14,8 +14,8 @@ export type BundleType = z.infer<typeof BundleType>;
 
 /**
  * How a bundle is priced. The chosen policy is stored; the MATH runs server-side in the
- * pricing engine, which is also where promotion interaction (`DEC-PROMO-STACK`) is
- * resolved. No prices are computed in a contract.
+ * pricing engine, which is also where promotion interaction (`DEC-PROMO-STACK`, decided
+ * 2026-11-20) is applied. No prices are computed in a contract.
  */
 export const BundlePricePolicy = z.enum(['sum_components', 'fixed_bundle_price', 'discounted_components']);
 export type BundlePricePolicy = z.infer<typeof BundlePricePolicy>;

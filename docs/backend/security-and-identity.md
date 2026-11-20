@@ -269,7 +269,20 @@ A restore is refused with `customer_identifier_taken` when another live customer
 
 ### Admin idle lock
 
-After 15 minutes of inactivity the admin shell opens a lock screen. `POST /auth/admin/resume` accepts the PIN or password and extends the same session, so the open route and form state survive. The lock proves presence. The one-hour idle lifetime still ends the session on the server.
+After 15 minutes without operator activity the admin session locks. The server holds the lock, so a reload, a new tab or a laptop waking from sleep comes back to the lock screen on the same page.
+
+- **State.** Each admin session records `lastActiveAt` (operator presence) and `lockedAt`. A session counts as locked when `lockedAt` is set, or when more than 17 minutes (the 15-minute lock plus 2 minutes of grace) have passed since the last presence. A lock found by time alone is written to the session.
+- **Presence.** Typing, clicking, scrolling or touching in any open admin tab counts. One tab reports it with `POST /auth/admin/activity` at most once a minute. Background reads never count, so an unattended tab locks on the server too.
+- **Locking.** When the 15 minutes pass, the tab sends `POST /auth/admin/lock`, retrying on its 15-second timer until the server has it. Tabs lock and unlock together through a `BroadcastChannel`.
+- **While locked.** The session guard refuses every admin route with `401` and the reason `session_locked`, except the routes marked `@AllowWhileLocked()`: `GET /auth/admin/me` (which returns `session.locked`) and `POST /auth/admin/resume`. Cookie refresh still works but never removes the lock, and it caps the idle expiry at one hour after the last presence.
+- **Resume.** `POST /auth/admin/resume` checks the PIN or password first, then clears the lock and rotates the same session, so the open route and form state survive. The admin then fetches the new CSRF token. A refused PIN or password keeps the session and the lock screen; the admin asks `/me` whether the session is still alive and signs out only if it is not. Rate limits and the PIN lockout apply.
+- **Calls made while locked.** A call refused with `session_locked` waits until the lock comes down, then is sent again. The guard refuses before any handler runs, so sending it again cannot repeat a change.
+
+The one-hour idle lifetime and the absolute lifetime still end the session on the server.
+
+### Unsaved changes
+
+A reload or tab close in the admin with unsaved form work, locked or not, shows the browser's own "Leave site?" question. Browsers use their own wording and buttons; a page cannot change them. A form counts as unsaved when Angular marks it `ng-dirty` and it was edited after the last successful change request. Search boxes, table filters, anything inside `[data-unsaved="off"]` (such as the lock screen's password form) and the sign-in pages never count. Screens whose unsaved work is not a form, such as the shipping rule builder, register a check with `UnsavedChanges.register()`.
 
 ## Password, PIN, and OTP policies
 

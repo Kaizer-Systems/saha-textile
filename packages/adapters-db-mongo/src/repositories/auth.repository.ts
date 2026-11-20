@@ -77,6 +77,8 @@ function toSession(doc: AuthSessionDoc): AuthSession {
 		absoluteExpiresAt: isoRequired(doc.absoluteExpiresAt),
 		revokedAt: iso(doc.revokedAt),
 		revokeReason: (doc.revokeReason as AuthSession['revokeReason']) ?? null,
+		lastActiveAt: iso(doc.lastActiveAt ?? null),
+		lockedAt: iso(doc.lockedAt ?? null),
 	};
 }
 
@@ -120,7 +122,8 @@ export class MongoAuthSessionRepository implements AuthSessionRepository {
 	}
 
 	async create(session: AuthSession): Promise<AuthSession> {
-		const { id, createdAt, lastSeenAt, expiresAt, absoluteExpiresAt, revokedAt, ...rest } = session;
+		const { id, createdAt, lastSeenAt, expiresAt, absoluteExpiresAt, revokedAt, lastActiveAt, lockedAt, ...rest } =
+			session;
 		await AuthSessionModel.create([
 			{
 				_id: id,
@@ -130,6 +133,8 @@ export class MongoAuthSessionRepository implements AuthSessionRepository {
 				expiresAt: new Date(expiresAt),
 				absoluteExpiresAt: new Date(absoluteExpiresAt),
 				revokedAt: revokedAt ? new Date(revokedAt) : null,
+				lastActiveAt: lastActiveAt ? new Date(lastActiveAt) : null,
+				lockedAt: lockedAt ? new Date(lockedAt) : null,
 			},
 		]);
 		return session;
@@ -199,6 +204,22 @@ export class MongoAuthSessionRepository implements AuthSessionRepository {
 
 	async touch(sessionId: string, lastSeenAt: string): Promise<void> {
 		await AuthSessionModel.updateOne({ _id: sessionId }, { $set: { lastSeenAt: new Date(lastSeenAt) } }).exec();
+	}
+
+	async markActive(sessionId: string, at: string): Promise<void> {
+		await AuthSessionModel.updateOne({ _id: sessionId }, { $set: { lastActiveAt: new Date(at) } }).exec();
+	}
+
+	async setLock(sessionId: string, lockedAt: string | null, lastActiveAt?: string): Promise<void> {
+		await AuthSessionModel.updateOne(
+			{ _id: sessionId },
+			{
+				$set: {
+					lockedAt: lockedAt ? new Date(lockedAt) : null,
+					...(lastActiveAt ? { lastActiveAt: new Date(lastActiveAt) } : {}),
+				},
+			},
+		).exec();
 	}
 
 	async updateDeviceLabel(sessionId: string, label: string): Promise<void> {

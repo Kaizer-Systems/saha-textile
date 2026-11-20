@@ -56,7 +56,8 @@ Keep these rules in mind:
 - `canActivateChild()` inherits authentication from the protected shell; it does not check permissions.
 - `PermissionGuard` reads `route.data.permission`, which may be one code or a list that must all be held, and sends a missing grant to `/error/403`.
 - Permissions held in the store shape UI only. The API rechecks audience, role, declared permission and current versions.
-- After 15 minutes of inactivity the shell opens the idle lock, which accepts the PIN when configured, otherwise the password, through `POST /auth/admin/resume`.
+- After 15 minutes of inactivity the shell opens the idle lock, which accepts the PIN when configured, otherwise the password, through `POST /auth/admin/resume`. The server holds the lock, so a reload or a new tab shows it again (`/me` returns `session.locked`); see [Admin idle lock](/backend/security-and-identity#admin-idle-lock).
+- `UnsavedChanges` (started in `app.ts`) makes a reload or tab close with unsaved form work ask the browser's "Leave site?" question, locked or not.
 
 ### Invitation acceptance
 

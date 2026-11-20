@@ -110,6 +110,8 @@ const fakeAuthSessions = {
 	revokeFamily: notImplemented,
 	revokeAllForUser: notImplemented,
 	touch: notImplemented,
+	markActive: notImplemented,
+	setLock: notImplemented,
 	updateDeviceLabel: notImplemented,
 	updateCsrfSecretHash: notImplemented,
 } as AuthSessionRepository;

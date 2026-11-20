@@ -56,6 +56,17 @@ export interface AuthSessionRepository {
 	revokeAllForUser(userId: string, reason: SessionRevokeReason, at: string): Promise<number>;
 	touch(sessionId: string, lastSeenAt: string): Promise<void>;
 	/**
+	 * Admin presence: the operator was active at `at` (typing or clicking in the admin). Only the
+	 * admin's activity signal calls this; background reads never do, so they cannot keep an
+	 * unattended session unlocked.
+	 */
+	markActive(sessionId: string, at: string): Promise<void>;
+	/**
+	 * Admin lock: `lockedAt` is set when the 15-minute lock comes up and set back to null only after
+	 * the PIN or password. `lastActiveAt`, when given, is written in the same update.
+	 */
+	setLock(sessionId: string, lockedAt: string | null, lastActiveAt?: string): Promise<void>;
+	/**
 	 * Persists a UA-derived device label (establish / refresh backfill).
 	 *
 	 * Does not invent hardware IDs — callers pass the output of `labelFromUserAgent`, which lives

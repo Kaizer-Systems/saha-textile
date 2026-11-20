@@ -1,9 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { Observable, catchError, map, of, switchMap, tap } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
+import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.interceptor';
 
 import {
 	AdminAuthGateway,
@@ -21,6 +22,9 @@ import {
 	type AdminUser,
 } from './auth-gateway';
 import { CsrfTokens } from './csrf-tokens';
+
+/** The lock and presence calls explain themselves through the lock screen, never a toast. */
+const QUIET = { context: new HttpContext().set(QUIET_ERRORS, true) };
 
 /**
  * The single place admin authentication route paths exist in this application.
@@ -40,6 +44,8 @@ const ROUTES = {
 	passwordReset: '/auth/admin/password/reset',
 	logout: '/auth/admin/logout',
 	refresh: '/auth/admin/refresh',
+	lock: '/auth/admin/lock',
+	activity: '/auth/admin/activity',
 	security: '/auth/admin/security',
 	pin: '/auth/admin/pin',
 	pinRemove: '/auth/admin/pin/remove',
@@ -187,6 +193,14 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 		return this.http.post<void>(this.url(ROUTES.logout), {});
 	}
 
+	override lockSession(): Observable<void> {
+		return this.http.post<unknown>(this.url(ROUTES.lock), {}, QUIET).pipe(map(() => undefined));
+	}
+
+	override markActivity(): Observable<void> {
+		return this.http.post<unknown>(this.url(ROUTES.activity), {}, QUIET).pipe(map(() => undefined));
+	}
+
 	override refreshSession(): Observable<void> {
 		// Rotation replaces the session's CSRF token and sets it only as an API-host cookie, so
 		// the new value has to be fetched. A failed fetch must not read as a failed rotation:
@@ -209,6 +223,10 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 	override isSessionEstablishingEndpoint(url: string): boolean {
 		const path = pathOf(url);
 		return SESSION_ESTABLISHING_ROUTES.includes(path);
+	}
+
+	override isPresenceProofEndpoint(url: string): boolean {
+		return pathOf(url) === ROUTES.resume;
 	}
 }
 

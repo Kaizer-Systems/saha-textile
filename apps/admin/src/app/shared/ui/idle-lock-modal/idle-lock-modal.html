@@ -32,6 +32,7 @@
 		</div>
 		} @else {
 		<form
+			data-unsaved="off"
 			class="theme-form theme-form-2"
 			[formGroup]="passwordForm"
 			(ngSubmit)="submitPassword()"

@@ -48,6 +48,9 @@ const harness = () => {
 		listOwnSessions: vi.fn(async () => ({ items: [] })),
 		revokeOwnSession: vi.fn(async () => ({ wasCurrent: false })),
 		revokeOtherSessions: vi.fn(async () => 1),
+		lockAdminSession: vi.fn(async () => {}),
+		unlockAdminSession: vi.fn(async () => {}),
+		markAdminActive: vi.fn(async () => {}),
 	};
 	const invites = {
 		create: vi.fn(async () => ({
@@ -346,5 +349,61 @@ describe('quick resume', () => {
 		expect((await h.controller.resume(pin, principal, request(), reply())).session.audience).toBe('admin');
 		expect((await h.controller.resume(password, principal, request(), reply())).session.audience).toBe('admin');
 		expect(h.sessions.refresh).toHaveBeenCalledTimes(2);
+	});
+
+	it('takes the lock down before rotating, so the session counts as active again', async () => {
+		const order: string[] = [];
+		h.sessions.unlockAdminSession.mockImplementation(async () => {
+			order.push('unlock');
+		});
+		h.sessions.refresh.mockImplementation(async () => {
+			order.push('refresh');
+			return { session: { audience: 'admin', expiresAt: 'e', absoluteExpiresAt: 'a' } } as never;
+		});
+		await h.controller.resume(pin, principal, request(), reply());
+		expect(h.sessions.unlockAdminSession).toHaveBeenCalledWith('s1');
+		expect(order).toEqual(['unlock', 'refresh']);
+	});
+
+	it('keeps the lock up when the PIN is wrong', async () => {
+		h.auth.verifyAdminPin.mockResolvedValue('invalid' as never);
+		await expect(h.controller.resume(pin, principal, request(), reply())).rejects.toThrow('Invalid credentials');
+		expect(h.sessions.unlockAdminSession).not.toHaveBeenCalled();
+	});
+});
+
+describe('the server-held lock (owner, 2026-11-20)', () => {
+	it('locks the live session, and refuses without a session', async () => {
+		h.sessions.findLiveById.mockResolvedValue({ id: 'sess_1', audience: 'admin' } as never);
+		await h.controller.lock(principal);
+		expect(h.sessions.lockAdminSession).toHaveBeenCalledWith({ id: 'sess_1', audience: 'admin' });
+		h.sessions.findLiveById.mockResolvedValue(null);
+		await h.controller.lock(principal);
+		expect(h.sessions.lockAdminSession).toHaveBeenCalledTimes(1);
+		await expect(h.controller.lock(undefined)).rejects.toThrow('Authentication required');
+	});
+
+	it('records activity for the caller’s own session', async () => {
+		await h.controller.activity(principal);
+		expect(h.sessions.markAdminActive).toHaveBeenCalledWith('s1');
+		await expect(h.controller.activity(undefined)).rejects.toThrow('Authentication required');
+	});
+
+	it('tells a reloaded page that its session is locked', async () => {
+		h.sessions.findLiveById.mockResolvedValue({
+			audience: 'admin',
+			lockedAt: '2026-11-20T10:00:00.000Z',
+			expiresAt: 'live-e',
+			absoluteExpiresAt: 'live-a',
+		} as never);
+		expect((await h.controller.me(principal)).session.locked).toBe(true);
+		h.sessions.findLiveById.mockResolvedValue({
+			audience: 'admin',
+			lockedAt: null,
+			lastActiveAt: new Date().toISOString(),
+			expiresAt: 'live-e',
+			absoluteExpiresAt: 'live-a',
+		} as never);
+		expect((await h.controller.me(principal)).session.locked).toBe(false);
 	});
 });

@@ -190,6 +190,16 @@ describe('HttpAdminAuthGateway credential classification', () => {
 		expect(gateway.isCredentialEndpoint(url)).toBe(true);
 	});
 
+	it('treats only the PIN or password check on the lock as a presence proof', () => {
+		const resume = urlUsedBy(() => gateway.resumeWithPassword('x').subscribe({ error: () => undefined }));
+		const login = urlUsedBy(() =>
+			gateway.loginWithPassword({ identifier: 'a', password: 'b' }).subscribe({ error: () => undefined }),
+		);
+		expect(gateway.isPresenceProofEndpoint(resume)).toBe(true);
+		expect(gateway.isPresenceProofEndpoint(login)).toBe(false);
+		expect(gateway.isPresenceProofEndpoint(`${resume}x`)).toBe(false);
+	});
+
 	it('does NOT treat its own refresh route as session-establishing', () => {
 		// Rotation renews a session that already exists; it proves nothing about a latch that
 		// was set because rotation itself failed.

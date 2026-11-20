@@ -159,6 +159,16 @@ describe.skipIf(!hasMongoEnv())('auth repositories (integration, rs0)', () => {
 			expect(await repo.updateCsrfSecretHash(`${P}none`, 'c3')).toBeNull();
 		});
 
+		it('holds the admin lock and the last activity (owner, 2026-11-20)', async () => {
+			expect(await repo.findById(`${P}s1`)).toMatchObject({ lastActiveAt: null, lockedAt: null });
+			await repo.markActive(`${P}s1`, at);
+			expect(await repo.findById(`${P}s1`)).toMatchObject({ lastActiveAt: at, lockedAt: null });
+			await repo.setLock(`${P}s1`, future);
+			expect(await repo.findById(`${P}s1`)).toMatchObject({ lastActiveAt: at, lockedAt: future });
+			await repo.setLock(`${P}s1`, null, future);
+			expect(await repo.findById(`${P}s1`)).toMatchObject({ lastActiveAt: future, lockedAt: null });
+		});
+
 		it('revokes one, a family, and a user', async () => {
 			await repo.create(session('s3'));
 			await repo.create(session('s4', { refreshFamilyId: `${P}other` }));

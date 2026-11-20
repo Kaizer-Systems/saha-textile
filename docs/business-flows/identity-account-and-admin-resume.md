@@ -126,7 +126,7 @@ stateDiagram-v2
     Restoring --> Blocked: stale draft, changed permission, or changed entity
 ```
 
-After 15 minutes of inactivity the shell opens the idle lock. Resume uses the preferred method, PIN when configured and otherwise password, through `POST /auth/admin/resume`. The API also enforces the admin idle lifetime and PIN lockout.
+After 15 minutes of inactivity the session locks on the server, and every admin tab shows the lock. A reload or a new tab comes back to the lock on the same page. Resume uses the preferred method, PIN when configured and otherwise password, through `POST /auth/admin/resume`; the page and any form behind the lock stay as they were. A mistyped PIN or password keeps the lock screen up. The API also enforces the admin idle lifetime and PIN lockout. A reload or tab close with unsaved form work asks the browser's "Leave site?" question first. See [Admin idle lock](/backend/security-and-identity#admin-idle-lock).
 
 ## Safe admin resume order
 

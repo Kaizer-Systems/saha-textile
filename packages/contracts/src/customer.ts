@@ -38,8 +38,9 @@ export type AuthIdentity = z.infer<typeof AuthIdentity>;
 /**
  * Named saved address (`DEC-ACCOUNT-SEPARATION` D9).
  *
- * `label` is the Home/Office name. Billing-vs-shipping policy flags are deliberately
- * absent — those remain open under `DEC-ADDRESS`.
+ * `label` is the Home/Office name. `DEC-ADDRESS` was decided on 2026-11-20 (several named
+ * addresses, country and State rules, a phone code per country); the fields it adds arrive
+ * with the orders and checkout build.
  */
 export const Address = z.object({
 	id: Id,

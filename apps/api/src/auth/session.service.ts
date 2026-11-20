@@ -57,6 +57,27 @@ export interface LiveSessionExpectation {
  * Soft-lock = presence proof; this idle TTL = hard kill.
  */
 export const ADMIN_IDLE_TTL_SECONDS = 60 * 60;
+
+/**
+ * The admin's 15-minute lock, held by the server (owner, 2026-11-20: a reload must not skip it).
+ *
+ * The admin app sends an activity signal at most once a minute while the operator types, clicks or
+ * scrolls, and locks itself after 15 minutes without one. The server treats a session as locked
+ * when the lock was set, or when no activity has come for 15 minutes plus a short grace (the
+ * signal's own one-minute step and clock drift), so a closed tab, a sleeping laptop or a reload
+ * comes back to the lock too. Only the PIN or password clears it.
+ */
+export const ADMIN_LOCK_AFTER_SECONDS = 15 * 60;
+export const ADMIN_LOCK_GRACE_SECONDS = 2 * 60;
+
+/** Whether an admin session is behind the lock at `nowMs`. Storefront sessions never are. */
+export function isAdminSessionLocked(session: AuthSession, nowMs: number = Date.now()): boolean {
+	if (session.audience !== 'admin') return false;
+	if (session.lockedAt) return true;
+	const lastActive = Date.parse(session.lastActiveAt ?? session.lastSeenAt ?? session.createdAt);
+	if (!Number.isFinite(lastActive)) return false;
+	return nowMs - lastActive > (ADMIN_LOCK_AFTER_SECONDS + ADMIN_LOCK_GRACE_SECONDS) * 1000;
+}
 export const STOREFRONT_IDLE_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 /**
@@ -140,6 +161,34 @@ export class SessionService {
 		if (expected?.userId && session.userId !== expected.userId) return false;
 		if (expected?.audience && session.audience !== expected.audience) return false;
 		return true;
+	}
+
+	/**
+	 * The idle expiry a rotation writes. For an admin session it counts from the operator's last
+	 * real activity, not from the refresh: a locked tab that keeps its cookies fresh in the
+	 * background must still be signed out an hour after anyone last used it.
+	 */
+	private nextIdleExpiry(current: AuthSession, nowMs: number): string {
+		const fromNow = nowMs + idleTtlSeconds(current.audience, current.persistent) * 1000;
+		if (current.audience !== 'admin' || !current.lastActiveAt) return new Date(fromNow).toISOString();
+		const fromActivity = Date.parse(current.lastActiveAt) + ADMIN_IDLE_TTL_SECONDS * 1000;
+		return new Date(Math.min(fromNow, Number.isFinite(fromActivity) ? fromActivity : fromNow)).toISOString();
+	}
+
+	/** Puts the admin lock up for this session (idempotent: an earlier lock time is kept). */
+	async lockAdminSession(session: AuthSession): Promise<void> {
+		if (session.lockedAt) return;
+		await this.sessions.setLock(session.id, new Date().toISOString());
+	}
+
+	/** Clears the lock after the PIN or password, and counts the proof as activity. */
+	async unlockAdminSession(sessionId: string): Promise<void> {
+		await this.sessions.setLock(sessionId, null, new Date().toISOString());
+	}
+
+	/** The operator is present (the admin's activity signal). */
+	async markAdminActive(sessionId: string): Promise<void> {
+		await this.sessions.markActive(sessionId, new Date().toISOString());
 	}
 
 	async findLiveById(sessionId: string, expected?: LiveSessionExpectation): Promise<AuthSession | null> {
@@ -266,6 +315,9 @@ export class SessionService {
 			absoluteExpiresAt: new Date(nowMs + ABSOLUTE_TTL_SECONDS[input.audience] * 1000).toISOString(),
 			revokedAt: null,
 			revokeReason: null,
+			// Signing in is presence: an admin session starts active and unlocked.
+			lastActiveAt: input.audience === 'admin' ? new Date(nowMs).toISOString() : null,
+			lockedAt: null,
 		};
 
 		await this.sessions.create(session);
@@ -367,7 +419,7 @@ export class SessionService {
 			nextCsrfSecretHash: this.hash(csrfToken),
 			// Carries the original choice forward: rotating must never quietly upgrade a
 			// browser-session login into a remembered one.
-			expiresAt: new Date(nowMs + idleTtlSeconds(current.audience, current.persistent) * 1000).toISOString(),
+			expiresAt: this.nextIdleExpiry(current, nowMs),
 			lastSeenAt: new Date(nowMs).toISOString(),
 		});
 

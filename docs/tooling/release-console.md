@@ -85,6 +85,8 @@ GitHub, DigitalOcean and Cloudflare have screens. Any other vendor can be chosen
 
 **Add a project** walks through eight steps: name and workspace, repositories (a vendor each), environments and where each runs, cloud platforms, edge platforms with their domains, secrets managers and where each environment reads its secrets, the repositories' own menus, and a summary. When a GitHub repository is added, the wizard reads its `.release-console.json` from the default branch through the GitHub CLI sign-in and ticks its own menus; a repository on another vendor gets its menus ticked by hand. The new project opens on its Connections tab.
 
+Each step carries its own icon, and every provider shows its logo beside its name: on its card, on the buttons that pick where an environment runs or reads its secrets, in tables, beside domain and address boxes, and in the summary. Project settings › Repositories shows them the same way. The browser loads the logos from Iconify (`api.iconify.design`) when the screen opens; Infisical and Doppler, which Iconify lacks, show their own site icon through Google's favicon service. No logo is kept in the repository or on the computer, and without a network the provider's name shows on its own.
+
 Project settings › **Repositories** (also reached from a repository's **Repository settings**) changes a repository after the project exists:
 
 - its role, environments (where each runs, its domains, and which secrets manager it reads and where), cloud platforms, edge platforms with their domains, secrets managers, and own menus;

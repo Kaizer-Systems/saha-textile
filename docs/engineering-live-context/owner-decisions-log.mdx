@@ -2246,3 +2246,22 @@ Brief: https://claude.ai/artifact/4d5yK6GhiTrg3T25KybWeN (revision 4). Owner, 21
 - **Swatch cuts (P11, P12):** a cut is a new picture made from the product photo by the image worker and listed under it; Replace re-cuts at the same square; a 360 px Image V2 size is added; anyone who may edit products may cut.
 - **Icons (owner):** Buy now gets a lightning bolt beside its text, like Add to cart's cart; measurements use a coiled measuring tape ("ফিতে") instead of the ruler.
 - **Admin look preview (owner):** wherever a look is chosen in admin, a plain sketch of that look with the values on hand shows at once.
+
+## Owner decision round (2026-11-21) — this computer and a development server get separate Infisical projects
+
+- **The development server** (owner, popup): "Code path only (Recommended)". The API and the
+  release builder know a development server (`DEPLOY_ENV=development`, as strict as staging, test
+  payments only); nothing is made in GitHub or DigitalOcean until the owner decides to make the
+  server. Its deploy identity would take the Infisical Free plan's last identity (5 of 5).
+- **Its settings** (owner, word for word): "can you duplicate the entire saha-textile-dev project
+  itself into a new one? the primary copy gets renamed to saha-textile-local, and the duplicated
+  copy gets renamed to saha-textile-development. is that possible for you to do? and then in the
+  saha-textile-development project folder, you remove the key(s) and value(s) pairs which were
+  added specifically for local env and which are not needed at all for dev server kind of
+  deployment. you are free to use chrome for this if you need and make any necessary adjustments
+  in code if or configuration if needed due to this local and dev project separation."
+- **Done 2026-11-21:** the owner renamed `saha-textile-dev` to `saha-textile-local` (slug
+  `saha-textile-local-s77l`). The copy is `saha-textile-development`, without this computer's own
+  entries and with the server settings every server uses; what was left out, changed and left
+  blank is listed in `docker/infisical/README.md` (Changes on 2026-11-21). Its sign-in secrets and
+  passwords are still this computer's copies until the server gets its own.

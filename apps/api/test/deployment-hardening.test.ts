@@ -70,6 +70,8 @@ describe('deployment hardening', () => {
 			['production', undefined, true], // forgotten DEPLOY_ENV fails closed
 			['production', 'production', true],
 			['production', 'staging', true],
+			['production', 'development', true], // a development server (owner, 2026-11-21)
+			['development', 'development', true],
 			['production', 'local', false], // the mode-3 Docker stack
 			['development', undefined, false],
 			['test', undefined, false],
@@ -82,11 +84,14 @@ describe('deployment hardening', () => {
 			expect(problemsFor({ NODE_ENV: 'production' } as NodeJS.ProcessEnv).length).toBeGreaterThan(5);
 		});
 
-		it.each(['staging', 'production'])('refuses DEPLOY_ENV=%s on a development build', (deployEnv) => {
-			expect(problemsFor(deployment({ NODE_ENV: 'development', DEPLOY_ENV: deployEnv }))).toEqual([
-				`DEPLOY_ENV=${deployEnv} requires NODE_ENV=production.`,
-			]);
-		});
+		it.each(['development', 'staging', 'production'])(
+			'refuses DEPLOY_ENV=%s on a development build',
+			(deployEnv) => {
+				expect(problemsFor(deployment({ NODE_ENV: 'development', DEPLOY_ENV: deployEnv }))).toEqual([
+					`DEPLOY_ENV=${deployEnv} requires NODE_ENV=production.`,
+				]);
+			},
+		);
 
 		it('rejects an unknown DEPLOY_ENV rather than guessing', () => {
 			expect(() => loadConfig(deployment({ DEPLOY_ENV: 'prod' }))).toThrow();
@@ -94,7 +99,7 @@ describe('deployment hardening', () => {
 	});
 
 	describe('a complete deployment', () => {
-		it.each(['production', 'staging'])('boots as %s with no problems', (deployEnv) => {
+		it.each(['production', 'staging', 'development'])('boots as %s with no problems', (deployEnv) => {
 			expect(problemsFor(deployment({ DEPLOY_ENV: deployEnv }))).toEqual([]);
 		});
 

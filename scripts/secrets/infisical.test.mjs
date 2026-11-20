@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { CACHE_NOTE, exportFolder, exportProject, parseExport } from './infisical.mjs';
-import { SecretsError, TIERS, loadInventory } from './inventory.mjs';
+import { PROJECT_TIERS, SecretsError, loadInventory } from './inventory.mjs';
 
 const MARK = 'zz-made-up-';
 
@@ -144,7 +144,7 @@ test('loadInventory refuses an inventory without a project for every tier, and t
 		mkdirSync(join(root, 'docker/production'), { recursive: true });
 		writeFileSync(join(root, 'docker/production/required-secrets.txt'), '# comment\nPORT\n\n');
 		const json = {
-			projects: TIERS.map((tier) => ({ name: `saha-textile-${tier}`, environment: tier, projectId: tier })),
+			projects: PROJECT_TIERS.map((tier) => ({ tier, name: `project-${tier}`, environment: tier, projectId: tier })),
 			apiVariables: ['PORT'],
 			developmentOnlyApiVariables: [],
 			backupVariables: [],
@@ -173,7 +173,7 @@ test('loadInventory refuses an inventory without a project for every tier, and t
 		);
 		writeFileSync(join(root, 'docker/production/required-secrets.txt'), 'PORT\n');
 
-		json.projects = json.projects.filter((project) => project.name !== 'saha-textile-production');
+		json.projects = json.projects.filter((project) => project.tier !== 'production');
 		json.projects.push({ name: 'another-project', environment: 'x', projectId: 'x' });
 		writeFileSync(join(root, 'docker/infisical/variable-names.json'), JSON.stringify(json));
 		assert.match(
@@ -187,7 +187,11 @@ test('loadInventory refuses an inventory without a project for every tier, and t
 
 test('the inventory names a project for each tier', () => {
 	const inventory = loadInventory();
-	assert.deepEqual(Object.keys(inventory.projects).sort(), [...TIERS].sort());
+	assert.deepEqual(Object.keys(inventory.projects).sort(), [...PROJECT_TIERS].sort());
+	// This computer and the development server are separate projects (owner, 2026-11-21).
+	assert.equal(inventory.projects.dev.name, 'saha-textile-local');
+	assert.equal(inventory.projects.development.name, 'saha-textile-development');
+	assert.notEqual(inventory.projects.dev.projectId, inventory.projects.development.projectId);
 	assert.equal(inventory.projects.production.environment, 'prod');
 	for (const name of inventory.requiredForRelease) assert.ok(inventory.api.has(name), name);
 	for (const name of Object.values(inventory.derivedFiles)) assert.ok(inventory.api.has(name), name);

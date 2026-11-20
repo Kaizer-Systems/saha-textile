@@ -5,7 +5,7 @@ import type { AppConfig } from './app-config';
  * BUILT: the local mode-3 Docker stack runs production builds (`NODE_ENV=production`) on a
  * laptop with development secrets, and has to keep booting.
  */
-export const DEPLOY_ENVS = ['local', 'staging', 'production'] as const;
+export const DEPLOY_ENVS = ['local', 'development', 'staging', 'production'] as const;
 export type DeployEnv = (typeof DEPLOY_ENVS)[number];
 
 /**
@@ -14,10 +14,11 @@ export type DeployEnv = (typeof DEPLOY_ENVS)[number];
  * Strict by default: a production build is held to deployment rules unless the operator says,
  * explicitly, `DEPLOY_ENV=local`. A forgotten variable therefore fails closed — a deploy that
  * omits `DEPLOY_ENV` is treated as production, never as a laptop. Staging is as strict as
- * production: it has its own real credentials under the three-environment plan.
+ * production: it has its own real credentials under the three-environment plan. So is a
+ * development server (`development`, owner 2026-11-21): a server is a server.
  */
 export function isStrictDeployment(config: Pick<AppConfig, 'nodeEnv' | 'deployEnv'>): boolean {
-	if (config.deployEnv === 'staging' || config.deployEnv === 'production') return true;
+	if (isServerEnv(config.deployEnv)) return true;
 	return config.nodeEnv === 'production' && config.deployEnv !== 'local';
 }
 
@@ -98,7 +99,7 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 	const problems: string[] = [];
 
 	// A deployment label on a development build is a broken deploy, not a choice.
-	if ((config.deployEnv === 'staging' || config.deployEnv === 'production') && config.nodeEnv !== 'production') {
+	if (isServerEnv(config.deployEnv) && config.nodeEnv !== 'production') {
 		problems.push(`DEPLOY_ENV=${config.deployEnv} requires NODE_ENV=production.`);
 	}
 	if (!isStrictDeployment(config)) return problems;
@@ -207,22 +208,28 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 }
 
 /**
- * The three-environment plan: staging takes test payments only, and production takes real ones
- * only. Applies once CCAvenue is configured, because a deployment may run before it is.
+ * The three-environment plan: staging and a development server take test payments only, and
+ * production takes real ones only. Applies once CCAvenue is configured, because a deployment may
+ * run before it is.
  */
 function ccavenueHostProblems(config: AppConfig): string[] {
 	const { ccavenue } = config.payments;
 	if (!ccavenue.configured) return [];
-	const staging = config.deployEnv === 'staging';
+	const testOnly = config.deployEnv === 'staging' || config.deployEnv === 'development';
 	return [
 		{ name: 'CCAVENUE_BASE_URL', url: ccavenue.baseUrl },
 		{ name: 'CCAVENUE_API_URL', url: ccavenue.apiUrl },
 	].flatMap(({ name, url }) => {
 		const isTestHost = CCAVENUE_TEST_HOSTS.has(new URL(url).hostname);
-		if (staging && !isTestHost) return [`${name} must be a CCAvenue test host on staging.`];
-		if (!staging && isTestHost) return [`${name} must not be a CCAvenue test host in production.`];
+		if (testOnly && !isTestHost) return [`${name} must be a CCAvenue test host on ${config.deployEnv}.`];
+		if (!testOnly && isTestHost) return [`${name} must not be a CCAvenue test host in production.`];
 		return [];
 	});
+}
+
+/** A server environment: a development server, staging or production (never this computer). */
+function isServerEnv(deployEnv: DeployEnv | undefined): boolean {
+	return deployEnv === 'development' || deployEnv === 'staging' || deployEnv === 'production';
 }
 
 /** Meilisearch itself refuses a production master key under 16 bytes, so the API key gets the same floor. */

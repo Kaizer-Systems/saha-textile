@@ -3,7 +3,8 @@
  * Infisical commands for this repository.
  *
  *   pnpm secrets:status                  every project
- *   pnpm secrets:status -- staging       one project: dev, staging or production
+ *   pnpm secrets:status -- staging       one project: dev (this computer, saha-textile-local),
+ *                                        development, staging or production
  *   pnpm secrets:pull                    rewrite apps/api/.env from the dev project (see pull.mjs)
  *   pnpm stack:env                       write docker/stack/env/ from the dev project (see stack.mjs)
  *   pnpm secrets:setup-local             real logins for this Mac's services (see local-setup.mjs)
@@ -15,7 +16,7 @@
  * They need the Infisical CLI signed in (`infisical login`) with access to the projects.
  */
 import { exportFolder, exportProject } from './infisical.mjs';
-import { ROOT, SecretsError, TIERS, describeError, loadInventory } from './inventory.mjs';
+import { PROJECT_TIERS, ROOT, SecretsError, describeError, loadInventory } from './inventory.mjs';
 import { setupLocal } from './local-setup.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
@@ -37,14 +38,14 @@ const PIPELINE_SETS = new Set(
 /** @param {string[]} args */
 function status(args) {
 	const wanted = args.filter((arg) => arg !== '--');
-	const tiers = wanted.length === 0 || wanted.includes('all') ? TIERS : wanted;
+	const tiers = wanted.length === 0 || wanted.includes('all') ? PROJECT_TIERS : wanted;
 	for (const tier of tiers) {
-		if (!TIERS.includes(tier))
-			throw new SecretsError(`Unknown project "${tier}". Use one of: ${TIERS.join(', ')}.`);
+		if (!PROJECT_TIERS.includes(tier))
+			throw new SecretsError(`Unknown project "${tier}". Use one of: ${PROJECT_TIERS.join(', ')}.`);
 	}
 	const inventory = loadInventory();
 	const blocks = [];
-	for (const tier of /** @type {Array<'dev' | 'staging' | 'production'>} */ (tiers)) {
+	for (const tier of /** @type {Array<'dev' | 'development' | 'staging' | 'production'>} */ (tiers)) {
 		const project = inventory.projects[tier];
 		const folders = exportProject(project, { notes });
 		const lines = [
@@ -128,13 +129,13 @@ function release(args) {
 	const images = parseImagesFile(imagesText);
 	const inventory = loadInventory();
 	const allowBlank = checkAllowBlankNames(allowBlankNames, inventory);
-	const project = inventory.projects[/** @type {'staging' | 'production'} */ (tier)];
+	const project = inventory.projects[/** @type {'development' | 'staging' | 'production'} */ (tier)];
 	const folders = exportProject(project, { notes });
 	const result = writeTierRelease({
 		out: /** @type {string} */ (out),
 		folders,
 		inventory,
-		tier: /** @type {'staging' | 'production'} */ (tier),
+		tier: /** @type {'development' | 'staging' | 'production'} */ (tier),
 		images,
 		source: `${project.name} (${project.environment})`,
 		allowBlank,

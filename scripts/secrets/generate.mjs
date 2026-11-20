@@ -17,7 +17,7 @@ export const APP_DATABASE_USER = 'saha_textile_app';
 export const ROOT_DATABASE_USER = 'saha_textile_root';
 
 /**
- * @param {'dev' | 'staging' | 'production'} tier
+ * @param {'dev' | 'development' | 'staging' | 'production'} tier
  * @param {(size: number) => Buffer} [random]
  * @returns {{ api: Map<string, string>, infrastructure: Map<string, string> }}
  */

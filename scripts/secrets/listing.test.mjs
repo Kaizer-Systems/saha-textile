@@ -35,7 +35,7 @@ test('the screen lists every tier with its four shop folders, plus the other fol
 		['dev', 'staging', 'production'],
 	);
 	const dev = plan[0];
-	assert.equal(dev.project, 'saha-textile-dev');
+	assert.equal(dev.project, 'saha-textile-local');
 	assert.deepEqual(dev.folders.slice(0, 4), ['api', 'backup', 'infrastructure', 'deployment']);
 	assert.ok(dev.folders.includes('release-console') && dev.folders.includes('github-actions'));
 	assert.deepEqual(plan[2].folders, ['api', 'backup', 'infrastructure', 'deployment']);

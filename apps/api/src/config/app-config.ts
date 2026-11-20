@@ -117,7 +117,8 @@ const CcavenueConfigSchema = z
 const ConfigSchema = z.object({
 	nodeEnv: z.enum(['development', 'test', 'production']).default('development'),
 	/**
-	 * Where this process runs — `local`, `staging` or `production` (`DEPLOY_ENV`). Optional, and
+	 * Where this process runs — `local`, `development` (a development server), `staging` or
+	 * `production` (`DEPLOY_ENV`). Optional, and
 	 * its absence is NOT leniency: with `NODE_ENV=production` an unset value is treated as a
 	 * deployment, so the hardening rules in `deployment-hardening.ts` apply unless the operator
 	 * says `DEPLOY_ENV=local` (the mode-3 Docker stack does).

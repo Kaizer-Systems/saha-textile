@@ -13,6 +13,17 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 /** The three deployment tiers, each with its own Infisical project (owner decision 2026-11-17). */
 export const TIERS = ['dev', 'staging', 'production'];
 
+/**
+ * Every project in variable-names.json, by its `tier`: `dev` is this computer (project
+ * saha-textile-local; the key keeps its old name until the Release Console renames it too),
+ * `development` a development server (saha-textile-development, owner 2026-11-21). TIERS above is
+ * what the Release Console lists today, so `development` joins it once the console knows it.
+ */
+export const PROJECT_TIERS = ['dev', 'development', 'staging', 'production'];
+
+/** The tiers a server deploy releases: every project but this computer's. */
+export const SERVER_TIERS = ['development', 'staging', 'production'];
+
 /** The Infisical folders every project uses. */
 export const FOLDERS = ['api', 'backup', 'infrastructure', 'deployment'];
 
@@ -102,11 +113,10 @@ export function loadInventory(root = ROOT) {
 	/** @type {Record<string, Project>} */
 	const projects = {};
 	for (const project of json.projects) {
-		const tier = TIERS.find((candidate) => project.name === `saha-textile-${candidate}`);
-		if (tier)
-			projects[tier] = { name: project.name, environment: project.environment, projectId: project.projectId };
+		if (PROJECT_TIERS.includes(project.tier))
+			projects[project.tier] = { name: project.name, environment: project.environment, projectId: project.projectId };
 	}
-	for (const tier of TIERS) {
+	for (const tier of PROJECT_TIERS) {
 		if (!projects[tier]) throw new SecretsError(`variable-names.json has no project for ${tier}.`);
 	}
 

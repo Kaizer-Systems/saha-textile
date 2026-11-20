@@ -3,11 +3,11 @@
 Created and checked in Infisical Cloud on 2026-11-17. All 363 entries were empty after reopening
 their folders. No real env files or secret values were read during setup.
 
-| Project                   | Populated environment | `/api` | `/backup` | `/infrastructure` | `/deployment` | Total |
-| ------------------------- | --------------------- | -----: | --------: | ----------------: | ------------: | ----: |
-| `saha-textile-dev`        | Development (`dev`)   |     99 |         6 |                 6 |            12 |   123 |
-| `saha-textile-staging`    | Staging (`staging`)   |     96 |         6 |                 6 |            12 |   120 |
-| `saha-textile-production` | Production (`prod`)   |     96 |         6 |                 6 |            12 |   120 |
+| Project                                       | Populated environment | `/api` | `/backup` | `/infrastructure` | `/deployment` | Total |
+| --------------------------------------------- | --------------------- | -----: | --------: | ----------------: | ------------: | ----: |
+| `saha-textile-dev` (now `saha-textile-local`) | Development (`dev`)   |     99 |         6 |                 6 |            12 |   123 |
+| `saha-textile-staging`                        | Staging (`staging`)   |     96 |         6 |                 6 |            12 |   120 |
+| `saha-textile-production`                     | Production (`prod`)   |     96 |         6 |                 6 |            12 |   120 |
 
 Infisical creates three default environments in each project. Only the matching environment
 above has entries; the other default environments are empty. Separate projects allow future
@@ -136,6 +136,50 @@ After this, `/deployment` holds ten entries per project.
   PRODUCTION) are copies of that project's `/api/SPACES_KEY`, `/api/SPACES_SECRET` and
   `/api/SPACES_BUCKET`. They are not separate Infisical entries; rotating an `/api` Spaces key
   means updating GitHub too.
+
+### Changes on 2026-11-21: this computer and a development server are separate projects
+
+Owner, 2026-11-21: "duplicate the entire saha-textile-dev project itself into a new one? the
+primary copy gets renamed to saha-textile-local, and the duplicated copy gets renamed to
+saha-textile-development … remove the key(s) and value(s) pairs which were added specifically
+for local env and which are not needed at all for dev server kind of deployment."
+
+| Project                    | Tier key      | For                                                                  | Environment |
+| -------------------------- | ------------- | -------------------------------------------------------------------- | ----------- |
+| `saha-textile-local`       | `dev`         | this computer: `pnpm dev`, the full Docker stack, the local pipeline | `dev`       |
+| `saha-textile-development` | `development` | a development server (none exists yet)                               | `dev`       |
+| `saha-textile-staging`     | `staging`     | the staging server                                                   | `staging`   |
+| `saha-textile-production`  | `production`  | the production server                                                | `prod`      |
+
+- **Renamed by the owner:** `saha-textile-dev` is now `saha-textile-local` (slug
+  `saha-textile-local-s77l`); its ID and contents are unchanged, so nothing that reads it by ID
+  moved. The tier key stays `dev` until the Release Console renames its own tiers too.
+- **Copied** into the new `saha-textile-development` (ID `daf1beb3-16a7-47cb-bcc4-10bb322a4db4`):
+  values through the CLI from private files, blank names pasted as names only; checked by name and
+  same/different. Infisical has no project copy of its own.
+- **Left out, this computer only:** `/api/OTP_LOCAL_FIXED_CODE`, `/api/SHOP_ORIGIN` (Compose sets it
+  on a server), `/api/TLS_CERT_FILE`, `/api/TLS_KEY_FILE`, and the `/release-console` and
+  `/github-actions` folders.
+- **Set to the server shape** (the same on every server, as in the production proof): `NODE_ENV`
+  `production`, `DEPLOY_ENV` `development`, `TRUST_PROXY` `true`, `CLIENT_IP_HEADER`
+  `cf-connecting-ip`, `NOTIFICATION_PROVIDER` `msg91`, `MONGODB_HOST` `mongo`, `MONGODB_PORT`
+  `27017`, `MONGODB_DB_NAME` `saha_textile_development`, `REDIS_HOST` `redis`,
+  `MEILISEARCH_HOST` `http://meilisearch:7700`; `meilisearch.toml` runs in production mode.
+- **Left blank until the server exists:** this computer's addresses (`CORS_ALLOWED_ORIGINS`,
+  `ADMIN_APP_URL`, `GOOGLE_MAIL_REDIRECT_URI`), this computer's search key
+  (`MEILISEARCH_API_KEY`; a server release reads its own), every `/deployment` name, and the new
+  `MSG91_RECEIPT_TOKEN`, `OPS_TOKEN`, `PAYPAL_WEBHOOK_ID`.
+- **Still copied from this computer:** the sign-in secrets, the database and Redis passwords, the
+  mailbox key and the `/infrastructure` keyfile and administrator. Before the development server
+  holds anything real, give it its own (`scripts/secrets/generate.mjs`, the same recipe as
+  staging and production); then this computer and the server stop sharing them.
+- **Code:** `variable-names.json` names each project's `tier`; `pnpm secrets:status -- development`
+  reports it; `pnpm secrets:release -- development …` writes its release folder; the API knows
+  `DEPLOY_ENV=development` (as strict as staging, CCAvenue test hosts only, PayPal sandbox).
+- **Not made yet** (owner, 2026-11-21: code path only): the server, its GitHub `development`
+  environment and its deploy identity. The identity would be `github-deploy-development`, OIDC
+  subject `repo:Kaizer-Systems/saha-textile:environment:development`, Viewer on
+  `saha-textile-development` only; it takes the Infisical Free plan's last identity (5 of 5).
 
 ## Filling values
 

@@ -75,7 +75,7 @@ const mode = (root, name) => statSync(join(root, STACK_ENV_DIR, name)).mode & 0o
 test("stack:env writes the API file with the stack settings on top, and the dev project's Redis password and search key", () => {
 	withRoot((root) => {
 		const lines = write(root, devProject());
-		assert.match(lines[0], /api\.env \(\d+ settings from Infisical saha-textile-dev \(dev\), folder \/api\)/);
+		assert.match(lines[0], /api\.env \(\d+ settings from Infisical saha-textile-local \(dev\), folder \/api\)/);
 
 		const api = parseEnvText(file(root, 'api.env'));
 		assert.equal(api.get('CSRF_SECRET'), `${MARK}csrf`);

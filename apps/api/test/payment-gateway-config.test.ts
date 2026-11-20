@@ -113,6 +113,14 @@ describe('CCAvenue hosts in a strict deployment', () => {
 		expect(problems('staging')).toEqual([]);
 	});
 
+	it('holds a development server to test hosts too', () => {
+		expect(problems('development')).toEqual([]);
+		expect(problems('development', live)).toEqual([
+			'CCAVENUE_BASE_URL must be a CCAvenue test host on development.',
+			'CCAVENUE_API_URL must be a CCAvenue test host on development.',
+		]);
+	});
+
 	it('has nothing to say while CCAvenue is unconfigured', () => {
 		const env = { ...baseEnv, NODE_ENV: 'production', DEPLOY_ENV: 'production' } as NodeJS.ProcessEnv;
 		const unconfigured = deploymentHardeningProblems(parseWithoutHardening(env), env);

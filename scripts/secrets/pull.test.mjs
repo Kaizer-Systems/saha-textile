@@ -68,7 +68,7 @@ test('first pull writes apps/api/.env owner-only, and a second one finds it up t
 
 		const second = pull(root, devProject());
 		assert.equal(second.outcome, 'unchanged');
-		assert.match(second.lines[0], /up to date: 3 settings from Infisical saha-textile-dev/);
+		assert.match(second.lines[0], /up to date: 3 settings from Infisical saha-textile-local \(dev\)/);
 	});
 });
 

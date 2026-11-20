@@ -1,6 +1,6 @@
 /**
- * Plan step 8: the release folder a staging or production deploy job ships to its droplet, written
- * from that project's values. The job signs in as its deploy identity first (github-login.mjs), so
+ * Plan step 8: the release folder a server deploy job (development, staging or production) ships to
+ * its droplet, written from that project's values. The job signs in as its deploy identity first (github-login.mjs), so
  * `exportProject` reads the project with that identity's read-only token. Then the job runs
  * `deploy.sh --check-only` on the folder before anything leaves the runner.
  *
@@ -18,7 +18,7 @@
 import { cpSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { ROOT, SecretsError } from './inventory.mjs';
+import { ROOT, SERVER_TIERS, SecretsError } from './inventory.mjs';
 import { IMAGE_NAMES } from './release.mjs';
 import { buildRelease, writeFiles } from './render.mjs';
 
@@ -50,7 +50,7 @@ export function parseImagesFile(text) {
 }
 
 const RELEASE_USAGE =
-	'Usage: pnpm secrets:release -- <staging|production> --images <file> --out <empty folder> [--allow-blank NAME ...]';
+	'Usage: pnpm secrets:release -- <development|staging|production> --images <file> --out <empty folder> [--allow-blank NAME ...]';
 
 /**
  * The release command's arguments: the tier first, then `--images`, `--out` and any number of
@@ -69,7 +69,7 @@ export function parseReleaseArgs(args) {
 		else if (flag === '--out' && parsed.out === undefined) parsed.out = value;
 		else throw new SecretsError(RELEASE_USAGE);
 	}
-	if ((tier !== 'staging' && tier !== 'production') || !parsed.imagesFile || !parsed.out) {
+	if (!SERVER_TIERS.includes(/** @type {string} */ (tier)) || !parsed.imagesFile || !parsed.out) {
 		throw new SecretsError(RELEASE_USAGE);
 	}
 	return parsed;
@@ -77,12 +77,12 @@ export function parseReleaseArgs(args) {
 
 /**
  * The settings a deploy job adds to the project's /deployment values.
- * @param {'staging' | 'production'} tier
+ * @param {'development' | 'staging' | 'production'} tier
  * @param {Map<string, string>} images
  */
 export function tierReleaseSettings(tier, images) {
-	if (tier !== 'staging' && tier !== 'production') {
-		throw new SecretsError(`A deploy release is for staging or production, not ${tier}.`);
+	if (!SERVER_TIERS.includes(tier)) {
+		throw new SecretsError(`A deploy release is for ${SERVER_TIERS.join(', ')}, not ${tier}.`);
 	}
 	for (const name of IMAGE_NAMES) {
 		if (!images.get(name)?.includes('@sha256:')) {
@@ -104,7 +104,7 @@ export function tierReleaseSettings(tier, images) {
  * @param {string} options.out
  * @param {Record<string, Map<string, string>>} options.folders
  * @param {import('./inventory.mjs').Inventory} options.inventory
- * @param {'staging' | 'production'} options.tier
+ * @param {'development' | 'staging' | 'production'} options.tier
  * @param {Map<string, string>} options.images
  * @param {string} options.source
  * @param {Set<string>} [options.allowBlank]   required names this deploy may leave blank (`--allow-blank`)

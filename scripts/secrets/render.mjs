@@ -244,7 +244,7 @@ export function buildStackEnv(api, { inventory, source, owned, settings, unknown
  *
  * @param {Record<string, Folder>} folders     the project's four folders
  * @param {object} options
- * @param {'dev' | 'staging' | 'production'} options.tier
+ * @param {'dev' | 'development' | 'staging' | 'production'} options.tier
  * @param {Inventory} options.inventory
  * @param {string} options.source               the project, for the file headers
  * @param {Folder} [options.release]           non-secret settings from the caller: image digests,
@@ -513,7 +513,7 @@ export function planEnvFileChange(current, next) {
 /**
  * What `pnpm secrets:status` reports for one project. Names and counts only.
  * @param {Record<string, Folder>} folders
- * @param {{ tier: 'dev' | 'staging' | 'production', inventory: Inventory }} options
+ * @param {{ tier: 'dev' | 'development' | 'staging' | 'production', inventory: Inventory }} options
  */
 export function projectReport(folders, { tier, inventory, setByPipeline = new Set() }) {
 	const allowed = folderNames(inventory);

@@ -74,8 +74,8 @@ function withDir(fn) {
 	}
 }
 
-test('a staging or production release folder passes the droplet check, with digests, tier, port and root', () => {
-	for (const tier of ['staging', 'production']) {
+test('a development, staging or production release folder passes the droplet check, with digests, tier, port and root', () => {
+	for (const tier of ['development', 'staging', 'production']) {
 		withDir((dir) => {
 			const out = join(dir, 'release');
 			writeTierRelease({ out, folders: project(tier), inventory, tier, images, source: `test (${tier})` });
@@ -285,7 +285,7 @@ test('the release builder deploys blank only what it was told, keeps the media k
 });
 
 test('a deploy release refuses another tier, unpinned images and a folder that is not empty', () => {
-	assert.throws(() => tierReleaseSettings('dev', images), /for staging or production, not dev/);
+	assert.throws(() => tierReleaseSettings('dev', images), /for development, staging, production, not dev/);
 	assert.throws(() => tierReleaseSettings('staging', new Map()), /API_IMAGE is missing or not pinned/);
 	withDir((dir) => {
 		writeFileSync(join(dir, 'old'), 'x');

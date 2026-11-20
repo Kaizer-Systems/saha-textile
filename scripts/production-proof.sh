@@ -352,9 +352,9 @@ printf '%s\n' "$EDGE_ALL" | grep "$INVITE_MARK" | grep -F '"status":200' | grep 
 	pass 'the admin invite page answered and its token is logged as a placeholder' ||
 	fail 'the admin invite page did not answer, or its token is not masked'
 LEAKED="$(printf '%s\n' "$EDGE_ALL" | grep -e "tokval$LOG_MARK" -e "codval$LOG_MARK" -e "payval$PAY_MARK" -e "invval$INVITE_MARK" || true)"
-expect 'no secret value in the edge request log' "$(printf '%s' "$LEAKED" | grep -c . || true)" 0
 # The values here are made up for this check, so showing where one got through is safe.
-[[ -z "$LEAKED" ]] || printf '%s\n' "$LEAKED" | cut -c1-400 | sed 's/^/       leaked in: /' >&2
+[[ -z "$LEAKED" ]] || printf '%s\n' "$LEAKED" | cut -c1-600 | sed 's/^/       leaked in: /'
+expect 'no secret value in the edge request log' "$(printf '%s' "$LEAKED" | grep -c . || true)" 0
 expect 'the admin container keeps no request log of its own' \
 	"$(docker logs --since 120s "$(in_release "$FIRST" ps --quiet admin | head -n 1)" 2>&1 | grep -c "$INVITE_MARK")" 0
 

@@ -1,0 +1,227 @@
+@let d = draft(); @let id = idPrefix();
+<!--
+	Brief shop15–shop17 (a copy of the admin's postal-address-form, DEC-UI-REUSE copy mode, without the
+	Area line the shop pictures don't draw). A caller may put its own first field before Full name.
+-->
+<div class="row g-3">
+	<ng-content select="[addressFirst]" />
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_name'"
+		>
+			{{ 'addr_full_name' | transloco }}
+		</label>
+		<input
+			class="form-control"
+			autocomplete="off"
+			maxlength="120"
+			[id]="id + '_name'"
+			[value]="d.fullName"
+			(input)="set('fullName', $any($event.target).value)"
+		/>
+	</div>
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_country'"
+		>
+			{{ 'addr_country' | transloco }}
+		</label>
+		<select
+			class="form-select"
+			[id]="id + '_country'"
+			(change)="setCountry($any($event.target).value)"
+		>
+			@for (row of countryRows(); track row.code) {
+			<option
+				[value]="row.code"
+				[selected]="row.code === d.countryCode"
+			>
+				{{ row.name }}
+			</option>
+			}
+		</select>
+	</div>
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_mobile'"
+		>
+			{{ 'addr_mobile' | transloco }}
+		</label>
+		<div class="input-group">
+			<select
+				class="form-select w-auto flex-grow-0"
+				[attr.aria-label]="'addr_calling_code' | transloco"
+				(change)="setPhoneCountry('mobile', $any($event.target).value)"
+			>
+				@for (row of countryRows(); track row.code) {
+				<option
+					[value]="row.code"
+					[selected]="row.code === mobilePick()"
+				>
+					{{ row.flag }} +{{ row.callingCode }}
+				</option>
+				}
+			</select>
+			<input
+				class="form-control"
+				inputmode="tel"
+				maxlength="20"
+				autocomplete="off"
+				[id]="id + '_mobile'"
+				[value]="d.mobile"
+				(input)="set('mobile', $any($event.target).value)"
+			/>
+		</div>
+		<p class="small text-muted mb-0">
+			{{ (d.countryCode === 'IN' ? 'addr_mobile_help_in' : 'addr_mobile_help_intl') | transloco }}
+		</p>
+	</div>
+	@if (!compact()) {
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_alt'"
+		>
+			{{ 'addr_alt_mobile' | transloco }}
+			<span class="text-muted">({{ 'optional' | transloco }})</span>
+		</label>
+		<div class="input-group">
+			<select
+				class="form-select w-auto flex-grow-0"
+				[attr.aria-label]="'addr_calling_code' | transloco"
+				(change)="setPhoneCountry('alt', $any($event.target).value)"
+			>
+				@for (row of countryRows(); track row.code) {
+				<option
+					[value]="row.code"
+					[selected]="row.code === altPick()"
+				>
+					{{ row.flag }} +{{ row.callingCode }}
+				</option>
+				}
+			</select>
+			<input
+				class="form-control"
+				inputmode="tel"
+				maxlength="20"
+				autocomplete="off"
+				[id]="id + '_alt'"
+				[value]="d.altMobile"
+				(input)="set('altMobile', $any($event.target).value)"
+			/>
+		</div>
+	</div>
+	} @if (postalLabel() !== 'none') {
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_postal'"
+		>
+			{{ 'addr_postal_' + postalLabel() | transloco }}
+		</label>
+		<input
+			class="form-control"
+			maxlength="12"
+			autocomplete="off"
+			[class.is-invalid]="pinNote() === 'unknown'"
+			[id]="id + '_postal'"
+			[value]="d.postalCode"
+			(input)="setPostalCode($any($event.target).value)"
+		/>
+		@if (pinNote() === 'unknown') {
+		<div class="invalid-feedback">{{ 'ord_pin_unknown' | transloco }}</div>
+		} @else if (pinFound(); as found) {
+		<p class="small text-success mt-1 mb-0">
+			<i class="ri-checkbox-circle-line"></i>
+			{{ found.city }}, {{ found.state }} @if (found.deliverable) { · {{ 'addr_we_deliver_here' | transloco
+			}} }
+		</p>
+		}
+	</div>
+	}
+	<div class="col-12">
+		<label
+			class="form-label"
+			[for]="id + '_line1'"
+		>
+			{{ 'addr_line1' | transloco }}
+		</label>
+		<input
+			class="form-control"
+			maxlength="200"
+			autocomplete="off"
+			[id]="id + '_line1'"
+			[value]="d.line1"
+			(input)="set('line1', $any($event.target).value)"
+		/>
+	</div>
+	@if (!compact()) {
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_landmark'"
+		>
+			{{ 'addr_landmark' | transloco }}
+			<span class="text-muted">({{ 'optional' | transloco }})</span>
+		</label>
+		<input
+			class="form-control"
+			maxlength="120"
+			autocomplete="off"
+			[id]="id + '_landmark'"
+			[value]="d.landmark"
+			(input)="set('landmark', $any($event.target).value)"
+		/>
+	</div>
+	}
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_city'"
+		>
+			{{ 'addr_city' | transloco }}
+		</label>
+		<input
+			class="form-control"
+			maxlength="80"
+			autocomplete="off"
+			[id]="id + '_city'"
+			[value]="d.city"
+			(input)="set('city', $any($event.target).value)"
+		/>
+	</div>
+	@if (states().length) {
+	<div class="col-md-6">
+		<label
+			class="form-label"
+			[for]="id + '_state'"
+		>
+			{{ 'addr_sub_' + subdivisionLabel() | transloco }}
+		</label>
+		<select
+			class="form-select"
+			[id]="id + '_state'"
+			(change)="set('subdivisionCode', $any($event.target).value)"
+		>
+			<option
+				value=""
+				[selected]="!d.subdivisionCode"
+			>
+				{{ 'ord_choose' | transloco }}
+			</option>
+			@for (state of states(); track state.code) {
+			<option
+				[value]="state.code"
+				[selected]="state.code === d.subdivisionCode"
+			>
+				{{ state.name }}
+			</option>
+			}
+		</select>
+		<p class="small text-muted mb-0">{{ statesHelp() }}</p>
+	</div>
+	}
+</div>

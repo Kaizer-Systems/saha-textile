@@ -46,6 +46,7 @@
     "@ngrx/store": "^22.0.1",
     "@ngx-loading-bar/core": "^7.0.1",
     "@ngx-loading-bar/router": "^7.0.1",
+    "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",
     "@saha-textile/http-transport": "workspace:*",
     "@tanstack/angular-query-experimental": "^5.104.5",

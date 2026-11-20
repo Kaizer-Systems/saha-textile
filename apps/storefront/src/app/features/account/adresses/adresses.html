@@ -7,7 +7,7 @@
 				[type]="'button'"
 				[spinner]="false"
 				[id]="'add_address'"
-				(click)="AddressModal()?.openModal()"
+				(click)="openAddress(null)"
 			>
 				<i class="ri-add-line"></i>
 				{{ 'add_address' | transloco }}
@@ -56,7 +56,7 @@
 						[type]="'button'"
 						[spinner]="false"
 						[id]="'edit_address'+address.id"
-						(click)="AddressModal()?.openModal(address)"
+						(click)="openAddress(address)"
 					>
 						<i class="ri-edit-box-line"></i>
 						{{ 'edit' | transloco }}

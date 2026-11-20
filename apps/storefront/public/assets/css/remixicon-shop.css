@@ -11,7 +11,7 @@
 /*
  * Remix Icon for the shop. Written by scripts/split-icon-font.mjs from remixicon.css; do not edit by hand.
  * Every rule after the two @font-face rules is the vendor file, unchanged. Only how the font loads differs:
- * the 110 icons the shop uses come from remixicon-shop.woff (9.4 KB, preloaded by index.html);
+ * the 114 icons the shop uses come from remixicon-shop.woff (9.8 KB, preloaded by index.html);
  * any other icon comes from the vendor font, which a page downloads only if it shows one of them.
  *
  * The small file is the family's default face (no unicode-range), declared first; the vendor font comes after it,
@@ -22,7 +22,7 @@
  */
 @font-face {
 	font-family: 'remixicon';
-	src: url('../fonts/remixicon/remixicon-shop.woff?v=ee274e3c') format('woff');
+	src: url('../fonts/remixicon/remixicon-shop.woff?v=f92bcdd5') format('woff');
 	font-display: swap;
 }
 @font-face {
@@ -31,17 +31,17 @@
 	font-display: swap;
 	unicode-range:
 		U+EA01-EA11, U+EA14-EA26, U+EA28-EA43, U+EA45-EA4D, U+EA4F-EA5F, U+EA61, U+EA63, U+EA65-EA6A, U+EA6D,
-		U+EA6F-EA77, U+EA79-EA93, U+EA95-EB0E, U+EB10-EB4D, U+EB4F-EB7A, U+EB7C-EB7F, U+EB82-EB97, U+EB9A-EBB1,
-		U+EBB3-EC29, U+EC2B-EC51, U+EC55-EC81, U+EC83-ECA0, U+ECA2-ECAE, U+ECB0-ECB4, U+ECB6-ECBB, U+ECBD-ED0E,
-		U+ED10-ED21, U+ED23-ED32, U+ED34-ED3A, U+ED3C-ED69, U+ED6B-EDBA, U+EDBC-EDDE, U+EDE0-EE09, U+EE0C-EE0D,
-		U+EE10-EE17, U+EE1B-EE2A, U+EE2C-EE58, U+EE5A-EE64, U+EE66-EE8A, U+EE8C-EE8F, U+EE91-EE94, U+EE96-EEB4,
-		U+EEB6-EEB7, U+EEB9-EED9, U+EEDB-EEF2, U+EEF4-EEF5, U+EEF7-EF13, U+EF15-EF64, U+EF66-EF74, U+EF76-EF77,
-		U+EF79-EF99, U+EF9B-EFC4, U+EFC6-EFD6, U+EFD8-EFDF, U+EFE1-EFEB, U+EFED-EFFE, U+F000-F001, U+F003-F008, U+F00B,
-		U+F00E-F022, U+F024-F037, U+F039-F044, U+F046-F047, U+F049-F052, U+F055-F063, U+F065-F0A2, U+F0A4-F0C2,
-		U+F0C4-F0CB, U+F0CE-F0D0, U+F0D2-F0FD, U+F0FF-F103, U+F106, U+F108-F10C, U+F10E-F111, U+F113-F116, U+F119-F11D,
-		U+F11F, U+F121-F159, U+F15B-F185, U+F187-F1A4, U+F1A6-F1AD, U+F1B0-F1BE, U+F1C0-F1EE, U+F1F0-F20E, U+F210-F230,
-		U+F232-F239, U+F23B-F254, U+F256-F263, U+F265-F2AD, U+F2AF-F2BA, U+F2BC-F2C1, U+F2C3-F2D3, U+F2D5-F3DF,
-		U+F3E1-F3E5, U+F3E7-F3E9;
+		U+EA6F-EA77, U+EA79-EA91, U+EA93, U+EA95-EB0E, U+EB10-EB4D, U+EB4F-EB7A, U+EB7C-EB7F, U+EB82-EB97, U+EB9A-EBB1,
+		U+EBB3-EC29, U+EC2B-EC51, U+EC55-EC81, U+EC83-ECA0, U+ECA2-ECAB, U+ECAD-ECAE, U+ECB0-ECB4, U+ECB6-ECBB,
+		U+ECBD-ECEE, U+ECF0-ED0E, U+ED10-ED21, U+ED23-ED32, U+ED34-ED3A, U+ED3C-ED69, U+ED6B-EDBA, U+EDBC-EDDE,
+		U+EDE0-EE09, U+EE0C-EE0D, U+EE10-EE17, U+EE1B-EE2A, U+EE2C-EE58, U+EE5A-EE64, U+EE66-EE8A, U+EE8C-EE8F,
+		U+EE91-EE94, U+EE96-EEB4, U+EEB6-EEB7, U+EEB9-EED9, U+EEDB-EEF2, U+EEF4-EEF5, U+EEF7-EF13, U+EF15-EF64,
+		U+EF66-EF74, U+EF76-EF77, U+EF79-EF99, U+EF9B-EFC4, U+EFC6-EFD6, U+EFD8-EFDF, U+EFE1-EFEB, U+EFED-EFFE,
+		U+F000-F001, U+F003-F008, U+F00B, U+F00E-F022, U+F024-F037, U+F039-F044, U+F046-F047, U+F049-F052, U+F055-F063,
+		U+F065, U+F067-F0A2, U+F0A4-F0C2, U+F0C4-F0CB, U+F0CE-F0D0, U+F0D2-F0FD, U+F0FF-F103, U+F106, U+F108-F10C,
+		U+F10E-F111, U+F113-F116, U+F119-F11D, U+F11F, U+F121-F159, U+F15B-F185, U+F187-F1A4, U+F1A6-F1AD, U+F1B0-F1BE,
+		U+F1C0-F1EE, U+F1F0-F20E, U+F210-F230, U+F232-F239, U+F23B-F254, U+F256-F263, U+F265-F2AD, U+F2AF-F2BA,
+		U+F2BC-F2C1, U+F2C3-F2D3, U+F2D5-F3DF, U+F3E1-F3E5, U+F3E7-F3E9;
 }
 [class^='ri-'],
 [class*=' ri-'] {

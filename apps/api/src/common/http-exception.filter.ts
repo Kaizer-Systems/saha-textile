@@ -3,6 +3,7 @@ import { type ApiErrorCode, ApiErrorResponse, type FieldIssue } from '@saha-text
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { SessionRefusal } from '../auth/session-refusal';
+import { maskAddress } from '../infra/log-masking';
 import { CsrfRefusal } from './csrf-refusal';
 import { REQUEST_ID_HEADER } from './request-context';
 
@@ -105,7 +106,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
 			// Log the real cause here — it must never reach the client.
 			this.logger.error(
-				`${request.method} ${request.url} failed [requestId=${String(requestId)}]`,
+				`${request.method} ${maskAddress(request.url)} failed [requestId=${String(requestId)}]`,
 				exception instanceof Error ? exception.stack : String(exception),
 			);
 		}

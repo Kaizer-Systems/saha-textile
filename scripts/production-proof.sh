@@ -325,15 +325,33 @@ expect 'the shop answers after the manual rollback' "$(with_pull_cert "$SITE_HOS
 
 echo 'Edge log'
 LOG_MARK="logcheck$RANDOM$RANDOM"
-with_pull_cert "$SITE_HOST" "/en/?$LOG_MARK" -H "Referer: https://user:pw@www.google.com:443/search?q=refpath$LOG_MARK" >/dev/null
+with_pull_cert "$SITE_HOST" "/en/?$LOG_MARK&token=tokval$LOG_MARK&lang=en&Code=codval$LOG_MARK" \
+	-H "Referer: https://user:pw@www.google.com:443/search?q=refpath$LOG_MARK" >/dev/null
+PAY_MARK="paycheck$RANDOM$RANDOM"
+with_pull_cert "$SITE_HOST" "/en/pay/payval$PAY_MARK?mark=$PAY_MARK" >/dev/null
+INVITE_MARK="invitecheck$RANDOM$RANDOM"
+with_pull_cert "$ADMIN_HOST" "/auth/accept-invite?mark=$INVITE_MARK&token=invval$INVITE_MARK" >/dev/null
 sleep 1
-EDGE_LINES="$(docker logs --since 120s "$(in_release "$FIRST" ps --quiet edge | head -n 1)" 2>&1 | grep "$LOG_MARK")"
+EDGE_ALL="$(docker logs --since 120s "$(in_release "$FIRST" ps --quiet edge | head -n 1)" 2>/dev/null)"
+EDGE_LINES="$(printf '%s\n' "$EDGE_ALL" | grep "$LOG_MARK")"
 expect 'one log line per request at the edge (the image default is replaced)' "$(printf '%s\n' "$EDGE_LINES" | grep -c "$LOG_MARK")" 1
 printf '%s' "$EDGE_LINES" | grep -q '"kind":"edge"' && pass 'the edge line is the JSON edge format' || fail 'the edge line is not the JSON edge format'
 printf '%s' "$EDGE_LINES" | grep -q '"referer_host":"www.google.com"' && pass 'the edge line names the referrer host' ||
 	fail 'the edge line does not name the referrer host'
 printf '%s' "$EDGE_LINES" | grep -q -e 'refpath' -e 'user:pw' && fail 'the referrer path, query or login reached the log' ||
 	pass 'only the referrer host reaches the log'
+# One-time tokens keep their place in the address as placeholders (owner, 2026-11-21).
+printf '%s' "$EDGE_LINES" | grep -qF "\"uri\":\"/en/?$LOG_MARK&token={{token}}&lang=en&Code={{Code}}\"" &&
+	pass 'secret query values are logged as placeholders, the rest kept' ||
+	fail 'secret query values are not logged as placeholders'
+printf '%s\n' "$EDGE_ALL" | grep "$PAY_MARK" | grep -qF "\"uri\":\"/en/pay/{{token}}?mark=$PAY_MARK\"" &&
+	pass 'the payment link token is logged as a placeholder' || fail 'the payment link token is not masked'
+printf '%s\n' "$EDGE_ALL" | grep "$INVITE_MARK" | grep -F '"status":200' | grep -qF 'token={{token}}' &&
+	pass 'the admin invite page answered and its token is logged as a placeholder' ||
+	fail 'the admin invite page did not answer, or its token is not masked'
+expect 'no secret value in the edge request log' "$(printf '%s\n' "$EDGE_ALL" | grep -c -e "tokval$LOG_MARK" -e "codval$LOG_MARK" -e "payval$PAY_MARK" -e "invval$INVITE_MARK")" 0
+expect 'the admin container keeps no request log of its own' \
+	"$(docker logs --since 120s "$(in_release "$FIRST" ps --quiet admin | head -n 1)" 2>&1 | grep -c "$INVITE_MARK")" 0
 
 echo 'Backup and restore'
 start_store

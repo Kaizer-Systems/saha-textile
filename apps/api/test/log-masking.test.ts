@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { maskPersonalData } from '../src/infra/log-masking';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { ADDRESS_SECRET_NAMES, maskAddress, maskPersonalData } from '../src/infra/log-masking';
 
 describe('maskPersonalData', () => {
 	it.each([
@@ -28,5 +31,43 @@ describe('maskPersonalData', () => {
 		'job mail.send #88213 attempt 3 of 3',
 	])('leaves ordinary facts alone: %s', (input) => {
 		expect(maskPersonalData(input)).toBe(input);
+	});
+});
+
+describe('maskAddress (owner, 2026-11-21: placeholders keep the address shape, no secret is logged)', () => {
+	it.each([
+		['/en/auth/activate?token=s3cr3t&lang=en', '/en/auth/activate?token={{token}}&lang=en'],
+		['/auth/accept-invite?token=s3cr3t', '/auth/accept-invite?token={{token}}'],
+		[
+			'/admin/mailboxes/oauth/callback?state=s1&code=s2&scope=email%20profile',
+			'/admin/mailboxes/oauth/callback?state={{state}}&code={{code}}&scope=email%20profile',
+		],
+		['/storefront/pay/s3cr3t', '/storefront/pay/{{token}}'],
+		['/en/pay/s3cr3t?x=1', '/en/pay/{{token}}?x=1'],
+		[
+			'/x?Token=a&access_token=b&mytoken=keep&token=',
+			'/x?Token={{Token}}&access_token={{access_token}}&mytoken=keep&token={{token}}',
+		],
+		['/auth/verify?token=abc&email=riya@x.com', '/auth/verify?token={{token}}&email=r***@x.com'],
+		['/en/collections/silk?page=2&sort=new', '/en/collections/silk?page=2&sort=new'],
+		['', ''],
+	])('%s', (input, output) => {
+		expect(maskAddress(input)).toBe(output);
+	});
+
+	it('survives the logger masking a message a second time', () => {
+		const line = `GET ${maskAddress('/en/pay/s3cr3t?token=abc')} failed`;
+		expect(maskPersonalData(line)).toBe('GET /en/pay/{{token}}?token={{token}} failed');
+	});
+
+	it('names the same secrets as the edge log in the stack and production configs', () => {
+		for (const file of ['docker/stack/nginx/edge.conf', 'docker/production/nginx/edge.conf.template']) {
+			const text = readFileSync(resolve(__dirname, '../../..', file), 'utf8');
+			const lists = [...text.matchAll(/\((?:\?<log_[a-z]_name>|\?:)((?:[a-z_]+\|)+[a-z_]+)\)=/g)].map(
+				(match) => match[1] ?? '',
+			);
+			expect(lists, file).toHaveLength(5);
+			for (const list of lists) expect(list.split('|'), file).toEqual([...ADDRESS_SECRET_NAMES]);
+		}
 	});
 });

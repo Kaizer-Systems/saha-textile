@@ -160,7 +160,7 @@ describe('request log options', () => {
 			}),
 		).toEqual({
 			method: 'GET',
-			url: '/auth/verify?token=[masked]&email=r***@x.com',
+			url: '/auth/verify?token={{token}}&email=r***@x.com',
 			hostname: 'api',
 			remoteAddress: '1.2.3.4',
 		});

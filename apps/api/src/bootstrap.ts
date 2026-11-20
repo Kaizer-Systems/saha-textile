@@ -18,7 +18,7 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
 import { isPublicRead } from './common/public-read';
 import { REQUEST_ID_HEADER, attachRequestContext, resolveClientIp, resolveRequestId } from './common/request-context';
 import type { AppConfig } from './config/app-config';
-import { maskPersonalData } from './infra/log-masking';
+import { maskAddress } from './infra/log-masking';
 import { createAppLogger } from './infra/structured-logger';
 import { createOpenApiDocument } from './openapi';
 
@@ -87,11 +87,11 @@ export function requestLogOptions(config: Pick<AppConfig, 'nodeEnv' | 'logLevel'
 		timestamp: () => `,"time":"${new Date().toISOString()}"`,
 		formatters: { level: (label: string) => ({ level: label }) },
 		mixin: () => ({ kind: 'request' }),
-		// The address can carry an email or a token in its query; it is masked like any message.
+		// The address can carry an email, or a token in its query or path: secrets become placeholders.
 		serializers: {
 			req: (request: { method?: string; url?: string; hostname?: string; ip?: string }) => ({
 				method: request.method,
-				url: maskPersonalData(request.url ?? ''),
+				url: maskAddress(request.url ?? ''),
 				hostname: request.hostname,
 				remoteAddress: request.ip,
 			}),

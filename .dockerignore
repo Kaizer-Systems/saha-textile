@@ -17,6 +17,7 @@
 !**/.env.example
 certs
 .production-proof
+.local-release
 docker/stack/env/*.env
 docker/stack/env/redis-password
 docker/stack/env/meilisearch.toml

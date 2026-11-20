@@ -27,9 +27,55 @@ import { buildStackEnv, isBlank, isPlain } from './render.mjs';
 
 export const STACK_ENV_DIR = 'docker/stack/env';
 
-const STOREFRONT_HOST = 'local.saha-textile.localhost';
-const ADMIN_HOST = 'admin-local.saha-textile.localhost';
-const API_HOST = 'api-local.saha-textile.localhost';
+export const STOREFRONT_HOST = 'local.saha-textile.localhost';
+export const ADMIN_HOST = 'admin-local.saha-textile.localhost';
+export const API_HOST = 'api-local.saha-textile.localhost';
+
+/**
+ * The stack's three addresses on this Mac's HTTPS port. The local pipeline's release folder uses the
+ * same ones (scripts/secrets/release.mjs), because the stack is where that release runs.
+ * @param {string} port
+ */
+export function stackAddresses(port) {
+	const suffix = port === '443' ? '' : `:${port}`;
+	return {
+		shop: `https://${STOREFRONT_HOST}${suffix}`,
+		admin: `https://${ADMIN_HOST}${suffix}`,
+		api: `https://${API_HOST}${suffix}`,
+	};
+}
+
+/**
+ * The API settings the stack sets over the dev project's: its own services, hosts and proxy. The
+ * local pipeline's release folder lays the same ones over `/api`.
+ * @param {ReturnType<typeof stackAddresses>} addresses
+ * @param {{ redisPassword: string, searchKey: string, mongo: { appUser: string, appPassword: string } }} services
+ */
+export function stackApiSettings(addresses, { redisPassword, searchKey, mongo }) {
+	return new Map([
+		['NODE_ENV', 'production'],
+		['DEPLOY_ENV', 'local'],
+		['PORT', '4000'],
+		['MONGODB_HOST', 'mongo'],
+		['MONGODB_PORT', '27017'],
+		['MONGODB_REPLICA_SET', 'rs0'],
+		['MONGODB_DB_NAME', 'saha_textile_stack'],
+		['MONGODB_USERNAME', mongo.appUser],
+		['MONGODB_PASSWORD', mongo.appPassword],
+		['REDIS_HOST', 'redis'],
+		['REDIS_PORT', '6379'],
+		['REDIS_PASSWORD', redisPassword],
+		['MEILISEARCH_HOST', 'http://meilisearch:7700'],
+		['MEILISEARCH_API_KEY', searchKey],
+		['CORS_ALLOWED_ORIGINS', `${addresses.shop},${addresses.admin}`],
+		['TRUST_PROXY', 'true'],
+		['CLIENT_IP_HEADER', 'cf-connecting-ip'],
+		['COOKIE_SECURE', 'true'],
+		['ADMIN_APP_URL', addresses.admin],
+		// Google refuses .localhost callbacks, so the stack reuses the dev client's registered one.
+		['GOOGLE_MAIL_REDIRECT_URI', 'https://localhost:4000/admin/mailboxes/oauth/callback'],
+	]);
+}
 
 /**
  * Settings the stack sets itself. The dev project's values for these describe `pnpm dev` on this Mac
@@ -123,37 +169,11 @@ export function stackPort(local) {
  * @param {'refuse' | 'drop'} options.unknown
  */
 export function buildStackFiles(api, { inventory, source, local, services, unknown }) {
-	const port = stackPort(local);
-	const suffix = port === '443' ? '' : `:${port}`;
-	const shop = `https://${STOREFRONT_HOST}${suffix}`;
-	const admin = `https://${ADMIN_HOST}${suffix}`;
-	const apiUrl = `https://${API_HOST}${suffix}`;
+	const addresses = stackAddresses(stackPort(local));
+	const { shop, admin, api: apiUrl } = addresses;
 	const redisPassword = services.redisPassword;
 	const searchKey = services.masterKey;
-
-	const settings = new Map([
-		['NODE_ENV', 'production'],
-		['DEPLOY_ENV', 'local'],
-		['PORT', '4000'],
-		['MONGODB_HOST', 'mongo'],
-		['MONGODB_PORT', '27017'],
-		['MONGODB_REPLICA_SET', 'rs0'],
-		['MONGODB_DB_NAME', 'saha_textile_stack'],
-		['MONGODB_USERNAME', services.mongo.appUser],
-		['MONGODB_PASSWORD', services.mongo.appPassword],
-		['REDIS_HOST', 'redis'],
-		['REDIS_PORT', '6379'],
-		['REDIS_PASSWORD', redisPassword],
-		['MEILISEARCH_HOST', 'http://meilisearch:7700'],
-		['MEILISEARCH_API_KEY', searchKey],
-		['CORS_ALLOWED_ORIGINS', `${shop},${admin}`],
-		['TRUST_PROXY', 'true'],
-		['CLIENT_IP_HEADER', 'cf-connecting-ip'],
-		['COOKIE_SECURE', 'true'],
-		['ADMIN_APP_URL', admin],
-		// Google refuses .localhost callbacks, so the stack reuses the dev client's registered one.
-		['GOOGLE_MAIL_REDIRECT_URI', 'https://localhost:4000/admin/mailboxes/oauth/callback'],
-	]);
+	const settings = stackApiSettings(addresses, { redisPassword, searchKey, mongo: services.mongo });
 	const env = buildStackEnv(api, { inventory, source, owned: STACK_OWNED, settings, unknown });
 
 	const storefrontConfig = {

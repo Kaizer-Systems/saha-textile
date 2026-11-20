@@ -10,6 +10,9 @@
 #    pnpm stack:certs   issue the stack certificate (mkcert, once)
 #    pnpm stack:env     write docker/stack/env/ from the Infisical dev project
 #    pnpm stack:up      build + start everything, wait until healthy
+#                       (with STACK_API_IMAGE, STACK_STOREFRONT_IMAGE and STACK_ADMIN_IMAGE set to
+#                       images pinned by digest, as `pnpm pipeline:local` does, it builds nothing
+#                       and runs exactly those)
 #    pnpm stack:down    stop (volumes kept)
 #
 #  Hosts (Chrome and Firefox resolve *.localhost to loopback by themselves;
@@ -119,7 +122,7 @@ services:
   api:
     <<: [*logging, *app-env]
     build: { context: ../.., dockerfile: docker/images/Dockerfile, target: api }
-    image: saha-textile-api:local
+    image: ${STACK_API_IMAGE:-saha-textile-api:local}
     depends_on:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -128,7 +131,7 @@ services:
 
   worker:
     <<: [*logging, *app-env]
-    image: saha-textile-api:local
+    image: ${STACK_API_IMAGE:-saha-textile-api:local}
     command: ['node', 'dist/worker.js']
     # Encoding is the only CPU-heavy work; keep it niced and bounded like on the droplet.
     cpus: 2
@@ -144,7 +147,7 @@ services:
   storefront:
     <<: *logging
     build: { context: ../.., dockerfile: docker/images/Dockerfile, target: storefront }
-    image: saha-textile-storefront:local
+    image: ${STACK_STOREFRONT_IMAGE:-saha-textile-storefront:local}
     env_file: ./env/storefront.env
     volumes:
       # SSR calls the API through the edge over HTTPS, so it must trust the local CA.
@@ -156,7 +159,7 @@ services:
   admin:
     <<: *logging
     build: { context: ../.., dockerfile: docker/images/Dockerfile, target: admin }
-    image: saha-textile-admin:local
+    image: ${STACK_ADMIN_IMAGE:-saha-textile-admin:local}
     volumes:
       - ./env/admin.config.json:/usr/share/nginx/html/config.json:ro
     restart: unless-stopped

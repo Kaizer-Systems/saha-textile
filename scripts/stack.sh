@@ -65,7 +65,16 @@ cmd_up() {
 	# The services first, then the database's logins, then the apps: the API must find its login.
 	"${COMPOSE[@]}" up -d --wait mongo redis meilisearch
 	ensure_database
-	"${COMPOSE[@]}" up -d --build --wait
+	# Images pinned by digest (the local pipeline's stage 5) run as they are; otherwise build here.
+	local build=(--build)
+	if [[ -n "${STACK_API_IMAGE:-}${STACK_STOREFRONT_IMAGE:-}${STACK_ADMIN_IMAGE:-}" ]]; then
+		local name
+		for name in STACK_API_IMAGE STACK_STOREFRONT_IMAGE STACK_ADMIN_IMAGE; do
+			[[ "${!name:-}" == *@sha256:* ]] || { echo "$name must be set and pinned by digest." >&2; exit 1; }
+		done
+		build=(--no-build --pull missing)
+	fi
+	"${COMPOSE[@]}" up -d "${build[@]}" --wait
 	# The same release steps as a deploy: roles, indexes, migrations and the search index.
 	"${COMPOSE[@]}" exec -T api node dist/release-steps.js
 	# A broken config.json does not stop the app: the browser silently falls back to localhost.

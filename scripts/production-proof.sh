@@ -201,7 +201,7 @@ status_code() {
 	curl -sk -o /dev/null -w '%{http_code}' --resolve "$1:$EDGE_PORT:127.0.0.1" "${@:3}" "https://$1:$EDGE_PORT$2"
 }
 
-with_pull_cert() { status_code "$1" "$2" --cert "$PROOF/client/client.pem" --key "$PROOF/client/client.key" -H 'CF-Connecting-IP: 203.0.113.9'; }
+with_pull_cert() { status_code "$1" "$2" --cert "$PROOF/client/client.pem" --key "$PROOF/client/client.key" -H 'CF-Connecting-IP: 203.0.113.9' "${@:3}"; }
 
 clean
 mkdir -p "$SAHA_TEXTILE_ROOT" "$PROOF/releases"
@@ -325,11 +325,15 @@ expect 'the shop answers after the manual rollback' "$(with_pull_cert "$SITE_HOS
 
 echo 'Edge log'
 LOG_MARK="logcheck$RANDOM$RANDOM"
-with_pull_cert "$SITE_HOST" "/en/?$LOG_MARK" >/dev/null
+with_pull_cert "$SITE_HOST" "/en/?$LOG_MARK" -H "Referer: https://user:pw@www.google.com:443/search?q=refpath$LOG_MARK" >/dev/null
 sleep 1
 EDGE_LINES="$(docker logs --since 120s "$(in_release "$FIRST" ps --quiet edge | head -n 1)" 2>&1 | grep "$LOG_MARK")"
 expect 'one log line per request at the edge (the image default is replaced)' "$(printf '%s\n' "$EDGE_LINES" | grep -c "$LOG_MARK")" 1
 printf '%s' "$EDGE_LINES" | grep -q '"kind":"edge"' && pass 'the edge line is the JSON edge format' || fail 'the edge line is not the JSON edge format'
+printf '%s' "$EDGE_LINES" | grep -q '"referer_host":"www.google.com"' && pass 'the edge line names the referrer host' ||
+	fail 'the edge line does not name the referrer host'
+printf '%s' "$EDGE_LINES" | grep -q -e 'refpath' -e 'user:pw' && fail 'the referrer path, query or login reached the log' ||
+	pass 'only the referrer host reaches the log'
 
 echo 'Backup and restore'
 start_store

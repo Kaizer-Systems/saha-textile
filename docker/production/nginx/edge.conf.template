@@ -66,6 +66,15 @@ map $status $retry_after {
 	503     15;
 }
 
+# Where the visitor came from, as a host name only (the Release Console's Search engines screen
+# counts "page not found" by referrer). The path and query never reach the log: with
+# strict-origin-when-cross-origin a link inside the site sends its full address, which can carry
+# a sign-in or reset token. Any user:password@ part is dropped too.
+map $http_referer $referer_host {
+	default "";
+	"~*^https?://(?:[^/?#@]*@)?(?<referer_name>[^/?#:]+)" $referer_name;
+}
+
 # One JSON line per request, read by the Release Console's agent. request_id is the id this
 # edge gave the request and passed on in X-Request-ID, so the app's log lines for the same
 # request carry it too. The agent masks emails and phone numbers in the address before it
@@ -74,7 +83,7 @@ log_format edge escape=json '{"time":"$time_iso8601","kind":"edge","request_id":
 	'"ip":"$client_ip","method":"$request_method","uri":"$request_uri","status":$status,'
 	'"bytes":$body_bytes_sent,"seconds":$request_time,"upstream_seconds":"$upstream_response_time",'
 	'"host":"$host","country":"$http_cf_ipcountry","cf_ray":"$http_cf_ray","cache":"$http_cf_cache_status",'
-	'"user_agent":"$http_user_agent"}';
+	'"referer_host":"$referer_host","user_agent":"$http_user_agent"}';
 # Set inside each server block below: at this level it would sit beside the nginx image's default
 # `main` log, and every request would be written twice in two formats.
 

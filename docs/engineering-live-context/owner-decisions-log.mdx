@@ -2172,3 +2172,32 @@ words in the orders brief's notes). Closed here: the order row of `DEC-NUMBERING
   releases, rebuilds the country, State and phone data file and opens a pull request into `dev` only when something
   changed; with no change it ends quietly. A person reviews and merges. (Owner: "if no change in data … there wont be any
   new PR opened if nothing changes, right?" — right.)
+
+## Owner decision round (2026-11-20) — Release Console upgrade
+
+The owner asked to move the console's keys to Infisical, make it a deployable app, add a secrets-manager step and list
+every missing piece for yes/no answers (request word for word in the console chat's hand-over). Answers:
+
+- **Secrets managers in projects.** Add a project gains a step for secrets managers, one or more per repository (managed
+  services such as Infisical Cloud, AWS Secrets Manager, Google Secret Manager, Azure Key Vault or Doppler; self-hosted ones
+  such as Infisical or Vault; GitHub Actions secrets; files on the server). Each environment reads one of them.
+- **"Yes, all recommended"** to the upgrade list: keys only from Infisical and never pasted into the console; one
+  `/release-console` folder in the dev project only; `pnpm console:env` writes the console's key file with the owner's own
+  login (no machine identity); a GitHub token inside Docker; a Secrets screen with names and dates only; one image holding
+  the app, its API and its SQLite database; a Mac helper on `127.0.0.1` with a fixed list of commands, never the Docker socket
+  in the container; `pnpm console:up`/`console:down`; the image published privately but not deployed until the owner says;
+  Cloudflare Access plus the PIN on a server; deploy to local from the console with live progress; start and stop the
+  stack's own services only; never the checks stage under running dev servers; this Mac's figures in place of DigitalOcean's
+  (5-second live, 7-day history); live logs; a requests view; VictoriaTraces with tracing in the API, worker and shop
+  server; no log database; local alerts; a heavy-load measurement before `DEC-TRACING-SERVERS`; screens per the Safe
+  Releases Brief (a brief first for any screen without a design); phone layout; browser tests; troubleshooting steps; a
+  portal guide.
+- **Still open:** dropping the planned read-only Keychain identity (Infisical plan L4) and the database monitor's read-only
+  Mongo login.
+- **Sign-in with a PIN or a password** (owner: "make sure the release console login pin is no longer on keychain and is
+  properly maintained in dashboard with an option for password and pin both"). The PIN was never in the Keychain; both are
+  scrypt hashes in the console's database, managed in Console settings.
+- **One DigitalOcean token.** The owner made one full-access token without an expiry and keeps it in
+  `CONSOLE_DO_WRITE_TOKEN`; a read/change pair counts as complete when either is filled. The console would use a read-only
+  token first if one is added later.
+- **Cloudflare read token:** "Read all resources", 90 days, in the account that holds `sahatextile.com`.

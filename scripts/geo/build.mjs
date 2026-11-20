@@ -81,11 +81,23 @@ function writeIfChanged(path, text) {
 	return true;
 }
 
-async function fetchJson(url, init) {
+/** Never echoes a secret: the query string is dropped, and `secret` is cut out of the answer's text. */
+async function fetchJson(url, { secret = null, ...init } = {}) {
 	const response = await fetch(url, { ...init, signal: AbortSignal.timeout(60_000) });
-	if (!response.ok) throw new Error(`${url.split('?')[0]} answered HTTP ${response.status}`);
+	if (!response.ok) {
+		let said = (await response.text().catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 300);
+		if (secret) said = said.split(secret).join('<key>');
+		throw new Error(`${url.split('?')[0]} answered HTTP ${response.status}${said ? `: ${said}` : ''}`);
+	}
 	return response.json();
 }
+
+/** `SOUTH 24 PARGANAS` → `South 24 Parganas`. */
+const titleCase = (text) =>
+	text
+		.toLowerCase()
+		.replace(/(^|[\s(\-/])([a-z])/g, (_, before, letter) => `${before}${letter.toUpperCase()}`)
+		.trim();
 
 export function mobileLengthsFor(metadata, country) {
 	try {
@@ -154,30 +166,70 @@ async function buildCountriesAndStates() {
 	return { countries, subdivisionFiles, unmatchedIndia };
 }
 
+/** data.gov.in refuses bursts (HTTP 429): one page every PIN_PAGE_PAUSE_MS, and a few spaced retries. */
+const PIN_PAGE_PAUSE_MS = 1_500;
+const PIN_RETRY_WAITS_MS = [15_000, 30_000, 60_000, 120_000];
+const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+
+async function politeFetchJson(url, key) {
+	await pause(PIN_PAGE_PAUSE_MS);
+	for (let attempt = 0; ; attempt += 1) {
+		try {
+			return await fetchJson(url, { secret: key });
+		} catch (error) {
+			const busy = / answered HTTP (429|5\d\d)/.test(error.message);
+			if (!busy || attempt >= PIN_RETRY_WAITS_MS.length) throw error;
+			console.log(
+				`PIN directory: ${error.message.split(': ')[0]}; waiting ${PIN_RETRY_WAITS_MS[attempt] / 1000} s`,
+			);
+			await pause(PIN_RETRY_WAITS_MS[attempt]);
+		}
+	}
+}
+
+/** India Post writes "NA" where it has no value. */
+const known = (value) => {
+	const text = String(value ?? '').trim();
+	return /^(n\.?a\.?|null|-)$/i.test(text) ? '' : text;
+};
+
 /** PIN → city, district, State (data.gov.in, paged). Null without the key. */
 async function buildPins(indiaSubdivisions) {
 	const key = process.env.DATA_GOV_IN_API_KEY?.trim();
 	if (!key) return null;
 	const byName = new Map(indiaSubdivisions.map((row) => [normaliseName(row.name), row]));
 	const pins = {};
+	const unmatchedStates = new Set();
 	const limit = 1000;
 	for (let offset = 0; ; offset += limit) {
 		const url = `${PIN_API_URL}?api-key=${encodeURIComponent(key)}&format=json&limit=${limit}&offset=${offset}`;
-		const page = await fetchJson(url);
+		const page = await politeFetchJson(url, key);
+		if (offset && offset % 20_000 === 0) console.log(`PIN directory: ${offset} of ${page.total ?? '?'} rows read`);
 		const records = Array.isArray(page.records) ? page.records : [];
 		for (const record of records) {
 			const pin = String(record.pincode ?? '').trim();
-			if (!/^\d{6}$/.test(pin) || pins[pin]) continue;
-			const state = byName.get(normaliseName(String(record.statename ?? '')));
+			if (!/^\d{6}$/.test(pin)) continue;
+			// A PIN serves several post offices: the first that names a State and district wins.
+			if (pins[pin]?.subdivisionCode && pins[pin]?.district) continue;
+			const stateName = known(record.statename).replace(/^the\s+/i, '');
+			const state = byName.get(normaliseName(stateName));
+			if (!state && stateName) unmatchedStates.add(stateName);
+			// India Post names a postal division ("Kolkata North Division"), not a city; the district
+			// is what a buyer writes as the city ("Kolkata", "South 24 Parganas").
+			const district = titleCase(known(record.district));
+			// Fill only what the earlier post offices of this PIN left empty.
+			const before = pins[pin];
+			const place = before?.district || district || null;
 			pins[pin] = {
-				city: String(record.divisionname ?? record.district ?? '').trim() || null,
-				district: String(record.district ?? '').trim() || null,
-				subdivisionCode: state?.code ?? null,
-				gstStateCode: state?.gstStateCode ?? null,
+				city: place,
+				district: place,
+				subdivisionCode: before?.subdivisionCode ?? state?.code ?? null,
+				gstStateCode: before?.subdivisionCode ? before.gstStateCode : (state?.gstStateCode ?? null),
 			};
 		}
 		if (records.length < limit) break;
 	}
+	if (unmatchedStates.size) console.warn(`PIN directory: no State matched for ${[...unmatchedStates].join(', ')}`);
 	return Object.fromEntries(Object.entries(pins).sort(([a], [b]) => a.localeCompare(b)));
 }
 

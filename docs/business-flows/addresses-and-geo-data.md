@@ -32,6 +32,8 @@ Credit: country subdivision data © dr5hn and contributors, available under the 
 
 ## Refreshing the data
 
-`node scripts/geo/build.mjs` rebuilds the files from the pinned sources; a run with no change in the sources writes nothing. The PIN step runs only when `DATA_GOV_IN_API_KEY` is set; without it the lookup answers "not loaded" and address checks skip the PIN checks.
+`node scripts/geo/build.mjs` rebuilds the files from the pinned sources; a run with no change in the sources writes nothing.
+
+The PIN directory (`data/india-pins.json`, about 19,600 PIN codes) keeps, for each PIN, the district (which is also what fills the city box), and the State with its GST code. India Post lists one row per post office, so a PIN served by several post offices takes the first row that names its State and district; the few rows India Post leaves without a district or State keep those empty, and such a PIN is still known. The PIN step runs only when `DATA_GOV_IN_API_KEY` is set. It reads one page every 1.5 seconds and waits and retries a few times when data.gov.in answers that it is busy; a refusal stops the run with data.gov.in's own words, never the key. Without the key the existing PIN file is kept; with no PIN file at all, the lookup answers "not loaded" and address checks skip the PIN checks.
 
 A GitHub Actions job (`.github/workflows/geo-refresh.yml`) runs the same script on the 2nd of each month on GitHub's machines and opens a pull request into `dev` only when a file changed. A person reviews and merges it.

@@ -1903,6 +1903,10 @@ files for every caller and prints names, never values.
   `github-deploy-production` (GitHub OIDC, each a read-only member of its own project only, bound to
   its GitHub environment), and a read-only dev-project key for unattended local runs whose secret
   lives in the macOS Keychain.
+  **Changed on 2026-11-20: three identities.** The Keychain key is dropped (owner: "drop it so that
+  one of the machine identity frees up"; Release Console round of 2026-11-20). Every local refresh
+  uses the owner's own CLI login; when it has expired, commands keep the last copy and say to run
+  `infisical login`. Two of the five free slots stay unused.
 - **Mode 3 matches the droplet.** The stack's API and worker read a read-only file mounted at
   `/run/secrets/api.env` through `DOTENV_CONFIG_PATH`, instead of `env_file`.
 - The renderer, `pnpm secrets:status` and `pnpm check:infisical-names` were built the same day

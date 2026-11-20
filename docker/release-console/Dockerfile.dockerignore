@@ -1,0 +1,30 @@
+# The Release Console image's own ignore file (BuildKit uses it instead of the root
+# .dockerignore for this Dockerfile). It sends Docker only what the console's three
+# packages need, so the build never walks the shop's node_modules: everything is
+# left out, then the workspace files and the console's packages are let back in.
+*
+
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!turbo.json
+!tsconfig.base.json
+
+!apps/release-console/
+!apps/release-console-api/
+!packages/release-console-contracts/
+
+# Never sent, even inside the console's packages: installed modules, build output,
+# caches, local data and anything that holds keys.
+**/node_modules
+**/dist
+**/build
+**/*.tsbuildinfo
+**/.angular
+**/.turbo
+**/coverage
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/.env
+**/.env.*

@@ -13,6 +13,10 @@ pnpm console:env     # write the key file again after changing keys in Infisical
 Run these from the main folder. The Mac helper drives the stack and the local pipeline in its own
 checkout, so it refuses to start from a worktree.
 
+The image is built from the console's three packages only: `Dockerfile.dockerignore` beside the
+Dockerfile sends Docker the workspace files and those packages, never the shop's `node_modules`, so a
+build reads about 15 kB of context and takes well under a minute when only the console changed.
+
 ## What runs
 
 | Part                                             | Where                                                          | Notes                                                                                              |

@@ -12,7 +12,34 @@ their folders. No real env files or secret values were read during setup.
 Infisical creates three default environments in each project. Only the matching environment
 above has entries; the other default environments are empty. Separate projects allow future
 automation identities to receive project-level access without access to another deployment tier.
-No machine identities, role grants, authentication methods, or pipeline integrations were added.
+No machine identities, role grants, authentication methods, or pipeline integrations were added
+then.
+
+### Deploy identities (plan step 7, created 2026-11-20)
+
+Owner decision L4, as changed on 2026-11-20: three identities in all, the owner and these two. Every
+local refresh uses the owner's own CLI login.
+
+| Identity                   | Organization role | Project, role                     | Sign-in                                                                           |
+| -------------------------- | ----------------- | --------------------------------- | --------------------------------------------------------------------------------- |
+| `github-deploy-staging`    | No Access         | `saha-textile-staging`, Viewer    | OIDC Auth only. Subject `repo:Kaizer-Systems/saha-textile:environment:staging`    |
+| `github-deploy-production` | No Access         | `saha-textile-production`, Viewer | OIDC Auth only. Subject `repo:Kaizer-Systems/saha-textile:environment:production` |
+
+- Both: discovery URL and issuer `https://token.actions.githubusercontent.com`, audience
+  `https://github.com/Kaizer-Systems` (GitHub's default for this owner), no CA certificate, no
+  extra claims, access tokens of 900 seconds (also the maximum). Universal Auth was removed, so
+  neither has a client secret; only a GitHub Actions job running in that repository's `staging` or
+  `production` environment can sign in, and only to read its own project.
+- The subject uses GitHub's default format (`gh api repos/Kaizer-Systems/saha-textile/actions/oidc/customization/sub`
+  reports `use_default: true`; the repository predates GitHub's immutable subject format). If the
+  repository is ever renamed or transferred, both subjects must change.
+- Each GitHub environment already requires a reviewer and allows only its branch, so a sign-in
+  happens only after the owner approves a deploy.
+- The deploy job (plan step 8, Chunk J) needs `permissions: id-token: write` and the identity's ID,
+  which is shown on its page in Infisical (Access Control → Machine Identities). An ID is not a
+  secret: without a matching GitHub token it opens nothing.
+- Infisical Free allows five identities, people and machines together: the organization's two
+  people and these two make four.
 
 ### Changes on 2026-11-19 (owner to apply in Infisical)
 

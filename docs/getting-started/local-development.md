@@ -109,11 +109,13 @@ The search server (the full stack's Meilisearch on port 7700, which `pnpm dev` a
 Test runners work on databases of their own (`saha_textile_e2e`, `saha_textile_it`, `saha_textile_test` and names derived from them), which the app login cannot reach. They log in with the machine's test login, `saha_textile_tests`, whose password `pnpm secrets:setup-local` makes once in `docker/dev-secrets/mongo-test-password`. MongoDB grants rights per database, not per name prefix, so this login can read, write and drop any database on the machine; each runner still refuses a database that is not a test database. The test login exists only on a developer machine, never in Infisical or on a droplet. Worktrees read the main folder's file.
 
 - `pnpm coverage`, `pnpm e2e`, `pnpm e2e:stack` and `pnpm e2e:session-rotation` use it on their own.
-- An opt-in database suite (`RUN_DB_IT=1`) gets the address from `scripts/secrets/test-login.mjs`, which prints only into `$(…)` or a pipe:
+- An opt-in database suite runs through `scripts/secrets/test-login.mjs run`, which gives the command the test address, `MONGODB_DB_NAME` and `RUN_DB_IT=1`, and accepts only a test database name:
 
 ```bash
-MONGODB_URI="$(node scripts/secrets/test-login.mjs saha_textile_test)" MONGODB_DB_NAME=saha_textile_test RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
+node scripts/secrets/test-login.mjs run saha_textile_test -- pnpm --filter @saha-textile/adapters-db-mongo test
 ```
+
+Two guards keep the working database out of reach. The Mongo adapter's test setup refuses `RUN_DB_IT=1` on any database that is not a test database, and the adapter itself refuses the test login on any other database; an address without `MONGODB_DB_NAME` opens the database the address names, never `saha_textile_local`. `node scripts/secrets/test-login.mjs <database>` prints the address alone, into a pipe only, for a tool that needs it.
 
 Without the file, as on CI, the address carries no login.
 

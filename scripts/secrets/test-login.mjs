@@ -15,12 +15,20 @@
  * `docker/dev-secrets/mongo-test-password` of the main folder, which worktrees share. Without the
  * file (CI, or a Mac before setup) the address carries no login, as before.
  *
- *   MONGODB_URI="$(node scripts/secrets/test-login.mjs saha_textile_test)" RUN_DB_IT=1 \
- *     MONGODB_DB_NAME=saha_textile_test pnpm --filter @saha-textile/adapters-db-mongo test
+ * Run an opt-in database suite on a test database (sets MONGODB_URI, MONGODB_DB_NAME and RUN_DB_IT=1
+ * for the command, and nothing else changes):
  *
- * The address holds the password, so it is printed only into a pipe or `$(…)`, never to a screen.
+ *   node scripts/secrets/test-login.mjs run saha_textile_test -- pnpm --filter @saha-textile/adapters-db-mongo test
+ *
+ * Or print the address alone, for a tool that needs it; the address holds the password, so it is
+ * printed only into a pipe or `$(…)`, never to a screen:
+ *
+ *   node scripts/secrets/test-login.mjs saha_textile_test | …
+ *
+ * Only test database names are accepted (ending in _it, _e2e or _test), and the Mongo adapter refuses
+ * the test login on any other database as well.
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -92,13 +100,50 @@ function* parseEnvLines(text) {
 	}
 }
 
+/** Same rule as the Mongo adapter's TEST_DATABASE_NAME. */
+export const TEST_DATABASE_NAME = /_(it|e2e|test)(_[a-z0-9_]+)?$/;
+
+/**
+ * The environment for a command run on one test database: its address, its name and the opt-in flag.
+ * The app login is cleared so it can never be used instead.
+ * @param {string} database
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function testRunEnv(database, env = process.env) {
+	return {
+		...env,
+		MONGODB_URI: testDatabaseUri(localMongoTarget(database, env)),
+		MONGODB_DB_NAME: database,
+		MONGODB_USERNAME: '',
+		MONGODB_PASSWORD: '',
+		RUN_DB_IT: '1',
+	};
+}
+
+const USAGE = [
+	'Usage:',
+	'  node scripts/secrets/test-login.mjs run <test database> -- <command…>',
+	'  node scripts/secrets/test-login.mjs <test database> | …',
+	'A test database ends in _it, _e2e or _test.',
+	'',
+].join('\n');
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-	const database = process.argv[2];
-	if (!database || !/_(it|e2e|test)(_[a-z0-9_]+)?$/.test(database)) {
-		process.stderr.write(
-			'Usage: node scripts/secrets/test-login.mjs <test database, ending in _it, _e2e or _test>\n',
-		);
+	const run = process.argv[2] === 'run';
+	const database = process.argv[run ? 3 : 2];
+	if (!database || !TEST_DATABASE_NAME.test(database)) {
+		process.stderr.write(USAGE);
 		process.exit(2);
+	}
+	if (run) {
+		const rest = process.argv.slice(4);
+		const command = rest[0] === '--' ? rest.slice(1) : rest;
+		if (command.length === 0) {
+			process.stderr.write(USAGE);
+			process.exit(2);
+		}
+		const child = spawnSync(command[0], command.slice(1), { stdio: 'inherit', env: testRunEnv(database) });
+		process.exit(child.status ?? 1);
 	}
 	if (process.stdout.isTTY) {
 		process.stderr.write('This prints a password. Use it inside $(…) or a pipe, never on the screen.\n');

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { ROOT } from './inventory.mjs';
-import { TEST_PASSWORD_FILE, localMongoTarget, mainCheckout, testDatabaseUri } from './test-login.mjs';
+import { TEST_PASSWORD_FILE, localMongoTarget, mainCheckout, testDatabaseUri, testRunEnv } from './test-login.mjs';
 
 function withRoot(fn) {
 	const root = mkdtempSync(join(tmpdir(), 'secrets-test-login-'));
@@ -62,6 +62,32 @@ test('host, port and replica set come from the environment first, then apps/api/
 test('the main folder is found from this checkout, and a folder outside git falls back to itself', () => {
 	assert.equal(mainCheckout(ROOT).length > 0, true);
 	withRoot((root) => assert.equal(mainCheckout(root), root));
+});
+
+test('run gives the command the test address, the database name and the opt-in flag, and clears the app login', () => {
+	const script = join(ROOT, 'scripts/secrets/test-login.mjs');
+	const probe =
+		'const e=process.env;const u=e.MONGODB_URI||"";console.log(JSON.stringify({db:e.MONGODB_DB_NAME,run:e.RUN_DB_IT,user:e.MONGODB_USERNAME,pwd:e.MONGODB_PASSWORD,path:/\\/saha_textile_test\\?/.test(u)}))';
+	const child = spawnSync(
+		process.execPath,
+		[script, 'run', 'saha_textile_test', '--', process.execPath, '-e', probe],
+		{ encoding: 'utf8', env: { ...process.env, MONGODB_USERNAME: 'saha_textile_app', MONGODB_PASSWORD: 'x' } },
+	);
+	assert.equal(child.status, 0);
+	assert.deepEqual(JSON.parse(child.stdout), { db: 'saha_textile_test', run: '1', user: '', pwd: '', path: true });
+	const exit = spawnSync(process.execPath, [
+		script,
+		'run',
+		'saha_textile_it',
+		'--',
+		process.execPath,
+		'-e',
+		'process.exit(3)',
+	]);
+	assert.equal(exit.status, 3, "the command's exit code is passed on");
+	assert.equal(spawnSync(process.execPath, [script, 'run', 'saha_textile_local', '--', 'true']).status, 2);
+	assert.equal(spawnSync(process.execPath, [script, 'run', 'saha_textile_it']).status, 2);
+	assert.equal(testRunEnv('saha_textile_e2e', {}).MONGODB_DB_NAME, 'saha_textile_e2e');
 });
 
 test('the command refuses a non-test database and never prints to a screen', () => {

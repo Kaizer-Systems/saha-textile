@@ -8,6 +8,8 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
 	test: {
+		// An opt-in database run may only open a test database; see the file.
+		setupFiles: ['./test/test-database-guard.ts'],
 		maxWorkers: 4,
 		hookTimeout: 30_000,
 		testTimeout: 15_000,

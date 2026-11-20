@@ -11,3 +11,5 @@ export declare function localMongoTarget(
 	env?: NodeJS.ProcessEnv,
 	root?: string,
 ): { host?: string; port?: string; replicaSet?: string; database: string };
+export declare const TEST_DATABASE_NAME: RegExp;
+export declare function testRunEnv(database: string, env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;

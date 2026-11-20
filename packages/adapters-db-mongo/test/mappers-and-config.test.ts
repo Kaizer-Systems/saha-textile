@@ -57,6 +57,48 @@ describe('buildMongoConfig', () => {
 		expect(() => buildMongoConfig({ MONGODB_USERNAME: 'app' })).toThrow('set both');
 		expect(() => buildMongoConfig({ MONGODB_PASSWORD: 'test-value' })).toThrow('set both');
 	});
+
+	it('takes the database a URI names when MONGODB_DB_NAME is not set, never the working default', () => {
+		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1/saha_textile_it?replicaSet=rs0' }).dbName).toBe(
+			'saha_textile_it',
+		);
+		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1/saha%5Ftextile%5Fe2e' }).dbName).toBe('saha_textile_e2e');
+		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1/?replicaSet=rs0' }).dbName).toBe('saha_textile_local');
+		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1' }).dbName).toBe('saha_textile_local');
+	});
+
+	it('holds the test login to test databases, whichever way the login is given', () => {
+		const testUri = (db: string) => `mongodb://saha_textile_tests:p%40ss@h:1/${db}?replicaSet=rs0&authSource=admin`;
+		for (const db of [
+			'saha_textile_it',
+			'saha_textile_e2e',
+			'saha_textile_test',
+			'saha_textile_it_purchasing_flow',
+			'saha_textile_permissions_rename_it',
+		]) {
+			expect(buildMongoConfig({ MONGODB_URI: testUri(db) }).dbName).toBe(db);
+		}
+		expect(() => buildMongoConfig({ MONGODB_URI: testUri('saha_textile_local') })).toThrow(
+			'the test login may only open a test database (a name ending in _it, _e2e or _test), not saha_textile_local',
+		);
+		expect(() =>
+			buildMongoConfig({ MONGODB_URI: testUri('saha_textile_it'), MONGODB_DB_NAME: 'saha_textile_local' }),
+		).toThrow('not saha_textile_local');
+		expect(() => buildMongoConfig({ MONGODB_URI: 'mongodb://saha_textile_tests@h:1/' })).toThrow(
+			'not saha_textile_local',
+		);
+		expect(() =>
+			buildMongoConfig({
+				MONGODB_USERNAME: 'saha_textile_tests',
+				MONGODB_PASSWORD: 'p',
+				MONGODB_DB_NAME: 'shop',
+			}),
+		).toThrow('not shop');
+		// Any other login is the deployment's business, as before.
+		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://saha_textile_app:p@h:1/saha_textile_local' }).dbName).toBe(
+			'saha_textile_local',
+		);
+	});
 });
 
 describe('disconnectMongo', () => {

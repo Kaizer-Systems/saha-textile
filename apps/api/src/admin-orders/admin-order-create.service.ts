@@ -399,7 +399,7 @@ export class AdminOrderCreateService {
 			lineId: line.lineId,
 			productId: line.productId,
 			categoryIds: [...new Set(facts[index]?.facts.categoryPaths.flat() ?? [])],
-			amountINR: round2(line.unitPriceINR * line.quantity),
+			amountINR: line.lineTotalINR,
 			onSale:
 				!line.zonePrice &&
 				facts[index]?.facts.currentSaleINR !== null &&
@@ -543,7 +543,7 @@ export class AdminOrderCreateService {
 				? amountINR
 				: round2(amountINR * built.rate.rateFromINR * (1 + built.rate.markupPercent / 100));
 		return built.lines.map((line) => {
-			const lineTotalINR = round2(line.unitPriceINR * line.quantity);
+			const lineTotalINR = line.lineTotalINR;
 			const zoneRule =
 				line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail' ? line.zonePrice.rule : null;
 			return {

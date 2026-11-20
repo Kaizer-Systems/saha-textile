@@ -96,6 +96,7 @@ export function metaOf(order: Order): { attention: AttentionReason[] } {
 	const attention: AttentionReason[] = [];
 	if (order.addresses?.invoice.needed) attention.push('invoiceAddressNeeded');
 	if (order.paymentStatus === 'pending_at_bank') attention.push('pendingAtBank');
+	if (order.paymentReview) attention.push('paymentReview');
 	return { attention };
 }
 

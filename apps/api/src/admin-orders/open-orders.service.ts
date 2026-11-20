@@ -37,7 +37,6 @@ import type { CheckoutRights } from './admin-order-create.service';
 import { AdminOrdersService, historyEntry, type Actor } from './admin-orders.service';
 import { OrderStock } from './order-stock';
 
-const round2 = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100;
 const istDay = (at: Date): string => new Date(at.getTime() + 330 * 60_000).toISOString().slice(0, 10);
 
 /**
@@ -118,8 +117,8 @@ export class OpenOrdersService {
 			imageAssetId: null,
 			unitPriceINR: line.unitPriceINR,
 			unitPricePaid: line.unitPriceINR,
-			lineTotalINR: round2(line.unitPriceINR * line.quantity),
-			lineTotalPaid: round2(line.unitPriceINR * line.quantity),
+			lineTotalINR: line.lineTotalINR,
+			lineTotalPaid: line.lineTotalINR,
 			pricing: {
 				regularUnitINR:
 					line.zonePrice?.kind === 'priced' ? line.zonePrice.retailUnitPriceINR : line.unitPriceINR,

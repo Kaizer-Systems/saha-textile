@@ -136,6 +136,9 @@ export function buildAdapter(config: AppConfig): FastifyAdapter {
 export async function createApp(config: AppConfig): Promise<NestFastifyApplication> {
 	const app = await NestFactory.create<NestFastifyApplication>(AppModule.forRoot(config), buildAdapter(config), {
 		bufferLogs: true,
+		// Keeps each body's bytes beside the parsed one (`request.rawBody`): PayPal checks its webhook
+		// signature over the exact bytes it sent, so the webhook route forwards those, not a re-encoding.
+		rawBody: true,
 	});
 	app.useLogger(createAppLogger(config));
 	const instance = app.getHttpAdapter().getInstance();

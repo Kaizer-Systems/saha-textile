@@ -94,6 +94,35 @@ export class OrderStock {
 		return costs;
 	}
 
+	/**
+	 * The lines whose pieces are no longer free to sell (a late payment, OD1). Read-only; quantities of
+	 * the same variant on several lines are added up. Untracked stock and made-to-order lines are free.
+	 */
+	async unavailableLines(order: Order): Promise<string[]> {
+		const wanted = new Map<string, { quantity: number; lineIds: string[] }>();
+		for (const line of order.lines) {
+			if (line.madeToOrder) continue;
+			const variantId = await this.variantIdOf(line);
+			const entry = wanted.get(variantId) ?? { quantity: 0, lineIds: [] };
+			entry.quantity += line.quantity;
+			entry.lineIds.push(line.lineId ?? line.sku);
+			wanted.set(variantId, entry);
+		}
+		const out: string[] = [];
+		for (const [variantId, entry] of wanted) {
+			const variant = await this.variants.findById(variantId, 'admin');
+			const stock = variant?.stock;
+			if (!stock) {
+				out.push(...entry.lineIds);
+				continue;
+			}
+			if (!stock.tracked) continue;
+			const free = stock.quantity - stock.held - (stock.reserved ?? 0);
+			if (free < entry.quantity) out.push(...entry.lineIds);
+		}
+		return out;
+	}
+
 	private async move(
 		kind: Move,
 		order: Order,

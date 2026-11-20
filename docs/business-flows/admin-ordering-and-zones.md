@@ -19,6 +19,8 @@ source_of_truth:
     - apps/api/src/admin-orders/payment-requests.service.ts
     - apps/api/src/admin-orders/open-orders.service.ts
     - apps/api/src/shop-checkout/shop-checkout.service.ts
+    - apps/api/src/shop-checkout/shop-payments.service.ts
+    - packages/core-domain/src/orders/shop-payment.ts
     - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
@@ -71,6 +73,18 @@ The order's balance and payment status are worked out again from every payment a
 ## Open orders
 
 An open order lets a buyer collect pieces over weeks and take them in one shipment. Staff add pieces (kept at once, priced in rupees) and remove them (back on sale at once); payments come in as they come. **Close** works out the shipping for one parcel; the order then waits for what is due, is placed when it is already paid ahead, or goes on a business's account within its credit.
+
+## Paying at the shop
+
+**Pay** (`POST /storefront/checkout/place`) saves the order from the same figures the quote showed, takes its number, holds its pieces for 15 minutes (OD1) and sends the browser to the gateway: the INR gateway for rupees, PayPal for any other currency. New addresses ticked **Save to my addresses** are saved at this point. The same key pressed again reuses the order: a double press gets the same hand-off, and a press after an unfinished payment holds the pieces again and starts a new attempt.
+
+- **Attempts.** Each press is an attempt with its own id (`ST2611482190-1`, `-2`…), sent to the gateway as its order id. The attempt keeps the amount and currency it was sent, PayPal's order id, the gateway's reference once known, and when to ask again.
+- **Answers.** CCAvenue's return (`POST /payments/ccavenue/return`, then the shop's return page), its order status echo (`POST /payments/ccavenue/notify`), PayPal's return through the shop's return page, and PayPal's webhook (`POST /payments/paypal/webhook`, checked with `PAYPAL_WEBHOOK_ID` over PayPal's own bytes) all only name an attempt. The status enquiry decides, through core `decidePaymentResult`.
+- **Paid within the hold.** The payment is recorded once by its gateway reference, with a receipt number and, for PayPal, PayPal's own rate, fee and rupees received. The order is placed, its pieces leave the shopper's bag and its coupons count as used.
+- **Paid after the hold ended.** The pieces are held again when every one is still free and the order is placed. Otherwise the whole payment is refunded through the gateway with our own refund reference, the order is cancelled and the sold lines are named for the cart popup. Backorders (OD2) are not built, so none apply yet.
+- **Failed or cancelled.** The hold is let go at once. The return page shows the approved popups: after PayPal, **Please choose your currency** with ₹ first for buyers billed in India; after the INR gateway refuses a card from abroad, **Switch to your region's currency**.
+- **Review.** An answer that doesn't add up (another amount or currency, a paid return with no record yet) changes nothing: the attempt keeps its state, the order shows **Payment to check** under Needs attention, and the enquiry keeps running, since a CCAvenue return can arrive before its status record.
+- **The sweep.** Every minute the API asks again about pending attempts (2, 5, 10, 15, 30 and 60 minutes after Pay, then hourly for two days) and lets go of holds whose 15 minutes ran out, after one last enquiry.
 
 ## The shop checkout quote
 

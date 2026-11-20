@@ -25,6 +25,7 @@ import {
 	orderSearchKeys,
 	toBusiness,
 } from '../src/repositories/orders-build.repository';
+import { MongoTransactionManager } from '../src/transaction-manager';
 import { hasMongoEnv, runPrefix } from './mongo-test-env';
 
 describe('orders build mapping (no database)', () => {
@@ -200,6 +201,32 @@ describe.runIf(hasMongoEnv())('orders build persistence (rs0)', () => {
 		await payments.save(payment);
 		await expect(payments.save({ ...payment, id: `${P}pay2` })).rejects.toThrow();
 		expect((await payments.findByGatewayReference('ccavenue', `${P}gw1`))?.id).toBe(`${P}pay1`);
+	});
+
+	it('counts a payment saved earlier in the same transaction when the order is read again', async () => {
+		const payments = new MongoOrderPaymentRepository();
+		const transactions = new MongoTransactionManager();
+		const seen = await transactions.withTransaction(async (context) => {
+			await payments.save(
+				OrderPayment.parse({
+					id: `${P}pay-tx`,
+					orderId: `${P}tx-order`,
+					method: 'upi',
+					state: 'received',
+					amountINR: 500,
+					currency: 'INR',
+					amount: 500,
+					reference: 'UTR-TX',
+					receivedOn: now.slice(0, 10),
+					recordedBy: null,
+					recordedAt: now,
+				}),
+				context,
+			);
+			// No context passed: the read joins the transaction on the call stack, as settle() does.
+			return (await payments.listByOrder(`${P}tx-order`)).map((row) => row.id);
+		});
+		expect(seen).toEqual([`${P}pay-tx`]);
 	});
 
 	it('finds a payment request by its token hash only', async () => {

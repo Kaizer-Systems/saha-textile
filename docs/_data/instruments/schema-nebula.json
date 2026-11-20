@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 114,
-		"existingModelCount": 95,
+		"nodeCount": 115,
+		"existingModelCount": 96,
 		"targetOnlyCount": 19,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map, as is mailboxOutbox, the Inbox's Undo Send queue."
@@ -1531,6 +1531,19 @@
 			"blockingDecisions": [],
 			"purpose": "The gateway's own payment requests for an order (CCAvenue Quick Invoice, PayPal Invoicing): amount, currency and rate, the gateway's link and id, our forwarding link's token hash, who it went to, attempts, sends by hand, expiry and status.",
 			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts",
+			"references": ["orders"]
+		},
+		{
+			"id": "paymentAttempts",
+			"label": "paymentAttempts",
+			"cluster": "commerce-fulfilment",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "One press of Pay at the shop checkout: the gateway, amount and currency it was sent, its state as decidePaymentResult judged it, PayPal's order id, the gateway reference, the hand-off kept for a double press, and when the status enquiry runs again. A payment after the 15-minute hold for a piece sold meanwhile keeps its refund here (OD1).",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20); OD1 (2026-11-17)",
 			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts",
 			"references": ["orders"]
 		},

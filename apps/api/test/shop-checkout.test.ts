@@ -61,6 +61,9 @@ function harness(options: { cantShip?: boolean; policy?: string; gateways?: stri
 			listEnabled: async () => [{ code: 'INR' }, { code: 'USD' }, { code: 'GBP' }],
 		} as never,
 		{ factsFor: async () => [{ facts: { categoryPaths: [['cat_silk']], currentSaleINR: null } }] } as never,
+		{} as never,
+		{} as never,
+		{} as never,
 		{ findById: async () => ({ id: 'cus_1', addresses: [] }) } as never,
 		{ findByCode: async () => null } as never,
 		{ countPlacedByCustomer: async () => 1 } as never,
@@ -73,6 +76,7 @@ function harness(options: { cantShip?: boolean; policy?: string; gateways?: stri
 			}),
 		} as never,
 		new Map((options.gateways ?? ['ccavenue', 'paypal']).map((id) => [id, {}])) as never,
+		{} as never,
 	);
 	return svc;
 }
@@ -128,5 +132,55 @@ describe('shop checkout quote (S1–S10, shop01–shop09)', () => {
 		expect(
 			(await harness({ gateways: ['ccavenue'] }).quote(request('GB', null, 'GBP'), principal)).payBlocked,
 		).toBe('noGateway');
+	});
+});
+
+describe('shop checkout Pay (place)', () => {
+	it('Pay again on the same order after its hold ended: the pieces are held again and a new attempt starts', async () => {
+		const calls: string[] = [];
+		const existing = {
+			id: 'ord_1',
+			orderNumber: 'ST-2611-482190',
+			status: 'awaiting_payment',
+			holdUntil: null,
+			locale: 'bn',
+			revision: 3,
+			history: [],
+			lines: [{ lineId: 'l1', productId: 'p1', sku: 'S', quantity: 1, held: false }],
+		};
+		const svc = new ShopCheckoutService(
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			{ reserve: async () => void calls.push('reserve') } as never,
+			{
+				start: async (order: { holdUntil: string }, locale: string) => {
+					calls.push(`start:${locale}:${order.holdUntil}`);
+					return { handoff: { kind: 'redirect', url: 'https://gateway.test' } };
+				},
+			} as never,
+			{} as never,
+			{} as never,
+			{
+				findByIdempotencyKey: async (key: string) => (key === 'shop:cus_1:key-0123456789abcdef' ? existing : null),
+				findById: async () => existing,
+				update: async (order: object) => order,
+			} as never,
+			{} as never,
+			{} as never,
+			new Map() as never,
+			{ withTransaction: async <T>(work: (context: object) => Promise<T>) => work({}) } as never,
+		);
+		const handoff = await svc.place(
+			{ ...request('IN', null, 'INR'), idempotencyKey: 'key-0123456789abcdef' },
+			principal,
+			'en',
+			new Date('2026-11-20T10:00:00.000Z'),
+		);
+		expect(handoff).toMatchObject({ orderNumber: 'ST-2611-482190', handoff: { kind: 'redirect' } });
+		expect(calls).toEqual(['reserve', 'start:bn:2026-11-20T10:15:00.000Z']);
 	});
 });

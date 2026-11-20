@@ -115,6 +115,7 @@ export class AdminCartService {
 					unitPriceINR: 0,
 					unitPrice: 0,
 					lineTotal: 0,
+					lineTotalINR: 0,
 					zonePrice: null,
 					problem: 'unavailable',
 				};
@@ -122,7 +123,15 @@ export class AdminCartService {
 			const fact = factsByIndex.get(entry);
 			const zonePrice: ZoneLinePrice | null = fact ? this.zones.price(pricing, fact.facts, now).price : null;
 			if (zonePrice?.kind === 'noPrice') {
-				return { ...base, unitPriceINR: 0, unitPrice: 0, lineTotal: 0, zonePrice, problem: 'noZonePrice' };
+				return {
+					...base,
+					unitPriceINR: 0,
+					unitPrice: 0,
+					lineTotal: 0,
+					lineTotalINR: 0,
+					zonePrice,
+					problem: 'noZonePrice',
+				};
 			}
 			const addOns = row.unitPriceINR - row.basePriceINR;
 			const pieceINR = zonePrice?.kind === 'priced' ? zonePrice.unitPriceINR : row.basePriceINR;
@@ -151,14 +160,14 @@ export class AdminCartService {
 		const counted = lines.filter((line) => !UNSELLABLE.has(line.problem));
 		const subtotalINR = round2(
 			counted.reduce(
-				(sum, line) => sum + ((line as AdminCartLine & { lineTotalINR?: number }).lineTotalINR ?? 0),
+				(sum, line) => sum + line.lineTotalINR,
 				0,
 			),
 		);
 		return {
 			currency: rate.currency,
 			markupPercent: rate.markupPercent,
-			lines: lines.map(({ lineTotalINR: _total, ...line }: AdminCartLine & { lineTotalINR?: number }) => line),
+			lines,
 			subtotal: round2(counted.reduce((sum, line) => sum + line.lineTotal, 0)),
 			subtotalINR,
 		};

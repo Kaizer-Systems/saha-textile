@@ -299,3 +299,44 @@ describe('CCAvenue quick invoice (HDFC API § 13, § 15)', () => {
 		});
 	});
 });
+
+describe('PayPal webhook check', () => {
+	const headers = {
+		'paypal-auth-algo': 'SHA256withRSA',
+		'paypal-cert-url': 'https://api.sandbox.paypal.com/cert.pem',
+		'paypal-transmission-id': 't-1',
+		'paypal-transmission-sig': 'sig',
+		'paypal-transmission-time': '2026-11-20T10:00:00Z',
+	};
+
+	function gateway(answer: string) {
+		const bodies: string[] = [];
+		const fetchFn = vi.fn(async (url: string, init?: { body?: string }) => {
+			if (url.endsWith('/v1/oauth2/token'))
+				return new Response(JSON.stringify({ access_token: 'tok', expires_in: 3600 }), { status: 200 });
+			bodies.push(init?.body ?? '');
+			return new Response(JSON.stringify({ verification_status: answer }), { status: 200 });
+		});
+		const gw = new PayPalPaymentGateway({
+			config: config as Extract<typeof config, { configured: true }>,
+			fetch: fetchFn as unknown as typeof fetch,
+			orders: {} as PayPalOrdersApi,
+			payments: {} as PayPalPaymentsApi,
+		});
+		return { gw, bodies };
+	}
+
+	it('sends PayPal its own bytes, unchanged, beside the webhook id', async () => {
+		const raw = '{"id":"WH-1","event_type":"PAYMENT.CAPTURE.COMPLETED","resource":{"amount":{"value":"121.00"}}}';
+		const { gw, bodies } = gateway('SUCCESS');
+		expect(await gw.verifyWebhook(headers, raw)).toBe(true);
+		expect(bodies[0]).toContain(`"webhook_event":${raw}}`);
+		expect(JSON.parse(bodies[0] ?? '{}')).toMatchObject({ webhook_id: 'wh_1', transmission_id: 't-1' });
+	});
+
+	it('says no to a failed check, a missing header or a body that is not JSON', async () => {
+		expect(await gateway('FAILURE').gw.verifyWebhook(headers, '{}')).toBe(false);
+		expect(await gateway('SUCCESS').gw.verifyWebhook({ ...headers, 'paypal-transmission-sig': undefined }, '{}')).toBe(false);
+		expect(await gateway('SUCCESS').gw.verifyWebhook(headers, 'not json')).toBe(false);
+	});
+});

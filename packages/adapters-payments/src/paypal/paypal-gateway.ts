@@ -87,6 +87,11 @@ function captureState(status: string | undefined): PaymentState {
 	}
 }
 
+/** A request body already written as JSON text (the webhook check splices PayPal's own bytes in). */
+function isRawBody(body: unknown): body is { raw: string } {
+	return typeof body === 'object' && body !== null && typeof (body as { raw?: unknown }).raw === 'string';
+}
+
 function firstCapture(order: PayPalOrder): CapturedPayment | null {
 	return order.purchaseUnits?.[0]?.payments?.captures?.[0] ?? null;
 }
@@ -376,21 +381,32 @@ export class PayPalPaymentGateway implements PaymentGatewayPort, PaymentRequestP
 		});
 	}
 
-	/** Webhook check with PayPal (verify-webhook-signature). False when no webhook id is set. */
-	async verifyWebhook(headers: Readonly<Record<string, string | undefined>>, event: unknown): Promise<boolean> {
+	/**
+	 * Webhook check with PayPal (verify-webhook-signature). False when no webhook id is set or a header
+	 * is missing. `rawBody` is the request body exactly as PayPal sent it: PayPal checks the signature
+	 * over those bytes, so a parsed-and-re-encoded copy can fail on a harmless difference.
+	 */
+	async verifyWebhook(headers: Readonly<Record<string, string | undefined>>, rawBody: string): Promise<boolean> {
 		if (!this.#config.webhookId) return false;
+		const fields = {
+			auth_algo: headers['paypal-auth-algo'],
+			cert_url: headers['paypal-cert-url'],
+			transmission_id: headers['paypal-transmission-id'],
+			transmission_sig: headers['paypal-transmission-sig'],
+			transmission_time: headers['paypal-transmission-time'],
+			webhook_id: this.#config.webhookId,
+		};
+		if (Object.values(fields).some((value) => !value)) return false;
+		try {
+			JSON.parse(rawBody);
+		} catch {
+			return false;
+		}
+		const body = `${JSON.stringify(fields).slice(0, -1)},"webhook_event":${rawBody}}`;
 		const answer = await this.#rest<{ verification_status?: string }>(
 			'POST',
 			'/v1/notifications/verify-webhook-signature',
-			{
-				auth_algo: headers['paypal-auth-algo'],
-				cert_url: headers['paypal-cert-url'],
-				transmission_id: headers['paypal-transmission-id'],
-				transmission_sig: headers['paypal-transmission-sig'],
-				transmission_time: headers['paypal-transmission-time'],
-				webhook_id: this.#config.webhookId,
-				webhook_event: event,
-			},
+			{ raw: body },
 		);
 		return answer.verification_status === 'SUCCESS';
 	}
@@ -442,7 +458,12 @@ export class PayPalPaymentGateway implements PaymentGatewayPort, PaymentRequestP
 					'content-type': 'application/json',
 					prefer: 'return=representation',
 				},
-				body: body === undefined ? undefined : JSON.stringify(body),
+				body:
+					body === undefined
+						? undefined
+						: isRawBody(body)
+							? body.raw
+							: JSON.stringify(body),
 				signal: AbortSignal.timeout(this.#timeoutMs),
 			});
 		} catch {

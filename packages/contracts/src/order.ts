@@ -357,6 +357,19 @@ export const Order = z.object({
 	paymentStatus: OrderPaymentStatus.default('unpaid'),
 	/** How the admin checkout chose to take the money (ck01–ck08); null for shop orders and older rows. */
 	placedWith: z.enum(['paymentLink', 'manual', 'cashOnDelivery', 'onAccount', 'keepOpen']).nullable().optional(),
+	/**
+	 * Shop orders (OD1, `DEC-STOCK-RESERVE`): the pieces are held from Pay until this time, 15 minutes
+	 * later. Null once the hold became a sale or was let go (payment failed, cancelled, or time ran out).
+	 */
+	holdUntil: IsoDateTime.nullable().optional(),
+	/**
+	 * A shop payment staff must look at: a gateway answer that didn't add up (core `decidePaymentResult`
+	 * review), or a refund the gateway refused. Shown under Needs attention until cleared.
+	 */
+	paymentReview: z
+		.object({ attemptId: z.string(), reason: z.string(), at: IsoDateTime })
+		.nullable()
+		.optional(),
 	/** Open orders: when it was opened and closed. */
 	openedAt: IsoDateTime.nullable().optional(),
 	closedAt: IsoDateTime.nullable().optional(),

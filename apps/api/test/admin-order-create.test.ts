@@ -38,6 +38,7 @@ const view = (over: Partial<AdminCartView['lines'][number]> = {}): AdminCartView
 			unitPriceINR: 20_000,
 			unitPrice: 20_000,
 			lineTotal: 40_000,
+			lineTotalINR: 40_000,
 			zonePrice: {
 				kind: 'priced',
 				unitPriceINR: 20_000,

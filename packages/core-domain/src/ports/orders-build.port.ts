@@ -15,6 +15,7 @@ import type {
 	OrderListQuery,
 	OrderPayment,
 	OrderSettings,
+	PaymentAttempt,
 	PaymentRequest,
 	PinLookup,
 	PriceZone,
@@ -96,6 +97,17 @@ export interface AdminOrderRepository {
 	listOpenOnAccount(businessId: string): Promise<Array<{ orderId: string; dueINR: number; placedAt: string }>>;
 	/** How many orders a customer has placed (first-order coupons). */
 	countPlacedByCustomer(customerId: string): Promise<number>;
+	/** Shop orders still waiting for payment whose 15-minute hold has run out (OD1), oldest first. */
+	listHoldsEnded(now: Date, limit: number): Promise<Order[]>;
+}
+
+/** The shop's payment attempts (one per press of Pay); see `PaymentAttempt`. */
+export interface PaymentAttemptRepository {
+	findById(id: string): Promise<PaymentAttempt | null>;
+	listByOrder(orderId: string): Promise<PaymentAttempt[]>;
+	save(attempt: PaymentAttempt, context?: TransactionContext): Promise<PaymentAttempt>;
+	/** Pending attempts whose next status enquiry is due, oldest first. */
+	listDue(now: Date, limit: number): Promise<PaymentAttempt[]>;
 }
 
 export interface OrderPaymentRepository {

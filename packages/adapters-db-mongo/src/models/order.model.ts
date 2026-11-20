@@ -24,6 +24,7 @@ export interface OrderDoc {
 	searchKeys?: string[];
 	idempotencyKey?: string;
 	attention?: string[];
+	holdUntil?: string | null;
 	buyer?: Record<string, unknown>;
 	balance?: Record<string, unknown>;
 	createdAt?: Date;
@@ -65,6 +66,8 @@ const OrderSchema = new Schema<OrderDoc>(
 		buyer: { type: Schema.Types.Mixed },
 		/** Running money in rupees (due, paid ahead…); declared so filters on its parts stay. */
 		balance: { type: Schema.Types.Mixed },
+		/** Shop orders: the 15-minute hold from Pay (OD1); the hold sweep looks for ones that ran out. */
+		holdUntil: { type: String, default: null },
 	},
 	{ collection: 'orders', timestamps: true, strict: false },
 );
@@ -87,6 +90,7 @@ OrderSchema.index({ searchKeys: 1, createdAt: -1 });
 OrderSchema.index({ channel: 1, createdAt: -1 });
 OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ attention: 1, createdAt: -1 });
+OrderSchema.index({ status: 1, holdUntil: 1 }, { partialFilterExpression: { holdUntil: { $type: 'string' } } });
 OrderSchema.index({ 'buyer.businessId': 1, createdAt: -1 });
 OrderSchema.index({ 'buyer.customerId': 1, createdAt: -1 });
 

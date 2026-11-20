@@ -49,8 +49,17 @@ export const OrderListQuery = z.object({
 });
 export type OrderListQuery = z.infer<typeof OrderListQuery>;
 
-/** Why an order needs staff (ol03). */
-export const AttentionReason = z.enum(['invoiceAddressNeeded', 'requestExpiredUnpaid', 'pendingAtBank', 'openTooLong']);
+/**
+ * Why an order needs staff (ol03). `paymentReview`: a shop payment core sent to an operator, or a
+ * refund the gateway refused or didn't confirm.
+ */
+export const AttentionReason = z.enum([
+	'invoiceAddressNeeded',
+	'requestExpiredUnpaid',
+	'pendingAtBank',
+	'openTooLong',
+	'paymentReview',
+]);
 export type AttentionReason = z.infer<typeof AttentionReason>;
 
 export const OrderListRow = z.object({
@@ -134,6 +143,11 @@ export const AdminCartLine = z.object({
 	unitPriceINR: PriceINR,
 	unitPrice: z.number().nonnegative(),
 	lineTotal: z.number().nonnegative(),
+	/**
+	 * The line's rupee total. Not unit × quantity for fabric sold by the metre: the quantity is in tenths
+	 * of a metre and the price is per metre (core `cartLineTotalINR`).
+	 */
+	lineTotalINR: PriceINR.default(0),
 	/** Business orders: how the zone priced the line. */
 	zonePrice: ZoneLinePrice.nullable(),
 	problem: z.enum(['out_of_stock', 'limited', 'unavailable', 'noZonePrice']).nullable(),

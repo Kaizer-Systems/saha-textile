@@ -170,6 +170,8 @@ export const COLLECTION_NAMES = {
 	/** Orders and checkout (brief approved 2026-11-20): payments, payment requests, shipments. */
 	Payment: 'payments',
 	PaymentRequest: 'paymentRequests',
+	/** One press of Pay at the shop checkout; the gateway's answers are judged against it. */
+	PaymentAttempt: 'paymentAttempts',
 	Shipment: 'shipments',
 	/** A business's two accounts (receivable and payable), append-only. */
 	LedgerEntry: 'ledgerEntries',

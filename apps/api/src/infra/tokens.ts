@@ -120,6 +120,7 @@ export const DOCUMENT_RENDERER = Symbol('DocumentRendererPort');
 export const ADMIN_ORDER_REPOSITORY = Symbol('AdminOrderRepository');
 export const ORDER_PAYMENT_REPOSITORY = Symbol('OrderPaymentRepository');
 export const PAYMENT_REQUEST_REPOSITORY = Symbol('PaymentRequestRepository');
+export const PAYMENT_ATTEMPT_REPOSITORY = Symbol('PaymentAttemptRepository');
 export const SHIPMENT_REPOSITORY = Symbol('ShipmentRepository');
 export const BUSINESS_REPOSITORY = Symbol('BusinessRepository');
 export const LEDGER_REPOSITORY = Symbol('LedgerRepository');
@@ -132,3 +133,4 @@ export const EINVOICE_PORT = Symbol('EInvoicePort');
 export const EWAYBILL_PORT = Symbol('EWayBillPort');
 /** The gateways' own payment requests, by gateway (CCAvenue Quick Invoice, PayPal Invoicing). */
 export const PAYMENT_REQUEST_PORTS = Symbol('PaymentRequestPorts');
+export const CHECKOUT_GATEWAYS = Symbol('CheckoutGateways');

@@ -112,12 +112,29 @@ export const CheckoutHandoff = z.object({
 });
 export type CheckoutHandoff = z.infer<typeof CheckoutHandoff>;
 
-/** After a failed or unfinished payment: the approved popups (shop04 PayPal, shop05 INR card refused). */
+/**
+ * After the gateway: what the shop shows. `paid` → the order is placed. `pending` → "We're confirming
+ * your payment" (the bank hasn't answered; the pieces stay held until the 15 minutes run out). `failed`
+ * or `cancelled` → back to checkout with the approved popup when one applies (shop04 PayPal, shop05
+ * INR card refused). `refunded` → the payment came after the hold ended and a piece had sold meanwhile
+ * (OD1): refunded in full, the sold lines named for the cart popup (drawn in a brief before it is built).
+ */
 export const CheckoutPaymentOutcome = z.object({
+	orderId: Id,
 	orderNumber: z.string(),
-	result: z.enum(['paid', 'pending', 'failed', 'cancelled']),
+	result: z.enum(['paid', 'pending', 'failed', 'cancelled', 'refunded']),
 	popup: z.enum(['chooseCurrency', 'switchToRegionCurrency']).nullable(),
 	/** The currency the popup lists first. */
 	firstCurrency: z.string().length(3).nullable(),
+	/** `refunded`: the cart lines whose pieces sold before the payment arrived. */
+	soldOutLineIds: z.array(Id).default([]),
 });
 export type CheckoutPaymentOutcome = z.infer<typeof CheckoutPaymentOutcome>;
+
+/** The shop's return page: `token` is PayPal's order id; a claim only, checked by a status enquiry. */
+export const CheckoutConfirm = z.object({
+	token: z.string().regex(/^[A-Z0-9]{5,40}$/).optional(),
+	/** The shopper came back from the gateway's Cancel: the hold is let go at once (OD1). */
+	cancelled: z.boolean().default(false),
+});
+export type CheckoutConfirm = z.infer<typeof CheckoutConfirm>;

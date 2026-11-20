@@ -6,6 +6,7 @@ import {
 	LedgerEntry,
 	OrderPayment,
 	OrderSettings,
+	PaymentAttempt,
 	PaymentRequest,
 	PriceZone,
 	Shipment,
@@ -30,6 +31,7 @@ import {
 	type LedgerRepository,
 	type OrderPaymentRepository,
 	type OrderSettingsRepository,
+	type PaymentAttemptRepository,
 	type PaymentRequestRepository,
 	type PriceZoneRepository,
 	type ShipmentRepository,
@@ -43,6 +45,7 @@ import {
 	CouponUseModel,
 	LedgerEntryModel,
 	OrderModel,
+	PaymentAttemptModel,
 	PaymentModel,
 	PaymentRequestModel,
 	PriceZoneModel,
@@ -167,9 +170,16 @@ function withListFilter(base: FilterQuery<OrderDoc>, listFilter: string): Filter
 	return { ...base, status: { $in: [...(STATUS_BY_FILTER[listFilter] ?? [])] } };
 }
 
+/**
+ * Reads that may run inside a use case's transaction join it (the session on the async call stack),
+ * so a payment saved earlier in the same transaction is counted when the order is settled again.
+ * Outside a transaction this is null and the read is an ordinary one.
+ */
+const joined = () => sessionFrom() ?? null;
+
 export class MongoAdminOrderRepository implements AdminOrderRepository {
 	async findById(id: string): Promise<Order | null> {
-		const doc = await OrderModel.findById(id).lean<OrderDoc>().exec();
+		const doc = await OrderModel.findById(id).session(joined()).lean<OrderDoc>().exec();
 		return doc ? toOrder(doc) : null;
 	}
 
@@ -177,13 +187,14 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 		const doc = await OrderModel.findOne({
 			$or: [{ orderNumber: number }, { orderNumberKey: normalizeForSearch(number) }],
 		})
+			.session(joined())
 			.lean<OrderDoc>()
 			.exec();
 		return doc ? toOrder(doc) : null;
 	}
 
 	async findByIdempotencyKey(key: string): Promise<Order | null> {
-		const doc = await OrderModel.findOne({ idempotencyKey: key }).lean<OrderDoc>().exec();
+		const doc = await OrderModel.findOne({ idempotencyKey: key }).session(joined()).lean<OrderDoc>().exec();
 		return doc ? toOrder(doc) : null;
 	}
 
@@ -290,6 +301,18 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 		}));
 	}
 
+	async listHoldsEnded(now: Date, limit: number): Promise<Order[]> {
+		const docs = await OrderModel.find({
+			status: 'awaiting_payment',
+			holdUntil: { $type: 'string', $lte: now.toISOString() },
+		})
+			.sort({ holdUntil: 1 })
+			.limit(limit)
+			.lean<OrderDoc[]>()
+			.exec();
+		return docs.map(toOrder);
+	}
+
 	async countPlacedByCustomer(customerId: string): Promise<number> {
 		return OrderModel.countDocuments({
 			$or: [{ 'buyer.customerId': customerId }, { userId: customerId }],
@@ -304,18 +327,23 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 
 export class MongoOrderPaymentRepository implements OrderPaymentRepository {
 	async listByOrder(orderId: string): Promise<OrderPayment[]> {
-		const docs = await PaymentModel.find({ orderId }).sort({ recordedAt: 1 }).lean<OrdersBuildDoc[]>().exec();
+		const docs = await PaymentModel.find({ orderId })
+			.sort({ recordedAt: 1 })
+			.session(joined())
+			.lean<OrdersBuildDoc[]>()
+			.exec();
 		return docs.map((doc) => OrderPayment.parse(fromDoc(doc)));
 	}
 
 	async findById(id: string): Promise<OrderPayment | null> {
-		const doc = fromDoc(await PaymentModel.findById(id).lean<OrdersBuildDoc>().exec());
+		const doc = fromDoc(await PaymentModel.findById(id).session(joined()).lean<OrdersBuildDoc>().exec());
 		return doc ? OrderPayment.parse(doc) : null;
 	}
 
 	async findByGatewayReference(gateway: string, reference: string): Promise<OrderPayment | null> {
 		const doc = fromDoc(
 			await PaymentModel.findOne({ gatewayKey: `${gateway}:${reference}` })
+				.session(joined())
 				.lean<OrdersBuildDoc>()
 				.exec(),
 		);
@@ -341,25 +369,69 @@ export class MongoOrderPaymentRepository implements OrderPaymentRepository {
 	}
 }
 
+export class MongoPaymentAttemptRepository implements PaymentAttemptRepository {
+	async findById(id: string): Promise<PaymentAttempt | null> {
+		const doc = fromDoc(await PaymentAttemptModel.findById(id).session(joined()).lean<OrdersBuildDoc>().exec());
+		return doc ? PaymentAttempt.parse(doc) : null;
+	}
+
+	async listByOrder(orderId: string): Promise<PaymentAttempt[]> {
+		const docs = await PaymentAttemptModel.find({ orderId })
+			.sort({ createdAt: 1 })
+			.session(joined())
+			.lean<OrdersBuildDoc[]>()
+			.exec();
+		return docs.map((doc) => PaymentAttempt.parse(fromDoc(doc)));
+	}
+
+	async save(attempt: PaymentAttempt, context?: TransactionContext): Promise<PaymentAttempt> {
+		const parsed = PaymentAttempt.parse(attempt);
+		const { _id, ...rest } = toDoc(parsed);
+		await PaymentAttemptModel.updateOne(
+			{ _id },
+			{ $set: rest },
+			{ upsert: true, session: sessionFrom(context) },
+		).exec();
+		return parsed;
+	}
+
+	async listDue(now: Date, limit: number): Promise<PaymentAttempt[]> {
+		const docs = await PaymentAttemptModel.find({
+			state: 'pending',
+			nextCheckAt: { $type: 'string', $lte: now.toISOString() },
+		})
+			.sort({ nextCheckAt: 1 })
+			.limit(limit)
+			.lean<OrdersBuildDoc[]>()
+			.exec();
+		return docs.map((doc) => PaymentAttempt.parse(fromDoc(doc)));
+	}
+}
+
 export class MongoPaymentRequestRepository implements PaymentRequestRepository {
 	async listByOrder(orderId: string): Promise<PaymentRequest[]> {
-		const docs = await PaymentRequestModel.find({ orderId }).sort({ createdAt: 1 }).lean<OrdersBuildDoc[]>().exec();
+		const docs = await PaymentRequestModel.find({ orderId })
+			.sort({ createdAt: 1 })
+			.session(joined())
+			.lean<OrdersBuildDoc[]>()
+			.exec();
 		return docs.map((doc) => PaymentRequest.parse(fromDoc(doc)));
 	}
 
 	async findById(id: string): Promise<PaymentRequest | null> {
-		const doc = fromDoc(await PaymentRequestModel.findById(id).lean<OrdersBuildDoc>().exec());
+		const doc = fromDoc(await PaymentRequestModel.findById(id).session(joined()).lean<OrdersBuildDoc>().exec());
 		return doc ? PaymentRequest.parse(doc) : null;
 	}
 
 	async findByTokenHash(tokenHash: string): Promise<PaymentRequest | null> {
-		const doc = fromDoc(await PaymentRequestModel.findOne({ tokenHash }).lean<OrdersBuildDoc>().exec());
+		const doc = fromDoc(await PaymentRequestModel.findOne({ tokenHash }).session(joined()).lean<OrdersBuildDoc>().exec());
 		return doc ? PaymentRequest.parse(doc) : null;
 	}
 
 	async findByGatewayRequestId(gateway: string, gatewayRequestId: string): Promise<PaymentRequest | null> {
 		const doc = fromDoc(
 			await PaymentRequestModel.findOne({ gatewayKey: `${gateway}:${gatewayRequestId}` })
+				.session(joined())
 				.lean<OrdersBuildDoc>()
 				.exec(),
 		);
@@ -389,7 +461,11 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
 
 export class MongoShipmentRepository implements ShipmentRepository {
 	async listByOrder(orderId: string): Promise<Shipment[]> {
-		const docs = await ShipmentModel.find({ orderId }).sort({ createdAt: 1 }).lean<OrdersBuildDoc[]>().exec();
+		const docs = await ShipmentModel.find({ orderId })
+			.sort({ createdAt: 1 })
+			.session(joined())
+			.lean<OrdersBuildDoc[]>()
+			.exec();
 		return docs.map((doc) => Shipment.parse(fromDoc(doc)));
 	}
 
@@ -601,7 +677,9 @@ export class MongoLedgerRepository implements LedgerRepository {
 		const [row] = await LedgerEntryModel.aggregate<{ total: number }>([
 			{ $match: { businessId, side } },
 			{ $group: { _id: null, total: { $sum: '$amountINR' } } },
-		]).exec();
+		])
+			.session(joined())
+			.exec();
 		return Math.round((row?.total ?? 0) * 100) / 100;
 	}
 

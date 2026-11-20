@@ -105,6 +105,72 @@ export const MarkPaymentReceivedWrite = z.object({
 export type MarkPaymentReceivedWrite = z.infer<typeof MarkPaymentReceivedWrite>;
 
 /* ---------------------------------------------------------------------------------------------- */
+/* Shop payment attempts                                                                           */
+/* ---------------------------------------------------------------------------------------------- */
+
+/** Where an attempt stands, in the words of core `PaymentState`. */
+export const PaymentAttemptState = z.enum([
+	'pending',
+	'authorized',
+	'captured',
+	'failed',
+	'cancelled',
+	'refunded',
+	'review',
+]);
+export type PaymentAttemptState = z.infer<typeof PaymentAttemptState>;
+
+/**
+ * One press of Pay at the shop checkout (OD1: the pieces are held for 15 minutes from Pay). Each
+ * attempt has its own id, sent to the gateway as its order id, so a retry never reuses one. The
+ * gateway's answers reach it only through core `decidePaymentResult`: the browser's return is a
+ * claim, the status enquiry is the proof. Amounts are whole minor units, as the gateway is sent them.
+ */
+export const PaymentAttempt = z.object({
+	/** `ST2611482190-1`: the order number's text form and the attempt's count (CCAvenue: 30 letters and digits). */
+	id: z.string().regex(/^[A-Za-z0-9-]{1,30}$/),
+	orderId: Id,
+	gateway: PaymentGateway,
+	currency: z.string().length(3),
+	amountMinor: z.number().int().positive(),
+	amountINR: PriceINR,
+	state: PaymentAttemptState,
+	/** PayPal's order id (the status enquiry needs it); null for CCAvenue. */
+	gatewayOrderId: z.string().nullable().default(null),
+	/** The gateway's payment reference once it gave one (CCAvenue tracking id, PayPal capture id). */
+	gatewayReference: z.string().nullable().default(null),
+	/** How the browser goes to the gateway, kept so a double press answers with the same hand-off. */
+	handoff: z
+		.discriminatedUnion('kind', [
+			z.object({ kind: z.literal('redirect'), url: z.string() }),
+			z.object({ kind: z.literal('form-post'), url: z.string(), fields: z.record(z.string(), z.string()) }),
+		])
+		.nullable()
+		.default(null),
+	/** The gateway's reason for a failure, for staff and for choosing the shopper's popup. */
+	failureReason: z.string().max(300).nullable().default(null),
+	/** Why core sent it to an operator (amount or currency mismatch, a paid return with no record…). */
+	reviewReason: z.string().nullable().default(null),
+	/** A payment that came after the hold ended for a piece sold meanwhile: refunded in full (OD1). */
+	refund: z
+		.object({
+			reference: z.string(),
+			outcome: z.enum(['accepted', 'duplicate', 'refused', 'unknown']),
+			soldOutLineIds: z.array(Id),
+			at: IsoDateTime,
+		})
+		.nullable()
+		.default(null),
+	/** The status enquiry runs again at `nextCheckAt` while the attempt is pending (HDFC: returns can be 5–10 minutes late). */
+	checks: z.number().int().nonnegative().default(0),
+	nextCheckAt: IsoDateTime.nullable().default(null),
+	lastCheckedAt: IsoDateTime.nullable().default(null),
+	createdAt: IsoDateTime,
+	updatedAt: IsoDateTime,
+});
+export type PaymentAttempt = z.infer<typeof PaymentAttempt>;
+
+/* ---------------------------------------------------------------------------------------------- */
 /* Payment requests                                                                               */
 /* ---------------------------------------------------------------------------------------------- */
 

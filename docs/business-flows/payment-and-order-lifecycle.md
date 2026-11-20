@@ -171,8 +171,7 @@ Do not generate production numbers from database counts, random ids, timestamps 
 ## Limitations
 
 - `POST /orders` creates a `pending` order and removes the cart in one transaction. It has no idempotency key, stock step or payment step.
-- The CCAvenue adapter is bound in the API, and no route calls it. No payment collection, hosted handoff, callback route or webhook exists.
-- No job enquires about attempts left `pending`, and no code calls `decidePaymentResult`.
+- The shop checkout's Pay (`POST /storefront/checkout/place`) is the payment path built on these rules; see [Admin ordering, zones and payments](/business-flows/admin-ordering-and-zones#paying-at-the-shop). `POST /orders` stays until the shop's checkout screens use Pay.
 - `OrdersService` generates an interim order number.
 - Status changes have no legal-transition rule, version check or audit record.
 

@@ -67,6 +67,28 @@ PaymentRequestSchema.index({ status: 1, expiresAt: 1 });
 export const PaymentRequestModel: Model<OrdersBuildDoc> =
 	(models.PaymentRequest as Model<OrdersBuildDoc>) ?? model<OrdersBuildDoc>('PaymentRequest', PaymentRequestSchema);
 
+/* ------------------------------------------------------------------ shop payment attempts */
+
+const PaymentAttemptSchema = new Schema<OrdersBuildDoc>(
+	{
+		_id: { type: String, required: true },
+		orderId: { type: String, required: true },
+		state: { type: String, required: true },
+		/** When the status enquiry runs again while the attempt is pending. */
+		nextCheckAt: { type: String, default: null },
+		createdAt: { type: String, required: true },
+	},
+	{ ...loose, collection: COLLECTION_NAMES.PaymentAttempt },
+);
+PaymentAttemptSchema.index({ orderId: 1, createdAt: 1 });
+PaymentAttemptSchema.index(
+	{ state: 1, nextCheckAt: 1 },
+	{ partialFilterExpression: { nextCheckAt: { $type: 'string' } } },
+);
+
+export const PaymentAttemptModel: Model<OrdersBuildDoc> =
+	(models.PaymentAttempt as Model<OrdersBuildDoc>) ?? model<OrdersBuildDoc>('PaymentAttempt', PaymentAttemptSchema);
+
 /* ------------------------------------------------------------------ shipments */
 
 const ShipmentSchema = new Schema<OrdersBuildDoc>(

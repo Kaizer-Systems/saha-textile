@@ -6,3 +6,4 @@ export * from './coupon-engine';
 export * from './numbering';
 export * from './address-rules';
 export * from './open-orders';
+export * from './shop-payment';

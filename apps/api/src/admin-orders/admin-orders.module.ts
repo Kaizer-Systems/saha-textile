@@ -7,8 +7,14 @@ import { AuthModule } from '../auth/auth.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { APP_CONFIG } from '../config/app-config';
-import { buildPaymentRequestPorts } from '../infra/payment-gateway-factory';
-import { EINVOICE_PORT, EWAYBILL_PORT, INR_PAYMENT_GATEWAY, PAYMENT_REQUEST_PORTS } from '../infra/tokens';
+import { buildCheckoutGateways, buildPaymentRequestPorts } from '../infra/payment-gateway-factory';
+import {
+	CHECKOUT_GATEWAYS,
+	EINVOICE_PORT,
+	EWAYBILL_PORT,
+	INR_PAYMENT_GATEWAY,
+	PAYMENT_REQUEST_PORTS,
+} from '../infra/tokens';
 import { ShippingModule } from '../shipping/shipping.module';
 import { OrdersSetupModule } from '../orders-setup/orders-setup.module';
 import { AdminCartService } from './admin-cart.service';
@@ -33,15 +39,19 @@ import { PaymentRequestsService } from './payment-requests.service';
 		PaymentRequestsService,
 		PaymentRequestSweep,
 		OpenOrdersService,
-		{
-			provide: PAYMENT_REQUEST_PORTS,
-			useFactory: buildPaymentRequestPorts,
-			inject: [APP_CONFIG, INR_PAYMENT_GATEWAY],
-		},
+		{ provide: CHECKOUT_GATEWAYS, useFactory: buildCheckoutGateways, inject: [APP_CONFIG, INR_PAYMENT_GATEWAY] },
+		{ provide: PAYMENT_REQUEST_PORTS, useFactory: buildPaymentRequestPorts, inject: [CHECKOUT_GATEWAYS] },
 		// No e-invoice or e-way bill integration yet: Raise falls back to typing the details by hand.
 		{ provide: EINVOICE_PORT, useValue: NOT_CONNECTED_EINVOICE },
 		{ provide: EWAYBILL_PORT, useValue: NOT_CONNECTED_EWAYBILL },
 	],
-	exports: [AdminCartService, AdminOrdersService, PAYMENT_REQUEST_PORTS],
+	exports: [
+		AdminCartService,
+		AdminOrdersService,
+		OrderStock,
+		PaymentRequestsService,
+		PAYMENT_REQUEST_PORTS,
+		CHECKOUT_GATEWAYS,
+	],
 })
 export class AdminOrdersModule {}

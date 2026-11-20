@@ -42,10 +42,34 @@ export function buildPayPalGateway(config: AppConfig, logger = new Logger('PayPa
 /** The gateways that send their own payment requests, by gateway (CCAvenue Quick Invoice, PayPal Invoicing). */
 export type PaymentRequestPorts = ReadonlyMap<'ccavenue' | 'paypal', PaymentRequestPort>;
 
-export function buildPaymentRequestPorts(config: AppConfig, inr: PaymentGatewayPort): PaymentRequestPorts {
+/** PayPal's webhook check; `rawBody` is the request body exactly as received. */
+export interface WebhookVerifier {
+	verifyWebhook(headers: Readonly<Record<string, string | undefined>>, rawBody: string): Promise<boolean>;
+}
+
+/**
+ * What the shop checkout and our payment requests go through, built once: the INR gateway when it has
+ * its keys (null otherwise), and PayPal when it is on (null when off, with its one startup line).
+ */
+export interface CheckoutGateways {
+	readonly inr: PaymentGatewayPort | null;
+	readonly paypal: (PaymentGatewayPort & PaymentRequestPort & WebhookVerifier) | null;
+}
+
+export function buildCheckoutGateways(config: AppConfig, inr: PaymentGatewayPort): CheckoutGateways {
+	return { inr: inr instanceof UnavailablePaymentGateway ? null : inr, paypal: buildPayPalGateway(config) };
+}
+
+/** The gateway that took an attempt, by its name. */
+export function gatewayNamed(gateways: CheckoutGateways, id: string): PaymentGatewayPort | null {
+	if (gateways.inr?.gateway === id) return gateways.inr;
+	if (gateways.paypal?.gateway === id) return gateways.paypal;
+	return null;
+}
+
+export function buildPaymentRequestPorts(gateways: CheckoutGateways): PaymentRequestPorts {
 	const ports = new Map<'ccavenue' | 'paypal', PaymentRequestPort>();
-	if (inr instanceof CcavenuePaymentGateway) ports.set('ccavenue', inr);
-	const paypal = buildPayPalGateway(config);
-	if (paypal) ports.set('paypal', paypal);
+	if (gateways.inr instanceof CcavenuePaymentGateway) ports.set('ccavenue', gateways.inr);
+	if (gateways.paypal) ports.set('paypal', gateways.paypal);
 	return ports;
 }

@@ -152,6 +152,29 @@ export function containerLogs(container, { tail = 300, since = '' } = {}) {
 	});
 }
 
+/**
+ * The Secrets screen's names and states, from Infisical with the owner's login. The CLI calls block,
+ * so they run in their own process (`secret-names.mjs`); its output holds names only, never values.
+ */
+export function secretNames() {
+	return new Promise((resolve, reject) => {
+		execFile(
+			process.execPath,
+			[join(ROOT, 'scripts/release-console/secret-names.mjs')],
+			{ cwd: ROOT, encoding: 'utf8', timeout: 180_000, maxBuffer: 8 * 1024 * 1024 },
+			(_error, stdout) => {
+				try {
+					const out = JSON.parse(String(stdout));
+					if (out.error) reject(Object.assign(new Error(out.error), { status: 502 }));
+					else resolve(out);
+				} catch {
+					reject(Object.assign(new Error('Infisical could not be read.'), { status: 502 }));
+				}
+			},
+		);
+	});
+}
+
 /** Which mode 1/2 servers answer on this Mac. */
 export async function devServers() {
 	const out = await sh('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN']);
@@ -357,6 +380,11 @@ export function createRunner(token) {
 			if (req.method === 'GET' && path === '/mac') return send(200, await shared('mac', 2000, macNow));
 			if (req.method === 'GET' && path === '/docker') return send(200, await shared('docker', 2000, dockerNow));
 			if (req.method === 'GET' && path === '/dev-servers') return send(200, await devServers());
+			if (req.method === 'GET' && path === '/secrets')
+				return send(
+					200,
+					await shared(`secrets${url.searchParams.get('fresh') ? Date.now() : ''}`, 60_000, secretNames),
+				);
 			if (req.method === 'GET' && path === '/shop-health')
 				return send(200, await shared('shop-health', 2000, shopHealth));
 			if (req.method === 'GET' && path === '/logs')

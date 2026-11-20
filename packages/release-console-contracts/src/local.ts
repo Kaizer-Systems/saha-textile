@@ -202,3 +202,31 @@ export const requestsViewSchema = z.object({
 	series: z.array(z.tuple([z.number(), num, z.number(), z.number()])),
 });
 export type RequestsView = z.infer<typeof requestsViewSchema>;
+
+/* ----- secrets (names only, from Infisical with the owner's login) ----- */
+
+/** `not-here`: this tier does not use the name or folder; `unknown`: Infisical could not be read. */
+export const secretCellSchema = z.enum(['set', 'empty', 'missing', 'not-here', 'unknown']);
+export type SecretCell = z.infer<typeof secretCellSchema>;
+export const secretsViewSchema = z.object({
+	at: z.string(),
+	tiers: z.array(z.object({ tier: z.string(), project: z.string(), environment: z.string() })),
+	folders: z.array(
+		z.object({
+			folder: z.string(),
+			rows: z.array(
+				z.object({
+					name: z.string(),
+					/** Listed in docker/infisical/variable-names.json. */
+					expected: z.boolean(),
+					devOnly: z.boolean(),
+					/** May stay empty: optional, or one of an either-one pair. */
+					optional: z.boolean(),
+					cells: z.record(z.string(), secretCellSchema),
+				}),
+			),
+		}),
+	),
+	errors: z.array(z.object({ tier: z.string(), folder: z.string(), message: z.string() })),
+});
+export type SecretsView = z.infer<typeof secretsViewSchema>;

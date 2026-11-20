@@ -8,6 +8,7 @@ import { ApmScreen } from './apm-screen';
 import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } from './local-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
+import { SecretsScreen } from './secrets-screen';
 import { ServicesScreen } from './services-screen';
 import {
 	CfDomainsScreen,
@@ -35,6 +36,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 	health: 'normal',
 	alerts: ['rules', 'firing'],
 	apm: ['services', 'endpoint'],
+	secrets: ['matrix', 'problem'],
 	pulls: 'list',
 	pipeline: 'list',
 	droplets: 'list',
@@ -65,6 +67,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		HealthScreen,
 		AlertsScreen,
 		ApmScreen,
+		SecretsScreen,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -179,6 +182,9 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 					}
 					@case ('health') {
 						<rc-health-screen />
+					}
+					@case ('secrets') {
+						<rc-secrets-screen [tab]="tabKey()" />
 					}
 					@case ('apm') {
 						<rc-apm-screen [tab]="tabKey()" />

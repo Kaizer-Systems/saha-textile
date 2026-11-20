@@ -6,6 +6,8 @@ import {
 	alertsViewSchema,
 	type RequestsView,
 	requestsViewSchema,
+	type SecretsView,
+	secretsViewSchema,
 	type AttentionCount,
 	type DockerSnapshot,
 	type HelperStatus,
@@ -273,6 +275,9 @@ export class ConsoleApi {
 	}
 	requests(minutes: number): Promise<RequestsView> {
 		return this.call('GET', `/api/local/requests?minutes=${minutes}`, requestsViewSchema);
+	}
+	secrets(fresh = false): Promise<SecretsView> {
+		return this.call('GET', `/api/local/secrets${fresh ? '?fresh=1' : ''}`, secretsViewSchema, undefined, 200_000);
 	}
 	alerts(): Promise<AlertsView> {
 		return this.call('GET', '/api/local/alerts', alertsViewSchema);

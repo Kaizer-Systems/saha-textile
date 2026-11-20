@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestj
 import {
 	type AlertsView,
 	type RequestsView,
+	type SecretsView,
 	type DockerSnapshot,
 	type HelperStatus,
 	type Job,
@@ -60,6 +61,15 @@ export class LocalController {
 			query,
 		);
 		return this.requests.view(minutes);
+	}
+
+	/**
+	 * Names in Infisical per tier and folder, never values, read by the Mac helper with the owner's
+	 * login; `fresh` reads again instead of the last minute's answer.
+	 */
+	@Get('secrets')
+	secrets(@Query('fresh') fresh?: string): Promise<SecretsView> {
+		return this.runner.call<SecretsView>('GET', `/secrets${fresh ? '?fresh=1' : ''}`, undefined, 190_000);
 	}
 
 	/** Local alert rules, what fires now and what ended in the last 7 days. */

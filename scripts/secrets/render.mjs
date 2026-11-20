@@ -489,9 +489,14 @@ export function projectReport(folders, { tier, inventory, setByPipeline = new Se
  * One folder the shop never reads (inventory.otherFolders), for `pnpm secrets:status`. Names only.
  * @param {import('./inventory.mjs').OtherFolder} group
  * @param {Map<string, string> | null} values   null when the folder could not be read
+ * @param {Record<string, Map<string, string>>} [shopFolders]  the same project's shop folders, to
+ *   point out a name still kept there (it belongs in this folder only)
  */
-export function otherFolderReport(group, values) {
-	if (values === null) return { folder: group.folder, readable: false, count: group.names.length };
+export function otherFolderReport(group, values, shopFolders = {}) {
+	const alsoIn = Object.entries(shopFolders).flatMap(([folder, entries]) =>
+		group.names.filter((name) => entries.has(name)).map((name) => `/${folder}/${name}`),
+	);
+	if (values === null) return { folder: group.folder, readable: false, count: group.names.length, alsoIn };
 	const listed = new Set(group.names);
 	const inSets = new Set(group.oneOf.flat());
 	const required = group.names.filter((name) => !group.optional.has(name) && !inSets.has(name));
@@ -507,14 +512,22 @@ export function otherFolderReport(group, values) {
 		needOneOf: group.oneOf.filter((set) => !set.some(filled)),
 		optionalBlank: [...group.optional, ...met.flat()].filter((name) => !filled(name)),
 		unknown: [...values.keys()].filter((name) => !listed.has(name)).sort(),
+		alsoIn,
 	};
 }
 
 /** @param {ReturnType<typeof otherFolderReport>} report */
 export function formatOtherFolder(report) {
 	const head = `  /${report.folder.padEnd(15)}`;
+	const moved =
+		report.alsoIn.length > 0
+			? [`      also still in a shop folder: ${report.alsoIn.join(', ')} (delete it there once it is here)`]
+			: [];
 	if (!report.readable) {
-		return `${head} could not be read (not created yet?); its ${report.count} names are in docker/infisical/variable-names.json`;
+		return [
+			`${head} could not be read (not created yet?); its ${report.count} names are in docker/infisical/variable-names.json`,
+			...moved,
+		].join('\n');
 	}
 	const lines = [`${head} ${report.filled} filled`];
 	if (report.missing.length > 0) lines.push(`      not in Infisical yet: ${report.missing.join(', ')}`);
@@ -524,6 +537,7 @@ export function formatOtherFolder(report) {
 	}
 	if (report.optionalBlank.length > 0) lines.push(`      optional, blank: ${report.optionalBlank.join(', ')}`);
 	if (report.unknown.length > 0) lines.push(`      not in the inventory (misspelt?): ${report.unknown.join(', ')}`);
+	lines.push(...moved);
 	return lines.join('\n');
 }
 

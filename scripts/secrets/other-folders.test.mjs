@@ -48,6 +48,37 @@ test('the release-console group is in the inventory: dev only, read by the conso
 	]);
 });
 
+test('the github-actions group holds the geo refresh key: dev only, read by the workflows', () => {
+	const actions = loadInventory().otherFolders.find((candidate) => candidate.folder === 'github-actions');
+	assert.ok(actions);
+	assert.deepEqual([...actions.tiers], ['dev']);
+	assert.equal(actions.readBy, '.github/workflows');
+	assert.deepEqual(actions.names, ['DATA_GOV_IN_API_KEY']);
+});
+
+test('a name still kept in a shop folder is pointed out, readable folder or not', () => {
+	const [tool] = inventoryWith({ tool: group() }).otherFolders;
+	const shop = {
+		api: new Map([
+			['TOOL_A', 'zz'],
+			['PORT', '4000'],
+		]),
+		deployment: new Map(),
+	};
+	const unread = formatOtherFolder(otherFolderReport(tool, null, shop));
+	assert.match(unread, /also still in a shop folder: \/api\/TOOL_A \(delete it there once it is here\)/);
+	const read = otherFolderReport(
+		tool,
+		new Map([
+			['TOOL_A', 'zz'],
+			['TOOL_B', 'zz'],
+		]),
+		shop,
+	);
+	assert.deepEqual(read.alsoIn, ['/api/TOOL_A']);
+	assert.ok(!formatOtherFolder(read).includes('zz'));
+});
+
 test('an other folder may not reuse a shop folder, name an unknown project, skip readBy or repeat a name', () => {
 	const refused = (otherFolders, message) =>
 		assert.throws(
@@ -100,6 +131,7 @@ test('status reports filled, missing, blank, optional-blank and unknown names, a
 		needOneOf: [],
 		optionalBlank: ['TOOL_C'],
 		unknown: ['TOOL_X'],
+		alsoIn: [],
 	});
 	const text = formatOtherFolder(report);
 	assert.match(text, /\/tool +2 filled/);

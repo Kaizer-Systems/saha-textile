@@ -59,6 +59,11 @@ After this, `/deployment` holds ten entries per project.
   `saha-textile-dev` and add the names listed there. Each DigitalOcean and Cloudflare pair
   (`*_READ_TOKEN`, `*_WRITE_TOKEN`) needs either key: the console reads with the change key when
   there is no read key. Not in staging or production.
+- **`/github-actions`, dev project only** (owner, 2026-11-20): the master copy of keys that only
+  GitHub Actions workflows use, kept for safe keeping. Today it holds `DATA_GOV_IN_API_KEY`, which
+  `.github/workflows/geo-refresh.yml` reads from the repository secret of the same name. Move it
+  here from `/api` and delete the `/api` entry (the API never reads it, and `pnpm stack:env` and a
+  release refuse it there). A changed value goes to GitHub's repository secrets as well.
 
 ## Filling values
 

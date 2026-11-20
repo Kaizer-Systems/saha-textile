@@ -222,6 +222,12 @@
 				["CONSOLE_DO_READ_TOKEN", "CONSOLE_DO_WRITE_TOKEN"],
 				["CONSOLE_CF_READ_TOKEN", "CONSOLE_CF_WRITE_TOKEN"]
 			]
+		},
+		"github-actions": {
+			"description": "Keys only GitHub Actions workflows use, kept here as the master copy for safe keeping (owner, 2026-11-20). The workflow reads its repository secret of the same name; copy a changed value to GitHub's repository secrets too. Read by .github/workflows only; never rendered into the shop's files or a release.",
+			"projects": ["dev"],
+			"readBy": ".github/workflows",
+			"names": ["DATA_GOV_IN_API_KEY"]
 		}
 	}
 }

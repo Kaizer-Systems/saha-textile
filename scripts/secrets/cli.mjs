@@ -64,7 +64,7 @@ function status(args) {
 			} catch (error) {
 				if (!(error instanceof SecretsError)) throw error;
 			}
-			lines.push(formatOtherFolder(otherFolderReport(group, values)));
+			lines.push(formatOtherFolder(otherFolderReport(group, values, folders)));
 		}
 		blocks.push(lines.join('\n'));
 	}

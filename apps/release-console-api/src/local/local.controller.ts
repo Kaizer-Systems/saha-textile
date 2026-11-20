@@ -12,6 +12,7 @@ import {
 	type ShopHealth,
 	confirmPinSchema,
 	localActionSchema,
+	secretTierSchema,
 	startLocalSchema,
 } from '@saha-textile/release-console-contracts';
 import { z } from 'zod';
@@ -64,12 +65,18 @@ export class LocalController {
 	}
 
 	/**
-	 * Names in Infisical per tier and folder, never values, read by the Mac helper with the owner's
-	 * login; `fresh` reads again instead of the last minute's answer.
+	 * Names in one tier's Infisical project and environment, per folder, never values, read by the Mac
+	 * helper with the owner's login; `fresh` reads again instead of the last minute's answer.
 	 */
 	@Get('secrets')
-	secrets(@Query('fresh') fresh?: string): Promise<SecretsView> {
-		return this.runner.call<SecretsView>('GET', `/secrets${fresh ? '?fresh=1' : ''}`, undefined, 190_000);
+	secrets(@Query() query: unknown): Promise<SecretsView> {
+		const { tier, fresh } = parseBody(z.object({ tier: secretTierSchema, fresh: z.string().optional() }), query);
+		return this.runner.call<SecretsView>(
+			'GET',
+			`/secrets?tier=${tier}${fresh ? '&fresh=1' : ''}`,
+			undefined,
+			190_000,
+		);
 	}
 
 	/** Local alert rules, what fires now and what ended in the last 7 days. */

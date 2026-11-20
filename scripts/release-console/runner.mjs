@@ -36,6 +36,8 @@ export const STACK_APP_SERVICES = ['edge', 'storefront', 'admin', 'api', 'worker
 export const PIPELINE_STAGES = ['checks', 'proof', 'images', 'release', 'deploy', 'record'];
 /** Mode 1 and 2 servers in this checkout; while one answers, the checks stage would rebuild under it. */
 export const DEV_PORTS = { api: 4000, storefront: 4200, admin: 4300 };
+/** The Infisical tiers the Secrets screen reads, one per console environment. */
+export const SECRET_TIERS = ['dev', 'staging', 'production'];
 const MAX_LINES = 5000;
 
 /**
@@ -156,11 +158,11 @@ export function containerLogs(container, { tail = 300, since = '' } = {}) {
  * The Secrets screen's names and states, from Infisical with the owner's login. The CLI calls block,
  * so they run in their own process (`secret-names.mjs`); its output holds names only, never values.
  */
-export function secretNames() {
+export function secretNames(tier) {
 	return new Promise((resolve, reject) => {
 		execFile(
 			process.execPath,
-			[join(ROOT, 'scripts/release-console/secret-names.mjs')],
+			[join(ROOT, 'scripts/release-console/secret-names.mjs'), '--tier', tier],
 			{ cwd: ROOT, encoding: 'utf8', timeout: 180_000, maxBuffer: 8 * 1024 * 1024 },
 			(_error, stdout) => {
 				try {
@@ -380,11 +382,12 @@ export function createRunner(token) {
 			if (req.method === 'GET' && path === '/mac') return send(200, await shared('mac', 2000, macNow));
 			if (req.method === 'GET' && path === '/docker') return send(200, await shared('docker', 2000, dockerNow));
 			if (req.method === 'GET' && path === '/dev-servers') return send(200, await devServers());
-			if (req.method === 'GET' && path === '/secrets')
-				return send(
-					200,
-					await shared(`secrets${url.searchParams.get('fresh') ? Date.now() : ''}`, 60_000, secretNames),
-				);
+			if (req.method === 'GET' && path === '/secrets') {
+				const tier = url.searchParams.get('tier') ?? '';
+				if (!SECRET_TIERS.includes(tier)) return send(400, { message: 'Unknown tier.' });
+				const key = `secrets:${tier}${url.searchParams.get('fresh') ? `:${Date.now()}` : ''}`;
+				return send(200, await shared(key, 60_000, () => secretNames(tier)));
+			}
 			if (req.method === 'GET' && path === '/shop-health')
 				return send(200, await shared('shop-health', 2000, shopHealth));
 			if (req.method === 'GET' && path === '/logs')

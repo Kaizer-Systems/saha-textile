@@ -6,6 +6,7 @@ import {
 	alertsViewSchema,
 	type RequestsView,
 	requestsViewSchema,
+	type SecretTier,
 	type SecretsView,
 	secretsViewSchema,
 	type AttentionCount,
@@ -276,8 +277,14 @@ export class ConsoleApi {
 	requests(minutes: number): Promise<RequestsView> {
 		return this.call('GET', `/api/local/requests?minutes=${minutes}`, requestsViewSchema);
 	}
-	secrets(fresh = false): Promise<SecretsView> {
-		return this.call('GET', `/api/local/secrets${fresh ? '?fresh=1' : ''}`, secretsViewSchema, undefined, 200_000);
+	secrets(tier: SecretTier, fresh = false): Promise<SecretsView> {
+		return this.call(
+			'GET',
+			`/api/local/secrets?tier=${tier}${fresh ? '&fresh=1' : ''}`,
+			secretsViewSchema,
+			undefined,
+			200_000,
+		);
 	}
 	alerts(): Promise<AlertsView> {
 		return this.call('GET', '/api/local/alerts', alertsViewSchema);

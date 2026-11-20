@@ -205,12 +205,19 @@ export type RequestsView = z.infer<typeof requestsViewSchema>;
 
 /* ----- secrets (names only, from Infisical with the owner's login) ----- */
 
-/** `not-here`: this tier does not use the name or folder; `unknown`: Infisical could not be read. */
-export const secretCellSchema = z.enum(['set', 'empty', 'missing', 'not-here', 'unknown']);
-export type SecretCell = z.infer<typeof secretCellSchema>;
+/** The Infisical tier each console environment reads: its own project and environment only. */
+export const SECRET_TIERS = ['dev', 'staging', 'production'] as const;
+export const secretTierSchema = z.enum(SECRET_TIERS);
+export type SecretTier = z.infer<typeof secretTierSchema>;
+/** `unknown`: Infisical could not read that folder. */
+export const secretStateSchema = z.enum(['set', 'empty', 'missing', 'unknown']);
+export type SecretState = z.infer<typeof secretStateSchema>;
 export const secretsViewSchema = z.object({
 	at: z.string(),
-	tiers: z.array(z.object({ tier: z.string(), project: z.string(), environment: z.string() })),
+	tier: secretTierSchema,
+	/** The Infisical project and environment read, for example `saha-textile-dev` and `dev`. */
+	project: z.string(),
+	environment: z.string(),
 	folders: z.array(
 		z.object({
 			folder: z.string(),
@@ -222,11 +229,11 @@ export const secretsViewSchema = z.object({
 					devOnly: z.boolean(),
 					/** May stay empty: optional, or one of an either-one pair. */
 					optional: z.boolean(),
-					cells: z.record(z.string(), secretCellSchema),
+					state: secretStateSchema,
 				}),
 			),
 		}),
 	),
-	errors: z.array(z.object({ tier: z.string(), folder: z.string(), message: z.string() })),
+	errors: z.array(z.object({ folder: z.string(), message: z.string() })),
 });
 export type SecretsView = z.infer<typeof secretsViewSchema>;

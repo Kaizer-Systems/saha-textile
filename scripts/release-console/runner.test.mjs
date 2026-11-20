@@ -144,3 +144,11 @@ test('takes an Infisical place only when every part is a plain name or path', ()
 	])
 		assert.equal(placeFrom(bad), null, JSON.stringify(bad));
 });
+
+test('the GitHub connection is the helper’s fixed script, on any operating system', () => {
+	const [kind, label, cmd, args] = commandFor('github-login', { command: 'rm -rf /' });
+	assert.equal(kind, 'github');
+	assert.equal(label, 'Connect to GitHub');
+	assert.equal(cmd, process.execPath, 'Node runs it, not a shell');
+	assert.deepEqual(args, ['scripts/release-console/github-login.mjs']);
+});

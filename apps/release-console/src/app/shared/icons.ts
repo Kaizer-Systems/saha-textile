@@ -266,6 +266,7 @@ export function serviceLogo(name: string): string {
 export const INLINE_ICONS = [
 	'tabler/adjustments-horizontal',
 	'tabler/external-link',
+	'tabler/x',
 	'tabler/user-check',
 	'tabler/bell-ringing',
 	'tabler/brand-docker',

@@ -72,7 +72,7 @@ export type JobLine = z.infer<typeof jobLineSchema>;
 
 export const jobSchema = z.object({
 	id: z.string(),
-	kind: z.enum(['stack', 'pipeline']),
+	kind: z.enum(['stack', 'pipeline', 'github']),
 	label: z.string(),
 	status: z.enum(['running', 'stopping', 'passed', 'failed', 'stopped']),
 	startedAt: z.string(),
@@ -299,3 +299,19 @@ export const secretsPlacesSchema = z.object({
 	places: z.array(z.object({ tier: secretTierSchema, project: z.string(), environment: z.string() })),
 });
 export type SecretsPlaces = z.infer<typeof secretsPlacesSchema>;
+
+/** The GitHub CLI on this Mac, as the Mac helper sees it; never its token. */
+export const githubStatusSchema = z.object({
+	installed: z.boolean(),
+	signedIn: z.boolean(),
+	account: z.string().nullable(),
+});
+export type GithubStatus = z.infer<typeof githubStatusSchema>;
+
+/** Connect's check before any terminal opens: signed in, still answering, and able to open the repository. */
+export const githubCheckSchema = githubStatusSchema.extend({
+	repository: z.string(),
+	reachable: z.boolean(),
+	message: z.string(),
+});
+export type GithubCheck = z.infer<typeof githubCheckSchema>;

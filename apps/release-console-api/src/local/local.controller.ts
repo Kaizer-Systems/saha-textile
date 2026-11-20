@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
 import {
 	type AlertsView,
+	type GithubCheck,
+	type GithubStatus,
 	type RequestsView,
 	type Environment,
 	type SaveSecretsResult,
@@ -111,6 +113,47 @@ export class LocalController {
 	@Get('secrets/places')
 	secretsPlaces(): Promise<SecretsPlaces> {
 		return this.runner.call<SecretsPlaces>('GET', '/secrets/places');
+	}
+
+	/** Whether the GitHub CLI on this Mac is installed and signed in, and as whom. */
+	@Get('github/status')
+	githubStatus(): Promise<GithubStatus> {
+		return this.runner.call<GithubStatus>('GET', '/github/status');
+	}
+
+	/**
+	 * Connect's first step: whether the GitHub CLI where the console runs is signed in, whether that
+	 * sign-in still answers, and whether it can open this repository. No terminal opens when it can.
+	 */
+	@Get('github/check')
+	githubCheck(@Query() query: unknown): Promise<GithubCheck> {
+		const { repository } = parseBody(
+			z.object({ repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, 'owner/name') }),
+			query,
+		);
+		return this.runner.call<GithubCheck>('GET', `/github/check?repository=${encodeURIComponent(repository)}`);
+	}
+
+	/**
+	 * Starts the GitHub CLI's browser sign-in where the console runs (Connect, when the check fails).
+	 * No PIN: the owner approves the sign-in on github.com itself, and the job is the helper's fixed script.
+	 */
+	@Post('github/login')
+	@HttpCode(202)
+	async githubLogin(): Promise<Job> {
+		const job = await this.runner.call<Job>('POST', '/run/github-login', {});
+		this.store.audit(null, 'github-sign-in-started', job.label);
+		return job;
+	}
+
+	/** Stops a GitHub sign-in that is still waiting (the popup closed before it finished). */
+	@Post('github/login/:id/stop')
+	@HttpCode(200)
+	async stopGithubLogin(@Param('id') id: string): Promise<Job> {
+		if (!/^[a-z0-9-]+$/.test(id)) throw new HelperError('No such job.', 404);
+		const job = await this.runner.call<Job>('GET', `/jobs/${id}?after=0`);
+		if (job.kind !== 'github') throw new HelperError('Only a GitHub sign-in can be stopped here.', 403);
+		return this.runner.call<Job>('POST', `/jobs/${id}/stop`);
 	}
 
 	/** Local alert rules, what fires now and what ended in the last 7 days. */

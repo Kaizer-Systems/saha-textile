@@ -366,6 +366,53 @@ const publicJob = (j, after = 0) => ({
 	lines: j.lines.filter((l) => l.seq > after),
 });
 
+/** Whether a read-only tool exits 0, without waiting on its output. */
+const succeeds = (cmd, args, timeout = 10_000) =>
+	new Promise((resolve) => execFile(cmd, args, { timeout }, (error) => resolve(!error)));
+
+/**
+ * Whether the GitHub CLI on this Mac is installed and signed in, and as whom. Never the token.
+ * `gh auth status` decides: `gh auth token` can still find a keychain entry for a config that has
+ * no account, so it is not proof of a sign-in.
+ */
+export async function githubStatus() {
+	if (!(await succeeds('gh', ['--version'], 5000))) return { installed: false, signedIn: false, account: null };
+	const signedIn = await succeeds('gh', ['auth', 'status', '--hostname', 'github.com']);
+	const account = signedIn ? (await sh('gh', ['api', 'user', '--jq', '.login'], 10_000)).trim() || null : null;
+	return { installed: true, signedIn, account };
+}
+
+/**
+ * Connect's check before any terminal opens: is gh signed in, does that sign-in still answer (an
+ * expired or revoked token does not), and can it open this repository.
+ * @param {string} repository  owner/name, checked by the caller
+ */
+export async function githubCheck(repository) {
+	const status = await githubStatus();
+	if (!status.signedIn || !status.account)
+		return {
+			...status,
+			repository,
+			reachable: false,
+			message: status.installed
+				? 'Not signed in, or the sign-in no longer answers.'
+				: 'The GitHub CLI is not installed on this machine.',
+		};
+	const name = (await sh('gh', ['api', `repos/${repository}`, '--jq', '.full_name'], 15_000)).trim();
+	return {
+		...status,
+		repository,
+		reachable: name.toLowerCase() === repository.toLowerCase(),
+		message: name ? '' : `Signed in as ${status.account}, but that account cannot open ${repository}.`,
+	};
+}
+
+/** The CLI sign-in's token, only when `gh auth status` says it is signed in. */
+export async function githubToken() {
+	if (!(await succeeds('gh', ['auth', 'status', '--hostname', 'github.com']))) return null;
+	return (await sh('gh', ['auth', 'token', '--hostname', 'github.com'], 5000)).trim() || null;
+}
+
 /**
  * The commands the console may start; anything else is refused. `busy` names the dev servers that
  * answer now (from `devServers()`), which keep the checks stage from running under them.
@@ -390,6 +437,9 @@ export function commandFor(action, body = {}, busy = []) {
 				'docker',
 				['compose', '-f', 'docker/stack/compose.yaml', 'start', ...STACK_APP_SERVICES],
 			];
+		case 'github-login':
+			// A Node script, so it runs wherever the console does: a Mac, Linux or Windows.
+			return ['github', 'Connect to GitHub', process.execPath, ['scripts/release-console/github-login.mjs']];
 		case 'pipeline': {
 			const args = ['scripts/pipeline/local.mjs', '--json'];
 			const { from, only } = body;
@@ -472,6 +522,17 @@ export function createRunner(token) {
 					forget(placeKey(place));
 				}
 			}
+			if (req.method === 'GET' && path === '/github/check') {
+				const repository = url.searchParams.get('repository') ?? '';
+				if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))
+					return send(400, { message: 'Write the repository as owner/name.' });
+				return send(200, await githubCheck(repository));
+			}
+			if (req.method === 'GET' && path === '/github/status')
+				return send(200, await shared('github-status', 2000, githubStatus));
+			// The CLI sign-in's token, for the console API in Docker (its own container has no gh).
+			// Only a caller holding the helper's token gets here; nothing logs it.
+			if (req.method === 'GET' && path === '/github/token') return send(200, { token: await githubToken() });
 			if (req.method === 'GET' && path === '/secrets/places')
 				return send(200, await shared('secrets-places', 600_000, secretPlaces));
 			if (req.method === 'GET' && path === '/secrets') {

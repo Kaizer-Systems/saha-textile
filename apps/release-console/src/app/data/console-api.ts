@@ -20,6 +20,10 @@ import {
 	type DockerSnapshot,
 	type HelperStatus,
 	type Job,
+	type GithubStatus,
+	githubStatusSchema,
+	type GithubCheck,
+	githubCheckSchema,
 	type LocalAction,
 	type Logs,
 	type MacSnapshot,
@@ -357,6 +361,27 @@ export class ConsoleApi {
 	}
 	stopJob(id: string, pin: string): Promise<Job> {
 		return this.call('POST', `/api/local/jobs/${id}/stop`, jobSchema, { pin });
+	}
+	/** Whether the GitHub CLI on this Mac is installed and signed in, and as whom. */
+	githubStatus(): Promise<GithubStatus> {
+		return this.call('GET', '/api/local/github/status', githubStatusSchema);
+	}
+	/** Connect's check: signed in, still answering, and able to open this repository. */
+	githubCheck(repository: string): Promise<GithubCheck> {
+		return this.call(
+			'GET',
+			`/api/local/github/check?repository=${encodeURIComponent(repository)}`,
+			githubCheckSchema,
+			undefined,
+			40_000,
+		);
+	}
+	/** Starts the GitHub CLI's browser sign-in where the console runs; its lines are read like any job's. */
+	githubLogin(): Promise<Job> {
+		return this.call('POST', '/api/local/github/login', jobSchema, {});
+	}
+	stopGithubLogin(id: string): Promise<Job> {
+		return this.call('POST', `/api/local/github/login/${id}/stop`, jobSchema, {});
 	}
 
 	/* local stack (this computer) */

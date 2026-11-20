@@ -17,6 +17,7 @@ import { PageHead } from './page-head';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
+import { GithubSignIn } from '../shared/github-sign-in';
 import { Icon } from '../shared/icons';
 import { STEP_ICONS, VendorLogo } from '../shared/vendor-logo';
 
@@ -80,6 +81,9 @@ interface RepoDraft {
 	menus: string[];
 	/** What reading the repository's `.release-console.json` found. */
 	file: string;
+	/** Connect's state for a GitHub repository: not tried, being checked, connected (as whom), or failed (why). */
+	link: 'idle' | 'checking' | 'connected' | 'failed';
+	linkNote: string;
 }
 interface EnvDraft {
 	name: string;
@@ -93,7 +97,7 @@ interface EnvDraft {
 /** Add a project: name, repositories (a vendor each), environments, clouds, edges, own menus. */
 @Component({
 	selector: 'rc-add-project',
-	imports: [PageHead, VendorLogo, Icon],
+	imports: [PageHead, VendorLogo, Icon, GithubSignIn],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-page-head
@@ -267,6 +271,22 @@ interface EnvDraft {
 									Repositories in this project
 								</span>
 							</div>
+							@if (notice()) {
+								<div class="rc-banner red small">
+									<span class="rc-dot red"></span>
+									<div>
+										<b>{{ notice() }}</b>
+										Press Connect to try again.
+									</div>
+									<button
+										type="button"
+										class="rc-btn ghost"
+										(click)="notice.set('')"
+									>
+										Dismiss
+									</button>
+								</div>
+							}
 							<div class="rc-tw">
 								<table class="rc-t">
 									<thead>
@@ -289,7 +309,34 @@ interface EnvDraft {
 													/>
 												</td>
 												<td>{{ r.role || '—' }}</td>
-												<td class="rc-mono">{{ r.file }}</td>
+												<td>
+													<span class="rc-mono">{{ r.file }}</span>
+													@if (r.vendor === 'github') {
+														@switch (r.link) {
+															@case ('connected') {
+																<span class="rc-pill ok">
+																	connected as {{ r.linkNote }}
+																</span>
+															}
+															@case ('checking') {
+																<span class="rc-pill cy">checking…</span>
+															}
+															@default {
+																@if (r.link === 'failed') {
+																	<span class="rc-note red">{{ r.linkNote }}</span>
+																}
+																<button
+																	type="button"
+																	class="rc-btn"
+																	(click)="connect(r.repository)"
+																>
+																	<rc-icon name="tabler/plug-connected" />
+																	Connect
+																</button>
+															}
+														}
+													}
+												</td>
 												<td>
 													<button
 														type="button"
@@ -868,6 +915,12 @@ interface EnvDraft {
 				</button>
 			</div>
 		</div>
+		@if (showSignIn()) {
+			<rc-github-sign-in
+				(signedIn)="afterSignIn()"
+				(closed)="afterClose($event)"
+			/>
+		}
 	`,
 })
 export class AddProject {
@@ -891,6 +944,61 @@ export class AddProject {
 	protected readonly at = signal(0);
 	protected readonly busy = signal(false);
 	protected readonly message = signal('');
+	/** The terminal popup that connects GitHub where the console runs. */
+	protected readonly showSignIn = signal(false);
+	/** The repository whose Connect opened the popup. */
+	private readonly pending = signal<string | null>(null);
+	/** A page-level notice, e.g. a connection closed before it finished. */
+	protected readonly notice = signal('');
+
+	private setLink(repository: string, link: RepoDraft['link'], linkNote = ''): void {
+		this.repos.update((rs) => rs.map((r) => (r.repository === repository ? { ...r, link, linkNote } : r)));
+	}
+
+	/**
+	 * Connect (owner, 20 Nov): first checks, with no terminal, that a sign-in exists where the console
+	 * runs, that it still answers, and that it can open this repository; then the row turns green.
+	 * Otherwise the terminal popup opens and starts the sign-in by itself. A sign-in that answers but
+	 * cannot open the repository is said in the row: signing in again would not change that.
+	 */
+	protected async connect(repository: string): Promise<void> {
+		this.notice.set('');
+		this.setLink(repository, 'checking');
+		try {
+			const c = await this.api.githubCheck(repository);
+			if (c.signedIn && c.account && c.reachable) {
+				this.setLink(repository, 'connected', c.account);
+				void this.readFile(repository);
+				return;
+			}
+			if (c.signedIn && c.account) {
+				this.setLink(repository, 'failed', c.message);
+				return;
+			}
+		} catch (err) {
+			this.setLink(repository, 'failed', (err as Error).message);
+			return;
+		}
+		this.pending.set(repository);
+		this.showSignIn.set(true);
+	}
+
+	/** The popup closed: before the connection finished, the page says it was cancelled. */
+	protected afterClose(connected: boolean): void {
+		this.showSignIn.set(false);
+		const repository = this.pending();
+		if (!connected && repository) {
+			this.setLink(repository, 'idle');
+			this.notice.set('GitHub connection cancelled.');
+		}
+		this.pending.set(null);
+	}
+
+	/** Connected in the terminal: the page checks the repository again at once and turns it green. */
+	protected async afterSignIn(): Promise<void> {
+		const repository = this.pending();
+		if (repository) await this.connect(repository);
+	}
 	protected readonly name = signal('');
 	protected readonly workspace = signal('');
 	protected readonly id = computed(() => slugOf(this.name()));
@@ -941,6 +1049,8 @@ export class AddProject {
 				role: role.value.trim(),
 				menus: [],
 				file: vendor === 'github' ? 'reading…' : 'add menus by hand',
+				link: 'idle',
+				linkNote: '',
 			},
 		]);
 		box.value = '';
@@ -957,7 +1067,8 @@ export class AddProject {
 			);
 		try {
 			const a = await this.api.repositoryFile({ vendor: 'github', repository });
-			if (a.state !== 'ok') set(a.message);
+			if (a.state === 'not-connected') set('Connect to read its own menus.');
+			else if (a.state !== 'ok') set(a.message);
 			else if (!a.data.found) set('no .release-console.json');
 			else {
 				const menus = a.data.menus.filter((m) => !!CONSOLE_MENU.screens[m]);
@@ -1122,6 +1233,38 @@ export class AddProject {
 		else void this.router.navigate(['/console', 'projects']);
 	}
 
+	/**
+	 * When the GitHub CLI is signed in, the new project's GitHub repositories read GitHub through it:
+	 * the sign-in is linked as the project's key and set on each GitHub repository's source code.
+	 * A failure here leaves the repositories for the Connections screen, which opens next.
+	 */
+	private async linkCliSignIn(projectId: string): Promise<void> {
+		const github = this.repos().filter((r) => r.vendor === 'github' && r.link === 'connected');
+		if (!github.length) return;
+		try {
+			await this.api.linkKey(projectId, {
+				id: 'github-cli',
+				kind: 'github-cli',
+				label: 'GitHub CLI sign-in on this computer',
+				envNames: [],
+				expiresAt: null,
+				note: '',
+				target: '',
+			});
+			for (const r of github) {
+				const short = r.repository.split('/')[1] ?? r.repository;
+				await this.api.setSlotKeys(projectId, {
+					repositoryId: slugOf(short),
+					slot: 'source-code',
+					slotId: '',
+					keyIds: ['github-cli'],
+				});
+			}
+		} catch {
+			// Connections shows the repository without a key, with its Link a key button.
+		}
+	}
+
 	protected async next(): Promise<void> {
 		const error = this.stepError();
 		this.message.set(error);
@@ -1138,6 +1281,7 @@ export class AddProject {
 		this.busy.set(true);
 		try {
 			const project = await this.api.addProject(parsed.data);
+			await this.linkCliSignIn(project.id);
 			await this.queries.invalidateQueries({ queryKey: ['projects'] });
 			void this.router.navigate(['/p', project.id, 'settings'], { queryParams: { tab: 'connections' } });
 		} catch (err) {

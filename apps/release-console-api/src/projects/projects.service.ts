@@ -14,15 +14,26 @@ import {
 } from '@saha-textile/release-console-contracts';
 
 import { KeySourceService } from '../keys/key-source.js';
+import { RunnerClient } from '../runner/runner-client.js';
 import { ConsoleStore } from '../store/console-store.js';
 import { checkKey, stateWithExpiry } from '../vendors/key-checks.js';
 
 const run = promisify(execFile);
 
-/** The GitHub CLI's own sign-in on this computer (made in the browser with `gh auth login`). */
-export async function githubCliToken(): Promise<string | null> {
-	const { stdout } = await run('gh', ['auth', 'token'], { timeout: 10_000 }).catch(() => ({ stdout: '' }));
-	return stdout.trim() || null;
+/**
+ * The GitHub CLI's own sign-in on this computer (made in the browser with `gh auth login`). In
+ * Docker the console's container has no gh, so the Mac helper reads it from the Mac's gh instead.
+ */
+export async function githubCliToken(
+	helper: Pick<RunnerClient, 'call'> = new RunnerClient(),
+	local: () => Promise<{ stdout: string }> = () => run('gh', ['auth', 'token'], { timeout: 10_000 }),
+): Promise<string | null> {
+	const { stdout } = await local().catch(() => ({ stdout: '' }));
+	if (stdout.trim()) return stdout.trim();
+	const answer = await helper
+		.call<{ token: string | null }>('GET', '/github/token', undefined, 10_000)
+		.catch(() => ({ token: null }));
+	return answer.token || null;
 }
 
 /** Every environment must run on one of its repository's clouds and read one of its secrets managers. */

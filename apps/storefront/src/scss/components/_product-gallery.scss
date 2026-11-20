@@ -1,0 +1,60 @@
+// Product photo gallery: the thumbnail row and the phone dots (owner, 21 Nov 2026, product page brief rev 4, P1 and P2).
+//
+// Five or fewer tiles are a plain row the server draws, each a fifth of the photo's width as in the Codex renders, so a
+// product with two or three photos never stretches its tiles across the row (the slider shares its row between however
+// many slides it has). More than five use the slider with five in view and arrows. One photo with no video gets no row.
+.product-left-box {
+	// Laptops and tablets keep the arrows and the row; the dots are for phones only.
+	.product-main-1 .owl-theme .owl-dots {
+		display: none;
+	}
+
+	.st-thumb-row {
+		display: flex;
+		gap: 10px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		> li {
+			flex: 0 0 calc((100% - 40px) / 5);
+			min-width: 0;
+		}
+	}
+
+	@include mq-max(md) {
+		// Phones swipe the photo and read the dots; a thumbnail row would only push the name and price down (P1).
+		.bottom-slider-image {
+			display: none;
+		}
+
+		// The theme's own dots (`.slider-dots`), laid on the photo's lower edge on a light pill; none for one photo.
+		.product-main-1.st-one .owl-theme .owl-dots {
+			display: none;
+		}
+
+		.product-main-1:not(.st-one) .owl-theme .owl-dots {
+			position: absolute;
+			left: 50%;
+			bottom: 12px;
+			transform: translateX(-50%);
+			display: flex;
+			align-items: center;
+			margin: 0;
+			padding: 5px 8px;
+			border-radius: 20px;
+			background-color: color-mix(in srgb, var(--st-surface, #fff) 82%, transparent);
+		}
+	}
+}
+
+// The slider draws its arrows as buttons inside the slide area; the theme shows them with
+// `.product-section .product-left-box .product-main-1 .owl-prev`, so phones hide them one class stronger.
+@include mq-max(md) {
+	.product-section .product-left-box .product-main-1.slider-dots {
+		.owl-prev,
+		.owl-next {
+			display: none;
+		}
+	}
+}

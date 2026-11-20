@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, afterNextRender, computed, inject, input, signal, viewChild } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
@@ -27,7 +28,7 @@ import { GalleryZoomLens } from './gallery-zoom-lens';
 	selector: 'app-product-gallery',
 	templateUrl: './product-gallery.html',
 	styleUrls: ['./product-gallery.scss'],
-	imports: [CarouselModule, TranslocoModule, GalleryZoomLens, VideoModal, ShortsModal],
+	imports: [CarouselModule, NgTemplateOutlet, TranslocoModule, GalleryZoomLens, VideoModal, ShortsModal],
 })
 export class ProductGallery {
 	private readonly modals = inject(NgbModal);
@@ -51,8 +52,14 @@ export class ProductGallery {
 
 	readonly images = computed<GalleryImage[]>(() => this.frames().map(toGalleryImage));
 
-	/** About 120 px wide in the strip; the `card` widths (200 / 400) cover it at any density. */
-	readonly thumbSizes = '120px';
+	/** A tile is a fifth of the strip, about 96 px at most; the 200 px `card` file covers it at 2x. */
+	readonly thumbSizes = '96px';
+
+	/** Tiles in view under the photo, as in the Codex renders (owner, 21 Nov). Up to this many need no slider. */
+	readonly thumbsInView = 5;
+
+	/** Photos plus video tiles. One alone gets no row: it would only repeat the photo above. */
+	readonly tileCount = computed(() => this.frames().length + this.videos().length);
 
 	/**
 	 * The strip uses the small `card` file, not the 900 px main photo it used to download three of. A photo sent without

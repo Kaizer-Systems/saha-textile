@@ -1,8 +1,8 @@
 // The product page's photo gallery as the server draws it, before the browser starts its carousels (shop speed round 4).
 // Owl cannot measure on the server, so it writes every slide and the loop's copies one under another at no width, and
 // gives every thumbnail after the first the auto-height plugin's closed state. Started, the main carousel shows the
-// first photo, and the strip shows three thumbnails, each (strip - 20px) / 3 wide, with owl's own 10px right margin
-// (measured from 320 to 1920 px). Until ProductGallery adds `.st-gallery-started`, these rules lay the server's HTML
+// first photo, and the strip (only for more than five tiles; fewer are a plain row) shows five thumbnails, each
+// (strip - 40px) / 5 wide, with owl's own 10px right margin. Until ProductGallery adds `.st-gallery-started`, these rules lay the server's HTML
 // out the same way, so the first paint is the started gallery and nothing below it moves.
 .product-left-box:not(.st-gallery-started) {
 	.product-main-1 .owl-item.cloned,
@@ -23,7 +23,7 @@
 	}
 
 	.left-slider .owl-item {
-		flex: 0 0 calc((100% - 20px) / 3);
+		flex: 0 0 calc((100% - 40px) / 5);
 	}
 
 	.left-slider .owl-item.owl-height.height-0 {

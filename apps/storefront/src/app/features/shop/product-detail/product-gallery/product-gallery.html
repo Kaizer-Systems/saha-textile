@@ -4,7 +4,10 @@
 >
 	<div class="row g-2">
 		<div class="col-12">
-			<div class="product-main-1 no-arrow">
+			<div
+				class="product-main-1 no-arrow slider-dots"
+				[class.st-one]="images().length < 2"
+			>
 				<div class="product-label-group">
 					@if (product()?.is_sale_enable) {
 					<div class="product-label-tag"><span>{{ 'sale' | transloco }}</span></div>
@@ -61,34 +64,33 @@
 				</owl-carousel-o>
 			</div>
 		</div>
-		@if (frames().length) {
+		@if (tileCount() > 1) {
 		<div class="col-12">
-			<div class="bottom-slider-image left-slider no-arrow slick-top">
+			<div
+				class="bottom-slider-image left-slider slick-top"
+				[class.no-arrow]="tileCount() <= thumbsInView"
+			>
+				@if (tileCount() <= thumbsInView) {
+				<!-- Five or fewer: a plain row the server draws, each tile a fifth of the photo's width (owner, 21 Nov). -->
+				<ul class="st-thumb-row">
+					@for (image of frames(); track image) {
+					<li>
+						<ng-container *ngTemplateOutlet="photoTile; context: { $implicit: image }" />
+					</li>
+					} @for (video of videos(); track video.videoId) {
+					<li>
+						<ng-container *ngTemplateOutlet="videoTile; context: { $implicit: video }" />
+					</li>
+					}
+				</ul>
+				} @else {
 				<owl-carousel-o [options]="productThumbSlider">
 					@for (image of frames(); track image) {
 					<ng-template
 						carouselSlide
 						[id]="image.id.toString()"
 					>
-						<div>
-							<div
-								class="slider-image"
-								[class.active]="image.id.toString() === activeSlide.toString()"
-							>
-								<img
-									[src]="image ? thumb(image).src : 'assets/images/product.png'"
-									[attr.srcset]="image ? thumb(image).srcset : null"
-									[attr.sizes]="image && thumb(image).srcset ? thumbSizes : null"
-									[attr.width]="image?.image?.width ?? null"
-									[attr.height]="image?.image?.height ?? null"
-									loading="lazy"
-									decoding="async"
-									class="img-fluid"
-									alt="{{ product()?.name }}"
-									(click)="carousel()?.to(activeSlide = image.id.toString())"
-								/>
-							</div>
-						</div>
+						<ng-container *ngTemplateOutlet="photoTile; context: { $implicit: image }" />
 					</ng-template>
 					}
 					<!-- One tile per product video, after the photos, in admin order (owner R4). -->
@@ -97,38 +99,71 @@
 						carouselSlide
 						[id]="'video-' + video.videoId"
 					>
-						<div>
-							<button
-								type="button"
-								class="slider-image position-relative d-block w-100 border-0 bg-transparent p-0"
-								[attr.aria-label]="(video.kind === 'short' ? 'play_short' : 'play_video') | transloco: { title: video.title }"
-								(click)="playVideo(video)"
-							>
-								<span class="ratio ratio-3x4 d-block">
-									<img
-										[src]="poster(video)"
-										class="object-fit-cover"
-										[alt]="video.title"
-										lang="en"
-										loading="lazy"
-										decoding="async"
-									/>
-								</span>
-								<span
-									class="position-absolute translate-middle rounded-circle theme-bg-color d-inline-flex lh-1 fs-5 start-50 top-50 p-2 text-white"
-									aria-hidden="true"
-								>
-									<i class="ri-play-fill"></i>
-								</span>
-							</button>
-						</div>
+						<ng-container *ngTemplateOutlet="videoTile; context: { $implicit: video }" />
 					</ng-template>
 					}
 				</owl-carousel-o>
+				}
 			</div>
 		</div>
 		}
 	</div>
 </div>
+
+<ng-template
+	#photoTile
+	let-image
+>
+	<div>
+		<div
+			class="slider-image"
+			[class.active]="image.id.toString() === activeSlide.toString()"
+		>
+			<img
+				[src]="image ? thumb(image).src : 'assets/images/product.png'"
+				[attr.srcset]="image ? thumb(image).srcset : null"
+				[attr.sizes]="image && thumb(image).srcset ? thumbSizes : null"
+				[attr.width]="image?.image?.width ?? null"
+				[attr.height]="image?.image?.height ?? null"
+				loading="lazy"
+				decoding="async"
+				class="img-fluid"
+				alt="{{ product()?.name }}"
+				(click)="carousel()?.to(activeSlide = image.id.toString())"
+			/>
+		</div>
+	</div>
+</ng-template>
+
+<ng-template
+	#videoTile
+	let-video
+>
+	<div>
+		<button
+			type="button"
+			class="slider-image position-relative d-block w-100 border-0 bg-transparent p-0"
+			[attr.aria-label]="(video.kind === 'short' ? 'play_short' : 'play_video') | transloco: { title: video.title }"
+			(click)="playVideo(video)"
+		>
+			<span class="ratio ratio-3x4 d-block">
+				<img
+					[src]="poster(video)"
+					class="object-fit-cover"
+					[alt]="video.title"
+					lang="en"
+					loading="lazy"
+					decoding="async"
+				/>
+			</span>
+			<span
+				class="position-absolute translate-middle rounded-circle theme-bg-color d-inline-flex lh-1 fs-5 start-50 top-50 p-2 text-white"
+				aria-hidden="true"
+			>
+				<i class="ri-play-fill"></i>
+			</span>
+		</button>
+	</div>
+</ng-template>
 <app-video-modal />
 <app-shorts-modal />

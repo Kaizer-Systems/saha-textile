@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
 import {
 	type AlertsView,
+	type RequestsView,
 	type DockerSnapshot,
 	type HelperStatus,
 	type Job,
@@ -15,6 +16,7 @@ import {
 import { z } from 'zod';
 
 import { LocalAlerts } from './local-alerts.js';
+import { RequestLog } from './request-log.js';
 import { StatsCollector } from './stats-collector.js';
 import { parseBody } from '../common/parse.js';
 import { LockService } from '../lock/lock.service.js';
@@ -47,7 +49,18 @@ export class LocalController {
 		private readonly lock: LockService,
 		private readonly store: ConsoleStore,
 		private readonly alerts: LocalAlerts,
+		private readonly requests: RequestLog,
 	) {}
+
+	/** Per service and route: requests per minute, p50/p95/p99, error rates and Apdex, from the edge's log. */
+	@Get('requests')
+	requestsView(@Query() query: Record<string, unknown>): RequestsView {
+		const { minutes } = parseBody(
+			z.object({ minutes: z.coerce.number().int().min(5).max(10080).default(60) }),
+			query,
+		);
+		return this.requests.view(minutes);
+	}
 
 	/** Local alert rules, what fires now and what ended in the last 7 days. */
 	@Get('alerts')

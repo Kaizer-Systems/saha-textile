@@ -161,3 +161,44 @@ export const alertsViewSchema = z.object({
 	recent: z.array(alertSchema),
 });
 export type AlertsView = z.infer<typeof alertsViewSchema>;
+
+/* ----- requests (APM from the edge's request log) ----- */
+
+/** Latency buckets of the minute summaries, in milliseconds; the last one has no upper end. */
+export const LATENCY_BUCKETS_MS = [25, 50, 100, 250, 500, 1000, 2000, 4000, 8000] as const;
+
+const timing = {
+	count: z.number().int(),
+	perMinute: z.number(),
+	p50: num,
+	p95: num,
+	p99: num,
+	/** Server errors (5xx) as a share of requests, 0 to 1. */
+	errorRate: z.number(),
+	clientErrorRate: z.number(),
+	/** 0 to 1: requests under 0.5 s count fully, those under 2 s count half. */
+	apdex: num,
+};
+export const requestServiceSchema = z.object({ service: z.string(), ...timing });
+export const requestRouteSchema = z.object({
+	service: z.string(),
+	method: z.string(),
+	route: z.string(),
+	...timing,
+	/** Request counts per latency bucket, for the endpoint's histogram. */
+	buckets: z.array(z.number().int()),
+});
+export type RequestRoute = z.infer<typeof requestRouteSchema>;
+
+export const requestsViewSchema = z.object({
+	/** `edge`: read from the local stack edge's JSON request log; `none`: nothing to read yet. */
+	source: z.enum(['edge', 'none']),
+	note: z.string().nullable(),
+	minutes: z.number().int(),
+	readAt: z.string().nullable(),
+	services: z.array(requestServiceSchema),
+	routes: z.array(requestRouteSchema),
+	/** Per minute: [time, p95 ms of all services, server-error share 0 to 1, requests]. */
+	series: z.array(z.tuple([z.number(), num, z.number(), z.number()])),
+});
+export type RequestsView = z.infer<typeof requestsViewSchema>;

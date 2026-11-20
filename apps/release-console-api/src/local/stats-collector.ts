@@ -2,6 +2,7 @@ import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/com
 import type { DockerSnapshot, Job, MacSnapshot, Series } from '@saha-textile/release-console-contracts';
 
 import { LocalAlerts, type Readings } from './local-alerts.js';
+import { RequestLog } from './request-log.js';
 import { ProjectsService } from '../projects/projects.service.js';
 
 import { RunnerClient } from '../runner/runner-client.js';
@@ -83,6 +84,7 @@ export class StatsCollector implements OnModuleInit, OnModuleDestroy {
 		private readonly store: ConsoleStore,
 		private readonly alerts: LocalAlerts,
 		private readonly projects: ProjectsService,
+		private readonly requests: RequestLog,
 	) {}
 
 	onModuleInit(): void {
@@ -109,7 +111,8 @@ export class StatsCollector implements OnModuleInit, OnModuleDestroy {
 			this.prev = counters;
 			this.prevAt = now;
 			this.save(rows, now);
-			this.judge({ mac, docker, helper: true, jobs }, now);
+			await this.requests.tick(docker, now).catch(() => undefined);
+			this.judge({ mac, docker, helper: true, jobs, requests: this.requests.recent(5, now) }, now);
 		} catch {
 			this.latest = { ...this.latest, helper: false };
 			this.judge({ mac: null, docker: null, helper: false, jobs: null }, now);

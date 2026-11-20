@@ -23,6 +23,8 @@ const MIGRATIONS = [
 	 CREATE TABLE runs (id TEXT PRIMARY KEY, kind TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, json TEXT NOT NULL);`,
 	`CREATE TABLE alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, rule TEXT NOT NULL, subject TEXT NOT NULL, level TEXT NOT NULL, title TEXT NOT NULL, detail TEXT NOT NULL, fired_at TEXT NOT NULL, resolved_at TEXT);
 	 CREATE INDEX alerts_open ON alerts (resolved_at, rule, subject);`,
+	`CREATE TABLE requests (minute INTEGER NOT NULL, service TEXT NOT NULL, method TEXT NOT NULL, route TEXT NOT NULL, count INTEGER NOT NULL, e5 INTEGER NOT NULL, e4 INTEGER NOT NULL, buckets TEXT NOT NULL);
+	 CREATE INDEX requests_minute ON requests (minute);`,
 ];
 
 /**

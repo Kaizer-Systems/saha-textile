@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import {
 	type AlertsView,
 	alertsViewSchema,
+	type RequestsView,
+	requestsViewSchema,
 	type AttentionCount,
 	type DockerSnapshot,
 	type HelperStatus,
@@ -268,6 +270,9 @@ export class ConsoleApi {
 			`/api/local/history?source=${encodeURIComponent(source)}&names=${names.join(',')}&minutes=${minutes}`,
 			seriesListSchema,
 		);
+	}
+	requests(minutes: number): Promise<RequestsView> {
+		return this.call('GET', `/api/local/requests?minutes=${minutes}`, requestsViewSchema);
 	}
 	alerts(): Promise<AlertsView> {
 		return this.call('GET', '/api/local/alerts', alertsViewSchema);

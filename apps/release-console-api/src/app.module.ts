@@ -6,6 +6,7 @@ import { HealthController } from './health/health.controller.js';
 import { KeySourceService } from './keys/key-source.js';
 import { LocalStackController } from './local-stack/local-stack.controller.js';
 import { LocalAlerts } from './local/local-alerts.js';
+import { RequestLog } from './local/request-log.js';
 import { LocalController } from './local/local.controller.js';
 import { StatsCollector } from './local/stats-collector.js';
 import { LocalStackService } from './local-stack/local-stack.service.js';
@@ -40,6 +41,7 @@ import { ConsoleStore } from './store/console-store.js';
 		RunnerClient,
 		StatsCollector,
 		LocalAlerts,
+		RequestLog,
 		{ provide: APP_FILTER, useClass: HelperErrorFilter },
 		{ provide: APP_GUARD, useClass: SessionGuard },
 	],

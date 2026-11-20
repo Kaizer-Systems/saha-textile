@@ -29,6 +29,8 @@ export interface Readings {
 	helper: boolean;
 	jobs: Job[] | null;
 	projects: Project[];
+	/** Requests and server errors of the last 5 minutes from the edge's log; null without one. */
+	requests?: { total: number; serverErrors: number } | null;
 }
 
 const GB = 1024 ** 3;
@@ -88,7 +90,7 @@ const NEEDS: Record<AlertRule, number> = {
 	'helper-down': 12,
 	'run-failed': 1,
 	'key-expiring': 1,
-	'errors-rising': 60,
+	'errors-rising': 1,
 };
 
 const pct = (part: number, whole: number) => Math.round((part / whole) * 100);
@@ -154,6 +156,19 @@ export function findings(r: Readings): { found: Finding[]; judged: Set<AlertRule
 			});
 	}
 
+	if (r.requests) {
+		judged.add('errors-rising');
+		const { total, serverErrors } = r.requests;
+		if (total >= 20 && serverErrors / total > 0.05)
+			found.push({
+				rule: 'errors-rising',
+				subject: 'local stack',
+				level: serverErrors / total > 0.2 ? 'red' : 'amber',
+				title: `Server errors at ${Math.round((serverErrors / total) * 100)}% of requests`,
+				detail: `${serverErrors} of ${total} requests in the last 5 minutes answered 5xx.`,
+			});
+	}
+
 	for (const p of r.projects)
 		for (const k of p.keys) {
 			if (k.state !== 'expiring' && k.state !== 'expired' && k.state !== 'failed') continue;
@@ -199,10 +214,12 @@ const toAlert = (r: AlertRow): Alert => ({
 export class LocalAlerts {
 	private readonly streak = new Map<string, number>();
 	private checkedAt: string | null = null;
+	private requestLog = false;
 
 	constructor(private readonly store: ConsoleStore) {}
 
 	evaluate(r: Readings, now = Date.now()): void {
+		if (r.requests) this.requestLog = true;
 		const at = new Date(now).toISOString();
 		const { found, judged } = findings(r);
 		const db = this.store.db();
@@ -255,11 +272,11 @@ export class LocalAlerts {
 				.all() as unknown as AlertRow[]
 		).map(toAlert);
 		const rules = ALERT_RULES.map((rule): AlertRuleState => {
-			if (rule === 'errors-rising')
+			if (rule === 'errors-rising' && !this.requestLog)
 				return {
 					...RULES[rule],
 					state: 'waiting',
-					note: 'Starts once the local stack’s edge writes its request log as JSON, as production’s does.',
+					note: 'Starts once the local stack’s edge is running and has served requests.',
 				};
 			return { ...RULES[rule], state: firing.some((a) => a.rule === rule) ? 'firing' : 'ok', note: null };
 		});

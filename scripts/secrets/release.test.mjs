@@ -107,11 +107,13 @@ test('the local release describes the stack: its hosts, port, proxy header and s
 test('a blank required value stops the release before anything is written, naming it only', () => {
 	withRoot((root) => {
 		assert.throws(
-			() => write(root, devFolders({ MSG91_AUTH_KEY: '' })),
+			() => write(root, devFolders({ CSRF_SECRET: '' })),
 			(error) =>
-				error instanceof SecretsError && /MSG91_AUTH_KEY/.test(error.message) && !error.message.includes(MARK),
+				error instanceof SecretsError && /CSRF_SECRET/.test(error.message) && !error.message.includes(MARK),
 		);
 		assert.equal(existsSync(join(root, RELEASES_DIR, 'r1')), false);
+		// A local machine may leave the server-only MSG91_AUTH_KEY blank (required-secrets.txt): it logs instead.
+		assert.ok(write(root, devFolders({ MSG91_AUTH_KEY: '' }), 'r9').dir);
 	});
 });
 

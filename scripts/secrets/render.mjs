@@ -284,7 +284,11 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 			apiEntries.push([name, value]);
 		}
 	}
-	const missing = inventory.requiredForRelease.filter((name) => isBlank(api.get(name)));
+	// On a local machine (DEPLOY_ENV=local) the server-only names may stay blank (required-secrets.txt).
+	const local = (release.get('DEPLOY_ENV') ?? api.get('DEPLOY_ENV')) === 'local';
+	const missing = inventory.requiredForRelease.filter(
+		(name) => isBlank(api.get(name)) && !(local && inventory.serverOnlyRequired.has(name)),
+	);
 	if (missing.length > 0) problems.push(`Required for a release but blank in /api: ${missing.join(', ')}.`);
 
 	const mongoPassword = api.get('MONGODB_PASSWORD');
@@ -471,7 +475,9 @@ export function projectReport(folders, { tier, inventory, setByPipeline = new Se
 	const api = folders.api ?? new Map();
 	// The dev project's release is the local pipeline's, which sets the stack's own settings itself.
 	const requiredBlank = inventory.requiredForRelease.filter(
-		(name) => isBlank(api.get(name)) && !(tier === 'dev' && setByPipeline.has(name)),
+		(name) =>
+			isBlank(api.get(name)) &&
+			!(tier === 'dev' && (setByPipeline.has(name) || inventory.serverOnlyRequired.has(name))),
 	);
 	const infrastructureBlank = inventory.infrastructureFiles.filter((file) =>
 		isBlank(folders.infrastructure?.get(file)),

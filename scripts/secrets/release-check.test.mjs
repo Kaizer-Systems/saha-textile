@@ -39,7 +39,8 @@ function withRelease(change, fn) {
 		};
 		const required = readFileSync(join(release, 'required-secrets.txt'), 'utf8')
 			.split('\n')
-			.filter((line) => line && !line.startsWith('#'));
+			.filter((line) => line && !line.startsWith('#'))
+			.map((line) => line.split(/\s+/)[0]);
 		const api = Object.fromEntries(required.map((name) => [name, `${MARK}-${name.toLowerCase()}`]));
 		Object.assign(api, {
 			SPACES_CDN_URL: 'https://cdn.example.test',
@@ -138,6 +139,7 @@ test('the folder checks still refuse an image without a digest, a missing settin
 		[{ release: { API_IMAGE: 'registry.test/api:latest' } }, /API_IMAGE must be pinned by digest/],
 		[{ release: { CDN_HOST: undefined } }, /CDN_HOST is missing from release\.env/],
 		[{ api: { MSG91_AUTH_KEY: '' } }, /MSG91_AUTH_KEY has no value in secrets\/api\.env/],
+		[{ release: { DEPLOY_ENV: 'local' }, api: { CSRF_SECRET: '' } }, /CSRF_SECRET has no value/],
 	];
 	for (const [change, message] of cases) {
 		withRelease(change, (release, root) => {
@@ -150,4 +152,13 @@ test('the folder checks still refuse an image without a digest, a missing settin
 		rmSync(join(release, 'secrets/mongo-keyfile'));
 		assert.match(check(release, root).output, /secrets\/mongo-keyfile is missing or empty/);
 	});
+});
+
+test('on a local machine the server-only MSG91_AUTH_KEY may be blank; on a server it may not', () => {
+	withRelease({ release: { DEPLOY_ENV: 'local' }, api: { MSG91_AUTH_KEY: '' } }, (release, root) =>
+		assert.equal(check(release, root).status, 0),
+	);
+	withRelease({ release: { DEPLOY_ENV: 'development' }, api: { MSG91_AUTH_KEY: '' } }, (release, root) =>
+		assert.match(check(release, root).output, /MSG91_AUTH_KEY has no value/),
+	);
 });

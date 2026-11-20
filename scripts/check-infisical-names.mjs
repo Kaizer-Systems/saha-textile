@@ -43,7 +43,8 @@ const problems = findNameProblems({
 	requiredFile: read('docker/production/required-secrets.txt')
 		.split('\n')
 		.map((line) => line.trim())
-		.filter((line) => line !== '' && !line.startsWith('#')),
+		.filter((line) => line !== '' && !line.startsWith('#'))
+		.map((line) => line.split(/\s+/)[0]),
 	deployFiles: secretFilesCheckedByDeploy(read('docker/production/bin/deploy.sh')),
 	productionCompose: read('docker/production/compose.yaml'),
 });

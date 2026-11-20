@@ -48,6 +48,7 @@ export function describeError(error) {
  * @property {Set<string>} developmentOnly           never sent to a release
  * @property {Set<string>} composeProvided           set by Compose in a release, so left out of `api.env`
  * @property {string[]} requiredForRelease           `required-secrets.txt`
+ * @property {Set<string>} serverOnlyRequired        required on a server, not on a local machine
  * @property {string[]} backup
  * @property {string[]} infrastructureFiles          stored whole in `/infrastructure`
  * @property {Record<string, string>} derivedFiles   secret file name → the `/api` setting it is written from
@@ -72,10 +73,13 @@ export function describeError(error) {
  */
 export function loadInventory(root = ROOT) {
 	const json = JSON.parse(readFileSync(join(root, 'docker/infisical/variable-names.json'), 'utf8'));
-	const required = readFileSync(join(root, 'docker/production/required-secrets.txt'), 'utf8')
+	const requiredLines = readFileSync(join(root, 'docker/production/required-secrets.txt'), 'utf8')
 		.split('\n')
 		.map((line) => line.trim())
-		.filter((line) => line !== '' && !line.startsWith('#'));
+		.filter((line) => line !== '' && !line.startsWith('#'))
+		.map((line) => line.split(/\s+/));
+	const required = requiredLines.map(([name]) => name);
+	const serverOnly = new Set(requiredLines.filter(([, scope]) => scope === 'server-only').map(([name]) => name));
 
 	/** @type {Record<string, Project>} */
 	const projects = {};
@@ -94,6 +98,7 @@ export function loadInventory(root = ROOT) {
 		developmentOnly: new Set(json.developmentOnlyApiVariables),
 		composeProvided: new Set(json.composeProvidedApiVariables ?? []),
 		requiredForRelease: required,
+		serverOnlyRequired: serverOnly,
 		backup: json.backupVariables,
 		infrastructureFiles: json.infrastructureSecretFileNames,
 		derivedFiles: json.derivedSecretFiles ?? {},

@@ -25,6 +25,7 @@ import { FOLDERS, SecretsError, folderNames } from './inventory.mjs';
  * written without quotes. Any value that would need quoting is refused instead.
  */
 export const SHELL_READ_API_NAMES = new Set([
+	'ADMIN_APP_URL',
 	'CCAVENUE_BASE_URL',
 	'CCAVENUE_MERCHANT_ID',
 	'CCAVENUE_RETURN_URL',
@@ -32,6 +33,8 @@ export const SHELL_READ_API_NAMES = new Set([
 	'GOOGLE_OAUTH_CLIENT_ID',
 	'MONGODB_DB_NAME',
 	'MONGODB_USERNAME',
+	'SPACES_CDN_URL',
+	'SPACES_ENDPOINT',
 ]);
 
 /** The deploy reads this key from the search server, so a release never carries it. */

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Deploys one release folder: bin/deploy.sh <release-folder>
+#   bin/deploy.sh --check-only <release-folder>   only the checks on the folder itself (digests,
+#   settings, secret files, required names, the payment host, addresses that must agree); nothing
+#   starts. The local pipeline runs it on a folder made from the dev project (plan step 6).
 #
 #   check inputs → back up (production) → pull by digest → data services → database and search
 #   keys → release steps (roles, indexes, migrations, search; all before the switch) → apps →
@@ -8,7 +11,12 @@
 # Any failure after the apps change puts the previous release back and exits 1.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-RELEASE="$(cd "${1:?Usage: deploy.sh <release-folder>}" && pwd)"
+CHECK_ONLY=0
+if [[ "${1:-}" == --check-only ]]; then
+	CHECK_ONLY=1
+	shift
+fi
+RELEASE="$(cd "${1:?Usage: deploy.sh [--check-only] <release-folder>}" && pwd)"
 CURRENT="$SAHA_TEXTILE_ROOT/current"
 PREVIOUS="$SAHA_TEXTILE_ROOT/previous"
 SECRETS="$RELEASE/secrets"
@@ -17,6 +25,15 @@ KEEP_RELEASES=3
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 
 check_inputs() {
+	check_release
+	local name
+	for name in origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem; do
+		[[ -s "$SAHA_TEXTILE_ROOT/certs/$name" ]] || die "certs/$name is missing or empty."
+	done
+}
+
+# Everything that can be checked in the release folder alone, before any server is touched.
+check_release() {
 	say 'Checking the release'
 	local name value
 	for name in API_IMAGE STOREFRONT_IMAGE ADMIN_IMAGE OPS_IMAGE; do
@@ -35,10 +52,40 @@ check_inputs() {
 		[[ -z "$name" || "$name" == \#* ]] && continue
 		grep -q "^$name=." "$SECRETS/api.env" || die "$name has no value in secrets/api.env."
 	done <"$RELEASE/required-secrets.txt"
-	for name in origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem; do
-		[[ -s "$SAHA_TEXTILE_ROOT/certs/$name" ]] || die "certs/$name is missing or empty."
-	done
 	check_payment_host
+	check_addresses
+}
+
+api_value() { sed -n "s/^$1=//p" "$SECRETS/api.env" | tail -n 1; }
+# The host part of an address: no scheme, port or path.
+host_of() {
+	local value="${1#*://}"
+	value="${value%%/*}"
+	printf '%s' "${value%%:*}"
+}
+
+# Addresses kept twice, as a full address and as a bare host (owner decision D3, 2026-11-20). Both
+# forms stay; a release whose two forms disagree is refused before anything starts. Messages name
+# the settings, never their values.
+check_addresses() {
+	local pair url host
+	for pair in SITE_URL:STOREFRONT_HOST ADMIN_URL:ADMIN_HOST API_URL:API_HOST; do
+		url="$(release_value "$RELEASE" "${pair%%:*}")"
+		host="$(release_value "$RELEASE" "${pair##*:}")"
+		[[ "$(host_of "$url")" == "$host" ]] ||
+			die "${pair%%:*} and ${pair##*:} in release.env must name the same host."
+	done
+	[[ "$(host_of "$(api_value SPACES_CDN_URL)")" == "$(release_value "$RELEASE" CDN_HOST)" ]] ||
+		die 'CDN_HOST in release.env must be the host of SPACES_CDN_URL in secrets/api.env.'
+	local endpoint admin_app
+	endpoint="$(api_value SPACES_ENDPOINT)"
+	[[ -z "$endpoint" || "$(host_of "$endpoint")" == "$(release_value "$RELEASE" SPACES_HOST)" ]] ||
+		die 'SPACES_HOST in release.env must be the host of SPACES_ENDPOINT in secrets/api.env.'
+	admin_app="$(api_value ADMIN_APP_URL)"
+	local admin_url
+	admin_url="$(release_value "$RELEASE" ADMIN_URL)"
+	[[ -z "$admin_app" || "${admin_app%/}" == "${admin_url%/}" ]] ||
+		die 'ADMIN_APP_URL in secrets/api.env must be ADMIN_URL from release.env.'
 }
 
 # The storefront's CSP lets forms post only to CCAVENUE_HOST. If that is not the host the API sends
@@ -214,6 +261,11 @@ prune_releases() {
 	done < <(find "$(dirname "$RELEASE")" -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 ls -dt)
 }
 
+if [[ "$CHECK_ONLY" == 1 ]]; then
+	check_release
+	say 'The release folder passed every check. Nothing was started.'
+	exit 0
+fi
 check_inputs
 mkdir -p "$PUBLIC"
 touch "$PUBLIC/storefront.env" "$PUBLIC/storefront.config.json" "$PUBLIC/admin.config.json"

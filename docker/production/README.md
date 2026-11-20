@@ -49,10 +49,18 @@ behind Authenticated Origin Pulls).
 
 ```bash
 bin/deploy.sh /opt/saha-textile/releases/<id>
+bin/deploy.sh --check-only <release-folder>
 bin/rollback.sh
 bin/backup.sh
 CONFIRM_REPLACE_DATA=yes bin/restore.sh <backup-stamp> <age-identity-file>
 ```
+
+`--check-only` runs only the checks on the release folder itself and starts nothing: images pinned by
+digest, every `release.env` setting, every secret file, every name in `required-secrets.txt`, the
+payment host, and the addresses kept both as a URL and as a host (`SITE_URL` and `STOREFRONT_HOST`,
+`ADMIN_URL` and `ADMIN_HOST`, `API_URL` and `API_HOST`, `SPACES_CDN_URL` and `CDN_HOST`,
+`SPACES_ENDPOINT` and `SPACES_HOST`, `ADMIN_APP_URL` and `ADMIN_URL`), which must agree. A real
+deploy runs the same checks first, plus the droplet's certificates.
 
 The first administrator is the one step that stays manual, because it prints a credential. Run it
 over SSH, never from a workflow:

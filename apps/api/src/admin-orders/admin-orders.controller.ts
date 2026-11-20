@@ -11,6 +11,7 @@ import {
 	MarkPaymentReceivedWrite,
 	OrderCommentWrite,
 	OrderListQuery,
+	PaymentRequestWrite,
 	StatusChangeWrite,
 } from '@saha-textile/contracts';
 
@@ -21,6 +22,7 @@ import { API_TAGS } from '../openapi-tags';
 import { AdminCartService } from './admin-cart.service';
 import { AdminOrderCreateService, type CheckoutRights } from './admin-order-create.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
+import { PaymentRequestsService } from './payment-requests.service';
 
 const actorOf = (principal: AuthenticatedPrincipal | undefined): Actor => ({
 	id: principal?.userId ?? null,
@@ -43,6 +45,7 @@ export class AdminOrdersController {
 		private readonly cart: AdminCartService,
 		private readonly orders: AdminOrdersService,
 		private readonly checkout: AdminOrderCreateService,
+		private readonly paymentRequests: PaymentRequestsService,
 	) {}
 
 	@Get()
@@ -192,6 +195,47 @@ export class AdminOrdersController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.orders.markReceived(id, paymentId, body, actorOf(principal));
+	}
+
+	@Post(':id/requests')
+	@RequirePermissions('order.send')
+	@ApiOperation({
+		operationId: 'createPaymentRequest',
+		summary: 'Ask the gateway to send its payment request (never more than is due)',
+	})
+	createRequest(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(PaymentRequestWrite)) body: PaymentRequestWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.paymentRequests.create(id, body, actorOf(principal));
+	}
+
+	@Post(':id/requests/:requestId/check')
+	@HttpCode(200)
+	@RequirePermissions('order.payment')
+	@ApiOperation({ operationId: 'checkPaymentRequest', summary: 'Check payment status with the gateway now' })
+	checkRequest(
+		@Param('id') id: string,
+		@Param('requestId') requestId: string,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.paymentRequests.check(id, requestId, actorOf(principal));
+	}
+
+	@Post(':id/requests/:requestId/cancel')
+	@HttpCode(200)
+	@RequirePermissions('order.send')
+	@ApiOperation({
+		operationId: 'cancelPaymentRequest',
+		summary: 'Cancel the payment request (the link stops working)',
+	})
+	cancelRequest(
+		@Param('id') id: string,
+		@Param('requestId') requestId: string,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.paymentRequests.cancel(id, requestId, actorOf(principal));
 	}
 
 	@Post(':id/e-invoice/raise')

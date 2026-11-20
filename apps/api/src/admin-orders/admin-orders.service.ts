@@ -649,7 +649,7 @@ export class AdminOrdersService {
 	 * Works the balance and payment status out again from every payment, places an order that was
 	 * waiting for its money, and records the change in the history.
 	 */
-	private async settle(
+	async settle(
 		order: Order,
 		revision: number,
 		actor: Actor,

@@ -205,6 +205,8 @@ export const PayPageView = z.discriminatedUnion('state', [
 		deliveryCity: z.string().nullable(),
 		deliveryCountry: z.string().nullable(),
 		expiresAt: IsoDateTime,
+		/** The gateway's own request page; the pay page starts it only when Pay is pressed. */
+		payUrl: z.string().url(),
 	}),
 	z.object({ state: z.literal('paid'), orderNumber: z.string() }),
 	/** Expired, cancelled or replaced without a newer request: nothing is charged. */

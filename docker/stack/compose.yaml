@@ -43,13 +43,33 @@ services:
   mongo:
     <<: *logging
     image: mongo:9.0.4
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all', '--wiredTigerCacheSizeGB', '1']
+    # Logins required, as on a droplet (docker/production/compose.yaml): a replica-set keyfile,
+    # `--auth`, and the administrator from mounted files. mongod refuses a keyfile unless it is mode
+    # 400 and owned by its user, which a bind mount cannot promise, so it is copied in first.
+    # `pnpm stack:up` then starts the replica set and creates the app login
+    # (docker/stack/prepare-database.sh), as deploy.sh does.
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        install -o mongodb -g mongodb -m 400 /run/secrets/mongo-keyfile /data/configdb/keyfile &&
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth
+        --keyFile /data/configdb/keyfile --wiredTigerCacheSizeGB 1
+    environment:
+      # Only read on an empty data folder.
+      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo-root-username
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo-root-password
+    secrets:
+      - mongo-keyfile
+      - mongo-root-username
+      - mongo-root-password
+      - mongo-app-password
     volumes:
       - saha_textile_stack_mongo_data:/data/db
       - saha_textile_stack_mongo_configdb:/data/configdb
     healthcheck:
-      test: |
-        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }" | grep -q 1
+      # `ping` answers without a login, before the replica set is started, as on a droplet.
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 10s
       retries: 24
@@ -169,6 +189,14 @@ services:
 secrets:
   api_env:
     file: ./env/api.env
+  mongo-keyfile:
+    file: ./env/mongo-keyfile
+  mongo-root-username:
+    file: ./env/mongo-root-username
+  mongo-root-password:
+    file: ./env/mongo-root-password
+  mongo-app-password:
+    file: ./env/mongo-app-password
   redis-password:
     file: ./env/redis-password
   meilisearch.toml:

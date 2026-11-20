@@ -57,6 +57,8 @@ docker/stack/env/*.config.json
 docker/stack/env/redis-password
 docker/stack/env/meilisearch.toml
 docker/stack/env/*.tmp
+# Every file there, including the MongoDB login files (keyfile, administrator, app password) and any added later.
+docker/stack/env/*
 
 # This Mac's own service secrets (pnpm secrets:setup-local): the dev project's /infrastructure files — never commit.
 docker/dev-secrets/

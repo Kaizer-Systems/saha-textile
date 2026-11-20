@@ -8,11 +8,15 @@
  *   meilisearch.toml   the search server's master key, as on a droplet
  *   storefront.env, storefront.config.json, admin.config.json   public settings, no secrets
  *
- * The stack's Redis password and search master key are the dev project's own (`/api/REDIS_PASSWORD`
- * and `/infrastructure/meilisearch.toml`), as the owner directed on 2026-11-20: `pnpm dev` uses the
- * stack's search server, so both modes must agree on its key. `stack.env` keeps only this Mac's
- * HTTPS port. When Infisical cannot be read, `apps/api/.env` (which `pnpm secrets:pull` keeps in
- * step) and `docker/dev-secrets/meilisearch.toml` are used.
+ *   mongo-keyfile, mongo-root-username, mongo-root-password, mongo-app-password
+ *                      the stack's MongoDB requires logins, as on a droplet
+ *
+ * The stack's Redis password, search master key and database logins are the dev project's own
+ * (`/api/REDIS_PASSWORD`, `/api/MONGODB_USERNAME` and `MONGODB_PASSWORD`, and the `/infrastructure`
+ * files), as the owner directed on 2026-11-20: `pnpm dev` uses the stack's search server, so both
+ * modes must agree on its key. `stack.env` keeps only this Mac's HTTPS port. When Infisical cannot
+ * be read, `apps/api/.env` (which `pnpm secrets:pull` keeps in step) and `docker/dev-secrets/` are
+ * used.
  */
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -38,15 +42,46 @@ export const STACK_OWNED =
 /** Lines an older `stack.env` held. The stack now takes both from the dev project and ignores them. */
 export const RETIRED_LOCAL_SECRETS = ['REDIS_PASSWORD', 'MEILISEARCH_MASTER_KEY'];
 
+/** The `/infrastructure` files the stack reads; `docker/dev-secrets/` holds the same as a fallback. */
+export const STACK_INFRASTRUCTURE_FILES = [
+	'mongo-keyfile',
+	'mongo-root-username',
+	'mongo-root-password',
+	'meilisearch.toml',
+];
+
 /**
- * The stack's Redis password and search server settings, from the dev project.
+ * The stack's Redis password, search server settings and database logins, from the dev project.
  * @param {Map<string, string>} api              the dev project's /api folder (or apps/api/.env)
- * @param {string | undefined} searchConfig       its /infrastructure/meilisearch.toml
+ * @param {Map<string, string>} infrastructure   its /infrastructure folder (or docker/dev-secrets/)
  * @param {string} source                         where they came from, for messages
  */
-export function stackServiceSecrets(api, searchConfig, source) {
-	const redisPassword = api.get('REDIS_PASSWORD') ?? '';
-	if (isBlank(redisPassword)) throw new SecretsError(`REDIS_PASSWORD is blank in ${source}. Nothing was written.`);
+export function stackServiceSecrets(api, infrastructure, source) {
+	const searchConfig = infrastructure.get('meilisearch.toml');
+	for (const name of ['REDIS_PASSWORD', 'MONGODB_USERNAME', 'MONGODB_PASSWORD']) {
+		if (isBlank(api.get(name))) throw new SecretsError(`${name} is blank in ${source}. Nothing was written.`);
+	}
+	for (const name of ['mongo-keyfile', 'mongo-root-username', 'mongo-root-password']) {
+		if (isBlank(infrastructure.get(name))) {
+			throw new SecretsError(
+				`${name} is blank in the dev project's /infrastructure folder. Nothing was written.`,
+			);
+		}
+	}
+	const redisPassword = /** @type {string} */ (api.get('REDIS_PASSWORD'));
+	const keyfile = /** @type {string} */ (infrastructure.get('mongo-keyfile')).replace(/\s/g, '');
+	if (!/^[A-Za-z0-9+/=]{6,1024}$/.test(keyfile)) {
+		throw new SecretsError(
+			'mongo-keyfile must be 6 to 1,024 base64 characters, as made by: openssl rand -base64 756. Nothing was written.',
+		);
+	}
+	const mongo = {
+		keyfile: `${keyfile}\n`,
+		rootUser: /** @type {string} */ (infrastructure.get('mongo-root-username')).trim(),
+		rootPassword: /** @type {string} */ (infrastructure.get('mongo-root-password')).trim(),
+		appUser: /** @type {string} */ (api.get('MONGODB_USERNAME')),
+		appPassword: /** @type {string} */ (api.get('MONGODB_PASSWORD')),
+	};
 	const masterKey = /^\s*master_key\s*=\s*"([^"]+)"\s*$/m.exec(searchConfig ?? '')?.[1] ?? '';
 	if (masterKey === '') {
 		throw new SecretsError(
@@ -56,13 +91,17 @@ export function stackServiceSecrets(api, searchConfig, source) {
 	for (const [name, value] of [
 		['REDIS_PASSWORD', redisPassword],
 		['the search master key', masterKey],
+		['mongo-root-username', mongo.rootUser],
+		['mongo-root-password', mongo.rootPassword],
+		['MONGODB_USERNAME', mongo.appUser],
+		['MONGODB_PASSWORD', mongo.appPassword],
 	]) {
 		if (!isPlain(value)) {
 			throw new SecretsError(`${name} may not contain a space, quote, #, backslash or $. Nothing was written.`);
 		}
 	}
 	const text = /** @type {string} */ (searchConfig);
-	return { redisPassword, masterKey, searchConfig: text.endsWith('\n') ? text : `${text}\n` };
+	return { redisPassword, masterKey, searchConfig: text.endsWith('\n') ? text : `${text}\n`, mongo };
 }
 
 /** @param {Map<string, string>} local  the values in `stack.env` */
@@ -100,6 +139,8 @@ export function buildStackFiles(api, { inventory, source, local, services, unkno
 		['MONGODB_PORT', '27017'],
 		['MONGODB_REPLICA_SET', 'rs0'],
 		['MONGODB_DB_NAME', 'saha_textile_stack'],
+		['MONGODB_USERNAME', services.mongo.appUser],
+		['MONGODB_PASSWORD', services.mongo.appPassword],
 		['REDIS_HOST', 'redis'],
 		['REDIS_PORT', '6379'],
 		['REDIS_PASSWORD', redisPassword],
@@ -126,6 +167,10 @@ export function buildStackFiles(api, { inventory, source, local, services, unkno
 		['api.env', env.text],
 		['redis-password', redisPassword],
 		['meilisearch.toml', services.searchConfig],
+		['mongo-keyfile', services.mongo.keyfile],
+		['mongo-root-username', services.mongo.rootUser],
+		['mongo-root-password', services.mongo.rootPassword],
+		['mongo-app-password', services.mongo.appPassword],
 		['storefront.config.json', `${JSON.stringify(storefrontConfig, null, '\t')}\n`],
 		[
 			'storefront.env',
@@ -142,7 +187,16 @@ export function buildStackFiles(api, { inventory, source, local, services, unkno
 }
 
 /** The files that hold secrets; the rest are public. */
-const SECRET_FILES = new Set(['api.env', 'redis-password', 'meilisearch.toml', 'stack.env']);
+const SECRET_FILES = new Set([
+	'api.env',
+	'redis-password',
+	'meilisearch.toml',
+	'mongo-keyfile',
+	'mongo-root-username',
+	'mongo-root-password',
+	'mongo-app-password',
+	'stack.env',
+]);
 
 /**
  * Reads Infisical (or the fallback), writes `docker/stack/env/`, and returns what to print.
@@ -157,12 +211,12 @@ export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) 
 	const project = inventory.projects.dev;
 	const lines = [];
 	let api;
-	let searchConfig;
+	let infrastructure;
 	let source = `Infisical ${project.name} (${project.environment}), folder /api`;
 	let unknown = /** @type {'refuse' | 'drop'} */ ('refuse');
 	try {
 		api = readApi();
-		searchConfig = readInfrastructure().get('meilisearch.toml');
+		infrastructure = readInfrastructure();
 	} catch (error) {
 		if (!(error instanceof SecretsError)) throw error;
 		const fallback = readIfPresent(join(root, 'apps/api/.env'));
@@ -173,7 +227,12 @@ export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) 
 		}
 		lines.push('Infisical could not be read, so apps/api/.env was used instead:', `  ${error.message}`);
 		api = parseEnvText(fallback);
-		searchConfig = readIfPresent(join(root, 'docker/dev-secrets/meilisearch.toml')) ?? undefined;
+		infrastructure = new Map(
+			STACK_INFRASTRUCTURE_FILES.map((name) => [
+				name,
+				readIfPresent(join(root, 'docker/dev-secrets', name)) ?? '',
+			]),
+		);
 		source = 'apps/api/.env (Infisical could not be read)';
 		unknown = 'drop';
 	}
@@ -182,7 +241,7 @@ export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) 
 	const stackEnvPath = join(dir, 'stack.env');
 	const localText = readIfPresent(stackEnvPath);
 	const local = localText === null ? new Map() : parseEnvText(localText);
-	const services = stackServiceSecrets(api, searchConfig, source);
+	const services = stackServiceSecrets(api, infrastructure, source);
 	const built = buildStackFiles(api, { inventory, source, local, services, unknown });
 	// Settings the last api.env had and this one lacks: most often values not yet filled in Infisical.
 	const previous = readIfPresent(join(dir, 'api.env'));
@@ -198,7 +257,7 @@ export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) 
 	for (const [name, text] of built.files) replaceFile(join(dir, name), text, SECRET_FILES.has(name) ? 0o600 : 0o644);
 
 	lines.push(
-		`Wrote ${STACK_ENV_DIR}: api.env (${built.names.length} settings from ${source}), redis-password, meilisearch.toml, storefront.env and the two config.json files.`,
+		`Wrote ${STACK_ENV_DIR}: api.env (${built.names.length} settings from ${source}), redis-password, meilisearch.toml, the four MongoDB login files, storefront.env and the two config.json files.`,
 		...built.notes.map((note) => `  ${note}`),
 		...(dropped.length > 0
 			? [

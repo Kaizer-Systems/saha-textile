@@ -31,12 +31,20 @@ and Firefox resolve `*.localhost` themselves; Safari needs the `/etc/hosts` line
 **Secrets** reach the containers the way a droplet's release folder delivers them. `pnpm stack:env`
 writes `docker/stack/env/` (gitignored and excluded from the Docker build context):
 
-| File               | Read by                                                                  | From                                            |
-| ------------------ | ------------------------------------------------------------------------ | ----------------------------------------------- |
-| `api.env`          | API and worker, mounted at `/run/secrets/api.env` (`DOTENV_CONFIG_PATH`) | dev project `/api`, with the stack's own on top |
-| `redis-password`   | Redis, read into its config file at start                                | dev project `/api/REDIS_PASSWORD`               |
-| `meilisearch.toml` | Meilisearch (`MEILI_CONFIG_FILE_PATH`)                                   | dev project `/infrastructure/meilisearch.toml`  |
-| `stack.env`        | `scripts/stack.sh` and `pnpm stack:env` only                             | this Mac's `STACK_HTTPS_PORT`, written by hand  |
+| File                                                          | Read by                                                                  | From                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------- |
+| `api.env`                                                     | API and worker, mounted at `/run/secrets/api.env` (`DOTENV_CONFIG_PATH`) | dev project `/api`, with the stack's own on top |
+| `redis-password`                                              | Redis, read into its config file at start                                | dev project `/api/REDIS_PASSWORD`               |
+| `meilisearch.toml`                                            | Meilisearch (`MEILI_CONFIG_FILE_PATH`)                                   | dev project `/infrastructure/meilisearch.toml`  |
+| `mongo-keyfile`, `mongo-root-username`, `mongo-root-password` | MongoDB: replica-set keyfile and administrator                           | dev project `/infrastructure`                   |
+| `mongo-app-password`                                          | MongoDB, to keep the app login in step                                   | dev project `/api/MONGODB_PASSWORD`             |
+| `stack.env`                                                   | `scripts/stack.sh` and `pnpm stack:env` only                             | this Mac's `STACK_HTTPS_PORT`, written by hand  |
+
+The stack's MongoDB requires logins, as on a droplet: `--auth` with the keyfile, the administrator
+from the mounted files, and the app login (`readWrite` on `saha_textile_stack` only) that
+`pnpm stack:up` creates after MongoDB starts and before the apps do, with
+`docker/stack/prepare-database.sh`, the same steps as `deploy.sh`. A data folder made before logins
+were required gets its administrator from the mounted files on that first start.
 
 The stack's search server is also the one `pnpm dev` uses (port 7700), so both modes share the dev
 project's master key. No secret shows in `docker inspect` or on a command line. The dev project's own settings for local

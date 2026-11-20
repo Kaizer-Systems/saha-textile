@@ -45,12 +45,26 @@ cmd_certs() {
 	echo "Stack certificate issued for $STOREFRONT_HOST, $ADMIN_HOST, $API_HOST and localhost (mailbox callback)"
 }
 
+# As deploy.sh's ensure_database: start the replica set once and keep the app login in step.
+# docker/stack/prepare-database.sh runs inside the mongo container and reads every password from
+# the files mounted there.
+ensure_database() {
+	local database user
+	database="$(sed -n 's/^MONGODB_DB_NAME=//p' "$ENV_DIR/api.env")"
+	user="$(sed -n 's/^MONGODB_USERNAME=//p' "$ENV_DIR/api.env")"
+	"${COMPOSE[@]}" exec -T -e APP_DATABASE="$database" -e APP_USER="$user" mongo sh -s <"$STACK_DIR/prepare-database.sh"
+}
+
 cmd_up() {
 	[[ -f "$CERT_DIR/stack-cert.pem" ]] || { echo "Run: pnpm stack:certs" >&2; exit 1; }
 	local name
-	for name in api.env redis-password meilisearch.toml storefront.env storefront.config.json admin.config.json; do
+	for name in api.env redis-password meilisearch.toml mongo-keyfile mongo-root-username mongo-root-password \
+		mongo-app-password storefront.env storefront.config.json admin.config.json; do
 		[[ -s "$ENV_DIR/$name" ]] || { echo "docker/stack/env/$name is missing. Run: pnpm stack:env" >&2; exit 1; }
 	done
+	# The services first, then the database's logins, then the apps: the API must find its login.
+	"${COMPOSE[@]}" up -d --wait mongo redis meilisearch
+	ensure_database
 	"${COMPOSE[@]}" up -d --build --wait
 	# The same release steps as a deploy: roles, indexes, migrations and the search index.
 	"${COMPOSE[@]}" exec -T api node dist/release-steps.js

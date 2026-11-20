@@ -91,9 +91,11 @@ pipeline and the deploy jobs follow the plan in the owner decisions log (2026-11
 - `pnpm dev` runs the same pull first and never stops on it: offline, signed out or refused, it says
   so in one line and the existing file is used. A hand-written file is left alone until
   `pnpm secrets:pull` has run once.
-- `pnpm stack:env` writes `docker/stack/env/` from the dev project's `/api` folder: `api.env` with
-  the stack's own hosts and services on top, plus `redis-password` and `meilisearch.toml`. The API
-  and worker read `api.env` mounted read-only at `/run/secrets/api.env` through
+- `pnpm stack:env` writes `docker/stack/env/` from the dev project's `/api` and `/infrastructure`
+  folders: `api.env` with the stack's own hosts and services on top, plus `redis-password`,
+  `meilisearch.toml` and the four MongoDB login files (keyfile and administrator from
+  `/infrastructure`, the app password from `/api`); the stack's MongoDB requires logins like a
+  droplet's. The API and worker read `api.env` mounted read-only at `/run/secrets/api.env` through
   `DOTENV_CONFIG_PATH`, as on a droplet. The stack's Redis password and search master key are the
   dev project's (`/api/REDIS_PASSWORD`, `/infrastructure/meilisearch.toml`), because `pnpm dev`
   uses the stack's search server too (2026-11-20); `docker/stack/env/stack.env` keeps only the

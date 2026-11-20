@@ -120,14 +120,14 @@ const stages = {
 		}
 	},
 
-	proof({ json, report }) {
+	proof({ json, report, state }) {
 		// In a clean copy of the last commit, as GitHub runs it: the proof builds its images from the
 		// folder it runs in, and this folder may hold uncommitted work (other chats share it).
 		const checkout = join(ROOT, LOCAL_RELEASE_DIR, 'checkout');
 		rmSync(checkout, { recursive: true, force: true });
 		mkdirSync(checkout, { recursive: true, mode: 0o700 });
-		sh(`git archive --format=tar HEAD | tar -x -C "${checkout}"`, { json });
-		reportDirty(report, 'proof');
+		sh(`git archive --format=tar ${state.commit} | tar -x -C "${checkout}"`, { json });
+		reportDirty(report, 'proof', state.commit);
 		report.step('proof', PROOF.name);
 		const inCheckout = `cd "${checkout}" && ${PROOF.run}`;
 		try {
@@ -139,10 +139,10 @@ const stages = {
 		}
 	},
 
-	images({ json, report }) {
-		const commit = capture('git', ['rev-parse', 'HEAD']);
-		const tree = capture('git', ['rev-parse', 'HEAD^{tree}']);
-		const dirty = reportDirty(report, 'images');
+	images({ json, report, state }) {
+		const commit = state.commit;
+		const tree = capture('git', ['rev-parse', `${commit}^{tree}`]);
+		const dirty = reportDirty(report, 'images', commit);
 		const running = spawnSync('docker', ['inspect', REGISTRY_CONTAINER], { stdio: 'ignore' }).status === 0;
 		if (!running) {
 			report.step('images', 'Starting the registry on this Mac');
@@ -158,7 +158,7 @@ const stages = {
 			report.step('images', `Building ${target} from the commit`);
 			const name = `${REGISTRY}/saha-textile-${target}`;
 			sh(
-				`git archive --format=tar HEAD | docker build --quiet -f docker/images/Dockerfile --target ${target} -t ${name}:sha-${commit} -t ${name}:tree-${tree} - >/dev/null`,
+				`git archive --format=tar ${commit} | docker build --quiet -f docker/images/Dockerfile --target ${target} -t ${name}:sha-${commit} -t ${name}:tree-${tree} - >/dev/null`,
 				{ json },
 			);
 			sh(
@@ -256,14 +256,13 @@ const stages = {
 	},
 };
 
-/** Says how many uncommitted changes the commit-built images leave out, and returns the count. */
-function reportDirty(report, stage) {
+/** Says how many uncommitted changes a commit-built stage leaves out, and returns the count. */
+function reportDirty(report, stage, commit) {
 	const dirty = capture('git', ['status', '--porcelain']).split('\n').filter(Boolean).length;
 	if (dirty > 0) {
-		const commit = capture('git', ['rev-parse', '--short=8', 'HEAD']);
 		report.note(
 			stage,
-			`${dirty} uncommitted change(s) in this folder are NOT used: this stage builds from commit ${commit}, as GitHub does.`,
+			`${dirty} uncommitted change(s) in this folder are NOT used: this stage builds from commit ${commit.slice(0, 8)}, as GitHub does.`,
 		);
 	}
 	return dirty;
@@ -294,7 +293,10 @@ function record(line) {
 async function main() {
 	const options = parseArgs(process.argv.slice(2));
 	const report = reporter(options);
-	const state = { release: undefined };
+	// One commit for the whole run, so every stage proves the same code even if another chat commits
+	// meanwhile (this folder is shared).
+	const state = { release: undefined, commit: capture('git', ['rev-parse', 'HEAD']) };
+	report.note('run', `Commit ${state.commit.slice(0, 8)}.`);
 	const started = Date.now();
 	const results = {};
 	for (const stage of options.stages) {

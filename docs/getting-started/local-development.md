@@ -11,6 +11,9 @@ source_of_truth:
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
     - scripts/secrets/test-login.mjs
+    - scripts/pipeline/local.mjs
+    - scripts/pipeline/stages.mjs
+    - scripts/secrets/release.mjs
     - apps/api/src/reset-local-customer.ts
     - apps/api/src/set-local-test-credentials.ts
     - apps/api/src/invite-local-admin.ts
@@ -69,6 +72,30 @@ Each script documents its allow marker for deliberate exceptions. Run the root l
 | `pnpm auth:set-local-credentials`                                                                            | Set local test credentials                              |
 | `pnpm mongo:reconcile-indexes`                                                                               | Bring database indexes in line with the models          |
 | `pnpm mongo:split-admin-users`, `pnpm mongo:rename-admin-user-permissions`, `pnpm mongo:extract-credentials` | One-off data migrations                                 |
+
+## The local pipeline
+
+`pnpm pipeline:local` walks a change through the same stages it goes through on GitHub, and ends with the result running on the full local stack with the dev project's real values.
+
+| Stage     | What it does                                                                                                                                                                                                                                                                        |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`  | The CI jobs' commands, in order (`scripts/pipeline/stages.mjs`). A test in `pnpm test:scripts` fails when this list and the workflows drift apart.                                                                                                                                  |
+| `proof`   | `pnpm production:proof`: deploy, rollback, backup and restore on throwaway values, then its stack is removed.                                                                                                                                                                       |
+| `images`  | The four images, built from the last commit as GitHub builds them, tagged `sha-<commit>` and `tree-<tree>` and pinned by digest in a registry on the machine (port 5056). Uncommitted changes are not in them; the stage says how many there are.                                   |
+| `release` | A full release folder from the dev project's real values (`scripts/secrets/release.mjs`), laid out like a droplet's, then the droplet's own `deploy.sh --check-only` on it. The folder describes the full stack: its hosts and port, its services and the proxy header it forwards. |
+| `deploy`  | `pnpm stack:env`, then the full stack runs exactly those image digests.                                                                                                                                                                                                             |
+| `record`  | Readiness and both `config.json` files checked through the stack's edge, and one line in `.local-release/runs.log`.                                                                                                                                                                 |
+
+```bash
+pnpm pipeline:local
+pnpm pipeline:local -- --from images
+pnpm pipeline:local -- --only release
+pnpm pipeline:local -- --json
+```
+
+- The release stage stops on any setting a release needs that the dev project leaves blank, such as `MSG91_AUTH_KEY`, and on any address whose URL and host forms disagree. Anything filled in the dev project's `/deployment` folder must agree with the stack's addresses.
+- The `checks` stage builds the apps inside the folder it runs in, so run it where no server is using those builds.
+- `.local-release/` (gitignored) keeps the newest three release folders, the image list and the run log. Every message names settings and stages, never a value.
 
 ## Environment and services
 

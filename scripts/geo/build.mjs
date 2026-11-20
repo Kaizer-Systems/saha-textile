@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Builds the repository's country, State and phone data file (owner decisions `DEC-ADDRESS` and
- * `DEC-GEO-REFRESH`, 2026-11-20) into `packages/adapters-geo/data/`.
+ * Builds the country, State, phone and PIN data (owner decisions `DEC-ADDRESS` and `DEC-GEO-REFRESH`,
+ * 2026-11-20; "move all that data to spaces", 2026-11-20).
  *
  * Sources, pinned (change a pin by hand, in a reviewed pull request):
  * - Phone codes and mobile lengths: libphonenumber-js, the version in packages/adapters-geo/package.json
@@ -11,21 +11,27 @@
  * - India's States: matched by name to our GST State list (packages/contracts/src/gst.ts), which adds
  *   each State's GST code.
  * - PIN codes: India Post's all-India PIN code directory on data.gov.in (Government Open Data Licence),
- *   read through its API with DATA_GOV_IN_API_KEY. Without the key this step is skipped quietly and
- *   the existing PIN file (if any) is kept.
+ *   read through its API with DATA_GOV_IN_API_KEY. Without the key this step is skipped and the PIN
+ *   files already named in the manifest are kept as they are.
  *
- * Output files are sorted so that a refresh with no change in the sources writes identical bytes; the
- * monthly GitHub Actions job (.github/workflows/geo-refresh.yml) opens a pull request only when they
- * differ. Run locally:  node scripts/geo/build.mjs   (add DATA_GOV_IN_API_KEY=… for the PIN step).
+ * Output: small files in a local working folder (`.geo-data/`, not committed; GEO_DATA_DIR overrides it):
+ * `countries.json`, `subdivisions/<CC>.json`, `pins/<first 3 digits>.json`. The repository keeps only
+ * `packages/adapters-geo/data/manifest.json`, which names each file's SHA-256; `scripts/geo/upload.mjs`
+ * stores each file in Spaces as `geo/<sha256>.json`. Files are sorted, so the same sources give the
+ * same manifest and the monthly job (.github/workflows/geo-refresh.yml) opens a pull request only when
+ * it changed. Run locally:  node scripts/geo/build.mjs   (add DATA_GOV_IN_API_KEY=… for the PIN step).
  */
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const GEO_PACKAGE = join(ROOT, 'packages/adapters-geo');
-const OUT = join(GEO_PACKAGE, 'data');
+/** The local working folder the files are written to (uploaded from by scripts/geo/upload.mjs). */
+export const WORK = process.env.GEO_DATA_DIR ? resolve(process.env.GEO_DATA_DIR) : join(ROOT, '.geo-data');
+export const MANIFEST = join(GEO_PACKAGE, 'data', 'manifest.json');
 
 export const DR5HN_TAG = 'v5.2.0-export.1';
 export const DR5HN_COMMIT = '9b255c45fc53e02a8dff547d88558d4fe91784d5';
@@ -74,11 +80,64 @@ function stableJson(value) {
 	return `${JSON.stringify(value, null, '\t')}\n`;
 }
 
-function writeIfChanged(path, text) {
-	const before = existsSync(path) ? readFileSync(path, 'utf8') : null;
-	if (before === text) return false;
-	writeFileSync(path, text);
-	return true;
+const sha256 = (text) => createHash('sha256').update(text).digest('hex');
+
+export function readManifest(path = MANIFEST) {
+	return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+}
+
+/** PIN rows (PIN → city, district, State) split into one file per first three digits. */
+export function pinSlices(pins) {
+	const slices = new Map();
+	for (const [pin, row] of Object.entries(pins)) {
+		const key = pin.slice(0, 3);
+		if (!slices.has(key)) slices.set(key, {});
+		slices.get(key)[pin] = row;
+	}
+	return new Map([...slices].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/**
+ * Writes the files into `work` and returns the manifest. `pins` null keeps the previous manifest's PIN
+ * files (already in Spaces) without rebuilding them.
+ */
+export function writeGeoOutput({ countries, subdivisionFiles, pins, sources, previous, work = WORK }) {
+	rmSync(work, { recursive: true, force: true });
+	const files = new Map();
+	const add = (path, text) => {
+		mkdirSync(dirname(join(work, path)), { recursive: true });
+		writeFileSync(join(work, path), text);
+		files.set(path, { sha256: sha256(text), bytes: Buffer.byteLength(text) });
+	};
+	add('countries.json', stableJson(countries));
+	for (const [code, rows] of [...subdivisionFiles].sort(([a], [b]) => a.localeCompare(b)))
+		add(`subdivisions/${code}.json`, stableJson(rows));
+	let pinCount = 0;
+	if (pins) {
+		for (const [key, rows] of pinSlices(pins)) add(`pins/${key}.json`, `${JSON.stringify(rows)}\n`);
+		pinCount = Object.keys(pins).length;
+	} else if (previous) {
+		for (const [path, entry] of Object.entries(previous.files)) if (path.startsWith('pins/')) files.set(path, entry);
+		pinCount = previous.counts?.pins ?? 0;
+	}
+	const sorted = Object.fromEntries([...files].sort(([a], [b]) => a.localeCompare(b)));
+	return {
+		schema: 1,
+		version: sha256(JSON.stringify(sorted)).slice(0, 16),
+		counts: { countries: countries.length, withSubdivisions: subdivisionFiles.size, pins: pinCount },
+		sources,
+		files: sorted,
+	};
+}
+
+/** What changed between two manifests, by file path. */
+export function manifestChanges(before, after) {
+	const was = before?.files ?? {};
+	const now = after.files;
+	const changed = [];
+	for (const path of Object.keys(now)) if (was[path]?.sha256 !== now[path].sha256) changed.push(was[path] ? path : `${path} (new)`);
+	for (const path of Object.keys(was)) if (!now[path]) changed.push(`${path} (gone)`);
+	return changed;
 }
 
 /** Never echoes a secret: the query string is dropped, and `secret` is cut out of the answer's text. */
@@ -234,36 +293,22 @@ async function buildPins(indiaSubdivisions) {
 }
 
 async function main() {
-	mkdirSync(join(OUT, 'subdivisions'), { recursive: true });
+	const previous = readManifest();
 	const { countries, subdivisionFiles, unmatchedIndia } = await buildCountriesAndStates();
-	const changed = [];
-	if (writeIfChanged(join(OUT, 'countries.json'), stableJson(countries))) changed.push('countries.json');
-	const keep = new Set([...subdivisionFiles.keys()].map((code) => `${code}.json`));
-	for (const file of readdirSync(join(OUT, 'subdivisions'))) {
-		if (!keep.has(file)) {
-			rmSync(join(OUT, 'subdivisions', file));
-			changed.push(`subdivisions/${file} (gone)`);
-		}
-	}
-	for (const [code, rows] of subdivisionFiles) {
-		if (writeIfChanged(join(OUT, 'subdivisions', `${code}.json`), stableJson(rows)))
-			changed.push(`subdivisions/${code}.json`);
-	}
 	const pins = await buildPins(subdivisionFiles.get('IN') ?? []);
-	if (pins) {
-		if (writeIfChanged(join(OUT, 'india-pins.json'), `${JSON.stringify(pins)}\n`)) changed.push('india-pins.json');
-	} else {
-		console.log('PIN step skipped: DATA_GOV_IN_API_KEY is not set (the existing PIN file, if any, is kept).');
-	}
+	if (!pins) console.log('PIN step skipped: DATA_GOV_IN_API_KEY is not set (the PIN files in the manifest are kept).');
 	const sources = {
 		libphonenumber: JSON.parse(readFileSync(require.resolve('libphonenumber-js/package.json'), 'utf8')).version,
 		dr5hn: { tag: DR5HN_TAG, commit: DR5HN_COMMIT },
-		pins: pins ? { resource: PIN_RESOURCE_ID, count: Object.keys(pins).length } : null,
+		pins: pins ? { resource: PIN_RESOURCE_ID } : (previous?.sources?.pins ?? null),
 	};
+	const manifest = writeGeoOutput({ countries, subdivisionFiles, pins, sources, previous });
+	const changed = manifestChanges(previous, manifest);
+	if (changed.length) writeFileSync(MANIFEST, stableJson(manifest));
 	if (unmatchedIndia.length) console.warn(`India: no GST code matched for ${unmatchedIndia.join(', ')}`);
-	console.log(`countries: ${countries.length}, with subdivisions: ${subdivisionFiles.size}`);
-	console.log(changed.length ? `changed: ${changed.join(', ')}` : 'no change');
-	console.log(`sources: ${JSON.stringify(sources)}`);
+	console.log(`countries: ${manifest.counts.countries}, with subdivisions: ${manifest.counts.withSubdivisions}, PINs: ${manifest.counts.pins}`);
+	console.log(changed.length ? `changed (${changed.length}): ${changed.slice(0, 20).join(', ')}${changed.length > 20 ? ' …' : ''}` : 'no change');
+	console.log(`files in ${WORK}; manifest version ${manifest.version}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

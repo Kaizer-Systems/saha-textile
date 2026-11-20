@@ -69,3 +69,6 @@ docker/dev-secrets/
 # Release Console key file (pnpm console:env), real secrets
 docker/release-console/env/
 docker/release-console/runner.log
+
+# Geo data working folder (scripts/geo/build.mjs writes it; the files live in Spaces, the repo keeps only the manifest)
+.geo-data/

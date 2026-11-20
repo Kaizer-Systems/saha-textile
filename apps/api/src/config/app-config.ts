@@ -285,6 +285,12 @@ const ConfigSchema = z.object({
 	/** The daily exchange-rate fetch (shipping rules brief fx01): the open tier needs no key. Never logged. */
 	fx: z.object({ exchangeRateApiKey: z.string().min(1).optional() }).default({}),
 	/**
+	 * Country, State, phone and PIN data (owner, 2026-11-20: kept in Spaces). Read from this
+	 * environment's bucket under `geo/`; `dataDir` (GEO_DATA_DIR) reads a local folder written by
+	 * scripts/geo/build.mjs instead, for work without Spaces.
+	 */
+	geo: z.object({ dataDir: z.string().min(1).optional() }).default({}),
+	/**
 	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
 	 *
 	 * Not a cache and not a session store — sessions live in Mongo and are cookie-bound, so
@@ -526,6 +532,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			},
 		},
 		fx: { exchangeRateApiKey: env.EXCHANGERATE_API_KEY || undefined },
+		geo: { dataDir: env.GEO_DATA_DIR || undefined },
 		documents: {
 			chromiumChannel: env.PDF_CHROMIUM_CHANNEL || undefined,
 			chromiumExecutable: env.PDF_CHROMIUM_EXECUTABLE || undefined,

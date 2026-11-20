@@ -127,7 +127,7 @@
 		"TRUST_PROXY",
 		"YOUTUBE_API_KEY"
 	],
-	"developmentOnlyApiVariables": ["OTP_LOCAL_FIXED_CODE", "TLS_CERT_FILE", "TLS_KEY_FILE"],
+	"developmentOnlyApiVariables": ["GEO_DATA_DIR", "OTP_LOCAL_FIXED_CODE", "TLS_CERT_FILE", "TLS_KEY_FILE"],
 	"composeProvidedApiVariables": ["SHOP_ORIGIN"],
 	"requiredApiVariablesByCurrentDeploymentValidator": [
 		"NODE_ENV",

@@ -1,10 +1,19 @@
-# Monthly refresh of the country, State, phone and PIN code data (owner decision DEC-GEO-REFRESH, 2026-11-20).
+# Monthly refresh of the country, State, phone and PIN code data (owner decision DEC-GEO-REFRESH, 2026-11-20;
+# "move all that data to spaces", 2026-11-20).
 #
-# Runs on GitHub's machines, never on our servers. It rebuilds packages/adapters-geo/data from the pinned
-# official sources (scripts/geo/build.mjs) and opens a pull request into `dev` only when a file changed; with no
-# change it ends quietly. A person reviews and merges. The PIN step needs the repository secret
-# DATA_GOV_IN_API_KEY (India Post's directory on data.gov.in); without it that step is skipped and the existing
-# PIN file is kept.
+# Runs on GitHub's machines, never on our servers. It rebuilds the data from the pinned official sources
+# (scripts/geo/build.mjs). The files themselves live in each environment's Spaces bucket as geo/<sha256>.json;
+# the repository keeps only packages/adapters-geo/data/manifest.json, which names them. When the manifest
+# changed, the job uploads the new files to every environment whose Spaces keys GitHub holds, then opens a pull
+# request into `dev` that changes only the manifest. A person reviews and merges; until then every server keeps
+# reading the files of the manifest it shipped with. With no change it ends quietly.
+#
+# Secrets (repository level):
+# - DATA_GOV_IN_API_KEY: India Post's PIN directory on data.gov.in. Without it the PIN step is skipped and the
+#   PIN files already named in the manifest are kept.
+# - SPACES_KEY_<ENV>, SPACES_SECRET_<ENV>, SPACES_BUCKET_<ENV> for ENV = DEV, STAGING, PRODUCTION (a key
+#   limited to that bucket). An environment without them is skipped and named in the pull request, so its
+#   files can be uploaded by hand before merging:  node --env-file=<that env's file> scripts/geo/upload.mjs
 name: Geo data refresh
 
 on:
@@ -40,33 +49,69 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - name: Install the geo package
-        run: pnpm install --frozen-lockfile --filter @saha-textile/adapters-geo
+      - name: Install the geo and storage packages
+        run: pnpm install --frozen-lockfile --filter @saha-textile/adapters-geo --filter @saha-textile/adapters-storage-spaces
 
-      - name: Rebuild the data file
+      - name: Rebuild the data
         env:
           DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
         run: node scripts/geo/build.mjs
 
-      - name: Open a pull request when something changed
+      - name: Check for a change
+        id: change
+        run: |
+          if git diff --quiet -- packages/adapters-geo/data/manifest.json; then
+            echo "No change in the country, State, phone or PIN data."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload the new files to each environment's bucket
+        if: steps.change.outputs.changed == 'true'
+        id: upload
+        env:
+          SPACES_KEY_DEV: ${{ secrets.SPACES_KEY_DEV }}
+          SPACES_SECRET_DEV: ${{ secrets.SPACES_SECRET_DEV }}
+          SPACES_BUCKET_DEV: ${{ secrets.SPACES_BUCKET_DEV }}
+          SPACES_KEY_STAGING: ${{ secrets.SPACES_KEY_STAGING }}
+          SPACES_SECRET_STAGING: ${{ secrets.SPACES_SECRET_STAGING }}
+          SPACES_BUCKET_STAGING: ${{ secrets.SPACES_BUCKET_STAGING }}
+          SPACES_KEY_PRODUCTION: ${{ secrets.SPACES_KEY_PRODUCTION }}
+          SPACES_SECRET_PRODUCTION: ${{ secrets.SPACES_SECRET_PRODUCTION }}
+          SPACES_BUCKET_PRODUCTION: ${{ secrets.SPACES_BUCKET_PRODUCTION }}
+        run: |
+          uploaded=""
+          skipped=""
+          for env in DEV STAGING PRODUCTION; do
+            key="SPACES_KEY_${env}"; secret="SPACES_SECRET_${env}"; bucket="SPACES_BUCKET_${env}"
+            if [ -z "${!key}" ] || [ -z "${!secret}" ] || [ -z "${!bucket}" ]; then
+              skipped="$skipped ${env,,}"
+              continue
+            fi
+            SPACES_KEY="${!key}" SPACES_SECRET="${!secret}" SPACES_BUCKET="${!bucket}" node scripts/geo/upload.mjs
+            uploaded="$uploaded ${env,,}"
+          done
+          echo "uploaded=${uploaded# }" >> "$GITHUB_OUTPUT"
+          echo "skipped=${skipped# }" >> "$GITHUB_OUTPUT"
+
+      - name: Open a pull request with the new manifest
+        if: steps.change.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPLOADED: ${{ steps.upload.outputs.uploaded }}
+          SKIPPED: ${{ steps.upload.outputs.skipped }}
         run: |
-          if git diff --quiet -- packages/adapters-geo/data && [ -z "$(git ls-files --others --exclude-standard packages/adapters-geo/data)" ]; then
-            echo "No change in the country, State, phone or PIN data."
-            exit 0
-          fi
           branch="chore/geo-refresh-$(date -u +%Y-%m)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add packages/adapters-geo/data
+          git add packages/adapters-geo/data/manifest.json
           git commit -m "chore(geo): monthly country, State, phone and PIN data refresh"
           git push --force-with-lease origin "$branch"
+          body="Rebuilt by scripts/geo/build.mjs from the pinned sources (libphonenumber-js, dr5hn countries-states-cities, India Post via data.gov.in). The files are in Spaces for: ${UPLOADED:-none}. Not uploaded (upload by hand before merging): ${SKIPPED:-none}. Review the manifest's changed files and merge into dev."
           if gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
-            echo "The refresh pull request is already open; it now has this month's data."
+            echo "The refresh pull request is already open; it now has this month's manifest."
           else
-            gh pr create --base dev --head "$branch" \
-              --title "chore(geo): monthly country, State, phone and PIN data refresh" \
-              --body "Rebuilt by scripts/geo/build.mjs from the pinned sources (libphonenumber-js, dr5hn countries-states-cities, India Post via data.gov.in). Review the changed files and merge into dev."
+            gh pr create --base dev --head "$branch" --title "chore(geo): monthly country, State, phone and PIN data refresh" --body "$body"
           fi

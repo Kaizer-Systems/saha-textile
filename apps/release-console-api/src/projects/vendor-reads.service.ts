@@ -11,6 +11,7 @@ import {
 	type RepositoryFileFound,
 	type RepositoryFileQuery,
 	repositoryFileSchema,
+	CONSOLE_KEYS_FOLDER,
 	VENDOR_NAMES,
 	type VendorAnswer,
 	type WorkflowRun,
@@ -145,7 +146,7 @@ export class VendorReadsService {
 			return notConnected(
 				ref.kind === 'github-cli'
 					? 'The GitHub CLI is not signed in on this computer. Run gh auth login in a terminal.'
-					: `${ref.label} has no value in the Keychain. Paste it again on the Connections screen.`,
+					: `${ref.label} has no value in the console's key file. Add ${ref.envNames.join(' + ')} in Infisical (${CONSOLE_KEYS_FOLDER}), then run pnpm console:env.`,
 			);
 		try {
 			return { state: 'ok', readAt: new Date().toISOString(), data: await read(key) };

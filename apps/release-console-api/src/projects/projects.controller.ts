@@ -9,6 +9,7 @@ import {
 	type Droplet,
 	type EdgeZone,
 	type KeyRef,
+	type KeySource,
 	newProjectSchema,
 	type Project,
 	type PullRequest,
@@ -16,7 +17,7 @@ import {
 	repositoryFileQuerySchema,
 	repositorySchema,
 	slotKeysSchema,
-	storeKeySchema,
+	linkKeySchema,
 	type VendorAnswer,
 	type WorkflowRun,
 } from '@saha-textile/release-console-contracts';
@@ -25,6 +26,7 @@ import { AttentionService } from './attention.service.js';
 import { ProjectsService } from './projects.service.js';
 import { VendorReadsService } from './vendor-reads.service.js';
 import { parseBody } from '../common/parse.js';
+import { KeySourceService } from '../keys/key-source.js';
 import { ConsoleStore } from '../store/console-store.js';
 
 @Controller('api')
@@ -34,6 +36,7 @@ export class ProjectsController {
 		private readonly reads: VendorReadsService,
 		private readonly attention: AttentionService,
 		private readonly store: ConsoleStore,
+		private readonly keyFile: KeySourceService,
 	) {}
 
 	@Get('projects')
@@ -56,7 +59,7 @@ export class ProjectsController {
 
 	@Post('projects/:id/keys')
 	async storeKey(@Param('id') id: string, @Body() body: unknown): Promise<KeyRef> {
-		const ref = await this.projects.storeKey(id, parseBody(storeKeySchema, body));
+		const ref = await this.projects.linkKey(id, parseBody(linkKeySchema, body));
 		this.attention.forget(id);
 		return ref;
 	}
@@ -110,6 +113,11 @@ export class ProjectsController {
 	@HttpCode(200)
 	repositoryFile(@Body() body: unknown): Promise<VendorAnswer<RepositoryFileFound>> {
 		return this.reads.repositoryFile(parseBody(repositoryFileQuerySchema, body));
+	}
+
+	@Get('key-source')
+	keySource(): KeySource {
+		return this.keyFile.describe();
 	}
 
 	@Get('attention')

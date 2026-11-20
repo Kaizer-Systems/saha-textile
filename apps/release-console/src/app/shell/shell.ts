@@ -57,7 +57,7 @@ const tabQuery = (tab: string | null): Record<string, string> => (tab ? { tab } 
 const PAGE_WORDS: Record<string, string[]> = {
 	attention: ['expiring', 'failed', 'approval', 'needs me'],
 	audit: ['who did what', 'history', 'log'],
-	settings: ['pin', 'lock', 'keys', 'connections', 'keychain'],
+	settings: ['pin', 'lock', 'keys', 'connections', 'infisical'],
 	add: ['new project', 'wizard'],
 	repositories: ['repo', 'source code'],
 	environments: ['staging', 'production', 'local'],
@@ -155,7 +155,9 @@ export class Shell {
 				link: ['/p', p.id, 'settings'],
 				query: { tab },
 				aliases:
-					tab === 'connections' ? ['keys', 'tokens', 'keychain', 'github', 'digitalocean', 'cloudflare'] : [],
+					tab === 'connections'
+						? ['keys', 'tokens', 'infisical', 'secrets', 'github', 'digitalocean', 'cloudflare']
+						: [],
 			})),
 			...p.repositories.map((r) => ({
 				label: r.name,

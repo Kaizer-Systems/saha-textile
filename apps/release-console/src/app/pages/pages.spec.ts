@@ -9,7 +9,7 @@ const ref = (state: KeyRef['state']): KeyRef => ({
 	id: 'do-read',
 	kind: 'do-read',
 	label: 'DigitalOcean API · read',
-	keychainItem: 'P · do-read',
+	envNames: ['CONSOLE_DO_READ_TOKEN'],
 	account: '',
 	rights: [],
 	expiresAt: '2026-11-20T00:00:00.000Z',

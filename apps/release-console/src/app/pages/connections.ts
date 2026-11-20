@@ -8,22 +8,24 @@ import {
 	type SlotKeys,
 	SECRETS_HOSTING,
 	VENDOR_NAMES,
-	keyValueSchema,
+	CONSOLE_KEYS_FOLDER,
+	envNameSchema,
 } from '@saha-textile/release-console-contracts';
-import { QueryClient } from '@tanstack/angular-query-experimental';
+import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 
 import { day, when } from './format-time';
 import { ConsoleApi } from '../data/console-api';
 
-/** Kinds the owner can add here. The GitHub CLI sign-in itself is made in a terminal; here it is only linked. */
-const PASTE_KINDS: KeyKind[] = [
+/** Kinds the owner can link here, each by its Infisical name; the GitHub CLI sign-in needs none. */
+const LINK_KINDS: KeyKind[] = [
 	'do-read',
 	'do-change',
 	'spaces-key',
 	'cf-read',
 	'cf-change',
-	'github-cli',
 	'github-token',
+	'github-cli',
+	'service-key',
 ];
 
 interface SlotChoice {
@@ -50,8 +52,8 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 }
 
 /**
- * Project settings › Connections: every key by category and repository. Values go to the macOS
- * Keychain through the local API and are never shown again; one key serves every repository of
+ * Project settings › Connections: every key by category and repository. Keys live in Infisical; the
+ * console links each to its Infisical name and never sees a pasted value. One key serves every repository of
  * this project that uses the same account, and never another project.
  */
 @Component({
@@ -210,8 +212,51 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 			</div>
 		</div>
 		<div class="rc-panel">
+			<div class="rc-ph"><span class="rc-label">Key file · from Infisical, written with your login</span></div>
+			@if (source.data(); as f) {
+				<div class="rc-kv">
+					<div>
+						<span>Infisical folder</span>
+						<em class="rc-mono">{{ f.folder }}</em>
+					</div>
+					<div>
+						<span>Key file</span>
+						<em class="rc-mono">{{ f.present ? f.file : 'not written yet' }}</em>
+					</div>
+					<div>
+						<span>Written</span>
+						<em class="rc-mono">{{ when(f.readAt) }}</em>
+					</div>
+					<div>
+						<span>Names with a value</span>
+						<em class="rc-mono">{{ f.names.join(', ') || 'none' }}</em>
+					</div>
+					<div>
+						<span>Not in Infisical yet</span>
+						<em
+							class="rc-mono"
+							[class.amber]="f.missing.length > 0"
+						>
+							{{ f.missing.join(', ') || 'none' }}
+						</em>
+					</div>
+					<div>
+						<span>Optional, blank</span>
+						<em class="rc-mono">{{ f.optionalBlank.join(', ') || 'none' }}</em>
+					</div>
+				</div>
+				<p class="rc-note">
+					Add or change a key in Infisical, then run
+					<code>pnpm console:env</code>
+					on this Mac; the console reads the new file at once. Names only are shown here, never values.
+				</p>
+			} @else if (source.isError()) {
+				<p class="rc-p red">The console API is not answering.</p>
+			}
+		</div>
+		<div class="rc-panel">
 			<div class="rc-ph">
-				<span class="rc-label">Keys in {{ p.name }} · values only in the macOS Keychain</span>
+				<span class="rc-label">Keys in {{ p.name }} · values only in Infisical</span>
 			</div>
 			<div class="rc-tw">
 				<table class="rc-t">
@@ -234,11 +279,7 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 									<b>{{ k.label }}</b>
 									<br />
 									<span class="rc-mono">
-										{{
-											k.keychainItem
-												? 'Keychain: Release Console · ' + k.keychainItem
-												: 'kept by the GitHub CLI'
-										}}
+										{{ k.envNames.length ? k.envNames.join(' + ') : 'kept by the GitHub CLI' }}
 									</span>
 								</td>
 								<td>{{ k.account || '—' }}</td>
@@ -273,7 +314,7 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 											[disabled]="busy()"
 											(click)="remove(k)"
 										>
-											Remove
+											Unlink
 										</button>
 									</div>
 								</td>
@@ -292,10 +333,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 			class="rc-panel"
 			(submit)="save($event)"
 		>
-			<div class="rc-ph"><span class="rc-label">Add a key · token paste, never a password</span></div>
+			<div class="rc-ph">
+				<span class="rc-label">Link a key · by its Infisical name, never a pasted value</span>
+			</div>
 			<div class="rc-g2">
 				<div class="pj-vendors">
-					@for (k of pasteKinds; track k) {
+					@for (k of linkKinds; track k) {
 						<div
 							class="do-radio"
 							role="radio"
@@ -315,26 +358,46 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 				</div>
 				<div class="rc-form">
 					@if (kinds[kind()].stored) {
-						<label>
-							Key
-							<div class="rc-msearch">
-								<input
-									#value
-									type="password"
-									autocomplete="off"
-									spellcheck="false"
-									name="value"
-									[attr.aria-label]="kinds[kind()].label"
-									[attr.placeholder]="
-										kind() === 'spaces-key' ? 'ACCESS_KEY:SECRET' : 'paste the token'
-									"
-								/>
-							</div>
-						</label>
+						@for (n of kinds[kind()].envNames; track n; let i = $index) {
+							<label>
+								{{
+									kind() === 'spaces-key'
+										? i === 0
+											? 'Access key name'
+											: 'Secret name'
+										: 'Infisical name'
+								}}
+								<div class="rc-msearch">
+									<input
+										type="text"
+										autocomplete="off"
+										spellcheck="false"
+										[attr.name]="'env' + i"
+										[value]="n"
+										[attr.aria-label]="'Infisical name ' + (i + 1)"
+									/>
+								</div>
+							</label>
+						}
+						@if (!kinds[kind()].envNames.length) {
+							<label>
+								Infisical name
+								<div class="rc-msearch">
+									<input
+										type="text"
+										autocomplete="off"
+										spellcheck="false"
+										name="env0"
+										placeholder="CONSOLE_SERVICE_KEY"
+										aria-label="Infisical name"
+									/>
+								</div>
+							</label>
+						}
 					} @else {
 						<p class="rc-note">
-							Nothing is pasted: the console uses the GitHub CLI's own sign-in on this computer and checks
-							that it opens each chosen repository.
+							Nothing is read from Infisical: the console uses the GitHub CLI's own sign-in, which works
+							only when the console runs outside Docker, and checks that it opens each chosen repository.
 						</p>
 					}
 					@if (kind() === 'spaces-key') {
@@ -386,9 +449,10 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 						</p>
 					}
 					<p class="rc-note">
-						A pasted key goes to the macOS Keychain (service “Release Console”, account “{{ p.name }} ·
-						{{ nextId() }}”) and is checked at once. The console never shows it again. Cloudflare tokens
-						come from the Cloudflare account that holds the domain.
+						Save the key in Infisical ({{ keysFolder }}) under the name above, run
+						<code>pnpm console:env</code>
+						, then link it here; it is checked at once. The console never sees or shows the value.
+						Cloudflare tokens come from the Cloudflare account that holds the domain.
 					</p>
 					<div>
 						<button
@@ -396,7 +460,7 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 							class="rc-btn primary"
 							[disabled]="busy()"
 						>
-							{{ kinds[kind()].stored ? 'Store in the Keychain and check' : 'Link and check' }}
+							Link and check
 						</button>
 					</div>
 					@if (formMessage()) {
@@ -411,9 +475,15 @@ export class Connections {
 	private readonly api = inject(ConsoleApi);
 	private readonly queries = inject(QueryClient);
 	readonly project = input.required<Project>();
+	protected readonly keysFolder = CONSOLE_KEYS_FOLDER;
+	protected readonly source = injectQuery(() => ({
+		queryKey: ['key-source'],
+		queryFn: () => this.api.keySource(),
+		refetchInterval: 15_000,
+	}));
 	protected readonly kinds = KEY_KINDS;
 	protected readonly vendors = VENDOR_NAMES;
-	protected readonly pasteKinds = PASTE_KINDS;
+	protected readonly linkKinds = LINK_KINDS;
 	protected readonly day = day;
 	protected readonly when = when;
 	protected readonly kind = signal<KeyKind>('do-read');
@@ -541,18 +611,18 @@ export class Connections {
 	protected async save(e: Event): Promise<void> {
 		e.preventDefault();
 		const form = e.target as HTMLFormElement;
-		const valueBox = form.querySelector<HTMLInputElement>('input[name=value]');
-		const dateBox = form.querySelector<HTMLInputElement>('input[name=expires]');
-		const targetBox = form.querySelector<HTMLInputElement>('input[name=target]');
+		const field = (name: string) => form.querySelector<HTMLInputElement>(`input[name=${name}]`)?.value.trim() ?? '';
 		const kind = this.kind();
-		const value = valueBox?.value.trim() ?? '';
-		const target = targetBox?.value.trim() ?? '';
-		if (KEY_KINDS[kind].stored && !value) {
-			this.formMessage.set('Paste the key first.');
+		const envNames = [field('env0'), field('env1')].filter(Boolean);
+		const target = field('target');
+		const expires = field('expires');
+		if (KEY_KINDS[kind].stored && !envNames.length) {
+			this.formMessage.set('Name the Infisical variable that holds this key.');
 			return;
 		}
-		if (!keyValueSchema.safeParse(value).success) {
-			this.formMessage.set('That does not look like a token: it has spaces, quotes or backslashes.');
+		const badName = envNames.find((n) => !envNameSchema.safeParse(n).success);
+		if (badName) {
+			this.formMessage.set(`${badName} is not an Infisical name: use capitals, digits and underscores.`);
 			return;
 		}
 		if (kind === 'spaces-key' && !/^[a-z0-9-]+\/[a-z0-9.-]+$/.test(target)) {
@@ -562,18 +632,17 @@ export class Connections {
 		const p = this.project();
 		const id = this.nextId();
 		this.busy.set(true);
-		this.formMessage.set('Storing in the Keychain and checking with the vendor…');
+		this.formMessage.set('Linking and checking with the vendor…');
 		try {
-			const ref = await this.api.storeKey(p.id, {
+			const ref = await this.api.linkKey(p.id, {
 				id,
 				kind,
 				label: KEY_KINDS[kind].label,
-				value,
-				expiresAt: dateBox?.value ? new Date(`${dateBox.value}T23:59:59`).toISOString() : null,
+				envNames: KEY_KINDS[kind].stored ? envNames : [],
+				expiresAt: expires ? new Date(`${expires}T23:59:59`).toISOString() : null,
 				note: '',
 				target,
 			});
-			if (valueBox) valueBox.value = '';
 			for (const c of this.slotChoices().filter((c) => this.picked().has(c.id)))
 				await this.api.setSlotKeys(p.id, {
 					...c.slot,
@@ -602,16 +671,11 @@ export class Connections {
 	}
 
 	protected async remove(k: KeyRef): Promise<void> {
-		if (
-			!window.confirm(
-				`Remove ${k.label} from ${this.project().name}${k.keychainItem ? ' and delete it from the Keychain' : ''}?`,
-			)
-		)
-			return;
+		if (!window.confirm(`Unlink ${k.label} from ${this.project().name}? The key stays in Infisical.`)) return;
 		this.busy.set(true);
 		try {
 			await this.api.removeKey(this.project().id, k.id);
-			this.message.set(`${k.label} removed.`);
+			this.message.set(`${k.label} unlinked; it stays in Infisical.`);
 			await this.refresh();
 		} catch (err) {
 			this.message.set((err as Error).message);
@@ -624,5 +688,6 @@ export class Connections {
 		await this.queries.invalidateQueries({ queryKey: ['projects'] });
 		await this.queries.invalidateQueries({ queryKey: ['attention'] });
 		await this.queries.invalidateQueries({ queryKey: ['vendor'] });
+		await this.queries.invalidateQueries({ queryKey: ['key-source'] });
 	}
 }

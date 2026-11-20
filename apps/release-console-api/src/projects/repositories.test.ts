@@ -7,26 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectsService } from './projects.service.js';
 import { SAHA_TEXTILE } from './saha-textile.fixture.js';
 import { VendorReadsService } from './vendor-reads.service.js';
-import { KeychainPort } from '../keychain/keychain.port.js';
+import { KeySourceService } from '../keys/key-source.js';
 import { LocalStackService } from '../local-stack/local-stack.service.js';
 import { ConsoleStore } from '../store/console-store.js';
 import { githubAdapter } from '../vendors/github.adapter.js';
 
 import type { Repository } from '@saha-textile/release-console-contracts';
-
-/** An in-memory Keychain for tests only. */
-class MemoryKeychain extends KeychainPort {
-	readonly items = new Map<string, string>();
-	async set(account: string, value: string): Promise<void> {
-		this.items.set(account, value);
-	}
-	async get(account: string): Promise<string | null> {
-		return this.items.get(account) ?? null;
-	}
-	async remove(account: string): Promise<void> {
-		this.items.delete(account);
-	}
-}
 
 const shopWeb: Repository = {
 	id: 'shop-web',
@@ -44,7 +30,7 @@ describe('editing repositories after a project is added', () => {
 	let projects: ProjectsService;
 	beforeEach(() => {
 		process.env['CONSOLE_DATA_DIR'] = mkdtempSync(join(tmpdir(), 'release-console-repos-'));
-		projects = new ProjectsService(new ConsoleStore(), new MemoryKeychain());
+		projects = new ProjectsService(new ConsoleStore(), new KeySourceService());
 		projects.add(SAHA_TEXTILE);
 	});
 	afterEach(() => {

@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { HealthController } from './health/health.controller.js';
-import { KeychainPort } from './keychain/keychain.port.js';
-import { MacKeychain } from './keychain/mac-keychain.js';
+import { KeySourceService } from './keys/key-source.js';
 import { LocalStackController } from './local-stack/local-stack.controller.js';
 import { LocalStackService } from './local-stack/local-stack.service.js';
 import { LockController } from './lock/lock.controller.js';
@@ -24,7 +23,7 @@ import { ConsoleStore } from './store/console-store.js';
 		ProjectsService,
 		VendorReadsService,
 		AttentionService,
-		{ provide: KeychainPort, useClass: MacKeychain },
+		KeySourceService,
 		{ provide: APP_GUARD, useClass: SessionGuard },
 	],
 })

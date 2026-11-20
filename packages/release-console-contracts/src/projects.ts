@@ -1,7 +1,7 @@
 /**
  * Projects, repositories and their vendor slots (Release Console Projects brief, approved 10 Nov
- * 2026). The console file on the owner's computer holds only these shapes; key values live in the
- * macOS Keychain and never appear in any answer.
+ * 2026). The console's own store holds only these shapes. Key values live in Infisical; the console
+ * reads them from its key file (written from Infisical with the owner's login) and never returns one.
  */
 import { z } from 'zod';
 
@@ -95,13 +95,25 @@ export const keyKindSchema = z.enum([
 ]);
 export type KeyKind = z.infer<typeof keyKindSchema>;
 
+/** An Infisical variable name: capitals, digits and underscores. */
+export const envNameSchema = z
+	.string()
+	.min(2)
+	.max(80)
+	.regex(/^[A-Z][A-Z0-9_]*$/, 'capitals, digits and underscores, starting with a letter');
+
+/** Where the console's keys live in Infisical (owner decision, 20 Nov 2026): one folder, dev project only. */
+export const CONSOLE_KEYS_FOLDER = 'saha-textile-dev · dev · /release-console';
+
 export interface KeyKindInfo {
 	label: string;
 	vendor: Vendor | null;
-	/** `false` for a sign-in kept by another tool; nothing goes into the Keychain. */
+	/** `false` for a sign-in kept by another tool (the GitHub CLI); no Infisical name is read. */
 	stored: boolean;
 	/** Which slot of a repository the key serves. */
-	slot: 'source-code' | 'cloud' | 'edge' | null;
+	slot: 'source-code' | 'cloud' | 'edge' | 'secrets' | null;
+	/** The Infisical names the key is read from; a Spaces key has two (access key, then secret). */
+	envNames: string[];
 	/** Where the owner makes the key; the console never makes one. */
 	howTo: string;
 }
@@ -112,75 +124,78 @@ export const KEY_KINDS: Record<KeyKind, KeyKindInfo> = {
 		vendor: 'github',
 		stored: false,
 		slot: 'source-code',
-		howTo: 'Sign in once with `gh auth login` in a terminal; the browser finishes the sign-in. Nothing is pasted here.',
+		envNames: [],
+		howTo: 'Works only when the console runs outside Docker: sign in once with `gh auth login`. Inside Docker, link a GitHub token.',
 	},
 	'github-token': {
 		label: 'GitHub fine-grained token',
 		vendor: 'github',
 		stored: true,
 		slot: 'source-code',
-		howTo: 'GitHub › Settings › Developer settings › Fine-grained tokens, limited to this repository, read-only.',
+		envNames: ['CONSOLE_GITHUB_TOKEN'],
+		howTo: 'GitHub › Settings › Developer settings › Fine-grained tokens: owner Kaizer-Systems, this repository only; Actions read and write, Contents, Pull requests, Deployments, Environments, Commit statuses and Secrets read-only.',
 	},
 	'do-read': {
 		label: 'DigitalOcean API · read',
 		vendor: 'digitalocean',
 		stored: true,
 		slot: 'cloud',
-		howTo: 'DigitalOcean › API › Tokens › Generate New Token, read scopes only, with an expiry.',
+		envNames: ['CONSOLE_DO_READ_TOKEN'],
+		howTo: 'DigitalOcean › API › Tokens › Generate New Token: Read Only, with an expiry.',
 	},
 	'do-change': {
 		label: 'DigitalOcean API · change',
 		vendor: 'digitalocean',
 		stored: true,
 		slot: 'cloud',
-		howTo: 'DigitalOcean › API › Tokens › Generate New Token, custom scopes for the changes the console makes.',
+		envNames: ['CONSOLE_DO_WRITE_TOKEN'],
+		howTo: 'DigitalOcean › API › Tokens › Generate New Token: custom scopes for the changes the console makes, with an expiry.',
 	},
 	'spaces-key': {
 		label: 'DigitalOcean Spaces key',
 		vendor: 'digitalocean',
 		stored: true,
 		slot: 'cloud',
-		howTo: 'DigitalOcean › Spaces Object Storage › Access Keys, limited to the shop bucket.',
+		envNames: ['CONSOLE_SPACES_ACCESS_KEY', 'CONSOLE_SPACES_SECRET_KEY'],
+		howTo: 'DigitalOcean › Spaces Object Storage › Access Keys: Limited Access, the shop bucket, Read.',
 	},
 	'cf-read': {
 		label: 'Cloudflare API · read',
 		vendor: 'cloudflare',
 		stored: true,
 		slot: 'edge',
-		howTo: 'Cloudflare (the account that holds the domain) › Manage account › API Tokens, read permissions for the zone.',
+		envNames: ['CONSOLE_CF_READ_TOKEN'],
+		howTo: 'Cloudflare (the account that holds the domain) › Manage account › Account API Tokens: zone read permissions for the domain only.',
 	},
 	'cf-change': {
 		label: 'Cloudflare API · change',
 		vendor: 'cloudflare',
 		stored: true,
 		slot: 'edge',
-		howTo: 'Cloudflare (the account that holds the domain) › Manage account › API Tokens, edit permissions for the zone.',
+		envNames: ['CONSOLE_CF_WRITE_TOKEN'],
+		howTo: 'Cloudflare (the account that holds the domain) › Manage account › Account API Tokens: the edit permissions the console uses, for the domain only.',
 	},
 	'service-key': {
 		label: 'Service key',
 		vendor: null,
 		stored: true,
 		slot: null,
-		howTo: 'Made in the service’s own dashboard, with the narrowest rights it offers.',
+		envNames: [],
+		howTo: 'Made in the service’s own dashboard, with the narrowest rights it offers; saved in Infisical under a name you choose.',
 	},
 };
-
-/** A pasted key: printable characters only, no spaces or quotes, so it can never break the Keychain call. */
-export const keyValueSchema = z
-	.string()
-	.max(4000)
-	.regex(/^[\x21\x23-\x5b\x5d-\x7e]*$/, 'printable characters without spaces, quotes or backslashes');
 
 export const keyStateSchema = z.enum(['unchecked', 'verified', 'failed', 'expiring', 'expired']);
 export type KeyState = z.infer<typeof keyStateSchema>;
 
-/** A reference to one key. The value itself is only in the Keychain item `keychainItem`. */
+/** A reference to one key: the Infisical names its value is read from. The value is never stored here. */
 export const keyRefSchema = z.object({
 	id: slug,
 	kind: keyKindSchema,
 	label: z.string().min(1).max(80),
 	/** The Keychain account name; empty for a sign-in kept by another tool (`github-cli`). */
-	keychainItem: z.string(),
+	/** Infisical names; empty for the GitHub CLI sign-in. */
+	envNames: z.array(envNameSchema).max(2).default([]),
 	account: z.string().max(120).default(''),
 	rights: z.array(z.string()).default([]),
 	expiresAt: z.string().datetime().nullable().default(null),
@@ -257,7 +272,7 @@ export const repositorySchema = z.object({
 });
 export type Repository = z.infer<typeof repositorySchema>;
 
-/** Project names become Keychain account names, so they keep to plain characters. */
+/** Project names keep to plain characters; they appear in audit lines and file names. */
 export const projectNameSchema = z
 	.string()
 	.min(1)
@@ -291,12 +306,12 @@ export const consoleViewSchema = z.object({
 });
 export type ConsoleView = z.infer<typeof consoleViewSchema>;
 
-/** Storing a key: the value travels once, to the local API, and is never sent back. */
-export const storeKeySchema = z.object({
+/** Linking a key: which Infisical names hold it. No value travels; the console reads it from its key file. */
+export const linkKeySchema = z.object({
 	id: slug,
 	kind: keyKindSchema,
 	label: z.string().min(1).max(80),
-	value: keyValueSchema.default(''),
+	envNames: z.array(envNameSchema).max(2).default([]),
 	expiresAt: z.string().datetime().nullable().default(null),
 	note: z.string().max(300).default(''),
 	/** What the key reaches inside the vendor: `region/bucket` for a Spaces key (e.g. `sgp1/saha-textile-media`). */
@@ -306,7 +321,7 @@ export const storeKeySchema = z.object({
 		.regex(/^([a-z0-9-]+\/[a-z0-9.-]+)?$/, 'region/bucket')
 		.default(''),
 });
-export type StoreKey = z.infer<typeof storeKeySchema>;
+export type LinkKey = z.infer<typeof linkKeySchema>;
 
 /** Which keys a repository's slot uses. */
 export const slotKeysSchema = z.object({
@@ -458,3 +473,16 @@ export type RepositoryFileQuery = z.infer<typeof repositoryFileQuerySchema>;
 export const repositoryFileFoundSchema = z.object({ found: z.boolean(), menus: z.array(z.string()) });
 export type RepositoryFileFound = z.infer<typeof repositoryFileFoundSchema>;
 export const repositoryFileAnswerSchema = vendorAnswer(repositoryFileFoundSchema);
+
+/** What the console's key file holds: names and when it was read, never values. */
+export const keySourceSchema = z.object({
+	file: z.string(),
+	present: z.boolean(),
+	readAt: z.string().datetime().nullable(),
+	names: z.array(z.string()),
+	/** Names the console reads that the file lacks; the optional ones are listed apart. */
+	missing: z.array(z.string()),
+	optionalBlank: z.array(z.string()),
+	folder: z.string(),
+});
+export type KeySource = z.infer<typeof keySourceSchema>;

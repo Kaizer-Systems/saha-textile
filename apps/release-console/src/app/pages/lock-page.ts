@@ -115,7 +115,7 @@ export function fillDigits(digits: string[], start: number, typed: string): { di
 								{{
 									s.pinSet
 										? s.triesLeft + ' tries left before a 15-minute lock.'
-										: 'Keys you add later go to the macOS Keychain; macOS may ask once to let the console use them. 5 wrong tries lock the console for 15 minutes.'
+										: 'Keys stay in Infisical; the console reads them from its key file. 5 wrong tries lock the console for 15 minutes.'
 								}}
 							</p>
 						}

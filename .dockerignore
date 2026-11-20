@@ -31,3 +31,6 @@ vendor
 project-context
 apps/developer-portal*
 docs
+
+# Release Console key file, real secrets
+docker/release-console/env

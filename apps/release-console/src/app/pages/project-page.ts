@@ -177,9 +177,10 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 										<span class="rc-label">Remove {{ p.name }}</span>
 									</div>
 									<p class="rc-p">
-										This removes the project from this console and deletes its
-										{{ p.keys.length }} key{{ p.keys.length === 1 ? '' : 's' }} from the Keychain.
-										No other project is touched, and nothing changes on GitHub or any cloud.
+										This removes the project from this console with its
+										{{ p.keys.length }} key link{{ p.keys.length === 1 ? '' : 's' }}; the keys stay
+										in Infisical. No other project is touched, and nothing changes on GitHub or any
+										cloud.
 									</p>
 									<div class="rc-form">
 										<label>

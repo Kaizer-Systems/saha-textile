@@ -65,3 +65,6 @@ docker/stack/env/*
 
 # This Mac's own service secrets (pnpm secrets:setup-local): the dev project's /infrastructure files — never commit.
 docker/dev-secrets/
+
+# Release Console key file (pnpm console:env), real secrets
+docker/release-console/env/

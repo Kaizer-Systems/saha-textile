@@ -133,7 +133,8 @@ interface EnvDraft {
 								</label>
 							</div>
 							<p class="rc-note">
-								The name also names this project's keys in the Keychain, so keys never cross projects.
+								Keys are linked per project on its Connections tab, so a key never serves another
+								project by accident.
 							</p>
 						</div>
 						<div class="rc-panel">

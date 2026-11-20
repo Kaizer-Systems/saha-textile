@@ -21,7 +21,8 @@ import {
 	type RepositoryFileQuery,
 	type ServicesSnapshot,
 	type SlotKeys,
-	type StoreKey,
+	type KeySource,
+	type LinkKey,
 	type UnlockAnswer,
 	type VendorAnswer,
 	type WorkflowRun,
@@ -34,6 +35,7 @@ import {
 	dropletsAnswerSchema,
 	edgeZonesAnswerSchema,
 	keyRefSchema,
+	keySourceSchema,
 	lockStatusSchema,
 	okAnswerSchema,
 	projectSchema,
@@ -135,7 +137,8 @@ export class ConsoleApi {
 	removeProject(id: string): Promise<unknown> {
 		return this.call('DELETE', `/api/projects/${id}`, okAnswerSchema);
 	}
-	storeKey(projectId: string, key: StoreKey): Promise<KeyRef> {
+	/** Links a key to its Infisical names; no value is sent. */
+	linkKey(projectId: string, key: LinkKey): Promise<KeyRef> {
 		return this.call('POST', `/api/projects/${projectId}/keys`, keyRefSchema, key, 40_000);
 	}
 	checkKey(projectId: string, keyId: string): Promise<KeyRef> {
@@ -162,6 +165,11 @@ export class ConsoleApi {
 	}
 
 	/* attention and audit */
+	/** The console's key file: names present and missing, never values. */
+	keySource(): Promise<KeySource> {
+		return this.call('GET', '/api/key-source', keySourceSchema);
+	}
+
 	attentionCounts(): Promise<AttentionCount[]> {
 		return this.call('GET', '/api/attention', attentionCountsSchema, undefined, 40_000);
 	}

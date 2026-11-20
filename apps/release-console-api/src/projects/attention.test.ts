@@ -43,7 +43,7 @@ describe('attention', () => {
 					id: 'cf-read',
 					kind: 'cf-read',
 					label: 'Cloudflare API · read',
-					keychainItem: 'P · cf-read',
+					envNames: ['CONSOLE_CF_READ_TOKEN'],
 					account: '',
 					rights: [],
 					expiresAt: '2026-11-12T00:00:00Z',

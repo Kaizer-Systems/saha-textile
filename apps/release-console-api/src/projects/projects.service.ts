@@ -9,11 +9,11 @@ import {
 	type NewProject,
 	type Project,
 	type Repository,
+	type LinkKey,
 	type SlotKeys,
-	type StoreKey,
 } from '@saha-textile/release-console-contracts';
 
-import { KeychainPort } from '../keychain/keychain.port.js';
+import { KeySourceService } from '../keys/key-source.js';
 import { ConsoleStore } from '../store/console-store.js';
 import { checkKey, stateWithExpiry } from '../vendors/key-checks.js';
 
@@ -39,15 +39,12 @@ export function checkRepository(repo: Repository): void {
 	}
 }
 
-/** The Keychain account name of a key: project name and key id, so keys never cross projects. */
-export const keychainItemOf = (project: Pick<Project, 'name'>, keyId: string): string => `${project.name} · ${keyId}`;
-
-/** Projects, their repositories and key references. Key values go straight to the Keychain. */
+/** Projects, their repositories and key links. Key values stay in Infisical and the key file. */
 @Injectable()
 export class ProjectsService {
 	constructor(
 		private readonly store: ConsoleStore,
-		private readonly keychain: KeychainPort,
+		private readonly keys: KeySourceService,
 	) {}
 
 	view(): ConsoleView {
@@ -97,22 +94,28 @@ export class ProjectsService {
 
 	async remove(id: string): Promise<void> {
 		const project = this.project(id);
-		for (const k of project.keys) if (k.keychainItem) await this.keychain.remove(k.keychainItem);
 		this.store.update((f) => ({ ...f, projects: f.projects.filter((p) => p.id !== id) }));
-		this.store.audit(id, 'project-removed', `${project.name} removed with its ${project.keys.length} keys`);
+		this.store.audit(
+			id,
+			'project-removed',
+			`${project.name} removed with its ${project.keys.length} key links; the keys stay in Infisical`,
+		);
 	}
 
-	async storeKey(projectId: string, input: StoreKey): Promise<KeyRef> {
-		const project = this.project(projectId);
+	/** Links a key to its Infisical names and checks it at once. No value is sent or stored. */
+	async linkKey(projectId: string, input: LinkKey): Promise<KeyRef> {
+		this.project(projectId);
 		const kind = KEY_KINDS[input.kind];
-		if (kind.stored && !input.value) throw new ConflictException('Paste the key value.');
-		const keychainItem = kind.stored ? keychainItemOf(project, input.id) : '';
-		if (kind.stored) await this.keychain.set(keychainItem, input.value);
+		const envNames = kind.stored ? (input.envNames.length ? input.envNames : kind.envNames) : [];
+		if (kind.stored && !envNames.length)
+			throw new ConflictException('Name the Infisical variable that holds this key.');
+		if (input.kind === 'spaces-key' && envNames.length !== 2)
+			throw new ConflictException('A Spaces key needs two names: its access key, then its secret.');
 		const ref: KeyRef = {
 			id: input.id,
 			kind: input.kind,
 			label: input.label,
-			keychainItem,
+			envNames,
 			account: '',
 			rights: [],
 			expiresAt: input.expiresAt,
@@ -124,8 +127,8 @@ export class ProjectsService {
 		this.saveKey(projectId, ref);
 		this.store.audit(
 			projectId,
-			'key-stored',
-			`${input.label} (${input.id}) ${kind.stored ? 'stored in the Keychain' : 'linked'}`,
+			'key-linked',
+			`${input.label} (${input.id}) linked${envNames.length ? ` to ${envNames.join(' + ')}` : ''}`,
 		);
 		return this.checkKeyNow(projectId, input.id);
 	}
@@ -140,7 +143,14 @@ export class ProjectsService {
 			.map((r) => r.sourceCode.repository);
 		const check = value
 			? await checkKey(ref.kind, value, repos, ref.target)
-			: { state: 'failed' as const, account: '', rights: [], note: 'The Keychain has no value for this key.' };
+			: {
+					state: 'failed' as const,
+					account: '',
+					rights: [],
+					note: ref.envNames.length
+						? `The key file has no value for ${ref.envNames.join(' + ')}. Add it in Infisical, then run pnpm console:env.`
+						: 'The GitHub CLI is not signed in where the console runs.',
+				};
 		const next: KeyRef = {
 			...ref,
 			account: check.account || ref.account,
@@ -159,7 +169,6 @@ export class ProjectsService {
 	async removeKey(projectId: string, keyId: string): Promise<void> {
 		const ref = this.project(projectId).keys.find((k) => k.id === keyId);
 		if (!ref) throw new NotFoundException(`No key ${keyId}.`);
-		if (ref.keychainItem) await this.keychain.remove(ref.keychainItem);
 		this.store.update((f) => ({
 			...f,
 			projects: f.projects.map((p) =>
@@ -181,7 +190,7 @@ export class ProjectsService {
 						},
 			),
 		}));
-		this.store.audit(projectId, 'key-removed', `${ref.label} (${keyId}) removed from the Keychain`);
+		this.store.audit(projectId, 'key-unlinked', `${ref.label} (${keyId}) unlinked; it stays in Infisical`);
 	}
 
 	setSlotKeys(projectId: string, input: SlotKeys): Project {
@@ -301,7 +310,10 @@ export class ProjectsService {
 	/** The key's value for a vendor call, held in memory for that call only. */
 	async valueOf(ref: KeyRef): Promise<string | null> {
 		if (ref.kind === 'github-cli') return githubCliToken();
-		return ref.keychainItem ? this.keychain.get(ref.keychainItem) : null;
+		const values = ref.envNames.map((n) => this.keys.get(n));
+		if (!values.length || values.some((v) => v === null)) return null;
+		// A Spaces key is its access key and secret joined, as its check expects.
+		return values.join(':');
 	}
 
 	private saveKey(projectId: string, ref: KeyRef): void {

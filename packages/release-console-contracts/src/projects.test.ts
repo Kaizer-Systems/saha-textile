@@ -5,7 +5,7 @@ import {
 	newProjectSchema,
 	projectNameSchema,
 	repositoryFileSchema,
-	storeKeySchema,
+	linkKeySchema,
 	vendorScreens,
 } from './projects.js';
 
@@ -41,11 +41,13 @@ describe('projects contracts', () => {
 		expect(() => newProjectSchema.parse({ id: 'x', name: 'X', workspace: 'W', repositories: [] })).toThrow();
 	});
 
-	it('keeps key values to characters the Keychain call cannot misread', () => {
+	it('links a key by its Infisical names, never a value', () => {
 		const ok = { id: 'do-read', kind: 'do-read', label: 'DigitalOcean API · read' };
-		expect(storeKeySchema.parse({ ...ok, value: 'abc_DEF-123.x' }).value).toBe('abc_DEF-123.x');
-		for (const value of ['has space', 'quote"d', 'back\\slash', 'new\nline'])
-			expect(() => storeKeySchema.parse({ ...ok, value })).toThrow();
+		expect(linkKeySchema.parse({ ...ok, envNames: ['CONSOLE_DO_READ_TOKEN'] }).envNames).toEqual(['CONSOLE_DO_READ_TOKEN']);
+		expect('value' in linkKeySchema.parse({ ...ok, value: 'never-kept' })).toBe(false);
+		for (const name of ['lower_case', '1STARTS_WITH_DIGIT', 'HAS-DASH', 'HAS SPACE'])
+			expect(() => linkKeySchema.parse({ ...ok, envNames: [name] })).toThrow();
+		expect(() => linkKeySchema.parse({ ...ok, envNames: ['A1', 'B2', 'C3'] })).toThrow();
 	});
 
 	it('keeps project names plain', () => {

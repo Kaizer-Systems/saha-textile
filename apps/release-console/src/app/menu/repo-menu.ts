@@ -81,6 +81,23 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 		const s = CONSOLE_MENU.screens[k] ?? extra[k];
 		if (s) screens[k] = s;
 	}
+	// Live deploy's tabs are the repository's environments, not the brief's sample states.
+	const deploy = screens['deploy'];
+	if (deploy)
+		screens['deploy'] = {
+			...deploy,
+			states: Object.fromEntries(repo.environments.map((e) => [e.name, e.label])),
+			captions: Object.fromEntries(
+				repo.environments.map((e) => [
+					e.name,
+					e.cloudId === null
+						? `${e.label}: the local pipeline and stack, run from here`
+						: `${e.label}: deploys run by GitHub Actions with a 10-minute watch and rollback, once its server exists`,
+				]),
+			),
+			partStates: null,
+			offStates: null,
+		};
 	const aliases = Object.fromEntries(Object.entries(CONSOLE_MENU.aliases).filter(([k]) => keys.has(k)));
 	return { menu: groups, aliases, later: CONSOLE_MENU.later.filter((k) => keys.has(k)), screens };
 }

@@ -67,6 +67,26 @@ describe('repository menu', () => {
 		expect(m.screens[laterKey('infisical')]?.captions['list']).toContain('never their values');
 	});
 
+	it('names Live deploy’s tabs after the repository’s environments', () => {
+		const m = repositoryMenu(
+			repo({
+				environments: [
+					{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+					{
+						name: 'staging',
+						label: 'Staging',
+						cloudId: 'digitalocean',
+						domains: [],
+						secretsId: null,
+						secretsPath: '',
+					},
+				],
+				cloud: [{ id: 'digitalocean', vendor: 'digitalocean', account: '', keyIds: [] }],
+			}),
+		);
+		expect(m.screens['deploy']?.states).toEqual({ local: 'Local', staging: 'Staging' });
+	});
+
 	it('scopes search to what the repository has', () => {
 		const bare = repositoryMenu(repo({}));
 		expect(searchMenu(bare, 'droplet').map((h) => h.screen)).not.toContain('droplets');

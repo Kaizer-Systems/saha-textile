@@ -201,6 +201,9 @@ export class ScreenPage {
 	protected readonly live = computed(() => {
 		const tab = LIVE_TABS[this.screen()];
 		if (tab === null) return true;
+		// Live deploy is live on an environment that runs on this computer.
+		if (this.screen() === 'deploy')
+			return this.ctx.repo()?.environments.find((e) => e.name === this.tabKey())?.cloudId === null;
 		if (tab === undefined) return false;
 		return Array.isArray(tab) ? tab.includes(this.tabKey()) : tab === this.tabKey();
 	});

@@ -205,7 +205,7 @@
 	],
 	"otherFolders": {
 		"release-console": {
-			"description": "The Release Console's own keys (owner, 2026-11-20: 'Yes, all recommended'). Stored once, in the dev project. Read by apps/release-console-api/src only; never rendered into the shop's files or a release.",
+			"description": "The Release Console's own keys (owner, 2026-11-20: 'Yes, all recommended'). Stored once, in the dev project. Read by apps/release-console-api/src only; never rendered into the shop's files or a release. Each read/change pair is complete when either key is filled: the console reads with the change key when there is no read key.",
 			"projects": ["dev"],
 			"readBy": "apps/release-console-api/src",
 			"names": [
@@ -217,7 +217,11 @@
 				"CONSOLE_CF_WRITE_TOKEN",
 				"CONSOLE_GITHUB_TOKEN"
 			],
-			"optional": ["CONSOLE_DO_WRITE_TOKEN", "CONSOLE_CF_WRITE_TOKEN"]
+			"optional": [],
+			"oneOf": [
+				["CONSOLE_DO_READ_TOKEN", "CONSOLE_DO_WRITE_TOKEN"],
+				["CONSOLE_CF_READ_TOKEN", "CONSOLE_CF_WRITE_TOKEN"]
+			]
 		}
 	}
 }

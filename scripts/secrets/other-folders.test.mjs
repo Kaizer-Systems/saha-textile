@@ -41,7 +41,11 @@ test('the release-console group is in the inventory: dev only, read by the conso
 	assert.deepEqual([...console.tiers], ['dev']);
 	assert.equal(console.readBy, 'apps/release-console-api/src');
 	assert.equal(console.names.length, 7);
-	assert.deepEqual([...console.optional].sort(), ['CONSOLE_CF_WRITE_TOKEN', 'CONSOLE_DO_WRITE_TOKEN']);
+	assert.equal(console.optional.size, 0);
+	assert.deepEqual(console.oneOf, [
+		['CONSOLE_DO_READ_TOKEN', 'CONSOLE_DO_WRITE_TOKEN'],
+		['CONSOLE_CF_READ_TOKEN', 'CONSOLE_CF_WRITE_TOKEN'],
+	]);
 });
 
 test('an other folder may not reuse a shop folder, name an unknown project, skip readBy or repeat a name', () => {
@@ -56,6 +60,24 @@ test('an other folder may not reuse a shop folder, name an unknown project, skip
 	refused({ tool: group({ names: ['MONGODB_PASSWORD'], optional: [] }) }, /MONGODB_PASSWORD is listed twice/);
 	refused({ tool: group(), other: group() }, /TOOL_A is listed twice/);
 	refused({ tool: group({ optional: ['TOOL_Z'] }) }, /optional lists TOOL_Z/);
+	refused({ tool: group({ oneOf: [['TOOL_A']] }) }, /oneOf needs sets of two names or more/);
+	refused(
+		{ tool: group({ oneOf: [['TOOL_A', 'TOOL_C']] }) },
+		/oneOf lists TOOL_C, which is not one of its names, is optional/,
+	);
+	refused({ tool: group({ oneOf: [['TOOL_A', 'TOOL_Z']] }) }, /oneOf lists TOOL_Z/);
+	refused(
+		{
+			tool: group({
+				names: ['TOOL_A', 'TOOL_B', 'TOOL_C', 'TOOL_D'],
+				oneOf: [
+					['TOOL_A', 'TOOL_B'],
+					['TOOL_B', 'TOOL_D'],
+				],
+			}),
+		},
+		/oneOf lists TOOL_B/,
+	);
 	assert.deepEqual(inventoryWith(undefined).otherFolders, []);
 });
 
@@ -75,6 +97,7 @@ test('status reports filled, missing, blank, optional-blank and unknown names, a
 		filled: 2,
 		missing: ['TOOL_B'],
 		blank: [],
+		needOneOf: [],
 		optionalBlank: ['TOOL_C'],
 		unknown: ['TOOL_X'],
 	});
@@ -89,6 +112,36 @@ test('status reports filled, missing, blank, optional-blank and unknown names, a
 		formatOtherFolder(otherFolderReport(tool, null)),
 		'  /tool            could not be read (not created yet?); its 3 names are in docker/infisical/variable-names.json',
 	);
+});
+
+test('a oneOf set is met by any one filled name; an unmet set is reported, a met one makes the rest optional', () => {
+	const [tool] = inventoryWith({
+		tool: group({
+			names: ['TOOL_A', 'TOOL_READ', 'TOOL_CHANGE', 'X_READ', 'X_CHANGE'],
+			optional: [],
+			oneOf: [
+				['TOOL_READ', 'TOOL_CHANGE'],
+				['X_READ', 'X_CHANGE'],
+			],
+		}),
+	}).otherFolders;
+	const report = otherFolderReport(
+		tool,
+		new Map([
+			['TOOL_A', 'zz'],
+			['TOOL_READ', ''],
+			['TOOL_CHANGE', 'zz'],
+			['X_READ', ''],
+			['X_CHANGE', ''],
+		]),
+	);
+	assert.deepEqual(report.missing, []);
+	assert.deepEqual(report.needOneOf, [['X_READ', 'X_CHANGE']]);
+	assert.deepEqual(report.optionalBlank, ['TOOL_READ']);
+	const text = formatOtherFolder(report);
+	assert.match(text, /needs one of: X_READ or X_CHANGE/);
+	assert.match(text, /optional, blank: TOOL_READ/);
+	assert.ok(!text.includes('zz'));
 });
 
 test('the names check wants every listed name read in its readBy folder', () => {

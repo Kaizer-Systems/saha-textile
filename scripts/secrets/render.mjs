@@ -493,14 +493,19 @@ export function projectReport(folders, { tier, inventory, setByPipeline = new Se
 export function otherFolderReport(group, values) {
 	if (values === null) return { folder: group.folder, readable: false, count: group.names.length };
 	const listed = new Set(group.names);
-	const required = group.names.filter((name) => !group.optional.has(name));
+	const inSets = new Set(group.oneOf.flat());
+	const required = group.names.filter((name) => !group.optional.has(name) && !inSets.has(name));
+	const filled = (name) => !isBlank(values.get(name));
+	// A set is met when any one of its names is filled; its blank names are then simply optional.
+	const met = group.oneOf.filter((set) => set.some(filled));
 	return {
 		folder: group.folder,
 		readable: true,
 		filled: [...values].filter(([, value]) => !isBlank(value)).length,
 		missing: required.filter((name) => !values.has(name)),
 		blank: required.filter((name) => values.has(name) && isBlank(values.get(name))),
-		optionalBlank: [...group.optional].filter((name) => isBlank(values.get(name))),
+		needOneOf: group.oneOf.filter((set) => !set.some(filled)),
+		optionalBlank: [...group.optional, ...met.flat()].filter((name) => !filled(name)),
 		unknown: [...values.keys()].filter((name) => !listed.has(name)).sort(),
 	};
 }
@@ -514,6 +519,9 @@ export function formatOtherFolder(report) {
 	const lines = [`${head} ${report.filled} filled`];
 	if (report.missing.length > 0) lines.push(`      not in Infisical yet: ${report.missing.join(', ')}`);
 	if (report.blank.length > 0) lines.push(`      blank: ${report.blank.join(', ')}`);
+	if (report.needOneOf.length > 0) {
+		lines.push(`      needs one of: ${report.needOneOf.map((set) => set.join(' or ')).join('; ')}`);
+	}
 	if (report.optionalBlank.length > 0) lines.push(`      optional, blank: ${report.optionalBlank.join(', ')}`);
 	if (report.unknown.length > 0) lines.push(`      not in the inventory (misspelt?): ${report.unknown.join(', ')}`);
 	return lines.join('\n');

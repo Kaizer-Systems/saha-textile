@@ -47,15 +47,18 @@ After this, `/deployment` holds ten entries per project.
 
 - **Folders the shop never reads** (`otherFolders` in `variable-names.json`): a folder kept in
   Infisical for something other than the shop. Each lists the projects that hold it, the one code
-  folder that reads its names (`readBy`) and the names that may stay blank (`optional`). The
+  folder that reads its names (`readBy`), the names that may stay blank (`optional`) and sets
+  where any one filled name is enough (`oneOf`, e.g. a read key or a change key that can also
+  read). The
   renderer never reads these folders, so they reach no release folder and no shop file.
   `pnpm secrets:status` reports each one (filled, not in Infisical yet, blank, optional and blank,
   misspelt), and `pnpm check:infisical-names` fails when a listed name is read nowhere in its
   `readBy` folder.
 - **`/release-console`, dev project only** (owner, 2026-11-20: "Yes, all recommended"): the Release
   Console's own keys, read by `apps/release-console-api/src`. Create the folder in
-  `saha-textile-dev` and add the names listed there. `CONSOLE_DO_WRITE_TOKEN` and
-  `CONSOLE_CF_WRITE_TOKEN` may stay blank until the keys exist. Not in staging or production.
+  `saha-textile-dev` and add the names listed there. Each DigitalOcean and Cloudflare pair
+  (`*_READ_TOKEN`, `*_WRITE_TOKEN`) needs either key: the console reads with the change key when
+  there is no read key. Not in staging or production.
 
 ## Filling values
 

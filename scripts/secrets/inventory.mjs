@@ -62,6 +62,8 @@ export function describeError(error) {
  * @property {string} readBy          the one code folder that reads these names
  * @property {string[]} names
  * @property {Set<string>} optional   names that may stay blank
+ * @property {string[][]} oneOf       sets where at least one name must be filled (e.g. a read key or
+ *                                    a change key that can also read)
  */
 
 /**
@@ -134,7 +136,23 @@ function otherFolders(json, apiNames) {
 			if (!names.includes(name))
 				throw new SecretsError(`otherFolders.${folder}.optional lists ${name}, not one of its names.`);
 		}
-		return { folder, tiers, readBy: group.readBy, names, optional };
+		/** @type {string[][]} */
+		const oneOf = group.oneOf ?? [];
+		const inSets = new Set();
+		for (const set of oneOf) {
+			if (!Array.isArray(set) || set.length < 2) {
+				throw new SecretsError(`otherFolders.${folder}.oneOf needs sets of two names or more.`);
+			}
+			for (const name of set) {
+				if (!names.includes(name) || optional.has(name) || inSets.has(name)) {
+					throw new SecretsError(
+						`otherFolders.${folder}.oneOf lists ${name}, which is not one of its names, is optional, or is in another set.`,
+					);
+				}
+				inSets.add(name);
+			}
+		}
+		return { folder, tiers, readBy: group.readBy, names, optional, oneOf };
 	});
 }
 

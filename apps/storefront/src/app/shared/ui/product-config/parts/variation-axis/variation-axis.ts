@@ -29,6 +29,9 @@ export class VariationAxis {
 
 	public selectedVariation: IVariation | null = null;
 
+	/** At or under this many left, the stock reads "Only N left" in amber: the shop default (owner log, Badges). */
+	readonly lowStock = 2;
+
 	onSelect(variation: IVariation | null) {
 		this.selectedVariation = variation;
 		this.selectVariation.emit(variation);

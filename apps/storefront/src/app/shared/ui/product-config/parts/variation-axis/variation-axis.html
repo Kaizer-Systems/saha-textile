@@ -18,7 +18,7 @@
 						scope="col"
 						class="text-end"
 					>
-						{{ 'price' | transloco }}
+						{{ 'price_incl_taxes' | transloco }}
 					</th>
 				</tr>
 			</thead>
@@ -29,16 +29,21 @@
 					[class.disabled]="variation.stock_status === 'out_of_stock'"
 				>
 					<td class="option-cell">
-						<i
-							class="ri-checkbox-circle-fill"
-							[class.checked]="selectedVariation?.id === variation.id"
-						></i>
+						<span
+							class="st-radio"
+							[class.is-on]="selectedVariation?.id === variation.id"
+							aria-hidden="true"
+						></span>
 						{{ variation.name }}
 					</td>
 					<td class="text-content">{{ variation.sku }}</td>
 					<td>
 						@if (variation.stock_status === 'out_of_stock') {
 						<span class="text-danger">{{ 'out_of_stock' | transloco }}</span>
+						} @else if (variation.quantity <= lowStock) {
+						<span class="st-low-stock">
+							{{ 'only_count_left' | transloco: { count: variation.quantity } }}
+						</span>
 						} @else {
 						<span class="in-stock">{{ variation.quantity }} {{ 'in_stock' | transloco }}</span>
 						}

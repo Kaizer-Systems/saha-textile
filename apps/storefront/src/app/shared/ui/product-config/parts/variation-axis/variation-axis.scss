@@ -21,7 +21,7 @@
 			transition: background-color 0.2s ease;
 
 			&.active {
-				background-color: rgba(65, 115, 148, 0.06);
+				background-color: color-mix(in srgb, var(--theme-color) 7%, transparent);
 			}
 
 			// An out-of-stock option stays readable: muted, but at 5.3 : 1, and its label a deeper red (decision D3).
@@ -46,16 +46,16 @@
 
 		.option-cell {
 			font-weight: 600;
+			white-space: nowrap;
 
-			i {
-				margin-right: 6px;
-				color: var(--st-text-disabled-2);
-				vertical-align: middle;
-
-				&.checked {
-					color: var(--st-accent-text);
-				}
+			.st-radio {
+				margin-right: 8px;
 			}
+		}
+
+		.st-low-stock {
+			color: color-mix(in srgb, var(--st-warning) 72%, var(--st-text-body));
+			font-weight: 600;
 		}
 
 		.in-stock {
@@ -64,6 +64,7 @@
 
 		.price-cell {
 			font-weight: 600;
+			white-space: nowrap;
 			color: var(--st-accent-text);
 		}
 	}

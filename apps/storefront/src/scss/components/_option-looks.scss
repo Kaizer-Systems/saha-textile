@@ -1,0 +1,20 @@
+// Option looks shared by the product page, the buy bar's choice lists and the product pop-up (owner, 21 Nov 2026,
+// product page brief rev 4). Colours come from theme variables, so the colour-only dark file covers them.
+
+// A radio ring: a ring when free, the theme colour with a filled centre when chosen. Replaces the small tick circles
+// the option table used, which read as dots (brief section 4, P9).
+.st-radio {
+	display: inline-block;
+	flex: none;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 2px solid var(--st-border-strong, #b8c0ca);
+	background-color: var(--st-surface, #fff);
+	vertical-align: -4px;
+
+	&.is-on {
+		border-color: var(--theme-color);
+		background: radial-gradient(circle, var(--theme-color) 0 4px, var(--st-surface, #fff) 4.5px);
+	}
+}

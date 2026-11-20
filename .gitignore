@@ -68,3 +68,4 @@ docker/dev-secrets/
 
 # Release Console key file (pnpm console:env), real secrets
 docker/release-console/env/
+docker/release-console/runner.log

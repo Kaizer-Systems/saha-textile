@@ -33,7 +33,11 @@ test('lists the names the console API reads, and reports missing ones by name on
 
 test('writes an owner-only file and prints no value', () => {
 	const root = tempRoot();
-	const { ok, lines } = writeConsoleEnv({ root, project, read: () => new Map([['CONSOLE_DO_READ_TOKEN', 'test-value-3']]) });
+	const { ok, lines } = writeConsoleEnv({
+		root,
+		project,
+		read: () => new Map([['CONSOLE_DO_READ_TOKEN', 'test-value-3']]),
+	});
 	assert.equal(ok, true);
 	assert.equal(statSync(join(root, CONSOLE_ENV_FILE)).mode & 0o777, 0o600);
 	assert.match(readFileSync(join(root, CONSOLE_ENV_FILE), 'utf8'), /test-value-3/);
@@ -57,4 +61,12 @@ test('keeps the last file when Infisical cannot be read, and fails when there is
 test('the API reads every name this script writes', () => {
 	const api = readFileSync(join(ROOT, 'apps/release-console-api/src/keys/console-key-names.ts'), 'utf8');
 	for (const name of CONSOLE_KEY_NAMES) assert.match(api, new RegExp(`'${name}'`));
+});
+
+test('a read and change pair is complete when either key is filled', async () => {
+	const { missingNames } = await import('./env.mjs');
+	assert.ok(!missingNames(['CONSOLE_DO_WRITE_TOKEN']).includes('CONSOLE_DO_READ_TOKEN'));
+	assert.ok(missingNames([]).includes('CONSOLE_DO_READ_TOKEN'));
+	assert.ok(!missingNames([]).includes('CONSOLE_DO_WRITE_TOKEN'));
+	assert.ok(!missingNames(['CONSOLE_CF_READ_TOKEN']).includes('CONSOLE_CF_READ_TOKEN'));
 });

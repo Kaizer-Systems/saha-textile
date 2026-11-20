@@ -696,8 +696,19 @@ export class AdminOrdersService {
 				...(placeNow ? [historyEntry(actor, at, 'status', { from: order.status, to: 'placed' })] : []),
 			],
 		};
+		// Stored with the order so the list's "Needs attention" filter finds an unpaid request that ran out.
+		const meta = metaOf(next);
+		const nowAt = new Date(at);
+		if (
+			next.status === 'awaiting_payment' &&
+			requests.length > 0 &&
+			!requests.some((request) => isRequestActive(request, nowAt)) &&
+			requests.some((request) => request.status !== 'paid')
+		) {
+			meta.attention.push('requestExpiredUnpaid');
+		}
 		return refuseStale(
-			() => this.orders.update(next, revision, context, metaOf(next)),
+			() => this.orders.update(next, revision, context, meta),
 			'Someone else changed this order first',
 		);
 	}

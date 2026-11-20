@@ -18,6 +18,7 @@ import { AdminOrdersService } from './admin-orders.service';
 import { OrderStock } from './order-stock';
 import { OpenOrdersService } from './open-orders.service';
 import { PayPageController } from './pay-page.controller';
+import { PaymentRequestSweep } from './payment-request-sweep';
 import { PaymentRequestsService } from './payment-requests.service';
 
 /** The admin ordering system (orders and checkout brief, approved 2026-11-20). */
@@ -30,6 +31,7 @@ import { PaymentRequestsService } from './payment-requests.service';
 		AdminOrderCreateService,
 		OrderStock,
 		PaymentRequestsService,
+		PaymentRequestSweep,
 		OpenOrdersService,
 		{
 			provide: PAYMENT_REQUEST_PORTS,

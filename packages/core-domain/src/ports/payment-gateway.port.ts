@@ -49,6 +49,18 @@ export interface PaymentReport {
 	/** The gateway's reason text for a failed attempt. Not for showing to customers. */
 	failureReason: string | null;
 	auditRecord: PaymentAuditRecord;
+	/**
+	 * PayPal: its own figures for a captured payment (gross, fee, net, the rupees received and its
+	 * exchange rate), kept on the payment for the books only; prices never learn from them.
+	 */
+	receivable?: {
+		grossAmount: number;
+		grossCurrency: string;
+		fee: number | null;
+		net: number | null;
+		receivableINR: number | null;
+		exchangeRate: { sourceCurrency: string; targetCurrency: string; value: number } | null;
+	};
 }
 
 export interface PaymentStatusQuery {

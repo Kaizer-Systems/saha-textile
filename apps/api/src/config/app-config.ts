@@ -266,7 +266,22 @@ const ConfigSchema = z.object({
 			.default('products'),
 	}),
 	spaces: SpacesConfigSchema,
-	payments: z.object({ ccavenue: CcavenueConfigSchema }),
+	payments: z.object({
+		ccavenue: CcavenueConfigSchema,
+		/**
+		 * PayPal (orders brief; owner 2026-11-20: PAYPAL_ENV sandbox for dev and staging, live for
+		 * production). Read as given; `parsePayPalConfig` decides at startup whether PayPal is on, and a
+		 * mismatch with DEPLOY_ENV leaves it off. Never logged.
+		 */
+		paypal: z
+			.object({
+				clientId: z.string().min(1).optional(),
+				clientSecret: z.string().min(1).optional(),
+				env: z.string().min(1).optional(),
+				webhookId: z.string().min(1).optional(),
+			})
+			.default({}),
+	}),
 	/** The daily exchange-rate fetch (shipping rules brief fx01): the open tier needs no key. Never logged. */
 	fx: z.object({ exchangeRateApiKey: z.string().min(1).optional() }).default({}),
 	/**
@@ -502,6 +517,12 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 				returnUrl: env.CCAVENUE_RETURN_URL || undefined,
 				baseUrl: env.CCAVENUE_BASE_URL || undefined,
 				apiUrl: env.CCAVENUE_API_URL || undefined,
+			},
+			paypal: {
+				clientId: env.PAYPAL_CLIENT_ID || undefined,
+				clientSecret: env.PAYPAL_CLIENT_SECRET || undefined,
+				env: env.PAYPAL_ENV || undefined,
+				webhookId: env.PAYPAL_WEBHOOK_ID || undefined,
 			},
 		},
 		fx: { exchangeRateApiKey: env.EXCHANGERATE_API_KEY || undefined },

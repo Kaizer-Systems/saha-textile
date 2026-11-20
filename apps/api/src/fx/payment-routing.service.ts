@@ -17,13 +17,14 @@ import {
 import { adminNames } from '../common/admin-names';
 import { staleSaveRefusal } from '../common/coded-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { payPalConfigOf } from '../infra/payment-gateway-factory';
 import { ADMIN_USER_REPOSITORY, AUDIT_LOG_REPOSITORY, SITE_SETTINGS_REPOSITORY } from '../infra/tokens';
 
 /**
  * The gateways each adapter is built for. CCAvenue's adapter is built (bound, not yet tried on
- * CCAvenue); Razorpay waits for HDFC's kit and PayPal for its own build (owner OD20).
+ * CCAvenue); Razorpay waits for HDFC's kit (owner OD20). PayPal's adapter is built (orders build).
  */
-const BUILT = { ccavenue: true, razorpay: false, paypal: false } as const;
+const BUILT = { ccavenue: true, razorpay: false, paypal: true } as const;
 
 /** What checkout needs to route a payment by currency (core `routePaymentGateway`). */
 export function gatewayRoutingOf(settings: PaymentRoutingSettings, homeCurrency = 'INR'): GatewayRouting {
@@ -61,7 +62,8 @@ export class PaymentRoutingService {
 			keysOnServer: {
 				ccavenue: Boolean(this.config.payments.ccavenue.merchantId),
 				razorpay: false,
-				paypal: false,
+				// On only when the keys are set and PAYPAL_ENV fits DEPLOY_ENV; otherwise the page says it isn't configured.
+				paypal: payPalConfigOf(this.config).configured,
 			},
 			built: { ...BUILT },
 		};

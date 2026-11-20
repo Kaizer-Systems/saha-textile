@@ -1,9 +1,13 @@
 import type {
+	CreatedPaymentRequest,
 	CreatePaymentInput,
+	CreatePaymentRequestInput,
 	PaymentAuditRecord,
 	PaymentGatewayPort,
 	PaymentIntent,
 	PaymentReport,
+	PaymentRequestPort,
+	PaymentRequestStatusReport,
 	PaymentStatusQuery,
 	RefundInput,
 	RefundRecord,
@@ -15,6 +19,7 @@ import type { z } from 'zod';
 import { CcavenueCipher } from './ccavenue-cipher';
 import { type CcavenueGatewayOptions, parseCcavenueConfig } from './ccavenue-config';
 import { CcavenueMerchantApi } from './ccavenue-merchant-api';
+import { generateQuickInvoice, quickInvoiceStatus } from './ccavenue-quick-invoice';
 import {
 	AttemptId,
 	CallbackForm,
@@ -127,7 +132,7 @@ const unreadableAnswer = (command: string): PaymentGatewayError =>
  * live in `decidePaymentResult`. Everything held here is in ES private fields, so logging this
  * object cannot print a credential.
  */
-export class CcavenuePaymentGateway implements PaymentGatewayPort {
+export class CcavenuePaymentGateway implements PaymentGatewayPort, PaymentRequestPort {
 	readonly gateway = 'ccavenue' as const;
 
 	readonly #cipher: CcavenueCipher;
@@ -283,6 +288,20 @@ export class CcavenuePaymentGateway implements PaymentGatewayPort {
 			state: refundState(refund.refund_status),
 			auditRecord: pickAudit(refund, REFUND_RECORD_AUDIT_FIELDS),
 		}));
+	}
+
+	/** The gateway's own payment request (Quick Invoice): CCAvenue emails and texts the customer itself. */
+	async createPaymentRequest(input: CreatePaymentRequestInput): Promise<CreatedPaymentRequest> {
+		return generateQuickInvoice(this.#api, input);
+	}
+
+	async fetchPaymentRequestStatus(gatewayRequestId: string): Promise<PaymentRequestStatusReport> {
+		return quickInvoiceStatus(this.#api, gatewayRequestId);
+	}
+
+	/** HDFC's document prints no cancel call: the request stops being forwarded to and runs out by its validity. */
+	async cancelPaymentRequest(gatewayRequestId: string): Promise<void> {
+		void gatewayRequestId;
 	}
 
 	#decryptCallback(cipherHex: string): string {

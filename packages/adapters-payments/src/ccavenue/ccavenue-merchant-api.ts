@@ -7,13 +7,17 @@ import { parsePairs } from './ccavenue-wire';
 /** 51419, 51313 and 51308 all mean CCAvenue found nothing for the search. */
 const NO_RECORD_CODES: ReadonlySet<string> = new Set(['51419', '51313', '51308']);
 
-export type MerchantApiCommand = 'orderStatusTracker' | 'refundOrder' | 'getRefundDetails';
+export type MerchantApiCommand =
+	'orderStatusTracker' | 'refundOrder' | 'getRefundDetails' | 'generateQuickInvoice' | 'invoiceList';
 
 /** The guide prints 1.1 as the general value and asks for 1.2 on the Status call. */
 const COMMAND_VERSIONS: Readonly<Record<MerchantApiCommand, string>> = {
 	orderStatusTracker: '1.2',
 	refundOrder: '1.1',
 	getRefundDetails: '1.1',
+	/** HDFC API document § 13: "The index says to pass version 1.2". */
+	generateQuickInvoice: '1.2',
+	invoiceList: '1.1',
 };
 
 const SERVLET_PATH = '/apis/servlet/DoWebTrans';

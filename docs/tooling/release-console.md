@@ -87,6 +87,8 @@ GitHub, DigitalOcean and Cloudflare have screens. Any other vendor can be chosen
 
 Each step carries its own icon, and every provider shows its logo beside its name: on its card, on the buttons that pick where an environment runs or reads its secrets, in tables, beside domain and address boxes, and in the summary. Project settings › Repositories shows them the same way. The browser loads the logos from Iconify (`api.iconify.design`) when the screen opens; Infisical and Doppler, which Iconify lacks, show their own site icon through Google's favicon service. No logo is kept in the repository or on the computer, and without a network the provider's name shows on its own.
 
+The rest of the console follows the same rule. Every menu, screen, menu group, page title, tab, panel and search result has an icon; cloud, edge and secrets groups, the repository switcher, Connections and the project tables show the provider's logo; environment tabs show a laptop for this computer, a flask for staging and a globe for production; and this Mac's screens show the product each container runs (Node, Angular, NestJS, MongoDB, Redis, Meilisearch, Nginx or Docker). Icons are drawn in the colour of their text, so they dim, light and change colour with their item. The console fetches every icon once while the lock screen shows, so screens open with their icons in place. The icons live in `apps/release-console/src/app/shared/icons.ts`; a new screen needs an entry there, and a test fails until it has one.
+
 Project settings › **Repositories** (also reached from a repository's **Repository settings**) changes a repository after the project exists:
 
 - its role, environments (where each runs, its domains, and which secrets manager it reads and where), cloud platforms, edge platforms with their domains, secrets managers, and own menus;
@@ -147,7 +149,7 @@ The console never makes a token or signs in for the owner. A browser sign-in for
 
 ### This Mac as an environment
 
-For an environment that runs on this computer, the console reads the Mac and Docker through the Mac helper. These screens stand where a server's figures will stand once the server agent exists.
+For an environment that runs on this computer, the console reads the Mac and Docker through the Mac helper. The helper runs its read-only tools without blocking and shares one reading of the Mac, Docker or the shop's health between requests that arrive within two seconds, so it answers at once even while `docker stats` is still running. These screens stand where a server's figures will stand once the server agent exists.
 
 | Repository screen              | Shows                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

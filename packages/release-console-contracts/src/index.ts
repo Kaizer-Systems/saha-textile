@@ -44,3 +44,4 @@ export const consoleApiHealthSchema = z.object({ status: z.literal('ok'), versio
 export type ConsoleApiHealth = z.infer<typeof consoleApiHealthSchema>;
 
 export * from './projects.js';
+export * from './local.js';

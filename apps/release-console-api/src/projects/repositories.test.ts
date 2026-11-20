@@ -91,7 +91,7 @@ describe('editing repositories after a project is added', () => {
 	});
 
 	it('reads the shop readiness only for the stack it belongs to', async () => {
-		expect(await new LocalStackService().readiness('client-shop')).toMatchObject({
+		expect(await new LocalStackService({} as never, {} as never).readiness('client-shop')).toMatchObject({
 			status: 'unknown',
 			reachable: false,
 		});

@@ -339,8 +339,25 @@ export const changePinSchema = z.object({
 	current: z.string().regex(/^\d{6}$/),
 	next: z.string().regex(/^\d{6}$/),
 });
+/** How the lock screen opens first; both work whenever a password is set. */
+export const signInMethodSchema = z.enum(['pin', 'password']);
+export type SignInMethod = z.infer<typeof signInMethodSchema>;
+/** A console password: 12 to 200 characters. */
+export const consolePasswordSchema = z.string().min(12, 'at least 12 characters').max(200);
+/** Unlocking with the PIN or the password. */
+export const unlockSchema = z.union([
+	pinSchema,
+	z.object({ password: z.string().min(1).max(200) }),
+]);
+export type Unlock = z.infer<typeof unlockSchema>;
+/** Setting or changing the password, or removing it, always needs the PIN. */
+export const setPasswordSchema = z.object({ pin: pinSchema.shape.pin, password: consolePasswordSchema });
+export const removePasswordSchema = z.object({ pin: pinSchema.shape.pin });
+export const preferredMethodSchema = z.object({ pin: pinSchema.shape.pin, method: signInMethodSchema });
 export const lockStatusSchema = z.object({
 	pinSet: z.boolean(),
+	passwordSet: z.boolean(),
+	preferred: signInMethodSchema,
 	unlocked: z.boolean(),
 	lockedUntil: z.string().datetime().nullable(),
 	triesLeft: z.number().int().nonnegative(),

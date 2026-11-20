@@ -3,7 +3,11 @@ import {
 	changePinSchema,
 	type LockStatus,
 	pinSchema,
+	preferredMethodSchema,
+	removePasswordSchema,
+	setPasswordSchema,
 	type UnlockAnswer,
+	unlockSchema,
 } from '@saha-textile/release-console-contracts';
 
 import { LockService } from './lock.service.js';
@@ -30,7 +34,30 @@ export class LockController {
 	@Post('unlock')
 	@HttpCode(200)
 	unlock(@Body() body: unknown): UnlockAnswer {
-		return { session: this.lock.unlock(parseBody(pinSchema, body).pin) };
+		return { session: this.lock.unlock(parseBody(unlockSchema, body)) };
+	}
+
+	@Post('password')
+	@HttpCode(200)
+	setPassword(@Req() req: Req, @Body() body: unknown): { ok: true } {
+		const { pin, password } = parseBody(setPasswordSchema, body);
+		this.lock.setPassword(sessionOf(req), pin, password);
+		return { ok: true };
+	}
+
+	@Post('password/remove')
+	@HttpCode(200)
+	removePassword(@Req() req: Req, @Body() body: unknown): { ok: true } {
+		this.lock.removePassword(sessionOf(req), parseBody(removePasswordSchema, body).pin);
+		return { ok: true };
+	}
+
+	@Post('preferred')
+	@HttpCode(200)
+	preferred(@Req() req: Req, @Body() body: unknown): { ok: true } {
+		const { pin, method } = parseBody(preferredMethodSchema, body);
+		this.lock.setPreferred(sessionOf(req), pin, method);
+		return { ok: true };
 	}
 
 	@Post('lock')

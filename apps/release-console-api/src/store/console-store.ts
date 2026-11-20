@@ -1,70 +1,139 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import { type AuditEntry, auditEntrySchema } from '@saha-textile/release-console-contracts';
 
 import { type ConsoleFile, consoleFileSchema, emptyConsoleFile } from './console-file.js';
 
-/** Where the console keeps its file: `CONSOLE_DATA_DIR`, or the Mac's Application Support folder. */
+/** Where the console keeps its database: `CONSOLE_DATA_DIR`, or the Mac's Application Support folder. */
 export function dataDir(): string {
 	return process.env['CONSOLE_DATA_DIR'] ?? join(homedir(), 'Library', 'Application Support', 'Release Console');
 }
 
+/** Each step brings the database one version forward; the version is kept in `user_version`. */
+const MIGRATIONS = [
+	`CREATE TABLE state (id INTEGER PRIMARY KEY CHECK (id = 1), json TEXT NOT NULL);
+	 CREATE TABLE audit (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, project_id TEXT, action TEXT NOT NULL, detail TEXT NOT NULL);
+	 CREATE INDEX audit_project ON audit (project_id, id);`,
+	`CREATE TABLE samples (ts INTEGER NOT NULL, source TEXT NOT NULL, name TEXT NOT NULL, value REAL NOT NULL);
+	 CREATE INDEX samples_lookup ON samples (source, name, ts);
+	 CREATE TABLE runs (id TEXT PRIMARY KEY, kind TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, json TEXT NOT NULL);`,
+];
+
 /**
- * Reads and writes the console file. It starts empty: the owner adds every project with
- * Add a project; nothing is imported on its own. Every write goes to a temporary file first and is then
- * renamed, so a crash never leaves half a file. Files are readable by the owner only.
+ * The console's own database: one SQLite file (`console.db`) in the data folder, readable by the
+ * owner only. It holds projects, key links (never key values), the PIN hash, the lock state, the
+ * audit trail, stats history and run history. A first start imports an older `console.json` and
+ * `audit.jsonl`, then renames them.
  */
 @Injectable()
-export class ConsoleStore {
+export class ConsoleStore implements OnModuleDestroy {
 	private readonly dir = dataDir();
-	private readonly file = join(this.dir, 'console.json');
-	private readonly auditFile = join(this.dir, 'audit.jsonl');
+	private handle: DatabaseSync | null = null;
 	private cache: ConsoleFile | null = null;
+
+	/** The open database, created and brought up to date on first use. */
+	db(): DatabaseSync {
+		if (this.handle) return this.handle;
+		mkdirSync(this.dir, { recursive: true, mode: 0o700 });
+		const file = join(this.dir, 'console.db');
+		const db = new DatabaseSync(file);
+		chmodSync(file, 0o600);
+		db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;');
+		const version = Number((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version);
+		for (let v = version; v < MIGRATIONS.length; v++) {
+			db.exec('BEGIN');
+			db.exec(MIGRATIONS[v] ?? '');
+			db.exec(`PRAGMA user_version = ${v + 1}`);
+			db.exec('COMMIT');
+		}
+		this.handle = db;
+		this.importLegacy(db);
+		return db;
+	}
+
+	onModuleDestroy(): void {
+		this.handle?.close();
+		this.handle = null;
+	}
 
 	read(): ConsoleFile {
 		if (this.cache) return this.cache;
-		let data = emptyConsoleFile();
-		if (existsSync(this.file)) data = consoleFileSchema.parse(JSON.parse(readFileSync(this.file, 'utf8')));
-		this.cache = data;
-		return data;
+		const row = this.db().prepare('SELECT json FROM state WHERE id = 1').get() as { json: string } | undefined;
+		this.cache = row ? consoleFileSchema.parse(JSON.parse(row.json)) : emptyConsoleFile();
+		return this.cache;
 	}
 
 	write(next: ConsoleFile): void {
-		mkdirSync(this.dir, { recursive: true, mode: 0o700 });
-		const tmp = `${this.file}.tmp`;
-		writeFileSync(tmp, `${JSON.stringify(consoleFileSchema.parse(next), null, '\t')}\n`, { mode: 0o600 });
-		renameSync(tmp, this.file);
-		this.cache = next;
+		const parsed = consoleFileSchema.parse(next);
+		this.db()
+			.prepare('INSERT INTO state (id, json) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET json = excluded.json')
+			.run(JSON.stringify(parsed));
+		this.cache = parsed;
 	}
 
 	update(change: (file: ConsoleFile) => ConsoleFile): ConsoleFile {
 		const next = change(structuredClone(this.read()));
 		this.write(next);
-		return next;
+		return this.read();
 	}
 
 	audit(projectId: string | null, action: string, detail: string): void {
-		mkdirSync(this.dir, { recursive: true, mode: 0o700 });
-		const entry: AuditEntry = { at: new Date().toISOString(), projectId, action, detail };
-		appendFileSync(this.auditFile, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
+		this.db()
+			.prepare('INSERT INTO audit (at, project_id, action, detail) VALUES (?, ?, ?, ?)')
+			.run(new Date().toISOString(), projectId, action, detail);
 	}
 
-	auditEntries(projectId: string | null): AuditEntry[] {
-		if (!existsSync(this.auditFile)) return [];
-		return readFileSync(this.auditFile, 'utf8')
-			.split('\n')
-			.filter(Boolean)
-			.flatMap((line) => {
+	/** Newest first; one project's entries, or every entry when `projectId` is null. */
+	auditEntries(projectId: string | null, limit = 500): AuditEntry[] {
+		const rows = (
+			projectId === null
+				? this.db()
+						.prepare('SELECT at, project_id, action, detail FROM audit ORDER BY id DESC LIMIT ?')
+						.all(limit)
+				: this.db()
+						.prepare(
+							'SELECT at, project_id, action, detail FROM audit WHERE project_id = ? ORDER BY id DESC LIMIT ?',
+						)
+						.all(projectId, limit)
+		) as { at: string; project_id: string | null; action: string; detail: string }[];
+		return rows.flatMap((r) => {
+			const parsed = auditEntrySchema.safeParse({
+				at: r.at,
+				projectId: r.project_id,
+				action: r.action,
+				detail: r.detail,
+			});
+			return parsed.success ? [parsed.data] : [];
+		});
+	}
+
+	/** Moves an older file-based console into the database once, keeping the old files renamed. */
+	private importLegacy(db: DatabaseSync): void {
+		const jsonFile = join(this.dir, 'console.json');
+		const auditFile = join(this.dir, 'audit.jsonl');
+		const hasState = db.prepare('SELECT 1 FROM state WHERE id = 1').get() !== undefined;
+		if (!hasState && existsSync(jsonFile)) {
+			const parsed = consoleFileSchema.safeParse(JSON.parse(readFileSync(jsonFile, 'utf8')));
+			if (parsed.success) {
+				db.prepare('INSERT INTO state (id, json) VALUES (1, ?)').run(JSON.stringify(parsed.data));
+				renameSync(jsonFile, `${jsonFile}.imported`);
+			}
+		}
+		if (existsSync(auditFile)) {
+			const insert = db.prepare('INSERT INTO audit (at, project_id, action, detail) VALUES (?, ?, ?, ?)');
+			for (const line of readFileSync(auditFile, 'utf8').split('\n').filter(Boolean)) {
 				try {
-					return [auditEntrySchema.parse(JSON.parse(line))];
+					const e = auditEntrySchema.parse(JSON.parse(line));
+					insert.run(e.at, e.projectId, e.action, e.detail);
 				} catch {
-					return [];
+					/* a damaged line is skipped */
 				}
-			})
-			.filter((e) => projectId === null || e.projectId === projectId)
-			.reverse();
+			}
+			renameSync(auditFile, `${auditFile}.imported`);
+		}
 	}
 }

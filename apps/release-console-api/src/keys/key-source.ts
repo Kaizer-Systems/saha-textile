@@ -5,7 +5,7 @@ import { parseEnv } from 'node:util';
 import { Injectable } from '@nestjs/common';
 import { CONSOLE_KEYS_FOLDER, type KeySource } from '@saha-textile/release-console-contracts';
 
-import { CONSOLE_KEY_NAMES, OPTIONAL_KEY_NAMES } from './console-key-names.js';
+import { CONSOLE_KEY_NAMES, EITHER_ONE, OPTIONAL_KEY_NAMES } from './console-key-names.js';
 
 /**
  * The console's key file: `CONSOLE_KEYS_FILE`, or `docker/release-console/env/console.env` beside the
@@ -52,13 +52,15 @@ export class KeySourceService {
 		const values = this.load();
 		const names = values ? [...values.keys()].sort() : [];
 		const absent = CONSOLE_KEY_NAMES.filter((n) => !names.includes(n));
+		const covered = (n: string) =>
+			EITHER_ONE.some((pair) => pair.includes(n) && pair.some((m) => names.includes(m)));
 		return {
 			file: keysFile(),
 			present: values !== null,
 			readAt: values ? (this.cache?.readAt ?? null) : null,
 			names,
-			missing: absent.filter((n) => !OPTIONAL_KEY_NAMES.includes(n)),
-			optionalBlank: absent.filter((n) => OPTIONAL_KEY_NAMES.includes(n)),
+			missing: absent.filter((n) => !OPTIONAL_KEY_NAMES.includes(n) && !covered(n)),
+			optionalBlank: absent.filter((n) => OPTIONAL_KEY_NAMES.includes(n) || covered(n)),
 			folder: CONSOLE_KEYS_FOLDER,
 		};
 	}

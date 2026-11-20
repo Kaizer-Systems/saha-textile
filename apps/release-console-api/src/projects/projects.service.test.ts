@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -26,6 +26,14 @@ const droplet = {
 	tags: ['env:staging'],
 	created_at: '2026-11-10T00:00:00Z',
 };
+
+/** Everything the database files hold, as text, to prove a value never reached them. */
+const databaseText = (dir: string): string =>
+	['console.db', 'console.db-wal']
+		.map((f) => join(dir, f))
+		.filter((f) => existsSync(f))
+		.map((f) => readFileSync(f, 'latin1'))
+		.join('');
 
 describe('projects and key links', () => {
 	let dir: string;
@@ -81,7 +89,7 @@ describe('projects and key links', () => {
 		});
 		expect(ref).toMatchObject({ state: 'verified', account: 'Saha Textile', envNames: ['CONSOLE_DO_READ_TOKEN'] });
 		expect(JSON.stringify(projects.view())).not.toContain('test-value-1');
-		expect(readFileSync(join(dir, 'console.json'), 'utf8')).not.toContain('test-value-1');
+		expect(databaseText(dir)).not.toContain('test-value-1');
 	});
 
 	it('fails a link whose name the key file lacks, and recovers when the file gains it', async () => {

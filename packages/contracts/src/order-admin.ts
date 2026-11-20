@@ -4,8 +4,8 @@ import { PostalAddressInput } from './address-book';
 import { CartAddonValue } from './cart';
 import { Id, IsoDateTime, PriceINR } from './common';
 import { AppliedCoupon } from './coupon';
-import { Order, OrderChannel, OrderPaymentStatus, OrderStatus } from './order';
-import { ManualPaymentWrite, OrderPayment, PaymentRequest, Shipment } from './order-payment';
+import { Order, OrderChannel, OrderPaymentStatus, OrderStatus, PaymentGateway } from './order';
+import { ManualPaymentWrite, OrderPayment, PaymentMethod, PaymentRequest, Shipment } from './order-payment';
 import { ZoneLinePrice } from './price-zone';
 import { IsoDate } from './purchasing';
 
@@ -74,8 +74,19 @@ export const OrderListRow = z.object({
 	totalINR: PriceINR,
 	status: OrderStatus,
 	paymentStatus: OrderPaymentStatus,
-	/** The payment line under the chip: "UPI · 4021…", "Link sent · PayPal · until 27 Nov". */
-	paymentDetail: z.string().nullable(),
+	/**
+	 * What the line under the payment chip says, as data the admin words in the page's language:
+	 * the live payment request ("Link sent · PayPal · until 27 Nov"), or the last payment received
+	 * ("UPI · 4321…").
+	 */
+	paymentDetail: z
+		.discriminatedUnion('kind', [
+			z.object({ kind: z.literal('request'), gateway: PaymentGateway, until: IsoDateTime }),
+			z.object({ kind: z.literal('payment'), method: PaymentMethod, referenceStart: z.string().nullable() }),
+		])
+		.nullable(),
+	/** The delivery country (ISO code), for the list's "Delivers to" column. */
+	deliveryCountry: z.string().nullable().default(null),
 	attention: z.array(AttentionReason),
 	/** Open orders: pieces held, goods so far, paid, balance. */
 	open: z

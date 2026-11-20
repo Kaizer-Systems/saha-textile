@@ -117,11 +117,7 @@ export class ShopPaymentsService {
 	async start(order: Order, locale: string, now = new Date()): Promise<PaymentAttempt> {
 		const previous = await this.attempts.listByOrder(order.id);
 		const last = previous[previous.length - 1];
-		if (
-			last?.state === 'pending' &&
-			last.handoff &&
-			now.getTime() - new Date(last.createdAt).getTime() < 60_000
-		) {
+		if (last?.state === 'pending' && last.handoff && now.getTime() - new Date(last.createdAt).getTime() < 60_000) {
 			return last;
 		}
 		const gatewayId = order.currency === 'INR' ? 'inr' : 'paypal';
@@ -266,7 +262,10 @@ export class ShopPaymentsService {
 	}
 
 	/** How an attempt ended, for the shop's return page. */
-	async outcomeFor(attemptId: string, principal: AuthenticatedPrincipal | undefined): Promise<CheckoutPaymentOutcome> {
+	async outcomeFor(
+		attemptId: string,
+		principal: AuthenticatedPrincipal | undefined,
+	): Promise<CheckoutPaymentOutcome> {
 		const { attempt, order } = await this.owned(attemptId, principal);
 		return this.outcome(attempt, order);
 	}
@@ -362,7 +361,11 @@ export class ShopPaymentsService {
 		const order = await this.orders.get(attempt.orderId);
 		const reference = attempt.gatewayReference ?? attempt.id;
 		if (order.status === 'cancelled') return this.refund(attempt, status, order, [], 'orderCancelled', now);
-		if (order.status === 'awaiting_payment' && !holdIsLive(order.holdUntil, now) && !order.lines.some((l) => l.held)) {
+		if (
+			order.status === 'awaiting_payment' &&
+			!holdIsLive(order.holdUntil, now) &&
+			!order.lines.some((l) => l.held)
+		) {
 			// Paid after the hold ended (OD1): keep the pieces again if every one is still free.
 			const soldOut = await this.stock.unavailableLines(order);
 			if (soldOut.length) return this.refund(attempt, status, order, soldOut, 'soldOutBeforePayment', now);

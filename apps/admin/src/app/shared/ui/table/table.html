@@ -438,7 +438,10 @@
 			</thead>
 			<tbody>
 				@for (columnData of tableConfig?.data; track columnData.id;let i = $index) {
-				<tr [class.table-active]="hasCheckbox && isPicked(columnData)">
+				<tr
+					[class.table-active]="hasCheckbox && isPicked(columnData)"
+					[class.table-danger]="columnData.rowTone === 'danger'"
+				>
 					@if (hasCheckbox) {
 					<td class="sm-width">
 						<div class="custom-control custom-checkbox">

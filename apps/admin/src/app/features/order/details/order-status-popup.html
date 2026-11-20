@@ -1,0 +1,288 @@
+@let d = detail();
+<div class="modal-header">
+	<h2 id="order_status_popup_title">{{ 'ord_update_status' | transloco }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div class="modal-body theme-form theme-form-2">
+	@if (d) {
+	<p class="small text-muted mb-3">
+		{{ 'ord_status_now' | transloco: { status: ('ord_status_' + d.order.status | transloco) } }}
+	</p>
+	<label class="form-label">{{ 'ord_new_status' | transloco }}</label>
+	<ul class="dropdown-menu show position-static mt-1 mb-3 w-100 border shadow-none">
+		@for (option of options(); track option.to) {
+		<li>
+			<button
+				type="button"
+				class="dropdown-item d-flex justify-content-between align-items-center"
+				[class.active]="to() === option.to"
+				[class.disabled]="!option.allowed"
+				[class.text-muted]="!option.allowed"
+				[disabled]="!option.allowed"
+				[attr.aria-pressed]="to() === option.to"
+				(click)="to.set(option.to)"
+			>
+				{{ 'ord_status_' + option.to | transloco }} @if (option.reason) {
+				<small
+					class="ms-3"
+					[class.text-danger]="!option.allowed"
+					[class.text-muted]="option.allowed"
+				>
+					{{ 'ord_block_' + option.reason | transloco }}
+				</small>
+				} @else if (option.warning) {
+				<small class="text-muted ms-3">{{ 'ord_block_' + option.warning | transloco }}</small>
+				}
+			</button>
+		</li>
+		}
+	</ul>
+
+	@if (chosen()?.to === 'shipped') {
+	<label class="form-label">{{ 'ord_ship_with' | transloco }}</label>
+	<div class="row g-2 mb-3">
+		<div class="col-sm-6">
+			<div class="rounded border p-2">
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="radio"
+						id="ship_manual"
+						checked
+					/>
+					<label
+						class="form-check-label"
+						for="ship_manual"
+					>
+						<b>{{ 'ord_ship_manual' | transloco }}</b>
+						<span class="d-block small text-muted">{{ 'ord_ship_manual_help' | transloco }}</span>
+					</label>
+				</div>
+			</div>
+		</div>
+		<div class="col-sm-6">
+			<div class="rounded border p-2 opacity-50">
+				<div class="form-check">
+					<input
+						class="form-check-input"
+						type="radio"
+						id="ship_provider"
+						disabled
+					/>
+					<label
+						class="form-check-label"
+						for="ship_provider"
+					>
+						<b>{{ 'ord_ship_provider' | transloco }}</b>
+						<span class="d-block small text-muted">{{ 'ord_ship_provider_help' | transloco }}</span>
+					</label>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row g-3 mb-3">
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="ship_courier"
+			>
+				{{ 'ord_courier' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="ship_courier"
+				maxlength="80"
+				[ngModel]="courierName()"
+				(ngModelChange)="courierName.set($event)"
+			/>
+		</div>
+		<div class="col-md-6">
+			<label
+				class="form-label"
+				for="ship_tracking"
+			>
+				{{ 'ord_tracking_number' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="ship_tracking"
+				maxlength="60"
+				[ngModel]="trackingNumber()"
+				(ngModelChange)="trackingNumber.set($event)"
+			/>
+		</div>
+		<div class="col-md-8">
+			<label
+				class="form-label"
+				for="ship_link"
+			>
+				{{ 'ord_tracking_link' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="ship_link"
+				type="url"
+				placeholder="https://"
+				[ngModel]="trackingUrl()"
+				(ngModelChange)="trackingUrl.set($event)"
+			/>
+		</div>
+		<div class="col-md-4">
+			<label
+				class="form-label"
+				for="ship_on"
+			>
+				{{ 'ord_shipped_on' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="ship_on"
+				type="date"
+				[max]="today"
+				[ngModel]="shippedOn()"
+				(ngModelChange)="shippedOn.set($event)"
+			/>
+		</div>
+	</div>
+	} @if (chosen()?.to === 'delivered') {
+	<div class="row g-3 mb-3">
+		<div class="col-md-5">
+			<label
+				class="form-label"
+				for="delivered_on"
+			>
+				{{ 'ord_delivered_on' | transloco }}
+			</label>
+			<input
+				class="form-control"
+				id="delivered_on"
+				type="date"
+				[max]="today"
+				[ngModel]="deliveredOn()"
+				(ngModelChange)="deliveredOn.set($event)"
+			/>
+		</div>
+		<div class="col-md-7">
+			<label
+				class="form-label"
+				for="delivered_by"
+			>
+				{{ 'ord_proof_of_delivery' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="delivered_by"
+				maxlength="120"
+				[placeholder]="'ord_proof_placeholder' | transloco"
+				[ngModel]="receivedBy()"
+				(ngModelChange)="receivedBy.set($event)"
+			/>
+		</div>
+	</div>
+	} @if (chosen()?.to === 'cancelled') {
+	<div class="row g-3 mb-3">
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="cancel_reason"
+			>
+				{{ 'ord_cancel_reason' | transloco }}
+			</label>
+			<select
+				class="form-select"
+				id="cancel_reason"
+				[ngModel]="cancelReason()"
+				(ngModelChange)="cancelReason.set($event)"
+			>
+				@for (reason of cancelReasons; track reason) {
+				<option [value]="reason">{{ 'ord_cancel_' + reason | transloco }}</option>
+				}
+			</select>
+		</div>
+		<div class="col-12">
+			<label
+				class="form-label"
+				for="cancel_note"
+			>
+				{{ 'ord_note' | transloco }}
+				<span class="text-muted">({{ 'optional' | transloco }})</span>
+			</label>
+			<input
+				class="form-control"
+				id="cancel_note"
+				maxlength="500"
+				[ngModel]="cancelNote()"
+				(ngModelChange)="cancelNote.set($event)"
+			/>
+		</div>
+		<p class="small text-muted mb-0">{{ 'ord_cancel_help' | transloco }}</p>
+	</div>
+	}
+	<div class="mb-3">
+		<label
+			class="form-label"
+			for="status_comment"
+		>
+			{{ 'ord_comment' | transloco }}
+			<span class="text-muted">({{ 'ord_comment_staff_only' | transloco }})</span>
+		</label>
+		<textarea
+			class="form-control"
+			id="status_comment"
+			rows="2"
+			maxlength="1000"
+			[placeholder]="'ord_comment_placeholder' | transloco"
+			[ngModel]="comment()"
+			(ngModelChange)="comment.set($event)"
+		></textarea>
+	</div>
+	@if (chosen(); as option) {
+	<p class="small mb-0">
+		<i class="ri-notification-3-line"></i>
+		@if (option.tells.length) { {{ 'ord_customer_told' | transloco }} @for (template of option.tells; track
+		template) {
+		<span class="fm-chip ms-1">{{ 'ord_template_' + template | transloco }}</span>
+		} } @else { {{ 'ord_customer_told_nothing' | transloco }} }
+	</p>
+	} @if (error(); as problem) {
+	<div
+		class="alert alert-warning d-flex align-items-start mt-3 mb-0 gap-2"
+		role="alert"
+	>
+		<i class="ri-error-warning-line mt-1"></i>
+		<div>{{ problem }}</div>
+	</div>
+	} }
+</div>
+<div class="modal-footer">
+	<div class="left-part"></div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn"
+			[class.btn-theme]="chosen()?.to !== 'cancelled'"
+			[class.btn-danger]="chosen()?.to === 'cancelled'"
+			[disabled]="!canSave()"
+			(click)="save()"
+		>
+			@if (chosen(); as option) { {{ 'ord_mark_as' | transloco: { status: ('ord_status_' + option.to | transloco)
+			} }} } @else { {{ 'ord_choose_status' | transloco }} }
+		</button>
+	</div>
+</div>

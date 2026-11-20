@@ -126,7 +126,9 @@ export class ShopCheckoutService {
 		if (!principal || principal.audience !== 'storefront') throw new UnauthorizedException('Sign in to check out');
 		const key = `shop:${principal.userId}:${input.idempotencyKey}`;
 		const existing = await this.orders.findByIdempotencyKey(key);
-		const order = existing ? await this.reuse(existing, now) : await this.create(input, principal, key, locale, now);
+		const order = existing
+			? await this.reuse(existing, now)
+			: await this.create(input, principal, key, locale, now);
 		const attempt = await this.payments.start(order, order.locale ?? locale, now);
 		if (!attempt.handoff) {
 			throw new ConflictException(codedRefusal('payment_not_started', 'The payment could not start', 'pay'));
@@ -176,7 +178,11 @@ export class ShopCheckoutService {
 		// "Save to my addresses" with "Name this address" (shop17): saved when Pay is pressed.
 		for (const choice of [input.delivery, input.billing]) {
 			if (choice?.kind === 'new' && choice.saveAs) {
-				await this.addressBook.add(built.customer.id, { ...choice.address, label: choice.saveAs, isDefault: false });
+				await this.addressBook.add(built.customer.id, {
+					...choice.address,
+					label: choice.saveAs,
+					isDefault: false,
+				});
 			}
 		}
 		const at = now.toISOString();
@@ -295,7 +301,9 @@ export class ShopCheckoutService {
 				title: { en: line.title },
 				sku: line.sku || line.productId,
 				quantity: line.quantity,
-				attributes: Object.fromEntries(line.options.map((option) => [option.group || option.code, option.value])),
+				attributes: Object.fromEntries(
+					line.options.map((option) => [option.group || option.code, option.value]),
+				),
 				addons: [
 					...line.options
 						.filter((option) => option.priceDeltaINR !== 0)
@@ -374,7 +382,8 @@ export class ShopCheckoutService {
 		const invoice: Built['invoice'] =
 			decision.status === 'ready'
 				? {
-						source: decision.source === 'givenAtCheckout' ? 'addressInIndia' : (decision.source as 'billing'),
+						source:
+							decision.source === 'givenAtCheckout' ? 'addressInIndia' : (decision.source as 'billing'),
 						address: {
 							...((decision.source === 'billing'
 								? billing

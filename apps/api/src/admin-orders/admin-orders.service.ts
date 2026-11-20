@@ -118,6 +118,7 @@ export function attentionOf(
 		reasons.push('requestExpiredUnpaid');
 	}
 	if (order.paymentStatus === 'pending_at_bank') reasons.push('pendingAtBank');
+	if (order.paymentReview) reasons.push('paymentReview');
 	if (
 		order.status === 'open' &&
 		settings.openOrders.enabled &&
@@ -129,22 +130,17 @@ export function attentionOf(
 	return reasons;
 }
 
-const METHOD_WORDS: Record<string, string> = {
-	upi: 'UPI',
-	bankTransfer: 'Bank transfer',
-	cashOnDelivery: 'Cash on delivery',
-	gateway: 'Online',
-	onAccount: 'On account',
-};
-
-/** The line under the payment chip: "UPI · 4021…", "Link sent · PayPal · until 2026-11-27". */
-export function paymentDetailOf(payments: readonly OrderPayment[], requests: readonly PaymentRequest[], now: Date) {
+/** The line under the payment chip, as data: the live request, or the last payment received. */
+export function paymentDetailOf(
+	payments: readonly OrderPayment[],
+	requests: readonly PaymentRequest[],
+	now: Date,
+): OrderListRow['paymentDetail'] {
 	const live = requests.find((request) => isRequestActive(request, now));
-	if (live) return `Link sent · ${live.gateway} · until ${live.expiresAt.slice(0, 10)}`;
+	if (live) return { kind: 'request', gateway: live.gateway, until: live.expiresAt };
 	const last = [...payments].reverse().find((payment) => payment.state === 'received');
 	if (!last) return null;
-	const reference = last.reference ? ` · ${last.reference.slice(0, 4)}…` : '';
-	return `${METHOD_WORDS[last.method] ?? last.method}${reference}`;
+	return { kind: 'payment', method: last.method, referenceStart: last.reference ? last.reference.slice(0, 4) : null };
 }
 
 /**
@@ -224,6 +220,11 @@ export class AdminOrdersService {
 			status: order.status,
 			paymentStatus: order.paymentStatus,
 			paymentDetail: paymentDetailOf(payments, requests, now),
+			deliveryCountry:
+				order.addresses?.delivery.countryCode ??
+				order.addresses?.delivery.country ??
+				order.shipping?.deliveryCountry ??
+				null,
 			attention: attentionOf(order, requests, settings, now),
 			open:
 				order.status === 'open' && order.openedAt

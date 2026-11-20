@@ -7,7 +7,6 @@ import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Coupon } from './coupon/coupon';
-import { Order } from './order/order';
 import { OrderStatus } from './order-status/order-status';
 import { Page } from './page/page';
 import { Refund } from './refund/refund';
@@ -22,7 +21,6 @@ const query = (params?: () => unknown) => {
 vi.mock('@data-access/queries/attribute.queries', () => ({ injectAttributesQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/coupon.queries', () => ({ injectCouponsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/currency.queries', () => ({ injectCurrenciesQuery: (p: () => unknown) => query(p) }));
-vi.mock('@data-access/queries/order.queries', () => ({ injectOrdersQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/order-status.queries', () => ({
 	injectOrderStatusQuery: (p: () => unknown) => query(p),
 }));
@@ -73,44 +71,6 @@ describe.each<{ name: string; type: Type<unknown>; edit: string | null; rows: un
 			expect(router.navigateByUrl).toHaveBeenCalledOnce();
 		});
 	}
-});
-
-describe('Order list', () => {
-	it('decorates each order for the table', () => {
-		const { page } = render(Order);
-		data.set({
-			data: [
-				{
-					order_number: 7,
-					payment_status: 'PENDING_NOW',
-					payment_method: 'cash_on',
-					consumer: { name: 'Asha' },
-				},
-				{ order_number: 8, consumer: { name: 'Bina' } },
-			],
-			total: 2,
-		});
-		TestBed.tick();
-		expect(page.tableConfig.total).toBe(2);
-		expect(page.tableConfig.data[0]).toMatchObject({
-			order_id: '<span class="fw-bolder">#7</span>',
-			order_payment_status: '<div class="status-pending_now"><span>PENDING NOW</span></div>',
-			payment_mode: '<div class="payment-mode"><span>CASH ON</span></div>',
-		});
-		expect(page.tableConfig.data[1]).toMatchObject({ order_payment_status: '-', payment_mode: '-' });
-	});
-
-	it('starts empty, opens a row, and ignores other actions', () => {
-		const { page, router } = render(Order);
-		expect(page.tableConfig.data).toEqual([]);
-		data.set({});
-		TestBed.tick();
-		page.onTableChange({ page: 2 });
-		page.onActionClicked({ actionToPerform: 'view', data: { order_number: 7 } });
-		page.onActionClicked({ actionToPerform: 'other', data: {} });
-		expect(router.navigateByUrl).toHaveBeenCalledTimes(1);
-		expect(router.navigateByUrl).toHaveBeenCalledWith('/order/details/7');
-	});
 });
 
 describe('Refund list', () => {

@@ -42,6 +42,8 @@ export interface ITableBulkAction {
 }
 export interface IBaseRow {
 	id: number | string;
+	/** `danger`: the row is drawn red (Bootstrap `table-danger`), e.g. an order waiting for its invoice address. */
+	rowTone?: 'danger';
 }
 
 export interface ITableColumn {

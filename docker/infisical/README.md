@@ -91,6 +91,11 @@ After this, `/deployment` holds ten entries per project.
   `.github/workflows/geo-refresh.yml` reads from the repository secret of the same name. Move it
   here from `/api` and delete the `/api` entry (the API never reads it, and `pnpm stack:env` and a
   release refuse it there). A changed value goes to GitHub's repository secrets as well.
+- **The geo refresh job's Spaces keys** (owner, 2026-11-20: reuse the API's keys): the repository
+  secrets `SPACES_KEY_<ENV>`, `SPACES_SECRET_<ENV>` and `SPACES_BUCKET_<ENV>` (DEV, STAGING,
+  PRODUCTION) are copies of that project's `/api/SPACES_KEY`, `/api/SPACES_SECRET` and
+  `/api/SPACES_BUCKET`. They are not separate Infisical entries; rotating an `/api` Spaces key
+  means updating GitHub too.
 
 ## Filling values
 

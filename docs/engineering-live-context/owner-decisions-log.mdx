@@ -1931,6 +1931,21 @@ names-only audit of the dev project against the files on the Mac.
 - **`SHOP_ORIGIN` stays in the dev project only.** In staging and production Compose sets it from
   `STOREFRONT_HOST`.
 
+## Owner decision (2026-11-20) — the geo refresh job reuses the API's Spaces keys
+
+- **Decision** (owner: "Reuse the API's keys"): `.github/workflows/geo-refresh.yml` uploads the
+  country, State and PIN files with the same Spaces keys the API uses. Its repository secrets
+  `SPACES_KEY_<ENV>`, `SPACES_SECRET_<ENV>` and `SPACES_BUCKET_<ENV>` (ENV = DEV, STAGING,
+  PRODUCTION) are copies of that project's `/api/SPACES_KEY`, `/api/SPACES_SECRET` and
+  `/api/SPACES_BUCKET` in Infisical, which stay the master copies. Nothing new is stored in
+  Infisical.
+- **When a key changes**, update it in Infisical and in GitHub's repository secrets.
+- **Known trade-off:** repository secrets can be read by any workflow in the repository, and these
+  keys can write to the whole media bucket. Separate bucket-limited keys were offered and declined.
+- **Today** only the dev project has its Spaces keys; staging and production are copied once their
+  buckets and keys exist. Until then the job skips those environments and names them in its pull
+  request.
+
 ## Owner decision round (2026-11-20) — which address each customer email comes from
 
 The owner, answering questions about `MSG91_EMAIL_FROM` on the Dev Secrets Checklist and in chat.

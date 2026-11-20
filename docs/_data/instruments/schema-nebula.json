@@ -31,9 +31,9 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 109,
-		"existingModelCount": 88,
-		"targetOnlyCount": 21,
+		"nodeCount": 114,
+		"existingModelCount": 95,
+		"targetOnlyCount": 19,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map, as is mailboxOutbox, the Inbox's Undo Send queue."
 	},
@@ -520,25 +520,27 @@
 			"id": "payments",
 			"label": "payments",
 			"cluster": "commerce-fulfilment",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["G"],
 			"blockingDecisions": [],
-			"purpose": "Gateway attempts, verification, capture, settlement, and failure data separated from orders.",
-			"source": "catalog §7.21",
-			"references": ["orders", "currencies", "paymentGatewayConfigs"]
+			"purpose": "Every payment on an order: typed by staff (UPI, bank transfer, cash on delivery, with the reference the customer gave) or recorded from a gateway (its reference locked; PayPal payments keep PayPal's own rate, fee and the rupees received). An order can have several.",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"references": ["orders", "paymentRequests"],
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts"
 		},
 		{
 			"id": "shipments",
 			"label": "shipments",
 			"cluster": "commerce-fulfilment",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["G"],
-			"blockingDecisions": ["DEC-SHIPPING"],
-			"purpose": "Domestic and international shipment lifecycle independent of order and payment state.",
-			"source": "catalog §7.22",
-			"references": ["orders", "shippingProviderConfigs", "shippingRateQuotes"]
+			"blockingDecisions": [],
+			"purpose": "Parcels sent for an order: courier name, tracking number and link typed by staff now (a connected courier later), shipped and delivered dates, and the proof of delivery.",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"references": ["orders"],
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts"
 		},
 		{
 			"id": "returns",
@@ -1518,6 +1520,71 @@
 			"source": "decisions 2026-11-15 purchases and stock",
 			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
 			"references": []
+		},
+		{
+			"id": "paymentRequests",
+			"label": "paymentRequests",
+			"cluster": "commerce-fulfilment",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "The gateway's own payment requests for an order (CCAvenue Quick Invoice, PayPal Invoicing): amount, currency and rate, the gateway's link and id, our forwarding link's token hash, who it went to, attempts, sends by hand, expiry and status.",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts",
+			"references": ["orders"]
+		},
+		{
+			"id": "ledgerEntries",
+			"label": "ledgerEntries",
+			"cluster": "commerce-fulfilment",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "A business's two accounts, receivable and payable, as append-only entries (orders on account, receipts, purchase entries and payments, set-offs, reversals). Never netted except by a set-off entry under a written agreement.",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts",
+			"references": ["suppliers", "orders"]
+		},
+		{
+			"id": "priceZones",
+			"label": "priceZones",
+			"cluster": "catalog-merchandising",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "Zones for business customers: RETAIL (shop pricing) and named price lists built like sale events, with all-products, category and product rules. Orders keep the zone and version that priced them.",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts",
+			"references": ["categories", "products"]
+		},
+		{
+			"id": "coupons",
+			"label": "coupons",
+			"cluster": "catalog-merchandising",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "Coupons built in the coupon builder: kind and value, what they apply to, sale pieces in or out, minimum order, who may use them, channels, use limits, dates, and whether they combine.",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts",
+			"references": ["categories", "products"]
+		},
+		{
+			"id": "couponUses",
+			"label": "couponUses",
+			"cluster": "catalog-merchandising",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["G"],
+			"blockingDecisions": [],
+			"purpose": "One use of a coupon on one order by one buyer, so per-customer and total limits hold.",
+			"source": "decisions § orders and checkout brief approved, with changes (2026-11-20)",
+			"currentModel": "packages/adapters-db-mongo/src/models/orders-build.model.ts",
+			"references": ["coupons", "orders"]
 		}
 	]
 }

@@ -15,6 +15,10 @@ import {
 	ReviewModel,
 	ShopEventModel,
 	StoreLocationModel,
+	OrderModel,
+	PaymentModel,
+	SupplierModel,
+	LedgerEntryModel,
 } from '../models/index';
 
 /**
@@ -63,4 +67,8 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('store photos', as(StoreLocationModel), 'photoAssetIds'),
 	entry('event popup pictures', as(ShopEventModel), 'popupAssetIds'),
 	entry('event popup picture (before 2026-11-10)', as(ShopEventModel), 'popupAssetId'),
+	entry('order line picture (kept with the order)', as(OrderModel), 'lines.imageAssetId'),
+	entry('payment proof', as(PaymentModel), 'proofMediaId'),
+	entry('signed set-off agreement (business)', as(SupplierModel), 'setOff.mediaId'),
+	entry('signed set-off agreement (one-off entry)', as(LedgerEntryModel), 'agreement.mediaId'),
 ];

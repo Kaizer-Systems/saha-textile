@@ -48,3 +48,4 @@ export * from './localized-text-registry';
 export * from './media-library.repository';
 export * from './media-zip.repository';
 export * from './purchasing.repository';
+export * from './orders-build.repository';

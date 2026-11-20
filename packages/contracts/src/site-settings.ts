@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { HomeHeroLayout } from './content-block';
 import { IsoDateTime } from './common';
+import { DocumentNumberingSettings } from './document-numbering';
 import { FxSettings, PaymentRoutingSettings } from './fx';
+import { OrderSettings } from './order-settings';
+import { ZonePricingSettings } from './price-zone';
 import { StorefrontSearchSettings } from './search-term';
 
 /**
@@ -354,6 +357,12 @@ export const SITE_SETTING_SCHEMAS = {
 	fx: FxSettings,
 	/** Which gateway takes each currency (brief pay01). */
 	'payments.routing': PaymentRoutingSettings,
+	/** Named order settings (orders brief: admin payment methods, link validity, holds, e-documents gate…). */
+	'orders.settings': OrderSettings,
+	/** Document number formats (DEC-NUMBERING; the order format stays a setting while OD18 is open). */
+	'orders.numbering': DocumentNumberingSettings,
+	/** The open zone questions as settings (DEC-B2B-ZONES). */
+	'zones.pricing': ZonePricingSettings,
 } as const;
 export type SiteSettingKey = keyof typeof SITE_SETTING_SCHEMAS;
 export type SiteSettingValue<K extends SiteSettingKey> = z.infer<(typeof SITE_SETTING_SCHEMAS)[K]>;

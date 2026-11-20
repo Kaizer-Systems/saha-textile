@@ -165,7 +165,8 @@ export class MongoSupplierRepository implements SupplierRepository {
 	}
 
 	async list(filter: SupplierListFilter, owedBySupplier: ReadonlyMap<string, number>): Promise<ListPage<Supplier>> {
-		const query: FilterQuery<AggregateDoc> = { deletedAt: null };
+		// One record per business (orders brief, 2026-11-20): the Suppliers page lists those that sell to us.
+		const query: FilterQuery<AggregateDoc> = { deletedAt: null, 'roles.supplier': { $ne: false } };
 		if (filter.filter === 'inactive') query.active = false;
 		if (filter.filter === 'owed')
 			query._id = { $in: [...owedBySupplier].filter(([, owed]) => owed > 0).map(([id]) => id) };
@@ -212,8 +213,8 @@ export class MongoSupplierRepository implements SupplierRepository {
 
 	async countActive(): Promise<{ all: number; inactive: number }> {
 		const [all, inactive] = await Promise.all([
-			SupplierModel.countDocuments({ deletedAt: null }).exec(),
-			SupplierModel.countDocuments({ deletedAt: null, active: false }).exec(),
+			SupplierModel.countDocuments({ deletedAt: null, 'roles.supplier': { $ne: false } }).exec(),
+			SupplierModel.countDocuments({ deletedAt: null, active: false, 'roles.supplier': { $ne: false } }).exec(),
 		]);
 		return { all, inactive };
 	}

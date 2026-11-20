@@ -79,7 +79,7 @@ describe('physical collection names', () => {
 		const nebulaPath = resolve(repositoryRoot(), 'docs/_data/instruments/schema-nebula.json');
 		const nebula = JSON.parse(readFileSync(nebulaPath, 'utf8')) as { collections: Array<{ id: string }> };
 		const nodeIds = new Set(nebula.collections.map((node) => node.id));
-		expect(nodeIds.size).toBe(108);
+		expect(nodeIds.size).toBe(114);
 
 		const graphBacked = Object.values(COLLECTION_NAMES).filter((name) => !NON_GRAPH_COLLECTIONS.includes(name));
 		const missing = graphBacked.filter((name) => !nodeIds.has(name));

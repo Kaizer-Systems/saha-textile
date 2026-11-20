@@ -1,7 +1,6 @@
 import type {
 	Business,
 	BusinessListQuery,
-	BusinessListResponse,
 	Coupon,
 	CouponListQuery,
 	CouponListResponse,
@@ -14,7 +13,6 @@ import type {
 	LedgerSide,
 	Order,
 	OrderListQuery,
-	OrderListRow,
 	OrderPayment,
 	OrderSettings,
 	PaymentRequest,
@@ -45,9 +43,11 @@ export class StaleRevisionError extends Error {
 	}
 }
 
-export interface AdminOrderListPage {
-	rows: OrderListRow[];
-	total: number;
+/** Extra search words and staff attention reasons kept beside an order (never part of the record). */
+export interface OrderWriteMeta {
+	/** References found elsewhere (tracking numbers, payment references) the order is found by. */
+	searchExtras?: readonly string[];
+	attention?: readonly string[];
 }
 
 /** Orders as the admin works with them (the shop's reads stay on `OrderRepository`). */
@@ -57,11 +57,18 @@ export interface AdminOrderRepository {
 	findByNumber(number: string): Promise<Order | null>;
 	findByIdempotencyKey(key: string): Promise<Order | null>;
 	/** Saves a new order; refuses a number that already exists (stripped form included). */
-	create(order: Order, idempotencyKey: string | null, context?: TransactionContext): Promise<Order>;
+	create(
+		order: Order,
+		idempotencyKey: string | null,
+		context?: TransactionContext,
+		meta?: OrderWriteMeta,
+	): Promise<Order>;
 	/** Saves a change when `expectedRevision` still matches, raising the revision. */
-	update(order: Order, expectedRevision: number, context?: TransactionContext): Promise<Order>;
-	list(query: OrderListQuery, now: Date): Promise<AdminOrderListPage>;
-	counts(query: OrderListQuery, now: Date): Promise<Record<string, number>>;
+	update(order: Order, expectedRevision: number, context?: TransactionContext, meta?: OrderWriteMeta): Promise<Order>;
+	/** Newest first; the list's filter, search and date range applied on the server. */
+	list(query: OrderListQuery): Promise<{ orders: Order[]; total: number }>;
+	/** Count per list filter (and `toPack`) for the same search and range. */
+	counts(query: OrderListQuery): Promise<Record<string, number>>;
 	/** Orders a business has on account and not settled, oldest first. */
 	listOpenOnAccount(businessId: string): Promise<Array<{ orderId: string; dueINR: number; placedAt: string }>>;
 	/** How many orders a customer has placed (first-order coupons). */
@@ -97,7 +104,7 @@ export interface ShipmentRepository {
 /** Businesses: the supplier record of the purchases module with the customer side added. */
 export interface BusinessRepository {
 	findById(id: string): Promise<Business | null>;
-	list(query: BusinessListQuery): Promise<BusinessListResponse>;
+	list(query: BusinessListQuery): Promise<{ items: Business[]; total: number; counts: Record<string, number> }>;
 	/** Name, trade name, phone or GSTIN (the Create order picker). */
 	searchBuyers(q: string, limit: number): Promise<Business[]>;
 	save(business: Business, expectedRevision: number | null, context?: TransactionContext): Promise<Business>;

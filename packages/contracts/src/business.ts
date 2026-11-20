@@ -213,6 +213,8 @@ export const LedgerEntry = z.object({
 	dueOn: IsoDate.nullable().default(null),
 	note: z.string().max(500).nullable().default(null),
 	reversalOf: Id.nullable().default(null),
+	/** A one-off set-off's own signed agreement (a standing one lives on the business). */
+	agreement: z.object({ reference: z.string(), signedOn: IsoDate, mediaId: Id }).nullable().default(null),
 	at: IsoDateTime,
 	by: z.string(),
 });

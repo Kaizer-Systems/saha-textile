@@ -167,6 +167,16 @@ export const COLLECTION_NAMES = {
 	ShippingRuleSetVersion: 'shippingRuleSetVersions',
 	ShippingException: 'shippingExceptions',
 	ShippingProviderConfig: 'shippingProviderConfigs',
+	/** Orders and checkout (brief approved 2026-11-20): payments, payment requests, shipments. */
+	Payment: 'payments',
+	PaymentRequest: 'paymentRequests',
+	Shipment: 'shipments',
+	/** A business's two accounts (receivable and payable), append-only. */
+	LedgerEntry: 'ledgerEntries',
+	/** Zones for business customers (DEC-B2B-ZONES) and coupons (DEC-PROMO-STACK). */
+	PriceZone: 'priceZones',
+	Coupon: 'coupons',
+	CouponUse: 'couponUses',
 	/** Typed site settings: home hero layout, YouTube rail settings and cache. */
 	SiteSetting: 'siteSettings',
 	SeoRedirect: 'seoRedirects',

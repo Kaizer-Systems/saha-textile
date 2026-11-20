@@ -2,6 +2,7 @@ import type { DataMigration } from '@saha-textile/core-domain';
 
 import { writeLaunchCurrencySymbols } from '../migrations/fx-launch-symbols';
 import { seedLegalPages } from '../migrations/legal-pages';
+import { prepareOrdersBusinessesAndZones } from '../migrations/orders-businesses-zones';
 import { giveMailboxAccessRights } from '../migrations/mailbox-rights';
 import {
 	addCardWidth600,
@@ -91,5 +92,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Exchange rates (shipping rules brief fx01): the launch currencies written as the brief writes them (US$, C$, A$, S$, NZ$); only a stored bare "$" changes',
 		half: 'expand',
 		up: () => writeLaunchCurrencySymbols(),
+	},
+	{
+		id: '0010-orders-businesses-zones-numbering',
+		description:
+			'Orders and checkout (brief approved 2026-11-20): every supplier becomes a business with the supplier role (same record); the RETAIL zone is written; document numbers start from the accepted table, keeping the format of any purchases series that already issued numbers',
+		half: 'expand',
+		up: () => prepareOrdersBusinessesAndZones(),
 	},
 ];

@@ -62,7 +62,7 @@ describe('buildMongoConfig', () => {
 		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1/saha_textile_it?replicaSet=rs0' }).dbName).toBe(
 			'saha_textile_it',
 		);
-		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1/saha%5Ftextile%5Fe2e' }).dbName).toBe('saha_textile_e2e');
+		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1/saha_textile%5Fe2e' }).dbName).toBe('saha_textile_e2e');
 		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1/?replicaSet=rs0' }).dbName).toBe('saha_textile_local');
 		expect(buildMongoConfig({ MONGODB_URI: 'mongodb://h:1' }).dbName).toBe('saha_textile_local');
 	});

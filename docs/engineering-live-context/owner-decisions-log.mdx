@@ -2192,8 +2192,11 @@ every missing piece for yes/no answers (request word for word in the console cha
   server; no log database; local alerts; a heavy-load measurement before `DEC-TRACING-SERVERS`; screens per the Safe
   Releases Brief (a brief first for any screen without a design); phone layout; browser tests; troubleshooting steps; a
   portal guide.
-- **Still open:** dropping the planned read-only Keychain identity (Infisical plan L4) and the database monitor's read-only
-  Mongo login.
+- **Read-only Keychain identity dropped** (owner, 20 Nov: "drop it so that one of the machine identity frees up"). Infisical
+  plan L4 becomes three identities: the owner, `github-deploy-staging` and `github-deploy-production`. Local refreshes use
+  the owner's own CLI login; when it has expired they keep the last copy and say to run `infisical login`; nothing
+  refreshes in the background while the owner is signed out.
+- **Still open:** the database monitor's read-only Mongo login.
 - **Sign-in with a PIN or a password** (owner: "make sure the release console login pin is no longer on keychain and is
   properly maintained in dashboard with an option for password and pin both"). The PIN was never in the Keychain; both are
   scrypt hashes in the console's database, managed in Console settings.

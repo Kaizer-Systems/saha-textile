@@ -75,13 +75,15 @@ log_format edge escape=json '{"time":"$time_iso8601","kind":"edge","request_id":
 	'"bytes":$body_bytes_sent,"seconds":$request_time,"upstream_seconds":"$upstream_response_time",'
 	'"host":"$host","country":"$http_cf_ipcountry","cf_ray":"$http_cf_ray","cache":"$http_cf_cache_status",'
 	'"user_agent":"$http_user_agent"}';
-access_log /var/log/nginx/access.log edge;
+# Set inside each server block below: at this level it would sit beside the nginx image's default
+# `main` log, and every request would be written twice in two formats.
 
 # Cloudflare's free rule is one coarse layer, and the API has its own limits behind this.
 limit_req_zone $client_ip zone=sign_in:10m rate=30r/m;
 limit_req_status 429;
 
 server {
+	access_log /var/log/nginx/access.log edge;
 	listen ${EDGE_PORT} ssl;
 	http2 on;
 	server_name ${STOREFRONT_HOST};
@@ -118,6 +120,7 @@ server {
 }
 
 server {
+	access_log /var/log/nginx/access.log edge;
 	listen ${EDGE_PORT} ssl;
 	http2 on;
 	server_name ${ADMIN_HOST};
@@ -146,6 +149,7 @@ server {
 }
 
 server {
+	access_log /var/log/nginx/access.log edge;
 	listen ${EDGE_PORT} ssl;
 	http2 on;
 	server_name ${API_HOST};
@@ -198,6 +202,7 @@ server {
 
 # Anything else: refuse rather than guess.
 server {
+	access_log /var/log/nginx/access.log edge;
 	listen ${EDGE_PORT} ssl default_server;
 	server_name _;
 	include /etc/nginx/snippets/tls.conf;

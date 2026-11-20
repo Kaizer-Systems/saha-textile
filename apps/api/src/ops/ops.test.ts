@@ -1,7 +1,7 @@
 import { HttpException, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { OpsTokenGuard, opsTokenFrom } from './ops-token.guard';
+import { OpsTokenGuard } from './ops-token.guard';
 import { OpsService } from './ops.service';
 
 const TOKEN = 'a'.repeat(64);
@@ -11,24 +11,16 @@ const context = (authorization?: string, ip = '10.0.0.1') =>
 	}) as never;
 
 describe('operations address', () => {
-	afterEach(() => {
-		delete process.env['OPS_TOKEN'];
-	});
-
 	it('is off without a key, refuses a wrong key, and lets the right key through', () => {
-		expect(() => new OpsTokenGuard().canActivate(context(`Bearer ${TOKEN}`))).toThrow(NotFoundException);
-		process.env['OPS_TOKEN'] = TOKEN;
-		const guard = new OpsTokenGuard();
+		expect(() => new OpsTokenGuard({ ops: {} }).canActivate(context(`Bearer ${TOKEN}`))).toThrow(NotFoundException);
+		const guard = new OpsTokenGuard({ ops: { token: TOKEN } });
 		expect(() => guard.canActivate(context('Bearer wrong'))).toThrow(UnauthorizedException);
 		expect(() => guard.canActivate(context())).toThrow(UnauthorizedException);
 		expect(guard.canActivate(context(`Bearer ${TOKEN}`))).toBe(true);
 	});
 
-	it('takes only a 64-hex key, and answers at most 60 a minute per address', () => {
-		expect(() => opsTokenFrom({ OPS_TOKEN: 'short' } as never)).toThrow(/64 hex/);
-		expect(opsTokenFrom({ OPS_TOKEN: '' } as never)).toBeNull();
-		process.env['OPS_TOKEN'] = TOKEN;
-		const guard = new OpsTokenGuard();
+	it('answers at most 60 a minute per address', () => {
+		const guard = new OpsTokenGuard({ ops: { token: TOKEN } });
 		for (let i = 0; i < 60; i++) guard.canActivate(context(`Bearer ${TOKEN}`, '10.0.0.9'));
 		expect(() => guard.canActivate(context(`Bearer ${TOKEN}`, '10.0.0.9'))).toThrow(HttpException);
 		expect(guard.canActivate(context(`Bearer ${TOKEN}`, '10.0.0.10'))).toBe(true);

@@ -588,6 +588,52 @@ The full design and build order are in `production-deployment-plan.mdx`.
   throwaway work. Do it as a late pre-launch pass, then raise `--max-warnings` to 0 in CI so
   they cannot return.
 
+#### OPEN — Server deploy path at deployment (J-SERVER-DEPLOY, 2026-11-20)
+
+The code is built with no account touched (owner, 2026-11-20: "Build it, touch no cloud";
+commits 1a5b33c4 and a7aebdbd): `pnpm server:plan|create|destroy` with
+`docker/production/first-boot.yaml`, `docker/production/bin/receive-release.sh`,
+`.github/workflows/deploy.yml`, and the Release Console's server Live deploy, which starts the
+workflow and approves its wait with the PIN. **It stays OPEN until a staging deploy passes end to
+end.** Each step changes an account, so each needs the owner's yes at the time;
+`docker/production/README.md`, "A new server", has the detail.
+
+- [ ] **Merge the workflow where GitHub reads it.** `deploy.yml` (and `publish-images.yml`'s new
+      `workflow_call`) must be on the default branch, on `staging` and on `main`, through the
+      normal `dev → staging → main` pull requests. Until then the console's Live deploy says so.
+- [ ] **Keys made on the Mac.** A deploy key pair (`ssh-keygen -t ed25519`), the admin
+      password's `openssl passwd -6` hash for the Recovery Console (the password in NordPass),
+      and a Cloudflare tunnel token for the server. Values never enter the repository.
+- [ ] **Create the server.** `pnpm server:create -- staging --yes` with
+      `SERVER_ADMIN_SSH_KEY_FILE`, `SERVER_DEPLOY_SSH_KEY_FILE`, `SERVER_ADMIN_PASSWORD_HASH`
+      and `SERVER_TUNNEL_TOKEN` set: droplet, metrics agent, first boot, and a Cloud Firewall
+      with 443 from Cloudflare's ranges only. The staging droplet still waits until full
+      development is complete (owner, 2026-11-08) unless the owner moves that date.
+- [ ] **Cloudflare.** The tunnel's SSH hostname (`ssh://localhost:22`), an Access application on
+      it with a Service Auth policy and a service token, the DNS records for
+      `staging.`, `admin-staging.` and `api-staging.sahatextile.com`, the Origin Certificate in
+      `/opt/saha-textile/certs/`, Authenticated Origin Pulls, and the Access wall on `staging.` and
+      `admin-staging.` (plan §9).
+- [ ] **The GitHub environment `staging`.** Variables `INFISICAL_IDENTITY_ID` (the
+      `github-deploy-staging` identity), `SERVER_SSH_HOST`, `SERVER_SSH_KNOWN_HOSTS`,
+      `API_HOST`; secrets `DEPLOY_SSH_KEY`, `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`.
+      The console's set-up banner lists whichever are still missing.
+- [ ] **First deploy and its proofs.** Start it from the console's Live deploy (Staging tab),
+      approve with the PIN, then create the first administrator over SSH. Prove: the GHCR
+      sign-in with the job's token on the droplet (plan §3; fallback: stream the images through
+      the tunnel), no host, address or value in the Actions log, a deliberate bad release
+      refused before the switch, rollback, and the other "Staging must prove" items.
+- [ ] **Production.** The same steps with the `production` GitHub environment and
+      `github-deploy-production`, after the DNS switch decisions (plan §16 steps 7 and 9).
+- [ ] **A development server (only if one is wanted).** Needs a `github-deploy-dev` Infisical
+      identity (the fifth of five free ones), a `development` GitHub environment, the API's own
+      `DEPLOY_ENV` value with its hardening rules, and the release renderer's dev tier
+      (the Infisical chat does the renderer side). Until then the console's Dev server tab
+      explains this and offers no deploy.
+- [ ] **Not built yet.** Scripted Cloudflare setup (tunnel, Access, records), saving staging's
+      data before `server:destroy` and restoring it on create (plan §11), and the Rollback
+      workflow (plan §10).
+
 ### Chunk K — Privacy policy rewrite and data-rights workflows
 
 **Marker:** OPEN — parked by the owner on 2026-11-10 for later review; needs more briefs before any build.

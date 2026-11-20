@@ -216,6 +216,10 @@ const stages = {
 
 	deploy({ json, report }) {
 		const images = readImages();
+		report.note(
+			'deploy',
+			`Images built from commit ${(images.get('COMMIT') ?? 'unknown').slice(0, 8)} (the images stage).`,
+		);
 		report.step('deploy', 'The stack files from the dev project (pnpm stack:env)');
 		sh('pnpm -s stack:env', { json });
 		report.step('deploy', 'The stack runs the pinned images');

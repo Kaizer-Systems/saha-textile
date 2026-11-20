@@ -70,5 +70,6 @@ docker/dev-secrets/
 docker/release-console/env/
 docker/release-console/runner.log
 
-# Geo data working folder (scripts/geo/build.mjs writes it; the files live in Spaces, the repo keeps only the manifest)
+# Geo data working folder and the last published index (scripts/geo/build.mjs, upload.mjs); the data lives in Spaces
 .geo-data/
+.geo-previous-manifest.json

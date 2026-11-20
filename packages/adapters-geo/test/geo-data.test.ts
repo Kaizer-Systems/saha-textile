@@ -128,3 +128,43 @@ describe('country, State, phone and PIN data from object storage (DEC-ADDRESS)',
 		expect(await geo.mobileLengths('91')).toEqual([10]);
 	});
 });
+
+describe('the index from Spaces, re-read every few hours', () => {
+	it('loads it on first use, swaps to a new version later, and keeps the old one when a re-read fails', async () => {
+		const first = fixture();
+		const second = fixture();
+		second.manifest.version = 'second';
+		let clock = 0;
+		let fail = false;
+		const loadManifest = vi.fn(async () => {
+			if (fail) throw new Error('Spaces down');
+			return loadManifest.mock.calls.length === 1 ? first.manifest : second.manifest;
+		});
+		const geo = new ManifestGeoDataAdapter({ read: folderGeoReader(first.dir), loadManifest, now: () => clock });
+		expect((await geo.manifest()).version).toBe('test');
+		clock = 7 * 60 * 60 * 1000;
+		await geo.manifest();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect((await geo.manifest()).version).toBe('second');
+		fail = true;
+		clock = 14 * 60 * 60 * 1000;
+		await geo.manifest();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect((await geo.manifest()).version).toBe('second');
+	});
+
+	it('says the data is unavailable when there is no index yet, and tries again next time', async () => {
+		const { dir, manifest } = fixture();
+		let calls = 0;
+		const geo = new ManifestGeoDataAdapter({
+			read: folderGeoReader(dir),
+			loadManifest: async () => {
+				calls += 1;
+				if (calls === 1) throw new Error('NoSuchKey');
+				return manifest;
+			},
+		});
+		await expect(geo.countries()).rejects.toBeInstanceOf(GeoDataUnavailableError);
+		expect((await geo.countries()).length).toBe(2);
+	});
+});

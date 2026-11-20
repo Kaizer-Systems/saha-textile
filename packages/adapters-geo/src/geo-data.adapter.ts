@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { GeoCountry, GeoSubdivision, type GeoCountryDetail, type PinLookup } from '@saha-textile/contracts';
 import type { GeoDataPort } from '@saha-textile/core-domain';
@@ -16,10 +15,11 @@ import { isValidPhoneNumber } from 'libphonenumber-js/max';
  * - `subdivisions/<CC>.json`: one country's States or regions;
  * - `pins/<first 3 digits>.json`: one slice of India Post's PIN directory.
  *
- * Each file is stored once under its own content hash (`geo/<sha256>.json`). The repository keeps only
- * `data/manifest.json`, which names each file's hash: the monthly refresh uploads new files and opens a
- * pull request that changes the manifest, so new data goes live only when a person merges it. A file is
- * read the first time it is asked for, checked against the manifest's hash, and kept in memory.
+ * Each file is stored once under its own content hash (`geo/<sha256>.json`). The index naming each file's
+ * hash, the manifest, is in Spaces too (`geo/manifest.json`; every published one is kept under
+ * `geo/manifests/<version>.json`), so the monthly refresh publishes new data with no code change or
+ * release (owner, 2026-11-20). The manifest is read on first use and again in the background every few
+ * hours; a file is read the first time it is asked for, checked against the manifest's hash, and kept.
  */
 
 export interface GeoManifestEntry {
@@ -42,9 +42,17 @@ export type GeoFileReader = (path: string, entry: GeoManifestEntry) => Promise<U
 /** The object-storage key a file is stored under. */
 export const geoObjectKey = (entry: GeoManifestEntry): string => `geo/${entry.sha256}.json`;
 
+/** Where the current manifest is kept in object storage. */
+export const GEO_MANIFEST_KEY = 'geo/manifest.json';
+
 /** Reads from object storage (the API passes its StoragePort's `download`). */
 export function storageGeoReader(download: (key: string) => Promise<Uint8Array>): GeoFileReader {
 	return (_path, entry) => download(geoObjectKey(entry));
+}
+
+/** The current manifest from object storage. */
+export function storageGeoManifest(download: (key: string) => Promise<Uint8Array>): () => Promise<GeoManifest> {
+	return async () => parseManifest(await download(GEO_MANIFEST_KEY));
 }
 
 /** Reads from a folder laid out like the manifest (`scripts/geo/build.mjs` writes one; tests use one). */
@@ -52,10 +60,21 @@ export function folderGeoReader(dir: string): GeoFileReader {
 	return async (path) => new Uint8Array(await readFile(join(dir, path)));
 }
 
-/** The manifest shipped with this package (`data/manifest.json`). */
-export function loadGeoManifest(path = resolve(__dirname, '..', 'data', 'manifest.json')): GeoManifest {
-	return JSON.parse(readFileSync(path, 'utf8')) as GeoManifest;
+/** The manifest in a local folder (`<dir>/manifest.json`, as scripts/geo/build.mjs writes it). */
+export function folderGeoManifest(dir: string): () => Promise<GeoManifest> {
+	return async () => parseManifest(new Uint8Array(await readFile(join(dir, 'manifest.json'))));
 }
+
+function parseManifest(bytes: Uint8Array): GeoManifest {
+	const manifest = JSON.parse(Buffer.from(bytes).toString('utf8')) as GeoManifest;
+	if (manifest?.schema !== 1 || typeof manifest.version !== 'string' || typeof manifest.files !== 'object') {
+		throw new Error('the geo manifest could not be read');
+	}
+	return manifest;
+}
+
+/** How long a loaded manifest is used before it is read again in the background. */
+export const GEO_MANIFEST_REFRESH_MS = 6 * 60 * 60 * 1000;
 
 /** Thrown when a file is missing from storage or its bytes don't match the manifest. */
 export class GeoDataUnavailableError extends Error {
@@ -73,17 +92,62 @@ interface PinRow {
 }
 
 export class ManifestGeoDataAdapter implements GeoDataPort {
-	readonly #manifest: GeoManifest;
+	readonly #load: () => Promise<GeoManifest>;
 	readonly #read: GeoFileReader;
-	readonly #cache = new Map<string, Promise<unknown>>();
+	readonly #now: () => number;
+	#current: { manifest: GeoManifest; at: number } | null = null;
+	#first: Promise<GeoManifest> | null = null;
+	#refreshing = false;
+	#cache = new Map<string, Promise<unknown>>();
 
-	constructor(options: { manifest: GeoManifest; read: GeoFileReader }) {
-		this.#manifest = options.manifest;
+	/** `manifest` (a fixed one) or `loadManifest` (read now and again every few hours). */
+	constructor(options: {
+		read: GeoFileReader;
+		manifest?: GeoManifest;
+		loadManifest?: () => Promise<GeoManifest>;
+		now?: () => number;
+	}) {
 		this.#read = options.read;
+		this.#now = options.now ?? Date.now;
+		const fixed = options.manifest;
+		this.#load = options.loadManifest ?? (async () => fixed as GeoManifest);
+		if (fixed) this.#current = { manifest: fixed, at: Number.POSITIVE_INFINITY };
 	}
 
-	get version(): string {
-		return this.#manifest.version;
+	/** The manifest in use, read on first use; later reads happen in the background and swap only on success. */
+	async manifest(): Promise<GeoManifest> {
+		const current = this.#current;
+		if (current) {
+			if (this.#now() - current.at > GEO_MANIFEST_REFRESH_MS && !this.#refreshing) void this.#refresh();
+			return current.manifest;
+		}
+		if (!this.#first) {
+			this.#first = this.#load().then(
+				(manifest) => {
+					this.#current = { manifest, at: this.#now() };
+					return manifest;
+				},
+				(error: unknown) => {
+					this.#first = null;
+					throw new GeoDataUnavailableError('manifest.json', error instanceof Error ? error.message : 'not readable');
+				},
+			);
+		}
+		return this.#first;
+	}
+
+	async #refresh(): Promise<void> {
+		this.#refreshing = true;
+		try {
+			const next = await this.#load();
+			if (next.version !== this.#current?.manifest.version) this.#cache = new Map();
+			this.#current = { manifest: next, at: this.#now() };
+		} catch {
+			// Keep serving the manifest already loaded; the next request tries again.
+			if (this.#current) this.#current = { ...this.#current, at: this.#now() - GEO_MANIFEST_REFRESH_MS + 60_000 };
+		} finally {
+			this.#refreshing = false;
+		}
 	}
 
 	async countries(): Promise<GeoCountry[]> {
@@ -101,7 +165,7 @@ export class ManifestGeoDataAdapter implements GeoDataPort {
 
 	/** One PIN: reads only its slice of the directory (`pins/700.json` for 700029). Null: no PIN data at all. */
 	async pin(pin: string): Promise<PinLookup | null> {
-		if (!this.#manifest.counts.pins) return null;
+		if (!(await this.manifest()).counts.pins) return null;
 		const valid = /^\d{6}$/.test(pin);
 		const slice = valid ? ((await this.#file(`pins/${pin.slice(0, 3)}.json`)) as Record<string, PinRow> | null) : null;
 		const row = slice?.[pin];
@@ -136,20 +200,22 @@ export class ManifestGeoDataAdapter implements GeoDataPort {
 	}
 
 	/** A file's parsed contents, null when the manifest has no such file. Loaded once, then kept. */
-	#file(path: string): Promise<unknown> {
-		const entry = this.#manifest.files[path];
-		if (!entry) return Promise.resolve(null);
-		let loading = this.#cache.get(path);
+	async #file(path: string): Promise<unknown> {
+		const entry = (await this.manifest()).files[path];
+		if (!entry) return null;
+		const cache = this.#cache;
+		const key = `${path}@${entry.sha256}`;
+		let loading = cache.get(key);
 		if (!loading) {
-			loading = this.#load(path, entry);
-			this.#cache.set(path, loading);
+			loading = this.#fetch(path, entry);
+			cache.set(key, loading);
 			// A failed read is not kept: the next request tries again.
-			loading.catch(() => this.#cache.delete(path));
+			loading.catch(() => cache.delete(key));
 		}
 		return loading;
 	}
 
-	async #load(path: string, entry: GeoManifestEntry): Promise<unknown> {
+	async #fetch(path: string, entry: GeoManifestEntry): Promise<unknown> {
 		let bytes: Uint8Array;
 		try {
 			bytes = await this.#read(path, entry);

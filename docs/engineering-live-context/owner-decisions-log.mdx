@@ -2191,6 +2191,12 @@ words in the orders brief's notes). Closed here: the order row of `DEC-NUMBERING
   releases, rebuilds the country, State and phone data file and opens a pull request into `dev` only when something
   changed; with no change it ends quietly. A person reviews and merges. (Owner: "if no change in data … there wont be any
   new PR opened if nothing changes, right?" — right.)
+  - **Amended the same day (owner, 2026-11-20):** "definitely move all that data to spaces", read with targeted
+    queries, then "yes do publish directly to spaces". The data is small files in each environment's Spaces bucket
+    (`geo/<sha256>.json`) with the index as `geo/manifest.json`; the monthly job publishes there directly, with no pull
+    request, code change or release. Automatic safety checks replace the review (countries, India's States with GST
+    codes, PIN counts); every index is kept for rollback. GitHub holds each environment's Spaces keys as copies of its
+    `/api` values (owner: "Reuse the API's keys").
 
 ## Owner decision round (2026-11-20) — Release Console upgrade
 

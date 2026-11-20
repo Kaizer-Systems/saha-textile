@@ -15,11 +15,13 @@
  *   files already named in the manifest are kept as they are.
  *
  * Output: small files in a local working folder (`.geo-data/`, not committed; GEO_DATA_DIR overrides it):
- * `countries.json`, `subdivisions/<CC>.json`, `pins/<first 3 digits>.json`. The repository keeps only
- * `packages/adapters-geo/data/manifest.json`, which names each file's SHA-256; `scripts/geo/upload.mjs`
- * stores each file in Spaces as `geo/<sha256>.json`. Files are sorted, so the same sources give the
- * same manifest and the monthly job (.github/workflows/geo-refresh.yml) opens a pull request only when
- * it changed. Run locally:  node scripts/geo/build.mjs   (add DATA_GOV_IN_API_KEY=… for the PIN step).
+ * `countries.json`, `subdivisions/<CC>.json`, `pins/<first 3 digits>.json`, and `manifest.json`, the
+ * index naming each file's SHA-256. `scripts/geo/upload.mjs` stores each file in Spaces as
+ * `geo/<sha256>.json` and publishes the index as `geo/manifest.json` (owner, 2026-11-20: published
+ * directly, no pull request). The previous index (`.geo-previous-manifest.json`, or GEO_PREVIOUS_MANIFEST;
+ * `upload.mjs --pull-previous` fetches it) tells this build what changed and which PIN files to keep when
+ * the PIN step is skipped. Files are sorted, so the same sources give the same index version.
+ * Run locally:  node scripts/geo/build.mjs   (add DATA_GOV_IN_API_KEY=… for the PIN step).
  */
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
@@ -31,7 +33,10 @@ const ROOT = resolve(import.meta.dirname, '..', '..');
 const GEO_PACKAGE = join(ROOT, 'packages/adapters-geo');
 /** The local working folder the files are written to (uploaded from by scripts/geo/upload.mjs). */
 export const WORK = process.env.GEO_DATA_DIR ? resolve(process.env.GEO_DATA_DIR) : join(ROOT, '.geo-data');
-export const MANIFEST = join(GEO_PACKAGE, 'data', 'manifest.json');
+/** The index of the files last published, the starting point for this build. */
+export const PREVIOUS = process.env.GEO_PREVIOUS_MANIFEST
+	? resolve(process.env.GEO_PREVIOUS_MANIFEST)
+	: join(ROOT, '.geo-previous-manifest.json');
 
 export const DR5HN_TAG = 'v5.2.0-export.1';
 export const DR5HN_COMMIT = '9b255c45fc53e02a8dff547d88558d4fe91784d5';
@@ -82,7 +87,7 @@ function stableJson(value) {
 
 const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 
-export function readManifest(path = MANIFEST) {
+export function readManifest(path = PREVIOUS) {
 	return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
 }
 
@@ -304,10 +309,11 @@ async function main() {
 	};
 	const manifest = writeGeoOutput({ countries, subdivisionFiles, pins, sources, previous });
 	const changed = manifestChanges(previous, manifest);
-	if (changed.length) writeFileSync(MANIFEST, stableJson(manifest));
+	writeFileSync(join(WORK, 'manifest.json'), stableJson(manifest));
 	if (unmatchedIndia.length) console.warn(`India: no GST code matched for ${unmatchedIndia.join(', ')}`);
 	console.log(`countries: ${manifest.counts.countries}, with subdivisions: ${manifest.counts.withSubdivisions}, PINs: ${manifest.counts.pins}`);
 	console.log(changed.length ? `changed (${changed.length}): ${changed.slice(0, 20).join(', ')}${changed.length > 20 ? ' …' : ''}` : 'no change');
+	if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `changed=${changed.length ? 'true' : 'false'}\n`, { flag: 'a' });
 	console.log(`files in ${WORK}; manifest version ${manifest.version}`);
 }
 

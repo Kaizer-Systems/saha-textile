@@ -1,8 +1,9 @@
 import { Inject, Logger, Module, type OnApplicationBootstrap } from '@nestjs/common';
 import {
 	ManifestGeoDataAdapter,
+	folderGeoManifest,
 	folderGeoReader,
-	loadGeoManifest,
+	storageGeoManifest,
 	storageGeoReader,
 } from '@saha-textile/adapters-geo';
 import type { GeoDataPort, StoragePort } from '@saha-textile/core-domain';
@@ -12,17 +13,18 @@ import { GEO_DATA_PORT, STORAGE_PORT } from '../infra/tokens';
 import { GeoController } from './geo.controller';
 
 /**
- * Country, State, phone and PIN data (`DEC-ADDRESS`; owner, 2026-11-20: kept in Spaces). Each answer
- * reads only the small file it needs from this environment's bucket (`geo/<sha256>.json`, named by the
- * manifest shipped with @saha-textile/adapters-geo) and keeps it in memory. GEO_DATA_DIR reads a local
- * folder instead.
+ * Country, State, phone and PIN data (`DEC-ADDRESS`; owner, 2026-11-20: kept in Spaces, published there
+ * directly). Each answer reads only the small file it needs from this environment's bucket
+ * (`geo/<sha256>.json`), named by the bucket's own index (`geo/manifest.json`, re-read every few hours),
+ * and keeps it in memory. GEO_DATA_DIR reads a local folder instead.
  */
 export function buildGeoData(config: AppConfig, storage: StoragePort): ManifestGeoDataAdapter {
-	const manifest = loadGeoManifest();
-	const read = config.geo.dataDir
-		? folderGeoReader(config.geo.dataDir)
-		: storageGeoReader((key) => storage.download(key));
-	return new ManifestGeoDataAdapter({ manifest, read });
+	const dir = config.geo.dataDir;
+	const download = (key: string) => storage.download(key);
+	return new ManifestGeoDataAdapter({
+		read: dir ? folderGeoReader(dir) : storageGeoReader(download),
+		loadManifest: dir ? folderGeoManifest(dir) : storageGeoManifest(download),
+	});
 }
 
 @Module({

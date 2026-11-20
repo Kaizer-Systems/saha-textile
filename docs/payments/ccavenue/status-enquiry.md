@@ -3,7 +3,7 @@ title: CCAvenue status enquiry
 description: HDFC VAS integration-guide section 3, transcribed as printed, plus the ASP.NET, Java and PHP Status API sample kits.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-20'
 search_keywords: orderStatusTracker enc_request DoWebTrans tracking_id status enquiry
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -245,7 +245,7 @@ The kits do not agree with the PDF, or with each other, on the API host:
 | Java `wsURL`; Java comment "Staging"                    | `https://180.179.175.17/apis/servlet/DoWebTrans`                     |
 | ASP.NET JSON kit backup file `CCAvenue_API.aspx.cs.bak` | `https://login.ccavenue.ae/apis/servlet/DoWebTrans` (the UAE domain) |
 
-The guide's `api.ccavenue.com` / `apitest.ccavenue.com` pair is the documented one. Which host HDFC expects for this merchant is a question for HDFC; the kit hosts are recorded, not recommended.
+The guide's `api.ccavenue.com` / `apitest.ccavenue.com` pair is the documented one, and HDFC confirms it: `apitest.ccavenue.com` for test, `api.ccavenue.com` for live. The kit hosts are recorded, not used.
 
 ### Sample-code behaviour not to copy
 

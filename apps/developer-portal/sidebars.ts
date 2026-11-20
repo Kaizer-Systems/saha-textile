@@ -68,6 +68,7 @@ const sidebars: SidebarsConfig = {
 						'payments/ccavenue/status-enquiry',
 						'payments/ccavenue/merchant-api',
 						'payments/ccavenue/audit-and-go-live',
+						'payments/ccavenue/dynamic-event-notification',
 					],
 				},
 				'payments/razorpay',

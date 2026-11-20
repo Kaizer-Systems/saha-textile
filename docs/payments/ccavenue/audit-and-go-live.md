@@ -3,7 +3,7 @@ title: CCAvenue audit and go-live
 description: HDFC integration checklist, security-audit checks, hygiene, go-live steps, and best practices, as printed.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-20'
 search_keywords: CCAvenue security audit go-live SSL status API receipt
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -96,7 +96,7 @@ Details the guide asks to be shared for the audit:
 
 After UAT integration and the security audit, MRM sends the Live Kit request to the PGHD team with complete details, the Live MIQ. The PGHD team validates the request and takes it further with CCAvenue for onboarding. After onboarding, the Live Kit and credentials are released by the PGHD team on the merchant's registered email ids.
 
-Webhook, as printed: Dynamic Event Notification is a server-to-server response call. If the server-to-server call needs to be enabled, share the URL where the S2S response will be posted.
+Webhook, as printed: Dynamic Event Notification is a server-to-server response call. If the server-to-server call needs to be enabled, share the URL where the S2S response will be posted. Its format is transcribed on [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification).
 
 Go-live steps for Web / iOS / Android:
 
@@ -151,3 +151,5 @@ G. Maintain transaction logs in a secure storage location, including the custome
 H. HDFC VAS responds on the merchant receipt URL (`redirect_url` and `cancel_url`). Validate the response received on this URL against the actual request, then record it in the database. Validate the transaction amount and `order_id` received from the payment gateway against the merchant order id and amount for which the transaction was requested. Proceed only if both match. Any mismatch should result in a transaction decline by the merchant.
 
 H(a). As soon as the response is received from HDFC VAS on the return URL, initiate the Status API immediately and capture the response in the database: status, amount, and order id. All values used for the final receipt or confirmation are taken from the database, not from the values sent on the browser response.
+
+HDFC adds that a response can reach the return URL 5–10 minutes after payment, and recommends that buffer before calling the Status API. See [Account settings and behaviour](/payments/ccavenue#account-settings-and-behaviour).

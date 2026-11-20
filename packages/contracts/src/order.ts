@@ -355,6 +355,8 @@ export const Order = z.object({
 	coupons: z.array(AppliedCoupon).default([]),
 	balance: OrderBalance.optional(),
 	paymentStatus: OrderPaymentStatus.default('unpaid'),
+	/** How the admin checkout chose to take the money (ck01–ck08); null for shop orders and older rows. */
+	placedWith: z.enum(['paymentLink', 'manual', 'cashOnDelivery', 'onAccount', 'keepOpen']).nullable().optional(),
 	/** Open orders: when it was opened and closed. */
 	openedAt: IsoDateTime.nullable().optional(),
 	closedAt: IsoDateTime.nullable().optional(),

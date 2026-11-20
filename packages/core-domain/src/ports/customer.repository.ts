@@ -89,6 +89,11 @@ export interface CustomerRepository {
 	updateAddress(customerId: string, addressId: string, patch: Partial<Omit<Address, 'id'>>): Promise<Customer | null>;
 	deleteAddress(customerId: string, addressId: string): Promise<Customer | null>;
 	/**
+	 * Writes one saved address whole (`DEC-ADDRESS`): fields the new copy leaves out are gone, so a
+	 * State code never outlives a change of country. Promoting it to default demotes the others.
+	 */
+	replaceAddress(customerId: string, address: Address): Promise<Customer | null>;
+	/**
 	 * Upserts the customer row.
 	 *
 	 * `customer.identities` is IGNORED. Identity links belong to `AuthIdentityRepository`, which

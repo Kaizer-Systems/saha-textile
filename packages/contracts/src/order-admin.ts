@@ -433,7 +433,15 @@ export const AdminOrderDetail = z.object({
 			creditDays: z.number().int(),
 		})
 		.nullable(),
-	/** Whether the e-invoice / e-way bill block shows (business orders) and the gate setting. */
-	eDocuments: z.object({ shown: z.boolean(), gate: z.enum(['off', 'warn', 'block']), connected: z.boolean() }),
+	/**
+	 * The e-invoice / e-way bill block (`DEC-EDOCS-GATE`, owner 2026-11-20: block when required). Shown
+	 * when either is required; Shipped stays off while a required one is missing. `connected` is false
+	 * until an integration exists, so Raise opens the manual entry popup.
+	 */
+	eDocuments: z.object({
+		shown: z.boolean(),
+		eInvoice: z.object({ required: z.boolean(), present: z.boolean(), connected: z.boolean() }),
+		eWayBill: z.object({ required: z.boolean(), present: z.boolean(), connected: z.boolean() }),
+	}),
 });
 export type AdminOrderDetail = z.infer<typeof AdminOrderDetail>;

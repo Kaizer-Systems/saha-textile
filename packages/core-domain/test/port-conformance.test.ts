@@ -130,6 +130,7 @@ const fakeCustomers = {
 	addAddress: notImplemented,
 	updateAddress: notImplemented,
 	deleteAddress: notImplemented,
+	replaceAddress: notImplemented,
 	save: notImplemented,
 	setPasswordHash: notImplemented,
 } as CustomerRepository;

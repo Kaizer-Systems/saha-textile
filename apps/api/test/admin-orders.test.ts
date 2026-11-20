@@ -1,0 +1,364 @@
+import { Order, OrderSettings, type OrderPayment, type Shipment } from '@saha-textile/contracts';
+import { NOT_CONNECTED_EINVOICE, NOT_CONNECTED_EWAYBILL } from '@saha-textile/core-domain';
+import { describe, expect, it } from 'vitest';
+
+import { AdminOrdersService } from '../src/admin-orders/admin-orders.service';
+
+const address = {
+	fullName: 'Ananya Das',
+	line1: '12 Lake Road',
+	city: 'Kolkata',
+	state: 'West Bengal',
+	postalCode: '700029',
+	country: 'IN',
+};
+
+const baseOrder = (over: Record<string, unknown> = {}) =>
+	Order.parse({
+		id: 'ord_1',
+		orderNumber: 'ST-2611-482190',
+		currency: 'INR',
+		lines: [
+			{
+				lineId: 'l1',
+				productId: 'p1',
+				title: { en: 'Kanjivaram saree' },
+				sku: 'SAR-1',
+				quantity: 1,
+				unitPriceINR: 60_000,
+				unitPricePaid: 60_000,
+				lineTotalINR: 60_000,
+				lineTotalPaid: 60_000,
+			},
+		],
+		subtotalINR: 60_000,
+		subtotalPaid: 60_000,
+		totalINR: 60_000,
+		totalPaid: 60_000,
+		status: 'packed',
+		paymentStatus: 'paid',
+		channel: 'admin',
+		buyer: { kind: 'business', businessId: 'biz_1', name: 'Boutique Nila' },
+		addresses: { billing: address, delivery: address },
+		balance: {
+			goodsINR: 60_000,
+			couponINR: 0,
+			shippingINR: 0,
+			totalINR: 60_000,
+			paidINR: 60_000,
+			dueINR: 0,
+			paidAheadINR: 0,
+		},
+		createdAt: '2026-11-20T05:00:00.000Z',
+		...over,
+	});
+
+function service(order: Order) {
+	let stored = order;
+	const shipments: Shipment[] = [];
+	const payments: OrderPayment[] = [];
+	const ledger: unknown[] = [];
+	const svc = new AdminOrdersService(
+		{
+			findById: async () => stored,
+			update: async (next: Order) => {
+				stored = { ...next, revision: next.revision + 1 };
+				return stored;
+			},
+		} as never,
+		{
+			listByOrder: async () => payments,
+			findById: async (paymentId: string) => payments.find((row) => row.id === paymentId) ?? null,
+			save: async (payment: OrderPayment) => {
+				const index = payments.findIndex((row) => row.id === payment.id);
+				if (index >= 0) payments[index] = payment;
+				else payments.push(payment);
+				return payment;
+			},
+		} as never,
+		{ listByOrder: async () => [] } as never,
+		{
+			listByOrder: async () => shipments,
+			save: async (shipment: Shipment) => {
+				const index = shipments.findIndex((row) => row.id === shipment.id);
+				if (index >= 0) shipments[index] = shipment;
+				else shipments.push(shipment);
+				return shipment;
+			},
+		} as never,
+		{ get: async () => OrderSettings.parse({}) } as never,
+		{ findById: async () => null } as never,
+		{ balance: async () => 0, append: async (entry: unknown) => ledger.push(entry) } as never,
+		NOT_CONNECTED_EINVOICE,
+		NOT_CONNECTED_EWAYBILL,
+		{
+			childNumber: async (_kind: string, number: string, n: number) => `${number}/P${n}`,
+			issue: async () => `RC/26-27/00000${payments.length + 1}`,
+		} as never,
+		{ check: async () => ({ ...address, countryCode: 'IN', gstStateCode: '19' }) } as never,
+		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
+	);
+	return { svc, shipments, payments, ledger, current: () => stored };
+}
+
+const actor = { id: 'adm_1', name: 'Staff' };
+const shipped = {
+	to: 'shipped' as const,
+	comment: null,
+	shipped: {
+		mode: 'manual' as const,
+		courierName: 'DTDC',
+		trackingNumber: 'D47512398',
+		trackingUrl: null,
+		shippedOn: '2026-11-20',
+	},
+	delivered: null,
+	cancel: null,
+	lineIds: [],
+	revision: 0,
+};
+
+describe('admin orders: the order page (od05–od08, st01–st05)', () => {
+	it('keeps Shipped off until the IRN and, from ₹50,000, the e-way bill are in (DEC-EDOCS-GATE)', async () => {
+		const { svc } = service(baseOrder());
+		const detail = await svc.detail('ord_1');
+		expect(detail.eDocuments).toEqual({
+			shown: true,
+			eInvoice: { required: true, present: false, connected: false },
+			eWayBill: { required: true, present: false, connected: false },
+		});
+		expect(detail.allowedNext.find((row) => row.to === 'shipped')).toMatchObject({
+			allowed: false,
+			reason: 'eDocumentsMissing',
+		});
+		await expect(svc.changeStatus('ord_1', shipped, actor)).rejects.toMatchObject({
+			response: { issues: [{ code: 'status_blocked', params: { reason: 'eDocumentsMissing' } }] },
+		});
+	});
+
+	it('records the documents typed by hand, then ships with a parcel number off the order number', async () => {
+		const { svc, shipments, current } = service(baseOrder());
+		expect(await svc.raise('ord_1', 'eInvoice', actor)).toEqual({ outcome: 'notConnected' });
+		await svc.setEInvoice(
+			'ord_1',
+			{
+				irn: 'a'.repeat(64),
+				ackNo: '112010036563310',
+				ackDate: '2026-11-20T06:00:00.000Z',
+				signedQr: null,
+				revision: 0,
+			},
+			actor,
+		);
+		await svc.setEWayBill(
+			'ord_1',
+			{
+				number: '331001234567',
+				generatedOn: '2026-11-20T06:10:00.000Z',
+				validUntil: '2026-11-21T06:10:00.000Z',
+				transporterName: null,
+				transporterId: null,
+				vehicleOrDocumentNo: null,
+				distanceKm: 12,
+				revision: 1,
+			},
+			actor,
+		);
+		expect(current().eInvoice).toMatchObject({ source: 'manual', by: 'adm_1' });
+		const detail = await svc.changeStatus('ord_1', { ...shipped, revision: 2 }, actor);
+		expect(detail.order.status).toBe('shipped');
+		expect(shipments[0]).toMatchObject({ number: 'ST-2611-482190/P1', courierName: 'DTDC', lineIds: ['l1'] });
+		expect(current().history.at(-1)).toMatchObject({ kind: 'status', from: 'packed', to: 'shipped' });
+	});
+
+	it('asks for the courier, and refuses steps the machine does not allow', async () => {
+		const small = baseOrder({
+			buyer: { kind: 'person', customerId: 'cus_1', name: 'Ananya Das' },
+			subtotalINR: 9_000,
+			totalINR: 9_000,
+			balance: {
+				goodsINR: 9_000,
+				couponINR: 0,
+				shippingINR: 0,
+				totalINR: 9_000,
+				paidINR: 9_000,
+				dueINR: 0,
+				paidAheadINR: 0,
+			},
+		});
+		const { svc } = service(small);
+		await expect(svc.changeStatus('ord_1', { ...shipped, shipped: null }, actor)).rejects.toMatchObject({
+			response: { issues: [{ code: 'courier_needed' }] },
+		});
+		await expect(
+			svc.changeStatus('ord_1', { ...shipped, to: 'delivered', shipped: null }, actor),
+		).rejects.toMatchObject({
+			response: { issues: [{ code: 'status_blocked' }] },
+		});
+	});
+
+	it('adds the staff-only invoice address and clears the flag that holds packing', async () => {
+		const needs = baseOrder({
+			status: 'processing',
+			addresses: {
+				billing: { ...address, country: 'GB' },
+				delivery: { ...address, country: 'GB' },
+				invoice: { source: 'none', needed: true },
+			},
+		});
+		const { svc, current } = service(needs);
+		expect((await svc.detail('ord_1')).attention).toContain('invoiceAddressNeeded');
+		await svc.setInvoiceAddress(
+			'ord_1',
+			{
+				address: {
+					fullName: 'Ananya Das',
+					line1: '12 Lake Road',
+					city: 'Kolkata',
+					subdivisionCode: 'WB',
+					postalCode: '700029',
+					countryCode: 'IN',
+					mobile: { countryCallingCode: '91', number: '9830012345' },
+				},
+				confirmedHow: 'Called the customer',
+				revision: 0,
+			},
+			actor,
+		);
+		expect(current().addresses?.invoice).toMatchObject({
+			source: 'staff',
+			needed: false,
+			confirmedHow: 'Called the customer',
+		});
+	});
+
+	it('records payments by hand: less than due stays due, a pending transfer waits, then the order is placed', async () => {
+		const awaiting = baseOrder({
+			status: 'awaiting_payment',
+			paymentStatus: 'unpaid',
+			placedWith: 'manual',
+			balance: {
+				goodsINR: 60_000,
+				couponINR: 0,
+				shippingINR: 0,
+				totalINR: 60_000,
+				paidINR: 0,
+				dueINR: 60_000,
+				paidAheadINR: 0,
+			},
+		});
+		const { svc, payments, ledger, current } = service(awaiting);
+		expect(await svc.paymentPrefill('ord_1')).toEqual({ amountINR: 60_000 });
+		const part = await svc.recordPayment(
+			'ord_1',
+			{
+				method: 'upi',
+				amountINR: 20_000,
+				reference: '402112345678',
+				receivedOn: '2026-11-20',
+				received: true,
+				note: null,
+				proofMediaId: null,
+				collector: null,
+				revision: 0,
+			},
+			actor,
+		);
+		expect(part.order.balance).toMatchObject({ paidINR: 20_000, dueINR: 40_000 });
+		expect(payments[0]).toMatchObject({ state: 'received', receiptNumber: 'RC/26-27/000001' });
+		expect(ledger).toHaveLength(0);
+		const pending = await svc.recordPayment(
+			'ord_1',
+			{
+				method: 'bankTransfer',
+				amountINR: 40_000,
+				reference: 'UTR-PENDING',
+				receivedOn: '2026-11-20',
+				received: false,
+				note: null,
+				proofMediaId: null,
+				collector: null,
+				revision: 1,
+			},
+			actor,
+		);
+		expect(pending.order).toMatchObject({ paymentStatus: 'pending_at_bank', status: 'awaiting_payment' });
+		const done = await svc.markReceived(
+			'ord_1',
+			payments[1]?.id as string,
+			{ reference: 'HDFCN52026112012345', receivedOn: '2026-11-21', revision: 2 },
+			actor,
+		);
+		expect(done.order).toMatchObject({ paymentStatus: 'paid', status: 'placed' });
+		expect(current().history.map((row) => row.kind)).toEqual(['payment', 'payment', 'payment', 'status']);
+	});
+
+	it('refuses a payment method switched off in the order settings', async () => {
+		const { svc } = service(baseOrder({ status: 'awaiting_payment' }));
+		const off = OrderSettings.parse({
+			adminPaymentMethods: {
+				paymentLink: true,
+				upi: false,
+				bankTransfer: true,
+				cashOnDelivery: true,
+				onAccount: true,
+			},
+		});
+		(svc as unknown as { settings: { get: () => Promise<OrderSettings> } }).settings = { get: async () => off };
+		await expect(
+			svc.recordPayment(
+				'ord_1',
+				{
+					method: 'upi',
+					amountINR: 1,
+					reference: 'x',
+					receivedOn: '2026-11-20',
+					received: true,
+					note: null,
+					proofMediaId: null,
+					collector: null,
+					revision: 0,
+				},
+				actor,
+			),
+		).rejects.toMatchObject({ response: { issues: [{ code: 'method_off' }] } });
+	});
+
+	it('takes a payment on an order placed on account off the business account', async () => {
+		const { svc, ledger } = service(
+			baseOrder({
+				status: 'placed',
+				paymentStatus: 'on_account',
+				placedWith: 'onAccount',
+				balance: {
+					goodsINR: 60_000,
+					couponINR: 0,
+					shippingINR: 0,
+					totalINR: 60_000,
+					paidINR: 0,
+					dueINR: 60_000,
+					paidAheadINR: 0,
+				},
+			}),
+		);
+		const after = await svc.recordPayment(
+			'ord_1',
+			{
+				method: 'bankTransfer',
+				amountINR: 60_000,
+				reference: 'UTR1',
+				receivedOn: '2026-11-20',
+				received: true,
+				note: null,
+				proofMediaId: null,
+				collector: null,
+				revision: 0,
+			},
+			actor,
+		);
+		expect(after.order.paymentStatus).toBe('paid');
+		expect(ledger).toEqual([
+			expect.objectContaining({ businessId: 'biz_1', side: 'receivable', kind: 'receipt', amountINR: -60_000 }),
+		]);
+	});
+});

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { Address } from '@saha-textile/contracts';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
 import {
@@ -184,6 +185,32 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 			expect(updated?.addresses.find((row) => row.id === `${P}work`)?.isDefault).toBe(false);
 			expect((await repo.updateAddress(id, `${P}home`, { line2: 'Flat 2' }))?.addresses[0]?.line2).toBe('Flat 2');
 			expect(await repo.updateAddress(id, `${P}none`, { city: 'x' })).toBeNull();
+		});
+
+		it('replaces one address whole: dropped fields go, a new default demotes the others (DEC-ADDRESS)', async () => {
+			await repo.updateAddress(id, `${P}home`, { isDefault: false });
+			await repo.updateAddress(id, `${P}work`, { isDefault: true });
+			const replaced = await repo.replaceAddress(id, {
+				id: `${P}home`,
+				label: 'Home',
+				fullName: 'Asha Sen',
+				line1: '1 High Street',
+				city: 'Canterbury',
+				state: 'Kent',
+				subdivisionCode: 'KEN',
+				postalCode: 'CT1 2AB',
+				country: 'GB',
+				countryCode: 'GB',
+				mobile: { countryCallingCode: '44', number: '7700900123' },
+				altMobile: null,
+				phone: '+44 7700900123',
+				isDefault: true,
+			});
+			const home = replaced?.addresses.find((row) => row.id === `${P}home`);
+			expect(home).toMatchObject({ city: 'Canterbury', countryCode: 'GB', mobile: { number: '7700900123' } });
+			expect(home?.line2).toBeUndefined();
+			expect(replaced?.addresses.find((row) => row.id === `${P}work`)?.isDefault).toBe(false);
+			expect(await repo.replaceAddress(id, { ...(home as Address), id: `${P}none` })).toBeNull();
 		});
 
 		it('removes an address', async () => {

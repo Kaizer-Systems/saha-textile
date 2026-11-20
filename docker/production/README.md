@@ -48,6 +48,7 @@ behind Authenticated Origin Pulls).
 ## Commands
 
 ```bash
+sudo -n bin/receive-release.sh            # the deploy user's only command; the deploy job feeds it
 bin/deploy.sh /opt/saha-textile/releases/<id>
 bin/deploy.sh --check-only <release-folder>
 bin/rollback.sh
@@ -69,6 +70,51 @@ over SSH, never from a workflow:
 docker exec -it "$(docker compose --project-name saha-textile ps --quiet api | head -n 1)" \
 	node dist/create-first-admin.js --email <address>
 ```
+
+## A new server
+
+Every step here changes an account, so each one waits for the owner's yes at the time. Nothing in
+the repository runs them by itself.
+
+1. **Plan:** `pnpm server:plan -- staging` prints the droplet, its Cloud Firewall and what the first
+   boot sets up. It touches nothing.
+2. **Keys made on the Mac, values never in the repository:**
+    - a deploy key pair (`ssh-keygen -t ed25519 -f deploy_key -C deploy`): the public half for the
+      server, the private half for the GitHub environment's `DEPLOY_SSH_KEY` secret;
+    - the admin password's hash for the Recovery Console (`openssl passwd -6`), the password itself
+      in NordPass;
+    - a Cloudflare tunnel for the server, and its token.
+3. **Create:** in a terminal, with `SERVER_ADMIN_SSH_KEY_FILE`, `SERVER_DEPLOY_SSH_KEY_FILE`,
+   `SERVER_ADMIN_PASSWORD_HASH` and `SERVER_TUNNEL_TOKEN` set, run
+   `pnpm server:create -- staging --yes`. It creates the droplet with the metrics agent, the first
+   boot from `first-boot.yaml` (admin and deploy users, SSH on 127.0.0.1 only, Docker with local
+   logs and live-restore, cloudflared, UFW, 4 GiB swap, security patches with the 7-day reboot
+   rule, `/opt/saha-textile` and `bin/receive-release.sh`) and a Cloud Firewall that lets in 443
+   from Cloudflare's ranges only. `pnpm server:destroy -- staging --yes` removes a staging or
+   development server; production is never removed by a script.
+4. **Cloudflare:** the tunnel's public hostname for SSH (`ssh://localhost:22`), a Cloudflare Access
+   application on it with a Service Auth policy and a service token, the shop's DNS records, the
+   Origin Certificate and Authenticated Origin Pulls (plan §9). The certificate files go to
+   `/opt/saha-textile/certs/`.
+5. **The GitHub environment** (`staging` or `production`), read by `.github/workflows/deploy.yml`:
+
+    | Kind     | Name                      | Holds                                                             |
+    | -------- | ------------------------- | ----------------------------------------------------------------- |
+    | Variable | `INFISICAL_IDENTITY_ID`   | That environment's deploy identity (`docker/infisical/README.md`) |
+    | Variable | `SERVER_SSH_HOST`         | The tunnel's SSH hostname                                         |
+    | Variable | `SERVER_SSH_KNOWN_HOSTS`  | The server's host key line, read through the tunnel once          |
+    | Variable | `API_HOST`                | The API's public host, for the health check through Cloudflare    |
+    | Secret   | `DEPLOY_SSH_KEY`          | The deploy key's private half                                     |
+    | Secret   | `CF_ACCESS_CLIENT_ID`     | The Access service token's id                                     |
+    | Secret   | `CF_ACCESS_CLIENT_SECRET` | The Access service token's secret                                 |
+
+6. **Deploy:** the Release Console's Ship › Live deploy on that environment's tab (or **Run
+   workflow** on GitHub). The workflow finds this commit's images in GHCR by its tree, publishes
+   them first when they are missing (never for production), waits for the owner's approval, writes
+   the release from Infisical, checks it, ships it through the tunnel to the deploy user, whose key
+   can only run `bin/receive-release.sh`: it signs in to GHCR with the job's own token, runs
+   `bin/deploy.sh` and signs out. Then the workflow checks `/health/ready` through Cloudflare.
+7. **First administrator:** the one manual step, over SSH, as below.
 
 ## Back-in-a-moment pages
 

@@ -1,3 +1,116 @@
 {
+	"version": 2,
+	"product": {
+		"name": "Saha Textile",
+		"kind": "shop"
+	},
+	"parts": [
+		{
+			"id": "api",
+			"kind": "app",
+			"tech": "nestjs",
+			"service": "api",
+			"host": "api",
+			"health": "/health/ready",
+			"ops": "/ops",
+			"logs": "json"
+		},
+		{
+			"id": "worker",
+			"kind": "worker",
+			"tech": "bullmq",
+			"service": "worker"
+		},
+		{
+			"id": "storefront",
+			"kind": "app",
+			"tech": "analog",
+			"service": "storefront",
+			"host": "shop",
+			"health": "/",
+			"pwa": true,
+			"buildHeader": "x-client-build"
+		},
+		{
+			"id": "admin",
+			"kind": "app",
+			"tech": "angular",
+			"service": "admin",
+			"host": "admin",
+			"buildHeader": "x-client-build"
+		},
+		{
+			"id": "mongo",
+			"kind": "database",
+			"tech": "mongodb",
+			"service": "mongo"
+		},
+		{
+			"id": "redis",
+			"kind": "cache",
+			"tech": "redis",
+			"service": "redis"
+		},
+		{
+			"id": "search",
+			"kind": "search",
+			"tech": "meilisearch",
+			"service": "meilisearch"
+		},
+		{
+			"id": "edge",
+			"kind": "edge",
+			"tech": "nginx",
+			"service": "edge",
+			"log": "edge-json"
+		}
+	],
+	"commands": {
+		"localPipeline": "pnpm pipeline:local",
+		"stackEnv": "pnpm stack:env",
+		"stackUp": "pnpm stack:up",
+		"stackDown": "pnpm stack:down",
+		"stackStatus": "pnpm stack:status"
+	},
+	"deploy": {
+		"workflow": ".github/workflows/deploy.yml",
+		"images": ".github/workflows/publish-images.yml",
+		"ci": ".github/workflows/ci.yml",
+		"migrations": "packages/adapters-db-mongo/src/release"
+	},
+	"secrets": {
+		"nameList": "docker/infisical/variable-names.json"
+	},
+	"payments": {
+		"gateways": ["ccavenue", "paypal"],
+		"stuckAfterMinutes": 15,
+		"reconcileAt": "06:30"
+	},
+	"messages": {
+		"provider": "msg91",
+		"channels": ["sms", "email"],
+		"lowBalance": 1000
+	},
+	"clients": {
+		"header": "x-client-build",
+		"forgetAfterHours": 24
+	},
+	"seo": {
+		"sitemap": "/sitemap.xml",
+		"keyPages": ["/"],
+		"searchConsole": "sc-domain:sahatextile.com"
+	},
+	"jobs": {
+		"queues": ["saha-textile-media", "saha-textile-documents"],
+		"scheduled": ["search-outbox", "search-health", "fx-rates", "mail-sync"]
+	},
+	"backups": {
+		"script": "docker/production/bin/backup.sh",
+		"store": "spaces"
+	},
+	"links": {
+		"docs": "docs",
+		"storybook": "apps/storefront/.storybook"
+	},
 	"menus": ["payments", "messages", "clients", "seo"]
 }

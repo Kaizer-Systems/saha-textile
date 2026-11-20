@@ -66,12 +66,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build number
+        id: build
+        # The build number the shop and admin send as x-client-build (Release Console, Client versions):
+        # the first 12 characters of the code fingerprint, as the local pipeline stamps it, so the same
+        # code always carries the same number (images are found by that fingerprint).
+        env:
+          TREE: ${{ steps.tree.outputs.hash }}
+        run: echo "id=${TREE::12}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: docker/images/Dockerfile
           target: ${{ matrix.target }}
+          build-args: |
+            BUILD_ID=${{ steps.build.outputs.id }}
           push: true
           tags: |
             ghcr.io/${{ steps.owner.outputs.name }}/saha-textile-${{ matrix.target }}:sha-${{ github.sha }}

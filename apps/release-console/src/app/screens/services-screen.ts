@@ -35,6 +35,43 @@ import { BrandLogo, Icon, serviceLogo } from '../shared/icons';
 				</div>
 			</div>
 		} @else {
+			<!-- Parts map (brief 26gq3NbcbBESea6abRtsa3, screen 1): the repository's parts from its .release-console.json,
+			     each joined to its container by its compose service name. -->
+			<div class="rc-panel">
+				<div class="rc-ph">
+					<span class="rc-label">
+						<rc-icon name="tabler/sitemap" />
+						Parts · from .release-console.json{{ branch() ? ' on ' + branch() : '' }} · read {{ readAt() }}
+					</span>
+					<button
+						type="button"
+						class="rc-btn ghost"
+						[disabled]="manifest.isFetching() || services.isFetching()"
+						(click)="checkAgain()"
+					>
+						Check again
+					</button>
+				</div>
+				@if (parts().length) {
+					<div class="rc-flow">
+						@for (p of parts(); track p.id) {
+							<div class="rc-job">
+								<span
+									class="rc-dot"
+									[class.ok]="p.tone === 'ok'"
+									[class.amber]="p.tone === 'amber'"
+									[class.red]="p.tone === 'red'"
+								></span>
+								<b>{{ p.id }}</b>
+								<span class="rc-mono">{{ p.kind }} · {{ p.tech }}</span>
+								<small>{{ p.state }}</small>
+							</div>
+						}
+					</div>
+				} @else {
+					<p class="rc-note">{{ partsNote() }}</p>
+				}
+			</div>
 			<div class="rc-g4">
 				<div class="rc-stat">
 					<span class="rc-label">
@@ -151,6 +188,53 @@ export class ServicesScreen {
 		return at
 			? new Date(at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 			: '—';
+	});
+	/** The repository's manifest, from the open environment's branch. */
+	protected readonly branch = computed(
+		() => this.ctx.repo()?.environments.find((e) => e.name === this.state.environment())?.branch ?? '',
+	);
+	protected readonly manifest = injectQuery(() => {
+		const repo = this.ctx.repo();
+		const repository = repo?.sourceCode.vendor === 'github' ? repo.sourceCode.repository : '';
+		const ref = this.branch();
+		return {
+			queryKey: ['manifest', repository, ref],
+			queryFn: () => this.api.repositoryFile({ vendor: 'github', repository, ...(ref ? { ref } : {}) }),
+			enabled: !!repository,
+			// Read on opening, then every minute while on screen (brief 26gq3NbcbBESea6abRtsa3, refresh table);
+			// the containers themselves are read every 5 s above.
+			refetchOnMount: 'always' as const,
+			refetchInterval: 60_000,
+		};
+	});
+	protected checkAgain(): void {
+		void this.manifest.refetch();
+		void this.services.refetch();
+	}
+	/** Each part with its container's state: joined by the compose service name (`<stack>-<service>-1`). */
+	protected readonly parts = computed(() => {
+		const answer = this.manifest.data();
+		const manifest = answer?.state === 'ok' ? answer.data.manifest : null;
+		return (manifest?.parts ?? []).map((p) => {
+			const c = this.rows().find((s) => s.name === p.service || s.name.endsWith(`-${p.service}-1`));
+			const tone = !c
+				? 'red'
+				: c.state !== 'running' || c.health === 'unhealthy'
+					? 'red'
+					: c.health === 'starting'
+						? 'amber'
+						: 'ok';
+			const state = c ? `${c.state}${c.health !== 'none' ? ` · ${c.health}` : ''} · ${c.uptime}` : 'no container';
+			return { id: p.id, kind: p.kind, tech: p.tech, tone, state };
+		});
+	});
+	protected readonly partsNote = computed(() => {
+		const a = this.manifest.data();
+		if (this.manifest.isPending()) return 'Reading .release-console.json…';
+		if (!a || a.state !== 'ok') return a && 'message' in a ? a.message : 'The manifest could not be read.';
+		return a.data.found
+			? 'The file lists no parts yet: add "parts" (version 2) to see each part here.'
+			: 'No .release-console.json on this branch: add one (version 2) to describe this repository’s parts.';
 	});
 	protected readonly fmt = formatBytes;
 	protected readonly logo = serviceLogo;

@@ -78,7 +78,7 @@ describe('server deploys on GitHub', () => {
 			'POST',
 			`https://api.github.com/repos/${REPO}/actions/workflows/deploy.yml/dispatches`,
 			'k',
-			{ ref: 'main', inputs: { environment: 'production' } },
+			{ ref: 'main', inputs: { environment: 'production', allow_blank: '' } },
 			expect.any(Object),
 		);
 	});

@@ -8,6 +8,11 @@ const API = 'https://api.cloudflare.com/client/v4';
 export interface EdgeAdapter {
 	zones(key: string): Promise<EdgeZone[]>;
 	records(key: string, zone: string): Promise<DnsRecord[]>;
+	/** The zone's edge certificates: hosts, status, issuer and the earliest expiry in each pack. */
+	certificates(
+		key: string,
+		zone: string,
+	): Promise<{ zone: string; hosts: string[]; status: string; issuer: string; expiresOn: string | null }[]>;
 }
 
 export function toZone(z: unknown): EdgeZone {
@@ -55,5 +60,25 @@ export const cloudflareAdapter: EdgeAdapter = {
 		const id = zones[0]?.id;
 		if (!id) throw new VendorError(`The key does not see the zone ${zone}.`, 404);
 		return arr(await read(`/zones/${id}/dns_records?per_page=500`, key)).map(toRecord);
+	},
+	async certificates(key, zone) {
+		const zones = arr(await read(`/zones?name=${encodeURIComponent(zone)}`, key)).map(toZone);
+		const id = zones[0]?.id;
+		if (!id) throw new VendorError(`The key does not see the zone ${zone}.`, 404);
+		return arr(await read(`/zones/${id}/ssl/certificate_packs?status=all`, key)).map((p) => {
+			const pack = rec(p);
+			const certs = arr(pack['certificates']).map(rec);
+			const expiries = certs
+				.map((c) => str(c['expires_on']))
+				.filter(Boolean)
+				.sort();
+			return {
+				zone,
+				hosts: arr(pack['hosts']).map((h) => str(h)),
+				status: str(pack['status']),
+				issuer: str(pack['certificate_authority']) || str(certs[0]?.['issuer']),
+				expiresOn: expiries[0] ?? null,
+			};
+		});
 	},
 };

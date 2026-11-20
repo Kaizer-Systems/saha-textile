@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import {
 	type DockerSnapshot,
 	LATENCY_BUCKETS_MS,
+	type ClientBuildsView,
 	type Logs,
+	type NotFoundView,
 	type RequestRoute,
 	type RequestsView,
 } from '@saha-textile/release-console-contracts';
@@ -22,6 +24,31 @@ export interface EdgeRequest {
 	route: string;
 	status: number;
 	ms: number;
+	/** Where the visitor came from: the referrer's host only, `this site` for our own links, or ''. */
+	referrer: string;
+	/** The client build that sent it (`x-client-build`, logged as `client_build`), or ''. */
+	build: string;
+}
+
+/**
+ * Where a visitor came from, from the edge's `referer_host` field (the host only: the edge drops the
+ * scheme, sign-in, port, path and query before it logs anything). Lowercased without `www.`;
+ * `this site` when it is one of our own hosts (the same host or the same site name, e.g.
+ * `local.saha-textile.localhost` and `api-local.saha-textile.localhost`); '' when there was none.
+ */
+export function referrerOf(refererHost: unknown, host: unknown): string {
+	if (typeof refererHost !== 'string') return '';
+	const from = refererHost
+		.trim()
+		.toLowerCase()
+		.replace(/^www\./, '');
+	if (!/^[a-z0-9.-]+$/.test(from)) return '';
+	const own = String(host ?? '')
+		.toLowerCase()
+		.replace(/:\d+$/, '')
+		.replace(/^www\./, '');
+	const site = (h: string) => h.split('.').slice(-2).join('.');
+	return from === own || (own.includes('.') && site(from) === site(own)) ? 'this site' : from;
 }
 
 /** The service a host serves: the first label of the local host names. */
@@ -40,7 +67,7 @@ const STATIC = /\.(js|mjs|css|map|png|jpe?g|webp|avif|gif|svg|ico|woff2?|ttf|jso
  * segments. Query strings, where personal data could ride, are never kept.
  */
 export function routeOf(uri: string): string {
-	const path = (uri.split('?')[0] ?? '/').split('#')[0] ?? '/';
+	const path = ((uri.split('?')[0] ?? '/').split('#')[0] ?? '/').replace(/\/pay\/[^/]+/gi, '/pay/:token');
 	const ext = STATIC.exec(path)?.[1];
 	if (ext) return `static .${ext.toLowerCase()}`;
 	const parts = path
@@ -81,6 +108,8 @@ export function parseEdgeLine(line: string): EdgeRequest | null {
 		route: routeOf(String(d['uri'] ?? '/')),
 		status,
 		ms: Math.round(seconds * 1000),
+		referrer: referrerOf(d['referer_host'], d['host']),
+		build: /^[a-z0-9]{7,40}(-app)?$/.test(String(d['client_build'] ?? '')) ? String(d['client_build']) : '',
 	};
 }
 
@@ -171,6 +200,42 @@ export function summarise(requests: EdgeRequest[], minute: number): Summary[] {
 	return [...rows.values()].map((r) => ({ minute, ...r }));
 }
 
+/** One minute's requests that named their client build, per service, build and installed app. */
+export function clientBuildsOf(
+	requests: EdgeRequest[],
+	minute: number,
+): { service: string; build: string; installed: boolean; count: number }[] {
+	const rows = new Map<string, { service: string; build: string; installed: boolean; count: number }>();
+	for (const r of requests) {
+		if (r.at < minute || r.at >= minute + MINUTE || !r.build) continue;
+		const installed = r.build.endsWith('-app');
+		const build = installed ? r.build.slice(0, -4) : r.build;
+		const key = `${r.service} ${build} ${installed}`;
+		const row = rows.get(key) ?? { service: r.service, build, installed, count: 0 };
+		row.count++;
+		rows.set(key, row);
+	}
+	return [...rows.values()];
+}
+
+/** One minute's "page not found" answers from the shop's pages (not files), by route and referrer. */
+export function notFoundOf(
+	requests: EdgeRequest[],
+	minute: number,
+): { route: string; referrer: string; count: number }[] {
+	const rows = new Map<string, { route: string; referrer: string; count: number }>();
+	for (const r of requests) {
+		if (r.at < minute || r.at >= minute + MINUTE) continue;
+		if (r.status !== 404 || r.service !== 'storefront' || r.method !== 'GET' || r.route.startsWith('static '))
+			continue;
+		const key = `${r.route} ${r.referrer}`;
+		const row = rows.get(key) ?? { route: r.route, referrer: r.referrer, count: 0 };
+		row.count++;
+		rows.set(key, row);
+	}
+	return [...rows.values()];
+}
+
 const add = (a: number[], b: number[]) => a.map((v, i) => v + (b[i] ?? 0));
 const timing = (count: number, e5: number, e4: number, buckets: number[], minutes: number) => ({
 	count,
@@ -223,16 +288,116 @@ export class RequestLog {
 		const insert = db.prepare(
 			'INSERT INTO requests (minute, service, method, route, count, e5, e4, buckets) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
 		);
-		for (let m = Math.max(first, current - 3 * MINUTE); m < current; m += MINUTE)
+		const missing = db.prepare('INSERT INTO not_found (minute, route, referrer, count) VALUES (?, ?, ?, ?)');
+		const builds = db.prepare(
+			'INSERT INTO client_builds (minute, service, build, installed, count) VALUES (?, ?, ?, ?, ?)',
+		);
+		for (let m = Math.max(first, current - 3 * MINUTE); m < current; m += MINUTE) {
 			for (const r of summarise(requests, m))
 				insert.run(m, r.service, r.method, r.route, r.count, r.e5, r.e4, JSON.stringify(r.buckets));
+			for (const r of notFoundOf(requests, m)) missing.run(m, r.route, r.referrer, r.count);
+			for (const r of clientBuildsOf(requests, m))
+				builds.run(m, r.service, r.build, r.installed ? 1 : 0, r.count);
+		}
+		db.prepare('DELETE FROM client_builds WHERE minute < ?').run(now - KEEP_MS);
 		db.prepare('DELETE FROM requests WHERE minute < ?').run(now - KEEP_MS);
+		db.prepare('DELETE FROM not_found WHERE minute < ?').run(now - KEEP_MS);
 		this.lastMinute = current - MINUTE;
 		this.readAt = new Date(now).toISOString();
 	}
 
 	private rows(since: number): Row[] {
 		return this.store.db().prepare('SELECT * FROM requests WHERE minute >= ?').all(since) as unknown as Row[];
+	}
+
+	/**
+	 * The shop's "page not found" answers of the last `hours` hours (Search engines, brief
+	 * 26gq3NbcbBESea6abRtsa3, screen 5): the 50 most frequent paths, with where visitors came from.
+	 */
+	notFound(hours: number, now = Date.now()): NotFoundView {
+		const since = now - hours * 3_600_000;
+		const rows = this.store
+			.db()
+			.prepare('SELECT minute, route, referrer, count FROM not_found WHERE minute >= ?')
+			.all(since) as unknown as { minute: number; route: string; referrer: string; count: number }[];
+		const paths = new Map<string, { count: number; last: number; from: Map<string, number> }>();
+		for (const r of rows) {
+			const p = paths.get(r.route) ?? { count: 0, last: 0, from: new Map<string, number>() };
+			p.count += r.count;
+			p.last = Math.max(p.last, r.minute);
+			if (r.referrer) p.from.set(r.referrer, (p.from.get(r.referrer) ?? 0) + r.count);
+			paths.set(r.route, p);
+		}
+		return {
+			source: this.source,
+			since: new Date(since).toISOString(),
+			total: rows.reduce((a, r) => a + r.count, 0),
+			paths: [...paths.entries()]
+				.sort((a, b) => b[1].count - a[1].count)
+				.slice(0, 50)
+				.map(([route, p]) => ({
+					route,
+					count: p.count,
+					from: [...p.from.entries()]
+						.sort((a, b) => b[1] - a[1])
+						.map(([h]) => h)
+						.slice(0, 3),
+					lastAt: new Date(p.last + MINUTE).toISOString(),
+				})),
+		};
+	}
+
+	/** Which client builds called in the last `hours` hours, per app, newest first (Client versions). */
+	clientBuilds(hours: number, now = Date.now()): ClientBuildsView {
+		const since = now - hours * 3_600_000;
+		const rows = this.store
+			.db()
+			.prepare('SELECT minute, service, build, installed, count FROM client_builds WHERE minute >= ?')
+			.all(since) as unknown as {
+			minute: number;
+			service: string;
+			build: string;
+			installed: number;
+			count: number;
+		}[];
+		const apps = new Map<
+			string,
+			Map<string, { requests: number; installed: number; lastHour: number; first: number; last: number }>
+		>();
+		for (const r of rows) {
+			const builds = apps.get(r.service) ?? new Map();
+			const b = builds.get(r.build) ?? {
+				requests: 0,
+				installed: 0,
+				lastHour: 0,
+				first: r.minute,
+				last: r.minute,
+			};
+			b.requests += r.count;
+			if (r.installed) b.installed += r.count;
+			if (r.minute >= now - 3_600_000) b.lastHour += r.count;
+			b.first = Math.min(b.first, r.minute);
+			b.last = Math.max(b.last, r.minute);
+			builds.set(r.build, b);
+			apps.set(r.service, builds);
+		}
+		return {
+			source: this.source,
+			since: new Date(since).toISOString(),
+			apps: [...apps.entries()].map(([service, builds]) => ({
+				service,
+				builds: [...builds.entries()]
+					.sort((a, b) => b[1].last - a[1].last)
+					.map(([build, b]) => ({
+						build,
+						requests: b.requests,
+						installed: b.installed,
+						lastHour: b.lastHour,
+						firstAt: new Date(b.first).toISOString(),
+						lastAt: new Date(b.last + MINUTE).toISOString(),
+					})),
+			})),
+		};
 	}
 
 	/** Requests and server errors of the last `minutes` minutes, for the errors-rising alert; null without a log. */

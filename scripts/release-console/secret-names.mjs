@@ -7,7 +7,7 @@
  * Run by the Mac helper in its own process, because the Infisical CLI calls block. Values are dropped
  * inside `listFolderNames`; this prints names and states only, as one JSON object on stdout.
  *
- *   node scripts/release-console/secret-names.mjs --project saha-textile-dev --environment dev [--folder /api]
+ *   node scripts/release-console/secret-names.mjs --project saha-textile-local --environment dev [--folder /api]
  */
 import { pathToFileURL } from 'node:url';
 
@@ -37,6 +37,9 @@ export function tierSecrets(inventory, tier, list = listFolderNames, keep = () =
 		for (const name of group.optional) optional.add(name);
 		for (const set of group.oneOf) for (const name of set) optional.add(name);
 	}
+	/** Names a release needs in /api, and the ones a server deploy may leave blank when asked (required-secrets.txt tags). */
+	const required = new Set(inventory.requiredForRelease ?? []);
+	const mayBlank = inventory.mayDeployBlank ?? new Set();
 	/** @type {{ folder: string, message: string }[]} */
 	const errors = [];
 	return {
@@ -73,6 +76,10 @@ export function tierSecrets(inventory, tier, list = listFolderNames, keep = () =
 						optional: optional.has(name),
 						/** Only names the inventory lists for this folder can take a new value. */
 						writable: writable.has(name),
+						/** A release stops on it while blank (docker/production/required-secrets.txt). */
+						requiredForRelease: folder === 'api' && required.has(name),
+						/** Tagged `may-deploy-blank`: a server deploy may go ahead without it when asked. */
+						mayDeployBlank: folder === 'api' && mayBlank.has(name),
 						state,
 					};
 				}),

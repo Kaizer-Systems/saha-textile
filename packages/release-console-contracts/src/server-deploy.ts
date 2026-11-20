@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { vendorAnswer } from './projects.js';
+import { branchNameSchema, vendorAnswer } from './projects.js';
 
 /** A PIN or password, as every other confirmation in local.ts takes it. */
 const confirmation = z.string().min(6).max(200);
@@ -16,16 +16,18 @@ export const DEPLOY_WORKFLOW = 'deploy.yml';
 export const SERVER_TARGETS = {
 	staging: { branch: 'staging' },
 	production: { branch: 'main' },
+	/** A development server may run any branch, picked on its Live deploy tab (owner, 21 Nov). */
+	development: { branch: 'dev' },
 } as const;
+/** The targets whose branch can be picked for one run on the deploy screen; the others are locked. */
+export const BRANCH_PICKED_TARGETS: readonly ServerTarget[] = ['development'];
 export type ServerTarget = keyof typeof SERVER_TARGETS;
 
-/**
- * The deploy target of a console environment that runs on a server, by its name. A development
- * server has none yet: it needs its own deploy identity and API setting first (Infisical chat, 20 Nov).
- */
+/** The deploy target of a console environment that runs on a server, by its name. */
 export function serverTargetOf(environment: string): ServerTarget | null {
 	if (/prod/i.test(environment)) return 'production';
 	if (/stag/i.test(environment)) return 'staging';
+	if (/dev/i.test(environment)) return 'development';
 	return null;
 }
 
@@ -106,7 +108,7 @@ export type DeployRun = z.infer<typeof deployRunSchema>;
 
 export const serverDeployViewSchema = z.object({
 	environment: z.string(),
-	target: z.enum(['staging', 'production']).nullable(),
+	target: z.enum(['staging', 'production', 'development']).nullable(),
 	branch: z.string().nullable(),
 	/** Whether the GitHub environment exists, and the names it still lacks (`null` when the key cannot list them). */
 	setup: z.object({
@@ -122,10 +124,57 @@ export type ServerDeployView = z.infer<typeof serverDeployViewSchema>;
 export const serverDeployAnswerSchema = vendorAnswer(serverDeployViewSchema);
 
 /**
+ * /api names a server deploy never accepts blank, with what would happen (brief 26gq3NbcbBESea6abRtsa3,
+ * screen 12: "the database and Redis passwords never are"). The database, Redis, search and the API's
+ * own start-up settings: without them the server does not come up at all, so allowing them blank
+ * would only start a deploy that fails. deploy.yml checks the same rule (a test keeps them in step).
+ */
+export const NEVER_BLANK_PATTERN =
+	'^(MONGODB_|REDIS_|MEILISEARCH_)|^(NODE_ENV|DEPLOY_ENV|PORT|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|CSRF_SECRET|COOKIE_SECURE|CORS_ALLOWED_ORIGINS|TRUST_PROXY)$';
+const NEVER_BLANK = new RegExp(NEVER_BLANK_PATTERN);
+
+/**
+ * Which values a server deploy may leave blank is a positive list: the `may-deploy-blank` tag in
+ * docker/production/required-secrets.txt (Infisical chat, 21 Nov), read by the Mac helper into each
+ * Secrets row. The pattern above stays as a first gate. Some tagged values go together: the API
+ * refuses a media store with only some of its keys (scripts/secrets/render.mjs), so they are
+ * allowed blank all at once or not at all.
+ */
+export const BLANK_TOGETHER: readonly (readonly string[])[] = [['SPACES_KEY', 'SPACES_SECRET', 'SPACES_BUCKET']];
+
+/** Why a name can never be deployed blank, or `null` when it can be allowed. */
+export function neverBlankReason(name: string): string | null {
+	if (!NEVER_BLANK.test(name)) return null;
+	if (name.startsWith('MONGODB_')) return 'the database will not start';
+	if (name.startsWith('REDIS_')) return 'Redis will not start';
+	if (name.startsWith('MEILISEARCH_')) return 'search will not start';
+	return 'the API will not start';
+}
+
+/**
  * A server deploy runs on its environment's own branch (owner, 20 Nov: server branches are frozen
  * on the deploy screen and change only in the wizard or Project settings › Repositories).
  */
-export const startServerDeploySchema = z.object({ pin: confirmation });
+export const startServerDeploySchema = z.object({
+	pin: confirmation,
+	/**
+	 * Required values the owner lets this deploy run without (brief 26gq3NbcbBESea6abRtsa3, screen 12):
+	 * passed to deploy.yml as `allow_blank`, then to the release step as `--allow-blank NAME` each.
+	 */
+	allowBlank: z
+		.array(
+			z
+				.string()
+				.regex(/^[A-Z][A-Z0-9_]{1,63}$/)
+				.refine((n) => neverBlankReason(n) === null, { message: 'This value can never be deployed blank.' }),
+		)
+		.max(60)
+		.default([]),
+	/** Production with blanks asks for its name typed. */
+	confirm: z.string().max(40).optional(),
+	/** A development server only: this run's branch, picked on the deploy tab (owner, 21 Nov). */
+	branch: branchNameSchema.optional(),
+});
 export const reviewServerDeploySchema = z.object({
 	pin: confirmation,
 	runId: z.number().int().positive(),

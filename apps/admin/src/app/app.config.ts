@@ -28,6 +28,7 @@ import { provideAdminSessionBootstrap } from '@core/auth/session-bootstrap';
 import { provideRuntimeConfig } from '@core/config/runtime-config';
 import { provideActiveLanguages, savedLanguages } from '@core/i18n/active-languages';
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
+import { ClientBuildInterceptor } from '@core/interceptors/client-build.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from '@core/interceptors/loader.interceptor';
 import { HttpMediaLibraryGateway } from '@core/media-library/http-media-library.gateway';
@@ -76,6 +77,11 @@ export const appConfig: ApplicationConfig = {
 		{
 			provide: HTTP_INTERCEPTORS,
 			useClass: AuthInterceptor,
+			multi: true,
+		},
+		{
+			provide: HTTP_INTERCEPTORS,
+			useClass: ClientBuildInterceptor,
 			multi: true,
 		},
 		{

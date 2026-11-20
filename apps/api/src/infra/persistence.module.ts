@@ -107,7 +107,7 @@ import {
 	MongoOrderSettingsRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
-import { BullMqDocumentRenderer, BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
+import { BullMqDocumentRenderer, BullMqMediaJobQueue, BullMqQueueStats } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import type {
@@ -250,6 +250,7 @@ import {
 	YOUTUBE_PORT,
 	INR_PAYMENT_GATEWAY,
 	DOCUMENT_RENDERER,
+	QUEUE_STATS,
 } from './tokens';
 import { SaleAwareVariantRepository } from '../events/sale-aware-variant.repository';
 import { SalePriceBook } from '../events/sale-price-book';
@@ -485,6 +486,11 @@ import { LanguageStore } from '../languages/language-store';
 			inject: [APP_CONFIG],
 		},
 		{
+			provide: QUEUE_STATS,
+			useFactory: (config: AppConfig) => new BullMqQueueStats(config.redis),
+			inject: [APP_CONFIG],
+		},
+		{
 			provide: CDN_PURGE,
 			useFactory: (config: AppConfig) => {
 				const { cloudflareZoneId, cloudflarePurgeToken } = config.media;
@@ -632,6 +638,7 @@ import { LanguageStore } from '../languages/language-store';
 		YOUTUBE_PORT,
 		INR_PAYMENT_GATEWAY,
 		DOCUMENT_RENDERER,
+		QUEUE_STATS,
 	],
 })
 export class PersistenceModule implements OnApplicationBootstrap, OnApplicationShutdown {

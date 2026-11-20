@@ -68,10 +68,10 @@ describe('connections and wizard helpers', () => {
 		expect(secretsProblem([{ ...local, secretsFrom: 'none' }], [])).toBe('');
 		expect(secretsProblem([{ ...local, secretsFrom: 'infisical' }], infisical)).toMatch(/Write where Local reads/);
 		expect(
-			secretsProblem([{ ...local, secretsFrom: 'infisical', secretsPath: 'saha-textile-dev' }], infisical),
+			secretsProblem([{ ...local, secretsFrom: 'infisical', secretsPath: 'saha-textile-local' }], infisical),
 		).toMatch(/project\/environment/);
 		expect(
-			secretsProblem([{ ...local, secretsFrom: 'infisical', secretsPath: 'saha-textile-dev/dev' }], infisical),
+			secretsProblem([{ ...local, secretsFrom: 'infisical', secretsPath: 'saha-textile-local/dev' }], infisical),
 		).toBe('');
 		expect(secretsProblem([{ ...local, secretsFrom: 'doppler', secretsPath: 'shop/prd' }], infisical)).toMatch(
 			/Choose where Local reads/,
@@ -79,19 +79,19 @@ describe('connections and wizard helpers', () => {
 	});
 
 	it('says what an Infisical place reads, in words', () => {
-		expect(placeNote('infisical', 'saha-textile-dev/dev')).toBe(
-			'Reads project saha-textile-dev, environment dev, every folder. Saved as saha-textile-dev/dev.',
+		expect(placeNote('infisical', 'saha-textile-local/dev')).toBe(
+			'Reads project saha-textile-local, environment dev, every folder. Saved as saha-textile-local/dev.',
 		);
-		expect(placeNote('infisical', 'saha-textile-dev/Development')).toBe(
-			'Reads project saha-textile-dev, environment Development (short name dev), every folder. Saved as saha-textile-dev/dev.',
+		expect(placeNote('infisical', 'saha-textile-local/Development')).toBe(
+			'Reads project saha-textile-local, environment Development (short name dev), every folder. Saved as saha-textile-local/dev.',
 		);
 		expect(savedPlace('infisical', ' saha-textile-production/Production/api ')).toBe(
 			'saha-textile-production/prod/api',
 		);
 		expect(savedPlace('doppler', ' shop/prd ')).toBe('shop/prd');
 		expect(savedPlace(null, 'anything')).toBe('');
-		expect(placeNote('infisical', 'saha-textile-dev/dev/api')).toContain('only /api');
-		expect(placeNote('infisical', '')).toContain('saha-textile-dev/Development/api');
+		expect(placeNote('infisical', 'saha-textile-local/dev/api')).toContain('only /api');
+		expect(placeNote('infisical', '')).toContain('saha-textile-local/Development/api');
 		expect(andList(['Local', 'Staging', 'Production'])).toBe('Local, Staging and Production');
 	});
 

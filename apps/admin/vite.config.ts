@@ -24,7 +24,14 @@ const localHttps = (() => {
 
 // AnalogJS (Vite) build for the admin. Platform swap only — the app still uses
 // Angular Router config + NGXS + ngx-translate (those migrate in later phases).
+/**
+ * The build this bundle comes from (Release Console, Client versions): `BUILD_ID` from the image
+ * build (a short commit), sent as `x-client-build`; any other value leaves the header off.
+ */
+const clientBuild = /^[a-z0-9]{7,40}$/.test(process.env['BUILD_ID'] ?? '') ? (process.env['BUILD_ID'] ?? '') : '';
+
 export default defineConfig(() => ({
+	define: { __CLIENT_BUILD__: JSON.stringify(clientBuild) },
 	server: {
 		port: 4300,
 		host: 'localhost',

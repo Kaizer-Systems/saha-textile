@@ -137,6 +137,10 @@ test('the wizard adds a project with a GitHub repository and lands on its Connec
 	await expect(next).toBeDisabled();
 	for (const chip of await page.getByRole('button', { name: 'no manager' }).all()) await chip.click();
 	await next.click();
+	// Project menus: optional; Search engines is ticked so its screen can be tested below.
+	await page.getByRole('checkbox', { name: /Search engines/ }).click();
+	await page.getByRole('checkbox', { name: /Client versions/ }).click();
+	await page.getByRole('checkbox', { name: /Messages/ }).click();
 	await next.click();
 	await expect(page.getByRole('heading', { name: /Add a project · Done/i })).toBeVisible();
 	await page.getByRole('button', { name: 'Add project', exact: true }).click();
@@ -161,4 +165,242 @@ test('Watch › Alerts lists the local rules', async ({ page }, info) => {
 	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/alerts?tab=rules`);
 	for (const rule of ['Start-up disk filling', 'A container stopped', 'Mac helper silent', 'Errors rising'])
 		await expect(page.getByText(rule)).toBeVisible();
+});
+
+/** Sample answers for a server environment's deploy view and its Infisical names (names only, no values). */
+async function sampleServerDeploy(page: Page, environment: string): Promise<void> {
+	const at = new Date().toISOString();
+	const target = environment === 'production' ? 'production' : 'staging';
+	const view = {
+		state: 'ok',
+		readAt: at,
+		data: {
+			environment,
+			target,
+			branch: target === 'production' ? 'main' : 'staging',
+			setup: { environmentExists: true, missingVariables: [], missingSecrets: [], workflowOnBranch: true },
+			run: null,
+			recent: [],
+		},
+	};
+	const row = (name: string, state: string, required = true, mayDeployBlank = false) => ({
+		name,
+		expected: true,
+		devOnly: false,
+		optional: false,
+		writable: true,
+		requiredForRelease: required,
+		mayDeployBlank,
+		state,
+	});
+	const secrets = {
+		at,
+		tier: target,
+		project: `saha-textile-${target}`,
+		environment: target === 'production' ? 'prod' : 'staging',
+		folder: '/',
+		folders: [
+			{
+				folder: 'api',
+				rows: [
+					row('CCAVENUE_WORKING_KEY', 'empty', false),
+					row('COOKIE_DOMAIN', 'set'),
+					row('MONGODB_PASSWORD', 'empty'),
+					row('MSG91_AUTH_KEY', 'empty', true, true),
+					row('SPACES_BUCKET', 'empty', true, true),
+					row('SPACES_KEY', 'empty', true, true),
+					row('SPACES_SECRET', 'empty', true, true),
+				],
+			},
+		],
+		errors: [],
+	};
+	for (const [url, body] of [
+		[`**/server-deploy/${environment}`, view],
+		['**/api/local/secrets?**', secrets],
+	] as const)
+		await page.route(url, (route) => {
+			const origin = route.request().headers()['origin'] ?? '*';
+			const headers = {
+				'access-control-allow-origin': origin,
+				'access-control-allow-credentials': 'true',
+				'access-control-allow-headers': 'content-type, x-console-session',
+				'access-control-allow-methods': 'GET, POST, OPTIONS',
+			};
+			if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+			return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+		});
+}
+
+test('a server deploy reads blank values on opening and can allow them (screen 12)', async ({ page }, info) => {
+	await sampleServerDeploy(page, 'staging');
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/deploy?tab=staging`);
+	await expect(page.getByText('locked · change it in Project settings › Repositories')).toBeVisible();
+	// Payment keys never stop a deploy, so they are not counted.
+	await expect(page.getByText('5 required values are blank in saha-textile-staging · staging')).toBeVisible();
+	await page.getByRole('button', { name: 'Allow all 4' }).click();
+	for (const n of ['MSG91_AUTH_KEY', 'SPACES_BUCKET', 'SPACES_KEY', 'SPACES_SECRET'])
+		await expect(page.getByText(`--allow-blank ${n}`, { exact: true })).toBeVisible();
+	await expect(
+		page.getByText(/sign-in codes and texts are not sent \(MSG91\); photo uploads are off \(Spaces\)/),
+	).toBeVisible();
+	// The Spaces keys go together: ✕ on one puts all three back; picking one brings all three.
+	await page.getByRole('button', { name: 'SPACES_KEY ✕' }).click();
+	await expect(page.getByRole('button', { name: 'SPACES_SECRET ✕' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'MSG91_AUTH_KEY ✕' })).toBeVisible();
+	await page.getByLabel('Search blank values to allow').click();
+	await expect(page.getByText('cannot be blank: the database will not start')).toBeVisible();
+	await expect(page.getByRole('option', { name: /CCAVENUE/ })).toHaveCount(0);
+	await page.getByRole('option', { name: /SPACES_BUCKET/ }).click();
+	for (const n of ['SPACES_BUCKET', 'SPACES_KEY', 'SPACES_SECRET'])
+		await expect(page.getByRole('button', { name: `${n} ✕` })).toBeVisible();
+});
+
+test('Search engines shows the sitemap check and the shop’s missing pages (screen 5)', async ({ page }, info) => {
+	const at = new Date().toISOString();
+	const result = {
+		origin: 'https://local.saha-textile.localhost:8443',
+		sitemap: '/sitemap.xml',
+		at,
+		listed: 4,
+		checked: 4,
+		ok: 2,
+		redirects: 1,
+		notFound: 1,
+		other: 0,
+		failures: [
+			{ path: '/collections/silk-old', status: 404 },
+			{ path: '/sale', status: 301 },
+		],
+		paths: ['/', '/collections/silk', '/collections/silk-old', '/sale'],
+		note: '',
+	};
+	const job = {
+		id: 'seo-sample',
+		kind: 'seo',
+		label: 'Check the sitemap of this computer',
+		status: 'passed',
+		startedAt: at,
+		finishedAt: at,
+		exitCode: 0,
+		lines: [{ seq: 1, stream: 'out', text: '', event: { result } }],
+	};
+	const answers: [string, unknown][] = [
+		['**/api/local/jobs', [job]],
+		['**/api/local/jobs/seo-sample**', job],
+		[
+			'**/api/local/not-found**',
+			{
+				source: 'edge',
+				since: at,
+				total: 30,
+				paths: [
+					{ route: '/collections/silk-old', count: 21, from: ['google.com'], lastAt: at },
+					{ route: '/product/banarasi-red', count: 9, from: ['instagram.com', 'this site'], lastAt: at },
+				],
+			},
+		],
+	];
+	for (const [url, body] of answers)
+		await page.route(url, (route) => {
+			const origin = route.request().headers()['origin'] ?? '*';
+			const headers = {
+				'access-control-allow-origin': origin,
+				'access-control-allow-credentials': 'true',
+				'access-control-allow-headers': 'content-type, x-console-session',
+				'access-control-allow-methods': 'GET, POST, OPTIONS',
+			};
+			if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+			return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+		});
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/seo`);
+	await expect(page.getByText('2 / 4')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Check the sitemap' })).toBeEnabled();
+	await expect(page.getByRole('cell', { name: '/collections/silk-old' }).first()).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'google.com' })).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'instagram.com, this site' })).toBeVisible();
+	await expect(page.getByText('needs the Search Console key')).toBeVisible();
+});
+
+test('Client versions lists the builds still calling, newest first (screen 4)', async ({ page }, info) => {
+	const at = new Date().toISOString();
+	await page.route('**/api/local/client-builds**', (route) => {
+		const origin = route.request().headers()['origin'] ?? '*';
+		const headers = {
+			'access-control-allow-origin': origin,
+			'access-control-allow-credentials': 'true',
+			'access-control-allow-headers': 'content-type, x-console-session',
+			'access-control-allow-methods': 'GET, POST, OPTIONS',
+		};
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		return route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			headers,
+			body: JSON.stringify({
+				source: 'edge',
+				since: at,
+				apps: [
+					{
+						service: 'storefront',
+						builds: [
+							{
+								build: 'ea27a021',
+								requests: 12480,
+								installed: 3869,
+								lastHour: 610,
+								firstAt: at,
+								lastAt: at,
+							},
+							{ build: '471b5c40', requests: 910, installed: 582, lastHour: 12, firstAt: at, lastAt: at },
+						],
+					},
+				],
+			}),
+		});
+	});
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/clients`);
+	await expect(page.getByText('ea27a021 (newest)')).toBeVisible();
+	await expect(page.getByRole('cell', { name: '31%' })).toBeVisible();
+	await expect(page.getByRole('cell', { name: '64%' })).toBeVisible();
+});
+
+test('Job queues and Messages read the shop API’s operations address (screens 8 and 3)', async ({ page }, info) => {
+	const at = new Date().toISOString();
+	const answer = async (url: string, data: unknown) =>
+		page.route(url, (route) => {
+			const origin = route.request().headers()['origin'] ?? '*';
+			const headers = {
+				'access-control-allow-origin': origin,
+				'access-control-allow-credentials': 'true',
+				'access-control-allow-headers': 'content-type, x-console-session',
+				'access-control-allow-methods': 'GET, POST, OPTIONS',
+			};
+			if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+			return route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				headers,
+				body: JSON.stringify({ state: 'ok', readAt: at, data }),
+			});
+		});
+	await answer('**/ops/local/jobs', {
+		at,
+		queues: [{ queue: 'saha-textile-media', waiting: 0, active: 1, delayed: 0, failed: 2, completed: 40 }],
+	});
+	await answer('**/ops/local/messages', {
+		at,
+		since: at,
+		channels: [{ channel: 'sms', total: 8, sent: 5, delivered: 1, failed: 1, suppressed: 1, queued: 0 }],
+		recent: [{ at, channel: 'sms', category: 'transactional', template: 'sign-in-code', status: 'sent' }],
+	});
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/queues`);
+	await expect(page.getByRole('cell', { name: 'saha-textile-media' })).toBeVisible();
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/messages`);
+	await expect(page.getByText('75% sent or delivered · 1 failed · 1 held back')).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'sign-in-code' })).toBeVisible();
 });

@@ -1,15 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal, viewChild } from '@angular/core';
 
-import { serverLane } from '@saha-textile/release-console-contracts';
+import {
+	BLANK_TOGETHER,
+	BRANCH_PICKED_TARGETS,
+	neverBlankReason,
+	serverLane,
+} from '@saha-textile/release-console-contracts';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
+import { BranchPicker } from '../shared/branch-picker';
 import { BrandLogo, Icon } from '../shared/icons';
 import { PIN_LENGTH, PinBoxes } from '../shared/pin-boxes';
 
-import type { DeployRun, ServerDeployView } from '@saha-textile/release-console-contracts';
+import type { DeployRun, ServerDeployView, ServerTarget } from '@saha-textile/release-console-contracts';
 
 /** Each lane row's icon. */
 const LANE_ICONS: Record<string, string> = {
@@ -45,6 +51,70 @@ export function runTitle(run: DeployRun | null): string {
 }
 
 /**
+ * The blank values a server deploy would stop on (required for a release, not set, in /api), split
+ * into those it may go ahead without (tagged `may-deploy-blank`; a set that goes together only when
+ * every one of it is blank) and the rest, each with the reason it has to be filled.
+ */
+export function requiredBlanks(
+	folders: {
+		folder: string;
+		rows: { name: string; state: string; requiredForRelease?: boolean; mayDeployBlank?: boolean }[];
+	}[],
+): { offered: string[]; never: { name: string; reason: string }[] } {
+	const blank = (folders.find((f) => f.folder === 'api')?.rows ?? []).filter(
+		(r) => r.requiredForRelease && r.state !== 'set',
+	);
+	const offered = new Set(
+		blank.filter((r) => r.mayDeployBlank && neverBlankReason(r.name) === null).map((r) => r.name),
+	);
+	const reasons = new Map<string, string>();
+	for (const group of BLANK_TOGETHER) {
+		const picked = group.filter((n) => offered.has(n));
+		if (!picked.length || picked.length === group.length) continue;
+		const filled = group.filter((n) => !picked.includes(n));
+		for (const n of picked) {
+			offered.delete(n);
+			reasons.set(n, `goes with ${filled.join(', ')}, which is set: fill it too, or empty all ${group.length}`);
+		}
+	}
+	return {
+		offered: [...offered].sort(),
+		never: blank
+			.filter((r) => !offered.has(r.name))
+			.map((r) => ({
+				name: r.name,
+				reason: reasons.get(r.name) ?? neverBlankReason(r.name) ?? 'every release needs it',
+			}))
+			.sort((a, b) => a.name.localeCompare(b.name)),
+	};
+}
+
+/** The names picked or put back together with `name` (a set that goes together moves as one). */
+export function togetherWith(name: string, offered: string[]): string[] {
+	const group = BLANK_TOGETHER.find((g) => g.includes(name));
+	return group ? group.filter((n) => offered.includes(n)) : [name];
+}
+
+/** What stops working while these values stay blank, and whether everything else still works. */
+export function blankEffects(names: string[]): { stops: string[]; restWorks: boolean } {
+	const groups: [RegExp, string][] = [
+		[/^MSG91_/, 'sign-in codes and texts are not sent (MSG91)'],
+		[/^SPACES_/, 'photo uploads are off (Spaces)'],
+	];
+	const stops = new Set<string>();
+	let unknown = false;
+	for (const n of names) {
+		const g = groups.find(([re]) => re.test(n));
+		if (g) stops.add(g[1]);
+		else {
+			stops.add(`whatever reads ${n}`);
+			unknown = true;
+		}
+	}
+	return { stops: [...stops], restWorks: !unknown };
+}
+
+/**
  * Ship › Live deploy for an environment that runs on a server (owner, 20 Nov): GitHub's deploy.yml
  * builds and checks the commit, publishes its images to GHCR, waits for the owner's approval,
  * writes the release from Infisical, signs in to the server through the Cloudflare tunnel, pulls
@@ -54,7 +124,7 @@ export function runTitle(run: DeployRun | null): string {
  */
 @Component({
 	selector: 'rc-server-deploy-screen',
-	imports: [Icon, BrandLogo, PinBoxes],
+	imports: [Icon, BrandLogo, PinBoxes, BranchPicker],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (view.data(); as a) {
@@ -249,19 +319,163 @@ export function runTitle(run: DeployRun | null): string {
 						<div class="rc-ph">
 							<span class="rc-label">
 								<rc-icon name="tabler/cloud" />
-								Deploy to {{ d.target }} · from {{ d.branch }}
+								Deploy to {{ d.target }} · from {{ pickedBranch() || d.branch }}
 							</span>
 						</div>
 						<!-- A server environment's branch is fixed here; it changes only in the wizard or Project settings › Repositories (owner, 20 Nov). -->
-						<div class="rc-states">
-							<rc-icon name="tabler/git-branch" />
-							<span class="rc-mono">{{ d.branch }}</span>
-							<span class="rc-note">· set in Project settings › Repositories</span>
-						</div>
+						@if (picksBranch(d.target)) {
+							<!-- A development server may try any branch for one run (owner, 21 Nov; brief screen 12). -->
+							<rc-branch-picker
+								label="Branch"
+								context="this deploy"
+								[branches]="branches.data()?.branches ?? []"
+								[defaultBranch]="branches.data()?.defaultBranch ?? null"
+								[current]="branches.data()?.current ?? null"
+								[value]="pickedBranch() || d.branch || ''"
+								[waitingText]="branches.data()?.note || 'loading branches…'"
+								[refreshing]="branches.isFetching()"
+								(picked)="pickedBranch.set($event)"
+								(refresh)="refreshBranches()"
+							/>
+							<p class="rc-note">
+								Editable here: a development server can try any branch. Its saved branch stays
+								{{ d.branch }}.
+							</p>
+						} @else {
+							<div class="rc-states">
+								<rc-icon name="tabler/git-branch" />
+								<span class="rc-mono">{{ d.branch }}</span>
+								<span class="rc-pill muted wraps">
+									locked · change it in Project settings › Repositories
+								</span>
+							</div>
+						}
 						<p class="rc-note">
 							GitHub runs the checks, publishes the images to GHCR when this commit has none, then waits
 							for your approval before anything reaches the server.
 						</p>
+						<!-- Deploy with chosen blanks (owner, 21 Nov; brief 26gq3NbcbBESea6abRtsa3, screen 12, drawn as approved). -->
+						@if (blankCount()) {
+							<div class="rc-banner amber small">
+								<span class="rc-dot amber"></span>
+								<div>
+									<b>{{ blankCount() }} required values are blank in {{ placeName() }}</b>
+									(read when this tab opened, names only). The deploy stops on blanks unless you allow
+									them below.
+								</div>
+								@if (blankSplit().offered.length) {
+									<button
+										type="button"
+										class="rc-btn primary"
+										(click)="allowAll()"
+									>
+										Allow all {{ blankSplit().offered.length }}
+									</button>
+								}
+								<button
+									type="button"
+									class="rc-btn ghost"
+									[disabled]="blanks.isFetching()"
+									(click)="blanks.refetch()"
+								>
+									Check again
+								</button>
+							</div>
+							<span class="rc-label">Deploy even though these are blank</span>
+							<div class="rc-msearch multi">
+								@for (n of allowed(); track n) {
+									<button
+										type="button"
+										class="rc-chip on"
+										[title]="'Put ' + n + ' back in the list'"
+										(click)="unallow(n)"
+									>
+										{{ n }} ✕
+									</button>
+								}
+								<input
+									type="search"
+									autocomplete="off"
+									aria-label="Search blank values to allow"
+									placeholder="search blank names…"
+									[value]="blankQuery()"
+									(focus)="blankOpen.set(true)"
+									(blur)="blankOpen.set(false)"
+									(input)="blankQuery.set($any($event.target).value)"
+								/>
+								@if (blankOpen()) {
+									<div
+										class="rc-mres"
+										role="listbox"
+									>
+										@for (n of offered(); track n) {
+											<button
+												type="button"
+												class="rc-mrow"
+												role="option"
+												(mousedown)="$event.preventDefault(); allow(n)"
+											>
+												<span class="t rc-mono">{{ n }}</span>
+												<span class="p">/api · blank</span>
+											</button>
+										}
+										@for (x of neverShown(); track x.name) {
+											<div
+												class="rc-mrow off"
+												aria-disabled="true"
+											>
+												<span class="t rc-mono">{{ x.name }}</span>
+												<span class="p">cannot be blank: {{ x.reason }}</span>
+											</div>
+										}
+										@if (!offered().length && !neverShown().length) {
+											<div class="rc-mnone">Nothing left to allow.</div>
+										}
+									</div>
+								}
+							</div>
+							<p class="rc-note">
+								Opening the tab reads the environment at once and lists every blank value that would
+								stop the deploy; Allow all adds the ones it may go ahead without as chips in one click.
+								✕ puts a name back in the list. Only values the release allows blank are offered (today
+								the MSG91 key and the three Spaces keys, which go together); every other required value
+								is greyed with the reason it has to be filled. Payment keys never stop a deploy:
+								payments simply answer "not configured" until they are set.
+							</p>
+							@if (allowed().length) {
+								<span class="rc-label">What runs</span>
+								<p class="rc-note rc-mono">deploy.yml · allow_blank = {{ allowed().join(',') }}</p>
+								<p class="rc-note rc-mono">
+									→ release {{ d.target }}
+									@for (n of allowed(); track n) {
+										{{ ' ' }}
+										<span class="rc-flag">--allow-blank {{ n }}</span>
+									}
+								</p>
+								<p class="rc-note">
+									What stops working until they are filled: {{ effects().stops.join('; ') }}.
+									@if (effects().restWorks) {
+										The shop, admin, catalogue and browsing work.
+									}
+								</p>
+								@if (d.target === 'production') {
+									<div class="rc-form">
+										<label>
+											Type production to confirm
+											<div class="rc-msearch">
+												<input
+													type="text"
+													autocomplete="off"
+													aria-label="Type production to confirm"
+													[value]="confirmText()"
+													(input)="confirmText.set($any($event.target).value)"
+												/>
+											</div>
+										</label>
+									</div>
+								}
+							}
+						}
 						<div class="rc-form">
 							<label>
 								PIN
@@ -295,7 +509,7 @@ export function runTitle(run: DeployRun | null): string {
 								<button
 									type="submit"
 									class="rc-btn primary"
-									[disabled]="!pinReady() || busy() || running()"
+									[disabled]="!pinReady() || busy() || running() || needsConfirm()"
 								>
 									Start the deploy
 								</button>
@@ -410,6 +624,80 @@ export class ServerDeployScreen {
 	protected readonly laneIcons = LANE_ICONS;
 	protected readonly gapsOf = setupGaps;
 	protected readonly pin = signal('');
+	/**
+	 * Required values blank in this environment (owner, 21 Nov): read names-only when the tab opens.
+	 * Only /api names can be allowed blank; other folders hold infrastructure the server cannot start without.
+	 */
+	protected readonly blanks = injectQuery(() => ({
+		queryKey: ['blanks', this.ctx.projectId(), this.ctx.repoId(), this.environment()],
+		queryFn: () =>
+			this.api.secrets({
+				projectId: this.ctx.projectId() ?? '',
+				repositoryId: this.ctx.repoId() ?? '',
+				environment: this.environment(),
+			}),
+		enabled: !!this.ctx.projectId() && !!this.ctx.repoId(),
+		refetchOnMount: 'always' as const,
+	}));
+	protected readonly blankSplit = computed(() => requiredBlanks(this.blanks.data()?.folders ?? []));
+	protected readonly blankCount = computed(() => this.blankSplit().offered.length + this.blankSplit().never.length);
+	protected readonly placeName = computed(() => {
+		const b = this.blanks.data();
+		return b ? `${b.project} · ${b.environment}` : this.environment();
+	});
+	protected readonly allowed = signal<string[]>([]);
+	protected readonly blankQuery = signal('');
+	protected readonly blankOpen = signal(false);
+	protected readonly confirmText = signal('');
+	private readonly matches = (n: string) => n.toLowerCase().includes(this.blankQuery().trim().toLowerCase());
+	protected readonly offered = computed(() =>
+		this.blankSplit().offered.filter((n) => !this.allowed().includes(n) && this.matches(n)),
+	);
+	protected readonly neverShown = computed(() => this.blankSplit().never.filter((x) => this.matches(x.name)));
+	protected readonly effects = computed(() => blankEffects(this.allowed()));
+	/** Production with allowed blanks waits for its name typed (the API checks it too). */
+	protected readonly needsConfirm = computed(() => {
+		const a = this.view.data();
+		return (
+			a?.state === 'ok' &&
+			a.data.target === 'production' &&
+			this.allowed().length > 0 &&
+			this.confirmText().trim() !== 'production'
+		);
+	});
+	protected allowAll(): void {
+		this.allowed.set([...new Set([...this.allowed(), ...this.blankSplit().offered])]);
+	}
+	protected allow(name: string): void {
+		const add = togetherWith(name, this.blankSplit().offered);
+		this.allowed.update((a) => [...new Set([...a, ...add])]);
+		this.blankQuery.set('');
+	}
+	protected unallow(name: string): void {
+		const drop = togetherWith(name, this.blankSplit().offered);
+		this.allowed.update((a) => a.filter((n) => !drop.includes(n)));
+	}
+	/** This run's branch on a development server; empty means its saved branch. */
+	protected readonly pickedBranch = signal('');
+	protected picksBranch(target: string | null): boolean {
+		return !!target && BRANCH_PICKED_TARGETS.includes(target as ServerTarget);
+	}
+	private readonly refreshNext = signal(false);
+	protected readonly branches = injectQuery(() => {
+		const a = this.view.data();
+		const repository = this.ctx.repo()?.sourceCode.repository ?? '';
+		return {
+			queryKey: ['server-branches', repository],
+			queryFn: () => this.api.repositoryBranches(repository, this.refreshNext()),
+			enabled: a?.state === 'ok' && this.picksBranch(a.data.target) && !!repository,
+			staleTime: 60_000,
+		};
+	});
+	protected async refreshBranches(): Promise<void> {
+		this.refreshNext.set(true);
+		await this.branches.refetch();
+		this.refreshNext.set(false);
+	}
 	protected readonly busy = signal(false);
 	protected readonly message = signal('');
 
@@ -492,6 +780,9 @@ export class ServerDeployScreen {
 					this.ctx.repoId() ?? '',
 					this.environment(),
 					this.pin(),
+					this.allowed(),
+					this.confirmText() || undefined,
+					this.pickedBranch() || undefined,
 				),
 			'Started. GitHub shows the run in a few seconds; the deploy job then waits for your approval here.',
 		);

@@ -248,20 +248,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 		access: ['tokens', 'sessions', 'keys'],
 		settings: ['pin', 'link server'],
 	},
-	later: [
-		'rehearsal',
-		'loadtest',
-		'rum',
-		'slo',
-		'cdn',
-		'drift',
-		'payments',
-		'clients',
-		'seo',
-		'privacy',
-		'costs',
-		'domains',
-	],
+	later: ['rehearsal', 'loadtest', 'rum', 'slo', 'cdn', 'drift', 'payments', 'privacy'],
 	screens: {
 		overview: {
 			label: 'Overview',

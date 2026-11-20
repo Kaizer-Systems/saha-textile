@@ -37,6 +37,7 @@ import { PrivacyModule } from './privacy/privacy.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { SecurityModule } from './security/security.module';
 import { StorefrontModule } from './storefront/storefront.module';
+import { OpsModule } from './ops/ops.module';
 
 /**
  * Composition root.
@@ -82,6 +83,7 @@ export class AppModule {
 				PurchasingModule,
 				WishlistModule,
 				LanguagesModule,
+				OpsModule,
 			],
 			providers: [
 				// Ordered deliberately, and the order is itself a security property.

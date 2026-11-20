@@ -10,9 +10,19 @@ import {
 	serverTargetOf,
 	DEPLOY_SECRETS,
 	DEPLOY_VARIABLES,
+	BLANK_TOGETHER,
+	NEVER_BLANK_PATTERN,
+	neverBlankReason,
+	startServerDeploySchema,
 } from './server-deploy.js';
 
 const workflow = readFileSync(join(process.cwd(), '../../.github/workflows/deploy.yml'), 'utf8');
+/** Names tagged `may-deploy-blank` in the release's required list (Infisical chat's file). */
+const mayDeployBlank = readFileSync(join(process.cwd(), '../../docker/production/required-secrets.txt'), 'utf8')
+	.split('\n')
+	.map((line) => line.trim().split(/\s+/))
+	.filter(([name, ...tags]) => name && !name.startsWith('#') && tags.includes('may-deploy-blank'))
+	.map(([name]) => name);
 
 const step = (name: string, conclusion: string | null = 'success', status = 'completed') => ({
 	name,
@@ -35,10 +45,11 @@ const run = (over: Partial<DeployRun> = {}): DeployRun => ({
 });
 
 describe('server deploys', () => {
-	it('maps a server environment to its GitHub environment by name; a dev server has none yet', () => {
+	it('maps a server environment to its GitHub environment by name, a dev server included', () => {
 		expect(serverTargetOf('production')).toBe('production');
 		expect(serverTargetOf('Staging')).toBe('staging');
-		expect(serverTargetOf('dev-server')).toBeNull();
+		expect(serverTargetOf('dev-server')).toBe('development');
+		expect(serverTargetOf('qa')).toBeNull();
 	});
 
 	it('names only jobs, steps and settings deploy.yml really has', () => {
@@ -95,5 +106,33 @@ describe('server deploys', () => {
 		expect(by['approval']?.cls).toBe('ok');
 		expect(by['release']?.cls).toBe('red');
 		expect(by['health']).toMatchObject({ cls: 'skip', time: 'not reached' });
+	});
+	it('never lets the database, Redis, search or API start-up values deploy blank (screen 12)', () => {
+		expect(neverBlankReason('MONGODB_PASSWORD')).toBe('the database will not start');
+		expect(neverBlankReason('REDIS_PASSWORD')).toBe('Redis will not start');
+		expect(neverBlankReason('MEILISEARCH_HOST')).toBe('search will not start');
+		expect(neverBlankReason('JWT_ACCESS_SECRET')).toBe('the API will not start');
+		expect(neverBlankReason('PORTAL_X')).toBeNull();
+		expect(neverBlankReason('MSG91_AUTH_KEY')).toBeNull();
+		expect(neverBlankReason('CCAVENUE_WORKING_KEY')).toBeNull();
+		const ok = startServerDeploySchema.safeParse({ pin: '482913', allowBlank: ['MSG91_AUTH_KEY'] });
+		expect(ok.success).toBe(true);
+		expect(startServerDeploySchema.safeParse({ pin: '482913', allowBlank: ['MONGODB_PASSWORD'] }).success).toBe(
+			false,
+		);
+		expect(startServerDeploySchema.safeParse({ pin: '482913', allowBlank: ['msg;id'] }).success).toBe(false);
+	});
+
+	it('deploy.yml takes allow_blank and checks the same never-blank rule', () => {
+		expect(workflow).toContain('      allow_blank:\n');
+		expect(workflow).toContain(`NEVER_BLANK: '${NEVER_BLANK_PATTERN}'`);
+		expect(workflow).toContain('flags+=(--allow-blank "$name")');
+		expect(workflow).toContain('if ($i == "may-deploy-blank") found = 1');
+	});
+
+	it('keeps the Spaces keys that go together in step with required-secrets.txt (no drift)', () => {
+		const spaces = mayDeployBlank.filter((n) => n.startsWith('SPACES_')).sort();
+		expect([...BLANK_TOGETHER[0]].sort()).toEqual(spaces);
+		for (const group of BLANK_TOGETHER) for (const n of group) expect(mayDeployBlank).toContain(n);
 	});
 });

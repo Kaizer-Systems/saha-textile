@@ -61,7 +61,14 @@ const angularServerMode = (): Plugin => ({
  */
 const buildDir = process.env['ST_BUILD_DIR'] ? appPath(`./${process.env['ST_BUILD_DIR']}`) : null;
 
+/**
+ * The build this bundle comes from (Release Console, Client versions): `BUILD_ID` from the image
+ * build (a short commit), sent as `x-client-build`; any other value leaves the header off.
+ */
+const clientBuild = /^[a-z0-9]{7,40}$/.test(process.env['BUILD_ID'] ?? '') ? (process.env['BUILD_ID'] ?? '') : '';
+
 export default defineConfig(({ command }) => ({
+	define: { __CLIENT_BUILD__: JSON.stringify(clientBuild) },
 	// Pin the project root to this file's dir (as the Analog template does) so
 	// Vite behaves identically regardless of the launch cwd — otherwise resolution
 	// (incl. the sass importer) drifts when started from the workspace root vs the

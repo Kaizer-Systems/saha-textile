@@ -116,6 +116,8 @@ export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');
 /** Business documents as PDF (owner decision 2026-11-17: Chromium through Playwright). */
 export const DOCUMENT_RENDERER = Symbol('DocumentRendererPort');
+/** Read-only counts of the background queues, for the operations address (`/ops`). */
+export const QUEUE_STATS = Symbol('QueueStatsPort');
 /** Orders and checkout (brief approved 2026-11-20). */
 export const ADMIN_ORDER_REPOSITORY = Symbol('AdminOrderRepository');
 export const ORDER_PAYMENT_REPOSITORY = Symbol('OrderPaymentRepository');

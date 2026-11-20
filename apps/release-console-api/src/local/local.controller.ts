@@ -20,8 +20,13 @@ import {
 	type HelperStatus,
 	type Job,
 	type Logs,
+	type ClientBuildsView,
+	clientBuildsQuerySchema,
 	type MacSnapshot,
+	type NotFoundView,
+	notFoundQuerySchema,
 	type Series,
+	sitemapCheckSchema,
 	type ShopHealth,
 	confirmPinSchema,
 	localActionSchema,
@@ -97,6 +102,42 @@ export class LocalController {
 			query,
 		);
 		return this.requests.view(minutes);
+	}
+
+	/** Which client builds of the shop and admin called in the last hours (Client versions). */
+	@Get('client-builds')
+	clientBuilds(@Query() query: unknown): ClientBuildsView {
+		return this.requests.clientBuilds(parseBody(clientBuildsQuerySchema, query).hours);
+	}
+
+	/** The shop's "page not found" answers of the last hours, by path and referrer host (Search engines). */
+	@Get('not-found')
+	notFound(@Query() query: unknown): NotFoundView {
+		return this.requests.notFound(parseBody(notFoundQuerySchema, query).hours);
+	}
+
+	/**
+	 * Starts the Mac helper's sitemap check for one environment's site (Search engines, brief
+	 * 26gq3NbcbBESea6abRtsa3, screen 5): this computer's stack, or the environment's first domain on a
+	 * server. Read only and one page at a time, so it needs no PIN; one check runs at a time.
+	 */
+	@Post('seo/sitemap-check')
+	@HttpCode(202)
+	async sitemapCheck(@Body() body: unknown): Promise<Job> {
+		const { projectId, repositoryId, environment } = parseBody(sitemapCheckSchema, body);
+		const { repo } = this.projects.repository(projectId, repositoryId);
+		const env = repo.environments.find((e) => e.name === environment);
+		if (!env) throw new HelperError(`${repo.name} has no environment ${environment}.`, 404);
+		const domain = env.domains[0] ?? '';
+		if (env.cloudId !== null && !/^[a-z0-9.-]+$/i.test(domain))
+			throw new HelperError(`${repo.name} · ${env.label} has no domain to check.`, 409);
+		const job = await this.runner.call<Job>(
+			'POST',
+			'/run/sitemap-check',
+			env.cloudId === null ? { local: true } : { origin: `https://${domain}` },
+		);
+		this.store.audit(projectId, 'sitemap-check-started', `${repo.name} · ${env.label}`);
+		return job;
 	}
 
 	/**

@@ -42,6 +42,7 @@ import { provideLocaleRouting } from './core/i18n/locale-routing';
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { CatalogLocaleInterceptor } from './core/interceptors/catalog-locale.interceptor';
+import { ClientBuildInterceptor } from './core/interceptors/client-build.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
 import { provideAppUpdate } from './core/pwa/app-update';
@@ -84,6 +85,11 @@ export const appConfig: ApplicationConfig = {
 		{
 			provide: HTTP_INTERCEPTORS,
 			useClass: CatalogLocaleInterceptor,
+			multi: true,
+		},
+		{
+			provide: HTTP_INTERCEPTORS,
+			useClass: ClientBuildInterceptor,
 			multi: true,
 		},
 		{

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Req } from '@nestjs/common';
 import {
 	type ServerDeployView,
+	BRANCH_PICKED_TARGETS,
 	type ServerTarget,
 	type VendorAnswer,
 	reviewServerDeploySchema,
@@ -48,7 +49,7 @@ export class ServerDeployController {
 		const target: ServerTarget | null = serverTargetOf(e.name);
 		if (!target)
 			throw new NotReady(
-				`${e.label} runs on a server without a deploy target yet. A development server needs its own Infisical deploy identity, a "development" GitHub environment and the API's own deploy setting first.`,
+				`${e.label} runs on a server, but its name says neither development, staging nor production, so deploy.yml has no GitHub environment for it.`,
 			);
 		const ref = project.keys.find((k) => k.id === repo.sourceCode.keyId);
 		const key = ref ? await this.projects.valueOf(ref) : null;
@@ -94,16 +95,28 @@ export class ServerDeployController {
 		@Param('env') env: string,
 		@Body() body: unknown,
 	): Promise<{ ok: true }> {
-		const { pin } = parseBody(startServerDeploySchema, body);
+		const { pin, allowBlank, confirm, branch } = parseBody(startServerDeploySchema, body);
 		const c = await this.ready(p, r, env);
+		if (c.target === 'production' && allowBlank.length && confirm !== 'production')
+			throw new NotReady('Type production to deploy production with blank values.');
+		// Staging and production run their own branch; only a development server takes one per run.
+		if (branch && !BRANCH_PICKED_TARGETS.includes(c.target))
+			throw new NotReady(`${c.env.label} deploys its own branch; change it in Project settings › Repositories.`);
 		this.lock.confirm(sessionOf(req), pin, `deploy ${c.env.name}`);
 		await this.vendor(() =>
-			startServerDeploy(c.repo.sourceCode.repository, c.target, c.key, undefined, c.env.branch || undefined),
+			startServerDeploy(
+				c.repo.sourceCode.repository,
+				c.target,
+				c.key,
+				undefined,
+				branch || c.env.branch || undefined,
+				allowBlank,
+			),
 		);
 		this.store.audit(
 			c.project.id,
 			'server-deploy-started',
-			`${c.repo.name} · ${c.env.label} → GitHub environment ${c.target}`,
+			`${c.repo.name} · ${c.env.label} → GitHub environment ${c.target}${allowBlank.length ? ` · allowed blank: ${allowBlank.join(', ')}` : ''}`,
 		);
 		return { ok: true };
 	}

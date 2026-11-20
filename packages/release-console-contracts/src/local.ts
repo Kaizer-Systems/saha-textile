@@ -74,7 +74,7 @@ export type JobLine = z.infer<typeof jobLineSchema>;
 
 export const jobSchema = z.object({
 	id: z.string(),
-	kind: z.enum(['stack', 'pipeline', 'github']),
+	kind: z.enum(['stack', 'pipeline', 'github', 'seo']),
 	label: z.string(),
 	status: z.enum(['running', 'stopping', 'passed', 'failed', 'stopped']),
 	startedAt: z.string(),
@@ -232,7 +232,7 @@ export const secretsViewSchema = z.object({
 	 * expected, so nothing is marked missing and nothing takes a new value.
 	 */
 	tier: secretTierSchema.nullable(),
-	/** The Infisical project and environment read, for example `saha-textile-dev` and `dev`. */
+	/** The Infisical project and environment read, for example `saha-textile-local` and `dev`. */
 	project: z.string(),
 	environment: z.string(),
 	/** The place's folder: `/` for the whole environment. */
@@ -250,6 +250,10 @@ export const secretsViewSchema = z.object({
 					optional: z.boolean(),
 					/** Listed by the inventory for this folder, so it can take a new value. */
 					writable: z.boolean(),
+					/** A release stops on it while blank (docker/production/required-secrets.txt); /api only. */
+					requiredForRelease: z.boolean().default(false),
+					/** Tagged `may-deploy-blank`: a server deploy may leave it blank when asked. */
+					mayDeployBlank: z.boolean().default(false),
 					state: secretStateSchema,
 				}),
 			),

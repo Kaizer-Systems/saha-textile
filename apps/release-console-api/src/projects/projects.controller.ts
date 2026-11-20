@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import { NotFoundException, Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import {
 	type AttentionCount,
 	type AttentionItem,
@@ -16,6 +16,9 @@ import {
 	type RepositoryFileFound,
 	repositoryFileQuerySchema,
 	type Branches,
+	type DomainsView,
+	type SecurityView,
+	type ReleasesView,
 	branchesQuerySchema,
 	repositorySchema,
 	slotKeysSchema,
@@ -169,6 +172,37 @@ export class ProjectsController {
 		@Param('slot') slot: string,
 	): Promise<VendorAnswer<CloudAccount>> {
 		return this.reads.cloudAccount(p, r, slot);
+	}
+
+	@Get('projects/:p/repos/:r/releases')
+	releases(@Param('p') p: string, @Param('r') r: string): Promise<VendorAnswer<ReleasesView>> {
+		return this.reads.releases(p, r);
+	}
+
+	@Get('projects/:p/repos/:r/security')
+	security(@Param('p') p: string, @Param('r') r: string): Promise<VendorAnswer<SecurityView>> {
+		return this.reads.security(p, r);
+	}
+
+	/** One environment's shop operations (Jobs and queues, Messages) from its API's `/ops`. */
+	@Get('projects/:p/repos/:r/ops/:env/:kind')
+	ops(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('env') env: string,
+		@Param('kind') kind: string,
+	): Promise<VendorAnswer<unknown>> {
+		if (kind !== 'jobs' && kind !== 'messages') throw new NotFoundException();
+		return this.reads.ops(p, r, env, kind);
+	}
+
+	@Get('projects/:p/repos/:r/edge/:slot/certificates')
+	certificates(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+	): Promise<VendorAnswer<DomainsView>> {
+		return this.reads.domains(p, r, slot);
 	}
 
 	@Get('projects/:p/repos/:r/edge/:slot/zones')

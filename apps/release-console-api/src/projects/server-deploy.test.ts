@@ -47,10 +47,10 @@ describe('server deploys from the console', () => {
 			state: 'not-connected',
 			message: expect.stringMatching(/runs on this computer/),
 		});
-		expect(await c.view('saha-textile', 'saha-textile', 'dev-server')).toMatchObject({
-			state: 'not-connected',
-			message: expect.stringMatching(/development server needs its own Infisical deploy identity/),
-		});
+		// A development server now deploys too (owner, 21 Nov): GitHub environment development.
+		vi.mocked(deploys.serverDeployView).mockResolvedValueOnce({ environment: 'dev-server' } as never);
+		expect(await c.view('saha-textile', 'saha-textile', 'dev-server')).toMatchObject({ state: 'ok' });
+		expect(vi.mocked(deploys.serverDeployView).mock.calls.at(-1)?.[2]).toBe('development');
 		vi.mocked(deploys.serverDeployView).mockResolvedValueOnce({ environment: 'staging' } as never);
 		expect(await c.view('saha-textile', 'saha-textile', 'staging')).toMatchObject({ state: 'ok' });
 		// No branch chosen for Staging: the target's own branch (undefined here) applies.
@@ -78,6 +78,7 @@ describe('server deploys from the console', () => {
 			'github-key-not-real',
 			undefined,
 			undefined,
+			[],
 		);
 		expect(right.store.audit).toHaveBeenCalledWith(
 			'saha-textile',

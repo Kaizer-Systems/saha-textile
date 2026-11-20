@@ -158,6 +158,23 @@ export async function dockerNow() {
 }
 
 /** Container logs, newest last; only this project's containers (an unknown name throws at once). */
+/**
+ * nginx's error lines (the edge's stderr) print the full request line and referrer, which can carry
+ * a sign-in or reset token (Infisical chat, 21 Nov). The console keeps only the request's path
+ * without its query, and the referrer's host, before any line leaves the helper.
+ */
+export function maskLogLine(line) {
+	return (
+		line
+			// A payment link's token, anywhere in an address, plain or URL-encoded (Infisical chat, 21 Nov).
+			.replace(/\/pay\/[^/?&#"\s]+/gi, '/pay/{{token}}')
+			.replace(/%2Fpay%2F[^&#"\s%]+/gi, '%2Fpay%2F{{token}}')
+			.replace(/(request: "[A-Z]+ [^"?\s]*)\?[^"\s]*/g, '$1')
+			.replace(/(upstream: "[^"?]*)\?[^"]*"/g, '$1"')
+			.replace(/referrer: "([a-z][a-z0-9+.-]*:\/\/)?(?:[^@"/]*@)?([^/:"?#]*)[^"]*"/gi, 'referrer: "$2"')
+	);
+}
+
 export function containerLogs(container, { tail = 300, since = '' } = {}) {
 	if (!/^saha-textile[a-z0-9_.-]*$/.test(container))
 		throw Object.assign(new Error('Unknown container.'), { status: 400 });
@@ -167,7 +184,10 @@ export function containerLogs(container, { tail = 300, since = '' } = {}) {
 	args.push(container);
 	return new Promise((resolve) => {
 		execFile('docker', args, { encoding: 'utf8', timeout: 20_000, maxBuffer: 32 * 1024 * 1024 }, (_e, out, err) =>
-			resolve({ container, lines: `${out ?? ''}${err ?? ''}`.split('\n').filter(Boolean).slice(-n) }),
+			resolve({
+				container,
+				lines: `${out ?? ''}${err ?? ''}`.split('\n').filter(Boolean).slice(-n).map(maskLogLine),
+			}),
 		);
 	});
 }
@@ -259,6 +279,49 @@ export async function devServers() {
 	return Object.fromEntries(
 		Object.entries(DEV_PORTS).map(([name, port]) => [name, new RegExp(`:${port} \\(LISTEN\\)`).test(out)]),
 	);
+}
+
+/**
+ * Reads this computer's stack API's operations address (`/ops/jobs` or `/ops/messages`) with the key
+ * the console API hands over for this one call (brief 26gq3NbcbBESea6abRtsa3, Q1 A). Local only, so the
+ * stack's own certificate is accepted; the key is never logged or kept.
+ */
+export async function localOps(body, root = ROOT) {
+	const kind = String(body.kind ?? '');
+	const token = String(body.token ?? '');
+	const hours = Math.min(Math.max(Number(body.hours) || 24, 1), 168);
+	if (kind !== 'jobs' && kind !== 'messages')
+		throw Object.assign(new Error('Unknown operations read.'), { status: 400 });
+	if (!/^[a-f0-9]{64}$/.test(token)) throw Object.assign(new Error('No operations key.'), { status: 400 });
+	const file = join(root, 'docker/stack/env/stack.env');
+	const port = /STACK_HTTPS_PORT=(\d+)/.exec(existsSync(file) ? readFileSync(file, 'utf8') : '')?.[1] ?? '443';
+	const url = `https://api-local.saha-textile.localhost:${port}/ops/${kind}${kind === 'messages' ? `?hours=${hours}` : ''}`;
+	return new Promise((resolve, reject) => {
+		const req = httpsRequest(
+			url,
+			{ rejectUnauthorized: false, timeout: 8000, headers: { authorization: `Bearer ${token}` } },
+			(res) => {
+				let text = '';
+				res.on('data', (d) => (text += d));
+				res.on('end', () => {
+					if (res.statusCode !== 200)
+						return reject(
+							Object.assign(new Error(`The stack's API answered ${res.statusCode} to /ops/${kind}.`), {
+								status: 502,
+							}),
+						);
+					try {
+						resolve(JSON.parse(text));
+					} catch {
+						reject(Object.assign(new Error('The stack’s API did not answer JSON.'), { status: 502 }));
+					}
+				});
+			},
+		);
+		req.on('timeout', () => req.destroy(new Error('timeout')));
+		req.on('error', () => reject(Object.assign(new Error('The stack’s API is not answering.'), { status: 502 })));
+		req.end();
+	});
 }
 
 /** GET a local https health address that uses the mkcert certificate; answers `null` when it cannot. */
@@ -505,6 +568,21 @@ export function commandFor(action, body = {}, busy = []) {
 				['scripts/release-console/github-login.mjs', '--repository', repository, '--mode', mode],
 			];
 		}
+		case 'sitemap-check': {
+			// Search engines (brief 26gq3NbcbBESea6abRtsa3, screen 5): one polite crawl at a time, read only.
+			const path = body.path === undefined ? '/sitemap.xml' : String(body.path);
+			if (!/^\/[A-Za-z0-9._\-/]*\.xml$/.test(path))
+				throw Object.assign(new Error('The sitemap path must be like /sitemap.xml.'), { status: 400 });
+			const site = body.local === true ? ['--local'] : ['--origin', String(body.origin ?? '')];
+			if (body.local !== true && !/^https:\/\/[a-z0-9.-]+(:\d{1,5})?$/i.test(site[1]))
+				throw Object.assign(new Error('Give the site as https://host.'), { status: 400 });
+			return [
+				'seo',
+				`Check the sitemap of ${body.local === true ? 'this computer' : site[1]}`,
+				process.execPath,
+				['scripts/release-console/sitemap-check.mjs', ...site, '--path', path],
+			];
+		}
 		case 'pipeline': {
 			const args = ['scripts/pipeline/local.mjs', '--json'];
 			const { from, only, branch } = body;
@@ -638,6 +716,11 @@ export function createRunner(token) {
 				if (!place) return send(400, { message: 'That is not a place in Infisical.' });
 				const key = `${placeKey(place)}${place.folder}${url.searchParams.get('fresh') ? `:${Date.now()}` : ''}`;
 				return send(200, await shared(key, 60_000, () => secretNames(place)));
+			}
+			if (req.method === 'POST' && path === '/ops') {
+				let raw = '';
+				for await (const chunk of req) raw += chunk;
+				return send(200, await localOps(raw ? JSON.parse(raw) : {}));
 			}
 			if (req.method === 'GET' && path === '/shop-health')
 				return send(200, await shared('shop-health', 2000, shopHealth));

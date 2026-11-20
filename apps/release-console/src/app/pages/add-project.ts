@@ -65,7 +65,7 @@ export const SECRETS_NOTES: Record<SecretsVendor, string> = {
 export const needsAddress = (v: SecretsVendor): boolean => v === 'infisical-self-hosted' || v === 'vault';
 /** What each manager's "where inside it" box takes, as its placeholder. Infisical's is checked; the rest come with their screens. */
 export const PLACE_HINTS: Record<SecretsVendor, string> = {
-	infisical: 'project/environment, e.g. saha-textile-dev/Development',
+	infisical: 'project/environment, e.g. saha-textile-local/Development',
 	'infisical-self-hosted': 'project/environment, e.g. shop-dev/Development',
 	'aws-secrets-manager': 'secret name or prefix, e.g. shop/prod/',
 	'gcp-secret-manager': 'project id/prefix, e.g. shop-prod/api-',
@@ -82,7 +82,7 @@ export function placeNote(vendor: SecretsVendor, text: string): string {
 	if (!isInfisical(vendor)) return 'Its screens come later; the console keeps this place for them.';
 	const place = parseSecretsPlace(text);
 	if (!place)
-		return 'Whole environment: saha-textile-dev/Development (or its short name, saha-textile-dev/dev). One folder: saha-textile-dev/Development/api.';
+		return 'Whole environment: saha-textile-local/Development (or its short name, saha-textile-local/dev). One folder: saha-textile-local/Development/api.';
 	const typed = text.split(/[/·|]/)[1]?.trim() ?? '';
 	const env =
 		typed.toLowerCase() === place.environment ? place.environment : `${typed} (short name ${place.environment})`;
@@ -91,7 +91,7 @@ export function placeNote(vendor: SecretsVendor, text: string): string {
 	}. Saved as ${formatSecretsPlace(place)}.`;
 }
 
-/** The place as saved: an Infisical place in its short form (`saha-textile-dev/dev`), anything else as typed. */
+/** The place as saved: an Infisical place in its short form (`saha-textile-local/dev`), anything else as typed. */
 export function savedPlace(vendor: SecretsVendor | null, text: string): string {
 	if (!vendor) return '';
 	const place = isInfisical(vendor) ? parseSecretsPlace(text) : null;
@@ -1433,8 +1433,13 @@ export class AddProject {
 			else if (!a.data.found) set(`no .release-console.json ${on}; tick them on Project menus`);
 			else {
 				const menus = a.data.menus.filter((m) => !!CONSOLE_MENU.screens[m]);
+				// Version 2 tells more than menus (brief 26gq3NbcbBESea6abRtsa3): its parts, and lines it could not use.
+				const parts = a.data.manifest?.parts.length ?? 0;
+				const skipped = a.data.problems.length;
 				set(
-					`from .release-console.json ${on}: ${menus.map((m) => this.menuLabel(m)).join(', ') || 'none'}`,
+					`from .release-console.json ${on}: ${menus.map((m) => this.menuLabel(m)).join(', ') || 'none'}` +
+						(parts ? ` · ${parts} parts described` : '') +
+						(skipped ? ` · ${skipped} line(s) not used: ${a.data.problems.join(' ')}` : ''),
 					menus,
 				);
 			}

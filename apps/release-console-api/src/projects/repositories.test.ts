@@ -72,7 +72,7 @@ describe('editing repositories after a project is added', () => {
 	});
 
 	it('reads only GitHub repository files before a project exists', async () => {
-		const reads = new VendorReadsService(projects);
+		const reads = new VendorReadsService(projects, new KeySourceService());
 		expect(await reads.repositoryFile({ vendor: 'gitlab', repository: 'acme/shop-web' })).toMatchObject({
 			state: 'not-connected',
 		});

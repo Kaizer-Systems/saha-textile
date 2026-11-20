@@ -7,7 +7,7 @@ import type { Repository, SecretsVendor } from './projects.js';
  * means the whole environment (`/`). The older `project · environment · /folder` still reads.
  */
 export interface SecretsPlace {
-	/** The Infisical project's name (or slug), e.g. `saha-textile-dev`. */
+	/** The Infisical project's name (or slug), e.g. `saha-textile-local`. */
 	project: string;
 	/** The environment's slug inside that project, e.g. `dev`, `staging`, `prod`. */
 	environment: string;
@@ -15,7 +15,7 @@ export interface SecretsPlace {
 	folder: string;
 }
 
-export const SECRETS_PLACE_HINT = 'project/environment, e.g. saha-textile-dev/dev';
+export const SECRETS_PLACE_HINT = 'project/environment, e.g. saha-textile-local/dev';
 
 /**
  * Infisical's three default environments by their names (owner, 20 Nov: the dashboard shows

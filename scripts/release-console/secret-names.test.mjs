@@ -35,6 +35,8 @@ test('reads only the asked tier’s project and folders, as set, empty or missin
 			devOnly: false,
 			optional: false,
 			writable: false,
+			requiredForRelease: false,
+			mayDeployBlank: false,
 			state: 'empty',
 		},
 	);
@@ -130,4 +132,26 @@ test('folders inside a place, and arguments that are refused', () => {
 		['--project', 'p', '--environment', 'dev', '--folder', 'api'],
 	])
 		assert.throws(() => placeFromArgs(bad), /Give a place/);
+});
+
+test('marks /api names a release needs, and the ones a server deploy may leave blank', () => {
+	const tagged = {
+		...inventory,
+		requiredForRelease: ['MSG91_AUTH_KEY', 'PORT'],
+		mayDeployBlank: new Set(['MSG91_AUTH_KEY']),
+	};
+	const view = tierSecrets(tagged, 'staging', ({ folder }) =>
+		folder === 'api'
+			? [
+					{ name: 'MSG91_AUTH_KEY', empty: true },
+					{ name: 'PORT', empty: false },
+				]
+			: [],
+	);
+	const api = view.folders.find((f) => f.folder === 'api');
+	const row = (n) => api.rows.find((r) => r.name === n);
+	assert.deepEqual([row('MSG91_AUTH_KEY').requiredForRelease, row('MSG91_AUTH_KEY').mayDeployBlank], [true, true]);
+	assert.deepEqual([row('PORT').requiredForRelease, row('PORT').mayDeployBlank], [true, false]);
+	for (const f of view.folders.filter((x) => x.folder !== 'api'))
+		for (const r of f.rows) assert.equal(r.requiredForRelease || r.mayDeployBlank, false);
 });

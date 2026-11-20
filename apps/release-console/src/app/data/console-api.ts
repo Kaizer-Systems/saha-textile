@@ -82,10 +82,25 @@ import {
 	readinessSchema,
 	repositoryFileAnswerSchema,
 	branchesSchema,
+	domainsAnswerSchema,
+	securityAnswerSchema,
+	releasesAnswerSchema,
+	type ReleasesView,
+	type SecurityView,
+	type DomainsView,
 	type Branches,
 	servicesSnapshotSchema,
 	unlockAnswerSchema,
 	workflowRunsAnswerSchema,
+	type NotFoundView,
+	notFoundViewSchema,
+	type SitemapCheck,
+	type ClientBuildsView,
+	clientBuildsViewSchema,
+	type OpsJobsView,
+	opsJobsAnswerSchema,
+	type OpsMessagesView,
+	opsMessagesAnswerSchema,
 } from '@saha-textile/release-console-contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
@@ -259,6 +274,24 @@ export class ConsoleApi {
 	cloudAccount(p: string, r: string, slot: string): Promise<VendorAnswer<CloudAccount>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/account`, cloudAccountAnswerSchema);
 	}
+	/** Releases: what each environment's branch has that the next one's lacks. */
+	releases(p: string, r: string): Promise<VendorAnswer<ReleasesView>> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/releases`, releasesAnswerSchema, undefined, 60_000);
+	}
+	/** Dependencies and security: GitHub's open Dependabot and code-scanning alerts. */
+	security(p: string, r: string): Promise<VendorAnswer<SecurityView>> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/security`, securityAnswerSchema, undefined, 60_000);
+	}
+	/** Certificates and domains: the edge slot's certificates and a handshake with each server domain. */
+	certificates(p: string, r: string, slot: string): Promise<VendorAnswer<DomainsView>> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/edge/${slot}/certificates`,
+			domainsAnswerSchema,
+			undefined,
+			60_000,
+		);
+	}
 	zones(p: string, r: string, slot: string): Promise<VendorAnswer<EdgeZone[]>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/edge/${slot}/zones`, edgeZonesAnswerSchema);
 	}
@@ -297,6 +330,38 @@ export class ConsoleApi {
 			seriesListSchema,
 		);
 	}
+	/** One environment's background queues, from the shop API's read-only `/ops` (Job queues). */
+	opsJobs(p: string, r: string, env: string): Promise<VendorAnswer<OpsJobsView>> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/ops/${env}/jobs`,
+			opsJobsAnswerSchema,
+			undefined,
+			30_000,
+		);
+	}
+	/** One environment's sent messages of the last 24 hours, from `/ops` (Messages). */
+	opsMessages(p: string, r: string, env: string): Promise<VendorAnswer<OpsMessagesView>> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/ops/${env}/messages`,
+			opsMessagesAnswerSchema,
+			undefined,
+			30_000,
+		);
+	}
+	/** Which client builds of the shop and admin called in the last hours (Client versions). */
+	clientBuilds(hours: number): Promise<ClientBuildsView> {
+		return this.call('GET', `/api/local/client-builds?hours=${hours}`, clientBuildsViewSchema);
+	}
+	/** The shop's "page not found" answers of the last hours, by path (Search engines). */
+	notFound(hours: number): Promise<NotFoundView> {
+		return this.call('GET', `/api/local/not-found?hours=${hours}`, notFoundViewSchema);
+	}
+	/** Starts the Mac helper's sitemap check for one environment's site; read only, no PIN. */
+	sitemapCheck(where: SitemapCheck): Promise<Job> {
+		return this.call('POST', '/api/local/seo/sitemap-check', jobSchema, where);
+	}
 	requests(minutes: number): Promise<RequestsView> {
 		return this.call('GET', `/api/local/requests?minutes=${minutes}`, requestsViewSchema);
 	}
@@ -311,12 +376,20 @@ export class ConsoleApi {
 		) as Promise<VendorAnswer<ServerDeployView>>;
 	}
 	/** Starts deploy.yml for a server environment after the PIN. */
-	startServerDeploy(projectId: string, repoId: string, environment: string, pin: string): Promise<unknown> {
+	startServerDeploy(
+		projectId: string,
+		repoId: string,
+		environment: string,
+		pin: string,
+		allowBlank: string[] = [],
+		confirm?: string,
+		branch?: string,
+	): Promise<unknown> {
 		return this.call(
 			'POST',
 			`/api/projects/${projectId}/repos/${repoId}/server-deploy/${environment}`,
 			okAnswerSchema,
-			{ pin },
+			{ pin, allowBlank, ...(confirm ? { confirm } : {}), ...(branch ? { branch } : {}) },
 			60_000,
 		);
 	}

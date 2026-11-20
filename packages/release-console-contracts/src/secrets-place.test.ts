@@ -22,13 +22,13 @@ const repo = repositorySchema.parse({
 
 describe('secrets places', () => {
 	it('reads project/environment and an optional folder, typed with slashes', () => {
-		expect(parseSecretsPlace('saha-textile-dev/dev')).toEqual({
-			project: 'saha-textile-dev',
+		expect(parseSecretsPlace('saha-textile-local/dev')).toEqual({
+			project: 'saha-textile-local',
 			environment: 'dev',
 			folder: '/',
 		});
-		expect(parseSecretsPlace(' saha-textile-dev / dev / api / payments / ')).toEqual({
-			project: 'saha-textile-dev',
+		expect(parseSecretsPlace(' saha-textile-local / dev / api / payments / ')).toEqual({
+			project: 'saha-textile-local',
 			environment: 'dev',
 			folder: '/api/payments',
 		});
@@ -36,7 +36,7 @@ describe('secrets places', () => {
 	});
 
 	it('takes Infisical’s environment names as well as their short names', () => {
-		expect(parseSecretsPlace('saha-textile-dev/Development')?.environment).toBe('dev');
+		expect(parseSecretsPlace('saha-textile-local/Development')?.environment).toBe('dev');
 		expect(parseSecretsPlace('saha-textile-staging/Staging')?.environment).toBe('staging');
 		expect(parseSecretsPlace('saha-textile-production/Production/api')).toEqual({
 			project: 'saha-textile-production',
@@ -47,8 +47,8 @@ describe('secrets places', () => {
 	});
 
 	it('still reads the older dotted form', () => {
-		expect(parseSecretsPlace('saha-textile-dev · dev · /api')).toEqual({
-			project: 'saha-textile-dev',
+		expect(parseSecretsPlace('saha-textile-local · dev · /api')).toEqual({
+			project: 'saha-textile-local',
 			environment: 'dev',
 			folder: '/api',
 		});
@@ -80,7 +80,7 @@ describe('secrets places', () => {
 	it('writes a place back the way it is typed', () => {
 		expect(formatSecretsPlace({ project: 'p', environment: 'dev', folder: '/' })).toBe('p/dev');
 		expect(formatSecretsPlace({ project: 'p', environment: 'dev', folder: '/api/x' })).toBe('p/dev/api/x');
-		const place = { project: 'saha-textile-dev', environment: 'dev', folder: '/api' };
+		const place = { project: 'saha-textile-local', environment: 'dev', folder: '/api' };
 		expect(parseSecretsPlace(formatSecretsPlace(place))).toEqual(place);
 	});
 

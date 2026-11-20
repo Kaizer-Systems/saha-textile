@@ -305,7 +305,7 @@ export function newRepository(
 												<input
 													type="text"
 													autocomplete="off"
-													placeholder="project/environment, e.g. saha-textile-dev/dev"
+													placeholder="project/environment, e.g. saha-textile-local/dev"
 													[value]="e.secretsPath"
 													[disabled]="e.secretsId === null"
 													(change)="

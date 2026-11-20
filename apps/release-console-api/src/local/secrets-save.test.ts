@@ -12,7 +12,7 @@ const repo = repositorySchema.parse({
 	name: 'saha-textile',
 	sourceCode: { vendor: 'github', repository: 'Kaizer-Systems/saha-textile' },
 	environments: [
-		{ name: 'local', label: 'Local', secretsId: 'infisical', secretsPath: 'saha-textile-dev · dev' },
+		{ name: 'local', label: 'Local', secretsId: 'infisical', secretsPath: 'saha-textile-local · dev' },
 		{
 			name: 'staging',
 			label: 'Staging',
@@ -74,7 +74,7 @@ describe('reading an environment’s Secrets', () => {
 		await c.secrets({ projectId: 'saha-textile', repositoryId: 'saha-textile', environment: 'local', fresh: '1' });
 		expect(runner.call).toHaveBeenCalledWith(
 			'GET',
-			'/secrets?project=saha-textile-dev&environment=dev&folder=%2F&fresh=1',
+			'/secrets?project=saha-textile-local&environment=dev&folder=%2F&fresh=1',
 			undefined,
 			190_000,
 		);

@@ -153,7 +153,7 @@ describe('projects and key links', () => {
 
 	it('answers not connected until a slot has a key, then reads with it', async () => {
 		writeKeys(['CONSOLE_DO_READ_TOKEN=test-value-3']);
-		const reads = new VendorReadsService(projects);
+		const reads = new VendorReadsService(projects, new KeySourceService());
 		expect((await reads.droplets('saha-textile', 'saha-textile', 'digitalocean')).state).toBe('not-connected');
 		const fetch = vi.fn(async (url: string) =>
 			url.endsWith('/account')
@@ -216,7 +216,7 @@ describe('projects and key links', () => {
 			slotId: 'cloudflare',
 			keyIds: ['cf-read'],
 		});
-		const reads = new VendorReadsService(projects);
+		const reads = new VendorReadsService(projects, new KeySourceService());
 		expect(await reads.records('saha-textile', 'saha-textile', 'cloudflare', 'example.com')).toMatchObject({
 			state: 'error',
 		});
@@ -268,7 +268,13 @@ describe('projects and key links', () => {
 		expect(d).toMatchObject({
 			present: true,
 			names: ['CONSOLE_DO_READ_TOKEN'],
-			optionalBlank: ['CONSOLE_CF_WRITE_TOKEN', 'CONSOLE_DO_WRITE_TOKEN'],
+			optionalBlank: [
+				'CONSOLE_CF_WRITE_TOKEN',
+				'CONSOLE_DO_WRITE_TOKEN',
+				'CONSOLE_OPS_TOKEN_DEV',
+				'CONSOLE_OPS_TOKEN_PRODUCTION',
+				'CONSOLE_OPS_TOKEN_STAGING',
+			],
 		});
 		expect(d.missing).toContain('CONSOLE_GITHUB_TOKEN');
 		expect(JSON.stringify(d)).not.toContain('test-value-6');

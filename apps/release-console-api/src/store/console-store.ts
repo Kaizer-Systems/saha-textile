@@ -25,6 +25,10 @@ const MIGRATIONS = [
 	 CREATE INDEX alerts_open ON alerts (resolved_at, rule, subject);`,
 	`CREATE TABLE requests (minute INTEGER NOT NULL, service TEXT NOT NULL, method TEXT NOT NULL, route TEXT NOT NULL, count INTEGER NOT NULL, e5 INTEGER NOT NULL, e4 INTEGER NOT NULL, buckets TEXT NOT NULL);
 	 CREATE INDEX requests_minute ON requests (minute);`,
+	`CREATE TABLE not_found (minute INTEGER NOT NULL, route TEXT NOT NULL, referrer TEXT NOT NULL, count INTEGER NOT NULL);
+	 CREATE INDEX not_found_minute ON not_found (minute);`,
+	`CREATE TABLE client_builds (minute INTEGER NOT NULL, service TEXT NOT NULL, build TEXT NOT NULL, installed INTEGER NOT NULL, count INTEGER NOT NULL);
+	 CREATE INDEX client_builds_minute ON client_builds (minute);`,
 ];
 
 /**

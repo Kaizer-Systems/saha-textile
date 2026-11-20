@@ -149,13 +149,14 @@ export async function startServerDeploy(
 	key: string,
 	http: GithubHttp = live,
 	chosen?: string,
+	allowBlank: readonly string[] = [],
 ): Promise<void> {
 	const branch = chosen || SERVER_TARGETS[target].branch;
 	const a = await http.send(
 		'POST',
 		`${API}/repos/${repository}/actions/workflows/${DEPLOY_WORKFLOW}/dispatches`,
 		key,
-		{ ref: branch, inputs: { environment: target } },
+		{ ref: branch, inputs: { environment: target, allow_blank: [...new Set(allowBlank)].join(',') } },
 		GH,
 	);
 	if (a.status === 404)

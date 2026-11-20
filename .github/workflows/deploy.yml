@@ -2,8 +2,9 @@ name: Deploy
 
 # Deploys one commit to its server (production-deployment-plan.mdx §3, §4 and §7; build step 3).
 # Started by hand or by the Release Console (Ship › Live deploy, with the owner's PIN), on the branch
-# the target environment allows: `staging` for staging, `main` for production. Each GitHub
-# environment holds a required reviewer, so the deploy job waits for the owner's approval.
+# the target environment allows: `staging` for staging, `main` for production, and any branch for
+# development (a development server tries branches; its GitHub environment allows every branch).
+# Each GitHub environment holds a required reviewer, so the deploy job waits for the owner's approval.
 #
 #   images   are this commit's images in GHCR? (found by the code fingerprint, the tree tag)
 #   publish  if not: CI, the production proof and the GHCR images (publish-images.yml). Never for
@@ -30,8 +31,16 @@ on:
       environment:
         description: Where to deploy
         type: choice
-        options: [staging, production]
+        options: [staging, production, development]
         required: true
+      allow_blank:
+        description: >-
+          Required /api values this deploy may run without, comma-separated names (Release Console,
+          screen 12). Only names tagged may-deploy-blank in docker/production/required-secrets.txt;
+          each becomes --allow-blank NAME for the release step.
+        type: string
+        default: ''
+        required: false
 
 concurrency:
   group: deploy-${{ inputs.environment }}
@@ -121,6 +130,9 @@ jobs:
       packages: read
     env:
       TIER: ${{ inputs.environment }}
+      ALLOW_BLANK: ${{ inputs.allow_blank }}
+      # Kept in step with NEVER_BLANK_PATTERN in packages/release-console-contracts (a test checks it).
+      NEVER_BLANK: '^(MONGODB_|REDIS_|MEILISEARCH_)|^(NODE_ENV|DEPLOY_ENV|PORT|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|CSRF_SECRET|COOKIE_SECURE|CORS_ALLOWED_ORIGINS|TRUST_PROXY)$'
       RELEASE_DIR: ${{ runner.temp }}/release
       SSH_DIR: ${{ runner.temp }}/ssh
     steps:
@@ -147,6 +159,17 @@ jobs:
             [ -n "${!name}" ] || missing="$missing $name"
           done
           [ -z "$missing" ] || { echo "FAILED: this environment is missing:$missing (docker/production/README.md, A new server)." >&2; exit 1; }
+          # Values allowed blank: names only, each tagged may-deploy-blank in required-secrets.txt (the release step
+          # checks the same list again, and that the Spaces keys come together).
+          IFS=',' read -r -a requested <<<"$ALLOW_BLANK"
+          for name in "${requested[@]}"; do
+            [ -n "$name" ] || continue
+            [[ "$name" =~ ^[A-Z][A-Z0-9_]{1,63}$ ]] || { echo "FAILED: allow_blank holds something that is not a variable name." >&2; exit 1; }
+            if [[ "$name" =~ $NEVER_BLANK ]]; then echo "FAILED: $name can never be deployed blank." >&2; exit 1; fi
+            awk -v n="$name" '!/^#/ && $1 == n { for (i = 2; i <= NF; i++) if ($i == "may-deploy-blank") found = 1 } END { exit !found }' \
+              docker/production/required-secrets.txt ||
+              { echo "FAILED: $name is not tagged may-deploy-blank in docker/production/required-secrets.txt." >&2; exit 1; }
+          done
 
       - name: Install the Infisical CLI
         run: bash scripts/deploy/install-infisical.sh
@@ -165,7 +188,11 @@ jobs:
           printf 'API_IMAGE=%s\nSTOREFRONT_IMAGE=%s\nADMIN_IMAGE=%s\nOPS_IMAGE=%s\n' \
             "$API_IMAGE" "$STOREFRONT_IMAGE" "$ADMIN_IMAGE" "$OPS_IMAGE" > "$RUNNER_TEMP/images.env"
           mkdir "$RELEASE_DIR"
-          node scripts/secrets/cli.mjs release "$TIER" --images "$RUNNER_TEMP/images.env" --out "$RELEASE_DIR" >/dev/null
+          # One --allow-blank NAME per allowed value (checked in the first step); the release records them.
+          flags=()
+          IFS=',' read -r -a requested <<<"$ALLOW_BLANK"
+          for name in "${requested[@]}"; do [ -z "$name" ] || flags+=(--allow-blank "$name"); done
+          node scripts/secrets/cli.mjs release "$TIER" --images "$RUNNER_TEMP/images.env" --out "$RELEASE_DIR" "${flags[@]}" >/dev/null
 
       - name: Check the release folder
         run: bash "$RELEASE_DIR/bin/deploy.sh" --check-only "$RELEASE_DIR" >/dev/null

@@ -2176,6 +2176,44 @@ mark {
 	color: var(--hud-muted);
 	font-size: 12.5px;
 }
+/* Multi-select: picked chips and the search text in one box, as screen 12 of brief
+   26gq3NbcbBESea6abRtsa3 draws it (approved 21 Nov); a row that cannot be picked stays grey. */
+.rc-msearch.multi {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	padding: 5px 6px;
+	background: rgba(5, 14, 26, 0.9);
+	border: 1px solid var(--hud-line);
+	border-radius: 6px;
+}
+.rc-msearch.multi:focus-within {
+	border-color: var(--hud-cyan);
+	box-shadow: 0 0 0 2px rgba(94, 214, 255, 0.2);
+}
+.rc-msearch.multi input,
+.rc-msearch.multi input:focus {
+	flex: 1;
+	min-width: 140px;
+	width: auto;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	padding: 3px 4px;
+}
+.rc-flag {
+	white-space: nowrap;
+}
+.rc-pill.wraps {
+	white-space: normal;
+}
+.rc-mrow.off,
+.rc-mrow.off:hover {
+	cursor: default;
+	background: transparent;
+	opacity: 0.6;
+}
 .rc-sub {
 	display: grid;
 	gap: 1px;

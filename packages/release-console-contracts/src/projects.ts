@@ -5,6 +5,8 @@
  */
 import { z } from 'zod';
 
+import { releaseManifestSchema } from './release-manifest.js';
+
 const slug = z
 	.string()
 	.min(1)
@@ -104,7 +106,7 @@ export const envNameSchema = z
 	.regex(/^[A-Z][A-Z0-9_]*$/, 'capitals, digits and underscores, starting with a letter');
 
 /** Where the console's keys live in Infisical (owner decision, 20 Nov 2026): one folder, dev project only. */
-export const CONSOLE_KEYS_FOLDER = 'saha-textile-dev · dev · /release-console';
+export const CONSOLE_KEYS_FOLDER = 'saha-textile-local · dev · /release-console';
 
 export interface KeyKindInfo {
 	label: string;
@@ -264,7 +266,7 @@ export const environmentSchema = z.object({
 	domains: z.array(z.string()).default([]),
 	/** Which of the repository's secrets managers it reads; `null` means no manager: env files written by hand. */
 	secretsId: slug.nullable().default(null),
-	/** Where its secrets sit inside that manager, e.g. `saha-textile-dev/dev/api`. */
+	/** Where its secrets sit inside that manager, e.g. `saha-textile-local/dev/api`. */
 	secretsPath: z.string().max(200).default(''),
 	/**
 	 * The branch its deploys run from (owner, 20 Nov); `''` means the repository's default branch.
@@ -476,6 +478,64 @@ export const cloudAccountSchema = z.object({
 });
 export type CloudAccount = z.infer<typeof cloudAccountSchema>;
 
+/** Releases (brief 26gq3NbcbBESea6abRtsa3, screen 6): what one environment's branch has that the next one lacks. */
+export const releaseCompareSchema = z.object({
+	from: z.string(),
+	to: z.string(),
+	fromBranch: z.string(),
+	toBranch: z.string(),
+	aheadBy: z.number().int(),
+	commits: z.array(z.object({ sha: z.string(), message: z.string(), author: z.string(), date: z.string() })),
+	files: z.number().int(),
+	migrations: z.boolean(),
+	secretNames: z.boolean(),
+	url: z.string(),
+	note: z.string(),
+});
+export const releasesViewSchema = z.object({ comparisons: z.array(releaseCompareSchema) });
+export type ReleasesView = z.infer<typeof releasesViewSchema>;
+export const releasesAnswerSchema = vendorAnswer(releasesViewSchema);
+
+/** Dependencies and security (brief 26gq3NbcbBESea6abRtsa3, screen 7): GitHub's open alerts. */
+export const securityAlertSchema = z.object({
+	kind: z.enum(['dependency', 'code']),
+	name: z.string(),
+	where: z.string(),
+	severity: z.string(),
+	fixedIn: z.string(),
+	url: z.string(),
+});
+export const securityViewSchema = z.object({
+	alerts: z.array(securityAlertSchema),
+	/** Why a list is missing (feature off, or the token lacks the permission). */
+	notes: z.array(z.string()),
+});
+export type SecurityView = z.infer<typeof securityViewSchema>;
+export const securityAnswerSchema = vendorAnswer(securityViewSchema);
+
+/** Certificates and domains (brief 26gq3NbcbBESea6abRtsa3, screen 9). */
+export const edgeCertificateSchema = z.object({
+	zone: z.string(),
+	hosts: z.array(z.string()),
+	status: z.string(),
+	issuer: z.string(),
+	expiresOn: z.string().nullable(),
+});
+export const hostCheckSchema = z.object({
+	host: z.string(),
+	environment: z.string(),
+	ok: z.boolean(),
+	issuer: z.string(),
+	expiresOn: z.string().nullable(),
+	error: z.string(),
+});
+export const domainsViewSchema = z.object({
+	certificates: z.array(edgeCertificateSchema),
+	hosts: z.array(hostCheckSchema),
+});
+export type DomainsView = z.infer<typeof domainsViewSchema>;
+export const domainsAnswerSchema = vendorAnswer(domainsViewSchema);
+
 export const edgeZoneSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -515,6 +575,9 @@ export const repositoryFileFoundSchema = z.object({
 	menus: z.array(z.string()),
 	/** The branch it was read from, when the answer knows it. */
 	ref: z.string().optional(),
+	/** The whole file read as manifest version 2 (version 1 lifted), and each line it could not use. */
+	manifest: releaseManifestSchema.nullable().optional(),
+	problems: z.array(z.string()).default([]),
 });
 
 /**

@@ -14,7 +14,17 @@ import {
 	parseTopCpu,
 	parseVmStat,
 } from './mac-stats.mjs';
-import { commandFor, containerLogs, createRunner, ensureToken, placeFrom, shared, tokenMatches } from './runner.mjs';
+import {
+	commandFor,
+	containerLogs,
+	createRunner,
+	ensureToken,
+	localOps,
+	maskLogLine,
+	placeFrom,
+	shared,
+	tokenMatches,
+} from './runner.mjs';
 
 const VM = `Mach Virtual Memory Statistics: (page size of 16384 bytes)
 Pages free:                                    22900.
@@ -75,6 +85,12 @@ en1 1500 <Link#10> 36:54:e5:3f:57:40 0 0 0 0 0 0 0`),
 
 test('starts only commands on its list, and never the checks stage under running dev servers', () => {
 	assert.throws(() => commandFor('rm-rf'), /Unknown action/);
+	const [kind, , , siteArgs] = commandFor('sitemap-check', { origin: 'https://staging.sahatextile.com' });
+	assert.equal(kind, 'seo');
+	assert.deepEqual(siteArgs.slice(1), ['--origin', 'https://staging.sahatextile.com', '--path', '/sitemap.xml']);
+	assert.deepEqual(commandFor('sitemap-check', { local: true })[3].slice(1, 2), ['--local']);
+	assert.throws(() => commandFor('sitemap-check', { origin: 'https://a.example; id' }), /https:\/\/host/);
+	assert.throws(() => commandFor('sitemap-check', { local: true, path: '../../etc/passwd' }), /sitemap path/);
 	assert.throws(() => commandFor('pipeline', { only: 'everything' }), /Unknown stage/);
 	assert.throws(() => commandFor('pipeline', { from: 'proof', only: 'deploy' }), /not both/);
 	const [, , cmd, args] = commandFor('pipeline', { only: 'deploy' });
@@ -162,4 +178,31 @@ test('the GitHub connection is the helper’s fixed script, on any operating sys
 	]);
 	assert.equal(commandFor('github-login', { repository: 'a/b', mode: 'another' })[3].at(-1), 'another');
 	assert.throws(() => commandFor('github-login', { repository: 'a/b; rm -rf /' }), /owner\/name/);
+});
+
+test('nginx error lines lose the request query and keep only the referrer host', () => {
+	const line =
+		'2026-11-21T01:00:00Z 2026/11/21 01:00:00 [error] 29#29: *1 connect() failed (111: Connection refused) while connecting to upstream, client: 172.18.0.1, server: local.saha-textile.localhost, request: "GET /account/reset?token=abc123&email=a@b.c HTTP/2.0", upstream: "http://172.18.0.5:4000/account/reset?token=abc123", host: "local.saha-textile.localhost:8443", referrer: "https://user:pw@local.saha-textile.localhost:8443/account/reset?token=abc123"';
+	const masked = maskLogLine(line);
+	assert.ok(masked.includes('request: "GET /account/reset HTTP/2.0"'));
+	assert.ok(masked.includes('referrer: "local.saha-textile.localhost"'));
+	assert.ok(!masked.includes('referrer: "https'));
+	assert.ok(!masked.includes('user:pw'));
+	assert.ok(!masked.includes('token='), 'no query reaches the console');
+	assert.ok(masked.includes('upstream: "http://172.18.0.5:4000/account/reset"'));
+	const json = '2026-11-21T01:00:00Z {"kind":"edge","uri":"/x","referer_host":"www.google.com"}';
+	assert.equal(maskLogLine(json), json, 'JSON request lines are left as they are');
+});
+
+test('the operations read takes only jobs or messages, with a 64-hex key', async () => {
+	await assert.rejects(localOps({ kind: 'users', token: 'a'.repeat(64) }), /Unknown operations read/);
+	await assert.rejects(localOps({ kind: 'jobs', token: 'short' }), /No operations key/);
+});
+
+test('a payment link token is masked anywhere in a line, plain or URL-encoded', () => {
+	const plain = maskLogLine('request: "GET /pay/abc123secret HTTP/2.0"');
+	assert.equal(plain, 'request: "GET /pay/{{token}} HTTP/2.0"');
+	const inside = maskLogLine('{"kind":"edge","uri":"/catalog/seo-route?path=%2Fpay%2Fabc123secret&x=1"}');
+	assert.ok(!inside.includes('abc123secret'));
+	assert.ok(inside.includes('%2Fpay%2F{{token}}&x=1'));
 });

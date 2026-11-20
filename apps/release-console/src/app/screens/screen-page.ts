@@ -5,10 +5,17 @@ import { VENDOR_NAMES } from '@saha-textile/release-console-contracts';
 
 import { AlertsScreen } from './alerts-screen';
 import { ApmScreen } from './apm-screen';
+import { ChangesScreen } from './changes-screen';
+import { ClientsScreen } from './clients-screen';
+import { CostsScreen } from './costs-screen';
+import { DepsScreen } from './deps-screen';
+import { DomainsScreen } from './domains-screen';
 import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } from './local-screens';
+import { JobsScreen, MessagesScreen } from './ops-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
 import { SecretsScreen } from './secrets-screen';
+import { SeoScreen } from './seo-screen';
 import { ServerDeployScreen } from './server-deploy-screen';
 import { ServicesScreen } from './services-screen';
 import {
@@ -44,12 +51,28 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 	doaccount: 'overview',
 	cfdomains: 'list',
 	dns: 'records',
+	costs: 'month',
+	domains: 'list',
+	deps: 'list',
+	changes: 'diff',
+	seo: 'health',
+	clients: 'versions',
+	queues: 'list',
+	messages: 'delivery',
 };
 
 /** One repository screen: its place in that repository's menu, its tabs and its body. */
 @Component({
 	selector: 'rc-screen-page',
 	imports: [
+		ClientsScreen,
+		CostsScreen,
+		JobsScreen,
+		MessagesScreen,
+		SeoScreen,
+		DomainsScreen,
+		DepsScreen,
+		ChangesScreen,
 		OverviewScreen,
 		ServicesScreen,
 		PlannedScreen,
@@ -157,6 +180,30 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 					}
 					@case ('pulls') {
 						<rc-pulls-screen />
+					}
+					@case ('queues') {
+						<rc-jobs-screen />
+					}
+					@case ('messages') {
+						<rc-messages-screen />
+					}
+					@case ('clients') {
+						<rc-clients-screen />
+					}
+					@case ('seo') {
+						<rc-seo-screen />
+					}
+					@case ('costs') {
+						<rc-costs-screen />
+					}
+					@case ('domains') {
+						<rc-domains-screen />
+					}
+					@case ('deps') {
+						<rc-deps-screen />
+					}
+					@case ('changes') {
+						<rc-changes-screen />
 					}
 					@case ('pipeline') {
 						<rc-pipelines-screen />

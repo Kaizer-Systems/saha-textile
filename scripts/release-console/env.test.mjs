@@ -11,7 +11,7 @@ const ROOT = join(import.meta.dirname, '../..');
 
 /** A temporary root, so the test writes nowhere real. */
 const tempRoot = () => mkdtempSync(join(tmpdir(), 'console-env-'));
-const project = { name: 'saha-textile-dev', environment: 'dev', projectId: 'test-project' };
+const project = { name: 'saha-textile-local', environment: 'dev', projectId: 'test-project' };
 
 test('lists the names the console API reads, and reports missing ones by name only', () => {
 	const built = buildConsoleEnv(
@@ -25,7 +25,13 @@ test('lists the names the console API reads, and reports missing ones by name on
 	assert.deepEqual(built.names, ['CONSOLE_DO_READ_TOKEN', 'CONSOLE_SENTRY_KEY']);
 	assert.ok(built.missing.includes('CONSOLE_GITHUB_TOKEN'));
 	assert.ok(!built.missing.includes('CONSOLE_CF_WRITE_TOKEN'));
-	assert.deepEqual(built.optionalBlank, ['CONSOLE_CF_WRITE_TOKEN', 'CONSOLE_DO_WRITE_TOKEN']);
+	assert.deepEqual(built.optionalBlank, [
+		'CONSOLE_CF_WRITE_TOKEN',
+		'CONSOLE_DO_WRITE_TOKEN',
+		'CONSOLE_OPS_TOKEN_DEV',
+		'CONSOLE_OPS_TOKEN_PRODUCTION',
+		'CONSOLE_OPS_TOKEN_STAGING',
+	]);
 	assert.deepEqual(built.extra, ['CONSOLE_SENTRY_KEY']);
 	assert.match(built.text, /^CONSOLE_DO_READ_TOKEN=test-value-1$/m);
 	assert.doesNotMatch(built.text, /CONSOLE_CF_WRITE_TOKEN/);

@@ -2,7 +2,6 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { VENDOR_NAMES, type Repository } from '@saha-textile/release-console-contracts';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 
 import { Connections } from './connections';
@@ -13,12 +12,16 @@ import { RepositoryEditor } from './repository-editor';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
+import { Icon, PROJECT_PAGE_ICONS, SETTINGS_TAB_ICONS, environmentIcon } from '../shared/icons';
+import { VendorLogo } from '../shared/vendor-logo';
 import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
+
+import type { Repository } from '@saha-textile/release-console-contracts';
 
 /** The project level: every repository at a glance, environments, Attention, Audit and settings. */
 @Component({
 	selector: 'rc-project-page',
-	imports: [PageHead, Connections, RepoCi, NgTemplateOutlet, RepositoryEditor],
+	imports: [PageHead, Connections, RepoCi, NgTemplateOutlet, RepositoryEditor, Icon, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (ctx.project(); as p) {
@@ -27,6 +30,8 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 				[title]="title()"
 				[tabs]="page() === 'settings' ? settingsTabs : []"
 				[tab]="settingsTab()"
+				[icon]="headIcon()"
+				[tabIcons]="settingsTabIcons"
 			/>
 			<div class="rc-content">
 				@switch (page()) {
@@ -39,7 +44,10 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 					@case ('attention') {
 						<div class="rc-panel">
 							<div class="rc-ph">
-								<span class="rc-label">What needs you in {{ p.name }}</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/bell-ringing" />
+									What needs you in {{ p.name }}
+								</span>
 							</div>
 							@if (attention.isPending()) {
 								<p class="rc-p muted">Checking keys and pipelines…</p>
@@ -70,7 +78,10 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 																a.kind === 'key-missing'
 															"
 														></span>
-														<b>{{ a.title }}</b>
+														<b>
+															<rc-icon [name]="attentionIcon(a.kind)" />
+															{{ a.title }}
+														</b>
 													</td>
 													<td>{{ a.repositoryId ?? 'project' }}</td>
 													<td>
@@ -100,7 +111,10 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 					@case ('audit') {
 						<div class="rc-panel">
 							<div class="rc-ph">
-								<span class="rc-label">{{ p.name }} · who did what, newest first</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/history" />
+									{{ p.name }} · who did what, newest first
+								</span>
 							</div>
 							<div class="rc-tw">
 								<table class="rc-t">
@@ -139,6 +153,7 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 								<div class="rc-panel">
 									<div class="rc-ph">
 										<span class="rc-label">
+											<rc-icon name="tabler/list-details" />
 											Each repository's own menus · from its .release-console.json
 										</span>
 									</div>
@@ -154,7 +169,14 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 												@for (r of p.repositories; track r.id) {
 													<tr>
 														<td>
-															<b>{{ r.name }}</b>
+															<b>
+																<rc-vendor-logo
+																	[vendor]="r.sourceCode.vendor"
+																	[named]="false"
+																	[size]="14"
+																/>
+																{{ r.name }}
+															</b>
 														</td>
 														<td>{{ menusOf(r) }}</td>
 													</tr>
@@ -174,7 +196,10 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 									(submit)="remove($event, typed.value)"
 								>
 									<div class="rc-ph">
-										<span class="rc-label">Remove {{ p.name }}</span>
+										<span class="rc-label">
+											<rc-icon name="tabler/trash" />
+											Remove {{ p.name }}
+										</span>
 									</div>
 									<p class="rc-p">
 										This removes the project from this console with its
@@ -217,7 +242,14 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 							@for (r of p.repositories; track r.id) {
 								<div class="rc-panel">
 									<div class="rc-ph">
-										<span class="rc-label">{{ r.name }}</span>
+										<span class="rc-label">
+											<rc-vendor-logo
+												[vendor]="r.sourceCode.vendor"
+												[named]="false"
+												[size]="14"
+											/>
+											{{ r.name }}
+										</span>
 									</div>
 									<div class="rc-kv">
 										<div>
@@ -226,15 +258,41 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 										</div>
 										<div>
 											<span>Source code</span>
-											<em>{{ vendor(r.sourceCode.vendor) }} · {{ r.sourceCode.repository }}</em>
+											<em>
+												<rc-vendor-logo
+													[vendor]="r.sourceCode.vendor"
+													[named]="false"
+													[size]="14"
+												/>
+												{{ r.sourceCode.repository }}
+											</em>
 										</div>
 										<div>
 											<span>Runs on</span>
-											<em>{{ cloudsOf(r) }}</em>
+											<em>
+												@for (c of r.cloud; track c.id) {
+													<rc-vendor-logo
+														[vendor]="c.vendor"
+														[size]="14"
+													/>
+												} @empty {
+													<rc-icon name="tabler/device-laptop" />
+													this computer only
+												}
+											</em>
 										</div>
 										<div>
 											<span>Edge</span>
-											<em>{{ edgesOf(r) }}</em>
+											<em>
+												@for (e of r.edge; track e.id) {
+													<rc-vendor-logo
+														[vendor]="e.vendor"
+														[size]="14"
+													/>
+												} @empty {
+													—
+												}
+											</em>
 										</div>
 										<rc-repo-ci
 											[projectId]="p.id"
@@ -259,7 +317,12 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 
 			<ng-template #repoTable>
 				<div class="rc-panel">
-					<div class="rc-ph"><span class="rc-label">Repositories · one source-code vendor each</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-icon name="tabler/brand-git" />
+							Repositories · one source-code vendor each
+						</span>
+					</div>
 					<div class="rc-tw">
 						<table class="rc-t">
 							<thead>
@@ -282,13 +345,65 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 											<span class="rc-mono">{{ r.role }}</span>
 										</td>
 										<td>
-											{{ vendor(r.sourceCode.vendor) }} ·
+											<rc-vendor-logo
+												[vendor]="r.sourceCode.vendor"
+												[size]="14"
+											/>
+											<br />
 											<span class="rc-mono">{{ r.sourceCode.repository }}</span>
 										</td>
-										<td>{{ envLabels(r) }}</td>
-										<td>{{ cloudsOf(r) }}</td>
-										<td>{{ edgesOf(r) }}</td>
-										<td>{{ secretsOf(r) }}</td>
+										<td>
+											<div class="rc-states">
+												@for (e of r.environments; track e.name) {
+													<span>
+														<rc-icon [name]="envIcon(e.name, e.cloudId === null)" />
+														{{ e.label }}
+													</span>
+												}
+											</div>
+										</td>
+										<td>
+											<div class="rc-states">
+												@for (c of r.cloud; track c.id) {
+													<rc-vendor-logo
+														[vendor]="c.vendor"
+														[size]="14"
+													/>
+												} @empty {
+													<span>
+														<rc-icon name="tabler/device-laptop" />
+														this computer only
+													</span>
+												}
+											</div>
+										</td>
+										<td>
+											<div class="rc-states">
+												@for (e of r.edge; track e.id) {
+													<span class="rc-states">
+														<rc-vendor-logo
+															[vendor]="e.vendor"
+															[size]="14"
+														/>
+														<span class="rc-mono">{{ e.zones.join(', ') }}</span>
+													</span>
+												} @empty {
+													<span>—</span>
+												}
+											</div>
+										</td>
+										<td>
+											<div class="rc-states">
+												@for (x of r.secrets; track x.id) {
+													<rc-vendor-logo
+														[vendor]="x.vendor"
+														[size]="14"
+													/>
+												} @empty {
+													<span>files kept by hand</span>
+												}
+											</div>
+										</td>
 										<td>
 											<button
 												type="button"
@@ -307,7 +422,12 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 			</ng-template>
 			<ng-template #envTable>
 				<div class="rc-panel">
-					<div class="rc-ph"><span class="rc-label">Environments and where each runs</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-icon name="tabler/stack-2" />
+							Environments and where each runs
+						</span>
+					</div>
 					<div class="rc-tw">
 						<table class="rc-t">
 							<thead>
@@ -323,12 +443,38 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 								@for (row of envRows(); track row.repo + row.env) {
 									<tr>
 										<td>
-											<b>{{ row.label }}</b>
+											<b>
+												<rc-icon [name]="envIcon(row.env, row.runsOn === null)" />
+												{{ row.label }}
+											</b>
 										</td>
 										<td>{{ row.repo }}</td>
-										<td>{{ row.runsOn }}</td>
+										<td>
+											@if (row.runsOn) {
+												<rc-vendor-logo
+													[vendor]="row.runsOn"
+													[size]="14"
+												/>
+											} @else {
+												<rc-icon name="tabler/device-laptop" />
+												this computer
+											}
+										</td>
 										<td class="rc-mono">{{ row.domains }}</td>
-										<td>{{ row.secrets }}</td>
+										<td>
+											@if (row.secrets) {
+												<rc-vendor-logo
+													[vendor]="row.secrets"
+													[size]="14"
+												/>
+												@if (row.secretsPath) {
+													<br />
+													<span class="rc-mono">{{ row.secretsPath }}</span>
+												}
+											} @else {
+												files kept by hand
+											}
+										</td>
 									</tr>
 								}
 							</tbody>
@@ -388,34 +534,28 @@ export class ProjectPage {
 					repo: r.name,
 					env: e.name,
 					label: e.label,
-					runsOn: cloud ? VENDOR_NAMES[cloud.vendor] : 'this computer',
+					runsOn: cloud?.vendor ?? null,
 					domains: e.domains.join(', ') || '—',
-					secrets: secrets
-						? `${VENDOR_NAMES[secrets.vendor]}${e.secretsPath ? ` · ${e.secretsPath}` : ''}`
-						: 'files kept by hand',
+					secrets: secrets?.vendor ?? null,
+					secretsPath: e.secretsPath,
 				};
 			}),
 		),
 	);
 
-	protected vendor(v: keyof typeof VENDOR_NAMES): string {
-		return VENDOR_NAMES[v];
-	}
-	protected cloudsOf(r: Repository): string {
-		return r.cloud.map((c) => VENDOR_NAMES[c.vendor]).join(' + ') || 'this computer only';
-	}
-	protected edgesOf(r: Repository): string {
-		return (
-			r.edge
-				.map((e) => `${VENDOR_NAMES[e.vendor]}${e.zones.length ? ` (${e.zones.join(', ')})` : ''}`)
-				.join(' + ') || '—'
-		);
-	}
-	protected secretsOf(r: Repository): string {
-		return r.secrets.map((x) => VENDOR_NAMES[x.vendor]).join(' + ') || 'files kept by hand';
-	}
-	protected envLabels(r: Repository): string {
-		return r.environments.map((e) => e.label).join(' · ');
+	protected readonly settingsTabIcons = SETTINGS_TAB_ICONS;
+	protected readonly envIcon = environmentIcon;
+	protected readonly headIcon = computed(() =>
+		this.page() === 'settings'
+			? (SETTINGS_TAB_ICONS[this.settingsTab()] ?? 'tabler/plug-connected')
+			: (PROJECT_PAGE_ICONS[this.page()] ?? 'tabler/layout-dashboard'),
+	);
+	/** What an Attention row is about: a key, a pipeline or an approval. */
+	protected attentionIcon(kind: string): string {
+		if (kind.startsWith('key')) return 'tabler/key';
+		if (kind.startsWith('ci')) return 'tabler/route-2';
+		if (kind.startsWith('approval')) return 'tabler/circle-check';
+		return 'tabler/bell-ringing';
 	}
 	protected menusOf(r: Repository): string {
 		return r.menus.map((k) => CONSOLE_MENU.screens[k]?.label ?? k).join(', ') || 'none';

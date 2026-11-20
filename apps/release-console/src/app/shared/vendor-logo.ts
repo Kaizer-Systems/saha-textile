@@ -39,30 +39,33 @@ export function iconUrl(icon: string, height: number, color?: string): string {
 export const siteIconUrl = (domain: string): string => `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
 
 /**
- * A provider's logo, loaded live, followed by its name; the logo never wraps away from it. If both
- * logo sources fail (offline), the name stands alone.
+ * A provider's logo, loaded live, followed by its name (unless `named` is false, where the name
+ * already shows beside it); the logo never wraps away from the name. If both logo sources fail
+ * (offline), the name stands alone.
  */
 @Component({
 	selector: 'rc-vendor-logo',
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	host: { class: 'rc-vlogo' },
+	host: { class: 'rc-vlogo', '[class.bare]': '!named()' },
 	template: `
 		@if (src(); as s) {
 			<img
 				[src]="s"
 				[attr.height]="size()"
 				alt=""
-				loading="lazy"
 				referrerpolicy="no-referrer"
 				(error)="next()"
 			/>
 		}
-		<span>{{ name() }}</span>
+		@if (named()) {
+			<span>{{ name() }}</span>
+		}
 	`,
 })
 export class VendorLogo {
 	readonly vendor = input.required<Vendor>();
 	readonly size = input(18);
+	readonly named = input(true);
 	protected readonly name = computed(() => VENDOR_NAMES[this.vendor()]);
 	private readonly attempt = signal(0);
 	protected readonly src = computed(() => {
@@ -76,32 +79,6 @@ export class VendorLogo {
 	protected next(): void {
 		this.attempt.update((n) => n + 1);
 	}
-}
-
-/** A step's own icon (Git, cloud, key…), loaded live like the logos. */
-@Component({
-	selector: 'rc-step-icon',
-	changeDetection: ChangeDetectionStrategy.OnPush,
-	host: { class: 'rc-vlogo' },
-	template: `
-		@if (!failed()) {
-			<img
-				[src]="url()"
-				width="16"
-				height="16"
-				alt=""
-				loading="lazy"
-				referrerpolicy="no-referrer"
-				(error)="failed.set(true)"
-			/>
-		}
-	`,
-})
-export class StepIcon {
-	readonly icon = input.required<string>();
-	readonly color = input('#5ed6ff');
-	protected readonly failed = signal(false);
-	protected readonly url = computed(() => iconUrl(this.icon(), 16, this.color()));
 }
 
 /** The icon of each Add-a-project step, in step order. */

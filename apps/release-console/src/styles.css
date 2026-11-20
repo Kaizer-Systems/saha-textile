@@ -3475,3 +3475,42 @@ figure.gif img {
 .rc-form:has(> label > .rc-vlogo) > label {
 	grid-template-columns: subgrid;
 }
+/* Menu, page, tab, panel and stage icons (owner: "add logos and icons wherever possible", 20 Nov).
+   Iconify images used as a mask, so each icon is painted in its text's colour and follows hover,
+   selection and state colours. Sized to the text unless a size is given. */
+.rc-icon {
+	display: inline-block;
+	flex: none;
+	width: 1.15em;
+	height: 1.15em;
+	margin-right: 0.45em;
+	vertical-align: -0.22em;
+	background-color: currentColor;
+	-webkit-mask: var(--rc-icon) center / contain no-repeat;
+	mask: var(--rc-icon) center / contain no-repeat;
+}
+.rc-icon.flush {
+	margin-right: 0;
+}
+/* A menu group's name with its icon or logo, kept together at the left of the group row. */
+.rc-gl b {
+	display: inline-flex;
+	align-items: center;
+	font-weight: inherit;
+}
+/* A logo shown without its name keeps the same space after it as an icon. */
+.rc-vlogo.bare {
+	margin-right: 0.45em;
+}
+/* Logos listed one after another (a project's clouds, edges…) keep apart; a row with its own gap needs none. */
+.rc-vlogo + .rc-vlogo {
+	margin-left: 0.8em;
+}
+.rc-states > .rc-vlogo + .rc-vlogo {
+	margin-left: 0;
+}
+/* A side-menu item with an icon: a long name wraps beside its icon, not under it. */
+.rc-nav:has(> .rc-icon, > .rc-vlogo) {
+	display: flex;
+	align-items: center;
+}

@@ -17,7 +17,8 @@ import { PageHead } from './page-head';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
-import { STEP_ICONS, StepIcon, VendorLogo } from '../shared/vendor-logo';
+import { Icon } from '../shared/icons';
+import { STEP_ICONS, VendorLogo } from '../shared/vendor-logo';
 
 export const STEPS = [
 	'Name and workspace',
@@ -92,7 +93,7 @@ interface EnvDraft {
 /** Add a project: name, repositories (a vendor each), environments, clouds, edges, own menus. */
 @Component({
 	selector: 'rc-add-project',
-	imports: [PageHead, VendorLogo, StepIcon],
+	imports: [PageHead, VendorLogo, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-page-head
@@ -107,7 +108,10 @@ interface EnvDraft {
 						[class.on]="$index === at()"
 					>
 						<span>{{ $index + 1 }}</span>
-						<rc-step-icon [icon]="stepIcons[$index] ?? 'tabler/circle'" />
+						<rc-icon
+							[name]="stepIcons[$index] ?? 'tabler/circle'"
+							flush
+						/>
 						{{ s }}
 					</li>
 				}
@@ -116,7 +120,12 @@ interface EnvDraft {
 				@case (0) {
 					<div class="rc-g2">
 						<div class="rc-panel">
-							<div class="rc-ph"><span class="rc-label">Name</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/folder" />
+									Name
+								</span>
+							</div>
 							<div class="rc-form">
 								<label>
 									Project
@@ -140,7 +149,12 @@ interface EnvDraft {
 							</p>
 						</div>
 						<div class="rc-panel">
-							<div class="rc-ph"><span class="rc-label">Workspace</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/briefcase" />
+									Workspace
+								</span>
+							</div>
 							<div class="pj-vendors">
 								@for (ws of workspaces(); track ws) {
 									<div
@@ -179,7 +193,10 @@ interface EnvDraft {
 					<div class="rc-g2">
 						<div class="rc-panel">
 							<div class="rc-ph">
-								<span class="rc-label">Add a repository · one source-code vendor per repository</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/square-rounded-plus" />
+									Add a repository · one source-code vendor per repository
+								</span>
 							</div>
 							<div class="pj-vendors">
 								@for (v of source; track v) {
@@ -244,7 +261,12 @@ interface EnvDraft {
 							</p>
 						</div>
 						<div class="rc-panel">
-							<div class="rc-ph"><span class="rc-label">Repositories in this project</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/brand-git" />
+									Repositories in this project
+								</span>
+							</div>
 							<div class="rc-tw">
 								<table class="rc-t">
 									<thead>
@@ -291,6 +313,7 @@ interface EnvDraft {
 					<div class="rc-panel">
 						<div class="rc-ph">
 							<span class="rc-label">
+								<rc-icon name="tabler/stack-2" />
 								Environments and where each runs · every repository of the project
 							</span>
 						</div>
@@ -390,7 +413,10 @@ interface EnvDraft {
 					<div class="rc-g2">
 						<div class="rc-panel">
 							<div class="rc-ph">
-								<span class="rc-label">Cloud platforms · one or more (multi-cloud)</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/cloud" />
+									Cloud platforms · one or more (multi-cloud)
+								</span>
 							</div>
 							<div class="pj-vendors">
 								@for (c of clouds; track c) {
@@ -431,7 +457,12 @@ interface EnvDraft {
 							</div>
 						</div>
 						<div class="rc-panel">
-							<div class="rc-ph"><span class="rc-label">Keys</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/key" />
+									Keys
+								</span>
+							</div>
 							<p class="rc-p">
 								Keys are added on the project's Connections screen after this wizard: a token paste, a
 								browser sign-in, or a cloud role, never a password. Environments that run on a cloud are
@@ -443,7 +474,12 @@ interface EnvDraft {
 				@case (4) {
 					<div class="rc-g2">
 						<div class="rc-panel">
-							<div class="rc-ph"><span class="rc-label">Edge, DNS and security · one or more</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/world" />
+									Edge, DNS and security · one or more
+								</span>
+							</div>
 							<div class="pj-vendors">
 								@for (v of edges; track v) {
 									<div
@@ -486,7 +522,10 @@ interface EnvDraft {
 						</div>
 						<div class="rc-panel">
 							<div class="rc-ph">
-								<span class="rc-label">Each domain belongs to one edge platform</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/world-www" />
+									Each domain belongs to one edge platform
+								</span>
 							</div>
 							<div class="rc-form">
 								@for (e of edgeList(); track e.vendor; let i = $index) {
@@ -515,7 +554,12 @@ interface EnvDraft {
 				@case (5) {
 					<div class="rc-g2">
 						<div class="rc-panel">
-							<div class="rc-ph"><span class="rc-label">Secrets managers · one or more</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/key" />
+									Secrets managers · one or more
+								</span>
+							</div>
 							<div class="pj-vendors">
 								@for (v of secretsVendors; track v) {
 									<div
@@ -576,7 +620,10 @@ interface EnvDraft {
 						</div>
 						<div class="rc-panel">
 							<div class="rc-ph">
-								<span class="rc-label">Where each environment reads its secrets</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/route" />
+									Where each environment reads its secrets
+								</span>
 							</div>
 							<div class="rc-tw">
 								<table class="rc-t">
@@ -640,7 +687,10 @@ interface EnvDraft {
 				@case (6) {
 					<div class="rc-panel">
 						<div class="rc-ph">
-							<span class="rc-label">Project menus · each repository's own screens</span>
+							<span class="rc-label">
+								<rc-icon name="tabler/list-details" />
+								Project menus · each repository's own screens
+							</span>
 						</div>
 						@for (r of repos(); track r.repository) {
 							<span class="rc-subl">{{ r.repository }}</span>
@@ -672,7 +722,12 @@ interface EnvDraft {
 				}
 				@default {
 					<div class="rc-panel">
-						<div class="rc-ph"><span class="rc-label">Ready to add</span></div>
+						<div class="rc-ph">
+							<span class="rc-label">
+								<rc-icon name="tabler/circle-check" />
+								Ready to add
+							</span>
+						</div>
 						<div class="rc-tw">
 							<table class="rc-t">
 								<tbody>

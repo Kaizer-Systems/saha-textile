@@ -35,7 +35,8 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 	const groups: MenuGroup[] = [];
 	const extra: Record<string, ScreenInfo> = {};
 	const own = repo.menus.filter((k) => CONSOLE_MENU.screens[k]);
-	if (own.length) groups.push({ label: repo.name, subs: [{ label: 'only in this repository', items: own }] });
+	if (own.length)
+		groups.push({ label: repo.name, own: true, subs: [{ label: 'only in this repository', items: own }] });
 	for (const label of ['Ship', 'Watch', 'Run']) {
 		const g = groupOf(label);
 		if (g) groups.push(g);
@@ -43,10 +44,15 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 	for (const slot of repo.cloud) {
 		const name = VENDOR_NAMES[slot.vendor];
 		const full = slot.vendor === 'digitalocean' ? groupOf('DigitalOcean') : undefined;
-		if (full && vendorScreens(slot.vendor) === 'full') groups.push({ ...full, label: `Cloud · ${name}` });
+		if (full && vendorScreens(slot.vendor) === 'full')
+			groups.push({ ...full, label: `Cloud · ${name}`, vendor: slot.vendor });
 		else {
 			extra[laterKey(slot.id)] = laterScreen(name);
-			groups.push({ label: `Cloud · ${name}`, subs: [{ label: null, items: [laterKey(slot.id)] }] });
+			groups.push({
+				label: `Cloud · ${name}`,
+				vendor: slot.vendor,
+				subs: [{ label: null, items: [laterKey(slot.id)] }],
+			});
 		}
 	}
 	for (const slot of repo.edge) {
@@ -55,13 +61,18 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 		if (full && vendorScreens(slot.vendor) === 'full')
 			groups.push({
 				label: `Edge · ${name}`,
+				vendor: slot.vendor,
 				subs: full.subs.map((s) =>
 					s.label?.startsWith('Domain:') ? { ...s, label: `Domain: ${slot.zones[0] ?? 'none'} ▾` } : s,
 				),
 			});
 		else {
 			extra[laterKey(slot.id)] = laterScreen(name);
-			groups.push({ label: `Edge · ${name}`, subs: [{ label: null, items: [laterKey(slot.id)] }] });
+			groups.push({
+				label: `Edge · ${name}`,
+				vendor: slot.vendor,
+				subs: [{ label: null, items: [laterKey(slot.id)] }],
+			});
 		}
 	}
 	for (const slot of repo.secrets) {
@@ -70,7 +81,11 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 			name,
 			'Each environment’s secret names, when each was last changed and which are missing show here, never their values.',
 		);
-		groups.push({ label: `Secrets · ${name}`, subs: [{ label: null, items: [laterKey(slot.id)] }] });
+		groups.push({
+			label: `Secrets · ${name}`,
+			vendor: slot.vendor,
+			subs: [{ label: null, items: [laterKey(slot.id)] }],
+		});
 	}
 	const governance = groupOf('Governance');
 	if (governance) groups.push(governance);

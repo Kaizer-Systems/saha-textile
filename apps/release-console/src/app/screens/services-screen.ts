@@ -6,10 +6,12 @@ import { formatBytes } from './format';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
+import { BrandLogo, Icon, serviceLogo } from '../shared/icons';
 
 /** Every container in the chosen environment, refreshed every 5 seconds. Local stack is live today. */
 @Component({
 	selector: 'rc-services-screen',
+	imports: [Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (!onThisComputer()) {
@@ -35,28 +37,45 @@ import { ConsoleState } from '../data/console-state';
 		} @else {
 			<div class="rc-g4">
 				<div class="rc-stat">
-					<span class="rc-label">Containers</span>
+					<span class="rc-label">
+						<rc-icon name="tabler/brand-docker" />
+						Containers
+					</span>
 					<b>{{ rows().length }}</b>
 					<small>{{ repoId() }} stack</small>
 				</div>
 				<div class="rc-stat">
-					<span class="rc-label">Running</span>
+					<span class="rc-label">
+						<rc-icon name="tabler/player-play" />
+						Running
+					</span>
 					<b class="ok">{{ running() }}</b>
 					<small>of {{ rows().length }}</small>
 				</div>
 				<div class="rc-stat">
-					<span class="rc-label">Unhealthy</span>
+					<span class="rc-label">
+						<rc-icon name="tabler/heart-broken" />
+						Unhealthy
+					</span>
 					<b [class.red]="unhealthy() > 0">{{ unhealthy() }}</b>
 					<small>health checks failing</small>
 				</div>
 				<div class="rc-stat">
-					<span class="rc-label">Read at</span>
+					<span class="rc-label">
+						<rc-icon name="tabler/clock" />
+						Read at
+					</span>
 					<b>{{ readAt() }}</b>
 					<small>every 5 s</small>
 				</div>
 			</div>
 			<div class="rc-panel">
-				<div class="rc-ph"><span class="rc-label">Local stack · Docker on this computer</span></div>
+				<div class="rc-ph">
+					<span class="rc-label">
+						<rc-icon name="tabler/brand-docker" />
+						Local stack · Docker on this computer
+					</span>
+				</div>
 				<div class="rc-tw">
 					<table class="rc-t">
 						<thead>
@@ -78,7 +97,13 @@ import { ConsoleState } from '../data/console-state';
 											[class.ok]="s.state === 'running' && s.health !== 'unhealthy'"
 											[class.red]="s.state !== 'running' || s.health === 'unhealthy'"
 										></span>
-										<b>{{ s.name }}</b>
+										<b>
+											<rc-brand-logo
+												[name]="logo(s.name)"
+												[size]="14"
+												[label]="s.name"
+											/>
+										</b>
 									</td>
 									<td>
 										<span
@@ -128,4 +153,5 @@ export class ServicesScreen {
 			: '—';
 	});
 	protected readonly fmt = formatBytes;
+	protected readonly logo = serviceLogo;
 }

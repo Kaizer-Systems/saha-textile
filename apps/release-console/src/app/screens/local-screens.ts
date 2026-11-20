@@ -16,6 +16,7 @@ import { formatBytes } from './format';
 import { Gauge, LocalGate, SparkLine, formatRate, levelColour, percent } from './local-parts';
 import { ConsoleApi } from '../data/console-api';
 import { when } from '../pages/format-time';
+import { BrandLogo, Icon, STAGE_ICONS, serviceLogo } from '../shared/icons';
 
 const WINDOWS: [number, string][] = [
 	[15, '15 min'],
@@ -54,31 +55,48 @@ export function containerRates(
 /** Run › Server, Metrics tab, for an environment on this computer: the Mac itself. */
 @Component({
 	selector: 'rc-server-screen',
-	imports: [LocalGate, Gauge, SparkLine],
+	imports: [LocalGate, Gauge, SparkLine, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
 			@if (mac.data(); as m) {
 				<div class="rc-g3">
 					<div class="rc-panel">
-						<div class="rc-ph"><span class="rc-label">This Mac · now</span></div>
+						<div class="rc-ph">
+							<span class="rc-label">
+								<rc-brand-logo
+									name="simple-icons/apple"
+									color="#d9f4ff"
+									[size]="13"
+								/>
+								This Mac · now
+							</span>
+						</div>
 						<div class="rc-row">
 							<rc-gauge
 								[value]="m.cpu?.used ?? 0"
 								label="CPU"
+								icon="tabler/cpu"
 							/>
 							<rc-gauge
 								[value]="memPct()"
 								label="Memory"
+								icon="tabler/device-sd-card"
 							/>
 							<rc-gauge
 								[value]="diskPct()"
 								label="Start-up disk"
+								icon="tabler/device-floppy"
 							/>
 						</div>
 					</div>
 					<div class="rc-panel">
-						<div class="rc-ph"><span class="rc-label">Load and memory</span></div>
+						<div class="rc-ph">
+							<span class="rc-label">
+								<rc-icon name="tabler/gauge" />
+								Load and memory
+							</span>
+						</div>
 						<div class="rc-kv">
 							<div>
 								<span>Load (1, 5, 15 min)</span>
@@ -109,7 +127,15 @@ export function containerRates(
 						</div>
 					</div>
 					<div class="rc-panel">
-						<div class="rc-ph"><span class="rc-label">Docker on this Mac</span></div>
+						<div class="rc-ph">
+							<span class="rc-label">
+								<rc-brand-logo
+									name="logos/docker-icon"
+									[size]="14"
+								/>
+								Docker on this Mac
+							</span>
+						</div>
 						@if (docker.data(); as d) {
 							<div class="rc-kv">
 								<div>
@@ -145,7 +171,10 @@ export function containerRates(
 				</div>
 				<div class="rc-panel">
 					<div class="rc-ph">
-						<span class="rc-label">History · every 5 seconds, minute averages beyond 2 hours</span>
+						<span class="rc-label">
+							<rc-icon name="tabler/chart-line" />
+							History · every 5 seconds, minute averages beyond 2 hours
+						</span>
 						<div class="rc-states">
 							@for (w of windows; track w[0]) {
 								<button
@@ -162,7 +191,10 @@ export function containerRates(
 					<div class="rc-g2">
 						@for (s of charts(); track s.label) {
 							<div>
-								<span class="rc-label">{{ s.label }} · now {{ s.now }}</span>
+								<span class="rc-label">
+									<rc-icon [name]="chartIcon(s.label)" />
+									{{ s.label }} · now {{ s.now }}
+								</span>
 								<rc-spark-line
 									[values]="s.values"
 									[colour]="s.colour"
@@ -186,6 +218,13 @@ export function containerRates(
 	`,
 })
 export class ServerScreen {
+	protected readonly logo = serviceLogo;
+	/** A history chart's icon. */
+	protected chartIcon(label: string): string {
+		if (label === 'CPU') return 'tabler/cpu';
+		if (label === 'Memory') return 'tabler/device-sd-card';
+		return label.endsWith('out') ? 'tabler/upload' : 'tabler/download';
+	}
 	private readonly api = inject(ConsoleApi);
 	protected readonly windows = WINDOWS;
 	protected readonly minutes = signal(60);
@@ -256,14 +295,20 @@ export class ServerScreen {
 /** Run › Infrastructure: every Saha Textile container on this Mac with its live figures and history. */
 @Component({
 	selector: 'rc-infra-screen',
-	imports: [LocalGate, SparkLine],
+	imports: [LocalGate, SparkLine, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
 			@if (docker.data(); as d) {
 				<div class="rc-panel">
 					<div class="rc-ph">
-						<span class="rc-label">Containers on this Mac · read {{ when(d.at) }} · every 5 s</span>
+						<span class="rc-label">
+							<rc-brand-logo
+								name="logos/docker-icon"
+								[size]="14"
+							/>
+							Containers on this Mac · read {{ when(d.at) }} · every 5 s
+						</span>
 					</div>
 					<div class="rc-tw">
 						<table class="rc-t">
@@ -292,7 +337,13 @@ export class ServerScreen {
 												[class.ok]="c.state === 'running' && !c.status.includes('unhealthy')"
 												[class.red]="c.state !== 'running' || c.status.includes('unhealthy')"
 											></span>
-											<b>{{ c.name }}</b>
+											<b>
+												<rc-brand-logo
+													[name]="logo(c.name)"
+													[size]="14"
+													[label]="c.name"
+												/>
+											</b>
 											<br />
 											<span class="rc-mono">{{ c.image }}</span>
 										</td>
@@ -334,29 +385,47 @@ export class ServerScreen {
 				@if (open(); as name) {
 					<div class="rc-panel">
 						<div class="rc-ph">
-							<span class="rc-label">{{ name }} · last hour</span>
+							<span class="rc-label">
+								<rc-brand-logo
+									[name]="logo(name)"
+									[size]="14"
+								/>
+								{{ name }} · last hour
+							</span>
 						</div>
 						<div class="rc-g2">
 							<div>
-								<span class="rc-label">CPU %</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/cpu" />
+									CPU %
+								</span>
 								<rc-spark-line [values]="series('cpu')" />
 							</div>
 							<div>
-								<span class="rc-label">Memory</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/device-sd-card" />
+									Memory
+								</span>
 								<rc-spark-line
 									[values]="series('mem')"
 									colour="#ffb547"
 								/>
 							</div>
 							<div>
-								<span class="rc-label">Network in</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/download" />
+									Network in
+								</span>
 								<rc-spark-line
 									[values]="series('net_rx_rate')"
 									colour="#5dffa8"
 								/>
 							</div>
 							<div>
-								<span class="rc-label">Disk write</span>
+								<span class="rc-label">
+									<rc-icon name="tabler/device-floppy" />
+									Disk write
+								</span>
 								<rc-spark-line
 									[values]="series('block_write_rate')"
 									colour="#c4b5fd"
@@ -374,6 +443,7 @@ export class ServerScreen {
 	`,
 })
 export class InfraScreen {
+	protected readonly logo = serviceLogo;
 	private readonly api = inject(ConsoleApi);
 	protected readonly when = when;
 	protected readonly bytes = formatBytes;
@@ -480,13 +550,16 @@ export function readLogLine(raw: string): LogLine {
 /** Run › Live logs: one container's log, followed live, filtered by words, errors or one request. */
 @Component({
 	selector: 'rc-tail-screen',
-	imports: [LocalGate],
+	imports: [LocalGate, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
 			<div class="rc-panel">
 				<div class="rc-ph">
-					<span class="rc-label">Live logs · this Mac's containers</span>
+					<span class="rc-label">
+						<rc-icon name="tabler/logs" />
+						Live logs · this Mac's containers
+					</span>
 					<div class="rc-states">
 						@for (n of [100, 300, 1000]; track n) {
 							<button
@@ -508,7 +581,11 @@ export function readLogLine(raw: string): LogLine {
 							[class.on]="container() === c"
 							(click)="container.set(c)"
 						>
-							{{ c.replace('saha-textile-', '') }}
+							<rc-brand-logo
+								[name]="logo(c)"
+								[size]="13"
+								[label]="c.replace('saha-textile-', '')"
+							/>
 						</button>
 					}
 				</div>
@@ -580,6 +657,7 @@ export function readLogLine(raw: string): LogLine {
 	`,
 })
 export class TailScreen {
+	protected readonly logo = serviceLogo;
 	private readonly api = inject(ConsoleApi);
 	readonly mode = input('follow');
 	protected readonly container = signal<string>('');
@@ -624,19 +702,30 @@ export class TailScreen {
 /** Watch › Health for this Mac: one tile per part, green, amber or red. */
 @Component({
 	selector: 'rc-health-screen',
-	imports: [LocalGate],
+	imports: [LocalGate, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
 			<div class="rc-panel">
-				<div class="rc-ph"><span class="rc-label">Everything on this Mac · every 10 s</span></div>
+				<div class="rc-ph">
+					<span class="rc-label">
+						<rc-icon name="tabler/heartbeat" />
+						Everything on this Mac · every 10 s
+					</span>
+				</div>
 				<div class="rc-tiles">
 					@for (t of tiles(); track t.name) {
 						<div
 							class="rc-tile"
 							[class]="'rc-tile ' + t.cls"
 						>
-							<b>{{ t.name }}</b>
+							<b>
+								<rc-brand-logo
+									[name]="logo(t.name)"
+									[size]="14"
+									[label]="t.name"
+								/>
+							</b>
 							<span>{{ t.state }}</span>
 						</div>
 					}
@@ -649,6 +738,10 @@ export class TailScreen {
 	`,
 })
 export class HealthScreen {
+	/** Docker's own logo, or the product a container runs. */
+	protected logo(name: string): string {
+		return name === 'Docker' ? 'logos/docker-icon' : serviceLogo(name);
+	}
 	private readonly api = inject(ConsoleApi);
 	private readonly docker = injectQuery(() => ({
 		queryKey: ['docker'],
@@ -753,14 +846,19 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 /** Ship › Live deploy, Local tab: run the local pipeline and the stack from here, and watch it. */
 @Component({
 	selector: 'rc-deploy-screen',
-	imports: [LocalGate],
+	imports: [LocalGate, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
 			@let lane = laneView();
 			<div class="rc-g3 deploy">
 				<div class="rc-panel">
-					<div class="rc-ph"><span class="rc-label">Pipeline</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-icon name="tabler/route-2" />
+							Pipeline
+						</span>
+					</div>
 					<ul class="rc-lane">
 						@for (s of lane; track s.stage) {
 							<li [class]="s.cls">
@@ -771,14 +869,22 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 									[class.cy]="s.cls === 'run'"
 									[class.pulse]="s.cls === 'run'"
 								></span>
-								<span>{{ stageNames[s.stage] }}</span>
+								<span>
+									<rc-icon [name]="stageIcons[s.stage]" />
+									{{ stageNames[s.stage] }}
+								</span>
 								<span class="rc-mono">{{ s.time }}</span>
 							</li>
 						}
 					</ul>
 				</div>
 				<div class="rc-panel">
-					<div class="rc-ph"><span class="rc-label">Release</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-icon name="tabler/rocket" />
+							Release
+						</span>
+					</div>
 					<div class="rc-reactor">
 						<svg
 							viewBox="0 0 240 240"
@@ -859,16 +965,30 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 					</div>
 				</div>
 				<div class="rc-panel">
-					<div class="rc-ph"><span class="rc-label">Systems</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-icon name="tabler/server" />
+							Systems
+						</span>
+					</div>
 					<div class="rc-kv">
 						@for (k of systems(); track k[0]) {
 							<div>
-								<span>{{ k[0] }}</span>
+								<span>
+									<rc-brand-logo
+										[name]="systemLogo(k[0])"
+										[size]="14"
+										[label]="k[0]"
+									/>
+								</span>
 								<em [class]="k[2]">{{ k[1] }}</em>
 							</div>
 						}
 					</div>
-					<div class="rc-label">Events</div>
+					<div class="rc-label">
+						<rc-icon name="tabler/list" />
+						Events
+					</div>
 					<div class="rc-log">
 						@for (e of events(); track $index) {
 							<div
@@ -894,7 +1014,12 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 					class="rc-panel"
 					(submit)="start($event)"
 				>
-					<div class="rc-ph"><span class="rc-label">Deploy to local · the same stages as GitHub</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-icon name="tabler/device-laptop" />
+							Deploy to local · the same stages as GitHub
+						</span>
+					</div>
 					<div class="rc-states">
 						<button
 							type="button"
@@ -979,7 +1104,15 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 					</p>
 				</form>
 				<div class="rc-panel">
-					<div class="rc-ph"><span class="rc-label">The local stack</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-brand-logo
+								name="logos/docker-icon"
+								[size]="14"
+							/>
+							The local stack
+						</span>
+					</div>
 					<div class="rc-row">
 						@for (a of stackActions; track a[0]) {
 							<button
@@ -1012,7 +1145,12 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 						Stopping touches only the stack's own services; the search server that pnpm dev also uses keeps
 						running.
 					</p>
-					<div class="rc-ph"><span class="rc-label">Recent runs</span></div>
+					<div class="rc-ph">
+						<span class="rc-label">
+							<rc-icon name="tabler/history" />
+							Recent runs
+						</span>
+					</div>
 					<div class="rc-tw">
 						<table class="rc-t">
 							<thead>
@@ -1061,7 +1199,10 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 			@if (current(); as j) {
 				<div class="rc-panel">
 					<div class="rc-ph">
-						<span class="rc-label">Output · {{ j.label }}</span>
+						<span class="rc-label">
+							<rc-icon name="tabler/terminal-2" />
+							Output · {{ j.label }}
+						</span>
 						<div class="rc-states">
 							<button
 								type="button"
@@ -1104,6 +1245,14 @@ export class DeployScreen {
 	protected readonly when = when;
 	protected readonly stages = PIPELINE_STAGES;
 	protected readonly stageNames = STAGE_NAMES;
+	protected readonly stageIcons = STAGE_ICONS;
+	/** The logo beside a system on the Systems list. */
+	protected systemLogo(name: string): string {
+		if (name === 'Mac helper') return 'simple-icons/apple';
+		if (name.startsWith('Shop API')) return serviceLogo('api');
+		if (name === 'Dev servers') return 'logos/nodejs-icon';
+		return 'logos/docker-icon';
+	}
 	protected readonly stackActions: [LocalAction, string][] = [
 		['stack-env', 'Write stack files'],
 		['stack-up', 'Start the stack'],

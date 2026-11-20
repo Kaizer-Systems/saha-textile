@@ -6,6 +6,7 @@ import { formatBytes } from './format';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
+import { Icon } from '../shared/icons';
 
 /** “1.2 MB/s” for a byte rate; “—” when unknown. */
 export function formatRate(bytesPerSecond: number | null | undefined): string {
@@ -79,6 +80,7 @@ export class SparkLine {
 /** The brief's ring gauge (`rc-ring`). */
 @Component({
 	selector: 'rc-gauge',
+	imports: [Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-ring">
@@ -119,13 +121,19 @@ export class SparkLine {
 					{{ value() }}%
 				</text>
 			</svg>
-			<span>{{ label() }}</span>
+			<span>
+				@if (icon()) {
+					<rc-icon [name]="icon()" />
+				}
+				{{ label() }}
+			</span>
 		</div>
 	`,
 })
 export class Gauge {
 	readonly value = input(0, { transform: (v: number) => Math.round(v) });
 	readonly label = input('');
+	readonly icon = input('');
 	protected readonly colour = computed(() => levelColour(this.value()));
 }
 

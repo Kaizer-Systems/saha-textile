@@ -15,6 +15,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleSession } from '../data/session';
+import { Icon } from '../shared/icons';
 
 const LENGTH = 6;
 
@@ -38,6 +39,7 @@ export function fillDigits(digits: string[], start: number, typed: string): { di
  */
 @Component({
 	selector: 'rc-lock-page',
+	imports: [Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc">
@@ -94,6 +96,7 @@ export function fillDigits(digits: string[], start: number, typed: string): { di
 										[attr.aria-selected]="method() === 'pin'"
 										(click)="useMethod('pin')"
 									>
+										<rc-icon name="tabler/dialpad" />
 										PIN
 									</button>
 									<button
@@ -104,6 +107,7 @@ export function fillDigits(digits: string[], start: number, typed: string): { di
 										[attr.aria-selected]="method() === 'password'"
 										(click)="useMethod('password')"
 									>
+										<rc-icon name="tabler/password" />
 										Password
 									</button>
 								</div>

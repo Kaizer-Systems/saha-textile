@@ -17,6 +17,10 @@ import {
 } from './vendor-screens';
 import { ConsoleContext } from '../data/console-context';
 import { placeOf } from '../menu/menu-search';
+import { Icon, environmentIcon, screenIcon } from '../shared/icons';
+import { VendorLogo } from '../shared/vendor-logo';
+
+const SCREEN_LATER = /^later-/;
 
 /** Screens with live data, and the tab that shows it. Every other tab stays the planned screen. */
 export const LIVE_TABS: Record<string, string | string[] | null> = {
@@ -48,6 +52,8 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		DoAccountScreen,
 		CfDomainsScreen,
 		DnsScreen,
+		Icon,
+		VendorLogo,
 		DeployScreen,
 		ServerScreen,
 		InfraScreen,
@@ -60,7 +66,20 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		<div class="rc-row between rc-head">
 			<div>
 				<span class="rc-crumb">{{ crumb() }}</span>
-				<h2 class="rc-title">{{ s?.label ?? (ctx.projects.isPending() ? '' : 'Not in this repository') }}</h2>
+				<h2 class="rc-title">
+					@if (s) {
+						@if (titleVendor(); as tv) {
+							<rc-vendor-logo
+								[vendor]="tv"
+								[named]="false"
+								[size]="20"
+							/>
+						} @else {
+							<rc-icon [name]="icon()" />
+						}
+					}
+					{{ s?.label ?? (ctx.projects.isPending() ? '' : 'Not in this repository') }}
+				</h2>
 			</div>
 			@if (tabs().length > 1) {
 				<div class="rc-states">
@@ -82,6 +101,9 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 								[attr.data-tip]="t.part"
 								(click)="openTab(t.key)"
 							>
+								@if (tabIcon(t.key); as ti) {
+									<rc-icon [name]="ti" />
+								}
 								{{ t.label }}
 							</button>
 						}
@@ -176,6 +198,13 @@ export class ScreenPage {
 		return m ? placeOf(m) : new Map<string, string[]>();
 	});
 	protected readonly info = computed(() => this.ctx.repoMenu()?.screens[this.screen()]);
+	protected readonly icon = computed(() => screenIcon(this.screen()));
+	/** A provider's placeholder screen ("screens later") shows that provider's logo. */
+	protected readonly titleVendor = computed(() =>
+		SCREEN_LATER.test(this.screen())
+			? this.ctx.repoMenu()?.menu.find((g) => g.subs.some((sub) => sub.items.includes(this.screen())))?.vendor
+			: undefined,
+	);
 	protected readonly crumb = computed(() => {
 		const p = this.place().get(this.screen()) ?? [];
 		const head = [this.ctx.project()?.name, this.ctx.repo()?.name].filter(Boolean).join(' › ');
@@ -213,6 +242,13 @@ export class ScreenPage {
 		if (!repo || repo.sourceCode.vendor === 'github') return null;
 		return this.place().get(this.screen())?.[0] === 'Ship' ? VENDOR_NAMES[repo.sourceCode.vendor] : null;
 	});
+
+	/** Live deploy's tabs are environments, each with its icon. */
+	protected tabIcon(key: string): string | null {
+		if (this.screen() !== 'deploy') return null;
+		const env = this.ctx.repo()?.environments.find((e) => e.name === key);
+		return env ? environmentIcon(env.name, env.cloudId === null) : null;
+	}
 
 	protected openTab(key: string): void {
 		void this.router.navigate([], { queryParams: { tab: key }, queryParamsHandling: 'merge' });

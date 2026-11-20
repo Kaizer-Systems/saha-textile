@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { VENDOR_NAMES, type Project } from '@saha-textile/release-console-contracts';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { AddProject } from './add-project';
@@ -9,11 +8,15 @@ import { when } from './format-time';
 import { PageHead } from './page-head';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
+import { Icon, environmentIcon } from '../shared/icons';
+import { VendorLogo } from '../shared/vendor-logo';
+
+import type { Project, Vendor } from '@saha-textile/release-console-contracts';
 
 /** The console level: all projects by workspace, Add a project, Attention, Audit and Console settings. */
 @Component({
 	selector: 'rc-console-page',
-	imports: [PageHead, AddProject],
+	imports: [PageHead, AddProject, Icon, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@switch (page()) {
@@ -21,7 +24,10 @@ import { ConsoleContext } from '../data/console-context';
 				<rc-add-project />
 			}
 			@case ('attention') {
-				<rc-page-head title="Attention" />
+				<rc-page-head
+					title="Attention"
+					icon="tabler/bell-ringing"
+				/>
 				<div class="rc-content">
 					<div class="rc-panel">
 						<div class="rc-ph"><span class="rc-label">What needs you · names and counts only</span></div>
@@ -41,7 +47,10 @@ import { ConsoleContext } from '../data/console-context';
 										@for (c of counts.data() ?? []; track c.projectId) {
 											<tr>
 												<td>
-													<b>{{ c.name }}</b>
+													<b>
+														<rc-icon name="tabler/folder" />
+														{{ c.name }}
+													</b>
 												</td>
 												<td>
 													<span
@@ -74,7 +83,10 @@ import { ConsoleContext } from '../data/console-context';
 				</div>
 			}
 			@case ('audit') {
-				<rc-page-head title="Audit (every project)" />
+				<rc-page-head
+					title="Audit (every project)"
+					icon="tabler/history"
+				/>
 				<div class="rc-content">
 					<div class="rc-panel">
 						<div class="rc-ph">
@@ -106,11 +118,19 @@ import { ConsoleContext } from '../data/console-context';
 				</div>
 			}
 			@case ('settings') {
-				<rc-page-head title="Console settings" />
+				<rc-page-head
+					title="Console settings"
+					icon="tabler/settings"
+				/>
 				<div class="rc-content">
 					<div class="rc-g2">
 						<div class="rc-panel">
-							<div class="rc-ph"><span class="rc-label">Lock</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/lock" />
+									Lock
+								</span>
+							</div>
 							<p class="rc-p">
 								The console locks when this tab closes, after 30 idle minutes, and when its local API
 								restarts.
@@ -133,7 +153,12 @@ import { ConsoleContext } from '../data/console-context';
 							class="rc-panel"
 							(submit)="changePin($event, cur.value, next.value)"
 						>
-							<div class="rc-ph"><span class="rc-label">Change PIN</span></div>
+							<div class="rc-ph">
+								<span class="rc-label">
+									<rc-icon name="tabler/dialpad" />
+									Change PIN
+								</span>
+							</div>
 							<div class="rc-form">
 								<label>
 									Current PIN
@@ -178,7 +203,10 @@ import { ConsoleContext } from '../data/console-context';
 						(submit)="savePassword($event)"
 					>
 						<div class="rc-ph">
-							<span class="rc-label">Sign in with a PIN or a password</span>
+							<span class="rc-label">
+								<rc-icon name="tabler/password" />
+								Sign in with a PIN or a password
+							</span>
 						</div>
 						@if (lock.data(); as l) {
 							<div class="rc-kv">
@@ -279,7 +307,10 @@ import { ConsoleContext } from '../data/console-context';
 				</div>
 			}
 			@default {
-				<rc-page-head title="All projects" />
+				<rc-page-head
+					title="All projects"
+					icon="tabler/layout-grid"
+				/>
 				<div class="rc-content">
 					<div class="rc-row between">
 						<span class="rc-label">
@@ -290,32 +321,73 @@ import { ConsoleContext } from '../data/console-context';
 							class="rc-btn primary"
 							(click)="router.navigate(['/console', 'add'])"
 						>
-							+ Add a project
+							<rc-icon name="tabler/square-rounded-plus" />
+							Add a project
 						</button>
 					</div>
 					@for (ws of workspaces(); track ws) {
 						<div class="pj-ws">
-							<span class="rc-subl">{{ ws }}</span>
+							<span class="rc-subl">
+								<rc-icon name="tabler/briefcase" />
+								{{ ws }}
+							</span>
 							<div class="pj-grid">
 								@for (p of inWorkspace(ws); track p.id) {
 									<div class="rc-panel pj-card">
-										<h3 class="rc-h">{{ p.name }}</h3>
+										<h3 class="rc-h">
+											<rc-icon name="tabler/folder" />
+											{{ p.name }}
+										</h3>
 										<div class="rc-kv">
 											<div>
 												<span>Source code</span>
-												<em>{{ sourceOf(p) }}</em>
+												<em>
+													@for (v of sourcesOf(p); track v) {
+														<rc-vendor-logo
+															[vendor]="v"
+															[size]="14"
+														/>
+													}
+													· {{ p.repositories.length }} repo{{
+														p.repositories.length === 1 ? '' : 's'
+													}}
+												</em>
 											</div>
 											<div>
 												<span>Environments</span>
-												<em>{{ envsOf(p) }}</em>
+												<em>
+													@for (e of envsOf(p); track e.name) {
+														<rc-icon [name]="envIcon(e.name, e.local)" />
+														{{ e.label }}
+													}
+												</em>
 											</div>
 											<div>
 												<span>Cloud</span>
-												<em>{{ cloudsOf(p) }}</em>
+												<em>
+													@for (c of cloudsOf(p); track c) {
+														<rc-vendor-logo
+															[vendor]="c"
+															[size]="14"
+														/>
+													} @empty {
+														<rc-icon name="tabler/device-laptop" />
+														this computer
+													}
+												</em>
 											</div>
 											<div>
 												<span>Edge and DNS</span>
-												<em>{{ edgesOf(p) }}</em>
+												<em>
+													@for (e of edgesOf(p); track e) {
+														<rc-vendor-logo
+															[vendor]="e"
+															[size]="14"
+														/>
+													} @empty {
+														—
+													}
+												</em>
 											</div>
 										</div>
 										<div>
@@ -375,22 +447,21 @@ export class ConsolePage {
 	protected projectName(id: string | null): string {
 		return id ? (this.all().find((p) => p.id === id)?.name ?? id) : 'Console';
 	}
-	protected sourceOf(p: Project): string {
-		const vendors = [...new Set(p.repositories.map((r) => VENDOR_NAMES[r.sourceCode.vendor]))];
-		return `${vendors.join(', ')} · ${p.repositories.length} repo${p.repositories.length === 1 ? '' : 's'}`;
+	protected readonly envIcon = environmentIcon;
+	protected sourcesOf(p: Project): Vendor[] {
+		return [...new Set(p.repositories.map((r) => r.sourceCode.vendor))];
 	}
-	protected envsOf(p: Project): string {
-		return [...new Set(p.repositories.flatMap((r) => r.environments.map((e) => e.label)))].join(' · ');
+	protected envsOf(p: Project): { name: string; label: string; local: boolean }[] {
+		const seen = new Map<string, { name: string; label: string; local: boolean }>();
+		for (const e of p.repositories.flatMap((r) => r.environments))
+			if (!seen.has(e.name)) seen.set(e.name, { name: e.name, label: e.label, local: e.cloudId === null });
+		return [...seen.values()];
 	}
-	protected cloudsOf(p: Project): string {
-		return (
-			[...new Set(p.repositories.flatMap((r) => r.cloud.map((c) => VENDOR_NAMES[c.vendor])))].join(' + ') || '—'
-		);
+	protected cloudsOf(p: Project): Vendor[] {
+		return [...new Set(p.repositories.flatMap((r) => r.cloud.map((c) => c.vendor)))];
 	}
-	protected edgesOf(p: Project): string {
-		return (
-			[...new Set(p.repositories.flatMap((r) => r.edge.map((e) => VENDOR_NAMES[e.vendor])))].join(' + ') || '—'
-		);
+	protected edgesOf(p: Project): Vendor[] {
+		return [...new Set(p.repositories.flatMap((r) => r.edge.map((e) => e.vendor)))];
 	}
 	protected open(projectId: string, page: string): void {
 		void this.router.navigate(['/p', projectId, page]);

@@ -6,6 +6,8 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
+import { Icon } from '../shared/icons';
+import { VendorLogo } from '../shared/vendor-logo';
 
 import type { VendorAnswer } from '@saha-textile/release-console-contracts';
 
@@ -72,7 +74,7 @@ const ok = <T>(a: VendorAnswer<T> | undefined): T | null => (a?.state === 'ok' ?
 /** Ship › Code › Pull requests: open pull requests, read live from GitHub. */
 @Component({
 	selector: 'rc-pulls-screen',
-	imports: [VendorState],
+	imports: [VendorState, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -83,7 +85,14 @@ const ok = <T>(a: VendorAnswer<T> | undefined): T | null => (a?.state === 'ok' ?
 		>
 			<div class="rc-panel">
 				<div class="rc-ph">
-					<span class="rc-label">Open pull requests · {{ rows().length }} · read {{ when(readAt()) }}</span>
+					<span class="rc-label">
+						<rc-vendor-logo
+							vendor="github"
+							[named]="false"
+							[size]="14"
+						/>
+						Open pull requests · {{ rows().length }} · read {{ when(readAt()) }}
+					</span>
 				</div>
 				<div class="rc-tw">
 					<table class="rc-t">
@@ -150,7 +159,7 @@ export class PullsScreen {
 /** Ship › Code › Pipelines: the latest workflow runs, read live from GitHub Actions. */
 @Component({
 	selector: 'rc-pipelines-screen',
-	imports: [VendorState],
+	imports: [VendorState, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -161,7 +170,14 @@ export class PullsScreen {
 		>
 			<div class="rc-panel">
 				<div class="rc-ph">
-					<span class="rc-label">Workflow runs · latest {{ rows().length }} · read {{ when(readAt()) }}</span>
+					<span class="rc-label">
+						<rc-vendor-logo
+							vendor="github-secrets"
+							[named]="false"
+							[size]="14"
+						/>
+						Workflow runs · latest {{ rows().length }} · read {{ when(readAt()) }}
+					</span>
 				</div>
 				<div class="rc-tw">
 					<table class="rc-t">
@@ -248,7 +264,7 @@ function cfSlot(ctx: ConsoleContext) {
 /** DigitalOcean › Compute › Droplets: every droplet the read key sees. */
 @Component({
 	selector: 'rc-droplets-screen',
-	imports: [VendorState],
+	imports: [VendorState, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -259,7 +275,14 @@ function cfSlot(ctx: ConsoleContext) {
 		>
 			<div class="rc-panel">
 				<div class="rc-ph">
-					<span class="rc-label">Droplets · {{ rows().length }} · read {{ when(readAt()) }}</span>
+					<span class="rc-label">
+						<rc-vendor-logo
+							vendor="digitalocean"
+							[named]="false"
+							[size]="14"
+						/>
+						Droplets · {{ rows().length }} · read {{ when(readAt()) }}
+					</span>
 				</div>
 				<div class="rc-tw">
 					<table class="rc-t">
@@ -324,7 +347,7 @@ export class DropletsScreen {
 /** DigitalOcean › Manage › Cloud account: the account, droplet limit and this cycle's usage. */
 @Component({
 	selector: 'rc-do-account-screen',
-	imports: [VendorState],
+	imports: [VendorState, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -336,22 +359,34 @@ export class DropletsScreen {
 			@if (account(); as a) {
 				<div class="rc-g4">
 					<div class="rc-stat">
-						<span class="rc-label">Team</span>
+						<span class="rc-label">
+							<rc-icon name="tabler/users" />
+							Team
+						</span>
 						<b>{{ a.team || '—' }}</b>
 						<small>{{ a.status }}</small>
 					</div>
 					<div class="rc-stat">
-						<span class="rc-label">Droplet limit</span>
+						<span class="rc-label">
+							<rc-icon name="tabler/droplet" />
+							Droplet limit
+						</span>
 						<b>{{ a.dropletLimit }}</b>
 						<small>on this account</small>
 					</div>
 					<div class="rc-stat">
-						<span class="rc-label">This cycle so far</span>
+						<span class="rc-label">
+							<rc-icon name="tabler/receipt" />
+							This cycle so far
+						</span>
 						<b>{{ a.monthToDateUsage ? '$' + a.monthToDateUsage : '—' }}</b>
 						<small>month to date</small>
 					</div>
 					<div class="rc-stat">
-						<span class="rc-label">Balance</span>
+						<span class="rc-label">
+							<rc-icon name="tabler/coin" />
+							Balance
+						</span>
 						<b>{{ a.accountBalance ? '$' + a.accountBalance : '—' }}</b>
 						<small>{{ a.accountBalance ? 'account balance' : 'needs the billing read scope' }}</small>
 					</div>
@@ -373,7 +408,7 @@ export class DoAccountScreen {
 /** Cloudflare › Account › Domains: every site (zone) the read token sees. */
 @Component({
 	selector: 'rc-cf-domains-screen',
-	imports: [VendorState],
+	imports: [VendorState, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -384,7 +419,14 @@ export class DoAccountScreen {
 		>
 			<div class="rc-panel">
 				<div class="rc-ph">
-					<span class="rc-label">Sites on the account · read {{ when(readAt()) }}</span>
+					<span class="rc-label">
+						<rc-vendor-logo
+							vendor="cloudflare"
+							[named]="false"
+							[size]="14"
+						/>
+						Sites on the account · read {{ when(readAt()) }}
+					</span>
 				</div>
 				<div class="rc-tw">
 					<table class="rc-t">
@@ -439,7 +481,7 @@ export class CfDomainsScreen {
 /** Cloudflare › Domain › DNS: every record in the slot's first zone. */
 @Component({
 	selector: 'rc-dns-screen',
-	imports: [VendorState],
+	imports: [VendorState, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -450,7 +492,14 @@ export class CfDomainsScreen {
 		>
 			<div class="rc-panel">
 				<div class="rc-ph">
-					<span class="rc-label">{{ zone() }} · {{ rows().length }} records · read {{ when(readAt()) }}</span>
+					<span class="rc-label">
+						<rc-vendor-logo
+							vendor="cloudflare"
+							[named]="false"
+							[size]="14"
+						/>
+						{{ zone() }} · {{ rows().length }} records · read {{ when(readAt()) }}
+					</span>
 				</div>
 				<div class="rc-tw">
 					<table class="rc-t">

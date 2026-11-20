@@ -5,17 +5,34 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
+import { BrandLogo, Icon, environmentIcon, serviceLogo } from '../shared/icons';
+import { VendorLogo } from '../shared/vendor-logo';
 
 /** The repository's environments at a glance. Those on this computer are live; servers appear once linked. */
 @Component({
 	selector: 'rc-overview-screen',
+	imports: [Icon, VendorLogo, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-g3">
 			@for (env of envs(); track env.name) {
 				<div class="rc-panel">
 					<div class="rc-ph">
-						<span class="rc-label">{{ env.label }} · {{ env.runsOn }}</span>
+						<span class="rc-label">
+							<rc-icon [name]="env.icon" />
+							{{ env.label }}
+						</span>
+						@if (env.vendor) {
+							<rc-vendor-logo
+								[vendor]="env.vendor"
+								[size]="14"
+							/>
+						} @else {
+							<span class="rc-mono">
+								<rc-icon name="tabler/device-laptop" />
+								this computer
+							</span>
+						}
 					</div>
 					@if (env.local) {
 						@if (readiness.data(); as r) {
@@ -27,6 +44,10 @@ import { ConsoleContext } from '../data/console-context';
 										[class.amber]="r.status === 'degraded'"
 										[class.red]="r.status === 'down'"
 									></span>
+									<rc-brand-logo
+										[name]="apiLogo"
+										[size]="14"
+									/>
 									Shop API:
 									<b>{{ r.reachable ? r.status : 'not running' }}</b>
 								</p>
@@ -40,6 +61,10 @@ import { ConsoleContext } from '../data/console-context';
 						}
 						@if (services.data(); as s) {
 							<p class="rc-p">
+								<rc-brand-logo
+									name="logos/docker-icon"
+									[size]="14"
+								/>
 								Containers:
 								<b>{{ running() }}</b>
 								running of {{ s.services.length }}
@@ -47,7 +72,7 @@ import { ConsoleContext } from '../data/console-context';
 						}
 					} @else {
 						<p class="rc-p muted">
-							Its servers on {{ env.runsOn }} show here once the console's agent is linked on them.
+							Its servers on {{ env.runsOnName }} show here once the console's agent is linked on them.
 							{{ env.domains }}
 						</p>
 					}
@@ -60,6 +85,7 @@ export class OverviewScreen {
 	private readonly api = inject(ConsoleApi);
 	private readonly ctx = inject(ConsoleContext);
 	private readonly repoId = computed(() => this.ctx.repoId() ?? '');
+	protected readonly apiLogo = serviceLogo('api');
 	protected readonly envs = computed(() => {
 		const repo = this.ctx.repo();
 		return (repo?.environments ?? []).map((e) => {
@@ -68,7 +94,9 @@ export class OverviewScreen {
 				name: e.name,
 				label: e.label,
 				local: !cloud,
-				runsOn: cloud ? VENDOR_NAMES[cloud.vendor] : 'this computer',
+				icon: environmentIcon(e.name, !cloud),
+				vendor: cloud?.vendor ?? null,
+				runsOnName: cloud ? VENDOR_NAMES[cloud.vendor] : 'this computer',
 				domains: e.domains.length ? `Domains: ${e.domains.join(', ')}.` : '',
 			};
 		});

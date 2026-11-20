@@ -27,6 +27,7 @@ import {
 } from './add-project';
 import { ConsoleApi } from '../data/console-api';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
+import { Icon } from '../shared/icons';
 import { VendorLogo } from '../shared/vendor-logo';
 
 const list = (text: string): string[] =>
@@ -105,12 +106,17 @@ export function newRepository(
  */
 @Component({
 	selector: 'rc-repository-editor',
-	imports: [VendorLogo],
+	imports: [VendorLogo, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@let p = project();
 		<div class="rc-panel">
-			<div class="rc-ph"><span class="rc-label">Repositories · one source-code vendor each</span></div>
+			<div class="rc-ph">
+				<span class="rc-label">
+					<rc-icon name="tabler/brand-git" />
+					Repositories · one source-code vendor each
+				</span>
+			</div>
 			<div class="rc-tw">
 				<table class="rc-t">
 					<thead>
@@ -165,6 +171,11 @@ export function newRepository(
 			<div class="rc-panel">
 				<div class="rc-ph">
 					<span class="rc-label">
+						<rc-vendor-logo
+							[vendor]="d.sourceCode.vendor"
+							[named]="false"
+							[size]="14"
+						/>
 						{{ d.name }} · {{ names[d.sourceCode.vendor] }} · {{ d.sourceCode.repository }}
 					</span>
 				</div>
@@ -495,7 +506,10 @@ export function newRepository(
 
 		<div class="rc-panel">
 			<div class="rc-ph">
-				<span class="rc-label">Add a repository · one source-code vendor per repository</span>
+				<span class="rc-label">
+					<rc-icon name="tabler/square-rounded-plus" />
+					Add a repository · one source-code vendor per repository
+				</span>
 			</div>
 			<div class="rc-g2">
 				<div class="pj-vendors">

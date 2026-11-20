@@ -15,8 +15,20 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { type ListItem, placeOf, searchList, searchMenu } from '../menu/menu-search';
+import {
+	CONSOLE_PAGE_ICONS,
+	GROUP_ICONS,
+	Icon,
+	OWN_GROUP_ICON,
+	PROJECT_PAGE_ICONS,
+	SETTINGS_TAB_ICONS,
+	environmentIcon,
+	screenIcon,
+} from '../shared/icons';
+import { VendorLogo } from '../shared/vendor-logo';
 
-import type { Project } from '@saha-textile/release-console-contracts';
+import type { MenuGroup } from '../menu/menu.types';
+import type { Environment, Project } from '@saha-textile/release-console-contracts';
 
 /** The five console-level menus. */
 export const CONSOLE_PAGES: [string, string][] = [
@@ -50,6 +62,7 @@ interface Hit {
 	link: string[];
 	query: Record<string, string>;
 	via: string;
+	icon: string;
 }
 
 const tabQuery = (tab: string | null): Record<string, string> => (tab ? { tab } : {});
@@ -65,7 +78,7 @@ const PAGE_WORDS: Record<string, string[]> = {
 
 @Component({
 	selector: 'rc-shell',
-	imports: [RouterOutlet, NgTemplateOutlet],
+	imports: [RouterOutlet, NgTemplateOutlet, Icon, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	host: { '(document:keydown)': 'onKey($event)', '(document:click)': 'closeMenus($event)' },
 	templateUrl: './shell.html',
@@ -77,6 +90,9 @@ export class Shell {
 	protected readonly ctx = inject(ConsoleContext);
 	protected readonly consolePages = CONSOLE_PAGES;
 	protected readonly projectPages = PROJECT_PAGES;
+	protected readonly consoleIcons = CONSOLE_PAGE_ICONS;
+	protected readonly projectIcons = PROJECT_PAGE_ICONS;
+	protected readonly screenIcon = screenIcon;
 	private readonly searchBox = viewChild<ElementRef<HTMLInputElement>>('searchBox');
 
 	protected readonly projectOpen = signal(false);
@@ -110,6 +126,7 @@ export class Shell {
 				link: ['/p', project.id, 'r', repo.id, h.screen],
 				query: tabQuery(h.state),
 				via: h.via,
+				icon: screenIcon(h.screen),
 			}));
 		const items: ListItem[] =
 			this.ctx.level() === 'project' && project ? this.projectItems(project) : this.consoleItems();
@@ -119,6 +136,7 @@ export class Shell {
 			link: h.link,
 			query: h.query ?? {},
 			via: h.via,
+			icon: this.linkIcon(h.link, h.query ?? {}),
 		}));
 	});
 
@@ -166,6 +184,20 @@ export class Shell {
 				aliases: [r.sourceCode.repository.toLowerCase()],
 			})),
 		];
+	}
+
+	/** The icon of a console or project search result, from where it leads. */
+	private linkIcon(link: string[], query: Record<string, string>): string {
+		if (link[0] === '/console') return CONSOLE_PAGE_ICONS[link[1] ?? ''] ?? 'tabler/circle';
+		if (link.length > 3) return 'tabler/brand-git';
+		if (link[2] === 'settings' && query['tab']) return SETTINGS_TAB_ICONS[query['tab']] ?? 'tabler/settings';
+		return PROJECT_PAGE_ICONS[link[2] ?? ''] ?? 'tabler/circle';
+	}
+	protected groupIcon(g: MenuGroup): string {
+		return g.own ? OWN_GROUP_ICON : (GROUP_ICONS[g.label] ?? 'tabler/folder');
+	}
+	protected envIcon(e: Environment): string {
+		return environmentIcon(e.name, e.cloudId === null);
 	}
 
 	protected screen(key: string) {

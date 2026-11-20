@@ -6,6 +6,7 @@ import {
 	type KeyRef,
 	type Project,
 	type SlotKeys,
+	type Vendor,
 	SECRETS_HOSTING,
 	VENDOR_NAMES,
 	CONSOLE_KEYS_FOLDER,
@@ -15,6 +16,8 @@ import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 
 import { day, when } from './format-time';
 import { ConsoleApi } from '../data/console-api';
+import { Icon } from '../shared/icons';
+import { VendorLogo } from '../shared/vendor-logo';
 
 /** Kinds the owner can link here, each by its Infisical name; the GitHub CLI sign-in needs none. */
 const LINK_KINDS: KeyKind[] = [
@@ -31,6 +34,7 @@ const LINK_KINDS: KeyKind[] = [
 interface SlotChoice {
 	id: string;
 	label: string;
+	vendor: Vendor;
 	slot: SlotKeys;
 }
 
@@ -58,11 +62,17 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
  */
 @Component({
 	selector: 'rc-connections',
+	imports: [Icon, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@let p = project();
 		<div class="rc-panel">
-			<div class="rc-ph"><span class="rc-label">Source code · one vendor per repository</span></div>
+			<div class="rc-ph">
+				<span class="rc-label">
+					<rc-icon name="tabler/brand-git" />
+					Source code · one vendor per repository
+				</span>
+			</div>
 			<div class="rc-tw">
 				<table class="rc-t">
 					<thead>
@@ -82,7 +92,11 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 									<b>{{ r.name }}</b>
 								</td>
 								<td>
-									{{ vendors[r.sourceCode.vendor] }} ·
+									<rc-vendor-logo
+										[vendor]="r.sourceCode.vendor"
+										[size]="14"
+									/>
+									·
 									<span class="rc-mono">{{ r.sourceCode.repository }}</span>
 									{{ ref?.account ? ' · ' + ref?.account : '' }}
 								</td>
@@ -102,7 +116,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 			</div>
 		</div>
 		<div class="rc-panel">
-			<div class="rc-ph"><span class="rc-label">Cloud platforms · per repository</span></div>
+			<div class="rc-ph">
+				<span class="rc-label">
+					<rc-icon name="tabler/cloud" />
+					Cloud platforms · per repository
+				</span>
+			</div>
 			<div class="rc-tw">
 				<table class="rc-t">
 					<thead>
@@ -119,7 +138,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 								<td>
 									<b>{{ row.repo }}</b>
 								</td>
-								<td>{{ row.vendor }}</td>
+								<td>
+									<rc-vendor-logo
+										[vendor]="row.vendor"
+										[size]="14"
+									/>
+								</td>
 								<td>{{ row.keys }}</td>
 								<td>
 									<span
@@ -138,7 +162,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 			</div>
 		</div>
 		<div class="rc-panel">
-			<div class="rc-ph"><span class="rc-label">Edge, DNS and security</span></div>
+			<div class="rc-ph">
+				<span class="rc-label">
+					<rc-icon name="tabler/world" />
+					Edge, DNS and security
+				</span>
+			</div>
 			<div class="rc-tw">
 				<table class="rc-t">
 					<thead>
@@ -156,7 +185,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 								<td>
 									<b>{{ row.repo }}</b>
 								</td>
-								<td>{{ row.vendor }}</td>
+								<td>
+									<rc-vendor-logo
+										[vendor]="row.vendor"
+										[size]="14"
+									/>
+								</td>
 								<td class="rc-mono">{{ row.zones }}</td>
 								<td>{{ row.keys }}</td>
 								<td>
@@ -176,7 +210,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 			</div>
 		</div>
 		<div class="rc-panel">
-			<div class="rc-ph"><span class="rc-label">Secrets managers · per repository</span></div>
+			<div class="rc-ph">
+				<span class="rc-label">
+					<rc-icon name="tabler/key" />
+					Secrets managers · per repository
+				</span>
+			</div>
 			<div class="rc-tw">
 				<table class="rc-t">
 					<thead>
@@ -194,7 +233,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 								<td>
 									<b>{{ row.repo }}</b>
 								</td>
-								<td>{{ row.vendor }}</td>
+								<td>
+									<rc-vendor-logo
+										[vendor]="row.vendor"
+										[size]="14"
+									/>
+								</td>
 								<td class="rc-mono">{{ row.runs }}</td>
 								<td>{{ row.envs }}</td>
 								<td><span class="rc-pill amber">screens later</span></td>
@@ -212,7 +256,12 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 			</div>
 		</div>
 		<div class="rc-panel">
-			<div class="rc-ph"><span class="rc-label">Key file · from Infisical, written with your login</span></div>
+			<div class="rc-ph">
+				<span class="rc-label">
+					<rc-icon name="tabler/file-certificate" />
+					Key file · from Infisical, written with your login
+				</span>
+			</div>
 			@if (source.data(); as f) {
 				<div class="rc-kv">
 					<div>
@@ -256,7 +305,10 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 		</div>
 		<div class="rc-panel">
 			<div class="rc-ph">
-				<span class="rc-label">Keys in {{ p.name }} · values only in Infisical</span>
+				<span class="rc-label">
+					<rc-icon name="tabler/key" />
+					Keys in {{ p.name }} · values only in Infisical
+				</span>
 			</div>
 			<div class="rc-tw">
 				<table class="rc-t">
@@ -276,7 +328,18 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 							@let pill = pillOf(k);
 							<tr>
 								<td>
-									<b>{{ k.label }}</b>
+									<b>
+										@if (kinds[k.kind].vendor; as kv) {
+											<rc-vendor-logo
+												[vendor]="kv"
+												[named]="false"
+												[size]="14"
+											/>
+										} @else {
+											<rc-icon name="tabler/key" />
+										}
+										{{ k.label }}
+									</b>
 									<br />
 									<span class="rc-mono">
 										{{ k.envNames.length ? k.envNames.join(' + ') : 'kept by the GitHub CLI' }}
@@ -334,7 +397,10 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 			(submit)="save($event)"
 		>
 			<div class="rc-ph">
-				<span class="rc-label">Link a key · by its Infisical name, never a pasted value</span>
+				<span class="rc-label">
+					<rc-icon name="tabler/link" />
+					Link a key · by its Infisical name, never a pasted value
+				</span>
 			</div>
 			<div class="rc-g2">
 				<div class="pj-vendors">
@@ -350,7 +416,18 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 						>
 							<i aria-hidden="true"></i>
 							<span>
-								<b>{{ kinds[k].label }}</b>
+								<b>
+									@if (kinds[k].vendor; as kv) {
+										<rc-vendor-logo
+											[vendor]="kv"
+											[named]="false"
+											[size]="14"
+										/>
+									} @else {
+										<rc-icon name="tabler/key" />
+									}
+									{{ kinds[k].label }}
+								</b>
 								<small>{{ kinds[k].howTo }}</small>
 							</span>
 						</div>
@@ -426,7 +503,10 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 							</div>
 						</label>
 					}
-					<span class="rc-label">Use it for</span>
+					<span class="rc-label">
+						<rc-icon name="tabler/target" />
+						Use it for
+					</span>
 					@for (c of slotChoices(); track c.id) {
 						<div
 							class="do-radio"
@@ -439,7 +519,14 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 						>
 							<i aria-hidden="true"></i>
 							<span>
-								<b>{{ c.label }}</b>
+								<b>
+									<rc-vendor-logo
+										[vendor]="c.vendor"
+										[named]="false"
+										[size]="14"
+									/>
+									{{ c.label }}
+								</b>
 								<small>this project only</small>
 							</span>
 						</div>
@@ -510,6 +597,7 @@ export class Connections {
 				out.push({
 					id: `${r.id}:sc`,
 					label: `${r.name} · ${VENDOR_NAMES[r.sourceCode.vendor]}`,
+					vendor: r.sourceCode.vendor,
 					slot: { repositoryId: r.id, slot: 'source-code', slotId: '', keyIds: [] },
 				});
 			if (info.slot === 'cloud')
@@ -517,6 +605,7 @@ export class Connections {
 					out.push({
 						id: `${r.id}:c:${c.id}`,
 						label: `${r.name} · ${VENDOR_NAMES[c.vendor]}`,
+						vendor: c.vendor,
 						slot: { repositoryId: r.id, slot: 'cloud', slotId: c.id, keyIds: c.keyIds },
 					});
 			if (info.slot === 'edge')
@@ -524,6 +613,7 @@ export class Connections {
 					out.push({
 						id: `${r.id}:e:${e.id}`,
 						label: `${r.name} · ${VENDOR_NAMES[e.vendor]} (${e.zones.join(', ') || 'no domain'})`,
+						vendor: e.vendor,
 						slot: { repositoryId: r.id, slot: 'edge', slotId: e.id, keyIds: e.keyIds },
 					});
 		}
@@ -535,7 +625,7 @@ export class Connections {
 			r.cloud.map((c) => ({
 				id: `${r.id}:${c.id}`,
 				repo: r.name,
-				vendor: VENDOR_NAMES[c.vendor],
+				vendor: c.vendor,
 				keys: this.labels(c.keyIds),
 				pill: c.vendor === 'digitalocean' ? this.slotPill(c.keyIds) : { cls: 'amber', text: 'screens later' },
 			})),
@@ -546,7 +636,7 @@ export class Connections {
 			r.edge.map((e) => ({
 				id: `${r.id}:${e.id}`,
 				repo: r.name,
-				vendor: VENDOR_NAMES[e.vendor],
+				vendor: e.vendor,
 				zones: e.zones.join(', ') || '—',
 				keys: this.labels(e.keyIds),
 				pill: e.vendor === 'cloudflare' ? this.slotPill(e.keyIds) : { cls: 'amber', text: 'screens later' },
@@ -559,7 +649,7 @@ export class Connections {
 			r.secrets.map((x) => ({
 				id: `${r.id}:${x.id}`,
 				repo: r.name,
-				vendor: VENDOR_NAMES[x.vendor],
+				vendor: x.vendor,
 				runs:
 					x.address ||
 					(SECRETS_HOSTING[x.vendor] === 'managed'

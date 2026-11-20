@@ -1,3 +1,5 @@
+import type { Vendor } from '@saha-textile/release-console-contracts';
+
 export interface MenuSub {
 	label: string | null;
 	items: string[];
@@ -5,6 +7,10 @@ export interface MenuSub {
 export interface MenuGroup {
 	label: string;
 	subs: MenuSub[];
+	/** The provider of a cloud, edge or secrets group, shown as its logo. */
+	vendor?: Vendor;
+	/** The group of the repository's own menus. */
+	own?: boolean;
 }
 export interface ScreenInfo {
 	label: string;

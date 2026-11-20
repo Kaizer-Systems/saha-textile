@@ -195,3 +195,13 @@ export const ZoneTryResult = z.object({
 	),
 });
 export type ZoneTryResult = z.infer<typeof ZoneTryResult>;
+
+/** Go live, back to draft, or archive a zone. */
+export const PriceZoneStatusWrite = z.object({
+	status: z.enum(['draft', 'live', 'archived']),
+	revision: z.number().int().nonnegative(),
+});
+export type PriceZoneStatusWrite = z.infer<typeof PriceZoneStatusWrite>;
+
+export const ZonePricingSettingsWrite = ZonePricingSettings.omit({ updatedAt: true, updatedBy: true });
+export type ZonePricingSettingsWrite = z.infer<typeof ZonePricingSettingsWrite>;

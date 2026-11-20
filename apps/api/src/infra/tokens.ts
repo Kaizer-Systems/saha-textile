@@ -116,3 +116,19 @@ export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');
 /** Business documents as PDF (owner decision 2026-11-17: Chromium through Playwright). */
 export const DOCUMENT_RENDERER = Symbol('DocumentRendererPort');
+/** Orders and checkout (brief approved 2026-11-20). */
+export const ADMIN_ORDER_REPOSITORY = Symbol('AdminOrderRepository');
+export const ORDER_PAYMENT_REPOSITORY = Symbol('OrderPaymentRepository');
+export const PAYMENT_REQUEST_REPOSITORY = Symbol('PaymentRequestRepository');
+export const SHIPMENT_REPOSITORY = Symbol('ShipmentRepository');
+export const BUSINESS_REPOSITORY = Symbol('BusinessRepository');
+export const LEDGER_REPOSITORY = Symbol('LedgerRepository');
+export const PRICE_ZONE_REPOSITORY = Symbol('PriceZoneRepository');
+export const COUPON_REPOSITORY = Symbol('CouponRepository');
+export const DOCUMENT_NUMBERING_REPOSITORY = Symbol('DocumentNumberingRepository');
+export const ORDER_SETTINGS_REPOSITORY = Symbol('OrderSettingsRepository');
+export const GEO_DATA_PORT = Symbol('GeoDataPort');
+export const EINVOICE_PORT = Symbol('EInvoicePort');
+export const EWAYBILL_PORT = Symbol('EWayBillPort');
+/** The gateways' own payment requests, by gateway (CCAvenue Quick Invoice, PayPal Invoicing). */
+export const PAYMENT_REQUEST_PORTS = Symbol('PaymentRequestPorts');

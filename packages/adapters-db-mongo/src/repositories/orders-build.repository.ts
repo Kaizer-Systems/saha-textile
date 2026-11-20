@@ -19,6 +19,9 @@ import {
 	type SiteSettingKey,
 } from '@saha-textile/contracts';
 import {
+	CouponUsedUpError,
+	DuplicateCouponCodeError,
+	DuplicateOrderKeyError,
 	StaleRevisionError,
 	normalizeForSearch,
 	type AdminOrderRepository,
@@ -75,30 +78,6 @@ function fromDoc(doc: OrdersBuildDoc | null): Record<string, unknown> | null {
 
 /** India midnight of a `YYYY-MM-DD` day, as an instant. */
 const indiaDayStart = (day: string): Date => new Date(`${day}T00:00:00+05:30`);
-
-/** Thrown when an order number (or its stripped form) or an idempotency key already exists. */
-export class DuplicateOrderKeyError extends Error {
-	constructor(readonly key: 'orderNumber' | 'idempotencyKey') {
-		super(`Duplicate order ${key}`);
-		this.name = 'DuplicateOrderKeyError';
-	}
-}
-
-/** Thrown when a coupon has reached its total uses. */
-export class CouponUsedUpError extends Error {
-	constructor(readonly couponId: string) {
-		super(`Coupon ${couponId} has no uses left`);
-		this.name = 'CouponUsedUpError';
-	}
-}
-
-/** Thrown when a coupon code is already taken by another coupon. */
-export class DuplicateCouponCodeError extends Error {
-	constructor(readonly code: string) {
-		super(`Coupon code ${code} is taken`);
-		this.name = 'DuplicateCouponCodeError';
-	}
-}
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Orders                                                                                          */

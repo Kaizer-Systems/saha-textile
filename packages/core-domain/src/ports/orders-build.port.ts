@@ -43,6 +43,30 @@ export class StaleRevisionError extends Error {
 	}
 }
 
+/** Thrown when an order number (or its stripped form) or an idempotency key already exists. */
+export class DuplicateOrderKeyError extends Error {
+	constructor(readonly key: 'orderNumber' | 'idempotencyKey') {
+		super(`Duplicate order ${key}`);
+		this.name = 'DuplicateOrderKeyError';
+	}
+}
+
+/** Thrown when a coupon has reached its total uses. */
+export class CouponUsedUpError extends Error {
+	constructor(readonly couponId: string) {
+		super(`Coupon ${couponId} has no uses left`);
+		this.name = 'CouponUsedUpError';
+	}
+}
+
+/** Thrown when a coupon code is already taken by another coupon. */
+export class DuplicateCouponCodeError extends Error {
+	constructor(readonly code: string) {
+		super(`Coupon code ${code} is taken`);
+		this.name = 'DuplicateCouponCodeError';
+	}
+}
+
 /** Extra search words and staff attention reasons kept beside an order (never part of the record). */
 export interface OrderWriteMeta {
 	/** References found elsewhere (tracking numbers, payment references) the order is found by. */

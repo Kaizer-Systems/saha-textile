@@ -174,9 +174,12 @@ describe('projects and keys', () => {
 					name: 'shop-web',
 					role: '',
 					sourceCode: { vendor: 'gitlab', repository: 'acme/shop-web', keyId: null },
-					environments: [{ name: 'local', label: 'Local', cloudId: null, domains: [] }],
+					environments: [
+						{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+					],
 					cloud: [],
 					edge: [],
+					secrets: [],
 					menus: [],
 				},
 			],

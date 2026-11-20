@@ -6,6 +6,7 @@ import {
 	type KeyRef,
 	type Project,
 	type SlotKeys,
+	SECRETS_HOSTING,
 	VENDOR_NAMES,
 	keyValueSchema,
 } from '@saha-textile/release-console-contracts';
@@ -167,6 +168,42 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 							</tr>
 						} @empty {
 							<tr><td colspan="5">No repository of this project uses an edge platform.</td></tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div class="rc-panel">
+			<div class="rc-ph"><span class="rc-label">Secrets managers · per repository</span></div>
+			<div class="rc-tw">
+				<table class="rc-t">
+					<thead>
+						<tr>
+							<th>Repository</th>
+							<th>Manager</th>
+							<th>Runs</th>
+							<th>Environments reading it</th>
+							<th>State</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (row of secretsRows(); track row.id) {
+							<tr>
+								<td>
+									<b>{{ row.repo }}</b>
+								</td>
+								<td>{{ row.vendor }}</td>
+								<td class="rc-mono">{{ row.runs }}</td>
+								<td>{{ row.envs }}</td>
+								<td><span class="rc-pill amber">screens later</span></td>
+							</tr>
+						} @empty {
+							<tr>
+								<td colspan="5">
+									No repository of this project names a secrets manager; its environments use files
+									kept by hand.
+								</td>
+							</tr>
 						}
 					</tbody>
 				</table>
@@ -443,6 +480,28 @@ export class Connections {
 				zones: e.zones.join(', ') || '—',
 				keys: this.labels(e.keyIds),
 				pill: e.vendor === 'cloudflare' ? this.slotPill(e.keyIds) : { cls: 'amber', text: 'screens later' },
+			})),
+		),
+	);
+
+	protected readonly secretsRows = computed(() =>
+		this.project().repositories.flatMap((r) =>
+			r.secrets.map((x) => ({
+				id: `${r.id}:${x.id}`,
+				repo: r.name,
+				vendor: VENDOR_NAMES[x.vendor],
+				runs:
+					x.address ||
+					(SECRETS_HOSTING[x.vendor] === 'managed'
+						? 'managed service'
+						: SECRETS_HOSTING[x.vendor] === 'source-code'
+							? 'inside the source-code vendor'
+							: 'on the server'),
+				envs:
+					r.environments
+						.filter((e) => e.secretsId === x.id)
+						.map((e) => (e.secretsPath ? `${e.label} (${e.secretsPath})` : e.label))
+						.join(', ') || 'none yet',
 			})),
 		),
 	);

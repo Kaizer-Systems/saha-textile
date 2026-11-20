@@ -9,8 +9,11 @@ const groupOf = (label: string): MenuGroup | undefined => CONSOLE_MENU.menu.find
 /** The screen key of a cloud or edge slot whose vendor has no screens yet. */
 export const laterKey = (slotId: string): string => `later-${slotId}`;
 
-function laterScreen(vendorName: string): ScreenInfo {
-	const caption = `${vendorName} screens are built the way ${vendorName} works when this repository first needs them. Its environments, servers and costs show here once its adapter reads them.`;
+function laterScreen(
+	vendorName: string,
+	shows = 'Its environments, servers and costs show here once its adapter reads them.',
+): ScreenInfo {
+	const caption = `${vendorName} screens are built the way ${vendorName} works when this repository first needs them. ${shows}`;
 	return {
 		label: 'Screens later',
 		states: { list: 'Screens later' },
@@ -25,7 +28,7 @@ function laterScreen(vendorName: string): ScreenInfo {
 
 /**
  * One repository's menu: Overview, its own menus (from `.release-console.json`), Ship, Watch,
- * Run, one group per cloud slot and per edge slot, and Governance. The screens map holds only
+ * Run, one group per cloud slot, edge slot and secrets manager, and Governance. The screens map holds only
  * what this menu shows, so search never finds another repository's screens.
  */
 export function repositoryMenu(repo: Repository): ConsoleMenu {
@@ -60,6 +63,14 @@ export function repositoryMenu(repo: Repository): ConsoleMenu {
 			extra[laterKey(slot.id)] = laterScreen(name);
 			groups.push({ label: `Edge · ${name}`, subs: [{ label: null, items: [laterKey(slot.id)] }] });
 		}
+	}
+	for (const slot of repo.secrets) {
+		const name = VENDOR_NAMES[slot.vendor];
+		extra[laterKey(slot.id)] = laterScreen(
+			name,
+			'Each environment’s secret names, when each was last changed and which are missing show here, never their values.',
+		);
+		groups.push({ label: `Secrets · ${name}`, subs: [{ label: null, items: [laterKey(slot.id)] }] });
 	}
 	const governance = groupOf('Governance');
 	if (governance) groups.push(governance);

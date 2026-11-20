@@ -5,6 +5,7 @@ import {
 	type CloudVendor,
 	type EdgeVendor,
 	type Project,
+	type SecretsVendor,
 	type Repository,
 	type SourceCodeVendor,
 	VENDOR_NAMES,
@@ -13,7 +14,17 @@ import {
 } from '@saha-textile/release-console-contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
-import { CLOUDS, EDGES, OWN_MENUS, SOURCE, SOURCE_NOTES, slugOf } from './add-project';
+import {
+	CLOUDS,
+	EDGES,
+	OWN_MENUS,
+	SECRETS,
+	SECRETS_NOTES,
+	SOURCE,
+	SOURCE_NOTES,
+	needsAddress,
+	slugOf,
+} from './add-project';
 import { ConsoleApi } from '../data/console-api';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
 
@@ -47,7 +58,21 @@ export function toggleEdgeSlot(repo: Repository, vendor: EdgeVendor): Repository
 	};
 }
 
-/** A new repository that starts with the first repository's environments, clouds and edges (keys included). */
+/** Adds a secrets manager, or removes it and moves its environments back to files kept by hand. */
+export function toggleSecretsSlot(repo: Repository, vendor: SecretsVendor): Repository {
+	if (!repo.secrets.some((x) => x.vendor === vendor))
+		return { ...repo, secrets: [...repo.secrets, { id: vendor, vendor, address: '', keyIds: [] }] };
+	const gone = repo.secrets.filter((x) => x.vendor === vendor).map((x) => x.id);
+	return {
+		...repo,
+		secrets: repo.secrets.filter((x) => x.vendor !== vendor),
+		environments: repo.environments.map((e) =>
+			e.secretsId && gone.includes(e.secretsId) ? { ...e, secretsId: null, secretsPath: '' } : e,
+		),
+	};
+}
+
+/** A new repository that starts with the first repository's environments, clouds, edges and secrets managers (keys included). */
 export function newRepository(
 	first: Repository | undefined,
 	vendor: SourceCodeVendor,
@@ -62,10 +87,13 @@ export function newRepository(
 		role,
 		sourceCode: { vendor, repository, keyId: null },
 		environments: structuredClone(
-			first?.environments ?? [{ name: 'local', label: 'Local', cloudId: null, domains: [] }],
+			first?.environments ?? [
+				{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+			],
 		),
 		cloud: structuredClone(first?.cloud ?? []),
 		edge: structuredClone(first?.edge ?? []),
+		secrets: structuredClone(first?.secrets ?? []),
 		menus,
 	};
 }
@@ -90,6 +118,7 @@ export function newRepository(
 							<th>Environments</th>
 							<th>Clouds</th>
 							<th>Edges</th>
+							<th>Secrets</th>
 							<th></th>
 						</tr>
 					</thead>
@@ -108,6 +137,7 @@ export function newRepository(
 								<td>{{ envLabels(r) }}</td>
 								<td>{{ cloudsOf(r) }}</td>
 								<td>{{ edgesOf(r) }}</td>
+								<td>{{ secretsOf(r) }}</td>
 								<td>
 									<button
 										type="button"
@@ -153,6 +183,8 @@ export function newRepository(
 								<th>Environment</th>
 								<th>Runs on</th>
 								<th>Domains</th>
+								<th>Secrets from</th>
+								<th>Where inside it</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -192,6 +224,40 @@ export function newRepository(
 												autocomplete="off"
 												[value]="e.domains.join(', ')"
 												(change)="setEnv(i, { domains: split($any($event.target).value) })"
+											/>
+										</div>
+									</td>
+									<td>
+										<div class="rc-states">
+											<button
+												type="button"
+												class="rc-chip"
+												[class.on]="e.secretsId === null"
+												(click)="setEnv(i, { secretsId: null, secretsPath: '' })"
+											>
+												files kept by hand
+											</button>
+											@for (x of d.secrets; track x.id) {
+												<button
+													type="button"
+													class="rc-chip"
+													[class.on]="e.secretsId === x.id"
+													(click)="setEnv(i, { secretsId: x.id })"
+												>
+													{{ names[x.vendor] }}
+												</button>
+											}
+										</div>
+									</td>
+									<td>
+										<div class="rc-msearch">
+											<input
+												type="text"
+												autocomplete="off"
+												placeholder="project · environment · /folder"
+												[value]="e.secretsPath"
+												[disabled]="e.secretsId === null"
+												(change)="setEnv(i, { secretsPath: $any($event.target).value.trim() })"
 											/>
 										</div>
 									</td>
@@ -299,6 +365,52 @@ export function newRepository(
 					</div>
 				</div>
 
+				<div class="pj-vendors">
+					<span class="rc-subl">Secrets managers · one or more; each environment reads one</span>
+					<div class="pj-grid">
+						@for (v of secretsVendors; track v) {
+							<div
+								class="pj-vendor"
+								role="checkbox"
+								tabindex="0"
+								[class.on]="hasSecrets(v)"
+								[attr.aria-checked]="hasSecrets(v)"
+								(click)="toggleSecrets(v)"
+								(keydown.enter)="toggleSecrets(v)"
+							>
+								<b>{{ names[v] }}</b>
+								<small>{{ secretsNotes[v] }}</small>
+								<span
+									class="rc-pill"
+									[class.ok]="hasSecrets(v)"
+									[class.amber]="!hasSecrets(v) && screens(v) === 'later'"
+									[class.muted]="!hasSecrets(v) && screens(v) === 'full'"
+								>
+									{{ hasSecrets(v) ? 'active' : screens(v) === 'later' ? 'screens later' : 'choose' }}
+								</span>
+							</div>
+						}
+					</div>
+					<div class="rc-form">
+						@for (x of d.secrets; track x.id; let i = $index) {
+							@if (addressNeeded(x.vendor)) {
+								<label>
+									{{ names[x.vendor] }}
+									<div class="rc-msearch">
+										<input
+											type="url"
+											autocomplete="off"
+											placeholder="https://secrets.example.com"
+											[value]="x.address"
+											(change)="setSecretsAddress(i, $any($event.target).value)"
+										/>
+									</div>
+								</label>
+							}
+						}
+					</div>
+				</div>
+
 				<span class="rc-subl">Own menus · first group of this repository's menu</span>
 				<div class="pj-grid">
 					@for (m of ownMenus; track m) {
@@ -319,8 +431,8 @@ export function newRepository(
 					}
 				</div>
 				<p class="rc-note">
-					Slots that stay keep their keys. A newly added cloud or edge platform starts without a key; connect
-					it on the Connections tab.
+					Slots that stay keep their keys. A newly added cloud, edge platform or secrets manager starts
+					without a key; connect it on the Connections tab.
 				</p>
 				@if (message()) {
 					<p class="rc-note">{{ message() }}</p>
@@ -440,6 +552,9 @@ export class RepositoryEditor {
 	protected readonly sourceNotes = SOURCE_NOTES;
 	protected readonly clouds = CLOUDS;
 	protected readonly edges = EDGES;
+	protected readonly secretsVendors = SECRETS;
+	protected readonly secretsNotes = SECRETS_NOTES;
+	protected readonly addressNeeded = needsAddress;
 	protected readonly ownMenus = OWN_MENUS;
 	protected readonly screens = vendorScreens;
 	protected readonly split = list;
@@ -456,6 +571,9 @@ export class RepositoryEditor {
 		});
 	}
 
+	protected secretsOf(r: Repository): string {
+		return r.secrets.map((x) => VENDOR_NAMES[x.vendor]).join(' + ') || 'files kept by hand';
+	}
 	protected envLabels(r: Repository): string {
 		return r.environments.map((e) => e.label).join(' · ');
 	}
@@ -499,7 +617,12 @@ export class RepositoryEditor {
 		const name = slugOf(label);
 		const d = this.draft();
 		if (!d || !name || d.environments.some((e) => e.name === name)) return;
-		this.patch({ environments: [...d.environments, { name, label, cloudId: null, domains: [] }] });
+		this.patch({
+			environments: [
+				...d.environments,
+				{ name, label, cloudId: null, domains: [], secretsId: null, secretsPath: '' },
+			],
+		});
 		box.value = '';
 	}
 	protected dropEnv(i: number): void {
@@ -519,6 +642,17 @@ export class RepositoryEditor {
 	protected toggleEdge(v: EdgeVendor): void {
 		this.draft.update((d) => (d ? toggleEdgeSlot(d, v) : d));
 	}
+	protected hasSecrets(v: SecretsVendor): boolean {
+		return !!this.draft()?.secrets.some((x) => x.vendor === v);
+	}
+	protected toggleSecrets(v: SecretsVendor): void {
+		this.draft.update((d) => (d ? toggleSecretsSlot(d, v) : d));
+	}
+	protected setSecretsAddress(i: number, text: string): void {
+		this.draft.update((d) =>
+			d ? { ...d, secrets: d.secrets.map((x, n) => (n === i ? { ...x, address: text.trim() } : x)) } : d,
+		);
+	}
 	protected setZones(i: number, text: string): void {
 		this.draft.update((d) =>
 			d ? { ...d, edge: d.edge.map((e, n) => (n === i ? { ...e, zones: list(text) } : e)) } : d,
@@ -530,6 +664,13 @@ export class RepositoryEditor {
 	}
 
 	protected async save(): Promise<void> {
+		const missing = this.draft()?.secrets.find(
+			(x) => needsAddress(x.vendor) && !/^https?:\/\/\S+$/.test(x.address),
+		);
+		if (missing) {
+			this.message.set(`Give ${VENDOR_NAMES[missing.vendor]} its server's address, starting with https://.`);
+			return;
+		}
 		const parsed = repositorySchema.safeParse(this.draft());
 		if (!parsed.success) {
 			this.message.set(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '));

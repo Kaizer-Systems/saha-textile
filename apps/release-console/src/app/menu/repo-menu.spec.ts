@@ -10,9 +10,10 @@ const repo = (over: Partial<Repository>): Repository => ({
 	name: 'shop-web',
 	role: '',
 	sourceCode: { vendor: 'github', repository: 'acme/shop-web', keyId: null },
-	environments: [{ name: 'local', label: 'Local', cloudId: null, domains: [] }],
+	environments: [{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' }],
 	cloud: [],
 	edge: [],
+	secrets: [],
 	menus: [],
 	...over,
 });
@@ -47,6 +48,23 @@ describe('repository menu', () => {
 		expect(
 			m.menu.find((g) => g.label === 'Edge · Cloudflare')?.subs.some((s) => s.label === 'Domain: example.com ▾'),
 		).toBe(true);
+	});
+
+	it('adds a Secrets group per secrets manager, before Governance', () => {
+		const m = repositoryMenu(
+			repo({
+				secrets: [
+					{ id: 'infisical', vendor: 'infisical', address: '', keyIds: [] },
+					{ id: 'github-secrets', vendor: 'github-secrets', address: '', keyIds: [] },
+				],
+			}),
+		);
+		expect(m.menu.map((g) => g.label).slice(-3)).toEqual([
+			'Secrets · Infisical Cloud',
+			'Secrets · GitHub Actions secrets',
+			'Governance',
+		]);
+		expect(m.screens[laterKey('infisical')]?.captions['list']).toContain('never their values');
 	});
 
 	it('scopes search to what the repository has', () => {

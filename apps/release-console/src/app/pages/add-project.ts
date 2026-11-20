@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import {
 	type CloudVendor,
 	type EdgeVendor,
+	type SecretsVendor,
 	type NewProject,
 	type SourceCodeVendor,
 	VENDOR_NAMES,
@@ -23,12 +24,37 @@ export const STEPS = [
 	'Environments',
 	'Cloud platforms',
 	'Edge and DNS',
+	'Secrets managers',
 	'Project menus',
 	'Done',
 ];
 export const SOURCE: SourceCodeVendor[] = ['github', 'gitlab', 'bitbucket', 'azure-repos'];
 export const CLOUDS: CloudVendor[] = ['digitalocean', 'aws', 'gcp', 'azure'];
 export const EDGES: EdgeVendor[] = ['cloudflare', 'cloudfront', 'fastly'];
+export const SECRETS: SecretsVendor[] = [
+	'infisical',
+	'infisical-self-hosted',
+	'aws-secrets-manager',
+	'gcp-secret-manager',
+	'azure-key-vault',
+	'doppler',
+	'vault',
+	'github-secrets',
+	'server-files',
+];
+export const SECRETS_NOTES: Record<SecretsVendor, string> = {
+	infisical: 'managed service; projects, environments and folders',
+	'infisical-self-hosted': 'runs on your own server; the same projects and folders',
+	'aws-secrets-manager': 'managed by AWS; read with a cloud role',
+	'gcp-secret-manager': 'managed by Google Cloud; read with a service account',
+	'azure-key-vault': 'managed by Azure; read with a managed identity',
+	doppler: 'managed service; projects and configs',
+	vault: 'runs on your own server (or HCP Vault)',
+	'github-secrets': 'repository and environment secrets for workflows',
+	'server-files': 'files kept on the server, written at deploy',
+};
+/** Self-hosted managers that need their server's address. */
+export const needsAddress = (v: SecretsVendor): boolean => v === 'infisical-self-hosted' || v === 'vault';
 export const SOURCE_NOTES: Record<SourceCodeVendor, string> = {
 	github: 'pull requests, Actions, environments, packages',
 	gitlab: 'merge requests, GitLab CI',
@@ -58,6 +84,8 @@ interface EnvDraft {
 	label: string;
 	runsOn: CloudVendor | null;
 	domains: string;
+	secretsFrom: SecretsVendor | null;
+	secretsPath: string;
 }
 
 /** Add a project: name, repositories (a vendor each), environments, clouds, edges, own menus. */
@@ -464,6 +492,124 @@ interface EnvDraft {
 					</div>
 				}
 				@case (5) {
+					<div class="rc-g2">
+						<div class="rc-panel">
+							<div class="rc-ph"><span class="rc-label">Secrets managers · one or more</span></div>
+							<div class="pj-vendors">
+								@for (v of secretsVendors; track v) {
+									<div
+										class="pj-vendor"
+										role="checkbox"
+										tabindex="0"
+										[class.on]="secretsOn(v)"
+										[attr.aria-checked]="secretsOn(v)"
+										(click)="toggleSecrets(v)"
+										(keydown.enter)="toggleSecrets(v)"
+									>
+										<b>{{ names[v] }}</b>
+										<small>{{ secretsNotes[v] }}</small>
+										<span
+											class="rc-pill"
+											[class.ok]="secretsOn(v)"
+											[class.amber]="!secretsOn(v) && screens(v) === 'later'"
+											[class.muted]="!secretsOn(v) && screens(v) === 'full'"
+										>
+											{{
+												secretsOn(v)
+													? 'active'
+													: screens(v) === 'later'
+														? 'screens later'
+														: 'choose'
+											}}
+										</span>
+									</div>
+								}
+							</div>
+							<div class="rc-form">
+								@for (x of secretsList(); track x.vendor; let i = $index) {
+									@if (addressNeeded(x.vendor)) {
+										<label>
+											{{ names[x.vendor] }}
+											<div class="rc-msearch">
+												<input
+													type="url"
+													autocomplete="off"
+													placeholder="https://secrets.example.com"
+													[value]="x.address"
+													(input)="setSecretsAddress(i, $any($event.target).value)"
+												/>
+											</div>
+										</label>
+									}
+								}
+							</div>
+							<p class="rc-note">
+								A project can use several: for example one manager for the apps and GitHub's own secrets
+								for its workflows. Keys to read them are added on the Connections tab.
+							</p>
+						</div>
+						<div class="rc-panel">
+							<div class="rc-ph">
+								<span class="rc-label">Where each environment reads its secrets</span>
+							</div>
+							<div class="rc-tw">
+								<table class="rc-t">
+									<thead>
+										<tr>
+											<th>Environment</th>
+											<th>Reads from</th>
+											<th>Where inside it</th>
+										</tr>
+									</thead>
+									<tbody>
+										@for (e of envs(); track e.name; let i = $index) {
+											<tr>
+												<td>
+													<b>{{ e.label }}</b>
+												</td>
+												<td>
+													<div class="rc-states">
+														<button
+															type="button"
+															class="rc-chip"
+															[class.on]="e.secretsFrom === null"
+															(click)="setSecretsFrom(i, null)"
+														>
+															files kept by hand
+														</button>
+														@for (x of secretsList(); track x.vendor) {
+															<button
+																type="button"
+																class="rc-chip"
+																[class.on]="e.secretsFrom === x.vendor"
+																(click)="setSecretsFrom(i, x.vendor)"
+															>
+																{{ names[x.vendor] }}
+															</button>
+														}
+													</div>
+												</td>
+												<td>
+													<div class="rc-msearch">
+														<input
+															type="text"
+															autocomplete="off"
+															placeholder="project · environment · /folder"
+															[value]="e.secretsPath"
+															[disabled]="e.secretsFrom === null"
+															(input)="setSecretsPath(i, $any($event.target).value)"
+														/>
+													</div>
+												</td>
+											</tr>
+										}
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				}
+				@case (6) {
 					<div class="rc-panel">
 						<div class="rc-ph">
 							<span class="rc-label">Project menus · each repository's own screens</span>
@@ -520,6 +666,10 @@ interface EnvDraft {
 								<span>Edges</span>
 								<em>{{ edgeSummary() }}</em>
 							</div>
+							<div>
+								<span>Secrets</span>
+								<em>{{ secretsSummary() }}</em>
+							</div>
 						</div>
 						<p class="rc-note">Next: connect each vendor on the project's Connections screen.</p>
 					</div>
@@ -559,6 +709,9 @@ export class AddProject {
 	protected readonly sourceNotes = SOURCE_NOTES;
 	protected readonly clouds = CLOUDS;
 	protected readonly edges = EDGES;
+	protected readonly secretsVendors = SECRETS;
+	protected readonly secretsNotes = SECRETS_NOTES;
+	protected readonly addressNeeded = needsAddress;
 	protected readonly ownMenus = OWN_MENUS;
 	protected readonly screens = vendorScreens;
 
@@ -571,11 +724,19 @@ export class AddProject {
 	protected readonly repoVendor = signal<SourceCodeVendor>('github');
 	protected readonly repos = signal<RepoDraft[]>([]);
 	protected readonly envs = signal<EnvDraft[]>([
-		{ name: 'local', label: 'Local', runsOn: null, domains: 'localhost' },
-		{ name: 'staging', label: 'Staging', runsOn: 'digitalocean', domains: '' },
-		{ name: 'production', label: 'Production', runsOn: 'digitalocean', domains: '' },
+		{ name: 'local', label: 'Local', runsOn: null, domains: 'localhost', secretsFrom: null, secretsPath: '' },
+		{ name: 'staging', label: 'Staging', runsOn: 'digitalocean', domains: '', secretsFrom: null, secretsPath: '' },
+		{
+			name: 'production',
+			label: 'Production',
+			runsOn: 'digitalocean',
+			domains: '',
+			secretsFrom: null,
+			secretsPath: '',
+		},
 	]);
 	protected readonly cloudSet = signal<Set<CloudVendor>>(new Set(['digitalocean']));
+	protected readonly secretsList = signal<{ vendor: SecretsVendor; address: string }[]>([]);
 	protected readonly edgeList = signal<{ vendor: EdgeVendor; zones: string }[]>([
 		{ vendor: 'cloudflare', zones: '' },
 	]);
@@ -650,7 +811,10 @@ export class AddProject {
 		const label = box.value.trim();
 		const name = slugOf(label);
 		if (!name || this.envs().some((e) => e.name === name)) return;
-		this.envs.update((es) => [...es, { name, label, runsOn: null, domains: '' }]);
+		this.envs.update((es) => [
+			...es,
+			{ name, label, runsOn: null, domains: '', secretsFrom: null, secretsPath: '' },
+		]);
 		box.value = '';
 	}
 	protected dropEnv(i: number): void {
@@ -672,6 +836,28 @@ export class AddProject {
 	}
 	protected setZones(i: number, zones: string): void {
 		this.edgeList.update((list) => list.map((e, n) => (n === i ? { ...e, zones } : e)));
+	}
+	protected secretsOn(v: SecretsVendor): boolean {
+		return this.secretsList().some((x) => x.vendor === v);
+	}
+	protected toggleSecrets(v: SecretsVendor): void {
+		if (this.secretsOn(v)) {
+			this.secretsList.update((list) => list.filter((x) => x.vendor !== v));
+			this.envs.update((es) =>
+				es.map((e) => (e.secretsFrom === v ? { ...e, secretsFrom: null, secretsPath: '' } : e)),
+			);
+		} else this.secretsList.update((list) => [...list, { vendor: v, address: '' }]);
+	}
+	protected setSecretsAddress(i: number, address: string): void {
+		this.secretsList.update((list) => list.map((x, n) => (n === i ? { ...x, address: address.trim() } : x)));
+	}
+	protected setSecretsFrom(i: number, vendor: SecretsVendor | null): void {
+		this.envs.update((es) =>
+			es.map((e, n) => (n === i ? { ...e, secretsFrom: vendor, secretsPath: vendor ? e.secretsPath : '' } : e)),
+		);
+	}
+	protected setSecretsPath(i: number, secretsPath: string): void {
+		this.envs.update((es) => es.map((e, n) => (n === i ? { ...e, secretsPath } : e)));
 	}
 	protected toggleMenu(repository: string, menu: string): void {
 		this.repos.update((rs) =>
@@ -696,6 +882,14 @@ export class AddProject {
 	protected readonly cloudSummary = computed(
 		() => [...this.cloudSet()].map((c) => VENDOR_NAMES[c]).join(' + ') || '—',
 	);
+	protected readonly secretsSummary = computed(() => {
+		const chosen = this.secretsList().map((x) => VENDOR_NAMES[x.vendor]);
+		if (!chosen.length) return 'files kept by hand';
+		const where = this.envs()
+			.map((e) => `${e.label}: ${e.secretsFrom ? VENDOR_NAMES[e.secretsFrom] : 'files'}`)
+			.join(' · ');
+		return `${chosen.join(' + ')} (${where})`;
+	});
 	protected readonly edgeSummary = computed(
 		() =>
 			this.edgeList()
@@ -711,6 +905,7 @@ export class AddProject {
 				.map((t) => t.trim())
 				.filter(Boolean);
 		const clouds = [...this.cloudSet()];
+		const secrets = this.secretsList().map((x) => x.vendor);
 		return {
 			id: this.id(),
 			name: this.name().trim(),
@@ -727,6 +922,8 @@ export class AddProject {
 						label: e.label,
 						cloudId: e.runsOn && clouds.includes(e.runsOn) ? e.runsOn : null,
 						domains: list(e.domains),
+						secretsId: e.secretsFrom && secrets.includes(e.secretsFrom) ? e.secretsFrom : null,
+						secretsPath: e.secretsFrom ? e.secretsPath.trim() : '',
 					})),
 					cloud: clouds.map((c) => ({ id: c, vendor: c, account: '', keyIds: [] })),
 					edge: this.edgeList().map((e) => ({
@@ -734,6 +931,12 @@ export class AddProject {
 						vendor: e.vendor,
 						account: '',
 						zones: list(e.zones),
+						keyIds: [],
+					})),
+					secrets: this.secretsList().map((x) => ({
+						id: x.vendor,
+						vendor: x.vendor,
+						address: needsAddress(x.vendor) ? x.address : '',
 						keyIds: [],
 					})),
 					menus: r.menus,
@@ -755,6 +958,14 @@ export class AddProject {
 				return this.repos().length ? '' : 'Add at least one repository.';
 			case 2:
 				return this.envs().length ? '' : 'Keep at least one environment.';
+			case 5: {
+				const missing = this.secretsList().find(
+					(x) => needsAddress(x.vendor) && !/^https?:\/\/\S+$/.test(x.address),
+				);
+				return missing
+					? `Give ${VENDOR_NAMES[missing.vendor]} its server's address, starting with https://.`
+					: '';
+			}
 			default:
 				return '';
 		}

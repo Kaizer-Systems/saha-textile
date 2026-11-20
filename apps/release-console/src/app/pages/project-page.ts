@@ -268,6 +268,7 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 									<th>Environments</th>
 									<th>Clouds</th>
 									<th>Edges</th>
+									<th>Secrets</th>
 									<th></th>
 								</tr>
 							</thead>
@@ -286,6 +287,7 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 										<td>{{ envLabels(r) }}</td>
 										<td>{{ cloudsOf(r) }}</td>
 										<td>{{ edgesOf(r) }}</td>
+										<td>{{ secretsOf(r) }}</td>
 										<td>
 											<button
 												type="button"
@@ -313,6 +315,7 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 									<th>Repository</th>
 									<th>Runs on</th>
 									<th>Domains</th>
+									<th>Secrets from</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -324,6 +327,7 @@ import { PROJECT_PAGES, SETTINGS_TABS } from '../shell/shell';
 										<td>{{ row.repo }}</td>
 										<td>{{ row.runsOn }}</td>
 										<td class="rc-mono">{{ row.domains }}</td>
+										<td>{{ row.secrets }}</td>
 									</tr>
 								}
 							</tbody>
@@ -378,12 +382,16 @@ export class ProjectPage {
 		(this.ctx.project()?.repositories ?? []).flatMap((r) =>
 			r.environments.map((e) => {
 				const cloud = r.cloud.find((c) => c.id === e.cloudId);
+				const secrets = r.secrets.find((x) => x.id === e.secretsId);
 				return {
 					repo: r.name,
 					env: e.name,
 					label: e.label,
 					runsOn: cloud ? VENDOR_NAMES[cloud.vendor] : 'this computer',
 					domains: e.domains.join(', ') || '—',
+					secrets: secrets
+						? `${VENDOR_NAMES[secrets.vendor]}${e.secretsPath ? ` · ${e.secretsPath}` : ''}`
+						: 'files kept by hand',
 				};
 			}),
 		),
@@ -401,6 +409,9 @@ export class ProjectPage {
 				.map((e) => `${VENDOR_NAMES[e.vendor]}${e.zones.length ? ` (${e.zones.join(', ')})` : ''}`)
 				.join(' + ') || '—'
 		);
+	}
+	protected secretsOf(r: Repository): string {
+		return r.secrets.map((x) => VENDOR_NAMES[x.vendor]).join(' + ') || 'files kept by hand';
 	}
 	protected envLabels(r: Repository): string {
 		return r.environments.map((e) => e.label).join(' · ');

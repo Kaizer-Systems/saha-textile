@@ -25,6 +25,20 @@ export async function githubCliToken(): Promise<string | null> {
 	return stdout.trim() || null;
 }
 
+/** Every environment must run on one of its repository's clouds and read one of its secrets managers. */
+export function checkRepository(repo: Repository): void {
+	const clouds = new Set(repo.cloud.map((c) => c.id));
+	const secrets = new Set(repo.secrets.map((x) => x.id));
+	for (const e of repo.environments) {
+		if (e.cloudId && !clouds.has(e.cloudId))
+			throw new ConflictException(`${repo.name} · ${e.label} runs on a cloud the repository does not have.`);
+		if (e.secretsId && !secrets.has(e.secretsId))
+			throw new ConflictException(
+				`${repo.name} · ${e.label} reads a secrets manager the repository does not have.`,
+			);
+	}
+}
+
 /** The Keychain account name of a key: project name and key id, so keys never cross projects. */
 export const keychainItemOf = (project: Pick<Project, 'name'>, keyId: string): string => `${project.name} · ${keyId}`;
 
@@ -66,6 +80,7 @@ export class ProjectsService {
 			throw new ConflictException('A project with that name exists.');
 		const ids = input.repositories.map((r) => r.id);
 		if (new Set(ids).size !== ids.length) throw new ConflictException('Two repositories share an id.');
+		input.repositories.forEach(checkRepository);
 		const project: Project = { ...input, keys: [], createdAt: new Date().toISOString() };
 		this.store.update((f) => ({
 			...f,
@@ -161,6 +176,7 @@ export class ProjectsService {
 								},
 								cloud: r.cloud.map((c) => ({ ...c, keyIds: c.keyIds.filter((k) => k !== keyId) })),
 								edge: r.edge.map((e) => ({ ...e, keyIds: e.keyIds.filter((k) => k !== keyId) })),
+								secrets: r.secrets.map((x) => ({ ...x, keyIds: x.keyIds.filter((k) => k !== keyId) })),
 							})),
 						},
 			),
@@ -178,6 +194,8 @@ export class ProjectsService {
 			throw new NotFoundException('No such cloud slot.');
 		if (input.slot === 'edge' && !repo.edge.some((e) => e.id === input.slotId))
 			throw new NotFoundException('No such edge slot.');
+		if (input.slot === 'secrets' && !repo.secrets.some((x) => x.id === input.slotId))
+			throw new NotFoundException('No such secrets manager.');
 		this.store.update((f) => ({
 			...f,
 			projects: f.projects.map((p) =>
@@ -197,12 +215,19 @@ export class ProjectsService {
 														c.id === input.slotId ? { ...c, keyIds: input.keyIds } : c,
 													),
 												}
-											: {
-													...r,
-													edge: r.edge.map((e) =>
-														e.id === input.slotId ? { ...e, keyIds: input.keyIds } : e,
-													),
-												},
+											: input.slot === 'edge'
+												? {
+														...r,
+														edge: r.edge.map((e) =>
+															e.id === input.slotId ? { ...e, keyIds: input.keyIds } : e,
+														),
+													}
+												: {
+														...r,
+														secrets: r.secrets.map((x) =>
+															x.id === input.slotId ? { ...x, keyIds: input.keyIds } : x,
+														),
+													},
 							),
 						},
 			),
@@ -249,6 +274,7 @@ export class ProjectsService {
 	}
 
 	private keepKnownKeys(project: Project, repo: Repository): Repository {
+		checkRepository(repo);
 		const known = new Set(project.keys.map((k) => k.id));
 		const ids = (list: string[]) => list.filter((k) => known.has(k));
 		return {
@@ -259,6 +285,7 @@ export class ProjectsService {
 			},
 			cloud: repo.cloud.map((c) => ({ ...c, keyIds: ids(c.keyIds) })),
 			edge: repo.edge.map((e) => ({ ...e, keyIds: ids(e.keyIds) })),
+			secrets: repo.secrets.map((x) => ({ ...x, keyIds: ids(x.keyIds) })),
 		};
 	}
 

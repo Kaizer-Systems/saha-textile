@@ -33,9 +33,10 @@ const shopWeb: Repository = {
 	name: 'shop-web',
 	role: 'storefront',
 	sourceCode: { vendor: 'gitlab', repository: 'acme/shop-web', keyId: null },
-	environments: [{ name: 'local', label: 'Local', cloudId: null, domains: [] }],
+	environments: [{ name: 'local', label: 'Local', cloudId: null, domains: [], secretsId: null, secretsPath: '' }],
 	cloud: [{ id: 'digitalocean', vendor: 'digitalocean', account: '', keyIds: ['do-read', 'not-in-project'] }],
 	edge: [],
+	secrets: [],
 	menus: [],
 };
 
@@ -108,5 +109,26 @@ describe('editing repositories after a project is added', () => {
 			status: 'unknown',
 			reachable: false,
 		});
+	});
+
+	it('keeps a secrets manager’s keys and refuses an environment reading one the repository lacks', () => {
+		const repo = projects.project('saha-textile').repositories[0] as Repository;
+		const withInfisical: Repository = {
+			...repo,
+			secrets: [{ id: 'infisical', vendor: 'infisical', address: '', keyIds: [] }],
+			environments: repo.environments.map((e) => ({
+				...e,
+				secretsId: 'infisical',
+				secretsPath: `saha-textile-${e.name} · /api`,
+			})),
+		};
+		const saved = projects.updateRepository('saha-textile', 'saha-textile', withInfisical).repositories[0];
+		expect(saved?.environments.map((e) => e.secretsId)).toEqual(['infisical', 'infisical', 'infisical']);
+		expect(() =>
+			projects.updateRepository('saha-textile', 'saha-textile', { ...withInfisical, secrets: [] }),
+		).toThrow(/secrets manager the repository does not have/);
+		expect(() =>
+			projects.updateRepository('saha-textile', 'saha-textile', { ...withInfisical, cloud: [] }),
+		).toThrow(/cloud the repository does not have/);
 	});
 });

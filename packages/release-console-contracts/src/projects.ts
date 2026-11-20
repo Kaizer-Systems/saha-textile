@@ -20,7 +20,36 @@ export type CloudVendor = z.infer<typeof cloudVendorSchema>;
 /** Edge, DNS and security platforms. One or more per repository; each domain belongs to one. */
 export const edgeVendorSchema = z.enum(['cloudflare', 'cloudfront', 'fastly']);
 export type EdgeVendor = z.infer<typeof edgeVendorSchema>;
-export type Vendor = SourceCodeVendor | CloudVendor | EdgeVendor;
+/**
+ * Secrets managers. One or more per repository; each environment reads its secrets from one of
+ * them. Managed services, self-hosted servers and the source-code vendor's own store all count.
+ */
+export const secretsVendorSchema = z.enum([
+	'infisical',
+	'infisical-self-hosted',
+	'aws-secrets-manager',
+	'gcp-secret-manager',
+	'azure-key-vault',
+	'doppler',
+	'vault',
+	'github-secrets',
+	'server-files',
+]);
+export type SecretsVendor = z.infer<typeof secretsVendorSchema>;
+export type Vendor = SourceCodeVendor | CloudVendor | EdgeVendor | SecretsVendor;
+
+/** How each secrets manager is run: by its vendor, by the owner, or inside the source-code vendor. */
+export const SECRETS_HOSTING: Record<SecretsVendor, 'managed' | 'self-hosted' | 'source-code'> = {
+	infisical: 'managed',
+	'infisical-self-hosted': 'self-hosted',
+	'aws-secrets-manager': 'managed',
+	'gcp-secret-manager': 'managed',
+	'azure-key-vault': 'managed',
+	doppler: 'managed',
+	vault: 'self-hosted',
+	'github-secrets': 'source-code',
+	'server-files': 'self-hosted',
+};
 
 /** Vendors whose screens are built. Every other vendor can be chosen and shows “screens later”. */
 export const VENDORS_WITH_SCREENS: readonly Vendor[] = ['github', 'digitalocean', 'cloudflare'];
@@ -39,6 +68,15 @@ export const VENDOR_NAMES: Record<Vendor, string> = {
 	cloudflare: 'Cloudflare',
 	cloudfront: 'AWS CloudFront + Route 53',
 	fastly: 'Fastly',
+	infisical: 'Infisical Cloud',
+	'infisical-self-hosted': 'Infisical (self-hosted)',
+	'aws-secrets-manager': 'AWS Secrets Manager',
+	'gcp-secret-manager': 'Google Secret Manager',
+	'azure-key-vault': 'Azure Key Vault',
+	doppler: 'Doppler',
+	vault: 'HashiCorp Vault or OpenBao',
+	'github-secrets': 'GitHub Actions secrets',
+	'server-files': 'Files on the server',
 };
 
 /**
@@ -183,12 +221,25 @@ export const edgeSlotSchema = z.object({
 });
 export type EdgeSlot = z.infer<typeof edgeSlotSchema>;
 
+export const secretsSlotSchema = z.object({
+	id: slug,
+	vendor: secretsVendorSchema,
+	/** The server's address for a self-hosted manager, e.g. `https://vault.example.com`; empty when managed. */
+	address: z.union([z.literal(''), z.string().url().max(200)]).default(''),
+	keyIds: z.array(slug).default([]),
+});
+export type SecretsSlot = z.infer<typeof secretsSlotSchema>;
+
 export const environmentSchema = z.object({
 	name: slug,
 	label: z.string().min(1).max(40),
 	/** Which of the repository's clouds it runs on; `null` means this computer. */
 	cloudId: slug.nullable().default(null),
 	domains: z.array(z.string()).default([]),
+	/** Which of the repository's secrets managers it reads; `null` means files kept by hand. */
+	secretsId: slug.nullable().default(null),
+	/** Where its secrets sit inside that manager, e.g. `saha-textile-dev · dev · /api`. */
+	secretsPath: z.string().max(200).default(''),
 });
 export type Environment = z.infer<typeof environmentSchema>;
 
@@ -200,6 +251,7 @@ export const repositorySchema = z.object({
 	environments: z.array(environmentSchema).min(1),
 	cloud: z.array(cloudSlotSchema).default([]),
 	edge: z.array(edgeSlotSchema).default([]),
+	secrets: z.array(secretsSlotSchema).default([]),
 	/** The repository's own menu screens, from its `.release-console.json`. */
 	menus: z.array(z.string()).default([]),
 });
@@ -259,7 +311,7 @@ export type StoreKey = z.infer<typeof storeKeySchema>;
 /** Which keys a repository's slot uses. */
 export const slotKeysSchema = z.object({
 	repositoryId: slug,
-	slot: z.enum(['source-code', 'cloud', 'edge']),
+	slot: z.enum(['source-code', 'cloud', 'edge', 'secrets']),
 	slotId: z.string().default(''),
 	keyIds: z.array(slug),
 });

@@ -30,6 +30,8 @@
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 
+import { localMongoTarget, testDatabaseUri } from '../../../scripts/secrets/test-login.mjs';
+
 /** Short enough to expire inside a run, long enough for the requests before it. */
 const ACCESS_TTL = '1s';
 const ACCESS_EXPIRY_WAIT_MS = 1_400;
@@ -94,8 +96,10 @@ async function main() {
 	// The Mongo adapter reads its connection settings from `process.env` at connect time, so
 	// the database name is the one value that still has to go through the environment.
 	process.env.MONGODB_DB_NAME = E2E_DB_NAME;
-	// The shop's own database login (apps/api/.env) belongs to its own database, not to this one.
-	// Set before dotenv loads, which never replaces a name already set.
+	// The shop's own database login (apps/api/.env) reaches only its own database; this one is reached
+	// with this Mac's test login, when there is one. Set before dotenv loads, which never replaces a
+	// name already set.
+	process.env.MONGODB_URI = testDatabaseUri(localMongoTarget(E2E_DB_NAME));
 	process.env.MONGODB_USERNAME = '';
 	process.env.MONGODB_PASSWORD = '';
 

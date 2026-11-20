@@ -74,7 +74,11 @@ function pull(args) {
 
 function stackEnv() {
 	const inventory = loadInventory();
-	console.log(writeStackEnv({ root: ROOT, inventory, readApi: devApiReader(inventory) }).join('\n'));
+	const { projectId, environment } = inventory.projects.dev;
+	const readInfrastructure = () => exportFolder({ projectId, environment, folder: 'infrastructure', notes });
+	console.log(
+		writeStackEnv({ root: ROOT, inventory, readApi: devApiReader(inventory), readInfrastructure }).join('\n'),
+	);
 }
 
 function setupLocalCommand() {

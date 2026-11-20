@@ -16,6 +16,7 @@ import {
 	setupLocal,
 } from './local-setup.mjs';
 import { buildRelease } from './render.mjs';
+import { TEST_DATABASE_USER, TEST_PASSWORD_FILE } from './test-login.mjs';
 
 /** Deterministic stand-in for randomBytes: each call gives a new, recognisable run of bytes. */
 function counterRandom() {
@@ -110,20 +111,27 @@ test('fillBlanks fills blank and missing settings in place and touches nothing e
 	assert.deepEqual(fillBlanks('A=1\n', new Map([['A', '2']])), { text: 'A=1\n', filled: [], kept: ['A'] });
 });
 
-test('the login script creates both logins as deploy.sh does and proves each on its own connection', () => {
+test('the login script creates the logins as deploy.sh does, plus the test login, and proves each on its own connection', () => {
 	const script = mongoLoginScript({
 		database: 'saha_textile_local',
 		rootUser: 'saha_textile_root',
 		rootPassword: 'r00t',
 		appUser: 'saha_textile_app',
 		appPassword: 'app"pw',
+		testPassword: 't3st',
 	});
 	assert.match(script, /keep\('admin', "saha_textile_root", "r00t", \[\{ role: 'root', db: 'admin' \}\]\)/);
 	assert.match(
 		script,
 		/keep\("saha_textile_local", "saha_textile_app", "app\\"pw", \[\{ role: 'readWrite', db: "saha_textile_local" \}\]\)/,
 	);
-	assert.match(script, /print\(both \? 'logins-ok' : 'logins-failed'\)/);
+	assert.ok(
+		script.includes(
+			`keep('admin', "${TEST_DATABASE_USER}", "t3st", [{"role":"readWriteAnyDatabase","db":"admin"},{"role":"dbAdminAnyDatabase","db":"admin"}])`,
+		),
+	);
+	assert.ok(script.includes(`logsIn("${TEST_DATABASE_USER}", "t3st", 'admin')`));
+	assert.match(script, /print\(all \? 'logins-ok' : 'logins-failed'\)/);
 });
 
 /** A throwaway repository root with a hand-written apps/api/.env. */
@@ -152,7 +160,12 @@ test('setupLocal fills the file, writes the services folder and the list for Inf
 	withRoot(HAND_WRITTEN, (root) => {
 		const scripts = [];
 		const generate = (tier) => generateServiceSecrets(tier, counterRandom());
-		const lines = setupLocal({ root, generate, runMongo: mongoAccepting(scripts) });
+		const lines = setupLocal({
+			root,
+			generate,
+			runMongo: mongoAccepting(scripts),
+			makeTestPassword: () => 'zz-test-pw',
+		});
 		const env = parseEnvText(readFileSync(join(root, 'apps/api/.env'), 'utf8'));
 		assert.equal(env.get('JWT_ACCESS_SECRET'), 'keep-me', 'a setting with a value is never changed');
 		assert.equal(env.get('MONGODB_USERNAME'), APP_DATABASE_USER);
@@ -171,6 +184,9 @@ test('setupLocal fills the file, writes the services folder and the list for Inf
 		assert.equal(readFileSync(join(dir, 'redis-password'), 'utf8'), env.get('REDIS_PASSWORD'));
 		assert.equal(scripts.length, 1);
 		assert.ok(scripts[0].includes(env.get('MONGODB_PASSWORD')));
+		assert.equal(readFileSync(join(root, TEST_PASSWORD_FILE), 'utf8'), 'zz-test-pw');
+		assert.equal(statSync(join(root, TEST_PASSWORD_FILE)).mode & 0o777, 0o600);
+		assert.ok(scripts[0].includes('"zz-test-pw"'));
 
 		const handover = parseEnvText(readFileSync(join(root, FOR_INFISICAL), 'utf8'));
 		assert.equal(handover.has('JWT_ACCESS_SECRET'), false, 'only what was blank is handed over');
@@ -179,7 +195,14 @@ test('setupLocal fills the file, writes the services folder and the list for Inf
 		assert.equal(handover.get('ADMIN_APP_URL'), 'https://localhost:4300');
 
 		const text = lines.join('\n');
-		for (const value of [env.get('MONGODB_PASSWORD'), env.get('CSRF_SECRET'), handover.get('MAILBOX_TOKEN_KEY')]) {
+		assert.match(text, /saha_textile_tests \(this Mac's test databases\)/);
+		assert.equal(handover.has('MONGO_TEST_PASSWORD'), false, 'the test login never goes to Infisical');
+		for (const value of [
+			env.get('MONGODB_PASSWORD'),
+			env.get('CSRF_SECRET'),
+			handover.get('MAILBOX_TOKEN_KEY'),
+			'zz-test-pw',
+		]) {
 			assert.ok(!text.includes(value), 'a value reached the output');
 		}
 		assert.match(text, /Not in apps\/api\/.env yet: MAILBOX_TOKEN_KEY, ADMIN_APP_URL/);
@@ -193,6 +216,11 @@ test('setupLocal fills the file, writes the services folder and the list for Inf
 		});
 		assert.deepEqual(parseEnvText(readFileSync(join(root, FOR_INFISICAL), 'utf8')), handover);
 		assert.equal(readFileSync(join(dir, 'mongo-keyfile'), 'utf8'), keyfile);
+		assert.equal(
+			readFileSync(join(root, TEST_PASSWORD_FILE), 'utf8'),
+			'zz-test-pw',
+			'the test password is made once',
+		);
 		assert.match(again[0], /0 blank settings filled \(none\)/);
 		assert.match(again.join('\n'), /were already there and are kept/);
 	});

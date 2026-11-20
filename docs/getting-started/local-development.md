@@ -4,12 +4,13 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-20'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
+    - scripts/secrets/test-login.mjs
     - apps/api/src/reset-local-customer.ts
     - apps/api/src/set-local-test-credentials.ts
     - apps/api/src/invite-local-admin.ts
@@ -96,10 +97,25 @@ The machine's own MongoDB, Redis and search server use real logins, in the same 
 
 - It fills every blank service setting in `apps/api/.env` with a strong random value (`MONGODB_USERNAME` and `MONGODB_PASSWORD`, `REDIS_PASSWORD`, `CSRF_SECRET` and similar), plus the local settings `REDIS_HOST`, `REDIS_PORT`, `DEPLOY_ENV=local` and `COOKIE_SECURE=true`. A setting that already has a value is never changed, and the file before is kept as `apps/api/.env.before-local-setup`.
 - It writes the gitignored `docker/dev-secrets/`: the replica-set keyfile, the database administrator's name and password, and the search server's `meilisearch.toml`. These are the dev project's `/infrastructure` entries.
-- It creates the administrator (`root`, in `admin`) and the app login (`readWrite` on its own database only) in the running MongoDB, and checks that both log in.
+- It creates the administrator (`root`, in `admin`) and the app login (`readWrite` on its own database only) in the running MongoDB, plus a test login for the test runners' own databases, and checks that all three log in.
 - It writes `docker/dev-secrets/for-infisical.env`, the `/api` settings the dev project still lacks, ready to drop onto the project's `/api` folder.
 
-Logins become required with `MONGO_AUTH=on` in `docker/mongo/.env` and `REDIS_AUTH=on` in `docker/redis/.env`, followed by `pnpm mongo:up` and `pnpm redis:up`. Every folder that runs the API needs the same two `.env` files, `docker/dev-secrets/` and the new settings in its `apps/api/.env`. A folder without the switch refuses to restart a container that requires logins. `pnpm local-auth:proof` proves the switch on throwaway copies. Test runners that use their own databases (`pnpm coverage`, the browser-test runner) do not use the app login.
+Logins are required with `MONGO_AUTH=on` in `docker/mongo/.env` and `REDIS_AUTH=on` in `docker/redis/.env`, followed by `pnpm mongo:up` and `pnpm redis:up`. A folder without the switch refuses to restart a container that requires logins. `pnpm local-auth:proof` proves the switch on throwaway copies. Every folder that runs the API needs the logins and the search key in its `apps/api/.env`.
+
+The search server (the full stack's Meilisearch on port 7700, which `pnpm dev` also uses) takes its master key from the dev project's `/infrastructure/meilisearch.toml` through `pnpm stack:env`. Its admin key is the API's `MEILISEARCH_API_KEY`.
+
+#### The test login
+
+Test runners work on databases of their own (`saha_textile_e2e`, `saha_textile_it`, `saha_textile_test` and names derived from them), which the app login cannot reach. They log in with the machine's test login, `saha_textile_tests`, whose password `pnpm secrets:setup-local` makes once in `docker/dev-secrets/mongo-test-password`. MongoDB grants rights per database, not per name prefix, so this login can read, write and drop any database on the machine; each runner still refuses a database that is not a test database. The test login exists only on a developer machine, never in Infisical or on a droplet. Worktrees read the main folder's file.
+
+- `pnpm coverage`, `pnpm e2e`, `pnpm e2e:stack` and `pnpm e2e:session-rotation` use it on their own.
+- An opt-in database suite (`RUN_DB_IT=1`) gets the address from `scripts/secrets/test-login.mjs`, which prints only into `$(…)` or a pipe:
+
+```bash
+MONGODB_URI="$(node scripts/secrets/test-login.mjs saha_textile_test)" MONGODB_DB_NAME=saha_textile_test RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
+```
+
+Without the file, as on CI, the address carries no login.
 
 Local defaults target the Docker MongoDB replica set below, `console` notifications (no real sends), and CORS for the storefront (`:4200`), admin (`:4300`), and persistent developer portal (`127.0.0.1:3457` / `localhost:3457`) so approved Scalar Test Requests can reach the local API.
 

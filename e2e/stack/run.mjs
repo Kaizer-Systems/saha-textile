@@ -20,6 +20,8 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { testDatabaseUri } from '../../scripts/secrets/test-login.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DATABASE = 'saha_textile_e2e';
 const SEARCH_INDEX = 'products_e2e';
@@ -35,10 +37,19 @@ const playwrightArgs = args.filter((arg) => arg !== '--keep' && arg !== '--serve
 const envFile = resolve(ROOT, 'apps/api/.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
+// The shop's own database login (apps/api/.env) reaches only its own database. This one is reached
+// with this Mac's test login, when there is one (scripts/secrets/test-login.mjs).
+const DATABASE_URI = testDatabaseUri({
+	host: process.env.MONGODB_HOST,
+	port: process.env.MONGODB_PORT,
+	replicaSet: process.env.MONGODB_REPLICA_SET,
+	database: DATABASE,
+});
+
 const env = {
 	...process.env,
 	MONGODB_DB_NAME: DATABASE,
-	// The shop's own database login (apps/api/.env) belongs to its own database, not to this one.
+	MONGODB_URI: DATABASE_URI,
 	MONGODB_USERNAME: '',
 	MONGODB_PASSWORD: '',
 	MEILISEARCH_INDEX: SEARCH_INDEX,
@@ -97,12 +108,7 @@ async function waitFor(label, url) {
 async function resetDatabase() {
 	const require = createRequire(resolve(ROOT, 'packages/adapters-db-mongo/package.json'));
 	const mongoose = require('mongoose');
-	const host = env.MONGODB_HOST || '127.0.0.1';
-	const port = env.MONGODB_PORT || '27017';
-	const replicaSet = env.MONGODB_REPLICA_SET || 'rs0';
-	const connection = await mongoose
-		.createConnection(`mongodb://${host}:${port}/${DATABASE}?replicaSet=${replicaSet}&directConnection=true`)
-		.asPromise();
+	const connection = await mongoose.createConnection(DATABASE_URI).asPromise();
 	await connection.dropDatabase();
 	await connection.close();
 }

@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { parseEnvText } from './files.mjs';
 import { SecretsError, loadInventory } from './inventory.mjs';
-import { STACK_ENV_DIR, completeStackEnv, stackPort, writeStackEnv } from './stack.mjs';
+import { STACK_ENV_DIR, stackPort, stackServiceSecrets, writeStackEnv } from './stack.mjs';
 
 // Every made-up value carries this marker, so a test can prove no value reaches a message.
 const MARK = 'zz-made-up-';
@@ -31,7 +31,7 @@ function devProject(extra = {}) {
 			// The dev project's own values for settings the stack owns: all replaced or dropped.
 			MONGODB_HOST: 'localhost',
 			MONGODB_PASSWORD: `${MARK}dev-mongo`,
-			REDIS_PASSWORD: `${MARK}dev-redis`,
+			REDIS_PASSWORD: 'zzmadeupdevredis0123',
 			MEILISEARCH_API_KEY: `${MARK}dev-search`,
 			SHOP_ORIGIN: 'https://localhost:4200',
 			OTP_LOCAL_FIXED_CODE: '123456',
@@ -41,11 +41,21 @@ function devProject(extra = {}) {
 	);
 }
 
-let counter = 0;
-const makeSecret = () => `stack${String(++counter).padStart(20, '0')}`;
+const SEARCH_KEY = 'zzmadeupsearchkey0123456789';
+const SEARCH_CONFIG = `master_key = "${SEARCH_KEY}"\nenv = "development"\nno_analytics = true\n`;
+const infrastructure =
+	(config = SEARCH_CONFIG) =>
+	() =>
+		new Map([['meilisearch.toml', config]]);
 
 function write(root, api, extra = {}) {
-	const lines = writeStackEnv({ root, inventory, readApi: () => api, makeSecret, ...extra });
+	const lines = writeStackEnv({
+		root,
+		inventory,
+		readApi: () => api,
+		readInfrastructure: infrastructure(),
+		...extra,
+	});
 	for (const line of lines) assert.ok(!line.includes(MARK), `a value leaked into: ${line}`);
 	return lines;
 }
@@ -53,13 +63,12 @@ function write(root, api, extra = {}) {
 const file = (root, name) => readFileSync(join(root, STACK_ENV_DIR, name), 'utf8');
 const mode = (root, name) => statSync(join(root, STACK_ENV_DIR, name)).mode & 0o777;
 
-test('stack:env writes the API file with the stack settings on top, and Redis and search files that agree with it', () => {
+test("stack:env writes the API file with the stack settings on top, and the dev project's Redis password and search key", () => {
 	withRoot((root) => {
 		const lines = write(root, devProject());
 		assert.match(lines[0], /api\.env \(\d+ settings from Infisical saha-textile-dev \(dev\), folder \/api\)/);
 
 		const api = parseEnvText(file(root, 'api.env'));
-		const local = parseEnvText(file(root, 'stack.env'));
 		assert.equal(api.get('CSRF_SECRET'), `${MARK}csrf`);
 		assert.equal(api.get('MONGODB_HOST'), 'mongo');
 		assert.equal(api.get('NODE_ENV'), 'production');
@@ -76,12 +85,13 @@ test('stack:env writes the API file with the stack settings on top, and Redis an
 		]) {
 			assert.equal(api.has(name), false, `${name} must not reach the stack`);
 		}
-		assert.equal(api.get('REDIS_PASSWORD'), local.get('REDIS_PASSWORD'));
-		assert.equal(file(root, 'redis-password'), local.get('REDIS_PASSWORD'));
-		assert.equal(api.get('MEILISEARCH_API_KEY'), local.get('MEILISEARCH_MASTER_KEY'));
+		assert.equal(api.get('REDIS_PASSWORD'), 'zzmadeupdevredis0123');
+		assert.equal(file(root, 'redis-password'), 'zzmadeupdevredis0123');
+		assert.equal(api.get('MEILISEARCH_API_KEY'), SEARCH_KEY);
+		assert.equal(file(root, 'meilisearch.toml'), SEARCH_CONFIG);
 		assert.equal(
-			file(root, 'meilisearch.toml'),
-			`master_key = "${local.get('MEILISEARCH_MASTER_KEY')}"\nenv = "development"\nno_analytics = true\n`,
+			lines.some((line) => line.includes('stack.env')),
+			false,
 		);
 
 		const shop = JSON.parse(file(root, 'storefront.config.json'));
@@ -98,27 +108,29 @@ test('stack:env writes the API file with the stack settings on top, and Redis an
 			'https://admin-local.saha-textile.localhost',
 		);
 
-		for (const name of ['api.env', 'redis-password', 'meilisearch.toml', 'stack.env'])
-			assert.equal(mode(root, name), 0o600);
+		for (const name of ['api.env', 'redis-password', 'meilisearch.toml']) assert.equal(mode(root, name), 0o600);
 		for (const name of ['storefront.env', 'storefront.config.json', 'admin.config.json'])
 			assert.equal(mode(root, name), 0o644);
 	});
 });
 
-test('the local secrets are made once, and a different HTTPS port reaches every address', () => {
+test('stack.env keeps only the HTTPS port, which reaches every address; its old secrets are named as unused', () => {
 	withRoot((root) => {
 		write(root, devProject());
-		const first = parseEnvText(file(root, 'stack.env'));
-		writeFileSync(join(root, STACK_ENV_DIR, 'stack.env'), `${file(root, 'stack.env')}STACK_HTTPS_PORT=8443`);
-		write(root, devProject());
-		const second = parseEnvText(file(root, 'stack.env'));
+		const old = 'REDIS_PASSWORD=oldlocal\nMEILISEARCH_MASTER_KEY=oldsearch\nSTACK_HTTPS_PORT=8443\n';
+		writeFileSync(join(root, STACK_ENV_DIR, 'stack.env'), old);
+		const lines = write(root, devProject());
+		assert.ok(
+			lines.includes(
+				'  docker/stack/env/stack.env still holds REDIS_PASSWORD and MEILISEARCH_MASTER_KEY, no longer used: the stack takes both from the dev project. Only STACK_HTTPS_PORT is read there.',
+			),
+		);
+		assert.equal(file(root, 'stack.env'), old, 'stack.env is never rewritten');
+		assert.equal(file(root, 'redis-password'), 'zzmadeupdevredis0123');
 		assert.equal(
 			write(root, devProject({ CSRF_SECRET: '' })).find((line) => line.includes('No longer')),
 			'  No longer in api.env: CSRF_SECRET. Fill any the stack needs in Infisical, then run pnpm stack:env again.',
 		);
-		assert.equal(second.get('REDIS_PASSWORD'), first.get('REDIS_PASSWORD'));
-		assert.equal(second.get('MEILISEARCH_MASTER_KEY'), first.get('MEILISEARCH_MASTER_KEY'));
-		assert.equal(second.get('STACK_HTTPS_PORT'), '8443');
 		assert.equal(
 			parseEnvText(file(root, 'api.env')).get('ADMIN_APP_URL'),
 			'https://admin-local.saha-textile.localhost:8443',
@@ -130,15 +142,23 @@ test('the local secrets are made once, and a different HTTPS port reaches every 
 	});
 });
 
-test('a stack.env from before this change gains the search key and keeps its Redis password', () => {
-	const { text, values } = completeStackEnv('REDIS_PASSWORD=abc123', () => 'fresh0123456789');
-	assert.equal(text, 'REDIS_PASSWORD=abc123\nMEILISEARCH_MASTER_KEY=fresh0123456789\n');
-	assert.equal(values.get('REDIS_PASSWORD'), 'abc123');
+test('a blank Redis password, a search config without a key, or an unsafe value stops stack:env', () => {
+	const api = (value) => new Map([['REDIS_PASSWORD', value]]);
 	assert.throws(
-		() => completeStackEnv(`REDIS_PASSWORD='has space'\n`),
-		(error) =>
-			error instanceof SecretsError && /REDIS_PASSWORD in docker\/stack\/env\/stack.env/.test(error.message),
+		() => stackServiceSecrets(api(''), SEARCH_CONFIG, 'the dev project'),
+		/REDIS_PASSWORD is blank in the dev project/,
 	);
+	assert.throws(() => stackServiceSecrets(api('abc'), 'env = "development"\n', 'x'), /has no master_key/);
+	assert.throws(() => stackServiceSecrets(api('abc'), undefined, 'x'), /has no master_key/);
+	assert.throws(
+		() => stackServiceSecrets(api('has space'), SEARCH_CONFIG, 'x'),
+		(error) => error instanceof SecretsError && /REDIS_PASSWORD may not contain/.test(error.message),
+	);
+	assert.equal(stackServiceSecrets(api('abc'), 'master_key = "k1"', 'x').searchConfig, 'master_key = "k1"\n');
+	withRoot((root) => {
+		assert.throws(() => write(root, devProject(), { readInfrastructure: infrastructure('') }), SecretsError);
+		assert.throws(() => file(root, 'api.env'), { code: 'ENOENT' });
+	});
 	assert.equal(stackPort(new Map()), '443');
 	assert.throws(() => stackPort(new Map([['STACK_HTTPS_PORT', 'https']])), SecretsError);
 });
@@ -156,7 +176,12 @@ test('a misspelt name in Infisical stops stack:env before anything is written', 
 
 test('without Infisical, apps/api/.env is used and names the inventory does not know are left out', () => {
 	withRoot((root) => {
-		writeFileSync(join(root, 'apps/api/.env'), `CSRF_SECRET=${MARK}from-file\nOLD_SETTING=${MARK}old\nPORT=4000\n`);
+		writeFileSync(
+			join(root, 'apps/api/.env'),
+			`CSRF_SECRET=${MARK}from-file\nOLD_SETTING=${MARK}old\nPORT=4000\nREDIS_PASSWORD=zzfilepassword\n`,
+		);
+		mkdirSync(join(root, 'docker/dev-secrets'), { recursive: true });
+		writeFileSync(join(root, 'docker/dev-secrets/meilisearch.toml'), SEARCH_CONFIG);
 		const unavailable = () => {
 			throw new SecretsError('The Infisical CLI is not installed.');
 		};
@@ -167,6 +192,8 @@ test('without Infisical, apps/api/.env is used and names the inventory does not 
 		assert.equal(api.get('CSRF_SECRET'), `${MARK}from-file`);
 		assert.equal(api.has('OLD_SETTING'), false);
 		assert.match(file(root, 'api.env'), /^# Written by pnpm stack:env from apps\/api\/.env/);
+		assert.equal(file(root, 'redis-password'), 'zzfilepassword');
+		assert.equal(file(root, 'meilisearch.toml'), SEARCH_CONFIG);
 
 		rmSync(join(root, 'apps/api/.env'));
 		assert.throws(

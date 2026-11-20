@@ -8,11 +8,12 @@
  *   meilisearch.toml   the search server's master key, as on a droplet
  *   storefront.env, storefront.config.json, admin.config.json   public settings, no secrets
  *
- * The stack's Redis password and search key are made on this Mac the first time and kept in
- * `stack.env`: they guard services only this Mac can reach, so they have no place in Infisical.
- * When Infisical cannot be read, `apps/api/.env` (which `pnpm secrets:pull` keeps in step) is used.
+ * The stack's Redis password and search master key are the dev project's own (`/api/REDIS_PASSWORD`
+ * and `/infrastructure/meilisearch.toml`), as the owner directed on 2026-11-20: `pnpm dev` uses the
+ * stack's search server, so both modes must agree on its key. `stack.env` keeps only this Mac's
+ * HTTPS port. When Infisical cannot be read, `apps/api/.env` (which `pnpm secrets:pull` keeps in
+ * step) and `docker/dev-secrets/meilisearch.toml` are used.
  */
-import { randomBytes } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -34,32 +35,34 @@ const API_HOST = 'api-local.saha-textile.localhost';
 export const STACK_OWNED =
 	/^(NODE_ENV|DEPLOY_ENV|PORT|CORS_ALLOWED_ORIGINS|TRUST_PROXY|CLIENT_IP_HEADER|MONGODB_[A-Z_]+|REDIS_[A-Z_]+|MEILISEARCH_HOST|MEILISEARCH_API_KEY|COOKIE_DOMAIN|COOKIE_SECURE|TLS_CERT_FILE|TLS_KEY_FILE|OTP_LOCAL_FIXED_CODE|ADMIN_APP_URL|GOOGLE_MAIL_REDIRECT_URI|SHOP_ORIGIN)$/;
 
-/** Values made on this Mac once and kept in `stack.env`. */
-export const LOCAL_SECRETS = ['REDIS_PASSWORD', 'MEILISEARCH_MASTER_KEY'];
+/** Lines an older `stack.env` held. The stack now takes both from the dev project and ignores them. */
+export const RETIRED_LOCAL_SECRETS = ['REDIS_PASSWORD', 'MEILISEARCH_MASTER_KEY'];
 
 /**
- * `stack.env` with any missing local secret added. Lines already there are kept as they are.
- * @param {string | null} text
- * @param {() => string} [makeSecret]
+ * The stack's Redis password and search server settings, from the dev project.
+ * @param {Map<string, string>} api              the dev project's /api folder (or apps/api/.env)
+ * @param {string | undefined} searchConfig       its /infrastructure/meilisearch.toml
+ * @param {string} source                         where they came from, for messages
  */
-export function completeStackEnv(text, makeSecret = () => randomBytes(24).toString('hex')) {
-	const values = text === null ? new Map() : parseEnvText(text);
-	let next = text ?? '';
-	if (next !== '' && !next.endsWith('\n')) next += '\n';
-	for (const name of LOCAL_SECRETS) {
-		if (values.get(name)) continue;
-		const value = makeSecret();
-		values.set(name, value);
-		next += `${name}=${value}\n`;
+export function stackServiceSecrets(api, searchConfig, source) {
+	const redisPassword = api.get('REDIS_PASSWORD') ?? '';
+	if (isBlank(redisPassword)) throw new SecretsError(`REDIS_PASSWORD is blank in ${source}. Nothing was written.`);
+	const masterKey = /^\s*master_key\s*=\s*"([^"]+)"\s*$/m.exec(searchConfig ?? '')?.[1] ?? '';
+	if (masterKey === '') {
+		throw new SecretsError(
+			`meilisearch.toml has no master_key (dev project /infrastructure). Nothing was written.`,
+		);
 	}
-	for (const name of LOCAL_SECRETS) {
-		if (!isPlain(/** @type {string} */ (values.get(name)))) {
-			throw new SecretsError(
-				`${name} in ${STACK_ENV_DIR}/stack.env may not contain a space, quote, #, backslash or $.`,
-			);
+	for (const [name, value] of [
+		['REDIS_PASSWORD', redisPassword],
+		['the search master key', masterKey],
+	]) {
+		if (!isPlain(value)) {
+			throw new SecretsError(`${name} may not contain a space, quote, #, backslash or $. Nothing was written.`);
 		}
 	}
-	return { text: next, values };
+	const text = /** @type {string} */ (searchConfig);
+	return { redisPassword, masterKey, searchConfig: text.endsWith('\n') ? text : `${text}\n` };
 }
 
 /** @param {Map<string, string>} local  the values in `stack.env` */
@@ -76,17 +79,18 @@ export function stackPort(local) {
  * @param {object} options
  * @param {import('./inventory.mjs').Inventory} options.inventory
  * @param {string} options.source
- * @param {Map<string, string>} options.local    the values in `stack.env`, local secrets included
+ * @param {Map<string, string>} options.local    the values in `stack.env`
+ * @param {ReturnType<typeof stackServiceSecrets>} options.services
  * @param {'refuse' | 'drop'} options.unknown
  */
-export function buildStackFiles(api, { inventory, source, local, unknown }) {
+export function buildStackFiles(api, { inventory, source, local, services, unknown }) {
 	const port = stackPort(local);
 	const suffix = port === '443' ? '' : `:${port}`;
 	const shop = `https://${STOREFRONT_HOST}${suffix}`;
 	const admin = `https://${ADMIN_HOST}${suffix}`;
 	const apiUrl = `https://${API_HOST}${suffix}`;
-	const redisPassword = /** @type {string} */ (local.get('REDIS_PASSWORD'));
-	const searchKey = /** @type {string} */ (local.get('MEILISEARCH_MASTER_KEY'));
+	const redisPassword = services.redisPassword;
+	const searchKey = services.masterKey;
 
 	const settings = new Map([
 		['NODE_ENV', 'production'],
@@ -121,7 +125,7 @@ export function buildStackFiles(api, { inventory, source, local, unknown }) {
 	const files = new Map([
 		['api.env', env.text],
 		['redis-password', redisPassword],
-		['meilisearch.toml', `master_key = "${searchKey}"\nenv = "development"\nno_analytics = true\n`],
+		['meilisearch.toml', services.searchConfig],
 		['storefront.config.json', `${JSON.stringify(storefrontConfig, null, '\t')}\n`],
 		[
 			'storefront.env',
@@ -146,17 +150,19 @@ const SECRET_FILES = new Set(['api.env', 'redis-password', 'meilisearch.toml', '
  * @param {string} options.root
  * @param {import('./inventory.mjs').Inventory} options.inventory
  * @param {() => Map<string, string>} options.readApi
- * @param {() => string} [options.makeSecret]
+ * @param {() => Map<string, string>} options.readInfrastructure
  * @returns {string[]}
  */
-export function writeStackEnv({ root, inventory, readApi, makeSecret }) {
+export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) {
 	const project = inventory.projects.dev;
 	const lines = [];
 	let api;
+	let searchConfig;
 	let source = `Infisical ${project.name} (${project.environment}), folder /api`;
 	let unknown = /** @type {'refuse' | 'drop'} */ ('refuse');
 	try {
 		api = readApi();
+		searchConfig = readInfrastructure().get('meilisearch.toml');
 	} catch (error) {
 		if (!(error instanceof SecretsError)) throw error;
 		const fallback = readIfPresent(join(root, 'apps/api/.env'));
@@ -167,14 +173,17 @@ export function writeStackEnv({ root, inventory, readApi, makeSecret }) {
 		}
 		lines.push('Infisical could not be read, so apps/api/.env was used instead:', `  ${error.message}`);
 		api = parseEnvText(fallback);
+		searchConfig = readIfPresent(join(root, 'docker/dev-secrets/meilisearch.toml')) ?? undefined;
 		source = 'apps/api/.env (Infisical could not be read)';
 		unknown = 'drop';
 	}
 
 	const dir = join(root, STACK_ENV_DIR);
 	const stackEnvPath = join(dir, 'stack.env');
-	const local = completeStackEnv(readIfPresent(stackEnvPath), makeSecret);
-	const built = buildStackFiles(api, { inventory, source, local: local.values, unknown });
+	const localText = readIfPresent(stackEnvPath);
+	const local = localText === null ? new Map() : parseEnvText(localText);
+	const services = stackServiceSecrets(api, searchConfig, source);
+	const built = buildStackFiles(api, { inventory, source, local, services, unknown });
 	// Settings the last api.env had and this one lacks: most often values not yet filled in Infisical.
 	const previous = readIfPresent(join(dir, 'api.env'));
 	const dropped =
@@ -186,7 +195,6 @@ export function writeStackEnv({ root, inventory, readApi, makeSecret }) {
 					.sort();
 
 	mkdirSync(dir, { recursive: true, mode: 0o700 });
-	replaceFile(stackEnvPath, local.text, 0o600);
 	for (const [name, text] of built.files) replaceFile(join(dir, name), text, SECRET_FILES.has(name) ? 0o600 : 0o644);
 
 	lines.push(
@@ -199,5 +207,11 @@ export function writeStackEnv({ root, inventory, readApi, makeSecret }) {
 			: []),
 		`Safari only, add to /etc/hosts:  127.0.0.1 ${STOREFRONT_HOST} ${ADMIN_HOST} ${API_HOST}`,
 	);
+	const retired = RETIRED_LOCAL_SECRETS.filter((name) => local.has(name));
+	if (retired.length > 0) {
+		lines.push(
+			`  ${STACK_ENV_DIR}/stack.env still holds ${retired.join(' and ')}, no longer used: the stack takes ${retired.length > 1 ? 'both' : 'it'} from the dev project. Only STACK_HTTPS_PORT is read there.`,
+		);
+	}
 	return lines;
 }

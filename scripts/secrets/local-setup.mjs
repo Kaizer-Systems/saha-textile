@@ -10,7 +10,9 @@
  * 2. Writes `docker/dev-secrets/`: the four `/infrastructure` files (made once, never replaced) and
  *    the two files written from `/api` (mongo-app-password, redis-password), as in a release folder.
  * 3. Creates (or updates) the administrator in `admin` and the app login in the app's database with
- *    `readWrite` only, exactly as deploy.sh does, and proves the app login works.
+ *    `readWrite` only, exactly as deploy.sh does, and proves the app login works. Also the Mac-only
+ *    test login (`test-login.mjs`) for the test runners' own databases, its password made once in
+ *    `docker/dev-secrets/mongo-test-password`. That one never goes to Infisical or a droplet.
  * 4. Writes `docker/dev-secrets/for-infisical.env`: the `/api` lines the dev project still lacks, to
  *    drag onto its `/api` folder. The `/infrastructure` files sit beside it.
  *
@@ -18,6 +20,7 @@
  * (phase 2, on the owner's word), so nothing running on this Mac breaks today. Names only in output.
  */
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -25,6 +28,7 @@ import { parseEnvText, readIfPresent, replaceFile } from './files.mjs';
 import { generateServiceSecrets } from './generate.mjs';
 import { SecretsError } from './inventory.mjs';
 import { envLine, isBlank } from './render.mjs';
+import { TEST_DATABASE_USER, TEST_PASSWORD_FILE, TEST_ROLES } from './test-login.mjs';
 
 export const DEV_SECRETS_DIR = 'docker/dev-secrets';
 export const FOR_INFISICAL = `${DEV_SECRETS_DIR}/for-infisical.env`;
@@ -90,9 +94,9 @@ export function fillBlanks(text, values) {
 /**
  * The mongosh script that creates or updates both logins, as deploy.sh's ensure_database does, then
  * logs in as the app to prove it. Passed on standard input, so no password reaches a command line.
- * @param {{ database: string, rootUser: string, rootPassword: string, appUser: string, appPassword: string }} logins
+ * @param {{ database: string, rootUser: string, rootPassword: string, appUser: string, appPassword: string, testPassword: string }} logins
  */
-export function mongoLoginScript({ database, rootUser, rootPassword, appUser, appPassword }) {
+export function mongoLoginScript({ database, rootUser, rootPassword, appUser, appPassword, testPassword }) {
 	const json = JSON.stringify;
 	return `
 function keep(database, user, pwd, roles) {
@@ -117,8 +121,10 @@ try {
 } catch (error) {}
 keep('admin', ${json(rootUser)}, ${json(rootPassword)}, [{ role: 'root', db: 'admin' }]);
 keep(${json(database)}, ${json(appUser)}, ${json(appPassword)}, [{ role: 'readWrite', db: ${json(database)} }]);
-const both = logsIn(${json(rootUser)}, ${json(rootPassword)}, 'admin') && logsIn(${json(appUser)}, ${json(appPassword)}, ${json(database)});
-print(both ? 'logins-ok' : 'logins-failed');
+// This Mac only: the test runners' login for their own databases (see test-login.mjs).
+keep('admin', ${json(TEST_DATABASE_USER)}, ${json(testPassword)}, ${json(TEST_ROLES)});
+const all = logsIn(${json(rootUser)}, ${json(rootPassword)}, 'admin') && logsIn(${json(appUser)}, ${json(appPassword)}, ${json(database)}) && logsIn(${json(TEST_DATABASE_USER)}, ${json(testPassword)}, 'admin');
+print(all ? 'logins-ok' : 'logins-failed');
 `;
 }
 
@@ -127,9 +133,15 @@ print(both ? 'logins-ok' : 'logins-failed');
  * @param {string} options.root
  * @param {(tier: 'dev') => ReturnType<typeof generateServiceSecrets>} [options.generate]
  * @param {(script: string) => { status: number | null, stdout: string }} [options.runMongo]
+ * @param {() => string} [options.makeTestPassword]
  * @returns {string[]} what to print: names, files and outcomes only
  */
-export function setupLocal({ root, generate = generateServiceSecrets, runMongo = runInMongoContainer }) {
+export function setupLocal({
+	root,
+	generate = generateServiceSecrets,
+	runMongo = runInMongoContainer,
+	makeTestPassword = () => randomBytes(32).toString('hex'),
+}) {
 	const envPath = join(root, 'apps/api/.env');
 	const before = readIfPresent(envPath);
 	if (before === null) throw new SecretsError('apps/api/.env is missing. Create it first (pnpm secrets:pull).');
@@ -169,6 +181,12 @@ export function setupLocal({ root, generate = generateServiceSecrets, runMongo =
 	const infrastructure = new Map(
 		[...made.infrastructure.keys()].map((file) => [file, /** @type {string} */ (readIfPresent(join(dir, file)))]),
 	);
+	const testPasswordPath = join(root, TEST_PASSWORD_FILE);
+	if (!existsSync(testPasswordPath)) {
+		writeFileSync(testPasswordPath, makeTestPassword(), { mode: 0o600, flag: 'wx' });
+		createdFiles.push('mongo-test-password');
+	}
+	const testPassword = /** @type {string} */ (readIfPresent(testPasswordPath)).trim();
 	replaceFile(join(dir, 'mongo-app-password'), /** @type {string} */ (after.get('MONGODB_PASSWORD')), 0o600);
 	replaceFile(join(dir, 'redis-password'), /** @type {string} */ (after.get('REDIS_PASSWORD')), 0o600);
 
@@ -181,6 +199,7 @@ export function setupLocal({ root, generate = generateServiceSecrets, runMongo =
 			rootPassword: /** @type {string} */ (infrastructure.get('mongo-root-password')),
 			appUser: /** @type {string} */ (after.get('MONGODB_USERNAME')),
 			appPassword: /** @type {string} */ (after.get('MONGODB_PASSWORD')),
+			testPassword,
 		}),
 	);
 	if (outcome.status !== 0 || !outcome.stdout.includes('logins-ok')) {
@@ -218,8 +237,8 @@ export function setupLocal({ root, generate = generateServiceSecrets, runMongo =
 					`  Not in apps/api/.env yet: ${heldBack.map(([name]) => name).join(', ')}. The API needs them together with the three GOOGLE_MAIL_* settings, so they arrive with those at the first pull.`,
 				]
 			: []),
-		`${DEV_SECRETS_DIR}/: ${createdFiles.length > 0 ? `made ${createdFiles.join(', ')}` : 'the four /infrastructure files were already there and are kept'}; mongo-app-password and redis-password written from apps/api/.env.`,
-		`Database logins: ${infrastructure.get('mongo-root-username')} (root, in admin) and ${after.get('MONGODB_USERNAME')} (readWrite on ${database}) created or updated, and both log in. They are not required until the switch is turned on.`,
+		`${DEV_SECRETS_DIR}/: ${createdFiles.length > 0 ? `made ${createdFiles.join(', ')}` : 'the four /infrastructure files and the test password were already there and are kept'}; mongo-app-password and redis-password written from apps/api/.env.`,
+		`Database logins: ${infrastructure.get('mongo-root-username')} (root, in admin), ${after.get('MONGODB_USERNAME')} (readWrite on ${database}) and ${TEST_DATABASE_USER} (this Mac's test databases) created or updated, and all three log in.`,
 		`${FOR_INFISICAL}: ${forInfisical.length} settings for the dev project's /api folder (${forInfisical.map(([name]) => name).join(', ')}).`,
 	];
 }

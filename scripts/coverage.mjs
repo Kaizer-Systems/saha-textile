@@ -16,6 +16,8 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { testDatabaseUri } from './secrets/test-login.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const METRICS = ['statements', 'branches', 'functions', 'lines'];
 const DENOMINATOR = 'src/zz-denominator.spec.ts';
@@ -85,7 +87,14 @@ function measure(name, { dir, angular, mongo }) {
 					RUN_DB_IT: '1',
 					MONGODB_HOST: process.env.MONGODB_HOST || '127.0.0.1',
 					MONGODB_DB_NAME: 'saha_textile_it',
-					// The shop's own database login (apps/api/.env) belongs to its own database, not to this one.
+					// The shop's own database login (apps/api/.env) reaches only its own database. The suite's
+					// databases are reached with this Mac's test login, when there is one.
+					MONGODB_URI: testDatabaseUri({
+						host: process.env.MONGODB_HOST,
+						port: process.env.MONGODB_PORT,
+						replicaSet: process.env.MONGODB_REPLICA_SET,
+						database: 'saha_textile_it',
+					}),
 					MONGODB_USERNAME: '',
 					MONGODB_PASSWORD: '',
 					MONGODB_REPLICA_SET: process.env.MONGODB_REPLICA_SET || 'rs0',

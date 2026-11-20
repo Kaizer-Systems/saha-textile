@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 
 import type { Connection } from 'mongoose';
 
+import { testDatabaseUri } from '../scripts/secrets/test-login.mjs';
+
 const adapterPackage = resolve(__dirname, '../packages/adapters-db-mongo/package.json');
 const mongoose = createRequire(adapterPackage)('mongoose') as typeof import('mongoose');
 
@@ -12,14 +14,18 @@ const DATABASE = 'saha_textile_e2e';
 const envFile = resolve(__dirname, '../apps/api/.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
-/** Opens the throwaway browser-test database for one step. Tests never touch any other. */
+/**
+ * Opens the throwaway browser-test database for one step. Tests never touch any other. It logs in
+ * with this Mac's test login (scripts/secrets/test-login.mjs) when there is one.
+ */
 export async function withDatabase<T>(work: (connection: Connection) => Promise<T>): Promise<T> {
-	const host = process.env['MONGODB_HOST'] || '127.0.0.1';
-	const port = process.env['MONGODB_PORT'] || '27017';
-	const replicaSet = process.env['MONGODB_REPLICA_SET'] || 'rs0';
-	const connection = await mongoose
-		.createConnection(`mongodb://${host}:${port}/${DATABASE}?replicaSet=${replicaSet}&directConnection=true`)
-		.asPromise();
+	const uri = testDatabaseUri({
+		host: process.env['MONGODB_HOST'],
+		port: process.env['MONGODB_PORT'],
+		replicaSet: process.env['MONGODB_REPLICA_SET'],
+		database: DATABASE,
+	});
+	const connection = await mongoose.createConnection(uri).asPromise();
 	try {
 		return await work(connection);
 	} finally {

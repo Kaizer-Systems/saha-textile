@@ -94,17 +94,21 @@ pipeline and the deploy jobs follow the plan in the owner decisions log (2026-11
 - `pnpm stack:env` writes `docker/stack/env/` from the dev project's `/api` folder: `api.env` with
   the stack's own hosts and services on top, plus `redis-password` and `meilisearch.toml`. The API
   and worker read `api.env` mounted read-only at `/run/secrets/api.env` through
-  `DOTENV_CONFIG_PATH`, as on a droplet. The stack's Redis password and search key are made on the
-  Mac once and kept in `docker/stack/env/stack.env`; they guard services only that Mac can reach.
-  When Infisical cannot be read it uses `apps/api/.env`, and it names any setting the previous
-  `api.env` had and the new one lacks.
+  `DOTENV_CONFIG_PATH`, as on a droplet. The stack's Redis password and search master key are the
+  dev project's (`/api/REDIS_PASSWORD`, `/infrastructure/meilisearch.toml`), because `pnpm dev`
+  uses the stack's search server too (2026-11-20); `docker/stack/env/stack.env` keeps only the
+  Mac's HTTPS port. When Infisical cannot be read it uses `apps/api/.env` and
+  `docker/dev-secrets/meilisearch.toml`, and it names any setting the previous `api.env` had and
+  the new one lacks.
 - `pnpm secrets:setup-local` gives the Mac's own MongoDB, Redis and search server real logins and
   writes `docker/dev-secrets/for-infisical.env` plus the four `/infrastructure` files for the dev
   project (see `docs/getting-started/local-development.md`). Its values come from
   `scripts/secrets/generate.mjs`, the same recipe staging and production use: hex passwords and
   signing secrets from the system's secure random source, a 756-byte base64 replica-set keyfile, a
   32-byte base64 `MAILBOX_TOKEN_KEY`, the logins `saha_textile_root` (administrator) and
-  `saha_textile_app` (`readWrite` on the app's database only).
+  `saha_textile_app` (`readWrite` on the app's database only). It also makes the Mac-only test
+  login `saha_textile_tests` (`scripts/secrets/test-login.mjs`) for the test runners' own databases;
+  that one is never stored in Infisical.
 - A release folder's files are 0644 inside 0700 folders: containers whose process is not root (the
   API as `node`, MongoDB's `_FILE` settings as `mongodb`) must read their mounted file on a Linux
   host, and the folder keeps every other account out.

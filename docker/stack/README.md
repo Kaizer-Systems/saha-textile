@@ -34,11 +34,12 @@ writes `docker/stack/env/` (gitignored and excluded from the Docker build contex
 | File               | Read by                                                                  | From                                            |
 | ------------------ | ------------------------------------------------------------------------ | ----------------------------------------------- |
 | `api.env`          | API and worker, mounted at `/run/secrets/api.env` (`DOTENV_CONFIG_PATH`) | dev project `/api`, with the stack's own on top |
-| `redis-password`   | Redis, read into its config file at start                                | `stack.env`                                     |
-| `meilisearch.toml` | Meilisearch (`MEILI_CONFIG_FILE_PATH`)                                   | `stack.env`                                     |
-| `stack.env`        | `scripts/stack.sh` and `pnpm stack:env` only                             | made on this Mac once                           |
+| `redis-password`   | Redis, read into its config file at start                                | dev project `/api/REDIS_PASSWORD`               |
+| `meilisearch.toml` | Meilisearch (`MEILI_CONFIG_FILE_PATH`)                                   | dev project `/infrastructure/meilisearch.toml`  |
+| `stack.env`        | `scripts/stack.sh` and `pnpm stack:env` only                             | this Mac's `STACK_HTTPS_PORT`, written by hand  |
 
-No secret shows in `docker inspect` or on a command line. The dev project's own settings for local
+The stack's search server is also the one `pnpm dev` uses (port 7700), so both modes share the dev
+project's master key. No secret shows in `docker inspect` or on a command line. The dev project's own settings for local
 development (the fixed OTP, certificate paths, localhost database and Redis, `SHOP_ORIGIN`) are
 left out. When Infisical cannot be read, `apps/api/.env` is used instead, and the command names any
 setting the previous `api.env` had and the new one lacks. Run `pnpm stack:env` again after

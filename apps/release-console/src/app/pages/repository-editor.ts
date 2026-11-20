@@ -27,6 +27,7 @@ import {
 } from './add-project';
 import { ConsoleApi } from '../data/console-api';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
+import { VendorLogo } from '../shared/vendor-logo';
 
 const list = (text: string): string[] =>
 	text
@@ -104,6 +105,7 @@ export function newRepository(
  */
 @Component({
 	selector: 'rc-repository-editor',
+	imports: [VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@let p = project();
@@ -131,7 +133,11 @@ export function newRepository(
 									<span class="rc-mono">{{ r.role }}</span>
 								</td>
 								<td>
-									{{ names[r.sourceCode.vendor] }} ·
+									<rc-vendor-logo
+										[vendor]="r.sourceCode.vendor"
+										[size]="16"
+									/>
+									·
 									<span class="rc-mono">{{ r.sourceCode.repository }}</span>
 								</td>
 								<td>{{ envLabels(r) }}</td>
@@ -183,8 +189,7 @@ export function newRepository(
 								<th>Environment</th>
 								<th>Runs on</th>
 								<th>Domains</th>
-								<th>Secrets from</th>
-								<th>Where inside it</th>
+								<th>Secrets from, and where inside it</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -193,6 +198,7 @@ export function newRepository(
 								<tr>
 									<td>
 										<b>{{ e.label }}</b>
+										<br />
 										<span class="rc-mono">{{ e.name }}</span>
 									</td>
 									<td>
@@ -212,7 +218,10 @@ export function newRepository(
 													[class.on]="e.cloudId === c.id"
 													(click)="setEnv(i, { cloudId: c.id })"
 												>
-													{{ names[c.vendor] }}
+													<rc-vendor-logo
+														[vendor]="c.vendor"
+														[size]="14"
+													/>
 												</button>
 											}
 										</div>
@@ -228,37 +237,42 @@ export function newRepository(
 										</div>
 									</td>
 									<td>
-										<div class="rc-states">
-											<button
-												type="button"
-												class="rc-chip"
-												[class.on]="e.secretsId === null"
-												(click)="setEnv(i, { secretsId: null, secretsPath: '' })"
-											>
-												files kept by hand
-											</button>
-											@for (x of d.secrets; track x.id) {
+										<div class="rc-form">
+											<div class="rc-states">
 												<button
 													type="button"
 													class="rc-chip"
-													[class.on]="e.secretsId === x.id"
-													(click)="setEnv(i, { secretsId: x.id })"
+													[class.on]="e.secretsId === null"
+													(click)="setEnv(i, { secretsId: null, secretsPath: '' })"
 												>
-													{{ names[x.vendor] }}
+													files kept by hand
 												</button>
-											}
-										</div>
-									</td>
-									<td>
-										<div class="rc-msearch">
-											<input
-												type="text"
-												autocomplete="off"
-												placeholder="project · environment · /folder"
-												[value]="e.secretsPath"
-												[disabled]="e.secretsId === null"
-												(change)="setEnv(i, { secretsPath: $any($event.target).value.trim() })"
-											/>
+												@for (x of d.secrets; track x.id) {
+													<button
+														type="button"
+														class="rc-chip"
+														[class.on]="e.secretsId === x.id"
+														(click)="setEnv(i, { secretsId: x.id })"
+													>
+														<rc-vendor-logo
+															[vendor]="x.vendor"
+															[size]="14"
+														/>
+													</button>
+												}
+											</div>
+											<div class="rc-msearch">
+												<input
+													type="text"
+													autocomplete="off"
+													placeholder="project · environment · /folder"
+													[value]="e.secretsPath"
+													[disabled]="e.secretsId === null"
+													(change)="
+														setEnv(i, { secretsPath: $any($event.target).value.trim() })
+													"
+												/>
+											</div>
 										</div>
 									</td>
 									<td>
@@ -310,7 +324,9 @@ export function newRepository(
 								(click)="toggleCloud(c)"
 								(keydown.enter)="toggleCloud(c)"
 							>
-								<b>{{ names[c] }}</b>
+								<b>
+									<rc-vendor-logo [vendor]="c" />
+								</b>
 								<small>{{ screens(c) === 'full' ? 'full console screens' : 'screens later' }}</small>
 								<span
 									class="rc-pill"
@@ -334,7 +350,9 @@ export function newRepository(
 								(click)="toggleEdge(v)"
 								(keydown.enter)="toggleEdge(v)"
 							>
-								<b>{{ names[v] }}</b>
+								<b>
+									<rc-vendor-logo [vendor]="v" />
+								</b>
 								<small>{{ screens(v) === 'full' ? 'full console screens' : 'screens later' }}</small>
 								<span
 									class="rc-pill"
@@ -349,7 +367,10 @@ export function newRepository(
 						<div class="rc-form">
 							@for (e of d.edge; track e.id; let i = $index) {
 								<label>
-									{{ names[e.vendor] }}
+									<rc-vendor-logo
+										[vendor]="e.vendor"
+										[size]="16"
+									/>
 									<div class="rc-msearch">
 										<input
 											type="text"
@@ -378,7 +399,9 @@ export function newRepository(
 								(click)="toggleSecrets(v)"
 								(keydown.enter)="toggleSecrets(v)"
 							>
-								<b>{{ names[v] }}</b>
+								<b>
+									<rc-vendor-logo [vendor]="v" />
+								</b>
 								<small>{{ secretsNotes[v] }}</small>
 								<span
 									class="rc-pill"
@@ -395,7 +418,10 @@ export function newRepository(
 						@for (x of d.secrets; track x.id; let i = $index) {
 							@if (addressNeeded(x.vendor)) {
 								<label>
-									{{ names[x.vendor] }}
+									<rc-vendor-logo
+										[vendor]="x.vendor"
+										[size]="16"
+									/>
 									<div class="rc-msearch">
 										<input
 											type="url"
@@ -482,7 +508,9 @@ export function newRepository(
 							(click)="newVendor.set(v)"
 							(keydown.enter)="newVendor.set(v)"
 						>
-							<b>{{ names[v] }}</b>
+							<b>
+								<rc-vendor-logo [vendor]="v" />
+							</b>
 							<small>{{ sourceNotes[v] }}</small>
 							@if (newVendor() === v) {
 								<span class="rc-pill ok">chosen</span>

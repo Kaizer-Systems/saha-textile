@@ -3452,3 +3452,26 @@ figure.gif img {
 	opacity: 0;
 	cursor: text;
 }
+
+/* ===== Provider logos and step icons (owner request, 20 Nov 2026) =====
+   Loaded live from Iconify (or the provider's site icon) and never stored. The logo stays
+   beside the provider's name wherever a provider is shown (tiles, chips, tables, labels); a long
+   name may wrap after it. A step's icon sits before the step's name in the steps bar. */
+.rc-vlogo {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	vertical-align: middle;
+}
+/* A form whose labels are providers (domains per edge platform, addresses per secrets manager):
+   the label column grows to the longest provider name, never below the usual 90px, and every
+   row keeps the same column so the inputs line up. */
+.rc-form:has(> label > .rc-vlogo) {
+	grid-template-columns: minmax(90px, max-content) minmax(0, 1fr);
+}
+.rc-form:has(> label > .rc-vlogo) > * {
+	grid-column: 1 / -1;
+}
+.rc-form:has(> label > .rc-vlogo) > label {
+	grid-template-columns: subgrid;
+}

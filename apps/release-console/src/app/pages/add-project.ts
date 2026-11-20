@@ -17,6 +17,7 @@ import { PageHead } from './page-head';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
+import { STEP_ICONS, StepIcon, VendorLogo } from '../shared/vendor-logo';
 
 export const STEPS = [
 	'Name and workspace',
@@ -91,7 +92,7 @@ interface EnvDraft {
 /** Add a project: name, repositories (a vendor each), environments, clouds, edges, own menus. */
 @Component({
 	selector: 'rc-add-project',
-	imports: [PageHead],
+	imports: [PageHead, VendorLogo, StepIcon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-page-head
@@ -106,6 +107,7 @@ interface EnvDraft {
 						[class.on]="$index === at()"
 					>
 						<span>{{ $index + 1 }}</span>
+						<rc-step-icon [icon]="stepIcons[$index] ?? 'tabler/circle'" />
 						{{ s }}
 					</li>
 				}
@@ -189,7 +191,9 @@ interface EnvDraft {
 										(click)="repoVendor.set(v)"
 										(keydown.enter)="repoVendor.set(v)"
 									>
-										<b>{{ names[v] }}</b>
+										<b>
+											<rc-vendor-logo [vendor]="v" />
+										</b>
 										<small>{{ sourceNotes[v] }}</small>
 										@if (repoVendor() === v) {
 											<span class="rc-pill ok">chosen</span>
@@ -256,7 +260,12 @@ interface EnvDraft {
 										@for (r of repos(); track r.repository) {
 											<tr>
 												<td class="rc-mono">{{ r.repository }}</td>
-												<td>{{ names[r.vendor] }}</td>
+												<td>
+													<rc-vendor-logo
+														[vendor]="r.vendor"
+														[size]="16"
+													/>
+												</td>
 												<td>{{ r.role || '—' }}</td>
 												<td class="rc-mono">{{ r.file }}</td>
 												<td>
@@ -300,6 +309,7 @@ interface EnvDraft {
 										<tr>
 											<td>
 												<b>{{ e.label }}</b>
+												<br />
 												<span class="rc-mono">{{ e.name }}</span>
 											</td>
 											<td>
@@ -319,7 +329,10 @@ interface EnvDraft {
 															[class.on]="e.runsOn === c"
 															(click)="setRunsOn(i, c)"
 														>
-															{{ names[c] }}
+															<rc-vendor-logo
+																[vendor]="c"
+																[size]="14"
+															/>
 														</button>
 													}
 												</div>
@@ -389,7 +402,9 @@ interface EnvDraft {
 										(click)="toggleCloud(c)"
 										(keydown.enter)="toggleCloud(c)"
 									>
-										<b>{{ names[c] }}</b>
+										<b>
+											<rc-vendor-logo [vendor]="c" />
+										</b>
 										<small>
 											{{
 												screens(c) === 'full'
@@ -439,7 +454,9 @@ interface EnvDraft {
 										(click)="toggleEdge(v)"
 										(keydown.enter)="toggleEdge(v)"
 									>
-										<b>{{ names[v] }}</b>
+										<b>
+											<rc-vendor-logo [vendor]="v" />
+										</b>
 										<small>
 											{{
 												v === 'cloudflare'
@@ -474,7 +491,10 @@ interface EnvDraft {
 							<div class="rc-form">
 								@for (e of edgeList(); track e.vendor; let i = $index) {
 									<label>
-										{{ names[e.vendor] }}
+										<rc-vendor-logo
+											[vendor]="e.vendor"
+											[size]="16"
+										/>
 										<div class="rc-msearch">
 											<input
 												type="text"
@@ -507,7 +527,9 @@ interface EnvDraft {
 										(click)="toggleSecrets(v)"
 										(keydown.enter)="toggleSecrets(v)"
 									>
-										<b>{{ names[v] }}</b>
+										<b>
+											<rc-vendor-logo [vendor]="v" />
+										</b>
 										<small>{{ secretsNotes[v] }}</small>
 										<span
 											class="rc-pill"
@@ -530,7 +552,10 @@ interface EnvDraft {
 								@for (x of secretsList(); track x.vendor; let i = $index) {
 									@if (addressNeeded(x.vendor)) {
 										<label>
-											{{ names[x.vendor] }}
+											<rc-vendor-logo
+												[vendor]="x.vendor"
+												[size]="16"
+											/>
 											<div class="rc-msearch">
 												<input
 													type="url"
@@ -558,8 +583,7 @@ interface EnvDraft {
 									<thead>
 										<tr>
 											<th>Environment</th>
-											<th>Reads from</th>
-											<th>Where inside it</th>
+											<th>Reads from, and where inside it</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -569,37 +593,40 @@ interface EnvDraft {
 													<b>{{ e.label }}</b>
 												</td>
 												<td>
-													<div class="rc-states">
-														<button
-															type="button"
-															class="rc-chip"
-															[class.on]="e.secretsFrom === null"
-															(click)="setSecretsFrom(i, null)"
-														>
-															files kept by hand
-														</button>
-														@for (x of secretsList(); track x.vendor) {
+													<div class="rc-form">
+														<div class="rc-states">
 															<button
 																type="button"
 																class="rc-chip"
-																[class.on]="e.secretsFrom === x.vendor"
-																(click)="setSecretsFrom(i, x.vendor)"
+																[class.on]="e.secretsFrom === null"
+																(click)="setSecretsFrom(i, null)"
 															>
-																{{ names[x.vendor] }}
+																files kept by hand
 															</button>
-														}
-													</div>
-												</td>
-												<td>
-													<div class="rc-msearch">
-														<input
-															type="text"
-															autocomplete="off"
-															placeholder="project · environment · /folder"
-															[value]="e.secretsPath"
-															[disabled]="e.secretsFrom === null"
-															(input)="setSecretsPath(i, $any($event.target).value)"
-														/>
+															@for (x of secretsList(); track x.vendor) {
+																<button
+																	type="button"
+																	class="rc-chip"
+																	[class.on]="e.secretsFrom === x.vendor"
+																	(click)="setSecretsFrom(i, x.vendor)"
+																>
+																	<rc-vendor-logo
+																		[vendor]="x.vendor"
+																		[size]="14"
+																	/>
+																</button>
+															}
+														</div>
+														<div class="rc-msearch">
+															<input
+																type="text"
+																autocomplete="off"
+																placeholder="project · environment · /folder"
+																[value]="e.secretsPath"
+																[disabled]="e.secretsFrom === null"
+																(input)="setSecretsPath(i, $any($event.target).value)"
+															/>
+														</div>
 													</div>
 												</td>
 											</tr>
@@ -646,31 +673,120 @@ interface EnvDraft {
 				@default {
 					<div class="rc-panel">
 						<div class="rc-ph"><span class="rc-label">Ready to add</span></div>
-						<div class="rc-kv">
-							<div>
-								<span>Project</span>
-								<em>{{ name() }} · {{ workspace() }}</em>
-							</div>
-							<div>
-								<span>Repositories</span>
-								<em>{{ repoSummary() }}</em>
-							</div>
-							<div>
-								<span>Environments</span>
-								<em>{{ envSummary() }}</em>
-							</div>
-							<div>
-								<span>Clouds</span>
-								<em>{{ cloudSummary() }}</em>
-							</div>
-							<div>
-								<span>Edges</span>
-								<em>{{ edgeSummary() }}</em>
-							</div>
-							<div>
-								<span>Secrets</span>
-								<em>{{ secretsSummary() }}</em>
-							</div>
+						<div class="rc-tw">
+							<table class="rc-t">
+								<tbody>
+									<tr>
+										<td>Project</td>
+										<td>{{ name() }} · {{ workspace() }}</td>
+									</tr>
+									<tr>
+										<td>Repositories</td>
+										<td>
+											<div class="rc-form">
+												@for (r of repos(); track r.repository) {
+													<div class="rc-states">
+														<rc-vendor-logo
+															[vendor]="r.vendor"
+															[size]="14"
+														/>
+														<span class="rc-mono">{{ r.repository }}</span>
+													</div>
+												}
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<td>Environments</td>
+										<td>
+											<div class="rc-form">
+												@for (e of envs(); track e.name) {
+													<div class="rc-states">
+														<b>{{ e.label }}</b>
+														@if (e.runsOn) {
+															<rc-vendor-logo
+																[vendor]="e.runsOn"
+																[size]="14"
+															/>
+														} @else {
+															<span>this computer</span>
+														}
+													</div>
+												}
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<td>Clouds</td>
+										<td>
+											<div class="rc-states">
+												@for (c of cloudSet(); track c) {
+													<rc-vendor-logo
+														[vendor]="c"
+														[size]="14"
+													/>
+												} @empty {
+													<span>—</span>
+												}
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<td>Edges</td>
+										<td>
+											<div class="rc-form">
+												@for (e of edgeList(); track e.vendor) {
+													<div class="rc-states">
+														<rc-vendor-logo
+															[vendor]="e.vendor"
+															[size]="14"
+														/>
+														<span class="rc-mono">{{ e.zones }}</span>
+													</div>
+												} @empty {
+													<span>—</span>
+												}
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<td>Secrets</td>
+										<td>
+											<div class="rc-states">
+												@for (x of secretsList(); track x.vendor) {
+													<rc-vendor-logo
+														[vendor]="x.vendor"
+														[size]="14"
+													/>
+												} @empty {
+													<span>files kept by hand</span>
+												}
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<td>Each environment reads</td>
+										<td>
+											<div class="rc-form">
+												@for (e of envs(); track e.name) {
+													<div class="rc-states">
+														<b>{{ e.label }}</b>
+														@if (e.secretsFrom) {
+															<rc-vendor-logo
+																[vendor]="e.secretsFrom"
+																[size]="14"
+															/>
+															<span class="rc-mono">{{ e.secretsPath }}</span>
+														} @else {
+															<span>files kept by hand</span>
+														}
+													</div>
+												}
+											</div>
+										</td>
+									</tr>
+								</tbody>
+							</table>
 						</div>
 						<p class="rc-note">Next: connect each vendor on the project's Connections screen.</p>
 					</div>
@@ -705,6 +821,7 @@ export class AddProject {
 	private readonly queries = inject(QueryClient);
 	private readonly ctx = inject(ConsoleContext);
 	protected readonly steps = STEPS;
+	protected readonly stepIcons = STEP_ICONS;
 	protected readonly names = VENDOR_NAMES;
 	protected readonly source = SOURCE;
 	protected readonly sourceNotes = SOURCE_NOTES;
@@ -869,34 +986,6 @@ export class AddProject {
 			),
 		);
 	}
-
-	protected readonly repoSummary = computed(() =>
-		this.repos()
-			.map((r) => `${r.repository} (${VENDOR_NAMES[r.vendor]})`)
-			.join(', '),
-	);
-	protected readonly envSummary = computed(() =>
-		this.envs()
-			.map((e) => `${e.label} on ${e.runsOn ? VENDOR_NAMES[e.runsOn] : 'this computer'}`)
-			.join(' · '),
-	);
-	protected readonly cloudSummary = computed(
-		() => [...this.cloudSet()].map((c) => VENDOR_NAMES[c]).join(' + ') || '—',
-	);
-	protected readonly secretsSummary = computed(() => {
-		const chosen = this.secretsList().map((x) => VENDOR_NAMES[x.vendor]);
-		if (!chosen.length) return 'files kept by hand';
-		const where = this.envs()
-			.map((e) => `${e.label}: ${e.secretsFrom ? VENDOR_NAMES[e.secretsFrom] : 'files'}`)
-			.join(' · ');
-		return `${chosen.join(' + ')} (${where})`;
-	});
-	protected readonly edgeSummary = computed(
-		() =>
-			this.edgeList()
-				.map((e) => `${VENDOR_NAMES[e.vendor]} ${e.zones}`.trim())
-				.join(' + ') || '—',
-	);
 
 	/** The wizard's answers as the API's NewProject. */
 	protected draft(): NewProject {

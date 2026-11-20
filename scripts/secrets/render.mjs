@@ -284,7 +284,7 @@ export function buildRelease(folders, { tier, inventory, source, release = new M
 			apiEntries.push([name, value]);
 		}
 	}
-	// On a local machine (DEPLOY_ENV=local) the server-only names may stay blank (required-secrets.txt).
+	// On this computer (DEPLOY_ENV=local) the server-only names may stay blank (required-secrets.txt).
 	const local = (release.get('DEPLOY_ENV') ?? api.get('DEPLOY_ENV')) === 'local';
 	const missing = inventory.requiredForRelease.filter(
 		(name) => isBlank(api.get(name)) && !(local && inventory.serverOnlyRequired.has(name)),
@@ -484,7 +484,10 @@ export function projectReport(folders, { tier, inventory, setByPipeline = new Se
 	);
 	const backupBlank =
 		tier === 'production' ? inventory.backup.filter((name) => isBlank(folders.backup?.get(name))) : [];
-	return { tier, folders: perFolder, requiredBlank, infrastructureBlank, backupBlank };
+	// Fine on this computer, but a server reading this project (a future dev server) would need them.
+	const serverOnlyBlank =
+		tier === 'dev' ? [...inventory.serverOnlyRequired].filter((name) => isBlank(api.get(name))) : [];
+	return { tier, folders: perFolder, requiredBlank, infrastructureBlank, backupBlank, serverOnlyBlank };
 }
 
 /**
@@ -566,6 +569,11 @@ export function formatReport(report, title) {
 	}
 	if (report.infrastructureBlank.length > 0) {
 		lines.push(`  Blank, but ${release} needs it in /infrastructure: ${report.infrastructureBlank.join(', ')}`);
+	}
+	if (report.serverOnlyBlank?.length > 0) {
+		lines.push(
+			`  Blank, fine on this computer, needed before a server uses this project: ${report.serverOnlyBlank.join(', ')}`,
+		);
 	}
 	if (report.backupBlank.length > 0)
 		lines.push(`  Blank, but production backups need it in /backup: ${report.backupBlank.join(', ')}`);

@@ -52,7 +52,7 @@ check_release() {
 	deploy_env="$(release_value "$RELEASE" DEPLOY_ENV)"
 	while read -r name scope; do
 		[[ -z "$name" || "$name" == \#* ]] && continue
-		# `server-only` names may stay blank on a local machine (required-secrets.txt).
+		# `server-only` names may stay blank on this computer, never on a server (required-secrets.txt).
 		[[ "$scope" == server-only && "$deploy_env" == local ]] && continue
 		grep -q "^$name=." "$SECRETS/api.env" || die "$name has no value in secrets/api.env."
 	done <"$RELEASE/required-secrets.txt"

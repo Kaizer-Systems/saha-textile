@@ -645,6 +645,14 @@ export class AdminOrdersService {
 		);
 	}
 
+	/** Saves an order the caller built whole, with the revision check and the stored attention list. */
+	updateRaw(next: Order, revision: number, context?: TransactionContext): Promise<Order> {
+		return refuseStale(
+			() => this.orders.update(next, revision, context, metaOf(next)),
+			'Someone else changed this order first',
+		);
+	}
+
 	/**
 	 * Works the balance and payment status out again from every payment, places an order that was
 	 * waiting for its money, and records the change in the history.

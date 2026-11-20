@@ -16,6 +16,7 @@ import { AdminOrderCreateService } from './admin-order-create.service';
 import { AdminOrdersController } from './admin-orders.controller';
 import { AdminOrdersService } from './admin-orders.service';
 import { OrderStock } from './order-stock';
+import { OpenOrdersService } from './open-orders.service';
 import { PayPageController } from './pay-page.controller';
 import { PaymentRequestsService } from './payment-requests.service';
 
@@ -29,6 +30,7 @@ import { PaymentRequestsService } from './payment-requests.service';
 		AdminOrderCreateService,
 		OrderStock,
 		PaymentRequestsService,
+		OpenOrdersService,
 		{
 			provide: PAYMENT_REQUEST_PORTS,
 			useFactory: buildPaymentRequestPorts,

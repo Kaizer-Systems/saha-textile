@@ -10,6 +10,9 @@ import {
 	ManualPaymentWrite,
 	MarkPaymentReceivedWrite,
 	OrderCommentWrite,
+	OpenOrderAddLines,
+	OpenOrderClose,
+	OpenOrderRemoveLine,
 	OrderListQuery,
 	PaymentRequestWrite,
 	StatusChangeWrite,
@@ -22,6 +25,7 @@ import { API_TAGS } from '../openapi-tags';
 import { AdminCartService } from './admin-cart.service';
 import { AdminOrderCreateService, type CheckoutRights } from './admin-order-create.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
+import { OpenOrdersService } from './open-orders.service';
 import { PaymentRequestsService } from './payment-requests.service';
 
 const actorOf = (principal: AuthenticatedPrincipal | undefined): Actor => ({
@@ -46,6 +50,7 @@ export class AdminOrdersController {
 		private readonly orders: AdminOrdersService,
 		private readonly checkout: AdminOrderCreateService,
 		private readonly paymentRequests: PaymentRequestsService,
+		private readonly openOrders: OpenOrdersService,
 	) {}
 
 	@Get()
@@ -236,6 +241,48 @@ export class AdminOrdersController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.paymentRequests.cancel(id, requestId, actorOf(principal));
+	}
+
+	@Post(':id/open/lines')
+	@HttpCode(200)
+	@RequirePermissions('order.open')
+	@ApiOperation({ operationId: 'addOpenOrderLines', summary: 'Add pieces to an open order (kept from now on)' })
+	addOpenLines(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(OpenOrderAddLines)) body: OpenOrderAddLines,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.openOrders.addLines(id, body, actorOf(principal), rightsOf(principal));
+	}
+
+	@Post(':id/open/remove-line')
+	@HttpCode(200)
+	@RequirePermissions('order.open')
+	@ApiOperation({
+		operationId: 'removeOpenOrderLine',
+		summary: 'Remove a line from an open order (its pieces go back on sale)',
+	})
+	removeOpenLine(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(OpenOrderRemoveLine)) body: OpenOrderRemoveLine,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.openOrders.removeLine(id, body, actorOf(principal));
+	}
+
+	@Post(':id/open/close')
+	@HttpCode(200)
+	@RequirePermissions('order.open')
+	@ApiOperation({
+		operationId: 'closeOpenOrder',
+		summary: 'Close an open order: shipping for one parcel, then what is due',
+	})
+	closeOpen(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(OpenOrderClose)) body: OpenOrderClose,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.openOrders.close(id, body, actorOf(principal));
 	}
 
 	@Post(':id/e-invoice/raise')

@@ -32,6 +32,7 @@ test('lists the names the console API reads, and reports missing ones by name on
 		'CONSOLE_OPS_TOKEN_LOCAL',
 		'CONSOLE_OPS_TOKEN_PRODUCTION',
 		'CONSOLE_OPS_TOKEN_STAGING',
+		'GOOGLE_SEARCH_CONSOLE_KEY',
 	]);
 	assert.deepEqual(built.extra, ['CONSOLE_SENTRY_KEY']);
 	assert.match(built.text, /^CONSOLE_DO_READ_TOKEN=test-value-1$/m);

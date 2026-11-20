@@ -35,18 +35,19 @@ const group = (extra = {}) => ({
 	...extra,
 });
 
-test('the release-console group is in the inventory: dev only, read by the console API, four optional names', () => {
+test('the release-console group is in the inventory: dev only, read by the console API, five optional names', () => {
 	const console = loadInventory().otherFolders.find((candidate) => candidate.folder === 'release-console');
 	assert.ok(console);
 	assert.deepEqual([...console.tiers], ['dev']);
 	assert.equal(console.readBy, 'apps/release-console-api/src');
-	assert.equal(console.names.length, 11);
+	assert.equal(console.names.length, 12);
 	// The API operations keys (Release Console, 21 Nov): optional until each environment's OPS_TOKEN exists.
 	assert.deepEqual([...console.optional].sort(), [
 		'CONSOLE_OPS_TOKEN_DEV',
 		'CONSOLE_OPS_TOKEN_LOCAL',
 		'CONSOLE_OPS_TOKEN_PRODUCTION',
 		'CONSOLE_OPS_TOKEN_STAGING',
+		'GOOGLE_SEARCH_CONSOLE_KEY',
 	]);
 	assert.deepEqual(console.oneOf, [
 		['CONSOLE_DO_READ_TOKEN', 'CONSOLE_DO_WRITE_TOKEN'],

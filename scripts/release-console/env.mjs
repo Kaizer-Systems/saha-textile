@@ -29,6 +29,7 @@ export const CONSOLE_KEY_NAMES = [
 	'CONSOLE_OPS_TOKEN_STAGING',
 	'CONSOLE_SPACES_ACCESS_KEY',
 	'CONSOLE_SPACES_SECRET_KEY',
+	'GOOGLE_SEARCH_CONSOLE_KEY',
 ];
 export const OPTIONAL_NAMES = new Set([
 	'CONSOLE_CF_WRITE_TOKEN',
@@ -37,6 +38,7 @@ export const OPTIONAL_NAMES = new Set([
 	'CONSOLE_OPS_TOKEN_LOCAL',
 	'CONSOLE_OPS_TOKEN_PRODUCTION',
 	'CONSOLE_OPS_TOKEN_STAGING',
+	'GOOGLE_SEARCH_CONSOLE_KEY',
 ]);
 /** Pairs where either key will do: the console reads with the change key when there is no read key. */
 export const EITHER_ONE = [

@@ -275,6 +275,7 @@ describe('projects and key links', () => {
 				'CONSOLE_OPS_TOKEN_LOCAL',
 				'CONSOLE_OPS_TOKEN_PRODUCTION',
 				'CONSOLE_OPS_TOKEN_STAGING',
+				'GOOGLE_SEARCH_CONSOLE_KEY',
 			],
 		});
 		expect(d.missing).toContain('CONSOLE_GITHUB_TOKEN');

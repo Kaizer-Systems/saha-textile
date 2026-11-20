@@ -3,7 +3,7 @@ title: Release Console
 description: The owner's dashboard for projects, repositories, releases and cloud accounts; its lock, its levels, its Keychain connections and its local API.
 status: implemented
 audience: [operator, frontend, backend]
-last_verified: '2026-11-10'
+last_verified: '2026-11-20'
 source_of_truth:
     - apps/release-console
     - apps/release-console-api
@@ -50,7 +50,7 @@ The console has three levels. Search (⌘K) is on at every level and finds only 
 | ---------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Console    | `/console/…`                  | All projects (grouped by workspace), Add a project, Attention, Audit (every project), Console settings                                            |
 | Project    | `/p/:project/…`               | Overview, Repositories, Environments, Attention, Audit, Project settings (Connections, Repositories, Environments, Project menus, Remove project) |
-| Repository | `/p/:project/r/:repo/:screen` | Overview, the repository's own menus, Ship, Watch, Run, one group per cloud platform, one group per edge platform, Governance                     |
+| Repository | `/p/:project/r/:repo/:screen` | Overview, the repository's own menus, Ship, Watch, Run, one group per cloud platform, edge platform and secrets manager, Governance               |
 
 The top bar holds the **Project** switcher (amber), the **Repository** switcher (cyan, with **Project overview** first) and the environment tabs of the open repository. The console level has no environment tabs.
 
@@ -63,21 +63,22 @@ A project has one or more repositories. Each repository has:
 - **one source-code vendor**: GitHub, GitLab, Bitbucket or Azure Repos;
 - **one or more cloud platforms**: DigitalOcean, AWS, Google Cloud or Azure; each environment runs on one of them or on this computer;
 - **one or more edge platforms**: Cloudflare, AWS CloudFront with Route 53, or Fastly; each domain belongs to exactly one;
+- **one or more secrets managers**: Infisical Cloud, Infisical (self-hosted), AWS Secrets Manager, Google Secret Manager, Azure Key Vault, Doppler, HashiCorp Vault or OpenBao, GitHub Actions secrets, or files on the server; each environment reads one of them, at a place inside it such as `saha-textile-dev · dev · /api`, or uses files kept by hand. A self-hosted manager needs its server's address;
 - **its own menus**, listed in its `.release-console.json`.
 
 GitHub, DigitalOcean and Cloudflare have screens. Any other vendor can be chosen; its group shows **Screens later** until its own screens are built the way that vendor works. Each vendor is an adapter behind one shape per slot (source code, cloud, edge) in `apps/release-console-api/src/vendors/`.
 
 ### Adding and changing repositories
 
-**Add a project** walks through seven steps: name and workspace, repositories (a vendor each), environments and where each runs, cloud platforms, edge platforms with their domains, the repositories' own menus, and a summary. When a GitHub repository is added, the wizard reads its `.release-console.json` from the default branch through the GitHub CLI sign-in and ticks its own menus; a repository on another vendor gets its menus ticked by hand. The new project opens on its Connections tab.
+**Add a project** walks through eight steps: name and workspace, repositories (a vendor each), environments and where each runs, cloud platforms, edge platforms with their domains, secrets managers and where each environment reads its secrets, the repositories' own menus, and a summary. When a GitHub repository is added, the wizard reads its `.release-console.json` from the default branch through the GitHub CLI sign-in and ticks its own menus; a repository on another vendor gets its menus ticked by hand. The new project opens on its Connections tab.
 
 Project settings › **Repositories** (also reached from a repository's **Repository settings**) changes a repository after the project exists:
 
-- its role, environments (where each runs and its domains), cloud platforms, edge platforms with their domains, and own menus;
+- its role, environments (where each runs, its domains, and which secrets manager it reads and where), cloud platforms, edge platforms with their domains, secrets managers, and own menus;
 - **+ Add repository**: a vendor and `owner/name`; the new repository starts with the first repository's environments, clouds and edges, keys included, and with the own menus of its `.release-console.json` when GitHub has one;
 - **Remove repository**: the project keeps at least one repository, and its keys stay.
 
-Slots that stay keep their keys. A cloud or edge platform added later starts without a key. Removing a cloud moves the environments that ran on it back to this computer. Key ids the project does not hold are dropped when a repository is saved.
+Slots that stay keep their keys. A cloud, edge platform or secrets manager added later starts without a key. Removing a cloud moves the environments that ran on it back to this computer; removing a secrets manager moves the environments that read it back to files kept by hand. An environment can only run on a cloud, and read a secrets manager, that its repository has. Key ids the project does not hold are dropped when a repository is saved.
 
 ### Where the data lives
 
@@ -93,7 +94,7 @@ A repository's `.release-console.json` at its root lists only its own menus, for
 
 ## Connections and the Keychain
 
-Project settings › **Connections** lists every key by category and repository: source code, cloud platforms, and edge, DNS and security. Below them, **Keys** lists each key with its account, rights, expiry, last check and state, with **Check** and **Remove**.
+Project settings › **Connections** lists every key by category and repository: source code, cloud platforms, edge, DNS and security, and secrets managers (with the environments that read each one). Below them, **Keys** lists each key with its account, rights, expiry, last check and state, with **Check** and **Remove**.
 
 Keys are a token paste or a browser sign-in, never a password. **Add a key** offers each kind with where to make it; **Use it for** lists the matching slots of this project's repositories, all ticked.
 

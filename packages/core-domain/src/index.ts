@@ -16,3 +16,4 @@ export * from './purchasing/index';
 export * from './page-builder/index';
 export * from './shipping/index';
 export * from './fx/index';
+export * from './orders/index';

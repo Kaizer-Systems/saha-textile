@@ -55,3 +55,4 @@ export * from './email-picture.repository';
 export * from './purchasing.repository';
 export * from './document-renderer.port';
 export * from './page-layout.repository';
+export * from './orders-build.port';

@@ -1,4 +1,5 @@
 import { ensureHomeBanners, withDatabase } from './database';
+import { HOME_LOCK_WAIT_MS, holdHome } from './home-lock';
 import { expect, test } from './support';
 
 /**
@@ -68,10 +69,16 @@ const setSwitch = (home: boolean) =>
 	);
 
 test.describe('Page Builder on the shop (step 3)', () => {
+	// The switch is one for the whole shop: these run in order in one worker, holding Home alone (home-lock.ts) so the
+	// other project's run of this file, and every spec that reads Home, waits.
+	test.describe.configure({ mode: 'default' });
 	// Everything this file changes on the home page is put back after: the banners, the switch and the schedule.
 	let putBackBanners: () => Promise<void> = async () => undefined;
 	let keptSwitch: Record<string, unknown> | null = null;
+	let releaseHome: () => void = () => undefined;
 	test.beforeAll(async () => {
+		test.setTimeout(HOME_LOCK_WAIT_MS + 30_000);
+		releaseHome = await holdHome('change');
 		putBackBanners = await ensureHomeBanners();
 		keptSwitch = await withDatabase((db) =>
 			db.collection('siteSettings').findOne({ _id: 'storefront.pageBuilder' as never }),
@@ -128,17 +135,23 @@ test.describe('Page Builder on the shop (step 3)', () => {
 	});
 
 	test.afterAll(async () => {
-		await withDatabase(async (db) => {
-			if (keptSwitch)
-				await db.collection('siteSettings').replaceOne({ _id: 'storefront.pageBuilder' as never }, keptSwitch);
-			else await db.collection('siteSettings').deleteOne({ _id: 'storefront.pageBuilder' as never });
-			await db
-				.collection('builderPages')
-				.updateOne({ _id: 'home:page' as never }, { $pull: { schedule: { layoutId: LAYOUT } } as never });
-			await db.collection('pageLayoutRevisions').deleteOne({ _id: REVISION as never });
-			await db.collection('pageLayouts').deleteOne({ _id: LAYOUT as never });
-		});
-		await putBackBanners();
+		try {
+			await withDatabase(async (db) => {
+				if (keptSwitch)
+					await db
+						.collection('siteSettings')
+						.replaceOne({ _id: 'storefront.pageBuilder' as never }, keptSwitch);
+				else await db.collection('siteSettings').deleteOne({ _id: 'storefront.pageBuilder' as never });
+				await db
+					.collection('builderPages')
+					.updateOne({ _id: 'home:page' as never }, { $pull: { schedule: { layoutId: LAYOUT } } as never });
+				await db.collection('pageLayoutRevisions').deleteOne({ _id: REVISION as never });
+				await db.collection('pageLayouts').deleteOne({ _id: LAYOUT as never });
+			});
+			await putBackBanners();
+		} finally {
+			releaseHome();
+		}
 	});
 
 	test('switch off: the fixed home page, as before', async ({ page }) => {

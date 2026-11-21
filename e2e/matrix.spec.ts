@@ -1,3 +1,4 @@
+import { readsHome } from './home-lock';
 import { expect, test } from './support';
 
 /** One product for each way an option can be drawn. */
@@ -33,6 +34,9 @@ test.describe('every picker style', () => {
 });
 
 test.describe('around the product', () => {
+	// Recently Viewed and the Bengali rails are read on Home as a fresh test database has it.
+	readsHome();
+
 	test('quick view opens from a card without leaving the listing', async ({ page, isMobile }) => {
 		test.skip(isMobile, 'the card actions appear on hover');
 		await page.goto('/en/collections/sarees');

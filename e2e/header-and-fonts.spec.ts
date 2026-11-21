@@ -1,3 +1,4 @@
+import { readsHome } from './home-lock';
 import { expect, test } from './support';
 
 /**
@@ -5,6 +6,9 @@ import { expect, test } from './support';
  * search.spec.ts) and the বাংলা text font (preloaded on বাংলা pages so nothing moves when it arrives), 17 Nov.
  */
 test.describe('the header and the page fonts', () => {
+	// The বাংলা page is Home, measured as a fresh test database has it.
+	readsHome();
+
 	test('the cart count follows the cart without touching the header', async ({ page }) => {
 		await page.goto('/en/product/katan-banarasi-saree');
 		const add = page.locator('app-buy-box button', { hasText: /add to cart/i }).first();

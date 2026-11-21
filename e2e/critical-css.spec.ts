@@ -1,3 +1,4 @@
+import { readsHome } from './home-lock';
 import { expect, test } from './support';
 
 /**
@@ -6,6 +7,9 @@ import { expect, test } from './support';
  * the first paint. The page must look the same either way.
  */
 test.describe('critical CSS on Home', () => {
+	// Home is loaded twice and compared, so nothing may change it in between.
+	readsHome();
+
 	test('is worked out once, then inlined, with the stylesheets loading without blocking', async ({
 		page,
 		request,

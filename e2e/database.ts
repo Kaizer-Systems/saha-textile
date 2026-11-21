@@ -92,31 +92,40 @@ export async function ensureHomeBanners(): Promise<() => Promise<void>> {
 				},
 				{ upsert: true },
 			);
-			await db.collection('contentBlocks').updateOne(
-				{ key },
-				{
-					$set: {
-						ownerType: 'home',
-						ownerId: null,
-						position,
-						slot,
-						images: { desktop: assetId, tablet: null, phone: null },
-						containsText: false,
-						localeImages: {},
-						heading: {},
-						subheading: {},
-						ctaLabel: {},
-						link: { href: '/collections', external: false },
-						alt: { en: 'Saha Textile collection', bn: 'Collection Saha Textile' },
-						status: 'active',
-						startsAt: null,
-						endsAt: null,
-						assetIds: [assetId],
+			// Two upserts that both find no row both insert, and the second fails on the shared id; tried again, it
+			// finds the first one's row and updates it.
+			const upsertBlock = () =>
+				db.collection('contentBlocks').updateOne(
+					{ key },
+					{
+						$set: {
+							ownerType: 'home',
+							ownerId: null,
+							position,
+							slot,
+							images: { desktop: assetId, tablet: null, phone: null },
+							containsText: false,
+							localeImages: {},
+							heading: {},
+							subheading: {},
+							ctaLabel: {},
+							link: { href: '/collections', external: false },
+							alt: { en: 'Saha Textile collection', bn: 'Collection Saha Textile' },
+							status: 'active',
+							startsAt: null,
+							endsAt: null,
+							assetIds: [assetId],
+						},
+						$setOnInsert: { _id: `cbk_e2e_${position}_${slot}` as never },
 					},
-					$setOnInsert: { _id: `cbk_e2e_${position}_${slot}` as never },
-				},
-				{ upsert: true },
-			);
+					{ upsert: true },
+				);
+			try {
+				await upsertBlock();
+			} catch (error) {
+				if ((error as { code?: unknown }).code !== 11000) throw error;
+				await upsertBlock();
+			}
 		}
 	});
 	return () =>

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { withDatabase } from './database';
+import { HOME_LOCK_WAIT_MS, holdHome } from './home-lock';
 import { ADMIN } from './support';
 
 /**
@@ -35,6 +36,10 @@ const settings = {
 };
 
 test.describe('Page Builder Go Live (step 7)', () => {
+	// Home's settings, schedule and waiting list are shared with the shop's Page Builder spec: held alone (home-lock.ts)
+	// and run in order in one worker.
+	test.describe.configure({ mode: 'default' });
+	let releaseHome: () => void = () => undefined;
 	let keptSettings: unknown = null;
 	// Home's schedule and waiting list as found: Go Live with an end also adds a hand-back entry, which the cancel
 	// leaves, so both are put back exactly.
@@ -42,6 +47,8 @@ test.describe('Page Builder Go Live (step 7)', () => {
 	let keptPending: unknown = [];
 
 	test.beforeAll(async () => {
+		test.setTimeout(HOME_LOCK_WAIT_MS + 30_000);
+		releaseHome = await holdHome('change');
 		const now = new Date();
 		await withDatabase(async (db) => {
 			const page = await db.collection('builderPages').findOne({ _id: 'home:page' as never });
@@ -94,13 +101,17 @@ test.describe('Page Builder Go Live (step 7)', () => {
 	});
 
 	test.afterAll(async () => {
-		await withDatabase(async (db) => {
-			await db.collection('builderPages').updateOne({ _id: 'home:page' as never }, {
-				$set: { settings: keptSettings, schedule: keptSchedule, pending: keptPending },
-			} as never);
-			await db.collection('pageLayoutRevisions').deleteMany({ layoutId: LAYOUT });
-			await db.collection('pageLayouts').deleteOne({ _id: LAYOUT as never });
-		});
+		try {
+			await withDatabase(async (db) => {
+				await db.collection('builderPages').updateOne({ _id: 'home:page' as never }, {
+					$set: { settings: keptSettings, schedule: keptSchedule, pending: keptPending },
+				} as never);
+				await db.collection('pageLayoutRevisions').deleteMany({ layoutId: LAYOUT });
+				await db.collection('pageLayouts').deleteOne({ _id: LAYOUT as never });
+			});
+		} finally {
+			releaseHome();
+		}
 	});
 
 	test('the checks, the speed budget, then a schedule that shows on Home and is cancelled (E1, E2, P6, A1)', async ({

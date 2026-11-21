@@ -2,6 +2,7 @@ import { test as plain } from '@playwright/test';
 
 import { expect, test } from './support';
 import { ensureHomeBanners } from './database';
+import { HOME_LOCK_WAIT_MS, holdHome, readsHome } from './home-lock';
 
 /** Phones and tablets are checked both ways up. */
 const PHONES = [
@@ -140,12 +141,23 @@ test.describe('Header menu', () => {
 });
 
 test.describe('Home banners', () => {
-	// Stand-in banners for these tests only: put back after, so later specs see the home page as found.
+	// Stand-in banners for these tests only: put back after, so later specs see the home page as found. They run in
+	// order in one worker, holding Home alone (home-lock.ts) so the other project's run and every reader of Home wait.
+	test.describe.configure({ mode: 'default' });
 	let putBack: () => Promise<void> = async () => undefined;
+	let releaseHome: () => void = () => undefined;
 	test.beforeAll(async () => {
+		test.setTimeout(HOME_LOCK_WAIT_MS + 30_000);
+		releaseHome = await holdHome('change');
 		putBack = await ensureHomeBanners();
 	});
-	test.afterAll(() => putBack());
+	test.afterAll(async () => {
+		try {
+			await putBack();
+		} finally {
+			releaseHome();
+		}
+	});
 
 	test('the hero plays three slides from the admin banners', async ({ page }) => {
 		await page.goto('/en/');
@@ -172,6 +184,8 @@ test.describe('Home banners', () => {
 });
 
 test.describe('Home blog posts', () => {
+	readsHome();
+
 	test('their pictures are real pictures that load near the screen, at the card width', async ({ page }) => {
 		const blogPictures: string[] = [];
 		page.on('request', (request) => {
@@ -218,6 +232,8 @@ test.describe('Home blog posts', () => {
 });
 
 test.describe('Home far sections', () => {
+	readsHome();
+
 	test('wait until they are near the screen, then draw in full', async ({ page }) => {
 		await page.goto('/en/', { waitUntil: 'networkidle' });
 		const sections = page.locator('app-home > section');
@@ -248,6 +264,8 @@ test.describe('Home far sections', () => {
 });
 
 test.describe('Scroll between pages', () => {
+	readsHome();
+
 	test('a product opens at its top, and Back returns to the same card on Home', async ({ page }) => {
 		await page.goto('/en/', { waitUntil: 'networkidle' });
 		const row = page.locator('app-home > section.product-section').nth(1);

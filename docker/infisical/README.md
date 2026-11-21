@@ -213,6 +213,31 @@ component MongoDB settings. For that deployment path, fill the component setting
 
 **The entries are not deployment-ready.** The owner still supplies values.
 
+### A server project's own secrets: `pnpm secrets:generate`
+
+`pnpm secrets:generate -- <development|staging|production>` reports, names only, what it would fill
+in that project; add `--write` to save. It is run once per server project, on this computer, before
+that server's first deploy (owner, 2026-11-20); a GitHub runner never makes secrets, and a release
+never makes them again.
+
+- **Made** when blank, with the same recipe as this computer's (`scripts/secrets/generate.mjs`):
+  `MONGODB_PASSWORD`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CSRF_SECRET`,
+  `MAILBOX_TOKEN_KEY`, `/infrastructure/mongo-keyfile`, `mongo-root-password` and
+  `meilisearch.toml` (production mode).
+- **Set** when blank, the server shape the production proof deploys: `NODE_ENV`, `DEPLOY_ENV`,
+  `PORT`, `COOKIE_SECURE`, `TRUST_PROXY`, `CLIENT_IP_HEADER`, `NOTIFICATION_PROVIDER`, the Mongo,
+  Redis and search hosts and ports, `MONGODB_REPLICA_SET`, the two login names, and the database
+  (`saha_textile_development`, `saha_textile_staging`, `saha_textile_prod`). A filled one that
+  differs is reported, not changed.
+- **Never overwritten:** a filled value stays. The one exception is `--replace-shared`, which
+  replaces a value that is still this computer's own (saha-textile-development was copied from
+  saha-textile-local). Replace a database, Redis or keyfile secret only before that server's data
+  exists: once it runs, changing one is a rotation, not a fill.
+- **Still yours** (listed at the end): the domains (`CORS_ALLOWED_ORIGINS`, `SPACES_CDN_URL`, the
+  `/deployment` hosts), `MSG91_AUTH_KEY`, the Spaces keys, and production's `/backup`.
+- After `--write`, it reads the project back and confirms every written name holds its new value.
+  Copy the new values into NordPass from the Infisical dashboard: Infisical Free keeps no history.
+
 ## Renderer and checks (`scripts/secrets/`)
 
 One renderer turns a project's four folders into the files each place reads, so a file is the same

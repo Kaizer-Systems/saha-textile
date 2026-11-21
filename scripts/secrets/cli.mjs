@@ -3,11 +3,13 @@
  * Infisical commands for this repository.
  *
  *   pnpm secrets:status                  every project
- *   pnpm secrets:status -- staging       one project: dev (this computer, saha-textile-local),
+ *   pnpm secrets:status -- staging       one project: local (this computer, saha-textile-local),
  *                                        development, staging or production
- *   pnpm secrets:pull                    rewrite apps/api/.env from the dev project (see pull.mjs)
- *   pnpm stack:env                       write docker/stack/env/ from the dev project (see stack.mjs)
+ *   pnpm secrets:pull                    rewrite apps/api/.env from the local project (see pull.mjs)
+ *   pnpm stack:env                       write docker/stack/env/ from the local project (see stack.mjs)
  *   pnpm secrets:setup-local             real logins for this Mac's services (see local-setup.mjs)
+ *   pnpm secrets:generate -- staging     a server project's own secrets and server settings; reports
+ *                                        only until --write (see server-secrets.mjs)
  *
  * `status` prints, per project and folder, how many settings are filled, which names are missing,
  * misspelt or due for deletion, and whether the project is ready for a release. Every command prints
@@ -16,8 +18,10 @@
  * They need the Infisical CLI signed in (`infisical login`) with access to the projects.
  */
 import { exportFolder, exportProject } from './infisical.mjs';
-import { TIERS, ROOT, SecretsError, describeError, loadInventory } from './inventory.mjs';
+import { SERVER_TIERS, TIERS, ROOT, SecretsError, describeError, loadInventory } from './inventory.mjs';
 import { setupLocal } from './local-setup.mjs';
+import { formatServerPlan, planServerSecrets, SERVER_ONLY } from './server-secrets.mjs';
+import { applySecretChanges } from './write.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
 import { stackAddresses, stackApiSettings, writeStackEnv } from './stack.mjs';
@@ -155,14 +159,62 @@ function release(args) {
 	);
 }
 
-const commands = { status, pull, 'stack-env': stackEnv, 'setup-local': setupLocalCommand, release };
+const GENERATE_FLAGS = new Set(['--write', '--replace-shared']);
+
+/**
+ * `pnpm secrets:generate -- <development|staging|production> [--write] [--replace-shared]`.
+ * @param {string[]} args
+ */
+function generate(args) {
+	const words = args.filter((arg) => arg !== '--');
+	const flags = words.filter((word) => word.startsWith('--'));
+	const unknown = flags.filter((flag) => !GENERATE_FLAGS.has(flag));
+	if (unknown.length > 0) throw new SecretsError(`Unknown option ${unknown[0]}. Use --write or --replace-shared.`);
+	const tiers = words.filter((word) => !word.startsWith('--'));
+	if (tiers.length !== 1) throw new SecretsError('Name one project: development, staging or production.');
+	const [tier] = tiers;
+	// Checked before Infisical is asked for anything.
+	if (!SERVER_TIERS.includes(tier)) throw new SecretsError(SERVER_ONLY);
+	const inventory = loadInventory();
+	const project = inventory.projects[tier];
+	const folders = exportProject(project, { notes });
+	const local = exportProject(inventory.projects.local, { notes });
+	const write = flags.includes('--write');
+	const { changes, report } = planServerSecrets({
+		tier,
+		folders,
+		local,
+		inventory,
+		replaceShared: flags.includes('--replace-shared'),
+	});
+	const name = `${project.name} (${project.environment})`;
+	if (!write || changes.length === 0) {
+		console.log(formatServerPlan(report, { project: name, written: false }));
+		return;
+	}
+	const results = applySecretChanges(changes, { inventory });
+	const failed = results.filter((result) => !result.saved);
+	// Read back: every name written is filled now, and none still equals this computer's value.
+	const after = exportProject(project, { notes });
+	const missing = changes
+		.filter((change) => after[change.folder]?.get(change.name) !== change.value)
+		.map((c) => c.name);
+	console.log(formatServerPlan(report, { project: name, written: true }));
+	for (const result of failed)
+		console.log(`  Not saved: /${result.folder} (${result.names.join(', ')}): ${result.error}`);
+	if (missing.length > 0) console.log(`  Read back different or missing: ${missing.join(', ')}`);
+	else console.log(`  Read back: all ${changes.length} written names hold the new values.`);
+	if (failed.length > 0 || missing.length > 0) process.exitCode = 1;
+}
+
+const commands = { status, pull, 'stack-env': stackEnv, 'setup-local': setupLocalCommand, release, generate };
 
 function main() {
 	const [command, ...args] = process.argv.slice(2);
 	const run = commands[/** @type {keyof typeof commands} */ (command)];
 	if (!run) {
 		console.error(
-			'Usage: node scripts/secrets/cli.mjs status [dev|staging|production] | pull [--dry-run|--replace] | stack-env | setup-local',
+			'Usage: node scripts/secrets/cli.mjs status [local|development|staging|production] | pull [--dry-run|--replace] | stack-env | setup-local | release <tier> … | generate <development|staging|production> [--write] [--replace-shared]',
 		);
 		process.exit(2);
 	}

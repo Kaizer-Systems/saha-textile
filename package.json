@@ -31,6 +31,7 @@
     "secrets:pull": "node scripts/secrets/cli.mjs pull",
     "secrets:setup-local": "node scripts/secrets/cli.mjs setup-local",
     "secrets:release": "node scripts/secrets/cli.mjs release",
+    "secrets:generate": "node scripts/secrets/cli.mjs generate",
     "local-auth:proof": "bash scripts/local-auth-proof.sh",
     "check:e2e-types": "tsc --noEmit -p e2e/tsconfig.json",
     "typecheck": "turbo run typecheck",

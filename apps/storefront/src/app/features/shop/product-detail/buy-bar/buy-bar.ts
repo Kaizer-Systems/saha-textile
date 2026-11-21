@@ -4,7 +4,6 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { NgbPopover } from '@ng-bootstrap/ng-bootstrap';
 
 import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
-
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
 

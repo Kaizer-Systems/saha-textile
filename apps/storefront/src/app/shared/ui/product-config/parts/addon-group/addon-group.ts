@@ -45,6 +45,8 @@ export class AddonGroup implements OnInit {
 	 * Edit add-on).
 	 */
 	readonly measureAs = input<'auto' | 'row' | 'form'>('auto');
+	/** Inside the buy bar's sheet the footer carries the total and the row's chip the measurement state (brief P4). */
+	readonly inSheet = input(false);
 
 	private readonly modals = inject(NgbModal);
 	private readonly transloco = inject(TranslocoService);

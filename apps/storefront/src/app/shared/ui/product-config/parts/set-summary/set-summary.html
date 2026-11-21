@@ -1,0 +1,54 @@
+<!-- Trending Products' sidebar box, reused (theme .category-menu and its underlined title), as the brief drew it. -->
+<div class="pt-25">
+	<div class="category-menu st-set-summary">
+		<h3>{{ 'set_summary' | transloco }}</h3>
+		<div class="st-set-summary-head">
+			@if (photo(); as src) {
+			<img
+				[src]="src"
+				[attr.srcset]="srcset()"
+				sizes="56px"
+				[alt]="name()"
+				width="56"
+				height="72"
+				loading="lazy"
+			/>
+			}
+			<div>
+				<b>{{ name() }}</b>
+				<span class="text-content">{{ 'qty' | transloco }} {{ quantity() }}</span>
+			</div>
+		</div>
+		<ol class="st-set-summary-pieces">
+			@for (piece of bundle().components; track piece.code) {
+			<li>
+				{{ piece.name }} × {{ piece.quantity || 1 }}
+				<span>
+					{{ 'price_on_its_own' | transloco: { price: (piece.price * (piece.quantity || 1) | currencySymbol) }
+					}}
+				</span>
+			</li>
+			}
+		</ol>
+		<dl class="st-set-summary-sums">
+			<dt>{{ 'bought_separately' | transloco }}</dt>
+			<dd class="is-was">{{ separately() | currencySymbol }}</dd>
+			@if (saving() > 0) {
+			<dt>{{ 'you_save' | transloco }}</dt>
+			<dd class="is-save">{{ saving() | currencySymbol }}</dd>
+			}
+			<dt>{{ 'set_price' | transloco }}</dt>
+			<dd class="is-total">{{ price() | currencySymbol }}</dd>
+		</dl>
+		<p class="st-set-summary-note">
+			<i
+				class="ri-truck-line"
+				aria-hidden="true"
+			></i>
+			{{ 'set_delivery_note' | transloco }}
+		</p>
+		@if (!buyable()) {
+		<p class="st-set-summary-note">{{ 'bundle_not_on_sale' | transloco }}</p>
+		}
+	</div>
+</div>

@@ -37,6 +37,8 @@ export class BundleConfigurator implements OnInit {
 	/** Prefill measurement values (field code -> value) when editing a saved line. */
 	readonly initialMeasurements = input<Record<string, number>>();
 	readonly stateChange = output<ConfiguratorState>();
+	/** The product page shows the set's summary in its right column instead (brief P8); the pop-up keeps it here. */
+	readonly showSummary = input(true);
 
 	private readonly selections = signal<Record<string, string>>({});
 	private readonly measurements = signal<Record<string, number>>({});

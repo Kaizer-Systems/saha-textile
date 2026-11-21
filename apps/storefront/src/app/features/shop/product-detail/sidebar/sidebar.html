@@ -1,7 +1,18 @@
 <div class="right-sidebar-box">
 	@if (product()?.store) {
 	<app-store-information [store]="product()?.store" />
-	} @if ((siteConfig$ | async)?.product?.is_trending_product) {
+	} @if (product()?.bundle; as set) {
+	<!-- A set page: the set's summary takes Trending Products' place (brief P8). -->
+	<app-set-summary
+		[bundle]="set"
+		[total]="setPrice()"
+		[quantity]="quantity()"
+		[buyable]="buyable()"
+		[name]="product()?.name ?? ''"
+		[photo]="product()?.product_thumbnail?.original_url ?? null"
+		[image]="product()?.product_thumbnail?.image ?? null"
+	/>
+	} @else if ((siteConfig$ | async)?.product?.is_trending_product) {
 	<app-trending-products [product]="product()" />
 	}
 </div>

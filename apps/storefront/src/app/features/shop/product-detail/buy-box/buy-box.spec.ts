@@ -333,4 +333,65 @@ describe('BuyBox and the buy bar', () => {
 		expect(applyAddon).toHaveBeenCalledWith({ blouse: 'none' }, {}, false);
 		expect(render().box.addonView()).toBeNull();
 	});
+
+	it('shows a set in the bar and configures it in a sheet that keeps its choices (brief P4, P8)', async () => {
+		expect(render().box.setView()).toBeNull();
+		const bundle = { components: [{ code: 'a' }, { code: 'b' }], bundle_price: 7300 };
+		const { box, cart } = render(true, { bundle });
+		const applySet = vi.fn();
+		const bundleState = signal<{ valid: boolean } | null>(null);
+		let snapshot: unknown = null;
+		let purchasable = false;
+		Object.defineProperty(box, 'configurator', {
+			value: () => ({
+				bundleState,
+				applySet,
+				effectiveBase: () => 7300,
+				purchasable: () => purchasable,
+				setSnapshot: () => snapshot,
+			}),
+		});
+		expect(box.setView()).toEqual({ pieces: 2, ready: false });
+		bundleState.set({ valid: true });
+		expect(box.setView()).toEqual({ pieces: 2, ready: true });
+
+		const modals = TestBed.inject(NgbModal);
+		const open = vi.spyOn(modals, 'open');
+		await box.openSet();
+		expect(open).not.toHaveBeenCalled();
+
+		snapshot = { selections: { blouse: 'boat' }, measurements: {}, measured: false };
+		const save = vi.fn(() => true);
+		const start = vi.fn();
+		open.mockReturnValueOnce({ componentInstance: { start, save }, result: Promise.reject('closed') } as never);
+		await box.openSet();
+		expect(start).toHaveBeenCalledWith(expect.objectContaining({ mode: 'set', basePrice: 7300, buyable: false }));
+		const options = open.mock.calls[0][1] as { beforeDismiss: () => boolean };
+		// Outside taps and Escape keep the choices: the sheet saves instead of being dismissed.
+		expect(options.beforeDismiss()).toBe(false);
+		expect(save).toHaveBeenCalled();
+		save.mockReturnValueOnce(false);
+		expect(options.beforeDismiss()).toBe(true);
+		expect(applySet).not.toHaveBeenCalled();
+
+		box.onSummary({ ...(summary as object), purchasable: false, soldOut: false } as never);
+		open.mockReturnValueOnce({
+			componentInstance: { start, save },
+			result: Promise.resolve({ selections: { blouse: 'none' }, measurements: {}, measured: false, add: true }),
+		} as never);
+		await box.openSet();
+		expect(applySet).toHaveBeenCalledWith({ blouse: 'none' }, {}, false);
+		// A set that cannot be bought yet is never added, whatever the sheet says.
+		expect(cart.addToCart).not.toHaveBeenCalled();
+
+		purchasable = true;
+		box.onSummary({ ...(summary as object), purchasable: true, soldOut: false, variation: null } as never);
+		const addToCart = vi.spyOn(box, 'addToCart').mockImplementation(() => undefined);
+		open.mockReturnValueOnce({
+			componentInstance: { start, save },
+			result: Promise.resolve({ selections: {}, measurements: {}, measured: true, add: true }),
+		} as never);
+		await box.openSet();
+		expect(addToCart).toHaveBeenCalledOnce();
+	});
 });

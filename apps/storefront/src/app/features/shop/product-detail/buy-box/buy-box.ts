@@ -13,17 +13,17 @@ import { AuthStore } from '@core/state/auth.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { CompareStore } from '@core/state/compare/compare.store';
 import { WishlistStore } from '@core/state/wishlist/wishlist.store';
+import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
-import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
+import { AddonSheet, type AddonSheetResult } from '@shared/ui/product-config/parts/addon-sheet/addon-sheet';
 import { AttributesInfo } from '@shared/ui/product-config/parts/attributes-info/attributes-info';
 import { LOW_STOCK_AT, VariationTable } from '@shared/ui/product-config/parts/variation-table/variation-table';
-import { AddonSheet, type AddonSheetResult } from '@shared/ui/product-config/parts/addon-sheet/addon-sheet';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
 
 import { environment } from '../../../../../../public/environments/environment';
@@ -225,22 +225,30 @@ export class BuyBox {
 		const configurator = this.configurator();
 		const snapshot = configurator?.setSnapshot();
 		if (!configurator || !snapshot) return;
+		let sheet: AddonSheet | undefined;
 		const popup = this.modals.open(AddonSheet, {
 			ariaLabelledBy: 'addon_sheet_title',
 			centered: true,
 			scrollable: true,
 			size: 'lg',
 			windowClass: 'theme-modal st-sheet',
+			// Tapping outside or Escape keeps the set's choices too: the sheet is the page's own set (brief P8).
+			// A sheet with nothing drawn yet just closes.
+			beforeDismiss: () => !sheet?.save(),
 		});
-		(popup.componentInstance as AddonSheet).start({
+		sheet = popup.componentInstance as AddonSheet;
+		sheet.start({
 			product: this.product(),
 			basePrice: configurator.effectiveBase(),
 			selections: snapshot.selections,
 			measurements: snapshot.measurements,
 			mode: 'set',
+			buyable: configurator.purchasable(),
 		});
 		const result = (await popup.result.catch(() => null)) as AddonSheetResult | null;
-		if (result) configurator.applySet(result.selections, result.measurements, result.measured);
+		if (!result) return;
+		configurator.applySet(result.selections, result.measurements, result.measured);
+		if (result.add && this.purchasable()) this.addToCart();
 	}
 
 	/** The buy bar's chip lists choose through the page's own option buttons (brief P4). */

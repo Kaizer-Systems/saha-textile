@@ -14,9 +14,9 @@ import {
 
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
+import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { ICartAddOrUpdate, ICartLineConfig } from '@data-access/interfaces/cart.interface';
 import { ConfiguratorState, IAddonGroup, IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
-import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 
 import { AddonGroup } from '../parts/addon-group/addon-group';
@@ -51,6 +51,8 @@ export class ProductConfigurator implements OnInit {
 	 */
 	readonly showFacts = input(true);
 	readonly showTable = input(true);
+	/** The set's summary; the product page draws it in its right column instead (brief P8). */
+	readonly showSetSummary = input(true);
 
 	private platformId = inject(PLATFORM_ID);
 	private allowVariantUrl = false;

@@ -109,7 +109,8 @@
 	/>
 	}
 
-	<!-- Order summary snapshot -->
+	<!-- Order summary snapshot (the product page shows it in the right column instead) -->
+	@if (showSummary()) {
 	<div class="bundle-summary">
 		<h3 class="h5">{{ 'order_summary_snapshot' | transloco }}</h3>
 		<ul class="summary-lines">
@@ -135,4 +136,5 @@
 		<p class="bundle-note text-content">{{ 'bundle_deliver_together' | transloco }}</p>
 		<p class="bundle-note text-content">{{ 'bundle_not_on_sale' | transloco }}</p>
 	</div>
+	}
 </div>

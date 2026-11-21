@@ -12,34 +12,67 @@
 			type="button"
 			class="btn btn-close"
 			[attr.aria-label]="'close' | transloco"
-			(click)="modal.dismiss()"
+			(click)="sheet.mode === 'set' ? save() : modal.dismiss()"
 		>
 			<i class="ri-close-line"></i>
 		</button>
 	</div>
 	<div class="modal-body">
 		@if (sheet.mode === 'set') {
+		<!-- The sheet's footer carries the set price (brief section 7), so the part's own summary stays off. -->
 		<app-bundle-configurator
 			[product]="sheet.product"
 			[initialSelections]="sheet.selections"
 			[initialMeasurements]="sheet.measurements"
+			[showSummary]="false"
 			(stateChange)="onState($event)"
 		/>
-		} @else {
+		@if (!sheet.buyable) {
+		<p class="text-content mt-3 mb-0">{{ 'bundle_not_on_sale' | transloco }}</p>
+		} } @else { @if (sheet.mode === 'designs') {
+		<!-- As drawn (brief section 7): the pencil changes the design only. -->
+		<p class="text-content mb-3">{{ 'designs_only_note' | transloco }}</p>
+		}
 		<app-addon-group
 			[product]="sheet.product"
 			[basePrice]="sheet.basePrice"
 			[initialSelections]="sheet.selections"
 			[initialMeasurements]="sheet.measurements"
 			[measureAs]="sheet.mode === 'designs' ? 'row' : 'form'"
+			[inSheet]="true"
 			(stateChange)="onState($event)"
 		/>
 		}
 	</div>
 	<div class="modal-footer st-sheet-footer">
-		<p class="mb-0">
-			<span class="text-content">{{ 'total_price' | transloco }}</span>
-			<strong class="theme-color ms-1">{{ total() | currencySymbol }}</strong>
+		@if (sheet.mode === 'set') {
+		<!-- As drawn (brief section 7): the set price with its piece count, and Add set to cart. -->
+		<p class="st-sheet-price">
+			<span class="text-content">
+				{{ 'set_price_pieces' | transloco: { count: sheet.product.bundle?.components?.length ?? 0 } }}
+			</span>
+			<strong>{{ total() | currencySymbol }}</strong>
+		</p>
+		<button
+			type="button"
+			class="btn st-sheet-save"
+			[disabled]="!sheet.buyable || !valid()"
+			(click)="save(true)"
+		>
+			<i
+				class="ri-shopping-cart-line me-1"
+				aria-hidden="true"
+			></i>
+			{{ 'add_set_to_cart' | transloco }}
+		</button>
+		} @else {
+		<p class="st-sheet-price">
+			<span class="text-content">
+				@if (delta() > 0 && addonNames()) { {{ 'price_plus_addon' | transloco: { base: (sheet.basePrice |
+				currencySymbol), name: addonNames(), delta: (delta() | currencySymbol) } }} } @else { {{ 'total_price' |
+				transloco }} }
+			</span>
+			<strong>{{ total() | currencySymbol }}</strong>
 		</p>
 		<button
 			type="button"
@@ -48,6 +81,7 @@
 		>
 			{{ (sheet.mode === 'designs' ? 'done' : 'save') | transloco }}
 		</button>
+		}
 	</div>
 </div>
 }

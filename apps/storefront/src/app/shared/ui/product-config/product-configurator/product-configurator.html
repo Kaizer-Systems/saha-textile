@@ -22,6 +22,7 @@
 } @if (hasBundle()) {
 <app-bundle-configurator
 	[product]="product()"
+	[showSummary]="showSetSummary()"
 	[initialSelections]="bundleSeed()"
 	[initialMeasurements]="measurementSeed()"
 	(stateChange)="onBundleChange($event)"

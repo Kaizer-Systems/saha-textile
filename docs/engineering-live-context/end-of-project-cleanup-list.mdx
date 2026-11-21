@@ -86,6 +86,13 @@ Each line names the files, what replaced the piece, and what the removal also to
 | OC8 | The theme's demo coupon list and coupon form (no longer routed)                                               | `apps/admin/src/app/features/coupon/coupon.ts` with its html and scss, `create-coupon`, `edit-coupon`, `form-coupon` (and its spec), `data-access` coupon service and queries if nothing else reads them                                                                                                                                                                                                                                                                                             | `coupon-list` and `coupon-builder` on `/admin/coupons` (ticks with bulk Delete / Turn on / Turn off, the row switch, six tabs, Check it)                              | Their words                                                       |
 | OC9 | The customer page's own add-address modal and the inline address field code                                   | `apps/admin/src/app/features/customer/form-customer/form-customer.html`: the `#addAddressModal` template (opened only by `openThemeAddressModal()`, which nothing calls); `form-customer.ts`: `addressForms`, `rebuildAddressForms`, `saveAddressAt`, `onDefaultToggle`, `addressCountryChange`, `confirmDeleteAddress` and the older unchecked `/admin/customers/:id/addresses` add and update calls they use. The inline fields left the page on 20 Nov (owner: replace with cards, as ad04 draws) | The address cards with the default radio, Edit and Delete, and the address popup (`customer-address-popup.ts`) on the checked `address-book` routes (brief ad04–ad05) | Their words                                                       |
 
+## Product page build
+
+| #   | Piece | Files | Replaced by | The removal also touches |
+| --- | ----- | ----- | ----------- | ------------------------ |
+| PP1 | The old product-page sticky bar (no longer rendered) | `apps/storefront/src/app/features/shop/product-detail/widgets/sticky-checkout/` (component, template, spec) | The buy bar, `features/shop/product-detail/buy-bar/` (product page brief P4, 21 Nov 2026) | Nothing else; the buy bar keeps using the theme's `stickyCart` switch |
+| PP2 | The set part's old piece list styles (no markup uses them since the piece rows) | `.bundle-components` and `.bundle-component` (with `.comp-*`) in `apps/storefront/src/scss/components/_set-rows.scss` | The piece rows `.st-piece*` in the same file (brief P8) | Nothing else |
+
 ## Decided, so not on this list (2026-11-16)
 
 The owner chose to remove these with the Legal Pages build instead of keeping them for the end:
@@ -94,4 +101,3 @@ The owner chose to remove these with the Legal Pages build instead of keeping th
   brief, choice A).
 - The eight legal page files the shop read before the API (Legal Pages brief, choice 4), with the language
   manifest's `pages` part that counted them.
-- The old product-page sticky bar `features/shop/product-detail/widgets/sticky-checkout` (component, template, spec): no longer rendered since the buy bar moved into the buy box (product page brief P4, 21 Nov 2026).

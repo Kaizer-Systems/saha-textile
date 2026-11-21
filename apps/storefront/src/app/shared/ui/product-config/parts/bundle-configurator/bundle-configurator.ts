@@ -26,7 +26,6 @@ import { OptionSwatch } from '../option-swatch/option-swatch';
 @Component({
 	selector: 'app-bundle-configurator',
 	templateUrl: './bundle-configurator.html',
-	styleUrls: ['./bundle-configurator.scss'],
 	providers: [CurrencySymbolPipe],
 	imports: [OptionSwatch, MeasurementRow, CurrencySymbolPipe, TranslocoModule],
 })

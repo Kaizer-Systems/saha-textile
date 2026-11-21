@@ -17,6 +17,7 @@ import {
 	LocalizedFields,
 	SOURCE_LOCALE,
 } from '@core/i18n/localized-fields';
+import { OPTION_LOOKS, usesColour, usesPicture } from '@core/catalog/option-looks';
 import { ActiveLanguages } from '@core/i18n/active-languages';
 import { MediaGateway } from '@core/media/media.gateway';
 import { AttributeService } from '@data-access/services/attribute.service';
@@ -36,7 +37,6 @@ const slugOf = (text: string): string =>
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '');
 
-const STYLES = ['rectangle', 'circle', 'image_swatch', 'color_swatch', 'radio', 'dropdown', 'image_tile', 'radio_bar'];
 const ROLES = ['filter_only', 'variation_axis', 'named_add_on', 'bundle_component_option'];
 const FACET_STYLES = ['checkbox', 'swatch', 'chips', 'radio'];
 
@@ -78,7 +78,7 @@ export class FormAttribute {
 	/** Set when editing: the code stays, because products point at it. */
 	readonly code = signal<string | null>(null);
 
-	readonly styleOptions = STYLES.map((value) => ({ value, label: value }));
+	readonly styleOptions = OPTION_LOOKS.map((value) => ({ value, label: value }));
 	private readonly translations = toSignal(this.transloco.selectTranslation());
 	readonly roleOptions = computed(() => {
 		this.translations();
@@ -95,6 +95,18 @@ export class FormAttribute {
 				term.label[locale]?.trim()
 					? []
 					: [{ key: `value_${index}`, label: 'value', name: this.guide(term) || String(index + 1) }],
+			),
+			// A second line is optional, but once written it is owed in every language.
+			...this.terms().flatMap((term, index) =>
+				this.hasNote(term) && !term.subLabel?.[locale]?.trim()
+					? [
+							{
+								key: `value_note_${index}`,
+								label: 'value_second_line',
+								name: this.guide(term) || String(index + 1),
+							},
+						]
+					: [],
 			),
 		]),
 	);
@@ -117,13 +129,17 @@ export class FormAttribute {
 	}
 
 	get isColour(): boolean {
-		return this.form.get('style')?.value === 'color_swatch';
+		return usesColour(this.form.get('style')?.value);
 	}
 
 	/** Picture styles give each value a default picture that products start with. */
 	get isPicture(): boolean {
-		const style = this.form.get('style')?.value;
-		return style === 'image_swatch' || style === 'image_tile';
+		return usesPicture(this.form.get('style')?.value);
+	}
+
+	/** True once the value's second line is written in any language. */
+	hasNote(term: AttributeDefinitionTerm): boolean {
+		return Object.values(term.subLabel ?? {}).some((text) => text.trim());
 	}
 
 	picture(term: AttributeDefinitionTerm): IAttachment | null {
@@ -210,6 +226,24 @@ export class FormAttribute {
 		this.change(index, { label, ...(naming ? { slug: slugOf(text) } : {}) });
 	}
 
+	/** The value's optional second line in the language on screen ("Medium" under "M"); empty clears it there. */
+	setNote(index: number, term: AttributeDefinitionTerm, text: string) {
+		const locale = this.fields.locale();
+		const { [locale]: _dropped, ...others } = term.subLabel ?? {};
+		const subLabel = text.trim() ? { ...others, [locale]: text.trim() } : others;
+		if (Object.keys(subLabel).length) {
+			this.change(index, { subLabel });
+			return;
+		}
+		this.terms.update((rows) =>
+			rows.map((row, position) => {
+				if (position !== index) return row;
+				const { subLabel: _cleared, ...rest } = row;
+				return rest;
+			}),
+		);
+	}
+
 	setSlug(index: number, text: string) {
 		this.change(index, { slug: slugOf(text) });
 	}
@@ -260,7 +294,7 @@ export class FormAttribute {
 			label: { ...label, en: english },
 			defaultRole: raw['default_role'] as AdminAttributeWrite['defaultRole'],
 			defaultDisplayStyle: raw['style'] as AdminAttributeWrite['defaultDisplayStyle'],
-			valueType: raw['style'] === 'color_swatch' ? 'color' : 'term',
+			valueType: usesColour(raw['style'] as string) ? 'color' : 'term',
 			terms,
 			filterConfig: {
 				visible: Boolean(raw['use_as_filter']),

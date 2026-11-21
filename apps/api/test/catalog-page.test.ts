@@ -28,7 +28,7 @@ const product = Product.parse({
 			requiredSelection: true,
 			terms: [
 				{ code: 's', label: { en: 'S' } },
-				{ code: 'm', label: { en: 'M' } },
+				{ code: 'm', label: { en: 'M' }, subLabel: { en: 'Medium', bn: 'মাঝারি' } },
 			],
 		},
 		{
@@ -109,6 +109,10 @@ describe('product page read', () => {
 		]);
 		expect(page.optionGroups[1]?.defaultTermCode).toBe('no-design');
 		expect(page.optionGroups[1]?.terms[1]).toMatchObject({ priceDeltaINR: 750, requiresMeasurements: true });
+		// The second line comes in the page language; a value without one reads null.
+		expect(page.optionGroups[0]?.terms.map((term) => term.subLabel)).toEqual([null, 'Medium']);
+		const bengali = await withCatalogLocale('bn', () => pageService().page('kurti-palazzo-set'));
+		expect(bengali.optionGroups[0]?.terms[1]?.subLabel).toBe('মাঝারি');
 		expect(page.variants.map((row) => row.selections)).toEqual([{ size: 's' }, { size: 'm' }]);
 		expect(page.measurements?.fields.map((field) => field.code)).toEqual(['chest']);
 		expect(page.selected?.sku).toBe('KPS-1');

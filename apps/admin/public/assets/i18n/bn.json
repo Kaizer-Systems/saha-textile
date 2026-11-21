@@ -1502,6 +1502,8 @@
 	"gap_meta_description": "মেটা বিবরণ",
 	"gap_option": "বিকল্পের নাম",
 	"gap_value": "মানের নাম",
+	"gap_value_note": "মানের দ্বিতীয় লাইন",
+	"value_second_line": "দ্বিতীয় লাইন (ঐচ্ছিক), যেমন মাঝারি",
 	"gap_category": "অন্তত একটি ক্যাটাগরি বেছে নিন",
 	"gap_price": "দাম দিন",
 	"gap_primary_image": "প্রধান ছবি দিন",

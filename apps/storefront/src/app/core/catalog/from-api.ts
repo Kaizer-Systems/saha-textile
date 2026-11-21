@@ -68,6 +68,8 @@ export interface ApiPlacement {
 interface ApiOptionTerm {
 	code: string;
 	label: string;
+	/** The second line in the page language; older API builds leave it out. */
+	subLabel?: string | null;
 	isBase: boolean;
 	hex: string | null;
 	image: ApiImage | null;
@@ -232,6 +234,10 @@ const STYLE: Record<string, DisplayStyle> = {
 	dropdown: 'dropdown',
 	image_tile: 'image_tile',
 	radio_bar: 'radio_bar',
+	picture_row: 'picture_row',
+	picture_chip: 'picture_chip',
+	size_v2: 'size_v2',
+	colour_chip: 'colour_chip',
 };
 
 const FACT_ICONS: Record<string, string> = {
@@ -329,8 +335,10 @@ function optionTerms(group: ApiOptionGroup) {
 	return group.terms.map((term, index) => ({
 		code: term.code,
 		label: term.label,
+		...(term.subLabel ? { sub_label: term.subLabel } : {}),
 		price_delta: term.priceDeltaINR ?? 0,
 		image: swatchAttachment(term.image, index + 1)?.original_url,
+		...(term.hex ? { hex: term.hex } : {}),
 		is_default: term.code === group.defaultTermCode,
 		requires_measurements: term.requiresMeasurements,
 	}));
@@ -368,6 +376,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				id: attributeId * 1000 + termIndex + 1,
 				name: term.label,
 				value: term.label,
+				...(term.subLabel ? { sub_label: term.subLabel } : {}),
 				slug: term.code,
 				status: true,
 				hex_color: term.hex ?? '',

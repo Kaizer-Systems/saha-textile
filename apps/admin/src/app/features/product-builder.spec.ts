@@ -11,6 +11,7 @@ import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import { OPTION_LOOKS } from '@core/catalog/option-looks';
 import { LocalizedFields } from '@core/i18n/localized-fields';
 import { MediaGateway } from '@core/media/media.gateway';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
@@ -243,6 +244,20 @@ describe('OptionGroups', () => {
 
 	it('names roles in plain words', () => {
 		expect(render().roleOptions()[0]).toEqual({ value: 'variation_axis', label: 'role_name_variation_axis' });
+	});
+
+	it('offers every look, and a picked value brings its second line', () => {
+		const medium = { code: 'm', label: both, slug: 'm', subLabel: { en: 'Medium', bn: 'মাঝারি' }, aliases: [] };
+		const page = render([group({ terms: [] })], [definition({ terms: [medium] })]);
+		expect(page.styleOptions.map((option) => option.value)).toEqual([...OPTION_LOOKS]);
+		page.pick(0, page.groups()[0]!, { value: ['m'] } as never);
+		expect(page.groups()[0]?.terms[0]?.subLabel).toEqual({ en: 'Medium', bn: 'মাঝারি' });
+		expect(['image_tile', 'picture_row', 'picture_chip', 'size_v2'].map((look) => page.usesPicture(look))).toEqual([
+			true,
+			true,
+			true,
+			false,
+		]);
 	});
 
 	describe('changing a role', () => {
@@ -1199,6 +1214,25 @@ describe('FormAttribute', () => {
 		expect(page.terms()[0]).not.toHaveProperty('swatchAssetId');
 		expect(page.terms()[0]).not.toHaveProperty('swatchVersionId');
 		expect(page.picture(page.terms()[0]!)).toBeNull();
+	});
+
+	it('offers the four new looks, and keeps a second line owed in every language once written', () => {
+		const { page } = render('color');
+		expect(page.styleOptions.map((option) => option.value)).toEqual([...OPTION_LOOKS]);
+		page.form.patchValue({ style: 'colour_chip' });
+		expect([page.isColour, page.isPicture]).toEqual([true, false]);
+		page.form.patchValue({ style: 'picture_row' });
+		expect([page.isColour, page.isPicture]).toEqual([false, true]);
+		page.form.patchValue({ style: 'size_v2' });
+		expect([page.isColour, page.isPicture]).toEqual([false, false]);
+		const before = page.gaps()['bn']?.length ?? 0;
+		page.setNote(0, page.terms()[0]!, ' Medium ');
+		expect(page.terms()[0]?.subLabel).toEqual({ en: 'Medium' });
+		expect(page.hasNote(page.terms()[0]!)).toBe(true);
+		expect(page.gaps()['bn']?.length).toBe(before + 1);
+		page.setNote(0, page.terms()[0]!, '');
+		expect(page.terms()[0]).not.toHaveProperty('subLabel');
+		expect(page.gaps()['bn']?.length).toBe(before);
 	});
 
 	it('fills from the API, keeping the code', () => {

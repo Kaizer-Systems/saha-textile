@@ -25,6 +25,14 @@ export function productGallery(product: Pick<Product, 'imageMode' | 'media'>): s
 
 const filled = (value: string | undefined): boolean => !!value && value.trim().length > 0;
 
+/** Looks that are only a colour, so each value needs one. */
+const COLOUR_LOOKS: ReadonlySet<string> = new Set(['color_swatch', 'colour_chip']);
+/**
+ * Looks that are only a picture beside, at most, a name, so each value needs one. The picture tiles
+ * (`image_tile`, `picture_row`) also carry the price and fall back to a placeholder, as before.
+ */
+const PICTURE_REQUIRED_LOOKS: ReadonlySet<string> = new Set(['image_swatch', 'picture_chip']);
+
 function text(field: string, values: Readonly<Record<string, string>> | undefined, locales: readonly string[]) {
 	return locales.filter((locale) => !filled(values?.[locale])).map((locale) => ({ field, locale }));
 }
@@ -45,10 +53,14 @@ export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles,
 		gaps.push(...text(`option:${group.attributeCode}`, group.label, locales));
 		for (const term of group.terms) {
 			gaps.push(...text(`value:${group.attributeCode}:${term.code}`, term.label, locales));
-			if (group.displayStyle === 'color_swatch' && !term.hex) {
+			// A second line is optional, but once written in one language it is owed in every one.
+			if (Object.values(term.subLabel ?? {}).some(filled)) {
+				gaps.push(...text(`value_note:${group.attributeCode}:${term.code}`, term.subLabel, locales));
+			}
+			if (COLOUR_LOOKS.has(group.displayStyle) && !term.hex) {
 				gaps.push({ field: `swatch_colour:${group.attributeCode}:${term.code}`, locale: null });
 			}
-			if (group.displayStyle === 'image_swatch' && !term.swatchAssetId) {
+			if (PICTURE_REQUIRED_LOOKS.has(group.displayStyle) && !term.swatchAssetId) {
 				gaps.push({ field: `swatch_image:${group.attributeCode}:${term.code}`, locale: null });
 			}
 		}

@@ -306,6 +306,8 @@ export class CatalogPublicService {
 				terms: group.terms.map((term) => ({
 					code: term.code,
 					label: localized(term.label),
+					// The second line some looks draw (`size_v2`), in the page language.
+					subLabel: term.subLabel ? localized(term.subLabel) || null : null,
 					isBase: term.isBase,
 					hex: term.hex ?? null,
 					// The version stored with the swatch; a swatch made from one of the product's own photos draws
@@ -810,7 +812,8 @@ export class CatalogPublicService {
 			// Chat apps read JPEG best, so a JPEG size wins.
 			.sort(
 				(a, b) =>
-					Number(b.format === 'image/jpeg') - Number(a.format === 'image/jpeg') || fit(a.width) - fit(b.width),
+					Number(b.format === 'image/jpeg') - Number(a.format === 'image/jpeg') ||
+					fit(a.width) - fit(b.width),
 			);
 		const best = files[0];
 		return best

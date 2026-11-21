@@ -109,6 +109,14 @@
 				@if (!onSourceLanguage) {
 				<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: guide(term) } }}</p>
 				}
+				<input
+					class="form-control mt-2"
+					[class.is-invalid]="hasNote(term) && !term.subLabel?.[fields.locale()]"
+					[id]="'value_note_' + index"
+					[value]="term.subLabel?.[fields.locale()] ?? ''"
+					[placeholder]="'value_second_line' | transloco"
+					(change)="setNote(index, term, $any($event.target).value)"
+				/>
 			</div>
 			@if (onSourceLanguage) {
 			<div class="col-3">

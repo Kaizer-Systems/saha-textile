@@ -71,7 +71,7 @@
 							</div>
 							}
 						</app-form-fields>
-						@if (group.displayStyle === 'image_swatch') {
+						@if (usesPicture(group.displayStyle)) {
 						<app-form-fields
 							[labelClass]="'form-label-title col-sm-3 mb-0'"
 							[gridClass]="'col-sm-9'"

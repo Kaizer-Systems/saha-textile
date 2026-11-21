@@ -6,6 +6,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbAccordionModule, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
 
+import { OPTION_LOOKS, usesPicture } from '@core/catalog/option-looks';
 import { MediaGateway } from '@core/media/media.gateway';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
@@ -15,7 +16,6 @@ import type { AddonTemplateRow } from '@data-access/services/addon-template.serv
 import type { AttributeDefinition, ProductOptionGroup, ProductOptionTerm } from '@saha-textile/contracts';
 
 const ROLES = ['variation_axis', 'named_add_on', 'filter_only', 'bundle_component_option'] as const;
-const STYLES = ['rectangle', 'circle', 'image_swatch', 'color_swatch', 'radio', 'dropdown'] as const;
 
 const labelIn = (label: Readonly<Record<string, string>>, locale: string): string => label[locale] ?? '';
 
@@ -23,6 +23,7 @@ function termFrom(term: AttributeDefinition['terms'][number], position: number):
 	return {
 		code: term.code,
 		label: term.label,
+		...(term.subLabel ? { subLabel: term.subLabel } : {}),
 		isBase: term.isBase,
 		...(term.hex ? { hex: term.hex } : {}),
 		...(term.swatchAssetId ? { swatchAssetId: term.swatchAssetId } : {}),
@@ -95,7 +96,10 @@ export class OptionGroups {
 		this.translations();
 		return ROLES.map((value) => ({ value, label: this.transloco.translate(`role_name_${value}`) }));
 	});
-	readonly styleOptions = STYLES.map((value) => ({ value, label: value }));
+	/** Every look the shop draws, the same list as Admin › Attributes (the picture tiles and the four looks from the renders included). */
+	readonly styleOptions = OPTION_LOOKS.map((value) => ({ value, label: value }));
+	/** Picture looks take a swatch picture per value. */
+	readonly usesPicture = usesPicture;
 	readonly attributeOptions = computed(() =>
 		this.definitions()
 			.filter((row) => !this.groups().some((group) => group.attributeCode === row.code))

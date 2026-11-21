@@ -116,6 +116,38 @@ describe('pageToProduct', () => {
 		expect(product.variations[1]).toMatchObject({ price: 2400, sale_price: 2000, discount: 16 });
 	});
 
+	it('keeps the four looks from the renders and each value’s second line and colour', () => {
+		const looks = pageToProduct({
+			...page,
+			optionGroups: [
+				{
+					...page.optionGroups[0]!,
+					displayStyle: 'size_v2',
+					terms: [term('s', 'S'), term('m', 'M', { subLabel: 'Medium' })],
+				},
+				{
+					...page.optionGroups[1]!,
+					displayStyle: 'colour_chip',
+					terms: [
+						term('no-design', 'None', { isBase: true, hex: '#ffffff', subLabel: null }),
+						term('red', 'Red', { hex: '#aa0000', subLabel: 'Deep red' }),
+					],
+				},
+			],
+		});
+		expect(looks.attributes[0]?.style).toBe('size_v2');
+		expect(looks.attributes[0]?.attribute_values.map((value) => value.sub_label)).toEqual([undefined, 'Medium']);
+		expect(looks.addon_groups?.[0]?.style).toBe('colour_chip');
+		expect(looks.addon_groups?.[0]?.terms.map((value) => [value.hex, value.sub_label])).toEqual([
+			['#ffffff', undefined],
+			['#aa0000', 'Deep red'],
+		]);
+		for (const style of ['picture_row', 'picture_chip']) {
+			const read = pageToProduct({ ...page, optionGroups: [{ ...page.optionGroups[1]!, displayStyle: style }] });
+			expect(read.addon_groups?.[0]?.style).toBe(style);
+		}
+	});
+
 	it('opens on the SKU the server selected and keeps the real string id', () => {
 		expect(product.id).toBe('prd_931');
 		expect(product.sku).toBe('KPS-2');
@@ -162,7 +194,10 @@ describe('pageToProduct link preview', () => {
 			shareImageSize: { width: 1200, height: 630, type: 'image/jpeg' },
 		} as ApiProductPage);
 		expect(product.product_meta_image?.original_url).toBe('share.jpg');
-		expect(product.product_meta_image).toMatchObject({ mime_type: 'image/jpeg', pixels: { width: 1200, height: 630 } });
+		expect(product.product_meta_image).toMatchObject({
+			mime_type: 'image/jpeg',
+			pixels: { width: 1200, height: 630 },
+		});
 		expect(product.product_thumbnail?.original_url).toBe('g.webp');
 	});
 

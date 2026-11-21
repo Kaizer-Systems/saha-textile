@@ -66,6 +66,14 @@
 		</li>
 		}
 	</ul>
+	} @case ('picture_row') {
+	<ng-container *ngTemplateOutlet="looks" />
+	} @case ('picture_chip') {
+	<ng-container *ngTemplateOutlet="looks" />
+	} @case ('size_v2') {
+	<ng-container *ngTemplateOutlet="looks" />
+	} @case ('colour_chip') {
+	<ng-container *ngTemplateOutlet="looks" />
 	} @case ('color') {
 	<!-- theme variant colour swatch (.select-package.color), reused for add-on/bundle colour field -->
 	<ul class="circle select-package color">
@@ -114,4 +122,54 @@
 		}
 	</ul>
 	} }
+
+	<!-- The four looks from the early renders (brief P6): one shared item, its shape set by the list's modifier. -->
+	<ng-template #looks>
+		<ul
+			class="st-look-list"
+			[class.st-look-rows]="displayStyle() === 'picture_row'"
+			[class.st-look-sizes]="displayStyle() === 'size_v2'"
+		>
+			@for (t of terms(); track t.code) {
+			<li>
+				<button
+					type="button"
+					class="st-look"
+					[class.is-on]="t.code === selected()"
+					[attr.aria-pressed]="t.code === selected()"
+					(click)="select(t.code)"
+				>
+					@if (t.code === selected()) {
+					<i
+						class="ri-checkbox-circle-fill st-look-check"
+						aria-hidden="true"
+					></i>
+					} @if (displayStyle() === 'colour_chip') {
+					<span
+						class="st-look-dot"
+						[style.background-color]="t.hex || null"
+					></span>
+					} @else if (displayStyle() !== 'size_v2') {
+					<img
+						class="st-look-pic"
+						[src]="t.image || 'assets/images/product.png'"
+						alt=""
+						loading="lazy"
+					/>
+					}
+					<span class="st-look-text">
+						<span class="st-look-name">{{ t.label }}</span>
+						@if (displayStyle() === 'size_v2' && t.sub_label) {
+						<span class="st-look-note">{{ t.sub_label }}</span>
+						} @if (displayStyle() === 'picture_row') {
+						<span class="st-look-note">+{{ t.price_delta | currencySymbol }}</span>
+						} @else if (t.price_delta) {
+						<span class="st-look-note">+{{ t.price_delta | currencySymbol }}</span>
+						}
+					</span>
+				</button>
+			</li>
+			}
+		</ul>
+	</ng-template>
 </div>

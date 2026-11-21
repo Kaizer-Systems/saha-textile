@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { CatalogRupee, I18nString, Id, Slug } from './common';
+import { CatalogRupee, I18nString, Id, LocalizedText, Slug } from './common';
 
 /**
  * Per-product business meaning of an option group (owner lock 2026-07-04).
@@ -28,6 +28,12 @@ export type AttributeDefaultRole = z.infer<typeof AttributeDefaultRole>;
 /**
  * Storefront option renderer (visual ONLY — owner lock 2026-07-04, canonical six;
  * `image_tile` ["Image V2"] + `radio_bar` added 2026-07-17 for storefront/admin parity).
+ * Four more from the early renders (owner, 21 Nov 2026, product page brief P6), usable for
+ * variations, add-ons and set pieces alike:
+ * - `picture_row`  — picture left, name and price right, two per row (half the height of `image_tile`);
+ * - `picture_chip` — a small round picture and the name in one pill;
+ * - `size_v2`      — a size box with an optional second line under the name (`subLabel`);
+ * - `colour_chip`  — a colour dot with its name; a sold-out colour is crossed out.
  */
 export const OptionDisplayStyle = z.enum([
 	'rectangle',
@@ -38,6 +44,10 @@ export const OptionDisplayStyle = z.enum([
 	'dropdown',
 	'image_tile',
 	'radio_bar',
+	'picture_row',
+	'picture_chip',
+	'size_v2',
+	'colour_chip',
 ]);
 export type OptionDisplayStyle = z.infer<typeof OptionDisplayStyle>;
 
@@ -57,12 +67,14 @@ export const AttributeDefinitionTerm = z.object({
 	code: z.string().min(1),
 	label: I18nString,
 	slug: Slug,
-	/** Required when rendered as `color_swatch`. */
+	/** Optional second line under the name, in each language ("Medium", "Waist 29–31 in"); drawn by `size_v2`. */
+	subLabel: LocalizedText.optional(),
+	/** Required when rendered as `color_swatch` or `colour_chip`. */
 	hex: z
 		.string()
 		.regex(/^#([0-9a-fA-F]{6})$/, 'must be a 6-digit hex colour')
 		.optional(),
-	/** Required when rendered as `image_swatch`/`image_tile` (media library asset). */
+	/** Required when rendered as `image_swatch` or `picture_chip`; drawn by `image_tile` and `picture_row` too. */
 	swatchAssetId: Id.optional(),
 	/** The version of the swatch picture (media brief: a place stores the photo and its version). */
 	swatchVersionId: Id.optional(),

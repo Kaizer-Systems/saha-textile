@@ -69,6 +69,35 @@ describe('goLiveGaps', () => {
 			{ field: 'swatch_image:c:x', locale: null },
 		]);
 		expect(run(complete({ optionGroups: groups('image_swatch', { swatchAssetId: 'm' }) }))).toEqual([]);
+		// The colour chip is a colour too; the picture chip a picture; the picture tiles keep their placeholder.
+		expect(run(complete({ optionGroups: groups('colour_chip', {}) }))).toEqual([
+			{ field: 'swatch_colour:c:x', locale: null },
+		]);
+		expect(run(complete({ optionGroups: groups('picture_chip', {}) }))).toEqual([
+			{ field: 'swatch_image:c:x', locale: null },
+		]);
+		expect(run(complete({ optionGroups: groups('picture_row', {}) }))).toEqual([]);
+		expect(run(complete({ optionGroups: groups('size_v2', {}) }))).toEqual([]);
+	});
+
+	it('wants a second line in every language once it is written in one', () => {
+		const groups = (subLabel?: Record<string, string>) => [
+			{
+				attributeCode: 'size',
+				label: both,
+				displayStyle: 'size_v2',
+				terms: [{ code: 'm', label: both, subLabel }],
+			},
+		];
+		expect(run(complete({ optionGroups: groups() }))).toEqual([]);
+		expect(run(complete({ optionGroups: groups({ en: ' ' }) }))).toEqual([]);
+		expect(run(complete({ optionGroups: groups({ en: 'Medium' }) }))).toEqual([
+			{ field: 'value_note:size:m', locale: 'bn' },
+		]);
+		expect(run(complete({ optionGroups: groups({ bn: 'মাঝারি' }) }))).toEqual([
+			{ field: 'value_note:size:m', locale: 'en' },
+		]);
+		expect(run(complete({ optionGroups: groups({ en: 'Medium', bn: 'মাঝারি' }) }))).toEqual([]);
 	});
 
 	it('wants the primary image in every size a shop page needs', () => {

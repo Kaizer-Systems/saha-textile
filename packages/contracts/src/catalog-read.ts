@@ -212,6 +212,8 @@ export type CatalogGallery = z.infer<typeof CatalogGallery>;
 const PageOptionTerm = z.object({
 	code: z.string().min(1),
 	label: z.string(),
+	/** The value's second line in the page language, when it has one (`size_v2`). */
+	subLabel: z.string().nullable().default(null),
 	isBase: z.boolean(),
 	hex: z.string().nullable(),
 	image: swatchImage,

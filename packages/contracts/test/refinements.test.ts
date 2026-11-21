@@ -128,6 +128,8 @@ describe('catalogue image roles', () => {
 			return parsed;
 		};
 		expect(group(null).success).toBe(true);
+		// A value with no second line reads null, so older pages still parse.
+		expect(group(null).data?.subLabel).toBeNull();
 		expect(group(image({ swatch_image: [source] })).success).toBe(true);
 		expect(messages(group(image({ card: [source] })))).toContain('a swatch image carries the square role only');
 	});

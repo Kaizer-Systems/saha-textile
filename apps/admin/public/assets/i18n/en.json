@@ -1502,6 +1502,8 @@
 	"gap_meta_description": "Meta description",
 	"gap_option": "Option name",
 	"gap_value": "Value name",
+	"gap_value_note": "Second line of value",
+	"value_second_line": "Second line (optional), for example Medium",
 	"gap_category": "Choose at least one category",
 	"gap_price": "Add a price",
 	"gap_primary_image": "Add a primary image",

@@ -23,7 +23,25 @@ import type { IVariation } from './product.interface';
  * Behaviour is a separate dimension (`semantic_role`), never encoded here.
  */
 export type DisplayStyle =
-	'color' | 'image' | 'rectangle' | 'circle' | 'radio' | 'dropdown' | 'image_tile' | 'radio_bar';
+	| 'color'
+	| 'image'
+	| 'rectangle'
+	| 'circle'
+	| 'radio'
+	| 'dropdown'
+	| 'image_tile'
+	| 'radio_bar'
+	// The four looks from the early renders (owner, 21 Nov 2026, product page brief P6).
+	| 'picture_row'
+	| 'picture_chip'
+	| 'size_v2'
+	| 'colour_chip';
+
+/** The looks drawn by the shared `.st-look` item in `scss/components/_option-looks.scss`. */
+export const LOOKS_FROM_RENDERS: readonly DisplayStyle[] = ['picture_row', 'picture_chip', 'size_v2', 'colour_chip'];
+
+/** Looks that show each value's picture, so a value without its own takes its variant's photo. */
+export const PICTURE_LOOKS: readonly string[] = ['image', 'picture_row', 'picture_chip'];
 
 export type SemanticRole = 'variation_axis' | 'filter_only' | 'named_add_on' | 'bundle_component_option';
 
@@ -43,8 +61,12 @@ export interface ISemanticAttribute {
 export interface IAddonTerm {
 	code: string;
 	label: string;
+	/** Optional second line under the name (`size_v2`), in the page language. */
+	sub_label?: string;
 	price_delta: number; // INR added to the base price
 	image?: string;
+	/** The value's colour, for the colour looks. */
+	hex?: string;
 	is_default?: boolean;
 	requires_measurements?: boolean;
 }
@@ -92,8 +114,10 @@ export interface IBundleComponent {
 export interface IBundleOptionTerm {
 	code: string;
 	label: string;
+	sub_label?: string;
 	price_delta: number;
 	image?: string;
+	hex?: string;
 	is_default?: boolean;
 	requires_measurements?: boolean;
 }

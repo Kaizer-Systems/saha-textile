@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { VariationAxis } from './variation-axis';
 
@@ -24,5 +24,14 @@ describe('VariationAxis', () => {
 		expect(axis.selectedVariation).toBe(variation);
 		axis.onSelect(null);
 		expect(seen).toEqual([variation, null]);
+	});
+
+	it('chooses a value through its own picker, and does nothing before it is drawn', () => {
+		const axis = render();
+		expect(() => axis.choose({ id: 1 } as never)).not.toThrow();
+		const setVariant = vi.fn();
+		Object.defineProperty(axis, 'picker', { value: () => ({ setVariant }) });
+		axis.choose({ id: 1 } as never);
+		expect(setVariant).not.toHaveBeenCalled();
 	});
 });

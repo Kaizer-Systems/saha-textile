@@ -1,7 +1,8 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, viewChild } from '@angular/core';
 
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
+import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { VariantAttributes } from '@shared/ui/variant-attributes/variant-attributes';
 
@@ -28,6 +29,15 @@ export class VariationAxis {
 	readonly selectVariation = output<IVariation | null>();
 
 	public selectedVariation: IVariation | null = null;
+
+	private readonly picker = viewChild(VariantAttributes);
+
+	/** Chooses a value as if its own button were tapped (the buy bar's chips, brief P4). */
+	choose(value: IAttributeValue) {
+		const picker = this.picker();
+		const variations = this.product()?.variations;
+		if (picker && variations) picker.setVariant(variations, value);
+	}
 
 	onSelect(variation: IVariation | null) {
 		this.selectedVariation = variation;

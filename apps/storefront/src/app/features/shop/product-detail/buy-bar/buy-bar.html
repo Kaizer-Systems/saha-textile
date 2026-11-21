@@ -16,6 +16,65 @@
 				/>
 				<div class="st-bar-text">
 					<p class="st-bar-name">{{ host().product().name }}</p>
+					@if (axes().length) {
+					<!-- The chosen options as chips; each opens its list above it (brief P4). -->
+					<div class="st-bar-chips">
+						@for (axis of axes(); track axis.name) {
+						<button
+							type="button"
+							class="st-bar-chip"
+							[ngbPopover]="choices"
+							#chip="ngbPopover"
+							placement="top-start top auto"
+							autoClose="outside"
+							popoverClass="st-bar-pop"
+							[attr.aria-label]="axis.name"
+						>
+							{{ axis.pick?.value ?? axis.name }}
+							<i
+								class="ri-arrow-down-s-line"
+								aria-hidden="true"
+							></i>
+						</button>
+						<ng-template #choices>
+							<ul class="st-bar-list">
+								@for (choice of axis.values; track choice.value.id) {
+								<li>
+									<button
+										type="button"
+										class="st-bar-choice"
+										[class.is-on]="choice.chosen"
+										[class.is-off]="choice.soldOut"
+										[disabled]="choice.soldOut"
+										(click)="choose(choice, chip)"
+									>
+										@if (axis.colour) {
+										<span
+											class="st-look-dot"
+											[style.background-color]="choice.value.hex_color || null"
+										></span>
+										} @else {
+										<span
+											class="st-radio"
+											[class.is-on]="choice.chosen"
+											aria-hidden="true"
+										></span>
+										}
+										<span class="st-bar-choice-name">{{ choice.value.value }}</span>
+										<span class="st-bar-choice-stock">
+											@if (choice.soldOut) { {{ 'out_of_stock' | transloco }} } @else if
+											(choice.quantity <= lowStock) { {{ 'only_count_left' | transloco: { count:
+											choice.quantity } }} } @else { {{ 'in_stock_count_left' | transloco: {
+											count: choice.quantity } }} }
+										</span>
+									</button>
+								</li>
+								}
+							</ul>
+						</ng-template>
+						}
+					</div>
+					}
 					<p class="st-bar-price">
 						<span class="theme-color">{{ host().displayPrice() | currencySymbol }}</span>
 						@if (host().discount()) {

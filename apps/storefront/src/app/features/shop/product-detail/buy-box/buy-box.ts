@@ -15,6 +15,7 @@ import { CompareStore } from '@core/state/compare/compare.store';
 import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
+import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -166,6 +167,11 @@ export class BuyBox {
 	onSummary(summary: IConfiguratorSummary) {
 		if (summary.variation !== this.summary()?.variation) this.variationChange.emit(summary.variation);
 		this.summary.set(summary);
+	}
+
+	/** The buy bar's chip lists choose through the page's own option buttons (brief P4). */
+	chooseValue(value: IAttributeValue) {
+		this.configurator()?.chooseValue(value);
 	}
 
 	updateQuantity(qty: number) {

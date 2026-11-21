@@ -1,5 +1,6 @@
 import type { Signal } from '@angular/core';
 
+import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 
@@ -20,4 +21,5 @@ export interface BuyBarHost {
 	addToCart(): void;
 	buyNow(): void;
 	notify(): void;
+	chooseValue(value: IAttributeValue): void;
 }

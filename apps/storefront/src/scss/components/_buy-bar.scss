@@ -99,3 +99,89 @@
 		}
 	}
 }
+
+// The chosen options as chips (brief P4): each opens a short list above it.
+.st-bar-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 6px;
+	margin: 2px 0;
+}
+
+.st-bar-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 1px 6px 1px 10px;
+	border: 1px solid var(--st-border-strong, #c9c9c9);
+	border-radius: 999px;
+	background-color: var(--st-surface, #fff);
+	color: var(--st-text, #222);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.6;
+
+	&:hover,
+	&[aria-expanded='true'] {
+		border-color: var(--theme-color);
+	}
+}
+
+// The list: one row per value, its colour dot or radio ring, its name and its stock; a sold-out one greyed.
+.st-bar-pop {
+	max-width: min(320px, calc(100vw - 24px));
+
+	.popover-body {
+		padding: 6px;
+	}
+}
+
+.st-bar-list {
+	display: grid;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.st-bar-choice {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 6px 8px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--st-text, #222);
+	font-size: 14px;
+	text-align: left;
+
+	&:hover:not(:disabled),
+	&.is-on {
+		background-color: color-mix(in srgb, var(--theme-color) 8%, transparent);
+	}
+
+	&.is-on {
+		font-weight: 600;
+	}
+
+	&.is-off {
+		color: var(--st-text-unavailable);
+		cursor: not-allowed;
+	}
+
+	.st-look-dot {
+		margin: 0;
+	}
+}
+
+.st-bar-choice-name {
+	flex: 1;
+}
+
+.st-bar-choice-stock {
+	color: var(--st-text-muted);
+	font-size: 12px;
+	white-space: nowrap;
+}

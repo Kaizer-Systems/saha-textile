@@ -274,3 +274,13 @@ describe('BuyBox price line stock', () => {
 		expect(render(true, { attributes: [{ id: 1 }], variations: [] }).box.hasVariation()).toBe(false);
 	});
 });
+
+describe('BuyBox and the buy bar', () => {
+	it('chooses a value the bar asks for through the configurator', () => {
+		const { box } = render();
+		const chooseValue = vi.fn();
+		Object.defineProperty(box, 'configurator', { value: () => ({ chooseValue }) });
+		box.chooseValue({ id: 3 } as never);
+		expect(chooseValue).toHaveBeenCalledWith({ id: 3 });
+	});
+});

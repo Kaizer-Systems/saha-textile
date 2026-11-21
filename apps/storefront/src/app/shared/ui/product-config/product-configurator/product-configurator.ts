@@ -1,10 +1,22 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, OnInit, PLATFORM_ID, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+	Component,
+	OnInit,
+	PLATFORM_ID,
+	computed,
+	effect,
+	inject,
+	input,
+	output,
+	signal,
+	viewChild,
+} from '@angular/core';
 
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
 import { ICartAddOrUpdate, ICartLineConfig } from '@data-access/interfaces/cart.interface';
 import { ConfiguratorState, IAddonGroup, IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
+import { IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 
 import { AddonGroup } from '../parts/addon-group/addon-group';
@@ -132,6 +144,13 @@ export class ProductConfigurator implements OnInit {
 			const variation = this.product().variations?.find((v) => v.id === variationId);
 			if (variation) this.selectedVariation.set(variation);
 		}
+	}
+
+	private readonly axis = viewChild(VariationAxis);
+
+	/** Chooses an option value from outside the page's own buttons (the buy bar), through those same buttons. */
+	chooseValue(value: IAttributeValue) {
+		this.axis()?.choose(value);
 	}
 
 	selectVariation(variation: IVariation | null) {

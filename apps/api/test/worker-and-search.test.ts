@@ -413,6 +413,22 @@ describe('UnavailableNotificationAdapter', () => {
 		});
 		expect(append).not.toHaveBeenCalled();
 	});
+
+	it('records a first attempt with its key and its shopper, timed by the clock', async () => {
+		const append = vi.fn(async (entry: unknown) => entry);
+		const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+		const port = new UnavailableNotificationAdapter({
+			append,
+			findByIdempotencyKey: vi.fn(async () => null),
+		} as never);
+		const before = Date.now();
+		const result = await port.send({ ...message, idempotencyKey: 'k2', userId: 'cus_1' } as never);
+		expect(result.status).toBe('failed');
+		const entry = append.mock.calls[0]?.[0] as { idempotencyKey: string; userId: string; createdAt: string };
+		expect(entry).toMatchObject({ idempotencyKey: 'k2', userId: 'cus_1' });
+		expect(Date.parse(entry.createdAt)).toBeGreaterThanOrEqual(before);
+		warn.mockRestore();
+	});
 });
 
 describe('local stand-ins', () => {

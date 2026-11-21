@@ -122,7 +122,14 @@ import { z } from 'zod';
 import { SecretDrafts } from './secret-drafts';
 import { ConsoleSession } from './session';
 
-const productScreensSchema = z.record(z.string(), z.object({ tabs: z.array(z.string()), forms: z.array(z.string()) }));
+const productScreensSchema = z.record(
+	z.string(),
+	z.object({
+		tabs: z.array(z.string()),
+		forms: z.array(z.string()),
+		vendor: z.enum(['digitalocean', 'cloudflare', 'github', 'local']),
+	}),
+);
 
 /**
  * Where the console's API answers. In its Docker image one process serves the page and the API, so
@@ -290,7 +297,7 @@ export class ConsoleApi {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/account`, cloudAccountAnswerSchema);
 	}
 	/* product screens (DigitalOcean and Cloudflare lifecycle, brief v7) */
-	productScreens(): Promise<Record<string, { tabs: string[]; forms: string[] }>> {
+	productScreens(): Promise<z.infer<typeof productScreensSchema>> {
 		return this.call('GET', '/api/product-screens', productScreensSchema);
 	}
 	productTab(

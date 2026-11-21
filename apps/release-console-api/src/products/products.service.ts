@@ -16,6 +16,7 @@ import type { Follow, ProductCtx, ProductScreen } from './kit.js';
 import { PRODUCT_SCREENS } from './registry.js';
 import { KeySourceService } from '../keys/key-source.js';
 import { RequestLog } from '../local/request-log.js';
+import { RunnerClient } from '../runner/runner-client.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ConsoleStore } from '../store/console-store.js';
 import { VendorError } from '../vendors/http.js';
@@ -32,6 +33,7 @@ const KEYS: Record<ProductScreen['vendor'], { read: KeyKind; change: KeyKind; na
 	digitalocean: { read: 'do-read', change: 'do-change', name: 'DigitalOcean' },
 	cloudflare: { read: 'cf-read', change: 'cf-change', name: 'Cloudflare' },
 	github: { read: 'github-token', change: 'github-token', name: 'GitHub' },
+	local: { read: 'github-cli', change: 'github-cli', name: 'this Mac' },
 };
 const STEP_EVERY_MS = 3000;
 const GIVE_UP_MS = 30 * 60_000;
@@ -43,6 +45,7 @@ const GIVE_UP_MS = 30 * 60_000;
 @Injectable()
 export class ProductsService {
 	private readonly jobs = new Map<string, Running>();
+	private readonly helper = new RunnerClient();
 
 	constructor(
 		private readonly projects: ProjectsService,
@@ -76,6 +79,30 @@ export class ProductsService {
 	): Promise<VendorAnswer<ProductCtx>> {
 		const { project, repo } = this.projects.repository(p, r);
 		const want = KEYS[s.vendor];
+		const shared = {
+			projectId: p,
+			repo,
+			id,
+			range,
+			keyRefs: project.keys,
+			consoleKey: (name: string) => this.keyFile.get(name) ?? null,
+			recent: (action: string) => this.store.auditEntries(p, 500).filter((e) => e.action === action),
+			recentAll: (action: string) => this.store.auditEntries(null, 500).filter((e) => e.action === action),
+			repository: repo.sourceCode.repository,
+			localRequests: (minutes: number) => this.requests.view(minutes).series,
+			localView: (minutes: number) => this.requests.view(minutes),
+			helper: <T>(method: 'GET' | 'POST', path: string, body?: unknown) =>
+				this.helper.call<T>(method, path, body, 60_000),
+			auditLog: (limit: number) => this.store.auditEntries(p, limit),
+		};
+		if (s.vendor === 'local') {
+			const cf = repo.edge.find((e) => e.vendor === 'cloudflare');
+			return {
+				state: 'ok',
+				readAt: new Date().toISOString(),
+				data: { ...shared, key: '', zones: cf?.zones ?? [], writeKey: async () => '' },
+			};
+		}
 		const slot =
 			s.vendor === 'digitalocean'
 				? repo.cloud.find((c) => c.vendor === 'digitalocean')
@@ -103,18 +130,9 @@ export class ProductsService {
 			state: 'ok',
 			readAt: new Date().toISOString(),
 			data: {
-				projectId: p,
-				repo,
+				...shared,
 				key,
 				zones: 'zones' in slot ? slot.zones : [],
-				id,
-				range,
-				keyRefs: project.keys,
-				consoleKey: (name: string) => this.keyFile.get(name) ?? null,
-				recent: (action: string) => this.store.auditEntries(p, 500).filter((e) => e.action === action),
-				recentAll: (action: string) => this.store.auditEntries(null, 500).filter((e) => e.action === action),
-				repository: repo.sourceCode.repository,
-				localRequests: (minutes: number) => this.requests.view(minutes).series,
 				writeKey: async () => {
 					const v = changeRef ? await this.projects.valueOf(changeRef) : null;
 					if (!v)

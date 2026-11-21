@@ -351,14 +351,9 @@ export class ScreenPage {
 		const t = this.tabKey();
 		return c.tabs.includes(t) || ((t === 'creating' || t === 'restoring') && c.forms.length > 0);
 	});
-	protected readonly productVendor = computed(() => {
-		const group = this.place().get(this.screen())?.[0];
-		return group === 'Cloudflare'
-			? ('cloudflare' as const)
-			: group === 'Ship' && this.screen() !== 'images'
-				? ('github' as const)
-				: ('digitalocean' as const);
-	});
+	protected readonly productVendor = computed(
+		() => this.productScreens.data()?.[this.screen()]?.vendor ?? 'digitalocean',
+	);
 
 	/** The open Live deploy tab is an environment that runs on a server. */
 	protected readonly deployOnServer = computed(

@@ -25,7 +25,7 @@ export class ProductsController {
 	) {}
 
 	@Get('product-screens')
-	catalogue(): Record<string, { tabs: string[]; forms: string[] }> {
+	catalogue(): ReturnType<ProductsService['catalogue']> {
 		return this.products.catalogue();
 	}
 

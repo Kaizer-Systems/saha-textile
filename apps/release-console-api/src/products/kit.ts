@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type {
 	KeyRef,
+	RequestsView,
 	MonitorRange,
 	ProductAction,
 	ProductColumn,
@@ -48,6 +49,12 @@ export interface ProductCtx {
 	repository: string;
 	/** The local stack's request log for the last minutes: per minute [time, p95 ms, error share, requests]. */
 	localRequests(minutes: number): Array<[number, number | null, number, number]>;
+	/** The local request log's services and routes for the last minutes (APM's own read). */
+	localView(minutes: number): RequestsView;
+	/** The Mac helper (127.0.0.1:4419 or host.docker.internal): read-only looks at this Mac's stack. */
+	helper<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T>;
+	/** This console's audit log for the project, newest first. */
+	auditLog(limit: number): Array<{ at: string; action: string; detail: string }>;
 }
 
 /** One step of a change the console follows after sending it. */
@@ -77,7 +84,7 @@ export type Send = ProductFormSpec['send'];
 export type Write = ProductWrite;
 
 export interface ProductScreen {
-	vendor: 'digitalocean' | 'cloudflare' | 'github';
+	vendor: 'digitalocean' | 'cloudflare' | 'github' | 'local';
 	tabs: Record<string, (ctx: ProductCtx) => Promise<ProductTab>>;
 	forms?: Record<string, ProductFormSpec>;
 }

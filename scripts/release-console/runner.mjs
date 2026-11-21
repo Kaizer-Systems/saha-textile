@@ -7,9 +7,24 @@
  * commands: read-only Mac and Docker figures, container logs, the local stack's own commands and
  * `pnpm pipeline:local`. It runs from the main checkout only, never from a worktree.
  */
+import {
+	InspectError,
+	commandList,
+	connectionsOf,
+	factsOf,
+	meiliReport,
+	mongoProfile,
+	mongoReport,
+	networks,
+	patches,
+	redisReport,
+	restart,
+	terminal,
+	topOf,
+} from './inspect.mjs';
 import { execFile, spawn, spawnSync } from 'node:child_process';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { join } from 'node:path';
@@ -797,6 +812,65 @@ export function createRunner(token) {
 						since: url.searchParams.get('since') ?? '',
 					}),
 				);
+			if (path.startsWith('/inspect/')) {
+				const q = (k) => url.searchParams.get(k) ?? '';
+				const body = async () => {
+					let raw = '';
+					for await (const chunk of req) raw += chunk;
+					return raw ? JSON.parse(raw) : {};
+				};
+				try {
+					if (req.method === 'GET' && path === '/inspect/top') return send(200, await topOf(q('container')));
+					if (req.method === 'GET' && path === '/inspect/facts')
+						return send(200, await factsOf(q('container')));
+					if (req.method === 'GET' && path === '/inspect/connections')
+						return send(200, await connectionsOf(q('container')));
+					if (req.method === 'GET' && path === '/inspect/networks')
+						return send(200, await shared('networks', 5000, networks));
+					if (req.method === 'GET' && path === '/inspect/mongo')
+						return send(
+							200,
+							await shared(`mongo:${q('container')}:${q('db')}`, 5000, () =>
+								mongoReport(q('container'), q('db')),
+							),
+						);
+					if (req.method === 'POST' && path === '/inspect/mongo/profile') {
+						const b = await body();
+						return send(200, await mongoProfile(b.container, b.db, b.on === true));
+					}
+					if (req.method === 'GET' && path === '/inspect/redis')
+						return send(
+							200,
+							await shared(`redis:${q('container')}`, 5000, () => redisReport(q('container'))),
+						);
+					if (req.method === 'GET' && path === '/inspect/meili')
+						return send(
+							200,
+							await shared(`meili:${q('container')}`, 5000, () => meiliReport(q('container'))),
+						);
+					if (req.method === 'GET' && path === '/inspect/patches')
+						return send(200, await shared('patches', 300_000, patches));
+					if (req.method === 'GET' && path === '/inspect/commands') return send(200, commandList());
+					if (req.method === 'POST' && path === '/inspect/restart')
+						return send(200, await restart((await body()).container));
+					if (req.method === 'GET' && path === '/inspect/migration-files')
+						return send(
+							200,
+							readdirSync(join(ROOT, 'packages/adapters-db-mongo/src/migrations')).filter(
+								(f) => f.endsWith('.ts') && f !== 'index.ts' && !f.endsWith('.test.ts'),
+							),
+						);
+					if (req.method === 'POST' && path === '/inspect/terminal') {
+						const b = await body();
+						const t = await terminal(b.container, b.command);
+						return send(200, { ...t, lines: t.lines.map(maskLogLine) });
+					}
+				} catch (err) {
+					if (err instanceof InspectError) return send(400, { message: err.message });
+					throw err;
+				}
+				return send(404, { message: 'No such inspection.' });
+			}
 			if (req.method === 'GET' && path === '/jobs')
 				return send(
 					200,

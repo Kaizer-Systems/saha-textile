@@ -145,7 +145,7 @@ export class ProductScreen {
 	private readonly screens = injectProductScreens();
 	readonly screen = input.required<string>();
 	readonly tab = input.required<string>();
-	readonly vendor = input<'digitalocean' | 'cloudflare' | 'github'>('digitalocean');
+	readonly vendor = input<'digitalocean' | 'cloudflare' | 'github' | 'local'>('digitalocean');
 	readonly noun = input('');
 
 	private readonly query = toSignal(
@@ -157,7 +157,10 @@ export class ProductScreen {
 	protected readonly id = computed(() => this.query().id);
 	protected readonly range = computed(() => this.query().range ?? '24h');
 	protected readonly vendorName = computed(
-		() => ({ cloudflare: 'Cloudflare', github: 'GitHub', digitalocean: 'DigitalOcean' })[this.vendor()],
+		() =>
+			({ cloudflare: 'Cloudflare', github: 'GitHub', digitalocean: 'DigitalOcean', local: 'this Mac’s stack' })[
+				this.vendor()
+			],
 	);
 	protected readonly kind = computed(() =>
 		this.tab() === 'creating' || this.tab() === 'restoring' ? 'jobs' : 'tab',

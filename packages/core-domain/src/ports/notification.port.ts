@@ -1,5 +1,14 @@
 import type { MessageOutboxStatus, NotificationCategory, NotificationChannel } from '@saha-textile/contracts';
 
+/** One row of a list variable, such as an order email's items (`{{#each items}}`). */
+export type NotificationListRow = Readonly<Record<string, string | number>>;
+
+/**
+ * A template variable. Lists and yes/no flags are for email templates (Handlebars `{{#each}}` and
+ * `{{#if}}`); SMS templates take text and numbers only, and an adapter drops anything else.
+ */
+export type NotificationVariable = string | number | boolean | ReadonlyArray<NotificationListRow>;
+
 /**
  * One outbound message request.
  *
@@ -15,7 +24,7 @@ export interface NotificationMessage {
 	/** Email address or E.164 phone number. Never logged, never persisted raw. */
 	destination: string;
 	/** Template variables; must not carry secrets, tokens, or full card data. */
-	variables?: Record<string, string | number>;
+	variables?: Record<string, NotificationVariable>;
 	/** Recipient, when the message belongs to a known account. */
 	userId?: string;
 	/** Caller-supplied key making a retry safe (OTP resend, order-confirmation replay). */

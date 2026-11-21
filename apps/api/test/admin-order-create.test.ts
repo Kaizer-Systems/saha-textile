@@ -100,6 +100,7 @@ function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
 	const reserved: number[] = [];
 	const payments: unknown[] = [];
 	const saved: Array<[string, unknown]> = [];
+	const told: string[] = [];
 	const svc = new AdminOrderCreateService(
 		{
 			price: async () => cart,
@@ -187,8 +188,14 @@ function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
 		} as never,
 		{ getSettings: async () => ({ abroadPolicy: 'exportOffIndianInvoice', homeCountry: 'IN' }) } as never,
 		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
+		{
+			plan: (_order: unknown, templates: string[]) =>
+				templates.map((template) => ({ channel: 'email' as const, template })),
+			send: async (order: { orderNumber: string }, templates: string[]) =>
+				void told.push(...templates.map((template) => `${order.orderNumber}:${template}`)),
+		} as never,
 	);
-	return { svc, created, ledger, reserved, payments, saved };
+	return { svc, created, ledger, reserved, payments, saved, told };
 }
 
 const actor = { id: 'adm_1', name: null };
@@ -275,7 +282,7 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 	});
 
 	it('places an order on account: zone snapshot, pieces kept, the account debited with its due date', async () => {
-		const { svc, ledger, reserved } = harness();
+		const { svc, ledger, reserved, told } = harness();
 		const order = await svc.create(
 			input({ method: 'onAccount', creditOverrideReason: null }),
 			actor,
@@ -297,6 +304,12 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 		});
 		expect(order.addresses?.invoice).toMatchObject({ source: 'billing', needed: false });
 		expect(reserved).toEqual([1]);
+		// Placed at once on account: Order confirmed goes once it is saved, and the history says so.
+		expect(told).toEqual(['ST-2611-482190:order_confirmed']);
+		expect(order.history[0]).toMatchObject({
+			kind: 'created',
+			messages: [{ channel: 'email', template: 'order_confirmed' }],
+		});
 		expect(ledger[0]).toMatchObject({
 			kind: 'orderOnAccount',
 			amountINR: 40_200,
@@ -306,12 +319,14 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 	});
 
 	it('returns the first order for a repeated key (a double click)', async () => {
-		const { svc, created } = harness();
+		const { svc, created, told } = harness();
 		const first = await svc.create(input({ method: 'keepOpen' }), actor, rights);
 		const again = await svc.create(input({ method: 'keepOpen' }), actor, rights);
 		expect(again.id).toBe(first.id);
 		expect(created).toHaveLength(1);
 		expect(first).toMatchObject({ status: 'open' });
+		// An order kept open tells the customer nothing yet.
+		expect(told).toEqual([]);
 	});
 
 	it('refuses over the credit limit unless overridden with the permission and a reason (K9)', async () => {

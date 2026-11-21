@@ -28,6 +28,7 @@ import {
 import { AdminOrdersService } from './admin-orders.service';
 import { BusinessAddressesService } from './business-addresses.service';
 import { BusinessReceiptsService } from './business-receipts.service';
+import { OrderNoticesService } from './order-notices.service';
 import { OrderStock } from './order-stock';
 import { OpenOrdersService } from './open-orders.service';
 import { PayPageController } from './pay-page.controller';
@@ -54,6 +55,7 @@ import { PaymentRequestsService } from './payment-requests.service';
 		PaymentRequestsService,
 		PaymentRequestSweep,
 		OpenOrdersService,
+		OrderNoticesService,
 		{ provide: CHECKOUT_GATEWAYS, useFactory: buildCheckoutGateways, inject: [APP_CONFIG, INR_PAYMENT_GATEWAY] },
 		{ provide: PAYMENT_REQUEST_PORTS, useFactory: buildPaymentRequestPorts, inject: [CHECKOUT_GATEWAYS] },
 		// No e-invoice or e-way bill integration yet: Raise falls back to typing the details by hand.
@@ -64,6 +66,7 @@ import { PaymentRequestsService } from './payment-requests.service';
 		AdminCartService,
 		AdminOrdersService,
 		OrderStock,
+		OrderNoticesService,
 		PaymentRequestsService,
 		PAYMENT_REQUEST_PORTS,
 		CHECKOUT_GATEWAYS,

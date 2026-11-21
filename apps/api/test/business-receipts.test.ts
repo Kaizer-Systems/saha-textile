@@ -21,10 +21,12 @@ const open = [
 
 function harness() {
 	const settled: Array<{ orderId: string; amountINR: number; receiptNumber: string | null }> = [];
+	const receipts: Array<{ numbers: string[]; balance: number }> = [];
 	const svc = new BusinessReceiptsService(
 		{
 			get: async () => ({ id: 'biz_1' }),
-			recordReceipt: async () => ({ documentNumber: 'RC/26-27/000457' }),
+			recordReceipt: async () => ({ id: 'led_1', documentNumber: 'RC/26-27/000457' }),
+			receivableINR: async () => 15_000,
 		} as never,
 		{
 			settleFromReceipt: async (orderId: string, share: { amountINR: number; receiptNumber: string | null }) =>
@@ -32,8 +34,12 @@ function harness() {
 		} as never,
 		{ listOpenOnAccount: async () => open } as never,
 		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
+		{
+			sendBusinessReceipt: async (_b: unknown, _e: unknown, _i: unknown, numbers: string[], balance: number) =>
+				void receipts.push({ numbers, balance }),
+		} as never,
 	);
-	return { svc, settled };
+	return { svc, settled, receipts };
 }
 
 const receipt = (over: Record<string, unknown> = {}) => ({
@@ -48,12 +54,14 @@ const receipt = (over: Record<string, unknown> = {}) => ({
 
 describe('receipts on a business account (bz06)', () => {
 	it('settles the oldest open orders first, each with the receipt’s number', async () => {
-		const { svc, settled } = harness();
+		const { svc, settled, receipts } = harness();
 		await svc.record('biz_1', receipt() as never, { id: 'adm_1', name: null });
 		expect(settled).toEqual([
 			{ orderId: 'ord_a', amountINR: 20_000, receiptNumber: 'RC/26-27/000457' },
 			{ orderId: 'ord_b', amountINR: 15_000, receiptNumber: 'RC/26-27/000457' },
 		]);
+		// The receipt email names the orders it paid and the balance left, once saved.
+		expect(receipts).toEqual([{ numbers: ['ST-2611-000001', 'ST-2611-000002'], balance: 15_000 }]);
 	});
 
 	it('takes a split changed by hand, and refuses one that does not fit', async () => {

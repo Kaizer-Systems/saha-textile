@@ -82,9 +82,12 @@ function harness(gatewayPayments: Array<{ gatewayReference: string; amountMinor:
 		}),
 		cancelPaymentRequest: async (id: string) => void cancelled.push(id),
 	};
+	const tells: string[] = [];
 	const svc = new PaymentRequestsService(
 		{
 			get: async () => order,
+			tell: async () => void tells.push('tell'),
+			told: () => [],
 			settle: async (_o: Order, _r: number, _a: unknown, _at: string, _c: unknown, entry: { kind: string }) => {
 				settled.push(entry.kind);
 				return order;
@@ -139,7 +142,7 @@ function harness(gatewayPayments: Array<{ gatewayReference: string; amountMinor:
 			},
 		} as never,
 	);
-	return { svc, requests, payments, cancelled, settled, sent };
+	return { svc, requests, payments, cancelled, settled, sent, tells };
 }
 
 const actor = { id: 'adm_1', name: null };
@@ -223,7 +226,7 @@ describe('payment requests and our pay link (pl01–pl05, oo07, K1)', () => {
 	});
 
 	it('records a captured payment once, however often staff check', async () => {
-		const { svc, payments, settled } = harness([{ gatewayReference: '313012345678', amountMinor: 3_000_000 }]);
+		const { svc, payments, settled, tells } = harness([{ gatewayReference: '313012345678', amountMinor: 3_000_000 }]);
 		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
 		const first = await svc.check('ord_1', request.id, actor, NOW);
 		expect(first).toMatchObject({
@@ -235,6 +238,8 @@ describe('payment requests and our pay link (pl01–pl05, oo07, K1)', () => {
 		expect(again.recorded).toBe(false);
 		expect(payments).toHaveLength(1);
 		expect(settled).toEqual(['paymentRequest', 'payment']);
+		// The payment's messages go once, after the save; a repeated check tells nothing.
+		expect(tells).toEqual(['tell']);
 	});
 
 	it('shows the expired page with the shop’s contact once a request is cancelled or out of date', async () => {

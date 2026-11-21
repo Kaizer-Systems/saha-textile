@@ -3,7 +3,7 @@ title: Admin Ordering, Zones and Payments
 description: How staff create and run orders for shop customers and businesses, how business zones price a piece, how pieces are kept in stock for orders, and how payments, payment requests, open orders and the shop checkout quote work.
 status: scaffolded
 audience: [backend, frontend, operator]
-last_verified: '2026-11-20'
+last_verified: '2026-11-21'
 source_of_truth:
     - packages/contracts/src/order.ts
     - packages/contracts/src/order-admin.ts
@@ -12,12 +12,14 @@ source_of_truth:
     - packages/contracts/src/checkout.ts
     - packages/core-domain/src/orders/zone-pricing.ts
     - packages/core-domain/src/orders/status-machine.ts
+    - packages/core-domain/src/orders/order-notices.ts
     - packages/core-domain/src/orders/coupon-engine.ts
     - apps/api/src/admin-orders/admin-orders.service.ts
     - apps/api/src/admin-orders/admin-order-create.service.ts
     - apps/api/src/admin-orders/order-stock.ts
     - apps/api/src/admin-orders/payment-requests.service.ts
     - apps/api/src/admin-orders/open-orders.service.ts
+    - apps/api/src/admin-orders/order-notices.service.ts
     - apps/api/src/shop-checkout/shop-checkout.service.ts
     - apps/api/src/shop-checkout/shop-payments.service.ts
     - packages/core-domain/src/orders/shop-payment.ts
@@ -74,6 +76,27 @@ The status machine offers only the next steps an order can take; a blocked step 
 - **Request online payment** on the order page asks the server first (`GET /admin/orders/:id/requests/preview`): the amount due, the gateway the chosen currency goes to, today's rate with the markup, who the gateway sends the request to, and why it can't go (payment links switched off, nothing due, more than due, the gateway not set up, no email or mobile). A customer billed in India who is asked in another currency is warned, with a one-click switch to rupees, because PayPal India only takes payers outside India. **Request again** on an expired or cancelled request shows the old request's rate and total beside the new one.
 
 The order's balance and payment status are worked out again from every payment after each change; an order waiting for its money is placed once it is paid, on account or due on delivery.
+
+## Customer messages
+
+An order change tells the customer only at the steps below, through `NotificationPort` (MSG91), and only after the change is saved, so nothing goes out for a change that was rolled back. A message that fails is kept in the message outbox and never undoes the change.
+
+| Change                                                                                                              | Message                   | Channels   |
+| ------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------- |
+| Placed: by its payment, at Create order (paid, cash on delivery or on account), or when an open order closes placed | `order_confirmed`         | Email, SMS |
+| Shipped (with the courier, tracking number and link)                                                                | `order_shipped`           | Email, SMS |
+| Delivered                                                                                                           | `order_delivered`         | Email, SMS |
+| Cancelled                                                                                                           | `order_cancelled`         | Email, SMS |
+| A shop payment arrived after a piece sold, and was refunded in full                                                 | `order_refunded_sold_out` | Email, SMS |
+| A shop payment reached an order already cancelled, and was refunded                                                 | `refund_processed`        | Email, SMS |
+| A shop payment the bank or gateway refused (not one the shopper cancelled)                                          | `payment_not_completed`   | Email, SMS |
+| Money received on an order already placed, by hand or through a payment request                                     | `payment_receipt`         | Email      |
+| A receipt on a business's customer account, to its accounts contact                                                 | `payment_receipt`         | Email      |
+
+- **Who it goes to:** the billing contact: the buyer's email, and the billing address's mobile. The SMS goes only to an Indian mobile number (DLT), with the order number without hyphens (`ST2611482190`) and amounts in whole rupees.
+- **The history** lists, under each change, the messages that had somewhere to go. Settings › Communications and the channel switches can still hold one back when it is sent.
+- **Not sent automatically:** a payment that places an order gets Order confirmed, not a second receipt; payment requests are sent by the gateway itself, and our own payment-link SMS and email go only when staff press **Send as SMS** or **Send as email**.
+- **Email variables** are formatted by the server (money, dates, the shipping reason in the shop checkout's words); item lists and yes/no flags are passed to MSG91 as JSON for the templates' `{{#each}}` and `{{#if}}`.
 
 ## Open orders
 

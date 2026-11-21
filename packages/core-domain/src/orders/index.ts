@@ -7,3 +7,4 @@ export * from './numbering';
 export * from './address-rules';
 export * from './open-orders';
 export * from './shop-payment';
+export * from './order-notices';

@@ -17,6 +17,7 @@ import {
 	onAccountDueDate,
 	orderBalance,
 	statusAfterClose,
+	statusNotices,
 	type BusinessRepository,
 	type LedgerRepository,
 	type OrderPaymentRepository,
@@ -336,11 +337,13 @@ export class OpenOrdersService {
 				historyEntry(actor, at, 'closed', {
 					from: 'open',
 					to: status,
+					// Closed and placed (paid up, or on account): Order confirmed goes once it is saved.
+					messages: this.orders.told(order, statusNotices(order.status, status)),
 					detail: { shippingINR: quote.amountINR, then: input.then },
 				}),
 			],
 		};
-		await this.transactions.withTransaction(async (context) => {
+		const saved = await this.transactions.withTransaction(async (context) => {
 			const saved = await this.orders.updateRaw(next, input.revision, context);
 			if (input.then === 'toAccount' && order.buyer?.businessId && balance.dueINR > 0) {
 				await this.ledgers.append(
@@ -363,7 +366,9 @@ export class OpenOrdersService {
 					context,
 				);
 			}
+			return saved;
 		});
+		await this.orders.tell(order, saved);
 		return this.orders.detail(id, now);
 	}
 }

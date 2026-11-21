@@ -38,6 +38,7 @@ import {
 	isRequestActive,
 	openTooLong,
 	type AdminOrderRepository,
+	type OrderNotice,
 	type AdminUserRepository,
 	type BusinessRepository,
 	type EInvoicePort,
@@ -69,6 +70,7 @@ import {
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
+import { OrderNoticesService, type OrderNoticeFacts } from './order-notices.service';
 import { OrderStock } from './order-stock';
 import { refuseStale } from '../orders-setup/orders-audit';
 
@@ -220,7 +222,22 @@ export class AdminOrdersService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		private readonly stock: OrderStock,
 		@Optional() @Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository | null = null,
+		@Optional() private readonly notices: OrderNoticesService | null = null,
 	) {}
+
+	/**
+	 * After a change is saved: the messages its status move tells the customer (order_confirmed when
+	 * a payment placed it, and so on). Never inside a transaction, so nothing goes out for a change
+	 * that was rolled back.
+	 */
+	async tell(before: Order, after: Order, facts: OrderNoticeFacts = {}): Promise<void> {
+		await this.notices?.afterChange(before, after, facts);
+	}
+
+	/** The history's "Customer told" for these messages: only the ones that have somewhere to go. */
+	told(order: Order, templates: readonly string[]): OrderNotice[] {
+		return this.notices?.plan(order, templates) ?? [];
+	}
 
 	/** Staff names by id for the order page; an unknown or removed account is simply left out. */
 	private async staffNames(ids: ReadonlyArray<string | null | undefined>): Promise<Record<string, string>> {
@@ -457,7 +474,10 @@ export class AdminOrdersService {
 		const tells = allowedNextStatuses(machineOrder(order), machineSettings(settings)).find(
 			(row) => row.to === input.to,
 		)?.tells;
-		await this.transactions.withTransaction(async (context) => {
+		// od06: "Customer told · Email · SMS": the messages that have somewhere to go (Settings ›
+		// Communications can still hold one back when it is sent).
+		const told = this.notices?.plan(order, tells ?? []) ?? [];
+		const saved = await this.transactions.withTransaction(async (context) => {
 			let lines = order.lines;
 			if (input.to === 'cancelled') {
 				// Cancelled: the kept pieces go back on sale at once.
@@ -530,11 +550,7 @@ export class AdminOrdersService {
 						from: order.status,
 						to: input.to,
 						comment: input.comment ?? input.cancel?.note ?? null,
-						// od06: "Customer told · Email · SMS" (both go per Settings › Communications).
-						messages: (tells ?? []).flatMap((template) => [
-							{ channel: 'email' as const, template },
-							{ channel: 'sms' as const, template },
-						]),
+						messages: told,
 						detail: {
 							...(input.cancel ? { reason: input.cancel.reason } : {}),
 							...(input.shipped
@@ -550,10 +566,21 @@ export class AdminOrdersService {
 					}),
 				],
 			};
-			await refuseStale(
+			return refuseStale(
 				() => this.orders.update(next, input.revision, context, metaOf(next)),
 				'Someone else changed this order first',
 			);
+		});
+		await this.notices?.send(saved, tells ?? [], {
+			...(input.shipped
+				? {
+						shipment: {
+							courierName: input.shipped.courierName,
+							trackingNumber: input.shipped.trackingNumber,
+							trackingUrl: input.shipped.trackingUrl ?? null,
+						},
+					}
+				: {}),
 		});
 		return this.detail(id, now);
 	}
@@ -693,7 +720,10 @@ export class AdminOrdersService {
 			throw new ConflictException(codedRefusal('order_cancelled', 'This order is cancelled', 'id'));
 		}
 		const at = now.toISOString();
-		await this.transactions.withTransaction(async (context) => {
+		// od08: a payment received on an order already placed gets a receipt email; a payment that
+		// places the order is in its Order confirmed message instead.
+		const receipt = input.received && order.status !== 'awaiting_payment' ? ['payment_receipt'] : [];
+		const { saved, payment } = await this.transactions.withTransaction(async (context) => {
 			const payment: OrderPayment = {
 				id: `pay_${randomUUID()}`,
 				orderId: id,
@@ -716,9 +746,10 @@ export class AdminOrdersService {
 			};
 			await this.payments.save(payment, context);
 			if (input.received) await this.ledgerReceipt(order, payment, actor, at, context);
-			await this.settle(order, input.revision, actor, at, context, {
+			const saved = await this.settle(order, input.revision, actor, at, context, {
 				kind: 'payment',
 				comment: input.note,
+				messages: this.notices?.plan(order, receipt) ?? [],
 				detail: {
 					method: input.method,
 					amountINR: input.amountINR,
@@ -726,7 +757,10 @@ export class AdminOrdersService {
 					received: input.received,
 				},
 			});
+			return { saved, payment };
 		});
+		await this.tell(order, saved);
+		if (receipt.length) await this.notices?.send(saved, receipt, { payment }, payment.id);
 		return this.detail(id, now);
 	}
 
@@ -743,7 +777,8 @@ export class AdminOrdersService {
 			);
 		}
 		const at = now.toISOString();
-		await this.transactions.withTransaction(async (context) => {
+		const receipt = order.status !== 'awaiting_payment' ? ['payment_receipt'] : [];
+		const { saved, received } = await this.transactions.withTransaction(async (context) => {
 			const received: OrderPayment = {
 				...payment,
 				state: 'received',
@@ -753,11 +788,15 @@ export class AdminOrdersService {
 			};
 			await this.payments.save(received, context);
 			await this.ledgerReceipt(order, received, actor, at, context);
-			await this.settle(order, input.revision, actor, at, context, {
+			const saved = await this.settle(order, input.revision, actor, at, context, {
 				kind: 'payment',
+				messages: this.notices?.plan(order, receipt) ?? [],
 				detail: { paymentId, received: true, reference: input.reference },
 			});
+			return { saved, received };
 		});
+		await this.tell(order, saved);
+		if (receipt.length) await this.notices?.send(saved, receipt, { payment: received }, received.id);
 		return this.detail(id, now);
 	}
 
@@ -840,7 +879,15 @@ export class AdminOrdersService {
 			history: [
 				...order.history,
 				historyEntry(actor, at, kind, extra),
-				...(placeNow ? [historyEntry(actor, at, 'status', { from: order.status, to: 'placed' })] : []),
+				...(placeNow
+					? [
+							historyEntry(actor, at, 'status', {
+								from: order.status,
+								to: 'placed',
+								messages: this.notices?.plan(order, ['order_confirmed']) ?? [],
+							}),
+						]
+					: []),
 			],
 		};
 		// Stored with the order so the list's "Needs attention" filter finds an unpaid request that ran out.

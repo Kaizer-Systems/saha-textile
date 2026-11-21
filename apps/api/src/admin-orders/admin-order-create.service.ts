@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import {
+	BadRequestException,
+	ConflictException,
+	ForbiddenException,
+	Inject,
+	Injectable,
+	Optional,
+} from '@nestjs/common';
 import {
 	type AdminCartLine,
 	type AdminCheckoutQuote,
@@ -65,6 +72,7 @@ import { ZonePricingService } from '../orders-setup/zone-pricing.service';
 import { DEFAULT_SHIPPING_SETTINGS, ShippingAdminService } from '../shipping/shipping-admin.service';
 import { AdminCartService } from './admin-cart.service';
 import { historyEntry, linesSummary, metaOf, type Actor } from './admin-orders.service';
+import { OrderNoticesService } from './order-notices.service';
 import { OrderStock } from './order-stock';
 
 const round2 = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100;
@@ -119,6 +127,7 @@ export class AdminOrderCreateService {
 		@Inject(COUPON_REPOSITORY) private readonly couponRepo: CouponRepository,
 		@Inject(SHIPPING_RULE_REPOSITORY) private readonly shippingRules: ShippingRuleRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
+		@Optional() private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/** The shop-customer picker on Create order: name, phone or email, active customers only. */
@@ -435,6 +444,16 @@ export class AdminOrderCreateService {
 						paymentStatus,
 						status,
 						statusTimeline: [{ status, at }],
+						// Placed at once (paid, cash on delivery or on account): the customer is sent Order
+						// confirmed once it is saved. A payment link sends the gateway's own request instead.
+						history:
+							status === 'placed'
+								? order.history.map((entry) =>
+										entry.kind === 'created'
+											? { ...entry, messages: this.notices?.plan(order, ['order_confirmed']) ?? [] }
+											: entry,
+									)
+								: order.history,
 						lines: order.lines.map((line) => ({ ...line, held: !line.madeToOrder })),
 						onAccountDueOn:
 							method === 'onAccount' && built.buyer.kind === 'business'
@@ -471,6 +490,7 @@ export class AdminOrderCreateService {
 					return saved;
 				});
 				await this.saveNewAddresses(input, built.buyer);
+				if (placed.status === 'placed') await this.notices?.send(placed, ['order_confirmed']);
 				return placed;
 			} catch (error) {
 				if (error instanceof DuplicateOrderKeyError && error.key === 'orderNumber' && attempt < 4) continue;

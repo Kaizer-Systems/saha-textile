@@ -6,6 +6,7 @@ import {
 	Injectable,
 	Logger,
 	NotFoundException,
+	Optional,
 	ServiceUnavailableException,
 } from '@nestjs/common';
 import type {
@@ -35,6 +36,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { historyEntry, metaOf, type Actor, AdminOrdersService } from '../admin-orders/admin-orders.service';
+import { OrderNoticesService } from '../admin-orders/order-notices.service';
 import { OrderStock } from '../admin-orders/order-stock';
 import { PaymentRequestsService } from '../admin-orders/payment-requests.service';
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
@@ -106,6 +108,7 @@ export class ShopPaymentsService {
 		@Inject(COUPON_REPOSITORY) private readonly coupons: CouponRepository,
 		@Inject(SHIPPING_RULE_REPOSITORY) private readonly shippingRules: ShippingRuleRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
+		@Optional() private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/* ------------------------------------------------------------------ starting a payment */
@@ -414,7 +417,11 @@ export class ShopPaymentsService {
 		if (placedBefore && after.paymentReview?.reason !== 'paidTwice' && (after.balance?.paidAheadINR ?? 0) > 0) {
 			await this.flag(order.id, attempt.id, 'paidTwice', now);
 		}
-		if (!placedBefore && after.status === 'placed') await this.afterPlaced(after);
+		if (!placedBefore && after.status === 'placed') {
+			await this.afterPlaced(after);
+			// Placed by its payment: Order confirmed, once the change is saved.
+			await this.orders.tell(order, after);
+		}
 		return saved;
 	}
 
@@ -543,6 +550,10 @@ export class ShopPaymentsService {
 								historyEntry(SYSTEM, at, 'status', {
 									from: current.status,
 									to: 'cancelled',
+									messages:
+										refunded && reason === 'soldOutBeforePayment'
+											? this.orders.told(current, ['order_refunded_sold_out'])
+											: [],
 									detail: { reason, soldOutLines: soldOutLineIds.join(',') },
 								}),
 							],
@@ -555,6 +566,17 @@ export class ShopPaymentsService {
 			return next;
 		});
 		if (!refunded) await this.flag(order.id, attempt.id, 'refundNotConfirmed', now);
+		else {
+			// OD1: sold before the money arrived → "Sorry, it sold out" with the full refund; a payment
+			// that reached an order already cancelled → "Refund processed".
+			const after = await this.orders.get(order.id);
+			await this.notices?.send(
+				after,
+				[reason === 'soldOutBeforePayment' ? 'order_refunded_sold_out' : 'refund_processed'],
+				{ soldOutLineIds, refundedINR: attempt.amountINR },
+				`refund:${attempt.id}`,
+			);
+		}
 		return saved;
 	}
 
@@ -563,7 +585,13 @@ export class ShopPaymentsService {
 	private async unpaid(attempt: PaymentAttempt, now: Date): Promise<PaymentAttempt> {
 		const saved = await this.attempts.save(attempt);
 		const order = await this.orders.get(attempt.orderId);
-		await this.releaseHold(order, attempt, attempt.state, now);
+		const released = await this.releaseHold(order, attempt, attempt.state, now);
+		// A payment the bank or gateway refused gets "Your payment didn't go through" with the way back
+		// to checkout; a shopper who pressed Cancel on the gateway's page already saw the currency
+		// choice on our return page, so nothing is sent for that.
+		if (attempt.state === 'failed' && released.status === 'awaiting_payment') {
+			await this.notices?.send(released, ['payment_not_completed'], {}, `failed:${attempt.id}`);
+		}
 		return saved;
 	}
 

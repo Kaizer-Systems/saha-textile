@@ -1,5 +1,5 @@
 import type { Msg91HttpClient } from '../client.js';
-import type { Msg91AdapterConfig, Msg91ToolDispatch, Msg91ToolResult } from '../types.js';
+import type { Msg91AdapterConfig, Msg91ToolDispatch, Msg91ToolResult, Msg91Variable } from '../types.js';
 
 /** `POST https://control.msg91.com/api/v5/email/send` — template_id + variables. */
 export async function sendEmailViaMsg91(
@@ -26,10 +26,21 @@ export async function sendEmailViaMsg91(
 	return client.postJson('https://control.msg91.com/api/v5/email/send', body);
 }
 
-function stringifyVariables(variables: Record<string, string | number>): Record<string, string> {
-	const out: Record<string, string> = {};
+/**
+ * Text and numbers go as text. Lists (an order's items, for `{{#each}}`) and yes/no flags (for
+ * `{{#if}}`) go as JSON values: the string "false" would read as true in a Handlebars `#if`.
+ */
+function stringifyVariables(
+	variables: Record<string, Msg91Variable>,
+): Record<string, string | boolean | ReadonlyArray<Readonly<Record<string, string>>>> {
+	const out: Record<string, string | boolean | ReadonlyArray<Readonly<Record<string, string>>>> = {};
 	for (const [key, value] of Object.entries(variables)) {
-		out[key] = String(value);
+		if (typeof value === 'boolean') out[key] = value;
+		else if (Array.isArray(value)) {
+			out[key] = value.map((row: Readonly<Record<string, string | number>>) =>
+				Object.fromEntries(Object.entries(row).map(([name, cell]) => [name, String(cell)])),
+			);
+		} else out[key] = String(value);
 	}
 	return out;
 }

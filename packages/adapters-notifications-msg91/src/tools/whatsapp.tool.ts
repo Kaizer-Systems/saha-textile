@@ -24,10 +24,9 @@ export async function sendWhatsappViaMsg91(
 
 	const to = normalizeE164Digits(dispatch.destination);
 	const from = normalizeE164Digits(config.whatsappNumber);
-	const bodyParameters = Object.values(dispatch.variables).map((value) => ({
-		type: 'text',
-		text: String(value),
-	}));
+	const bodyParameters = Object.values(dispatch.variables)
+		.filter((value): value is string | number => typeof value === 'string' || typeof value === 'number')
+		.map((value) => ({ type: 'text', text: String(value) }));
 
 	const body = {
 		integrated_number: from,

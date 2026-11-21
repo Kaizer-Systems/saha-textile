@@ -66,7 +66,15 @@ function harness(options: Options = {}) {
 	const orders = new Map<string, Order>([['ord_1', options.order ?? makeOrder()]]);
 	const attempts = new Map<string, PaymentAttempt>();
 	const payments: OrderPayment[] = [];
-	const calls = { reserve: 0, release: 0, refunds: [] as string[], uses: 0, flags: [] as string[] };
+	const calls = {
+		reserve: 0,
+		release: 0,
+		refunds: [] as string[],
+		uses: 0,
+		flags: [] as string[],
+		// What the customer was told: status moves (order_confirmed) and the messages sent directly.
+		told: [] as string[],
+	};
 	const cart = { id: 'cart_1', userId: 'cus_1', lines: [{ id: 'c1', productId: 'p1', variationId: null }, { id: 'c2', productId: 'p9', variationId: null }] };
 	let status: Partial<PaymentReport> | null = options.status === undefined ? { state: 'captured' } : options.status;
 
@@ -87,6 +95,8 @@ function harness(options: Options = {}) {
 	};
 	const adminOrders = {
 		get: async (id: string) => orders.get(id) as Order,
+		tell: async (before: Order, after: Order) => void calls.told.push(`${before.status}→${after.status}`),
+		told: () => [],
 		settle: async (order: Order, revision: number) => {
 			const paid = payments.filter((row) => row.state === 'received').reduce((sum, row) => sum + row.amountINR, 0);
 			const placed = order.status === 'awaiting_payment' && paid >= order.totalINR;
@@ -207,6 +217,7 @@ function harness(options: Options = {}) {
 		} as never,
 		{ getSettings: async () => null } as never,
 		{ withTransaction: async <T>(work: (context: object) => Promise<T>) => work({}) } as never,
+		{ send: async (_order: Order, templates: string[]) => void calls.told.push(...templates) } as never,
 	);
 	const shopper = { userId: 'cus_1', sessionId: 's', audience: 'storefront', role: null, permissions: [] } as never;
 	return {
@@ -248,6 +259,8 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 		expect(order.holdUntil).toBeNull();
 		expect(h.cart.lines.map((line) => line.productId)).toEqual(['p9']);
 		expect(h.attempts.get(attempt.id)?.state).toBe('captured');
+		// Order confirmed goes once, for the move that placed it; the repeated return tells nothing.
+		expect(h.calls.told).toEqual(['awaiting_payment→placed']);
 	});
 
 	it('failed: lets the hold go at once; a card refused as foreign for a buyer billed abroad gets shop05', async () => {
@@ -263,6 +276,7 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 		expect(order.holdUntil).toBeNull();
 		const outcome = await h.service.outcomeFor(attempt.id, h.shopper);
 		expect(outcome).toMatchObject({ result: 'failed', popup: 'switchToRegionCurrency', firstCurrency: 'EUR' });
+		expect(h.calls.told).toEqual(['payment_not_completed']);
 	});
 
 	it('paid after the hold ended for a piece sold meanwhile: refunded in full, order cancelled, sold lines named', async () => {
@@ -274,6 +288,7 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 		expect(h.orders.get('ord_1')?.status).toBe('cancelled');
 		const outcome = await h.service.outcomeFor(attempt.id, h.shopper);
 		expect(outcome).toMatchObject({ result: 'refunded', soldOutLineIds: ['l1'] });
+		expect(h.calls.told).toEqual(['order_refunded_sold_out']);
 	});
 
 	it('paid after the hold ended with every piece still free: kept again and placed', async () => {
@@ -319,6 +334,8 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 		const outcome = await h.service.confirm(attempt.id, { cancelled: true }, h.shopper, NOW);
 		expect(outcome).toMatchObject({ result: 'cancelled', popup: 'chooseCurrency', firstCurrency: 'INR' });
 		expect(h.calls.release).toBe(1);
+		// The shopper pressed Cancel and saw the currency choice: no "didn't go through" email.
+		expect(h.calls.told).toEqual([]);
 	});
 
 	it('someone else’s payment reads as missing', async () => {

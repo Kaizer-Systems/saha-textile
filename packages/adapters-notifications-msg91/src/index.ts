@@ -1,4 +1,11 @@
-export type { Msg91AdapterConfig, Msg91Fetch, Msg91ToolDispatch, Msg91ToolName, Msg91ToolResult } from './types.js';
+export type {
+	Msg91AdapterConfig,
+	Msg91Fetch,
+	Msg91ToolDispatch,
+	Msg91ToolName,
+	Msg91ToolResult,
+	Msg91Variable,
+} from './types.js';
 export { Msg91HttpClient } from './client.js';
 export {
 	Msg91NotificationAdapter,

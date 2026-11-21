@@ -65,10 +65,14 @@ function harness(order: Order, payments: OrderPayment[] = [], limitINR = 500_000
 	const moves: Array<[string, string[]]> = [];
 	const ledger: Array<Record<string, unknown>> = [];
 	const settled: string[] = [];
+	const tells: string[] = [];
 	const svc = new OpenOrdersService(
 		{
 			get: async () => stored,
 			detail: async () => ({ order: stored }),
+			tell: async (before: Order, after: Order) => void tells.push(`${before.status}→${after.status}`),
+			told: (_order: Order, templates: string[]) =>
+				templates.map((template) => ({ channel: 'email' as const, template })),
 			settle: async (
 				next: Order,
 				_revision: number,
@@ -134,7 +138,7 @@ function harness(order: Order, payments: OrderPayment[] = [], limitINR = 500_000
 		{ balance: async () => 0, append: async (entry: Record<string, unknown>) => ledger.push(entry) } as never,
 		{ withTransaction: async (work: (context: unknown) => Promise<unknown>) => work({}) } as never,
 	);
-	return { svc, moves, ledger, settled, current: () => stored };
+	return { svc, moves, ledger, settled, tells, current: () => stored };
 }
 
 const actor = { id: 'adm_1', name: null };
@@ -188,6 +192,10 @@ describe('open orders (oo01–oo08)', () => {
 			paymentStatus: 'paid_ahead',
 			balance: { paidAheadINR: 3_000 },
 		});
+		// Closed and placed: Order confirmed, listed in the history and sent once saved.
+		expect(ahead.tells).toEqual(['open→placed']);
+		expect(ahead.current().history.at(-1)?.messages).toEqual([{ channel: 'email', template: 'order_confirmed' }]);
+		expect(due.current().history.at(-1)?.messages).toEqual([]);
 	});
 
 	it('previews the close without saving: one parcel’s shipping, what is due, and whether it can go on account', async () => {

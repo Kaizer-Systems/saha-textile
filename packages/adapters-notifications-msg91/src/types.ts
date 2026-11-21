@@ -27,8 +27,12 @@ export interface Msg91ToolDispatch {
 	/** Provider template / flow / WhatsApp template id already resolved from DB. */
 	providerTemplateId: string;
 	destination: string;
-	variables: Record<string, string | number>;
+	/** Text and numbers for SMS and WhatsApp; email templates may also take lists and yes/no flags. */
+	variables: Record<string, Msg91Variable>;
 }
+
+/** Mirrors core's `NotificationVariable`, which this package doesn't import. */
+export type Msg91Variable = string | number | boolean | ReadonlyArray<Readonly<Record<string, string | number>>>;
 
 export interface Msg91ToolResult {
 	ok: boolean;

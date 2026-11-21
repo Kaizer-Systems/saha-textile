@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
 	type Order,
 	type OrderPayment,
@@ -15,6 +15,7 @@ import {
 } from '@saha-textile/contracts';
 import {
 	checkRequestAmount,
+	isIndianMobile,
 	isRequestActive,
 	messageForm,
 	type NotificationPort,
@@ -43,6 +44,7 @@ import {
 } from '../infra/tokens';
 import { DocumentNumbersService } from '../orders-setup/document-numbers.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
+import { OrderNoticesService } from './order-notices.service';
 
 export const hashPayToken = (token: string): string => createHash('sha256').update(token).digest('hex');
 const minor = (amount: number): number => Math.round(amount * 100);
@@ -69,6 +71,7 @@ export class PaymentRequestsService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort,
+		@Optional() private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/**
@@ -232,6 +235,7 @@ export class PaymentRequestsService {
 		const report = await port.fetchPaymentRequestStatus(request.gatewayRequestId);
 		const at = now.toISOString();
 		let recorded: OrderPayment | null = null;
+		let changed: { before: Order; after: Order; receipt: string[] } | null = null;
 		await this.transactions.withTransaction(async (context) => {
 			for (const paid of report.payments) {
 				if (await this.payments.findByGatewayReference(request.gateway, paid.gatewayReference)) continue;
@@ -292,8 +296,10 @@ export class PaymentRequestsService {
 			);
 			if (recorded) {
 				const order = await this.orders.get(orderId);
-				await this.orders.settle(order, order.revision, actor, at, context, {
+				const receipt = order.status !== 'awaiting_payment' ? ['payment_receipt'] : [];
+				const saved = await this.orders.settle(order, order.revision, actor, at, context, {
 					kind: 'payment',
+					messages: this.notices?.plan(order, receipt) ?? [],
 					detail: {
 						gateway: request.gateway,
 						reference: (recorded as OrderPayment).reference,
@@ -301,8 +307,17 @@ export class PaymentRequestsService {
 						requestAt: request.createdAt,
 					},
 				});
+				changed = { before: order, after: saved, receipt };
 			}
 		});
+		// pl02: once saved, the payment that placed the order sends Order confirmed; a payment on an
+		// order already placed (a part payment on an open order) sends its receipt.
+		if (changed && recorded) {
+			const { before, after, receipt } = changed as { before: Order; after: Order; receipt: string[] };
+			const payment = recorded as OrderPayment;
+			await this.orders.tell(before, after);
+			if (receipt.length) await this.notices?.send(after, receipt, { payment }, payment.id);
+		}
 		return { request: await this.requestOf(orderId, requestId), recorded: recorded !== null, payment: recorded };
 	}
 
@@ -458,8 +473,5 @@ export class PaymentRequestsService {
 	}
 }
 
-/** Our SMS goes only to Indian mobile numbers (DLT): +91 and ten digits starting 6–9. */
-export function isIndianMobile(value: string | null): boolean {
-	const digits = (value ?? '').replace(/[\s-]/g, '');
-	return /^(\+?91)?[6-9]\d{9}$/.test(digits);
-}
+/** Our SMS goes only to Indian mobile numbers (DLT); the rule lives in core with the order messages. */
+export { isIndianMobile };

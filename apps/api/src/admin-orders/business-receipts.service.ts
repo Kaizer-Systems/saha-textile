@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Optional } from '@nestjs/common';
 import type { BusinessOpenOrder, BusinessReceiptWrite, LedgerEntry } from '@saha-textile/contracts';
 import {
 	allocateReceipt,
@@ -11,6 +11,7 @@ import { codedRefusal } from '../common/coded-refusal';
 import { ADMIN_ORDER_REPOSITORY, TRANSACTION_MANAGER } from '../infra/tokens';
 import { BusinessesService } from '../orders-setup/businesses.service';
 import { AdminOrdersService, type Actor } from './admin-orders.service';
+import { OrderNoticesService } from './order-notices.service';
 
 /**
  * Recording a receipt on a business's customer account (brief bz06): it settles the oldest open
@@ -24,6 +25,7 @@ export class BusinessReceiptsService {
 		private readonly orders: AdminOrdersService,
 		@Inject(ADMIN_ORDER_REPOSITORY) private readonly orderRepo: AdminOrderRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
+		@Optional() private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/** The business's orders on account that still owe money, oldest first (the "Settles" table). */
@@ -49,7 +51,7 @@ export class BusinessReceiptsService {
 				codedRefusal(`receipt_${refusal}`, 'That split does not fit the open orders', 'allocations'),
 			);
 		}
-		return this.transactions.withTransaction(async (context) => {
+		const entry = await this.transactions.withTransaction(async (context) => {
 			const entry = await this.businesses.recordReceipt(businessId, input, actor.id, context);
 			for (const share of allocations) {
 				await this.orders.settleFromReceipt(
@@ -66,5 +68,20 @@ export class BusinessReceiptsService {
 			}
 			return entry;
 		});
+		// The receipt email goes once the receipt is saved, never for one that was rolled back.
+		if (this.notices) {
+			const numbers = new Map(open.map((row) => [row.orderId, row.orderNumber]));
+			await this.notices.sendBusinessReceipt(
+				await this.businesses.get(businessId),
+				entry,
+				input,
+				allocations.flatMap((share) => {
+					const number = numbers.get(share.orderId);
+					return number ? [number] : [];
+				}),
+				await this.businesses.receivableINR(businessId),
+			);
+		}
+		return entry;
 	}
 }

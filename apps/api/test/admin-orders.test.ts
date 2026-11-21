@@ -1,8 +1,9 @@
 import { Order, OrderSettings, type OrderPayment, type Shipment } from '@saha-textile/contracts';
-import { NOT_CONNECTED_EINVOICE, NOT_CONNECTED_EWAYBILL } from '@saha-textile/core-domain';
+import { NOT_CONNECTED_EINVOICE, NOT_CONNECTED_EWAYBILL, type NotificationMessage } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
 import { AdminOrdersService, attentionTimesOf, paymentDetailOf } from '../src/admin-orders/admin-orders.service';
+import { OrderNoticesService } from '../src/admin-orders/order-notices.service';
 
 const address = {
 	fullName: 'Ananya Das',
@@ -53,7 +54,7 @@ const baseOrder = (over: Record<string, unknown> = {}) =>
 		...over,
 	});
 
-function service(order: Order) {
+function service(order: Order, notices: OrderNoticesService | null = null) {
 	let stored = order;
 	const shipments: Shipment[] = [];
 	const payments: OrderPayment[] = [];
@@ -107,6 +108,8 @@ function service(order: Order) {
 				return new Map([['l1', 41_000]]);
 			},
 		} as never,
+		null,
+		notices,
 	);
 	return { svc, shipments, payments, ledger, stockMoves, current: () => stored };
 }
@@ -425,5 +428,141 @@ describe('admin orders: the list lines (ol02, ol03)', () => {
 		const order = baseOrder({ status: 'awaiting_payment', paymentStatus: 'pending_at_bank' });
 		const times = attentionTimesOf(order, ['pendingAtBank', 'invoiceAddressNeeded'], [payment({ state: 'pending' })], []);
 		expect(times).toEqual({ pendingAtBank: at });
+	});
+});
+
+describe('admin orders: what the customer is told (status table, od06, od08)', () => {
+	const person = (over: Record<string, unknown> = {}) =>
+		baseOrder({
+			buyer: { kind: 'person', customerId: 'cus_1', name: 'Ananya Das', email: 'ananya@example.com' },
+			addresses: {
+				billing: { ...address, mobile: { countryCallingCode: '91', number: '9830012345' } },
+				delivery: address,
+			},
+			subtotalINR: 9_000,
+			totalINR: 9_000,
+			balance: {
+				goodsINR: 9_000,
+				couponINR: 0,
+				shippingINR: 0,
+				totalINR: 9_000,
+				paidINR: 9_000,
+				dueINR: 0,
+				paidAheadINR: 0,
+			},
+			...over,
+		});
+	const notices = (fail = false) => {
+		const sent: NotificationMessage[] = [];
+		const svc = new OrderNoticesService(
+			{
+				send: async (message: NotificationMessage) => {
+					if (fail) throw new Error('provider down');
+					sent.push(message);
+					return { status: 'sent', providerMessageId: 'm', outboxEntryId: 'o' };
+				},
+				isChannelEnabled: async () => true,
+			},
+			{ media: { shopOrigin: 'https://shop.example' } } as never,
+		);
+		return { svc, sent };
+	};
+	const upi = (amountINR: number, revision: number) => ({
+		method: 'upi' as const,
+		amountINR,
+		reference: '402112345678',
+		receivedOn: '2026-11-20',
+		received: true,
+		note: null,
+		proofMediaId: null,
+		collector: null,
+		collectedBy: null,
+		revision,
+	});
+
+	it('sends Order shipped by email and SMS once saved, with the courier, and lists both in the history', async () => {
+		const told = notices();
+		const { svc, current } = service(person(), told.svc);
+		await svc.changeStatus('ord_1', shipped, actor);
+		expect(told.sent.map((row) => [row.templateKey, row.channel])).toEqual([
+			['order_shipped', 'email'],
+			['order_shipped', 'sms'],
+		]);
+		expect(told.sent[0]?.variables).toMatchObject({ courier_name: 'DTDC', tracking_number: 'D47512398' });
+		expect(current().history.at(-1)?.messages).toEqual([
+			{ channel: 'email', template: 'order_shipped' },
+			{ channel: 'sms', template: 'order_shipped' },
+		]);
+	});
+
+	it('tells nothing for a quiet step, and a message that fails never undoes the change', async () => {
+		const quiet = notices();
+		const placed = service(person({ status: 'placed' }), quiet.svc);
+		await placed.svc.changeStatus('ord_1', { ...shipped, to: 'processing', shipped: null }, actor);
+		expect(quiet.sent).toEqual([]);
+		expect(placed.current().history.at(-1)?.messages).toEqual([]);
+		const broken = notices(true);
+		const { svc, current } = service(person(), broken.svc);
+		await expect(svc.changeStatus('ord_1', shipped, actor)).resolves.toMatchObject({
+			order: { status: 'shipped' },
+		});
+		expect(current().status).toBe('shipped');
+	});
+
+	it('sends Order confirmed when a payment places the order, without a second receipt email', async () => {
+		const told = notices();
+		const awaiting = person({
+			status: 'awaiting_payment',
+			paymentStatus: 'unpaid',
+			placedWith: 'manual',
+			balance: {
+				goodsINR: 9_000,
+				couponINR: 0,
+				shippingINR: 0,
+				totalINR: 9_000,
+				paidINR: 0,
+				dueINR: 9_000,
+				paidAheadINR: 0,
+			},
+		});
+		const { svc, current } = service(awaiting, told.svc);
+		// The balance is worked out again from the lines (one ₹60,000 saree), so this pays it up.
+		await svc.recordPayment('ord_1', upi(60_000, 0), actor);
+		expect(told.sent.map((row) => [row.templateKey, row.channel])).toEqual([
+			['order_confirmed', 'email'],
+			['order_confirmed', 'sms'],
+		]);
+		expect(current().history.map((row) => [row.kind, row.messages.length])).toEqual([
+			['payment', 0],
+			['status', 2],
+		]);
+	});
+
+	it('emails a receipt for money received on an order already placed (od08)', async () => {
+		const told = notices();
+		const due = person({
+			status: 'delivered',
+			paymentStatus: 'due_on_delivery',
+			placedWith: 'cashOnDelivery',
+			balance: {
+				goodsINR: 9_000,
+				couponINR: 0,
+				shippingINR: 0,
+				totalINR: 9_000,
+				paidINR: 0,
+				dueINR: 9_000,
+				paidAheadINR: 0,
+			},
+		});
+		const { svc, current, payments } = service(due, told.svc);
+		await svc.recordPayment('ord_1', upi(9_000, 0), actor);
+		expect(told.sent).toHaveLength(1);
+		expect(told.sent[0]).toMatchObject({
+			channel: 'email',
+			templateKey: 'payment_receipt',
+			idempotencyKey: `order:ord_1:payment_receipt:email:${payments[0]?.id}`,
+			variables: { amount: '₹9,000', method_line: 'UPI · ref 402112345678' },
+		});
+		expect(current().history.at(-1)?.messages).toEqual([{ channel: 'email', template: 'payment_receipt' }]);
 	});
 });

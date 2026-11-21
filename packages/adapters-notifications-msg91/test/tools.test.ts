@@ -43,6 +43,33 @@ describe('email tool', () => {
 		});
 	});
 
+	it('keeps an order email’s item list and yes/no flags as JSON (Handlebars #each and #if)', async () => {
+		const { client, postJson } = recorder();
+		await sendEmailViaMsg91(
+			client,
+			config,
+			dispatch({
+				templateKey: 'order_confirmed',
+				variables: {
+					order_number: 'ST-2611-482190',
+					items: [{ name: 'Red Banarasi', quantity: 2, total: '₹20,400' }],
+					has_cancel_note: false,
+				},
+			}),
+		);
+		expect(bodyOf(postJson)).toMatchObject({
+			recipients: [
+				{
+					variables: {
+						order_number: 'ST-2611-482190',
+						items: [{ name: 'Red Banarasi', quantity: '2', total: '₹20,400' }],
+						has_cancel_note: false,
+					},
+				},
+			],
+		});
+	});
+
 	it("sends from the address of the template's group", async () => {
 		const { client, postJson } = recorder();
 		await sendEmailViaMsg91(client, config, dispatch({ templateKey: 'back_in_stock' }));
@@ -77,6 +104,22 @@ describe('SMS flow tool', () => {
 			flow_id: 'tpl_1',
 			recipients: [{ mobiles: '919830012345', code: '123456', name: 'Asha' }],
 		});
+	});
+
+	it('sends text only: an email-only list or flag never reaches a DLT template', async () => {
+		const { client, postJson } = recorder();
+		await sendSmsFlowViaMsg91(
+			client,
+			config,
+			dispatch({
+				tool: 'sms.flow',
+				destination: '+919830012345',
+				variables: { order_number: 'ST2611482190', amount: 23_050, items: [{ name: 'x' }], has_refund: true },
+			}),
+		);
+		expect(bodyOf(postJson)['recipients']).toEqual([
+			{ mobiles: '919830012345', order_number: 'ST2611482190', amount: '23050' },
+		]);
 	});
 
 	it('passes the DLT sender when configured', async () => {

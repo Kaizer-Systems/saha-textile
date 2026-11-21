@@ -20,6 +20,8 @@ import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
+import { AttributesInfo } from '@shared/ui/product-config/parts/attributes-info/attributes-info';
+import { LOW_STOCK_AT, VariationTable } from '@shared/ui/product-config/parts/variation-table/variation-table';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
 
 import { environment } from '../../../../../../public/environments/environment';
@@ -44,6 +46,8 @@ import { SaleTimer } from '../widgets/sale-timer/sale-timer';
 		ProductSocialShare,
 		Button,
 		ProductConfigurator,
+		VariationTable,
+		AttributesInfo,
 		SaleTimer,
 		CurrencySymbolPipe,
 		TranslocoModule,
@@ -96,6 +100,25 @@ export class BuyBox {
 		() => (this.summary()?.purchasable ?? this.product().stock_status === 'in_stock') && !this.lengthIssue(),
 	);
 	readonly soldOut = computed(() => this.summary()?.soldOut ?? this.product().stock_status === 'out_of_stock');
+
+	/** Same rule as the configurator's, from the data alone, so the server draws the option table too. */
+	readonly hasVariation = computed(() => !!(this.product().attributes?.length && this.product().variations?.length));
+
+	/**
+	 * The chosen option's stock for the price line (brief P10): "In stock · 3 left", amber "Only 2 left", red
+	 * "Out of stock". Null where a count would mislead: made to order, fabric by the metre (tenths), a set, or
+	 * before an option is chosen.
+	 */
+	readonly stockChip = computed<{ kind: 'in' | 'low' | 'out'; count: number | null } | null>(() => {
+		const product = this.product();
+		if (product.made_to_order || this.rule() || product.bundle) return null;
+		const source = this.hasVariation() ? this.summary()?.variation : product;
+		if (!source) return null;
+		if (source.stock_status === 'out_of_stock') return { kind: 'out', count: 0 };
+		if (source.stock_status !== 'in_stock') return null;
+		const count = typeof source.quantity === 'number' ? source.quantity : null;
+		return { kind: count !== null && count <= LOW_STOCK_AT ? 'low' : 'in', count };
+	});
 
 	get cartItem(): ICart | null {
 		return this.cartItems().find((item) => item.product.id == this.product().id) ?? null;

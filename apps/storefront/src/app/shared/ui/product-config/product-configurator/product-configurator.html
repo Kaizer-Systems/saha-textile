@@ -1,5 +1,5 @@
-<!-- filter_only descriptive attributes (display-only) -->
-@if (hasFilterAttrs()) {
+<!-- filter_only descriptive attributes (display-only); the product page shows them below its buttons -->
+@if (hasFilterAttrs() && showFacts()) {
 <app-attributes-info [attributes]="product().semantic_attributes || []" />
 }
 
@@ -8,6 +8,7 @@
 <app-variation-axis
 	[product]="product()"
 	[owlCar]="owlCar()"
+	[showTable]="showTable()"
 	(selectVariation)="selectVariation($event)"
 />
 } @if (hasAddon()) {

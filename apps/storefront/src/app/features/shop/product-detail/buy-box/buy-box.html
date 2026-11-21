@@ -1,131 +1,42 @@
 <!-- The page's one H1 (SEO); sized like the theme's h2 in buy-box.scss so the look is unchanged. -->
 <h1 class="name">{{ product().name }}</h1>
 
-<div class="price-rating">
-	<p class="h3 theme-color price">
-		{{ displayPrice() | currencySymbol }}@if (rule()) {
-		<span class="text-content">{{ 'per_metre' | transloco }}</span>
-		} @if (discount()) {
-		<del class="text-content">{{ comparePrice() | currencySymbol }}</del>
-		} @if (discount()) {
-		<span class="offer-top">{{ discount() }}% {{ 'off' | transloco }}</span>
-		}
-	</p>
-	<!-- Stars only from approved reviews, and only once there is one. -->
-	@if (product().reviews_count) {
-	<div class="product-rating custom-rate">
-		<ngb-rating
-			[attr.aria-label]="'rating' | transloco"
-			[rate]="product().rating_count"
-			[readonly]="true"
-		/>
-		<span class="review">{{ 'reviews_count' | transloco: { count: product().reviews_count } }}</span>
-	</div>
-	}
-</div>
-
-<p class="tax-note text-content">{{ 'inclusive_of_all_taxes' | transloco }}</p>
-
-<!-- A running sale event: the theme's own "Hurry up! Sale ends in" timer, from the server's clock. -->
-@if (product().sale_expired_at) {
-<app-sale-timer
-	[startDate]="null"
-	[endDate]="product().sale_expired_at"
-/>
-} @if (product().short_description) {
-<div class="product-contain">
-	<p [innerHTML]="product().short_description"></p>
-</div>
-}
-
-<!-- composed configurable sections (variation axis + add-on + bundle) -->
-<app-product-configurator
-	[product]="product()"
-	[owlCar]="owlCar()"
-	(summaryChange)="onSummary($event)"
-/>
-
-@if (rule(); as metre) { @if (metre.quickLengths.length) {
-<!-- M02: quick lengths reuse the theme's option buttons (the ones used for sizes); Other types any length. -->
-<div class="product-package">
-	<div class="product-title">
-		<h4>{{ 'length' | transloco }}</h4>
-	</div>
-	<ul class="select-package rectangle">
-		@for (quick of metre.quickLengths; track quick.tenths) {
-		<li [class.active]="length() === quick.tenths">
-			<app-button
-				[id]="'quick-length-' + quick.tenths"
-				[type]="'button'"
-				[spinner]="false"
-				(click)="pickLength(quick.tenths)"
-			>
-				{{ lengthOf(quick.tenths) }} · {{ quick.label }}
-			</app-button>
-		</li>
-		}
-		<li [class.active]="!metre.quickLengths.some(isQuick)">
-			<app-button
-				[id]="'quick-length-other'"
-				[type]="'button'"
-				[spinner]="false"
-				(click)="focusLength()"
-			>
-				{{ 'other_length' | transloco }}
-			</app-button>
-		</li>
-	</ul>
-</div>
-} }
-
-<div class="note-box product-package">
-	<div class="cart_qty qty-box product-qty">
-		<div class="input-group">
-			<app-button
-				[class]="'btn qty-left-minus'"
-				[id]="'qty-minus-' + product().id"
-				[spinner]="false"
-				(click)="updateQuantity(-1)"
-				[ariaLabel]="'decrease_quantity' | transloco"
-			>
-				<i class="ri-subtract-fill"></i>
-			</app-button>
-			@if (rule()) {
-			<!-- M02: the box shows the unit ("2.5 m"), so it is text and a little wider than the theme's. -->
-			<input
-				#lengthBox
-				class="form-control input-number qty-input"
-				type="text"
-				inputmode="decimal"
-				name="length"
-				style="min-width: 64px"
-				[id]="'length-' + product().id"
-				[class.is-invalid]="lengthIssue() === 'below_cut'"
-				[value]="lengthOf(length())"
-				[attr.aria-label]="'length' | transloco"
-				(change)="typeLength(lengthBox)"
-			/>
-			} @else {
-			<input
-				class="form-control input-number qty-input"
-				type="text"
-				name="quantity"
-				value="{{ productQty }}"
-				readonly
-				[attr.aria-label]="'quantity' | transloco"
-			/>
+<!-- One price line: price, tax note, the chosen option's stock and the icons (owner, 21 Nov 2026, brief P10). -->
+<div class="st-price-line">
+	<div class="price-rating">
+		<p class="h3 theme-color price">
+			{{ displayPrice() | currencySymbol }}@if (rule()) {
+			<span class="text-content">{{ 'per_metre' | transloco }}</span>
+			} @if (discount()) {
+			<del class="text-content">{{ comparePrice() | currencySymbol }}</del>
+			} @if (discount()) {
+			<span class="offer-top">{{ discount() }}% {{ 'off' | transloco }}</span>
 			}
-			<app-button
-				[class]="'btn qty-left-minus'"
-				[id]="'qty-plus-' + product().id"
-				[spinner]="false"
-				(click)="updateQuantity(1)"
-				[ariaLabel]="'increase_quantity' | transloco"
-			>
-				<i class="ri-add-line"></i>
-			</app-button>
+		</p>
+		<!-- Stars only from approved reviews, and only once there is one. -->
+		@if (product().reviews_count) {
+		<div class="product-rating custom-rate">
+			<ngb-rating
+				[attr.aria-label]="'rating' | transloco"
+				[rate]="product().rating_count"
+				[readonly]="true"
+			/>
+			<span class="review">{{ 'reviews_count' | transloco: { count: product().reviews_count } }}</span>
 		</div>
+		}
 	</div>
+	<p class="tax-note text-content">{{ 'inclusive_of_all_taxes' | transloco }}</p>
+	@if (stockChip(); as stock) {
+	<span
+		class="st-stock"
+		[class.is-low]="stock.kind === 'low'"
+		[class.is-out]="stock.kind === 'out'"
+	>
+		@switch (stock.kind) { @case ('out') { {{ 'out_of_stock' | transloco }} } @case ('low') { {{ 'only_count_left' |
+		transloco: { count: stock.count } }} } @default { @if (stock.count === null) { {{ 'in_stock' | transloco }} }
+		@else { {{ 'in_stock_count_left' | transloco: { count: stock.count } }} } } }
+	</span>
+	}
 	<!-- Theme wishlist/compare buttons; each toggles, says what it does and shows the theme tooltip. -->
 	<div class="wishlist-btn-group">
 		<button
@@ -189,34 +100,116 @@
 	</div>
 </div>
 
-@if (rule(); as metre) {
-<!-- M02–M04: the sum in words, the snap note, and why a length cannot be bought. -->
-<div class="mb-3">
-	<p class="text-content mb-1">
-		{{ lengthOf(length()) }} × {{ displayPrice() | currencySymbol }} = {{ lineTotal() | currencySymbol }}
-	</p>
-	@if (snapped(); as note) {
-	<p class="text-content small mb-1">{{ 'length_snapped' | transloco: note }}</p>
-	} @if (lengthIssue() === 'below_cut') {
-	<p class="text-danger small mb-0">
-		{{ 'length_below_cut' | transloco: { cut: lengthOf(metre.shortestCutTenths) } }}
-	</p>
-	} @else if (lengthIssue() === 'over_stock') {
-	<p class="text-danger small mb-0">{{ 'length_over_stock' | transloco: { left: lengthOf(available() ?? 0) } }}</p>
-	}
+<!-- A running sale event: the theme's own "Hurry up! Sale ends in" timer, from the server's clock. -->
+@if (product().sale_expired_at) {
+<app-sale-timer
+	[startDate]="null"
+	[endDate]="product().sale_expired_at"
+/>
+} @if (product().short_description) {
+<!-- Two lines on the first screen; the full text stays in the page and in the Description tab. -->
+<div class="product-contain">
+	<p
+		class="st-clamp-2"
+		[innerHTML]="product().short_description"
+	></p>
 </div>
 }
 
-<div class="dynamic-checkout">
-	<app-button
-		[class]="'btn btn-md bg-theme'"
-		[id]="'buynowbtn-' + product().id"
-		[disabled]="!purchasable()"
-		(click)="purchasable() && buyNow()"
+<!-- composed configurable sections (variation axis + add-on + bundle) -->
+<app-product-configurator
+	[product]="product()"
+	[owlCar]="owlCar()"
+	[showFacts]="false"
+	[showTable]="false"
+	(summaryChange)="onSummary($event)"
+/>
+
+@if (rule(); as metre) { @if (metre.quickLengths.length) {
+<!-- M02: quick lengths reuse the theme's option buttons (the ones used for sizes); Other types any length. -->
+<div class="product-package">
+	<div class="product-title">
+		<h4>{{ 'length' | transloco }}</h4>
+	</div>
+	<ul class="select-package rectangle">
+		@for (quick of metre.quickLengths; track quick.tenths) {
+		<li [class.active]="length() === quick.tenths">
+			<app-button
+				[id]="'quick-length-' + quick.tenths"
+				[type]="'button'"
+				[spinner]="false"
+				(click)="pickLength(quick.tenths)"
+			>
+				{{ lengthOf(quick.tenths) }} · {{ quick.label }}
+			</app-button>
+		</li>
+		}
+		<li [class.active]="!metre.quickLengths.some(isQuick)">
+			<app-button
+				[id]="'quick-length-other'"
+				[type]="'button'"
+				[spinner]="false"
+				(click)="focusLength()"
+			>
+				{{ 'other_length' | transloco }}
+			</app-button>
+		</li>
+	</ul>
+</div>
+} }
+
+<!-- Quantity, Add to cart and Buy now in one row (owner, 21 Nov 2026, brief P10); Notify me gets its own row. -->
+<div class="st-cta-row">
+	<div
+		class="cart_qty qty-box product-qty"
+		[class.st-qty-length]="!!rule()"
 	>
-		<i class="ri-flashlight-fill me-1"></i>
-		{{ 'buy_now' | transloco }}
-	</app-button>
+		<div class="input-group">
+			<app-button
+				[class]="'btn qty-left-minus'"
+				[id]="'qty-minus-' + product().id"
+				[spinner]="false"
+				(click)="updateQuantity(-1)"
+				[ariaLabel]="'decrease_quantity' | transloco"
+			>
+				<i class="ri-subtract-fill"></i>
+			</app-button>
+			@if (rule()) {
+			<!-- M02: the box shows the unit ("2.5 m"), so it is text and a little wider than the theme's. -->
+			<input
+				#lengthBox
+				class="form-control input-number qty-input"
+				type="text"
+				inputmode="decimal"
+				name="length"
+				style="min-width: 64px"
+				[id]="'length-' + product().id"
+				[class.is-invalid]="lengthIssue() === 'below_cut'"
+				[value]="lengthOf(length())"
+				[attr.aria-label]="'length' | transloco"
+				(change)="typeLength(lengthBox)"
+			/>
+			} @else {
+			<input
+				class="form-control input-number qty-input"
+				type="text"
+				name="quantity"
+				value="{{ productQty }}"
+				readonly
+				[attr.aria-label]="'quantity' | transloco"
+			/>
+			}
+			<app-button
+				[class]="'btn qty-left-minus'"
+				[id]="'qty-plus-' + product().id"
+				[spinner]="false"
+				(click)="updateQuantity(1)"
+				[ariaLabel]="'increase_quantity' | transloco"
+			>
+				<i class="ri-add-line"></i>
+			</app-button>
+		</div>
+	</div>
 	@if (purchasable()) {
 	<app-button
 		[id]="'addcartbtn-' + product().id"
@@ -237,14 +230,58 @@
 		<i class="ri-shopping-cart-line me-1"></i>
 		} {{ (soldOut() ? 'sold_out' : 'add_to_cart') | transloco }}
 	</app-button>
-	@if (soldOut()) {
+	}
 	<app-button
-		[id]="'notifybtn-' + product().id"
-		[class]="'btn btn-md btn-outline-dark'"
-		[spinner]="false"
-		(click)="notify()"
+		[class]="'btn btn-md bg-theme'"
+		[id]="'buynowbtn-' + product().id"
+		[disabled]="!purchasable()"
+		(click)="purchasable() && buyNow()"
 	>
-		{{ 'notify_me' | transloco }}
+		<i class="ri-flashlight-fill me-1"></i>
+		{{ 'buy_now' | transloco }}
 	</app-button>
-	} }
+	@if (!purchasable() && soldOut()) {
+	<div class="st-cta-wide">
+		<app-button
+			[id]="'notifybtn-' + product().id"
+			[class]="'btn btn-md btn-outline-dark'"
+			[spinner]="false"
+			(click)="notify()"
+		>
+			{{ 'notify_me' | transloco }}
+		</app-button>
+	</div>
+	}
 </div>
+
+@if (rule(); as metre) {
+<!-- M02–M04: the sum in words, the snap note, and why a length cannot be bought. -->
+<div class="mb-3">
+	<p class="text-content mb-1">
+		{{ lengthOf(length()) }} × {{ displayPrice() | currencySymbol }} = {{ lineTotal() | currencySymbol }}
+	</p>
+	@if (snapped(); as note) {
+	<p class="text-content small mb-1">{{ 'length_snapped' | transloco: note }}</p>
+	} @if (lengthIssue() === 'below_cut') {
+	<p class="text-danger small mb-0">
+		{{ 'length_below_cut' | transloco: { cut: lengthOf(metre.shortestCutTenths) } }}
+	</p>
+	} @else if (lengthIssue() === 'over_stock') {
+	<p class="text-danger small mb-0">{{ 'length_over_stock' | transloco: { left: lengthOf(available() ?? 0) } }}</p>
+	}
+</div>
+}
+
+<!-- Facts and the full option table, below the buttons (brief P10); choosing stays above. -->
+@if (hasVariation() || product().semantic_attributes?.length) {
+<div class="st-after-cta">
+	@if (hasVariation()) {
+	<app-variation-table
+		[product]="product()"
+		[selected]="summary()?.variation ?? null"
+	/>
+	} @if (product().semantic_attributes?.length) {
+	<app-attributes-info [attributes]="product().semantic_attributes || []" />
+	}
+</div>
+}

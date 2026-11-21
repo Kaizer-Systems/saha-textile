@@ -32,6 +32,13 @@ export class ProductConfigurator implements OnInit {
 	readonly owlCar = input<CarouselComponent>();
 	/** Saved line snapshot to re-seed selections when editing an existing cart line. */
 	readonly initialConfig = input<ICartLineConfig>();
+	/**
+	 * The attribute chips (facts) and the option table. The product page turns both off and draws them
+	 * below its buttons so Add to cart and Buy now reach the first screen (owner, 21 Nov 2026, brief P10);
+	 * the pop-up keeps them with the choices.
+	 */
+	readonly showFacts = input(true);
+	readonly showTable = input(true);
 
 	private platformId = inject(PLATFORM_ID);
 	private allowVariantUrl = false;

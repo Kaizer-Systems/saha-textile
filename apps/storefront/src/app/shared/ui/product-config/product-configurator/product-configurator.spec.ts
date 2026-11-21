@@ -83,6 +83,14 @@ describe('what a product shows', () => {
 		expect(render(product({ attributes: [{}], variations: [] })).component.hasVariation()).toBe(false);
 	});
 
+	it('keeps the facts and the option table with the choices unless the host places them itself', () => {
+		const { fixture, component } = render(withVariants());
+		expect([component.showFacts(), component.showTable()]).toEqual([true, true]);
+		fixture.componentRef.setInput('showFacts', false);
+		fixture.componentRef.setInput('showTable', false);
+		expect([component.showFacts(), component.showTable()]).toEqual([false, false]);
+	});
+
 	it('reads the seeds for an edit', () => {
 		const raw = { addon_selections: { a: 'b' }, bundle_selections: { c: 'd' }, measurements: { chest: 30 } };
 		const { component } = render(product(), { raw });

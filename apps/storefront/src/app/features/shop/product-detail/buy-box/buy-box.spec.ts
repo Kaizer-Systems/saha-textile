@@ -244,3 +244,33 @@ describe('BuyBox fabric by the metre (M02–M04)', () => {
 		expect(box.lengthIssue()).toBeNull();
 	});
 });
+
+describe('BuyBox price line stock', () => {
+	const variant = (quantity: number, stock_status = 'in_stock') => ({ sku: 'V', quantity, stock_status });
+	const withVariants = { attributes: [{ id: 1 }], variations: [variant(3)] };
+
+	it('counts a plain product, amber at two or fewer, red when sold out', () => {
+		expect(render(true, { quantity: 9 }).box.stockChip()).toEqual({ kind: 'in', count: 9 });
+		expect(render(true, { quantity: 2 }).box.stockChip()).toEqual({ kind: 'low', count: 2 });
+		expect(render(true, { stock_status: 'out_of_stock' }).box.stockChip()).toEqual({ kind: 'out', count: 0 });
+		expect(render(true).box.stockChip()).toEqual({ kind: 'in', count: null });
+	});
+
+	it('says nothing where a count would mislead', () => {
+		expect(render(true, { made_to_order: true, quantity: 4 }).box.stockChip()).toBeNull();
+		expect(render(true, { bundle: { bundle_price: 1 }, quantity: 4 }).box.stockChip()).toBeNull();
+		expect(render(true, { sold_by: 'metre', metre_rule: { shortestCutTenths: 10 } }).box.stockChip()).toBeNull();
+		expect(render(true, { stock_status: 'on_backorder' }).box.stockChip()).toBeNull();
+	});
+
+	it('follows the chosen option once there is one, and draws the option table from the data', () => {
+		const { box } = render(true, withVariants);
+		expect(box.hasVariation()).toBe(true);
+		expect(box.stockChip()).toBeNull();
+		box.onSummary({ variation: variant(1) } as never);
+		expect(box.stockChip()).toEqual({ kind: 'low', count: 1 });
+		box.onSummary({ variation: variant(0, 'out_of_stock') } as never);
+		expect(box.stockChip()).toEqual({ kind: 'out', count: 0 });
+		expect(render(true, { attributes: [{ id: 1 }], variations: [] }).box.hasVariation()).toBe(false);
+	});
+});

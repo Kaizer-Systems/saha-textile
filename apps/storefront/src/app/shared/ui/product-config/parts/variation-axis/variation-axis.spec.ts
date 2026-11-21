@@ -11,8 +11,8 @@ describe('VariationAxis', () => {
 		return TestBed.createComponent(VariationAxis).componentInstance;
 	};
 
-	it('reads "Only N left" at or under the shop default of 2', () => {
-		expect(render().lowStock).toBe(2);
+	it('shows the option table unless the host places it elsewhere', () => {
+		expect(render().showTable()).toBe(true);
 	});
 
 	it('keeps the chosen option and tells the page', () => {

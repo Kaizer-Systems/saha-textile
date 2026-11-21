@@ -1,0 +1,225 @@
+// Product page buy box, laptop first screen (owner, 21 Nov 2026, product page brief rev 4, P10): Add to cart and
+// Buy now must be in the first screen on laptops too. The price, tax note, stock and the wishlist/compare/share icons
+// share one line; the description shows two lines; quantity, Add to cart and Buy now share one row; the facts and the
+// option table move below the buttons. Shared classes, so the buy bar and the pop-ups can use the same pieces.
+// Colours come from theme variables, so the colour-only dark file covers them.
+
+// One price line: price, MRP and % off, the tax note, the chosen option's stock, then the icons at its end (they drop
+// to the next line when the price is long).
+.st-price-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+
+	.product-section .right-box-contain & .price-rating {
+		margin: 0;
+	}
+
+	.tax-note {
+		margin: 0;
+	}
+
+	.wishlist-btn-group {
+		display: flex;
+		gap: 6px;
+		margin-left: auto;
+
+		.wishlist-button {
+			display: grid;
+			place-items: center;
+			width: 36px;
+			height: 36px;
+			padding: 0;
+			border: 1px solid var(--st-border);
+			border-radius: 50%;
+			background-color: var(--st-surface-soft);
+			transition: none;
+
+			i {
+				font-size: 18px;
+				line-height: 1;
+			}
+		}
+	}
+
+	// Phones keep the theme's centred column: the line centres and the icons stay beside the price.
+	@include mq-max(md) {
+		justify-content: center;
+
+		.wishlist-btn-group {
+			margin-left: 0;
+		}
+	}
+}
+
+// Stock of the chosen option as a small chip: green in stock, amber when low, red when sold out. The inline
+// counterpart of the product card's `.stock-chip`, which sits on the photo's corner in solid colours; this one sits
+// in the price line in soft tints, as drawn in the brief, so it has a name of its own.
+.st-stock {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 10px;
+	border-radius: 999px;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.6;
+	white-space: nowrap;
+	color: var(--st-success);
+	background-color: color-mix(in srgb, var(--st-success) 12%, transparent);
+
+	&.is-low {
+		color: color-mix(in srgb, var(--st-warning) 72%, var(--st-text-body));
+		background-color: color-mix(in srgb, var(--st-warning) 12%, transparent);
+	}
+
+	&.is-out {
+		color: var(--st-danger-text);
+		background-color: color-mix(in srgb, var(--st-danger-text) 10%, transparent);
+	}
+}
+
+// Two lines of text with "…"; the rest stays in the page for readers and search engines.
+.st-clamp-2 {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+}
+
+// Quantity, Add to cart and Buy now in one row; Notify me (sold out) takes a line of its own. The buttons share the
+// rest of the line but never shrink below their words: when a longer label (Bengali) cannot fit beside the others,
+// Buy now moves to its own full-width line instead of spilling over its edge.
+.st-cta-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px 8px;
+	align-items: stretch;
+	margin: 16px 0;
+
+	> .qty-box {
+		flex: 0 0 auto;
+		width: 100px;
+		max-width: none;
+		margin: 0;
+
+		.input-group {
+			flex-wrap: nowrap;
+			align-items: center;
+			height: 100%;
+		}
+
+		// Fabric by the metre: the box reads "2.5 m".
+		&.st-qty-length {
+			width: 140px;
+		}
+	}
+
+	> app-button {
+		display: flex;
+		flex: 1 1 0;
+		min-width: max-content;
+	}
+
+	> app-button .btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		min-height: 46px;
+		margin: 0;
+		padding-inline: 6px;
+		font-size: 14px;
+		font-weight: 600;
+		line-height: 1.25;
+		white-space: nowrap;
+	}
+
+	// As drawn in the brief: Add to cart outlined in the theme colour, Buy now filled; both fill on hover, as the
+	// theme's checkout buttons do.
+	> app-button .btn.border-theme-color {
+		border: 1px solid var(--theme-color);
+		background-color: transparent;
+		color: var(--theme-color);
+	}
+
+	> app-button .btn.bg-theme {
+		color: #fff;
+	}
+
+	> app-button .btn:not(:disabled):hover {
+		border-color: var(--theme-color);
+		background-color: var(--theme-color);
+		color: #fff;
+	}
+
+	// Notify me, the one live button on a sold-out page, in Add to cart's outlined look (the theme drops button
+	// borders, so without this it read as plain text).
+	> .st-cta-wide {
+		flex: 1 1 100%;
+
+		.btn {
+			width: 100%;
+			min-height: 46px;
+			border: 1px solid var(--theme-color);
+			background-color: transparent;
+			color: var(--theme-color);
+			font-size: 14px;
+			font-weight: 600;
+
+			&:hover {
+				background-color: var(--theme-color);
+				color: #fff;
+			}
+		}
+	}
+
+	// Small phones: the quantity gets its own centred line so both buttons keep a comfortable width.
+	@include mq-max(sm) {
+		> .qty-box {
+			flex: 1 1 100%;
+			width: auto;
+
+			.input-group {
+				max-width: 140px;
+				margin-inline: auto;
+			}
+		}
+	}
+}
+
+// What follows the buttons: the option table, then the attribute chips (facts, not choices).
+.st-after-cta {
+	> * + * {
+		margin-top: 16px;
+	}
+
+	.variation-table-wrap {
+		margin-top: 0;
+	}
+}
+
+// Laptops and tablets: a balanced 24 px under the breadcrumb (was 43), the price close under the name, and a shorter
+// description block (brief section 2).
+@include mq-min(md) {
+	app-product-detail {
+		section.product-section {
+			padding-top: 24px;
+		}
+
+		.product-section .right-box-contain {
+			.name {
+				margin-bottom: 4px;
+			}
+
+			.product-contain {
+				padding-bottom: 10px;
+
+				p {
+					margin-top: 8px;
+				}
+			}
+		}
+	}
+}

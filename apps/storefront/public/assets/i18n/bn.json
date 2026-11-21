@@ -935,6 +935,7 @@
 	"cart_line_limited_metre": "আর মাত্র {{count}} আছে। অনুগ্রহ করে মাপ কমান।",
 	"only_length_left": "তাড়াতাড়ি করুন! আর মাত্র {{length}} বাকি",
 	"only_count_left": "আর মাত্র {{count}}টি বাকি",
+	"in_stock_count_left": "স্টকে আছে · আর {{count}}টি বাকি",
 	"sold_by_unit": "বিক্রি হয়",
 	"sold_by_metre": "মিটারে",
 	"shortest_cut": "সবচেয়ে কম কাটা",

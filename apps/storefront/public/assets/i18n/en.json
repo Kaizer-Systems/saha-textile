@@ -935,6 +935,7 @@
 	"cart_line_limited_metre": "Only {{count}} left. Please shorten the length.",
 	"only_length_left": "Please hurry! Only {{length}} left",
 	"only_count_left": "Only {{count}} left",
+	"in_stock_count_left": "In stock · {{count}} left",
 	"sold_by_unit": "Sold by",
 	"sold_by_metre": "metre",
 	"shortest_cut": "Shortest cut",

@@ -74,6 +74,13 @@ make_certificates() {
 	cp "$PROOF/client/client.pem" "$certs/cloudflare-client-ca.pem"
 	openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj '/CN=Another Cloudflare Customer' \
 		-keyout "$PROOF/client/other.key" -out "$PROOF/client/other.pem" 2>/dev/null
+	# A renewed origin pair from the same CA, as Infisical's /infrastructure would carry it.
+	mkdir -p "$PROOF/renewed"
+	openssl req -newkey rsa:2048 -nodes -subj "/CN=$SITE_HOST" \
+		-keyout "$PROOF/renewed/origin.key" -out "$PROOF/renewed/origin.csr" 2>/dev/null
+	openssl x509 -req -in "$PROOF/renewed/origin.csr" -CA "$certs/origin-ca.pem" -CAkey "$PROOF/origin-ca.key" \
+		-CAcreateserial -days 2 -extfile "$PROOF/san.ext" -out "$PROOF/renewed/origin.pem" 2>/dev/null
+	cp "$certs/origin.pem" "$certs/origin.key" "$PROOF/"
 }
 
 make_secrets() {
@@ -301,6 +308,7 @@ docker exec "$(in_release "$FIRST" ps --quiet api | head -n 1)" node dist/create
 echo 'A bad deploy rolls back'
 BAD="$(write_release bad)"
 sed -i.bak 's/^CSRF_SECRET=.*/CSRF_SECRET=change-me/' "$BAD/secrets/api.env"
+cp "$PROOF/renewed/origin.pem" "$PROOF/renewed/origin.key" "$BAD/secrets/"
 load_start
 if HEALTH_TIMEOUT=60 "$BAD/bin/deploy.sh" "$BAD" >"$PROOF/bad-deploy.log" 2>&1; then fail 'a bad config went live'; fi
 load_stop
@@ -308,14 +316,34 @@ no_visible_gap 'visitors saw nothing during the failed deploy'
 pass 'a bad config exits with failure'
 expect 'the working release stays current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
 expect 'the shop answers after the rollback' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.pem" "$PROOF/origin.pem" && cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.key" "$PROOF/origin.key" \
+	&& pass "a failed deploy puts the server's own certificates back" || fail "a failed deploy left the release's certificates in place"
+[[ ! -e "$BAD/certs-before" ]] && pass 'the kept copies of the old certificates are gone' || fail 'the old certificates were left in the release folder'
+
+echo 'Certificates a release carries'
+MISMATCH="$(write_release mismatch)"
+cp "$PROOF/renewed/origin.pem" "$MISMATCH/secrets/origin.pem"
+cp "$PROOF/client/other.key" "$MISMATCH/secrets/origin.key"
+if "$MISMATCH/bin/deploy.sh" --check-only "$MISMATCH" >"$PROOF/mismatch.log" 2>&1; then fail 'a certificate with the wrong key passed the release check'; fi
+grep -q 'do not belong together' "$PROOF/mismatch.log" && pass 'a certificate with the wrong key is refused by the release check' \
+	|| fail "the mismatched pair was refused for another reason: $(tail -n 1 "$PROOF/mismatch.log")"
+rm "$MISMATCH/secrets/origin.key"
+if "$MISMATCH/bin/deploy.sh" "$MISMATCH" >"$PROOF/mismatch-deploy.log" 2>&1; then fail "a certificate that does not fit the server's key went live"; fi
+grep -q 'do not belong together' "$PROOF/mismatch-deploy.log" && pass "a certificate that does not fit the server's own key is refused before anything starts" \
+	|| fail "the half pair was refused for another reason: $(tail -n 1 "$PROOF/mismatch-deploy.log")"
+cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.pem" "$PROOF/origin.pem" && pass 'a refused release changes no certificate' || fail 'a refused release changed a certificate'
 
 echo 'A good second deploy, then manual rollback'
 SECOND="$(write_release second)"
+cp "$PROOF/renewed/origin.pem" "$PROOF/renewed/origin.key" "$SECOND/secrets/"
 load_start
 "$SECOND/bin/deploy.sh" "$SECOND" >/dev/null
 load_stop
 no_visible_gap 'no request failed during the deploy'
 expect 'the second release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$SECOND"
+cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.pem" "$PROOF/renewed/origin.pem" && pass "a live release's certificates are installed" || fail "the live release's certificates were not installed"
+SERVED="$(openssl s_client -connect "127.0.0.1:$EDGE_PORT" -servername "$SITE_HOST" -cert "$PROOF/client/client.pem" -key "$PROOF/client/client.key" </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 2>/dev/null)"
+expect 'the edge serves the new certificate' "$SERVED" "$(openssl x509 -noout -fingerprint -sha256 -in "$PROOF/renewed/origin.pem")"
 load_start
 "$SECOND/bin/rollback.sh" >/dev/null
 load_stop

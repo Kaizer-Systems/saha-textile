@@ -5,10 +5,11 @@
 #   starts. The local pipeline runs it on a folder made from the dev project (plan step 6).
 #
 #   check inputs → back up (production) → pull by digest → data services → database and search
-#   keys → release steps (roles, indexes, migrations, search; all before the switch) → apps →
-#   health and config checks
+#   keys → release steps (roles, indexes, migrations, search; all before the switch) → the
+#   release's certificates → apps → health and config checks
 #
-# Any failure after the apps change puts the previous release back and exits 1.
+# Any failure after the apps change puts the previous release back, with the server's own
+# certificates if the release replaced them, and exits 1.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 CHECK_ONLY=0
@@ -24,27 +25,82 @@ PUBLIC="$RELEASE/public"
 KEEP_RELEASES=3
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 
+CERT_FILES='origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem'
+CERTS="$SAHA_TEXTILE_ROOT/certs"
+# The server's own copies a deploy replaced, kept until the new release is live (private, 0700).
+CERTS_BEFORE="$RELEASE/certs-before"
+
 check_inputs() {
 	check_release
-	install_certs
 	local name
-	for name in origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem; do
-		[[ -s "$SAHA_TEXTILE_ROOT/certs/$name" ]] || die "certs/$name is missing or empty."
+	for name in $CERT_FILES; do
+		[[ -s "$SECRETS/$name" || -s "$CERTS/$name" ]] || die "certs/$name is missing or empty."
+	done
+	# A certificate from the release with the server's key, or the other way round, must still pair.
+	if [[ -s "$SECRETS/origin.pem" || -s "$SECRETS/origin.key" ]]; then
+		check_cert_pair "$(cert_source origin.pem)" "$(cert_source origin.key)"
+	fi
+}
+
+# The copy a deploy will use: the release's when it carries one, else the server's.
+cert_source() {
+	if [[ -s "$SECRETS/$1" ]]; then printf '%s' "$SECRETS/$1"; else printf '%s' "$CERTS/$1"; fi
+}
+
+# Certificates the release carries from Infisical (/infrastructure, owner 21 Nov) are checked before
+# anything starts: each parses, none has expired, and the origin certificate belongs to its key. A
+# wrong file would otherwise stop the edge on its next reload, and the previous release with it.
+check_release_certs() {
+	local name carried=0
+	for name in $CERT_FILES; do [[ -s "$SECRETS/$name" ]] && carried=1; done
+	[[ "$carried" == 1 ]] || return 0
+	command -v openssl >/dev/null || die 'openssl is needed to check the certificates this release carries.'
+	for name in origin.pem origin-ca.pem cloudflare-client-ca.pem; do
+		[[ -s "$SECRETS/$name" ]] || continue
+		openssl x509 -noout -in "$SECRETS/$name" 2>/dev/null || die "secrets/$name is not a certificate."
+		openssl x509 -noout -checkend 0 -in "$SECRETS/$name" >/dev/null 2>&1 || die "secrets/$name has expired."
+	done
+	if [[ -s "$SECRETS/origin.key" ]]; then
+		openssl pkey -noout -in "$SECRETS/origin.key" 2>/dev/null || die 'secrets/origin.key is not a private key.'
+	fi
+	if [[ -s "$SECRETS/origin.pem" && -s "$SECRETS/origin.key" ]]; then
+		check_cert_pair "$SECRETS/origin.pem" "$SECRETS/origin.key"
+	fi
+}
+
+check_cert_pair() {
+	local cert_key key_key
+	cert_key="$(openssl x509 -noout -pubkey -in "$1" 2>/dev/null)" || die 'origin.pem cannot be read.'
+	key_key="$(openssl pkey -pubout -in "$2" 2>/dev/null)" || die 'origin.key cannot be read.'
+	[[ -n "$cert_key" && "$cert_key" == "$key_key" ]] || die 'origin.pem and origin.key do not belong together.'
+}
+
+# Installs the release's certificates right before the switch. Each server copy it replaces is kept
+# in the release folder first, so a release that does not come up healthy puts them back.
+install_certs() {
+	local name mode
+	install -d -m 0755 "$CERTS"
+	install -d -m 0700 "$CERTS_BEFORE"
+	for name in $CERT_FILES; do
+		[[ -s "$SECRETS/$name" ]] || continue
+		cmp -s "$SECRETS/$name" "$CERTS/$name" && continue
+		[[ -e "$CERTS/$name" ]] && cp -p "$CERTS/$name" "$CERTS_BEFORE/$name"
+		mode=0644
+		[[ "$name" == *.key ]] && mode=0600
+		install -m "$mode" "$SECRETS/$name" "$CERTS/$name"
+		say "certs/$name from the release"
 	done
 }
 
-# Certificates the release carries from Infisical (/infrastructure, owner 21 Nov) replace the
-# server's own copies; any the release lacks stay as they are on the server.
-install_certs() {
-	local name mode
-	install -d -m 0755 "$SAHA_TEXTILE_ROOT/certs"
-	for name in origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem; do
-		[[ -s "$SECRETS/$name" ]] || continue
-		mode=0644
-		[[ "$name" == *.key ]] && mode=0600
-		install -m "$mode" "$SECRETS/$name" "$SAHA_TEXTILE_ROOT/certs/$name"
-		say "certs/$name from the release"
+# Puts back the server's own certificates that install_certs replaced.
+restore_certs() {
+	local name
+	for name in $CERT_FILES; do
+		[[ -e "$CERTS_BEFORE/$name" ]] || continue
+		cp -p "$CERTS_BEFORE/$name" "$CERTS/$name"
+		say "certs/$name put back"
 	done
+	rm -rf "$CERTS_BEFORE"
 }
 
 # Everything that can be checked in the release folder alone, before any server is touched.
@@ -76,6 +132,7 @@ check_release() {
 	done <"$RELEASE/required-secrets.txt"
 	check_payment_host
 	check_addresses
+	check_release_certs
 }
 
 # Required names this server deploy was told to leave blank: allowed-blank.txt, written by the
@@ -331,14 +388,18 @@ ensure_search_key
 set +e
 (
 	set -e
+	install_certs
 	start_apps
 )
 started=$?
 set -e
 if [[ "$started" -ne 0 ]]; then
+	restore_certs
 	restore_previous
 	die 'The release was not healthy and is not live. Read the logs over SSH.'
 fi
+# Live: the copies kept for a failure are no longer needed (they hold the old private key).
+rm -rf "$CERTS_BEFORE"
 
 if [[ -L "$CURRENT" ]]; then ln -sfn "$(readlink "$CURRENT")" "$PREVIOUS"; fi
 ln -sfn "$RELEASE" "$CURRENT"

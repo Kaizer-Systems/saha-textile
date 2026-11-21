@@ -44,12 +44,12 @@ export function namesInExample(text) {
 }
 
 /**
- * The certificate files deploy.sh insists on in certs/, read from its `for name in … ; do` list in
- * check_inputs (the one that tests $SAHA_TEXTILE_ROOT/certs).
+ * The certificate files deploy.sh insists on in certs/, read from its `CERT_FILES='…'` line (the
+ * list check_inputs, check_release_certs, install_certs and restore_certs all walk).
  * @param {string} deployScript
  */
 export function certificateFilesCheckedByDeploy(deployScript) {
-	const match = deployScript.match(/for name in ([a-z0-9. -]+); do\s*\n\s*\[\[ -s "\$SAHA_TEXTILE_ROOT\/certs\//);
+	const match = deployScript.match(/^CERT_FILES='([a-z0-9. -]+)'$/m);
 	return match ? new Set(match[1].split(/\s+/).filter(Boolean)) : null;
 }
 
@@ -160,7 +160,7 @@ export function findNameProblems({
 	const certs = inventory.certificateFileNames ?? [];
 	if (deployCerts !== undefined && certs.length) {
 		if (!deployCerts)
-			problems.push('Could not find the certificate list in docker/production/bin/deploy.sh (check_inputs).');
+			problems.push('Could not find the certificate list in docker/production/bin/deploy.sh (CERT_FILES).');
 		else if ([...certs].sort().join() !== [...deployCerts].sort().join())
 			problems.push('The certificate files deploy.sh checks differ from certificateFileNames in the inventory.');
 	}

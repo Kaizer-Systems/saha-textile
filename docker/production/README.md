@@ -30,6 +30,12 @@ with. The newest three releases and their images stay on disk.
 `origin-ca.pem` (Cloudflare's Origin CA root) and `cloudflare-client-ca.pem` (the certificate
 behind Authenticated Origin Pulls).
 
+A release may carry any of these four from Infisical's `/infrastructure`. `deploy.sh` checks them
+before anything starts: each certificate parses and has not expired, and `origin.pem` belongs to
+the key it will be used with, whether that key comes from the release or is already on the server.
+It installs them only right before the switch, keeps the copies it replaced, and puts those back if
+the new release does not come up healthy; once the release is live the kept copies are deleted.
+
 ## Files in `secrets/`
 
 | File                  | Holds                                                                                                                          |

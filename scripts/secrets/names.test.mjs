@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { findNameProblems, namesInExample, namesReadByCode, secretFilesCheckedByDeploy } from './names.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { ROOT, loadInventory } from './inventory.mjs';
+import {
+	certificateFilesCheckedByDeploy,
+	findNameProblems,
+	namesInExample,
+	namesReadByCode,
+	secretFilesCheckedByDeploy,
+} from './names.mjs';
 
 const deployScript = `check_inputs() {
 	for name in api.env backup.env mongo-keyfile mongo-app-password \\
@@ -112,4 +122,11 @@ test('a setting the release writes itself is known without being an Infisical na
 		'RELEASE_ALLOWED_BLANK is written by the release, so it must not also be an Infisical name in apiVariables.',
 		'RELEASE_ALLOWED_BLANK is listed as written by the release, but no code reads it. Remove it.',
 	]);
+});
+
+test('deploy.sh walks one certificate list, the same four files the inventory names', () => {
+	const deploy = readFileSync(join(ROOT, 'docker/production/bin/deploy.sh'), 'utf8');
+	const listed = certificateFilesCheckedByDeploy(deploy);
+	assert.deepEqual([...(listed ?? [])].sort(), [...loadInventory().certificateFiles].sort());
+	assert.equal(certificateFilesCheckedByDeploy('for name in a b; do'), null);
 });

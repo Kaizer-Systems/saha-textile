@@ -30,6 +30,7 @@ import { toolsGh } from './gh-tools.mjs';
 import { BRANCH_NAME, checkoutBranches, menusFileAt } from './git-branches.mjs';
 import { repositoryOf } from './infisical-places.mjs';
 import { loadInventory, ROOT, TIERS } from '../secrets/inventory.mjs';
+import { FirstBootError, firstBootTemplate, prepareFirstBoot } from './first-boot.mjs';
 
 export const RUNNER_PORT = Number(process.env.CONSOLE_RUNNER_PORT ?? 4419);
 export const TOKEN_FILE = join(ROOT, 'docker/release-console/env/runner-token');
@@ -668,6 +669,26 @@ export function createRunner(token) {
 					forget(placeKey(place));
 				}
 			}
+			// A new server's first-boot file (DigitalOcean › Droplets › create): the deploy key pair is made
+			// here and its private half stays on this Mac; the password and the tunnel token are used once and
+			// never kept or logged. The answer goes only to the console API, which holds the helper's token.
+			if (req.method === 'POST' && path === '/server/first-boot') {
+				let raw = '';
+				for await (const chunk of req) {
+					raw += chunk;
+					if (raw.length > 16 * 1024) return send(413, { message: 'Too long.' });
+				}
+				const body = raw ? JSON.parse(raw) : {};
+				raw = '';
+				try {
+					return send(200, await prepareFirstBoot(body));
+				} catch (error) {
+					if (error instanceof FirstBootError) return send(400, { message: error.message });
+					throw error;
+				}
+			}
+			if (req.method === 'GET' && path === '/server/first-boot/template')
+				return send(200, { text: firstBootTemplate() });
 			if (req.method === 'GET' && path === '/github/check') {
 				const repository = url.searchParams.get('repository') ?? '';
 				if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))

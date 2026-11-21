@@ -31,6 +31,7 @@ import { VendorState } from './vendor-screens';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
+import { PIN_LENGTH, PinBoxes } from '../shared/pin-boxes';
 
 /** The seven steps, in DigitalOcean's own order (brief v7, screens-do.js). */
 export const DO_STEPS = [
@@ -43,7 +44,7 @@ export const DO_STEPS = [
 	['finalize', 'Name and confirm'],
 ] as const;
 /** Tabs that are another view of a step. */
-const STEP_OF: Record<string, string> = { v5: 'size', imageOpen: 'image' };
+const STEP_OF: Record<string, string> = { v5: 'size', imageOpen: 'image', confirm: 'finalize' };
 
 const COUNTRY: Record<string, string> = {
 	nyc: 'USA',
@@ -106,7 +107,7 @@ export class DropletDrafts {
 /** DigitalOcean › Droplets › the seven create steps, read live from DigitalOcean. */
 @Component({
 	selector: 'rc-do-create',
-	imports: [VendorState],
+	imports: [VendorState, PinBoxes],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -1113,6 +1114,115 @@ POST https://api.digitalocean.com/v2/droplets
 						</p>
 					</div>
 				</div>
+				@if (step() === 'confirm') {
+					<div
+						class="rc-modal-back"
+						(keydown.escape)="go('finalize')"
+					>
+						<form
+							class="rc-modal"
+							role="dialog"
+							[attr.aria-label]="'Create ' + d.names[0]"
+							(submit)="$event.preventDefault(); create()"
+						>
+							<h3 class="rc-h">Create {{ d.names[0] }}</h3>
+							<p class="rc-p">
+								A new {{ d.environment }} server, billed at
+								<b>{{ money(cost().total) }} a month</b>
+								from now.
+								@if (isProduction()) {
+									The shop keeps running where it is; nothing moves to this server until a deploy and
+									the DNS switch.
+								} @else {
+									It is billed by the hour and stops costing when you destroy it.
+								}
+							</p>
+							<div class="rc-form">
+								<label>
+									Type {{ d.environment }}
+									<span class="rc-msearch">
+										<input
+											type="text"
+											autocomplete="off"
+											[attr.aria-label]="'Type ' + d.environment + ' to confirm'"
+											[value]="typed()"
+											(input)="typed.set($any($event.target).value)"
+										/>
+									</span>
+								</label>
+								<label>
+									Admin password
+									<span class="rc-msearch">
+										<input
+											type="password"
+											autocomplete="new-password"
+											aria-label="Admin password for the Recovery Console"
+											(input)="password.set($any($event.target).value)"
+										/>
+									</span>
+								</label>
+								<label>
+									Once more
+									<span class="rc-msearch">
+										<input
+											type="password"
+											autocomplete="new-password"
+											aria-label="Admin password again"
+											(input)="password2.set($any($event.target).value)"
+										/>
+									</span>
+								</label>
+								<label>
+									PIN
+									<rc-pin-boxes
+										label="Console PIN to create"
+										[autofocus]="false"
+										[disabled]="busy()"
+										(changed)="pin.set($event)"
+									/>
+								</label>
+							</div>
+							<p class="rc-note">
+								The admin password opens the Recovery Console when the network is down. It is hashed on
+								this Mac into the first-boot file and never kept: save it in NordPass first.
+							</p>
+							@if (confirmProblem(); as why) {
+								<div class="rc-banner amber small">
+									<span class="rc-dot amber"></span>
+									<div>{{ why }}</div>
+								</div>
+							}
+							@if (message(); as m) {
+								<div class="rc-banner red small">
+									<span class="rc-dot red"></span>
+									<div>{{ m }}</div>
+								</div>
+							}
+							<div class="rc-row end">
+								<button
+									type="button"
+									class="rc-btn ghost"
+									(click)="go('finalize')"
+								>
+									Cancel
+								</button>
+								<button
+									type="submit"
+									class="rc-btn"
+									[class.primary]="!isProduction()"
+									[class.danger]="isProduction()"
+									[disabled]="!!confirmProblem() || busy()"
+								>
+									<span
+										class="lock"
+										aria-hidden="true"
+									></span>
+									{{ busy() ? 'Starting…' : 'Create and pay' }}
+								</button>
+							</div>
+						</form>
+					</div>
+				}
 			}
 		</rc-vendor-state>
 	`,
@@ -1183,7 +1293,10 @@ export class DoCreateScreen {
 		return serverDraftOf(this.ctx.projectId() ?? 'project', first);
 	});
 
-	protected readonly stepKey = computed(() => (this.step() === 'imageOpen' ? 'image' : this.step()));
+	protected readonly stepKey = computed(() => {
+		const s = this.step();
+		return s === 'imageOpen' ? 'image' : s === 'confirm' ? 'finalize' : s;
+	});
 	protected readonly stepIndex = computed(() => {
 		const k = STEP_OF[this.step()] ?? this.step();
 		return Math.max(
@@ -1465,6 +1578,47 @@ export class DoCreateScreen {
 	// ---- summary
 	protected readonly size = computed(() => this.catalog()?.sizes.find((s) => s.slug === this.draft().size));
 	protected readonly cost = computed(() => dropletCost(this.draft(), this.size()));
+	// ---- confirm (PIN, typed name, the admin's Recovery Console password)
+	protected readonly typed = signal('');
+	protected readonly password = signal('');
+	protected readonly password2 = signal('');
+	protected readonly pin = signal('');
+	protected readonly busy = signal(false);
+	protected readonly message = signal('');
+	protected readonly isProduction = computed(() => /prod/i.test(this.draft().environment));
+	protected readonly confirmProblem = computed(() => {
+		if (this.problems().length) return this.problems()[0] ?? '';
+		if (this.typed().trim() !== this.draft().environment) return `Type ${this.draft().environment} to confirm.`;
+		const pw = this.password();
+		if (pw.length < 12) return 'The admin password needs at least 12 characters.';
+		if (pw !== this.password2()) return 'The two passwords differ.';
+		if (this.pin().length !== PIN_LENGTH) return 'Type your console PIN.';
+		return '';
+	});
+	protected async create(): Promise<void> {
+		if (this.confirmProblem() || this.busy()) return;
+		this.busy.set(true);
+		this.message.set('');
+		try {
+			const job = await this.api.createDroplet(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', this.slot(), {
+				pin: this.pin(),
+				confirm: this.typed().trim(),
+				draft: this.draft(),
+				adminPassword: this.password(),
+			});
+			this.password.set('');
+			this.password2.set('');
+			void this.router.navigate([], {
+				queryParams: { tab: 'creating', job: job.id },
+				queryParamsHandling: 'merge',
+			});
+		} catch (err) {
+			this.message.set(err instanceof Error ? err.message : 'The console API did not answer.');
+		} finally {
+			this.busy.set(false);
+		}
+	}
+
 	protected readonly problems = computed(() => {
 		const c = this.catalog();
 		return c ? draftProblems(this.draft(), c) : [];

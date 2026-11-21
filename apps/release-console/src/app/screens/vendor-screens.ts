@@ -275,6 +275,28 @@ function cfSlot(ctx: ConsoleContext) {
 			[pending]="q.isPending()"
 			[failed]="q.isError()"
 		>
+			<div class="rc-g4">
+				<div class="rc-stat">
+					<span class="rc-label">Droplets</span>
+					<b>{{ rows().length }}</b>
+					<small>{{ running() }} running · {{ rows().length - running() }} not running</small>
+				</div>
+				<div class="rc-stat">
+					<span class="rc-label">This month</span>
+					<b>{{ month() ? '$' + month() : '—' }}</b>
+					<small>whole account · DigitalOcean billing</small>
+				</div>
+				<div class="rc-stat">
+					<span class="rc-label">Droplet limit</span>
+					<b>{{ limit() ?? '—' }}</b>
+					<small>on this account</small>
+				</div>
+				<div class="rc-stat">
+					<span class="rc-label">Read</span>
+					<b>{{ when(readAt()) }}</b>
+					<small>with the read key, every minute</small>
+				</div>
+			</div>
 			<div class="rc-panel">
 				<div class="rc-ph">
 					<span class="rc-label">
@@ -283,8 +305,35 @@ function cfSlot(ctx: ConsoleContext) {
 							[named]="false"
 							[size]="14"
 						/>
-						Droplets · {{ rows().length }} · read {{ when(readAt()) }}
+						Droplets · {{ rows().length }}
 					</span>
+					<div class="rc-row">
+						<button
+							type="button"
+							class="rc-btn ghost"
+							(click)="open('creating')"
+						>
+							Create and destroy jobs
+						</button>
+						<button
+							type="button"
+							class="rc-btn ghost"
+							(click)="open('destroy')"
+						>
+							Destroy a server
+						</button>
+						<button
+							type="button"
+							class="rc-btn primary"
+							(click)="open('region')"
+						>
+							<span
+								class="lock"
+								aria-hidden="true"
+							></span>
+							Create droplet
+						</button>
+					</div>
 				</div>
 				<div class="rc-tw">
 					<table class="rc-t">
@@ -344,6 +393,17 @@ export class DropletsScreen {
 		const a = this.q.data();
 		return a?.state === 'ok' ? a.readAt : null;
 	});
+	private readonly router = inject(Router);
+	private readonly account = injectQuery(() => ({
+		queryKey: ['vendor', 'do-account', this.ctx.projectId(), this.ctx.repoId()],
+		queryFn: () => this.api.cloudAccount(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', doSlot(this.ctx)),
+	}));
+	protected readonly running = computed(() => this.rows().filter((d) => d.status === 'active').length);
+	protected readonly month = computed(() => ok(this.account.data())?.monthToDateUsage ?? null);
+	protected readonly limit = computed(() => ok(this.account.data())?.dropletLimit ?? null);
+	protected open(tab: string): void {
+		void this.router.navigate([], { queryParams: { tab }, queryParamsHandling: 'merge' });
+	}
 }
 
 /** DigitalOcean › Manage › Cloud account: the account, droplet limit and this cycle's usage. */

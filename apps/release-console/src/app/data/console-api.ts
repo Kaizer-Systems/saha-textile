@@ -36,6 +36,9 @@ import {
 	type AuditEntry,
 	type CloudAccount,
 	type DoCatalog,
+	type DropletJob,
+	type StartDropletCreate,
+	type StartDropletDestroy,
 	type ConsoleView,
 	type DnsRecord,
 	type Droplet,
@@ -71,6 +74,8 @@ import {
 	auditEntriesSchema,
 	cloudAccountAnswerSchema,
 	doCatalogAnswerSchema,
+	dropletJobSchema,
+	dropletJobsSchema,
 	consoleViewSchema,
 	dnsRecordsAnswerSchema,
 	dropletsAnswerSchema,
@@ -275,6 +280,31 @@ export class ConsoleApi {
 	}
 	cloudAccount(p: string, r: string, slot: string): Promise<VendorAnswer<CloudAccount>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/account`, cloudAccountAnswerSchema);
+	}
+	/** DigitalOcean › Droplets: create a server after the PIN; the screen follows the job. */
+	createDroplet(p: string, r: string, slot: string, body: StartDropletCreate): Promise<DropletJob> {
+		return this.call(
+			'POST',
+			`/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs/create`,
+			dropletJobSchema,
+			body,
+			120_000,
+		);
+	}
+	destroyDroplet(p: string, r: string, slot: string, body: StartDropletDestroy): Promise<DropletJob> {
+		return this.call(
+			'POST',
+			`/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs/destroy`,
+			dropletJobSchema,
+			body,
+			60_000,
+		);
+	}
+	dropletJob(p: string, r: string, slot: string, id: string): Promise<DropletJob> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs/${id}`, dropletJobSchema);
+	}
+	dropletJobs(p: string, r: string, slot: string): Promise<DropletJob[]> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/droplet-jobs`, dropletJobsSchema);
 	}
 	/** Everything DigitalOcean's create steps choose from (the Marketplace is long, so a longer wait). */
 	doCatalog(p: string, r: string, slot: string): Promise<VendorAnswer<DoCatalog>> {

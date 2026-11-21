@@ -20,6 +20,8 @@ import { ServerDeployController } from './projects/server-deploy.controller.js';
 import { VendorReadsService } from './projects/vendor-reads.service.js';
 import { HelperErrorFilter } from './runner/helper-error.filter.js';
 import { RunnerClient } from './runner/runner-client.js';
+import { DropletJobs } from './servers/droplet-jobs.js';
+import { ServersController } from './servers/servers.controller.js';
 import { ConsoleStore } from './store/console-store.js';
 
 @Module({
@@ -29,6 +31,7 @@ import { ConsoleStore } from './store/console-store.js';
 		LocalStackController,
 		ProjectsController,
 		ServerDeployController,
+		ServersController,
 		LocalController,
 		AppFilesController,
 	],
@@ -44,6 +47,7 @@ import { ConsoleStore } from './store/console-store.js';
 		StatsCollector,
 		LocalAlerts,
 		RequestLog,
+		DropletJobs,
 		{ provide: APP_FILTER, useClass: HelperErrorFilter },
 		{ provide: APP_GUARD, useClass: SessionGuard },
 	],

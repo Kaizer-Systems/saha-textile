@@ -514,3 +514,93 @@ test('DigitalOcean’s create steps read live lists, price the droplet and show 
 	await expect(page.locator('.do-sum pre')).toContainText(`"name": "browser-test-${info.project.name}-staging"`);
 	await expect(page.locator('.do-sum pre')).toContainText('"user_data": "(docker/production/first-boot.yaml');
 });
+
+test('Create asks for the typed name, the admin password and the PIN, then follows each step', async ({
+	page,
+}, info) => {
+	const base = `browser-test-${info.project.name}`;
+	const at = new Date().toISOString();
+	const steps = (upto: number) =>
+		[
+			['tunnel', 'Cloudflare tunnel for the server'],
+			['first-boot', 'First-boot file filled in on this Mac'],
+			['droplet', 'Request accepted by DigitalOcean'],
+			['active', 'Server built and switched on'],
+		].map(([key, label], n) => ({
+			key,
+			label,
+			detail: n < upto ? 'done (sample)' : '',
+			state: n < upto ? 'done' : n === upto ? 'running' : 'queued',
+			ms: n < upto ? 1000 : null,
+		}));
+	const job = (upto: number, state: string) => ({
+		id: 'job-sample',
+		kind: 'create',
+		environment: 'staging',
+		name: `${base}-staging`,
+		state,
+		startedAt: at,
+		finishedAt: state === 'running' ? null : at,
+		steps: steps(upto),
+		dropletId: 42,
+		ipv4: '203.0.113.9',
+		ipv6: null,
+		privateIp: null,
+		monthly: 24,
+		hourly: 0.036,
+		error: null,
+	});
+	let created: Record<string, unknown> | null = null;
+	let reads = 0;
+	const cors = (origin: string) => ({
+		'access-control-allow-origin': origin,
+		'access-control-allow-credentials': 'true',
+		'access-control-allow-headers': 'content-type, x-console-session',
+		'access-control-allow-methods': 'GET, POST, OPTIONS',
+	});
+	await page.route('**/cloud/*/catalog', (route) =>
+		route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			headers: cors(route.request().headers()['origin'] ?? '*'),
+			body: JSON.stringify({ state: 'ok', readAt: at, data: sampleCatalog }),
+		}),
+	);
+	await page.route('**/droplet-jobs/**', (route) => {
+		const headers = cors(route.request().headers()['origin'] ?? '*');
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		if (route.request().method() === 'POST') {
+			created = route.request().postDataJSON() as Record<string, unknown>;
+			return route.fulfill({
+				status: 202,
+				contentType: 'application/json',
+				headers,
+				body: JSON.stringify(job(0, 'running')),
+			});
+		}
+		reads += 1;
+		const body = reads < 2 ? job(2, 'running') : job(4, 'done');
+		return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+	});
+	await unlock(page);
+	await page.goto(`/p/${base}/r/saha-textile/droplets?tab=auth`);
+	await page.getByRole('checkbox', { name: /example key/ }).click();
+	await page.getByRole('link', { name: /7\s*Name and confirm/ }).click();
+	await page.getByRole('button', { name: /Create staging droplet/ }).click();
+	const box = page.getByRole('dialog', { name: `Create ${base}-staging` });
+	await expect(box).toBeVisible();
+	const go = box.getByRole('button', { name: /Create and pay/ });
+	await expect(box.getByText('Type staging to confirm.')).toBeVisible();
+	await box.getByLabel('Type staging to confirm').fill('staging');
+	await box.getByLabel('Admin password for the Recovery Console').fill('example only words');
+	await box.getByLabel('Admin password again').fill('example only words');
+	await expect(box.getByText('Type your console PIN.')).toBeVisible();
+	await expect(go).toBeDisabled();
+	await box.getByLabel('PIN digit 1 of 6').click();
+	await page.keyboard.type(PIN);
+	await expect(go).toBeEnabled();
+	await go.click();
+	await expect(page.getByText('Each step, as it happens')).toBeVisible();
+	await expect(page.getByText(`${base}-staging is ready`)).toBeVisible();
+	expect(created).toMatchObject({ confirm: 'staging', pin: PIN, draft: { environment: 'staging', sshKeyIds: [7] } });
+});

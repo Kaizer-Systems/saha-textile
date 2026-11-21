@@ -213,6 +213,36 @@ export class BuyBox {
 		if (result) configurator.applyAddon(result.selections, result.measurements, result.measured);
 	}
 
+	/** A set as the bar shows it (brief P4): how many pieces it holds and whether its choices are complete. */
+	readonly setView = computed(() => {
+		const bundle = this.product().bundle;
+		if (!bundle) return null;
+		return { pieces: bundle.components?.length ?? 0, ready: this.configurator()?.bundleState()?.valid ?? false };
+	});
+
+	/** The bar's Configure set: the page's set part in a sheet, written back on Save. */
+	async openSet(): Promise<void> {
+		const configurator = this.configurator();
+		const snapshot = configurator?.setSnapshot();
+		if (!configurator || !snapshot) return;
+		const popup = this.modals.open(AddonSheet, {
+			ariaLabelledBy: 'addon_sheet_title',
+			centered: true,
+			scrollable: true,
+			size: 'lg',
+			windowClass: 'theme-modal st-sheet',
+		});
+		(popup.componentInstance as AddonSheet).start({
+			product: this.product(),
+			basePrice: configurator.effectiveBase(),
+			selections: snapshot.selections,
+			measurements: snapshot.measurements,
+			mode: 'set',
+		});
+		const result = (await popup.result.catch(() => null)) as AddonSheetResult | null;
+		if (result) configurator.applySet(result.selections, result.measurements, result.measured);
+	}
+
 	/** The buy bar's chip lists choose through the page's own option buttons (brief P4). */
 	chooseValue(value: IAttributeValue) {
 		this.configurator()?.chooseValue(value);

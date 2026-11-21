@@ -154,6 +154,18 @@ export class ProductConfigurator implements OnInit {
 		return this.addonPart()?.snapshot() ?? null;
 	}
 
+	private readonly setPart = viewChild(BundleConfigurator);
+
+	/** The set part's choices, for the buy bar's Configure set sheet to start from. */
+	setSnapshot() {
+		return this.setPart()?.snapshot() ?? null;
+	}
+
+	/** Writes the Configure set sheet's choices back into the page's set part. */
+	applySet(selections: Record<string, string>, measurements: Record<string, number>, measured: boolean) {
+		this.setPart()?.apply(selections, measurements, measured);
+	}
+
 	/** Writes the buy bar's sheet's add-on choices back into the page's add-on part. */
 	applyAddon(selections: Record<string, string>, measurements: Record<string, number>, measured: boolean) {
 		this.addonPart()?.apply(selections, measurements, measured);

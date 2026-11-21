@@ -26,6 +26,8 @@ const host = (overrides: Record<string, unknown> = {}) => ({
 	chooseValue: vi.fn(),
 	addonView: signal(null),
 	openAddon: vi.fn(),
+	setView: signal(null),
+	openSet: vi.fn(),
 	...overrides,
 });
 
@@ -154,5 +156,15 @@ describe('BuyBar', () => {
 	it('shows the price with the add-on once one adds to it', () => {
 		const { el } = draw(host({ summary: signal({ unitPrice: 15050 }), discount: signal(0) }));
 		expect(el.querySelector('.st-bar-price')?.textContent?.replace(/\D/g, '')).toContain('15050');
+	});
+
+	it('shows a set’s pieces and state, Configure set, and no Buy now', () => {
+		const stub = host({ setView: signal({ pieces: 3, ready: false }), purchasable: signal(false) });
+		const { el } = draw(stub);
+		expect(el.querySelector('.st-bar-set')?.textContent).toContain('set_pieces');
+		expect(el.querySelector('.st-stock.is-low')?.textContent).toContain('set_choices_needed');
+		expect(el.querySelector('#bar-buy')).toBeNull();
+		el.querySelector<HTMLButtonElement>('#bar-configure-set')?.click();
+		expect(stub.openSet).toHaveBeenCalled();
 	});
 });

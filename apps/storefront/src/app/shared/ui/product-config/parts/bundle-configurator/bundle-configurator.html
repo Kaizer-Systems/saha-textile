@@ -71,15 +71,15 @@
 		/>
 		}
 	</div>
-	} @if (needsMeasurements()) {
+	} @if (needsMeasurements()) { @for (key of [formKey()]; track key) {
 	<app-measurements-form
 		[fields]="bundle().measurement_fields || []"
 		[title]="'measurements_required_for_selection'"
-		[initialValues]="initialMeasurements()"
+		[initialValues]="formSeed() ?? initialMeasurements()"
 		(valueChange)="onMeasurementsValue($event)"
 		(validChange)="onMeasurementsValid($event)"
 	/>
-	}
+	} }
 
 	<!-- Order summary snapshot -->
 	<div class="bundle-summary">

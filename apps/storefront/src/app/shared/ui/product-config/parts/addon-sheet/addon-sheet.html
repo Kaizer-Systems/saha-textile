@@ -5,7 +5,8 @@
 			class="h5 modal-title"
 			id="addon_sheet_title"
 		>
-			{{ (sheet.mode === 'designs' ? 'choose_design' : 'edit_addon') | transloco }}
+			{{ (sheet.mode === 'designs' ? 'choose_design' : sheet.mode === 'set' ? 'configure_set' : 'edit_addon') |
+			transloco }}
 		</h2>
 		<button
 			type="button"
@@ -17,6 +18,14 @@
 		</button>
 	</div>
 	<div class="modal-body">
+		@if (sheet.mode === 'set') {
+		<app-bundle-configurator
+			[product]="sheet.product"
+			[initialSelections]="sheet.selections"
+			[initialMeasurements]="sheet.measurements"
+			(stateChange)="onState($event)"
+		/>
+		} @else {
 		<app-addon-group
 			[product]="sheet.product"
 			[basePrice]="sheet.basePrice"
@@ -25,6 +34,7 @@
 			[measureAs]="sheet.mode === 'designs' ? 'row' : 'form'"
 			(stateChange)="onState($event)"
 		/>
+		}
 	</div>
 	<div class="modal-footer st-sheet-footer">
 		<p class="mb-0">

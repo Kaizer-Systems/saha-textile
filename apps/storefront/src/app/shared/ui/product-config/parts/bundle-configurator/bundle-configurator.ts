@@ -93,6 +93,25 @@ export class BundleConfigurator implements OnInit {
 		this.emit();
 	}
 
+	/** Changes when values are written in from outside, so the form is drawn again with them. */
+	readonly formKey = signal(0);
+	readonly formSeed = signal<Record<string, number> | undefined>(undefined);
+
+	/** Takes choices made in the buy bar's Configure set sheet (brief P4) as this part's own. */
+	apply(selections: Record<string, string>, measurements: Record<string, number>, measured: boolean) {
+		this.selections.set({ ...selections });
+		this.measurements.set({ ...measurements });
+		this.measurementsValid.set(measured);
+		this.formSeed.set({ ...measurements });
+		this.formKey.update((key) => key + 1);
+		this.emit();
+	}
+
+	/** The current choices, for a sheet to start from. */
+	snapshot(): { selections: Record<string, string>; measurements: Record<string, number>; measured: boolean } {
+		return { selections: this.selections(), measurements: this.measurements(), measured: this.measurementsValid() };
+	}
+
 	private emit() {
 		this.stateChange.emit({
 			total: this.total(),

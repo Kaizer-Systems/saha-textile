@@ -99,6 +99,17 @@
 						</span>
 						}
 					</div>
+					} @if (host().setView(); as set) {
+					<!-- A set (brief P4): what it is and whether its choices are complete. -->
+					<div class="st-bar-chips">
+						<span class="st-bar-set">{{ 'set_pieces' | transloco: { count: set.pieces } }}</span>
+						<span
+							class="st-stock"
+							[class.is-low]="!set.ready"
+						>
+							{{ (set.ready ? 'set_ready' : 'set_choices_needed') | transloco }}
+						</span>
+					</div>
 					}
 					<p class="st-bar-price">
 						<span class="theme-color">
@@ -151,7 +162,16 @@
 				>
 					{{ 'notify_me' | transloco }}
 				</app-button>
-				} @else { @if (host().addonView()) {
+				} @else { @if (host().setView()) {
+				<app-button
+					[id]="'bar-configure-set'"
+					[class]="'btn btn-md border-theme-color'"
+					[spinner]="false"
+					(click)="host().openSet()"
+				>
+					{{ 'configure_set' | transloco }}
+				</app-button>
+				} @if (host().addonView()) {
 				<app-button
 					[id]="'bar-edit-addon'"
 					[class]="'btn btn-md border-theme-color'"
@@ -170,7 +190,7 @@
 					<i class="ri-shopping-cart-line me-1"></i>
 					{{ 'add_to_cart' | transloco }}
 				</app-button>
-				@if (!host().addonView()) {
+				@if (!host().addonView() && !host().setView()) {
 				<app-button
 					[id]="'bar-buy'"
 					[class]="'btn btn-md bg-theme'"

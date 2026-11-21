@@ -4,7 +4,7 @@ wide: true
 description: The profiles that tell the image worker what to make — shape, sizes per family, quality, smallest photo, fills, upload limit and types — how they are added, edited, switched off and deleted, and why an edit never changes a picture already made.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-16'
+last_verified: '2026-11-21'
 source_of_truth:
     - packages/contracts/src/media.ts
     - packages/core-domain/src/media/profiles.ts
@@ -66,6 +66,8 @@ Each add, edit and delete is audited (`media.profile.create`, `.update`, `.delet
 ## The product-card sizes (17 Nov 2026)
 
 The card family (shop cards and the product page's thumbnail strip) has 200, 400, 600, 700 and 960 px. The 600 px size was added for phones: a two-up card is shown 126–185 px wide, so at 2.6–3× a phone needed about 500–560 px and took the 700 px file. Release step `0006-media-card-600` gives built-in profiles still on the seeded 200, 400, 700 and 960 px the new size and a new version, so **Bring older versions up to date** adds 600 px files to photos made before; card sizes an admin changed, and profiles an admin made, are left as they are. The step matches the old list exactly with `$eq`: on a free-form field Mongoose turns a bare array into `$in`, which would also match an admin's own sizes. The shop's card `sizes` was measured at the same time (`product-box-horizontal.ts`).
+
+The Image V2 swatch family (`swatch_image_v2`) has 120, 240 and 360 px, so the tile stays sharp on 3× phones. Release step `0012-media-swatch-v2-360` gives built-in profiles still on the seeded 120 and 240 px the new size and a new version, the same way. The built-in **Swatch cut 1:1** profile (`swatch_1x1`) holds only the two square swatch families: it is the version every swatch cut is made under (see [Swatch cuts](./swatch-cuts.md)).
 
 ## Tests
 

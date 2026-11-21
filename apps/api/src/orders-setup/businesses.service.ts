@@ -57,6 +57,16 @@ const round2 = (amount: number): number => Math.round((amount + Number.EPSILON) 
  * except by a set-off entry under a written agreement (off for Saha Textile). A business that buys
  * from us has one zone (RETAIL by default).
  */
+/**
+ * When a dated ledger entry (a receipt, a set-off) sits in the statement, so the running balance follows
+ * what really happened: dated today, the moment it is recorded (after the orders placed earlier today);
+ * dated earlier, the end of that day in India (after that day's orders, which it pays).
+ */
+export function entryMoment(day: string, now = new Date()): string {
+	if (day === istDay(now)) return now.toISOString();
+	return new Date(`${day}T23:59:59.999+05:30`).toISOString();
+}
+
 @Injectable()
 export class BusinessesService {
 	constructor(
@@ -380,7 +390,7 @@ export class BusinessesService {
 					documentId: `rcpt_${randomUUID()}`,
 					documentNumber: number,
 					note: [input.method, input.reference, input.note].filter(Boolean).join(' · ').slice(0, 500),
-					at: new Date(`${input.receivedOn}T12:00:00+05:30`).toISOString(),
+					at: entryMoment(input.receivedOn),
 					by: actor ?? 'system',
 				}),
 				context,
@@ -492,7 +502,7 @@ export class BusinessesService {
 		const entries = await this.transactions.withTransaction(async (context) => {
 			const number = await this.numbers.issue('journal', context);
 			const documentId = `jv_${randomUUID()}`;
-			const at = input.on ? new Date(`${input.on}T12:00:00+05:30`).toISOString() : new Date().toISOString();
+			const at = input.on ? entryMoment(input.on) : new Date().toISOString();
 			const base = {
 				businessId: id,
 				kind: 'setOff' as const,

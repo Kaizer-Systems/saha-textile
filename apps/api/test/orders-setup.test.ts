@@ -7,7 +7,7 @@ import {
 } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { BusinessesService } from '../src/orders-setup/businesses.service';
+import { BusinessesService, entryMoment } from '../src/orders-setup/businesses.service';
 import { CouponsService } from '../src/orders-setup/coupons.service';
 import { OrderSettingsService } from '../src/orders-setup/order-settings.service';
 import { ZonePricingService } from '../src/orders-setup/zone-pricing.service';
@@ -294,6 +294,16 @@ describe('document numbers (DEC-NUMBERING)', () => {
 		};
 		await expect(service(locked).saveNumbering(changed, 'adm')).rejects.toThrow();
 		await expect(service(locked).saveNumbering(write, 'adm')).resolves.toBeTruthy();
+	});
+});
+
+describe('when a receipt or set-off sits in a business statement', () => {
+	const now = new Date('2026-11-21T07:10:00Z'); // 12:40 in India
+	it('dated today: the moment it is recorded, after this morning’s and this afternoon’s orders', () => {
+		expect(entryMoment('2026-11-21', now)).toBe('2026-11-21T07:10:00.000Z');
+	});
+	it('dated earlier: the end of that day in India, after that day’s orders', () => {
+		expect(entryMoment('2026-11-12', now)).toBe('2026-11-12T18:29:59.999Z');
 	});
 });
 

@@ -7,7 +7,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ConsentStore } from '@core/consent/consent.store';
-import { CONSENT_ASK_CLASS } from '@core/consent/cookie-catalogue';
+import { CONSENT_ASK_CLASS, CONSENT_TAP_ATTRIBUTE } from '@core/consent/cookie-catalogue';
 import { AuthStore } from '@core/state/auth.store';
 
 import { Cookie } from './cookie';
@@ -15,6 +15,8 @@ import { CookieSettings, longestLabel } from './cookie-settings/cookie-settings'
 
 const consentDouble = (functional = false) => ({
 	settingsRequests: signal(0),
+	decided: signal(false),
+	openSettings: vi.fn(),
 	allows: vi.fn(() => functional),
 	save: vi.fn(),
 	syncAccount: vi.fn(async () => {}),
@@ -108,6 +110,39 @@ describe('Cookie', () => {
 		return { box: fixture.componentInstance, consent, isAuthenticated };
 	};
 
+	it('carries out a tap noted before it woke, once, when no replay did (D1, 21 Nov)', () => {
+		const { box, consent } = setup();
+		document.documentElement.setAttribute(CONSENT_TAP_ATTRIBUTE, 'cookie_accept_btn');
+		box.carryOutEarlyTap(document);
+		expect(consent.save).toHaveBeenCalledOnce();
+		expect(consent.save).toHaveBeenLastCalledWith({ functional: true });
+		expect(document.documentElement.hasAttribute(CONSENT_TAP_ATTRIBUTE)).toBe(false);
+		box.carryOutEarlyTap(document);
+		expect(consent.save).toHaveBeenCalledOnce();
+	});
+
+	it('leaves a noted tap alone when Angular replayed it, or a decision exists', () => {
+		const replayed = setup();
+		replayed.box.necessaryOnly();
+		document.documentElement.setAttribute(CONSENT_TAP_ATTRIBUTE, 'cookie_necessary_btn');
+		replayed.box.carryOutEarlyTap(document);
+		expect(replayed.consent.save).toHaveBeenCalledOnce();
+
+		const decided = setup();
+		decided.consent.decided.set(true);
+		document.documentElement.setAttribute(CONSENT_TAP_ATTRIBUTE, 'cookie_accept_btn');
+		decided.box.carryOutEarlyTap(document);
+		expect(decided.consent.save).not.toHaveBeenCalled();
+	});
+
+	it('opens the settings for a noted Choose tap', () => {
+		const { box, consent } = setup();
+		document.documentElement.setAttribute(CONSENT_TAP_ATTRIBUTE, 'cookie_choose_btn');
+		box.carryOutEarlyTap(document);
+		expect(consent.openSettings).toHaveBeenCalledOnce();
+		expect(consent.save).not.toHaveBeenCalled();
+	});
+
 	it('answers from the box', () => {
 		const { box, consent } = setup();
 		box.acceptAll();
@@ -143,7 +178,10 @@ describe('Cookie box markup (D1)', () => {
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
 			providers: [
-				{ provide: ConsentStore, useValue: { ...consentDouble(), boxOpen: signal(open), openSettings: vi.fn() } },
+				{
+					provide: ConsentStore,
+					useValue: { ...consentDouble(), boxOpen: signal(open), openSettings: vi.fn() },
+				},
 				{ provide: AuthStore, useValue: { isAuthenticated: signal(false) } },
 				{ provide: NgbModal, useValue: { open: vi.fn() } },
 				provideRouter([]),

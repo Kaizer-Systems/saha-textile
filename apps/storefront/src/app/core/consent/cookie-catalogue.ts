@@ -11,6 +11,13 @@ export const COOKIE_POLICY_VERSION = '2026-11-10';
  */
 export const CONSENT_ASK_CLASS = 'st-consent-ask';
 
+/**
+ * Which of the box's buttons a visitor tapped before the box's code woke up (decision D1): the page head notes it on
+ * `<html>`, and the box carries it out once awake if Angular's replay did not (consent-ask.vite.ts).
+ */
+export const CONSENT_TAP_ATTRIBUTE = 'data-st-consent-tap';
+export const CONSENT_BUTTONS = ['cookie_accept_btn', 'cookie_necessary_btn', 'cookie_choose_btn'] as const;
+
 export type OptionalCategory = 'functional' | 'analytics' | 'targeting' | 'marketing' | 'promotional';
 
 export interface CookieItem {

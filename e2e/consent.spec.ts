@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 import { COOKIE_POLICY_VERSION, FUNCTIONAL_ITEMS } from '../apps/storefront/src/app/core/consent/cookie-catalogue';
 
@@ -34,7 +34,13 @@ test.describe('Cookie box', () => {
 						id: 'c0ffee00-0000-4000-8000-0000000000d1',
 						version: COOKIE_POLICY_VERSION,
 						savedAt: '2026-11-17T00:00:00.000Z',
-						categories: { functional: false, analytics: false, targeting: false, marketing: false, promotional: false },
+						categories: {
+							functional: false,
+							analytics: false,
+							targeting: false,
+							marketing: false,
+							promotional: false,
+						},
 					}),
 				);
 				await context.addCookies([{ name: 'st_consent', value, url: baseURL ?? '' }]);
@@ -62,11 +68,42 @@ test.describe('Cookie box', () => {
 		await expect(box(page)).toBeHidden();
 	});
 
-	test('a tap on the box the moment the page appears still counts (D1: the box wakes on its first tap)', async ({
+	// D1: the box is drawn with the page and wakes on idle or on its first tap. Each case below fixes the order of
+	// events by holding script files, so neither passes nor fails by the machine's speed (21 Nov).
+	test("a tap before any of the shop's code has loaded still counts", async ({ page }) => {
+		const held: Route[] = [];
+		let released = false;
+		await page.route(/\/assets\/[^/]+\.js$/, async (route) => {
+			if (released) await route.continue();
+			else held.push(route);
+		});
+		await page.goto('/en/', { waitUntil: 'commit' });
+		// Drawn by the server and shown by the page head, with no app code run yet.
+		await expect(box(page)).toBeVisible();
+		await page.locator('#cookie_accept_btn').click();
+		released = true;
+		for (const route of held.splice(0)) await route.continue();
+		await expect(box(page)).toBeHidden();
+		await expect.poll(async () => (await consentCookie(page))?.categories?.['functional']).toBe(true);
+	});
+
+	test('a tap while the box is already waking up still counts (Angular does not replay that one)', async ({
 		page,
 	}) => {
-		await page.goto('/en/', { waitUntil: 'domcontentloaded' });
+		// The box's own code: asked for once the page is idle, then held until the tap has happened.
+		let started!: () => void;
+		const waking = new Promise<void>((resolve) => (started = resolve));
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => (release = resolve));
+		await page.route(/\/assets\/cookie-[^/]+\.js$/, async (route) => {
+			started();
+			await gate;
+			await route.continue();
+		});
+		await page.goto('/en/');
+		await waking;
 		await page.locator('#cookie_accept_btn').click();
+		release();
 		await expect(box(page)).toBeHidden();
 		await expect.poll(async () => (await consentCookie(page))?.categories?.['functional']).toBe(true);
 	});

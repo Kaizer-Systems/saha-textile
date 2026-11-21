@@ -76,6 +76,7 @@ import {
 	doCatalogAnswerSchema,
 	dropletJobSchema,
 	dropletJobsSchema,
+	sshListAnswerSchema,
 	consoleViewSchema,
 	dnsRecordsAnswerSchema,
 	dropletsAnswerSchema,
@@ -280,6 +281,10 @@ export class ConsoleApi {
 	}
 	cloudAccount(p: string, r: string, slot: string): Promise<VendorAnswer<CloudAccount>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/account`, cloudAccountAnswerSchema);
+	}
+	/** Who may sign in over SSH to the project's servers; every server's Access rule follows. */
+	setSshEmails(p: string, body: { pin: string; emails: string[] }): Promise<{ emails: string[]; hosts: string[] }> {
+		return this.call('PUT', `/api/projects/${p}/ssh-emails`, sshListAnswerSchema, body, 120_000);
 	}
 	/** DigitalOcean › Droplets: create a server after the PIN; the screen follows the job. */
 	createDroplet(p: string, r: string, slot: string, body: StartDropletCreate): Promise<DropletJob> {

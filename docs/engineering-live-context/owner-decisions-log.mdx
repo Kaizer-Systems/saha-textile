@@ -2266,3 +2266,28 @@ Brief: https://claude.ai/artifact/4d5yK6GhiTrg3T25KybWeN (revision 4). Owner, 21
   blank is listed in `docker/infisical/README.md` (Changes on 2026-11-21). Its sign-in secrets and
   passwords are still this computer's copies until the server gets its own.
 - **Revision 4 additions approved** (owner, 21 Nov: "Approve additions including everything and all the optionals too"): the icons, the phone spacing (breadcrumb padding 7 px, a 16 px gap below it, the photo full width), the buy-bar chip lists, the pencil, Edit add-on and Configure set pop-ups, and the admin look preview. Phones show no arrows on the photo (dots and swipe), as P3 says; laptops and tablets keep them.
+
+## Owner decision round (2026-11-21) — servers made from the Release Console: SSH, certificates, Search Console key
+
+- **SSH route stays the plan's.** Asked why Cloudflare is needed for a droplet's SSH, the owner
+  chose "Keep the plan: tunnel + Access (Recommended)": port 22 stays closed, SSH goes out through
+  `cloudflared`, the deploy job proves itself with an Access service token.
+- **Who may sign in is a list.** Owner: "going with your recommended option, but flexibility to add
+  more people too as and when required, not just one." Each project keeps a list of emails
+  (Release Console › Droplets › Who may sign in over SSH); changing it rewrites every server's
+  Access rule.
+- **Certificates live in Infisical.** Owner: "key and csr made on the device that triggers it, yes
+  not just this mac. and if possible also include to hold the public and private key in infisical
+  in the specific project's specific env … if infisical has no value to pull from then key and csr
+  gets made again, else subsequent releases pull from infisical when value avalable." Built: the
+  optional `/infrastructure` names `origin.pem`, `origin.key`, `origin-ca.pem` and
+  `cloudflare-client-ca.pem` (variable-names.json `certificateFileNames`); a release carries the
+  ones that are set and `deploy.sh` installs them into `certs/`. Creating a server reuses them when
+  set, otherwise makes the key and CSR on the console's machine and our own origin-pulls CA, and
+  saves them there.
+- **Search Console key in production.** Owner: the Google key belongs to the production project.
+  The service account `release-console-search` lives in Google Cloud project
+  `saha-textile-production` (Restricted user on `sc-domain:sahatextile.com`); the organisation's
+  "Disable service account key creation" rule is lifted for that project only while the key is
+  made, then put back ("Brief: off, create, back on"). The unused account in `saha-textile-dev` was
+  deleted on the owner's yes.

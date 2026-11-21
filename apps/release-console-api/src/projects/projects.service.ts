@@ -89,7 +89,7 @@ export class ProjectsService {
 		const ids = input.repositories.map((r) => r.id);
 		if (new Set(ids).size !== ids.length) throw new ConflictException('Two repositories share an id.');
 		input.repositories.forEach(checkRepository);
-		const project: Project = { ...input, keys: [], createdAt: new Date().toISOString() };
+		const project: Project = { ...input, keys: [], sshEmails: [], createdAt: new Date().toISOString() };
 		this.store.update((f) => ({
 			...f,
 			workspaces: [...new Set([...f.workspaces, project.workspace])],
@@ -202,6 +202,22 @@ export class ProjectsService {
 			),
 		}));
 		this.store.audit(projectId, 'key-unlinked', `${ref.label} (${keyId}) unlinked; it stays in Infisical`);
+	}
+
+	/** Who may sign in over SSH to the project's servers (owner, 21 Nov: a list, more added later). */
+	setSshEmails(projectId: string, emails: string[]): Project {
+		this.project(projectId);
+		const clean = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+		this.store.update((f) => ({
+			...f,
+			projects: f.projects.map((p) => (p.id !== projectId ? p : { ...p, sshEmails: clean })),
+		}));
+		this.store.audit(
+			projectId,
+			'ssh-list',
+			`${clean.length} ${clean.length === 1 ? 'person' : 'people'} on the SSH list`,
+		);
+		return this.project(projectId);
 	}
 
 	setSlotKeys(projectId: string, input: SlotKeys): Project {

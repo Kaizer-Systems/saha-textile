@@ -120,6 +120,160 @@ export const cfWrites = {
 		});
 		return 'created';
 	},
+	/** The tunnel's routes: SSH on its own host name, nothing else (plan §5). */
+	async routeSsh(key: string, accountId: string, id: string, sshHost: string): Promise<void> {
+		await call('PUT', `/accounts/${accountId}/cfd_tunnel/${id}/configurations`, key, {
+			config: { ingress: [{ hostname: sshHost, service: 'ssh://localhost:22' }, { service: 'http_status:404' }] },
+		});
+	},
+	/** Points `host` at the tunnel (CNAME, proxied); refuses a record that points anywhere else. */
+	async pointTunnel(key: string, zoneId: string, host: string, tunnelId: string): Promise<'created' | 'kept'> {
+		const target = `${tunnelId}.cfargotunnel.com`;
+		const existing = arr(
+			await call('GET', `/zones/${zoneId}/dns_records?name=${encodeURIComponent(host)}&per_page=50`, key),
+		).map(rec);
+		if (existing.some((r) => str(r['type']) === 'CNAME' && str(r['content']) === target)) return 'kept';
+		const other = existing.find((r) => ['A', 'AAAA', 'CNAME'].includes(str(r['type'])));
+		if (other)
+			throw new VendorError(
+				`${host} already points to ${str(other['content'])} (${str(other['type'])}); the console does not overwrite it.`,
+				409,
+			);
+		await call('POST', `/zones/${zoneId}/dns_records`, key, {
+			type: 'CNAME',
+			name: host,
+			content: target,
+			proxied: true,
+			ttl: 1,
+			comment: 'Release Console: SSH through the server tunnel',
+		});
+		return 'created';
+	},
+	/** A service token for the deploy job; its secret is shown once, here, and goes straight to GitHub. */
+	async serviceToken(key: string, accountId: string, name: string) {
+		const t = rec(
+			await call('POST', `/accounts/${accountId}/access/service_tokens`, key, { name, duration: '8760h' }),
+		);
+		return { id: str(t['id']), clientId: str(t['client_id']), clientSecret: str(t['client_secret']) };
+	},
+	async serviceTokensNamed(key: string, accountId: string, name: string): Promise<string[]> {
+		return arr(await call('GET', `/accounts/${accountId}/access/service_tokens?per_page=100`, key))
+			.map(rec)
+			.filter((t) => str(t['name']) === name)
+			.map((t) => str(t['id']));
+	},
+	async deleteServiceToken(key: string, accountId: string, id: string): Promise<void> {
+		await call('DELETE', `/accounts/${accountId}/access/service_tokens/${id}`, key);
+	},
+	/** The Access application on the SSH host, if there is one. */
+	async accessAppFor(key: string, accountId: string, host: string): Promise<{ id: string } | null> {
+		const app = arr(await call('GET', `/accounts/${accountId}/access/apps?domain=${encodeURIComponent(host)}`, key))
+			.map(rec)
+			.find((a) => str(a['domain']) === host);
+		return app ? { id: str(app['id']) } : null;
+	},
+	/**
+	 * The SSH host's Access application with exactly two rules: the deploy job's service token, and
+	 * the people on the project's list (a one-time code to their email). Made, or rewritten in place.
+	 */
+	async accessApp(
+		key: string,
+		accountId: string,
+		input: { name: string; host: string; tokenId: string | null; emails: string[] },
+	): Promise<string> {
+		const policies = [
+			...(input.tokenId
+				? [
+						{
+							name: 'Deploy job',
+							decision: 'non_identity',
+							include: [{ service_token: { token_id: input.tokenId } }],
+						},
+					]
+				: []),
+			{
+				name: 'People on the project list',
+				decision: 'allow',
+				include: input.emails.map((email) => ({ email: { email } })),
+			},
+		].map((p, n) => ({ ...p, precedence: n + 1 }));
+		const body = {
+			name: input.name,
+			domain: input.host,
+			type: 'self_hosted',
+			session_duration: '24h',
+			app_launcher_visible: false,
+			policies,
+		};
+		const existing = await cfWrites.accessAppFor(key, accountId, input.host);
+		const app = rec(
+			existing
+				? await call('PUT', `/accounts/${accountId}/access/apps/${existing.id}`, key, body)
+				: await call('POST', `/accounts/${accountId}/access/apps`, key, body),
+		);
+		return str(app['id']);
+	},
+	async deleteAccessApp(key: string, accountId: string, id: string): Promise<void> {
+		await call('DELETE', `/accounts/${accountId}/access/apps/${id}`, key);
+	},
+	/** Cloudflare's Origin CA signs the CSR made on the console's machine: 15 years, these hosts. */
+	async originCertificate(key: string, csr: string, hosts: string[]): Promise<string> {
+		const r = rec(
+			await call('POST', '/certificates', key, {
+				hostnames: hosts,
+				requested_validity: 5475,
+				request_type: 'origin-rsa',
+				csr,
+			}),
+		);
+		const cert = str(r['certificate']);
+		if (!cert.includes('BEGIN CERTIFICATE')) throw new VendorError('Cloudflare returned no certificate.', 502);
+		return cert;
+	},
+	/** Our own origin-pulls client certificate, uploaded for per-host Authenticated Origin Pulls. */
+	async uploadOriginPulls(key: string, zoneId: string, certificate: string, privateKey: string): Promise<string> {
+		const r = rec(
+			await call('POST', `/zones/${zoneId}/origin_tls_client_auth/hostnames/certificates`, key, {
+				certificate,
+				private_key: privateKey,
+			}),
+		);
+		return str(r['id']);
+	},
+	/** Whether every host already presents a client certificate to the origin. */
+	async originPullsOn(key: string, zoneId: string, hosts: string[]): Promise<boolean> {
+		for (const host of hosts) {
+			const r = rec(
+				await call(
+					'GET',
+					`/zones/${zoneId}/origin_tls_client_auth/hostnames/${encodeURIComponent(host)}`,
+					key,
+				).catch(() => null),
+			);
+			if (r['enabled'] !== true) return false;
+		}
+		return true;
+	},
+	async setOriginPulls(key: string, zoneId: string, hosts: string[], certId: string | null, enabled: boolean) {
+		await call('PUT', `/zones/${zoneId}/origin_tls_client_auth/hostnames`, key, {
+			config: hosts.map((hostname) => ({ hostname, enabled, ...(certId ? { cert_id: certId } : {}) })),
+		});
+	},
+	/** Removes the tunnel CNAME of `host` (only when it points at this tunnel). */
+	async unpointTunnel(key: string, zoneId: string, host: string, tunnelId: string): Promise<number> {
+		const target = `${tunnelId}.cfargotunnel.com`;
+		const ours = arr(
+			await call(
+				'GET',
+				`/zones/${zoneId}/dns_records?type=CNAME&name=${encodeURIComponent(host)}&per_page=50`,
+				key,
+			),
+		)
+			.map(rec)
+			.filter((r) => str(r['content']) === target);
+		for (const r of ours) await call('DELETE', `/zones/${zoneId}/dns_records/${str(r['id'])}`, key);
+		return ours.length;
+	},
 	/** Removes `host`'s A records that point at `ip` only. */
 	async unpointHost(key: string, zoneId: string, host: string, ip: string): Promise<number> {
 		const ours = arr(

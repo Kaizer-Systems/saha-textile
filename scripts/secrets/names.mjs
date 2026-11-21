@@ -44,6 +44,16 @@ export function namesInExample(text) {
 }
 
 /**
+ * The certificate files deploy.sh insists on in certs/, read from its `for name in … ; do` list in
+ * check_inputs (the one that tests $SAHA_TEXTILE_ROOT/certs).
+ * @param {string} deployScript
+ */
+export function certificateFilesCheckedByDeploy(deployScript) {
+	const match = deployScript.match(/for name in ([a-z0-9. -]+); do\s*\n\s*\[\[ -s "\$SAHA_TEXTILE_ROOT\/certs\//);
+	return match ? new Set(match[1].split(/\s+/).filter(Boolean)) : null;
+}
+
+/**
  * The secret files deploy.sh insists on, read from its `for name in … ; do` list in check_inputs.
  * @param {string} deployScript
  */
@@ -60,10 +70,19 @@ export function secretFilesCheckedByDeploy(deployScript) {
  * @param {Map<string, string[]>} input.codeNames
  * @param {string[]} input.requiredFile            required-secrets.txt names
  * @param {Set<string> | null} input.deployFiles  secret files deploy.sh checks
+ * @param {Set<string> | null} [input.deployCerts]  certificate files deploy.sh checks in certs/
  * @param {string} input.productionCompose
  * @returns {string[]} problems, empty when everything agrees
  */
-export function findNameProblems({ inventory, exampleNames, codeNames, requiredFile, deployFiles, productionCompose }) {
+export function findNameProblems({
+	inventory,
+	exampleNames,
+	codeNames,
+	requiredFile,
+	deployFiles,
+	deployCerts,
+	productionCompose,
+}) {
 	const problems = [];
 	const known = new Set([...inventory.apiVariables, ...inventory.developmentOnlyApiVariables]);
 	const used = new Set([...exampleNames, ...codeNames.keys()]);
@@ -137,6 +156,13 @@ export function findNameProblems({ inventory, exampleNames, codeNames, requiredF
 		problems.push(
 			'The secret files deploy.sh checks differ from the inventory (api.env, backup.env, infrastructureSecretFileNames and derivedSecretFiles).',
 		);
+	}
+	const certs = inventory.certificateFileNames ?? [];
+	if (deployCerts !== undefined && certs.length) {
+		if (!deployCerts)
+			problems.push('Could not find the certificate list in docker/production/bin/deploy.sh (check_inputs).');
+		else if ([...certs].sort().join() !== [...deployCerts].sort().join())
+			problems.push('The certificate files deploy.sh checks differ from certificateFileNames in the inventory.');
 	}
 	return problems;
 }

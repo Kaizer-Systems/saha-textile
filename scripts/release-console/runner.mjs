@@ -9,7 +9,7 @@
  */
 import { execFile, spawn, spawnSync } from 'node:child_process';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { join } from 'node:path';
@@ -31,6 +31,7 @@ import { BRANCH_NAME, checkoutBranches, menusFileAt } from './git-branches.mjs';
 import { repositoryOf } from './infisical-places.mjs';
 import { loadInventory, ROOT, TIERS } from '../secrets/inventory.mjs';
 import { FirstBootError, firstBootTemplate, prepareFirstBoot } from './first-boot.mjs';
+import { SetupError, aopPair, certificateFiles, githubEnvironment, knownHosts, originCsr } from './server-setup.mjs';
 
 export const RUNNER_PORT = Number(process.env.CONSOLE_RUNNER_PORT ?? 4419);
 export const TOKEN_FILE = join(ROOT, 'docker/release-console/env/runner-token');
@@ -684,6 +685,49 @@ export function createRunner(token) {
 					return send(200, await prepareFirstBoot(body));
 				} catch (error) {
 					if (error instanceof FirstBootError) return send(400, { message: error.message });
+					throw error;
+				}
+			}
+			// A new server's setup on this machine (owner, 21 Nov): certificate keys made here, the files
+			// saved to the environment's Infisical /infrastructure, GitHub's environment set with gh, and the
+			// host key read through the tunnel. Bodies are size-limited; nothing is logged.
+			const setupRoutes = {
+				'/server/origin-csr': (b) => originCsr(b),
+				'/server/aop-pair': (b) => aopPair(b),
+				'/server/certificates-save': async (b) => {
+					const { files, keyFile } = await certificateFiles(b);
+					const place = {
+						project: String(b.place?.project ?? ''),
+						environment: String(b.place?.environment ?? ''),
+						folder: '/',
+					};
+					const saved = await saveSecrets({
+						place,
+						changes: Object.entries(files).map(([name, value]) => ({
+							folder: 'infrastructure',
+							name,
+							value,
+						})),
+					});
+					if (keyFile) rmSync(keyFile, { force: true });
+					return { saved: Object.keys(files), result: saved };
+				},
+				'/github/environment': (b) => githubEnvironment(b),
+				'/server/known-hosts': (b) => knownHosts(b),
+			};
+			if (req.method === 'POST' && Object.hasOwn(setupRoutes, path)) {
+				let raw = '';
+				for await (const chunk of req) {
+					raw += chunk;
+					if (raw.length > 64 * 1024) return send(413, { message: 'Too long.' });
+				}
+				const body = raw ? JSON.parse(raw) : {};
+				raw = '';
+				try {
+					return send(200, await setupRoutes[path](body));
+				} catch (error) {
+					if (error instanceof SetupError || error instanceof FirstBootError)
+						return send(400, { message: error.message });
 					throw error;
 				}
 			}

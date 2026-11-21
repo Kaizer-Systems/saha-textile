@@ -21,7 +21,7 @@ import { VendorReadsService } from './projects/vendor-reads.service.js';
 import { HelperErrorFilter } from './runner/helper-error.filter.js';
 import { RunnerClient } from './runner/runner-client.js';
 import { DropletJobs } from './servers/droplet-jobs.js';
-import { ServersController } from './servers/servers.controller.js';
+import { ServersController, SshListController } from './servers/servers.controller.js';
 import { ConsoleStore } from './store/console-store.js';
 
 @Module({
@@ -32,6 +32,7 @@ import { ConsoleStore } from './store/console-store.js';
 		ProjectsController,
 		ServerDeployController,
 		ServersController,
+		SshListController,
 		LocalController,
 		AppFilesController,
 	],

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
+import { SshList } from './ssh-list';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
@@ -266,7 +267,7 @@ function cfSlot(ctx: ConsoleContext) {
 /** DigitalOcean › Compute › Droplets: every droplet the read key sees. */
 @Component({
 	selector: 'rc-droplets-screen',
-	imports: [VendorState, VendorLogo],
+	imports: [VendorState, VendorLogo, SshList],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-vendor-state
@@ -376,6 +377,7 @@ function cfSlot(ctx: ConsoleContext) {
 					</table>
 				</div>
 			</div>
+			<rc-ssh-list />
 		</rc-vendor-state>
 	`,
 })

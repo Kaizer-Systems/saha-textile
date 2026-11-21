@@ -594,6 +594,9 @@ test('Create asks for the typed name, the admin password and the PIN, then follo
 	await box.getByLabel('Type staging to confirm').fill('staging');
 	await box.getByLabel('Admin password for the Recovery Console').fill('example only words');
 	await box.getByLabel('Admin password again').fill('example only words');
+	await expect(box.getByText('Add at least one person who may sign in over SSH.')).toBeVisible();
+	await box.getByLabel('Add a person who may sign in over SSH').fill('owner@example.com');
+	await page.keyboard.press('Enter');
 	await expect(box.getByText('Type your console PIN.')).toBeVisible();
 	await expect(go).toBeDisabled();
 	await box.getByLabel('PIN digit 1 of 6').click();
@@ -602,5 +605,10 @@ test('Create asks for the typed name, the admin password and the PIN, then follo
 	await go.click();
 	await expect(page.getByText('Each step, as it happens')).toBeVisible();
 	await expect(page.getByText(`${base}-staging is ready`)).toBeVisible();
-	expect(created).toMatchObject({ confirm: 'staging', pin: PIN, draft: { environment: 'staging', sshKeyIds: [7] } });
+	expect(created).toMatchObject({
+		confirm: 'staging',
+		pin: PIN,
+		sshEmails: ['owner@example.com'],
+		draft: { environment: 'staging', sshKeyIds: [7] },
+	});
 });

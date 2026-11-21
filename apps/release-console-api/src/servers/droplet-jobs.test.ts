@@ -18,11 +18,27 @@ const project = {
 };
 const repo = {
 	id: 'saha-textile',
+	sourceCode: { vendor: 'github', repository: 'example/shop', keyId: null },
+	secrets: [{ id: 'inf', vendor: 'infisical' }],
 	cloud: [{ id: 'do1', vendor: 'digitalocean', keyIds: ['do'] }],
 	edge: [{ id: 'cf1', vendor: 'cloudflare', zones: ['example.com'], keyIds: ['cf'] }],
 	environments: [
-		{ name: 'staging', cloudId: 'do1', domains: ['staging.example.com', 'api-staging.example.com'] },
-		{ name: 'production', cloudId: 'do1', domains: ['example.com'] },
+		{
+			name: 'staging',
+			label: 'Staging',
+			cloudId: 'do1',
+			secretsId: 'inf',
+			secretsPath: 'example-staging/staging',
+			domains: ['staging.example.com', 'api-staging.example.com'],
+		},
+		{
+			name: 'production',
+			label: 'Production',
+			cloudId: 'do1',
+			secretsId: 'inf',
+			secretsPath: 'example-production/prod',
+			domains: ['example.com'],
+		},
 	],
 };
 const catalog = {
@@ -34,10 +50,12 @@ function setup(over: Partial<JobDeps> = {}) {
 	const projects = {
 		repository: () => ({ project, repo }),
 		valueOf: async (ref: { id: string }) => `example-${ref.id}-key`,
+		setSshEmails: () => project,
 	} as unknown as ProjectsService;
 	const jobs = new DropletJobs(projects, { audit } as unknown as ConsoleStore, {} as RunnerClient);
 	const created: Record<string, unknown>[] = [];
 	const records: string[] = [];
+	const helperCalls: string[] = [];
 	let polls = 0;
 	jobs.deps = {
 		catalog: async () => catalog,
@@ -92,6 +110,19 @@ function setup(over: Partial<JobDeps> = {}) {
 				return 'created' as const;
 			},
 			unpointHost: async () => 1,
+			routeSsh: async () => undefined,
+			pointTunnel: async () => 'created' as const,
+			serviceToken: async () => ({ id: 'st1', clientId: 'example-id', clientSecret: 'example-secret' }),
+			serviceTokensNamed: async () => [],
+			deleteServiceToken: async () => undefined,
+			accessAppFor: async () => null,
+			accessApp: async () => 'app1',
+			deleteAccessApp: async () => undefined,
+			originCertificate: async () => '-----BEGIN CERTIFICATE-----',
+			uploadOriginPulls: async () => 'aop1',
+			originPullsOn: async () => false,
+			setOriginPulls: async () => undefined,
+			unpointTunnel: async () => 1,
 		},
 		ranges: async () => [
 			'173.245.48.0/20',
@@ -100,12 +131,23 @@ function setup(over: Partial<JobDeps> = {}) {
 			'103.31.4.0/22',
 			'141.101.64.0/18',
 		],
-		firstBoot: async () => ({ userData: '#cloud-config\n', deployPublicKey: 'ssh-ed25519 AAAAdeploy' }),
+		helper: (async (path: string) => {
+			helperCalls.push(path);
+			if (path === '/server/first-boot') return { userData: '#cloud-config\n' };
+			if (path === '/server/origin-csr') return { csr: '-----BEGIN CERTIFICATE REQUEST-----' };
+			if (path === '/server/aop-pair')
+				return { caCertificate: 'CA', clientCertificate: 'CLIENT', clientKey: 'KEY' };
+			if (path === '/server/certificates-save') return { saved: ['origin.pem', 'origin.key'] };
+			if (path === '/github/environment') return { environmentMade: false, set: ['SERVER_SSH_HOST'] };
+			if (path === '/server/known-hosts') return { line: 'ssh-staging.example.com ssh-ed25519 AAAAhost' };
+			return {};
+		}) as JobDeps['helper'],
+		infisicalSet: async () => new Set<string>(),
 		sleep: async () => undefined,
 		waits: { activeEvery: 1, activeFor: 60_000, tunnelEvery: 1, tunnelFor: 60_000 },
 		...over,
 	} as JobDeps;
-	return { jobs, audit, created, records };
+	return { jobs, audit, created, records, helperCalls };
 }
 
 const draft = () => ({ ...serverDraftOf('saha-textile', 'staging'), sshKeyIds: [7] });
@@ -116,17 +158,21 @@ const done = async (jobs: DropletJobs, id: string) => {
 
 describe('creating and destroying a server', () => {
 	it('creates the droplet step by step with the filled first-boot file and the Cloudflare records', async () => {
-		const { jobs, created, records, audit } = setup();
+		const { jobs, created, records, audit, helperCalls } = setup();
 		const started = await jobs.startCreate('saha-textile', 'saha-textile', 'do1', {
 			pin: '000000',
 			confirm: 'staging',
 			draft: draft(),
 			adminPassword: 'example only words',
+			sshEmails: ['owner@example.com'],
 		});
 		const job = await done(jobs, started.id);
 		expect(job.state).toBe('done');
 		expect(job.steps.map((s) => `${s.key}:${s.state}`)).toEqual([
 			'tunnel:done',
+			'ssh-host:done',
+			'access:done',
+			'certificates:done',
 			'first-boot:done',
 			'volume:skipped',
 			'droplet:done',
@@ -135,14 +181,27 @@ describe('creating and destroying a server', () => {
 			'project:skipped',
 			'firewall:done',
 			'dns:done',
+			'origin-pulls:done',
 			'tunnel-up:done',
+			'github:done',
+			'known-hosts:done',
 		]);
 		expect(created[0]).toMatchObject({ name: 'saha-textile-staging', user_data: '#cloud-config\n', ssh_keys: [7] });
 		expect(created[0]).not.toHaveProperty('volumes');
 		expect(records).toEqual(['staging.example.com', 'api-staging.example.com']);
+		// Certificates made on the console's machine and kept in Infisical; GitHub set; host key read.
+		expect(helperCalls).toEqual([
+			'/server/origin-csr',
+			'/server/aop-pair',
+			'/server/certificates-save',
+			'/server/first-boot',
+			'/github/environment',
+			'/server/known-hosts',
+			'/github/environment',
+		]);
 		expect(job.monthly).toBe(24);
 		// The audit log names what happened, never the password or the token.
-		expect(JSON.stringify(audit.mock.calls)).not.toMatch(/example only words|example-tunnel-token/);
+		expect(JSON.stringify(audit.mock.calls)).not.toMatch(/example only words|example-tunnel-token|example-secret/);
 	});
 
 	it('stops at a DNS record that points elsewhere and never overwrites it', async () => {
@@ -165,6 +224,7 @@ describe('creating and destroying a server', () => {
 			confirm: 'staging',
 			draft: draft(),
 			adminPassword: 'example only words',
+			sshEmails: ['owner@example.com'],
 		});
 		const job = await done(jobs, started.id);
 		expect(job.state).toBe('failed');
@@ -182,6 +242,7 @@ describe('creating and destroying a server', () => {
 				confirm: 'staging',
 				draft: prod,
 				adminPassword: 'example only words',
+				sshEmails: ['owner@example.com'],
 			}),
 		).rejects.toThrow('Type production to confirm.');
 		const started = await jobs.startCreate('saha-textile', 'saha-textile', 'do1', {
@@ -189,6 +250,7 @@ describe('creating and destroying a server', () => {
 			confirm: 'production',
 			draft: prod,
 			adminPassword: 'example only words',
+			sshEmails: ['owner@example.com'],
 		});
 		const job = await done(jobs, started.id);
 		expect(job.steps.find((s) => s.key === 'dns')).toMatchObject({ state: 'skipped' });
@@ -212,6 +274,6 @@ describe('creating and destroying a server', () => {
 		});
 		const job = await done(jobs, started.id);
 		expect(job.state).toBe('done');
-		expect(job.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done']);
+		expect(job.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'done']);
 	});
 });

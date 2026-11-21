@@ -76,6 +76,7 @@ describe('attention', () => {
 					menus: [],
 				},
 			],
+			sshEmails: [],
 		} satisfies Project;
 		expect(keyAttention(project).map((i) => i.kind)).toEqual(['key-expiring', 'key-missing', 'key-missing']);
 	});

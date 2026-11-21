@@ -1173,6 +1173,31 @@ POST https://api.digitalocean.com/v2/droplets
 									</span>
 								</label>
 								<label>
+									May sign in over SSH
+									<span class="rc-msearch multi">
+										@for (e of emails(); track e) {
+											<span class="rc-pill cy">
+												{{ e }}
+												<button
+													type="button"
+													class="rc-flag"
+													[attr.aria-label]="'Remove ' + e"
+													(click)="removeEmail(e)"
+												>
+													✕
+												</button>
+											</span>
+										}
+										<input
+											type="email"
+											placeholder="an email, Enter"
+											aria-label="Add a person who may sign in over SSH"
+											(keydown.enter)="$event.preventDefault(); addEmail($any($event.target))"
+											(blur)="addEmail($any($event.target))"
+										/>
+									</span>
+								</label>
+								<label>
 									PIN
 									<rc-pin-boxes
 										label="Console PIN to create"
@@ -1586,12 +1611,25 @@ export class DoCreateScreen {
 	protected readonly busy = signal(false);
 	protected readonly message = signal('');
 	protected readonly isProduction = computed(() => /prod/i.test(this.draft().environment));
+	/** Who may sign in over SSH: the project's list, changed here before the create if needed. */
+	private readonly emailEdits = signal<string[] | null>(null);
+	protected readonly emails = computed(() => this.emailEdits() ?? this.ctx.project()?.sshEmails ?? []);
+	protected addEmail(input: HTMLInputElement): void {
+		const e = input.value.trim().toLowerCase();
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return;
+		input.value = '';
+		if (!this.emails().includes(e)) this.emailEdits.set([...this.emails(), e]);
+	}
+	protected removeEmail(e: string): void {
+		this.emailEdits.set(this.emails().filter((x) => x !== e));
+	}
 	protected readonly confirmProblem = computed(() => {
 		if (this.problems().length) return this.problems()[0] ?? '';
 		if (this.typed().trim() !== this.draft().environment) return `Type ${this.draft().environment} to confirm.`;
 		const pw = this.password();
 		if (pw.length < 12) return 'The admin password needs at least 12 characters.';
 		if (pw !== this.password2()) return 'The two passwords differ.';
+		if (!this.emails().length) return 'Add at least one person who may sign in over SSH.';
 		if (this.pin().length !== PIN_LENGTH) return 'Type your console PIN.';
 		return '';
 	});
@@ -1605,6 +1643,7 @@ export class DoCreateScreen {
 				confirm: this.typed().trim(),
 				draft: this.draft(),
 				adminPassword: this.password(),
+				sshEmails: this.emails(),
 			});
 			this.password.set('');
 			this.password2.set('');

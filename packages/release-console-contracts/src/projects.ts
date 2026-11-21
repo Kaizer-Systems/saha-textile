@@ -303,12 +303,14 @@ export const projectSchema = z.object({
 	workspace: z.string().min(1).max(60),
 	repositories: z.array(repositorySchema).min(1),
 	keys: z.array(keyRefSchema).default([]),
+	/** Who may sign in over SSH to the project's servers through Cloudflare Access (owner, 21 Nov). */
+	sshEmails: z.array(z.string().email().max(254)).max(50).default([]),
 	createdAt: z.string().datetime(),
 });
 export type Project = z.infer<typeof projectSchema>;
 
 /** A project as the Add-a-project wizard sends it: no keys or dates yet. */
-export const newProjectSchema = projectSchema.omit({ keys: true, createdAt: true });
+export const newProjectSchema = projectSchema.omit({ keys: true, createdAt: true, sshEmails: true });
 export type NewProject = z.infer<typeof newProjectSchema>;
 
 /**

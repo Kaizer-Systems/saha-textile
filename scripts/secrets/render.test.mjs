@@ -421,3 +421,28 @@ test('projectReport and formatReport: what is missing, misspelt or due for delet
 	assert.match(devText, /not in Infisical yet: .*OTP_LOCAL_FIXED_CODE.*SHOP_ORIGIN/);
 	assert.match(devText, /the local pipeline needs it/);
 });
+
+test('buildRelease: certificates in /infrastructure ride along for deploy.sh to install (owner, 21 Nov)', () => {
+	const cert = '-----BEGIN CERTIFICATE-----\nMIIBexample\n-----END CERTIFICATE-----';
+	const key = '-----BEGIN PRIVATE KEY-----\nMIIBexample\n-----END PRIVATE KEY-----\n';
+	const project = completeProject();
+	project.infrastructure.set('origin.pem', cert);
+	project.infrastructure.set('origin.key', key);
+	const { files } = buildRelease(project, { tier: 'staging', inventory, source: 's', release });
+	assert.equal(files.get('secrets/origin.pem'), `${cert}\n`);
+	assert.equal(files.get('secrets/origin.key'), key);
+	assert.equal(files.has('secrets/origin-ca.pem'), false);
+
+	const half = completeProject();
+	half.infrastructure.set('origin.pem', cert);
+	assert.match(
+		refusal(() => buildRelease(half, { tier: 'staging', inventory, source: 's', release })),
+		/origin\.pem and origin\.key go together/,
+	);
+	const wrong = completeProject();
+	wrong.infrastructure.set('origin-ca.pem', 'not a certificate');
+	assert.match(
+		refusal(() => buildRelease(wrong, { tier: 'staging', inventory, source: 's', release })),
+		/origin-ca\.pem is not a PEM certificate/,
+	);
+});

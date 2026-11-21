@@ -13,6 +13,7 @@ import {
 	namesInExample,
 	namesReadByCode,
 	otherFolderProblems,
+	certificateFilesCheckedByDeploy,
 	secretFilesCheckedByDeploy,
 } from './secrets/names.mjs';
 
@@ -46,6 +47,7 @@ const problems = findNameProblems({
 		.filter((line) => line !== '' && !line.startsWith('#'))
 		.map((line) => line.split(/\s+/)[0]),
 	deployFiles: secretFilesCheckedByDeploy(read('docker/production/bin/deploy.sh')),
+	deployCerts: certificateFilesCheckedByDeploy(read('docker/production/bin/deploy.sh')),
 	productionCompose: read('docker/production/compose.yaml'),
 });
 const readers = [...new Set(Object.values(inventory.otherFolders ?? {}).map((group) => group.readBy))];

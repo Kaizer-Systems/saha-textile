@@ -1,11 +1,13 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, Req } from '@nestjs/common';
 import {
 	type DropletJob,
+	setSshEmailsSchema,
 	startDropletCreateSchema,
 	startDropletDestroySchema,
 } from '@saha-textile/release-console-contracts';
 
 import { DropletJobs } from './droplet-jobs.js';
+import { ProjectsService } from '../projects/projects.service.js';
 import { parseBody } from '../common/parse.js';
 import { LockService } from '../lock/lock.service.js';
 import { sessionOf } from '../lock/session.guard.js';
@@ -59,5 +61,27 @@ export class ServersController {
 		const input = parseBody(startDropletDestroySchema, body);
 		this.lock.confirm(sessionOf(req), input.pin, `destroy ${input.confirm}`);
 		return this.jobs.startDestroy(p, r, slot, input);
+	}
+}
+
+/** The project's SSH list (owner, 21 Nov); every server's Access rule follows, after the PIN. */
+@Controller('api/projects/:p/ssh-emails')
+export class SshListController {
+	constructor(
+		private readonly jobs: DropletJobs,
+		private readonly lock: LockService,
+		private readonly projects: ProjectsService,
+	) {}
+
+	@Put()
+	async set(
+		@Param('p') p: string,
+		@Body() body: unknown,
+		@Req() req: Req,
+	): Promise<{ emails: string[]; hosts: string[] }> {
+		const input = parseBody(setSshEmailsSchema, body);
+		this.lock.confirm(sessionOf(req), input.pin, 'change who may sign in over SSH');
+		const project = this.projects.setSshEmails(p, input.emails);
+		return { emails: project.sshEmails, hosts: await this.jobs.updateSshList(p) };
 	}
 }

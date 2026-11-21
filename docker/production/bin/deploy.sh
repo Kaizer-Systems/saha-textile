@@ -26,9 +26,24 @@ HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 
 check_inputs() {
 	check_release
+	install_certs
 	local name
 	for name in origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem; do
 		[[ -s "$SAHA_TEXTILE_ROOT/certs/$name" ]] || die "certs/$name is missing or empty."
+	done
+}
+
+# Certificates the release carries from Infisical (/infrastructure, owner 21 Nov) replace the
+# server's own copies; any the release lacks stay as they are on the server.
+install_certs() {
+	local name mode
+	install -d -m 0755 "$SAHA_TEXTILE_ROOT/certs"
+	for name in origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem; do
+		[[ -s "$SECRETS/$name" ]] || continue
+		mode=0644
+		[[ "$name" == *.key ]] && mode=0600
+		install -m "$mode" "$SECRETS/$name" "$SAHA_TEXTILE_ROOT/certs/$name"
+		say "certs/$name from the release"
 	done
 }
 

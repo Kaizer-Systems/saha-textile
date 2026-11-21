@@ -19,6 +19,8 @@ export const startDropletCreateSchema = z.object({
 	 * The admin user's Recovery Console password: hashed on this Mac into the first-boot file and
 	 * never kept. The owner keeps the password itself in NordPass.
 	 */
+	/** Who may sign in over SSH through Access (owner, 21 Nov: a list, more added later). */
+	sshEmails: z.array(z.string().email().max(254)).min(1).max(50),
 	adminPassword: z
 		.string()
 		.min(12)
@@ -34,6 +36,17 @@ export const startDropletDestroySchema = z.object({
 	dropletId: z.number().int().positive(),
 });
 export type StartDropletDestroy = z.infer<typeof startDropletDestroySchema>;
+
+/** Changes the project's SSH list; the servers' Access rules follow. */
+export const setSshEmailsSchema = z.object({
+	pin,
+	emails: z.array(z.string().email().max(254)).min(1).max(50),
+});
+export type SetSshEmails = z.infer<typeof setSshEmailsSchema>;
+export const sshListAnswerSchema = z.object({ emails: z.array(z.string()), hosts: z.array(z.string()) });
+
+/** The SSH host name a server gets through its tunnel: `ssh-<environment>.<zone>`. */
+export const sshHostOf = (environment: string, zone: string): string => `ssh-${environment}.${zone}`;
 
 export const jobStepStateSchema = z.enum(['queued', 'running', 'done', 'skipped', 'failed']);
 export type JobStepState = z.infer<typeof jobStepStateSchema>;
@@ -72,7 +85,10 @@ export const dropletJobsSchema = z.array(dropletJobSchema);
 /** The create steps in order, as the Creating tab lists them before they run. */
 export const CREATE_STEPS: readonly (readonly [string, string])[] = [
 	['tunnel', 'Cloudflare tunnel for the server'],
-	['first-boot', 'First-boot file filled in on this Mac'],
+	['ssh-host', 'SSH host name through the tunnel'],
+	['access', 'Cloudflare Access: the deploy job and the people on the list'],
+	['certificates', 'Origin Certificate and origin-pulls certificate, kept in Infisical'],
+	['first-boot', 'First-boot file filled in on this machine'],
 	['volume', 'Block storage volume'],
 	['droplet', 'Request accepted by DigitalOcean'],
 	['active', 'Server built and switched on'],
@@ -80,13 +96,18 @@ export const CREATE_STEPS: readonly (readonly [string, string])[] = [
 	['project', 'Moved into the DigitalOcean project'],
 	['firewall', 'Cloud Firewall attached'],
 	['dns', 'DNS records at Cloudflare'],
+	['origin-pulls', 'Authenticated Origin Pulls on the environment’s hosts'],
 	['tunnel-up', 'First boot done: the tunnel is up'],
+	['github', 'GitHub environment: variables and secrets'],
+	['known-hosts', 'The server’s SSH host key, read through the tunnel'],
 ];
 
 /** The destroy steps, the create in reverse. Production is never destroyed from the console. */
 export const DESTROY_STEPS: readonly (readonly [string, string])[] = [
 	['dns', 'DNS records at Cloudflare removed'],
+	['origin-pulls', 'Authenticated Origin Pulls turned off on its hosts'],
 	['firewall', 'Cloud Firewall deleted'],
 	['droplet', 'Droplet destroyed'],
-	['tunnel', 'Cloudflare tunnel deleted'],
+	['access', 'Access application and deploy token deleted'],
+	['tunnel', 'Cloudflare tunnel and its SSH host name deleted'],
 ];

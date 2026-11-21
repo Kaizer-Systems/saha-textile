@@ -366,6 +366,20 @@ export function buildRelease(
 		if (isBlank(value)) problems.push(`/infrastructure/${file} is blank.`);
 		else files.set(`secrets/${file}`, /** @type {string} */ (value));
 	}
+	// ---- certificates (owner, 21 Nov): optional; a release carries the ones /infrastructure holds and
+	// deploy.sh installs them into certs/, so a new or rebuilt server gets them from Infisical.
+	const certs = inventory.certificateFiles.filter((f) => !isBlank(folders.infrastructure?.get(f)));
+	if (certs.includes('origin.pem') !== certs.includes('origin.key')) {
+		problems.push('/infrastructure/origin.pem and origin.key go together: fill both or neither.');
+	}
+	for (const file of certs) {
+		const value = /** @type {string} */ (folders.infrastructure?.get(file));
+		const key = file.endsWith('.key');
+		const shape = key ? /-----BEGIN (RSA |EC )?PRIVATE KEY-----/ : /-----BEGIN CERTIFICATE-----/;
+		if (!shape.test(value))
+			problems.push(`/infrastructure/${file} is not a PEM ${key ? 'private key' : 'certificate'}.`);
+		else files.set(`secrets/${file}`, value.endsWith('\n') ? value : `${value}\n`);
+	}
 	const keyfile = folders.infrastructure?.get('mongo-keyfile');
 	if (!isBlank(keyfile) && !/^[A-Za-z0-9+/=]{6,1024}$/.test(/** @type {string} */ (keyfile).replace(/\s/g, ''))) {
 		problems.push('mongo-keyfile must be 6 to 1,024 base64 characters, as made by: openssl rand -base64 756');

@@ -71,6 +71,7 @@ export function describeError(error) {
  *                                                    in Infisical (RELEASE_ALLOWED_BLANK)
  * @property {string[]} backup
  * @property {string[]} infrastructureFiles          stored whole in `/infrastructure`
+ * @property {string[]} certificateFiles             optional in `/infrastructure`; deploy.sh installs them into certs/
  * @property {Record<string, string>} derivedFiles   secret file name → the `/api` setting it is written from
  * @property {string[]} deployment
  * @property {Record<string, string>} derivedDeployment  `release.env` name → the `/api` setting it is
@@ -114,7 +115,11 @@ export function loadInventory(root = ROOT) {
 	const projects = {};
 	for (const project of json.projects) {
 		if (PROJECT_TIERS.includes(project.tier))
-			projects[project.tier] = { name: project.name, environment: project.environment, projectId: project.projectId };
+			projects[project.tier] = {
+				name: project.name,
+				environment: project.environment,
+				projectId: project.projectId,
+			};
 	}
 	for (const tier of PROJECT_TIERS) {
 		if (!projects[tier]) throw new SecretsError(`variable-names.json has no project for ${tier}.`);
@@ -131,6 +136,7 @@ export function loadInventory(root = ROOT) {
 		releaseWritten: new Set(json.releaseWrittenApiVariables ?? []),
 		backup: json.backupVariables,
 		infrastructureFiles: json.infrastructureSecretFileNames,
+		certificateFiles: json.certificateFileNames ?? [],
 		derivedFiles: json.derivedSecretFiles ?? {},
 		deployment: json.deploymentVariables,
 		derivedDeployment: json.derivedDeploymentVariables ?? {},
@@ -200,7 +206,7 @@ export function folderNames(inventory) {
 	return {
 		api: inventory.api,
 		backup: new Set(inventory.backup),
-		infrastructure: new Set(inventory.infrastructureFiles),
+		infrastructure: new Set([...inventory.infrastructureFiles, ...inventory.certificateFiles]),
 		deployment: new Set(inventory.deployment),
 	};
 }

@@ -43,8 +43,14 @@ export async function withDatabase<T>(work: (connection: Connection) => Promise<
 	}
 }
 
-/** Stand-in rows for the live banners on the home page: three hero slides and two promos. */
-export async function ensureHomeBanners(): Promise<void> {
+/**
+ * Stand-in rows for the live banners on the home page: three hero slides and two promos. Their picture files do not
+ * exist, so the home page draws them collapsed; the answer puts back exactly what was there before (the rows they
+ * replaced, or nothing), so a later spec sees the home page a fresh test database has.
+ */
+export async function ensureHomeBanners(): Promise<() => Promise<void>> {
+	const keptAssets = new Map<string, Record<string, unknown> | null>();
+	const keptBlocks = new Map<string, Record<string, unknown> | null>();
 	const slots = [
 		['hero', 'main'],
 		['hero', 'slide_2'],
@@ -56,6 +62,8 @@ export async function ensureHomeBanners(): Promise<void> {
 		for (const [position, slot] of slots) {
 			const assetId = `med_e2e_${position}_${slot}`;
 			const key = `home:-:${position}:${slot}`;
+			keptAssets.set(assetId, await db.collection('mediaAssets').findOne({ _id: assetId as never }));
+			keptBlocks.set(key, await db.collection('contentBlocks').findOne({ key }));
 			await db.collection('mediaAssets').updateOne(
 				{ _id: assetId as never },
 				{
@@ -111,4 +119,15 @@ export async function ensureHomeBanners(): Promise<void> {
 			);
 		}
 	});
+	return () =>
+		withDatabase(async (db) => {
+			for (const [assetId, row] of keptAssets) {
+				if (row) await db.collection('mediaAssets').replaceOne({ _id: assetId as never }, row);
+				else await db.collection('mediaAssets').deleteOne({ _id: assetId as never });
+			}
+			for (const [key, row] of keptBlocks) {
+				if (row) await db.collection('contentBlocks').replaceOne({ key }, row);
+				else await db.collection('contentBlocks').deleteOne({ key });
+			}
+		});
 }

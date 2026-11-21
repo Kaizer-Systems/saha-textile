@@ -36,22 +36,26 @@ const settings = {
 
 test.describe('Page Builder Go Live (step 7)', () => {
 	let keptSettings: unknown = null;
+	// Home's schedule and waiting list as found: Go Live with an end also adds a hand-back entry, which the cancel
+	// leaves, so both are put back exactly.
+	let keptSchedule: unknown = [];
+	let keptPending: unknown = [];
 
 	test.beforeAll(async () => {
 		const now = new Date();
 		await withDatabase(async (db) => {
 			const page = await db.collection('builderPages').findOne({ _id: 'home:page' as never });
 			keptSettings = page?.['settings'] ?? null;
-			await db
-				.collection('builderPages')
-				.updateOne(
-					{ _id: 'home:page' as never },
-					{
-						$setOnInsert: { pageType: 'home', target: 'page', schedule: [] },
-						$set: { settings, updatedAt: now },
-					},
-					{ upsert: true },
-				);
+			keptSchedule = page?.['schedule'] ?? [];
+			keptPending = page?.['pending'] ?? [];
+			await db.collection('builderPages').updateOne(
+				{ _id: 'home:page' as never },
+				{
+					$setOnInsert: { pageType: 'home', target: 'page', schedule: [] },
+					$set: { settings, updatedAt: now },
+				},
+				{ upsert: true },
+			);
 			await db.collection('pageLayouts').updateOne(
 				{ _id: LAYOUT as never },
 				{
@@ -92,8 +96,7 @@ test.describe('Page Builder Go Live (step 7)', () => {
 	test.afterAll(async () => {
 		await withDatabase(async (db) => {
 			await db.collection('builderPages').updateOne({ _id: 'home:page' as never }, {
-				$pull: { schedule: { layoutId: LAYOUT }, pending: { 'entry.layoutId': LAYOUT } },
-				$set: { settings: keptSettings },
+				$set: { settings: keptSettings, schedule: keptSchedule, pending: keptPending },
 			} as never);
 			await db.collection('pageLayoutRevisions').deleteMany({ layoutId: LAYOUT });
 			await db.collection('pageLayouts').deleteOne({ _id: LAYOUT as never });

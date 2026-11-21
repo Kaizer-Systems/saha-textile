@@ -140,7 +140,12 @@ test.describe('Header menu', () => {
 });
 
 test.describe('Home banners', () => {
-	test.beforeAll(ensureHomeBanners);
+	// Stand-in banners for these tests only: put back after, so later specs see the home page as found.
+	let putBack: () => Promise<void> = async () => undefined;
+	test.beforeAll(async () => {
+		putBack = await ensureHomeBanners();
+	});
+	test.afterAll(() => putBack());
 
 	test('the hero plays three slides from the admin banners', async ({ page }) => {
 		await page.goto('/en/');
@@ -246,7 +251,9 @@ test.describe('Scroll between pages', () => {
 	test('a product opens at its top, and Back returns to the same card on Home', async ({ page }) => {
 		await page.goto('/en/', { waitUntil: 'networkidle' });
 		const row = page.locator('app-home > section.product-section').nth(1);
-		await row.scrollIntoViewIfNeeded();
+		// The row at the top of the screen, so Home is well scrolled however tall the sections above it are (with or
+		// without banners).
+		await row.evaluate((element) => element.scrollIntoView({ block: 'start' }));
 		const card = row.locator('.owl-item.active a[href*="/product/"]').first();
 		await expect(card).toBeVisible();
 		await page.waitForTimeout(400);

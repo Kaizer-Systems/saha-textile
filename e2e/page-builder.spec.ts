@@ -68,8 +68,14 @@ const setSwitch = (home: boolean) =>
 	);
 
 test.describe('Page Builder on the shop (step 3)', () => {
+	// Everything this file changes on the home page is put back after: the banners, the switch and the schedule.
+	let putBackBanners: () => Promise<void> = async () => undefined;
+	let keptSwitch: Record<string, unknown> | null = null;
 	test.beforeAll(async () => {
-		await ensureHomeBanners();
+		putBackBanners = await ensureHomeBanners();
+		keptSwitch = await withDatabase((db) =>
+			db.collection('siteSettings').findOne({ _id: 'storefront.pageBuilder' as never }),
+		);
 		// Later than any switch already on Home's schedule (the release step puts Today's home page there when the
 		// stack starts), so this layout is the one showing: the later start wins.
 		const now = new Date(Date.now() - 1_000);
@@ -122,14 +128,17 @@ test.describe('Page Builder on the shop (step 3)', () => {
 	});
 
 	test.afterAll(async () => {
-		await setSwitch(false);
 		await withDatabase(async (db) => {
+			if (keptSwitch)
+				await db.collection('siteSettings').replaceOne({ _id: 'storefront.pageBuilder' as never }, keptSwitch);
+			else await db.collection('siteSettings').deleteOne({ _id: 'storefront.pageBuilder' as never });
 			await db
 				.collection('builderPages')
 				.updateOne({ _id: 'home:page' as never }, { $pull: { schedule: { layoutId: LAYOUT } } as never });
 			await db.collection('pageLayoutRevisions').deleteOne({ _id: REVISION as never });
 			await db.collection('pageLayouts').deleteOne({ _id: LAYOUT as never });
 		});
+		await putBackBanners();
 	});
 
 	test('switch off: the fixed home page, as before', async ({ page }) => {

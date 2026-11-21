@@ -4,7 +4,7 @@ slug: /payments/ccavenue
 description: "The INR gateway role: HDFC's documentation and the calls this project will make."
 status: scaffolded
 audience: [backend, operator]
-last_verified: '2026-11-20'
+last_verified: '2026-11-21'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit non-seamless initiateTransaction encResp orderStatusTracker refundOrder DoWebTrans working key access code
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -22,7 +22,7 @@ source_of_truth:
 
 CCAvenue is the INR online gateway, provided through HDFC Bank for merchant **K R MARKETING ONLINE**.
 
-This page has two sections. **Section 1** is what HDFC and CCAvenue provided, transcribed in full on the pages it links to. **Section 2** is the calls this project makes, in the project's API-documentation format, with the adapter method behind each one. The adapter exists and no route calls it yet.
+This page has two sections. **Section 1** is what HDFC and CCAvenue provided, transcribed in full on the pages it links to. **Section 2** is the calls this project makes, in the project's API-documentation format, with the adapter method behind each one. The shop checkout, the gateway's callback routes and the admin's payment requests call the adapter.
 
 ## 1. Company-provided documentation
 
@@ -117,19 +117,19 @@ HDFC PG Helpdesk answered these points in writing. They apply to CCAvenue accoun
 
 ## 2. Endpoints we use
 
-**Status: built, not reachable.** `CcavenuePaymentGateway` (`packages/adapters-payments`) implements `PaymentGatewayPort` (`packages/core-domain/src/ports/payment-gateway.port.ts`), and the API binds it to the `INR_PAYMENT_GATEWAY` token. No route, use case or screen calls it, and [Route inventory](/api/route-inventory) lists no payment route. None of these calls has been made against CCAvenue's test system; see [Limitations](#limitations). The design around them is in [Payment and order lifecycle](/business-flows/payment-and-order-lifecycle).
+**Status: built and called, never run against CCAvenue.** `CcavenuePaymentGateway` (`packages/adapters-payments`) implements `PaymentGatewayPort` (`packages/core-domain/src/ports/payment-gateway.port.ts`), and the API binds it to the `INR_PAYMENT_GATEWAY` token. The shop checkout's Pay (`POST /storefront/checkout/place`), the return and order status echo routes (`POST /payments/ccavenue/return`, `POST /payments/ccavenue/notify`), the shop's return page, **Check payment status** and the minute-by-minute sweep call it, and the admin's rupee payment requests use its quick invoice (`generateQuickInvoice`, read back with `invoiceList`). None of these calls has been made against CCAvenue's test system; see [Limitations](#limitations). The design around them is in [Payment and order lifecycle](/business-flows/payment-and-order-lifecycle) and [Admin ordering, zones and payments](/business-flows/admin-ordering-and-zones#paying-at-the-shop).
 
 Each entry follows the record that [Route inventory § Adding a route](/api/route-inventory#adding-a-route) requires before a route is built: owner and actor, method and path, authentication, request and response contracts, idempotency, side effects, and the tests that will prove it. The callback route will appear in OpenAPI and [Scalar](/api/openapi-and-scalar) like every other route. This page is the vendor-side reference.
 
 ### Summary
 
-| #   | Direction                | Method | Vendor endpoint                                                 | Port method          | Status                   |
-| --- | ------------------------ | ------ | --------------------------------------------------------------- | -------------------- | ------------------------ |
-| 1   | Browser → CCAvenue       | `POST` | `/transaction/transaction.do?command=initiateTransaction`       | `createPayment`      | Built; no route calls it |
-| 2   | CCAvenue → browser → API | `POST` | Our `redirect_url` / `cancel_url` receives `encResp`, `orderNo` | `verifyCallback`     | Built; no route calls it |
-| 3   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=orderStatusTracker`         | `fetchPaymentStatus` | Built; no route calls it |
-| 4   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=refundOrder`                | `refundPayment`      | Built; no route calls it |
-| 5   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=getRefundDetails`           | `fetchRefunds`       | Built; no route calls it |
+| #   | Direction                | Method | Vendor endpoint                                                 | Port method          | Status                                                        |
+| --- | ------------------------ | ------ | --------------------------------------------------------------- | -------------------- | ------------------------------------------------------------- |
+| 1   | Browser → CCAvenue       | `POST` | `/transaction/transaction.do?command=initiateTransaction`       | `createPayment`      | Called by Pay                                                 |
+| 2   | CCAvenue → browser → API | `POST` | Our `redirect_url` / `cancel_url` receives `encResp`, `orderNo` | `verifyCallback`     | Called by the return and echo routes                          |
+| 3   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=orderStatusTracker`         | `fetchPaymentStatus` | Called by the return page, Check payment status and the sweep |
+| 4   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=refundOrder`                | `refundPayment`      | Called by the shop's automatic full refunds                   |
+| 5   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=getRefundDetails`           | `fetchRefunds`       | Built; no route calls it                                      |
 
 Calls not planned are listed at the end of this section with the reason.
 
@@ -323,20 +323,20 @@ A decrypted callback is not URL-encoded, so text a customer types on the billing
 
 ### Not planned
 
-| Call                                                                                      | Why not                                                                                                                                                                                                                                    |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `confirmOrder`, `cancelOrder`, `getPendingOrders`                                         | The integration requires an account with auto-confirm enabled, which confirms successful orders without a call. On an account without it, unconfirmed orders auto-cancel and are never settled, and these calls would move into section 2. |
-| [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification) posts         | The status enquiry already settles an attempt whose return is lost. The echo URL would add a second, server-to-server copy of the return; it needs its own route and handler.                                                              |
-| `orderLookup`, `getSettlementDetails`, `payoutSummary`, `payIdDetails`, consolidate calls | Reconciliation and finance reporting. Not part of the first payment integration.                                                                                                                                                           |
-| Customer vault calls, `addCustomerPaymentOption`                                          | Card storage; `addCustomerPaymentOption` posts a card number from the merchant server.                                                                                                                                                     |
-| Invoice calls, `updateMerchantParams`, `updateBillingDetails`                             | No invoice or pay-link product in scope.                                                                                                                                                                                                   |
-| Custom checkout form, Direct Connect (`initiatePayloadTransaction`)                       | Card data would touch our servers.                                                                                                                                                                                                         |
+| Call                                                                                                               | Why not                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `confirmOrder`, `cancelOrder`, `getPendingOrders`                                                                  | The integration requires an account with auto-confirm enabled, which confirms successful orders without a call. On an account without it, unconfirmed orders auto-cancel and are never settled, and these calls would move into section 2. |
+| [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification) posts other than the order status echo | They carry payment-option and reconciliation news, not our payments. The order status echo is handled by `POST /payments/ccavenue/notify`, read like the return and checked by the status enquiry.                                         |
+| `orderLookup`, `getSettlementDetails`, `payoutSummary`, `payIdDetails`, consolidate calls                          | Reconciliation and finance reporting. Not part of the first payment integration.                                                                                                                                                           |
+| Customer vault calls, `addCustomerPaymentOption`                                                                   | Card storage; `addCustomerPaymentOption` posts a card number from the merchant server.                                                                                                                                                     |
+| Invoice calls other than `generateQuickInvoice` and `invoiceList`, `updateMerchantParams`, `updateBillingDetails`  | Payment requests need only a quick invoice and its status.                                                                                                                                                                                 |
+| Custom checkout form, Direct Connect (`initiatePayloadTransaction`)                                                | Card data would touch our servers.                                                                                                                                                                                                         |
 
 ### During a restart
 
 A deploy swaps old and new copies side by side, so it causes no gap ([Deploys without a gap](/engineering-live-context/production-deployment-plan#deploys-without-a-gap)). A reboot or a crash can still leave the API briefly unavailable ([Back in a moment](/engineering-live-context/production-deployment-plan#back-in-a-moment)). The payment return behaves as follows during such a moment, based on HDFC's documentation.
 
-- **No webhook is handled.** The payment return (call 2) is the customer's browser posting CCAvenue's form once. CCAvenue can also post the same `encResp` server-to-server to an order status echo URL, and retries a failed post twice, nine minutes apart ([Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification)). The adapter does not handle that post, so CCAvenue needs no Cloudflare webhook rule.
+- **The echo can bring a lost return back.** The payment return (call 2) is the customer's browser posting CCAvenue's form once. CCAvenue also posts the same `encResp` server-to-server to the order status echo URL (`POST /payments/ccavenue/notify`) and retries a failed post twice, nine minutes apart ([Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification)). The API reads it like the return, so the edge must let CCAvenue's post reach that path.
 - **A return during the gap is lost.** `encResp` never reaches the API. The payment itself completed at CCAvenue and is unaffected. If the customer re-posts the same form later, `decidePaymentResult` treats it like any other return, so a replay is harmless.
 - **The status enquiry settles the attempt.** HDFC makes call 3 mandatory because the return may never arrive. An attempt still `pending` after CCAvenue's 15-minute payment-page session is settled by calling `fetchPaymentStatus` and passing the answer to `decidePaymentResult` with no callback. A lost return delays the order; it does not lose it.
 - **What the customer sees.** The return address is on the API host. While the API is unavailable, Nginx answers its path (`PAYMENT_RETURN_PATH`) with the storefront's "back in a moment" page, worded for a payment being confirmed ([Deploy and recovery](/deployment/deploy-and-recovery)).
@@ -355,8 +355,8 @@ Neither the documents nor HDFC's answers settle these.
 - Nothing here has run against CCAvenue. The encryption matches OpenSSL and the transcribed kit scheme, using a generated key, and the reply shapes come from the printed samples. The first test transaction may show differences.
 - Testing against CCAvenue needs the test Merchant ID, Access Code and Working Key, and the site's URL registered on the test account. On an account with Ignore IP and URL, no IP is registered, and the test can run from a developer machine.
 - A paid callback that meets a "no record" status answer goes to `review`. If CCAvenue answers "no record" during the return delay, a genuine payment waits for an operator instead of settling automatically.
-- No route, use case, payment collection or screen uses the adapter. Checkout stays closed.
-- No job runs the status enquiry for attempts left `pending`, so nothing settles a return lost during a reboot or crash automatically.
+- Without the CCAvenue keys the shop keeps Pay off for rupees (`noGateway`) and the admin can't request a rupee payment online.
+- The sweep asks again about attempts left `pending` (2, 5, 10, 15, 30 and 60 minutes after Pay, then hourly for two days), so a return lost during a reboot or crash settles by itself.
 - The cipher has no authentication tag and uses a fixed IV. The return route must answer every failure identically and be rate limited, or an attacker could learn from the differences.
 - `orderNo` is optional in `verifyCallback`, because one printed sample shows `encResp` alone. When present it must match.
 - A retry that gives one order id a second `tracking_id` goes to `review`.

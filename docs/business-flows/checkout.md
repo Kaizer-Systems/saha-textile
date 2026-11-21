@@ -1,148 +1,143 @@
 ---
 title: Checkout, Pricing, Tax, Currency, and Shipping
 wide: true
-description: Authenticated checkout calculation, quote, promotion, tax, FX, shipping, and correction flow.
+description: The shop checkout's server quote, addresses, shipping line, coupons, currency and gateway choice, Pay, and the popups after a payment that didn't go through.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-21'
 source_of_truth:
     - apps/storefront/src/app/features/shop/checkout
+    - apps/api/src/shop-checkout
     - apps/api/src/cart
-    - apps/api/src/promotions
     - apps/api/src/currency
+    - packages/contracts/src/checkout.ts
     - packages/contracts/src/order.ts
     - packages/contracts/src/shipping.ts
+    - packages/core-domain/src/orders/coupon-engine.ts
     - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
 ---
 
 # Checkout, pricing, tax, currency, and shipping
 
-Checkout is the server-owned step between a cart and a payment attempt. It calculates and validates what a customer will pay. This page describes the target design and the rules that apply to it.
+Checkout is the server-owned step between a cart and a payment attempt. The API prices every step; the shop shows the answer and never rebuilds a total from product cards, local cart state or display prices.
 
 ## Preconditions
 
-- The customer is signed in. Guest checkout is not available.
-- The guest cart merge is complete.
-- Every line has a valid product, variant, option, add-on, measurement and bundle signature.
-- Shipping and billing addresses satisfy the contract.
-- The selected currency is enabled.
+- The shopper is signed in. Guest checkout is off at launch: `/checkout` sends a guest to sign in and back.
+- The cart is the shopper's own server cart (`POST /storefront/checkout/quote` reads it from the session).
+- The delivery address is complete; billing is the same as delivery unless the shopper unticks it.
+- The chosen currency is one the shop offers.
+
+## The page
+
+The page is built from the theme's checkout markup (`checkout-section-2`, `checkout-detail-box`, `delivery-address-box`, `pos-detail-card`, `summary-total`, the coupon box):
+
+1. **Delivery address**: a saved address (the default starts chosen) or a new one with the country rules. The country sets the State list, the phone code and what the postal code is called; in India the PIN code fills the city and State. **Save to my addresses** starts ticked, with **Name this address**.
+2. **Billing address**: **Same as delivery address**, or a saved or new one.
+3. **Address in India (optional)**: only when both addresses are abroad and the shop sends orders abroad with an Indian invoice address. Every field is optional; only a complete address is used. The shop's words never mention invoices or GST.
+4. **Summary**: each line with its MRP note or coupon share, the shipping line with its reason, applied coupons with **Remove**, the total, and **Pay** naming the amount.
 
 ## Calculation sequence
 
 ```mermaid
 sequenceDiagram
-    actor Customer
-    participant SF as Storefront
-    participant Checkout as Checkout use case
-    participant Catalog as Catalogue/inventory
-    participant Promo as Promotion engine
+    actor Shopper
+    participant SF as Shop checkout
+    participant API as POST /storefront/checkout/quote
+    participant Cart as Cart and catalogue
+    participant Ship as Shipping rule sets
+    participant Coupon as Coupon engine
     participant FX as Currency service
-    participant Ship as ShippingPort
 
-    Customer->>SF: Confirm address and delivery input
-    SF->>Checkout: Request priced checkout
-    Checkout->>Catalog: Revalidate lines, stock, canonical INR prices
-    Checkout->>Promo: Resolve automatic and coupon promotions in INR
-    Checkout->>Checkout: Resolve tax policy and snapshot tax lines
-    Checkout->>Ship: Request destination/package quote
-    Ship-->>Checkout: Cost + quote currency + expiry/ETD
-    Checkout->>FX: Convert display values from INR
-    Checkout->>Checkout: Apply configured non-INR gateway gross-up
-    Checkout-->>SF: Expiring priced snapshot + corrections
+    Shopper->>SF: Address, currency, coupon codes
+    SF->>API: CheckoutRequest
+    API->>Cart: Revalidate lines and canonical INR prices (sale events applied)
+    API->>Ship: Zone from the delivery country, then the zone's rule set
+    API->>Coupon: Coupons in INR, in their fixed order
+    API->>FX: Convert from INR at the active rate, plus the PayPal markup
+    API-->>SF: CheckoutQuote (lines, shipping, coupons, totals, notes, payBlocked)
 ```
 
-The browser renders the snapshot. It does not rebuild the total from product cards, local cart state or display prices.
+The quote runs again whenever the address, currency or coupons change.
 
 ## Amount ownership
 
-| Amount                    | Source                          | Snapshot requirement                           |
-| ------------------------- | ------------------------------- | ---------------------------------------------- |
-| Product and variant price | Canonical INR catalogue row     | INR and paid-currency unit and line totals     |
-| Add-on and bundle prices  | Validated configuration         | Selected options and resolved amounts          |
-| Promotion                 | API promotion engine            | Rule, code and applied INR value               |
-| Tax                       | Tax class and rule resolution   | HSN, class, rate, base, amount, inclusive flag |
-| Shipping                  | Shipping provider quote         | Value, currency, INR value, provider, method   |
-| Exchange rate             | Latest good stored rate         | Rate, source, fetched date                     |
-| Gateway gross-up          | Versioned payment configuration | Rule version and charged amount                |
+| Amount                    | Source                                      | Kept on the order                          |
+| ------------------------- | ------------------------------------------- | ------------------------------------------ |
+| Product and variant price | Canonical INR catalogue row and sale events | INR and paid-currency unit and line totals |
+| Coupons                   | Coupon engine in `core-domain`              | Each coupon, its lines and its INR amount  |
+| Shipping                  | The zone's shipping rule set                | Charge, reason, rule set and version       |
+| Exchange rate             | The active rate source                      | Rate, source and the markup                |
+| Tax                       | GST is included in the price                | Tax lines wait on the HSN codes and rates  |
 
-## Canonical price and currency
+## Currency and gateway
 
-Product pricing starts in INR:
+Product prices are always INR. A sale event's price replaces the regular price while the event runs ([Launch and sale events](./events.md)).
 
-```ts
-effectiveSellingINR = activeSalePriceINR ?? priceINR;
-displayNet = roundCurrency(effectiveSellingINR * rateFromINR, currency);
-```
-
-`activeSalePriceINR` is the price a running sale event sets for the SKU. Sale events are laid over catalogue reads only while they run; a SKU has no sale window of its own. See [Launch and sale events](./events.md).
-
-INR uses a rate of `1`. If a rate refresh fails, keep the latest good rate and mark it stale. Never overwrite it with an invalid value.
-
-For the non-INR PayPal path, the gross-up formula is:
+- **Rupees** go through the INR gateway at the INR price.
+- **Any other currency** goes through PayPal. The whole payment, shipping included, is converted at the active rate and then raised by the PayPal markup (6% for every currency but rupees, changed only by the super admin):
 
 ```text
-G = (N + f) / (1 - p)
+amount = round2(amountINR × rateFromINR × (1 + markupPercent / 100))
 ```
 
-`N` is the intended net amount in the paid currency, `p` is the percentage fee, `f` is the fixed fee and `G` is the charge before currency rounding. Extra exchange-rate or GST-on-fee rules must be explicit versioned configuration.
+- Prices follow the active rate source as it updates; a payment keeps the rate that priced it.
+- A shopper billed in India who pays in another currency sees a quiet **Paying from India? Pay in ₹ instead** note (`payFromIndiaInRupees`). It never blocks Pay.
+- A shopper billed abroad who picks ₹ while the INR gateway doesn't take cards issued abroad (an order setting) gets the currency picker with the billing country's currency first (`currencyPicker.first`).
 
-## Shipping selection
+## Shipping
 
-- An India destination uses the domestic shipping adapter.
-- Any other destination uses the international adapter.
-- A provider response must include value and currency.
-- Shipping cost is converted with the stored rate.
-- International shipping receives PayPal gross-up only when the active rule enables it.
-- A fallback for an unserviceable address must be identifiable in the quote.
+The delivery country picks the zone: India is domestic, anywhere else international. The currency never changes the zone. Each zone's rule set prices the cart and explains itself; the shop turns that explanation into the reason line ("1 discounted piece × ₹100 · full-price pieces ship free", "Sent abroad: first piece, then 2 more"). A piece that can't go to the delivery country is named under its line with **Remove**. See [Shipping rules](./shipping-rules.md).
 
-## Tax
+## Coupons
 
-Tax resolves at checkout from the product or variant tax profile and the applicable rules. The order line freezes the result. The customer-facing tax display is an open accounting decision and must not be guessed in Angular.
+The shopper types a code into the coupon box; up to five codes go with the quote. The coupon engine applies them in a fixed order (% first, then ₹ off, then free delivery), each on what is left and never below ₹0. Sale pieces are left out unless the coupon includes them, and only coupons switched to combine are used together. A refused code says why in plain words (`couponRefusals`).
 
-## Promotions
+## When Pay stays off
 
-`GET /promotions/active` and `POST /promotions/validate` support coupon entry. Final checkout must re-evaluate coupon validity, timing, scope, priority, stacking and cart conditions against INR values.
+`payBlocked` names the reason: `cartEmpty`, `lineProblem`, `pieceCannotShip`, `deliveryAbroadNotOffered` or `noGateway` (no gateway set up for the currency). Only `pieceCannotShip` has its own words on the button; the other reasons leave Pay greyed.
 
-## Checkout state machine
+## Pay and the return
 
-```mermaid
-stateDiagram-v2
-    [*] --> Editing
-    Editing --> Pricing: valid address + delivery + cart
-    Pricing --> CorrectionRequired: changed line / invalid coupon / no quote
-    CorrectionRequired --> Editing
-    Pricing --> ReadyToPay: priced snapshot returned
-    ReadyToPay --> Pricing: quote expires or cart changes
-    ReadyToPay --> PaymentInitiation: customer confirms
-    PaymentInitiation --> [*]
-```
+**Pay** (`POST /storefront/checkout/place`, with an idempotency key) saves the order from the same figures the quote showed, holds its pieces for 15 minutes and hands the browser to the gateway. The gateway comes back to `/checkout/payment-return?attempt=…`, which asks the API to confirm the attempt (`POST /storefront/checkout/attempts/:attemptId/confirm`). The server's status enquiry decides; the browser's word is never taken.
+
+| Result                  | What the shopper sees                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `paid`                  | The return page: the order is placed, with **See your order**.                                                                   |
+| `pending`               | The return page: the bank hasn't answered; the pieces stay held.                                                                 |
+| `refunded`              | The return page: a piece sold before the payment arrived, and the payment was refunded in full.                                  |
+| `failed` or `cancelled` | Back on the checkout (the return page is replaced in the history), with the popup below or a "didn't go through" line above Pay. |
+
+The return page hands the outcome to the checkout in the browser's history state, never in the URL, and the checkout clears it before opening the popup, so a reload or **Back** never opens it again.
+
+### The currency popups
+
+Both are the shop's confirmation modal (`theme-modal`, `icon-box`, `button-box`) over the checkout:
+
+- **Please choose your currency** (after PayPal returns without a completed payment): ₹ first for shoppers billed in India, each row naming how it pays ("Card, UPI, net banking" or "PayPal"); **Close** and **Continue in ₹**.
+- **Switch to your region's currency** (the INR gateway refused a card from abroad): no ₹, the billing country's currency first and marked "From your billing address"; **Try another card** and **Continue in £**.
+
+The popups list ₹, £, US$ and € where the shop offers them; **More currencies** adds the shop's other currencies, named by the browser in the page's language. **Continue** sets the shop's currency, so the checkout quotes again in it.
 
 ## Correction matrix
 
-| Failure             | Response                                                       |
-| ------------------- | -------------------------------------------------------------- |
-| Product retired     | Mark the line unavailable; require removal or replacement      |
-| Stock reduced       | Adjust or block the quantity with a line notice                |
-| Price changed       | Show old and new values and require confirmation               |
-| Coupon invalid      | Keep the cart, remove the discount and explain                 |
-| Address invalid     | Map structured errors to address fields                        |
-| No shipping service | Offer a configured fallback or manual contact                  |
-| Quote expired       | Requote before payment                                         |
-| Exchange rate stale | Use the latest acceptable rate, or block past the safety limit |
+| Failure                   | Response                                              |
+| ------------------------- | ----------------------------------------------------- |
+| Piece can't go there      | Named under the line with **Remove**; Pay stays off   |
+| Coupon can't apply        | Kept off the total, with the reason                   |
+| Address invalid           | One message per field, from the country rules         |
+| Payment didn't go through | Back to the checkout with the popup or the retry line |
 
 ## Limitations
 
-- The storefront checkout renders forms, addresses, delivery and payment choices with a static totals object. It does not call the API.
-- No quote endpoint, tax engine or shipping adapter exists.
-- Exchange rates are stored values. No refresh job or `FxRatePort` adapter exists.
-- Points and wallet controls in the checkout UI have no backend.
+- Tax lines are not shown: GST is included in the price, and the amounts wait on the HSN codes and rates.
+- `GET /promotions/active` and `POST /promotions/validate` remain for the older coupon entry; the checkout uses the quote's coupons.
 
 ## Debugging checkpoints
 
-1. Confirm that the cart merge finished and the session is valid.
-2. Compare the cart version and signature with the priced snapshot.
-3. Inspect line corrections before promotion or shipping calculations.
-4. Check canonical INR inputs before converted values.
-5. Inspect the exchange-rate and gross-up configuration versions.
-6. Check the shipping destination, package facts, quote currency and expiry.
-7. Never debug a total from the rendered Angular numbers alone.
+1. Confirm the shopper is signed in and the server cart holds the lines.
+2. Read the quote response before the page: `payBlocked`, `shipping.reason`, `coupons` and `couponRefusals`.
+3. Check canonical INR inputs before converted values.
+4. Check the currency's stored rate and the markup.
+5. Check the zone's rule set and its version.
+6. After a gateway return, read the attempt (`GET /storefront/checkout/attempts/:attemptId`) before the page.

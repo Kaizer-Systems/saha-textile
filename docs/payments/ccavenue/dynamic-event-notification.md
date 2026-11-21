@@ -3,7 +3,7 @@ title: CCAvenue Dynamic Event Notification
 description: CCAvenue's server-to-server event posts (the webhook), transcribed from HDFC's Dynamic Event Notification document, with the parameters of each event.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-20'
+last_verified: '2026-11-21'
 search_keywords: CCAvenue webhook Dynamic Event Notification order status echo URL reconciliation risk status payment type status encResp server to server
 source_of_truth:
     - packages/adapters-payments/src
@@ -115,7 +115,7 @@ The same parameters as the Order Status table, from `order_id` to `merchant_para
 
 ## 4. Relation to the adapter
 
-- The adapter has no handler for these posts, and no route receives them. A lost payment return is settled by the status enquiry ([During a restart](/payments/ccavenue#during-a-restart)).
+- `POST /payments/ccavenue/notify` receives the order status echo; the other event posts have no handler. A lost payment return is also settled by the status enquiry ([During a restart](/payments/ccavenue#during-a-restart)).
 - The echo URL repeats the hosted return server-to-server, with the same encryption and the same `&`-separated format, so `verifyCallback`'s decryption and parsing apply to it. Like the browser return, it is a claim that `decidePaymentResult` checks against the status enquiry.
 - The callback status map has no entry for the echo URL's `initiated`, so it reads as `review`. The reconciliation values are merchant-API words, which the status-enquiry map already covers ([How CCAvenue's values map](/payments/ccavenue#how-ccavenues-values-map)).
 - A `risk_status` of `High` corresponds to the fraud flag `High` that the status-enquiry map turns into `review`.

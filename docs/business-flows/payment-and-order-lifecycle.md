@@ -4,10 +4,14 @@ wide: true
 description: Gateway selection, hosted payment, idempotency, atomic order records, status transitions, and ownership.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-21'
 source_of_truth:
     - apps/api/src/orders
+    - apps/api/src/shop-checkout
+    - apps/api/src/admin-orders
     - packages/contracts/src/order.ts
+    - packages/core-domain/src/orders/status-machine.ts
+    - packages/core-domain/src/orders/numbering.ts
     - packages/core-domain/src/ports/payment-gateway.port.ts
     - packages/core-domain/src/payments/decide-payment-result.ts
     - packages/adapters-payments/src
@@ -17,7 +21,7 @@ source_of_truth:
 
 # Payment and order lifecycle
 
-This page describes how orders and payments relate, and the rules a payment integration must follow. Orders exist in the API. The payment port, the rule that judges a gateway's answers, and a CCAvenue adapter exist, and no route uses them yet.
+This page describes how orders and payments relate, and the rules a payment integration must follow. The shop checkout's Pay, the admin's payment requests and **Check payment status** all go through `PaymentGatewayPort` and the one rule that judges a gateway's answers. How staff create orders, take payments and run open orders is in [Admin ordering, zones and payments](/business-flows/admin-ordering-and-zones); the shop's side is in [Checkout](/business-flows/checkout).
 
 ## Gateway selection
 
@@ -86,7 +90,9 @@ Order history renders from the snapshot, not from the current product.
 
 ### Order
 
-`pending → paid → processing → shipped → delivered`, with cancellation and refund paths. Transitions must be validated and appended to a timeline.
+`OrderStatus`: `open` (an admin order kept open to add pieces), `awaiting_payment`, `placed`, `processing`, `packed`, `shipped`, `out_for_delivery` (set only by a connected courier), `delivered` and `cancelled`. The status machine in `packages/core-domain/src/orders/status-machine.ts` offers only the next steps an order can take and names the reason a step is blocked (for example Packed without a needed invoice address). Every change is kept in the order's history with who made it and the comment.
+
+The payment status sits beside it (`OrderPaymentStatus`): `unpaid`, `request_sent`, `pending_at_bank`, `paid`, `part_paid`, `paid_ahead`, `due_on_delivery`, `on_account`, `refunded` and `part_refunded`. It is worked out again from every payment after each change.
 
 ### Payment attempt
 
@@ -147,14 +153,13 @@ Customers can read only their own orders. A mismatch returns not-found. An admin
 
 ## Document numbering
 
-The numbering policy for orders, tax invoices and purchase invoices is an open decision. Before you implement it, the decision log must define:
+`packages/core-domain/src/orders/numbering.ts` renders and checks every number; counters live behind `NumberAllocatorPort`.
 
-- Financial-year reset or perpetual sequence.
-- Company code, separators and zero-padding.
-- Gapless requirements and cancellation handling.
-- Separate sequences for each document type.
-
-Do not generate production numbers from database counts, random ids, timestamps or a frontend formatter. India financial-year boundaries are calculated in IST, and issued invoices must stay immutable.
+- **Order number:** `ST-YYMM-NNNNNN`, the year and month followed by six random digits (`ST-2611-482190`). It never restarts, reveals nothing about volume and is checked for uniqueness. Its SMS form drops the hyphens (`ST2611482190`).
+- **Numbers hung off the order:** shipments `/P1`, returns `/R1`, payment requests `/Q1` (`ST-2611-482190/P1`).
+- **GST documents** (tax invoice, credit and debit note, receipt, refund and payment vouchers, delivery challan, self-invoice): one series per document type, at most 16 characters, restarting each financial year (`RC/26-27/000457`). The financial year is worked out in IST.
+- **Taken inside the save:** a number is issued only when the document is final, in the same transaction, so drafts and failed saves never use one up. A cancelled document keeps its number.
+- **Formats are settings,** checked when set and locked once the first number is issued.
 
 ## Failure matrix
 
@@ -170,10 +175,9 @@ Do not generate production numbers from database counts, random ids, timestamps 
 
 ## Limitations
 
-- `POST /orders` creates a `pending` order and removes the cart in one transaction. It has no idempotency key, stock step or payment step.
-- The shop checkout's Pay (`POST /storefront/checkout/place`) is the payment path built on these rules; see [Admin ordering, zones and payments](/business-flows/admin-ordering-and-zones#paying-at-the-shop). `POST /orders` stays until the shop's checkout screens use Pay.
-- `OrdersService` generates an interim order number.
-- Status changes have no legal-transition rule, version check or audit record.
+- `POST /orders` creates a `pending` order from the cart without an idempotency key, stock step or payment step. The shop checkout places orders through Pay (`POST /storefront/checkout/place`) instead; see [Admin ordering, zones and payments](/business-flows/admin-ordering-and-zones#paying-at-the-shop).
+- `PATCH /orders/:id/status` doesn't apply the status machine. Staff move orders through the admin order routes, which do.
+- Tax invoices are not issued: they need the HSN codes and rates as well as the invoice series.
 
 ## Debugging checkpoints
 

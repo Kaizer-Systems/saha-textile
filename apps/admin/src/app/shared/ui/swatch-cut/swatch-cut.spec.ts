@@ -64,6 +64,14 @@ describe('SwatchCut (brief P11)', () => {
 		expect(cut.previewValues()[0]?.price).toBe(0);
 	});
 
+	it('names the cut it replaces, so the server deletes it once nothing uses it (owner, 22 Nov 2026)', async () => {
+		const region = { x: 0.1, y: 0.6, width: 400 / 1800, height: 400 / 2400 };
+		const { cut, gateway } = render({ ...photo, cutId: 'med_old_cut', region });
+		await cut.start({ pictureId: 'med_old_cut', valueName: 'Shadow work' });
+		await cut.save();
+		expect(gateway.cut).toHaveBeenCalledWith('med_photo', { region: cut.region(), replaces: 'med_old_cut' });
+	});
+
 	it('zooms between 1 and 6, says when the square will look soft, and keeps it inside the photo', async () => {
 		const { cut } = render();
 		await cut.start({ pictureId: 'med_photo', valueName: 'Floral' });

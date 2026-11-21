@@ -504,8 +504,11 @@ export const MediaCutRegion = z.object({
 });
 export type MediaCutRegion = z.infer<typeof MediaCutRegion>;
 
-/** Admin's "Save cut": make a swatch picture from a square of this photo. */
-export const MediaCutRequest = z.object({ region: MediaCutRegion });
+/**
+ * Admin's "Save cut": make a swatch picture from a square of this photo. `replaces` names the cut the value held when
+ * the pop-up opened; it is deleted for good once nothing uses it (owner, 22 Nov 2026).
+ */
+export const MediaCutRequest = z.object({ region: MediaCutRegion, replaces: Id.optional() });
 export type MediaCutRequest = z.infer<typeof MediaCutRequest>;
 
 /**

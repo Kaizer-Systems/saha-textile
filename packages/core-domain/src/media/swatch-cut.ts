@@ -1,7 +1,7 @@
 import type { MediaAsset, MediaCutRegion, MediaVersion } from '@saha-textile/contracts';
 
 import type { ImageCutPort } from '../ports/image-codec.port';
-import type { MediaAssetRepository } from '../ports/media.repository';
+import type { MediaAssetRepository, MediaCutRepository } from '../ports/media.repository';
 import type { StoragePort } from '../ports/storage.port';
 
 import type { ProcessOutcome } from './process-asset';
@@ -195,4 +195,63 @@ export async function cutSwatch(deps: CutSwatchDeps, input: { assetId: string })
 	});
 	const outcome = await deps.process(cut.id);
 	return outcome.status === 'ready' ? { status: 'made', px: square.width } : outcome;
+}
+
+/**
+ * The swatch pictures a save leaves behind (owner, 22 Nov 2026): ids the old values held that the new ones no longer
+ * hold. Only cuts are ever deleted, and only once nothing uses them; photos and library pictures stay.
+ */
+export function swatchesLeftBehind(
+	before: readonly (string | null | undefined)[],
+	after: readonly (string | null | undefined)[],
+): string[] {
+	const kept = new Set(after.filter((id): id is string => !!id));
+	return [...new Set(before.filter((id): id is string => !!id && !kept.has(id)))];
+}
+
+export interface DropCutDeps {
+	assets: Pick<MediaAssetRepository, 'findById' | 'countReferences' | 'hardDelete'>;
+	storage: Pick<StoragePort, 'getUrl'>;
+	queue: { enqueue(job: { type: 'delete-objects'; keys: string[]; urls: string[] }): Promise<void> };
+}
+
+export type DropCutOutcome = 'dropped' | 'in_use' | 'not_a_cut' | 'gone';
+
+/**
+ * Deletes a swatch cut for good once nothing uses it (owner, 22 Nov 2026: a cut replaced by another selection has no
+ * further use): its original, every size, the files a Replace kept, the CDN copies and the record. A cut still used
+ * by another value, product, attribute or order stays.
+ */
+export async function dropUnusedCut(deps: DropCutDeps, input: { assetId: string }): Promise<DropCutOutcome> {
+	const cut = await deps.assets.findById(input.assetId);
+	if (!cut || cut.deletedAt) return 'gone';
+	if (!cut.cutFrom) return 'not_a_cut';
+	if ((await deps.assets.countReferences(cut.id)) > 0) return 'in_use';
+	const sizes = [
+		...cut.derivatives.map((file) => file.storageKey),
+		...(cut.keptFiles ?? []).flatMap((kept) => kept.keys),
+	];
+	const keys = cut.originalStorageKey ? [...sizes, cut.originalStorageKey] : sizes;
+	const urls = cut.visibility === 'public' ? sizes.map((key) => deps.storage.getUrl(key)) : [];
+	if (keys.length) await deps.queue.enqueue({ type: 'delete-objects', keys, urls });
+	await deps.assets.hardDelete(cut.id);
+	return 'dropped';
+}
+
+/** A cut made in the pop-up but never saved on a value is swept after this long. */
+export const UNSAVED_CUT_HOURS = 24;
+
+/**
+ * The daily sweep: cuts no place uses and made over a day ago (a pop-up's cut whose form was never saved, or a cut
+ * left by a deleted product) are deleted for good, as `dropUnusedCut` does. Answers how many went.
+ */
+export async function sweepUnusedCuts(
+	deps: DropCutDeps & { cuts: Pick<MediaCutRepository, 'findCutsMadeBefore'>; now: () => Date },
+): Promise<number> {
+	const before = new Date(deps.now().getTime() - UNSAVED_CUT_HOURS * 3_600_000);
+	let dropped = 0;
+	for (const cut of await deps.cuts.findCutsMadeBefore(before)) {
+		if ((await dropUnusedCut(deps, { assetId: cut.id })) === 'dropped') dropped += 1;
+	}
+	return dropped;
 }

@@ -4,7 +4,7 @@ wide: true
 description: How admin shows each option look while it is chosen, and how a swatch cut turns a square of a product photo into a picture of its own, made by the image worker from the original and listed under its photo in the Media Library.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-21'
+last_verified: '2026-11-22'
 source_of_truth:
     - packages/contracts/src/media.ts
     - packages/contracts/src/media-library.ts
@@ -76,7 +76,11 @@ open to anyone who may edit products (`product.edit`), without Media Library acc
 
 ### In the Media Library
 
-A cut is an ordinary picture: it can be reused on another product, and deleted when nothing uses it. Its details say
+A cut exists for the values that use it, so a cut nothing uses is deleted for good with its original, every size and
+its CDN copies (`dropUnusedCut`): when a product or attribute save replaces it (`swatchesLeftBehind` → the worker's
+`drop-cut` job), when Save cut replaces an unsaved one (the request's `replaces`), and in a daily sweep for cuts made
+over a day ago that were never saved (`cut-sweep`, 03:52 IST). A cut still used by another value, product, attribute
+or order stays. Photos and library pictures are never deleted this way. Its details say
 "Cut from …"; a photo's details list its swatch cuts with where each is used. "Where used" and the delete guard count
 a product's own option swatches (`optionGroups.terms.swatchAssetId`) as well as attribute default pictures.
 

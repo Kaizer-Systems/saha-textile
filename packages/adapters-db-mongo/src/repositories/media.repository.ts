@@ -171,6 +171,18 @@ export class MongoMediaAssetRepository
 		return docs.map(toAsset);
 	}
 
+	/** Swatch cuts made before this moment and not deleted (the daily sweep checks each one's uses). */
+	async findCutsMadeBefore(before: Date): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({
+			'cutFrom.assetId': { $type: 'string' },
+			deletedAt: null,
+			createdAt: { $lt: before },
+		})
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
 	async countReferences(assetId: string): Promise<number> {
 		const counts = await Promise.all(
 			MEDIA_OWNER_REGISTRY.map((owner) => owner.model.countDocuments({ [owner.path]: assetId }).exec()),

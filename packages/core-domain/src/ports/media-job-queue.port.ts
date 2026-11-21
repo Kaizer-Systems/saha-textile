@@ -11,6 +11,8 @@ export type MediaJob =
 	| { type: 'replace'; assetId: string }
 	/** A swatch cut (brief P11): cut its square from the photo's original, then make its swatch sizes. */
 	| { type: 'cut'; assetId: string }
+	/** A swatch cut replaced on a value: deleted for good, with its files, once nothing uses it. */
+	| { type: 'drop-cut'; assetId: string }
 	/** Delete storage objects, then purge their public URLs from the CDN. */
 	| { type: 'delete-objects'; keys: string[]; urls: string[] }
 	| { type: 'purge'; urls: string[] }

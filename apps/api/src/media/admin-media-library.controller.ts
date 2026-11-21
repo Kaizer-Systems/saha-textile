@@ -231,7 +231,7 @@ export class AdminMediaLibraryController {
 		@Body(new ZodValidationPipe(MediaCutRequest)) body: MediaCutRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<MediaCutResult> {
-		return this.library.cut(actor(principal), id, body.region);
+		return this.library.cut(actor(principal), id, body.region, new Date(), body.replaces);
 	}
 
 	@Delete('files/:id/versions/:versionId')

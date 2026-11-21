@@ -31,7 +31,7 @@ export interface ProcessMediaAssetDeps {
 	/** Email pictures a Replace or a new name leaves behind are recorded for Clean up, never deleted (R6-1). */
 	emailPictures?: Pick<EmailPictureRepository, 'keep'>;
 	/** A photo's swatch cuts (brief P11): a Replace with a new original has each one cut again. */
-	cuts?: MediaCutRepository;
+	cuts?: Pick<MediaCutRepository, 'findCutsOf'>;
 }
 
 export type ProcessOutcome =

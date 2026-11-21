@@ -46,7 +46,9 @@ import {
 	brandStripLogo,
 	deliverStockAlerts,
 	cutSwatch,
+	dropUnusedCut,
 	processMediaAsset,
+	sweepUnusedCuts,
 	replaceMediaAsset,
 	sweepKeptFiles,
 	reconcileSeededRoles,
@@ -203,6 +205,18 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		process: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: false }),
 		reprocess: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: true }),
 		replace: (job) => replaceMediaAsset(processDeps, { assetId: job.assetId }),
+		// A cut replaced on a value (owner, 22 Nov 2026): deleted for good, with its files, once nothing uses it.
+		'drop-cut': async (job) => {
+			const outcome = await dropUnusedCut({ assets, storage, queue }, { assetId: job.assetId });
+			logger.log(`Swatch cut ${job.assetId}: ${outcome}`);
+			return outcome;
+		},
+		// Every day: cuts nothing uses, made over a day ago (a pop-up's cut never saved), go for good.
+		'cut-sweep': async () => {
+			const dropped = await sweepUnusedCuts({ assets, storage, queue, cuts: assets, now });
+			logger.log(`Swatch cut sweep: ${dropped} deleted`);
+			return dropped;
+		},
 		// A swatch cut (brief P11): its square from the photo's original, then its swatch sizes.
 		cut: (job) =>
 			cutSwatch(

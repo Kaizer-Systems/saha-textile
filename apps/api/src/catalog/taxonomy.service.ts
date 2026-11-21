@@ -306,6 +306,11 @@ export class TaxonomyService {
 		);
 		await this.copyToProducts(saved);
 		await this.catalog.record(actorUserId, 'catalog.attribute.save', saved.id, { code: saved.code });
+		// A default picture replaced by a new cut or another picture: the old cut goes once nothing uses it.
+		await this.catalog.dropLeftBehindSwatches(
+			(existing?.terms ?? []).map((term) => term.swatchAssetId),
+			saved.terms.map((term) => term.swatchAssetId),
+		);
 		return saved;
 	}
 

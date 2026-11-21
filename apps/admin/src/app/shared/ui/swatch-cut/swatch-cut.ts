@@ -185,7 +185,10 @@ export class SwatchCut {
 		this.saving.set(true);
 		this.problem.set(null);
 		try {
-			const made = await firstValueFrom(this.gateway.cut(photo.photoId, { region }));
+			// The cut the value held is named, so the server deletes it once nothing uses it (owner, 22 Nov 2026).
+			const made = await firstValueFrom(
+				this.gateway.cut(photo.photoId, { region, ...(photo.cutId ? { replaces: photo.cutId } : {}) }),
+			);
 			this.modal.close({ kind: 'cut', id: made.id, versionId: made.versionId } satisfies SwatchCutResult);
 		} catch (error) {
 			this.problem.set(readApiErrorMessage(error) ?? this.transloco.translate('cut_failed'));

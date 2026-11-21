@@ -27,6 +27,8 @@ export type ScheduledMediaJob =
 	| { type: 'trash-purge' }
 	/** Removes uploads still waiting for their bytes a day after they started. */
 	| { type: 'upload-sweep' }
+	/** Deletes swatch cuts nothing uses, made over a day ago (a pop-up's cut never saved on a value). */
+	| { type: 'cut-sweep' }
 	/** Deletes files kept after a Replace once their 7 days are over (decision 11). */
 	| { type: 'kept-files-sweep' }
 	/** The nightly Spaces check (R5-5): missing pictures the website uses, files no record knows. */
@@ -188,6 +190,12 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'upload-sweep',
 			{ pattern: '50 3 * * *', tz },
 			{ name: 'upload-sweep', data: { type: 'upload-sweep' } },
+		);
+		// Swatch cuts nothing uses, made over a day ago: deleted for good (03:52 IST).
+		await this.queue.upsertJobScheduler(
+			'cut-sweep',
+			{ pattern: '52 3 * * *', tz },
+			{ name: 'cut-sweep', data: { type: 'cut-sweep' } },
 		);
 		// Files kept 7 days after a Replace (decision 11): deleted once due (03:55 IST).
 		await this.queue.upsertJobScheduler(

@@ -5,6 +5,9 @@ import {
 	SEEDED_MEDIA_ROLES,
 	checkCut,
 	cutSwatch,
+	dropUnusedCut,
+	swatchesLeftBehind,
+	sweepUnusedCuts,
 	cutPixels,
 	cutSlug,
 	MIN_CUT_PX,
@@ -204,5 +207,90 @@ describe('cutSwatch: the worker’s cut job', () => {
 			status: 'rejected',
 			reason: 'not_an_image',
 		});
+	});
+});
+
+describe('replaced cuts are deleted once nothing uses them (owner, 22 Nov 2026)', () => {
+	const file = (key: string) => ({
+		role: 'swatch_image',
+		storageKey: key,
+		width: 80,
+		height: 80,
+		byteSize: 1,
+		format: 'image/webp',
+		roleVersion: 1,
+	});
+	const cutRow = (over: Record<string, unknown> = {}) =>
+		({
+			id: 'med_cut',
+			cutFrom: { assetId: 'med_photo', region: { x: 0, y: 0, width: 0.5, height: 0.375 } },
+			originalStorageKey: 'originals/med_cut.jpg',
+			derivatives: [file('d/80.webp'), file('d/160.webp')],
+			keptFiles: [{ keys: ['d/old.webp'], bytes: 1, deleteAfter: '2026-11-29T00:00:00.000Z', reason: 'replace' }],
+			visibility: 'public',
+			deletedAt: null,
+			...over,
+		}) as never;
+	const deps = (row: unknown, references = 0) => {
+		const jobs: unknown[] = [];
+		return {
+			jobs,
+			deps: {
+				assets: {
+					findById: vi.fn(async () => row as never),
+					countReferences: vi.fn(async () => references),
+					hardDelete: vi.fn(async () => undefined),
+				},
+				storage: { getUrl: (key: string) => `https://cdn.test/${key}` },
+				queue: { enqueue: vi.fn(async (job: unknown) => void jobs.push(job)) },
+			},
+		};
+	};
+
+	it('lists the swatches a save left behind, once each', () => {
+		expect(swatchesLeftBehind(['a', 'b', 'b', null, 'c'], ['c', undefined, 'd'])).toEqual(['a', 'b']);
+		expect(swatchesLeftBehind([], ['a'])).toEqual([]);
+	});
+
+	it('deletes an unused cut with its original, sizes, kept files and CDN copies', async () => {
+		const run = deps(cutRow());
+		expect(await dropUnusedCut(run.deps, { assetId: 'med_cut' })).toBe('dropped');
+		expect(run.jobs).toEqual([
+			{
+				type: 'delete-objects',
+				keys: ['d/80.webp', 'd/160.webp', 'd/old.webp', 'originals/med_cut.jpg'],
+				urls: ['https://cdn.test/d/80.webp', 'https://cdn.test/d/160.webp', 'https://cdn.test/d/old.webp'],
+			},
+		]);
+		expect(run.deps.assets.hardDelete).toHaveBeenCalledWith('med_cut');
+	});
+
+	it('keeps a cut still in use, and never touches a photo or a picture already gone', async () => {
+		const used = deps(cutRow(), 1);
+		expect(await dropUnusedCut(used.deps, { assetId: 'med_cut' })).toBe('in_use');
+		expect(used.deps.assets.hardDelete).not.toHaveBeenCalled();
+		expect(await dropUnusedCut(deps(cutRow({ cutFrom: null })).deps, { assetId: 'med_cut' })).toBe('not_a_cut');
+		expect(await dropUnusedCut(deps(null).deps, { assetId: 'med_cut' })).toBe('gone');
+		expect(
+			await dropUnusedCut(deps(cutRow({ deletedAt: '2026-11-21T00:00:00.000Z' })).deps, { assetId: 'med_cut' }),
+		).toBe('gone');
+		// A private cut has no CDN copies to purge; one with nothing stored only loses its record.
+		const bare = deps(
+			cutRow({ visibility: 'private', derivatives: [], keptFiles: undefined, originalStorageKey: null }),
+		);
+		expect(await dropUnusedCut(bare.deps, { assetId: 'med_cut' })).toBe('dropped');
+		expect(bare.jobs).toEqual([]);
+		const hidden = deps(cutRow({ visibility: 'private' }));
+		await dropUnusedCut(hidden.deps, { assetId: 'med_cut' });
+		expect(hidden.jobs[0]).toMatchObject({ urls: [] });
+	});
+
+	it('sweeps cuts made over a day ago that nothing uses', async () => {
+		const run = deps(cutRow());
+		const findCutsMadeBefore = vi.fn(async () => [{ id: 'a' }, { id: 'b' }] as never);
+		run.deps.assets.countReferences.mockResolvedValueOnce(0).mockResolvedValueOnce(2);
+		const now = () => new Date('2026-11-22T10:00:00.000Z');
+		expect(await sweepUnusedCuts({ ...run.deps, cuts: { findCutsMadeBefore }, now })).toBe(1);
+		expect(findCutsMadeBefore).toHaveBeenCalledWith(new Date('2026-11-21T10:00:00.000Z'));
 	});
 });

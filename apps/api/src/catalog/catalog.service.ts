@@ -19,6 +19,7 @@ import {
 	type SeoRedirectWrite,
 } from '@saha-textile/contracts';
 import {
+	swatchesLeftBehind,
 	normaliseSourcePath,
 	productGallery,
 	repointedRows,
@@ -82,6 +83,10 @@ import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
 import { missingFilter } from '../languages/missing-filter';
 
 const RELATION_TYPES = ['related', 'upsell', 'cross_sell'] as const;
+
+/** Every swatch picture a product's values hold. */
+const swatchIdsOf = (product: Pick<Product, 'optionGroups'>): (string | undefined)[] =>
+	product.optionGroups.flatMap((group) => group.terms.map((term) => term.swatchAssetId));
 
 @Injectable()
 export class CatalogService {
@@ -685,7 +690,18 @@ export class CatalogService {
 		await this.replaceManualRelations(product.id, 'related', body.relatedProductIds);
 		await this.replaceManualRelations(product.id, 'upsell', body.upsellProductIds);
 		await this.replaceManualRelations(product.id, 'cross_sell', body.crossSellProductIds);
+		await this.dropLeftBehindSwatches(swatchIdsOf(product), swatchIdsOf(next));
 		return { id: product.id, slug: next.slug };
+	}
+
+	/**
+	 * Swatch pictures a save left behind (owner, 22 Nov 2026): each goes to the worker, which deletes it for good only
+	 * when it is a swatch cut that nothing uses any more. Photos and library pictures are never deleted this way.
+	 */
+	async dropLeftBehindSwatches(before: readonly (string | undefined)[], after: readonly (string | undefined)[]) {
+		if (!this.mediaJobs) return;
+		for (const assetId of swatchesLeftBehind(before, after))
+			await this.mediaJobs.enqueue({ type: 'drop-cut', assetId });
 	}
 
 	/**

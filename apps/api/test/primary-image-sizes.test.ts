@@ -107,7 +107,7 @@ function harness(gallery: string[], assets: z.output<typeof MediaAsset>[]) {
 				],
 			}),
 		);
-	return { save, store, jobs };
+	return { save, store, jobs, catalog };
 }
 
 describe('main-photo sizes on product save', () => {
@@ -139,5 +139,16 @@ describe('main-photo sizes on product save', () => {
 		const { save, jobs } = harness([], []);
 		await save();
 		expect(jobs).toEqual([]);
+	});
+});
+
+describe('swatch cuts left behind by a save (owner, 22 Nov 2026)', () => {
+	it('sends each swatch picture a save dropped to the worker, and none when the values keep theirs', async () => {
+		const run = harness(['med_a'], [asset('med_a', true)]);
+		await run.save();
+		expect(run.jobs.some((job) => (job as { type: string }).type === 'drop-cut')).toBe(false);
+		await run.catalog.dropLeftBehindSwatches(['med_cut1', 'med_keep', undefined], ['med_keep']);
+		expect(run.jobs).toContainEqual({ type: 'drop-cut', assetId: 'med_cut1' });
+		expect(run.jobs).not.toContainEqual({ type: 'drop-cut', assetId: 'med_keep' });
 	});
 });

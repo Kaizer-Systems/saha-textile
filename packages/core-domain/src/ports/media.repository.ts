@@ -135,4 +135,6 @@ export interface MediaAssetRepository {
 /** A photo's swatch cuts (owner, 21 Nov 2026, brief P11): the pictures cut from it, not in Trash or deleted. */
 export interface MediaCutRepository {
 	findCutsOf(photoId: string): Promise<MediaAsset[]>;
+	/** Every swatch cut made before this moment, not deleted: what the daily sweep checks. */
+	findCutsMadeBefore(before: Date): Promise<MediaAsset[]>;
 }

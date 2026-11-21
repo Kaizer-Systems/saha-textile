@@ -319,6 +319,7 @@ describe('TaxonomyService', () => {
 			record: vi.fn(async () => undefined),
 			upsertRedirect: vi.fn(async () => undefined),
 			syncSearch: vi.fn(async () => undefined),
+			dropLeftBehindSwatches: vi.fn(async () => undefined),
 		};
 		const categories = {
 			tree: vi.fn(async () => rows),
@@ -610,6 +611,16 @@ describe('TaxonomyService', () => {
 		await service.saveAttribute(attribute(), null);
 		expect(attributes.save.mock.calls[1]?.[0]).toMatchObject({ id: 'attr_old' });
 		expect(catalog.record).toHaveBeenCalledTimes(2);
+		// A default picture replaced: the old one goes to the worker, which deletes it only if it is an unused cut.
+		attributes.findByCode.mockResolvedValueOnce({
+			id: 'attr_old',
+			terms: [{ code: 'red', swatchAssetId: 'med_old' }],
+		});
+		await service.saveAttribute(attribute(), null);
+		expect(catalog.dropLeftBehindSwatches).toHaveBeenLastCalledWith(
+			['med_old'],
+			attribute().terms.map((term) => term.swatchAssetId),
+		);
 		await expect(service.saveAttribute(attribute({ label: { en: ' ' } }), null)).rejects.toThrow('English name');
 	});
 

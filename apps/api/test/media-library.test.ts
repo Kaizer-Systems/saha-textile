@@ -1433,6 +1433,16 @@ describe('Save cut: a swatch picture from a square of a photo (owner, 21 Nov 202
 		});
 	});
 
+	it('sends the cut the value held to the worker, which deletes it once nothing uses it (owner, 22 Nov 2026)', async () => {
+		const run = setup();
+		const first = await run.service.cut('adm_1', 'med_photo', square(0.2, 0.5, 600));
+		const second = await run.service.cut('adm_1', 'med_photo', square(0, 0, 600), new Date(), first.id);
+		expect(run.jobs).toContainEqual({ type: 'drop-cut', assetId: first.id });
+		// Saving the same square again replaces nothing.
+		await run.service.cut('adm_1', 'med_photo', square(0, 0, 600), new Date(), second.id);
+		expect(run.jobs).not.toContainEqual({ type: 'drop-cut', assetId: second.id });
+	});
+
 	it('works without the cuts lookup, making a new cut each time', async () => {
 		const run = harness();
 		run.file('med_photo', { width: 1800, height: 2400 });

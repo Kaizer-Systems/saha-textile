@@ -200,7 +200,20 @@ export class MediaLibraryService {
 	 * never changed; the image worker cuts the square from its original and makes the swatch sizes. The same square of
 	 * the same photo reuses the cut already there.
 	 */
-	async cut(actor: string, photoId: string, region: MediaCutRegion, now = new Date()): Promise<MediaCutResult> {
+	async cut(
+		actor: string,
+		photoId: string,
+		region: MediaCutRegion,
+		now = new Date(),
+		replaces?: string,
+	): Promise<MediaCutResult> {
+		const made = await this.makeCut(actor, photoId, region, now);
+		// The cut the value held before goes once nothing uses it: a saved one stays until its form is saved.
+		if (replaces && replaces !== made.id) await this.queue.enqueue({ type: 'drop-cut', assetId: replaces });
+		return made;
+	}
+
+	private async makeCut(actor: string, photoId: string, region: MediaCutRegion, now: Date): Promise<MediaCutResult> {
 		const photo = await this.assets.findById(photoId);
 		if (!photo || photo.deletedAt) throw new NotFoundException();
 		const check = checkCut(photo, region);

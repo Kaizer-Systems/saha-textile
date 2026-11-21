@@ -174,4 +174,20 @@ test.describe('Orders: create, take payment and move along (oc01, ck01–ck05, o
 		await expect(newestHistory(page)).toContainText('Email');
 		await expect(newestHistory(page)).not.toContainText('SMS');
 	});
+
+	test('keeps an order open from the sixth payment card, and tells the customer nothing yet', async ({ page }) => {
+		const buyer = await customer(page, 'open');
+		await checkoutFor(page, buyer);
+		// Owner, 21 Nov (option A): "Keep the order open" sits with the other ways to settle an order.
+		const card = page.locator('label[for="pay_keepOpen"]');
+		await expect(card).toContainText('Keep the order open');
+		await page.locator('#pay_keepOpen').check();
+		await expect(page.locator('.payment-option.mt-3')).toContainText('The order stays open.');
+		const place = page.locator('button.payment-btn');
+		await expect(place).toHaveText('Keep the order open');
+		await place.click();
+		await expect(page).toHaveURL(/\/order\/details\//);
+		await expect(page.locator('body')).toContainText(/Open order since/);
+		await expect(newestHistory(page)).not.toContainText('Email');
+	});
 });

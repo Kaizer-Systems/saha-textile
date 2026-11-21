@@ -45,6 +45,7 @@ const actorOf = (principal: AuthenticatedPrincipal | undefined): Actor => ({
 const rightsOf = (principal: AuthenticatedPrincipal | undefined): CheckoutRights => ({
 	belowCost: principal?.permissions.includes('stock.cost') ?? false,
 	creditOverride: principal?.permissions.includes('business.approve') ?? false,
+	keepOpen: principal?.permissions.includes('order.open') ?? false,
 });
 
 /**

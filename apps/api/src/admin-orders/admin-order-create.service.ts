@@ -84,6 +84,8 @@ export interface CheckoutRights {
 	belowCost: boolean;
 	/** business.approve: let an order on account go over the limit once, with a reason (K9). */
 	creditOverride: boolean;
+	/** order.open: keep an order open to add pieces over time ("Keep the order open"). */
+	keepOpen: boolean;
 }
 
 interface Built {
@@ -662,6 +664,10 @@ export class AdminOrderCreateService {
 		for (const method of ['paymentLink', 'upi', 'bankTransfer', 'cashOnDelivery', 'onAccount'] as const) {
 			if (!settings.adminPaymentMethods[method]) methodsOff.push({ method, reason: 'switchedOff' });
 		}
+		// "Keep the order open" (owner, 21 Nov: a sixth payment card): only while open orders are on, and
+		// only for staff who may keep orders open. Placing it otherwise is refused like any method that is off.
+		if (!settings.openOrders.enabled) methodsOff.push({ method: 'keepOpen', reason: 'switchedOff' });
+		else if (!rights.keepOpen) methodsOff.push({ method: 'keepOpen', reason: 'noPermission' });
 		let credit: AdminCheckoutQuote['credit'] = null;
 		if (buyer.kind === 'business') {
 			const customer = buyer.business.roles.customer;

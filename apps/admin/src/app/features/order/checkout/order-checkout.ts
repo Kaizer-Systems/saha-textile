@@ -30,8 +30,18 @@ import type {
 	SavedAddressRow,
 } from '@saha-textile/contracts';
 
-/** The payment methods as the brief draws them (ck01–ck08), in its order. */
-export const CHECKOUT_METHODS = ['paymentLink', 'upi', 'bankTransfer', 'cashOnDelivery', 'onAccount'] as const;
+/**
+ * The payment methods as the brief draws them (ck01–ck08), in its order, then "Keep the order open"
+ * (owner, 21 Nov: option A, a sixth payment card).
+ */
+export const CHECKOUT_METHODS = [
+	'paymentLink',
+	'upi',
+	'bankTransfer',
+	'cashOnDelivery',
+	'onAccount',
+	'keepOpen',
+] as const;
 export type CheckoutMethod = (typeof CHECKOUT_METHODS)[number];
 const METHOD_ICON: Record<CheckoutMethod, string> = {
 	paymentLink: 'ri-links-line',
@@ -39,6 +49,7 @@ const METHOD_ICON: Record<CheckoutMethod, string> = {
 	bankTransfer: 'ri-bank-line',
 	cashOnDelivery: 'ri-hand-coin-line',
 	onAccount: 'ri-file-list-3-line',
+	keepOpen: 'ri-folder-open-line',
 };
 
 /** Where an address comes from: one of the buyer's saved addresses, or typed for this order. */
@@ -183,6 +194,7 @@ export class OrderCheckout {
 	readonly payment = computed<AdminCheckoutPayment>(() => {
 		const method = this.method();
 		if (method === 'paymentLink') return { method: 'paymentLink' };
+		if (method === 'keepOpen') return { method: 'keepOpen' };
 		if (method === 'cashOnDelivery') return { method: 'cashOnDelivery', collector: this.collector() };
 		if (method === 'onAccount') {
 			const reason = this.overrideReason().trim();
@@ -267,8 +279,16 @@ export class OrderCheckout {
 		if (this.buyer()?.kind !== 'business') off.set('onAccount', 'notABusiness');
 		return off;
 	});
+	/**
+	 * On account shows for a business only. "Keep the order open" shows only while open orders are on and
+	 * for staff who may keep them; the quote says when it isn't (switched off, no permission).
+	 */
 	readonly shownMethods = computed(() =>
-		this.methods.filter((method) => method !== 'onAccount' || this.buyer()?.kind === 'business'),
+		this.methods.filter((method) => {
+			if (method === 'onAccount') return this.buyer()?.kind === 'business';
+			if (method === 'keepOpen') return !!this.quote.data() && !this.methodOff().has('keepOpen');
+			return true;
+		}),
 	);
 	/** K9: over the limit, on account needs the override permission and a reason. */
 	readonly overLimit = computed(() => this.methodOff().get('onAccount') === 'overLimit');

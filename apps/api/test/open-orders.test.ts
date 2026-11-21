@@ -142,7 +142,7 @@ function harness(order: Order, payments: OrderPayment[] = [], limitINR = 500_000
 }
 
 const actor = { id: 'adm_1', name: null };
-const rights = { belowCost: false, creditOverride: false };
+const rights = { belowCost: false, creditOverride: false, keepOpen: true };
 const received = (amountINR: number): OrderPayment =>
 	({
 		id: 'p',

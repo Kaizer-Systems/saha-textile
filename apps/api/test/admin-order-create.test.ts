@@ -94,7 +94,7 @@ const tenOff = {
 
 const freeShip = { ...tenOff, id: 'cpn_free', code: 'FREESHIP', title: 'Free delivery', kind: 'freeDelivery', value: 0 };
 
-function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
+function harness(cart = view(), limitINR = 200_000, outstanding = 0, orderSettings: Record<string, unknown> = {}) {
 	const created: Order[] = [];
 	const ledger: Array<Record<string, unknown>> = [];
 	const reserved: number[] = [];
@@ -136,7 +136,7 @@ function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
 			countPlacedByCustomer: async () => 0,
 		} as never,
 		{ save: async (payment: unknown) => payments.push(payment) } as never,
-		{ get: async () => OrderSettings.parse({}) } as never,
+		{ get: async () => OrderSettings.parse(orderSettings) } as never,
 		{
 			findById: async () => ({
 				id: 'biz_1',
@@ -199,7 +199,7 @@ function harness(cart = view(), limitINR = 200_000, outstanding = 0) {
 }
 
 const actor = { id: 'adm_1', name: null };
-const rights = { belowCost: false, creditOverride: false };
+const rights = { belowCost: false, creditOverride: false, keepOpen: true };
 
 describe('create order (oc01–oc03, ck01–ck08)', () => {
 	it('lists a business buyer’s saved addresses for the checkout, and refuses an unknown customer', async () => {
@@ -329,6 +329,27 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 		expect(told).toEqual([]);
 	});
 
+	it('offers "Keep the order open" only while open orders are on, to staff who may keep them', async () => {
+		const allowed = await harness().svc.quote(input({ method: 'keepOpen' }), rights);
+		expect(allowed.methodsOff.find((row) => row.method === 'keepOpen')).toBeUndefined();
+		const noRight = harness();
+		expect(
+			(await noRight.svc.quote(input({ method: 'keepOpen' }), { ...rights, keepOpen: false })).methodsOff,
+		).toContainEqual({ method: 'keepOpen', reason: 'noPermission' });
+		await expect(
+			noRight.svc.create(input({ method: 'keepOpen' }), actor, { ...rights, keepOpen: false }),
+		).rejects.toMatchObject({ response: { issues: [{ code: 'method_off', params: { reason: 'noPermission' } }] } });
+		const switchedOff = harness(view(), 200_000, 0, { openOrders: { enabled: false, remindAfterDays: null } });
+		expect((await switchedOff.svc.quote(input({ method: 'keepOpen' }), rights)).methodsOff).toContainEqual({
+			method: 'keepOpen',
+			reason: 'switchedOff',
+		});
+		await expect(switchedOff.svc.create(input({ method: 'keepOpen' }), actor, rights)).rejects.toMatchObject({
+			response: { issues: [{ code: 'method_off', params: { reason: 'switchedOff' } }] },
+		});
+		expect(noRight.created).toHaveLength(0);
+	});
+
 	it('refuses over the credit limit unless overridden with the permission and a reason (K9)', async () => {
 		const over = harness(view(), 30_000, 0);
 		await expect(
@@ -340,7 +361,7 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 		const order = await allowed.svc.create(
 			input({ method: 'onAccount', creditOverrideReason: 'Owner agreed on the phone' }),
 			actor,
-			{ belowCost: false, creditOverride: true },
+			{ belowCost: false, creditOverride: true, keepOpen: true },
 		);
 		expect(order.status).toBe('placed');
 	});
@@ -383,7 +404,7 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 			response: { issues: [{ code: 'zone_price_below_cost' }] },
 		});
 		await expect(
-			harness(cheap).svc.create(input({ method: 'keepOpen' }), actor, { belowCost: true, creditOverride: false }),
+			harness(cheap).svc.create(input({ method: 'keepOpen' }), actor, { ...rights, belowCost: true }),
 		).resolves.toMatchObject({ status: 'open' });
 	});
 });

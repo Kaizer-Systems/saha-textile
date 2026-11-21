@@ -194,6 +194,34 @@ describe('admin checkout (ck01–ck08, ad07)', () => {
 		expect(page.body()?.indianInvoiceAddress).toMatchObject({ fullName: 'Arjun Mehta' });
 	});
 
+	it('offers "Keep the order open" as a sixth card only when the server allows it, and places it open', async () => {
+		addresses.set([home]);
+		quote.set(priced());
+		const { page, fixture, gateway, router } = render();
+		fixture.detectChanges();
+		expect(page.shownMethods()).toEqual(['paymentLink', 'upi', 'bankTransfer', 'cashOnDelivery', 'keepOpen']);
+		page.method.set('keepOpen');
+		expect(page.payment()).toEqual({ method: 'keepOpen' });
+		expect(page.placeWords()).toBe('ord_place_keepOpen');
+		expect(page.canPlace()).toBe(true);
+		await page.place();
+		expect(gateway.create).toHaveBeenCalledWith(expect.objectContaining({ payment: { method: 'keepOpen' } }));
+		// An open order asks no gateway for money.
+		expect(gateway.requestPayment).not.toHaveBeenCalled();
+		expect(router.navigate).toHaveBeenCalledWith(['/order/details', 'ord_9']);
+		// Open orders switched off, or staff without the permission: the card isn't there.
+		quote.set(
+			priced({
+				methodsOff: [
+					{ method: 'onAccount', reason: 'notABusiness' },
+					{ method: 'keepOpen', reason: 'noPermission' },
+				],
+			}),
+		);
+		expect(page.shownMethods()).not.toContain('keepOpen');
+		expect(page.canPlace()).toBe(false);
+	});
+
 	it('stops on a piece that can’t be sent, and lists coupons once each', () => {
 		addresses.set([home]);
 		quote.set(

@@ -802,6 +802,16 @@
 												<i class="ri-information-line"></i>
 												{{ 'ord_cod_note' | transloco }}
 											</p>
+											} @case ('keepOpen') {
+											<!-- Keep the order open (owner, 21 Nov: option A): what happens, as drawn. -->
+											<p class="mb-1">
+												<b>{{ 'ord_keep_open_title' | transloco }}</b>
+											</p>
+											<ul class="small mb-0 ps-3">
+												<li>{{ 'ord_keep_open_held' | transloco }}</li>
+												<li>{{ 'ord_keep_open_add' | transloco }}</li>
+												<li>{{ 'ord_keep_open_close' | transloco }}</li>
+											</ul>
 											} @case ('onAccount') { @if (creditView(); as credit) { @let numbers =
 											quote.data()?.credit;
 											<div class="d-flex justify-content-between small mb-1">

@@ -1,0 +1,140 @@
+<div class="modal-header">
+	<h2 id="swatch_cut_title">{{ 'cut_title' | transloco: { value: start$()?.valueName ?? '' } }}</h2>
+	<button
+		type="button"
+		class="btn btn-close"
+		[title]="'close' | transloco"
+		(click)="modal.dismiss()"
+	>
+		<i class="ri-close-line"></i>
+	</button>
+</div>
+<div
+	class="modal-body"
+	id="swatch_cut"
+>
+	@if (source(); as photo) {
+	<div class="sc-grid">
+		<div class="sc-photo-side">
+			<!-- The photo, dimmed outside the square; drag (or tap) to move the square, arrows nudge it. -->
+			<div
+				class="sc-photo"
+				role="slider"
+				tabindex="0"
+				[attr.aria-label]="'cut_drag' | transloco"
+				[attr.aria-valuetext]="'cut_px' | transloco: { px: px() }"
+				(pointerdown)="press($event)"
+				(pointermove)="follow($event)"
+				(pointerup)="release()"
+				(pointercancel)="release()"
+				(keydown)="nudge($event)"
+			>
+				<img
+					[src]="photo.url"
+					alt=""
+					draggable="false"
+				/>
+				@if (region(); as square) {
+				<span
+					class="sc-square"
+					[style.left.%]="square.x * 100"
+					[style.top.%]="square.y * 100"
+					[style.width.%]="square.width * 100"
+					[style.height.%]="square.height * 100"
+				></span>
+				}
+			</div>
+			<div class="sc-zoom">
+				<button
+					type="button"
+					class="btn btn-sm sc-zoom-step"
+					[title]="'cut_zoom_out' | transloco"
+					(click)="setZoom(zoom() - 0.5)"
+				>
+					<i class="ri-zoom-out-line"></i>
+				</button>
+				<input
+					type="range"
+					class="form-range"
+					min="1"
+					max="6"
+					step="0.1"
+					[attr.aria-label]="'cut_zoom' | transloco"
+					[value]="zoom()"
+					(input)="setZoom(+$any($event.target).value)"
+				/>
+				<button
+					type="button"
+					class="btn btn-sm sc-zoom-step"
+					[title]="'cut_zoom_in' | transloco"
+					(click)="setZoom(zoom() + 0.5)"
+				>
+					<i class="ri-zoom-in-line"></i>
+				</button>
+				<span class="sc-zoom-value">{{ zoom() }}×</span>
+			</div>
+			@if (soft()) {
+			<p class="sc-help is-soft">{{ 'cut_soft' | transloco: { px: px() } }}</p>
+			} @else {
+			<p class="sc-help">{{ 'cut_help' | transloco: { px: px() } }}</p>
+			}
+		</div>
+		<div class="sc-preview-side">
+			<h3 class="sc-preview-title">{{ 'cut_how_it_shows' | transloco }}</h3>
+			<dl class="sc-looks">
+				@for (look of looks; track look) {
+				<dt>{{ 'look_name_' + look | transloco }}</dt>
+				<dd>
+					<app-look-preview
+						[look]="look"
+						[values]="previewValues()"
+						[compact]="true"
+					/>
+				</dd>
+				}
+			</dl>
+			<p class="sc-note">{{ 'cut_note' | transloco }}</p>
+		</div>
+	</div>
+	} @else if (!problem()) {
+	<p class="text-muted">{{ 'loading' | transloco }}</p>
+	} @if (problem(); as message) {
+	<div
+		class="alert alert-danger mt-3 mb-0"
+		role="alert"
+	>
+		{{ message }}
+	</div>
+	}
+</div>
+<div class="modal-footer">
+	<div class="left-part">
+		<button
+			type="button"
+			class="btn btn-outline"
+			id="swatch_cut_whole"
+			[disabled]="!source()"
+			(click)="useWhole()"
+		>
+			{{ 'cut_whole' | transloco }}
+		</button>
+	</div>
+	<div class="right-part d-flex gap-2">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="swatch_cut_save"
+			[disabled]="!source() || saving()"
+			(click)="save()"
+		>
+			{{ (saving() ? 'cut_saving' : 'cut_save') | transloco }}
+		</button>
+	</div>
+</div>

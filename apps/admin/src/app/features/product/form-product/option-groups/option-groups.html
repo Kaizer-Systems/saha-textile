@@ -125,6 +125,20 @@
 												class="img-fluid"
 											/>
 										</li>
+										} @if (term.swatchAssetId) {
+										<!-- Cut a square of the chosen picture for the swatch (brief P11), beside the + tile's look. -->
+										<li
+											class="choosefile-input swatch-cut-tile"
+											role="button"
+											tabindex="0"
+											[title]="'cut_swatch_title' | transloco"
+											[attr.aria-label]="'cut_swatch_title' | transloco"
+											(click)="openCut(index, group, term)"
+											(keydown.enter)="openCut(index, group, term)"
+										>
+											<i class="ri-scissors-cut-line"></i>
+											<span class="small">{{ 'cut_swatch' | transloco }}</span>
+										</li>
 										}
 									</ul>
 									@if (!term.swatchAssetId) {

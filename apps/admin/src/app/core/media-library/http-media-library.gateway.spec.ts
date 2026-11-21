@@ -108,6 +108,14 @@ describe('HttpMediaLibraryGateway', () => {
 		expectCall('DELETE', /\/files\/med_1\/versions\/hero_21x9\.crop$/);
 	});
 
+	it('reads the cut pop-up’s photo and saves a swatch cut (brief P11)', () => {
+		gateway.cutSource('med_1').subscribe();
+		expectCall('GET', /\/files\/med_1\/cut-source$/);
+		const region = { x: 0.1, y: 0.2, width: 0.3, height: 0.225 };
+		gateway.cut('med_1', { region }).subscribe();
+		expectCall('POST', /\/files\/med_1\/cuts$/, { region });
+	});
+
 	it('saves a photo’s own text where the image fields save it (A42)', () => {
 		const text = { alt: { en: 'Red Banarasi silk saree' }, caption: {} };
 		gateway.saveText('med_1', text).subscribe();

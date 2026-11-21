@@ -93,6 +93,37 @@
 							}
 						</td>
 					</tr>
+					<!-- Swatch cuts (brief P11): a cut names its photo; a photo lists its cuts and where each is used. -->
+					@if (file.cutFrom; as from) {
+					<tr>
+						<td class="text-muted">{{ 'swatch' | transloco }}</td>
+						<td id="fm_details_cut_from">{{ 'fm_cut_from' | transloco: { name: from.photoName } }}</td>
+					</tr>
+					} @if (file.cuts?.length) {
+					<tr>
+						<td class="text-muted">{{ 'fm_cuts' | transloco }}</td>
+						<td id="fm_details_cuts">
+							@for (cut of file.cuts; track cut.id) {
+							<div class="d-flex align-items-center mb-1 gap-2">
+								@if (cut.thumbnail) {
+								<img
+									[src]="cut.thumbnail"
+									alt=""
+									width="32"
+									height="32"
+									style="object-fit: cover; border-radius: 4px"
+								/>
+								}
+								<span>{{ cut.name }}</span>
+								<span class="fm-meta">
+									{{ cut.usedOn ? ('fm_cut_used_on' | transloco: { count: cut.usedOn }) :
+									('fm_cut_unused' | transloco) }}
+								</span>
+							</div>
+							}
+						</td>
+					</tr>
+					}
 				</tbody>
 			</table>
 		</div>

@@ -168,6 +168,19 @@
 					[purpose]="'product'"
 					(selectedFiles)="setPicture(index, $event)"
 				/>
+				@if (term.swatchAssetId) {
+				<!-- Cut a square of the default picture for the swatch (brief P11). -->
+				<button
+					type="button"
+					class="btn btn-outline btn-sm swatch-cut-button mt-2"
+					[id]="'cut_' + index"
+					[title]="'cut_swatch_title' | transloco"
+					(click)="openCut(index, term)"
+				>
+					<i class="ri-scissors-cut-line me-1"></i>
+					{{ 'cut_swatch' | transloco }}
+				</button>
+				}
 			</div>
 			}
 		</div>

@@ -13,6 +13,21 @@ export interface LookPreviewValue {
 	picture?: string | null;
 	/** Rupees the value adds, shown by the looks that show a price. */
 	price?: number | null;
+	/** A square of `picture` to draw instead of the whole of it (the swatch cut pop-up, brief P11), in fractions. */
+	crop?: { x: number; y: number; width: number; height: number } | null;
+}
+
+/** CSS that draws one square of a picture (fractions of it) filling its box: the swatch cut pop-up's previews. */
+export function cropStyle(
+	crop: { x: number; y: number; width: number; height: number },
+	picture: string,
+): Record<string, string> {
+	const along = (start: number, size: number) => (size >= 1 ? 0 : (start / (1 - size)) * 100);
+	return {
+		'background-image': `url(${JSON.stringify(picture)})`,
+		'background-size': `${100 / crop.width}% ${100 / crop.height}%`,
+		'background-position': `${along(crop.x, crop.width)}% ${along(crop.y, crop.height)}%`,
+	};
 }
 
 const RADIO_LOOKS = new Set(['radio', 'radio_bar']);
@@ -42,6 +57,9 @@ export class LookPreview {
 	readonly note = input<string>('');
 	/** The line under the sketch. */
 	readonly help = input<string>('');
+	/** Just the element, without the heading and the box (the swatch cut pop-up lists the looks itself). */
+	readonly compact = input(false);
+	readonly cropStyle = cropStyle;
 
 	readonly shown = computed(() => this.values().slice(0, SHOWN));
 	readonly radio = computed(() => RADIO_LOOKS.has(this.look()));

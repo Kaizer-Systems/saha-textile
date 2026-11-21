@@ -201,19 +201,8 @@ export class CatalogPublicService {
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
 		const variantPhotos = rows.flatMap((row) => row.media?.primaryAssetId ?? []);
 		const assets = await this.assetsFor([...productGallery(product), ...swatchIds, ...variantPhotos]);
-		// A swatch cut still being made shows its photo's own swatch meanwhile (owner, 21 Nov 2026, brief P11).
-		const making = [...assets.values()].flatMap((asset) =>
-			asset.cutFrom && asset.processing.state !== 'ready' ? [asset.cutFrom.assetId] : [],
-		);
-		for (const [id, row] of await this.assetsFor(making)) assets.set(id, row);
-		const swatchOf = (id: string): { asset: MediaAsset | undefined; version: string | undefined } => {
-			const asset = assets.get(id);
-			const photo =
-				asset?.cutFrom && asset.processing.state !== 'ready' ? assets.get(asset.cutFrom.assetId) : undefined;
-			return photo
-				? { asset: photo, version: product.media.versions?.[photo.id] }
-				: { asset, version: undefined };
-		};
+		await this.addCutPhotos(assets);
+		const swatchOf = (id: string) => this.swatchAsset(assets, id, product.media.versions);
 		const gallery = productGallery(product).flatMap((id) => {
 			// `card` is the thumbnail strip's size (about 120 px); without it the strip fell back to 900 px photos.
 			const image = this.image(assets.get(id), GALLERY_FRAME_ROLES, product.media.versions?.[id]);
@@ -664,15 +653,42 @@ export class CatalogPublicService {
 			attribute.terms.flatMap((term) => (term.swatch ? [term.swatch] : [])),
 		);
 		const assets = await this.assetsFor(ids);
+		await this.addCutPhotos(assets);
 		return product.attributes.flatMap((attribute) =>
-			attribute.terms.map((term) => ({
-				attributeCode: attribute.code,
-				termCode: term.code,
-				label: localized(term.label),
-				hex: term.hex ?? null,
-				image: term.swatch ? this.image(assets.get(term.swatch), ['swatch_image']) : null,
-			})),
+			attribute.terms.map((term) => {
+				const swatch = term.swatch ? this.swatchAsset(assets, term.swatch, product.media.versions) : null;
+				return {
+					attributeCode: attribute.code,
+					termCode: term.code,
+					label: localized(term.label),
+					hex: term.hex ?? null,
+					image: swatch ? this.image(swatch.asset, ['swatch_image'], swatch.version) : null,
+				};
+			}),
 		);
+	}
+
+	/** Loads the photos of swatch cuts still being made, so they can stand in meanwhile (brief P11). */
+	private async addCutPhotos(assets: Map<string, MediaAsset>): Promise<void> {
+		const making = [...assets.values()].flatMap((asset) =>
+			asset.cutFrom && asset.processing.state !== 'ready' ? [asset.cutFrom.assetId] : [],
+		);
+		for (const [id, row] of await this.assetsFor(making)) assets.set(id, row);
+	}
+
+	/**
+	 * The picture a swatch draws: its own, or, while it is a cut still being made, its photo's (owner, 21 Nov 2026,
+	 * brief P11: "nothing breaks"), drawn in the version the product's gallery stores for that photo.
+	 */
+	private swatchAsset(
+		assets: ReadonlyMap<string, MediaAsset>,
+		id: string,
+		versions: Readonly<Record<string, string>> | undefined,
+	): { asset: MediaAsset | undefined; version: string | undefined } {
+		const asset = assets.get(id);
+		const photo =
+			asset?.cutFrom && asset.processing.state !== 'ready' ? assets.get(asset.cutFrom.assetId) : undefined;
+		return photo ? { asset: photo, version: versions?.[photo.id] } : { asset, version: undefined };
 	}
 
 	async cardsForSlugs(slugs: readonly string[]) {

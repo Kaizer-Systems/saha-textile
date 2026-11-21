@@ -1274,6 +1274,30 @@ describe('FormAttribute', () => {
 		return { page, service, router, toasts };
 	};
 
+	it('cuts a square of a value’s default picture, or goes back to the whole photo (brief P11)', async () => {
+		const { page } = render('color');
+		const cutStart = vi.fn();
+		const modals = TestBed.inject(NgbModal);
+		const open = vi.spyOn(modals, 'open');
+		const answer = (result: unknown) =>
+			open.mockReturnValueOnce({ componentInstance: { start: cutStart }, result } as never);
+		await page.openCut(0, { ...page.terms()[0]!, swatchAssetId: undefined } as never);
+		expect(open).not.toHaveBeenCalled();
+		answer(Promise.resolve({ kind: 'cut', id: 'med_cut', versionId: 'swatch_1x1.as_is' }));
+		await page.openCut(0, page.terms()[0]!);
+		expect(cutStart).toHaveBeenCalledWith({ pictureId: 'a1', valueName: expect.any(String) });
+		expect(page.terms()[0]).toMatchObject({ swatchAssetId: 'med_cut', swatchVersionId: 'swatch_1x1.as_is' });
+		// Until the cut's own files are made, the field shows the picture it was cut from.
+		expect(page.picture(page.terms()[0]!)).toMatchObject({ id: 'med_cut', original_url: 'a.webp' });
+		answer(Promise.resolve({ kind: 'whole', photoId: 'a1' }));
+		await page.openCut(0, page.terms()[0]!);
+		expect(page.terms()[0]).toMatchObject({ swatchAssetId: 'a1' });
+		expect(page.terms()[0]).not.toHaveProperty('swatchVersionId');
+		answer(Promise.reject('closed'));
+		await page.openCut(0, page.terms()[0]!);
+		expect(page.terms()[0]?.swatchAssetId).toBe('a1');
+	});
+
 	it('gives each value a default picture in the picture styles only', () => {
 		const { page } = render('color');
 		expect(page.isPicture).toBe(false);
@@ -1610,6 +1634,30 @@ describe('swatch pictures', () => {
 		page.chooseSwatch(0, page.groups()[0]!, 'v0', 'p1');
 		expect(page.groups()[0]?.terms[0]).toMatchObject({ swatchAssetId: 'p1' });
 		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchVersionId');
+	});
+
+	it('Cut opens the swatch cut pop-up for the chosen picture, then uses the cut or the whole photo (brief P11)', async () => {
+		const page = render([{ swatchAssetId: 'p2', priceDeltaINR: 750 }, {}], new Map([['p2', 'p2.webp']]));
+		const cutStart = vi.fn();
+		const answer = (result: unknown) =>
+			swatchModals.open.mockReturnValueOnce({ componentInstance: { start: cutStart }, result } as never);
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[1]!);
+		answer(Promise.resolve({ kind: 'cut', id: 'med_cut', versionId: 'swatch_1x1.as_is' }));
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[0]!);
+		expect(cutStart).toHaveBeenCalledWith({ pictureId: 'p2', valueName: 'Red', price: 750 });
+		expect(page.groups()[0]?.terms[0]).toMatchObject({
+			swatchAssetId: 'med_cut',
+			swatchVersionId: 'swatch_1x1.as_is',
+		});
+		// Until the cut's own files are made, its tile shows the photo it was cut from.
+		expect(page.tiles().get('med_cut')).toBe('p2.webp');
+		answer(Promise.resolve({ kind: 'whole', photoId: 'p2' }));
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[0]!);
+		expect(page.groups()[0]?.terms[0]).toMatchObject({ swatchAssetId: 'p2' });
+		expect(page.groups()[0]?.terms[0]).not.toHaveProperty('swatchVersionId');
+		answer(Promise.reject('closed'));
+		await page.openCut(0, page.groups()[0]!, page.groups()[0]!.terms[0]!);
+		expect(page.groups()[0]?.terms[0]?.swatchAssetId).toBe('p2');
 	});
 
 	it('takes a picture from the library for the value that asked', () => {

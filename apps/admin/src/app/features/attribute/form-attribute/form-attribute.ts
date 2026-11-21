@@ -5,6 +5,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
@@ -28,6 +29,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { LookPreview, type LookPreviewValue } from '@shared/ui/look-preview/look-preview';
+import { SwatchCut, type SwatchCutResult } from '@shared/ui/swatch-cut/swatch-cut';
 
 import type { IAttachment } from '@data-access/interfaces/attachment.interface';
 import type { AdminAttributeWrite, AttributeDefinition, AttributeDefinitionTerm } from '@saha-textile/contracts';
@@ -81,6 +83,7 @@ export class FormAttribute {
 	private transloco = inject(TranslocoService);
 	private media = inject(MediaGateway);
 	private swatches = inject(SwatchPictures);
+	private readonly modals = inject(NgbModal);
 
 	readonly type = input<string>(undefined);
 
@@ -193,6 +196,43 @@ export class FormAttribute {
 
 	picture(term: AttributeDefinitionTerm): IAttachment | null {
 		return term.swatchAssetId ? (this.pictures().get(term.swatchAssetId) ?? null) : null;
+	}
+
+	/**
+	 * Cut (brief P11): a square of the value's default picture, made a picture of its own; or the whole photo again.
+	 * Until the cut's own files are made, the field shows the picture it was cut from.
+	 */
+	async openCut(index: number, term: AttributeDefinitionTerm): Promise<void> {
+		const chosen = term.swatchAssetId;
+		if (!chosen) return;
+		const locale = this.fields.locale();
+		const popup = this.modals.open(SwatchCut, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			ariaLabelledBy: 'swatch_cut_title',
+			windowClass: 'theme-modal',
+		});
+		void (popup.componentInstance as SwatchCut).start({
+			pictureId: chosen,
+			valueName: term.label[locale] || term.label['en'] || term.code,
+		});
+		const result = (await popup.result.catch(() => null)) as SwatchCutResult | null;
+		if (!result) return;
+		const id = result.kind === 'cut' ? result.id : result.photoId;
+		const shown = this.pictures().get(chosen);
+		if (shown && !this.pictures().has(id)) this.pictures.update((map) => new Map([...map, [id, { ...shown, id }]]));
+		this.terms.update((rows) =>
+			rows.map((row, position) => {
+				if (position !== index) return row;
+				const { swatchVersionId: _version, ...rest } = row;
+				return {
+					...rest,
+					swatchAssetId: id,
+					...(result.kind === 'cut' ? { swatchVersionId: result.versionId } : {}),
+				};
+			}),
+		);
 	}
 
 	setPicture(index: number, picked: IAttachment | IAttachment[] | null) {

@@ -1074,6 +1074,31 @@ describe('gallery and swatches', () => {
 		expect(swatches[0]?.image?.assetId).toBe('s1');
 		expect(swatches[1]).toMatchObject({ hex: null, image: null });
 	});
+
+	it('shows a default picture’s photo while its cut is being made (brief P11)', async () => {
+		const row = product({
+			attributes: [
+				{
+					code: 'print',
+					label: { en: 'Print' },
+					terms: [{ code: 'floral', label: { en: 'Floral' }, swatch: 'cut1' }],
+				},
+			],
+		});
+		const cut = (state: string) => ({
+			...asset('cut1', 'swatch_image'),
+			cutFrom: { assetId: 'ph1', region: { x: 0, y: 0, width: 0.5, height: 0.375 } },
+			processing: { state, attempts: 0, error: null, processedAt: null },
+		});
+		const shown = async (state: string) =>
+			(
+				await build({ rows: [row], assets: [asset('ph1', 'swatch_image'), cut(state)] }).service.swatches(
+					'red-saree',
+				)
+			)[0]?.image?.assetId;
+		expect(await shown('processing')).toBe('ph1');
+		expect(await shown('ready')).toBe('cut1');
+	});
 });
 
 describe('cards', () => {

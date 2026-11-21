@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { OPTION_LOOKS } from '@core/catalog/option-looks';
 
-import { LookPreview, type LookPreviewValue } from './look-preview';
+import { LookPreview, cropStyle, type LookPreviewValue } from './look-preview';
 
 const values: LookPreviewValue[] = [
 	{ label: 'No Design', price: 0, picture: 'no-design-160.webp', hex: '#ffffff' },
@@ -70,5 +70,23 @@ describe('LookPreview', () => {
 		const many = Array.from({ length: 9 }, (_, index) => ({ label: `V${index}` }));
 		expect(draw('rectangle', many).querySelectorAll('.lp-item')).toHaveLength(6);
 		expect(draw('rectangle').querySelector('.look-preview-help')).toBeNull();
+	});
+
+	it('draws a square of a picture for the swatch cut pop-up, and only the element when compact (brief P11)', () => {
+		const crop = { x: 0.25, y: 0.5, width: 0.5, height: 0.25 };
+		const host = draw('image_tile', [{ label: 'Shadow work', picture: 'photo-900.webp', crop }], {
+			compact: true,
+			help: 'look_preview_help',
+		} as never);
+		const square = host.querySelector<HTMLElement>('.lp-cut');
+		expect(square?.style.backgroundImage).toContain('photo-900.webp');
+		expect(square?.style.backgroundSize).toBe('200% 400%');
+		expect(square?.style.backgroundPosition).toMatch(/^50% 66\.666/);
+		expect(host.querySelector('img.lp-pic')).toBeNull();
+		expect(host.querySelector('.look-preview-head')).toBeNull();
+		expect(host.querySelector('.look-preview-help')).toBeNull();
+		expect(host.querySelector('.look-preview')?.classList.contains('is-compact')).toBe(true);
+		// A square as wide as the picture sits at its start.
+		expect(cropStyle({ x: 0, y: 0.2, width: 1, height: 0.75 }, 'a.webp')['background-position']).toBe('0% 80%');
 	});
 });

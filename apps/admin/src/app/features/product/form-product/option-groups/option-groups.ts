@@ -11,6 +11,7 @@ import { SwatchPictures } from '@core/catalog/swatch-pictures';
 import { MediaGateway } from '@core/media/media.gateway';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { LookPreview, type LookPreviewValue } from '@shared/ui/look-preview/look-preview';
+import { SwatchCut, type SwatchCutResult } from '@shared/ui/swatch-cut/swatch-cut';
 import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 
 import type { IAttachment } from '@data-access/interfaces/attachment.interface';
@@ -257,6 +258,43 @@ export class OptionGroups {
 			if (term.code !== code) return term;
 			const { swatchAssetId: current, swatchVersionId: _version, ...rest } = term;
 			return current === assetId ? rest : { ...rest, swatchAssetId: assetId };
+		});
+		this.update(index, { terms });
+	}
+
+	/**
+	 * Cut (brief P11): a square of the value's chosen picture, made a picture of its own; or the whole photo again. A cut
+	 * keeps its own version (Swatch cut 1:1); the whole photo draws the version the product's gallery stores.
+	 */
+	async openCut(index: number, group: ProductOptionGroup, term: ProductOptionTerm): Promise<void> {
+		const chosen = term.swatchAssetId;
+		if (!chosen) return;
+		const popup = this.modals.open(SwatchCut, {
+			size: 'xl',
+			centered: true,
+			scrollable: true,
+			ariaLabelledBy: 'swatch_cut_title',
+			windowClass: 'theme-modal',
+		});
+		void (popup.componentInstance as SwatchCut).start({
+			pictureId: chosen,
+			valueName: this.termLabel(term),
+			price: term.priceDeltaINR ?? null,
+		});
+		const result = (await popup.result.catch(() => null)) as SwatchCutResult | null;
+		if (!result) return;
+		const id = result.kind === 'cut' ? result.id : result.photoId;
+		// Until the cut's own files are made, its tile shows the picture it was cut from.
+		const shown = this.tiles().get(chosen);
+		if (shown && !this.tiles().has(id)) this.tiles.update((tiles) => new Map([...tiles, [id, shown]]));
+		const terms = group.terms.map((row) => {
+			if (row.code !== term.code) return row;
+			const { swatchVersionId: _version, ...rest } = row;
+			return {
+				...rest,
+				swatchAssetId: id,
+				...(result.kind === 'cut' ? { swatchVersionId: result.versionId } : {}),
+			};
 		});
 		this.update(index, { terms });
 	}

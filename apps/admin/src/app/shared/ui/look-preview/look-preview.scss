@@ -9,6 +9,13 @@
 	font-size: 13px;
 }
 
+.look-preview.is-compact {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+}
+
 .look-preview-head {
 	display: flex;
 	flex-wrap: wrap;
@@ -71,6 +78,12 @@
 	height: 26px;
 	border-radius: 50%;
 	object-fit: cover;
+}
+
+// A square of the picture drawn by its background (the swatch cut pop-up): no image cut is made in the browser.
+.lp-cut {
+	display: inline-block;
+	background-repeat: no-repeat;
 }
 
 .lp-blank {

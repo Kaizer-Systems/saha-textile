@@ -14,6 +14,9 @@ import type {
 	MediaDuplicateQuery,
 	MediaFavouriteWrite,
 	MediaFileAddress,
+	MediaCutRequest,
+	MediaCutResult,
+	MediaCutSource,
 	MediaFileDetails,
 	MediaAddVersionsRequest,
 	MediaAddVersionsResult,
@@ -64,6 +67,9 @@ export type {
 	MediaZipPlan,
 	MediaZipRequest,
 	MediaFileDetails,
+	MediaCutRequest,
+	MediaCutResult,
+	MediaCutSource,
 	MediaAddVersionsRequest,
 	MediaBulkAddVersionsRequest,
 	MediaAddVersionsResult,
@@ -137,6 +143,10 @@ export abstract class MediaLibraryGateway {
 	abstract itemActivity(entityId: string): Observable<MediaActivityPage>;
 	/** What the details popup shows (A31, A31B, A32). */
 	abstract details(id: string): Observable<MediaFileDetails>;
+	/** The swatch cut pop-up's photo (brief P11): open to anyone who may edit products. */
+	abstract cutSource(id: string): Observable<MediaCutSource>;
+	/** "Save cut": a swatch picture made from a square of the photo (brief P11). */
+	abstract cut(id: string, body: MediaCutRequest): Observable<MediaCutResult>;
 	/** Reprocess (step 3): add versions to one photo (C01), or the same ones to many (C07). */
 	abstract addVersions(id: string, body: MediaAddVersionsRequest): Observable<MediaAddVersionsResult>;
 	abstract addVersionsToMany(body: MediaBulkAddVersionsRequest): Observable<MediaAddVersionsResult>;

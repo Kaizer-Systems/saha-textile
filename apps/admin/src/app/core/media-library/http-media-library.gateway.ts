@@ -19,6 +19,9 @@ import {
 	type MediaDuplicateQuery,
 	type MediaFavouriteWrite,
 	type MediaFileAddress,
+	type MediaCutRequest,
+	type MediaCutResult,
+	type MediaCutSource,
 	type MediaFileDetails,
 	type MediaPhotoText,
 	type MediaAddVersionsRequest,
@@ -91,6 +94,15 @@ export class HttpMediaLibraryGateway extends MediaLibraryGateway {
 
 	override details(fileId: string): Observable<MediaFileDetails> {
 		return this.http.get<MediaFileDetails>(this.url(`/files/${id(fileId)}/details`));
+	}
+
+	override cutSource(fileId: string): Observable<MediaCutSource> {
+		// The pop-up says in words why a picture can't be cut, so the global error toast stays quiet.
+		return this.http.get<MediaCutSource>(this.url(`/files/${id(fileId)}/cut-source`), quiet());
+	}
+
+	override cut(fileId: string, body: MediaCutRequest): Observable<MediaCutResult> {
+		return this.http.post<MediaCutResult>(this.url(`/files/${id(fileId)}/cuts`), body, quiet());
 	}
 
 	override addVersions(fileId: string, body: MediaAddVersionsRequest): Observable<MediaAddVersionsResult> {

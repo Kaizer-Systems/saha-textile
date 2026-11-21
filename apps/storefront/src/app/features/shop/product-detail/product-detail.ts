@@ -1,6 +1,16 @@
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, PLATFORM_ID, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+	Component,
+	HostListener,
+	PLATFORM_ID,
+	afterEveryRender,
+	computed,
+	effect,
+	inject,
+	signal,
+	viewChild,
+} from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -34,7 +44,6 @@ import { ProductBundle } from '@features/shop/product-detail/widgets/product-bun
 import { ProductDeliveryInformation } from '@features/shop/product-detail/widgets/product-delivery-information/product-delivery-information';
 import { ProductDetailsTabs } from '@features/shop/product-detail/widgets/product-details-tabs/product-details-tabs';
 import { ProductInformation } from '@features/shop/product-detail/widgets/product-information/product-information';
-import { StickyCheckout } from '@features/shop/product-detail/widgets/sticky-checkout/sticky-checkout';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 import { isoDuration, posterFor, watchUrl } from '@shared/ui/video/video-links';
@@ -90,7 +99,6 @@ const uniqueCards = (cards: IProduct[]): IProduct[] =>
 		ProductSidebar,
 		YouMayAlsoLike,
 		ProductBlogs,
-		StickyCheckout,
 		SkeletonPage,
 		FaqAccordion,
 		AsyncPipe,
@@ -171,6 +179,8 @@ export class ProductDetail {
 
 	constructor() {
 		this.isBrowser = isPlatformBrowser(this.platformId);
+		// The buy bar's switch also runs after each render, so a phone or a short laptop window shows it from the start.
+		afterEveryRender(() => this.onScroll());
 
 		this.route.params.subscribe((params) => this.slug.set(params['slug']));
 		this.route.queryParamMap?.subscribe((params) => this.variantSku.set(params.get('variant')));
@@ -393,17 +403,20 @@ export class ProductDetail {
 		};
 	}
 
+	/**
+	 * The buy bar's switch (theme `stickyCart`; brief P4): on phones from the start, on laptops whenever the page's own
+	 * Add to cart is out of view, above (scrolled past) or below (a tall product or a short window).
+	 */
 	@HostListener('window:scroll')
+	@HostListener('window:resize')
 	onScroll() {
 		if (!this.isBrowser) return;
 		const button = document.querySelector('.scroll-button');
 		if (!button) return;
-		const rect = button.getBoundingClientRect();
-		if (rect.bottom < window.innerHeight && rect.bottom < 0) {
-			document.body.classList.add('stickyCart');
-		} else {
-			document.body.classList.remove('stickyCart');
-		}
+		document.body.classList.toggle(
+			'stickyCart',
+			showBuyBar(button.getBoundingClientRect(), window.innerWidth, window.innerHeight),
+		);
 	}
 
 	ngOnDestroy() {
@@ -411,4 +424,10 @@ export class ProductDetail {
 		// The next page must not inherit this product's structured data.
 		for (const id of ['product-group', 'product-crumbs', 'product-faq']) this.seo.removeJsonLd(id);
 	}
+}
+
+/** Phones (under 768 px) always show the buy bar; wider screens only while the page's own buttons are out of view. */
+export function showBuyBar(button: Pick<DOMRect, 'top' | 'bottom'>, width: number, height: number): boolean {
+	if (width < 768) return true;
+	return button.bottom < 0 || button.top > height;
 }

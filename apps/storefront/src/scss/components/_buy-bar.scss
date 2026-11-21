@@ -1,0 +1,101 @@
+// The buy bar (owner, 21 Nov 2026, product page brief P4, section 7): one markup for every kind of product, inside the
+// theme's own `.sticky-bottom-cart` and its `stickyCart` show switch. A summary line (photo, name, price) and the page's
+// own button row (`.st-cta-row`). Colours come from theme variables, so the colour-only dark file covers them.
+
+.st-buy-bar {
+	// The bar sits inside the buy box now; a fixed box with no left edge would start where the column starts.
+	left: 0;
+	right: 0;
+	padding: 10px 0;
+	background-color: var(--st-surface, #fff);
+}
+
+.st-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 16px;
+}
+
+.st-bar-summary {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.st-bar-photo {
+	flex: none;
+	width: 42px;
+	height: 56px;
+	border-radius: 6px;
+	object-fit: cover;
+}
+
+.st-bar-text {
+	min-width: 0;
+}
+
+.st-bar-name {
+	margin: 0;
+	overflow: hidden;
+	font-size: 14px;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.st-bar-price {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+
+	del {
+		margin: 0 4px;
+		color: var(--st-text-muted);
+		font-weight: 400;
+	}
+}
+
+.st-bar-off {
+	color: var(--st-danger-text);
+	font-size: 12.5px;
+}
+
+// The button row keeps one line in the bar: no top margin, the quantity stays beside the buttons.
+.st-buy-bar .st-bar-actions.st-cta-row {
+	flex: none;
+	flex-wrap: nowrap;
+	margin: 0;
+
+	> .qty-box {
+		flex: 0 0 auto;
+		width: 92px;
+
+		.input-group {
+			max-width: none;
+			margin: 0;
+		}
+	}
+
+	> app-button .btn {
+		min-height: 40px;
+	}
+}
+
+// Phones: the summary on one line, the buttons across the full width under it.
+@include mq-max(md) {
+	.st-bar {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.st-buy-bar .st-bar-actions.st-cta-row {
+		width: 100%;
+
+		> app-button .btn {
+			padding-inline: 4px;
+			font-size: 13px;
+		}
+	}
+}

@@ -14,7 +14,7 @@ import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SiteConfigStore } from '@core/state/site-config.store';
 
-import { ProductDetail } from './product-detail';
+import { ProductDetail, showBuyBar } from './product-detail';
 
 const product = signal<unknown>(undefined);
 const pending = signal(true);
@@ -425,7 +425,7 @@ describe('ProductDetail sticky bar', () => {
 	const button = (bottom: number) => {
 		const element = document.createElement('div');
 		element.className = 'scroll-button';
-		element.getBoundingClientRect = () => ({ bottom }) as DOMRect;
+		element.getBoundingClientRect = () => ({ top: bottom - 46, bottom }) as DOMRect;
 		document.body.append(element);
 	};
 
@@ -439,7 +439,7 @@ describe('ProductDetail sticky bar', () => {
 		expect(document.body.classList.contains('stickyCart')).toBe(false);
 	});
 
-	it('shows once the button has scrolled away, and hides again', () => {
+	it('on a laptop, shows while the page’s buttons are out of view, above or below, and hides while they are in view', () => {
 		const { page } = render();
 		button(-10);
 		page.onScroll();
@@ -451,7 +451,15 @@ describe('ProductDetail sticky bar', () => {
 		document.querySelector('.scroll-button')?.remove();
 		button(window.innerHeight + 100);
 		page.onScroll();
-		expect(document.body.classList.contains('stickyCart')).toBe(false);
+		expect(document.body.classList.contains('stickyCart')).toBe(true);
+		document.querySelector('.scroll-button')?.remove();
+	});
+
+	it('shows on phones from the start', () => {
+		expect(showBuyBar({ top: 100, bottom: 146 }, 375, 812)).toBe(true);
+		expect(showBuyBar({ top: 100, bottom: 146 }, 1366, 657)).toBe(false);
+		expect(showBuyBar({ top: 700, bottom: 746 }, 1366, 657)).toBe(true);
+		expect(showBuyBar({ top: -60, bottom: -14 }, 1366, 657)).toBe(true);
 	});
 
 	it('removes the bar when leaving, in the browser only', () => {

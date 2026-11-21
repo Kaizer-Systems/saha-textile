@@ -137,4 +137,24 @@ describe('AddonGroup measurement title', () => {
 			expect(modals.open.mock.lastCall?.[1]).toMatchObject({ windowClass: 'theme-modal st-sheet' });
 		});
 	});
+
+	it('takes choices made in the bar’s sheet as its own and draws the form again', () => {
+		const { group, states } = render();
+		const key = group.formKey();
+		group.apply({ tailoring: 'stitched' }, { chest: 36 }, true);
+		expect(group.snapshot()).toEqual({
+			selections: { tailoring: 'stitched' },
+			measurements: { chest: 36 },
+			measured: true,
+		});
+		expect(states.at(-1)).toMatchObject({ valid: true, total: 1550 });
+		expect(group.formKey()).toBe(key + 1);
+		expect(group.formSeed()).toEqual({ chest: 36 });
+		expect(
+			render({
+				measureAs: 'form',
+				product: { ...(product as object), measurement_fields: Array(6).fill({ code: 'x' }) },
+			}).group.asRow(),
+		).toBe(false);
+	});
 });

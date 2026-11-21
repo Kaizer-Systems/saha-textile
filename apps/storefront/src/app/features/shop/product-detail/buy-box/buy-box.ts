@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbPopover, NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, NgbPopover, NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
 import { lengthProblem, lengthText, metreTotal, readLength, stepLength } from '@core/catalog/metre-length';
@@ -23,6 +23,7 @@ import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
 import { AttributesInfo } from '@shared/ui/product-config/parts/attributes-info/attributes-info';
 import { LOW_STOCK_AT, VariationTable } from '@shared/ui/product-config/parts/variation-table/variation-table';
+import { AddonSheet, type AddonSheetResult } from '@shared/ui/product-config/parts/addon-sheet/addon-sheet';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
 
 import { environment } from '../../../../../../public/environments/environment';
@@ -63,6 +64,7 @@ export class BuyBox {
 	private router = inject(Router);
 	private http = inject(HttpClient);
 	private authStore = inject(AuthStore);
+	private modals = inject(NgbModal);
 
 	readonly product = input.required<IProduct>();
 	readonly option = input<ISiteConfig | null>();
@@ -167,6 +169,48 @@ export class BuyBox {
 	onSummary(summary: IConfiguratorSummary) {
 		if (summary.variation !== this.summary()?.variation) this.variationChange.emit(summary.variation);
 		this.summary.set(summary);
+	}
+
+	/**
+	 * The add-on as the buy bar shows it (brief P4): each group's chosen term, and whether the chosen terms need
+	 * measurements and have them. Null for a product without add-ons.
+	 */
+	readonly addonView = computed(() => {
+		const groups = this.product().addon_groups ?? [];
+		if (!groups.length) return null;
+		const state = this.configurator()?.addonState();
+		const chosen = groups.map((group) => {
+			const code = state?.selections?.[group.code] ?? group.default_term_code ?? group.terms[0]?.code;
+			return { group, term: group.terms.find((term) => term.code === code) };
+		});
+		return {
+			chips: chosen.map(({ group, term }) => ({ group: group.label, term: term?.label ?? '' })),
+			needs: chosen.some(({ term }) => term?.requires_measurements),
+			measured: state?.valid ?? false,
+		};
+	});
+
+	/** The bar's pencil (`designs`) and Edit add-on (`all`): the page's add-on part in a sheet, written back on Save. */
+	async openAddon(mode: 'designs' | 'all'): Promise<void> {
+		const configurator = this.configurator();
+		const snapshot = configurator?.addonSnapshot();
+		if (!configurator || !snapshot) return;
+		const popup = this.modals.open(AddonSheet, {
+			ariaLabelledBy: 'addon_sheet_title',
+			centered: true,
+			scrollable: true,
+			size: 'lg',
+			windowClass: 'theme-modal st-sheet',
+		});
+		(popup.componentInstance as AddonSheet).start({
+			product: this.product(),
+			basePrice: configurator.effectiveBase(),
+			selections: snapshot.selections,
+			measurements: snapshot.measurements,
+			mode,
+		});
+		const result = (await popup.result.catch(() => null)) as AddonSheetResult | null;
+		if (result) configurator.applyAddon(result.selections, result.measurements, result.measured);
 	}
 
 	/** The buy bar's chip lists choose through the page's own option buttons (brief P4). */

@@ -22,16 +22,16 @@
 		[added]="measured()"
 		(open)="openMeasurements()"
 	/>
-	} @else {
+	} @else { @for (key of [formKey()]; track key) {
 	<app-measurements-form
 		[fields]="fields()"
 		[title]="'measurements_required_for_selection'"
 		[forName]="measuredLabel()"
-		[initialValues]="initialMeasurements()"
+		[initialValues]="formSeed() ?? initialMeasurements()"
 		(valueChange)="onMeasurementsValue($event)"
 		(validChange)="onMeasurementsValid($event)"
 	/>
-	} }
+	} } }
 
 	<!-- Only once an add-on adds to the price; before that it only repeated the price (owner, 21 Nov 2026, brief P10). -->
 	@if (delta()) {

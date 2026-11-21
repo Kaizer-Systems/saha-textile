@@ -41,9 +41,10 @@ export class AddonGroup implements OnInit {
 	readonly stateChange = output<ConfiguratorState>();
 	/**
 	 * How the measurements show (brief P7): `auto` is the form itself for four fields or fewer and the measurement row
-	 * with its pop-up for more; `row` always the row (sets and the buy bar).
+	 * with its pop-up for more; `row` always the row (sets and the bar's pencil); `form` always the form (the bar's
+	 * Edit add-on).
 	 */
-	readonly measureAs = input<'auto' | 'row'>('auto');
+	readonly measureAs = input<'auto' | 'row' | 'form'>('auto');
 
 	private readonly modals = inject(NgbModal);
 	private readonly transloco = inject(TranslocoService);
@@ -75,7 +76,13 @@ export class AddonGroup implements OnInit {
 
 	readonly fields = computed(() => this.product().measurement_fields ?? []);
 	/** More than four fields would push the buttons down, so they move into the pop-up behind the row. */
-	readonly asRow = computed(() => this.measureAs() === 'row' || this.fields().length > INLINE_FIELDS);
+	readonly asRow = computed(
+		() => this.measureAs() === 'row' || (this.measureAs() === 'auto' && this.fields().length > INLINE_FIELDS),
+	);
+	/** Changes when values are written in from outside, so the form on the page is drawn again with them. */
+	readonly formKey = signal(0);
+	/** The values the form on the page starts from: a saved line's, or the last ones written in. */
+	readonly formSeed = signal<Record<string, number> | undefined>(undefined);
 	/** The row's name: the template's ("Suit measurements"), else the form's own title. */
 	readonly rowTitle = computed(
 		() =>
@@ -122,6 +129,24 @@ export class AddonGroup implements OnInit {
 	select(group: IAddonGroup, code: string) {
 		this.selections.update((s) => ({ ...s, [group.code]: code }));
 		this.emit();
+	}
+
+	/**
+	 * Takes choices made elsewhere (the buy bar's sheets, brief P4) as this part's own: the selections, the measurements
+	 * and whether they were complete, and draws the form again with them.
+	 */
+	apply(selections: Record<string, string>, measurements: Record<string, number>, measured: boolean) {
+		this.selections.set({ ...selections });
+		this.measurements.set({ ...measurements });
+		this.measurementsValid.set(measured);
+		this.formSeed.set({ ...measurements });
+		this.formKey.update((key) => key + 1);
+		this.emit();
+	}
+
+	/** The last state reported, for a sheet to start from. */
+	snapshot(): { selections: Record<string, string>; measurements: Record<string, number>; measured: boolean } {
+		return { selections: this.selections(), measurements: this.measurements(), measured: this.measurementsValid() };
 	}
 
 	onMeasurementsValue(value: Record<string, number>) {

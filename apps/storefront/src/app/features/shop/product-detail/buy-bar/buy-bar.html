@@ -74,9 +74,36 @@
 						</ng-template>
 						}
 					</div>
+					} @if (host().addonView(); as addon) {
+					<!-- The add-on (brief P4): the chosen design with a pencil, and its measurements' state. -->
+					<div class="st-bar-chips">
+						@for (chip of addon.chips; track chip.group) {
+						<button
+							type="button"
+							class="st-bar-chip"
+							[attr.aria-label]="'choose_design' | transloco"
+							(click)="host().openAddon('designs')"
+						>
+							{{ chip.group }}: {{ chip.term }}
+							<i
+								class="ri-pencil-line"
+								aria-hidden="true"
+							></i>
+						</button>
+						} @if (addon.needs) {
+						<span
+							class="st-stock"
+							[class.is-low]="!addon.measured"
+						>
+							{{ (addon.measured ? 'measurements_added_long' : 'measurements_needed') | transloco }}
+						</span>
+						}
+					</div>
 					}
 					<p class="st-bar-price">
-						<span class="theme-color">{{ host().displayPrice() | currencySymbol }}</span>
+						<span class="theme-color">
+							{{ (host().summary()?.unitPrice ?? host().displayPrice()) | currencySymbol }}
+						</span>
 						@if (host().discount()) {
 						<del>{{ host().comparePrice() | currencySymbol }}</del>
 						<span class="st-bar-off">{{ host().discount() }}% {{ 'off' | transloco }}</span>
@@ -124,7 +151,16 @@
 				>
 					{{ 'notify_me' | transloco }}
 				</app-button>
-				} @else {
+				} @else { @if (host().addonView()) {
+				<app-button
+					[id]="'bar-edit-addon'"
+					[class]="'btn btn-md border-theme-color'"
+					[spinner]="false"
+					(click)="host().openAddon('all')"
+				>
+					{{ 'edit_addon' | transloco }}
+				</app-button>
+				}
 				<app-button
 					[id]="'bar-add'"
 					[class]="'btn btn-md border-theme-color'"
@@ -134,6 +170,7 @@
 					<i class="ri-shopping-cart-line me-1"></i>
 					{{ 'add_to_cart' | transloco }}
 				</app-button>
+				@if (!host().addonView()) {
 				<app-button
 					[id]="'bar-buy'"
 					[class]="'btn btn-md bg-theme'"
@@ -143,7 +180,7 @@
 					<i class="ri-flashlight-fill me-1"></i>
 					{{ 'buy_now' | transloco }}
 				</app-button>
-				}
+				} }
 			</div>
 		</div>
 	</div>

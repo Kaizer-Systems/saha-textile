@@ -147,6 +147,17 @@ export class ProductConfigurator implements OnInit {
 	}
 
 	private readonly axis = viewChild(VariationAxis);
+	private readonly addonPart = viewChild(AddonGroup);
+
+	/** The add-on part's choices, for the buy bar's sheets to start from (brief P4). */
+	addonSnapshot() {
+		return this.addonPart()?.snapshot() ?? null;
+	}
+
+	/** Writes the buy bar's sheet's add-on choices back into the page's add-on part. */
+	applyAddon(selections: Record<string, string>, measurements: Record<string, number>, measured: boolean) {
+		this.addonPart()?.apply(selections, measurements, measured);
+	}
 
 	/** Chooses an option value from outside the page's own buttons (the buy bar), through those same buttons. */
 	chooseValue(value: IAttributeValue) {

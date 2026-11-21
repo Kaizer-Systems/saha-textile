@@ -24,6 +24,8 @@ const host = (overrides: Record<string, unknown> = {}) => ({
 	buyNow: vi.fn(),
 	notify: vi.fn(),
 	chooseValue: vi.fn(),
+	addonView: signal(null),
+	openAddon: vi.fn(),
 	...overrides,
 });
 
@@ -128,5 +130,29 @@ describe('BuyBar', () => {
 		it('draws no chips for a product without options', () => {
 			expect(draw(host()).bar.axes()).toEqual([]);
 		});
+	});
+
+	describe('the add-on', () => {
+		const addon = (measured: boolean) =>
+			host({ addonView: signal({ chips: [{ group: 'Blouse', term: 'Boat Neck' }], needs: true, measured }) });
+
+		it('shows the chosen design with a pencil and the measurements’ state, and Edit add-on instead of Buy now', () => {
+			const stub = addon(false);
+			const { el } = draw(stub);
+			expect(el.querySelector('.st-bar-chip')?.textContent).toContain('Blouse: Boat Neck');
+			expect(el.querySelector('.st-stock.is-low')?.textContent).toContain('measurements_needed');
+			expect(el.querySelector('#bar-buy')).toBeNull();
+			el.querySelector<HTMLButtonElement>('.st-bar-chip')?.click();
+			el.querySelector<HTMLButtonElement>('#bar-edit-addon')?.click();
+			expect(stub.openAddon.mock.calls).toEqual([['designs'], ['all']]);
+			expect(draw(addon(true)).el.querySelector('.st-stock:not(.is-low)')?.textContent).toContain(
+				'measurements_added_long',
+			);
+		});
+	});
+
+	it('shows the price with the add-on once one adds to it', () => {
+		const { el } = draw(host({ summary: signal({ unitPrice: 15050 }), discount: signal(0) }));
+		expect(el.querySelector('.st-bar-price')?.textContent?.replace(/\D/g, '')).toContain('15050');
 	});
 });

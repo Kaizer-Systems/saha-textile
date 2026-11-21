@@ -1,0 +1,43 @@
+@if (config(); as sheet) {
+<div class="modal-content">
+	<div class="modal-header">
+		<h2
+			class="h5 modal-title"
+			id="addon_sheet_title"
+		>
+			{{ (sheet.mode === 'designs' ? 'choose_design' : 'edit_addon') | transloco }}
+		</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<app-addon-group
+			[product]="sheet.product"
+			[basePrice]="sheet.basePrice"
+			[initialSelections]="sheet.selections"
+			[initialMeasurements]="sheet.measurements"
+			[measureAs]="sheet.mode === 'designs' ? 'row' : 'form'"
+			(stateChange)="onState($event)"
+		/>
+	</div>
+	<div class="modal-footer st-sheet-footer">
+		<p class="mb-0">
+			<span class="text-content">{{ 'total_price' | transloco }}</span>
+			<strong class="theme-color ms-1">{{ total() | currencySymbol }}</strong>
+		</p>
+		<button
+			type="button"
+			class="btn st-sheet-save"
+			(click)="save()"
+		>
+			{{ (sheet.mode === 'designs' ? 'done' : 'save') | transloco }}
+		</button>
+	</div>
+</div>
+}

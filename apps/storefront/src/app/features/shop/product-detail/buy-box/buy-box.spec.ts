@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -282,5 +283,54 @@ describe('BuyBox and the buy bar', () => {
 		Object.defineProperty(box, 'configurator', { value: () => ({ chooseValue }) });
 		box.chooseValue({ id: 3 } as never);
 		expect(chooseValue).toHaveBeenCalledWith({ id: 3 });
+	});
+
+	it('shows the add-on’s chosen terms and opens the sheet, writing back only what is saved', async () => {
+		const groups = [
+			{
+				code: 'blouse',
+				label: 'Blouse',
+				default_term_code: 'none',
+				terms: [
+					{ code: 'none', label: 'None' },
+					{ code: 'boat', label: 'Boat Neck', requires_measurements: true },
+				],
+			},
+		];
+		const { box } = render(true, { addon_groups: groups });
+		const applyAddon = vi.fn();
+		const addonState = signal<{ selections: Record<string, string>; valid: boolean } | null>({
+			selections: { blouse: 'boat' },
+			valid: false,
+		});
+		Object.defineProperty(box, 'configurator', {
+			value: () => ({
+				addonState,
+				applyAddon,
+				effectiveBase: () => 1500,
+				addonSnapshot: () => ({ selections: { blouse: 'boat' }, measurements: {}, measured: false }),
+			}),
+		});
+		expect(box.addonView()).toEqual({
+			chips: [{ group: 'Blouse', term: 'Boat Neck' }],
+			needs: true,
+			measured: false,
+		});
+		const start = vi.fn();
+		const modals = TestBed.inject(NgbModal);
+		const open = vi.spyOn(modals, 'open');
+		open.mockReturnValueOnce({ componentInstance: { start }, result: Promise.reject('closed') } as never);
+		await box.openAddon('designs');
+		expect(start).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'designs', basePrice: 1500, selections: { blouse: 'boat' } }),
+		);
+		expect(applyAddon).not.toHaveBeenCalled();
+		open.mockReturnValueOnce({
+			componentInstance: { start },
+			result: Promise.resolve({ selections: { blouse: 'none' }, measurements: {}, measured: false }),
+		} as never);
+		await box.openAddon('all');
+		expect(applyAddon).toHaveBeenCalledWith({ blouse: 'none' }, {}, false);
+		expect(render().box.addonView()).toBeNull();
 	});
 });

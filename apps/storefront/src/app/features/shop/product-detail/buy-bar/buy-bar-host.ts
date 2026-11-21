@@ -22,4 +22,6 @@ export interface BuyBarHost {
 	buyNow(): void;
 	notify(): void;
 	chooseValue(value: IAttributeValue): void;
+	addonView: Signal<{ chips: { group: string; term: string }[]; needs: boolean; measured: boolean } | null>;
+	openAddon(mode: 'designs' | 'all'): Promise<void>;
 }

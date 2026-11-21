@@ -26,7 +26,12 @@ export class FirstBootError extends Error {}
 
 /** Where a server's deploy key pair lives on this Mac. */
 export function keyFolder(project, environment, home = homedir()) {
-	if (!SLUG.test(project) || !SLUG.test(environment))
+	if (
+		typeof project !== 'string' ||
+		typeof environment !== 'string' ||
+		!SLUG.test(project) ||
+		!SLUG.test(environment)
+	)
 		throw new FirstBootError('That is not a project and environment.');
 	return join(home, '.release-console', 'servers', `${project}-${environment}`);
 }

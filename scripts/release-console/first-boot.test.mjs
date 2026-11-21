@@ -33,6 +33,7 @@ test('the deploy key pair is made once per server and reused', async () => {
 	assert.equal(one.file, join(home, '.release-console', 'servers', 'saha-textile-staging', 'deploy_key'));
 	assert.equal(two.publicKey, one.publicKey);
 	assert.throws(() => keyFolder('../x', 'staging', home), FirstBootError);
+	assert.throws(() => keyFolder('saha-textile', undefined, home), FirstBootError);
 });
 
 test('the admin password is hashed with SHA-512 crypt and refused when too short', async () => {

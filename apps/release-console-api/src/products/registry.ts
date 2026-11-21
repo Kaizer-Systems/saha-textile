@@ -98,6 +98,8 @@ import {
 	uptimeScreen,
 } from './watch.js';
 
+import { addExtras } from './extras.js';
+
 /** Screen key (from the approved menu) → its live tabs and forms. */
 export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	droplets: dropletScreen,
@@ -184,3 +186,5 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	audit: auditScreen,
 	privacy: privacyScreen,
 };
+
+addExtras(PRODUCT_SCREENS);

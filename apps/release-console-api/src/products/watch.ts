@@ -204,13 +204,11 @@ export const incidentScreen: ProductScreen = {
 					what: `${Math.round(e * 100)}% of ${n} requests failed`,
 					kind: 'errors',
 				})),
-				...(list ?? [])
-					.slice(0, 20)
-					.map((i) => ({
-						at: i.last,
-						what: `${i.container}: ${i.title.slice(0, 100)} (${i.count}×)`,
-						kind: 'issue',
-					})),
+				...(list ?? []).slice(0, 20).map((i) => ({
+					at: i.last,
+					what: `${i.container}: ${i.title.slice(0, 100)} (${i.count}×)`,
+					kind: 'issue',
+				})),
 				...ctx
 					.recentAll('local-job-started')
 					.slice(0, 10)
@@ -980,15 +978,13 @@ export const dashboardsScreen: ProductScreen = {
 					table(
 						'Orders by day',
 						[col('day', 'Day', true), col('n', 'Orders', true), col('inr', 'Takings', true)],
-						[...orders]
-							.reverse()
-							.map((o) =>
-								row(o._id, o._id, {
-									day: o._id,
-									n: o.n,
-									inr: `₹${Math.round(o.inr).toLocaleString('en-IN')}`,
-								}),
-							),
+						[...orders].reverse().map((o) =>
+							row(o._id, o._id, {
+								day: o._id,
+								n: o.n,
+								inr: `₹${Math.round(o.inr).toLocaleString('en-IN')}`,
+							}),
+						),
 						'No orders in the last 30 days.',
 					),
 					table(

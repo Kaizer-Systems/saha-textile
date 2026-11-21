@@ -65,6 +65,11 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		'creating',
 		'done',
 		'destroy',
+		'environment',
+		'imageOpen',
+		'creating1',
+		'creating2',
+		'creating3',
 	],
 	doaccount: 'overview',
 	cfdomains: 'list',
@@ -235,6 +240,12 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 							<rc-droplets-screen />
 						} @else if (tabKey() === 'creating' || tabKey() === 'done' || tabKey() === 'destroy') {
 							<rc-do-jobs [tab]="tabKey()" />
+						} @else if (tabKey().startsWith('creating')) {
+							<!-- The brief's drawings of a create at three moments: the live Creating view. -->
+							<rc-do-jobs tab="creating" />
+						} @else if (tabKey() === 'environment' || tabKey() === 'imageOpen') {
+							<!-- A whole environment starts at the region step; an opened image is the image step. -->
+							<rc-do-create [step]="tabKey() === 'imageOpen' ? 'image' : 'region'" />
 						} @else {
 							<rc-do-create [step]="tabKey()" />
 						}

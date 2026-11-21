@@ -120,7 +120,8 @@ export type ProductFieldValue = z.infer<typeof productFieldValueSchema>;
 export const productFieldSchema = z.object({
 	key: z.string(),
 	label: z.string(),
-	type: z.enum(['text', 'number', 'select', 'toggle', 'multi', 'textarea', 'cards']),
+	/** `secret`: typed into a hidden box, sent once, never shown again or kept by the console. */
+	type: z.enum(['text', 'number', 'select', 'toggle', 'multi', 'textarea', 'cards', 'secret']),
 	options: z.array(z.object({ value: z.string(), label: z.string(), sub: z.string().default('') })).default([]),
 	value: productFieldValueSchema.nullable().default(null),
 	help: z.string().default(''),

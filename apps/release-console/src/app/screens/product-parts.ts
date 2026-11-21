@@ -471,6 +471,21 @@ type Values = Record<string, ProductFieldValue | null>;
 								</select>
 							</label>
 						}
+						@case ('secret') {
+							<label>
+								{{ fl.label }}
+								<span class="rc-msearch">
+									<input
+										type="password"
+										autocomplete="off"
+										spellcheck="false"
+										[attr.aria-label]="fl.label"
+										[value]="values()[fl.key] ?? ''"
+										(input)="set(fl.key, $any($event.target).value)"
+									/>
+								</span>
+							</label>
+						}
 						@case ('textarea') {
 							<label>
 								{{ fl.label }}
@@ -702,6 +717,12 @@ export class ProductFormPart {
 			void this.queries.invalidateQueries({
 				queryKey: ['product', this.ctx.projectId(), this.ctx.repoId(), this.screen()],
 			});
+			// A secret is sent once and never kept here.
+			const secrets = this.form()
+				.fields.filter((f) => f.type === 'secret')
+				.map((f) => f.key);
+			if (secrets.length)
+				this.values.set({ ...this.values(), ...Object.fromEntries(secrets.map((k) => [k, ''])) });
 			this.confirming.set(false);
 			this.sent.emit(job);
 		} catch (err) {

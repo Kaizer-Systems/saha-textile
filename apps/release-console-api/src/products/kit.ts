@@ -169,7 +169,13 @@ export async function write(
 	if (method === 'DELETE') {
 		const res = await fetch(url, {
 			method,
-			headers: { authorization: `Bearer ${key}`, accept: 'application/json', 'user-agent': 'release-console' },
+			headers: {
+				authorization: `Bearer ${key}`,
+				accept: 'application/json',
+				'user-agent': 'release-console',
+				...(payload === undefined ? {} : { 'content-type': 'application/json' }),
+			},
+			body: payload === undefined ? undefined : JSON.stringify(payload),
 			signal: AbortSignal.timeout(20_000),
 		});
 		status = res.status;

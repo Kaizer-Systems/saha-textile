@@ -821,7 +821,13 @@ export const vpcPeeringScreen = resource({
 
 const SPACES_REGION = 'sgp1';
 
-async function s3(ctx: ProductCtx, path: string, region = SPACES_REGION, bucket?: string): Promise<string> {
+export async function s3(
+	ctx: ProductCtx,
+	path: string,
+	region = SPACES_REGION,
+	bucket?: string,
+	method: 'GET' | 'PUT' | 'DELETE' = 'GET',
+): Promise<string> {
 	const accessKey = ctx.consoleKey('CONSOLE_SPACES_ACCESS_KEY');
 	const secret = ctx.consoleKey('CONSOLE_SPACES_SECRET_KEY');
 	if (!accessKey || !secret)
@@ -830,8 +836,8 @@ async function s3(ctx: ProductCtx, path: string, region = SPACES_REGION, bucket?
 			400,
 		);
 	const url = new URL(`https://${bucket ? `${bucket}.` : ''}${region}.digitaloceanspaces.com${path}`);
-	const headers = signV4({ method: 'GET', url, region: 'us-east-1', service: 's3', accessKey, secret });
-	const res = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) });
+	const headers = signV4({ method, url, region: 'us-east-1', service: 's3', accessKey, secret });
+	const res = await fetch(url, { method, headers, signal: AbortSignal.timeout(15_000) });
 	const body = await res.text();
 	if (res.status === 404 && /NoSuch(Lifecycle|CORS|Bucket)Configuration|NoSuchCORS/.test(body)) return '';
 	if (!res.ok)
@@ -841,7 +847,7 @@ async function s3(ctx: ProductCtx, path: string, region = SPACES_REGION, bucket?
 		);
 	return body;
 }
-const tags = (xml: string, tag: string) =>
+export const tags = (xml: string, tag: string) =>
 	[...xml.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'g'))].map((m) => m[1] ?? '');
 const tag1 = (xml: string, tag: string) => tags(xml, tag)[0] ?? '';
 
@@ -849,7 +855,7 @@ const tag1 = (xml: string, tag: string) => tags(xml, tag)[0] ?? '';
  * The account's buckets. A key limited to one bucket may not list them all, so the names then come
  * from the project's Spaces key target, DigitalOcean's key grants and the CDN endpoints.
  */
-async function buckets(ctx: ProductCtx): Promise<Array<{ name: string; created: string; region: string }>> {
+export async function buckets(ctx: ProductCtx): Promise<Array<{ name: string; created: string; region: string }>> {
 	try {
 		const xml = await s3(ctx, '/');
 		return tags(xml, 'Bucket').map((b) => ({

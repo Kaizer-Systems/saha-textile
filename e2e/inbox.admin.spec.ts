@@ -5,7 +5,9 @@ import { ADMIN, expect, test } from './support';
 /**
  * The admin Inbox, with Gmail answered by the test: Gmail cannot be reached from a test run, and
  * the API's own Gmail calls are covered by its unit tests. Everything the admin does on the page
- * (address, folding, reply, the collision check, the send request) runs for real.
+ * (address, folding, reply, the collision check, the send request) runs for real. The answers carry
+ * every field the API's contracts give them (`@saha-textile/contracts` mailbox.ts), defaults included,
+ * because the page reads them as the API sends them.
  */
 
 const now = Date.now();
@@ -26,6 +28,9 @@ const message = (id: string, fields: Record<string, unknown>) => ({
 	references: '',
 	contactForm: null,
 	sentBy: null,
+	labelIds: ['INBOX'],
+	starred: false,
+	large: false,
 	...fields,
 });
 const priya = 'Priya Banerjee <priya@example.test>';
@@ -36,6 +41,7 @@ const mailboxes = [
 		mailboxId: 'mbx-wecare',
 		address: 'wecare@shop.test',
 		status: 'connected',
+		rights: ['read', 'send', 'organise', 'bin'],
 		canSend: true,
 		unread: 1,
 		sendAs: [
@@ -54,6 +60,7 @@ function conversation(extra: ReturnType<typeof message>[] = []) {
 		id: 't1',
 		subject: 'Blouse alteration',
 		unread: false,
+		labelIds: ['INBOX'],
 		messages: [
 			message('m1', { from: priya, date: at(50) }),
 			message('m2', { from: shop, date: at(40), sentBy: 'Riya' }),
@@ -81,44 +88,63 @@ const row = {
 	participants: ['Priya Banerjee', 'Saha Textile'],
 	fromContactForm: false,
 	lastReplyBy: 'Riya',
+	labelIds: ['INBOX'],
+	unreadCount: 0,
+	starred: false,
+	important: false,
 };
 
-/** Answers the Inbox API; `arrived` adds a colleague's reply once the reply box is open. */
-async function gmail(page: Page, options: { arrived?: boolean } = {}) {
+/** Answers the Inbox API. Set `state.arrived` to add a colleague's reply to the conversation from then on. */
+async function gmail(page: Page) {
 	const sent: unknown[] = [];
-	let threadReads = 0;
+	const state = { arrived: false };
+	const saved = () => ({ draftId: 'd1', version: `v${Date.now()}`, savedAt: new Date().toISOString() });
 	await page.route(/\/admin\/inbox(\/|\?|$)/, async (route: Route) => {
 		const url = new URL(route.request().url());
 		const path = url.pathname.replace(/^.*\/admin\/inbox/, '');
+		const method = route.request().method();
 		if (path === '' || path === '/') return route.fulfill({ json: mailboxes });
-		if (path.endsWith('/threads')) return route.fulfill({ json: { threads: [row], nextPageToken: null } });
-		if (path.endsWith('/threads/t1')) {
-			threadReads++;
-			const late = options.arrived && threadReads > 1;
-			return route.fulfill({
-				json: conversation(
-					late
-						? [
-								message('m4', {
-									from: shop,
-									date: at(0.03),
-									sentBy: 'Arup',
-									html: '<p>See you Saturday</p>',
-								}),
-							]
-						: [],
-				),
-			});
+		if (path === '/all/threads') {
+			const threads = [{ ...row, mailboxId: 'mbx-wecare', mailboxAddress: 'wecare@shop.test' }];
+			return route.fulfill({ json: { threads, skipped: [] } });
 		}
-		if (path.endsWith('/modify')) return route.fulfill({ json: { ok: true } });
+		if (path.endsWith('/threads')) {
+			return route.fulfill({ json: { threads: [row], nextPageToken: null, estimate: 1 } });
+		}
+		if (path.endsWith('/threads/t1')) {
+			const late = state.arrived
+				? [message('m4', { from: shop, date: at(0.03), sentBy: 'Arup', html: '<p>See you Saturday</p>' })]
+				: [];
+			return route.fulfill({ json: conversation(late) });
+		}
+		if (path.endsWith('/modify') || path.endsWith('/messages/read')) return route.fulfill({ json: { ok: true } });
+		if (path.endsWith('/labels')) return route.fulfill({ json: [] });
+		if (path.endsWith('/saved-replies')) {
+			return route.fulfill({ json: { shared: [], personal: [], canEditShared: false } });
+		}
+		if (path.endsWith('/drafts') && method === 'GET') {
+			return route.fulfill({ json: { drafts: [], nextPageToken: null } });
+		}
+		// Autosave: the reply is kept as a Gmail draft while it is written (C2).
+		if (/\/drafts(\/d1)?$/.test(path)) return route.fulfill({ json: saved() });
 		if (path.endsWith('/send')) {
 			sent.push(route.request().postDataJSON());
-			return route.fulfill({ json: { id: 's1', threadId: 't1' } });
+			return route.fulfill({
+				json: { outboxId: 'o1', draftId: 'd1', sendAt: new Date(Date.now() + 10_000).toISOString() },
+			});
+		}
+		if (path.endsWith('/outbox/o1')) {
+			return route.fulfill({
+				json: { outboxId: 'o1', status: 'sent', draftId: 'd1', threadId: 't1', sentMessageId: 's1' },
+			});
 		}
 		return route.fulfill({ status: 404, json: {} });
 	});
-	return sent;
+	return { sent, state };
 }
+
+/** The reply's words, typed into the compose box's editor. */
+const replyBody = (page: Page) => page.locator('#inbox_body [contenteditable="true"]');
 
 test.describe('the admin Inbox', () => {
 	test('lists conversations by who is in them and opens one at its own address', async ({ page }) => {
@@ -145,7 +171,7 @@ test.describe('the admin Inbox', () => {
 	});
 
 	test('replies under the conversation, checks addresses, and quotes the answered message', async ({ page }) => {
-		const sent = await gmail(page);
+		const { sent } = await gmail(page);
 		await page.goto(`${ADMIN}/inbox/wecare/inbox/t1`);
 		await page.locator('#inbox_reply_btn').click();
 		await expect(page).toHaveURL(/draft=reply/);
@@ -155,7 +181,7 @@ test.describe('the admin Inbox', () => {
 		await page.locator('#inbox_to').fill('priya@example.test, priya@example');
 		await expect(page.locator('#inbox_to_problem')).toContainText('priya@example');
 		await page.locator('#inbox_to').fill('priya@example.test');
-		await page.locator('#inbox_body').fill('Your blouse is ready for pickup.');
+		await replyBody(page).fill('Your blouse is ready for pickup.');
 		await page.locator('#inbox_send_btn').click();
 
 		await expect.poll(() => sent.length).toBe(1);
@@ -171,10 +197,12 @@ test.describe('the admin Inbox', () => {
 	});
 
 	test('stops a reply when a colleague answered meanwhile, then sends on request', async ({ page }) => {
-		const sent = await gmail(page, { arrived: true });
+		const { sent, state } = await gmail(page);
 		await page.goto(`${ADMIN}/inbox/wecare/inbox/t1`);
 		await page.locator('#inbox_reply_btn').click();
-		await page.locator('#inbox_body').fill('We have kept it for you.');
+		await replyBody(page).fill('We have kept it for you.');
+		// Arup answers from another computer while this reply is being written.
+		state.arrived = true;
 		await page.locator('#inbox_send_btn').click();
 		await expect(page.getByRole('alert').filter({ hasText: 'Arup has replied' })).toBeVisible();
 		expect(sent).toHaveLength(0);

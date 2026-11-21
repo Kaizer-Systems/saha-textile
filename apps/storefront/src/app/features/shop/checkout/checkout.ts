@@ -1,8 +1,9 @@
 import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
@@ -15,10 +16,11 @@ import { IUserAddress } from '@data-access/interfaces/user.interface';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { ShopAddressForm } from '@shared/ui/shop-address-form/shop-address-form';
-
-import { popupCurrencies } from './payment-return/payment-return';
 import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
+import { PaymentCurrencyPopup, popupCurrencies } from './payment-currency-popup/payment-currency-popup';
+
+import type { ReturnedPayment } from './payment-return/payment-return';
 import type {
 	AddressInIndiaInput,
 	CheckoutAddressChoice,
@@ -60,6 +62,11 @@ export class Checkout {
 	private readonly cartFacade = inject(CartFacade);
 	private readonly transloco = inject(TranslocoService);
 	private readonly doc = inject(DOCUMENT);
+	private readonly modals = inject(NgbModal);
+
+	constructor() {
+		afterNextRender(() => this.afterGatewayReturn());
+	}
 
 	public breadcrumb = translatedBreadcrumb('checkout');
 
@@ -280,6 +287,32 @@ export class Checkout {
 	/** shop08 / K2: "Paying from India? … Pay in ₹ instead". */
 	payInRupees(): void {
 		this.settings.setCurrency({ ...(this.settings.selectedCurrency() ?? {}), code: 'INR', symbol: '₹' } as never);
+	}
+
+	/**
+	 * Back from the gateway without a payment: the return page hands over what happened in the history
+	 * state. With a popup the approved one opens over the checkout (shop04, shop05); without one the
+	 * page says the payment didn't go through. The state is cleared first, so a reload or Back never
+	 * opens it again.
+	 */
+	afterGatewayReturn(): void {
+		const view = this.doc.defaultView;
+		const state = (view?.history.state ?? null) as { paymentOutcome?: ReturnedPayment } | null;
+		const outcome = state?.paymentOutcome;
+		if (!view || !outcome) return;
+		view.history.replaceState({ ...state, paymentOutcome: undefined }, '');
+		if (!outcome.popup) {
+			this.error.set(this.transloco.translate('ret_failed_text'));
+			return;
+		}
+		const popup = this.modals.open(PaymentCurrencyPopup, {
+			ariaLabelledBy: 'currency-popup-title',
+			centered: true,
+			windowClass: 'theme-modal text-center',
+		});
+		const content = popup.componentInstance as PaymentCurrencyPopup;
+		content.kind.set(outcome.popup);
+		content.first.set(outcome.firstCurrency);
 	}
 
 	removeLine(lineId: string): void {

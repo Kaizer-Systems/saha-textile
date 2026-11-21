@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +13,7 @@ import { CartFacade } from '@core/state/cart/cart.facade';
 import { SettingStore } from '@core/state/setting.store';
 
 import { Checkout, shopMoney } from './checkout';
+import { PaymentCurrencyPopup } from './payment-currency-popup/payment-currency-popup';
 
 const quoteData = signal<unknown>(undefined);
 vi.mock('@tanstack/angular-query-experimental', async (original) => ({
@@ -35,10 +37,13 @@ const render = (currency = 'INR') => {
 	const place = vi.fn(() =>
 		of({ orderId: 'o1', orderNumber: 'ST-2611-1', handoff: { kind: 'redirect', url: 'https://pay' } }),
 	);
+	const popup = { kind: signal('chooseCurrency'), first: signal<string | null>(null) };
+	const open = vi.fn(() => ({ componentInstance: popup }));
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			provideRouter([]),
+			{ provide: NgbModal, useValue: { open } },
 			{ provide: TranslocoService, useValue: { selectTranslate: () => of(''), translate: t } },
 			{ provide: CheckoutGateway, useValue: { place } },
 			{
@@ -50,7 +55,7 @@ const render = (currency = 'INR') => {
 		],
 	});
 	TestBed.overrideComponent(Checkout, { set: { imports: [], template: '' } });
-	return { page: TestBed.createComponent(Checkout).componentInstance, place };
+	return { page: TestBed.createComponent(Checkout).componentInstance, place, open, popup };
 };
 
 const quote = (over: Record<string, unknown> = {}) => ({
@@ -153,6 +158,31 @@ describe('Shop checkout (shop01–shop17)', () => {
 		);
 		page.removeCoupon('WEDDING10');
 		expect(page.couponCodes()).toEqual(['FREESHIP']);
+	});
+
+	it('opens the approved currency popup over the checkout after an unpaid return, once (shop04, shop05)', () => {
+		const { page, open, popup } = render();
+		history.replaceState({ paymentOutcome: { popup: 'switchToRegionCurrency', firstCurrency: 'GBP' } }, '');
+		page.afterGatewayReturn();
+		expect(open).toHaveBeenCalledWith(PaymentCurrencyPopup, {
+			ariaLabelledBy: 'currency-popup-title',
+			centered: true,
+			windowClass: 'theme-modal text-center',
+		});
+		expect(popup.kind()).toBe('switchToRegionCurrency');
+		expect(popup.first()).toBe('GBP');
+		// The hand-over is cleared, so a reload or Back never opens it again.
+		expect((history.state as { paymentOutcome?: unknown }).paymentOutcome).toBeUndefined();
+		page.afterGatewayReturn();
+		expect(open).toHaveBeenCalledTimes(1);
+	});
+
+	it('says a payment didn’t go through when the gateway’s answer calls for no popup', () => {
+		const { page, open } = render();
+		history.replaceState({ paymentOutcome: { popup: null, firstCurrency: null } }, '');
+		page.afterGatewayReturn();
+		expect(open).not.toHaveBeenCalled();
+		expect(page.error()).toBe('ret_failed_text');
 	});
 
 	it('asks a guest to sign in first: guest checkout is off at launch (OD6)', async () => {

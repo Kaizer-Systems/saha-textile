@@ -342,6 +342,9 @@ load_stop
 no_visible_gap 'no request failed during the deploy'
 expect 'the second release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$SECOND"
 cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.pem" "$PROOF/renewed/origin.pem" && pass "a live release's certificates are installed" || fail "the live release's certificates were not installed"
+# Four release folders now (first, bad, mismatch, second): the cleanup keeps three, but never the
+# release a rollback returns to.
+[[ -f "$FIRST/release.env" ]] && pass 'the previous release is kept however many failed ones came after it' || fail 'the cleanup deleted the previous release'
 SERVED="$(openssl s_client -connect "127.0.0.1:$EDGE_PORT" -servername "$SITE_HOST" -cert "$PROOF/client/client.pem" -key "$PROOF/client/client.key" </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 2>/dev/null)"
 expect 'the edge serves the new certificate' "$SERVED" "$(openssl x509 -noout -fingerprint -sha256 -in "$PROOF/renewed/origin.pem")"
 load_start

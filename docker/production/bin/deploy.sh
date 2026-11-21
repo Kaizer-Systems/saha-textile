@@ -363,14 +363,25 @@ restore_previous() {
 	fi
 }
 
-# Keeps the newest releases and their images, so a rollback needs no registry login.
+# Keeps the newest releases and their images, so a rollback needs no registry login. The current
+# and previous releases are always kept, however many failed or refused releases came after them,
+# and so is every image either of them runs.
 prune_releases() {
-	local kept=0 release image
+	local kept=0 release image value in_use=' ' live
+	for live in "$CURRENT" "$PREVIOUS"; do
+		[[ -L "$live" ]] || continue
+		for image in API_IMAGE STOREFRONT_IMAGE ADMIN_IMAGE OPS_IMAGE; do
+			in_use+="$(release_value "$(readlink "$live")" "$image") "
+		done
+	done
 	while read -r release; do
 		kept=$((kept + 1))
 		[[ "$kept" -le "$KEEP_RELEASES" ]] && continue
+		[[ "$release" -ef "$CURRENT" || "$release" -ef "$PREVIOUS" ]] && continue
 		for image in API_IMAGE STOREFRONT_IMAGE ADMIN_IMAGE OPS_IMAGE; do
-			docker image rm "$(release_value "$release" "$image")" >/dev/null 2>&1 || true
+			value="$(release_value "$release" "$image")"
+			[[ -z "$value" || "$in_use" == *" $value "* ]] && continue
+			docker image rm "$value" >/dev/null 2>&1 || true
 		done
 		rm -rf "$release"
 	done < <(find "$(dirname "$RELEASE")" -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 ls -dt)

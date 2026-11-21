@@ -188,6 +188,12 @@
 		</ul>
 	</div>
 
+	<!-- Sets cannot be bought until they can be priced (brief B12). The page and the Configure set sheet say so here, on
+	every screen size; the product pop-up's own summary below says it too. -->
+	@if (!showSummary()) {
+	<p class="text-content mt-3 mb-0">{{ 'bundle_not_on_sale' | transloco }}</p>
+	}
+
 	<!-- A row's status mark: green ready, amber a choice or measurements missing, red out of stock, none while off. -->
 	<ng-template
 		#markTpl

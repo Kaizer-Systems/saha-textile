@@ -29,9 +29,7 @@
 			[showSummary]="false"
 			(stateChange)="onState($event)"
 		/>
-		@if (!sheet.buyable) {
-		<p class="text-content mt-3 mb-0">{{ 'bundle_not_on_sale' | transloco }}</p>
-		} } @else { @if (sheet.mode === 'designs') {
+		} @else { @if (sheet.mode === 'designs') {
 		<!-- As drawn (brief section 7): the pencil changes the design only. -->
 		<p class="text-content mb-3">{{ 'designs_only_note' | transloco }}</p>
 		}

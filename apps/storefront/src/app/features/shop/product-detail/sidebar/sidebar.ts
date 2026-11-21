@@ -28,6 +28,5 @@ export class ProductSidebar {
 	/** On a set page: the set price with its chosen options, and how many sets the buy box holds (brief P8). */
 	readonly setPrice = input<number | null>(null);
 	readonly quantity = input(1);
-	readonly buyable = input(true);
 	readonly setPieces = input<string[] | null>(null);
 }

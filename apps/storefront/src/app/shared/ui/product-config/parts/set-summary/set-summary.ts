@@ -30,8 +30,6 @@ export class SetSummary {
 	/** The photo's files, so the browser loads a small one for the 56 px picture. */
 	readonly image = input<ResolvedImage | null>(null);
 	readonly quantity = input(1);
-	/** False while the set cannot be bought (sets wait for their pricing, brief B12): the summary says so. */
-	readonly buyable = input(true);
 	/** The pieces the set holds now; the set's own pieces until the page reports its picks. */
 	readonly chosen = input<string[] | null>(null);
 

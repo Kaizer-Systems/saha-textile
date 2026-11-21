@@ -124,6 +124,10 @@ function setup(over: Partial<JobDeps> = {}) {
 			setOriginPulls: async () => undefined,
 			unpointTunnel: async () => 1,
 			accessEnabled: async () => true,
+			privateRoute: async () => undefined,
+			deletePrivateRoutes: async () => 1,
+			warpEnrollment: async () => undefined,
+			warpInclude: async () => undefined,
 		},
 		ranges: async () => [
 			'173.245.48.0/20',
@@ -184,6 +188,7 @@ describe('creating and destroying a server', () => {
 			'dns:done',
 			'origin-pulls:done',
 			'tunnel-up:done',
+			'private-access:done',
 			'github:done',
 			'known-hosts:done',
 		]);

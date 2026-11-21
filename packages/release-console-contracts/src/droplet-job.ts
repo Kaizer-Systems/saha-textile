@@ -74,6 +74,8 @@ export const dropletJobSchema = z.object({
 	ipv4: z.string().nullable(),
 	ipv6: z.string().nullable(),
 	privateIp: z.string().nullable(),
+	/** The SSH host through the tunnel (browser terminal and cloudflared). */
+	sshHost: z.string().nullable().default(null),
 	monthly: z.number(),
 	hourly: z.number(),
 	error: z.string().nullable(),
@@ -98,6 +100,7 @@ export const CREATE_STEPS: readonly (readonly [string, string])[] = [
 	['dns', 'DNS records at Cloudflare'],
 	['origin-pulls', 'Authenticated Origin Pulls on the environment’s hosts'],
 	['tunnel-up', 'First boot done: the tunnel is up'],
+	['private-access', 'WARP: the server’s private address for the people on the list'],
 	['github', 'GitHub environment: variables and secrets'],
 	['known-hosts', 'The server’s SSH host key, read through the tunnel'],
 ];

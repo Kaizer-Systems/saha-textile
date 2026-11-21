@@ -133,7 +133,11 @@ export const cfWrites = {
 	/** The tunnel's routes: SSH on its own host name, nothing else (plan §5). */
 	async routeSsh(key: string, accountId: string, id: string, sshHost: string): Promise<void> {
 		await call('PUT', `/accounts/${accountId}/cfd_tunnel/${id}/configurations`, key, {
-			config: { ingress: [{ hostname: sshHost, service: 'ssh://localhost:22' }, { service: 'http_status:404' }] },
+			config: {
+				ingress: [{ hostname: sshHost, service: 'ssh://localhost:22' }, { service: 'http_status:404' }],
+				// WARP devices reach the server's private address through this tunnel (owner, 21 Nov).
+				'warp-routing': { enabled: true },
+			},
 		});
 	},
 	/** Points `host` at the tunnel (CNAME, proxied); refuses a record that points anywhere else. */
@@ -210,7 +214,8 @@ export const cfWrites = {
 		const body = {
 			name: input.name,
 			domain: input.host,
-			type: 'self_hosted',
+			// `ssh`: a self-hosted app that also draws an SSH terminal in the browser (owner, 21 Nov).
+			type: 'ssh',
 			session_duration: '24h',
 			app_launcher_visible: false,
 			policies,
@@ -283,6 +288,59 @@ export const cfWrites = {
 			.filter((r) => str(r['content']) === target);
 		for (const r of ours) await call('DELETE', `/zones/${zoneId}/dns_records/${str(r['id'])}`, key);
 		return ours.length;
+	},
+	/** The server's private address, carried by its tunnel to WARP devices. */
+	async privateRoute(
+		key: string,
+		accountId: string,
+		tunnelId: string,
+		network: string,
+		comment: string,
+	): Promise<void> {
+		const routes = arr(
+			await call('GET', `/accounts/${accountId}/teamnet/routes?is_deleted=false&per_page=100`, key),
+		).map(rec);
+		if (routes.some((r) => str(r['network']) === network && str(r['tunnel_id']) === tunnelId)) return;
+		await call('POST', `/accounts/${accountId}/teamnet/routes`, key, { network, tunnel_id: tunnelId, comment });
+	},
+	async deletePrivateRoutes(key: string, accountId: string, tunnelId: string): Promise<number> {
+		const ours = arr(await call('GET', `/accounts/${accountId}/teamnet/routes?is_deleted=false&per_page=100`, key))
+			.map(rec)
+			.filter((r) => str(r['tunnel_id']) === tunnelId);
+		for (const r of ours) await call('DELETE', `/accounts/${accountId}/teamnet/routes/${str(r['id'])}`, key);
+		return ours.length;
+	},
+	/** Who may sign a device into WARP: the project's SSH list (the account's WARP login app). */
+	async warpEnrollment(key: string, accountId: string, emails: string[]): Promise<void> {
+		const policies = [
+			{
+				name: 'People on the SSH list',
+				decision: 'allow',
+				include: emails.map((email) => ({ email: { email } })),
+				precedence: 1,
+			},
+		];
+		const app = arr(await call('GET', `/accounts/${accountId}/access/apps?per_page=100`, key))
+			.map(rec)
+			.find((a) => str(a['type']) === 'warp');
+		const body = { type: 'warp', name: 'Warp Login App', session_duration: '720h', policies };
+		if (app) await call('PUT', `/accounts/${accountId}/access/apps/${str(app['id'])}`, key, body);
+		else await call('POST', `/accounts/${accountId}/access/apps`, key, body);
+	},
+	/** WARP carries only these networks (include mode), so nothing else on a device changes. */
+	async warpInclude(key: string, accountId: string, networks: string[]): Promise<void> {
+		const current = arr(
+			await call('GET', `/accounts/${accountId}/devices/policy/include`, key).catch(() => []),
+		).map(rec);
+		const have = new Set(current.map((r) => str(r['address'])));
+		const add = networks
+			.filter((n) => !have.has(n))
+			.map((address) => ({ address, description: 'Release Console: servers' }));
+		if (!add.length) return;
+		await call('PUT', `/accounts/${accountId}/devices/policy/include`, key, [
+			...current.map((r) => ({ address: str(r['address']), description: str(r['description']) })),
+			...add,
+		]);
 	},
 	/** Removes `host`'s A records that point at `ip` only. */
 	async unpointHost(key: string, zoneId: string, host: string, ip: string): Promise<number> {

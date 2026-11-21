@@ -280,6 +280,30 @@ import type { Droplet, DropletJob, DropletJobStep } from '@saha-textile/release-
 								{{ addresses(j) }}
 							</em>
 						</div>
+						@if (j.kind === 'create' && j.privateIp) {
+							<div>
+								<span>SSH, WARP on (iTerm, Termius)</span>
+								<em class="rc-mono">ssh {{ admin }}@{{ j.privateIp }}</em>
+							</div>
+							<div>
+								<span>SFTP, WARP on (Mountain Duck)</span>
+								<em class="rc-mono">sftp://{{ admin }}@{{ j.privateIp }}:22</em>
+							</div>
+						}
+						@if (j.kind === 'create' && j.sshHost) {
+							<div>
+								<span>Browser terminal (any phone)</span>
+								<em class="rc-mono">https://{{ j.sshHost }}</em>
+							</div>
+							<div>
+								<span>Laptop without WARP</span>
+								<em class="rc-mono">
+									ssh -o ProxyCommand="cloudflared access ssh --hostname %h" {{ admin }}@{{
+										j.sshHost
+									}}
+								</em>
+							</div>
+						}
 						@if (j.kind === 'create') {
 							<div>
 								<span>Cost</span>
@@ -313,6 +337,8 @@ export class DoJobsScreen {
 	protected readonly when = when;
 	protected readonly money = money;
 	protected readonly pinLength = PIN_LENGTH;
+	/** The admin user the first-boot file makes (scripts/release-console/first-boot.mjs). */
+	protected readonly admin = 'saha-textile-admin';
 	protected readonly jobId = toSignal(inject(ActivatedRoute).queryParamMap.pipe(map((q) => q.get('job') ?? '')), {
 		initialValue: '',
 	});

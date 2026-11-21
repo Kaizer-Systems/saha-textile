@@ -265,6 +265,7 @@ export class DropletJobs {
 					emails: project.sshEmails,
 				});
 				done.push(host);
+				await this.deps.cf.warpEnrollment(keys.cfKey, zone.accountId, project.sshEmails);
 			}
 		}
 		return done;
@@ -322,6 +323,7 @@ export class DropletJobs {
 		const tunnel = c.tunnel as unknown as NonNullable<Carry['tunnel']>;
 		await this.step(job, 'ssh-host', async () => {
 			c.sshHost = sshHostOf(d.environment, zone.name);
+			job.sshHost = c.sshHost;
 			await deps.cf.routeSsh(keys.cfKey, tunnel.accountId, tunnel.id, c.sshHost);
 			const r = await deps.cf.pointTunnel(keys.cfKey, zone.id, c.sshHost, tunnel.id);
 			return `${c.sshHost} → ssh://localhost:22 in the tunnel · DNS ${r === 'created' ? 'added' : 'already there'}`;
@@ -521,6 +523,22 @@ export class DropletJobs {
 			});
 		} else this.skip(job, 'tunnel-up', 'no tunnel');
 
+		if (tunnel && job.privateIp && zone) {
+			const ip = job.privateIp;
+			await this.step(job, 'private-access', async () => {
+				await deps.cf.privateRoute(
+					keys.cfKey,
+					tunnel.accountId,
+					tunnel.id,
+					`${ip}/32`,
+					`${job.name}: SSH and SFTP over WARP`,
+				);
+				await deps.cf.warpEnrollment(keys.cfKey, zone.accountId, o.emails);
+				await deps.cf.warpInclude(keys.cfKey, zone.accountId, [`${ip}/32`]);
+				return `${ip} through the tunnel · WARP for ${o.emails.length} ${o.emails.length === 1 ? 'person' : 'people'} · WARP carries only server addresses`;
+			});
+		} else this.skip(job, 'private-access', 'no tunnel');
+
 		const token = c.token;
 		if (!token) {
 			for (const k of ['github', 'known-hosts']) this.skip(job, k, 'no first-boot file');
@@ -604,6 +622,7 @@ export class DropletJobs {
 				const t = await deps.cf.tunnelNamed(keys.cfKey, zone.accountId, target.name);
 				if (!t) return 'none by that name';
 				if (envName) await deps.cf.unpointTunnel(keys.cfKey, zone.id, sshHostOf(envName, zone.name), t.id);
+				await deps.cf.deletePrivateRoutes(keys.cfKey, zone.accountId, t.id);
 				await deps.cf.deleteTunnel(keys.cfKey, zone.accountId, t.id);
 				return `${target.name} and its SSH host name deleted`;
 			});
@@ -639,6 +658,7 @@ export class DropletJobs {
 			ipv4: null,
 			ipv6: null,
 			privateIp: null,
+			sshHost: null,
 			monthly: 0,
 			hourly: 0,
 			error: null,

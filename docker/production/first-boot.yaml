@@ -43,7 +43,7 @@ write_files:
   - path: /etc/ssh/sshd_config.d/60-saha-textile.conf
     permissions: '0644'
     content: |
-      # Only the Cloudflare tunnel reaches SSH, on this machine's own address.
+      # Only the Cloudflare tunnel reaches SSH: here and on the private address (61-saha-textile-private.conf).
       ListenAddress 127.0.0.1
       PermitRootLogin no
       PasswordAuthentication no
@@ -130,6 +130,9 @@ runcmd:
   - [systemctl, enable, --now, unattended-upgrades]
   - [systemctl, daemon-reload]
   - [systemctl, enable, --now, saha-textile-reboot-check.timer]
+  # WARP private access (owner, 21 Nov): SSH also answers on the private VPC address, reached only through the
+  # tunnel's private route; the Cloud Firewall and UFW keep 22 closed to everything else.
+  - [sh, -c, 'ip=$(curl -fsS http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address) && echo "ListenAddress $ip" > /etc/ssh/sshd_config.d/61-saha-textile-private.conf || echo "first-boot: no private address for SSH" >&2']
   - [systemctl, restart, ssh]
   - [touch, /opt/saha-textile/first-boot.done]
 

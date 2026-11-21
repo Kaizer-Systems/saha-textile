@@ -123,6 +123,7 @@ function setup(over: Partial<JobDeps> = {}) {
 			originPullsOn: async () => false,
 			setOriginPulls: async () => undefined,
 			unpointTunnel: async () => 1,
+			accessEnabled: async () => true,
 		},
 		ranges: async () => [
 			'173.245.48.0/20',
@@ -275,5 +276,20 @@ describe('creating and destroying a server', () => {
 		const job = await done(jobs, started.id);
 		expect(job.state).toBe('done');
 		expect(job.steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'done']);
+	});
+
+	it('says Zero Trust must be on before it makes anything', async () => {
+		const { jobs, created } = setup();
+		jobs.deps = { ...jobs.deps, cf: { ...jobs.deps.cf, accessEnabled: async () => false } };
+		await expect(
+			jobs.startCreate('saha-textile', 'saha-textile', 'do1', {
+				pin: '000000',
+				confirm: 'staging',
+				draft: draft(),
+				adminPassword: 'example only words',
+				sshEmails: ['owner@example.com'],
+			}),
+		).rejects.toThrow('Zero Trust is not switched on');
+		expect(created).toEqual([]);
 	});
 });

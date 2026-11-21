@@ -120,6 +120,16 @@ export const cfWrites = {
 		});
 		return 'created';
 	},
+	/** Whether Cloudflare Zero Trust (Access) is switched on for the account; servers need it for SSH. */
+	async accessEnabled(key: string, accountId: string): Promise<boolean> {
+		try {
+			await call('GET', `/accounts/${accountId}/access/organizations`, key);
+			return true;
+		} catch (err) {
+			if (err instanceof VendorError && /not.?enabled/i.test(err.message)) return false;
+			throw err;
+		}
+	},
 	/** The tunnel's routes: SSH on its own host name, nothing else (plan §5). */
 	async routeSsh(key: string, accountId: string, id: string, sshHost: string): Promise<void> {
 		await call('PUT', `/accounts/${accountId}/cfd_tunnel/${id}/configurations`, key, {

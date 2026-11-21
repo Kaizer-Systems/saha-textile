@@ -178,6 +178,16 @@ export class DropletJobs {
 				`${env.label} is neither development, staging nor production, so deploy.yml has no place for it.`,
 			);
 		const keys = await this.keys(project, repo, slotId);
+		if (d.firstBoot) {
+			// Checked before anything is made: SSH goes through Cloudflare Access (plan §5).
+			const zoneName = zoneFor(env.domains[0] ?? '', keys.zones) ?? keys.zones[0];
+			if (!zoneName) throw new BadRequestException('The repository names no Cloudflare zone for the tunnel.');
+			const zone = await this.deps.cf.zone(keys.cfKey, zoneName);
+			if (!(await this.deps.cf.accessEnabled(keys.cfKey, zone.accountId)))
+				throw new BadRequestException(
+					'Cloudflare Zero Trust is not switched on for this account, and the server’s SSH goes through it. In Cloudflare, open Zero Trust, choose a team name and the Free plan, then create again.',
+				);
+		}
 		const size = (await this.deps.catalog(keys.doKey)).sizes.find((s) => s.slug === d.size);
 		const cost = dropletCost(d, size);
 		this.projects.setSshEmails(projectId, input.sshEmails);

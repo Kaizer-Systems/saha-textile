@@ -119,7 +119,7 @@ The same parameters as the Order Status table, from `order_id` to `merchant_para
 - The echo URL repeats the hosted return server-to-server, with the same encryption and the same `&`-separated format, so `verifyCallback`'s decryption and parsing apply to it. Like the browser return, it is a claim that `decidePaymentResult` checks against the status enquiry.
 - The callback status map has no entry for the echo URL's `initiated`, so it reads as `review`. The reconciliation values are merchant-API words, which the status-enquiry map already covers ([How CCAvenue's values map](/payments/ccavenue#how-ccavenues-values-map)).
 - A `risk_status` of `High` corresponds to the fraud flag `High` that the status-enquiry map turns into `review`.
-- The post is encrypted with the primary URL's working key. The document does not say whether an account with several registered URLs holds a different working key for each.
+- The post is encrypted with the primary URL's working key. Each registered URL has its own working key, and the dashboard's API Keys page marks the primary URL with a star ([Account settings and behaviour](/payments/ccavenue#account-settings-and-behaviour)). An integration that sends requests with another URL's keys needs the primary URL's working key as well to read these posts.
 
 ## Related pages
 

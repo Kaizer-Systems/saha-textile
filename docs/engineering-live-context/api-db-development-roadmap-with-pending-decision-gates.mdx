@@ -800,6 +800,17 @@ What needs the owner's own keys, accounts or go-ahead waits here; the console ne
 | Wizard finds `.release-console.json` on GitHub                  | The file reaching the default branch        | It lives on `feat/combined-after-pr6` until the merge.                                                                                                                                                                                                                           |
 | Database monitor (item 23)                                      | Owner's call                                | Needs a read-only Mongo login for the console.                                                                                                                                                                                                                                   |
 
+### Chunk Q — INR gateway account questions held for later
+
+**Marker:** OPEN — held by the owner on 2026-11-21 ("not to proceed anything for the CC Avenue to Razor Pay Switch").
+Neither item is raised with HDFC again until the owner reopens it. The CCAvenue adapter, its tests and its go-live
+work do not depend on either.
+
+| Item                                | Where it stood when held                                                                                                                                     | Open points                                                                                                                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Moving the INR gateway to Razorpay  | First asked 2026-08-20. HDFC's relationship manager answered on 2026-11-20 that the move is possible and that the current payment-gateway rates would apply. | No steps and no timeline. In code a move is a new adapter plus one DI binding behind `PaymentGatewayPort`; core and UI do not change.                                            |
+| Account status and applicable rates | First asked 2026-09-30. Account status was never answered. A rate card arrived on 2026-11-20; its figures are kept outside this public repository.           | Whether the card is the account's present rates or the rates after a move, and whether its one-time integration fee and yearly maintenance charge apply to the existing account. |
+
 ## Owner lock order
 
 Recommended order for the fastest reduction of blocked behavior:

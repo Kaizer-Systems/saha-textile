@@ -82,6 +82,7 @@ amount = round2(amountINR × rateFromINR × (1 + markupPercent / 100))
 ```
 
 - Prices follow the active rate source as it updates; a payment keeps the rate that priced it.
+- **One list everywhere:** `GET /currency` returns each enabled currency with `shopRateFromINR`, the stored rate with the markup on top (₹ as it is). The top bar's currency picker lists exactly these, and every price on the shop is shown at that rate, so a price seen while browsing is the price the checkout charges. A choice saved in the browser takes today's rate when the list arrives, and one the shop has stopped selling falls back to ₹.
 - A shopper billed in India who pays in another currency sees a quiet **Paying from India? Pay in ₹ instead** note (`payFromIndiaInRupees`). It never blocks Pay.
 - A shopper billed abroad who picks ₹ while the INR gateway doesn't take cards issued abroad (an order setting) gets the currency picker with the billing country's currency first (`currencyPicker.first`).
 
@@ -95,7 +96,17 @@ The shopper types a code into the coupon box; up to five codes go with the quote
 
 ## When Pay stays off
 
-`payBlocked` names the reason: `cartEmpty`, `lineProblem`, `pieceCannotShip`, `deliveryAbroadNotOffered` or `noGateway` (no gateway set up for the currency). Only `pieceCannotShip` has its own words on the button; the other reasons leave Pay greyed.
+`payBlocked` names the reason, and Pay's own label says it in place of the amount:
+
+| `payBlocked`               | Pay reads                           | Also on the page                                   |
+| -------------------------- | ----------------------------------- | -------------------------------------------------- |
+| `cartEmpty`                | Your bag is empty                   |                                                    |
+| `lineProblem`              | Check the pieces marked above       | The line's reason in the cart page's words, in red |
+| `pieceCannotShip`          | Remove the piece that can't be sent | The line's reason with **Remove**                  |
+| `deliveryAbroadNotOffered` | We deliver only within India        |                                                    |
+| `noGateway`                | Choose another currency to pay      |                                                    |
+
+A line marked for `lineProblem` is one the cart reports as unavailable, out of stock, or below the shortest cut for fabric; "only a few left" lowers the quantity and doesn't stop Pay.
 
 ## Pay and the return
 

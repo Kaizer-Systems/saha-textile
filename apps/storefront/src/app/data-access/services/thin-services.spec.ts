@@ -14,6 +14,7 @@ import { BlogService } from './blog.service';
 import { CartService } from './cart.service';
 import { CategoryService } from './category.service';
 import { ContactChangeService } from './contact-change.service';
+import { ContactMessageService } from './contact-message.service';
 import { CountryService } from './country.service';
 import { CouponService } from './coupon.service';
 import { CurrencyService } from './currency.service';
@@ -30,7 +31,6 @@ import { ReviewService } from './review.service';
 import { SettingService } from './setting.service';
 import { SiteConfigService } from './site-config.service';
 import { StateService } from './state.service';
-import { ContactMessageService } from './contact-message.service';
 import { StoreLocationService } from './store-location.service';
 import { StoreService } from './store.service';
 import { TagService } from './tag.service';
@@ -54,7 +54,6 @@ beforeEach(() => {
 const reads: [string, () => unknown, string, unknown][] = [
 	['attributes', () => TestBed.inject(AttributeService).getAttributes({ a: 1 }), '/attribute.json', { a: 1 }],
 	['coupons', () => TestBed.inject(CouponService).getCoupons({ a: 1 }), '/coupon.json', { a: 1 }],
-	['currencies', () => TestBed.inject(CurrencyService).getCurrencies({ a: 1 }), '/currency.json', { a: 1 }],
 	['order status', () => TestBed.inject(OrderStatusService).getOrderStatus({ a: 1 }), '/order-status.json', { a: 1 }],
 	['orders', () => TestBed.inject(OrderService).getOrders({ a: 1 }), '/order.json', { a: 1 }],
 	['points', () => TestBed.inject(PointService).getUserTransaction({ a: 1 }), '/point.json', { a: 1 }],
@@ -72,6 +71,24 @@ const plainReads: [string, () => unknown, string][] = [
 	['states', () => TestBed.inject(StateService).getStates(), '/state.json'],
 	['a legal page', () => TestBed.inject(PageService).getPage('privacy-policy'), '/catalog/pages/privacy-policy'],
 ];
+
+describe('currency service', () => {
+	it('reads the shop’s currencies from the API, each at the shop rate', async () => {
+		http.get.mockReturnValue(
+			of([
+				{ code: 'INR', symbol: '₹', enabled: true, rateFromINR: 1, shopRateFromINR: 1 },
+				{ code: 'USD', symbol: 'US$', enabled: true, rateFromINR: 0.012, shopRateFromINR: 0.01272 },
+			]),
+		);
+		const model = await firstValueFrom(TestBed.inject(CurrencyService).getCurrencies({ status: 1 }));
+		expect(String(http.get.mock.lastCall?.[0])).toMatch(/\/currency$/);
+		expect(model.data.map((row) => [row.id, row.code, row.symbol, row.exchange_rate, row.status])).toEqual([
+			[1, 'INR', '₹', 1, true],
+			[2, 'USD', 'US$', 0.01272, true],
+		]);
+		expect(model.data[1]).toMatchObject({ symbol_position: 'before_price', no_of_decimal: 2 });
+	});
+});
 
 describe('contact message service', () => {
 	it('sends a Contact Us message to the API', async () => {

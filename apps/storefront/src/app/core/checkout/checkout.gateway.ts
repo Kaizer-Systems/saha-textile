@@ -14,6 +14,7 @@ import type {
 	CheckoutRequest,
 	PayPageView,
 	SavedAddressWrite,
+	ShopCurrency as ContractShopCurrency,
 } from '@saha-textile/contracts';
 
 /** One cart line as the server prices it, with what the checkout's summary draws (picture, MRP). */
@@ -24,13 +25,13 @@ export interface CheckoutCartLine {
 	unitPriceINR: number;
 	mrpINR: number | null;
 	image: { roles: Record<string, Array<{ url: string }>> } | null;
+	/** Why the line can't be bought as it is (the cart page's words); `limited` doesn't stop Pay. */
+	problem?: 'unavailable' | 'out_of_stock' | 'limited' | 'below_shortest_cut' | null;
+	shortestCutTenths?: number | null;
 }
 
 /** A currency the API prices in (`GET /currency`): the list the checkout's quote is checked against. */
-export interface ShopCurrency {
-	code: string;
-	symbol: string;
-}
+export type ShopCurrency = ContractShopCurrency;
 
 /**
  * The shop checkout (shipping brief shop01–shop06; orders brief shop07–shop17): the server prices

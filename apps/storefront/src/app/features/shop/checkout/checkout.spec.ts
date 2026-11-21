@@ -16,16 +16,18 @@ import { Checkout, shopMoney } from './checkout';
 import { PaymentCurrencyPopup } from './payment-currency-popup/payment-currency-popup';
 
 const quoteData = signal<unknown>(undefined);
+const CART = { lines: [{ id: 'l1', mrpINR: 12_000, unitPriceINR: 10_200, image: null }] };
+const cartData = signal<unknown>(CART);
+const currencyData = signal<unknown>([
+	{ code: 'INR', symbol: '₹', enabled: true, rateFromINR: 1, shopRateFromINR: 1 },
+	{ code: 'USD', symbol: 'US$', enabled: true, rateFromINR: 0.012, shopRateFromINR: 0.01272 },
+]);
 vi.mock('@tanstack/angular-query-experimental', async (original) => ({
 	...(await original<typeof import('@tanstack/angular-query-experimental')>()),
 	injectQuery: (options: () => { queryKey: unknown[] }) => {
 		const key = options().queryKey;
-		return key[1] === 'quote'
-			? { data: quoteData, isError: () => false, refetch: vi.fn() }
-			: {
-					data: () => ({ lines: [{ id: 'l1', mrpINR: 12_000, unitPriceINR: 10_200, image: null }] }),
-					refetch: vi.fn(),
-				};
+		if (key[1] === 'quote') return { data: quoteData, isError: () => false, refetch: vi.fn() };
+		return key[1] === 'currencies' ? { data: currencyData } : { data: cartData, refetch: vi.fn() };
 	},
 }));
 vi.mock('@core/geo/geo.gateway', () => ({ injectGeoCountryQuery: () => ({ data: () => null }) }));
@@ -34,6 +36,7 @@ const t = (key: string, params?: Record<string, unknown>) =>
 	params ? `${key}(${Object.values(params).join(',')})` : key;
 
 const render = (currency = 'INR') => {
+	const setCurrency = vi.fn();
 	const place = vi.fn(() =>
 		of({ orderId: 'o1', orderNumber: 'ST-2611-1', handoff: { kind: 'redirect', url: 'https://pay' } }),
 	);
@@ -50,12 +53,12 @@ const render = (currency = 'INR') => {
 				provide: AccountStore,
 				useValue: { user: () => ({ address: [{ address_id: 'adr_home', is_default: true, title: 'Home' }] }) },
 			},
-			{ provide: SettingStore, useValue: { selectedCurrency: () => ({ code: currency }), setCurrency: vi.fn() } },
+			{ provide: SettingStore, useValue: { selectedCurrency: () => ({ code: currency }), setCurrency } },
 			{ provide: CartFacade, useValue: { deleteCart: vi.fn() } },
 		],
 	});
 	TestBed.overrideComponent(Checkout, { set: { imports: [], template: '' } });
-	return { page: TestBed.createComponent(Checkout).componentInstance, place, open, popup };
+	return { page: TestBed.createComponent(Checkout).componentInstance, place, open, popup, setCurrency };
 };
 
 const quote = (over: Record<string, unknown> = {}) => ({
@@ -132,6 +135,41 @@ describe('Shop checkout (shop01–shop17)', () => {
 			}),
 		);
 		expect(page.shippingWhy()).toBe('chk_ship_abroad(2)');
+	});
+
+	it('switches currency with the shop’s own row, its rate included, so every price follows', () => {
+		const { page, setCurrency } = render('USD');
+		page.useCurrency('USD', 'US$');
+		expect(setCurrency).toHaveBeenLastCalledWith(
+			expect.objectContaining({ code: 'USD', symbol: 'US$', exchange_rate: 0.01272 }),
+		);
+		page.payInRupees();
+		expect(setCurrency).toHaveBeenLastCalledWith(expect.objectContaining({ code: 'INR', exchange_rate: 1 }));
+		// A currency the list doesn't hold keeps the old way: its code and symbol.
+		page.useCurrency('GBP', '£');
+		expect(setCurrency).toHaveBeenLastCalledWith({ code: 'GBP', symbol: '£' });
+	});
+
+	it('says on Pay why it is off, and marks the piece that stops it (owner, 21 Nov: option 1)', () => {
+		const { page } = render();
+		for (const [reason, words] of [
+			['cartEmpty', 'chk_pay_off_cartEmpty'],
+			['lineProblem', 'chk_pay_off_lineProblem'],
+			['deliveryAbroadNotOffered', 'chk_pay_off_deliveryAbroadNotOffered'],
+			['noGateway', 'chk_pay_off_noGateway'],
+		]) {
+			quoteData.set(quote({ payBlocked: reason }));
+			expect(page.payWords()).toBe(words);
+		}
+		expect(page.problemWords('l1')).toBe('');
+		cartData.set({ lines: [{ ...CART.lines[0], problem: 'out_of_stock' }] });
+		expect(page.problemWords('l1')).toBe('cart_line_out_of_stock()');
+		cartData.set({ lines: [{ ...CART.lines[0], problem: 'below_shortest_cut', shortestCutTenths: 25 }] });
+		expect(page.problemWords('l1')).toMatch(/^cart_line_below_shortest_cut\(2\.5/);
+		// Too few left lowers the quantity but doesn't stop Pay, so nothing is marked.
+		cartData.set({ lines: [{ ...CART.lines[0], problem: 'limited' }] });
+		expect(page.problemWords('l1')).toBe('');
+		cartData.set(CART);
 	});
 
 	it('keeps Pay off while a piece can’t be sent, and says so (shop06)', async () => {

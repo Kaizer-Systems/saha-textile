@@ -490,8 +490,25 @@ describe('currency', () => {
 		expect((await new CurrencyService(repo as never, settings as never).convert(10_000, 'GBP')).amount).toBe(90.64);
 	});
 
+	it('lists each currency with the rate the shop shows prices at, rupees as they are', async () => {
+		const repo = {
+			listEnabled: vi.fn(async () => [
+				{ code: 'INR', rateFromINR: 1 },
+				{ code: 'USD', rateFromINR: 0.012 },
+			]),
+		};
+		const rows = await new CurrencyService(repo as never).listForShop();
+		expect(rows.map((row) => [row.code, row.shopRateFromINR])).toEqual([
+			['INR', 1],
+			['USD', 0.012 * 1.06],
+		]);
+		const settings = { get: vi.fn(async () => ({ paypalMarkupPercent: 10 })) };
+		const marked = await new CurrencyService(repo as never, settings as never).listForShop();
+		expect(marked[1]?.shopRateFromINR).toBeCloseTo(0.0132, 10);
+	});
+
 	it('serves the controller, defaulting to rupees', async () => {
-		const service = { listEnabled: vi.fn(async () => 'list'), convert: vi.fn(async () => 'converted') };
+		const service = { listForShop: vi.fn(async () => 'list'), convert: vi.fn(async () => 'converted') };
 		const controller = new CurrencyController(service as never);
 		expect(await controller.list()).toBe('list');
 		await controller.convert('100', 'USD');

@@ -7,12 +7,14 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
+import { lengthText } from '@core/catalog/metre-length';
 import { CheckoutGateway, followHandoff, type CheckoutCartLine } from '@core/checkout/checkout.gateway';
 import { injectGeoCountryQuery } from '@core/geo/geo.gateway';
 import { AccountStore } from '@core/state/account.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { SettingStore } from '@core/state/setting.store';
 import { IUserAddress } from '@data-access/interfaces/user.interface';
+import { toShopCurrency } from '@data-access/services/currency.service';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { ShopAddressForm } from '@shared/ui/shop-address-form/shop-address-form';
@@ -155,6 +157,12 @@ export class Checkout {
 		queryFn: () => firstValueFrom(this.gateway.cart()),
 	}));
 	readonly cartLines = computed(() => new Map((this.cart.data()?.lines ?? []).map((line) => [line.id, line])));
+	/** The shop's currencies, shared with the currency popup's list. */
+	private readonly shopCurrencies = injectQuery(() => ({
+		queryKey: ['shop-checkout', 'currencies'],
+		queryFn: () => firstValueFrom(this.gateway.currencies()),
+		staleTime: 5 * 60_000,
+	}));
 
 	readonly q = computed<CheckoutQuote | null>(() => this.quote.data() ?? null);
 	readonly freeDelivery = computed(() => this.q()?.coupons.find((row) => row.kind === 'freeDelivery') ?? null);
@@ -180,6 +188,16 @@ export class Checkout {
 		const line: CheckoutCartLine | undefined = this.cartLines().get(lineId);
 		const roles = line?.image?.roles ?? {};
 		return roles['thumb']?.[0]?.url ?? roles['card']?.[0]?.url ?? 'assets/images/product.png';
+	}
+
+	/** A line that stops Pay (sold out, gone, below the shortest cut), in the cart page's own words. */
+	problemWords(lineId: string): string {
+		const line = this.cartLines().get(lineId);
+		if (!line?.problem || line.problem === 'limited') return '';
+		const unit = this.transloco.translate('unit_m');
+		return this.transloco.translate(`cart_line_${line.problem}`, {
+			cut: line.shortestCutTenths ? lengthText(line.shortestCutTenths, unit) : '',
+		});
 	}
 
 	/** shop01: "MRP ₹12,000 · discounted" / "Full price"; a coupon's share; why a sale piece got none. */
@@ -236,11 +254,17 @@ export class Checkout {
 		return free ? `${words} · ${t('chk_ship_full_price_free')}` : words;
 	}
 
+	/**
+	 * Pay's own words (owner, 21 Nov: option 1, the reason on the button): the amount, or why Pay is off
+	 * (bag empty, a piece marked above, delivery only within India, another currency, a piece that
+	 * can't be sent).
+	 */
 	payWords(): string {
 		const q = this.q();
 		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
 		if (!q) return t('chk_pay');
 		if (q.payBlocked === 'pieceCannotShip') return t('chk_remove_cannot_ship');
+		if (q.payBlocked) return t(`chk_pay_off_${q.payBlocked}`);
 		const total = this.money(q.totals.total);
 		return q.currency === 'INR' ? t('chk_pay_amount', { amount: total }) : t('chk_pay_paypal', { amount: total });
 	}
@@ -280,13 +304,20 @@ export class Checkout {
 		return popupCurrencies(first, false);
 	}
 
+	/** Sets the shop's currency by its code, with the shop's own row (its rate) so every price follows. */
 	useCurrency(code: string, symbol: string): void {
-		this.settings.setCurrency({ ...(this.settings.selectedCurrency() ?? {}), code, symbol } as never);
+		const data = this.shopCurrencies.data();
+		const rows = Array.isArray(data) ? data : [];
+		const index = rows.findIndex((row) => row.code === code);
+		const row = rows[index];
+		this.settings.setCurrency(
+			row ? toShopCurrency(row, index) : ({ ...(this.settings.selectedCurrency() ?? {}), code, symbol } as never),
+		);
 	}
 
 	/** shop08 / K2: "Paying from India? … Pay in ₹ instead". */
 	payInRupees(): void {
-		this.settings.setCurrency({ ...(this.settings.selectedCurrency() ?? {}), code: 'INR', symbol: '₹' } as never);
+		this.useCurrency('INR', '₹');
 	}
 
 	/**

@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { type Currency, FxSettings } from '@saha-textile/contracts';
+import { type Currency, FxSettings, type ShopCurrency } from '@saha-textile/contracts';
 import {
 	type CurrencyRepository,
 	type SiteSettingsRepository,
@@ -32,6 +32,20 @@ export class CurrencyService {
 
 	listEnabled(): Promise<Currency[]> {
 		return this.currencies.listEnabled();
+	}
+
+	/** The enabled currencies with the rate the shop shows prices at (the markup on all but rupees). */
+	async listForShop(): Promise<ShopCurrency[]> {
+		const [rows, fx] = await Promise.all([
+			this.currencies.listEnabled(),
+			this.settings?.get('fx').then((value) => FxSettings.parse(value ?? {})) ??
+				Promise.resolve(FxSettings.parse({})),
+		]);
+		return rows.map((row) => ({
+			...row,
+			shopRateFromINR:
+				row.code === HOME_CURRENCY ? row.rateFromINR : row.rateFromINR * (1 + fx.paypalMarkupPercent / 100),
+		}));
 	}
 
 	/**

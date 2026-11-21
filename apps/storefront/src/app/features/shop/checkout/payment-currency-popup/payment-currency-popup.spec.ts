@@ -17,7 +17,13 @@ vi.mock('@tanstack/angular-query-experimental', async (original) => ({
 	injectQuery: () => ({ data: offered }),
 }));
 
-const currency = (code: string, symbol: string) => ({ code, symbol });
+const currency = (code: string, symbol: string) => ({
+	code,
+	symbol,
+	enabled: true,
+	rateFromINR: 0.05,
+	shopRateFromINR: 0.053,
+});
 
 const render = (kind: 'chooseCurrency' | 'switchToRegionCurrency', first: string | null) => {
 	const close = vi.fn();
@@ -80,7 +86,10 @@ describe('Currency popup over the checkout (shop04, shop05)', () => {
 		expect(popup.rows().map((row) => row.code)).toEqual(['USD', 'INR', 'AED']);
 		popup.picked.set('AED');
 		popup.continueIn();
-		expect(setCurrency).toHaveBeenCalledWith({ code: 'AED', id: 1, symbol: 'AED' });
+		// The shop's own row, with the rate the shop prices at, so every price follows.
+		expect(setCurrency).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 3, code: 'AED', symbol: 'AED', exchange_rate: 0.053, status: true }),
+		);
 		expect(close).toHaveBeenCalledWith('AED');
 	});
 

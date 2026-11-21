@@ -1,5 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
 
 import { SettingStore } from '@core/state/setting.store';
 import { ICurrency } from '@data-access/interfaces/currency.interface';
@@ -29,6 +29,11 @@ export class Currency {
 
 	private readonly currenciesQuery = injectCurrenciesQuery(() => ({ status: 1 }));
 	readonly currencies = computed<ICurrency[]>(() => this.currenciesQuery.data()?.data ?? []);
+
+	constructor() {
+		// The shop's own currencies (`GET /currency`): a saved choice takes today's rate, or falls back to ₹.
+		effect(() => this.settingStore.useCurrencies(this.currencies()));
+	}
 
 	openDropDown(): void {
 		this.open.update((open) => !open);

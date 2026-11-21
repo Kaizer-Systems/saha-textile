@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { expect, test } from './support';
+import { API_URL, expect, test } from './support';
 
 /**
  * The shop checkout (shipping brief shop01–shop06, orders brief shop07–shop17): a guest signs in
@@ -39,6 +39,16 @@ test.describe('Shop checkout', () => {
 	// One account means one one-time code at a time.
 	test.describe.configure({ mode: 'serial' });
 
+	test('the top bar offers only the currencies the shop sells', async ({ page }) => {
+		const offered = (await (await page.request.get(`${API_URL}/currency`)).json()) as Array<{ code: string }>;
+		await page.goto('/en');
+		await page.waitForLoadState('networkidle');
+		await page.locator('app-currency button.dropdown-toggle').first().click();
+		await expect(page.locator('app-currency .dropdown-menu.show .dropdown-item')).toHaveText(
+			offered.map((row) => row.code),
+		);
+	});
+
 	test('asks a guest to sign in first, in both languages', async ({ page }) => {
 		await page.goto('/en/checkout');
 		await expect(page).toHaveURL(/\/auth\/login/);
@@ -69,12 +79,14 @@ test.describe('Shop checkout', () => {
 				await page.locator('#chk_delivery_label').fill('Home');
 		}
 
-		// The server's quote: the piece, the shipping line and the total, and Pay naming the amount. A
-		// stack without INR gateway keys keeps Pay off (`noGateway`), so the button is not pressed.
+		// The server's quote: the piece, the shipping line and the total. A stack without INR gateway
+		// keys keeps Pay off (`noGateway`) and the button names why (owner, 21 Nov: option 1).
 		await expect(page.locator('body')).toContainText(/Katan Banarasi Saree/);
 		await expect(page.locator('body')).toContainText(/Shipping/);
+		await expect(page.locator('.summary-total')).toContainText(/₹[\d,]+/);
 		const pay = page.locator('button.proceed-btn');
-		await expect(pay).toHaveText(/Pay\s+₹[\d,]+/);
+		await expect(pay).toHaveText('Choose another currency to pay');
+		await expect(pay).toBeDisabled();
 	});
 
 	test('opens the currency popup over the checkout after a payment that didn’t go through (shop04, shop05)', async ({
@@ -112,7 +124,7 @@ test.describe('Shop checkout', () => {
 		await popup.getByRole('button', { name: 'Continue in US$' }).click();
 		await expect(popup).toHaveCount(0);
 
-		// The checkout now quotes in US$ through PayPal.
+		// The checkout now quotes in US$ (PayPal, which this stack has no keys for either).
 		if (await page.locator('#chk_delivery_name').isVisible()) {
 			await page.locator('#chk_delivery_name').fill('Diya Sharma');
 			await page.locator('#chk_delivery_mobile').fill('9830012345');
@@ -122,7 +134,7 @@ test.describe('Shop checkout', () => {
 			if (await page.locator('#chk_delivery_label').isVisible())
 				await page.locator('#chk_delivery_label').fill('Home');
 		}
-		await expect(page.locator('button.proceed-btn')).toContainText('PayPal');
+		await expect(page.locator('.summary-total')).toContainText('US$');
 
 		// A reload never opens the popup again; the return page was replaced in the history.
 		await page.reload();

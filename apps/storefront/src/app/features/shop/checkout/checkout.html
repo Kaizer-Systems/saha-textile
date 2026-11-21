@@ -425,6 +425,11 @@
 										<h5 class="price">{{ money(line.lineTotal) }}</h5>
 										@if (lineSub(line); as sub) {
 										<p class="small text-muted mb-0">{{ sub }}</p>
+										} @if (problemWords(line.lineId); as problem) {
+										<p class="text-danger small mb-0 mt-1">
+											<i class="ri-error-warning-line"></i>
+											{{ problem }}
+										</p>
 										} @if (line.cannotShipReason) {
 										<p class="text-danger small mb-0 mt-1">
 											<i class="ri-error-warning-line"></i>

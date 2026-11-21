@@ -131,7 +131,9 @@ test.describe('Shop checkout rules for every address and currency', () => {
 			if (await page.locator('#chk_delivery_label').isVisible())
 				await page.locator('#chk_delivery_label').fill('Home');
 		}
-		await expect(page.locator('button.proceed-btn')).toHaveText(/Pay\s+₹[\d,]+/);
+		// No gateway keys on the test stack: Pay names the reason it is off (owner, 21 Nov: option 1).
+		await expect(page.locator('.summary-total')).toContainText(/₹[\d,]+/);
+		await expect(page.locator('button.proceed-btn')).toHaveText('Choose another currency to pay');
 		await expect(page.locator('body')).toContainText(/discounted piece|ships free|Every piece ships free/);
 	});
 });

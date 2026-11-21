@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { CheckoutGateway, type ShopCurrency } from '@core/checkout/checkout.gateway';
 import { SettingStore } from '@core/state/setting.store';
+import { toShopCurrency } from '@data-access/services/currency.service';
 import { Button } from '@shared/ui/button/button';
 
 import type { ICurrency } from '@data-access/interfaces/currency.interface';
@@ -173,11 +174,14 @@ export class PaymentCurrencyPopup {
 		const code = this.choice();
 		const row = this.rows().find((item) => item.code === code);
 		if (!code || !row) return;
-		this.settings.setCurrency({
-			...(this.settings.selectedCurrency() ?? {}),
-			code,
-			symbol: row.symbol,
-		} as ICurrency);
+		// The shop's own row, rate included, so prices across the shop follow the new currency.
+		const index = this.offered().findIndex((currency) => currency.code === code);
+		const offered = this.offered()[index];
+		this.settings.setCurrency(
+			offered
+				? toShopCurrency(offered, index)
+				: ({ ...(this.settings.selectedCurrency() ?? {}), code, symbol: row.symbol } as ICurrency),
+		);
 		this.modal.close(code);
 	}
 

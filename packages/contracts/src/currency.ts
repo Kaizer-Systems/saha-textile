@@ -26,3 +26,11 @@ export const Currency = z.object({
 	updatedAt: IsoDateTime.optional(),
 });
 export type Currency = z.infer<typeof Currency>;
+
+/**
+ * A currency as the shop prices in it (`GET /currency`): `shopRateFromINR` is the stored rate with
+ * the PayPal markup on top for every currency but rupees (brief fx01), the same figure the checkout
+ * quote charges, so browsing prices and the checkout agree.
+ */
+export const ShopCurrency = Currency.extend({ shopRateFromINR: z.number().finite().positive() });
+export type ShopCurrency = z.infer<typeof ShopCurrency>;

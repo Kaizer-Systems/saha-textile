@@ -22,6 +22,7 @@ const render = (platform = 'browser') => {
 		setting: signal(null),
 		selectedCurrency: signal<unknown>({ code: 'INR' }),
 		setCurrency: vi.fn(),
+		useCurrencies: vi.fn(),
 	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -56,11 +57,13 @@ describe('Header currency', () => {
 		expect(widget.selectedCurrency()).toEqual({ code: 'USD' });
 	});
 
-	it('lists the currencies, empty until loaded', () => {
-		const { widget } = render();
+	it('lists the currencies, empty until loaded, and hands them to the store to keep the choice current', () => {
+		const { widget, store } = render();
 		expect(widget.currencies()).toEqual([]);
 		data.set({ data: [{ code: 'USD' }], total: 1 });
 		expect(widget.currencies()).toEqual([{ code: 'USD' }]);
+		TestBed.tick();
+		expect(store.useCurrencies).toHaveBeenLastCalledWith([{ code: 'USD' }]);
 	});
 
 	it('opens and closes', () => {

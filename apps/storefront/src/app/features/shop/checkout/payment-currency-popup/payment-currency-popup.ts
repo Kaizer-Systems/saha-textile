@@ -3,9 +3,11 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { intlLocale } from '@saha-textile/core-domain/languages';
+import { injectQuery } from '@tanstack/angular-query-experimental';
+import { firstValueFrom } from 'rxjs';
 
+import { CheckoutGateway, type ShopCurrency } from '@core/checkout/checkout.gateway';
 import { SettingStore } from '@core/state/setting.store';
-import { injectCurrenciesQuery } from '@data-access/queries/currency.queries';
 import { Button } from '@shared/ui/button/button';
 
 import type { ICurrency } from '@data-access/interfaces/currency.interface';
@@ -40,8 +42,9 @@ export interface PopupCurrencyRow {
  * didn't complete, shop05 "Switch to your region's currency" when the INR gateway refused a card from
  * abroad; approved 19 Nov). Built from the shop's confirmation modal: `theme-modal`, `icon-box wo-bg`,
  * `modal-title`, `button-box` and `app-button`. The four drawn currencies come first, kept to the ones the
- * shop offers; "More currencies" adds the shop's other currencies. Continue sets the shop's currency, so
- * the checkout quotes again in it; Close / Try another card just closes.
+ * API prices in (`GET /currency`, the list the quote is checked against); "More currencies" adds the
+ * API's other currencies. Continue sets the shop's currency, so the checkout quotes again in it; Close /
+ * Try another card just closes.
  */
 @Component({
 	selector: 'app-payment-currency-popup',
@@ -64,10 +67,10 @@ export interface PopupCurrencyRow {
 					<button
 						type="button"
 						class="btn btn-md d-flex justify-content-between align-items-center mb-2 w-100"
-						[class.theme-bg-color]="picked() === row.code"
-						[class.text-light]="picked() === row.code"
-						[class.btn-theme-outline]="picked() !== row.code"
-						[attr.aria-pressed]="picked() === row.code"
+						[class.theme-bg-color]="choice() === row.code"
+						[class.text-light]="choice() === row.code"
+						[class.btn-theme-outline]="choice() !== row.code"
+						[attr.aria-pressed]="choice() === row.code"
 						(click)="picked.set(row.code)"
 					>
 						<span>
@@ -115,7 +118,12 @@ export class PaymentCurrencyPopup {
 	readonly modal = inject(NgbActiveModal);
 	private readonly settings = inject(SettingStore);
 	private readonly transloco = inject(TranslocoService);
-	private readonly currenciesQuery = injectCurrenciesQuery(() => ({ status: 1 }));
+	private readonly gateway = inject(CheckoutGateway);
+	private readonly currencies = injectQuery(() => ({
+		queryKey: ['shop-checkout', 'currencies'],
+		queryFn: () => firstValueFrom(this.gateway.currencies()),
+		staleTime: 5 * 60_000,
+	}));
 
 	/** Set by the checkout when it opens the popup. */
 	readonly kind = signal<CurrencyPopupKind>('chooseCurrency');
@@ -124,8 +132,8 @@ export class PaymentCurrencyPopup {
 	readonly picked = signal<string | null>(null);
 	readonly showAll = signal(false);
 
-	/** The shop's active currencies; empty until they arrive, when the four drawn ones show as they are. */
-	private readonly offered = computed<ICurrency[]>(() => this.currenciesQuery.data()?.data ?? []);
+	/** The API's currencies; empty until they arrive, when the four drawn ones show as they are. */
+	private readonly offered = computed<ShopCurrency[]>(() => this.currencies.data() ?? []);
 	private readonly withRupees = computed(() => this.kind() !== 'switchToRegionCurrency');
 
 	readonly drawn = computed<PopupCurrencyRow[]>(() => {
@@ -135,7 +143,7 @@ export class PaymentCurrencyPopup {
 			.map((row) => ({ code: row.code, symbol: row.symbol, nameKey: row.name, name: row.code }));
 	});
 
-	/** The shop's other currencies, behind "More currencies". */
+	/** The API's other currencies, behind "More currencies". */
 	readonly more = computed<PopupCurrencyRow[]>(() => {
 		const known = new Set(POPUP_CURRENCIES.map((row) => row.code));
 		return this.offered()
@@ -165,10 +173,11 @@ export class PaymentCurrencyPopup {
 		const code = this.choice();
 		const row = this.rows().find((item) => item.code === code);
 		if (!code || !row) return;
-		const offered = this.offered().find((currency) => currency.code === code);
-		this.settings.setCurrency(
-			offered ?? ({ ...(this.settings.selectedCurrency() ?? {}), code, symbol: row.symbol } as ICurrency),
-		);
+		this.settings.setCurrency({
+			...(this.settings.selectedCurrency() ?? {}),
+			code,
+			symbol: row.symbol,
+		} as ICurrency);
 		this.modal.close(code);
 	}
 

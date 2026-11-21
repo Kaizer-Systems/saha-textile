@@ -6,6 +6,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { CheckoutGateway } from '@core/checkout/checkout.gateway';
 import { SettingStore } from '@core/state/setting.store';
 
 import { PaymentCurrencyPopup, popupCurrencies } from './payment-currency-popup';
@@ -16,7 +17,7 @@ vi.mock('@tanstack/angular-query-experimental', async (original) => ({
 	injectQuery: () => ({ data: offered }),
 }));
 
-const currency = (code: string, symbol: string) => ({ id: 1, code, symbol, exchange_rate: 1, status: true });
+const currency = (code: string, symbol: string) => ({ code, symbol });
 
 const render = (kind: 'chooseCurrency' | 'switchToRegionCurrency', first: string | null) => {
 	const close = vi.fn();
@@ -25,6 +26,7 @@ const render = (kind: 'chooseCurrency' | 'switchToRegionCurrency', first: string
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: NgbActiveModal, useValue: { close, dismiss: vi.fn() } },
+			{ provide: CheckoutGateway, useValue: { currencies: () => of([]) } },
 			{ provide: TranslocoService, useValue: { selectTranslate: () => of(''), getActiveLang: () => 'en' } },
 			{ provide: SettingStore, useValue: { selectedCurrency: () => ({ code: 'INR', id: 1 }), setCurrency } },
 		],
@@ -49,6 +51,8 @@ describe('Currency popup over the checkout (shop04, shop05)', () => {
 		expect(popup.rows().map((row) => row.code)).toEqual(['INR', 'GBP', 'USD', 'EUR']);
 		expect(popup.hint('INR')).toBe('ret_inr_ways');
 		expect(popup.hint('GBP')).toBe('ret_paypal');
+		// The first row starts chosen, so Continue names it before anything is pressed.
+		expect(popup.choice()).toBe('INR');
 		expect(popup.pickedSymbol()).toBe('₹');
 		popup.continueIn();
 		expect(setCurrency).toHaveBeenCalledWith({ code: 'INR', id: 1, symbol: '₹' });
@@ -66,7 +70,7 @@ describe('Currency popup over the checkout (shop04, shop05)', () => {
 	});
 
 	it('keeps to the currencies the shop offers, and "More currencies" adds the rest', () => {
-		offered.set({ data: [currency('INR', '₹'), currency('USD', 'US$'), currency('AED', 'AED')] });
+		offered.set([currency('INR', '₹'), currency('USD', 'US$'), currency('AED', 'AED')]);
 		const { popup, setCurrency, close } = render('chooseCurrency', 'USD');
 		expect(popup.rows().map((row) => row.code)).toEqual(['USD', 'INR']);
 		// Names the drawn four don't cover come from the browser, in the page's language.
@@ -76,13 +80,12 @@ describe('Currency popup over the checkout (shop04, shop05)', () => {
 		expect(popup.rows().map((row) => row.code)).toEqual(['USD', 'INR', 'AED']);
 		popup.picked.set('AED');
 		popup.continueIn();
-		// The shop's own currency row is set, with its rate and format.
-		expect(setCurrency).toHaveBeenCalledWith(currency('AED', 'AED'));
+		expect(setCurrency).toHaveBeenCalledWith({ code: 'AED', id: 1, symbol: 'AED' });
 		expect(close).toHaveBeenCalledWith('AED');
 	});
 
 	it('never offers ₹ from "More currencies" after a refused card', () => {
-		offered.set({ data: [currency('INR', '₹'), currency('GBP', '£'), currency('AED', 'AED')] });
+		offered.set([currency('INR', '₹'), currency('GBP', '£'), currency('AED', 'AED')]);
 		const { popup } = render('switchToRegionCurrency', 'GBP');
 		popup.showAll.set(true);
 		expect(popup.rows().map((row) => row.code)).toEqual(['GBP', 'AED']);

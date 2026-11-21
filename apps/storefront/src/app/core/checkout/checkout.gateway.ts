@@ -26,6 +26,12 @@ export interface CheckoutCartLine {
 	image: { roles: Record<string, Array<{ url: string }>> } | null;
 }
 
+/** A currency the API prices in (`GET /currency`): the list the checkout's quote is checked against. */
+export interface ShopCurrency {
+	code: string;
+	symbol: string;
+}
+
 /**
  * The shop checkout (shipping brief shop01–shop06; orders brief shop07–shop17): the server prices
  * every step (addresses, shipping with its reason, coupons, the gateway the currency picks) and the
@@ -65,6 +71,11 @@ export class CheckoutGateway {
 	saveAddress(addressId: string | null, body: SavedAddressWrite): Observable<unknown> {
 		const base = this.api('/storefront/account/address-book');
 		return addressId ? this.http.put(`${base}/${encodeURIComponent(addressId)}`, body) : this.http.post(base, body);
+	}
+
+	/** The currencies the API prices in; the currency popups keep to these (shop04, shop05). */
+	currencies(): Observable<ShopCurrency[]> {
+		return this.http.get<ShopCurrency[]>(this.api('/currency'));
 	}
 
 	/** Our pay page (shop10, shop11): the order, its total and the gateway's request, or why it ended. */

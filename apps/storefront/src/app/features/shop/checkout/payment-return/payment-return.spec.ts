@@ -78,4 +78,11 @@ describe('Back from the gateway (OD1, shop04, shop05)', () => {
 		await broken.page.ngOnInit();
 		expect(broken.page.failed()).toBe(true);
 	});
+
+	it('is its own page beside the checkout, behind the shop’s sign-in', async () => {
+		const page = await import('../../../../pages/checkout/payment-return.page');
+		const { AuthGuard } = await import('@core/guards/auth.guard');
+		expect(page.default).toBe(PaymentReturn);
+		expect(page.routeMeta.canActivate).toContain(AuthGuard);
+	});
 });

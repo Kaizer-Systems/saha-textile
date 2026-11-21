@@ -75,29 +75,41 @@ check_cert_pair() {
 	[[ -n "$cert_key" && "$cert_key" == "$key_key" ]] || die 'origin.pem and origin.key do not belong together.'
 }
 
-# Installs the release's certificates right before the switch. Each server copy it replaces is kept
+# Writes one certificate file. An existing file is rewritten in place, never replaced: Compose mounts
+# each one into the edge as a single file, and a mount keeps the file it started with, so a new file
+# would stay unseen on Linux (the old certificate served on) and vanish on Docker Desktop.
+put_cert() {
+	local from="$1" to="$2" mode=0644
+	[[ "$to" == *.key ]] && mode=0600
+	if [[ -e "$to" ]]; then
+		chmod "$mode" "$to"
+		cat "$from" >"$to"
+	else
+		install -m "$mode" "$from" "$to"
+	fi
+}
+
+# Installs the release's certificates right before the switch. Each server copy it changes is kept
 # in the release folder first, so a release that does not come up healthy puts them back.
 install_certs() {
-	local name mode
+	local name
 	install -d -m 0755 "$CERTS"
 	install -d -m 0700 "$CERTS_BEFORE"
 	for name in $CERT_FILES; do
 		[[ -s "$SECRETS/$name" ]] || continue
 		cmp -s "$SECRETS/$name" "$CERTS/$name" && continue
 		[[ -e "$CERTS/$name" ]] && cp -p "$CERTS/$name" "$CERTS_BEFORE/$name"
-		mode=0644
-		[[ "$name" == *.key ]] && mode=0600
-		install -m "$mode" "$SECRETS/$name" "$CERTS/$name"
+		put_cert "$SECRETS/$name" "$CERTS/$name"
 		say "certs/$name from the release"
 	done
 }
 
-# Puts back the server's own certificates that install_certs replaced.
+# Puts back the server's own certificates that install_certs changed.
 restore_certs() {
 	local name
 	for name in $CERT_FILES; do
 		[[ -e "$CERTS_BEFORE/$name" ]] || continue
-		cp -p "$CERTS_BEFORE/$name" "$CERTS/$name"
+		put_cert "$CERTS_BEFORE/$name" "$CERTS/$name"
 		say "certs/$name put back"
 	done
 	rm -rf "$CERTS_BEFORE"

@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 
-import { describe, expect, it } from 'vitest';
+import { TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { describe, expect, it, vi } from 'vitest';
 
 import { BundleConfigurator } from './bundle-configurator';
 
@@ -27,8 +29,15 @@ const bundle = (overrides: Record<string, unknown> = {}) =>
 		},
 	}) as never;
 
+const modals = { open: vi.fn() };
 const render = (product: unknown = bundle(), inputs: Record<string, unknown> = {}) => {
 	TestBed.resetTestingModule();
+	TestBed.configureTestingModule({
+		providers: [
+			{ provide: NgbModal, useValue: modals },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key, getActiveLang: () => 'en' } },
+		],
+	});
 	TestBed.overrideComponent(BundleConfigurator, { set: { imports: [], template: '' } });
 	const fixture = TestBed.createComponent(BundleConfigurator);
 	const states: ConfiguratorState[] = [];
@@ -89,5 +98,38 @@ describe('BundleConfigurator', () => {
 		const stale = render(bundle(), { initialSelections: { blouse: 'gone' } });
 		expect(stale.box.selectedTermLabel(stale.box.optionGroups()[0]!)).toBe('');
 		expect(stale.box.optionDelta()).toBe(50);
+	});
+
+	describe('piece rows (brief P8)', () => {
+		it('opens one row at a time, all closed at first', () => {
+			const { box: component } = render();
+			expect(component.open()).toBeNull();
+			component.toggle('a');
+			component.toggle('b');
+			expect(component.open()).toBe('b');
+			component.toggle('b');
+			expect(component.open()).toBeNull();
+		});
+
+		it('marks each piece: red out of stock, amber while its measurements are missing, else green', () => {
+			const { box: component } = render();
+			expect(component.mark({ stock_status: 'out_of_stock' } as never)).toBe('bad');
+			expect(component.mark({ stock_status: 'in_stock', requires_measurements: true } as never)).toBe('warn');
+			expect(component.mark({ stock_status: 'in_stock' } as never)).toBe('ok');
+			component.apply({}, { chest: 36 }, true);
+			expect(component.mark({ stock_status: 'in_stock', requires_measurements: true } as never)).toBe('ok');
+		});
+
+		it('opens the set’s form in the pop-up and keeps only what is saved', async () => {
+			const start = vi.fn();
+			const { box: component } = render();
+			modals.open.mockReturnValueOnce({ componentInstance: { start }, result: Promise.reject('closed') });
+			await component.openMeasurements();
+			expect(component.measured()).toBe(false);
+			modals.open.mockReturnValueOnce({ componentInstance: { start }, result: Promise.resolve({ chest: 38 }) });
+			await component.openMeasurements();
+			expect(component.measured()).toBe(true);
+			expect(start).toHaveBeenCalledTimes(2);
+		});
 	});
 });

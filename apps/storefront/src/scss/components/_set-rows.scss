@@ -1,0 +1,99 @@
+// A set's piece rows (owner, 21 Nov 2026, product page brief P8): photo, number, name, SKU and a status mark; one
+// row opens at a time. Keyed on the rows' own classes, so the product page and the Configure set pop-up match.
+// Colours come from theme variables, so the colour-only dark file covers them.
+
+.st-piece-rows {
+	display: grid;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.st-piece {
+	border: 1px solid var(--st-border-soft, #e6e6e6);
+	border-radius: 10px;
+	background-color: var(--st-surface, #fff);
+
+	&.is-open {
+		border-color: var(--theme-color);
+	}
+}
+
+.st-piece-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 10px;
+	border: 0;
+	background: transparent;
+	color: var(--st-text, #222);
+	text-align: left;
+}
+
+.st-piece-mark {
+	flex: none;
+	font-size: 20px;
+	line-height: 1;
+
+	&.is-ok {
+		color: var(--st-success);
+	}
+
+	&.is-warn {
+		color: color-mix(in srgb, var(--st-warning) 72%, var(--st-text-body));
+	}
+
+	&.is-bad {
+		color: var(--st-danger-text);
+	}
+}
+
+.st-piece-photo {
+	flex: none;
+	width: 44px;
+	height: 58px;
+	border-radius: 6px;
+	object-fit: cover;
+}
+
+.st-piece-text {
+	display: grid;
+	flex: 1;
+	min-width: 0;
+	line-height: 1.3;
+}
+
+.st-piece-name {
+	font-weight: 600;
+}
+
+.st-piece-sub {
+	color: var(--st-text-muted);
+	font-size: 13px;
+}
+
+.st-piece-caret {
+	flex: none;
+	font-size: 20px;
+	transition: transform 0.2s ease;
+
+	.is-open & {
+		transform: rotate(180deg);
+	}
+}
+
+.st-piece-body {
+	padding: 4px 14px 12px 64px;
+	font-size: 14px;
+}
+
+.st-piece-note {
+	color: var(--st-danger-text);
+}
+
+.st-piece-link {
+	color: var(--theme-color);
+	font-weight: 600;
+}

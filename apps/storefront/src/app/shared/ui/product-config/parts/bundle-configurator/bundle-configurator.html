@@ -10,47 +10,75 @@
 			{{ 'bundle_components' | transloco }}
 			<span class="count">({{ components().length }})</span>
 		</h2>
-		<ul class="bundle-components">
+		<!-- One row per piece (brief P8): photo, number, name, SKU and a status mark; one opens at a time. -->
+		<ul class="st-piece-rows">
 			@for (comp of components(); track comp.code; let i = $index) {
-			<li class="bundle-component">
-				<span class="comp-index">{{ i + 1 }}</span>
-				<img
-					class="comp-image"
-					[src]="comp.image || 'assets/images/product.png'"
-					[alt]="comp.name"
-				/>
-				<div class="comp-main">
-					<h3 class="h6 comp-name">{{ comp.name }}</h3>
-					<div class="comp-sku text-content">{{ 'sku' | transloco }}: {{ comp.sku }}</div>
+			<li
+				class="st-piece"
+				[class.is-open]="open() === comp.code"
+			>
+				<button
+					type="button"
+					class="st-piece-head"
+					[attr.aria-expanded]="open() === comp.code"
+					(click)="toggle(comp.code)"
+				>
+					<span
+						class="st-piece-mark"
+						[class]="'st-piece-mark is-' + mark(comp)"
+						[attr.title]="('piece_' + mark(comp)) | transloco"
+					>
+						<i
+							[class]="mark(comp) === 'ok' ? 'ri-checkbox-circle-fill' : mark(comp) === 'bad' ? 'ri-close-circle-fill' : 'ri-error-warning-fill'"
+							aria-hidden="true"
+						></i>
+					</span>
+					<img
+						class="st-piece-photo"
+						[src]="comp.image || 'assets/images/product.png'"
+						alt=""
+						width="44"
+						height="58"
+						loading="lazy"
+					/>
+					<span class="st-piece-text">
+						<span class="st-piece-name">{{ i + 1 }}. {{ comp.name }}</span>
+						<span class="st-piece-sub">
+							{{ 'sku' | transloco }}: {{ comp.sku }} · {{ comp.price | currencySymbol }}
+						</span>
+					</span>
+					<i
+						class="ri-arrow-down-s-line st-piece-caret"
+						aria-hidden="true"
+					></i>
+				</button>
+				@if (open() === comp.code) {
+				<div class="st-piece-body">
+					<p class="mb-1">
+						{{ 'consumes' | transloco }}:
+						<b>{{ comp.consumes }}</b>
+					</p>
 					@if (comp.attributes?.length) {
-					<div class="comp-attrs">
+					<p class="mb-1">
 						@for (a of comp.attributes; track a.code) {
-						<span>
+						<span class="me-2">
 							{{ a.label }}:
 							<b>{{ a.value }}</b>
 						</span>
 						}
-					</div>
+					</p>
+					} @if (comp.stock_status !== 'in_stock') {
+					<p class="st-piece-note mb-1">{{ 'piece_out_note' | transloco }}</p>
+					} @if (comp.slug) {
+					<a
+						class="st-piece-link"
+						[href]="'/' + lang() + '/product/' + comp.slug"
+					>
+						{{ 'view_this_piece' | transloco }}
+					</a>
 					}
 				</div>
-				<div class="comp-meta">
-					<div class="comp-consumes text-content">
-						{{ 'consumes' | transloco }}:
-						<b>{{ comp.consumes }}</b>
-					</div>
-					@if (comp.requires_measurements) {
-					<div class="comp-flag warn">
-						<i class="ri-error-warning-line"></i>
-						{{ 'requires_measurements' | transloco }}
-					</div>
-					} @else if (comp.stock_status === 'in_stock') {
-					<div class="comp-flag ok">
-						{{ 'in_stock' | transloco }} @if (comp.stock) { ({{ comp.stock }} {{ 'units' | transloco }}) }
-					</div>
-					} @else {
-					<div class="comp-flag danger">{{ 'out_of_stock' | transloco }}</div>
-					}
-				</div>
+				}
 			</li>
 			}
 		</ul>
@@ -71,15 +99,15 @@
 		/>
 		}
 	</div>
-	} @if (needsMeasurements()) { @for (key of [formKey()]; track key) {
-	<app-measurements-form
-		[fields]="bundle().measurement_fields || []"
-		[title]="'measurements_required_for_selection'"
-		[initialValues]="formSeed() ?? initialMeasurements()"
-		(valueChange)="onMeasurementsValue($event)"
-		(validChange)="onMeasurementsValid($event)"
+	} @if (needsMeasurements()) {
+	<!-- Sets always show the measurement row (brief P7); the form opens in the pop-up. -->
+	<app-measurement-row
+		[title]="measureTitle()"
+		[fieldCount]="(bundle().measurement_fields || []).length"
+		[added]="measured()"
+		(open)="openMeasurements()"
 	/>
-	} }
+	}
 
 	<!-- Order summary snapshot -->
 	<div class="bundle-summary">

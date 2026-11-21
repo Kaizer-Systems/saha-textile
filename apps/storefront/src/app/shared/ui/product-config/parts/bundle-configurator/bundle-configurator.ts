@@ -1,6 +1,7 @@
-import { Component, OnInit, computed, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 import {
 	ConfiguratorState,
@@ -11,7 +12,8 @@ import {
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
-import { MeasurementsForm } from '../measurements-form/measurements-form';
+import { MeasurementRow } from '../measurement-row/measurement-row';
+import { MeasurementsSheet } from '../measurements-sheet/measurements-sheet';
 import { OptionSwatch } from '../option-swatch/option-swatch';
 
 /**
@@ -26,7 +28,7 @@ import { OptionSwatch } from '../option-swatch/option-swatch';
 	templateUrl: './bundle-configurator.html',
 	styleUrls: ['./bundle-configurator.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [OptionSwatch, MeasurementsForm, CurrencySymbolPipe, TranslocoModule],
+	imports: [OptionSwatch, MeasurementRow, CurrencySymbolPipe, TranslocoModule],
 })
 export class BundleConfigurator implements OnInit {
 	readonly product = input.required<IProduct>();
@@ -66,6 +68,51 @@ export class BundleConfigurator implements OnInit {
 	);
 	readonly available = computed(() => this.components().every((c) => c.stock_status === 'in_stock'));
 	readonly valid = computed(() => this.available() && (!this.needsMeasurements() || this.measurementsValid()));
+
+	private readonly modals = inject(NgbModal);
+	private readonly transloco = inject(TranslocoService);
+
+	/** The open piece row; one at a time, all closed at first (brief P8). */
+	readonly open = signal<string | null>(null);
+	readonly measured = computed(() => this.measurementsValid());
+	readonly lang = computed(() => this.transloco.getActiveLang() || 'en');
+	readonly measureTitle = computed(
+		() => this.product().measurement_title || this.transloco.translate('measurements_required_for_selection'),
+	);
+
+	toggle(code: string): void {
+		this.open.update((now) => (now === code ? null : code));
+	}
+
+	/** A piece's mark: red out of stock, amber while its measurements are missing, else green. */
+	mark(piece: IBundleComponent): 'ok' | 'warn' | 'bad' {
+		if (piece.stock_status !== 'in_stock') return 'bad';
+		if (piece.requires_measurements && !this.measurementsValid()) return 'warn';
+		return 'ok';
+	}
+
+	/** The measurement row's Add / Edit: the set's form in the pop-up; Save brings the values back. */
+	async openMeasurements(): Promise<void> {
+		const popup = this.modals.open(MeasurementsSheet, {
+			ariaLabelledBy: 'measurements_sheet_title',
+			centered: true,
+			scrollable: true,
+			size: 'lg',
+			windowClass: 'theme-modal st-sheet',
+		});
+		(popup.componentInstance as MeasurementsSheet).start({
+			heading: this.measureTitle(),
+			fields: this.bundle().measurement_fields ?? [],
+			forName: '',
+			values: this.measurements(),
+			sizeGuide: !!this.product().size_guide,
+		});
+		const values = (await popup.result.catch(() => null)) as Record<string, number> | null;
+		if (!values) return;
+		this.measurements.set(values);
+		this.measurementsValid.set(true);
+		this.emit();
+	}
 
 	ngOnInit() {
 		const seed = this.initialSelections();

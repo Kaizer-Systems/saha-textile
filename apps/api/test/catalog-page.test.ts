@@ -115,6 +115,7 @@ describe('product page read', () => {
 		expect(bengali.optionGroups[0]?.terms[1]?.subLabel).toBe('মাঝারি');
 		expect(page.variants.map((row) => row.selections)).toEqual([{ size: 's' }, { size: 'm' }]);
 		expect(page.measurements?.fields.map((field) => field.code)).toEqual(['chest']);
+		expect(page.measurements?.title).toBe('Blouse measurements');
 		expect(page.selected?.sku).toBe('KPS-1');
 		expect(page.badges.primary).toBe('sale');
 	});
@@ -148,6 +149,7 @@ describe('product page read', () => {
 		const page = await service.page('kurti-palazzo-set');
 		expect(page.measurements).toEqual({
 			templateCode: null,
+			title: null,
 			priceINR: 0,
 			fields: [{ code: 'shoulder', label: 'Shoulder', unit: 'in', min: null, max: null, step: null }],
 			sizeGuide: [],

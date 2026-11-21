@@ -103,6 +103,8 @@ export interface IProduct {
 	faq?: Array<{ question: string; answer: string }>;
 	addon_groups?: IAddonGroup[]; // named_add_on option groups
 	measurement_fields?: IMeasurementField[]; // tailoring inputs for add-on/bundle
+	/** The measurement template's name ("Suit measurements"), shown on the measurement row. */
+	measurement_title?: string;
 	bundle?: IBundle; // true composite/kit
 	related_blog_ids?: number[]; // blogs the admin linked to this (or parent) product
 	is_random_related_products: boolean;

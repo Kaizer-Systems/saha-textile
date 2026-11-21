@@ -133,6 +133,8 @@ export interface ApiProductPage {
 	}>;
 	measurements: {
 		templateCode: string | null;
+		/** The template's name ("Suit measurements"); older API builds leave it out. */
+		title?: string | null;
 		priceINR: number;
 		fields: Array<{
 			code: string;
@@ -497,6 +499,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		sold_by: page.soldBy ?? 'piece',
 		made_to_order: page.madeToOrder,
 		metre_rule: page.soldBy === 'metre' ? (page.metre ?? null) : null,
+		...(page.measurements?.title ? { measurement_title: page.measurements.title } : {}),
 		size_guide: page.measurements?.sizeGuide.length
 			? {
 					fields: page.measurements.fields.map(({ code, label, unit }) => ({ code, label, unit })),

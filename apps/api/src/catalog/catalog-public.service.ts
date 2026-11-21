@@ -376,6 +376,7 @@ export class CatalogPublicService {
 		if (template && template.fields.length > 0) {
 			return {
 				templateCode: template.code,
+				title: template.label ? localized(template.label) || null : null,
 				priceINR: product.addonPriceINR ?? template.priceINR,
 				fields: template.fields.map((field) => ({ ...field, label: localized(field.label) })),
 				sizeGuide: template.sizeGuide,
@@ -385,6 +386,7 @@ export class CatalogPublicService {
 		if (own.length === 0) return null;
 		return {
 			templateCode: null,
+			title: null,
 			priceINR: product.addonPriceINR ?? 0,
 			fields: own.map((addon) => ({
 				code: addon.code,

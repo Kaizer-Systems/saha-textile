@@ -1,0 +1,27 @@
+<div class="st-measure-row">
+	<i
+		class="st-ico-tape"
+		aria-hidden="true"
+	></i>
+	<span class="st-measure-name">{{ title() }}</span>
+	<!-- The price line's stock chip, reused: amber while measurements are needed, green once they are in. -->
+	<span
+		class="st-stock"
+		[class.is-low]="!added()"
+	>
+		@if (added()) {
+		<i
+			class="ri-checkbox-circle-fill me-1"
+			aria-hidden="true"
+		></i>
+		{{ 'measurements_added' | transloco }} } @else { {{ 'measurements_needed_count' | transloco: { count:
+		fieldCount() } }} }
+	</span>
+	<button
+		type="button"
+		class="btn st-measure-btn"
+		(click)="open.emit()"
+	>
+		{{ (added() ? 'edit' : 'add') | transloco }}
+	</button>
+</div>

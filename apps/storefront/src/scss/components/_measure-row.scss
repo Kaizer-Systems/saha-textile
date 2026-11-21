@@ -1,0 +1,140 @@
+// The measurement row and the pop-up it opens (owner, 21 Nov 2026, product page brief P7, render 3). Shared classes:
+// the product page, sets and the buy bar use the same row; any pop-up can become a sheet on phones with `.st-sheet`.
+// Colours come from theme variables, so the colour-only dark file covers them.
+
+.st-measure-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 10px;
+	margin: 12px 0;
+	padding: 12px 14px;
+	border: 1px solid var(--st-border);
+	border-radius: 10px;
+	background-color: var(--st-surface-soft);
+
+	.st-ico-tape {
+		font-size: 18px;
+		color: var(--theme-color);
+	}
+
+	.st-measure-name {
+		font-weight: 600;
+	}
+}
+
+// Add / Edit: outlined in the theme colour, filled on hover, like the page's other secondary buttons.
+.st-measure-btn {
+	margin-left: auto;
+	padding: 4px 18px;
+	border: 1px solid var(--theme-color);
+	border-radius: 6px;
+	background-color: var(--st-surface);
+	color: var(--theme-color);
+	font-weight: 600;
+
+	&:hover {
+		background-color: var(--theme-color);
+		color: #fff;
+	}
+}
+
+// The pop-up's footer: the size-guide hint on the left, Save on the right.
+.st-sheet-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px 16px;
+	padding: 12px 16px 16px;
+
+	@include mq-max(sm) {
+		.st-sheet-save {
+			flex: 1 1 100%;
+		}
+	}
+}
+
+// Save measurements: the theme's filled button, faded until the form is complete (the theme's own disabled button
+// reads as plain grey text).
+.st-sheet-save {
+	padding: 10px 24px;
+	border: 0;
+	border-radius: 6px;
+	background-color: var(--theme-color);
+	color: #fff;
+	font-weight: 600;
+
+	&:hover {
+		color: #fff;
+	}
+
+	&:disabled {
+		background-color: var(--theme-color);
+		color: #fff;
+		opacity: 0.55;
+	}
+}
+
+// The in/cm switch, keyed on the form's own classes so the pop-up draws it as the product page does (brief section
+// 11: it lost its look outside the page). The same shape as the theme's option buttons.
+.measurements-head .select-package {
+	display: flex;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+
+	li {
+		padding: 3px;
+		border: 1px solid color-mix(in srgb, var(--st-text-muted) 40%, transparent);
+		border-radius: 6px;
+
+		button {
+			display: block;
+			padding: 4px 11px;
+			border: 1px solid var(--st-border-line);
+			border-radius: 4px;
+			background: transparent;
+			color: var(--st-text-body);
+			font-size: 14px;
+		}
+
+		&.active {
+			border-color: var(--theme-color);
+
+			button {
+				background: var(--theme-color);
+				color: #fff;
+				font-weight: 600;
+			}
+		}
+	}
+}
+
+// Phones: the pop-up rises from the bottom as a sheet, full width, its top corners rounded.
+@include mq-max(sm) {
+	.modal.st-sheet {
+		.modal-dialog,
+		.modal-dialog-centered {
+			align-items: flex-end;
+			min-height: 100%;
+			max-width: none;
+			margin: 0;
+		}
+
+		.modal-content {
+			max-height: 90vh;
+			border-radius: 16px 16px 0 0;
+		}
+
+		&.fade .modal-dialog {
+			transform: translateY(100%);
+			transition: transform 0.25s ease-out;
+		}
+
+		&.show .modal-dialog {
+			transform: none;
+		}
+	}
+}

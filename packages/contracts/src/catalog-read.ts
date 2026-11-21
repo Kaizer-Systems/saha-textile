@@ -252,6 +252,8 @@ export type CatalogPageVariant = z.infer<typeof CatalogPageVariant>;
 export const CatalogPageMeasurements = z.object({
 	/** Null when the fields are the product's own rather than a shared template. */
 	templateCode: z.string().min(1).nullable(),
+	/** The template's name in the page language ("Suit measurements"), for the measurement row; null for own fields. */
+	title: z.string().nullable().default(null),
 	priceINR: money,
 	fields: z.array(
 		z.object({

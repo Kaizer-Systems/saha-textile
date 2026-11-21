@@ -1,12 +1,15 @@
-import { Component, OnInit, computed, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 import { ConfiguratorState, IAddonGroup } from '@data-access/interfaces/product-detail.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
+import { MeasurementRow } from '../measurement-row/measurement-row';
 import { MeasurementsForm } from '../measurements-form/measurements-form';
+import { MeasurementsSheet } from '../measurements-sheet/measurements-sheet';
 import { OptionSwatch } from '../option-swatch/option-swatch';
 
 /**
@@ -17,12 +20,15 @@ import { OptionSwatch } from '../option-swatch/option-swatch';
  * zero-measurement defaults like "No Design"). The base product identity is
  * unchanged — this only customises an included sub-part.
  */
+/** Measurement forms with this many fields or fewer show on the page; longer ones open from the row (P7). */
+const INLINE_FIELDS = 4;
+
 @Component({
 	selector: 'app-addon-group',
 	templateUrl: './addon-group.html',
 	styleUrls: ['./addon-group.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [OptionSwatch, MeasurementsForm, CurrencySymbolPipe, TranslocoModule],
+	imports: [OptionSwatch, MeasurementsForm, MeasurementRow, CurrencySymbolPipe, TranslocoModule],
 })
 export class AddonGroup implements OnInit {
 	readonly product = input.required<IProduct>();
@@ -33,6 +39,14 @@ export class AddonGroup implements OnInit {
 	/** Prefill measurement values (field code -> value) for editing. */
 	readonly initialMeasurements = input<Record<string, number>>();
 	readonly stateChange = output<ConfiguratorState>();
+	/**
+	 * How the measurements show (brief P7): `auto` is the form itself for four fields or fewer and the measurement row
+	 * with its pop-up for more; `row` always the row (sets and the buy bar).
+	 */
+	readonly measureAs = input<'auto' | 'row'>('auto');
+
+	private readonly modals = inject(NgbModal);
+	private readonly transloco = inject(TranslocoService);
 
 	readonly base = computed(() => this.basePrice() ?? this.product().price);
 
@@ -58,6 +72,40 @@ export class AddonGroup implements OnInit {
 	readonly measuredLabel = computed(() => this.selectedTerms().find((t) => t?.requires_measurements)?.label ?? '');
 
 	readonly valid = computed(() => !this.needsMeasurements() || this.measurementsValid());
+
+	readonly fields = computed(() => this.product().measurement_fields ?? []);
+	/** More than four fields would push the buttons down, so they move into the pop-up behind the row. */
+	readonly asRow = computed(() => this.measureAs() === 'row' || this.fields().length > INLINE_FIELDS);
+	/** The row's name: the template's ("Suit measurements"), else the form's own title. */
+	readonly rowTitle = computed(
+		() =>
+			this.product().measurement_title ||
+			this.transloco.translate('measurements_for', { name: this.measuredLabel() }),
+	);
+	readonly measured = computed(() => this.measurementsValid());
+
+	/** Add / Edit on the row: the whole form in the shop's pop-up, a sheet on phones; Save brings the values back. */
+	async openMeasurements(): Promise<void> {
+		const popup = this.modals.open(MeasurementsSheet, {
+			ariaLabelledBy: 'measurements_sheet_title',
+			centered: true,
+			scrollable: true,
+			size: 'lg',
+			windowClass: 'theme-modal st-sheet',
+		});
+		(popup.componentInstance as MeasurementsSheet).start({
+			heading: this.rowTitle(),
+			fields: this.fields(),
+			forName: this.measuredLabel(),
+			values: this.measurements(),
+			sizeGuide: !!this.product().size_guide,
+		});
+		const values = (await popup.result.catch(() => null)) as Record<string, number> | null;
+		if (!values) return;
+		this.measurements.set(values);
+		this.measurementsValid.set(true);
+		this.emit();
+	}
 
 	ngOnInit() {
 		const seed = this.initialSelections();

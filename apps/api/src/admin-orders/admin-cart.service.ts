@@ -19,6 +19,7 @@ import {
 	cartLineTotalINR,
 	foreignAmountFromINR,
 	priceCartLine,
+	zoneAddOnPrice,
 	type BusinessRepository,
 	type PriceZoneRepository,
 	type PricedCartLine,
@@ -111,6 +112,11 @@ export class AdminCartService {
 				quantity: line.quantity,
 				soldBy: row?.soldBy ?? page?.soldBy ?? 'piece',
 				imageUrl: page && row ? imageOf(page, row.galleryIndex) : null,
+				measurements: (row?.measurements ?? []).map((field) => ({
+					code: field.code,
+					label: field.label,
+					value: `${field.value} ${field.unit}`,
+				})),
 			};
 			if (!row || !row.buyable) {
 				return {
@@ -122,6 +128,8 @@ export class AdminCartService {
 					zonePrice: null,
 					problem: 'unavailable',
 					mrpINR: null,
+					options: [],
+					addOnsZonePriced: false,
 				};
 			}
 			const fact = factsByIndex.get(entry);
@@ -136,15 +144,27 @@ export class AdminCartService {
 					zonePrice,
 					problem: 'noZonePrice',
 					mrpINR: null,
+					options: [],
+					addOnsZonePriced: false,
 				};
 			}
-			const addOns = row.unitPriceINR - row.basePriceINR;
+			// The zone prices the piece; stitching and add-ons keep their listed price unless the rule's
+			// "Also apply to stitching and add-ons" is on with a % off or ₹ off (DEC-B2B-ZONES).
+			const adjust = zonePrice?.kind === 'priced' ? zonePrice.addOns : null;
+			const options = row.options.map((option) => ({
+				...option,
+				priceDeltaINR: zoneAddOnPrice(option.priceDeltaINR, adjust),
+			}));
+			const addOns = options.reduce((sum, option) => sum + option.priceDeltaINR, 0);
 			const pieceINR = zonePrice?.kind === 'priced' ? zonePrice.unitPriceINR : row.basePriceINR;
 			const effective: PricedCartLine = {
 				...row,
+				options,
 				basePriceINR: pieceINR,
 				unitPriceINR: round2(pieceINR + addOns),
 			};
+			const addOnsZonePriced =
+				!!adjust && options.some((option, index) => option.priceDeltaINR !== row.options[index]?.priceDeltaINR);
 			const lineTotalINR = round2(cartLineTotalINR(effective, line.quantity));
 			const problem: AdminCartLine['problem'] =
 				row.available !== null && row.available <= 0
@@ -161,6 +181,14 @@ export class AdminCartService {
 				zonePrice,
 				problem,
 				mrpINR: row.mrpINR,
+				options: options.map((option, index) => ({
+					code: option.code,
+					group: option.group,
+					value: option.value,
+					priceINR: option.priceDeltaINR,
+					listedPriceINR: row.options[index]?.priceDeltaINR ?? option.priceDeltaINR,
+				})),
+				addOnsZonePriced,
 			};
 		});
 		const counted = lines.filter((line) => !UNSELLABLE.has(line.problem));

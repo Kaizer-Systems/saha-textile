@@ -302,6 +302,25 @@
 									/>
 								</div>
 							</div>
+							<!-- Owner, DEC-B2B-ZONES (20 Nov, "Rule decides"): the rule's % off or ₹ off on stitching too. -->
+							<div class="srb-line">
+								<div class="form-check form-switch d-flex align-items-center gap-2 ps-0">
+									<label class="switch">
+										<input
+											type="checkbox"
+											[id]="'zone_addons_' + rule.id"
+											[checked]="rule.addOns && canPriceAddOns(rule)"
+											[disabled]="readOnly() || !canPriceAddOns(rule)"
+											(change)="update(rule, { addOns: $any($event.target).checked })"
+										/>
+										<span class="switch-state"></span>
+									</label>
+									<label [for]="'zone_addons_' + rule.id">{{ 'zone_addons_switch' | transloco }}</label>
+								</div>
+								@if (!canPriceAddOns(rule)) {
+								<span class="small text-muted">{{ 'zone_addons_not_this_formula' | transloco }}</span>
+								}
+							</div>
 							<div class="srb-line">
 								<span class="srb-kw">{{ 'zone_limits' | transloco }}</span>
 								<div class="input-group">
@@ -481,6 +500,7 @@
 								<div class="small text-muted">
 									{{ 'zone_retail_was' | transloco: { amount: '₹' +
 									line.price.retailUnitPriceINR.toLocaleString('en-IN') } }}
+									<span class="d-block">{{ addOnWords(line.price) }}</span>
 								</div>
 								}
 								<ul class="small text-muted mb-0 ps-3">

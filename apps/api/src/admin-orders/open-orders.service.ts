@@ -26,6 +26,7 @@ import {
 } from '@saha-textile/core-domain';
 
 import { codedRefusal } from '../common/coded-refusal';
+import { adminLineConfig } from './admin-line-snapshot';
 import {
 	BUSINESS_REPOSITORY,
 	LEDGER_REPOSITORY,
@@ -114,8 +115,7 @@ export class OpenOrdersService {
 			title: { en: line.title },
 			sku: line.sku,
 			quantity: line.quantity,
-			attributes: {},
-			addons: [],
+			...adminLineConfig(line),
 			imageAssetId: null,
 			imageUrl: line.imageUrl,
 			unitPriceINR: line.unitPriceINR,
@@ -133,6 +133,7 @@ export class OpenOrdersService {
 						? line.zonePrice.rule
 						: null,
 				discounted: line.mrpINR !== null && line.unitPriceINR < line.mrpINR,
+				addOnsZonePriced: line.addOnsZonePriced,
 			},
 			couponINR: 0,
 			categoryIds: [],

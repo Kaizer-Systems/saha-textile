@@ -1,4 +1,4 @@
-import type { DocumentNumberingSettings, OrderBalance, ZoneRule } from '@saha-textile/contracts';
+import type { DocumentNumberingSettings, OrderBalance, ZonePriceFormula, ZoneRule } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -32,6 +32,8 @@ import {
 	statusAfterClose,
 	warnIndiaBillingForeignCurrency,
 	roundZonePrice,
+	zoneAddOnPrice,
+	zoneFormulaCanPriceAddOns,
 	zonePriceFor,
 	zoneRuleProblems,
 	zoneRulesReadCost,
@@ -348,6 +350,7 @@ const rule = (over: Partial<ZoneRule> & Pick<ZoneRule, 'id' | 'scope' | 'price'>
 	minQuantityPerLine: null,
 	validFrom: null,
 	validUntil: null,
+	addOns: false,
 	...over,
 });
 const facts = (over: Partial<ZoneLineFacts> = {}): ZoneLineFacts => ({
@@ -392,6 +395,76 @@ const unit = (zone: Parameters<typeof zonePriceFor>[0], line: ZoneLineFacts) => 
 	const { price } = zonePriceFor(zone, line, NOW);
 	return price.kind === 'priced' ? price.unitPriceINR : price.reason;
 };
+
+describe('zones: "Also apply to stitching and add-ons" (owner, 20 Nov: "Rule decides")', () => {
+	const one = (over: Partial<ZoneRule> & Pick<ZoneRule, 'price'>) => ({
+		retail: false,
+		live: true,
+		rules: [rule({ id: 'r', scope: { tier: 'allProducts' }, ...over })],
+	});
+	const addOnsOf = (zone: Parameters<typeof zonePriceFor>[0], line = facts()) => {
+		const { price, trace } = zonePriceFor(zone, line, NOW);
+		return { addOns: price.kind === 'priced' ? price.addOns : 'none', trace };
+	};
+	const pct: ZonePriceFormula = { kind: 'percentOffBase', base: 'regularSelling', percent: 10 };
+	const off: ZonePriceFormula = { kind: 'amountOffBase', base: 'regularSelling', amountINR: 500 };
+
+	it('off by default: only the piece takes the zone price', () => {
+		expect(addOnsOf(one({ price: pct })).addOns).toBeNull();
+	});
+
+	it('on: the rule’s % off or ₹ off carries to the add-ons, and the trace says so', () => {
+		expect(addOnsOf(one({ price: pct, addOns: true }))).toEqual({
+			addOns: { kind: 'percentOff', percent: 10 },
+			trace: ['tier:allProducts', 'rule:r', 'formula:percentOffBase', 'addOns:percentOff:10'],
+		});
+		expect(addOnsOf(one({ price: off, addOns: true })).addOns).toEqual({ kind: 'amountOff', amountINR: 500 });
+	});
+
+	it('never from a flat price, per-variant flat price, price per metre or % above cost', () => {
+		const flatAndCost: ZonePriceFormula[] = [
+			{ kind: 'flatPrice', amountINR: 5_000, skuPrices: { S1: 4_800 } },
+			{ kind: 'percentAboveCost', percent: 30 },
+		];
+		for (const price of flatAndCost) {
+			expect(addOnsOf(one({ price, addOns: true })).addOns).toBeNull();
+			expect(zoneFormulaCanPriceAddOns(price)).toBe(false);
+		}
+		const metre = one({ price: { kind: 'pricePerMetre', amountINR: 400 }, addOns: true });
+		expect(addOnsOf(metre, facts({ metres: 2.5, quantity: 2.5 })).addOns).toBeNull();
+		expect(zoneFormulaCanPriceAddOns({ kind: 'pricePerMetre', amountINR: 400 })).toBe(false);
+		expect(zoneFormulaCanPriceAddOns({ kind: 'noPrice' })).toBe(false);
+	});
+
+	it('follows the formula that set the price inside breaks and lower-of / higher-of', () => {
+		const breaks: ZonePriceFormula = {
+			kind: 'quantityBreaks',
+			breaks: [
+				{ minQuantity: 1, formula: { kind: 'flatPrice', amountINR: 9_500, skuPrices: {} } },
+				{ minQuantity: 5, formula: pct },
+			],
+		};
+		expect(zoneFormulaCanPriceAddOns(breaks)).toBe(true);
+		expect(addOnsOf(one({ price: breaks, addOns: true })).addOns).toBeNull();
+		expect(addOnsOf(one({ price: breaks, addOns: true }), facts({ quantity: 6 })).addOns).toEqual({
+			kind: 'percentOff',
+			percent: 10,
+		});
+		// Lower of ₹9,000 (10% off ₹10,000) and ₹9,500 (₹500 off): the 10% off sets the price.
+		const lower: ZonePriceFormula = { kind: 'lowerOf', formulas: [pct, off] };
+		expect(addOnsOf(one({ price: lower, addOns: true })).addOns).toEqual({ kind: 'percentOff', percent: 10 });
+		const higher: ZonePriceFormula = { kind: 'higherOf', formulas: [pct, off] };
+		expect(addOnsOf(one({ price: higher, addOns: true })).addOns).toEqual({ kind: 'amountOff', amountINR: 500 });
+	});
+
+	it('prices an add-on at its listed price less the % or ₹, never below ₹0', () => {
+		expect(zoneAddOnPrice(1_200, null)).toBe(1_200);
+		expect(zoneAddOnPrice(1_200, { kind: 'percentOff', percent: 10 })).toBe(1_080);
+		expect(zoneAddOnPrice(1_200, { kind: 'amountOff', amountINR: 500 })).toBe(700);
+		expect(zoneAddOnPrice(300, { kind: 'amountOff', amountINR: 500 })).toBe(0);
+		expect(zoneAddOnPrice(0, { kind: 'percentOff', percent: 10 })).toBe(0);
+	});
+});
 
 describe('zones (DEC-B2B-ZONES): rules from the builder', () => {
 	it('gives RETAIL, and a business on a zone not yet live, the shop price with the sale', () => {

@@ -104,6 +104,8 @@ export const OrderLinePricing = z.object({
 	zoneRule: ZoneRuleRef.nullable().default(null),
 	/** Whether the line counts as discounted for shipping rules (selling price below MRP; coupons never count). */
 	discounted: z.boolean().default(false),
+	/** Business orders: the zone rule also priced the line's stitching and add-ons (DEC-B2B-ZONES). */
+	addOnsZonePriced: z.boolean().default(false),
 });
 export type OrderLinePricing = z.infer<typeof OrderLinePricing>;
 

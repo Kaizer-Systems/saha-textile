@@ -1,4 +1,5 @@
 import type {
+	ZoneAddOnAdjust,
 	ZoneCondition,
 	ZoneConditionGroup,
 	ZoneLinePrice,
@@ -122,27 +123,42 @@ function baseValue(base: 'regularSelling' | 'currentSaleOrRegular' | 'mrp', fact
 	return facts.regularSellingINR;
 }
 
-/** `skip`: the formula doesn't fit this line (no break reached, or price per metre on a piece); the next rule tries. */
+/**
+ * `skip`: the formula doesn't fit this line (no break reached, or price per metre on a piece); the next
+ * rule tries. A price says how add-ons could follow it: % off or ₹ off carry over; every other kind
+ * (flat, per-variant flat, per metre, % above cost) leaves add-ons at their listed price.
+ */
 type FormulaOutcome =
-	{ kind: 'price'; amount: number } | { kind: 'noPrice' } | { kind: 'costUnknown' } | { kind: 'skip' };
+	| { kind: 'price'; amount: number; addOns: ZoneAddOnAdjust | null }
+	| { kind: 'noPrice' }
+	| { kind: 'costUnknown' }
+	| { kind: 'skip' };
 
 export function evaluateZoneFormula(formula: ZonePriceFormula, facts: ZoneLineFacts): FormulaOutcome {
 	switch (formula.kind) {
 		case 'noPrice':
 			return { kind: 'noPrice' };
 		case 'flatPrice':
-			return { kind: 'price', amount: formula.skuPrices[facts.sku] ?? formula.amountINR };
+			return { kind: 'price', amount: formula.skuPrices[facts.sku] ?? formula.amountINR, addOns: null };
 		case 'percentOffBase':
-			return { kind: 'price', amount: (baseValue(formula.base, facts) * (100 - formula.percent)) / 100 };
+			return {
+				kind: 'price',
+				amount: (baseValue(formula.base, facts) * (100 - formula.percent)) / 100,
+				addOns: { kind: 'percentOff', percent: formula.percent },
+			};
 		case 'amountOffBase':
-			return { kind: 'price', amount: Math.max(0, baseValue(formula.base, facts) - formula.amountINR) };
+			return {
+				kind: 'price',
+				amount: Math.max(0, baseValue(formula.base, facts) - formula.amountINR),
+				addOns: { kind: 'amountOff', amountINR: formula.amountINR },
+			};
 		case 'percentAboveCost':
 			return facts.purchaseCostINR === null
 				? { kind: 'costUnknown' }
-				: { kind: 'price', amount: facts.purchaseCostINR * (1 + formula.percent / 100) };
+				: { kind: 'price', amount: facts.purchaseCostINR * (1 + formula.percent / 100), addOns: null };
 		case 'pricePerMetre':
 			// Prices of fabric by the metre are per metre; on a piece this formula doesn't apply.
-			return facts.metres === null ? { kind: 'skip' } : { kind: 'price', amount: formula.amountINR };
+			return facts.metres === null ? { kind: 'skip' } : { kind: 'price', amount: formula.amountINR, addOns: null };
 		case 'quantityBreaks': {
 			const step = [...formula.breaks]
 				.sort((a, b) => b.minQuantity - a.minQuantity)
@@ -158,11 +174,44 @@ export function evaluateZoneFormula(formula: ZonePriceFormula, facts: ZoneLineFa
 		case 'lowerOf':
 		case 'higherOf': {
 			const outcomes = formula.formulas.map((item) => evaluateZoneFormula(item, facts));
-			const prices = outcomes.flatMap((outcome) => (outcome.kind === 'price' ? [outcome.amount] : []));
-			if (!prices.length) return outcomes.find((outcome) => outcome.kind !== 'price') ?? { kind: 'noPrice' };
-			return { kind: 'price', amount: formula.kind === 'lowerOf' ? Math.min(...prices) : Math.max(...prices) };
+			const priced = outcomes.filter((outcome) => outcome.kind === 'price');
+			if (!priced.length) return outcomes.find((outcome) => outcome.kind !== 'price') ?? { kind: 'noPrice' };
+			// The formula that set the price decides what the add-ons do.
+			return priced.reduce((best, outcome) =>
+				(formula.kind === 'lowerOf' ? outcome.amount < best.amount : outcome.amount > best.amount)
+					? outcome
+					: best,
+			);
 		}
 	}
+}
+
+/**
+ * Whether a rule's "Also apply to stitching and add-ons" switch can do anything: only when some formula
+ * in it is a % off or ₹ off. Flat prices, per-variant flat prices, price per metre, % above cost and no
+ * price never touch add-ons, so the builder greys the switch for them.
+ */
+export function zoneFormulaCanPriceAddOns(formula: ZonePriceFormula): boolean {
+	switch (formula.kind) {
+		case 'percentOffBase':
+		case 'amountOffBase':
+			return true;
+		case 'quantityBreaks':
+		case 'orderValueBreaks':
+			return formula.breaks.some((step) => zoneFormulaCanPriceAddOns(step.formula));
+		case 'lowerOf':
+		case 'higherOf':
+			return formula.formulas.some(zoneFormulaCanPriceAddOns);
+		default:
+			return false;
+	}
+}
+
+/** An add-on's price under a zone rule: its listed price less the rule's % or ₹, never below ₹0. */
+export function zoneAddOnPrice(listedINR: number, adjust: ZoneAddOnAdjust | null): number {
+	if (!adjust || listedINR <= 0) return listedINR;
+	if (adjust.kind === 'percentOff') return round2((listedINR * (100 - adjust.percent)) / 100);
+	return round2(Math.max(0, listedINR - adjust.amountINR));
 }
 
 /** Up to the next ₹10, or the next amount ending in 9 (₹1,999). */
@@ -207,6 +256,7 @@ export function zonePriceFor(zone: ZoneForPricing, facts: ZoneLineFacts, now = n
 				retailUnitPriceINR: retail,
 				rule: { tier: 'retail', ruleId: null, ruleName: '' },
 				belowCost: false,
+				addOns: null,
 			},
 			trace: [facts.currentSaleINR !== null ? 'retail:sale' : 'retail:regular'],
 		};
@@ -232,6 +282,15 @@ export function zonePriceFor(zone: ZoneForPricing, facts: ZoneLineFacts, now = n
 			if (rule.rounding !== 'none') trace.push(`rounding:${rule.rounding}`);
 			const belowCost = facts.purchaseCostINR !== null && amount < facts.purchaseCostINR;
 			if (belowCost) trace.push('belowCost');
+			// "Also apply to stitching and add-ons": only a % off or ₹ off carries over.
+			const addOns = rule.addOns ? outcome.addOns : null;
+			if (addOns) {
+				trace.push(
+					addOns.kind === 'percentOff'
+						? `addOns:percentOff:${addOns.percent}`
+						: `addOns:amountOff:${addOns.amountINR}`,
+				);
+			}
 			return {
 				price: {
 					kind: 'priced',
@@ -239,6 +298,7 @@ export function zonePriceFor(zone: ZoneForPricing, facts: ZoneLineFacts, now = n
 					retailUnitPriceINR: retail,
 					rule: { tier, ruleId: rule.id, ruleName: rule.name },
 					belowCost,
+					addOns,
 				},
 				trace,
 			};

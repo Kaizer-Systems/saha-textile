@@ -55,6 +55,7 @@ import {
 
 import { AddressBookService, type CheckedPostalAddress } from '../addresses/address-book.service';
 import { codedRefusal } from '../common/coded-refusal';
+import { adminLineConfig } from './admin-line-snapshot';
 import { CurrencyService } from '../currency/currency.service';
 import {
 	ADMIN_ORDER_REPOSITORY,
@@ -777,8 +778,7 @@ export class AdminOrderCreateService {
 				title: { en: line.title },
 				sku: line.sku,
 				quantity: line.quantity,
-				attributes: {},
-				addons: [],
+				...adminLineConfig(line),
 				imageAssetId: null,
 				imageUrl: line.imageUrl,
 				unitPriceINR: line.unitPriceINR,
@@ -794,6 +794,7 @@ export class AdminOrderCreateService {
 					zoneRule,
 					// The shipping try prices the lines in cart order, so its pieces line up by position.
 					discounted: built.quote.shipping.pieces[index]?.discounted ?? false,
+					addOnsZonePriced: line.addOnsZonePriced,
 				},
 				couponINR: built.couponByLine.get(line.lineId) ?? 0,
 				categoryIds: [],

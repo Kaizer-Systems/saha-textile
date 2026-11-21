@@ -337,6 +337,8 @@ export class ShopCheckoutService {
 					saleEventId: null,
 					zoneRule: null,
 					discounted: line.mrpINR !== null && line.basePriceINR < line.mrpINR,
+					// Shop orders take the shop price; zone pricing is for business orders made by staff.
+					addOnsZonePriced: false,
 				},
 				couponINR: built.couponByLine.get(line.id) ?? 0,
 				categoryIds: [...new Set(fact?.categoryPaths.flat() ?? [])],

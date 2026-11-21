@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { formulaWords, newZoneFormula, newZoneRule, ruleWords } from '@core/zones/zone-blocks';
+import {
+	addOnTraceWords,
+	addOnTryWords,
+	formulaWords,
+	newZoneFormula,
+	newZoneRule,
+	ruleWords,
+	zoneFormulaCanPriceAddOns,
+} from '@core/zones/zone-blocks';
 
 import { startValue } from './zone-conditions';
 import { isoToLocalInput, localInputToIso, zoneProblemsOf } from './zone-editor';
@@ -46,6 +54,54 @@ describe('zone rules in plain words (DEC-B2B-ZONES)', () => {
 			'zone_words_from_quantity(10|zone_words_percent_off(10|zone_base_regularSelling))',
 		);
 		expect(ruleWords({ ...newZoneRule('allProducts'), enabled: false }, t)).toContain('(zone_words_off)');
+	});
+});
+
+describe('zone rules: "Also apply to stitching and add-ons" (owner, 20 Nov: "Rule decides")', () => {
+	it('starts off, and can only do something for a % off or ₹ off', () => {
+		expect(newZoneRule('allProducts').addOns).toBe(false);
+		expect(zoneFormulaCanPriceAddOns(newZoneFormula('percentOffBase'))).toBe(true);
+		expect(zoneFormulaCanPriceAddOns({ kind: 'amountOffBase', base: 'mrp', amountINR: 500 })).toBe(true);
+		for (const kind of ['flatPrice', 'pricePerMetre', 'percentAboveCost', 'noPrice'] as const) {
+			expect(zoneFormulaCanPriceAddOns(newZoneFormula(kind))).toBe(false);
+		}
+		expect(zoneFormulaCanPriceAddOns(newZoneFormula('quantityBreaks'))).toBe(true);
+		expect(
+			zoneFormulaCanPriceAddOns({
+				kind: 'lowerOf',
+				formulas: [newZoneFormula('flatPrice'), newZoneFormula('pricePerMetre')],
+			}),
+		).toBe(false);
+	});
+
+	it('says in plain words what stitching and add-ons pay', () => {
+		const rule = newZoneRule('allProducts');
+		expect(ruleWords(rule, t)).toContain('zone_words_addons_listed');
+		expect(ruleWords({ ...rule, addOns: true }, t)).toContain('zone_words_addons_same');
+		// Switched on for a flat price, it does nothing, and the words say so.
+		expect(ruleWords({ ...rule, addOns: true, price: newZoneFormula('flatPrice') }, t)).toContain(
+			'zone_words_addons_listed',
+		);
+	});
+
+	it('shows each Try it line’s add-on effect, and words the trace step', () => {
+		const priced = {
+			kind: 'priced' as const,
+			unitPriceINR: 8_000,
+			retailUnitPriceINR: 10_000,
+			rule: { tier: 'allProducts' as const, ruleId: 'r', ruleName: 'All' },
+			belowCost: false,
+		};
+		expect(addOnTryWords({ ...priced, addOns: null }, t)).toBe('zone_try_addons_listed');
+		expect(addOnTryWords({ ...priced, addOns: { kind: 'percentOff', percent: 20 } }, t)).toBe(
+			'zone_try_addons_percent(20)',
+		);
+		expect(addOnTryWords({ ...priced, addOns: { kind: 'amountOff', amountINR: 1_500 } }, t)).toBe(
+			'zone_try_addons_amount(1,500)',
+		);
+		expect(addOnTryWords({ kind: 'noPrice', reason: 'noRule' }, t)).toBe('zone_try_addons_listed');
+		expect(addOnTraceWords('addOns:percentOff:20', t)).toBe('zone_trace_addOns_percent(20)');
+		expect(addOnTraceWords('addOns:amountOff:1500', t)).toBe('zone_trace_addOns_amount(1,500)');
 	});
 });
 

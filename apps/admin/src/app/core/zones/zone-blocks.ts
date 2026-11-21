@@ -3,6 +3,7 @@ import type {
 	ZoneCondition,
 	ZoneConditionGroup,
 	ZoneField,
+	ZoneLinePrice,
 	ZoneOperator,
 	ZonePriceFormula,
 	ZoneRule,
@@ -112,7 +113,30 @@ export function newZoneRule(tier: ZoneRuleScope['tier']): ZoneRule {
 		minQuantityPerLine: null,
 		validFrom: null,
 		validUntil: null,
+		addOns: false,
 	};
+}
+
+/**
+ * Whether a rule's "Also apply to stitching and add-ons" switch can do anything (owner, DEC-B2B-ZONES
+ * 20 Nov): only a % off or ₹ off carries to add-ons, also inside breaks and lower-of / higher-of. The
+ * same rule as core `zoneFormulaCanPriceAddOns`, which prices the order; the builder greys the switch
+ * when this is false.
+ */
+export function zoneFormulaCanPriceAddOns(formula: ZonePriceFormula): boolean {
+	switch (formula.kind) {
+		case 'percentOffBase':
+		case 'amountOffBase':
+			return true;
+		case 'quantityBreaks':
+		case 'orderValueBreaks':
+			return formula.breaks.some((step) => zoneFormulaCanPriceAddOns(step.formula));
+		case 'lowerOf':
+		case 'higherOf':
+			return formula.formulas.some(zoneFormulaCanPriceAddOns);
+		default:
+			return false;
+	}
 }
 
 const rupees = (value: number | null | undefined): string =>
@@ -209,7 +233,25 @@ export function ruleWords(rule: ZoneRule, t: Translate, nameOf?: (id: string) =>
 		rule.floorINR !== null ? t('zone_words_floor', { amount: rupees(rule.floorINR) }) : '',
 		rule.ceilingINR !== null ? t('zone_words_ceiling', { amount: rupees(rule.ceilingINR) }) : '',
 		rule.rounding !== 'none' ? t(`zone_rounding_${rule.rounding}`) : '',
+		t(rule.addOns && zoneFormulaCanPriceAddOns(rule.price) ? 'zone_words_addons_same' : 'zone_words_addons_listed'),
 	].filter(Boolean);
 	const head = `${scope}${when}: ${formulaWords(rule.price, t)}`;
 	return [head, ...extras].join('; ') + (rule.enabled ? '' : ` (${t('zone_words_off')})`);
+}
+
+/** Try it: what a line's stitching and add-ons cost under the rule that priced it. */
+export function addOnTryWords(price: ZoneLinePrice, t: Translate): string {
+	const adjust = price.kind === 'priced' ? price.addOns : null;
+	if (!adjust) return t('zone_try_addons_listed');
+	return adjust.kind === 'percentOff'
+		? t('zone_try_addons_percent', { amount: String(adjust.percent) })
+		: t('zone_try_addons_amount', { amount: adjust.amountINR.toLocaleString('en-IN') });
+}
+
+/** The engine's `addOns:percentOff:10` / `addOns:amountOff:500` trace step in words. */
+export function addOnTraceWords(code: string, t: Translate): string {
+	const [, kind = '', amount = ''] = code.split(':');
+	return kind === 'percentOff'
+		? t('zone_trace_addOns_percent', { amount })
+		: t('zone_trace_addOns_amount', { amount: Number(amount).toLocaleString('en-IN') });
 }

@@ -177,8 +177,22 @@ export const ZoneRule = z.object({
 	minQuantityPerLine: z.number().int().positive().nullable().default(null),
 	validFrom: IsoDateTime.nullable().default(null),
 	validUntil: IsoDateTime.nullable().default(null),
+	/**
+	 * "Also apply to stitching and add-ons" (owner, DEC-B2B-ZONES, 20 Nov: "Rule decides"). Off: only the
+	 * piece takes the zone price and add-ons keep their listed price. On: the rule's % off or ₹ off also
+	 * applies to each add-on. A flat price, per-variant flat price, price per metre, % above cost or no
+	 * price never touches add-ons, even when this is on.
+	 */
+	addOns: z.boolean().default(false),
 });
 export type ZoneRule = z.infer<typeof ZoneRule>;
+
+/** How a zone rule prices a line's stitching and other add-ons, when its switch is on. */
+export const ZoneAddOnAdjust = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('percentOff'), percent: z.number().finite().gt(0).max(100) }),
+	z.object({ kind: z.literal('amountOff'), amountINR: Rupees.positive() }),
+]);
+export type ZoneAddOnAdjust = z.infer<typeof ZoneAddOnAdjust>;
 
 export const PriceZone = z.object({
 	id: Id,
@@ -247,6 +261,8 @@ export const ZoneLinePrice = z.discriminatedUnion('kind', [
 		rule: ZoneRuleRef,
 		/** The cost guard: the zone price is below the piece's purchase cost. */
 		belowCost: z.boolean().default(false),
+		/** Stitching and add-ons at the rule's % off or ₹ off; null = their listed price. */
+		addOns: ZoneAddOnAdjust.nullable().default(null),
 	}),
 	/** Shown in red as "Price not set for this zone"; the card is greyed and can't be picked. */
 	z.object({

@@ -2183,6 +2183,15 @@ words in the orders brief's notes). Closed here: the order row of `DEC-NUMBERING
     - **Clashes: order in the builder.** Tiers stay fixed (product exception > category rules > all-products rule); within a
       tier the first matching rule wins and the owner drags rules into order.
     - **Coupons on zone prices: a switch on each coupon**, "Usable on zone prices", off by default; OD4 applies on top.
+    - **Stitching and add-ons: the rule decides** (owner's answer of 2026-11-20, "Rule decides (Recommended)"; it reached
+      the build on 2026-11-21). Every zone rule has a switch, "Also apply to stitching and add-ons", off by default. Off:
+      only the piece takes the zone price and stitching and other add-ons keep their listed price. On: the rule's % off
+      or ₹ off also applies to each add-on (never below ₹0). A flat price, per-variant flat price, price per metre (and
+      % above cost) never touches add-ons, even with the switch on; the builder greys the switch for them and says why.
+      Inside quantity breaks or lower-of / higher-of, the formula that set the piece's price decides. In Plain words and
+      Try it the add-on effect shows per rule and per line, and the order line records whether its add-ons were
+      zone-priced. Admin order lines now keep their options, add-ons (stitching at the price charged) and measurements,
+      as shop orders do, for this and for the invoice.
 - **`DEC-EDOCS-GATE` — block when required** ("Block when required (Recommended)"). Mark as Shipped stays off, with the
   reason, until the e-invoice IRN is in while the e-invoice switch is on (on by default for business orders; the CA
   confirms the turnover test) and, for goods of ₹50,000 or more, the e-way bill number is in — shop orders of that value

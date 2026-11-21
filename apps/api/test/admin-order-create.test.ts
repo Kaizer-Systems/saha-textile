@@ -47,8 +47,12 @@ const view = (over: Partial<AdminCartView['lines'][number]> = {}): AdminCartView
 				retailUnitPriceINR: 25_000,
 				rule: { tier: 'allProducts', ruleId: 'r1', ruleName: 'Wholesale' },
 				belowCost: false,
+				addOns: null,
 			},
 			problem: null,
+			options: [],
+			measurements: [],
+			addOnsZonePriced: false,
 			...over,
 		},
 	],
@@ -281,6 +285,26 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 		]);
 	});
 
+	it('keeps the line’s options, stitching at the price charged, measurements, and whether the zone priced them', async () => {
+		const stitched = view({
+			options: [
+				{ code: 'fall', group: 'Fall and pico', value: 'Yes', priceINR: 0, listedPriceINR: 0 },
+				{ code: 'blouse', group: 'Blouse stitching', value: 'Padded', priceINR: 1_080, listedPriceINR: 1_200 },
+			],
+			measurements: [{ code: 'bust', label: 'Bust', value: '36 in' }],
+			addOnsZonePriced: true,
+		});
+		const order = await harness(stitched).svc.create(input({ method: 'keepOpen' }), actor, rights);
+		expect(order.lines[0]).toMatchObject({
+			attributes: { 'Fall and pico': 'Yes', 'Blouse stitching': 'Padded' },
+			addons: [
+				{ code: 'blouse', label: 'Blouse stitching', value: 'Padded', priceINR: 1_080 },
+				{ code: 'bust', label: 'Bust', value: '36 in' },
+			],
+			pricing: { addOnsZonePriced: true },
+		});
+	});
+
 	it('places an order on account: zone snapshot, pieces kept, the account debited with its due date', async () => {
 		const { svc, ledger, reserved, told } = harness();
 		const order = await svc.create(
@@ -300,7 +324,9 @@ describe('create order (oc01–oc03, ck01–ck08)', () => {
 		});
 		expect(order.lines[0]).toMatchObject({
 			held: true,
-			pricing: { zoneRule: { ruleId: 'r1' }, regularUnitINR: 25_000 },
+			pricing: { zoneRule: { ruleId: 'r1' }, regularUnitINR: 25_000, addOnsZonePriced: false },
+			attributes: {},
+			addons: [],
 		});
 		expect(order.addresses?.invoice).toMatchObject({ source: 'billing', needed: false });
 		expect(reserved).toEqual([1]);

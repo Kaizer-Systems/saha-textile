@@ -184,6 +184,22 @@ export const AdminCartLine = z.object({
 	problem: z.enum(['out_of_stock', 'limited', 'unavailable', 'noZonePrice']).nullable(),
 	/** The piece's MRP, so checkout can say "MRP ₹9,800 · discounted" and word the shipping reason (ck01). */
 	mrpINR: PriceINR.nullable().default(null),
+	/** The line's options and add-ons (stitching), each at the price charged and its listed price. */
+	options: z
+		.array(
+			z.object({
+				code: z.string(),
+				group: z.string(),
+				value: z.string(),
+				priceINR: z.number().nonnegative(),
+				listedPriceINR: z.number().nonnegative(),
+			}),
+		)
+		.default([]),
+	/** Measurements taken for stitching, as typed. */
+	measurements: z.array(z.object({ code: z.string(), label: z.string(), value: z.string() })).default([]),
+	/** The zone rule's % off or ₹ off also priced the add-ons (its "Also apply to stitching" switch). */
+	addOnsZonePriced: z.boolean().default(false),
 });
 export type AdminCartLine = z.infer<typeof AdminCartLine>;
 

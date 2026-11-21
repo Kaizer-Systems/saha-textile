@@ -54,7 +54,7 @@ const zone = PriceZone.parse({
 	],
 });
 
-function service() {
+function service(zoneUsed: PriceZone = zone) {
 	const pages: Record<string, ReturnType<typeof page>> = {
 		p_saree: page(10_000),
 		p_off: page(5_000),
@@ -127,7 +127,7 @@ function service() {
 					? { id, roles: { customer: { zoneId: 'zone_w' } } }
 					: { id, roles: { customer: { zoneId: 'zone_retail' } } },
 		} as never,
-		{ findById: async (id: string) => (id === 'zone_w' ? zone : null) } as never,
+		{ findById: async (id: string) => (id === 'zone_w' ? zoneUsed : null) } as never,
 		{} as never,
 	);
 }
@@ -159,7 +159,9 @@ describe('admin cart (create order, zone cards)', () => {
 		});
 		expect(view.lines[0]).toMatchObject({
 			unitPriceINR: 8_800,
-			zonePrice: { kind: 'priced', unitPriceINR: 8_000, rule: { ruleId: 'all' } },
+			zonePrice: { kind: 'priced', unitPriceINR: 8_000, rule: { ruleId: 'all' }, addOns: null },
+			options: [{ code: 'stitching', group: 'Blouse', value: 'Basic stitching', priceINR: 800, listedPriceINR: 800 }],
+			addOnsZonePriced: false,
 		});
 		expect(view.lines[1]).toMatchObject({
 			problem: 'noZonePrice',
@@ -168,6 +170,40 @@ describe('admin cart (create order, zone cards)', () => {
 		// Fabric: 2.5 m at the zone's ₹400 a metre.
 		expect(view.lines[2]).toMatchObject({ unitPriceINR: 400, lineTotal: 1_000 });
 		expect(view.subtotalINR).toBe(9_800);
+	});
+
+	it('takes the rule’s % off on the stitching too when its switch is on, but never from a flat price', async () => {
+		const withAddOns = (price: ZoneRule['price']) =>
+			PriceZone.parse({
+				...zone,
+				rules: [ZoneRule.parse({ id: 'all', scope: { tier: 'allProducts' }, price, addOns: true })],
+			});
+		const business = { kind: 'business' as const, businessId: 'biz_w' };
+		const percent = await service(
+			withAddOns({ kind: 'percentOffBase', base: 'regularSelling', percent: 20 }),
+		).price({ buyer: business, currency: 'INR', lines: [line('p_saree', 2, true)] });
+		// ₹8,000 for the piece and ₹640 for ₹800 stitching, both 20% off.
+		expect(percent.lines[0]).toMatchObject({
+			unitPriceINR: 8_640,
+			lineTotalINR: 17_280,
+			options: [{ code: 'stitching', priceINR: 640, listedPriceINR: 800 }],
+			addOnsZonePriced: true,
+		});
+		const flat = await service(withAddOns({ kind: 'flatPrice', amountINR: 7_000, skuPrices: {} })).price({
+			buyer: business,
+			currency: 'INR',
+			lines: [line('p_saree', 1, true)],
+		});
+		expect(flat.lines[0]).toMatchObject({
+			unitPriceINR: 7_800,
+			options: [{ priceINR: 800, listedPriceINR: 800 }],
+			addOnsZonePriced: false,
+		});
+		// No stitching chosen: nothing to price, so nothing was zone-priced.
+		const plain = await service(
+			withAddOns({ kind: 'percentOffBase', base: 'regularSelling', percent: 20 }),
+		).price({ buyer: business, currency: 'INR', lines: [line('p_saree', 1)] });
+		expect(plain.lines[0]).toMatchObject({ unitPriceINR: 8_000, addOnsZonePriced: false });
 	});
 
 	it('gives a business on RETAIL the shop price', async () => {

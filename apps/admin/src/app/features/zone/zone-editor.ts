@@ -10,7 +10,16 @@ import { Subject, debounceTime, firstValueFrom, switchMap } from 'rxjs';
 
 import { apiProblem } from '@core/purchasing/purchasing-format';
 import { AuthStore } from '@core/state/auth.store';
-import { ZONE_TIERS, newZoneGroup, newZoneId, newZoneRule, ruleWords } from '@core/zones/zone-blocks';
+import {
+	ZONE_TIERS,
+	newZoneGroup,
+	newZoneId,
+	newZoneRule,
+	addOnTraceWords,
+	addOnTryWords,
+	ruleWords,
+	zoneFormulaCanPriceAddOns,
+} from '@core/zones/zone-blocks';
 import { ZONES_KEY, ZonesGateway } from '@core/zones/zones.gateway';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
@@ -20,7 +29,7 @@ import { ProductService } from '@data-access/services/product.service';
 import { ZoneConditions } from './zone-conditions';
 import { ZoneFormula } from './zone-formula';
 
-import type { PriceZone, ZoneRule, ZoneRuleScope, ZoneTryResult } from '@saha-textile/contracts';
+import type { PriceZone, ZoneLinePrice, ZoneRule, ZoneRuleScope, ZoneTryResult } from '@saha-textile/contracts';
 
 function flatten(rows: readonly ICategory[] = [], depth = 0): Array<{ id: string; label: string }> {
 	return rows.flatMap((row) => [
@@ -317,9 +326,20 @@ export class ZoneEditor {
 	}
 
 	/** One step of how a price was reached, in words: "Tier: Category rules", "Rule: Silk −15%". */
+	/** The rule's add-on switch can do something only for a % off or ₹ off (greyed otherwise). */
+	canPriceAddOns(rule: ZoneRule): boolean {
+		return zoneFormulaCanPriceAddOns(rule.price);
+	}
+
+	/** Try it: what the line's stitching and add-ons cost under the rule that priced it. */
+	addOnWords(price: ZoneLinePrice): string {
+		return addOnTryWords(price, (key, params) => this.transloco.translate(key, params));
+	}
+
 	traceWords(code: string): string {
 		const t = (key: string, params?: Record<string, string>) => this.transloco.translate(key, params);
 		const [head = '', rest = ''] = code.split(':');
+		if (head === 'addOns') return addOnTraceWords(code, t);
 		const detail =
 			head === 'tier'
 				? t(`zone_tier_${rest}`)

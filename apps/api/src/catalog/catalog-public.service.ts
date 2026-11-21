@@ -201,6 +201,19 @@ export class CatalogPublicService {
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
 		const variantPhotos = rows.flatMap((row) => row.media?.primaryAssetId ?? []);
 		const assets = await this.assetsFor([...productGallery(product), ...swatchIds, ...variantPhotos]);
+		// A swatch cut still being made shows its photo's own swatch meanwhile (owner, 21 Nov 2026, brief P11).
+		const making = [...assets.values()].flatMap((asset) =>
+			asset.cutFrom && asset.processing.state !== 'ready' ? [asset.cutFrom.assetId] : [],
+		);
+		for (const [id, row] of await this.assetsFor(making)) assets.set(id, row);
+		const swatchOf = (id: string): { asset: MediaAsset | undefined; version: string | undefined } => {
+			const asset = assets.get(id);
+			const photo =
+				asset?.cutFrom && asset.processing.state !== 'ready' ? assets.get(asset.cutFrom.assetId) : undefined;
+			return photo
+				? { asset: photo, version: product.media.versions?.[photo.id] }
+				: { asset, version: undefined };
+		};
 		const gallery = productGallery(product).flatMap((id) => {
 			// `card` is the thumbnail strip's size (about 120 px); without it the strip fell back to 900 px photos.
 			const image = this.image(assets.get(id), GALLERY_FRAME_ROLES, product.media.versions?.[id]);
@@ -318,11 +331,14 @@ export class CatalogPublicService {
 					// The version stored with the swatch; a swatch made from one of the product's own photos draws
 					// the version its gallery stores.
 					image: term.swatchAssetId
-						? this.image(
-								assets.get(term.swatchAssetId),
-								['swatch_image'],
-								term.swatchVersionId ?? product.media.versions?.[term.swatchAssetId],
-							)
+						? ((swatch) =>
+								this.image(
+									swatch.asset,
+									['swatch_image'],
+									swatch.version ??
+										term.swatchVersionId ??
+										product.media.versions?.[term.swatchAssetId ?? ''],
+								))(swatchOf(term.swatchAssetId))
 						: null,
 					// An option that measures costs the template's amount unless this product overrides it.
 					priceDeltaINR:

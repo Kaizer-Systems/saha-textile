@@ -301,6 +301,33 @@ describe('product page', () => {
 		expect(await shown()).toBe('https://cdn.test/k/sw2-ver_a');
 	});
 
+	it('shows the photo’s own swatch while its cut is being made, then the cut (brief P11)', async () => {
+		const photoRow = asset('ph1', 'swatch_image');
+		const cut = (state: string) => ({
+			...asset('cut1', 'swatch_image'),
+			cutFrom: { assetId: 'ph1', region: { x: 0, y: 0, width: 0.5, height: 0.375 } },
+			processing: { state, attempts: 0, error: null, processedAt: null },
+		});
+		const shown = async (state: string) => {
+			const row = product({
+				optionGroups: [
+					{
+						attributeCode: 'print',
+						label: { en: 'Print' },
+						semanticRole: 'variation_axis',
+						displayStyle: 'image_swatch',
+						terms: [{ code: 'floral', label: { en: 'Floral' }, swatchAssetId: 'cut1' }],
+					},
+				],
+			});
+			const page = await build({ rows: [row], assets: [photoRow, cut(state)] }).service.page('red-saree');
+			return page.optionGroups[0]?.terms[0]?.image?.roles['swatch_image']?.[0]?.url;
+		};
+		expect(await shown('processing')).toBe('https://cdn.test/k/ph1');
+		expect(await shown('queued')).toBe('https://cdn.test/k/ph1');
+		expect(await shown('ready')).toBe('https://cdn.test/k/cut1');
+	});
+
 	it('finds a variant photo in the gallery, and copes when it is not there', async () => {
 		const row = product({
 			media: { gallery: ['m1', 'gone'] },

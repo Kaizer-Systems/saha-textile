@@ -2,7 +2,12 @@ import { Business, Order, type OrderPayment } from '@saha-textile/contracts';
 import type { NotificationMessage } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
+import { AdminOrderCreateService } from '../src/admin-orders/admin-order-create.service';
+import { AdminOrdersService } from '../src/admin-orders/admin-orders.service';
+import { BusinessReceiptsService } from '../src/admin-orders/business-receipts.service';
 import { noticeMoney, OrderNoticesService, shippingNote } from '../src/admin-orders/order-notices.service';
+import { PaymentRequestsService } from '../src/admin-orders/payment-requests.service';
+import { ShopPaymentsService } from '../src/shop-checkout/shop-payments.service';
 
 const address = {
 	fullName: 'Rina Das',
@@ -316,5 +321,23 @@ describe('order messages: what the customer gets (orders brief, emails section)'
 			shippingNote([JSON.stringify({ result: 'productCharge', units: 1, unitAmountINR: 100, amountINR: 100 })]),
 		).toBe('1 discounted piece × ₹100');
 		expect(shippingNote(['not json', JSON.stringify({ nothing: true })])).toBe('');
+	});
+
+	it('is named on every service that sends order messages, so the built API really gets it', () => {
+		// An optional `OrderNoticesService | null` parameter compiles to `Object`; without the
+		// explicit @Inject the running API quietly got no sender (found by the browser run).
+		for (const service of [
+			AdminOrdersService,
+			AdminOrderCreateService,
+			PaymentRequestsService,
+			BusinessReceiptsService,
+			ShopPaymentsService,
+		]) {
+			const named = (Reflect.getMetadata('self:paramtypes', service) ?? []) as Array<{ param: unknown }>;
+			expect(
+				named.some((row) => row.param === OrderNoticesService),
+				service.name,
+			).toBe(true);
+		}
 	});
 });

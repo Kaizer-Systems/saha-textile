@@ -227,7 +227,12 @@ export class OrderCheckout {
 			idempotencyKey: this.key,
 		};
 	});
-	/** The quote ignores the payment details typed by hand, so typing a UTR doesn't ask again. */
+	/**
+	 * The quote ignores the payment details typed by hand, so typing a UTR or an amount doesn't ask
+	 * again. The amount sent is a fixed ₹1 the server never uses: the typed one opens at the quote's
+	 * total, so an empty box (UPI chosen before the first quote came back, or cleared to retype)
+	 * would otherwise be refused and leave the summary empty for good.
+	 */
 	private readonly quoteBody = computed(() => {
 		const body = this.body();
 		if (!body) return null;
@@ -239,7 +244,12 @@ export class OrderCheckout {
 				method === 'upi' || method === 'bankTransfer'
 					? ({
 							method: 'manual',
-							payment: { ...(body.payment as { payment: object }).payment, reference: '—', note: null },
+							payment: {
+								...(body.payment as { payment: object }).payment,
+								amountINR: 1,
+								reference: '—',
+								note: null,
+							},
 						} as AdminCheckoutPayment)
 					: body.payment,
 		} as AdminOrderCreate;

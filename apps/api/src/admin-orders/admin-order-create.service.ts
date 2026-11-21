@@ -127,7 +127,7 @@ export class AdminOrderCreateService {
 		@Inject(COUPON_REPOSITORY) private readonly couponRepo: CouponRepository,
 		@Inject(SHIPPING_RULE_REPOSITORY) private readonly shippingRules: ShippingRuleRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
-		@Optional() private readonly notices: OrderNoticesService | null = null,
+		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/** The shop-customer picker on Create order: name, phone or email, active customers only. */

@@ -122,13 +122,13 @@
 											<div class="col-md-6 mt-2">
 												<label
 													class="form-label"
-													for="chk_delivery_name"
+													for="chk_delivery_label"
 												>
 													{{ 'chk_name_this_address' | transloco }}
 												</label>
 												<input
 													class="form-control"
-													id="chk_delivery_name"
+													id="chk_delivery_label"
 													maxlength="80"
 													[value]="deliveryName()"
 													(input)="deliveryName.set($any($event.target).value)"
@@ -194,13 +194,13 @@
 											<div class="col-md-6 mt-2">
 												<label
 													class="form-label"
-													for="chk_billing_name"
+													for="chk_billing_label"
 												>
 													{{ 'chk_name_this_address' | transloco }}
 												</label>
 												<input
 													class="form-control"
-													id="chk_billing_name"
+													id="chk_billing_label"
 													maxlength="80"
 													[value]="billingName()"
 													(input)="billingName.set($any($event.target).value)"

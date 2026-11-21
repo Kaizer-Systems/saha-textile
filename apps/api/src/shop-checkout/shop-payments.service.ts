@@ -108,7 +108,7 @@ export class ShopPaymentsService {
 		@Inject(COUPON_REPOSITORY) private readonly coupons: CouponRepository,
 		@Inject(SHIPPING_RULE_REPOSITORY) private readonly shippingRules: ShippingRuleRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
-		@Optional() private readonly notices: OrderNoticesService | null = null,
+		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/* ------------------------------------------------------------------ starting a payment */

@@ -71,7 +71,7 @@ export class PaymentRequestsService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort,
-		@Optional() private readonly notices: OrderNoticesService | null = null,
+		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/**

@@ -222,7 +222,7 @@ export class AdminOrdersService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		private readonly stock: OrderStock,
 		@Optional() @Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository | null = null,
-		@Optional() private readonly notices: OrderNoticesService | null = null,
+		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/**

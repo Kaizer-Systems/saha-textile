@@ -163,6 +163,22 @@ describe('admin checkout (ck01–ck08, ad07)', () => {
 		expect(page.payment()).toMatchObject({ payment: { received: false, note: 'RTGS' } });
 	});
 
+	it('asks for a quote the server accepts while the amount box is empty or changing (UPI chosen early)', () => {
+		addresses.set([home]);
+		const { page, fixture } = render();
+		fixture.detectChanges();
+		const quoteBody = () =>
+			(page as unknown as { quoteBody: () => { payment: { payment?: { amountINR: number } } } }).quoteBody();
+		page.method.set('upi');
+		// No quote has come back yet, so the typed amount is still empty.
+		expect(page.amount()).toBe('');
+		expect(quoteBody().payment.payment?.amountINR).toBe(1);
+		page.amount.set('2500');
+		expect(quoteBody().payment.payment?.amountINR).toBe(1);
+		// What is placed still carries the typed amount.
+		expect(page.payment()).toMatchObject({ payment: { amountINR: 2_500 } });
+	});
+
 	it('asks for the Indian invoice address only when both addresses are abroad, and sends it once complete', () => {
 		addresses.set([{ ...home, id: 'addr_uk', countryCode: 'GB', country: 'GB', postalCode: 'NW3 4DU' }]);
 		const { page, fixture } = render();

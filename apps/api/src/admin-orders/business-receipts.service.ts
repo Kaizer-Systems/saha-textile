@@ -25,7 +25,7 @@ export class BusinessReceiptsService {
 		private readonly orders: AdminOrdersService,
 		@Inject(ADMIN_ORDER_REPOSITORY) private readonly orderRepo: AdminOrderRepository,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
-		@Optional() private readonly notices: OrderNoticesService | null = null,
+		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
 	) {}
 
 	/** The business's orders on account that still owe money, oldest first (the "Settles" table). */

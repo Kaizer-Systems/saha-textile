@@ -155,6 +155,26 @@ describe('order page (od05–od08, pl01–pl05)', () => {
 		expect(rows[2]).toMatchObject({ text: 'ord_hist_paid_via', placed: true, by: 'ord_by_shop' });
 	});
 
+	it('names staff from the server’s list when a history line kept no name (actions taken in the admin)', () => {
+		data.set({
+			...detail({
+				channel: 'admin',
+				createdBy: 'adm_7',
+				history: [
+					{ at: '2026-11-21T06:47:00.000Z', kind: 'created', by: 'adm_7', byName: null, messages: [], detail: {} },
+					{ at: '2026-11-21T06:50:00.000Z', kind: 'comment', by: 'adm_gone', byName: null, comment: 'x', messages: [], detail: {} },
+				],
+			} as never),
+			staff: { adm_7: 'Rupa Sen' },
+		} as never);
+		const { page } = render();
+		expect(page.createdByName()).toBe('Rupa');
+		const rows = page.historyRows();
+		expect(rows[1]).toMatchObject({ by: 'Rupa' });
+		// Someone no longer on the staff list reads as System, never as an id.
+		expect(rows[0]).toMatchObject({ by: 'ord_by_system' });
+	});
+
 	it('words the payment request card and the payments table (pl01–pl04)', () => {
 		data.set(detail({ currency: 'INR', lines: [{ held: true, quantity: 2 }] } as never));
 		const { page } = render();

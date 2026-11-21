@@ -113,11 +113,15 @@ export class Details {
 	readonly paypalRecord = computed(() => this.detail()?.payments.find((payment) => payment.paypal)?.paypal ?? null);
 	readonly needsInvoiceAddress = computed(() => !!this.detail()?.attention.includes('invoiceAddressNeeded'));
 
-	/** Staff first names from the order's own history ("by Moulik", "Moulik, in the admin"). */
+	/**
+	 * Staff first names ("by Moulik", "Moulik, in the admin"): the names the server looks up for this
+	 * order's staff, then any name a history line kept itself.
+	 */
 	readonly staffNames = computed(() => {
 		const names = new Map<string, string>();
+		for (const [id, name] of Object.entries(this.detail()?.staff ?? {})) names.set(id, firstName(name));
 		for (const entry of this.order()?.history ?? []) {
-			if (entry.by && entry.byName) names.set(entry.by, firstName(entry.byName));
+			if (entry.by && entry.byName && !names.has(entry.by)) names.set(entry.by, firstName(entry.byName));
 		}
 		return names;
 	});
@@ -289,9 +293,9 @@ export class Details {
 			text = t(`ord_history_${entry.kind}`);
 		}
 		const order = this.order();
-		const by = entry.byName
-			? firstName(entry.byName)
-			: t(order?.channel === 'shop' ? 'ord_by_shop' : 'ord_by_system');
+		const by =
+			(entry.by ? this.staffNames().get(entry.by) : undefined) ??
+			(entry.byName ? firstName(entry.byName) : t(order?.channel === 'shop' ? 'ord_by_shop' : 'ord_by_system'));
 		return { at: entry.at, lead, text, comment, by, messages: entry.messages };
 	}
 

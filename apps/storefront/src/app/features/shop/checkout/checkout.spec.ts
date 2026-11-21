@@ -154,4 +154,10 @@ describe('Shop checkout (shop01–shop17)', () => {
 		page.removeCoupon('WEDDING10');
 		expect(page.couponCodes()).toEqual(['FREESHIP']);
 	});
+
+	it('asks a guest to sign in first: guest checkout is off at launch (OD6)', async () => {
+		const page = await import('../../../pages/checkout.page');
+		const { AuthGuard } = await import('@core/guards/auth.guard');
+		expect(page.routeMeta.canActivate).toContain(AuthGuard);
+	});
 });

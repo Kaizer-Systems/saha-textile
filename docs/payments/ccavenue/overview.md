@@ -4,7 +4,7 @@ slug: /payments/ccavenue
 description: "The INR gateway role: HDFC's documentation and the calls this project will make."
 status: scaffolded
 audience: [backend, operator]
-last_verified: '2026-11-21'
+last_verified: '2026-11-22'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit non-seamless initiateTransaction encResp orderStatusTracker refundOrder DoWebTrans working key access code
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -95,16 +95,18 @@ Two operational points from the merchant API that the hosted flow does not menti
 
 HDFC PG Helpdesk answered these points in writing. They apply to CCAvenue accounts issued through HDFC. Some are settings that HDFC switches on for a given account.
 
-| Topic                         | Behaviour                                                                                                                                                                                                                                                   |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| IP and URL allow-list         | An HDFC reseller account can have **Ignore IP and URL** enabled. No IP or URL then needs whitelisting: merchant API calls work from any IP address, including a developer machine, and the reply returns to the IP that sent the request.                   |
-| Registered URL                | HDFC registers the URL that transactions start from. One account can hold several URLs, and all of them work. A test account accepts a `localhost` `redirect_url`, so the complete payment return can be tested on a developer machine.                     |
-| API hosts                     | `https://apitest.ccavenue.com` for test and `https://api.ccavenue.com` for live.                                                                                                                                                                            |
-| Order confirmation            | With **auto-confirm** enabled, every successful order is confirmed automatically, and no `confirmOrder` call is made.                                                                                                                                       |
-| Return delay                  | A response can reach the return URL 5–10 minutes after payment, because of processing delays. HDFC recommends a buffer of 5–10 minutes before calling the Status API. The VAS guide (best practice H(a)) asks for the call as soon as the response arrives. |
-| `Awaited` orders              | No maximum time applies. An order stays `Awaited` until the customer's bank responds.                                                                                                                                                                       |
-| Server-to-server notification | A webhook URL can be configured on the account. A failed post is retried twice, nine minutes apart. The format is on [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification).                                                           |
-| Partial refunds               | More than one partial refund against the same transaction works once HDFC enables it for the account. Without it, a second refund fails with "Multiple refunds not allowed" (51311, 51328).                                                                 |
+| Topic                         | Behaviour                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IP and URL allow-list         | An HDFC reseller account can have **Ignore IP and URL** enabled. No IP or URL then needs whitelisting: merchant API calls work from any IP address, including a developer machine, and the reply returns to the IP that sent the request.                                                                                                                                       |
+| Registered URL                | HDFC registers the URL that transactions start from. One account can hold several URLs, and all of them work. A test account accepts a `localhost` `redirect_url`, so the complete payment return can be tested on a developer machine. The test and live environments each hold their own primary website URL; a change to the test one is requested through HDFC's KITS team. |
+| URLs for API calls            | No URL needs whitelisting for API calls. The payment response is received by the merchant's own service, which may pass it on to its API address.                                                                                                                                                                                                                               |
+| API hosts                     | `https://apitest.ccavenue.com` for test and `https://api.ccavenue.com` for live.                                                                                                                                                                                                                                                                                                |
+| Order confirmation            | With **auto-confirm** enabled, every successful order is confirmed automatically, and no `confirmOrder` call is made.                                                                                                                                                                                                                                                           |
+| Return delay                  | A response can reach the return URL 5–10 minutes after payment, because of processing delays. HDFC recommends a buffer of 5–10 minutes before calling the Status API. The VAS guide (best practice H(a)) asks for the call as soon as the response arrives.                                                                                                                     |
+| Status API call limit         | HDFC states no defined limit on the number of Status API calls. The recommended buffer of 5–10 minutes before the first call still applies.                                                                                                                                                                                                                                     |
+| `Awaited` orders              | No maximum time applies. An order stays `Awaited` until the customer's bank responds.                                                                                                                                                                                                                                                                                           |
+| Server-to-server notification | A webhook URL can be configured on the account. A failed post is retried twice, nine minutes apart. The format is on [Dynamic Event Notification](/payments/ccavenue/dynamic-event-notification).                                                                                                                                                                               |
+| Partial refunds               | More than one partial refund against the same transaction works once HDFC enables it for the account. Without it, a second refund fails with "Multiple refunds not allowed" (51311, 51328).                                                                                                                                                                                     |
 
 ### Transcription pages
 
@@ -345,10 +347,9 @@ A deploy swaps old and new copies side by side, so it causes no gap ([Deploys wi
 
 Neither the documents nor HDFC's answers settle these.
 
-1. **Status API rate limit.** How often may `orderStatusTracker` be called? HDFC gives a 5–10 minute buffer before the first call and states no limit.
-2. **Status during the return delay.** Before a delayed return arrives, does the Status API answer `Initiated` or `Awaited`, or "no record" (51419, 51313, 51308)? The first is `pending`. The second, beside a paid callback, is `review`.
-3. **STRING format.** The kit revision documents XML and JSON only, but its ASP.NET sample still sends `request_type=STRING`. Only JSON is planned here.
-4. **Working key per URL.** A webhook post is encrypted with the primary URL's working key. Whether each registered URL has its own working key is not stated.
+1. **Status during the return delay.** Before a delayed return arrives, does the Status API answer `Initiated` or `Awaited`, or "no record" (51419, 51313, 51308)? The first is `pending`. The second, beside a paid callback, is `review`.
+2. **STRING format.** The kit revision documents XML and JSON only, but its ASP.NET sample still sends `request_type=STRING`. Only JSON is planned here.
+3. **Working key per URL.** A webhook post is encrypted with the primary URL's working key. Whether each registered URL has its own working key is not stated.
 
 ## Limitations
 

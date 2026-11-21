@@ -16,6 +16,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	MediaCutRequest,
 	type MediaCutResult,
+	type MediaCutSource,
 	MediaBrowseQuery,
 	type MediaBrowseResponse,
 	MediaDuplicateQuery,
@@ -206,6 +207,16 @@ export class AdminMediaLibraryController {
 			reservationId: body.reservationId,
 			many: false,
 		});
+	}
+
+	@Get('files/:id/cut-source')
+	@RequirePermissions('product.edit')
+	@ApiOperation({
+		operationId: 'mediaFileCutSource',
+		summary: 'What the swatch cut pop-up draws: the photo, its size, and the square of a cut already used',
+	})
+	cutSource(@Param('id') id: string): Promise<MediaCutSource> {
+		return this.library.cutSource(id);
 	}
 
 	@Post('files/:id/cuts')

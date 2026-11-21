@@ -1441,3 +1441,88 @@ describe('Save cut: a swatch picture from a square of a photo (owner, 21 Nov 202
 		expect(a.id).not.toBe(b.id);
 	});
 });
+
+describe('the cut pop-up and a photo’s cuts in details (brief P11)', () => {
+	const derivative = (role: string, width: number) => ({
+		role,
+		storageKey: `media/x/${role}-${width}.webp`,
+		width,
+		height: Math.round((width * 4) / 3),
+		byteSize: 10,
+		format: 'image/webp',
+		roleVersion: 1,
+	});
+	const square = { x: 0.2, y: 0.5, width: 600 / 1800, height: 600 / 2400 };
+	const setup = () => {
+		const run = harness();
+		run.file('med_photo', {
+			width: 1800,
+			height: 2400,
+			derivatives: [
+				derivative('gallery', 600),
+				derivative('gallery', 900),
+				derivative('gallery', 1200),
+				derivative('thumb', 160),
+			],
+		});
+		const findCutsOf = async (photoId: string) =>
+			[...run.files.values()].filter((row) => row.cutFrom?.assetId === photoId);
+		Object.defineProperty(run.service, 'cuts', { value: { findCutsOf } });
+		return run;
+	};
+
+	it('gives the photo’s 900 px file and its size, and for a cut its photo and square', async () => {
+		const run = setup();
+		expect(await run.service.cutSource('med_photo')).toMatchObject({
+			photoId: 'med_photo',
+			url: expect.stringContaining('gallery-900'),
+			width: 1800,
+			height: 2400,
+			cutId: null,
+			region: null,
+		});
+		const made = await run.service.cut('adm_1', 'med_photo', square);
+		expect(await run.service.cutSource(made.id)).toMatchObject({
+			photoId: 'med_photo',
+			cutId: made.id,
+			region: square,
+		});
+	});
+
+	it('falls back to the widest file, and refuses a picture with nothing to cut from', async () => {
+		const run = setup();
+		run.file('med_small', {
+			width: 800,
+			height: 800,
+			derivatives: [derivative('card', 400), derivative('thumb', 160)],
+		});
+		expect((await run.service.cutSource('med_small')).url).toContain('card-400');
+		run.file('med_bare', { width: 800, height: 800 });
+		await expect(run.service.cutSource('med_bare')).rejects.toMatchObject({
+			response: { issues: [{ code: 'cut_no_photo' }] },
+		});
+		run.file('med_sizeless', {});
+		await expect(run.service.cutSource('med_sizeless')).rejects.toThrow();
+		await expect(run.service.cutSource('med_none')).rejects.toThrow();
+	});
+
+	it('lists a photo’s cuts in its details, and names the photo in a cut’s', async () => {
+		const run = setup();
+		expect((await run.service.details('med_photo')).cuts).toEqual([]);
+		const made = await run.service.cut('adm_1', 'med_photo', square);
+		expect((await run.service.details('med_photo')).cuts).toEqual([
+			expect.objectContaining({ id: made.id, usedOn: 0 }),
+		]);
+		expect((await run.service.details(made.id)).cutFrom).toEqual({
+			photoId: 'med_photo',
+			photoName: 'med_photo.jpg',
+		});
+		// A cut whose photo has gone names the photo by its id.
+		run.files.delete('med_photo');
+		expect((await run.service.details(made.id)).cutFrom).toEqual({ photoId: 'med_photo', photoName: 'med_photo' });
+		// Without the cuts lookup a photo's details list none.
+		const plain = harness();
+		plain.file('med_photo', { width: 1800, height: 2400 });
+		expect((await plain.service.details('med_photo')).cuts).toBeUndefined();
+	});
+});

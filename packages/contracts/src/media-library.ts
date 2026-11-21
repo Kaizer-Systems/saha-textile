@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { Id, IsoDateTime, LocaleCode, LocalizedText } from './common';
-import { MediaFill, MediaProfileKey } from './media';
+import { MediaCutRegion, MediaFill, MediaProfileKey } from './media';
 
 /**
  * The Media page as a file manager (media build step 1; brief revision 6, accepted 15 Nov 2026):
@@ -264,8 +264,29 @@ export const MediaFileDetails = z.object({
 	text: z.object({ alt: LocalizedText, caption: LocalizedText }).optional(),
 	/** A photo's web file name, the start of every picture address (changed with Change, owner 16 Nov, option B). */
 	slug: z.string().optional(),
+	/** A swatch cut (brief P11): the photo it was cut from ("Cut from …"); null or absent for any other picture. */
+	cutFrom: z.object({ photoId: Id, photoName: z.string() }).nullable().optional(),
+	/** A photo's swatch cuts (brief P11), each with its thumbnail and how many places use it. */
+	cuts: z
+		.array(z.object({ id: Id, name: z.string(), thumbnail: z.string().nullable(), usedOn: z.number().int() }))
+		.optional(),
 });
 export type MediaFileDetails = z.infer<typeof MediaFileDetails>;
+
+/**
+ * What the admin cut pop-up draws (brief P11): the photo to cut from (a large file and the original's size) and,
+ * when the value already uses a cut, that cut and its square, so the pop-up reopens on the same square.
+ */
+export const MediaCutSource = z.object({
+	photoId: Id,
+	name: z.string(),
+	url: z.string().min(1),
+	width: z.number().int().positive(),
+	height: z.number().int().positive(),
+	cutId: Id.nullable(),
+	region: MediaCutRegion.nullable(),
+});
+export type MediaCutSource = z.infer<typeof MediaCutSource>;
 export type MediaFileAddress = z.infer<typeof MediaFileAddress>;
 
 /** S11: a big upload in parts. Every call names the upload the browser started. */

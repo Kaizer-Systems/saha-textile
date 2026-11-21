@@ -4,6 +4,7 @@ import { HttpStatus, Inject, Injectable, NotFoundException, Optional } from '@ne
 import type {
 	MediaCutRegion,
 	MediaCutResult,
+	MediaCutSource,
 	AuditLog,
 	MediaAsset,
 	MediaBrowseQuery,
@@ -994,6 +995,57 @@ export class MediaLibraryService {
 			...(asset.kind === 'image'
 				? { text: { alt: { ...asset.text.alt }, caption: { ...asset.text.caption } } }
 				: {}),
+			...(await this.cutDetails(asset)),
+		};
+	}
+
+	/** A cut's photo ("Cut from …") and a photo's cuts with where they are used (brief P11). */
+	private async cutDetails(asset: MediaAsset): Promise<Pick<MediaFileDetails, 'cutFrom' | 'cuts'>> {
+		if (asset.cutFrom) {
+			const photo = await this.assets.findById(asset.cutFrom.assetId);
+			return {
+				cutFrom: { photoId: asset.cutFrom.assetId, photoName: photo ? fileName(photo) : asset.cutFrom.assetId },
+			};
+		}
+		if (asset.kind !== 'image' || !this.cuts) return {};
+		const cuts = await this.cuts.findCutsOf(asset.id);
+		if (!cuts.length) return { cuts: [] };
+		const used = await this.files.whereUsed(cuts.map((cut) => cut.id));
+		return {
+			cuts: cuts.map((cut) => ({
+				id: cut.id,
+				name: fileName(cut),
+				thumbnail: this.thumbnailOf(cut),
+				usedOn: (used.get(cut.id) ?? []).length,
+			})),
+		};
+	}
+
+	/**
+	 * What the cut pop-up draws (brief P11): the photo (a file about 1200 px wide and the original's size) and, for a
+	 * value that already uses a cut, that cut and its square. Open to anyone who may edit products (P12).
+	 */
+	async cutSource(id: string): Promise<MediaCutSource> {
+		const chosen = await this.assets.findById(id);
+		if (!chosen || chosen.deletedAt) throw new NotFoundException();
+		const photo = chosen.cutFrom ? await this.assets.findById(chosen.cutFrom.assetId) : chosen;
+		if (!photo || photo.deletedAt || photo.kind !== 'image' || !photo.width || !photo.height) {
+			throw mediaRefusal(HttpStatus.BAD_REQUEST, 'cut_no_photo', 'This picture has no photo to cut from.');
+		}
+		const files = shownDerivatives(photo).sort((a, b) => a.width - b.width);
+		const file =
+			files.find((row) => row.role === 'gallery' && row.width >= 900) ??
+			files.filter((row) => row.role === 'gallery').at(-1) ??
+			files.at(-1);
+		if (!file) throw mediaRefusal(HttpStatus.BAD_REQUEST, 'cut_no_photo', 'This picture has no photo to cut from.');
+		return {
+			photoId: photo.id,
+			name: fileName(photo),
+			url: this.storage.getUrl(file.storageKey),
+			width: photo.width,
+			height: photo.height,
+			cutId: chosen.cutFrom ? chosen.id : null,
+			region: chosen.cutFrom?.region ?? null,
 		};
 	}
 

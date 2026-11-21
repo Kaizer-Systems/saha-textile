@@ -3,6 +3,8 @@ import {
 	Component,
 	DestroyRef,
 	ElementRef,
+	Injector,
+	afterNextRender,
 	computed,
 	effect,
 	inject,
@@ -61,10 +63,13 @@ export class LoadPiece {
 
 type Phase = 'hidden' | 'waiting' | 'shown' | 'out';
 
-/** Shown only after this long, so a fast answer never flashes a loader. */
+/** A read started on an open page (another tab's first read) shows the loader only after this long. */
 export const SHOW_AFTER_MS = 150;
-/** Once shown, kept at least this long, then faded out. */
-export const KEEP_AT_LEAST_MS = 400;
+/**
+ * Every page shows its loader at once when it opens and keeps it at least this long, longer while its
+ * reads last (owner, 21 Nov: "at least show 1 second bare minimum ... for any screen").
+ */
+export const KEEP_AT_LEAST_MS = 1000;
 const FADE_MS = 350;
 /** Amber, "still waiting", after this long. */
 export const SLOW_AFTER_S = 8;
@@ -180,8 +185,17 @@ export class LoadOverlay {
 	readonly active = input<boolean | null>(null);
 	/** Off while another loader covers the window. */
 	readonly enabled = input(true);
+	/** Which page is open; a new value shows the loader at once for at least a second. */
+	readonly opened = input('');
+	/**
+	 * Another loader covers this one (the Boot sequence while the console opens). When it lifts, this
+	 * page's loader takes over and shows its second in full, instead of spending it out of sight.
+	 */
+	readonly under = input(false);
 
 	protected readonly phase = signal<Phase>('hidden');
+	/** True while this loader fully covers what is under it (its fade has not begun). */
+	readonly covering = computed(() => this.phase() === 'shown');
 	private readonly firstReads = signal(0);
 	private readonly refetching = signal(0);
 	private readonly polled = signal(0);
@@ -193,11 +207,19 @@ export class LoadOverlay {
 	protected readonly whole = computed(() => Math.floor(this.elapsed()));
 	protected readonly slow = computed(() => this.phase() === 'shown' && this.elapsed() >= SLOW_AFTER_S);
 	protected readonly offer = computed(() => this.slow() && this.elapsed() >= OFFER_AFTER_S && !this.kept());
-	private readonly wanted = computed(() => this.enabled() && (this.active() ?? this.firstReads() > 0));
+	/** True for the first second after a page opens. */
+	private readonly opening = signal(false);
+	private readonly wanted = computed(
+		() => this.enabled() && (this.active() ?? (this.firstReads() > 0 || this.opening())),
+	);
 
 	private timer: ReturnType<typeof setTimeout> | null = null;
+	private openTimer: ReturnType<typeof setTimeout> | null = null;
 	private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	private readonly injector = inject(Injector);
+	/** When the loader reached the screen; its second counts from here. */
 	private shownAt = 0;
+	private shownMark = 0;
 
 	constructor() {
 		const count = () => {
@@ -215,7 +237,37 @@ export class LoadOverlay {
 			stop();
 			clearInterval(tick);
 			this.clear();
+			if (this.openTimer) clearTimeout(this.openTimer);
 			if (this.refreshTimer) clearTimeout(this.refreshTimer);
+		});
+		// A page opening shows the loader at once and holds it a second. So does the Boot sequence lifting
+		// off the first page: that page's loader was out of sight until then.
+		let wasUnder = false;
+		effect(() => {
+			const page = this.opened();
+			const on = this.enabled();
+			const under = this.under();
+			untracked(() => {
+				const uncovered = wasUnder && !under;
+				wasUnder = under;
+				if (!on || !page || under || this.active() !== null) return;
+				if (this.openTimer) clearTimeout(this.openTimer);
+				// The second starts once the cover above has faded away.
+				const after = uncovered ? FADE_MS : 0;
+				if (this.phase() === 'shown' || this.phase() === 'out') {
+					this.clear();
+					// A new page's seconds count from now; a page the Boot sequence uncovered keeps counting.
+					if (!uncovered) {
+						this.startedAt.set(Date.now());
+						this.now.set(Date.now());
+						this.kept.set(false);
+					}
+					this.phase.set('shown');
+					this.markShown(after);
+				}
+				this.opening.set(true);
+				this.openTimer = setTimeout(() => this.opening.set(false), KEEP_AT_LEAST_MS + after);
+			});
 		});
 		effect(() => {
 			const want = this.wanted();
@@ -248,7 +300,25 @@ export class LoadOverlay {
 		this.timer = null;
 	}
 
-	/** The small state machine: hidden → waiting (150 ms) → shown → (at least 400 ms) out → hidden. */
+	/**
+	 * Starts the loader's second: now, then again once the page has drawn it, so a busy page that draws
+	 * it late still shows it a full second. `after` waits out a cover fading above it.
+	 */
+	private markShown(after = 0): void {
+		const mark = ++this.shownMark;
+		this.shownAt = Date.now() + after;
+		afterNextRender(
+			() => {
+				if (mark === this.shownMark) this.shownAt = Date.now() + after;
+			},
+			{ injector: this.injector },
+		);
+	}
+
+	/**
+	 * The small state machine: hidden → waiting (150 ms; none when a page opens or the loader is
+	 * forced) → shown → (at least 1 s) out → hidden.
+	 */
 	private step(want: boolean): void {
 		const phase = this.phase();
 		if (want) {
@@ -258,11 +328,13 @@ export class LoadOverlay {
 				this.kept.set(false);
 				this.phase.set('waiting');
 				this.clear();
-				this.timer = setTimeout(() => {
-					this.shownAt = Date.now();
+				const show = () => {
 					this.now.set(Date.now());
 					this.phase.set('shown');
-				}, SHOW_AFTER_MS);
+					this.markShown();
+				};
+				if (this.opening() || this.active() !== null) show();
+				else this.timer = setTimeout(show, SHOW_AFTER_MS);
 			} else if (phase === 'out') {
 				this.clear();
 				this.phase.set('shown');

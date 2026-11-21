@@ -2301,3 +2301,20 @@ Brief: https://claude.ai/artifact/4d5yK6GhiTrg3T25KybWeN (revision 4). Owner, 21
   "Disable service account key creation" rule is lifted for that project only while the key is
   made, then put back ("Brief: off, create, back on"). The unused account in `saha-textile-dev` was
   deleted on the owner's yes.
+
+## Owner decision round (2026-11-21) — Release Console loaders
+
+- **29 loaders, one per kind of work.** Brief `N5kmX6DLJv1ECitVUPFHJ8` revision 2. Owner: "All
+  accepted. Build it just like that for every loader with first load, slow vendor(10 sec instead of
+  20), refresh data on screen and data arrives states." Keep waiting is offered at 10 seconds; the
+  amber "still waiting" stays at 8 seconds.
+- **Verified on every page.** Owner: "all animations per page, they all have to be verified per page
+  after the build is complete." `pnpm e2e:console:loaders` checks every place in every state, at
+  laptop and phone size.
+- **At least one second on every page.** Owner: "even if there is no data or something that being
+  read ... at least show 1 second bare minimum of the loading animation ... That's the minimum amount
+  for any screen." Every page (each menu screen, the console and project pages) shows its loader at
+  once when it opens and keeps it at least one second, longer while its reads last. This replaces the
+  brief's "shown only after 150 ms, kept at least 400 ms". The second counts from when the loader is
+  on screen. Opening the console fresh shows the Boot sequence for its own second, then hands over to
+  the page's loader, which shows its full second once the Boot sequence has faded.

@@ -1,5 +1,6 @@
 <div class="rc">
 	<rc-load-overlay
+		#boot
 		loader="boot"
 		source="the console"
 		what="projects · keys · Mac helper"
@@ -364,6 +365,8 @@
 				[source]="load().source"
 				[what]="load().what"
 				[enabled]="!!ctx.projects.data()"
+				[under]="boot.covering()"
+				[opened]="ctx.level() + '|' + ctx.projectId() + '|' + ctx.repoId() + '|' + ctx.page()"
 			/>
 			<router-outlet />
 		</main>

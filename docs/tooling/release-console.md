@@ -167,10 +167,13 @@ The console never makes a token or signs in for the owner. A browser sign-in for
 A screen's first read covers the content area with its own loader, one of 29 drawings picked by the
 screen's place in the menu (`apps/release-console/src/app/shared/loaders/loader-art.ts`; the approved
 brief lists which screen shows which). It says who is being read and what, counts real seconds, turns
-amber after 8 seconds and offers **Keep waiting** after 10. It appears only after 150 ms and stays at
-least 400 ms, so a fast answer never flashes it. A read with data already on screen never covers it: a
-light runs along the top of the content and the **Refreshing…** chip shows. Opening the console after
-the PIN shows the Boot sequence over the whole window. Reduced motion stills every drawing.
+amber after 8 seconds and offers **Keep waiting** after 10. Every page shows its loader at once when it
+opens and keeps it on screen for at least one second, longer while its reads last, even a page that
+reads nothing. A read that starts later on an open page (another tab's first read) shows it after
+150 ms. A read with data already on screen never covers it: a light runs along the top of the content
+and the **Refreshing…** chip shows. Opening the console after the PIN, or reloading it, shows the Boot
+sequence over the whole window for at least a second; it then hands over to the page's own loader,
+which shows its full second once the Boot sequence has faded. Reduced motion stills every drawing.
 
 ### Screens drawn from live product reads
 

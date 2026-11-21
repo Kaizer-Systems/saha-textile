@@ -20,7 +20,14 @@ const FAST = (path: string) =>
 	path === '/api/projects' || path.startsWith('/api/lock') || path === '/api/product-screens';
 
 type Check =
-	'first load' | 'right drawing' | 'words' | 'amber at 8 s' | 'Keep waiting at 10 s' | 'data arrives' | 'refresh';
+	| 'at least 1 s'
+	| 'first load'
+	| 'right drawing'
+	| 'words'
+	| 'amber at 8 s'
+	| 'Keep waiting at 10 s'
+	| 'data arrives'
+	| 'refresh';
 interface Result {
 	place: string;
 	url: string;
@@ -46,6 +53,56 @@ async function holdReads(page: Page, hold: { ms: number }): Promise<void> {
 		await route.continue().catch(() => undefined);
 	});
 }
+
+/**
+ * Records, inside the page, when each loader is fully on screen: from the moment it shows until its
+ * fade begins. Playwright's own polling sees a loader late, so it cannot time one second.
+ */
+async function recordLoaders(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		const spans: Record<string, Array<[number, number]>> = { main: [], boot: [] };
+		const open: Record<string, number | null> = { main: null, boot: null };
+		(window as unknown as { rcLoaderSpans: typeof spans }).rcLoaderSpans = spans;
+		const look = () => {
+			const t = performance.now();
+			for (const el of document.querySelectorAll('rc-load-overlay')) {
+				const key = el.classList.contains('full') ? 'boot' : 'main';
+				const shown = el.classList.contains('on') && !el.classList.contains('out');
+				const since = open[key] ?? null;
+				if (shown && since === null) open[key] = t;
+				else if (!shown && since !== null) {
+					spans[key]?.push([since, t]);
+					open[key] = null;
+				}
+			}
+		};
+		new MutationObserver(look).observe(document, {
+			subtree: true,
+			childList: true,
+			attributes: true,
+			attributeFilter: ['class'],
+		});
+	});
+}
+
+const FADE_MS = 350;
+/**
+ * How long the page's own loader was fully in view, in seconds: after the Boot sequence (when the
+ * page was reloaded) had faded away completely.
+ */
+const inView = (page: Page) =>
+	page.evaluate((fade) => {
+		const s = (window as unknown as { rcLoaderSpans?: Record<string, Array<[number, number]>> }).rcLoaderSpans;
+		const bootGone = Math.max(0, ...(s?.['boot'] ?? []).map(([, end]) => end + fade));
+		const main = s?.['main'] ?? [];
+		return main.reduce((sum, [from, to]) => sum + Math.max(0, to - Math.max(from, bootGone)), 0) / 1000;
+	}, FADE_MS);
+const bootShown = (page: Page) =>
+	page.evaluate(() => {
+		const s = (window as unknown as { rcLoaderSpans?: Record<string, Array<[number, number]>> }).rcLoaderSpans;
+		return (s?.['boot'] ?? []).map(([from, to]) => (to - from) / 1000);
+	});
+const enough = (s: number) => (s >= 0.995 ? `ok (${s.toFixed(2)} s)` : `only ${s.toFixed(2)} s`);
 
 const seconds = async (page: Page) =>
 	Number.parseFloat(
@@ -97,29 +154,55 @@ async function checkScreen(
 	readsNothing: string | null,
 ): Promise<void> {
 	const overlay = page.locator('rc-load-overlay:not(.full)');
+	const on = page.locator('rc-load-overlay.on:not(.full)');
+	// Every page shows its loader at once and keeps it at least a second, even when its reads answer
+	// at once or it reads nothing (owner, 21 Nov).
+	// Opening it fresh, the Boot sequence shows first; then this page's own loader, a full second in
+	// view after the Boot sequence has faded.
+	hold.ms = 0;
+	await page.goto(r.url, { waitUntil: 'commit' });
+	try {
+		await expect(on).toBeVisible({ timeout: 6000 });
+		// Under the Boot sequence the page's loader may come and go; what counts is after it lifts.
+		await expect(page.locator('rc-load-overlay.full.on')).toHaveCount(0, { timeout: 8000 });
+		await expect(on).toHaveCount(0, { timeout: readsNothing ? 6000 : 30_000 });
+		r.checks['at least 1 s'] = enough(await inView(page));
+	} catch {
+		r.checks['at least 1 s'] = 'no loader when the page opened';
+	}
+	if (readsNothing) {
+		// Nothing to read: the loader is the page's opening second; it can never be slow or refresh.
+		await page.goto(r.url, { waitUntil: 'commit' });
+		try {
+			await expect(on).toBeVisible({ timeout: 4000 });
+			r.checks['first load'] = `ok (${readsNothing}: reads nothing, shows its second)`;
+		} catch {
+			r.checks['first load'] = 'no loader';
+			return;
+		}
+		const shownHere = await overlay.getAttribute('data-loader');
+		r.checks['right drawing'] = shownHere === r.loader ? 'ok' : `showed ${shownHere}`;
+		const t = ((await overlay.locator('.rc-load-title').textContent()) ?? '').trim();
+		r.checks.words = /^Reading \S/.test(t) ? `ok (${t})` : `“${t}”`;
+		r.checks['amber at 8 s'] = 'n/a: reads nothing, so it is never slow';
+		r.checks['Keep waiting at 10 s'] = 'n/a: reads nothing, so it is never slow';
+		try {
+			await expect(on).toHaveCount(0, { timeout: 6000 });
+			r.checks['data arrives'] = 'ok (the page shows after its second)';
+		} catch {
+			r.checks['data arrives'] = 'the cover stayed';
+		}
+		r.checks.refresh = 'n/a: reads nothing';
+		return;
+	}
 	hold.ms = HOLD_MS;
 	await page.goto(r.url, { waitUntil: 'commit' });
 	// First load: the screen's own drawing covers the content area with who and what.
 	try {
-		await expect(page.locator('rc-load-overlay.on:not(.full)')).toBeVisible({ timeout: 6000 });
+		await expect(on).toBeVisible({ timeout: 6000 });
 		r.checks['first load'] = 'ok';
 	} catch {
 		hold.ms = 0;
-		// A page that reads nothing (a link to the vendor's own page, or the projects list the Boot
-		// sequence already loaded) correctly shows no loader.
-		if (readsNothing) {
-			r.checks['first load'] = `ok (${readsNothing}: no read, so no loader)`;
-			for (const k of [
-				'right drawing',
-				'words',
-				'amber at 8 s',
-				'Keep waiting at 10 s',
-				'data arrives',
-				'refresh',
-			] as const)
-				r.checks[k] = 'n/a: no read';
-			return;
-		}
 		r.checks['first load'] = 'no loader: this screen made no read that waited';
 		return;
 	}
@@ -232,6 +315,7 @@ test('every screen shows its own loader in every state', async ({ context }, inf
 		const page = await context.newPage();
 		const hold = { ms: 0 };
 		await holdReads(page, hold);
+		await recordLoaders(page);
 		await unlock(page);
 		for (;;) {
 			const next = queue.shift();
@@ -259,13 +343,55 @@ test('every screen shows its own loader in every state', async ({ context }, inf
 		checks: {},
 	};
 	const page = await context.newPage();
+	await recordLoaders(page);
 	await unlock(page);
+	const full = page.locator('rc-load-overlay.full.on');
+	const main = page.locator('rc-load-overlay.on:not(.full)');
+	// Moving between pages in the menu (no Boot sequence): each page's loader a full second, whether
+	// the page reads (Audit) or not (All projects).
+	await expect(full).toHaveCount(0, { timeout: 8000 });
+	await expect(main).toHaveCount(0, { timeout: 8000 });
+	for (const [label, url, loader] of [
+		['Audit (every project)', '/console/audit', LOADER_OF_PAGE['audit']],
+		['All projects', '/console/projects', LOADER_OF_PAGE['projects']],
+	] as const) {
+		const moved: Result = { place: `Moving in the menu › ${label}`, url, loader: loader ?? '?', checks: {} };
+		// The console's own router moves, as a menu press or the Back button does (the phone's menu is
+		// folded away, so it is not clicked).
+		await page.evaluate((to) => {
+			const s = (window as unknown as { rcLoaderSpans: Record<string, unknown[]> }).rcLoaderSpans;
+			for (const k of Object.keys(s)) s[k]?.splice(0);
+			history.pushState(null, '', to);
+			dispatchEvent(new PopStateEvent('popstate', { state: null }));
+		}, url);
+		try {
+			await expect(main).toBeVisible({ timeout: 4000 });
+			moved.checks['first load'] = 'ok';
+			moved.checks['right drawing'] =
+				(await page.locator('rc-load-overlay:not(.full)').getAttribute('data-loader')) === loader
+					? 'ok'
+					: 'wrong drawing';
+			await expect(main).toHaveCount(0, { timeout: 8000 });
+			moved.checks['at least 1 s'] = enough(await inView(page));
+		} catch {
+			moved.checks['first load'] = 'no loader when the page opened';
+		}
+		results.push(moved);
+	}
+	// Opening fresh with the projects list at once: the Boot sequence still shows a full second.
+	await page.reload({ waitUntil: 'commit' });
+	try {
+		await expect(full).toBeVisible({ timeout: 6000 });
+		await expect(full).toHaveCount(0, { timeout: 8000 });
+		boot.checks['at least 1 s'] = enough((await bootShown(page))[0] ?? 0);
+	} catch {
+		boot.checks['at least 1 s'] = 'no Boot sequence';
+	}
 	await page.route('**/api/projects', async (route) => {
 		if (route.request().method() === 'GET') await new Promise((r) => setTimeout(r, HOLD_MS));
 		await route.continue().catch(() => undefined);
 	});
 	await page.reload({ waitUntil: 'commit' });
-	const full = page.locator('rc-load-overlay.full.on');
 	try {
 		await expect(full).toBeVisible({ timeout: 6000 });
 		boot.checks['first load'] = 'ok';

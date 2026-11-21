@@ -162,6 +162,41 @@ The console never makes a token or signs in for the owner. A browser sign-in for
 | Cloudflare › Domains (Registrations tab)    | Every site (zone) the token sees                                                                                                        | Not connected                                                                                                                 |
 | Cloudflare › DNS (Records tab)              | Every record in the edge slot's first domain                                                                                            | Not connected                                                                                                                 |
 
+### Screens drawn from live product reads
+
+Every other tab of the approved menu is drawn by one engine from the console API: a tab's answer is
+a view (tiles, facts, tables, notes, links and buttons), a chart, a form, or the changes being
+followed. Each screen names the platform it reads:
+
+| Platform     | Screens                                                                                                                                                                                                                                                                                                                                                                                   | Key                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| DigitalOcean | Droplet tabs (use, edit, monitor, back up, operate, history), Networking, Volumes, Backups and snapshots, Autoscale pools, Kubernetes, App Platform, Functions, Network file storage, Managed databases, Container registry, Images and Marketplace, Load balancers, DNS, Certificates, Monitoring and uptime, AI platform, VPC peering, Spaces, Secrets, Security posture, Cloud account | the read key; changes with the full-access key                      |
+| Cloudflare   | Accounts and domains, Domains, Build, Protect & connect, Zero Trust, Workers, Manage account, and every domain screen (Overview to Web3), Cache and CDN, Shopper experience                                                                                                                                                                                                               | the edge slot's token; a refused read names the permission it needs |
+| GitHub       | Pull request detail and checks, Pipelines start and failed run, Job logs, Approvals, Release steps, Release impact, Rollback, Release calendar, Rehearsal, Load test, Secrets › Write                                                                                                                                                                                                     | the repository's GitHub key or CLI sign-in                          |
+| This Mac     | Processes, Server patches and links, Terminal, older log lines, Network, Database and drift, Search index, Photos, Schedules, Switches, Drift, Issues, Incident room, Traces, Database monitor, Health failing, Uptime and journeys, Service goals, Dashboards, Payments, Who has access, Audit, Privacy requests                                                                         | none: the Mac helper's fixed, read-only tools                       |
+
+Rules every screen follows:
+
+- **Reads** are cached for 20 seconds per key in the API and 30 seconds in the app, so a screen opened
+  again shows its last answer at once and refreshes behind it. While a tab reads, the loading banner
+  holds its place; switching the product or the range keeps the last answer on screen with
+  "Refreshing…".
+- **Changes** go through a form: what is sent, what it costs (before anything is billed), the PIN, and
+  the product's name typed for one-way changes. The API records each change in the audit log and
+  follows it until the vendor reports it finished; the Creating and Operate tabs show each step.
+- **Refused by design**: removing the project's live domain, revoking the token the console uses,
+  emptying a bucket, opening SSH or the database ports to the internet, load-testing production,
+  and anything that makes a new key or token (that stays the owner's step on the vendor's page).
+- **Secrets** typed into a form (Secrets › Write) go to GitHub through the Mac helper on `gh`'s standard
+  input, are never kept, and the audit keeps the name only.
+
+The Mac helper's inspection routes (`/inspect/*`) run fixed commands only, on containers named
+`saha-textile-*` and databases named `saha_textile_*`: processes, container facts (environment names,
+never values), TCP connections, networks, a MongoDB report (every value in a query shape replaced by
+`?`), the profiler switch, Redis queues with failed jobs and schedules, Meilisearch, patches, the
+terminal's fixed commands (output masked like the logs) and a container restart. Passwords are read
+inside their own container.
+
 ### This Mac as an environment
 
 For an environment that runs on this computer, the console reads the Mac and Docker through the Mac helper. The helper runs its read-only tools without blocking and shares one reading of the Mac, Docker or the shop's health between requests that arrive within two seconds, so it answers at once even while `docker stats` is still running. These screens stand where a server's figures will stand once the server agent exists.
@@ -213,6 +248,10 @@ Inside its image the API also serves the app, on one address. On the Mac it is p
 | `GET /api/audit?project=`                                                                            | Who did what, newest first                                                                                                                                                                                                                                                                                                 |
 | `GET /api/projects/:p/repos/:r/github/pulls` and `…/github/runs`                                     | Pull requests and workflow runs                                                                                                                                                                                                                                                                                            |
 | `GET …/cloud/:slot/droplets` and `…/cloud/:slot/account`                                             | Droplets and the cloud account                                                                                                                                                                                                                                                                                             |
+| `GET /api/product-screens`                                                                           | Which screens are drawn from live product reads, with their tabs, forms and platform                                                                                                                                                                                                                                       |
+| `GET /api/projects/:p/repos/:r/products/:screen/tab/:tab?id=&range=`                                 | One tab's answer: view, chart or form                                                                                                                                                                                                                                                                                      |
+| `GET …/products/:screen/form/:form?id=`, `POST …/products/:screen/form/:form`                        | A form, and sending it with the PIN (`{ pin, confirm, id, values }`); answers the change being followed                                                                                                                                                                                                                    |
+| `GET …/products/:screen/jobs`                                                                        | The changes sent from that screen and their steps                                                                                                                                                                                                                                                                          |
 | `GET …/edge/:slot/zones` and `…/edge/:slot/zones/:zone/dns`                                          | Sites and DNS records                                                                                                                                                                                                                                                                                                      |
 | `GET /api/local/services?repo=`, `GET /api/local/readiness?repo=`                                    | The repository's containers on this computer; the shop API's readiness for the shop's own stack, `unknown` for others                                                                                                                                                                                                      |
 | `GET /api/local/helper`, `…/mac`, `…/docker`, `…/shop-health`                                        | Whether the Mac helper answers (and which dev servers run); the Mac's and Docker's figures; the shop API's readiness                                                                                                                                                                                                       |

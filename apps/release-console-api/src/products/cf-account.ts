@@ -979,16 +979,14 @@ export const cfAccountScreen: ProductScreen = {
 					table(
 						'Audit log (newest 50)',
 						[col('at', 'When', true), col('who', 'Who'), col('what', 'What'), col('on', 'On')],
-						(logs ?? [])
-							.slice(0, 50)
-							.map((l, i) =>
-								row(String(i), str(rec(l['action'])['type']), {
-									at: when(str(l['when'])),
-									who: str(rec(l['actor'])['email']) || str(rec(l['actor'])['type']),
-									what: str(rec(l['action'])['type']),
-									on: str(rec(l['resource'])['type']),
-								}),
-							),
+						(logs ?? []).slice(0, 50).map((l, i) =>
+							row(String(i), str(rec(l['action'])['type']), {
+								at: when(str(l['when'])),
+								who: str(rec(l['actor'])['email']) || str(rec(l['actor'])['type']),
+								what: str(rec(l['action'])['type']),
+								on: str(rec(l['resource'])['type']),
+							}),
+						),
 						'Audit log not readable with this key.',
 					),
 				],

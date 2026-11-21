@@ -55,6 +55,19 @@ import {
 	cfWeb3Screen,
 } from './cf-zone.js';
 
+import {
+	approvalsScreen,
+	calendarScreen,
+	impactScreen,
+	loadTestScreen,
+	logsScreen,
+	pipelineScreen,
+	pullsScreen,
+	rehearsalScreen,
+	rollbackScreen,
+	stepsScreen,
+} from './ship.js';
+
 /** Screen key (from the approved menu) → its live tabs and forms. */
 export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	droplets: dropletScreen,
@@ -105,4 +118,14 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	cfnetwork: cfNetworkScreen,
 	cftraffic: cfTrafficScreen,
 	cfweb3: cfWeb3Screen,
+	pulls: pullsScreen,
+	pipeline: pipelineScreen,
+	logs: logsScreen,
+	approvals: approvalsScreen,
+	steps: stepsScreen,
+	impact: impactScreen,
+	rollback: rollbackScreen,
+	calendar: calendarScreen,
+	rehearsal: rehearsalScreen,
+	loadtest: loadTestScreen,
 };

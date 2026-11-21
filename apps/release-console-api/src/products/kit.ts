@@ -42,6 +42,12 @@ export interface ProductCtx {
 	consoleKey(name: string): string | null;
 	/** This project's audit entries with this action, newest first (what the console changed before). */
 	recent(action: string): Array<{ at: string; detail: string }>;
+	/** Every audit entry with this action, any project (local jobs are not tied to one). */
+	recentAll(action: string): Array<{ at: string; detail: string }>;
+	/** The repository on its source-code platform (owner/name), for GitHub screens. */
+	repository: string;
+	/** The local stack's request log for the last minutes: per minute [time, p95 ms, error share, requests]. */
+	localRequests(minutes: number): Array<[number, number | null, number, number]>;
 }
 
 /** One step of a change the console follows after sending it. */
@@ -49,6 +55,8 @@ export interface Follow {
 	label: string;
 	/** Answers true when this step is done; throws VendorError when it failed. */
 	check(key: string): Promise<boolean>;
+	/** What the step found, shown under it once done (a load test stage's numbers). */
+	detail?: () => string;
 }
 
 export interface Sent {
@@ -69,7 +77,7 @@ export type Send = ProductFormSpec['send'];
 export type Write = ProductWrite;
 
 export interface ProductScreen {
-	vendor: 'digitalocean' | 'cloudflare';
+	vendor: 'digitalocean' | 'cloudflare' | 'github';
 	tabs: Record<string, (ctx: ProductCtx) => Promise<ProductTab>>;
 	forms?: Record<string, ProductFormSpec>;
 }
@@ -117,10 +125,10 @@ function vendorMessage(vendor: string, url: string, status: number, body: unknow
 }
 
 /** GET a vendor URL, cached for a few seconds per key. Throws VendorError with plain words. */
-export async function read(vendor: string, url: string, key: string): Promise<unknown> {
+export async function read(vendor: string, url: string, key: string, ttl = CACHE_MS): Promise<unknown> {
 	const k = `${keyTag(key)} ${url}`;
 	const hit = cache.get(k);
-	if (hit && Date.now() - hit.at < CACHE_MS) return hit.body;
+	if (hit && Date.now() - hit.at < ttl) return hit.body;
 	const body = getJson(url, key).then((a) => {
 		if (a.status >= 400) throw new VendorError(vendorMessage(vendor, url, a.status, a.body), a.status);
 		return a.body;

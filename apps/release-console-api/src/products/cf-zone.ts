@@ -252,22 +252,20 @@ async function auditHistory(ctx: ProductCtx, match?: RegExp) {
 			table(
 				'Changes Cloudflare recorded',
 				[col('at', 'When', true), col('who', 'Who'), col('what', 'What'), col('on', 'On'), col('ok', 'Result')],
-				mine
-					.slice(0, 100)
-					.map((l, i) =>
-						row(
-							String(i),
-							str(rec(l['action'])['type']),
-							{
-								at: when(str(l['when'])),
-								who: str(rec(l['actor'])['email']) || str(rec(l['actor'])['type']),
-								what: str(rec(l['action'])['type']),
-								on: str(rec(l['resource'])['type']),
-								ok: rec(l['action'])['result'] === true ? 'ok' : 'refused',
-							},
-							rec(l['action'])['result'] === true ? null : 'red',
-						),
+				mine.slice(0, 100).map((l, i) =>
+					row(
+						String(i),
+						str(rec(l['action'])['type']),
+						{
+							at: when(str(l['when'])),
+							who: str(rec(l['actor'])['email']) || str(rec(l['actor'])['type']),
+							what: str(rec(l['action'])['type']),
+							on: str(rec(l['resource'])['type']),
+							ok: rec(l['action'])['result'] === true ? 'ok' : 'refused',
+						},
+						rec(l['action'])['result'] === true ? null : 'red',
 					),
+				),
 				logs.length
 					? 'Nothing about this area.'
 					: 'The audit log is not readable with this key (it needs Account audit logs read).',

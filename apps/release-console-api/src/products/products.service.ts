@@ -15,6 +15,7 @@ import {
 import type { Follow, ProductCtx, ProductScreen } from './kit.js';
 import { PRODUCT_SCREENS } from './registry.js';
 import { KeySourceService } from '../keys/key-source.js';
+import { RequestLog } from '../local/request-log.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ConsoleStore } from '../store/console-store.js';
 import { VendorError } from '../vendors/http.js';
@@ -30,6 +31,7 @@ interface Running {
 const KEYS: Record<ProductScreen['vendor'], { read: KeyKind; change: KeyKind; name: string }> = {
 	digitalocean: { read: 'do-read', change: 'do-change', name: 'DigitalOcean' },
 	cloudflare: { read: 'cf-read', change: 'cf-change', name: 'Cloudflare' },
+	github: { read: 'github-token', change: 'github-token', name: 'GitHub' },
 };
 const STEP_EVERY_MS = 3000;
 const GIVE_UP_MS = 30 * 60_000;
@@ -46,6 +48,7 @@ export class ProductsService {
 		private readonly projects: ProjectsService,
 		private readonly store: ConsoleStore,
 		private readonly keyFile: KeySourceService,
+		private readonly requests: RequestLog,
 	) {}
 
 	/** Screens this console draws from live product reads, with their tabs and forms. */
@@ -95,7 +98,7 @@ export class ProductsService {
 				state: 'not-connected',
 				message: `${readRef.label} has no value in the console's key file. Add ${readRef.envNames.join(' + ')} in Infisical (${CONSOLE_KEYS_FOLDER}), then run pnpm console:env.`,
 			};
-		const changeRef = refs.find((k) => k.kind === want.change);
+		const changeRef = s.vendor === 'github' ? readRef : refs.find((k) => k.kind === want.change);
 		return {
 			state: 'ok',
 			readAt: new Date().toISOString(),
@@ -109,6 +112,9 @@ export class ProductsService {
 				keyRefs: project.keys,
 				consoleKey: (name: string) => this.keyFile.get(name) ?? null,
 				recent: (action: string) => this.store.auditEntries(p, 500).filter((e) => e.action === action),
+				recentAll: (action: string) => this.store.auditEntries(null, 500).filter((e) => e.action === action),
+				repository: repo.sourceCode.repository,
+				localRequests: (minutes: number) => this.requests.view(minutes).series,
 				writeKey: async () => {
 					const v = changeRef ? await this.projects.valueOf(changeRef) : null;
 					if (!v)
@@ -227,6 +233,7 @@ export class ProductsService {
 					await new Promise((res) => setTimeout(res, STEP_EVERY_MS));
 				}
 				step.state = 'done';
+				step.detail = f.detail?.() ?? step.detail;
 			} catch (err) {
 				step.state = 'failed';
 				step.detail = err instanceof VendorError ? err.message : (err as Error).message;

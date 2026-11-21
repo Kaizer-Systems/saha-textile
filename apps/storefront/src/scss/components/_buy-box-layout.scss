@@ -10,7 +10,9 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 8px 12px;
+	// 8 px between items and 34 px icons, so a sale price (MRP and % off on the first line) still leaves the tax
+	// note, the stock chip and the icons one line between them on a 1366 px laptop.
+	gap: 8px;
 
 	.product-section .right-box-contain & .price-rating {
 		margin: 0;
@@ -27,14 +29,14 @@
 
 	.wishlist-btn-group {
 		display: flex;
-		gap: 6px;
+		gap: 4px;
 		margin-left: auto;
 
 		.wishlist-button {
 			display: grid;
 			place-items: center;
-			width: 36px;
-			height: 36px;
+			width: 34px;
+			height: 34px;
 			padding: 0;
 			border: 1px solid var(--st-border);
 			border-radius: 50%;

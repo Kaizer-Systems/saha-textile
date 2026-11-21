@@ -14,7 +14,6 @@ import {
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { loaderArt } from './loader-art';
-import { LoadMarks } from '../loading';
 
 import type { Query } from '@tanstack/angular-query-experimental';
 
@@ -73,17 +72,30 @@ export const SLOW_AFTER_S = 8;
 export const OFFER_AFTER_S = 10;
 /** A refetch with data on screen shows the refresh light only when it takes longer than this. */
 const REFRESH_AFTER_MS = 300;
+/**
+ * A screen that refreshes itself every few seconds shows the light only when one of those reads is
+ * slow, so a live screen never flickers but a lagging one says so.
+ */
+const POLL_REFRESH_AFTER_MS = 1500;
 
 const watched = (q: Query) => q.getObserversCount() > 0 && q.state.fetchStatus === 'fetching';
-/** Polling reads (a running job, live charts) refresh every few seconds; they never light the bar. */
+/** Polling reads (a running job, live charts) refresh every few seconds. */
 interface Observed {
 	observers: Array<{ options: { refetchInterval?: unknown }; getCurrentResult(): { isPlaceholderData: boolean } }>;
 }
 const observersOf = (q: Query) => (q as unknown as Observed).observers;
 const polling = (q: Query) => observersOf(q).some((o) => !!o.options.refetchInterval);
-/** Another product or range of the same tab: the last answer stays on screen while it reads. */
-const showsLast = (q: Query) =>
-	q.state.data !== undefined || observersOf(q).some((o) => o.getCurrentResult().isPlaceholderData);
+/**
+ * A first read: nothing on screen yet for it. A read whose answer (or failure) is already on screen,
+ * or another product or range of the same tab showing the last answer, is a refresh instead, so a
+ * screen retrying after a failure keeps its banner visible.
+ */
+const firstRead = (q: Query) =>
+	q.state.status === 'pending' &&
+	// A refresh of a read that already answered or failed resets it to pending; it is not a first read.
+	q.state.dataUpdateCount === 0 &&
+	q.state.errorUpdateCount === 0 &&
+	!observersOf(q).some((o) => o.getCurrentResult().isPlaceholderData);
 
 /**
  * The console's loader over the content area (brief N5kmX6DLJv1ECitVUPFHJ8, approved 21 Nov):
@@ -103,6 +115,7 @@ const showsLast = (q: Query) =>
 		'[class.full]': 'full()',
 		'[class.slow]': 'slow()',
 		'[class.refreshing]': 'refreshing()',
+		'[attr.data-loader]': 'loader()',
 	},
 	template: `
 		@if (phase() === 'shown' || phase() === 'out') {
@@ -155,7 +168,6 @@ const showsLast = (q: Query) =>
 })
 export class LoadOverlay {
 	private readonly client = inject(QueryClient);
-	private readonly marks = inject(LoadMarks);
 	/** Which drawing (loader-art.ts). */
 	readonly loader = input('reactor');
 	/** Who is being read: DigitalOcean, Cloudflare, GitHub, this Mac, the console. */
@@ -172,6 +184,7 @@ export class LoadOverlay {
 	protected readonly phase = signal<Phase>('hidden');
 	private readonly firstReads = signal(0);
 	private readonly refetching = signal(0);
+	private readonly polled = signal(0);
 	protected readonly refreshing = signal(false);
 	private readonly startedAt = signal(0);
 	private readonly now = signal(Date.now());
@@ -180,9 +193,7 @@ export class LoadOverlay {
 	protected readonly whole = computed(() => Math.floor(this.elapsed()));
 	protected readonly slow = computed(() => this.phase() === 'shown' && this.elapsed() >= SLOW_AFTER_S);
 	protected readonly offer = computed(() => this.slow() && this.elapsed() >= OFFER_AFTER_S && !this.kept());
-	private readonly wanted = computed(
-		() => this.enabled() && (this.active() ?? (this.firstReads() > 0 || this.marks.open() > 0)),
-	);
+	private readonly wanted = computed(() => this.enabled() && (this.active() ?? this.firstReads() > 0));
 
 	private timer: ReturnType<typeof setTimeout> | null = null;
 	private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -191,8 +202,9 @@ export class LoadOverlay {
 	constructor() {
 		const count = () => {
 			const all = this.client.getQueryCache().getAll().filter(watched);
-			this.firstReads.set(all.filter((q) => !showsLast(q)).length);
-			this.refetching.set(all.filter((q) => showsLast(q) && !polling(q)).length);
+			this.firstReads.set(all.filter(firstRead).length);
+			this.refetching.set(all.filter((q) => !firstRead(q) && !polling(q)).length);
+			this.polled.set(all.filter((q) => !firstRead(q) && polling(q)).length);
 		};
 		count();
 		const stop = this.client.getQueryCache().subscribe(() => queueMicrotask(count));
@@ -210,12 +222,19 @@ export class LoadOverlay {
 			untracked(() => this.step(want));
 		});
 		effect(() => {
-			const busy = this.refetching() > 0 && this.phase() === 'hidden';
+			const hidden = this.phase() === 'hidden';
+			const after = !hidden
+				? null
+				: this.refetching() > 0
+					? REFRESH_AFTER_MS
+					: this.polled() > 0
+						? POLL_REFRESH_AFTER_MS
+						: null;
 			untracked(() => {
 				if (this.refreshTimer) clearTimeout(this.refreshTimer);
 				this.refreshTimer = null;
-				if (!busy) this.refreshing.set(false);
-				else this.refreshTimer = setTimeout(() => this.refreshing.set(true), REFRESH_AFTER_MS);
+				if (after === null) this.refreshing.set(false);
+				else this.refreshTimer = setTimeout(() => this.refreshing.set(true), after);
 			});
 		});
 	}

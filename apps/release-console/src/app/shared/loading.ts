@@ -1,13 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, Injectable, inject, input, signal } from '@angular/core';
-
-/**
- * How many screens are reading right now by their own means (not through the query cache): every
- * rendered loading marker counts, so the content area's loader covers those reads too.
- */
-@Injectable({ providedIn: 'root' })
-export class LoadMarks {
-	readonly open = signal(0);
-}
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * What a screen shows while it reads (owner, 21 Nov: a screen must never sit blank while data
@@ -38,11 +29,6 @@ export class LoadMarks {
 	`,
 })
 export class Loading {
-	constructor() {
-		const marks = inject(LoadMarks);
-		marks.open.update((n) => n + 1);
-		inject(DestroyRef).onDestroy(() => marks.open.update((n) => Math.max(0, n - 1)));
-	}
 	readonly what = input.required<string>();
 	readonly detail = input('');
 }

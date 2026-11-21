@@ -39,6 +39,7 @@
     "e2e": "playwright test",
     "e2e:stack": "node e2e/stack/run.mjs",
     "e2e:console": "playwright test -c apps/release-console/playwright.config.ts",
+    "e2e:console:loaders": "CONSOLE_E2E_LOADERS=1 playwright test -c apps/release-console/playwright.config.ts",
     "e2e:session-rotation": "turbo run build --filter=@saha-textile/api && pnpm --filter @saha-textile/api e2e:session-rotation",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

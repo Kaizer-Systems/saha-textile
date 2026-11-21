@@ -141,6 +141,7 @@ test('the wizard adds a project with a GitHub repository and lands on its Connec
 	await page.getByRole('checkbox', { name: /Search engines/ }).click();
 	await page.getByRole('checkbox', { name: /Client versions/ }).click();
 	await page.getByRole('checkbox', { name: /Messages/ }).click();
+	await page.getByRole('checkbox', { name: /Payments/ }).click();
 	await next.click();
 	await expect(page.getByRole('heading', { name: /Add a project · Done/i })).toBeVisible();
 	await page.getByRole('button', { name: 'Add project', exact: true }).click();

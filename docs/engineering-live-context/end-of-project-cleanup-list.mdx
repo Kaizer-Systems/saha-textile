@@ -95,10 +95,10 @@ Each line names the files, what replaced the piece, and what the removal also to
 
 ## Release Console loaders
 
-| #   | Piece                                                          | Files                                                                                  | Replaced by                                                                                             | The removal also touches                                                               |
-| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| RC1 | The small "Reading…" banner, now words for screen readers only | `apps/release-console/src/app/shared/loading.ts` (the `rc-loading` host's banner look) | The content area's loader `rc-load-overlay` (loader brief N5kmX6DLJv1ECitVUPFHJ8, approved 21 Nov 2026) | Its 12 callers and `LoadMarks`, which the overlay counts; keep the screen-reader words |
-| RC2 | The banner style the old marker used for loading               | `.rc-banner.cy.small` with `.rc-chk.run` where only loading used it                    | The same overlay                                                                                        | Other banners still use `.rc-banner`                                                   |
+| #   | Piece                                                          | Files                                                                                  | Replaced by                                                                                             | The removal also touches                     |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| RC1 | The small "Reading…" banner, now words for screen readers only | `apps/release-console/src/app/shared/loading.ts` (the `rc-loading` host's banner look) | The content area's loader `rc-load-overlay` (loader brief N5kmX6DLJv1ECitVUPFHJ8, approved 21 Nov 2026) | Its 12 callers; keep the screen-reader words |
+| RC2 | The banner style the old marker used for loading               | `.rc-banner.cy.small` with `.rc-chk.run` where only loading used it                    | The same overlay                                                                                        | Other banners still use `.rc-banner`         |
 
 ## Decided, so not on this list (2026-11-16)
 

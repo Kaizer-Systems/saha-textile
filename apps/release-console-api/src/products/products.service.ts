@@ -55,11 +55,11 @@ export class ProductsService {
 	) {}
 
 	/** Screens this console draws from live product reads, with their tabs and forms. */
-	catalogue(): Record<string, { tabs: string[]; forms: string[] }> {
+	catalogue(): Record<string, { tabs: string[]; forms: string[]; vendor: ProductScreen['vendor'] }> {
 		return Object.fromEntries(
 			Object.entries(PRODUCT_SCREENS).map(([k, s]) => [
 				k,
-				{ tabs: Object.keys(s.tabs), forms: Object.keys(s.forms ?? {}) },
+				{ tabs: Object.keys(s.tabs), forms: Object.keys(s.forms ?? {}), vendor: s.vendor },
 			]),
 		);
 	}

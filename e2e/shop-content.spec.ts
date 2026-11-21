@@ -62,11 +62,18 @@ test.describe.serial('Compound photos', () => {
 		try {
 			await page.goto(`/en/product/${slug}?variant=BAN-1-90001`);
 			await page.waitForLoadState('networkidle');
-			const thumbs = page.locator('.bottom-slider-image .owl-item:not(.cloned)');
-			await expect(thumbs).toHaveCount(gallery.length);
+			// The photos under the main one: a plain row for up to five, the slider for more, none for a single photo
+			// (product page brief P2, 21 Nov 2026). The main slider holds the same photos.
+			const thumbs = page.locator(
+				'.bottom-slider-image .st-thumb-row > li, .bottom-slider-image .owl-item:not(.cloned)',
+			);
+			const photos = page.locator('.product-main-1 .owl-item:not(.cloned)');
+			await expect(photos).toHaveCount(gallery.length);
+			await expect(thumbs).toHaveCount(gallery.length > 1 ? gallery.length : 0);
 			await page.locator('ul.select-package.color li button').nth(1).click();
 			await expect(page.locator('app-buy-box tr.active')).toContainText('Green');
-			await expect(thumbs).toHaveCount(1);
+			await expect(photos).toHaveCount(1);
+			await expect(thumbs).toHaveCount(0);
 		} finally {
 			await withDatabase((db) => db.collection('products').replaceOne({ slug }, original as never));
 		}

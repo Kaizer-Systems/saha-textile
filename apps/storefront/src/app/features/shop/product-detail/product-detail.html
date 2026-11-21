@@ -103,8 +103,10 @@
 <app-product-blogs [product]="product" />
 
 <!-- Sticky Cart Box -->
-<!-- The buy bar now lives in the buy box (brief P4), so it shares the page's choices. -->
-} @else if (loading()) {
+<!-- The buy bar (brief P4): the buy box's own choices and buttons, fixed to the bottom when the page shows it. -->
+@if (buyBox(); as box) {
+<app-buy-bar [host]="box" />
+} } @else if (loading()) {
 <!-- min-vh-100 holds the footer below the fold, so it does not jump when the product lands. -->
 <section
 	class="product-section min-vh-100"

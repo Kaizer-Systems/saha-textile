@@ -1,7 +1,7 @@
 <div
 	class="sticky-bottom-cart st-buy-bar"
-	[class.is-soldout]="host.soldOut()"
-	[class.is-metre]="!!host.rule()"
+	[class.is-soldout]="host().soldOut()"
+	[class.is-metre]="!!host().rule()"
 >
 	<div class="container-fluid-lg">
 		<div class="st-bar">
@@ -15,12 +15,12 @@
 					loading="lazy"
 				/>
 				<div class="st-bar-text">
-					<p class="st-bar-name">{{ host.product().name }}</p>
+					<p class="st-bar-name">{{ host().product().name }}</p>
 					<p class="st-bar-price">
-						<span class="theme-color">{{ host.displayPrice() | currencySymbol }}</span>
-						@if (host.discount()) {
-						<del>{{ host.comparePrice() | currencySymbol }}</del>
-						<span class="st-bar-off">{{ host.discount() }}% {{ 'off' | transloco }}</span>
+						<span class="theme-color">{{ host().displayPrice() | currencySymbol }}</span>
+						@if (host().discount()) {
+						<del>{{ host().comparePrice() | currencySymbol }}</del>
+						<span class="st-bar-off">{{ host().discount() }}% {{ 'off' | transloco }}</span>
 						}
 					</p>
 				</div>
@@ -33,7 +33,7 @@
 							[class]="'btn qty-left-minus'"
 							[id]="'bar-qty-minus'"
 							[spinner]="false"
-							(click)="host.updateQuantity(-1)"
+							(click)="host().updateQuantity(-1)"
 							[ariaLabel]="'decrease_quantity' | transloco"
 						>
 							<i class="ri-subtract-fill"></i>
@@ -42,26 +42,26 @@
 							class="form-control input-number qty-input"
 							type="text"
 							readonly
-							[value]="host.rule() ? host.lengthOf(host.length()) : host.productQty"
-							[attr.aria-label]="(host.rule() ? 'length' : 'quantity') | transloco"
+							[value]="host().rule() ? host().lengthOf(host().length()) : host().productQty"
+							[attr.aria-label]="(host().rule() ? 'length' : 'quantity') | transloco"
 						/>
 						<app-button
 							[class]="'btn qty-left-minus'"
 							[id]="'bar-qty-plus'"
 							[spinner]="false"
-							(click)="host.updateQuantity(1)"
+							(click)="host().updateQuantity(1)"
 							[ariaLabel]="'increase_quantity' | transloco"
 						>
 							<i class="ri-add-line"></i>
 						</app-button>
 					</div>
 				</div>
-				@if (host.soldOut()) {
+				@if (host().soldOut()) {
 				<app-button
 					[id]="'bar-notify'"
 					[class]="'btn btn-md border-theme-color'"
 					[spinner]="false"
-					(click)="host.notify()"
+					(click)="host().notify()"
 				>
 					{{ 'notify_me' | transloco }}
 				</app-button>
@@ -69,8 +69,8 @@
 				<app-button
 					[id]="'bar-add'"
 					[class]="'btn btn-md border-theme-color'"
-					[disabled]="!host.purchasable()"
-					(click)="host.purchasable() && host.addToCart()"
+					[disabled]="!host().purchasable()"
+					(click)="host().purchasable() && host().addToCart()"
 				>
 					<i class="ri-shopping-cart-line me-1"></i>
 					{{ 'add_to_cart' | transloco }}
@@ -78,8 +78,8 @@
 				<app-button
 					[id]="'bar-buy'"
 					[class]="'btn btn-md bg-theme'"
-					[disabled]="!host.purchasable()"
-					(click)="host.purchasable() && host.buyNow()"
+					[disabled]="!host().purchasable()"
+					(click)="host().purchasable() && host().buyNow()"
 				>
 					<i class="ri-flashlight-fill me-1"></i>
 					{{ 'buy_now' | transloco }}

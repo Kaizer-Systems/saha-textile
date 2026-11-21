@@ -6,7 +6,6 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BuyBar } from './buy-bar';
-import { BUY_BAR_HOST } from './buy-bar-host';
 
 const host = (overrides: Record<string, unknown> = {}) => ({
 	product: signal({ name: 'Royal Blue Suit', product_thumbnail: { original_url: 'thumb.webp' } }),
@@ -31,9 +30,10 @@ const draw = (stub: ReturnType<typeof host>) => {
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		imports: [BuyBar, TranslocoTestingModule.forRoot({ langs: { en: {} } })],
-		providers: [CurrencyPipe, { provide: BUY_BAR_HOST, useValue: stub }],
+		providers: [CurrencyPipe],
 	});
 	const fixture = TestBed.createComponent(BuyBar);
+	fixture.componentRef.setInput('host', stub);
 	fixture.detectChanges();
 	return { el: fixture.nativeElement as HTMLElement, bar: fixture.componentInstance };
 };

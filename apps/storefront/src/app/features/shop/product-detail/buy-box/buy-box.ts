@@ -25,8 +25,6 @@ import { LOW_STOCK_AT, VariationTable } from '@shared/ui/product-config/parts/va
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
 
 import { environment } from '../../../../../../public/environments/environment';
-import { BuyBar } from '../buy-bar/buy-bar';
-import { BUY_BAR_HOST } from '../buy-bar/buy-bar-host';
 import { ProductSocialShare } from '../widgets/product-social-share/product-social-share';
 import { SaleTimer } from '../widgets/sale-timer/sale-timer';
 
@@ -40,9 +38,8 @@ import { SaleTimer } from '../widgets/sale-timer/sale-timer';
 	selector: 'app-buy-box',
 	templateUrl: './buy-box.html',
 	styleUrls: ['./buy-box.scss'],
-	providers: [CurrencySymbolPipe, { provide: BUY_BAR_HOST, useExisting: BuyBox }],
+	providers: [CurrencySymbolPipe],
 	imports: [
-		BuyBar,
 		NgbRating,
 		NgbTooltip,
 		NgbPopover,

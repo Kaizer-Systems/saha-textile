@@ -48,6 +48,7 @@ import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 import { isoDuration, posterFor, watchUrl } from '@shared/ui/video/video-links';
 
+import { BuyBar } from './buy-bar/buy-bar';
 import { BuyBox } from './buy-box/buy-box';
 import { ProductBlogs } from './product-blogs/product-blogs';
 import { ProductGallery } from './product-gallery/product-gallery';
@@ -90,6 +91,7 @@ const uniqueCards = (cards: IProduct[]): IProduct[] =>
 		Breadcrumb,
 		ProductGallery,
 		BuyBox,
+		BuyBar,
 		ProductAction,
 		ProductInformation,
 		ProductDeliveryInformation,
@@ -171,6 +173,8 @@ export class ProductDetail {
 	readonly leadSrcset = computed(() => roleSrcset(this.product()?.product_thumbnail?.image, 'gallery'));
 
 	private readonly galleryRef = viewChild(ProductGallery);
+	/** The buy box, whose state and buttons the buy bar uses (brief P4). */
+	readonly buyBox = viewChild(BuyBox);
 	readonly owlCar = computed(() => this.galleryRef()?.carousel());
 
 	public isBrowser: boolean;

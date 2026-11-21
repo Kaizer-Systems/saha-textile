@@ -1,4 +1,4 @@
-import { InjectionToken, type Signal } from '@angular/core';
+import type { Signal } from '@angular/core';
 
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
@@ -21,5 +21,3 @@ export interface BuyBarHost {
 	buyNow(): void;
 	notify(): void;
 }
-
-export const BUY_BAR_HOST = new InjectionToken<BuyBarHost>('BUY_BAR_HOST');

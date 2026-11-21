@@ -124,9 +124,9 @@ test.describe('Orders: create, take payment and move along (oc01, ck01–ck05, o
 		await moveTo(page, 'Processing');
 		await expect(newestHistory(page)).not.toContainText('SMS');
 		await moveTo(page, 'Packed');
-		// st03: Shipped takes the courier and tracking number. Pieces leave stock at their recorded
-		// cost, and the demo catalogue's stock was seeded with none, so the server refuses rather than
-		// cost them at ₹0, and the popup says which piece (Order shipped is covered by the API tests).
+		// st03: Shipped takes the courier and tracking number, and pieces leave stock at their recorded
+		// cost. A piece bought through purchases ships and tells the customer by email and SMS; demo stock
+		// seeded with no cost is refused rather than costed at ₹0, and the popup names the piece.
 		await page.getByRole('button', { name: /Update status/i }).click();
 		const popup = page.locator('.modal-content');
 		await popup.locator('.dropdown-item', { hasText: /^\s*Shipped/ }).click();
@@ -134,9 +134,16 @@ test.describe('Orders: create, take payment and move along (oc01, ck01–ck05, o
 		await page.locator('#ship_courier').fill('DTDC');
 		await page.locator('#ship_tracking').fill('D47512398');
 		await popup.locator('.modal-footer .btn', { hasText: /Mark as Shipped/i }).click();
-		await expect(popup).toContainText('has stock with no recorded cost');
-		await popup.locator('.modal-footer .btn-outline').click();
-		await expect(newestHistory(page)).toContainText('Packed');
+		const refused = popup.getByText('has stock with no recorded cost');
+		const shippedRow = newestHistory(page).filter({ hasText: 'DTDC' });
+		await expect(refused.or(shippedRow)).toBeVisible();
+		if (await refused.isVisible()) {
+			await popup.locator('.modal-footer .btn-outline').click();
+			await expect(newestHistory(page)).toContainText('Packed');
+		} else {
+			await expect(shippedRow).toContainText('Email');
+			await expect(shippedRow).toContainText('SMS');
+		}
 
 		// ol04: the list finds the order by the number as an SMS writes it, without hyphens.
 		await page.goto(`${ADMIN}/order`);

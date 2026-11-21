@@ -148,6 +148,54 @@ describe('pageToProduct', () => {
 		}
 	});
 
+	it('gives each set piece its photo, page and group, and keeps the groups', () => {
+		const card = { roles: { card: [{ url: 'piece-400.webp', width: 400 }] } };
+		const set = pageToProduct({
+			...page,
+			bundle: {
+				bundleType: 'choose_one_per_group',
+				pricePolicy: 'fixed_bundle_price',
+				priceINR: 7300,
+				groups: [
+					{
+						code: 'saree',
+						label: 'Saree',
+						minSelections: 1,
+						maxSelections: 1,
+						components: [
+							{
+								productId: 'p1',
+								slug: 'peacock',
+								title: 'Peacock',
+								sku: 'P1',
+								sellingINR: 5000,
+								quantity: 1,
+								required: true,
+								inStock: true,
+								image: card,
+							},
+							{
+								productId: 'p2',
+								slug: 'arni',
+								title: 'Arni',
+								sku: 'P2',
+								sellingINR: 4000,
+								quantity: 1,
+								required: false,
+								inStock: false,
+							},
+						],
+					},
+				],
+			},
+		} as never);
+		expect(set.bundle?.components.map((piece) => [piece.image, piece.slug, piece.required, piece.group])).toEqual([
+			['piece-400.webp', 'peacock', true, 'saree'],
+			[undefined, 'arni', false, 'saree'],
+		]);
+		expect(set.bundle?.groups).toEqual([{ code: 'saree', label: 'Saree', min: 1, max: 1 }]);
+	});
+
 	it('opens on the SKU the server selected and keeps the real string id', () => {
 		expect(product.id).toBe('prd_931');
 		expect(product.sku).toBe('KPS-2');

@@ -164,6 +164,8 @@ export interface ApiProductPage {
 				quantity: number;
 				required: boolean;
 				inStock: boolean;
+				/** The piece's own main photo; older API builds leave it out. */
+				image?: ApiImage | null;
 			}>;
 		}>;
 	} | null;
@@ -460,8 +462,19 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 						consumes: '1 unit',
 						stock_status: component.inStock ? 'in_stock' : 'out_of_stock',
 						price: component.sellingINR,
+						// The piece's own photo, page and group, for the set's piece rows (brief P8).
+						...(component.image ? { image: cardUrl(component.image) || undefined } : {}),
+						slug: component.slug,
+						required: component.required,
+						group: group.code,
 					})),
 				),
+				groups: page.bundle.groups.map((group) => ({
+					code: group.code,
+					label: group.label,
+					min: group.minSelections,
+					max: group.maxSelections,
+				})),
 				option_groups: page.optionGroups
 					.filter((group) => group.role === 'bundle_component_option')
 					.map((group) => ({

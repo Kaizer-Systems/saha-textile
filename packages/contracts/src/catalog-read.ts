@@ -288,6 +288,8 @@ export const CatalogPageBundle = z.object({
 					quantity: z.number().int().positive(),
 					required: z.boolean(),
 					inStock: z.boolean(),
+					/** The piece's own main photo (card size), for the set's piece rows; null when it has none. */
+					image: ResolvedImage.nullable().default(null),
 				}),
 			),
 		}),

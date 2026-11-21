@@ -108,6 +108,12 @@ export interface IBundleComponent {
 	price: number; // INR contribution shown in the snapshot
 	attributes?: ISemanticAttribute[]; // descriptive (Color/Fabric …)
 	requires_measurements?: boolean;
+	/** The piece's own page, for the link in its row. */
+	slug?: string;
+	/** False for an optional extra. */
+	required?: boolean;
+	/** The group the piece belongs to (choose one per group). */
+	group?: string;
 }
 
 /** One choice inside a bundle option group. */
@@ -172,6 +178,8 @@ export interface IBundle {
 	price_policy: 'sum-components' | 'fixed-bundle-price' | 'discounted-components';
 	bundle_price: number; // INR total shown
 	components: IBundleComponent[];
+	/** The set's groups: for "choose one per group" sets, how many pieces of each may be chosen. */
+	groups?: { code: string; label: string; min: number; max: number }[];
 	option_groups: IBundleOptionGroup[];
 	measurement_fields?: IMeasurementField[];
 	note?: string;

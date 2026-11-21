@@ -694,6 +694,8 @@ describe('bundles', () => {
 		expect(page.bundle).toMatchObject({ priceINR: 2000 });
 		expect(page.bundle?.groups[0]).toMatchObject({ maxSelections: 1 });
 		expect(page.bundle?.groups[0]?.components[0]).toMatchObject({ sku: 'V1', sellingINR: 1000, inStock: true });
+		// Each piece carries its own main photo, or null without one (brief P8).
+		expect(page.bundle?.groups[0]?.components[0]).toHaveProperty('image');
 	});
 
 	it('uses the fixed price, or the sum when none is set', async () => {

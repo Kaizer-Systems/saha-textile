@@ -413,6 +413,9 @@ export class CatalogPublicService {
 						const rows = await this.variants.listForProduct(target.id, 'public');
 						const read = productReadModel(target, rows);
 						const chosen = read.selected ? pricedRow(read.selected, read.madeToOrder) : null;
+						// The piece's own main photo, so a set's rows show each piece (brief P8).
+						const primary = productGallery(target)[0];
+						const photo = primary ? (await this.assetsFor([primary])).get(primary) : undefined;
 						return {
 							productId: target.id,
 							slug: target.slug,
@@ -422,6 +425,7 @@ export class CatalogPublicService {
 							quantity: component.quantity,
 							required: component.required,
 							inStock: read.sellable > 0 || read.madeToOrder,
+							image: primary ? this.image(photo, ['card'], target.media.versions?.[primary]) : null,
 						};
 					}),
 				);

@@ -138,7 +138,8 @@ test.describe('Product builder', () => {
 		await page.locator('#sort_description').fill('A short description.');
 		await tab(page, 'Inventory').click();
 		await page.locator('#sku').fill(sku);
-		await page.locator('#quantity').fill('7');
+		// Stock is never typed on the product (purchases brief F01): it arrives through opening stock or purchases.
+		await expect(page.locator('#quantity')).toHaveCount(0);
 		await page.locator('#price').fill('4500');
 		await page.getByRole('button', { name: /save product/i }).click();
 		await expect(page).toHaveURL(/\/product$/);
@@ -151,7 +152,7 @@ test.describe('Product builder', () => {
 		const row = await withDatabase(async (db) =>
 			db.collection('productVariants').findOne({ productId: (await stored())?._id as never }),
 		);
-		expect(row).toMatchObject({ priceINR: 4500, stock: { quantity: 7 } });
+		expect(row).toMatchObject({ priceINR: 4500, stock: { quantity: 0 } });
 	});
 
 	test('Go Live refuses and lists every gap, in the toast and on the form', async ({ page }) => {

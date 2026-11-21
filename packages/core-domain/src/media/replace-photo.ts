@@ -271,6 +271,12 @@ export const replaceMediaAsset = async (
 		next.by,
 	);
 	if (leaving.length) await deps.emailPictures?.keep(leaving);
+	// A new original: each swatch cut of the photo is cut again at its own square (owner, 21 Nov 2026, brief P11).
+	if (next.reason === 'replace') {
+		for (const cut of (await deps.cuts?.findCutsOf(asset.id)) ?? []) {
+			await deps.queue.enqueue({ type: 'cut', assetId: cut.id });
+		}
+	}
 	return { status: 'ready', rendered: rendered.added.length, skipped: rendered.skipped };
 };
 

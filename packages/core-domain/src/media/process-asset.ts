@@ -5,7 +5,7 @@ import type { EmailPictureRepository } from '../ports/email-picture.repository';
 import type { ImageCodecPort, ImageProbe } from '../ports/image-codec.port';
 import { ImageDecodeError } from '../ports/image-codec.port';
 import type { MediaJobQueuePort } from '../ports/media-job-queue.port';
-import type { MediaAssetRepository } from '../ports/media.repository';
+import type { MediaCutRepository, MediaAssetRepository } from '../ports/media.repository';
 import type { MediaProfileRepository } from '../ports/media-profile.repository';
 import type { MediaRoleRepository } from '../ports/media-role.repository';
 import type { StoragePort } from '../ports/storage.port';
@@ -30,6 +30,8 @@ export interface ProcessMediaAssetDeps {
 	brandColour?: () => Promise<string | null>;
 	/** Email pictures a Replace or a new name leaves behind are recorded for Clean up, never deleted (R6-1). */
 	emailPictures?: Pick<EmailPictureRepository, 'keep'>;
+	/** A photo's swatch cuts (brief P11): a Replace with a new original has each one cut again. */
+	cuts?: MediaCutRepository;
 }
 
 export type ProcessOutcome =

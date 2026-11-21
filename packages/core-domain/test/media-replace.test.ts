@@ -1,5 +1,5 @@
 import type { ImageDerivative, MediaAsset, MediaReplacement, MediaVersion } from '@saha-textile/contracts';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	KEEP_REPLACED_DAYS,
@@ -225,6 +225,22 @@ describe('the worker’s Replace (S7, C08)', () => {
 			},
 		]);
 		expect(run.jobs).toEqual([]);
+	});
+
+	it('has the photo’s swatch cuts cut again from the new original (brief P11), and only for a new original', async () => {
+		const run = harness(photo({ replacing: queued() }));
+		const findCutsOf = vi.fn(async () => [{ id: 'med_c1' }, { id: 'med_c2' }] as never);
+		await replaceMediaAsset({ ...run.deps, cuts: { findCutsOf } }, { assetId: 'med_r' });
+		expect(findCutsOf).toHaveBeenCalledWith('med_r');
+		expect(run.jobs).toEqual(
+			expect.arrayContaining([
+				{ type: 'cut', assetId: 'med_c1' },
+				{ type: 'cut', assetId: 'med_c2' },
+			]),
+		);
+		const plain = harness(photo({ replacing: queued() }));
+		await replaceMediaAsset(plain.deps, { assetId: 'med_r' });
+		expect(plain.jobs.some((job) => job.type === 'cut')).toBe(false);
 	});
 
 	it('a new photo that can’t make a version stops the whole Replace; the old photo stays and the new files go', async () => {

@@ -126,6 +126,8 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		// An icon's Brand colour fill: the Brand Kit's theme colour.
 		brandColour: async () => (await settings.get('brand'))?.themeColor ?? null,
 		emailPictures,
+		// A Replace has the photo's swatch cuts cut again (brief P11).
+		cuts: assets,
 	};
 	// The worker reads Settings › Languages too: search documents carry every added language.
 	const languages = new LanguageStore(new MongoLanguageRepository(), config);

@@ -16,7 +16,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { testDatabaseUri } from './secrets/test-login.mjs';
+import { localMongoTarget, testDatabaseUri } from './secrets/test-login.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const METRICS = ['statements', 'branches', 'functions', 'lines'];
@@ -80,24 +80,21 @@ function measure(name, { dir, angular, mongo }) {
 		'--coverage.reporter=json',
 		`--coverage.reportsDirectory=${report}`,
 	];
+	// Where the suite's MongoDB is: CI's environment, else this Mac's apps/api/.env (port 27018).
+	const target = mongo ? localMongoTarget('saha_textile_it') : null;
 	const env = {
 		...process.env,
-		...(mongo
+		...(target
 			? {
 					RUN_DB_IT: '1',
-					MONGODB_HOST: process.env.MONGODB_HOST || '127.0.0.1',
+					MONGODB_HOST: target.host || '127.0.0.1',
 					MONGODB_DB_NAME: 'saha_textile_it',
 					// The shop's own database login (apps/api/.env) reaches only its own database. The suite's
 					// databases are reached with this Mac's test login, when there is one.
-					MONGODB_URI: testDatabaseUri({
-						host: process.env.MONGODB_HOST,
-						port: process.env.MONGODB_PORT,
-						replicaSet: process.env.MONGODB_REPLICA_SET,
-						database: 'saha_textile_it',
-					}),
+					MONGODB_URI: testDatabaseUri(target),
 					MONGODB_USERNAME: '',
 					MONGODB_PASSWORD: '',
-					MONGODB_REPLICA_SET: process.env.MONGODB_REPLICA_SET || 'rs0',
+					MONGODB_REPLICA_SET: target.replicaSet || 'rs0',
 				}
 			: {}),
 	};

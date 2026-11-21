@@ -79,10 +79,16 @@ export function testDatabaseUri({ host, port, replicaSet, database }, { root } =
 	return `mongodb://${login}${host || '127.0.0.1'}:${port || '27017'}/${database}?${params.toString()}`;
 }
 
-/** Host, port and replica set: the environment first, then `apps/api/.env`, then the defaults. */
+/**
+ * Host, port and replica set: the environment first, then `apps/api/.env` (this folder's, else the
+ * main folder's, since a worktree or a clean copy has none), then the defaults. This Mac's MongoDB
+ * listens on 27018 (27017 belongs to another project's), so the file matters.
+ */
 export function localMongoTarget(database, env = process.env, root = OWN_ROOT) {
-	const file = join(root, 'apps/api/.env');
-	const fromFile = existsSync(file) ? Object.fromEntries(parseEnvLines(readFileSync(file, 'utf8'))) : {};
+	const file = [join(root, 'apps/api/.env'), join(mainCheckout(root), 'apps/api/.env')].find((path) =>
+		existsSync(path),
+	);
+	const fromFile = file ? Object.fromEntries(parseEnvLines(readFileSync(file, 'utf8'))) : {};
 	const pick = (name) => env[name] || fromFile[name] || undefined;
 	return {
 		host: pick('MONGODB_HOST'),

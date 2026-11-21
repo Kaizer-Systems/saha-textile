@@ -7,8 +7,10 @@ import { NgbAccordionModule, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
 
 import { OPTION_LOOKS, usesPicture } from '@core/catalog/option-looks';
+import { SwatchPictures } from '@core/catalog/swatch-pictures';
 import { MediaGateway } from '@core/media/media.gateway';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { LookPreview, type LookPreviewValue } from '@shared/ui/look-preview/look-preview';
 import { FmPicker, type FmPicked } from '@features/media/file-manager/fm-picker';
 
 import type { IAttachment } from '@data-access/interfaces/attachment.interface';
@@ -46,7 +48,7 @@ const PLACEHOLDER = 'assets/images/product.png';
 	templateUrl: './option-groups.html',
 	// The Images tab's tile and badge, reused as they are for the swatch pictures.
 	styleUrls: ['../product-images/product-images.scss'],
-	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields],
+	imports: [FormsModule, TranslocoModule, NgbAccordionModule, Select2, FormFields, LookPreview],
 })
 export class OptionGroups {
 	readonly groups = model.required<ProductOptionGroup[]>();
@@ -64,6 +66,35 @@ export class OptionGroups {
 	readonly photos = input<readonly string[]>([]);
 	/** Preview address of each image, shared with the Images tab. */
 	readonly tiles = model<ReadonlyMap<string, string>>(new Map());
+	/** The version the product shows of each of its photos (Images tab); a swatch made from one draws that version. */
+	readonly versions = input<Readonly<Record<string, string>>>({});
+
+	private readonly swatches = inject(SwatchPictures);
+
+	/**
+	 * Each group's live preview (brief A5): this product's own values, prices and swatch pictures, each the very square
+	 * the shop draws (the value's own version, else the product's version of that photo); none draws grey. Without the
+	 * Media Library permission the photo's versions cannot be read, so the preview crops the photo's thumbnail to its
+	 * middle square: exactly the shop's square for an "as is" version, the centre rather than the focus for a Crop one.
+	 */
+	readonly previews = computed<LookPreviewValue[][]>(() =>
+		this.groups().map((group) =>
+			group.terms.map((term) => ({
+				label: this.termLabel(term),
+				subLabel: term.subLabel?.[this.locale()] || term.subLabel?.['en'] || null,
+				hex: term.hex ?? null,
+				picture: term.swatchAssetId
+					? (this.swatches.url(
+							term.swatchAssetId,
+							term.swatchVersionId ?? this.versions()[term.swatchAssetId],
+						) ??
+						this.tiles().get(term.swatchAssetId) ??
+						null)
+					: null,
+				price: term.priceDeltaINR ?? null,
+			})),
+		),
+	);
 
 	private media = inject(MediaGateway);
 	private readonly modals = inject(NgbModal);
@@ -72,6 +103,11 @@ export class OptionGroups {
 	private requested = new Set<string>();
 
 	constructor() {
+		effect(() =>
+			this.swatches.need(
+				this.groups().flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? [])),
+			),
+		);
 		// A value brings its default picture from Settings › Attributes; fetch any preview not yet known.
 		effect(() => {
 			const known = this.tiles();

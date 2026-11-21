@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
 import { OPTION_LOOKS } from '@core/catalog/option-looks';
+import { SwatchPictures } from '@core/catalog/swatch-pictures';
 import { LocalizedFields } from '@core/i18n/localized-fields';
 import { MediaGateway } from '@core/media/media.gateway';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
@@ -244,6 +245,78 @@ describe('OptionGroups', () => {
 
 	it('names roles in plain words', () => {
 		expect(render().roleOptions()[0]).toEqual({ value: 'variation_axis', label: 'role_name_variation_axis' });
+	});
+
+	it('previews the product’s own values with the square of the version the shop draws', () => {
+		const swatches = { need: vi.fn(), url: (id: string, version?: string | null) => `${id}@${version ?? 'shown'}` };
+		const term = (code: string, extra: Record<string, unknown>) => ({
+			code,
+			label: both,
+			isBase: false,
+			addonTemplateIds: [],
+			requiresMeasurements: false,
+			sortOrder: 0,
+			...extra,
+		});
+		const page = mount(OptionGroups, [...providers, { provide: SwatchPictures, useValue: swatches }], {
+			groups: [
+				group({
+					displayStyle: 'picture_row',
+					terms: [
+						term('photo', { swatchAssetId: 'p1', priceDeltaINR: 750 }),
+						term('library', { swatchAssetId: 'lib', swatchVersionId: 'product_3x4.crop' }),
+						term('plain', { subLabel: { en: 'Medium', bn: 'মাঝারি' } }),
+					],
+				}),
+			],
+			definitions: [],
+			locale: 'bn',
+			versions: { p1: 'product_3x4.crop', lib: 'product_3x4.as_is' },
+		});
+		expect(page.previews()[0]).toEqual([
+			{ label: 'লাল', subLabel: null, hex: null, picture: 'p1@product_3x4.crop', price: 750 },
+			{ label: 'লাল', subLabel: null, hex: null, picture: 'lib@product_3x4.crop', price: null },
+			{ label: 'লাল', subLabel: 'মাঝারি', hex: null, picture: null, price: null },
+		]);
+		expect(swatches.need).toHaveBeenCalledWith(['p1', 'lib']);
+	});
+
+	it('falls back to the photo’s thumbnail when its versions cannot be read', () => {
+		const page = mount(
+			OptionGroups,
+			[...providers, { provide: SwatchPictures, useValue: { need: vi.fn(), url: () => null } }],
+			{
+				groups: [
+					group({
+						displayStyle: 'picture_chip',
+						terms: [
+							{
+								code: 'a',
+								label: both,
+								isBase: false,
+								addonTemplateIds: [],
+								requiresMeasurements: false,
+								sortOrder: 0,
+								swatchAssetId: 'p1',
+							},
+							{
+								code: 'b',
+								label: both,
+								isBase: false,
+								addonTemplateIds: [],
+								requiresMeasurements: false,
+								sortOrder: 1,
+								swatchAssetId: 'p9',
+							},
+						],
+					}),
+				],
+				definitions: [],
+				locale: 'en',
+				tiles: new Map([['p1', 'p1-card.webp']]),
+			},
+		);
+		expect(page.previews()[0]?.map((value) => value.picture)).toEqual(['p1-card.webp', null]);
 	});
 
 	it('offers every look, and a picked value brings its second line', () => {
@@ -1214,6 +1287,24 @@ describe('FormAttribute', () => {
 		expect(page.terms()[0]).not.toHaveProperty('swatchAssetId');
 		expect(page.terms()[0]).not.toHaveProperty('swatchVersionId');
 		expect(page.picture(page.terms()[0]!)).toBeNull();
+	});
+
+	it('previews samples until a value is named, then the values in the look picked', () => {
+		const { page } = render();
+		expect(page.look()).toBe('rectangle');
+		expect(page.previewValues().map((value) => [value.label, value.hex])).toEqual([
+			['look_preview_sample', '#1f4e96'],
+			['look_preview_sample', '#b5157d'],
+			['look_preview_sample', '#2e7d32'],
+		]);
+		page.form.patchValue({ style: 'colour_chip' });
+		expect(page.look()).toBe('colour_chip');
+		page.setName(0, page.terms()[0]!, 'Ivory');
+		page.setHex(0, '#f2ead8');
+		page.setNote(0, page.terms()[0]!, 'Off white');
+		expect(page.previewValues()).toEqual([
+			{ label: 'Ivory', subLabel: 'Off white', hex: '#f2ead8', picture: null },
+		]);
 	});
 
 	it('offers the four new looks, and keeps a second line owed in every language once written', () => {

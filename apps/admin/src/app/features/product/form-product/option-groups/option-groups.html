@@ -49,6 +49,12 @@
 								[value]="group.displayStyle"
 								(update)="update(index, { displayStyle: $any($event.value) })"
 							/>
+							<app-look-preview
+								[look]="group.displayStyle"
+								[values]="previews()[index] ?? []"
+								[note]="'look_preview_own_values'"
+								[help]="'look_preview_help_product'"
+							/>
 						</app-form-fields>
 						<app-form-fields
 							[labelClass]="'form-label-title col-sm-3 mb-0'"

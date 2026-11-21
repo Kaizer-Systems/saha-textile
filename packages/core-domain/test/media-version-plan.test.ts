@@ -36,6 +36,28 @@ const spec = (plan: ReturnType<typeof planVersion>, role: string, width: number)
 describe('planVersion: each fill fits the photo to the profile’s shape', () => {
 	const square = { width: 3000, height: 3000 };
 
+	it('cuts a product photo’s swatch squares around its focus point only in its Crop version', () => {
+		const portrait = { width: 1800, height: 2400 };
+		const focal = { x: 0.5, y: 0.82 };
+		const plan = (fill: 'as_is' | 'crop' | 'blur') =>
+			planVersion({
+				profile: profile('product_3x4'),
+				fill,
+				roles,
+				source: portrait,
+				maxDisplayWidth: null,
+				focal,
+			});
+		// The Crop version: every square swatch keeps the part around the point (the fabric low on a model photo).
+		expect(spec(plan('crop'), 'swatch_image', 240)).toMatchObject({ width: 240, height: 240, fit: 'cover', focal });
+		expect(spec(plan('crop'), 'swatch_image_v2', 240)).toMatchObject({ fit: 'cover', focal });
+		// "As is" and the other fills cut their squares from the middle: the point does not move them.
+		expect(spec(plan('as_is'), 'swatch_image', 240)).not.toHaveProperty('focal');
+		expect(spec(plan('blur'), 'swatch_image', 240)).not.toHaveProperty('focal');
+		// A gallery photo that keeps its shape never uses the point.
+		expect(spec(plan('as_is'), 'gallery', 1200)).not.toHaveProperty('focal');
+	});
+
 	it('white padding, blurred fill and crop make 3:4 boxes; swatches keep their own square crop', () => {
 		const white = planVersion({
 			profile: profile('product_3x4'),

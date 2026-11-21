@@ -54,6 +54,12 @@
 			[placeholder]="'select_style' | transloco"
 			formControlName="style"
 		/>
+		<app-look-preview
+			[look]="look()"
+			[values]="previewValues()"
+			[note]="'look_preview_changes'"
+			[help]="'look_preview_help_attribute'"
+		/>
 	</app-form-fields>
 	<app-form-fields
 		[label]="'use_as_filter'"

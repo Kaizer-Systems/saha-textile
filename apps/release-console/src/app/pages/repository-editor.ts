@@ -29,6 +29,7 @@ import {
 import { ConsoleApi } from '../data/console-api';
 import { CONSOLE_MENU } from '../menu/console-menu.data';
 import { BranchPicker } from '../shared/branch-picker';
+import { ConfirmDialog } from '../shared/confirm-dialog';
 import { Icon } from '../shared/icons';
 import { VendorLogo } from '../shared/vendor-logo';
 
@@ -613,6 +614,7 @@ export function newRepository(
 })
 export class RepositoryEditor {
 	private readonly api = inject(ConsoleApi);
+	private readonly confirmDialog = inject(ConfirmDialog);
 	private readonly queries = inject(QueryClient);
 	private readonly router = inject(Router);
 	readonly project = input.required<Project>();
@@ -774,7 +776,14 @@ export class RepositoryEditor {
 
 	protected async remove(): Promise<void> {
 		const d = this.draft();
-		if (!d || !window.confirm(`Remove ${d.name} from ${this.project().name}? The project's keys stay.`)) return;
+		if (!d) return;
+		const yes = await this.confirmDialog.ask({
+			title: `Remove ${d.name}?`,
+			body: `It leaves ${this.project().name}. The project's keys stay linked.`,
+			confirm: 'Remove',
+			danger: true,
+		});
+		if (!yes) return;
 		await this.run(async () => {
 			await this.api.removeRepository(this.project().id, d.id);
 			this.cancel();

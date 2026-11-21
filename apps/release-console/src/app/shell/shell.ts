@@ -15,6 +15,7 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { type ListItem, placeOf, searchList, searchMenu } from '../menu/menu-search';
+import { ConfirmHost } from '../shared/confirm-dialog';
 import {
 	CONSOLE_PAGE_ICONS,
 	GROUP_ICONS,
@@ -78,7 +79,7 @@ const PAGE_WORDS: Record<string, string[]> = {
 
 @Component({
 	selector: 'rc-shell',
-	imports: [RouterOutlet, NgTemplateOutlet, Icon, VendorLogo],
+	imports: [RouterOutlet, NgTemplateOutlet, Icon, VendorLogo, ConfirmHost],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	host: { '(document:keydown)': 'onKey($event)', '(document:click)': 'closeMenus($event)' },
 	templateUrl: './shell.html',

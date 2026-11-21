@@ -2171,6 +2171,20 @@ mark {
 	padding: 0 1px;
 	border-radius: 2px;
 }
+/* Every dropdown list stays a reasonable height and scrolls inside itself (owner, 21 Nov). */
+.rc-mres {
+	max-height: min(320px, 60vh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+/* A list in the top layer (popover), placed beside its box by the component, outside any table or panel. */
+.rc-mres.floating {
+	position: fixed;
+	inset: auto;
+	margin: 0;
+	z-index: 60;
+	color: inherit;
+}
 .rc-mnone {
 	padding: 8px 10px;
 	color: var(--hud-muted);

@@ -17,6 +17,7 @@ import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 
 import { day, when } from './format-time';
 import { ConsoleApi } from '../data/console-api';
+import { ConfirmDialog } from '../shared/confirm-dialog';
 import { Icon } from '../shared/icons';
 import { VendorLogo } from '../shared/vendor-logo';
 
@@ -568,6 +569,7 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 })
 export class Connections {
 	private readonly api = inject(ConsoleApi);
+	private readonly confirmDialog = inject(ConfirmDialog);
 	private readonly queries = inject(QueryClient);
 	readonly project = input.required<Project>();
 	protected readonly keysFolder = CONSOLE_KEYS_FOLDER;
@@ -770,7 +772,13 @@ export class Connections {
 	}
 
 	protected async remove(k: KeyRef): Promise<void> {
-		if (!window.confirm(`Unlink ${k.label} from ${this.project().name}? The key stays in Infisical.`)) return;
+		const yes = await this.confirmDialog.ask({
+			title: `Unlink ${k.label}?`,
+			body: `It stops being used by ${this.project().name}. The key itself stays in Infisical, and you can link it again.`,
+			confirm: 'Unlink',
+			danger: true,
+		});
+		if (!yes) return;
 		this.busy.set(true);
 		try {
 			await this.api.removeKey(this.project().id, k.id);

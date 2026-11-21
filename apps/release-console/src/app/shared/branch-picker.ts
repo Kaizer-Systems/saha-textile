@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import {
+	ChangeDetectionStrategy,
+	Component,
+	computed,
+	DestroyRef,
+	effect,
+	ElementRef,
+	inject,
+	input,
+	output,
+	signal,
+	viewChild,
+} from '@angular/core';
 
 import { Icon } from './icons';
 
@@ -36,6 +48,31 @@ export function branchWhere(b: Branch, defaultBranch: string | null, current: st
  * the arrow keys and Enter. Built from the console's menu-search box and results list
  * (`rc-msearch`, `rc-mres`, `rc-mrow`), so it looks like the search it already has.
  */
+export interface FloatingPlace {
+	top: number | null;
+	bottom: number | null;
+	left: number;
+	width: number;
+	maxHeight: number;
+}
+
+/**
+ * A floating list's place for a box at `rect`: under it, at most 320 px tall, or above it when
+ * there is less than 200 px below; never wider than the window, at least 320 px wide.
+ */
+export function floatingPlace(
+	rect: { top: number; bottom: number; left: number; width: number },
+	viewWidth: number,
+	viewHeight: number,
+): FloatingPlace {
+	const width = Math.min(Math.max(rect.width, 320), viewWidth - 16);
+	const left = Math.max(8, Math.min(rect.left, viewWidth - width - 8));
+	const below = viewHeight - rect.bottom - 12;
+	if (below >= 200 || below >= rect.top)
+		return { top: rect.bottom + 4, bottom: null, left, width, maxHeight: Math.min(320, Math.max(120, below)) };
+	return { top: null, bottom: viewHeight - rect.top + 4, left, width, maxHeight: Math.min(320, rect.top - 12) };
+}
+
 @Component({
 	selector: 'rc-branch-picker',
 	imports: [Icon],
@@ -51,6 +88,7 @@ export function branchWhere(b: Branch, defaultBranch: string | null, current: st
 			</span>
 			<div class="rc-msearch">
 				<input
+					#box
 					type="search"
 					autocomplete="off"
 					spellcheck="false"
@@ -64,9 +102,17 @@ export function branchWhere(b: Branch, defaultBranch: string | null, current: st
 					(keydown)="key($event)"
 				/>
 				@if (open()) {
+					<!-- Shown in the browser's top layer (popover), so no table scroll or panel shape around the picker clips it (owner, 21 Nov). -->
 					<div
-						class="rc-mres"
+						#list
+						popover="manual"
+						class="rc-mres floating"
 						role="listbox"
+						[style.top.px]="place().top"
+						[style.bottom.px]="place().bottom"
+						[style.left.px]="place().left"
+						[style.width.px]="place().width"
+						[style.max-height.px]="place().maxHeight"
 					>
 						@for (b of hits(); track b.name) {
 							<button
@@ -131,7 +177,36 @@ export class BranchPicker {
 	protected openList(): void {
 		this.query.set('');
 		this.active.set(0);
+		this.measure();
 		this.open.set(true);
+	}
+
+	/** Where the floating list sits: under the box, or above it when there is no room below. */
+	protected readonly place = signal<FloatingPlace>({ top: null, bottom: null, left: 0, width: 360, maxHeight: 320 });
+	private readonly box = viewChild<ElementRef<HTMLInputElement>>('box');
+	private readonly list = viewChild<ElementRef<HTMLElement>>('list');
+
+	private measure(): void {
+		const el = this.box()?.nativeElement;
+		if (el) this.place.set(floatingPlace(el.getBoundingClientRect(), window.innerWidth, window.innerHeight));
+	}
+
+	constructor() {
+		// While the list is open, keep it beside its box on every frame: late logos, scrolling and
+		// resizing all move the box, and none of them is missed this way.
+		let frame = 0;
+		effect(() => {
+			const el = this.list()?.nativeElement;
+			if (!el) return;
+			if (!el.matches(':popover-open')) el.showPopover();
+			const tick = () => {
+				if (!this.open()) return;
+				this.measure();
+				frame = requestAnimationFrame(tick);
+			};
+			frame = requestAnimationFrame(tick);
+		});
+		inject(DestroyRef).onDestroy(() => cancelAnimationFrame(frame));
 	}
 
 	protected pick(name: string): void {

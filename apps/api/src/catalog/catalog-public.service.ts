@@ -20,7 +20,12 @@ import {
 	productGallery,
 	resolveImage,
 	liveRelations,
+	includedPicks,
+	pieceChangeINR,
+	piecePriceINR,
+	setPriceINR,
 	stepperStep,
+	type SetPricing,
 	type AddonTemplateRepository,
 	type CategoryPlacementRepository,
 	type CategoryRepository,
@@ -426,6 +431,7 @@ export class CatalogPublicService {
 							required: component.required,
 							inStock: read.sellable > 0 || read.madeToOrder,
 							image: primary ? this.image(photo, ['card'], target.media.versions?.[primary]) : null,
+							adjustmentINR: component.priceAdjustmentINR,
 						};
 					}),
 				);
@@ -441,17 +447,42 @@ export class CatalogPublicService {
 		);
 		const usable = groups.filter((group) => group.components.length > 0);
 		if (usable.length === 0) return null;
-		const sum = usable.reduce(
-			(total, group) =>
-				total +
-				group.components.reduce((part, component) => part + component.sellingINR * component.quantity, 0),
-			0,
-		);
+		// The owner's rule (21 Nov 2026): each set follows its own price setting; core prices it and each piece's change.
+		const pieceOf = (component: (typeof usable)[number]['components'][number]) => ({
+			id: component.productId,
+			priceINR: component.sellingINR,
+			quantity: component.quantity,
+			required: component.required,
+			adjustmentINR: component.adjustmentINR,
+		});
+		const pricing: SetPricing = {
+			policy: bundle.pricePolicy,
+			fixedPriceINR: bundle.fixedPriceINR,
+			groups: usable.map((group) => ({
+				code: group.code,
+				maxSelections: group.maxSelections,
+				pieces: group.components.map(pieceOf),
+			})),
+		};
 		return {
 			bundleType: bundle.bundleType,
 			pricePolicy: bundle.pricePolicy,
-			priceINR: bundle.pricePolicy === 'fixed_bundle_price' ? (bundle.fixedPriceINR ?? sum) : sum,
-			groups: usable,
+			priceINR: setPriceINR(pricing),
+			groups: usable.map((group) => {
+				const pieces = group.components.map(pieceOf);
+				const included = new Set(
+					includedPicks({ code: group.code, maxSelections: group.maxSelections, pieces }),
+				);
+				return {
+					...group,
+					components: group.components.map(({ adjustmentINR: _adjustment, ...component }, at) => ({
+						...component,
+						included: included.has(component.productId),
+						setPriceINR: pieces[at] ? piecePriceINR(bundle.pricePolicy, pieces[at]) : 0,
+						priceChangeINR: pieceChangeINR(pricing, group.code, component.productId),
+					})),
+				};
+			}),
 		};
 	}
 

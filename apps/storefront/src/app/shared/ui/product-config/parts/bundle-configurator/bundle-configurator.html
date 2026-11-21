@@ -7,44 +7,47 @@
 	<!-- Components -->
 	<div class="bundle-section">
 		<h2 class="h4 bundle-heading">
-			{{ 'bundle_components' | transloco }}
-			<span class="count">({{ components().length }})</span>
+			@if (hasChoice()) { {{ 'choose_your_set' | transloco }} } @else { {{ 'bundle_components' | transloco }} }
+			<span class="count">({{ countLabel() }})</span>
 		</h2>
-		<!-- One row per piece (brief P8): photo, number, name, SKU and a status mark; one opens at a time. -->
+		<!-- One row per piece or choice group (brief P8): photo, number, name and a status mark; one opens at a time. -->
 		<ul class="st-piece-rows">
-			@for (comp of components(); track comp.code; let i = $index) {
+			@for (row of rows(); track row.code; let i = $index) {
 			<li
 				class="st-piece"
-				[class.is-open]="open() === comp.code"
+				[class.is-open]="open() === row.code"
 			>
+				@if (row.kind === 'group') {
+				<!-- A choice group (owner, 21 Nov 2026): its tiles pick the piece; the price follows the set's setting. -->
 				<button
 					type="button"
 					class="st-piece-head"
-					[attr.aria-expanded]="open() === comp.code"
-					(click)="toggle(comp.code)"
+					[attr.aria-expanded]="open() === row.code"
+					(click)="toggle(row.code)"
 				>
-					<span
-						class="st-piece-mark"
-						[class]="'st-piece-mark is-' + mark(comp)"
-						[attr.title]="('piece_' + mark(comp)) | transloco"
-					>
-						<i
-							[class]="mark(comp) === 'ok' ? 'ri-checkbox-circle-fill' : mark(comp) === 'bad' ? 'ri-close-circle-fill' : 'ri-error-warning-fill'"
-							aria-hidden="true"
-						></i>
-					</span>
+					<ng-container
+						[ngTemplateOutlet]="markTpl"
+						[ngTemplateOutletContext]="{ $implicit: groupMark(row.pieces) }"
+					/>
+					@for (piece of row.pieces; track piece.code) { @if (chosen().has(piece.code)) {
 					<img
 						class="st-piece-photo"
-						[src]="comp.image || 'assets/images/product.png'"
+						[src]="piece.image || 'assets/images/product.png'"
 						alt=""
 						width="44"
 						height="58"
 						loading="lazy"
 					/>
+					} }
 					<span class="st-piece-text">
-						<span class="st-piece-name">{{ i + 1 }}. {{ comp.name }}</span>
+						<span class="st-piece-name">
+							{{ i + 1 }}. {{ 'pick_of' | transloco: { label: row.label, max: row.max, count:
+							row.pieces.length } }}
+						</span>
 						<span class="st-piece-sub">
-							{{ 'sku' | transloco }}: {{ comp.sku }} · {{ comp.price | currencySymbol }}
+							@for (piece of row.pieces; track piece.code) { @if (chosen().has(piece.code)) {
+							<span class="st-piece-chip">{{ piece.name }}</span>
+							} }
 						</span>
 					</span>
 					<i
@@ -52,37 +55,161 @@
 						aria-hidden="true"
 					></i>
 				</button>
-				@if (open() === comp.code) {
+				@if (open() === row.code) {
+				<div class="st-piece-body">
+					<p class="mb-2">
+						<b>{{ row.label }}</b>
+						<span class="text-danger">*</span>
+						<span class="text-content ms-1">{{ 'price_changes_with_pick' | transloco }}</span>
+					</p>
+					<!-- The picture-row look (brief P6), reused as is. -->
+					<ul class="st-look-list st-look-rows">
+						@for (piece of row.pieces; track piece.code) {
+						<li>
+							<button
+								type="button"
+								class="st-look"
+								[class.is-on]="chosen().has(piece.code)"
+								[class.is-off]="piece.stock_status !== 'in_stock'"
+								[attr.aria-pressed]="chosen().has(piece.code)"
+								[disabled]="piece.stock_status !== 'in_stock'"
+								(click)="pick(row.group, row.max, piece.code)"
+							>
+								@if (chosen().has(piece.code)) {
+								<i
+									class="ri-checkbox-circle-fill st-look-check"
+									aria-hidden="true"
+								></i>
+								}
+								<img
+									class="st-look-pic"
+									[src]="piece.image || 'assets/images/product.png'"
+									alt=""
+									loading="lazy"
+								/>
+								<span class="st-look-text">
+									<span class="st-look-name">{{ piece.name }}</span>
+									<span class="st-look-note">
+										@if (piece.stock_status !== 'in_stock') {
+										<del>{{ 'out_of_stock' | transloco }}</del>
+										} @else if ((piece.price_change ?? 0) > 0) { +{{ piece.price_change |
+										currencySymbol }} } @else if ((piece.price_change ?? 0) < 0) { −{{
+										-(piece.price_change ?? 0) | currencySymbol }} } @else { {{ 'included' |
+										transloco }} }
+									</span>
+								</span>
+							</button>
+						</li>
+						}
+					</ul>
+				</div>
+				} } @else {
+				<div class="st-piece-top">
+					<button
+						type="button"
+						class="st-piece-head"
+						[attr.aria-expanded]="open() === row.code"
+						(click)="toggle(row.code)"
+					>
+						<ng-container
+							[ngTemplateOutlet]="markTpl"
+							[ngTemplateOutletContext]="{ $implicit: mark(row.piece) }"
+						/>
+						<img
+							class="st-piece-photo"
+							[src]="row.piece.image || 'assets/images/product.png'"
+							alt=""
+							width="44"
+							height="58"
+							loading="lazy"
+						/>
+						<span class="st-piece-text">
+							<span class="st-piece-name">{{ i + 1 }}. {{ row.piece.name }}</span>
+							<span class="st-piece-sub">
+								{{ 'sku' | transloco }}: {{ row.piece.sku }} · {{ row.piece.price | currencySymbol }}
+							</span>
+						</span>
+						<i
+							class="ri-arrow-down-s-line st-piece-caret"
+							aria-hidden="true"
+						></i>
+					</button>
+					@if (row.optional) {
+					<!-- An optional piece (owner, 21 Nov 2026): the switch adds it and its own price. -->
+					<!-- Bootstrap's switch without `form-check`: the theme zeroes that class's margin inside the product page. -->
+					<label class="form-switch st-piece-switch">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							role="switch"
+							[checked]="chosen().has(row.piece.code)"
+							(change)="toggleExtra(row.piece.code)"
+						/>
+						<span>
+							{{ 'add_optional' | transloco: { price: (row.piece.price_change ?? 0) | currencySymbol } }}
+						</span>
+					</label>
+					}
+				</div>
+				@if (open() === row.code) {
 				<div class="st-piece-body">
 					<p class="mb-1">
 						{{ 'consumes' | transloco }}:
-						<b>{{ comp.consumes }}</b>
+						<b>{{ row.piece.consumes }}</b>
 					</p>
-					@if (comp.attributes?.length) {
+					@if (row.piece.attributes?.length) {
 					<p class="mb-1">
-						@for (a of comp.attributes; track a.code) {
+						@for (a of row.piece.attributes; track a.code) {
 						<span class="me-2">
 							{{ a.label }}:
 							<b>{{ a.value }}</b>
 						</span>
 						}
 					</p>
-					} @if (comp.stock_status !== 'in_stock') {
+					} @if (row.piece.stock_status !== 'in_stock') {
 					<p class="st-piece-note mb-1">{{ 'piece_out_note' | transloco }}</p>
-					} @if (comp.slug) {
+					} @if (row.optional && chosen().has(row.piece.code)) {
+					<p class="text-content mb-1">
+						{{ 'optional_piece_note' | transloco: { name: row.piece.name, price: (row.piece.price_change ??
+						0) | currencySymbol } }}
+					</p>
+					} @if (row.piece.slug) {
 					<a
 						class="st-piece-link"
-						[href]="'/' + lang() + '/product/' + comp.slug"
+						[href]="'/' + lang() + '/product/' + row.piece.slug"
 					>
 						{{ 'view_this_piece' | transloco }}
 					</a>
 					}
 				</div>
-				}
+				} }
 			</li>
 			}
 		</ul>
 	</div>
+
+	<!-- A row's status mark: green ready, amber a choice or measurements missing, red out of stock, none while off. -->
+	<ng-template
+		#markTpl
+		let-mark
+	>
+		@if (mark !== 'off') {
+		<span
+			[class]="'st-piece-mark is-' + mark"
+			[attr.title]="('piece_' + mark) | transloco"
+		>
+			<i
+				[class]="mark === 'ok' ? 'ri-checkbox-circle-fill' : mark === 'bad' ? 'ri-close-circle-fill' : 'ri-error-warning-fill'"
+				aria-hidden="true"
+			></i>
+		</span>
+		} @else {
+		<span
+			class="st-piece-mark"
+			aria-hidden="true"
+		></span>
+		}
+	</ng-template>
 
 	<!-- Options -->
 	@if (optionGroups().length) {

@@ -20,7 +20,7 @@
 			</div>
 		</div>
 		<ol class="st-set-summary-pieces">
-			@for (piece of bundle().components; track piece.code) {
+			@for (piece of pieces(); track piece.code) {
 			<li>
 				{{ piece.name }} × {{ piece.quantity || 1 }}
 				<span>

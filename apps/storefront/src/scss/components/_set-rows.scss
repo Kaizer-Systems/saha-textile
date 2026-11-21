@@ -50,6 +50,55 @@
 	}
 }
 
+// An optional piece's row has no mark while it is switched off; the empty mark keeps the rows aligned.
+.st-piece-mark:empty {
+	width: 1em;
+}
+
+// A closed choice group shows its pick as a small chip (brief section 6, owner's rule of 21 Nov 2026).
+.st-piece-chip {
+	display: inline-block;
+	max-width: 100%;
+	margin-top: 4px;
+	padding: 2px 10px;
+	overflow: hidden;
+	border-radius: 999px;
+	background-color: var(--st-surface-soft);
+	color: var(--st-text-body);
+	font-size: 12px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+// An optional piece: its row head and the switch that adds it, side by side; the switch drops below the head
+// (right-aligned) when the row is too narrow for both, so the piece's name keeps its width.
+.st-piece-top {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+
+	.st-piece-head {
+		flex: 1 1 260px;
+		min-width: 0;
+	}
+}
+
+.st-piece-switch {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 6px;
+	margin: 0 10px 0 auto;
+	padding-left: 0;
+	font-size: 13px;
+	white-space: nowrap;
+
+	.form-check-input {
+		float: none;
+		margin: 0;
+	}
+}
+
 .st-piece-photo {
 	flex: none;
 	width: 44px;
@@ -61,6 +110,8 @@
 .st-piece-text {
 	display: grid;
 	flex: 1;
+	// The column may shrink below a long name (a pick's chip), so the row never runs past a phone's screen.
+	grid-template-columns: minmax(0, 1fr);
 	min-width: 0;
 	line-height: 1.3;
 }

@@ -164,8 +164,13 @@ export class ProductConfigurator implements OnInit {
 	}
 
 	/** Writes the Configure set sheet's choices back into the page's set part. */
-	applySet(selections: Record<string, string>, measurements: Record<string, number>, measured: boolean) {
-		this.setPart()?.apply(selections, measurements, measured);
+	applySet(
+		selections: Record<string, string>,
+		measurements: Record<string, number>,
+		measured: boolean,
+		set: { picks?: Record<string, string[]>; extras?: string[] } = {},
+	) {
+		this.setPart()?.apply(selections, measurements, measured, set);
 	}
 
 	/** Writes the buy bar's sheet's add-on choices back into the page's add-on part. */

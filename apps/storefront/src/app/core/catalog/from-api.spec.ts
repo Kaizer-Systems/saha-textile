@@ -173,6 +173,9 @@ describe('pageToProduct', () => {
 								required: true,
 								inStock: true,
 								image: card,
+								included: true,
+								setPriceINR: 5000,
+								priceChangeINR: 0,
 							},
 							{
 								productId: 'p2',
@@ -194,6 +197,11 @@ describe('pageToProduct', () => {
 			[undefined, 'arni', false, 'saree'],
 		]);
 		expect(set.bundle?.groups).toEqual([{ code: 'saree', label: 'Saree', min: 1, max: 1 }]);
+		// How each piece prices the set, as the API worked it out; an older API leaves it out.
+		expect(set.bundle?.components.map((piece) => [piece.included, piece.set_price, piece.price_change])).toEqual([
+			[true, 5000, 0],
+			[false, 4000, 0],
+		]);
 	});
 
 	it('opens on the SKU the server selected and keeps the real string id', () => {

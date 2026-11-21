@@ -709,6 +709,60 @@ describe('bundles', () => {
 		expect(missing.bundle?.priceINR).toBe(2000);
 	});
 
+	it("follows the set's price setting for picks and optional pieces (owner, 21 Nov 2026)", async () => {
+		const rows = [
+			product(),
+			product({ id: 'prd_2', slug: 'maroon', sku: 'SKU-2', basePriceINR: 1800 }),
+			product({ id: 'prd_3', slug: 'petticoat', sku: 'SKU-3', basePriceINR: 600 }),
+		];
+		const one = (productId: string, extra: Record<string, unknown> = {}) =>
+			component(productId, { quantity: 1, ...extra });
+		const groups = [
+			{
+				code: 'saree',
+				label: { en: 'Saree' },
+				minSelections: 1,
+				maxSelections: 1,
+				components: [one('prd_1'), one('prd_2'), one('prd_3')],
+			},
+			{
+				code: 'extra',
+				label: { en: 'Extra' },
+				minSelections: 0,
+				maxSelections: 1,
+				components: [one('prd_3', { required: false, priceAdjustmentINR: 100 })],
+			},
+		];
+		const fixed = await build({
+			rows,
+			variants: [],
+			bundle: bundle({
+				bundleType: 'choose_one_per_group',
+				pricePolicy: 'fixed_bundle_price',
+				fixedPriceINR: 7300,
+				groups,
+			}),
+		}).service.page('red-saree');
+		expect(fixed.bundle?.priceINR).toBe(7300);
+		const [saree, extra] = fixed.bundle?.groups ?? [];
+		expect(saree?.components.map((piece) => [piece.included, piece.setPriceINR, piece.priceChangeINR])).toEqual([
+			[true, 1000, 0],
+			[false, 1800, 800],
+			[false, 600, 0],
+		]);
+		expect(extra?.components[0]).toMatchObject({ included: false, priceChangeINR: 600 });
+		expect(extra?.components[0]).not.toHaveProperty('adjustmentINR');
+
+		const discounted = await build({
+			rows,
+			variants: [],
+			bundle: bundle({ bundleType: 'choose_one_per_group', pricePolicy: 'discounted_components', groups }),
+		}).service.page('red-saree');
+		// Only the first saree is in the set until another is picked; the optional piece is off.
+		expect(discounted.bundle?.priceINR).toBe(1000);
+		expect(discounted.bundle?.groups[1]?.components[0]).toMatchObject({ setPriceINR: 500, priceChangeINR: 500 });
+	});
+
 	it('leaves out components that are gone, and a bundle with none left', async () => {
 		const page = await build({
 			bundle: bundle({

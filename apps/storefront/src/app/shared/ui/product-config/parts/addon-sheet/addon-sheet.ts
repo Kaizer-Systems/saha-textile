@@ -21,6 +21,9 @@ export interface AddonSheetStart {
 	mode: 'designs' | 'all' | 'set';
 	/** Set mode: whether the page can add the set to the cart (sets wait for their pricing, brief B12). */
 	buyable?: boolean;
+	/** Set mode: each choice group's picks and the optional pieces switched on. */
+	picks?: Record<string, string[]>;
+	extras?: string[];
 }
 
 export interface AddonSheetResult {
@@ -29,6 +32,8 @@ export interface AddonSheetResult {
 	measured: boolean;
 	/** Set mode: the shopper pressed Add set to cart. */
 	add?: boolean;
+	picks?: Record<string, string[]>;
+	extras?: string[];
 }
 
 /**
@@ -50,6 +55,9 @@ export class AddonSheet {
 	readonly total = signal(0);
 	readonly valid = signal(false);
 	private readonly chosen = signal<Record<string, string>>({});
+	/** Set mode: how many pieces the set holds now (picks and optional pieces count). */
+	readonly pieceCount = signal<number | null>(null);
+	readonly pieces = computed(() => this.pieceCount() ?? this.config()?.product.bundle?.components?.length ?? 0);
 
 	/** What the add-on adds over the product's own price, and the chosen terms that add it (the footer's line). */
 	readonly delta = computed(() => this.total() - (this.config()?.basePrice ?? 0));
@@ -66,10 +74,11 @@ export class AddonSheet {
 		this.config.set(config);
 	}
 
-	onState(state: { total: number; valid?: boolean; selections?: Record<string, string> }): void {
+	onState(state: { total: number; valid?: boolean; selections?: Record<string, string>; pieces?: string[] }): void {
 		this.total.set(state.total);
 		this.valid.set(state.valid ?? false);
 		this.chosen.set(state.selections ?? {});
+		this.pieceCount.set(state.pieces?.length ?? null);
 	}
 
 	/** Hands the choices back; in set mode closing keeps them too, since the page shows the same set. */

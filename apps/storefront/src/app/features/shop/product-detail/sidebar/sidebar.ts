@@ -29,4 +29,5 @@ export class ProductSidebar {
 	readonly setPrice = input<number | null>(null);
 	readonly quantity = input(1);
 	readonly buyable = input(true);
+	readonly setPieces = input<string[] | null>(null);
 }

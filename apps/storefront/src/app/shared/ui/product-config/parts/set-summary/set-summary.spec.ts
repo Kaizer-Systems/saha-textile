@@ -41,4 +41,24 @@ describe('SetSummary', () => {
 		const card = { ...gallery, roles: { ...gallery.roles, card: [{ url: 'c200', width: 200 }] } };
 		expect(render({ bundle, image: card }).srcset()).toBe('c200 200w');
 	});
+
+	it('lists only the pieces the set holds: its own until the page reports its picks', () => {
+		const choice = {
+			bundle_price: 7300,
+			price_policy: 'fixed-bundle-price',
+			groups: [{ code: 'saree', label: 'Saree', min: 1, max: 1 }],
+			components: [
+				{ code: 'a', name: 'A', price: 100, quantity: 1, group: 'saree' },
+				{ code: 'b', name: 'B', price: 300, quantity: 1, group: 'saree' },
+			],
+		};
+		expect(
+			render({ bundle: choice })
+				.pieces()
+				.map((piece) => piece.code),
+		).toEqual(['a']);
+		const picked = render({ bundle: choice, chosen: ['b'] });
+		expect(picked.pieces().map((piece) => piece.code)).toEqual(['b']);
+		expect(picked.separately()).toBe(300);
+	});
 });

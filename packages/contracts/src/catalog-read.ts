@@ -290,6 +290,12 @@ export const CatalogPageBundle = z.object({
 					inStock: z.boolean(),
 					/** The piece's own main photo (card size), for the set's piece rows; null when it has none. */
 					image: ResolvedImage.nullable().default(null),
+					/** Chosen until the shopper picks another piece of its group (a choice group's first pieces). */
+					included: z.boolean().default(false),
+					/** What the piece adds to a set priced by its pieces (after its adjustment, times quantity). */
+					setPriceINR: money.default(0),
+					/** What choosing or switching on this piece changes in the set price; the owner's rule of 21 Nov 2026. */
+					priceChangeINR: z.number().default(0),
 				}),
 			),
 		}),

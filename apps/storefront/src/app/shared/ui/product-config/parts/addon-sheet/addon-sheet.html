@@ -24,6 +24,8 @@
 			[product]="sheet.product"
 			[initialSelections]="sheet.selections"
 			[initialMeasurements]="sheet.measurements"
+			[initialPicks]="sheet.picks"
+			[initialExtras]="sheet.extras"
 			[showSummary]="false"
 			(stateChange)="onState($event)"
 		/>
@@ -49,7 +51,7 @@
 		<!-- As drawn (brief section 7): the set price with its piece count, and Add set to cart. -->
 		<p class="st-sheet-price">
 			<span class="text-content">
-				{{ 'set_price_pieces' | transloco: { count: sheet.product.bundle?.components?.length ?? 0 } }}
+				{{ (pieces() === 1 ? 'set_price_pieces_one' : 'set_price_pieces') | transloco: { count: pieces() } }}
 			</span>
 			<strong>{{ total() | currencySymbol }}</strong>
 		</p>

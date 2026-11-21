@@ -1,10 +1,13 @@
 import { Component, computed, input } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { chosenPieces } from '@saha-textile/core-domain/set-price';
 
 import { ResolvedImage, roleSrcset } from '@core/media/resolved-image';
 import { IBundle } from '@data-access/interfaces/product-detail.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+
+import { setPricing } from '../../set-pricing';
 
 /**
  * A set's summary (owner, 21 Nov 2026, product page brief P8): its pieces with their prices, what they cost bought
@@ -29,10 +32,17 @@ export class SetSummary {
 	readonly quantity = input(1);
 	/** False while the set cannot be bought (sets wait for their pricing, brief B12): the summary says so. */
 	readonly buyable = input(true);
+	/** The pieces the set holds now; the set's own pieces until the page reports its picks. */
+	readonly chosen = input<string[] | null>(null);
+
+	readonly pieces = computed(() => {
+		const ids = new Set(this.chosen() ?? chosenPieces(setPricing(this.bundle())));
+		return this.bundle().components.filter((piece) => ids.has(piece.code));
+	});
 
 	readonly price = computed(() => this.total() ?? this.bundle().bundle_price);
 	readonly separately = computed(() =>
-		this.bundle().components.reduce((sum, piece) => sum + piece.price * (piece.quantity || 1), 0),
+		this.pieces().reduce((sum, piece) => sum + piece.price * (piece.quantity || 1), 0),
 	);
 	readonly srcset = computed(() => roleSrcset(this.image(), 'card') ?? roleSrcset(this.image(), 'gallery'));
 	readonly saving = computed(() => Math.max(0, this.separately() - this.price()));

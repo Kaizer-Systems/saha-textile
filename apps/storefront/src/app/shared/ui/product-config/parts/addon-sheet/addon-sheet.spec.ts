@@ -25,7 +25,19 @@ describe('AddonSheet', () => {
 		sheet.onState({ total: 7300, valid: true });
 		expect([sheet.total(), sheet.valid()]).toEqual([7300, true]);
 		sheet.onState({ total: 7400 });
-		expect(sheet.valid()).toBe(false);
+		expect([sheet.valid(), sheet.pieceCount()]).toEqual([false, null]);
+		expect(sheet.pieces()).toBe(0);
+		sheet.onState({ total: 7400, pieces: ['a', 'b', 'c'] });
+		expect([sheet.pieceCount(), sheet.pieces()]).toEqual([3, 3]);
+		sheet.onState({ total: 7400 });
+		sheet.start({
+			product: { bundle: { components: [{}, {}] } } as never,
+			basePrice: 0,
+			selections: {},
+			measurements: {},
+			mode: 'set',
+		});
+		expect(sheet.pieces()).toBe(2);
 	});
 
 	it('hands back nothing before its part is drawn', () => {

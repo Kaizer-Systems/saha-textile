@@ -166,6 +166,9 @@ export interface ApiProductPage {
 				inStock: boolean;
 				/** The piece's own main photo; older API builds leave it out. */
 				image?: ApiImage | null;
+				included?: boolean;
+				setPriceINR?: number;
+				priceChangeINR?: number;
 			}>;
 		}>;
 	} | null;
@@ -467,6 +470,10 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 						slug: component.slug,
 						required: component.required,
 						group: group.code,
+						// How the piece prices the set (owner, 21 Nov 2026): the API works it out, the page shows it.
+						included: component.included ?? false,
+						set_price: component.setPriceINR ?? component.sellingINR * component.quantity,
+						price_change: component.priceChangeINR ?? 0,
 					})),
 				),
 				groups: page.bundle.groups.map((group) => ({

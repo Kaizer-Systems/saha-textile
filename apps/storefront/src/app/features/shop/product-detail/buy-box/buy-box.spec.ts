@@ -352,8 +352,13 @@ describe('BuyBox and the buy bar', () => {
 			}),
 		});
 		expect(box.setView()).toEqual({ pieces: 2, ready: false });
+		expect(box.setPieces()).toBeNull();
 		bundleState.set({ valid: true });
 		expect(box.setView()).toEqual({ pieces: 2, ready: true });
+		// A set with picks or an optional piece counts the pieces it holds now.
+		bundleState.set({ valid: true, pieces: ['a', 'b', 'c'] } as never);
+		expect(box.setView()).toEqual({ pieces: 3, ready: true });
+		bundleState.set({ valid: true });
 
 		const modals = TestBed.inject(NgbModal);
 		const open = vi.spyOn(modals, 'open');
@@ -380,7 +385,7 @@ describe('BuyBox and the buy bar', () => {
 			result: Promise.resolve({ selections: { blouse: 'none' }, measurements: {}, measured: false, add: true }),
 		} as never);
 		await box.openSet();
-		expect(applySet).toHaveBeenCalledWith({ blouse: 'none' }, {}, false);
+		expect(applySet).toHaveBeenCalledWith({ blouse: 'none' }, {}, false, { picks: undefined, extras: undefined });
 		// A set that cannot be bought yet is never added, whatever the sheet says.
 		expect(cart.addToCart).not.toHaveBeenCalled();
 

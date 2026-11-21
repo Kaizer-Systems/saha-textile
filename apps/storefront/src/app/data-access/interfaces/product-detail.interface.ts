@@ -114,6 +114,12 @@ export interface IBundleComponent {
 	required?: boolean;
 	/** The group the piece belongs to (choose one per group). */
 	group?: string;
+	/** Chosen until the shopper picks another piece of its group. */
+	included?: boolean;
+	/** What the piece adds to a set priced by its pieces (after its adjustment, times quantity). */
+	set_price?: number;
+	/** What choosing or switching on this piece changes in the set price (owner's rule, 21 Nov 2026). */
+	price_change?: number;
 }
 
 /** One choice inside a bundle option group. */
@@ -150,6 +156,10 @@ export interface ConfiguratorState {
 	valid: boolean; // required selections made + measurements filled where needed
 	selections?: Record<string, string>; // groupCode -> termCode
 	measurements?: Record<string, number>;
+	/** A set: each choice group's picked pieces, the optional pieces switched on, and every piece it now holds. */
+	picks?: Record<string, string[]>;
+	extras?: string[];
+	pieces?: string[];
 }
 
 /**

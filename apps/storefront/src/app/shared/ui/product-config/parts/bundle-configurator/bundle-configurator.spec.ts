@@ -113,11 +113,14 @@ describe('BundleConfigurator', () => {
 
 		it('marks each piece: red out of stock, amber while its measurements are missing, else green', () => {
 			const { box: component } = render();
-			expect(component.mark({ stock_status: 'out_of_stock' } as never)).toBe('bad');
-			expect(component.mark({ stock_status: 'in_stock', requires_measurements: true } as never)).toBe('warn');
-			expect(component.mark({ stock_status: 'in_stock' } as never)).toBe('ok');
+			// The set's own piece is in it; a piece it does not hold shows no mark.
+			const piece = (over: Record<string, unknown>) => ({ code: 'saree', ...over }) as never;
+			expect(component.mark(piece({ stock_status: 'out_of_stock' }))).toBe('bad');
+			expect(component.mark(piece({ stock_status: 'in_stock', requires_measurements: true }))).toBe('warn');
+			expect(component.mark(piece({ stock_status: 'in_stock' }))).toBe('ok');
+			expect(component.mark({ code: 'other', stock_status: 'in_stock' } as never)).toBe('off');
 			component.apply({}, { chest: 36 }, true);
-			expect(component.mark({ stock_status: 'in_stock', requires_measurements: true } as never)).toBe('ok');
+			expect(component.mark(piece({ stock_status: 'in_stock', requires_measurements: true }))).toBe('ok');
 		});
 
 		it('opens the set’s form in the pop-up and keeps only what is saved', async () => {
@@ -130,6 +133,96 @@ describe('BundleConfigurator', () => {
 			await component.openMeasurements();
 			expect(component.measured()).toBe(true);
 			expect(start).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('choice groups and optional pieces (owner, 21 Nov 2026: each set follows its price setting)', () => {
+		const piece = (code: string, group: string, over: Record<string, unknown> = {}) => ({
+			code,
+			name: code,
+			group,
+			stock_status: 'in_stock',
+			price: 1000,
+			quantity: 1,
+			...over,
+		});
+		const set = (policy = 'fixed-bundle-price') =>
+			bundle({
+				price_policy: policy,
+				bundle_price: 7300,
+				option_groups: [],
+				groups: [
+					{ code: 'saree', label: 'Saree', min: 1, max: 1 },
+					{ code: 'more', label: 'More', min: 1, max: 2 },
+				],
+				components: [
+					piece('peacock', 'saree', { included: true, set_price: 35800, price_change: 0 }),
+					piece('maroon', 'saree', { set_price: 36600, price_change: 800 }),
+					piece('gold', 'saree', { set_price: 30000, price_change: 0, stock_status: 'out_of_stock' }),
+					piece('arni', 'more', { required: true, set_price: 12600 }),
+					piece('petticoat', 'more', { required: false, set_price: 1000, price_change: 1000 }),
+				],
+			});
+
+		it('draws a choice group as one row and other pieces as their own, the optional one marked', () => {
+			const { box } = render(set());
+			expect(box.rows().map((row) => [row.kind, row.code])).toEqual([
+				['group', 'group:saree'],
+				['piece', 'arni'],
+				['piece', 'petticoat'],
+			]);
+			expect(box.rows().map((row) => (row.kind === 'piece' ? row.optional : row.max))).toEqual([1, false, true]);
+			expect([box.hasChoice(), box.optionalCount(), box.countLabel()]).toEqual([true, 1, '2 plus_optional']);
+			expect(render().box.countLabel()).toBe('1');
+			expect([...box.chosen()]).toEqual(['peacock', 'arni']);
+		});
+
+		it("prices picks and the optional piece by the set's setting, and reports what the set holds", () => {
+			const { box, states } = render(set());
+			expect(states.at(-1)).toMatchObject({ total: 7300, delta: 0, pieces: ['peacock', 'arni'] });
+			box.pick('saree', 1, 'maroon');
+			expect(states.at(-1)).toMatchObject({ total: 8100, delta: 800, picks: { saree: ['maroon'] } });
+			box.pick('saree', 1, 'maroon');
+			expect(states).toHaveLength(2);
+			box.toggleExtra('petticoat');
+			expect(states.at(-1)).toMatchObject({
+				total: 9100,
+				extras: ['petticoat'],
+				pieces: ['maroon', 'arni', 'petticoat'],
+			});
+			box.toggleExtra('petticoat');
+			expect(states.at(-1)).toMatchObject({ total: 8100, extras: [] });
+			const summed = render(set('sum-components'));
+			expect(summed.states.at(-1)).toMatchObject({ total: 35800 + 12600 });
+		});
+
+		it("takes up to the group's limit, dropping the oldest pick", () => {
+			const { box } = render(set());
+			box.pick('more', 2, 'petticoat');
+			expect(box.chosen().has('petticoat')).toBe(false);
+		});
+
+		it('marks a group by its picks: green, amber when a pick is out but another is in, red when none is', () => {
+			const { box } = render(set());
+			const saree = box.rows()[0];
+			if (saree?.kind !== 'group') throw new Error('expected the saree group');
+			expect(box.groupMark(saree.pieces)).toBe('ok');
+			box.apply({}, {}, false, { picks: { saree: ['gold'] } });
+			expect(box.groupMark(saree.pieces)).toBe('warn');
+			expect(box.available()).toBe(false);
+			const none = saree.pieces.map((one) => ({ ...one, stock_status: 'out_of_stock' }));
+			expect(box.groupMark(none as never)).toBe('bad');
+			const measured = saree.pieces.map((one) => ({ ...one, requires_measurements: true }));
+			box.apply({}, {}, false, { picks: { saree: ['peacock'] } });
+			expect(box.groupMark(measured as never)).toBe('warn');
+		});
+
+		it("starts from the sheet's picks and hands them back", () => {
+			const { box } = render(set(), { initialPicks: { saree: ['maroon'] }, initialExtras: ['petticoat'] });
+			expect(box.snapshot()).toMatchObject({ picks: { saree: ['maroon'] }, extras: ['petticoat'] });
+			expect(box.setPrice()).toBe(9100);
+			box.apply({}, {}, false);
+			expect(box.snapshot()).toMatchObject({ picks: {}, extras: [] });
 		});
 	});
 });

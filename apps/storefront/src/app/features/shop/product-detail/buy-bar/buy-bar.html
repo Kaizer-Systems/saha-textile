@@ -102,7 +102,10 @@
 					} @if (host().setView(); as set) {
 					<!-- A set (brief P4): what it is and whether its choices are complete. -->
 					<div class="st-bar-chips">
-						<span class="st-bar-set">{{ 'set_pieces' | transloco: { count: set.pieces } }}</span>
+						<span class="st-bar-set">
+							{{ (set.pieces === 1 ? 'set_pieces_one' : 'set_pieces') | transloco: { count: set.pieces }
+							}}
+						</span>
 						<span
 							class="st-stock"
 							[class.is-low]="!set.ready"

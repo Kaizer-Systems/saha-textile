@@ -6,6 +6,7 @@ import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
 import {
 	addCardWidth600,
 	addProfileSizes,
+	addSwatchV2Width360,
 	seedProfilesAndNameVersions,
 	widenProfileTypes,
 } from '../src/migrations/media-versions';
@@ -95,14 +96,15 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 	});
 
 	it('inserts missing profiles without overwriting an admin’s edit, and lists built-in first', async () => {
-		await expect(profiles.insertMissing(SEEDED_MEDIA_PROFILES)).resolves.toBe(12);
+		// The twelve approved profiles and Swatch cut 1:1 (brief P11, 21 Nov 2026).
+		await expect(profiles.insertMissing(SEEDED_MEDIA_PROFILES)).resolves.toBe(13);
 		const product = await profiles.findByKey('product_3x4');
 		if (!product) throw new Error('product_3x4 was not inserted');
 		await profiles.save({ ...product, name: 'Saree 3:4', version: 2 });
 		await expect(profiles.insertMissing(SEEDED_MEDIA_PROFILES)).resolves.toBe(0);
 		expect(await profiles.findByKey('product_3x4')).toMatchObject({ name: 'Saree 3:4', version: 2 });
 		const list = await profiles.list();
-		expect(list).toHaveLength(12);
+		expect(list).toHaveLength(13);
 		const firstOther = list.findIndex((row) => !row.builtIn);
 		expect(list.slice(0, firstOther).every((row) => row.builtIn)).toBe(true);
 		expect(list.slice(firstOther).every((row) => !row.builtIn)).toBe(true);
@@ -157,6 +159,30 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await profiles.save({ ...product, version: 1 });
 		await profiles.save(category);
 		await profiles.delete('own_card');
+	});
+
+	it('migration 0012: built-in profiles on the seeded Image V2 swatch sizes gain 360 px and a new version', async () => {
+		const before = [120, 240];
+		const product = await profiles.findByKey('product_3x4');
+		if (!product) throw new Error('profile missing');
+		await profiles.save({ ...product, widths: { ...product.widths, swatch_image_v2: before }, version: 2 });
+		await profiles.save({
+			...product,
+			key: 'own_swatch',
+			name: 'Own swatch',
+			builtIn: false,
+			widths: { ...product.widths, swatch_image_v2: before },
+		});
+		expect(await addSwatchV2Width360()).toMatch(
+			/^gave \d+ built-in image profiles? a 360 px Image V2 swatch size$/,
+		);
+		const after = await profiles.findByKey('product_3x4');
+		expect(after?.widths['swatch_image_v2']).toEqual([120, 240, 360]);
+		expect(after?.version).toBe(3);
+		expect((await profiles.findByKey('own_swatch'))?.widths['swatch_image_v2']).toEqual(before);
+		expect(await addSwatchV2Width360()).toBe('gave 0 built-in image profiles a 360 px Image V2 swatch size');
+		await profiles.save({ ...product, version: 1 });
+		await profiles.delete('own_swatch');
 	});
 
 	it('names today’s photos’ versions once, without moving a file or the date modified', async () => {
@@ -414,6 +440,20 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		await assets.dropKept('med_rep', '2026-11-24T00:00:00.000Z');
 		expect((await assets.findById('med_rep'))?.keptFiles).toEqual([]);
 		await MediaAssetModel.deleteMany({ _id: { $in: ['med_rep', 'med_busy_rep'] } }).exec();
+	});
+
+	it('keeps a swatch cut’s photo and square, and finds a photo’s cuts (brief P11)', async () => {
+		const region = { x: 0.2, y: 0.5, width: 0.25, height: 0.1875 };
+		await raw('med_cut_photo', {});
+		await raw('med_cut_a', { cutFrom: { assetId: 'med_cut_photo', region } });
+		await raw('med_cut_b', { cutFrom: { assetId: 'med_cut_photo', region: { ...region, x: 0.4 } } });
+		await raw('med_cut_gone', { cutFrom: { assetId: 'med_cut_photo', region }, deletedAt: new Date() });
+		await raw('med_cut_bin', { cutFrom: { assetId: 'med_cut_photo', region }, trashedAt: new Date() });
+		expect((await assets.findById('med_cut_a'))?.cutFrom).toEqual({ assetId: 'med_cut_photo', region });
+		expect((await assets.findById('med_cut_photo'))?.cutFrom).toBeNull();
+		expect((await assets.findCutsOf('med_cut_photo')).map((row) => row.id)).toEqual(['med_cut_a', 'med_cut_b']);
+		expect(await assets.findCutsOf('med_cut_a')).toEqual([]);
+		await MediaAssetModel.deleteMany({ _id: { $regex: '^med_cut_' } }).exec();
 	});
 
 	it('keeps a focal point on the photo, clears it, and runs a focal remake on the same original (step 3c)', async () => {

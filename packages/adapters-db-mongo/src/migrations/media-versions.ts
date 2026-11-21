@@ -138,3 +138,25 @@ export async function addCardWidth600(): Promise<string> {
 	const changed = result.modifiedCount;
 	return `gave ${changed} built-in image profile${changed === 1 ? '' : 's'} a 600 px product-card size`;
 }
+
+/** The Image V2 swatch sizes every built-in profile was seeded with before the 360 px size (21 Nov 2026). */
+const SWATCH_V2_BEFORE_360 = [120, 240];
+const SWATCH_V2_WITH_360 = [120, 240, 360];
+
+/**
+ * Release migration `0012-media-swatch-v2-360` (product page brief section 8, owner 21 Nov 2026, expand): built-in
+ * profiles whose Image V2 swatch sizes are still the seeded 120 and 240 px gain a 360 px size, so the tile stays sharp
+ * on 3x phones, and their version goes up, so "Bring older versions up to date" adds the 360 px files to photos made
+ * before (pages keep their files until then; nothing is removed). Sizes an admin changed stay, and so do profiles an
+ * admin made. Safe to run again.
+ */
+export async function addSwatchV2Width360(): Promise<string> {
+	const result = await MediaProfileModel.updateMany(
+		// `$eq`, not a bare array: on a Mixed path Mongoose turns a bare array into `$in` (see 0006).
+		{ builtIn: true, 'widths.swatch_image_v2': { $eq: SWATCH_V2_BEFORE_360 } },
+		{ $set: { 'widths.swatch_image_v2': SWATCH_V2_WITH_360 }, $inc: { version: 1 } },
+		{ timestamps: false },
+	).exec();
+	const changed = result.modifiedCount;
+	return `gave ${changed} built-in image profile${changed === 1 ? '' : 's'} a 360 px Image V2 swatch size`;
+}

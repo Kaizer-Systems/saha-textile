@@ -8,6 +8,7 @@ import { giveMailboxAccessRights } from '../migrations/mailbox-rights';
 import {
 	addCardWidth600,
 	addProfileSizes,
+	addSwatchV2Width360,
 	seedProfilesAndNameVersions,
 	widenProfileTypes,
 } from '../migrations/media-versions';
@@ -107,5 +108,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Order numbers (OD18 Final, 2026-11-20): a numbering setting still on the interim ST-#####-##### shape moves to ST-YYMM-NNNNNN; a format staff chose is kept',
 		half: 'expand',
 		up: () => setOwnerOrderNumberFormat(),
+	},
+	{
+		id: '0012-media-swatch-v2-360',
+		description:
+			'Image V2 swatch (product page brief section 8): built-in image profiles still on the seeded 120 and 240 px Image V2 swatch sizes gain 360 px and a new version, so "Bring older versions up to date" adds it to existing photos; sizes an admin changed stay',
+		half: 'expand',
+		up: () => addSwatchV2Width360(),
 	},
 ];

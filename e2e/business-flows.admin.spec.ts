@@ -1,7 +1,8 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
+import { AdminApi as Api, ensurePounds, ensureSahaShipping, type Json } from './business-setup';
 import { withDatabase } from './database';
-import { ADMIN, API_URL } from './support';
+import { ADMIN } from './support';
 
 /**
  * The whole business, end to end on the real API and screens, in the throwaway test database:
@@ -19,46 +20,6 @@ const run = Date.now().toString(36);
 const word = (text: string) => text.replace(/\d/g, (digit) => 'abcdefghij'[Number(digit)] ?? 'x');
 const today = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 const PRODUCT = 'prd_1001'; // Handwoven Katan Banarasi Saree: ₹4,680 against an MRP of ₹5,200, so "discounted".
-
-type Json = Record<string, unknown> & { id?: string };
-
-class Api {
-	private token = '';
-	constructor(private readonly request: APIRequestContext) {}
-
-	private async csrf(): Promise<string> {
-		if (!this.token) {
-			const response = await this.request.get(`${API_URL}/auth/admin/csrf`);
-			this.token = ((await response.json()) as { csrfToken: string }).csrfToken;
-		}
-		return this.token;
-	}
-
-	/** A call that must succeed; its body. */
-	async ok<T = Json>(method: 'GET' | 'POST' | 'PUT', path: string, data?: unknown): Promise<T> {
-		const answer = await this.try(method, path, data);
-		expect(answer.status, `${method} ${path}: ${JSON.stringify(answer.body).slice(0, 600)}`).toBeLessThan(300);
-		return answer.body as T;
-	}
-
-	/** A call that may be refused; its status and body. */
-	async try(
-		method: 'GET' | 'POST' | 'PUT',
-		path: string,
-		data?: unknown,
-	): Promise<{ status: number; body: unknown }> {
-		const headers: Record<string, string> = method === 'GET' ? {} : { 'x-csrf-token': await this.csrf() };
-		const response = await this.request.fetch(`${API_URL}${path}`, { method, headers, data });
-		const text = await response.text();
-		let body: unknown = text;
-		try {
-			body = text ? JSON.parse(text) : null;
-		} catch {
-			// not JSON
-		}
-		return { status: response.status(), body };
-	}
-}
 
 const codeOf = (body: unknown): string =>
 	((body as { error?: { issues?: Array<{ code?: string }> } })?.error?.issues?.[0]?.code ??
@@ -238,113 +199,9 @@ test.describe('The whole business, end to end', () => {
 	});
 
 	test('setup: Saha Textile’s two shipping rule sets, site-wide, export off with an Indian invoice address', async () => {
-		const domestic = await api.ok<{ ruleSet: { id: string } }>('POST', '/admin/shipping/rule-sets', {
-			name: `Saha Textile — Domestic ${run}`,
-			description: '',
-			use: 'domestic',
-			copyFromId: null,
-		});
-		const international = await api.ok<{ ruleSet: { id: string } }>('POST', '/admin/shipping/rule-sets', {
-			name: `Saha Textile — International ${run}`,
-			description: '',
-			use: 'international',
-			copyFromId: null,
-		});
-		const bodies = {
-			[domestic.ruleSet.id]: {
-				steps: [
-					{
-						id: 'step-1',
-						scope: 'eachLine',
-						combine: 'sum',
-						node: {
-							kind: 'if',
-							id: 'if-1',
-							when: {
-								kind: 'group',
-								id: 'when-1',
-								join: 'all',
-								items: [
-									{ kind: 'condition', id: 'c-1', field: 'line.discounted', op: 'is', value: true },
-								],
-							},
-							then: {
-								kind: 'result',
-								id: 'r-1',
-								result: { kind: 'productCharge', charge: 'domestic', per: 'unit' },
-							},
-							otherwise: { kind: 'result', id: 'r-2', result: { kind: 'free' } },
-						},
-					},
-				],
-				adjust: [],
-			},
-			[international.ruleSet.id]: {
-				steps: [
-					{
-						id: 'step-1',
-						scope: 'wholeCart',
-						combine: 'sum',
-						node: {
-							kind: 'result',
-							id: 'r-1',
-							result: {
-								kind: 'firstAndFurther',
-								first: { from: 'product', charge: 'internationalFirst' },
-								further: { from: 'product', charge: 'internationalFurther' },
-								count: 'acrossCart',
-							},
-						},
-					},
-				],
-				adjust: [],
-			},
-		};
-		for (const [id, draft] of Object.entries(bodies)) {
-			const opened = await api.ok<{ ruleSet: { name: string; use: string; revision: number } }>(
-				'GET',
-				`/admin/shipping/rule-sets/${id}`,
-			);
-			const saved = await api.ok<{ ruleSet: { revision: number } }>('POST', `/admin/shipping/rule-sets/${id}`, {
-				name: opened.ruleSet.name,
-				description: '',
-				use: opened.ruleSet.use,
-				draft,
-				testCarts: [],
-				revision: opened.ruleSet.revision,
-			});
-			const activated = await api.ok<{ outcome: string }>('POST', `/admin/shipping/rule-sets/${id}/activate`, {
-				revision: saved.ruleSet.revision,
-				acceptChanges: [],
-			});
-			expect(activated.outcome).toBe('activated');
-		}
-		// The owner's shop sells in eight currencies; the seeded test database has ₹ and US$ only. Pounds
-		// are added from the US$ row (₹107.50 to the pound), the way the owner's list holds them.
-		await withDatabase(async (db) => {
-			const currencies = db.collection('currencies');
-			const usd = await currencies.findOne({ _id: 'USD' as never });
-			if (usd && !(await currencies.findOne({ _id: 'GBP' as never }))) {
-				await currencies.insertOne({
-					...usd,
-					_id: 'GBP' as never,
-					symbol: '£',
-					paypalFixed: 0.2,
-					rateFromINR: 1 / 107.5,
-				});
-			}
-		});
-		const overview = await api.ok<{ settings: { revision: number } | null }>('GET', '/admin/shipping/overview');
-		await api.ok('POST', '/admin/shipping/settings', {
-			homeCountry: 'IN',
-			domestic: { kind: 'ruleSet', ruleSetId: domestic.ruleSet.id },
-			international: { kind: 'ruleSet', ruleSetId: international.ruleSet.id },
-			mixedRuleSets: 'sum',
-			defaultCharges: { domestic: 100, internationalFirst: 2000, internationalFurther: 900 },
-			abroadPolicy: 'exportOffIndianInvoice',
-			abroadOptions: { askForHomeAddress: true, holdPackingUntilComplete: true },
-			revision: overview.settings?.revision ?? 0,
-		});
+		// Shared with the shop checkout rules spec: whichever runs first sets them up.
+		await ensurePounds();
+		await ensureSahaShipping(api, run);
 	});
 
 	test('buying: a purchase order, goods received and checked, posted with its cost, paid, and a damaged piece returned', async ({
@@ -592,9 +449,9 @@ test.describe('The whole business, end to end', () => {
 		);
 		let now = await detail(api, created.id);
 		expect(now.order).toMatchObject({ status: 'placed', paymentStatus: 'due_on_delivery' });
-		now = await move(api, created.id, 'processing');
-		now = await move(api, created.id, 'packed');
-		now = await move(api, created.id, 'shipped', shipped);
+		await move(api, created.id, 'processing');
+		await move(api, created.id, 'packed');
+		await move(api, created.id, 'shipped', shipped);
 		now = await move(api, created.id, 'delivered', delivered);
 		const prefill = await api.ok<{ amountINR: number }>('GET', `/admin/orders/${created.id}/payments/prefill`);
 		expect(prefill.amountINR).toBe(now.order.balance?.dueINR);
@@ -960,8 +817,8 @@ test.describe('The whole business, end to end', () => {
 		});
 
 		// The e-document gate: a business order of ₹50,000 or more needs the IRN and the e-way bill to ship.
-		let now = await move(api, allowed.id, 'processing');
-		now = await move(api, allowed.id, 'packed');
+		await move(api, allowed.id, 'processing');
+		let now = await move(api, allowed.id, 'packed');
 		expect(now.allowedNext.find((row) => row.to === 'shipped')).toMatchObject({ allowed: false });
 		now = await api.ok<OrderDetail>('PUT', `/admin/orders/${allowed.id}/e-invoice`, {
 			irn: 'a'.repeat(64),

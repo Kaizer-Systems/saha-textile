@@ -12,10 +12,10 @@ import { expect, test } from './support';
 const SAREE = 'katan-banarasi-saree';
 const SHOPPER = 'meera.sharma.003@example.com';
 
-async function signIn(page: Page): Promise<void> {
+async function signIn(page: Page, email = SHOPPER): Promise<void> {
 	await page.goto('/en/auth/login');
 	await page.waitForLoadState('networkidle');
-	await page.locator('#email').fill(SHOPPER);
+	await page.locator('#email').fill(email);
 	await page.getByRole('button', { name: /one-time code/i }).click();
 	await page.locator('#login_btn').click();
 	await page.locator('input[formcontrolname="code"]').fill('123456');
@@ -75,5 +75,65 @@ test.describe('Shop checkout', () => {
 		await expect(page.locator('body')).toContainText(/Shipping/);
 		const pay = page.locator('button.proceed-btn');
 		await expect(pay).toHaveText(/Pay\s+₹[\d,]+/);
+	});
+
+	test('opens the currency popup over the checkout after a payment that didn’t go through (shop04, shop05)', async ({
+		page,
+	}) => {
+		// Its own shopper: one account takes one one-time code at a time.
+		await signIn(page, 'diya.sharma.007@example.com');
+		await addToBag(page);
+
+		// No gateway keys on this stack, so the server's answer to the return page is stood in for: the
+		// INR gateway refused a card from abroad (shop05), then a plain failure with no popup.
+		const answer = (popup: string | null) => ({
+			orderId: 'ord_e2e_return',
+			orderNumber: 'ST-2611-000001',
+			result: 'failed',
+			popup,
+			firstCurrency: popup ? 'USD' : null,
+			soldOutLineIds: [],
+		});
+		let popupKind: string | null = 'switchToRegionCurrency';
+		await page.route('**/storefront/checkout/attempts/*/confirm', (route) =>
+			route.fulfill({ json: answer(popupKind) }),
+		);
+		await page.goto('/en/checkout/payment-return?attempt=ST2611000001-1');
+
+		// Back on the checkout, with the popup over it: no ₹ after a refused card, the billing
+		// country's currency first and named, and Continue in that currency.
+		await expect(page).toHaveURL(/\/en\/checkout\/?(\?.*)?$/);
+		const popup = page.locator('.modal.theme-modal .modal-body');
+		await expect(popup.locator('.modal-title')).toHaveText(/Switch to your region.s currency/);
+		await expect(popup.getByRole('button', { name: /Indian Rupee/ })).toHaveCount(0);
+		await expect(popup.locator('button[aria-pressed="true"]')).toContainText(
+			/US Dollar\s*From your billing address/,
+		);
+		await popup.getByRole('button', { name: 'Continue in US$' }).click();
+		await expect(popup).toHaveCount(0);
+
+		// The checkout now quotes in US$ through PayPal.
+		if (await page.locator('#chk_delivery_name').isVisible()) {
+			await page.locator('#chk_delivery_name').fill('Diya Sharma');
+			await page.locator('#chk_delivery_mobile').fill('9830012345');
+			await page.locator('#chk_delivery_postal').fill('700029');
+			await expect(page.locator('#chk_delivery_city')).toHaveValue(/Kolkata/i);
+			await page.locator('#chk_delivery_line1').fill('3 Southern Avenue');
+			if (await page.locator('#chk_delivery_label').isVisible())
+				await page.locator('#chk_delivery_label').fill('Home');
+		}
+		await expect(page.locator('button.proceed-btn')).toContainText('PayPal');
+
+		// A reload never opens the popup again; the return page was replaced in the history.
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await expect(page.locator('.modal.theme-modal .modal-title')).toHaveCount(0);
+
+		// A failure with no popup says so above Pay instead.
+		popupKind = null;
+		await page.goto('/en/checkout/payment-return?attempt=ST2611000001-2');
+		await expect(page).toHaveURL(/\/en\/checkout\/?(\?.*)?$/);
+		await expect(page.locator('.text-danger', { hasText: 'The payment didn’t go through' })).toBeVisible();
+		await expect(page.locator('.modal.theme-modal .modal-title')).toHaveCount(0);
 	});
 });

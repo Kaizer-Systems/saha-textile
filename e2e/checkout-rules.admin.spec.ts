@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { AdminApi, ensurePounds, ensureSahaShipping } from './business-setup';
 import { API_URL, expect, test } from './support';
 
 /**
@@ -7,8 +8,9 @@ import { API_URL, expect, test } from './support';
  * shop01–shop09), on the shop's own quote for a signed-in shopper: which shipping rule prices the
  * bag, when the optional Address in India step shows, the "Paying from India?" note, the currency
  * choice before the INR gateway takes cards issued abroad, and foreign prices with the markup.
- * Needs the shipping rules `business-flows.admin.spec.ts` sets up; Pay is never pressed (no gateway
- * keys on the test stack).
+ * Runs with the admin's session so it sets up Saha Textile's shipping rules and the pound itself
+ * (`business-setup.ts`, whichever spec runs first); Pay is never pressed (no gateway keys on the test
+ * stack).
  */
 
 const SHOPPER = 'anjali.sharma.002@example.com';
@@ -77,10 +79,11 @@ async function quote(page: Page, body: Record<string, unknown>): Promise<Quote> 
 const fresh = (address: typeof kolkata) => ({ kind: 'new', address, saveAs: null });
 
 test.describe('Shop checkout rules for every address and currency', () => {
-	test.skip(({ isMobile }) => isMobile, 'one shopper account, so these run once');
 	test.describe.configure({ mode: 'serial' });
 
 	test('prices each case by where the parcel goes, never by the currency', async ({ page }) => {
+		await ensurePounds();
+		await ensureSahaShipping(new AdminApi(page.request), Date.now().toString(36));
 		await signInAndFillBag(page);
 
 		// S1: India to India in ₹: the domestic rule, the INR gateway, no extra step.

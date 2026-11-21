@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type {
+	MediaCutRegion,
+	MediaCutResult,
 	AuditLog,
 	MediaAsset,
 	MediaBrowseQuery,
@@ -35,6 +37,12 @@ import type {
 } from '@saha-textile/contracts';
 import { MediaCategory } from '@saha-textile/contracts';
 import {
+	SWATCH_CUT_PROFILE,
+	checkCut,
+	planCut,
+	sameCutRegion,
+	type CutRefusal,
+	type MediaCutRepository,
 	type EmailPictureRepository,
 	type AdminUserRepository,
 	type AuditLogRepository,
@@ -85,6 +93,7 @@ import {
 	AUDIT_LOG_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	MEDIA_BROWSE_REPOSITORY,
+	MEDIA_CUT_REPOSITORY,
 	MEDIA_FAVOURITE_REPOSITORY,
 	MEDIA_FOLDER_REPOSITORY,
 	MEDIA_JOB_QUEUE,
@@ -96,6 +105,7 @@ import {
 } from '../infra/tokens';
 import { LanguageStore } from '../languages/language-store';
 import { missingFilter } from '../languages/missing-filter';
+import { mediaRefusal } from './media-refusal';
 import { MediaStorageService } from './media-storage.service';
 
 /** Clean up (A44): a list's page size, the days a file must sit unused, the largest files shown, groups read. */
@@ -150,6 +160,16 @@ export const fileName = (asset: MediaAsset): string => asset.displayName ?? asse
  * restore, stars, the duplicate check, Activity and Undo. Every change is audited under
  * `entityType: 'media'`; Activity (S9) is that trail, and Undo (S1) reverses its last entry.
  */
+/** Why a square cannot be cut, in the admin's words (brief P11). */
+const CUT_REFUSALS: Record<CutRefusal, string> = {
+	not_a_photo: 'Only a photo can be cut.',
+	no_original: 'This photo has no original to cut from.',
+	is_a_cut: 'Cut from the photo itself, not from a cut.',
+	outside_photo: 'The square must stay inside the photo.',
+	not_square: 'The cut must be square.',
+	too_small: 'The square is too small for a swatch.',
+};
+
 @Injectable()
 export class MediaLibraryService {
 	constructor(
@@ -170,7 +190,38 @@ export class MediaLibraryService {
 		@Optional() private readonly languages?: LanguageStore,
 		/** The photos a language's to-do counts, for `?missing=` from Settings › Languages. */
 		@Optional() @Inject(LANGUAGE_COVERAGE_REPOSITORY) private readonly coverage?: LanguageCoverageRepository,
+		/** A photo's swatch cuts (brief P11), so the same square is cut once. */
+		@Optional() @Inject(MEDIA_CUT_REPOSITORY) private readonly cuts?: MediaCutRepository,
 	) {}
+
+	/**
+	 * "Save cut" (owner, 21 Nov 2026, brief P11/P12): a swatch picture made from a square of this photo. The photo is
+	 * never changed; the image worker cuts the square from its original and makes the swatch sizes. The same square of
+	 * the same photo reuses the cut already there.
+	 */
+	async cut(actor: string, photoId: string, region: MediaCutRegion, now = new Date()): Promise<MediaCutResult> {
+		const photo = await this.assets.findById(photoId);
+		if (!photo || photo.deletedAt) throw new NotFoundException();
+		const check = checkCut(photo, region);
+		if (!check.ok) throw mediaRefusal(HttpStatus.BAD_REQUEST, `cut_${check.reason}`, CUT_REFUSALS[check.reason]);
+		const versionId = `${SWATCH_CUT_PROFILE}.as_is`;
+		const same = (await this.cuts?.findCutsOf(photoId))?.find(
+			(cut) => cut.cutFrom && sameCutRegion(cut.cutFrom.region, region),
+		);
+		if (same) return { id: same.id, versionId, px: check.px, soft: check.soft, created: false };
+		const cut = planCut({
+			id: `med_${randomUUID()}`,
+			photo,
+			region,
+			profileVersion: (await this.profiles.findByKey(SWATCH_CUT_PROFILE))?.version ?? 1,
+			by: actor === 'system' ? null : actor,
+			at: now.toISOString(),
+		});
+		await this.assets.create(cut);
+		await this.queue.enqueue({ type: 'cut', assetId: cut.id });
+		await this.record(actor, 'media.cut', { photoId, region, px: check.px }, cut.id);
+		return { id: cut.id, versionId, px: check.px, soft: check.soft, created: true };
+	}
 
 	// --- Reading ----------------------------------------------------------------------------------
 

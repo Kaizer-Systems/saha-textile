@@ -383,6 +383,18 @@ export const MediaBulkAddVersionsRequest = z
 	.strict();
 export type MediaBulkAddVersionsRequest = z.infer<typeof MediaBulkAddVersionsRequest>;
 
+/** "Save cut" (brief P11): the swatch picture made, or the same square's cut already there. */
+export const MediaCutResult = z.object({
+	id: z.string().min(1),
+	versionId: z.string().min(1),
+	/** The square's side in pixels of the original, and whether it is under 480 px ("This will look soft"). */
+	px: z.number().int().positive(),
+	soft: z.boolean(),
+	/** False when this photo already had a cut of the same square, which is reused. */
+	created: z.boolean(),
+});
+export type MediaCutResult = z.infer<typeof MediaCutResult>;
+
 export const MediaAddVersionsResult = z.object({
 	/** Photos that got at least one version to make. */
 	photos: z.number().int().nonnegative(),

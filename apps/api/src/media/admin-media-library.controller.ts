@@ -14,6 +14,8 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	MediaCutRequest,
+	type MediaCutResult,
 	MediaBrowseQuery,
 	type MediaBrowseResponse,
 	MediaDuplicateQuery,
@@ -204,6 +206,21 @@ export class AdminMediaLibraryController {
 			reservationId: body.reservationId,
 			many: false,
 		});
+	}
+
+	@Post('files/:id/cuts')
+	// Anyone who may edit products may cut a swatch (owner, 21 Nov 2026, brief P12).
+	@RequirePermissions('product.edit')
+	@ApiOperation({
+		operationId: 'cutMediaFileSwatch',
+		summary: 'Save cut: a swatch picture made from a square of this photo; the photo itself never changes',
+	})
+	cut(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(MediaCutRequest)) body: MediaCutRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<MediaCutResult> {
+		return this.library.cut(actor(principal), id, body.region);
 	}
 
 	@Delete('files/:id/versions/:versionId')

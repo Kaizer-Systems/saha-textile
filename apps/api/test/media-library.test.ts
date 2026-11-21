@@ -1383,3 +1383,61 @@ describe('Clean up lists (A44, media step 5)', () => {
 		expect(twice.counts.duplicates).toBe(1);
 	});
 });
+
+describe('Save cut: a swatch picture from a square of a photo (owner, 21 Nov 2026, brief P11/P12)', () => {
+	const square = (x: number, y: number, px: number) => ({ x, y, width: px / 1800, height: px / 2400 });
+	const setup = () => {
+		const run = harness();
+		run.file('med_photo', { width: 1800, height: 2400 });
+		const findCutsOf = async (photoId: string) =>
+			[...run.files.values()].filter((row) => row.cutFrom?.assetId === photoId);
+		Object.defineProperty(run.service, 'cuts', { value: { findCutsOf } });
+		return run;
+	};
+
+	it('makes a cut of its own, queues the worker and records who did it', async () => {
+		const run = setup();
+		const made = await run.service.cut('adm_1', 'med_photo', square(0.2, 0.5, 600));
+		expect(made).toMatchObject({ versionId: 'swatch_1x1.as_is', px: 600, soft: false, created: true });
+		expect(run.files.get(made.id)).toMatchObject({
+			cutFrom: { assetId: 'med_photo' },
+			slug: 'med-photo-cut',
+			versions: [{ id: 'swatch_1x1.as_is', state: 'making' }],
+			uploadedBy: { type: 'admin', id: 'adm_1' },
+		});
+		expect(run.jobs).toContainEqual({ type: 'cut', assetId: made.id });
+		expect(run.audit.some((entry) => entry.action === 'media.cut' && entry.entityId === made.id)).toBe(true);
+		// The photo itself never changes.
+		expect(run.files.get('med_photo')?.cutFrom ?? null).toBeNull();
+	});
+
+	it('reuses the cut of the same square, and says when a square will look soft', async () => {
+		const run = setup();
+		const first = await run.service.cut('adm_1', 'med_photo', square(0.2, 0.5, 600));
+		const again = await run.service.cut('adm_1', 'med_photo', square(0.2, 0.5, 600));
+		expect(again).toMatchObject({ id: first.id, created: false });
+		const soft = await run.service.cut('system', 'med_photo', square(0, 0, 300));
+		expect(soft).toMatchObject({ px: 300, soft: true, created: true });
+		expect(run.files.get(soft.id)?.uploadedBy).toBeNull();
+	});
+
+	it('refuses a missing photo, a square off the photo and a cut of a cut, in words', async () => {
+		const run = setup();
+		await expect(run.service.cut('adm_1', 'med_none', square(0, 0, 600))).rejects.toThrow();
+		await expect(run.service.cut('adm_1', 'med_photo', square(0.9, 0, 600))).rejects.toMatchObject({
+			response: { issues: [{ code: 'cut_outside_photo', message: 'The square must stay inside the photo.' }] },
+		});
+		const made = await run.service.cut('adm_1', 'med_photo', square(0, 0, 600));
+		await expect(run.service.cut('adm_1', made.id, square(0, 0, 0.5))).rejects.toMatchObject({
+			response: { issues: [{ code: 'cut_no_original' }] },
+		});
+	});
+
+	it('works without the cuts lookup, making a new cut each time', async () => {
+		const run = harness();
+		run.file('med_photo', { width: 1800, height: 2400 });
+		const a = await run.service.cut('adm_1', 'med_photo', square(0, 0, 600));
+		const b = await run.service.cut('adm_1', 'med_photo', square(0, 0, 600));
+		expect(a.id).not.toBe(b.id);
+	});
+});

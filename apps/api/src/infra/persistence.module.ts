@@ -228,6 +228,7 @@ import {
 	LANGUAGE_COVERAGE_REPOSITORY,
 	LANGUAGE_REPOSITORY,
 	MEDIA_BROWSE_REPOSITORY,
+	MEDIA_CUT_REPOSITORY,
 	MEDIA_FAVOURITE_REPOSITORY,
 	MEDIA_FOLDER_REPOSITORY,
 	SHARE_LINK_REPOSITORY,
@@ -399,6 +400,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: STORAGE_LEDGER_REPOSITORY, useClass: MongoStorageLedgerRepository },
 		{ provide: MEDIA_ZIP_REPOSITORY, useClass: MongoMediaZipRepository },
 		{ provide: MEDIA_BROWSE_REPOSITORY, useExisting: MEDIA_ASSET_REPOSITORY },
+		{ provide: MEDIA_CUT_REPOSITORY, useExisting: MEDIA_ASSET_REPOSITORY },
 		// The blog (owner log § blog, 2026-11-08).
 		{ provide: BLOG_POST_REPOSITORY, useClass: MongoBlogPostRepository },
 		// The four legal pages (Legal Pages brief, 2026-11-15).
@@ -594,6 +596,7 @@ import { LanguageStore } from '../languages/language-store';
 		STORAGE_LEDGER_REPOSITORY,
 		MEDIA_ZIP_REPOSITORY,
 		MEDIA_BROWSE_REPOSITORY,
+		MEDIA_CUT_REPOSITORY,
 		MAILBOX_PORT,
 		MAILBOX_REPOSITORY,
 		MAILBOX_ACCESS_REPOSITORY,

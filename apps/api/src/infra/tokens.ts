@@ -87,6 +87,8 @@ export const SHARE_LINK_REPOSITORY = Symbol('ShareLinkRepository');
 export const STORAGE_LEDGER_REPOSITORY = Symbol('StorageLedgerRepository');
 export const MEDIA_ZIP_REPOSITORY = Symbol('MediaZipRepository');
 export const MEDIA_BROWSE_REPOSITORY = Symbol('MediaBrowseRepository');
+/** A photo's swatch cuts (brief P11): the media repository's own lookup. */
+export const MEDIA_CUT_REPOSITORY = Symbol('MediaCutRepository');
 export const LANGUAGE_COVERAGE_REPOSITORY = Symbol('LanguageCoverageRepository');
 /** Gmail mailboxes in the admin and Contact Us delivery (owner log § stores, Contact Us and Gmail mailboxes). */
 export const MAILBOX_PORT = Symbol('MailboxPort');

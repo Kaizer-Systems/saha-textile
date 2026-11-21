@@ -100,13 +100,13 @@ test.describe('Real cart', () => {
 		await expect(page.locator('app-no-data')).toBeVisible();
 	});
 
-	test('checkout says plainly that it is closed, in both languages', async ({ page }) => {
+	// The checkout opened with the orders brief (approved 2026-11-20); a guest signs in first (OD6).
+	// The signed-in checkout is in checkout.spec.ts.
+	test('checkout asks a guest to sign in first, in both languages', async ({ page }) => {
 		await page.goto('/en/checkout');
-		await expect(page.locator('app-no-data h4')).toHaveText('Online ordering opens soon');
-		await expect(page.locator('section a.proceed-btn')).toHaveText(/Back to cart/);
+		await expect(page).toHaveURL(/\/auth\/login/);
 		await page.goto('/bn/checkout');
-		await expect(page.locator('app-no-data h4')).toHaveText('অনলাইনে অর্ডার শিগগিরই শুরু হবে');
-		await expect(page.locator('.left-sidebar-checkout')).toHaveCount(0);
+		await expect(page).toHaveURL(/\/bn\/auth\/login/);
 	});
 });
 

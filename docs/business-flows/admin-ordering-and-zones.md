@@ -114,6 +114,8 @@ An order whose billing and delivery addresses are both outside India, with no co
 
 ## Paying at the shop
 
+The checkout page is for signed-in shoppers: guest checkout is off at launch (OD6), so a guest who opens it is sent to sign in and comes back after. The pay page behind a payment link (`/pay/<token>`) stays open to anyone with the link.
+
 **Pay** (`POST /storefront/checkout/place`) saves the order from the same figures the quote showed, takes its number, holds its pieces for 15 minutes (OD1) and sends the browser to the gateway: the INR gateway for rupees, PayPal for any other currency. New addresses ticked **Save to my addresses** are saved at this point. The same key pressed again reuses the order: a double press gets the same hand-off, and a press after an unfinished payment holds the pieces again and starts a new attempt.
 
 - **Attempts.** Each press is an attempt with its own id (`ST2611482190-1`, `-2`…), sent to the gateway as its order id. The attempt keeps the amount and currency it was sent, PayPal's order id, the gateway's reference once known, and when to ask again.

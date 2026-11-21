@@ -42,6 +42,8 @@ export class ConsoleContext {
 	readonly projectId = computed(() => (this.parts()[0] === 'p' ? (this.parts()[1] ?? null) : null));
 	readonly repoId = computed(() => (this.level() === 'repository' ? (this.parts()[3] ?? null) : null));
 	/** The open page: a console page, a project page or a repository screen. */
+	/** The open tab (`?tab=`), for the loader's words. */
+	readonly tab = computed(() => new URLSearchParams(this.url().split('?')[1]?.split('#')[0] ?? '').get('tab'));
 	readonly page = computed(() => {
 		const p = this.parts();
 		if (this.level() === 'console') return p[1] ?? 'projects';

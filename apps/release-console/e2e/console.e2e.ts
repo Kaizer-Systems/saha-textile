@@ -471,8 +471,13 @@ test('DigitalOcean’s create steps read live lists, price the droplet and show 
 	});
 	await unlock(page);
 	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/droplets?tab=region`);
-	await expect(page.getByRole('status').filter({ hasText: 'Reading DigitalOcean…' })).toBeVisible();
+	// The content area's loader (brief N5kmX6DLJv1ECitVUPFHJ8): the droplets' own drawing, who and what.
+	const loader = page.locator('rc-load-overlay.on:not(.full)');
+	await expect(loader.getByText('Reading DigitalOcean')).toBeVisible();
+	await expect(loader.locator('.rc-load-what')).toContainText('Droplets');
+	await expect(loader.locator('rc-load-piece svg .led').first()).toBeAttached();
 	await expect(page.getByText('New droplet for staging')).toBeVisible();
+	await expect(page.locator('rc-load-overlay.on')).toHaveCount(0);
 	await expect(page.getByRole('radio', { name: /Bangalore 1/ })).toHaveAttribute('aria-checked', 'true');
 	const cost = page.locator('.do-cost b');
 	await expect(cost).toHaveText('$24');

@@ -1,5 +1,7 @@
 /* Self-hosted text fonts, written by scripts/self-host-fonts.mjs. */
 @import './fonts.css';
+/* The loaders (brief N5kmX6DLJv1ECitVUPFHJ8, approved 21 Nov 2026). */
+@import './loaders.css';
 
 /* Release Console look, from the approved Safe Releases Brief. Dark by design. */
 :root {

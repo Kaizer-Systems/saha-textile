@@ -62,12 +62,7 @@ export function injectProductScreens() {
 									}
 								</select>
 							</label>
-							@if (refreshing()) {
-								<span class="rc-pill cy">Refreshing…</span>
-							}
 						</div>
-					} @else if (refreshing()) {
-						<div class="rc-row end"><span class="rc-pill cy">Refreshing…</span></div>
 					}
 					@switch (t.type) {
 						@case ('view') {

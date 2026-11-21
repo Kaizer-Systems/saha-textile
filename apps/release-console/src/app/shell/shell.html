@@ -1,4 +1,11 @@
 <div class="rc">
+	<rc-load-overlay
+		loader="boot"
+		source="the console"
+		what="projects · keys · Mac helper"
+		[full]="true"
+		[active]="ctx.projects.isPending()"
+	/>
 	<div class="rc-top">
 		<div class="rc-brand">
 			<span
@@ -18,7 +25,10 @@
 			(keydown.enter)="toggleProject($event)"
 		>
 			<span class="rc-label">Project</span>
-			<span class="pj-cur"><rc-icon name="tabler/folders" />{{ ctx.project()?.name ?? 'None chosen' }}</span>
+			<span class="pj-cur">
+				<rc-icon name="tabler/folders" />
+				{{ ctx.project()?.name ?? 'None chosen' }}
+			</span>
 			<span class="pj-caret">▾</span>
 			@if (projectOpen()) {
 			<div
@@ -34,7 +44,10 @@
 					(click)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
 					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
 				>
-					<b><rc-icon name="tabler/folder" />{{ p.name }}</b>
+					<b>
+						<rc-icon name="tabler/folder" />
+						{{ p.name }}
+					</b>
 					<span class="rc-mono">
 						{{ p.workspace }} · {{ p.repositories.length }} repo{{ p.repositories.length === 1 ? '' : 's' }}
 					</span>
@@ -47,7 +60,10 @@
 					(click)="$event.stopPropagation(); go(['/console', 'add'])"
 					(keydown.enter)="$event.stopPropagation(); go(['/console', 'add'])"
 				>
-					<b><rc-icon name="tabler/square-rounded-plus" />Add a project</b>
+					<b>
+						<rc-icon name="tabler/square-rounded-plus" />
+						Add a project
+					</b>
 					<span class="rc-mono">source code, environments, cloud, edge</span>
 				</div>
 				<div
@@ -57,7 +73,10 @@
 					(click)="$event.stopPropagation(); go(['/console', 'projects'])"
 					(keydown.enter)="$event.stopPropagation(); go(['/console', 'projects'])"
 				>
-					<b><rc-icon name="tabler/layout-grid" />All projects</b>
+					<b>
+						<rc-icon name="tabler/layout-grid" />
+						All projects
+					</b>
 					<span class="rc-mono">the console level</span>
 				</div>
 			</div>
@@ -75,7 +94,17 @@
 			(keydown.enter)="toggleRepo($event)"
 		>
 			<span class="rc-label">Repository</span>
-			<span class="pj-cur">@if (ctx.repo(); as cr) {<rc-vendor-logo [vendor]="cr.sourceCode.vendor" [named]="false" [size]="15" />{{ cr.name }}} @else {<rc-icon name="tabler/layout-dashboard" />Project overview}</span>
+			<span class="pj-cur">
+				@if (ctx.repo(); as cr) {
+				<rc-vendor-logo
+					[vendor]="cr.sourceCode.vendor"
+					[named]="false"
+					[size]="15"
+				/>
+				{{ cr.name }}} @else {
+				<rc-icon name="tabler/layout-dashboard" />
+				Project overview}
+			</span>
 			<span class="pj-caret">▾</span>
 			@if (repoOpen()) {
 			<div
@@ -90,7 +119,10 @@
 					(click)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
 					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'overview'])"
 				>
-					<b><rc-icon name="tabler/layout-dashboard" />Project overview</b>
+					<b>
+						<rc-icon name="tabler/layout-dashboard" />
+						Project overview
+					</b>
 					<span class="rc-mono">the project level: repositories, environments, keys</span>
 				</div>
 				@for (r of p.repositories; track r.id) {
@@ -102,7 +134,14 @@
 					(click)="$event.stopPropagation(); go(['/p', p.id, 'r', r.id, 'overview'])"
 					(keydown.enter)="$event.stopPropagation(); go(['/p', p.id, 'r', r.id, 'overview'])"
 				>
-					<b><rc-vendor-logo [vendor]="r.sourceCode.vendor" [named]="false" [size]="15" />{{ r.name }}</b>
+					<b>
+						<rc-vendor-logo
+							[vendor]="r.sourceCode.vendor"
+							[named]="false"
+							[size]="15"
+						/>
+						{{ r.name }}
+					</b>
 					<span class="rc-mono">{{ r.role || r.sourceCode.repository }}</span>
 				</div>
 				}
@@ -122,7 +161,8 @@
 				[attr.aria-selected]="state.environment() === env.name"
 				(click)="state.setEnvironment(env.name)"
 			>
-				<rc-icon [name]="envIcon(env)" />{{ env.label }}
+				<rc-icon [name]="envIcon(env)" />
+				{{ env.label }}
 			</button>
 			}
 		</div>
@@ -188,7 +228,10 @@
 						[attr.aria-selected]="$index === active()"
 						(mousedown)="pick(hit)"
 					>
-						<b><rc-icon [name]="hit.icon" />{{ hit.label }}</b>
+						<b>
+							<rc-icon [name]="hit.icon" />
+							{{ hit.label }}
+						</b>
 						<span>{{ hit.path }}{{ hit.via ? ' · “' + hit.via + '”' : '' }}</span>
 					</button>
 					} @empty {
@@ -206,7 +249,8 @@
 				[attr.aria-current]="ctx.page() === page[0]"
 				(click)="go(['/console', page[0]])"
 			>
-				<rc-icon [name]="consoleIcons[page[0]] ?? 'tabler/circle'" />{{ page[1] }}
+				<rc-icon [name]="consoleIcons[page[0]] ?? 'tabler/circle'" />
+				{{ page[1] }}
 			</button>
 			} } @case ('project') { @if (ctx.project(); as p) {
 			<div class="pj-level">Project</div>
@@ -218,7 +262,8 @@
 				[attr.aria-current]="ctx.page() === page[0]"
 				(click)="go(['/p', p.id, page[0]])"
 			>
-				<rc-icon [name]="projectIcons[page[0]] ?? 'tabler/circle'" />{{ page[1] }}
+				<rc-icon [name]="projectIcons[page[0]] ?? 'tabler/circle'" />
+				{{ page[1] }}
 			</button>
 			}
 			<div class="pj-level">Repositories</div>
@@ -228,7 +273,12 @@
 				class="rc-nav pj-repo"
 				(click)="go(['/p', p.id, 'r', r.id, 'overview'])"
 			>
-				<rc-vendor-logo [vendor]="r.sourceCode.vendor" [named]="false" [size]="14" />{{ r.name }} ›
+				<rc-vendor-logo
+					[vendor]="r.sourceCode.vendor"
+					[named]="false"
+					[size]="14"
+				/>
+				{{ r.name }} ›
 			</button>
 			} }
 			<div class="rc-navfoot">
@@ -258,7 +308,17 @@
 					[attr.aria-expanded]="openGroup() === group.label"
 					(click)="openGroupFirst(group.label)"
 				>
-					<b>@if (group.vendor) {<rc-vendor-logo [vendor]="group.vendor" [named]="false" [size]="14" />} @else {<rc-icon [name]="groupIcon(group)" />}{{ group.label }}</b>
+					<b>
+						@if (group.vendor) {
+						<rc-vendor-logo
+							[vendor]="group.vendor"
+							[named]="false"
+							[size]="14"
+						/>
+						} @else {
+						<rc-icon [name]="groupIcon(group)" />
+						}{{ group.label }}
+					</b>
 					<span>{{ count(group.label) }}</span>
 				</button>
 				@if (openGroup() === group.label) { @for (sub of group.subs; track $index) { @if (sub.label) {
@@ -285,7 +345,8 @@
 					class="rc-nav"
 					(click)="go(['/p', p.id, 'settings'], { tab: 'repositories', repo: r.id })"
 				>
-					<rc-icon name="tabler/adjustments-horizontal" />Repository settings
+					<rc-icon name="tabler/adjustments-horizontal" />
+					Repository settings
 				</button>
 				<button
 					type="button"
@@ -297,7 +358,15 @@
 			</div>
 			} } } } }
 		</nav>
-		<main class="rc-main"><router-outlet /></main>
+		<main class="rc-main">
+			<rc-load-overlay
+				[loader]="load().loader"
+				[source]="load().source"
+				[what]="load().what"
+				[enabled]="!!ctx.projects.data()"
+			/>
+			<router-outlet />
+		</main>
 		<rc-confirm-host />
 	</div>
 </div>
@@ -312,7 +381,8 @@
 		aria-disabled="true"
 		[attr.data-tip]="s.tip"
 	>
-		<rc-icon [name]="screenIcon(key)" />{{ s.label }}
+		<rc-icon [name]="screenIcon(key)" />
+		{{ s.label }}
 		<span
 			class="nav-x"
 			aria-hidden="true"
@@ -329,7 +399,8 @@
 		[attr.aria-current]="ctx.page() === key"
 		(click)="goScreen(key)"
 	>
-		<rc-icon [name]="screenIcon(key)" />{{ s.label }} @if (isLater(key)) {
+		<rc-icon [name]="screenIcon(key)" />
+		{{ s.label }} @if (isLater(key)) {
 		<span
 			class="later"
 			title="Appears once its feature is built"

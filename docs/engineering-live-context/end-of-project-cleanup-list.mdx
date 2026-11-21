@@ -88,10 +88,17 @@ Each line names the files, what replaced the piece, and what the removal also to
 
 ## Product page build
 
-| #   | Piece | Files | Replaced by | The removal also touches |
-| --- | ----- | ----- | ----------- | ------------------------ |
-| PP1 | The old product-page sticky bar (no longer rendered) | `apps/storefront/src/app/features/shop/product-detail/widgets/sticky-checkout/` (component, template, spec) | The buy bar, `features/shop/product-detail/buy-bar/` (product page brief P4, 21 Nov 2026) | Nothing else; the buy bar keeps using the theme's `stickyCart` switch |
-| PP2 | The set part's old piece list styles (no markup uses them since the piece rows) | `.bundle-components` and `.bundle-component` (with `.comp-*`) in `apps/storefront/src/scss/components/_set-rows.scss` | The piece rows `.st-piece*` in the same file (brief P8) | Nothing else |
+| #   | Piece                                                                           | Files                                                                                                                 | Replaced by                                                                               | The removal also touches                                              |
+| --- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| PP1 | The old product-page sticky bar (no longer rendered)                            | `apps/storefront/src/app/features/shop/product-detail/widgets/sticky-checkout/` (component, template, spec)           | The buy bar, `features/shop/product-detail/buy-bar/` (product page brief P4, 21 Nov 2026) | Nothing else; the buy bar keeps using the theme's `stickyCart` switch |
+| PP2 | The set part's old piece list styles (no markup uses them since the piece rows) | `.bundle-components` and `.bundle-component` (with `.comp-*`) in `apps/storefront/src/scss/components/_set-rows.scss` | The piece rows `.st-piece*` in the same file (brief P8)                                   | Nothing else                                                          |
+
+## Release Console loaders
+
+| #   | Piece                                                          | Files                                                                                  | Replaced by                                                                                             | The removal also touches                                                               |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| RC1 | The small "Reading…" banner, now words for screen readers only | `apps/release-console/src/app/shared/loading.ts` (the `rc-loading` host's banner look) | The content area's loader `rc-load-overlay` (loader brief N5kmX6DLJv1ECitVUPFHJ8, approved 21 Nov 2026) | Its 12 callers and `LoadMarks`, which the overlay counts; keep the screen-reader words |
+| RC2 | The banner style the old marker used for loading               | `.rc-banner.cy.small` with `.rc-chk.run` where only loading used it                    | The same overlay                                                                                        | Other banners still use `.rc-banner`                                                   |
 
 ## Decided, so not on this list (2026-11-16)
 

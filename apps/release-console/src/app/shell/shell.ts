@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 
+import { VENDOR_NAMES } from '@saha-textile/release-console-contracts';
 import { injectIsFetching } from '@tanstack/angular-query-experimental';
 
 import { ConsoleApi } from '../data/console-api';
@@ -28,6 +29,8 @@ import {
 	environmentIcon,
 	screenIcon,
 } from '../shared/icons';
+import { LoadOverlay } from '../shared/loaders/load-overlay';
+import { LOADER_OF_PAGE, LOADER_OF_SCREEN } from '../shared/loaders/loader-art';
 import { VendorLogo } from '../shared/vendor-logo';
 
 import type { MenuGroup } from '../menu/menu.types';
@@ -81,7 +84,7 @@ const PAGE_WORDS: Record<string, string[]> = {
 
 @Component({
 	selector: 'rc-shell',
-	imports: [RouterOutlet, NgTemplateOutlet, Icon, VendorLogo, ConfirmHost],
+	imports: [RouterOutlet, NgTemplateOutlet, Icon, VendorLogo, ConfirmHost, LoadOverlay],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	host: { '(document:keydown)': 'onKey($event)', '(document:click)': 'closeMenus($event)' },
 	templateUrl: './shell.html',
@@ -96,6 +99,43 @@ export class Shell {
 	 * make it flicker): the top bar says so, so a screen is never silently blank (owner, 21 Nov).
 	 */
 	protected readonly firstReads = injectIsFetching({ predicate: (q) => q.state.data === undefined });
+	/**
+	 * Which loader the content area shows on its first read, who it says it is reading and what
+	 * (brief N5kmX6DLJv1ECitVUPFHJ8): each screen's own drawing, picked by its place in the menu.
+	 */
+	protected readonly load = computed(() => {
+		const page = this.ctx.page();
+		if (this.ctx.level() !== 'repository')
+			return { loader: LOADER_OF_PAGE[page] ?? 'boot', source: 'the console', what: page.replace(/-/g, ' ') };
+		const menu = this.ctx.repoMenu();
+		const info = menu?.screens[page];
+		const group = menu?.menu.find((g) => g.subs.some((s) => s.items.includes(page)));
+		const tab = this.ctx.tab();
+		const tabLabel = info ? (tab && info.states[tab]) || Object.values(info.states)[0] : '';
+		const label = group?.label ?? '';
+		const repo = this.ctx.repo();
+		const source =
+			page === 'overview'
+				? 'this Mac'
+				: group?.own
+					? (repo?.name ?? 'the repository')
+					: group?.vendor
+						? VENDOR_NAMES[group.vendor]
+						: label.startsWith('Ship')
+							? repo
+								? VENDOR_NAMES[repo.sourceCode.vendor]
+								: 'GitHub'
+							: label.startsWith('Shop')
+								? 'the shop'
+								: label.startsWith('Governance') || page === 'settings'
+									? 'the console'
+									: 'this Mac';
+		return {
+			loader: LOADER_OF_SCREEN[page] ?? 'reactor',
+			source,
+			what: [info?.label, tabLabel].filter(Boolean).join(' · '),
+		};
+	});
 	protected readonly consolePages = CONSOLE_PAGES;
 	protected readonly projectPages = PROJECT_PAGES;
 	protected readonly consoleIcons = CONSOLE_PAGE_ICONS;

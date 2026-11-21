@@ -162,6 +162,16 @@ The console never makes a token or signs in for the owner. A browser sign-in for
 | Cloudflare › Domains (Registrations tab)    | Every site (zone) the token sees                                                                                                        | Not connected                                                                                                                 |
 | Cloudflare › DNS (Records tab)              | Every record in the edge slot's first domain                                                                                            | Not connected                                                                                                                 |
 
+### Loading
+
+A screen's first read covers the content area with its own loader, one of 29 drawings picked by the
+screen's place in the menu (`apps/release-console/src/app/shared/loaders/loader-art.ts`; the approved
+brief lists which screen shows which). It says who is being read and what, counts real seconds, turns
+amber after 8 seconds and offers **Keep waiting** after 10. It appears only after 150 ms and stays at
+least 400 ms, so a fast answer never flashes it. A read with data already on screen never covers it: a
+light runs along the top of the content and the **Refreshing…** chip shows. Opening the console after
+the PIN shows the Boot sequence over the whole window. Reduced motion stills every drawing.
+
 ### Screens drawn from live product reads
 
 Every other tab of the approved menu is drawn by one engine from the console API: a tab's answer is

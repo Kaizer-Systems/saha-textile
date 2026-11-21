@@ -59,6 +59,9 @@ export class SwatchCut {
 	/** The square's middle, as fractions of the photo. */
 	readonly centre = signal({ x: 0.5, y: 0.5 });
 
+	/** The zoom as the label shows it: one decimal, as the brief drew "3.3×". */
+	readonly zoomLabel = computed(() => this.zoom().toFixed(1));
+
 	/** The square's side in pixels of the original. */
 	readonly px = computed(() => {
 		const photo = this.source();

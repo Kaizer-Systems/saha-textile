@@ -10,7 +10,7 @@ import {
 	seedProfilesAndNameVersions,
 	widenProfileTypes,
 } from '../src/migrations/media-versions';
-import { MediaAssetModel, MediaProfileModel } from '../src/models/index';
+import { MediaAssetModel, MediaProfileModel, ProductModel } from '../src/models/index';
 import { MongoMediaProfileRepository } from '../src/repositories/media-profile.repository';
 import { MongoMediaAssetRepository } from '../src/repositories/media.repository';
 import { hasMongoEnv, insertRaw } from './mongo-test-env';
@@ -453,6 +453,16 @@ describe.runIf(hasMongoEnv())('media profiles and versions persistence (rs0)', (
 		expect((await assets.findById('med_cut_photo'))?.cutFrom).toBeNull();
 		expect((await assets.findCutsOf('med_cut_photo')).map((row) => row.id)).toEqual(['med_cut_a', 'med_cut_b']);
 		expect(await assets.findCutsOf('med_cut_a')).toEqual([]);
+		// A product drawing the cut as an option swatch uses it, so it is never deleted from under the product.
+		await insertRaw(ProductModel, {
+			_id: 'prd_cut_user',
+			slug: 'cut-user',
+			title: { en: 'Cut user' },
+			optionGroups: [{ attributeCode: 'print', terms: [{ code: 'floral', swatchAssetId: 'med_cut_a' }] }],
+		});
+		expect((await assets.whereUsed(['med_cut_a'])).get('med_cut_a')).toEqual(['product option swatch · Cut user']);
+		expect(await assets.countReferences('med_cut_a')).toBe(1);
+		await ProductModel.deleteOne({ _id: 'prd_cut_user' }).exec();
 		await MediaAssetModel.deleteMany({ _id: { $regex: '^med_cut_' } }).exec();
 	});
 

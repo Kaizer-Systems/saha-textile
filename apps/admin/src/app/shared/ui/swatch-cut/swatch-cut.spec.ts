@@ -57,6 +57,7 @@ describe('SwatchCut (brief P11)', () => {
 		const { cut } = render({ ...photo, cutId: 'med_cut', region });
 		await cut.start({ pictureId: 'med_cut', valueName: 'Shadow work' });
 		expect(cut.zoom()).toBeCloseTo(4.5);
+		expect(cut.zoomLabel()).toBe('4.5');
 		expect(cut.px()).toBe(400);
 		expect(cut.region()?.x).toBeCloseTo(0.1);
 		expect(cut.region()?.y).toBeCloseTo(0.6);

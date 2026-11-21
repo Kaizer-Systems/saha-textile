@@ -79,4 +79,12 @@ describe('media owner registry', () => {
 			expect(collections.has(name)).toBe(true);
 		}
 	});
+
+	it('counts a product option swatch as a use, though option groups are stored free-form (brief P11)', () => {
+		expect(
+			MEDIA_OWNER_REGISTRY.some(
+				(entry) => entry.model.modelName === 'Product' && entry.path === 'optionGroups.terms.swatchAssetId',
+			),
+		).toBe(true);
+	});
 });

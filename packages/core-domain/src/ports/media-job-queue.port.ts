@@ -9,6 +9,8 @@ export type MediaJob =
 	| { type: 'reprocess'; assetId: string; reason: 'ladder' | 'slug' | 'primary' | 'manual' | 'versions' }
 	/** Replace (media step 3b): remake every version from the new original, then swap it in. */
 	| { type: 'replace'; assetId: string }
+	/** A swatch cut (brief P11): cut its square from the photo's original, then make its swatch sizes. */
+	| { type: 'cut'; assetId: string }
 	/** Delete storage objects, then purge their public URLs from the CDN. */
 	| { type: 'delete-objects'; keys: string[]; urls: string[] }
 	| { type: 'purge'; urls: string[] }

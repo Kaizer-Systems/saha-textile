@@ -6,11 +6,13 @@ import {
 	SNIFF_BYTES,
 	STORY_LAYOUT,
 	bytesReader,
+	cutPixels,
 	measureFromHeader,
 	sniffPhotoKind,
 	svgRasterSize,
 	svgSize,
 	type ImageCodecPort,
+	type ImageCutPort,
 	type ImageProbe,
 	type ImageRenderSpec,
 	type PhotoKind,
@@ -66,7 +68,7 @@ interface Readable {
 	kind: PhotoKind | null;
 }
 
-export class SharpImageCodec implements ImageCodecPort {
+export class SharpImageCodec implements ImageCodecPort, ImageCutPort {
 	/** One readable copy per photo for the whole job: a JPEG XL or PSD is decoded once, not once per size. */
 	private readonly readables = new WeakMap<Uint8Array, Promise<Readable>>();
 
@@ -281,6 +283,29 @@ export class SharpImageCodec implements ImageCodecPort {
 			height: info.height,
 			sha256: createHash('sha256').update(out).digest('hex'),
 		};
+	}
+
+	/**
+	 * A square of the upright photo at full resolution (swatch cuts, brief P11), as a high-quality JPEG: the cut's own
+	 * original, which the swatch sizes are then made from.
+	 */
+	async cut(
+		original: Uint8Array,
+		region: { x: number; y: number; width: number; height: number },
+	): Promise<RenderedImage> {
+		const { bytes } = await this.readable(original);
+		const meta = await sharp(bytes).metadata();
+		if (!meta.width || !meta.height) throw new ImageDecodeError('no size');
+		// EXIF orientations 5–8 turn the photo on its side: the upright width is the stored height.
+		const sideways = (meta.orientation ?? 1) >= 5;
+		const upright = sideways
+			? { width: meta.height, height: meta.width }
+			: { width: meta.width, height: meta.height };
+		const { left, top, size } = cutPixels(upright, region);
+		const pipeline = this.base(bytes)
+			.extract({ left, top, width: size, height: size })
+			.jpeg({ quality: 95, mozjpeg: true, chromaSubsampling: '4:4:4' });
+		return this.finish(pipeline);
 	}
 
 	async placeholder(original: Uint8Array): Promise<{ thumbHash: string; dominantColor: string }> {

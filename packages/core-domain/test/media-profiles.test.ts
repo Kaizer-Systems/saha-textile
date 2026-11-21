@@ -58,7 +58,7 @@ const AT = '2026-11-16T00:00:00.000Z';
 const byKey = new Map(SEEDED_MEDIA_PROFILES.map((profile) => [profile.key, profile]));
 
 describe('the starting image profiles (F01 + the fills table, R4-1/R4-10; Banner keep shape, 16 Nov)', () => {
-	it('are the twelve approved profiles, with unique keys', () => {
+	it('are the twelve approved profiles and the swatch cut one (brief P11, 21 Nov), with unique keys', () => {
 		expect(SEEDED_MEDIA_PROFILES.map((profile) => profile.name)).toEqual([
 			'Product 3:4',
 			'Category 3:4',
@@ -72,8 +72,9 @@ describe('the starting image profiles (F01 + the fills table, R4-1/R4-10; Banner
 			'Browser icon 1:1',
 			'Logo (keep shape)',
 			'Link preview 1.91:1',
+			'Swatch cut 1:1',
 		]);
-		expect(new Set(SEEDED_MEDIA_PROFILES.map((profile) => profile.key)).size).toBe(12);
+		expect(new Set(SEEDED_MEDIA_PROFILES.map((profile) => profile.key)).size).toBe(13);
 	});
 
 	it('offer exactly the fills the approved table lists, and never a stretch', () => {
@@ -91,6 +92,7 @@ describe('the starting image profiles (F01 + the fills table, R4-1/R4-10; Banner
 			browser_icon_1x1: ['white', 'brand'],
 			logo_keep_shape: [],
 			link_preview: ['blur'],
+			swatch_1x1: ['crop'],
 		});
 		const all = SEEDED_MEDIA_PROFILES.flatMap((profile) => profile.fills as string[]);
 		expect(all.some((fill) => /stretch|squeeze/.test(fill))).toBe(false);
@@ -106,6 +108,7 @@ describe('the starting image profiles (F01 + the fills table, R4-1/R4-10; Banner
 			'browser_icon_1x1',
 			'logo_keep_shape',
 			'link_preview',
+			'swatch_1x1',
 		]);
 	});
 
@@ -262,7 +265,7 @@ describe('assignExistingVersions: today’s photos become the version they alrea
 describe('reconcileBuiltInProfiles', () => {
 	it('puts back only built-in profiles, never one an admin may have deleted', async () => {
 		const insertMissing = vi.fn(async (rows: readonly MediaProfile[]) => rows.length);
-		await expect(reconcileBuiltInProfiles({ insertMissing })).resolves.toBe(8);
+		await expect(reconcileBuiltInProfiles({ insertMissing })).resolves.toBe(9);
 		const keys = (insertMissing.mock.calls[0]?.[0] ?? []).map((profile) => profile.key);
 		expect(keys).not.toContain('hero_21x9');
 		expect(keys).not.toContain('square_1x1');

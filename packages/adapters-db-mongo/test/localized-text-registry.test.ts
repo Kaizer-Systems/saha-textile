@@ -76,6 +76,7 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 	'MediaAsset.replacing': 'a storage key, sizes, a phase and counts',
 	'MediaAsset.keptFiles': 'storage keys, byte counts and dates',
 	'MediaAsset.focal': 'two fractions',
+	'MediaAsset.cutFrom': 'a photo id and four fractions (swatch cut, brief P11)',
 	'MediaProfile.shape': 'a ratio',
 	'MediaProfile.minSize': 'a size in pixels',
 	'MediaProfile.widths': 'sizes in pixels',

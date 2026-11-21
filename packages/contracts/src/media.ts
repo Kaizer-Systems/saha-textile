@@ -493,6 +493,22 @@ export const MediaAltText = z.object({
 export type MediaAltText = z.infer<typeof MediaAltText>;
 
 /**
+ * A square of a photo, as fractions of the upright original (0–1): its top-left corner and its width and height.
+ * Square in pixels, so `width × photo width = height × photo height` (owner, 21 Nov 2026, product page brief P11).
+ */
+export const MediaCutRegion = z.object({
+	x: z.number().min(0).max(1),
+	y: z.number().min(0).max(1),
+	width: z.number().gt(0).max(1),
+	height: z.number().gt(0).max(1),
+});
+export type MediaCutRegion = z.infer<typeof MediaCutRegion>;
+
+/** Admin's "Save cut": make a swatch picture from a square of this photo. */
+export const MediaCutRequest = z.object({ region: MediaCutRegion });
+export type MediaCutRequest = z.infer<typeof MediaCutRequest>;
+
+/**
  * A first-class, reusable media asset (`mediaAssets`).
  *
  * Owner locks: assets are reusable and referenced by owners (never embedded copies);
@@ -524,6 +540,12 @@ export const MediaAsset = z
 		 * on an asset written before image profiles (the release migration names those).
 		 */
 		versions: z.array(MediaVersion).optional(),
+		/**
+		 * A swatch cut (brief P11): the photo it was cut from and the square, so the image worker can cut it again
+		 * from the photo's original after a Replace, and the admin pop-up can reopen on the same square. Null or
+		 * absent for every other picture.
+		 */
+		cutFrom: z.object({ assetId: Id, region: MediaCutRegion }).nullable().optional(),
 		/** The part that must stay in every crop (S10), as fractions of the upright photo; null keeps the middle. */
 		focal: z
 			.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })

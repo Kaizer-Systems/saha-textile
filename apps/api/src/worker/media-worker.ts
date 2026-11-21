@@ -45,6 +45,7 @@ import {
 	type CdnPurgePort,
 	brandStripLogo,
 	deliverStockAlerts,
+	cutSwatch,
 	processMediaAsset,
 	replaceMediaAsset,
 	sweepKeptFiles,
@@ -200,6 +201,16 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		process: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: false }),
 		reprocess: (job) => processMediaAsset(processDeps, { assetId: job.assetId, reprocess: true }),
 		replace: (job) => replaceMediaAsset(processDeps, { assetId: job.assetId }),
+		// A swatch cut (brief P11): its square from the photo's original, then its swatch sizes.
+		cut: (job) =>
+			cutSwatch(
+				{
+					...processDeps,
+					cutter: codec,
+					process: (assetId) => processMediaAsset(processDeps, { assetId, reprocess: true }),
+				},
+				{ assetId: job.assetId },
+			),
 		// A folder download (media step 5, A30): the .zip is written into Spaces file by file.
 		zip: async (job) => {
 			const outcome = await buildZip(zipDeps, { zipId: job.zipId });

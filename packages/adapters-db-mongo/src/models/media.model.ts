@@ -36,6 +36,8 @@ export interface MediaAssetDoc {
 	replacing?: unknown;
 	/** The focal point for crops (S10), fractions of the upright photo. */
 	focal?: { x: number; y: number } | null;
+	/** A swatch cut (brief P11): the photo it was cut from and the square, fractions of the upright photo. */
+	cutFrom?: { assetId: string; region: { x: number; y: number; width: number; height: number } } | null;
 	/** Files kept after a Replace until they are swept (decision 11). */
 	keptFiles?: unknown[];
 	dominantColor: string | null;
@@ -80,6 +82,8 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		replacing: { type: Schema.Types.Mixed, default: null },
 		/** The focal point for crops (S10): { x, y } as fractions; null keeps the middle. */
 		focal: { type: Schema.Types.Mixed, default: null },
+		/** A swatch cut's photo and square (brief P11); `cutFrom.assetId` is indexed for "this photo's cuts". */
+		cutFrom: { type: Schema.Types.Mixed, default: null },
 		/** Files kept after a Replace until their `deleteAfter` (ISO time), then swept (decision 11). */
 		keptFiles: { type: [Schema.Types.Mixed], default: [] },
 		dominantColor: { type: String, default: null },
@@ -121,6 +125,11 @@ MediaAssetSchema.index({ sha256: 1 }, { partialFilterExpression: { sha256: { $ty
 MediaAssetSchema.index({ kind: 1, purpose: 1, status: 1, createdAt: -1 });
 /** The orphan-collection sweep: soft-deleted before a cutoff. */
 MediaAssetSchema.index({ deletedAt: 1 });
+// A photo's swatch cuts (brief P11): the Media Library lists them, and a Replace of the photo cuts them again.
+MediaAssetSchema.index(
+	{ 'cutFrom.assetId': 1 },
+	{ partialFilterExpression: { 'cutFrom.assetId': { $type: 'string' } } },
+);
 /** GC pass 1 pages live assets by id under a creation cutoff. */
 MediaAssetSchema.index({ deletedAt: 1, createdAt: 1, _id: 1 });
 /** Reprocess after a ladder edit: assets holding a stale derivative of a role. */

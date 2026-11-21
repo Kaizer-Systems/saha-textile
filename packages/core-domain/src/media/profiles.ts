@@ -162,6 +162,16 @@ export const SEEDED_MEDIA_PROFILES: readonly MediaProfile[] = [
 		minSize: { edge: 'width', px: 1200, mode: 'warn' },
 		mainPhotoOnly: true,
 	}),
+	// A swatch cut's own sizes (owner, 21 Nov 2026, brief P11): the square swatch families, cut from a photo.
+	profile({
+		key: 'swatch_1x1',
+		name: 'Swatch cut 1:1',
+		builtIn: true,
+		shape: { width: 1, height: 1 },
+		roles: ['swatch_image', 'swatch_image_v2'],
+		fills: ['crop'],
+		minSize: { edge: 'short', px: 480, mode: 'warn' },
+	}),
 ];
 
 /**

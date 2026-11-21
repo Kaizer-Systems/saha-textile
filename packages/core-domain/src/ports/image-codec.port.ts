@@ -83,3 +83,11 @@ export interface ImageCodecPort {
 	/** ThumbHash (base64) and dominant colour (`#rrggbb`) for the loading placeholder. */
 	placeholder(bytes: Uint8Array): Promise<{ thumbHash: string; dominantColor: string }>;
 }
+
+/**
+ * Cuts a square of a photo at full resolution (swatch cuts, owner 21 Nov 2026, brief P11): the region is in fractions
+ * of the upright photo, the result an upright sRGB JPEG kept as the cut's own original.
+ */
+export interface ImageCutPort {
+	cut(bytes: Uint8Array, region: { x: number; y: number; width: number; height: number }): Promise<RenderedImage>;
+}

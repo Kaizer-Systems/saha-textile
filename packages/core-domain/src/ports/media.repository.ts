@@ -131,3 +131,8 @@ export interface MediaAssetRepository {
 	/** Hard delete — only for a GC'd orphan or an explicit privacy/legal purge. */
 	hardDelete(assetId: string): Promise<void>;
 }
+
+/** A photo's swatch cuts (owner, 21 Nov 2026, brief P11): the pictures cut from it, not in Trash or deleted. */
+export interface MediaCutRepository {
+	findCutsOf(photoId: string): Promise<MediaAsset[]>;
+}

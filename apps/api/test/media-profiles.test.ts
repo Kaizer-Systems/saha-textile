@@ -39,7 +39,8 @@ describe('MediaProfilesService', () => {
 	it('lists every profile with how many photos hold a version of it (0 when none)', async () => {
 		const service = new MediaProfilesService(repository(), audit());
 		const list = await service.list();
-		expect(list).toHaveLength(12);
+		// The twelve approved profiles and the swatch cut one (brief P11, 21 Nov 2026).
+		expect(list).toHaveLength(13);
 		expect(list.find((row) => row.profile.key === 'product_3x4')?.photos).toBe(612);
 		expect(list.find((row) => row.profile.key === 'banner_keep_shape')?.photos).toBe(13);
 		expect(list.find((row) => row.profile.key === 'hero_21x9')?.photos).toBe(0);
@@ -49,7 +50,7 @@ describe('MediaProfilesService', () => {
 		const rows = repository();
 		await new MediaProfilesService(rows, audit()).onApplicationBootstrap();
 		const keys = (rows.insertMissing.mock.calls[0]?.[0] ?? []).map((row) => row.key);
-		expect(keys).toHaveLength(8);
+		expect(keys).toHaveLength(9);
 		expect(keys).not.toContain('hero_16x9');
 	});
 

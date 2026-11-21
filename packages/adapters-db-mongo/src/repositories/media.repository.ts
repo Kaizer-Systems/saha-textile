@@ -2,6 +2,7 @@ import type { MediaAsset, MediaReplacement, SpotLuminance } from '@saha-textile/
 import {
 	type MediaAssetFilter,
 	type MediaAssetRepository,
+	type MediaCutRepository,
 	type WordSpotsRepository,
 	type MediaBrowseFilter,
 	type MediaBrowseRepository,
@@ -33,6 +34,7 @@ const toAsset = (doc: MediaAssetDoc): MediaAsset =>
 		versions: doc.versions ?? [],
 		replacing: doc.replacing ?? null,
 		focal: doc.focal ?? null,
+		cutFrom: doc.cutFrom ?? null,
 		keptFiles: doc.keptFiles ?? [],
 		dominantColor: doc.dominantColor ?? null,
 		thumbHash: doc.thumbHash ?? null,
@@ -94,7 +96,9 @@ const olderVersionsFilter = (profileKey: string, version: number) => ({
 	versions: { $elemMatch: { profileKey, state: 'ready', profileVersion: { $lt: version } } },
 });
 
-export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBrowseRepository, WordSpotsRepository {
+export class MongoMediaAssetRepository
+	implements MediaAssetRepository, MediaBrowseRepository, WordSpotsRepository, MediaCutRepository
+{
 	/** The words check's measurement on one version (Page Builder SG-1); the rest of the photo is left as it is. */
 	async setWordSpots(assetId: string, versionId: string, spots: SpotLuminance[]): Promise<void> {
 		await MediaAssetModel.collection.updateOne(
@@ -158,6 +162,15 @@ export class MongoMediaAssetRepository implements MediaAssetRepository, MediaBro
 	 * (`MEDIA_OWNER_REGISTRY`). Assets are REUSABLE, so detaching one owner must never delete
 	 * bytes another still renders.
 	 */
+	/** A photo's swatch cuts (brief P11), oldest first; not ones in Trash or deleted. */
+	async findCutsOf(photoId: string): Promise<MediaAsset[]> {
+		const docs = await MediaAssetModel.find({ 'cutFrom.assetId': photoId, deletedAt: null, trashedAt: null })
+			.sort({ createdAt: 1 })
+			.lean<MediaAssetDoc[]>()
+			.exec();
+		return docs.map(toAsset);
+	}
+
 	async countReferences(assetId: string): Promise<number> {
 		const counts = await Promise.all(
 			MEDIA_OWNER_REGISTRY.map((owner) => owner.model.countDocuments({ [owner.path]: assetId }).exec()),

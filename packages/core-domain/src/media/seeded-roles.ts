@@ -87,7 +87,8 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		key: 'swatch_image_v2',
 		label: 'Image tile swatch',
 		purposes: ['product'],
-		widths: [120, 240],
+		// 360 keeps the Image V2 tile sharp on 3× phones (owner, 21 Nov 2026, brief section 8).
+		widths: [120, 240, 360],
 		aspect: { width: 1, height: 1 },
 		fit: 'cover',
 		format: 'image/webp',

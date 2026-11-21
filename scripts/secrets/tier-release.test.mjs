@@ -285,7 +285,7 @@ test('the release builder deploys blank only what it was told, keeps the media k
 });
 
 test('a deploy release refuses another tier, unpinned images and a folder that is not empty', () => {
-	assert.throws(() => tierReleaseSettings('dev', images), /for development, staging, production, not dev/);
+	assert.throws(() => tierReleaseSettings('local', images), /for development, staging, production, not local/);
 	assert.throws(() => tierReleaseSettings('staging', new Map()), /API_IMAGE is missing or not pinned/);
 	withDir((dir) => {
 		writeFileSync(join(dir, 'old'), 'x');

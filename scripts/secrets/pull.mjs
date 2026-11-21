@@ -54,7 +54,7 @@ export function describeChange(change) {
  * @returns {{ outcome: 'written' | 'unchanged' | 'kept' | 'dry-run', lines: string[] }}
  */
 export function pullDevEnv({ root, inventory, readApi, auto = false, replace = false, dryRun = false }) {
-	const project = inventory.projects.dev;
+	const project = inventory.projects.local;
 	const source = `${project.name} (${project.environment})`;
 	const envPath = join(root, DEV_ENV);
 	const current = readIfPresent(envPath);

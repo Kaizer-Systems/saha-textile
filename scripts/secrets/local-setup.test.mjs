@@ -28,7 +28,7 @@ function counterRandom() {
 }
 
 test('the generated secrets have the forms each service documents', () => {
-	const made = generateServiceSecrets('dev');
+	const made = generateServiceSecrets('local');
 	const api = Object.fromEntries(made.api);
 	assert.equal(api.MONGODB_USERNAME, APP_DATABASE_USER);
 	for (const name of ['MONGODB_PASSWORD', 'REDIS_PASSWORD']) assert.match(api[name], /^[0-9a-f]{64}$/);
@@ -46,7 +46,7 @@ test('the generated secrets have the forms each service documents', () => {
 	);
 	assert.match(generateServiceSecrets('production').infrastructure.get('meilisearch.toml'), /env = "production"/);
 	// Two runs never repeat a value.
-	assert.notEqual(generateServiceSecrets('dev').api.get('MONGODB_PASSWORD'), api.MONGODB_PASSWORD);
+	assert.notEqual(generateServiceSecrets('local').api.get('MONGODB_PASSWORD'), api.MONGODB_PASSWORD);
 });
 
 test('generated values pass every check a release folder makes', () => {

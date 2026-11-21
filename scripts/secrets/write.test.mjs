@@ -10,27 +10,27 @@ const VALUE = 'zz-made-up-value';
 
 test('only names the inventory lists for that tier and folder may be written', () => {
 	assert.ok(writableNames(inventory, 'staging', 'api').has('MSG91_AUTH_KEY'));
-	assert.ok(writableNames(inventory, 'dev', 'release-console').has('CONSOLE_GITHUB_TOKEN'));
+	assert.ok(writableNames(inventory, 'local', 'release-console').has('CONSOLE_GITHUB_TOKEN'));
 	assert.equal(writableNames(inventory, 'production', 'release-console'), null);
 	const problems = checkChanges(
 		[
-			{ tier: 'dev', folder: 'api', name: 'NOT_A_NAME', value: VALUE },
+			{ tier: 'local', folder: 'api', name: 'NOT_A_NAME', value: VALUE },
 			{ tier: 'qa', folder: 'api', name: 'X', value: VALUE },
 			{ tier: 'production', folder: 'github-actions', name: 'DATA_GOV_IN_API_KEY', value: VALUE },
-			{ tier: 'dev', folder: 'api', name: 'CSRF_SECRET', value: '  ' },
-			{ tier: 'dev', folder: 'api', name: 'JWT_ACCESS_SECRET', value: 'a\0b' },
-			{ tier: 'dev', folder: 'api', name: 'JWT_REFRESH_SECRET', value: VALUE },
-			{ tier: 'dev', folder: 'api', name: 'JWT_REFRESH_SECRET', value: VALUE },
+			{ tier: 'local', folder: 'api', name: 'CSRF_SECRET', value: '  ' },
+			{ tier: 'local', folder: 'api', name: 'JWT_ACCESS_SECRET', value: 'a\0b' },
+			{ tier: 'local', folder: 'api', name: 'JWT_REFRESH_SECRET', value: VALUE },
+			{ tier: 'local', folder: 'api', name: 'JWT_REFRESH_SECRET', value: VALUE },
 		],
 		inventory,
 	);
 	assert.deepEqual(problems, [
-		'dev/api/NOT_A_NAME: not a name the inventory lists for this folder.',
+		'local/api/NOT_A_NAME: not a name the inventory lists for this folder.',
 		'qa/api/X: unknown project.',
 		'production/github-actions/DATA_GOV_IN_API_KEY: the production project holds no /github-actions folder.',
-		'dev/api/CSRF_SECRET: the value is empty.',
-		'dev/api/JWT_ACCESS_SECRET: the value holds a NUL character.',
-		'dev/api/JWT_REFRESH_SECRET: changed twice in one batch.',
+		'local/api/CSRF_SECRET: the value is empty.',
+		'local/api/JWT_ACCESS_SECRET: the value holds a NUL character.',
+		'local/api/JWT_REFRESH_SECRET: changed twice in one batch.',
 	]);
 	assert.deepEqual(checkChanges([], inventory), ['There is nothing to save.']);
 	for (const problem of problems) assert.ok(!problem.includes(VALUE));
@@ -40,9 +40,9 @@ test('a batch is saved with one CLI call per tier and folder, values only in pri
 	const calls = [];
 	const results = applySecretChanges(
 		[
-			{ tier: 'dev', folder: 'api', name: 'CSRF_SECRET', value: `${VALUE}-1` },
-			{ tier: 'dev', folder: 'release-console', name: 'CONSOLE_GITHUB_TOKEN', value: `${VALUE}-2` },
-			{ tier: 'dev', folder: 'api', name: 'JWT_ACCESS_SECRET', value: `${VALUE}-3\nsecond line` },
+			{ tier: 'local', folder: 'api', name: 'CSRF_SECRET', value: `${VALUE}-1` },
+			{ tier: 'local', folder: 'release-console', name: 'CONSOLE_GITHUB_TOKEN', value: `${VALUE}-2` },
+			{ tier: 'local', folder: 'api', name: 'JWT_ACCESS_SECRET', value: `${VALUE}-3\nsecond line` },
 		],
 		{
 			inventory,
@@ -65,7 +65,7 @@ test('a batch is saved with one CLI call per tier and folder, values only in pri
 	assert.deepEqual(api.args.slice(0, 2), ['secrets', 'set']);
 	assert.deepEqual(api.args.slice(-7), [
 		'--projectId',
-		inventory.projects.dev.projectId,
+		inventory.projects.local.projectId,
 		'--env',
 		'dev',
 		'--path',
@@ -81,8 +81,8 @@ test('a batch is saved with one CLI call per tier and folder, values only in pri
 		for (const file of call.files) assert.equal(existsSync(file), false, 'value files deleted');
 	}
 	assert.deepEqual(results, [
-		{ tier: 'dev', folder: 'api', names: ['CSRF_SECRET', 'JWT_ACCESS_SECRET'], saved: true },
-		{ tier: 'dev', folder: 'release-console', names: ['CONSOLE_GITHUB_TOKEN'], saved: true },
+		{ tier: 'local', folder: 'api', names: ['CSRF_SECRET', 'JWT_ACCESS_SECRET'], saved: true },
+		{ tier: 'local', folder: 'release-console', names: ['CONSOLE_GITHUB_TOKEN'], saved: true },
 	]);
 });
 
@@ -90,7 +90,7 @@ test('a bad batch writes nothing, and a refused save is reported by name only', 
 	let ran = false;
 	assert.throws(
 		() =>
-			applySecretChanges([{ tier: 'dev', folder: 'api', name: 'NOPE', value: VALUE }], {
+			applySecretChanges([{ tier: 'local', folder: 'api', name: 'NOPE', value: VALUE }], {
 				inventory,
 				run: () => {
 					ran = true;

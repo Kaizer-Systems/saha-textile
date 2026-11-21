@@ -146,14 +146,15 @@ for local env and which are not needed at all for dev server kind of deployment.
 
 | Project                    | Tier key      | For                                                                  | Environment |
 | -------------------------- | ------------- | -------------------------------------------------------------------- | ----------- |
-| `saha-textile-local`       | `dev`         | this computer: `pnpm dev`, the full Docker stack, the local pipeline | `dev`       |
+| `saha-textile-local`       | `local`       | this computer: `pnpm dev`, the full Docker stack, the local pipeline | `dev`       |
 | `saha-textile-development` | `development` | a development server (none exists yet)                               | `dev`       |
 | `saha-textile-staging`     | `staging`     | the staging server                                                   | `staging`   |
 | `saha-textile-production`  | `production`  | the production server                                                | `prod`      |
 
 - **Renamed by the owner:** `saha-textile-dev` is now `saha-textile-local` (slug
   `saha-textile-local-s77l`); its ID and contents are unchanged, so nothing that reads it by ID
-  moved. The tier key stays `dev` until the Release Console renames its own tiers too.
+  moved. Its tier key is `local` since the same day (it was `dev`): `pnpm secrets:status -- local`.
+  `-- dev` is refused, because it could mean this computer or a development server.
 - **Copied** into the new `saha-textile-development` (ID `daf1beb3-16a7-47cb-bcc4-10bb322a4db4`):
   values through the CLI from private files, blank names pasted as names only; checked by name and
   same/different. Infisical has no project copy of its own.

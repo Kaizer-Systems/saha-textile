@@ -60,7 +60,7 @@ test('a place in the name list reads that tier, narrowed to its folder', () => {
 	assert.equal(tierOfPlace(inventory, placeOf('production')), 'production');
 	assert.equal(tierOfPlace(inventory, { ...placeOf('production'), environment: 'dev' }), null);
 	const asked = [];
-	const view = placeSecrets(inventory, placeOf('dev', '/api'), {
+	const view = placeSecrets(inventory, placeOf('local', '/api'), {
 		list: ({ folder }) => {
 			asked.push(folder);
 			return [];
@@ -70,7 +70,7 @@ test('a place in the name list reads that tier, narrowed to its folder', () => {
 		},
 	});
 	assert.deepEqual(asked, ['api']);
-	assert.equal(view.tier, 'dev');
+	assert.equal(view.tier, 'local');
 	assert.equal(view.folder, '/api');
 	assert.ok(view.folders[0].rows.some((r) => r.writable && r.state === 'missing'));
 });

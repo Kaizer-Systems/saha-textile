@@ -30,7 +30,7 @@ const inventory = loadInventory();
 function completeProject(tier = 'staging') {
 	const api = new Map();
 	for (const name of inventory.api) api.set(name, `${MARK}${name.toLowerCase()}`);
-	for (const name of inventory.developmentOnly) api.set(name, tier === 'dev' ? `${MARK}dev` : '');
+	for (const name of inventory.developmentOnly) api.set(name, tier === 'local' ? `${MARK}dev` : '');
 	for (const name of inventory.composeProvided) api.set(name, '');
 	api.set('MONGODB_URI', '');
 	api.set('MEILISEARCH_API_KEY', '');
@@ -273,14 +273,14 @@ test('buildRelease: refuses, naming every problem at once and no value', () => {
 });
 
 test('buildRelease: backups are optional outside production, and overrides reach api.env', () => {
-	const project = completeProject('dev');
+	const project = completeProject('local');
 	project.backup = new Map();
 	project.deployment = new Map();
 	const { files } = buildRelease(project, {
-		tier: 'dev',
+		tier: 'local',
 		inventory,
 		source: 'd',
-		release: new Map([['DEPLOY_ENV', 'dev']]),
+		release: new Map([['DEPLOY_ENV', 'local']]),
 		apiOverrides: new Map([
 			['CORS_ALLOWED_ORIGINS', 'https://local.saha-textile.localhost'],
 			['STACK_ONLY', 'yes'],
@@ -416,8 +416,8 @@ test('projectReport and formatReport: what is missing, misspelt or due for delet
 	assert.match(text, /Not ready for a deploy yet\./);
 	assert.ok(!text.includes(MARK));
 
-	const dev = projectReport({ api: new Map() }, { tier: 'dev', inventory });
-	const devText = formatReport(dev, 'saha-textile-dev (dev)');
+	const dev = projectReport({ api: new Map() }, { tier: 'local', inventory });
+	const devText = formatReport(dev, 'saha-textile-local (dev)');
 	assert.match(devText, /not in Infisical yet: .*OTP_LOCAL_FIXED_CODE.*SHOP_ORIGIN/);
 	assert.match(devText, /the local pipeline needs it/);
 });

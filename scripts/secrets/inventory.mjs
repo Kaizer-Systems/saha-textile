@@ -10,16 +10,17 @@ import { fileURLToPath } from 'node:url';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
-/** The three deployment tiers, each with its own Infisical project (owner decision 2026-11-17). */
-export const TIERS = ['dev', 'staging', 'production'];
-
 /**
- * Every project in variable-names.json, by its `tier`: `dev` is this computer (project
- * saha-textile-local; the key keeps its old name until the Release Console renames it too),
- * `development` a development server (saha-textile-development, owner 2026-11-21). TIERS above is
- * what the Release Console lists today, so `development` joins it once the console knows it.
+ * Every project in variable-names.json, by its `tier`, each with its own Infisical project (owner
+ * decisions 2026-11-17 and 2026-11-21): `local` is this computer (saha-textile-local, `pnpm dev`, the
+ * Docker stack, the local pipeline), `development` a development server (saha-textile-development),
+ * then `staging` and `production`. The key `dev` meant this computer until 2026-11-21; it is refused
+ * now, because it reads as either `local` or `development`.
  */
-export const PROJECT_TIERS = ['dev', 'development', 'staging', 'production'];
+export const TIERS = ['local', 'development', 'staging', 'production'];
+
+/** The tier that is this computer, never a server. */
+export const LOCAL_TIER = 'local';
 
 /** The tiers a server deploy releases: every project but this computer's. */
 export const SERVER_TIERS = ['development', 'staging', 'production'];
@@ -114,14 +115,14 @@ export function loadInventory(root = ROOT) {
 	/** @type {Record<string, Project>} */
 	const projects = {};
 	for (const project of json.projects) {
-		if (PROJECT_TIERS.includes(project.tier))
+		if (TIERS.includes(project.tier))
 			projects[project.tier] = {
 				name: project.name,
 				environment: project.environment,
 				projectId: project.projectId,
 			};
 	}
-	for (const tier of PROJECT_TIERS) {
+	for (const tier of TIERS) {
 		if (!projects[tier]) throw new SecretsError(`variable-names.json has no project for ${tier}.`);
 	}
 

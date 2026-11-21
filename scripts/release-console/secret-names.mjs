@@ -57,7 +57,7 @@ export function tierSecrets(inventory, tier, list = listFolderNames, keep = () =
 				errors.push({ folder, message: describeError(error) });
 			}
 			const expected = [...(expectedOf[folder] ?? [])].filter(
-				(name) => tier === 'dev' || !inventory.developmentOnly.has(name),
+				(name) => tier === 'local' || !inventory.developmentOnly.has(name),
 			);
 			const names = new Set([...expected, ...(values?.keys() ?? [])]);
 			const writable = writableNames(inventory, tier, folder) ?? new Set();

@@ -28,17 +28,17 @@ function inventoryWith(otherFolders) {
 }
 
 const group = (extra = {}) => ({
-	projects: ['dev'],
+	projects: ['local'],
 	readBy: 'apps/tool/src',
 	names: ['TOOL_A', 'TOOL_B', 'TOOL_C'],
 	optional: ['TOOL_C'],
 	...extra,
 });
 
-test('the release-console group is in the inventory: dev only, read by the console API, five optional names', () => {
+test('the release-console group is in the inventory: this computer only, read by the console API, five optional names', () => {
 	const console = loadInventory().otherFolders.find((candidate) => candidate.folder === 'release-console');
 	assert.ok(console);
-	assert.deepEqual([...console.tiers], ['dev']);
+	assert.deepEqual([...console.tiers], ['local']);
 	assert.equal(console.readBy, 'apps/release-console-api/src');
 	assert.equal(console.names.length, 12);
 	// The API operations keys (Release Console, 21 Nov): optional until each environment's OPS_TOKEN exists.
@@ -55,10 +55,10 @@ test('the release-console group is in the inventory: dev only, read by the conso
 	]);
 });
 
-test('the github-actions group holds the geo refresh key: dev only, read by the workflows', () => {
+test('the github-actions group holds the geo refresh key: this computer only, read by the workflows', () => {
 	const actions = loadInventory().otherFolders.find((candidate) => candidate.folder === 'github-actions');
 	assert.ok(actions);
-	assert.deepEqual([...actions.tiers], ['dev']);
+	assert.deepEqual([...actions.tiers], ['local']);
 	assert.equal(actions.readBy, '.github/workflows');
 	assert.deepEqual(actions.names, ['DATA_GOV_IN_API_KEY']);
 });
@@ -193,12 +193,12 @@ test('the names check wants every listed name read in its readBy folder', () => 
 	assert.deepEqual(otherFolderProblems(undefined, {}), []);
 });
 
-test('dev status leaves out settings the local pipeline sets itself; staging still needs them', () => {
+test('local status leaves out settings the local pipeline sets itself; staging still needs them', () => {
 	const inventory = loadInventory();
 	const folders = { api: new Map(), backup: new Map(), infrastructure: new Map(), deployment: new Map() };
 	const setByPipeline = new Set(['CLIENT_IP_HEADER']);
 	assert.equal(
-		projectReport(folders, { tier: 'dev', inventory, setByPipeline }).requiredBlank.includes('CLIENT_IP_HEADER'),
+		projectReport(folders, { tier: 'local', inventory, setByPipeline }).requiredBlank.includes('CLIENT_IP_HEADER'),
 		false,
 	);
 	assert.equal(

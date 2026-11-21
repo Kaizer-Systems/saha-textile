@@ -228,7 +228,7 @@ const SECRET_FILES = new Set([
  * @returns {string[]}
  */
 export function writeStackEnv({ root, inventory, readApi, readInfrastructure }) {
-	const project = inventory.projects.dev;
+	const project = inventory.projects.local;
 	const lines = [];
 	let api;
 	let infrastructure;

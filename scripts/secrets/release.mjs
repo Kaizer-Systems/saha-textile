@@ -104,7 +104,7 @@ export function writeLocalRelease({ root, folders, inventory, source, port, imag
 			images,
 		},
 	);
-	const { files, notes } = buildRelease(folders, { tier: 'dev', inventory, source, release, apiOverrides });
+	const { files, notes } = buildRelease(folders, { tier: 'local', inventory, source, release, apiOverrides });
 	const releases = join(root, RELEASES_DIR);
 	mkdirSync(join(root, LOCAL_RELEASE_DIR), { recursive: true, mode: 0o700 });
 	mkdirSync(releases, { recursive: true, mode: 0o700 });

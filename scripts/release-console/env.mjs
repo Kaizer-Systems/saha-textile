@@ -80,7 +80,12 @@ export function buildConsoleEnv(values, { source }) {
  * @param {{ root?: string, project?: import('../secrets/inventory.mjs').Project, read?: () => Map<string, string>, notes?: Set<string> }} [options]
  * @returns {{ ok: boolean, lines: string[] }}
  */
-export function writeConsoleEnv({ root = ROOT, project = loadInventory().projects.dev, read, notes = new Set() } = {}) {
+export function writeConsoleEnv({
+	root = ROOT,
+	project = loadInventory().projects.local,
+	read,
+	notes = new Set(),
+} = {}) {
 	const path = join(root, CONSOLE_ENV_FILE);
 	const source = `Infisical ${project.name} (${project.environment}), folder /${CONSOLE_FOLDER}`;
 	let values;

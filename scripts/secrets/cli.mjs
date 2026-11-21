@@ -16,7 +16,7 @@
  * They need the Infisical CLI signed in (`infisical login`) with access to the projects.
  */
 import { exportFolder, exportProject } from './infisical.mjs';
-import { PROJECT_TIERS, ROOT, SecretsError, describeError, loadInventory } from './inventory.mjs';
+import { TIERS, ROOT, SecretsError, describeError, loadInventory } from './inventory.mjs';
 import { setupLocal } from './local-setup.mjs';
 import { pullDevEnv, refreshBeforeDev } from './pull.mjs';
 import { formatOtherFolder, formatReport, otherFolderReport, projectReport } from './render.mjs';
@@ -38,14 +38,18 @@ const PIPELINE_SETS = new Set(
 /** @param {string[]} args */
 function status(args) {
 	const wanted = args.filter((arg) => arg !== '--');
-	const tiers = wanted.length === 0 || wanted.includes('all') ? PROJECT_TIERS : wanted;
+	const tiers = wanted.length === 0 || wanted.includes('all') ? TIERS : wanted;
 	for (const tier of tiers) {
-		if (!PROJECT_TIERS.includes(tier))
-			throw new SecretsError(`Unknown project "${tier}". Use one of: ${PROJECT_TIERS.join(', ')}.`);
+		if (tier === 'dev')
+			throw new SecretsError(
+				'"dev" was renamed on 2026-11-21: use "local" for this computer or "development" for a development server.',
+			);
+		if (!TIERS.includes(tier))
+			throw new SecretsError(`Unknown project "${tier}". Use one of: ${TIERS.join(', ')}.`);
 	}
 	const inventory = loadInventory();
 	const blocks = [];
-	for (const tier of /** @type {Array<'dev' | 'development' | 'staging' | 'production'>} */ (tiers)) {
+	for (const tier of /** @type {Array<'local' | 'development' | 'staging' | 'production'>} */ (tiers)) {
 		const project = inventory.projects[tier];
 		const folders = exportProject(project, { notes });
 		const lines = [
@@ -76,7 +80,7 @@ function status(args) {
 
 /** @param {import('./inventory.mjs').Inventory} inventory */
 function devApiReader(inventory) {
-	const { projectId, environment } = inventory.projects.dev;
+	const { projectId, environment } = inventory.projects.local;
 	return () => exportFolder({ projectId, environment, folder: 'api', notes });
 }
 
@@ -104,7 +108,7 @@ function pull(args) {
 
 function stackEnv() {
 	const inventory = loadInventory();
-	const { projectId, environment } = inventory.projects.dev;
+	const { projectId, environment } = inventory.projects.local;
 	const readInfrastructure = () => exportFolder({ projectId, environment, folder: 'infrastructure', notes });
 	console.log(
 		writeStackEnv({ root: ROOT, inventory, readApi: devApiReader(inventory), readInfrastructure }).join('\n'),

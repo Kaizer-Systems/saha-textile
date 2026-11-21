@@ -3,7 +3,7 @@
 	"status": "names-only; owner fills values; renderer in scripts/secrets (2026-11-19); wiring into each mode pending",
 	"projects": [
 		{
-			"tier": "dev",
+			"tier": "local",
 			"name": "saha-textile-local",
 			"environment": "dev",
 			"projectId": "a4ce0ced-3627-4fd7-b78d-4f7690e2da76",
@@ -220,12 +220,13 @@
 		"2026-11-21: RELEASE_ALLOWED_BLANK is written by the release itself (names a server deploy was told to leave blank, from `--allow-blank`); it is never stored in Infisical, and an /api entry with that name is refused.",
 		"2026-11-21: OPS_TOKEN and MSG91_RECEIPT_TOKEN added (the Release Console's read-only /ops address and MSG91's delivery-receipt address; both optional, blank switches the address off). Add both to /api in all three projects; each environment gets its own values (`openssl rand -hex 32` and `openssl rand -hex 24`).",
 		"2026-11-21 (owner): saha-textile-dev is renamed saha-textile-local (this computer; tier key stays `dev` until the Release Console renames it too) and copied into saha-textile-development (tier `development`, a development server): without this computer's own entries (OTP_LOCAL_FIXED_CODE, SHOP_ORIGIN, TLS_CERT_FILE, TLS_KEY_FILE, the /release-console and /github-actions folders), with server settings (DEPLOY_ENV=development, NODE_ENV=production, proxy, container hosts, saha_textile_development) and with this computer's addresses and search key left blank.",
-		"2026-11-21 (owner): optional certificateFileNames in /infrastructure of each server project (origin.pem, origin.key, origin-ca.pem, cloudflare-client-ca.pem). A release carries the ones that are set and deploy.sh installs them into /opt/saha-textile/certs; the Release Console fills origin.pem and origin.key when it creates a server and they are empty, so every later release pulls them from Infisical."
+		"2026-11-21 (owner): optional certificateFileNames in /infrastructure of each server project (origin.pem, origin.key, origin-ca.pem, cloudflare-client-ca.pem). A release carries the ones that are set and deploy.sh installs them into /opt/saha-textile/certs; the Release Console fills origin.pem and origin.key when it creates a server and they are empty, so every later release pulls them from Infisical.",
+		"2026-11-21 (owner): the tier key `dev` is renamed `local` (this computer, saha-textile-local) and `development` (saha-textile-development) is one of the tiers the Release Console reads; `pnpm secrets:status -- local` replaces `-- dev`, which is now refused because it could mean either."
 	],
 	"otherFolders": {
 		"release-console": {
 			"description": "The Release Console's own keys (owner, 2026-11-20: 'Yes, all recommended'). Stored once, in the dev project. Read by apps/release-console-api/src only; never rendered into the shop's files or a release. Each read/change pair is complete when either key is filled: the console reads with the change key when there is no read key.",
-			"projects": ["dev"],
+			"projects": ["local"],
 			"readBy": "apps/release-console-api/src",
 			"names": [
 				"CONSOLE_DO_READ_TOKEN",
@@ -255,7 +256,7 @@
 		},
 		"github-actions": {
 			"description": "Keys only GitHub Actions workflows use, kept here as the master copy for safe keeping (owner, 2026-11-20). The workflow reads its repository secret of the same name; copy a changed value to GitHub's repository secrets too. Read by .github/workflows only; never rendered into the shop's files or a release.",
-			"projects": ["dev"],
+			"projects": ["local"],
 			"readBy": ".github/workflows",
 			"names": ["DATA_GOV_IN_API_KEY"]
 		}

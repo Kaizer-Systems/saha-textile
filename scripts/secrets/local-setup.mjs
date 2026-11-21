@@ -131,7 +131,7 @@ print(all ? 'logins-ok' : 'logins-failed');
 /**
  * @param {object} options
  * @param {string} options.root
- * @param {(tier: 'dev') => ReturnType<typeof generateServiceSecrets>} [options.generate]
+ * @param {(tier: 'local') => ReturnType<typeof generateServiceSecrets>} [options.generate]
  * @param {(script: string) => { status: number | null, stdout: string }} [options.runMongo]
  * @param {() => string} [options.makeTestPassword]
  * @returns {string[]} what to print: names, files and outcomes only
@@ -145,7 +145,7 @@ export function setupLocal({
 	const envPath = join(root, 'apps/api/.env');
 	const before = readIfPresent(envPath);
 	if (before === null) throw new SecretsError('apps/api/.env is missing. Create it first (pnpm secrets:pull).');
-	const made = generate('dev');
+	const made = generate('local');
 
 	const wanted = new Map([...made.api, ...LOCAL_SETTINGS]);
 	const current = parseEnvText(before);

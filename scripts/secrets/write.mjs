@@ -15,7 +15,7 @@ import { join } from 'node:path';
 
 import { folderNames, SecretsError } from './inventory.mjs';
 
-/** @typedef {{ tier: 'dev' | 'development' | 'staging' | 'production', folder: string, name: string, value: string }} SecretChange */
+/** @typedef {{ tier: 'local' | 'development' | 'staging' | 'production', folder: string, name: string, value: string }} SecretChange */
 
 /**
  * The names a tier's folder may hold: the shop's four folders, or that tier's other folders.

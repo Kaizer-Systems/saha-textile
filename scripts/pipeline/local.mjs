@@ -287,7 +287,7 @@ const stages = {
 	release({ json, report, state }) {
 		const images = readImages();
 		const inventory = loadInventory();
-		const project = inventory.projects.dev;
+		const project = inventory.projects.local;
 		const notes = new Set();
 		report.step('release', `Reading ${project.name} (${project.environment})`);
 		const folders = exportProject(project, { notes });

@@ -31,7 +31,7 @@ export MONGO_HOST_PORT=27099 REDIS_HOST_PORT=6399
 node --input-type=module -e '
 import { writeFileSync } from "node:fs";
 const { generateServiceSecrets } = await import(process.argv[1] + "/scripts/secrets/generate.mjs");
-const made = generateServiceSecrets("dev");
+const made = generateServiceSecrets("local");
 const dir = process.argv[2];
 for (const [file, value] of made.infrastructure) writeFileSync(dir + "/" + file, value, { mode: 0o600 });
 writeFileSync(dir + "/mongo-app-password", made.api.get("MONGODB_PASSWORD"), { mode: 0o600 });

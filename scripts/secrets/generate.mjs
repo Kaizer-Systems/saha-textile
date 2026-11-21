@@ -17,7 +17,7 @@ export const APP_DATABASE_USER = 'saha_textile_app';
 export const ROOT_DATABASE_USER = 'saha_textile_root';
 
 /**
- * @param {'dev' | 'development' | 'staging' | 'production'} tier
+ * @param {'local' | 'development' | 'staging' | 'production'} tier
  * @param {(size: number) => Buffer} [random]
  * @returns {{ api: Map<string, string>, infrastructure: Map<string, string> }}
  */
@@ -42,7 +42,7 @@ export function generateServiceSecrets(tier, random = randomBytes) {
 			['mongo-root-password', hex(32)],
 			[
 				'meilisearch.toml',
-				`master_key = "${hex(32)}"\nenv = "${tier === 'dev' ? 'development' : 'production'}"\nno_analytics = true\n`,
+				`master_key = "${hex(32)}"\nenv = "${tier === 'local' ? 'development' : 'production'}"\nno_analytics = true\n`,
 			],
 		]),
 	};

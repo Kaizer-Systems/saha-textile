@@ -35,13 +35,15 @@ const FOLDER_ICONS: Record<string, string> = {
 
 /**
  * The name-list tier an environment's name suggests, used only to offer filling in its place in one
- * click: this computer and dev suggest the dev project, staging the staging project, production the
- * production project; anything else suggests none. What a tab reads comes from its own setting.
+ * click: this computer suggests the local project, a development server the development project,
+ * staging the staging project, production the production project; anything else suggests none. What
+ * a tab reads comes from its own setting.
  */
 export function tierOf(name: string, onThisComputer: boolean): SecretTier | null {
 	if (/prod/i.test(name)) return 'production';
 	if (/stag/i.test(name)) return 'staging';
-	if (onThisComputer || /^(local|dev)/i.test(name)) return 'dev';
+	if (onThisComputer || /^local/i.test(name)) return 'local';
+	if (/^dev/i.test(name)) return 'development';
 	return null;
 }
 

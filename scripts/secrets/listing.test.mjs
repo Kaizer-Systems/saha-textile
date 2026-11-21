@@ -32,12 +32,15 @@ test('the screen lists every tier with its four shop folders, plus the other fol
 	const plan = secretsScreenPlan(loadInventory());
 	assert.deepEqual(
 		plan.map((row) => row.tier),
-		['dev', 'staging', 'production'],
+		['local', 'development', 'staging', 'production'],
 	);
 	const dev = plan[0];
 	assert.equal(dev.project, 'saha-textile-local');
 	assert.deepEqual(dev.folders.slice(0, 4), ['api', 'backup', 'infrastructure', 'deployment']);
 	assert.ok(dev.folders.includes('release-console') && dev.folders.includes('github-actions'));
-	assert.deepEqual(plan[2].folders, ['api', 'backup', 'infrastructure', 'deployment']);
-	assert.equal(plan[2].environment, 'prod');
+	// A development server's project holds only the shop's four folders, like staging and production.
+	assert.equal(plan[1].project, 'saha-textile-development');
+	assert.deepEqual(plan[1].folders, ['api', 'backup', 'infrastructure', 'deployment']);
+	assert.deepEqual(plan[3].folders, ['api', 'backup', 'infrastructure', 'deployment']);
+	assert.equal(plan[3].environment, 'prod');
 });

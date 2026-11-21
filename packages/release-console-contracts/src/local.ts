@@ -209,8 +209,13 @@ export type RequestsView = z.infer<typeof requestsViewSchema>;
 
 /* ----- secrets (names only, from Infisical with the owner's login) ----- */
 
-/** The Infisical tier each console environment reads: its own project and environment only. */
-export const SECRET_TIERS = ['dev', 'staging', 'production'] as const;
+/**
+ * The name list's tiers (docker/infisical/variable-names.json), each its own Infisical project:
+ * `local` this computer (saha-textile-local), `development` a development server
+ * (saha-textile-development), then staging and production. Each console environment reads only its
+ * own place. `dev` was renamed `local` on 2026-11-21.
+ */
+export const SECRET_TIERS = ['local', 'development', 'staging', 'production'] as const;
 export const secretTierSchema = z.enum(SECRET_TIERS);
 export type SecretTier = z.infer<typeof secretTierSchema>;
 /** `unknown`: Infisical could not read that folder. */

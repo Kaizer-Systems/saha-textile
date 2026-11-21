@@ -177,7 +177,7 @@ function checkUnknown(folder, values, allowed, { problems, notes, skip = new Set
 }
 
 /**
- * `apps/api/.env` for `pnpm dev`, from the dev project's `/api` folder. Personal overrides (from
+ * `apps/api/.env` for `pnpm dev`, from the local project's `/api` folder. Personal overrides (from
  * `apps/api/.env.overrides`) are laid on top; an override with an empty value removes the setting.
  * @param {Folder} api
  * @param {{ inventory: Inventory, source: string, overrides?: Folder }} options
@@ -203,9 +203,9 @@ export function buildDevEnv(api, { inventory, source, overrides = new Map() }) {
 }
 
 /**
- * The API file of the full local Docker stack (mode 3), from the dev project's `/api` folder. Local
+ * The API file of the full local Docker stack (mode 3), from the local project's `/api` folder. Local
  * development settings and every setting the stack owns are dropped, then the stack's own values are
- * laid on top, so the stack runs the dev project's keys with its own hostnames and services.
+ * laid on top, so the stack runs the local project's keys with its own hostnames and services.
  * @param {Folder} api
  * @param {object} options
  * @param {Inventory} options.inventory
@@ -244,7 +244,7 @@ export function buildStackEnv(api, { inventory, source, owned, settings, unknown
  *
  * @param {Record<string, Folder>} folders     the project's four folders
  * @param {object} options
- * @param {'dev' | 'development' | 'staging' | 'production'} options.tier
+ * @param {'local' | 'development' | 'staging' | 'production'} options.tier
  * @param {Inventory} options.inventory
  * @param {string} options.source               the project, for the file headers
  * @param {Folder} [options.release]           non-secret settings from the caller: image digests,
@@ -527,7 +527,7 @@ export function planEnvFileChange(current, next) {
 /**
  * What `pnpm secrets:status` reports for one project. Names and counts only.
  * @param {Record<string, Folder>} folders
- * @param {{ tier: 'dev' | 'development' | 'staging' | 'production', inventory: Inventory }} options
+ * @param {{ tier: 'local' | 'development' | 'staging' | 'production', inventory: Inventory }} options
  */
 export function projectReport(folders, { tier, inventory, setByPipeline = new Set() }) {
 	const allowed = folderNames(inventory);
@@ -536,7 +536,7 @@ export function projectReport(folders, { tier, inventory, setByPipeline = new Se
 	const expected = {
 		...allowed,
 		api:
-			tier === 'dev'
+			tier === 'local'
 				? allowed.api
 				: new Set(
 						[...allowed.api].filter(
@@ -563,22 +563,22 @@ export function projectReport(folders, { tier, inventory, setByPipeline = new Se
 		};
 	});
 	const api = folders.api ?? new Map();
-	// The dev project's release is the local pipeline's, which sets the stack's own settings itself.
+	// The local project's release is the local pipeline's, which sets the stack's own settings itself.
 	const requiredBlank = inventory.requiredForRelease.filter(
 		(name) =>
 			isBlank(api.get(name)) &&
-			!(tier === 'dev' && (setByPipeline.has(name) || inventory.serverOnlyRequired.has(name))),
+			!(tier === 'local' && (setByPipeline.has(name) || inventory.serverOnlyRequired.has(name))),
 	);
 	const infrastructureBlank = inventory.infrastructureFiles.filter((file) =>
 		isBlank(folders.infrastructure?.get(file)),
 	);
 	const backupBlank =
 		tier === 'production' ? inventory.backup.filter((name) => isBlank(folders.backup?.get(name))) : [];
-	// Fine on this computer, but a server reading this project (a future dev server) would need them.
+	// Fine on this computer, but a server reading this project would need them.
 	const serverOnlyBlank =
-		tier === 'dev' ? [...inventory.serverOnlyRequired].filter((name) => isBlank(api.get(name))) : [];
+		tier === 'local' ? [...inventory.serverOnlyRequired].filter((name) => isBlank(api.get(name))) : [];
 	// A server deploy may still go ahead with these blank, if it names them (`--allow-blank`).
-	const mayDeployBlank = tier === 'dev' ? [] : requiredBlank.filter((name) => inventory.mayDeployBlank.has(name));
+	const mayDeployBlank = tier === 'local' ? [] : requiredBlank.filter((name) => inventory.mayDeployBlank.has(name));
 	return {
 		tier,
 		folders: perFolder,
@@ -663,7 +663,7 @@ export function formatReport(report, title) {
 			);
 		}
 	}
-	const release = report.tier === 'dev' ? 'the local pipeline' : 'a deploy';
+	const release = report.tier === 'local' ? 'the local pipeline' : 'a deploy';
 	if (report.requiredBlank.length > 0) {
 		lines.push(`  Blank, but ${release} needs it in /api: ${report.requiredBlank.join(', ')}`);
 	}

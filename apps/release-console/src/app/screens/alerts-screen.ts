@@ -6,6 +6,7 @@ import { SparkLine } from './local-parts';
 import { type Trouble, TroubleSteps } from './trouble';
 import { ConsoleApi } from '../data/console-api';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 import type { Alert, AlertRule } from '@saha-textile/release-console-contracts';
 
@@ -43,7 +44,7 @@ const lasted = (a: Alert) => {
  */
 @Component({
 	selector: 'rc-alerts-screen',
-	imports: [Icon, SparkLine, TroubleSteps],
+	imports: [Loading, Icon, SparkLine, TroubleSteps],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (view.data(); as v) {
@@ -179,7 +180,7 @@ const lasted = (a: Alert) => {
 				<div><b>The console API is not answering.</b></div>
 			</div>
 		} @else {
-			<p class="rc-p muted">Reading the alerts…</p>
+			<rc-loading what="Reading the alerts…" />
 		}
 	`,
 })

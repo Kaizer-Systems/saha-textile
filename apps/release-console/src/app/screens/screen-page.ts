@@ -9,6 +9,7 @@ import { ChangesScreen } from './changes-screen';
 import { ClientsScreen } from './clients-screen';
 import { CostsScreen } from './costs-screen';
 import { DepsScreen } from './deps-screen';
+import { DoCreateScreen } from './do-create';
 import { DomainsScreen } from './domains-screen';
 import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } from './local-screens';
 import { JobsScreen, MessagesScreen } from './ops-screens';
@@ -47,7 +48,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 	secrets: ['matrix', 'problem'],
 	pulls: 'list',
 	pipeline: 'list',
-	droplets: 'list',
+	droplets: ['list', 'region', 'image', 'size', 'v5', 'storage', 'auth', 'network', 'finalize'],
 	doaccount: 'overview',
 	cfdomains: 'list',
 	dns: 'records',
@@ -79,6 +80,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		PullsScreen,
 		PipelinesScreen,
 		DropletsScreen,
+		DoCreateScreen,
 		DoAccountScreen,
 		CfDomainsScreen,
 		DnsScreen,
@@ -209,7 +211,11 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						<rc-pipelines-screen />
 					}
 					@case ('droplets') {
-						<rc-droplets-screen />
+						@if (tabKey() === 'list') {
+							<rc-droplets-screen />
+						} @else {
+							<rc-do-create [step]="tabKey()" />
+						}
 					}
 					@case ('doaccount') {
 						<rc-do-account-screen />

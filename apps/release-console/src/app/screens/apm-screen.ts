@@ -6,6 +6,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { SparkLine } from './local-parts';
 import { ConsoleApi } from '../data/console-api';
 import { BrandLogo, Icon, serviceLogo } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 const WINDOWS: [number, string][] = [
 	[15, '15 min'],
@@ -28,7 +29,7 @@ const routeKey = (r: RequestRoute) => `${r.service} ${r.method} ${r.route}`;
  */
 @Component({
 	selector: 'rc-apm-screen',
-	imports: [Icon, BrandLogo, SparkLine],
+	imports: [Loading, Icon, BrandLogo, SparkLine],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-row between">
@@ -286,7 +287,7 @@ const routeKey = (r: RequestRoute) => `${r.service} ${r.method} ${r.route}`;
 				<div><b>The console API is not answering.</b></div>
 			</div>
 		} @else {
-			<p class="rc-p muted">Reading the request log…</p>
+			<rc-loading what="Reading the request log…" />
 		}
 	`,
 })

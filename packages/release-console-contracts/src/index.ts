@@ -51,3 +51,4 @@ export * from './server-deploy.js';
 export * from './seo.js';
 export * from './clients.js';
 export * from './ops.js';
+export * from './do-catalog.js';

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
 	type CloudAccount,
+	type DoCatalog,
 	type DnsRecord,
 	type Droplet,
 	type EdgeZone,
@@ -202,6 +203,11 @@ export class VendorReadsService {
 
 	cloudAccount(projectId: string, repoId: string, slotId: string): Promise<VendorAnswer<CloudAccount>> {
 		return this.cloud(projectId, repoId, slotId, (key) => digitalOceanAdapter.account(key));
+	}
+
+	/** Everything DigitalOcean's create steps choose from, read with the read key. */
+	doCatalog(projectId: string, repoId: string, slotId: string): Promise<VendorAnswer<DoCatalog>> {
+		return this.cloud(projectId, repoId, slotId, (key) => digitalOceanAdapter.catalog(key));
 	}
 
 	zones(projectId: string, repoId: string, slotId: string): Promise<VendorAnswer<EdgeZone[]>> {

@@ -5,6 +5,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** Hourly while open (GitHub updates alerts on its own schedule), and at once on opening. */
 export const DEPS_REFRESH_MS = 60 * 60 * 1000;
@@ -26,7 +27,7 @@ export function bySeverity(alerts: { severity: string }[]): { severity: string; 
  */
 @Component({
 	selector: 'rc-deps-screen',
-	imports: [Icon],
+	imports: [Loading, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-panel">
@@ -101,7 +102,7 @@ export function bySeverity(alerts: { severity: string }[]): { severity: string; 
 					<p class="rc-note">{{ a.message }}</p>
 				}
 			} @else {
-				<p class="rc-note">Reading GitHub's alerts…</p>
+				<rc-loading what="Reading GitHub's alerts…" />
 			}
 		</div>
 	`,

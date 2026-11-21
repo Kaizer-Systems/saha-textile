@@ -9,6 +9,7 @@ import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { SecretDrafts } from '../data/secret-drafts';
 import { Icon, environmentIcon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 import { PIN_LENGTH, PinBoxes } from '../shared/pin-boxes';
 import { VendorLogo } from '../shared/vendor-logo';
 
@@ -71,7 +72,7 @@ const needsOwner = (row: Row) => !row.optional && row.state !== 'set';
  */
 @Component({
 	selector: 'rc-secrets-screen',
-	imports: [Icon, PinBoxes, VendorLogo],
+	imports: [Loading, Icon, PinBoxes, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	host: { '(window:beforeunload)': 'unsaved($event)' },
 	template: `
@@ -305,7 +306,7 @@ const needsOwner = (row: Row) => !row.optional && row.state !== 'set';
 					</div>
 				</div>
 			} @else {
-				<p class="rc-p muted">Reading {{ placeLabel() }} with your login; this takes a few seconds…</p>
+				<rc-loading [what]="'Reading ' + placeLabel() + ' with your login; this takes a few seconds…'" />
 			}
 
 			@if (saving()) {

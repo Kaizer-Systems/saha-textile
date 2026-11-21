@@ -19,6 +19,7 @@ import { day, when } from './format-time';
 import { ConsoleApi } from '../data/console-api';
 import { ConfirmDialog } from '../shared/confirm-dialog';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
 
 /** Kinds the owner can link here, each by its Infisical name; the GitHub CLI sign-in needs none. */
@@ -64,7 +65,7 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
  */
 @Component({
 	selector: 'rc-connections',
-	imports: [Icon, VendorLogo],
+	imports: [Loading, Icon, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@let p = project();
@@ -308,6 +309,8 @@ export function keyPill(ref: KeyRef | undefined): { cls: string; text: string } 
 					<code>pnpm console:env</code>
 					on this Mac; the console reads the new file at once. Names only are shown here, never values.
 				</p>
+			} @else if (source.isPending()) {
+				<rc-loading what="Reading the console's key file…" />
 			} @else if (source.isError()) {
 				<p class="rc-p red">The console API is not answering.</p>
 			}

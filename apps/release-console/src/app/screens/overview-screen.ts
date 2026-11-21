@@ -6,12 +6,13 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { BrandLogo, Icon, environmentIcon, serviceLogo } from '../shared/icons';
+import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
 
 /** The repository's environments at a glance. Those on this computer are live; servers appear once linked. */
 @Component({
 	selector: 'rc-overview-screen',
-	imports: [Icon, VendorLogo, BrandLogo],
+	imports: [Loading, Icon, VendorLogo, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-g3">
@@ -35,6 +36,9 @@ import { VendorLogo } from '../shared/vendor-logo';
 						}
 					</div>
 					@if (env.local) {
+						@if (readiness.isPending() || services.isPending()) {
+							<rc-loading what="Checking this computer's stack…" />
+						}
 						@if (readiness.data(); as r) {
 							@if (r.status !== 'unknown') {
 								<p class="rc-p">

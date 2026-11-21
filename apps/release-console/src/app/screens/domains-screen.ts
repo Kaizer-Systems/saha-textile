@@ -5,6 +5,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** Once a week while open, and at once on opening (owner, 21 Nov). */
 export const DOMAINS_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
@@ -24,7 +25,7 @@ export function daysLeft(iso: string | null, now = Date.now()): number | null {
  */
 @Component({
 	selector: 'rc-domains-screen',
-	imports: [Icon],
+	imports: [Loading, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@for (slot of slots(); track slot) {
@@ -101,7 +102,7 @@ export function daysLeft(iso: string | null, now = Date.now()): number | null {
 						<p class="rc-note">{{ a.message }}</p>
 					}
 				} @else {
-					<p class="rc-note">Reading Cloudflare and the domains…</p>
+					<rc-loading what="Reading Cloudflare and the domains…" />
 				}
 			</div>
 		} @empty {

@@ -7,18 +7,20 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
 
 import type { VendorAnswer } from '@saha-textile/release-console-contracts';
 
 /** Why a vendor screen has no data: not connected (amber, with the way to connect) or an error (red). */
 @Component({
+	imports: [Loading],
 	selector: 'rc-vendor-state',
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@let a = answer();
 		@if (pending()) {
-			<p class="rc-p muted">Reading {{ vendor() }}…</p>
+			<rc-loading [what]="'Reading ' + vendor() + '…'" />
 		} @else if (failed()) {
 			<div class="rc-banner red small">
 				<span class="rc-dot red"></span>

@@ -21,6 +21,7 @@ import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
 import { BranchPicker } from '../shared/branch-picker';
 import { BrandLogo, Icon, STAGE_ICONS, serviceLogo } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 const WINDOWS: [number, string][] = [
 	[15, '15 min'],
@@ -59,7 +60,7 @@ export function containerRates(
 /** Run › Server, Metrics tab, for an environment on this computer: the Mac itself. */
 @Component({
 	selector: 'rc-server-screen',
-	imports: [LocalGate, Gauge, SparkLine, Icon, BrandLogo],
+	imports: [Loading, LocalGate, Gauge, SparkLine, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -169,7 +170,7 @@ export function containerRates(
 								</div>
 							</div>
 						} @else {
-							<p class="rc-p muted">Reading Docker…</p>
+							<rc-loading what="Reading Docker…" />
 						}
 					</div>
 				</div>
@@ -216,7 +217,7 @@ export function containerRates(
 			} @else if (mac.isError()) {
 				<p class="rc-p red">{{ mac.error().message }}</p>
 			} @else {
-				<p class="rc-p muted">Reading this Mac…</p>
+				<rc-loading what="Reading this Mac…" />
 			}
 		</rc-local-gate>
 	`,
@@ -299,7 +300,7 @@ export class ServerScreen {
 /** Run › Infrastructure: every Saha Textile container on this Mac with its live figures and history. */
 @Component({
 	selector: 'rc-infra-screen',
-	imports: [LocalGate, SparkLine, Icon, BrandLogo],
+	imports: [Loading, LocalGate, SparkLine, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -441,7 +442,7 @@ export class ServerScreen {
 			} @else if (docker.isError()) {
 				<p class="rc-p red">{{ docker.error().message }}</p>
 			} @else {
-				<p class="rc-p muted">Reading Docker…</p>
+				<rc-loading what="Reading Docker…" />
 			}
 		</rc-local-gate>
 	`,
@@ -554,7 +555,7 @@ export function readLogLine(raw: string): LogLine {
 /** Run › Live logs: one container's log, followed live, filtered by words, errors or one request. */
 @Component({
 	selector: 'rc-tail-screen',
-	imports: [LocalGate, Icon, BrandLogo],
+	imports: [Loading, LocalGate, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -621,6 +622,8 @@ export function readLogLine(raw: string): LogLine {
 				</div>
 				@if (logs.isError()) {
 					<p class="rc-p red">{{ logs.error().message }}</p>
+				} @else if (logs.isPending() && container()) {
+					<rc-loading [what]="'Reading the log of ' + container() + '…'" />
 				} @else if (container()) {
 					<p class="rc-note">
 						{{ shown().length }} of {{ lines().length }} lines{{
@@ -706,7 +709,7 @@ export class TailScreen {
 /** Watch › Health for this Mac: one tile per part, green, amber or red. */
 @Component({
 	selector: 'rc-health-screen',
-	imports: [LocalGate, Icon, BrandLogo, TroubleSteps],
+	imports: [Loading, LocalGate, Icon, BrandLogo, TroubleSteps],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -717,6 +720,9 @@ export class TailScreen {
 						Everything on this Mac · every 10 s
 					</span>
 				</div>
+				@if (dockerPending()) {
+					<rc-loading what="Reading Docker and the shop's health…" />
+				}
 				<div class="rc-tiles">
 					@for (t of tiles(); track t.name) {
 						<div
@@ -743,6 +749,8 @@ export class TailScreen {
 	`,
 })
 export class HealthScreen {
+	/** Nothing read yet: the tiles would be empty, so the screen says it is reading. */
+	protected readonly dockerPending = computed(() => this.docker.isPending() || this.shop.isPending());
 	/** Docker down, or the stack not answering: the steps to bring it back. */
 	protected readonly trouble = computed<Trouble | null>(() => {
 		const d = this.docker.data();
@@ -861,7 +869,7 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 /** Ship › Live deploy, Local tab: run the local pipeline and the stack from here, and watch it. */
 @Component({
 	selector: 'rc-deploy-screen',
-	imports: [LocalGate, Icon, BrandLogo, TroubleSteps, BranchPicker],
+	imports: [Loading, LocalGate, Icon, BrandLogo, TroubleSteps, BranchPicker],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<rc-local-gate>
@@ -1198,6 +1206,11 @@ const STAGE_NAMES: Record<PipelineStage, string> = {
 								</tr>
 							</thead>
 							<tbody>
+								@if (jobs.isPending()) {
+									<tr>
+										<td colspan="4"><rc-loading what="Reading the runs on this Mac…" /></td>
+									</tr>
+								}
 								@for (j of jobs.data() ?? []; track j.id) {
 									<tr>
 										<td>{{ j.label }}</td>

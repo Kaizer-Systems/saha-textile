@@ -4,6 +4,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { ConsoleApi } from '../data/console-api';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** Every minute while open, and at once on opening (brief's refresh table). */
 export const CLIENTS_REFRESH_MS = 60 * 1000;
@@ -20,7 +21,7 @@ export function share(part: number, whole: number): string {
  */
 @Component({
 	selector: 'rc-clients-screen',
-	imports: [Icon],
+	imports: [Loading, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-banner small">
@@ -100,7 +101,7 @@ export function share(part: number, whole: number): string {
 				</p>
 			}
 		} @else {
-			<p class="rc-note">Reading the request log…</p>
+			<rc-loading what="Reading the request log…" />
 		}
 	`,
 })

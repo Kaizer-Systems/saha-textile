@@ -5,6 +5,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** Every 5 minutes while open, and at once on opening (GitHub allows 5,000 calls an hour). */
 export const CHANGES_REFRESH_MS = 5 * 60 * 1000;
@@ -16,7 +17,7 @@ export const CHANGES_REFRESH_MS = 5 * 60 * 1000;
  */
 @Component({
 	selector: 'rc-changes-screen',
-	imports: [Icon],
+	imports: [Loading, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-row between">
@@ -93,7 +94,7 @@ export const CHANGES_REFRESH_MS = 5 * 60 * 1000;
 				<p class="rc-note">{{ a.message }}</p>
 			}
 		} @else {
-			<p class="rc-note">Asking GitHub what each environment would receive…</p>
+			<rc-loading what="Asking GitHub what each environment would receive…" />
 		}
 	`,
 })

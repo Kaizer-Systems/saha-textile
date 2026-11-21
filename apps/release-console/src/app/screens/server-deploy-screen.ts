@@ -13,6 +13,7 @@ import { ConsoleContext } from '../data/console-context';
 import { when } from '../pages/format-time';
 import { BranchPicker } from '../shared/branch-picker';
 import { BrandLogo, Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 import { PIN_LENGTH, PinBoxes } from '../shared/pin-boxes';
 
 import type { DeployRun, ServerDeployView, ServerTarget } from '@saha-textile/release-console-contracts';
@@ -124,7 +125,7 @@ export function blankEffects(names: string[]): { stops: string[]; restWorks: boo
  */
 @Component({
 	selector: 'rc-server-deploy-screen',
-	imports: [Icon, BrandLogo, PinBoxes, BranchPicker],
+	imports: [Loading, Icon, BrandLogo, PinBoxes, BranchPicker],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (view.data(); as a) {
@@ -611,7 +612,7 @@ export function blankEffects(names: string[]): { stops: string[]; restWorks: boo
 				<div><b>The console API is not answering.</b></div>
 			</div>
 		} @else {
-			<p class="rc-p muted">Reading the deploy runs from GitHub…</p>
+			<rc-loading what="Reading the deploy runs from GitHub…" />
 		}
 	`,
 })

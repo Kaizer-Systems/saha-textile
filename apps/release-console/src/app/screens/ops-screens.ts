@@ -6,6 +6,7 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** Both screens read every minute while open, and at once on opening (brief's refresh table). */
 export const OPS_REFRESH_MS = 60 * 1000;
@@ -27,7 +28,7 @@ const readAt = (at: number) =>
  */
 @Component({
 	selector: 'rc-jobs-screen',
-	imports: [Icon],
+	imports: [Loading, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-panel">
@@ -95,7 +96,7 @@ const readAt = (at: number) =>
 					<p class="rc-note">{{ a.message }}</p>
 				}
 			} @else {
-				<p class="rc-note">Reading the shop API's operations address…</p>
+				<rc-loading what="Reading the shop API's operations address…" />
 			}
 		</div>
 	`,
@@ -121,7 +122,7 @@ export class JobsScreen {
  */
 @Component({
 	selector: 'rc-messages-screen',
-	imports: [Icon],
+	imports: [Loading, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-row between">
@@ -223,7 +224,7 @@ export class JobsScreen {
 				<p class="rc-note">{{ a.message }}</p>
 			}
 		} @else {
-			<p class="rc-note">Reading the shop API's operations address…</p>
+			<rc-loading what="Reading the shop API's operations address…" />
 		}
 	`,
 })

@@ -7,6 +7,7 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** "Page not found" answers are read again every 5 minutes while open (brief's refresh table). */
 export const NOT_FOUND_REFRESH_MS = 5 * 60 * 1000;
@@ -70,7 +71,7 @@ export function missingAction(
  */
 @Component({
 	selector: 'rc-seo-screen',
-	imports: [Icon],
+	imports: [Loading, Icon],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-g4">
@@ -271,7 +272,7 @@ export function missingAction(
 					site’s name. A path the sitemap lists but the shop cannot find is shown red.
 				</p>
 			} @else {
-				<p class="rc-note">Reading the request log…</p>
+				<rc-loading what="Reading the request log…" />
 			}
 		</div>
 	`,

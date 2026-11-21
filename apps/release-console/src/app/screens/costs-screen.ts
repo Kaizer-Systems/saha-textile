@@ -6,6 +6,7 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
 
 /** Once a day while open (brief 26gq3NbcbBESea6abRtsa3: billing changes about daily), and at once on opening. */
@@ -18,7 +19,7 @@ export const COSTS_REFRESH_MS = 24 * 60 * 60 * 1000;
  */
 @Component({
 	selector: 'rc-costs-screen',
-	imports: [Icon, VendorLogo],
+	imports: [Loading, Icon, VendorLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="rc-panel">
@@ -36,6 +37,9 @@ export const COSTS_REFRESH_MS = 24 * 60 * 60 * 1000;
 					Check again
 				</button>
 			</div>
+			@if (bills.isPending()) {
+				<rc-loading what="Reading DigitalOcean's billing…" />
+			}
 			<div class="rc-tw">
 				<table class="rc-t">
 					<thead>

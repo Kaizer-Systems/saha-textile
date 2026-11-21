@@ -404,3 +404,113 @@ test('Job queues and Messages read the shop API’s operations address (screens 
 	await expect(page.getByText('75% sent or delivered · 1 failed · 1 held back')).toBeVisible();
 	await expect(page.getByRole('cell', { name: 'sign-in-code' })).toBeVisible();
 });
+
+/** A made-up DigitalOcean account for the create steps: no real key or account is used. */
+const sampleCatalog = {
+	regions: [
+		{ slug: 'blr1', name: 'Bangalore 1', available: true, sizes: [], features: [] },
+		{ slug: 'sfo1', name: 'San Francisco 1', available: false, sizes: [], features: [] },
+	],
+	sizes: [
+		['s-2vcpu-4gb', 'regular', 4096, 2, 80, 24],
+		['s-4vcpu-8gb', 'regular', 8192, 4, 160, 48],
+		['s-2vcpu-4gb-amd', 'amd', 4096, 2, 80, 28],
+		['s5-2vcpu-4gb-50gb', 'v5shared', 4096, 2, 50, 26],
+		['s5-4vcpu-8gb-50gb', 'v5shared', 8192, 4, 50, 50],
+		['g-2vcpu-8gb', 'general', 8192, 2, 25, 63],
+	].map(([slug, family, memoryMb, vcpus, diskGb, price]) => ({
+		slug,
+		description: String(family),
+		family,
+		memoryMb,
+		vcpus,
+		diskGb,
+		transferTb: 4,
+		priceMonthly: price,
+		priceHourly: Number(price) / 672,
+		regions: ['blr1'],
+		available: true,
+	})),
+	images: [
+		['ubuntu-26-04-x64', 'Ubuntu', '26.04 (LTS) x64', 'os', '2026-04-30'],
+		['ubuntu-24-04-x64', 'Ubuntu', '24.04 (LTS) x64', 'os', '2024-04-30'],
+		['debian-13-x64', 'Debian', '13 x64', 'os', '2025-08-10'],
+		['docker-20-04', 'Ubuntu', 'Docker on Ubuntu', 'app', '2025-01-01'],
+		[null, 'Ubuntu', 'before-upgrade', 'snapshot', '2026-11-01'],
+	].map(([slug, distribution, name, kind, made], n) => ({
+		id: n + 1,
+		slug,
+		name,
+		distribution,
+		kind,
+		regions: ['blr1'],
+		minDiskGb: 10,
+		sizeGb: kind === 'snapshot' ? 3.2 : null,
+		createdAt: `${made}T00:00:00Z`,
+		of: null,
+	})),
+	sshKeys: [{ id: 7, name: 'example key', fingerprint: 'aa:bb:cc' }],
+	vpcs: [],
+	projects: [{ id: 'p1', name: 'first-project', isDefault: true }],
+	missing: [],
+};
+
+test('DigitalOcean’s create steps read live lists, price the droplet and show the request', async ({ page }, info) => {
+	await page.route('**/cloud/*/catalog', async (route) => {
+		const origin = route.request().headers()['origin'] ?? '*';
+		const headers = {
+			'access-control-allow-origin': origin,
+			'access-control-allow-credentials': 'true',
+			'access-control-allow-headers': 'content-type, x-console-session',
+		};
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		// Slow on purpose: the screen must say it is reading, never sit blank (owner, 21 Nov).
+		await new Promise((r) => setTimeout(r, 1200));
+		const body = { state: 'ok', readAt: new Date().toISOString(), data: sampleCatalog };
+		return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+	});
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/droplets?tab=region`);
+	await expect(page.getByRole('status').filter({ hasText: 'Reading DigitalOcean…' })).toBeVisible();
+	await expect(page.getByText('New droplet for staging')).toBeVisible();
+	await expect(page.getByRole('radio', { name: /Bangalore 1/ })).toHaveAttribute('aria-checked', 'true');
+	const cost = page.locator('.do-cost b');
+	await expect(cost).toHaveText('$24');
+
+	await page.getByRole('button', { name: 'Next: Image ›' }).click();
+	await page.getByRole('radio', { name: /^Debian/ }).click();
+	await expect(page.locator('.do-sum')).toContainText('Debian 13 x64');
+	await page.getByRole('radio', { name: /^Ubuntu/ }).click();
+	await page.getByRole('radio', { name: /26\.04 \(LTS\) x64 · our servers use this/ }).click();
+	await expect(page.locator('.do-sum')).toContainText('Ubuntu 26.04 (LTS) x64');
+
+	await page.getByRole('button', { name: 'Next: Size ›' }).click();
+	await page.getByRole('radio', { name: /\$48/ }).click();
+	await expect(cost).toHaveText('$48');
+	// The sliders choose among DigitalOcean's v5 sizes, the cheapest with at least what is set.
+	await page.getByRole('tab', { name: 'Build your own (sliders)' }).click();
+	await expect(page.getByText(/2 combinations in\s+blr1/)).toBeVisible();
+	await page.getByRole('slider', { name: 'vCPU' }).focus();
+	await page.keyboard.press('ArrowLeft');
+	await page.getByRole('slider', { name: 'Memory' }).focus();
+	await page.keyboard.press('ArrowLeft');
+	await expect(page.locator('.do-sum pre')).toContainText('"size": "s5-2vcpu-4gb-50gb"');
+	await expect(cost).toHaveText('$26');
+
+	await page.getByRole('button', { name: 'Next: Storage and backups ›' }).click();
+	await page.getByRole('radio', { name: /^Weekly/ }).click();
+	await expect(cost).toHaveText('$31.20');
+	await expect(page.locator('.do-sum pre')).toContainText('"plan": "weekly"');
+
+	await page.getByRole('button', { name: 'Next: Sign-in ›' }).click();
+	await page.getByRole('checkbox', { name: /example key/ }).click();
+	await expect(page.locator('.do-sum')).toContainText('SSH key example key');
+
+	await page.getByRole('button', { name: 'Next: Network and extras ›' }).click();
+	await expect(page.getByText("443 from Cloudflare's ranges only")).toBeVisible();
+	await page.getByRole('button', { name: 'Next: Name and confirm ›' }).click();
+	await expect(page.getByText('Not ready to create:')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: /Create staging droplet/ })).toBeEnabled();
+	await expect(page.locator('.do-sum pre')).toContainText(`"name": "browser-test-${info.project.name}-staging"`);
+	await expect(page.locator('.do-sum pre')).toContainText('"user_data": "(docker/production/first-boot.yaml');
+});

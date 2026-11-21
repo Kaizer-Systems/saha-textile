@@ -130,6 +130,17 @@
 		<span></span>
 		}
 		<div class="rc-who">
+			<span
+				class="rc-mono"
+				role="status"
+				[style.visibility]="firstReads() > 0 ? 'visible' : 'hidden'"
+			>
+				<span
+					class="rc-chk run"
+					aria-hidden="true"
+				></span>
+				{{ firstReads() > 0 ? 'Reading…' : '' }}
+			</span>
 			<span class="rc-mono">owner · unlocked</span>
 			<span class="rc-dot ok"></span>
 			<button

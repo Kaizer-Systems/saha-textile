@@ -35,6 +35,7 @@ import {
 	type AttentionItem,
 	type AuditEntry,
 	type CloudAccount,
+	type DoCatalog,
 	type ConsoleView,
 	type DnsRecord,
 	type Droplet,
@@ -69,6 +70,7 @@ import {
 	attentionItemsSchema,
 	auditEntriesSchema,
 	cloudAccountAnswerSchema,
+	doCatalogAnswerSchema,
 	consoleViewSchema,
 	dnsRecordsAnswerSchema,
 	dropletsAnswerSchema,
@@ -273,6 +275,16 @@ export class ConsoleApi {
 	}
 	cloudAccount(p: string, r: string, slot: string): Promise<VendorAnswer<CloudAccount>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/account`, cloudAccountAnswerSchema);
+	}
+	/** Everything DigitalOcean's create steps choose from (the Marketplace is long, so a longer wait). */
+	doCatalog(p: string, r: string, slot: string): Promise<VendorAnswer<DoCatalog>> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/cloud/${slot}/catalog`,
+			doCatalogAnswerSchema,
+			undefined,
+			60_000,
+		);
 	}
 	/** Releases: what each environment's branch has that the next one's lacks. */
 	releases(p: string, r: string): Promise<VendorAnswer<ReleasesView>> {

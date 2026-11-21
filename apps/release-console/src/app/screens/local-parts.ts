@@ -8,6 +8,7 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { Icon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** “1.2 MB/s” for a byte rate; “—” when unknown. */
 export function formatRate(bytesPerSecond: number | null | undefined): string {
@@ -144,7 +145,7 @@ export class Gauge {
  */
 @Component({
 	selector: 'rc-local-gate',
-	imports: [TroubleSteps],
+	imports: [Loading, TroubleSteps],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (!onThisComputer()) {
@@ -175,7 +176,7 @@ export class Gauge {
 				<div><b>The console API is not answering.</b></div>
 			</div>
 		} @else {
-			<p class="rc-p muted">Asking the Mac helper…</p>
+			<rc-loading what="Asking the Mac helper…" />
 		}
 	`,
 })

@@ -11,6 +11,8 @@ import {
 } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 
+import { injectIsFetching } from '@tanstack/angular-query-experimental';
+
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
@@ -89,6 +91,11 @@ export class Shell {
 	private readonly api = inject(ConsoleApi);
 	protected readonly state = inject(ConsoleState);
 	protected readonly ctx = inject(ConsoleContext);
+	/**
+	 * Reads that have no answer yet (first loads only, not the screens' own refreshes, which would
+	 * make it flicker): the top bar says so, so a screen is never silently blank (owner, 21 Nov).
+	 */
+	protected readonly firstReads = injectIsFetching({ predicate: (q) => q.state.data === undefined });
 	protected readonly consolePages = CONSOLE_PAGES;
 	protected readonly projectPages = PROJECT_PAGES;
 	protected readonly consoleIcons = CONSOLE_PAGE_ICONS;

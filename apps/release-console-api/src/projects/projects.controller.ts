@@ -4,6 +4,7 @@ import {
 	type AttentionItem,
 	type AuditEntry,
 	type CloudAccount,
+	type DoCatalog,
 	type ConsoleView,
 	type DnsRecord,
 	type Droplet,
@@ -172,6 +173,15 @@ export class ProjectsController {
 		@Param('slot') slot: string,
 	): Promise<VendorAnswer<CloudAccount>> {
 		return this.reads.cloudAccount(p, r, slot);
+	}
+
+	@Get('projects/:p/repos/:r/cloud/:slot/catalog')
+	doCatalog(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('slot') slot: string,
+	): Promise<VendorAnswer<DoCatalog>> {
+		return this.reads.doCatalog(p, r, slot);
 	}
 
 	@Get('projects/:p/repos/:r/releases')

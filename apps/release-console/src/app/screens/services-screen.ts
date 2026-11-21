@@ -7,11 +7,12 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { BrandLogo, Icon, serviceLogo } from '../shared/icons';
+import { Loading } from '../shared/loading';
 
 /** Every container in the chosen environment, refreshed every 5 seconds. Local stack is live today. */
 @Component({
 	selector: 'rc-services-screen',
-	imports: [Icon, BrandLogo],
+	imports: [Loading, Icon, BrandLogo],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		@if (!onThisComputer()) {
@@ -23,7 +24,7 @@ import { BrandLogo, Icon, serviceLogo } from '../shared/icons';
 				</div>
 			</div>
 		} @else if (services.isPending()) {
-			<p class="rc-p muted">Reading Docker on this computer…</p>
+			<rc-loading what="Reading Docker on this computer…" />
 		} @else if (services.isError()) {
 			<div class="rc-banner red small">
 				<span class="rc-dot red"></span>

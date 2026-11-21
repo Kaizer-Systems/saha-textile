@@ -566,3 +566,22 @@ describe('admin orders: what the customer is told (status table, od06, od08)', (
 		expect(current().history.at(-1)?.messages).toEqual([{ channel: 'email', template: 'payment_receipt' }]);
 	});
 });
+
+describe('admin orders: a business past its credit limit (approved one-off)', () => {
+	it('shows ₹0 available, never a negative amount; Used says how far over', async () => {
+		const { svc } = service(baseOrder({ status: 'placed', paymentStatus: 'on_account', placedWith: 'onAccount' }));
+		const internals = svc as unknown as {
+			businesses: { findById: () => Promise<unknown> };
+			ledgers: { balance: () => Promise<number> };
+		};
+		internals.businesses = {
+			findById: async () => ({
+				id: 'biz_1',
+				roles: { customer: { creditLimitINR: 20_000, creditDays: 30, standing: 'active' } },
+			}),
+		};
+		internals.ledgers = { balance: async () => 51_056 };
+		const detail = await svc.detail('ord_1');
+		expect(detail.credit).toMatchObject({ limitINR: 20_000, usedINR: 51_056, availableINR: 0 });
+	});
+});

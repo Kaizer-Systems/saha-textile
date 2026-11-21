@@ -1,10 +1,19 @@
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import type { Connection } from 'mongoose';
 
-import { testDatabaseUri } from '../scripts/secrets/test-login.mjs';
+type TestLogin = typeof import('../scripts/secrets/test-login.mjs');
+
+/**
+ * The test login is an ES module (it reads `import.meta`), and Playwright compiles the specs as
+ * CommonJS, so a static import of it stopped every spec that uses this file from loading. A native
+ * dynamic import at call time keeps it as it is for its other callers.
+ */
+const loadTestLogin = new Function('url', 'return import(url)') as (url: string) => Promise<TestLogin>;
+const testLoginUrl = pathToFileURL(resolve(__dirname, '../scripts/secrets/test-login.mjs')).href;
 
 const adapterPackage = resolve(__dirname, '../packages/adapters-db-mongo/package.json');
 const mongoose = createRequire(adapterPackage)('mongoose') as typeof import('mongoose');
@@ -19,6 +28,7 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
  * with this Mac's test login (scripts/secrets/test-login.mjs) when there is one.
  */
 export async function withDatabase<T>(work: (connection: Connection) => Promise<T>): Promise<T> {
+	const { testDatabaseUri } = await loadTestLogin(testLoginUrl);
 	const uri = testDatabaseUri({
 		host: process.env['MONGODB_HOST'],
 		port: process.env['MONGODB_PORT'],

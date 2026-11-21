@@ -353,7 +353,7 @@ export class OrderCheckout {
 			}),
 			limitLine: this.t('ord_credit_limit_line', { limit: rupees(credit.limitINR) }),
 			after: rupees(available - credit.thisOrderINR),
-			available: rupees(available),
+			available: rupees(Math.max(0, available)),
 			over: rupees(credit.usedINR + credit.thisOrderINR - credit.limitINR),
 			due: credit.dueOn
 				? this.t('ord_payment_due_line', {

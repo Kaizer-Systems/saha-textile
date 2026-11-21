@@ -111,7 +111,8 @@ export class BusinessPage {
 	readonly supplierEntries = computed(() => this.payable.data()?.rows ?? []);
 	/** Set-offs on the customer account that can still be reversed. */
 	readonly setOffRows = computed(() => (this.receivable.data()?.rows ?? []).filter((row) => this.canReverse(row)));
-	readonly available = computed(() => (this.customer()?.creditLimitINR ?? 0) - this.owesUs());
+	/** Never below ₹0: an account past its limit (an approved one-off) shows ₹0 available; Used says by how much. */
+	readonly available = computed(() => Math.max(0, (this.customer()?.creditLimitINR ?? 0) - this.owesUs()));
 	readonly usedPercent = computed(() => {
 		const limit = this.customer()?.creditLimitINR ?? 0;
 		return limit > 0 ? Math.min(100, (this.owesUs() / limit) * 100) : 0;

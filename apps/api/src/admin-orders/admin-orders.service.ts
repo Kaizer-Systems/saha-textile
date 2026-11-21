@@ -438,7 +438,8 @@ export class AdminOrdersService {
 		return {
 			limitINR: customer.creditLimitINR,
 			usedINR: Math.max(0, used),
-			availableINR: customer.creditLimitINR - Math.max(0, used),
+			// Never below ₹0 on the page: past the limit (an approved one-off), Used shows by how much.
+			availableINR: Math.max(0, customer.creditLimitINR - Math.max(0, used)),
 			standing: customer.standing,
 			creditDays: customer.creditDays,
 		};

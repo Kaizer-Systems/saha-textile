@@ -108,6 +108,7 @@ export class ProductsService {
 				range,
 				keyRefs: project.keys,
 				consoleKey: (name: string) => this.keyFile.get(name) ?? null,
+				recent: (action: string) => this.store.auditEntries(p, 500).filter((e) => e.action === action),
 				writeKey: async () => {
 					const v = changeRef ? await this.projects.valueOf(changeRef) : null;
 					if (!v)

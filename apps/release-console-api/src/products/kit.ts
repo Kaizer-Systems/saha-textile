@@ -40,6 +40,8 @@ export interface ProductCtx {
 	keyRefs: KeyRef[];
 	/** A value from the console's own key file by name (Spaces keys); never sent anywhere but the vendor. */
 	consoleKey(name: string): string | null;
+	/** This project's audit entries with this action, newest first (what the console changed before). */
+	recent(action: string): Array<{ at: string; detail: string }>;
 }
 
 /** One step of a change the console follows after sending it. */
@@ -84,6 +86,21 @@ export function forget(key: string): void {
 	for (const k of cache.keys()) if (k.startsWith(tag)) cache.delete(k);
 }
 
+/** Which Cloudflare token permission a refused path needs, in Cloudflare's own words. */
+const CF_HINTS: Array<[RegExp, string]> = [
+	[/dns_records|dnssec|dns_settings/, 'Zone › DNS › Edit (on the domain)'],
+	[/\/certificates|ssl\/|origin_tls_client_auth|client_certificates/, 'Zone › SSL and Certificates › Edit'],
+	[/rulesets|firewall|waf/, 'Zone › Zone WAF › Edit and Zone › Firewall Services › Edit'],
+	[/purge_cache/, 'Zone › Cache Purge'],
+	[/settings/, 'Zone › Zone Settings › Edit'],
+	[/bot_management/, 'Zone › Bot Management › Edit'],
+	[/email\/routing/, 'Zone › Email Routing Rules › Edit'],
+	[/custom_pages/, 'Zone › Custom Pages › Edit'],
+	[/pagerules/, 'Zone › Page Rules › Edit'],
+	[/workers\/routes/, 'Zone › Workers Routes › Edit'],
+	[/^\/client\/v4\/zones/, 'Zone › Zone › Read'],
+];
+
 function vendorMessage(vendor: string, url: string, status: number, body: unknown): string {
 	const b = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
 	const errors = Array.isArray(b['errors']) ? (b['errors'] as Array<Record<string, unknown>>) : [];
@@ -92,8 +109,10 @@ function vendorMessage(vendor: string, url: string, status: number, body: unknow
 		(errors[0] && typeof errors[0]['message'] === 'string' ? errors[0]['message'] : '') ||
 		'';
 	const path = url.replace(/^https:\/\/[^/]+/, '').split('?')[0] ?? '';
-	if (status === 403 || status === 401)
-		return `${vendor} refused ${path} with this key (${status})${said ? `: ${said}` : ''}. The key needs that permission.`;
+	if (status === 403 || status === 401) {
+		const hint = vendor === 'Cloudflare' ? CF_HINTS.find(([re]) => re.test(path))?.[1] : undefined;
+		return `${vendor} refused ${path} with this key (${status})${said ? `: ${said}` : ''}. ${hint ? `Add the permission ${hint} to the console’s Cloudflare token.` : 'The key needs that permission.'}`;
+	}
 	return `${vendor} answered ${status} to ${path}${said ? `: ${said}` : ''}.`;
 }
 

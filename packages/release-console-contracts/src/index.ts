@@ -53,3 +53,4 @@ export * from './clients.js';
 export * from './ops.js';
 export * from './do-catalog.js';
 export * from './droplet-job.js';
+export * from './products.js';

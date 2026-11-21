@@ -16,6 +16,7 @@ import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } fro
 import { JobsScreen, MessagesScreen } from './ops-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
+import { ProductScreen, injectProductScreens } from './product-screen';
 import { SecretsScreen } from './secrets-screen';
 import { SeoScreen } from './seo-screen';
 import { ServerDeployScreen } from './server-deploy-screen';
@@ -31,6 +32,7 @@ import {
 import { ConsoleContext } from '../data/console-context';
 import { placeOf } from '../menu/menu-search';
 import { Icon, environmentIcon, screenIcon } from '../shared/icons';
+import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
 
 const SCREEN_LATER = /^later-/;
@@ -92,6 +94,8 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		OverviewScreen,
 		ServicesScreen,
 		PlannedScreen,
+		ProductScreen,
+		Loading,
 		PullsScreen,
 		PipelinesScreen,
 		DropletsScreen,
@@ -273,6 +277,15 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						<rc-dns-screen />
 					}
 				}
+			} @else if (product()) {
+				<rc-product
+					[screen]="screen()"
+					[tab]="tabKey()"
+					[vendor]="productVendor()"
+					[noun]="s.label"
+				/>
+			} @else if (productScreens.isPending()) {
+				<rc-loading what="Reading which screens have live data…" />
 			} @else {
 				<rc-planned-screen
 					[info]="s"
@@ -330,6 +343,18 @@ export class ScreenPage {
 		if (tab === undefined) return false;
 		return Array.isArray(tab) ? tab.includes(this.tabKey()) : tab === this.tabKey();
 	});
+	protected readonly productScreens = injectProductScreens();
+	/** A tab drawn from the console API's live product reads (DigitalOcean and Cloudflare lifecycle). */
+	protected readonly product = computed(() => {
+		const c = this.productScreens.data()?.[this.screen()];
+		if (!c) return false;
+		const t = this.tabKey();
+		return c.tabs.includes(t) || ((t === 'creating' || t === 'restoring') && c.forms.length > 0);
+	});
+	protected readonly productVendor = computed(() =>
+		this.place().get(this.screen())?.[0] === 'Cloudflare' ? ('cloudflare' as const) : ('digitalocean' as const),
+	);
+
 	/** The open Live deploy tab is an environment that runs on a server. */
 	protected readonly deployOnServer = computed(
 		() => (this.ctx.repo()?.environments.find((e) => e.name === this.tabKey())?.cloudId ?? null) !== null,

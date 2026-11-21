@@ -612,3 +612,109 @@ test('Create asks for the typed name, the admin password and the PIN, then follo
 		draft: { environment: 'staging', sshKeyIds: [7] },
 	});
 });
+
+test('a DigitalOcean product screen lists, opens its create form with the price, and sends it with the PIN', async ({
+	page,
+}, info) => {
+	const base = `browser-test-${info.project.name}`;
+	const at = new Date().toISOString();
+	const field = (key: string, label: string, type: string, value: unknown) => ({
+		key,
+		label,
+		type,
+		options: [],
+		value,
+		help: '',
+		required: true,
+		min: null,
+		max: null,
+		readOnly: false,
+	});
+	const list = {
+		type: 'view',
+		picker: null,
+		view: {
+			head: null,
+			stats: [{ label: 'Volumes', value: '1', sub: '' }],
+			notes: [],
+			facts: [],
+			tables: [
+				{
+					title: 'Block storage volumes',
+					columns: [
+						{ key: 'name', label: 'Volume', mono: false },
+						{ key: 'size', label: 'Size', mono: true },
+					],
+					rows: [{ id: 'vol-1', name: 'example-data', cells: { name: 'example-data', size: '100 GiB' }, tone: null }],
+					empty: 'No volumes on this account.',
+					opens: true,
+				},
+			],
+			links: [],
+			actions: [{ label: 'Create volume', form: 'create', tone: 'primary' }],
+		},
+	};
+	const create = {
+		type: 'form',
+		picker: null,
+		form: {
+			key: 'create',
+			title: 'Create a volume',
+			submit: 'Create volume',
+			fields: [field('name', 'Name', 'text', 'example-new'), field('size', 'Size (GiB)', 'number', 50)],
+			cost: '$5.00 a month for 50 GiB, billed by the hour.',
+			notes: [],
+			confirmName: null,
+			danger: false,
+			blocked: null,
+		},
+	};
+	const job = {
+		id: 'product-job-sample',
+		screen: 'volumes',
+		form: 'create',
+		target: 'Creating volume example-new',
+		startedAt: at,
+		finishedAt: at,
+		state: 'done',
+		message: 'Done.',
+		productId: 'vol-2',
+		steps: [{ label: 'Sent to DigitalOcean with the PIN', detail: 'Creating volume example-new', state: 'done' }],
+	};
+	let sent: Record<string, unknown> | null = null;
+	await page.route('**/products/volumes/**', (route) => {
+		const headers = {
+			'access-control-allow-origin': route.request().headers()['origin'] ?? '*',
+			'access-control-allow-credentials': 'true',
+			'access-control-allow-headers': 'content-type, x-console-session',
+			'access-control-allow-methods': 'GET, POST, OPTIONS',
+		};
+		const url = route.request().url();
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		const json = (status: number, body: unknown) =>
+			route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(body) });
+		if (route.request().method() === 'POST') {
+			sent = route.request().postDataJSON() as Record<string, unknown>;
+			return json(202, job);
+		}
+		if (url.includes('/jobs')) return json(200, sent ? [job] : []);
+		if (url.includes('/tab/create')) return json(200, { state: 'ok', readAt: at, data: create });
+		return json(200, { state: 'ok', readAt: at, data: list });
+	});
+	await unlock(page);
+	await page.goto(`/p/${base}/r/saha-textile/volumes`);
+	await expect(page.getByRole('cell', { name: 'example-data' })).toBeVisible();
+	await page.getByRole('button', { name: /Create volume/ }).click();
+	await expect(page.getByText('$5.00 a month for 50 GiB, billed by the hour.')).toBeVisible();
+	await page.getByLabel('Size (GiB)').fill('60');
+	await page.getByRole('button', { name: /Create volume/ }).click();
+	const box = page.getByRole('dialog', { name: 'Create a volume' });
+	await expect(box).toBeVisible();
+	const go = box.getByRole('button', { name: 'Create volume' });
+	await expect(go).toBeDisabled();
+	await box.getByLabel('PIN digit 1 of 6').click();
+	await page.keyboard.type(PIN);
+	await go.click();
+	await expect(page.getByRole('heading', { name: 'Creating volume example-new' })).toBeVisible();
+	expect(sent).toMatchObject({ pin: PIN, values: { name: 'example-new', size: 60 } });
+});

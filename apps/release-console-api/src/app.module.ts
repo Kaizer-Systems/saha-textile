@@ -23,9 +23,12 @@ import { RunnerClient } from './runner/runner-client.js';
 import { DropletJobs } from './servers/droplet-jobs.js';
 import { ServersController, SshListController } from './servers/servers.controller.js';
 import { ConsoleStore } from './store/console-store.js';
+import { ProductsController } from './products/products.controller.js';
+import { ProductsService } from './products/products.service.js';
 
 @Module({
 	controllers: [
+		ProductsController,
 		HealthController,
 		LockController,
 		LocalStackController,
@@ -38,6 +41,7 @@ import { ConsoleStore } from './store/console-store.js';
 	],
 	providers: [
 		ConsoleStore,
+		ProductsService,
 		LockService,
 		LocalStackService,
 		ProjectsService,

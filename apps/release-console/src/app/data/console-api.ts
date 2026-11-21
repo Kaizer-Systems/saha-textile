@@ -76,6 +76,12 @@ import {
 	doCatalogAnswerSchema,
 	dropletJobSchema,
 	dropletJobsSchema,
+	productJobSchema,
+	productJobsSchema,
+	productTabAnswerSchema,
+	type ProductJob,
+	type ProductTab,
+	type ProductWrite,
 	sshListAnswerSchema,
 	consoleViewSchema,
 	dnsRecordsAnswerSchema,
@@ -111,11 +117,12 @@ import {
 	opsMessagesAnswerSchema,
 } from '@saha-textile/release-console-contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
+import { z } from 'zod';
 
 import { SecretDrafts } from './secret-drafts';
 import { ConsoleSession } from './session';
 
-import type { z } from 'zod';
+const productScreensSchema = z.record(z.string(), z.object({ tabs: z.array(z.string()), forms: z.array(z.string()) }));
 
 /**
  * Where the console's API answers. In its Docker image one process serves the page and the API, so
@@ -281,6 +288,55 @@ export class ConsoleApi {
 	}
 	cloudAccount(p: string, r: string, slot: string): Promise<VendorAnswer<CloudAccount>> {
 		return this.call('GET', `/api/projects/${p}/repos/${r}/cloud/${slot}/account`, cloudAccountAnswerSchema);
+	}
+	/* product screens (DigitalOcean and Cloudflare lifecycle, brief v7) */
+	productScreens(): Promise<Record<string, { tabs: string[]; forms: string[] }>> {
+		return this.call('GET', '/api/product-screens', productScreensSchema);
+	}
+	productTab(
+		p: string,
+		r: string,
+		screen: string,
+		tab: string,
+		id: string | null,
+		range: string,
+	): Promise<VendorAnswer<ProductTab>> {
+		const q = new URLSearchParams({ range, ...(id ? { id } : {}) });
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/products/${screen}/tab/${tab}?${q.toString()}`,
+			productTabAnswerSchema,
+			undefined,
+			60_000,
+		);
+	}
+	productForm(
+		p: string,
+		r: string,
+		screen: string,
+		form: string,
+		id: string | null,
+	): Promise<VendorAnswer<ProductTab>> {
+		const q = id ? `?id=${encodeURIComponent(id)}` : '';
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/products/${screen}/form/${form}${q}`,
+			productTabAnswerSchema,
+			undefined,
+			60_000,
+		);
+	}
+	sendProductForm(p: string, r: string, screen: string, form: string, body: ProductWrite): Promise<ProductJob> {
+		return this.call(
+			'POST',
+			`/api/projects/${p}/repos/${r}/products/${screen}/form/${form}`,
+			productJobSchema,
+			body,
+			120_000,
+		);
+	}
+	productJobs(p: string, r: string, screen: string): Promise<ProductJob[]> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/products/${screen}/jobs`, productJobsSchema);
 	}
 	/** Who may sign in over SSH to the project's servers; every server's Access rule follows. */
 	setSshEmails(p: string, body: { pin: string; emails: string[] }): Promise<{ emails: string[]; hosts: string[] }> {

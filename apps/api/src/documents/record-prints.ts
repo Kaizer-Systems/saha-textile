@@ -7,7 +7,7 @@ import {
 	type StockCount,
 	gstStateName,
 } from '@saha-textile/contracts';
-import { type OpeningStockRecord, formatQuantity, rupeesInWords } from '@saha-textile/core-domain';
+import { type OpeningStockRecord, formatQuantity, istDay, rupeesInWords } from '@saha-textile/core-domain';
 
 import { longDate } from '../purchasing/purchase-order-document';
 import type { DocumentData, DocumentRow } from './document-data';
@@ -54,7 +54,8 @@ function addressLines(address: OrderAddress | null | undefined): string[] {
 	].filter(Boolean);
 }
 
-const dayOf = (iso: string): string => iso.slice(0, 10);
+/** The day in India: a moment after 18:30 UTC is already the next day there. */
+const dayOf = (iso: string): string => istDay(iso);
 
 /** A receipt voucher for money received against an order (RC series, Rule 50). */
 export function orderReceiptData(order: Order, payment: OrderPayment, seller: DocumentData['seller']): DocumentData {

@@ -170,6 +170,18 @@ describe('record prints', () => {
 			{ index: '2', item: 'Mulmul', expected: '', counted: '12.5 m', difference: '' },
 		]);
 		expect(data.signatures?.['countedBy']).toBe('Raju');
+		// Started at 03:42 in India, still 22 Nov in UTC: the sheet says 23 Nov.
+		const late = stockCountData(
+			{
+				number: 'SC/26-27/000003',
+				label: '',
+				startedAt: '2026-11-22T22:12:00.000Z',
+				counterNames: [],
+				lines: [],
+			} as never,
+			seller,
+		);
+		expect(late.date).toBe('23 Nov 2026');
 	});
 
 	it('prints an opening-stock load, with cost only for those who may see it', () => {

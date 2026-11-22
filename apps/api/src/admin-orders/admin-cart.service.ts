@@ -27,6 +27,7 @@ import {
 	type ZoneForPricing,
 } from '@saha-textile/core-domain';
 
+import { imageOf as childImage } from '../cart/cart-lines.service';
 import { CatalogPublicService } from '../catalog/catalog-public.service';
 import { codedRefusal } from '../common/coded-refusal';
 import { CurrencyService } from '../currency/currency.service';
@@ -89,7 +90,8 @@ export class AdminCartService {
 			const result = page ? priceCartLine(page, line) : null;
 			return { line, page, title: reads[index]?.title ?? '', row: result?.ok ? result.line : null };
 		});
-		const zoned = pricing.retail ? [] : priced.filter((entry) => entry.row);
+		// A set keeps its own price method; zone prices apply to products sold on their own.
+		const zoned = pricing.retail ? [] : priced.filter((entry) => entry.row && !entry.page?.bundle);
 		const facts = zoned.length
 			? await this.zones.factsFor(
 					zoned.map(({ line, row }) => ({
@@ -117,6 +119,25 @@ export class AdminCartService {
 					label: field.label,
 					value: `${field.value} ${field.unit}`,
 				})),
+				// A set's pieces, free items and extras, or a product's free items, as the shop cart shows them (E09).
+				children: page
+					? (row?.children ?? []).map((child) => ({
+							role: child.role,
+							key: child.key,
+							parentKey: child.parentKey,
+							level: child.level,
+							productId: child.productId,
+							title: child.title,
+							sku: child.sku,
+							image: childImage(page, child.productId),
+							variantId: child.variantId,
+							variantLabel: child.variantLabel,
+							quantity: child.quantity,
+							priceINR: child.priceINR,
+							mrpINR: child.mrpINR,
+						}))
+					: [],
+				setHeading: page?.bundle?.heading ?? null,
 			};
 			if (!row || !row.buyable) {
 				return {

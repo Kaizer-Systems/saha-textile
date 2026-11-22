@@ -38,6 +38,7 @@ import { ShippingAdminService } from '../shipping/shipping-admin.service';
 import { AdminCartService } from './admin-cart.service';
 import type { CheckoutRights } from './admin-order-create.service';
 import { AdminOrdersService, historyEntry, linesSummary, type Actor } from './admin-orders.service';
+import { childLines, keepsStock, setLine } from '../orders/order-tree';
 import { OrderStock } from './order-stock';
 
 const istDay = (at: Date): string => new Date(at.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -108,47 +109,66 @@ export class OpenOrdersService {
 			throw new ForbiddenException(codedRefusal('zone_price_below_cost', 'A zone price is below cost', 'lines'));
 		}
 		const at = now.toISOString();
-		const added: OrderLine[] = view.lines.map((line) => ({
-			lineId: line.lineId,
-			productId: line.productId,
-			variationId: line.variationId,
-			title: { en: line.title },
-			sku: line.sku,
-			quantity: line.quantity,
-			...adminLineConfig(line),
-			imageAssetId: null,
-			imageUrl: line.imageUrl,
-			unitPriceINR: line.unitPriceINR,
-			unitPricePaid: line.unitPriceINR,
-			lineTotalINR: line.lineTotalINR,
-			lineTotalPaid: line.lineTotalINR,
-			pricing: {
-				regularUnitINR:
-					line.zonePrice?.kind === 'priced' ? line.zonePrice.retailUnitPriceINR : line.unitPriceINR,
-				mrpUnitINR: line.mrpINR !== null && line.mrpINR > line.unitPriceINR ? line.mrpINR : null,
-				saleUnitINR: null,
-				saleEventId: null,
-				zoneRule:
-					line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail'
-						? line.zonePrice.rule
-						: null,
-				discounted: line.mrpINR !== null && line.unitPriceINR < line.mrpINR,
-				addOnsZonePriced: line.addOnsZonePriced,
-			},
-			couponINR: 0,
-			categoryIds: [],
-			held: false,
-			addedAt: at,
-			addedBy: actor.id,
-			role: 'product',
-			parentLineId: null,
-			set: null,
-		}));
+		const added: OrderLine[] = view.lines.flatMap((line) => {
+			const own: OrderLine = {
+				lineId: line.lineId,
+				productId: line.productId,
+				variationId: line.variationId,
+				title: { en: line.title },
+				sku: line.sku,
+				quantity: line.quantity,
+				...adminLineConfig(line),
+				imageAssetId: null,
+				imageUrl: line.imageUrl,
+				unitPriceINR: line.unitPriceINR,
+				unitPricePaid: line.unitPriceINR,
+				lineTotalINR: line.lineTotalINR,
+				lineTotalPaid: line.lineTotalINR,
+				pricing: {
+					regularUnitINR:
+						line.zonePrice?.kind === 'priced' ? line.zonePrice.retailUnitPriceINR : line.unitPriceINR,
+					mrpUnitINR: line.mrpINR !== null && line.mrpINR > line.unitPriceINR ? line.mrpINR : null,
+					saleUnitINR: null,
+					saleEventId: null,
+					zoneRule:
+						line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail'
+							? line.zonePrice.rule
+							: null,
+					discounted: line.mrpINR !== null && line.unitPriceINR < line.mrpINR,
+					addOnsZonePriced: line.addOnsZonePriced,
+				},
+				couponINR: 0,
+				categoryIds: [],
+				held: false,
+				addedAt: at,
+				addedBy: actor.id,
+				role: 'product',
+				parentLineId: null,
+				set: null,
+			};
+			// A set joins as its own line with its pieces, free items and extras beneath it (bundle builder brief E09).
+			const tree = {
+				id: line.lineId,
+				productId: line.productId,
+				variationId: line.variationId,
+				quantity: line.quantity,
+				soldBy: line.soldBy,
+				unitPriceINR: line.unitPriceINR,
+				mrpINR: line.mrpINR,
+				setHeading: line.setHeading,
+				children: line.children,
+			};
+			const children = childLines(tree, own, (amount) => amount, 0, at).map((row) => ({
+				...row,
+				addedBy: actor.id,
+			}));
+			return [...setLine(own, tree), ...children];
+		});
 		await this.transactions.withTransaction(async (context) => {
 			await this.stock.reserve(order, added, actor.id, context, at);
 			const withLines: Order = {
 				...order,
-				lines: [...order.lines, ...added.map((line) => ({ ...line, held: !line.madeToOrder }))],
+				lines: [...order.lines, ...added.map((line) => ({ ...line, held: keepsStock(line) }))],
 			};
 			await this.orders.settle(withLines, input.revision, actor, at, context, {
 				kind: 'lineAdded',
@@ -254,11 +274,17 @@ export class OpenOrdersService {
 			zone: parcel?.problem === null ? (parcel.quote.zone ?? null) : null,
 			shippingTrace:
 				parcel?.problem === null
-					? parcel.quote.groups.flatMap((group) => group.trace.map((entry) => JSON.stringify(entry))).slice(0, 40)
+					? parcel.quote.groups
+							.flatMap((group) => group.trace.map((entry) => JSON.stringify(entry)))
+							.slice(0, 40)
 					: [],
 			shippingPieces:
 				parcel?.problem === null
-					? parcel.quote.lines.map((line) => ({ lineId: line.lineId, units: line.units, discounted: line.discounted }))
+					? parcel.quote.lines.map((line) => ({
+							lineId: line.lineId,
+							units: line.units,
+							discounted: line.discounted,
+						}))
 					: [],
 			totalINR: balance.totalINR,
 			paidINR: balance.paidINR,
@@ -333,7 +359,11 @@ export class OpenOrdersService {
 						: [],
 				),
 				pending: false,
-				pieces: quote.lines.map((line) => ({ lineId: line.lineId, units: line.units, discounted: line.discounted })),
+				pieces: quote.lines.map((line) => ({
+					lineId: line.lineId,
+					units: line.units,
+					discounted: line.discounted,
+				})),
 			},
 			statusTimeline: [...order.statusTimeline, { status, at }],
 			history: [

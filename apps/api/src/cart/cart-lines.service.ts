@@ -234,7 +234,7 @@ export class CartLinesService {
 }
 
 /** A child's picture, from the set's items or a free item on the page. */
-function imageOf(page: CatalogProductPage, productId: string): CatalogPageBundleItem['image'] {
+export function imageOf(page: CatalogProductPage, productId: string): CatalogPageBundleItem['image'] {
 	const items = [...(page.bundle?.levels.flatMap((level) => level.items) ?? []), ...(page.bundle?.extras ?? [])];
 	const piece = items.find((item) => item.productId === productId);
 	if (piece) return piece.image;

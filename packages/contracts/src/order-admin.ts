@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 import { PostalAddressInput } from './address-book';
-import { CartAddonValue } from './cart';
+import { CartAddonValue, CartViewChild } from './cart';
+import { FreePick } from './free-with';
+import { BundleChoice } from './product-bundle';
 import { Id, IsoDateTime, PriceINR } from './common';
 import { AppliedCoupon } from './coupon';
 import { Order, OrderChannel, OrderPaymentStatus, OrderStatus, PaymentGateway } from './order';
@@ -149,6 +151,10 @@ export const AdminCartLineWrite = z.object({
 	variationId: Id.nullable().default(null),
 	quantity: z.number().int().positive().max(9999),
 	addons: z.array(CartAddonValue).max(40).default([]),
+	/** A set's choices, made in the Configure pop-up (bundle builder brief E09); absent for other products. */
+	bundle: BundleChoice.optional(),
+	/** A product's own free items picked (P8). */
+	free: z.array(FreePick).max(10).optional(),
 });
 export type AdminCartLineWrite = z.infer<typeof AdminCartLineWrite>;
 
@@ -200,6 +206,9 @@ export const AdminCartLine = z.object({
 	measurements: z.array(z.object({ code: z.string(), label: z.string(), value: z.string() })).default([]),
 	/** The zone rule's % off or ₹ off also priced the add-ons (its "Also apply to stitching" switch). */
 	addOnsZonePriced: z.boolean().default(false),
+	/** A set's pieces, their free items and its extras, or a product's free items, as in the shop cart (E09). */
+	children: z.array(CartViewChild).default([]),
+	setHeading: z.enum(['components', 'choose']).nullable().default(null),
 });
 export type AdminCartLine = z.infer<typeof AdminCartLine>;
 

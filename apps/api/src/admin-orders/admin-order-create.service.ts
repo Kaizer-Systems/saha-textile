@@ -74,6 +74,7 @@ import { DEFAULT_SHIPPING_SETTINGS, ShippingAdminService } from '../shipping/shi
 import { AdminCartService } from './admin-cart.service';
 import { historyEntry, linesSummary, metaOf, type Actor } from './admin-orders.service';
 import { OrderNoticesService } from './order-notices.service';
+import { childLines, keepsStock, parcelUnits, setLine, type TreeLine } from '../orders/order-tree';
 import { OrderStock } from './order-stock';
 
 const round2 = (amount: number): number => Math.round((amount + Number.EPSILON) * 100) / 100;
@@ -224,7 +225,8 @@ export class AdminOrderCreateService {
 		if (request.coupon.combines) {
 			for (const code of request.withCodes ?? []) {
 				const coupon = await this.couponRepo.findByCode(code);
-				if (coupon && coupon.enabled && coupon.combines && coupon.code !== request.coupon.code) others.push(coupon);
+				if (coupon && coupon.enabled && coupon.combines && coupon.code !== request.coupon.code)
+					others.push(coupon);
 			}
 		}
 		// The delivery charge for this cart in the home country, unless the caller gave one.
@@ -256,9 +258,7 @@ export class AdminOrderCreateService {
 		const run = applyCoupons(all, lines, new Map(all.map((row) => [row.id, context])));
 		const applied = run.applied.find((row) => row.couponId === definition.id) ?? null;
 		const before = round2(view.subtotalINR + deliveryINR);
-		const off = round2(
-			run.applied.reduce((sum, row) => sum + row.amountINR + (row.deliveryAmountINR ?? 0), 0),
-		);
+		const off = round2(run.applied.reduce((sum, row) => sum + row.amountINR + (row.deliveryAmountINR ?? 0), 0));
 		const freeDelivery = run.applied.find((row) => (row.deliveryAmountINR ?? 0) > 0) ?? null;
 		return {
 			refusal: run.refused.find((row) => row.code === definition.code)?.refusal ?? null,
@@ -454,11 +454,14 @@ export class AdminOrderCreateService {
 							status === 'placed'
 								? order.history.map((entry) =>
 										entry.kind === 'created'
-											? { ...entry, messages: this.notices?.plan(order, ['order_confirmed']) ?? [] }
+											? {
+													...entry,
+													messages: this.notices?.plan(order, ['order_confirmed']) ?? [],
+												}
 											: entry,
 									)
 								: order.history,
-						lines: order.lines.map((line) => ({ ...line, held: !line.madeToOrder })),
+						lines: order.lines.map((line) => ({ ...line, held: keepsStock(line) })),
 						onAccountDueOn:
 							method === 'onAccount' && built.buyer.kind === 'business'
 								? onAccountDueDate(istDay(now), built.buyer.business.roles.customer?.creditDays ?? 0)
@@ -581,12 +584,10 @@ export class AdminOrderCreateService {
 				: { source: 'none', address: null, needed: true, addedBy: null, confirmedHow: null, at: null };
 
 		// Shipping from the live rule sets; a length of fabric is one unit.
+		// What goes in the parcel: a set is weighed by its pieces, a product with free items by itself and them (E09).
+		const parcel = parcelUnits(view.lines.map(treeLine));
 		const shippingResult = await this.shipping.tryCart({
-			lines: input.cart.lines.map((line, index) => ({
-				productId: line.productId,
-				variationId: view.lines[index]?.variationId ?? line.variationId,
-				quantity: Math.min(99, line.quantity),
-			})),
+			lines: parcel.map(({ productId, variationId, quantity }) => ({ productId, variationId, quantity })),
 			delivery: {
 				country: delivery.countryCode ?? delivery.country,
 				state: delivery.state ?? null,
@@ -729,11 +730,12 @@ export class AdminOrderCreateService {
 						? [{ id: group.ruleSetId, version: group.version, name: group.ruleSetName ?? '' }]
 						: [],
 				),
-				cannotShip: shippingResult.lines.flatMap((line, index) =>
-					line.route === 'cantShip'
-						? [{ lineId: view.lines[index]?.lineId ?? line.lineId, reason: 'cantShip' }]
-						: [],
-				),
+				cannotShip: shippingResult.lines.flatMap((line, index) => {
+					const cartLine = view.lines[parcel[index]?.cartIndex ?? -1];
+					return line.route === 'cantShip'
+						? [{ lineId: cartLine?.lineId ?? line.lineId, reason: 'cantShip' }]
+						: [];
+				}),
 				pieces: shippingResult.lines.map((line) => ({
 					lineId: line.lineId,
 					units: line.units,
@@ -768,11 +770,11 @@ export class AdminOrderCreateService {
 			built.rate.currency === 'INR'
 				? amountINR
 				: round2(amountINR * built.rate.rateFromINR * (1 + built.rate.markupPercent / 100));
-		return built.lines.map((line, index) => {
+		return built.lines.flatMap((line, index) => {
 			const lineTotalINR = line.lineTotalINR;
 			const zoneRule =
 				line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail' ? line.zonePrice.rule : null;
-			return {
+			const own = {
 				lineId: line.lineId,
 				productId: line.productId,
 				variationId: line.variationId,
@@ -794,7 +796,7 @@ export class AdminOrderCreateService {
 					saleEventId: null,
 					zoneRule,
 					// The shipping try prices the lines in cart order, so its pieces line up by position.
-					discounted: built.quote.shipping.pieces[index]?.discounted ?? false,
+					discounted: discountedOf(built, index),
 					addOnsZonePriced: line.addOnsZonePriced,
 				},
 				couponINR: built.couponByLine.get(line.lineId) ?? 0,
@@ -806,6 +808,15 @@ export class AdminOrderCreateService {
 				parentLineId: null,
 				set: null,
 			} as OrderLine;
+			// A set becomes its own line and its pieces, free items and extras beneath it, as at the shop (E09).
+			const tree = treeLine(line);
+			const children = childLines(tree, own, convert, built.couponByLine.get(line.lineId) ?? 0, at).map(
+				(row) => ({
+					...row,
+					addedBy: actorId,
+				}),
+			);
+			return [...setLine(own, tree), ...children];
 		});
 	}
 
@@ -898,4 +909,25 @@ export class AdminOrderCreateService {
 			});
 		}
 	}
+}
+
+/** A staff cart line as the order tree reads it. */
+function treeLine(line: AdminCartLine): TreeLine {
+	return {
+		id: line.lineId,
+		productId: line.productId,
+		variationId: line.variationId,
+		quantity: line.quantity,
+		soldBy: line.soldBy,
+		unitPriceINR: line.unitPriceINR,
+		mrpINR: line.mrpINR,
+		setHeading: line.setHeading,
+		children: line.children,
+	};
+}
+
+/** Whether a cart line counts as discounted for shipping: any of its parcel units does. */
+function discountedOf(built: Built, cartIndex: number): boolean {
+	const units = parcelUnits(built.lines.map(treeLine));
+	return units.some((unit, index) => unit.cartIndex === cartIndex && built.quote.shipping.pieces[index]?.discounted);
 }

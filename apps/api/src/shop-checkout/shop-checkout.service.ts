@@ -264,6 +264,7 @@ export class ShopCheckoutService {
 			closedAt: null,
 			eInvoice: null,
 			eWayBill: null,
+			packTicks: [],
 			history: [historyEntry(actor, at, 'created', { detail: { channel: 'shop', currency: quote.currency } })],
 			revision: 0,
 			createdAt: at,

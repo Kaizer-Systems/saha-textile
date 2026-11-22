@@ -405,6 +405,8 @@ export const Order = z.object({
 	eInvoice: EInvoiceRecord.nullable().optional(),
 	eWayBill: EWayBillRecord.nullable().optional(),
 	history: z.array(OrderHistoryEntry).default([]),
+	/** The Pack list's ticks (bundle builder brief E08): the lines already in the parcel, by line id. */
+	packTicks: z.array(z.string()).default([]),
 	/** Raised on every change; a save with an older revision is refused. */
 	revision: z.number().int().nonnegative().default(0),
 	createdAt: IsoDateTime.optional(),

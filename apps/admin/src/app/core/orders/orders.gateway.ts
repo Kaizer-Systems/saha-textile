@@ -32,6 +32,7 @@ import type {
 	OpenOrderRemoveLine,
 	Order,
 	OrderCommentWrite,
+	PackTickWrite,
 	OrderListQuery,
 	OrderListResponse,
 	StatusChangeWrite,
@@ -136,6 +137,11 @@ export class OrdersGateway {
 
 	comment(id: string, body: OrderCommentWrite): Observable<Order> {
 		return this.http.post<Order>(this.api(`/${this.id(id)}/comments`), body, PAGE_EXPLAINS_ERRORS);
+	}
+
+	/** One Pack list tick (bundle builder brief E08). */
+	packTick(id: string, body: PackTickWrite): Observable<Order> {
+		return this.http.put<Order>(this.api(`/${this.id(id)}/pack-ticks`), body, PAGE_EXPLAINS_ERRORS);
 	}
 
 	setInvoiceAddress(id: string, body: InvoiceAddressWrite): Observable<Order> {

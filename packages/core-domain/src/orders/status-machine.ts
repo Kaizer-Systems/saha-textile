@@ -32,6 +32,8 @@ export interface StatusMachineOrder {
 	hasEWayBill: boolean;
 	/** Value of the goods in rupees (the e-way bill threshold reads it). */
 	goodsINR: number;
+	/** Packed waits for every Pack list tick when the order holds a set or free items (brief E08). */
+	packListIncomplete?: boolean;
 }
 
 export interface StatusMachineSettings {
@@ -132,6 +134,7 @@ function blockFor(
 	if (to === 'placed' && !order.placeable) return 'notPaid';
 	if (to === 'placed' && from === 'open' && order.lines.length === 0) return 'closeOpenOrderFirst';
 	if (to === 'packed' && order.invoiceAddressNeeded) return 'addInvoiceAddressFirst';
+	if (to === 'packed' && order.packListIncomplete) return 'packListIncomplete';
 	if (to === 'out_for_delivery' && settings.outForDeliveryOnlyFromCourier && !settings.courierConnected)
 		return 'onlyFromCourier';
 	if (to === 'shipped' && eDocumentsMissing(order, settings)) return 'eDocumentsMissing';

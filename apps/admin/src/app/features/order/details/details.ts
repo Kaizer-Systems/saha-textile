@@ -130,7 +130,9 @@ export class Details {
 		const ship = this.order()?.shipping;
 		if (!ship || ship.pending) return '';
 		const { reason } = shippingReason({ trace: ship.trace, pieces: ship.pieces }, this.t);
-		return this.transloco.getActiveLang() === 'en' && reason ? reason.charAt(0).toLowerCase() + reason.slice(1) : reason;
+		return this.transloco.getActiveLang() === 'en' && reason
+			? reason.charAt(0).toLowerCase() + reason.slice(1)
+			: reason;
 	});
 	/** When the order was priced (its rate, or its creation). */
 	readonly pricedAt = computed(() => this.order()?.currencyRecord?.pricedAt ?? this.order()?.createdAt ?? null);
@@ -140,7 +142,8 @@ export class Details {
 	readonly codDue = computed(() => {
 		const detail = this.detail();
 		if (!detail || detail.order.paymentStatus !== 'due_on_delivery') return null;
-		if (detail.payments.some((payment) => payment.method === 'cashOnDelivery' && payment.state === 'received')) return null;
+		if (detail.payments.some((payment) => payment.method === 'cashOnDelivery' && payment.state === 'received'))
+			return null;
 		return { amountINR: detail.order.balance?.dueINR ?? detail.order.totalINR, by: this.createdByName() };
 	});
 	readonly createdByName = computed(() => {
@@ -258,16 +261,21 @@ export class Details {
 			if (str('proof')) parts.push(t('ord_hist_proof', { proof: str('proof') }));
 			text = parts.join(' · ');
 		} else if (entry.kind === 'created' && str('items')) {
-			text = t(str('method') === 'keepOpen' ? 'ord_hist_opened' : 'ord_hist_created_items', { items: str('items') });
+			text = t(str('method') === 'keepOpen' ? 'ord_hist_opened' : 'ord_hist_created_items', {
+				items: str('items'),
+			});
 		} else if (entry.kind === 'lineAdded' && str('items')) {
 			text = t('ord_hist_added', { items: str('items') });
 		} else if (entry.kind === 'lineRemoved' && str('title')) {
 			const count = num('quantity') ?? 1;
-			text = t(count === 1 ? 'ord_hist_removed_one' : count === 2 ? 'ord_hist_removed_two' : 'ord_hist_removed_other', {
-				count,
-				title: str('title'),
-				amount: rupees(num('amountINR') ?? 0),
-			});
+			text = t(
+				count === 1 ? 'ord_hist_removed_one' : count === 2 ? 'ord_hist_removed_two' : 'ord_hist_removed_other',
+				{
+					count,
+					title: str('title'),
+					amount: rupees(num('amountINR') ?? 0),
+				},
+			);
 		} else if (entry.kind === 'comment') {
 			text = t('ord_hist_comment', { comment: entry.comment ?? '' });
 			comment = null;
@@ -392,24 +400,28 @@ export class Details {
 	linePrice(line: OrderLine): string {
 		const price = this.money(line.unitPricePaid);
 		const mrp = line.pricing?.mrpUnitINR;
-		return mrp && mrp > line.unitPriceINR
-			? this.t('ord_line_mrp_price', { mrp: rupees(mrp), price })
-			: price;
+		return mrp && mrp > line.unitPriceINR ? this.t('ord_line_mrp_price', { mrp: rupees(mrp), price }) : price;
 	}
 
 	buyerPhone(): string {
 		const mobile = this.order()?.buyer?.mobile;
 		if (!mobile) return '';
 		const digits = mobile.number.replace(/\D/g, '');
-		const spaced = mobile.countryCallingCode === '91' && digits.length === 10 ? `${digits.slice(0, 5)} ${digits.slice(5)}` : digits;
+		const spaced =
+			mobile.countryCallingCode === '91' && digits.length === 10
+				? `${digits.slice(0, 5)} ${digits.slice(5)}`
+				: digits;
 		return `+${mobile.countryCallingCode} ${spaced}`;
 	}
 
 	time(value: string | null | undefined): string {
 		if (!value) return '';
-		return new Date(value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+		return new Date(value).toLocaleTimeString('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit',
+			timeZone: 'Asia/Kolkata',
+		});
 	}
-
 
 	/** The history comment; how an invoice address was confirmed is a code shown in the page's language. */
 	historyComment(entry: OrderHistoryEntry): string {
@@ -494,6 +506,125 @@ export class Details {
 	readonly receivedCount = computed(
 		() => (this.detail()?.payments ?? []).filter((payment) => payment.state === 'received').length,
 	);
+
+	/* ------------------------------------------------- sets, free items and the Pack list (brief E07–E08) */
+
+	/** The lines a line holds: a set's pieces and extras, a piece's or a product's free items. */
+	childrenOf(line: OrderLine): OrderLine[] {
+		return (this.order()?.lines ?? []).filter((row) => row.parentLineId && row.parentLineId === line.lineId);
+	}
+
+	private lineById(id: string | null): OrderLine | undefined {
+		return id ? this.order()?.lines.find((row) => row.lineId === id) : undefined;
+	}
+
+	/** 2 for a free item under a set's piece, 1 for other children, 0 for a line of its own. */
+	depthOf(line: OrderLine): number {
+		if (!line.parentLineId) return 0;
+		return this.lineById(line.parentLineId)?.parentLineId ? 2 : 1;
+	}
+
+	/** A piece's number in its set. */
+	pieceNumber(line: OrderLine): number {
+		const parent = this.lineById(line.parentLineId);
+		return parent
+			? this.childrenOf(parent)
+					.filter((row) => row.role === 'piece')
+					.indexOf(line) + 1
+			: 0;
+	}
+
+	/** A set's line shows what its children cost together (its own line holds no money). */
+	setTotalPaid(line: OrderLine): number {
+		return this.childrenOf(line).reduce((sum, row) => sum + row.lineTotalPaid, 0);
+	}
+
+	/** "3 pieces + 1 extra" under a set's name. */
+	setCounts(line: OrderLine): string {
+		const children = this.childrenOf(line);
+		const pieces = children.filter((row) => row.role === 'piece').length;
+		const extras = children.filter((row) => row.role === 'extra').length;
+		const words = this.t(pieces === 1 ? 'ord_set_pieces_one' : 'ord_set_pieces', { count: pieces });
+		return extras ? `${words} ${this.t('ord_set_extras', { count: extras })}` : words;
+	}
+
+	/** A child's size or colour, as the order kept it. */
+	attributeValues(line: OrderLine): string[] {
+		return Object.values(line.attributes);
+	}
+
+	freeCount(line: OrderLine): number {
+		return this.childrenOf(line).filter((row) => row.role === 'free').length;
+	}
+
+	/** Lines of their own (a product or a set), numbered as the Pack list names them. */
+	private readonly topLines = computed(() => (this.order()?.lines ?? []).filter((line) => !line.parentLineId));
+
+	/** Every physical piece in the parcel, flat, with where it comes from (E08). */
+	readonly packRows = computed(() => {
+		const order = this.order();
+		if (!order) return [];
+		const tops = this.topLines();
+		const lineNo = (line: OrderLine | undefined) => (line ? tops.indexOf(line) + 1 : 0);
+		const setName = (line: OrderLine | undefined) => line?.title.en ?? '';
+		return order.lines
+			.filter((line) => line.role !== 'bundle')
+			.map((line) => {
+				const parent = this.lineById(line.parentLineId);
+				let from: string;
+				if (!parent) from = this.t('ord_pack_from_line', { n: lineNo(line) });
+				else if (line.role === 'piece')
+					from = this.t('ord_pack_from_piece', { set: setName(parent), n: this.pieceNumber(line) });
+				else if (line.role === 'extra') from = this.t('ord_pack_from_extra', { set: setName(parent) });
+				else if (parent.role === 'piece') {
+					from = this.t('ord_pack_from_free_piece', {
+						n: this.pieceNumber(parent),
+						set: setName(this.lineById(parent.parentLineId)),
+					});
+				} else from = this.t('ord_pack_from_free_line', { n: lineNo(parent) });
+				const options = [
+					...Object.values(line.attributes),
+					...line.addons.map((addon) => `${addon.label ?? addon.code}: ${addon.value}`),
+				].join(' · ');
+				return { line, from, options, ticked: order.packTicks.includes(line.lineId ?? '') };
+			});
+	});
+	/** The Pack list shows while the order is being packed. */
+	readonly packing = computed(() => ['placed', 'processing'].includes(this.order()?.status ?? ''));
+	readonly packTicked = computed(() => this.packRows().filter((row) => row.ticked).length);
+	readonly packPieces = computed(() => this.packRows().reduce((sum, row) => sum + row.line.quantity, 0));
+	/** Mark packed opens once every piece is ticked (the server checks it again). */
+	readonly packDone = computed(() => this.packRows().every((row) => row.ticked));
+
+	async tick(line: OrderLine, ticked: boolean): Promise<void> {
+		const order = this.order();
+		if (!order || !line.lineId) return;
+		await this.run(`pack:${line.lineId}`, async () => {
+			await firstValueFrom(
+				this.gateway.packTick(order.id, { lineId: line.lineId as string, ticked, revision: order.revision }),
+			);
+			await this.queryClient.invalidateQueries({ queryKey: [...ORDERS_KEY] });
+		});
+	}
+
+	async markPacked(): Promise<void> {
+		const order = this.order();
+		if (!order) return;
+		await this.run('packed', async () => {
+			await firstValueFrom(
+				this.gateway.changeStatus(order.id, {
+					to: 'packed',
+					comment: null,
+					shipped: null,
+					delivered: null,
+					cancel: null,
+					lineIds: [],
+					revision: order.revision,
+				}),
+			);
+			await this.refresh('ord_status_saved');
+		});
+	}
 
 	readonly heldPieces = computed(() =>
 		(this.order()?.lines ?? []).reduce((sum, line) => sum + (line.held ? line.quantity : 0), 0),
@@ -635,7 +766,9 @@ export class Details {
 		} else if (outcome.status === 'queued') {
 			this.notifier.showSuccess(this.t('ord_send_result_queued'));
 		} else {
-			this.notifier.showError(this.t('ord_send_result_not_sent', { why: this.t(`ord_send_why_${outcome.status}`) }));
+			this.notifier.showError(
+				this.t('ord_send_result_not_sent', { why: this.t(`ord_send_why_${outcome.status}`) }),
+			);
 		}
 	}
 

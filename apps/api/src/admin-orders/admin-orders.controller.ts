@@ -16,6 +16,7 @@ import {
 	ManualPaymentWrite,
 	MarkPaymentReceivedWrite,
 	OrderCommentWrite,
+	PackTickWrite,
 	OpenOrderAddLines,
 	OpenOrderClose,
 	OpenOrderRemoveLine,
@@ -209,6 +210,14 @@ export class AdminOrdersController {
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.orders.comment(id, body.comment, body.revision, actorOf(principal));
+	}
+
+	@Put(':id/pack-ticks')
+	@HttpCode(200)
+	@RequirePermissions('order.update')
+	@ApiOperation({ operationId: 'tickAdminOrderPackList', summary: 'Tick or untick one piece on the Pack list' })
+	packTick(@Param('id') id: string, @Body(new ZodValidationPipe(PackTickWrite)) body: PackTickWrite) {
+		return this.orders.packTick(id, body);
 	}
 
 	@Put(':id/invoice-address')

@@ -56,9 +56,7 @@
 					{{ 'ord_review_' + review.reason | transloco }} · {{ review.attemptId }} · {{ when(review.at) }}
 				</div>
 			</div>
-			}
-
-			@if (o.status === 'open' && o.openedAt) {
+			} @if (o.status === 'open' && o.openedAt) {
 			<!-- oo02: an open order says how long it has been open and what it holds. -->
 			<div
 				class="alert alert-info d-flex align-items-start gap-2"
@@ -76,8 +74,9 @@
 					<div class="title-header">
 						<div class="d-flex align-items-center flex-wrap gap-2">
 							<h5>
-								{{ (o.status === 'open' ? 'ord_order_title_open' : o.channel === 'shop' ? 'ord_order_title_placed' :
-								'ord_order_title') | transloco: { number: o.orderNumber, date: when(o.createdAt) } }}
+								{{ (o.status === 'open' ? 'ord_order_title_open' : o.channel === 'shop' ?
+								'ord_order_title_placed' : 'ord_order_title') | transloco: { number: o.orderNumber,
+								date: when(o.createdAt) } }}
 							</h5>
 							@if (o.status !== 'open') {
 							<div [class]="'status-' + statusPill()">
@@ -162,32 +161,92 @@
 								</tr>
 							</thead>
 							<tbody>
-								@for (line of o.lines; track line.lineId ?? line.sku) {
-								<tr>
+								<!-- A set's line, then its pieces, their free items and its extras, indented (brief E07). -->
+								@for (line of o.lines; track line.lineId ?? line.sku) { @let depth = depthOf(line);
+								<tr
+									[class.ord-group-line]="line.role === 'bundle' || (!depth && freeCount(line) > 0)"
+									[class.ord-child-line]="depth > 0"
+									[class.is-free]="line.role === 'free'"
+									[class.is-depth-2]="depth === 2"
+								>
 									<td>
 										<div class="d-flex align-items-center gap-2 text-start">
+											@if (depth) {
+											<span
+												class="ord-child-elbow"
+												aria-hidden="true"
+											></span>
+											}
 											<img
 												[src]="line.imageUrl ?? 'assets/images/product.png'"
 												alt=""
-												width="40"
-												height="52"
-												class="rounded object-fit-cover"
+												[width]="depth ? 32 : 40"
+												[height]="depth ? 42 : 52"
+												class="object-fit-cover rounded"
 											/>
+											@if (depth) {
 											<div>
-												<h6 class="mb-0">{{ line.title.en }}</h6>
+												@if (line.role === 'free') {
+												<span class="badge ord-chip-free">
+													{{ 'ord_child_free' | transloco }}
+												</span>
+												} @else if (line.role === 'extra') {
+												<span class="badge ord-chip-extra">
+													{{ 'ord_child_extra' | transloco }}
+												</span>
+												}
+												<span>
+													@if (line.role === 'piece') { {{ pieceNumber(line) }}. }{{
+													line.title.en }}
+												</span>
+												<br />
 												<small class="text-muted">
-													{{ line.sku }} · {{ linePrice(line) }} @for (addon of line.addons; track
-													addon.code) { · {{ addon.label ?? addon.code }}: {{ addon.value }} }
+													{{ line.sku }} @for (value of attributeValues(line); track $index) {
+													· {{ value }} }
 												</small>
 											</div>
+											} @else {
+											<div>
+												<h6 class="mb-0">{{ line.title.en }}</h6>
+												@if (line.role === 'bundle') {
+												<span class="badge ord-chip-set">
+													{{ (line.set?.heading === 'choose' ? 'ord_set_chip_choose' :
+													'ord_set_chip_components') | transloco }}
+												</span>
+												<small class="text-muted">{{ line.sku }} · {{ setCounts(line) }}</small>
+												} @else { @if (freeCount(line)) {
+												<span class="badge ord-chip-set">
+													{{ 'ord_free_items_chip' | transloco: { count: freeCount(line) } }}
+												</span>
+												}
+												<small class="text-muted">
+													{{ line.sku }} · {{ linePrice(line) }} @for (addon of line.addons;
+													track addon.code) { · {{ addon.label ?? addon.code }}: {{
+													addon.value }} }
+												</small>
+												}
+											</div>
+											}
 										</div>
 									</td>
 									@if (o.status === 'open') {
 									<td class="text-nowrap">{{ line.addedAt ? day(line.addedAt) : '—' }}</td>
 									}
-									<td class="text-end text-nowrap">{{ money(line.unitPricePaid) }}</td>
+									<td class="text-end text-nowrap">
+										@if (line.role === 'bundle') { {{ money(setTotalPaid(line) / line.quantity) }} }
+										@else if (depth) {
+										<small class="text-muted">
+											@if (line.role === 'free') { {{ 'ord_child_free' | transloco }} } @else if
+											(line.role === 'extra') { +{{ money(line.unitPricePaid) }} } @else { {{
+											'ord_child_included' | transloco }} }
+										</small>
+										} @else { {{ money(line.unitPricePaid) }} }
+									</td>
 									<td class="text-end text-nowrap">{{ line.quantity }}</td>
-									<td class="text-end text-nowrap">{{ money(line.lineTotalPaid) }}</td>
+									<td class="text-end text-nowrap">
+										@if (line.role === 'bundle') { {{ money(setTotalPaid(line)) }} } @else if
+										(!depth) { {{ money(line.lineTotalPaid) }} }
+									</td>
 									<td>
 										@if (line.held && (o.status === 'open' || o.status === 'awaiting_payment')) {
 										<div class="status-pending">
@@ -201,7 +260,7 @@
 									</td>
 									@if (o.status === 'open') {
 									<td class="text-center">
-										@if (line.held) {
+										@if (line.held && !depth) {
 										<button
 											*hasPermission="'order.open'"
 											type="button"
@@ -248,7 +307,92 @@
 				</div>
 			</div>
 
-			@if (o.shipping; as ship) {
+			<!-- The Pack list (bundle builder brief E08): every physical piece in the parcel, flat, ticked as it goes
+				 in; Mark packed opens once all are ticked (the server checks it again). -->
+			@if (packing() && packRows().length) {
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ 'ord_pack_title' | transloco: { count: packPieces() } }}</h5>
+						</div>
+						<div
+							class="d-flex gap-2"
+							*hasPermission="'order.update'"
+						>
+							<button
+								type="button"
+								class="btn btn-theme btn-sm"
+								[disabled]="!packDone() || busy() === 'packed'"
+								(click)="markPacked()"
+							>
+								{{ 'ord_pack_mark' | transloco }}
+							</button>
+						</div>
+					</div>
+					<p class="help-text">{{ 'ord_pack_help' | transloco }}</p>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th><span class="visually-hidden">{{ 'ord_pack_col_tick' | transloco }}</span></th>
+									<th>{{ 'ord_pack_col_piece' | transloco }}</th>
+									<th>{{ 'sku' | transloco }}</th>
+									<th>{{ 'ord_pack_col_options' | transloco }}</th>
+									<th class="text-end">{{ 'ord_col_qty' | transloco }}</th>
+									<th>{{ 'ord_pack_col_from' | transloco }}</th>
+									<th>{{ 'ord_pack_col_stock' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of packRows(); track row.line.lineId) {
+								<tr>
+									<td>
+										<input
+											class="checkbox_animated check-it"
+											type="checkbox"
+											[checked]="row.ticked"
+											[disabled]="busy() === 'pack:' + row.line.lineId"
+											[attr.aria-label]="'ord_pack_tick' | transloco: { name: row.line.title.en }"
+											(change)="tick(row.line, $any($event.target).checked)"
+										/>
+									</td>
+									<td>
+										<div class="d-flex align-items-center gap-2 text-start">
+											<img
+												[src]="row.line.imageUrl ?? 'assets/images/product.png'"
+												alt=""
+												width="32"
+												height="42"
+												class="object-fit-cover rounded"
+											/>
+											<span>{{ row.line.title.en }}</span>
+										</div>
+									</td>
+									<td>{{ row.line.sku }}</td>
+									<td>{{ row.options || '—' }}</td>
+									<td class="text-end">{{ row.line.quantity }}</td>
+									<td class="text-start"><small>{{ row.from }}</small></td>
+									<td>
+										@if (row.line.held) {
+										<div class="status-in_stock">
+											<span>{{ 'ord_line_held' | transloco }}</span>
+										</div>
+										} @else if (row.line.madeToOrder) {
+										<small class="text-muted">{{ 'made_to_order' | transloco }}</small>
+										} @else { — }
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-2 mb-0">
+						{{ 'ord_pack_ticked' | transloco: { ticked: packTicked(), count: packRows().length } }}
+					</p>
+				</div>
+			</div>
+			} @if (o.shipping; as ship) {
 			<div class="card">
 				<div class="card-body">
 					<div class="title-header">
@@ -281,7 +425,8 @@
 						<div class="d-flex align-items-center">
 							<h5>{{ 'ord_payments' | transloco }}</h5>
 						</div>
-						@if (!activeRequest() && o.status !== 'cancelled' && o.status !== 'open' && (o.balance?.dueINR ?? 0) > 0) {
+						@if (!activeRequest() && o.status !== 'cancelled' && o.status !== 'open' && (o.balance?.dueINR
+						?? 0) > 0) {
 						<div class="d-flex flex-wrap gap-2">
 							<button
 								*hasPermission="'order.payment'"
@@ -305,8 +450,8 @@
 						}
 					</div>
 					<!-- pl01–pl05: the gateway's own request, our link beside it, and what has happened so far. -->
-					@for (request of requests(); track request.id) { @let paid = request.status === 'paid'; @let lapsed =
-					request === lapsedRequest() && (o.balance?.dueINR ?? 0) > 0;
+					@for (request of requests(); track request.id) { @let paid = request.status === 'paid'; @let lapsed
+					= request === lapsedRequest() && (o.balance?.dueINR ?? 0) > 0;
 					<div class="mb-3 rounded border p-3">
 						<div class="d-flex justify-content-between align-items-center mb-2">
 							<h6 class="mb-0">
@@ -367,7 +512,7 @@
 							</div>
 						</div>
 						}
-						<ul class="list-unstyled small mb-0 mt-3">
+						<ul class="list-unstyled small mt-3 mb-0">
 							@if (paid) { @let captured = paidAttempt(request);
 							<li class="mb-1">
 								<span class="text-muted">{{ 'ord_req_result' | transloco }}:</span>
@@ -402,15 +547,15 @@
 								@for (attempt of request.attempts; track $index) { @if (!$first) { · } @if
 								(attempt.state === 'failed') {
 								<span class="text-danger">
-									{{ time(attempt.at) }} · {{ attempt.method ? ('ord_req_declined_method' | transloco: {
-									method: attempt.method }) : ('ord_req_declined' | transloco) }}
+									{{ time(attempt.at) }} · {{ attempt.method ? ('ord_req_declined_method' | transloco:
+									{ method: attempt.method }) : ('ord_req_declined' | transloco) }}
 								</span>
-								@if (attempt.reason) { {{ 'ord_req_bank_reason' | transloco: { reason: attempt.reason } }}
-								} } @else if (attempt.state === 'pending') { {{ time(attempt.at) }} ·
+								@if (attempt.reason) { {{ 'ord_req_bank_reason' | transloco: { reason: attempt.reason }
+								}} } } @else if (attempt.state === 'pending') { {{ time(attempt.at) }} ·
 								<b>{{ 'ord_attempt_pending' | transloco }}</b>
 								@if (attempt.method) { ({{ attempt.method }}) } } @else { {{ time(attempt.at) }} · {{
-								'ord_attempt_' + attempt.state | transloco }} } } @empty { {{ 'ord_no_attempts' | transloco
-								}} }
+								'ord_attempt_' + attempt.state | transloco }} } } @empty { {{ 'ord_no_attempts' |
+								transloco }} }
 							</li>
 							@if (request.status === 'active' && hasPendingAttempt(request)) {
 							<li class="mb-1">
@@ -716,8 +861,9 @@
 									<td>
 										@if (entry.lead) {
 										<b>{{ entry.lead }}</b>
-										@if (entry.text) { · {{ entry.text }} } } @else { {{ entry.text }} } @if (entry.placed) {
-										· <b>{{ 'ord_status_placed' | transloco }}</b>
+										@if (entry.text) { · {{ entry.text }} } } @else { {{ entry.text }} } @if
+										(entry.placed) { ·
+										<b>{{ 'ord_status_placed' | transloco }}</b>
 										} @if (entry.comment) { · “{{ entry.comment }}” }
 									</td>
 									<td>{{ entry.by }}</td>
@@ -752,7 +898,10 @@
 							<ul>
 								<li>
 									{{ 'ord_pieces_so_far' | transloco }}
-									<span>{{ 'ord_pieces_lines' | transloco: { pieces: heldPieces(), lines: o.lines.length } }}</span>
+									<span>
+										{{ 'ord_pieces_lines' | transloco: { pieces: heldPieces(), lines: o.lines.length
+										} }}
+									</span>
 								</li>
 								<li>
 									{{ 'ord_goods_so_far' | transloco }}
@@ -763,8 +912,8 @@
 									<span>{{ 'ord_shipping_at_close' | transloco }}</span>
 								</li>
 								<li>
-									{{ (receivedCount() === 1 ? 'ord_paid_one_payment' : 'ord_paid_n_payments') | transloco: {
-									count: receivedCount() } }}
+									{{ (receivedCount() === 1 ? 'ord_paid_one_payment' : 'ord_paid_n_payments') |
+									transloco: { count: receivedCount() } }}
 									<span>{{ (o.balance?.paidINR ?? 0) | rupees }}</span>
 								</li>
 								@if ((o.balance?.paidAheadINR ?? 0) > 0) {
@@ -881,8 +1030,8 @@
 										transloco }}:
 									</label>
 									<h4>
-										{{ o.buyer?.name ?? '—' }} @if (o.status === 'open' && o.buyer?.kind === 'person') { {{
-										'ord_invoice_own_name' | transloco }} }
+										{{ o.buyer?.name ?? '—' }} @if (o.status === 'open' && o.buyer?.kind ===
+										'person') { {{ 'ord_invoice_own_name' | transloco }} }
 									</h4>
 								</li>
 								@if (o.buyer?.gstin) {
@@ -925,8 +1074,8 @@
 									<label>{{ 'ord_invoice_address' | transloco }}:</label>
 									<h4>
 										@if (addresses.invoice.address; as invoice) { @if (addresses.invoice.source ===
-										'billing') { {{ (addresses.billingSameAsDelivery ? 'ord_invoice_same' : 'ord_invoice_billing') | transloco }} } @else {
-										{{ address(invoice) }} }
+										'billing') { {{ (addresses.billingSameAsDelivery ? 'ord_invoice_same' :
+										'ord_invoice_billing') | transloco }} } @else { {{ address(invoice) }} }
 										<span class="fm-chip ms-1">
 											{{ 'ord_invoice_source_' + addresses.invoice.source | transloco }}
 										</span>
@@ -941,8 +1090,8 @@
 								<li>
 									<label>{{ 'ord_buyer_created_by' | transloco }}:</label>
 									<h4>
-										{{ 'ord_created_by_admin' | transloco: { name: createdByName() ?? ('ord_by_system' |
-										transloco) } }}
+										{{ 'ord_created_by_admin' | transloco: { name: createdByName() ??
+										('ord_by_system' | transloco) } }}
 									</h4>
 								</li>
 								} @else {
@@ -968,9 +1117,7 @@
 						<p class="small mb-0">{{ 'ord_currency_inr_note' | transloco }}</p>
 					</div>
 				</div>
-				}
-
-				@if (d.credit; as credit) {
+				} @if (d.credit; as credit) {
 				<div class="card">
 					<div class="card-body">
 						<div class="title-header">
@@ -1011,10 +1158,10 @@
 								<li>
 									<label>{{ 'ord_priced_at' | transloco }}:</label>
 									<h4>
-										{{ 'ord_rate_line_from' | transloco: { rate: rupees(o.currencyRecord.inrPerUnit ??
-										0), code: o.currencyRecord.code, source: ('ord_rate_source_' + o.currencyRecord.source
-										| transloco), at: when(o.currencyRecord.rateSetAt ?? o.currencyRecord.pricedAt), markup:
-										o.currencyRecord.markupPercent } }}
+										{{ 'ord_rate_line_from' | transloco: { rate: rupees(o.currencyRecord.inrPerUnit
+										?? 0), code: o.currencyRecord.code, source: ('ord_rate_source_' +
+										o.currencyRecord.source | transloco), at: when(o.currencyRecord.rateSetAt ??
+										o.currencyRecord.pricedAt), markup: o.currencyRecord.markupPercent } }}
 									</h4>
 								</li>
 								<li>

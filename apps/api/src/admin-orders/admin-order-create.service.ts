@@ -385,6 +385,7 @@ export class AdminOrderCreateService {
 			closedAt: null,
 			eInvoice: null,
 			eWayBill: null,
+			packTicks: [],
 			history: [
 				historyEntry(actor, at, 'created', {
 					comment: input.comment,

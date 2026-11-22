@@ -399,6 +399,8 @@ export const StatusBlockReason = z.enum([
 	'onlyFromCourier',
 	'closeOpenOrderFirst',
 	'eDocumentsMissing',
+	/** A set or a free item is on the order and the Pack list has pieces still unticked (brief E08). */
+	'packListIncomplete',
 ]);
 export type StatusBlockReason = z.infer<typeof StatusBlockReason>;
 
@@ -586,3 +588,11 @@ export const AdminOrderDetail = z.object({
 	staff: z.record(z.string(), z.string()).default({}),
 });
 export type AdminOrderDetail = z.infer<typeof AdminOrderDetail>;
+
+/** One Pack list tick (bundle builder brief E08): a line goes in the parcel, or comes back out. */
+export const PackTickWrite = z.object({
+	lineId: z.string().min(1).max(200),
+	ticked: z.boolean(),
+	revision: z.number().int().nonnegative(),
+});
+export type PackTickWrite = z.infer<typeof PackTickWrite>;

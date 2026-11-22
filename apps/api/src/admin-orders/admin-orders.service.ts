@@ -35,6 +35,8 @@ import {
 	orderBalance,
 	eDocumentsRequired,
 	isPlaceable,
+	packLines,
+	packListIncomplete,
 	isRequestActive,
 	openTooLong,
 	type AdminOrderRepository,
@@ -90,6 +92,7 @@ export function machineOrder(order: Order): StatusMachineOrder {
 		hasEInvoice: !!order.eInvoice,
 		hasEWayBill: !!order.eWayBill,
 		goodsINR: order.balance?.goodsINR ?? order.subtotalINR,
+		packListIncomplete: packListIncomplete(order),
 	};
 }
 
@@ -600,6 +603,29 @@ export class AdminOrdersService {
 		};
 		await refuseStale(
 			() => this.orders.update(next, revision, undefined, metaOf(next)),
+			'Someone else changed this order first',
+		);
+		return this.detail(id, now);
+	}
+
+	/**
+	 * One Pack list tick (bundle builder brief E08): a line goes in the parcel or comes back out. Ticks are kept until
+	 * Packed; a set's own line is never a piece, and a shipped or cancelled order has nothing left to pack.
+	 */
+	async packTick(id: string, input: { lineId: string; ticked: boolean; revision: number }, now = new Date()) {
+		const order = await this.get(id);
+		if (!['placed', 'processing'].includes(order.status)) {
+			throw new ConflictException(codedRefusal('pack_closed', 'This order is not being packed', 'status'));
+		}
+		if (!packLines(order.lines).some((line) => line.lineId === input.lineId)) {
+			throw new BadRequestException(codedRefusal('pack_line_unknown', 'No such piece on this order', 'lineId'));
+		}
+		const ticks = new Set(order.packTicks);
+		if (input.ticked) ticks.add(input.lineId);
+		else ticks.delete(input.lineId);
+		const next = { ...order, packTicks: [...ticks] };
+		await refuseStale(
+			() => this.orders.update(next, input.revision, undefined, metaOf(next)),
 			'Someone else changed this order first',
 		);
 		return this.detail(id, now);

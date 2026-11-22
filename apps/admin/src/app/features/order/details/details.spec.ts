@@ -107,7 +107,14 @@ describe('order page (od05–od08, pl01–pl05)', () => {
 			detail({
 				channel: 'shop',
 				history: [
-					{ at: '2026-11-18T13:33:00.000Z', kind: 'created', by: null, byName: null, messages: [], detail: {} },
+					{
+						at: '2026-11-18T13:33:00.000Z',
+						kind: 'created',
+						by: null,
+						byName: null,
+						messages: [],
+						detail: {},
+					},
 					{
 						at: '2026-11-18T13:33:10.000Z',
 						kind: 'payment',
@@ -161,8 +168,23 @@ describe('order page (od05–od08, pl01–pl05)', () => {
 				channel: 'admin',
 				createdBy: 'adm_7',
 				history: [
-					{ at: '2026-11-21T06:47:00.000Z', kind: 'created', by: 'adm_7', byName: null, messages: [], detail: {} },
-					{ at: '2026-11-21T06:50:00.000Z', kind: 'comment', by: 'adm_gone', byName: null, comment: 'x', messages: [], detail: {} },
+					{
+						at: '2026-11-21T06:47:00.000Z',
+						kind: 'created',
+						by: 'adm_7',
+						byName: null,
+						messages: [],
+						detail: {},
+					},
+					{
+						at: '2026-11-21T06:50:00.000Z',
+						kind: 'comment',
+						by: 'adm_gone',
+						byName: null,
+						comment: 'x',
+						messages: [],
+						detail: {},
+					},
 				],
 			} as never),
 			staff: { adm_7: 'Rupa Sen' },
@@ -202,9 +224,9 @@ describe('order page (od05–od08, pl01–pl05)', () => {
 		expect(
 			page.paymentMethodWords({ method: 'gateway', gateway: { id: 'ccavenue', requestId: 'q1' } } as never),
 		).toBe('ord_pay_method_link');
-		expect(page.paymentMethodWords({ method: 'gateway', gateway: { id: 'paypal', requestId: null } } as never)).toBe(
-			'ord_pay_method_shop',
-		);
+		expect(
+			page.paymentMethodWords({ method: 'gateway', gateway: { id: 'paypal', requestId: null } } as never),
+		).toBe('ord_pay_method_shop');
 		expect(page.recordedBy({ gateway: { id: 'paypal' } } as never)).toBe('PayPal');
 		expect(page.recordedBy({ gateway: null, recordedBy: 'u1' } as never)).toBe('Moulik');
 	});
@@ -227,5 +249,88 @@ describe('order page (od05–od08, pl01–pl05)', () => {
 		);
 		await page.checkRequest({ id: 'q2', gateway: 'ccavenue' } as never);
 		expect(notifier.showSuccess).toHaveBeenLastCalledWith('ord_request_paid_detail_toast');
+	});
+});
+
+describe('sets and free items on the order page (bundle builder brief E07–E08)', () => {
+	const line = (over: Record<string, unknown>) => ({
+		title: { en: 'Piece' },
+		sku: 'SKU',
+		quantity: 1,
+		attributes: {},
+		addons: [],
+		unitPricePaid: 0,
+		lineTotalPaid: 0,
+		held: true,
+		role: 'product',
+		parentLineId: null,
+		...over,
+	});
+	const lines = [
+		line({
+			lineId: 's',
+			role: 'bundle',
+			title: { en: 'Peacock set' },
+			sku: 'BND-1',
+			set: { heading: 'components' },
+		}),
+		line({
+			lineId: 's~a',
+			role: 'piece',
+			parentLineId: 's',
+			title: { en: 'Peacock Blue' },
+			lineTotalPaid: 33211.16,
+		}),
+		line({
+			lineId: 's~a>f',
+			role: 'free',
+			parentLineId: 's~a',
+			title: { en: 'Petticoat' },
+			attributes: { Variation: 'M' },
+		}),
+		line({ lineId: 's~b', role: 'piece', parentLineId: 's', title: { en: 'Off White' }, lineTotalPaid: 11688.84 }),
+		line({ lineId: 'p', title: { en: 'Lavender saree' }, lineTotalPaid: 5600 }),
+		line({ lineId: 'p~f', role: 'free', parentLineId: 'p', title: { en: 'Cover bag' } }),
+	];
+
+	it('draws the tree: depths, piece numbers, the set’s total from its pieces', () => {
+		data.set(detail({ lines: lines as never }));
+		const { page } = render();
+		const [set, a, free, b, product] = page.order()!.lines;
+		expect([set, a, free, b].map((row) => page.depthOf(row!))).toEqual([0, 1, 2, 1]);
+		expect([a, b].map((row) => page.pieceNumber(row!))).toEqual([1, 2]);
+		expect(page.setTotalPaid(set!)).toBeCloseTo(44900, 2);
+		expect(page.setCounts(set!)).toBe('ord_set_pieces');
+		expect(page.freeCount(product!)).toBe(1);
+	});
+
+	it('lists every physical piece with where it comes from, and opens Mark packed only when all are ticked', () => {
+		data.set(detail({ lines: lines as never, packTicks: ['s~a', 's~a>f', 's~b', 'p'] }));
+		const { page } = render();
+		expect(page.packRows().map((row) => [row.line.lineId, row.from, row.options, row.ticked])).toEqual([
+			['s~a', 'ord_pack_from_piece', '', true],
+			['s~a>f', 'ord_pack_from_free_piece', 'M', true],
+			['s~b', 'ord_pack_from_piece', '', true],
+			['p', 'ord_pack_from_line', '', true],
+			['p~f', 'ord_pack_from_free_line', '', false],
+		]);
+		expect(page.packDone()).toBe(false);
+		expect(page.packing()).toBe(true);
+	});
+
+	it('saves a tick and moves the order to Packed', async () => {
+		data.set(detail({ lines: lines as never }));
+		const { page, gateway } = render();
+		const calls: unknown[] = [];
+		Object.assign(gateway, {
+			packTick: vi.fn((id: string, body: unknown) => (calls.push(['tick', id, body]), of({}))),
+			changeStatus: vi.fn((id: string, body: { to: string }) => (calls.push(['status', id, body.to]), of({}))),
+		});
+		await page.tick(page.order()!.lines[1]!, true);
+		await page.markPacked();
+		expect(calls).toEqual([
+			['tick', 'ord_1', { lineId: 's~a', ticked: true, revision: 4 }],
+			['status', 'ord_1', 'packed'],
+		]);
 	});
 });

@@ -221,6 +221,7 @@ export function toOrder(doc: OrderDoc): Order {
 		eInvoice: (row.eInvoice ?? null) as Order['eInvoice'],
 		eWayBill: (row.eWayBill ?? null) as Order['eWayBill'],
 		history: (row.history ?? []) as Order['history'],
+		packTicks: (row.packTicks ?? []) as Order['packTicks'],
 		revision: (row.revision ?? 0) as number,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),

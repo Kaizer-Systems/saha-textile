@@ -1,3 +1,6 @@
+// The chips beside a line's name: a set's kind, "Free items: 2", and Free / Extra on child rows (shared file).
+@use '../order-chips';
+
 // The order's items as a tree (bundle builder brief E07, approved 2026-11-22): a set's or a product-with-free-items'
 // line carries a bar in the theme colour; its pieces, free items and extras sit beneath it, indented, with an elbow
 // back to the line. Free rows take a light tint of the success colour.
@@ -37,23 +40,4 @@
 	.is-depth-2 & {
 		left: 42px;
 	}
-}
-
-// The chips beside a line's name: a set's kind, "Free items: 2", and Free / Extra on child rows.
-.badge.ord-chip-set {
-	margin-right: 4px;
-	background-color: color-mix(in srgb, var(--theme-color) 12%, transparent);
-	color: var(--theme-color);
-}
-
-.badge.ord-chip-free {
-	margin-right: 4px;
-	background-color: color-mix(in srgb, var(--admin-ok) 12%, transparent);
-	color: var(--admin-ok);
-}
-
-.badge.ord-chip-extra {
-	margin-right: 4px;
-	background-color: var(--bs-secondary-bg, #eef3f8);
-	color: var(--admin-ink-2);
 }

@@ -25,8 +25,7 @@
 			</div>
 			} @else {
 			<app-order-buyer-card />
-			}
-			@if ((category$ | async)?.data?.length) {
+			} @if ((category$ | async)?.data?.length) {
 			<div class="card">
 				<div class="card-body">
 					<div class="pos-product-screen">
@@ -140,7 +139,7 @@
 						} @else {
 						<ul class="cart-listing">
 							@for (row of rows(); track row.key) {
-							<li>
+							<li [class.has-kids]="!!row.priced?.children?.length">
 								<img
 									[src]="row.priced?.imageUrl ?? 'assets/images/product.png'"
 									class="img-fluid"
@@ -148,7 +147,9 @@
 								/>
 								<div class="cart-content">
 									<h4>{{ row.priced?.title ?? '…' }}</h4>
-									@if (row.priced?.problem; as problem) {
+									@if (row.priced; as line) { @if (line.setHeading) {
+									<span class="badge ord-chip-set">{{ 'bundle' | transloco }}</span>
+									} } @if (row.priced?.problem; as problem) {
 									<p class="small text-danger mb-1">
 										{{ 'ord_cart_problem_' + problem | transloco }}
 									</p>
@@ -187,7 +188,40 @@
 									</div>
 								</div>
 							</li>
-							}
+							@if (row.priced; as line) { @if (line.children.length) {
+							<li class="ord-cart-kids-li">
+								<!-- What the line holds (E09): a set's pieces, their free items and extras; a product's free items. -->
+								<ul class="ord-cart-kids">
+									@for (kid of kids(line); track kid.child.key) {
+									<li
+										[class.is-free]="kid.child.role === 'free'"
+										[class.is-depth-2]="kid.depth === 2"
+									>
+										<img
+											[src]="kid.imageUrl ?? 'assets/images/product.png'"
+											alt=""
+											width="24"
+											height="32"
+										/>
+										<span class="ord-cart-kid-name">
+											@if (kid.child.role === 'free') {
+											<span class="badge ord-chip-free">{{ 'ord_child_free' | transloco }}</span>
+											} @else if (kid.child.role === 'extra') {
+											<span class="badge ord-chip-extra">
+												{{ 'ord_child_extra' | transloco }}
+											</span>
+											} @if (kid.number) { {{ kid.number }}. }{{ kid.child.title }} @if
+											(kid.child.variantLabel) { · {{ kid.child.variantLabel }} }
+										</span>
+										<small class="ord-cart-kid-price">
+											@if (kid.child.role === 'extra') { +{{ rupees(kid.child.priceINR) }} } @if
+											(kid.child.role === 'piece') { {{ 'ord_child_included' | transloco }} }
+										</small>
+									</li>
+									}
+								</ul>
+							</li>
+							} } }
 						</ul>
 						}
 					</div>
@@ -212,8 +246,7 @@
 					</ul>
 					} @if (draft.count() && !draft.buyer()) {
 					<p class="help-text mt-3 mb-0">{{ 'ord_choose_buyer_first' | transloco }}</p>
-					}
-					@if (draft.addingTo(); as adding) {
+					} @if (draft.addingTo(); as adding) {
 					<ng-container *hasPermission="'order.open'">
 						@if (draft.count()) {
 						<button

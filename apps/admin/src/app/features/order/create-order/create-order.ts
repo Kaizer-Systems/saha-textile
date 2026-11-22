@@ -26,6 +26,7 @@ import { NoData } from '@shared/ui/no-data/no-data';
 import { Pagination } from '@shared/ui/pagination/pagination';
 import { ProductBoxSkeleton } from '@shared/ui/skeleton/product-box-skeleton/product-box-skeleton';
 
+import { cartKidRows, CartKidRow } from './cart-kids';
 import { OrderBuyerCard } from './order-buyer-card';
 import { OrderProductCard } from './order-product-card';
 import { OrderSetPopup } from './order-set-popup';
@@ -199,6 +200,16 @@ export class CreateOrder {
 		} finally {
 			this.addingBusy.set(false);
 		}
+	}
+
+	/** A set's pieces, their free items and extras, or a product's free items, beneath its cart line (E09). */
+	kids(line: AdminCartLine): CartKidRow[] {
+		return cartKidRows(line.children);
+	}
+
+	/** A child's own price is kept in rupees whatever the order's currency. */
+	rupees(amount: number): string {
+		return money(amount, 'INR', this.transloco.getActiveLang() === 'bn' ? 'bn-IN' : 'en-IN');
 	}
 
 	money(amount: number): string {

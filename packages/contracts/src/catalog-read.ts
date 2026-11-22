@@ -42,6 +42,11 @@ export const CatalogCard = z
 		madeToOrder: z.boolean(),
 		/** Fabric by the metre shows "/ m" after its price (M6). */
 		soldBy: z.enum(['piece', 'metre']).default('piece'),
+		/**
+		 * A set's card (bundle builder brief G02, approved 2026-11-22): how many pieces, and whether the shopper must
+		 * choose (a choice level, a size, a free item to pick). A fixed set adds straight from its card.
+		 */
+		set: z.object({ pieces: z.number().int().positive(), choose: z.boolean() }).nullable().default(null),
 	})
 	.superRefine((card, ctx) => {
 		const roles = Object.keys(card.image?.roles ?? {});

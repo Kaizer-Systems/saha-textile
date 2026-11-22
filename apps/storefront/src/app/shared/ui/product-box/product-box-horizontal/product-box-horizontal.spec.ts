@@ -98,4 +98,20 @@ describe('ProductBoxHorizontal', () => {
 		expect(empty.box.saved()).toBe(false);
 		expect(empty.box.compared()).toBe(false);
 	});
+
+	it('a set with choices opens them; a fixed set adds straight away with an empty choice (G02)', () => {
+		const choose = render({ id: 's1', slug: 'set-1', sale_price: 2600, set_card: { pieces: 2, choose: true } });
+		expect(choose.box.isConfigurable(choose.box.product())).toBe(true);
+		const fixed = render({ id: 's2', slug: 'set-2', sale_price: 44900, set_card: { pieces: 2, choose: false } });
+		expect(fixed.box.isConfigurable(fixed.box.product())).toBe(false);
+		fixed.box.addToCart(fixed.box.product()!, 1);
+		expect(fixed.cart.addToCart).toHaveBeenCalledWith(
+			expect.objectContaining({
+				quantity: 1,
+				line_config: expect.objectContaining({
+					raw: { set_choice: { picks: {}, variants: {}, extras: [], free: {} }, free_items: [] },
+				}),
+			}),
+		);
+	});
 });

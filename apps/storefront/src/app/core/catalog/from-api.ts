@@ -45,6 +45,8 @@ export interface ApiCard {
 	inStock: boolean;
 	madeToOrder: boolean;
 	soldBy?: 'piece' | 'metre';
+	/** A set's card (bundle builder brief G02): its pieces, and whether the shopper must choose. */
+	set?: { pieces: number; choose: boolean } | null;
 }
 
 export interface ApiHome {
@@ -279,6 +281,7 @@ export function cardToProduct(card: ApiCard): IProduct {
 		stock_status: card.inStock ? 'in_stock' : 'out_of_stock',
 		product_thumbnail: attachment(card.image, card.id),
 		sold_by: card.soldBy ?? 'piece',
+		set_card: card.set ?? null,
 		variations,
 		categories: [],
 		related_products: [],

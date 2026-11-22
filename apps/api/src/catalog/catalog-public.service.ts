@@ -3,6 +3,7 @@ import {
 	CatalogCard,
 	CatalogGallery,
 	CatalogHome,
+	type CatalogPageBundle,
 	CatalogPlacementPage,
 	type CatalogPlacementQuery,
 	CatalogProductPage,
@@ -782,7 +783,19 @@ export class CatalogPublicService {
 	private async cards(products: Product[], known?: ReadonlyMap<string, ProductVariant[]>): Promise<CatalogCard[]> {
 		const variants = known ?? (await this.variantsByProduct(products));
 		const assets = await this.assetsFor(products.flatMap((product) => productGallery(product).slice(0, 1)));
-		return products.map((product) => this.card(product, variants.get(product.id) ?? [], assets));
+		// Sets price and stock from their pieces (G02): their cards read the set's own page model.
+		const sets = new Map(
+			await Promise.all(
+				products
+					.filter((product) => product.type === 'bundle')
+					.map(async (product) => [product.id, await this.bundleFor(product).catch(() => null)] as const),
+			),
+		);
+		return products.map((product) => {
+			const card = this.card(product, variants.get(product.id) ?? [], assets);
+			const set = sets.get(product.id);
+			return set ? setCard(card, set) : card;
+		});
 	}
 
 	private card(product: Product, rows: ProductVariant[], assets: Map<string, MediaAsset>): CatalogCard {
@@ -890,4 +903,40 @@ function isCleanListing(query: CatalogPlacementQuery): boolean {
 	return (
 		page === 1 && [attribute, price, price_min, price_max, rating, category, sortBy].every((v) => v === undefined)
 	);
+}
+
+/**
+ * A set's card (bundle builder brief G02): a fixed set shows its price with the pieces' total struck; a set with
+ * choices shows "From" its lowest full combination. Stock is the set's own (enough of every piece).
+ */
+export function setCard(card: CatalogCard, set: CatalogPageBundle): CatalogCard {
+	const needsSize = set.levels.some((level) =>
+		level.items.some((item) => item.variantId === null && item.variants.length > 0),
+	);
+	const freeChoice = set.levels.some((level) =>
+		level.items.some((item) => item.freeWith !== null && !item.freeWith.given && item.freeWith.min > 0),
+	);
+	const choose = set.fromPrice || set.heading === 'choose' || needsSize || freeChoice;
+	return CatalogCard.parse({
+		...card,
+		price: choose
+			? { kind: 'single', sellingINR: set.lowINR, mrpINR: null, percentOff: null }
+			: {
+					kind: 'single',
+					sellingINR: set.priceINR,
+					mrpINR: set.separatelyINR > set.priceINR ? set.separatelyINR : null,
+					percentOff:
+						set.separatelyINR > set.priceINR
+							? Math.round(((set.separatelyINR - set.priceINR) / set.separatelyINR) * 100)
+							: null,
+				},
+		inStock: set.buyable,
+		set: {
+			pieces: Math.max(
+				1,
+				set.levels.reduce((sum, level) => sum + level.take, 0),
+			),
+			choose,
+		},
+	});
 }

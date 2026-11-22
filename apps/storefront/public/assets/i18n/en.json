@@ -1213,5 +1213,9 @@
 	"shop_order_status_shipped": "Shipped",
 	"shop_order_status_out_for_delivery": "Out for delivery",
 	"shop_order_status_delivered": "Delivered",
-	"shop_order_status_cancelled": "Cancelled"
+	"shop_order_status_cancelled": "Cancelled",
+	"view_full_details": "View full details",
+	"quick_view_failed": "The product could not be opened. Try again, or open its page.",
+	"set_of_pieces": "Set of {{count}}",
+	"price_from": "From"
 }

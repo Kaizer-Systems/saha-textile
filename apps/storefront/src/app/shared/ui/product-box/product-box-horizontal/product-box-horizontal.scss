@@ -11,10 +11,15 @@
 	line-clamp: 2;
 }
 
-// Phone view: the theme's corner button sits exactly in the corner, so the second one (compare)
-// goes one button height plus a gap below the heart.
+// Phone view: the theme's corner button sits exactly in the corner, so each next one (quick view, then
+// compare) goes one button height plus a gap below the one before.
 :host .product-header-top .wishlist-button + .wishlist-button {
 	top: 32px;
+}
+
+// The quick view's eye (owner, 22 Nov 2026) sits between them, so compare moves one more step down.
+:host .product-header-top .wishlist-button + .wishlist-button + .wishlist-button {
+	top: 64px;
 }
 
 // The theme hides the hover bar below 480 px; between 480 and 767 px it still appears on hover,

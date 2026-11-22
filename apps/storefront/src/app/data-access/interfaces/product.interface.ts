@@ -57,6 +57,8 @@ export interface IProduct {
 	saree_length_m?: number | null;
 	/** Piece, or fabric by the metre (shop brief): then every quantity is tenths of a metre. */
 	sold_by?: 'piece' | 'metre';
+	/** A set's card (bundle builder brief G02): its pieces, and whether the shopper must choose before adding. */
+	set_card?: { pieces: number; choose: boolean } | null;
 	/** Made to order keeps selling whatever the stock (no length limit for fabric). */
 	made_to_order?: boolean;
 	/** The metre rules (shortest cut, step, quick lengths, width) of a metre product. */

@@ -1213,5 +1213,9 @@
 	"shop_order_status_shipped": "পাঠানো হয়েছে",
 	"shop_order_status_out_for_delivery": "ডেলিভারির পথে",
 	"shop_order_status_delivered": "পৌঁছে গেছে",
-	"shop_order_status_cancelled": "বাতিল হয়েছে"
+	"shop_order_status_cancelled": "বাতিল হয়েছে",
+	"view_full_details": "পুরো বিবরণ দেখুন",
+	"quick_view_failed": "প্রোডাক্টটি খোলা গেল না। আবার চেষ্টা করুন, বা এর পেজটি খুলুন।",
+	"set_of_pieces": "{{count}}টির সেট",
+	"price_from": "শুরু"
 }

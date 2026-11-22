@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, viewChild, input, signal, untracke
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { NgbRatingConfig, NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, NgbRatingConfig, NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
 import { cardOffer } from '@core/catalog/card-offer';
@@ -15,7 +15,6 @@ import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 import { ProductConfigModal } from '@shared/ui/modal/product-config-modal/product-config-modal';
-import { ProductDetailModal } from '@shared/ui/modal/product-detail-modal/product-detail-modal';
 
 import { Button } from '../../button/button';
 
@@ -36,7 +35,6 @@ const CARD_SIZES = '(max-width: 575px) 44vw, (max-width: 991px) 43vw, 250px';
 		Button,
 		NgbRating,
 		NgbTooltip,
-		ProductDetailModal,
 		ProductConfigModal,
 		TranslocoModule,
 		TitleCasePipe,
@@ -47,6 +45,7 @@ export class ProductBoxHorizontal {
 	private readonly wishlist = inject(WishlistStore);
 	private readonly compare = inject(CompareStore);
 	private cartFacade = inject(CartFacade);
+	private readonly modals = inject(NgbModal);
 
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
@@ -71,7 +70,6 @@ export class ProductBoxHorizontal {
 
 	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 
-	readonly productDetailModal = viewChild<ProductDetailModal>('productDetailModal');
 	readonly configModal = viewChild<ProductConfigModal>('configModal');
 	/** The popups asked for so far: each is drawn, and its code loaded, the first time (see the template). */
 	readonly asked = signal({ detail: false, config: false });
@@ -89,13 +87,9 @@ export class ProductBoxHorizontal {
 		config.readonly = true;
 
 		effect(() => {
-			const detail = this.productDetailModal();
 			const options = this.configModal();
 			untracked(() => {
-				if (this.opening === 'detail' && detail) {
-					this.opening = null;
-					void detail.openModal();
-				} else if (this.opening === 'config' && options) {
+				if (this.opening === 'config' && options) {
 					this.opening = null;
 					options.openModal();
 				}
@@ -103,12 +97,18 @@ export class ProductBoxHorizontal {
 		});
 	}
 
-	/** Quick view (and classified products): the product popup. */
-	openDetail() {
-		const popup = this.productDetailModal();
-		if (popup) return void popup.openModal();
-		this.opening = 'detail';
-		this.asked.update((asked) => ({ ...asked, detail: true }));
+	/**
+	 * Quick view (bundle builder brief G03/G04, HF; owner, 22 Nov 2026): the product page's own gallery and buy box in
+	 * a pop-up. Its code loads the first time a shopper asks, so pages of cards stay light.
+	 */
+	async openDetail(): Promise<void> {
+		const product = this.product();
+		if (!product?.slug) return;
+		const { QuickView, QUICK_VIEW_OPTIONS } = await import('@shared/ui/modal/quick-view/quick-view');
+		const ref = this.modals.open(QuickView, QUICK_VIEW_OPTIONS);
+		const view = ref.componentInstance as InstanceType<typeof QuickView>;
+		view.card.set(product);
+		view.slug.set(product.slug);
 	}
 
 	/** A product that needs choices: the options popup. */
@@ -132,6 +132,8 @@ export class ProductBoxHorizontal {
 			!!(product.attributes?.length && product.variations?.length) ||
 			!!product.addon_groups?.length ||
 			!!product.bundle ||
+			// A set with something to choose opens its choices (G02); a fixed set adds straight away.
+			!!product.set_card?.choose ||
 			// A length cannot be guessed: fabric by the metre always opens the popup (M01).
 			product.sold_by === 'metre'
 		);
@@ -145,6 +147,16 @@ export class ProductBoxHorizontal {
 			variation_id: this.cartItem ? this.cartItem?.variation_id : null,
 			variation: this.cartItem ? this.cartItem?.variation : null,
 			quantity: qty,
+			// A fixed set from its card: nothing to choose, so an empty choice — the server takes every piece (G02).
+			...(product?.set_card && !product.set_card.choose && !this.cartItem
+				? {
+						line_config: {
+							base_price: product.sale_price,
+							delta_total: 0,
+							raw: { set_choice: { picks: {}, variants: {}, extras: [], free: {} }, free_items: [] },
+						},
+					}
+				: {}),
 		};
 		this.cartFacade.addToCart(params);
 	}

@@ -1,0 +1,52 @@
+<div class="st-qv-head">
+	<button
+		type="button"
+		class="btn-close"
+		[attr.aria-label]="'close' | transloco"
+		(click)="modal.dismiss()"
+	></button>
+</div>
+<div class="modal-body st-qv-body">
+	@if (product(); as product) {
+	<div class="row g-4 product-section st-qv-row">
+		<div class="col-md-6">
+			<app-product-gallery
+				[product]="product"
+				[variation]="variation()"
+			/>
+		</div>
+		<div class="col-md-6">
+			<app-buy-box
+				[product]="product"
+				[option]="siteConfig()"
+				(variationChange)="variation.set($event)"
+			/>
+			<a
+				class="st-qv-full"
+				[routerLink]="['/product', product.slug]"
+				(click)="modal.close()"
+			>
+				{{ 'view_full_details' | transloco }}
+				<i
+					class="ri-arrow-right-line"
+					aria-hidden="true"
+				></i>
+			</a>
+		</div>
+	</div>
+	} @else if (failed()) {
+	<p class="text-content m-4">{{ 'quick_view_failed' | transloco }}</p>
+	} @else {
+	<!-- Holds the pop-up's shape while the product loads, so it never jumps. -->
+	<div
+		class="row g-4 st-qv-row"
+		aria-busy="true"
+	>
+		<div class="col-md-6"><div class="st-qv-photo-wait"></div></div>
+		<div class="col-md-6">
+			<h2 class="name">{{ card()?.name }}</h2>
+			<p class="text-content">{{ 'please_wait' | transloco }}…</p>
+		</div>
+	</div>
+	}
+</div>

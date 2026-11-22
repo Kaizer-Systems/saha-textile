@@ -65,6 +65,18 @@
 					aria-hidden="true"
 				></i>
 			</button>
+			<!-- Quick view on phones too (owner, 22 Nov 2026), in the same corner button. -->
+			<button
+				type="button"
+				class="btn wishlist-button"
+				[attr.aria-label]="'quick_view' | transloco"
+				(click)="openDetail()"
+			>
+				<i
+					class="ri-eye-line"
+					aria-hidden="true"
+				></i>
+			</button>
 			<button
 				type="button"
 				class="btn wishlist-button"
@@ -138,13 +150,21 @@
 		<a [routerLink]="['/product/', product()?.slug]">
 			<h3 class="h6 name">{{ product()?.name }}</h3>
 		</a>
+		@if (product()?.set_card; as set) {
+		<!-- A set's own label (G02): how many pieces, or that the shopper chooses. -->
+		<span class="st-piece-chip is-set">
+			{{ set.choose ? ('choose_your_set' | transloco) : ('set_of_pieces' | transloco: { count: set.pieces }) }}
+		</span>
+		}
 		<p>{{ product()?.short_description }}</p>
 		<div class="h5 sold text-content">
 			@if (offer(product()!).kind === 'range') {
 			<span class="theme-color price">
 				{{ offer(product()!).min | currencySymbol }} – {{ offer(product()!).max | currencySymbol }}
 			</span>
-			} @else {
+			} @else { @if (product()?.set_card?.choose) {
+			<span>{{ 'price_from' | transloco }}</span>
+			}
 			<span class="theme-color price">{{ offer(product()!).selling | currencySymbol }}</span>
 			@if (product()?.sold_by === 'metre') {
 			<span>{{ 'per_m_short' | transloco }}</span>
@@ -170,7 +190,7 @@
 				[spinner]="false"
 				(click)="isConfigurable(product()) ? openConfig() : (product()?.type === 'classified' ? openDetail() : addToCart(product()!, 1))"
 			>
-				{{ 'add' | transloco }}
+				{{ (product()?.set_card?.choose ? 'choose' : 'add') | transloco }}
 				<span class="add-icon">
 					<i class="ri-add-line"></i>
 				</span>
@@ -223,18 +243,9 @@
 </div>
 <!-- The card's popups load the first time they are asked for: their code (the product configurator) stays out of
      the first load of every page that shows cards. -->
-@if (asked().detail) {
-@defer (on immediate) {
-<app-product-detail-modal
-	#productDetailModal
-	[product]="product()"
-/>
-} }
-@if (asked().config) {
-@defer (on immediate) {
+@if (asked().config) { @defer (on immediate) {
 <app-product-config-modal
 	#configModal
 	[product]="product()!"
 />
-} }
-}
+} } }

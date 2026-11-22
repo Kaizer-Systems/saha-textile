@@ -35,7 +35,7 @@ left and the shop's own set block on the right. -->
 			</div>
 
 			<ul class="nav nav-tabs mb-3">
-				@for (t of ['build', 'rules', 'details', 'photos', 'seo', 'status']; track t) {
+				@for (t of ['build', 'rules', 'details', 'photos', 'seo', 'faq', 'status']; track t) {
 				<li class="nav-item">
 					<a
 						class="nav-link"
@@ -49,7 +49,7 @@ left and the shop's own set block on the right. -->
 				}
 			</ul>
 
-			@if (tab() === 'details' || tab() === 'seo') {
+			@if (tab() === 'details' || tab() === 'seo' || tab() === 'faq') {
 			<div
 				class="btn-group mb-3"
 				role="group"
@@ -362,14 +362,106 @@ left and the shop's own set block on the right. -->
 						(change)="setText('shortDescription', $any($event.target).value)"
 					></textarea>
 					<label class="form-label-title">{{ 'description' | transloco }}</label>
-					<textarea
-						class="form-control mb-3"
-						rows="6"
-						[value]="x.description[lang()] ?? ''"
-						(change)="setText('description', $any($event.target).value)"
-					></textarea>
+					<!-- The product form's own editor; the text follows the language chosen above. -->
+					@if (editor) {
+					<div class="custom-editor mb-3">
+						<ngx-editor-menu [editor]="editor" />
+						<ngx-editor
+							[editor]="editor"
+							[ngModel]="x.description[lang()] ?? ''"
+							(ngModelChange)="setText('description', $event)"
+						/>
+					</div>
+					}
+					<!-- Categories and tags from the product form's own lists; a bundle never asks about HSN (A11). -->
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-3 mb-0'"
+						[gridClass]="'col-sm-9'"
+						[label]="'categories'"
+						[for]="'bundle_categories'"
+						[required]="false"
+					>
+						<app-advanced-dropdown
+							[position]="'bottom'"
+							[selectedOption]="startCategories()"
+							[options]="categories()"
+							[subArrayKey]="'subcategories'"
+							[id]="'bundle_categories'"
+							(selectedItem)="setCategories($event)"
+						/>
+						<p class="help-text">{{ 'bundle_categories_help' | transloco }}</p>
+					</app-form-fields>
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-3 mb-0'"
+						[gridClass]="'col-sm-9'"
+						[label]="'tags'"
+						[for]="'bundle_tags'"
+						[required]="false"
+					>
+						<app-advanced-dropdown
+							[position]="'bottom'"
+							[selectedOption]="startTags()"
+							[options]="tags()"
+							(selectedItem)="setTags($event)"
+						/>
+					</app-form-fields>
+					<!-- A sale window (suggestion S9): the set sells only between these days; empty means always. -->
+					<div class="row g-3 mb-3">
+						<div class="col-md-4">
+							<label class="form-label-title">{{ 'bundle_sale_from' | transloco }}</label>
+							<input
+								class="form-control"
+								type="date"
+								[value]="windowDay('from')"
+								(change)="setWindow('from', $any($event.target).value)"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label-title">{{ 'bundle_sale_to' | transloco }}</label>
+							<input
+								class="form-control"
+								type="date"
+								[value]="windowDay('to')"
+								(change)="setWindow('to', $any($event.target).value)"
+							/>
+						</div>
+						<p class="help-text mb-0">{{ 'bundle_sale_window_help' | transloco }}</p>
+					</div>
 					} } @case ('photos') {
+					<!-- Photos (A08): nothing to upload; each piece's main photo is linked in level order and leaves with it. A styled
+						 photo of the whole set, if chosen, shows first. -->
 					<p class="help-text">{{ 'bundle_photos_help' | transloco }}</p>
+					<div class="d-flex mb-4 flex-wrap gap-3">
+						@for (photo of photos(); track photo.assetId) {
+						<figure class="mb-0 text-center">
+							<img
+								[src]="photo.url"
+								alt=""
+								width="96"
+								height="128"
+								class="object-fit-cover rounded"
+							/>
+							<figcaption class="help-text">{{ photoFrom(photo.fromKey) }}</figcaption>
+						</figure>
+						} @empty {
+						<p class="help-text mb-0">{{ 'bundle_photos_none' | transloco }}</p>
+						}
+					</div>
+					<app-form-fields
+						[labelClass]="'form-label-title col-sm-3 mb-0'"
+						[gridClass]="'col-sm-9'"
+						[label]="'bundle_styled_photo'"
+						[for]="'bundle_styled_photo'"
+						[required]="false"
+					>
+						<app-image-upload
+							[profile]="null"
+							[multipleImage]="false"
+							[image]="styledTile()"
+							(selectedFiles)="pickStyled($event)"
+						/>
+						<p class="help-text">{{ 'bundle_styled_photo_help' | transloco }}</p>
+					</app-form-fields>
 					} @case ('seo') { @if (details(); as x) {
 					<label class="form-label-title">{{ 'meta_title' | transloco }}</label>
 					<input
@@ -384,7 +476,14 @@ left and the shop's own set block on the right. -->
 						[value]="x.seo.description[lang()] ?? ''"
 						(change)="setSeo('description', $any($event.target).value)"
 					></textarea>
-					} } @case ('status') { @if (details(); as x) {
+					} } @case ('faq') {
+					<!-- FAQ's (A05): the product form's own FAQ part; questions follow the language chosen above. -->
+					<app-product-faq
+						[value]="faqValue()"
+						(valueChange)="setFaq($event)"
+						[locale]="lang()"
+					/>
+					} @case ('status') { @if (details(); as x) {
 					<div class="form-check form-switch mb-2">
 						<input
 							class="form-check-input"

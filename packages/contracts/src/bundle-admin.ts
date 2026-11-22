@@ -6,6 +6,14 @@ import { Id, LocalizedText } from './common';
 import { BundleStockSummary, ProductBundle } from './product-bundle';
 import { ProductStatus } from './product';
 
+/** A bundle's own FAQ questions (the FAQ's tab), as the product form keeps them. */
+export const BundleFaqRow = z.object({
+	id: z.string().min(1).optional(),
+	question: z.record(z.string(), z.string().max(500)),
+	answer: z.record(z.string(), z.string().max(4000)),
+});
+export type BundleFaqRow = z.infer<typeof BundleFaqRow>;
+
 /**
  * The bundle builder's reads and writes (bundle builder brief, approved 2026-11-22; V1 option 1: every part of a
  * bundle is edited in the builder, tabs Build, Price rules, Details, Photos, SEO, FAQ's and Status).
@@ -66,6 +74,7 @@ export const BundleProductView = z.object({
 	tags: z.array(z.string()),
 	seo: z.object({ title: LocalizedText, description: LocalizedText }),
 	faqEnabled: z.boolean(),
+	faq: z.array(BundleFaqRow).default([]),
 	lowStockThreshold: z.number().int().nullable(),
 });
 export type BundleProductView = z.infer<typeof BundleProductView>;
@@ -104,6 +113,7 @@ export const BundleDetailsWrite = z.object({
 	tags: z.array(z.string().trim().min(1).max(60)).max(40),
 	seo: z.object({ title: LocalizedText, description: LocalizedText }),
 	faqEnabled: z.boolean(),
+	faq: z.array(BundleFaqRow).max(30).default([]),
 	featured: z.boolean(),
 	showOnShop: z.boolean(),
 	lowStockThreshold: z.number().int().nonnegative().nullable(),

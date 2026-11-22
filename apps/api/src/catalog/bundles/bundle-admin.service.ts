@@ -93,6 +93,11 @@ export class BundleAdminService {
 				tags: product.tags,
 				seo: { title: product.seo?.title ?? {}, description: product.seo?.description ?? {} },
 				faqEnabled: product.faqEnabled,
+				faq: (await this.catalog.productFaq(product.id)).map((entry) => ({
+					id: entry.id,
+					question: entry.question,
+					answer: entry.answer,
+				})),
 				lowStockThreshold: product.lowStockThreshold,
 			},
 			bundle,
@@ -252,6 +257,7 @@ export class BundleAdminService {
 			lowStockThreshold: body.lowStockThreshold,
 		};
 		await this.products.save(next);
+		await this.catalog.saveProductFaq(product.id, body.faq);
 		await this.catalog.syncSearch(next);
 		await this.catalog.record(actor, 'catalog.bundle.details', product.id, { showOnShop: body.showOnShop });
 		return { id: product.id, slug: next.slug };

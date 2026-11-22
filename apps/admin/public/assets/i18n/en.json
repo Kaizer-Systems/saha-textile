@@ -6746,5 +6746,13 @@
 	"bundle_round_ten": "The nearest ₹10",
 	"bundle_rules_none": "No price rules for this set yet.",
 	"bundle_rules_edit": "Edit in the Price rules tab",
-	"bundle_rules_count_one": "1 rule for this set"
+	"bundle_rules_count_one": "1 rule for this set",
+	"bundle_tab_faq": "FAQ's",
+	"bundle_categories_help": "A set can sit in as many categories as you like; nothing about HSN, tax or returns changes.",
+	"bundle_sale_from": "Sells from",
+	"bundle_sale_to": "Sells until",
+	"bundle_sale_window_help": "Leave both empty to sell the set at all times.",
+	"bundle_photos_none": "Add pieces on the Build tab; their photos appear here.",
+	"bundle_styled_photo": "Styled photo",
+	"bundle_styled_photo_help": "Optional: a photo of the whole set, shown before the pieces' photos."
 }

@@ -5,12 +5,20 @@ import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { Editor, NgxEditorModule } from 'ngx-editor';
 import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { BundleService } from '@data-access/services/bundle.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
+import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { ImageUpload, type PickedAttachment } from '@shared/ui/image-upload/image-upload';
+
+import { type FaqValue, ProductFaq } from '../form-product/product-faq/product-faq';
 
 import { BundleRuleRows } from './bundle-rule-rows';
 import { ruleSentence } from './rule-words';
@@ -29,7 +37,7 @@ import type {
 	ProductBundleWrite,
 } from '@saha-textile/contracts';
 
-type Tab = 'build' | 'rules' | 'details' | 'photos' | 'seo' | 'status';
+type Tab = 'build' | 'rules' | 'details' | 'photos' | 'seo' | 'faq' | 'status';
 const LANGS = ['en', 'bn'] as const;
 type Lang = (typeof LANGS)[number];
 
@@ -42,7 +50,18 @@ type Lang = (typeof LANGS)[number];
 @Component({
 	selector: 'app-bundle-builder',
 	templateUrl: './bundle-builder.html',
-	imports: [BundleRuleRows, FormsModule, NgTemplateOutlet, RouterModule, TranslocoModule],
+	imports: [
+		AdvancedDropdown,
+		BundleRuleRows,
+		FormFields,
+		FormsModule,
+		ImageUpload,
+		NgTemplateOutlet,
+		NgxEditorModule,
+		ProductFaq,
+		RouterModule,
+		TranslocoModule,
+	],
 })
 export class BundleBuilder {
 	private readonly route = inject(ActivatedRoute);
@@ -67,6 +86,23 @@ export class BundleBuilder {
 	readonly dirty = signal(false);
 	readonly device = signal<'laptop' | 'phone'>('laptop');
 	readonly previewUrl = signal<SafeResourceUrl | null>(null);
+	/** The description's editor, as in the product form (browser only). */
+	readonly editor: Editor | null = this.isBrowser ? new Editor() : null;
+	/** The bundle's photos: its styled photo first, then each piece's main photo in level order (A08). */
+	readonly photos = signal<BundleBuilderView['photos']>([]);
+	/** The styled photo's tile for the picker, once chosen in this visit. */
+	readonly styledTile = signal<PickedAttachment | null>(null);
+	/** Categories and tags, from the same lists as the product form (A05 Details). */
+	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
+	readonly categories = computed(() => this.categoriesQuery.data()?.data ?? []);
+	readonly tagsQuery = injectTagsQuery(() => ({ type: 'product', status: 1 }));
+	readonly tags = computed(() => this.tagsQuery.data()?.data ?? []);
+	/**
+	 * The dropdowns' starting selection, set once on load: they announce their selection again whenever this input
+	 * changes, so it must not follow the details (the product form does the same).
+	 */
+	readonly startCategories = signal<string[]>([]);
+	readonly startTags = signal<string[]>([]);
 	private page: CatalogPageBundle | null = null;
 	private frameReady = false;
 	private draftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -99,7 +135,10 @@ export class BundleBuilder {
 			this.post();
 		};
 		window.addEventListener('message', listen);
-		inject(DestroyRef).onDestroy(() => window.removeEventListener('message', listen));
+		inject(DestroyRef).onDestroy(() => {
+			window.removeEventListener('message', listen);
+			this.editor?.destroy();
+		});
 	}
 
 	private async load(): Promise<void> {
@@ -140,15 +179,19 @@ export class BundleBuilder {
 			tags: product.tags,
 			seo: product.seo,
 			faqEnabled: product.faqEnabled,
+			faq: product.faq,
 			featured: product.featured,
 			showOnShop: product.showOnShop,
 			lowStockThreshold: product.lowStockThreshold,
 		});
+		this.startCategories.set(product.categoryIds);
+		this.startTags.set(product.tags);
 		await this.openPreview();
 	}
 
 	private apply(next: Pick<BundleBuilderView, 'items' | 'checks' | 'page'> & Partial<BundleBuilderView>): void {
 		if (next.product) this.view.set(next as BundleBuilderView);
+		if (next.photos) this.photos.set(next.photos);
 		this.items.set(new Map(next.items.map((item) => [item.key, item])));
 		this.checks.set(next.checks);
 		this.page = next.page;
@@ -344,8 +387,74 @@ export class BundleBuilder {
 		this.dirty.set(true);
 	}
 
+	/** The FAQ's tab, in the product form's own part (switch and questions); one object until the details change. */
+	readonly faqValue = computed<FaqValue>(() => {
+		const details = this.details();
+		return { enabled: details?.faqEnabled ?? false, rows: details?.faq ?? [] };
+	});
+
+	setFaq(value: FaqValue): void {
+		const current = this.details();
+		if (!current) return;
+		this.details.set({ ...current, faqEnabled: value.enabled, faq: value.rows });
+		this.dirty.set(true);
+	}
+
+	/**
+	 * The dropdowns announce their selection item by item (and again on start), always in the same list; it is read a
+	 * moment later, once complete, and only a real change marks the bundle changed.
+	 */
+	setCategories(ids: unknown): void {
+		if (!Array.isArray(ids)) return;
+		queueMicrotask(() => {
+			const next = ids.map(String);
+			if (next.join('|') !== (this.details()?.categoryIds ?? []).join('|')) this.setDetail('categoryIds', next);
+		});
+	}
+
+	setTags(ids: unknown): void {
+		if (!Array.isArray(ids)) return;
+		queueMicrotask(() => {
+			const next = ids.map(String);
+			if (next.join('|') !== (this.details()?.tags ?? []).join('|')) this.setDetail('tags', next);
+		});
+	}
+
+	/** The styled photo (A08 suggestion): a picture of the whole set, shown before the pieces' photos. */
+	pickStyled(data: PickedAttachment | PickedAttachment[] | null): void {
+		if (Array.isArray(data)) return;
+		this.styledTile.set(data);
+		this.change((draft) => ({
+			...draft,
+			styledPhoto: data ? { assetId: String(data.id), versionId: data.versionId ?? null } : null,
+		}));
+	}
+
+	/** Where a linked photo comes from: the piece's name, or "Styled photo". */
+	photoFrom(key: string | null): string {
+		if (!key) return this.transloco.translate('bundle_styled_photo');
+		return this.item(key)?.title ?? key;
+	}
+
+	/** The sale window's dates as the date boxes show them (yyyy-mm-dd). */
+	windowDay(which: 'from' | 'to'): string {
+		return this.draft()?.saleWindow?.[which]?.slice(0, 10) ?? '';
+	}
+
+	setWindow(which: 'from' | 'to', day: string): void {
+		this.change((draft) => {
+			const window = { from: draft.saleWindow?.from ?? null, to: draft.saleWindow?.to ?? null };
+			window[which] = day
+				? new Date(`${day}T${which === 'from' ? '00:00:00' : '23:59:59'}+05:30`).toISOString()
+				: null;
+			return { ...draft, saleWindow: window.from || window.to ? window : null };
+		});
+	}
+
 	setText(key: 'title' | 'shortDescription' | 'description', text: string): void {
 		const current = this.details();
+		// The editor writes the text back once on start; an unchanged text keeps the bundle unchanged.
+		if ((current?.[key][this.lang()] ?? '') === text) return;
 		if (current) this.setDetail(key, { ...current[key], [this.lang()]: text } as BundleDetailsWrite[typeof key]);
 	}
 

@@ -244,6 +244,11 @@ export class CatalogService {
 	 * screen. Saved in the form's order; a question removed from the form is deleted, unless an
 	 * editor has since pointed it at other products too. Blank rows are skipped.
 	 */
+	/** A bundle's FAQ's tab saves its questions the same way as the product form (bundle builder brief A05). */
+	saveProductFaq(productId: string, rows: NonNullable<ProductMerchandisingWrite['content']>['faq']) {
+		return this.syncProductFaq(productId, rows);
+	}
+
 	private async syncProductFaq(productId: string, rows: NonNullable<ProductMerchandisingWrite['content']>['faq']) {
 		if (!this.faqs) return;
 		const existing = await this.faqs.listForProduct(productId);

@@ -6746,5 +6746,13 @@
 	"bundle_round_ten": "কাছের ₹10-এ",
 	"bundle_rules_none": "এই সেটের জন্য এখনও কোনো দামের নিয়ম নেই।",
 	"bundle_rules_edit": "দামের নিয়ম ট্যাবে বদলান",
-	"bundle_rules_count_one": "এই সেটের 1টি নিয়ম"
+	"bundle_rules_count_one": "এই সেটের 1টি নিয়ম",
+	"bundle_tab_faq": "প্রশ্নোত্তর",
+	"bundle_categories_help": "একটি সেট যত খুশি ক্যাটাগরিতে রাখা যায়; HSN, ট্যাক্স বা রিটার্নের কিছুই বদলায় না।",
+	"bundle_sale_from": "বিক্রি শুরু",
+	"bundle_sale_to": "বিক্রি চলবে",
+	"bundle_sale_window_help": "সবসময় বিক্রির জন্য দুটোই ফাঁকা রাখুন।",
+	"bundle_photos_none": "বিল্ড ট্যাবে জিনিস যোগ করুন; তাদের ছবি এখানে দেখা যাবে।",
+	"bundle_styled_photo": "সাজানো ছবি",
+	"bundle_styled_photo_help": "ইচ্ছা হলে: পুরো সেটের একটি ছবি, জিনিসগুলির ছবির আগে দেখানো হবে।"
 }

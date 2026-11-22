@@ -341,3 +341,65 @@ describe('order messages: what the customer gets (orders brief, emails section)'
 		}
 	});
 });
+
+describe('a set in the order emails (bundle builder brief E05)', () => {
+	it('lists the set with its price from its pieces, then its pieces, free items and extras beneath it', async () => {
+		const { svc, sent } = harness();
+		const line = (over: Record<string, unknown>) => ({
+			productId: 'p',
+			title: { en: 'Piece' },
+			sku: 'SKU',
+			quantity: 1,
+			unitPriceINR: 0,
+			unitPricePaid: 0,
+			lineTotalINR: 0,
+			lineTotalPaid: 0,
+			...over,
+		});
+		await svc.send(
+			order({
+				lines: [
+					line({ lineId: 's', role: 'bundle', title: { en: 'Peacock Blue set' } }),
+					line({
+						lineId: 's~a',
+						role: 'piece',
+						parentLineId: 's',
+						title: { en: 'Peacock Blue' },
+						lineTotalPaid: 33_211.16,
+					}),
+					line({
+						lineId: 's~a>f',
+						role: 'free',
+						parentLineId: 's~a',
+						title: { en: 'Petticoat' },
+						attributes: { size: 'M' },
+					}),
+					line({
+						lineId: 's~b',
+						role: 'piece',
+						parentLineId: 's',
+						title: { en: 'Off White' },
+						lineTotalPaid: 11_688.84,
+					}),
+					line({
+						lineId: 's~x',
+						role: 'extra',
+						parentLineId: 's',
+						title: { en: 'Gift box' },
+						unitPricePaid: 250,
+						lineTotalPaid: 250,
+					}),
+				],
+			}),
+			['order_confirmed'],
+		);
+		const rows = sent[0]?.variables?.['items'] as Array<Record<string, string>>;
+		expect(rows.map((row) => [row.name, row.options, row.price, row.total])).toEqual([
+			['Peacock Blue set', 'Set', '₹45,150', '₹45,150'],
+			['↳ 1. Peacock Blue', '', 'Included', ''],
+			['  ↳ Petticoat', 'M', 'Free', ''],
+			['↳ 2. Off White', '', 'Included', ''],
+			['↳ Gift box', '', '+₹250', '₹250'],
+		]);
+	});
+});

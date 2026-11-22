@@ -292,16 +292,65 @@ export class OrderNoticesService {
 		}
 	}
 
+	/**
+	 * The order's rows as the emails list them. A set's line shows its price from its pieces; its pieces (numbered,
+	 * "Included"), their free items and its extras follow beneath it, marked "↳", as on the order pages (bundle
+	 * builder brief E05, approved 2026-11-22). A product's free items follow it at "Free".
+	 */
 	private items(order: Order, keep: (line: Order['lines'][number]) => boolean = () => true): NotificationListRow[] {
-		return order.lines.filter(keep).map((line) => ({
-			image: line.imageUrl ?? '',
-			name: line.title.en,
-			options: Object.values(line.attributes ?? {}).join(' · '),
-			quantity: String(line.quantity),
-			price: noticeMoney(line.unitPricePaid, order.currency),
-			total: noticeMoney(line.lineTotalPaid, order.currency),
-			note: line.madeToOrder ? 'Made to order' : '',
-		}));
+		const byId = new Map(order.lines.map((line) => [line.lineId ?? '', line]));
+		const childrenOf = (line: Order['lines'][number]) =>
+			order.lines.filter((row) => row.parentLineId && row.parentLineId === line.lineId);
+		return order.lines.filter(keep).map((line) => {
+			const options = Object.values(line.attributes ?? {}).join(' · ');
+			if (line.role === 'bundle') {
+				const total = childrenOf(line).reduce((sum, row) => sum + row.lineTotalPaid, 0);
+				return {
+					image: line.imageUrl ?? '',
+					name: line.title.en,
+					options: 'Set',
+					quantity: String(line.quantity),
+					price: noticeMoney(total / line.quantity, order.currency),
+					total: noticeMoney(total, order.currency),
+					note: '',
+				};
+			}
+			const parent = line.parentLineId ? byId.get(line.parentLineId) : undefined;
+			if (parent) {
+				const depth = parent.parentLineId ? 2 : 1;
+				const number =
+					line.role === 'piece'
+						? `${
+								childrenOf(parent)
+									.filter((row) => row.role === 'piece')
+									.indexOf(line) + 1
+							}. `
+						: '';
+				return {
+					image: line.imageUrl ?? '',
+					name: `${'  '.repeat(depth - 1)}↳ ${number}${line.title.en}`,
+					options,
+					quantity: String(line.quantity),
+					price:
+						line.role === 'free'
+							? 'Free'
+							: line.role === 'extra'
+								? `+${noticeMoney(line.unitPricePaid, order.currency)}`
+								: 'Included',
+					total: line.role === 'extra' ? noticeMoney(line.lineTotalPaid, order.currency) : '',
+					note: line.madeToOrder ? 'Made to order' : '',
+				};
+			}
+			return {
+				image: line.imageUrl ?? '',
+				name: line.title.en,
+				options,
+				quantity: String(line.quantity),
+				price: noticeMoney(line.unitPricePaid, order.currency),
+				total: noticeMoney(line.lineTotalPaid, order.currency),
+				note: line.madeToOrder ? 'Made to order' : '',
+			};
+		});
 	}
 
 	/** How it was or will be paid, as order_confirmed says it. */

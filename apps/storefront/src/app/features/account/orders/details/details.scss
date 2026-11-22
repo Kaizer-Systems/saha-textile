@@ -42,3 +42,61 @@
 		}
 	}
 }
+
+// Phones: no sideways scroll (owner, 22 Nov 2026, for My orders; the same here). Each line is a block: its picture on
+// the left, the name, then price, quantity and total each on a short line under it.
+@media (max-width: 767px) {
+	.my-order-lines {
+		display: block;
+		width: 100%;
+
+		tbody {
+			display: block;
+		}
+
+		tr {
+			display: grid;
+			grid-template-columns: 56px minmax(0, 1fr);
+			column-gap: 10px;
+			padding: 10px 0;
+			border-bottom: 1px solid var(--st-border-soft);
+		}
+
+		td {
+			display: block;
+			min-width: 0 !important;
+			padding: 0 !important;
+			border: none !important;
+			text-align: left !important;
+			white-space: normal !important;
+			background-color: transparent !important;
+		}
+
+		td.product-image {
+			grid-row: 1 / span 4;
+
+			img {
+				width: 56px;
+				height: 72px;
+				object-fit: cover;
+			}
+		}
+
+		td:not(.product-image) {
+			grid-column: 2;
+		}
+
+		td h6 {
+			display: inline;
+			margin-right: 6px;
+		}
+
+		tr.mo-child td.product-image {
+			padding-left: 14px !important;
+		}
+
+		tr.mo-child.is-depth-2 td.product-image {
+			padding-left: 28px !important;
+		}
+	}
+}

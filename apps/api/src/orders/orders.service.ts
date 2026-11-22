@@ -150,7 +150,10 @@ export class OrdersService {
 
 	/** One of the shopper's own orders by its number (E05); another's is "not found", never "forbidden". */
 	async shopView(userId: string, orderNumber: string): Promise<ShopOrderView> {
-		const order = await this.orders.findByOrderNumber(orderNumber);
+		// Shop addresses are lower case ("/account/order/details/st-2611-482190"); order numbers are kept upper case.
+		const typed = orderNumber.trim();
+		const order =
+			(await this.orders.findByOrderNumber(typed)) ?? (await this.orders.findByOrderNumber(typed.toUpperCase()));
 		if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
 		return shopOrderView(order);
 	}

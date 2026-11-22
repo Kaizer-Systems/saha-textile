@@ -96,7 +96,7 @@
 									@if (line.role === 'free') { @if (line.mrp) {
 									<del class="text-content">{{ money(line.mrp, o.currency) }}</del>
 									}
-									<b class="text-success">{{ 'free' | transloco }}</b>
+									<b class="text-success ms-1">{{ 'free' | transloco }}</b>
 									} @else if (line.role === 'extra') { +{{ money(line.unitPrice, o.currency) }} }
 									@else {
 									<span class="text-content">{{ 'included' | transloco }}</span>
@@ -129,7 +129,7 @@
 		</div>
 	</div>
 	<div class="row">
-		<div class="col-xxl-4 col-lg-12 col-md-5">
+		<div class="col-xxl-5 col-lg-12 col-md-5">
 			<div class="card h-m30">
 				<div class="card-body">
 					<h3 class="fw-semibold mb-3">{{ 'summary' | transloco }}</h3>
@@ -164,7 +164,7 @@
 			</div>
 		</div>
 		@if (o.delivery; as d) {
-		<div class="col-xxl-8 col-lg-12 col-md-7">
+		<div class="col-xxl-7 col-lg-12 col-md-7">
 			<div class="card">
 				<div class="card-body">
 					<h3 class="fw-semibold mb-3">{{ 'my_order_delivery' | transloco }}</h3>

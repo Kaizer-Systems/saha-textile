@@ -113,7 +113,10 @@ describe('a shopper’s own orders (bundle builder brief E05–E06)', () => {
 		const svc = new OrdersService(
 			...(Array.from({ length: 8 }, () => ({}) as never) as ConstructorParameters<typeof OrdersService>),
 		);
-		Object.assign(svc, { orders: { findByOrderNumber: async () => order } });
+		Object.assign(svc, {
+			orders: { findByOrderNumber: async (number: string) => (number === 'ST-2611-482190' ? order : null) },
+		});
+		await expect(svc.shopView('cus_1', 'st-2611-482190')).resolves.toMatchObject({ orderNumber: 'ST-2611-482190' });
 		await expect(svc.shopView('cus_2', 'ST-2611-482190')).rejects.toMatchObject({ status: 404 });
 		await expect(svc.shopView('cus_1', 'ST-2611-482190')).resolves.toMatchObject({ orderNumber: 'ST-2611-482190' });
 	});

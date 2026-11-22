@@ -10,6 +10,18 @@
 	object-fit: cover;
 }
 
+// The theme gives a wallet table's 4th column 500px below 1300px (its description column); here it is Total.
+.wallet-table .my-orders-table td:nth-child(4),
+.wallet-table .my-orders-table th:nth-child(4) {
+	min-width: 0 !important;
+}
+
+// The Items words wrap rather than widen the table.
+.wallet-table .my-orders-table td.mo-items {
+	white-space: normal;
+	text-align: left;
+}
+
 .mo-view a {
 	display: inline-flex;
 	align-items: center;
@@ -17,7 +29,15 @@
 }
 
 @media (max-width: 767px) {
-	.my-orders-table {
+	.wallet-table:has(.my-orders-table) {
+		padding: 0;
+		background-color: transparent;
+	}
+
+	.wallet-table .my-orders-table {
+		display: block;
+		width: 100%;
+
 		thead {
 			display: none;
 		}
@@ -53,6 +73,7 @@
 
 		.mo-number {
 			grid-area: number;
+			white-space: nowrap !important;
 		}
 
 		.mo-status {
@@ -71,6 +92,7 @@
 		.mo-total {
 			grid-area: total;
 			font-weight: 600;
+			text-align: right !important;
 		}
 
 		.mo-view {

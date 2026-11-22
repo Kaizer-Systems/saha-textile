@@ -446,6 +446,29 @@ export class AdminPagePreviewController {
 	}
 }
 
+/** The bundle builder's live preview: a code for /__preview/bundle (bundle builder brief, 2026-11-22). */
+@ApiTags(API_TAGS.media)
+@Audience('admin')
+@Controller('admin/page-builder/bundles')
+export class AdminBundlePreviewController {
+	constructor(private readonly preview: PagePreviewService) {}
+
+	@Post(':productId/preview-code')
+	@HttpCode(200)
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('product.edit')
+	@ApiOperation({
+		operationId: 'bundlePreviewCode',
+		summary: "A code for the bundle builder's shop preview, used once within a minute",
+	})
+	code(
+		@Param('productId') productId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<PreviewCodeResponse> {
+		return this.preview.bundleCode(principal?.userId ?? null, productId);
+	}
+}
+
 /** The shop's server swaps a preview code and reads the draft it opens (never cached). */
 @ApiTags(API_TAGS.media)
 @Public()

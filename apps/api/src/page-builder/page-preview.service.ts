@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
 	PREVIEW_CODE_SECONDS,
 	PREVIEW_SESSION_SECONDS,
@@ -8,9 +8,9 @@ import {
 	type PreviewExchangeResponse,
 	type StorefrontPageLayout,
 } from '@saha-textile/contracts';
-import type { PageLayoutRepository, PreviewTokenRepository } from '@saha-textile/core-domain';
+import type { PageLayoutRepository, PreviewTokenRepository, ProductRepository } from '@saha-textile/core-domain';
 
-import { PAGE_LAYOUT_REPOSITORY, PREVIEW_TOKEN_REPOSITORY } from '../infra/tokens';
+import { PAGE_LAYOUT_REPOSITORY, PREVIEW_TOKEN_REPOSITORY, PRODUCT_REPOSITORY } from '../infra/tokens';
 import { PageBuilderService } from './page-builder.service';
 
 /** Only hashes are stored: a leaked database row never opens a preview. */
@@ -28,7 +28,28 @@ export class PagePreviewService {
 		@Inject(PREVIEW_TOKEN_REPOSITORY) private readonly tokens: PreviewTokenRepository,
 		@Inject(PAGE_LAYOUT_REPOSITORY) private readonly layouts: PageLayoutRepository,
 		private readonly builder: PageBuilderService,
+		@Optional() @Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository | null = null,
 	) {}
+
+	/**
+	 * The bundle builder's live preview (bundle builder brief, approved 2026-11-22): the same private, framed address,
+	 * `/{locale}/__preview/bundle`, whose set block is drawn from what the builder sends it. The session names the
+	 * bundle (`bundle:<productId>`) so it opens nothing else.
+	 */
+	async bundleCode(actor: string | null, productId: string, now = new Date()): Promise<PreviewCodeResponse> {
+		const product = await this.products?.findById(productId, 'admin');
+		if (!product || product.type !== 'bundle') throw new NotFoundException('No such bundle');
+		const code = newToken();
+		const expiresAt = new Date(now.getTime() + PREVIEW_CODE_SECONDS * 1000).toISOString();
+		await this.tokens.createCode({
+			codeHash: tokenHash(code),
+			layoutId: `bundle:${product.id}`,
+			revisionId: null,
+			by: actor,
+			expiresAt,
+		});
+		return { code, expiresAt };
+	}
 
 	async code(
 		actor: string | null,
@@ -50,6 +71,17 @@ export class PagePreviewService {
 	/** The shop's server swaps a code for a session; a used, expired or unknown code is a plain 404. */
 	async exchange(code: string, now = new Date()): Promise<PreviewExchangeResponse> {
 		const used = await this.tokens.useCode(tokenHash(code), now.toISOString());
+		if (used?.layoutId.startsWith('bundle:')) {
+			const token = newToken();
+			const expiresAt = new Date(now.getTime() + PREVIEW_SESSION_SECONDS * 1000).toISOString();
+			await this.tokens.createSession({
+				tokenHash: tokenHash(token),
+				layoutId: used.layoutId,
+				revisionId: null,
+				expiresAt,
+			});
+			return { token, pageType: 'bundle', expiresAt };
+		}
 		const layout = used ? await this.layouts.layout(used.layoutId) : null;
 		if (!layout) throw new NotFoundException('No such preview');
 		const token = newToken();

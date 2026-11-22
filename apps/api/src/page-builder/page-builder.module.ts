@@ -9,6 +9,7 @@ import {
 	AdminPageBuilderController,
 	AdminPageGoLiveController,
 	AdminPagePreviewController,
+	AdminBundlePreviewController,
 	StorefrontPageLayoutController,
 	StorefrontPreviewController,
 } from './page-builder.controller';
@@ -22,6 +23,7 @@ import { PageBuilderService } from './page-builder.service';
 		AdminPageBlocksController,
 		AdminPageGoLiveController,
 		AdminPagePreviewController,
+		AdminBundlePreviewController,
 		StorefrontPageLayoutController,
 		StorefrontPreviewController,
 	],

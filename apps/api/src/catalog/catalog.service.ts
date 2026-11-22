@@ -20,6 +20,8 @@ import {
 } from '@saha-textile/contracts';
 import {
 	isShownOnShop,
+	quoteBundle,
+	type ProductBundleRepository,
 	swatchesLeftBehind,
 	normaliseSourcePath,
 	productGallery,
@@ -57,9 +59,11 @@ import { randomUUID } from 'node:crypto';
 
 import { productReadModel, skuView } from './catalog-read-model';
 import { applyProductContent, syncVariantRows } from './product-content';
+import type { BundleReader } from './bundles/bundle-reader';
 import type { BundleStockService } from './bundles/bundle-stock.service';
 import { SearchVocabularyService } from './search-vocabulary.service';
 import {
+	BUNDLE_READER,
 	BUNDLE_STOCK,
 	ADDON_TEMPLATE_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
@@ -81,6 +85,7 @@ import {
 	LANGUAGE_COVERAGE_REPOSITORY,
 	ORDER_REPOSITORY,
 	STOCK_READ_REPOSITORY,
+	PRODUCT_BUNDLE_REPOSITORY,
 } from '../infra/tokens';
 import type { LanguageCoverageRepository } from '@saha-textile/core-domain';
 import { missingFilter } from '../languages/missing-filter';
@@ -129,6 +134,10 @@ export class CatalogService {
 		@Optional() @Inject(STOCK_READ_REPOSITORY) private readonly stockRead: StockReadRepository | null = null,
 		@Optional() @Inject(ORDER_REPOSITORY) private readonly orders: OrderRepository | null = null,
 		@Optional() @Inject(BUNDLE_STOCK) private readonly bundleStock: BundleStockService | null = null,
+		@Optional() @Inject(BUNDLE_READER) private readonly bundleReader: BundleReader | null = null,
+		@Optional()
+		@Inject(PRODUCT_BUNDLE_REPOSITORY)
+		private readonly bundleRepo: ProductBundleRepository | null = null,
 	) {}
 
 	/** P11: the unit is fixed once the product has stock, stock history or orders. */
@@ -385,10 +394,13 @@ export class CatalogService {
 			audience: 'admin',
 			search: query.search,
 			status: query.status,
+			...(query.type ? { type: query.type } : {}),
+			...(query.shop ? { shop: query.shop } : {}),
 			page: query.page,
 			pageSize: query.pageSize,
 			...(await missingFilter(this.coverage, 'products', query.missing)),
 		});
+		const bundleInfo = await this.bundleRows(page.items.filter((product) => product.type === 'bundle'));
 		const rows = await Promise.all(
 			page.items.map(async (product) => ({
 				product,
@@ -411,11 +423,35 @@ export class CatalogService {
 				variantCount: variants.length,
 				thumbnailUrl: this.thumbnail(assets.get(product.media.gallery[0] ?? '')),
 				wasLive: isPublished(product),
+				type: product.type,
+				showOnShop: product.showOnShop !== false,
+				bundle: bundleInfo.get(product.id) ?? null,
 			})),
 			total: page.total,
 			page: page.page,
 			pageSize: page.pageSize,
 		});
+	}
+
+	/** Products › Bundles (B1–B3): each bundle's levels, set price today and worked-out stock. */
+	private async bundleRows(products: readonly Product[]) {
+		const out = new Map<string, NonNullable<AdminProductList['items'][number]['bundle']>>();
+		if (!this.bundleReader || !this.bundleRepo || products.length === 0) return out;
+		const bundles = await this.bundleRepo.listByProductIds(products.map((product) => product.id));
+		for (const bundle of bundles) {
+			const product = products.find((row) => row.id === bundle.productId);
+			const resolved = await this.bundleReader.resolve(bundle);
+			const quote = quoteBundle(this.bundleReader.toQuote(resolved));
+			const choices = resolved.levels.some((level) => level.items.length > level.take);
+			out.set(bundle.productId, {
+				levels: bundle.levels.length,
+				choices,
+				setPriceINR: quote.ok ? quote.totalINR : null,
+				fromPrice: choices,
+				stock: bundle.stock ?? this.bundleReader.stock(resolved, product?.lowStockThreshold ?? null),
+			});
+		}
+		return out;
 	}
 
 	async adminDetail(idOrSlug: string): Promise<AdminProductDetail> {

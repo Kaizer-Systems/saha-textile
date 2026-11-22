@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { BlogModule } from '../blog/blog.module';
 import { AdminAddonTemplatesController } from './admin-addon-templates.controller';
+import { AdminBundleBuilderController, AdminBundlePriceMethodsController } from './bundles/admin-bundles.controller';
+import { BundleAdminService } from './bundles/bundle-admin.service';
 import { AdminFaqController, AdminQuestionsController, FaqController, QuestionsController } from './content.controller';
 import { AdminProductsController } from './admin-products.controller';
 import { AdminProductDraftsController } from './admin-product-drafts.controller';
@@ -37,6 +39,8 @@ import { TaxonomyService } from './taxonomy.service';
 		AdminSearchTermsController,
 		AdminStorefrontSettingsController,
 		AdminProductsController,
+		AdminBundleBuilderController,
+		AdminBundlePriceMethodsController,
 		AdminProductDraftsController,
 		AdminTaxonomyController,
 		AdminAddonTemplatesController,
@@ -50,6 +54,7 @@ import { TaxonomyService } from './taxonomy.service';
 	],
 	providers: [
 		ProductBuilderService,
+		BundleAdminService,
 		ProductBulkService,
 		ProductDraftsService,
 		TaxonomyService,

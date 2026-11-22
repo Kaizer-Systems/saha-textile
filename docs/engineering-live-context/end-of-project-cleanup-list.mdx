@@ -93,6 +93,18 @@ Each line names the files, what replaced the piece, and what the removal also to
 | PP1 | The old product-page sticky bar (no longer rendered)                            | `apps/storefront/src/app/features/shop/product-detail/widgets/sticky-checkout/` (component, template, spec)           | The buy bar, `features/shop/product-detail/buy-bar/` (product page brief P4, 21 Nov 2026) | Nothing else; the buy bar keeps using the theme's `stickyCart` switch |
 | PP2 | The set part's old piece list styles (no markup uses them since the piece rows) | `.bundle-components` and `.bundle-component` (with `.comp-*`) in `apps/storefront/src/scss/components/_set-rows.scss` | The piece rows `.st-piece*` in the same file (brief P8)                                   | Nothing else                                                          |
 
+## Bundle builder build
+
+Replaced or unreachable once bundles moved to the bundle builder (brief UE6GxSvKq5VfspTqD41ixQ, approved 2026-11-22).
+
+| #   | What                                                               | Where                                                                                       | Replaced by                                             |
+| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| BB1 | The old bundle fields kept for a rollback (bundleType, pricePolicy, fixedPriceINR, groups) | `productBundles` documents (migration 0014 kept them); a later release's `contract` removes them | `levels`, `extras`, `pricing` |
+| BB2 | The old set price engine                                           | `packages/core-domain/src/catalog/set-price.ts` and its ESM build entry                      | `packages/core-domain/src/bundle/` (`quoteBundle`)      |
+| BB3 | The greyed "a bundle" branch in the purchase line search           | `apps/admin/src/app/features/purchasing/shared/line-search.*` (`line_blocked_bundle`)        | The stock search leaves bundles out (A14)               |
+| BB4 | The optional-piece switch style                                    | `.st-piece-switch` in `apps/storefront/src/scss/components/_set-rows.scss`                  | Extras' outlined tick (`.st-piece-mark.is-extra`)       |
+| BB5 | A bundle's own base variant row (created with every new product)   | `ProductBuilderService.create` for type `bundle`                                            | Worked-out stock; the row is never sold                 |
+
 ## Release Console loaders
 
 | #   | Piece                                                          | Files                                                                                  | Replaced by                                                                                             | The removal also touches                     |

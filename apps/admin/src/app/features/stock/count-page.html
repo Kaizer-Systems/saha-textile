@@ -8,6 +8,16 @@
 		class="text-muted ms-2"
 	>
 		{{ current.number }} · {{ current.label || ('count_scope_' + current.scope.kind | transloco) }}
+		<a
+			href="javascript:void(0)"
+			class="ms-1"
+			id="count_print_sheet"
+			[title]="'count_print_sheet' | transloco"
+			[attr.aria-label]="'count_print_sheet' | transloco"
+			(click)="printSheet(current.id)"
+		>
+			<i class="ri-printer-line"></i>
+		</a>
 	</span>
 	@if (current.status === 'counting') {
 	<p class="small text-muted mb-2">

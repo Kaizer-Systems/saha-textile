@@ -79,7 +79,10 @@ export class BusinessesGateway {
 	}
 
 	removeAddress(id: string, addressId: string): Observable<Business> {
-		return this.http.delete<Business>(this.api(`/${this.id(id)}/addresses/${this.id(addressId)}`), PAGE_EXPLAINS_ERRORS);
+		return this.http.delete<Business>(
+			this.api(`/${this.id(id)}/addresses/${this.id(addressId)}`),
+			PAGE_EXPLAINS_ERRORS,
+		);
 	}
 
 	/** bz06: the orders on account that still owe money, oldest first (the receipt's Settles table). */
@@ -96,6 +99,13 @@ export class BusinessesGateway {
 	}
 
 	/** so04: a reversing entry with its own reason, in both accounts. */
+	/** A receipt (RC) or journal voucher (JV) of the account, on its document format. */
+	documentPdf(id: string, documentId: string): Observable<Blob> {
+		return this.http.get(this.api(`/${this.id(id)}/documents/${this.id(documentId)}/pdf`), {
+			responseType: 'blob',
+		});
+	}
+
 	reverseSetOff(id: string, documentId: string, body: SetOffReverseWrite): Observable<unknown> {
 		return this.http.post(
 			this.api(`/${this.id(id)}/set-offs/${this.id(documentId)}/reverse`),

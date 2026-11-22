@@ -11,6 +11,7 @@ import {
 	apiProblem,
 	downloadCsv,
 	requestKey,
+	openPdf,
 } from '@core/purchasing/purchasing-format';
 import { STOCK_KEYS, StockGateway } from '@core/purchasing/stock.gateway';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -161,6 +162,13 @@ export class OpeningStock {
 				['ST-FAB-0007', '42.5', '160', '14/03/2026', 'Roll on the top shelf'],
 			],
 		);
+	}
+
+	/** One posted load on its document format (cost only with stock.cost). */
+	async printLoad(id: string): Promise<void> {
+		const blob = await firstValueFrom(this.gateway.openingPdf(id)).catch(() => null);
+		if (blob) openPdf(blob);
+		else this.notifier.showError(this.transloco.translate('print_failed'));
 	}
 
 	async read(input: HTMLInputElement): Promise<void> {

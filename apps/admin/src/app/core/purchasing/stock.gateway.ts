@@ -235,6 +235,16 @@ export class StockGateway {
 	}
 
 	/* opening stock */
+	/** The stock count sheet (expected figures only where this person may see them), on its document format. */
+	countSheetPdf(id: string): Observable<Blob> {
+		return this.http.get(this.api(`stock-counts/${encodeURIComponent(id)}/sheet-pdf`), { responseType: 'blob' });
+	}
+
+	/** One opening-stock load, on its document format. */
+	openingPdf(id: string): Observable<Blob> {
+		return this.http.get(this.api(`opening-stock/${encodeURIComponent(id)}/pdf`), { responseType: 'blob' });
+	}
+
 	openingLoads(): Observable<OpeningLoad[]> {
 		return this.http.get<OpeningLoad[]>(this.api('opening-stock'));
 	}

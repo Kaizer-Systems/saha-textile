@@ -13,6 +13,7 @@ source_of_truth:
     - packages/adapters-db-mongo/src/repositories/document-format.repository.ts
     - packages/adapters-db-mongo/src/migrations/document-formats.ts
     - apps/api/src/documents
+    - packages/core-domain/src/documents/words.ts
     - apps/admin/src/app/features/setting/document-formats
 ---
 
@@ -24,12 +25,12 @@ A **document format** is the layout one kind of document prints with: its blocks
 
 Seventeen documents, in four groups:
 
-| Group | Documents |
-| --- | --- |
-| Sales | Tax invoice, Credit note, Debit note, Receipt voucher, Refund voucher, Delivery challan |
-| Orders and parcels | Packing slip, Return note |
-| Purchases | Purchase order, Goods receipt (purchase entry), Purchase return note, Self-invoice (reverse charge), Payment voucher |
-| Stock and accounts | Stock adjustment, Stock count sheet, Opening stock, Journal voucher |
+| Group              | Documents                                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Sales              | Tax invoice, Credit note, Debit note, Receipt voucher, Refund voucher, Delivery challan                              |
+| Orders and parcels | Packing slip, Return note                                                                                            |
+| Purchases          | Purchase order, Goods receipt (purchase entry), Purchase return note, Self-invoice (reverse charge), Payment voucher |
+| Stock and accounts | Stock adjustment, Stock count sheet, Opening stock, Journal voucher                                                  |
 
 `DOCUMENT_SPECS` in core lists, for each document, the blocks it may hold and each block's fields. **Locked fields** are the ones the law needs (GSTIN, HSN, the tax split, place of supply, the document number and date); they stay ticked. **Required blocks** (seller, details, lines, totals, signature on GST documents) can't be hidden. A block type appears once per format, except text blocks.
 
@@ -74,17 +75,22 @@ PDFs go through `DocumentRendererPort` (the Chromium adapter) with the Brand Kit
 
 ## What prints on it
 
-| Document | Where | Endpoint |
-| --- | --- | --- |
-| Packing slip | Orders › Order › Pack list › **Print pack list** | `GET /admin/orders/:id/packing-slip` |
-| Purchase order | Purchases › Purchase order PDF | `GET /admin/purchase-orders/:id/pdf` |
-| Goods receipt | Purchase entry PDF | purchasing prints |
-| Debit note, delivery challan | Purchase return PDFs | purchasing prints |
+| Document                                            | Where                                                                        | Endpoint                                              |
+| --------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Packing slip                                        | Orders › Order › Pack list › **Print pack list**                             | `GET /admin/orders/:id/packing-slip`                  |
+| Purchase order                                      | Purchases › Purchase order PDF                                               | `GET /admin/purchase-orders/:id/pdf`                  |
+| Goods receipt                                       | Purchase entry PDF                                                           | purchasing prints                                     |
+| Debit note, delivery challan                        | Purchase return PDFs                                                         | purchasing prints                                     |
+| Receipt voucher (order)                             | Orders › Order › Payments, the printer beside the receipt number             | `GET /admin/orders/:id/payments/:paymentId/receipt`   |
+| Receipt voucher, journal voucher (business account) | Businesses › Business › Customer account, the printer beside an RC or JV row | `GET /admin/businesses/:id/documents/:documentId/pdf` |
+| Stock count sheet                                   | Stock › Counts › Count, the printer beside the count number                  | `GET /admin/stock-counts/:id/sheet-pdf`               |
+| Opening stock                                       | Stock › Opening stock › Posted loads, the printer beside each number         | `GET /admin/opening-stock/:id/pdf`                    |
 
 The packing slip prints the Pack list flat: every piece with a tick box and where it came from ("Peacock Blue set, piece 1", "Free with piece 1 of …", "Line 2"), and no prices.
 
 ## Limitations
 
-- Tax invoices, credit notes, receipt, refund and payment vouchers, self-invoices and the stock documents have formats, previews and PDFs of their worked examples, but no screen issues them yet.
+- A receipt voucher prints the place of supply from the delivery State (outside India: 96) and the amount in words (`rupeesInWords`, core documents). A count sheet follows the count's blind rule: a counter who may not see expected figures gets none on paper. Opening stock prints cost and value only for `stock.cost`.
+- Tax invoices wait on the CA's answers. Credit notes and refund vouchers wait on returns and refunds, payment vouchers on supplier payments, self-invoices on reverse-charge purchases, and stock adjustments on a number series of their own: each has a format, a preview and a PDF of its worked example, but nothing issues it yet.
 - The theme's invoice template remains in `purchasing/` as the fallback when no formats are present.
 - HSN codes, rates and the GSTIN in the worked examples are examples.

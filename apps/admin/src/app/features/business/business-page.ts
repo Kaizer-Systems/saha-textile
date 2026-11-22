@@ -151,6 +151,24 @@ export class BusinessPage {
 		return rupees(amount);
 	}
 
+	/** Receipts (RC) and journal vouchers (JV) print on their document formats. */
+	printable(row: LedgerStatementRow): boolean {
+		return row.documentType === 'receipt' || row.documentType === 'journal';
+	}
+
+	async printDocument(row: LedgerStatementRow): Promise<void> {
+		const id = this.id();
+		if (!id) return;
+		const blob = await firstValueFrom(this.gateway.documentPdf(id, row.documentId)).catch(() => null);
+		if (!blob) {
+			this.notifier.showError(this.transloco.translate('print_failed'));
+			return;
+		}
+		const url = URL.createObjectURL(blob);
+		window.open(url, '_blank', 'noopener');
+		setTimeout(() => URL.revokeObjectURL(url), 60_000);
+	}
+
 	documentWords(row: LedgerStatementRow): string {
 		if (row.kind === 'setOff') {
 			// so04: "Set-off JV/26-27/000001 against what we owe them · agreement STS/2026/04".
@@ -160,7 +178,9 @@ export class BusinessPage {
 			);
 			const setting = this.business()?.setOff;
 			const reference = row.agreement?.reference ?? (setting?.mode === 'agreement' ? setting.reference : null);
-			return reference ? `${words} · ${this.transloco.translate('biz_setoff_row_agreement', { reference })}` : words;
+			return reference
+				? `${words} · ${this.transloco.translate('biz_setoff_row_agreement', { reference })}`
+				: words;
 		}
 		const kind = this.transloco.translate(`biz_entry_${row.kind}`);
 		return row.documentNumber ? `${kind} · ${row.documentNumber}` : kind;

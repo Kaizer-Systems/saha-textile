@@ -680,6 +680,15 @@
 										} @if (payment.receiptNumber) {
 										<div class="small text-muted">
 											{{ 'ord_receipt_number' | transloco: { number: payment.receiptNumber } }}
+											<a
+												href="javascript:void(0)"
+												class="ms-1"
+												[title]="'ord_print_receipt' | transloco"
+												[attr.aria-label]="'ord_print_receipt' | transloco"
+												(click)="printReceipt(payment.id)"
+											>
+												<i class="ri-printer-line"></i>
+											</a>
 										</div>
 										}
 									</td>

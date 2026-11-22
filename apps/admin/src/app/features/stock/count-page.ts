@@ -8,7 +8,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
-import { RupeesPipe, StockQuantityPipe, apiProblem } from '@core/purchasing/purchasing-format';
+import { RupeesPipe, StockQuantityPipe, apiProblem, openPdf } from '@core/purchasing/purchasing-format';
 import { STOCK_KEYS, StockGateway } from '@core/purchasing/stock.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -188,6 +188,13 @@ export class CountPage {
 		if (!count) return;
 		if (this.pending().length) await this.saveCounts();
 		await this.act(() => firstValueFrom(this.gateway.finishCount(count.id)), 'count_sent_to_review');
+	}
+
+	/** The count sheet on its document format; a blind count prints no expected figures for a counter. */
+	async printSheet(id: string): Promise<void> {
+		const blob = await firstValueFrom(this.gateway.countSheetPdf(id)).catch(() => null);
+		if (blob) openPdf(blob);
+		else this.notifier.showError(this.transloco.translate('print_failed'));
 	}
 
 	toggleRecount(variantId: string): void {

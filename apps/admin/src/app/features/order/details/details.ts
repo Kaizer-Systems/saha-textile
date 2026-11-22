@@ -622,6 +622,18 @@ export class Details {
 		});
 	}
 
+	/** Print receipt: the payment's receipt voucher opens as a PDF. */
+	async printReceipt(paymentId: string): Promise<void> {
+		const order = this.order();
+		if (!order) return;
+		await this.run('print-receipt', async () => {
+			const blob = await firstValueFrom(this.gateway.receiptPdf(order.id, paymentId));
+			const url = URL.createObjectURL(blob);
+			window.open(url, '_blank', 'noopener');
+			setTimeout(() => URL.revokeObjectURL(url), 60_000);
+		});
+	}
+
 	async markPacked(): Promise<void> {
 		const order = this.order();
 		if (!order) return;

@@ -6999,5 +6999,10 @@
 	"docf_field_credit": "Credit",
 	"docf_field_narration": "Narration",
 	"ord_pack_print": "Print pack list",
+	"ord_print_receipt": "Print receipt",
+	"biz_print_document": "Print this document",
+	"count_print_sheet": "Print count sheet",
+	"print_document": "Print",
+	"print_failed": "The document couldn't be printed. Try again.",
 	"search_hint_setting_document_formats": "How every printable document looks: invoices, packing slips, purchase orders and vouchers, and the layout builder."
 }

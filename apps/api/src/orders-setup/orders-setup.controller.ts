@@ -6,10 +6,13 @@ import {
 	Get,
 	Header,
 	HttpCode,
+	NotFoundException,
+	Optional,
 	Param,
 	Post,
 	Put,
 	Query,
+	Res,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
@@ -38,6 +41,9 @@ import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../au
 import { codedRefusal } from '../common/coded-refusal';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
+import type { FastifyReply } from 'fastify';
+
+import { BusinessDocuments } from './business-documents';
 import { BusinessesService } from './businesses.service';
 import { CouponsService } from './coupons.service';
 import { OrderSettingsService } from './order-settings.service';
@@ -275,7 +281,10 @@ export class AdminOrderSettingsController {
 @Audience('admin')
 @Controller('admin/businesses')
 export class AdminBusinessesController {
-	constructor(private readonly businesses: BusinessesService) {}
+	constructor(
+		private readonly businesses: BusinessesService,
+		@Optional() private readonly documents: BusinessDocuments | null = null,
+	) {}
 
 	@Get()
 	@Header('Cache-Control', 'no-store')
@@ -372,6 +381,22 @@ export class AdminBusinessesController {
 	})
 	ledger(@Param('id') id: string, @Query(new ZodValidationPipe(LedgerQuery)) query: LedgerQuery) {
 		return this.businesses.statement(id, query);
+	}
+
+	@Get(':id/documents/:documentId/pdf')
+	@RequirePermissions('business.index')
+	@ApiOperation({
+		operationId: 'businessDocumentPdf',
+		summary: 'A receipt (RC) or journal voucher (JV) of the account, on its document format',
+	})
+	async documentPdf(@Param('id') id: string, @Param('documentId') documentId: string, @Res() reply: FastifyReply) {
+		if (!this.documents) throw new NotFoundException();
+		const file = await this.documents.pdf(id, documentId);
+		void reply
+			.header('Content-Type', 'application/pdf')
+			.header('Content-Disposition', `inline; filename="${file.fileName}"`)
+			.header('Cache-Control', 'no-store')
+			.send(Buffer.from(file.data));
 	}
 
 	// Receipts on account (bz06) live in the admin-orders module, which settles the orders they pay.

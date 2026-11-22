@@ -144,6 +144,13 @@ export class OrdersGateway {
 		return this.http.get(this.api(`/${this.id(id)}/packing-slip`), { responseType: 'blob' });
 	}
 
+	/** The receipt voucher (RC) of one payment, on its document format. */
+	receiptPdf(id: string, paymentId: string): Observable<Blob> {
+		return this.http.get(this.api(`/${this.id(id)}/payments/${this.id(paymentId)}/receipt`), {
+			responseType: 'blob',
+		});
+	}
+
 	/** One Pack list tick (bundle builder brief E08). */
 	packTick(id: string, body: PackTickWrite): Observable<Order> {
 		return this.http.put<Order>(this.api(`/${this.id(id)}/pack-ticks`), body, PAGE_EXPLAINS_ERRORS);

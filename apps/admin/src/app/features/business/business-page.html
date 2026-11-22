@@ -154,7 +154,17 @@
 									<td>
 										@if (row.kind === 'setOff') {
 										<b>{{ documentWords(row) }}</b>
-										} @else { {{ documentWords(row) }} }
+										} @else { {{ documentWords(row) }} } @if (printable(row)) {
+										<a
+											href="javascript:void(0)"
+											class="ms-1"
+											[title]="'biz_print_document' | transloco"
+											[attr.aria-label]="'biz_print_document' | transloco"
+											(click)="printDocument(row)"
+										>
+											<i class="ri-printer-line"></i>
+										</a>
+										}
 									</td>
 									<td class="text-end">{{ row.amountINR > 0 ? money(row.amountINR) : '' }}</td>
 									<td class="text-end">{{ row.amountINR < 0 ? money(-row.amountINR) : '' }}</td>
@@ -196,8 +206,8 @@
 								</tr>
 							</thead>
 							<tbody>
-								@for (row of supplierSummary.data()?.statement ?? []; track row.documentId + row.kind + $index; let
-								last = $last) {
+								@for (row of supplierSummary.data()?.statement ?? []; track row.documentId + row.kind +
+								$index; let last = $last) {
 								<tr>
 									<td>{{ row.date | shortDate }}</td>
 									<td>
@@ -206,7 +216,9 @@
 										} @else { {{ row.documentNumber }} }
 									</td>
 									<td>{{ row.details }}</td>
-									<td class="text-end text-nowrap">{{ row.billINR ? (row.billINR | rupees) : '' }}</td>
+									<td class="text-end text-nowrap">
+										{{ row.billINR ? (row.billINR | rupees) : '' }}
+									</td>
 									<td class="text-end text-nowrap">
 										{{ row.paidOrCreditedINR ? (row.paidOrCreditedINR | rupees) : '' }}
 									</td>

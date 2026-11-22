@@ -192,7 +192,18 @@
 			<tbody>
 				@for (load of loads.data() ?? []; track load.id) {
 				<tr>
-					<td>{{ load.number }}</td>
+					<td>
+						{{ load.number }}
+						<a
+							href="javascript:void(0)"
+							class="ms-1"
+							[title]="'print_document' | transloco"
+							[attr.aria-label]="'print_document' | transloco"
+							(click)="printLoad(load.id)"
+						>
+							<i class="ri-printer-line"></i>
+						</a>
+					</td>
 					<td>{{ load.postedAt | shortDateTime }}</td>
 					<td>{{ load.postedByName ?? '—' }}</td>
 					<td class="text-end">{{ load.skus }}</td>

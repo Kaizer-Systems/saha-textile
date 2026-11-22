@@ -6999,5 +6999,10 @@
 	"docf_field_credit": "ক্রেডিট",
 	"docf_field_narration": "বিবরণ",
 	"ord_pack_print": "প্যাক তালিকা প্রিন্ট করুন",
+	"ord_print_receipt": "রসিদ প্রিন্ট করুন",
+	"biz_print_document": "এই ডকুমেন্ট প্রিন্ট করুন",
+	"count_print_sheet": "গণনার শিট প্রিন্ট করুন",
+	"print_document": "প্রিন্ট",
+	"print_failed": "ডকুমেন্টটা প্রিন্ট করা গেল না। আবার চেষ্টা করুন।",
 	"search_hint_setting_document_formats": "ইনভয়েস, প্যাকিং স্লিপ, পারচেজ অর্ডার আর ভাউচার প্রিন্টে কেমন দেখাবে, আর তার লেআউট বিল্ডার।"
 }

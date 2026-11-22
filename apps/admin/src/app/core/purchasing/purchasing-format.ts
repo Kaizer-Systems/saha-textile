@@ -126,6 +126,13 @@ export function downloadCsv(
 	saveBlob(fileName, blob);
 }
 
+/** A printed document opens in a new tab, as Print pack list does. */
+export function openPdf(blob: Blob): void {
+	const url = URL.createObjectURL(blob);
+	window.open(url, '_blank', 'noopener');
+	setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export function saveBlob(fileName: string, blob: Blob): void {
 	const url = URL.createObjectURL(blob);
 	const link = document.createElement('a');

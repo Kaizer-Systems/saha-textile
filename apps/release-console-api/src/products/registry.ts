@@ -48,6 +48,7 @@ import {
 	WAF_EXTRA,
 	extend,
 } from './cf-zone-more.js';
+import { ZT_EXTRA } from './cf-zt-more.js';
 import {
 	cfAccessScreen,
 	cfAnalyticsScreen,
@@ -141,7 +142,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	cfdomains: cfDomainsScreen,
 	cfbuild: cfBuildScreen,
 	cfprotect: cfProtectScreen,
-	cfzt: cfZeroTrustScreen,
+	cfzt: extend(cfZeroTrustScreen, ZT_EXTRA),
 	cfdev: cfDevScreen,
 	cfaccount: cfAccountScreen,
 	cfoverview: cfOverviewScreen,

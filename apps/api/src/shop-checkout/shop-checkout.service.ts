@@ -463,6 +463,7 @@ export class ShopCheckoutService {
 			amountINR: line.lineTotalINR,
 			onSale: facts[index]?.facts.currentSaleINR != null,
 			zonePriced: false,
+			isSet: Boolean(line.setHeading),
 		}));
 		const definitions: CouponDefinition[] = [];
 		const contexts = new Map<string, CouponContext>();

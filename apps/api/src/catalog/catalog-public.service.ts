@@ -268,7 +268,7 @@ export class CatalogPublicService {
 			price: read.price,
 			badges: read.badges,
 			madeToOrder: read.madeToOrder,
-			saleEndsAt: this.sales?.endsAtFor(product.id) ?? null,
+			saleEndsAt: this.sales?.endsAtFor(product.id, new Date(), { isSet: product.type === 'bundle' }) ?? null,
 			estimatedDeliveryText: product.estimatedDeliveryText ? localized(product.estimatedDeliveryText) : null,
 			sareeLengthM: product.sareeLengthM ?? null,
 			blousePieceM: product.blousePieceM ?? null,

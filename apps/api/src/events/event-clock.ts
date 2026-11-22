@@ -196,7 +196,7 @@ export class EventClock implements OnApplicationBootstrap, OnApplicationShutdown
 						endedAt: now.toISOString(),
 						saleRecord: record,
 						// The record keeps every SKU's prices; the working rules are not needed again.
-						sale: { categories: [], products: [] },
+						sale: { categories: [], products: [], includeSets: false },
 					},
 		);
 		if (!won) return;

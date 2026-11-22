@@ -32,6 +32,7 @@ export function blankCoupon(): CouponWrite {
 		scope: { kind: 'wholeOrder' },
 		excludedProductIds: [],
 		includeSaleItems: false,
+		includeSets: true,
 		minOrderINR: 0,
 		audience: { kind: 'everyone' },
 		channels: { shop: true, admin: true },
@@ -54,6 +55,7 @@ const FIELD_KEYS = [
 	'scope',
 	'excludedProductIds',
 	'includeSaleItems',
+	'includeSets',
 	'minOrderINR',
 	'audience',
 	'channels',
@@ -97,7 +99,9 @@ export function couponWords(
 						list: scope.categoryIds.map(nameOf).join(', '),
 					})
 				: t('cpn_words_products', { count: scope.productIds.length });
-	lines.push(`${where}${coupon.includeSaleItems ? '' : t('cpn_words_not_sale')}`);
+	lines.push(
+		`${where}${coupon.includeSaleItems ? '' : t('cpn_words_not_sale')}${coupon.includeSets ? '' : t('cpn_words_not_sets')}`,
+	);
 	if (coupon.excludedProductIds.length)
 		lines.push(t('cpn_words_excluded', { count: coupon.excludedProductIds.length }));
 	if (coupon.minOrderINR > 0) lines.push(t('cpn_words_min', { amount: rupees(coupon.minOrderINR) }));

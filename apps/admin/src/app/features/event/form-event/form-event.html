@@ -467,6 +467,26 @@
 									}
 									<p class="help-text">{{ 'event_sale_products_help' | transloco }}</p>
 								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'event_sale_sets'"
+									[for]="'sale_include_sets'"
+									[required]="false"
+								>
+									<div class="form-check form-switch ps-0">
+										<label class="switch">
+											<input
+												type="checkbox"
+												id="sale_include_sets"
+												[checked]="saleIncludeSets()"
+												(change)="saleIncludeSets.set($any($event.target).checked)"
+											/>
+											<span class="switch-state"></span>
+										</label>
+									</div>
+									<p class="help-text">{{ 'event_sale_sets_help' | transloco }}</p>
+								</app-form-fields>
 								<!-- Brief 4d: cells never wrap; on a narrow screen the table scrolls inside its box. -->
 								<div class="table-responsive">
 									<table

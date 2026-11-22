@@ -57,6 +57,7 @@ export function quoteFromPage(bundle: CatalogPageBundle): QuoteBundle {
 		combine: p.combine,
 		capAtSeparately: p.capAtSeparately,
 		roundTo: p.roundTo,
+		eventSale: p.eventSale ?? [],
 	};
 }
 

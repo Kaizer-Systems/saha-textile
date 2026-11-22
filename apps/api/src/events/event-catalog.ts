@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type {
 	Product,
 	ShopEvent,
@@ -10,20 +10,25 @@ import type {
 import {
 	type CategoryPlacementRepository,
 	type CategoryRepository,
+	type ProductBundleRepository,
 	type ProductRepository,
 	type ProductVariantRepository,
 	type ShopEventRepository,
 	resolveSaleRule,
 	salePriceINR,
 	saleWarning,
+	quoteBundle,
 	sellingPriceINR,
 	windowsOverlap,
 } from '@saha-textile/core-domain';
 
+import type { BundleReader } from '../catalog/bundles/bundle-reader';
 import { ProductBuilderService } from '../catalog/product-builder.service';
 import {
+	BUNDLE_READER,
 	CATEGORY_PLACEMENT_REPOSITORY,
 	CATEGORY_REPOSITORY,
+	PRODUCT_BUNDLE_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
 	SHOP_EVENT_REPOSITORY,
@@ -54,6 +59,8 @@ export class EventCatalog {
 		@Inject(CATEGORY_PLACEMENT_REPOSITORY) private readonly placements: CategoryPlacementRepository,
 		@Inject(SHOP_EVENT_REPOSITORY) private readonly events: ShopEventRepository,
 		private readonly builder: ProductBuilderService,
+		@Optional() @Inject(PRODUCT_BUNDLE_REPOSITORY) private readonly bundles: ProductBundleRepository | null = null,
+		@Optional() @Inject(BUNDLE_READER) private readonly bundleReader: BundleReader | null = null,
 	) {}
 
 	/** Every product in these categories or the categories under them. */
@@ -159,11 +166,35 @@ export class EventCatalog {
 			'admin',
 		);
 		const below = descendants(await this.categories.tree());
+		const setPrices = event.sale.includeSets
+			? await this.setPrices(targets.map(({ product }) => product))
+			: new Map();
 		return targets.flatMap(({ product }) => {
 			const own = new Set(product.categoryIds);
 			const resolution = resolveSaleRule(event.sale, product.id, (categoryId) =>
 				[...(below.get(categoryId) ?? [])].some((id) => own.has(id)),
 			);
+			// A set has no price rows of its own: with the sets switch on, it shows one row at its set price.
+			const setPrice = setPrices.get(product.id);
+			if (setPrice !== undefined) {
+				const candidates = resolution?.candidates ?? [];
+				const sale = candidates.length ? salePriceINR(candidates, setPrice, '') : null;
+				const winner =
+					candidates.find((candidate) => salePriceINR([candidate], setPrice, '') === sale) ?? candidates[0];
+				return [
+					{
+						productId: product.id,
+						productTitle: title(product),
+						sku: product.sku,
+						normalINR: setPrice,
+						saleINR: sale,
+						source: resolution?.source ?? 'held',
+						categoryId: winner?.categoryId ?? null,
+						warning: saleWarning(setPrice, sale),
+						refused: candidates.length > 0 && sale === null,
+					},
+				];
+			}
 			return rows
 				.filter((row) => row.productId === product.id)
 				.map((row) => {
@@ -186,6 +217,22 @@ export class EventCatalog {
 					};
 				});
 		});
+	}
+
+	/** Each set's own price (its first full choice, before any sale event), by product id. */
+	private async setPrices(products: readonly Product[]): Promise<Map<string, number>> {
+		const prices = new Map<string, number>();
+		if (!this.bundles || !this.bundleReader) return prices;
+		for (const product of products.filter((row) => row.type === 'bundle')) {
+			const bundle = await this.bundles.findByProductId(product.id, 'admin');
+			if (!bundle) continue;
+			const quote = quoteBundle({
+				...this.bundleReader.toQuote(await this.bundleReader.resolve(bundle)),
+				eventSale: [],
+			});
+			if (quote.setPriceINR > 0) prices.set(product.id, quote.setPriceINR);
+		}
+		return prices;
 	}
 
 	/** Products in another published or draft-overlapping sale over the same time. */

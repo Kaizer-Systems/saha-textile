@@ -239,6 +239,7 @@ export class BundleReader {
 			combine: bundle.pricing.combine,
 			capAtSeparately: bundle.pricing.capAtSeparately,
 			roundTo: bundle.pricing.roundTo,
+			eventSale: this.sales?.setRules(bundle.productId) ?? [],
 		};
 	}
 
@@ -392,6 +393,7 @@ export class BundleReader {
 				combine: quote.combine,
 				capAtSeparately: quote.capAtSeparately,
 				roundTo: quote.roundTo,
+				eventSale: [...(quote.eventSale ?? [])],
 			},
 			stock: {
 				setsPossible: stock.setsPossible,

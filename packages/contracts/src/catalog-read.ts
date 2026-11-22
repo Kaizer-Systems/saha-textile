@@ -6,6 +6,7 @@ import { Id, IsoDateTime, LocaleCode, Slug } from './common';
 import { FreeWithTake } from './free-with';
 import { ResolvedImage } from './media';
 import { BundleLevelPriceMode } from './product-bundle';
+import { SaleRule } from './shop-event';
 import { ProductVideo } from './site-settings';
 
 const money = z.number().int().nonnegative();
@@ -377,6 +378,8 @@ export const CatalogPageBundle = z.object({
 		combine: BundleRuleCombine,
 		capAtSeparately: z.boolean(),
 		roundTo: z.enum(['none', 'one', 'ten']),
+		/** Running sale events that include sets and reach this one: the lowest price wins, as for products. */
+		eventSale: z.array(SaleRule).default([]),
 	}),
 	stock: z.object({
 		setsPossible: z.number().int().nonnegative(),

@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import type { Category, ProductVariant, ShopEvent } from '@saha-textile/contracts';
+import type { Category, ProductVariant, SaleRule, ShopEvent } from '@saha-textile/contracts';
 import {
 	type CategoryRepository,
 	type ProductRepository,
@@ -19,6 +19,8 @@ interface BookEntry {
 	startsAt: number;
 	endsAt: number;
 	candidates: SaleCandidate[];
+	/** The event's sets switch: only then does it lower a set's own price. */
+	includeSets: boolean;
 }
 
 /** The categories under each category, itself included, from one read of the tree. */
@@ -110,6 +112,7 @@ export class SalePriceBook {
 				startsAt: Date.parse(event.startsAt as string),
 				endsAt: Date.parse(event.endsAt as string),
 				candidates: resolution.candidates,
+				includeSets: event.sale.includeSets,
 			};
 			into.set(productId, [...(into.get(productId) ?? []), entry]);
 		}
@@ -132,15 +135,30 @@ export class SalePriceBook {
 		return best;
 	}
 
+	/**
+	 * The rules of the sales running now that include sets and reach this set; the set's quote applies the
+	 * lowest. Empty for a set no such sale reaches.
+	 */
+	setRules(productId: string, now = new Date()): SaleRule[] {
+		return this.running(productId, now.getTime())
+			.filter((entry) => entry.includeSets)
+			.flatMap((entry) => entry.candidates.map((candidate) => candidate.rule));
+	}
+
 	/** The row as the shop sees it now: the sale price in `salePriceINR` while a sale lowers it. */
 	overlay(row: ProductVariant, now = new Date()): ProductVariant {
 		const sale = this.priceFor(row, now);
 		return sale ? { ...row, salePriceINR: sale.saleINR } : row;
 	}
 
-	/** When the soonest-ending running sale on this product ends, for the product page timer. */
-	endsAtFor(productId: string, now = new Date()): string | null {
-		const ends = this.running(productId, now.getTime()).map((entry) => entry.endsAt);
+	/**
+	 * When the soonest-ending running sale on this product ends, for the product page timer. A set counts only the
+	 * sales that include sets, the only ones that lower its price.
+	 */
+	endsAtFor(productId: string, now = new Date(), options: { isSet?: boolean } = {}): string | null {
+		const ends = this.running(productId, now.getTime())
+			.filter((entry) => !options.isSet || entry.includeSets)
+			.map((entry) => entry.endsAt);
 		return ends.length ? new Date(Math.min(...ends)).toISOString() : null;
 	}
 

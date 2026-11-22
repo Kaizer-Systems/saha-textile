@@ -59,6 +59,11 @@ export const CouponFields = z.object({
 	excludedProductIds: z.array(Id).max(2_000).default([]),
 	/** Pieces already on sale are left out unless this is on (OD4). */
 	includeSaleItems: z.boolean().default(false),
+	/**
+	 * Sets (bundles) take the coupon like any product, spread over their pieces; off leaves every set out,
+	 * whatever category it sits in (owner, 2026-11-23).
+	 */
+	includeSets: z.boolean().default(true),
 	minOrderINR: PriceINR.default(0),
 	audience: CouponAudience.default({ kind: 'everyone' }),
 	channels: z
@@ -173,6 +178,7 @@ export const CouponLineReason = z.enum([
 	'excluded',
 	'nothingLeft',
 	'zoneLineNotAllowed',
+	'setLeftOut',
 ]);
 export type CouponLineReason = z.infer<typeof CouponLineReason>;
 

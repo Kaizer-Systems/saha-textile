@@ -67,6 +67,11 @@ export type SaleProductLine = z.infer<typeof SaleProductLine>;
 export const SaleSetup = z.object({
 	categories: z.array(SaleCategoryLine).max(100).default([]),
 	products: z.array(SaleProductLine).max(1_000).default([]),
+	/**
+	 * Sets (bundles) the sale reaches get its rule on their set price; off (the default) leaves every set at
+	 * its own price, whatever category it sits in or even when picked (owner, 2026-11-23).
+	 */
+	includeSets: z.boolean().default(false),
 });
 export type SaleSetup = z.infer<typeof SaleSetup>;
 
@@ -145,7 +150,7 @@ export const ShopEvent = z.object({
 	/** A launch keeps a "Now live" line in the top bar this many days after its start. */
 	nowLiveDays: z.number().int().min(0).max(60).default(3),
 	launch: LaunchSetup.default({ categoryIds: [], productIds: [], heldProductIds: [] }),
-	sale: SaleSetup.default({ categories: [], products: [] }),
+	sale: SaleSetup.default({ categories: [], products: [], includeSets: false }),
 	status: ShopEventStatus.default('draft'),
 	publishedAt: IsoDateTime.nullable().default(null),
 	startedAt: IsoDateTime.nullable().default(null),
@@ -187,7 +192,7 @@ export const ShopEventWrite = z.object({
 	popupImageSide: PopupImageSide.default('right'),
 	nowLiveDays: z.number().int().min(0).max(60).default(3),
 	launch: LaunchSetup.default({ categoryIds: [], productIds: [], heldProductIds: [] }),
-	sale: SaleSetup.default({ categories: [], products: [] }),
+	sale: SaleSetup.default({ categories: [], products: [], includeSets: false }),
 });
 export type ShopEventWrite = z.infer<typeof ShopEventWrite>;
 

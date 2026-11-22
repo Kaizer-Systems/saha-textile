@@ -208,6 +208,7 @@ export class AdminOrderCreateService {
 			amountINR: line.lineTotalINR,
 			onSale: facts[index]?.facts.currentSaleINR !== null && facts[index]?.facts.currentSaleINR !== undefined,
 			zonePriced: false,
+			isSet: Boolean(line.setHeading),
 		}));
 		const definition: CouponDefinition = {
 			...request.coupon,
@@ -622,6 +623,7 @@ export class AdminOrderCreateService {
 				facts[index]?.facts.currentSaleINR !== null &&
 				facts[index]?.facts.currentSaleINR !== undefined,
 			zonePriced: line.zonePrice?.kind === 'priced' && line.zonePrice.rule.tier !== 'retail',
+			isSet: Boolean(line.setHeading),
 		}));
 		const codes = [...new Set(input.couponCodes.map((code) => code.toUpperCase()))];
 		const definitions: CouponDefinition[] = [];

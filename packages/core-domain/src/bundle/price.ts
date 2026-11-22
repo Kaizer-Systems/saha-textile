@@ -4,8 +4,10 @@ import type {
 	BundlePriceRule,
 	BundleRuleAction,
 	BundleRuleCombine,
+	SaleRule,
 } from '@saha-textile/contracts';
 
+import { applySaleRule } from './sale-rule';
 import { OFFER_ACTIONS, actionsFor, amountOf, type BundleFacts } from './rules';
 
 /**
@@ -57,6 +59,8 @@ export interface QuoteBundle {
 	combine: BundleRuleCombine;
 	capAtSeparately: boolean;
 	roundTo: 'none' | 'one' | 'ten';
+	/** Running sale events that include sets and reach this one; the lowest price they give wins. */
+	eventSale?: readonly SaleRule[];
 }
 
 export interface QuoteChoice {
@@ -99,8 +103,10 @@ export interface BundleQuote {
 	requiredExtras: string[];
 	/** Pieces at their Price in this set, added up. */
 	subtotalINR: number;
-	/** The set price for the pieces, after the method and the set's rules. */
+	/** The set price for the pieces, after the method, the set's rules and a running sale event. */
 	setPriceINR: number;
+	/** The set price before a sale event lowered it; null when no event did. */
+	beforeEventINR: number | null;
 	extrasINR: number;
 	/** What the shopper pays for one set. */
 	totalINR: number;
@@ -318,7 +324,10 @@ export function quoteBundle(bundle: QuoteBundle, choice: QuoteChoice = {}, now: 
 	const extrasToday = extras.reduce((sum, extra) => sum + extra.todayINR, 0);
 
 	if (bundle.capAtSeparately) running = Math.min(running, separately);
-	const setPriceINR = round(running, bundle.roundTo);
+	const ownPriceINR = round(running, bundle.roundTo);
+	// A sale event that includes sets works on the set's own price, after its rules (owner, 2026-11-23).
+	const eventINR = lowestEventPrice(bundle.eventSale ?? [], ownPriceINR);
+	const setPriceINR = eventINR ?? ownPriceINR;
 	const totalINR = round(setPriceINR + extrasINR, 'none');
 	const separatelyAll = round(separately + extrasToday, 'none');
 	return {
@@ -330,12 +339,23 @@ export function quoteBundle(bundle: QuoteBundle, choice: QuoteChoice = {}, now: 
 		requiredExtras: [...requiredExtras],
 		subtotalINR: round(subtotal, 'none'),
 		setPriceINR,
+		beforeEventINR: eventINR === null ? null : ownPriceINR,
 		extrasINR: round(extrasINR, 'none'),
 		totalINR,
 		separatelyINR: separatelyAll,
 		saveINR: Math.max(0, round(separatelyAll - totalINR, 'none')),
 		applied: [...fromMethod.applied, ...fromSet.applied],
 	};
+}
+
+/** The lowest price the running events give a set price, or null when none lowers it. */
+function lowestEventPrice(rules: readonly SaleRule[], priceINR: number): number | null {
+	let best: number | null = null;
+	for (const rule of rules) {
+		const price = applySaleRule(rule, priceINR, '');
+		if (price !== null && (best === null || price < best)) best = price;
+	}
+	return best;
 }
 
 /** Every full combination of picks (each choice level's `take`-sized subsets), up to `limit`. */

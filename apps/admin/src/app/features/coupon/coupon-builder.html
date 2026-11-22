@@ -249,6 +249,24 @@
 													</label>
 												</div>
 												<p class="help-text">{{ 'cpn_sale_help' | transloco }}</p>
+												<div class="d-flex align-items-center mb-2 gap-3">
+													<label class="switch mb-0">
+														<input
+															type="checkbox"
+															id="cpn_sets"
+															[checked]="d.includeSets"
+															(change)="patch({ includeSets: $any($event.target).checked })"
+														/>
+														<span class="switch-state"></span>
+													</label>
+													<label
+														class="form-label mb-0"
+														for="cpn_sets"
+													>
+														{{ 'cpn_sets_label' | transloco }}
+													</label>
+												</div>
+												<p class="help-text">{{ 'cpn_sets_help' | transloco }}</p>
 												<label
 													class="form-label"
 													for="cpn_min"
@@ -558,9 +576,9 @@
 							<span>
 								<b>{{ line.title }} × {{ line.quantity }}</b>
 								<span class="d-block text-muted">
-									@if (result.used.length > 1 && line.byCoupon.length) { @for (part of line.byCoupon; track
-									part.code) { @if (!$first) { · } {{ part.code }}: {{ money(part.amountINR) }} } } @else {
-									{{ 'cpn_reason_' + line.reason | transloco }} }
+									@if (result.used.length > 1 && line.byCoupon.length) { @for (part of line.byCoupon;
+									track part.code) { @if (!$first) { · } {{ part.code }}: {{ money(part.amountINR) }}
+									} } @else { {{ 'cpn_reason_' + line.reason | transloco }} }
 								</span>
 							</span>
 							<span class="text-nowrap">
@@ -574,8 +592,8 @@
 							<span>
 								<b>{{ 'cpn_try_delivery' | transloco }}</b>
 								<span class="d-block text-muted">
-									@if (result.deliveryOff; as free) { {{ 'cpn_try_free_delivery' | transloco: { code: free.code }
-									}} } @else { {{ 'cpn_try_delivery_unchanged' | transloco }} }
+									@if (result.deliveryOff; as free) { {{ 'cpn_try_free_delivery' | transloco: { code:
+									free.code } }} } @else { {{ 'cpn_try_delivery_unchanged' | transloco }} }
 								</span>
 							</span>
 							<span class="text-nowrap">

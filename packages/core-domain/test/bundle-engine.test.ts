@@ -87,6 +87,38 @@ describe('quoteBundle: the seeded methods', () => {
 		expect(quote.saveINR).toBe(11800);
 	});
 
+	it('a sale event that includes sets lowers the set price after its rules; the lowest event wins', () => {
+		const pair = bundle({
+			method: method('fixed_price'),
+			params: { setPrice: 44900 },
+			levels: [
+				{ code: 'one', take: 1, priceMode: 'difference', items: [k1010] },
+				{ code: 'two', take: 1, priceMode: 'difference', items: [a1096] },
+			],
+		});
+		const plain = quoteBundle(pair, {}, NOW);
+		expect(plain.beforeEventINR).toBeNull();
+		const onSale = quoteBundle(
+			{
+				...pair,
+				eventSale: [
+					{ kind: 'percent', value: 10, skuPrices: {} },
+					{ kind: 'amount', value: 2000, skuPrices: {} },
+				],
+			},
+			{},
+			NOW,
+		);
+		expect(onSale.setPriceINR).toBe(40410);
+		expect(onSale.beforeEventINR).toBe(44900);
+		expect(onSale.totalINR).toBe(40410);
+		expect(onSale.saveINR).toBe(56700 - 40410);
+		// A rule that would not lower the price is no sale.
+		const dearer = quoteBundle({ ...pair, eventSale: [{ kind: 'fixed', value: 50000, skuPrices: {} }] }, {}, NOW);
+		expect(dearer.setPriceINR).toBe(44900);
+		expect(dearer.beforeEventINR).toBeNull();
+	});
+
 	it('fixed price: a dearer pick adds the difference, a cheaper one is included (owner, 21 Nov)', () => {
 		const b = bundle({
 			method: method('fixed_price'),

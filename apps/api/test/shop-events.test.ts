@@ -321,7 +321,7 @@ describe('the clock', () => {
 		await h.clock.sweep(new Date(h.now + 2 * HOUR));
 		const ended = h.events.rows.get(created.id);
 		expect(ended?.status).toBe('ended');
-		expect(ended?.sale).toEqual({ categories: [], products: [] });
+		expect(ended?.sale).toEqual({ categories: [], products: [], includeSets: false });
 		expect(ended?.saleRecord).toMatchObject({ orders: 1, unitsSold: 2, revenueINR: 3_200, discountINR: 800 });
 	});
 
@@ -644,6 +644,34 @@ describe('the sale price book', () => {
 		expect(h.book.endsAtFor('nothing')).toBeNull();
 		// A product held back everywhere has no entry.
 		expect(h.book.productsIn(first.id)).not.toContain('p2');
+	});
+
+	it('gives a set the rules of running sales only when their sets switch is on', async () => {
+		const h = harness();
+		const rule = { kind: 'percent' as const, value: 10, skuPrices: {} };
+		const off = await h.admin.create(
+			{
+				...saleBody(h.now - HOUR, h.now + HOUR),
+				sale: { categories: [], products: [{ productId: 'p3', rule }] },
+			},
+			null,
+		);
+		await h.events.save({ ...off, status: 'live' });
+		await h.book.refresh();
+		expect(h.book.setRules('p3')).toEqual([]);
+		expect(h.book.endsAtFor('p3', new Date(h.now), { isSet: true })).toBeNull();
+		const on = await h.admin.create(
+			{
+				...saleBody(h.now - HOUR, h.now + HOUR),
+				sale: { categories: [], products: [{ productId: 'p3', rule }], includeSets: true },
+			},
+			null,
+		);
+		await h.events.save({ ...on, status: 'live' });
+		await h.book.refresh();
+		expect(h.book.setRules('p3')).toEqual([rule]);
+		expect(h.book.endsAtFor('p3', new Date(h.now), { isSet: true })).toBe(new Date(h.now + HOUR).toISOString());
+		expect(h.book.setRules('p3', new Date(h.now + 2 * HOUR))).toEqual([]);
 	});
 
 	it('maps a category with no stored path to itself', () => {

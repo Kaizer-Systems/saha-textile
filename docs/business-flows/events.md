@@ -3,7 +3,7 @@ title: Launch and Sale Events
 description: How launches and sales are set up in the admin, armed by Publish, started and ended by the API clock, priced as an overlay and shown on the shop.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-10'
+last_verified: '2026-11-23'
 source_of_truth:
     - packages/contracts/src/shop-event.ts
     - packages/core-domain/src/events
@@ -81,6 +81,8 @@ A category line applies its rule to every product in the category and the catego
 2. An `own` exception in any category that holds it.
 3. A `held` exception in any category, which keeps the product out even when another category would discount it.
 4. Every matching category rule. When categories disagree, `salePriceINR` keeps the lowest price.
+
+**Sets.** A set (a product of type `bundle`) has no price rows of its own. The sale's **Sets (bundles)** switch (`sale.includeSets`, off by default) decides whether the sale reaches sets at all, whatever category they sit in or even when picked. When it is on, the rule a set resolves to applies to its set price, after the set's own price method and rules: `SalePriceBook.setRules` hands the running rules to the set reader, the core quote (`quoteBundle`, `eventSale`) keeps the lowest result, and the shop page, cards, cart and checkout all price the set that way. The Review tab shows a set as one row at its set price. When it is off, sets keep their own price and do not appear in Review.
 
 `applySaleRule` refuses a rule that cannot apply to a SKU: a normal price of ₹ 0 or less, a result of ₹ 0 or less, a result at or above the normal price, or more rupees off than the price. Saving refuses rules that can never apply (`saleRuleProblem`). The Review tab warns, without refusing, when a SKU would be more than 60% off (`SALE_WARNING_PERCENT`), which catches a typed 90 meant as 9.
 

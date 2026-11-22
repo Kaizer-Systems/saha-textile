@@ -1,5 +1,10 @@
 import type { SaleRule, SaleSetup } from '@saha-textile/contracts';
 
+import { applySaleRule } from '../bundle/sale-rule';
+
+// The one sale-rule sum lives with the set engine, which is also built on its own for the apps.
+export { applySaleRule };
+
 /** Above this many percent off, the Review tab warns: it catches typing 90 for 9. */
 export const SALE_WARNING_PERCENT = 60;
 
@@ -58,27 +63,6 @@ export function resolveSaleRule(
 		source: 'category',
 		candidates: lines.map((line) => ({ rule: line.rule, source: 'category', categoryId: line.categoryId })),
 	};
-}
-
-/**
- * One rule applied to one SKU's normal selling price, in whole rupees rounded down, or null
- * when the rule can't apply: a price of ₹ 0 or less, one above the normal price, or more rupees
- * off than the price. A rule that leaves the price unchanged is no sale either.
- */
-export function applySaleRule(rule: SaleRule, normalINR: number, sku: string): number | null {
-	if (!Number.isFinite(normalINR) || normalINR <= 0) return null;
-	let sale: number;
-	if (rule.kind === 'percent') {
-		if (rule.value <= 0 || rule.value >= 100) return null;
-		sale = Math.floor((normalINR * (100 - rule.value)) / 100);
-	} else if (rule.kind === 'amount') {
-		if (rule.value <= 0 || rule.value >= normalINR) return null;
-		sale = Math.floor(normalINR - rule.value);
-	} else {
-		sale = Math.floor(rule.skuPrices[sku] ?? rule.value);
-	}
-	if (sale <= 0 || sale >= normalINR) return null;
-	return sale;
 }
 
 /** The lowest price any candidate rule gives this SKU, or null when none applies. */

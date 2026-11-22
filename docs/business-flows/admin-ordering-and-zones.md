@@ -3,7 +3,7 @@ title: Admin Ordering, Zones and Payments
 description: How staff create and run orders for shop customers and businesses, how business zones price a piece, how pieces are kept in stock for orders, and how payments, payment requests, open orders and the shop checkout quote work.
 status: scaffolded
 audience: [backend, frontend, operator]
-last_verified: '2026-11-21'
+last_verified: '2026-11-23'
 source_of_truth:
     - packages/contracts/src/order.ts
     - packages/contracts/src/order-admin.ts
@@ -41,6 +41,7 @@ Every business that buys from the shop has one **zone**, its buyer level. **RETA
 - Zone prices include GST, like shop prices. A price below the purchase cost is flagged; rules that read the purchase cost need the cost permission (`stock.cost`) to write or try, so a rule never reveals a cost.
 - **Try it** prices unsaved rules on real products line by line. A zone goes live only when the builder finds no mistake in its rules.
 - Coupons apply to zone-priced lines only when the coupon's **Usable on zone prices** switch is on.
+- Coupons apply to sets (bundles) like any product, spread over the set's paying pieces, while the coupon's **Sets (bundles)** switch is on (the default). Off leaves every set out, whatever category it sits in; the line's reason is `setLeftOut`.
 - **Stitching and add-ons:** a rule prices the piece; its **Also apply to stitching and add-ons** switch (off by default) carries the rule's % off or ₹ off to each add-on too, never below ₹0. A flat price, per-variant flat price, price per metre or % above cost never touches add-ons, so the switch is greyed for them with the reason. Inside quantity breaks or lower-of / higher-of, the formula that set the piece's price decides. In Plain words each rule says what stitching and add-ons pay, and Try it shows it on every line (`addOns:percentOff:<n>` or `addOns:amountOff:<n>` in the trace).
 
 The order keeps the zone, its version, the rule that priced each line and whether that rule also priced the line's add-ons (`pricing.addOnsZonePriced`). Admin order lines keep their options, their add-ons (stitching at the price charged) and measurements, in the same shape shop orders keep them.

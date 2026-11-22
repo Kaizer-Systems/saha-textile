@@ -745,6 +745,7 @@ const coupon = (over: Partial<CouponDefinition> = {}): CouponDefinition => ({
 	scope: { kind: 'wholeOrder' },
 	excludedProductIds: [],
 	includeSaleItems: false,
+	includeSets: true,
 	minOrderINR: 0,
 	audience: { kind: 'everyone' },
 	channels: { shop: true, admin: true },
@@ -778,6 +779,27 @@ describe('coupon engine (OD4 + stacking)', () => {
 		expect(run.applied[0]?.lines.find((line) => line.lineId === 'l2')?.reason).toBe('onSale');
 		const all = applyCoupons([coupon({ includeSaleItems: true })], lines, contexts('c1'));
 		expect(all.applied[0]?.amountINR).toBe(1_500);
+	});
+
+	it('takes sets like any product, and leaves every set out when its switch is off, whatever the scope', () => {
+		const set: CouponLine = {
+			lineId: 'l3',
+			productId: 'set1',
+			categoryIds: ['cat_silk'],
+			amountINR: 20_000,
+			onSale: false,
+			zonePriced: false,
+			isSet: true,
+		};
+		const withSets = applyCoupons([coupon()], [...lines, set], contexts('c1'));
+		expect(withSets.applied[0]?.amountINR).toBe(3_000);
+		const scoped = coupon({
+			includeSets: false,
+			scope: { kind: 'categories', categoryIds: ['cat_silk'], includeSubcategories: true },
+		});
+		const without = applyCoupons([scoped], [...lines, set], contexts('c1'));
+		expect(without.applied[0]?.amountINR).toBe(1_000);
+		expect(without.applied[0]?.lines.find((line) => line.lineId === 'l3')?.reason).toBe('setLeftOut');
 	});
 
 	it('refuses a coupon when everything in the bag is on sale', () => {

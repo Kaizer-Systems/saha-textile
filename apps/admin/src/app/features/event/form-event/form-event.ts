@@ -170,6 +170,8 @@ export class FormEvent {
 	// Sale lines.
 	readonly saleCategories = signal<SaleCategoryLine[]>([]);
 	readonly saleProducts = signal<SaleProductLine[]>([]);
+	/** The sets switch: off (the default) leaves every set at its own price. */
+	readonly saleIncludeSets = signal(false);
 	/** Product titles seen so far, from searches and Review. */
 	private readonly titles = signal(new Map<string, string>());
 
@@ -294,6 +296,7 @@ export class FormEvent {
 		this.heldProductIds.set(event.launch.heldProductIds);
 		this.saleCategories.set(event.sale.categories);
 		this.saleProducts.set(event.sale.products);
+		this.saleIncludeSets.set(event.sale.includeSets ?? false);
 		// Fetched together from the library so the pictures keep their slide order, as on the
 		// store form; one deleted since is left out.
 		const ids = event.popupAssetIds.join(',');
@@ -599,7 +602,11 @@ export class FormEvent {
 				productIds: this.launchProductIds(),
 				heldProductIds: this.heldProductIds(),
 			},
-			sale: { categories: this.saleCategories(), products: this.saleProducts() },
+			sale: {
+				categories: this.saleCategories(),
+				products: this.saleProducts(),
+				includeSets: this.saleIncludeSets(),
+			},
 		};
 	}
 

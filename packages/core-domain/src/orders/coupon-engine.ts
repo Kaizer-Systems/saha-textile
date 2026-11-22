@@ -32,6 +32,8 @@ export interface CouponLine {
 	onSale: boolean;
 	/** Priced by a business zone (not RETAIL). */
 	zonePriced: boolean;
+	/** A set (bundle) line: its coupon share is spread over its pieces. */
+	isSet?: boolean;
 }
 
 export interface CouponContext {
@@ -79,6 +81,8 @@ export function couponRefusal(coupon: CouponDefinition, ctx: CouponContext): Cou
 /** Why one line does or doesn't take a coupon (excluded, not in scope, on sale, zone line). */
 export function couponLineReason(coupon: CouponDefinition, line: CouponLine): CouponLineReason {
 	if (coupon.excludedProductIds.includes(line.productId)) return 'excluded';
+	// The sets switch wins over the scope: off leaves every set out, whatever category it sits in.
+	if (line.isSet && coupon.includeSets === false) return 'setLeftOut';
 	const scope = coupon.scope;
 	if (scope.kind === 'products' && !scope.productIds.includes(line.productId)) return 'notInScope';
 	if (scope.kind === 'categories' && !line.categoryIds.some((id) => scope.categoryIds.includes(id)))

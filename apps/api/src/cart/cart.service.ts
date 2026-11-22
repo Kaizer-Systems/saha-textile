@@ -134,7 +134,9 @@ export function lineKey(line: CartLine): string {
 		.map((addon) => `${addon.code}=${String(addon.value)}`)
 		.sort()
 		.join('|');
-	return `${line.productId}\0${line.variationId ?? ''}\0${addons}`;
+	// A set's choices and a product's free items make a line of their own (two sets with different picks are two lines).
+	const choices = JSON.stringify({ bundle: line.bundle ?? null, free: line.free ?? [] });
+	return `${line.productId}\0${line.variationId ?? ''}\0${addons}\0${choices}`;
 }
 
 function mergeCartLines(into: CartLine[], from: CartLine[]): CartLine[] {

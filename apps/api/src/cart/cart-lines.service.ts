@@ -8,6 +8,8 @@ import {
 	Cart as CartSchema,
 	CartView,
 	type CartViewLine,
+	type CatalogPageBundleItem,
+	type CatalogProductPage,
 	type UpdateCartLineRequest,
 } from '@saha-textile/contracts';
 import {
@@ -61,6 +63,8 @@ export class CartLinesService {
 			variationId: input.variationId ?? null,
 			quantity: input.quantity,
 			addons: input.addons ?? [],
+			bundle: input.bundle ?? null,
+			free: input.free ?? [],
 		};
 		const priced = await this.price(line);
 		line.addons = savedChoices(priced);
@@ -83,6 +87,8 @@ export class CartLinesService {
 			quantity: input.quantity,
 			variationId: input.variationId === undefined ? line.variationId : input.variationId,
 			addons: input.addons ?? line.addons,
+			bundle: input.bundle ?? line.bundle ?? null,
+			free: input.free ?? line.free ?? [],
 		};
 		const priced = await this.price(next);
 		next.addons = savedChoices(priced);
@@ -161,6 +167,8 @@ export class CartLinesService {
 			title: read?.title ?? '',
 			quantity: line.quantity,
 			addons: line.addons,
+			bundle: line.bundle ?? null,
+			free: line.free ?? [],
 		};
 		if (!page || !priced?.ok) {
 			return {
@@ -178,6 +186,7 @@ export class CartLinesService {
 				lineTotalINR: 0,
 				options: [],
 				measurements: [],
+				children: [],
 				problem: 'unavailable',
 			};
 		}
@@ -199,12 +208,35 @@ export class CartLinesService {
 			lineTotalINR: cartLineTotalINR(row, line.quantity),
 			options,
 			measurements,
+			children: row.children.map((child) => ({
+				role: child.role,
+				key: child.key,
+				parentKey: child.parentKey,
+				level: child.level,
+				productId: child.productId,
+				title: child.title,
+				sku: child.sku,
+				image: imageOf(page, child.productId),
+				variantLabel: child.variantLabel,
+				quantity: child.quantity,
+				priceINR: child.priceINR,
+				mrpINR: child.mrpINR,
+			})),
 			problem:
 				cartQuantityProblem(row, line.quantity) === 'below_shortest_cut'
 					? 'below_shortest_cut'
 					: lineProblem(row, line.quantity),
 		};
 	}
+}
+
+/** A child's picture, from the set's items or a free item on the page. */
+function imageOf(page: CatalogProductPage, productId: string): CatalogPageBundleItem['image'] {
+	const items = [...(page.bundle?.levels.flatMap((level) => level.items) ?? []), ...(page.bundle?.extras ?? [])];
+	const piece = items.find((item) => item.productId === productId);
+	if (piece) return piece.image;
+	const frees = [...items.flatMap((item) => item.freeWith?.items ?? []), ...(page.freeWith?.items ?? [])];
+	return frees.find((item) => item.productId === productId)?.image ?? null;
 }
 
 /** Defaults spelled out, so a line chosen by hand and one left on its default are the same line. */

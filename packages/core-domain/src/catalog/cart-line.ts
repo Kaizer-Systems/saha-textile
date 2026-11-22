@@ -1,9 +1,15 @@
-import type { CartAddonValue, CatalogProductPage } from '@saha-textile/contracts';
+import type { BundleChoice, CartAddonValue, CatalogProductPage, FreePick } from '@saha-textile/contracts';
+
+import { priceBundleLine, productFreeChildren, type ChildRefusal, type PricedChild } from './cart-bundle';
 
 /** What a shopper chose on one cart line. */
 export interface CartLineChoice {
 	variationId: string | null;
 	addons: readonly CartAddonValue[];
+	/** A set's choices (bundle builder brief). */
+	bundle?: BundleChoice | null;
+	/** A product's own free items picked (P8). */
+	free?: readonly FreePick[];
 }
 
 export interface PricedCartOption {
@@ -31,10 +37,14 @@ export interface PricedCartLine {
 	shortestCutTenths: number | null;
 	options: PricedCartOption[];
 	measurements: { code: string; label: string; value: number; unit: 'in' | 'cm' }[];
+	/** A set's pieces, their free items and extras, or a product's own free items. */
+	children: PricedChild[];
 }
 
 export type CartLineRefusal =
-	'bundle_not_on_sale' | 'unknown_variant' | 'unknown_option' | 'measurements_required' | 'measurement_out_of_range';
+	ChildRefusal | 'unknown_variant' | 'unknown_option' | 'measurements_required' | 'measurement_out_of_range';
+
+const NO_CHOICE: BundleChoice = { picks: {}, variants: {}, extras: [], free: {} };
 
 export type CartLinePricing = { ok: true; line: PricedCartLine } | { ok: false; reason: CartLineRefusal };
 
@@ -89,8 +99,32 @@ function baseRow(page: CatalogProductPage, variationId: string | null): BaseRow 
  * so a shopper is charged what they saw, and nothing the browser sends can change it.
  */
 export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice): CartLinePricing {
-	// A bundle is not buyable until the Chunk G pricing engine exists (brief B12).
-	if (page.bundle) return { ok: false, reason: 'bundle_not_on_sale' };
+	// A set (bundle builder brief, approved 2026-11-22): priced by core's engine; its pieces become children.
+	if (page.bundle) {
+		const set = priceBundleLine(page.bundle, choice.bundle ?? NO_CHOICE);
+		if (!set.ok) return { ok: false, reason: set.reason };
+		return {
+			ok: true,
+			line: {
+				sku: page.selected?.sku ?? page.slug,
+				variationId: null,
+				variantLabel: null,
+				galleryIndex: null,
+				basePriceINR: set.totalINR,
+				unitPriceINR: set.totalINR,
+				mrpINR: set.separatelyINR > set.totalINR ? set.separatelyINR : null,
+				available: page.bundle.stock.setsPossible,
+				buyable: page.bundle.buyable,
+				soldBy: 'piece',
+				shortestCutTenths: null,
+				options: [],
+				measurements: [],
+				children: set.children,
+			},
+		};
+	}
+	const free = productFreeChildren(page.freeWith ?? null, choice.free ?? []);
+	if (!free.ok) return { ok: false, reason: free.reason };
 	const base = baseRow(page, choice.variationId);
 	if (!base) return { ok: false, reason: 'unknown_variant' };
 
@@ -139,6 +173,7 @@ export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice):
 			unitPriceINR: options.reduce((sum, option) => sum + option.priceDeltaINR, basePriceINR),
 			options,
 			measurements,
+			children: free.children,
 		},
 	};
 }

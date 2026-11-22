@@ -258,6 +258,7 @@ export class DropletJobs {
 				if (!(await this.deps.cf.accessAppFor(keys.cfKey, zone.accountId, host))) continue;
 				const name = `${projectId}-${env.name}`;
 				const [tokenId] = await this.deps.cf.serviceTokensNamed(keys.cfKey, zone.accountId, `${name} deploy`);
+				await this.deps.cf.emailCodeSignIn(keys.cfKey, zone.accountId);
 				await this.deps.cf.accessApp(keys.cfKey, zone.accountId, {
 					name: `${name} SSH`,
 					host,
@@ -334,6 +335,7 @@ export class DropletJobs {
 				await deps.cf.deleteServiceToken(keys.cfKey, zone.accountId, old);
 			const t = await deps.cf.serviceToken(keys.cfKey, zone.accountId, tokenName);
 			c.token = { clientId: t.clientId, clientSecret: t.clientSecret };
+			const codeAdded = await deps.cf.emailCodeSignIn(keys.cfKey, zone.accountId);
 			await deps.cf.accessApp(keys.cfKey, zone.accountId, {
 				name: `${name} SSH`,
 				host: c.sshHost,
@@ -341,7 +343,7 @@ export class DropletJobs {
 				emails: o.emails,
 			});
 			const people = `${o.emails.length} ${o.emails.length === 1 ? 'person' : 'people'} on the list`;
-			return `${c.sshHost}: the deploy job's new service token and ${people}`;
+			return `${c.sshHost}: the deploy job's new service token and ${people}${codeAdded ? ' · sign-in by email code added' : ''}`;
 		});
 		await this.step(job, 'certificates', async () => {
 			if (!o.place)

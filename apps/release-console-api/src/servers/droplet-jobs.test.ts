@@ -117,6 +117,7 @@ function setup(over: Partial<JobDeps> = {}) {
 			deleteServiceToken: async () => undefined,
 			accessAppFor: async () => null,
 			accessApp: async () => 'app1',
+			emailCodeSignIn: async () => false,
 			deleteAccessApp: async () => undefined,
 			originCertificate: async () => '-----BEGIN CERTIFICATE-----',
 			uploadOriginPulls: async () => 'aop1',

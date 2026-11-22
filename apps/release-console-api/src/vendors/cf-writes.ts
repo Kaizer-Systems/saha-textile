@@ -327,7 +327,26 @@ export const cfWrites = {
 		if (app) await call('PUT', `/accounts/${accountId}/access/apps/${str(app['id'])}`, key, body);
 		else await call('POST', `/accounts/${accountId}/access/apps`, key, body);
 	},
-	/** WARP carries only these networks (include mode), so nothing else on a device changes. */
+	/**
+	 * Sign-in by a one-time code sent to the person's email, for the SSH terminal in the browser and
+	 * WARP. Zero Trust accounts made since June 2026 start with only "sign in with Cloudflare" (account
+	 * members only), so it is added when missing. Answers whether it was added.
+	 */
+	async emailCodeSignIn(key: string, accountId: string): Promise<boolean> {
+		const methods = arr(await call('GET', `/accounts/${accountId}/access/identity_providers`, key)).map(rec);
+		if (methods.some((m) => str(m['type']) === 'onetimepin')) return false;
+		await call('POST', `/accounts/${accountId}/access/identity_providers`, key, {
+			name: 'One-time PIN',
+			type: 'onetimepin',
+			config: {},
+		});
+		return true;
+	},
+	/**
+	 * WARP carries only these networks (include mode), so nothing else on a device changes. A new
+	 * account starts in exclude mode, which sends everything through Cloudflare except private ranges
+	 * (the servers' among them); setting the include list switches the mode, which is checked after.
+	 */
 	async warpInclude(key: string, accountId: string, networks: string[]): Promise<void> {
 		const current = arr(
 			await call('GET', `/accounts/${accountId}/devices/policy/include`, key).catch(() => []),
@@ -336,11 +355,17 @@ export const cfWrites = {
 		const add = networks
 			.filter((n) => !have.has(n))
 			.map((address) => ({ address, description: 'Release Console: servers' }));
-		if (!add.length) return;
-		await call('PUT', `/accounts/${accountId}/devices/policy/include`, key, [
-			...current.map((r) => ({ address: str(r['address']), description: str(r['description']) })),
-			...add,
-		]);
+		if (add.length)
+			await call('PUT', `/accounts/${accountId}/devices/policy/include`, key, [
+				...current.map((r) => ({ address: str(r['address']), description: str(r['description']) })),
+				...add,
+			]);
+		const policy = rec(await call('GET', `/accounts/${accountId}/devices/policy`, key));
+		if (!arr(policy['include']).length || arr(policy['exclude']).length)
+			throw new VendorError(
+				'WARP is still in exclude mode, so it would send all of a device’s traffic through Cloudflare. Set Split Tunnels to Include in the default device profile on Cloudflare One.',
+				409,
+			);
 	},
 	/** Removes `host`'s A records that point at `ip` only. */
 	async unpointHost(key: string, zoneId: string, host: string, ip: string): Promise<number> {

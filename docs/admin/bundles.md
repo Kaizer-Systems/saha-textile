@@ -16,6 +16,8 @@ source_of_truth:
     - apps/admin/src/app/features/product/bundles
     - apps/admin/src/app/features/order/create-order
     - apps/admin/src/app/features/order/details
+    - packages/contracts/src/free-with.ts
+    - apps/admin/src/app/features/product/form-product
 ---
 
 # Products › Bundles and orders with sets
@@ -32,6 +34,10 @@ A **set** is a product of type `bundle`. It holds no stock and no HSN of its own
 ## Products › Bundles and the builder
 
 The Bundles list shows each set with its levels, set price and sets possible. The builder (`/product/bundle/:id`) has tabs Build, Price rules, Details (categories, tags, description, sale window), Photos (the pieces' photos and an optional styled photo), SEO, FAQ's and Status, with a live shop preview beside it. Checks before Go Live include a warning when a ready-made garment's share of the set price crosses ₹2,500 on the other side of its own price.
+
+## Free with this product
+
+Any product (not only a set) can carry free items: **Products › Edit › Setup › Free with this product** picks them with the same search multi-select as Cross Sell, hidden products included (`Product.freeWith`, contracts `free-with.ts`). A table under the picker sets each item's **Quantity** (1–20) and **Size or colour**: one fixed size, or "Shopper chooses" when the product has sizes. One item is "Always gets it" or "May take it"; two or more open a box for all of them or a choice (exactly, up to, or between, and whether choosing is required). The shop shows them as ticked rows or picture tiles, the cart lists them at ₹0 under their product with the pinned size, and Add to cart waits for a required choice.
 
 ## Shares
 

@@ -685,6 +685,30 @@ describe('FormProduct.submit', () => {
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/product');
 	});
 
+	it('keeps each free item’s quantity and pinned size, and lists the sizes to pick (P8.1)', async () => {
+		const freeWith = {
+			items: [{ productId: 'f1', variantId: 'v1', quantity: 2 }],
+			take: 'all',
+			count: null,
+			from: null,
+			required: true,
+		};
+		const { page, service } = editing({ freeWith });
+		await vi.waitFor(() => expect(page.freeItemInfo().get('f1')?.variants).toEqual([{ id: 'v1', label: 'Red' }]));
+		expect(page.freeSetting('f1')).toEqual({ quantity: 2, variantId: 'v1' });
+		expect(page.freeSetting('other')).toEqual({ quantity: 1, variantId: null });
+		page.setFreeQuantity('f1', '30');
+		page.setFreeVariant('f1', '');
+		expect(page.isDirty()).toBe(true);
+		page.submit();
+		expect(service.saveCatalogProduct).toHaveBeenCalledWith(
+			'p1',
+			expect.objectContaining({
+				freeWith: expect.objectContaining({ items: [{ productId: 'f1', variantId: null, quantity: 20 }] }),
+			}),
+		);
+	});
+
 	it('sends disabled, and keeps a published SKU', () => {
 		const { page, service } = editing({ published: true });
 		page.form.patchValue({ status: 'disabled' });

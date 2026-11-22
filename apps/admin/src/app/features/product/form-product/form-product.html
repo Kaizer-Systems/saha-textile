@@ -1501,6 +1501,67 @@
 											</div>
 										</div>
 									</div>
+									} @if (freeCount > 0) {
+									<!-- P8.1: each free item's quantity and its size or colour, as in the bundle builder's item table. -->
+									<div class="table-responsive mt-2">
+										<table class="all-package theme-table no-footer table">
+											<thead>
+												<tr>
+													<th>{{ 'product' | transloco }}</th>
+													<th>{{ 'quantity' | transloco }}</th>
+													<th>{{ 'bundle_item_size' | transloco }}</th>
+												</tr>
+											</thead>
+											<tbody>
+												@for (freeId of form.controls['free_with_products'].value ?? []; track
+												freeId) { @let freeInfo = freeItemInfo().get(freeId); @let freeSet =
+												freeSetting(freeId);
+												<tr>
+													<td>
+														{{ freeInfo?.title ?? freeId }}
+														<small class="help-text d-block">{{ freeInfo?.sku }}</small>
+													</td>
+													<td>
+														<input
+															class="form-control form-control-sm"
+															type="number"
+															min="1"
+															max="20"
+															style="width: 80px"
+															[value]="freeSet.quantity"
+															[attr.aria-label]="'quantity' | transloco"
+															(change)="setFreeQuantity(freeId, $any($event.target).value)"
+														/>
+													</td>
+													<td>
+														@if (freeInfo?.variants?.length) {
+														<select
+															class="form-select form-select-sm"
+															[attr.aria-label]="'bundle_item_size' | transloco"
+															(change)="setFreeVariant(freeId, $any($event.target).value)"
+														>
+															<option
+																value=""
+																[selected]="freeSet.variantId === null"
+															>
+																{{ 'bundle_shopper_chooses' | transloco }}
+															</option>
+															@for (v of freeInfo?.variants ?? []; track v.id) {
+															<option
+																[value]="v.id"
+																[selected]="v.id === freeSet.variantId"
+															>
+																{{ v.label }}
+															</option>
+															}
+														</select>
+														} @else { — }
+													</td>
+												</tr>
+												}
+											</tbody>
+										</table>
+									</div>
 									}
 									<p class="help-text">{{ 'free_with_help' | transloco }}</p>
 								</app-form-fields>

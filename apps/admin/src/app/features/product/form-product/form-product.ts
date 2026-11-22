@@ -619,6 +619,8 @@ export class FormProduct implements DraftMarks {
 			upsell_products: new FormControl([]),
 			cross_sell_products: new FormControl([]),
 			free_with_products: new FormControl<string[]>([]),
+			/** Each free item's quantity and pinned size or colour (P8.1); null lets the shopper choose. */
+			free_with_items: new FormControl<Record<string, FreeItemSetting>>({}),
 			free_take: new FormControl<'all' | 'exactly' | 'upto' | 'between'>('all'),
 			free_count: new FormControl<number | null>(null),
 			free_from: new FormControl<number | null>(null),
@@ -765,6 +767,12 @@ export class FormProduct implements DraftMarks {
 				upsell_products: detail.upsellProductIds,
 				cross_sell_products: detail.crossSellProductIds,
 				free_with_products: detail.freeWith?.items.map((item) => item.productId) ?? [],
+				free_with_items: Object.fromEntries(
+					(detail.freeWith?.items ?? []).map((item) => [
+						item.productId,
+						{ quantity: item.quantity, variantId: item.variantId },
+					]),
+				),
 				free_take: detail.freeWith?.take ?? 'all',
 				free_count: detail.freeWith?.count ?? null,
 				free_from: detail.freeWith?.from ?? null,
@@ -917,6 +925,9 @@ export class FormProduct implements DraftMarks {
 		this.form.valueChanges
 			.pipe(debounceTime(250), takeUntil(this.destroy$))
 			.subscribe(() => this.recomputeChanges());
+		this.form.controls['free_with_products'].valueChanges
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((ids) => void this.loadFreeItems(ids ?? []));
 		this.attributes
 			.getDefinitions()
 			.pipe(takeUntil(this.destroy$))
@@ -1645,6 +1656,7 @@ export class FormProduct implements DraftMarks {
 		this.draft.set(null);
 		this.waitingDraft.set(null);
 		this.markClean();
+		void this.loadFreeItems(this.form.controls['free_with_products'].value ?? []);
 		const draftId = this.route.snapshot?.queryParamMap?.get('draft') ?? null;
 		if (draftId) void this.openEditDraft(draftId);
 		else void this.lookForDrafts();
@@ -1652,6 +1664,43 @@ export class FormProduct implements DraftMarks {
 
 	private markClean(): void {
 		this.savedPrint = fingerprint(this.snapshot());
+	}
+
+	/** The free items' names and sizes, read once per product (P8.1). */
+	readonly freeItemInfo = signal<ReadonlyMap<string, FreeItemInfo>>(new Map());
+
+	private async loadFreeItems(ids: readonly string[]): Promise<void> {
+		const missing = ids.filter((id) => !this.freeItemInfo().has(id));
+		for (const id of missing) {
+			const detail = await firstValueFrom(this.productService.getCatalogProduct(id)).catch(() => null);
+			if (!detail) continue;
+			const variants = detail.variants.filter((variant) => !variant.isBase);
+			this.freeItemInfo.update((map) =>
+				new Map(map).set(id, {
+					title: detail.title,
+					sku: detail.sku,
+					variants: variants.map((variant) => ({ id: variant.id, label: variant.label })),
+				}),
+			);
+		}
+	}
+
+	freeSetting(productId: string): FreeItemSetting {
+		return this.form.controls['free_with_items'].value?.[productId] ?? { quantity: 1, variantId: null };
+	}
+
+	private patchFreeSetting(productId: string, change: Partial<FreeItemSetting>): void {
+		const control = this.form.controls['free_with_items'];
+		control.setValue({ ...(control.value ?? {}), [productId]: { ...this.freeSetting(productId), ...change } });
+		control.markAsDirty();
+	}
+
+	setFreeQuantity(productId: string, value: string): void {
+		this.patchFreeSetting(productId, { quantity: Math.min(20, Math.max(1, Math.round(Number(value)) || 1)) });
+	}
+
+	setFreeVariant(productId: string, value: string): void {
+		this.patchFreeSetting(productId, { variantId: value || null });
 	}
 
 	/** Anything on the form not saved anywhere yet. */
@@ -1913,6 +1962,18 @@ export class FormProduct implements DraftMarks {
 	}
 }
 
+/** One free item's quantity and pinned size or colour on the Setup tab (P8.1). */
+interface FreeItemSetting {
+	quantity: number;
+	variantId: string | null;
+}
+
+interface FreeItemInfo {
+	title: string;
+	sku: string;
+	variants: { id: string; label: string }[];
+}
+
 /** Free with this product (P8) from the Setup tab's fields; none chosen removes them. */
 function freeWithOf(raw: Record<string, unknown>): CatalogProductWrite['freeWith'] {
 	const ids = Array.isArray(raw['free_with_products']) ? raw['free_with_products'].map(String).filter(Boolean) : [];
@@ -1920,8 +1981,13 @@ function freeWithOf(raw: Record<string, unknown>): CatalogProductWrite['freeWith
 	const take = ids.length > 1 ? ((raw['free_take'] as 'all' | 'exactly' | 'upto' | 'between') ?? 'all') : 'all';
 	const count = take === 'all' ? null : Math.min(ids.length, Math.max(1, Number(raw['free_count']) || 1));
 	const from = take === 'between' ? Math.min(count ?? 0, Math.max(0, Number(raw['free_from']) || 0)) : null;
+	const settings = (raw['free_with_items'] as Record<string, FreeItemSetting> | null) ?? {};
 	return {
-		items: ids.map((productId) => ({ productId, variantId: null, quantity: 1 })),
+		items: ids.map((productId) => ({
+			productId,
+			variantId: settings[productId]?.variantId ?? null,
+			quantity: Math.min(20, Math.max(1, settings[productId]?.quantity ?? 1)),
+		})),
 		take,
 		count,
 		from,

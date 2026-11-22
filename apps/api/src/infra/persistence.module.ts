@@ -57,6 +57,7 @@ import {
 	MongoProductQuestionRepository,
 	MongoProductRelationRepository,
 	MongoBundlePriceMethodRepository,
+	MongoDocumentFormatRepository,
 	MongoProductBundleRepository,
 	MongoSiteSettingsRepository,
 	MongoSearchAnalyticsRepository,
@@ -181,6 +182,7 @@ import {
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
 	BUNDLE_PRICE_METHOD_REPOSITORY,
+	DOCUMENT_FORMAT_REPOSITORY,
 	BUNDLE_READER,
 	BUNDLE_STOCK,
 	LISTING_PORT,
@@ -292,6 +294,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: PRODUCT_RELATION_REPOSITORY, useClass: MongoProductRelationRepository },
 		{ provide: PRODUCT_BUNDLE_REPOSITORY, useClass: MongoProductBundleRepository },
 		{ provide: BUNDLE_PRICE_METHOD_REPOSITORY, useClass: MongoBundlePriceMethodRepository },
+		{ provide: DOCUMENT_FORMAT_REPOSITORY, useClass: MongoDocumentFormatRepository },
 		{
 			provide: BUNDLE_READER,
 			useFactory: (
@@ -561,6 +564,7 @@ import { LanguageStore } from '../languages/language-store';
 		PRODUCT_RELATION_REPOSITORY,
 		PRODUCT_BUNDLE_REPOSITORY,
 		BUNDLE_PRICE_METHOD_REPOSITORY,
+		DOCUMENT_FORMAT_REPOSITORY,
 		BUNDLE_READER,
 		BUNDLE_STOCK,
 		LISTING_PORT,

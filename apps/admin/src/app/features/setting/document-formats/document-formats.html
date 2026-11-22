@@ -1,0 +1,155 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'docf_title'"
+>
+	<div
+		button
+		*hasPermission="'setting.edit'"
+	>
+		<button
+			type="button"
+			class="align-items-center btn btn-theme d-flex"
+			id="docf_make_new"
+			(click)="makeNew()"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'docf_make_new' | transloco }}
+		</button>
+	</div>
+	<p class="text-muted">{{ 'docf_intro' | transloco }}</p>
+	@if (note(); as n) { @if (n.kind === 'success') {
+	<div
+		class="alert alert-success d-flex align-items-center gap-2"
+		id="docf_note"
+		role="status"
+	>
+		<i class="ri-checkbox-circle-line"></i>
+		<span>{{ n.key | transloco: n.params }}</span>
+	</div>
+	} } @if (loading()) {
+	<div class="table-loader">
+		<span>{{ 'please_wait' | transloco }}...</span>
+	</div>
+	} @for (group of groups(); track group.group) {
+	<h6 class="text-uppercase text-muted small mt-4 mb-2">{{ 'docf_group_' + group.group | transloco }}</h6>
+	@for (item of group.documents; track item.doc) {
+	<section
+		class="mb-4"
+		[attr.data-doc]="item.doc"
+	>
+		<div class="d-flex justify-content-between align-items-baseline mb-2 flex-wrap gap-2">
+			<h5 class="mb-0">
+				{{ 'docf_doc_' + item.doc | transloco }} @if (item.numberExample) {
+				<small class="text-muted fw-normal">
+					· {{ 'docf_numbers_like' | transloco: { number: item.numberExample } }}
+				</small>
+				}
+			</h5>
+			<small class="text-muted">
+				{{ (item.formats.length === 1 ? 'docf_count_one' : 'docf_count') | transloco: { count:
+				item.formats.length } }}
+			</small>
+		</div>
+		<div class="table-responsive datatable-wrapper border-table">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th>{{ 'docf_col_format' | transloco }}</th>
+						<th>{{ 'docf_col_paper' | transloco }}</th>
+						<th>{{ 'docf_col_about' | transloco }}</th>
+						<th>{{ 'docf_col_changed' | transloco }}</th>
+						<th>{{ 'status' | transloco }}</th>
+						<th>{{ 'actions' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (format of item.formats; track format.id) {
+					<tr [attr.data-format]="format.id">
+						<td class="text-start">
+							<strong>{{ format.name }}</strong>
+						</td>
+						<td class="text-nowrap">{{ 'docf_paper_' + format.paper | transloco }}</td>
+						<td>{{ format.about }}</td>
+						<td class="text-nowrap">
+							{{ format.updatedAt ? (format.updatedAt | date: 'd MMM yyyy') : '—' }}
+						</td>
+						<td>
+							<div class="d-flex align-items-center justify-content-center gap-2">
+								<div class="form-check form-switch ps-0">
+									<label class="switch switch-sm">
+										<input
+											type="checkbox"
+											[id]="'docf_on_' + format.id"
+											[attr.aria-label]="'status' | transloco"
+											[checked]="format.active"
+											[disabled]="!canEdit() || busy() === format.id"
+											(change)="toggle(format, $event)"
+										/>
+										<span class="switch-state"></span>
+									</label>
+								</div>
+								<div [class]="format.active ? 'status-approved' : 'status-pending'">
+									<span>{{ (format.active ? 'docf_active' : 'docf_off') | transloco }}</span>
+								</div>
+							</div>
+						</td>
+						<td>
+							<ul id="actions">
+								<li>
+									<a
+										href="javascript:void(0)"
+										[title]="'docf_preview' | transloco"
+										[attr.aria-label]="'docf_preview' | transloco"
+										(click)="pdf(format, false)"
+									>
+										<i class="ri-eye-line"></i>
+									</a>
+								</li>
+								<li *hasPermission="'setting.edit'">
+									<a
+										[title]="'edit' | transloco"
+										[attr.aria-label]="'edit' | transloco"
+										[routerLink]="['/setting/document-formats', format.id]"
+									>
+										<i class="ri-pencil-line"></i>
+									</a>
+								</li>
+								<li *hasPermission="'setting.edit'">
+									<a
+										href="javascript:void(0)"
+										[title]="'docf_duplicate' | transloco"
+										[attr.aria-label]="'docf_duplicate' | transloco"
+										(click)="duplicate(format)"
+									>
+										<i class="ri-file-copy-line"></i>
+									</a>
+								</li>
+								<li>
+									<a
+										href="javascript:void(0)"
+										[title]="'docf_download' | transloco"
+										[attr.aria-label]="'docf_download' | transloco"
+										(click)="pdf(format, true)"
+									>
+										<i class="ri-download-2-line"></i>
+									</a>
+								</li>
+							</ul>
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		@if (note(); as n) { @if (n.kind === 'warning' && n.doc === item.doc) {
+		<div
+			class="alert alert-warning d-flex align-items-center mt-2 gap-2"
+			role="alert"
+		>
+			<i class="ri-error-warning-line"></i>
+			<span>{{ n.key | transloco: n.params }}</span>
+		</div>
+		} }
+	</section>
+	} }
+</app-page-wrapper>

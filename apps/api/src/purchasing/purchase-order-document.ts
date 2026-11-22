@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
 	type PurchaseOrder,
 	type ShopDetails,
@@ -72,7 +72,9 @@ export class PurchaseOrderDocument {
 	private readonly logger = new Logger(PurchaseOrderDocument.name);
 	private staticAssets: Promise<DocumentAsset[]> | null = null;
 
-	constructor(@Optional() private readonly brand: BrandService | null = null) {}
+	// The token is named: `BrandService | null` compiles to `Object`, which Nest can't resolve, so the logo never
+	// reached a document (found 22 Nov 2026 by the document formats preview).
+	constructor(@Optional() @Inject(BrandService) private readonly brand: BrandService | null = null) {}
 
 	/** The stylesheet and fonts, read once per process (shared by every business document). */
 	loadStatic(): Promise<DocumentAsset[]> {

@@ -609,6 +609,18 @@ export class Details {
 		});
 	}
 
+	/** Print pack list: the packing slip (every piece flat, a tick box each, no prices) opens as a PDF. */
+	async printPackList(): Promise<void> {
+		const order = this.order();
+		if (!order) return;
+		await this.run('print-pack', async () => {
+			const blob = await firstValueFrom(this.gateway.packingSlip(order.id));
+			const url = URL.createObjectURL(blob);
+			window.open(url, '_blank', 'noopener');
+			setTimeout(() => URL.revokeObjectURL(url), 60_000);
+		});
+	}
+
 	async markPacked(): Promise<void> {
 		const order = this.order();
 		if (!order) return;

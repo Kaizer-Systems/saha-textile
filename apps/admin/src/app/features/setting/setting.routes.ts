@@ -60,6 +60,14 @@ export default [
 		loadComponent: () => import('./shop-details/shop-details').then((m) => m.ShopDetailsSettings),
 	},
 	{
+		path: 'document-formats',
+		loadComponent: () => import('./document-formats/document-formats').then((m) => m.DocumentFormatsSettings),
+	},
+	{
+		path: 'document-formats/:id',
+		loadComponent: () => import('./document-formats/format-builder/format-builder').then((m) => m.FormatBuilder),
+	},
+	{
 		path: 'notifications',
 		loadComponent: () =>
 			import('./notification-settings/notification-settings').then((m) => m.NotificationSettings),

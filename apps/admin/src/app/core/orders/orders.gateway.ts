@@ -139,6 +139,11 @@ export class OrdersGateway {
 		return this.http.post<Order>(this.api(`/${this.id(id)}/comments`), body, PAGE_EXPLAINS_ERRORS);
 	}
 
+	/** Print pack list (E08 / F-PARCEL): the packing slip on its active format, as a PDF. */
+	packingSlip(id: string): Observable<Blob> {
+		return this.http.get(this.api(`/${this.id(id)}/packing-slip`), { responseType: 'blob' });
+	}
+
 	/** One Pack list tick (bundle builder brief E08). */
 	packTick(id: string, body: PackTickWrite): Observable<Order> {
 		return this.http.put<Order>(this.api(`/${this.id(id)}/pack-ticks`), body, PAGE_EXPLAINS_ERRORS);

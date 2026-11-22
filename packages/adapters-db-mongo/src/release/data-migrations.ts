@@ -1,6 +1,7 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
 import { convertBundlesToLevels, seedBundlePriceMethods, showProductsOnShop } from '../migrations/bundles-v2';
+import { seedDocumentFormatsStep } from '../migrations/document-formats';
 import { writeLaunchCurrencySymbols } from '../migrations/fx-launch-symbols';
 import { seedLegalPages } from '../migrations/legal-pages';
 import { setOwnerOrderNumberFormat } from '../migrations/order-number-format';
@@ -137,5 +138,12 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Show on shop (bundle builder brief D5): products saved before the switch existed get it on, so nothing leaves the shop',
 		half: 'expand',
 		up: () => showProductsOnShop(),
+	},
+	{
+		id: '0016-document-formats',
+		description:
+			'Document formats (bundle builder brief F): our "Saha Textile standard" format for all 17 documents, switched on, and the tax invoice\'s Compact and Counter receipt, switched off',
+		half: 'expand',
+		up: () => seedDocumentFormatsStep(),
 	},
 ];

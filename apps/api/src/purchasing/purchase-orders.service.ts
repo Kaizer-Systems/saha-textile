@@ -41,6 +41,8 @@ import {
 	SUPPLIER_ITEM_CODE_REPOSITORY,
 	SUPPLIER_REPOSITORY,
 } from '../infra/tokens';
+import { DocumentFormatsService } from '../documents/document-formats.service';
+import { purchaseOrderData } from '../documents/purchase-order';
 import { InboxService } from '../mailboxes/inbox.service';
 import { blockedReason } from './purchase-items.service';
 import { PurchaseOrderDocument } from './purchase-order-document';
@@ -62,9 +64,11 @@ export class PurchaseOrdersService {
 		@Inject(NUMBER_ALLOCATOR) private readonly numbers: NumberAllocatorPort,
 		private readonly document: PurchaseOrderDocument,
 		private readonly support: PurchasingSupport,
-		@Optional() private readonly inbox: InboxService | null = null,
+		// Named token: `InboxService | null` compiles to `Object`, which Nest can't resolve (found 22 Nov 2026).
+		@Optional() @Inject(InboxService) private readonly inbox: InboxService | null = null,
 		@Optional() @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRendererPort | null = null,
 		@Optional() @Inject(STORE_LOCATION_REPOSITORY) private readonly stores: StoreLocationRepository | null = null,
+		@Optional() @Inject(DocumentFormatsService) private readonly formats: DocumentFormatsService | null = null,
 	) {}
 
 	private withLate(order: PurchaseOrder, today: string): PurchaseOrder {
@@ -361,13 +365,34 @@ export class PurchaseOrdersService {
 		return { ...next, version };
 	}
 
-	/** po05: the order as a PDF, from the vendor invoice template. */
+	/**
+	 * po05: the order as a PDF, on the purchase order's active document format (bundle builder brief F-BUY); the
+	 * vendor invoice template stays only for a server without document formats.
+	 */
 	async pdf(id: string): Promise<{ fileName: string; data: Uint8Array }> {
 		if (!this.renderer) throw refuse('pdf_unavailable', 'PDFs cannot be made on this server yet.');
 		const order = await this.load(id);
 		const supplier = await this.suppliers.findById(order.supplierId);
+		const fileName = `${order.number.replace(/\//g, '-')}.pdf`;
+		if (this.formats) {
+			// A sent order prints the shop details it was sent with (R3-1); a draft prints today's.
+			const shop = order.shopSnapshot;
+			const seller = shop
+				? {
+						name: shop.legalName,
+						lines: [
+							...(shop.tradeName ? [shop.tradeName] : []),
+							...shop.addressLines,
+							...(shop.gstin ? [`GSTIN ${shop.gstin}`] : []),
+							[shop.phone, shop.email].filter(Boolean).join(' · '),
+						].filter(Boolean),
+					}
+				: await this.formats.seller({ name: (await this.document.brandFacts()).shopName, lines: [] });
+			const data = await this.formats.renderActive('purchaseOrder', purchaseOrderData(order, supplier, seller));
+			return { fileName, data };
+		}
 		const request = await this.document.render(order, supplier, await this.support.shopDetails());
-		return { fileName: `${order.number.replace(/\//g, '-')}.pdf`, data: await this.renderer.renderPdf(request) };
+		return { fileName, data: await this.renderer.renderPdf(request) };
 	}
 
 	/**

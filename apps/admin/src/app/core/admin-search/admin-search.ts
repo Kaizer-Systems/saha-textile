@@ -94,6 +94,7 @@ const KEYWORDS: Record<string, string[]> = {
 	setting_communications: ['message', 'channel', 'sms', 'whatsapp', 'email', 'otp'],
 	setting_purchases: ['books', 'closed', 'margin', 'approval', 'steps', 'terms', 'gst'],
 	setting_shop_details: ['gstin', 'legal', 'address', 'pan', 'letterhead', 'company', 'documents'],
+	setting_document_formats: ['invoice', 'print', 'pdf', 'layout', 'packing slip', 'challan', 'voucher', 'template'],
 	setting_notifications: ['sms', 'whatsapp', 'email', 'otp', 'msg91', 'template'],
 };
 

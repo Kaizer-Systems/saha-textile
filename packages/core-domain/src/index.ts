@@ -18,3 +18,4 @@ export * from './shipping/index';
 export * from './fx/index';
 export * from './orders/index';
 export * from './bundle/index';
+export * from './documents/index';

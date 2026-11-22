@@ -49,6 +49,8 @@ const NOT_TEXT: Readonly<Record<string, string>> = {
 		'Page Builder sections: their words per language are checked by the builder’s own Go Live checks (layoutProblems)',
 	'SavedBlock.section': 'a Page Builder section kept to reuse; checked when placed in a layout',
 	'SiteSetting.value': 'typed settings without per-language text',
+	'DocumentFormat.blocks':
+		'a document layout: block types and field codes; a text block holds the shop’s own words for its printed documents',
 	'RatingAggregate.buckets': 'counts',
 	'Customer.addresses': 'a customer’s own words, never translated',
 	'Customer.contacts': 'phone numbers and emails',

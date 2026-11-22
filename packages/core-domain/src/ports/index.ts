@@ -57,3 +57,4 @@ export * from './document-renderer.port';
 export * from './page-layout.repository';
 export * from './orders-build.port';
 export * from './queue-stats.port';
+export * from './document-format.repository';

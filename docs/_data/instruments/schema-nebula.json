@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 115,
-		"existingModelCount": 96,
+		"nodeCount": 116,
+		"existingModelCount": 97,
 		"targetOnlyCount": 19,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map, as is mailboxOutbox, the Inbox's Undo Send queue."
@@ -1532,6 +1532,19 @@
 			"purpose": "One document: the shop's legal name, GSTIN, address, phone and email printed on business documents; its GSTIN's State is the home State for purchase tax.",
 			"source": "decisions 2026-11-15 purchases and stock",
 			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
+			"references": []
+		},
+		{
+			"id": "documentFormats",
+			"label": "documentFormats",
+			"cluster": "inventory-procurement",
+			"currentState": "existing",
+			"targetAction": "add",
+			"owningChunks": ["H"],
+			"blockingDecisions": [],
+			"purpose": "Settings › Document formats: how each printable document looks, as blocks in order naming only that document's fields. Exactly one active format per document (partial unique index); ours are seeded for all 17 documents and the format builder makes more.",
+			"source": "decisions § bundle builder brief approved (2026-11-22), section F",
+			"currentModel": "packages/adapters-db-mongo/src/models/document-format.model.ts",
 			"references": []
 		},
 		{

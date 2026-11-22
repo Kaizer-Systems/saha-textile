@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, NotFoundException, Optional, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, NotFoundException, Optional, Param, Post, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { LabelSheetRequest } from '@saha-textile/contracts';
 import type { FastifyReply } from 'fastify';
@@ -25,7 +25,8 @@ const sendPdf = (reply: FastifyReply, file: { fileName: string; data: Uint8Array
 export class PurchasingPrintsController {
 	constructor(
 		private readonly prints: PurchasingPrints,
-		@Optional() private readonly stockPrints: StockPrints | null = null,
+		// `X | null` compiles to Object, so the class is named for Nest.
+		@Optional() @Inject(StockPrints) private readonly stockPrints: StockPrints | null = null,
 	) {}
 
 	private get stockDocs(): StockPrints {

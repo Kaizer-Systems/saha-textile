@@ -448,6 +448,20 @@ export class FormProduct implements DraftMarks {
 				})),
 		),
 	);
+	/**
+	 * Free with this product (P8): any product but a set, sizes included (the shopper or the table picks one), plus
+	 * the items already chosen, so their chips show before any search finds them.
+	 */
+	readonly freeWithData = computed<Select2Data>(() => {
+		const found = (this.productsQuery.data()?.items ?? [])
+			.filter((row) => row.id !== this.id && row.type !== 'bundle')
+			.map((row) => ({ label: row.title, value: row.id }));
+		const seen = new Set(found.map((option) => option.value));
+		const chosen = [...this.freeItemInfo()]
+			.filter(([id]) => !seen.has(id))
+			.map(([id, info]) => ({ label: info.title, value: id }));
+		return [...chosen, ...found];
+	});
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
 	category$: Observable<ICategoryModel | undefined> = toObservable(this.categoriesQuery.data);
 	readonly tagsQuery = injectTagsQuery(() => ({ type: 'product', status: 1 }));

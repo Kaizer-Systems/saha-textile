@@ -1409,7 +1409,7 @@
 									@if(isBrowser) {
 									<select2
 										class="custom-select"
-										[data]="collectionProduct?.length ? collectionProduct : []"
+										[data]="freeWithData()"
 										[placeholder]="'select_product' | transloco"
 										formControlName="free_with_products"
 										noResultMessage="{{ 'no_data_found' | transloco }}"

@@ -25,7 +25,8 @@ test.describe.serial('Notify Me', { tag: '@desktop-only' }, () => {
 	test.afterAll(tidy);
 
 	test('a guest click becomes one saved row after sign-in', async ({ page }) => {
-		await page.goto(PRODUCT);
+		// Clicked once the page has loaded, so the button's handler is in place.
+		await page.goto(PRODUCT, { waitUntil: 'networkidle' });
 		await page.locator('[id^="notifybtn-"]').click();
 		await expect(page).toHaveURL(/auth\/login/);
 

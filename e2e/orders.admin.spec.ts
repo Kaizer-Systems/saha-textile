@@ -114,6 +114,12 @@ test.describe('Orders: create, take payment and move along (oc01, ck01–ck05, o
 
 		// Placed and paid; the history names the staff member and lists what the customer was told.
 		await expect(page.locator('body')).toContainText('Receipt RC/');
+		// The receipt voucher prints on its document format (owner, 23 Nov 2026). PDFs are drawn by the worker, which
+		// this stack does not run, so the test proves the button asks for this payment's receipt; the document's
+		// content is covered by apps/api/test/record-prints.test.ts.
+		const receipt = page.waitForRequest((request) => /\/payments\/pay_[^/]+\/receipt$/.test(request.url()));
+		await page.getByTitle('Print receipt').first().click();
+		await receipt;
 		await expect(page.locator('body')).toContainText(/Created by:\s*e2e-admin/);
 		await expect(newestHistory(page)).toContainText('Email');
 		await expect(newestHistory(page)).toContainText('SMS');
@@ -128,6 +134,10 @@ test.describe('Orders: create, take payment and move along (oc01, ck01–ck05, o
 			await box.check();
 			await page.waitForLoadState('networkidle');
 		}
+		// Print pack list asks for the packing slip (drawn by the worker, as above).
+		const slip = page.waitForRequest((request) => /\/packing-slip$/.test(request.url()));
+		await page.locator('#ord_print_pack').click();
+		await slip;
 		await moveTo(page, 'Packed');
 		// st03: Shipped takes the courier and tracking number, and pieces leave stock at their recorded
 		// cost. A piece bought through purchases ships and tells the customer by email and SMS; demo stock

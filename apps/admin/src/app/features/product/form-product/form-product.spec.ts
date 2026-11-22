@@ -696,6 +696,8 @@ describe('FormProduct.submit', () => {
 		const { page, service } = editing({ freeWith });
 		await vi.waitFor(() => expect(page.freeItemInfo().get('f1')?.variants).toEqual([{ id: 'v1', label: 'Red' }]));
 		expect(page.freeSetting('f1')).toEqual({ quantity: 2, variantId: 'v1' });
+		// The chosen item is in the picker's list, so its chip shows before any search.
+		expect(page.freeWithData()).toContainEqual({ label: 'Silk', value: 'f1' });
 		expect(page.freeSetting('other')).toEqual({ quantity: 1, variantId: null });
 		page.setFreeQuantity('f1', '30');
 		page.setFreeVariant('f1', '');

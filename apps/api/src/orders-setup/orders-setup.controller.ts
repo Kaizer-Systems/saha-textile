@@ -6,6 +6,7 @@ import {
 	Get,
 	Header,
 	HttpCode,
+	Inject,
 	NotFoundException,
 	Optional,
 	Param,
@@ -283,7 +284,8 @@ export class AdminOrderSettingsController {
 export class AdminBusinessesController {
 	constructor(
 		private readonly businesses: BusinessesService,
-		@Optional() private readonly documents: BusinessDocuments | null = null,
+		// `X | null` compiles to Object, so the class is named for Nest.
+		@Optional() @Inject(BusinessDocuments) private readonly documents: BusinessDocuments | null = null,
 	) {}
 
 	@Get()

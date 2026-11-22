@@ -10,7 +10,8 @@ import { API_URL, expect, test } from './support';
  */
 
 const SAREE = 'katan-banarasi-saree';
-const SHOPPER = 'meera.sharma.003@example.com';
+// Its own shopper: cart.spec.ts empties Meera's bag while these run in parallel.
+const SHOPPER = 'isha.sharma.009@example.com';
 
 async function signIn(page: Page, email = SHOPPER): Promise<void> {
 	await page.goto('/en/auth/login');

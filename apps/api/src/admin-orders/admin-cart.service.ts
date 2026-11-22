@@ -243,7 +243,37 @@ export class AdminCartService {
 			page.items.map((product) => ({ productId: product.id, variantId: null, quantity: 1 })),
 			now,
 		);
+		// Sets keep their own price and worked-out stock (E09): read from their page.
+		const sets = new Map(
+			await Promise.all(
+				page.items
+					.filter((product) => product.type === 'bundle')
+					.map(
+						async (product) =>
+							[product.id, (await this.catalog.cartRead(product.id))?.page?.bundle ?? null] as const,
+					),
+			),
+		);
 		const items = page.items.map((product, index) => {
+			const set = sets.get(product.id) ?? null;
+			if (set) {
+				const card = cards.get(product.id);
+				return {
+					productId: product.id,
+					title: card?.title ?? product.title.en,
+					imageUrl: card?.image?.roles['card']?.[0]?.url ?? null,
+					categoryIds: product.categoryIds,
+					hasVariants: false,
+					soldBy: 'piece' as const,
+					shortestCutTenths: null,
+					stock: set.stock.setsPossible,
+					retailINR: set.priceINR,
+					price: this.convert(set.priceINR, rate),
+					zonePrice: null,
+					isBundle: true,
+					setsPossible: set.stock.setsPossible,
+				};
+			}
 			const fact = facts[index];
 			const card = cards.get(product.id);
 			const retailINR = fact ? retailUnitINR(fact.facts) : 0;
@@ -263,6 +293,8 @@ export class AdminCartService {
 				retailINR,
 				price: priceINR === null ? null : this.convert(priceINR, rate),
 				zonePrice,
+				isBundle: false,
+				setsPossible: null,
 			};
 		});
 		return { items, total: page.total };

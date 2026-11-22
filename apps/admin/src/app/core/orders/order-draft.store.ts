@@ -2,7 +2,13 @@ import { computed } from '@angular/core';
 
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 
-import type { AdminCartWrite, BusinessBuyerOption, CustomerBuyerOption } from '@saha-textile/contracts';
+import type {
+	AdminCartWrite,
+	BundleChoice,
+	BusinessBuyerOption,
+	CustomerBuyerOption,
+	FreePick,
+} from '@saha-textile/contracts';
 
 /** Who the order is for (oc01, oc03): a shop customer or a business, as the picker found them. */
 export type DraftBuyer =
@@ -15,6 +21,10 @@ export interface DraftLine {
 	variationId: string | null;
 	quantity: number;
 	soldBy: 'piece' | 'metre';
+	/** A set's choices from the Configure pop-up (bundle builder brief E09). */
+	bundle?: BundleChoice;
+	/** A product's own free items picked. */
+	free?: FreePick[];
 }
 
 /** oo02 "Add pieces": the open order the cart is being added to, instead of a new order. */
@@ -35,7 +45,11 @@ interface OrderDraftState {
 const STORAGE_KEY = 'st_admin_order_draft';
 const EMPTY: OrderDraftState = { buyerKind: 'person', buyer: null, currency: 'INR', lines: [], addingTo: null };
 
-const keyOf = (productId: string, variationId: string | null): string => `${productId}:${variationId ?? '-'}`;
+const keyOf = (productId: string, variationId: string | null, choice?: Pick<DraftLine, 'bundle' | 'free'>): string =>
+	// Two sets with different picks are two lines, as in the shop cart.
+	choice?.bundle || choice?.free?.length
+		? `${productId}:${variationId ?? '-'}:${JSON.stringify({ b: choice.bundle ?? null, f: choice.free ?? [] })}`
+		: `${productId}:${variationId ?? '-'}`;
 
 /** The draft lives for this browser tab, so going to checkout and back (or a reload) keeps it. */
 function load(): OrderDraftState {
@@ -90,6 +104,8 @@ export const OrderDraftStore = signalStore(
 					variationId: line.variationId,
 					quantity: line.quantity,
 					addons: [],
+					...(line.bundle ? { bundle: line.bundle } : {}),
+					...(line.free?.length ? { free: line.free } : {}),
 				})),
 			};
 		}),
@@ -119,7 +135,7 @@ export const OrderDraftStore = signalStore(
 			},
 			/** Adds pieces (or tenths of a metre); the same piece again adds to its line. */
 			add(line: Omit<DraftLine, 'key'>): void {
-				const key = keyOf(line.productId, line.variationId);
+				const key = keyOf(line.productId, line.variationId, line);
 				const existing = store.lines().find((row) => row.key === key);
 				commit({
 					lines: existing

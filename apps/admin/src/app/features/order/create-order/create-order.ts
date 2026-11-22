@@ -28,9 +28,10 @@ import { ProductBoxSkeleton } from '@shared/ui/skeleton/product-box-skeleton/pro
 
 import { OrderBuyerCard } from './order-buyer-card';
 import { OrderProductCard } from './order-product-card';
+import { OrderSetPopup } from './order-set-popup';
 import { OrderVariantPopup } from './order-variant-popup';
 
-import type { AdminCartLine, AdminProductCard, AdminVariantChoice } from '@saha-textile/contracts';
+import type { AdminCartLine, AdminProductCard, AdminVariantChoice, BundleChoice } from '@saha-textile/contracts';
 
 const PAGE_SIZE = 24;
 
@@ -233,6 +234,20 @@ export class CreateOrder {
 
 	/** Add from a card: a product with variants opens the variant picker first. */
 	async add(card: AdminProductCard): Promise<void> {
+		// A set opens Configure: its levels, sizes and extras, as a shopper would choose them (E09).
+		if (card.isBundle) {
+			const popup = this.modals.open(OrderSetPopup, {
+				centered: true,
+				size: 'lg',
+				windowClass: 'theme-modal',
+				ariaLabelledBy: 'order_set_popup_title',
+			});
+			void (popup.componentInstance as OrderSetPopup).start(card.productId, card.title);
+			const bundle = (await popup.result.catch(() => null)) as BundleChoice | null;
+			if (bundle)
+				this.draft.add({ productId: card.productId, variationId: null, quantity: 1, soldBy: 'piece', bundle });
+			return;
+		}
 		const step = card.soldBy === 'metre' ? (card.shortestCutTenths ?? 10) : 1;
 		if (!card.hasVariants) {
 			this.draft.add({ productId: card.productId, variationId: null, quantity: step, soldBy: card.soldBy });

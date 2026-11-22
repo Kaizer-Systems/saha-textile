@@ -239,6 +239,9 @@ export const AdminProductCard = z.object({
 	price: z.number().nonnegative().nullable(),
 	/** `noPrice` greys the card: "Price not set for this zone" in red, no click, no quantity. */
 	zonePrice: ZoneLinePrice.nullable(),
+	/** A set (bundle builder brief E09): Configure instead of Add, and how many full sets can be made now. */
+	isBundle: z.boolean().default(false),
+	setsPossible: z.number().int().nonnegative().nullable().default(null),
 });
 export type AdminProductCard = z.infer<typeof AdminProductCard>;
 

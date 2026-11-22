@@ -58,6 +58,9 @@ export function stockWords(
 							>
 								@if (soldOut()) {
 									{{ 'out_of_stock' | transloco }}
+								} @else if (card().isBundle) {
+									<i class="ri-equalizer-line"></i>
+									{{ 'ord_set_configure' | transloco }}
 								} @else {
 									<i class="ri-add-line"></i>
 									{{ 'add' | transloco }}
@@ -87,8 +90,11 @@ export class OrderProductCard {
 		return this.card().soldBy === 'metre' ? this.transloco.translate('ord_per_metre', { price: text }) : text;
 	});
 	readonly stock = computed(() =>
-		this.card().hasVariants
-			? this.transloco.translate('ord_card_choose_variant')
-			: stockWords(this.card(), (key, params) => this.transloco.translate(key, params)),
+		// A set's stock is worked out from its pieces: "4 sets possible" (bundle builder brief E09).
+		this.card().isBundle
+			? this.transloco.translate('ord_card_sets_possible', { count: this.card().setsPossible ?? 0 })
+			: this.card().hasVariants
+				? this.transloco.translate('ord_card_choose_variant')
+				: stockWords(this.card(), (key, params) => this.transloco.translate(key, params)),
 	);
 }

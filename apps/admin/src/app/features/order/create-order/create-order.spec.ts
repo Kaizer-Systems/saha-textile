@@ -195,7 +195,9 @@ describe('Add pieces to an open order (oo02)', () => {
 			searchCustomers: vi.fn(() => of([customer])),
 			addOpenLines,
 		});
-		await vi.waitFor(() => expect(draft.addingTo()).toMatchObject({ orderId: 'ord_9', buyerName: 'Nandita Ghosh' }));
+		await vi.waitFor(() =>
+			expect(draft.addingTo()).toMatchObject({ orderId: 'ord_9', buyerName: 'Nandita Ghosh' }),
+		);
 		expect(draft.buyer()).toMatchObject({ kind: 'person', customer: { id: 'cus_1' } });
 		draft.add({ productId: 'p1', variationId: null, quantity: 1, soldBy: 'piece' });
 		cart.set({ lines: [{ problem: null }] } as never);

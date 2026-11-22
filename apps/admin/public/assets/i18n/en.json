@@ -6762,5 +6762,16 @@
 	"bundle_source_help": "The category's newest live products join this level by themselves, such as new petticoats from a purchase order. Sets are never added.",
 	"bundle_item_size": "Size or colour",
 	"bundle_shopper_chooses": "Shopper chooses",
-	"bundle_check_garment_band": "{{item}}: its share of the set price is ₹{{total}} a piece against ₹{{separately}} on its own, across the ₹2,500 line where ready-made garments change GST rate. Billed at its share, its tax rate may differ from the piece sold alone (CA question B2.9)."
+	"bundle_check_garment_band": "{{item}}: its share of the set price is ₹{{total}} a piece against ₹{{separately}} on its own, across the ₹2,500 line where ready-made garments change GST rate. Billed at its share, its tax rate may differ from the piece sold alone (CA question B2.9).",
+	"ord_set_configure": "Configure",
+	"ord_card_sets_possible": "{{count}} sets possible",
+	"ord_set_configure_title": "{{name}}: pick the pieces",
+	"ord_set_pick_of": "pick {{take}} of {{count}}",
+	"ord_set_in_stock": "in stock",
+	"ord_set_always": "Always in the set",
+	"ord_set_size_for": "Size for {{name}}",
+	"ord_set_separately": "Bought separately",
+	"ord_set_you_save": "you save {{amount}}",
+	"ord_set_price": "Set price {{amount}}",
+	"ord_set_add": "Add to order"
 }

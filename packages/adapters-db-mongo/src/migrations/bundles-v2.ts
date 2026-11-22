@@ -173,9 +173,12 @@ export async function convertBundlesToLevels(): Promise<string> {
 
 /** Migration 0015: products written before Show on shop existed are shown (D5: "the migration sets it on"). */
 export async function showProductsOnShop(): Promise<string> {
+	// Filling a new switch is not an edit: `timestamps: false` keeps each product's Last changed (and the admin list's
+	// newest-first order) as it was.
 	const result = await ProductModel.updateMany(
 		{ showOnShop: { $exists: false } },
 		{ $set: { showOnShop: true } },
+		{ timestamps: false },
 	).exec();
 	return `set Show on shop on ${result.modifiedCount} product${result.modifiedCount === 1 ? '' : 's'}`;
 }

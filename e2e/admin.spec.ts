@@ -42,7 +42,8 @@ test.describe('Admin shell', () => {
 
 test.describe('Screens backed by the API', () => {
 	const screens: Array<[string, string]> = [
-		['/product', 'Handwoven Katan Banarasi Saree'],
+		// The demo catalogue's products share one creation time, so which saree comes first is not fixed: any will do.
+		['/product', 'Saree'],
 		['/admin-user', 'e2e-admin@example.test'],
 		['/role', 'Administrator'],
 		['/customer', 'example.com'],

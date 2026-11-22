@@ -13,11 +13,11 @@ export function packLines<T extends PackLine>(lines: readonly T[]): T[] {
 }
 
 /**
- * Whether Packed must wait: the order holds a set or free items and a piece is still unticked. Orders of plain
- * products keep today's packing, with the ticks there to use.
+ * Whether Packed must wait: a piece of the parcel is still unticked. Every order is packed against its Pack list
+ * (owner, 23 Nov 2026: "a good order process should have pack lists for any kind of order whether big or small").
+ * A line saved before lines had ids can't be ticked, so it never holds the order.
  */
 export function packListIncomplete(order: { lines: readonly PackLine[]; packTicks?: readonly string[] }): boolean {
-	if (!order.lines.some((line) => line.role !== undefined && line.role !== 'product')) return false;
 	const ticked = new Set(order.packTicks ?? []);
-	return packLines(order.lines).some((line) => !ticked.has(line.lineId ?? ''));
+	return packLines(order.lines).some((line) => Boolean(line.lineId) && !ticked.has(line.lineId ?? ''));
 }

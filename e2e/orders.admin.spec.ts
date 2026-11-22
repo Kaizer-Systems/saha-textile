@@ -123,6 +123,11 @@ test.describe('Orders: create, take payment and move along (oc01, ck01–ck05, o
 		// A quiet step tells nothing (st01).
 		await moveTo(page, 'Processing');
 		await expect(newestHistory(page)).not.toContainText('SMS');
+		// Every order is packed against its Pack list (owner, 23 Nov 2026): each piece is ticked first.
+		for (const box of await page.getByRole('checkbox', { name: /^Packed: / }).all()) {
+			await box.check();
+			await page.waitForLoadState('networkidle');
+		}
 		await moveTo(page, 'Packed');
 		// st03: Shipped takes the courier and tracking number, and pieces leave stock at their recorded
 		// cost. A piece bought through purchases ships and tells the customer by email and SMS; demo stock

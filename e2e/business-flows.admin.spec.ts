@@ -125,7 +125,23 @@ async function detail(api: Api, id: string): Promise<OrderDetail> {
 	return api.ok<OrderDetail>('GET', `/admin/orders/${id}`);
 }
 
+/** Every order is packed against its Pack list (owner, 23 Nov 2026): tick each piece before Packed. */
+async function tickPackList(api: Api, id: string): Promise<void> {
+	let current = await detail(api, id);
+	const lines = (current.order as unknown as { lines: { lineId?: string; role?: string }[] }).lines;
+	const ticked = new Set((current.order as unknown as { packTicks?: string[] }).packTicks ?? []);
+	for (const line of lines) {
+		if (!line.lineId || line.role === 'bundle' || ticked.has(line.lineId)) continue;
+		current = await api.ok<OrderDetail>('PUT', `/admin/orders/${id}/pack-ticks`, {
+			lineId: line.lineId,
+			ticked: true,
+			revision: current.order.revision,
+		});
+	}
+}
+
 async function move(api: Api, id: string, to: string, extra: Record<string, unknown> = {}): Promise<OrderDetail> {
+	if (to === 'packed') await tickPackList(api, id);
 	const current = await detail(api, id);
 	return api.ok<OrderDetail>('POST', `/admin/orders/${id}/status`, {
 		to,

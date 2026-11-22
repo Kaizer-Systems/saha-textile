@@ -87,7 +87,11 @@ async function open(
 	browser: Browser,
 	mode: 'light' | 'dark',
 	path: string,
-	options: { signedIn?: boolean; phone?: boolean } = {},
+	options: {
+		signedIn?: boolean;
+		phone?: boolean;
+		answers?: Map<string, { status: number; body: Buffer; headers: Record<string, string> }>;
+	} = {},
 ): Promise<Page> {
 	const context = await browser.newContext({
 		viewport: options.phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
@@ -100,6 +104,35 @@ async function open(
 		if (!localStorage.getItem('st_admin_theme')) localStorage.setItem('st_admin_theme', value);
 	}, mode);
 	const page = await context.newPage();
+	// Same data on both loads: the light page records the API's GET answers, the dark page is served them, so orders
+	// other tests place meanwhile can't change the layout being compared.
+	const answers = options.answers;
+	if (answers) {
+		// Matched by address without its query: the dashboard asks with the current time in its period.
+		const key = (url: string) => url.split('?')[0] ?? url;
+		await page.route(
+			(url) => url.href.startsWith(API_URL),
+			async (route) => {
+				const request = route.request();
+				const known = request.method() === 'GET' ? answers.get(key(request.url())) : undefined;
+				if (!known) return route.continue();
+				return route.fulfill({ status: known.status, body: known.body, headers: known.headers });
+			},
+		);
+		page.on('response', async (response) => {
+			const request = response.request();
+			if (request.method() !== 'GET' || !response.url().startsWith(API_URL) || answers.has(key(response.url())))
+				return;
+			try {
+				const headers = { ...response.headers() };
+				delete headers['content-length'];
+				delete headers['content-encoding'];
+				answers.set(key(response.url()), { status: response.status(), body: await response.body(), headers });
+			} catch {
+				// A response with no body (a redirect) is simply not replayed.
+			}
+		});
+	}
 	await page.goto(`${ADMIN}${path}`, { waitUntil: 'networkidle' });
 	await page.addStyleTag({ content: STILL });
 	await page.evaluate(() => document.fonts.ready);
@@ -223,8 +256,9 @@ test.describe('Admin light and dark: layout and contrast on every screen', () =>
 	for (const path of [...SCREENS, '/auth/login']) {
 		test(`${path} has the same layout and readable text in light and dark mode`, async ({ browser }) => {
 			const signedIn = path !== '/auth/login';
-			const light = await open(browser, 'light', path, { signedIn });
-			const dark = await open(browser, 'dark', path, { signedIn });
+			const answers = new Map<string, { status: number; body: Buffer; headers: Record<string, string> }>();
+			const light = await open(browser, 'light', path, { signedIn, answers });
+			const dark = await open(browser, 'dark', path, { signedIn, answers });
 			const [before, after] = await Promise.all([
 				light.evaluate(firstScreen, UNSTABLE),
 				dark.evaluate(firstScreen, UNSTABLE),

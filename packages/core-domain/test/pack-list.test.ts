@@ -14,11 +14,14 @@ describe('the Pack list (bundle builder brief E08)', () => {
 		expect(packLines(lines).map((line) => line.lineId)).toEqual(['s~a', 's~a>f', 'p']);
 	});
 
-	it('holds Packed until every piece is ticked, on orders with sets or free items', () => {
+	it('holds Packed until every piece is ticked, on every order', () => {
 		expect(packListIncomplete({ lines, packTicks: ['s~a', 'p'] })).toBe(true);
 		expect(packListIncomplete({ lines, packTicks: ['s~a', 's~a>f', 'p'] })).toBe(false);
-		expect(packListIncomplete({ lines: [{ lineId: 'p', role: 'product' }], packTicks: [] })).toBe(false);
-		expect(packListIncomplete({ lines: [{ lineId: 'old' }] })).toBe(false);
+		// Every order waits for its ticks, plain products too (owner, 23 Nov 2026).
+		expect(packListIncomplete({ lines: [{ lineId: 'p', role: 'product' }], packTicks: [] })).toBe(true);
+		expect(packListIncomplete({ lines: [{ lineId: 'p', role: 'product' }], packTicks: ['p'] })).toBe(false);
+		// A line saved before lines had ids can't be ticked, so it never holds the order.
+		expect(packListIncomplete({ lines: [{}] })).toBe(false);
 	});
 
 	it('names the reason on the status menu', () => {

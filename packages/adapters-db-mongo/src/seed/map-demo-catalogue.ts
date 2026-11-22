@@ -574,7 +574,8 @@ export function mapDemoCatalogue(input: {
 		if (measurements.length > 0 && demoMeasurements.length === 0) demoMeasurements.push(...measurements);
 		const doc: Product = {
 			id,
-			type: variable ? 'variable' : 'simple',
+			// A demo set is a set product (bundle builder brief): its own record holds the pieces, so it has no variations.
+			type: product.type === 'bundle' ? 'bundle' : variable ? 'variable' : 'simple',
 			sku,
 			title: text(product.name, slug),
 			slug,

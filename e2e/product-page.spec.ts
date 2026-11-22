@@ -56,10 +56,11 @@ test.describe('a set page', () => {
 		await page.locator('#bar-configure-set').click();
 		const footer = page.locator('.modal .st-sheet-footer');
 		await expect(footer).toContainText('Set price');
-		await expect(footer.locator('button', { hasText: /add set to cart/i })).toBeDisabled();
-		await expect(page.locator('.modal')).toContainText('This set cannot be bought yet.');
+		// Sets are buyable (bundle builder brief, approved 2026-11-22): the demo set's pieces are fixed, so it can go in now.
+		await expect(footer.locator('button', { hasText: /add set to cart/i })).toBeEnabled();
+		await expect(page.locator('.modal')).not.toContainText('This set cannot be bought yet.');
 		await page.keyboard.press('Escape');
 		await expect(page.locator('.modal')).toHaveCount(0);
-		await expect(page.locator('app-buy-bar .st-bar-set')).toContainText('Complete set');
+		await expect(page.locator('app-buy-bar .st-bar-set')).toBeVisible();
 	});
 });

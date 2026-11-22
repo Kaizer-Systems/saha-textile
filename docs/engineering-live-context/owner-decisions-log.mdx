@@ -2318,3 +2318,64 @@ Brief: https://claude.ai/artifact/4d5yK6GhiTrg3T25KybWeN (revision 4). Owner, 21
   brief's "shown only after 150 ms, kept at least 400 ms". The second counts from when the loader is
   on screen. Opening the console fresh shows the Boot sequence for its own second, then hands over to
   the page's loader, which shows its full second once the Boot sequence has faded.
+
+## Owner decision round (2026-11-22) — bundle builder brief approved (revisions 1–3); the build starts
+
+Brief: https://claude.ai/artifact/UE6GxSvKq5VfspTqD41ixQ (revision 3, 563 screens). Revision 1 (D1–D7 and every
+suggestion) and revision 2 (R1–R3) were accepted in full on 22 Nov. On revision 3 the owner wrote: "v1 to v9 all
+accepted", then "start building the code directly".
+
+- **Bundle model (D1):** a bundle is a product of type Bundle built in its own builder: levels, each holding one or
+  more products and a "take N"; a level with one product is fixed (green tick), a level with more than it takes is a
+  choice. The shop heading is "Bundle Components" when nothing is chosen and "Choose your set" when any level is a
+  choice. Optional extras use the same rows with an outlined tick that fills when ticked (no switch, no checkbox),
+  shown "Free" or "+₹X" (D3).
+- **Prices (R1):** each item shows MRP, Selling price, Current sale price (only while a sale covers an item in that
+  table, with the sale's name) and an editable Price in this set, which starts from the selling price. Bought
+  separately counts each piece's price today (its sale price while a sale runs); a check warns when the set costs
+  more than its pieces during a sale.
+- **Sale base (R3):** sales stay off the selling price, with no MRP or selling choice; the sale review shows
+  "Shopper sees: N% off MRP".
+- **Where a bundle is edited (V1):** Products › Bundles (list, Add bundle, Edit) and one builder page with tabs
+  Build, Price rules, Details, Photos, SEO, FAQ's and Status. Add product with Type = Bundle opens the builder; the
+  old Bundle tab retires.
+- **Field exceptions (V2):** a bundle has no HSN, tax, stock, MRP or selling price of its own, no barcode, weight
+  or variations; its own number is a BND- search number; categories never open the HSN pop-up for it; it is left
+  out of purchase orders, purchase entries, purchase returns, stock counts, adjustments, opening stock and barcode
+  labels. Photos are linked from the pieces in level order (nothing uploaded); SEO and FAQs are the bundle's own.
+- **Stock (V3):** worked out, never typed: "sets possible" from the pieces in stock. A bundle is out of stock only
+  when not one full combination of choices across all its levels can be made (owner's rule). No "partial" status;
+  an amber note names sold-out choices. Optional extras and free items never block.
+- **Price methods (V4, changed by the owner):** the "Set price is" list is **not built into the code**. Owner: "the
+  rules which you already showed us in this brief's screenshots, better to not bake into code, but build the builder
+  and create those exact same rules by default as seed data into the db itself for use so we always get it in the
+  dropdown from day 1." Price methods are records made in a builder, listed with add, edit and remove; One fixed
+  price, Pieces added up, Pieces % off, Pieces ₹ off and Buy more save more are seeded. Each bundle can add its own
+  price rules on the same rule blocks.
+- **Free with this product (V5, D4):** one or more free items on any product; for two or more, the shopper gets all
+  of them or a choice (exactly N, up to N, between M and N), required or optional. A free item is a real stocked
+  product, never a service. When a free item runs out the main product keeps selling, the row hides and admin is
+  alerted. Inside a bundle, a pick that brings free items opens a pop-up when a choice is needed.
+- **Show on shop (D5):** a product switch beside Status. Off: the product stays live, keeps stock, fills from
+  purchase orders and can be a set piece, extra or free item, but leaves listings, search, sitemap and feeds, and its
+  own page answers "not found".
+- **Cards and quick view (V6, V9 with the owner's comments):** bundle cards read "Set of N" or "Choose your set",
+  with "From ₹" for choices. Quick view carries every product page change: the same photo gallery, spacing and
+  buy box. Tablet quick view is side by side like the laptop one ("It should be sideways and not … one below the
+  other"). On phones quick view is a centred pop-up with space above and below, scrolling inside itself without
+  scrolling the page ("not like a huge-ass popup running from top end to bottom end").
+- **Grouped lines and Pack list (V7):** cart, header cart, shop orders and admin orders show a bundle with its
+  pieces, their free items and extras as a tree; phones fold a set's pieces; admin gets a Pack list and Mark packed
+  waits for every tick. Owner on My orders for phones: "could you think of a better UI" than a sideways-scrolling
+  table.
+- **Documents (V8, changed by the owner):** our format for every accepted document type, Settings › Document
+  formats with one table per document and exactly one active format each, Make new layout, and a layout builder per
+  document offering only that document's fields. Owner: "include the document builder's builder in the plan too now
+  instead of later." A set prints as a heading row with no amount or tax; its pieces are indented with their own
+  HSN, share and tax; free items at ₹0.
+- **Tax treatment (owner-final for concern 1):** each piece of a set is billed at its own share of the set price, the
+  share in proportion to each piece's Price in this set (owner: "yes i agree your drawn version is better and risk
+  free"). Concerns 2 (the ₹2,500 garment band) and 3 (free items at ₹0) went to the CA round 2 file as B2.9 and D2.5.
+- **Returning one piece of a set (concern 4):** refund that piece's share; the other pieces keep theirs ("okay").
+- **Colour picker (question answered):** Admin › Attributes already gives colour values a colour picker (hex) for
+  the Colour swatch and Colour chip looks; the shop draws circles and chips from it.

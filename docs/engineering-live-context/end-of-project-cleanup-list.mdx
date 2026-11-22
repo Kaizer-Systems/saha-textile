@@ -104,6 +104,9 @@ Replaced or unreachable once bundles moved to the bundle builder (brief UE6GxSvK
 | BB3 | The greyed "a bundle" branch in the purchase line search           | `apps/admin/src/app/features/purchasing/shared/line-search.*` (`line_blocked_bundle`)        | The stock search leaves bundles out (A14)               |
 | BB4 | The optional-piece switch style                                    | `.st-piece-switch` in `apps/storefront/src/scss/components/_set-rows.scss`                  | Extras' outlined tick (`.st-piece-mark.is-extra`)       |
 | BB5 | A bundle's own base variant row (created with every new product)   | `ProductBuilderService.create` for type `bundle`                                            | Worked-out stock; the row is never sold                 |
+| BB6 | The vendor demo order list and its look-ups (`order.json`)          | `OrderService.getOrders`, `injectOrdersQuery`, `injectOrderByNumberQuery`, `IOrder*` interfaces, `injectOrderStatusQuery` | `GET orders/mine` and `orders/mine/:number` (My orders, E05–E06) |
+| BB7 | The order page's Pay now and Ask for refund pop-ups                 | `shared/ui/modal/pay-modal`, `shared/ui/modal/refund-modal` (no page opens them now)        | Payments and returns arrive with the orders chunks      |
+| BB8 | The raw `GET orders` and `GET orders/:id` for shoppers (whole order records) | `apps/api/src/orders/orders.controller.ts` `listMine` / `get`                         | The shopper read model at `orders/mine` (no staff notes) |
 
 ## Release Console loaders
 

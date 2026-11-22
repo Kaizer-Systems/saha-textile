@@ -942,6 +942,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				matrix: 'All set',
 				problem: 'Missing + stale',
 				write: 'Write a secret',
+				variables: 'Actions variables',
 			},
 			off: false,
 			tip: null,
@@ -952,6 +953,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				matrix: 'Names and dates per environment, never values',
 				problem: 'Missing value blocks a deploy; older server copy flagged',
 				write: 'Write a new value into GitHub from the console',
+				variables: 'GitHub · Actions variables for the repository or one environment: add, change, delete',
 			},
 		},
 		drift: {

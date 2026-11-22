@@ -49,6 +49,7 @@ import {
 	extend,
 } from './cf-zone-more.js';
 import { ZT_EXTRA } from './cf-zt-more.js';
+import { PIPELINE_EXTRA, PULLS_EXTRA, ROLLBACK_EXTRA, SECRETS_EXTRA } from './gh-more.js';
 import { ALERTS_EXTRA, ANALYTICS_EXTRA, BUILD_EXTRA, DEV_EXTRA, TURNSTILE_EXTRA } from './cf-build-more.js';
 import {
 	cfAccessScreen,
@@ -165,13 +166,13 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 	cfnetwork: cfNetworkScreen,
 	cftraffic: cfTrafficScreen,
 	cfweb3: cfWeb3Screen,
-	pulls: pullsScreen,
-	pipeline: pipelineScreen,
+	pulls: extend(pullsScreen, PULLS_EXTRA),
+	pipeline: extend(pipelineScreen, PIPELINE_EXTRA),
 	logs: logsScreen,
 	approvals: approvalsScreen,
 	steps: stepsScreen,
 	impact: impactScreen,
-	rollback: rollbackScreen,
+	rollback: extend(rollbackScreen, ROLLBACK_EXTRA),
 	calendar: calendarScreen,
 	rehearsal: rehearsalScreen,
 	loadtest: loadTestScreen,
@@ -203,3 +204,5 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 };
 
 addExtras(PRODUCT_SCREENS);
+const ghSecrets = PRODUCT_SCREENS['secrets'];
+if (ghSecrets) PRODUCT_SCREENS['secrets'] = extend(ghSecrets, SECRETS_EXTRA);

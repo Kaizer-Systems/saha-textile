@@ -69,4 +69,3 @@ export * from './language.model';
 export * from './media-library.model';
 export * from './purchasing.model';
 export * from './orders-build.model';
-export * from './document-format.model';

@@ -226,10 +226,10 @@ const RUNTIME_ONLY_COLLECTIONS = [
 ] as const;
 
 /**
- * Formerly held implemented collections the graph had not caught up with.
- * Empty: `productQuestions` and `ratingAggregates` are now Schema Nebula nodes.
+ * Implemented collections the governed graph has not caught up with (its node count is ratified, so new nodes wait for
+ * a graph round): the bundle builder's price methods and Settings › Document formats (22 Nov 2026).
  */
-export const GRAPH_RECONCILIATION_OWED = [] as const;
+export const GRAPH_RECONCILIATION_OWED = ['bundlePriceMethods', 'documentFormats'] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */
 export const NON_GRAPH_COLLECTIONS: readonly string[] = [...RUNTIME_ONLY_COLLECTIONS, ...GRAPH_RECONCILIATION_OWED];

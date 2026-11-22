@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 116,
-		"existingModelCount": 97,
+		"nodeCount": 115,
+		"existingModelCount": 96,
 		"targetOnlyCount": 19,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map, as is mailboxOutbox, the Inbox's Undo Send queue."
@@ -244,20 +244,7 @@
 			"purpose": "Bundles (sets) built in the bundle builder: levels of pieces with how many the shopper takes, optional extras, the price method and the set's own rules, and the worked-out stock.",
 			"source": "catalog §7.9",
 			"currentModel": "packages/adapters-db-mongo/src/models/merchandising.model.ts",
-			"references": ["products", "productVariants", "bundlePriceMethods"]
-		},
-		{
-			"id": "bundlePriceMethods",
-			"label": "bundlePriceMethods",
-			"cluster": "catalog-merchandising",
-			"currentState": "existing",
-			"targetAction": "add",
-			"owningChunks": ["F"],
-			"blockingDecisions": [],
-			"purpose": "The bundle builder's \"Set price is\" list: price methods made in the method builder (where the price starts, the numbers each bundle types, and rule blocks). Five are seeded; admin may add, edit or remove them.",
-			"source": "decisions § bundle builder brief approved (2026-11-22)",
-			"currentModel": "packages/adapters-db-mongo/src/models/merchandising.model.ts",
-			"references": []
+			"references": ["products", "productVariants"]
 		},
 		{
 			"id": "productRelations",
@@ -1532,19 +1519,6 @@
 			"purpose": "One document: the shop's legal name, GSTIN, address, phone and email printed on business documents; its GSTIN's State is the home State for purchase tax.",
 			"source": "decisions 2026-11-15 purchases and stock",
 			"currentModel": "packages/adapters-db-mongo/src/models/purchasing.model.ts",
-			"references": []
-		},
-		{
-			"id": "documentFormats",
-			"label": "documentFormats",
-			"cluster": "inventory-procurement",
-			"currentState": "existing",
-			"targetAction": "add",
-			"owningChunks": ["H"],
-			"blockingDecisions": [],
-			"purpose": "Settings › Document formats: how each printable document looks, as blocks in order naming only that document's fields. Exactly one active format per document (partial unique index); ours are seeded for all 17 documents and the format builder makes more.",
-			"source": "decisions § bundle builder brief approved (2026-11-22), section F",
-			"currentModel": "packages/adapters-db-mongo/src/models/document-format.model.ts",
 			"references": []
 		},
 		{

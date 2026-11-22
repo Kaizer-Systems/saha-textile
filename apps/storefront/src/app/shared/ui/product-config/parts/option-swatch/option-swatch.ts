@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
@@ -28,6 +28,9 @@ export class OptionSwatch {
 	readonly displayStyle = input<DisplayStyle>('rectangle');
 	readonly required = input<boolean>(false);
 	readonly selected = input<string>();
+	/** A long picture-row list folds to three rows below laptop size until the shopper opens it (HX-3). */
+	readonly expanded = signal(false);
+	readonly folds = computed(() => this.displayStyle() === 'picture_row' && this.terms().length > 3);
 
 	readonly selectedChange = output<string>();
 

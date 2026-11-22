@@ -455,8 +455,11 @@ describe('ProductDetail sticky bar', () => {
 		document.querySelector('.scroll-button')?.remove();
 	});
 
-	it('shows on phones from the start', () => {
-		expect(showBuyBar({ top: 100, bottom: 146 }, 375, 812)).toBe(true);
+	it('shows only while the page buttons are out of view, phones included (HX-1)', () => {
+		// Phones (HX-1): the bar steps back while the page's buttons show above the bottom menu.
+		expect(showBuyBar({ top: 100, bottom: 146 }, 375, 812)).toBe(false);
+		expect(showBuyBar({ top: 760, bottom: 806 }, 375, 812)).toBe(true);
+		expect(showBuyBar({ top: -60, bottom: -14 }, 375, 812)).toBe(true);
 		expect(showBuyBar({ top: 100, bottom: 146 }, 1366, 657)).toBe(false);
 		expect(showBuyBar({ top: 700, bottom: 746 }, 1366, 657)).toBe(true);
 		expect(showBuyBar({ top: -60, bottom: -14 }, 1366, 657)).toBe(true);

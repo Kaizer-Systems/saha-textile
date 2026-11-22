@@ -1217,5 +1217,7 @@
 	"view_full_details": "পুরো বিবরণ দেখুন",
 	"quick_view_failed": "প্রোডাক্টটি খোলা গেল না। আবার চেষ্টা করুন, বা এর পেজটি খুলুন।",
 	"set_of_pieces": "{{count}}টির সেট",
-	"price_from": "শুরু"
+	"price_from": "শুরু",
+	"option_included": "দামের মধ্যেই",
+	"show_all_options": "সব {{count}}টি বিকল্প দেখুন"
 }

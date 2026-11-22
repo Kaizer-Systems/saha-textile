@@ -408,8 +408,8 @@ export class ProductDetail {
 	}
 
 	/**
-	 * The buy bar's switch (theme `stickyCart`; brief P4): on phones from the start, on laptops whenever the page's own
-	 * Add to cart is out of view, above (scrolled past) or below (a tall product or a short window).
+	 * The buy bar's switch (theme `stickyCart`; brief P4, HX-1): whenever the page's own Add to cart is out of view,
+	 * above (scrolled past) or below (a tall product, a short window, or behind a phone's bottom menu).
 	 */
 	@HostListener('window:scroll')
 	@HostListener('window:resize')
@@ -430,8 +430,12 @@ export class ProductDetail {
 	}
 }
 
-/** Phones (under 768 px) always show the buy bar; wider screens only while the page's own buttons are out of view. */
+/**
+ * The buy bar shows only while the page's own buttons are out of view, so one set of buttons shows at a time (bundle
+ * builder brief HX-1, approved 2026-11-22; phones used to show it from the start). On phones the bottom menu covers the
+ * last 72 px, so buttons behind it count as out of view.
+ */
 export function showBuyBar(button: Pick<DOMRect, 'top' | 'bottom'>, width: number, height: number): boolean {
-	if (width < 768) return true;
-	return button.bottom < 0 || button.top > height;
+	const visibleBottom = width < 768 ? height - 72 : height;
+	return button.bottom < 0 || button.top > visibleBottom;
 }

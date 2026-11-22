@@ -118,3 +118,15 @@
 		}
 	}
 }
+
+// Picture rows fold to three on tablets and phones (bundle builder brief HX-3, approved 2026-11-22): the rest hide
+// until "Show all N options"; laptops show every row.
+@media (max-width: 991.98px) {
+	.st-look-rows:not(.is-open) > li.st-look-more {
+		display: none;
+	}
+}
+
+.st-look-all {
+	padding: 6px 0 0;
+}

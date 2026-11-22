@@ -96,4 +96,32 @@ describe('OptionSwatch, the four looks from the renders', () => {
 		host.querySelectorAll<HTMLButtonElement>('.st-look')[0]?.click();
 		expect(seen).toEqual(['none']);
 	});
+
+	it('folds a long picture-row list to three rows on smaller screens, keeping the chosen one (HX-3)', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			imports: [OptionSwatch, TranslocoTestingModule.forRoot({ langs: { en: {} } })],
+			providers: [CurrencyPipe],
+		});
+		const fixture = TestBed.createComponent(OptionSwatch);
+		const terms = Array.from({ length: 6 }, (_, at) => ({
+			code: `t${at}`,
+			label: `T${at}`,
+			price_delta: at === 0 ? 0 : 750,
+		}));
+		fixture.componentRef.setInput('terms', terms);
+		fixture.componentRef.setInput('displayStyle', 'picture_row');
+		fixture.componentRef.setInput('selected', 't5');
+		fixture.detectChanges();
+		const el: HTMLElement = fixture.nativeElement;
+		const folded = [...el.querySelectorAll('.st-look-rows > li')].map((li) =>
+			li.classList.contains('st-look-more'),
+		);
+		expect(folded).toEqual([false, false, false, true, true, false]);
+		expect(el.querySelector('.st-look-all')).not.toBeNull();
+		fixture.componentInstance.expanded.set(true);
+		fixture.detectChanges();
+		expect(el.querySelector('.st-look-rows')?.classList).toContain('is-open');
+		expect(el.querySelector('.st-look-all')).toBeNull();
+	});
 });

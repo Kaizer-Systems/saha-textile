@@ -11,8 +11,9 @@
 		}
 	</div>
 	} @switch (displayStyle()) { @case ('dropdown') {
+	<!-- The shop's own select (HX-1): `form-control` painted over the arrow, so the list looked like a text box. -->
 	<select
-		class="form-control form-select"
+		class="form-select"
 		(change)="select($any($event.target).value)"
 	>
 		@for (t of terms(); track t.code) {
@@ -61,7 +62,7 @@
 			/>
 			<span class="tile-label">{{ t.label }}</span>
 			<span class="tile-delta">
-				{{ t.price_delta ? ('+' + (t.price_delta | currencySymbol)) : ('+' + (0 | currencySymbol)) }}
+				{{ t.price_delta ? ('+' + (t.price_delta | currencySymbol)) : ('option_included' | transloco) }}
 			</span>
 		</li>
 		}
@@ -129,9 +130,11 @@
 			class="st-look-list"
 			[class.st-look-rows]="displayStyle() === 'picture_row'"
 			[class.st-look-sizes]="displayStyle() === 'size_v2'"
+			[class.is-open]="expanded()"
 		>
-			@for (t of terms(); track t.code) {
-			<li>
+			@for (t of terms(); track t.code; let at = $index) {
+			<!-- Picture rows fold to three on tablets and phones (HX-3); the chosen one always shows. -->
+			<li [class.st-look-more]="folds() && at >= 3 && t.code !== selected()">
 				<button
 					type="button"
 					class="st-look"
@@ -162,7 +165,10 @@
 						@if (displayStyle() === 'size_v2' && t.sub_label) {
 						<span class="st-look-note">{{ t.sub_label }}</span>
 						} @if (displayStyle() === 'picture_row') {
-						<span class="st-look-note">+{{ t.price_delta | currencySymbol }}</span>
+						<span class="st-look-note">
+							{{ t.price_delta ? '+' + (t.price_delta | currencySymbol) : ('option_included' | transloco)
+							}}
+						</span>
 						} @else if (t.price_delta) {
 						<span class="st-look-note">+{{ t.price_delta | currencySymbol }}</span>
 						}
@@ -171,5 +177,14 @@
 			</li>
 			}
 		</ul>
+		@if (folds() && !expanded()) {
+		<button
+			type="button"
+			class="btn btn-link st-piece-link st-look-all d-lg-none"
+			(click)="expanded.set(true)"
+		>
+			{{ 'show_all_options' | transloco: { count: terms().length } }}
+		</button>
+		}
 	</ng-template>
 </div>

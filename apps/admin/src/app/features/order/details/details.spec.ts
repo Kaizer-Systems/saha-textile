@@ -307,7 +307,7 @@ describe('sets and free items on the order page (bundle builder brief E07–E08)
 	it('lists every physical piece with where it comes from, and opens Mark packed only when all are ticked', () => {
 		data.set(detail({ lines: lines as never, packTicks: ['s~a', 's~a>f', 's~b', 'p'] }));
 		const { page } = render();
-		expect(page.packRows().map((row) => [row.line.lineId, row.from, row.options, row.ticked])).toEqual([
+		expect(page.packRows().map((row) => [row.line.lineId, row.from.key, row.options, row.ticked])).toEqual([
 			['s~a', 'ord_pack_from_piece', '', true],
 			['s~a>f', 'ord_pack_from_free_piece', 'M', true],
 			['s~b', 'ord_pack_from_piece', '', true],

@@ -571,17 +571,19 @@ export class Details {
 			.filter((line) => line.role !== 'bundle')
 			.map((line) => {
 				const parent = this.lineById(line.parentLineId);
-				let from: string;
-				if (!parent) from = this.t('ord_pack_from_line', { n: lineNo(line) });
-				else if (line.role === 'piece')
-					from = this.t('ord_pack_from_piece', { set: setName(parent), n: this.pieceNumber(line) });
-				else if (line.role === 'extra') from = this.t('ord_pack_from_extra', { set: setName(parent) });
+				// The words are looked up in the template, so they follow the language once it has loaded.
+				let from: { key: string; params: Record<string, unknown> };
+				if (!parent) from = { key: 'ord_pack_from_line', params: { n: lineNo(line) } };
+				else if (line.role === 'piece') {
+					from = { key: 'ord_pack_from_piece', params: { set: setName(parent), n: this.pieceNumber(line) } };
+				} else if (line.role === 'extra')
+					from = { key: 'ord_pack_from_extra', params: { set: setName(parent) } };
 				else if (parent.role === 'piece') {
-					from = this.t('ord_pack_from_free_piece', {
-						n: this.pieceNumber(parent),
-						set: setName(this.lineById(parent.parentLineId)),
-					});
-				} else from = this.t('ord_pack_from_free_line', { n: lineNo(parent) });
+					from = {
+						key: 'ord_pack_from_free_piece',
+						params: { n: this.pieceNumber(parent), set: setName(this.lineById(parent.parentLineId)) },
+					};
+				} else from = { key: 'ord_pack_from_free_line', params: { n: lineNo(parent) } };
 				const options = [
 					...Object.values(line.attributes),
 					...line.addons.map((addon) => `${addon.label ?? addon.code}: ${addon.value}`),

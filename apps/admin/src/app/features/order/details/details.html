@@ -372,7 +372,9 @@
 									<td>{{ row.line.sku }}</td>
 									<td>{{ row.options || '—' }}</td>
 									<td class="text-end">{{ row.line.quantity }}</td>
-									<td class="text-start"><small>{{ row.from }}</small></td>
+									<td class="text-start">
+										<small>{{ row.from.key | transloco: row.from.params }}</small>
+									</td>
 									<td>
 										@if (row.line.held) {
 										<div class="status-in_stock">

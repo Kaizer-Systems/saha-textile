@@ -185,6 +185,45 @@ describe('admin orders: the order page (od05–od08, st01–st05)', () => {
 		expect(current().history.at(-1)).toMatchObject({ kind: 'status', from: 'packed', to: 'shipped' });
 	});
 
+	it('ships a set as its pieces: the set’s own line is never in the parcel', async () => {
+		const piece = baseOrder().lines[0];
+		const { svc, shipments } = service(
+			baseOrder({
+				lines: [
+					{ ...piece, lineId: 'set1', role: 'bundle', held: false },
+					{ ...piece, lineId: 'set1~p1', role: 'piece', parentLineId: 'set1', held: true },
+				],
+			}),
+		);
+		await svc.setEInvoice(
+			'ord_1',
+			{
+				irn: 'a'.repeat(64),
+				ackNo: '112010036563310',
+				ackDate: '2026-11-20T06:00:00.000Z',
+				signedQr: null,
+				revision: 0,
+			},
+			actor,
+		);
+		await svc.setEWayBill(
+			'ord_1',
+			{
+				number: '331001234567',
+				generatedOn: '2026-11-20T06:10:00.000Z',
+				validUntil: '2026-11-21T06:10:00.000Z',
+				transporterName: null,
+				transporterId: null,
+				vehicleOrDocumentNo: null,
+				distanceKm: 12,
+				revision: 1,
+			},
+			actor,
+		);
+		await svc.changeStatus('ord_1', { ...shipped, revision: 2 }, actor);
+		expect(shipments[0]?.lineIds).toEqual(['set1~p1']);
+	});
+
 	it('asks for the courier, and refuses steps the machine does not allow', async () => {
 		const small = baseOrder({
 			buyer: { kind: 'person', customerId: 'cus_1', name: 'Ananya Das' },
@@ -410,7 +449,13 @@ describe('admin orders: the list lines (ol02, ol03)', () => {
 		expect(paymentDetailOf([payment()], [], now)).toMatchObject({ kind: 'payment', reference: '432198765012' });
 		expect(
 			paymentDetailOf(
-				[payment({ method: 'gateway', reference: 'pp_9', gateway: { id: 'paypal', attemptId: 'a', reference: 'pp_9', requestId: null } })],
+				[
+					payment({
+						method: 'gateway',
+						reference: 'pp_9',
+						gateway: { id: 'paypal', attemptId: 'a', reference: 'pp_9', requestId: null },
+					}),
+				],
 				[],
 				now,
 			),
@@ -426,7 +471,12 @@ describe('admin orders: the list lines (ol02, ol03)', () => {
 
 	it('dates each reason an order waits on staff', () => {
 		const order = baseOrder({ status: 'awaiting_payment', paymentStatus: 'pending_at_bank' });
-		const times = attentionTimesOf(order, ['pendingAtBank', 'invoiceAddressNeeded'], [payment({ state: 'pending' })], []);
+		const times = attentionTimesOf(
+			order,
+			['pendingAtBank', 'invoiceAddressNeeded'],
+			[payment({ state: 'pending' })],
+			[],
+		);
 		expect(times).toEqual({ pendingAtBank: at });
 	});
 });

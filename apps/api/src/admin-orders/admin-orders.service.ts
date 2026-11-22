@@ -497,13 +497,16 @@ export class AdminOrdersService {
 					unitCostINR: (line.lineId ? costs.get(line.lineId) : undefined) ?? line.unitCostINR ?? null,
 				}));
 				const existing = await this.shipments.listByOrder(id);
+				// A parcel holds physical pieces: a set's own line carries nothing, its pieces are lines of their own.
+				const physical = order.lines.flatMap((line) =>
+					line.lineId && line.role !== 'bundle' ? [line.lineId] : [],
+				);
 				await this.shipments.save(
 					{
 						id: `shp_${randomUUID()}`,
 						orderId: id,
 						number: await this.numbers.childNumber('parcel', order.orderNumber, existing.length + 1),
-						lineIds:
-							input.shipped.lineIds ?? order.lines.flatMap((line) => (line.lineId ? [line.lineId] : [])),
+						lineIds: (input.shipped.lineIds ?? physical).filter((lineId) => physical.includes(lineId)),
 						mode: 'manual',
 						provider: null,
 						courierName: input.shipped.courierName,

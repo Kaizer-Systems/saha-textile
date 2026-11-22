@@ -16,6 +16,7 @@
 		"src/seed-local-product-questions.ts",
 		"src/seed-local-opening-stock.ts",
 		"src/seed-local-auth-accounts.ts",
+		"src/seed-e2e-blog.ts",
 		"src/invite-local-admin.ts"
 	]
 }

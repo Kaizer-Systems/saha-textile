@@ -110,9 +110,8 @@ test.describe('Real cart', () => {
 	});
 });
 
-test.describe.serial('Cart across a sign-in', () => {
-	test.skip(({ isMobile }) => isMobile, 'one account and shared stock, so these run once');
-
+// One account and shared stock, so these run once (on the laptop project).
+test.describe.serial('Cart across a sign-in', { tag: '@desktop-only' }, () => {
 	const reset = () =>
 		withDatabase(async (db) => {
 			const customer = await db.collection('customers').findOne({ email: SHOPPER });

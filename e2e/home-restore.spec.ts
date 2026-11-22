@@ -53,9 +53,8 @@ const measureButtons = (selector: string) => {
 	}));
 };
 
-plain.describe('Cookie box at every screen size', () => {
-	plain.skip(({ isMobile }) => isMobile, 'One pass covers every size; the phone project repeats nothing.');
-
+// One pass covers every size, so the phone project leaves it out.
+plain.describe('Cookie box at every screen size', { tag: '@desktop-only' }, () => {
 	for (const locale of ['en', 'bn']) {
 		plain(`no label is clipped or broken in ${locale}`, async ({ page }) => {
 			plain.setTimeout(120_000);
@@ -191,13 +190,22 @@ test.describe('Home blog posts', () => {
 		page.on('request', (request) => {
 			if (/-blog-\d+w-/.test(request.url())) blogPictures.push(request.url());
 		});
+		// Chrome fetches a lazy picture once it comes within 1,250 px of the window. The shop's Home opens with its
+		// banners and puts the blog section well beyond that; the test database's Home has no banners and is short,
+		// so the first screen is opened in a short window to keep the section as far away, then the size goes back.
+		const size = page.viewportSize() ?? { width: 1280, height: 720 };
+		await page.setViewportSize({ width: size.width, height: 240 });
 		await page.goto('/en/', { waitUntil: 'networkidle' });
+		const pictures = page.locator('.slider-3-blog .blog-box-image img');
+		// The e2e stack seeds three live posts (apps/api/src/seed-e2e-blog.ts).
+		await expect(pictures).not.toHaveCount(0);
+		const distance = await page
+			.locator('.slider-3-blog')
+			.evaluate((section) => section.getBoundingClientRect().top - window.innerHeight);
+		expect(distance).toBeGreaterThan(1250);
 		// Nothing from the blog section loads with the first screen: it is far below it.
 		expect(blogPictures).toEqual([]);
-
-		const pictures = page.locator('.slider-3-blog .blog-box-image img');
-		// The e2e database seeds no blog posts; the shop's own database has them (checked there on 17 Nov).
-		test.skip((await pictures.count()) === 0, 'This database has no blog posts on Home');
+		await page.setViewportSize(size);
 		// The carousel loops, so its first slides in the page are copies parked beside the visible strip; a lazy
 		// picture there rightly never loads. Check the first slide on show.
 		const first = page.locator('.slider-3-blog .owl-item.active .blog-box-image img').first();

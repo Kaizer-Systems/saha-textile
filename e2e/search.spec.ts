@@ -32,9 +32,8 @@ async function searchPage(page: Page, locale: 'en' | 'bn', query = '') {
 	return page.locator('.search-box input');
 }
 
-test.describe('the menu-bar search', () => {
-	test.skip(({ isMobile }) => isMobile, 'Phones search from the bottom bar, not the header.');
-
+// Phones search from the bottom bar, not the header.
+test.describe('the menu-bar search', { tag: '@desktop-only' }, () => {
 	test('opens ready to type, suggests while typing and opens a product with the keyboard', async ({
 		page,
 		problems,

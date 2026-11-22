@@ -142,6 +142,8 @@ run('Build the apps', 'pnpm', ['build:product-apps'], { env: { ...env, NODE_ENV:
 await resetDatabase();
 run('Seed reference data', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo', 'seed']);
 run('Seed the demo catalogue', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo', 'seed:demo-catalogue']);
+// Home's blog section and the blog pages need live posts; covers are made once, as this stack runs no image worker.
+run('Seed the blog posts', 'pnpm', ['--filter', '@saha-textile/api', 'seed:e2e-blog']);
 const adminPassword = createTestAdmin();
 run('Fill the search index', 'pnpm', ['--filter', '@saha-textile/api', 'search:rebuild']);
 // The same release steps a deployment runs (legal pages, Today's home page, picture versions…), each once.

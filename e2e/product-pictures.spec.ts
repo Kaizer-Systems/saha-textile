@@ -22,10 +22,9 @@ let keptVariantMedia: unknown = null;
  */
 let sourcePhoto = '';
 
-test.describe('the product’s own share picture and a variant’s own picture', () => {
-	// It changes a shared product and variant: run once, both tests in one worker, so no other run of it puts them
-	// back mid-check.
-	test.skip(({ isMobile }) => isMobile, 'changes a shared product, so this runs once');
+// It changes a shared product and variant: run once (on the laptop project), both tests in one worker, so no other run
+// of it puts them back mid-check.
+test.describe('the product’s own share picture and a variant’s own picture', { tag: '@desktop-only' }, () => {
 	test.describe.configure({ mode: 'default' });
 	test.beforeAll(async () => {
 		const now = new Date();

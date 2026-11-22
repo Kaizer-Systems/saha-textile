@@ -6,9 +6,8 @@ import { expect, test } from './support';
  * The installable shop. `sw.js` exists only in a production build, so these skip against
  * `vite dev`; `pnpm e2e:stack` or `E2E_BASE_URL` runs them.
  */
-test.describe('installable app', () => {
-	test.skip(({ isMobile }) => isMobile, 'server and browser behaviour, proven once');
-
+// Server and browser behaviour, proven once (on the laptop project).
+test.describe('installable app', { tag: '@desktop-only' }, () => {
 	test.beforeEach(async ({ request }) => {
 		const worker = await request.get('/sw.js');
 		test.skip(!worker.ok(), 'needs a production build');
@@ -114,8 +113,8 @@ test.describe('Get the App', () => {
 		expect(rule).toBe('(display-mode: standalone)');
 	});
 
-	test.describe('wide screens', () => {
-		test.skip(({ isMobile }) => isMobile, 'the top bar link shows at 1400 px and wider');
+	// The top bar link shows at 1400 px and wider.
+	test.describe('wide screens', { tag: '@desktop-only' }, () => {
 		test.use({ viewport: { width: 1600, height: 900 } });
 
 		test('the top bar link installs, and no longer goes to apple.com', async ({ page }) => {

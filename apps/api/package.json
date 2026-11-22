@@ -33,6 +33,7 @@
     "seed:local-home-banners": "node --import tsx src/seed-local-home-banners.ts",
     "seed:local-product-questions": "node --import tsx src/seed-local-product-questions.ts",
     "seed:local-opening-stock": "node --import tsx src/seed-local-opening-stock.ts",
+    "seed:e2e-blog": "node --import tsx src/seed-e2e-blog.ts",
     "speed:layouts": "node --import tsx src/speed-layouts.ts"
   },
   "dependencies": {

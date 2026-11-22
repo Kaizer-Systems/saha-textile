@@ -34,8 +34,8 @@ async function addToBag(page: Page): Promise<void> {
 	expect((await saved).status()).toBeLessThan(300);
 }
 
-test.describe('Shop checkout', () => {
-	test.skip(({ isMobile }) => isMobile, 'one shopper account, so these run once');
+// One shopper account, so these run once (on the laptop project).
+test.describe('Shop checkout', { tag: '@desktop-only' }, () => {
 	// One account means one one-time code at a time.
 	test.describe.configure({ mode: 'serial' });
 

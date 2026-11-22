@@ -38,13 +38,17 @@ test.describe('around the product', () => {
 	readsHome();
 
 	test('quick view opens from a card without leaving the listing', async ({ page, isMobile }) => {
-		test.skip(isMobile, 'the card actions appear on hover');
 		await page.goto('/en/collections/sarees');
 		await page.waitForLoadState('networkidle');
 		const card = page.locator('app-collection-products app-product-box').first();
-		await card.hover();
-		await card.locator('.product-option a').first().click();
-		await expect(page.locator('ngb-modal-window')).toBeVisible();
+		// Laptops: the hover bar's eye. Phones: the eye among the card's corner buttons (owner, 22 Nov 2026).
+		if (isMobile) await card.locator('.product-header-top button[aria-label="Quick View"]').click();
+		else {
+			await card.hover();
+			await card.locator('.product-option a').first().click();
+		}
+		await expect(page.locator('ngb-modal-window.st-quick-view')).toBeVisible();
+		await expect(page.locator('.st-quick-view app-buy-box')).toBeVisible();
 		await expect(page).toHaveURL(/\/collections\/sarees/);
 	});
 

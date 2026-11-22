@@ -525,11 +525,15 @@ test.describe('Media page (step 1)', () => {
 		await expect(page.locator('#fm_pick_rules')).toContainText('Needs Category 3:4');
 		await page.keyboard.press('Escape');
 		await expect(page.locator('#fm_pick_title')).toHaveCount(0);
-		await page.goto(`${ADMIN}/setting/brand-kit`, { waitUntil: 'networkidle' });
-		const icon = page.locator(
-			'app-image-upload[id$="_browser_icon"] .choosefile-input, [id$="_browser_icon"] .choosefile-input',
-		);
-		test.skip((await icon.count()) === 0, 'the browser icon slot is hidden while the phone logo makes the icons');
+		await page.goto(`${ADMIN}/setting/brand`, { waitUntil: 'networkidle' });
+		// The icon slot shows once "use the seal as the icon" is off; switched on screen only, nothing is saved.
+		const sealAsIcon = page.locator('input[id$="_seal_as_favicon"]').first();
+		await sealAsIcon.setChecked(false);
+		// The upload part takes its id as an input and writes no attribute; its row's label names it.
+		const icon = page
+			.locator('app-form-fields')
+			.filter({ has: page.locator('label[for$="_browser_icon"]') })
+			.locator('.choosefile-input');
 		await icon.first().click();
 		await expect(page.locator('#fm_pick_title')).toHaveText('Choose the browser and home-screen icon');
 		await expect(page.locator('#fm_pick_rules')).toContainText('Browser icon');
@@ -544,8 +548,8 @@ test.describe('Media page (step 1)', () => {
 			.or(page.locator('.nav-link', { hasText: 'Images' }))
 			.first()
 			.click();
+		// prd_906 carries the demo catalogue's three photos; wait for the tab to draw them.
 		const photo = page.locator('app-product-images [data-photo]').first();
-		test.skip((await photo.count()) === 0, 'the test product has no photos');
 		await photo.click();
 		await expect(page.locator('#product_photo_title')).toHaveText('Photo on this product');
 		await expect(page.locator('#product_photo_version')).toBeVisible();

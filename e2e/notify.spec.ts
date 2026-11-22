@@ -19,8 +19,8 @@ async function signIn(page: import('@playwright/test').Page, email: string) {
 	await page.locator('#login_btn').click();
 }
 
-test.describe.serial('Notify Me', () => {
-	test.skip(({ isMobile }) => isMobile, 'one account, so the flow runs once');
+// One account, so the flow runs once (on the laptop project).
+test.describe.serial('Notify Me', { tag: '@desktop-only' }, () => {
 	test.beforeEach(tidy);
 	test.afterAll(tidy);
 

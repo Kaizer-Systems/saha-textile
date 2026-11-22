@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { withDatabase } from './database';
 import { API_URL as API, expect, test } from './support';
 
-test.skip(({ isMobile }) => isMobile, 'data and server behaviour, proven once');
+// Data and server behaviour, proven once: the phone project leaves this file out (playwright.config.ts).
 
 const LISTING = '/en/collections/sarees/pure-silk/ikkat';
 

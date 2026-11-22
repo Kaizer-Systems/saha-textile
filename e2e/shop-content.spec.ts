@@ -46,8 +46,8 @@ test.describe('Bundles', () => {
 	});
 });
 
-test.describe.serial('Compound photos', () => {
-	test.skip(({ isMobile }) => isMobile, 'changes a shared product, so this runs once');
+// Changes a shared product, so this runs once (on the laptop project).
+test.describe.serial('Compound photos', { tag: '@desktop-only' }, () => {
 	const slug = 'designer-saree-with-blouse';
 
 	test('a variant with its own photos shows only those', async ({ page }) => {

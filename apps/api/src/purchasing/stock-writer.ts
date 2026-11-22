@@ -16,12 +16,14 @@ import {
 
 import {
 	INVENTORY_COST_LAYER_REPOSITORY,
+	BUNDLE_STOCK,
 	SEARCH_OUTBOX,
 	STOCK_HOLD_REPOSITORY,
 	STOCK_MOVEMENT,
 	STOCK_READ_REPOSITORY,
 } from '../infra/tokens';
 import { missing } from './purchasing-support';
+import type { BundleStockService } from '../catalog/bundles/bundle-stock.service';
 
 export interface StockChange {
 	variantId: string;
@@ -65,6 +67,7 @@ export class StockWriter {
 		@Inject(INVENTORY_COST_LAYER_REPOSITORY) private readonly layers: InventoryCostLayerRepository,
 		@Inject(STOCK_HOLD_REPOSITORY) private readonly holds: StockHoldRepository,
 		@Optional() @Inject(SEARCH_OUTBOX) private readonly searchOutbox: SearchOutboxRepository | null = null,
+		@Optional() @Inject(BUNDLE_STOCK) private readonly bundleStock: BundleStockService | null = null,
 	) {}
 
 	async facts(variantId: string): Promise<StockItemFacts> {
@@ -197,5 +200,7 @@ export class StockWriter {
 	/** After stock changes, the shop's search entries (in stock, low stock) refresh. */
 	async refreshShop(productIds: readonly string[]): Promise<void> {
 		await this.searchOutbox?.request([...new Set(productIds)], new Date()).catch(() => undefined);
+		// Bundles holding these pieces work out their stock again (V3).
+		await this.bundleStock?.refreshContaining(productIds);
 	}
 }

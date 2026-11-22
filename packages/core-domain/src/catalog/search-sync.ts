@@ -6,6 +6,7 @@ import type {
 	SearchOutboxKey,
 	SearchOutboxRepository,
 } from '../ports/search-outbox.repository';
+import { isShownOnShop } from './product-visibility';
 
 /** How many queued changes one pass takes. */
 export const SEARCH_OUTBOX_BATCH = 200;
@@ -41,7 +42,7 @@ async function split(deps: Pick<SearchSyncDeps, 'loadProduct'>, keys: readonly P
 	const removed: string[] = [];
 	for (const { productId } of keys) {
 		const product = await deps.loadProduct(productId);
-		if (product?.status === 'live') live.push(product);
+		if (product && isShownOnShop(product)) live.push(product);
 		else removed.push(productId);
 	}
 	return { live, removed };
@@ -129,7 +130,7 @@ export async function checkSearchIndex(deps: SearchCheckDeps): Promise<SearchChe
 	const now = deps.now();
 	const products = await deps.products();
 	const indexed = new Set(await deps.indexedIds());
-	const live = products.filter((product) => product.status === 'live');
+	const live = products.filter((product) => isShownOnShop(product));
 	const liveIds = new Set(live.map((product) => product.id));
 	const missing = live.filter((product) => !indexed.has(product.id)).map((product) => product.id);
 	const extra = [...indexed].filter((id) => !liveIds.has(id));

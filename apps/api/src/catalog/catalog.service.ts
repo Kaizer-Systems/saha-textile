@@ -19,6 +19,7 @@ import {
 	type SeoRedirectWrite,
 } from '@saha-textile/contracts';
 import {
+	isShownOnShop,
 	swatchesLeftBehind,
 	normaliseSourcePath,
 	productGallery,
@@ -56,8 +57,10 @@ import { randomUUID } from 'node:crypto';
 
 import { productReadModel, skuView } from './catalog-read-model';
 import { applyProductContent, syncVariantRows } from './product-content';
+import type { BundleStockService } from './bundles/bundle-stock.service';
 import { SearchVocabularyService } from './search-vocabulary.service';
 import {
+	BUNDLE_STOCK,
 	ADDON_TEMPLATE_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	CATEGORY_PLACEMENT_REPOSITORY,
@@ -125,6 +128,7 @@ export class CatalogService {
 		private readonly coverage: LanguageCoverageRepository | null = null,
 		@Optional() @Inject(STOCK_READ_REPOSITORY) private readonly stockRead: StockReadRepository | null = null,
 		@Optional() @Inject(ORDER_REPOSITORY) private readonly orders: OrderRepository | null = null,
+		@Optional() @Inject(BUNDLE_STOCK) private readonly bundleStock: BundleStockService | null = null,
 	) {}
 
 	/** P11: the unit is fixed once the product has stock, stock history or orders. */
@@ -433,6 +437,8 @@ export class CatalogService {
 			status: product.status,
 			published: isPublished(product),
 			featured: product.featured,
+			showOnShop: product.showOnShop !== false,
+			freeWith: product.freeWith ?? null,
 			madeToOrder: product.madeToOrder,
 			estimatedDeliveryText: product.estimatedDeliveryText?.en ?? null,
 			lowStockThreshold: product.lowStockThreshold,
@@ -553,6 +559,13 @@ export class CatalogService {
 		if (published && body.sku !== product.sku) {
 			throw new BadRequestException('A published product keeps its SKU');
 		}
+		// Free items are real products (P8): never the product itself, never a bundle, never missing.
+		for (const item of body.freeWith?.items ?? []) {
+			if (item.productId === product.id) throw new BadRequestException('A product cannot be free with itself');
+			const target = await this.products.findById(item.productId, 'admin');
+			if (!target) throw new NotFoundException(`Product not found: ${item.productId}`);
+			if (target.type === 'bundle') throw new BadRequestException('A bundle cannot be a free item');
+		}
 		const rows = new Map((await this.variants.listForProduct(product.id, 'admin')).map((row) => [row.id, row]));
 		const soldBy = body.soldBy ?? product.soldBy;
 		if (soldBy !== product.soldBy) {
@@ -623,6 +636,8 @@ export class CatalogService {
 					body.status === 'disabled' && product.status !== 'disabled' ? now : product.lifecycle.disabledAt,
 			},
 			featured: body.featured,
+			showOnShop: body.showOnShop === undefined ? product.showOnShop : body.showOnShop,
+			freeWith: body.freeWith === undefined ? product.freeWith : body.freeWith,
 			madeToOrder: body.madeToOrder,
 			estimatedDeliveryText: body.estimatedDeliveryText
 				? { ...(product.estimatedDeliveryText ?? {}), en: body.estimatedDeliveryText }
@@ -691,6 +706,8 @@ export class CatalogService {
 		await this.replaceManualRelations(product.id, 'upsell', body.upsellProductIds);
 		await this.replaceManualRelations(product.id, 'cross_sell', body.crossSellProductIds);
 		await this.dropLeftBehindSwatches(swatchIdsOf(product), swatchIdsOf(next));
+		// Its stock, price or status may change what the bundles holding it can make (V3).
+		await this.bundleStock?.refreshContaining([product.id]);
 		return { id: product.id, slug: next.slug };
 	}
 
@@ -711,7 +728,7 @@ export class CatalogService {
 	async syncSearch(product: Product): Promise<void> {
 		if (this.searchOutbox) return this.sendToSearch([product]);
 		try {
-			if (product.status === 'live') await this.indexLive([product]);
+			if (isShownOnShop(product)) await this.indexLive([product]);
 			else await this.search?.removeProduct(product.id);
 		} catch (error) {
 			this.logger.warn(`Search index not updated for ${product.id}: ${String(error)}`);
@@ -723,7 +740,7 @@ export class CatalogService {
 	 * changes how they are found. Products not on the shop leave the index.
 	 */
 	async syncSearchMany(products: readonly Product[]): Promise<number> {
-		const live = products.filter((product) => product.status === 'live');
+		const live = products.filter((product) => isShownOnShop(product));
 		if (this.searchOutbox) await this.sendToSearch(products);
 		else await this.indexLive(live);
 		return live.length;

@@ -1186,6 +1186,8 @@ export class MongoStockReadRepository implements StockReadRepository {
 		const seen = new Set<string>();
 		const out: StockItemFacts[] = [];
 		for (const fact of facts) {
+			// Bundles hold no stock of their own (V2, A14): no purchase or stock picker offers them.
+			if (fact.productType === 'bundle') continue;
 			const exactSku = fact.sku.toLowerCase() === text.toLowerCase() || fact.barcode === text;
 			const key = fact.productType === 'variable' && !exactSku ? `p:${fact.productId}` : `v:${fact.variantId}`;
 			if (seen.has(key)) continue;

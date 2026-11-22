@@ -11,6 +11,7 @@ import {
 	type ProductCreate,
 } from '@saha-textile/contracts';
 import {
+	bundleChecks,
 	goLiveGaps,
 	productGallery,
 	selectionHash,
@@ -131,7 +132,7 @@ export class ProductBuilderService {
 		if (product.status === 'discontinued') {
 			throw new BadRequestException('A discontinued product cannot go live');
 		}
-		const gaps = await this.gapsFor(product);
+		const gaps = [...(await this.gapsFor(product)), ...(await this.bundleGaps(product))];
 		if (gaps.length) return GoLiveResult.parse({ live: false, gaps });
 		if (product.status !== 'live') {
 			const now = new Date().toISOString();
@@ -143,6 +144,11 @@ export class ProductBuilderService {
 			await this.products.save(next);
 			await this.catalog.syncSearch(next);
 			await this.catalog.record(actorUserId, 'catalog.product.go-live', product.id, { sku: product.sku });
+		}
+		// The set follows its product onto the shop.
+		if (product.type === 'bundle' && this.bundles) {
+			const bundle = await this.bundles.findByProductId(product.id, 'admin');
+			if (bundle && bundle.status !== 'live') await this.bundles.save({ ...bundle, status: 'live' });
 		}
 		return GoLiveResult.parse({ live: true, gaps: [] });
 	}
@@ -161,6 +167,37 @@ export class ProductBuilderService {
 			faq: product.faqEnabled ? await this.catalog.productFaq(product.id) : [],
 		});
 		return gaps;
+	}
+
+	/**
+	 * A bundle's own checks before Go Live (rev 1 S6/S7, rev 3 C09): levels and pieces, the price method's inputs, and
+	 * a set that would cost more than its pieces. Each error is a gap named `bundle:<code>`.
+	 */
+	async bundleGaps(product: Product): Promise<GoLiveResult['gaps']> {
+		if (product.type !== 'bundle' || !this.bundles || !this.reader) return [];
+		const bundle = await this.bundles.findByProductId(product.id, 'admin');
+		if (!bundle) return [{ field: 'bundle:no_levels', locale: null }];
+		const resolved = await this.reader.resolve(bundle);
+		const checkItem = (item: (typeof resolved.levels)[number]['items'][number]) => ({
+			key: item.key,
+			live: item.live,
+			isBundle: item.isBundle,
+			inStock: item.capacity >= 1,
+		});
+		const checks = bundleChecks({
+			bundle: this.reader.toQuote(resolved),
+			levels: resolved.levels.map((level) => ({
+				code: level.code,
+				take: level.take,
+				items: level.items.map(checkItem),
+			})),
+			extras: resolved.extras.map(checkItem),
+			methodActive: resolved.method?.active ?? false,
+			dearerReason: bundle.dearerReason,
+		});
+		return checks
+			.filter((check) => check.severity === 'error')
+			.map((check) => ({ field: `bundle:${check.code}${check.level ? `:${check.level}` : ''}`, locale: null }));
 	}
 
 	async bundle(idOrSlug: string) {

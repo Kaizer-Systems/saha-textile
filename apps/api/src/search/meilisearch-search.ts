@@ -1,5 +1,6 @@
 import type { Product } from '@saha-textile/contracts';
 import {
+	isShownOnShop,
 	SEARCH_STOP_WORDS,
 	SearchUnavailableError,
 	type Paginated,
@@ -283,7 +284,7 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		return {
 			items: ids.flatMap((id) => {
 				const product = byId.get(id);
-				return product && product.status === 'live' ? [product] : [];
+				return product && isShownOnShop(product) ? [product] : [];
 			}),
 			total: body.estimatedTotalHits ?? ids.length,
 			page,

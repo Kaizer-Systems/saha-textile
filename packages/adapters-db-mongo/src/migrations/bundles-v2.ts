@@ -11,14 +11,15 @@ export const seededMethodId = (code: string): string => `bpm_${code}`;
  * the "Set price is" list has them from day one (owner: "create those exact same rules by default as seed data
  * into the db itself"). A method already stored under the same code is never overwritten.
  */
-export async function seedBundlePriceMethods(now = new Date()): Promise<string> {
+export async function seedBundlePriceMethods(): Promise<string> {
 	let written = 0;
 	for (const seed of SEEDED_PRICE_METHODS) {
 		const method = BundlePriceMethod.parse({ ...seed, id: seededMethodId(seed.code), seeded: true, version: 1 });
 		const { id, createdAt: _c, updatedAt: _u, ...rest } = method;
 		const result = await BundlePriceMethodModel.updateOne(
 			{ code: method.code },
-			{ $setOnInsert: { _id: id, ...rest, createdAt: now, updatedAt: now } },
+			// Timestamps come from the schema; setting them here as well would conflict with its own $set.
+			{ $setOnInsert: { _id: id, ...rest } },
 			{ upsert: true },
 		).exec();
 		if (result.upsertedCount > 0) written += 1;

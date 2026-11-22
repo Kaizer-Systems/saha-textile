@@ -12,6 +12,8 @@ export const PRODUCT_BUNDLE_REPOSITORY = Symbol('ProductBundleRepository');
 export const BUNDLE_PRICE_METHOD_REPOSITORY = Symbol('BundlePriceMethodRepository');
 /** Reads a bundle's items against their live products: shop page, builder, cart, checkout and stock. */
 export const BUNDLE_READER = Symbol('BundleReader');
+/** Refreshes bundles' worked-out stock after a piece's stock moves. */
+export const BUNDLE_STOCK = Symbol('BundleStock');
 export const SEARCH_PORT = Symbol('SearchPort');
 /** The search change queue (outbox). */
 export const SEARCH_OUTBOX = Symbol('SearchOutboxRepository');

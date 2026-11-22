@@ -1,6 +1,7 @@
 import type { AttributeDefinition, Product } from '@saha-textile/contracts';
 
 import type { SearchEntry, SearchPort } from '../ports/search.port';
+import { isShownOnShop } from './product-visibility';
 
 /**
  * Words that say nothing about a product. Spellings and words that mean the same thing are the
@@ -38,7 +39,8 @@ export function searchDocument(product: Pick<Product, 'id' | 'slug' | 'sku' | 't
  * same documents, so it is safe to repeat. Typeahead calls `SearchPort`, not a Mongo regex.
  */
 export async function rebuildSearchIndex(entries: readonly SearchEntry[], search: SearchPort): Promise<number> {
-	const live = entries.filter((entry) => entry.product.status === 'live');
+	// Live and shown on the shop: a product kept off the shop (D5) is never found by search.
+	const live = entries.filter((entry) => isShownOnShop(entry.product));
 	await search.replaceIndex(live);
 	return live.length;
 }

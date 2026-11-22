@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Optional } from '@nestjs/common';
 import type { Order, OrderLine } from '@saha-textile/contracts';
 import {
 	StockMovementRefusedError,
@@ -9,7 +9,13 @@ import {
 } from '@saha-textile/core-domain';
 
 import { codedRefusal } from '../common/coded-refusal';
-import { INVENTORY_COST_LAYER_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, STOCK_MOVEMENT } from '../infra/tokens';
+import type { BundleStockService } from '../catalog/bundles/bundle-stock.service';
+import {
+	BUNDLE_STOCK,
+	INVENTORY_COST_LAYER_REPOSITORY,
+	PRODUCT_VARIANT_REPOSITORY,
+	STOCK_MOVEMENT,
+} from '../infra/tokens';
 
 type Move = 'reserve' | 'release' | 'sell';
 
@@ -32,6 +38,7 @@ export class OrderStock {
 		@Inject(STOCK_MOVEMENT) private readonly stock: StockMovementPort,
 		@Inject(PRODUCT_VARIANT_REPOSITORY) private readonly variants: ProductVariantRepository,
 		@Inject(INVENTORY_COST_LAYER_REPOSITORY) private readonly layers: InventoryCostLayerRepository,
+		@Optional() @Inject(BUNDLE_STOCK) private readonly bundleStock: BundleStockService | null = null,
 	) {}
 
 	reserve(
@@ -131,6 +138,11 @@ export class OrderStock {
 		context: TransactionContext,
 		at: string,
 	): Promise<void> {
+		// Bundles holding these pieces work out their stock again once the order's transaction has settled (V3).
+		if (this.bundleStock && lines.length) {
+			const ids = lines.map((line) => line.productId);
+			setTimeout(() => void this.bundleStock?.refreshContaining(ids), 1500).unref();
+		}
 		for (const line of lines) {
 			if (line.madeToOrder) continue;
 			// Only pieces this order actually keeps are released or sold.

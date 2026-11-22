@@ -76,7 +76,8 @@ export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles,
 	const measures = product.optionGroups.some((group) => group.terms.some((term) => term.requiresMeasurements));
 	if (measures && !product.addonTemplateCode) gaps.push({ field: 'addon_template', locale: null });
 	if (!product.categoryIds.length) gaps.push({ field: 'category', locale: null });
-	const priced = variants.some((row) => row.priceINR > 0);
+	// A bundle has no price of its own: its pieces are priced, and its own checks run in the builder (V2, V4).
+	const priced = product.type === 'bundle' || variants.some((row) => row.priceINR > 0);
 	if (!priced) gaps.push({ field: 'price', locale: null });
 	const primary = productGallery(product)[0];
 	if (!primary) gaps.push({ field: 'primary_image', locale: null });

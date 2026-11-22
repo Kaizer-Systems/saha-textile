@@ -182,6 +182,7 @@ import {
 	PRODUCT_BUNDLE_REPOSITORY,
 	BUNDLE_PRICE_METHOD_REPOSITORY,
 	BUNDLE_READER,
+	BUNDLE_STOCK,
 	LISTING_PORT,
 	READINESS_PROBES,
 	SEARCH_OUTBOX,
@@ -258,6 +259,7 @@ import {
 } from './tokens';
 import { SaleAwareVariantRepository } from '../events/sale-aware-variant.repository';
 import { BundleReader } from '../catalog/bundles/bundle-reader';
+import { BundleStockService } from '../catalog/bundles/bundle-stock.service';
 import { SalePriceBook } from '../events/sale-price-book';
 import { LanguageStore } from '../languages/language-store';
 
@@ -299,6 +301,15 @@ import { LanguageStore } from '../languages/language-store';
 				book: SalePriceBook,
 			) => new BundleReader(products, variants, methods, book),
 			inject: [PRODUCT_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, BUNDLE_PRICE_METHOD_REPOSITORY, SALE_PRICE_BOOK],
+		},
+		{
+			provide: BUNDLE_STOCK,
+			useFactory: (
+				bundles: MongoProductBundleRepository,
+				products: MongoProductRepository,
+				reader: BundleReader,
+			) => new BundleStockService(bundles, products, reader),
+			inject: [PRODUCT_BUNDLE_REPOSITORY, PRODUCT_REPOSITORY, BUNDLE_READER],
 		},
 		{
 			provide: SEARCH_PORT,
@@ -551,6 +562,7 @@ import { LanguageStore } from '../languages/language-store';
 		PRODUCT_BUNDLE_REPOSITORY,
 		BUNDLE_PRICE_METHOD_REPOSITORY,
 		BUNDLE_READER,
+		BUNDLE_STOCK,
 		LISTING_PORT,
 		READINESS_PROBES,
 		SEARCH_PORT,

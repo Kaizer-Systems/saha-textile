@@ -20,6 +20,7 @@ import { firstValueFrom } from 'rxjs';
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 
 import { previewAdminOrigin } from '../../../server/admin-origin';
+import { BundlePreview } from './bundle-preview/bundle-preview';
 import { PageLayout } from './page-layout';
 import type { StorefrontPageLayoutView } from './page-builder.types';
 import { linkToBuilder } from './preview-messages';
@@ -51,7 +52,9 @@ export interface PreviewPageData {
 @Component({
 	selector: 'app-page-preview',
 	template: `
-		@if (sections(); as list) {
+		@if (pageType === 'bundle') {
+			<app-bundle-preview [adminOrigin]="adminOrigin()" />
+		} @else if (sections(); as list) {
 			<app-page-layout
 				[sections]="list"
 				[preview]="true"
@@ -73,7 +76,7 @@ export interface PreviewPageData {
 		}
 	`,
 	encapsulation: ViewEncapsulation.None,
-	imports: [PageLayout],
+	imports: [PageLayout, BundlePreview],
 })
 export class PagePreview {
 	private readonly http = inject(HttpClient);
@@ -101,6 +104,7 @@ export class PagePreview {
 	}));
 
 	readonly sections = computed(() => this.query.data()?.layout?.sections ?? null);
+	readonly adminOrigin = computed(() => this.query.data()?.adminOrigin ?? null);
 
 	constructor() {
 		const host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;

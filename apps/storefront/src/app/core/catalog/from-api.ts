@@ -372,6 +372,41 @@ function optionTerms(group: ApiOptionGroup) {
 }
 
 /** Maps the product page read model into the shape the existing configurator and gallery read. */
+/**
+ * A set's block in the shop's shape, from the API's (or the bundle builder's live preview). Product-level option
+ * groups and measurements are added by the page.
+ */
+export function bundleFromApi(set: CatalogPageBundle, sku: string): IBundle {
+	return {
+		sku,
+		heading: set.heading,
+		bundle_price: set.priceINR,
+		separately: set.separatelyINR,
+		save: set.saveINR,
+		from_price: set.fromPrice,
+		low: set.lowINR,
+		high: set.highINR,
+		levels: set.levels.map((level) => ({
+			code: level.code,
+			label: level.label,
+			take: level.take,
+			choice: level.choice,
+			price_mode: level.priceMode,
+			items: level.items.map(setItemFromApi),
+		})),
+		extras: set.extras.map(setItemFromApi),
+		pricing: set.pricing,
+		stock: {
+			sets_possible: set.stock.setsPossible,
+			state: set.stock.state,
+			sold_out_pieces: set.stock.soldOutPieces,
+			sold_out_choices: set.stock.soldOutChoices,
+		},
+		buyable: set.buyable,
+		option_groups: [],
+	};
+}
+
 export function pageToProduct(page: ApiProductPage): IProduct {
 	// The selected SKU's price and photo come first, so `?variant=` is right in the first HTML.
 	const selling =
@@ -473,31 +508,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 	// A set (bundle builder brief, approved 2026-11-22): levels, extras and the rules the page prices choices with.
 	const bundle: IBundle | undefined = page.bundle
 		? {
-				sku: page.selected?.sku ?? page.slug,
-				heading: page.bundle.heading,
-				bundle_price: page.bundle.priceINR,
-				separately: page.bundle.separatelyINR,
-				save: page.bundle.saveINR,
-				from_price: page.bundle.fromPrice,
-				low: page.bundle.lowINR,
-				high: page.bundle.highINR,
-				levels: page.bundle.levels.map((level) => ({
-					code: level.code,
-					label: level.label,
-					take: level.take,
-					choice: level.choice,
-					price_mode: level.priceMode,
-					items: level.items.map(setItemFromApi),
-				})),
-				extras: page.bundle.extras.map(setItemFromApi),
-				pricing: page.bundle.pricing,
-				stock: {
-					sets_possible: page.bundle.stock.setsPossible,
-					state: page.bundle.stock.state,
-					sold_out_pieces: page.bundle.stock.soldOutPieces,
-					sold_out_choices: page.bundle.stock.soldOutChoices,
-				},
-				buyable: page.bundle.buyable,
+				...bundleFromApi(page.bundle, page.selected?.sku ?? page.slug),
 				option_groups: page.optionGroups
 					.filter((group) => group.role === 'bundle_component_option')
 					.map((group) => ({

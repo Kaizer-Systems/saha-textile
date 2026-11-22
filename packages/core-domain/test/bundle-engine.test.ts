@@ -525,3 +525,70 @@ describe('checks before Go Live', () => {
 		]);
 	});
 });
+
+describe('the garment band warning (CA round 2, B2.9)', () => {
+	it('names a garment piece whose share sits across ₹2,500 from its own price, once', async () => {
+		const { bundleChecks } = await import('../src/bundle/checks');
+		const item = (key: string, price: number) => ({
+			key,
+			quantity: 1,
+			priceInSetINR: price,
+			todayINR: price,
+			onSale: false,
+		});
+		const bundle = {
+			levels: [
+				{ code: 'a', take: 1, priceMode: 'difference' as const, items: [item('kurti', 2800)] },
+				{ code: 'b', take: 1, priceMode: 'difference' as const, items: [item('dupatta', 1200)] },
+			],
+			extras: [],
+			method: {
+				base: { kind: 'fixed' as const, input: 'setPrice' },
+				inputs: [
+					{
+						code: 'setPrice',
+						label: { en: 'Set price' },
+						kind: 'money' as const,
+						min: null,
+						max: null,
+						default: null,
+					},
+				],
+				rules: [],
+				combine: 'all' as const,
+			},
+			params: { setPrice: 3200 },
+			rules: [],
+			combine: 'all' as const,
+			capAtSeparately: false,
+			roundTo: 'one' as const,
+		};
+		const flags = (garment: boolean) => [{ key: 'kurti', live: true, isBundle: false, inStock: true, garment }];
+		const checks = bundleChecks({
+			bundle,
+			levels: [
+				{ code: 'a', take: 1, items: flags(true) },
+				{ code: 'b', take: 1, items: [{ key: 'dupatta', live: true, isBundle: false, inStock: true }] },
+			],
+			extras: [],
+			methodActive: true,
+			dearerReason: null,
+		});
+		const band = checks.filter((check) => check.code === 'garment_band');
+		expect(band).toEqual([
+			{ severity: 'warn', code: 'garment_band', key: 'kurti', totalINR: 2240, separatelyINR: 2800 },
+		]);
+		expect(checks.some((check) => check.code === 'all_good')).toBe(true);
+		const plain = bundleChecks({
+			bundle,
+			levels: [
+				{ code: 'a', take: 1, items: flags(false) },
+				{ code: 'b', take: 1, items: [{ key: 'dupatta', live: true, isBundle: false, inStock: true }] },
+			],
+			extras: [],
+			methodActive: true,
+			dearerReason: null,
+		});
+		expect(plain.some((check) => check.code === 'garment_band')).toBe(false);
+	});
+});

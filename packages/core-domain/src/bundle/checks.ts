@@ -1,4 +1,5 @@
 import { combinations, quoteBundle, type QuoteBundle } from './price';
+import { splitShares } from './shares';
 
 /**
  * Checks before a bundle goes live (rev 1 S6/S7, rev 3 C09). Errors hold Go Live; warnings only inform. Words are
@@ -17,11 +18,13 @@ export interface BundleCheck {
 		| 'method_inactive'
 		| 'set_dearer'
 		| 'set_dearer_kept'
+		| 'garment_band'
 		| 'all_good';
 	level?: string;
 	key?: string;
 	input?: string;
-	/** For set_dearer: the picks, the set total and what the pieces cost separately. */
+	/** For set_dearer: the picks, the set total and what the pieces cost separately. For garment_band: a piece's share
+	 * of the set price (per piece) as the total, and its own price (per piece) as separately. */
 	picks?: Record<string, string[]>;
 	totalINR?: number;
 	separatelyINR?: number;
@@ -32,7 +35,12 @@ export interface CheckItem {
 	live: boolean;
 	isBundle: boolean;
 	inStock: boolean;
+	/** A ready-made garment (HSN chapters 61 and 62), whose GST rate changes at ₹2,500 a piece. */
+	garment?: boolean;
 }
+
+/** The ₹2,500-a-piece line where ready-made garments change GST rate (CA round 2, B2.9). */
+export const GARMENT_BAND_INR = 2500;
 
 export interface CheckInput {
 	bundle: QuoteBundle;
@@ -88,7 +96,47 @@ export function bundleChecks(input: CheckInput, now: Date = new Date()): BundleC
 			}
 		}
 	}
+	out.push(...garmentBand(input, now));
 	if (!out.some((check) => check.severity === 'error')) out.push({ severity: 'ok', code: 'all_good' });
+	return out;
+}
+
+/**
+ * A garment piece whose share of the set price sits on the other side of ₹2,500 from its own price: billed at its
+ * share (owner-final, 22 Nov 2026), its GST rate would differ from the piece sold alone. A warning only, until the CA
+ * answers B2.9; each piece is named once, from the first combination that shows it.
+ */
+function garmentBand(input: CheckInput, now: Date): BundleCheck[] {
+	const garments = new Set(
+		[...input.levels.flatMap((level) => level.items), ...input.extras].filter((i) => i.garment).map((i) => i.key),
+	);
+	if (garments.size === 0) return [];
+	const out: BundleCheck[] = [];
+	const named = new Set<string>();
+	for (const picks of combinations(input.bundle.levels, 500)) {
+		const quote = quoteBundle(input.bundle, { picks }, now);
+		if (!quote.ok) continue;
+		const shares = splitShares(
+			quote.setPriceINR,
+			quote.pieces.map((piece) => ({ key: piece.key, weightINR: piece.priceInSetINR })),
+		);
+		for (const piece of quote.pieces) {
+			if (!garments.has(piece.key) || named.has(piece.key)) continue;
+			const quantity = Math.max(1, piece.quantity);
+			const share = (shares.get(piece.key) ?? 0) / quantity;
+			const own = piece.todayINR / quantity;
+			if (share <= GARMENT_BAND_INR !== own <= GARMENT_BAND_INR) {
+				named.add(piece.key);
+				out.push({
+					severity: 'warn',
+					code: 'garment_band',
+					key: piece.key,
+					totalINR: Math.round(share * 100) / 100,
+					separatelyINR: Math.round(own * 100) / 100,
+				});
+			}
+		}
+	}
 	return out;
 }
 

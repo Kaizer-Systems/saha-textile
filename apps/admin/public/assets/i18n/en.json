@@ -6761,5 +6761,6 @@
 	"bundle_source_limit": "How many, newest first",
 	"bundle_source_help": "The category's newest live products join this level by themselves, such as new petticoats from a purchase order. Sets are never added.",
 	"bundle_item_size": "Size or colour",
-	"bundle_shopper_chooses": "Shopper chooses"
+	"bundle_shopper_chooses": "Shopper chooses",
+	"bundle_check_garment_band": "{{item}}: its share of the set price is ₹{{total}} a piece against ₹{{separately}} on its own, across the ₹2,500 line where ready-made garments change GST rate. Billed at its share, its tax rate may differ from the piece sold alone (CA question B2.9)."
 }

@@ -32,6 +32,8 @@ import {
 	STOCK_READ_REPOSITORY,
 	SUPPLIER_REPOSITORY,
 } from '../infra/tokens';
+import { DocumentFormatsService } from '../documents/document-formats.service';
+import { goodsReceiptData, purchaseReturnData } from '../documents/purchase-prints';
 import { PurchaseOrderDocument, escapeHtml, longDate, shopLines } from './purchase-order-document';
 import { PurchasingSupport, missing, refuse } from './purchasing-support';
 
@@ -92,7 +94,22 @@ export class PurchasingPrints {
 		private readonly orderDocument: PurchaseOrderDocument,
 		private readonly support: PurchasingSupport,
 		@Optional() @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRendererPort | null = null,
+		@Optional() @Inject(DocumentFormatsService) private readonly formats: DocumentFormatsService | null = null,
 	) {}
+
+	/** Our own name, address and GSTIN for a document printed on its format. */
+	private async seller() {
+		const shop = shopOnDocument(await this.support.shopDetails(), (await this.orderDocument.brandFacts()).shopName);
+		return {
+			name: shop.legalName,
+			lines: [
+				...(shop.tradeName ? [shop.tradeName] : []),
+				...shop.addressLines,
+				...(shop.gstin ? [`GSTIN ${shop.gstin}`] : []),
+				[shop.phone, shop.email].filter(Boolean).join(' · '),
+			].filter(Boolean),
+		};
+	}
 
 	private async print(
 		build: (brand: Brand, details: ShopDetails) => { html: string; title: string },
@@ -146,10 +163,13 @@ export class PurchasingPrints {
 		if (entry.status === 'draft')
 			throw refuse('goods_not_checked', 'Check the goods first: the receipt shows what was counted.');
 		const supplier = await this.suppliers.findById(entry.supplierId);
-		const data = await this.print((brand, shop) => ({
-			html: this.receiptHtml(entry, supplier, shop, brand),
-			title: `Goods receipt ${entry.number ?? entry.billNumber}`,
-		}));
+		// On the goods receipt's document format (bundle builder brief F-BUY); the theme template without formats.
+		const data = this.formats
+			? await this.formats.renderActive('purchaseEntry', goodsReceiptData(entry, supplier, await this.seller()))
+			: await this.print((brand, shop) => ({
+					html: this.receiptHtml(entry, supplier, shop, brand),
+					title: `Goods receipt ${entry.number ?? entry.billNumber}`,
+				}));
 		return {
 			fileName: `goods-receipt-${(entry.number ?? entry.billNumber).replace(/[^A-Za-z0-9-]+/g, '-')}.pdf`,
 			data,
@@ -222,10 +242,16 @@ export class PurchasingPrints {
 			this.suppliers.findById(doc.supplierId),
 		]);
 		const number = (kind === 'challan' ? doc.challanNumber : doc.number) ?? doc.id;
-		const data = await this.print((brand, shop) => ({
-			html: this.returnHtml(kind, doc, entry, supplier, shop, brand),
-			title: `${kind === 'challan' ? 'Delivery challan' : 'Debit note'} ${number}`,
-		}));
+		// On the debit note's or challan's document format (bundle builder brief F); the theme template without formats.
+		const data = this.formats
+			? await this.formats.renderActive(
+					kind === 'challan' ? 'deliveryChallan' : 'debitNote',
+					purchaseReturnData(kind, doc, entry, supplier, await this.seller()),
+				)
+			: await this.print((brand, shop) => ({
+					html: this.returnHtml(kind, doc, entry, supplier, shop, brand),
+					title: `${kind === 'challan' ? 'Delivery challan' : 'Debit note'} ${number}`,
+				}));
 		return { fileName: `${number.replace(/\//g, '-')}.pdf`, data };
 	}
 

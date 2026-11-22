@@ -7,6 +7,7 @@ import { previewDocument } from '../src/documents/document-previews';
 import { DocumentFormatsService } from '../src/documents/document-formats.service';
 import { packingSlipData } from '../src/documents/packing-slip';
 import { purchaseOrderData } from '../src/documents/purchase-order';
+import { goodsReceiptData, purchaseReturnData } from '../src/documents/purchase-prints';
 
 const brand = { logoSrc: null, themeColor: '#0e6b5c', fontFaces: '' };
 
@@ -265,5 +266,82 @@ describe('pages after the first', () => {
 			brand,
 		);
 		expect(shop).not.toContain('</style><script>');
+	});
+});
+
+describe('purchase prints on their formats', () => {
+	const seller = { name: 'Saha Textile', lines: [] };
+	const entry = {
+		number: 'PE/26-27/000037',
+		supplierName: 'Bishnupur Weavers',
+		purchaseOrderNumber: 'PO/26-27/000052',
+		billNumber: 'BW/1182',
+		billDate: '2026-11-20',
+		goodsReceivedOn: '2026-11-22',
+		lines: [
+			{
+				lineId: 'l1',
+				title: 'Baluchari saree',
+				optionsLabel: 'maroon',
+				sku: 'ST-1',
+				soldBy: 'piece',
+				hsnOnBill: '5007',
+				productHsn: null,
+				quantity: 6,
+				accepted: 4,
+				damaged: 1,
+				missing: 1,
+				unitPriceINR: 6200,
+				taxableINR: 31000,
+				gstRatePct: 5,
+				lineTotalINR: 32550,
+			},
+		],
+		totals: { taxableINR: 31000, cgstINR: 775, sgstINR: 775, igstINR: 0, totalINR: 32550 },
+	} as never;
+
+	it('a goods receipt shows what was on the bill against what was received, damaged and short', () => {
+		const data = goodsReceiptData(entry, null, seller);
+		expect(data.rows?.[0]?.cells).toMatchObject({ ordered: '6', received: '4 (1 damaged, 1 short)', hsn: '5007' });
+		expect(data.values).toMatchObject({ entryNo: 'PE/26-27/000037', poNo: 'PO/26-27/000052' });
+	});
+
+	it('a return prints as a debit note with its reason, or as a challan that is not a sale', () => {
+		const doc = {
+			number: 'DN/26-27/000002',
+			challanNumber: 'DC/26-27/000014',
+			sentAt: '2026-11-22T06:00:00.000Z',
+			taxType: 'intra_state',
+			reason: 'damaged_on_arrival',
+			noteToSupplier: null,
+			purchaseEntryNumber: 'PE/26-27/000037',
+			supplierName: 'Bishnupur Weavers',
+			courier: 'DTDC',
+			docket: 'D123',
+			totalINR: 6510,
+			lines: [
+				{
+					entryLineId: 'l1',
+					title: 'Baluchari saree',
+					optionsLabel: 'maroon',
+					sku: 'ST-1',
+					soldBy: 'piece',
+					quantity: 1,
+					unitCostINR: 6200,
+					taxableINR: 6200,
+					taxINR: 310,
+					gstRatePct: 5,
+					totalINR: 6510,
+				},
+			],
+		} as never;
+		const note = purchaseReturnData('debit-note', doc, entry, null, seller);
+		expect(note).toMatchObject({ doc: 'debitNote', number: 'DN/26-27/000002', taxHeading: 'CGST + SGST' });
+		expect(note.values['reason']).toBe('Damaged on arrival');
+		expect(note.rows?.[0]?.cells['hsn']).toBe('5007');
+		const challan = purchaseReturnData('challan', doc, entry, null, seller);
+		expect(challan).toMatchObject({ doc: 'deliveryChallan', number: 'DC/26-27/000014' });
+		expect(challan.values['purpose']).toContain('not a sale');
+		expect(challan.values['transport']).toBe('DTDC, docket D123');
 	});
 });

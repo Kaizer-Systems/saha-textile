@@ -19,6 +19,7 @@ export const CONSOLE_ENV_FILE = `${CONSOLE_ENV_DIR}/console.env`;
 /** Every key the console reads; the two change keys are made later and may stay blank. */
 export const CONSOLE_KEY_NAMES = [
 	'CONSOLE_CF_READ_TOKEN',
+	'CONSOLE_CF_USER_TOKEN',
 	'CONSOLE_CF_WRITE_TOKEN',
 	'CONSOLE_DO_READ_TOKEN',
 	'CONSOLE_DO_WRITE_TOKEN',
@@ -32,6 +33,7 @@ export const CONSOLE_KEY_NAMES = [
 	'GOOGLE_SEARCH_CONSOLE_KEY',
 ];
 export const OPTIONAL_NAMES = new Set([
+	'CONSOLE_CF_USER_TOKEN',
 	'CONSOLE_CF_WRITE_TOKEN',
 	'CONSOLE_DO_WRITE_TOKEN',
 	'CONSOLE_OPS_TOKEN_DEV',

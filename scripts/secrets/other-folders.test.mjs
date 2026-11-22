@@ -35,14 +35,16 @@ const group = (extra = {}) => ({
 	...extra,
 });
 
-test('the release-console group is in the inventory: this computer only, read by the console API, five optional names', () => {
+test('the release-console group is in the inventory: this computer only, read by the console API, six optional names', () => {
 	const console = loadInventory().otherFolders.find((candidate) => candidate.folder === 'release-console');
 	assert.ok(console);
 	assert.deepEqual([...console.tiers], ['local']);
 	assert.equal(console.readBy, 'apps/release-console-api/src');
-	assert.equal(console.names.length, 12);
+	assert.equal(console.names.length, 13);
 	// The API operations keys (Release Console, 21 Nov): optional until each environment's OPS_TOKEN exists.
+	// CONSOLE_CF_USER_TOKEN (22 Nov): a personal token, only for Cloudflare's Page Rules API.
 	assert.deepEqual([...console.optional].sort(), [
+		'CONSOLE_CF_USER_TOKEN',
 		'CONSOLE_OPS_TOKEN_DEV',
 		'CONSOLE_OPS_TOKEN_LOCAL',
 		'CONSOLE_OPS_TOKEN_PRODUCTION',

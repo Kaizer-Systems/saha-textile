@@ -269,6 +269,7 @@ describe('projects and key links', () => {
 			present: true,
 			names: ['CONSOLE_DO_READ_TOKEN'],
 			optionalBlank: [
+				'CONSOLE_CF_USER_TOKEN',
 				'CONSOLE_CF_WRITE_TOKEN',
 				'CONSOLE_DO_WRITE_TOKEN',
 				'CONSOLE_OPS_TOKEN_DEV',

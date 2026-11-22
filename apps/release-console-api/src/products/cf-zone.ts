@@ -49,6 +49,9 @@ import {
 	zoneOf,
 } from './cf-kit.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
+import { ruleKindTables, rulesTabs } from './cf-rules.js';
+
+const moreRules = rulesTabs();
 
 const DASH = 'https://dash.cloudflare.com';
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 1000) / 10}%` : '—');
@@ -1981,10 +1984,18 @@ export const cfRulesScreen: ProductScreen = {
 	tabs: {
 		overview: async (ctx) => {
 			const z = await zoneOf(ctx);
-			const [sets, pagerules] = await Promise.all([
+			const [sets, older] = await Promise.all([
 				cfAll(`/zones/${z.id}/rulesets`, ctx.key),
-				cfAll(`/zones/${z.id}/pagerules`, ctx.key),
+				// Cloudflare's Page Rules API refuses account-owned tokens (the console's kind) outright.
+				cfAll(`/zones/${z.id}/pagerules`, ctx.consoleKey('CONSOLE_CF_USER_TOKEN') ?? ctx.key).catch(
+					(err: unknown) => {
+						if (err instanceof VendorError && /account owned tokens/i.test(err.message))
+							return 'refused' as const;
+						throw err;
+					},
+				),
 			]);
+			const pagerules = older === 'refused' ? null : older;
 			const zoneSets = (sets ?? []).filter((s) => str(s['kind']) === 'zone');
 			const counts = await Promise.all(
 				zoneSets.map(async (s) => ({
@@ -2020,6 +2031,7 @@ export const cfRulesScreen: ProductScreen = {
 						rulesOf(await entrypoint(ctx, z, 'http_request_dynamic_redirect')),
 						'No redirect rules.',
 					),
+					...(await ruleKindTables(ctx, z)),
 					table(
 						'Page rules (older kind)',
 						[col('targets', 'URL', true), col('actions', 'Does'), col('status', 'On')],
@@ -2034,9 +2046,20 @@ export const cfRulesScreen: ProductScreen = {
 								status: str(p['status']),
 							}),
 						),
-						'No page rules.',
+						older === 'refused'
+							? 'Not readable with the console’s account token (see the note).'
+							: 'No page rules.',
 					),
 				],
+				notes:
+					older === 'refused'
+						? [
+								note(
+									'Page rules (the older kind) are not shown: Cloudflare’s Page Rules API does not accept account tokens. Add the personal token CONSOLE_CF_USER_TOKEN to see and change them here, on the Page Rules tab.',
+									'muted',
+								),
+							]
+						: [],
 				actions: [action('New redirect rule', 'create', 'primary'), action('Upload bulk redirects', 'op')],
 			});
 		},
@@ -2098,12 +2121,13 @@ export const cfRulesScreen: ProductScreen = {
 					notes: [note('Free: 10,000 bulk redirects across the account.', 'muted')],
 				}),
 			),
-		destroy: ruleDestroy('http_request_dynamic_redirect', 'redirect rule').read,
-		history: async (ctx) => auditHistory(ctx, /ruleset|rule|redirect/i),
+		history: async (ctx) =>
+			auditHistory(ctx, /ruleset|rule|redirect|page_rule|snippet|managed_headers|url_normalization/i),
+		...moreRules.tabs,
 	},
 	forms: {
 		create: redirectCreate,
-		destroy: ruleDestroy('http_request_dynamic_redirect', 'redirect rule'),
+		...moreRules.forms,
 		edit: {
 			read: (ctx) => cfRulesScreen.tabs['edit']!(ctx),
 			async send(ctx, w) {

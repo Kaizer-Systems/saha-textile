@@ -26,6 +26,7 @@ test('lists the names the console API reads, and reports missing ones by name on
 	assert.ok(built.missing.includes('CONSOLE_GITHUB_TOKEN'));
 	assert.ok(!built.missing.includes('CONSOLE_CF_WRITE_TOKEN'));
 	assert.deepEqual(built.optionalBlank, [
+		'CONSOLE_CF_USER_TOKEN',
 		'CONSOLE_CF_WRITE_TOKEN',
 		'CONSOLE_DO_WRITE_TOKEN',
 		'CONSOLE_OPS_TOKEN_DEV',

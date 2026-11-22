@@ -5,6 +5,7 @@
  */
 export const CONSOLE_KEY_NAMES = [
 	'CONSOLE_CF_READ_TOKEN',
+	'CONSOLE_CF_USER_TOKEN',
 	'CONSOLE_CF_WRITE_TOKEN',
 	'CONSOLE_DO_READ_TOKEN',
 	'CONSOLE_DO_WRITE_TOKEN',
@@ -20,6 +21,7 @@ export const CONSOLE_KEY_NAMES = [
 
 /** The change keys, and the API operations keys (brief 26gq3NbcbBESea6abRtsa3), which stay blank until set. */
 export const OPTIONAL_KEY_NAMES: readonly string[] = [
+	'CONSOLE_CF_USER_TOKEN',
 	'CONSOLE_CF_WRITE_TOKEN',
 	'CONSOLE_DO_WRITE_TOKEN',
 	'CONSOLE_OPS_TOKEN_DEV',

@@ -37,6 +37,15 @@ export interface ICartConfigRaw {
 	variation_id?: number | string | null;
 	addon_selections?: Record<string, string>; // group code -> term code
 	bundle_selections?: Record<string, string>; // group code -> term code
+	/** A set's choices: picks per level, sizes, extras and free items per piece (bundle builder brief). */
+	set_choice?: {
+		picks: Record<string, string[]>;
+		variants: Record<string, string>;
+		extras: string[];
+		free: Record<string, { productId: string; variantId: string | null }[]>;
+	};
+	/** A product's own free items picked (P8). */
+	free_items?: { productId: string; variantId: string | null }[];
 	measurements?: Record<string, number>; // field code -> value
 }
 
@@ -53,6 +62,26 @@ export interface ICartLineConfig {
 
 export type CartLineProblem = 'unavailable' | 'out_of_stock' | 'limited' | 'below_shortest_cut';
 
+/**
+ * What a line holds beneath it (bundle builder brief E02–E04): a set's pieces at their share of the set price, a
+ * piece's free items, the set's extras, or a product's own free items. Quantities are per one set or product.
+ */
+export interface ICartChild {
+	role: 'piece' | 'free' | 'extra';
+	key: string;
+	/** The piece a free item comes with; null for extras and a product's own free items. */
+	parent_key: string | null;
+	product_id: string;
+	title: string;
+	sku: string;
+	image_url: string | null;
+	variant_label: string | null;
+	quantity: number;
+	/** The piece's share, an extra's price, or 0 for a free item. */
+	price: number;
+	mrp: number | null;
+}
+
 export interface ICart {
 	id: string;
 	product_id: number | string;
@@ -65,6 +94,10 @@ export interface ICart {
 	/** Composed per-unit price (base + add-on/bundle deltas); falls back to variation/product sale price when absent. */
 	unit_price?: number;
 	line_config?: ICartLineConfig;
+	/** A set's pieces, free items and extras, or a product's free items (bundle builder brief E02). */
+	children?: ICartChild[];
+	/** A set's heading on the shop; absent for other products. */
+	set_heading?: 'components' | 'choose' | null;
 	/** Why this line cannot be bought as it stands. */
 	problem?: CartLineProblem | null;
 	/** Units that can be bought now. Null means no limit. */

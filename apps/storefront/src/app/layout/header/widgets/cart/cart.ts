@@ -8,6 +8,7 @@ import { Observable } from 'rxjs';
 
 import { lengthText } from '@core/catalog/metre-length';
 import { AuthStore } from '@core/state/auth.store';
+import { cartChildCounts, cartChildRows } from '@core/state/cart/cart-children';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { isMetreLine, minusDeletes, stepLine, typedLineLength } from '@core/state/cart/metre-line';
 import { SettingStore } from '@core/state/setting.store';
@@ -119,6 +120,31 @@ export class Cart {
 
 	readonly isMetre = isMetreLine;
 	readonly minusDeletes = minusDeletes;
+
+	readonly childRows = cartChildRows;
+	readonly childCounts = cartChildCounts;
+	/** Sets opened to show what they hold (E04: one row with the count, closed by default). */
+	private readonly openSets = signal<ReadonlySet<string>>(new Set());
+
+	isOpen(item: ICart): boolean {
+		return this.openSets().has(item.id);
+	}
+
+	toggle(item: ICart): void {
+		this.openSets.update((open) => {
+			const next = new Set(open);
+			if (!next.delete(item.id)) next.add(item.id);
+			return next;
+		});
+	}
+
+	/** A product's free items by name, for its one green row. */
+	freeNames(item: ICart): string {
+		return (item.children ?? [])
+			.filter((child) => child.role === 'free')
+			.map((child) => child.title)
+			.join(', ');
+	}
 
 	/** "2.5 m" for a metre line's box (M10). */
 	qtyText(item: ICart, unit: string): string {

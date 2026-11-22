@@ -149,6 +149,8 @@ export const CartViewLine = z.object({
 	bundle: BundleChoice.nullable().default(null),
 	free: z.array(FreePick).default([]),
 	children: z.array(CartViewChild).default([]),
+	/** A set's heading on the shop ("Bundle Components" or "Choose your set"); null for other products. */
+	setHeading: z.enum(['components', 'choose']).nullable().default(null),
 });
 export type CartViewLine = z.infer<typeof CartViewLine>;
 

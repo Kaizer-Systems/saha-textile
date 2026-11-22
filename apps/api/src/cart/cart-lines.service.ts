@@ -187,6 +187,7 @@ export class CartLinesService {
 				options: [],
 				measurements: [],
 				children: [],
+				setHeading: null,
 				problem: 'unavailable',
 			};
 		}
@@ -222,6 +223,7 @@ export class CartLinesService {
 				priceINR: child.priceINR,
 				mrpINR: child.mrpINR,
 			})),
+			setHeading: page.bundle?.heading ?? null,
 			problem:
 				cartQuantityProblem(row, line.quantity) === 'below_shortest_cut'
 					? 'below_shortest_cut'

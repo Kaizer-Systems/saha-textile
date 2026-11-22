@@ -77,6 +77,9 @@ export class ProductConfigurator implements OnInit {
 	readonly addonSeed = computed(() => this.initialConfig()?.raw?.addon_selections);
 	readonly bundleSeed = computed(() => this.initialConfig()?.raw?.bundle_selections);
 	readonly measurementSeed = computed(() => this.initialConfig()?.raw?.measurements);
+	/** A saved set's choices and a product's free picks, for Edit in the cart. */
+	readonly setSeed = computed(() => this.initialConfig()?.raw?.set_choice);
+	readonly freeSeed = computed(() => this.initialConfig()?.raw?.free_items ?? null);
 
 	/** Base price the add-on delta stacks onto: selected variant → bundle kit price → product base. */
 	readonly effectiveBase = computed(() => {
@@ -102,8 +105,8 @@ export class ProductConfigurator implements OnInit {
 	/** Purchasable only when EVERY present section is satisfied. */
 	readonly purchasable = computed(() => {
 		const p = this.product();
-		// A bundle shows what it holds, but cannot be bought until it can be priced (brief B12).
-		if (this.hasBundle()) return false;
+		// A set can be bought once its choices are complete (bundle builder brief; priced by the server).
+		if (this.hasBundle()) return this.bundleState()?.valid ?? false;
 		const baseStockOk = this.hasVariation()
 			? this.selectedVariation()?.stock_status === 'in_stock'
 			: p.stock_status === 'in_stock';
@@ -244,6 +247,19 @@ export class ProductConfigurator implements OnInit {
 				addon_selections: this.hasAddon() ? addonSel : undefined,
 				bundle_selections: this.hasBundle() ? bundleSel : undefined,
 				measurements: meas && Object.keys(meas).length ? meas : undefined,
+				// A set's choices and a product's free items go to the cart as the shopper made them.
+				...(this.hasBundle()
+					? {
+							set_choice: {
+								picks: this.bundleState()?.picks ?? {},
+								variants: this.bundleState()?.variants ?? {},
+								extras: this.bundleState()?.extras ?? [],
+								free: this.bundleState()?.free ?? {},
+							},
+						}
+					: {}),
+				// Sent even when empty, so an edit that drops every optional free item clears them on the line.
+				...(this.freeState() ? { free_items: this.freeState()?.picks ?? [] } : {}),
 			},
 		};
 

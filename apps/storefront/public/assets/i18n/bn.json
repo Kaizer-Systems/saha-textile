@@ -1159,5 +1159,20 @@
 	"extra_off": "যোগ করতে ট্যাপ করুন",
 	"extra_optional": "ইচ্ছা হলে",
 	"size_for": "{{name}}-এর সাইজ",
-	"set_sold_out": "এই সেটটি এখন স্টকে নেই।"
+	"set_sold_out": "এই সেটটি এখন স্টকে নেই।",
+	"cart_set_pieces": "{{count}}টি জিনিস",
+	"cart_set_pieces_one": "1টি জিনিস",
+	"cart_set_extras": "+ {{count}}টি এক্সট্রা",
+	"cart_set_free": "{{count}}টি ফ্রি জিনিস",
+	"cart_set_free_one": "1টি ফ্রি জিনিস",
+	"cart_you_save": "আপনার সাশ্রয় {{amount}}",
+	"cart_extra": "এক্সট্রা",
+	"cart_child_per_set": "প্রতি সেটে × {{count}}",
+	"cart_child_each": "প্রতিটির সঙ্গে × {{count}}",
+	"cart_show_set_items": "এই সেটের {{count}}টি জিনিস দেখুন",
+	"cart_hide_set_items": "এই সেটের জিনিসগুলি লুকান",
+	"cart_remove_extra": "এক্সট্রা সরান",
+	"cart_set_chip": "সেট",
+	"cart_mini_show": "দেখুন",
+	"cart_mini_hide": "লুকান"
 }

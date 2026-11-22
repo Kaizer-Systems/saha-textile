@@ -1159,5 +1159,20 @@
 	"extra_off": "Tap to add",
 	"extra_optional": "optional",
 	"size_for": "Size for {{name}}",
-	"set_sold_out": "This set is sold out."
+	"set_sold_out": "This set is sold out.",
+	"cart_set_pieces": "{{count}} pieces",
+	"cart_set_pieces_one": "1 piece",
+	"cart_set_extras": "+ {{count}} extra",
+	"cart_set_free": "{{count}} free items",
+	"cart_set_free_one": "1 free item",
+	"cart_you_save": "You save {{amount}}",
+	"cart_extra": "Extra",
+	"cart_child_per_set": "× {{count}} per set",
+	"cart_child_each": "× {{count}} with each",
+	"cart_show_set_items": "Show the {{count}} items in this set",
+	"cart_hide_set_items": "Hide the items in this set",
+	"cart_remove_extra": "Remove extra",
+	"cart_set_chip": "Set",
+	"cart_mini_show": "Show",
+	"cart_mini_hide": "Hide"
 }

@@ -25,6 +25,7 @@
 	[showSummary]="showSetSummary()"
 	[initialSelections]="bundleSeed()"
 	[initialMeasurements]="measurementSeed()"
+	[initialSet]="setSeed()"
 	(stateChange)="onBundleChange($event)"
 />
 }
@@ -33,6 +34,7 @@
 <app-free-items
 	[freeWith]="free"
 	[forName]="''"
+	[initial]="freeSeed()"
 	(stateChange)="freeState.set($event)"
 />
 }

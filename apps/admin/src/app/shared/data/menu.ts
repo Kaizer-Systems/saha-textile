@@ -142,6 +142,24 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 3,
+				// Bundles built in the bundle builder (bundle builder brief B1, approved 2026-11-22).
+				title: 'bundles',
+				path: '/product/bundles',
+				type: 'link',
+				level: 2,
+				permission: ['product.index'],
+			},
+			{
+				parent_id: 3,
+				// The "Set price is" list, made in the method builder (owner, 22 Nov 2026).
+				title: 'bundle_price_methods',
+				path: '/product/bundle-price-methods',
+				type: 'link',
+				level: 2,
+				permission: ['product.index'],
+			},
+			{
+				parent_id: 3,
 				title: 'drafts',
 				path: '/product/drafts',
 				type: 'link',

@@ -1,0 +1,478 @@
+<!-- The bundle builder (brief A05 option 1, P1–P11, C01–C09): the Page Builder's top bar and tabs, the build on the
+left and the shop's own set block on the right. -->
+@if (view(); as v) { @if (draft(); as d) {
+<div class="container-fluid">
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header">
+				<div class="d-flex align-items-center flex-wrap gap-2">
+					<h5>
+						<a [routerLink]="['/product/bundles']">{{ 'bundles' | transloco }}</a>
+						› {{ details()?.title?.['en'] || v.product.sku }}
+					</h5>
+					<span class="help-text">{{ v.product.sku }}</span>
+				</div>
+				<div class="d-flex gap-2">
+					<button
+						type="button"
+						class="btn btn-animation btn-md fw-bold"
+						[disabled]="saving() || !dirty()"
+						(click)="save()"
+					>
+						{{ 'save' | transloco }}
+					</button>
+					@if (v.product.status !== 'live') {
+					<button
+						type="button"
+						class="btn btn-theme"
+						[disabled]="saving() || errors().length > 0"
+						(click)="goLive()"
+					>
+						{{ 'go_live' | transloco }}
+					</button>
+					}
+				</div>
+			</div>
+
+			<ul class="nav nav-tabs mb-3">
+				@for (t of ['build', 'rules', 'details', 'photos', 'seo', 'status']; track t) {
+				<li class="nav-item">
+					<a
+						class="nav-link"
+						href="javascript:void(0)"
+						[class.active]="tab() === t"
+						(click)="tab.set($any(t))"
+					>
+						{{ 'bundle_tab_' + t | transloco }}
+					</a>
+				</li>
+				}
+			</ul>
+
+			@if (tab() === 'details' || tab() === 'seo') {
+			<div
+				class="btn-group mb-3"
+				role="group"
+			>
+				@for (code of langs; track code) {
+				<button
+					type="button"
+					class="btn btn-sm"
+					[class.btn-theme]="lang() === code"
+					[class.btn-outline-secondary]="lang() !== code"
+					(click)="lang.set(code)"
+				>
+					{{ code === 'en' ? 'English' : 'বাংলা' }}
+				</button>
+				}
+			</div>
+			}
+
+			<div class="row g-4">
+				<div [class]="tab() === 'build' ? 'col-xl-7' : 'col-12'">
+					@switch (tab()) { @case ('build') {
+					<!-- How the set is priced (C01): the method list from the database, its numbers, and what a shopper pays. -->
+					<div class="card mb-3">
+						<div class="card-body">
+							<div class="title-header option-title">
+								<h5>{{ 'bundle_how_priced' | transloco }}</h5>
+							</div>
+							<div class="row g-3 align-items-end">
+								<div class="col-md-6">
+									<label class="form-label-title">{{ 'set_price_is' | transloco }}</label>
+									<select
+										class="form-select"
+										[ngModel]="d.pricing.methodId"
+										(ngModelChange)="setMethod($event)"
+									>
+										@for (m of methods(); track m.id) { @if (m.active || m.id ===
+										d.pricing.methodId) {
+										<option [value]="m.id">{{ m.name[lang()] || m.name['en'] }}</option>
+										} }
+									</select>
+									@if (method(); as m) {
+									<p class="help-text mb-0">{{ m.help[lang()] || m.help['en'] }}</p>
+									}
+								</div>
+								@for (input of method()?.inputs ?? []; track input.code) {
+								<div class="col-md-3">
+									<label class="form-label-title">
+										{{ input.label[lang()] || input.label['en'] }}
+									</label>
+									<input
+										class="form-control"
+										type="number"
+										[value]="d.pricing.params[input.code] ?? ''"
+										(change)="setParam(input.code, $any($event.target).value)"
+									/>
+								</div>
+								}
+							</div>
+							<p class="help-text mt-2 mb-0">
+								<a
+									[routerLink]="['/product/bundle-price-methods']"
+									target="_blank"
+								>
+									{{ 'bundle_methods_link' | transloco }}
+								</a>
+							</p>
+						</div>
+					</div>
+
+					<!-- Levels (P1–P6): each holds products and says how many the shopper takes. -->
+					@for (level of d.levels; track level.code; let at = $index) {
+					<div class="card mb-3">
+						<div class="card-body">
+							<div class="d-flex align-items-end mb-2 flex-wrap gap-2">
+								<div class="flex-grow-1">
+									<label class="form-label-title">
+										{{ 'bundle_level_name' | transloco: { n: at + 1 } }}
+									</label>
+									<input
+										class="form-control"
+										[value]="level.label[lang()] ?? ''"
+										(change)="setLevelName(at, $any($event.target).value)"
+									/>
+								</div>
+								<div>
+									<label class="form-label-title">{{ 'bundle_take' | transloco }}</label>
+									<input
+										class="form-control"
+										type="number"
+										min="1"
+										[max]="level.items.length || 1"
+										[value]="level.take"
+										(change)="setLevel(at, { take: +$any($event.target).value || 1 })"
+									/>
+								</div>
+								@if (method()?.base?.kind === 'fixed' && level.items.length > level.take) {
+								<div>
+									<label class="form-label-title">{{ 'bundle_pick_price' | transloco }}</label>
+									<select
+										class="form-select"
+										[ngModel]="level.priceMode"
+										(ngModelChange)="setLevel(at, { priceMode: $event })"
+									>
+										<option value="difference">{{ 'bundle_mode_difference' | transloco }}</option>
+										<option value="included">{{ 'bundle_mode_included' | transloco }}</option>
+										<option value="own">{{ 'bundle_mode_own' | transloco }}</option>
+									</select>
+								</div>
+								}
+								<button
+									type="button"
+									class="btn btn-sm btn-outline-danger"
+									[title]="'remove_level' | transloco"
+									(click)="removeLevel(at)"
+								>
+									<i class="ri-delete-bin-line"></i>
+								</button>
+							</div>
+							<ng-container
+								*ngTemplateOutlet="itemsTable; context: { $implicit: level.items, where: 'level', at: at }"
+							/>
+							<button
+								type="button"
+								class="btn btn-sm btn-theme mt-2"
+								(click)="addingTo.set(level.code)"
+							>
+								<i class="ri-add-line"></i>
+								{{ 'add_product' | transloco }}
+							</button>
+						</div>
+					</div>
+					}
+					<button
+						type="button"
+						class="btn btn-theme mb-3"
+						(click)="addLevel()"
+					>
+						<i class="ri-add-line"></i>
+						{{ 'add_level' | transloco }}
+					</button>
+
+					<!-- Optional extras (P7): outside the levels; price 0 is Free. -->
+					<div class="card mb-3">
+						<div class="card-body">
+							<div class="title-header option-title">
+								<h5>{{ 'bundle_extras' | transloco }}</h5>
+							</div>
+							<ng-container
+								*ngTemplateOutlet="itemsTable; context: { $implicit: d.extras, where: 'extra', at: 0 }"
+							/>
+							<button
+								type="button"
+								class="btn btn-sm btn-theme mt-2"
+								(click)="addingTo.set('extras')"
+							>
+								<i class="ri-add-line"></i>
+								{{ 'add_extra' | transloco }}
+							</button>
+						</div>
+					</div>
+
+					@if (addingTo()) {
+					<div class="card mb-3">
+						<div class="card-body">
+							<input
+								class="form-control"
+								[placeholder]="'search_products_hidden_too' | transloco"
+								[value]="search()"
+								(input)="find($any($event.target).value)"
+							/>
+							<ul class="list-unstyled mt-2 mb-0">
+								@for (row of results(); track row.id) {
+								<li class="d-flex justify-content-between align-items-center border-bottom py-1">
+									<span>
+										{{ row.title }}
+										<small class="help-text">{{ row.sku }} · ₹{{ row.sellingFromINR }}</small>
+										@if (!row.showOnShop) {
+										<span class="badge bg-secondary ms-1">
+											{{ 'hidden_from_shop' | transloco }}
+										</span>
+										}
+									</span>
+									<button
+										type="button"
+										class="btn btn-sm btn-theme"
+										(click)="add(row)"
+									>
+										{{ 'add' | transloco }}
+									</button>
+								</li>
+								}
+							</ul>
+						</div>
+					</div>
+					}
+
+					<!-- Checks before Go Live (S6, S7, C09). -->
+					<div class="card">
+						<div class="card-body">
+							<div class="title-header option-title">
+								<h5>{{ 'bundle_checks' | transloco }}</h5>
+							</div>
+							<ul class="list-unstyled mb-0">
+								@for (check of checks(); track $index) {
+								<li
+									[class]="check.severity === 'error' ? 'text-danger' : check.severity === 'warn' ? 'text-warning' : 'text-success'"
+								>
+									<i
+										[class]="check.severity === 'ok' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'"
+									></i>
+									{{ checkText(check) }}
+								</li>
+								}
+							</ul>
+						</div>
+					</div>
+					} @case ('rules') {
+					<p class="help-text">{{ 'bundle_rules_help' | transloco }}</p>
+					<div class="form-check form-switch mb-2">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="cap"
+							[checked]="d.pricing.capAtSeparately"
+							(change)="change(draftCap($any($event.target).checked))"
+						/>
+						<label
+							class="form-check-label"
+							for="cap"
+						>
+							{{ 'bundle_cap_separately' | transloco }}
+						</label>
+					</div>
+					<label class="form-label-title">{{ 'bundle_dearer_reason' | transloco }}</label>
+					<input
+						class="form-control mb-3"
+						[value]="d.dearerReason ?? ''"
+						(change)="change(draftReason($any($event.target).value))"
+					/>
+					<p class="help-text mb-0">
+						{{ 'bundle_rules_count' | transloco: { count: d.pricing.rules.length } }}
+					</p>
+					} @case ('details') { @if (details(); as x) {
+					<label class="form-label-title">{{ 'name' | transloco }}</label>
+					<input
+						class="form-control mb-3"
+						[value]="x.title[lang()] ?? ''"
+						(change)="setText('title', $any($event.target).value)"
+					/>
+					<label class="form-label-title">{{ 'short_description' | transloco }}</label>
+					<textarea
+						class="form-control mb-3"
+						rows="3"
+						[value]="x.shortDescription[lang()] ?? ''"
+						(change)="setText('shortDescription', $any($event.target).value)"
+					></textarea>
+					<label class="form-label-title">{{ 'description' | transloco }}</label>
+					<textarea
+						class="form-control mb-3"
+						rows="6"
+						[value]="x.description[lang()] ?? ''"
+						(change)="setText('description', $any($event.target).value)"
+					></textarea>
+					} } @case ('photos') {
+					<p class="help-text">{{ 'bundle_photos_help' | transloco }}</p>
+					} @case ('seo') { @if (details(); as x) {
+					<label class="form-label-title">{{ 'meta_title' | transloco }}</label>
+					<input
+						class="form-control mb-3"
+						[value]="x.seo.title[lang()] ?? ''"
+						(change)="setSeo('title', $any($event.target).value)"
+					/>
+					<label class="form-label-title">{{ 'meta_description' | transloco }}</label>
+					<textarea
+						class="form-control mb-3"
+						rows="3"
+						[value]="x.seo.description[lang()] ?? ''"
+						(change)="setSeo('description', $any($event.target).value)"
+					></textarea>
+					} } @case ('status') { @if (details(); as x) {
+					<div class="form-check form-switch mb-2">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="shown"
+							[checked]="x.showOnShop"
+							(change)="setDetail('showOnShop', $any($event.target).checked)"
+						/>
+						<label
+							class="form-check-label"
+							for="shown"
+						>
+							{{ 'show_on_shop' | transloco }}
+						</label>
+					</div>
+					<div class="form-check form-switch mb-2">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="featured"
+							[checked]="x.featured"
+							(change)="setDetail('featured', $any($event.target).checked)"
+						/>
+						<label
+							class="form-check-label"
+							for="featured"
+						>
+							{{ 'featured' | transloco }}
+						</label>
+					</div>
+					} } }
+				</div>
+				@if (tab() === 'build') {
+				<div class="col-xl-5">
+					<div class="btn-group mb-2">
+						<button
+							type="button"
+							class="btn btn-sm"
+							[class.btn-theme]="device() === 'laptop'"
+							[class.btn-outline-secondary]="device() !== 'laptop'"
+							[title]="'laptop' | transloco"
+							(click)="device.set('laptop')"
+						>
+							<i class="ri-computer-line"></i>
+						</button>
+						<button
+							type="button"
+							class="btn btn-sm"
+							[class.btn-theme]="device() === 'phone'"
+							[class.btn-outline-secondary]="device() !== 'phone'"
+							[title]="'phone' | transloco"
+							(click)="device.set('phone')"
+						>
+							<i class="ri-smartphone-line"></i>
+						</button>
+					</div>
+					@if (previewUrl(); as src) {
+					<iframe
+						#preview
+						[src]="src"
+						[title]="'bundle_preview' | transloco"
+						[style.width]="device() === 'phone' ? '375px' : '100%'"
+						style="height: 900px; border: 1px solid #ddd; border-radius: 8px"
+					></iframe>
+					}
+				</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- An items table (R1): MRP, Selling price, Current sale price (only while a sale covers one), Price in this set. -->
+<ng-template
+	#itemsTable
+	let-rows
+	let-where="where"
+	let-at="at"
+>
+	@if (rows.length) {
+	<div class="table-responsive">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'product' | transloco }}</th>
+					<th>{{ 'mrp' | transloco }}</th>
+					<th>{{ 'selling_price' | transloco }}</th>
+					@if (anySale()) {
+					<th>{{ 'current_sale_price' | transloco }}</th>
+					}
+					<th>{{ 'price_in_this_set' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (row of rows; track $index; let itemAt = $index) { @let info = item(keyOf(row));
+				<tr>
+					<td>
+						{{ info?.title ?? row.productId }}
+						<small class="help-text d-block">
+							{{ info?.sku }} @if (info && !info.shown) { · {{ 'hidden_from_shop' | transloco }} } @if
+							(info?.freeItems) { · {{ 'free_items_count' | transloco: { count: info?.freeItems } }} } @if
+							(info && info.available !== null && info.available < 1) {
+							<span class="text-danger">· {{ 'out_of_stock' | transloco }}</span>
+							}
+						</small>
+					</td>
+					<td>{{ info?.mrpINR ?? '—' }}</td>
+					<td>{{ info?.sellingINR }}</td>
+					@if (anySale()) {
+					<td>
+						@if (info?.saleINR !== null && info?.saleINR !== undefined) { {{ info?.saleINR }}
+						<small class="help-text d-block">{{ info?.saleName }}</small>
+						}
+					</td>
+					}
+					<td>
+						<input
+							class="form-control form-control-sm"
+							type="number"
+							min="0"
+							[class.is-valid]="row.priceInSetINR !== null"
+							[value]="row.priceInSetINR ?? info?.sellingINR ?? ''"
+							(change)="setPrice(where, at, itemAt, $any($event.target).value)"
+						/>
+					</td>
+					<td>
+						<button
+							type="button"
+							class="btn btn-sm btn-outline-danger"
+							[title]="'remove' | transloco"
+							(click)="removeItem(where, at, itemAt)"
+						>
+							<i class="ri-close-line"></i>
+						</button>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @else {
+	<p class="help-text mb-0">{{ 'bundle_level_empty' | transloco }}</p>
+	}
+</ng-template>
+} }

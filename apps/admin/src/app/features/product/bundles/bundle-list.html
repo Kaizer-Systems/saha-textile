@@ -1,0 +1,26 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'bundles'"
+>
+	<div
+		button
+		*hasPermission="'product.create'"
+	>
+		<!-- Add bundle starts from a name and opens the builder (brief A03, B1). -->
+		<a
+			[routerLink]="['/product/create']"
+			[queryParams]="{ type: 'bundle' }"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'add_bundle' | transloco }}
+		</a>
+	</div>
+	<p class="help-text mb-3">{{ 'bundles_list_help' | transloco }}</p>
+	<app-table
+		[tableConfig]="tableConfig()"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="open($event)"
+		(action)="onActionClicked($event)"
+	/>
+</app-page-wrapper>

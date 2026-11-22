@@ -895,6 +895,8 @@ export class FormProduct implements DraftMarks {
 				this.applyCatalogProduct(detail);
 				this.afterProductLoaded();
 			});
+		// Products › Bundles › Add bundle (B1): the form opens as a bundle, so it steps aside at once (A03).
+		if (this.route.snapshot?.queryParamMap?.get('type') === 'bundle') this.form.controls['type'].setValue('bundle');
 		const draftId = this.route.snapshot?.queryParamMap?.get('draft') ?? null;
 		if (this.type() === 'create') {
 			if (draftId) void this.openNewDraft(draftId);

@@ -1,3 +1,4 @@
+import { isPlatformServer } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
 	Component,
@@ -9,7 +10,6 @@ import {
 	computed,
 	inject,
 } from '@angular/core';
-import { isPlatformServer } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 
 import { REQUEST } from '@analogjs/router/tokens';
@@ -19,11 +19,12 @@ import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 
-import { previewAdminOrigin } from '../../../server/admin-origin';
 import { BundlePreview } from './bundle-preview/bundle-preview';
 import { PageLayout } from './page-layout';
-import type { StorefrontPageLayoutView } from './page-builder.types';
 import { linkToBuilder } from './preview-messages';
+import { previewAdminOrigin } from '../../../server/admin-origin';
+
+import type { StorefrontPageLayoutView } from './page-builder.types';
 
 /** The session cookie the preview middleware sets (server/middleware/preview.ts). */
 export const PREVIEW_COOKIE = 'st_preview';

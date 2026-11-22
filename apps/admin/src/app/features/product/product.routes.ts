@@ -25,4 +25,21 @@ export default [
 		path: 'drafts',
 		component: ProductDrafts,
 	},
+	// The bundle builder (bundle builder brief, approved 2026-11-22).
+	{
+		path: 'bundles',
+		loadComponent: () => import('./bundles/bundle-list').then((m) => m.BundleList),
+	},
+	{
+		path: 'bundle/:id',
+		loadComponent: () => import('./bundles/bundle-builder').then((m) => m.BundleBuilder),
+	},
+	{
+		path: 'bundle-price-methods',
+		loadComponent: () => import('./bundles/price-method-list').then((m) => m.PriceMethodList),
+	},
+	{
+		path: 'bundle-price-methods/:id',
+		loadComponent: () => import('./bundles/price-method-builder').then((m) => m.PriceMethodBuilder),
+	},
 ] as Routes;

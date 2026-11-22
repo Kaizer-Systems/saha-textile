@@ -1,12 +1,12 @@
 import { Component, DestroyRef, afterNextRender, inject, input, signal } from '@angular/core';
 
-import type { CatalogPageBundle } from '@saha-textile/contracts';
-
 import { bundleFromApi } from '@core/catalog/from-api';
-import type { ConfiguratorState } from '@data-access/interfaces/product-detail.interface';
-import type { IProduct } from '@data-access/interfaces/product.interface';
 import { BundleConfigurator } from '@shared/ui/product-config/parts/bundle-configurator/bundle-configurator';
 import { SetSummary } from '@shared/ui/product-config/parts/set-summary/set-summary';
+
+import type { ConfiguratorState } from '@data-access/interfaces/product-detail.interface';
+import type { IProduct } from '@data-access/interfaces/product.interface';
+import type { CatalogPageBundle } from '@saha-textile/contracts';
 
 /** What the bundle builder posts into the frame. */
 export interface BundlePreviewMessage {

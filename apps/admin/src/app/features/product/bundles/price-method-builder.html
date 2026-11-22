@@ -1,0 +1,328 @@
+<!-- The price method builder (brief C05): name, numbers, where the price starts, If / Then rules, Try it. -->
+@let m = method();
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'bundle_price_method'"
+>
+	<div button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			(click)="save()"
+		>
+			{{ 'save' | transloco }}
+		</button>
+	</div>
+	<div class="btn-group mb-3">
+		@for (code of ['en', 'bn']; track code) {
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="lang() === code"
+			[class.btn-outline-secondary]="lang() !== code"
+			(click)="lang.set($any(code))"
+		>
+			{{ code === 'en' ? 'English' : 'বাংলা' }}
+		</button>
+		}
+	</div>
+	<div class="row g-3 mb-3">
+		<div class="col-md-4">
+			<label class="form-label-title">{{ 'name' | transloco }}</label>
+			<input
+				class="form-control"
+				[value]="m.name[lang()] ?? ''"
+				(change)="setText('name', $any($event.target).value)"
+			/>
+		</div>
+		<div class="col-md-5">
+			<label class="form-label-title">{{ 'bundle_method_help_line' | transloco }}</label>
+			<input
+				class="form-control"
+				[value]="m.help[lang()] ?? ''"
+				(change)="setText('help', $any($event.target).value)"
+			/>
+		</div>
+		<div class="col-md-2">
+			<label class="form-label-title">{{ 'code' | transloco }}</label>
+			<input
+				class="form-control"
+				[value]="m.code"
+				(change)="set({ code: $any($event.target).value.trim() })"
+			/>
+		</div>
+		<div class="col-md-1 form-check form-switch pt-4">
+			<input
+				class="form-check-input"
+				type="checkbox"
+				[checked]="m.active"
+				[title]="'active' | transloco"
+				(change)="set({ active: $any($event.target).checked })"
+			/>
+		</div>
+	</div>
+
+	<div class="title-header option-title">
+		<h5>{{ 'bundle_method_numbers' | transloco }}</h5>
+	</div>
+	@for (input of m.inputs; track $index; let at = $index) {
+	<div class="row g-2 align-items-end mb-2">
+		<div class="col-md-2">
+			<input
+				class="form-control"
+				[value]="input.code"
+				[title]="'code' | transloco"
+				(change)="setInput(at, { code: $any($event.target).value.trim() })"
+			/>
+		</div>
+		<div class="col-md-4">
+			<input
+				class="form-control"
+				[value]="input.label[lang()] ?? ''"
+				[placeholder]="'name' | transloco"
+				(change)="setInputLabel(at, $any($event.target).value)"
+			/>
+		</div>
+		<div class="col-md-2">
+			<select
+				class="form-select"
+				[ngModel]="input.kind"
+				(ngModelChange)="setInput(at, { kind: $event })"
+			>
+				<option value="money">₹</option>
+				<option value="percent">%</option>
+				<option value="number">#</option>
+			</select>
+		</div>
+		<div class="col-md-2">
+			<input
+				class="form-control"
+				type="number"
+				[value]="input.default ?? ''"
+				[placeholder]="'default' | transloco"
+				(change)="setInput(at, { default: $any($event.target).value === '' ? null : +$any($event.target).value })"
+			/>
+		</div>
+		<div class="col-md-1">
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-danger"
+				[title]="'remove' | transloco"
+				(click)="removeInput(at)"
+			>
+				<i class="ri-close-line"></i>
+			</button>
+		</div>
+	</div>
+	}
+	<button
+		type="button"
+		class="btn btn-sm btn-theme mb-3"
+		(click)="addInput()"
+	>
+		<i class="ri-add-line"></i>
+		{{ 'bundle_method_add_number' | transloco }}
+	</button>
+
+	<div class="row g-3 mb-3">
+		<div class="col-md-4">
+			<label class="form-label-title">{{ 'bundle_method_starts' | transloco }}</label>
+			<select
+				class="form-select"
+				[ngModel]="m.base.kind"
+				(ngModelChange)="setBase($event)"
+			>
+				<option value="pieces">{{ 'bundle_base_pieces' | transloco }}</option>
+				<option value="fixed">{{ 'bundle_base_fixed' | transloco }}</option>
+			</select>
+		</div>
+		@if (m.base.kind === 'fixed') {
+		<div class="col-md-3">
+			<label class="form-label-title">{{ 'bundle_base_number' | transloco }}</label>
+			<select
+				class="form-select"
+				[ngModel]="m.base.input"
+				(ngModelChange)="set({ base: { kind: 'fixed', input: $event } })"
+			>
+				@for (input of m.inputs; track input.code) {
+				<option [value]="input.code">{{ input.label[lang()] || input.code }}</option>
+				}
+			</select>
+		</div>
+		}
+		<div class="col-md-4">
+			<label class="form-label-title">{{ 'bundle_rules_combine' | transloco }}</label>
+			<select
+				class="form-select"
+				[ngModel]="m.combine"
+				(ngModelChange)="set({ combine: $event })"
+			>
+				<option value="all">{{ 'bundle_combine_all' | transloco }}</option>
+				<option value="first">{{ 'bundle_combine_first' | transloco }}</option>
+			</select>
+		</div>
+	</div>
+
+	<!-- If / Then rules: the shipping rule builder's blocks, with a bundle's own facts and actions. -->
+	@for (rule of m.rules; track rule.id; let at = $index) {
+	<div class="card mb-3">
+		<div class="card-body">
+			<div class="d-flex justify-content-between mb-2">
+				<b>{{ 'bundle_rule_n' | transloco: { n: at + 1 } }}</b>
+				<button
+					type="button"
+					class="btn btn-sm btn-outline-danger"
+					[title]="'remove' | transloco"
+					(click)="removeRule(at)"
+				>
+					<i class="ri-delete-bin-line"></i>
+				</button>
+			</div>
+			<p class="mb-1">{{ 'rule_if' | transloco }}</p>
+			@for (c of rule.when.conditions; track $index; let ci = $index) {
+			<div class="row g-2 mb-2">
+				<div class="col-md-4">
+					<select
+						class="form-select"
+						[ngModel]="c.fact"
+						(ngModelChange)="setCondition(at, ci, { fact: $event, op: null, value: null })"
+					>
+						@for (f of facts; track f) {
+						<option [value]="f">{{ 'bundle_fact_' + f.replace('.', '_') | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-3">
+					<select
+						class="form-select"
+						[ngModel]="c.op"
+						(ngModelChange)="setCondition(at, ci, { op: $event })"
+					>
+						@for (op of operatorsFor(c.fact); track op) {
+						<option [value]="op">{{ 'op_' + op | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-4">
+					<input
+						class="form-control"
+						[value]="conditionValue(c)"
+						(change)="setCondition(at, ci, { value: parseValue($any($event.target).value, c.fact) })"
+					/>
+				</div>
+				<div class="col-md-1">
+					<button
+						type="button"
+						class="btn btn-sm btn-outline-danger"
+						[title]="'remove' | transloco"
+						(click)="removeCondition(at, ci)"
+					>
+						<i class="ri-close-line"></i>
+					</button>
+				</div>
+			</div>
+			} @empty {
+			<p class="help-text">{{ 'bundle_rule_always' | transloco }}</p>
+			}
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-secondary mb-2"
+				(click)="addCondition(at)"
+			>
+				{{ 'add_condition' | transloco }}
+			</button>
+			<p class="mb-1">{{ 'rule_then' | transloco }}</p>
+			@for (a of rule.then; track $index; let ai = $index) {
+			<div class="row g-2 mb-2">
+				<div class="col-md-5">
+					<select
+						class="form-select"
+						[ngModel]="a.kind"
+						(ngModelChange)="setAction(at, ai, { kind: $event })"
+					>
+						@for (k of actions; track k) {
+						<option [value]="k">{{ 'bundle_action_' + k | transloco }}</option>
+						}
+					</select>
+				</div>
+				<div class="col-md-5">
+					<input
+						class="form-control"
+						list="method-numbers"
+						[value]="amountText(a)"
+						[placeholder]="'bundle_amount_or_number' | transloco"
+						(change)="setAmount(at, ai, $any($event.target).value)"
+					/>
+				</div>
+				<div class="col-md-1">
+					<button
+						type="button"
+						class="btn btn-sm btn-outline-danger"
+						[title]="'remove' | transloco"
+						(click)="removeAction(at, ai)"
+					>
+						<i class="ri-close-line"></i>
+					</button>
+				</div>
+			</div>
+			}
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-secondary"
+				(click)="addAction(at)"
+			>
+				{{ 'add_action' | transloco }}
+			</button>
+		</div>
+	</div>
+	}
+	<datalist id="method-numbers">
+		@for (input of m.inputs; track input.code) {
+		<option [value]="input.code"></option>
+		}
+	</datalist>
+	<button
+		type="button"
+		class="btn btn-theme mb-3"
+		(click)="addRule()"
+	>
+		<i class="ri-add-line"></i>
+		{{ 'add_rule' | transloco }}
+	</button>
+
+	<!-- Try it: three sample pieces priced with this method, by core's own engine. -->
+	<div class="card">
+		<div class="card-body">
+			<div class="title-header option-title">
+				<h5>{{ 'try_it' | transloco }}</h5>
+			</div>
+			<div class="row g-2 mb-2">
+				@for (price of sample(); track $index; let i = $index) {
+				<div class="col-md-3">
+					<input
+						class="form-control"
+						type="number"
+						[value]="price"
+						(change)="setSample(i, $any($event.target).value)"
+					/>
+				</div>
+				}
+			</div>
+			@for (input of m.inputs; track input.code) {
+			<div class="d-inline-block me-2">
+				<label class="form-label-title">{{ input.label[lang()] || input.code }}</label>
+				<input
+					class="form-control"
+					type="number"
+					[value]="tryParams()[input.code] ?? input.default ?? ''"
+					(change)="setTryParam(input.code, $any($event.target).value)"
+				/>
+			</div>
+			}
+			<p class="mt-2 mb-0">
+				{{ 'bundle_try_result' | transloco: { separately: tried().separatelyINR, total: tried().totalINR, save:
+				tried().saveINR } }}
+			</p>
+		</div>
+	</div>
+</app-page-wrapper>

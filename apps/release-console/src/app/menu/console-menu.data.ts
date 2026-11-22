@@ -1728,7 +1728,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			},
 			off: false,
 			tip: null,
-			part: 'Partly here. Workers, R2, KV, D1, Queues and Email Routing are here; the rest are listed only. For the rest, please go to the Cloudflare portal to access this.',
+			part: 'Partly here. Workers, R2, KV (with values), D1 (with SQL), Queues and Pages are made, changed and deleted here; Pages from Git, Hyperdrive, Vectorize, Images, Stream, Realtime and the AI products are listed only (they need secrets, uploads or paid plans). For the rest, please go to the Cloudflare portal.',
 			offStates: null,
 			partStates: null,
 			captions: {

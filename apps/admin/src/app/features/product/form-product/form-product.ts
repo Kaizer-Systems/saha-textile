@@ -618,6 +618,11 @@ export class FormProduct implements DraftMarks {
 			related_products: new FormControl(),
 			upsell_products: new FormControl([]),
 			cross_sell_products: new FormControl([]),
+			free_with_products: new FormControl<string[]>([]),
+			free_take: new FormControl<'all' | 'exactly' | 'upto' | 'between'>('all'),
+			free_count: new FormControl<number | null>(null),
+			free_from: new FormControl<number | null>(null),
+			free_required: new FormControl(true),
 			product_thumbnail_id: new FormControl(),
 			product_galleries_id: new FormControl(),
 			variations: this.formBuilder.array([], []),
@@ -759,6 +764,11 @@ export class FormProduct implements DraftMarks {
 				related_products: detail.relatedProductIds,
 				upsell_products: detail.upsellProductIds,
 				cross_sell_products: detail.crossSellProductIds,
+				free_with_products: detail.freeWith?.items.map((item) => item.productId) ?? [],
+				free_take: detail.freeWith?.take ?? 'all',
+				free_count: detail.freeWith?.count ?? null,
+				free_from: detail.freeWith?.from ?? null,
+				free_required: detail.freeWith?.required ?? true,
 				videos: detail.videos,
 			},
 			{ emitEvent: false },
@@ -1486,6 +1496,7 @@ export class FormProduct implements DraftMarks {
 			relatedProductIds: ids(raw['related_products']),
 			upsellProductIds: ids(raw['upsell_products']),
 			crossSellProductIds: ids(raw['cross_sell_products']),
+			freeWith: freeWithOf(raw),
 			videos: (raw['videos'] as ProductVideo[] | undefined) ?? [],
 		};
 		const finished: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
@@ -1900,4 +1911,20 @@ export class FormProduct implements DraftMarks {
 		event.preventDefault();
 		event.returnValue = '';
 	}
+}
+
+/** Free with this product (P8) from the Setup tab's fields; none chosen removes them. */
+function freeWithOf(raw: Record<string, unknown>): CatalogProductWrite['freeWith'] {
+	const ids = Array.isArray(raw['free_with_products']) ? raw['free_with_products'].map(String).filter(Boolean) : [];
+	if (ids.length === 0) return null;
+	const take = ids.length > 1 ? ((raw['free_take'] as 'all' | 'exactly' | 'upto' | 'between') ?? 'all') : 'all';
+	const count = take === 'all' ? null : Math.min(ids.length, Math.max(1, Number(raw['free_count']) || 1));
+	const from = take === 'between' ? Math.min(count ?? 0, Math.max(0, Number(raw['free_from']) || 0)) : null;
+	return {
+		items: ids.map((productId) => ({ productId, variantId: null, quantity: 1 })),
+		take,
+		count,
+		from,
+		required: raw['free_required'] !== false,
+	};
 }

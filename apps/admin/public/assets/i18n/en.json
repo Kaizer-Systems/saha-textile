@@ -6699,5 +6699,17 @@
 	"search_hint_product_bundles": "Sets sold as one product: levels, prices, stock and the bundle builder",
 	"search_hint_product_bundle_price_methods": "The \"Set price is\" list for bundles, and its rules",
 	"set_price": "Set price",
-	"show_on_shop_help": "Off: the product stays live and stocked and can be a set piece, an extra or a free item, but the shop never lists it and its own page says not found."
+	"show_on_shop_help": "Off: the product stays live and stocked and can be a set piece, an extra or a free item, but the shop never lists it and its own page says not found.",
+	"free_with_this_product": "Free with this product",
+	"free_always_gets": "Always gets it",
+	"free_may_take": "May take it",
+	"free_shopper_gets": "The shopper gets",
+	"free_take_all": "All of them",
+	"free_take_exactly": "A choice: exactly",
+	"free_take_upto": "A choice: up to",
+	"free_take_between": "A choice: between",
+	"free_at_least": "At least",
+	"free_how_many": "How many",
+	"free_required": "Choosing is required before Add to cart",
+	"free_with_help": "Real products given at no charge (petticoats, bags). Hidden products can be picked. If one runs out, this product keeps selling and the free row hides."
 }

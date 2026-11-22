@@ -1397,6 +1397,113 @@
 										{{ '*Choose a maximum of 3 products for effective cross-selling display.' }}
 									</p>
 								</app-form-fields>
+
+								<!-- Free with this product (brief P8.0–P8.8): the same search multi-select; hidden products can be picked. -->
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'free_with_this_product'"
+									[for]="'free_with_products'"
+									[required]="false"
+								>
+									@if(isBrowser) {
+									<select2
+										class="custom-select"
+										[data]="collectionProduct?.length ? collectionProduct : []"
+										[placeholder]="'select_product' | transloco"
+										formControlName="free_with_products"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										[customSearchEnabled]="true"
+										(close)="productDropdown($event)"
+										(search)="searchProduct($event)"
+										[multiple]="true"
+									/>
+									} @let freeCount = (form.controls['free_with_products'].value ?? []).length; @if
+									(freeCount === 1) {
+									<div class="d-flex mt-2 gap-3">
+										<label class="form-check">
+											<input
+												class="form-check-input"
+												type="radio"
+												[value]="true"
+												formControlName="free_required"
+											/>
+											{{ 'free_always_gets' | transloco }}
+										</label>
+										<label class="form-check">
+											<input
+												class="form-check-input"
+												type="radio"
+												[value]="false"
+												formControlName="free_required"
+											/>
+											{{ 'free_may_take' | transloco }}
+										</label>
+									</div>
+									} @else if (freeCount > 1) {
+									<!-- Two or more items: what the shopper gets (P8.3–P8.8). -->
+									<div class="card mt-2">
+										<div class="card-body row g-2 align-items-end">
+											<div class="col-md-5">
+												<label class="form-label-title">
+													{{ 'free_shopper_gets' | transloco }}
+												</label>
+												<select
+													class="form-select"
+													formControlName="free_take"
+												>
+													<option value="all">{{ 'free_take_all' | transloco }}</option>
+													<option value="exactly">
+														{{ 'free_take_exactly' | transloco }}
+													</option>
+													<option value="upto">{{ 'free_take_upto' | transloco }}</option>
+													<option value="between">
+														{{ 'free_take_between' | transloco }}
+													</option>
+												</select>
+											</div>
+											@if (form.controls['free_take'].value === 'between') {
+											<div class="col-md-2">
+												<label class="form-label-title">
+													{{ 'free_at_least' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													type="number"
+													min="0"
+													[max]="freeCount"
+													formControlName="free_from"
+												/>
+											</div>
+											} @if (form.controls['free_take'].value !== 'all') {
+											<div class="col-md-2">
+												<label class="form-label-title">
+													{{ 'free_how_many' | transloco }}
+												</label>
+												<input
+													class="form-control"
+													type="number"
+													min="1"
+													[max]="freeCount"
+													formControlName="free_count"
+												/>
+											</div>
+											}
+											<div class="col-md-3 form-check form-switch ps-0">
+												<label class="switch">
+													<input
+														type="checkbox"
+														formControlName="free_required"
+													/>
+													<span class="switch-state"></span>
+												</label>
+												<span class="ms-1">{{ 'free_required' | transloco }}</span>
+											</div>
+										</div>
+									</div>
+									}
+									<p class="help-text">{{ 'free_with_help' | transloco }}</p>
+								</app-form-fields>
 							</div>
 						</ng-template>
 					</li>

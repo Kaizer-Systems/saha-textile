@@ -678,6 +678,7 @@ describe('FormProduct.submit', () => {
 			relatedProductIds: ['a'],
 			upsellProductIds: [],
 			crossSellProductIds: [],
+			freeWith: null,
 			videos: [],
 		});
 		expect(page.tabError).toBeNull();

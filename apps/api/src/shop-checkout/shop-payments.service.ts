@@ -404,7 +404,10 @@ export class ShopPaymentsService {
 				current = {
 					...current,
 					holdUntil: null,
-					lines: current.lines.map((line) => ({ ...line, held: !line.madeToOrder })),
+					lines: current.lines.map((line) => ({
+						...line,
+						held: line.role !== 'bundle' && !line.madeToOrder,
+					})),
 				};
 			}
 			await this.orders.settle(current, current.revision, SYSTEM, at, context, {

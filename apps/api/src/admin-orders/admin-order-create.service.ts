@@ -801,6 +801,9 @@ export class AdminOrderCreateService {
 				held: false,
 				addedAt: at,
 				addedBy: actorId,
+				role: 'product',
+				parentLineId: null,
+				set: null,
 			} as OrderLine;
 		});
 	}

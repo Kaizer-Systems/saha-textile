@@ -8,3 +8,4 @@ export * from './address-rules';
 export * from './open-orders';
 export * from './shop-payment';
 export * from './order-notices';
+export * from './set-lines';

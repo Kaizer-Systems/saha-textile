@@ -140,6 +140,9 @@ export class OpenOrdersService {
 			held: false,
 			addedAt: at,
 			addedBy: actor.id,
+			role: 'product',
+			parentLineId: null,
+			set: null,
 		}));
 		await this.transactions.withTransaction(async (context) => {
 			await this.stock.reserve(order, added, actor.id, context, at);
@@ -245,7 +248,7 @@ export class OpenOrdersService {
 		});
 		const account = await this.accountFor(order, balance.dueINR);
 		return {
-			pieces: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+			pieces: order.lines.reduce((sum, line) => sum + (line.role === 'bundle' ? 0 : line.quantity), 0),
 			goodsINR: balance.goodsINR,
 			shippingINR,
 			zone: parcel?.problem === null ? (parcel.quote.zone ?? null) : null,

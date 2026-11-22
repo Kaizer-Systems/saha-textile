@@ -153,6 +153,23 @@ export const OrderLine = z.object({
 	shippingRuleSet: z.object({ id: Id, version: z.number().int().positive() }).nullable().optional(),
 	/** Pieces on admin orders are held from save until removed or the order is cancelled (K7). */
 	held: z.boolean().default(false),
+	/**
+	 * What the line is (bundle builder brief E05–E08, approved 2026-11-22): a product on its own; a set, which holds
+	 * no money, stock or tax of its own; or, beneath its parent, a set's piece (at its share of the set price), a
+	 * free item (₹0) or an extra. Lines saved before sets existed read as products.
+	 */
+	role: z.enum(['product', 'bundle', 'piece', 'free', 'extra']).default('product'),
+	/** The line this one sits under: a piece's or an extra's set, a free item's piece or product. */
+	parentLineId: Id.nullable().default(null),
+	/** A set's line only: its heading on the shop, its price and what its pieces cost separately ("You save"). */
+	set: z
+		.object({
+			heading: z.enum(['components', 'choose']),
+			priceINR: PriceINR,
+			separatelyINR: PriceINR.nullable(),
+		})
+		.nullable()
+		.default(null),
 	addedAt: IsoDateTime.optional(),
 	addedBy: z.string().nullable().optional(),
 });

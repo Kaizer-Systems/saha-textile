@@ -102,6 +102,7 @@ export const CartViewChild = z.object({
 	title: z.string(),
 	sku: z.string(),
 	image: ResolvedImage.nullable().default(null),
+	variantId: Id.nullable().default(null),
 	variantLabel: z.string().nullable().default(null),
 	quantity: z.number().int().positive(),
 	/** The piece's share of the set price, an extra's price, or 0 for a free item. */

@@ -72,7 +72,7 @@ export class OrderStock {
 		await this.move('sell', order, lines, actorId, context, at);
 		const costs = new Map<string, number>();
 		for (const line of lines) {
-			if (!line.held || line.madeToOrder) continue;
+			if (!line.held || line.madeToOrder || line.role === 'bundle') continue;
 			const variantId = await this.variantIdOf(line);
 			const drawn = await this.layers
 				.consumeFifo({ variantId, quantity: line.quantity }, context)
@@ -108,7 +108,7 @@ export class OrderStock {
 	async unavailableLines(order: Order): Promise<string[]> {
 		const wanted = new Map<string, { quantity: number; lineIds: string[] }>();
 		for (const line of order.lines) {
-			if (line.madeToOrder) continue;
+			if (line.madeToOrder || line.role === 'bundle') continue;
 			const variantId = await this.variantIdOf(line);
 			const entry = wanted.get(variantId) ?? { quantity: 0, lineIds: [] };
 			entry.quantity += line.quantity;
@@ -144,7 +144,8 @@ export class OrderStock {
 			setTimeout(() => void this.bundleStock?.refreshContaining(ids), 1500).unref();
 		}
 		for (const line of lines) {
-			if (line.madeToOrder) continue;
+			// A set's own line has no stock: its pieces, free items and extras are held one by one (brief E08).
+			if (line.madeToOrder || line.role === 'bundle') continue;
 			// Only pieces this order actually keeps are released or sold.
 			if (kind !== 'reserve' && !line.held) continue;
 			const variantId = await this.variantIdOf(line);

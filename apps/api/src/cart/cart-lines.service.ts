@@ -218,6 +218,7 @@ export class CartLinesService {
 				title: child.title,
 				sku: child.sku,
 				image: imageOf(page, child.productId),
+				variantId: child.variantId,
 				variantLabel: child.variantLabel,
 				quantity: child.quantity,
 				priceINR: child.priceINR,

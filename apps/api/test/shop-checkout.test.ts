@@ -165,7 +165,8 @@ describe('shop checkout Pay (place)', () => {
 			{} as never,
 			{} as never,
 			{
-				findByIdempotencyKey: async (key: string) => (key === 'shop:cus_1:key-0123456789abcdef' ? existing : null),
+				findByIdempotencyKey: async (key: string) =>
+					key === 'shop:cus_1:key-0123456789abcdef' ? existing : null,
 				findById: async () => existing,
 				update: async (order: object) => order,
 			} as never,
@@ -182,5 +183,114 @@ describe('shop checkout Pay (place)', () => {
 		);
 		expect(handoff).toMatchObject({ orderNumber: 'ST-2611-482190', handoff: { kind: 'redirect' } });
 		expect(calls).toEqual(['reserve', 'start:bn:2026-11-20T10:15:00.000Z']);
+	});
+});
+
+describe('a set at checkout (bundle builder brief E05–E08)', () => {
+	type LinesOf = { orderLines(built: unknown, at: string): import('@saha-textile/contracts').OrderLine[] };
+	const svc = new ShopCheckoutService(
+		...(Array.from({ length: 15 }, () => ({}) as never) as ConstructorParameters<typeof ShopCheckoutService>),
+	) as unknown as LinesOf;
+	const child = (over: Record<string, unknown>) => ({
+		role: 'piece',
+		key: 'k',
+		parentKey: null,
+		level: null,
+		productId: 'p',
+		title: 'Piece',
+		sku: 'SKU',
+		image: null,
+		variantId: null,
+		variantLabel: null,
+		quantity: 1,
+		priceINR: 0,
+		mrpINR: null,
+		...over,
+	});
+	const built = (setHeading: 'components' | null) => ({
+		quote: { currency: 'INR' },
+		conversion: { rateFromINR: 1, markupPercent: 0 },
+		facts: [],
+		couponByLine: new Map([['l1', 1000]]),
+		view: {
+			lines: [
+				{
+					id: 'l1',
+					productId: setHeading ? 'set1' : 'saree1',
+					variationId: null,
+					title: setHeading ? 'Peacock Blue set' : 'Peacock Blue saree',
+					sku: 'BND-0001',
+					quantity: 2,
+					image: null,
+					options: [],
+					measurements: [],
+					basePriceINR: 44900,
+					unitPriceINR: 44900,
+					mrpINR: 48400,
+					lineTotalINR: 89800,
+					setHeading,
+					children: setHeading
+						? [
+								child({
+									key: 'a',
+									productId: 'p933',
+									title: 'Peacock Blue',
+									priceINR: 33211.16,
+									mrpINR: 35800,
+								}),
+								child({
+									role: 'free',
+									key: 'a>petti',
+									parentKey: 'a',
+									productId: 'pt',
+									title: 'Petticoat',
+									variantId: 'v-m',
+									variantLabel: 'M',
+									mrpINR: 799,
+								}),
+								child({
+									key: 'b',
+									productId: 'p1086',
+									title: 'Off White',
+									priceINR: 11688.84,
+									mrpINR: 12600,
+								}),
+							]
+						: [
+								child({
+									role: 'free',
+									key: 'product>pt',
+									productId: 'pt',
+									title: 'Petticoat',
+									mrpINR: 799,
+								}),
+							],
+				},
+			],
+		},
+	});
+
+	it('keeps the set as a line with no money, its pieces and free item beneath carrying it', () => {
+		const lines = svc.orderLines(built('components'), '2026-11-22T00:00:00.000Z');
+		expect(
+			lines.map((line) => [line.lineId, line.role, line.parentLineId, line.quantity, line.lineTotalINR]),
+		).toEqual([
+			['l1', 'bundle', null, 2, 0],
+			['l1~a', 'piece', 'l1', 2, 66422.32],
+			['l1~a>petti', 'free', 'l1~a', 2, 0],
+			['l1~b', 'piece', 'l1', 2, 23377.68],
+		]);
+		expect(lines[0]?.set).toEqual({ heading: 'components', priceINR: 44900, separatelyINR: 48400 });
+		expect(lines.reduce((sum, line) => sum + line.lineTotalINR, 0)).toBeCloseTo(89800, 2);
+		expect(Math.round(lines.reduce((sum, line) => sum + line.couponINR, 0) * 100)).toBe(100000);
+		expect(lines[2]).toMatchObject({ variationId: 'v-m', attributes: { Variation: 'M' } });
+	});
+
+	it("leaves a product's coupon on its own line, with its free item beneath at ₹0", () => {
+		const lines = svc.orderLines(built(null), '2026-11-22T00:00:00.000Z');
+		expect(lines.map((line) => [line.role, line.parentLineId, line.lineTotalINR, line.couponINR])).toEqual([
+			['product', null, 89800, 1000],
+			['free', 'l1', 0, 0],
+		]);
 	});
 });

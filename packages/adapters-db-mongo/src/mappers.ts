@@ -170,7 +170,16 @@ export function toOrder(doc: OrderDoc): Order {
 	const row = doc as OrderDoc & Partial<Record<keyof Order, unknown>>;
 	const lines = (doc.lines ?? []).map((line) =>
 		line && typeof line === 'object'
-			? { couponINR: 0, categoryIds: [], held: false, ...(line as Record<string, unknown>) }
+			? {
+					couponINR: 0,
+					categoryIds: [],
+					held: false,
+					// Lines saved before sets existed read as products on their own (bundle builder brief E05).
+					role: 'product',
+					parentLineId: null,
+					set: null,
+					...(line as Record<string, unknown>),
+				}
 			: line,
 	);
 	const timeline = (doc.statusTimeline ?? []).map((event) =>

@@ -77,6 +77,37 @@ describe('an order’s pieces in stock (DEC-STOCK-RESERVE, K7)', () => {
 		expect(costs.get('a')).toBe(500);
 	});
 
+	it('holds a set piece by piece, never the set’s own line (bundle builder brief E08)', async () => {
+		const { helper, moves } = stock();
+		const set = Order.parse({
+			...order,
+			lines: [
+				line({
+					lineId: 's',
+					productId: 'set1',
+					variationId: null,
+					role: 'bundle',
+					lineTotalINR: 0,
+					held: true,
+				}),
+				line({ lineId: 's~a', variationId: 'va', role: 'piece', parentLineId: 's', held: true }),
+				line({
+					lineId: 's~f',
+					variationId: 'vf',
+					role: 'free',
+					parentLineId: 's~a',
+					lineTotalINR: 0,
+					held: true,
+				}),
+			],
+		});
+		await helper.reserve(set, set.lines, 'adm', {} as never, 'now');
+		expect(moves.map((row) => row.variantId)).toEqual(['va', 'vf']);
+		moves.length = 0;
+		await helper.sell(set, set.lines, 'adm', {} as never, 'now');
+		expect(moves.map((row) => row.variantId)).toEqual(['va', 'vf']);
+	});
+
 	it('refuses with the SKU when there is not enough free stock', async () => {
 		await expect(stock(true).helper.reserve(order, order.lines, 'adm', {} as never, 'now')).rejects.toMatchObject({
 			response: { issues: [{ code: 'out_of_stock', params: { sku: 'SAR-1' } }] },

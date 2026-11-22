@@ -896,12 +896,16 @@ export const cfDevScreen: ProductScreen = {
 /* ===== Manage account ===== */
 
 async function tokens(ctx: ProductCtx, a: string) {
-	const [list_, me] = await Promise.all([
+	// The console's key may be the account's own token or a person's token (page rules need one).
+	const [list_, me, meUser] = await Promise.all([
 		cfAll(`/accounts/${a}/tokens`, ctx.key),
 		cfSoft(`/accounts/${a}/tokens/verify`, ctx.key).catch(() => null),
+		cfSoft('/user/tokens/verify', ctx.key).catch(() => null),
 	]);
-	const user = list_ ? null : await cfAll('/user/tokens', ctx.key);
-	return { list: list_ ?? user ?? [], mine: str(rec(me)['id']), readable: !!(list_ ?? user) };
+	const mine = str(rec(me)['id']) || str(rec(meUser)['id']);
+	const listed = (list_ ?? []).some((x) => str(x['id']) === mine);
+	const user = !list_ || (mine && !listed) ? await cfAll('/user/tokens', ctx.key) : null;
+	return { list: [...(list_ ?? []), ...(user ?? [])], mine, readable: !!(list_ ?? user) };
 }
 
 export const cfAccountScreen: ProductScreen = {

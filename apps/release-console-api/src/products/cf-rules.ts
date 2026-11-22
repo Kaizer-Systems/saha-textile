@@ -721,7 +721,11 @@ export const cloudConnector: ProductFormSpec = {
 
 export const USER_TOKEN = 'CONSOLE_CF_USER_TOKEN';
 const NO_USER_TOKEN =
-	'Page rules need a personal Cloudflare token: Cloudflare’s Page Rules API refuses account tokens like the console’s. Add CONSOLE_CF_USER_TOKEN (My Profile › API Tokens, Zone › Page Rules › Edit on this domain) to the console’s keys.';
+	'Page rules need a personal Cloudflare token: Cloudflare’s Page Rules API refuses account tokens. Use a personal token (My Profile › API Tokens) as the console’s Cloudflare key, or add one as CONSOLE_CF_USER_TOKEN.';
+/** Cloudflare's answer to an account token on the Page Rules API. */
+const refusedKind = (err: unknown) => err instanceof VendorError && /account owned tokens|1011/i.test(err.message);
+/** The key for page rules: the separate personal token when there is one, else the console's own key. */
+const pageKey = (ctx: ProductCtx, fallback: string) => ctx.consoleKey(USER_TOKEN) ?? fallback;
 
 /** A page rule setting and how its value is written. */
 const PAGE_SETTINGS: Array<{
@@ -836,8 +840,12 @@ const patternOf = (r: Rule) => str(rec(rec(arr(r['targets'])[0])['constraint'])[
 export const pageRules: ProductFormSpec = {
 	async read(ctx) {
 		const z = await zoneOf(ctx);
-		const userKey = ctx.consoleKey(USER_TOKEN);
-		const rules = userKey ? await pageRulesOf(userKey, z) : [];
+		let refused = false;
+		const rules = await pageRulesOf(pageKey(ctx, ctx.key), z).catch((err: unknown) => {
+			if (!refusedKind(err)) throw err;
+			refused = true;
+			return [] as Rule[];
+		});
 		const p = pick(
 			'Page rule',
 			[
@@ -867,7 +875,7 @@ export const pageRules: ProductFormSpec = {
 				key: 'pagerules',
 				title: r ? `Edit page rule ${patternOf(r)}` : 'New page rule',
 				submit: r ? 'Save page rule' : 'Create page rule',
-				blocked: userKey ? null : NO_USER_TOKEN,
+				blocked: refused ? NO_USER_TOKEN : null,
 				fields: [
 					field('pattern', 'If the URL matches', 'text', {
 						value: r ? patternOf(r) : '',
@@ -889,8 +897,7 @@ export const pageRules: ProductFormSpec = {
 		);
 	},
 	async send(ctx, w) {
-		const userKey = ctx.consoleKey(USER_TOKEN);
-		if (!userKey) throw new VendorError(NO_USER_TOKEN, 400);
+		const userKey = pageKey(ctx, await ctx.writeKey());
 		const z = await zoneOf(ctx);
 		const pattern = text(w, 'pattern');
 		if (!/^[\w*.:/?&=%#~+-]+$/.test(pattern))
@@ -971,21 +978,18 @@ async function everyRule(ctx: ProductCtx, z: Zone, key: string): Promise<AnyRule
 			},
 		});
 	}
-	const userKey = ctx.consoleKey(USER_TOKEN);
-	if (userKey)
-		for (const r of await pageRulesOf(userKey, z).catch(() => [])) {
-			const name = patternOf(r);
-			out.push({
-				value: `page:${str(r['id'])}`,
-				label: `${name} (page rule)`,
-				name,
-				when: name,
-				remove: async (_k, uk) => {
-					if (!uk) throw new VendorError(NO_USER_TOKEN, 400);
-					await cfSend('DELETE', `/zones/${z.id}/pagerules/${str(r['id'])}`, uk);
-				},
-			});
-		}
+	for (const r of await pageRulesOf(pageKey(ctx, key), z).catch(() => [])) {
+		const name = patternOf(r);
+		out.push({
+			value: `page:${str(r['id'])}`,
+			label: `${name} (page rule)`,
+			name,
+			when: name,
+			remove: async (kk, uk) => {
+				await cfSend('DELETE', `/zones/${z.id}/pagerules/${str(r['id'])}`, uk ?? kk);
+			},
+		});
+	}
 	return out;
 }
 
@@ -1018,7 +1022,7 @@ export const anyRuleDestroy: ProductFormSpec = {
 		const r = (await everyRule(ctx, z, k)).find((x) => x.value === (w.id ?? ctx.id));
 		if (!r) throw new VendorError('Choose a rule.', 400);
 		confirmed(w, r.name);
-		await r.remove(k, ctx.consoleKey(USER_TOKEN));
+		await r.remove(k, ctx.consoleKey(USER_TOKEN) ?? null);
 		return { message: `${r.label} deleted`, productId: null, follow: [] };
 	},
 };

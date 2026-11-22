@@ -2050,6 +2050,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				monitor: 'Monitor',
 				destroy: 'Delete rule',
 				history: 'History',
+				events: 'Events',
 			},
 			off: false,
 			tip: null,
@@ -2067,6 +2068,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				monitor: 'Cloudflare · Monitor: blocked, challenged, allowed',
 				destroy: 'Cloudflare · Delete rule: what goes, what stays, typed name and PIN',
 				history: 'Cloudflare · History: every change, who made it, from where',
+				events: 'Cloudflare · Events: what was blocked or challenged in the last 24 hours, by whom and why',
 			},
 		},
 		cfbots: {

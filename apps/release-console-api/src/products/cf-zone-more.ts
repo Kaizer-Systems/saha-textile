@@ -21,12 +21,13 @@ import {
 	option,
 	pick,
 	row,
+	stat,
 	table,
 	text,
 	view,
 	when,
 } from './kit.js';
-import { CF_API, type SettingSpec, type Zone, cfAll, cfSend, cfSoft, settingsForm, zoneOf } from './cf-kit.js';
+import { CF_API, type SettingSpec, type Zone, cfAll, cfSend, cfSoft, graph, settingsForm, zoneOf } from './cf-kit.js';
 import { type RuleKind, ruleKindForm } from './cf-rules.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
@@ -931,7 +932,76 @@ const toolsDelete: ProductFormSpec = {
 	},
 };
 
+/** Security › Events: what Cloudflare blocked or challenged in the last 24 hours, and why. */
+const eventsTab: Tab = async (ctx) => {
+	const z = await zoneOf(ctx);
+	const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+	const data = await graph(
+		ctx,
+		`query($zone: String!, $since: Time!) { viewer { zones(filter: { zoneTag: $zone }) {
+			firewallEventsAdaptive(limit: 100, filter: { datetime_geq: $since }, orderBy: [datetime_DESC]) {
+				action source datetime clientIP clientCountryName clientRequestHTTPHost clientRequestPath ruleId userAgent } } } }`,
+		{ zone: z.id, since },
+	);
+	const events = arr(rec(arr(rec(rec(data)['viewer'])['zones'])[0])['firewallEventsAdaptive']).map(rec);
+	const count = (key: string) => {
+		const m = new Map<string, number>();
+		for (const e of events) m.set(str(e[key]), (m.get(str(e[key])) ?? 0) + 1);
+		return [...m.entries()].sort((a, b) => b[1] - a[1]);
+	};
+	return view({
+		stats: [
+			stat('Events (24 h, newest 100)', events.length, data ? 'from Cloudflare' : 'not readable with this key'),
+			...count('action')
+				.slice(0, 3)
+				.map(([a, n]) => stat(a.replace(/_/g, ' '), n, 'action')),
+		],
+		tables: [
+			table(
+				'By source',
+				[col('source', 'Source'), col('n', 'Events', true)],
+				count('source').map(([src, n]) =>
+					row(src, src, { source: src.replace(/([A-Z])/g, ' $1').toLowerCase(), n }),
+				),
+				'No events.',
+			),
+			table(
+				'Latest events',
+				[
+					col('at', 'When', true),
+					col('action', 'Action'),
+					col('source', 'Source'),
+					col('from', 'From'),
+					col('path', 'Path', true),
+				],
+				events.map((e, n) =>
+					row(
+						String(n),
+						str(e['clientRequestPath']),
+						{
+							at: when(str(e['datetime'])),
+							action: str(e['action']).replace(/_/g, ' '),
+							source: str(e['source']),
+							from: `${str(e['clientCountryName'])} ${str(e['clientIP'])}`,
+							path: `${str(e['clientRequestHTTPHost'])}${str(e['clientRequestPath'])}`.slice(0, 90),
+						},
+						str(e['action']) === 'block' ? 'red' : 'amber',
+					),
+				),
+				'Nothing blocked or challenged in the last 24 hours.',
+			),
+		],
+		notes: [
+			note(
+				'Free keeps 24 hours of events; Pro and up keep longer and can filter by every field on Cloudflare.',
+				'muted',
+			),
+		],
+	});
+};
+
 export const WAF_EXTRA: ScreenExtra = {
+	tabs: { events: eventsTab },
 	forms: { ua: uaForm, ipedit: ipEdit, toolsdelete: toolsDelete },
 	buttons: {
 		tools: [

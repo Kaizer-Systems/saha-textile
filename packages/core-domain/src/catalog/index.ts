@@ -20,3 +20,4 @@ export * from './search-sync';
 export * from './language-rules';
 export * from './photo-header';
 export * from './set-price';
+export * from './cart-bundle';

@@ -59,6 +59,28 @@ export class OrdersController {
 		});
 	}
 
+	@Get('mine')
+	@ApiOperation({
+		operationId: 'listMyShopOrders',
+		summary: 'The signed-in shopper’s own orders, as the shop shows them',
+	})
+	mine(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Query('page') page?: string,
+		@Query('pageSize') pageSize?: string,
+	) {
+		if (!principal || principal.audience !== 'storefront') throw new UnauthorizedException();
+		const size = Math.min(50, Math.max(1, Number(pageSize) || 10));
+		return this.orders.shopList(principal.userId, { page: Math.max(1, Number(page) || 1), pageSize: size });
+	}
+
+	@Get('mine/:orderNumber')
+	@ApiOperation({ operationId: 'getMyShopOrder', summary: 'One of the signed-in shopper’s own orders' })
+	mineOne(@Param('orderNumber') orderNumber: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
+		if (!principal || principal.audience !== 'storefront') throw new UnauthorizedException();
+		return this.orders.shopView(principal.userId, orderNumber);
+	}
+
 	@Get(':id')
 	@ApiOperation({ operationId: 'getOrder', summary: 'Get one of the caller’s own orders' })
 	async get(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {

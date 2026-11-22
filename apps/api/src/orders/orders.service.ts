@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import {
 	type AppliedPromotion,
 	type Order,
+	type ShopOrderPage,
+	type ShopOrderView,
 	type OrderLineInput,
 	type OrderStatus,
 	Order as OrderSchema,
@@ -23,6 +25,7 @@ import {
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import { CartService } from '../cart/cart.service';
+import { shopOrderSummary, shopOrderView } from './shop-order-view';
 import {
 	CURRENCY_REPOSITORY,
 	ORDER_REPOSITORY,
@@ -132,6 +135,24 @@ export class OrdersService {
 		const order = await this.orders.findById(id);
 		if (!order) throw new NotFoundException(`Order not found: ${id}`);
 		return order;
+	}
+
+	/** A shopper's own orders, newest first, in the shape the shop shows (brief E06). */
+	async shopList(userId: string, query: PageQuery): Promise<ShopOrderPage> {
+		const page = await this.orders.listByUser(userId, query);
+		return {
+			items: page.items.map(shopOrderSummary),
+			total: page.total,
+			page: page.page,
+			pageSize: page.pageSize,
+		};
+	}
+
+	/** One of the shopper's own orders by its number (E05); another's is "not found", never "forbidden". */
+	async shopView(userId: string, orderNumber: string): Promise<ShopOrderView> {
+		const order = await this.orders.findByOrderNumber(orderNumber);
+		if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
+		return shopOrderView(order);
 	}
 
 	listByUser(userId: string, query: PageQuery): Promise<Paginated<Order>> {

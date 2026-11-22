@@ -1,0 +1,44 @@
+// An order as a tree (bundle builder brief E05, approved 2026-11-22), the cart's look: a set's or a product-with-free-
+// items' line carries a bar in the theme colour; pieces, free items and extras sit beneath it, indented, smaller.
+.my-order-lines {
+	tr.mo-group > td:first-child {
+		box-shadow: inset 4px 0 0 var(--theme-color);
+	}
+
+	tr.mo-child {
+		background-color: var(--st-surface-subtle);
+
+		&.is-free {
+			background-color: color-mix(in srgb, var(--st-success) 6%, var(--st-surface));
+		}
+
+		td {
+			padding-top: 6px;
+			padding-bottom: 6px;
+		}
+
+		td.product-image {
+			padding-left: 32px;
+
+			img {
+				width: 32px;
+				height: 42px;
+				object-fit: cover;
+			}
+		}
+
+		&.is-depth-2 td.product-image {
+			padding-left: 56px;
+		}
+	}
+
+	.mo-name {
+		white-space: normal;
+		text-align: left;
+
+		.st-piece-chip {
+			margin: 0 6px 0 0;
+			vertical-align: 1px;
+		}
+	}
+}

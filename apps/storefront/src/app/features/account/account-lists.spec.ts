@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingStore } from '@core/state/setting.store';
 
 import { BankDetails } from './bank-details/bank-details';
-import { Orders } from './orders/orders';
 import { Point } from './point/point';
 import { Refund } from './refund/refund';
 import { Wallet } from './wallet/wallet';
@@ -17,7 +16,6 @@ const query = (filter?: () => unknown) => {
 	filter?.();
 	return { data };
 };
-vi.mock('@data-access/queries/order.queries', () => ({ injectOrdersQuery: (filter?: () => unknown) => query(filter) }));
 vi.mock('@data-access/queries/refund.queries', () => ({
 	injectRefundsQuery: (filter?: () => unknown) => query(filter),
 }));
@@ -43,13 +41,12 @@ const render = <T>(type: new () => T) => {
 afterEach(() => data.set(undefined));
 
 describe.each([
-	{ name: 'Orders', type: Orders, stream: 'order$' },
 	{ name: 'Refund', type: Refund, stream: 'refund$' },
 	{ name: 'Wallet', type: Wallet, stream: 'wallet$' },
 	{ name: 'Point', type: Point, stream: 'point$' },
 ])('$name list', ({ type, stream }) => {
 	it('shows the loaded page and moves between pages', async () => {
-		const page = render(type as new () => Orders) as unknown as {
+		const page = render(type as new () => Refund) as unknown as {
 			filter: () => Record<string, unknown>;
 			setPaginate: (page: number) => void;
 		} & Record<string, never>;

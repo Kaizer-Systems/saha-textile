@@ -1,0 +1,83 @@
+// My orders (bundle builder brief E06, approved 2026-11-22). Laptops and tablets keep the theme's wallet table; the
+// first picture of each order is small. On phones the table would scroll sideways, so each row becomes a card
+// (owner, 22 Nov 2026: "a better UI" than a sideways table): order number and status on top, the items under them,
+// the date and total, then View order. The same pattern as the cart page's phone cards.
+.mo-thumb {
+	flex: none;
+	width: 28px;
+	height: 36px;
+	border-radius: 4px;
+	object-fit: cover;
+}
+
+.mo-view a {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+@media (max-width: 767px) {
+	.my-orders-table {
+		thead {
+			display: none;
+		}
+
+		tbody,
+		tr,
+		td {
+			display: block;
+		}
+
+		tr {
+			display: grid;
+			grid-template-columns: 1fr auto;
+			grid-template-areas:
+				'number status'
+				'items items'
+				'date total'
+				'view view';
+			gap: 8px 12px;
+			margin-bottom: 12px;
+			padding: 14px;
+			border: 1px solid var(--st-border-line);
+			border-radius: 8px;
+			background-color: var(--st-surface);
+		}
+
+		td {
+			padding: 0 !important;
+			border: none !important;
+			text-align: left !important;
+			white-space: normal !important;
+		}
+
+		.mo-number {
+			grid-area: number;
+		}
+
+		.mo-status {
+			grid-area: status;
+		}
+
+		.mo-items {
+			grid-area: items;
+		}
+
+		.mo-date {
+			grid-area: date;
+			color: var(--st-text-muted);
+		}
+
+		.mo-total {
+			grid-area: total;
+			font-weight: 600;
+		}
+
+		.mo-view {
+			grid-area: view;
+			padding-top: 10px !important;
+			border-top: 1px solid var(--st-border-soft) !important;
+			text-align: right !important;
+		}
+	}
+}

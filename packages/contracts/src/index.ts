@@ -70,6 +70,7 @@ export * from './business';
 export * from './coupon';
 export * from './order-payment';
 export * from './order-settings';
+export * from './shop-orders';
 export * from './order-admin';
 export * from './checkout';
 export * from './ops';

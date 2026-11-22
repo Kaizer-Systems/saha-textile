@@ -6698,5 +6698,6 @@
 	"op_after": "after",
 	"search_hint_product_bundles": "Sets sold as one product: levels, prices, stock and the bundle builder",
 	"search_hint_product_bundle_price_methods": "The \"Set price is\" list for bundles, and its rules",
-	"set_price": "Set price"
+	"set_price": "Set price",
+	"show_on_shop_help": "Off: the product stays live and stocked and can be a set piece, an extra or a free item, but the shop never lists it and its own page says not found."
 }

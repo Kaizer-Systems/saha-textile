@@ -644,6 +644,7 @@ export class FormProduct implements DraftMarks {
 			addon_price_inr: new FormControl(null),
 			return_policy_text: new FormControl(),
 			is_featured: new FormControl(0),
+			show_on_shop: new FormControl(true),
 			status: new FormControl<string>('disabled'),
 		});
 		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, ['estimated_delivery_text']);
@@ -753,6 +754,7 @@ export class FormProduct implements DraftMarks {
 				replacement_path: detail.replacementPath,
 				addon_price_inr: detail.addonPriceINR,
 				is_featured: detail.featured,
+				show_on_shop: detail.showOnShop !== false,
 				status: detail.status,
 				related_products: detail.relatedProductIds,
 				upsell_products: detail.upsellProductIds,
@@ -1422,6 +1424,7 @@ export class FormProduct implements DraftMarks {
 			...(slug && slug !== product.slug ? { slug } : {}),
 			status: product.status === 'live' && raw['status'] === 'live' ? 'live' : 'disabled',
 			featured: Boolean(raw['is_featured']),
+			showOnShop: raw['show_on_shop'] !== false,
 			madeToOrder: Boolean(raw['made_to_order']),
 			estimatedDeliveryText: textOrNull(this.fields.text('estimated_delivery_text')['en']),
 			lowStockThreshold:

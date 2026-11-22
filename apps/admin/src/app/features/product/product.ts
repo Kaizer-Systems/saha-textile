@@ -45,6 +45,8 @@ interface ProductTableRow {
 	status_label: string;
 	status_class: string;
 	status_locked: boolean;
+	/** Show on shop (brief P9, D5): shown, or hidden while live and stocked. */
+	shop: string;
 }
 
 /** The bulk buttons' action names, and the API action each one runs. */
@@ -118,6 +120,7 @@ export class Product {
 				labelClassField: 'status_class',
 				lockField: 'status_locked',
 			},
+			{ title: 'show_on_shop', dataField: 'shop' },
 		],
 		rowActions: [
 			{
@@ -230,6 +233,10 @@ export class Product {
 					status_label: view.label,
 					status_class: view.pill,
 					status_locked: row.status === 'discontinued',
+					shop:
+						row.showOnShop === false
+							? `<div class="status-pending"><span>${escapeHtml(this.transloco.translate('hidden_from_shop'))}</span></div>`
+							: `<div class="status-in_stock"><span>${escapeHtml(this.transloco.translate('shown'))}</span></div>`,
 				};
 			});
 			this.tableConfig.update((config) => ({ ...config, data, total: page?.total ?? 0 }));

@@ -1828,6 +1828,26 @@
 								class="tab"
 								tab="status"
 							>
+								<!-- Show on shop (brief P9, D5): live and stocked, but kept off the shop when off. -->
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'show_on_shop'"
+									[for]="'product_show_on_shop'"
+									[required]="false"
+								>
+									<div class="form-check form-switch ps-0">
+										<label class="switch">
+											<input
+												type="checkbox"
+												id="product_show_on_shop"
+												formControlName="show_on_shop"
+											/>
+											<span class="switch-state"></span>
+										</label>
+										<p class="help-text">{{ 'show_on_shop_help' | transloco }}</p>
+									</div>
+								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"

@@ -624,6 +624,7 @@ describe('FormProduct.submit', () => {
 			sku: 'S1',
 			status: 'live',
 			featured: true,
+			showOnShop: true,
 			madeToOrder: false,
 			estimatedDeliveryText: '3 days',
 			lowStockThreshold: 2,

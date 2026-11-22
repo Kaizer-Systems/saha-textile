@@ -1,6 +1,6 @@
 /** The API's admin catalogue shapes (`AdminProductList`, `AdminProductDetail`, `ProductMerchandisingWrite`). */
 
-import type { ProductContentWrite, ProductVideo, QuickLength } from '@saha-textile/contracts';
+import type { FreeWith, ProductContentWrite, ProductVideo, QuickLength } from '@saha-textile/contracts';
 
 export type CatalogBadgeCode = 'sale' | 'featured' | 'bestseller' | 'trending' | 'new' | 'low_stock' | 'back_in_stock';
 
@@ -24,6 +24,9 @@ export interface CatalogShipping {
 }
 
 export interface CatalogProductRow {
+	/** Show on shop (D5); absent from older API builds means shown. */
+	showOnShop?: boolean;
+	type?: 'simple' | 'variable' | 'bundle';
 	id: string;
 	slug: string;
 	sku: string;
@@ -92,6 +95,9 @@ export interface CatalogShippingCharges {
 }
 
 export interface CatalogProductDetail {
+	/** Show on shop (D5) and Free with this product (P8). */
+	showOnShop?: boolean;
+	freeWith?: FreeWith | null;
 	id: string;
 	slug: string;
 	sku: string;
@@ -144,6 +150,9 @@ export interface CatalogVariantWrite extends CatalogShipping {
 }
 
 export interface CatalogProductWrite {
+	/** Show on shop (D5); absent keeps it. Free with this product (P8): null removes them, absent keeps them. */
+	showOnShop?: boolean;
+	freeWith?: FreeWith | null;
 	sku: string;
 	status: 'live' | 'disabled';
 	featured: boolean;

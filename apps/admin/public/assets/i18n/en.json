@@ -6697,5 +6697,6 @@
 	"op_before": "before",
 	"op_after": "after",
 	"search_hint_product_bundles": "Sets sold as one product: levels, prices, stock and the bundle builder",
-	"search_hint_product_bundle_price_methods": "The \"Set price is\" list for bundles, and its rules"
+	"search_hint_product_bundle_price_methods": "The \"Set price is\" list for bundles, and its rules",
+	"set_price": "Set price"
 }

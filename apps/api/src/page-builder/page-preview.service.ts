@@ -22,6 +22,12 @@ const newToken = (): string => randomBytes(32).toString('base64url');
  * server swaps it for a session kept in a cookie limited to /__preview, which lasts an hour; the draft is then drawn
  * by the shop's own code. No pass ever travels in an address that history, logs or the Referer header keep.
  */
+/**
+ * Bundle builder preview codes (bundle builder brief, 2026-11-22), held in memory for their one minute: Page Builder
+ * codes live on their layout's record, and a bundle has none. A restart only means the builder asks for a new code.
+ */
+const bundleCodes = new Map<string, { productId: string; expiresAt: number }>();
+
 @Injectable()
 export class PagePreviewService {
 	constructor(
@@ -41,14 +47,14 @@ export class PagePreviewService {
 		if (!product || product.type !== 'bundle') throw new NotFoundException('No such bundle');
 		const code = newToken();
 		const expiresAt = new Date(now.getTime() + PREVIEW_CODE_SECONDS * 1000).toISOString();
-		await this.tokens.createCode({
-			codeHash: tokenHash(code),
-			layoutId: `bundle:${product.id}`,
-			revisionId: null,
-			by: actor,
-			expiresAt,
-		});
+		this.sweep(now);
+		bundleCodes.set(tokenHash(code), { productId: product.id, expiresAt: Date.parse(expiresAt) });
 		return { code, expiresAt };
+	}
+
+	/** Drops expired bundle preview codes, so the map never grows. */
+	private sweep(now: Date): void {
+		for (const [hash, entry] of bundleCodes) if (entry.expiresAt <= now.getTime()) bundleCodes.delete(hash);
 	}
 
 	async code(
@@ -70,18 +76,16 @@ export class PagePreviewService {
 
 	/** The shop's server swaps a code for a session; a used, expired or unknown code is a plain 404. */
 	async exchange(code: string, now = new Date()): Promise<PreviewExchangeResponse> {
-		const used = await this.tokens.useCode(tokenHash(code), now.toISOString());
-		if (used?.layoutId.startsWith('bundle:')) {
-			const token = newToken();
+		// A bundle preview code (bundle builder): used once, within its minute. The shop's frame needs no draft from
+		// the server (the builder posts it), so the session token only unlocks the private address.
+		const bundle = bundleCodes.get(tokenHash(code));
+		if (bundle) {
+			bundleCodes.delete(tokenHash(code));
+			if (bundle.expiresAt <= now.getTime()) throw new NotFoundException('No such preview');
 			const expiresAt = new Date(now.getTime() + PREVIEW_SESSION_SECONDS * 1000).toISOString();
-			await this.tokens.createSession({
-				tokenHash: tokenHash(token),
-				layoutId: used.layoutId,
-				revisionId: null,
-				expiresAt,
-			});
-			return { token, pageType: 'bundle', expiresAt };
+			return { token: newToken(), pageType: 'bundle', expiresAt };
 		}
+		const used = await this.tokens.useCode(tokenHash(code), now.toISOString());
 		const layout = used ? await this.layouts.layout(used.layoutId) : null;
 		if (!layout) throw new NotFoundException('No such preview');
 		const token = newToken();

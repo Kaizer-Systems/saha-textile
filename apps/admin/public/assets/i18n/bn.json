@@ -6697,5 +6697,6 @@
 	"op_before": "এর আগে",
 	"op_after": "এর পরে",
 	"search_hint_product_bundles": "একসঙ্গে বিক্রি হওয়া সেট: ধাপ, দাম, স্টক আর বান্ডেল বিল্ডার",
-	"search_hint_product_bundle_price_methods": "বান্ডেলের \"সেটের দাম\" তালিকা আর তার নিয়ম"
+	"search_hint_product_bundle_price_methods": "বান্ডেলের \"সেটের দাম\" তালিকা আর তার নিয়ম",
+	"set_price": "সেটের দাম"
 }

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, afterNextRender, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, ViewEncapsulation, afterNextRender, inject, input, signal } from '@angular/core';
 
 import { bundleFromApi } from '@core/catalog/from-api';
 import { BundleConfigurator } from '@shared/ui/product-config/parts/bundle-configurator/bundle-configurator';
@@ -58,6 +58,17 @@ export function isBuilderMessage(
 			<p class="text-content p-4">{{ waiting() }}</p>
 		}
 	`,
+	// The owner's words (rev 1): the preview is the set's part of the page alone, not the shop around it.
+	styles: `
+		body.st-bundle-preview app-header,
+		body.st-bundle-preview app-footer,
+		body.st-bundle-preview app-mobile-menu,
+		body.st-bundle-preview app-cookie,
+		body.st-bundle-preview app-cookie-settings {
+			display: none !important;
+		}
+	`,
+	encapsulation: ViewEncapsulation.None,
 	imports: [BundleConfigurator, SetSummary],
 })
 export class BundlePreview {
@@ -69,6 +80,8 @@ export class BundlePreview {
 	constructor() {
 		const destroy = inject(DestroyRef);
 		afterNextRender(() => {
+			document.body.classList.add('st-bundle-preview');
+			destroy.onDestroy(() => document.body.classList.remove('st-bundle-preview'));
 			const origin = this.adminOrigin();
 			if (!origin || window.parent === window) return;
 			const listen = (event: MessageEvent) => {

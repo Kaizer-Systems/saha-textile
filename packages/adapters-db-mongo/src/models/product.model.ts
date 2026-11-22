@@ -37,6 +37,9 @@ export interface ProductDoc {
 	lowStockThreshold?: number | null;
 	lifetimeUnitsReceived?: number;
 	featured?: boolean;
+	/** Show on shop (D5); absent on rows written before 22 Nov 2026 means shown. */
+	showOnShop?: boolean;
+	freeWith?: unknown;
 	faqEnabled?: boolean;
 	videos?: Array<{
 		videoId: string;
@@ -110,6 +113,8 @@ const ProductSchema = new Schema<ProductDoc>(
 		lowStockThreshold: { type: Number, default: null },
 		lifetimeUnitsReceived: { type: Number, default: 0 },
 		featured: { type: Boolean, default: false },
+		showOnShop: { type: Boolean, default: true },
+		freeWith: { type: Schema.Types.Mixed, default: null },
 		faqEnabled: { type: Boolean, default: false },
 		videos: { type: [Schema.Types.Mixed], default: [] },
 		insightBadges: { type: [String], default: [] },

@@ -42,6 +42,8 @@ export const COLLECTION_NAMES = {
 	Product: 'products',
 	ProductVariant: 'productVariants',
 	ProductBundle: 'productBundles',
+	/** The "Set price is" list for bundles, made in the method builder (owner, 2026-11-22). */
+	BundlePriceMethod: 'bundlePriceMethods',
 	ProductRelation: 'productRelations',
 	// --- Commerce ------------------------------------------------------------
 	Cart: 'carts',

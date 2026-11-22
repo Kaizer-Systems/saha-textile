@@ -5,6 +5,7 @@ import {
 	GoLiveResult,
 	Product,
 	ProductBundle,
+	type ProductBundleWrite,
 	ProductVariant,
 	type MediaAsset,
 	type ProductCreate,
@@ -14,6 +15,7 @@ import {
 	productGallery,
 	selectionHash,
 	type MediaAssetRepository,
+	type BundlePriceMethodRepository,
 	type ProductBundleRepository,
 	type ProductRepository,
 	type ProductVariantRepository,
@@ -21,7 +23,10 @@ import {
 
 import { CatalogService } from './catalog.service';
 import { LanguageStore } from '../languages/language-store';
+import type { BundleReader } from './bundles/bundle-reader';
 import {
+	BUNDLE_PRICE_METHOD_REPOSITORY,
+	BUNDLE_READER,
 	MEDIA_ASSET_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
 	PRODUCT_REPOSITORY,
@@ -37,7 +42,7 @@ export const slugFrom = (title: string): string =>
 
 const BASE_SELECTION = [{ attributeCode: 'base', termCode: 'base' }];
 
-export type BundleWrite = Pick<ProductBundle, 'bundleType' | 'pricePolicy' | 'fixedPriceINR' | 'groups'>;
+export type BundleWrite = ProductBundleWrite;
 
 /** Creating products, going live and bundles: the admin product builder. */
 @Injectable()
@@ -51,12 +56,19 @@ export class ProductBuilderService {
 		@Optional()
 		@Inject(PRODUCT_BUNDLE_REPOSITORY)
 		private readonly bundles: ProductBundleRepository | null = null,
+		@Optional()
+		@Inject(BUNDLE_PRICE_METHOD_REPOSITORY)
+		private readonly methods: BundlePriceMethodRepository | null = null,
+		@Optional() @Inject(BUNDLE_READER) private readonly reader: BundleReader | null = null,
 	) {}
 
 	/** A new product starts disabled with one base row. The form finishes it. */
-	async create(body: ProductCreate, actorUserId: string | null) {
-		const slug = await this.freeSlug(slugFrom(body.title.en));
+	async create(asked: ProductCreate, actorUserId: string | null) {
+		const slug = await this.freeSlug(slugFrom(asked.title.en));
 		const id = `prd_${randomUUID()}`;
+		// A bundle has no SKU of its own: a BND number for search (V2, approved 22 Nov 2026).
+		const body =
+			asked.type === 'bundle' ? { ...asked, sku: await this.nextBundleNumber(), basePriceINR: 0 } : asked;
 		const product = Product.parse({
 			id,
 			type: body.type,
@@ -80,6 +92,28 @@ export class ProductBuilderService {
 		await this.variants.save(base);
 		await this.catalog.record(actorUserId, 'catalog.product.create', id, { sku: body.sku, type: body.type });
 		return { id, slug };
+	}
+
+	/** The next free bundle number: BND-0001, BND-0002… */
+	private async nextBundleNumber(): Promise<string> {
+		const page = await this.products.list({
+			audience: 'admin',
+			type: 'bundle',
+			page: 1,
+			pageSize: 100,
+			search: 'BND-',
+		});
+		const used = page.items.map((row) => Number(/^BND-(\d+)$/.exec(row.sku)?.[1] ?? 0));
+		for (let next = Math.max(0, ...used) + 1; ; next += 1) {
+			const sku = `BND-${String(next).padStart(4, '0')}`;
+			if (
+				!(await this.products.list({ audience: 'admin', search: sku, page: 1, pageSize: 1 })).items.some(
+					(row) => row.sku === sku,
+				)
+			) {
+				return sku;
+			}
+		}
 	}
 
 	/** The first free address from this base: `saree`, then `saree-2`, `saree-3`… */
@@ -134,26 +168,45 @@ export class ProductBuilderService {
 		return (await this.requireBundles().findByProductId(product.id, 'admin')) ?? null;
 	}
 
-	/** A bundle may not hold a bundle. Checkout resolves one level into real lines. */
+	/**
+	 * Saves the builder's Build and Price rules tabs (bundle builder brief, approved 2026-11-22). A bundle may not hold
+	 * a bundle (DEC-BUNDLE-NESTING), every item must exist, and the price method must exist. The worked-out stock is
+	 * saved with it, and the set follows its product's status.
+	 */
 	async saveBundle(idOrSlug: string, body: BundleWrite, actorUserId: string | null) {
 		const bundles = this.requireBundles();
 		const product = await this.catalog.getProduct(idOrSlug, 'admin');
 		if (product.type !== 'bundle') throw new BadRequestException('Only a bundle product has a bundle');
-		const componentIds = body.groups.flatMap((group) => group.components.map((component) => component.productId));
-		for (const id of componentIds) {
+		const itemIds = [
+			...new Set([...body.levels.flatMap((level) => level.items), ...body.extras].map((item) => item.productId)),
+		];
+		for (const id of itemIds) {
+			if (id === product.id) throw new BadRequestException('A bundle may not contain itself');
 			if (await bundles.isBundleProduct(id)) throw new BadRequestException('A bundle may not contain a bundle');
-			if (!(await this.products.findById(id, 'admin'))) throw new NotFoundException(`Product not found: ${id}`);
+			const target = await this.products.findById(id, 'admin');
+			if (!target) throw new NotFoundException(`Product not found: ${id}`);
+			if (target.type === 'bundle') throw new BadRequestException('A bundle may not contain a bundle');
+		}
+		if (this.methods && !(await this.methods.findById(body.pricing.methodId))) {
+			throw new BadRequestException('Choose how the set is priced');
 		}
 		const existing = await bundles.findByProductId(product.id, 'admin');
-		const saved = await bundles.save(
-			ProductBundle.parse({
-				...body,
-				id: existing?.id ?? `bnd_${randomUUID()}`,
-				productId: product.id,
-				status: existing?.status ?? 'draft',
-			}),
-		);
-		await this.catalog.record(actorUserId, 'catalog.bundle.save', product.id, { groups: body.groups.length });
+		const next = ProductBundle.parse({
+			...body,
+			id: existing?.id ?? `bnd_${randomUUID()}`,
+			productId: product.id,
+			stock: null,
+			status: product.status === 'live' ? 'live' : 'draft',
+		});
+		const stock = this.reader
+			? this.reader.stock(await this.reader.resolve(next), product.lowStockThreshold)
+			: null;
+		const saved = await bundles.save({ ...next, stock });
+		await this.catalog.record(actorUserId, 'catalog.bundle.save', product.id, {
+			levels: body.levels.length,
+			extras: body.extras.length,
+			method: body.pricing.methodId,
+		});
 		return saved;
 	}
 

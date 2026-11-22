@@ -241,10 +241,23 @@
 			"targetAction": "refactor",
 			"owningChunks": ["F"],
 			"blockingDecisions": [],
-			"purpose": "True compound products, kits, sets, and grouped purchase composition.",
+			"purpose": "Bundles (sets) built in the bundle builder: levels of pieces with how many the shopper takes, optional extras, the price method and the set's own rules, and the worked-out stock.",
 			"source": "catalog §7.9",
 			"currentModel": "packages/adapters-db-mongo/src/models/merchandising.model.ts",
-			"references": ["products", "productVariants"]
+			"references": ["products", "productVariants", "bundlePriceMethods"]
+		},
+		{
+			"id": "bundlePriceMethods",
+			"label": "bundlePriceMethods",
+			"cluster": "catalog-merchandising",
+			"currentState": "existing",
+			"targetAction": "add",
+			"owningChunks": ["F"],
+			"blockingDecisions": [],
+			"purpose": "The bundle builder's \"Set price is\" list: price methods made in the method builder (where the price starts, the numbers each bundle types, and rule blocks). Five are seeded; admin may add, edit or remove them.",
+			"source": "decisions § bundle builder brief approved (2026-11-22)",
+			"currentModel": "packages/adapters-db-mongo/src/models/merchandising.model.ts",
+			"references": []
 		},
 		{
 			"id": "productRelations",

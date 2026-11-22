@@ -4,21 +4,20 @@
 		<span>{{ 'bundle_availability_checked' | transloco }}</span>
 	</div>
 
-	<!-- Components -->
 	<div class="bundle-section">
+		<!-- The heading picks itself (D1): "Choose your set" when any level is a choice. -->
 		<h2 class="h4 bundle-heading">
 			@if (hasChoice()) { {{ 'choose_your_set' | transloco }} } @else { {{ 'bundle_components' | transloco }} }
 			<span class="count">({{ countLabel() }})</span>
 		</h2>
-		<!-- One row per piece or choice group (brief P8): photo, number, name and a status mark; one opens at a time. -->
+		<!-- One row per fixed piece, choice level or extra (brief P8, D1, D3): photo, number, name, status mark. -->
 		<ul class="st-piece-rows">
 			@for (row of rows(); track row.code; let i = $index) {
 			<li
 				class="st-piece"
 				[class.is-open]="open() === row.code"
 			>
-				@if (row.kind === 'group') {
-				<!-- A choice group (owner, 21 Nov 2026): its tiles pick the piece; the price follows the set's setting. -->
+				@if (row.kind === 'choice') {
 				<button
 					type="button"
 					class="st-piece-head"
@@ -27,26 +26,30 @@
 				>
 					<ng-container
 						[ngTemplateOutlet]="markTpl"
-						[ngTemplateOutletContext]="{ $implicit: groupMark(row.pieces) }"
+						[ngTemplateOutletContext]="{ $implicit: levelMark(row.level) }"
 					/>
-					@for (piece of row.pieces; track piece.code) { @if (chosen().has(piece.code)) {
+					@for (item of picked(row.level); track item.key) {
 					<img
 						class="st-piece-photo"
-						[src]="piece.image || 'assets/images/product.png'"
+						[src]="item.image || 'assets/images/product.png'"
 						alt=""
 						width="44"
 						height="58"
 						loading="lazy"
 					/>
-					} }
+					}
 					<span class="st-piece-text">
 						<span class="st-piece-name">
-							{{ i + 1 }}. {{ 'pick_of' | transloco: { label: row.label, max: row.max, count:
-							row.pieces.length } }}
+							{{ i + 1 }}. {{ 'pick_of' | transloco: { label: row.level.label, max: row.level.take, count:
+							row.level.items.length } }}
 						</span>
 						<span class="st-piece-sub">
-							@for (piece of row.pieces; track piece.code) { @if (chosen().has(piece.code)) {
-							<span class="st-piece-chip">{{ piece.name }}</span>
+							@for (item of picked(row.level); track item.key) {
+							<span class="st-piece-chip">
+								{{ item.name }}@if (sizeLabel(item); as size) { · {{ size }} }
+							</span>
+							@for (name of freeNames(item); track name) {
+							<span class="st-piece-chip is-free">{{ 'free_chip' | transloco: { name } }}</span>
 							} }
 						</span>
 					</span>
@@ -58,24 +61,24 @@
 				@if (open() === row.code) {
 				<div class="st-piece-body">
 					<p class="mb-2">
-						<b>{{ row.label }}</b>
+						<b>{{ row.level.label }}</b>
 						<span class="text-danger">*</span>
 						<span class="text-content ms-1">{{ 'price_changes_with_pick' | transloco }}</span>
 					</p>
 					<!-- The picture-row look (brief P6), reused as is. -->
 					<ul class="st-look-list st-look-rows">
-						@for (piece of row.pieces; track piece.code) {
+						@for (item of row.level.items; track item.key) {
 						<li>
 							<button
 								type="button"
 								class="st-look"
-								[class.is-on]="chosen().has(piece.code)"
-								[class.is-off]="piece.stock_status !== 'in_stock'"
-								[attr.aria-pressed]="chosen().has(piece.code)"
-								[disabled]="piece.stock_status !== 'in_stock'"
-								(click)="pick(row.group, row.max, piece.code)"
+								[class.is-on]="chosen().has(item.key)"
+								[class.is-off]="!item.in_stock || !offered(row.level, item)"
+								[attr.aria-pressed]="chosen().has(item.key)"
+								[disabled]="!item.in_stock || !offered(row.level, item)"
+								(click)="pick(row.level, item)"
 							>
-								@if (chosen().has(piece.code)) {
+								@if (chosen().has(item.key)) {
 								<i
 									class="ri-checkbox-circle-fill st-look-check"
 									aria-hidden="true"
@@ -83,104 +86,142 @@
 								}
 								<img
 									class="st-look-pic"
-									[src]="piece.image || 'assets/images/product.png'"
+									[src]="item.image || 'assets/images/product.png'"
 									alt=""
 									loading="lazy"
 								/>
 								<span class="st-look-text">
-									<span class="st-look-name">{{ piece.name }}</span>
+									<span class="st-look-name">{{ item.name }}</span>
 									<span class="st-look-note">
-										@if (piece.stock_status !== 'in_stock') {
+										@if (!item.in_stock) {
 										<del>{{ 'out_of_stock' | transloco }}</del>
-										} @else if ((piece.price_change ?? 0) > 0) { +{{ piece.price_change |
-										currencySymbol }} } @else if ((piece.price_change ?? 0) < 0) { −{{
-										-(piece.price_change ?? 0) | currencySymbol }} } @else { {{ 'included' |
-										transloco }} }
+										} @else if (!offered(row.level, item)) { {{ 'not_with_this_pick' | transloco }}
+										} @else { @let change = changeFor(row.level, item); @if (change > 0) { +{{
+										change | currencySymbol }} } @else if (change < 0) { −{{ -change |
+										currencySymbol }} } @else { {{ 'included' | transloco }} } } @if
+										(item.free_with) {
+										<span class="text-success ms-1">· {{ 'comes_with_free' | transloco }}</span>
+										}
 									</span>
 								</span>
 							</button>
 						</li>
 						}
 					</ul>
-				</div>
-				} } @else {
-				<div class="st-piece-top">
-					<button
-						type="button"
-						class="st-piece-head"
-						[attr.aria-expanded]="open() === row.code"
-						(click)="toggle(row.code)"
-					>
-						<ng-container
-							[ngTemplateOutlet]="markTpl"
-							[ngTemplateOutletContext]="{ $implicit: mark(row.piece) }"
-						/>
-						<img
-							class="st-piece-photo"
-							[src]="row.piece.image || 'assets/images/product.png'"
-							alt=""
-							width="44"
-							height="58"
-							loading="lazy"
-						/>
-						<span class="st-piece-text">
-							<span class="st-piece-name">{{ i + 1 }}. {{ row.piece.name }}</span>
-							<span class="st-piece-sub">
-								{{ 'sku' | transloco }}: {{ row.piece.sku }} · {{ row.piece.price | currencySymbol }}
-							</span>
-						</span>
-						<i
-							class="ri-arrow-down-s-line st-piece-caret"
-							aria-hidden="true"
-						></i>
-					</button>
-					@if (row.optional) {
-					<!-- An optional piece (owner, 21 Nov 2026): the switch adds it and its own price. -->
-					<!-- Bootstrap's switch without `form-check`: the theme zeroes that class's margin inside the product page. -->
-					<label class="form-switch st-piece-switch">
-						<input
-							class="form-check-input"
-							type="checkbox"
-							role="switch"
-							[checked]="chosen().has(row.piece.code)"
-							(change)="toggleExtra(row.piece.code)"
-						/>
-						<span>
-							{{ 'add_optional' | transloco: { price: (row.piece.price_change ?? 0) | currencySymbol } }}
-						</span>
-					</label>
+					@for (item of picked(row.level); track item.key) {
+					<ng-container
+						[ngTemplateOutlet]="detailTpl"
+						[ngTemplateOutletContext]="{ $implicit: item }"
+					/>
 					}
 				</div>
+				} } @else if (row.kind === 'piece') {
+				<button
+					type="button"
+					class="st-piece-head"
+					[attr.aria-expanded]="open() === row.code"
+					(click)="toggle(row.code)"
+				>
+					<ng-container
+						[ngTemplateOutlet]="markTpl"
+						[ngTemplateOutletContext]="{ $implicit: mark(row.item) }"
+					/>
+					<img
+						class="st-piece-photo"
+						[src]="row.item.image || 'assets/images/product.png'"
+						alt=""
+						width="44"
+						height="58"
+						loading="lazy"
+					/>
+					<span class="st-piece-text">
+						<span class="st-piece-name">
+							{{ i + 1 }}. {{ row.item.name }} @if (row.item.quantity > 1) { × {{ row.item.quantity }} }
+						</span>
+						<span class="st-piece-sub">
+							{{ 'sku' | transloco }}: {{ row.item.sku }} · {{ row.item.today | currencySymbol }} @if
+							(sizeLabel(row.item); as size) {
+							<span class="st-piece-chip">{{ size }}</span>
+							} @for (name of freeNames(row.item); track name) {
+							<span class="st-piece-chip is-free">{{ 'free_chip' | transloco: { name } }}</span>
+							}
+						</span>
+					</span>
+					<i
+						class="ri-arrow-down-s-line st-piece-caret"
+						aria-hidden="true"
+					></i>
+				</button>
 				@if (open() === row.code) {
 				<div class="st-piece-body">
-					<p class="mb-1">
-						{{ 'consumes' | transloco }}:
-						<b>{{ row.piece.consumes }}</b>
-					</p>
-					@if (row.piece.attributes?.length) {
-					<p class="mb-1">
-						@for (a of row.piece.attributes; track a.code) {
-						<span class="me-2">
-							{{ a.label }}:
-							<b>{{ a.value }}</b>
-						</span>
-						}
-					</p>
-					} @if (row.piece.stock_status !== 'in_stock') {
+					@if (!row.item.in_stock) {
 					<p class="st-piece-note mb-1">{{ 'piece_out_note' | transloco }}</p>
-					} @if (row.optional && chosen().has(row.piece.code)) {
-					<p class="text-content mb-1">
-						{{ 'optional_piece_note' | transloco: { name: row.piece.name, price: (row.piece.price_change ??
-						0) | currencySymbol } }}
-					</p>
-					} @if (row.piece.slug) {
+					}
+					<ng-container
+						[ngTemplateOutlet]="detailTpl"
+						[ngTemplateOutletContext]="{ $implicit: row.item }"
+					/>
+					@if (row.item.slug) {
 					<a
 						class="st-piece-link"
-						[href]="'/' + lang() + '/product/' + row.piece.slug"
+						[href]="'/' + lang() + '/product/' + row.item.slug"
 					>
 						{{ 'view_this_piece' | transloco }}
 					</a>
 					}
+				</div>
+				} } @else {
+				<!-- An optional extra (D3): the same row, an outlined tick that fills when ticked; Free or +₹X. -->
+				<button
+					type="button"
+					class="st-piece-head"
+					[attr.aria-pressed]="chosen().has(row.item.key)"
+					[disabled]="!row.item.in_stock"
+					(click)="toggleExtra(row.item)"
+				>
+					<span
+						class="st-piece-mark"
+						[class.is-extra]="!chosen().has(row.item.key)"
+						[class.is-extra-on]="chosen().has(row.item.key)"
+						[attr.title]="(chosen().has(row.item.key) ? 'extra_on' : 'extra_off') | transloco"
+					>
+						<i
+							[class]="chosen().has(row.item.key) ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line'"
+							aria-hidden="true"
+						></i>
+					</span>
+					<img
+						class="st-piece-photo"
+						[src]="row.item.image || 'assets/images/product.png'"
+						alt=""
+						width="44"
+						height="58"
+						loading="lazy"
+					/>
+					<span class="st-piece-text">
+						<span class="st-piece-name">
+							{{ row.item.name }} @if (row.item.quantity > 1) { × {{ row.item.quantity }} }
+						</span>
+						<span class="st-piece-sub">
+							@if (!row.item.in_stock) {
+							<del>{{ 'out_of_stock' | transloco }}</del>
+							} @else if (row.item.price_in_set === 0) { @if (row.item.mrp) {
+							<del>{{ row.item.mrp | currencySymbol }}</del>
+							}
+							<b class="text-success">{{ 'free' | transloco }}</b>
+							} @else { +{{ row.item.price_in_set * row.item.quantity | currencySymbol }} } · {{
+							'extra_optional' | transloco }} @for (name of freeNames(row.item); track name) {
+							<span class="st-piece-chip is-free">{{ 'free_chip' | transloco: { name } }}</span>
+							}
+						</span>
+					</span>
+				</button>
+				@if (chosen().has(row.item.key) && needsSize(row.item)) {
+				<div class="st-piece-body">
+					<ng-container
+						[ngTemplateOutlet]="detailTpl"
+						[ngTemplateOutletContext]="{ $implicit: row.item }"
+					/>
 				</div>
 				} }
 			</li>
@@ -188,18 +229,50 @@
 		</ul>
 	</div>
 
-	<!-- Sets cannot be bought until they can be priced (brief B12). The page and the Configure set sheet say so here, on
-	every screen size; the product pop-up's own summary below says it too. -->
-	@if (!showSummary()) {
-	<p class="text-content mt-3 mb-0">{{ 'bundle_not_on_sale' | transloco }}</p>
-	}
+	<!-- What a chosen item still needs inside its row: its size (S8), and a free choice for a fixed piece (D2-FIXED). -->
+	<ng-template
+		#detailTpl
+		let-item
+	>
+		@if (needsSize(item)) {
+		<p class="mt-2 mb-1">
+			<b>{{ 'size_for' | transloco: { name: item.name } }}</b>
+			<span class="text-danger">*</span>
+		</p>
+		<ul class="st-look-list st-look-sizes">
+			@for (size of item.variants; track size.id) {
+			<li>
+				<button
+					type="button"
+					class="st-look"
+					[class.is-on]="sizeOf(item) === size.id"
+					[class.is-off]="!size.in_stock"
+					[disabled]="!size.in_stock"
+					[attr.aria-pressed]="sizeOf(item) === size.id"
+					(click)="setSize(item, size.id)"
+				>
+					<span class="st-look-name">{{ size.label }}</span>
+				</button>
+			</li>
+			}
+		</ul>
+		} @if (item.free_with && !item.free_with.given) {
+		<div class="mt-2">
+			<app-free-items
+				[freeWith]="item.free_with"
+				[forName]="item.name"
+				[initial]="freeOf(item)"
+				(stateChange)="onFreeState(item, $event)"
+			/>
+		</div>
+		}
+	</ng-template>
 
-	<!-- A row's status mark: green ready, amber a choice or measurements missing, red out of stock, none while off. -->
+	<!-- A row's status mark: green ready, amber a choice, size or measurements missing, red out of stock. -->
 	<ng-template
 		#markTpl
 		let-mark
 	>
-		@if (mark !== 'off') {
 		<span
 			[class]="'st-piece-mark is-' + mark"
 			[attr.title]="('piece_' + mark) | transloco"
@@ -209,13 +282,13 @@
 				aria-hidden="true"
 			></i>
 		</span>
-		} @else {
-		<span
-			class="st-piece-mark"
-			aria-hidden="true"
-		></span>
-		}
 	</ng-template>
+
+	@if (!bundle().buyable) {
+	<p class="text-content mt-3 mb-0">
+		{{ (bundle().stock.sets_possible === 0 ? 'set_sold_out' : 'bundle_not_on_sale') | transloco }}
+	</p>
+	}
 
 	<!-- Options -->
 	@if (optionGroups().length) {
@@ -242,23 +315,22 @@
 	/>
 	}
 
-	<!-- Order summary snapshot (the product page shows it in the right column instead) -->
+	<!-- The pop-up keeps a short summary here; the product page shows the set summary in its right column. -->
 	@if (showSummary()) {
 	<div class="bundle-summary">
 		<h3 class="h5">{{ 'order_summary_snapshot' | transloco }}</h3>
 		<ul class="summary-lines">
-			@for (comp of components(); track comp.code) {
+			@for (piece of quote().pieces; track piece.key) {
 			<li>
-				<span class="s-name">
-					{{ comp.name }}
-					<small>({{ comp.sku }})</small>
-				</span>
-				<span class="s-price">{{ comp.price | currencySymbol }}</span>
+				<span class="s-name">{{ itemOf(piece.key)?.name }}</span>
+				<span class="s-price">{{ piece.todayINR | currencySymbol }}</span>
 			</li>
-			} @for (group of optionGroups(); track group.code) {
-			<li class="s-option">
-				<span class="s-name">{{ group.label }}: {{ selectedTermLabel(group) }}</span>
-				<span class="s-price">—</span>
+			} @for (extra of quote().extras; track extra.key) {
+			<li>
+				<span class="s-name">{{ itemOf(extra.key)?.name }}</span>
+				<span class="s-price">
+					@if (extra.free) { {{ 'free' | transloco }} } @else { +{{ extra.priceINR | currencySymbol }} }
+				</span>
 			</li>
 			}
 		</ul>
@@ -267,7 +339,6 @@
 			<span class="s-total-value">{{ total() | currencySymbol }}</span>
 		</div>
 		<p class="bundle-note text-content">{{ 'bundle_deliver_together' | transloco }}</p>
-		<p class="bundle-note text-content">{{ 'bundle_not_on_sale' | transloco }}</p>
 	</div>
 	}
 </div>

@@ -616,6 +616,8 @@ export function mapDemoCatalogue(input: {
 			lowStockThreshold: null,
 			lifetimeUnitsReceived: 0,
 			featured: Boolean(product.is_featured),
+			showOnShop: true,
+			freeWith: null,
 			faqEnabled: false,
 			videos: [],
 			insightBadges: [],
@@ -792,30 +794,34 @@ export function mapDemoCatalogue(input: {
 	const bundles: ProductBundle[] = productDocs
 		.filter((product) => bundleIds.has(product.id))
 		.flatMap((product) => {
-			const components = productDocs.filter((candidate) => !bundleIds.has(candidate.id)).slice(0, 3);
+			const components = productDocs.filter((candidate) => !bundleIds.has(candidate.id)).slice(0, 2);
 			if (components.length === 0) return [];
+			// A fixed pair at the product's price, one level per piece (bundle builder brief, 22 Nov 2026).
 			return [
 				{
 					id: `bnd_${product.id}`,
 					productId: product.id,
-					bundleType: 'choose_one_per_group' as const,
-					pricePolicy: 'fixed_bundle_price' as const,
-					fixedPriceINR: product.basePriceINR,
-					groups: [
-						{
-							code: 'set',
-							label: { en: 'Set' },
-							minSelections: 1,
-							maxSelections: 1,
-							components: components.map((component) => ({
-								productId: component.id,
-								variantId: null,
-								quantity: 1,
-								required: false,
-								priceAdjustmentINR: null,
-							})),
-						},
-					],
+					levels: components.map((component, at) => ({
+						code: `piece-${at + 1}`,
+						label: { en: `Piece ${at + 1}`, bn: `পিস ${at + 1}` },
+						take: 1,
+						source: { kind: 'items' as const },
+						items: [{ productId: component.id, variantId: null, quantity: 1, priceInSetINR: null }],
+						priceMode: 'difference' as const,
+					})),
+					extras: [],
+					pricing: {
+						methodId: 'bpm_fixed_price',
+						params: { setPrice: product.basePriceINR },
+						rules: [],
+						combine: 'all' as const,
+						capAtSeparately: false,
+						roundTo: 'one' as const,
+					},
+					saleWindow: null,
+					styledPhoto: null,
+					dearerReason: null,
+					stock: null,
 					status: product.status,
 				},
 			];

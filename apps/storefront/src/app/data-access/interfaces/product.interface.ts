@@ -2,7 +2,14 @@ import { IAttachment } from './attachment.interface';
 import { IAttribute, IAttributeValue } from './attribute.interface';
 import { ICategory } from './category.interface';
 import { IPaginateModel } from './core.interface';
-import { IAddonGroup, IBundle, IMeasurementField, ISemanticAttribute, ISizeGuide } from './product-detail.interface';
+import {
+	IAddonGroup,
+	IBundle,
+	IFreeWith,
+	IMeasurementField,
+	ISemanticAttribute,
+	ISizeGuide,
+} from './product-detail.interface';
 import { IReview } from './review.interface';
 import { IStores } from './store.interface';
 import { ITag } from './tag.interface';
@@ -106,6 +113,8 @@ export interface IProduct {
 	/** The measurement template's name ("Suit measurements"), shown on the measurement row. */
 	measurement_title?: string;
 	bundle?: IBundle; // true composite/kit
+	/** Free with this product (P8). */
+	free_with?: IFreeWith;
 	related_blog_ids?: number[]; // blogs the admin linked to this (or parent) product
 	is_random_related_products: boolean;
 	related_products: number[];

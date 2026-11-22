@@ -8,6 +8,10 @@ export const FAQ_REPOSITORY = Symbol('FaqRepository');
 export const PRODUCT_QUESTION_REPOSITORY = Symbol('ProductQuestionRepository');
 export const PRODUCT_RELATION_REPOSITORY = Symbol('ProductRelationRepository');
 export const PRODUCT_BUNDLE_REPOSITORY = Symbol('ProductBundleRepository');
+/** Products › Bundle price methods (bundle builder brief, 2026-11-22). */
+export const BUNDLE_PRICE_METHOD_REPOSITORY = Symbol('BundlePriceMethodRepository');
+/** Reads a bundle's items against their live products: shop page, builder, cart, checkout and stock. */
+export const BUNDLE_READER = Symbol('BundleReader');
 export const SEARCH_PORT = Symbol('SearchPort');
 /** The search change queue (outbox). */
 export const SEARCH_OUTBOX = Symbol('SearchOutboxRepository');

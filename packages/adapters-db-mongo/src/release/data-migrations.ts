@@ -1,5 +1,6 @@
 import type { DataMigration } from '@saha-textile/core-domain';
 
+import { convertBundlesToLevels, seedBundlePriceMethods, showProductsOnShop } from '../migrations/bundles-v2';
 import { writeLaunchCurrencySymbols } from '../migrations/fx-launch-symbols';
 import { seedLegalPages } from '../migrations/legal-pages';
 import { setOwnerOrderNumberFormat } from '../migrations/order-number-format';
@@ -115,5 +116,26 @@ export const DATA_MIGRATIONS: readonly DataMigration[] = [
 			'Image V2 swatch (product page brief section 8): built-in image profiles still on the seeded 120 and 240 px Image V2 swatch sizes gain 360 px and a new version, so "Bring older versions up to date" adds it to existing photos; sizes an admin changed stay',
 		half: 'expand',
 		up: () => addSwatchV2Width360(),
+	},
+	{
+		id: '0013-bundle-price-methods',
+		description:
+			'Bundle price methods (bundle builder brief, approved 2026-11-22): the five methods shown in the brief (One fixed price, Pieces added up, Pieces % off, Pieces ₹ off, Buy more save more) written once; a method stored under the same code is never overwritten',
+		half: 'expand',
+		up: () => seedBundlePriceMethods(),
+	},
+	{
+		id: '0014-bundles-to-levels',
+		description:
+			'Bundles (bundle builder brief): each bundle in the old Bundle tab shape gains levels, extras and a price method; fixed kits become one level per piece, choice groups one choice level, optional components extras; the old fields stay for a rollback',
+		half: 'expand',
+		up: () => convertBundlesToLevels(),
+	},
+	{
+		id: '0015-products-show-on-shop',
+		description:
+			'Show on shop (bundle builder brief D5): products saved before the switch existed get it on, so nothing leaves the shop',
+		half: 'expand',
+		up: () => showProductsOnShop(),
 	},
 ];

@@ -21,6 +21,10 @@ export interface ProductFilter extends PageQuery {
 	insight?: 'bestseller' | 'trending';
 	/** Placement path such as `sarees/pure-cotton`. Matches a category id resolved by the caller. */
 	categoryIds?: string[];
+	/** Admin lists: only this type (Products › Bundles lists bundles). */
+	type?: 'simple' | 'variable' | 'bundle';
+	/** Admin lists: shown on the shop, or hidden from it (D5). Public lists always leave hidden products out. */
+	shop?: 'shown' | 'hidden';
 }
 
 /**

@@ -48,6 +48,16 @@
 	&.is-bad {
 		color: var(--st-danger-text);
 	}
+
+	// An optional extra or a free item to take (bundle builder brief D3, approved 22 Nov 2026): an outlined grey
+	// tick until tapped, then a filled one in the theme colour; set pieces keep their green tick.
+	&.is-extra {
+		color: var(--st-text-muted, #8a8f98);
+	}
+
+	&.is-extra-on {
+		color: var(--theme-color);
+	}
 }
 
 // An optional piece's row has no mark while it is switched off; the empty mark keeps the rows aligned.
@@ -68,6 +78,12 @@
 	font-size: 12px;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+}
+
+// A free item's chip on a closed row ("Free: cream petticoat"), in the success colour.
+.st-piece-chip.is-free {
+	background-color: color-mix(in srgb, var(--st-success) 12%, transparent);
+	color: var(--st-success);
 }
 
 // An optional piece: its row head and the switch that adds it, side by side; the switch drops below the head

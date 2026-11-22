@@ -336,7 +336,7 @@ describe('BuyBox and the buy bar', () => {
 
 	it('shows a set in the bar and configures it in a sheet that keeps its choices (brief P4, P8)', async () => {
 		expect(render().box.setView()).toBeNull();
-		const bundle = { components: [{ code: 'a' }, { code: 'b' }], bundle_price: 7300 };
+		const bundle = { levels: [{ take: 1 }, { take: 1 }], bundle_price: 7300 };
 		const { box, cart } = render(true, { bundle });
 		const applySet = vi.fn();
 		const bundleState = signal<{ valid: boolean } | null>(null);
@@ -385,7 +385,7 @@ describe('BuyBox and the buy bar', () => {
 			result: Promise.resolve({ selections: { blouse: 'none' }, measurements: {}, measured: false, add: true }),
 		} as never);
 		await box.openSet();
-		expect(applySet).toHaveBeenCalledWith({ blouse: 'none' }, {}, false, { picks: undefined, extras: undefined });
+		expect(applySet).toHaveBeenCalledWith({ blouse: 'none' }, {}, false, {});
 		// A set that cannot be bought yet is never added, whatever the sheet says.
 		expect(cart.addToCart).not.toHaveBeenCalled();
 

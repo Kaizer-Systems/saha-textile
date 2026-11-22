@@ -1,33 +1,40 @@
-import { type SetPricing } from '@saha-textile/core-domain/set-price';
+import { type QuoteBundle, type QuoteItem } from '@saha-textile/core-domain/bundle';
 
-import { IBundle } from '@data-access/interfaces/product-detail.interface';
+import { IBundle, ISetItem } from '@data-access/interfaces/product-detail.interface';
+
+const quoteItem = (item: ISetItem): QuoteItem => ({
+	key: item.key,
+	quantity: item.quantity,
+	priceInSetINR: item.price_in_set,
+	todayINR: item.today,
+	onSale: item.sale !== null,
+	perTenth: item.sold_by === 'metre',
+});
 
 /**
- * A set's pieces in the shape core prices (owner, 21 Nov 2026: "Follow each set's price setting"). The API sends
- * each piece's own set price (after its adjustment, times quantity), so the shop adds those up; a fixed-price set's
- * own price is the one the page shows. Pieces without a group (older pages) form one group that takes them all.
+ * A set in the shape core's engine prices (bundle builder brief, approved 2026-11-22). The page prices each choice
+ * with `quoteBundle` from the same method and rules the API and checkout use, so the shopper pays what they see.
  */
-export function setPricing(bundle: IBundle): SetPricing {
-	// The page's own price is the set's price unless the set is priced by its pieces.
-	const fixed = bundle.price_policy !== 'sum-components' && bundle.price_policy !== 'discounted-components';
-	const components = bundle.components ?? [];
-	const groups = bundle.groups?.length
-		? bundle.groups
-		: [{ code: '', label: '', min: components.length, max: Math.max(1, components.length) }];
+export function setQuote(bundle: IBundle): QuoteBundle {
+	const pricing = bundle.pricing;
 	return {
-		policy: fixed ? 'fixed_bundle_price' : 'sum_components',
-		fixedPriceINR: fixed ? bundle.bundle_price : null,
-		groups: groups.map((group) => ({
-			code: group.code,
-			maxSelections: group.max,
-			pieces: components
-				.filter((piece) => (piece.group ?? '') === group.code)
-				.map((piece) => ({
-					id: piece.code,
-					priceINR: piece.set_price ?? (piece.price ?? 0) * (piece.quantity || 1),
-					quantity: 1,
-					required: piece.required ?? true,
-				})),
+		levels: bundle.levels.map((level) => ({
+			code: level.code,
+			take: level.take,
+			priceMode: level.price_mode,
+			items: level.items.map(quoteItem),
 		})),
+		extras: bundle.extras.map(quoteItem),
+		method: {
+			base: pricing.base,
+			inputs: pricing.inputs,
+			rules: pricing.methodRules,
+			combine: pricing.methodCombine,
+		},
+		params: pricing.params,
+		rules: pricing.rules,
+		combine: pricing.combine,
+		capAtSeparately: pricing.capAtSeparately,
+		roundTo: pricing.roundTo,
 	};
 }

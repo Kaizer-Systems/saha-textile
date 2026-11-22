@@ -13,6 +13,8 @@ export * from './product';
 export * from './product-options';
 export * from './product-variant';
 export * from './product-bundle';
+export * from './bundle-rules';
+export * from './free-with';
 export * from './product-relation';
 export * from './seo-redirect';
 export * from './seo-route';

@@ -186,9 +186,10 @@
 								tab="bundle"
 							>
 								<app-product-bundle
-									[(value)]="bundle"
-									[products]="bundleProducts()"
-									[locale]="fields.locale()"
+									[productId]="catalogProduct?.id ?? null"
+									[name]="form.controls['name'].value ?? ''"
+									[busy]="openingBuilder()"
+									(open)="openBuilder()"
 								/>
 							</div>
 						</ng-template>
@@ -1167,6 +1168,7 @@
 					</li>
 					<li
 						ngbNavItem="setup"
+						[class.d-none]="isBundle()"
 						id="setup"
 						[class.is-invalid]="tabError === 'setup'"
 					>
@@ -1400,6 +1402,7 @@
 					</li>
 					<li
 						ngbNavItem="images"
+						[class.d-none]="isBundle()"
 						id="images"
 						[class.is-invalid]="tabError === 'images'"
 					>
@@ -1438,6 +1441,7 @@
 					</li>
 					<li
 						ngbNavItem="seo"
+						[class.d-none]="isBundle()"
 						id="seo"
 						[class.is-invalid]="tabError === 'seo'"
 					>
@@ -1529,6 +1533,7 @@
 					</li>
 					<li
 						ngbNavItem="faq"
+						[class.d-none]="isBundle()"
 						id="faq"
 						[class.is-invalid]="tabError === 'faq'"
 					>
@@ -1555,6 +1560,7 @@
 					</li>
 					<li
 						ngbNavItem="shipping"
+						[class.d-none]="isBundle()"
 						id="shipping"
 						[class.is-invalid]="tabError === 'shipping'"
 					>
@@ -1804,6 +1810,7 @@
 					</li>
 					<li
 						ngbNavItem="status"
+						[class.d-none]="isBundle()"
 						id="status"
 						[class.is-invalid]="tabError === 'status'"
 					>

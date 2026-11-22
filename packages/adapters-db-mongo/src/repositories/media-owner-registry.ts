@@ -10,6 +10,7 @@ import {
 	SavedBlockModel,
 	CategoryModel,
 	ContentBlockModel,
+	ProductBundleModel,
 	ProductModel,
 	ProductVariantModel,
 	ReviewModel,
@@ -48,6 +49,8 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('product gallery attachment', as(ProductModel), 'media.gallery.assetId'),
 	entry('variant image', as(ProductVariantModel), 'media.primaryAssetId'),
 	entry('product share picture (Meta image)', as(ProductModel), 'media.shareImage.assetId'),
+	// A bundle's optional styled photo (brief A5); stored free-form, so the schema walk cannot find it.
+	entry('bundle styled photo', as(ProductBundleModel), 'styledPhoto.assetId'),
 	entry('attribute swatch', as(AttributeDefinitionModel), 'terms.swatchAssetId'),
 	// A product's own option swatches (and add-on picture tiles), photos or swatch cuts (brief P11); option groups are
 	// stored free-form, so the schema walk below cannot find this path by itself.

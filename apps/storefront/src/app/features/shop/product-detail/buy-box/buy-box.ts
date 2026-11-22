@@ -217,12 +217,14 @@ export class BuyBox {
 	readonly setView = computed(() => {
 		const bundle = this.product().bundle;
 		if (!bundle) return null;
-		const pieces = this.setPieces()?.length ?? bundle.components?.length ?? 0;
+		const pieces = this.setPieces()?.length ?? bundle.levels.reduce((sum, level) => sum + level.take, 0);
 		return { pieces, ready: this.configurator()?.bundleState()?.valid ?? false };
 	});
 
 	/** The pieces the set holds now (its picks and optional pieces), for the bar and the right column's summary. */
 	readonly setPieces = computed(() => this.configurator()?.bundleState()?.pieces ?? null);
+	readonly setPicks = computed(() => this.configurator()?.bundleState()?.picks ?? null);
+	readonly setExtras = computed(() => this.configurator()?.bundleState()?.extras ?? null);
 
 	/** The bar's Configure set: the page's set part in a sheet, written back on Save. */
 	async openSet(): Promise<void> {
@@ -248,15 +250,11 @@ export class BuyBox {
 			measurements: snapshot.measurements,
 			mode: 'set',
 			buyable: configurator.purchasable(),
-			picks: snapshot.picks,
-			extras: snapshot.extras,
+			set: snapshot.set,
 		});
 		const result = (await popup.result.catch(() => null)) as AddonSheetResult | null;
 		if (!result) return;
-		configurator.applySet(result.selections, result.measurements, result.measured, {
-			picks: result.picks,
-			extras: result.extras,
-		});
+		configurator.applySet(result.selections, result.measurements, result.measured, result.set ?? {});
 		if (result.add && this.purchasable()) this.addToCart();
 	}
 

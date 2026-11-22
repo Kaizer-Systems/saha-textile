@@ -524,27 +524,49 @@ function bundlesFor(docs: readonly Product[], notes: ReadonlyMap<number, Showcas
 		.filter((doc) => noteOf(doc).scenario === 'bundle')
 		.map((doc, index) => {
 			const parts = [0, 1].map((slot) => plain[(index * 11 + slot * 37) % plain.length] as Product);
+			const pair = index % 2 === 0;
+			// Even rows: a fixed pair (one level per piece). Odd rows: one level, pick 1 of 2.
+			const levels = pair
+				? parts.map((part, at) => ({
+						code: `piece-${at + 1}`,
+						label: { en: `Piece ${at + 1}`, bn: `পিস ${at + 1}` },
+						take: 1,
+						source: { kind: 'items' as const },
+						items: [{ productId: part.id, variantId: null, quantity: 1, priceInSetINR: null }],
+						priceMode: 'difference' as const,
+					}))
+				: [
+						{
+							code: 'set',
+							label: { en: 'In this set', bn: 'এই সেটে যা আছে' },
+							take: 1,
+							source: { kind: 'items' as const },
+							items: parts.map((part) => ({
+								productId: part.id,
+								variantId: null,
+								quantity: 1,
+								priceInSetINR: null,
+							})),
+							priceMode: 'difference' as const,
+						},
+					];
 			return {
 				id: `bnd_${doc.id}`,
 				productId: doc.id,
-				bundleType: index % 2 === 0 ? ('fixed_kit' as const) : ('choose_one_per_group' as const),
-				pricePolicy: 'fixed_bundle_price' as const,
-				fixedPriceINR: doc.basePriceINR,
-				groups: [
-					{
-						code: 'set',
-						label: { en: 'In this set', bn: 'এই সেটে যা আছে' },
-						minSelections: index % 2 === 0 ? 2 : 1,
-						maxSelections: index % 2 === 0 ? 2 : 1,
-						components: parts.map((part) => ({
-							productId: part.id,
-							variantId: null,
-							quantity: 1,
-							required: index % 2 === 0,
-							priceAdjustmentINR: null,
-						})),
-					},
-				],
+				levels,
+				extras: [],
+				pricing: {
+					methodId: 'bpm_fixed_price',
+					params: { setPrice: doc.basePriceINR },
+					rules: [],
+					combine: 'all' as const,
+					capAtSeparately: false,
+					roundTo: 'one' as const,
+				},
+				saleWindow: null,
+				styledPhoto: null,
+				dearerReason: null,
+				stock: null,
 				status: 'live' as const,
 			};
 		});

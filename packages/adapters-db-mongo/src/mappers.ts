@@ -81,6 +81,8 @@ export function toProduct(doc: ProductDoc): Product {
 		lowStockThreshold: doc.lowStockThreshold ?? null,
 		lifetimeUnitsReceived: doc.lifetimeUnitsReceived ?? 0,
 		featured: doc.featured ?? false,
+		showOnShop: doc.showOnShop !== false,
+		freeWith: (doc.freeWith ?? null) as Product['freeWith'],
 		faqEnabled: doc.faqEnabled ?? false,
 		videos: doc.videos ?? [],
 		insightBadges: doc.insightBadges ?? [],

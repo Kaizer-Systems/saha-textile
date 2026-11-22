@@ -20,12 +20,12 @@
 			</div>
 		</div>
 		<ol class="st-set-summary-pieces">
-			@for (piece of pieces(); track piece.code) {
+			@for (line of lines(); track line.key) {
 			<li>
-				{{ piece.name }} × {{ piece.quantity || 1 }}
+				{{ line.name }} × {{ line.quantity }}
 				<span>
-					{{ 'price_on_its_own' | transloco: { price: (piece.price * (piece.quantity || 1) | currencySymbol) }
-					}}
+					@if (line.free) { {{ 'free' | transloco }} · } {{ 'price_on_its_own' | transloco: { price:
+					(line.today | currencySymbol) } }}
 				</span>
 			</li>
 			}

@@ -1,0 +1,47 @@
+@if (config(); as sheet) {
+<div class="modal-content">
+	<div class="modal-header">
+		<h2
+			class="h5 modal-title"
+			id="free_items_sheet_title"
+		>
+			{{ (sheet.freeWith.given ? 'free_comes_with' : 'free_choose_for') | transloco: { name: sheet.pieceName } }}
+		</h2>
+		<button
+			type="button"
+			class="btn btn-close"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<app-free-items
+			[freeWith]="sheet.freeWith"
+			[forName]="sheet.pieceName"
+			[initial]="sheet.picks"
+			(stateChange)="state.set($event)"
+		/>
+	</div>
+	<div class="modal-footer st-sheet-footer">
+		@if (!sheet.freeWith.given && sheet.freeWith.min === 0) {
+		<button
+			type="button"
+			class="btn btn-animation btn-md fw-bold"
+			(click)="noThanks()"
+		>
+			{{ 'no_thanks' | transloco }}
+		</button>
+		}
+		<button
+			type="button"
+			class="btn st-sheet-save"
+			[disabled]="!state().valid"
+			(click)="done()"
+		>
+			{{ (sheet.freeWith.given ? 'ok' : 'done') | transloco }}
+		</button>
+	</div>
+</div>
+}

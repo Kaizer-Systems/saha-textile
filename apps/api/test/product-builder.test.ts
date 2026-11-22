@@ -229,18 +229,28 @@ describe('ProductBuilderService', () => {
 		await expect(gone.service.goLive('prd_1', null)).rejects.toThrow('discontinued');
 	});
 
-	const group = {
+	const level = {
 		code: 'g',
 		label: both,
-		minSelections: 1,
-		maxSelections: 1,
-		components: [{ productId: 'prd_1', variantId: null, quantity: 1, required: true, priceAdjustmentINR: null }],
+		take: 1,
+		source: { kind: 'items' },
+		items: [{ productId: 'prd_1', variantId: null, quantity: 1, priceInSetINR: null }],
+		priceMode: 'difference',
 	};
 	const write = {
-		bundleType: 'fixed_kit',
-		pricePolicy: 'sum_components',
-		fixedPriceINR: null,
-		groups: [group],
+		levels: [level],
+		extras: [],
+		pricing: {
+			methodId: 'bpm_pieces_added_up',
+			params: {},
+			rules: [],
+			combine: 'all',
+			capAtSeparately: false,
+			roundTo: 'one',
+		},
+		saleWindow: null,
+		styledPhoto: null,
+		dearerReason: null,
 	} as never;
 
 	it('reads and saves a bundle', async () => {
@@ -252,7 +262,8 @@ describe('ProductBuilderService', () => {
 		expect(catalog.record).toHaveBeenCalledOnce();
 		bundles.findByProductId.mockResolvedValueOnce({ id: 'bnd_1', status: 'live' });
 		await service.saveBundle('kit', write, null);
-		expect(bundles.save.mock.calls[1]?.[0]).toMatchObject({ id: 'bnd_1', status: 'live' });
+		// The set follows its product's status: a disabled product's set is a draft.
+		expect(bundles.save.mock.calls[1]?.[0]).toMatchObject({ id: 'bnd_1', status: 'draft' });
 		bundles.findByProductId.mockResolvedValueOnce({ id: 'bnd_1' });
 		await expect(service.bundle('kit')).resolves.toEqual({ id: 'bnd_1' });
 	});

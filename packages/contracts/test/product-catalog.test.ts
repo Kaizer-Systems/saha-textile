@@ -237,22 +237,13 @@ describe('ProductVariantSet', () => {
 });
 
 describe('ProductBundle — DEC-BUNDLE-NESTING is locked', () => {
+	const item = (productId: string, extra: Record<string, unknown> = {}) => ({ productId, quantity: 1, ...extra });
+	const level = (code: string, take: number, items: unknown[]) => ({ code, label: { en: code }, take, items });
 	const bundle = (overrides: Record<string, unknown> = {}) => ({
 		id: 'bundle_1',
 		productId: 'prod_bridal_set',
-		bundleType: 'fixed_kit',
-		pricePolicy: 'sum_components',
-		groups: [
-			{
-				code: 'core',
-				label: { en: 'Core' },
-				maxSelections: 2,
-				components: [
-					{ productId: 'prod_saree_001', quantity: 1 },
-					{ productId: 'prod_blouse_002', quantity: 1 },
-				],
-			},
-		],
+		levels: [level('saree', 1, [item('prod_saree_001')]), level('blouse', 1, [item('prod_blouse_002')])],
+		pricing: { methodId: 'bpm_pieces_added_up' },
 		...overrides,
 	});
 
@@ -260,89 +251,36 @@ describe('ProductBundle — DEC-BUNDLE-NESTING is locked', () => {
 		const parsed = ProductBundle.parse(bundle());
 		expect('allowNestedBundles' in parsed).toBe(false);
 		expect('maxDepth' in parsed).toBe(false);
+		expect(parsed.levels[0]).toMatchObject({ take: 1, source: { kind: 'items' }, priceMode: 'difference' });
+		expect(parsed.pricing).toMatchObject({ params: {}, rules: [], combine: 'all', roundTo: 'one' });
 	});
 
 	it('rejects a bundle containing itself', () => {
-		expect(
-			ProductBundle.safeParse(
-				bundle({
-					groups: [
-						{
-							code: 'core',
-							label: { en: 'Core' },
-							maxSelections: 1,
-							components: [{ productId: 'prod_bridal_set', quantity: 1 }],
-						},
-					],
-				}),
-			).success,
-		).toBe(false);
-	});
-
-	it('ties fixedPriceINR to the fixed-price policy in both directions', () => {
-		expect(ProductBundle.safeParse(bundle({ pricePolicy: 'fixed_bundle_price' })).success).toBe(false);
-		expect(
-			ProductBundle.safeParse(bundle({ pricePolicy: 'fixed_bundle_price', fixedPriceINR: 7999 })).success,
-		).toBe(true);
-		expect(ProductBundle.safeParse(bundle({ fixedPriceINR: 7999 })).success).toBe(false);
-	});
-
-	it('rejects optional components inside a fixed kit', () => {
-		expect(
-			ProductBundle.safeParse(
-				bundle({
-					groups: [
-						{
-							code: 'core',
-							label: { en: 'Core' },
-							maxSelections: 2,
-							components: [
-								{ productId: 'prod_saree_001', quantity: 1 },
-								{ productId: 'prod_blouse_002', quantity: 1, required: false },
-							],
-						},
-					],
-				}),
-			).success,
-		).toBe(false);
-	});
-
-	it('validates selection bounds and duplicate components', () => {
-		const group = {
-			code: 'choose',
-			label: { en: 'Choose' },
-			minSelections: 3,
-			maxSelections: 1,
-			components: [{ productId: 'prod_a', quantity: 1 }],
-		};
-		expect(ProductBundle.safeParse(bundle({ bundleType: 'choose_one_per_group', groups: [group] })).success).toBe(
+		expect(ProductBundle.safeParse(bundle({ levels: [level('a', 1, [item('prod_bridal_set')])] })).success).toBe(
 			false,
 		);
+	});
+
+	it('keeps an extra out of the pieces, and level codes unique', () => {
+		expect(ProductBundle.safeParse(bundle({ extras: [item('prod_saree_001')] })).success).toBe(false);
+		expect(ProductBundle.safeParse(bundle({ extras: [item('prod_petticoat')] })).success).toBe(true);
+		expect(
+			ProductBundle.safeParse(bundle({ levels: [level('a', 1, [item('x')]), level('a', 1, [item('y')])] }))
+				.success,
+		).toBe(false);
+	});
+
+	it('validates how many a level takes and duplicate items', () => {
+		expect(ProductBundle.safeParse(bundle({ levels: [level('a', 2, [item('x')])] })).success).toBe(false);
+		expect(ProductBundle.safeParse(bundle({ levels: [level('a', 1, [item('x'), item('x')])] })).success).toBe(
+			false,
+		);
+		// The same product twice with two pinned sizes is two items.
 		expect(
 			ProductBundle.safeParse(
-				bundle({
-					bundleType: 'choose_one_per_group',
-					groups: [{ ...group, minSelections: 1, maxSelections: 5 }],
-				}),
+				bundle({ levels: [level('a', 1, [item('x', { variantId: 's' }), item('x', { variantId: 'm' })])] }),
 			).success,
-		).toBe(false);
-		expect(
-			ProductBundle.safeParse(
-				bundle({
-					groups: [
-						{
-							code: 'core',
-							label: { en: 'Core' },
-							maxSelections: 2,
-							components: [
-								{ productId: 'prod_a', quantity: 1 },
-								{ productId: 'prod_a', quantity: 1 },
-							],
-						},
-					],
-				}),
-			).success,
-		).toBe(false);
+		).toBe(true);
 	});
 });
 

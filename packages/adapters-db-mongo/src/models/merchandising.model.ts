@@ -1,6 +1,4 @@
 import {
-	BundlePricePolicy,
-	BundleType,
 	CatalogStatus,
 	ProductRelationSource,
 	ProductRelationTargetType,
@@ -8,14 +6,24 @@ import {
 } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
-/** Bundles (`productBundles`) — a compound product that resolves to component lines. */
+/**
+ * Bundles (`productBundles`): a set built in the bundle builder (owner, 22 Nov 2026). Levels, extras, the price
+ * method and rules are validated by the `ProductBundle` contract on every write, so they are stored as documents.
+ * `stock` is the worked-out stock, refreshed whenever a piece's stock moves.
+ */
 export interface ProductBundleDoc {
 	_id: string;
 	productId: string;
-	bundleType: string;
-	pricePolicy: string;
-	fixedPriceINR: number | null;
-	groups: unknown[];
+	levels: unknown[];
+	extras: unknown[];
+	pricing: unknown;
+	saleWindow: unknown;
+	styledPhoto: unknown;
+	dearerReason: string | null;
+	stock: unknown;
+	/** Product ids of every piece and extra, for "Used in" and stock refreshes. */
+	memberIds: string[];
+	methodId: string | null;
 	status: string;
 	createdAt?: Date;
 	updatedAt?: Date;
@@ -25,17 +33,18 @@ const ProductBundleSchema = new Schema<ProductBundleDoc>(
 	{
 		_id: { type: String, required: true },
 		productId: { type: String, required: true },
-		bundleType: { type: String, enum: BundleType.options, required: true },
-		pricePolicy: {
-			type: String,
-			enum: BundlePricePolicy.options,
-			required: true,
-		},
-		fixedPriceINR: { type: Number, default: null },
-		groups: { type: [Schema.Types.Mixed], default: [] },
+		levels: { type: [Schema.Types.Mixed], default: [] },
+		extras: { type: [Schema.Types.Mixed], default: [] },
+		pricing: { type: Schema.Types.Mixed, default: null },
+		saleWindow: { type: Schema.Types.Mixed, default: null },
+		styledPhoto: { type: Schema.Types.Mixed, default: null },
+		dearerReason: { type: String, default: null },
+		stock: { type: Schema.Types.Mixed, default: null },
+		memberIds: { type: [String], default: [] },
+		methodId: { type: String, default: null },
 		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 	},
-	{ collection: 'productBundles', timestamps: true },
+	{ collection: 'productBundles', timestamps: true, minimize: false },
 );
 
 /**
@@ -44,6 +53,8 @@ const ProductBundleSchema = new Schema<ProductBundleDoc>(
  * every component of every bundle being saved.
  */
 ProductBundleSchema.index({ productId: 1 }, { unique: true });
+ProductBundleSchema.index({ memberIds: 1 });
+ProductBundleSchema.index({ methodId: 1 });
 
 export const ProductBundleModel: Model<ProductBundleDoc> =
 	(models.ProductBundle as Model<ProductBundleDoc>) ?? model<ProductBundleDoc>('ProductBundle', ProductBundleSchema);
@@ -158,3 +169,44 @@ AddonTemplateSchema.index({ code: 1 }, { unique: true });
 
 export const AddonTemplateModel: Model<AddonTemplateDoc> =
 	(models.AddonTemplate as Model<AddonTemplateDoc>) ?? model<AddonTemplateDoc>('AddonTemplate', AddonTemplateSchema);
+
+/** Products › Bundle price methods (`bundlePriceMethods`): the "Set price is" list, made in the method builder. */
+export interface BundlePriceMethodDoc {
+	_id: string;
+	code: string;
+	name: Record<string, string>;
+	help: Record<string, string>;
+	inputs: unknown[];
+	base: unknown;
+	rules: unknown[];
+	combine: string;
+	active: boolean;
+	seeded: boolean;
+	version: number;
+	sortOrder: number;
+	createdAt?: Date;
+	updatedAt?: Date;
+}
+
+const BundlePriceMethodSchema = new Schema<BundlePriceMethodDoc>(
+	{
+		_id: { type: String, required: true },
+		code: { type: String, required: true },
+		name: { type: Schema.Types.Mixed, required: true },
+		help: { type: Schema.Types.Mixed, required: true },
+		inputs: { type: [Schema.Types.Mixed], default: [] },
+		base: { type: Schema.Types.Mixed, required: true },
+		rules: { type: [Schema.Types.Mixed], default: [] },
+		combine: { type: String, enum: ['first', 'all'], default: 'all' },
+		active: { type: Boolean, default: true },
+		seeded: { type: Boolean, default: false },
+		version: { type: Number, default: 1 },
+		sortOrder: { type: Number, default: 0 },
+	},
+	{ collection: 'bundlePriceMethods', timestamps: true, minimize: false },
+);
+BundlePriceMethodSchema.index({ code: 1 }, { unique: true });
+
+export const BundlePriceMethodModel: Model<BundlePriceMethodDoc> =
+	(models.BundlePriceMethod as Model<BundlePriceMethodDoc>) ??
+	model<BundlePriceMethodDoc>('BundlePriceMethod', BundlePriceMethodSchema);

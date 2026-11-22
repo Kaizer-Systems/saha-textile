@@ -484,8 +484,12 @@ describe('measurements and bundles', () => {
 
 	it('builds a bundle from the other products', () => {
 		const { bundles } = map([{ id: 1, type: 'bundle', price: 500 }, { id: 2 }]);
-		expect(bundles[0]).toMatchObject({ productId: 'prd_1', fixedPriceINR: 500 });
-		expect(bundles[0]?.groups[0]?.components).toHaveLength(1);
+		expect(bundles[0]).toMatchObject({
+			productId: 'prd_1',
+			pricing: { methodId: 'bpm_fixed_price', params: { setPrice: 500 } },
+		});
+		expect(bundles[0]?.levels).toHaveLength(1);
+		expect(bundles[0]?.levels[0]?.items[0]?.productId).toBe('prd_2');
 	});
 });
 

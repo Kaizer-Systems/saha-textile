@@ -1,0 +1,149 @@
+<!-- Free with this product (brief P8.1–P8.8): the set rows and picture tiles, reused as they are. -->
+<div class="mb-3">
+	<p class="mb-2">
+		<b>{{ (forName() ? 'free_with_name' : 'free_with_this') | transloco: { name: forName() } }}</b>
+		@if (!given() && !single()) {
+		<span class="text-content ms-1">
+			@if (freeWith().none_or_exactly) { {{ 'free_choose_exactly_optional' | transloco: { count: freeWith().max,
+			total: items().length } }} } @else if (freeWith().min === freeWith().max) { {{ 'free_choose_exactly' |
+			transloco: { count: freeWith().max, total: items().length } }} } @else if (freeWith().min === 0) { {{
+			'free_choose_up_to' | transloco: { count: freeWith().max, total: items().length } }} } @else { {{
+			'free_choose_between' | transloco: { from: freeWith().min, count: freeWith().max, total: items().length } }}
+			}
+		</span>
+		}
+	</p>
+
+	@if (given() || single()) {
+	<ul class="st-piece-rows">
+		@for (item of items(); track item.product_id) { @if (item.in_stock || !given()) {
+		<li class="st-piece">
+			<button
+				type="button"
+				class="st-piece-head"
+				[attr.aria-pressed]="isOn(item)"
+				[disabled]="given() || !item.in_stock"
+				(click)="toggle(item)"
+			>
+				<span
+					class="st-piece-mark"
+					[class.is-ok]="given()"
+					[class.is-extra]="!given() && !isOn(item)"
+					[class.is-extra-on]="!given() && isOn(item)"
+				>
+					<i
+						[class]="isOn(item) ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line'"
+						aria-hidden="true"
+					></i>
+				</span>
+				<img
+					class="st-piece-photo"
+					[src]="item.image || 'assets/images/product.png'"
+					alt=""
+					width="44"
+					height="58"
+					loading="lazy"
+				/>
+				<span class="st-piece-text">
+					<span class="st-piece-name">{{ item.name }} @if (item.quantity > 1) { × {{ item.quantity }} }</span>
+					<span class="st-piece-sub">
+						@if (item.mrp) {
+						<del>{{ item.mrp | currencySymbol }}</del>
+						}
+						<b class="text-success">{{ 'free' | transloco }}</b>
+						@if (!given()) { · {{ 'free_tap_to_take' | transloco }} }
+					</span>
+				</span>
+			</button>
+			@if (isOn(item) && needsSize(item)) {
+			<div class="st-piece-body">
+				<ul class="st-look-list st-look-sizes">
+					@for (size of item.variants; track size.id) {
+					<li>
+						<button
+							type="button"
+							class="st-look"
+							[class.is-on]="sizeOf(item) === size.id"
+							[class.is-off]="!size.in_stock"
+							[disabled]="!size.in_stock"
+							[attr.aria-pressed]="sizeOf(item) === size.id"
+							(click)="setSize(item, size.id)"
+						>
+							<span class="st-look-name">{{ size.label }}</span>
+						</button>
+					</li>
+					}
+				</ul>
+				@if (!sizeOf(item)) {
+				<p class="st-piece-note mb-0">{{ 'free_size_needed' | transloco }}</p>
+				}
+			</div>
+			}
+		</li>
+		} }
+	</ul>
+	} @else {
+	<ul class="st-look-list st-look-rows">
+		@for (item of items(); track item.product_id) {
+		<li>
+			<button
+				type="button"
+				class="st-look"
+				[class.is-on]="isOn(item)"
+				[class.is-off]="!item.in_stock"
+				[attr.aria-pressed]="isOn(item)"
+				[disabled]="!item.in_stock"
+				(click)="toggle(item)"
+			>
+				@if (isOn(item)) {
+				<i
+					class="ri-checkbox-circle-fill st-look-check"
+					aria-hidden="true"
+				></i>
+				}
+				<img
+					class="st-look-pic"
+					[src]="item.image || 'assets/images/product.png'"
+					alt=""
+					loading="lazy"
+				/>
+				<span class="st-look-text">
+					<span class="st-look-name">{{ item.name }}</span>
+					<span class="st-look-note">
+						@if (!item.in_stock) {
+						<del>{{ 'out_of_stock' | transloco }}</del>
+						} @else { {{ 'free' | transloco }} }
+					</span>
+				</span>
+			</button>
+		</li>
+		}
+	</ul>
+	@for (item of items(); track item.product_id) { @if (isOn(item) && needsSize(item)) {
+	<p class="mt-2 mb-1">
+		<b>{{ 'free_size_for' | transloco: { name: item.name } }}</b>
+	</p>
+	<ul class="st-look-list st-look-sizes">
+		@for (size of item.variants; track size.id) {
+		<li>
+			<button
+				type="button"
+				class="st-look"
+				[class.is-on]="sizeOf(item) === size.id"
+				[class.is-off]="!size.in_stock"
+				[disabled]="!size.in_stock"
+				[attr.aria-pressed]="sizeOf(item) === size.id"
+				(click)="setSize(item, size.id)"
+			>
+				<span class="st-look-name">{{ size.label }}</span>
+			</button>
+		</li>
+		}
+	</ul>
+	} }
+	<p class="text-content mt-2 mb-0">
+		@if (needed() > 0) { {{ 'free_choose_more' | transloco: { count: needed() } }} } @else if (freeWith().min === 0)
+		{ {{ 'free_optional_note' | transloco }} }
+	</p>
+	}
+</div>

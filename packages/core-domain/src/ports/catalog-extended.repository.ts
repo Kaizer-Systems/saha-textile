@@ -1,5 +1,6 @@
 import type {
 	AttributeDefinition,
+	BundlePriceMethod,
 	CategoryFacetConfig,
 	CategoryPlacement,
 	FaqEntry,
@@ -109,10 +110,27 @@ export interface ProductVariantRepository {
  */
 export interface ProductBundleRepository {
 	findByProductId(productId: string, audience?: CatalogAudience): Promise<ProductBundle | null>;
+	/** Bundles of these products (admin lists), any status. */
+	listByProductIds(productIds: readonly string[]): Promise<ProductBundle[]>;
+	/** Every bundle that holds this product as a piece or an extra: "Used in", and stock refresh on a stock move. */
+	listContaining(productId: string): Promise<ProductBundle[]>;
+	/** How many bundles price themselves with this method (the method list's "Used by"). */
+	countUsingMethod(methodId: string): Promise<number>;
 	/** True when the product is backed by a bundle — the nesting guard. */
 	isBundleProduct(productId: string): Promise<boolean>;
 	save(bundle: ProductBundle, context?: TransactionContext): Promise<ProductBundle>;
+	/** Saves only the worked-out stock (V3), so a stock move never rewrites the set. */
+	saveStock(productId: string, stock: NonNullable<ProductBundle['stock']>): Promise<void>;
 	deleteById(bundleId: string, context?: TransactionContext): Promise<void>;
+}
+
+/** Products › Bundle price methods: the "Set price is" list, made in the method builder (owner, 22 Nov 2026). */
+export interface BundlePriceMethodRepository {
+	list(): Promise<BundlePriceMethod[]>;
+	findById(id: string): Promise<BundlePriceMethod | null>;
+	findByCode(code: string): Promise<BundlePriceMethod | null>;
+	save(method: BundlePriceMethod): Promise<BundlePriceMethod>;
+	deleteById(id: string): Promise<void>;
 }
 
 export interface RelationFilter extends PageQuery {

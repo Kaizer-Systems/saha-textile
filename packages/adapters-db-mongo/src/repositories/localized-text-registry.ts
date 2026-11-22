@@ -7,6 +7,8 @@ import {
 	BuilderPageModel,
 	AttributeDefinitionModel,
 	BlogCategoryModel,
+	BundlePriceMethodModel,
+	ProductBundleModel,
 	BlogPostModel,
 	BlogTagModel,
 	CategoryModel,
@@ -101,6 +103,25 @@ export const LOCALIZED_TEXT_REGISTRY: readonly LocalizedTextEntry[] = [
 			olderShape('attributes.$[].terms.$[].label'),
 			olderShape('addons.$[].label'),
 		],
+	},
+	{
+		// A bundle's level names show on the shop's set rows (bundle builder brief, approved 2026-11-22). They count
+		// on the products line, against the bundle's product.
+		owner: 'bundles',
+		model: as(ProductBundleModel),
+		area: 'products',
+		live: { status: 'live' },
+		idField: 'productId',
+		fields: [required('levels.$[].label')],
+	},
+	{
+		// The "Set price is" list: admin's own words, never a shop to-do; erase still reaches them.
+		owner: 'bundle price methods',
+		model: as(BundlePriceMethodModel),
+		area: null,
+		live: {},
+		idField: 'code',
+		fields: [required('name'), required('help'), required('inputs.$[].label')],
 	},
 	{
 		owner: 'options',

@@ -5,13 +5,16 @@ import {
 	DisplayStyle,
 	IAddonGroup,
 	IBundle,
+	IFreeWith,
 	IMeasurementField,
+	ISetItem,
 	ISemanticAttribute,
 } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { IVideo } from '@data-access/interfaces/video.interface';
 
 import type { MetreRule } from '@core/catalog/metre-length';
+import type { CatalogPageBundle, CatalogPageBundleItem, CatalogPageFreeWith } from '@saha-textile/contracts';
 
 interface ApiSource {
 	url: string;
@@ -146,32 +149,9 @@ export interface ApiProductPage {
 		}>;
 		sizeGuide: Array<{ size: string; values: Record<string, number> }>;
 	} | null;
-	bundle: {
-		bundleType: 'fixed_kit' | 'choose_one_per_group' | 'optional_addons';
-		pricePolicy: 'sum_components' | 'fixed_bundle_price' | 'discounted_components';
-		priceINR: number;
-		groups: Array<{
-			code: string;
-			label: string;
-			minSelections: number;
-			maxSelections: number;
-			components: Array<{
-				productId: string;
-				slug: string;
-				title: string;
-				sku: string;
-				sellingINR: number;
-				quantity: number;
-				required: boolean;
-				inStock: boolean;
-				/** The piece's own main photo; older API builds leave it out. */
-				image?: ApiImage | null;
-				included?: boolean;
-				setPriceINR?: number;
-				priceChangeINR?: number;
-			}>;
-		}>;
-	} | null;
+	bundle: CatalogPageBundle | null;
+	/** Free with this product (P8); older API builds leave it out. */
+	freeWith?: CatalogPageFreeWith | null;
 	breadcrumb: Array<{ name: string; path: string }>;
 	/** From approved reviews only. */
 	rating?: { average: number; count: number };
@@ -326,17 +306,57 @@ export function placementToCatalog(page: ApiPlacement): ICatalogResponse {
 	};
 }
 
-const BUNDLE_TYPE: Record<string, IBundle['bundle_type']> = {
-	fixed_kit: 'fixed-kit',
-	choose_one_per_group: 'choose-one-per-group',
-	optional_addons: 'optional-addons',
-};
+/** Free with this product (P8), in the shop's shape. */
+export function freeWithFromApi(free: CatalogPageFreeWith | null | undefined): IFreeWith | undefined {
+	if (!free || free.items.length === 0) return undefined;
+	return {
+		take: free.take,
+		count: free.count,
+		from: free.from,
+		required: free.required,
+		given: free.given,
+		min: free.min,
+		max: free.max,
+		none_or_exactly: free.noneOrExactly,
+		items: free.items.map((item) => ({
+			product_id: item.productId,
+			name: item.title,
+			...(item.image ? { image: cardUrl(item.image as ApiImage) || undefined } : {}),
+			mrp: item.mrpINR,
+			selling: item.sellingINR,
+			quantity: item.quantity,
+			in_stock: item.inStock,
+			variant_id: item.variantId,
+			variant_label: item.variantLabel,
+			variants: item.variants.map((v) => ({ id: v.id, label: v.label, in_stock: v.inStock })),
+		})),
+	};
+}
 
-const PRICE_POLICY: Record<string, IBundle['price_policy']> = {
-	sum_components: 'sum-components',
-	fixed_bundle_price: 'fixed-bundle-price',
-	discounted_components: 'discounted-components',
-};
+/** One set item (a piece or an extra), in the shop's shape. */
+function setItemFromApi(item: CatalogPageBundleItem): ISetItem {
+	return {
+		key: item.key,
+		product_id: item.productId,
+		slug: item.slug,
+		name: item.title,
+		sku: item.sku,
+		...(item.image ? { image: cardUrl(item.image as ApiImage) || undefined } : {}),
+		mrp: item.mrpINR,
+		selling: item.sellingINR,
+		sale: item.saleINR,
+		price_in_set: item.priceInSetINR,
+		today: item.todayINR,
+		quantity: item.quantity,
+		sold_by: item.soldBy,
+		in_stock: item.inStock,
+		available: item.available,
+		variant_id: item.variantId,
+		variant_label: item.variantLabel,
+		variants: item.variants.map((v) => ({ id: v.id, label: v.label, in_stock: v.inStock })),
+		free_with: freeWithFromApi(item.freeWith) ?? null,
+	};
+}
 
 function optionTerms(group: ApiOptionGroup) {
 	return group.terms.map((term, index) => ({
@@ -450,38 +470,34 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		...(field.max !== null ? { max: field.max } : {}),
 	}));
 
+	// A set (bundle builder brief, approved 2026-11-22): levels, extras and the rules the page prices choices with.
 	const bundle: IBundle | undefined = page.bundle
 		? {
 				sku: page.selected?.sku ?? page.slug,
-				bundle_type: BUNDLE_TYPE[page.bundle.bundleType] ?? 'fixed-kit',
-				price_policy: PRICE_POLICY[page.bundle.pricePolicy] ?? 'fixed-bundle-price',
+				heading: page.bundle.heading,
 				bundle_price: page.bundle.priceINR,
-				components: page.bundle.groups.flatMap((group) =>
-					group.components.map((component) => ({
-						code: component.productId,
-						name: component.title,
-						sku: component.sku,
-						quantity: component.quantity,
-						consumes: '1 unit',
-						stock_status: component.inStock ? 'in_stock' : 'out_of_stock',
-						price: component.sellingINR,
-						// The piece's own photo, page and group, for the set's piece rows (brief P8).
-						...(component.image ? { image: cardUrl(component.image) || undefined } : {}),
-						slug: component.slug,
-						required: component.required,
-						group: group.code,
-						// How the piece prices the set (owner, 21 Nov 2026): the API works it out, the page shows it.
-						included: component.included ?? false,
-						set_price: component.setPriceINR ?? component.sellingINR * component.quantity,
-						price_change: component.priceChangeINR ?? 0,
-					})),
-				),
-				groups: page.bundle.groups.map((group) => ({
-					code: group.code,
-					label: group.label,
-					min: group.minSelections,
-					max: group.maxSelections,
+				separately: page.bundle.separatelyINR,
+				save: page.bundle.saveINR,
+				from_price: page.bundle.fromPrice,
+				low: page.bundle.lowINR,
+				high: page.bundle.highINR,
+				levels: page.bundle.levels.map((level) => ({
+					code: level.code,
+					label: level.label,
+					take: level.take,
+					choice: level.choice,
+					price_mode: level.priceMode,
+					items: level.items.map(setItemFromApi),
 				})),
+				extras: page.bundle.extras.map(setItemFromApi),
+				pricing: page.bundle.pricing,
+				stock: {
+					sets_possible: page.bundle.stock.setsPossible,
+					state: page.bundle.stock.state,
+					sold_out_pieces: page.bundle.stock.soldOutPieces,
+					sold_out_choices: page.bundle.stock.soldOutChoices,
+				},
+				buyable: page.bundle.buyable,
 				option_groups: page.optionGroups
 					.filter((group) => group.role === 'bundle_component_option')
 					.map((group) => ({
@@ -495,6 +511,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 				...(measurementFields?.length ? { measurement_fields: measurementFields } : {}),
 			}
 		: undefined;
+	const freeWith = freeWithFromApi(page.freeWith);
 
 	const hasBundle = Boolean(bundle);
 	return {
@@ -540,6 +557,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		addon_groups: addonGroups.length ? addonGroups : undefined,
 		measurement_fields: !hasBundle && measurementFields?.length ? measurementFields : undefined,
 		bundle,
+		...(freeWith ? { free_with: freeWith } : {}),
 		categories: [],
 		related_products: [],
 		cross_sell_products: [],

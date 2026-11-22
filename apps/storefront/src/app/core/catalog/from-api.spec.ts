@@ -148,60 +148,71 @@ describe('pageToProduct', () => {
 		}
 	});
 
-	it('gives each set piece its photo, page and group, and keeps the groups', () => {
+	it('gives each set item its photo and page, and keeps the levels', () => {
 		const card = { roles: { card: [{ url: 'piece-400.webp', width: 400 }] } };
+		const piece = (key: string, image: unknown) => ({
+			key,
+			productId: key,
+			slug: key,
+			title: key,
+			sku: key,
+			image,
+			mrpINR: null,
+			sellingINR: 5000,
+			saleINR: null,
+			priceInSetINR: 5000,
+			todayINR: 5000,
+			quantity: 1,
+			soldBy: 'piece',
+			inStock: true,
+			available: 2,
+			variantId: null,
+			variantLabel: null,
+			variants: [],
+			freeWith: null,
+		});
 		const set = pageToProduct({
 			...page,
 			bundle: {
-				bundleType: 'choose_one_per_group',
-				pricePolicy: 'fixed_bundle_price',
+				heading: 'choose',
 				priceINR: 7300,
-				groups: [
+				separatelyINR: 10000,
+				saveINR: 2700,
+				fromPrice: true,
+				lowINR: 7300,
+				highINR: 7300,
+				levels: [
 					{
 						code: 'saree',
 						label: 'Saree',
-						minSelections: 1,
-						maxSelections: 1,
-						components: [
-							{
-								productId: 'p1',
-								slug: 'peacock',
-								title: 'Peacock',
-								sku: 'P1',
-								sellingINR: 5000,
-								quantity: 1,
-								required: true,
-								inStock: true,
-								image: card,
-								included: true,
-								setPriceINR: 5000,
-								priceChangeINR: 0,
-							},
-							{
-								productId: 'p2',
-								slug: 'arni',
-								title: 'Arni',
-								sku: 'P2',
-								sellingINR: 4000,
-								quantity: 1,
-								required: false,
-								inStock: false,
-							},
-						],
+						take: 1,
+						choice: true,
+						priceMode: 'difference',
+						items: [piece('peacock', card), piece('arni', null)],
 					},
 				],
+				extras: [],
+				pricing: {
+					base: { kind: 'pieces' },
+					inputs: [],
+					methodRules: [],
+					methodCombine: 'all',
+					params: {},
+					rules: [],
+					combine: 'all',
+					capAtSeparately: false,
+					roundTo: 'one',
+				},
+				stock: { setsPossible: 2, state: 'in_stock', soldOutPieces: [], soldOutChoices: [] },
+				buyable: true,
+				saleWindow: null,
 			},
 		} as never);
-		expect(set.bundle?.components.map((piece) => [piece.image, piece.slug, piece.required, piece.group])).toEqual([
-			['piece-400.webp', 'peacock', true, 'saree'],
-			[undefined, 'arni', false, 'saree'],
+		expect(set.bundle?.levels[0]?.items.map((row) => [row.image, row.slug])).toEqual([
+			['piece-400.webp', 'peacock'],
+			[undefined, 'arni'],
 		]);
-		expect(set.bundle?.groups).toEqual([{ code: 'saree', label: 'Saree', min: 1, max: 1 }]);
-		// How each piece prices the set, as the API worked it out; an older API leaves it out.
-		expect(set.bundle?.components.map((piece) => [piece.included, piece.set_price, piece.price_change])).toEqual([
-			[true, 5000, 0],
-			[false, 4000, 0],
-		]);
+		expect(set.bundle?.levels.map((level) => [level.code, level.take, level.choice])).toEqual([['saree', 1, true]]);
 	});
 
 	it('opens on the SKU the server selected and keeps the real string id', () => {

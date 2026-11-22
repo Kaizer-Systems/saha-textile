@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import type { Model } from 'mongoose';
 
+import { seedBundlePriceMethods } from '../migrations/bundles-v2';
 import {
 	AttributeDefinitionModel,
 	CategoryModel,
@@ -153,7 +154,16 @@ function documents(mapped: DemoCatalogue) {
 		attributes: mapped.attributeDefinitions.map(({ id, ...rest }) => ({ _id: id, ...rest })),
 		products: mapped.products.map(({ id, ...rest }) => ({ _id: id, ...rest })),
 		variants: mapped.variants.map(({ id, ...rest }) => ({ _id: id, ...rest })),
-		bundles: mapped.bundles.map(({ id, ...rest }) => ({ _id: id, ...rest })),
+		bundles: mapped.bundles.map(({ id, ...rest }) => ({
+			_id: id,
+			...rest,
+			memberIds: [
+				...new Set(
+					[...rest.levels.flatMap((level) => level.items), ...rest.extras].map((item) => item.productId),
+				),
+			],
+			methodId: rest.pricing.methodId,
+		})),
 		addonTemplates: mapped.addonTemplates.map((template) => ({
 			_id: template.id,
 			code: template.code,
@@ -206,6 +216,7 @@ export async function writeCatalogue(
 		await upsertChanged(AttributeDefinitionModel, docs.attributes as never, ['code']),
 		await upsertChanged(ProductModel, docs.products as never, ['slug', 'sku']),
 		await upsertChanged(ProductVariantModel, docs.variants as never, ['sku']),
+		(await seedBundlePriceMethods(), 0),
 		await upsertChanged(ProductBundleModel, docs.bundles as never),
 		await upsertChanged(AddonTemplateModel, docs.addonTemplates as never, ['code']),
 		await upsertChanged(MediaAssetModel, missingPhotos as never),

@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
 import { OptionDisplayStyle, SemanticRole, SizeGuideRow } from './attribute';
+import { BundleMethodBase, BundleMethodInput, BundlePriceRule, BundleRuleCombine } from './bundle-rules';
 import { Id, IsoDateTime, LocaleCode, Slug } from './common';
+import { FreeWithTake } from './free-with';
 import { ResolvedImage } from './media';
+import { BundleLevelPriceMode } from './product-bundle';
 import { ProductVideo } from './site-settings';
 
 const money = z.number().int().nonnegative();
@@ -268,39 +271,119 @@ export const CatalogPageMeasurements = z.object({
 	sizeGuide: z.array(SizeGuideRow),
 });
 
-export const CatalogPageBundle = z.object({
-	bundleType: z.enum(['fixed_kit', 'choose_one_per_group', 'optional_addons']),
-	pricePolicy: z.enum(['sum_components', 'fixed_bundle_price', 'discounted_components']),
-	priceINR: money,
-	groups: z.array(
+/** Worked-out amounts (sale prices, set totals) may carry paise. */
+const amount = z.number().nonnegative();
+
+/** A size or colour of a set piece or free item the shopper chooses (S8). */
+const PageChoiceVariant = z.object({ id: Id, label: z.string(), inStock: z.boolean() });
+
+/** Free with this product, as the shop shows it (P8, D4/D5): what is given or offered, and how many to take. */
+export const CatalogPageFreeWith = z.object({
+	take: FreeWithTake,
+	count: z.number().int().nullable(),
+	from: z.number().int().nullable(),
+	required: z.boolean(),
+	/** Worked out by core `freeRange`: nothing to choose (`given`), or how many the shopper must and may take. */
+	given: z.boolean(),
+	min: z.number().int().nonnegative(),
+	max: z.number().int().nonnegative(),
+	noneOrExactly: z.boolean(),
+	items: z.array(
 		z.object({
-			code: z.string().min(1),
-			label: z.string(),
-			minSelections: z.number().int().nonnegative(),
-			maxSelections: z.number().int().positive(),
-			components: z.array(
-				z.object({
-					productId: Id,
-					slug: Slug,
-					title: z.string(),
-					sku: z.string(),
-					sellingINR: money,
-					quantity: z.number().int().positive(),
-					required: z.boolean(),
-					inStock: z.boolean(),
-					/** The piece's own main photo (card size), for the set's piece rows; null when it has none. */
-					image: ResolvedImage.nullable().default(null),
-					/** Chosen until the shopper picks another piece of its group (a choice group's first pieces). */
-					included: z.boolean().default(false),
-					/** What the piece adds to a set priced by its pieces (after its adjustment, times quantity). */
-					setPriceINR: money.default(0),
-					/** What choosing or switching on this piece changes in the set price; the owner's rule of 21 Nov 2026. */
-					priceChangeINR: z.number().default(0),
-				}),
-			),
+			productId: Id,
+			title: z.string(),
+			image: ResolvedImage.nullable().default(null),
+			mrpINR: money.nullable(),
+			sellingINR: money,
+			quantity: z.number().int().positive(),
+			inStock: z.boolean(),
+			variantId: Id.nullable(),
+			variantLabel: z.string().nullable(),
+			variants: z.array(PageChoiceVariant).default([]),
 		}),
 	),
 });
+export type CatalogPageFreeWith = z.infer<typeof CatalogPageFreeWith>;
+
+/** One item of a set level or an optional extra, with today's prices and stock. */
+export const CatalogPageBundleItem = z.object({
+	key: z.string().min(1),
+	productId: Id,
+	slug: Slug,
+	title: z.string(),
+	sku: z.string(),
+	image: ResolvedImage.nullable().default(null),
+	mrpINR: money.nullable(),
+	sellingINR: money,
+	/** The running sale's price, while a sale lowers it. */
+	saleINR: amount.nullable().default(null),
+	/** Price in this set, per unit (its override, else the selling price). */
+	priceInSetINR: money,
+	/** What one unit costs bought alone today (the sale price while a sale runs). */
+	todayINR: amount,
+	quantity: z.number().int().positive(),
+	soldBy: z.enum(['piece', 'metre']).default('piece'),
+	inStock: z.boolean(),
+	/** Units free to sell now; null when made to order. */
+	available: z.number().int().nonnegative().nullable(),
+	/** A pinned size or colour, else null: the shopper picks from `variants`. */
+	variantId: Id.nullable(),
+	variantLabel: z.string().nullable(),
+	variants: z.array(PageChoiceVariant).default([]),
+	freeWith: CatalogPageFreeWith.nullable().default(null),
+});
+export type CatalogPageBundleItem = z.infer<typeof CatalogPageBundleItem>;
+
+export const CatalogPageBundleLevel = z.object({
+	code: z.string().min(1),
+	label: z.string(),
+	take: z.number().int().positive(),
+	/** More items than it takes: the shopper chooses. */
+	choice: z.boolean(),
+	priceMode: BundleLevelPriceMode,
+	items: z.array(CatalogPageBundleItem),
+});
+export type CatalogPageBundleLevel = z.infer<typeof CatalogPageBundleLevel>;
+
+/**
+ * A set on its product page (bundle builder brief, approved 2026-11-22). The shop prices each choice with core
+ * `quoteBundle` from `pricing`, the same rules checkout uses, so a shopper is charged what the page showed.
+ */
+export const CatalogPageBundle = z.object({
+	/** "Bundle Components" when nothing is chosen; "Choose your set" when any level is a choice. */
+	heading: z.enum(['components', 'choose']),
+	/** The set at its included picks, without extras. */
+	priceINR: amount,
+	separatelyINR: amount,
+	saveINR: amount,
+	/** Any level is a choice: lists and cards say "From" the lowest full combination. */
+	fromPrice: z.boolean(),
+	lowINR: amount,
+	highINR: amount,
+	levels: z.array(CatalogPageBundleLevel),
+	extras: z.array(CatalogPageBundleItem),
+	pricing: z.object({
+		base: BundleMethodBase,
+		inputs: z.array(BundleMethodInput),
+		methodRules: z.array(BundlePriceRule),
+		methodCombine: BundleRuleCombine,
+		params: z.record(z.string(), z.number()),
+		rules: z.array(BundlePriceRule),
+		combine: BundleRuleCombine,
+		capAtSeparately: z.boolean(),
+		roundTo: z.enum(['none', 'one', 'ten']),
+	}),
+	stock: z.object({
+		setsPossible: z.number().int().nonnegative(),
+		state: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
+		soldOutPieces: z.array(z.string()),
+		soldOutChoices: z.array(z.string()),
+	}),
+	/** Live, in stock and inside its sale window. */
+	buyable: z.boolean(),
+	saleWindow: z.object({ from: z.string().nullable(), to: z.string().nullable() }).nullable().default(null),
+});
+export type CatalogPageBundle = z.infer<typeof CatalogPageBundle>;
 
 /** One category in the shop menu, in the language asked for. */
 export const CatalogMenuCategory = z.object({
@@ -381,6 +464,8 @@ export const CatalogProductPage = z.object({
 	variants: z.array(CatalogPageVariant),
 	measurements: CatalogPageMeasurements.nullable(),
 	bundle: CatalogPageBundle.nullable(),
+	/** Free with this product (P8); null when it has none. */
+	freeWith: CatalogPageFreeWith.nullable().default(null),
 	breadcrumb: z.array(z.object({ name: z.string(), path: z.string() })),
 	/** From approved reviews only; zero until one is approved. */
 	rating: z.object({ average: z.number().min(0).max(5), count: z.number().int().nonnegative() }),

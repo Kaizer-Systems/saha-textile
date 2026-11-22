@@ -348,22 +348,16 @@ describe('MediaAsset formats', () => {
 	});
 });
 
-describe('ProductBundle groups', () => {
-	it('keeps group codes unique', () => {
-		const group = {
-			code: 'core',
-			label: { en: 'Core' },
-			maxSelections: 1,
-			components: [{ productId: 'prod_saree_001', quantity: 1 }],
-		};
+describe('ProductBundle levels', () => {
+	it('keeps level codes unique', () => {
+		const level = { code: 'core', label: { en: 'Core' }, take: 1, items: [{ productId: 'prod_saree_001' }] };
 		const parsed = ProductBundle.safeParse({
 			id: 'bundle_1',
 			productId: 'prod_set',
-			bundleType: 'fixed_kit',
-			pricePolicy: 'sum_components',
-			groups: [group, group],
+			levels: [level, level],
+			pricing: { methodId: 'bpm_pieces_added_up' },
 		});
-		expect(messages(parsed)).toContain('bundle group codes must be unique');
+		expect(messages(parsed)).toContain('level codes must be unique');
 	});
 });
 

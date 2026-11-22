@@ -56,6 +56,7 @@ import {
 	MongoFaqRepository,
 	MongoProductQuestionRepository,
 	MongoProductRelationRepository,
+	MongoBundlePriceMethodRepository,
 	MongoProductBundleRepository,
 	MongoSiteSettingsRepository,
 	MongoSearchAnalyticsRepository,
@@ -179,6 +180,8 @@ import {
 	PRODUCT_QUESTION_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
+	BUNDLE_PRICE_METHOD_REPOSITORY,
+	BUNDLE_READER,
 	LISTING_PORT,
 	READINESS_PROBES,
 	SEARCH_OUTBOX,
@@ -254,6 +257,7 @@ import {
 	QUEUE_STATS,
 } from './tokens';
 import { SaleAwareVariantRepository } from '../events/sale-aware-variant.repository';
+import { BundleReader } from '../catalog/bundles/bundle-reader';
 import { SalePriceBook } from '../events/sale-price-book';
 import { LanguageStore } from '../languages/language-store';
 
@@ -285,6 +289,17 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: PRODUCT_QUESTION_REPOSITORY, useClass: MongoProductQuestionRepository },
 		{ provide: PRODUCT_RELATION_REPOSITORY, useClass: MongoProductRelationRepository },
 		{ provide: PRODUCT_BUNDLE_REPOSITORY, useClass: MongoProductBundleRepository },
+		{ provide: BUNDLE_PRICE_METHOD_REPOSITORY, useClass: MongoBundlePriceMethodRepository },
+		{
+			provide: BUNDLE_READER,
+			useFactory: (
+				products: MongoProductRepository,
+				variants: MongoProductVariantRepository,
+				methods: MongoBundlePriceMethodRepository,
+				book: SalePriceBook,
+			) => new BundleReader(products, variants, methods, book),
+			inject: [PRODUCT_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, BUNDLE_PRICE_METHOD_REPOSITORY, SALE_PRICE_BOOK],
+		},
 		{
 			provide: SEARCH_PORT,
 			useFactory: (products: MongoProductRepository, config: AppConfig, languages: LanguageStore) =>
@@ -534,6 +549,8 @@ import { LanguageStore } from '../languages/language-store';
 		PRODUCT_QUESTION_REPOSITORY,
 		PRODUCT_RELATION_REPOSITORY,
 		PRODUCT_BUNDLE_REPOSITORY,
+		BUNDLE_PRICE_METHOD_REPOSITORY,
+		BUNDLE_READER,
 		LISTING_PORT,
 		READINESS_PROBES,
 		SEARCH_PORT,

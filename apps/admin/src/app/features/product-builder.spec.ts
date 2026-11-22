@@ -607,41 +607,14 @@ describe('ProductImages', () => {
 });
 
 describe('ProductBundleForm', () => {
-	const render = () =>
-		mount(ProductBundleForm, [], {
-			value: { bundleType: 'fixed_kit', pricePolicy: 'sum_components', fixedPriceINR: null, groups: [] },
-			products: [{ value: 'p1', label: 'Saree' }, { options: [] }],
-			locale: 'bn',
-		});
-
-	it('edits groups and components', () => {
-		const page = render();
-		page.addGroup();
-		page.addGroup();
-		const first = () => page.value().groups[0] as never;
-		page.setName(0, first(), 'পিস');
-		page.setLimit(0, 'maxSelections', '2.4');
-		page.addComponent(0, first(), 'p1');
-		page.addComponent(0, first(), 'p2');
-		page.addComponent(0, first(), '');
-		page.addComponent(0, first(), null);
-		page.setComponent(0, first(), 1, { quantity: 3 });
-		expect(page.value().groups[0]).toMatchObject({
-			label: { bn: 'পিস' },
-			maxSelections: 2,
-			components: [
-				{ productId: 'p1', quantity: 1 },
-				{ productId: 'p2', quantity: 3 },
-			],
-		});
-		page.removeComponent(0, first(), 0);
-		expect(page.value().groups[0]?.components).toHaveLength(1);
-		page.removeGroup(1);
-		expect(page.value().groups).toHaveLength(1);
-		page.set({ bundleType: 'optional_addons' });
-		expect(page.value().bundleType).toBe('optional_addons');
-		expect(page.productName('p1')).toBe('Saree');
-		expect(page.productName('zz')).toBe('zz');
+	it('opens the bundle builder, once the bundle has a name (brief A03)', () => {
+		const card = mount(ProductBundleForm, [], { productId: null, name: 'Wedding saree set' });
+		const opened: unknown[] = [];
+		card.open.subscribe(() => opened.push(true));
+		card.open.emit();
+		expect(opened).toHaveLength(1);
+		expect(card.productId()).toBeNull();
+		expect(card.busy()).toBe(false);
 	});
 });
 
@@ -715,7 +688,7 @@ describe('FormProduct builder', () => {
 			saveBundle: vi.fn(() => of({})),
 			discontinueCatalogProduct: vi.fn(() => of({})),
 		};
-		const router = { navigateByUrl: vi.fn() };
+		const router = { navigateByUrl: vi.fn(), navigate: vi.fn(() => Promise.resolve(true)) };
 		const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
 		const page = mount(
 			FormProduct,
@@ -808,21 +781,14 @@ describe('FormProduct builder', () => {
 		expect(next.content.categoryIds).toEqual([]);
 	});
 
-	it('reads a bundle, and saves it after the product', () => {
-		const saved = {
-			bundleType: 'choose_one_per_group',
-			pricePolicy: 'sum_components',
-			fixedPriceINR: null,
-			groups: [{}],
-		};
-		const { page, service } = render({ id: 'p1', product: detail({ type: 'bundle' }), bundle: saved });
-		expect(page.bundle()).toEqual(saved);
-		page.submit();
-		expect(service.saveBundle).toHaveBeenCalledWith('p1', saved);
-		const blank = render({ id: 'p1', product: detail({ type: 'bundle' }) });
-		expect(blank.page.bundle().groups).toEqual([]);
-		blank.page.submit();
-		expect(blank.service.saveBundle).not.toHaveBeenCalled();
+	it('sends a bundle to its builder, and a new bundle there once its name is saved (V1, A03)', () => {
+		const { router } = render({ id: 'p1', product: detail({ type: 'bundle' }) });
+		expect(router.navigate).toHaveBeenCalledWith(['/product/bundle', 'p1'], { replaceUrl: true });
+		const fresh = render();
+		fresh.page.form.controls['type'].setValue('bundle');
+		expect(fresh.page.isBundle()).toBe(true);
+		fresh.page.openBuilder();
+		expect(fresh.service.createCatalogProduct).not.toHaveBeenCalled();
 	});
 
 	it('names combinations in the current language, falling back to English, then the code', () => {
@@ -876,11 +842,6 @@ describe('FormProduct builder', () => {
 		const { page } = render({ id: 'p1', product });
 		expect(page.savedAxes()).toEqual(['color']);
 		expect(page.imageSizes().get('a')).toEqual([3, 4]);
-	});
-
-	it('leaves out bundles from the bundle picker, and lists simple products', () => {
-		const { page } = render();
-		expect(page.bundleProducts()).toEqual([]);
 	});
 });
 

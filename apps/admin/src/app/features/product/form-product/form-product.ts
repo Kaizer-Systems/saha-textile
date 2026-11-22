@@ -140,7 +140,6 @@ import type {
 	AttributeDefinition,
 	GoLiveGap,
 	ProductDraft,
-	ProductBundleWrite,
 	ProductContentWrite,
 	ProductCreate,
 	ProductOptionGroup,
@@ -551,14 +550,29 @@ export class FormProduct implements DraftMarks {
 		const { imageMode, gallery, compound } = this.images();
 		return imageMode === 'simple' ? gallery : [...new Set(compound.flatMap((row) => row.gallery))];
 	});
-	readonly bundle = signal<ProductBundleWrite>({
-		bundleType: 'fixed_kit',
-		pricePolicy: 'sum_components',
-		fixedPriceINR: null,
-		groups: [],
-	});
 	readonly goLiveGaps = signal<GoLiveGap[]>([]);
-	readonly bundleProducts = signal<Select2Data>([]);
+	/** Saving a new bundle's name before the builder opens (brief A03). */
+	readonly openingBuilder = signal(false);
+	/** Type is Bundle: the rest of the form steps aside; the builder holds every part of a bundle (V1). */
+	readonly isBundle = signal(false);
+
+	/** Opens the bundle builder: a new bundle is made from its name first, with a BND number of its own. */
+	openBuilder(): void {
+		const existing = this.catalogProduct;
+		if (existing) {
+			void this.router.navigate(['/product/bundle', existing.id]);
+			return;
+		}
+		const name = this.fields.text('name') as LocalizedText;
+		if (!name['en']?.trim()) return;
+		this.openingBuilder.set(true);
+		this.productService
+			.createCatalogProduct({ type: 'bundle', sku: 'BND', title: { en: name['en'].trim() }, basePriceINR: 0 })
+			.subscribe({
+				next: ({ id }) => void this.router.navigate(['/product/bundle', id]),
+				error: () => this.openingBuilder.set(false),
+			});
+	}
 
 	/** Every combination of the variation axes, for the compound image galleries. */
 	readonly combinations = computed<ImageCombination[]>(() => {
@@ -647,7 +661,6 @@ export class FormProduct implements DraftMarks {
 			this.optionGroups();
 			this.faq();
 			this.images();
-			this.bundle();
 			this.quickLengths();
 			this.soldBy();
 			this.returnableChoice();
@@ -819,13 +832,10 @@ export class FormProduct implements DraftMarks {
 		this.savedAxes.set(
 			content.optionGroups.filter((row) => row.semanticRole === 'variation_axis').map((row) => row.attributeCode),
 		);
+		// A bundle is edited in its builder (V1, option 1): All Products' Edit lands there.
 		if (detail.type === 'bundle') {
-			this.productService
-				.getBundle(detail.id)
-				.pipe(takeUntil(this.destroy$))
-				.subscribe((saved) => {
-					if (saved) this.bundle.set(saved);
-				});
+			void this.router.navigate(['/product/bundle', detail.id], { replaceUrl: true });
+			return;
 		}
 		// Price and stock live on the variant rows; the product-level inputs do not apply.
 		for (const name of ['price', 'quantity']) this.form.removeControl(name, { emitEvent: false });
@@ -917,7 +927,6 @@ export class FormProduct implements DraftMarks {
 			this.collectionProduct = product.filter(
 				(res) => res?.data?.type == 'simple' && res?.data?.stock_status == 'in_stock',
 			);
-			this.bundleProducts.set(product.filter((res) => res?.data?.type === 'simple'));
 		});
 
 		// Made to order is live-only, and its switch locks once the status leaves live.
@@ -926,6 +935,7 @@ export class FormProduct implements DraftMarks {
 		});
 
 		this.form.controls['type'].valueChanges.subscribe((value) => {
+			this.isBundle.set(value === 'bundle');
 			if (this.catalogProduct) return;
 			if (value == 'simple') {
 				this.form.setControl('quantity', new FormControl(0));
@@ -1473,11 +1483,7 @@ export class FormProduct implements DraftMarks {
 			crossSellProductIds: ids(raw['cross_sell_products']),
 			videos: (raw['videos'] as ProductVideo[] | undefined) ?? [],
 		};
-		const saved: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
-		const bundled = product.type === 'bundle' && this.bundle().groups.length > 0;
-		const finished = bundled
-			? saved.pipe(switchMap(() => this.productService.saveBundle(product.id, this.bundle())))
-			: saved;
+		const finished: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
 		finished.subscribe({
 			next: () => {
 				this.tabError = null;
@@ -1520,7 +1526,6 @@ export class FormProduct implements DraftMarks {
 				faq: this.faq(),
 				addonTemplateCode: this.addonTemplateCode(),
 				images: this.images(),
-				bundle: this.bundle(),
 				variantImages: Object.fromEntries(this.variantImages()),
 				tiles: Object.fromEntries(this.tiles()),
 				imageSizes: Object.fromEntries(this.imageSizes()),
@@ -1582,7 +1587,6 @@ export class FormProduct implements DraftMarks {
 		take<FaqValue>('faq', (value) => this.faq.set(value));
 		take<string | null>('addonTemplateCode', (value) => this.addonTemplateCode.set(value));
 		take<ReturnType<typeof this.images>>('images', (value) => this.images.set(value));
-		take<ProductBundleWrite>('bundle', (value) => this.bundle.set(value));
 		take<Record<string, PictureRef | null>>('variantImages', (value) =>
 			this.variantImages.set(new Map(Object.entries(value ?? {}))),
 		);

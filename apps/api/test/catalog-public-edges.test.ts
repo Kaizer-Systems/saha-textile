@@ -9,6 +9,8 @@ import { catalogEtag, CatalogEtagInterceptor } from '../src/catalog/catalog-etag
 import { pricedRow, productReadModel, skuView } from '../src/catalog/catalog-read-model';
 import { lastValueFrom, of } from 'rxjs';
 import { LanguageStore } from '../src/languages/language-store';
+import { BundleReader } from '../src/catalog/bundles/bundle-reader';
+import { SEEDED_PRICE_METHODS } from '@saha-textile/core-domain';
 
 type Variant = z.output<typeof ProductVariant>;
 type ProductRow = z.output<typeof Product>;
@@ -104,6 +106,17 @@ const build = (options: Options = {}) => {
 	const relations = { listForProduct: vi.fn(async () => options.relations ?? []) };
 	const templates = { findByCode: vi.fn(async () => options.template ?? null) };
 	const bundles = { findByProductId: vi.fn(async () => options.bundle ?? null) };
+	const methods = {
+		findById: vi.fn(
+			async (id: string) =>
+				SEEDED_PRICE_METHODS.map((seed) => ({
+					...seed,
+					id: `bpm_${seed.code}`,
+					seeded: true,
+					version: 1,
+				})).find((method) => method.id === id) ?? null,
+		),
+	};
 	const categories = {
 		findBySlug: vi.fn(async () => options.category ?? null),
 		findById: vi.fn(async () => options.category ?? null),
@@ -129,6 +142,8 @@ const build = (options: Options = {}) => {
 					undefined,
 					options.languages ? LanguageStore.fixed(options.languages) : undefined,
 					options.faqs as never,
+					undefined,
+					new BundleReader(products as never, variants as never, methods as never, null),
 				);
 	return { service, products, variants, placements, media, seo };
 };
@@ -700,146 +715,142 @@ describe('add-on prices', () => {
 });
 
 describe('bundles', () => {
-	const component = (productId: string, extra: Record<string, unknown> = {}) => ({
+	const set = product({ id: 'prd_set', type: 'bundle', slug: 'wedding-set', sku: 'BND-0001', basePriceINR: 0 });
+	const item = (productId: string, extra: Record<string, unknown> = {}) => ({
 		productId,
-		quantity: 2,
-		required: true,
+		variantId: null,
+		quantity: 1,
+		priceInSetINR: null,
 		...extra,
 	});
+	const level = (code: string, take: number, items: unknown[]) => ({
+		code,
+		label: { en: code },
+		take,
+		source: { kind: 'items' },
+		items,
+		priceMode: 'difference',
+	});
 	const bundle = (overrides: Record<string, unknown> = {}) => ({
-		bundleType: 'fixed_kit',
-		pricePolicy: 'sum_components',
-		fixedPriceINR: null,
-		groups: [
-			{ code: 'set', label: { en: 'Set' }, minSelections: 1, maxSelections: 3, components: [component('prd_1')] },
-		],
+		id: 'bnd_1',
+		productId: 'prd_set',
+		levels: [level('piece-1', 1, [item('prd_1', { quantity: 2 })])],
+		extras: [],
+		pricing: {
+			methodId: 'bpm_pieces_added_up',
+			params: {},
+			rules: [],
+			combine: 'all',
+			capAtSeparately: false,
+			roundTo: 'one',
+		},
+		saleWindow: null,
+		styledPhoto: null,
+		dearerReason: null,
+		stock: null,
+		status: 'live',
 		...overrides,
 	});
+	const rows = [
+		set,
+		product(),
+		product({ id: 'prd_2', slug: 'maroon', sku: 'SKU-2', basePriceINR: 1800 }),
+		product({ id: 'prd_3', slug: 'petticoat', sku: 'SKU-3', basePriceINR: 600 }),
+	];
 
-	it('sums the live components', async () => {
-		const page = await build({ bundle: bundle() }).service.page('red-saree');
-		expect(page.bundle).toMatchObject({ priceINR: 2000 });
-		expect(page.bundle?.groups[0]).toMatchObject({ maxSelections: 1 });
-		expect(page.bundle?.groups[0]?.components[0]).toMatchObject({ sku: 'V1', sellingINR: 1000, inStock: true });
-		// Each piece carries its own main photo, or null without one (brief P8).
-		expect(page.bundle?.groups[0]?.components[0]).toHaveProperty('image');
+	it('adds up the pieces, each with its photo, price in the set and stock', async () => {
+		const page = await build({ rows, bundle: bundle() }).service.page('wedding-set');
+		expect(page.bundle).toMatchObject({ heading: 'components', priceINR: 2000, fromPrice: false, buyable: true });
+		expect(page.bundle?.levels[0]?.items[0]).toMatchObject({
+			key: 'prd_1',
+			sku: 'V1',
+			sellingINR: 1000,
+			inStock: true,
+			quantity: 2,
+		});
+		expect(page.bundle?.levels[0]?.items[0]).toHaveProperty('image');
+		expect(page.bundle?.stock).toMatchObject({ setsPossible: 1, state: 'low_stock' });
 	});
 
-	it('uses the fixed price, or the sum when none is set', async () => {
-		const fixed = await build({
-			bundle: bundle({ pricePolicy: 'fixed_bundle_price', fixedPriceINR: 900 }),
-		}).service.page('red-saree');
-		expect(fixed.bundle?.priceINR).toBe(900);
-		const missing = await build({ bundle: bundle({ pricePolicy: 'fixed_bundle_price' }) }).service.page(
-			'red-saree',
-		);
-		expect(missing.bundle?.priceINR).toBe(2000);
-	});
-
-	it("follows the set's price setting for picks and optional pieces (owner, 21 Nov 2026)", async () => {
-		const rows = [
-			product(),
-			product({ id: 'prd_2', slug: 'maroon', sku: 'SKU-2', basePriceINR: 1800 }),
-			product({ id: 'prd_3', slug: 'petticoat', sku: 'SKU-3', basePriceINR: 600 }),
-		];
-		const one = (productId: string, extra: Record<string, unknown> = {}) =>
-			component(productId, { quantity: 1, ...extra });
-		const groups = [
-			{
-				code: 'saree',
-				label: { en: 'Saree' },
-				minSelections: 1,
-				maxSelections: 1,
-				components: [one('prd_1'), one('prd_2'), one('prd_3')],
+	it('uses one fixed price, and adds the difference for a dearer pick (owner, 21 Nov 2026)', async () => {
+		const fixed = bundle({
+			levels: [level('saree', 1, [item('prd_1'), item('prd_2'), item('prd_3')])],
+			extras: [item('prd_3', { priceInSetINR: 0 })].map((row) => ({ ...row, productId: 'prd_2' })),
+			pricing: {
+				methodId: 'bpm_fixed_price',
+				params: { setPrice: 7300 },
+				rules: [],
+				combine: 'all',
+				capAtSeparately: false,
+				roundTo: 'one',
 			},
-			{
-				code: 'extra',
-				label: { en: 'Extra' },
-				minSelections: 0,
-				maxSelections: 1,
-				components: [one('prd_3', { required: false, priceAdjustmentINR: 100 })],
-			},
-		];
-		const fixed = await build({
-			rows,
-			variants: [],
-			bundle: bundle({
-				bundleType: 'choose_one_per_group',
-				pricePolicy: 'fixed_bundle_price',
-				fixedPriceINR: 7300,
-				groups,
-			}),
-		}).service.page('red-saree');
-		expect(fixed.bundle?.priceINR).toBe(7300);
-		const [saree, extra] = fixed.bundle?.groups ?? [];
-		expect(saree?.components.map((piece) => [piece.included, piece.setPriceINR, piece.priceChangeINR])).toEqual([
-			[true, 1000, 0],
-			[false, 1800, 800],
-			[false, 600, 0],
-		]);
-		expect(extra?.components[0]).toMatchObject({ included: false, priceChangeINR: 600 });
-		expect(extra?.components[0]).not.toHaveProperty('adjustmentINR');
-
-		const discounted = await build({
-			rows,
-			variants: [],
-			bundle: bundle({ bundleType: 'choose_one_per_group', pricePolicy: 'discounted_components', groups }),
-		}).service.page('red-saree');
-		// Only the first saree is in the set until another is picked; the optional piece is off.
-		expect(discounted.bundle?.priceINR).toBe(1000);
-		expect(discounted.bundle?.groups[1]?.components[0]).toMatchObject({ setPriceINR: 500, priceChangeINR: 500 });
+		});
+		const page = await build({ rows, variants: [], bundle: fixed }).service.page('wedding-set');
+		expect(page.bundle).toMatchObject({
+			heading: 'choose',
+			priceINR: 7300,
+			fromPrice: true,
+			lowINR: 7300,
+			highINR: 8100,
+		});
+		expect(page.bundle?.levels[0]).toMatchObject({ choice: true, take: 1 });
+		expect(page.bundle?.extras[0]).toMatchObject({ key: 'prd_2', priceInSetINR: 0 });
+		expect(page.bundle?.pricing).toMatchObject({
+			base: { kind: 'fixed', input: 'setPrice' },
+			params: { setPrice: 7300 },
+		});
 	});
 
-	it('leaves out components that are gone, and a bundle with none left', async () => {
+	it('leaves out items that are gone, and a set with nothing left', async () => {
 		const page = await build({
-			bundle: bundle({
-				groups: [
-					{
-						code: 'a',
-						label: { en: 'A' },
-						minSelections: 1,
-						maxSelections: 1,
-						components: [component('gone')],
-					},
-					{
-						code: 'b',
-						label: { en: 'B' },
-						minSelections: 1,
-						maxSelections: 1,
-						components: [component('prd_1')],
-					},
-				],
-			}),
-		}).service.page('red-saree');
-		expect(page.bundle?.groups.map((group) => group.code)).toEqual(['b']);
-		const empty = await build({
-			bundle: bundle({
-				groups: [
-					{
-						code: 'a',
-						label: { en: 'A' },
-						minSelections: 1,
-						maxSelections: 1,
-						components: [component('gone')],
-					},
-				],
-			}),
-		}).service.page('red-saree');
+			rows,
+			bundle: bundle({ levels: [level('a', 1, [item('gone')]), level('b', 1, [item('prd_1')])] }),
+		}).service.page('wedding-set');
+		expect(page.bundle?.levels.map((row) => [row.code, row.items.length])).toEqual([
+			['a', 0],
+			['b', 1],
+		]);
+		expect(page.bundle?.buyable).toBe(false);
+		const empty = await build({ rows, bundle: bundle({ levels: [level('a', 1, [item('gone')])] }) }).service.page(
+			'wedding-set',
+		);
 		expect(empty.bundle).toBeNull();
 	});
 
-	it('falls back to the product when a component has no variants', async () => {
-		const page = await build({ bundle: bundle(), variants: [] }).service.page('red-saree');
-		expect(page.bundle?.groups[0]?.components[0]).toMatchObject({ sku: 'SKU-1', sellingINR: 1000, inStock: false });
+	it('falls back to the product price when an item has no live rows, then it is out of stock', async () => {
+		const page = await build({ rows, bundle: bundle(), variants: [] }).service.page('wedding-set');
+		expect(page.bundle?.levels[0]?.items[0]).toMatchObject({ sku: 'SKU-1', sellingINR: 1000, inStock: false });
+		expect(page.bundle?.stock).toMatchObject({ setsPossible: 0, state: 'out_of_stock', soldOutPieces: ['prd_1'] });
 	});
 
-	it('marks a made-to-order component in stock', async () => {
+	it('marks a made-to-order item in stock', async () => {
 		const page = await build({
 			bundle: bundle(),
-			rows: [product({ madeToOrder: true })],
+			rows: [set, product({ madeToOrder: true })],
 			variants: [variant({ stock: { quantity: 0 } })],
-		}).service.page('red-saree');
-		expect(page.bundle?.groups[0]?.components[0]?.inStock).toBe(true);
+		}).service.page('wedding-set');
+		expect(page.bundle?.levels[0]?.items[0]?.inStock).toBe(true);
+	});
+
+	it("shows a product's free items, and hides a product kept off the shop", async () => {
+		const withFree = product({
+			freeWith: {
+				items: [{ productId: 'prd_3', variantId: null, quantity: 1 }],
+				take: 'all',
+				count: null,
+				from: null,
+				required: true,
+			},
+		});
+		const page = await build({ rows: [withFree, rows[3] as ProductRow] }).service.page('red-saree');
+		expect(page.freeWith).toMatchObject({
+			given: true,
+			min: 1,
+			max: 1,
+			items: [{ productId: 'prd_3', title: 'Red saree' }],
+		});
+		const hidden = product({ showOnShop: false });
+		await expect(build({ rows: [hidden] }).service.page('red-saree')).rejects.toBeInstanceOf(NotFoundException);
 	});
 });
 

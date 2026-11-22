@@ -31,7 +31,7 @@ describe('AddonSheet', () => {
 		expect([sheet.pieceCount(), sheet.pieces()]).toEqual([3, 3]);
 		sheet.onState({ total: 7400 });
 		sheet.start({
-			product: { bundle: { components: [{}, {}] } } as never,
+			product: { bundle: { levels: [{ take: 1 }, { take: 1 }] } } as never,
 			basePrice: 0,
 			selections: {},
 			measurements: {},

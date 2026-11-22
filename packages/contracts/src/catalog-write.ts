@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import { AttributeDefinition } from './attribute';
 import { LocaleCode, Slug } from './common';
-import { BundleGroup, BundlePricePolicy, BundleType } from './product-bundle';
+import { FreeWith } from './free-with';
+import { BundleStockSummary } from './product-bundle';
 import { ProductShippingDefaults, ProductStatus, ProductType, QuickLength } from './product';
 import { CategoryShipping, ProductShippingCharges } from './shipping-rules';
 import { ProductOptionGroupSet } from './product-options';
@@ -155,6 +156,10 @@ export const ProductMerchandisingWrite = z
 		crossSellProductIds: z.array(z.string().min(1)).max(12).optional(),
 		/** YouTube videos and Shorts for the product page, as checked in admin. Absent leaves them. */
 		videos: ProductVideos.optional(),
+		/** Off: live and stocked, but never listed or shown on its own (D5). Absent keeps it. */
+		showOnShop: z.boolean().optional(),
+		/** Free with this product (P8). Null removes them; absent keeps them. */
+		freeWith: FreeWith.nullable().optional(),
 	})
 	.superRefine((body, ctx) => {
 		if (body.madeToOrder && body.status !== 'live') {
@@ -187,6 +192,10 @@ export const AdminProductListQuery = z.object({
 	status: ProductStatus.optional(),
 	/** Only items the shop shows that still lack text in this language (Settings › Languages). */
 	missing: LocaleCode.optional(),
+	/** Products › Bundles lists only bundles; All products lists everything. */
+	type: ProductType.optional(),
+	/** "shown" or "hidden" from the shop (Show on shop, D5). */
+	shop: z.enum(['shown', 'hidden']).optional(),
 	page: z.coerce.number().int().min(1).default(1),
 	pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -205,6 +214,19 @@ export const AdminProductRow = z.object({
 	thumbnailUrl: z.string().nullable(),
 	/** True once the product has been live: "Off shop" rather than "Not live yet" when it isn't. */
 	wasLive: z.boolean().default(false),
+	type: ProductType.default('simple'),
+	showOnShop: z.boolean().default(true),
+	/** Bundles only: how many levels, its set price today, and its worked-out stock. */
+	bundle: z
+		.object({
+			levels: z.number().int().nonnegative(),
+			choices: z.boolean(),
+			setPriceINR: z.number().nonnegative().nullable(),
+			fromPrice: z.boolean(),
+			stock: BundleStockSummary.nullable(),
+		})
+		.nullable()
+		.default(null),
 });
 export type AdminProductRow = z.infer<typeof AdminProductRow>;
 
@@ -253,6 +275,8 @@ export const AdminProductDetail = z.object({
 	/** True once the product has ever been live: its SKUs are then frozen. */
 	published: z.boolean(),
 	featured: z.boolean(),
+	showOnShop: z.boolean().default(true),
+	freeWith: FreeWith.nullable().default(null),
 	madeToOrder: z.boolean(),
 	estimatedDeliveryText: z.string().nullable(),
 	lowStockThreshold: z.number().int().nullable(),
@@ -352,6 +376,7 @@ export type StockAlertWrite = z.infer<typeof StockAlertWrite>;
 /** A new product starts disabled, with one base variant, and is finished on the form. */
 export const ProductCreate = z.object({
 	type: ProductType,
+	/** A bundle's own number is given by the server ("BND-0001", for search only: V2); anything sent is ignored. */
 	sku: z.string().trim().min(1).max(64),
 	title: z.object({ en: z.string().trim().min(1).max(300) }).catchall(z.string().max(300)),
 	basePriceINR: WholeRupee.default(0),
@@ -428,12 +453,3 @@ export type AdminCategoryRow = z.infer<typeof AdminCategoryRow>;
 
 export const AdminAttributeWrite = AttributeDefinition.omit({ createdAt: true, updatedAt: true, id: true });
 export type AdminAttributeWrite = z.infer<typeof AdminAttributeWrite>;
-
-/** The bundle tab. Its id and product come from the address. */
-export const ProductBundleWrite = z.object({
-	bundleType: BundleType,
-	pricePolicy: BundlePricePolicy,
-	fixedPriceINR: WholeRupee.nullable().default(null),
-	groups: z.array(BundleGroup).min(1),
-});
-export type ProductBundleWrite = z.infer<typeof ProductBundleWrite>;

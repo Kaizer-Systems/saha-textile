@@ -18,6 +18,14 @@ export const isStorefrontVisible = (status: ProductStatus): boolean =>
 	STOREFRONT_VISIBLE_PRODUCT_STATUSES.includes(status);
 
 /**
+ * Show on shop (owner, 22 Nov 2026, D5): a live product may be kept off the shop. It stays sellable as a set piece,
+ * an optional extra or a free item, keeps its stock and fills from purchase orders, but no listing, search, sitemap,
+ * feed or related list shows it, and its own page is "not found". Rows written before the switch existed are shown.
+ */
+export const isShownOnShop = (product: { status: ProductStatus; showOnShop?: boolean }): boolean =>
+	isStorefrontVisible(product.status) && product.showOnShop !== false;
+
+/**
  * Narrows a caller-supplied status filter to what the audience is allowed to see.
  *
  * Public callers can only ever narrow WITHIN the visible set — asking for `draft`

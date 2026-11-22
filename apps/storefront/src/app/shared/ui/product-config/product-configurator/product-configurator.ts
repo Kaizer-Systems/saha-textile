@@ -21,7 +21,7 @@ import { IProduct, IVariation } from '@data-access/interfaces/product.interface'
 
 import { AddonGroup } from '../parts/addon-group/addon-group';
 import { AttributesInfo } from '../parts/attributes-info/attributes-info';
-import { BundleConfigurator } from '../parts/bundle-configurator/bundle-configurator';
+import { BundleConfigurator, type SetChoice } from '../parts/bundle-configurator/bundle-configurator';
 import { VariationAxis } from '../parts/variation-axis/variation-axis';
 
 /**
@@ -168,7 +168,7 @@ export class ProductConfigurator implements OnInit {
 		selections: Record<string, string>,
 		measurements: Record<string, number>,
 		measured: boolean,
-		set: { picks?: Record<string, string[]>; extras?: string[] } = {},
+		set: SetChoice = {},
 	) {
 		this.setPart()?.apply(selections, measurements, measured, set);
 	}
@@ -259,7 +259,10 @@ export class ProductConfigurator implements OnInit {
 				);
 				return { group: g.label, value: term?.label ?? '', price_delta: term?.price_delta ?? 0 };
 			});
-			cfg.bundle_components = p.bundle.components.map((c) => ({ name: c.name, sku: c.sku, price: c.price }));
+			const chosen = new Set(this.bundleState()?.pieces ?? []);
+			cfg.bundle_components = [...p.bundle.levels.flatMap((level) => level.items), ...p.bundle.extras]
+				.filter((item) => chosen.has(item.key))
+				.map((item) => ({ name: item.name, sku: item.sku, price: item.today }));
 		}
 
 		const fields = p.measurement_fields ?? p.bundle?.measurement_fields;

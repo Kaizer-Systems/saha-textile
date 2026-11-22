@@ -79,10 +79,25 @@ const bulk = (
 		findByProductId: vi.fn(async () => ({
 			id: 'bnd_1',
 			productId: 'p3',
-			bundleType: 'fixed_kit',
-			pricePolicy: 'sum_components',
-			fixedPriceINR: null,
-			groups: [{ code: 'g', label: { en: 'Saree' }, maxSelections: 1, components: [{ productId: 'p1' }] }],
+			levels: [
+				{
+					code: 'g',
+					label: { en: 'Saree' },
+					take: 1,
+					source: { kind: 'items' },
+					items: [{ productId: 'p1', variantId: null, quantity: 1, priceInSetINR: null }],
+					priceMode: 'difference',
+				},
+			],
+			extras: [],
+			pricing: {
+				methodId: 'bpm_pieces_added_up',
+				params: {},
+				rules: [],
+				combine: 'all',
+				capAtSeparately: false,
+				roundTo: 'one',
+			},
 			status: 'live',
 		})),
 		save: vi.fn(async (row: unknown) => row),
@@ -182,7 +197,7 @@ describe('ProductBulkService', () => {
 		expect(gone.rows[0]?.outcome).toBe('done');
 	});
 
-	it('copies a bundle’s groups and refuses a discontinued product', async () => {
+	it('copies a bundle’s levels and refuses a discontinued product', async () => {
 		const { service, bundles } = bulk([
 			product('p3', { type: 'bundle' }),
 			product('p4', { status: 'discontinued' }),

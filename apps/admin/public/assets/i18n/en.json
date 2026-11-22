@@ -6571,5 +6571,12 @@
 	"cpn_try_free_delivery": "{{code}}: free delivery",
 	"cpn_try_coupons_used": "Coupons used",
 	"cpn_try_discount": "Discount",
-	"ord_place_order_stays_off": "Place order stays off."
+	"ord_place_order_stays_off": "Place order stays off.",
+	"bundle_steps_aside_title": "This product is a bundle",
+	"bundle_steps_aside_why": "A bundle is built in the bundle builder, so the rest of this form steps aside. Everything a bundle has lives there:",
+	"bundle_steps_aside_build": "Its levels, pieces, extras and price rules.",
+	"bundle_steps_aside_photos": "Its details, photos (from its pieces), SEO, FAQs and status.",
+	"bundle_steps_aside_tax": "No HSN, tax or stock of its own: each piece keeps its own.",
+	"open_bundle_builder": "Open the bundle builder",
+	"bundle_name_first": "Type the bundle's name in General first."
 }

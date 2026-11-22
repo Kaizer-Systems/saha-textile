@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { CatalogRupee, I18nString, Id, IsoDateTime, LocalizedText, PriceINR, SeoMeta, Slug } from './common';
+import { FreeWith } from './free-with';
 import { ProductOptionGroupSet } from './product-options';
 import { ProductShippingCharges } from './shipping-rules';
 import { ProductVideo } from './site-settings';
@@ -191,6 +192,13 @@ export const Product = z.object({
 	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
 	lifetimeUnitsReceived: z.number().int().nonnegative().default(0),
 	featured: z.boolean().default(false),
+	/**
+	 * Show on shop (owner, 22 Nov 2026, D5): off keeps a live product stocked and usable as a set piece, an extra
+	 * or a free item, but out of listings, search, the sitemap, feeds and related lists; its own page is "not found".
+	 */
+	showOnShop: z.boolean().default(true),
+	/** Free with this product (P8): real products given at no charge, always or by the shopper's choice. */
+	freeWith: FreeWith.nullable().default(null),
 	/** Shows the FAQ section on the product page: its own questions and its categories'. */
 	faqEnabled: z.boolean().default(false),
 	/** YouTube videos and Shorts, at most five, in the order admin set (owner, 2026-11-10). */

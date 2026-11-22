@@ -40,7 +40,8 @@ const addonGroups = [
 
 const bundle = (overrides: Record<string, unknown> = {}) => ({
 	bundle_price: 2000,
-	components: [{ name: 'A', sku: 'A', price: 100 }],
+	levels: [{ code: 'one', take: 1, items: [{ key: 'a', name: 'A', sku: 'A', today: 100 }] }],
+	extras: [{ key: 'pc', name: 'Petticoat', sku: 'PC', today: 450 }],
 	option_groups: [
 		{ code: 'size', label: 'Size', default_term_code: 's', terms: [{ code: 's', label: 'S', price_delta: 0 }] },
 		{ code: 'cut', label: 'Cut', terms: [{ code: 'x', label: 'X', price_delta: 50 }] },
@@ -263,7 +264,7 @@ describe('the cart line', () => {
 
 	it('resolves bundle choices and lists the components', () => {
 		const { component } = render(product({ bundle: bundle() }));
-		component.onBundleChange({ delta: 50, valid: true, selections: { cut: 'x' } } as never);
+		component.onBundleChange({ delta: 50, valid: true, selections: { cut: 'x' }, pieces: ['a'] } as never);
 		const config = component.buildParams(1, null).line_config;
 		expect(config?.bundle_options).toEqual([
 			{ group: 'Size', value: 'S', price_delta: 0 },

@@ -6571,5 +6571,12 @@
 	"cpn_try_free_delivery": "{{code}}: ফ্রি ডেলিভারি",
 	"cpn_try_coupons_used": "যে কুপন লেগেছে",
 	"cpn_try_discount": "ছাড়",
-	"ord_place_order_stays_off": "অর্ডার দেওয়ার বোতাম বন্ধ থাকবে।"
+	"ord_place_order_stays_off": "অর্ডার দেওয়ার বোতাম বন্ধ থাকবে।",
+	"bundle_steps_aside_title": "এই জিনিসটি একটি বান্ডেল",
+	"bundle_steps_aside_why": "বান্ডেল তৈরি হয় বান্ডেল বিল্ডারে, তাই এই ফর্মের বাকি অংশ সরে যাচ্ছে। বান্ডেলের সবকিছু সেখানেই থাকে:",
+	"bundle_steps_aside_build": "এর ধাপ, পিস, বাড়তি জিনিস আর দামের নিয়ম।",
+	"bundle_steps_aside_photos": "এর বিবরণ, ছবি (পিসগুলো থেকে), SEO, প্রশ্নোত্তর আর স্ট্যাটাস।",
+	"bundle_steps_aside_tax": "নিজের কোনো HSN, ট্যাক্স বা স্টক নেই: প্রতিটি পিস নিজেরটা রাখে।",
+	"open_bundle_builder": "বান্ডেল বিল্ডার খুলুন",
+	"bundle_name_first": "আগে সাধারণ ট্যাবে বান্ডেলের নাম লিখুন।"
 }

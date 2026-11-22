@@ -7,7 +7,7 @@ import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
 import { AddonGroup } from '../addon-group/addon-group';
-import { BundleConfigurator } from '../bundle-configurator/bundle-configurator';
+import { BundleConfigurator, type SetChoice } from '../bundle-configurator/bundle-configurator';
 
 export interface AddonSheetStart {
 	product: IProduct;
@@ -21,9 +21,8 @@ export interface AddonSheetStart {
 	mode: 'designs' | 'all' | 'set';
 	/** Set mode: whether the page can add the set to the cart (sets wait for their pricing, brief B12). */
 	buyable?: boolean;
-	/** Set mode: each choice group's picks and the optional pieces switched on. */
-	picks?: Record<string, string[]>;
-	extras?: string[];
+	/** Set mode: the set's choices (picks, sizes, extras, free items). */
+	set?: SetChoice;
 }
 
 export interface AddonSheetResult {
@@ -32,8 +31,7 @@ export interface AddonSheetResult {
 	measured: boolean;
 	/** Set mode: the shopper pressed Add set to cart. */
 	add?: boolean;
-	picks?: Record<string, string[]>;
-	extras?: string[];
+	set?: SetChoice;
 }
 
 /**
@@ -57,7 +55,10 @@ export class AddonSheet {
 	private readonly chosen = signal<Record<string, string>>({});
 	/** Set mode: how many pieces the set holds now (picks and optional pieces count). */
 	readonly pieceCount = signal<number | null>(null);
-	readonly pieces = computed(() => this.pieceCount() ?? this.config()?.product.bundle?.components?.length ?? 0);
+	readonly pieces = computed(
+		() =>
+			this.pieceCount() ?? this.config()?.product.bundle?.levels.reduce((sum, level) => sum + level.take, 0) ?? 0,
+	);
 
 	/** What the add-on adds over the product's own price, and the chosen terms that add it (the footer's line). */
 	readonly delta = computed(() => this.total() - (this.config()?.basePrice ?? 0));

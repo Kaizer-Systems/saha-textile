@@ -15,17 +15,13 @@ import {
 } from '@saha-textile/contracts';
 import {
 	retiredCollectionRow,
+	isShownOnShop,
 	parseAttributeFilter,
 	parsePriceRanges,
 	productGallery,
 	resolveImage,
 	liveRelations,
-	includedPicks,
-	pieceChangeINR,
-	piecePriceINR,
-	setPriceINR,
 	stepperStep,
-	type SetPricing,
 	type AddonTemplateRepository,
 	type CategoryPlacementRepository,
 	type CategoryRepository,
@@ -53,6 +49,7 @@ import {
 	FAQ_REPOSITORY,
 	LISTING_PORT,
 	MEDIA_ASSET_REPOSITORY,
+	BUNDLE_READER,
 	PRODUCT_BUNDLE_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
@@ -62,6 +59,7 @@ import {
 	STORAGE_PORT,
 } from '../infra/tokens';
 import type { SalePriceBook } from '../events/sale-price-book';
+import type { BundleReader } from './bundles/bundle-reader';
 
 const RAIL = 12;
 /** A category image is any library image, so take the size that suits it best. */
@@ -122,6 +120,7 @@ export class CatalogPublicService {
 		@Optional() @Inject(LanguageStore) private readonly languages: LanguageStore | null = null,
 		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
 		@Optional() @Inject(SALE_PRICE_BOOK) private readonly sales: SalePriceBook | null = null,
+		@Optional() @Inject(BUNDLE_READER) private readonly bundleReader: BundleReader | null = null,
 	) {
 		this.listings = listing ?? new MongoListing(products, variants);
 	}
@@ -361,6 +360,7 @@ export class CatalogPublicService {
 				: [],
 			measurements,
 			bundle: await this.bundleFor(product),
+			freeWith: await this.freeWithFor(product),
 			breadcrumb: await this.breadcrumbFor(product),
 			rating: { average: product.ratingsSummary.avg, count: product.ratingsSummary.count },
 			faq: await this.faqFor(product),
@@ -370,7 +370,7 @@ export class CatalogPublicService {
 	/** What a cart needs of a product: the page when it can be sold, and its name either way. */
 	async cartRead(id: string): Promise<{ slug: string; title: string; page: CatalogProductPage | null } | null> {
 		const live = await this.products.findById(id, 'public');
-		if (live) {
+		if (live && isShownOnShop(live)) {
 			const page = await this.page(live.slug);
 			return { slug: page.slug, title: page.title, page };
 		}
@@ -410,85 +410,27 @@ export class CatalogPublicService {
 		};
 	}
 
+	/** A piece's or free item's own main photo (card size), for set rows and free-item rows. */
+	private readonly cardImage = async (target: Product): Promise<ResolvedImage | null> => {
+		const primary = productGallery(target)[0];
+		if (!primary) return null;
+		const photo = (await this.assetsFor([primary])).get(primary);
+		return this.image(photo, ['card'], target.media.versions?.[primary]);
+	};
+
+	/** The set block (bundle builder brief, approved 2026-11-22): levels, extras and their prices, from core's engine. */
 	private async bundleFor(product: Product) {
-		if (!this.bundles) return null;
+		if (!this.bundles || !this.bundleReader || product.type !== 'bundle') return null;
 		const bundle = await this.bundles.findByProductId(product.id, 'public');
 		if (!bundle) return null;
-		const groups = await Promise.all(
-			bundle.groups.map(async (group) => {
-				const components = await Promise.all(
-					group.components.map(async (component) => {
-						const target = await this.products.findById(component.productId, 'public');
-						if (!target) return null;
-						const rows = await this.variants.listForProduct(target.id, 'public');
-						const read = productReadModel(target, rows);
-						const chosen = read.selected ? pricedRow(read.selected, read.madeToOrder) : null;
-						// The piece's own main photo, so a set's rows show each piece (brief P8).
-						const primary = productGallery(target)[0];
-						const photo = primary ? (await this.assetsFor([primary])).get(primary) : undefined;
-						return {
-							productId: target.id,
-							slug: target.slug,
-							title: localized(target.title),
-							sku: read.selected?.sku ?? target.sku,
-							sellingINR: chosen?.sellingINR ?? target.basePriceINR,
-							quantity: component.quantity,
-							required: component.required,
-							inStock: read.sellable > 0 || read.madeToOrder,
-							image: primary ? this.image(photo, ['card'], target.media.versions?.[primary]) : null,
-							adjustmentINR: component.priceAdjustmentINR,
-						};
-					}),
-				);
-				const live = components.filter((component) => component !== null);
-				return {
-					code: group.code,
-					label: localized(group.label),
-					minSelections: group.minSelections,
-					maxSelections: Math.min(group.maxSelections, Math.max(1, live.length)),
-					components: live,
-				};
-			}),
-		);
-		const usable = groups.filter((group) => group.components.length > 0);
-		if (usable.length === 0) return null;
-		// The owner's rule (21 Nov 2026): each set follows its own price setting; core prices it and each piece's change.
-		const pieceOf = (component: (typeof usable)[number]['components'][number]) => ({
-			id: component.productId,
-			priceINR: component.sellingINR,
-			quantity: component.quantity,
-			required: component.required,
-			adjustmentINR: component.adjustmentINR,
-		});
-		const pricing: SetPricing = {
-			policy: bundle.pricePolicy,
-			fixedPriceINR: bundle.fixedPriceINR,
-			groups: usable.map((group) => ({
-				code: group.code,
-				maxSelections: group.maxSelections,
-				pieces: group.components.map(pieceOf),
-			})),
-		};
-		return {
-			bundleType: bundle.bundleType,
-			pricePolicy: bundle.pricePolicy,
-			priceINR: setPriceINR(pricing),
-			groups: usable.map((group) => {
-				const pieces = group.components.map(pieceOf);
-				const included = new Set(
-					includedPicks({ code: group.code, maxSelections: group.maxSelections, pieces }),
-				);
-				return {
-					...group,
-					components: group.components.map(({ adjustmentINR: _adjustment, ...component }, at) => ({
-						...component,
-						included: included.has(component.productId),
-						setPriceINR: pieces[at] ? piecePriceINR(bundle.pricePolicy, pieces[at]) : 0,
-						priceChangeINR: pieceChangeINR(pricing, group.code, component.productId),
-					})),
-				};
-			}),
-		};
+		const resolved = await this.bundleReader.resolve(bundle);
+		return this.bundleReader.page(resolved, product, this.cardImage);
+	}
+
+	/** Free with this product (P8), as the page shows it. */
+	private async freeWithFor(product: Product) {
+		if (!this.bundleReader || !product.freeWith) return null;
+		return this.bundleReader.freeWithPage(product.freeWith, this.cardImage);
 	}
 
 	/**
@@ -703,7 +645,8 @@ export class CatalogPublicService {
 	/** Cards for products still on sale; anything no longer public is left out. */
 	async cardsForIds(ids: readonly string[]): Promise<CatalogCard[]> {
 		const found = await Promise.all(ids.map((id) => this.products.findById(id, 'public')));
-		return this.cards(found.filter((product) => product !== null));
+		// A product kept off the shop (Show on shop off) is sold only inside sets and as a free item (D5).
+		return this.cards(found.filter((product): product is Product => product !== null && isShownOnShop(product)));
 	}
 
 	async relationCards(slug: string) {
@@ -716,7 +659,7 @@ export class CatalogPublicService {
 		const targets = new Map<string, Product>();
 		for (const id of new Set(rows.map((row) => row.targetId))) {
 			const target = await this.products.findById(id, 'public');
-			if (target) targets.set(id, target);
+			if (target && isShownOnShop(target)) targets.set(id, target);
 		}
 		const live = liveRelations(rows, new Set(targets.keys()));
 		const products = (type: 'related' | 'upsell' | 'cross_sell' | 'bought_together') =>
@@ -831,7 +774,8 @@ export class CatalogPublicService {
 	private async requireLive(slug: string): Promise<Product> {
 		const product =
 			(await this.products.findBySlug(slug, 'public')) ?? (await this.products.findById(slug, 'public'));
-		if (!product) throw new NotFoundException(`Product not found: ${slug}`);
+		// Show on shop off (D5): the page is "not found" to shoppers, though the product sells inside sets.
+		if (!product || !isShownOnShop(product)) throw new NotFoundException(`Product not found: ${slug}`);
 		return product;
 	}
 

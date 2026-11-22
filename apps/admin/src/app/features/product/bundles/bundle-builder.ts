@@ -31,6 +31,7 @@ import type {
 	BundleDetailsWrite,
 	BundleItem,
 	BundleLevel,
+	BundleLevelSource,
 	BundlePricing,
 	BundlePriceMethodRow,
 	CatalogPageBundle,
@@ -232,6 +233,8 @@ export class BundleBuilder {
 	private async refresh(): Promise<void> {
 		const draft = this.draft();
 		if (!draft) return;
+		// A level just switched to "A category" waits for the category before the set is worked out again.
+		if (draft.levels.some((level) => level.source.kind === 'category' && !level.source.categoryId)) return;
 		try {
 			this.apply(await firstValueFrom(this.bundles.draft(this.productId, draft)));
 		} catch {
@@ -324,6 +327,71 @@ export class BundleBuilder {
 					},
 		);
 	}
+
+	/** One item's own settings: how many go in a set, and its size (S8). */
+	setItem(where: 'level' | 'extra', at: number, itemAt: number, patch: Partial<BundleItem>): void {
+		this.change((draft) =>
+			where === 'extra'
+				? {
+						...draft,
+						extras: draft.extras.map((row, index) => (index === itemAt ? { ...row, ...patch } : row)),
+					}
+				: {
+						...draft,
+						levels: draft.levels.map((level, index) =>
+							index === at
+								? {
+										...level,
+										items: level.items.map((row, i) => (i === itemAt ? { ...row, ...patch } : row)),
+									}
+								: level,
+						),
+					},
+		);
+	}
+
+	/** "2 × petticoat", or "2.5 m" of fabric sold by the metre (kept in tenths of a metre). */
+	quantityText(row: BundleItem): string {
+		return this.item(this.keyOf(row))?.soldBy === 'metre' ? String(row.quantity / 10) : String(row.quantity);
+	}
+
+	setQuantity(where: 'level' | 'extra', at: number, itemAt: number, row: BundleItem, value: string): void {
+		const metre = this.item(this.keyOf(row))?.soldBy === 'metre';
+		const typed = Number(value);
+		if (!Number.isFinite(typed) || typed <= 0) return;
+		this.setItem(where, at, itemAt, { quantity: Math.max(1, Math.round(metre ? typed * 10 : typed)) });
+	}
+
+	/** A pinned size or colour, or "shopper chooses" (null) when the product has several (S8). */
+	setVariant(where: 'level' | 'extra', at: number, itemAt: number, variantId: string): void {
+		this.setItem(where, at, itemAt, { variantId: variantId || null });
+	}
+
+	/** Where a level's products come from: picked one by one, or a category's newest live products (S10). */
+	setSource(at: number, kind: 'items' | 'category', categoryId?: string, limit?: number): void {
+		const source: BundleLevelSource =
+			kind === 'category'
+				? { kind: 'category', categoryId: categoryId ?? '', limit: limit ?? 12 }
+				: { kind: 'items' };
+		this.setLevel(at, { source });
+	}
+
+	/** Every category, flattened with its path, for the level's category choice. */
+	readonly categoryChoices = computed(() => {
+		const out: { id: string; name: string }[] = [];
+		const walk = (
+			rows: readonly { id: string | number; name: string; subcategories?: unknown[] }[],
+			path: string,
+		) => {
+			for (const row of rows) {
+				const name = path ? `${path} › ${row.name}` : row.name;
+				out.push({ id: String(row.id), name });
+				walk((row.subcategories ?? []) as typeof rows, name);
+			}
+		};
+		walk(this.categories() as unknown as { id: string; name: string; subcategories?: unknown[] }[], '');
+		return out;
+	});
 
 	removeItem(where: 'level' | 'extra', at: number, itemAt: number): void {
 		this.change((draft) =>

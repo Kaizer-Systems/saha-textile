@@ -145,6 +145,17 @@ left and the shop's own set block on the right. -->
 										(change)="setLevel(at, { take: +$any($event.target).value || 1 })"
 									/>
 								</div>
+								<div>
+									<label class="form-label-title">{{ 'bundle_level_source' | transloco }}</label>
+									<select
+										class="form-select"
+										[ngModel]="level.source.kind"
+										(ngModelChange)="setSource(at, $event)"
+									>
+										<option value="items">{{ 'bundle_source_items' | transloco }}</option>
+										<option value="category">{{ 'bundle_source_category' | transloco }}</option>
+									</select>
+								</div>
 								@if (method()?.base?.kind === 'fixed' && level.items.length > level.take) {
 								<div>
 									<label class="form-label-title">{{ 'bundle_pick_price' | transloco }}</label>
@@ -168,6 +179,36 @@ left and the shop's own set block on the right. -->
 									<i class="ri-delete-bin-line"></i>
 								</button>
 							</div>
+							<!-- A level filled from a category (S3/S10): its newest live products join by themselves. -->
+							@if (level.source.kind === 'category') {
+							<div class="row g-2 align-items-end">
+								<div class="col-md-6">
+									<label class="form-label-title">{{ 'category' | transloco }}</label>
+									<select
+										class="form-select"
+										[ngModel]="level.source.categoryId"
+										(ngModelChange)="setSource(at, 'category', $event, level.source.limit)"
+									>
+										<option value="">{{ 'select' | transloco }}</option>
+										@for (c of categoryChoices(); track c.id) {
+										<option [value]="c.id">{{ c.name }}</option>
+										}
+									</select>
+								</div>
+								<div class="col-md-3">
+									<label class="form-label-title">{{ 'bundle_source_limit' | transloco }}</label>
+									<input
+										class="form-control"
+										type="number"
+										min="1"
+										max="50"
+										[value]="level.source.limit"
+										(change)="setSource(at, 'category', level.source.categoryId, +$any($event.target).value || 12)"
+									/>
+								</div>
+								<p class="help-text mb-0">{{ 'bundle_source_help' | transloco }}</p>
+							</div>
+							} @else {
 							<ng-container
 								*ngTemplateOutlet="itemsTable; context: { $implicit: level.items, where: 'level', at: at }"
 							/>
@@ -179,6 +220,7 @@ left and the shop's own set block on the right. -->
 								<i class="ri-add-line"></i>
 								{{ 'add_product' | transloco }}
 							</button>
+							}
 						</div>
 					</div>
 					}
@@ -571,6 +613,8 @@ left and the shop's own set block on the right. -->
 			<thead>
 				<tr>
 					<th>{{ 'product' | transloco }}</th>
+					<th>{{ 'quantity' | transloco }}</th>
+					<th>{{ 'bundle_item_size' | transloco }}</th>
 					<th>{{ 'mrp' | transloco }}</th>
 					<th>{{ 'selling_price' | transloco }}</th>
 					@if (anySale()) {
@@ -592,6 +636,36 @@ left and the shop's own set block on the right. -->
 							<span class="text-danger">· {{ 'out_of_stock' | transloco }}</span>
 							}
 						</small>
+					</td>
+					<td>
+						<input
+							class="form-control form-control-sm"
+							type="number"
+							[step]="info?.soldBy === 'metre' ? 0.1 : 1"
+							min="0"
+							style="width: 80px"
+							[value]="quantityText(row)"
+							[attr.aria-label]="'quantity' | transloco"
+							(change)="setQuantity(where, at, itemAt, row, $any($event.target).value)"
+						/>
+						@if (info?.soldBy === 'metre') {
+						<small class="help-text">{{ 'unit_m' | transloco }}</small>
+						}
+					</td>
+					<td>
+						@if (info?.variants?.length) {
+						<select
+							class="form-select form-select-sm"
+							[ngModel]="row.variantId ?? ''"
+							[attr.aria-label]="'bundle_item_size' | transloco"
+							(ngModelChange)="setVariant(where, at, itemAt, $event)"
+						>
+							<option value="">{{ 'bundle_shopper_chooses' | transloco }}</option>
+							@for (v of info?.variants ?? []; track v.id) {
+							<option [value]="v.id">{{ v.label }}</option>
+							}
+						</select>
+						} @else { — }
 					</td>
 					<td>{{ info?.mrpINR ?? '—' }}</td>
 					<td>{{ info?.sellingINR }}</td>

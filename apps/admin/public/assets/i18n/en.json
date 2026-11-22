@@ -6754,5 +6754,12 @@
 	"bundle_sale_window_help": "Leave both empty to sell the set at all times.",
 	"bundle_photos_none": "Add pieces on the Build tab; their photos appear here.",
 	"bundle_styled_photo": "Styled photo",
-	"bundle_styled_photo_help": "Optional: a photo of the whole set, shown before the pieces' photos."
+	"bundle_styled_photo_help": "Optional: a photo of the whole set, shown before the pieces' photos.",
+	"bundle_level_source": "Filled from",
+	"bundle_source_items": "Products I pick",
+	"bundle_source_category": "A category",
+	"bundle_source_limit": "How many, newest first",
+	"bundle_source_help": "The category's newest live products join this level by themselves, such as new petticoats from a purchase order. Sets are never added.",
+	"bundle_item_size": "Size or colour",
+	"bundle_shopper_chooses": "Shopper chooses"
 }

@@ -179,6 +179,13 @@ export function cardBadges(badges: readonly string[]): CardBadges {
 const cardUrl = (image: ApiImage | null): string =>
 	image?.roles['card']?.find((source) => source.width >= 400)?.url ?? image?.roles['card']?.[0]?.url ?? '';
 
+/** The smallest card picture, for small rows such as a set's pieces in the cart. */
+export const smallCardUrl = (image: ApiImage | null): string | null =>
+	image?.roles['card']?.reduce<ApiSource | null>(
+		(low, source) => (!low || source.width < low.width ? source : low),
+		null,
+	)?.url ?? null;
+
 const attachment = (image: ApiImage | null, id: string): IAttachment | undefined => {
 	if (!image || !cardUrl(image)) return undefined;
 	return { id, original_url: cardUrl(image), image } as unknown as IAttachment;

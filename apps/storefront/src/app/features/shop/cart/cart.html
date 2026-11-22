@@ -90,7 +90,8 @@
 													} @if (item.line_config) {
 													<li><app-cart-line-config [config]="item.line_config" /></li>
 													}
-													<li>
+													<!-- A set's price shows in the Price column on laptops, so its row leaves this line to phones. -->
+													<li [class.d-lg-none]="item.set_heading">
 														<h5 class="text-content d-inline-block">
 															{{ 'price' | transloco }} :
 														</h5>
@@ -105,7 +106,8 @@
 														</span>
 														}
 													</li>
-													@if (item.product.discount) {
+													<!-- A set shows its saving under its name instead. -->
+													@if (item.product.discount && !item.set_heading) {
 													<li>
 														<h5 class="saving theme-color">
 															{{ 'saving' | transloco }}: {{ ((item.variation ?
@@ -370,7 +372,12 @@
 										</h5>
 									</td>
 									<td class="subtotal"></td>
-									<td class="save-remove">
+									<!-- Only an extra has an action; phones leave the empty strip out of the other cards. -->
+									<td
+										class="save-remove"
+										[class.d-none]="row.child.role !== 'extra'"
+										[class.d-lg-table-cell]="row.child.role !== 'extra'"
+									>
 										@if (row.child.role === 'extra') {
 										<a
 											class="remove close_button"

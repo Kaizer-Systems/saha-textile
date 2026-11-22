@@ -108,11 +108,17 @@
 						href="javascript:void(0)"
 						role="button"
 					>
-						<h5>
-							{{ item?.product?.name }}@if (item.set_heading) {
-							<span class="st-piece-chip is-set">{{ 'cart_set_chip' | transloco }}</span>
-							}
+						@if (item.set_heading) {
+						<!-- A long set name shortens itself so the Set chip always shows (E04). -->
+						<h5 class="d-flex align-items-center gap-1">
+							<span class="text-truncate">{{ item.product.name }}</span>
+							<span class="st-piece-chip is-set mt-0 flex-shrink-0">
+								{{ 'cart_set_chip' | transloco }}
+							</span>
 						</h5>
+						} @else {
+						<h5>{{ item?.product?.name }}</h5>
+						}
 					</a>
 					@if (isMetre(item)) {
 					<!-- M10: the line reads "2.5 m × ₹180.00". -->

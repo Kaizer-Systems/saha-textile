@@ -1,4 +1,4 @@
-import { ApiImage, galleryAttachment } from '@core/catalog/from-api';
+import { ApiImage, galleryAttachment, smallCardUrl } from '@core/catalog/from-api';
 import {
 	CartLineProblem,
 	ICart,
@@ -107,7 +107,7 @@ function childItem(child: ApiCartChild): ICartChild {
 		product_id: child.productId,
 		title: child.title,
 		sku: child.sku,
-		image_url: child.image ? galleryAttachment(child.image, 0).original_url : null,
+		image_url: smallCardUrl(child.image),
 		variant_label: child.variantLabel,
 		quantity: child.quantity,
 		price: child.priceINR,

@@ -52,3 +52,9 @@ export function orderItemsText(
 		: '';
 	return `${[sets, products].filter(Boolean).join(', ')} · ${pieces}`;
 }
+
+/** An order's pictures for a picture stack: its own list, or the first line's picture on an older answer. */
+export function orderThumbs(order: ShopOrderSummary): string[] {
+	if (order.thumbs?.length) return [...order.thumbs];
+	return order.firstImageUrl ? [order.firstImageUrl] : [];
+}

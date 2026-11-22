@@ -7,38 +7,24 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { map } from 'rxjs';
 
 import { injectMyOrderQuery } from '@data-access/queries/order.queries';
+import { ORDER_STEPS, orderStepRank } from '@shared/ui/order-progress/order-steps';
 
+import { orderSaved } from '../order-lines/order-line-groups';
+import { OrderLines } from '../order-lines/order-lines';
 import { orderMoney, orderPill } from '../order-money';
 
 import type { OrderStatus, ShopOrderLine } from '@saha-textile/contracts';
 
-/** The steps across the top, with the theme's tracking icons. */
-const STEPS: ReadonlyArray<{ status: OrderStatus; icon: string }> = [
-	{ status: 'placed', icon: 'pending' },
-	{ status: 'processing', icon: 'processing' },
-	{ status: 'shipped', icon: 'shipped' },
-	{ status: 'out_for_delivery', icon: 'out-for-delivery' },
-	{ status: 'delivered', icon: 'delivered' },
-];
-const RANK: Partial<Record<OrderStatus, number>> = {
-	placed: 0,
-	processing: 1,
-	packed: 1,
-	shipped: 2,
-	out_for_delivery: 3,
-	delivered: 4,
-};
-
 /**
  * One of the shopper's own orders (bundle builder brief E05, approved 2026-11-22): the steps so far, every line with
  * a set's pieces, their free items and its extras beneath it, the money in the currency paid, and the delivery
- * address.
+ * address. Phones and tablets draw the lines as cards (OrderLines; owner, 22 Nov 2026), laptops as the theme's table.
  */
 @Component({
 	selector: 'app-order-details',
 	templateUrl: './details.html',
 	styleUrls: ['./details.scss'],
-	imports: [DatePipe, TranslocoModule],
+	imports: [DatePipe, TranslocoModule, OrderLines],
 })
 export class OrderDetails {
 	private readonly route = inject(ActivatedRoute);
@@ -48,13 +34,28 @@ export class OrderDetails {
 	readonly order = computed(() => this.query.data());
 	readonly missing = computed(() => this.query.isError());
 
-	readonly steps = STEPS;
+	readonly steps = ORDER_STEPS;
 	readonly money = orderMoney;
 	readonly pill = orderPill;
 
 	reached(step: OrderStatus): boolean {
-		const at = RANK[this.order()?.status ?? 'placed'];
-		return at !== undefined && (RANK[step] ?? 99) <= at;
+		const at = orderStepRank(this.order()?.status ?? 'placed');
+		const rank = orderStepRank(step);
+		return at !== null && rank !== null && rank <= at;
+	}
+
+	/** The order holds a set or free items, so some lines sit under others. */
+	readonly hasTree = computed(() => (this.order()?.lines ?? []).some((line) => line.parentLineId));
+
+	/** Everything saved on the order (sets, coupon, free items' printed price). */
+	readonly saved = computed(() => {
+		const order = this.order();
+		return order ? orderSaved(order) : 0;
+	});
+
+	/** A phone number as a dialable link: digits and the leading plus only. */
+	telOf(phone: string): string {
+		return phone.replace(/[^\d+]/g, '');
 	}
 
 	/** Lines of their own and free items: the parcel's item count. */

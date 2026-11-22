@@ -31,10 +31,11 @@ describe('one of my orders (bundle builder brief E05)', () => {
 		order.set({
 			orderNumber: 'ST-1',
 			status: 'shipped',
+			coupon: 500,
 			lines: [
 				line({ lineId: 's', role: 'bundle', set: { heading: 'components', saved: 3500 } }),
 				line({ lineId: 's~a', role: 'piece', parentLineId: 's' }),
-				line({ lineId: 's~a>f', role: 'free', parentLineId: 's~a' }),
+				line({ lineId: 's~a>f', role: 'free', parentLineId: 's~a', mrp: 799 }),
 				line({ lineId: 's~b', role: 'piece', parentLineId: 's' }),
 				line({ lineId: 's~x', role: 'extra', parentLineId: 's' }),
 				line({ lineId: 'p' }),
@@ -52,5 +53,8 @@ describe('one of my orders (bundle builder brief E05)', () => {
 		expect(page.childCounts(lines[0]!)).toEqual({ pieces: 2, extras: 1, free: 0 });
 		expect(page.itemCount()).toBe(2);
 		expect(['placed', 'shipped', 'delivered'].map((s) => page.reached(s as never))).toEqual([true, true, false]);
+		expect(page.hasTree()).toBe(true);
+		expect(page.saved()).toBe(4799);
+		expect(page.telOf('+91 98300 12345')).toBe('+919830012345');
 	});
 });

@@ -31,7 +31,14 @@ const order = Order.parse({
 			imageUrl: 'set.jpg',
 			set: { heading: 'components', priceINR: 44900, separatelyINR: 48400 },
 		}),
-		line({ lineId: 's~a', role: 'piece', parentLineId: 's', unitPricePaid: 33211.16, lineTotalPaid: 33211.16 }),
+		line({
+			lineId: 's~a',
+			role: 'piece',
+			parentLineId: 's',
+			unitPricePaid: 33211.16,
+			lineTotalPaid: 33211.16,
+			imageUrl: 'piece-a.jpg',
+		}),
 		line({
 			lineId: 's~a>f',
 			role: 'free',
@@ -46,6 +53,7 @@ const order = Order.parse({
 			title: { en: 'Lavender saree' },
 			unitPricePaid: 5600,
 			lineTotalPaid: 5600,
+			imageUrl: 'lavender.jpg',
 			addons: [{ code: 'd', label: 'Blouse design', value: 'Boat Neck' }],
 		}),
 	],
@@ -54,7 +62,10 @@ const order = Order.parse({
 	totalINR: 50000,
 	totalPaid: 50000,
 	shipping: { value: 0, currency: 'INR' },
-	statusTimeline: [{ status: 'placed', at: '2026-11-22T05:11:00.000Z' }],
+	statusTimeline: [
+		{ status: 'placed', at: '2026-11-22T05:11:00.000Z' },
+		{ status: 'processing', at: '2026-11-22T06:00:00.000Z' },
+	],
 	addresses: {
 		billing: { fullName: 'Priya Sharma', line1: '14/2 Lake Road', city: 'Kolkata', country: 'IN' },
 		delivery: {
@@ -85,7 +96,18 @@ describe('a shopper’s own orders (bundle builder brief E05–E06)', () => {
 			firstTitle: 'Peacock set',
 			firstImageUrl: 'set.jpg',
 			total: 50000,
+			thumbs: ['set.jpg', 'lavender.jpg'],
+			statusAt: '2026-11-22T06:00:00.000Z',
 		});
+	});
+
+	it('takes a set’s first piece’s picture when the set has none, and leaves the time empty without a step', () => {
+		const bare = Order.parse({
+			...order,
+			lines: order.lines.map((row) => (row.lineId === 's' ? { ...row, imageUrl: null } : row)),
+			statusTimeline: [],
+		});
+		expect(shopOrderSummary(bare)).toMatchObject({ thumbs: ['piece-a.jpg', 'lavender.jpg'], statusAt: null });
 	});
 
 	it('shows the tree with the set priced from its pieces, the saving, a free item’s MRP, and the coupon', () => {

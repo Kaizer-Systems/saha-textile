@@ -40,10 +40,54 @@
 	</div>
 	<div class="card">
 		<div class="card-body">
-			<p class="text-content mb-2">
-				{{ 'my_order_parcel' | transloco: { items: itemCount(), pieces: o.pieces } }}
-			</p>
-			<div class="tracking-wrapper table-responsive">
+			<!-- The order at a glance (owner, 22 Nov 2026): when it was placed, how many items, the pieces in the parcel. -->
+			<div class="st-order-facts">
+				@if (o.placedAt) {
+				<span class="st-piece-chip">
+					<i
+						class="ri-calendar-line"
+						aria-hidden="true"
+					></i>
+					{{ 'my_order_placed_on' | transloco: { date: (o.placedAt | date: 'd MMM yyyy') } }}
+				</span>
+				}
+				<span class="st-piece-chip">
+					<i
+						class="ri-shopping-bag-3-line"
+						aria-hidden="true"
+					></i>
+					{{ (itemCount() === 1 ? 'my_order_item_count_one' : 'my_order_item_count') | transloco: { count:
+					itemCount() } }}
+				</span>
+				<span class="st-piece-chip">
+					<i
+						class="ri-archive-line"
+						aria-hidden="true"
+					></i>
+					{{ (o.pieces === 1 ? 'my_order_one_parcel_one' : 'my_order_one_parcel') | transloco: { count:
+					o.pieces } }}
+				</span>
+				@if (o.freeItems) {
+				<span class="st-piece-chip is-free">
+					<i
+						class="ri-gift-line"
+						aria-hidden="true"
+					></i>
+					{{ (o.freeItems === 1 ? 'cart_set_free_one' : 'cart_set_free') | transloco: { count: o.freeItems }
+					}}
+				</span>
+				}
+			</div>
+			@if (hasTree()) {
+			<p class="st-order-note">{{ 'my_order_tree_note' | transloco }}</p>
+			}
+			<!-- Phones and tablets: each line a card, what came with it on a rail beneath (owner, 22 Nov 2026). -->
+			<app-order-lines
+				class="d-xl-none"
+				[order]="o"
+			/>
+			<!-- Laptops: the theme's tracking table as a tree (E05). -->
+			<div class="tracking-wrapper table-responsive d-none d-xl-block">
 				<!-- What was bought, as a tree (E05): a set's line, then its pieces, their free items and its extras. -->
 				<table class="product-table my-order-lines table">
 					<tbody>
@@ -154,12 +198,21 @@
 								{{ 'shipping' | transloco }}
 								<span>{{ money(o.shipping, o.currency) }}</span>
 							</li>
-							<li>
+							<li class="st-order-total">
 								{{ 'my_order_total_incl_gst' | transloco }}
 								<span>{{ money(o.total, o.currency) }}</span>
 							</li>
 						</ul>
 					</div>
+					@if (saved()) {
+					<p class="st-order-saved">
+						<i
+							class="ri-price-tag-3-line"
+							aria-hidden="true"
+						></i>
+						{{ 'my_order_saved_total' | transloco: { amount: money(saved(), o.currency) } }}
+					</p>
+					}
 				</div>
 			</div>
 		</div>
@@ -168,17 +221,31 @@
 			<div class="card">
 				<div class="card-body">
 					<h3 class="fw-semibold mb-3">{{ 'my_order_delivery' | transloco }}</h3>
-					<div class="customer-detail tracking-wrapper">
-						<ul class="row g-3">
-							<li class="col-12">
-								<h4>
-									{{ d.name }} · {{ d.address }} @if (d.phone) {
-									<br />
-									{{ 'phone' | transloco }}: {{ d.phone }} }
-								</h4>
-							</li>
-						</ul>
-					</div>
+					<ul class="st-order-delivery">
+						<li>
+							<i
+								class="ri-user-3-line"
+								aria-hidden="true"
+							></i>
+							<b>{{ d.name }}</b>
+						</li>
+						<li>
+							<i
+								class="ri-map-pin-line"
+								aria-hidden="true"
+							></i>
+							<span>{{ d.address }}</span>
+						</li>
+						@if (d.phone) {
+						<li>
+							<i
+								class="ri-phone-line"
+								aria-hidden="true"
+							></i>
+							<a [href]="'tel:' + telOf(d.phone)">{{ d.phone }}</a>
+						</li>
+						}
+					</ul>
 				</div>
 			</div>
 		</div>

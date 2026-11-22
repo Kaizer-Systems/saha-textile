@@ -1,0 +1,17 @@
+<div
+	class="st-order-progress"
+	[class.is-delivered]="delivered()"
+	[class.is-cancelled]="cancelled()"
+	role="progressbar"
+	aria-valuemin="0"
+	[attr.aria-valuemax]="steps.length - 1"
+	[attr.aria-valuenow]="rank() ?? 0"
+	[attr.aria-valuetext]="label() || null"
+>
+	@for (step of steps; track step.status; let at = $index) {
+	<span
+		class="st-order-progress-step"
+		[class.is-on]="reached(at)"
+	></span>
+	}
+</div>

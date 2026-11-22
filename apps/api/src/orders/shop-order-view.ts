@@ -53,7 +53,20 @@ export function shopOrderSummary(order: Order): ShopOrderSummary {
 		freeItems: order.lines.filter((row) => row.role === 'free').reduce((sum, row) => sum + row.quantity, 0),
 		firstTitle: first ? (first.title['en'] ?? first.sku) : '',
 		firstImageUrl: first?.imageUrl ?? null,
+		thumbs: thumbs(order),
+		statusAt: order.statusTimeline.findLast((event) => event.status === order.status)?.at ?? null,
 	};
+}
+
+/** One picture per line of its own (a set without its own picture shows its first piece's), at most four, no repeats. */
+function thumbs(order: Order): string[] {
+	const out: string[] = [];
+	for (const row of order.lines.filter((line) => !line.parentLineId)) {
+		const image = row.imageUrl ?? order.lines.find((line) => line.parentLineId === row.lineId)?.imageUrl ?? null;
+		if (image && !out.includes(image)) out.push(image);
+		if (out.length === 4) break;
+	}
+	return out;
 }
 
 /** One order as its shopper sees it (E05): the tree, the money, the steps so far and where it is going. */

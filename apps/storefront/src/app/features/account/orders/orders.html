@@ -5,9 +5,15 @@
 </div>
 @if (result(); as page) { @if (orders().length) {
 <div class="total-box mt-0">
-	<div class="wallet-table mt-0">
+	<!-- Phones and tablets: one card per order, nothing scrolls sideways (owner, 22 Nov 2026). -->
+	<ul class="st-order-cards d-xl-none">
+		@for (order of orders(); track order.orderNumber) {
+		<li><app-order-card [order]="order" /></li>
+		}
+	</ul>
+	<!-- Laptops: one row per order (E06). -->
+	<div class="wallet-table d-none d-xl-block mt-0">
 		<div class="table-responsive">
-			<!-- Laptops: one row per order (E06). Phones: the same cells as a card (orders.scss). -->
 			<table class="my-orders-table">
 				<thead>
 					<tr>
@@ -25,13 +31,10 @@
 						<td class="mo-number"><span class="fw-bolder">#{{ order.orderNumber }}</span></td>
 						<td class="mo-date">{{ order.placedAt | date: 'd MMM yyyy' }}</td>
 						<td class="mo-items">
-							<div class="d-flex align-items-center gap-2">
-								<img
-									[src]="order.firstImageUrl ?? 'assets/images/product.png'"
-									class="mo-thumb"
-									alt=""
-									width="28"
-									height="36"
+							<div class="d-flex align-items-center gap-3">
+								<app-thumb-stack
+									[images]="thumbs(order)"
+									[size]="'sm'"
 								/>
 								<span>
 									{{ items(order) }} @if (order.sets) {
@@ -48,6 +51,11 @@
 							<div [class]="'status-' + pill(order.status)">
 								<span>{{ 'shop_order_status_' + order.status | transloco }}</span>
 							</div>
+							<app-order-progress
+								class="mo-progress"
+								[status]="order.status"
+								[label]="'shop_order_status_' + order.status | transloco"
+							/>
 						</td>
 						<td class="mo-view">
 							<a
@@ -56,7 +64,6 @@
 								[title]="'my_orders_view' | transloco"
 							>
 								<i class="ri-eye-line"></i>
-								<span class="d-md-none">{{ 'my_orders_view' | transloco }}</span>
 							</a>
 						</td>
 					</tr>

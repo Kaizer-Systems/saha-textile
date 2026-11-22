@@ -4,8 +4,9 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { describe, expect, it, vi } from 'vitest';
 
+import { OrderCard } from './order-card/order-card';
+import { orderItemsText, orderMoney, orderPill, orderThumbs } from './order-money';
 import { Orders } from './orders';
-import { orderItemsText, orderMoney, orderPill } from './order-money';
 
 import type { ShopOrderSummary } from '@saha-textile/contracts';
 
@@ -27,6 +28,8 @@ const summary = (over: Partial<ShopOrderSummary>): ShopOrderSummary => ({
 	freeItems: 0,
 	firstTitle: 'Peacock Blue saree',
 	firstImageUrl: null,
+	thumbs: [],
+	statusAt: null,
 	...over,
 });
 const t = (key: string, params?: Record<string, unknown>) => `${key}${params ? JSON.stringify(params) : ''}`;
@@ -54,6 +57,26 @@ describe('My orders (bundle builder brief E06)', () => {
 			'delivered',
 			'cancelled',
 		]);
+	});
+
+	it('fans out the order’s own pictures, or the first line’s on an older answer', () => {
+		expect(orderThumbs(summary({ thumbs: ['a.jpg', 'b.jpg'], firstImageUrl: 'a.jpg' }))).toEqual([
+			'a.jpg',
+			'b.jpg',
+		]);
+		expect(orderThumbs(summary({ firstImageUrl: 'a.jpg' }))).toEqual(['a.jpg']);
+		expect(orderThumbs(summary({}))).toEqual([]);
+	});
+
+	it('a phone card counts what lies beyond the first line and its pictures, and says "on" once settled', () => {
+		TestBed.resetTestingModule();
+		TestBed.overrideComponent(OrderCard, { set: { imports: [], template: '' } });
+		const fixture = TestBed.createComponent(OrderCard);
+		fixture.componentRef.setInput('order', summary({ sets: 2, products: 3, thumbs: ['a', 'b', 'c', 'd'] }));
+		const card = fixture.componentInstance;
+		expect([card.more(), card.morePictures(), card.settled()]).toEqual([4, 1, false]);
+		fixture.componentRef.setInput('order', summary({ status: 'delivered' }));
+		expect([card.more(), card.morePictures(), card.settled()]).toEqual([0, 1, true]);
 	});
 
 	it('reads a page of orders and moves between pages', () => {

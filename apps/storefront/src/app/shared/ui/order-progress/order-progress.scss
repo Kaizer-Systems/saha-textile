@@ -1,0 +1,30 @@
+// The order progress track (owner, 22 Nov 2026): five short bars with a gap, filled up to the step reached. Colours
+// come from theme variables, so the colour-only dark file covers them.
+:host {
+	display: block;
+}
+
+.st-order-progress {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 3px;
+	width: 100%;
+}
+
+.st-order-progress-step {
+	height: 4px;
+	border-radius: 999px;
+	background-color: var(--st-border-line);
+
+	&.is-on {
+		background-color: var(--theme-color);
+	}
+}
+
+.is-delivered .st-order-progress-step.is-on {
+	background-color: var(--st-success);
+}
+
+.is-cancelled .st-order-progress-step.is-on {
+	background-color: color-mix(in srgb, var(--st-danger-text) 55%, transparent);
+}

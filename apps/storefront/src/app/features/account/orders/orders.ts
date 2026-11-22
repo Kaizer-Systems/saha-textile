@@ -6,21 +6,25 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
 import { injectMyOrdersQuery } from '@data-access/queries/order.queries';
 import { NoData } from '@shared/ui/no-data/no-data';
+import { OrderProgress } from '@shared/ui/order-progress/order-progress';
 import { Pagination } from '@shared/ui/pagination/pagination';
+import { ThumbStack } from '@shared/ui/thumb-stack/thumb-stack';
 
-import { orderItemsText, orderMoney, orderPill } from './order-money';
+import { OrderCard } from './order-card/order-card';
+import { orderItemsText, orderMoney, orderPill, orderThumbs } from './order-money';
 
 import type { ShopOrderSummary } from '@saha-textile/contracts';
 
 /**
  * My orders on the shopper's real orders (bundle builder brief E06, approved 2026-11-22): Order, Date, Items, Total
- * and Status on laptops; on phones each order is a card, so nothing scrolls sideways (owner, 22 Nov 2026).
+ * and Status on laptops; on phones and tablets each order is a card (OrderCard), so nothing scrolls sideways (owner,
+ * 22 Nov 2026: "a mobile specific better view").
  */
 @Component({
 	selector: 'app-orders',
 	templateUrl: './orders.html',
 	styleUrls: ['./orders.scss'],
-	imports: [RouterLink, Pagination, NoData, DatePipe, TranslocoModule],
+	imports: [RouterLink, Pagination, NoData, DatePipe, TranslocoModule, OrderCard, ThumbStack, OrderProgress],
 })
 export class Orders {
 	private readonly transloco = inject(TranslocoService);
@@ -33,6 +37,7 @@ export class Orders {
 
 	readonly money = orderMoney;
 	readonly pill = orderPill;
+	readonly thumbs = orderThumbs;
 
 	items(order: ShopOrderSummary): string {
 		return orderItemsText(order, (key, params) => this.transloco.translate(key, params));

@@ -41,6 +41,10 @@ export const ShopOrderSummary = z.object({
 	/** The first line's title and picture, for the list. */
 	firstTitle: z.string(),
 	firstImageUrl: z.string().nullable(),
+	/** Up to four pictures of what the order holds, one per line of its own (a set's, else its first piece's). */
+	thumbs: z.array(z.string()).max(4).default([]),
+	/** When the order reached the status it is in now; null when its timeline holds no such step. */
+	statusAt: IsoDateTime.nullable().default(null),
 });
 export type ShopOrderSummary = z.infer<typeof ShopOrderSummary>;
 

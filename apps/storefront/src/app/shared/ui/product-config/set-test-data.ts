@@ -64,6 +64,7 @@ export const setBundle = (levels: ISetLevel[], over: Partial<IBundle> & { setPri
 			combine: 'all',
 			capAtSeparately: false,
 			roundTo: 'one',
+			eventSale: [],
 		},
 		stock: { sets_possible: 3, state: 'in_stock', sold_out_pieces: [], sold_out_choices: [] },
 		buyable: true,

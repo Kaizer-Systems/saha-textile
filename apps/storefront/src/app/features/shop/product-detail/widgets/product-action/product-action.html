@@ -1,5 +1,6 @@
-@if (product()?.sold_by === 'metre' && product()?.quantity && product()!.quantity <= 100) {
-<!-- M05: the same bar in metres for fabric ("Please hurry! Only 4.5 m left"); 10 m and under. -->
+<!-- HX-4: the bar shows only while the low-stock badge is on (the product's own threshold). -->
+@if (lowStock() && product()?.sold_by === 'metre') {
+<!-- M05: the same bar in metres for fabric ("Please hurry! Only 4.5 m left"). -->
 <div class="progress-sec">
 	<div class="left-progressbar">
 		<p class="h6">
@@ -12,12 +13,12 @@
 		>
 			<div
 				class="progress-bar progress-bar-striped progress-bar-animated"
-				[style.width]="product()!.quantity + '%'"
+				[style.width]="fillOf(product()!.quantity, true)"
 			></div>
 		</div>
 	</div>
 </div>
-} @else if (product()?.quantity && product()!.quantity <= 10) {
+} @else if (lowStock()) {
 <div class="progress-sec">
 	<div class="left-progressbar">
 		<p class="h6">
@@ -31,7 +32,7 @@
 		>
 			<div
 				class="progress-bar progress-bar-striped progress-bar-animated"
-				[style.width]="(product()!.quantity * 100) / 10+'%'"
+				[style.width]="fillOf(product()!.quantity, false)"
 			></div>
 		</div>
 	</div>

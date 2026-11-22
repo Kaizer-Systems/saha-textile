@@ -53,6 +53,7 @@ const page = {
 		combine: 'all',
 		capAtSeparately: false,
 		roundTo: 'one',
+		eventSale: [],
 	},
 };
 

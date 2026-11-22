@@ -456,6 +456,7 @@ describe('pageToProduct measurements and bundles', () => {
 				combine: 'all',
 				capAtSeparately: false,
 				roundTo: 'one',
+				eventSale: [],
 			},
 			stock: { setsPossible: 3, state: 'in_stock', soldOutPieces: [], soldOutChoices: ['b'] },
 			buyable: true,

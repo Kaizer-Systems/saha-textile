@@ -202,6 +202,7 @@ describe('pageToProduct', () => {
 					combine: 'all',
 					capAtSeparately: false,
 					roundTo: 'one',
+					eventSale: [],
 				},
 				stock: { setsPossible: 2, state: 'in_stock', soldOutPieces: [], soldOutChoices: [] },
 				buyable: true,

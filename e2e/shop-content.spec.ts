@@ -20,20 +20,29 @@ test.describe('Real categories', () => {
 });
 
 test.describe('Bundles', () => {
-	test('a bundle shows what it holds, and says it cannot be bought yet', async ({ page }) => {
+	// Sets are buyable (bundle builder brief, approved 2026-11-22): the page lists their pieces and adds them to the cart.
+	test('a set shows what it holds and can be added to the cart', async ({ page }) => {
 		await page.goto('/en/product/wedding-saree-complete-set');
 		await page.waitForLoadState('networkidle');
-		await expect(page.locator('app-buy-box')).toContainText('This set cannot be bought yet.');
-		await expect(page.locator('[id^="addcartbtn-"]')).toHaveCount(0);
-		await expect(page.locator('[id^="buynowbtn-"] button, button[id^="buynowbtn-"]').first()).toBeDisabled();
+		await expect(page.locator('app-buy-box .st-piece-rows .st-piece').first()).toBeVisible();
+		await expect(page.locator('app-buy-box')).not.toContainText('This set cannot be bought yet.');
+		await expect(page.locator('[id^="addcartbtn-"]').first()).toBeVisible();
 	});
 
-	test('the cart refuses a bundle sent by hand', async ({ page }) => {
+	test('the cart prices a set sent by hand from its pieces', async ({ page }) => {
 		await page.goto('/en');
-		const refused = await page.request.post(`${API_URL}/cart/current/lines`, {
+		const answer = await page.request.post(`${API_URL}/cart/current/lines`, {
 			data: { productId: 'prd_936', quantity: 1 },
 		});
-		expect(refused.status()).toBe(400);
+		expect(answer.status()).toBeLessThan(300);
+		const cart = (await answer.json()) as {
+			lines: { productId: string; unitPriceINR: number; children: { role: string; priceINR: number }[] }[];
+		};
+		const line = cart.lines.find((row) => row.productId === 'prd_936');
+		const pieces = line?.children.filter((child) => child.role === 'piece') ?? [];
+		expect(pieces.length).toBeGreaterThan(1);
+		const shares = pieces.reduce((sum, child) => sum + child.priceINR, 0);
+		expect(Math.abs(shares - (line?.unitPriceINR ?? 0))).toBeLessThan(0.05);
 	});
 });
 

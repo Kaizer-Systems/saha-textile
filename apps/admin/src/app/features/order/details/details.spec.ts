@@ -318,6 +318,14 @@ describe('sets and free items on the order page (bundle builder brief E07–E08)
 		expect(page.packing()).toBe(true);
 	});
 
+	it('a staff order line saved without options still lists in the Pack list (the page never stops)', () => {
+		const bare = { lineId: 'x', parentLineId: null, role: 'product', title: { en: 'Plain saree' }, quantity: 1 };
+		data.set(detail({ lines: [bare] as never, packTicks: undefined as never }));
+		const { page } = render();
+		expect(page.packRows().map((row) => [row.line.lineId, row.options, row.ticked])).toEqual([['x', '', false]]);
+		expect(page.attributeValues(page.order()!.lines[0]!)).toEqual([]);
+	});
+
 	it('saves a tick and moves the order to Packed', async () => {
 		data.set(detail({ lines: lines as never }));
 		const { page, gateway } = render();

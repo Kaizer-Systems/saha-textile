@@ -550,7 +550,7 @@ export class Details {
 
 	/** A child's size or colour, as the order kept it. */
 	attributeValues(line: OrderLine): string[] {
-		return Object.values(line.attributes);
+		return Object.values(line.attributes ?? {});
 	}
 
 	freeCount(line: OrderLine): number {
@@ -584,11 +584,12 @@ export class Details {
 						params: { n: this.pieceNumber(parent), set: setName(this.lineById(parent.parentLineId)) },
 					};
 				} else from = { key: 'ord_pack_from_free_line', params: { n: lineNo(parent) } };
+				// Lines without options may come without these fields; a missing one must never stop the page.
 				const options = [
-					...Object.values(line.attributes),
-					...line.addons.map((addon) => `${addon.label ?? addon.code}: ${addon.value}`),
+					...Object.values(line.attributes ?? {}),
+					...(line.addons ?? []).map((addon) => `${addon.label ?? addon.code}: ${addon.value}`),
 				].join(' · ');
-				return { line, from, options, ticked: order.packTicks.includes(line.lineId ?? '') };
+				return { line, from, options, ticked: (order.packTicks ?? []).includes(line.lineId ?? '') };
 			});
 	});
 	/** The Pack list shows while the order is being packed. */

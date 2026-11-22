@@ -25,8 +25,8 @@ function line(order: Order, row: Order['lines'][number]): ShopOrderLine {
 		role: row.role,
 		title: row.title['en'] ?? Object.values(row.title)[0] ?? row.sku,
 		details: [
-			...Object.values(row.attributes),
-			...row.addons.map((addon) => `${addon.label ?? addon.code}: ${addon.value}`),
+			...Object.values(row.attributes ?? {}),
+			...(row.addons ?? []).map((addon) => `${addon.label ?? addon.code}: ${addon.value}`),
 		],
 		quantity: row.quantity,
 		unitPrice: isSet ? round2(total / row.quantity) : row.unitPricePaid,

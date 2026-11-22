@@ -178,6 +178,10 @@ export function toOrder(doc: OrderDoc): Order {
 					role: 'product',
 					parentLineId: null,
 					set: null,
+					// A line saved without options (a staff order of a plain product) reads with none, so every
+					// screen that lists a line's options can read them.
+					attributes: {},
+					addons: [],
 					...(line as Record<string, unknown>),
 				}
 			: line,

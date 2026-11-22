@@ -148,7 +148,8 @@ export function settingsForm(key: string, title: string, specs: SettingSpec[]): 
 		async read(ctx) {
 			const z = await zoneOf(ctx);
 			const all = await settingsOf(ctx, z);
-			const usable = specs.filter((s) => !s.plan && all.get(s.id)?.['editable'] === true);
+			// Cloudflare's own `editable` decides, so a plan-locked setting opens the moment the plan has it.
+			const usable = specs.filter((s) => all.get(s.id)?.['editable'] === true);
 			return formTab(
 				form({
 					key,
@@ -170,7 +171,9 @@ export function settingsForm(key: string, title: string, specs: SettingSpec[]): 
 							help: s.help ?? '',
 						});
 					}),
-					notes: specs.filter((s) => s.plan).map((s) => note(`${s.label} needs ${s.plan}.`, 'muted')),
+					notes: specs
+						.filter((s) => s.plan && all.get(s.id)?.['editable'] !== true)
+						.map((s) => note(`${s.label} needs ${s.plan}.`, 'muted')),
 				}),
 			);
 		},
@@ -181,7 +184,7 @@ export function settingsForm(key: string, title: string, specs: SettingSpec[]): 
 			const changed: string[] = [];
 			for (const s of specs) {
 				const v = w.values[s.id];
-				if (typeof v !== 'string' || s.plan) continue;
+				if (typeof v !== 'string' || all.get(s.id)?.['editable'] !== true) continue;
 				const allowed = (s.options ?? [['on'], ['off']]).map((o) => o[0]);
 				if (!allowed.includes(v)) throw new VendorError(`${s.label}: choose one of the listed values.`, 400);
 				if (shown(all.get(s.id)?.['value']) === v) continue;

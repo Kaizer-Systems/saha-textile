@@ -1742,6 +1742,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				media: 'Cloudflare · Images and Stream: transformations, hosted images and videos, live inputs',
 				realtime: 'Cloudflare · Realtime: RealtimeKit, TURN, SFU, MoQ relay',
 			},
+			planStates: { media: { feature: 'cf.images', needs: 'Images or Stream add-on', tier: 'addon' } },
 		},
 		cfprotect: {
 			label: 'Protect & connect',
@@ -1925,6 +1926,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				markdown: 'Cloudflare · Markdown for Agents (Pro, locked)',
 				webmcp: 'Cloudflare · WebMCP: actions agents can take',
 			},
+			planStates: { markdown: { feature: 'cf.pro', needs: 'Pro', tier: 'pro' } },
 		},
 		cfanalytics: {
 			label: 'Analytics',
@@ -1959,6 +1961,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				export: 'Cloudflare · Export: Logpush (Enterprise) and OpenTelemetry destinations',
 				dashboards: 'Cloudflare · Custom dashboards',
 			},
+			planStates: { export: { feature: 'cf.logpush', needs: 'Enterprise', tier: 'ent' } },
 		},
 		dns: {
 			label: 'DNS (Cloudflare)',
@@ -2072,6 +2075,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				history: 'Cloudflare · History: every change, who made it, from where',
 				events: 'Cloudflare · Events: what was blocked or challenged in the last 24 hours, by whom and why',
 			},
+			planStates: { managed: { feature: 'cf.managed_waf', needs: 'Pro', tier: 'pro' } },
 		},
 		cfbots: {
 			label: 'Security settings',
@@ -2277,7 +2281,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			},
 			off: false,
 			tip: null,
-			part: 'Partly here. Health checks are here; load balancing and Argo need paid add-ons. For the rest, please go to the Cloudflare portal to access this.',
+			part: 'Partly here. Health checks are here; buying load balancing, Argo or a waiting room is on the Cloudflare portal (their tabs carry a plan badge until the account has them).',
 			offStates: null,
 			partStates: {
 				lb: 'Partly here: pools, monitors and steering once the add-on is bought. Buying it is on Cloudflare.',
@@ -2287,6 +2291,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				monitor: 'Cloudflare · Monitor: origin health',
 				history: 'Cloudflare · History: every change, who made it, from where',
 			},
+			planStates: { lb: { feature: 'cf.lb', needs: 'Load Balancing add-on', tier: 'addon' } },
 		},
 		cfweb3: {
 			label: 'Web3',
@@ -2301,6 +2306,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			captions: {
 				list: 'Cloudflare · Web3 gateways (not used)',
 			},
+			plan: { feature: 'cf.web3', needs: 'Web3 gateways (paid)', tier: 'addon' },
 		},
 		payments: {
 			label: 'Payments',

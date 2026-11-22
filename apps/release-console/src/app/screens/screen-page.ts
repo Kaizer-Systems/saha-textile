@@ -16,7 +16,7 @@ import { DeployScreen, HealthScreen, InfraScreen, ServerScreen, TailScreen } fro
 import { JobsScreen, MessagesScreen } from './ops-screens';
 import { OverviewScreen } from './overview-screen';
 import { PlannedScreen } from './planned-screen';
-import { ProductScreen, injectProductScreens } from './product-screen';
+import { ProductScreen, injectPlanFeatures, injectProductScreens } from './product-screen';
 import { SecretsScreen } from './secrets-screen';
 import { SeoScreen } from './seo-screen';
 import { ServerDeployScreen } from './server-deploy-screen';
@@ -34,6 +34,8 @@ import { placeOf } from '../menu/menu-search';
 import { Icon, environmentIcon, screenIcon } from '../shared/icons';
 import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
+
+import type { PlanLock } from '../menu/menu.types';
 
 const SCREEN_LATER = /^later-/;
 
@@ -166,6 +168,17 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 									<rc-icon [name]="ti" />
 								}
 								{{ t.label }}
+								@if (t.plan) {
+									<span
+										class="pv-plan"
+										[class]="'pv-plan ' + t.plan.tier"
+										[attr.data-tip]="
+											'Needs ' + t.plan.needs + ': the badge goes once the account has it.'
+										"
+									>
+										{{ t.plan.needs }}
+									</span>
+								}
 							</button>
 						}
 					}
@@ -309,6 +322,11 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 export class ScreenPage {
 	private readonly router = inject(Router);
 	protected readonly ctx = inject(ConsoleContext);
+	/** Live plan answer: a plan lock's badge shows until the feature is on (null while unknown). */
+	private readonly features = injectPlanFeatures(
+		() => this.ctx.projectId(),
+		() => this.ctx.repoId(),
+	);
 	readonly screen = input('overview');
 	readonly tab = input<string | undefined>(undefined);
 
@@ -339,8 +357,14 @@ export class ScreenPage {
 				label,
 				off: s.offStates?.[key] ?? null,
 				part: s.partStates?.[key] ?? null,
+				plan: this.locked(s.planStates?.[key] ?? s.plan ?? null),
 			}));
 	});
+	/** The lock while the account lacks its feature; null once Cloudflare says it is on. */
+	private locked(lock: PlanLock | null): PlanLock | null {
+		if (!lock) return null;
+		return this.features()?.[lock.feature] ? null : lock;
+	}
 	protected readonly tabKey = computed(() => {
 		const wanted = this.tab();
 		const usable = this.tabs().filter((t) => !t.off);

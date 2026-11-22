@@ -23,6 +23,25 @@ export function injectProductScreens() {
 }
 
 /**
+ * Which paid plans and add-ons the repository's Cloudflare domain and account have, read live (API
+ * cfplan › status): a plan lock's badge shows until this says the feature is on. Null while unknown.
+ */
+export function injectPlanFeatures(project: () => string | null, repo: () => string | null) {
+	const api = inject(ConsoleApi);
+	const q = injectQuery(() => ({
+		queryKey: ['plan-status', project(), repo()],
+		queryFn: () => api.productTab(project() ?? '', repo() ?? '', 'cfplan', 'status', null, '24h'),
+		enabled: !!project() && !!repo(),
+		staleTime: 5 * 60_000,
+	}));
+	return computed<Record<string, boolean> | null>(() => {
+		const a = q.data();
+		if (!a || a.state !== 'ok' || a.data.type !== 'view') return null;
+		return Object.fromEntries(a.data.view.facts.map(([k, v]) => [k, v === 'on']));
+	});
+}
+
+/**
  * One tab of a DigitalOcean or Cloudflare product screen, drawn from its live read: the brief's
  * lifecycle (list, create, creating, use, edit, monitor, back up, operate, destroy, history).
  * While it reads, the console's loading banner holds the tab's place; switching the product or the

@@ -49,6 +49,7 @@ import {
 	extend,
 } from './cf-zone-more.js';
 import { ZT_EXTRA } from './cf-zt-more.js';
+import { cfPlanScreen } from './cf-plan.js';
 import { PIPELINE_EXTRA, PULLS_EXTRA, ROLLBACK_EXTRA, SECRETS_EXTRA } from './gh-more.js';
 import { ALERTS_EXTRA, ANALYTICS_EXTRA, BUILD_EXTRA, DEV_EXTRA, TURNSTILE_EXTRA } from './cf-build-more.js';
 import {
@@ -204,5 +205,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 };
 
 addExtras(PRODUCT_SCREENS);
+// Not a menu screen: the plan locks' live answer (cf-plan.ts).
+PRODUCT_SCREENS['cfplan'] = cfPlanScreen;
 const ghSecrets = PRODUCT_SCREENS['secrets'];
 if (ghSecrets) PRODUCT_SCREENS['secrets'] = extend(ghSecrets, SECRETS_EXTRA);

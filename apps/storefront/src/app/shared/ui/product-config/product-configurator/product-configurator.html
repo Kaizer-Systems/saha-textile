@@ -28,3 +28,11 @@
 	(stateChange)="onBundleChange($event)"
 />
 }
+<!-- Free with this product (brief P8.1–P8.8): given rows or a choice, above the buttons; a required choice waits. -->
+@if (!hasBundle() && product().free_with; as free) {
+<app-free-items
+	[freeWith]="free"
+	[forName]="''"
+	(stateChange)="freeState.set($event)"
+/>
+}

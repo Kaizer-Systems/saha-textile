@@ -22,6 +22,7 @@ import { IProduct, IVariation } from '@data-access/interfaces/product.interface'
 import { AddonGroup } from '../parts/addon-group/addon-group';
 import { AttributesInfo } from '../parts/attributes-info/attributes-info';
 import { BundleConfigurator, type SetChoice } from '../parts/bundle-configurator/bundle-configurator';
+import { FreeItems, type FreeItemsState } from '../parts/free-items/free-items';
 import { VariationAxis } from '../parts/variation-axis/variation-axis';
 
 /**
@@ -36,7 +37,7 @@ import { VariationAxis } from '../parts/variation-axis/variation-axis';
 	selector: 'app-product-configurator',
 	templateUrl: './product-configurator.html',
 	styleUrls: ['./product-configurator.scss'],
-	imports: [AttributesInfo, VariationAxis, AddonGroup, BundleConfigurator],
+	imports: [AttributesInfo, VariationAxis, AddonGroup, BundleConfigurator, FreeItems],
 })
 export class ProductConfigurator implements OnInit {
 	readonly product = input.required<IProduct>();
@@ -62,6 +63,8 @@ export class ProductConfigurator implements OnInit {
 	readonly selectedVariation = signal<IVariation | null>(null);
 	readonly addonState = signal<ConfiguratorState | null>(null);
 	readonly bundleState = signal<ConfiguratorState | null>(null);
+	/** Free with this product (P8): the picks and whether a required choice is made. */
+	readonly freeState = signal<FreeItemsState | null>(null);
 
 	// Sections the product actually has — composed additively (a product may have several at once,
 	// e.g. a Colour variation axis AND a Blouse-Design add-on). Gated purely by data presence.
@@ -105,7 +108,8 @@ export class ProductConfigurator implements OnInit {
 			? this.selectedVariation()?.stock_status === 'in_stock'
 			: p.stock_status === 'in_stock';
 		const addonOk = !this.hasAddon() || (this.addonState()?.valid ?? false);
-		return baseStockOk && addonOk;
+		const freeOk = !p.free_with || (this.freeState()?.valid ?? false);
+		return baseStockOk && addonOk && freeOk;
 	});
 
 	/** True only when genuinely out of stock — not merely awaiting add-on/bundle configuration. */

@@ -1979,6 +1979,8 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				edit: 'Edit',
 				monitor: 'Monitor',
 				history: 'History',
+				rules: 'Routing rules',
+				addresses: 'Destination addresses',
 			},
 			off: false,
 			tip: null,
@@ -1990,6 +1992,8 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				edit: 'Cloudflare · Edit: DMARC record',
 				monitor: 'Cloudflare · Monitor: mail passing dmarc',
 				history: 'Cloudflare · History: every change, who made it, from where',
+				rules: 'Cloudflare · Routing rules: custom address, forward, drop or Worker',
+				addresses: 'Cloudflare · Destination addresses: add (Cloudflare emails a check) or delete',
 			},
 		},
 		cfssl: {
@@ -2003,6 +2007,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				monitor: 'Monitor',
 				destroy: 'Revoke certificate',
 				history: 'History',
+				hostnames: 'Custom hostnames',
 			},
 			off: false,
 			tip: null,
@@ -2018,6 +2023,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				monitor: 'Cloudflare · Monitor: tls 1.3 share, https share',
 				destroy: 'Cloudflare · Revoke certificate: what goes, what stays, typed name and PIN',
 				history: 'Cloudflare · History: every change, who made it, from where',
+				hostnames: 'Cloudflare · Custom hostnames: other domains served through this one, fallback origin',
 			},
 		},
 		cfwaf: {
@@ -2077,14 +2083,18 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			label: 'Access',
 			states: {
 				list: 'Applications',
+				app: 'Protect an address',
+				destroy: 'Delete application',
 			},
 			off: false,
 			tip: null,
-			part: 'Partly here. Applications are shown; their rules are edited on Cloudflare on purpose. For the rest, please go to the Cloudflare portal to access this.',
+			part: 'Partly here. Applications on this domain are made, changed and deleted here with email and email-domain rules; other rule kinds (groups, IP ranges, countries, device posture) are on the Cloudflare portal.',
 			offStates: null,
 			partStates: null,
 			captions: {
 				list: 'Cloudflare · Access applications on this domain',
+				app: 'Cloudflare · Protect an address: who may sign in, for how long',
+				destroy: 'Cloudflare · Delete application: typed name and PIN',
 			},
 		},
 		cfspeed: {
@@ -2139,6 +2149,8 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			label: 'Workers Routes',
 			states: {
 				list: 'Routes',
+				route: 'Add or edit a route',
+				destroy: 'Delete route',
 			},
 			off: false,
 			tip: null,
@@ -2147,6 +2159,8 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			partStates: null,
 			captions: {
 				list: 'Cloudflare · Workers routes on this domain',
+				route: 'Cloudflare · Add or edit a route: pattern and Worker, with the PIN',
+				destroy: 'Cloudflare · Delete route: typed pattern and PIN',
 			},
 		},
 		cfrules: {
@@ -2206,6 +2220,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				edit: 'Edit',
 				destroy: 'Reset to default',
 				history: 'History',
+				rules: 'Custom error rules',
 			},
 			off: false,
 			tip: null,
@@ -2217,6 +2232,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 				edit: 'Cloudflare · Edit: one error page',
 				destroy: 'Cloudflare · Reset to default: what goes, what stays, typed name and PIN',
 				history: 'Cloudflare · History: every change, who made it, from where',
+				rules: 'Cloudflare · Custom error rules: a body and status for matching errors',
 			},
 		},
 		cfnetwork: {

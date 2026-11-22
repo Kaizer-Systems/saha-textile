@@ -903,6 +903,14 @@ const SSL_EDGE: SettingSpec[] = [
 		label: 'HSTS',
 		help: 'Edit HSTS on its own form: once browsers have it, plain HTTP is refused for its whole max-age.',
 	},
+	{ id: 'ech', label: 'Encrypted Client Hello (ECH)' },
+	{ id: 'pq_keyex', label: 'Post-quantum key agreement' },
+	{ id: 'tls_1_2_only', label: 'TLS 1.2 only (older setting; minimum TLS version replaces it)' },
+	{
+		id: 'tls_client_auth',
+		label: 'Authenticated origin pulls (zone certificate)',
+		help: 'The server then accepts only Cloudflare’s client certificate; server create turns on the per-host kind.',
+	},
 ];
 
 const hstsForm: ProductFormSpec = {
@@ -1520,6 +1528,11 @@ const DDOS: SettingSpec[] = [
 		],
 	},
 	{ id: 'browser_check', label: 'Browser integrity check' },
+	{ id: 'email_obfuscation', label: 'Email address obfuscation' },
+	{ id: 'hotlink_protection', label: 'Hotlink protection' },
+	{ id: 'server_side_exclude', label: 'Server-side excludes' },
+	{ id: 'replace_insecure_js', label: 'Replace insecure JavaScript libraries' },
+	{ id: 'privacy_pass', label: 'Privacy Pass support' },
 ];
 
 export const cfBotsScreen: ProductScreen = {
@@ -1659,6 +1672,7 @@ const SPEED: SettingSpec[] = [
 	{ id: 'speed_brain', label: 'Speed Brain (prefetch)' },
 	{ id: 'polish', label: 'Polish (image compression)', plan: 'Pro' },
 	{ id: 'mirage', label: 'Mirage (retired)', plan: 'retired by Cloudflare' },
+	{ id: 'brotli', label: 'Brotli compression' },
 ];
 const CACHE: SettingSpec[] = [
 	{
@@ -1682,6 +1696,22 @@ const CACHE: SettingSpec[] = [
 	},
 	{ id: 'always_online', label: 'Always Online' },
 	{ id: 'development_mode', label: 'Development mode' },
+	{
+		id: 'edge_cache_ttl',
+		label: 'Edge cache TTL',
+		options: [
+			['7200', '2 hours'],
+			['10800', '3 hours'],
+			['14400', '4 hours'],
+			['28800', '8 hours'],
+			['43200', '12 hours'],
+			['86400', '1 day'],
+			['172800', '2 days'],
+			['604800', '1 week'],
+			['1209600', '2 weeks'],
+			['2678400', '1 month'],
+		],
+	},
 ];
 const NETWORK: SettingSpec[] = [
 	{ id: 'ipv6', label: 'IPv6 compatibility' },
@@ -1698,6 +1728,8 @@ const NETWORK: SettingSpec[] = [
 		],
 	},
 	{ id: 'max_upload', label: 'Maximum upload size', plan: 'a paid plan (Free is 100 MB)' },
+	{ id: 'orange_to_orange', label: 'Orange-to-orange (O2O)' },
+	{ id: 'visitor_ip', label: 'Visitor IP to the server' },
 ];
 
 const settingsHistory = (specs: SettingSpec[]) => async (ctx: ProductCtx) => {

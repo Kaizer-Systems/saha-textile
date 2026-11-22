@@ -927,7 +927,11 @@ interface AnyRule {
 }
 
 async function everyRule(ctx: ProductCtx, z: Zone, key: string): Promise<AnyRule[]> {
-	const kinds = [{ phase: 'http_request_dynamic_redirect', label: 'redirect rule' }, ...RULE_KINDS];
+	const kinds = [
+		{ phase: 'http_request_dynamic_redirect', label: 'redirect rule' },
+		...RULE_KINDS,
+		{ phase: 'http_custom_errors', label: 'custom error rule' },
+	];
 	const sets = await Promise.all(kinds.map((k) => entrypoint({ ...ctx, key }, z, k.phase, key)));
 	const out: AnyRule[] = [];
 	kinds.forEach((k, n) => {

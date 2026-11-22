@@ -37,6 +37,11 @@ async function addToBag(page: Page): Promise<void> {
 
 // One shopper account, so these run once (on the laptop project).
 test.describe('Shop checkout', { tag: '@desktop-only' }, () => {
+	// The newsletter pop-up opens after 30 seconds on the site, mid-checkout here; this shopper said "never".
+	test.beforeEach(async ({ context }) => {
+		await context.addCookies([{ name: 'st_newsletter', value: 'never', domain: 'localhost', path: '/' }]);
+	});
+
 	// One account means one one-time code at a time.
 	test.describe.configure({ mode: 'serial' });
 

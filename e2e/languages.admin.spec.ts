@@ -110,7 +110,20 @@ test.describe('Settings › Languages', () => {
 			await expect(page.locator('tr[data-language="bn"] .badge.bg-success').last()).toBeVisible();
 			return;
 		}
-		await expect(page.locator('#language_todo_bn')).toContainText(String(total));
+		// Other tests add and translate content meanwhile: the badge and the API are compared on one reload.
+		await expect
+			.poll(
+				async () => {
+					const now = (await (
+						await page.request.get(`${API_URL}/admin/languages/bn/todo`, { ignoreHTTPSErrors: true })
+					).json()) as { total: number };
+					const shown = (await page.locator('#language_todo_bn').innerText()).replace(/\D+/g, '');
+					if (shown !== String(now.total)) await page.reload({ waitUntil: 'networkidle' });
+					return shown === String(now.total);
+				},
+				{ timeout: 30_000 },
+			)
+			.toBe(true);
 		await page.locator('#language_todo_bn').click();
 		await expect(page.locator('.modal.show')).toContainText('What বাংলা still needs');
 		const open = lines.find((line) => line.count > 0 && line.area !== 'pages' && !line.area.endsWith('_text'));

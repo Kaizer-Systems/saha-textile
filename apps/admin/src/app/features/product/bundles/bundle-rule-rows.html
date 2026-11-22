@@ -1,0 +1,126 @@
+<!-- If / Then rules: the shipping rule builder's blocks, with a bundle's own facts and actions. -->
+@for (rule of rules(); track rule.id; let at = $index) {
+<div class="card mb-3">
+	<div class="card-body">
+		<div class="d-flex justify-content-between mb-2">
+			<b>{{ 'bundle_rule_n' | transloco: { n: at + 1 } }}</b>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-danger"
+				[title]="'remove' | transloco"
+				(click)="removeRule(at)"
+			>
+				<i class="ri-delete-bin-line"></i>
+			</button>
+		</div>
+		<p class="mb-1">{{ 'rule_if' | transloco }}</p>
+		@for (c of rule.when.conditions; track $index; let ci = $index) {
+		<div class="row g-2 mb-2">
+			<div class="col-md-4">
+				<select
+					class="form-select"
+					[ngModel]="c.fact"
+					(ngModelChange)="setCondition(at, ci, { fact: $event, op: null, value: null })"
+				>
+					@for (f of facts; track f) {
+					<option [value]="f">{{ 'bundle_fact_' + f.replace('.', '_') | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-3">
+				<select
+					class="form-select"
+					[ngModel]="c.op"
+					(ngModelChange)="setCondition(at, ci, { op: $event })"
+				>
+					@for (op of operatorsFor(c.fact); track op) {
+					<option [value]="op">{{ 'op_' + op | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-4">
+				<input
+					class="form-control"
+					[value]="conditionValue(c)"
+					(change)="setCondition(at, ci, { value: parseValue($any($event.target).value, c.fact) })"
+				/>
+			</div>
+			<div class="col-md-1">
+				<button
+					type="button"
+					class="btn btn-sm btn-outline-danger"
+					[title]="'remove' | transloco"
+					(click)="removeCondition(at, ci)"
+				>
+					<i class="ri-close-line"></i>
+				</button>
+			</div>
+		</div>
+		} @empty {
+		<p class="help-text">{{ 'bundle_rule_always' | transloco }}</p>
+		}
+		<button
+			type="button"
+			class="btn btn-sm btn-outline-secondary mb-2"
+			(click)="addCondition(at)"
+		>
+			{{ 'add_condition' | transloco }}
+		</button>
+		<p class="mb-1">{{ 'rule_then' | transloco }}</p>
+		@for (a of rule.then; track $index; let ai = $index) {
+		<div class="row g-2 mb-2">
+			<div class="col-md-5">
+				<select
+					class="form-select"
+					[ngModel]="a.kind"
+					(ngModelChange)="setAction(at, ai, { kind: $event })"
+				>
+					@for (k of actions; track k) {
+					<option [value]="k">{{ 'bundle_action_' + k | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-5">
+				<input
+					class="form-control"
+					[attr.list]="listId()"
+					[value]="amountText(a)"
+					[placeholder]="'bundle_amount_or_number' | transloco"
+					(change)="setAmount(at, ai, $any($event.target).value)"
+				/>
+			</div>
+			<div class="col-md-1">
+				<button
+					type="button"
+					class="btn btn-sm btn-outline-danger"
+					[title]="'remove' | transloco"
+					(click)="removeAction(at, ai)"
+				>
+					<i class="ri-close-line"></i>
+				</button>
+			</div>
+		</div>
+		}
+		<button
+			type="button"
+			class="btn btn-sm btn-outline-secondary"
+			(click)="addAction(at)"
+		>
+			{{ 'add_action' | transloco }}
+		</button>
+	</div>
+</div>
+}
+<datalist [id]="listId()">
+	@for (input of numbers(); track input.code) {
+	<option [value]="input.code"></option>
+	}
+</datalist>
+<button
+	type="button"
+	class="btn btn-theme mb-3"
+	(click)="addRule()"
+>
+	<i class="ri-add-line"></i>
+	{{ 'add_rule' | transloco }}
+</button>

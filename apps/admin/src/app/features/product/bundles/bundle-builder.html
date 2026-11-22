@@ -246,6 +246,27 @@ left and the shop's own set block on the right. -->
 					</div>
 					}
 
+					<!-- This set's price rules in plain words (C04); they are edited on the Price rules tab. -->
+					<div class="card mb-3">
+						<div class="card-body">
+							<div class="title-header option-title">
+								<h5>{{ 'bundle_tab_rules' | transloco }}</h5>
+							</div>
+							@for (line of ruleWords(); track $index) {
+							<p class="mb-1">{{ line }}</p>
+							} @empty {
+							<p class="help-text mb-1">{{ 'bundle_rules_none' | transloco }}</p>
+							}
+							<a
+								href="javascript:void(0)"
+								role="button"
+								(click)="tab.set('rules')"
+							>
+								{{ 'bundle_rules_edit' | transloco }}
+							</a>
+						</div>
+					</div>
+
 					<!-- Checks before Go Live (S6, S7, C09). -->
 					<div class="card">
 						<div class="card-body">
@@ -267,7 +288,40 @@ left and the shop's own set block on the right. -->
 						</div>
 					</div>
 					} @case ('rules') {
+					<!-- This set's own rules (C05): after its price method, on the same If / Then rows as the methods. -->
 					<p class="help-text">{{ 'bundle_rules_help' | transloco }}</p>
+					<div class="row g-3 mb-3">
+						<div class="col-md-5">
+							<label class="form-label-title">{{ 'bundle_rules_combine' | transloco }}</label>
+							<select
+								class="form-select"
+								[ngModel]="d.pricing.combine"
+								(ngModelChange)="setPricing({ combine: $event })"
+							>
+								<option value="all">{{ 'bundle_combine_all' | transloco }}</option>
+								<option value="first">{{ 'bundle_combine_first' | transloco }}</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label-title">{{ 'bundle_round_to' | transloco }}</label>
+							<select
+								class="form-select"
+								[ngModel]="d.pricing.roundTo"
+								(ngModelChange)="setPricing({ roundTo: $event })"
+							>
+								<option value="none">{{ 'bundle_round_none' | transloco }}</option>
+								<option value="one">{{ 'bundle_round_one' | transloco }}</option>
+								<option value="ten">{{ 'bundle_round_ten' | transloco }}</option>
+							</select>
+						</div>
+					</div>
+					<app-bundle-rule-rows
+						[rules]="d.pricing.rules"
+						[numbers]="method()?.inputs ?? []"
+						[lang]="lang()"
+						listId="bundle-rule-numbers"
+						(rulesChange)="setPricing({ rules: $event })"
+					/>
 					<div class="form-check form-switch mb-2">
 						<input
 							class="form-check-input"
@@ -290,7 +344,8 @@ left and the shop's own set block on the right. -->
 						(change)="change(draftReason($any($event.target).value))"
 					/>
 					<p class="help-text mb-0">
-						{{ 'bundle_rules_count' | transloco: { count: d.pricing.rules.length } }}
+						{{ (d.pricing.rules.length === 1 ? 'bundle_rules_count_one' : 'bundle_rules_count') | transloco:
+						{ count: d.pricing.rules.length } }}
 					</p>
 					} @case ('details') { @if (details(); as x) {
 					<label class="form-label-title">{{ 'name' | transloco }}</label>
@@ -362,8 +417,11 @@ left and the shop's own set block on the right. -->
 					</div>
 					} } }
 				</div>
-				@if (tab() === 'build') {
-				<div class="col-xl-5">
+				<!-- The preview stays on the page on every tab (hidden off Build), so its one-time code is not asked for twice. -->
+				<div
+					class="col-xl-5"
+					[class.d-none]="tab() !== 'build'"
+				>
 					<div class="btn-group mb-2">
 						<button
 							type="button"
@@ -396,7 +454,6 @@ left and the shop's own set block on the right. -->
 					></iframe>
 					}
 				</div>
-				}
 			</div>
 		</div>
 	</div>

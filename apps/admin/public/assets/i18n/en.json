@@ -6736,5 +6736,15 @@
 	"ord_pack_from_free_line": "Free with line {{n}}",
 	"ord_pack_ticked": "{{ticked}} of {{count}} ticked.",
 	"ord_pack_mark": "Mark packed",
-	"ord_block_packListIncomplete": "Tick every piece on the Pack list first"
+	"ord_block_packListIncomplete": "Tick every piece on the Pack list first",
+	"bundle_rule_and": "and",
+	"bundle_rule_or": "or",
+	"bundle_rule_does_nothing": "nothing changes yet",
+	"bundle_round_to": "Round the set price to",
+	"bundle_round_none": "Exact (paise kept)",
+	"bundle_round_one": "The nearest rupee",
+	"bundle_round_ten": "The nearest ₹10",
+	"bundle_rules_none": "No price rules for this set yet.",
+	"bundle_rules_edit": "Edit in the Price rules tab",
+	"bundle_rules_count_one": "1 rule for this set"
 }

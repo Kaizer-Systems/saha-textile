@@ -4,20 +4,16 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { BUNDLE_FACT_TYPES, BUNDLE_OPERATORS_BY_TYPE, quoteBundle } from '@saha-textile/core-domain/bundle';
+import { quoteBundle } from '@saha-textile/core-domain/bundle';
 import { firstValueFrom } from 'rxjs';
 
 import { BundleService } from '@data-access/services/bundle.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
-import type {
-	BundleMethodInput,
-	BundlePriceMethodWrite,
-	BundlePriceRule,
-	BundleRuleAction,
-	BundleRuleCondition,
-} from '@saha-textile/contracts';
+import { BundleRuleRows } from './bundle-rule-rows';
+
+import type { BundleMethodInput, BundlePriceMethodWrite } from '@saha-textile/contracts';
 
 const blank = (): BundlePriceMethodWrite => ({
 	code: '',
@@ -39,7 +35,7 @@ const blank = (): BundlePriceMethodWrite => ({
 @Component({
 	selector: 'app-price-method-builder',
 	templateUrl: './price-method-builder.html',
-	imports: [FormsModule, PageWrapper, RouterModule, TranslocoModule],
+	imports: [BundleRuleRows, FormsModule, PageWrapper, RouterModule, TranslocoModule],
 })
 export class PriceMethodBuilder {
 	private readonly route = inject(ActivatedRoute);
@@ -51,18 +47,6 @@ export class PriceMethodBuilder {
 	readonly id = this.route.snapshot.paramMap.get('id') ?? 'new';
 	readonly method = signal<BundlePriceMethodWrite>(blank());
 	readonly lang = signal<'en' | 'bn'>('en');
-	readonly facts = Object.keys(BUNDLE_FACT_TYPES) as (keyof typeof BUNDLE_FACT_TYPES)[];
-	readonly actions: BundleRuleAction['kind'][] = [
-		'priceIs',
-		'priceIsPieces',
-		'percentOff',
-		'amountOff',
-		'makeExtraFree',
-		'makePickFree',
-		'requireExtra',
-		'limitLevel',
-		'hideItem',
-	];
 	/** Try it: three sample pieces, priced with this method as it stands. */
 	readonly sample = signal<number[]>([16400, 3400, 450]);
 	readonly tryParams = signal<Record<string, number>>({});
@@ -99,10 +83,6 @@ export class PriceMethodBuilder {
 		const row = await firstValueFrom(this.bundles.method(this.id));
 		const { id: _id, seeded: _s, version: _v, usedBy: _u, createdAt: _c, updatedAt: _up, ...write } = row;
 		this.method.set(write);
-	}
-
-	operatorsFor(fact: string | null): string[] {
-		return fact ? [...BUNDLE_OPERATORS_BY_TYPE[BUNDLE_FACT_TYPES[fact as keyof typeof BUNDLE_FACT_TYPES]]] : [];
 	}
 
 	set(patch: Partial<BundlePriceMethodWrite>): void {
@@ -153,101 +133,6 @@ export class PriceMethodBuilder {
 					? { kind: 'fixed', input: this.method().inputs[0]?.code ?? 'setPrice' }
 					: { kind: 'pieces' },
 		});
-	}
-
-	addRule(): void {
-		const rule: BundlePriceRule = {
-			id: `r${Date.now().toString(36)}`,
-			name: null,
-			enabled: true,
-			when: { match: 'all', conditions: [] },
-			then: [],
-			otherwise: [],
-		};
-		this.set({ rules: [...this.method().rules, rule] });
-	}
-
-	setRule(at: number, patch: Partial<BundlePriceRule>): void {
-		this.set({ rules: this.method().rules.map((row, i) => (i === at ? { ...row, ...patch } : row)) });
-	}
-
-	removeRule(at: number): void {
-		this.set({ rules: this.method().rules.filter((_, i) => i !== at) });
-	}
-
-	addCondition(at: number): void {
-		const rule = this.method().rules[at];
-		if (rule)
-			this.setRule(at, {
-				when: {
-					...rule.when,
-					conditions: [
-						...rule.when.conditions,
-						{ fact: 'pieces.count', level: null, op: 'atLeast', value: 2 },
-					],
-				},
-			});
-	}
-
-	setCondition(at: number, c: number, patch: Partial<BundleRuleCondition>): void {
-		const rule = this.method().rules[at];
-		if (rule)
-			this.setRule(at, {
-				when: {
-					...rule.when,
-					conditions: rule.when.conditions.map((row, i) => (i === c ? { ...row, ...patch } : row)),
-				},
-			});
-	}
-
-	removeCondition(at: number, c: number): void {
-		const rule = this.method().rules[at];
-		if (rule)
-			this.setRule(at, { when: { ...rule.when, conditions: rule.when.conditions.filter((_, i) => i !== c) } });
-	}
-
-	addAction(at: number): void {
-		const rule = this.method().rules[at];
-		if (rule)
-			this.setRule(at, { then: [...rule.then, { kind: 'percentOff', amount: 10, level: null, items: [] }] });
-	}
-
-	setAction(at: number, a: number, patch: Partial<BundleRuleAction>): void {
-		const rule = this.method().rules[at];
-		if (rule) this.setRule(at, { then: rule.then.map((row, i) => (i === a ? { ...row, ...patch } : row)) });
-	}
-
-	removeAction(at: number, a: number): void {
-		const rule = this.method().rules[at];
-		if (rule) this.setRule(at, { then: rule.then.filter((_, i) => i !== a) });
-	}
-
-	/** A number typed in the rule, or one of the method's numbers ("the % typed on each bundle"). */
-	setAmount(at: number, a: number, value: string): void {
-		const input = this.method().inputs.find((row) => row.code === value);
-		this.setAction(at, a, { amount: input ? { input: input.code } : value === '' ? null : Number(value) });
-	}
-
-	amountText(action: BundleRuleAction): string {
-		const amount = action.amount;
-		return amount === null ? '' : typeof amount === 'number' ? String(amount) : amount.input;
-	}
-
-	conditionValue(condition: BundleRuleCondition): string {
-		return Array.isArray(condition.value) ? condition.value.join(', ') : String(condition.value ?? '');
-	}
-
-	parseValue(text: string, fact: string | null): BundleRuleCondition['value'] {
-		const type = fact ? BUNDLE_FACT_TYPES[fact as keyof typeof BUNDLE_FACT_TYPES] : 'number';
-		if (type === 'keys')
-			return text
-				.split(',')
-				.map((word) => word.trim())
-				.filter(Boolean);
-		if (type === 'boolean') return text === 'true';
-		if (type === 'date') return text.includes(',') ? text.split(',').map((word) => word.trim()) : text.trim();
-		const parts = text.split(',').map((word) => Number(word.trim()));
-		return parts.length === 2 ? [parts[0] ?? 0, parts[1] ?? 0] : Number(text);
 	}
 
 	async save(): Promise<void> {

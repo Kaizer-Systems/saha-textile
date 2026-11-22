@@ -6736,5 +6736,15 @@
 	"ord_pack_from_free_line": "লাইন {{n}}-এর সঙ্গে ফ্রি",
 	"ord_pack_ticked": "{{count}}টির মধ্যে {{ticked}}টিতে টিক দেওয়া হয়েছে।",
 	"ord_pack_mark": "প্যাক হয়েছে",
-	"ord_block_packListIncomplete": "আগে প্যাকিং তালিকার প্রতিটি জিনিসে টিক দিন"
+	"ord_block_packListIncomplete": "আগে প্যাকিং তালিকার প্রতিটি জিনিসে টিক দিন",
+	"bundle_rule_and": "এবং",
+	"bundle_rule_or": "অথবা",
+	"bundle_rule_does_nothing": "এখনও কিছু বদলায় না",
+	"bundle_round_to": "সেটের দাম গোল করা হবে",
+	"bundle_round_none": "যেমন আছে (পয়সা সমেত)",
+	"bundle_round_one": "কাছের টাকায়",
+	"bundle_round_ten": "কাছের ₹10-এ",
+	"bundle_rules_none": "এই সেটের জন্য এখনও কোনো দামের নিয়ম নেই।",
+	"bundle_rules_edit": "দামের নিয়ম ট্যাবে বদলান",
+	"bundle_rules_count_one": "এই সেটের 1টি নিয়ম"
 }

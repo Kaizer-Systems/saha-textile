@@ -12,6 +12,9 @@ import { BundleService } from '@data-access/services/bundle.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
 
+import { BundleRuleRows } from './bundle-rule-rows';
+import { ruleSentence } from './rule-words';
+
 import type {
 	AdminProductRow,
 	BundleBuilderItem,
@@ -20,6 +23,7 @@ import type {
 	BundleDetailsWrite,
 	BundleItem,
 	BundleLevel,
+	BundlePricing,
 	BundlePriceMethodRow,
 	CatalogPageBundle,
 	ProductBundleWrite,
@@ -38,7 +42,7 @@ type Lang = (typeof LANGS)[number];
 @Component({
 	selector: 'app-bundle-builder',
 	templateUrl: './bundle-builder.html',
-	imports: [FormsModule, NgTemplateOutlet, RouterModule, TranslocoModule],
+	imports: [BundleRuleRows, FormsModule, NgTemplateOutlet, RouterModule, TranslocoModule],
 })
 export class BundleBuilder {
 	private readonly route = inject(ActivatedRoute);
@@ -76,6 +80,13 @@ export class BundleBuilder {
 	readonly method = computed(() => this.methods().find((row) => row.id === this.draft()?.pricing.methodId) ?? null);
 	readonly anySale = computed(() => [...this.items().values()].some((item) => item.saleINR !== null));
 	readonly errors = computed(() => this.checks().filter((check) => check.severity === 'error'));
+	/** The set's own rules in plain words (C04), read when drawn so they follow the language once it has loaded. */
+	ruleWords(): string[] {
+		const t = (key: string, params?: Record<string, unknown>) => this.transloco.translate(key, params);
+		return (this.draft()?.pricing.rules ?? []).map((rule) =>
+			ruleSentence(rule, t, this.method()?.inputs ?? [], this.lang()),
+		);
+	}
 
 	constructor() {
 		if (!this.isBrowser) return;
@@ -367,6 +378,11 @@ export class BundleBuilder {
 			this.notifier.showSuccess(this.transloco.translate('bundle_live'));
 			void this.load();
 		} else this.notifier.showError(this.transloco.translate('bundle_go_live_gaps', { count: result.gaps.length }));
+	}
+
+	/** How the set is priced after its method: the rules, how they combine, and rounding. */
+	setPricing(patch: Partial<BundlePricing>): void {
+		this.change((draft) => ({ ...draft, pricing: { ...draft.pricing, ...patch } }));
 	}
 
 	draftCap(on: boolean) {

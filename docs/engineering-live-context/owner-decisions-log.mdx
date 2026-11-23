@@ -2410,3 +2410,27 @@ Nothing is built yet; an addendum (banks, kinds of business, GST, several GSTINs
   or with full history (Tally and others); the CA logs in with accountant powers including locks.
 - **Rendition 3 (D28–D31):** GST screens per GSTIN; personal data encrypted, masked and never exported; a numbered
   manual bill book when a counter loses the internet; exports for the CA in Tally XML, Excel, PDF and GST files.
+
+## Owner decision round (2026-11-23) — Release Path brief approved: servers, releases, rotation, failures, tracing
+
+Brief: https://claude.ai/artifact/MTo5HZTUH13ySALXGd2qWh. Owner: "yes, I approve the entire brief." All nine choices
+take the recommended answer. The Release Console chat builds its part (C1–C16) in its own thread; the Infisical chat
+builds the rest (M1–M10) in its own; "No chat is going to create a sub chat or a forked chat."
+
+- **Rotation (Q1, Q6):** a deploy may change the database, Redis and search secrets only when started with `rotate`
+  (typed environment name and PIN, from any console). A new keyfile is used from the database's next restart unless
+  `restart_database` is also ticked. Any failed change puts every old value back.
+- **Grace keys (Q2, Q5):** the sign-in, CSRF and mailbox keys keep their previous value for 30 days after a planned
+  change, so nobody is signed out. After a leak there is no grace period; the shop and admin sign-in pages then show a
+  signed-out note (existing alerts, English and Bengali) and a mailbox shows its existing "needs connecting again".
+- **Rollback (Q3):** a fast rollback on the server through the deploy user's one command, and older versions by a tag
+  per release.
+- **Staging SSL (Q4):** Full (strict) by a rule for the staging hosts while WordPress stays on the zone.
+- **Tracing (Q7):** built locally now (VictoriaTraces, OpenTelemetry in the API, worker and the shop's server pages);
+  `DEC-TRACING-SERVERS` stays open until the heavy-load measurement.
+- **Reading a server (Q8):** DigitalOcean monitoring, the API's `/ops` address and a one-command `observer` login
+  through the tunnel; no new open port, no agent.
+- **Database monitor (Q9):** a read-only database login for the console, per environment.
+- **DigitalOcean DNS:** "It should be available there for me if I want to use it." The create job offers DigitalOcean
+  DNS for a domain delegated to DigitalOcean; such hosts are not behind Cloudflare, so the server then needs a public
+  certificate and the firewall opens 443 to everyone. Saha Textile stays on Cloudflare.

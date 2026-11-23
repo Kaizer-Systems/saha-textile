@@ -808,6 +808,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'routing_title',
+				path: '/setting/order-routing',
+				type: 'link',
+				level: 2,
+				permission: ['setting.index'],
+			},
+			{
+				parent_id: 19,
 				title: 'edoc_settings_title',
 				path: '/setting/edocs',
 				type: 'link',

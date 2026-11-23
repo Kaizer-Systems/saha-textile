@@ -4,6 +4,7 @@ import { HomeHeroLayout } from './content-block';
 import { IsoDateTime } from './common';
 import { DocumentNumberingSettings } from './document-numbering';
 import { FxSettings, PaymentRoutingSettings } from './fx';
+import { OrderRoutingSettings } from './order-routing';
 import { OrderSettings } from './order-settings';
 import { StorefrontSearchSettings } from './search-term';
 
@@ -360,6 +361,8 @@ export const SITE_SETTING_SCHEMAS = {
 	'orders.settings': OrderSettings,
 	/** Document number formats (DEC-NUMBERING; the order format stays a setting while OD18 is open). */
 	'orders.numbering': DocumentNumberingSettings,
+	/** Where a new online order ships from (accounts brief M2). */
+	'orders.routing': OrderRoutingSettings,
 } as const;
 export type SiteSettingKey = keyof typeof SITE_SETTING_SCHEMAS;
 export type SiteSettingValue<K extends SiteSettingKey> = z.infer<(typeof SITE_SETTING_SCHEMAS)[K]>;

@@ -127,7 +127,7 @@ body {
 }
 .rc-body {
 	display: grid;
-	grid-template-columns: 178px minmax(0, 1fr);
+	grid-template-columns: 224px minmax(0, 1fr);
 	min-height: 560px;
 }
 .rc-side {

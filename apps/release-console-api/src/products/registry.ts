@@ -52,7 +52,7 @@ import {
 import { ZT_EXTRA } from './cf-zt-more.js';
 import { ACCOUNT_EXTRA, DATABASES_EXTRA, DODNS_EXTRA, MONITORING_EXTRA, NET_EXTRA, REGISTRY_EXTRA } from './do-more.js';
 import { cfPlanScreen } from './cf-plan.js';
-import { PIPELINE_EXTRA, PULLS_EXTRA, ROLLBACK_EXTRA, SECRETS_EXTRA } from './gh-more.js';
+import { PIPELINE_EXTRA, PULLS_EXTRA, ROLLBACK_EXTRA, SECRETS_EXTRA, depsAlertsScreen } from './gh-more.js';
 import {
 	ALERTS_EXTRA,
 	ANALYTICS_EXTRA,
@@ -216,5 +216,7 @@ export const PRODUCT_SCREENS: Record<string, ProductScreen> = {
 addExtras(PRODUCT_SCREENS);
 // Not a menu screen: the plan locks' live answer (cf-plan.ts).
 PRODUCT_SCREENS['cfplan'] = cfPlanScreen;
+// Dependencies keeps its own page; its Dismiss tab is drawn by the products engine.
+PRODUCT_SCREENS['deps'] = depsAlertsScreen;
 const ghSecrets = PRODUCT_SCREENS['secrets'];
 if (ghSecrets) PRODUCT_SCREENS['secrets'] = extend(ghSecrets, SECRETS_EXTRA);

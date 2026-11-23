@@ -240,7 +240,16 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						<rc-domains-screen />
 					}
 					@case ('deps') {
-						<rc-deps-screen />
+						@if (tabKey() === 'dismiss') {
+							<rc-product
+								[screen]="screen()"
+								[tab]="tabKey()"
+								vendor="github"
+								noun="Dependencies"
+							/>
+						} @else {
+							<rc-deps-screen />
+						}
 					}
 					@case ('changes') {
 						<rc-changes-screen />

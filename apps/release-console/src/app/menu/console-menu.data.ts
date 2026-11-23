@@ -513,6 +513,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			label: 'Dependencies',
 			states: {
 				list: 'Packages and images',
+				dismiss: 'Dismiss or reopen an alert',
 			},
 			off: false,
 			tip: null,
@@ -521,6 +522,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			partStates: null,
 			captions: {
 				list: 'Known vulnerabilities in packages and images, and majors falling behind',
+				dismiss: 'GitHub · Dismiss a Dependabot or code-scanning alert with its reason, or reopen one',
 			},
 		},
 		issues: {

@@ -526,3 +526,109 @@ export const SECRETS_EXTRA: ScreenExtra = {
 	tabs: { variables: (ctx) => variablesForm.read(ctx) },
 	forms: { variables: variablesForm },
 };
+
+/* ===== Dependabot and code-scanning alerts: dismiss or reopen ===== */
+
+async function alerts(ctx: ProductCtx, key = ctx.key) {
+	const [deps, code] = await Promise.all([
+		list(ctx, '/dependabot/alerts?per_page=100', undefined, key).catch(() => []),
+		list(ctx, '/code-scanning/alerts?per_page=100', undefined, key).catch(() => []),
+	]);
+	return [
+		...deps.map((a) => ({
+			value: `dependabot:${num(a['number'])}`,
+			label: `${str(rec(rec(a['dependency'])['package'])['name'])} · ${str(rec(a['security_advisory'])['severity'])} · ${str(a['state'])}`,
+			state: str(a['state']),
+		})),
+		...code.map((a) => ({
+			value: `code-scanning:${num(a['number'])}`,
+			label: `${str(rec(a['rule'])['description']) || str(rec(a['rule'])['id'])} · ${str(a['state'])}`,
+			state: str(a['state']),
+		})),
+	];
+}
+
+const DEP_REASONS = ['fix_started', 'inaccurate', 'no_bandwidth', 'not_used', 'tolerable_risk'];
+const CODE_REASONS = ['false positive', "won't fix", 'used in tests'];
+
+const dismissForm: ProductFormSpec = {
+	async read(ctx) {
+		const all = await alerts(ctx);
+		const p = pick(
+			'Alert',
+			all.map((a) => ({ value: a.value, label: a.label })),
+			ctx.id,
+		);
+		const a = all.find((x) => x.value === p.value);
+		const kind = a?.value.split(':')[0];
+		return formTab(
+			form({
+				key: 'dismiss',
+				title: 'Dismiss or reopen an alert',
+				submit: a?.state === 'dismissed' ? 'Reopen' : 'Dismiss',
+				blocked: a ? null : 'No Dependabot or code-scanning alerts (or the token cannot read them).',
+				fields:
+					a && a.state !== 'dismissed'
+						? [
+								field('reason', 'Why', 'select', {
+									value: kind === 'dependabot' ? 'tolerable_risk' : 'false positive',
+									options: (kind === 'dependabot' ? DEP_REASONS : CODE_REASONS).map((r) =>
+										option(r, r.replace(/_/g, ' ')),
+									),
+								}),
+								field('comment', 'Note', 'text'),
+							]
+						: [],
+				notes: [note('A dismissed alert stays on GitHub with its reason and can be reopened here.', 'muted')],
+			}),
+			p,
+		);
+	},
+	async send(ctx, w) {
+		const key = await ctx.writeKey();
+		const a = (await alerts(ctx, key)).find((x) => x.value === (w.id ?? ctx.id));
+		if (!a) throw new VendorError('Choose an alert.', 400);
+		const [kind, n] = a.value.split(':');
+		const reopen = a.state === 'dismissed';
+		if (kind === 'dependabot')
+			await send(
+				ctx,
+				key,
+				'PATCH',
+				`/dependabot/alerts/${n}`,
+				reopen
+					? { state: 'open' }
+					: {
+							state: 'dismissed',
+							dismissed_reason: opt(w, 'reason') || 'tolerable_risk',
+							dismissed_comment: opt(w, 'comment'),
+						},
+			);
+		else
+			await send(
+				ctx,
+				key,
+				'PATCH',
+				`/code-scanning/alerts/${n}`,
+				reopen
+					? { state: 'open' }
+					: {
+							state: 'dismissed',
+							dismissed_reason: opt(w, 'reason') || 'false positive',
+							dismissed_comment: opt(w, 'comment'),
+						},
+			);
+		return {
+			message: `${a.label.split(' · ')[0]} ${reopen ? 'reopened' : 'dismissed'}`,
+			productId: null,
+			follow: [],
+		};
+	},
+};
+
+/** Not a whole screen: the Dependencies page's own tab for dismissing alerts. */
+export const depsAlertsScreen = {
+	vendor: 'github' as const,
+	tabs: { dismiss: (ctx: ProductCtx) => dismissForm.read(ctx) },
+	forms: { dismiss: dismissForm },
+};

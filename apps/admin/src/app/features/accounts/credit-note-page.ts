@@ -9,8 +9,10 @@ import { gstStateName } from '@saha-textile/core-domain/company';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
+import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
 import { RETURN_KEYS, ReturnsGateway, returnProblemKey } from '@core/accounts/returns.gateway';
 import { apiProblem, openPdf } from '@core/purchasing/purchasing-format';
+import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
@@ -34,6 +36,8 @@ export class CreditNotePage {
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
 	private readonly router = inject(Router);
+	private readonly ledgers = inject(LedgerGateway);
+	private readonly auth = inject(AuthStore);
 
 	readonly id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
 	readonly busy = signal(false);
@@ -49,6 +53,40 @@ export class CreditNotePage {
 		enabled: !!this.id(),
 	}));
 	readonly draft = computed(() => this.note.data()?.status === 'draft');
+	readonly canRefund = computed(() => {
+		const n = this.note.data();
+		return (
+			!!n &&
+			n.status === 'issued' &&
+			!n.debitNoteId &&
+			n.refund?.status === 'due' &&
+			this.auth.permissions().includes('refund.action')
+		);
+	});
+	readonly refundHow = signal<'gateway' | 'by_hand'>('gateway');
+	readonly refundMethod = signal<'bank_transfer' | 'upi'>('bank_transfer');
+	readonly refundLedger = signal('');
+	readonly refundReference = signal('');
+	readonly chart = injectQuery(() => ({
+		queryKey: LEDGER_KEYS.chart,
+		queryFn: () => firstValueFrom(this.ledgers.chart()),
+		enabled: this.canRefund(),
+	}));
+	/** Cash and bank ledgers (their group, or a group above it, is cash in hand or a bank) for a refund by hand. */
+	readonly payFrom = computed(() => {
+		const chart = this.chart.data();
+		if (!chart) return [];
+		const groups = new Map(chart.groups.map((g) => [g.id, g]));
+		const isCashOrBank = (groupId: string | null): boolean => {
+			const group = groupId ? groups.get(groupId) : undefined;
+			if (!group) return false;
+			return (
+				['cash_in_hand', 'bank_accounts', 'bank_od'].includes(group.systemKey ?? '') ||
+				isCashOrBank(group.parentId)
+			);
+		};
+		return chart.ledgers.filter((l) => l.active && isCashOrBank(l.groupId));
+	});
 	readonly goodsKind = computed(() => this.note.data()?.kind !== 'price_adjustment');
 	readonly ratePercent = computed(() => this.note.data()?.lines.find((l) => !l.delivery)?.ratePercent ?? 0);
 
@@ -142,6 +180,25 @@ export class CreditNotePage {
 		this.modal?.close();
 		this.reason.set('');
 		this.modal = this.modals.open(debitModal, { centered: true });
+	}
+
+	openRefund(refundModal: TemplateRef<unknown>): void {
+		this.refundHow.set('gateway');
+		this.refundReference.set('');
+		this.modal = this.modals.open(refundModal, { centered: true });
+	}
+
+	refund(note: CreditNote): Promise<void> {
+		const write =
+			this.refundHow() === 'gateway'
+				? ({ how: 'gateway' } as const)
+				: ({
+						how: 'by_hand',
+						method: this.refundMethod(),
+						ledgerId: this.refundLedger(),
+						reference: this.refundReference(),
+					} as const);
+		return this.run(async () => void (await firstValueFrom(this.gateway.refund(note.id, write))), 'cn_refunded');
 	}
 
 	cancel(note: CreditNote): Promise<void> {

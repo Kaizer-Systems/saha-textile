@@ -7904,5 +7904,18 @@
 	"ret_problem_credit_note_cancel_refused": "It can’t be cancelled now; undo it with a debit note.",
 	"ret_problem_credit_note_cancel_super_admin": "Only a super admin can cancel it.",
 	"ret_problem_credit_note_not_cancellable": "It can’t be cancelled.",
-	"ret_problem_credit_note_not_undoable": "It is already undone."
+	"ret_problem_credit_note_not_undoable": "It is already undone.",
+	"cn_refund_now": "Refund {{amount}} now",
+	"cn_refund_how_gateway": "Back to the payment, through the gateway",
+	"cn_refund_how_by_hand": "Paid by hand (bank transfer or UPI)",
+	"cn_refund_method": "How",
+	"cn_refund_from": "Paid from",
+	"cn_refund_reference": "Reference (UTR)",
+	"cn_refund_confirm": "Refund",
+	"cn_refunded": "Refund recorded",
+	"ret_problem_credit_note_refund_not_due": "No refund is due on this credit note.",
+	"ret_problem_credit_note_refund_no_gateway_payment": "The order wasn’t paid through the gateway; record it as paid by hand.",
+	"ret_problem_credit_note_refund_gateway_unavailable": "The gateway isn’t answering; try again, it can’t refund twice.",
+	"ret_problem_credit_note_refund_refused": "The gateway refused the refund ({{sku}}).",
+	"ret_problem_credit_note_refund_needs_cash_or_bank": "Choose a cash or bank ledger to pay from."
 }

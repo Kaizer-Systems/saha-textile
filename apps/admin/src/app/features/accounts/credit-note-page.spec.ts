@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 
@@ -7,7 +8,9 @@ import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-exper
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
+import { LedgerGateway } from '@core/accounts/ledger.gateway';
 import { ReturnsGateway } from '@core/accounts/returns.gateway';
+import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { CreditNotePage } from './credit-note-page';
@@ -68,6 +71,21 @@ function setup(
 			}),
 		cancel: vi.fn(() => of(note({ status: 'cancelled' }))),
 		debitNote: vi.fn(() => of({ id: 'dn_1' })),
+		refund: vi.fn(() => of(note({ status: 'issued' }))),
+	};
+	const chart = {
+		groups: [
+			{ id: 'g_ca', systemKey: 'current_assets', parentId: null },
+			{ id: 'g_bank', systemKey: 'bank_accounts', parentId: 'g_ca' },
+			{ id: 'g_hdfc', systemKey: null, parentId: 'g_bank' },
+			{ id: 'g_exp', systemKey: null, parentId: null },
+		],
+		ledgers: [
+			{ id: 'led_hdfc', name: 'HDFC', groupId: 'g_hdfc', active: true },
+			{ id: 'led_old', name: 'Old', groupId: 'g_bank', active: false },
+			{ id: 'led_rent', name: 'Rent', groupId: 'g_exp', active: true },
+			{ id: 'led_lost', name: 'Lost', groupId: 'g_gone', active: true },
+		],
 	};
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -92,6 +110,8 @@ function setup(
 				useValue: { open: (template: unknown) => (opened.push(template), { close: () => undefined }) },
 			},
 			{ provide: NotificationService, useValue: notifier },
+			{ provide: LedgerGateway, useValue: { chart: () => of(chart) } },
+			{ provide: AuthStore, useValue: { permissions: signal(options.permissions ?? ['refund.action']) } },
 		],
 	});
 	const fixture = TestBed.createComponent(CreditNotePage);
@@ -170,5 +190,41 @@ describe('a credit note’s page (B4, B5, B8, B9)', () => {
 		await page.issue(note());
 		expect(notifier.showError).toHaveBeenCalledTimes(2);
 		expect(page.busy()).toBe(false);
+	});
+
+	it('offers Refund now on an issued note with a refund due, paying by gateway or by hand from a cash or bank ledger', async () => {
+		const due = note({ status: 'issued', refund: { status: 'due' } as never });
+		const { fixture, page, gateway, opened } = setup({ current: due });
+		expect(page.payFrom()).toEqual([]);
+		fixture.detectChanges();
+		await vi.waitFor(() => expect(page.canRefund()).toBe(true));
+		await vi.waitFor(() => expect(page.payFrom().map((l) => l.id)).toEqual(['led_hdfc']));
+		page.openRefund('refund' as never);
+		expect(opened).toEqual(['refund']);
+		await page.refund(due);
+		expect(gateway.refund).toHaveBeenLastCalledWith('cn_1', { how: 'gateway' });
+		page.refundHow.set('by_hand');
+		page.refundLedger.set('led_hdfc');
+		page.refundReference.set('UTR123456');
+		await page.refund(due);
+		expect(gateway.refund).toHaveBeenLastCalledWith('cn_1', {
+			how: 'by_hand',
+			method: 'bank_transfer',
+			ledgerId: 'led_hdfc',
+			reference: 'UTR123456',
+		});
+		for (const current of [
+			note({ status: 'issued', refund: { status: 'kept' } as never }),
+			note({ status: 'issued', debitNoteId: 'dn_1', refund: { status: 'due' } as never }),
+		]) {
+			const other = setup({ current });
+			other.fixture.detectChanges();
+			await vi.waitFor(() => expect(other.page.note.data()).toBeTruthy());
+			expect(other.page.canRefund()).toBe(false);
+		}
+		const noRight = setup({ current: due, permissions: [] });
+		noRight.fixture.detectChanges();
+		await vi.waitFor(() => expect(noRight.page.note.data()).toBeTruthy());
+		expect(noRight.page.canRefund()).toBe(false);
 	});
 });

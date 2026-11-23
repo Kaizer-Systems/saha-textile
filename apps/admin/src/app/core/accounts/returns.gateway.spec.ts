@@ -28,6 +28,7 @@ describe('returns gateway (accounts brief B)', () => {
 			[gateway.cancelChecks('c1'), 'GET', '/admin/accounts/credit-notes/c1/cancel-checks'],
 			[gateway.cancel('c1', 'why'), 'POST', '/admin/accounts/credit-notes/c1/cancel'],
 			[gateway.debitNote('c1', 'why'), 'POST', '/admin/accounts/credit-notes/c1/debit-note'],
+			[gateway.refund('c1', { how: 'gateway' }), 'POST', '/admin/accounts/credit-notes/c1/refund'],
 			[gateway.creditNotePdf('c1'), 'GET', '/admin/accounts/credit-notes/c1/pdf'],
 			[gateway.debitNotePdf('d1'), 'GET', '/admin/accounts/debit-notes/d1/pdf'],
 		];

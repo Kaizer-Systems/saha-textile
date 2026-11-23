@@ -7904,5 +7904,18 @@
 	"ret_problem_credit_note_cancel_refused": "এখন বাতিল করা যায় না; ডেবিট নোট দিয়ে উল্টে দিন।",
 	"ret_problem_credit_note_cancel_super_admin": "শুধু সুপার অ্যাডমিন বাতিল করতে পারেন।",
 	"ret_problem_credit_note_not_cancellable": "এটি বাতিল করা যায় না।",
-	"ret_problem_credit_note_not_undoable": "এটি আগেই উল্টানো হয়েছে।"
+	"ret_problem_credit_note_not_undoable": "এটি আগেই উল্টানো হয়েছে।",
+	"cn_refund_now": "{{amount}} এখন ফেরত দিন",
+	"cn_refund_how_gateway": "গেটওয়ে দিয়ে যেভাবে টাকা এসেছিল সেখানে",
+	"cn_refund_how_by_hand": "হাতে দেওয়া (ব্যাংক ট্রান্সফার বা UPI)",
+	"cn_refund_method": "কীভাবে",
+	"cn_refund_from": "কোথা থেকে দেওয়া",
+	"cn_refund_reference": "রেফারেন্স (UTR)",
+	"cn_refund_confirm": "ফেরত দিন",
+	"cn_refunded": "টাকা ফেরত লেখা হয়েছে",
+	"ret_problem_credit_note_refund_not_due": "এই ক্রেডিট নোটে কোনো টাকা ফেরত বাকি নেই।",
+	"ret_problem_credit_note_refund_no_gateway_payment": "অর্ডারের টাকা গেটওয়ে দিয়ে আসেনি; হাতে দেওয়া হিসেবে লিখুন।",
+	"ret_problem_credit_note_refund_gateway_unavailable": "গেটওয়ে সাড়া দিচ্ছে না; আবার চেষ্টা করুন, দু’বার ফেরত হবে না।",
+	"ret_problem_credit_note_refund_refused": "গেটওয়ে ফেরত নেয়নি ({{sku}})।",
+	"ret_problem_credit_note_refund_needs_cash_or_bank": "কোন ক্যাশ বা ব্যাংক লেজার থেকে দেওয়া হচ্ছে বেছে নিন।"
 }

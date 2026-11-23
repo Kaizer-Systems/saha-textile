@@ -8,6 +8,7 @@ import type {
 	CreditNote,
 	CreditNoteCancelChecks,
 	CreditNoteDraftWrite,
+	CreditNoteRefundWrite,
 	DebitNote,
 	OrderReturn,
 	OrderReturnsView,
@@ -78,6 +79,9 @@ export class ReturnsGateway {
 	}
 	cancel(id: string, reason: string): Observable<CreditNote> {
 		return this.http.post<CreditNote>(this.note(id, '/cancel'), { reason });
+	}
+	refund(id: string, write: CreditNoteRefundWrite): Observable<CreditNote> {
+		return this.http.post<CreditNote>(this.note(id, '/refund'), write);
 	}
 	debitNote(id: string, reason: string): Observable<DebitNote> {
 		return this.http.post<DebitNote>(this.note(id, '/debit-note'), { reason });

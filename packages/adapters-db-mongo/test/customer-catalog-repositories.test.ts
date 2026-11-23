@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { Address } from '@saha-textile/contracts';
+import { ProductBundle, type Address } from '@saha-textile/contracts';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
 import {
@@ -544,18 +544,21 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 		const repo = new MongoProductBundleRepository();
 
 		it('saves, finds, knows a bundle, and deletes', async () => {
-			const bundle = {
+			const bundle = ProductBundle.parse({
 				id: `${P}bun`,
 				productId: `${P}bprod`,
-				bundleType: 'fixed_kit',
-				pricePolicy: 'fixed_bundle_price',
-				fixedPriceINR: 100,
-				groups: [],
+				levels: [{ code: 'core', label: { en: 'Core' }, items: [{ productId: `${P}piece` }] }],
+				extras: [{ productId: `${P}extra`, priceInSetINR: 0 }],
+				pricing: { methodId: 'bpm_fixed_price', params: { setPrice: 100 } },
 				status: 'draft',
-			} as never;
+			});
 			await repo.save(bundle);
 			expect(await repo.findByProductId(`${P}bprod`)).toBeNull();
-			expect((await repo.findByProductId(`${P}bprod`, 'admin'))?.fixedPriceINR).toBe(100);
+			expect((await repo.findByProductId(`${P}bprod`, 'admin'))?.pricing.params['setPrice']).toBe(100);
+			// Its pieces and extras are findable, and the price method knows it is in use.
+			expect((await repo.listContaining(`${P}piece`)).map((found) => found.id)).toEqual([`${P}bun`]);
+			expect((await repo.listContaining(`${P}extra`)).map((found) => found.id)).toEqual([`${P}bun`]);
+			expect(await repo.countUsingMethod('bpm_fixed_price')).toBeGreaterThanOrEqual(1);
 			expect(await repo.isBundleProduct(`${P}bprod`)).toBe(true);
 			expect(await repo.isBundleProduct(`${P}none`)).toBe(false);
 			await repo.deleteById(`${P}bun`);
@@ -565,7 +568,12 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 		it('fills the gaps, and keeps dates', async () => {
 			await insertRaw(ProductBundleModel, { _id: `${P}sparse`, productId: `${P}sparse`, status: 'live' });
 			expect(await repo.findByProductId(`${P}sparse`)).toMatchObject({
-				fixedPriceINR: null,
+				levels: [],
+				extras: [],
+				saleWindow: null,
+				styledPhoto: null,
+				dearerReason: null,
+				stock: null,
 				createdAt: undefined,
 			});
 			await insertRaw(ProductBundleModel, {

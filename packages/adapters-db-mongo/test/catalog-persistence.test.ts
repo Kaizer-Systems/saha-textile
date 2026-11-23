@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { ProductBundle } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
@@ -235,19 +236,40 @@ describe.skipIf(!hasMongoEnv())('catalog persistence (integration, rs0)', () => 
 			await variants.save(
 				variant({
 					productId,
-					stock: { tracked: true, quantity: 0, held: 0, reserved: 0, lowStockThreshold: null, allowBackorder: false },
+					stock: {
+						tracked: true,
+						quantity: 0,
+						held: 0,
+						reserved: 0,
+						lowStockThreshold: null,
+						allowBackorder: false,
+					},
 				}),
 			);
 			await variants.save(
 				variant({
 					productId,
-					stock: { tracked: true, quantity: 3, held: 0, reserved: 0, lowStockThreshold: null, allowBackorder: false },
+					stock: {
+						tracked: true,
+						quantity: 3,
+						held: 0,
+						reserved: 0,
+						lowStockThreshold: null,
+						allowBackorder: false,
+					},
 				}),
 			);
 			await variants.save(
 				variant({
 					productId,
-					stock: { tracked: true, quantity: 0, held: 0, reserved: 0, lowStockThreshold: null, allowBackorder: true },
+					stock: {
+						tracked: true,
+						quantity: 0,
+						held: 0,
+						reserved: 0,
+						lowStockThreshold: null,
+						allowBackorder: true,
+					},
 				}),
 			);
 
@@ -278,32 +300,18 @@ describe.skipIf(!hasMongoEnv())('catalog persistence (integration, rs0)', () => 
 			const productId = `${TEST_PREFIX}prod_bundle_${randomUUID()}`;
 			expect(await bundles.isBundleProduct(productId)).toBe(false);
 
-			await bundles.save({
-				id: `${TEST_PREFIX}bundle_${randomUUID()}`,
-				productId,
-				bundleType: 'fixed_kit',
-				pricePolicy: 'sum_components',
-				fixedPriceINR: null,
-				groups: [
-					{
-						code: 'core',
-						label: { en: 'Core' },
-						minSelections: 0,
-						maxSelections: 1,
-						components: [
-							{
-								productId: `${TEST_PREFIX}component`,
-								variantId: null,
-								quantity: 1,
-								required: true,
-								priceAdjustmentINR: null,
-							},
-						],
-					},
-				],
-				// Draft on purpose: a draft bundle is still a bundle for nesting purposes.
-				status: 'draft',
-			});
+			await bundles.save(
+				ProductBundle.parse({
+					id: `${TEST_PREFIX}bundle_${randomUUID()}`,
+					productId,
+					levels: [
+						{ code: 'core', label: { en: 'Core' }, items: [{ productId: `${TEST_PREFIX}component` }] },
+					],
+					pricing: { methodId: 'bpm_fixed_price', params: { setPrice: 44_900 } },
+					// Draft on purpose: a draft bundle is still a bundle for nesting purposes.
+					status: 'draft',
+				}),
+			);
 
 			expect(await bundles.isBundleProduct(productId)).toBe(true);
 		});

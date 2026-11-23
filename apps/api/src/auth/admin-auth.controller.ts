@@ -39,7 +39,7 @@ import { resolveEffectivePermissions } from '@saha-textile/core-domain';
 import type { RoleRepository, AdminUserRoleAssignmentRepository } from '@saha-textile/core-domain';
 
 type AdminAuthSessionResponse = { user: AdminUser; session: SessionInfo };
-import type { CsrfTokenResponse } from '@saha-textile/contracts';
+import type { CsrfTokenResponse, SessionNoticeResponse } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -103,6 +103,17 @@ export class AdminAuthController {
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<CsrfTokenResponse> {
 		return { csrfToken: await this.sessions.issueCsrfToken(request, reply) };
+	}
+
+	/** The sign-in page's "we signed everyone out on …" line (Release Path brief, 2026-11-23). */
+	@Get('session-notice')
+	@Public()
+	@ApiOperation({
+		operationId: 'getAdminSessionNotice',
+		summary: 'Whether this browser was signed out when everyone was, after a key leak',
+	})
+	async sessionNotice(@Req() request: FastifyRequest): Promise<SessionNoticeResponse> {
+		return { signedOutAt: await this.sessions.signedOutNotice(request) };
 	}
 
 	@Post('login')

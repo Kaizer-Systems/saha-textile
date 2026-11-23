@@ -103,12 +103,15 @@ test('after a leak (no grace) a kept key is cleared; --clear-previous clears the
 		clearPrevious: false,
 		folders: folders(kept),
 		generate,
+		at: '2026-11-23T10:00:00.000Z',
 	});
 	assert.deepEqual(
 		leak.changes.map((change) => [change.name, change.value]),
 		[
 			['CSRF_SECRET_PREVIOUS', ''],
 			['CSRF_SECRET', `${MARK}-new-csrf`],
+			// Everyone is signed out by this one, so the sign-in pages say so for 30 days.
+			['SESSIONS_RESET_AT', '2026-11-23T10:00:00.000Z'],
 		],
 	);
 	assert.equal(leak.report.needsRotateDeploy, false);

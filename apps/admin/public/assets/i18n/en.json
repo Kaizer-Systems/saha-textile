@@ -1267,6 +1267,7 @@
 	"use_your_password_instead": "Use your password instead",
 	"invalid_credentials": "Invalid credentials.",
 	"if_your_pin_is_locked_sign_in_with_your_password": "If your PIN is locked, sign in with your password.",
+	"signed_out_for_security": "For your security, we signed everyone out on {{date}}. Please log in again.",
 	"something_went_wrong_please_try_again": "Something went wrong. Please try again.",
 	"invalid_or_expired_reset_link": "That reset link is not valid or has expired.",
 	"if_the_details_are_correct_we_have_sent_you_an_email": "If the details are correct, we have sent you an email.",

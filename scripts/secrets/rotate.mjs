@@ -99,8 +99,17 @@ export function parseRotateArgs(args) {
  * @param {boolean} options.clearPrevious
  * @param {{ api: Map<string, string>, infrastructure: Map<string, string> }} options.folders   the project's values (memory only)
  * @param {typeof generateServiceSecrets} [options.generate]
+ * @param {string} [options.at]   when this rotation happens (ISO), recorded for an emergency sign-out
  */
-export function planRotation({ tier, ids, grace, clearPrevious, folders, generate = generateServiceSecrets }) {
+export function planRotation({
+	tier,
+	ids,
+	grace,
+	clearPrevious,
+	folders,
+	generate = generateServiceSecrets,
+	at = new Date().toISOString(),
+}) {
 	const made = generate(tier);
 	/** @type {import('./write.mjs').SecretChange[]} */
 	const changes = [];
@@ -135,6 +144,12 @@ export function planRotation({ tier, ids, grace, clearPrevious, folders, generat
 		}
 	}
 	if (blank.length > 0) throw new SecretsError(`Blank in this project, so nothing to rotate: ${blank.join(', ')}.`);
+	// A new CSRF key without grace is the change that signs everyone out (it keys every stored
+	// session). The sign-in pages say so for 30 days from this time (SESSIONS_RESET_AT).
+	if (ids.includes('csrf') && !grace) {
+		changes.push({ tier, folder: 'api', name: 'SESSIONS_RESET_AT', value: at });
+		report.changed.push('SESSIONS_RESET_AT');
+	}
 	if (clearPrevious) {
 		for (const name of GRACE_NAMES) {
 			const previousName = `${name}_PREVIOUS`;

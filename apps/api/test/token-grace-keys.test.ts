@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { Cart } from '@saha-textile/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
+import { recentSessionReset } from '../src/auth/session-notice';
 import { TokenHasher } from '../src/auth/token-hasher';
 import { CartService } from '../src/cart/cart.service';
 import { loadConfig } from '../src/config/app-config';
@@ -145,5 +146,29 @@ describe('previous-key settings', () => {
 			/MAILBOX_TOKEN_KEY_PREVIOUS goes only with/,
 		);
 		expect(() => load({ MAILBOX_TOKEN_KEY_PREVIOUS: 'short' })).toThrow(/32 bytes/);
+	});
+});
+
+describe('the signed-out notice after a key leak', () => {
+	const now = Date.parse('2026-11-30T12:00:00.000Z');
+
+	it('names the day for 30 days, then says nothing', () => {
+		expect(recentSessionReset('2026-11-23T10:00:00.000Z', now)).toBe('2026-11-23');
+		// 30 days before 30 Nov at noon is 31 Oct at noon.
+		expect(recentSessionReset('2026-10-31T13:00:00.000Z', now)).toBe('2026-10-31');
+		expect(recentSessionReset('2026-10-31T11:00:00.000Z', now)).toBeNull();
+	});
+
+	it('says nothing without a date, for a date not yet reached, or for a broken one', () => {
+		expect(recentSessionReset(undefined, now)).toBeNull();
+		expect(recentSessionReset('2026-12-01T00:00:00.000Z', now)).toBeNull();
+		expect(recentSessionReset('not a date', now)).toBeNull();
+	});
+
+	it('reads SESSIONS_RESET_AT as an ISO time', () => {
+		expect(load({ SESSIONS_RESET_AT: '2026-11-23T10:00:00.000Z' }).cookies.sessionsResetAt).toBe(
+			'2026-11-23T10:00:00.000Z',
+		);
+		expect(() => load({ SESSIONS_RESET_AT: 'yesterday' })).toThrow();
 	});
 });

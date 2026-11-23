@@ -23,6 +23,8 @@ import {
 } from './auth-gateway';
 import { CsrfTokens } from './csrf-tokens';
 
+import type { SessionNoticeResponse } from '@saha-textile/contracts';
+
 /** The lock and presence calls explain themselves through the lock screen, never a toast. */
 const QUIET = { context: new HttpContext().set(QUIET_ERRORS, true) };
 
@@ -36,6 +38,7 @@ const QUIET = { context: new HttpContext().set(QUIET_ERRORS, true) };
 const ROUTES = {
 	// The admin session's own token (`st_admin_csrf`), never the storefront's.
 	csrf: '/auth/admin/csrf',
+	sessionNotice: '/auth/admin/session-notice',
 	me: '/auth/admin/me',
 	login: '/auth/admin/login',
 	pinLogin: '/auth/admin/login/pin',
@@ -145,6 +148,14 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 
 	override securitySettings(): Observable<AdminSecurityState> {
 		return this.http.get<AdminSecurityState>(this.url(ROUTES.security));
+	}
+
+	override sessionNotice(): Observable<string | null> {
+		return this.http.get<SessionNoticeResponse>(this.url(ROUTES.sessionNotice)).pipe(
+			map((response) => response.signedOutAt),
+			// A quiet question: any failure just leaves the line out.
+			catchError(() => of(null)),
+		);
 	}
 
 	override listSessions(): Observable<AdminSessionSummary[]> {

@@ -35,6 +35,14 @@
 						</div>
 						}
 					</div>
+					} @if (signedOutDay(); as day) {
+					<!-- After an emergency key change; Bootstrap's own alert, no new CSS. -->
+					<div
+						class="alert alert-info"
+						role="status"
+					>
+						{{ 'signed_out_for_security' | transloco: { date: day } }}
+					</div>
 					}
 					<div class="input-box">
 						<form

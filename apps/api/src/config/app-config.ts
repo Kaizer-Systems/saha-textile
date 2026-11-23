@@ -180,6 +180,8 @@ const ConfigSchema = z.object({
 		csrfSecret: z.string().optional(),
 		/** The CSRF key before the last planned change, still matched for 30 days (`TokenHasher`). */
 		csrfSecretPrevious: z.string().optional(),
+		/** When everyone was signed out after a key leak; the sign-in pages say so for 30 days. */
+		sessionsResetAt: z.string().datetime().optional(),
 		/**
 		 * Whether session cookies carry `Secure` (and so may use the `__Host-` prefix).
 		 *
@@ -504,6 +506,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			csrfHeader: env.CSRF_HEADER_NAME,
 			csrfSecret: env.CSRF_SECRET || undefined,
 			csrfSecretPrevious: env.CSRF_SECRET_PREVIOUS || undefined,
+			sessionsResetAt: env.SESSIONS_RESET_AT || undefined,
 			secure: env.COOKIE_SECURE,
 		},
 		tls: {

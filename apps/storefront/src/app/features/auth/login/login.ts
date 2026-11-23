@@ -1,12 +1,13 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Select2 } from 'ng-select2-component';
 
+import { StorefrontAuthGateway } from '@core/auth/auth-gateway';
 import { ResendCountdown } from '@core/auth/resend-countdown';
 import { clearNotifyIntent, readNotifyIntent } from '@core/catalog/notify-intent';
 import { AuthStore } from '@core/state/auth.store';
@@ -104,6 +105,13 @@ export class Login {
 	public readonly existingAccountNotice = signal(false);
 
 	/**
+	 * The day everyone was signed out after a key leak, when this browser's session was one of them
+	 * (the API answers for 30 days). Shown as `dd/mm/yyyy` (Release Path brief, 2026-11-23).
+	 */
+	private readonly signedOutAt = signal<string | null>(null);
+	public readonly signedOutDay = computed(() => this.signedOutAt()?.split('-').reverse().join('/') ?? null);
+
+	/**
 	 * What the API is asked about — an address, or a phone in E.164.
 	 *
 	 * A method, not a `computed`: the form is not a signal, so a `computed` kept the first value
@@ -135,6 +143,10 @@ export class Login {
 		// Arriving from the registration screen, where the Google button found an existing account.
 		// Carried in navigation state, never the URL: an address does not belong in a query string.
 		if (isPlatformBrowser(inject(PLATFORM_ID))) {
+			// A quiet question: any failure just leaves the line out.
+			inject(StorefrontAuthGateway)
+				.sessionNotice()
+				.subscribe((day) => this.signedOutAt.set(day));
 			const state = history.state as { existingAccountEmail?: unknown } | null;
 			if (typeof state?.existingAccountEmail === 'string') {
 				this.useCodeFor(state.existingAccountEmail);

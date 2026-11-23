@@ -1,9 +1,11 @@
-import { Component, inject, linkedSignal, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, inject, linkedSignal, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
+import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { ThemeModeStore } from '@core/brand/theme-mode';
 import { AuthStore } from '@core/state/auth.store';
@@ -44,6 +46,13 @@ export class Login {
 
 	public form: FormGroup;
 
+	/**
+	 * The day everyone was signed out after a key leak, when this browser's session was one of them
+	 * (the API answers for 30 days). Shown as `dd/mm/yyyy` (Release Path brief, 2026-11-23).
+	 */
+	private readonly signedOutAt = signal<string | null>(null);
+	public readonly signedOutDay = computed(() => this.signedOutAt()?.split('-').reverse().join('/') ?? null);
+
 	/** Which credential the operator is entering. Presentation only — the API decides policy. */
 	public readonly method = signal<'password' | 'pin'>('password');
 	public readonly error = this.authStore.error;
@@ -66,6 +75,11 @@ export class Login {
 			identifier: new FormControl('', [Validators.required]),
 			password: new FormControl(''),
 		});
+		if (isPlatformBrowser(inject(PLATFORM_ID))) {
+			inject(AdminAuthGateway)
+				.sessionNotice()
+				.subscribe((day) => this.signedOutAt.set(day));
+		}
 	}
 
 	useMethod(method: 'password' | 'pin'): void {

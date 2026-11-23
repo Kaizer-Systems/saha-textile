@@ -324,6 +324,7 @@
 	"not_connected": "Not connected",
 	"notifications": "Notifications",
 	"oauth_email_registered": "This email already has an account. Send yourself a code to sign in, then connect Google from Sign-in methods.",
+	"signed_out_for_security": "For your security, we signed everyone out on {{date}}. Please log in again.",
 	"oauth_identity_conflict": "That account is already connected to a different customer.",
 	"oauth_provider_unavailable": "That sign-in option is unavailable right now.",
 	"oauth_state_invalid": "That sign-in attempt has expired. Please try again.",

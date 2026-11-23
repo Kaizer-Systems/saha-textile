@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
 /**
  * The admin application's authentication boundary.
@@ -135,6 +135,15 @@ export interface AdminInviteAcceptInput {
 }
 
 export abstract class AdminAuthGateway {
+	/**
+	 * The day everyone was signed out after a key leak (`yyyy-mm-dd`), when this browser's session was
+	 * one of them and it happened within 30 days; otherwise null (Release Path brief, 2026-11-23).
+	 * Nothing to say by default; the HTTP gateway asks the API.
+	 */
+	sessionNotice(): Observable<string | null> {
+		return of(null);
+	}
+
 	/** Resolves the signed-in operator plus current permissions, or `null` when anonymous. */
 	abstract currentUser(): Observable<AdminMe | null>;
 

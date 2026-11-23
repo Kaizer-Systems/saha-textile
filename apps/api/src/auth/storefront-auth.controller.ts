@@ -46,6 +46,7 @@ import {
 	type OAuthVerifyResponse,
 	UpdateSignupFieldRequest,
 	type SessionListResponse,
+	type SessionNoticeResponse,
 	type SessionRevokeResponse,
 } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -206,6 +207,17 @@ export class StorefrontAuthController {
 	 * Answers 200 with `pending: null` rather than 404 when there is nothing in flight, because
 	 * for anybody opening the page cold that is the ordinary case, not a failure.
 	 */
+	/** The sign-in page's "we signed everyone out on …" line (Release Path brief, 2026-11-23). */
+	@Get('session-notice')
+	@Public()
+	@ApiOperation({
+		operationId: 'getCustomerSessionNotice',
+		summary: 'Whether this browser was signed out when everyone was, after a key leak',
+	})
+	async sessionNotice(@Req() request: FastifyRequest): Promise<SessionNoticeResponse> {
+		return { signedOutAt: await this.sessions.signedOutNotice(request) };
+	}
+
 	@Get('signup')
 	@Public()
 	@ApiOperation({

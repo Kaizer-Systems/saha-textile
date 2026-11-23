@@ -223,9 +223,9 @@ function rotate(args) {
 	const inventory = loadInventory();
 	const project = inventory.projects[tier];
 	const folders = exportProject(project, { notes });
-	const { changes, report } = planRotation({ tier, ids, grace, clearPrevious, folders });
-	const name = `${project.name} (${project.environment})`;
 	const at = new Date().toISOString();
+	const { changes, report } = planRotation({ tier, ids, grace, clearPrevious, folders, at });
+	const name = `${project.name} (${project.environment})`;
 	if (changes.length === 0) {
 		console.log(
 			json ? JSON.stringify({ tier, project: project.name, at, ...report }) : `${name}\n  Nothing to change.`,

@@ -20,6 +20,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { cookieNames, csrfCookieOptions, requestCookieAudience, sessionCookieOptions } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { recentSessionReset } from './session-notice';
 import { TokenHasher } from './token-hasher';
 import { labelFromUserAgent, shouldBackfillDeviceLabel } from './device-label';
 import type { AuthenticatedPrincipal } from './session.guard';
@@ -599,6 +600,18 @@ export class SessionService {
 	 */
 	verifyCsrfForSession(session: Pick<AuthSession, 'csrfSecretHash'>, presentedToken: string): boolean {
 		return this.tokens.matches(presentedToken, session.csrfSecretHash);
+	}
+
+	/**
+	 * The day everyone was signed out after a key leak, when this browser still holds a session that
+	 * no longer matches and it happened within 30 days; otherwise null. The sign-in pages show it.
+	 */
+	async signedOutNotice(request: FastifyRequest): Promise<string | null> {
+		const day = recentSessionReset(this.config.cookies.sessionsResetAt);
+		if (!day) return null;
+		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
+		if (!presented) return null;
+		return (await this.sessionByRefreshToken(presented)) ? null : day;
 	}
 
 	async findByRefreshCookie(request: FastifyRequest): Promise<AuthSession | null> {

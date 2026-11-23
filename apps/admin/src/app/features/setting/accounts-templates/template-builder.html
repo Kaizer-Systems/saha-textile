@@ -1,0 +1,361 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'at_title'"
+>
+	@if (template.data(); as t) {
+	<div class="card">
+		<div class="card-body theme-form theme-form-2">
+			<div class="title-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+				<h5>{{ t.name }} · {{ t.code }}</h5>
+				@if (canEdit() && content()) {
+				<span class="d-flex gap-2">
+					<button
+						type="button"
+						class="btn btn-outline"
+						id="tb_save"
+						[disabled]="busy()"
+						(click)="saveDraft()"
+					>
+						{{ 'tb_save_draft' | transloco }}
+					</button>
+					<button
+						type="button"
+						class="btn btn-theme"
+						id="tb_publish"
+						[disabled]="busy() || dirty() || !t.draft"
+						(click)="publish()"
+					>
+						{{ 'tb_publish' | transloco: { version: nextVersion() } }}
+					</button>
+				</span>
+				}
+			</div>
+			@for (p of problems(); track $index) {
+			<div class="alert alert-danger py-2">{{ p }}</div>
+			} @if (content(); as c) {
+			<div class="row g-3">
+				<div class="col-lg-6">
+					<div class="box rounded border p-3">
+						<div class="d-flex justify-content-between align-items-center mb-2">
+							<b>{{ 'tb_groups_and_ledgers' | transloco }}</b>
+							@if (canEdit()) {
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								id="tb_add_top"
+								(click)="addGroup(null)"
+							>
+								{{ 'accounts_add_group' | transloco }}
+							</button>
+							}
+						</div>
+						@for (node of tree(); track node.group.key) {
+						<ng-container *ngTemplateOutlet="groupRow; context: { $implicit: node, depth: 0 }" />
+						} @empty {
+						<p class="text-muted mb-0">{{ 'tb_empty' | transloco }}</p>
+						}
+					</div>
+				</div>
+				<div class="col-lg-6">
+					<div class="box rounded border p-3">
+						@if (group(); as g) {
+						<b class="d-block mb-2">{{ 'tb_selected' | transloco: { name: g.name } }}</b>
+						<label
+							class="form-label-title"
+							for="tb_name"
+						>
+							{{ 'name' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="tb_name"
+							[disabled]="!canEdit()"
+							[ngModel]="g.name"
+							(ngModelChange)="patchGroup(g.key, { name: $event })"
+						/>
+						@if (isNew(g.key)) {
+						<label
+							class="form-label-title"
+							for="tb_key"
+						>
+							{{ 'tb_key' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="tb_key"
+							[disabled]="!canEdit()"
+							[ngModel]="g.key"
+							(ngModelChange)="patchGroup(g.key, { key: $event })"
+						/>
+						}
+						<label
+							class="form-label-title"
+							for="tb_nature"
+						>
+							{{ 'tb_nature' | transloco }}
+						</label>
+						<select
+							class="form-select mb-2"
+							id="tb_nature"
+							[disabled]="!canEdit()"
+							[ngModel]="g.nature"
+							(ngModelChange)="patchGroup(g.key, { nature: $event })"
+						>
+							@for (n of natures; track n) {
+							<option [value]="n">{{ 'tb_nature_' + n | transloco }}</option>
+							}
+						</select>
+						<label
+							class="form-label-title"
+							for="tb_roles"
+						>
+							{{ 'tb_roles' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="tb_roles"
+							[disabled]="!canEdit()"
+							[ngModel]="g.roles.join(', ')"
+							(change)="patchGroup(g.key, { roles: roles($any($event.target).value) })"
+						/>
+						} @if (ledger(); as l) {
+						<b class="d-block mb-2">{{ 'tb_selected' | transloco: { name: l.name } }}</b>
+						<label
+							class="form-label-title"
+							for="tb_name"
+						>
+							{{ 'name' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="tb_name"
+							[disabled]="!canEdit()"
+							[ngModel]="l.name"
+							(ngModelChange)="patchLedger(l.key, { name: $event })"
+						/>
+						@if (isNew(l.key)) {
+						<label
+							class="form-label-title"
+							for="tb_key"
+						>
+							{{ 'tb_key' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="tb_key"
+							[disabled]="!canEdit()"
+							[ngModel]="l.key"
+							(ngModelChange)="patchLedger(l.key, { key: $event })"
+						/>
+						}
+						<label
+							class="form-label-title"
+							for="tb_group"
+						>
+							{{ 'accounts_group' | transloco }}
+						</label>
+						<select
+							class="form-select mb-2"
+							id="tb_group"
+							[disabled]="!canEdit()"
+							[ngModel]="l.groupKey"
+							(ngModelChange)="patchLedger(l.key, { groupKey: $event })"
+						>
+							@for (g of c.groups; track g.key) {
+							<option [value]="g.key">{{ g.name }}</option>
+							}
+						</select>
+						<label class="d-block mb-2">
+							<input
+								type="checkbox"
+								id="tb_hand"
+								[disabled]="!canEdit()"
+								[checked]="l.handPosting"
+								(change)="patchLedger(l.key, { handPosting: $any($event.target).checked })"
+							/>
+							{{ 'tb_hand_posting' | transloco }}
+						</label>
+						<label
+							class="form-label-title"
+							for="tb_roles"
+						>
+							{{ 'tb_roles' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="tb_roles"
+							[disabled]="!canEdit()"
+							[ngModel]="l.roles.join(', ')"
+							(change)="patchLedger(l.key, { roles: roles($any($event.target).value) })"
+						/>
+						<label
+							class="form-label-title"
+							for="tb_rule_set"
+						>
+							{{ 'tb_rule_set' | transloco }}
+						</label>
+						<select
+							class="form-select mb-2"
+							id="tb_rule_set"
+							[disabled]="!canEdit()"
+							[ngModel]="l.ruleSetCode ?? ''"
+							(ngModelChange)="patchLedger(l.key, { ruleSetCode: $event || null })"
+						>
+							<option value="">{{ 'tb_no_rule_set' | transloco }}</option>
+							@for (r of ruleSets(); track r.code) {
+							<option [value]="r.code">{{ r.code }} · {{ r.name }}</option>
+							}
+						</select>
+						<label
+							class="form-label-title"
+							for="tb_source"
+						>
+							{{ 'tb_source' | transloco }}
+						</label>
+						<input
+							class="form-control mb-2"
+							id="tb_source"
+							maxlength="300"
+							[disabled]="!canEdit()"
+							[ngModel]="l.source"
+							(ngModelChange)="patchLedger(l.key, { source: $event })"
+						/>
+						} @if (!group() && !ledger()) {
+						<p class="text-muted mb-0">{{ 'tb_pick' | transloco }}</p>
+						} @if (changes.data(); as ch) {
+						<div class="small mt-3">
+							<b class="d-block">{{ 'tb_changes' | transloco: { version: nextVersion() - 1 } }}</b>
+							@for (a of ch.added; track $index) {
+							<span class="text-success d-block">+ {{ a }}</span>
+							} @for (r of ch.removed; track $index) {
+							<span class="text-danger d-block">− {{ r }}</span>
+							} @for (n of ch.renamed; track $index) {
+							<span class="d-block">~ {{ n }}</span>
+							}
+						</div>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="row g-3 mt-1">
+				<div class="col-md-4">
+					<label
+						class="form-label-title"
+						for="tb_valid_from"
+					>
+						{{ 'tb_valid_from' | transloco }}
+					</label>
+					<input
+						type="date"
+						class="form-control"
+						id="tb_valid_from"
+						[disabled]="!canEdit()"
+						[ngModel]="validFrom()"
+						(ngModelChange)="validFrom.set($event); dirty.set(true)"
+					/>
+				</div>
+				<div class="col-md-8">
+					<label
+						class="form-label-title"
+						for="tb_version_source"
+					>
+						{{ 'tb_version_source' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="tb_version_source"
+						maxlength="500"
+						[disabled]="!canEdit()"
+						[ngModel]="source()"
+						(ngModelChange)="source.set($event); dirty.set(true)"
+					/>
+				</div>
+			</div>
+			<p class="help-text mt-2 mb-0">{{ 'tb_checks' | transloco }}</p>
+			} @if (!content()) {
+			<p class="text-muted mb-0">{{ 'tb_not_a_chart' | transloco }}</p>
+			}
+			<a
+				class="d-inline-block mt-3"
+				routerLink="/setting/accounts-templates"
+			>
+				{{ 'tb_back' | transloco }}
+			</a>
+		</div>
+	</div>
+	}
+</app-page-wrapper>
+
+<ng-template
+	#groupRow
+	let-node
+	let-depth="depth"
+>
+	<div [style.padding-left.px]="depth * 16">
+		<a
+			href="javascript:void(0)"
+			class="text-reset fw-semibold"
+			[class.text-primary]="selected()?.key === node.group.key"
+			(click)="selected.set({ kind: 'group', key: node.group.key })"
+		>
+			<i class="ri-folder-line me-1"></i>
+			{{ node.group.name }}
+		</a>
+		@if (node.group.roles.length) {
+		<small class="text-muted ms-1">{{ node.group.roles.join(', ') }}</small>
+		} @if (canEdit()) {
+		<a
+			href="javascript:void(0)"
+			class="ms-2"
+			[title]="'accounts_add_group' | transloco"
+			(click)="addGroup(node.group.key)"
+		>
+			<i class="ri-folder-add-line"></i>
+		</a>
+		<a
+			href="javascript:void(0)"
+			class="ms-1"
+			[title]="'accounts_add_ledger' | transloco"
+			(click)="addLedger(node.group.key)"
+		>
+			<i class="ri-file-add-line"></i>
+		</a>
+		@if (isNew(node.group.key) && !node.groups.length && !node.ledgers.length) {
+		<a
+			href="javascript:void(0)"
+			class="text-danger ms-1"
+			[title]="'delete' | transloco"
+			(click)="remove('group', node.group.key)"
+		>
+			<i class="ri-delete-bin-line"></i>
+		</a>
+		} }
+	</div>
+	@for (child of node.groups; track child.group.key) {
+	<ng-container *ngTemplateOutlet="groupRow; context: { $implicit: child, depth: depth + 1 }" />
+	} @for (l of node.ledgers; track l.key) {
+	<div [style.padding-left.px]="(depth + 1) * 16">
+		<a
+			href="javascript:void(0)"
+			class="text-reset"
+			[class.text-primary]="selected()?.key === l.key"
+			(click)="selected.set({ kind: 'ledger', key: l.key })"
+		>
+			<i class="ri-file-list-3-line me-1"></i>
+			{{ l.name }}
+		</a>
+		@if (l.roles.length) {
+		<small class="text-muted ms-1">{{ l.roles.join(', ') }}</small>
+		} @if (canEdit() && isNew(l.key)) {
+		<a
+			href="javascript:void(0)"
+			class="text-danger ms-1"
+			[title]="'delete' | transloco"
+			(click)="remove('ledger', l.key)"
+		>
+			<i class="ri-delete-bin-line"></i>
+		</a>
+		}
+	</div>
+	}
+</ng-template>

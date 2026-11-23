@@ -18,6 +18,13 @@ describe('accounts templates gateway (T2, T3)', () => {
 			[gateway.get('CH-PROP'), 'GET', `${base}/CH-PROP`],
 			[gateway.opens('llp'), 'GET', `${base}/opens`],
 			[gateway.setUpBooks(), 'POST', `${base}/set-up-books`],
+			[gateway.create({} as never), 'POST', base],
+			[gateway.importTemplate({}), 'POST', `${base}/import`],
+			[gateway.saveDraft('CH-PROP', {} as never), 'PUT', `${base}/CH-PROP/draft`],
+			[gateway.changes('CH-PROP'), 'GET', `${base}/CH-PROP/changes`],
+			[gateway.publish('CH-PROP', '2026-11-24T00:00:00.000Z'), 'POST', `${base}/CH-PROP/publish`],
+			[gateway.roles(), 'GET', '/admin/accounts/roles'],
+			[gateway.pointRole('cash', 'led_till'), 'PUT', '/admin/accounts/roles/cash'],
 		];
 		for (const [call, method, path] of cases) {
 			const done = firstValueFrom(call);
@@ -30,5 +37,7 @@ describe('accounts templates gateway (T2, T3)', () => {
 		expect(ACCOUNTS_TEMPLATE_KEYS.library).toEqual(['accounts-templates', 'library']);
 		expect(ACCOUNTS_TEMPLATE_KEYS.one('CH-PROP')).toEqual(['accounts-templates', 'CH-PROP']);
 		expect(ACCOUNTS_TEMPLATE_KEYS.opens('llp')).toEqual(['accounts-templates', 'opens', 'llp']);
+		expect(ACCOUNTS_TEMPLATE_KEYS.changes('CH-PROP')).toEqual(['accounts-templates', 'CH-PROP', 'changes']);
+		expect(ACCOUNTS_TEMPLATE_KEYS.roles).toEqual(['accounts-templates', 'roles']);
 	});
 });

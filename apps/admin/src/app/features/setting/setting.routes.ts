@@ -81,6 +81,16 @@ export default [
 			import('./accounts-templates/accounts-templates-page').then((m) => m.AccountsTemplatesPage),
 	},
 	{
+		// Accounts templates AT4: roles in this company's books (owner-approved 2026-11-24).
+		path: 'accounts-templates/roles',
+		loadComponent: () => import('./accounts-templates/roles-page').then((m) => m.RolesPage),
+	},
+	{
+		// Accounts templates AT3: one template, the chart builder (owner-approved 2026-11-24).
+		path: 'accounts-templates/:code',
+		loadComponent: () => import('./accounts-templates/template-builder').then((m) => m.TemplateBuilderPage),
+	},
+	{
 		// Accounts brief M2 (owner-approved 2026-11-23).
 		path: 'order-routing',
 		loadComponent: () => import('./order-routing/order-routing').then((m) => m.OrderRoutingPage),

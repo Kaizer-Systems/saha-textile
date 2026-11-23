@@ -2,7 +2,44 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'at_title'"
 >
-	<p class="text-muted">{{ 'at_intro' | transloco }}</p>
+	<div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+		<p class="text-muted mb-0">{{ 'at_intro' | transloco }}</p>
+		<span class="d-flex gap-2">
+			<a
+				class="btn btn-outline"
+				id="at_roles"
+				routerLink="/setting/accounts-templates/roles"
+			>
+				{{ 'ar_title' | transloco }}
+			</a>
+		</span>
+		@if (canEdit()) {
+		<span class="d-flex gap-2">
+			<label
+				class="btn btn-outline mb-0"
+				for="at_import"
+			>
+				{{ 'at_import' | transloco }}
+			</label>
+			<input
+				type="file"
+				class="d-none"
+				id="at_import"
+				accept=".json,application/json"
+				(change)="importFile($any($event.target))"
+			/>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="at_new"
+				(click)="openNew(newTemplate)"
+			>
+				<i class="ri-add-line"></i>
+				{{ 'at_new' | transloco }}
+			</button>
+		</span>
+		}
+	</div>
 	<div class="theme-form theme-form-2 d-flex align-items-end mb-3 flex-wrap gap-3">
 		<div>
 			<label
@@ -63,20 +100,26 @@
 			<tbody>
 				@for (row of rows(); track row.code) { @let s = state(row);
 				<tr [class.opacity-50]="row.locked">
-					<td class="text-nowrap">{{ row.code }}</td>
+					<td class="text-nowrap">
+						<a [routerLink]="['/setting/accounts-templates', row.code]">{{ row.code }}</a>
+					</td>
 					<td>{{ row.name }}</td>
 					<td>{{ 'at_type_' + row.kind | transloco }}</td>
 					<td>{{ appliesTo(row) }}</td>
 					<td class="text-nowrap">
-						{{ 'at_version_from' | transloco: { version: row.latestVersion, date: day(row.validFrom) } }}
-						@if (row.caReview === 'pending') {
+						@if (row.latestVersion !== null && row.validFrom) { {{ 'at_version_from' | transloco: { version:
+						row.latestVersion, date: day(row.validFrom) } }} } @if (row.caReview === 'pending') {
 						<span class="badge bg-light text-dark ms-1">{{ 'at_ca_review' | transloco }}</span>
+						} @if (row.hasDraft) {
+						<span class="badge bg-light text-dark ms-1">{{ 'at_has_draft' | transloco }}</span>
 						}
 					</td>
 					<td>
 						<div
 							[class.status-success]="s.key === 'at_state_installed'"
-							[class.status-pending]="s.key === 'at_state_update' || s.key === 'at_state_not_installed'"
+							[class.status-pending]="
+								s.key === 'at_state_update' || s.key === 'at_state_not_installed' || s.key === 'at_state_draft'
+							"
 							[class.status-danger]="s.key === 'at_state_locked'"
 						>
 							<span>{{ s.key | transloco: { version: s.version } }}</span>
@@ -97,3 +140,131 @@
 		</table>
 	</div>
 </app-page-wrapper>
+
+<ng-template
+	#newTemplate
+	let-modal
+>
+	<div class="modal-header">
+		<h5 class="modal-title">{{ 'at_new' | transloco }}</h5>
+		<button
+			type="button"
+			class="btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		></button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		@let f = fresh();
+		<div class="row g-3">
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="at_new_code"
+				>
+					{{ 'at_code' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="at_new_code"
+					placeholder="CH-FIRM-DEED"
+					[ngModel]="f.code"
+					(ngModelChange)="patchNew({ code: $event.toUpperCase() })"
+				/>
+			</div>
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="at_new_type"
+				>
+					{{ 'at_type' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="at_new_type"
+					[ngModel]="f.kind"
+					(ngModelChange)="patchNew({ kind: $event, startFrom: null })"
+				>
+					@for (t of types; track t) {
+					<option [value]="t">{{ 'at_type_' + t | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-12">
+				<label
+					class="form-label-title"
+					for="at_new_name"
+				>
+					{{ 'at_template' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="at_new_name"
+					maxlength="120"
+					[ngModel]="f.name"
+					(ngModelChange)="patchNew({ name: $event })"
+				/>
+			</div>
+			<div class="col-12">
+				<span class="form-label-title d-block">{{ 'at_applies_to' | transloco }}</span>
+				<label class="me-3">
+					<input
+						type="checkbox"
+						id="at_new_all"
+						[checked]="f.appliesTo.all"
+						(change)="patchNew({ appliesTo: { all: $any($event.target).checked, kinds: [] } })"
+					/>
+					{{ 'at_all_kinds' | transloco }}
+				</label>
+				@if (!f.appliesTo.all) { @for (k of kinds; track k) {
+				<label class="me-3">
+					<input
+						type="checkbox"
+						[id]="'at_new_kind_' + k"
+						[checked]="f.appliesTo.kinds.includes(k)"
+						(change)="toggleKind(k, $any($event.target).checked)"
+					/>
+					{{ 'co_kind_' + k | transloco }}
+				</label>
+				} }
+			</div>
+			<div class="col-12">
+				<label
+					class="form-label-title"
+					for="at_new_start"
+				>
+					{{ 'at_start_from' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="at_new_start"
+					[ngModel]="f.startFrom ?? ''"
+					(ngModelChange)="patchNew({ startFrom: $event || null })"
+				>
+					<option value="">{{ 'at_start_empty' | transloco }}</option>
+					@for (o of startOptions(); track o.code) {
+					<option [value]="o.code">{{ o.code }} · {{ o.name }}</option>
+					}
+				</select>
+			</div>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="at_new_save"
+			[disabled]="!canCreate()"
+			(click)="create()"
+		>
+			{{ 'at_new_save' | transloco }}
+		</button>
+	</div>
+</ng-template>

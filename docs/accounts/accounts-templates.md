@@ -68,6 +68,8 @@ Settings › Accounts templates lists every template with its code, type, the ki
 
 "Changes from vN" lists what a chart draft adds, removes and renames against the newest version. A chart template's ledger can name a tax rule set it follows (`ruleSetCode`) and its source. **Import** loads a template saved from another deployment (the template's JSON, as `GET /admin/accounts/templates/:code` gives it) under its own code; a code already here is refused with `duplicate_template_code`. The rules are in `packages/core-domain/src/templates/rules.ts`.
 
+The screens: Settings › Accounts templates has **Roles**, **Import** and **New template**; each code opens the template's page, where a chart template is built as a tree of groups and ledgers (a selected item's name, key while it is new, nature, hand posting, roles, rule set link and source), with the day it applies from, Changes from vN, **Save draft** and **Publish vN**. Tax rule sets and reports are shown there read-only until their builders.
+
 ## Roles
 
 Accounts › Roles lists every role the engine posts to, the ledger or group playing it in this company's books, the installed chart template that set it (`CH-COMMON v2`), and a problem when none or two play it. A super admin may point a ledger role at another ledger: the chosen ledger plays it and the others stop (a ledger left with no role is stored with `roles: ['none']`, since an empty list falls back to its system key). Each change is in the edit log (`accounts.role.point`).

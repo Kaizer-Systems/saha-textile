@@ -224,6 +224,8 @@ export function toOrder(doc: OrderDoc): Order {
 		closedAt: (row.closedAt ?? null) as Order['closedAt'],
 		eInvoice: (row.eInvoice ?? null) as Order['eInvoice'],
 		eWayBill: (row.eWayBill ?? null) as Order['eWayBill'],
+		/** Where the order ships from (accounts brief M1); null = not assigned. */
+		shipsFromLocationId: (row.shipsFromLocationId ?? null) as Order['shipsFromLocationId'],
 		history: (row.history ?? []) as Order['history'],
 		packTicks: (row.packTicks ?? []) as Order['packTicks'],
 		revision: (row.revision ?? 0) as number,

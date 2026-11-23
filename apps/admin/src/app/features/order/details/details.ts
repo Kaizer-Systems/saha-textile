@@ -20,6 +20,7 @@ import { INVOICE_CONFIRMED_HOW, OrderInvoiceAddressPopup } from './order-invoice
 import { OrderPaymentPopup } from './order-payment-popup';
 import { OrderRequestPopup } from './order-request-popup';
 import { OrderSendPopup, type SendChannel, type SendOutcome } from './order-send-popup';
+import { OrderShipsFromCard } from './order-ships-from';
 import { OrderStatusPopup } from './order-status-popup';
 
 import type {
@@ -66,7 +67,7 @@ function firstName(name: string): string {
 	selector: 'app-details',
 	templateUrl: './details.html',
 	styleUrls: ['./details.scss'],
-	imports: [HasPermissionDirective, RouterModule, RupeesPipe, TranslocoModule],
+	imports: [HasPermissionDirective, RouterModule, RupeesPipe, TranslocoModule, OrderShipsFromCard],
 })
 export class Details {
 	private readonly route = inject(ActivatedRoute);

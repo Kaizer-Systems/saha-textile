@@ -34,3 +34,33 @@ export const RoutingCandidate = z.object({
 	of: z.number().int().nonnegative(),
 });
 export type RoutingCandidate = z.infer<typeof RoutingCandidate>;
+
+/** M1: where an order ships from, each piece's free stock at each shipping location, and who may change it. */
+export const ShipsFromView = z.object({
+	orderId: Id,
+	revision: z.number().int().nonnegative(),
+	current: Id.nullable(),
+	/** Shipped, delivered or cancelled orders keep their location. */
+	open: z.boolean(),
+	locations: z.array(z.object({ id: Id, name: z.string(), shortCode: z.string() })),
+	lines: z.array(
+		z.object({
+			lineId: z.string(),
+			sku: z.string(),
+			title: z.string(),
+			quantity: z.number().int(),
+			/** Free pieces (on hand − held − kept for other orders) per location id. */
+			free: z.record(z.string(), z.number().int()),
+		}),
+	),
+	candidates: z.array(RoutingCandidate),
+});
+export type ShipsFromView = z.infer<typeof ShipsFromView>;
+
+export const ShipsFromWrite = z.object({
+	/** Null hands the order back to Not assigned. */
+	locationId: Id.nullable(),
+	revision: z.number().int().nonnegative(),
+	reason: z.string().trim().max(300).default(''),
+});
+export type ShipsFromWrite = z.infer<typeof ShipsFromWrite>;

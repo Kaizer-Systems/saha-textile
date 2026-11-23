@@ -219,7 +219,8 @@ export class OrderStock {
 		}
 	}
 
-	private async variantIdOf(line: OrderLine): Promise<string> {
+	/** The variant a line holds stock on (its option, or the product's base variant). */
+	async variantIdOf(line: OrderLine): Promise<string> {
 		if (line.variationId) return line.variationId;
 		const rows = await this.variants.listForProduct(line.productId, 'admin');
 		const base = rows.find((row) => row.isBaseVariant) ?? rows[0];

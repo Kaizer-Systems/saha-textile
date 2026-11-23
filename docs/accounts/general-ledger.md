@@ -79,6 +79,8 @@ Each month has a state per part of the books (sales, purchases, stock, cash, ban
 
 Reopening a month needs a super admin and a reason. Every change is written to the audit log with the state before and after.
 
+Every change to the books (vouchers posted or reversed, ledgers, groups and month locks) is kept in the audit log for eight years, in its own `books` tier.
+
 ## Document locks
 
 `POST /admin/document-locks` gives a document to one person. The page reports in every 20 seconds, and the lock ends when the page closes or after two idle minutes. Others are told who holds it. A super admin may take a document over; the take-over is logged.

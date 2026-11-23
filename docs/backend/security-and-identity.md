@@ -344,7 +344,7 @@ A strict deployment refuses to start with unsafe secrets or settings. See [Deplo
 
 ## Audit records
 
-Security audit records identify the request, session, actor, action, target, decision, time and safe context. They never contain passwords, PINs, OTP values, tokens, provider secrets, raw IPs or full personal data. Each record has a retention tier: `financial_security` keeps it for seven years, and `catalog_admin` for five. Authority and credential events use the seven-year tier. The trail is read-only over HTTP, through `GET /admin/audit-logs`, which caps a page at 200 rows and omits the IP and user-agent hashes. Offboarding an operator sets `disabled`, so the record keeps its subject and the email stays claimed.
+Security audit records identify the request, session, actor, action, target, decision, time and safe context. They never contain passwords, PINs, OTP values, tokens, provider secrets, raw IPs or full personal data. Each record has a retention tier: `financial_security` keeps it for seven years, `catalog_admin` for five, and `books` for eight (every change to the books: vouchers, ledgers and month locks). Authority and credential events use the seven-year tier. The trail is read-only over HTTP, through `GET /admin/audit-logs`, which caps a page at 200 rows and omits the IP and user-agent hashes. Offboarding an operator sets `disabled`, so the record keeps its subject and the email stays claimed.
 
 ## Limitations
 

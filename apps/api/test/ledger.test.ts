@@ -91,7 +91,7 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 	let locks: PeriodLock[] = options.locks ?? [];
 	const documentLocks = new Map<string, DocumentLock>();
 	let counter = 0;
-	const audit: { action: string }[] = [];
+	const audit: { action: string; retentionTier?: string }[] = [];
 	const service = new LedgerService(
 		books as never,
 		{
@@ -126,7 +126,7 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 			],
 		} as never,
 		{ withTransaction: (work: (c: object) => Promise<unknown>) => work({}) } as never,
-		{ append: async (entry: { action: string }) => void audit.push(entry) } as never,
+		{ append: async (entry: { action: string; retentionTier?: string }) => void audit.push(entry) } as never,
 		{ findByKey: async () => ({ id: 'role_admin' }) } as never,
 		{ findActive: async (userId: string) => (userId === 'adm_owner' ? { userId } : null) } as never,
 		{ findById: async (id: string) => ({ id, displayName: id === 'adm_owner' ? 'Owner' : 'Manager' }) } as never,
@@ -185,6 +185,8 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		expect((await service.postByHand(rentPaid(), owner)).id).toBe(voucher.id);
 		expect(books.vouchers).toHaveLength(1);
 		expect(audit.map((a) => a.action)).toContain('accounts.voucher.post');
+		// The books' edit log is kept 8 years (owner, 2026-11-23).
+		expect(audit.every((a) => a.retentionTier === 'books')).toBe(true);
 		const statement = await service.statement(
 			'led_cash',
 			{ from: '2026-11-01', to: '2026-11-30', locationIds: [] },

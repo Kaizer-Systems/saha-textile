@@ -601,7 +601,8 @@ export class LedgerService {
 				entityType,
 				entityId,
 				severity: 'info',
-				retentionTier: 'financial_security',
+				// The books' edit log is kept 8 years (owner, 2026-11-23).
+				retentionTier: 'books',
 				diffs,
 				metadata,
 				requestId: null,

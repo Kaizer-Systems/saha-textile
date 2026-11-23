@@ -4,10 +4,19 @@ import { Id, IsoDateTime } from './common';
 
 /**
  * Audit retention tier (owner lock 2026-07-23): `financial_security` = 7 years,
- * `catalog_admin` = 5 years. Raw analytics events are NOT audit logs (~90 days
- * after rollup; see `analytics` contracts when built).
+ * `catalog_admin` = 5 years. `books` = 8 years (owner, 2026-11-23): the books' edit
+ * log (vouchers, ledgers, month locks) is kept at least as long as the Companies Act's
+ * 8 years, which also covers GST's 72 months. Raw analytics events are NOT audit logs
+ * (~90 days after rollup; see `analytics` contracts when built).
  */
-export const AuditRetentionTier = z.enum(['financial_security', 'catalog_admin']);
+export const AuditRetentionTier = z.enum(['financial_security', 'catalog_admin', 'books']);
+
+/** How long each tier is kept, in years (the retention job's cut-off). */
+export const AUDIT_RETENTION_YEARS: Readonly<Record<AuditRetentionTier, number>> = {
+	financial_security: 7,
+	catalog_admin: 5,
+	books: 8,
+};
 export type AuditRetentionTier = z.infer<typeof AuditRetentionTier>;
 
 export const AuditAudience = z.enum(['storefront', 'admin', 'system']);

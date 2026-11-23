@@ -56,6 +56,7 @@ import {
 	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
 
+import { EDocsService } from '../edocs/edocs.service';
 import { AddressBookService } from '../addresses/address-book.service';
 import { codedRefusal } from '../common/coded-refusal';
 import {
@@ -226,6 +227,7 @@ export class AdminOrdersService {
 		private readonly stock: OrderStock,
 		@Optional() @Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository | null = null,
 		@Optional() @Inject(OrderNoticesService) private readonly notices: OrderNoticesService | null = null,
+		@Optional() @Inject(EDocsService) private readonly edocs: EDocsService | null = null,
 	) {}
 
 	/**
@@ -689,7 +691,14 @@ export class AdminOrdersService {
 				: { eWayBill: record as Order['eWayBill'] }),
 			history: [...order.history, historyEntry(actor, at, 'eDocument', { detail: { kind, source: 'api' } })],
 		};
-		return { outcome: 'raised', order: await this.orders.update(next, order.revision, undefined, metaOf(next)) };
+		const saved = await this.orders.update(next, order.revision, undefined, metaOf(next));
+		await this.edocs?.recordForOrder(
+			saved,
+			kind,
+			kind === 'eInvoice' ? 'irpDirect' : 'ewbDirect',
+			actor.id ?? 'unknown',
+		);
+		return { outcome: 'raised', order: saved };
 	}
 
 	async setEInvoice(id: string, input: EInvoiceWrite, actor: Actor, now = new Date()) {
@@ -708,6 +717,8 @@ export class AdminOrdersService {
 			() => this.orders.update(next, revision, undefined, metaOf(next)),
 			'Someone else changed this order first',
 		);
+		const saved = await this.get(id);
+		await this.edocs?.recordForOrder(saved, 'eInvoice', 'manual', actor.id ?? 'unknown');
 		return this.detail(id, now);
 	}
 
@@ -727,6 +738,8 @@ export class AdminOrdersService {
 			() => this.orders.update(next, revision, undefined, metaOf(next)),
 			'Someone else changed this order first',
 		);
+		const saved = await this.get(id);
+		await this.edocs?.recordForOrder(saved, 'eWayBill', 'manual', actor.id ?? 'unknown');
 		return this.detail(id, now);
 	}
 

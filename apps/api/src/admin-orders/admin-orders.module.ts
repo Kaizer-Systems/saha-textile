@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { NOT_CONNECTED_EINVOICE, NOT_CONNECTED_EWAYBILL } from '@saha-textile/core-domain';
 
 import { AddressesModule } from '../addresses/addresses.module';
 
 import { AuthModule } from '../auth/auth.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { CurrencyModule } from '../currency/currency.module';
+import { EDocsOrderBridge, eInvoicePortFrom, eWayBillPortFrom } from '../edocs/edocs-order-bridge';
+import { EDocsModule } from '../edocs/edocs.module';
 import { APP_CONFIG } from '../config/app-config';
 import { buildCheckoutGateways, buildPaymentRequestPorts } from '../infra/payment-gateway-factory';
 import {
@@ -37,7 +38,15 @@ import { PaymentRequestsService } from './payment-requests.service';
 
 /** The admin ordering system (orders and checkout brief, approved 2026-11-20). */
 @Module({
-	imports: [AuthModule, CatalogModule, CurrencyModule, OrdersSetupModule, AddressesModule, ShippingModule],
+	imports: [
+		EDocsModule,
+		AuthModule,
+		CatalogModule,
+		CurrencyModule,
+		OrdersSetupModule,
+		AddressesModule,
+		ShippingModule,
+	],
 	controllers: [
 		AdminOrdersController,
 		AdminCouponTryController,
@@ -59,8 +68,8 @@ import { PaymentRequestsService } from './payment-requests.service';
 		{ provide: CHECKOUT_GATEWAYS, useFactory: buildCheckoutGateways, inject: [APP_CONFIG, INR_PAYMENT_GATEWAY] },
 		{ provide: PAYMENT_REQUEST_PORTS, useFactory: buildPaymentRequestPorts, inject: [CHECKOUT_GATEWAYS] },
 		// No e-invoice or e-way bill integration yet: Raise falls back to typing the details by hand.
-		{ provide: EINVOICE_PORT, useValue: NOT_CONNECTED_EINVOICE },
-		{ provide: EWAYBILL_PORT, useValue: NOT_CONNECTED_EWAYBILL },
+		{ provide: EINVOICE_PORT, inject: [EDocsOrderBridge], useFactory: eInvoicePortFrom },
+		{ provide: EWAYBILL_PORT, inject: [EDocsOrderBridge], useFactory: eWayBillPortFrom },
 	],
 	exports: [
 		AdminCartService,

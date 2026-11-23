@@ -121,6 +121,8 @@ export const INVENTORY_SETTINGS_REPOSITORY = Symbol('InventorySettingsRepository
 export const SHOP_DETAILS_REPOSITORY = Symbol('ShopDetailsRepository');
 /** Company setup (accounts brief J, CT, G1–G2). */
 export const COMPANY_REPOSITORY = Symbol('CompanyRepository');
+export const EDOC_REPOSITORY = Symbol('EDocRepository');
+export const EDOC_KEY_STORE = Symbol('EDocKeyStore');
 export const STOCK_MOVEMENT = Symbol('StockMovementPort');
 export const STOCK_READ_REPOSITORY = Symbol('StockReadRepository');
 export const INVENTORY_COST_LAYER_REPOSITORY = Symbol('InventoryCostLayerRepository');

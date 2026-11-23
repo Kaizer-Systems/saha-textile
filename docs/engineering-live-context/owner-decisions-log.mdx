@@ -1877,7 +1877,7 @@ the commercial policy is settled; its CA items (C2) stay open.
   1 consent and 22 email templates; the follow-up to MSG91 closes questions 41–48.
 - **Two order messages added to Settings › Communications** from the 2026-11-17 orders round
   (OD1, OD2): an item on backorder, and an item sold out before payment (order refunded). Both
-  start on for every channel, like the other order messages (commit 741b9e3e).
+  start on for every channel, like the other order messages (commit 2dad11a7).
 
 ## Owner decision round (2026-11-19) — Infisical in every way the shop runs
 
@@ -2489,3 +2489,20 @@ the separate offline company.
 - **Multi-store check, temporary:** to prove the software also fits a company with several stores in several States, test
   locations may be added locally and used for books, GST per GSTIN and stock in and out; when the check is done they are removed,
   so K.R. Marketing stays a single online business.
+
+## Owner decision round (2026-11-23) — git history without AI attribution
+
+- **Every commit message cleaned, nothing else changed.** Owner: "would you be able to rewrite all the
+  commits that have such, codex or Claude or cursor or any kind of AI related stuff? ... without
+  affecting code or the order of commits or any kind of working of the code". All 1,470 commits on
+  every branch were rebuilt with the same files, parents, authors, committers and dates; 882 AI
+  co-author lines were removed and 24 messages reworded where they named an AI chat. Each commit is
+  signed again with the owner's key; GitHub's five pull-request merge commits are kept unsigned with
+  GitHub as committer. `main`, `staging`, `dev` and the old feature branches were force-pushed
+  (admin bypass); the branch `cursor/cloud-agent-1784884449111-q71gq` was deleted ("Delete it").
+  Commit ids quoted in these docs were switched to the new ids ("Yes, switch them"). A full backup of
+  the old history (bundle and mirror) and the old-to-new id list sit beside the project folder in
+  `saha-textile-history-backup-2026-11-23/`. GitHub's pages for pull requests #1–#6 still show their
+  old commits; only GitHub Support can remove those.
+- **No AI attribution from now on** ("AGENTS.md and my CLAUDE.md"): AGENTS.md §5 and the owner's own
+  CLAUDE.md say commit messages and pull requests never name an AI tool or chat.

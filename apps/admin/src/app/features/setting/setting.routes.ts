@@ -60,6 +60,11 @@ export default [
 		loadComponent: () => import('./shop-details/shop-details').then((m) => m.ShopDetailsSettings),
 	},
 	{
+		// Accounts brief J2, G1, G2 (owner-approved 2026-11-23).
+		path: 'gst-registrations',
+		loadComponent: () => import('./company/gst-registrations').then((m) => m.GstRegistrationsSettings),
+	},
+	{
 		// Accounts brief J3 (owner-approved 2026-11-23).
 		path: 'features',
 		loadComponent: () => import('./company/feature-switches').then((m) => m.FeatureSwitchesSettings),

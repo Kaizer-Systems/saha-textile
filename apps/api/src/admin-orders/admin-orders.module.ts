@@ -30,6 +30,7 @@ import { AdminOrdersService } from './admin-orders.service';
 import { BusinessAddressesService } from './business-addresses.service';
 import { BusinessReceiptsService } from './business-receipts.service';
 import { OrderNoticesService } from './order-notices.service';
+import { OrderRoutingModule } from '../routing/order-routing.module';
 import { OrderStock } from './order-stock';
 import { OpenOrdersService } from './open-orders.service';
 import { PayPageController } from './pay-page.controller';
@@ -40,6 +41,7 @@ import { PaymentRequestsService } from './payment-requests.service';
 @Module({
 	imports: [
 		EDocsModule,
+		OrderRoutingModule,
 		AuthModule,
 		CatalogModule,
 		CurrencyModule,

@@ -113,4 +113,73 @@ describe('an order’s pieces in stock (DEC-STOCK-RESERVE, K7)', () => {
 			response: { issues: [{ code: 'out_of_stock', params: { sku: 'SAR-1' } }] },
 		});
 	});
+
+	it('routes a new order to the one shipping location with every free piece, and keeps them there (M2)', async () => {
+		const moves: Array<Record<string, unknown>> = [];
+		const make = (mode: 'auto' | 'manual') =>
+			new OrderStock(
+				{
+					move: async (input: Record<string, unknown>) => (
+						moves.push(input),
+						{ ledgerId: 'x', onHandAfter: 0, heldAfter: 0 }
+					),
+					locationStock: async () => [
+						{
+							variantId: 'v1',
+							productId: 'p1',
+							locationId: 'loc_bar',
+							onHand: 5,
+							held: 0,
+							reserved: 0,
+							updatedAt: null,
+						},
+						{
+							variantId: 'v_base',
+							productId: 'p1',
+							locationId: 'loc_bar',
+							onHand: 2,
+							held: 0,
+							reserved: 0,
+							updatedAt: null,
+						},
+						{
+							variantId: 'v1',
+							productId: 'p1',
+							locationId: 'loc_aga',
+							onHand: 9,
+							held: 0,
+							reserved: 0,
+							updatedAt: null,
+						},
+					],
+				} as never,
+				{ listForProduct: async () => [{ id: 'v_base', isBaseVariant: true }] } as never,
+				{} as never,
+				null,
+				{ get: async () => ({ mode }) } as never,
+				{
+					list: async () => [
+						{
+							id: 'loc_bar',
+							active: true,
+							warehouse: true,
+							shipsOnline: true,
+							createdAt: '2026-11-01T00:00:00.000Z',
+						},
+						{
+							id: 'loc_aga',
+							active: true,
+							warehouse: true,
+							shipsOnline: true,
+							createdAt: '2026-11-02T00:00:00.000Z',
+						},
+					],
+				} as never,
+			);
+		const routed = await make('auto').route(order);
+		expect(routed).toBe('loc_bar');
+		expect(await make('manual').route(order)).toBeNull();
+		await make('auto').reserve({ ...order, shipsFromLocationId: routed }, order.lines, 'adm', {} as never, 'now');
+		expect(moves.every((row) => row.locationId === 'loc_bar')).toBe(true);
+	});
 });

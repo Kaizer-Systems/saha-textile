@@ -404,6 +404,7 @@ export class AdminOrderCreateService {
 				const placed = await this.transactions.withTransaction(async (context) => {
 					const orderNumber = await this.numbers.orderNumber(context, now);
 					let order: Order = { ...base, id: `ord_${randomUUID()}`, orderNumber };
+					order = { ...order, shipsFromLocationId: await this.stock.route(order) };
 					await this.stock.reserve(order, order.lines, actor.id, context, at);
 					const payments: OrderPayment[] = [];
 					if (input.payment.method === 'manual') {

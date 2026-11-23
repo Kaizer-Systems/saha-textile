@@ -137,7 +137,10 @@ function harness(cart = view(), limitINR = 200_000, outstanding = 0, orderSettin
 			}),
 		} as never,
 		{ orderNumber: async () => 'ST-2611-482190', issue: async () => 'RC/26-27/000001' } as never,
-		{ reserve: async (_o: Order, lines: Order['lines']) => reserved.push(lines.length) } as never,
+		{
+			route: async () => null,
+			reserve: async (_o: Order, lines: Order['lines']) => reserved.push(lines.length),
+		} as never,
 		{
 			findByIdempotencyKey: async (key: string) =>
 				created.find((row) => (row as Order & { key?: string }).key === key) ?? null,

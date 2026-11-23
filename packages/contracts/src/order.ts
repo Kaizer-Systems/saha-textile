@@ -356,6 +356,8 @@ export type EWayBillRecord = z.infer<typeof EWayBillRecord>;
 export const Order = z.object({
 	id: Id,
 	orderNumber: z.string().min(1),
+	/** Where the order ships from (accounts brief M1, M2); null = not assigned, the default stock location holds it. */
+	shipsFromLocationId: Id.nullable().optional(),
 	userId: Id.nullable().default(null),
 	/** Order currency (INR canonical; non-INR resolved at checkout). */
 	currency: z.string().length(3),

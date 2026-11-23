@@ -280,6 +280,8 @@ export class ShopCheckoutService {
 						orderNumber,
 						lines: base.lines.map((line) => ({ ...line, held: keepsStock(line) })),
 					};
+					// Where it ships from (accounts brief M2), before its pieces are kept there.
+					order.shipsFromLocationId = await this.stock.route(order);
 					await this.stock.reserve(order, order.lines, built.customer.id, context, at);
 					return this.orders.create(order, key, context, metaOf(order));
 				});

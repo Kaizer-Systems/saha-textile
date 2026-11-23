@@ -1,6 +1,9 @@
 import { ConflictException, Inject, Injectable, Optional } from '@nestjs/common';
 import type { Order, OrderLine } from '@saha-textile/contracts';
 import {
+	defaultStockLocation,
+	type LocationRepository,
+	routeOrder,
 	StockMovementRefusedError,
 	type InventoryCostLayerRepository,
 	type ProductVariantRepository,
@@ -13,9 +16,11 @@ import type { BundleStockService } from '../catalog/bundles/bundle-stock.service
 import {
 	BUNDLE_STOCK,
 	INVENTORY_COST_LAYER_REPOSITORY,
+	LOCATION_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
 	STOCK_MOVEMENT,
 } from '../infra/tokens';
+import { OrderRoutingService } from '../routing/order-routing.service';
 
 type Move = 'reserve' | 'release' | 'sell';
 
@@ -39,7 +44,36 @@ export class OrderStock {
 		@Inject(PRODUCT_VARIANT_REPOSITORY) private readonly variants: ProductVariantRepository,
 		@Inject(INVENTORY_COST_LAYER_REPOSITORY) private readonly layers: InventoryCostLayerRepository,
 		@Optional() @Inject(BUNDLE_STOCK) private readonly bundleStock: BundleStockService | null = null,
+		@Optional() private readonly routing: OrderRoutingService | null = null,
+		@Optional()
+		@Inject(LOCATION_REPOSITORY)
+		private readonly locations: Pick<LocationRepository, 'list'> | null = null,
 	) {}
+
+	/**
+	 * Where a new order ships from (accounts brief M2, D14): with "assign by itself", the one shipping location that
+	 * holds every stocked piece free (the default first when several do); otherwise null, Not assigned, for a
+	 * manager. Read before the order's stock is kept, so the pieces are kept at that location.
+	 */
+	async route(order: Order): Promise<string | null> {
+		if (!this.routing || !this.locations) return null;
+		const [settings, locations] = await Promise.all([this.routing.get(), this.locations.list()]);
+		const lines: { variantId: string; quantity: number }[] = [];
+		for (const line of order.lines) {
+			if (line.madeToOrder || line.role === 'bundle') continue;
+			lines.push({ variantId: await this.variantIdOf(line), quantity: line.quantity });
+		}
+		if (!lines.length) return null;
+		return routeOrder(
+			{
+				lines,
+				stock: await this.stock.locationStock(lines.map((line) => line.variantId)),
+				shippingLocationIds: locations.filter((l) => l.active && l.warehouse && l.shipsOnline).map((l) => l.id),
+				defaultLocationId: defaultStockLocation(locations),
+			},
+			settings,
+		).assign;
+	}
 
 	reserve(
 		order: Order,
@@ -167,6 +201,8 @@ export class OrderStock {
 						actorUserId: actorId,
 						approverUserId: null,
 						at,
+						// Kept and sold at the order's ships-from location; not assigned → the default stock location.
+						locationId: order.shipsFromLocationId ?? null,
 					},
 					context,
 				);

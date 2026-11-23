@@ -303,7 +303,8 @@ export class VendorReadsService {
 		}
 	}
 
-	private async sourceCode<T>(
+	/** Reads with the repository's source-code key; the answer says when there is none (also used by Coverage). */
+	async sourceCode<T>(
 		projectId: string,
 		repoId: string,
 		read: (repo: string, key: string) => Promise<T>,

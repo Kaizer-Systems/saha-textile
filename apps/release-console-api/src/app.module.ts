@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
 import { AppFilesController } from './app-files/app-files.controller.js';
+import { CoverageController } from './code-coverage/coverage.controller.js';
+import { CoverageService } from './code-coverage/coverage.service.js';
 import { HealthController } from './health/health.controller.js';
 import { KeySourceService } from './keys/key-source.js';
 import { LocalStackController } from './local-stack/local-stack.controller.js';
@@ -31,6 +33,7 @@ import { ProductsService } from './products/products.service.js';
 
 @Module({
 	controllers: [
+		CoverageController,
 		ProductsController,
 		HealthController,
 		LockController,
@@ -49,6 +52,7 @@ import { ProductsService } from './products/products.service.js';
 		AppFilesController,
 	],
 	providers: [
+		CoverageService,
 		ConsoleStore,
 		ProductsService,
 		LockService,

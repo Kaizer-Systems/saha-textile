@@ -140,6 +140,15 @@ test('answers only requests carrying its token', async () => {
 		headers: { authorization: `Bearer ${token}` },
 	});
 	assert.equal(unknown.status, 404);
+	// The Coverage screen's questions reach this copy's coverage folder; a bad name is refused.
+	const badName = await fetch(`http://127.0.0.1:${port}/coverage/report?ws=../x`, {
+		headers: { authorization: `Bearer ${token}` },
+	});
+	assert.deepEqual([badName.status, (await badName.json()).message], [400, 'That is not a workspace name.']);
+	const other = await fetch(`http://127.0.0.1:${port}/coverage/other`, {
+		headers: { authorization: `Bearer ${token}` },
+	});
+	assert.equal(other.status, 404);
 	server.close();
 });
 

@@ -47,6 +47,7 @@ import { BRANCH_NAME, checkoutBranches, menusFileAt } from './git-branches.mjs';
 import { repositoryOf } from './infisical-places.mjs';
 import { loadInventory, ROOT, SERVER_TIERS, TIERS } from '../secrets/inventory.mjs';
 import { FirstBootError, firstBootTemplate, prepareFirstBoot } from './first-boot.mjs';
+import { coverageLocal } from './coverage-local.mjs';
 import { tracingState } from './tracing.mjs';
 import {
 	SetupError,
@@ -982,6 +983,15 @@ export function createRunner(token) {
 				return send(200, await localOps(raw ? JSON.parse(raw) : {}));
 			}
 			if (req.method === 'GET' && path === '/tracing/state') return send(200, await tracingState(ROOT));
+			// Ship › Code › Coverage (brief CRmpBdP3ce62g1JoCAhh23): this copy's coverage reports, files and text.
+			if (req.method === 'GET' && path.startsWith('/coverage/')) {
+				const answer = coverageLocal(
+					path.slice('/coverage/'.length),
+					Object.fromEntries(url.searchParams),
+					ROOT,
+				);
+				return send(answer.status ?? 200, answer);
+			}
 			if (req.method === 'GET' && path.startsWith('/traces/')) {
 				try {
 					return send(

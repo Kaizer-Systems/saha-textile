@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
 	type AdjustmentRequest,
 	InventorySettings,
+	LocationStock,
 	ShopDetails,
 	type PurchaseEntry,
 	type PurchaseOrder,
@@ -55,6 +56,7 @@ import {
 	InventoryCostLayerModel,
 	InventoryLedgerModel,
 	InventorySettingsModel,
+	LocationStockModel,
 	ShopDetailsModel,
 	OpeningStockModel,
 	ProductModel,
@@ -941,12 +943,76 @@ export class MongoStockMovement implements StockMovementPort {
 					referenceNumber: input.referenceNumber,
 					actorUserId: input.actorUserId,
 					approverUserId: input.approverUserId,
+					locationId: input.locationId ?? null,
 					createdAt: new Date(input.at),
 				},
 			],
 			{ session },
 		);
+		if (input.locationId) {
+			// The location's share of the variant moves with it, in the same transaction (F4).
+			await LocationStockModel.updateOne(
+				{ _id: `${input.variantId}:${input.locationId}` },
+				{
+					$inc: { onHand: input.quantityDelta, held: input.heldDelta, reserved: reservedDelta },
+					$set: {
+						variantId: input.variantId,
+						productId: input.productId,
+						locationId: input.locationId,
+						updatedAt: input.at,
+					},
+				},
+				{ upsert: true, session },
+			).exec();
+		}
 		return { ledgerId, onHandAfter: updated.stock.quantity, heldAfter: updated.stock.held ?? 0 };
+	}
+
+	async locationStock(variantIds: readonly string[]): Promise<LocationStock[]> {
+		if (!variantIds.length) return [];
+		const docs = await LocationStockModel.find({ variantId: { $in: [...variantIds] } })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map((doc) => LocationStock.parse(doc));
+	}
+
+	async placeUnlocatedStock(locationId: string): Promise<{ variants: number; ledgerRows: number; layers: number }> {
+		const placed = new Set<string>((await LocationStockModel.distinct('variantId').exec()).map(String));
+		const unplaced = await ProductVariantModel.find({
+			$or: [{ 'stock.quantity': { $ne: 0 } }, { 'stock.held': { $gt: 0 } }, { 'stock.reserved': { $gt: 0 } }],
+		})
+			.select('productId stock')
+			.lean<
+				{ _id: string; productId: string; stock?: { quantity?: number; held?: number; reserved?: number } }[]
+			>()
+			.exec();
+		const now = new Date().toISOString();
+		const rows = unplaced
+			.filter((variant) => !placed.has(String(variant._id)))
+			.map((variant) => ({
+				updateOne: {
+					filter: { _id: `${variant._id}:${locationId}` },
+					update: {
+						$setOnInsert: {
+							variantId: String(variant._id),
+							productId: String(variant.productId),
+							locationId,
+							onHand: variant.stock?.quantity ?? 0,
+							held: variant.stock?.held ?? 0,
+							reserved: variant.stock?.reserved ?? 0,
+							updatedAt: now,
+						},
+					},
+					upsert: true,
+				},
+			}));
+		if (rows.length) await LocationStockModel.bulkWrite(rows);
+		const unset = { $or: [{ locationId: { $exists: false } }, { locationId: null }] };
+		const [ledger, layers] = await Promise.all([
+			InventoryLedgerModel.updateMany(unset, { $set: { locationId } }).exec(),
+			InventoryCostLayerModel.updateMany(unset, { $set: { locationId } }).exec(),
+		]);
+		return { variants: rows.length, ledgerRows: ledger.modifiedCount, layers: layers.modifiedCount };
 	}
 
 	async consumeLayer(layerId: string, quantity: number, context?: TransactionContext): Promise<void> {

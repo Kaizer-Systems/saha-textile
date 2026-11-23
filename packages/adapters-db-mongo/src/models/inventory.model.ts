@@ -26,6 +26,8 @@ export interface InventoryLedgerDoc {
 	referenceNumber?: string | null;
 	actorUserId: string | null;
 	approverUserId?: string | null;
+	/** Where the pieces moved (accounts brief F4). */
+	locationId?: string | null;
 	createdAt: Date;
 }
 
@@ -52,6 +54,7 @@ const InventoryLedgerSchema = new Schema<InventoryLedgerDoc>(
 		referenceNumber: { type: String, default: null },
 		actorUserId: { type: String, default: null },
 		approverUserId: { type: String, default: null },
+		locationId: { type: String, default: null },
 	},
 	{ collection: 'inventoryLedger', timestamps: { createdAt: true, updatedAt: false } },
 );
@@ -81,6 +84,7 @@ export interface InventoryCostLayerDoc {
 	sourceType?: string;
 	sourceLineId?: string | null;
 	sourceNumber?: string | null;
+	locationId?: string | null;
 	unitCostINR: number;
 	quantityReceived: number;
 	quantityRemaining: number;
@@ -96,6 +100,7 @@ const InventoryCostLayerSchema = new Schema<InventoryCostLayerDoc>(
 		sourceType: { type: String, default: 'purchase_invoice' },
 		sourceLineId: { type: String, default: null },
 		sourceNumber: { type: String, default: null },
+		locationId: { type: String, default: null },
 		unitCostINR: { type: Number, required: true },
 		quantityReceived: { type: Number, required: true },
 		quantityRemaining: { type: Number, required: true },

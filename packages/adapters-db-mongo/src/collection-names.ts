@@ -135,6 +135,8 @@ export const COLLECTION_NAMES = {
 	JournalLine: 'journalLines',
 	PeriodLock: 'periodLocks',
 	DocumentLock: 'documentLocks',
+	/** Stock split by location (accounts brief F4). */
+	LocationStock: 'locationStock',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
 	DocumentFormat: 'documentFormats',
 	Sequence: 'sequences',
@@ -265,6 +267,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'journalLines',
 	'periodLocks',
 	'documentLocks',
+	'locationStock',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

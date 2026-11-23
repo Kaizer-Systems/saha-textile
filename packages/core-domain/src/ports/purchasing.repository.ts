@@ -8,6 +8,7 @@ import type {
 	StockCount,
 	Supplier,
 	SupplierPayment,
+	LocationStock,
 } from '@saha-textile/contracts';
 
 import type { TransactionContext } from './transaction-manager.port';
@@ -282,9 +283,18 @@ export interface StockMovementPort {
 			actorUserId: string | null;
 			approverUserId: string | null;
 			at: string;
+			/** Where the pieces move (accounts brief F4); the API fills the default stock location when omitted. */
+			locationId?: string | null;
 		},
 		context?: TransactionContext,
 	): Promise<{ ledgerId: string; onHandAfter: number; heldAfter: number }>;
+	/** Each variant's stock split by location (N1); variants with no split yet return no rows. */
+	locationStock(variantIds: readonly string[]): Promise<LocationStock[]>;
+	/**
+	 * Places stock that has no location yet at one location, once (F4 migration): the variant's own totals
+	 * become that location's row, and past ledger rows and cost layers without a location get it. Idempotent.
+	 */
+	placeUnlocatedStock(locationId: string): Promise<{ variants: number; ledgerRows: number; layers: number }>;
 	/** Takes units out of one named layer; throws when the layer no longer holds them. */
 	consumeLayer(layerId: string, quantity: number, context?: TransactionContext): Promise<void>;
 }

@@ -73,3 +73,4 @@ export * from './company.model';
 export * from './edocs.model';
 export * from './locations.model';
 export * from './ledger.model';
+export * from './location-stock.model';

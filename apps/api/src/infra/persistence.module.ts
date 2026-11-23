@@ -121,12 +121,14 @@ import type {
 	CommunicationSwitchRepository,
 	ConsentRepository,
 	LanguageRepository,
+	LocationRepository,
 	MessageOutboxRepository,
 	NotificationSettingsRepository,
 	NotificationTemplateRepository,
 } from '@saha-textile/core-domain';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { LocationStockMovement } from './location-stock-movement';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
 import { LogOnlyCdnPurgeAdapter } from './log-only-cdn-purge.adapter';
 import { buildInrPaymentGateway } from './payment-gateway-factory';
@@ -503,7 +505,13 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: GENERAL_LEDGER_REPOSITORY, useClass: MongoGeneralLedgerRepository },
 		{ provide: PERIOD_LOCK_REPOSITORY, useClass: MongoPeriodLockRepository },
 		{ provide: DOCUMENT_LOCK_REPOSITORY, useClass: MongoDocumentLockRepository },
-		{ provide: STOCK_MOVEMENT, useClass: MongoStockMovement },
+		{
+			// Every stock move records its location (accounts brief F4).
+			provide: STOCK_MOVEMENT,
+			useFactory: (locations: LocationRepository) =>
+				new LocationStockMovement(new MongoStockMovement(), locations),
+			inject: [LOCATION_REPOSITORY],
+		},
 		{ provide: STOCK_READ_REPOSITORY, useClass: MongoStockReadRepository },
 		{ provide: INVENTORY_COST_LAYER_REPOSITORY, useClass: MongoInventoryCostLayerRepository },
 		{ provide: SITE_SETTINGS_REPOSITORY, useClass: MongoSiteSettingsRepository },

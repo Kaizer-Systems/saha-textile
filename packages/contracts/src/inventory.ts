@@ -77,6 +77,8 @@ export const InventoryLedgerEntry = z
 		referenceType: z.string().min(1).nullable().default(null),
 		referenceId: Id.nullable().default(null),
 		actorUserId: Id.nullable().default(null),
+		/** Where the pieces moved (accounts brief F4); absent or null on rows written before locations. */
+		locationId: Id.nullable().optional(),
 		createdAt: IsoDateTime,
 	})
 	.superRefine((entry, ctx) => {
@@ -144,6 +146,8 @@ export const InventoryCostLayer = z
 		quantityRemaining: z.number().int().nonnegative(),
 		receivedAt: IsoDateTime,
 		createdAt: IsoDateTime.optional(),
+		/** The location the pieces sit at; the layer travels with them (D15). Absent or null before locations. */
+		locationId: Id.nullable().optional(),
 	})
 	.superRefine((layer, ctx) => {
 		if (layer.quantityRemaining > layer.quantityReceived) {
@@ -177,6 +181,21 @@ export const VariantStockSnapshot = z.object({
 	updatedAt: IsoDateTime.optional(),
 });
 export type VariantStockSnapshot = z.infer<typeof VariantStockSnapshot>;
+
+/**
+ * One variant's stock at one location (accounts brief F4, N1). The variant's own stock stays the company-wide
+ * total every existing reader uses; these rows split it by location and always add up to it.
+ */
+export const LocationStock = z.object({
+	variantId: Id,
+	productId: Id,
+	locationId: Id,
+	onHand: z.number().int(),
+	held: z.number().int().default(0),
+	reserved: z.number().int().default(0),
+	updatedAt: IsoDateTime.nullable().default(null),
+});
+export type LocationStock = z.infer<typeof LocationStock>;
 
 /* =====================================================================================
  * Stock screens (purchases and stock brief, revision 2). Quantities are whole numbers of the

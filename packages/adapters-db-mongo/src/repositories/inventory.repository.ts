@@ -42,6 +42,7 @@ const toLedgerEntry = (doc: InventoryLedgerDoc): InventoryLedgerEntry => ({
 	referenceType: doc.referenceType ?? null,
 	referenceId: doc.referenceId ?? null,
 	actorUserId: doc.actorUserId ?? null,
+	locationId: doc.locationId ?? null,
 	createdAt: iso(doc.createdAt),
 });
 
@@ -199,6 +200,7 @@ const toCostLayer = (doc: InventoryCostLayerDoc): InventoryCostLayer => ({
 	quantityRemaining: doc.quantityRemaining,
 	receivedAt: iso(doc.receivedAt),
 	createdAt: doc.createdAt ? iso(doc.createdAt) : undefined,
+	locationId: doc.locationId ?? null,
 });
 
 export class MongoInventoryCostLayerRepository implements InventoryCostLayerRepository {

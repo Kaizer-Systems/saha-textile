@@ -49,7 +49,7 @@ The same `idempotencyKey` returns the first voucher instead of posting twice. Th
 
 ## How documents post
 
-Documents call `LedgerService.post` inside their own transaction, naming ledgers by system key:
+Documents call `LedgerService.post` inside their own transaction, naming each line's ledger by its **role** (or a ledger by id when the person chose one, such as the bank a refund was paid from):
 
 ```ts
 await ledger.post(
@@ -59,10 +59,10 @@ await ledger.post(
 		source: { type: 'taxInvoice', id: invoice.id, number: invoice.number },
 		idempotencyKey: `taxInvoice:${invoice.id}`,
 		lines: [
-			{ ledger: { systemKey: 'debtors_control' }, locationId, debitPaise: 1_050_000 },
-			{ ledger: { systemKey: 'sales' }, locationId, creditPaise: 1_000_000 },
-			{ ledger: { systemKey: 'output_cgst' }, locationId, creditPaise: 25_000 },
-			{ ledger: { systemKey: 'output_sgst' }, locationId, creditPaise: 25_000 },
+			{ ledger: { role: 'debtors_control' }, locationId, debitPaise: 1_050_000 },
+			{ ledger: { role: 'sales' }, locationId, creditPaise: 1_000_000 },
+			{ ledger: { role: 'output_cgst' }, locationId, creditPaise: 25_000 },
+			{ ledger: { role: 'output_sgst' }, locationId, creditPaise: 25_000 },
 		],
 	},
 	context,
@@ -70,6 +70,14 @@ await ledger.post(
 ```
 
 If the document's transaction fails, neither the document nor its voucher is saved.
+
+## Roles
+
+Posting rules never name a ledger. They post to a role, and the company's books say which ledger plays it (accounts templates). Today's system keys are the first roles: a ledger or group installed with a system key plays that role until its own `roles` list says otherwise, so books made before roles existed need no change.
+
+- A role with no active ledger refuses the posting with `voucher_problem:role_not_mapped:<role>`; a role played by more than one active ledger refuses with `voucher_problem:role_ambiguous:<role>`. A posting never guesses.
+- Group roles decide cash and bank: a ledger under a group playing `cash_in_hand` is cash; under `bank_accounts` or `bank_od`, bank.
+- The roles the engine knows, and the documents that need each, are listed in `packages/core-domain/src/ledger/roles.ts` (`ROLE_REGISTRY`); `missingRoles(chart, documentType)` lists what a document still needs. Which ledger plays each role comes from the installed accounts templates (template store and builder: steps T2 to T4).
 
 ## Periods and locks
 

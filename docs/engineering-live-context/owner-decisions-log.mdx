@@ -2545,3 +2545,25 @@ don't have to disable or skip a check. Everything will run just at a lower numbe
 - **Then 10% (24 Nov, same night).** At 50% the shop, admin and API passed, but the Release Console's two apps (12–18% and
   16–27%) would have held the staging deployment for days of tests. Owner chose "Floor 10% for now": `COVERAGE_FLOOR` is 10,
   raised as coverage grows.
+
+## Owner decision round (2026-11-24) — accounts templates: nothing kind- or law-dependent in code
+
+**Owner (24 Nov):** "all those inner things which you probably have baked into code, they should be built through the builder
+and then saved as a template, and then locked, waiting to be unlocked based on company choosing types, so that everything is
+customizable and none of it stays baked in code." Plan published as the Accounts templates brief
+(https://claude.ai/artifact/2VQqcwct33tTnTVxHbsQ8p); owner: "Approve, start T1".
+
+- **Engine and templates.** Code keeps only the rules every set of books obeys (double entry, numbering, locks, the edit log) and
+  a list of **roles**. Posting rules post to roles; which ledger plays each role is template data.
+- **Templates** (charts of accounts, roles, tax rule sets such as the reverse-charge list, TDS sections and limits, report
+  layouts) are made in a builder and saved with a reference code, dated versions, their legal source, the kinds of company
+  they apply to, and a CA review state.
+- **Shared and exclusive.** Company setup installs the shared templates and the chosen kind's own (proprietorship,
+  partnership firm, LLP, private limited, one person company); the rest stay locked, visible and greyed with the reason.
+- **Decisions AT-D1 to AT-D8 approved as recommended:** starter packs authored in the builder and marked for CA review;
+  locked templates visible; changing the kind only through Convert (new books for a new legal person); a new "Accounts
+  templates" permission for the super admin and the CA login; law changes as new dated versions offered as "Update
+  available", never installed by themselves, the company's own changes kept; CA review before go-live; the report builder is
+  part of this work; D4 (self-invoices, payment vouchers) built on roles and the reverse-charge rule set.
+- **Order:** T1 roles in the engine → T2 template store → D4 → T3 setup unlock → T4 builder screens → T5 tax rule sets →
+  T6 report templates → T7 updates → T8 starter packs for all five kinds.

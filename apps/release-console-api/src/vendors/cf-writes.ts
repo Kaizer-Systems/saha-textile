@@ -193,7 +193,13 @@ export const cfWrites = {
 	async accessApp(
 		key: string,
 		accountId: string,
-		input: { name: string; host: string; tokenId: string | null; emails: string[] },
+		input: {
+			name: string;
+			host: string;
+			tokenId: string | null;
+			emails: string[];
+			observerTokenId?: string | null;
+		},
 	): Promise<string> {
 		const policies = [
 			...(input.tokenId
@@ -202,6 +208,16 @@ export const cfWrites = {
 							name: 'Deploy job',
 							decision: 'non_identity',
 							include: [{ service_token: { token_id: input.tokenId } }],
+						},
+					]
+				: []),
+			// The console's read-only observer login (Release Path brief Q8) comes through with its own token.
+			...(input.observerTokenId
+				? [
+						{
+							name: 'Release Console observer',
+							decision: 'non_identity',
+							include: [{ service_token: { token_id: input.observerTokenId } }],
 						},
 					]
 				: []),

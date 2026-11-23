@@ -52,6 +52,8 @@ import {
 	certificateFiles,
 	environmentRules,
 	githubEnvironment,
+	observe,
+	saveObserverToken,
 	knownHosts,
 	originCsr,
 } from './server-setup.mjs';
@@ -836,6 +838,8 @@ export function createRunner(token) {
 				'/github/environment': (b) => githubEnvironment(b),
 				'/github/environment-rules': (b) => environmentRules(b),
 				'/server/deploy-identity': (b) => deployIdentityOf(b),
+				'/server/observer-token': (b) => saveObserverToken(b),
+				'/server/observe': (b) => observe(b),
 				'/server/known-hosts': (b) => knownHosts(b),
 			};
 			if (req.method === 'POST' && Object.hasOwn(setupRoutes, path)) {

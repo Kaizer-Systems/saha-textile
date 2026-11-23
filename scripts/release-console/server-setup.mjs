@@ -15,7 +15,7 @@
  * private keys are deleted once saved. Nothing here prints a value.
  */
 import { execFile, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -268,6 +268,76 @@ export async function environmentRules({ repository, environment, branch }, { ex
 		set.push(`${w.type} ${w.name}`);
 	}
 	return { reviewers: reviewers.length, set };
+}
+
+/**
+ * Keeps the console's observer token beside the observer key on this Mac (0600), for the read-only
+ * requests below; the create job hands it over once and never keeps it.
+ */
+export function saveObserverToken({ project, environment, clientId, clientSecret }) {
+	if (!/^[\w.-]{8,200}$/.test(String(clientId)) || !/^[\w.-]{16,400}$/.test(String(clientSecret)))
+		throw new SetupError('That is not a service token.');
+	const folder = keyFolder(project, environment);
+	mkdirSync(folder, { recursive: true, mode: 0o700 });
+	writeFileSync(join(folder, 'observer_token.json'), JSON.stringify({ clientId, clientSecret }), { mode: 0o600 });
+	return { saved: true };
+}
+
+/** The requests observe.sh answers (the Infisical chat's M9); anything else is refused here first. */
+export const OBSERVE_REQUEST =
+	/^(containers|releases|disk|logs [a-z0-9][a-z0-9_-]{0,40}( --since ([1-9]|[1-5][0-9]|60))?( --errors)?)$/;
+
+/**
+ * One read-only request to a server's observer login, through its Cloudflare tunnel with the
+ * console's observer token (Release Path brief Q8): no open port, and the key can only run
+ * observe.sh. Answers observe.sh's JSON.
+ */
+export async function observe({ project, environment, host, request }, { exec = run } = {}) {
+	if (!HOST.test(String(host))) throw new SetupError('That is not a host name.');
+	if (!OBSERVE_REQUEST.test(String(request))) throw new SetupError('observe.sh does not answer that request.');
+	const folder = keyFolder(project, environment);
+	const key = join(folder, 'observer_key');
+	const tokenFile = join(folder, 'observer_token.json');
+	if (!existsSync(key) || !existsSync(tokenFile))
+		throw new SetupError(
+			'This Mac has no observer key or token for that server: create it from the console, or Finish setup.',
+		);
+	const token = JSON.parse(readFileSync(tokenFile, 'utf8'));
+	// The token goes in cloudflared's own environment variables, never on a command line.
+	const env = {
+		...process.env,
+		TUNNEL_SERVICE_TOKEN_ID: String(token.clientId),
+		TUNNEL_SERVICE_TOKEN_SECRET: String(token.clientSecret),
+	};
+	const { stdout } = await exec(
+		'ssh',
+		[
+			'-i',
+			key,
+			'-o',
+			'IdentitiesOnly=yes',
+			'-o',
+			'BatchMode=yes',
+			'-o',
+			'StrictHostKeyChecking=accept-new',
+			'-o',
+			`UserKnownHostsFile=${join(folder, 'known_hosts')}`,
+			'-o',
+			'ProxyCommand=cloudflared access ssh --hostname %h',
+			`observer@${host}`,
+			String(request),
+		],
+		{ env, timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+	).catch((err) => {
+		const said =
+			String(err?.stdout ?? '').trim() ||
+			String(err?.stderr ?? '')
+				.trim()
+				.split('\n')
+				.pop();
+		throw new SetupError(`The observer login answered: ${said || 'nothing'}`);
+	});
+	return JSON.parse(stdout);
 }
 
 /**

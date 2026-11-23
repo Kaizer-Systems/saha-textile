@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
@@ -52,9 +52,85 @@ import { Loading } from '../shared/loading';
 						<rc-icon name="tabler/brand-docker" />
 						Containers · observer
 					</span>
-					<span class="rc-note">{{ s.containers.message }}</span>
+					<span
+						[class.rc-mono]="s.containers.state === 'ok'"
+						[class.rc-note]="s.containers.state !== 'ok'"
+					>
+						{{ s.containers.message }}
+					</span>
 				</div>
 			</div>
+			@if (s.containers.items.length) {
+				<div class="rc-tw">
+					<table class="rc-t">
+						<thead>
+							<tr>
+								<th>Container</th>
+								<th>State</th>
+								<th>CPU</th>
+								<th>Memory / limit</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							@for (c of s.containers.items; track c.name) {
+								<tr>
+									<td>{{ c.service }}</td>
+									<td
+										[class.ok]="c.state === 'running' && c.health !== 'unhealthy'"
+										[class.red]="c.state !== 'running' || c.health === 'unhealthy'"
+									>
+										{{ c.health || c.state
+										}}{{ c.restarts ? ' · ' + c.restarts + ' restarts' : '' }}
+									</td>
+									<td class="rc-mono">{{ pct(c.cpuPercent) }}</td>
+									<td class="rc-mono">{{ mb(c.memBytes) }} / {{ mb(c.memLimitBytes) }}</td>
+									<td>
+										<button
+											type="button"
+											class="rc-btn ghost"
+											(click)="logService.set(c.service)"
+										>
+											Log
+										</button>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+			@if (logService()) {
+				<div class="rc-panel">
+					<div class="rc-ph">
+						<span class="rc-label">{{ logService() }} · last 15 minutes, masked on the server</span>
+						<button
+							type="button"
+							class="rc-btn ghost"
+							(click)="logService.set('')"
+						>
+							Close
+						</button>
+					</div>
+					@if (logs.data(); as l) {
+						<div class="rc-log">
+							@for (line of l.lines; track $index) {
+								<div class="l">
+									<span class="n">{{ $index + 1 }}</span>
+									<span class="src">{{ l.service }}</span>
+									<span class="m">{{ line }}</span>
+								</div>
+							} @empty {
+								<div class="l dim"><span class="m">No lines in the last 15 minutes.</span></div>
+							}
+						</div>
+					} @else if (logs.isError()) {
+						<p class="rc-note">{{ logs.error().message }}</p>
+					} @else {
+						<rc-loading what="Reading the log through the observer login…" />
+					}
+				</div>
+			}
 			@if (s.shop.queues.length) {
 				<div class="rc-tw">
 					<table class="rc-t">
@@ -116,4 +192,19 @@ export class ServerStateScreen {
 	protected pct(v: number | null): string {
 		return v === null ? '—' : `${Math.round(v)}%`;
 	}
+	protected mb(v: number | null): string {
+		return v === null
+			? '—'
+			: v >= 1024 ** 3
+				? `${(v / 1024 ** 3).toFixed(1)} GB`
+				: `${Math.round(v / 1024 ** 2)} MB`;
+	}
+	/** The service whose log is open (observe.sh `logs`, through the observer login). */
+	protected readonly logService = signal('');
+	protected readonly logs = injectQuery(() => ({
+		queryKey: ['server-logs', this.ctx.projectId(), this.ctx.repoId(), this.envName(), this.logService()],
+		queryFn: () =>
+			this.api.serverLogs(this.ctx.projectId() ?? '', this.ctx.repoId() ?? '', this.envName(), this.logService()),
+		enabled: !!this.logService(),
+	}));
 }

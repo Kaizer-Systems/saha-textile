@@ -83,7 +83,33 @@ export const serverStateSchema = z.object({
 		message: z.string(),
 		queues: opsJobsSchema.shape.queues,
 	}),
-	containers: z.object({ state: partState, message: z.string() }),
+	containers: z.object({
+		state: partState,
+		message: z.string(),
+		/** observe.sh `containers` (the Infisical chat's M9). */
+		items: z
+			.array(
+				z.object({
+					service: z.string(),
+					name: z.string(),
+					state: z.string(),
+					health: z.string().nullable().default(null),
+					restarts: z.number().default(0),
+					cpuPercent: z.number().nullable().default(null),
+					memBytes: z.number().nullable().default(null),
+					memLimitBytes: z.number().nullable().default(null),
+				}),
+			)
+			.default([]),
+	}),
 	readAt: z.string(),
 });
 export type ServerState = z.infer<typeof serverStateSchema>;
+
+/** observe.sh `logs <service> [--since <1-60>] [--errors]`: at most 500 lines, masked on the server. */
+export const serverLogsSchema = z.object({
+	service: z.string(),
+	sinceMinutes: z.number(),
+	lines: z.array(z.string()),
+});
+export type ServerLogs = z.infer<typeof serverLogsSchema>;

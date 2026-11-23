@@ -134,3 +134,61 @@ test('adds the branch and release-tag rules, keeps the reviewers, and only reads
 		environmentRules({ repository: 'o/r', environment: 'staging', branch: 'bad branch' }, { exec, spawnFn }),
 	);
 });
+
+test('asks the observer only what observe.sh answers, with its token in the environment', async () => {
+	const { observe, saveObserverToken } = await import('./server-setup.mjs');
+	const home = mkdtempSync(join(tmpdir(), 'rc-observe-'));
+	const before = process.env.HOME;
+	process.env.HOME = home;
+	try {
+		await assert.rejects(
+			observe({
+				project: 'example',
+				environment: 'staging',
+				host: 'ssh-staging.example.com',
+				request: 'logs api; id',
+			}),
+			/does not answer that request/,
+		);
+		await assert.rejects(
+			observe({
+				project: 'example',
+				environment: 'staging',
+				host: 'ssh-staging.example.com',
+				request: 'containers',
+			}),
+			/no observer key or token/,
+		);
+		const folder = keyFolder('example', 'staging');
+		mkdirSync(folder, { recursive: true });
+		writeFileSync(join(folder, 'observer_key'), 'private (test)');
+		saveObserverToken({
+			project: 'example',
+			environment: 'staging',
+			clientId: 'example-client-id',
+			clientSecret: 'example-client-secret-0001',
+		});
+		let seen;
+		const exec = async (_cmd, args, opts) => {
+			seen = { args, env: opts.env };
+			return { stdout: '{"containers":[]}' };
+		};
+		const out = await observe(
+			{
+				project: 'example',
+				environment: 'staging',
+				host: 'ssh-staging.example.com',
+				request: 'logs api --since 15',
+			},
+			{ exec },
+		);
+		assert.deepEqual(out, { containers: [] });
+		assert.equal(seen.args.at(-1), 'logs api --since 15');
+		assert.equal(seen.args.at(-2), 'observer@ssh-staging.example.com');
+		assert.equal(seen.env.TUNNEL_SERVICE_TOKEN_ID, 'example-client-id');
+		assert.ok(!seen.args.join(' ').includes('example-client-secret'));
+	} finally {
+		process.env.HOME = before;
+		rmSync(home, { recursive: true, force: true });
+	}
+});

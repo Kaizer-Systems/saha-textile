@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -46,10 +46,13 @@ test('the admin password is hashed with SHA-512 crypt and refused when too short
 test('the first-boot file is filled with every marker and refuses a bad key or token', async () => {
 	const root = mkdtempSync(join(tmpdir(), 'rc-first-boot-root-'));
 	const home = mkdtempSync(join(tmpdir(), 'rc-first-boot-home-'));
-	mkdirSync(join(root, 'docker/production'), { recursive: true });
+	mkdirSync(join(root, 'docker/production/bin'), { recursive: true });
+	writeFileSync(join(root, 'docker/production/bin/receive-release.sh'), '#!/bin/sh\necho receive\n');
+	writeFileSync(join(root, 'docker/production/bin/observe.sh'), '#!/bin/sh\necho observe\n');
+	// The markers the real file has (docker/production/first-boot.yaml), the observer's among them (M9).
 	writeFileSync(
 		join(root, 'docker/production/first-boot.yaml'),
-		"users:\n  - name: '@@ADMIN_USER@@'\n    passwd: '@@ADMIN_PASSWORD_HASH@@'\n    keys: ['@@ADMIN_SSH_KEY@@', '@@DEPLOY_SSH_KEY@@']\ntoken: '@@TUNNEL_TOKEN@@'\n",
+		"users:\n  - name: '@@ADMIN_USER@@'\n    passwd: '@@ADMIN_PASSWORD_HASH@@'\n    keys: ['@@ADMIN_SSH_KEY@@', '@@DEPLOY_SSH_KEY@@', '@@OBSERVER_SSH_KEY@@']\ntoken: '@@TUNNEL_TOKEN@@'\nreceive: '@@RECEIVE_RELEASE_B64@@'\nobserve: '@@OBSERVE_B64@@'\n",
 	);
 	const deps = { root, home, exec: fakeKeygen, hash: async () => '$6$salt$hash' };
 	const out = await prepareFirstBoot(
@@ -66,6 +69,11 @@ test('the first-boot file is filled with every marker and refuses a bad key or t
 	assert.match(out.userData, /saha-textile-admin/);
 	assert.match(out.userData, /\$6\$salt\$hash/);
 	assert.match(out.deployPublicKey, /^ssh-ed25519 /);
+	assert.match(
+		out.userData,
+		new RegExp(Buffer.from('#!/bin/sh\necho observe\n').toString('base64').replace(/[+/=]/g, '.')),
+	);
+	assert.ok(existsSync(join(home, '.release-console', 'servers', 'saha-textile-staging', 'observer_key')));
 	await assert.rejects(
 		prepareFirstBoot(
 			{ project: 'saha-textile', environment: 'staging', adminKey: 'nope', password: 'x', tunnelToken: TOKEN },

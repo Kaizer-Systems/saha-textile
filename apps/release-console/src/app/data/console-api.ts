@@ -44,6 +44,8 @@ import {
 	reachableSchema,
 	type ServerState,
 	serverStateSchema,
+	type ServerLogs,
+	serverLogsSchema,
 	type DeployToken,
 	deployTokensSchema,
 	type ConsoleView,
@@ -403,6 +405,17 @@ export class ConsoleApi {
 			serverStateSchema,
 			undefined,
 			45_000,
+		);
+	}
+	/** One service's last log lines on a server, through the observer login (C12). */
+	serverLogs(p: string, r: string, env: string, service: string, errors = false): Promise<ServerLogs> {
+		const q = new URLSearchParams({ service, since: '15', errors: errors ? '1' : '0' });
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/server-state/${env}/logs?${q.toString()}`,
+			serverLogsSchema,
+			undefined,
+			60_000,
 		);
 	}
 	/** Reachable through Cloudflare, check by check (Release Path brief C8). */

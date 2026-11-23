@@ -36,10 +36,10 @@ export function keyFolder(project, environment, home = homedir()) {
 	return join(home, '.release-console', 'servers', `${project}-${environment}`);
 }
 
-/** The deploy key pair for this server: made once (ed25519, no passphrase), reused after. */
-export async function deployKey(project, environment, { home = homedir(), exec = run } = {}) {
+/** One key pair for this server in its folder on this Mac: made once (ed25519, no passphrase), reused after. */
+async function keyPair(project, environment, name, user, { home = homedir(), exec = run } = {}) {
 	const folder = keyFolder(project, environment, home);
-	const file = join(folder, 'deploy_key');
+	const file = join(folder, name);
 	if (!existsSync(file)) {
 		mkdirSync(folder, { recursive: true, mode: 0o700 });
 		await exec('ssh-keygen', [
@@ -49,12 +49,25 @@ export async function deployKey(project, environment, { home = homedir(), exec =
 			'-N',
 			'',
 			'-C',
-			`deploy@${project}-${environment}`,
+			`${user}@${project}-${environment}`,
 			'-f',
 			file,
 		]);
 	}
 	return { file, publicKey: readFileSync(`${file}.pub`, 'utf8').trim() };
+}
+
+/** The deploy key pair: its private half goes only to GitHub; it can only hand over a release. */
+export function deployKey(project, environment, opts = {}) {
+	return keyPair(project, environment, 'deploy_key', 'deploy', opts);
+}
+
+/**
+ * The observer key pair (Release Path brief Q8, the Infisical chat's M9): the console's read-only way
+ * into the server, forced to observe.sh. Its private half never leaves this Mac.
+ */
+export function observerKey(project, environment, opts = {}) {
+	return keyPair(project, environment, 'observer_key', 'observer', opts);
 }
 
 /** A SHA-512 crypt hash of the admin's Recovery Console password (`openssl passwd -6`), on stdin. */
@@ -90,12 +103,17 @@ export async function prepareFirstBoot(
 	if (typeof tunnelToken !== 'string' || !/^[A-Za-z0-9+/=_-]{40,}$/.test(tunnelToken))
 		throw new FirstBootError('The tunnel token is missing or not a tunnel token.');
 	const deploy = await deployKey(project, environment, { home, exec });
+	const observer = await observerKey(project, environment, { home, exec });
+	const script = (/** @type {string} */ path) => readFileSync(join(root, path)).toString('base64');
 	const values = {
 		ADMIN_USER: adminUser,
 		ADMIN_PASSWORD_HASH: await hash(password),
 		ADMIN_SSH_KEY: adminKey.trim(),
 		DEPLOY_SSH_KEY: deploy.publicKey,
+		OBSERVER_SSH_KEY: observer.publicKey,
 		TUNNEL_TOKEN: tunnelToken,
+		RECEIVE_RELEASE_B64: script('docker/production/bin/receive-release.sh'),
+		OBSERVE_B64: script('docker/production/bin/observe.sh'),
 	};
 	const userData = renderFirstBoot(readFileSync(join(root, TEMPLATE), 'utf8'), values);
 	if (Buffer.byteLength(userData) > 64 * 1024) throw new FirstBootError('The first-boot file is over 64 KB.');

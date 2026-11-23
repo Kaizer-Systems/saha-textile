@@ -229,6 +229,7 @@ describe('creating and destroying a server', () => {
 		expect(records).toEqual(['staging.example.com', 'api-staging.example.com']);
 		// Certificates made on the console's machine and kept in Infisical; GitHub set; host key read.
 		expect(helperCalls).toEqual([
+			'/server/observer-token',
 			'/server/origin-csr',
 			'/server/aop-pair',
 			'/server/certificates-save',

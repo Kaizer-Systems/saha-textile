@@ -46,7 +46,7 @@ import {
 } from '../infra/tokens';
 import { PurchaseOrderDocument } from '../purchasing/purchase-order-document';
 import type { DocumentData } from './document-data';
-import { documentHtml, eInvoiceBand, type RenderBrand } from './document-html';
+import { documentHtml, documentHtmlCopies, eInvoiceBand, type RenderBrand } from './document-html';
 import { previewDocument } from './document-previews';
 
 /** Fonts the PDF embeds (the preview uses the system's sans). */
@@ -201,30 +201,39 @@ export class DocumentFormatsService {
 		const format = await this.draftOf(id, draft);
 		const example = previewDocument(format.doc);
 		const data = { ...example, seller: await this.seller(example.seller) };
-		return { fileName: `${format.name} - example.pdf`, data: await this.pdf(format, data) };
+		return { fileName: `${format.name} - example.pdf`, data: await this.pdf(format, [data]) };
 	}
 
 	/** A real document on its document's active format (packing slips, purchase orders…). */
 	async renderActive(doc: DocumentKind, data: DocumentData): Promise<Uint8Array> {
+		return this.renderActiveCopies(doc, [data]);
+	}
+
+	/** Several copies of one real document in one PDF, each from a new page (tax invoice copies, EI10). */
+	async renderActiveCopies(doc: DocumentKind, copies: readonly DocumentData[]): Promise<Uint8Array> {
 		const format = await this.formats.findActive(doc);
 		const blocks = format?.blocks ?? ourBlocks(doc);
-		return this.pdf({ name: format?.name ?? 'Saha Textile standard', paper: format?.paper ?? 'a4', blocks }, data);
+		return this.pdf(
+			{ name: format?.name ?? 'Saha Textile standard', paper: format?.paper ?? 'a4', blocks },
+			copies,
+		);
 	}
 
 	private async pdf(
 		format: { name: string; paper: DocumentPaper; blocks: readonly DocumentBlock[] },
-		data: DocumentData,
+		copies: readonly DocumentData[],
 	): Promise<Uint8Array> {
 		if (!this.renderer) throw new ServiceUnavailableException({ code: 'documents_unavailable' });
+		const data = copies[0];
+		if (!data) throw new ServiceUnavailableException({ code: 'documents_unavailable' });
 		const [assets, logo] = await Promise.all([this.paperwork.loadStatic(), this.paperwork.logo()]);
 		const band = eInvoiceBand(format, data);
+		const brand = { logoSrc: logo.asset ? 'logo' : null, themeColor: logo.themeColor, fontFaces: FONT_FACES };
 		const request: DocumentRenderRequest = {
-			html: documentHtml(
-				format,
-				data,
-				{ logoSrc: logo.asset ? 'logo' : null, themeColor: logo.themeColor, fontFaces: FONT_FACES },
-				{ band: !!band },
-			),
+			html:
+				copies.length > 1
+					? documentHtmlCopies(format, copies, brand, { band: !!band })
+					: documentHtml(format, data, brand, { band: !!band }),
 			...(band ? { footerHtml: band } : {}),
 			assets: logo.asset ? [...assets, logo.asset] : assets,
 			title: `${data.title} ${data.number}`,

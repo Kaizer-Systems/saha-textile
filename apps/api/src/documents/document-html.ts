@@ -365,7 +365,7 @@ export function documentHtml(
 	format: { name: string; paper: DocumentPaper; blocks: readonly DocumentBlock[] },
 	data: DocumentData,
 	brand: RenderBrand,
-	options: { band?: boolean } = {},
+	options: { band?: boolean; pageNumbers?: boolean } = {},
 ): string {
 	// With the e-invoice band (AE4) the e-invoice and e-way bill blocks print in the page foot instead (EI8), and the foot carries the page numbers.
 	const visible = format.blocks.filter(
@@ -375,7 +375,7 @@ export function documentHtml(
 	const page = options.band ? { ...base, margin: base.margin.replace(/\s\S+$/, ` ${BAND_MARGIN_MM}mm`) } : base;
 	const footer = visible.find((block) => block.type === 'footer');
 	const pageNumbers =
-		!options.band && footer && has(footer, 'pageNumber')
+		options.pageNumbers !== false && !options.band && footer && has(footer, 'pageNumber')
 			? '@bottom-right{content:"Page " counter(page) " of " counter(pages);font-size:7pt;color:#777}'
 			: '';
 	// Pages after the first repeat a slim header (brief F: "the header repeated"): the document, its number, the shop.
@@ -450,4 +450,27 @@ body{margin:0;font-family:'Public Sans','Noto Sans Bengali',system-ui,sans-serif
 .dz-sign-line{border-top:1px solid #9aa5b1;margin:28px 0 3px}.dz-sign span{font-size:.8em;color:#52606d}
 .dz-foot{display:flex;justify-content:space-between;font-size:.75em;color:#7b8794;border-top:1px solid #e4e7eb;padding-top:4px;margin-top:8px}
 </style></head><body class="dz-paper-${format.paper}">${parts.join('\n')}</body></html>`;
+}
+
+/**
+ * Several copies of one document in one file, each from a new page (accounts brief EI10, "All three, one after
+ * another"). A page counter would run across the copies ("Page 2 of 3" on the duplicate), so the copies print
+ * without it; the copy label under the title tells them apart.
+ */
+export function documentHtmlCopies(
+	format: { name: string; paper: DocumentPaper; blocks: readonly DocumentBlock[] },
+	copies: readonly DocumentData[],
+	brand: RenderBrand,
+	options: { band?: boolean } = {},
+): string {
+	const pages = copies.map((data) => documentHtml(format, data, brand, { ...options, pageNumbers: false }));
+	const first = pages[0] ?? '';
+	const head = first.slice(0, first.indexOf('<body'));
+	const bodies = pages.map((html) =>
+		html.slice(html.indexOf('>', html.indexOf('<body')) + 1, html.lastIndexOf('</body>')),
+	);
+	const joined = bodies
+		.map((body, index) => (index ? `<div style="break-before:page">${body}</div>` : body))
+		.join('\n');
+	return `${head}<body class="dz-paper-${format.paper}">${joined}</body></html>`;
 }

@@ -4,20 +4,15 @@ import { Location } from '@saha-textile/contracts';
 import { StaleVersionError } from '@saha-textile/core-domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { buildMongoConfig } from '../src/config';
-import { connectMongo, disconnectMongo } from '../src/connection';
-import { LocationModel, UserLocationsModel } from '../src/models/locations.model';
+import { COLLECTION_NAMES, LEGACY_COLLECTION_NAMES } from '../src/collection-names';
+import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
+import { alignCollectionNames } from '../src/migrations/align-collection-names';
+import { LocationModel, AdminUserLocationsModel } from '../src/models/locations.model';
 import { MongoLocationRepository } from '../src/repositories/location.repository';
 
+import { hasMongoEnv } from './mongo-test-env';
+
 /** Locations (accounts brief K, L) against a real replica set, on a _test database only. */
-function hasMongoEnv(): boolean {
-	if (process.env.RUN_DB_IT !== '1') return false;
-	try {
-		return buildMongoConfig().dbName.endsWith('_test');
-	} catch {
-		return false;
-	}
-}
 
 describe.skipIf(!hasMongoEnv())('locations persistence (integration, rs0)', () => {
 	const repo = new MongoLocationRepository();
@@ -35,11 +30,11 @@ describe.skipIf(!hasMongoEnv())('locations persistence (integration, rs0)', () =
 		await connectMongo();
 		await LocationModel.syncIndexes();
 		await LocationModel.deleteMany({});
-		await UserLocationsModel.deleteMany({});
+		await AdminUserLocationsModel.deleteMany({});
 	});
 	afterAll(async () => {
 		await LocationModel.deleteMany({});
-		await UserLocationsModel.deleteMany({});
+		await AdminUserLocationsModel.deleteMany({});
 		await disconnectMongo();
 	});
 
@@ -54,7 +49,7 @@ describe.skipIf(!hasMongoEnv())('locations persistence (integration, rs0)', () =
 	});
 
 	it('stores where each user works', async () => {
-		await repo.saveUserLocations({
+		await repo.saveAdminUserLocations({
 			userId: 'usr_1',
 			worksAt: ['loc_1'],
 			homeLocationId: 'loc_1',
@@ -63,7 +58,38 @@ describe.skipIf(!hasMongoEnv())('locations persistence (integration, rs0)', () =
 			currentLocationId: null,
 			updatedAt: at(),
 		});
-		expect(await repo.userLocations('usr_1')).toMatchObject({ worksAt: ['loc_1'], homeLocationId: 'loc_1' });
-		expect(await repo.allUserLocations()).toHaveLength(1);
+		expect(await repo.adminUserLocations('usr_1')).toMatchObject({ worksAt: ['loc_1'], homeLocationId: 'loc_1' });
+		expect(await repo.allAdminUserLocations()).toHaveLength(1);
+	});
+
+	it('moves existing operator assignments without changing them', async () => {
+		const database = `saha_textile_it_location_alignment_${randomUUID().slice(0, 8)}`;
+		const parent = getMongoose().connection;
+		const connection = parent.useDb(database);
+		const db = connection.db;
+		if (!db) throw new Error('The migration test requires a database connection');
+		try {
+			const record = {
+				_id: 'adm_existing',
+				worksAt: ['loc_1'],
+				homeLocationId: 'loc_1',
+				currentLocationId: 'loc_1',
+			};
+			const target = COLLECTION_NAMES.AdminUserLocations;
+			const pairs = { userLocations: target };
+			expect(LEGACY_COLLECTION_NAMES['userLocations']).toBe(target);
+			await db.collection<typeof record>('userLocations').insertOne(record);
+			await expect(alignCollectionNames(connection, { pairs })).resolves.toMatchObject({
+				renamed: 1,
+				conflicts: 0,
+			});
+			await expect(db.collection<typeof record>(target).findOne({ _id: record._id })).resolves.toEqual(record);
+			await expect(alignCollectionNames(connection, { pairs })).resolves.toMatchObject({
+				renamed: 0,
+				conflicts: 0,
+			});
+		} finally {
+			await connection.dropDatabase();
+		}
 	});
 });

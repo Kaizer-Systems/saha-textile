@@ -62,8 +62,11 @@ export const LocationWrite = Location.omit({ id: true, createdAt: true, updatedA
 });
 export type LocationWrite = z.infer<typeof LocationWrite>;
 
+export const LocationActiveWrite = z.object({ active: z.boolean() });
+export type LocationActiveWrite = z.infer<typeof LocationActiveWrite>;
+
 /** Where a user works (L1). Owners and admins may switch and see all; staff see only their locations. */
-export const UserLocations = z.object({
+export const AdminUserLocations = z.object({
 	userId: Id,
 	worksAt: z.array(Id).max(200).default([]),
 	homeLocationId: Id.nullable().default(null),
@@ -73,15 +76,15 @@ export const UserLocations = z.object({
 	currentLocationId: Id.nullable().default(null),
 	updatedAt: IsoDateTime.nullable().default(null),
 });
-export type UserLocations = z.infer<typeof UserLocations>;
+export type AdminUserLocations = z.infer<typeof AdminUserLocations>;
 
-export const UserLocationsWrite = UserLocations.pick({
+export const AdminUserLocationsWrite = AdminUserLocations.pick({
 	worksAt: true,
 	homeLocationId: true,
 	maySwitch: true,
 	maySeeAll: true,
 });
-export type UserLocationsWrite = z.infer<typeof UserLocationsWrite>;
+export type AdminUserLocationsWrite = z.infer<typeof AdminUserLocationsWrite>;
 
 /** The location chip (L2, L3): what the signed-in user is looking at and what they may pick. */
 export const LocationChip = z.object({
@@ -92,3 +95,6 @@ export const LocationChip = z.object({
 	maySeeAll: z.boolean(),
 });
 export type LocationChip = z.infer<typeof LocationChip>;
+
+export const LocationChipWrite = z.object({ locationId: z.string().min(1).nullable() });
+export type LocationChipWrite = z.infer<typeof LocationChipWrite>;

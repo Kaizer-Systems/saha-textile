@@ -1,7 +1,7 @@
-import { Location, UserLocations } from '@saha-textile/contracts';
+import { Location, AdminUserLocations } from '@saha-textile/contracts';
 import { type LocationRepository, StaleVersionError } from '@saha-textile/core-domain';
 
-import { LocationModel, UserLocationsModel } from '../models/locations.model';
+import { LocationModel, AdminUserLocationsModel } from '../models/locations.model';
 import type { AggregateDoc } from '../models/purchasing.model';
 
 const strip = (doc: AggregateDoc): Record<string, unknown> => {
@@ -49,18 +49,18 @@ export class MongoLocationRepository implements LocationRepository {
 		});
 	}
 
-	async userLocations(userId: string): Promise<UserLocations | null> {
-		const doc = await UserLocationsModel.findById(userId).lean<AggregateDoc>().exec();
-		return doc ? UserLocations.parse({ ...strip(doc), userId: doc._id }) : null;
+	async adminUserLocations(userId: string): Promise<AdminUserLocations | null> {
+		const doc = await AdminUserLocationsModel.findById(userId).lean<AggregateDoc>().exec();
+		return doc ? AdminUserLocations.parse({ ...strip(doc), userId: doc._id }) : null;
 	}
 
-	async saveUserLocations(value: UserLocations): Promise<void> {
+	async saveAdminUserLocations(value: AdminUserLocations): Promise<void> {
 		const { userId, ...rest } = value;
-		await UserLocationsModel.updateOne({ _id: userId }, { $set: rest }, { upsert: true }).exec();
+		await AdminUserLocationsModel.updateOne({ _id: userId }, { $set: rest }, { upsert: true }).exec();
 	}
 
-	async allUserLocations(): Promise<UserLocations[]> {
-		const docs = await UserLocationsModel.find({}).lean<AggregateDoc[]>().exec();
-		return docs.map((doc) => UserLocations.parse({ ...strip(doc), userId: doc._id }));
+	async allAdminUserLocations(): Promise<AdminUserLocations[]> {
+		const docs = await AdminUserLocationsModel.find({}).lean<AggregateDoc[]>().exec();
+		return docs.map((doc) => AdminUserLocations.parse({ ...strip(doc), userId: doc._id }));
 	}
 }

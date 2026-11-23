@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import type { Location, LocationWrite, UserLocations } from '@saha-textile/contracts';
+import type { Location, LocationWrite, AdminUserLocations } from '@saha-textile/contracts';
 import type { CompanyRepository, LocationRepository, ShopDetailsRepository } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
@@ -7,7 +7,7 @@ import { LocationsService } from '../src/locations/locations.service';
 
 class MemoryLocations implements LocationRepository {
 	rows = new Map<string, Location>();
-	users = new Map<string, UserLocations>();
+	users = new Map<string, AdminUserLocations>();
 	async list() {
 		return [...this.rows.values()];
 	}
@@ -19,13 +19,13 @@ class MemoryLocations implements LocationRepository {
 			throw new Error('short_code_taken');
 		this.rows.set(l.id, l);
 	}
-	async userLocations(id: string) {
+	async adminUserLocations(id: string) {
 		return this.users.get(id) ?? null;
 	}
-	async saveUserLocations(v: UserLocations) {
+	async saveAdminUserLocations(v: AdminUserLocations) {
 		this.users.set(v.userId, v);
 	}
-	async allUserLocations() {
+	async allAdminUserLocations() {
 		return [...this.users.values()];
 	}
 }
@@ -121,7 +121,7 @@ describe('locations (accounts brief K, L)', () => {
 		const service = new LocationsService(repo, shop, company('19'), roles, assignments);
 		const [first] = await service.list(admin);
 		const second = await service.create(write(), null);
-		await service.saveUserLocations('usr_staff', {
+		await service.saveAdminUserLocations('usr_staff', {
 			worksAt: [second.id],
 			homeLocationId: null,
 			maySwitch: false,

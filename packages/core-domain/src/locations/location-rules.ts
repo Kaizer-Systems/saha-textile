@@ -1,4 +1,4 @@
-import type { Location, LocationWrite, UserLocations } from '@saha-textile/contracts';
+import type { Location, LocationWrite, AdminUserLocations } from '@saha-textile/contracts';
 
 import { GST_STATES } from '../company/gst-identity';
 
@@ -79,7 +79,10 @@ export interface LocationScope {
  * they may also pick All locations; with "may switch" they move the chip between their locations.
  */
 export function locationScope(
-	user: Pick<UserLocations, 'worksAt' | 'homeLocationId' | 'maySeeAll' | 'maySwitch' | 'currentLocationId'> | null,
+	user: Pick<
+		AdminUserLocations,
+		'worksAt' | 'homeLocationId' | 'maySeeAll' | 'maySwitch' | 'currentLocationId'
+	> | null,
 	options: { superAdmin: boolean; activeIds: readonly string[] },
 ): LocationScope {
 	const active = new Set(options.activeIds);

@@ -5,7 +5,13 @@ import { runtimeConfig } from '@core/config/runtime-config';
 
 import { QUIET } from '../purchasing/purchasing.gateway';
 
-import type { Location, LocationChip, LocationWrite, UserLocations, UserLocationsWrite } from '@saha-textile/contracts';
+import type {
+	Location,
+	LocationChip,
+	LocationWrite,
+	AdminUserLocations,
+	AdminUserLocationsWrite,
+} from '@saha-textile/contracts';
 import type { Observable } from 'rxjs';
 
 export type LocationRow = Location & { people: number };
@@ -34,11 +40,15 @@ export class LocationsGateway {
 	setActive(id: string, active: boolean): Observable<Location> {
 		return this.http.post<Location>(this.api(`/locations/${encodeURIComponent(id)}/active`), { active }, QUIET);
 	}
-	userLocations(userId: string): Observable<UserLocations> {
-		return this.http.get<UserLocations>(this.api(`/locations/users/${encodeURIComponent(userId)}`));
+	adminUserLocations(userId: string): Observable<AdminUserLocations> {
+		return this.http.get<AdminUserLocations>(this.api(`/locations/users/${encodeURIComponent(userId)}`));
 	}
-	saveUserLocations(userId: string, body: UserLocationsWrite): Observable<UserLocations> {
-		return this.http.put<UserLocations>(this.api(`/locations/users/${encodeURIComponent(userId)}`), body, QUIET);
+	saveAdminUserLocations(userId: string, body: AdminUserLocationsWrite): Observable<AdminUserLocations> {
+		return this.http.put<AdminUserLocations>(
+			this.api(`/locations/users/${encodeURIComponent(userId)}`),
+			body,
+			QUIET,
+		);
 	}
 	chip(): Observable<LocationChip> {
 		return this.http.get<LocationChip>(this.api('/me/location'));

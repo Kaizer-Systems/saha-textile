@@ -1,7 +1,11 @@
 import { Body, Controller, Get, Header, HttpCode, Param, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { LocationWrite, UserLocationsWrite } from '@saha-textile/contracts';
-import { z } from 'zod';
+import {
+	AdminUserLocationsWrite,
+	LocationActiveWrite,
+	LocationChipWrite,
+	LocationWrite,
+} from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -9,8 +13,6 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { LocationsService } from './locations.service';
 
-const ActiveSave = z.object({ active: z.boolean() });
-const ChipSave = z.object({ locationId: z.string().min(1).nullable() });
 const by = (principal: AuthenticatedPrincipal | undefined): string | null => principal?.userId ?? null;
 
 /** Settings › Locations and who works where (accounts brief K1–K3, L1). */
@@ -61,7 +63,7 @@ export class LocationsController {
 	})
 	setActive(
 		@Param('id') id: string,
-		@Body(new ZodValidationPipe(ActiveSave)) body: z.infer<typeof ActiveSave>,
+		@Body(new ZodValidationPipe(LocationActiveWrite)) body: LocationActiveWrite,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.locations.setActive(id, body.active, by(principal));
@@ -71,8 +73,8 @@ export class LocationsController {
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('setting.index')
 	@ApiOperation({ operationId: 'userLocations', summary: 'Where an admin user works (L1)' })
-	userLocations(@Param('userId') userId: string) {
-		return this.locations.userLocations(userId);
+	adminUserLocations(@Param('userId') userId: string) {
+		return this.locations.adminUserLocations(userId);
 	}
 
 	@Put('users/:userId')
@@ -81,11 +83,11 @@ export class LocationsController {
 		operationId: 'saveUserLocations',
 		summary: 'Set where an admin user works, their home, may switch, may see all',
 	})
-	saveUserLocations(
+	saveAdminUserLocations(
 		@Param('userId') userId: string,
-		@Body(new ZodValidationPipe(UserLocationsWrite)) body: UserLocationsWrite,
+		@Body(new ZodValidationPipe(AdminUserLocationsWrite)) body: AdminUserLocationsWrite,
 	) {
-		return this.locations.saveUserLocations(userId, body);
+		return this.locations.saveAdminUserLocations(userId, body);
 	}
 }
 
@@ -112,7 +114,7 @@ export class MyLocationController {
 		summary: 'Move the chip to one location, or all (null) when allowed',
 	})
 	switch(
-		@Body(new ZodValidationPipe(ChipSave)) body: z.infer<typeof ChipSave>,
+		@Body(new ZodValidationPipe(LocationChipWrite)) body: LocationChipWrite,
 		@Principal() principal?: AuthenticatedPrincipal,
 	) {
 		return this.locations.setChip(principal, body.locationId);

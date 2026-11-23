@@ -8,20 +8,25 @@
  * Usage (from the repo root; reads the same MONGODB_* env as the API):
  *   pnpm mongo:align-collections -- --dry-run
  *   pnpm mongo:align-collections
+ *   pnpm mongo:align-collections -- --admin-user-locations --dry-run
  *
  * Exit codes: 0 = aligned (or nothing to do), 1 = failure, 2 = at least one conflict a
  * human must resolve. A conflict means both the legacy and the ratified collection hold
  * data; the migration refuses to merge them rather than picking a winner.
  */
+import { COLLECTION_NAMES } from '../src/collection-names';
 import { alignCollectionNames } from '../src/migrations/align-collection-names';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
 
 async function main(): Promise<void> {
 	const dryRun = process.argv.includes('--dry-run');
+	const pairs = process.argv.includes('--admin-user-locations')
+		? { userLocations: COLLECTION_NAMES.AdminUserLocations }
+		: undefined;
 
 	await connectMongo();
 	try {
-		const report = await alignCollectionNames(getMongoose().connection, { dryRun });
+		const report = await alignCollectionNames(getMongoose().connection, { dryRun, pairs });
 
 		for (const entry of report.entries) {
 			if (entry.outcome === 'absent') continue;

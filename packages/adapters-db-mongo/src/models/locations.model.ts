@@ -18,9 +18,10 @@ export const LocationModel: Model<AggregateDoc> =
 	(models.Location as Model<AggregateDoc>) ?? model<AggregateDoc>('Location', LocationSchema);
 
 /** One per admin user (`_id` = user id): where they work and the chip's choice (L1–L3). */
-const UserLocationsSchema = new Schema<AggregateDoc>(
+const AdminUserLocationsSchema = new Schema<AggregateDoc>(
 	{ _id: { type: String, required: true } },
-	{ ...loose, collection: COLLECTION_NAMES.UserLocations },
+	{ ...loose, collection: COLLECTION_NAMES.AdminUserLocations },
 );
-export const UserLocationsModel: Model<AggregateDoc> =
-	(models.UserLocations as Model<AggregateDoc>) ?? model<AggregateDoc>('UserLocations', UserLocationsSchema);
+export const AdminUserLocationsModel: Model<AggregateDoc> =
+	(models.AdminUserLocations as Model<AggregateDoc>) ??
+	model<AggregateDoc>('AdminUserLocations', AdminUserLocationsSchema);

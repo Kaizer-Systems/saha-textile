@@ -5,8 +5,8 @@ import {
 	Location,
 	type LocationChip,
 	type LocationWrite,
-	UserLocations,
-	type UserLocationsWrite,
+	AdminUserLocations,
+	type AdminUserLocationsWrite,
 } from '@saha-textile/contracts';
 import {
 	type AdminUserRoleAssignmentRepository,
@@ -99,7 +99,7 @@ export class LocationsService {
 	/** What this user may see (L1–L3); a super admin sees everything. */
 	async scope(principal: AuthenticatedPrincipal | undefined): Promise<LocationScope> {
 		await this.ensureSeeded();
-		const user = principal ? await this.repo.userLocations(principal.userId) : null;
+		const user = principal ? await this.repo.adminUserLocations(principal.userId) : null;
 		return locationScope(user, {
 			superAdmin: await this.isSuperAdmin(principal),
 			activeIds: await this.activeIds(),
@@ -110,7 +110,7 @@ export class LocationsService {
 		await this.ensureSeeded();
 		const [locations, people, scope] = await Promise.all([
 			this.repo.list(),
-			this.repo.allUserLocations(),
+			this.repo.allAdminUserLocations(),
 			this.scope(principal),
 		]);
 		const count = (id: string) => people.filter((u) => u.worksAt.includes(id)).length;
@@ -178,32 +178,32 @@ export class LocationsService {
 		return next;
 	}
 
-	async userLocations(userId: string): Promise<UserLocations> {
+	async adminUserLocations(userId: string): Promise<AdminUserLocations> {
 		await this.ensureSeeded();
-		return (await this.repo.userLocations(userId)) ?? UserLocations.parse({ userId });
+		return (await this.repo.adminUserLocations(userId)) ?? AdminUserLocations.parse({ userId });
 	}
 
-	async saveUserLocations(userId: string, write: UserLocationsWrite): Promise<UserLocations> {
+	async saveAdminUserLocations(userId: string, write: AdminUserLocationsWrite): Promise<AdminUserLocations> {
 		const known = new Set((await this.repo.list()).map((l) => l.id));
 		if (write.worksAt.some((id) => !known.has(id))) throw new BadRequestException('location_unknown');
 		if (write.homeLocationId && !write.worksAt.includes(write.homeLocationId))
 			throw new BadRequestException('home_location_not_worked_at');
-		const current = await this.userLocations(userId);
-		const next = UserLocations.parse({
+		const current = await this.adminUserLocations(userId);
+		const next = AdminUserLocations.parse({
 			...current,
 			...write,
 			homeLocationId: write.homeLocationId ?? write.worksAt[0] ?? null,
 			currentLocationId: null,
 			updatedAt: new Date().toISOString(),
 		});
-		await this.repo.saveUserLocations(next);
+		await this.repo.saveAdminUserLocations(next);
 		return next;
 	}
 
 	/** The header chip (L2, L3). */
 	async chip(principal: AuthenticatedPrincipal | undefined): Promise<LocationChip> {
 		const scope = await this.scope(principal);
-		const user = principal ? await this.repo.userLocations(principal.userId) : null;
+		const user = principal ? await this.repo.adminUserLocations(principal.userId) : null;
 		const superAdmin = await this.isSuperAdmin(principal);
 		const all = await this.repo.list();
 		const pick = (l: Location) => ({ id: l.id, name: l.name, shortCode: l.shortCode });
@@ -225,8 +225,8 @@ export class LocationsService {
 		if (locationId === null && !chip.maySeeAll) throw new ForbiddenException('location_all_refused');
 		if (locationId !== null && !chip.choices.some((c) => c.id === locationId))
 			throw new ForbiddenException('location_switch_refused');
-		const current = await this.userLocations(principal.userId);
-		await this.repo.saveUserLocations({
+		const current = await this.adminUserLocations(principal.userId);
+		await this.repo.saveAdminUserLocations({
 			...current,
 			currentLocationId: locationId,
 			updatedAt: new Date().toISOString(),

@@ -19,7 +19,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 	imports: [TranslocoModule],
 	templateUrl: './user-locations.html',
 })
-export class UserLocationsCard {
+export class AdminUserLocationsCard {
 	private readonly gateway = inject(LocationsGateway);
 	private readonly queryClient = inject(QueryClient);
 	private readonly notifier = inject(NotificationService);
@@ -36,7 +36,7 @@ export class UserLocationsCard {
 	}));
 	readonly saved = injectQuery(() => ({
 		queryKey: LOCATION_KEYS.user(this.userId()),
-		queryFn: () => firstValueFrom(this.gateway.userLocations(this.userId())),
+		queryFn: () => firstValueFrom(this.gateway.adminUserLocations(this.userId())),
 		enabled: !!this.userId(),
 	}));
 	readonly worksAt = signal<string[]>([]);
@@ -81,7 +81,7 @@ export class UserLocationsCard {
 		this.saving.set(true);
 		try {
 			await firstValueFrom(
-				this.gateway.saveUserLocations(this.userId(), {
+				this.gateway.saveAdminUserLocations(this.userId(), {
 					worksAt: this.worksAt(),
 					homeLocationId: this.homeLocationId(),
 					maySwitch: this.maySwitch(),

@@ -127,7 +127,7 @@ export const COLLECTION_NAMES = {
 	EDocCall: 'edocCalls',
 	EDocKeys: 'edocKeys',
 	Location: 'locations',
-	UserLocations: 'userLocations',
+	AdminUserLocations: 'adminUserLocations',
 	/** The general ledger (accounts brief Q, T, D10). */
 	AccountGroup: 'accountGroups',
 	Ledger: 'ledgers',
@@ -263,7 +263,7 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'edocCalls',
 	'edocKeys',
 	'locations',
-	'userLocations',
+	'adminUserLocations',
 	'accountGroups',
 	'ledgers',
 	'journalVouchers',
@@ -286,16 +286,15 @@ export const NON_GRAPH_COLLECTIONS: readonly string[] = [...RUNTIME_ONLY_COLLECT
  * exactly the set a deployed or local database may still hold data under. Consumed by
  * `migrations/align-collection-names.ts`.
  *
- * `userRoleAssignments` is the one entry that is not a Mongoose default but a previously
- * RATIFIED explicit name, retired on 2026-08-15: the join is operator-only, so the bare noun
- * named a population it never held. Both spellings are listed because a database may hold
- * either — the lowercase Mongoose default from before explicit naming, or the camelCase
- * explicit name from after it.
+ * The explicit operator-only names `userRoleAssignments` and `userLocations` also need
+ * alignment. The role join has both an old Mongoose default and an old explicit name, so
+ * both spellings map to the same collection.
  */
 export const LEGACY_COLLECTION_NAMES: Readonly<Record<string, string>> = {
 	users: 'customers',
 	userroleassignments: 'adminUserRoleAssignments',
 	userRoleAssignments: 'adminUserRoleAssignments',
+	userLocations: COLLECTION_NAMES.AdminUserLocations,
 	authsessions: 'authSessions',
 	otpchallenges: 'otpChallenges',
 	oauthstates: 'oauthStates',

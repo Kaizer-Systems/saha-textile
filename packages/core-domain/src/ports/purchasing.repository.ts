@@ -155,7 +155,7 @@ export interface StockHoldRecord {
 	variantId: string;
 	productId: string;
 	quantity: number;
-	reason: 'waiting_for_supplier' | 'photoshoot' | 'store_display' | 'quality_check';
+	reason: 'waiting_for_supplier' | 'photoshoot' | 'store_display' | 'quality_check' | 'damaged';
 	note: string;
 	since: string;
 	byId: string | null;

@@ -68,6 +68,7 @@ export const HOLD_WORDS: Record<StockHoldRecord['reason'], string> = {
 	photoshoot: 'Photoshoot',
 	store_display: 'Store display',
 	quality_check: 'Quality check',
+	damaged: 'Damaged (returned)',
 };
 
 /** Where a ledger row's document lives, for the history link (i02). */

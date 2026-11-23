@@ -306,7 +306,8 @@ export type StockVariantDetail = z.infer<typeof StockVariantDetail>;
 export const AdjustmentAction = z.enum(['remove', 'add', 'hold', 'release']);
 export type AdjustmentAction = z.infer<typeof AdjustmentAction>;
 
-export const HoldReason = z.enum(['waiting_for_supplier', 'photoshoot', 'store_display', 'quality_check']);
+/** Why pieces are held; `damaged` comes only from a checked return (accounts brief B3: damaged, keep it). */
+export const HoldReason = z.enum(['waiting_for_supplier', 'photoshoot', 'store_display', 'quality_check', 'damaged']);
 export type HoldReason = z.infer<typeof HoldReason>;
 
 /** Reasons Adjust offers per action; `photoshoot_display_use` is now a hold (kept for history). */

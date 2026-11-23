@@ -7750,5 +7750,6 @@
 	"inv_problem_no_location": "The order has no location to ship from. Assign one in Ships from.",
 	"inv_problem_no_gst_registration": "The shipping location has no GST registration. Link one in Settings › Locations.",
 	"inv_portal_document_number": "On the portal, enter it against tax invoice {{number}}.",
-	"inv_outside_india": "Outside India (96)"
+	"inv_outside_india": "Outside India (96)",
+	"hold_reason_damaged": "Damaged (returned)"
 }

@@ -83,7 +83,8 @@ function lineFacts(line: InvoiceLineInput, hsn: string, unitPriceINR: number, ra
 	};
 }
 
-function splitTax(totalINR: number, rate: number, interState: boolean) {
+/** A tax-included amount split at a rate into taxable value and CGST + SGST (same State) or IGST, in paise. */
+export function splitTax(totalINR: number, rate: number, interState: boolean) {
 	const total = paise(totalINR);
 	const taxable = Math.round((total * 100) / (100 + rate));
 	const tax = total - taxable;

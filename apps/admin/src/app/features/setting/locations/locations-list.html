@@ -1,0 +1,94 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'locations'"
+>
+	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+		<p class="text-muted mb-0">{{ 'locations_intro' | transloco }}</p>
+		@if (canEdit()) {
+		<a
+			class="btn btn-theme"
+			id="location_add"
+			routerLink="/setting/locations/new"
+		>
+			<i
+				class="ri-add-line"
+				aria-hidden="true"
+			></i>
+			{{ 'location_add' | transloco }}
+		</a>
+		}
+	</div>
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'location' | transloco }}</th>
+					<th>{{ 'location_kinds' | transloco }}</th>
+					<th>{{ 'address' | transloco }}</th>
+					<th>GSTIN</th>
+					<th>{{ 'location_people' | transloco }}</th>
+					<th>{{ 'status' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (l of query.data() ?? []; track l.id) {
+				<tr [class.opacity-50]="!l.active">
+					<td>
+						{{ l.name }}
+						<small class="d-block text-muted">{{ l.shortCode }}</small>
+					</td>
+					<td>
+						@if (l.warehouse) {
+						<span class="badge bg-light text-dark me-1">{{ 'location_warehouse' | transloco }}</span>
+						} @if (l.store) {
+						<span class="badge bg-light text-dark me-1">{{ 'location_store' | transloco }}</span>
+						} @if (l.office) {
+						<span class="badge bg-light text-dark me-1">{{ 'location_office' | transloco }}</span>
+						} @if (l.shipsOnline) {
+						<span class="badge bg-light text-dark me-1">{{ 'location_ships_online' | transloco }}</span>
+						}
+					</td>
+					<td>
+						{{ l.address }}
+						<small class="d-block text-muted">{{ l.city }} {{ l.pin }} · {{ l.stateCode }}</small>
+					</td>
+					<td>{{ gstinOf(l.gstRegistrationId) }}</td>
+					<td>{{ l.people }}</td>
+					<td>
+						<div
+							class="d-inline-block"
+							[class.status-success]="l.active"
+							[class.status-pending]="!l.active"
+						>
+							<span>{{ (l.active ? 'active' : 'location_switched_off') | transloco }}</span>
+						</div>
+					</td>
+					<td>
+						<ul class="d-flex list-unstyled justify-content-center mb-0 gap-3">
+							<li>
+								<a
+									[routerLink]="['/setting/locations', l.id]"
+									[title]="(canEdit() ? 'edit' : 'view') | transloco"
+									[attr.aria-label]="(canEdit() ? 'edit' : 'view') | transloco"
+								>
+									<i [class]="canEdit() ? 'ri-pencil-line' : 'ri-eye-line'"></i>
+								</a>
+							</li>
+						</ul>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="7"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'locations_empty' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</app-page-wrapper>

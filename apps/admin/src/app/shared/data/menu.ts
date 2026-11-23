@@ -775,6 +775,14 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 19,
+				title: 'locations',
+				path: '/setting/locations',
+				type: 'link',
+				level: 2,
+				permission: ['setting.index'],
+			},
+			{
+				parent_id: 19,
 				title: 'edoc_settings_title',
 				path: '/setting/edocs',
 				type: 'link',

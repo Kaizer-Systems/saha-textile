@@ -70,6 +70,16 @@ export default [
 		loadComponent: () => import('./company/gst-registrations').then((m) => m.GstRegistrationsSettings),
 	},
 	{
+		// Accounts brief K1 (owner-approved 2026-11-23).
+		path: 'locations',
+		loadComponent: () => import('./locations/locations-list').then((m) => m.LocationsListPage),
+	},
+	{
+		// Accounts brief K2: 'new' or a location id.
+		path: 'locations/:id',
+		loadComponent: () => import('./locations/location-form').then((m) => m.LocationFormPage),
+	},
+	{
 		// Accounts brief addendum 2, EI1–EI2 (owner-approved 2026-11-23, AE1–AE9).
 		path: 'edocs',
 		loadComponent: () => import('./edocs/edoc-settings').then((m) => m.EDocSettingsPage),

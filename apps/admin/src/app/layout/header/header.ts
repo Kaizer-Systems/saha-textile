@@ -6,6 +6,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 
 import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { NavService } from '@data-access/services/nav.service';
+import { LocationChipComponent } from '@shared/components/location-chip/location-chip';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 import { Languages } from './widgets/languages/languages';
@@ -19,6 +20,7 @@ import { Search } from './widgets/search/search';
 	templateUrl: './header.html',
 	styleUrls: ['./header.scss'],
 	imports: [
+		LocationChipComponent,
 		RouterModule,
 		Search,
 		HasPermissionDirective,

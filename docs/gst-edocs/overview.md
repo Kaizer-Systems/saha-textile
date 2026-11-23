@@ -76,6 +76,8 @@ Keys are entered in Settings and sealed with AES-256-GCM under the server key `E
 
 The order page keeps its existing endpoints: `POST /admin/orders/:id/e-invoice/raise` and `/e-way-bill/raise` go through `EDocsOrderBridge`, and `PUT /admin/orders/:id/e-invoice` and `/e-way-bill` record what was entered by hand.
 
+With tax invoices switched on, Generate on a packed order issues the order's tax invoice first, and the e-document is recorded against it. An automatic e-invoice sends that invoice as it is; see [Tax invoices](../accounts/tax-invoices.md).
+
 ## Printing
 
 An invoice with an IRN prints the e-invoice band at the foot of every page: the signed QR (about 31 mm), the IRN, the acknowledgement number and date, and the e-way bill number. The renderer's `footerHtml` carries it (Chromium's footer template). An IRN typed without the signed file prints "QR pending". Invoices without an IRN keep their usual foot.

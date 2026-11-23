@@ -3,7 +3,7 @@ title: General ledger
 description: The chart of accounts, vouchers and their lines, how documents post, month locks per part of the books, and document locks.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-23'
+last_verified: '2026-11-24'
 search_keywords: general ledger chart of accounts voucher journal receipt payment contra reversal period lock month close document lock idempotency paise
 source_of_truth:
     - packages/contracts/src/ledger.ts
@@ -89,7 +89,7 @@ Every change to the books (vouchers posted or reversed, ledgers, groups and mont
 
 ## Document locks
 
-`POST /admin/document-locks` gives a document to one person. The page reports in every 20 seconds, and the lock ends when the page closes or after two idle minutes. Others are told who holds it. A super admin may take a document over; the take-over is logged.
+`POST /admin/document-locks` gives a document to one person. The holder's page reports in every 30 seconds while they are active on it, and the lock ends when they leave the page or after two minutes without activity. Others read the document under a banner naming the holder and their role (`GET /admin/document-locks/:type/:id`), and may ask them to release it (`POST /admin/document-locks/ask-release`; the holder's page shows who asked). A super admin may take a document over. Requests and take-overs are logged in the document's edit log.
 
 ## Permissions
 

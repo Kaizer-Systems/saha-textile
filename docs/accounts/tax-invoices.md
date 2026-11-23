@@ -3,7 +3,7 @@ title: Tax invoices
 description: Tax invoices issued when goods leave, numbered per GSTIN, with HSN and GST on every line, posted to the books, printed as the three Rule 48 copies, and registered as e-invoices.
 status: implemented
 audience: [backend, frontend, operator]
-last_verified: '2026-11-23'
+last_verified: '2026-11-24'
 search_keywords: tax invoice dispatch shipped GSTIN series HSN GST rate CGST SGST IGST place of supply rule 48 original duplicate triplicate e-invoice IRN e-way bill accounting tab checks
 source_of_truth:
     - packages/contracts/src/tax-invoice.ts

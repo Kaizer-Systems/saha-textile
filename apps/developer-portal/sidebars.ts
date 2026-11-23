@@ -85,7 +85,17 @@ const sidebars: SidebarsConfig = {
 			},
 			items: ['gst-edocs/government-apis', 'gst-edocs/provider-masters-india'],
 		},
-		'accounts/general-ledger',
+		{
+			type: 'category',
+			label: 'Accounts',
+			collapsed: false,
+			items: [
+				'accounts/general-ledger',
+				'accounts/tax-invoices',
+				'accounts/returns-and-credit-notes',
+				'accounts/refund-vouchers',
+			],
+		},
 		{
 			type: 'category',
 			label: 'Applications',

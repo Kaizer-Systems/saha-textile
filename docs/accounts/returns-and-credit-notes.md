@@ -56,7 +56,7 @@ A **price adjustment** is a credit note without goods: each line lowered by an a
 
 The input tax line is a voucher of its own: each written-off piece's cost times the line's GST rate, split into CGST and SGST (purchases are taken as made within the State until the CA answers B7.6). Nothing is posted when no piece was written off. Cancel and debit notes post its opposite.
 
-Refund: debit Sundry debtors, credit Gateway clearing (gateway) or the chosen cash or bank ledger (by hand). A gateway refund uses our own reference, `cn:<credit note id>`, so a retry never refunds twice.
+Refund: debit Sundry debtors, credit Gateway clearing (gateway) or the chosen cash or bank ledger (by hand). A gateway refund uses our own reference, `CN` and the note's id in letters and digits only (at most 30, CCAvenue's limit), so a retry never refunds twice.
 
 A business buyer's own account (Customers › the business) gets an entry for each step: the credit note (the total off), the refund, a debit note or a Cancel (the total back on). Shoppers without a business account have none; their credit sits in Sundry debtors.
 
@@ -78,7 +78,7 @@ A draft is held by the person editing it (document locks, decision D10). They ke
 
 ## Documents on the order page
 
-The order page's Documents card lists every document of the order: tax invoices, receipt vouchers, packing slips, returns, credit notes and debit notes, each with its number, date and amount. The eye opens its own page (a debit note opens the credit note it undoes); the printer prints it on its format. A draft credit note has no print yet. The return page's **Print return note** prints the Return note format: what came back, in what condition, the reason, and where the refund goes.
+The order page's Documents card lists every document of the order: tax invoices, receipt vouchers, packing slips, returns, credit notes, debit notes and [refund vouchers](./refund-vouchers.md), each with its number, date and amount. The eye opens its own page (a debit note opens the credit note it undoes); the printer prints it on its format. A draft credit note has no print yet. The return page's **Print return note** prints the Return note format: what came back, in what condition, the reason, and where the refund goes.
 
 ## API
 

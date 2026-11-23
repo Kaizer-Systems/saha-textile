@@ -95,6 +95,32 @@ describe('copyYouTubePosters', () => {
 		expect(stored()).toMatchObject({ retiredPosters: [] });
 	});
 
+	it("rewrites a copied feed's addresses from this bucket, and purges this bucket's address for old files", async () => {
+		// A feed copied from another environment's database: same keys, the other bucket's addresses.
+		const copied = (id: string, key: string) => ({
+			...row(id, 'video', key),
+			posterUrl: `https://other.test/${key}`,
+		});
+		const { deps, stored } = setup({
+			videos: [
+				copied('vvvvvvvvvvv', 'youtube/vvvvvvvvvvv-aaaaaaaa.webp'),
+				copied('wwwwwwwwwww', 'youtube/wwwwwwwwwww-old.webp'),
+			],
+			shorts: [],
+			retiredPosters: [{ key: 'youtube/gone-2.webp', url: 'https://other.test/youtube/gone-2.webp' }],
+		});
+		expect(await copyYouTubePosters(deps as never)).toEqual({ copied: 1, kept: 1, removed: 2 });
+		expect(stored().videos.map((video) => video.posterUrl)).toEqual([
+			'https://cdn.test/youtube/vvvvvvvvvvv-aaaaaaaa.webp',
+			'https://cdn.test/youtube/wwwwwwwwwww-aaaaaaaa.webp',
+		]);
+		expect(deps.queue.enqueue).toHaveBeenCalledWith({
+			type: 'delete-objects',
+			keys: ['youtube/wwwwwwwwwww-old.webp', 'youtube/gone-2.webp'],
+			urls: ['https://cdn.test/youtube/wwwwwwwwwww-old.webp', 'https://cdn.test/youtube/gone-2.webp'],
+		});
+	});
+
 	it("keeps the old copy, or YouTube's picture, when a picture cannot be fetched or decoded", async () => {
 		const { deps, stored } = setup({
 			videos: [row('none-picture'), row('broken-pict', 'video', 'youtube/broken-pict-keep.webp')],
@@ -114,6 +140,8 @@ describe('refreshYouTubeFeed posters', () => {
 			videos: [
 				row('stayingvid1', 'video', 'youtube/stayingvid1-a.webp'),
 				row('leavingvid1', 'video', 'youtube/leavingvid1-b.webp'),
+				// Its key is enough: the poster step deletes by key and purges this bucket's address.
+				{ ...row('leavingvid2', 'video', 'youtube/leavingvid2-c.webp'), posterUrl: null },
 			],
 			shorts: [],
 			fetchedAt: null,
@@ -159,6 +187,7 @@ describe('refreshYouTubeFeed posters', () => {
 		expect(feed.videos[0]?.posterKey).toBe('youtube/stayingvid1-a.webp');
 		expect(feed.retiredPosters).toEqual([
 			{ key: 'youtube/leavingvid1-b.webp', url: 'https://cdn.test/youtube/leavingvid1-b.webp' },
+			{ key: 'youtube/leavingvid2-c.webp', url: 'youtube/leavingvid2-c.webp' },
 		]);
 	});
 });

@@ -43,9 +43,11 @@ export const copyYouTubePosters = async (deps: {
 				quality: 78,
 			});
 			const key = `youtube/${row.videoId}-${image.sha256.slice(0, 8)}.webp`;
-			if (key === row.posterKey && row.posterUrl) {
+			// An unchanged picture keeps its file; its address is written again from this bucket, so a
+			// feed copied from another environment's database stops naming the other bucket.
+			if (key === row.posterKey) {
 				kept += 1;
-				return row;
+				return { ...row, posterUrl: deps.storage.getUrl(key) };
 			}
 			await deps.storage.upload({ key, body: image.bytes, contentType: 'image/webp', cacheControl: IMMUTABLE });
 			copied += 1;
@@ -75,18 +77,17 @@ export const copyYouTubePosters = async (deps: {
 	await deps.settings.set('youtube.feed', next);
 
 	const used = new Set([...next.videos, ...next.shorts].flatMap((row) => (row.posterKey ? [row.posterKey] : [])));
+	// Old files are named by key; the addresses to purge are this bucket's, not the ones saved.
 	const before = [
-		...[...feed.videos, ...feed.shorts].flatMap((row) =>
-			row.posterKey && row.posterUrl ? [{ key: row.posterKey, url: row.posterUrl }] : [],
-		),
-		...(latest.retiredPosters ?? []),
+		...[...feed.videos, ...feed.shorts].flatMap((row) => (row.posterKey ? [row.posterKey] : [])),
+		...(latest.retiredPosters ?? []).map((item) => item.key),
 	];
-	const stale = [...new Map(before.filter((item) => !used.has(item.key)).map((item) => [item.key, item])).values()];
+	const stale = [...new Set(before.filter((key) => !used.has(key)))];
 	if (stale.length) {
 		await deps.queue.enqueue({
 			type: 'delete-objects',
-			keys: stale.map((item) => item.key),
-			urls: stale.map((item) => item.url),
+			keys: stale,
+			urls: stale.map((key) => deps.storage.getUrl(key)),
 		});
 	}
 	return { copied, kept, removed: stale.length };

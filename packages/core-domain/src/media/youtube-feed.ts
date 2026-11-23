@@ -78,8 +78,9 @@ export const refreshYouTubeFeed = async (deps: {
 		const before = new Map([...keep.videos, ...keep.shorts].map((row) => [row.videoId, row] as const));
 		const staying = new Set([...videos, ...shorts].map((video) => video.videoId));
 		const leaving = [...before.values()].flatMap((row) =>
-			!staying.has(row.videoId) && row.posterKey && row.posterUrl
-				? [{ key: row.posterKey, url: row.posterUrl }]
+			// The poster step deletes by key and purges this bucket's address for it; `url` is kept for the record.
+			!staying.has(row.videoId) && row.posterKey
+				? [{ key: row.posterKey, url: row.posterUrl ?? row.posterKey }]
 				: [],
 		);
 		await deps.settings.set('youtube.feed', {

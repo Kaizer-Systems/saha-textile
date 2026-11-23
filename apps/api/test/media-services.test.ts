@@ -837,7 +837,7 @@ describe('YouTubeService', () => {
 		kind: 'short',
 		durationSeconds: 48,
 	};
-	const build = (stored: unknown = null, feed: unknown = null) => {
+	const build = (stored: unknown = null, feed: unknown = null, getUrl = (key: string) => `cdn/${key}`) => {
 		const youtube = { findVideo: vi.fn(async () => video as unknown) };
 		const settings = {
 			get: vi.fn(async (key: string) => (key === 'youtube' ? stored : feed)),
@@ -845,7 +845,7 @@ describe('YouTubeService', () => {
 		};
 		const queue = { enqueue: vi.fn(async () => {}) };
 		return {
-			service: new YouTubeService(youtube as never, settings as never, queue as never),
+			service: new YouTubeService(youtube as never, settings as never, queue as never, { getUrl }),
 			youtube,
 			settings,
 			queue,
@@ -891,13 +891,27 @@ describe('YouTubeService', () => {
 	it('serves the rail only where it is switched on, and cut to the display count', async () => {
 		expect(await build(stored).service.rail('product')).toEqual({ videos: [] });
 		expect(await build(stored).service.rail('home')).toEqual({ videos: [] });
-		const feedVideo = (id: string, posterUrl: string | null = null) => ({
+		// A saved address from another bucket (a copied database) is never shown: the key decides.
+		const feedVideo = (id: string, posterKey: string | null = null) => ({
 			videoId: id,
 			thumbnailUrl: `yt/${id}`,
-			posterUrl,
+			posterUrl: posterKey ? `https://other.test/${posterKey}` : null,
+			posterKey,
 		});
-		const { service } = build(stored, { videos: [feedVideo('a', 'cdn/a'), feedVideo('b'), feedVideo('c')] });
-		expect((await service.rail('home')).videos.map((row) => row.thumbnailUrl)).toEqual(['cdn/a', 'yt/b']);
+		const feed = { videos: [feedVideo('a', 'youtube/a.webp'), feedVideo('b'), feedVideo('c')] };
+		const { service } = build(stored, feed);
+		expect((await service.rail('home')).videos.map((row) => [row.thumbnailUrl, row.posterUrl])).toEqual([
+			['cdn/youtube/a.webp', 'cdn/youtube/a.webp'],
+			['yt/b', null],
+		]);
+		// No storage settings on this server: YouTube's own picture.
+		const bare = build(stored, feed, () => {
+			throw new Error('storage is not configured');
+		}).service;
+		expect((await bare.rail('home')).videos.map((row) => [row.thumbnailUrl, row.posterUrl])).toEqual([
+			['yt/a', null],
+			['yt/b', null],
+		]);
 	});
 
 	it('tells admin when the cache was filled, how much it holds and the last error', async () => {
@@ -928,12 +942,14 @@ describe('YouTubeService', () => {
 		const empty = await build(stored).service.videos();
 		expect(empty).toEqual({ videos: [], shorts: [], channelUrl: 'https://www.youtube.com/@a' });
 		const { service } = build(stored, {
-			videos: [{ videoId: 'v', thumbnailUrl: 'yt/v', posterUrl: null }],
-			shorts: [{ videoId: 's', thumbnailUrl: 'yt/s', posterUrl: 'cdn/s' }],
+			videos: [{ videoId: 'v', thumbnailUrl: 'yt/v', posterUrl: null, posterKey: null }],
+			shorts: [
+				{ videoId: 's', thumbnailUrl: 'yt/s', posterUrl: 'https://other.test/s.webp', posterKey: 's.webp' },
+			],
 		});
 		const page = await service.videos();
 		expect(page.videos[0]?.thumbnailUrl).toBe('yt/v');
-		expect(page.shorts[0]?.thumbnailUrl).toBe('cdn/s');
+		expect(page.shorts[0]?.thumbnailUrl).toBe('cdn/s.webp');
 		expect((await build(null, { videos: [] }).service.videos()).shorts).toEqual([]);
 	});
 });

@@ -2200,12 +2200,12 @@ words in the orders brief's notes). Closed here: the order row of `DEC-NUMBERING
   releases, rebuilds the country, State and phone data file and opens a pull request into `dev` only when something
   changed; with no change it ends quietly. A person reviews and merges. (Owner: "if no change in data … there wont be any
   new PR opened if nothing changes, right?" — right.)
-  - **Amended the same day (owner, 2026-11-20):** "definitely move all that data to spaces", read with targeted
-    queries, then "yes do publish directly to spaces". The data is small files in each environment's Spaces bucket
-    (`geo/<sha256>.json`) with the index as `geo/manifest.json`; the monthly job publishes there directly, with no pull
-    request, code change or release. Automatic safety checks replace the review (countries, India's States with GST
-    codes, PIN counts); every index is kept for rollback. GitHub holds each environment's Spaces keys as copies of its
-    `/api` values (owner: "Reuse the API's keys").
+    - **Amended the same day (owner, 2026-11-20):** "definitely move all that data to spaces", read with targeted
+      queries, then "yes do publish directly to spaces". The data is small files in each environment's Spaces bucket
+      (`geo/<sha256>.json`) with the index as `geo/manifest.json`; the monthly job publishes there directly, with no pull
+      request, code change or release. Automatic safety checks replace the review (countries, India's States with GST
+      codes, PIN counts); every index is kept for rollback. GitHub holds each environment's Spaces keys as copies of its
+      `/api` values (owner: "Reuse the API's keys").
 
 ## Owner decision round (2026-11-20) — Release Console upgrade
 
@@ -2434,3 +2434,33 @@ builds the rest (M1–M10) in its own; "No chat is going to create a sub chat or
 - **DigitalOcean DNS:** "It should be available there for me if I want to use it." The create job offers DigitalOcean
   DNS for a domain delegated to DigitalOcean; such hosts are not behind Cloudflare, so the server then needs a public
   certificate and the firewall opens 443 to everyone. Saha Textile stays on Cloudflare.
+
+## Owner decision round (2026-11-23) — accounts addenda approved: banks, kinds of business, GST, several GSTINs (AD1–AD12); e-invoice and e-way bill (AE1–AE9)
+
+Brief: https://claude.ai/artifact/2fn4V9AS2BDBP9vyWSNjwp (addendum and addendum 2). Owner on the first addendum: "Yes, all your
+addendums are also approved." On GST filing: the software makes the portal files and the ARN entry locks the month; a GST
+Suvidha Provider can be plugged in later behind a port. On addendum 2: "Approve all".
+
+- **Addendum (AD1–AD12):** several bank accounts with Excel or CSV statement import (PDF later) and an editable review before
+  saving; reconciliation where matches start as drafts to accept, reject or relink; account statements with the usual date
+  presets; kinds of business (proprietorship, partnership, LLP, one-person and private limited companies; no public limited);
+  GST taxpayer kinds and return schemes with dated terms per GSTIN; every GST return per GSTIN with finalisation, ARN and lock;
+  one set of books per company with every line carrying its GSTIN and location.
+- **Facts behind addendum 2:** the online shop's legal entity is K.R. Marketing, GSTIN 19DBYPS6736R1ZZ, **not enabled for
+  e-invoicing** (owner's portal check, 23 Nov 2026). The offline stores are a separate business and deployment; their status is
+  to be checked. NIC's own IRP and Cygnet give direct API access only from ₹100 crore; IRIS IRP 6's free plan is open to any
+  enabled GSTIN; NIC's e-way bill API needs about 10,000 e-way bills a month per GSTIN.
+- **AE1 Paths:** by hand for both documents, active now; four automatic paths built and tested (e-invoice direct with an IRP,
+  e-invoice through a provider, e-way bill direct with NIC, e-way bill through a provider), switched on per GSTIN when their
+  keys pass Test. The buttons are the same in every path: Generate turns into Print once done; by hand, Generate opens a
+  popup for the portal file and the numbers.
+- **AE2** Direct e-invoice: IRIS IRP 6 first; the same adapter speaks to NIC by base address. **AE3** Provider: Masters India,
+  with a written quote before switching on; TaxPro runner-up.
+- **AE4** The signed QR, IRN, acknowledgement and e-way bill print in a fixed foot band on every page, only on invoices with an
+  IRN. **AE5** Copies (Rule 48): Original for recipient, Duplicate for transporter, Triplicate for supplier; credit and debit
+  notes Original for recipient and Duplicate for supplier; delivery challans Original for consignee, Duplicate for transporter,
+  Triplicate for consigner (Rule 55). Print and Download offer each copy, or all three.
+- **AE6** Path keys are entered in Settings and sealed with the server key `EDOC_KEYS_KEY`; never shown again or logged.
+  **AE7** A path that stops answering falls back to the by-hand popup with the reason; a duplicate IRN fetches the existing one.
+  **AE8** Shipped stays blocked until they are in; the ₹50,000 setting moves to the new settings page; e-way bill numbers take
+  12 or 14 digits (14 from 23 Nov 2026). **AE9** Owner checks the offline stores' GSTIN status.

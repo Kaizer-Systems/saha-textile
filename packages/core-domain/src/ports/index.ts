@@ -58,3 +58,4 @@ export * from './page-layout.repository';
 export * from './orders-build.port';
 export * from './queue-stats.port';
 export * from './document-format.repository';
+export * from './company.repository';

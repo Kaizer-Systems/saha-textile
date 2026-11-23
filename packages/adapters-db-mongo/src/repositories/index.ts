@@ -50,3 +50,4 @@ export * from './media-zip.repository';
 export * from './purchasing.repository';
 export * from './orders-build.repository';
 export * from './document-format.repository';
+export * from './company.repository';

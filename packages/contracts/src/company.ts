@@ -187,7 +187,7 @@ export type FeatureKey = z.infer<typeof FeatureKey>;
 export const FEATURE_KEYS = FeatureKey.options;
 
 export const FeatureSwitches = z.object({
-	on: z.record(FeatureKey, z.boolean()).default({}),
+	on: z.partialRecord(FeatureKey, z.boolean()).default({}),
 	revision: z.number().int().nonnegative().default(0),
 	updatedAt: IsoDateTime.nullable().default(null),
 	updatedBy: Id.nullable().default(null),

@@ -118,6 +118,10 @@ export const COLLECTION_NAMES = {
 	InventorySettings: 'inventorySettings',
 	/** Settings › Shop details (purchases brief R3-1): the shop's own name, GSTIN and address on documents. */
 	ShopDetails: 'shopDetails',
+	/** Settings › Company, Registrations and Features (accounts brief J, CT, G1–G2). */
+	CompanyProfile: 'companyProfile',
+	GstRegistration: 'gstRegistrations',
+	FeatureSwitches: 'featureSwitches',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
 	DocumentFormat: 'documentFormats',
 	Sequence: 'sequences',

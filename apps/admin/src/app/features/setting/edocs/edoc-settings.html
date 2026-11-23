@@ -1,0 +1,402 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'edoc_settings_title'"
+>
+	<p class="text-muted">{{ 'edoc_settings_intro' | transloco }}</p>
+	@if (query.data(); as view) { @if (!view.gstin) {
+	<div class="alert alert-warning">{{ 'edoc_shop_gstin_needed' | transloco }}</div>
+	} @else if (settings(); as s) {
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ view.gstin }}</h5>
+					</div>
+					@if (!s.eInvoiceEnabledFrom) {
+					<div
+						class="alert alert-warning d-flex align-items-start gap-2"
+						id="edoc_not_enabled"
+					>
+						<i
+							class="ri-error-warning-line"
+							aria-hidden="true"
+						></i>
+						<div>{{ 'edoc_not_enabled_note' | transloco }}</div>
+					</div>
+					}
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label-title d-block">{{ 'edoc_einvoice_path' | transloco }}</label>
+							@for (path of ['manual', 'irpDirect', 'irpProvider']; track path) {
+							<label class="form-check d-block mb-2">
+								<input
+									class="form-check-input"
+									type="radio"
+									name="edoc_einvoice_path"
+									[id]="'edoc_einvoice_' + path"
+									[checked]="eInvoicePath() === path"
+									[disabled]="!canEdit() || (path !== 'manual' && !pickable($any(path)))"
+									(change)="eInvoicePath.set($any(path))"
+								/>
+								<b>{{ 'edoc_path_' + path + '_name' | transloco }}</b>
+								· {{ 'edoc_path_' + path + '_einvoice_help' | transloco }}
+							</label>
+							}
+						</div>
+						<div class="col-md-6">
+							<label class="form-label-title d-block">{{ 'edoc_ewaybill_path' | transloco }}</label>
+							@for (path of ['manual', 'ewbDirect', 'ewbProvider']; track path) {
+							<label class="form-check d-block mb-2">
+								<input
+									class="form-check-input"
+									type="radio"
+									name="edoc_ewaybill_path"
+									[id]="'edoc_ewaybill_' + path"
+									[checked]="eWayBillPath() === path"
+									[disabled]="!canEdit() || (path !== 'manual' && !pickable($any(path)))"
+									(change)="eWayBillPath.set($any(path))"
+								/>
+								<b>{{ 'edoc_path_' + path + '_name' | transloco }}</b>
+								· {{ 'edoc_path_' + path + '_ewaybill_help' | transloco }}
+							</label>
+							}
+						</div>
+						<div class="col-md-6">
+							<div class="d-flex align-items-center gap-2">
+								<label class="switch mb-0">
+									<input
+										type="checkbox"
+										id="edoc_with_einvoice"
+										[checked]="withEInvoice()"
+										[disabled]="!canEdit()"
+										(change)="withEInvoice.set($any($event.target).checked)"
+									/>
+									<span class="switch-state"></span>
+								</label>
+								<span>{{ 'edoc_with_einvoice' | transloco }}</span>
+							</div>
+							<small class="help-text d-block mt-1">{{ 'edoc_with_einvoice_help' | transloco }}</small>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="edoc_enabled_from"
+							>
+								{{ 'edoc_enabled_from' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								type="date"
+								id="edoc_enabled_from"
+								[ngModel]="enabledFrom()"
+								(ngModelChange)="enabledFrom.set($event)"
+								[disabled]="!canEdit()"
+							/>
+							<small class="help-text d-block">{{ 'edoc_enabled_from_help' | transloco }}</small>
+						</div>
+						<div class="col-md-3">
+							<label
+								class="form-label-title"
+								for="edoc_threshold"
+							>
+								{{ 'edoc_threshold' | transloco }}
+							</label>
+							<div class="input-group">
+								<span class="input-group-text">₹</span>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									id="edoc_threshold"
+									[ngModel]="threshold()"
+									(ngModelChange)="threshold.set($event)"
+									[disabled]="!canEdit()"
+								/>
+							</div>
+							<small class="help-text d-block">{{ 'edoc_threshold_help' | transloco }}</small>
+						</div>
+					</div>
+					@if (canEdit()) {
+					<div class="d-flex justify-content-end mt-3 gap-2">
+						<button
+							type="button"
+							class="btn btn-theme"
+							id="edoc_save"
+							[disabled]="saving()"
+							(click)="save()"
+						>
+							{{ 'save' | transloco }}
+						</button>
+					</div>
+					}
+				</div>
+			</div>
+
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'edoc_paths_title' | transloco }}</h5>
+					</div>
+					@if (!view.keysAvailable) {
+					<div class="alert alert-info">{{ 'edoc_keys_key_missing' | transloco }}</div>
+					}
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'edoc_path' | transloco }}</th>
+									<th>{{ 'edoc_needs' | transloco }}</th>
+									<th>{{ 'edoc_cost' | transloco }}</th>
+									<th>{{ 'status' | transloco }}</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (row of rows; track row.id) {
+								<tr>
+									<td>
+										{{ 'edoc_row_' + row.id | transloco }}
+										<small class="d-block text-muted">
+											{{ 'edoc_row_' + row.id + '_sub' | transloco }}
+										</small>
+									</td>
+									<td>{{ 'edoc_row_' + row.id + '_needs' | transloco }}</td>
+									<td>{{ (row.paid ? 'edoc_cost_paid' : 'edoc_cost_free') | transloco }}</td>
+									<td>
+										<div class="status-{{ statusOf(row).tone }} d-inline-block">
+											<span>{{ statusOf(row).key | transloco }}</span>
+										</div>
+									</td>
+									<td>
+										@if (row.automatic && canEdit() && view.keysAvailable) {
+										<ul class="d-flex list-unstyled justify-content-center mb-0 gap-3">
+											<li>
+												<a
+													href="javascript:void(0)"
+													[title]="'edoc_add_keys' | transloco"
+													[attr.aria-label]="'edoc_add_keys' | transloco"
+													(click)="openKeys($any(row.id))"
+												>
+													<i class="ri-key-2-line"></i>
+												</a>
+											</li>
+											@if (keysOf($any(row.id))) {
+											<li>
+												<a
+													href="javascript:void(0)"
+													[title]="'edoc_test' | transloco"
+													[attr.aria-label]="'edoc_test' | transloco"
+													(click)="test($any(row.id))"
+												>
+													<i class="ri-pulse-line"></i>
+												</a>
+											</li>
+											<li>
+												<a
+													href="javascript:void(0)"
+													[title]="'edoc_remove_keys' | transloco"
+													[attr.aria-label]="'edoc_remove_keys' | transloco"
+													(click)="removeKeys($any(row.id))"
+												>
+													<i class="ri-delete-bin-line"></i>
+												</a>
+											</li>
+											}
+										</ul>
+										}
+									</td>
+								</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					@if (keysPath(); as path) {
+					<div
+						class="mt-3 rounded border p-3"
+						id="edoc_keys_form"
+					>
+						<h6 class="mb-3">{{ 'edoc_add_keys' | transloco }} · {{ 'edoc_row_' + path | transloco }}</h6>
+						<div class="row g-3">
+							<div class="col-md-4">
+								<label
+									class="form-label-title"
+									for="edoc_provider"
+								>
+									{{ 'edoc_provider' | transloco }}
+								</label>
+								<select
+									class="form-select"
+									id="edoc_provider"
+									[ngModel]="provider()"
+									(ngModelChange)="provider.set($event)"
+								>
+									@for (p of providersOf(path); track p) {
+									<option [value]="p">{{ 'edoc_provider_' + p | transloco }}</option>
+									}
+								</select>
+							</div>
+							<div class="col-md-4">
+								<label
+									class="form-label-title"
+									for="edoc_environment"
+								>
+									{{ 'edoc_environment' | transloco }}
+								</label>
+								<select
+									class="form-select"
+									id="edoc_environment"
+									[ngModel]="environment()"
+									(ngModelChange)="environment.set($event)"
+								>
+									<option value="sandbox">{{ 'edoc_env_sandbox' | transloco }}</option>
+									<option value="production">{{ 'edoc_env_production' | transloco }}</option>
+								</select>
+							</div>
+							<div class="col-md-4">
+								<label
+									class="form-label-title"
+									for="edoc_user"
+								>
+									{{ 'edoc_api_user' | transloco }}
+								</label>
+								<input
+									class="form-control"
+									id="edoc_user"
+									autocomplete="off"
+									[ngModel]="userName()"
+									(ngModelChange)="userName.set($event)"
+								/>
+								<small class="help-text d-block">{{ 'edoc_api_user_help' | transloco }}</small>
+							</div>
+							<div class="col-md-12">
+								<label
+									class="form-label-title"
+									for="edoc_base_url"
+								>
+									{{ 'edoc_base_url' | transloco }}
+								</label>
+								<input
+									class="form-control"
+									id="edoc_base_url"
+									[ngModel]="baseUrl()"
+									(ngModelChange)="baseUrl.set($event)"
+								/>
+								<small class="help-text d-block">{{ 'edoc_base_url_help' | transloco }}</small>
+							</div>
+							<div class="col-md-4">
+								<label
+									class="form-label-title"
+									for="edoc_password"
+								>
+									{{ 'password' | transloco }}
+								</label>
+								<input
+									class="form-control"
+									type="password"
+									id="edoc_password"
+									autocomplete="new-password"
+									[ngModel]="password()"
+									(ngModelChange)="password.set($event)"
+								/>
+								<small class="help-text d-block">{{ 'edoc_password_help' | transloco }}</small>
+							</div>
+							<div class="col-md-4">
+								<label
+									class="form-label-title"
+									for="edoc_client_id"
+								>
+									{{ 'edoc_client_id' | transloco }}
+								</label>
+								<input
+									class="form-control"
+									id="edoc_client_id"
+									autocomplete="off"
+									[placeholder]="keysOf(path)?.clientIdHint ?? ''"
+									[ngModel]="clientId()"
+									(ngModelChange)="clientId.set($event)"
+								/>
+							</div>
+							<div class="col-md-4">
+								<label
+									class="form-label-title"
+									for="edoc_client_secret"
+								>
+									{{ 'edoc_client_secret' | transloco }}
+								</label>
+								<input
+									class="form-control"
+									type="password"
+									id="edoc_client_secret"
+									autocomplete="new-password"
+									[ngModel]="clientSecret()"
+									(ngModelChange)="clientSecret.set($event)"
+								/>
+								<small class="help-text d-block">{{ 'edoc_secret_help' | transloco }}</small>
+							</div>
+							@if (needsPublicKey(path)) {
+							<div class="col-md-12">
+								<label
+									class="form-label-title"
+									for="edoc_public_key"
+								>
+									{{ 'edoc_public_key' | transloco }}
+								</label>
+								<textarea
+									class="form-control"
+									rows="3"
+									id="edoc_public_key"
+									[ngModel]="publicKeyPem()"
+									(ngModelChange)="publicKeyPem.set($event)"
+								></textarea>
+								<small class="help-text d-block">{{ 'edoc_public_key_help' | transloco }}</small>
+							</div>
+							}
+						</div>
+						<div class="d-flex justify-content-end mt-3 gap-2">
+							<button
+								type="button"
+								class="btn btn-outline"
+								(click)="keysPath.set(null)"
+							>
+								{{ 'cancel' | transloco }}
+							</button>
+							<button
+								type="button"
+								class="btn btn-theme"
+								id="edoc_save_keys"
+								[disabled]="saving() || !userName() || !baseUrl()"
+								(click)="saveKeys()"
+							>
+								{{ 'edoc_save_keys' | transloco }}
+							</button>
+						</div>
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'edoc_what_applies' | transloco }}</h5>
+					</div>
+					<ul class="small mb-0 ps-3">
+						<li>{{ 'edoc_applies_einvoice' | transloco }}</li>
+						<li>{{ 'edoc_applies_ewaybill' | transloco }}</li>
+					</ul>
+				</div>
+			</div>
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header option-title">
+						<h5>{{ 'edoc_switching' | transloco }}</h5>
+					</div>
+					<p class="small mb-0">{{ 'edoc_switching_body' | transloco }}</p>
+				</div>
+			</div>
+		</div>
+	</div>
+	} }
+</app-page-wrapper>

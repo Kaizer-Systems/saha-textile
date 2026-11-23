@@ -65,6 +65,11 @@ export default [
 		loadComponent: () => import('./company/gst-registrations').then((m) => m.GstRegistrationsSettings),
 	},
 	{
+		// Accounts brief addendum 2, EI1–EI2 (owner-approved 2026-11-23, AE1–AE9).
+		path: 'edocs',
+		loadComponent: () => import('./edocs/edoc-settings').then((m) => m.EDocSettingsPage),
+	},
+	{
 		// Accounts brief J3 (owner-approved 2026-11-23).
 		path: 'features',
 		loadComponent: () => import('./company/feature-switches').then((m) => m.FeatureSwitchesSettings),

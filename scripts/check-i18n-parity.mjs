@@ -37,6 +37,9 @@ const CATALOGUES = [
 const SHARED_VALUE = /^(?:[A-Z]{2,6}|\d+|[\s\p{P}]*)$/u;
 const SHARED_WORDS = new Set([
 	'saha textile',
+	// E-invoice portals and GST providers are named as they name themselves (accounts brief addendum 2).
+	'iris irp 6',
+	'masters india',
 	// Tax heads as printed on GST documents; Bengali keeps them in Latin letters (owner, 2026-11-17).
 	'cgst + sgst',
 	'gst {{rate}}%',

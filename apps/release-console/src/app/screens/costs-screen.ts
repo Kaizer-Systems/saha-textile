@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
-import { injectEnvTags } from './env-tag-dialog';
-
 import { VENDOR_NAMES, type Vendor } from '@saha-textile/release-console-contracts';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
+import { injectEnvTags } from './env-tag-dialog';
 import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { Icon } from '../shared/icons';

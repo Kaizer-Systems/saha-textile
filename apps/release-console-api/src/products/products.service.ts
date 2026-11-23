@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
 	type KeyKind,
+	type KeyRef,
 	type MonitorRange,
 	type ProductJob,
 	type ProductTab,
 	type ProductWrite,
+	type Repository,
 	type VendorAnswer,
 	CONSOLE_KEYS_FOLDER,
 	monitorRangeSchema,
@@ -39,7 +41,26 @@ const STEP_EVERY_MS = 3000;
 const GIVE_UP_MS = 30 * 60_000;
 
 /**
- * Every DigitalOcean and Cloudflare product screen: reads with the narrow key, changes with the
+ * Where a screen's keys are linked: DigitalOcean on the repository's cloud slot, Cloudflare on its
+ * edge slot, and GitHub on its source-code slot (the repository's own GitHub token, or the project's
+ * GitHub token when the slot names none).
+ */
+export function keySlot(
+	vendor: ProductScreen['vendor'],
+	repo: Repository,
+	keys: KeyRef[],
+): { keyIds: string[]; zones?: string[] } | undefined {
+	if (vendor === 'digitalocean') return repo.cloud.find((c) => c.vendor === 'digitalocean');
+	if (vendor === 'github') {
+		if (repo.sourceCode.vendor !== 'github') return undefined;
+		const own = repo.sourceCode.keyId;
+		return { keyIds: own ? [own] : keys.filter((k) => k.kind === 'github-token').map((k) => k.id) };
+	}
+	return repo.edge.find((e) => e.vendor === 'cloudflare');
+}
+
+/**
+ * Every DigitalOcean, Cloudflare and GitHub product screen: reads with the narrow key, changes with the
  * full-access key after the PIN, records each change in the audit log, and follows it to the end.
  */
 @Injectable()
@@ -106,10 +127,7 @@ export class ProductsService {
 				data: { ...shared, key: '', zones: cf?.zones ?? [], writeKey: async () => '' },
 			};
 		}
-		const slot =
-			s.vendor === 'digitalocean'
-				? repo.cloud.find((c) => c.vendor === 'digitalocean')
-				: repo.edge.find((e) => e.vendor === 'cloudflare');
+		const slot = keySlot(s.vendor, repo, project.keys);
 		if (!slot)
 			return {
 				state: 'not-connected',
@@ -135,7 +153,7 @@ export class ProductsService {
 			data: {
 				...shared,
 				key,
-				zones: 'zones' in slot ? slot.zones : [],
+				zones: slot.zones ?? [],
 				writeKey: async () => {
 					const v = changeRef ? await this.projects.valueOf(changeRef) : null;
 					if (!v)

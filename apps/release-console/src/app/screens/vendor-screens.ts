@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { type Droplet, type VendorAnswer, envOfBranch, envOfHost } from '@saha-textile/release-console-contracts';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { EnvTagDialog, injectDefaultBranch, injectEnvTags } from './env-tag-dialog';
@@ -11,8 +12,6 @@ import { when } from '../pages/format-time';
 import { Icon } from '../shared/icons';
 import { Loading } from '../shared/loading';
 import { VendorLogo } from '../shared/vendor-logo';
-
-import { type Droplet, type VendorAnswer, envOfBranch, envOfHost } from '@saha-textile/release-console-contracts';
 
 /** Why a vendor screen has no data: not connected (amber, with the way to connect) or an error (red). */
 @Component({

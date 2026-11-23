@@ -9,6 +9,7 @@ import { PageBuilderModule } from './page-builder/page-builder.module';
 import { EventsModule } from './events/events.module';
 import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { PurchasingModule } from './purchasing/purchasing.module';
+import { CompanyModule } from './company/company.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
@@ -82,6 +83,7 @@ export class AppModule {
 				CommunicationsModule,
 				MailboxesModule,
 				PurchasingModule,
+				CompanyModule,
 				DocumentsModule,
 				WishlistModule,
 				LanguagesModule,

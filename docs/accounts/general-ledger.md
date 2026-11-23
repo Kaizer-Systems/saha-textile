@@ -4,7 +4,7 @@ description: The chart of accounts, vouchers and their lines, how documents post
 status: implemented
 audience: [backend, frontend, operator]
 last_verified: '2026-11-24'
-search_keywords: general ledger chart of accounts voucher journal receipt payment contra reversal period lock month close document lock idempotency paise
+search_keywords: general ledger chart of accounts voucher journal receipt payment contra reversal period lock month close document lock idempotency paise where money lands bank account gateway clearing
 source_of_truth:
     - packages/contracts/src/ledger.ts
     - packages/core-domain/src/ledger
@@ -79,6 +79,30 @@ Posting rules never name a ledger. They post to a role, and the company's books 
 - Group roles decide cash and bank: a ledger under a group playing `cash_in_hand` is cash; under `bank_accounts` or `bank_od`, bank.
 - The roles the engine knows, and the documents that need each, are listed in `packages/core-domain/src/ledger/roles.ts` (`ROLE_REGISTRY`); `missingRoles(chart, documentType)` lists what a document still needs. Which ledger plays each role comes from the installed [accounts templates](./accounts-templates.md).
 
+## Where money lands
+
+A payment on an order or a purchase entry records how the money moved (gateway, UPI, bank transfer, cash), not which bank account. The **Where money lands** card on Accounts › Ledgers sets the ledger for each way of paying, once (`ledgerSettings`, document `moneyLanding`):
+
+| Field               | Used for                                          | Offers       | When empty                   |
+| ------------------- | ------------------------------------------------- | ------------ | ---------------------------- |
+| `receivedByGateway` | money received through the payment gateway        | any ledger   | the `gateway_clearing` role  |
+| `receivedByUpi`     | money received by UPI                             | any ledger   | the `upi_card_clearing` role |
+| `receivedByBank`    | money received by bank transfer or cheque         | bank ledgers | refused: no bank account set |
+| `cashOnDelivery`    | cash on delivery, held by the courier             | any ledger   | the `cod_receivable` role    |
+| `paidByBank`        | supplier payments by bank transfer, UPI or cheque | bank ledgers | refused: no bank account set |
+| `paidInCash`        | supplier payments in cash                         | cash ledgers | the `cash` role              |
+
+Saving checks that each chosen ledger is active and of the right kind (`money_landing_wrong_ledger:<field>`), and refuses a save over someone else's newer one (`money_landing_changed`).
+
+The posting rules that read it live in `packages/core-domain/src/ledger/money-postings.ts`:
+
+- `receiptLanding(method, landing)`: the debit side of a received payment. On account and set off move no money and post nothing.
+- `receiptPosting(amount, landed, invoiced)`: the landing ledger against Customer advance, or against Customers once the order has a tax invoice.
+- `supplierPaymentFrom(mode, landing)`: the credit side of a supplier payment.
+- `purchaseEntryPosting(totals)`: Stock in hand and input CGST, SGST or IGST against Suppliers, with Rounding off on whichever side the bill's rounding falls. `purchaseReturnPosting` is its opposite, and `reversed(rows)` turns any posting into its reversal.
+
+A bank receipt or payment with no bank account set is refused with `money_lands_not_set:received_by_bank` or `money_lands_not_set:paid_by_bank`.
+
 ## Periods and locks
 
 Each month has a state per part of the books (sales, purchases, stock, cash, bank, payroll, journals):
@@ -105,7 +129,7 @@ Every change to the books (vouchers posted or reversed, ledgers, groups and mont
 | ------------------------ | ------------------------------------------------------------------ |
 | `accounts.index`         | read the chart, vouchers, statements and periods                   |
 | `accounts.post`          | post vouchers by hand (reversal also needs the Administrator role) |
-| `accounts.edit`          | add and change groups and ledgers                                  |
+| `accounts.edit`          | add and change groups and ledgers, and set where money lands       |
 | `accounts.lock`          | close or lock months, and post into a month closed for staff       |
 | `accounts_template.edit` | make, publish and install accounts templates                       |
 
@@ -120,3 +144,4 @@ Every change to the books (vouchers posted or reversed, ledgers, groups and mont
 | `GET /admin/accounts/vouchers`, `GET …/vouchers/:id`                                   | vouchers                       |
 | `POST /admin/accounts/vouchers`, `POST …/vouchers/:id/reverse`                         | post and reverse               |
 | `GET /admin/accounts/periods`, `POST /admin/accounts/periods`                          | month states and locks         |
+| `GET /admin/accounts/money-landing`, `PUT /admin/accounts/money-landing`               | where money lands              |

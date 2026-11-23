@@ -2583,3 +2583,26 @@ customizable and none of it stays baked in code." Plan published as the Accounts
   Istanbul data, the test report and git, so it works on any JavaScript or TypeScript code; the screen never writes a
   failure's cause, only the facts that point to it (the failing line, the lines it went through, the commit that last
   changed them). Another language needs a reader for its coverage format (LCOV or Cobertura) behind the same shape.
+
+## Owner decision round (2026-11-24) — receipts and purchase bills post inline, and Convert
+
+**Owner (24 Nov):** "It's inline transaction, but first give the brief, then do the inline transaction". Brief "Postings and
+Convert" (https://claude.ai/artifact/76vgVJ5Ki6F4HRFd25iPV7); owner: "Approve all".
+
+- **Inline.** Received payments on orders, purchase entries and their voids, supplier payments and their reversals, purchase
+  returns and refunds from suppliers post to the books in the same database transaction as the step that saves them (brief
+  P1 table).
+- **AP-D1:** one "Where money lands" card on Accounts › Ledgers sets the ledger for each way of paying, once (received by the
+  gateway, by UPI, by bank transfer or cheque, cash on delivery; supplier payments by bank and in cash).
+- **AP-D2:** when a posting can't be made (month locked, ledger missing, no bank account set), staff steps are refused with
+  the reason in words and nothing is half saved. At shop checkout the customer has already paid, so the payment is kept and
+  flagged for staff.
+- **AP-D3:** documents saved before this are posted by a super-admin "Post them" on Accounts › Periods and locks, each on its
+  own date, once; locked months are skipped and listed, never unlocked.
+- **AC-D1:** Convert happens in the same deployment (AT-D3): the old books are locked read-only up to the last day, the new
+  kind's templates are installed, and one opening voucher carries every balance, the owners' accounts mapped by a form. AD5's
+  "new deployment through Import" is not used for Convert.
+- **AC-D2:** Convert is for the super admin only, with a Preview first, and is not undone (the opening voucher can be reversed
+  like any voucher while its month is open).
+- **Order:** N3a where money lands and the posting rules → N3b inline posting in the orders and purchases steps → N3c catch-up
+  → N4 Convert → T4 builder screens.

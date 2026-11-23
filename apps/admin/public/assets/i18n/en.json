@@ -8241,5 +8241,18 @@
 	"pv_cancel_body": "The payment is reversed and the bill is owed again; the number is kept. Only a super admin can do this, while the month is open.",
 	"pv_cancel_confirm": "Cancel the voucher",
 	"si_problem_payment_voucher_cancelled": "This voucher is already cancelled.",
-	"si_problem_month_locked": "That month is closed for cash or bank."
+	"si_problem_month_locked": "That month is closed for cash or bank.",
+	"ml_title": "Where money lands",
+	"ml_receivedByGateway": "Received by the payment gateway",
+	"ml_receivedByUpi": "Received by UPI",
+	"ml_receivedByBank": "Received by bank transfer or cheque",
+	"ml_cashOnDelivery": "Cash on delivery",
+	"ml_paidByBank": "Supplier payments by bank transfer, UPI or cheque",
+	"ml_paidInCash": "Supplier payments in cash",
+	"ml_role_own": "Its own ledger",
+	"ml_choose_bank": "Choose a bank account",
+	"ml_help": "Until a bank account is chosen, bank receipts and payments can't be saved.",
+	"ml_saved": "Saved where money lands",
+	"ml_wrong_ledger": "{{field}}: choose a ledger of the right kind.",
+	"ml_changed": "Someone else changed this; open the page again."
 }

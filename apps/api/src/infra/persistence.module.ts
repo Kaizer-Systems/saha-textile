@@ -99,6 +99,7 @@ import {
 	MongoTemplateInstallRepository,
 	MongoSelfInvoiceRepository,
 	MongoPaymentVoucherRepository,
+	MongoMoneyLandingRepository,
 	MongoNumberAllocator,
 	MongoOpeningStockRepository,
 	MongoPurchaseEntryRepository,
@@ -171,6 +172,7 @@ import {
 	TEMPLATE_INSTALL_REPOSITORY,
 	SELF_INVOICE_REPOSITORY,
 	PAYMENT_VOUCHER_REPOSITORY,
+	MONEY_LANDING_REPOSITORY,
 	NUMBER_ALLOCATOR,
 	OPENING_STOCK_REPOSITORY,
 	PURCHASE_ENTRY_REPOSITORY,
@@ -535,6 +537,7 @@ import { LanguageStore } from '../languages/language-store';
 		{ provide: TEMPLATE_INSTALL_REPOSITORY, useClass: MongoTemplateInstallRepository },
 		{ provide: SELF_INVOICE_REPOSITORY, useClass: MongoSelfInvoiceRepository },
 		{ provide: PAYMENT_VOUCHER_REPOSITORY, useClass: MongoPaymentVoucherRepository },
+		{ provide: MONEY_LANDING_REPOSITORY, useClass: MongoMoneyLandingRepository },
 		{
 			// Every stock move records its location (accounts brief F4).
 			provide: STOCK_MOVEMENT,
@@ -730,6 +733,7 @@ import { LanguageStore } from '../languages/language-store';
 		TEMPLATE_INSTALL_REPOSITORY,
 		SELF_INVOICE_REPOSITORY,
 		PAYMENT_VOUCHER_REPOSITORY,
+		MONEY_LANDING_REPOSITORY,
 		STOCK_MOVEMENT,
 		STOCK_READ_REPOSITORY,
 		INVENTORY_COST_LAYER_REPOSITORY,

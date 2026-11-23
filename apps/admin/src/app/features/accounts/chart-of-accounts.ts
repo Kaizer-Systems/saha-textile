@@ -14,6 +14,7 @@ import { NotificationService } from '@data-access/services/notification.service'
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 
 import { type ChartNode, chartTree, drCr } from './ledger-helpers';
+import { MoneyLandingCard } from './money-landing-card';
 
 import type { Ledger } from '@saha-textile/contracts';
 
@@ -39,7 +40,7 @@ type Editing =
  */
 @Component({
 	selector: 'app-chart-of-accounts',
-	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, NgTemplateOutlet],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink, NgTemplateOutlet, MoneyLandingCard],
 	templateUrl: './chart-of-accounts.html',
 })
 export class ChartOfAccountsPage {

@@ -427,3 +427,22 @@ export const GstReturnFilingWrite = GstReturnFiling.pick({
 	acknowledgement: true,
 });
 export type GstReturnFilingWrite = z.infer<typeof GstReturnFilingWrite>;
+
+/**
+ * Where money lands (approved 24 Nov, AP-D1): the ledger each way of paying posts to. Null means the role's own ledger
+ * (gateway clearing, UPI and card clearing, COD receivable, cash); bank transfers and cheques need a bank account set.
+ */
+export const MoneyLanding = z.object({
+	receivedByGateway: Id.nullable().default(null),
+	receivedByUpi: Id.nullable().default(null),
+	receivedByBank: Id.nullable().default(null),
+	cashOnDelivery: Id.nullable().default(null),
+	paidByBank: Id.nullable().default(null),
+	paidInCash: Id.nullable().default(null),
+	updatedAt: IsoDateTime.nullable().default(null),
+	updatedBy: Id.nullable().default(null),
+});
+export type MoneyLanding = z.infer<typeof MoneyLanding>;
+
+export const MoneyLandingWrite = MoneyLanding.omit({ updatedAt: true, updatedBy: true });
+export type MoneyLandingWrite = z.infer<typeof MoneyLandingWrite>;

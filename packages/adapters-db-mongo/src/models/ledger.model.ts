@@ -140,3 +140,11 @@ const TemplateInstallSchema = new Schema<AggregateDoc>(
 );
 export const TemplateInstallModel: Model<AggregateDoc> =
 	(models.TemplateInstall as Model<AggregateDoc>) ?? model<AggregateDoc>('TemplateInstall', TemplateInstallSchema);
+
+/** Ledger settings, one document each by `_id` (`moneyLanding`: where money lands, AP-D1). */
+const LedgerSettingSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.LedgerSetting },
+);
+export const LedgerSettingModel: Model<AggregateDoc> =
+	(models.LedgerSetting as Model<AggregateDoc>) ?? model<AggregateDoc>('LedgerSetting', LedgerSettingSchema);

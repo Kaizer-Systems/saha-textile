@@ -1,5 +1,6 @@
 import {
 	AccountGroup,
+	MoneyLanding,
 	AccountsTemplate,
 	type ChartOfAccounts,
 	DocumentLock,
@@ -15,6 +16,7 @@ import {
 import {
 	type AccountsTemplateRepository,
 	type DocumentLockClaim,
+	type MoneyLandingRepository,
 	type DocumentLockRepository,
 	type GeneralLedgerRepository,
 	type GstReturnRepository,
@@ -29,6 +31,7 @@ import {
 import {
 	AccountGroupModel,
 	AccountsTemplateModel,
+	LedgerSettingModel,
 	DocumentLockModel,
 	GstReturnModel,
 	JournalLineModel,
@@ -476,5 +479,27 @@ export class MongoTemplateInstallRepository implements TemplateInstallRepository
 			{ _id: install.code, ...install },
 			{ upsert: true },
 		).exec();
+	}
+}
+
+/** Where money lands (AP-D1): a single settings document. */
+export class MongoMoneyLandingRepository implements MoneyLandingRepository {
+	async get(): Promise<MoneyLanding> {
+		const doc = await LedgerSettingModel.findById('moneyLanding').lean<AggregateDoc>().exec();
+		return MoneyLanding.parse(doc ? strip(doc) : {});
+	}
+
+	async save(landing: MoneyLanding, expectedUpdatedAt: string | null): Promise<void> {
+		try {
+			const result = await LedgerSettingModel.updateOne(
+				{ _id: 'moneyLanding', updatedAt: expectedUpdatedAt },
+				{ $set: landing },
+				{ upsert: expectedUpdatedAt === null },
+			).exec();
+			if (result.matchedCount + result.upsertedCount !== 1) throw new Error('money_landing_changed');
+		} catch (error) {
+			if ((error as { code?: number }).code === 11000) throw new Error('money_landing_changed', { cause: error });
+			throw error;
+		}
 	}
 }

@@ -88,3 +88,9 @@ export interface GstReturnRepository {
 	/** Refused with `duplicate_gst_filing` when that return is already marked filed. */
 	insert(filing: GstReturnFiling): Promise<void>;
 }
+
+/** Where money lands (approved 24 Nov, AP-D1): one setting; a save refused with `money_landing_changed` when stale. */
+export interface MoneyLandingRepository {
+	get(): Promise<import('@saha-textile/contracts').MoneyLanding>;
+	save(landing: import('@saha-textile/contracts').MoneyLanding, expectedUpdatedAt: string | null): Promise<void>;
+}

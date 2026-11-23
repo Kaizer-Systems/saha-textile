@@ -95,166 +95,171 @@
 				class="col-xl-2 col-lg-3 d-lg-block"
 				[class.d-none]="reading()"
 			>
-				<ul class="nav nav-pills flex-column">
-					@for (entry of folders; track entry.id) {
-					<li class="nav-item">
-						<a
-							class="nav-link"
-							[routerLink]="listLink(entry.id)"
-							[class.active]="!q() && !labelId() && !draftsView() && !allView() && folder() === entry.id"
-							[attr.aria-current]="
+				<!-- The four lists stay in view as one block (the theme's sticky-top-sec); inbox.scss lets the
+				     block scroll on its own when the labels outgrow the screen. -->
+				<div class="sticky-top-sec">
+					<ul class="nav nav-pills flex-column">
+						@for (entry of folders; track entry.id) {
+						<li class="nav-item">
+							<a
+								class="nav-link"
+								[routerLink]="listLink(entry.id)"
+								[class.active]="!q() && !labelId() && !draftsView() && !allView() && folder() === entry.id"
+								[attr.aria-current]="
 								!q() && !labelId() && !draftsView() && !allView() && folder() === entry.id ? 'page' : null
 							"
-						>
-							<i [class]="entry.icon"></i>
-							{{ 'inbox_folder_' + entry.id | transloco }} @if (entry.id === 'inbox' && mailbox()?.unread)
-							{
-							<span class="badge bg-danger ms-1">{{ mailbox()?.unread }}</span>
-							} @else if (entry.id === 'inbox' && mailbox()?.unread === null) {
-							<span
-								class="badge bg-light text-dark ms-1"
-								[title]="'inbox_unread_unknown' | transloco"
 							>
-								—
-							</span>
-							}
-						</a>
-					</li>
-					@if (entry.id === 'inbox' && mailboxes().length > 1) {
-					<!-- Every mailbox's newest Inbox conversations together (F1); never the default. -->
-					<li class="nav-item">
-						<a
-							class="nav-link"
-							id="inbox_folder_all_mailboxes"
-							[routerLink]="allLink()"
-							[class.active]="allView()"
-							[attr.aria-current]="allView() ? 'page' : null"
-						>
-							<i class="ri-stack-line"></i>
-							{{ 'inbox_all_mailboxes' | transloco }}
-						</a>
-					</li>
-					} @if (entry.id === 'sent' && canSend()) {
-					<!-- Drafts saved to Gmail as they are typed (C2); only people who may send see them. -->
-					<li class="nav-item">
-						<a
-							class="nav-link"
-							id="inbox_folder_drafts"
-							[routerLink]="draftsLink()"
-							[class.active]="draftsView()"
-							[attr.aria-current]="draftsView() ? 'page' : null"
-						>
-							<i class="ri-draft-line"></i>
-							{{ 'inbox_folder_drafts' | transloco }}
-						</a>
-					</li>
-					} }
-				</ul>
-				@if (labelLists().categories.length) {
-				<h6 class="text-content small mt-3 mb-1 px-3">{{ 'inbox_categories' | transloco }}</h6>
-				<ul class="nav nav-pills flex-column">
-					@for (label of labelLists().categories; track label.id) {
-					<li class="nav-item">
-						<a
-							class="nav-link"
-							[routerLink]="labelLink(label.id)"
-							[class.active]="!q() && labelId() === label.id"
-							[attr.aria-current]="!q() && labelId() === label.id ? 'page' : null"
-						>
-							{{ categoryKeys[label.id] | transloco }} @if (label.unread) {
-							<span class="badge bg-light text-dark ms-1">{{ label.unread }}</span>
-							}
-						</a>
-					</li>
+								<i [class]="entry.icon"></i>
+								{{ 'inbox_folder_' + entry.id | transloco }} @if (entry.id === 'inbox' &&
+								mailbox()?.unread) {
+								<span class="badge bg-danger ms-1">{{ mailbox()?.unread }}</span>
+								} @else if (entry.id === 'inbox' && mailbox()?.unread === null) {
+								<span
+									class="badge bg-light text-dark ms-1"
+									[title]="'inbox_unread_unknown' | transloco"
+								>
+									—
+								</span>
+								}
+							</a>
+						</li>
+						@if (entry.id === 'inbox' && mailboxes().length > 1) {
+						<!-- Every mailbox's newest Inbox conversations together (F1); never the default. -->
+						<li class="nav-item">
+							<a
+								class="nav-link"
+								id="inbox_folder_all_mailboxes"
+								[routerLink]="allLink()"
+								[class.active]="allView()"
+								[attr.aria-current]="allView() ? 'page' : null"
+							>
+								<i class="ri-stack-line"></i>
+								{{ 'inbox_all_mailboxes' | transloco }}
+							</a>
+						</li>
+						} @if (entry.id === 'sent' && canSend()) {
+						<!-- Drafts saved to Gmail as they are typed (C2); only people who may send see them. -->
+						<li class="nav-item">
+							<a
+								class="nav-link"
+								id="inbox_folder_drafts"
+								[routerLink]="draftsLink()"
+								[class.active]="draftsView()"
+								[attr.aria-current]="draftsView() ? 'page' : null"
+							>
+								<i class="ri-draft-line"></i>
+								{{ 'inbox_folder_drafts' | transloco }}
+							</a>
+						</li>
+						} }
+					</ul>
+					@if (labelLists().categories.length) {
+					<h6 class="text-content small mt-3 mb-1 px-3">{{ 'inbox_categories' | transloco }}</h6>
+					<ul class="nav nav-pills flex-column">
+						@for (label of labelLists().categories; track label.id) {
+						<li class="nav-item">
+							<a
+								class="nav-link"
+								[routerLink]="labelLink(label.id)"
+								[class.active]="!q() && labelId() === label.id"
+								[attr.aria-current]="!q() && labelId() === label.id ? 'page' : null"
+							>
+								{{ categoryKeys[label.id] | transloco }} @if (label.unread) {
+								<span class="badge bg-light text-dark ms-1">{{ label.unread }}</span>
+								}
+							</a>
+						</li>
+						}
+					</ul>
 					}
-				</ul>
-				}
-				<div class="d-flex align-items-center justify-content-between mt-3 mb-1 px-3">
-					<h6 class="text-content small mb-0">{{ 'inbox_labels' | transloco }}</h6>
-					@if (can('labels')) {
-					<button
-						type="button"
-						class="btn btn-sm p-0"
-						id="inbox_new_label"
-						[title]="'inbox_new_label' | transloco"
-						[attr.aria-label]="'inbox_new_label' | transloco"
-						(click)="openLabelEditor(null)"
-					>
-						<i class="ri-add-line"></i>
-					</button>
+					<div class="d-flex align-items-center justify-content-between mt-3 mb-1 px-3">
+						<h6 class="text-content small mb-0">{{ 'inbox_labels' | transloco }}</h6>
+						@if (can('labels')) {
+						<button
+							type="button"
+							class="btn btn-sm p-0"
+							id="inbox_new_label"
+							[title]="'inbox_new_label' | transloco"
+							[attr.aria-label]="'inbox_new_label' | transloco"
+							(click)="openLabelEditor(null)"
+						>
+							<i class="ri-add-line"></i>
+						</button>
+						}
+					</div>
+					<ul class="nav nav-pills flex-column">
+						@for (label of labelLists().labels; track label.id) {
+						<li class="nav-item d-flex align-items-center">
+							<a
+								[class]="'nav-link flex-grow-1 text-truncate ps-' + (label.depth > 1 ? 5 : label.depth + 3)"
+								[routerLink]="labelLink(label.id)"
+								[title]="label.name"
+								[class.active]="!q() && labelId() === label.id"
+								[attr.aria-current]="!q() && labelId() === label.id ? 'page' : null"
+							>
+								{{ label.leaf }} @if (label.unread) {
+								<span class="badge bg-light text-dark ms-1">{{ label.unread }}</span>
+								}
+							</a>
+							@if (can('labels')) {
+							<div
+								ngbDropdown
+								#labelMenu="ngbDropdown"
+								class="d-inline-block"
+								placement="bottom-end"
+								container="body"
+							>
+								<button
+									type="button"
+									class="btn btn-sm p-1"
+									ngbDropdownAnchor
+									[title]="'inbox_label_actions' | transloco"
+									[attr.aria-label]="('inbox_label_actions' | transloco) + ': ' + label.name"
+									(click)="labelMenu.toggle()"
+								>
+									<i class="ri-more-2-fill"></i>
+								</button>
+								<div ngbDropdownMenu>
+									<button
+										ngbDropdownItem
+										type="button"
+										(click)="openLabelEditor(label)"
+									>
+										{{ 'inbox_rename_label' | transloco }}
+									</button>
+									<button
+										ngbDropdownItem
+										type="button"
+										(click)="askDeleteLabel(label)"
+									>
+										{{ 'inbox_delete_label' | transloco }}
+									</button>
+								</div>
+							</div>
+							}
+						</li>
+						} @empty {
+						<li class="text-content small px-3">{{ 'inbox_no_labels' | transloco }}</li>
+						}
+					</ul>
+					@if (can('settings')) {
+					<!-- Gmail settings for this mailbox (G1): filters, vacation reply, signature. -->
+					<ul class="nav nav-pills flex-column mt-3">
+						<li class="nav-item">
+							<a
+								class="nav-link"
+								id="inbox_settings_link"
+								[routerLink]="settingsLink()"
+								[class.active]="settingsView()"
+								[attr.aria-current]="settingsView() ? 'page' : null"
+							>
+								<i class="ri-settings-3-line"></i>
+								{{ 'inbox_mailbox_settings' | transloco }}
+							</a>
+						</li>
+					</ul>
 					}
 				</div>
-				<ul class="nav nav-pills flex-column">
-					@for (label of labelLists().labels; track label.id) {
-					<li class="nav-item d-flex align-items-center">
-						<a
-							[class]="'nav-link flex-grow-1 text-truncate ps-' + (label.depth > 1 ? 5 : label.depth + 3)"
-							[routerLink]="labelLink(label.id)"
-							[title]="label.name"
-							[class.active]="!q() && labelId() === label.id"
-							[attr.aria-current]="!q() && labelId() === label.id ? 'page' : null"
-						>
-							{{ label.leaf }} @if (label.unread) {
-							<span class="badge bg-light text-dark ms-1">{{ label.unread }}</span>
-							}
-						</a>
-						@if (can('labels')) {
-						<div
-							ngbDropdown
-							#labelMenu="ngbDropdown"
-							class="d-inline-block"
-							placement="bottom-end"
-						>
-							<button
-								type="button"
-								class="btn btn-sm p-1"
-								ngbDropdownAnchor
-								[title]="'inbox_label_actions' | transloco"
-								[attr.aria-label]="('inbox_label_actions' | transloco) + ': ' + label.name"
-								(click)="labelMenu.toggle()"
-							>
-								<i class="ri-more-2-fill"></i>
-							</button>
-							<div ngbDropdownMenu>
-								<button
-									ngbDropdownItem
-									type="button"
-									(click)="openLabelEditor(label)"
-								>
-									{{ 'inbox_rename_label' | transloco }}
-								</button>
-								<button
-									ngbDropdownItem
-									type="button"
-									(click)="askDeleteLabel(label)"
-								>
-									{{ 'inbox_delete_label' | transloco }}
-								</button>
-							</div>
-						</div>
-						}
-					</li>
-					} @empty {
-					<li class="text-content small px-3">{{ 'inbox_no_labels' | transloco }}</li>
-					}
-				</ul>
-				@if (can('settings')) {
-				<!-- Gmail settings for this mailbox (G1): filters, vacation reply, signature. -->
-				<ul class="nav nav-pills flex-column mt-3">
-					<li class="nav-item">
-						<a
-							class="nav-link"
-							id="inbox_settings_link"
-							[routerLink]="settingsLink()"
-							[class.active]="settingsView()"
-							[attr.aria-current]="settingsView() ? 'page' : null"
-						>
-							<i class="ri-settings-3-line"></i>
-							{{ 'inbox_mailbox_settings' | transloco }}
-						</a>
-					</li>
-				</ul>
-				}
 			</div>
 
 			@if (settingsView() && can('settings')) {
@@ -324,7 +329,7 @@
 						[class.unread]="row.unread"
 					>
 						<a
-							class="d-block text-reset min-w-0 flex-grow-1"
+							class="d-block text-reset flex-grow-1 overflow-hidden"
 							[id]="'inbox_all_' + row.mailboxId + '_' + row.id"
 							[routerLink]="allRowLink(row)"
 						>
@@ -342,11 +347,11 @@
 									{{ row.date | date: listDateFormat(row.date) }}
 								</h5>
 							</div>
-							<h5 class="mb-1">
-								<span class="badge bg-light text-dark me-1 border">
+							<h5 class="mb-1 flex-wrap">
+								<span class="badge bg-light text-dark border">
 									{{ mailboxKey(row.mailboxAddress) }}@
 								</span>
-								{{ row.subject || ('inbox_no_subject' | transloco) }}
+								<span class="text-truncate">{{ row.subject || ('inbox_no_subject' | transloco) }}</span>
 							</h5>
 							<p class="text-content small text-truncate mb-1">{{ row.snippet }}</p>
 						</a>
@@ -392,7 +397,7 @@
 						[class.inbox-open]="openDraftId() === row.draftId"
 					>
 						<a
-							class="d-block text-reset min-w-0 flex-grow-1"
+							class="d-block text-reset flex-grow-1 overflow-hidden"
 							[id]="'inbox_draft_' + row.draftId"
 							[routerLink]="draftsLink()"
 							[queryParams]="{ draft: 'open', d: row.draftId }"
@@ -410,7 +415,9 @@
 									{{ row.date | date: listDateFormat(row.date) }}
 								</h5>
 							</div>
-							<h5 class="mb-1">{{ row.subject || ('inbox_no_subject' | transloco) }}</h5>
+							<h5 class="mb-1">
+								<span class="text-truncate">{{ row.subject || ('inbox_no_subject' | transloco) }}</span>
+							</h5>
 							<p class="text-content small text-truncate mb-1">{{ row.snippet }}</p>
 						</a>
 					</li>
@@ -731,7 +738,7 @@
 							}
 						</div>
 						<a
-							class="d-block text-reset min-w-0 flex-grow-1"
+							class="d-block text-reset flex-grow-1 overflow-hidden"
 							[id]="'inbox_row_' + row.id"
 							[routerLink]="[...listLink(), row.id]"
 							[queryParams]="listQuery()"
@@ -759,12 +766,15 @@
 									{{ row.date | date: listDateFormat(row.date) }}
 								</h5>
 							</div>
-							<h5 class="mb-1">
-								{{ row.subject || ('inbox_no_subject' | transloco) }} @if (row.fromContactForm) {
-								<span class="badge badge-theme ms-1">{{ 'inbox_website' | transloco }}</span>
+							<!-- As the brief draws it: the label chips, then the subject cut with "…" (it wraps
+							     under the chips when they leave no room). -->
+							<h5 class="mb-1 flex-wrap">
+								@if (row.fromContactForm) {
+								<span class="badge badge-theme">{{ 'inbox_website' | transloco }}</span>
 								} @for (name of rowLabels(row); track name) {
-								<span class="badge bg-light text-dark ms-1 border">{{ name }}</span>
+								<span class="badge bg-light text-dark border">{{ name }}</span>
 								}
+								<span class="text-truncate">{{ row.subject || ('inbox_no_subject' | transloco) }}</span>
 							</h5>
 							<p class="text-content small text-truncate mb-1">{{ row.snippet }}</p>
 							@if (row.lastReplyBy) {
@@ -1973,11 +1983,11 @@
 		<ul class="list-unstyled mb-3">
 			@for (reply of group.replies; track reply.id) {
 			<li class="d-flex justify-content-between align-items-start border-bottom gap-2 py-2">
-				<div class="min-w-0">
+				<div class="overflow-hidden">
 					<b class="d-block text-break">{{ reply.title }}</b>
 					<p class="text-content small text-truncate mb-0">{{ reply.body }}</p>
 					@if (replyToDelete()?.id === reply.id) {
-					<div class="d-flex align-items-center mt-2 flex-wrap gap-2">
+					<div class="d-flex align-items-center mt-2 flex-wrap gap-2 p-1">
 						<span class="small">
 							{{ (reply.scope === 'shared' ? 'inbox_reply_delete_shared' : 'inbox_reply_delete_own') |
 							transloco: { title: reply.title } }}

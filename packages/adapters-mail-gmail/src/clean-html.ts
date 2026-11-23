@@ -239,8 +239,24 @@ const ENTITIES: Readonly<Record<string, string>> = {
 	quot: '"',
 	apos: "'",
 	nbsp: ' ',
-	'#39': "'",
 };
+
+/** The largest code point a character reference may name; anything above it stays as written. */
+const LAST_CODE_POINT = 0x10ffff;
+
+/**
+ * Character references as plain characters, in one pass so "&amp;lt;" becomes "&lt;" and never "<":
+ * the common named ones, decimal (&#39;) and hex (&#x27;). Unknown names, &#0; and numbers past the
+ * last code point stay as written. Gmail sends snippets escaped this way.
+ */
+export function decodeEntities(text: string): string {
+	return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, name: string) => {
+		const key = name.toLowerCase();
+		if (!key.startsWith('#')) return ENTITIES[key] ?? whole;
+		const code = key.startsWith('#x') ? Number.parseInt(key.slice(2), 16) : Number(key.slice(1));
+		return code > 0 && code <= LAST_CODE_POINT ? String.fromCodePoint(code) : whole;
+	});
+}
 
 /**
  * Plain text from cleaned email HTML, for messages sent without a text part: line breaks where
@@ -248,12 +264,11 @@ const ENTITIES: Readonly<Record<string, string>> = {
  * plain-text quote in a reply.
  */
 export function htmlToText(html: string): string {
-	return html
+	const untagged = html
 		.replace(/<br\s*\/?>/gi, '\n')
 		.replace(/<\/?(p|div|li|tr|h[1-6]|blockquote|pre)\b[^>]*>/gi, '\n')
-		.replace(/<[^>]*>/g, '')
-		.replace(/&(#39|[a-z]+);/gi, (whole, name: string) => ENTITIES[name.toLowerCase()] ?? whole)
-		.replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+		.replace(/<[^>]*>/g, '');
+	return decodeEntities(untagged)
 		.replace(/[ \t]+\n/g, '\n')
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();

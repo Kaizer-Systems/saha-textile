@@ -9,7 +9,7 @@ import {
 } from '@saha-textile/contracts';
 import { z } from 'zod';
 
-import { cleanEmailHtml, htmlToText, splitTextQuote, textAsHtml } from './clean-html.js';
+import { cleanEmailHtml, decodeEntities, htmlToText, splitTextQuote, textAsHtml } from './clean-html.js';
 import { DRAFT_FORWARD_HEADER, DRAFT_QUOTE_HEADER } from './mime.js';
 
 /** The parts of Gmail's message resource this adapter reads. */
@@ -176,7 +176,8 @@ export function toThreadSummary(thread: GmailThread): InboxThreadSummary {
 		id: thread.id,
 		from: last ? header(last.payload, 'From') : '',
 		subject: first ? header(first.payload, 'Subject') : '',
-		snippet: last?.snippet ?? '',
+		// Gmail escapes snippets as HTML (Thanks &amp; Regards); the list shows them as text.
+		snippet: decodeEntities(last?.snippet ?? ''),
 		to: last ? header(last.payload, 'To') : '',
 		date: iso(last?.internalDate ?? '0'),
 		unread: messages.some((message) => message.labelIds.includes('UNREAD')),
@@ -242,7 +243,7 @@ export function toDraftSummary(draftId: string, message: GmailMessage): InboxDra
 		threadId: message.threadId || null,
 		to: header(message.payload, 'To'),
 		subject: header(message.payload, 'Subject'),
-		snippet: message.snippet,
+		snippet: decodeEntities(message.snippet),
 		date: iso(message.internalDate),
 	};
 }

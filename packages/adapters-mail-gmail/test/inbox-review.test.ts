@@ -4,11 +4,13 @@ import {
 	GmailMailbox,
 	buildOutgoing,
 	cleanEmailHtml,
+	decodeEntities,
 	displayName,
 	htmlToText,
 	markMisleadingLinks,
 	referencesFor,
 	splitTextQuote,
+	toDraftSummary,
 	toInboxMessage,
 	toThreadSummary,
 } from '../src/index.js';
@@ -420,6 +422,31 @@ describe('Gmail load (T1)', () => {
 		expect(message?.html).toContain('src="data:image/png;base64,AQ=="');
 		expect(message?.attachments.map((file) => file.filename)).toEqual(['p2.png', 'big.png', 'kept.png']);
 		expect(calls.filter((call) => call.url.includes('/attachments/'))).toHaveLength(2);
+	});
+});
+
+describe('snippets and character references (24 Nov inbox check)', () => {
+	it('decodes named, decimal and hex references in one pass, and leaves the rest as written', () => {
+		expect(decodeEntities('Thanks &amp; Regards · Here&#39;s · it&#x27;s · &LT;b&GT; · &quot;a&quot;')).toBe(
+			'Thanks & Regards · Here\'s · it\'s · <b> · "a"',
+		);
+		expect(decodeEntities('&amp;lt; stays &lt;')).toBe('&lt; stays <');
+		expect(decodeEntities('&unknown; &#0; &#99999999; &#x110000; &#x1F600;')).toBe(
+			'&unknown; &#0; &#99999999; &#x110000; 😀',
+		);
+	});
+
+	it("shows Gmail's escaped snippets as text in conversation and draft rows", () => {
+		const message = {
+			id: 'm1',
+			threadId: 't1',
+			labelIds: [],
+			snippet: 'Thanks &amp; Regards. Here&#39;s a quick one',
+			internalDate: '0',
+			payload: {},
+		};
+		expect(toThreadSummary({ id: 't1', messages: [message] }).snippet).toBe("Thanks & Regards. Here's a quick one");
+		expect(toDraftSummary('d1', message).snippet).toBe("Thanks & Regards. Here's a quick one");
 	});
 });
 

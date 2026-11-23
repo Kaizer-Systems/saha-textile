@@ -1,6 +1,27 @@
 // The reading pane is the Inbox's one custom part (approved brief, Gmail mailboxes revision 2).
 // Everything else on this page is the theme's own classes.
 
+// The folder column holds four lists: folders, categories, labels and Mailbox settings. The theme
+// pins every `.vertical-tabs .nav-pills` on its own at 100 px, so the four slid over one another as
+// the page scrolled. They now sit in one theme `sticky-top-sec` block that stays in view as a whole.
+// From the theme's 992 px breakpoint up, the block scrolls on its own when the labels are taller
+// than the space between the fixed header (110 px) and the fixed footer; below it the lists are the
+// theme's swipeable strips in the page's own flow.
+.vertical-tabs .sticky-top-sec {
+	@media (min-width: 992px) {
+		max-height: calc(100vh - 180px);
+		overflow-y: auto;
+
+		.nav-pills {
+			position: static;
+		}
+	}
+
+	@media (max-width: 991.98px) {
+		position: static;
+	}
+}
+
 // The theme capitalises notification rows; senders, subjects and addresses keep their own case.
 .inbox-list li {
 	text-transform: none;

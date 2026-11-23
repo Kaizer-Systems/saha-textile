@@ -58,7 +58,10 @@ describe('server deploys', () => {
 		}
 		expect(workflow).toContain('name: Images for this commit');
 		expect(workflow).toContain('name: Image digests');
-		expect(workflow).toContain('name: Deploy to ${{ inputs.environment }}');
+		// The deploy job is named "Deploy to <env>", or "Roll back <env>" for a rollback (Release Path brief F16).
+		expect(workflow).toContain(
+			"name: ${{ inputs.action == 'rollback' && 'Roll back' || 'Deploy to' }} ${{ inputs.environment }}",
+		);
 		expect(workflow).toContain('name: Publish\n');
 		for (const v of DEPLOY_VARIABLES) expect(workflow).toContain(`vars.${v}`);
 		for (const s of DEPLOY_SECRETS) expect(workflow).toContain(`secrets.${s}`);

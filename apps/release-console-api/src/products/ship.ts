@@ -3,7 +3,13 @@
  * workflow runs, approvals, release steps, impact, rollback, the release calendar, the dress
  * rehearsal and the load test, read live from GitHub (and the local request log for impact).
  */
-import { DEPLOY_WORKFLOW, deployFailureOf } from '@saha-textile/release-console-contracts';
+import {
+	DEPLOY_WORKFLOW,
+	RELEASE_TAG,
+	type ServerTarget,
+	deployFailureOf,
+	releaseTagTime,
+} from '@saha-textile/release-console-contracts';
 
 import type { Follow, ProductCtx, ProductScreen } from './kit.js';
 import {
@@ -30,6 +36,7 @@ import {
 	write,
 } from './kit.js';
 import { runLoad } from './loadtest.js';
+import { startServerDeploy } from '../vendors/github-deploys.js';
 import { VendorError, arr, num, rec, str } from '../vendors/http.js';
 
 const GH = 'https://api.github.com';
@@ -942,15 +949,26 @@ export const impactScreen: ProductScreen = {
 	},
 };
 
-/* ===== Rollback ===== */
+/* ===== Rollback (Release Path brief F16, approved 23 Nov: both rollbacks) ===== */
 
 async function releases(ctx: ProductCtx) {
-	const [tags, deps] = await Promise.all([ghSoft(ctx, '/tags?per_page=30'), ghSoft(ctx, '/deployments?per_page=30')]);
-	return { tags, deps };
+	const [tags, deps] = await Promise.all([
+		ghSoft(ctx, '/tags?per_page=100'),
+		ghSoft(ctx, '/deployments?per_page=30'),
+	]);
+	// Release tags deploy.yml pushes after each healthy deploy: <environment>-<yyyymmdd-hhmmss>-<sha8>.
+	const releaseTags = tags
+		.map((t) => ({ name: str(t['name']), sha: str(rec(t['commit'])['sha']).slice(0, 7) }))
+		.map((t) => ({ ...t, env: RELEASE_TAG.exec(t.name)?.[1] ?? '', at: releaseTagTime(t.name) }))
+		.filter((t) => t.env && t.at)
+		.sort((a, b) => b.name.localeCompare(a.name));
+	return { releaseTags, deps };
 }
 
+const SERVER_ENVS: ServerTarget[] = ['staging', 'production'];
+
 const rollbackChoose = async (ctx: ProductCtx) => {
-	const { tags, deps } = await releases(ctx);
+	const { releaseTags, deps } = await releases(ctx);
 	return view({
 		tables: [
 			table(
@@ -967,47 +985,73 @@ const rollbackChoose = async (ctx: ProductCtx) => {
 				'No releases recorded yet.',
 			),
 			table(
-				'Versions you can roll back to (tags)',
-				[col('name', 'Tag', true), col('sha', 'Commit', true)],
-				tags.map((t) =>
-					row(str(t['name']), str(t['name']), {
-						name: str(t['name']),
-						sha: str(rec(t['commit'])['sha']).slice(0, 7),
-					}),
+				'Versions you can deploy again (release tags)',
+				[col('name', 'Tag', true), col('env', 'Where'), col('at', 'Made', true), col('sha', 'Commit', true)],
+				releaseTags.map((t) =>
+					row(t.name, t.name, { name: t.name, env: t.env, at: when(t.at ?? ''), sha: t.sha }),
 				),
-				'No tags yet: each release gets one.',
+				'No release tags yet: each healthy deploy now gets one (staging-…, production-…).',
 			),
 		],
-		actions: [action('Roll back…', 'confirm', 'danger')],
+		notes: [
+			note(
+				'Roll back swaps the previous release back in on the server in seconds, from images already on its disk, its passwords included. Deploy an older version runs the deploy on one release tag. The database is never rolled back: migrations only add, so the older code still reads it.',
+				'muted',
+			),
+			note(
+				'After a leak, deploy forward instead: rolling back past a rotation brings the leaked values back.',
+				'amber',
+			),
+		],
+		actions: [action('Roll back', 'fast', 'danger'), action('Deploy an older version', 'confirm')],
 	});
 };
 
-const rollbackForm = async (ctx: ProductCtx) => {
-	const { tags } = await releases(ctx);
-	return formTab(
+const envField = () =>
+	field('environment', 'Where', 'select', {
+		value: 'staging',
+		options: SERVER_ENVS.map((e) => option(e, e)),
+		required: true,
+	});
+
+const rollbackFast = async () =>
+	formTab(
 		form({
-			key: 'confirm',
+			key: 'fast',
 			title: 'Roll back',
 			submit: 'Roll back',
 			danger: true,
-			blocked: tags.length ? null : 'No tagged versions to roll back to yet.',
+			fields: [envField()],
+			confirmName: 'rollback',
+			notes: [
+				note(
+					'The server swaps the previous release back in, passwords included, with no failed request. Type rollback to confirm.',
+					'amber',
+				),
+			],
+		}),
+	);
+
+const rollbackForm = async (ctx: ProductCtx) => {
+	const { releaseTags } = await releases(ctx);
+	return formTab(
+		form({
+			key: 'confirm',
+			title: 'Deploy an older version',
+			submit: 'Deploy this version',
+			danger: true,
+			blocked: releaseTags.length ? null : 'No release tags yet: each healthy deploy now gets one.',
 			fields: [
-				field('tag', 'To version', 'select', {
-					options: tags.map((t) =>
-						option(str(t['name']), str(t['name']), str(rec(t['commit'])['sha']).slice(0, 7)),
-					),
-					value: str(tags[1]?.['name'] ?? tags[0]?.['name']) || null,
+				field('tag', 'Version', 'select', {
+					options: releaseTags.map((t) => option(t.name, t.name, `${t.env} · ${t.sha}`)),
+					value: releaseTags[1]?.name ?? releaseTags[0]?.name ?? null,
 					required: true,
-				}),
-				field('environment', 'Where', 'select', {
-					value: 'staging',
-					options: [option('staging', 'staging'), option('production', 'production')],
 				}),
 			],
 			confirmName: 'rollback',
 			notes: [
 				note(
-					'Runs the deploy workflow on that version; the database is not rolled back (migrations only ever add). Type rollback to confirm.',
+					'Runs the deploy on that tag for the environment it names; the environment must allow its tags (the server create sets staging-* and production-*). Type rollback to confirm.',
 					'amber',
 				),
 			],
@@ -1017,24 +1061,29 @@ const rollbackForm = async (ctx: ProductCtx) => {
 
 export const rollbackScreen: ProductScreen = {
 	vendor: 'github',
-	tabs: { choose: rollbackChoose, confirm: rollbackForm },
+	tabs: { choose: rollbackChoose, confirm: rollbackForm, fast: rollbackFast },
 	forms: {
+		fast: {
+			read: rollbackFast,
+			async send(ctx, w) {
+				const key = await ctx.writeKey();
+				confirmed(w, 'rollback');
+				const env = text(w, 'environment') as ServerTarget;
+				if (!SERVER_ENVS.includes(env)) throw new VendorError('Choose where.', 400);
+				await startServerDeploy(ctx.repository, env, key, undefined, undefined, [], { action: 'rollback' });
+				return { message: `Rolling ${env} back to its previous release`, productId: env, follow: [] };
+			},
+		},
 		confirm: {
 			read: rollbackForm,
 			async send(ctx, w) {
 				const key = await ctx.writeKey();
 				confirmed(w, 'rollback');
-				const env = text(w, 'environment');
-				if (!['staging', 'production'].includes(env)) throw new VendorError('Choose where.', 400);
 				const tag = text(w, 'tag');
-				await write(
-					'GitHub',
-					'POST',
-					`${GH}/repos/${ctx.repository}/actions/workflows/${DEPLOY_WORKFLOW}/dispatches`,
-					key,
-					{ ref: tag, inputs: { environment: env } },
-				);
-				return { message: `Rolling ${env} back to ${tag}`, productId: tag, follow: [] };
+				const env = RELEASE_TAG.exec(tag)?.[1] as ServerTarget | undefined;
+				if (!env || !SERVER_ENVS.includes(env)) throw new VendorError('Choose a release tag.', 400);
+				await startServerDeploy(ctx.repository, env, key, undefined, undefined, [], { tag });
+				return { message: `Deploying ${tag} to ${env}`, productId: tag, follow: [] };
 			},
 		},
 	},

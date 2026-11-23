@@ -58,7 +58,7 @@ export const SERVER_LANE = [
 	{
 		key: 'release',
 		label: 'Release folder from Infisical',
-		jobs: ['Deploy to'],
+		jobs: ['Deploy to', 'Roll back'],
 		steps: [
 			'Check this environment is set up',
 			'Install the Infisical CLI',
@@ -70,16 +70,22 @@ export const SERVER_LANE = [
 	{
 		key: 'login',
 		label: 'Sign in to the server',
-		jobs: ['Deploy to'],
+		jobs: ['Deploy to', 'Roll back'],
 		steps: ['Install cloudflared', 'Open the way to the server'],
 	},
 	{
 		key: 'deploy',
 		label: 'Pull, release steps, switch, health',
-		jobs: ['Deploy to'],
-		steps: ['Ship the release and deploy it on the server'],
+		jobs: ['Deploy to', 'Roll back'],
+		// A rollback swaps the previous release back in instead (Release Path brief F16).
+		steps: ['Ship the release and deploy it on the server', 'Roll back on the server'],
 	},
-	{ key: 'health', label: 'Health through Cloudflare', jobs: ['Deploy to'], steps: ['Health through Cloudflare'] },
+	{
+		key: 'health',
+		label: 'Health through Cloudflare',
+		jobs: ['Deploy to', 'Roll back'],
+		steps: ['Health through Cloudflare'],
+	},
 ] as const;
 
 const stepSchema = z.object({
@@ -299,7 +305,7 @@ export function serverLane(run: DeployRun | null): LaneRow[] {
 		const base = { key: row.key, label: row.label };
 		if (!run) return { ...base, cls: 'wait', time: '' };
 		if (row.key === 'approval') {
-			const deploy = run.jobs.find((j) => j.name.startsWith('Deploy to'));
+			const deploy = run.jobs.find((j) => j.name.startsWith('Deploy to') || j.name.startsWith('Roll back'));
 			if (run.waiting.length) return { ...base, cls: 'run', time: 'waiting for you' };
 			if (deploy && deploy.status !== 'queued' && deploy.status !== 'waiting')
 				return { ...base, cls: 'ok', time: 'approved' };

@@ -427,7 +427,8 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			label: 'Rollback',
 			states: {
 				choose: 'Choose release',
-				confirm: 'Confirm',
+				fast: 'Roll back',
+				confirm: 'Deploy an older version',
 			},
 			off: false,
 			tip: null,
@@ -435,8 +436,9 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			offStates: null,
 			partStates: null,
 			captions: {
-				choose: 'Release history',
-				confirm: 'Confirm with your PIN',
+				choose: 'Release history and release tags',
+				fast: 'Swap the previous release back in on the server, in seconds, with your PIN',
+				confirm: 'Deploy one release tag again, with your PIN',
 			},
 		},
 		calendar: {

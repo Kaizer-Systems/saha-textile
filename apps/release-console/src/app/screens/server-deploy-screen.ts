@@ -917,6 +917,7 @@ export class ServerDeployScreen {
 					time: new Date(at).toLocaleTimeString('en-IN', { hour12: false }),
 					job: j.name
 						.replace(/^Deploy to .*/, 'deploy')
+						.replace(/^Roll back .*/, 'rollback')
 						.replace(/^Publish \/ /, '')
 						.slice(0, 18),
 					text: s.status === 'completed' ? `${s.name}: ${s.conclusion}` : `${s.name}…`,

@@ -85,7 +85,8 @@ async function runsOf(http: GithubHttp, repository: string, target: ServerTarget
 	if (a.status >= 400) throw failed('list deploy runs', a.status);
 	return arr(rec(a.body)['workflow_runs'])
 		.map(rec)
-		.filter((r) => str(r['display_title']).startsWith(`Deploy ${target} `))
+		// Rollbacks are named "Roll back <target> · <ref>" (deploy.yml run-name).
+		.filter((r) => [`Deploy ${target} `, `Roll back ${target} `].some((p) => str(r['display_title']).startsWith(p)))
 		.slice(0, 10);
 }
 

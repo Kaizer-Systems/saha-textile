@@ -126,6 +126,8 @@ export const COLLECTION_NAMES = {
 	EDocument: 'eDocuments',
 	EDocCall: 'edocCalls',
 	EDocKeys: 'edocKeys',
+	Location: 'locations',
+	UserLocations: 'userLocations',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
 	DocumentFormat: 'documentFormats',
 	Sequence: 'sequences',
@@ -248,6 +250,8 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'eDocuments',
 	'edocCalls',
 	'edocKeys',
+	'locations',
+	'userLocations',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

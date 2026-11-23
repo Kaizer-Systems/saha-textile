@@ -77,3 +77,4 @@ export * from './checkout';
 export * from './ops';
 export * from './company';
 export * from './edocs';
+export * from './locations';

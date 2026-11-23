@@ -60,3 +60,4 @@ export * from './queue-stats.port';
 export * from './document-format.repository';
 export * from './company.repository';
 export * from './edocs.port';
+export * from './location.repository';

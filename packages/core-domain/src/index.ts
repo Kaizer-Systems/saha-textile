@@ -21,3 +21,4 @@ export * from './bundle/index';
 export * from './documents/index';
 export * from './company/index';
 export * from './edocs/index';
+export * from './locations/index';

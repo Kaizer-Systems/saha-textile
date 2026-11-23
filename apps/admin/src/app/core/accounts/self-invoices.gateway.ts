@@ -6,10 +6,14 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import type {
 	EditLogEntry,
 	PaymentVoucher,
+	PaymentVoucherList,
+	PaymentVoucherListQuery,
 	PurchaseEntry,
 	SelfInvoice,
 	SelfInvoiceCancel,
 	SelfInvoiceForm,
+	SelfInvoiceList,
+	SelfInvoiceListQuery,
 	SelfInvoicePayWrite,
 	SelfInvoiceWrite,
 	SupplierPaymentWrite,
@@ -24,6 +28,8 @@ export const SELF_INVOICE_KEYS = {
 	voucher: (id: string) => ['payment-vouchers', id] as const,
 	voucherLog: (id: string) => ['payment-vouchers', id, 'log'] as const,
 	entryVouchers: (entryId: string) => ['payment-vouchers', 'purchase-entry', entryId] as const,
+	list: (query: SelfInvoiceListQuery) => ['self-invoices', 'list', query] as const,
+	voucherList: (query: PaymentVoucherListQuery) => ['payment-vouchers', 'list', query] as const,
 };
 
 /** Reverse charge (accounts brief D2–D4): self-invoices, their payments, and a payment voucher for every supplier payment. */
@@ -37,6 +43,16 @@ export class SelfInvoicesGateway {
 	private readonly entry = (id: string, rest: string) =>
 		`${runtimeConfig.apiUrl}/admin/purchases/entries/${encodeURIComponent(id)}${rest}`;
 
+	/** A7. */
+	list(query: SelfInvoiceListQuery): Observable<SelfInvoiceList> {
+		return this.http.get<SelfInvoiceList>(this.base(), { params: { ...query } });
+	}
+	/** A6. */
+	voucherList(query: PaymentVoucherListQuery): Observable<PaymentVoucherList> {
+		return this.http.get<PaymentVoucherList>(`${runtimeConfig.apiUrl}/admin/accounts/payment-vouchers`, {
+			params: { ...query },
+		});
+	}
 	form(receivedOn: string): Observable<SelfInvoiceForm> {
 		return this.http.get<SelfInvoiceForm>(`${this.base()}/form`, { params: { receivedOn } });
 	}

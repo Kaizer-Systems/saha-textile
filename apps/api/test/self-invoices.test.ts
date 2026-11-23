@@ -115,10 +115,12 @@ function setup(
 			},
 			removeDraft: async (id: string) => id !== 'si_gone' && invoices.delete(id),
 			forSupplier: async () => [],
+			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query })),
 		},
 		{
 			get: async (id: string) => vouchers.get(id) ?? null,
 			insert: async (v: PaymentVoucher) => void vouchers.set(v.id, v),
+			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query })),
 			forDocument: async (kind: string, id: string) =>
 				[...vouchers.values()].filter((v) => v.against.kind === kind && v.against.id === id),
 		},
@@ -314,9 +316,15 @@ describe('paying it: a payment voucher (D3)', () => {
 		const issued = await issueOne(s);
 		const { invoice, voucher } = await s.service.pay(issued.id, pay() as never, owner, NOW);
 		expect(invoice.paidINR).toBe(60_000);
+		expect(invoice.paymentVouchers).toEqual([{ id: voucher.id, number: 'PV/26-27/000003' }]);
 		expect(voucher).toMatchObject({
 			number: 'PV/26-27/000003',
-			against: { kind: 'selfInvoice', id: issued.id, number: 'SI/26-27/000001' },
+			against: {
+				kind: 'selfInvoice',
+				id: issued.id,
+				number: 'SI/26-27/000001',
+				detail: 'Rent of the shop (commercial property)',
+			},
 			paidFromLedgerId: 'led_bank0',
 			reverseChargeTaxINR: 10_800,
 			journalVoucherId: 'jv_4',
@@ -581,6 +589,16 @@ describe('prints and routes', () => {
 		const third = await issueOne(s);
 		expect((await routes.cancel(third.id, { reason: 'Typed twice', version: 1 }, owner)).status).toBe('cancelled');
 		expect(await routes.paymentVouchers(issued.id)).toEqual([voucher]);
+		const listQuery = { from: '2026-04-01', to: '2026-11-30', search: '', page: 1, pageSize: 25 };
+		expect(await routes.list({ ...listQuery, filter: 'all' })).toMatchObject({
+			query: { filter: 'all', dueSoonFrom: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
+		});
+		expect(await pvs.list({ ...listQuery, filter: 'reverse_charge' })).toMatchObject({
+			query: { filter: 'reverse_charge' },
+		});
+		expect(await s.service.list({ ...listQuery, filter: 'due_soon' }, NOW)).toMatchObject({
+			query: { dueSoonFrom: '2026-10-22' },
+		});
 		expect(await routes.log(issued.id)).toEqual(['selfInvoice', issued.id]);
 		expect(await pvs.get(voucher.id)).toBe(voucher);
 		expect(await pvs.log(voucher.id)).toEqual(['paymentVoucher', voucher.id]);

@@ -15,6 +15,12 @@ describe('self-invoices gateway (D2–D4)', () => {
 		const base = '/admin/accounts/self-invoices';
 		const cases: [Observable<unknown>, string, string][] = [
 			[gateway.form('2026-11-01'), 'GET', `${base}/form`],
+			[gateway.list({ from: 'a', to: 'b', search: '', filter: 'all', page: 1, pageSize: 25 }), 'GET', base],
+			[
+				gateway.voucherList({ from: 'a', to: 'b', search: '', filter: 'all', page: 1, pageSize: 25 }),
+				'GET',
+				'/admin/accounts/payment-vouchers',
+			],
 			[gateway.create({} as never), 'POST', base],
 			[gateway.save('s/1', {} as never), 'PUT', `${base}/s%2F1`],
 			[gateway.remove('s1'), 'DELETE', `${base}/s1`],
@@ -47,6 +53,8 @@ describe('self-invoices gateway (D2–D4)', () => {
 		expect(SELF_INVOICE_KEYS.voucher('p1')).toEqual(['payment-vouchers', 'p1']);
 		expect(SELF_INVOICE_KEYS.voucherLog('p1')).toEqual(['payment-vouchers', 'p1', 'log']);
 		expect(SELF_INVOICE_KEYS.entryVouchers('e1')).toEqual(['payment-vouchers', 'purchase-entry', 'e1']);
+		expect(SELF_INVOICE_KEYS.list({ page: 1 } as never)).toEqual(['self-invoices', 'list', { page: 1 }]);
+		expect(SELF_INVOICE_KEYS.voucherList({ page: 2 } as never)).toEqual(['payment-vouchers', 'list', { page: 2 }]);
 	});
 
 	it('turns refusal codes into word keys', () => {

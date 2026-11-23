@@ -1,4 +1,11 @@
-import type { PaymentVoucher, SelfInvoice } from '@saha-textile/contracts';
+import type {
+	PaymentVoucher,
+	PaymentVoucherList,
+	PaymentVoucherListQuery,
+	SelfInvoice,
+	SelfInvoiceList,
+	SelfInvoiceListQuery,
+} from '@saha-textile/contracts';
 
 import type { TransactionContext } from './transaction-manager.port';
 
@@ -11,6 +18,8 @@ export interface SelfInvoiceRepository {
 	/** Drafts only. */
 	removeDraft(id: string): Promise<boolean>;
 	forSupplier(supplierId: string): Promise<SelfInvoice[]>;
+	/** A7: one page and every chip's count; `dueSoonFrom` is the earliest day received still inside the 30 days. */
+	list(query: SelfInvoiceListQuery & { dueSoonFrom: string }): Promise<SelfInvoiceList>;
 }
 
 /** Payment vouchers (decision D5): made with the payment, never edited. */
@@ -19,4 +28,6 @@ export interface PaymentVoucherRepository {
 	/** Refused with `duplicate_payment_voucher` when the supplier payment already has one. */
 	insert(voucher: PaymentVoucher, context?: TransactionContext): Promise<void>;
 	forDocument(kind: PaymentVoucher['against']['kind'], id: string): Promise<PaymentVoucher[]>;
+	/** A6: one page and every chip's count. */
+	list(query: PaymentVoucherListQuery): Promise<PaymentVoucherList>;
 }

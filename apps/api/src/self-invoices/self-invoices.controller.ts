@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Put, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	PaymentVoucherListQuery,
 	SelfInvoiceCancel,
 	SelfInvoiceFormQuery,
 	SelfInvoiceIssue,
+	SelfInvoiceListQuery,
 	SelfInvoicePayWrite,
 	SelfInvoiceWrite,
 	SupplierPaymentWrite,
@@ -32,6 +34,17 @@ export class SelfInvoicesController {
 		private readonly formats: DocumentFormatsService,
 		private readonly editLog: EditLogService,
 	) {}
+
+	@Get()
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({
+		operationId: 'listSelfInvoices',
+		summary: 'Self-invoices by the day received, with every chip counted',
+	})
+	list(@Query(new ZodValidationPipe(SelfInvoiceListQuery)) query: SelfInvoiceListQuery) {
+		return this.selfInvoices.list(query);
+	}
 
 	@Get('form')
 	@Header('Cache-Control', 'no-store')
@@ -161,6 +174,14 @@ export class PaymentVouchersController {
 		private readonly formats: DocumentFormatsService,
 		private readonly editLog: EditLogService,
 	) {}
+
+	@Get()
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.index')
+	@ApiOperation({ operationId: 'listPaymentVouchers', summary: 'Payment vouchers by date, with every chip counted' })
+	list(@Query(new ZodValidationPipe(PaymentVoucherListQuery)) query: PaymentVoucherListQuery) {
+		return this.selfInvoices.listPaymentVouchers(query);
+	}
 
 	@Get(':id')
 	@Header('Cache-Control', 'no-store')

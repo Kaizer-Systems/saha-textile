@@ -134,4 +134,62 @@ describe.skipIf(!hasMongoEnv())('self-invoices and payment vouchers persistence 
 		expect(await vouchers.get('pv_2')).toMatchObject({ supplierPaymentId: 'pay_1' });
 		expect(await vouchers.get('pv_x')).toBeNull();
 	});
+
+	it('lists self-invoices by the day received with every chip counted, and vouchers by date', async () => {
+		const invoices = new MongoSelfInvoiceRepository();
+		await Promise.all([SelfInvoiceModel.deleteMany({}), PaymentVoucherModel.deleteMany({})]);
+		const make = (id: string, patch: Partial<SelfInvoice>) => invoices.insert({ ...draft, id, ...patch });
+		await make('si_a', { receivedOn: '2026-11-18', supplierName: 'Mitra & Co.' });
+		await make('si_old', { receivedOn: '2026-09-01' });
+		await make('si_b', { status: 'issued', number: 'SI/26-27/000001', receivedOn: '2026-11-16', paidINR: 60_000 });
+		await make('si_c', { status: 'issued', number: 'SI/26-27/000002', receivedOn: '2026-11-01', paidINR: 0 });
+		const query = {
+			from: '2026-04-01',
+			to: '2026-11-30',
+			search: '',
+			page: 1,
+			pageSize: 25,
+			dueSoonFrom: '2026-10-25',
+		};
+		const all = await invoices.list({ ...query, filter: 'all' });
+		expect(all.items.map((i) => i.id)).toEqual(['si_a', 'si_b', 'si_c', 'si_old']);
+		expect(all.counts).toEqual({ all: 4, drafts: 2, due_soon: 1, unpaid: 1, paid: 1 });
+		expect((await invoices.list({ ...query, filter: 'due_soon' })).items.map((i) => i.id)).toEqual(['si_a']);
+		const late = await invoices.list({ ...query, from: '2026-11-10', dueSoonFrom: '2026-10-25', filter: 'all' });
+		expect(late.counts.due_soon).toBe(1);
+		const searched = await invoices.list({ ...query, search: 'mitra', filter: 'all' });
+		expect([searched.total, searched.items[0]?.id]).toEqual([1, 'si_a']);
+		expect((await invoices.list({ ...query, search: 'SI/26-27/000002', filter: 'unpaid' })).total).toBe(1);
+
+		const vouchers = new MongoPaymentVoucherRepository();
+		await vouchers.insert(voucher);
+		await vouchers.insert({
+			...voucher,
+			id: 'pv_b',
+			number: 'PV/26-27/000006',
+			date: '2026-11-20',
+			against: { kind: 'purchaseEntry', id: 'pe_31', number: 'PE/26-27/00031', detail: '' },
+			supplierPaymentId: 'pay_9',
+			reference: '8821 1092',
+		});
+		const page = await vouchers.list({
+			from: '2026-11-01',
+			to: '2026-11-30',
+			search: '',
+			page: 1,
+			pageSize: 25,
+			filter: 'all',
+		});
+		expect(page.items.map((v) => v.number)).toEqual(['PV/26-27/000007', 'PV/26-27/000006']);
+		expect(page.counts).toEqual({ all: 2, reverse_charge: 1, supplier_bills: 1, cancelled: 0 });
+		const bills = await vouchers.list({
+			from: '2026-11-01',
+			to: '2026-11-30',
+			search: '8821',
+			page: 1,
+			pageSize: 25,
+			filter: 'supplier_bills',
+		});
+		expect(bills.items.map((v) => v.id)).toEqual(['pv_b']);
+	});
 });

@@ -62,7 +62,17 @@ function setup(
 					metadata: { number: 'SI/26-27/000002', late: false },
 				},
 			]),
-		paymentVouchers: () => of([{ id: 'pv_1', number: 'PV/26-27/000007' }]),
+		paymentVouchers: () =>
+			of([
+				{
+					id: 'pv_1',
+					number: 'PV/26-27/000007',
+					date: '2026-11-21',
+					mode: 'cash',
+					reference: null,
+					amountINR: 60_000,
+				},
+			]),
 		pdf: vi.fn(() => of(new Blob(['%PDF']))),
 		pay: vi.fn(() => (options.fail ? fail() : of({ invoice: invoice(), voucher: { number: 'PV/26-27/000007' } }))),
 		cancel: vi.fn(() => (options.fail ? fail() : of(invoice({ status: 'cancelled' })))),

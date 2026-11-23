@@ -4,13 +4,16 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import {
 	PaymentVoucher,
 	SelfInvoice,
+	type PaymentVoucherListQuery,
 	type SelfInvoiceCancel,
 	type SelfInvoiceForm,
+	type SelfInvoiceListQuery,
 	type SelfInvoicePayWrite,
 	type SelfInvoiceWrite,
 	type SupplierPaymentWrite,
 } from '@saha-textile/contracts';
 import {
+	addDays,
 	type CompanyRepository,
 	type GstReturnRepository,
 	istDay,
@@ -89,6 +92,16 @@ export class SelfInvoicesService {
 		const voucher = await this.vouchers.get(id);
 		if (!voucher) throw new NotFoundException('payment_voucher_not_found');
 		return voucher;
+	}
+
+	/** A7: self-invoices by the day received; "Due soon" are drafts still inside the 30 days. */
+	list(query: SelfInvoiceListQuery, now = new Date()) {
+		return this.invoices.list({ ...query, dueSoonFrom: addDays(istDay(now), -30) });
+	}
+
+	/** A6: every payment to a supplier. */
+	listPaymentVouchers(query: PaymentVoucherListQuery) {
+		return this.vouchers.list(query);
 	}
 
 	paymentVouchersFor(kind: PaymentVoucher['against']['kind'], id: string): Promise<PaymentVoucher[]> {
@@ -170,6 +183,7 @@ export class SelfInvoicesService {
 			taxableINR: write.taxableINR,
 			...selfInvoiceTax(write.taxableINR, choice.ratePercent, interState),
 			paidINR: 0,
+			paymentVouchers: [],
 			late: false,
 			journalVoucherId: null,
 			cancelReason: null,
@@ -340,7 +354,7 @@ export class SelfInvoicesService {
 				supplierId: invoice.supplierId,
 				payeeName: invoice.supplierName,
 				payeeAddress: invoice.supplierAddress,
-				against: { kind: 'selfInvoice', id: invoice.id, number: invoice.number },
+				against: { kind: 'selfInvoice', id: invoice.id, number: invoice.number, detail: invoice.rule.name },
 				amountINR: write.amountINR,
 				mode: write.mode,
 				reference: write.reference,
@@ -355,7 +369,13 @@ export class SelfInvoicesService {
 			await this.vouchers.insert(voucher, context);
 			const paidINR = Math.round((invoice.paidINR + write.amountINR) * 100) / 100;
 			const saved = await this.saveOrConflict(
-				{ ...invoice, paidINR, updatedAt: at, updatedBy: actor },
+				{
+					...invoice,
+					paidINR,
+					paymentVouchers: [...invoice.paymentVouchers, { id: voucher.id, number: voucher.number }],
+					updatedAt: at,
+					updatedBy: actor,
+				},
 				invoice.version,
 				context,
 			);

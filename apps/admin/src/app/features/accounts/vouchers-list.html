@@ -2,9 +2,8 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'accounts_vouchers'"
 >
-	@if (canPost()) {
 	<ul class="nav nav-tabs mb-3">
-		@for (t of ['posted', 'drafts']; track t) {
+		@if (canPost()) { @for (t of ['posted', 'drafts']; track t) {
 		<li class="nav-item">
 			<a
 				class="nav-link"
@@ -18,9 +17,25 @@
 				}
 			</a>
 		</li>
-		}
+		} }
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				routerLink="/accounts/payment-vouchers"
+			>
+				{{ 'pv_list_title' | transloco }}
+			</a>
+		</li>
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				routerLink="/accounts/self-invoices"
+			>
+				{{ 'si_list_title' | transloco }}
+			</a>
+		</li>
 	</ul>
-	} @if (tab() === 'drafts') {
+	@if (tab() === 'drafts') {
 	<div class="table-responsive datatable-wrapper border-table">
 		<table class="all-package theme-table no-footer table">
 			<thead>

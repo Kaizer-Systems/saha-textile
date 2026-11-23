@@ -29,6 +29,11 @@ export default [
 		path: 'refund-vouchers/:id',
 		loadComponent: () => import('./refund-voucher-page').then((m) => m.RefundVoucherPage),
 	},
+	{ path: 'self-invoices', loadComponent: () => import('./self-invoices-list').then((m) => m.SelfInvoicesListPage) },
+	{
+		path: 'payment-vouchers',
+		loadComponent: () => import('./payment-vouchers-list').then((m) => m.PaymentVouchersListPage),
+	},
 	{
 		path: 'self-invoices/new',
 		loadComponent: () => import('./self-invoice-form').then((m) => m.SelfInvoiceFormPage),

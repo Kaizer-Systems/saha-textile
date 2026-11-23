@@ -58,6 +58,8 @@ export const SelfInvoice = z.object({
 	taxINR: PriceINR,
 	totalINR: PriceINR,
 	paidINR: PriceINR,
+	/** The payment vouchers issued with its payments (A7's Paid column). */
+	paymentVouchers: z.array(z.object({ id: Id, number: z.string() })).default([]),
 	/** Issued after the 30 days of Rule 47A. */
 	late: z.boolean(),
 	journalVoucherId: Id.nullable(),
@@ -125,6 +127,8 @@ export const PaymentVoucherAgainst = z.object({
 	kind: z.enum(['selfInvoice', 'purchaseEntry']),
 	id: Id,
 	number: z.string(),
+	/** What it paid for, as A6's Against column shows it ("shop rent"). */
+	detail: z.string().default(''),
 });
 export type PaymentVoucherAgainst = z.infer<typeof PaymentVoucherAgainst>;
 
@@ -152,3 +156,41 @@ export const PaymentVoucher = z.object({
 	createdBy: Id.nullable(),
 });
 export type PaymentVoucher = z.infer<typeof PaymentVoucher>;
+
+const ListPaging = {
+	from: IsoDate,
+	to: IsoDate,
+	search: z.string().trim().max(80).default(''),
+	page: z.coerce.number().int().min(1).default(1),
+	pageSize: z.coerce.number().int().min(1).max(100).default(25),
+};
+
+/** A7's chips: drafts, those still inside the 30 days, issued and not fully paid, paid. */
+export const SelfInvoiceListFilter = z.enum(['all', 'drafts', 'due_soon', 'unpaid', 'paid']);
+export type SelfInvoiceListFilter = z.infer<typeof SelfInvoiceListFilter>;
+
+/** Accounts › Self-invoices (A7): by the day received, with a search over number, supplier and what. */
+export const SelfInvoiceListQuery = z.object({ ...ListPaging, filter: SelfInvoiceListFilter.default('all') });
+export type SelfInvoiceListQuery = z.infer<typeof SelfInvoiceListQuery>;
+
+export const SelfInvoiceList = z.object({
+	items: z.array(SelfInvoice),
+	total: z.number().int().nonnegative(),
+	counts: z.record(SelfInvoiceListFilter, z.number().int().nonnegative()),
+});
+export type SelfInvoiceList = z.infer<typeof SelfInvoiceList>;
+
+/** A6's chips: reverse charge (against a self-invoice), supplier bills (against a purchase entry), cancelled. */
+export const PaymentVoucherListFilter = z.enum(['all', 'reverse_charge', 'supplier_bills', 'cancelled']);
+export type PaymentVoucherListFilter = z.infer<typeof PaymentVoucherListFilter>;
+
+/** Accounts › Payment vouchers (A6): by date, with a search over number, payee, what it paid and reference. */
+export const PaymentVoucherListQuery = z.object({ ...ListPaging, filter: PaymentVoucherListFilter.default('all') });
+export type PaymentVoucherListQuery = z.infer<typeof PaymentVoucherListQuery>;
+
+export const PaymentVoucherList = z.object({
+	items: z.array(PaymentVoucher),
+	total: z.number().int().nonnegative(),
+	counts: z.record(PaymentVoucherListFilter, z.number().int().nonnegative()),
+});
+export type PaymentVoucherList = z.infer<typeof PaymentVoucherList>;

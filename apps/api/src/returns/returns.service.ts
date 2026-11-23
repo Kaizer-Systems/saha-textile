@@ -757,8 +757,8 @@ export class ReturnsService {
 		}
 	}
 
-	private posting(rows: { systemKey: string; debitPaise?: number; creditPaise?: number }[], locationId: string) {
-		return rows.map((row) => ({ ledger: { systemKey: row.systemKey }, locationId, ...row }));
+	private posting(rows: { role: string; debitPaise?: number; creditPaise?: number }[], locationId: string) {
+		return rows.map((row) => ({ ledger: { role: row.role }, locationId, ...row }));
 	}
 
 	/** B4 Issue: the number, stock, the posting and the return's step in one transaction. */
@@ -1016,7 +1016,7 @@ export class ReturnsService {
 		const note = await this.creditNote(id);
 		if (note.status !== 'issued' || note.debitNoteId || note.refund?.status !== 'due')
 			throw new ConflictException('credit_note_refund_not_due');
-		let ledger: { systemKey: string } | { id: string };
+		let ledger: { role: string } | { id: string };
 		let reference: string;
 		if (write.how === 'gateway') {
 			const paid = (await this.payments.listByOrder(note.orderId)).find(
@@ -1033,7 +1033,7 @@ export class ReturnsService {
 			});
 			if (result.outcome === 'refused')
 				throw new ConflictException(`credit_note_refund_refused:${result.refusalCode ?? 'gateway'}`);
-			ledger = { systemKey: 'gateway_clearing' };
+			ledger = { role: 'gateway_clearing' };
 		} else {
 			const chart = await this.ledger.chart();
 			const from = chart.ledgers.find((l) => l.id === write.ledgerId);
@@ -1050,7 +1050,7 @@ export class ReturnsService {
 					narration: `Refund for credit note ${note.number} · ${reference}`,
 					lines: [
 						{
-							ledger: { systemKey: 'debtors_control' },
+							ledger: { role: 'debtors_control' },
 							locationId: note.locationId,
 							debitPaise: Math.round(note.totalINR * 100),
 						},

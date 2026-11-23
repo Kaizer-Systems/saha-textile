@@ -15,6 +15,7 @@ import {
 	type TaxInvoiceRepository,
 	type TransactionContext,
 	type TransactionManagerPort,
+	rolesOf,
 } from '@saha-textile/core-domain';
 
 import {
@@ -87,7 +88,10 @@ export class InvoicesService {
 			creditPaise: line.creditPaise,
 		}));
 		const costPaise = (voucher?.lines ?? [])
-			.filter((line) => ledgerOf(line.ledgerId)?.systemKey === 'cost_of_goods_sold')
+			.filter((line) => {
+				const ledger = ledgerOf(line.ledgerId);
+				return !!ledger && rolesOf(ledger).includes('cost_of_goods_sold');
+			})
 			.reduce((sum, line) => sum + line.debitPaise, 0);
 		const state = (code: string) => (code === '96' ? 'Outside India' : (gstStateName(code) ?? code));
 		const checks: InvoiceCheck[] = [
@@ -241,7 +245,7 @@ export class InvoicesService {
 					totals: built.totals,
 					paidInAdvance: order.paymentStatus === 'paid',
 					costINR,
-				}).map((row) => ({ ledger: { systemKey: row.systemKey }, locationId: location.id, ...row })),
+				}).map((row) => ({ ledger: { role: row.role }, locationId: location.id, ...row })),
 				source: { type: 'taxInvoice', id, number },
 				idempotencyKey: `taxInvoice:${id}`,
 			},

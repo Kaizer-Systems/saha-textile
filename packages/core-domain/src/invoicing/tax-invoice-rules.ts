@@ -136,25 +136,25 @@ export function invoicePosting(input: {
 	totals: InvoiceTotals;
 	paidInAdvance: boolean;
 	costINR: number;
-}): { systemKey: string; debitPaise?: number; creditPaise?: number }[] {
+}): { role: string; debitPaise?: number; creditPaise?: number }[] {
 	const t = input.totals;
-	const rows: { systemKey: string; debitPaise?: number; creditPaise?: number }[] = [
-		{ systemKey: input.paidInAdvance ? 'customer_advances' : 'debtors_control', debitPaise: paise(t.totalINR) },
-		{ systemKey: 'sales', creditPaise: paise(t.taxableINR) },
+	const rows: { role: string; debitPaise?: number; creditPaise?: number }[] = [
+		{ role: input.paidInAdvance ? 'customer_advances' : 'debtors_control', debitPaise: paise(t.totalINR) },
+		{ role: 'sales', creditPaise: paise(t.taxableINR) },
 	];
 	const taxes = [
 		['output_cgst', t.cgstINR],
 		['output_sgst', t.sgstINR],
 		['output_igst', t.igstINR],
 	] as const;
-	for (const [systemKey, amount] of taxes) if (amount) rows.push({ systemKey, creditPaise: paise(amount) });
+	for (const [role, amount] of taxes) if (amount) rows.push({ role, creditPaise: paise(amount) });
 	const round = paise(t.roundOffINR);
-	if (round > 0) rows.push({ systemKey: 'rounding_off', creditPaise: round });
-	if (round < 0) rows.push({ systemKey: 'rounding_off', debitPaise: -round });
+	if (round > 0) rows.push({ role: 'rounding_off', creditPaise: round });
+	if (round < 0) rows.push({ role: 'rounding_off', debitPaise: -round });
 	const cost = paise(input.costINR);
 	if (cost > 0) {
-		rows.push({ systemKey: 'cost_of_goods_sold', debitPaise: cost });
-		rows.push({ systemKey: 'stock_in_hand', creditPaise: cost });
+		rows.push({ role: 'cost_of_goods_sold', debitPaise: cost });
+		rows.push({ role: 'stock_in_hand', creditPaise: cost });
 	}
 	return rows;
 }

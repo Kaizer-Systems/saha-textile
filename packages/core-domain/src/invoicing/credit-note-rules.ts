@@ -192,7 +192,7 @@ export function creditNoteProblems(input: {
 	return [...problems];
 }
 
-type PostingRow = { systemKey: string; debitPaise?: number; creditPaise?: number };
+type PostingRow = { role: string; debitPaise?: number; creditPaise?: number };
 
 /**
  * A credit note's posting (posting rules, "Credit note for a return"): sales returns and the output tax back on the
@@ -200,21 +200,21 @@ type PostingRow = { systemKey: string; debitPaise?: number; creditPaise?: number
  */
 export function creditNotePosting(input: { totals: NoteTotals; restockCostINR: number }): PostingRow[] {
 	const t = input.totals;
-	const rows: PostingRow[] = [{ systemKey: 'sales_returns', debitPaise: paise(t.taxableINR) }];
+	const rows: PostingRow[] = [{ role: 'sales_returns', debitPaise: paise(t.taxableINR) }];
 	const taxes = [
 		['output_cgst', t.cgstINR],
 		['output_sgst', t.sgstINR],
 		['output_igst', t.igstINR],
 	] as const;
-	for (const [systemKey, amount] of taxes) if (amount) rows.push({ systemKey, debitPaise: paise(amount) });
-	rows.push({ systemKey: 'debtors_control', creditPaise: paise(t.totalINR) });
+	for (const [role, amount] of taxes) if (amount) rows.push({ role, debitPaise: paise(amount) });
+	rows.push({ role: 'debtors_control', creditPaise: paise(t.totalINR) });
 	const round = paise(t.roundOffINR);
-	if (round > 0) rows.push({ systemKey: 'rounding_off', debitPaise: round });
-	if (round < 0) rows.push({ systemKey: 'rounding_off', creditPaise: -round });
+	if (round > 0) rows.push({ role: 'rounding_off', debitPaise: round });
+	if (round < 0) rows.push({ role: 'rounding_off', creditPaise: -round });
 	const cost = paise(input.restockCostINR);
 	if (cost > 0) {
-		rows.push({ systemKey: 'stock_in_hand', debitPaise: cost });
-		rows.push({ systemKey: 'cost_of_goods_sold', creditPaise: cost });
+		rows.push({ role: 'stock_in_hand', debitPaise: cost });
+		rows.push({ role: 'cost_of_goods_sold', creditPaise: cost });
 	}
 	return rows;
 }
@@ -255,16 +255,16 @@ export function inputTaxReversalPosting(amountINR: number): PostingRow[] {
 	if (total <= 0) return [];
 	const half = Math.floor(total / 2);
 	return [
-		{ systemKey: 'stock_loss', debitPaise: total },
-		{ systemKey: 'input_cgst', creditPaise: half },
-		{ systemKey: 'input_sgst', creditPaise: total - half },
+		{ role: 'stock_loss', debitPaise: total },
+		{ role: 'input_cgst', creditPaise: half },
+		{ role: 'input_sgst', creditPaise: total - half },
 	];
 }
 
 /** The opposite of a posting, for Cancel and debit notes. */
 export function oppositePosting(rows: readonly PostingRow[]): PostingRow[] {
 	return rows.map((row) => ({
-		systemKey: row.systemKey,
+		role: row.role,
 		...(row.debitPaise ? { creditPaise: row.debitPaise } : { debitPaise: row.creditPaise }),
 	}));
 }

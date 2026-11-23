@@ -99,8 +99,8 @@ describe('tax invoices (accounts brief D1, D3; today’s rates until the CA conf
 		const debit = rows.reduce((s, r) => s + (r.debitPaise ?? 0), 0);
 		const credit = rows.reduce((s, r) => s + (r.creditPaise ?? 0), 0);
 		expect(debit).toBe(credit);
-		expect(rows[0]).toMatchObject({ systemKey: 'customer_advances', debitPaise: 99_900 });
-		expect(rows.find((r) => r.systemKey === 'cost_of_goods_sold')?.debitPaise).toBe(60_000);
+		expect(rows[0]).toMatchObject({ role: 'customer_advances', debitPaise: 99_900 });
+		expect(rows.find((r) => r.role === 'cost_of_goods_sold')?.debitPaise).toBe(60_000);
 	});
 });
 
@@ -179,17 +179,17 @@ describe('tax invoice edge cases (D1)', () => {
 	it('posts CGST and SGST in the seller’s State to a debtor, rounding either way, with no cost line when cost is unknown', () => {
 		const within = buildInvoiceLines([line({ lineTotalINR: 1_050.4 })], { interState: false, shippingINR: 0 });
 		const down = invoicePosting({ totals: within.totals, paidInAdvance: false, costINR: 0 });
-		expect(down.map((r) => r.systemKey)).toEqual([
+		expect(down.map((r) => r.role)).toEqual([
 			'debtors_control',
 			'sales',
 			'output_cgst',
 			'output_sgst',
 			'rounding_off',
 		]);
-		expect(down.find((r) => r.systemKey === 'rounding_off')).toEqual({ systemKey: 'rounding_off', debitPaise: 40 });
+		expect(down.find((r) => r.role === 'rounding_off')).toEqual({ role: 'rounding_off', debitPaise: 40 });
 		const up = buildInvoiceLines([line({ lineTotalINR: 1_050.6 })], { interState: false, shippingINR: 0 });
 		expect(invoicePosting({ totals: up.totals, paidInAdvance: false, costINR: 0 }).at(-1)).toEqual({
-			systemKey: 'rounding_off',
+			role: 'rounding_off',
 			creditPaise: 40,
 		});
 	});

@@ -37,9 +37,9 @@ describe('refund vouchers (accounts brief C, Rule 51)', () => {
 	});
 
 	it('takes the advance off against the gateway or the bank', () => {
-		expect(refundVoucherPosting(2_600, { systemKey: 'gateway_clearing' })).toEqual([
-			{ ledger: { systemKey: 'customer_advances' }, debitPaise: 260_000 },
-			{ ledger: { systemKey: 'gateway_clearing' }, creditPaise: 260_000 },
+		expect(refundVoucherPosting(2_600, { role: 'gateway_clearing' })).toEqual([
+			{ ledger: { role: 'customer_advances' }, debitPaise: 260_000 },
+			{ ledger: { role: 'gateway_clearing' }, creditPaise: 260_000 },
 		]);
 		expect(refundVoucherPosting(10.005, { id: 'led_hdfc' })[1]).toEqual({
 			ledger: { id: 'led_hdfc' },

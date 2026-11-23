@@ -19,9 +19,18 @@ export type AccountNature = z.infer<typeof AccountNature>;
 /** A stable name for a group or ledger the system made, used for its translated title and by posting rules. */
 export const SystemKey = z.string().regex(/^[a-z][a-z0-9_]{1,59}$/, { message: 'system_key_shape' });
 
+/**
+ * A role a posting rule posts to ("customer_advances", "rcm_payable"): which ledger or group plays it is template data
+ * (accounts templates, owner 2026-11-24), never code. Today's system keys are the first roles.
+ */
+export const RoleKey = z.string().regex(/^[a-z][a-z0-9_]{1,59}$/);
+export type RoleKey = z.infer<typeof RoleKey>;
+
 export const AccountGroup = z.object({
 	id: Id,
 	systemKey: SystemKey.nullable().default(null),
+	/** The roles this group or ledger plays; empty = only the role named by its systemKey. */
+	roles: z.array(RoleKey).default([]),
 	name: z.string().trim().min(2).max(80),
 	parentId: Id.nullable().default(null),
 	nature: AccountNature,
@@ -39,6 +48,8 @@ export type AccountGroupWrite = z.infer<typeof AccountGroupWrite>;
 export const Ledger = z.object({
 	id: Id,
 	systemKey: SystemKey.nullable().default(null),
+	/** The roles this group or ledger plays; empty = only the role named by its systemKey. */
+	roles: z.array(RoleKey).default([]),
 	name: z.string().trim().min(2).max(80),
 	groupId: Id,
 	nature: AccountNature,

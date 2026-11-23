@@ -29,10 +29,10 @@ export function refundablePayments(payments: readonly OrderPayment[]): OrderPaym
  */
 export function refundVoucherPosting(
 	amountINR: number,
-	paidFrom: { systemKey: string } | { id: string },
-): { ledger: { systemKey: string } | { id: string }; debitPaise?: number; creditPaise?: number }[] {
+	paidFrom: { role: string } | { id: string },
+): { ledger: { role: string } | { id: string }; debitPaise?: number; creditPaise?: number }[] {
 	return [
-		{ ledger: { systemKey: 'customer_advances' }, debitPaise: paise(amountINR) },
+		{ ledger: { role: 'customer_advances' }, debitPaise: paise(amountINR) },
 		{ ledger: paidFrom, creditPaise: paise(amountINR) },
 	];
 }

@@ -60,6 +60,7 @@ import {
 	type TransactionManagerPort,
 	voucherProblems,
 	voucherTotals,
+	resolveRole,
 } from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
@@ -85,7 +86,8 @@ import { DocumentNumbersService } from '../orders-setup/document-numbers.service
 
 /** A line a document posts: its ledger by system key or id; the GST registration comes from the location. */
 export interface PostingLine {
-	ledger: { systemKey: string } | { id: string };
+	/** A role the company's books map to a ledger (accounts templates T1), or a ledger by id. */
+	ledger: { role: string } | { id: string };
 	locationId: string;
 	debitPaise?: number;
 	creditPaise?: number;
@@ -155,6 +157,8 @@ export class LedgerService {
 			const now = new Date().toISOString();
 			const seed = defaultChart(kind);
 			const groupId = (key: string) => `grp_${key}`;
+			// A seed ledger always sits in a seed group; a broken seed fails Ledger.parse loudly.
+			const natureOf = new Map(seed.groups.map((group) => [group.systemKey, group.nature]));
 			await this.books.seedChart({
 				groups: seed.groups.map((group, index) =>
 					AccountGroup.parse({
@@ -175,7 +179,7 @@ export class LedgerService {
 						systemKey: ledger.systemKey,
 						name: ledger.name,
 						groupId: groupId(ledger.groupKey),
-						nature: seed.groups.find((g) => g.systemKey === ledger.groupKey)?.nature ?? 'asset',
+						nature: natureOf.get(ledger.groupKey),
 						handPosting: ledger.handPosting,
 						createdAt: now,
 						updatedAt: now,
@@ -359,9 +363,18 @@ export class LedgerService {
 		return voucher;
 	}
 
+	/** The ledger playing a role; a role with no ledger, or several, refuses the posting. */
+	private byRole(ledgers: readonly Ledger[], role: string): Ledger {
+		try {
+			return resolveRole(ledgers, role);
+		} catch (error) {
+			throw new BadRequestException(`voucher_problem:${(error as Error).message}`);
+		}
+	}
+
 	/**
-	 * A document's posting (tax invoices, receipts, purchases… as they arrive): in the document's own transaction,
-	 * by system ledger keys. A second call with the same key returns the first voucher.
+	 * A document's posting (tax invoices, credit notes, refund vouchers…): in the document's own transaction, to the
+	 * ledgers playing its roles (or a ledger by id). A second call with the same key returns the first voucher.
 	 */
 	async post(
 		request: PostingRequest,
@@ -372,8 +385,8 @@ export class LedgerService {
 		const lines = await this.stampLines(
 			request.lines.map((line) => {
 				const ledger =
-					'systemKey' in line.ledger
-						? chart.ledgers.find((l) => l.systemKey === (line.ledger as { systemKey: string }).systemKey)
+					'role' in line.ledger
+						? this.byRole(chart.ledgers, line.ledger.role)
 						: chart.ledgers.find((l) => l.id === (line.ledger as { id: string }).id);
 				if (!ledger) throw new BadRequestException('voucher_problem:ledger_unknown');
 				return {
@@ -467,7 +480,8 @@ export class LedgerService {
 		write: VoucherReverse,
 		principal: AuthenticatedPrincipal | undefined,
 	): Promise<JournalVoucher> {
-		if (!(await this.isSuperAdmin(principal))) throw new ForbiddenException('reverse_super_admin_only');
+		if (!principal || !(await this.isSuperAdmin(principal)))
+			throw new ForbiddenException('reverse_super_admin_only');
 		const original = await this.books.getVoucher(id);
 		if (!original) throw new NotFoundException('voucher_not_found');
 		if (original.reversedById) throw new BadRequestException('voucher_problem:already_reversed');
@@ -483,8 +497,8 @@ export class LedgerService {
 					reversalOfId: original.id,
 					idempotencyKey: write.idempotencyKey,
 				},
-				{ byHand: false, mayPostWhenClosed: !!principal?.permissions.includes('accounts.lock') },
-				principal?.userId ?? null,
+				{ byHand: false, mayPostWhenClosed: principal.permissions.includes('accounts.lock') },
+				principal.userId,
 				context,
 			);
 			await this.books.markReversed(original.id, reversal.id, context);

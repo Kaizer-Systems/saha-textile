@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type {
 	AccountGroup,
 	ChartOfAccounts,
@@ -8,7 +8,7 @@ import type {
 	PeriodLock,
 	VoucherDraft,
 } from '@saha-textile/contracts';
-import type { StatementLine } from '@saha-textile/core-domain';
+import { StaleRevisionError, type StatementLine } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 
 import { LedgerService } from '../src/ledger/ledger.service';
@@ -121,7 +121,15 @@ const newGst = () => {
 		},
 	};
 };
-const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'private_limited' } = {}) => {
+const setup = (
+	options: {
+		locks?: PeriodLock[];
+		kind?: 'proprietorship' | 'private_limited';
+		noProfile?: boolean;
+		admins?: { findById: (id: string) => Promise<unknown> };
+		counts?: Record<string, number>;
+	} = {},
+) => {
 	const books = new MemoryBooks();
 	const gst = newGst();
 	let locks: PeriodLock[] = options.locks ?? [];
@@ -155,7 +163,7 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 			release: async () => undefined,
 		} as never,
 		{
-			getProfile: async () => ({ kind: options.kind ?? 'proprietorship' }),
+			getProfile: async () => (options.noProfile ? null : { kind: options.kind ?? 'proprietorship' }),
 			getRegistration: async (id: string) => (id === 'reg_wb' ? { id, gstin: '19DBYPS6736R1ZZ' } : null),
 		} as never,
 		{
@@ -168,16 +176,18 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 		{ append: async (entry: { action: string; retentionTier?: string }) => void audit.push(entry) } as never,
 		{ findByKey: async () => ({ id: 'role_admin' }) } as never,
 		{ findActive: async (userId: string) => (userId === 'adm_owner' ? { userId } : null) } as never,
-		{ findById: async (id: string) => ({ id, displayName: id === 'adm_owner' ? 'Owner' : 'Manager' }) } as never,
+		(options.admins ?? {
+			findById: async (id: string) => ({ id, displayName: id === 'adm_owner' ? 'Owner' : 'Manager' }),
+		}) as never,
 		{ findManyByIds: async () => [{ id: 'ast_1', originalStorageKey: 'media/bill.pdf' }] } as never,
 		{ getUrl: (key: string) => `https://cdn.example/${key}` } as never,
-		{ list: async () => ({ items: [], total: 0, counts: { counting: 1, review: 0 } }) } as never,
+		{ list: async () => ({ items: [], total: 0, counts: options.counts ?? { counting: 1, review: 0 } }) } as never,
 		{ pendingCount: async () => 2 } as never,
 		gst as never,
 		{ issue: async () => `JV/26-27/${String(++counter).padStart(6, '0')}` } as never,
 		{
-			scope: async (principal: { userId: string }) =>
-				principal.userId === 'adm_owner'
+			scope: async (principal?: { userId: string }) =>
+				principal?.userId === 'adm_owner'
 					? { all: true, ids: ['loc_bar', 'loc_aga'], current: null }
 					: { all: false, ids: ['loc_bar'], current: 'loc_bar' },
 		} as never,
@@ -415,5 +425,243 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 			(await service.postByHand(rentPaid({ date: '2026-10-15', idempotencyKey: 'oct-cash-01' }), owner)).date,
 		).toBe('2026-10-15');
 		expect((await service.periodGrid('2026-11-23')).filings).toHaveLength(1);
+	});
+
+	it('adds groups and ledgers, renames and switches off a ledger, and refuses what can’t be', async () => {
+		const { service, books, audit } = setup();
+		const chart = await service.chart();
+		const parent = chart.groups.find((g) => g.systemKey === 'indirect_expenses')!;
+		await expect(service.addGroup({ name: 'Shop costs', parentId: 'grp_x' }, 'adm_owner')).rejects.toThrow(
+			'group_parent_unknown',
+		);
+		const group = await service.addGroup({ name: 'Shop costs', parentId: parent.id }, 'adm_owner');
+		expect(group).toMatchObject({ parentId: parent.id, nature: parent.nature });
+		await expect(
+			service.addLedger({ name: 'Power', groupId: 'grp_x', active: true } as never, null),
+		).rejects.toThrow('group_unknown');
+		const ledger = await service.addLedger({ name: 'Electricity', groupId: group.id, active: true } as never, null);
+		const write = { name: 'Power', groupId: group.id, active: false } as never;
+		expect(await service.saveLedger(ledger.id, write, 'adm_owner')).toMatchObject({ name: 'Power', active: false });
+		await expect(service.saveLedger('led_x', write, null)).rejects.toBeInstanceOf(NotFoundException);
+		await expect(
+			service.saveLedger(ledger.id, { name: 'P', groupId: 'grp_x', active: true } as never, null),
+		).rejects.toThrow('group_unknown');
+		await expect(service.saveLedger('led_sales', write, null)).rejects.toThrow('system_ledger_group');
+		books.saveLedger = async () => {
+			throw new StaleRevisionError('ledger', ledger.id);
+		};
+		await expect(service.saveLedger(ledger.id, write, null)).rejects.toBeInstanceOf(ConflictException);
+		books.saveLedger = async () => {
+			throw new Error('disk_full');
+		};
+		await expect(service.saveLedger(ledger.id, write, null)).rejects.toThrow('disk_full');
+		expect(audit.map((a) => a.action)).toEqual(
+			expect.arrayContaining(['accounts.group.create', 'accounts.ledger.create', 'accounts.ledger.update']),
+		);
+	});
+
+	it('posts a document to the ledgers playing its roles, or by id, and refuses an unmapped role or unknown ledger', async () => {
+		const { service } = setup();
+		const posted = await service.post(
+			{
+				date: '2026-11-20',
+				narration: 'Refund voucher RF/26-27/000001',
+				lines: [
+					{
+						ledger: { role: 'customer_advances' },
+						locationId: 'loc_bar',
+						debitPaise: 2_600,
+						narration: 'Advance',
+					},
+					{ ledger: { id: 'led_gateway_clearing' }, locationId: 'loc_bar', creditPaise: 2_600 },
+				],
+				source: { type: 'refundVoucher', id: 'rf_1' },
+				idempotencyKey: 'refundVoucher:rf_1',
+			},
+			{} as never,
+		);
+		expect(posted.kind).toBe('document');
+		expect(posted.lines.map((l) => [l.ledgerId, l.gstRegistrationId, l.narration])).toEqual([
+			['led_customer_advances', 'reg_wb', 'Advance'],
+			['led_gateway_clearing', 'reg_wb', ''],
+		]);
+		const lines = (ledger: object, locationId = 'loc_bar') => [
+			{ ledger, locationId, debitPaise: 100 },
+			{ ledger: { role: 'gateway_clearing' }, locationId, creditPaise: 100 },
+		];
+		const request = (l: object[]) => ({
+			kind: 'journal' as const,
+			date: '2026-11-20',
+			narration: 'x',
+			lines: l as never,
+			source: { type: 'test', id: 'x' },
+			idempotencyKey: `k:${Math.random()}`,
+		});
+		await expect(service.post(request(lines({ role: 'nothing' })), {} as never)).rejects.toThrow(
+			'voucher_problem:role_not_mapped:nothing',
+		);
+		await expect(service.post(request(lines({ id: 'led_x' })), {} as never)).rejects.toThrow(
+			'voucher_problem:ledger_unknown',
+		);
+		await expect(
+			service.post(request(lines({ role: 'customer_advances' }, 'loc_gone')), {} as never),
+		).rejects.toBeInstanceOf(BadRequestException);
+	});
+
+	it('lists and opens vouchers with their attachment links, and reads balances and statements within the person’s locations', async () => {
+		const { service, books } = setup();
+		const posted = await service.post(
+			{
+				date: '2026-11-20',
+				narration: 'Rent',
+				lines: [
+					{ ledger: { id: 'led_rent' }, locationId: 'loc_bar', debitPaise: 500 },
+					{ ledger: { id: 'led_cash' }, locationId: 'loc_bar', creditPaise: 500 },
+				],
+				source: { type: 'test', id: 'rent' },
+				idempotencyKey: 'rent:test-0001',
+			},
+			{} as never,
+		);
+		const range = { from: '2026-11-01', to: '2026-11-30', kinds: [], search: '', page: 2, pageSize: 10 };
+		expect(await service.vouchers(range)).toMatchObject({ total: 1, page: 2, pageSize: 10 });
+		books.vouchers.push({
+			...posted,
+			id: 'jv_files',
+			attachments: [
+				{ assetId: 'ast_1', name: 'bill.pdf' },
+				{ assetId: 'ast_gone', name: 'lost.pdf' },
+			],
+		});
+		expect((await service.voucher('jv_files')).attachmentLinks.map((a) => a.url)).toEqual([
+			'https://cdn.example/media/bill.pdf',
+			null,
+		]);
+		await expect(service.voucher('jv_x')).rejects.toBeInstanceOf(NotFoundException);
+		expect((await service.voucher(posted.id)).attachmentLinks).toEqual([]);
+		expect(await service.balances('2026-11-30', owner)).toMatchObject({ led_rent: 1000 });
+		expect(await service.balances('2026-11-30', manager)).toMatchObject({ led_cash: -1000 });
+		const query = { from: '2026-11-01', to: '2026-11-30', locationIds: [] as string[] };
+		await expect(service.statement('led_x', query, owner)).rejects.toBeInstanceOf(NotFoundException);
+		await expect(
+			service.statement('led_rent', { ...query, locationIds: ['loc_aga'] }, manager),
+		).rejects.toBeInstanceOf(ForbiddenException);
+		expect((await service.statement('led_rent', query, manager)).openingPaise).toBe(0);
+		expect((await service.statement('led_rent', { ...query, locationIds: ['loc_bar'] }, owner)).from).toBe(
+			'2026-11-01',
+		);
+	});
+
+	it('handles nobody signed in, missing records, refused writes, take-overs and filings', async () => {
+		const { service, books } = setup({ noProfile: true, counts: {} });
+		expect(await service.isSuperAdmin(undefined)).toBe(false);
+		expect((await service.chart()).groups.some((g) => g.systemKey === 'capital_account')).toBe(true);
+		await expect(
+			service.reverse(
+				'jv_x',
+				{ date: '2026-11-30', reason: 'x', idempotencyKey: 'rev-x-0001' } as never,
+				undefined,
+			),
+		).rejects.toBeInstanceOf(ForbiddenException);
+		await expect(
+			service.reverse('jv_x', { date: '2026-11-30', reason: 'x', idempotencyKey: 'rev-x-0001' } as never, owner),
+		).rejects.toBeInstanceOf(NotFoundException);
+		const rent = await service.postByHand(rentPaid({ idempotencyKey: 'rent-anon-0001' }), undefined);
+		await expect(
+			service.reverse(rent.id, { date: '2026-11-01', reason: 'x', idempotencyKey: 'rev-x-0002' } as never, owner),
+		).rejects.toThrow('reverse_on_before_date');
+		books.vouchers.push({ ...rent, id: 'jv_due', idempotencyKey: 'due-key-0001', reverseOn: null });
+		books.dueReversals = async () => books.vouchers.filter((v) => v.id === 'jv_due');
+		expect(await service.runDueReversals('2026-11-30')).toBe(1);
+		expect(await service.periodChecks('2026-11')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ key: 'stock_counts' })]),
+		);
+		expect(await service.drafts()).toEqual([]);
+		await expect(service.draft('vd_x')).rejects.toBeInstanceOf(NotFoundException);
+		const write = {
+			kind: 'journal' as const,
+			date: '2026-11-05',
+			narration: 'x',
+			lines: [],
+			reverseOn: null,
+			attachments: [],
+			expectedUpdatedAt: null,
+		};
+		await expect(service.saveDraft('vd_x', write, owner)).rejects.toBeInstanceOf(NotFoundException);
+		const draft = await service.saveDraft(null, write, undefined);
+		expect(draft).toMatchObject({ createdBy: null, createdByName: '', updatedBy: null });
+		await service.saveDraft(draft.id, { ...write, expectedUpdatedAt: draft.updatedAt }, owner);
+		await service.saveDraft(draft.id, write, owner);
+		books.saveDraft = async () => {
+			throw new StaleRevisionError('voucherDraft', draft.id);
+		};
+		await expect(service.saveDraft(draft.id, write, owner)).rejects.toBeInstanceOf(ConflictException);
+		books.saveDraft = async () => {
+			throw new Error('disk_full');
+		};
+		await expect(service.saveDraft(draft.id, write, owner)).rejects.toThrow('disk_full');
+		await service.deleteDraft(draft.id, undefined);
+		await service.lockPeriods(
+			{ months: ['2026-09'], parts: ['sales'], state: 'closed_for_staff', reason: 'September done' },
+			undefined,
+		);
+		await service.lockPeriods(
+			{ months: ['2026-09'], parts: ['sales'], state: 'locked', reason: 'September filed' },
+			owner,
+		);
+		const filing = {
+			gstRegistrationId: 'reg_wb',
+			returnType: 'GSTR-1' as const,
+			month: '2026-09',
+			arn: 'aa1911261234568',
+			filedOn: '2026-10-11',
+			acknowledgement: null,
+		};
+		await expect(service.markFiled({ ...filing, gstRegistrationId: 'reg_x' } as never, owner)).rejects.toThrow(
+			'gst_registration_unknown',
+		);
+		await service.markFiled(filing as never, undefined);
+		await expect(service.markFiled(filing as never, owner)).rejects.toBeInstanceOf(ConflictException);
+		const failing = setup();
+		failing.gst.insert = async () => {
+			throw new Error('disk_full');
+		};
+		await expect(failing.service.markFiled(filing as never, owner)).rejects.toThrow('disk_full');
+		await expect(service.lockDocument('voucher', 'jv_9', undefined)).rejects.toBeInstanceOf(ForbiddenException);
+		expect(await service.touchDocument('voucher', 'jv_9', undefined)).toEqual({ held: false });
+		expect(await service.touchDocument('voucher', 'jv_9', owner)).toEqual({ held: true });
+		await service.releaseDocument('voucher', 'jv_9', undefined);
+		await service.releaseDocument('voucher', 'jv_9', owner);
+		await expect(service.takeOverDocument('voucher', 'jv_9', undefined)).rejects.toBeInstanceOf(ForbiddenException);
+		expect((await service.takeOverDocument('voucher', 'jv_9', owner)).holderId).toBe('adm_owner');
+	});
+
+	it('names people by display name, else e-mail, else username, else their id, even when the lookup fails', async () => {
+		const names = [
+			{ findById: async () => ({ displayName: '', email: 'e@x.test', username: 'u' }) },
+			{ findById: async () => ({ displayName: '', email: '', username: 'gopa' }) },
+			{ findById: async () => ({ displayName: '', email: '', username: '' }) },
+			{
+				findById: async () => {
+					throw new Error('down');
+				},
+			},
+		];
+		const seen: string[] = [];
+		for (const admins of names)
+			seen.push((await setup({ admins }).service.lockDocument('voucher', 'jv_1', owner)).holderName);
+		expect(seen).toEqual(['e@x.test', 'gopa', 'adm_owner', 'adm_owner']);
+		const broken = setup();
+		const seed = broken.books.seedChart.bind(broken.books);
+		let first = true;
+		broken.books.seedChart = async (chart) => {
+			if (first) {
+				first = false;
+				throw new Error('db_down');
+			}
+			return seed(chart);
+		};
+		await expect(broken.service.chart()).rejects.toThrow('db_down');
+		expect((await broken.service.chart()).ledgers.length).toBeGreaterThan(10);
 	});
 });

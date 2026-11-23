@@ -217,7 +217,7 @@ export class RefundVouchersService {
 				narration: `Refund voucher ${voucher.number} · receipt ${voucher.receiptNumber ?? '—'} · ${voucher.orderNumber}`,
 				lines: refundVoucherPosting(
 					voucher.amountINR,
-					voucher.ledgerId ? { id: voucher.ledgerId } : { systemKey: 'gateway_clearing' },
+					voucher.ledgerId ? { id: voucher.ledgerId } : { role: 'gateway_clearing' },
 				).map((line) => ({ ...line, locationId: voucher.locationId })),
 				source: { type: 'refundVoucher', id: voucher.id, number: voucher.number },
 				idempotencyKey: `refundVoucher:${voucher.id}`,

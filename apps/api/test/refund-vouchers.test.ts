@@ -139,8 +139,8 @@ describe('cancel a paid order and refund it (C1)', () => {
 		});
 		expect(made.saved).toEqual([expect.objectContaining({ id: 'pay_1', state: 'refunded' })]);
 		expect(made.posted[0]?.lines).toEqual([
-			{ ledger: { systemKey: 'customer_advances' }, debitPaise: 260_000, locationId: 'loc_bar' },
-			{ ledger: { systemKey: 'gateway_clearing' }, creditPaise: 260_000, locationId: 'loc_bar' },
+			{ ledger: { role: 'customer_advances' }, debitPaise: 260_000, locationId: 'loc_bar' },
+			{ ledger: { role: 'gateway_clearing' }, creditPaise: 260_000, locationId: 'loc_bar' },
 		]);
 		expect(made.logged.map((l) => [l.action, l.actor])).toEqual([
 			['refundVoucher.issue', 'adm_1'],

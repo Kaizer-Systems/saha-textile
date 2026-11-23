@@ -10,6 +10,7 @@ import type {
 	VoucherKind,
 	VoucherProblem,
 } from '@saha-textile/contracts';
+import { rolesOf } from './roles';
 
 /**
  * Voucher rules (accounts brief Q, T; owner-approved 2026-11-23). Pure: the API refuses a post with them and the
@@ -31,15 +32,16 @@ export function voucherTotals(lines: readonly LineAmounts[]): { debitPaise: numb
 /** "2026-11-23" → "2026-11". */
 export const monthOf = (day: string): string => day.slice(0, 7);
 
-/** Whether a ledger sits under Cash in hand, or under Bank accounts or a bank overdraft (contras, receipts). */
+/** Whether a ledger sits under a group playing the cash role, or the bank or overdraft role (contras, receipts): Cash in hand, or under Bank accounts or a bank overdraft (contras, receipts). */
 export function ledgerClass(
 	ledger: Pick<Ledger, 'groupId'>,
-	groups: readonly Pick<AccountGroup, 'id' | 'parentId' | 'systemKey'>[],
+	groups: readonly (Pick<AccountGroup, 'id' | 'parentId' | 'systemKey'> & { roles?: readonly string[] })[],
 ): 'cash' | 'bank' | 'other' {
 	const byId = new Map(groups.map((group) => [group.id, group]));
 	for (let group = byId.get(ledger.groupId), hops = 0; group && hops < 20; hops += 1) {
-		if (group.systemKey === 'cash_in_hand') return 'cash';
-		if (group.systemKey === 'bank_accounts' || group.systemKey === 'bank_od') return 'bank';
+		const roles = rolesOf(group);
+		if (roles.includes('cash_in_hand')) return 'cash';
+		if (roles.includes('bank_accounts') || roles.includes('bank_od')) return 'bank';
 		group = group.parentId ? byId.get(group.parentId) : undefined;
 	}
 	return 'other';

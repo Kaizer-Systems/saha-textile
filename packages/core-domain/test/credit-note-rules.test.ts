@@ -182,12 +182,12 @@ describe('postings (posting rules)', () => {
 	it('takes the sale back, credits the customer and returns restocked pieces to stock at cost', () => {
 		const rows = creditNotePosting({ totals, restockCostINR: 3_120 });
 		expect(rows).toEqual([
-			{ systemKey: 'sales_returns', debitPaise: 445_714 },
-			{ systemKey: 'output_cgst', debitPaise: 11_143 },
-			{ systemKey: 'output_sgst', debitPaise: 11_143 },
-			{ systemKey: 'debtors_control', creditPaise: 468_000 },
-			{ systemKey: 'stock_in_hand', debitPaise: 312_000 },
-			{ systemKey: 'cost_of_goods_sold', creditPaise: 312_000 },
+			{ role: 'sales_returns', debitPaise: 445_714 },
+			{ role: 'output_cgst', debitPaise: 11_143 },
+			{ role: 'output_sgst', debitPaise: 11_143 },
+			{ role: 'debtors_control', creditPaise: 468_000 },
+			{ role: 'stock_in_hand', debitPaise: 312_000 },
+			{ role: 'cost_of_goods_sold', creditPaise: 312_000 },
 		]);
 		const debit = rows.reduce((s, r) => s + (r.debitPaise ?? 0), 0);
 		const credit = rows.reduce((s, r) => s + (r.creditPaise ?? 0), 0);
@@ -196,14 +196,14 @@ describe('postings (posting rules)', () => {
 
 	it('balances rounding either way, and a debit note is the exact opposite', () => {
 		const up = creditNotePosting({ totals: { ...totals, roundOffINR: 0.4 }, restockCostINR: 0 });
-		expect(up.at(-1)).toEqual({ systemKey: 'rounding_off', debitPaise: 40 });
+		expect(up.at(-1)).toEqual({ role: 'rounding_off', debitPaise: 40 });
 		const down = creditNotePosting({ totals: { ...totals, igstINR: 1, roundOffINR: -0.4 }, restockCostINR: 0 });
-		expect(down.at(-1)).toEqual({ systemKey: 'rounding_off', creditPaise: 40 });
+		expect(down.at(-1)).toEqual({ role: 'rounding_off', creditPaise: 40 });
 		expect(debitNotePosting({ totals, restockCostINR: 3_120 }).slice(0, 4)).toEqual([
-			{ systemKey: 'sales_returns', creditPaise: 445_714 },
-			{ systemKey: 'output_cgst', creditPaise: 11_143 },
-			{ systemKey: 'output_sgst', creditPaise: 11_143 },
-			{ systemKey: 'debtors_control', debitPaise: 468_000 },
+			{ role: 'sales_returns', creditPaise: 445_714 },
+			{ role: 'output_cgst', creditPaise: 11_143 },
+			{ role: 'output_sgst', creditPaise: 11_143 },
+			{ role: 'debtors_control', debitPaise: 468_000 },
 		]);
 	});
 
@@ -243,13 +243,13 @@ describe('input tax on written-off returns (D9, s.17(5)(h))', () => {
 
 	it('posts stock loss against input CGST and SGST, nothing for nothing, and its opposite', () => {
 		expect(inputTaxReversalPosting(312.01)).toEqual([
-			{ systemKey: 'stock_loss', debitPaise: 31_201 },
-			{ systemKey: 'input_cgst', creditPaise: 15_600 },
-			{ systemKey: 'input_sgst', creditPaise: 15_601 },
+			{ role: 'stock_loss', debitPaise: 31_201 },
+			{ role: 'input_cgst', creditPaise: 15_600 },
+			{ role: 'input_sgst', creditPaise: 15_601 },
 		]);
 		expect(inputTaxReversalPosting(0)).toEqual([]);
 		expect(oppositePosting(inputTaxReversalPosting(312.01))[0]).toEqual({
-			systemKey: 'stock_loss',
+			role: 'stock_loss',
 			creditPaise: 31_201,
 		});
 	});

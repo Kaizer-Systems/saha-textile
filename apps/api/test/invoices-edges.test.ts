@@ -70,7 +70,7 @@ interface Options {
 
 function setup(options: Options = {}) {
 	const stored: TaxInvoice[] = [...(options.issued ?? [])];
-	const posted: { lines: { systemKey: string }[] }[] = [];
+	const posted: { lines: { role: string }[] }[] = [];
 	const service = new InvoicesService(
 		{
 			findByShipment: async (id: string) => stored.find((i) => i.shipmentId === id) ?? null,
@@ -100,7 +100,7 @@ function setup(options: Options = {}) {
 		} as never,
 		{ issue: async () => `TI/26-27/00000${stored.length + 1}` } as never,
 		{
-			post: async (request: { lines: { systemKey: string }[] }) => (posted.push(request), { id: 'jv_1' }),
+			post: async (request: { lines: { role: string }[] }) => (posted.push(request), { id: 'jv_1' }),
 			voucher: async () => {
 				if (options.voucher === 'throws') throw new Error('gone');
 				return options.voucher;
@@ -193,7 +193,7 @@ describe('issuing a tax invoice: every fallback (D1)', () => {
 			['a', 'b'],
 		);
 		expect(invoice?.lines.map((l) => l.title)).toEqual(['কাতান শাড়ি', 'ST-B']);
-		expect(posted[0]?.lines.filter((l) => l.systemKey === 'cost_of_goods_sold')).toHaveLength(1);
+		expect(posted[0]?.lines.filter((l) => l.role === 'cost_of_goods_sold')).toHaveLength(1);
 	});
 
 	it('refuses a parcel of only a set’s own line: nothing to invoice', async () => {

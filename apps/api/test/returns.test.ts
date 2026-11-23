@@ -93,7 +93,7 @@ function setup(options: Options = {}) {
 	const moves: { quantityDelta: number; heldDelta: number; reasonCode: string | null }[] = [];
 	const consumed: string[] = [];
 	const holds = new Map<string, { id: string; status: string }>();
-	const posted: { date: string; source: { type: string }; lines: { ledger: { systemKey?: string } }[] }[] = [];
+	const posted: { date: string; source: { type: string }; lines: { ledger: { role?: string } }[] }[] = [];
 	const entries: { kind: string; amountINR: number; documentNumber: string | null; by: string }[] = [];
 	const audit: string[] = [];
 	const logged: { action: string; entityType: string; diffs: unknown[]; metadata: Record<string, unknown> }[] = [];
@@ -816,11 +816,7 @@ describe('input tax on written-off pieces (D9) and a business buyer’s account'
 		const { draft } = await checkedDraft(made, 'write_off');
 		const issued = await made.service.issue(draft.id, 0, 'adm_1', NOW);
 		expect(keys(made)).toEqual(['creditNote', 'creditNoteInputTax']);
-		expect(made.posted[1]?.lines.map((l) => l.ledger.systemKey)).toEqual([
-			'stock_loss',
-			'input_cgst',
-			'input_sgst',
-		]);
+		expect(made.posted[1]?.lines.map((l) => l.ledger.role)).toEqual(['stock_loss', 'input_cgst', 'input_sgst']);
 		expect(made.posted[1]).toMatchObject({ lines: [{ debitPaise: 15_600 }, { creditPaise: 7_800 }, {}] });
 		await made.service.cancel(issued.id, { reason: 'Made against the wrong invoice' }, superAdmin, NOW);
 		expect(keys(made).slice(2)).toEqual(['creditNoteCancel', 'creditNoteInputTaxCancel']);

@@ -8,7 +8,12 @@ import { ProductBulkPopup } from './product-bulk-popup';
 
 import type { ProductBulkResult } from '@saha-textile/contracts';
 
-const row = (id: string, outcome: 'done' | 'skipped' | 'refused', reason: string | null = null, gaps: unknown[] = []) => ({
+const row = (
+	id: string,
+	outcome: 'done' | 'skipped' | 'refused',
+	reason: string | null = null,
+	gaps: unknown[] = [],
+) => ({
 	id,
 	title: `Saree ${id}`,
 	outcome,

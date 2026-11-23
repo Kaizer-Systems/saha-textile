@@ -368,7 +368,9 @@ export function documentHtml(
 	options: { band?: boolean } = {},
 ): string {
 	// With the e-invoice band (AE4) the e-invoice and e-way bill blocks print in the page foot instead (EI8), and the foot carries the page numbers.
-	const visible = format.blocks.filter((block) => !block.hidden && !(options.band && (block.type === 'einvoice' || block.type === 'eway')));
+	const visible = format.blocks.filter(
+		(block) => !block.hidden && !(options.band && (block.type === 'einvoice' || block.type === 'eway')),
+	);
 	const base = PAGE[format.paper];
 	const page = options.band ? { ...base, margin: base.margin.replace(/\s\S+$/, ` ${BAND_MARGIN_MM}mm`) } : base;
 	const footer = visible.find((block) => block.type === 'footer');

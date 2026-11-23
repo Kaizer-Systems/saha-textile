@@ -30,8 +30,7 @@ interface DraftTableRow {
 	saved_by: string;
 }
 
-const escapeHtml = (text: string): string =>
-	text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
 const pill = (css: string, words: string) => `<div class="${css}"><span>${escapeHtml(words)}</span></div>`;
 
@@ -89,7 +88,12 @@ export class ProductDrafts {
 		],
 		rowActions: [
 			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'product.index' },
-			{ label: 'draft_discard', actionToPerform: 'delete', icon: 'ri-delete-bin-line', permission: 'product.index' },
+			{
+				label: 'draft_discard',
+				actionToPerform: 'delete',
+				icon: 'ri-delete-bin-line',
+				permission: 'product.index',
+			},
 		],
 		data: [],
 		total: 0,

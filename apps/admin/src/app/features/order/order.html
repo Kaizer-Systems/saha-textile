@@ -7,7 +7,9 @@
 					<div>
 						<h6>{{ 'ord_tile_needs_attention' | transloco }}</h6>
 						<h3>{{ tile.needsAttention }}</h3>
-						<p class="small text-muted mb-0">{{ attentionLine() ?? ('ord_tile_needs_attention_sub' | transloco) }}</p>
+						<p class="small text-muted mb-0">
+							{{ attentionLine() ?? ('ord_tile_needs_attention_sub' | transloco) }}
+						</p>
 					</div>
 					<div class="icon-box">
 						<i class="ri-error-warning-line"></i>

@@ -27,7 +27,10 @@ const render = <T>(type: new () => T, platform = 'browser', result: Promise<unkn
 	return { modal: TestBed.createComponent(type).componentInstance, open, dismissAll };
 };
 
-const guide = { fields: [{ code: 'bust', label: 'Bust', unit: 'in' as const }], rows: [{ size: 'M', values: { bust: 36 } }] };
+const guide = {
+	fields: [{ code: 'bust', label: 'Bust', unit: 'in' as const }],
+	rows: [{ size: 'M', values: { bust: 36 } }],
+};
 
 const cases = [
 	{ name: 'DealsModal', type: DealsModal, call: (modal: DealsModal) => modal.openModal() },

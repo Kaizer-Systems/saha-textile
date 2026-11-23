@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { attentionTileLine, attentionWhy, couponWhy, paymentLine, shippingReason, toOrderTableRow } from './order-format';
+import {
+	attentionTileLine,
+	attentionWhy,
+	couponWhy,
+	paymentLine,
+	shippingReason,
+	toOrderTableRow,
+} from './order-format';
 import { isoDay, orderTablePage } from './orders.gateway';
 
 import type { OrderListRow } from '@saha-textile/contracts';
@@ -72,10 +79,16 @@ describe('orders list rows (ol02–ol04, oo01)', () => {
 
 	it('words each payment line as ol02 draws it', () => {
 		expect(
-			paymentLine({ kind: 'payment', method: 'upi', referenceStart: '4321', reference: '432198765012', gateway: null }, t),
+			paymentLine(
+				{ kind: 'payment', method: 'upi', referenceStart: '4321', reference: '432198765012', gateway: null },
+				t,
+			),
 		).toBe('ord_pay_line_ref(ord_method_upi,432198765012)');
 		expect(
-			paymentLine({ kind: 'payment', method: 'gateway', referenceStart: null, reference: null, gateway: 'paypal' }, t),
+			paymentLine(
+				{ kind: 'payment', method: 'gateway', referenceStart: null, reference: null, gateway: 'paypal' },
+				t,
+			),
 		).toBe('ord_gateway_paypal');
 		expect(paymentLine({ kind: 'cashOnDelivery' }, t)).toBe('ord_method_cashOnDelivery');
 		expect(paymentLine({ kind: 'onAccount', dueOn: '2026-12-20' }, t)).toContain('ord_pay_line_due(');
@@ -87,14 +100,19 @@ describe('orders list rows (ol02–ol04, oo01)', () => {
 		const why = attentionWhy(
 			{
 				attention: ['requestExpiredUnpaid', 'pendingAtBank', 'invoiceAddressNeeded'],
-				attentionAt: { requestExpiredUnpaid: '2026-11-17T04:45:00.000Z', pendingAtBank: '2026-11-19T13:14:00.000Z' },
+				attentionAt: {
+					requestExpiredUnpaid: '2026-11-17T04:45:00.000Z',
+					pendingAtBank: '2026-11-19T13:14:00.000Z',
+				},
 			},
 			t,
 			now,
 		);
 		expect(why).toContain('ord_why_requestExpiredUnpaid_on(');
 		expect(why).toContain('ord_why_pendingAtBank_at(18:44)');
-		expect(why).toContain('<b class="text-danger">ord_why_lead_invoiceAddressNeeded</b> ord_why_invoiceAddressNeeded');
+		expect(why).toContain(
+			'<b class="text-danger">ord_why_lead_invoiceAddressNeeded</b> ord_why_invoiceAddressNeeded',
+		);
 	});
 
 	it('builds the Needs attention tile line from the counts per reason (ol02)', () => {

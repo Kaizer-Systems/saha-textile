@@ -206,7 +206,9 @@ describe.runIf(hasMongoEnv())('shipping rule persistence (rs0)', () => {
 		});
 		const docs = [
 			product('bare', {}),
-			product('weighed', { shippingDefaults: { weightGrams: 600, lengthCm: null, widthCm: null, heightCm: null } }),
+			product('weighed', {
+				shippingDefaults: { weightGrams: 600, lengthCm: null, widthCm: null, heightCm: null },
+			}),
 			product('boxed', { shippingDefaults: { weightGrams: null, lengthCm: 35, widthCm: 25, heightCm: 5 } }),
 			product('half-box', { shippingDefaults: { weightGrams: null, lengthCm: 35, widthCm: null, heightCm: 5 } }),
 			product('from-category', { categoryIds: [cat('boxed')] }),

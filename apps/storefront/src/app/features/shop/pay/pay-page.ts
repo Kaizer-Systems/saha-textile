@@ -27,7 +27,10 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 							<div class="title-header mb-3">
 								<h2 class="mb-1">{{ 'pay_title' | transloco }}</h2>
 								<p class="text-content mb-0">
-									{{ 'pay_lead' | transloco: { number: page.orderNumber, until: until(page.expiresAt) } }}
+									{{
+										'pay_lead'
+											| transloco: { number: page.orderNumber, until: until(page.expiresAt) }
+									}}
 								</p>
 							</div>
 							<div class="row g-sm-4 g-3">
@@ -43,7 +46,10 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 														</div>
 														<div class="checkout-detail">
 															<p class="text-content mb-0">
-																{{ page.deliveryCity }}@if (page.deliveryCountry) { , {{ page.deliveryCountry }} }
+																{{ page.deliveryCity }}
+																@if (page.deliveryCountry) {
+																	, {{ page.deliveryCountry }}
+																}
 															</p>
 														</div>
 													</div>
@@ -56,7 +62,12 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 														</div>
 														<div class="checkout-detail">
 															<p class="text-content mb-0">
-																{{ (page.currency === 'INR' ? 'chk_pay_inr_help' : 'pay_paypal_help') | transloco }}
+																{{
+																	(page.currency === 'INR'
+																		? 'chk_pay_inr_help'
+																		: 'pay_paypal_help'
+																	) | transloco
+																}}
 															</p>
 														</div>
 													</div>
@@ -98,7 +109,7 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 											</ul>
 											<button
 												type="button"
-												class="btn btn-animation proceed-btn w-100 mt-3"
+												class="btn btn-animation proceed-btn mt-3 w-100"
 												(click)="pay(page.payUrl)"
 											>
 												{{
@@ -118,7 +129,9 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 										<div class="card-body p-5 text-center">
 											<i class="ri-checkbox-circle-line fs-1 text-success"></i>
 											<h3 class="mt-3">{{ 'pay_paid_title' | transloco }}</h3>
-											<p class="text-content mb-0">{{ 'pay_paid_text' | transloco: { number: page.orderNumber } }}</p>
+											<p class="text-content mb-0">
+												{{ 'pay_paid_text' | transloco: { number: page.orderNumber } }}
+											</p>
 										</div>
 									</div>
 								</div>
@@ -131,7 +144,9 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 										<div class="card-body p-5 text-center">
 											<i class="ri-time-line fs-1 theme-color"></i>
 											<h3 class="mt-3">{{ 'pay_expired_title' | transloco }}</h3>
-											<p class="text-content">{{ 'pay_expired_text' | transloco: { number: page.orderNumber } }}</p>
+											<p class="text-content">
+												{{ 'pay_expired_text' | transloco: { number: page.orderNumber } }}
+											</p>
 											<div class="d-flex justify-content-center mt-3 gap-2">
 												@if (page.contactPhone) {
 													<a
@@ -157,7 +172,7 @@ import { shopMoney } from '@features/shop/checkout/checkout';
 						}
 					}
 				} @else if (view.isError()) {
-					<p class="text-content text-center mb-0">{{ 'pay_not_found' | transloco }}</p>
+					<p class="text-content mb-0 text-center">{{ 'pay_not_found' | transloco }}</p>
 				}
 			</div>
 		</section>

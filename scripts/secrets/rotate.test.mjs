@@ -63,7 +63,14 @@ test('the arguments: a server tier, known ids once, the three switches', () => {
 			(error) => error instanceof SecretsError && pattern.test(error.message),
 		);
 	}
-	assert.deepEqual([...DATA_SERVICE_IDS].sort(), ['keyfile', 'mongo-app', 'mongo-monitor', 'mongo-root', 'redis', 'search']);
+	assert.deepEqual([...DATA_SERVICE_IDS].sort(), [
+		'keyfile',
+		'mongo-app',
+		'mongo-monitor',
+		'mongo-root',
+		'redis',
+		'search',
+	]);
 	assert.equal(Object.keys(ROTATION_IDS).length, 10);
 });
 

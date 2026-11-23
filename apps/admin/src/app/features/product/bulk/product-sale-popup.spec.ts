@@ -71,8 +71,12 @@ const engine = (body: ProductSaleWrite) =>
 		eventId: body.eventId,
 		eventStatus: body.eventId ? 'live' : null,
 		rows: body.lines.map((line) => {
-			if (line.productId === 'p3') return row('p3', [], { outcome: 'refused', reason: 'overlap', detail: 'Clash · Puja' });
-			const skus = line.productId === 'p2' ? [price('G', 2600, null, 'Green'), price('R', 2600, null, 'Rust')] : [price('S1', 2500)];
+			if (line.productId === 'p3')
+				return row('p3', [], { outcome: 'refused', reason: 'overlap', detail: 'Clash · Puja' });
+			const skus =
+				line.productId === 'p2'
+					? [price('G', 2600, null, 'Green'), price('R', 2600, null, 'Rust')]
+					: [price('S1', 2500)];
 			return row(
 				line.productId,
 				skus.map((sku) => ({
@@ -171,7 +175,9 @@ describe('ProductSalePopup', () => {
 		broken.popup.start(picks);
 		await flush();
 		expect(broken.popup.failed()).toBe(true);
-		popup.rows.update((rows) => rows.map((row) => ({ ...row, result: { ...(row.result ?? {}), outcome: 'done' } as never })));
+		popup.rows.update((rows) =>
+			rows.map((row) => ({ ...row, result: { ...(row.result ?? {}), outcome: 'done' } as never })),
+		);
 		popup.setValue('5');
 		await popup.confirm();
 		expect(modal.close).toHaveBeenCalledWith(expect.objectContaining({ created: true }));

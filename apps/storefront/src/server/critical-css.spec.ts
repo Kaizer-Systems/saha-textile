@@ -152,7 +152,17 @@ describe('critical CSS (speed baseline, option A)', () => {
 				'<script>var s = \'<p class="from-script">\';</script></app-root>',
 		);
 		const shape = pageShape(html);
-		for (const part of ['app-root', '@_nghost-ng-c1', 'div', '.product-box', '.sale', '@data-x', 'h3', '.h6', '.name'])
+		for (const part of [
+			'app-root',
+			'@_nghost-ng-c1',
+			'div',
+			'.product-box',
+			'.sale',
+			'@data-x',
+			'h3',
+			'.h6',
+			'.name',
+		])
 			expect(shape).toContain(part);
 		expect([...shape].some((part) => part.includes('add-to-cart'))).toBe(false);
 		expect(shape.has('.from-script')).toBe(false);
@@ -165,12 +175,17 @@ describe('critical CSS (speed baseline, option A)', () => {
 
 	it('works the answer out from every sample at once, in one document with this page head', () => {
 		const first = page('<link rel="stylesheet" href="/a.css">', '<app-root><i class="one"></i></app-root>');
-		const second = page('<link rel="stylesheet" href="/a.css">', '<app-root><i class="two"></i><script>x</script></app-root>');
+		const second = page(
+			'<link rel="stylesheet" href="/a.css">',
+			'<app-root><i class="two"></i><script>x</script></app-root>',
+		);
 		const body = sampleBody(second);
 		expect(body).toContain('class="two"');
 		expect(body).not.toContain('<script');
 		const doc = samplesDocument(second, [sampleBody(first), body]);
-		expect(doc.startsWith('<!doctype html><html><head><link rel="stylesheet" href="/a.css"></head><body>')).toBe(true);
+		expect(doc.startsWith('<!doctype html><html><head><link rel="stylesheet" href="/a.css"></head><body>')).toBe(
+			true,
+		);
 		expect(doc).toContain('class="one"');
 		expect(doc).toContain('class="two"');
 		expect(doc.match(/<app-root>/g)).toHaveLength(2);

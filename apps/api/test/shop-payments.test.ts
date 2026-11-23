@@ -8,7 +8,9 @@ import { ShopPaymentsService } from '../src/shop-checkout/shop-payments.service'
 const NOW = new Date('2026-11-20T10:00:00.000Z');
 const LATER = new Date('2026-11-20T10:30:00.000Z');
 
-function makeOrder(over: { billingCountry?: string; currency?: string; held?: boolean; holdUntil?: string | null } = {}) {
+function makeOrder(
+	over: { billingCountry?: string; currency?: string; held?: boolean; holdUntil?: string | null } = {},
+) {
 	const country = over.billingCountry ?? 'IN';
 	const held = over.held ?? true;
 	return Order.parse({
@@ -40,8 +42,22 @@ function makeOrder(over: { billingCountry?: string; currency?: string; held?: bo
 		holdUntil: over.holdUntil === undefined ? '2026-11-20T10:15:00.000Z' : over.holdUntil,
 		buyer: { kind: 'person', customerId: 'cus_1', name: 'Ananya Das' },
 		addresses: {
-			billing: { fullName: 'Ananya Das', line1: '1 Road', city: 'X', postalCode: '1', country, countryCode: country },
-			delivery: { fullName: 'Ananya Das', line1: '1 Road', city: 'X', postalCode: '1', country, countryCode: country },
+			billing: {
+				fullName: 'Ananya Das',
+				line1: '1 Road',
+				city: 'X',
+				postalCode: '1',
+				country,
+				countryCode: country,
+			},
+			delivery: {
+				fullName: 'Ananya Das',
+				line1: '1 Road',
+				city: 'X',
+				postalCode: '1',
+				country,
+				countryCode: country,
+			},
 		},
 		balance: {
 			goodsINR: 20_000,
@@ -75,7 +91,14 @@ function harness(options: Options = {}) {
 		// What the customer was told: status moves (order_confirmed) and the messages sent directly.
 		told: [] as string[],
 	};
-	const cart = { id: 'cart_1', userId: 'cus_1', lines: [{ id: 'c1', productId: 'p1', variationId: null }, { id: 'c2', productId: 'p9', variationId: null }] };
+	const cart = {
+		id: 'cart_1',
+		userId: 'cus_1',
+		lines: [
+			{ id: 'c1', productId: 'p1', variationId: null },
+			{ id: 'c2', productId: 'p9', variationId: null },
+		],
+	};
 	let status: Partial<PaymentReport> | null = options.status === undefined ? { state: 'captured' } : options.status;
 
 	const orderRepo = {
@@ -98,13 +121,19 @@ function harness(options: Options = {}) {
 		tell: async (before: Order, after: Order) => void calls.told.push(`${before.status}→${after.status}`),
 		told: () => [],
 		settle: async (order: Order, revision: number) => {
-			const paid = payments.filter((row) => row.state === 'received').reduce((sum, row) => sum + row.amountINR, 0);
+			const paid = payments
+				.filter((row) => row.state === 'received')
+				.reduce((sum, row) => sum + row.amountINR, 0);
 			const placed = order.status === 'awaiting_payment' && paid >= order.totalINR;
 			return orderRepo.update(
 				{
 					...order,
 					status: placed ? 'placed' : order.status,
-					balance: { ...(order.balance as NonNullable<Order['balance']>), paidINR: paid, paidAheadINR: Math.max(0, paid - order.totalINR) },
+					balance: {
+						...(order.balance as NonNullable<Order['balance']>),
+						paidINR: paid,
+						paidAheadINR: Math.max(0, paid - order.totalINR),
+					},
 				},
 				revision,
 			);
@@ -135,7 +164,11 @@ function harness(options: Options = {}) {
 		gateway: 'ccavenue' as const,
 		createPayment: async (input: { attemptId: string }) => ({
 			attemptId: input.attemptId,
-			handoff: { kind: 'form-post' as const, url: 'https://test.ccavenue.com/pay', fields: { encRequest: 'x', access_code: 'y' } },
+			handoff: {
+				kind: 'form-post' as const,
+				url: 'https://test.ccavenue.com/pay',
+				fields: { encRequest: 'x', access_code: 'y' },
+			},
 			auditRecord: {},
 		}),
 		verifyCallback: async (form: { attemptId: string }) => {
@@ -149,7 +182,13 @@ function harness(options: Options = {}) {
 		},
 		refundPayment: async (input: { refundReference: string }) => {
 			calls.refunds.push(input.refundReference);
-			return { outcome: 'accepted' as const, refundReference: input.refundReference, refusalReason: null, refusalCode: null, auditRecord: {} };
+			return {
+				outcome: 'accepted' as const,
+				refundReference: input.refundReference,
+				refusalReason: null,
+				refusalCode: null,
+				auditRecord: {},
+			};
 		},
 		fetchRefunds: async () => [],
 	};
@@ -158,7 +197,10 @@ function harness(options: Options = {}) {
 		gateway: 'paypal' as const,
 		createPayment: async (input: { attemptId: string }) => ({
 			attemptId: input.attemptId,
-			handoff: { kind: 'redirect' as const, url: 'https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T' },
+			handoff: {
+				kind: 'redirect' as const,
+				url: 'https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T',
+			},
 			auditRecord: { paypal_order_id: '5O190127TN364715T' },
 		}),
 		fetchPaymentStatus: async (query: { attemptId: string; gatewayReference?: string | null }) => {
@@ -168,7 +210,14 @@ function harness(options: Options = {}) {
 				...report(attempt),
 				gateway: 'paypal' as const,
 				gatewayReference: '3C679366HH908993F',
-				receivable: { grossAmount: 240, grossCurrency: 'USD', fee: 10.86, net: 229.14, receivableINR: 21_100.5, exchangeRate: { sourceCurrency: 'USD', targetCurrency: 'INR', value: 92.08 } },
+				receivable: {
+					grossAmount: 240,
+					grossCurrency: 'USD',
+					fee: 10.86,
+					net: 229.14,
+					receivableINR: 21_100.5,
+					exchangeRate: { sourceCurrency: 'USD', targetCurrency: 'INR', value: 92.08 },
+				},
 			};
 		},
 		verifyWebhook: async () => options.verified ?? false,
@@ -193,7 +242,9 @@ function harness(options: Options = {}) {
 				return attempt;
 			},
 			listDue: async (now: Date) =>
-				[...attempts.values()].filter((row) => row.state === 'pending' && row.nextCheckAt && new Date(row.nextCheckAt) <= now),
+				[...attempts.values()].filter(
+					(row) => row.state === 'pending' && row.nextCheckAt && new Date(row.nextCheckAt) <= now,
+				),
 		} as never,
 		{
 			findByGatewayReference: async (gateway: string, reference: string) =>
@@ -239,7 +290,12 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 		const h = harness();
 		const order = h.orders.get('ord_1') as Order;
 		const first = await h.service.start(order, 'en', NOW);
-		expect(first).toMatchObject({ id: 'ST2611482190-1', gateway: 'ccavenue', amountMinor: 2_000_000, state: 'pending' });
+		expect(first).toMatchObject({
+			id: 'ST2611482190-1',
+			gateway: 'ccavenue',
+			amountMinor: 2_000_000,
+			state: 'pending',
+		});
 		expect(first.handoff?.kind).toBe('form-post');
 		const again = await h.service.start(order, 'en', new Date(NOW.getTime() + 20_000));
 		expect(again.id).toBe('ST2611482190-1');
@@ -253,7 +309,11 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 		await h.service.ccavenueReturn({ attemptId: attempt.id }, new Date('2026-11-20T10:05:00.000Z'));
 		await h.service.ccavenueReturn({ attemptId: attempt.id }, new Date('2026-11-20T10:06:00.000Z'));
 		expect(h.payments).toHaveLength(1);
-		expect(h.payments[0]).toMatchObject({ method: 'gateway', reference: '313012345678', receiptNumber: 'RC/26-27/000001' });
+		expect(h.payments[0]).toMatchObject({
+			method: 'gateway',
+			reference: '313012345678',
+			receiptNumber: 'RC/26-27/000001',
+		});
 		const order = h.orders.get('ord_1') as Order;
 		expect(order.status).toBe('placed');
 		expect(order.holdUntil).toBeNull();
@@ -329,7 +389,10 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 	});
 
 	it('Cancel at PayPal: the hold goes at once and the shopper is asked to choose a currency, ₹ first in India', async () => {
-		const h = harness({ order: makeOrder({ currency: 'USD', billingCountry: 'IN' }), status: { state: 'pending' } });
+		const h = harness({
+			order: makeOrder({ currency: 'USD', billingCountry: 'IN' }),
+			status: { state: 'pending' },
+		});
 		const attempt = await h.service.start(h.orders.get('ord_1') as Order, 'en', NOW);
 		const outcome = await h.service.confirm(attempt.id, { cancelled: true }, h.shopper, NOW);
 		expect(outcome).toMatchObject({ result: 'cancelled', popup: 'chooseCurrency', firstCurrency: 'INR' });
@@ -341,7 +404,13 @@ describe('shop payments (OD1 hold, shop04/shop05 popups, decidePaymentResult)', 
 	it('someone else’s payment reads as missing', async () => {
 		const h = harness();
 		const attempt = await h.service.start(h.orders.get('ord_1') as Order, 'en', NOW);
-		const stranger = { userId: 'cus_2', sessionId: 's', audience: 'storefront', role: null, permissions: [] } as never;
+		const stranger = {
+			userId: 'cus_2',
+			sessionId: 's',
+			audience: 'storefront',
+			role: null,
+			permissions: [],
+		} as never;
 		await expect(h.service.outcomeFor(attempt.id, stranger)).rejects.toThrow();
 	});
 

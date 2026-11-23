@@ -31,7 +31,7 @@
 								[attr.aria-label]="blog.blog_thumbnail?.alt || blog.title"
 							>
 								<img
-									class="position-absolute top-0 start-0 object-fit-cover"
+									class="position-absolute object-fit-cover start-0 top-0"
 									[src]="blog.blog_thumbnail?.original_url || 'assets/images/product.png'"
 									[attr.srcset]="blog.blog_thumbnail?.srcset || null"
 									sizes="(min-width: 1600px) 520px, (min-width: 1050px) 33vw, (min-width: 580px) 50vw, calc(100vw - 32px)"

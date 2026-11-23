@@ -38,11 +38,12 @@ export class OrderClosePopup {
 	readonly shipWhy = computed(() => {
 		const p = this.preview();
 		if (!p?.shippingTrace?.length) return '';
-		const { reason } = shippingReason(
-			{ trace: p.shippingTrace, pieces: p.shippingPieces ?? [] },
-			(key, params) => this.transloco.translate(key, params),
+		const { reason } = shippingReason({ trace: p.shippingTrace, pieces: p.shippingPieces ?? [] }, (key, params) =>
+			this.transloco.translate(key, params),
 		);
-		return this.transloco.getActiveLang() === 'en' && reason ? reason.charAt(0).toLowerCase() + reason.slice(1) : reason;
+		return this.transloco.getActiveLang() === 'en' && reason
+			? reason.charAt(0).toLowerCase() + reason.slice(1)
+			: reason;
 	});
 	readonly then = signal<OpenOrderClose['then']>('requestOnline');
 	readonly busy = signal(false);

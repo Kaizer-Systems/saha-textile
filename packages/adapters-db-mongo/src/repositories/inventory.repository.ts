@@ -49,7 +49,10 @@ export class MongoInventoryRepository implements InventoryRepository {
 	async getSnapshot(variantId: string): Promise<VariantStockSnapshot | null> {
 		const doc = await ProductVariantModel.findById(variantId)
 			.select('stock')
-			.lean<{ _id: string; stock: { quantity: number; held?: number; reserved?: number; lowStockThreshold: number | null } }>()
+			.lean<{
+				_id: string;
+				stock: { quantity: number; held?: number; reserved?: number; lowStockThreshold: number | null };
+			}>()
 			.exec();
 		if (!doc) return null;
 
@@ -68,7 +71,10 @@ export class MongoInventoryRepository implements InventoryRepository {
 		const docs = await ProductVariantModel.find({ _id: { $in: [...variantIds] } })
 			.select('stock')
 			.lean<
-				Array<{ _id: string; stock: { quantity: number; held?: number; reserved?: number; lowStockThreshold: number | null } }>
+				Array<{
+					_id: string;
+					stock: { quantity: number; held?: number; reserved?: number; lowStockThreshold: number | null };
+				}>
 			>()
 			.exec();
 

@@ -469,9 +469,7 @@
 			<i class="ri-error-warning-line mt-1"></i>
 			<div>{{ 'biz_needs_a_role' | transloco }}</div>
 		</div>
-		}
-
-		@if (form.controls.buysFromUs.value && form.controls.sellsToUs.value) {
+		} @if (form.controls.buysFromUs.value && form.controls.sellsToUs.value) {
 		<ng-container *hasPermission="'business.settle'">
 			<hr />
 			<!-- so01: set-off between the two accounts, off unless there is a written agreement (kept ready for others). -->
@@ -499,7 +497,9 @@
 								[for]="'setoff_' + mode"
 							>
 								<b>{{ 'biz_setoff_mode_' + mode | transloco }}</b>
-								<span class="d-block small text-muted">{{ 'biz_setoff_mode_' + mode + '_help' | transloco }}</span>
+								<span class="d-block small text-muted">
+									{{ 'biz_setoff_mode_' + mode + '_help' | transloco }}
+								</span>
 							</label>
 						</div>
 					</div>

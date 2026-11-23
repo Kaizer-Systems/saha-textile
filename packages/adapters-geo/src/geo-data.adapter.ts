@@ -78,7 +78,10 @@ export const GEO_MANIFEST_REFRESH_MS = 6 * 60 * 60 * 1000;
 
 /** Thrown when a file is missing from storage or its bytes don't match the manifest. */
 export class GeoDataUnavailableError extends Error {
-	constructor(readonly path: string, reason: string) {
+	constructor(
+		readonly path: string,
+		reason: string,
+	) {
 		super(`Geo data file ${path} is unavailable: ${reason}`);
 		this.name = 'GeoDataUnavailableError';
 	}
@@ -129,7 +132,10 @@ export class ManifestGeoDataAdapter implements GeoDataPort {
 				},
 				(error: unknown) => {
 					this.#first = null;
-					throw new GeoDataUnavailableError('manifest.json', error instanceof Error ? error.message : 'not readable');
+					throw new GeoDataUnavailableError(
+						'manifest.json',
+						error instanceof Error ? error.message : 'not readable',
+					);
 				},
 			);
 		}
@@ -167,7 +173,9 @@ export class ManifestGeoDataAdapter implements GeoDataPort {
 	async pin(pin: string): Promise<PinLookup | null> {
 		if (!(await this.manifest()).counts.pins) return null;
 		const valid = /^\d{6}$/.test(pin);
-		const slice = valid ? ((await this.#file(`pins/${pin.slice(0, 3)}.json`)) as Record<string, PinRow> | null) : null;
+		const slice = valid
+			? ((await this.#file(`pins/${pin.slice(0, 3)}.json`)) as Record<string, PinRow> | null)
+			: null;
 		const row = slice?.[pin];
 		const state = row?.subdivisionCode
 			? (await this.#subdivisionsOf('IN')).find((sub) => sub.code === row.subdivisionCode)

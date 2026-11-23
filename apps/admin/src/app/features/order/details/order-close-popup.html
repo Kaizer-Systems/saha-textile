@@ -19,9 +19,9 @@
 		</li>
 		<li class="d-flex justify-content-between mb-1 gap-3">
 			<span>
-				@if (p.zone && shipWhy()) { {{ 'ord_close_shipping_line' | transloco: { zone: ('ord_zone_' + p.zone | transloco),
-				count: p.pieces, reason: shipWhy() } }} } @else { {{ 'ord_shipping' | transloco }} @if (p.zone) { ({{ 'ord_zone_'
-				+ p.zone | transloco }}) } }
+				@if (p.zone && shipWhy()) { {{ 'ord_close_shipping_line' | transloco: { zone: ('ord_zone_' + p.zone |
+				transloco), count: p.pieces, reason: shipWhy() } }} } @else { {{ 'ord_shipping' | transloco }} @if
+				(p.zone) { ({{ 'ord_zone_' + p.zone | transloco }}) } }
 			</span>
 			<span class="text-nowrap">@if (p.shippingINR !== null) { {{ p.shippingINR | rupees }} } @else { — }</span>
 		</li>

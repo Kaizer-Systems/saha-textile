@@ -336,7 +336,9 @@ describe('PayPal webhook check', () => {
 
 	it('says no to a failed check, a missing header or a body that is not JSON', async () => {
 		expect(await gateway('FAILURE').gw.verifyWebhook(headers, '{}')).toBe(false);
-		expect(await gateway('SUCCESS').gw.verifyWebhook({ ...headers, 'paypal-transmission-sig': undefined }, '{}')).toBe(false);
+		expect(
+			await gateway('SUCCESS').gw.verifyWebhook({ ...headers, 'paypal-transmission-sig': undefined }, '{}'),
+		).toBe(false);
 		expect(await gateway('SUCCESS').gw.verifyWebhook(headers, 'not json')).toBe(false);
 	});
 });

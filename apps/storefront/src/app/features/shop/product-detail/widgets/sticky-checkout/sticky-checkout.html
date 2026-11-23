@@ -15,7 +15,9 @@
 							alt="product"
 						/>
 						<div class="content">
-							<p class="h5">{{ selectedVariation ? selectedVariation.name : product ? product.name : '' }}</p>
+							<p class="h5">
+								{{ selectedVariation ? selectedVariation.name : product ? product.name : '' }}
+							</p>
 							<p class="h6">
 								{{ (selectedVariation ? selectedVariation.sale_price : product.sale_price) |
 								currencySymbol }} @if (selectedVariation ? selectedVariation.discount :

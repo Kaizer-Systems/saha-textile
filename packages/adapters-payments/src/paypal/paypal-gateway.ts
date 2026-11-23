@@ -458,12 +458,7 @@ export class PayPalPaymentGateway implements PaymentGatewayPort, PaymentRequestP
 					'content-type': 'application/json',
 					prefer: 'return=representation',
 				},
-				body:
-					body === undefined
-						? undefined
-						: isRawBody(body)
-							? body.raw
-							: JSON.stringify(body),
+				body: body === undefined ? undefined : isRawBody(body) ? body.raw : JSON.stringify(body),
 				signal: AbortSignal.timeout(this.#timeoutMs),
 			});
 		} catch {

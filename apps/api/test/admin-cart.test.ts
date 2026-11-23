@@ -160,7 +160,9 @@ describe('admin cart (create order, zone cards)', () => {
 		expect(view.lines[0]).toMatchObject({
 			unitPriceINR: 8_800,
 			zonePrice: { kind: 'priced', unitPriceINR: 8_000, rule: { ruleId: 'all' }, addOns: null },
-			options: [{ code: 'stitching', group: 'Blouse', value: 'Basic stitching', priceINR: 800, listedPriceINR: 800 }],
+			options: [
+				{ code: 'stitching', group: 'Blouse', value: 'Basic stitching', priceINR: 800, listedPriceINR: 800 },
+			],
 			addOnsZonePriced: false,
 		});
 		expect(view.lines[1]).toMatchObject({
@@ -200,9 +202,11 @@ describe('admin cart (create order, zone cards)', () => {
 			addOnsZonePriced: false,
 		});
 		// No stitching chosen: nothing to price, so nothing was zone-priced.
-		const plain = await service(
-			withAddOns({ kind: 'percentOffBase', base: 'regularSelling', percent: 20 }),
-		).price({ buyer: business, currency: 'INR', lines: [line('p_saree', 1)] });
+		const plain = await service(withAddOns({ kind: 'percentOffBase', base: 'regularSelling', percent: 20 })).price({
+			buyer: business,
+			currency: 'INR',
+			lines: [line('p_saree', 1)],
+		});
 		expect(plain.lines[0]).toMatchObject({ unitPriceINR: 8_000, addOnsZonePriced: false });
 	});
 

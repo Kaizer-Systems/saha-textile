@@ -174,7 +174,10 @@ function sourceViews(
 		if (source.from === 'product') return { from: 'product', name: null };
 		if (source.categoryId === null) return { from: 'shopDefault', name: null };
 		const category = chain.find((c) => c.id === source.categoryId);
-		return { from: 'category', name: category ? (category.name['en'] ?? Object.values(category.name)[0] ?? null) : null };
+		return {
+			from: 'category',
+			name: category ? (category.name['en'] ?? Object.values(category.name)[0] ?? null) : null,
+		};
 	};
 	return {
 		domestic: view(sources.domestic),

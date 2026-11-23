@@ -92,7 +92,11 @@ describe('country, State, phone and PIN data from object storage (DEC-ADDRESS)',
 		expect(await geo.pin('999999')).toMatchObject({ found: false });
 		expect(read.mock.calls.map(([path]) => path)).toContain('pins/700.json');
 		const none = fixture(false);
-		expect(await new ManifestGeoDataAdapter({ manifest: none.manifest, read: folderGeoReader(none.dir) }).pin('700029')).toBeNull();
+		expect(
+			await new ManifestGeoDataAdapter({ manifest: none.manifest, read: folderGeoReader(none.dir) }).pin(
+				'700029',
+			),
+		).toBeNull();
 	});
 
 	it('refuses a file whose contents do not match the manifest, and tries again next time', async () => {

@@ -72,7 +72,10 @@ export class Categories {
 		const categoryIds = this.categoryIds();
 		if (categoryIds && categoryIds.length) {
 			this.category$.subscribe(
-				(res) => (this.categories = res.data.filter((category) => isConfiguredCategory(category, this.categoryIds() ?? []))),
+				(res) =>
+					(this.categories = res.data.filter((category) =>
+						isConfiguredCategory(category, this.categoryIds() ?? []),
+					)),
 			);
 		}
 	}

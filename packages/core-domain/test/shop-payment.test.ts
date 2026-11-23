@@ -60,8 +60,7 @@ describe('shop payment rules (OD1, shop04, shop05)', () => {
 		).toEqual({ popup: 'switchToRegionCurrency', firstCurrency: 'EUR' });
 		expect(paymentPopup({ ...base, billingCountry: 'DE', failureReason: 'Insufficient funds' }).popup).toBeNull();
 		expect(
-			paymentPopup({ ...base, billingCountry: 'IN', failureReason: 'International cards are not enabled' })
-				.popup,
+			paymentPopup({ ...base, billingCountry: 'IN', failureReason: 'International cards are not enabled' }).popup,
 		).toBeNull();
 		expect(
 			paymentPopup({ ...base, state: 'cancelled', billingCountry: 'DE', failureReason: null }).popup,

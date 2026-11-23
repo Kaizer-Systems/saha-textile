@@ -295,7 +295,9 @@ export class MongoAdminOrderRepository implements AdminOrderRepository {
 
 	async listOpenOnAccount(
 		businessId: string,
-	): Promise<Array<{ orderId: string; orderNumber: string; dueINR: number; placedAt: string; dueOn: string | null }>> {
+	): Promise<
+		Array<{ orderId: string; orderNumber: string; dueINR: number; placedAt: string; dueOn: string | null }>
+	> {
 		const docs = await OrderModel.find({
 			'buyer.businessId': businessId,
 			'balance.dueINR': { $gt: 0 },
@@ -437,7 +439,9 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
 	}
 
 	async findByTokenHash(tokenHash: string): Promise<PaymentRequest | null> {
-		const doc = fromDoc(await PaymentRequestModel.findOne({ tokenHash }).session(joined()).lean<OrdersBuildDoc>().exec());
+		const doc = fromDoc(
+			await PaymentRequestModel.findOne({ tokenHash }).session(joined()).lean<OrdersBuildDoc>().exec(),
+		);
 		return doc ? PaymentRequest.parse(doc) : null;
 	}
 

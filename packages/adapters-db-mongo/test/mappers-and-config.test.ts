@@ -355,7 +355,12 @@ describe('mappers keep a complete row', () => {
 				placedWith: 'onAccount',
 				onAccountDueOn: '2026-12-20',
 			} as never),
-		).toMatchObject({ holdUntil: iso, paymentReview: review, placedWith: 'onAccount', onAccountDueOn: '2026-12-20' });
+		).toMatchObject({
+			holdUntil: iso,
+			paymentReview: review,
+			placedWith: 'onAccount',
+			onAccountDueOn: '2026-12-20',
+		});
 		expect(toOrder({ _id: 'o', orderNumber: 'n' } as never)).toMatchObject({
 			holdUntil: null,
 			paymentReview: null,

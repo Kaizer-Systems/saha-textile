@@ -87,8 +87,13 @@ export class Order {
 		const q = typeof this.params()['search'] === 'string' ? String(this.params()['search']).trim() : '';
 		const total = this.query.data()?.total;
 		if (!q || total === undefined) return null;
-		const count = this.transloco.translate(`ord_search_matches_${total === 1 ? 'one' : 'other'}`, { count: total, q });
-		return /^[A-Za-z]{0,3}\d{9,}$/.test(q.replace(/\s/g, '')) ? `${count} ${this.transloco.translate('ord_search_sms_form')}.` : `${count}.`;
+		const count = this.transloco.translate(`ord_search_matches_${total === 1 ? 'one' : 'other'}`, {
+			count: total,
+			q,
+		});
+		return /^[A-Za-z]{0,3}\d{9,}$/.test(q.replace(/\s/g, ''))
+			? `${count} ${this.transloco.translate('ord_search_sms_form')}.`
+			: `${count}.`;
 	});
 	readonly counts = computed<Partial<Record<OrderListFilter, number>>>(() => this.query.data()?.counts ?? {});
 

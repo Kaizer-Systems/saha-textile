@@ -200,7 +200,7 @@
 			[required]="false"
 		>
 			@if (zoneExceptions().length) {
-			<div class="pt-1 d-flex flex-column gap-1">
+			<div class="d-flex flex-column gap-1 pt-1">
 				@for (item of zoneExceptions(); track item.zone) {
 				<span>
 					{{ 'ship_zone_' + item.zone | transloco }}:
@@ -227,6 +227,8 @@
 				class="ri-git-branch-line mt-1"
 				aria-hidden="true"
 			></i>
+			<!-- Kept as written: the formatter would move the colon off the bold count and show a space before it. -->
+			<!-- prettier-ignore -->
 			<div>
 				{{ 'ship_used_by' | transloco }}
 				<b>{{ 'ship_used_by_count' | transloco: { n: usage.products } }}</b>:

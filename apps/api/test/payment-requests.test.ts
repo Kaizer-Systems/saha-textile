@@ -226,7 +226,9 @@ describe('payment requests and our pay link (pl01–pl05, oo07, K1)', () => {
 	});
 
 	it('records a captured payment once, however often staff check', async () => {
-		const { svc, payments, settled, tells } = harness([{ gatewayReference: '313012345678', amountMinor: 3_000_000 }]);
+		const { svc, payments, settled, tells } = harness([
+			{ gatewayReference: '313012345678', amountMinor: 3_000_000 },
+		]);
 		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
 		const first = await svc.check('ord_1', request.id, actor, NOW);
 		expect(first).toMatchObject({
@@ -263,10 +265,14 @@ describe('payment requests and our pay link (pl01–pl05, oo07, K1)', () => {
 		const request = await svc.create('ord_1', { amountINR: 30_000, currency: 'INR', revision: 0 }, actor, NOW);
 		const sms = await svc.messagePreview('ord_1', request.id, 'sms');
 		expect(sms).toMatchObject({ to: '+91 9830012345', unavailable: null });
-		expect(sms.text).toMatch(/^Saha Textile: please pay for your order ST2611482190 here: https:\/\/.+ Thank you for shopping with us\.$/);
+		expect(sms.text).toMatch(
+			/^Saha Textile: please pay for your order ST2611482190 here: https:\/\/.+ Thank you for shopping with us\.$/,
+		);
 		const out = await svc.sendMessage('ord_1', request.id, 'sms', actor, NOW);
 		expect(out.status).toBe('sent');
-		expect(sent).toMatchObject([{ channel: 'sms', templateKey: 'order_payment_link', destination: '+91 9830012345' }]);
+		expect(sent).toMatchObject([
+			{ channel: 'sms', templateKey: 'order_payment_link', destination: '+91 9830012345' },
+		]);
 		expect(out.request.sends).toMatchObject([{ channel: 'sms', by: 'adm_1' }]);
 		expect(settled).toContain('message');
 		expect(isIndianMobile('+44 20 7946 0000')).toBe(false);

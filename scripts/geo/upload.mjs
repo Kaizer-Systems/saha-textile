@@ -61,7 +61,9 @@ async function exists(s3, bucket, key) {
 		return true;
 	} catch (error) {
 		if (notFound(error)) return false;
-		throw new Error(`Spaces did not answer for ${key} (${error?.$metadata?.httpStatusCode ?? error?.name ?? 'unknown'})`);
+		throw new Error(
+			`Spaces did not answer for ${key} (${error?.$metadata?.httpStatusCode ?? error?.name ?? 'unknown'})`,
+		);
 	}
 }
 
@@ -71,7 +73,9 @@ async function getJson(s3, bucket, key) {
 		return JSON.parse(await answer.Body.transformToString('utf8'));
 	} catch (error) {
 		if (notFound(error)) return null;
-		throw new Error(`Spaces did not answer for ${key} (${error?.$metadata?.httpStatusCode ?? error?.name ?? 'unknown'})`);
+		throw new Error(
+			`Spaces did not answer for ${key} (${error?.$metadata?.httpStatusCode ?? error?.name ?? 'unknown'})`,
+		);
 	}
 }
 
@@ -99,7 +103,8 @@ export function publishProblems(next, current, india) {
 	if (current && next.counts.countries < current.counts.countries * 0.95)
 		problems.push(`countries fell from ${current.counts.countries} to ${next.counts.countries}`);
 	if (!india || india.length < 30) problems.push(`India has ${india?.length ?? 0} States and Union Territories`);
-	else if (india.some((row) => !/^\d{2}$/.test(row.gstStateCode ?? ''))) problems.push('an Indian State lost its GST code');
+	else if (india.some((row) => !/^\d{2}$/.test(row.gstStateCode ?? '')))
+		problems.push('an Indian State lost its GST code');
 	if (current?.counts.pins && next.counts.pins < current.counts.pins * 0.9)
 		problems.push(`PIN codes fell from ${current.counts.pins} to ${next.counts.pins}`);
 	return problems;
@@ -141,7 +146,9 @@ async function publish() {
 			}),
 		);
 	}
-	console.log(`${bucket}: ${entries.length} files, ${present} already there, ${uploaded} uploaded, ${missing.length} missing`);
+	console.log(
+		`${bucket}: ${entries.length} files, ${present} already there, ${uploaded} uploaded, ${missing.length} missing`,
+	);
 	if (missing.length) throw new Error(`not published: missing ${missing.slice(0, 10).join(', ')}`);
 	const indiaPath = join(WORK, 'subdivisions/IN.json');
 	const india = existsSync(indiaPath) ? JSON.parse(readFileSync(indiaPath, 'utf8')) : null;
@@ -150,7 +157,9 @@ async function publish() {
 	const text = `${JSON.stringify(manifest, null, '\t')}\n`;
 	await put(s3, bucket, historyKey(manifest.version), text);
 	await put(s3, bucket, CURRENT_KEY, text);
-	console.log(`${bucket}: index ${manifest.version} published (was ${current?.version ?? 'none'}); the API picks it up within a few hours`);
+	console.log(
+		`${bucket}: index ${manifest.version} published (was ${current?.version ?? 'none'}); the API picks it up within a few hours`,
+	);
 }
 
 async function pullPrevious() {
@@ -172,7 +181,9 @@ async function check() {
 	for (const [path, entry] of Object.entries(current.files)) {
 		if (!(await exists(s3, bucket, keyOf(entry)))) missing.push(path);
 	}
-	console.log(`${bucket}: index ${current.version}, ${Object.keys(current.files).length} files, ${missing.length} missing`);
+	console.log(
+		`${bucket}: index ${current.version}, ${Object.keys(current.files).length} files, ${missing.length} missing`,
+	);
 	if (missing.length) throw new Error(`missing: ${missing.slice(0, 10).join(', ')}`);
 }
 

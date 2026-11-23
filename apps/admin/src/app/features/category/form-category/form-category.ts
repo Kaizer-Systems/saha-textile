@@ -210,7 +210,8 @@ export class FormCategory {
 		forkJoin([this.shipping.exceptions(), this.shipping.overview()]).subscribe({
 			next: ([exceptions, overview]) => {
 				const own = exceptions.find((e) => e.target.kind === 'category' && e.target.categoryId === id);
-				const nameOf = (ruleSetId: string) => overview.ruleSets.find((r) => r.id === ruleSetId)?.name ?? ruleSetId;
+				const nameOf = (ruleSetId: string) =>
+					overview.ruleSets.find((r) => r.id === ruleSetId)?.name ?? ruleSetId;
 				const zones = ['domestic', 'international'] as const;
 				this.zoneExceptions.set(
 					own

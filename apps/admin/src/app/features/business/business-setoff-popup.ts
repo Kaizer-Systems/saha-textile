@@ -171,14 +171,16 @@ export function standingAgreement(business: Business, today: string) {
 					/>
 				</div>
 			</div>
-			<ul class="list-unstyled small mb-0 mt-3">
+			<ul class="list-unstyled small mt-3 mb-0">
 				<li class="mb-1">
 					<span class="text-muted">{{ 'biz_setoff_entry' | transloco }}:</span>
 					{{ 'biz_setoff_entry_line' | transloco }}
 				</li>
 				<li class="mb-1">
 					<span class="text-muted">{{ 'biz_setoff_result' | transloco }}:</span>
-					{{ 'biz_setoff_result_line' | transloco: { us: (afterUs() | rupees), them: (afterThem() | rupees) } }}
+					{{
+						'biz_setoff_result_line' | transloco: { us: (afterUs() | rupees), them: (afterThem() | rupees) }
+					}}
 				</li>
 				<li class="mb-1">
 					<span class="text-muted">GST:</span>
@@ -299,7 +301,12 @@ export class BusinessSetOffPopup {
 		this.error.set(null);
 		try {
 			await firstValueFrom(
-				this.gateway.recordSetOff(business.id, { amountINR: value, basis, note: this.note().trim(), on: this.on() }),
+				this.gateway.recordSetOff(business.id, {
+					amountINR: value,
+					basis,
+					note: this.note().trim(),
+					on: this.on(),
+				}),
 			);
 			this.modal.close(true);
 		} catch (error) {

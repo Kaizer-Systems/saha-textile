@@ -133,7 +133,10 @@ export type CheckoutPaymentOutcome = z.infer<typeof CheckoutPaymentOutcome>;
 
 /** The shop's return page: `token` is PayPal's order id; a claim only, checked by a status enquiry. */
 export const CheckoutConfirm = z.object({
-	token: z.string().regex(/^[A-Z0-9]{5,40}$/).optional(),
+	token: z
+		.string()
+		.regex(/^[A-Z0-9]{5,40}$/)
+		.optional(),
 	/** The shopper came back from the gateway's Cancel: the hold is let go at once (OD1). */
 	cancelled: z.boolean().default(false),
 });

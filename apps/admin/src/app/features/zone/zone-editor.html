@@ -315,7 +315,9 @@
 										/>
 										<span class="switch-state"></span>
 									</label>
-									<label [for]="'zone_addons_' + rule.id">{{ 'zone_addons_switch' | transloco }}</label>
+									<label [for]="'zone_addons_' + rule.id">
+										{{ 'zone_addons_switch' | transloco }}
+									</label>
 								</div>
 								@if (!canPriceAddOns(rule)) {
 								<span class="small text-muted">{{ 'zone_addons_not_this_formula' | transloco }}</span>

@@ -49,7 +49,10 @@ describe('business delivery addresses (bz02)', () => {
 			{ id: 'a', isDefault: true },
 			{ id: 'b', isDefault: false },
 		] as never[];
-		expect(withDefault(rows, 'b', false).map((row: { isDefault: boolean }) => row.isDefault)).toEqual([true, false]);
+		expect(withDefault(rows, 'b', false).map((row: { isDefault: boolean }) => row.isDefault)).toEqual([
+			true,
+			false,
+		]);
 		expect(withDefault(rows, 'b', true).map((row: { isDefault: boolean }) => row.isDefault)).toEqual([false, true]);
 	});
 });

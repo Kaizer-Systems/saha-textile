@@ -13,7 +13,12 @@ export function adminLineConfig(
 		addons: [
 			...line.options
 				.filter((option) => option.listedPriceINR !== 0)
-				.map((option) => ({ code: option.code, label: option.group, value: option.value, priceINR: option.priceINR })),
+				.map((option) => ({
+					code: option.code,
+					label: option.group,
+					value: option.value,
+					priceINR: option.priceINR,
+				})),
 			...line.measurements.map((field) => ({ code: field.code, label: field.label, value: field.value })),
 		],
 	};

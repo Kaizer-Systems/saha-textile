@@ -43,17 +43,26 @@
 											@for $i from 1 through $repeat {
 												&:nth-child(#{length($colors)}n + #{$i}) {
 													svg {
-														color: tc-shade(nth($colors, random(length($colors))), 15%) !important;
+														color: tc-shade(
+															nth($colors, random(length($colors))),
+															15%
+														) !important;
 													}
 
 													&:hover {
 														a {
 															svg {
-																stroke: tc-shade(nth($colors, random(length($colors))), 15%) !important;
+																stroke: tc-shade(
+																	nth($colors, random(length($colors))),
+																	15%
+																) !important;
 															}
 
 															&:hover {
-																background-color: tc-alpha(nth($colors, random(length($colors))), 0.15) !important;
+																background-color: tc-alpha(
+																	nth($colors, random(length($colors))),
+																	0.15
+																) !important;
 															}
 														}
 													}

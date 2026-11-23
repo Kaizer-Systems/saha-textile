@@ -94,9 +94,9 @@ export interface AdminOrderRepository {
 	/** Count per list filter (and `toPack`) for the same search and range. */
 	counts(query: OrderListQuery): Promise<Record<string, number>>;
 	/** Orders a business has on account and not settled, oldest first. */
-	listOpenOnAccount(businessId: string): Promise<
-		Array<{ orderId: string; orderNumber: string; dueINR: number; placedAt: string; dueOn: string | null }>
-	>;
+	listOpenOnAccount(
+		businessId: string,
+	): Promise<Array<{ orderId: string; orderNumber: string; dueINR: number; placedAt: string; dueOn: string | null }>>;
 	/** How many orders a customer has placed (first-order coupons). */
 	countPlacedByCustomer(customerId: string): Promise<number>;
 	/** Shop orders still waiting for payment whose 15-minute hold has run out (OD1), oldest first. */

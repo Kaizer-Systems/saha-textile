@@ -122,7 +122,8 @@ export function writeGeoOutput({ countries, subdivisionFiles, pins, sources, pre
 		for (const [key, rows] of pinSlices(pins)) add(`pins/${key}.json`, `${JSON.stringify(rows)}\n`);
 		pinCount = Object.keys(pins).length;
 	} else if (previous) {
-		for (const [path, entry] of Object.entries(previous.files)) if (path.startsWith('pins/')) files.set(path, entry);
+		for (const [path, entry] of Object.entries(previous.files))
+			if (path.startsWith('pins/')) files.set(path, entry);
 		pinCount = previous.counts?.pins ?? 0;
 	}
 	const sorted = Object.fromEntries([...files].sort(([a], [b]) => a.localeCompare(b)));
@@ -140,7 +141,8 @@ export function manifestChanges(before, after) {
 	const was = before?.files ?? {};
 	const now = after.files;
 	const changed = [];
-	for (const path of Object.keys(now)) if (was[path]?.sha256 !== now[path].sha256) changed.push(was[path] ? path : `${path} (new)`);
+	for (const path of Object.keys(now))
+		if (was[path]?.sha256 !== now[path].sha256) changed.push(was[path] ? path : `${path} (new)`);
 	for (const path of Object.keys(was)) if (!now[path]) changed.push(`${path} (gone)`);
 	return changed;
 }
@@ -301,7 +303,8 @@ async function main() {
 	const previous = readManifest();
 	const { countries, subdivisionFiles, unmatchedIndia } = await buildCountriesAndStates();
 	const pins = await buildPins(subdivisionFiles.get('IN') ?? []);
-	if (!pins) console.log('PIN step skipped: DATA_GOV_IN_API_KEY is not set (the PIN files in the manifest are kept).');
+	if (!pins)
+		console.log('PIN step skipped: DATA_GOV_IN_API_KEY is not set (the PIN files in the manifest are kept).');
 	const sources = {
 		libphonenumber: JSON.parse(readFileSync(require.resolve('libphonenumber-js/package.json'), 'utf8')).version,
 		dr5hn: { tag: DR5HN_TAG, commit: DR5HN_COMMIT },
@@ -311,9 +314,16 @@ async function main() {
 	const changed = manifestChanges(previous, manifest);
 	writeFileSync(join(WORK, 'manifest.json'), stableJson(manifest));
 	if (unmatchedIndia.length) console.warn(`India: no GST code matched for ${unmatchedIndia.join(', ')}`);
-	console.log(`countries: ${manifest.counts.countries}, with subdivisions: ${manifest.counts.withSubdivisions}, PINs: ${manifest.counts.pins}`);
-	console.log(changed.length ? `changed (${changed.length}): ${changed.slice(0, 20).join(', ')}${changed.length > 20 ? ' …' : ''}` : 'no change');
-	if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `changed=${changed.length ? 'true' : 'false'}\n`, { flag: 'a' });
+	console.log(
+		`countries: ${manifest.counts.countries}, with subdivisions: ${manifest.counts.withSubdivisions}, PINs: ${manifest.counts.pins}`,
+	);
+	console.log(
+		changed.length
+			? `changed (${changed.length}): ${changed.slice(0, 20).join(', ')}${changed.length > 20 ? ' …' : ''}`
+			: 'no change',
+	);
+	if (process.env.GITHUB_OUTPUT)
+		writeFileSync(process.env.GITHUB_OUTPUT, `changed=${changed.length ? 'true' : 'false'}\n`, { flag: 'a' });
 	console.log(`files in ${WORK}; manifest version ${manifest.version}`);
 }
 

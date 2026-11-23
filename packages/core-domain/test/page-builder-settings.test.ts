@@ -17,13 +17,20 @@ describe('Page settings (P3, SG-6)', () => {
 	it('lists what each shop language still lacks; spaces alone are empty', () => {
 		expect(pageSettingsGaps(settings(), ['en', 'bn'])).toEqual({});
 		expect(
-			pageSettingsGaps(settings({ description: { en: 'x', bn: '   ' }, heading: { en: 'h' } }), ['en', 'bn', 'hi']),
+			pageSettingsGaps(settings({ description: { en: 'x', bn: '   ' }, heading: { en: 'h' } }), [
+				'en',
+				'bn',
+				'hi',
+			]),
 		).toEqual({ bn: ['description', 'heading'], hi: ['title', 'description', 'heading'] });
 	});
 
 	it('saves words on one line each and drops empty languages', () => {
 		const saved = pageSettingsToSave(
-			settings({ title: { en: '  Sarees \n from   Kolkata ', bn: ' ' }, shareImage: { assetId: 'med_1', versionId: 'v1' } }),
+			settings({
+				title: { en: '  Sarees \n from   Kolkata ', bn: ' ' },
+				shareImage: { assetId: 'med_1', versionId: 'v1' },
+			}),
 		);
 		expect(saved.title).toEqual({ en: 'Sarees from Kolkata' });
 		expect(saved.shareImage).toEqual({ assetId: 'med_1', versionId: 'v1' });
@@ -91,7 +98,10 @@ describe('saved blocks (SG-5, P7)', () => {
 		}) as unknown as import('@saha-textile/contracts').PageSection;
 
 	it('draws a linked section from its block, keeping the layout’s own id and hiding; copies stay as they are', () => {
-		const sections = [promo('a', { id: 'blk_1', linked: true }, 'old'), promo('b', { id: 'blk_1', linked: false }, 'copy')];
+		const sections = [
+			promo('a', { id: 'blk_1', linked: true }, 'old'),
+			promo('b', { id: 'blk_1', linked: false }, 'copy'),
+		];
 		const drawn = withLinkedBlocks(sections, new Map([['blk_1', { section: promo('blk_1', null, 'Durga Puja') }]]));
 		expect(drawn[0]).toMatchObject({ id: 'a', title: { en: 'Durga Puja' }, block: { id: 'blk_1', linked: true } });
 		expect(drawn[1]).toMatchObject({ id: 'b', title: { en: 'copy' } });

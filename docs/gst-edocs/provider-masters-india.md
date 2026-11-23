@@ -24,22 +24,22 @@ POST `{base}/oauth/access_token` with `{username, password, client_id, client_se
 
 ## E-invoice
 
-| Call | Path | Notes |
-| --- | --- | --- |
-| Generate | POST `/generateEinvoice` | snake_case body built by `mastersIndiaInvoiceBody` from the INV-01 JSON (`user_gstin`, `transaction_details`, `document_details`, `seller_details`, `buyer_details`, `value_details`, `ewaybill_details`, `item_list`); the answer uses NIC's names (`Irn`, `AckNo`, `SignedQRCode`) |
-| Cancel | POST `/cancelEinvoice` | `{user_gstin, irn, cancel_reason "1"–"4", cancel_remarks}` |
-| By document | GET `/getIrnDetailsByDocDetails` | `user_gstin, document_type, document_number, document_date` |
-| GSTIN details | GET `/gstinDetails` | `user_gstin, gstin` |
+| Call          | Path                             | Notes                                                                                                                                                                                                                                                                                |
+| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Generate      | POST `/generateEinvoice`         | snake_case body built by `mastersIndiaInvoiceBody` from the INV-01 JSON (`user_gstin`, `transaction_details`, `document_details`, `seller_details`, `buyer_details`, `value_details`, `ewaybill_details`, `item_list`); the answer uses NIC's names (`Irn`, `AckNo`, `SignedQRCode`) |
+| Cancel        | POST `/cancelEinvoice`           | `{user_gstin, irn, cancel_reason "1"–"4", cancel_remarks}`                                                                                                                                                                                                                           |
+| By document   | GET `/getIrnDetailsByDocDetails` | `user_gstin, document_type, document_number, document_date`                                                                                                                                                                                                                          |
+| GSTIN details | GET `/gstinDetails`              | `user_gstin, gstin`                                                                                                                                                                                                                                                                  |
 
 Their plain-JSON documentation lists e-way bill by IRN only as SOAP, so this path makes the e-way bill together with the e-invoice (`ewaybill_details`).
 
 ## E-way bill
 
-| Call | Path |
-| --- | --- |
+| Call     | Path                                                             |
+| -------- | ---------------------------------------------------------------- |
 | Generate | POST `/ewayBillsGenerate` (body from `mastersIndiaEWayBillBody`) |
-| Part B | POST `/updateVehicleNumber` |
-| Cancel | POST `/ewayBillCancel` |
-| Extend | POST `/ewayBillValidityExtend` |
+| Part B   | POST `/updateVehicleNumber`                                      |
+| Cancel   | POST `/ewayBillCancel`                                           |
+| Extend   | POST `/ewayBillValidityExtend`                                   |
 
 Their pages don't publish separate sandbox and production addresses, so the base address is a setting. Some field values (state codes or names, reason texts) are not fixed by their pages; the path's Test and a sandbox generate confirm them before it is switched on.

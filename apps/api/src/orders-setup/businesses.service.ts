@@ -76,7 +76,9 @@ export class BusinessesService {
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		private readonly numbers: DocumentNumbersService,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
-		@Optional() @Inject(PURCHASE_ENTRY_REPOSITORY) private readonly purchases: PurchaseEntryRepository | null = null,
+		@Optional()
+		@Inject(PURCHASE_ENTRY_REPOSITORY)
+		private readonly purchases: PurchaseEntryRepository | null = null,
 	) {}
 
 	/**

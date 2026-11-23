@@ -93,7 +93,10 @@ export function paymentPopup(input: PaymentPopupInput): PaymentPopup {
 		return { popup: 'chooseCurrency', firstCurrency: first };
 	}
 	if (input.state === 'failed' && !billedHome && refusedAsForeignCard(input.failureReason)) {
-		return { popup: 'switchToRegionCurrency', firstCurrency: firstCurrencyFor(input.billingCountry, input.enabled) };
+		return {
+			popup: 'switchToRegionCurrency',
+			firstCurrency: firstCurrencyFor(input.billingCountry, input.enabled),
+		};
 	}
 	return { popup: null, firstCurrency: null };
 }

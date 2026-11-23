@@ -85,7 +85,11 @@ export class OrderStatusPopup {
 					? this.t(viaGateway ? 'ord_cancel_refund_gateway' : 'ord_cancel_refund_manual', { amount })
 					: null,
 			stock: this.t(
-				pieces === 1 ? 'ord_cancel_stock_one' : pieces === 2 ? 'ord_cancel_stock_two' : 'ord_cancel_stock_other',
+				pieces === 1
+					? 'ord_cancel_stock_one'
+					: pieces === 2
+						? 'ord_cancel_stock_two'
+						: 'ord_cancel_stock_other',
 				{ count: pieces },
 			),
 			told: this.t(paidINR > 0 ? 'ord_cancel_told_refund' : 'ord_cancel_told_plain'),

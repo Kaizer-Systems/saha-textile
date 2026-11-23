@@ -151,24 +151,52 @@ write_files:
 
 runcmd:
   # 4 GiB swap.
-  - [sh, -c, 'fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo "/swapfile none swap sw 0 0" >> /etc/fstab']
+  - [
+      sh,
+      -c,
+      'fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo "/swapfile none swap sw 0 0" >> /etc/fstab',
+    ]
   - [sysctl, --system]
   # Docker from Docker's own apt repository.
-  - [sh, -c, 'install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && chmod a+r /etc/apt/keyrings/docker.asc']
-  - [sh, -c, '. /etc/os-release && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list']
+  - [
+      sh,
+      -c,
+      'install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && chmod a+r /etc/apt/keyrings/docker.asc',
+    ]
+  - [
+      sh,
+      -c,
+      '. /etc/os-release && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list',
+    ]
   # cloudflared from Cloudflare's own apt repository.
-  - [sh, -c, 'curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg && echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" > /etc/apt/sources.list.d/cloudflared.list']
-  - [sh, -c, 'apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin cloudflared']
+  - [
+      sh,
+      -c,
+      'curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg && echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" > /etc/apt/sources.list.d/cloudflared.list',
+    ]
+  - [
+      sh,
+      -c,
+      'apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin cloudflared',
+    ]
   - [systemctl, enable, --now, docker]
   - [usermod, -aG, docker, '@@ADMIN_USER@@']
   # The tunnel dials out; the token file is removed once the service holds it.
-  - [sh, -c, 'cloudflared service install "$(cat /root/.saha-textile-tunnel-token)" && shred -u /root/.saha-textile-tunnel-token']
+  - [
+      sh,
+      -c,
+      'cloudflared service install "$(cat /root/.saha-textile-tunnel-token)" && shred -u /root/.saha-textile-tunnel-token',
+    ]
   # UFW is a second layer: Docker's published ports bypass it, so the Cloud Firewall is the gate.
   - [ufw, default, deny, incoming]
   - [ufw, default, allow, outgoing]
   - [ufw, allow, 443/tcp]
   - [ufw, --force, enable]
-  - [sh, -c, 'install -d -m 0755 -o root -g root /opt/saha-textile /opt/saha-textile/bin /opt/saha-textile/edge && install -d -m 0700 -o root -g root /opt/saha-textile/releases /opt/saha-textile/certs']
+  - [
+      sh,
+      -c,
+      'install -d -m 0755 -o root -g root /opt/saha-textile /opt/saha-textile/bin /opt/saha-textile/edge && install -d -m 0700 -o root -g root /opt/saha-textile/releases /opt/saha-textile/certs',
+    ]
   - [systemctl, enable, --now, unattended-upgrades]
   - [systemctl, daemon-reload]
   - [systemctl, enable, --now, saha-textile-reboot-check.timer]
@@ -176,7 +204,11 @@ runcmd:
   - [systemctl, enable, --now, saha-textile-renew-certs.timer]
   # WARP private access (owner, 21 Nov): SSH also answers on the private VPC address, reached only through the
   # tunnel's private route; the Cloud Firewall and UFW keep 22 closed to everything else.
-  - [sh, -c, 'ip=$(curl -fsS http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address) && echo "ListenAddress $ip" > /etc/ssh/sshd_config.d/61-saha-textile-private.conf || echo "first-boot: no private address for SSH" >&2']
+  - [
+      sh,
+      -c,
+      'ip=$(curl -fsS http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address) && echo "ListenAddress $ip" > /etc/ssh/sshd_config.d/61-saha-textile-private.conf || echo "first-boot: no private address for SSH" >&2',
+    ]
   - [systemctl, restart, ssh]
   - [touch, /opt/saha-textile/first-boot.done]
 

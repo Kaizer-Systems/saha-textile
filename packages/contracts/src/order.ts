@@ -385,7 +385,11 @@ export const Order = z.object({
 	/** How the admin checkout chose to take the money (ck01–ck08); null for shop orders and older rows. */
 	placedWith: z.enum(['paymentLink', 'manual', 'cashOnDelivery', 'onAccount', 'keepOpen']).nullable().optional(),
 	/** On account: the day payment falls due (order day plus the business's credit days), for the list (ol02). */
-	onAccountDueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+	onAccountDueOn: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.nullable()
+		.optional(),
 	/**
 	 * Shop orders (OD1, `DEC-STOCK-RESERVE`): the pieces are held from Pay until this time, 15 minutes
 	 * later. Null once the hold became a sale or was let go (payment failed, cancelled, or time ran out).
@@ -395,10 +399,7 @@ export const Order = z.object({
 	 * A shop payment staff must look at: a gateway answer that didn't add up (core `decidePaymentResult`
 	 * review), or a refund the gateway refused. Shown under Needs attention until cleared.
 	 */
-	paymentReview: z
-		.object({ attemptId: z.string(), reason: z.string(), at: IsoDateTime })
-		.nullable()
-		.optional(),
+	paymentReview: z.object({ attemptId: z.string(), reason: z.string(), at: IsoDateTime }).nullable().optional(),
 	/** Open orders: when it was opened and closed. */
 	openedAt: IsoDateTime.nullable().optional(),
 	closedAt: IsoDateTime.nullable().optional(),

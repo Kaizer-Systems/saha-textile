@@ -264,7 +264,9 @@ export class BusinessForm {
 	readonly addressRows = computed<CustomerAddressRow[]>(() =>
 		this.id()
 			? this.addresses()
-			: this.draftAddresses().map((row, index) => ({ ...row, id: `draft_${index}`, country: row.countryCode }) as never),
+			: this.draftAddresses().map(
+					(row, index) => ({ ...row, id: `draft_${index}`, country: row.countryCode }) as never,
+				),
 	);
 
 	addressLine(row: CustomerAddressRow): string {
@@ -299,7 +301,8 @@ export class BusinessForm {
 		if (!id) {
 			const index = row ? Number(row.id.replace('draft_', '')) : -1;
 			this.draftAddresses.update((rows) => {
-				const next = index >= 0 ? rows.map((existing, at) => (at === index ? body : existing)) : [...rows, body];
+				const next =
+					index >= 0 ? rows.map((existing, at) => (at === index ? body : existing)) : [...rows, body];
 				return body.isDefault ? next.map((existing) => ({ ...existing, isDefault: existing === body })) : next;
 			});
 			return;

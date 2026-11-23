@@ -22,20 +22,20 @@ Sources: the NIC e-invoice API developer portal (einv-apisandbox.nic.in, current
 2. Sign-in: the credentials JSON is Base64-encoded, then RSA-encrypted (PKCS#1 v1.5) with the system's public key, and sent as `{"Data": "…"}`.
 3. The answer carries an auth token and the session key (SEK), AES-256-ECB-encrypted with the app key.
 4. Later requests encrypt their JSON with the SEK (AES-256-ECB, PKCS#7) and send it Base64-encoded; answers are decrypted the same way.
-   - E-invoice: the JSON bytes are encrypted.
-   - E-way bill: the JSON is Base64-encoded first, then encrypted (`Encrypt(Base64(JSON), sek)`).
+    - E-invoice: the JSON bytes are encrypted.
+    - E-way bill: the JSON is Base64-encoded first, then encrypted (`Encrypt(Base64(JSON), sek)`).
 5. The token lives 360 minutes (60 on the e-invoice sandbox). Calling sign-in again returns the same token without extending it; `ForceRefreshAccessToken` renews it in its last 10 minutes.
 
 ## E-invoice (NIC standard; IRIS IRP 6 follows it)
 
-| Call | Method and path (NIC prefixes) | Body or answer |
-| --- | --- | --- |
-| Sign in | POST `/eivital/v1.04/auth`, headers `client_id`, `client_secret`, `Gstin` | `{UserName, Password, AppKey, ForceRefreshAccessToken}` → `{AuthToken, Sek, TokenExpiry}` |
-| Generate IRN | POST `/eicore/v1.03/Invoice` | INV-01 v1.1 → `{AckNo, AckDt, Irn, SignedInvoice, SignedQRCode, Status, EwbNo, EwbDt, EwbValidTill}` |
-| Cancel IRN | POST `/eicore/v1.03/Invoice/Cancel` | `{Irn, CnlRsn: "1" duplicate · "2" data entry mistake · "3" order cancelled · "4" others, CnlRem}` → `{Irn, CancelDate}` |
-| IRN by document | GET `/eicore/v1.03/Invoice/irnbydocdetails?doctype=&docnum=&docdate=` | Same answer as Generate; within 3 days |
-| GSTIN details | GET `/eivital/v1.04/Master/gstin/{gstin}` | `{Gstin, LegalName, TradeName, StateCode, AddrPncd, Status: ACT·CNL·INA·PRO, BlkStatus: U·B}` |
-| E-way bill by IRN | POST `/eiewb/v1.03/ewaybill` | `{Irn, Distance, TransMode, TransId, TransName, TransDocNo, TransDocDt, VehNo, VehType}` → `{EwbNo, EwbDt, EwbValidTill}` |
+| Call              | Method and path (NIC prefixes)                                            | Body or answer                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Sign in           | POST `/eivital/v1.04/auth`, headers `client_id`, `client_secret`, `Gstin` | `{UserName, Password, AppKey, ForceRefreshAccessToken}` → `{AuthToken, Sek, TokenExpiry}`                                 |
+| Generate IRN      | POST `/eicore/v1.03/Invoice`                                              | INV-01 v1.1 → `{AckNo, AckDt, Irn, SignedInvoice, SignedQRCode, Status, EwbNo, EwbDt, EwbValidTill}`                      |
+| Cancel IRN        | POST `/eicore/v1.03/Invoice/Cancel`                                       | `{Irn, CnlRsn: "1" duplicate · "2" data entry mistake · "3" order cancelled · "4" others, CnlRem}` → `{Irn, CancelDate}`  |
+| IRN by document   | GET `/eicore/v1.03/Invoice/irnbydocdetails?doctype=&docnum=&docdate=`     | Same answer as Generate; within 3 days                                                                                    |
+| GSTIN details     | GET `/eivital/v1.04/Master/gstin/{gstin}`                                 | `{Gstin, LegalName, TradeName, StateCode, AddrPncd, Status: ACT·CNL·INA·PRO, BlkStatus: U·B}`                             |
+| E-way bill by IRN | POST `/eiewb/v1.03/ewaybill`                                              | `{Irn, Distance, TransMode, TransId, TransName, TransDocNo, TransDocDt, VehNo, VehType}` → `{EwbNo, EwbDt, EwbValidTill}` |
 
 Calls after sign-in carry `client_id`, `client_secret`, `Gstin`, `user_name` and `AuthToken`. Errors come as `ErrorDetails`: a list (or Base64 JSON list) of `{ErrorCode, ErrorMessage}`.
 
@@ -62,13 +62,13 @@ The IRP accepts each value within its tolerance: from one rupee below the rupee 
 
 ## E-way bill (NIC, v1.03)
 
-| Call | Request | Answer |
-| --- | --- | --- |
-| Sign in | POST `/ewaybillapi/v1.03/auth`, headers `client-id`, `client-secret`, `Gstin`; `{action: "ACCESSTOKEN", username, password, app_key}` | `{status, authtoken, sek}` |
-| Generate | POST `/ewaybillapi/v1.03/ewayapi` `{action: "GENEWAYBILL", data}` | `{ewayBillNo, ewayBillDate, validUpto, alert}` |
-| Part B | `VEHEWB` `{ewbNo, vehicleNo, fromPlace, fromState, reasonCode 1 breakdown · 2 transhipment · 3 others · 4 first time, reasonRem, transDocNo, transDocDate, transMode, vehicleType}` | `{vehUpdDate, validUpto}` |
-| Cancel | `CANEWB` `{ewbNo, cancelRsnCode 1 duplicate · 2 order cancelled · 3 data entry mistake · 4 others, cancelRmrk}` | `{ewayBillNo, cancelDate}` |
-| Extend | `EXTENDVALIDITY` `{ewbNo, vehicleNo, fromPlace, fromState, remainingDistance, transDocNo, transDocDate, transMode, extnRsnCode, extnRemarks, fromPincode, consignmentStatus M · T, transitType, addressLine1–3}` | `{ewayBillNo, updatedDate, validUpto}` |
+| Call     | Request                                                                                                                                                                                                          | Answer                                         |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Sign in  | POST `/ewaybillapi/v1.03/auth`, headers `client-id`, `client-secret`, `Gstin`; `{action: "ACCESSTOKEN", username, password, app_key}`                                                                            | `{status, authtoken, sek}`                     |
+| Generate | POST `/ewaybillapi/v1.03/ewayapi` `{action: "GENEWAYBILL", data}`                                                                                                                                                | `{ewayBillNo, ewayBillDate, validUpto, alert}` |
+| Part B   | `VEHEWB` `{ewbNo, vehicleNo, fromPlace, fromState, reasonCode 1 breakdown · 2 transhipment · 3 others · 4 first time, reasonRem, transDocNo, transDocDate, transMode, vehicleType}`                              | `{vehUpdDate, validUpto}`                      |
+| Cancel   | `CANEWB` `{ewbNo, cancelRsnCode 1 duplicate · 2 order cancelled · 3 data entry mistake · 4 others, cancelRmrk}`                                                                                                  | `{ewayBillNo, cancelDate}`                     |
+| Extend   | `EXTENDVALIDITY` `{ewbNo, vehicleNo, fromPlace, fromState, remainingDistance, transDocNo, transDocDate, transMode, extnRsnCode, extnRemarks, fromPincode, consignmentStatus M · T, transitType, addressLine1–3}` | `{ewayBillNo, updatedDate, validUpto}`         |
 
 Action calls carry `client-id`, `client-secret`, `gstin` and `authtoken`. Errors come as `{status: "0", error: {errorCodes: "238,"}}`, sometimes Base64-wrapped.
 

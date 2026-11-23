@@ -158,7 +158,9 @@ export function evaluateZoneFormula(formula: ZonePriceFormula, facts: ZoneLineFa
 				: { kind: 'price', amount: facts.purchaseCostINR * (1 + formula.percent / 100), addOns: null };
 		case 'pricePerMetre':
 			// Prices of fabric by the metre are per metre; on a piece this formula doesn't apply.
-			return facts.metres === null ? { kind: 'skip' } : { kind: 'price', amount: formula.amountINR, addOns: null };
+			return facts.metres === null
+				? { kind: 'skip' }
+				: { kind: 'price', amount: formula.amountINR, addOns: null };
 		case 'quantityBreaks': {
 			const step = [...formula.breaks]
 				.sort((a, b) => b.minQuantity - a.minQuantity)

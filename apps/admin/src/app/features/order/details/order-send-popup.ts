@@ -43,7 +43,7 @@ export interface SendOutcome {
 				{{ (channel() === 'sms' ? 'ord_send_sms_intro' : 'ord_send_email_intro') | transloco }}
 			</p>
 			@if (preview(); as message) {
-				<ul class="list-unstyled small mb-0 mt-3">
+				<ul class="list-unstyled small mt-3 mb-0">
 					<li class="mb-1">
 						<span class="text-muted">{{ 'ord_send_to' | transloco }}:</span>
 						{{ toLine() }}
@@ -65,7 +65,7 @@ export interface SendOutcome {
 					}
 				</ul>
 				@if (channel() === 'sms') {
-					<div class="mt-3 rounded border bg-light p-3 small">
+					<div class="bg-light small mt-3 rounded border p-3">
 						<div class="text-muted mb-1">{{ 'ord_send_sms_from' | transloco }}</div>
 						<div class="text-break">{{ message.text }}</div>
 					</div>

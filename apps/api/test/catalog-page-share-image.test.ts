@@ -159,7 +159,9 @@ describe('the Meta image: a share picture chosen in the admin (owner, 17 Nov)', 
 	}
 
 	it('sends the chosen version at the link-preview width, as JPEG, over the main photo', async () => {
-		const page = await withShare({ assetId: 'med_share', versionId: 'link_preview.crop' }).page('red-banarasi-saree');
+		const page = await withShare({ assetId: 'med_share', versionId: 'link_preview.crop' }).page(
+			'red-banarasi-saree',
+		);
 		expect(page.shareImageUrl).toBe('https://cdn.test/media/link_preview.crop-1200.jpg');
 		expect(page.shareImageSize).toEqual({ width: 1200, height: 628, type: 'image/jpeg' });
 		// The tall Story card stays the main photo's.
@@ -172,7 +174,10 @@ describe('the Meta image: a share picture chosen in the admin (owner, 17 Nov)', 
 	});
 
 	it('falls back to the main photo’s card when the chosen photo is in the bin or unknown', async () => {
-		const binned = withShare({ assetId: 'med_share', versionId: 'link_preview.crop' }, chosen('2026-11-17T01:00:00.000Z'));
+		const binned = withShare(
+			{ assetId: 'med_share', versionId: 'link_preview.crop' },
+			chosen('2026-11-17T01:00:00.000Z'),
+		);
 		expect((await binned.page('red-banarasi-saree')).shareImageUrl).toBe('https://cdn.test/media/share-1200.jpg');
 		const unknown = withShare({ assetId: 'med_gone', versionId: null });
 		expect((await unknown.page('red-banarasi-saree')).shareImageUrl).toBe('https://cdn.test/media/share-1200.jpg');
@@ -219,7 +224,10 @@ describe('the Variation image: a variant’s own picture at its version (owner, 
 	}
 
 	it('points at the gallery photo when the variant’s picture is one of them', async () => {
-		const page = await pageWith([row('var_r', 'red'), row('var_b', 'blue', { primaryAssetId: 'med_back', primaryVersionId: null })]);
+		const page = await pageWith([
+			row('var_r', 'red'),
+			row('var_b', 'blue', { primaryAssetId: 'med_back', primaryVersionId: null }),
+		]);
 		expect(page.gallery).toHaveLength(2);
 		expect(page.variants.find((each) => each.id === 'var_b')?.galleryIndex).toBe(1);
 		expect(page.variants.find((each) => each.id === 'var_r')?.galleryIndex).toBeNull();

@@ -212,6 +212,7 @@ The zone already exists, and WordPress sits behind it. Read the current zone set
 - **Rate limit (Free plan):** 1 rule, 10-second window, counted per IP, matched on path. It covers sign-in and OTP paths. Finer limits live in Nginx and the API.
 - **Off:** Bot Fight Mode, which no rule can skip and which can challenge API traffic. Rocket Loader and email obfuscation, which rewrite HTML.
 - **Staging privacy:** a Cloudflare Access login wall on `staging.` and `admin-staging.`, allowing only the owner. `api-staging.` stays reachable so webhooks work, with `noindex` and no real customer data.
+- **Search engines (owner, 2026-11-24):** only the production shop is listed. On staging and a development server (`DEPLOY_ENV`), the shop's `robots.txt` says `Disallow: /` and every shop answer carries `X-Robots-Tag: noindex, nofollow`, even with the login wall off. The admin page (`<meta name="robots">`) and every API answer (`X-Robots-Tag`) say `noindex, nofollow` in every environment, production included. The production shop keeps `Allow: /`, its sitemap, and `noindex` only on private pages. The production proof checks the staging side.
 - **Production admin:** no Access wall at launch. The real sign-in is on `api.`, so a wall on `admin.` would add little.
 
 ## 10. Rollback

@@ -154,12 +154,13 @@ describe('createApp', () => {
 		expect(limiter['errorResponseBuilder']?.()).toBeInstanceOf(HttpException);
 	});
 
-	it('echoes the request id on every reply', async () => {
+	it('echoes the request id on every reply, and keeps every reply out of search engines', async () => {
 		await createApp(config);
 		const reply = { header: vi.fn() };
 		const done = vi.fn();
 		hooks[0]?.({ id: 'r1' }, reply, 'body', done);
 		expect(reply.header).toHaveBeenCalledWith(expect.any(String), 'r1');
+		expect(reply.header).toHaveBeenCalledWith('X-Robots-Tag', 'noindex, nofollow');
 		expect(done).toHaveBeenCalledTimes(1);
 	});
 });

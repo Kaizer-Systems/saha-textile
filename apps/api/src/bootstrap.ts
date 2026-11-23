@@ -147,9 +147,11 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 	const instance = app.getHttpAdapter().getInstance();
 
 	// Echo the correlation id on every response, including successful ones, so a client
-	// or a support ticket can always name the exact request.
+	// or a support ticket can always name the exact request. No API answer belongs in a search
+	// engine, in any environment (owner, 2026-11-24).
 	instance.addHook('onSend', (request, reply, payload, done) => {
 		void reply.header(REQUEST_ID_HEADER, request.id);
+		void reply.header('X-Robots-Tag', 'noindex, nofollow');
 		done();
 	});
 	// Every log line written while a request is handled names that request.

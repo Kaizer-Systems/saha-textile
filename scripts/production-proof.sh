@@ -316,6 +316,17 @@ shows 'in Bengali for a Bengali browser' "$API_HOST" /payments/ccavenue/return "
 in_release "$FIRST" up --detach --no-deps --wait --wait-timeout 120 api >/dev/null 2>&1
 expect 'everything answers again' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 
+echo 'Search engines (owner, 2026-11-24: only the production shop is listed)'
+# The proof deploys as staging: its shop asks crawlers to stay out and marks every page noindex.
+grep -q '^Disallow: /$' <<<"$(page "$SITE_HOST" /robots.txt)" &&
+	pass "staging's robots.txt asks every crawler to stay out" || fail "staging's robots.txt still allows crawling"
+grep -qi '^x-robots-tag: noindex, nofollow' <<<"$(page "$SITE_HOST" /en/ -o /dev/null -D -)" &&
+	pass 'a staging shop page says noindex' || fail 'a staging shop page does not say noindex'
+grep -qi '^x-robots-tag: noindex, nofollow' <<<"$(page "$API_HOST" /health/live -o /dev/null -D -)" &&
+	pass 'an API answer says noindex' || fail 'an API answer does not say noindex'
+grep -q 'name="robots" content="noindex, nofollow"' <<<"$(page "$ADMIN_HOST" /)" &&
+	pass 'the admin page says noindex' || fail 'the admin page does not say noindex'
+
 echo 'Two copies of each web service'
 expect 'the API runs two copies' "$(in_release "$FIRST" ps --quiet api | wc -l | tr -d ' ')" 2
 expect 'the storefront runs two copies' "$(in_release "$FIRST" ps --quiet storefront | wc -l | tr -d ' ')" 2

@@ -2,6 +2,7 @@ import { defineEventHandler, getRequestURL, send, setResponseHeaders } from 'h3'
 
 import { DEFAULT_LOCALE, localeOfPath, refreshSupportedLocales, supportedLocales } from '../../app/core/i18n/locale';
 import { serverApiUrl } from '../api-url';
+import { hiddenFromSearch } from '../search-visibility';
 
 /**
  * Pages the storefront itself owns, listed in every language beside the API's products,
@@ -103,7 +104,10 @@ export default defineEventHandler(async (event) => {
 		setResponseHeaders(event, { 'Cache-Control': 'public, max-age=3600' });
 		await send(
 			event,
-			`User-agent: *\nAllow: /\n\nSitemap: ${originOf()}/sitemap.xml\n`,
+			// Staging and a development server ask every crawler to stay out (search-visibility.ts).
+			hiddenFromSearch()
+				? 'User-agent: *\nDisallow: /\n'
+				: `User-agent: *\nAllow: /\n\nSitemap: ${originOf()}/sitemap.xml\n`,
 			'text/plain; charset=utf-8',
 		);
 		return true;

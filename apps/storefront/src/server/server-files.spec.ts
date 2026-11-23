@@ -4,8 +4,10 @@ import { LOCAL_ADMIN_ORIGIN, previewAdminOrigin } from './admin-origin';
 import { serverApiUrl } from './api-url';
 import locale from './middleware/locale';
 import preview from './middleware/preview';
+import searchVisibility from './middleware/search-visibility';
 import seoFiles from './middleware/seo-files';
 import webManifest from './middleware/web-manifest';
+import { hiddenFromSearch } from './search-visibility';
 
 const h3 = vi.hoisted(() => ({
 	getCookie: vi.fn(() => undefined as string | undefined),
@@ -45,6 +47,38 @@ afterEach(() => {
 	delete process.env['SAHA_TEXTILE_PUBLIC_CONFIG'];
 	delete process.env['ADMIN_ORIGIN'];
 	delete process.env['DEPLOY_ENV'];
+});
+
+describe('search visibility', () => {
+	const run = (input: unknown) => (searchVisibility as unknown as (event: unknown) => unknown)(input);
+
+	it('marks every answer noindex on staging and a development server, and nothing elsewhere', () => {
+		for (const deployEnv of ['staging', 'development']) {
+			process.env['DEPLOY_ENV'] = deployEnv;
+			expect(hiddenFromSearch()).toBe(true);
+			run(event('/en/product/x'));
+			expect(h3.setResponseHeaders).toHaveBeenLastCalledWith(expect.anything(), {
+				'X-Robots-Tag': 'noindex, nofollow',
+			});
+		}
+		h3.setResponseHeaders.mockClear();
+		for (const deployEnv of ['production', 'local', undefined]) {
+			if (deployEnv) process.env['DEPLOY_ENV'] = deployEnv;
+			else delete process.env['DEPLOY_ENV'];
+			expect(hiddenFromSearch()).toBe(false);
+			run(event('/en/product/x'));
+		}
+		expect(h3.setResponseHeaders).not.toHaveBeenCalled();
+	});
+
+	it('reads no environment where there is no process', () => {
+		vi.stubGlobal('process', undefined);
+		try {
+			expect(hiddenFromSearch()).toBe(false);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 });
 
 describe('serverApiUrl', () => {
@@ -178,6 +212,25 @@ describe('SEO files', () => {
 		expect(h3.send).toHaveBeenLastCalledWith(
 			expect.anything(),
 			expect.stringContaining('https://origin.test/'),
+			expect.any(String),
+		);
+	});
+
+	it('asks every crawler to stay out of staging and a development server', async () => {
+		for (const deployEnv of ['staging', 'development']) {
+			process.env['DEPLOY_ENV'] = deployEnv;
+			expect(await run(event('/robots.txt', {}, { host: 'staging.test' }))).toBe(true);
+			expect(h3.send).toHaveBeenLastCalledWith(
+				expect.anything(),
+				'User-agent: *\nDisallow: /\n',
+				expect.any(String),
+			);
+		}
+		process.env['DEPLOY_ENV'] = 'production';
+		await run(event('/robots.txt', {}, { host: 'shop.test' }));
+		expect(h3.send).toHaveBeenLastCalledWith(
+			expect.anything(),
+			expect.stringContaining('Allow: /\n\nSitemap: https://shop.test/sitemap.xml'),
 			expect.any(String),
 		);
 	});

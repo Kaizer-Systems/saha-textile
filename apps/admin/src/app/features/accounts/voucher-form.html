@@ -3,24 +3,39 @@
 	[title]="'accounts_voucher_new'"
 >
 	<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-		<small class="text-muted">{{ 'accounts_number_when_posted' | transloco }}</small>
-		<button
-			type="button"
-			class="btn btn-theme"
-			id="voucher_post"
-			[disabled]="posting() || !canPost()"
-			(click)="post()"
-		>
-			<i class="ri-check-line"></i>
-			{{ 'accounts_post' | transloco }}
-		</button>
+		<small class="text-muted">
+			@if (draftId()) {
+			<span class="badge bg-light text-dark me-1">{{ 'accounts_draft' | transloco }}</span>
+			} {{ 'accounts_number_when_posted' | transloco }} @if (draftBy()) { · {{ 'accounts_draft_by' | transloco: { name: draftBy() } }} }
+		</small>
+		<div class="d-flex gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="voucher_save_draft"
+				[disabled]="savingDraft() || posting()"
+				(click)="saveDraft()"
+			>
+				{{ 'accounts_save_draft' | transloco }}
+			</button>
+			<button
+				type="button"
+				class="btn btn-theme"
+				id="voucher_post"
+				[disabled]="posting() || !canPost()"
+				(click)="post()"
+			>
+				<i class="ri-check-line"></i>
+				{{ 'accounts_post' | transloco }}
+			</button>
+		</div>
 	</div>
 	<div class="row g-3">
 		<div class="col-xl-8">
 			<div class="card">
 				<div class="card-body">
 					<div class="row g-3">
-						<div class="col-md-4">
+						<div class="col-md-3">
 							<label
 								class="form-label-title"
 								for="voucher_date"
@@ -35,7 +50,7 @@
 								(ngModelChange)="date.set($event)"
 							/>
 						</div>
-						<div class="col-md-4">
+						<div class="col-md-3">
 							<label
 								class="form-label-title"
 								for="voucher_kind"
@@ -53,7 +68,7 @@
 								}
 							</select>
 						</div>
-						<div class="col-md-4">
+						<div class="col-md-3">
 							<label
 								class="form-label-title"
 								for="voucher_reverse_on"
@@ -68,6 +83,31 @@
 								(ngModelChange)="reverseOn.set($event)"
 							/>
 							<small class="help-text d-block">{{ 'accounts_reverse_on_help' | transloco }}</small>
+						</div>
+						<div class="col-md-3">
+							<span class="form-label-title d-block">{{ 'accounts_attach' | transloco }}</span>
+							@for (file of attachments(); track file.assetId) {
+							<div class="d-flex align-items-center small gap-2">
+								<i class="ri-attachment-2"></i>
+								<span class="text-truncate">{{ file.name }}</span>
+								<a
+									href="javascript:void(0)"
+									[title]="'accounts_remove_attachment' | transloco"
+									(click)="removeAttachment(file.assetId)"
+								>
+									<i class="ri-close-line"></i>
+								</a>
+							</div>
+							}
+							<a
+								href="javascript:void(0)"
+								class="text-decoration-underline small"
+								id="voucher_attach"
+								(click)="attach()"
+							>
+								<i class="ri-attachment-2"></i>
+								{{ 'accounts_add_file' | transloco }}
+							</a>
 						</div>
 					</div>
 				</div>

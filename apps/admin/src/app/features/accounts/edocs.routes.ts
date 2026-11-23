@@ -17,6 +17,7 @@ export default [
 	},
 	{ path: 'vouchers', loadComponent: () => import('./vouchers-list').then((m) => m.VouchersListPage) },
 	{ path: 'vouchers/new', loadComponent: () => import('./voucher-form').then((m) => m.VoucherFormPage) },
+	{ path: 'vouchers/drafts/:draftId', loadComponent: () => import('./voucher-form').then((m) => m.VoucherFormPage) },
 	{ path: 'vouchers/:id', loadComponent: () => import('./voucher-view').then((m) => m.VoucherViewPage) },
 	{ path: 'ledgers', loadComponent: () => import('./chart-of-accounts').then((m) => m.ChartOfAccountsPage) },
 	{ path: 'ledgers/:id', loadComponent: () => import('./ledger-statement').then((m) => m.LedgerStatementPage) },

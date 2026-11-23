@@ -5,6 +5,7 @@ import {
 	JournalVoucher,
 	Ledger,
 	PeriodLock,
+	VoucherDraft,
 	type VoucherKind,
 } from '@saha-textile/contracts';
 import {
@@ -23,6 +24,7 @@ import {
 	JournalVoucherModel,
 	LedgerModel,
 	PeriodLockModel,
+	VoucherDraftModel,
 } from '../models/ledger.model';
 import type { AggregateDoc } from '../models/purchasing.model';
 import { sessionFrom } from '../transaction-manager';
@@ -221,6 +223,30 @@ export class MongoGeneralLedgerRepository implements GeneralLedgerRepository {
 
 	async ledgerInUse(ledgerId: string): Promise<boolean> {
 		return !!(await JournalLineModel.exists({ ledgerId }).exec());
+	}
+
+	async listDrafts(): Promise<VoucherDraft[]> {
+		const docs = await VoucherDraftModel.find({}).sort({ updatedAt: -1 }).limit(500).lean<AggregateDoc[]>().exec();
+		return docs.map((doc) => VoucherDraft.parse({ ...strip(doc), id: doc._id }));
+	}
+
+	async getDraft(id: string): Promise<VoucherDraft | null> {
+		const doc = await VoucherDraftModel.findById(id).lean<AggregateDoc>().exec();
+		return doc ? VoucherDraft.parse({ ...strip(doc), id: doc._id }) : null;
+	}
+
+	async saveDraft(draft: VoucherDraft, expectedUpdatedAt: string | null): Promise<void> {
+		const { id, ...rest } = draft;
+		if (expectedUpdatedAt === null) {
+			await VoucherDraftModel.create({ _id: id, ...rest });
+			return;
+		}
+		const result = await VoucherDraftModel.replaceOne({ _id: id, updatedAt: expectedUpdatedAt }, rest).exec();
+		if (result.matchedCount !== 1) throw new StaleRevisionError('voucherDraft', id);
+	}
+
+	async deleteDraft(id: string, context?: TransactionContext): Promise<void> {
+		await VoucherDraftModel.deleteOne({ _id: id }, { session: sessionFrom(context) }).exec();
 	}
 }
 

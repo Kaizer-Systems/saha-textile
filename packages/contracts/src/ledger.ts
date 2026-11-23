@@ -82,6 +82,10 @@ export const JournalLine = z.object({
 });
 export type JournalLine = z.infer<typeof JournalLine>;
 
+/** A file kept with a voucher (Q3 Attach): a Media Library file, by id, with the name shown. */
+export const VoucherAttachment = z.object({ assetId: Id, name: z.string().trim().min(1).max(200) });
+export type VoucherAttachment = z.infer<typeof VoucherAttachment>;
+
 export const JournalVoucher = z.object({
 	id: Id,
 	number: z.string().min(1),
@@ -101,7 +105,7 @@ export const JournalVoucher = z.object({
 	reverseOn: IsoDate.nullable().default(null),
 	/** Posting the same key again returns the first voucher instead of a second one. */
 	idempotencyKey: z.string().min(8).max(120).nullable().default(null),
-	attachmentIds: z.array(Id).max(20).default([]),
+	attachments: z.array(VoucherAttachment).max(20).default([]),
 	totalPaise: Paise,
 	createdBy: Id.nullable().default(null),
 	createdAt: IsoDateTime,
@@ -126,9 +130,11 @@ export const JournalVoucherWrite = z.object({
 		.min(2)
 		.max(100),
 	reverseOn: IsoDate.nullable().default(null),
-	attachmentIds: z.array(Id).max(20).default([]),
+	attachments: z.array(VoucherAttachment).max(20).default([]),
 	/** Made by the form once, so a double click or a retry never posts twice. */
 	idempotencyKey: z.string().min(8).max(120),
+	/** Posted from a saved draft: the draft goes in the same transaction. */
+	draftId: Id.nullable().default(null),
 });
 export type JournalVoucherWrite = z.infer<typeof JournalVoucherWrite>;
 
@@ -277,3 +283,46 @@ export type DocumentLockTarget = z.infer<typeof DocumentLockTarget>;
 /** Q1's balances on a day. */
 export const BalancesQuery = z.object({ on: IsoDate });
 export type BalancesQuery = z.infer<typeof BalancesQuery>;
+
+/** A draft line may be half filled: Save draft keeps whatever is typed; Post checks it all (Q3). */
+export const VoucherDraftLine = z.object({
+	ledgerId: z.string().max(80).default(''),
+	locationId: z.string().max(80).default(''),
+	debitPaise: Paise.default(0),
+	creditPaise: Paise.default(0),
+	narration: z.string().trim().max(200).default(''),
+});
+export type VoucherDraftLine = z.infer<typeof VoucherDraftLine>;
+
+/** Q3 Save draft: a voucher not yet posted, with no number; anyone who may post can open and finish it. */
+export const VoucherDraft = z.object({
+	id: Id,
+	kind: z.enum(HAND_VOUCHER_KINDS),
+	date: IsoDate,
+	narration: z.string().trim().max(500).default(''),
+	lines: z.array(VoucherDraftLine).max(100).default([]),
+	reverseOn: IsoDate.nullable().default(null),
+	attachments: z.array(VoucherAttachment).max(20).default([]),
+	createdBy: Id.nullable().default(null),
+	createdByName: z.string().default(''),
+	createdAt: IsoDateTime,
+	updatedAt: IsoDateTime,
+	updatedBy: Id.nullable().default(null),
+});
+export type VoucherDraft = z.infer<typeof VoucherDraft>;
+
+export const VoucherDraftWrite = VoucherDraft.pick({
+	kind: true,
+	date: true,
+	narration: true,
+	lines: true,
+	reverseOn: true,
+	attachments: true,
+}).extend({ expectedUpdatedAt: IsoDateTime.nullable().default(null) });
+export type VoucherDraftWrite = z.infer<typeof VoucherDraftWrite>;
+
+/** A voucher as its page reads it: with each attachment's link. */
+export const VoucherDetail = JournalVoucher.extend({
+	attachmentLinks: z.array(VoucherAttachment.extend({ url: z.string().nullable() })).default([]),
+});
+export type VoucherDetail = z.infer<typeof VoucherDetail>;

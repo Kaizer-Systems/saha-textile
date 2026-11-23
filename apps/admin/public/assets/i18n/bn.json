@@ -7597,5 +7597,21 @@
 	"routing_who_location_staff_may": "না",
 	"routing_saved": "সেভ হয়েছে",
 	"routing_save_failed": "সেভ হয়নি। পেজ আবার খুলে চেষ্টা করুন।",
-	"search_hint_setting_order_routing": "নতুন অনলাইন অর্ডার কোন জায়গা থেকে যাবে"
+	"search_hint_setting_order_routing": "নতুন অনলাইন অর্ডার কোন জায়গা থেকে যাবে",
+	"accounts_attach": "সংযুক্ত",
+	"accounts_attach_files": "ভাউচারে ফাইল যোগ করুন",
+	"accounts_add_file": "ফাইল যোগ করুন",
+	"accounts_remove_attachment": "ফাইল সরান",
+	"accounts_attachments": "ফাইল",
+	"accounts_save_draft": "ড্রাফট সেভ করুন",
+	"accounts_draft": "ড্রাফট",
+	"accounts_draft_by": "সেভ করেছেন {{name}}",
+	"accounts_draft_saved": "ড্রাফট সেভ হয়েছে",
+	"accounts_draft_changed": "অন্য কেউ এই ড্রাফট সেভ করেছেন। আবার খুলুন।",
+	"accounts_draft_failed": "ড্রাফট সেভ হয়নি। আবার চেষ্টা করুন।",
+	"accounts_tab_posted": "পোস্ট হয়েছে",
+	"accounts_tab_drafts": "ড্রাফট",
+	"accounts_saved_by": "কে সেভ করেছেন",
+	"accounts_delete_draft": "ড্রাফট মুছুন",
+	"accounts_no_drafts": "কোনো ড্রাফট নেই।"
 }

@@ -5,6 +5,7 @@ import type {
 	JournalVoucher,
 	Ledger,
 	PeriodLock,
+	VoucherDraft,
 	VoucherKind,
 } from '@saha-textile/contracts';
 
@@ -49,6 +50,12 @@ export interface GeneralLedgerRepository {
 	dueReversals(day: string): Promise<JournalVoucher[]>;
 	/** Whether any posted line uses the ledger (a used ledger is switched off, never removed). */
 	ledgerInUse(ledgerId: string): Promise<boolean>;
+	/** Q3 drafts: not posted, no number. */
+	listDrafts(): Promise<VoucherDraft[]>;
+	getDraft(id: string): Promise<VoucherDraft | null>;
+	/** Refused with `StaleRevisionError` when `expectedUpdatedAt` no longer matches (null = a new draft). */
+	saveDraft(draft: VoucherDraft, expectedUpdatedAt: string | null): Promise<void>;
+	deleteDraft(id: string, context?: TransactionContext): Promise<void>;
 }
 
 export interface PeriodLockRepository {

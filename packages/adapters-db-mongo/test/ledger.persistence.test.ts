@@ -10,6 +10,7 @@ import {
 	JournalVoucherModel,
 	LedgerModel,
 	PeriodLockModel,
+	VoucherDraftModel,
 } from '../src/models/ledger.model';
 import {
 	MongoDocumentLockRepository,
@@ -172,5 +173,30 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		expect((await locks.acquire(theirs, '2026-11-23T10:05:00.000Z')).holderId).toBe('adm_b');
 		await locks.release('voucher', 'v1', 'adm_b');
 		expect(await locks.get('voucher', 'v1')).toBeNull();
+	});
+
+	it('keeps drafts, saves them only over the copy read, and removes them', async () => {
+		const draft = {
+			id: 'vd_1',
+			kind: 'journal' as const,
+			date: '2026-11-30',
+			narration: 'Electricity accrual',
+			lines: [{ ledgerId: 'rent', locationId: '', debitPaise: 840_000, creditPaise: 0, narration: '' }],
+			reverseOn: null,
+			attachments: [{ assetId: 'ast_1', name: 'cesc-bill-nov.pdf' }],
+			createdBy: 'adm_a',
+			createdByName: 'A',
+			createdAt: at,
+			updatedAt: at,
+			updatedBy: 'adm_a',
+		};
+		await repo.saveDraft(draft, null);
+		const later = { ...draft, narration: 'Electricity accrual, November', updatedAt: '2026-11-23T11:00:00.000Z' };
+		await repo.saveDraft(later, at);
+		await expect(repo.saveDraft({ ...later, narration: 'x' }, at)).rejects.toBeInstanceOf(StaleRevisionError);
+		expect((await repo.listDrafts()).map((d) => d.narration)).toEqual(['Electricity accrual, November']);
+		expect((await repo.getDraft('vd_1'))?.attachments[0]?.name).toBe('cesc-bill-nov.pdf');
+		await repo.deleteDraft('vd_1');
+		expect(await repo.getDraft('vd_1')).toBeNull();
 	});
 });

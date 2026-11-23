@@ -18,6 +18,9 @@ import type {
 	PeriodLock,
 	PeriodLockWrite,
 	VoucherKind,
+	VoucherDetail,
+	VoucherDraft,
+	VoucherDraftWrite,
 	VoucherPage,
 	VoucherReverse,
 } from '@saha-textile/contracts';
@@ -29,6 +32,8 @@ export const LEDGER_KEYS = {
 	statement: (id: string) => ['accounts', 'statement', id] as const,
 	vouchers: ['accounts', 'vouchers'] as const,
 	voucher: (id: string) => ['accounts', 'voucher', id] as const,
+	drafts: ['accounts', 'drafts'] as const,
+	draft: (id: string) => ['accounts', 'draft', id] as const,
 	periods: ['accounts', 'periods'] as const,
 };
 
@@ -69,8 +74,22 @@ export class LedgerGateway {
 		for (const kind of q.kinds) params = params.append('kinds', kind);
 		return this.http.get<VoucherPage>(this.api('/vouchers'), { params });
 	}
-	voucher(id: string): Observable<JournalVoucher> {
-		return this.http.get<JournalVoucher>(this.api(`/vouchers/${encodeURIComponent(id)}`));
+	voucher(id: string): Observable<VoucherDetail> {
+		return this.http.get<VoucherDetail>(this.api(`/vouchers/${encodeURIComponent(id)}`));
+	}
+	drafts(): Observable<VoucherDraft[]> {
+		return this.http.get<VoucherDraft[]>(this.api('/vouchers/drafts'));
+	}
+	draft(id: string): Observable<VoucherDraft> {
+		return this.http.get<VoucherDraft>(this.api(`/vouchers/drafts/${encodeURIComponent(id)}`));
+	}
+	saveDraft(id: string | null, write: VoucherDraftWrite): Observable<VoucherDraft> {
+		return id
+			? this.http.put<VoucherDraft>(this.api(`/vouchers/drafts/${encodeURIComponent(id)}`), write, QUIET)
+			: this.http.post<VoucherDraft>(this.api('/vouchers/drafts'), write, QUIET);
+	}
+	deleteDraft(id: string): Observable<void> {
+		return this.http.delete<void>(this.api(`/vouchers/drafts/${encodeURIComponent(id)}`), QUIET);
 	}
 	post(write: JournalVoucherWrite): Observable<JournalVoucher> {
 		return this.http.post<JournalVoucher>(this.api('/vouchers'), write, QUIET);

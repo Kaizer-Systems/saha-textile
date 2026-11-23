@@ -6,6 +6,7 @@ import type {
 	JournalVoucher,
 	Ledger,
 	PeriodLock,
+	VoucherDraft,
 } from '@saha-textile/contracts';
 import type { StatementLine } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
@@ -84,6 +85,19 @@ class MemoryBooks {
 	async ledgerInUse() {
 		return false;
 	}
+	drafts = new Map<string, VoucherDraft>();
+	async listDrafts() {
+		return [...this.drafts.values()];
+	}
+	async getDraft(id: string) {
+		return this.drafts.get(id) ?? null;
+	}
+	async saveDraft(draft: VoucherDraft) {
+		this.drafts.set(draft.id, draft);
+	}
+	async deleteDraft(id: string) {
+		this.drafts.delete(id);
+	}
 }
 
 const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'private_limited' } = {}) => {
@@ -130,6 +144,8 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 		{ findByKey: async () => ({ id: 'role_admin' }) } as never,
 		{ findActive: async (userId: string) => (userId === 'adm_owner' ? { userId } : null) } as never,
 		{ findById: async (id: string) => ({ id, displayName: id === 'adm_owner' ? 'Owner' : 'Manager' }) } as never,
+		{ findManyByIds: async () => [{ id: 'ast_1', originalStorageKey: 'media/bill.pdf' }] } as never,
+		{ getUrl: (key: string) => `https://cdn.example/${key}` } as never,
 		{ issue: async () => `JV/26-27/${String(++counter).padStart(6, '0')}` } as never,
 		{
 			scope: async (principal: { userId: string }) =>
@@ -164,7 +180,8 @@ const rentPaid = (patch: Record<string, unknown> = {}) => ({
 		{ ledgerId: 'led_cash', locationId: 'loc_bar', debitPaise: 0, creditPaise: 1_500_000, narration: '' },
 	],
 	reverseOn: null,
-	attachmentIds: [],
+	attachments: [],
+	draftId: null,
 	idempotencyKey: 'rent-nov-0001',
 	...patch,
 });
@@ -281,5 +298,32 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		expect((await service.lockDocument('voucher', 'jv_1', owner)).holderName).toBe('Owner');
 		expect((await service.lockDocument('voucher', 'jv_1', manager)).holderName).toBe('Owner');
 		await expect(service.takeOverDocument('voucher', 'jv_1', manager)).rejects.toBeInstanceOf(ForbiddenException);
+	});
+
+	it('saves a half-filled draft, then posts it with its attachment and removes the draft', async () => {
+		const { service, books } = setup();
+		const draft = await service.saveDraft(
+			null,
+			{
+				kind: 'payment',
+				date: '2026-11-05',
+				narration: 'November rent',
+				lines: [{ ledgerId: 'led_rent', locationId: '', debitPaise: 1_500_000, creditPaise: 0, narration: '' }],
+				reverseOn: null,
+				attachments: [{ assetId: 'ast_1', name: 'rent-receipt.pdf' }],
+				expectedUpdatedAt: null,
+			},
+			owner,
+		);
+		expect(draft).toMatchObject({ createdByName: 'Owner' });
+		const posted = await service.postByHand(
+			rentPaid({ draftId: draft.id, attachments: draft.attachments, idempotencyKey: 'from-draft-01' }),
+			owner,
+		);
+		expect(books.drafts.size).toBe(0);
+		const detail = await service.voucher(posted.id);
+		expect(detail.attachmentLinks).toEqual([
+			{ assetId: 'ast_1', name: 'rent-receipt.pdf', url: 'https://cdn.example/media/bill.pdf' },
+		]);
 	});
 });

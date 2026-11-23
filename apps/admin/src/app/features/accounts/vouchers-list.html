@@ -2,6 +2,71 @@
 	[gridClass]="'col-sm-12'"
 	[title]="'accounts_vouchers'"
 >
+	@if (canPost()) {
+	<ul class="nav nav-tabs mb-3">
+		@for (t of ['posted', 'drafts']; track t) {
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				href="javascript:void(0)"
+				[id]="'vouchers_tab_' + t"
+				[class.active]="tab() === t"
+				(click)="tab.set($any(t))"
+			>
+				{{ 'accounts_tab_' + t | transloco }} @if (t === 'drafts' && drafts.data()?.length) {
+				<span class="badge bg-light text-dark ms-1">{{ drafts.data()?.length }}</span>
+				}
+			</a>
+		</li>
+		}
+	</ul>
+	} @if (tab() === 'drafts') {
+	<div class="table-responsive datatable-wrapper border-table">
+		<table class="all-package theme-table no-footer table">
+			<thead>
+				<tr>
+					<th>{{ 'date' | transloco }}</th>
+					<th>{{ 'accounts_kind' | transloco }}</th>
+					<th>{{ 'accounts_narration' | transloco }}</th>
+					<th class="text-end">{{ 'accounts_amount' | transloco }}</th>
+					<th>{{ 'accounts_saved_by' | transloco }}</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (d of drafts.data() ?? []; track d.id) {
+				<tr>
+					<td class="text-nowrap">
+						<a [routerLink]="['/accounts/vouchers/drafts', d.id]">{{ d.date }}</a>
+					</td>
+					<td>{{ 'accounts_kind_' + d.kind | transloco }}</td>
+					<td>{{ d.narration || '—' }}</td>
+					<td class="text-end text-nowrap">{{ rupees(draftTotal(d.lines)) }}</td>
+					<td>{{ d.createdByName || '—' }}</td>
+					<td class="text-end">
+						<a
+							href="javascript:void(0)"
+							[title]="'accounts_delete_draft' | transloco"
+							(click)="deleteDraft(d.id)"
+						>
+							<i class="ri-delete-bin-line"></i>
+						</a>
+					</td>
+				</tr>
+				} @empty {
+				<tr>
+					<td
+						colspan="6"
+						class="text-muted py-4 text-center"
+					>
+						{{ 'accounts_no_drafts' | transloco }}
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	} @else {
 	<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
 		<div class="d-flex flex-wrap gap-2">
 			<input
@@ -100,5 +165,6 @@
 			}
 		</ul>
 	</nav>
+	}
 	}
 </app-page-wrapper>

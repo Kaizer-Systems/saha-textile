@@ -7597,5 +7597,21 @@
 	"routing_who_location_staff_may": "No",
 	"routing_saved": "Saved",
 	"routing_save_failed": "Couldn't save. Open the page again and retry.",
-	"search_hint_setting_order_routing": "How a new online order gets its ships-from location"
+	"search_hint_setting_order_routing": "How a new online order gets its ships-from location",
+	"accounts_attach": "Attach",
+	"accounts_attach_files": "Attach files to the voucher",
+	"accounts_add_file": "Add a file",
+	"accounts_remove_attachment": "Remove file",
+	"accounts_attachments": "Files",
+	"accounts_save_draft": "Save draft",
+	"accounts_draft": "Draft",
+	"accounts_draft_by": "by {{name}}",
+	"accounts_draft_saved": "Draft saved",
+	"accounts_draft_changed": "Someone else saved this draft. Open it again.",
+	"accounts_draft_failed": "Couldn't save the draft. Try again.",
+	"accounts_tab_posted": "Posted",
+	"accounts_tab_drafts": "Drafts",
+	"accounts_saved_by": "Saved by",
+	"accounts_delete_draft": "Delete draft",
+	"accounts_no_drafts": "No drafts."
 }

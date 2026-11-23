@@ -8,6 +8,7 @@ import {
 	JournalVoucherWrite,
 	LedgerWrite,
 	PeriodLockWrite,
+	VoucherDraftWrite,
 	VoucherListQuery,
 	VoucherReverse,
 } from '@saha-textile/contracts';
@@ -96,6 +97,51 @@ export class LedgerController {
 	@ApiOperation({ operationId: 'listVouchers', summary: 'Vouchers in a period, newest first' })
 	vouchers(@Query(new ZodValidationPipe(VoucherListQuery)) query: VoucherListQuery) {
 		return this.ledger.vouchers(query);
+	}
+
+	@Get('vouchers/drafts')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.post')
+	@ApiOperation({ operationId: 'listVoucherDrafts', summary: 'Vouchers saved as drafts, newest first' })
+	drafts() {
+		return this.ledger.drafts();
+	}
+
+	@Get('vouchers/drafts/:id')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.post')
+	@ApiOperation({ operationId: 'getVoucherDraft', summary: 'One draft voucher' })
+	draft(@Param('id') id: string) {
+		return this.ledger.draft(id);
+	}
+
+	@Post('vouchers/drafts')
+	@RequirePermissions('accounts.post')
+	@ApiOperation({ operationId: 'createVoucherDraft', summary: 'Save a voucher as a draft (no number yet)' })
+	createDraft(
+		@Body(new ZodValidationPipe(VoucherDraftWrite)) body: VoucherDraftWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.ledger.saveDraft(null, body, principal);
+	}
+
+	@Put('vouchers/drafts/:id')
+	@RequirePermissions('accounts.post')
+	@ApiOperation({ operationId: 'saveVoucherDraft', summary: 'Save a draft over the copy read' })
+	saveDraft(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(VoucherDraftWrite)) body: VoucherDraftWrite,
+		@Principal() principal?: AuthenticatedPrincipal,
+	) {
+		return this.ledger.saveDraft(id, body, principal);
+	}
+
+	@Delete('vouchers/drafts/:id')
+	@HttpCode(204)
+	@RequirePermissions('accounts.post')
+	@ApiOperation({ operationId: 'deleteVoucherDraft', summary: 'Throw a draft away (it was never posted)' })
+	async deleteDraft(@Param('id') id: string, @Principal() principal?: AuthenticatedPrincipal): Promise<void> {
+		await this.ledger.deleteDraft(id, principal);
 	}
 
 	@Get('vouchers/:id')

@@ -87,3 +87,12 @@ const DocumentLockSchema = new Schema<AggregateDoc>(
 );
 export const DocumentLockModel: Model<AggregateDoc> =
 	(models.DocumentLock as Model<AggregateDoc>) ?? model<AggregateDoc>('DocumentLock', DocumentLockSchema);
+
+/** Q3 drafts: vouchers saved before Post, with no number. */
+const VoucherDraftSchema = new Schema<AggregateDoc>(
+	{ _id: { type: String, required: true }, updatedAt: { type: String, required: true } },
+	{ ...loose, collection: COLLECTION_NAMES.VoucherDraft },
+);
+VoucherDraftSchema.index({ updatedAt: -1 });
+export const VoucherDraftModel: Model<AggregateDoc> =
+	(models.VoucherDraft as Model<AggregateDoc>) ?? model<AggregateDoc>('VoucherDraft', VoucherDraftSchema);

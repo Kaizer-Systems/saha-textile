@@ -23,6 +23,10 @@ import {
 	type LedgerWrite,
 	type PeriodLock,
 	type PeriodLockWrite,
+	type VoucherAttachment,
+	type VoucherDetail,
+	VoucherDraft,
+	type VoucherDraftWrite,
 	type VoucherKind,
 	type VoucherReverse,
 } from '@saha-textile/contracts';
@@ -38,10 +42,12 @@ import {
 	istDay,
 	ledgerStatement,
 	type LocationRepository,
+	type MediaAssetRepository,
 	type PeriodLockRepository,
 	reversalLines,
 	type RoleRepository,
 	StaleRevisionError,
+	type StoragePort,
 	SUPER_ADMIN_ROLE_KEY,
 	type TransactionContext,
 	type TransactionManagerPort,
@@ -58,8 +64,10 @@ import {
 	DOCUMENT_LOCK_REPOSITORY,
 	GENERAL_LEDGER_REPOSITORY,
 	LOCATION_REPOSITORY,
+	MEDIA_ASSET_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
 	ROLE_REPOSITORY,
+	STORAGE_PORT,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { LocationsService } from '../locations/locations.service';
@@ -107,6 +115,8 @@ export class LedgerService {
 		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY)
 		private readonly assignments: Pick<AdminUserRoleAssignmentRepository, 'findActive'>,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
+		@Inject(MEDIA_ASSET_REPOSITORY) private readonly media: Pick<MediaAssetRepository, 'findManyByIds'>,
+		@Inject(STORAGE_PORT) private readonly storage: Pick<StoragePort, 'getUrl'>,
 		private readonly numbers: DocumentNumbersService,
 		private readonly locations: LocationsService,
 	) {}
@@ -265,7 +275,7 @@ export class LedgerService {
 			narration: string;
 			lines: JournalLine[];
 			reverseOn?: string | null;
-			attachmentIds?: string[];
+			attachments?: VoucherAttachment[];
 			source?: { type: string; id: string; number?: string | null } | null;
 			reversalOfId?: string | null;
 			idempotencyKey: string;
@@ -311,7 +321,7 @@ export class LedgerService {
 			reversalOfId: input.reversalOfId ?? null,
 			reverseOn: input.reverseOn ?? null,
 			idempotencyKey: input.idempotencyKey,
-			attachmentIds: input.attachmentIds ?? [],
+			attachments: input.attachments ?? [],
 			totalPaise: voucherTotals(input.lines).debitPaise,
 			createdBy: by,
 			createdAt: new Date().toISOString(),
@@ -373,9 +383,62 @@ export class LedgerService {
 			throw new ForbiddenException('location_out_of_scope');
 		const lines = await this.stampLines(write.lines);
 		const mayPostWhenClosed = !!principal?.permissions.includes('accounts.lock');
-		return this.tx.withTransaction((context) =>
-			this.insert({ ...write, lines }, { byHand: true, mayPostWhenClosed }, principal?.userId ?? null, context),
-		);
+		const { draftId, ...voucher } = write;
+		return this.tx.withTransaction(async (context) => {
+			const posted = await this.insert(
+				{ ...voucher, lines },
+				{ byHand: true, mayPostWhenClosed },
+				principal?.userId ?? null,
+				context,
+			);
+			// Posted from a draft: the draft goes with it, so it can never be posted twice.
+			if (draftId) await this.books.deleteDraft(draftId, context);
+			return posted;
+		});
+	}
+
+	/** Q3 Save draft: kept with no number; anyone who may post can open and finish it. */
+	drafts(): Promise<VoucherDraft[]> {
+		return this.books.listDrafts();
+	}
+
+	async draft(id: string): Promise<VoucherDraft> {
+		const draft = await this.books.getDraft(id);
+		if (!draft) throw new NotFoundException('draft_not_found');
+		return draft;
+	}
+
+	async saveDraft(
+		id: string | null,
+		write: VoucherDraftWrite,
+		principal: AuthenticatedPrincipal | undefined,
+	): Promise<VoucherDraft> {
+		const now = new Date().toISOString();
+		const current = id ? await this.books.getDraft(id) : null;
+		if (id && !current) throw new NotFoundException('draft_not_found');
+		const { expectedUpdatedAt, ...rest } = write;
+		const draft = VoucherDraft.parse({
+			...rest,
+			id: current?.id ?? `vd_${randomUUID()}`,
+			createdBy: current?.createdBy ?? principal?.userId ?? null,
+			createdByName: current?.createdByName ?? (principal ? await this.nameOf(principal.userId) : ''),
+			createdAt: current?.createdAt ?? now,
+			updatedAt: now,
+			updatedBy: principal?.userId ?? null,
+		});
+		try {
+			await this.books.saveDraft(draft, current ? (expectedUpdatedAt ?? current.updatedAt) : null);
+		} catch (error) {
+			if (error instanceof StaleRevisionError) throw new ConflictException('draft_changed');
+			throw error;
+		}
+		return draft;
+	}
+
+	async deleteDraft(id: string, principal: AuthenticatedPrincipal | undefined): Promise<void> {
+		await this.draft(id);
+		await this.books.deleteDraft(id);
+		await this.log(principal?.userId ?? null, 'accounts.draft.delete', 'voucherDraft', id, []);
 	}
 
 	/** A posted voucher is never edited: a reversal on a date undoes it (super admin only, brief tests). */
@@ -447,10 +510,22 @@ export class LedgerService {
 		return { ...result, page: query.page, pageSize: query.pageSize };
 	}
 
-	async voucher(id: string): Promise<JournalVoucher> {
+	async voucher(id: string): Promise<VoucherDetail> {
 		const voucher = await this.books.getVoucher(id);
 		if (!voucher) throw new NotFoundException('voucher_not_found');
-		return voucher;
+		const assets = voucher.attachments.length
+			? await this.media.findManyByIds(voucher.attachments.map((a) => a.assetId))
+			: [];
+		return {
+			...voucher,
+			attachmentLinks: voucher.attachments.map((attachment) => {
+				const asset = assets.find((a) => a.id === attachment.assetId);
+				return {
+					...attachment,
+					url: asset?.originalStorageKey ? this.storage.getUrl(asset.originalStorageKey) : null,
+				};
+			}),
+		};
 	}
 
 	/** Q1: each ledger's balance on a day (debit positive), at the locations the person may see. */

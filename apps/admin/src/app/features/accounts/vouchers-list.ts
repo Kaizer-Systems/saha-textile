@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { LEDGER_KEYS, LedgerGateway } from '@core/accounts/ledger.gateway';
@@ -29,6 +29,7 @@ export class VouchersListPage {
 	private readonly auth = inject(AuthStore);
 	readonly canPost = computed(() => this.auth.permissions().includes('accounts.post'));
 	readonly kinds: VoucherKind[] = ['journal', 'receipt', 'payment', 'contra', 'opening', 'document'];
+	readonly tab = signal<'posted' | 'drafts'>('posted');
 	readonly kind = signal<VoucherKind | ''>('');
 	readonly search = signal('');
 	readonly range = signal(periodRange({ period: 'last_30_days' }));
@@ -49,6 +50,19 @@ export class VouchersListPage {
 			),
 	}));
 	readonly pages = computed(() => Math.max(1, Math.ceil((this.query.data()?.total ?? 0) / 25)));
+	private readonly queryClient = inject(QueryClient);
+	/** Q3 drafts: saved, not posted, no number. */
+	readonly drafts = injectQuery(() => ({
+		queryKey: LEDGER_KEYS.drafts,
+		queryFn: () => firstValueFrom(this.gateway.drafts()),
+		enabled: this.canPost(),
+	}));
+	readonly draftTotal = (lines: { debitPaise: number }[]) => lines.reduce((sum, l) => sum + l.debitPaise, 0);
+
+	async deleteDraft(id: string): Promise<void> {
+		await firstValueFrom(this.gateway.deleteDraft(id));
+		await this.queryClient.invalidateQueries({ queryKey: LEDGER_KEYS.drafts });
+	}
 
 	setPeriod(q: DashboardPeriodQuery): void {
 		this.range.set(periodRange(q));

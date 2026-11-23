@@ -77,6 +77,16 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: 'category',
+			label: 'E-invoice and e-way bill',
+			collapsed: false,
+			link: {
+				type: 'doc',
+				id: 'gst-edocs/overview',
+			},
+			items: ['gst-edocs/government-apis', 'gst-edocs/provider-masters-india'],
+		},
+		{
+			type: 'category',
 			label: 'Applications',
 			collapsed: false,
 			items: [

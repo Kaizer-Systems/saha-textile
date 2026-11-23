@@ -40,6 +40,14 @@ A template applies to every kind of company (`appliesTo.all`) or to the kinds it
 
 The starter charts are split from the starting chart of each kind: what all five kinds share goes to `CH-COMMON`, the rest to each kind's own. Each is marked `caReview: pending` until the CA confirms it. Version 2 of `CH-COMMON`, `CH-PVT` and `CH-OPC` adds the expense ledgers the reverse-charge list posts to ([self-invoices](./self-invoices.md)). A starter template a library lacks is added to it, and a newer starter version is added to a template no person has published a version of; either way, installing a newer version is a person's choice.
 
+## Company setup
+
+Settings › Company shows what the kind picked opens: its chart templates with their newest versions, its reports, and each tax rule set with how many entries apply to that kind, and how many templates of other kinds stay locked. The first save sets up the books: the chart is installed from the unlocked chart templates and every unlocked template is recorded as installed at its newest version (`POST /admin/accounts/templates/set-up-books`, `accounts_template.edit`; refused with `books_already_set_up` once done). Books are also set up on the first read of the chart, from the kind saved at that moment.
+
+Once the books are set up the kind is kept: the choice is greyed on Settings › Company and the API refuses a different kind with `kind_locked_books_exist`. Changing the kind of a business goes through Convert: new books from a closing date.
+
+Settings › Accounts templates lists every template with its code, type, the kinds it applies to, its newest version with its first day and CA review state, and its state here: Installed, Installed with an update waiting, Not installed, or Locked (another kind's, greyed). It filters by kind and type, and reads with `accounts.index`.
+
 ## Versions
 
 A template keeps every version. Each has a `validFrom` and optional `validTo` date, its legal `source`, a CA review state and its content. A law change is a new version, never an edit of an old one; documents keep the rule they were made with.
@@ -57,12 +65,14 @@ The library row for each template says which version is installed and whether a 
 
 ## API
 
-| Method and path                       | Purpose                                                                    | Permission       |
-| ------------------------------------- | -------------------------------------------------------------------------- | ---------------- |
-| `GET /admin/accounts/templates`       | every template without its versions, with lock state and installed version | `accounts.index` |
-| `GET /admin/accounts/templates/:code` | one template with every version (404 when unknown)                         | `accounts.index` |
+| Method and path                               | Purpose                                                                    | Permission               |
+| --------------------------------------------- | -------------------------------------------------------------------------- | ------------------------ |
+| `GET /admin/accounts/templates`               | every template without its versions, with lock state and installed version | `accounts.index`         |
+| `GET /admin/accounts/templates/:code`         | one template with every version (404 when unknown)                         | `accounts.index`         |
+| `GET /admin/accounts/templates/opens?kind=`   | what a kind opens, and whether the books are set up                        | `accounts.index`         |
+| `POST /admin/accounts/templates/set-up-books` | install the books from the unlocked templates, once                        | `accounts_template.edit` |
 
-Making, publishing and installing templates needs `accounts_template.edit`, held by the Administrator role and the CA login. After adding it, run `pnpm seed:system-roles` so the Administrator role holds it.
+Making and publishing templates and setting up the books need `accounts_template.edit`, held by the Administrator role and the CA login. After adding it, run `pnpm seed:system-roles` so the Administrator role holds it.
 
 ## Collections
 

@@ -79,6 +79,7 @@ const set = (over: Partial<CatalogPageBundle> = {}): CatalogPageBundle => ({
 	extras: [item('box', 300)],
 	pricing: {
 		base: { kind: 'pieces' },
+		eventSale: [],
 		inputs: [],
 		methodRules: [
 			{

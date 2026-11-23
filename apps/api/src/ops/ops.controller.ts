@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { OpsMessagesQuery, type OpsJobs, type OpsMessages } from '@saha-textile/contracts';
 import type { z } from 'zod';
 
@@ -6,11 +7,14 @@ import { OpsTokenGuard } from './ops-token.guard';
 import { OpsService } from './ops.service';
 import { Public } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { API_TAGS } from '../openapi-tags';
 
 /**
  * The operations address the Release Console reads (brief 26gq3NbcbBESea6abRtsa3, Q1 A): read only,
  * its own key instead of a session, and nothing personal. Off unless `OPS_TOKEN` is set.
  */
+// Counts for the operator's console, read like the health probes: no session, no side effects.
+@ApiTags(API_TAGS.health)
 @Public()
 @UseGuards(OpsTokenGuard)
 @Controller('ops')

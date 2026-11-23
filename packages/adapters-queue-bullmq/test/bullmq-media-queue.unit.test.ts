@@ -123,6 +123,7 @@ describe('BullMqMediaJobQueue', () => {
 			'search-check',
 			'trash-purge',
 			'upload-sweep',
+			'cut-sweep',
 			'kept-files-sweep',
 			'spaces-check',
 			'zip-sweep',

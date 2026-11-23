@@ -560,7 +560,6 @@ describe('checks before Go Live', () => {
 
 describe('the garment band warning (CA round 2, B2.9)', () => {
 	it('names a garment piece whose share sits across ₹2,500 from its own price, once', async () => {
-		const { bundleChecks } = await import('../src/bundle/checks');
 		const item = (key: string, price: number) => ({
 			key,
 			quantity: 1,

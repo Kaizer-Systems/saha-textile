@@ -31,7 +31,11 @@ const sale = (partial: Partial<ShopEvent> = {}): ShopEvent => ({
 	message: { en: 'Up to 30% off', bn: '৩০% পর্যন্ত ছাড়' },
 	startsAt: '2027-09-20T04:30:00.000Z',
 	endsAt: '2027-09-27T18:29:00.000Z',
-	sale: { categories: [{ categoryId: 'cat_saree', rule: rule('percent', 20), exceptions: [] }], products: [] },
+	sale: {
+		categories: [{ categoryId: 'cat_saree', rule: rule('percent', 20), exceptions: [] }],
+		products: [],
+		includeSets: false,
+	},
 	linkHref: null,
 	showCountdown: true,
 	showPopup: true,
@@ -92,6 +96,7 @@ describe('resolveSaleRule', () => {
 			{ categoryId: 'cat_silk', rule: rule('percent', 30), exceptions: [] },
 		],
 		products: [{ productId: 'p_single', rule: rule('fixed', 999) }],
+		includeSets: false,
 	};
 	const inBoth = (id: string) => id === 'cat_saree' || id === 'cat_silk';
 
@@ -153,7 +158,7 @@ describe('publish checks', () => {
 				title: { en: 'Puja Sale' },
 				startsAt: '2027-08-01T00:00:00.000Z',
 				endsAt: null,
-				sale: { categories: [], products: [] },
+				sale: { categories: [], products: [], includeSets: false },
 			}),
 			['en', 'bn'],
 			now,
@@ -349,6 +354,7 @@ describe('sale pricing edges', () => {
 			saleTargets({
 				categories: [{ categoryId: 'cat_saree', rule: rule('percent', 20), exceptions: [] }],
 				products: [{ productId: 'p1', rule: rule('percent', 10) }],
+				includeSets: false,
 			} as SaleSetup),
 		).toEqual({ productIds: ['p1'], categoryIds: ['cat_saree'] });
 		expect(

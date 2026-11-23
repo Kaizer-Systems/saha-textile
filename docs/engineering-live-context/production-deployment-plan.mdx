@@ -246,6 +246,13 @@ If a deploy's health check fails, `deploy.sh` restores the previous release itse
 - `pnpm spaces:copy -- --from <bucket> --to <bucket>` reports what a copy would do; `--apply` does it (owner, 2026-11-23: dev's files into staging from time to time, a trimmed staging into production once). Each bucket's key comes from the Infisical project whose `/api/SPACES_BUCKET` names it. Every file keeps its content, headers, metadata and public or private setting; files already the same are skipped, a file whose only difference is public/private is fixed, and nothing in the destination is deleted. Production's bucket needs `--confirm <its name>`. Afterwards it checks every file again and the destination's listing, CDN and upload rules (`--origin` to name other page addresses).
 - Nothing needs rewriting after a copy: files hold no web addresses, and the database keeps file names, building each address from `SPACES_CDN_URL` when read. The YouTube posters' saved addresses are rebuilt from their file names the same way. Copying the database itself is a separate step.
 
+### Copying a database into another environment
+
+- `pnpm db:copy -- --from <local|stack|development|staging> --to <stack|development|staging|production> [--from-ssh <user@host>] [--to-ssh <user@host>]` reports each side's collections and documents; `--apply --confirm <destination database>` copies (owner, 2026-11-23: this computer's data into staging as it is; a trimmed staging into production later). Production is never a source, and this computer's own database is never a destination.
+- The dump streams from one database container into the other (`mongodump --archive | mongorestore --drop`, renamed to the destination's database, nothing on disk), using the administrator login each container already holds. Users are not copied, so the destination keeps its own app and monitor logins. A server is reached with the admin login over WARP or the tunnel; it is in the docker group, so no sudo.
+- On a destination with apps, the API and worker stop while the copy lands, start again, then run the release steps and rebuild the search index. Every collection's document count is compared with the source before the apps start.
+- After a copy, mailbox tokens and e-document keys sealed with the source's keys cannot be opened: those connections show "needs connecting again". The source's sessions sign nobody in; its admin accounts and passwords come across, so the first-administrator step is not needed.
+
 ## 12. Monitoring
 
 **DigitalOcean only.** No outside monitoring vendor.

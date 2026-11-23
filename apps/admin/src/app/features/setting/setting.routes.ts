@@ -60,6 +60,11 @@ export default [
 		loadComponent: () => import('./shop-details/shop-details').then((m) => m.ShopDetailsSettings),
 	},
 	{
+		// Accounts brief J3 (owner-approved 2026-11-23).
+		path: 'features',
+		loadComponent: () => import('./company/feature-switches').then((m) => m.FeatureSwitchesSettings),
+	},
+	{
 		path: 'document-formats',
 		loadComponent: () => import('./document-formats/document-formats').then((m) => m.DocumentFormatsSettings),
 	},

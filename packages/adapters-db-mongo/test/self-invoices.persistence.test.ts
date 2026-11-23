@@ -121,7 +121,7 @@ describe.skipIf(!hasMongoEnv())('self-invoices and payment vouchers persistence 
 			...voucher,
 			id: 'pv_2',
 			number: 'PV/26-27/000008',
-			against: { kind: 'purchaseEntry' as const, id: 'pe_31', number: 'PE/26-27/00031' },
+			against: { kind: 'purchaseEntry' as const, id: 'pe_31', number: 'PE/26-27/00031', detail: '' },
 			supplierPaymentId: 'pay_1',
 			reverseChargeTaxINR: null,
 		};

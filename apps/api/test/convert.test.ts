@@ -269,7 +269,7 @@ describe('converting', () => {
 
 	it('posts no voucher when nothing has a balance at any location, and names no one without a session', async () => {
 		const { service, posted, saves } = setup({
-			balances: (_day, locations) => (locations.length ? {} : { led_capital: -1_000 }),
+			balances: (_day, locations): Record<string, number> => (locations.length ? {} : { led_capital: -1_000 }),
 			locks: [],
 		});
 		expect(

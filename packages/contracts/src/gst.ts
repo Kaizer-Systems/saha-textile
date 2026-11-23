@@ -73,12 +73,12 @@ const GSTIN_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export function gstinCheckCharacter(first14: string): string {
 	let sum = 0;
 	for (let index = 0; index < 14; index += 1) {
-		const value = GSTIN_ALPHABET.indexOf(first14[index] ?? '');
+		const value = GSTIN_ALPHABET.indexOf(first14.charAt(index));
 		if (value < 0) return '';
 		const product = value * (index % 2 === 0 ? 1 : 2);
 		sum += Math.floor(product / 36) + (product % 36);
 	}
-	return GSTIN_ALPHABET[(36 - (sum % 36)) % 36] ?? '';
+	return GSTIN_ALPHABET.charAt((36 - (sum % 36)) % 36);
 }
 
 export type GstinProblem = 'shape' | 'state' | 'check_digit';

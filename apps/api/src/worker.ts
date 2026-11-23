@@ -1,5 +1,7 @@
 // Load apps/api/.env before anything reads process.env (as main.ts does).
 import 'dotenv/config';
+// Before every other module: tracing must see the drivers load (off unless configured).
+import './tracing-worker';
 import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';

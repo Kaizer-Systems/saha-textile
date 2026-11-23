@@ -2,6 +2,8 @@
 // Deployed environments inject env via Compose env_file/secrets instead;
 // dotenv is a no-op there when no .env file is present.
 import 'dotenv/config';
+// Before every other module: tracing must see the drivers load (off unless configured).
+import './tracing-api';
 import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';

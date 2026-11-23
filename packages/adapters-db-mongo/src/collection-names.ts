@@ -231,9 +231,16 @@ const RUNTIME_ONLY_COLLECTIONS = [
 
 /**
  * Implemented collections the governed graph has not caught up with (its node count is ratified, so new nodes wait for
- * a graph round): the bundle builder's price methods and Settings › Document formats (22 Nov 2026).
+ * a graph round): the bundle builder's price methods and Settings › Document formats (22 Nov 2026); the accounts
+ * brief's company profile, GST registrations and feature switches (23 Nov 2026).
  */
-export const GRAPH_RECONCILIATION_OWED = ['bundlePriceMethods', 'documentFormats'] as const;
+export const GRAPH_RECONCILIATION_OWED = [
+	'bundlePriceMethods',
+	'documentFormats',
+	'companyProfile',
+	'gstRegistrations',
+	'featureSwitches',
+] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */
 export const NON_GRAPH_COLLECTIONS: readonly string[] = [...RUNTIME_ONLY_COLLECTIONS, ...GRAPH_RECONCILIATION_OWED];

@@ -3576,3 +3576,252 @@ figure.gif img {
 	display: flex;
 	align-items: center;
 }
+
+/* ===== Ship › Code › Coverage (brief CRmpBdP3ce62g1JoCAhh23, approved 24 Nov 2026) =====
+   Reuses rc-t, rc-tw, rc-bar, rc-pill, rc-chip, rc-tabs, rc-msearch, rc-log, rc-panel and rc-g-side.
+   Only the six pieces the brief names as custom live here: the tree row's arrow and slide, the line
+   tints, the gap strip, the code colours, the map, and a green fill for rc-bar. */
+.rc-bar i.ok {
+	background: var(--hud-green);
+	box-shadow: 0 0 6px var(--hud-green);
+}
+.rc-g-side.rc-cov-split {
+	grid-template-columns: minmax(0, 1fr);
+}
+.rc-g-side.rc-cov-split.open {
+	grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.3fr);
+}
+.rc-cov-split.open .rc-cov-bar {
+	display: none;
+}
+.rc-cov-tree {
+	max-height: 600px;
+	overflow: auto;
+	overscroll-behavior: contain;
+}
+.rc-cov-tree .rc-t {
+	min-width: 420px;
+}
+.rc-cov-tree .rc-t thead th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+}
+.rc-cov-tree tr.row {
+	cursor: pointer;
+}
+.rc-cov-tree tr.row:hover td,
+.rc-cov-tree tr.row:focus td {
+	background: rgba(94, 214, 255, 0.06);
+}
+.rc-cov-tree tr.row:focus {
+	outline: none;
+}
+.rc-cov-tree td.num {
+	text-align: right;
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	font-variant-numeric: tabular-nums;
+}
+.rc-cov-tree tr.unmeasured td:first-child {
+	color: var(--hud-muted);
+}
+.rc-cov-name {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+}
+.rc-cov-arrow {
+	display: inline-block;
+	width: 12px;
+	flex: none;
+	text-align: center;
+	color: var(--hud-cyan-dim);
+	transition: transform 0.18s ease;
+}
+.rc-cov-arrow.open {
+	transform: rotate(90deg);
+	color: var(--hud-cyan);
+}
+@keyframes rc-cov-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+.rc-cov-tree tr.in {
+	animation: rc-cov-in 0.24s ease both;
+}
+.rc-cov-body {
+	position: relative;
+	height: 560px;
+}
+.rc-cov-code {
+	position: absolute;
+	inset: 0 12px 0 0;
+	max-height: none;
+	overflow: auto;
+	overscroll-behavior: contain;
+}
+.rc-cov-code .l {
+	grid-template-columns: 44px 40px max-content;
+	border-left: 3px solid transparent;
+	padding: 0 4px 0 0;
+}
+.rc-cov-code .n,
+.rc-cov-code .src {
+	text-align: right;
+	min-width: 0;
+	user-select: none;
+}
+.rc-cov-code .m {
+	tab-size: 4;
+	white-space: pre;
+	overflow-wrap: normal;
+	color: #cfe6f3;
+}
+.rc-cov-code .l.run {
+	border-left-color: rgba(93, 255, 168, 0.35);
+}
+.rc-cov-code .l.run .src {
+	color: var(--hud-green);
+}
+.rc-cov-code .l.part {
+	background: rgba(255, 181, 71, 0.11);
+	border-left-color: var(--hud-amber);
+}
+.rc-cov-code .l.part .src {
+	color: var(--hud-amber);
+}
+.rc-cov-code .l.err {
+	border-left-color: var(--hud-red);
+}
+.rc-cov-code .l .rc-pill {
+	margin-left: 12px;
+	font-family: var(--font-mono);
+	vertical-align: 1px;
+}
+@keyframes rc-cov-flash {
+	0%,
+	40% {
+		box-shadow:
+			inset 0 0 0 1px var(--hud-cyan),
+			0 0 14px rgba(94, 214, 255, 0.5);
+	}
+	100% {
+		box-shadow: none;
+	}
+}
+.rc-cov-code .l.flash {
+	animation: rc-cov-flash 1.4s ease;
+}
+.rc-cov-gaps {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: 9px;
+	padding: 0;
+	border: 0;
+	border-left: 1px solid var(--hud-line);
+	background: rgba(94, 214, 255, 0.06);
+	cursor: pointer;
+}
+.rc-cov-gaps i {
+	position: absolute;
+	left: 1px;
+	right: 1px;
+	min-height: 2px;
+	background: var(--hud-amber);
+}
+.rc-cov-gaps i.red {
+	background: var(--hud-red);
+}
+.rc-cov-code .hljs-keyword,
+.rc-cov-code .hljs-meta {
+	color: #7cc7ff;
+}
+.rc-cov-code .hljs-built_in,
+.rc-cov-code .hljs-type {
+	color: #8ee6d6;
+}
+.rc-cov-code .hljs-title,
+.rc-cov-code .hljs-tag,
+.rc-cov-code .hljs-name {
+	color: #a8e9ff;
+}
+.rc-cov-code .hljs-string,
+.rc-cov-code .hljs-regexp {
+	color: #d6bcff;
+}
+.rc-cov-code .hljs-number,
+.rc-cov-code .hljs-literal {
+	color: #f6c6e6;
+}
+.rc-cov-code .hljs-comment {
+	color: #5f8197;
+	font-style: italic;
+}
+.rc-cov-map {
+	position: relative;
+	height: 520px;
+	overflow: hidden;
+	border: 1px solid var(--hud-line);
+	background: rgba(16, 36, 58, 0.35);
+}
+.rc-cov-box {
+	position: absolute;
+	padding: 3px 5px;
+	border: 1px solid;
+	overflow: hidden;
+	cursor: pointer;
+	font-size: 11px;
+	line-height: 1.25;
+	text-align: left;
+	color: var(--hud-text);
+}
+.rc-cov-box:hover,
+.rc-cov-box:focus-visible {
+	filter: brightness(1.35);
+	z-index: 2;
+}
+.rc-cov-box.ok {
+	border-color: rgba(93, 255, 168, 0.65);
+	background: rgba(93, 255, 168, 0.13);
+}
+.rc-cov-box.amber {
+	border-color: rgba(255, 181, 71, 0.7);
+	background: rgba(255, 181, 71, 0.15);
+}
+.rc-cov-box.red {
+	border-color: rgba(255, 93, 93, 0.65);
+	background: rgba(255, 93, 93, 0.15);
+}
+.rc-cov-box b {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+@media (max-width: 760px) {
+	.rc-g-side.rc-cov-split.open {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.rc-cov-split.open .rc-cov-tree {
+		display: none;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.rc-cov-tree tr.in,
+	.rc-cov-code .l.flash {
+		animation: none;
+	}
+	.rc-cov-arrow {
+		transition: none;
+	}
+}

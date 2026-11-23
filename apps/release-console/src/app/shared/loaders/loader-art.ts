@@ -508,6 +508,7 @@ export const LOADER_OF_SCREEN: Readonly<Record<string, string>> = {
 	pulls: 'pipeline',
 	pipeline: 'pipeline',
 	logs: 'terminal',
+	coverage: 'diff',
 	approvals: 'reactor',
 	deploy: 'reactor',
 	steps: 'reactor',

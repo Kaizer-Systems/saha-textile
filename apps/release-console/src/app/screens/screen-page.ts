@@ -8,6 +8,7 @@ import { ApmScreen } from './apm-screen';
 import { ChangesScreen } from './changes-screen';
 import { ClientsScreen } from './clients-screen';
 import { CostsScreen } from './costs-screen';
+import { CoverageScreen } from './coverage-screen';
 import { DbMonitorScreen } from './db-monitor';
 import { DepsScreen } from './deps-screen';
 import { DoCreateScreen } from './do-create';
@@ -58,6 +59,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 	secrets: ['matrix', 'problem', 'rotate'],
 	pulls: 'list',
 	pipeline: 'list',
+	coverage: ['tree', 'map'],
 	droplets: [
 		'list',
 		'region',
@@ -131,6 +133,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		ServerStateScreen,
 		DbMonitorScreen,
 		TracesScreen,
+		CoverageScreen,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -265,6 +268,10 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 					}
 					@case ('pipeline') {
 						<rc-pipelines-screen />
+					}
+					@case ('coverage') {
+						<!-- Ship › Code › Coverage (brief CRmpBdP3ce62g1JoCAhh23, approved 24 Nov 2026). -->
+						<rc-coverage-screen [tab]="tabKey()" />
 					}
 					@case ('droplets') {
 						@if (tabKey() === 'list') {

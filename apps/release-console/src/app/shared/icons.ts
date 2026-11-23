@@ -119,6 +119,7 @@ export const SCREEN_ICONS: Record<string, string> = {
 	pulls: 'tabler/git-pull-request',
 	pipeline: 'tabler/route-2',
 	logs: 'tabler/file-text',
+	coverage: 'tabler/chart-treemap',
 	approvals: 'tabler/circle-check',
 	deploy: 'tabler/rocket',
 	steps: 'tabler/list-numbers',

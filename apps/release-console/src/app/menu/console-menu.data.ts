@@ -11,7 +11,7 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			subs: [
 				{
 					label: 'Code',
-					items: ['pulls', 'pipeline', 'logs'],
+					items: ['pulls', 'pipeline', 'logs', 'coverage'],
 				},
 				{
 					label: 'Release',
@@ -168,6 +168,16 @@ export const CONSOLE_MENU: ConsoleMenu = {
 		processes: ['pm2', 'pm2 plus', 'keymetrics', 'cpu', 'memory', 'heap', 'profile'],
 		tail: ['logs', 'pm2 logs', 'tail'],
 		logs: ['ci logs', 'github actions'],
+		coverage: [
+			'tests',
+			'test coverage',
+			'code coverage',
+			'karma',
+			'istanbul',
+			'vitest',
+			'lines covered',
+			'failing tests',
+		],
 		pipeline: ['ci', 'github actions', 'workflow', 'run workflow'],
 		pulls: ['pr', 'pull request', 'merge'],
 		terminal: ['ssh', 'shell', 'iterm', 'command'],
@@ -338,6 +348,22 @@ export const CONSOLE_MENU: ConsoleMenu = {
 			captions: {
 				finished: 'Finished job: full log, errors highlighted',
 				running: 'Running job: live steps, log on GitHub',
+			},
+		},
+		coverage: {
+			label: 'Coverage',
+			states: {
+				tree: 'Tree',
+				map: 'Map',
+			},
+			off: false,
+			tip: null,
+			part: null,
+			offStates: null,
+			partStates: null,
+			captions: {
+				tree: 'Every file and folder with its coverage up to the whole codebase; a file opens at the side',
+				map: 'The codebase as boxes sized by its code and coloured by its coverage',
 			},
 		},
 		approvals: {

@@ -1,0 +1,25 @@
+{
+	"ci": [
+		{
+			"id": "902",
+			"sha": "f00dfeed",
+			"ref": "feat/combined-after-pr6",
+			"title": "ci: still going",
+			"finishedAt": null,
+			"state": "running",
+			"url": "https://github.com/Kaizer-Systems/saha-textile/actions/runs/902"
+		},
+		{
+			"id": "901",
+			"sha": "ea59b191af3615d569df8966f3992bd02432c61e",
+			"ref": "feat/combined-after-pr6",
+			"title": "feat(release-console): coverage screen",
+			"finishedAt": "2026-11-24T03:00:00.000Z",
+			"state": "failed",
+			"url": "https://github.com/Kaizer-Systems/saha-textile/actions/runs/901"
+		}
+	],
+	"ciMessage": null,
+	"mac": null,
+	"macMessage": "This copy has no coverage reports yet. Run pnpm coverage, then open this screen again."
+}

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { type Page, expect, test } from '@playwright/test';
 
 /**
@@ -1168,4 +1170,99 @@ test('Tracing switch: off, Turn tracing on with the PIN and its output, then the
 	await page.locator('.rc-env-tab', { hasText: 'Local' }).click();
 	await expect(page.getByText('The trace store has stopped,')).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Start it again' })).toBeVisible();
+});
+
+/**
+ * Ship › Code › Coverage (brief CRmpBdP3ce62g1JoCAhh23). The answers are real: this Mac's coverage of the
+ * console API and contracts folders, run through the console's own coverage model when the fixtures were
+ * made (two runs listed, one still going), with one failure added so the failure card can be checked.
+ */
+async function sampleCoverage(page: Page): Promise<void> {
+	const fixture = (name: string) => readFileSync(new URL(`fixtures/coverage-${name}.json`, import.meta.url), 'utf8');
+	await page.route('**/coverage/runs', (route) =>
+		route.fulfill({ contentType: 'application/json', body: fixture('runs') }),
+	);
+	await page.route('**/coverage/tree?**', (route) =>
+		route.fulfill({ contentType: 'application/json', body: fixture('tree') }),
+	);
+	await page.route('**/coverage/file?**', (route) => {
+		const path = new URL(route.request().url()).searchParams.get('path') ?? '';
+		const body = path.endsWith('github-deploys.ts')
+			? fixture('file-deploys')
+			: path.endsWith('zip.ts')
+				? fixture('file-zip')
+				: JSON.stringify({
+						state: 'ok',
+						readAt: '2026-11-24T03:00:00.000Z',
+						data: {
+							path,
+							sha: 'f00d',
+							counts: null,
+							text: ['// a test file'],
+							lines: [{ h: null, c: 'none', notes: [] }],
+							gaps: [],
+							specs: [],
+							failures: [],
+							changed: [],
+							note: 'Not measured: this file has no code the tests run (styles, templates, data, docs or settings).',
+						},
+					});
+		return route.fulfill({ contentType: 'application/json', body });
+	});
+}
+
+test('Coverage shows the tree with every folder’s numbers, a file at the side, its gaps, a failure and the map', async ({
+	page,
+}, info) => {
+	await sampleCoverage(page);
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/coverage?tab=tree`);
+	await expect(page.getByRole('heading', { name: 'Coverage' })).toBeVisible();
+	// The newest run with reports opens; a run still going cannot be chosen.
+	const run = page.getByLabel('CI run');
+	await expect(run).toHaveValue('901');
+	await expect(run.locator('option[value="902"]')).toBeDisabled();
+	await expect(page.getByText('whole codebase', { exact: true })).toBeVisible();
+	await expect(page.locator('.rc-stat').filter({ hasText: 'tests' })).toContainText('1 failed');
+	// A folder opens one level; a workspace whose tests failed says so.
+	await page.locator('tr.row[data-path="apps"]').click();
+	await expect(page.locator('tr.row[data-path="apps/release-console-api"]')).toContainText('1 test failed');
+	// Find a file, open it at the side.
+	await page.keyboard.press('/');
+	await page.getByLabel('Find a file').fill('github-deploys');
+	await page.locator('tr.row[data-path="apps/release-console-api/src/vendors/github-deploys.ts"]').click();
+	await expect(page.locator('.rc-cov-code .l').first()).toBeVisible();
+	await expect(page.locator('.rc-cov-code .l.err').first()).toBeVisible();
+	await expect(page.locator('.rc-cov-code .rc-pill.amber').first()).toContainText(/never/);
+	await expect(page).toHaveURL(/file=apps%2Frelease-console-api%2Fsrc%2Fvendors%2Fgithub-deploys\.ts/);
+	// n steps to the first gap and puts its line in the address.
+	await page.locator('.rc-cov-code').click();
+	await page.keyboard.press('n');
+	await expect(page).toHaveURL(/line=\d+/);
+	await expect(page.locator('.rc-cov-code .l.flash')).toHaveCount(1);
+	// The gap list, then the failure with expected against received.
+	await page.getByRole('tab', { name: /^Gaps/ }).click();
+	await expect(page.locator('.rc-kv [role="button"]').first()).toContainText(
+		/never (true|false|called|ran|reached|needed)/,
+	);
+	await page.getByRole('tab', { name: /^Tests/ }).click();
+	await expect(page.getByText("expected 'waiting' to be 'approved'")).toBeVisible();
+	await expect(page.getByText("'approved'", { exact: true })).toBeVisible();
+	await expect(page.getByText("'waiting'", { exact: true })).toBeVisible();
+	// A step of the failure opens that line in the same pane.
+	await page.getByRole('button', { name: 'apps/release-console-api/src/vendors/github-deploys.ts:40' }).click();
+	await expect(page.locator('.rc-cov-code .l[data-ln="40"]')).toHaveClass(/flash/);
+	await page.getByRole('tab', { name: /^Tests/ }).click();
+	await page.getByRole('button', { name: /github-deploys\.test\.ts:12/ }).click();
+	await expect(page.getByText(/^Not measured/)).toBeVisible();
+	// Esc closes the file and takes it out of the address.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.rc-cov-code')).toHaveCount(0);
+	await expect(page).not.toHaveURL(/file=/);
+	// The map: boxes sized by code; a folder box goes inside.
+	await page.getByRole('button', { name: 'Map', exact: true }).click();
+	const apps = page.locator('.rc-cov-box[title^="apps ·"]');
+	await expect(apps).toBeVisible();
+	await apps.click();
+	await expect(page.locator('.rc-cov-box[title^="apps/release-console-api ·"]')).toBeVisible();
 });

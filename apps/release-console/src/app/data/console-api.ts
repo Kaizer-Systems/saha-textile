@@ -138,6 +138,14 @@ import {
 	type RotateRequest,
 	type RotationView,
 	rotationViewSchema,
+	type CoverageFileAnswer,
+	type CoverageRuns,
+	type CoverageSource,
+	type CoverageTreeAnswer,
+	coverageFileAnswerSchema,
+	coverageRunsSchema,
+	coverageTreeAnswerSchema,
+	vendorAnswer,
 } from '@saha-textile/release-console-contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { z } from 'zod';
@@ -164,6 +172,21 @@ export const CONSOLE_API = import.meta.env.DEV
 	: (globalThis.location?.origin ?? '');
 
 /** An answer the API refused, with its reason. */
+/** Which run to read: a CI run's id or this Mac's, and the change whose lines to mark ('commit' or a branch). */
+export interface CoverageQuery {
+	source: CoverageSource;
+	run: string;
+	base?: string | null;
+}
+const coverageTreeAnswer = vendorAnswer(coverageTreeAnswerSchema);
+const coverageFileAnswer = vendorAnswer(coverageFileAnswerSchema);
+export function coverageQuery(q: CoverageQuery & { path?: string }): string {
+	const p = new URLSearchParams({ source: q.source, run: q.run });
+	if (q.base) p.set('base', q.base);
+	if (q.path) p.set('path', q.path);
+	return p.toString();
+}
+
 export class ApiError extends Error {
 	constructor(
 		message: string,
@@ -444,6 +467,29 @@ export class ConsoleApi {
 			z.union([dbReportSchema, z.object({ error: z.string() })]),
 			undefined,
 			75_000,
+		);
+	}
+	/* Ship › Code › Coverage (brief CRmpBdP3ce62g1JoCAhh23): CI runs and this Mac, a run's tree, one file. */
+	coverageRuns(p: string, r: string): Promise<CoverageRuns> {
+		return this.call('GET', `/api/projects/${p}/repos/${r}/coverage/runs`, coverageRunsSchema, undefined, 60_000);
+	}
+	/** The first read of a CI run downloads and adds up its reports (about 4 MB zipped), so it may take a while. */
+	coverageTree(p: string, r: string, q: CoverageQuery): Promise<VendorAnswer<CoverageTreeAnswer>> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/coverage/tree?${coverageQuery(q)}`,
+			coverageTreeAnswer,
+			undefined,
+			180_000,
+		);
+	}
+	coverageFile(p: string, r: string, q: CoverageQuery & { path: string }): Promise<VendorAnswer<CoverageFileAnswer>> {
+		return this.call(
+			'GET',
+			`/api/projects/${p}/repos/${r}/coverage/file?${coverageQuery(q)}`,
+			coverageFileAnswer,
+			undefined,
+			180_000,
 		);
 	}
 	/** This computer's traces: the slowest or the failed of the last hour (Release Path brief Part 6). */

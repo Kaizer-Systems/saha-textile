@@ -7748,5 +7748,7 @@
 	"inv_problem_hsn_rate_missing": "No GST rate is known for {{sku}}'s HSN code. Check the code in Products.",
 	"inv_problem_no_lines": "Nothing in this parcel can be invoiced.",
 	"inv_problem_no_location": "The order has no location to ship from. Assign one in Ships from.",
-	"inv_problem_no_gst_registration": "The shipping location has no GST registration. Link one in Settings › Locations."
+	"inv_problem_no_gst_registration": "The shipping location has no GST registration. Link one in Settings › Locations.",
+	"inv_portal_document_number": "On the portal, enter it against tax invoice {{number}}.",
+	"inv_outside_india": "Outside India (96)"
 }

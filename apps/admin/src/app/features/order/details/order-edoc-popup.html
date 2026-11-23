@@ -1,7 +1,7 @@
 <div class="modal-header">
 	<h2 id="order_edoc_popup_title">
 		{{ (kind() === 'eInvoice' ? 'ord_einvoice' : 'ord_ewaybill') | transloco }}@if (order(); as o) { · {{
-		o.orderNumber }} }
+		invoiceNumber() ?? o.orderNumber }} }
 	</h2>
 	<button
 		type="button"
@@ -18,7 +18,11 @@
 		role="status"
 	>
 		<i class="ri-information-line mt-1"></i>
-		<div>{{ 'ord_edoc_not_connected' | transloco }}</div>
+		<div>
+			{{ 'ord_edoc_not_connected' | transloco }} @if (invoiceNumber(); as number) {
+			<div class="mt-1">{{ 'inv_portal_document_number' | transloco: { number } }}</div>
+			}
+		</div>
 	</div>
 	@if (kind() === 'eInvoice') {
 	<div class="mb-3">

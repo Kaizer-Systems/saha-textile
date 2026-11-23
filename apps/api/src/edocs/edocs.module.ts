@@ -30,6 +30,6 @@ import { EDocsService } from './edocs.service';
 					: new UnavailableEDocKeyStore(),
 		},
 	],
-	exports: [EDocsService, EDocsOrderBridge],
+	exports: [EDocsService, EDocsOrderBridge, EDOC_REPOSITORY],
 })
 export class EDocsModule {}

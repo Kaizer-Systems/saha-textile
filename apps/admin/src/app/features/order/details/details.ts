@@ -7,7 +7,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
-import { invoiceProblemKey } from '@core/accounts/invoices.gateway';
+import { INVOICE_KEYS, InvoicesGateway, invoiceProblemKey } from '@core/accounts/invoices.gateway';
 import { ORDER_STATUS_PILL, money, shippingReason } from '@core/orders/order-format';
 import { ORDERS_KEY, OrdersGateway, injectAdminOrderQuery } from '@core/orders/orders.gateway';
 import { RupeesPipe, apiProblem, rupees, shortDate, shortDateTime } from '@core/purchasing/purchasing-format';
@@ -74,6 +74,7 @@ function firstName(name: string): string {
 export class Details {
 	private readonly route = inject(ActivatedRoute);
 	private readonly gateway = inject(OrdersGateway);
+	private readonly invoices = inject(InvoicesGateway);
 	private readonly modals = inject(NgbModal);
 	private readonly notifier = inject(NotificationService);
 	private readonly transloco = inject(TranslocoService);
@@ -832,6 +833,12 @@ export class Details {
 				await this.refresh('ord_edoc_saved');
 				return;
 			}
+			// Generate on a packed order issues its tax invoice first (D1, EI5B): the card shows it, and the
+			// by-hand popup names it, since its number is what goes on the portal.
+			await this.queryClient.invalidateQueries({ queryKey: INVOICE_KEYS.forOrder(order.id) });
+			const invoices = await firstValueFrom(this.invoices.forOrder(order.id)).catch(() => []);
+			const issued = invoices.filter((invoice) => invoice.status === 'issued');
+			const invoice = issued.find((i) => !i.shipmentId) ?? issued.at(-1) ?? null;
 			// No integration yet: the details are typed in by hand (owner, 2026-11-20).
 			const popup = this.modals.open(OrderEDocPopup, {
 				centered: true,
@@ -839,7 +846,7 @@ export class Details {
 				windowClass: 'theme-modal',
 				ariaLabelledBy: 'order_edoc_popup_title',
 			});
-			(popup.componentInstance as OrderEDocPopup).start(order, kind);
+			(popup.componentInstance as OrderEDocPopup).start(order, kind, invoice?.number ?? null);
 			if (await popup.result.catch(() => null)) await this.refresh('ord_edoc_saved');
 		});
 	}

@@ -16,7 +16,8 @@ export interface InvoiceEDocs {
 
 /**
  * A tax invoice as its print reads it (accounts brief D1, AE5): one of the three Rule 48 copies, the HSN summary,
- * the IRN band only when the invoice has an IRN, and "Rates wait for the CA" until the CA confirms them.
+ * and the IRN band only when the invoice has an IRN. "Rates wait for the CA" is marked on the admin screens (the
+ * order's invoice card and the invoice's Checks), never on the buyer's copy.
  */
 export function taxInvoiceData(
 	invoice: TaxInvoice,
@@ -75,10 +76,6 @@ export function taxInvoiceData(
 			...(edocs?.ackNo ? { ackNo: edocs.ackNo } : {}),
 			...(edocs?.ackDate ? { ackDate: edocs.ackDate } : {}),
 			...(edocs?.ewayBill ? { ewayBill: edocs.ewayBill } : {}),
-			...(invoice.ratesPendingCa
-				? { note: 'GST at the rates in force today; rates wait for the CA to confirm.' }
-				: {}),
-			...(invoice.status === 'cancelled' ? { note: `Cancelled: ${invoice.cancellation?.reason ?? ''}` } : {}),
 		},
 		parties: {
 			billTo: {

@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
+import { gstStateName } from '@saha-textile/core-domain/company';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
@@ -60,6 +61,13 @@ export class InvoiceViewPage {
 		const invoice = this.invoice.data();
 		return this.locations.data()?.find((l) => l.id === invoice?.locationId)?.name ?? '';
 	});
+
+	/** The State's name with its code ("Maharashtra (27)"); 96 is outside India. */
+	state(code: string): string {
+		return code === '96'
+			? this.transloco.translate('inv_outside_india')
+			: `${gstStateName(code) ?? code} (${code})`;
+	}
 
 	day(iso: string): string {
 		return new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('en-GB', {

@@ -43,13 +43,14 @@ const invoice = TaxInvoice.parse({
 });
 
 describe('tax invoice print (accounts brief D1, AE5)', () => {
-	it('prints the copy asked for, IGST, the HSN summary and the CA note; no band without an IRN', () => {
+	it('prints the copy asked for, IGST and the HSN summary; no band without an IRN, no internal notes', () => {
 		const data = taxInvoiceData(invoice, { name: 'K.R. Marketing', lines: [] }, 'duplicate', null);
 		expect(data.values).toMatchObject({
 			copyLabel: 'Duplicate for transporter',
 			placeOfSupply: 'Maharashtra (27)',
 		});
-		expect(data.values['note']).toContain('rates wait for the CA');
+		// The CA caveat is for us, on the admin screens; the buyer's copy never carries it.
+		expect(data.values['note']).toBeUndefined();
 		expect(data.values['irn']).toBeUndefined();
 		expect(data.taxHeading).toBe('IGST');
 		expect(data.hsnSummary).toEqual([{ hsn: '5007', taxable: '₹34,761.90', rate: '5%', tax: '₹1,738.10' }]);

@@ -52,9 +52,13 @@ export class OrderEDocPopup {
 	readonly busy = signal(false);
 	readonly error = signal<string | null>(null);
 
-	start(order: Order, kind: 'eInvoice' | 'eWayBill'): void {
+	/** The tax invoice the portal entry is for (D1); null when the order has none yet. */
+	readonly invoiceNumber = signal<string | null>(null);
+
+	start(order: Order, kind: 'eInvoice' | 'eWayBill', invoiceNumber: string | null = null): void {
 		this.order.set(order);
 		this.kind.set(kind);
+		this.invoiceNumber.set(invoiceNumber);
 	}
 
 	/** The file read from the portal (EI4B), and why it was refused. */

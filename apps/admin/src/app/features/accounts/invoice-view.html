@@ -88,33 +88,30 @@
 						</div>
 						<div class="col-md-6">
 							<span class="text-muted">{{ 'inv_place_of_supply' | transloco }}:</span>
-							{{ inv.placeOfSupply }} · {{ inv.interState ? 'IGST' : 'CGST + SGST' }}
+							{{ state(inv.placeOfSupply) }} · {{ inv.interState ? 'IGST' : 'CGST + SGST' }}
 						</div>
 					</div>
 					<div class="table-responsive datatable-wrapper border-table">
 						<table class="all-package theme-table no-footer table">
 							<thead>
 								<tr>
-									<th>{{ 'inv_item' | transloco }}</th>
-									<th>HSN</th>
-									<th class="text-end">{{ 'inv_qty' | transloco }}</th>
-									<th class="text-end">{{ 'inv_taxable' | transloco }}</th>
-									<th class="text-end">{{ 'inv_rate' | transloco }}</th>
-									<th class="text-end">{{ 'inv_tax' | transloco }}</th>
-									<th class="text-end">{{ 'inv_amount' | transloco }}</th>
+									<th class="text-start">{{ 'inv_item' | transloco }}</th>
+									<th class="text-end text-nowrap">{{ 'inv_taxable' | transloco }}</th>
+									<th class="text-end text-nowrap">{{ 'inv_tax' | transloco }}</th>
+									<th class="text-end text-nowrap">{{ 'inv_amount' | transloco }}</th>
 								</tr>
 							</thead>
 							<tbody>
 								@for (line of inv.lines; track line.lineId) {
 								<tr>
-									<td>
+									<td class="text-start">
 										{{ line.title }}
-										<small class="text-muted d-block">{{ line.sku }}</small>
+										<small class="text-muted d-block">
+											{{ line.sku }} · HSN {{ line.hsn }} · {{ 'inv_qty' | transloco }} {{
+											line.quantity }} · {{ line.ratePercent }}%
+										</small>
 									</td>
-									<td>{{ line.hsn }}</td>
-									<td class="text-end">{{ line.quantity }}</td>
 									<td class="text-end text-nowrap">{{ inr(line.taxableINR) }}</td>
-									<td class="text-end">{{ line.ratePercent }}%</td>
 									<td class="text-end text-nowrap">
 										{{ inr(line.cgstINR + line.sgstINR + line.igstINR) }}
 									</td>
@@ -122,16 +119,29 @@
 								</tr>
 								} @if (inv.shippingINR) {
 								<tr>
-									<td colspan="6">{{ 'inv_delivery' | transloco }}</td>
+									<td
+										class="text-start"
+										colspan="3"
+									>
+										{{ 'inv_delivery' | transloco }}
+									</td>
 									<td class="text-end text-nowrap">{{ inr(inv.shippingINR) }}</td>
 								</tr>
 								}
 								<tr>
-									<td colspan="6">{{ 'inv_round_off' | transloco }}</td>
+									<td
+										class="text-start"
+										colspan="3"
+									>
+										{{ 'inv_round_off' | transloco }}
+									</td>
 									<td class="text-end text-nowrap">{{ inr(inv.roundOffINR) }}</td>
 								</tr>
 								<tr>
-									<td colspan="6">
+									<td
+										class="text-start"
+										colspan="3"
+									>
 										<b>{{ 'accounts_total' | transloco }}</b>
 									</td>
 									<td class="text-end text-nowrap">

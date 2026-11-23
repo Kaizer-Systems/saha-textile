@@ -10,6 +10,7 @@ import { EventsModule } from './events/events.module';
 import { MailboxesModule } from './mailboxes/mailboxes.module';
 import { PurchasingModule } from './purchasing/purchasing.module';
 import { CompanyModule } from './company/company.module';
+import { LocationsModule } from './locations/locations.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
@@ -84,6 +85,7 @@ export class AppModule {
 				MailboxesModule,
 				PurchasingModule,
 				CompanyModule,
+				LocationsModule,
 				DocumentsModule,
 				WishlistModule,
 				LanguagesModule,

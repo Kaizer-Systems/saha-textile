@@ -106,6 +106,7 @@ export const PermissionCode = z.enum([
 	'faq.edit',
 	'faq.index',
 	'language.manage',
+	'location.edit',
 	'mailbox.manage',
 	'mailbox.use',
 	'order.address',
@@ -401,6 +402,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'The open boxes and Save on Settings › Shop details (X04) and PUT /admin/settings/shop-details: the legal name, GSTIN and address printed on business documents. Reading the page is setting.index (read only, X04D). Held by the Administrator role.',
 	'company.edit':
 		'Save on Settings › Company, Registrations and Features (accounts brief J, CT, G1–G2) and PUT /admin/company, /admin/company/registrations, /admin/company/features. Reading them is setting.index. Held by the Administrator role.',
+	'location.edit':
+		'Add, edit and switch off locations (warehouses, stores, offices) and set where each admin user works (accounts brief K, L). Held by the Administrator role.',
 	'edocs.generate':
 		'Generate e-invoice and Generate e-way bill on an order or invoice, by hand or through a connected path, and update an e-way bill’s Part B or extend it (accounts brief addendum 2). Held by the Administrator role.',
 	'edocs.cancel':
@@ -440,6 +443,7 @@ export const PermissionResource = z.enum([
 	'event',
 	'faq',
 	'language',
+	'location',
 	'mailbox',
 	'order',
 	'page',

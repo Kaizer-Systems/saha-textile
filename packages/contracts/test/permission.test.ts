@@ -45,7 +45,8 @@ describe('permission registry', () => {
 		// order.{address,open,payment,send} and price_zone.{create,destroy,edit,index} (DEC-B2B-ZONES).
 		// 156 → 157 on 2026-11-23 with `company.edit` (accounts brief: Settings › Company, Registrations, Features).
 		// 157 → 160 on 2026-11-23 with `edocs.generate`, `edocs.cancel`, `edocs.settings` (accounts brief addendum 2).
-		expect(PERMISSION_CODES).toHaveLength(160);
+		// 160 → 161 on 2026-11-23 with `location.edit` (accounts brief K, L).
+		expect(PERMISSION_CODES).toHaveLength(161);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

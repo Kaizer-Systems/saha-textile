@@ -105,7 +105,7 @@ A bank receipt or payment with no bank account set is refused with `money_lands_
 
 ## Receipts and purchases
 
-`BooksPostingService` (`apps/api/src/ledger/books-posting.ts`) posts these inside the step that saves the document, in the same transaction, so the document and its voucher are saved together or not at all:
+`BooksPostingService` (`apps/api/src/ledger/books-posting.ts`) posts these inside the step that saves the document, in the same transaction, so the document and its voucher are saved together or not at all. It posts once the books are set up (Settings › Company); before that the documents are saved without vouchers and **Post them** catches them up, which itself refuses with `books_not_set_up` until then:
 
 | Step                                | Posting                                                                          | Key                                       |
 | ----------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |

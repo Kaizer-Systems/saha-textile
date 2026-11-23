@@ -8386,5 +8386,6 @@
 	"ar_doc_paymentVoucher": "পেমেন্ট ভাউচার",
 	"ar_doc_supplierPayment": "সাপ্লায়ারকে দেওয়া টাকা",
 	"ar_doc_payment": "পেমেন্ট",
-	"ar_doc_contra": "কনট্রা"
+	"ar_doc_contra": "কনট্রা",
+	"cu_books_not_set_up": "খাতা এখনও তৈরি হয়নি: আগে সেটিংস › কোম্পানি-তে ব্যবসার ধরন সেভ করুন।"
 }

@@ -7,7 +7,9 @@ import { BooksCatchUpController, BooksCatchUpService } from '../src/ledger/books
 type Row = Record<string, unknown>;
 const at = '2026-11-10T05:00:00.000Z';
 
-function setup(options: { superAdmin?: boolean; posted?: string[]; failing?: Record<string, string> } = {}) {
+function setup(
+	options: { superAdmin?: boolean; posted?: string[]; failing?: Record<string, string>; notSetUp?: boolean } = {},
+) {
 	const posted = new Set(options.posted ?? []);
 	const calls: string[] = [];
 	const record =
@@ -147,6 +149,7 @@ function setup(options: { superAdmin?: boolean; posted?: string[]; failing?: Rec
 			}),
 		} as never,
 		{ withTransaction: <T>(work: (context: object) => Promise<T>) => work({}) } as never,
+		{ booksSetUp: async () => !options.notSetUp } as never,
 	);
 	return { service, books, calls };
 }
@@ -160,6 +163,9 @@ describe('documents saved before the books took them', () => {
 			response: { issues: [expect.objectContaining({ message: 'catch_up_super_admin_only' })] },
 		});
 		await expect(service.run(undefined)).rejects.toThrow();
+		await expect(setup({ notSetUp: true }).service.run(owner)).rejects.toMatchObject({
+			response: { issues: [expect.objectContaining({ message: 'books_not_set_up' })] },
+		});
 	});
 
 	it('counts what has no voucher yet, by kind, leaving out what moves no money or nets to nothing', async () => {

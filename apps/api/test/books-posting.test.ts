@@ -31,6 +31,7 @@ function setup(
 		vouchers?: Record<string, { lines: Line[] }>;
 		advancesLedgers?: unknown[];
 		postFails?: Error;
+		notSetUp?: boolean;
 	} = {},
 ) {
 	const vouchers = new Map(Object.entries(options.vouchers ?? {}));
@@ -56,6 +57,7 @@ function setup(
 		{ listForOrder: async () => options.invoices ?? [] } as never,
 		{ listByOrder: async () => [{ id: 'pay_1' }, { id: 'pay_2' }] } as never,
 		{ listForOrder: async () => [{ id: 'rf_1' }] } as never,
+		{ booksSetUp: async () => !options.notSetUp } as never,
 	);
 	const posted = () => ledger.post.mock.calls.map(([request]) => request);
 	return { service, ledger, posted };
@@ -72,6 +74,31 @@ const entry = {
 	voidedAt: '2026-11-25T05:00:00.000Z',
 	totals: { taxableINR: 1_000, cgstINR: 25, sgstINR: 25, igstINR: 0, totalINR: 1_050 },
 } as never;
+
+describe('before the books are set up', () => {
+	it('saves documents without posting: Post them catches them up later', async () => {
+		const { service, ledger } = setup({ notSetUp: true, landing: landingNone, locations: [] });
+		const order = { id: 'ord_1', orderNumber: 'ST-1', shipsFromLocationId: null };
+		const results = await Promise.all([
+			service.purchaseEntryPosted(entry, ctx, null),
+			service.purchaseEntryVoided(entry, ctx, null),
+			service.supplierPaid({ id: 'p', mode: 'upi' } as never, entry, ctx, null),
+			service.supplierPaymentReversed({ id: 'p' } as never, ctx, null),
+			service.purchaseReturnSent({ id: 'r' } as never, true, ctx, null),
+			service.purchaseReturnSettled({ id: 'r' } as never, { how: 'refund' } as never, ctx, null),
+			service.paymentReceived({ id: 'p', state: 'received', method: 'bankTransfer' } as never, order, ctx, null),
+			service.paymentUndone({ id: 'p' } as never, '2026-11-24', ctx, null),
+			service.businessReceipt(
+				{ id: 'r', number: null, businessName: 'B' },
+				{ method: 'upi', amountINR: 1, receivedOn: '2026-11-24' },
+				ctx,
+				null,
+			),
+		]);
+		expect(results.every((result) => result === null)).toBe(true);
+		expect(ledger.post).not.toHaveBeenCalled();
+	});
+});
 
 describe('purchases in the books', () => {
 	it('posts a purchase entry as stock and input tax against the supplier, on the day it was posted', async () => {

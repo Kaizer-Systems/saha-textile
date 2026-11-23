@@ -4,7 +4,7 @@ import { AccountsTemplatesController } from '../src/accounts-templates/accounts-
 import { AccountsTemplatesService } from '../src/accounts-templates/accounts-templates.service';
 import { memoryTemplateStores } from './accounts-templates-memory';
 
-import type { AccountsTemplate, ChartTemplateContent } from '@saha-textile/contracts';
+import type { AccountsTemplate, ChartTemplateContent, TemplateNew } from '@saha-textile/contracts';
 
 /** The template builder (accounts templates plan AT2, AT3): New template, Save draft, Publish, Import. */
 
@@ -22,14 +22,14 @@ async function setup(installs: { code: string; version: number }[] = []) {
 }
 const refusal = (error: unknown) =>
 	(error as { response?: { issues?: { code: string; message: string }[] } }).response?.issues?.map((i) => i.message);
-const newChart = {
+const newChart: TemplateNew = {
 	code: 'CH-FIRM-DEED',
 	kind: 'chart',
 	name: 'Partners from the deed',
 	description: '',
 	appliesTo: { all: false, kinds: ['partnership'] },
 	startFrom: null,
-} as const;
+};
 const ledger = (key: string, groupKey: string) => ({
 	key,
 	name: key,

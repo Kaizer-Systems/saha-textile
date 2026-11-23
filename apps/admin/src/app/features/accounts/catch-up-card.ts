@@ -52,7 +52,11 @@ export class CatchUpCard {
 	readonly refused = computed(() => {
 		const error = this.waiting.error();
 		if (!error) return null;
-		return this.t(apiProblem(error, '') === 'catch_up_super_admin_only' ? 'cu_super_admin_only' : 'cu_failed');
+		const words: Record<string, string> = {
+			catch_up_super_admin_only: 'cu_super_admin_only',
+			books_not_set_up: 'cu_books_not_set_up',
+		};
+		return this.t(words[apiProblem(error, '')] ?? 'cu_failed');
 	});
 	readonly total = computed(() =>
 		this.kinds.reduce((sum, kind) => sum + (this.waiting.data()?.waiting[kind] ?? 0), 0),

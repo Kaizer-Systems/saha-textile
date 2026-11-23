@@ -39,6 +39,7 @@ import {
 	REFUND_VOUCHER_REPOSITORY,
 	TAX_INVOICE_REPOSITORY,
 } from '../infra/tokens';
+import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import { accountsRefusal } from './accounts-refusal';
 import { LedgerService } from './ledger.service';
 
@@ -69,6 +70,8 @@ export class BooksPostingService {
 		@Inject(TAX_INVOICE_REPOSITORY) private readonly invoices: Pick<TaxInvoiceRepository, 'listForOrder'>,
 		@Inject(ORDER_PAYMENT_REPOSITORY) private readonly payments: Pick<OrderPaymentRepository, 'listByOrder'>,
 		@Inject(REFUND_VOUCHER_REPOSITORY) private readonly refunds: Pick<RefundVoucherRepository, 'listForOrder'>,
+		/** The books take postings once they are set up (Settings › Company); before that, Post them catches up. */
+		private readonly templates: AccountsTemplatesService,
 	) {}
 
 	/** A rule reading "Where money lands"; a missing bank account refuses the step in words. */
@@ -134,6 +137,7 @@ export class BooksPostingService {
 
 	/** Purchases › Post: stock and input tax against the supplier (input tax that can't be claimed goes into stock). */
 	async purchaseEntryPosted(entry: PurchaseEntry, context: TransactionContext, by: string | null) {
+		if (!(await this.templates.booksSetUp())) return null;
 		return this.post(
 			purchaseEntryPosting(billTotals(entry.totals, entry.itcClaimable)),
 			{
@@ -150,6 +154,7 @@ export class BooksPostingService {
 
 	/** A posted entry voided: its posting reversed, dated the day it is voided. */
 	async purchaseEntryVoided(entry: PurchaseEntry, context: TransactionContext, by: string | null) {
+		if (!(await this.templates.booksSetUp())) return null;
 		return this.reverse(
 			`purchaseEntry:${entry.id}`,
 			{
@@ -170,6 +175,7 @@ export class BooksPostingService {
 		context: TransactionContext,
 		by: string | null,
 	) {
+		if (!(await this.templates.booksSetUp())) return null;
 		const from = await this.lands((landing) => supplierPaymentFrom(payment.mode, landing));
 		return this.post(
 			supplierPaymentPosting(payment.amountINR, from),
@@ -187,6 +193,7 @@ export class BooksPostingService {
 
 	/** A supplier payment reversed (or its voucher cancelled): its posting reversed on that day. */
 	async supplierPaymentReversed(payment: SupplierPayment, context: TransactionContext, by: string | null) {
+		if (!(await this.templates.booksSetUp())) return null;
 		return this.reverse(
 			`supplierPayment:${payment.id}`,
 			{
@@ -207,6 +214,7 @@ export class BooksPostingService {
 		context: TransactionContext,
 		by: string | null,
 	) {
+		if (!(await this.templates.booksSetUp())) return null;
 		return this.post(
 			purchaseReturnPosting(
 				billTotals(
@@ -242,6 +250,7 @@ export class BooksPostingService {
 		context: TransactionContext,
 		by: string | null,
 	) {
+		if (!(await this.templates.booksSetUp())) return null;
 		if (settlement.how !== 'refund') return null;
 		const landed = await this.lands(bankLanding);
 		return this.post(
@@ -278,6 +287,7 @@ export class BooksPostingService {
 		/** "Post them" wants every failure back, to list it. */
 		options: { keepCustomerPayment: boolean } = { keepCustomerPayment: true },
 	) {
+		if (!(await this.templates.booksSetUp())) return null;
 		if (payment.state !== 'received') return null;
 		const work = async () => {
 			const landed = await this.lands((landing) => receiptLanding(payment.method, landing));
@@ -314,6 +324,7 @@ export class BooksPostingService {
 
 	/** A received payment voided or failed afterwards: its posting reversed on that day. */
 	async paymentUndone(payment: OrderPayment, day: string, context: TransactionContext, by: string | null) {
+		if (!(await this.templates.booksSetUp())) return null;
 		return this.reverse(
 			`receipt:${payment.id}`,
 			{
@@ -334,6 +345,7 @@ export class BooksPostingService {
 		context: TransactionContext,
 		by: string | null,
 	) {
+		if (!(await this.templates.booksSetUp())) return null;
 		const landed: LedgerRef =
 			input.method === 'cash'
 				? { role: 'cash' }

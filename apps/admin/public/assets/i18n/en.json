@@ -8386,5 +8386,6 @@
 	"ar_doc_paymentVoucher": "Payment vouchers",
 	"ar_doc_supplierPayment": "Supplier payments",
 	"ar_doc_payment": "Payments",
-	"ar_doc_contra": "Contra"
+	"ar_doc_contra": "Contra",
+	"cu_books_not_set_up": "The books aren't set up yet: save the kind of business on Settings › Company first."
 }

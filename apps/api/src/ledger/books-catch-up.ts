@@ -1,4 +1,13 @@
-import { Controller, ForbiddenException, Get, Header, Inject, Injectable, Post } from '@nestjs/common';
+import {
+	BadRequestException,
+	Controller,
+	ForbiddenException,
+	Get,
+	Header,
+	Inject,
+	Injectable,
+	Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	type BooksCatchUp,
@@ -33,6 +42,7 @@ import {
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
+import { AccountsTemplatesService } from '../accounts-templates/accounts-templates.service';
 import { accountsRefusal } from './accounts-refusal';
 import { BooksPostingService } from './books-posting';
 import { LedgerService } from './ledger.service';
@@ -81,6 +91,7 @@ export class BooksCatchUpService {
 		@Inject(BUSINESS_REPOSITORY) private readonly businesses: Pick<BusinessRepository, 'list'>,
 		@Inject(LEDGER_REPOSITORY) private readonly accounts: Pick<LedgerRepository, 'list'>,
 		@Inject(TRANSACTION_MANAGER) private readonly tx: TransactionManagerPort,
+		private readonly templates: AccountsTemplatesService,
 	) {}
 
 	/** Every row of a paged list. */
@@ -198,6 +209,8 @@ export class BooksCatchUpService {
 	private async superAdmin(principal: AuthenticatedPrincipal | undefined): Promise<void> {
 		if (!(await this.ledger.isSuperAdmin(principal)))
 			throw new ForbiddenException(accountsRefusal('catch_up_super_admin_only'));
+		// Before the books are set up nothing posts; Post them runs once they are.
+		if (!(await this.templates.booksSetUp())) throw new BadRequestException(accountsRefusal('books_not_set_up'));
 	}
 
 	async summary(principal: AuthenticatedPrincipal | undefined): Promise<BooksCatchUp> {

@@ -88,6 +88,9 @@ describe('documents saved before the books took them', () => {
 		others.fixture.detectChanges();
 		await vi.waitFor(() => expect(others.card.refused()).toBe('Super admin only'));
 		others.fixture.detectChanges();
+		const early = setup({ summary: refused('books_not_set_up') });
+		early.fixture.detectChanges();
+		await vi.waitFor(() => expect(early.card.refused()).toBe('cu_books_not_set_up'));
 		const down = setup({ summary: new Error('down') });
 		down.fixture.detectChanges();
 		await vi.waitFor(() => expect(down.card.refused()).toBe('Failed'));

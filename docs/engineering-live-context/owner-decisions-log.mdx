@@ -2464,3 +2464,15 @@ Suvidha Provider can be plugged in later behind a port. On addendum 2: "Approve 
   **AE7** A path that stops answering falls back to the by-hand popup with the reason; a duplicate IRN fetches the existing one.
   **AE8** Shipped stays blocked until they are in; the ₹50,000 setting moves to the new settings page; e-way bill numbers take
   12 or 14 digits (14 from 23 Nov 2026). **AE9** Owner checks the offline stores' GSTIN status.
+
+## Owner decision round (2026-11-23) — Release Console tracing switch approved
+
+- **One button instead of typed commands.** Owner: "why manual commands i have to write? then what is
+  the release console for?" Brief `8UmNaHHAuiGLez47McHkj8`, approved: "Approve, both A". Watch › Traces
+  on the Local tab gets **Turn tracing on for this Mac** and **Turn tracing off**, each with the PIN:
+  start or stop only the trace store, give the apps its address, restart the local stack's API, worker
+  and shop when they run, then say which apps are sending. The console never stops what it did not start.
+- **Q1 A.** The address on this Mac lives in `apps/api/.env.overrides`, not in Infisical: it is this
+  Mac's own address and not a secret. Servers keep waiting for `DEC-TRACING-SERVERS`.
+- **Q2 A.** The shop's `pnpm start` loads its tracing file too (Infisical chat), so the shop sends
+  wherever it runs except the vite dev server.

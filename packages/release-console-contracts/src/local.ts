@@ -85,7 +85,15 @@ export const jobSchema = z.object({
 export type Job = z.infer<typeof jobSchema>;
 export const jobsSchema = z.array(jobSchema);
 
-export const localActionSchema = z.enum(['stack-env', 'stack-up', 'stack-stop-apps', 'stack-start-apps', 'pipeline']);
+export const localActionSchema = z.enum([
+	'stack-env',
+	'stack-up',
+	'stack-stop-apps',
+	'stack-start-apps',
+	'pipeline',
+	'tracing-on',
+	'tracing-off',
+]);
 export type LocalAction = z.infer<typeof localActionSchema>;
 export const PIPELINE_STAGES = ['checks', 'proof', 'images', 'release', 'deploy', 'record'] as const;
 export const pipelineStageSchema = z.enum(PIPELINE_STAGES);

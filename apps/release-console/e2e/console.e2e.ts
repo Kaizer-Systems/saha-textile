@@ -976,6 +976,18 @@ test('Release Path: Rotate, the ready card, the server panels, the database moni
 		readAt: at,
 	});
 	await answerWith(page, '**/server-state/staging/db-report', { error: 'The monitor login is not set up.' });
+	await answerWith(page, '**/api/local/tracing', {
+		state: 'on',
+		store: true,
+		address: true,
+		apps: ['API', 'Worker', 'Shop'].map((label) => ({
+			label,
+			service: `saha-textile-${label === 'Shop' ? 'storefront' : label.toLowerCase()}`,
+			sending: true,
+			note: 'sending · 3 traces in the last hour',
+			tone: 'ok',
+		})),
+	});
 	await answerWith(page, '**/api/local/traces?view=slowest', {
 		state: 'ok',
 		message: '1 traces in the last hour',
@@ -1059,4 +1071,101 @@ test('Release Path: Rotate, the ready card, the server panels, the database moni
 	await page.locator('.rc-main table').getByRole('button', { name: 'Waterfall' }).click();
 	await expect(page.getByText('variants.find on MongoDB took 181 ms')).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Open in Database monitor' })).toBeVisible();
+});
+
+test('Tracing switch: off, Turn tracing on with the PIN and its output, then the Sending list and Turn tracing off', async ({
+	page,
+}, info) => {
+	const base = `/p/browser-test-${info.project.name}/r/saha-textile`;
+	const at = new Date().toISOString();
+	const apps = (shop: { sending: boolean; note: string; tone: string }) => [
+		{
+			label: 'API',
+			service: 'saha-textile-api',
+			sending: true,
+			note: 'sending · 12 traces in the last hour',
+			tone: 'ok',
+		},
+		{
+			label: 'Worker',
+			service: 'saha-textile-worker',
+			sending: true,
+			note: 'sending · 2 traces in the last hour',
+			tone: 'ok',
+		},
+		{ label: 'Shop', service: 'saha-textile-storefront', ...shop },
+	];
+	await answerWith(page, '**/api/local/jobs', []);
+	await answerWith(page, '**/api/local/tracing', { state: 'off', store: false, address: false, apps: [] });
+	const job = {
+		id: 'job-trace',
+		kind: 'stack',
+		label: 'Turn tracing on for this Mac',
+		status: 'passed',
+		startedAt: at,
+		finishedAt: at,
+		exitCode: 0,
+		lines: [
+			{
+				seq: 1,
+				stream: 'out',
+				text: '17:42:03 Trace store started · 127.0.0.1:10428 · keeps 7 days, at most 2 GiB',
+				event: null,
+			},
+			{
+				seq: 2,
+				stream: 'out',
+				text: '17:42:05 Local stack: address set · restarting api, worker, storefront…',
+				event: null,
+			},
+			{ seq: 3, stream: 'out', text: '17:42:41 First traces: API ✓ · worker ✓ · shop —', event: null },
+		],
+	};
+	await answerWith(page, '**/api/local/run/tracing-on', job);
+	await answerWith(page, '**/api/local/jobs/job-trace*', job);
+	await unlock(page);
+	await page.goto(`${base}/traces?tab=list`);
+	await page.locator('.rc-env-tab', { hasText: 'Local' }).click();
+	await expect(page.getByText('Tracing is off on this Mac.')).toBeVisible();
+	await expect(page.getByText('http://127.0.0.1:10428/insert/opentelemetry/v1/traces')).toBeVisible();
+	// Pressed again if the first press did not reach the page while this Mac was busy (seen once, 23 Nov).
+	const output = page.getByText('Output · Turn tracing on for this Mac');
+	await expect(async () => {
+		if (!(await output.isVisible())) {
+			await page.getByLabel('Console PIN to turn tracing on').fill('123456');
+			await page.getByRole('button', { name: 'Turn tracing on' }).click();
+		}
+		await expect(output).toBeVisible({ timeout: 5000 });
+	}).toPass({ timeout: 30_000 });
+	await expect(page.getByText('17:42:03', { exact: true })).toBeVisible();
+	await expect(page.getByText('First traces: API ✓ · worker ✓ · shop —')).toBeVisible();
+	// On, with the shop started in a terminal before the address: the Sending list says why.
+	await answerWith(page, '**/api/local/tracing', {
+		state: 'on',
+		store: true,
+		address: true,
+		apps: apps({
+			sending: false,
+			note: 'runs on :4200, started outside the console before tracing was turned on · it sends from its next start',
+			tone: 'amber',
+		}),
+	});
+	await answerWith(page, '**/api/local/traces?view=slowest', {
+		state: 'ok',
+		message: '1 traces in the last hour',
+		services: ['saha-textile-api'],
+		traces: [],
+		edges: [],
+	});
+	await page.reload();
+	await page.locator('.rc-env-tab', { hasText: 'Local' }).click();
+	await expect(page.getByText('Sending · the last hour')).toBeVisible();
+	await expect(page.getByText(/started outside the console before tracing was turned on/)).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Turn tracing off' })).toBeVisible();
+	// The store stopped by itself: the amber banner and Start it again.
+	await answerWith(page, '**/api/local/tracing', { state: 'stopped', store: false, address: true, apps: [] });
+	await page.reload();
+	await page.locator('.rc-env-tab', { hasText: 'Local' }).click();
+	await expect(page.getByText('The trace store has stopped,')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Start it again' })).toBeVisible();
 });

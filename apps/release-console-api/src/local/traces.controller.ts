@@ -1,5 +1,14 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { type TraceView, type TracesList, diagnose, edgesOf, traceOf } from '@saha-textile/release-console-contracts';
+import {
+	type TraceView,
+	type TracesList,
+	type TracingView,
+	diagnose,
+	edgesOf,
+	traceOf,
+	tracingRawSchema,
+	tracingView,
+} from '@saha-textile/release-console-contracts';
 import { z } from 'zod';
 
 import { parseBody } from '../common/parse.js';
@@ -75,5 +84,38 @@ export class TracesController {
 				others.filter((o) => o.id !== t.id),
 			),
 		};
+	}
+}
+
+/**
+ * The tracing switch's state on this Mac (brief 8UmNaHHAuiGLez47McHkj8, approved 23 Nov): the helper's
+ * read of Docker, the store, the address and what runs, plus each app's traces in the last hour.
+ * Turning it on or off is the local run actions `tracing-on` and `tracing-off`, with the PIN.
+ */
+@Controller('api/local/tracing')
+export class TracingController {
+	private readonly helper = new RunnerClient();
+
+	@Get()
+	async read(): Promise<TracingView> {
+		const parsed = tracingRawSchema.safeParse(
+			await this.helper.call<unknown>('GET', '/tracing/state', undefined, 30_000),
+		);
+		if (!parsed.success)
+			throw new HelperError('The Mac helper answered in a shape the console does not know.', 502);
+		const counts: Record<string, number> = {};
+		if (parsed.data.store)
+			for (const service of ['saha-textile-api', 'saha-textile-worker', 'saha-textile-storefront']) {
+				const a = await this.helper
+					.call<Answer>(
+						'GET',
+						`/traces/search?${new URLSearchParams({ service, limit: '100', lookback: '1h' })}`,
+						undefined,
+						20_000,
+					)
+					.catch(() => ({}) as Answer);
+				counts[service] = Array.isArray(a.data) ? a.data.length : 0;
+			}
+		return tracingView(parsed.data, counts);
 	}
 }

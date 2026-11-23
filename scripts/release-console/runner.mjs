@@ -47,6 +47,7 @@ import { BRANCH_NAME, checkoutBranches, menusFileAt } from './git-branches.mjs';
 import { repositoryOf } from './infisical-places.mjs';
 import { loadInventory, ROOT, SERVER_TIERS, TIERS } from '../secrets/inventory.mjs';
 import { FirstBootError, firstBootTemplate, prepareFirstBoot } from './first-boot.mjs';
+import { tracingState } from './tracing.mjs';
 import {
 	SetupError,
 	aopPair,
@@ -708,6 +709,21 @@ export function commandFor(action, body = {}, busy = []) {
 				'docker',
 				['compose', '-f', 'docker/stack/compose.yaml', 'stop', ...STACK_APP_SERVICES],
 			];
+		// Tracing on this Mac, one press (tracing switch brief 8UmNaHHAuiGLez47McHkj8): one stack job at a time.
+		case 'tracing-on':
+			return [
+				'stack',
+				'Turn tracing on for this Mac',
+				process.execPath,
+				['scripts/release-console/tracing.mjs', 'on'],
+			];
+		case 'tracing-off':
+			return [
+				'stack',
+				'Turn tracing off for this Mac',
+				process.execPath,
+				['scripts/release-console/tracing.mjs', 'off'],
+			];
 		case 'stack-start-apps':
 			return [
 				'stack',
@@ -964,6 +980,7 @@ export function createRunner(token) {
 				for await (const chunk of req) raw += chunk;
 				return send(200, await localOps(raw ? JSON.parse(raw) : {}));
 			}
+			if (req.method === 'GET' && path === '/tracing/state') return send(200, await tracingState(ROOT));
 			if (req.method === 'GET' && path.startsWith('/traces/')) {
 				try {
 					return send(

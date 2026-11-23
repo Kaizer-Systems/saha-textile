@@ -298,7 +298,16 @@ The Creating tab lists each server's deploy token with its end date and **Renew 
 
 On a server environment's tab, Run › Server, Infrastructure, Live logs and Watch › Health show the server's CPU, memory and disk from DigitalOcean's monitoring, the shop's queues from the API's `/ops` address (with that environment's `CONSOLE_OPS_TOKEN_*`), and its containers with each one's last 15 minutes of masked log lines through the observer. Watch › Database monitor on a server tab reads `db-report` with the read-only monitor login: sizes, operation counts, slow-query shapes with every value shown as `?`, and index use. On the Local tab, its **Top queries** tab runs the same report against this Mac's MongoDB (127.0.0.1:27018) through the Mac helper, with the local monitor login `saha_textile_monitor`. The helper reads its password from `docker/dev-secrets/mongo-monitor-password` and passes it to `mongosh` on stdin, so the password never reaches the browser or a process list. Without that file, the tab says to run `pnpm secrets:setup-local -- --monitor-only`. The Query plan tab stays as before.
 
-Watch › Traces reads the local VictoriaTraces (`docker compose -f docker/stack/compose.yaml --profile tracing up -d traces`, on 127.0.0.1:10428) through the Mac helper: the slowest and the failed requests of the last hour, one request's waterfall, the service map, and **Diagnose** by fixed rules (the span that took most of the request, a call repeated three or more times, a slow database call, an outside call far over its usual time). The API and worker send spans when `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set. Traces appear within half a minute. Server tabs stay off until tracing is switched on for staging and production.
+Watch › Traces reads the local VictoriaTraces (on 127.0.0.1:10428) through the Mac helper: the slowest and the failed requests of the last hour, one request's waterfall, the service map, and **Diagnose** by fixed rules (the span that took most of the request, a call repeated three or more times, a slow database call, an outside call far over its usual time). Traces appear within half a minute. Server tabs stay off until tracing is switched on for staging and production.
+
+On the Local tab, **Turn tracing on for this Mac** (with the PIN) does the whole setup as one run, shown line by line in the Output panel:
+
+1. It starts only the trace store (the stack's `traces` service, profile `tracing`). The store keeps 7 days of traces, in at most 2 GiB.
+2. It writes the store's address, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:10428/insert/opentelemetry/v1/traces`, into `apps/api/.env.overrides`, and into `apps/api/.env` in place. The address is this Mac's own and not a secret, so it is not kept in Infisical.
+3. It gives the local stack its own address inside Docker, then restarts the stack's API, worker and shop if they are running.
+4. It waits up to a minute and names the apps that sent their first traces.
+
+While tracing is on, a **Sending** list names any app that is not sending, and why. An API or shop started in a terminal is never stopped by the console; it sends from its next start. The shop's vite dev server is never traced. **Turn tracing off** removes the address, restarts the stack's apps and stops the store; recorded traces stay until they are 7 days old. If the store stops by itself (Docker or the Mac restarted), **Start it again** restarts it.
 
 ## Console API
 

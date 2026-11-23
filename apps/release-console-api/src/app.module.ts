@@ -24,7 +24,7 @@ import { DropletJobs } from './servers/droplet-jobs.js';
 import { EnvTagsController, ServersController, SshListController } from './servers/servers.controller.js';
 import { RotationController } from './projects/rotation.controller.js';
 import { LocalDbReportController, ServerStateController } from './servers/server-state.controller.js';
-import { TracesController } from './local/traces.controller.js';
+import { TracesController, TracingController } from './local/traces.controller.js';
 import { ConsoleStore } from './store/console-store.js';
 import { ProductsController } from './products/products.controller.js';
 import { ProductsService } from './products/products.service.js';
@@ -44,6 +44,7 @@ import { ProductsService } from './products/products.service.js';
 		ServerStateController,
 		LocalDbReportController,
 		TracesController,
+		TracingController,
 		LocalController,
 		AppFilesController,
 	],

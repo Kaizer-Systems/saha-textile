@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { diagnose, edgesOf, traceOf } from './traces.js';
+import { type TracingRaw, diagnose, edgesOf, traceOf, tracingView } from './traces.js';
 
 /** A made-up Jaeger-format trace: the shop's page, the API, two database calls and a Redis read. */
 const sample = (variantsMs = 181, id = 't1') => ({
@@ -131,5 +131,62 @@ describe('traces (Release Path brief Part 6)', () => {
 		const o = traceOf(outside);
 		expect(o?.spans.find((s) => s.id === 'm')?.where).toBe('api.msg91.com');
 		expect(edgesOf(o ? [o] : []).map((e) => `${e.from}→${e.to}`)).toContain('API→api.msg91.com');
+	});
+});
+
+describe('the tracing switch on this Mac (brief 8UmNaHHAuiGLez47McHkj8)', () => {
+	const raw = (over: Partial<TracingRaw> = {}): TracingRaw => ({
+		docker: true,
+		store: true,
+		address: true,
+		addressSince: '2026-11-23T12:00:00.000Z',
+		stack: [],
+		outside: { api: null, storefront: null },
+		...over,
+	});
+
+	it('picks off, on, stopped and no-docker', () => {
+		expect(tracingView(raw({ address: false }), {}).state).toBe('off');
+		expect(tracingView(raw({ store: true, address: false }), {}).state).toBe('off');
+		expect(tracingView(raw(), {}).state).toBe('on');
+		expect(tracingView(raw({ store: false }), {}).state).toBe('stopped');
+		expect(tracingView(raw({ docker: false }), {}).state).toBe('no-docker');
+	});
+
+	it('says why each app is not sending and what starts it', () => {
+		const v = tracingView(
+			raw({
+				stack: ['worker'],
+				outside: {
+					api: { startedAt: '2026-11-23T11:00:00.000Z', vite: false },
+					storefront: { startedAt: '2026-11-23T12:30:00.000Z', vite: true },
+				},
+			}),
+			{ 'saha-textile-worker': 140 },
+		);
+		expect(v.apps.map((a) => [a.label, a.tone])).toEqual([
+			['API', 'amber'],
+			['Worker', 'ok'],
+			['Shop', 'amber'],
+		]);
+		expect(v.apps[0]?.note).toContain(
+			'started outside the console before tracing was turned on · it sends from its next start',
+		);
+		expect(v.apps[1]?.note).toBe('sending · 100+ traces in the last hour');
+		expect(v.apps[2]?.note).toContain('quick-edit server (vite), which is never traced');
+	});
+
+	it('tells an app that started after the address apart from one that has had no request', () => {
+		const v = tracingView(
+			raw({
+				stack: ['api'],
+				outside: { api: null, storefront: { startedAt: '2026-11-23T12:30:00.000Z', vite: false } },
+			}),
+			{},
+		);
+		expect(v.apps[0]?.note).toContain('in the local stack · no traces in the last hour');
+		expect(v.apps[1]?.note).toBe('not running in the local stack');
+		expect(v.apps[2]).toMatchObject({ tone: 'muted' });
+		expect(v.apps[2]?.note).toContain('started outside the console · no traces in the last hour');
 	});
 });

@@ -256,3 +256,95 @@ export function edgesOf(traces: readonly TraceView[]): TracesList['edges'] {
 	}
 	return [...map.values()].map((e) => ({ ...e, ms: Math.round(e.ms / e.calls) }));
 }
+
+/* ----- the tracing switch on this Mac (brief 8UmNaHHAuiGLez47McHkj8, approved 23 Nov) ----- */
+
+/** What the Mac helper reads: Docker, the trace store, the address, the stack's apps, ports 4000 and 4200. */
+export const tracingRawSchema = z.object({
+	docker: z.boolean(),
+	store: z.boolean(),
+	address: z.boolean(),
+	addressSince: z.string().nullable(),
+	stack: z.array(z.string()),
+	outside: z.object({
+		api: z.object({ startedAt: z.string().nullable(), vite: z.boolean() }).nullable(),
+		storefront: z.object({ startedAt: z.string().nullable(), vite: z.boolean() }).nullable(),
+	}),
+});
+export type TracingRaw = z.infer<typeof tracingRawSchema>;
+
+export const tracingAppSchema = z.object({
+	label: z.string(),
+	service: z.string(),
+	sending: z.boolean(),
+	note: z.string(),
+	tone: z.enum(['ok', 'amber', 'muted']),
+});
+export const tracingViewSchema = z.object({
+	/** off: no store or no address · on: both · stopped: address set, store off · no-docker: Docker is off. */
+	state: z.enum(['off', 'on', 'stopped', 'no-docker']),
+	store: z.boolean(),
+	address: z.boolean(),
+	apps: z.array(tracingAppSchema),
+});
+export type TracingView = z.infer<typeof tracingViewSchema>;
+
+const APPS = [
+	{ label: 'API', service: 'saha-textile-api', stack: 'api', port: 4000, outside: 'api' },
+	{ label: 'Worker', service: 'saha-textile-worker', stack: 'worker', port: null, outside: null },
+	{ label: 'Shop', service: 'saha-textile-storefront', stack: 'storefront', port: 4200, outside: 'storefront' },
+] as const;
+
+/**
+ * The switch's state and each app's line on the Sending list, from the helper's read and each app's
+ * traces in the last hour (`counts`, capped at `cap`). An app that sends nothing says why and what
+ * starts it; the console never restarts what it did not start.
+ */
+export function tracingView(raw: TracingRaw, counts: Record<string, number>, cap = 100): TracingView {
+	const state = !raw.docker ? 'no-docker' : raw.address ? (raw.store ? 'on' : 'stopped') : 'off';
+	const since = raw.addressSince ? Date.parse(raw.addressSince) : null;
+	const apps = APPS.map((a) => {
+		const n = counts[a.service] ?? 0;
+		const base = { label: a.label, service: a.service };
+		if (n > 0)
+			return {
+				...base,
+				sending: true,
+				note: `sending · ${n >= cap ? `${cap}+` : n} ${n === 1 ? 'trace' : 'traces'} in the last hour`,
+				tone: 'ok' as const,
+			};
+		if (raw.stack.includes(a.stack))
+			return {
+				...base,
+				sending: false,
+				note: 'in the local stack · no traces in the last hour: it sends once it handles a request',
+				tone: 'muted' as const,
+			};
+		const p = a.outside ? raw.outside[a.outside] : null;
+		if (p && a.port) {
+			if (p.vite)
+				return {
+					...base,
+					sending: false,
+					note: `runs on :${a.port} as the quick-edit server (vite), which is never traced`,
+					tone: 'amber' as const,
+				};
+			const before = since !== null && p.startedAt !== null && Date.parse(p.startedAt) < since;
+			return {
+				...base,
+				sending: false,
+				note: before
+					? `runs on :${a.port}, started outside the console before tracing was turned on · it sends from its next start`
+					: `runs on :${a.port}, started outside the console · no traces in the last hour: it sends once it handles a request`,
+				tone: before ? ('amber' as const) : ('muted' as const),
+			};
+		}
+		return {
+			...base,
+			sending: false,
+			note: a.port ? 'not running' : 'not running in the local stack',
+			tone: 'muted' as const,
+		};
+	});
+	return { state, store: raw.store, address: raw.address, apps };
+}

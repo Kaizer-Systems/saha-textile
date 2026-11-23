@@ -51,7 +51,9 @@ import {
 	type TracesList,
 	tracesListSchema,
 	type TraceView,
+	type TracingView,
 	traceViewSchema,
+	tracingViewSchema,
 	type DeployToken,
 	deployTokensSchema,
 	type ConsoleView,
@@ -679,6 +681,10 @@ export class ConsoleApi {
 	}
 	alerts(): Promise<AlertsView> {
 		return this.call('GET', '/api/local/alerts', alertsViewSchema);
+	}
+	/** The tracing switch on this Mac: its state and which apps are sending. */
+	localTracing(): Promise<TracingView> {
+		return this.call('GET', '/api/local/tracing', tracingViewSchema, undefined, 60_000);
 	}
 	jobs(): Promise<Job[]> {
 		return this.call('GET', '/api/local/jobs', jobsSchema);

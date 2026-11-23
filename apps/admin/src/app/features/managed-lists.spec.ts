@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -688,8 +688,37 @@ describe('Redirects', () => {
 			remove: vi.fn(() => of(undefined)),
 			save: vi.fn(() => of({})),
 		};
-		return { ...render(Redirect, [{ provide: RedirectService, useValue: api }], url), api };
+		// The page reads `?source=` from its route (the Release Console's Add redirect link).
+		const [path = '', query = ''] = url.split('?');
+		const route = {
+			snapshot: {
+				queryParamMap: convertToParamMap(Object.fromEntries(new URLSearchParams(query))),
+				url: path
+					.split('/')
+					.filter(Boolean)
+					.slice(1)
+					.map((segment) => ({ path: segment })),
+			},
+		};
+		return {
+			...render(
+				Redirect,
+				[
+					{ provide: RedirectService, useValue: api },
+					{ provide: ActivatedRoute, useValue: route },
+				],
+				url,
+			),
+			api,
+		};
 	};
+
+	it('starts a new redirect from the path the Release Console sends', () => {
+		expect(setup('/redirect/create?source=/missing/page').page.form.getRawValue().sourcePath).toBe('/missing/page');
+		// Only a path, and only on the create screen.
+		expect(setup('/redirect/create?source=https://x.test/a').page.form.getRawValue().sourcePath).toBe('');
+		expect(setup('/redirect?source=/missing/page').page.form.getRawValue().sourcePath).toBe('');
+	});
 
 	it('loads the list and knows its mode', () => {
 		const { page } = setup();

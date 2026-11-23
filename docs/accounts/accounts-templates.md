@@ -28,16 +28,17 @@ Anything in the books that differs by the kind of company, or that the law can c
 
 A template applies to every kind of company (`appliesTo.all`) or to the kinds it lists. The kind on Settings › Company unlocks the shared templates and its own; the others stay in the library, locked, with the reason `not_this_kind`, so a CA can see what another kind would get.
 
-| Code        | Template                                        | Applies to         |
-| ----------- | ----------------------------------------------- | ------------------ |
-| `CH-COMMON` | Shared chart                                    | every kind         |
-| `CH-PROP`   | Proprietor's capital and drawings               | proprietorship     |
-| `CH-FIRM`   | Partners' capital and current accounts          | partnership firm   |
-| `CH-LLP`    | Partners' contribution and current accounts     | LLP                |
-| `CH-PVT`    | Share capital and reserves                      | private limited    |
-| `CH-OPC`    | Share capital and reserves (one person company) | one person company |
+| Code        | Template                                        | Applies to            |
+| ----------- | ----------------------------------------------- | --------------------- |
+| `CH-COMMON` | Shared chart                                    | every kind            |
+| `CH-PROP`   | Proprietor's capital and drawings               | proprietorship        |
+| `CH-FIRM`   | Partners' capital and current accounts          | partnership firm      |
+| `CH-LLP`    | Partners' contribution and current accounts     | LLP                   |
+| `CH-PVT`    | Share capital and reserves                      | private limited       |
+| `CH-OPC`    | Share capital and reserves (one person company) | one person company    |
+| `RS-RCM`    | Reverse-charge list (a tax rule set)            | every kind, per entry |
 
-These starter charts are written into an empty library once, split from the starting chart of each kind: what all five kinds share goes to `CH-COMMON`, the rest to each kind's own. Each is version 1, valid from 1 April 2026, marked `caReview: pending` until the CA confirms it.
+The starter charts are split from the starting chart of each kind: what all five kinds share goes to `CH-COMMON`, the rest to each kind's own. Each is marked `caReview: pending` until the CA confirms it. Version 2 of `CH-COMMON`, `CH-PVT` and `CH-OPC` adds the expense ledgers the reverse-charge list posts to ([self-invoices](./self-invoices.md)). A starter template a library lacks is added to it, and a newer starter version is added to a template no person has published a version of; either way, installing a newer version is a person's choice.
 
 ## Versions
 

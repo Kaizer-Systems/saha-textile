@@ -95,6 +95,7 @@ const sidebars: SidebarsConfig = {
 				'accounts/tax-invoices',
 				'accounts/returns-and-credit-notes',
 				'accounts/refund-vouchers',
+				'accounts/self-invoices',
 			],
 		},
 		{

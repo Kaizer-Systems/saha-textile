@@ -15,6 +15,7 @@ export const ROTATE_IDS = [
 	'mongo-app',
 	'redis',
 	'mongo-root',
+	'mongo-monitor',
 	'search',
 	'keyfile',
 	'sign-in',
@@ -24,7 +25,14 @@ export const ROTATE_IDS = [
 export type RotateId = (typeof ROTATE_IDS)[number];
 
 /** Values the database, Redis or search run with: changing one needs a deploy with rotation. */
-export const DATA_SERVICE_IDS: readonly RotateId[] = ['mongo-app', 'redis', 'mongo-root', 'search', 'keyfile'];
+export const DATA_SERVICE_IDS: readonly RotateId[] = [
+	'mongo-app',
+	'redis',
+	'mongo-root',
+	'mongo-monitor',
+	'search',
+	'keyfile',
+];
 /** Values kept for 30 days under `<NAME>_PREVIOUS` on a scheduled change (brief Q2). */
 export const GRACE_IDS: readonly RotateId[] = ['sign-in', 'csrf', 'mailbox'];
 export const GRACE_DAYS = 30;
@@ -53,6 +61,14 @@ export const ROTATE_ROWS: readonly RotateRow[] = [
 		key: 'mongo-root',
 		ids: ['mongo-root'],
 		label: 'Database administrator password',
+		scheduled: 'no pause',
+		leak: 'no pause',
+		tone: 'ok',
+	},
+	{
+		key: 'mongo-monitor',
+		ids: ['mongo-monitor'],
+		label: 'Database monitor password',
 		scheduled: 'no pause',
 		leak: 'no pause',
 		tone: 'ok',
@@ -177,6 +193,7 @@ export const DATA_FILE_IDS: Readonly<Record<string, RotateId>> = {
 	'mongo-app-password': 'mongo-app',
 	'redis-password': 'redis',
 	'mongo-root-password': 'mongo-root',
+	'mongo-monitor-password': 'mongo-monitor',
 	'meilisearch.toml': 'search',
 	'mongo-keyfile': 'keyfile',
 };

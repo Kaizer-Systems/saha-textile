@@ -8,6 +8,7 @@ import { ApmScreen } from './apm-screen';
 import { ChangesScreen } from './changes-screen';
 import { ClientsScreen } from './clients-screen';
 import { CostsScreen } from './costs-screen';
+import { DbMonitorScreen } from './db-monitor';
 import { DepsScreen } from './deps-screen';
 import { DoCreateScreen } from './do-create';
 import { DoJobsScreen } from './do-jobs';
@@ -127,6 +128,7 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 		SecretsScreen,
 		RotateScreen,
 		ServerStateScreen,
+		DbMonitorScreen,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -335,6 +337,9 @@ export const LIVE_TABS: Record<string, string | string[] | null> = {
 						<rc-dns-screen />
 					}
 				}
+			} @else if (screen() === 'queries' && envOnServer()) {
+				<!-- Database monitor on a server tab: observe.sh db-report (Release Path brief Q9). -->
+				<rc-db-monitor />
 			} @else if (product()) {
 				<rc-product
 					[screen]="screen()"

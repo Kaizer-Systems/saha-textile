@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import {
+	type DbReport,
 	type ServerLogs,
 	type ServerState,
+	dbReportSchema,
 	opsJobsSchema,
 	serverLogsSchema,
 	serverStateSchema,
@@ -85,6 +87,31 @@ export class ServerStateController {
 			45_000,
 		);
 		const parsed = serverLogsSchema.safeParse(answer);
+		if (!parsed.success) throw new HelperError('observe.sh answered in a shape the console does not know.', 502);
+		return parsed.data;
+	}
+
+	/**
+	 * Database monitor on a server tab (Release Path brief Q9): observe.sh `db-report` with the
+	 * read-only monitor login. Answers `{ error }` when the server has no monitor login yet.
+	 */
+	@Get('db-report')
+	async dbReport(
+		@Param('p') p: string,
+		@Param('r') r: string,
+		@Param('env') envName: string,
+	): Promise<DbReport | { error: string }> {
+		const host = this.sshHost(p, r, envName);
+		if (!host) throw new HelperError('The repository names no Cloudflare zone for the SSH host.', 409);
+		const answer = await this.helper.call<unknown>(
+			'POST',
+			'/server/observe',
+			{ project: p, environment: envName, host, request: 'db-report' },
+			60_000,
+		);
+		const said = (answer as { error?: unknown } | null)?.error;
+		if (typeof said === 'string') return { error: said };
+		const parsed = dbReportSchema.safeParse(answer);
 		if (!parsed.success) throw new HelperError('observe.sh answered in a shape the console does not know.', 502);
 		return parsed.data;
 	}

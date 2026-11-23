@@ -285,7 +285,7 @@ export function saveObserverToken({ project, environment, clientId, clientSecret
 
 /** The requests observe.sh answers (the Infisical chat's M9); anything else is refused here first. */
 export const OBSERVE_REQUEST =
-	/^(containers|releases|disk|logs [a-z0-9][a-z0-9_-]{0,40}( --since ([1-9]|[1-5][0-9]|60))?( --errors)?)$/;
+	/^(containers|releases|disk|db-report|logs [a-z0-9][a-z0-9_-]{0,40}( --since ([1-9]|[1-5][0-9]|60))?( --errors)?)$/;
 
 /**
  * One read-only request to a server's observer login, through its Cloudflare tunnel with the

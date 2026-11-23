@@ -310,7 +310,17 @@ export function deployIdentityOf(place, inventory = loadInventory()) {
 }
 
 /** The rotate script's value ids (Release Path brief, Part 3; the Infisical chat's `pnpm secrets:rotate`). */
-export const ROTATE_IDS = ['mongo-app', 'redis', 'mongo-root', 'search', 'keyfile', 'sign-in', 'csrf', 'mailbox'];
+export const ROTATE_IDS = [
+	'mongo-app',
+	'redis',
+	'mongo-root',
+	'mongo-monitor',
+	'search',
+	'keyfile',
+	'sign-in',
+	'csrf',
+	'mailbox',
+];
 
 /**
  * The arguments for `pnpm secrets:rotate` from the console's request: a server tier, then either the

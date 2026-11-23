@@ -113,3 +113,43 @@ export const serverLogsSchema = z.object({
 	lines: z.array(z.string()),
 });
 export type ServerLogs = z.infer<typeof serverLogsSchema>;
+
+/**
+ * observe.sh `db-report` with the read-only monitor login (Release Path brief Q9, the Infisical
+ * chat's 9fda8096): server figures, slow-query shapes (every value "?") and index use.
+ */
+export const dbReportSchema = z.object({
+	uptimeSeconds: z.number().default(0),
+	connections: z.unknown(),
+	opcounters: z.record(z.string(), z.number()).default({}),
+	memoryMB: z.unknown(),
+	dataBytes: z.number().default(0),
+	storageBytes: z.number().default(0),
+	indexBytes: z.number().default(0),
+	collections: z.number().default(0),
+	slowQueries: z
+		.array(
+			z.object({
+				op: z.string().default(''),
+				ns: z.string().default(''),
+				millis: z.number().default(0),
+				at: z.string().default(''),
+				plan: z.string().default(''),
+				examined: z.number().default(0),
+				returned: z.number().default(0),
+				shape: z.string().default(''),
+			}),
+		)
+		.default([]),
+	indexes: z
+		.array(
+			z.object({
+				collection: z.string(),
+				index: z.string(),
+				ops: z.number().default(0),
+				since: z.string().default(''),
+			}),
+		)
+		.default([]),
+});
+export type DbReport = z.infer<typeof dbReportSchema>;

@@ -132,6 +132,7 @@ export const DATA_SECRET_LABELS: Readonly<Record<string, string>> = {
 	'mongo-keyfile': 'database keyfile',
 	'mongo-root-username': 'database administrator name',
 	'mongo-root-password': 'database administrator password',
+	'mongo-monitor-password': 'database monitor password',
 	'mongo-app-password': 'database app password',
 	'redis-password': 'Redis password',
 	'meilisearch.toml': 'search master key',

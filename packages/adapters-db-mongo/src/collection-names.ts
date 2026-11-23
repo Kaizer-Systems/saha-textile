@@ -128,6 +128,13 @@ export const COLLECTION_NAMES = {
 	EDocKeys: 'edocKeys',
 	Location: 'locations',
 	UserLocations: 'userLocations',
+	/** The general ledger (accounts brief Q, T, D10). */
+	AccountGroup: 'accountGroups',
+	Ledger: 'ledgers',
+	JournalVoucher: 'journalVouchers',
+	JournalLine: 'journalLines',
+	PeriodLock: 'periodLocks',
+	DocumentLock: 'documentLocks',
 	/** Settings › Document formats (bundle builder brief F, 2026-11-22): one active format per document. */
 	DocumentFormat: 'documentFormats',
 	Sequence: 'sequences',
@@ -252,6 +259,12 @@ export const GRAPH_RECONCILIATION_OWED = [
 	'edocKeys',
 	'locations',
 	'userLocations',
+	'accountGroups',
+	'ledgers',
+	'journalVouchers',
+	'journalLines',
+	'periodLocks',
+	'documentLocks',
 ] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */

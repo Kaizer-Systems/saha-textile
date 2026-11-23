@@ -53,3 +53,4 @@ export * from './document-format.repository';
 export * from './company.repository';
 export * from './edocs.repository';
 export * from './location.repository';
+export * from './ledger.repository';

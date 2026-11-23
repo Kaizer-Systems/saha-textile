@@ -18,6 +18,7 @@ import { ConsoleApi } from '../data/console-api';
 import { ConsoleContext } from '../data/console-context';
 import { ConsoleState } from '../data/console-state';
 import { type ListItem, placeOf, searchList, searchMenu } from '../menu/menu-search';
+import { injectPlanFeatures } from '../screens/product-screen';
 import { ConfirmHost } from '../shared/confirm-dialog';
 import {
 	CONSOLE_PAGE_ICONS,
@@ -94,6 +95,16 @@ export class Shell {
 	private readonly api = inject(ConsoleApi);
 	protected readonly state = inject(ConsoleState);
 	protected readonly ctx = inject(ConsoleContext);
+	/** Live plan answer for the open repository: a whole screen's plan badge shows until it is on. */
+	private readonly planFeatures = injectPlanFeatures(
+		() => this.ctx.projectId(),
+		() => this.ctx.repoId(),
+	);
+	/** A screen-level plan lock while the account lacks the feature (null once Cloudflare says on). */
+	protected planLock(key: string) {
+		const lock = this.screen(key)?.plan ?? null;
+		return lock && !this.planFeatures()?.[lock.feature] ? lock : null;
+	}
 	/**
 	 * Reads that have no answer yet (first loads only, not the screens' own refreshes, which would
 	 * make it flicker): the top bar says so, so a screen is never silently blank (owner, 21 Nov).

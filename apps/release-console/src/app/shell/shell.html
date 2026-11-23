@@ -410,6 +410,13 @@
 		>
 			○
 		</span>
+		} @if (planLock(key); as lock) {
+		<span
+			[class]="'pv-plan ' + lock.tier"
+			[attr.data-tip]="'Needs ' + lock.needs + ': the badge goes once the account has it.'"
+		>
+			{{ lock.needs }}
+		</span>
 		}
 	</button>
 	} }

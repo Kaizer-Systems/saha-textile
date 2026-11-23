@@ -323,6 +323,7 @@ describe('credit note drafts (B4, B10, B11)', () => {
 		expect(draft).toMatchObject({
 			status: 'draft',
 			kind: 'goods_returned',
+			reason: 'Damaged on arrival',
 			totalINR: 4_680,
 			deadline: '2027-11-30',
 		});

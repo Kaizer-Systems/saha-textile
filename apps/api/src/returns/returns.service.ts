@@ -24,6 +24,7 @@ import {
 	type OrderReturnsView,
 	type PriceAdjustmentWrite,
 	type ReturnCheck,
+	type ReturnReason,
 	ReturnSettings,
 	type ReturnStart,
 	type ReturnStep,
@@ -85,6 +86,16 @@ import { DocumentNumbersService } from '../orders-setup/document-numbers.service
 /** A goods line that put pieces back in stock (or into held) when its note was issued. */
 const backInStock = (line: CreditNoteLine): boolean =>
 	!line.delivery && (line.outcome === 'restock' || line.outcome === 'damaged');
+
+/** A return's reason as a credit note prints it (Rule 53: the reason in words). */
+const REASON_WORDS: Record<ReturnReason, string> = {
+	damaged_on_arrival: 'Damaged on arrival',
+	wrong_item: 'Wrong item sent',
+	not_as_described: 'Not as described',
+	size_or_fit: 'Size or fit',
+	changed_mind: 'Changed their mind',
+	other: 'Returned for another reason',
+};
 
 /** Notes still in force against an invoice: issued, not cancelled and not undone by a debit note. */
 const inForce = (note: CreditNote): boolean => note.status === 'issued' && !note.debitNoteId;
@@ -386,7 +397,7 @@ export class ReturnsService {
 			invoice,
 			{
 				kind: 'goods_returned',
-				reason: entry.reason,
+				reason: REASON_WORDS[entry.reason],
 				refundTo: entry.refundTo,
 				returnId: entry.id,
 				shipmentId: null,

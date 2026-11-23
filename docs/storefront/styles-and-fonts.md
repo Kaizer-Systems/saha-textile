@@ -3,7 +3,7 @@ title: Styles, Dark Mode and Fonts
 description: How the storefront's global stylesheet is built and ordered, how the theme's dark mode loads only when it is switched on, and how every text font is served from the apps' own addresses.
 status: implemented
 audience: [beginner, frontend, operations]
-last_verified: '2026-11-17'
+last_verified: '2026-11-24'
 source_of_truth:
     - apps/storefront/src/styles.css
     - apps/storefront/src/scss/app.scss
@@ -12,6 +12,9 @@ source_of_truth:
     - apps/storefront/service-worker.vite.ts
     - apps/storefront/src/server/critical-css.ts
     - apps/storefront/src/server/plugins/critical-css.ts
+    - apps/storefront/src/server/expect-link.ts
+    - apps/storefront/src/server/plugins/expect-link.ts
+    - apps/storefront/src/app/layout/layout.html
     - apps/storefront/vite.config.ts
     - apps/storefront/index.html
     - apps/admin/src/styles.scss
@@ -70,6 +73,18 @@ The theme stylesheet is about 1 MB (100 KB compressed). Linked normally it block
 - **Seeing it.** The page answer carries `x-st-critical: pending`, `inlined` or `uncovered`. `ST_CRITICAL_CSS=off` turns it off.
 
 `ST_BUILD_DIR=<folder> pnpm build` builds the shop into that folder instead of `dist/`, so a build can be measured beside a running shop without replacing the files it serves.
+
+## The header draws once, whole
+
+A page reaches a phone in pieces, and Chrome draws what it has read so far. The header sits about 133–180 KB into the page (its menu holds every category for the flyouts), so on a slow phone Chrome drew it in several steps: the centred menu widened item by item and the icons on the right pushed in, moving the whole header sideways while the page loaded (a layout shift of about 0.008, measured with Chrome slowed four times on a 400 KB/s line).
+
+`index.html` therefore asks Chrome to hold the first paint until the tag after the header has been read: `<link rel="expect" href="#page-content" blocking="render">`, where `page-content` is the layout's `router-outlet` (`layout/layout.html`). Three details:
+
+- **The tag after the header, not the header.** Chrome lifts the hold when the named element's opening tag is read, not its end, so naming the header would lift it at once.
+- **The page's own address.** The shop's `<base href="/">` turns a bare `#page-content` into the home page's address, and Chrome ignores an expect link that points at another page. A server plugin writes each page's own path and query in front of it (`src/server/expect-link.ts`, `src/server/plugins/expect-link.ts`), on pages answered with 200. Other answers keep the bare link, which Chrome ignores.
+- **What it costs.** On the same slowed phone the main content (Largest Contentful Paint) appears at the same moment with and without the hold; the first paint comes 0.3–0.7 s later, because what used to appear first was a partial header. On a fast connection nothing changes. Browsers without `rel="expect"` ignore it, and a page without the tag stops waiting at its end.
+
+`e2e/header-and-fonts.spec.ts` checks that nothing moves on a বাংলা page while it loads.
 
 ## The icon font
 

@@ -66,6 +66,22 @@
 			href="/assets/css/remixicon-shop.css"
 			rel="stylesheet"
 		/>
+		<!--
+			The header is drawn once, whole. The page arrives in pieces on a slow line or a busy phone, and the browser
+			drew each piece of the header as it came: the centred menu widened item by item and the icons on the right
+			pushed in, so the whole header slid sideways while loading. This holds the first paint until the tag right
+			after the header (the layout's router-outlet, about 48 KB into the page) has been read; the rest of the page
+			still draws as it arrives. Chrome lifts the hold at that element's opening tag, so it must come after the
+			header, not be the header. The server writes each page's own address in front of #page-content
+			(src/server/expect-link.ts): with <base href="/"> a bare fragment names the home page, and Chrome ignores
+			a link to another page. Browsers without rel="expect" ignore it, and a page without the tag stops waiting
+			at its end.
+		-->
+		<link
+			rel="expect"
+			href="#page-content"
+			blocking="render"
+		/>
 		<link
 			href="/src/styles.css"
 			rel="stylesheet"

@@ -12,7 +12,8 @@
 
 <!-- Layout Partial -->
 <app-header />
-<router-outlet />
+<!-- The first tag after the header: the page head holds the first paint until it arrives (index.html, rel="expect"). -->
+<router-outlet id="page-content" />
 <!-- The footer stays awake from the start: its Cookie settings link must work at the first click. -->
 <app-footer [footer]="footerData" />
 

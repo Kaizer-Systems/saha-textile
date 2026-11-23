@@ -4,8 +4,8 @@
 #   settings, secret files, required names, the payment host, addresses that must agree); nothing
 #   starts. The local pipeline runs it on a folder made from the dev project (plan step 6).
 #
-#   check inputs → the data services' own secrets (same as before, or the first copy) →
-#   back up (production) → pull by digest → data services → database and search
+#   check inputs → the data services' own secrets (same as before, the first copy, or a rotation
+#   asked for) → back up (production) → pull by digest → data services → rotation → database and search
 #   keys → release steps (roles, indexes, migrations, search; all before the switch) → the
 #   release's certificates → apps → health and config checks
 #
@@ -31,9 +31,13 @@ CERTS="$SAHA_TEXTILE_ROOT/certs"
 # The server's own copies a deploy replaced, kept until the new release is live (private, 0700).
 CERTS_BEFORE="$RELEASE/certs-before"
 
-# Read by the database, Redis and search containers from the server's own folder (compose.yaml).
-DATA_SECRET_FILES='mongo-keyfile mongo-root-username mongo-root-password mongo-app-password redis-password meilisearch.toml'
-DATA_SECRETS="$SAHA_TEXTILE_ROOT/data-secrets"
+# The server's data-service copies a rotating release replaced, kept until it is live (private, 0700).
+DATA_BEFORE="$RELEASE/data-secrets-before"
+# Set from rotation.txt (written by `secrets:release --rotate [--restart-database]`).
+ROTATE=0
+RESTART_DATABASE=0
+# The data-service files this release changes; empty unless it rotates.
+ROTATING=''
 
 check_inputs() {
 	check_release
@@ -94,23 +98,40 @@ put_cert() {
 	fi
 }
 
-# The first deploy copies the release's data-service files into the server's folder. Later releases
-# must carry the same files: the running data services were started with them, so a changed password
-# would reach the apps but not the database, Redis or search. Such a release stops here, before
-# anything changes; changing one of these is a planned rotation (README, "Data-service secrets").
+# The first deploy copies the release's data-service files into the server's folder. A later release
+# that carries different ones changes the running services only when it was started with rotation:
+# otherwise the apps would get a password the database, Redis or search never saw. Without rotation
+# it stops here, before anything changes (README, "Data-service secrets").
 sync_data_secrets() {
-	local name changed=''
+	local name changed
 	install -d -m 0700 "$DATA_SECRETS"
-	for name in $DATA_SECRET_FILES; do
-		[[ -e "$DATA_SECRETS/$name" ]] || continue
-		cmp -s "$SECRETS/$name" "$DATA_SECRETS/$name" || changed+=" $name"
-	done
-	[[ -z "$changed" ]] || die "This release changes secrets the database, Redis or search already run with:$changed. A deploy does not rotate these yet; nothing was changed."
+	changed="$(data_secrets_changed "$RELEASE")"
+	if [[ -n "$changed" ]]; then
+		[[ "$ROTATE" == 1 ]] || die "This release changes secrets the database, Redis or search already run with: $changed. Deploy with rotation to apply them; nothing was changed."
+		[[ " $changed " != *' mongo-root-username '* ]] || die "The database administrator's name cannot change on a running database; nothing was changed."
+		ROTATING="$changed"
+		say "Rotating: $changed"
+	fi
 	for name in $DATA_SECRET_FILES; do
 		[[ -e "$DATA_SECRETS/$name" ]] && continue
 		cp -p "$SECRETS/$name" "$DATA_SECRETS/$name"
 		say "data-secrets/$name from the release"
 	done
+}
+
+# rotation.txt: `rotate`, and `restart-database` only with it. Anything else is refused.
+read_rotation() {
+	local word
+	[[ -f "$RELEASE/rotation.txt" ]] || return 0
+	while read -r word; do
+		case "$word" in
+		'') ;;
+		rotate) ROTATE=1 ;;
+		restart-database) RESTART_DATABASE=1 ;;
+		*) die 'rotation.txt holds something other than rotate or restart-database.' ;;
+		esac
+	done <"$RELEASE/rotation.txt"
+	[[ "$RESTART_DATABASE" == 0 || "$ROTATE" == 1 ]] || die 'restart-database goes only with rotate.'
 }
 
 # Installs the release's certificates right before the switch. Each server copy it changes is kept
@@ -158,6 +179,7 @@ check_release() {
 	local tags deploy_env
 	deploy_env="$(release_value "$RELEASE" DEPLOY_ENV)"
 	read_allowed_blank
+	read_rotation
 	while read -r name tags; do
 		[[ -z "$name" || "$name" == \#* ]] && continue
 		# `server-only` names may stay blank on this computer, never on a server (required-secrets.txt).
@@ -262,34 +284,6 @@ render_public_config() {
 		--arg adminUrl "$(release_value "$RELEASE" ADMIN_URL)" \
 		--arg siteUrl "$(release_value "$RELEASE" SITE_URL)" '{$apiUrl, $adminUrl, $siteUrl}' \
 		>"$PUBLIC/admin.config.json"
-}
-
-# Safe to repeat. Starts the replica set once, then keeps the app user's password in step.
-ensure_database() {
-	say 'Preparing the database'
-	local database
-	database="$(sed -n 's/^MONGODB_DB_NAME=//p' "$SECRETS/api.env")"
-	local user
-	user="$(sed -n 's/^MONGODB_USERNAME=//p' "$SECRETS/api.env")"
-	compose_for "$RELEASE" exec -T -e APP_DATABASE="$database" -e APP_USER="$user" mongo sh -s <<'SCRIPT'
-set -eu
-umask 077
-root="$(cat /run/secrets/mongo-root-username)"
-cat >/tmp/prepare.js <<'JS'
-const status = (() => { try { return rs.status().ok; } catch (error) { return 0; } })();
-if (!status) rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] });
-for (let i = 0; i < 60 && !db.hello().isWritablePrimary; i += 1) sleep(500);
-if (!db.hello().isWritablePrimary) throw new Error('The replica set has no primary.');
-const appDb = db.getSiblingDB(process.env.APP_DATABASE);
-const password = require('fs').readFileSync('/run/secrets/mongo-app-password', 'utf8').trim();
-const roles = [{ role: 'readWrite', db: process.env.APP_DATABASE }];
-if (appDb.getUser(process.env.APP_USER)) appDb.updateUser(process.env.APP_USER, { pwd: password, roles });
-else appDb.createUser({ user: process.env.APP_USER, pwd: password, roles });
-JS
-mongosh --quiet --username "$root" --password "$(cat /run/secrets/mongo-root-password)" \
-	--authenticationDatabase admin admin /tmp/prepare.js >/dev/null
-rm -f /tmp/prepare.js
-SCRIPT
 }
 
 # The API uses the admin key, never the master key. It comes from the search server, so it is one
@@ -430,8 +424,21 @@ fi
 render_public_config
 say 'Starting data services'
 compose_for "$RELEASE" up --detach --wait --wait-timeout "$HEALTH_TIMEOUT" mongo redis meilisearch
-ensure_database
-ensure_search_key
+# Rotation (when asked), the app login and the search key, while the old release keeps serving. A failure
+# puts every rotated secret back before stopping.
+set +e
+(
+	set -e
+	if [[ -n "$ROTATING" ]]; then rotate_data_secrets "$RELEASE" "$DATA_BEFORE" "$RESTART_DATABASE" "$ROTATING"; fi
+	ensure_database "$RELEASE"
+	ensure_search_key
+)
+prepared=$?
+set -e
+if [[ "$prepared" -ne 0 ]]; then
+	restore_data_secrets "$RELEASE" "$DATA_BEFORE"
+	die 'The data services could not be prepared. Every rotated secret is back, and the old release keeps serving.'
+fi
 # Not `if ! start_apps`: Bash ignores `set -e` inside a condition, so a failed step would go on.
 set +e
 (
@@ -443,11 +450,18 @@ started=$?
 set -e
 if [[ "$started" -ne 0 ]]; then
 	restore_certs
+	restore_data_secrets "$RELEASE" "$DATA_BEFORE"
 	restore_previous
 	die 'The release was not healthy and is not live. Read the logs over SSH.'
 fi
-# Live: the copies kept for a failure are no longer needed (they hold the old private key).
-rm -rf "$CERTS_BEFORE"
+# Live: the copies kept for a failure are no longer needed (they hold the old private key and passwords).
+rm -rf "$CERTS_BEFORE" "$DATA_BEFORE"
+# The deploy user's one command follows the code, so a server made earlier learns new requests (rollback).
+if [[ -s "$RELEASE/bin/receive-release.sh" ]] && ! cmp -s "$RELEASE/bin/receive-release.sh" "$SAHA_TEXTILE_ROOT/bin/receive-release.sh"; then
+	install -d -m 0755 "$SAHA_TEXTILE_ROOT/bin"
+	install -m 0755 "$RELEASE/bin/receive-release.sh" "$SAHA_TEXTILE_ROOT/bin/receive-release.sh"
+	say 'The deploy command was brought up to date'
+fi
 
 if [[ -L "$CURRENT" ]]; then ln -sfn "$(readlink "$CURRENT")" "$PREVIOUS"; fi
 ln -sfn "$RELEASE" "$CURRENT"

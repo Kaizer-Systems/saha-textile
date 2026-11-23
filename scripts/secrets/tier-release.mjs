@@ -14,8 +14,13 @@
  * (owner, 2026-11-21: the Release Console's "deploy with these blank"). Only names tagged
  * `may-deploy-blank` in required-secrets.txt qualify; the release records the ones it really left
  * blank in allowed-blank.txt and in the API's RELEASE_ALLOWED_BLANK.
+ *
+ * `--rotate` lets the server change its database, Redis and search secrets to this release's (owner,
+ * 2026-11-23, Release Path brief); `--restart-database` (only with it) also restarts MongoDB for a new
+ * keyfile. Both are written to rotation.txt, which deploy.sh reads; without them a release whose
+ * data-service secrets differ from the server's is refused before anything changes.
  */
-import { cpSync, existsSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ROOT, SERVER_TIERS, SecretsError } from './inventory.mjs';
@@ -50,19 +55,31 @@ export function parseImagesFile(text) {
 }
 
 const RELEASE_USAGE =
-	'Usage: pnpm secrets:release -- <development|staging|production> --images <file> --out <empty folder> [--allow-blank NAME ...]';
+	'Usage: pnpm secrets:release -- <development|staging|production> --images <file> --out <empty folder> [--allow-blank NAME ...] [--rotate [--restart-database]]';
+
+/** Flags that take no value. */
+const SWITCHES = /** @type {const} */ ({ '--rotate': 'rotate', '--restart-database': 'restartDatabase' });
 
 /**
- * The release command's arguments: the tier first, then `--images`, `--out` and any number of
- * `--allow-blank NAME`, each flag once except the last.
+ * The release command's arguments: the tier first, then `--images`, `--out`, any number of
+ * `--allow-blank NAME`, and the switches `--rotate` and `--restart-database`; each once except
+ * `--allow-blank`.
  * @param {string[]} args
  */
 export function parseReleaseArgs(args) {
 	const [tier, ...rest] = args.filter((arg) => arg !== '--');
-	/** @type {{ tier: string | undefined, imagesFile?: string, out?: string, allowBlank: string[] }} */
-	const parsed = { tier, allowBlank: [] };
-	for (let index = 0; index < rest.length; index += 2) {
+	/** @type {{ tier: string | undefined, imagesFile?: string, out?: string, allowBlank: string[], rotate: boolean, restartDatabase: boolean }} */
+	const parsed = { tier, allowBlank: [], rotate: false, restartDatabase: false };
+	for (let index = 0; index < rest.length;) {
+		const switchName = SWITCHES[/** @type {keyof typeof SWITCHES} */ (rest[index])];
+		if (switchName) {
+			if (parsed[switchName]) throw new SecretsError(RELEASE_USAGE);
+			parsed[switchName] = true;
+			index += 1;
+			continue;
+		}
 		const [flag, value] = [rest[index], rest[index + 1]];
+		index += 2;
 		if (value === undefined || value.startsWith('--')) throw new SecretsError(RELEASE_USAGE);
 		if (flag === '--allow-blank') parsed.allowBlank.push(value);
 		else if (flag === '--images' && parsed.imagesFile === undefined) parsed.imagesFile = value;
@@ -72,6 +89,7 @@ export function parseReleaseArgs(args) {
 	if (!SERVER_TIERS.includes(/** @type {string} */ (tier)) || !parsed.imagesFile || !parsed.out) {
 		throw new SecretsError(RELEASE_USAGE);
 	}
+	if (parsed.restartDatabase && !parsed.rotate) throw new SecretsError('--restart-database goes only with --rotate.');
 	return parsed;
 }
 
@@ -108,9 +126,19 @@ export function tierReleaseSettings(tier, images) {
  * @param {Map<string, string>} options.images
  * @param {string} options.source
  * @param {Set<string>} [options.allowBlank]   required names this deploy may leave blank (`--allow-blank`)
+ * @param {{ rotate: boolean, restartDatabase: boolean }} [options.rotation]   `--rotate`, `--restart-database`
  * @returns {{ dir: string, notes: string[], deployedBlank: string[] }}
  */
-export function writeTierRelease({ out, folders, inventory, tier, images, source, allowBlank = new Set() }) {
+export function writeTierRelease({
+	out,
+	folders,
+	inventory,
+	tier,
+	images,
+	source,
+	allowBlank = new Set(),
+	rotation = { rotate: false, restartDatabase: false },
+}) {
 	if (existsSync(out) && readdirSync(out).length > 0) {
 		throw new SecretsError('The output folder must be empty: a release folder is written once.');
 	}
@@ -120,6 +148,11 @@ export function writeTierRelease({ out, folders, inventory, tier, images, source
 	const production = join(ROOT, 'docker/production');
 	for (const part of ['compose.yaml', 'nginx', 'required-secrets.txt', 'bin']) {
 		cpSync(join(production, part), join(out, part), { recursive: true });
+	}
+	if (rotation.restartDatabase && !rotation.rotate)
+		throw new SecretsError('--restart-database goes only with --rotate.');
+	if (rotation.rotate) {
+		writeFileSync(join(out, 'rotation.txt'), `rotate\n${rotation.restartDatabase ? 'restart-database\n' : ''}`);
 	}
 	return { dir: out, notes, deployedBlank };
 }

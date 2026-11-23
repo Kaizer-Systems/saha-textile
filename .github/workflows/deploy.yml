@@ -23,7 +23,7 @@ name: Deploy
 # DEPLOY_SSH_KEY (the deploy user's private key), CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET
 # (the Cloudflare Access service token). docker/production/README.md, "A new server", lists them.
 
-run-name: Deploy ${{ inputs.environment }} · ${{ github.ref_name }}
+run-name: ${{ inputs.action == 'rollback' && 'Roll back' || 'Deploy' }} ${{ inputs.environment }} · ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
@@ -41,6 +41,24 @@ on:
         type: string
         default: ''
         required: false
+      action:
+        description: deploy (this commit) or rollback (the server puts its previous release back, from images on disk)
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+        required: false
+      rotate:
+        description: >-
+          Change the database, Redis and search secrets on the server to Infisical's (Release Path brief, C1).
+          Without it, a release whose values differ is refused before anything changes.
+        type: boolean
+        default: false
+        required: false
+      restart_database:
+        description: With rotate, restart MongoDB now for a new keyfile (about 20 s); otherwise it is used from the next restart.
+        type: boolean
+        default: false
+        required: false
 
 concurrency:
   group: deploy-${{ inputs.environment }}
@@ -52,6 +70,7 @@ permissions:
 jobs:
   images:
     name: Images for this commit
+    if: inputs.action != 'rollback'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -82,7 +101,7 @@ jobs:
   publish:
     name: Publish
     needs: images
-    if: needs.images.outputs.found != 'true' && inputs.environment != 'production'
+    if: inputs.action != 'rollback' && needs.images.outputs.found != 'true' && inputs.environment != 'production'
     permissions:
       contents: read
       packages: write
@@ -91,7 +110,7 @@ jobs:
   resolve:
     name: Image digests
     needs: [images, publish]
-    if: always() && needs.images.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    if: always() && inputs.action != 'rollback' && needs.images.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -119,18 +138,22 @@ jobs:
           grep -q '^found=true$' "$GITHUB_OUTPUT" || { echo 'FAILED: the images are not in GHCR.' >&2; exit 1; }
 
   deploy:
-    name: Deploy to ${{ inputs.environment }}
+    name: ${{ inputs.action == 'rollback' && 'Roll back' || 'Deploy to' }} ${{ inputs.environment }}
     needs: resolve
-    if: needs.resolve.result == 'success'
+    if: ${{ !cancelled() && (inputs.action == 'rollback' || needs.resolve.result == 'success') }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     permissions:
-      contents: read
+      # write: only to tag the commit once it is live (the last step).
+      contents: write
       id-token: write
       packages: read
     env:
       TIER: ${{ inputs.environment }}
+      ACTION: ${{ inputs.action || 'deploy' }}
       ALLOW_BLANK: ${{ inputs.allow_blank }}
+      ROTATE: ${{ inputs.rotate }}
+      RESTART_DATABASE: ${{ inputs.restart_database }}
       # Kept in step with NEVER_BLANK_PATTERN in packages/release-console-contracts (a test checks it).
       NEVER_BLANK: '^(MONGODB_|REDIS_|MEILISEARCH_)|^(NODE_ENV|DEPLOY_ENV|PORT|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|CSRF_SECRET|COOKIE_SECURE|CORS_ALLOWED_ORIGINS|TRUST_PROXY)$'
       RELEASE_DIR: ${{ runner.temp }}/release
@@ -159,6 +182,12 @@ jobs:
             [ -n "${!name}" ] || missing="$missing $name"
           done
           [ -z "$missing" ] || { echo "FAILED: this environment is missing:$missing (docker/production/README.md, A new server)." >&2; exit 1; }
+          if [ "$RESTART_DATABASE" = true ] && [ "$ROTATE" != true ]; then
+            echo 'FAILED: restart_database goes only with rotate.' >&2; exit 1
+          fi
+          if [ "$ACTION" = rollback ] && { [ "$ROTATE" = true ] || [ -n "$ALLOW_BLANK" ]; }; then
+            echo 'FAILED: a rollback takes no rotate or allow_blank: it returns to the previous release as it ran.' >&2; exit 1
+          fi
           # Values allowed blank: names only, each tagged may-deploy-blank in required-secrets.txt (the release step
           # checks the same list again, and that the Spaces keys come together).
           IFS=',' read -r -a requested <<<"$ALLOW_BLANK"
@@ -172,12 +201,15 @@ jobs:
           done
 
       - name: Install the Infisical CLI
+        if: env.ACTION == 'deploy'
         run: bash scripts/deploy/install-infisical.sh
 
       - name: Sign in to Infisical as this environment's deploy identity
+        if: env.ACTION == 'deploy'
         run: node scripts/secrets/github-login.mjs "${{ vars.INFISICAL_IDENTITY_ID }}"
 
       - name: Write the release folder
+        if: env.ACTION == 'deploy'
         env:
           API_IMAGE: ${{ needs.resolve.outputs.api }}
           STOREFRONT_IMAGE: ${{ needs.resolve.outputs.storefront }}
@@ -192,9 +224,12 @@ jobs:
           flags=()
           IFS=',' read -r -a requested <<<"$ALLOW_BLANK"
           for name in "${requested[@]}"; do [ -z "$name" ] || flags+=(--allow-blank "$name"); done
+          if [ "$ROTATE" = true ]; then flags+=(--rotate); fi
+          if [ "$RESTART_DATABASE" = true ]; then flags+=(--restart-database); fi
           node scripts/secrets/cli.mjs release "$TIER" --images "$RUNNER_TEMP/images.env" --out "$RELEASE_DIR" "${flags[@]}" >/dev/null
 
       - name: Check the release folder
+        if: env.ACTION == 'deploy'
         run: bash "$RELEASE_DIR/bin/deploy.sh" --check-only "$RELEASE_DIR" >/dev/null
 
       - name: Install cloudflared
@@ -229,15 +264,21 @@ jobs:
           } > "$SSH_DIR/config"
 
       - name: Ship the release and deploy it on the server
+        if: env.ACTION == 'deploy'
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         run: |
           id="$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::8}"
+          echo "RELEASE_ID=$id" >> "$GITHUB_ENV"
           {
             printf 'release %s\n%s\n%s\n' "$id" "$GHCR_USER" "$GHCR_TOKEN"
             tar -C "$RELEASE_DIR" -czf - .
           } | ssh -F "$SSH_DIR/config" server
+
+      - name: Roll back on the server
+        if: env.ACTION == 'rollback'
+        run: printf 'rollback\n' | ssh -F "$SSH_DIR/config" server
 
       # deploy.sh already checked readiness on the server; this proves the way in through Cloudflare.
       # /health/live, because the edge answers /health/ready only to callers inside the server (404 here).
@@ -251,6 +292,18 @@ jobs:
           done
           echo 'FAILED: the API did not answer through Cloudflare.' >&2
           exit 1
+
+      # A tag per live release, so the Release Console can deploy an older version (brief Q3). Each
+      # environment accepts its own tags (<environment>-*). A refused tag never fails a live deploy.
+      - name: Tag the live release
+        if: env.ACTION == 'deploy'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$TIER-$RELEASE_ID"
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$tag" -f "sha=$GITHUB_SHA" >/dev/null &&
+            echo "Tagged $tag." || echo 'The tag was refused; the release is live all the same.'
 
       - name: Remove the release folder and keys from the runner
         if: always()

@@ -352,6 +352,12 @@ grep -q 'already run with: redis-password\. .*nothing was changed' "$PROOF/rotat
 cmp -s "$SAHA_TEXTILE_ROOT/data-secrets/redis-password" "$PROOF/secrets/redis-password" &&
 	pass "the server keeps the data services' own password" || fail "the refused release changed the server's Redis password"
 expect 'the working release stays current after the refusal' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
+RENAME="$(write_release rename)"
+printf 'other_root' >"$RENAME/secrets/mongo-root-username"
+printf 'rotate\n' >"$RENAME/rotation.txt"
+if "$RENAME/bin/deploy.sh" "$RENAME" >"$PROOF/rename.log" 2>&1; then fail 'a new administrator name went live'; fi
+grep -q "administrator's name cannot change" "$PROOF/rename.log" &&
+	pass "a new administrator name is refused even with rotation" || fail "the rename was refused for another reason: $(tail -n 1 "$PROOF/rename.log")"
 
 echo 'A good second deploy, then manual rollback'
 SECOND="$(write_release second)"
@@ -362,8 +368,8 @@ load_stop
 no_visible_gap 'no request failed during the deploy'
 expect 'the second release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$SECOND"
 cmp -s "$SAHA_TEXTILE_ROOT/certs/origin.pem" "$PROOF/renewed/origin.pem" && pass "a live release's certificates are installed" || fail "the live release's certificates were not installed"
-# Five release folders now (first, bad, mismatch, rotate, second): the cleanup keeps three, but never
-# the release a rollback returns to.
+# Six release folders now (first, bad, mismatch, rotate, rename, second): the cleanup keeps three, but
+# never the release a rollback returns to.
 [[ -f "$FIRST/release.env" ]] && pass 'the previous release is kept however many failed ones came after it' || fail 'the cleanup deleted the previous release'
 SERVED="$(openssl s_client -connect "127.0.0.1:$EDGE_PORT" -servername "$SITE_HOST" -cert "$PROOF/client/client.pem" -key "$PROOF/client/client.key" </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256 2>/dev/null)"
 expect 'the edge serves the new certificate' "$SERVED" "$(openssl x509 -noout -fingerprint -sha256 -in "$PROOF/renewed/origin.pem")"
@@ -453,6 +459,94 @@ READY=no
 for _ in $(seq 1 60); do api_ready && READY=yes && break; sleep 2; done
 expect 'the API is ready again, database and Redis up' "$READY" yes
 expect 'the shop answers after the restart' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+
+# ---- Rotation (owner, 2026-11-23, Release Path brief) ----
+new_secret() { openssl rand -hex 24 | tr -d '\n'; }
+mongo_login() { in_release "$FIRST" exec -T mongo mongosh --quiet -u "$1" -p "$2" --authenticationDatabase "$3" "$3" --eval 'db.runCommand({ ping: 1 }).ok' 2>/dev/null | tail -n 1; }
+redis_login() { in_release "$FIRST" exec -T -e REDISCLI_AUTH="$1" redis redis-cli --no-auth-warning ping 2>/dev/null | tr -d '\r'; }
+search_login() { in_release "$FIRST" exec -T meilisearch curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $1" http://127.0.0.1:7700/keys; }
+master_of() { sed -n 's/^master_key = "\(.*\)"$/\1/p' "$1"; }
+search_up() {
+	in_release "$FIRST" --profile ops run --rm --no-deps -T ops sh -c \
+		'curl -fsS --cacert /certs/origin-ca.pem --max-time 10 "$1/health/ready" | jq -e "[.dependencies[] | select(.name == \"search\") | .status] | all(. == \"up\")" >/dev/null' \
+		sh "https://$API_HOST:$EDGE_PORT" >/dev/null 2>&1
+}
+OLD_APP="$(cat "$PROOF/secrets/mongo-app-password")"; OLD_REDIS="$(cat "$PROOF/secrets/redis-password")"
+OLD_ROOT="$(cat "$PROOF/secrets/mongo-root-password")"; OLD_MASTER="$(master_of "$PROOF/secrets/meilisearch.toml")"
+
+echo 'A deploy that rotates every data-service secret, restarting the database'
+ROTATED="$(write_release rotated)"
+NEW_APP="$(new_secret)"; NEW_REDIS="$(new_secret)"; NEW_ROOT="$(new_secret)"; NEW_MASTER="$(new_secret)"
+printf '%s' "$NEW_APP" >"$ROTATED/secrets/mongo-app-password"
+printf '%s' "$NEW_REDIS" >"$ROTATED/secrets/redis-password"
+printf '%s' "$NEW_ROOT" >"$ROTATED/secrets/mongo-root-password"
+printf 'master_key = "%s"\nenv = "production"\nno_analytics = true\n' "$NEW_MASTER" >"$ROTATED/secrets/meilisearch.toml"
+openssl rand -base64 96 | tr -d '\n' >"$ROTATED/secrets/mongo-keyfile"
+sed -i.bak -e "s/^MONGODB_PASSWORD=.*/MONGODB_PASSWORD=$NEW_APP/" -e "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$NEW_REDIS/" "$ROTATED/secrets/api.env"
+rm "$ROTATED/secrets/api.env.bak"
+printf 'rotate\nrestart-database\n' >"$ROTATED/rotation.txt"
+MONGO_STARTED="$(docker inspect --format '{{.State.StartedAt}}' "$(in_release "$FIRST" ps -q mongo)")"
+if ! "$ROTATED/bin/deploy.sh" "$ROTATED" >"$PROOF/rotated.log" 2>&1; then
+	tail -n 15 "$PROOF/rotated.log" | sed 's/^/       /'
+	fail 'the rotating deploy failed'
+fi
+expect 'the rotating release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$ROTATED"
+SAME=yes
+for name in mongo-app-password redis-password mongo-root-password meilisearch.toml mongo-keyfile; do
+	cmp -s "$ROTATED/secrets/$name" "$SAHA_TEXTILE_ROOT/data-secrets/$name" || SAME="no: $name"
+done
+expect "the server's copies are the release's" "$SAME" yes
+expect 'the new administrator password works' "$(mongo_login proof_root "$NEW_ROOT" admin)" 1
+[[ "$(mongo_login proof_root "$OLD_ROOT" admin)" != 1 ]] && pass 'the old administrator password is refused' || fail 'the old administrator password still works'
+expect 'the new app password works' "$(mongo_login saha_textile_app "$NEW_APP" saha_textile_proof)" 1
+[[ "$(mongo_login saha_textile_app "$OLD_APP" saha_textile_proof)" != 1 ]] && pass 'the old app password is refused' || fail 'the old app password still works'
+expect 'the new Redis password works' "$(redis_login "$NEW_REDIS")" PONG
+[[ "$(redis_login "$OLD_REDIS")" != PONG ]] && pass 'the old Redis password is refused' || fail 'the old Redis password still works'
+expect 'search takes the new master key' "$(search_login "$NEW_MASTER")" 200
+[[ "$(search_login "$OLD_MASTER")" != 200 ]] && pass 'search refuses the old master key' || fail 'search still takes the old master key'
+[[ "$(docker inspect --format '{{.State.StartedAt}}' "$(in_release "$FIRST" ps -q mongo)")" != "$MONGO_STARTED" ]] &&
+	pass 'the database restarted for its new keyfile' || fail 'the database did not restart'
+search_up && pass 'the API reaches search with the key read again' || fail 'the API cannot reach search after the rotation'
+expect 'the shop answers after the rotation' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+LEAK=no
+for value in "$NEW_APP" "$NEW_REDIS" "$NEW_ROOT" "$NEW_MASTER" "$OLD_APP" "$OLD_REDIS" "$OLD_ROOT"; do
+	grep -qF "$value" "$PROOF/rotated.log" && LEAK=yes
+done
+expect 'no password in the deploy output' "$LEAK" no
+[[ ! -e "$ROTATED/data-secrets-before" ]] && pass 'the kept old copies are gone once live' || fail 'the old copies were left in the release folder'
+
+echo 'A failed deploy after a rotation puts every password back'
+BADROT="$(write_release badrot)"
+cp "$ROTATED/secrets/"* "$BADROT/secrets/"
+NEWER_REDIS="$(new_secret)"; NEWER_APP="$(new_secret)"
+printf '%s' "$NEWER_REDIS" >"$BADROT/secrets/redis-password"
+printf '%s' "$NEWER_APP" >"$BADROT/secrets/mongo-app-password"
+sed -i.bak -e "s/^MONGODB_PASSWORD=.*/MONGODB_PASSWORD=$NEWER_APP/" -e "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$NEWER_REDIS/" \
+	-e 's/^CSRF_SECRET=.*/CSRF_SECRET=change-me/' "$BADROT/secrets/api.env"
+rm "$BADROT/secrets/api.env.bak"
+printf 'rotate\n' >"$BADROT/rotation.txt"
+if HEALTH_TIMEOUT=60 "$BADROT/bin/deploy.sh" "$BADROT" >"$PROOF/badrot.log" 2>&1; then fail 'a bad config went live with a rotation'; fi
+pass 'the bad release exits with failure'
+expect 'the rotated release stays current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$ROTATED"
+cmp -s "$ROTATED/secrets/redis-password" "$SAHA_TEXTILE_ROOT/data-secrets/redis-password" &&
+	cmp -s "$ROTATED/secrets/mongo-app-password" "$SAHA_TEXTILE_ROOT/data-secrets/mongo-app-password" &&
+	pass "the server's copies are put back" || fail "the server's copies were not put back"
+expect 'Redis takes the live release password again' "$(redis_login "$NEW_REDIS")" PONG
+[[ "$(redis_login "$NEWER_REDIS")" != PONG ]] && pass "the failed release's Redis password is refused" || fail "the failed release's Redis password still works"
+expect 'the live app password works again' "$(mongo_login saha_textile_app "$NEW_APP" saha_textile_proof)" 1
+expect 'the shop answers after the failed rotation' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+
+echo 'Rolling back past a rotation brings the old passwords back'
+"$ROTATED/bin/rollback.sh" >"$PROOF/rotate-rollback.log" 2>&1 || { tail -n 15 "$PROOF/rotate-rollback.log" | sed 's/^/       /'; fail 'the rollback past a rotation failed'; }
+expect 'the rollback returned to the first release' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
+expect 'the old administrator password works again' "$(mongo_login proof_root "$OLD_ROOT" admin)" 1
+expect 'the old app password works again' "$(mongo_login saha_textile_app "$OLD_APP" saha_textile_proof)" 1
+expect 'the old Redis password works again' "$(redis_login "$OLD_REDIS")" PONG
+expect 'search takes the old master key again' "$(search_login "$OLD_MASTER")" 200
+READY=no
+for _ in $(seq 1 30); do api_ready && READY=yes && break; sleep 2; done
+expect 'the first release is ready again' "$READY" yes
+expect 'the shop answers after the rollback past a rotation' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 
 echo
 echo "Passed $PASSED checks. The stack is still running: pnpm production:proof clean removes it."

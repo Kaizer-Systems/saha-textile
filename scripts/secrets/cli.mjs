@@ -130,7 +130,7 @@ function setupLocalCommand() {
  * @param {string[]} args
  */
 function release(args) {
-	const { tier, imagesFile, out, allowBlank: allowBlankNames } = parseReleaseArgs(args);
+	const { tier, imagesFile, out, allowBlank: allowBlankNames, rotate, restartDatabase } = parseReleaseArgs(args);
 	const imagesText = readIfPresent(/** @type {string} */ (imagesFile));
 	if (imagesText === null) throw new SecretsError('The images file is missing.');
 	// Read before Infisical is asked for anything, so a bad file or name costs no sign-in.
@@ -147,10 +147,16 @@ function release(args) {
 		images,
 		source: `${project.name} (${project.environment})`,
 		allowBlank,
+		rotation: { rotate, restartDatabase },
 	});
 	console.log(
 		[
 			`Release folder written for ${tier}. Next: bin/deploy.sh --check-only <folder>.`,
+			...(rotate
+				? [
+						`  Rotation allowed${restartDatabase ? ', with a database restart' : ''} (recorded in rotation.txt).`,
+					]
+				: []),
 			...(result.deployedBlank.length > 0
 				? [`  Deployed blank, as asked: ${result.deployedBlank.join(', ')} (recorded in allowed-blank.txt).`]
 				: []),

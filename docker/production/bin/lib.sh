@@ -122,3 +122,146 @@ swap_apps() {
 	compose_for "$release" up --detach --no-deps --force-recreate worker >/dev/null
 	sync_edge "$release"
 }
+
+# ---- The data services' own secrets ---------------------------------------------------------
+# MongoDB, Redis and Meilisearch outlive every release and read these files from the server's own
+# folder (compose.yaml). A release may change them only when it was started with rotation; each
+# change is made on the running service, so nothing restarts unless a new keyfile is to be used now.
+
+DATA_SECRET_FILES='mongo-keyfile mongo-root-username mongo-root-password mongo-app-password redis-password meilisearch.toml'
+DATA_SECRETS="$SAHA_TEXTILE_ROOT/data-secrets"
+# The order changes are made in: the administrator first, because every later step logs in with it.
+ROTATION_ORDER='mongo-root-password mongo-app-password redis-password meilisearch.toml mongo-keyfile'
+
+# The names whose file in <release>/secrets differs from the server's copy (a missing copy is not a change).
+data_secrets_changed() {
+	local release="$1" name out=''
+	for name in $DATA_SECRET_FILES; do
+		[[ -e "$DATA_SECRETS/$name" ]] || continue
+		cmp -s "$release/secrets/$name" "$DATA_SECRETS/$name" || out+=" $name"
+	done
+	printf '%s' "${out# }"
+}
+
+# Rewrites a server copy in place: each data service mounts its file as a single file and keeps its inode.
+put_data_secret() {
+	cat "$1" >"$DATA_SECRETS/$2"
+}
+
+# Sets the administrator's password to the server's copy, logging in with the one in <file>. Already
+# set (a repeated step) is fine. The passwords pass through standard input and files, never a log.
+change_root_password() {
+	local release="$1" current="$2"
+	exec_one "$release" mongo sh -c '
+		read -r current || [ -n "$current" ]
+		user="$(cat /run/secrets/mongo-root-username)"
+		target="$(cat /run/secrets/mongo-root-password)"
+		ping="db.adminCommand({ ping: 1 }).ok"
+		mongosh --quiet -u "$user" -p "$target" --authenticationDatabase admin admin --eval "$ping" >/dev/null 2>&1 && exit 0
+		mongosh --quiet -u "$user" -p "$current" --authenticationDatabase admin admin --eval \
+			"db.changeUserPassword(\"$user\", require(\"fs\").readFileSync(\"/run/secrets/mongo-root-password\", \"utf8\").replace(/\\n+\$/, \"\"))" >/dev/null
+	' <"$current"
+}
+
+# Sets Redis's password to the server's copy on the running server, logging in with the one in <file>.
+# Clients already signed in stay signed in; the file is read again at the next start.
+change_redis_password() {
+	local release="$1" current="$2"
+	exec_one "$release" redis sh -c '
+		read -r current || [ -n "$current" ]
+		target="$(cat /run/secrets/redis-password)"
+		REDISCLI_AUTH="$target" redis-cli --no-auth-warning ping 2>/dev/null | grep -q PONG && exit 0
+		printf "%s" "$target" | REDISCLI_AUTH="$current" redis-cli --no-auth-warning -x CONFIG SET requirepass | grep -q OK
+	' <"$current"
+}
+
+# Restarts one data service and waits until it is healthy again.
+restart_data_service() {
+	local release="$1" service="$2" container
+	container="$(compose_for "$release" ps --quiet "$service" | head -n 1)"
+	[[ -n "$container" ]] || return 1
+	docker restart "$container" >/dev/null
+	wait_ready "$container"
+}
+
+# Makes the running data services use <release>'s files for <names>, keeping the server's old copies
+# in <before> (private) so a failure can put them back. <restart> 1 restarts MongoDB for a new keyfile;
+# otherwise the keyfile is used from MongoDB's next start (a single member checks it against no one).
+rotate_data_secrets() {
+	local release="$1" before="$2" restart="$3" names=" $4 " name
+	install -d -m 0700 "$before"
+	for name in $ROTATION_ORDER; do
+		[[ "$names" == *" $name "* ]] || continue
+		cp -p "$DATA_SECRETS/$name" "$before/$name"
+		put_data_secret "$release/secrets/$name" "$name"
+		case "$name" in
+		mongo-root-password) change_root_password "$release" "$before/$name" || {
+			say 'The database administrator password could not be changed.'
+			return 1
+		} ;;
+		redis-password) change_redis_password "$release" "$before/$name" || {
+			say 'The Redis password could not be changed.'
+			return 1
+		} ;;
+		meilisearch.toml) restart_data_service "$release" meilisearch || {
+			say 'Search did not come back with its new key.'
+			return 1
+		} ;;
+		mongo-keyfile) if [[ "$restart" == 1 ]]; then
+			restart_data_service "$release" mongo || {
+				say 'The database did not come back with its new keyfile.'
+				return 1
+			}
+		fi ;;
+		esac
+		# The app password is set by ensure_database, which runs next.
+		say "data-secrets/$name changed"
+	done
+}
+
+# Puts back every server copy rotate_data_secrets changed, and the running services with them.
+# It tries every step even when one fails, then says which needs a hand over SSH.
+restore_data_secrets() {
+	local release="$1" before="$2" name failed=''
+	[[ -d "$before" ]] || return 0
+	for name in $ROTATION_ORDER; do
+		[[ -e "$before/$name" ]] || continue
+		put_data_secret "$before/$name" "$name"
+		case "$name" in
+		mongo-root-password) (change_root_password "$release" "$release/secrets/$name") || failed+=" $name" ;;
+		redis-password) (change_redis_password "$release" "$release/secrets/$name") || failed+=" $name" ;;
+		meilisearch.toml) (restart_data_service "$release" meilisearch) || failed+=" $name" ;;
+		esac
+		say "data-secrets/$name put back"
+	done
+	if [[ -e "$before/mongo-app-password" ]]; then (ensure_database "$release") || failed+=' mongo-app-password'; fi
+	rm -rf "$before"
+	[[ -z "$failed" ]] || say "FAILED to put back:$failed. Use SSH."
+}
+
+# Safe to repeat. Starts the replica set once, then sets the app user's password from the server's copy.
+ensure_database() {
+	local release="$1" database user
+	say 'Preparing the database'
+	database="$(sed -n 's/^MONGODB_DB_NAME=//p' "$release/secrets/api.env")"
+	user="$(sed -n 's/^MONGODB_USERNAME=//p' "$release/secrets/api.env")"
+	compose_for "$release" exec -T -e APP_DATABASE="$database" -e APP_USER="$user" mongo sh -s <<'SCRIPT'
+set -eu
+umask 077
+root="$(cat /run/secrets/mongo-root-username)"
+cat >/tmp/prepare.js <<'JS'
+const status = (() => { try { return rs.status().ok; } catch (error) { return 0; } })();
+if (!status) rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] });
+for (let i = 0; i < 60 && !db.hello().isWritablePrimary; i += 1) sleep(500);
+if (!db.hello().isWritablePrimary) throw new Error('The replica set has no primary.');
+const appDb = db.getSiblingDB(process.env.APP_DATABASE);
+const password = require('fs').readFileSync('/run/secrets/mongo-app-password', 'utf8').trim();
+const roles = [{ role: 'readWrite', db: process.env.APP_DATABASE }];
+if (appDb.getUser(process.env.APP_USER)) appDb.updateUser(process.env.APP_USER, { pwd: password, roles });
+else appDb.createUser({ user: process.env.APP_USER, pwd: password, roles });
+JS
+mongosh --quiet --username "$root" --password "$(cat /run/secrets/mongo-root-password)" \
+	--authenticationDatabase admin admin /tmp/prepare.js >/dev/null
+rm -f /tmp/prepare.js
+SCRIPT
+}

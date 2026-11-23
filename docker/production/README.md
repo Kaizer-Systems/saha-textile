@@ -46,10 +46,29 @@ containers read: `mongo-keyfile`, `mongo-root-username`, `mongo-root-password`, 
 and Compose never re-reads a running container's mounts. A release folder would not do: a later
 cleanup deletes it, and the containers could not start again after a reboot.
 
-The first deploy copies the six files from its release. Every later release must carry the same
-files. One that changes any of them stops before anything changes and names the file: the apps
-would get the new password while the database, Redis or search kept the old one. Changing one of
-these is a planned rotation, which a deploy does not do yet.
+The first deploy copies the six files from its release. A later release that carries different ones
+is refused before anything changes, naming the files, unless it was started with rotation: the apps
+would otherwise get a password the database, Redis or search never saw.
+
+### Rotation
+
+`pnpm secrets:release … --rotate [--restart-database]` (the deploy workflow's `rotate` and
+`restart_database` inputs) writes `rotation.txt` into the release. The deploy then changes each
+running service before the switch, while the old release keeps serving, keeping the server's old
+copies in `<release>/data-secrets-before/` until the release is live:
+
+| File                  | How it changes                                                                    |
+| --------------------- | --------------------------------------------------------------------------------- |
+| `mongo-root-password` | `changeUserPassword`, logged in with the old one; first, since later steps use it |
+| `mongo-app-password`  | the database step's `updateUser`                                                  |
+| `redis-password`      | `CONFIG SET requirepass`; clients already signed in stay signed in                |
+| `meilisearch.toml`    | search restarts (a few seconds); the API's search key is read again               |
+| `mongo-keyfile`       | used from MongoDB's next start, or a restart now with `restart-database`          |
+| `mongo-root-username` | refused: the name cannot change on a running database                             |
+
+Any failure afterwards, up to the health check, puts every old copy and value back before the
+previous release is restored. `bin/rollback.sh` brings the previous release's values back too, so a
+rollback past a rotation reaches its data; after a leak, deploy a fix instead.
 
 ## Files in `secrets/`
 
@@ -69,13 +88,18 @@ these is a planned rotation, which a deploy does not do yet.
 ## Commands
 
 ```bash
-sudo -n bin/receive-release.sh            # the deploy user's only command; the deploy job feeds it
+sudo -n bin/receive-release.sh            # the deploy user's only command: a release, or `rollback`
 bin/deploy.sh /opt/saha-textile/releases/<id>
 bin/deploy.sh --check-only <release-folder>
 bin/rollback.sh
 bin/backup.sh
 CONFIRM_REPLACE_DATA=yes bin/restore.sh <backup-stamp> <age-identity-file>
 ```
+
+Each deploy also brings `/opt/saha-textile/bin/receive-release.sh` up to date from its release, so a
+server made earlier learns new requests. The deploy workflow's `action: rollback` sends the one line
+`rollback`, and the live release's `bin/rollback.sh` puts the previous release back from images on
+disk.
 
 `--check-only` runs only the checks on the release folder itself and starts nothing: images pinned by
 digest, every `release.env` setting, every secret file, every name in `required-secrets.txt`, the

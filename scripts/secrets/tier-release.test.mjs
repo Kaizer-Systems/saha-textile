@@ -224,7 +224,14 @@ test('--allow-blank names: only required names tagged may-deploy-blank, each onc
 			'--allow-blank',
 			'C_D',
 		]),
-		{ tier: 'production', imagesFile: 'i', out: 'o', allowBlank: ['A_B', 'C_D'] },
+		{
+			tier: 'production',
+			imagesFile: 'i',
+			out: 'o',
+			allowBlank: ['A_B', 'C_D'],
+			rotate: false,
+			restartDatabase: false,
+		},
 	);
 	for (const args of [
 		['staging', '--images', 'i'],
@@ -249,6 +256,60 @@ test('--allow-blank names: only required names tagged may-deploy-blank, each onc
 		() => checkAllowBlankNames([`${MARK}=secret`], inventory),
 		(error) => /not a setting name/.test(error.message) && !error.message.includes(MARK),
 	);
+});
+
+test('--rotate and --restart-database: switches written to rotation.txt, the restart only with rotation', () => {
+	assert.deepEqual(parseReleaseArgs(['staging', '--rotate', '--images', 'i', '--restart-database', '--out', 'o']), {
+		tier: 'staging',
+		imagesFile: 'i',
+		out: 'o',
+		allowBlank: [],
+		rotate: true,
+		restartDatabase: true,
+	});
+	assert.throws(
+		() => parseReleaseArgs(['staging', '--images', 'i', '--out', 'o', '--restart-database']),
+		/only with --rotate/,
+	);
+	assert.throws(() => parseReleaseArgs(['staging', '--rotate', '--rotate', '--images', 'i', '--out', 'o']), /Usage/);
+	const deployCheck = (out, dir) =>
+		spawnSync('bash', [join(out, 'bin/deploy.sh'), '--check-only', out], {
+			encoding: 'utf8',
+			env: { ...process.env, SAHA_TEXTILE_ROOT: join(dir, 'root') },
+		});
+	withDir((dir) => {
+		const out = join(dir, 'release');
+		writeTierRelease({
+			out,
+			folders: project('staging'),
+			inventory,
+			tier: 'staging',
+			images,
+			source: 'test (staging)',
+			rotation: { rotate: true, restartDatabase: true },
+		});
+		assert.equal(readFileSync(join(out, 'rotation.txt'), 'utf8'), 'rotate\nrestart-database\n');
+		const check = deployCheck(out, dir);
+		assert.equal(check.status, 0, `${check.stdout}${check.stderr}`);
+		writeFileSync(join(out, 'rotation.txt'), 'restart-database\n');
+		const alone = deployCheck(out, dir);
+		assert.notEqual(alone.status, 0);
+		assert.match(alone.stderr, /restart-database goes only with rotate/);
+		writeFileSync(join(out, 'rotation.txt'), 'rotate\nforce\n');
+		assert.match(deployCheck(out, dir).stderr, /rotation\.txt holds something other/);
+	});
+	withDir((dir) => {
+		const out = join(dir, 'release');
+		writeTierRelease({
+			out,
+			folders: project('staging'),
+			inventory,
+			tier: 'staging',
+			images,
+			source: 'test (staging)',
+		});
+		assert.ok(!existsSync(join(out, 'rotation.txt')), 'no rotation.txt unless asked');
+	});
 });
 
 test('the release builder deploys blank only what it was told, keeps the media keys together, and refuses a stored record', () => {

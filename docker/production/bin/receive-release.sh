@@ -9,6 +9,9 @@
 #   <GHCR token>        the job's own read-only GITHUB_TOKEN, valid only while the job runs
 #   <tar.gz>
 #
+# Or one line, `rollback`: the live release's own bin/rollback.sh puts the previous release back, from
+# images already on disk (owner, 2026-11-23, Release Path brief Q3). Nothing else is accepted.
+#
 # It unpacks into /opt/saha-textile/releases/<id>/, signs in to GHCR for the pulls, runs that
 # release's own bin/deploy.sh and signs out again, whatever happened. Like lib.sh, it prints step
 # names and pass or fail only: never an address, a host, a key or container logs.
@@ -24,7 +27,14 @@ die() {
 
 [[ "$(id -u)" == 0 ]] || die 'Run through sudo: the release folder is root-only.'
 
-read -r word id || die 'No release header.'
+read -r word id || [[ -n "${word:-}" ]] || die 'No release header.'
+if [[ "$word" == rollback && -z "${id:-}" ]]; then
+	[[ -L "$ROOT/current" && -L "$ROOT/previous" ]] || die 'There is no previous release to go back to.'
+	say 'Rolling back'
+	SAHA_TEXTILE_ROOT="$ROOT" bash "$(readlink "$ROOT/current")/bin/rollback.sh"
+	say 'Rolled back.'
+	exit 0
+fi
 [[ "$word" == release && "$id" =~ ^[0-9]{8}-[0-9]{6}-[0-9a-f]{8}$ ]] || die 'The release header is not valid.'
 read -r user || die 'No GHCR user.'
 read -r token || die 'No GHCR token.'

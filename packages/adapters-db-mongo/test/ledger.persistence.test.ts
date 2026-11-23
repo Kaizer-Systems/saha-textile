@@ -10,11 +10,13 @@ import {
 	JournalVoucherModel,
 	LedgerModel,
 	PeriodLockModel,
+	GstReturnModel,
 	VoucherDraftModel,
 } from '../src/models/ledger.model';
 import {
 	MongoDocumentLockRepository,
 	MongoGeneralLedgerRepository,
+	MongoGstReturnRepository,
 	MongoPeriodLockRepository,
 } from '../src/repositories/ledger.repository';
 import { MongoTransactionManager } from '../src/transaction-manager';
@@ -198,5 +200,23 @@ describe.skipIf(!hasMongoEnv())('general ledger persistence (integration, rs0)',
 		expect((await repo.getDraft('vd_1'))?.attachments[0]?.name).toBe('cesc-bill-nov.pdf');
 		await repo.deleteDraft('vd_1');
 		expect(await repo.getDraft('vd_1')).toBeNull();
+	});
+
+	it('records a GST return as filed once per GSTIN, return and month', async () => {
+		const gst = new MongoGstReturnRepository();
+		const filing = {
+			gstRegistrationId: 'reg_wb',
+			gstin: '19DBYPS6736R1ZZ',
+			returnType: 'GSTR-3B' as const,
+			month: '2026-10',
+			arn: 'AA1911261234567',
+			filedOn: '2026-11-20',
+			acknowledgement: null,
+			by: 'adm_a',
+			at,
+		};
+		await gst.insert(filing);
+		await expect(gst.insert(filing)).rejects.toThrow('duplicate_gst_filing');
+		expect(await gst.list()).toMatchObject([{ arn: 'AA1911261234567', month: '2026-10' }]);
 	});
 });

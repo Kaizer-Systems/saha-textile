@@ -45,6 +45,8 @@ Every voucher is numbered from the journal series (`JV/26-27/000001`) when it is
 
 The same `idempotencyKey` returns the first voucher instead of posting twice. The voucher form makes one key per form; documents use their own reference.
 
+**Save draft** keeps a half-filled voucher with no number (`voucherDrafts`); it opens again from the Drafts tab, and posting it removes the draft in the same transaction. Files from the Media Library attach to a voucher (`attachments`, by asset id and name); the voucher page links to each one.
+
 ## How documents post
 
 Documents call `LedgerService.post` inside their own transaction, naming ledgers by system key:
@@ -76,6 +78,10 @@ Each month has a state per part of the books (sales, purchases, stock, cash, ban
 - **Open**: anyone with permission posts.
 - **Closed for staff**: only holders of `accounts.lock` post, for adjustments.
 - **Locked**: nobody posts.
+
+**Lock a month** first lists what still needs doing in that month: draft vouchers dated in it, reversals due, stock counts still open and stock changes waiting for approval. Cash sheets, transfers, depreciation and payroll show as not in use until those features exist. A lock may go ahead anyway.
+
+**GSTR-3B.** The Periods screen shows whether each month's GSTR-3B is filed. Mark filed takes the ARN, the date and the portal's acknowledgement (`gstReturns`); from then on that month locks for that GSTIN in the parts the return covers (GSTR-1: sales; GSTR-3B: sales and purchases), and vouchers there are refused with `gst_filed`.
 
 Reopening a month needs a super admin and a reason. Every change is written to the audit log with the state before and after.
 

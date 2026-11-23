@@ -156,9 +156,14 @@ jobs:
       RESTART_DATABASE: ${{ inputs.restart_database }}
       # Kept in step with NEVER_BLANK_PATTERN in packages/release-console-contracts (a test checks it).
       NEVER_BLANK: '^(MONGODB_|REDIS_|MEILISEARCH_)|^(NODE_ENV|DEPLOY_ENV|PORT|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|CSRF_SECRET|COOKIE_SECURE|CORS_ALLOWED_ORIGINS|TRUST_PROXY)$'
-      RELEASE_DIR: ${{ runner.temp }}/release
-      SSH_DIR: ${{ runner.temp }}/ssh
     steps:
+      # A job's env cannot read the runner context (GitHub refused the whole file as invalid, so no deploy could
+      # start), so the two folders are set here, from the runner's own variable, for every later step.
+      - name: Folders on this runner
+        run: |
+          echo "RELEASE_DIR=$RUNNER_TEMP/release" >> "$GITHUB_ENV"
+          echo "SSH_DIR=$RUNNER_TEMP/ssh" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 

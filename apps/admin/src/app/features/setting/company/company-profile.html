@@ -77,6 +77,13 @@
 				<small class="text-muted d-block mt-1">{{ 'co_opens_locked' | transloco: { count: o.locked } }}</small>
 				@if (o.booksSetUp) {
 				<small class="text-muted d-block mt-1">{{ 'co_kind_locked' | transloco }}</small>
+				<a
+					class="btn btn-outline btn-sm mt-2"
+					id="co_convert"
+					routerLink="/setting/company/convert"
+				>
+					{{ 'co_convert' | transloco }}
+				</a>
 				}
 			</div>
 			}

@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import {
@@ -32,7 +33,7 @@ const newId = (prefix: string): string => `${prefix}_${Math.random().toString(36
  */
 @Component({
 	selector: 'app-company-profile',
-	imports: [PageWrapper, TranslocoModule, FormsModule],
+	imports: [PageWrapper, TranslocoModule, FormsModule, RouterLink],
 	templateUrl: './company-profile.html',
 })
 export class CompanyProfileSettings {

@@ -65,6 +65,11 @@ export default [
 		loadComponent: () => import('./company/company-profile').then((m) => m.CompanyProfileSettings),
 	},
 	{
+		// Postings and Convert brief AC2 (owner-approved 2026-11-24).
+		path: 'company/convert',
+		loadComponent: () => import('./company/convert-page').then((m) => m.ConvertPage),
+	},
+	{
 		// Accounts brief J2, G1, G2 (owner-approved 2026-11-23).
 		path: 'gst-registrations',
 		loadComponent: () => import('./company/gst-registrations').then((m) => m.GstRegistrationsSettings),

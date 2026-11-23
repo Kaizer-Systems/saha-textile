@@ -44,7 +44,18 @@ The starter charts are split from the starting chart of each kind: what all five
 
 Settings › Company shows what the kind picked opens: its chart templates with their newest versions, its reports, and each tax rule set with how many entries apply to that kind, and how many templates of other kinds stay locked. The first save sets up the books: the chart is installed from the unlocked chart templates and every unlocked template is recorded as installed at its newest version (`POST /admin/accounts/templates/set-up-books`, `accounts_template.edit`; refused with `books_already_set_up` once done). Books are also set up on the first read of the chart, from the kind saved at that moment.
 
-Once the books are set up the kind is kept: the choice is greyed on Settings › Company and the API refuses a different kind with `kind_locked_books_exist`. Changing the kind of a business goes through Convert: new books from a closing date.
+Once the books are set up the kind is kept: the choice is greyed on Settings › Company and the API refuses a different kind with `kind_locked_books_exist`. Changing the kind of a business goes through Convert.
+
+## Convert
+
+Settings › Company › **Convert to another kind** (shown once the books exist) opens the Convert page: the new kind, the last day of the old books (the last day of a month, before today), and where each owners' account with a balance goes, with one more row for the profit or loss so far. Each row can go to an owners' ledger already in the books, to one of the new kind's chart that the books don't have yet, or to a new ledger named on the page. **Preview** shows the rows, the opening date and how many months will be locked; **Convert** asks once more and then, in the same deployment:
+
+1. adds the new kind's chart template to the books (groups and ledgers missing by key), and any owners' ledger named on the page;
+2. posts one opening voucher the day after the last day (`convert:<last day>`), location by location: each owners' account moved to where it goes, and every income and expense ledger closed into where the profit goes; asset and liability ledgers carry on as they are;
+3. locks every part of every month in the Periods grid up to the last day;
+4. changes the kind (only Convert may, once the books exist), records the new kind's templates as installed, and writes `company.convert` to the edit log with the kind before and after.
+
+Nothing is deleted and a conversion isn't undone; the opening voucher can be reversed like any voucher while its month is open. Only the super admin may preview or convert (`convert_super_admin_only`); other refusals are `convert_books_not_set_up`, `convert_same_kind`, `convert_last_day_not_month_end`, `convert_last_day_not_past`, `convert_row_not_mapped:<row>` and `convert_target_unknown:<row>`. The rules are in `packages/core-domain/src/ledger/convert.ts`.
 
 Settings › Accounts templates lists every template with its code, type, the kinds it applies to, its newest version with its first day and CA review state, and its state here: Installed, Installed with an update waiting, Not installed, or Locked (another kind's, greyed). It filters by kind and type, and reads with `accounts.index`.
 
@@ -65,12 +76,14 @@ The library row for each template says which version is installed and whether a 
 
 ## API
 
-| Method and path                               | Purpose                                                                    | Permission               |
-| --------------------------------------------- | -------------------------------------------------------------------------- | ------------------------ |
-| `GET /admin/accounts/templates`               | every template without its versions, with lock state and installed version | `accounts.index`         |
-| `GET /admin/accounts/templates/:code`         | one template with every version (404 when unknown)                         | `accounts.index`         |
-| `GET /admin/accounts/templates/opens?kind=`   | what a kind opens, and whether the books are set up                        | `accounts.index`         |
-| `POST /admin/accounts/templates/set-up-books` | install the books from the unlocked templates, once                        | `accounts_template.edit` |
+| Method and path                                     | Purpose                                                                    | Permission               |
+| --------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------ |
+| `GET /admin/accounts/templates`                     | every template without its versions, with lock state and installed version | `accounts.index`         |
+| `GET /admin/accounts/templates/:code`               | one template with every version (404 when unknown)                         | `accounts.index`         |
+| `GET /admin/accounts/templates/opens?kind=`         | what a kind opens, and whether the books are set up                        | `accounts.index`         |
+| `POST /admin/accounts/templates/set-up-books`       | install the books from the unlocked templates, once                        | `accounts_template.edit` |
+| `GET /admin/company/convert/preview?kind=&lastDay=` | what converting would do (super admin)                                     | `accounts_template.edit` |
+| `POST /admin/company/convert`                       | convert to another kind (super admin)                                      | `accounts_template.edit` |
 
 Making and publishing templates and setting up the books need `accounts_template.edit`, held by the Administrator role and the CA login. After adding it, run `pnpm seed:system-roles` so the Administrator role holds it.
 

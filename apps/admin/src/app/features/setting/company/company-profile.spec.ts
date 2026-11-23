@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
@@ -68,6 +69,7 @@ function setup(
 	TestBed.configureTestingModule({
 		imports: [CompanyProfileSettings, TranslocoTestingModule.forRoot({ langs: { en: {} } })],
 		providers: [
+			provideRouter([]),
 			provideTanStackQuery(new QueryClient()),
 			{ provide: CompanyGateway, useValue: gateway },
 			{ provide: AccountsTemplatesGateway, useValue: templates },

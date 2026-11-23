@@ -22,7 +22,7 @@ Amounts are stored as whole paise (integers), so sums never drift. Screens show 
 
 ## Chart of accounts
 
-The first read of the chart seeds it from the kind of business on Settings › Company (`defaultChart`):
+The first read of the chart installs it from the [accounts templates](./accounts-templates.md) that the kind of business on Settings › Company unlocks: the shared chart (`CH-COMMON`) and the kind's own. The starter templates hold:
 
 - the usual primary groups (capital, loans, current liabilities, fixed assets, current assets, sales, direct and indirect incomes and expenses, branches, suspense);
 - the ledgers the posting rules need, found by `systemKey` (output and input GST, stock in hand and in transit, customers, suppliers, gateway clearing, customer advances, cost of goods sold and so on);
@@ -77,7 +77,7 @@ Posting rules never name a ledger. They post to a role, and the company's books 
 
 - A role with no active ledger refuses the posting with `voucher_problem:role_not_mapped:<role>`; a role played by more than one active ledger refuses with `voucher_problem:role_ambiguous:<role>`. A posting never guesses.
 - Group roles decide cash and bank: a ledger under a group playing `cash_in_hand` is cash; under `bank_accounts` or `bank_od`, bank.
-- The roles the engine knows, and the documents that need each, are listed in `packages/core-domain/src/ledger/roles.ts` (`ROLE_REGISTRY`); `missingRoles(chart, documentType)` lists what a document still needs. Which ledger plays each role comes from the installed accounts templates (template store and builder: steps T2 to T4).
+- The roles the engine knows, and the documents that need each, are listed in `packages/core-domain/src/ledger/roles.ts` (`ROLE_REGISTRY`); `missingRoles(chart, documentType)` lists what a document still needs. Which ledger plays each role comes from the installed [accounts templates](./accounts-templates.md).
 
 ## Periods and locks
 
@@ -101,12 +101,13 @@ Every change to the books (vouchers posted or reversed, ledgers, groups and mont
 
 ## Permissions
 
-| Code             | Allows                                                             |
-| ---------------- | ------------------------------------------------------------------ |
-| `accounts.index` | read the chart, vouchers, statements and periods                   |
-| `accounts.post`  | post vouchers by hand (reversal also needs the Administrator role) |
-| `accounts.edit`  | add and change groups and ledgers                                  |
-| `accounts.lock`  | close or lock months, and post into a month closed for staff       |
+| Code                     | Allows                                                             |
+| ------------------------ | ------------------------------------------------------------------ |
+| `accounts.index`         | read the chart, vouchers, statements and periods                   |
+| `accounts.post`          | post vouchers by hand (reversal also needs the Administrator role) |
+| `accounts.edit`          | add and change groups and ledgers                                  |
+| `accounts.lock`          | close or lock months, and post into a month closed for staff       |
+| `accounts_template.edit` | make, publish and install accounts templates                       |
 
 ## API
 

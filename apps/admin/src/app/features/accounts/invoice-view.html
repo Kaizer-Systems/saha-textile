@@ -1,0 +1,278 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'inv_tax_invoice'"
+>
+	@if (invoice.data(); as inv) {
+	<div class="d-flex align-items-start justify-content-between mb-3 flex-wrap gap-2">
+		<div>
+			<h5 class="mb-1">
+				{{ inv.number }}
+				<div
+					class="d-inline-block ms-2"
+					[class.status-success]="inv.status === 'issued'"
+					[class.status-danger]="inv.status === 'cancelled'"
+				>
+					<span>{{ 'inv_status_' + inv.status | transloco }}</span>
+				</div>
+			</h5>
+			<small class="text-muted d-block">
+				{{ 'inv_tax_invoice' | transloco }} · {{ day(inv.date) }} · {{ inv.buyer.name }} · {{ locationName() }}
+			</small>
+		</div>
+		<div
+			ngbDropdown
+			class="d-inline-block"
+			placement="bottom-end"
+		>
+			<button
+				type="button"
+				class="btn btn-outline"
+				id="inv_view_print"
+				ngbDropdownToggle
+				[disabled]="busy()"
+			>
+				<i class="ri-printer-line"></i>
+				{{ 'inv_print' | transloco }}
+			</button>
+			<div ngbDropdownMenu>
+				@for (p of prints; track p.copy) {
+				<button
+					ngbDropdownItem
+					type="button"
+					(click)="print(p.copy, false)"
+				>
+					{{ p.label | transloco }}
+				</button>
+				}
+			</div>
+		</div>
+	</div>
+	<div class="row g-3">
+		<div class="col-xl-8">
+			<div class="card">
+				<div class="card-body">
+					<ul class="nav nav-tabs mb-3">
+						@for (t of tabs; track t) {
+						<li class="nav-item">
+							<a
+								class="nav-link"
+								href="javascript:void(0)"
+								[id]="'inv_tab_' + t"
+								[class.active]="tab() === t"
+								(click)="tab.set(t)"
+							>
+								{{ 'inv_tab_' + t | transloco }}
+							</a>
+						</li>
+						}
+					</ul>
+					@switch (tab()) { @case ('details') {
+					<div class="row g-3 small mb-3">
+						<div class="col-md-6">
+							<span class="text-muted d-block">{{ 'inv_seller' | transloco }}</span>
+							<b>{{ inv.seller.name }}</b>
+							<div>{{ inv.seller.address }}</div>
+							<div>GSTIN {{ inv.gstin }}</div>
+						</div>
+						<div class="col-md-6">
+							<span class="text-muted d-block">{{ 'inv_buyer' | transloco }}</span>
+							<b>{{ inv.buyer.name }}</b>
+							<div>{{ inv.buyer.address }}</div>
+							@if (inv.buyer.gstin) {
+							<div>GSTIN {{ inv.buyer.gstin }}</div>
+							}
+						</div>
+						<div class="col-md-6">
+							<span class="text-muted">{{ 'inv_order' | transloco }}:</span>
+							<a [routerLink]="['/order/details', inv.orderId]">{{ inv.orderNumber }}</a>
+						</div>
+						<div class="col-md-6">
+							<span class="text-muted">{{ 'inv_place_of_supply' | transloco }}:</span>
+							{{ inv.placeOfSupply }} · {{ inv.interState ? 'IGST' : 'CGST + SGST' }}
+						</div>
+					</div>
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'inv_item' | transloco }}</th>
+									<th>HSN</th>
+									<th class="text-end">{{ 'inv_qty' | transloco }}</th>
+									<th class="text-end">{{ 'inv_taxable' | transloco }}</th>
+									<th class="text-end">{{ 'inv_rate' | transloco }}</th>
+									<th class="text-end">{{ 'inv_tax' | transloco }}</th>
+									<th class="text-end">{{ 'inv_amount' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (line of inv.lines; track line.lineId) {
+								<tr>
+									<td>
+										{{ line.title }}
+										<small class="text-muted d-block">{{ line.sku }}</small>
+									</td>
+									<td>{{ line.hsn }}</td>
+									<td class="text-end">{{ line.quantity }}</td>
+									<td class="text-end text-nowrap">{{ inr(line.taxableINR) }}</td>
+									<td class="text-end">{{ line.ratePercent }}%</td>
+									<td class="text-end text-nowrap">
+										{{ inr(line.cgstINR + line.sgstINR + line.igstINR) }}
+									</td>
+									<td class="text-end text-nowrap">{{ inr(line.totalINR) }}</td>
+								</tr>
+								} @if (inv.shippingINR) {
+								<tr>
+									<td colspan="6">{{ 'inv_delivery' | transloco }}</td>
+									<td class="text-end text-nowrap">{{ inr(inv.shippingINR) }}</td>
+								</tr>
+								}
+								<tr>
+									<td colspan="6">{{ 'inv_round_off' | transloco }}</td>
+									<td class="text-end text-nowrap">{{ inr(inv.roundOffINR) }}</td>
+								</tr>
+								<tr>
+									<td colspan="6">
+										<b>{{ 'accounts_total' | transloco }}</b>
+									</td>
+									<td class="text-end text-nowrap">
+										<b>{{ inr(inv.totalINR) }}</b>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					} @case ('accounting') { @if (accounting.data(); as a) {
+					<div class="table-responsive datatable-wrapper border-table">
+						<table class="all-package theme-table no-footer table">
+							<thead>
+								<tr>
+									<th>{{ 'accounts_ledger' | transloco }}</th>
+									<th>{{ 'accounts_location' | transloco }}</th>
+									<th class="text-end">{{ 'accounts_debit' | transloco }}</th>
+									<th class="text-end">{{ 'accounts_credit' | transloco }}</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (line of a.lines; track $index) {
+								<tr>
+									<td>
+										<a [routerLink]="['/accounts/ledgers', line.ledgerId]">{{ line.ledgerName }}</a>
+									</td>
+									<td>{{ line.locationName }}</td>
+									<td class="text-end text-nowrap">
+										{{ line.debitPaise ? rupees(line.debitPaise) : '' }}
+									</td>
+									<td class="text-end text-nowrap">
+										{{ line.creditPaise ? rupees(line.creditPaise) : '' }}
+									</td>
+								</tr>
+								}
+								<tr>
+									<td colspan="2">
+										<b>{{ 'accounts_total' | transloco }}</b>
+									</td>
+									<td class="text-end text-nowrap">
+										<b>{{ rupees(a.totalPaise) }}</b>
+									</td>
+									<td class="text-end text-nowrap">
+										<b>{{ rupees(a.totalPaise) }}</b>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<p class="help-text mt-2 mb-0">
+						@if (a.voucherId) { {{ 'inv_posted_note' | transloco }}
+						<a [routerLink]="['/accounts/vouchers', a.voucherId]">{{ a.voucherNumber }}</a>
+						} @else { {{ 'inv_not_posted' | transloco }} }
+					</p>
+					} } @case ('checks') { @if (accounting.data(); as a) {
+					<ul class="list-unstyled mb-0">
+						@for (check of a.checks; track check.key) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i
+								[class]="check.ok ? 'ri-checkbox-circle-line text-success' : 'ri-close-circle-line text-danger'"
+								aria-hidden="true"
+							></i>
+							<div>
+								<b>{{ 'inv_check_' + check.key | transloco }}</b>
+								<small class="text-muted d-block">{{ detail(check) }}</small>
+							</div>
+						</li>
+						}
+					</ul>
+					} } @case ('log') {
+					<ul class="list-unstyled small mb-0">
+						<li class="py-1">{{ 'inv_log_issued' | transloco: { at: when(inv.createdAt) } }}</li>
+						@if (inv.cancellation; as c) {
+						<li class="py-1">
+							{{ 'inv_log_cancelled' | transloco: { at: when(c.at), reason: c.reason } }}
+						</li>
+						}
+						<li class="text-muted py-1">{{ 'inv_log_never_edited' | transloco }}</li>
+					</ul>
+					} @case ('prints') {
+					<p class="small text-muted">{{ 'inv_prints_intro' | transloco }}</p>
+					<ul class="list-unstyled mb-0">
+						@for (p of prints; track p.copy) {
+						<li class="d-flex align-items-center justify-content-between border-bottom gap-2 py-2">
+							<span>
+								{{ p.label | transloco }} @if (p.hint) {
+								<small class="text-muted ms-1">{{ p.hint | transloco }}</small>
+								}
+							</span>
+							<span class="d-flex gap-2">
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									[disabled]="busy()"
+									(click)="print(p.copy, false)"
+								>
+									<i class="ri-printer-line"></i>
+									{{ 'inv_print' | transloco }}
+								</button>
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									[disabled]="busy()"
+									(click)="print(p.copy, true)"
+								>
+									<i class="ri-download-2-line"></i>
+									{{ 'inv_download' | transloco }}
+								</button>
+							</span>
+						</li>
+						}
+					</ul>
+					} }
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-4">
+			<div class="card">
+				<div class="card-body">
+					<div class="title-header">
+						<h5>{{ 'inv_checks_title' | transloco }}</h5>
+					</div>
+					@if (accounting.data(); as a) {
+					<ul class="list-unstyled mb-0">
+						@for (check of a.checks; track check.key) {
+						<li class="d-flex border-bottom gap-2 py-2">
+							<i
+								[class]="check.ok ? 'ri-checkbox-circle-line text-success' : 'ri-close-circle-line text-danger'"
+								aria-hidden="true"
+							></i>
+							<div>
+								<b>{{ 'inv_check_' + check.key | transloco }}</b>
+								<small class="text-muted d-block">{{ detail(check) }}</small>
+							</div>
+						</li>
+						}
+					</ul>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</app-page-wrapper>

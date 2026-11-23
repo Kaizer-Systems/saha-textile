@@ -2,7 +2,7 @@ import type { Routes } from '@angular/router';
 
 /**
  * Accounts › E-invoices and E-way bills (addendum 2, EI12–EI13), Vouchers (Q3, Q4), Ledgers (Q1, Q2) and Periods and
- * locks (T1, T2). The Accounts menu grows with D6.
+ * locks (T1, T2), a tax invoice's page (D1, Q5). The Accounts menu grows with D6.
  */
 export default [
 	{
@@ -22,4 +22,5 @@ export default [
 	{ path: 'ledgers', loadComponent: () => import('./chart-of-accounts').then((m) => m.ChartOfAccountsPage) },
 	{ path: 'ledgers/:id', loadComponent: () => import('./ledger-statement').then((m) => m.LedgerStatementPage) },
 	{ path: 'periods', loadComponent: () => import('./periods').then((m) => m.PeriodsPage) },
+	{ path: 'invoices/:id', loadComponent: () => import('./invoice-view').then((m) => m.InvoiceViewPage) },
 ] satisfies Routes;

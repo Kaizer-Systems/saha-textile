@@ -5,6 +5,7 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
+import { invoiceProblemKey } from '@core/accounts/invoices.gateway';
 import { OrdersGateway } from '@core/orders/orders.gateway';
 import { apiProblem, rupees } from '@core/purchasing/purchasing-format';
 
@@ -161,7 +162,9 @@ export class OrderStatusPopup {
 			const order = await firstValueFrom(this.gateway.changeStatus(detail.order.id, body));
 			this.modal.close(order);
 		} catch (error) {
-			this.error.set(apiProblem(error, this.transloco.translate('ord_action_failed')));
+			const message = apiProblem(error, this.transloco.translate('ord_action_failed'));
+			const problem = invoiceProblemKey(message);
+			this.error.set(problem ? this.transloco.translate(problem.key, problem.params) : message);
 		} finally {
 			this.busy.set(false);
 		}

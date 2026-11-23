@@ -7,6 +7,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, map } from 'rxjs';
 
+import { invoiceProblemKey } from '@core/accounts/invoices.gateway';
 import { ORDER_STATUS_PILL, money, shippingReason } from '@core/orders/order-format';
 import { ORDERS_KEY, OrdersGateway, injectAdminOrderQuery } from '@core/orders/orders.gateway';
 import { RupeesPipe, apiProblem, rupees, shortDate, shortDateTime } from '@core/purchasing/purchasing-format';
@@ -17,6 +18,7 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 import { OrderClosePopup, type CloseOutcome } from './order-close-popup';
 import { OrderEDocPopup } from './order-edoc-popup';
 import { INVOICE_CONFIRMED_HOW, OrderInvoiceAddressPopup } from './order-invoice-address-popup';
+import { OrderInvoicesCard } from './order-invoices';
 import { OrderPaymentPopup } from './order-payment-popup';
 import { OrderRequestPopup } from './order-request-popup';
 import { OrderSendPopup, type SendChannel, type SendOutcome } from './order-send-popup';
@@ -67,7 +69,7 @@ function firstName(name: string): string {
 	selector: 'app-details',
 	templateUrl: './details.html',
 	styleUrls: ['./details.scss'],
-	imports: [HasPermissionDirective, RouterModule, RupeesPipe, TranslocoModule, OrderShipsFromCard],
+	imports: [HasPermissionDirective, RouterModule, RupeesPipe, TranslocoModule, OrderShipsFromCard, OrderInvoicesCard],
 })
 export class Details {
 	private readonly route = inject(ActivatedRoute);
@@ -847,7 +849,9 @@ export class Details {
 		try {
 			await work();
 		} catch (error) {
-			this.notifier.showError(apiProblem(error, this.transloco.translate('ord_action_failed')));
+			const message = apiProblem(error, this.transloco.translate('ord_action_failed'));
+			const problem = invoiceProblemKey(message);
+			this.notifier.showError(problem ? this.transloco.translate(problem.key, problem.params) : message);
 		} finally {
 			this.busy.set(null);
 		}

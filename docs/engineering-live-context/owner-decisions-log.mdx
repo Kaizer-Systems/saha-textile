@@ -2567,3 +2567,19 @@ customizable and none of it stays baked in code." Plan published as the Accounts
   part of this work; D4 (self-invoices, payment vouchers) built on roles and the reverse-charge rule set.
 - **Order:** T1 roles in the engine → T2 template store → D4 → T3 setup unlock → T4 builder screens → T5 tax rule sets →
   T6 report templates → T7 updates → T8 starter packs for all five kinds.
+
+## Owner decision round (2026-11-24) — Release Console Coverage screen
+
+- **Brief** `CRmpBdP3ce62g1JoCAhh23` (24 Nov): Ship › Code › Coverage. The owner: "Yes, I approve the brief." Every choice
+  as recommended:
+    - **Q1 A:** CI runs of any commit (the coverage job keeps its reports as the run's `coverage` artifact, 90 days) and This
+      Mac (the latest `pnpm coverage`, through the helper).
+    - **Q2 A:** green only at 100%, amber from 80%, red below.
+    - **Q3 A:** Ship › Code › Coverage, next to Pipelines and Job logs.
+    - **Q4 A:** syntax colours with highlight.js (TypeScript, JavaScript, HTML, styles, JSON).
+    - **Q5 A:** all the additions: gaps in plain words, the gap list and n/p keys, failures beside the code, changed lines,
+      the map, comparing two runs, Run on This Mac, slowest tests.
+- **Dynamic, not tailored (owner's question, answered 24 Nov):** every number, colour and gap word comes from rules over
+  Istanbul data, the test report and git, so it works on any JavaScript or TypeScript code; the screen never writes a
+  failure's cause, only the facts that point to it (the failing line, the lines it went through, the commit that last
+  changed them). Another language needs a reader for its coverage format (LCOV or Cobertura) behind the same shape.

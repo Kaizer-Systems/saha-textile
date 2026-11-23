@@ -23,4 +23,6 @@ export default [
 	{ path: 'ledgers/:id', loadComponent: () => import('./ledger-statement').then((m) => m.LedgerStatementPage) },
 	{ path: 'periods', loadComponent: () => import('./periods').then((m) => m.PeriodsPage) },
 	{ path: 'invoices/:id', loadComponent: () => import('./invoice-view').then((m) => m.InvoiceViewPage) },
+	{ path: 'returns/:id', loadComponent: () => import('./return-page').then((m) => m.ReturnPage) },
+	{ path: 'credit-notes/:id', loadComponent: () => import('./credit-note-page').then((m) => m.CreditNotePage) },
 ] satisfies Routes;

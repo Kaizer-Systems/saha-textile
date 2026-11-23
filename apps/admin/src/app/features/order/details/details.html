@@ -748,6 +748,11 @@
 
 			<app-order-invoices [orderId]="o.id" />
 
+			<app-order-returns
+				[orderId]="o.id"
+				[orderNumber]="o.orderNumber"
+			/>
+
 			@if (d.eDocuments.shown) {
 			<div class="card">
 				<div class="card-body">

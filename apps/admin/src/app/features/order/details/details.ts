@@ -19,6 +19,7 @@ import { OrderClosePopup, type CloseOutcome } from './order-close-popup';
 import { OrderEDocPopup } from './order-edoc-popup';
 import { INVOICE_CONFIRMED_HOW, OrderInvoiceAddressPopup } from './order-invoice-address-popup';
 import { OrderInvoicesCard } from './order-invoices';
+import { OrderReturnsCard } from './order-returns';
 import { OrderPaymentPopup } from './order-payment-popup';
 import { OrderRequestPopup } from './order-request-popup';
 import { OrderSendPopup, type SendChannel, type SendOutcome } from './order-send-popup';
@@ -69,7 +70,15 @@ function firstName(name: string): string {
 	selector: 'app-details',
 	templateUrl: './details.html',
 	styleUrls: ['./details.scss'],
-	imports: [HasPermissionDirective, RouterModule, RupeesPipe, TranslocoModule, OrderShipsFromCard, OrderInvoicesCard],
+	imports: [
+		HasPermissionDirective,
+		RouterModule,
+		RupeesPipe,
+		TranslocoModule,
+		OrderShipsFromCard,
+		OrderInvoicesCard,
+		OrderReturnsCard,
+	],
 })
 export class Details {
 	private readonly route = inject(ActivatedRoute);

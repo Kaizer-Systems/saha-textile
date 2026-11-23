@@ -1,0 +1,362 @@
+@if (view.data(); as v) { @if (v.invoiceId) {
+<div class="card">
+	<div class="card-body">
+		<div class="title-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+			<h5>{{ 'ret_card_title' | transloco }}</h5>
+			@if (canEdit()) {
+			<div class="d-flex flex-wrap gap-2">
+				<button
+					type="button"
+					class="btn btn-theme btn-sm"
+					id="ret_start_open"
+					[disabled]="!v.windowOpen"
+					[title]="(v.windowOpen ? 'ret_start' : 'ret_window_closed_short') | transloco"
+					(click)="open(startModal)"
+				>
+					<i class="ri-arrow-go-back-line"></i>
+					{{ 'ret_start' | transloco }}
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					id="ret_adjust_open"
+					(click)="open(adjustModal)"
+				>
+					<i class="ri-price-tag-3-line"></i>
+					{{ 'ret_price_adjustment' | transloco }}
+				</button>
+			</div>
+			}
+		</div>
+		<div class="alert alert-info d-flex gap-2 py-2">
+			<i class="ri-time-line mt-1"></i>
+			<div>
+				@if (!v.deliveredOn) { {{ 'ret_window_not_delivered' | transloco }} } @else if (v.windowOpen) { {{
+				'ret_window_open' | transloco: { date: day(v.windowEnds) } }} } @else { {{ 'ret_window_closed' |
+				transloco: { date: day(v.windowEnds) } }} } {{ 'ret_deadline' | transloco: { invoice: v.invoiceNumber,
+				date: day(v.deadline) } }}
+			</div>
+		</div>
+		@for (parcel of openParcels(); track parcel.shipmentId) {
+		<div class="d-flex align-items-center justify-content-between border-bottom mb-2 flex-wrap gap-2 pb-2">
+			<span>
+				<b>{{ parcel.number }}</b>
+				<small class="text-muted ms-1">{{ parcel.courier }}</small>
+			</span>
+			@if (canEdit()) {
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				[disabled]="busy()"
+				(click)="undelivered(parcel.shipmentId)"
+			>
+				{{ 'ret_parcel_back' | transloco }}
+			</button>
+			}
+		</div>
+		} @if (empty()) {
+		<p class="text-muted mb-0">{{ 'ret_none_yet' | transloco }}</p>
+		} @else {
+		<div class="table-responsive datatable-wrapper border-table">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th>{{ 'ret_document' | transloco }}</th>
+						<th>{{ 'ret_number' | transloco }}</th>
+						<th>{{ 'status' | transloco }}</th>
+						<th class="text-end">{{ 'ret_amount' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (r of v.returns; track r.id) {
+					<tr>
+						<td>{{ 'ret_kind_return' | transloco }}</td>
+						<td>
+							<a [routerLink]="['/accounts/returns', r.id]">{{ r.number }}</a>
+						</td>
+						<td>{{ 'ret_status_' + r.status | transloco }}</td>
+						<td></td>
+					</tr>
+					} @for (n of v.creditNotes; track n.id) {
+					<tr>
+						<td>{{ 'cn_kind_' + n.kind | transloco }}</td>
+						<td>
+							<a [routerLink]="['/accounts/credit-notes', n.id]">
+								{{ n.number ?? ('cn_status_draft' | transloco) }}
+							</a>
+						</td>
+						<td>{{ 'cn_status_' + n.status | transloco }}</td>
+						<td class="text-end text-nowrap">{{ rupees(n.totalINR) }}</td>
+					</tr>
+					} @for (d of v.debitNotes; track d.id) {
+					<tr>
+						<td>{{ 'cn_debit_note' | transloco }}</td>
+						<td>
+							<a [routerLink]="['/accounts/credit-notes', d.creditNoteId]">{{ d.number }}</a>
+						</td>
+						<td>{{ 'cn_status_issued' | transloco }}</td>
+						<td class="text-end text-nowrap">{{ rupees(d.totalINR) }}</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		}
+	</div>
+</div>
+
+<ng-template
+	#startModal
+	let-modal
+>
+	<div class="modal-header">
+		<h5 class="mb-0">{{ 'ret_start_title' | transloco: { number: orderNumber() } }}</h5>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		></button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		<div class="alert alert-info py-2">
+			<i class="ri-information-line me-1"></i>
+			{{ 'ret_start_info' | transloco }}
+		</div>
+		<div class="table-responsive datatable-wrapper border-table mb-3">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th>{{ 'inv_item' | transloco }}</th>
+						<th>{{ 'ret_bought' | transloco }}</th>
+						<th>{{ 'ret_returned_before' | transloco }}</th>
+						<th>{{ 'ret_return_now' | transloco }}</th>
+						<th class="text-end">{{ 'ret_price' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (row of v.returnable; track row.lineId) {
+					<tr>
+						<td>
+							{{ row.title }}
+							<small class="text-muted d-block">
+								{{ (row.returnable ? 'ret_can_return' : 'ret_cannot_return') | transloco }}
+							</small>
+						</td>
+						<td>{{ row.bought }}</td>
+						<td>{{ row.returnedBefore }}</td>
+						<td>
+							<input
+								class="form-control form-control-sm"
+								type="number"
+								min="0"
+								[max]="row.bought - row.returnedBefore"
+								[disabled]="!row.returnable || row.bought <= row.returnedBefore"
+								[attr.aria-label]="('ret_return_now' | transloco) + ': ' + row.title"
+								[ngModel]="quantities()[row.lineId] ?? 0"
+								(ngModelChange)="setQuantity(row.lineId, $event)"
+							/>
+						</td>
+						<td class="text-end text-nowrap">{{ rupees(row.unitPriceINR) }}</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="row g-3">
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="ret_reason"
+				>
+					{{ 'ret_why' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="ret_reason"
+					[ngModel]="reason()"
+					(ngModelChange)="reason.set($event)"
+				>
+					@for (r of reasons; track r) {
+					<option [value]="r">{{ 'ret_reason_' + r | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-6">
+				<span class="form-label-title d-block">{{ 'ret_how' | transloco }}</span>
+				@for (h of ['pickup', 'customer_sends']; track h) {
+				<label class="form-check d-block">
+					<input
+						class="form-check-input"
+						type="radio"
+						name="ret_how"
+						[checked]="how() === h"
+						(change)="how.set($any(h))"
+					/>
+					{{ 'ret_how_' + h | transloco }}
+				</label>
+				}
+			</div>
+			<div class="col-md-6">
+				<span class="form-label-title d-block">{{ 'ret_refund_to' | transloco }}</span>
+				@for (r of ['original_payment', 'bank_transfer']; track r) {
+				<label class="form-check d-block">
+					<input
+						class="form-check-input"
+						type="radio"
+						name="ret_refund_to"
+						[checked]="refundTo() === r"
+						(change)="refundTo.set($any(r))"
+					/>
+					{{ 'ret_refund_' + r | transloco }}
+				</label>
+				}
+			</div>
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="ret_note"
+				>
+					{{ 'ret_note' | transloco }}
+				</label>
+				<textarea
+					class="form-control"
+					id="ret_note"
+					rows="2"
+					maxlength="500"
+					[ngModel]="note()"
+					(ngModelChange)="note.set($event)"
+				></textarea>
+			</div>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="ret_start_confirm"
+			[disabled]="busy() || !picked()"
+			(click)="start()"
+		>
+			{{ 'ret_start_confirm' | transloco }}
+		</button>
+	</div>
+</ng-template>
+
+<ng-template
+	#adjustModal
+	let-modal
+>
+	<div class="modal-header">
+		<h5 class="mb-0">{{ 'ret_adjust_title' | transloco }}</h5>
+		<button
+			type="button"
+			class="btn btn-close"
+			[title]="'close' | transloco"
+			(click)="modal.dismiss()"
+		></button>
+	</div>
+	<div class="modal-body theme-form theme-form-2">
+		<div class="alert alert-info py-2">
+			<i class="ri-information-line me-1"></i>
+			{{ 'ret_adjust_info' | transloco }}
+		</div>
+		<div class="table-responsive datatable-wrapper border-table mb-3">
+			<table class="all-package theme-table no-footer table">
+				<thead>
+					<tr>
+						<th>{{ 'inv_item' | transloco }}</th>
+						<th class="text-end">{{ 'ret_paid' | transloco }}</th>
+						<th>{{ 'ret_lower_by' | transloco }}</th>
+						<th class="text-end">{{ 'ret_new_price' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (row of v.returnable; track row.lineId) {
+					<tr>
+						<td>{{ row.title }}</td>
+						<td class="text-end text-nowrap">{{ rupees(row.unitPriceINR * row.bought) }}</td>
+						<td>
+							<div class="input-group input-group-sm">
+								<span class="input-group-text">₹</span>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[attr.aria-label]="('ret_lower_by' | transloco) + ': ' + row.title"
+									[ngModel]="lowerBy()[row.lineId] ?? 0"
+									(ngModelChange)="setLowerBy(row.lineId, $event)"
+								/>
+							</div>
+						</td>
+						<td class="text-end text-nowrap">
+							{{ rupees(row.unitPriceINR * row.bought - (lowerBy()[row.lineId] ?? 0)) }}
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="row g-3">
+			<div class="col-md-6">
+				<label
+					class="form-label-title"
+					for="adj_reason"
+				>
+					{{ 'ret_why' | transloco }}
+				</label>
+				<select
+					class="form-select"
+					id="adj_reason"
+					[ngModel]="adjustmentReason()"
+					(ngModelChange)="adjustmentReason.set($event)"
+				>
+					@for (r of adjustmentReasons; track r) {
+					<option [value]="r">{{ r | transloco }}</option>
+					}
+				</select>
+			</div>
+			<div class="col-md-6">
+				<span class="form-label-title d-block">{{ 'ret_give_back' | transloco }}</span>
+				@for (r of ['original_payment', 'customer_account']; track r) {
+				<label class="form-check d-block">
+					<input
+						class="form-check-input"
+						type="radio"
+						name="adj_refund_to"
+						[checked]="refundTo() === r"
+						(change)="refundTo.set($any(r))"
+					/>
+					{{ 'ret_refund_' + r | transloco }}
+				</label>
+				}
+			</div>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button
+			type="button"
+			class="btn btn-outline"
+			(click)="modal.dismiss()"
+		>
+			{{ 'cancel' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn btn-theme"
+			id="ret_adjust_confirm"
+			[disabled]="busy() || !lowered()"
+			(click)="adjust()"
+		>
+			{{ 'cn_save_draft' | transloco }}
+		</button>
+	</div>
+</ng-template>
+} }

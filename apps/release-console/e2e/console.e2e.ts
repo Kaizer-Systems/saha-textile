@@ -833,3 +833,230 @@ test('a DigitalOcean product screen lists, opens its create form with the price,
 	await expect(page.getByRole('heading', { name: 'Creating volume example-new' })).toBeVisible();
 	expect(sent).toMatchObject({ pin: PIN, values: { name: 'example-new', size: 60 } });
 });
+
+/** A made-up answer for one console API address (no real account is read). */
+async function answerWith(page: Page, url: string, body: unknown): Promise<void> {
+	await page.route(url, (route) => {
+		const origin = route.request().headers()['origin'] ?? '*';
+		const headers = {
+			'access-control-allow-origin': origin,
+			'access-control-allow-credentials': 'true',
+			'access-control-allow-headers': 'content-type, x-console-session',
+			'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
+		};
+		if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+		return route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
+	});
+}
+
+const rotationWaiting = {
+	environment: 'staging',
+	tier: 'staging',
+	state: {
+		pending: ['redis'],
+		pendingAt: new Date().toISOString(),
+		requestedAt: null,
+		graceAt: null,
+		graceNames: [],
+		lastAt: new Date().toISOString(),
+		lastChanged: ['REDIS_PASSWORD'],
+	},
+	graceDaysLeft: null,
+};
+
+test('Release Path: a refused deploy, the rotation section and the reachable card on Live deploy', async ({
+	page,
+}, info) => {
+	const at = new Date().toISOString();
+	await sampleServerDeploy(page, 'staging');
+	await answerWith(page, '**/server-deploy/staging', {
+		state: 'ok',
+		readAt: at,
+		data: {
+			environment: 'staging',
+			target: 'staging',
+			branch: 'staging',
+			setup: { environmentExists: true, missingVariables: [], missingSecrets: [], workflowOnBranch: true },
+			run: {
+				id: 9,
+				url: 'https://github.com/example/actions/runs/9',
+				branch: 'staging',
+				commit: '08ac015',
+				status: 'completed',
+				conclusion: 'failure',
+				createdAt: at,
+				waiting: [],
+				jobs: [],
+			},
+			recent: [],
+			failure: {
+				kind: 'refused-secrets',
+				step: null,
+				message: 'This release changes secrets the database, Redis or search already run with: redis-password.',
+				names: ['redis-password'],
+			},
+			tags: [],
+		},
+	});
+	await answerWith(page, '**/rotation/staging', rotationWaiting);
+	await answerWith(page, '**/droplet-jobs/reachable/staging', {
+		environment: 'staging',
+		checks: [
+			{ key: 'health', label: 'Health through Cloudflare', ok: true, detail: 'answered 200', fix: null },
+			{
+				key: 'origin-pulls',
+				label: 'Origin pulls certificate on api-staging.example.com',
+				ok: false,
+				detail: 'missing on api-staging.example.com',
+				fix: 'origin-pulls',
+			},
+		],
+	});
+	await unlock(page);
+	await page.goto(`/p/browser-test-${info.project.name}/r/saha-textile/deploy?tab=staging`);
+	await expect(page.getByText('Redis password in Infisical differs from what the server runs with.')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Deploy again with rotation' })).toBeVisible();
+	await expect(page.getByText('Through Cloudflare · not reachable')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Turn origin pulls on again' })).toBeVisible();
+	await expect(page.getByText('1 value in Infisical differs from what the server runs.')).toBeVisible();
+	await expect(page.getByText('→ release staging --rotate')).toBeVisible();
+	const go = page.getByRole('button', { name: 'Deploy and rotate' });
+	await expect(go).toBeDisabled();
+	await page.getByLabel('Type staging to confirm').fill('staging');
+	await page.getByLabel('Console PIN to deploy').getByLabel('PIN digit 1 of 6').click();
+	await page.keyboard.type(PIN);
+	await expect(go).toBeEnabled();
+});
+
+test('Release Path: Rotate, the ready card, the server panels, the database monitor and traces', async ({
+	page,
+}, info) => {
+	const base = `/p/browser-test-${info.project.name}/r/saha-textile`;
+	const at = new Date().toISOString();
+	await answerWith(page, '**/rotation/staging', rotationWaiting);
+	await answerWith(page, '**/droplet-jobs/job-ready', {
+		id: 'job-ready',
+		kind: 'create',
+		environment: 'staging',
+		name: 'browser-test-staging',
+		state: 'failed',
+		startedAt: at,
+		finishedAt: at,
+		steps: [{ key: 'ready', label: 'What is left for you', detail: 'Not finished', state: 'failed', ms: 1 }],
+		dropletId: 42,
+		ipv4: '203.0.113.9',
+		ipv6: null,
+		privateIp: null,
+		sshHost: null,
+		monthly: 24,
+		hourly: 0.036,
+		error: 'Not finished: 1 thing left before staging can deploy. Fix it, then Finish setup.',
+		left: [{ text: 'GitHub’s staging environment has no required reviewer.', blocking: true }],
+	});
+	await answerWith(page, '**/server-state/staging', {
+		environment: 'staging',
+		machine: { state: 'ok', message: 'monitoring', cpuPercent: 14, memoryPercent: 72, diskPercent: 31 },
+		shop: { state: 'ok', message: 'queues empty', queues: [] },
+		containers: {
+			state: 'ok',
+			message: '1 running · 0 restarting',
+			items: [
+				{
+					service: 'api',
+					name: 'api-1',
+					state: 'running',
+					health: 'healthy',
+					restarts: 0,
+					cpuPercent: 3,
+					memBytes: 262 * 1024 ** 2,
+					memLimitBytes: 768 * 1024 ** 2,
+				},
+			],
+		},
+		readAt: at,
+	});
+	await answerWith(page, '**/server-state/staging/db-report', { error: 'The monitor login is not set up.' });
+	await answerWith(page, '**/api/local/traces?view=slowest', {
+		state: 'ok',
+		message: '1 traces in the last hour',
+		services: ['saha-textile-api'],
+		traces: [
+			{
+				id: 'abcdef0123456789',
+				name: 'GET /catalog/products/{{slug}}',
+				service: 'saha-textile-api',
+				ms: 288,
+				status: 200,
+				error: false,
+				at,
+				spans: 2,
+				requestId: null,
+				build: null,
+			},
+		],
+		edges: [{ from: 'API', to: 'MongoDB', calls: 1, ms: 181 }],
+	});
+	await answerWith(page, '**/api/local/traces/abcdef0123456789', {
+		id: 'abcdef0123456789',
+		name: 'GET /catalog/products/{{slug}}',
+		service: 'saha-textile-api',
+		ms: 288,
+		status: 200,
+		error: false,
+		at,
+		requestId: null,
+		build: null,
+		spans: [
+			{
+				id: 'a',
+				parentId: null,
+				name: 'GET /catalog/products/{{slug}}',
+				service: 'saha-textile-api',
+				where: 'API',
+				startMs: 0,
+				ms: 288,
+				depth: 0,
+				error: false,
+				query: null,
+			},
+			{
+				id: 'b',
+				parentId: 'a',
+				name: 'variants.find',
+				service: 'saha-textile-api',
+				where: 'MongoDB',
+				startMs: 30,
+				ms: 181,
+				depth: 1,
+				error: false,
+				query: '{ productId: ? }',
+			},
+		],
+		diagnose: [{ rule: 'slow-database', text: 'variants.find on MongoDB took 181 ms', spanId: 'b' }],
+	});
+	await unlock(page);
+	// Run › Secrets › Rotate on Staging: what waits for a deploy with rotation, and the values to pick.
+	await page.goto(`${base}/secrets?tab=rotate`);
+	await page.locator('.rc-env-tab', { hasText: 'Staging' }).click();
+	await expect(page.getByText('Waiting for a deploy with rotation:')).toBeVisible();
+	await expect(page.getByText('Database monitor password', { exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: /Make new values/ })).toBeDisabled();
+	// The create job's ready card: what is left, and Finish setup.
+	await page.goto(`${base}/droplets?tab=creating&job=job-ready`);
+	await expect(page.getByText('Left for you', { exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Finish setup' })).toBeVisible();
+	// Run › Infrastructure on Staging: DigitalOcean monitoring, /ops and the observer's containers.
+	await page.goto(`${base}/infra`);
+	await page.locator('.rc-env-tab', { hasText: 'Staging' }).click();
+	await expect(page.getByText('CPU 14% · memory 72% · disk 31%')).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'api', exact: true })).toBeVisible();
+	await page.goto(`${base}/queries`);
+	await page.locator('.rc-env-tab', { hasText: 'Staging' }).click();
+	await expect(page.getByText('The monitor login is not set up.')).toBeVisible();
+	// Watch › Traces on Local: the slowest request, its waterfall and Diagnose.
+	await page.goto(`${base}/traces?tab=list`);
+	await page.locator('.rc-env-tab', { hasText: 'Local' }).click();
+	await page.locator('.rc-main table').getByRole('button', { name: 'Waterfall' }).click();
+	await expect(page.getByText('variants.find on MongoDB took 181 ms')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Open in Database monitor' })).toBeVisible();
+});

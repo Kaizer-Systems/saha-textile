@@ -3,7 +3,7 @@ title: Release Console
 description: The owner's dashboard for projects, repositories, releases and cloud accounts; its Docker image, its lock, its levels, its Infisical keys, this Mac as an environment and its API.
 status: implemented
 audience: [operator, frontend, backend]
-last_verified: 2026-11-20
+last_verified: 2026-11-23
 source_of_truth:
     - apps/release-console
     - apps/release-console-api
@@ -257,6 +257,48 @@ New values can be written from the same screen (owner, 20 Nov), for a place in t
 Wherever something fails, the screen shows the steps to fix it: the Mac helper silent, Docker down, the stack not answering, a database login refused, certificates missing, a port taken, a run already going, the checks stage refused under dev servers, a failed run (matched from its last lines), Infisical signed out, a full disk, a key to replace, and errors rising. The steps live in `apps/release-console/src/app/screens/trouble.ts`; a test checks that every `pnpm` command they name exists.
 
 Each vendor read answers in one of three ways: data, **not connected** (with a button to Connections), or an error with the vendor's reason. DigitalOcean screens read with the read key when the slot has one, and with the change key otherwise. Every other screen and tab describes what it will show; items the console cannot do are red and disabled, and items it can do in part are yellow.
+
+## Releases, rotation and servers
+
+### Changing passwords and keys
+
+Run › Secrets › Rotate changes values for a server environment. Pick the values and why: **on a schedule** keeps the old sign-in, CSRF and mailbox keys for 30 days under `<NAME>_PREVIOUS`, so nobody is signed out; **after a leak** drops them at once. **Make new values** asks for the environment's name typed and the PIN, then the Mac helper runs `pnpm secrets:rotate -- <tier> --names <ids> [--no-grace] --json`, which makes the values and writes them into Infisical. The console keeps names and dates only.
+
+| Value                                                             | What happens                                                                                                |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Database app, administrator and monitor passwords, Redis password | changed on the running service before the switch, no pause                                                  |
+| Search master key                                                 | search restarts, a few seconds                                                                              |
+| Database keyfile                                                  | used from the database's next restart, or restarted now (about 20 s)                                        |
+| Sign-in keys and CSRF key, mailbox key                            | kept 30 days on a schedule; after a leak everyone signs in again, and each Gmail mailbox is connected again |
+
+Database, Redis and search values wait for a deploy with rotation: Live deploy lists them under **Rotate secrets in this deploy** and its button becomes **Deploy and rotate** (deploy.yml `rotate`, and `restart_database` when ticked). A successful run clears the list. Without rotation the server refuses a release whose data-service secrets changed; Live deploy names them in words and offers **Deploy again with rotation**. After 30 days, Attention and the Rotate tab remind you to **Remove the old keys** (`--clear-previous`), which the next normal deploy carries.
+
+### Failed releases, rollback and the reachable card
+
+When a run fails, Live deploy and Release steps read the failed job's log: a release step's name and message, the server's refusal, or its `FAILED:` line. After every finished run the console checks the environment through Cloudflare: `/health/live`, each host's record pointing at this server and proxied, the Full (strict) rule, origin pulls on each host, and the firewall's Cloudflare ranges. A broken check is named, with **Turn origin pulls on again** and **Roll back**, each with the PIN.
+
+Ship › Rollback has two ways back. **Roll back** starts deploy.yml with `action=rollback`: the server swaps the previous release back in from images on its disk, passwords included. **Deploy an older version** runs the deploy on one release tag (`<environment>-<yyyymmdd-hhmmss>-<sha8>`, pushed after each healthy deploy); each GitHub environment accepts its own tags. After a leak, deploy forward instead: a rollback past a rotation brings the old values back.
+
+### Creating a server
+
+The create job runs these steps after the server is up:
+
+- **Zone check**: Full (strict) by a configuration rule for the environment's own hosts only, Always Use HTTPS, and TLS 1.2 minimum. The rest of the zone keeps its SSL mode.
+- **Staging login wall**: an Access application over the shop and admin hosts for the people on the project's SSH list; API hosts stay open for webhooks; production is not walled.
+- **DigitalOcean DNS**: a host outside the repository's Cloudflare zones whose domain is delegated to DigitalOcean gets its record there, never overwriting one that points elsewhere; the firewall then opens 443 to everyone.
+- **Identity and approval**: `INFISICAL_IDENTITY_ID` from `docker/infisical/variable-names.json`, the GitHub environment's branch rule and its release-tag rule. A missing required reviewer is never set by the console; it stops the job.
+- **Outside check**: ports 21, 22, 80, 27017, 6379 and 7700 on the public address must not answer.
+- **Ready card**: what is left for you. Anything blocking fails the job with **Finish setup**, which gives the deploy token a new secret and redoes only the GitHub environment, the identity check and the host key.
+
+Each server also gets a read-only **observer** login: an ed25519 key made beside the deploy key in `~/.release-console/servers/<project>-<environment>/`, forced on the server to `observe.sh`, and its own Access service token (`<server> observer`) kept beside the key with mode 600. The Mac helper sends only the requests `observe.sh` answers: `containers`, `logs <service>`, `releases`, `disk` and `db-report`.
+
+The Creating tab lists each server's deploy token with its end date and **Renew token**; Attention warns 30 days before a token ends. DNS › The DNS switch moves the apex and www records to the production server after its checklist, with `production` typed and the PIN; Flip back restores the records from before.
+
+### Reading a server, tracing and the database monitor
+
+On a server environment's tab, Run › Server, Infrastructure, Live logs and Watch › Health show the server's CPU, memory and disk from DigitalOcean's monitoring, the shop's queues from the API's `/ops` address (with that environment's `CONSOLE_OPS_TOKEN_*`), and its containers with each one's last 15 minutes of masked log lines through the observer. Watch › Database monitor on a server tab reads `db-report` with the read-only monitor login: sizes, operation counts, slow-query shapes with every value shown as `?`, and index use.
+
+Watch › Traces reads the local VictoriaTraces (`docker compose -f docker/stack/compose.yaml --profile tracing up -d traces`, on 127.0.0.1:10428) through the Mac helper: the slowest and the failed requests of the last hour, one request's waterfall, the service map, and **Diagnose** by fixed rules (the span that took most of the request, a call repeated three or more times, a slow database call, an outside call far over its usual time). The API and worker send spans when `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set. Traces appear within half a minute. Server tabs stay off until tracing is switched on for staging and production.
 
 ## Console API
 

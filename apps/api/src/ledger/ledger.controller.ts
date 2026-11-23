@@ -7,6 +7,7 @@ import {
 	DocumentLockTarget,
 	JournalVoucherWrite,
 	LedgerWrite,
+	PeriodChecksQuery,
 	PeriodLockWrite,
 	VoucherDraftWrite,
 	VoucherListQuery,
@@ -180,6 +181,14 @@ export class LedgerController {
 	@ApiOperation({ operationId: 'periodGrid', summary: 'Months of this year and the last, each part’s state' })
 	periods() {
 		return this.ledger.periodGrid();
+	}
+
+	@Get('periods/checks')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('accounts.lock')
+	@ApiOperation({ operationId: 'periodChecks', summary: 'What still needs doing in a month before it is locked' })
+	periodChecks(@Query(new ZodValidationPipe(PeriodChecksQuery)) query: z.infer<typeof PeriodChecksQuery>) {
+		return this.ledger.periodChecks(query.month);
 	}
 
 	@Post('periods')

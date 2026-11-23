@@ -14,6 +14,7 @@ import type {
 	JournalVoucherWrite,
 	Ledger,
 	LedgerWrite,
+	PeriodCheck,
 	PeriodGrid,
 	PeriodLock,
 	PeriodLockWrite,
@@ -35,6 +36,7 @@ export const LEDGER_KEYS = {
 	drafts: ['accounts', 'drafts'] as const,
 	draft: (id: string) => ['accounts', 'draft', id] as const,
 	periods: ['accounts', 'periods'] as const,
+	checks: (month: string) => ['accounts', 'periods', 'checks', month] as const,
 };
 
 /** Accounts › Ledgers, Vouchers, Periods and locks (accounts brief Q1–Q3, T1–T2). */
@@ -99,6 +101,9 @@ export class LedgerGateway {
 	}
 	periods(): Observable<PeriodGrid> {
 		return this.http.get<PeriodGrid>(this.api('/periods'));
+	}
+	periodChecks(month: string): Observable<PeriodCheck[]> {
+		return this.http.get<PeriodCheck[]>(this.api('/periods/checks'), { params: { month } });
 	}
 	lock(write: PeriodLockWrite): Observable<PeriodLock[]> {
 		return this.http.post<PeriodLock[]>(this.api('/periods'), write, QUIET);

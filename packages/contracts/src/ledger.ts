@@ -326,3 +326,28 @@ export const VoucherDetail = JournalVoucher.extend({
 	attachmentLinks: z.array(VoucherAttachment.extend({ url: z.string().nullable() })).default([]),
 });
 export type VoucherDetail = z.infer<typeof VoucherDetail>;
+
+/**
+ * T2's checks before a month is locked. Each says whether something in that month still needs doing; a lock may
+ * go ahead anyway, as drawn. A check whose feature is not built yet says so (`not_in_use`) instead of passing.
+ */
+export const PeriodCheckKey = z.enum([
+	'cash_sheets',
+	'transfers',
+	'depreciation',
+	'payroll',
+	'drafts',
+	'reversals',
+	'stock_counts',
+	'stock_approvals',
+]);
+export type PeriodCheckKey = z.infer<typeof PeriodCheckKey>;
+
+export const PeriodCheck = z.object({
+	key: PeriodCheckKey,
+	state: z.enum(['ok', 'attention', 'not_in_use']),
+	count: z.number().int().nonnegative().default(0),
+});
+export type PeriodCheck = z.infer<typeof PeriodCheck>;
+
+export const PeriodChecksQuery = z.object({ month: YearMonth });

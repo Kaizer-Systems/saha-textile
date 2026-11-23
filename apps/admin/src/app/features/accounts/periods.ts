@@ -71,6 +71,13 @@ export class PeriodsPage {
 		columnState(this.grid.data()?.locks ?? [], month, parts);
 
 	readonly lockMonth = signal('');
+	readonly modalOpen = signal(false);
+	/** T2: what still needs doing in the chosen month (a lock may go ahead anyway). */
+	readonly checks = injectQuery(() => ({
+		queryKey: LEDGER_KEYS.checks(this.lockMonth()),
+		queryFn: () => firstValueFrom(this.gateway.periodChecks(this.lockMonth())),
+		enabled: this.modalOpen() && !!this.lockMonth() && this.canLock(),
+	}));
 	readonly everything = signal(true);
 	readonly chosen = signal<ReadonlySet<BookPart>>(new Set());
 	readonly lockState = signal<PeriodState>('locked');
@@ -85,7 +92,9 @@ export class PeriodsPage {
 		this.chosen.set(new Set());
 		this.lockState.set('locked');
 		this.reason.set('');
+		this.modalOpen.set(true);
 		this.modal = this.modals.open(template, { centered: true, size: 'lg' });
+		void this.modal.result.finally(() => this.modalOpen.set(false)).catch(() => undefined);
 	}
 
 	toggle(part: BookPart, on: boolean): void {

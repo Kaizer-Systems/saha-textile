@@ -22,6 +22,7 @@ import {
 	Ledger,
 	type LedgerWrite,
 	type PeriodLock,
+	type PeriodCheck,
 	type PeriodLockWrite,
 	type VoucherAttachment,
 	type VoucherDetail,
@@ -31,6 +32,7 @@ import {
 	type VoucherReverse,
 } from '@saha-textile/contracts';
 import {
+	type AdjustmentRequestRepository,
 	type AdminUserRepository,
 	type AdminUserRoleAssignmentRepository,
 	type AuditLogRepository,
@@ -47,6 +49,7 @@ import {
 	reversalLines,
 	type RoleRepository,
 	StaleRevisionError,
+	type StockCountRepository,
 	type StoragePort,
 	SUPER_ADMIN_ROLE_KEY,
 	type TransactionContext,
@@ -57,6 +60,7 @@ import {
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import {
+	ADJUSTMENT_REQUEST_REPOSITORY,
 	ADMIN_USER_REPOSITORY,
 	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
@@ -67,6 +71,7 @@ import {
 	MEDIA_ASSET_REPOSITORY,
 	PERIOD_LOCK_REPOSITORY,
 	ROLE_REPOSITORY,
+	STOCK_COUNT_REPOSITORY,
 	STORAGE_PORT,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
@@ -117,6 +122,9 @@ export class LedgerService {
 		@Inject(ADMIN_USER_REPOSITORY) private readonly admins: Pick<AdminUserRepository, 'findById'>,
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly media: Pick<MediaAssetRepository, 'findManyByIds'>,
 		@Inject(STORAGE_PORT) private readonly storage: Pick<StoragePort, 'getUrl'>,
+		@Inject(STOCK_COUNT_REPOSITORY) private readonly counts: Pick<StockCountRepository, 'list'>,
+		@Inject(ADJUSTMENT_REQUEST_REPOSITORY)
+		private readonly approvals: Pick<AdjustmentRequestRepository, 'pendingCount'>,
 		private readonly numbers: DocumentNumbersService,
 		private readonly locations: LocationsService,
 	) {}
@@ -565,6 +573,35 @@ export class LedgerService {
 			months.push(`${year}-${String(month).padStart(2, '0')}`);
 		}
 		return { months, locks: await this.periods.list() };
+	}
+
+	/**
+	 * T2's checks before locking a month (as drawn). Cash sheets, transfers, depreciation and payroll answer
+	 * `not_in_use` until those features exist (C1, C3, A1, P1); the rest are checked now: drafts dated in the
+	 * month, reversals due in it, stock counts still open, and stock changes waiting for approval.
+	 */
+	async periodChecks(month: string): Promise<PeriodCheck[]> {
+		const [drafts, due, counts, approvals] = await Promise.all([
+			this.books.listDrafts(),
+			this.books.dueReversals(`${month}-31`),
+			this.counts.list({ filter: 'all', page: 1, pageSize: 1 }),
+			this.approvals.pendingCount(),
+		]);
+		const attention = (key: PeriodCheck['key'], count: number): PeriodCheck => ({
+			key,
+			state: count ? 'attention' : 'ok',
+			count,
+		});
+		return [
+			{ key: 'cash_sheets', state: 'not_in_use', count: 0 },
+			{ key: 'transfers', state: 'not_in_use', count: 0 },
+			{ key: 'depreciation', state: 'not_in_use', count: 0 },
+			{ key: 'payroll', state: 'not_in_use', count: 0 },
+			attention('drafts', drafts.filter((d) => d.date.startsWith(month)).length),
+			attention('reversals', due.filter((v) => v.reverseOn?.startsWith(month)).length),
+			attention('stock_counts', (counts.counts['counting'] ?? 0) + (counts.counts['review'] ?? 0)),
+			attention('stock_approvals', approvals),
+		];
 	}
 
 	/** T2: close or lock chosen months and parts with a reason; reopening is logged the same way. */

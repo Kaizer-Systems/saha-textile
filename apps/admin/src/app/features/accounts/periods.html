@@ -179,6 +179,29 @@
 				></textarea>
 			</div>
 		</div>
+		<ul class="list-unstyled mt-3 mb-0">
+			@for (c of checks.data() ?? []; track c.key) {
+			<li class="border-bottom py-2">
+				<i
+					[class]="
+						c.state === 'ok'
+							? 'ri-checkbox-circle-line text-success me-1'
+							: c.state === 'attention'
+								? 'ri-close-circle-line text-danger me-1'
+								: 'ri-indeterminate-circle-line text-muted me-1'
+					"
+				></i>
+				<b>{{ 'accounts_check_' + c.key | transloco }}</b>
+				@if (c.state === 'attention') {
+				<span class="small float-end">{{ c.count }}</span>
+				}
+				<div class="small text-muted">
+					{{ 'accounts_check_' + c.key + '_' + (c.state === 'not_in_use' ? 'not_in_use' : c.state ===
+					'attention' ? 'attention' : 'ok') | transloco }}
+				</div>
+			</li>
+			}
+		</ul>
 	</div>
 	<div class="modal-footer">
 		<button

@@ -146,6 +146,8 @@ const setup = (options: { locks?: PeriodLock[]; kind?: 'proprietorship' | 'priva
 		{ findById: async (id: string) => ({ id, displayName: id === 'adm_owner' ? 'Owner' : 'Manager' }) } as never,
 		{ findManyByIds: async () => [{ id: 'ast_1', originalStorageKey: 'media/bill.pdf' }] } as never,
 		{ getUrl: (key: string) => `https://cdn.example/${key}` } as never,
+		{ list: async () => ({ items: [], total: 0, counts: { counting: 1, review: 0 } }) } as never,
+		{ pendingCount: async () => 2 } as never,
 		{ issue: async () => `JV/26-27/${String(++counter).padStart(6, '0')}` } as never,
 		{
 			scope: async (principal: { userId: string }) =>
@@ -325,5 +327,33 @@ describe('general ledger (accounts brief Q, T, D10)', () => {
 		expect(detail.attachmentLinks).toEqual([
 			{ assetId: 'ast_1', name: 'rent-receipt.pdf', url: 'https://cdn.example/media/bill.pdf' },
 		]);
+	});
+
+	it('lists the checks before locking a month, with features not built yet marked', async () => {
+		const { service } = setup();
+		await service.saveDraft(
+			null,
+			{
+				kind: 'journal',
+				date: '2026-11-30',
+				narration: '',
+				lines: [],
+				reverseOn: null,
+				attachments: [],
+				expectedUpdatedAt: null,
+			},
+			owner,
+		);
+		const checks = await service.periodChecks('2026-11');
+		expect(Object.fromEntries(checks.map((c) => [c.key, [c.state, c.count]]))).toEqual({
+			cash_sheets: ['not_in_use', 0],
+			transfers: ['not_in_use', 0],
+			depreciation: ['not_in_use', 0],
+			payroll: ['not_in_use', 0],
+			drafts: ['attention', 1],
+			reversals: ['ok', 0],
+			stock_counts: ['attention', 1],
+			stock_approvals: ['attention', 2],
+		});
 	});
 });

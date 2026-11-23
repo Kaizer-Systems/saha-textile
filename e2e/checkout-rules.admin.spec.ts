@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { AdminApi, ensurePounds, ensureSahaShipping } from './business-setup';
+import { AdminApi, ensurePounds, ensureSahaTextileShipping } from './business-setup';
 import { API_URL, expect, test } from './support';
 
 /**
@@ -83,7 +83,7 @@ test.describe('Shop checkout rules for every address and currency', () => {
 
 	test('prices each case by where the parcel goes, never by the currency', async ({ page }) => {
 		await ensurePounds();
-		await ensureSahaShipping(new AdminApi(page.request), Date.now().toString(36));
+		await ensureSahaTextileShipping(new AdminApi(page.request), Date.now().toString(36));
 		await signInAndFillBag(page);
 
 		// S1: India to India in ₹: the domestic rule, the INR gateway, no extra step.

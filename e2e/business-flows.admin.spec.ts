@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { AdminApi as Api, ensurePounds, ensureSahaShipping, type Json } from './business-setup';
+import { AdminApi as Api, ensurePounds, ensureSahaTextileShipping, type Json } from './business-setup';
 import { withDatabase } from './database';
 import { ADMIN } from './support';
 
@@ -217,7 +217,7 @@ test.describe('The whole business, end to end', () => {
 	test('setup: Saha Textile’s two shipping rule sets, site-wide, export off with an Indian invoice address', async () => {
 		// Shared with the shop checkout rules spec: whichever runs first sets them up.
 		await ensurePounds();
-		await ensureSahaShipping(api, run);
+		await ensureSahaTextileShipping(api, run);
 	});
 
 	test('buying: a purchase order, goods received and checked, posted with its cost, paid, and a damaged piece returned', async ({

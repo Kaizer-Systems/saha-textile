@@ -77,7 +77,7 @@ interface ShippingOverview {
 	} | null;
 }
 
-const sahaShippingSet = (overview: ShippingOverview): boolean =>
+const sahaTextileShippingSet = (overview: ShippingOverview): boolean =>
 	overview.settings?.abroadPolicy === 'exportOffIndianInvoice' &&
 	overview.settings.domestic?.kind === 'ruleSet' &&
 	overview.settings.international?.kind === 'ruleSet';
@@ -87,8 +87,8 @@ const sahaShippingSet = (overview: ShippingOverview): boolean =>
  * pieces free), and abroad the first piece's charge once then each further piece's, with export off
  * and an Indian invoice address. Already in place → nothing is done.
  */
-export async function ensureSahaShipping(api: AdminApi, run: string): Promise<void> {
-	if (sahaShippingSet(await api.ok<ShippingOverview>('GET', '/admin/shipping/overview'))) return;
+export async function ensureSahaTextileShipping(api: AdminApi, run: string): Promise<void> {
+	if (sahaTextileShippingSet(await api.ok<ShippingOverview>('GET', '/admin/shipping/overview'))) return;
 	const domestic = await api.ok<{ ruleSet: { id: string } }>('POST', '/admin/shipping/rule-sets', {
 		name: `Saha Textile — Domestic ${run}`,
 		description: '',
@@ -169,7 +169,7 @@ export async function ensureSahaShipping(api: AdminApi, run: string): Promise<vo
 		expect(activated.outcome).toBe('activated');
 	}
 	const overview = await api.ok<ShippingOverview>('GET', '/admin/shipping/overview');
-	if (sahaShippingSet(overview)) return;
+	if (sahaTextileShippingSet(overview)) return;
 	const answer = await api.try('POST', '/admin/shipping/settings', {
 		homeCountry: 'IN',
 		domestic: { kind: 'ruleSet', ruleSetId: domestic.ruleSet.id },
@@ -182,5 +182,5 @@ export async function ensureSahaShipping(api: AdminApi, run: string): Promise<vo
 	});
 	// Another spec may have saved the same settings a moment earlier (its revision wins).
 	if (answer.status >= 300)
-		expect(sahaShippingSet(await api.ok<ShippingOverview>('GET', '/admin/shipping/overview'))).toBe(true);
+		expect(sahaTextileShippingSet(await api.ok<ShippingOverview>('GET', '/admin/shipping/overview'))).toBe(true);
 }

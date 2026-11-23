@@ -26,5 +26,6 @@ PaymentVoucherSchema.index(
 	{ unique: true, partialFilterExpression: { supplierPaymentId: { $type: 'string' } } },
 );
 PaymentVoucherSchema.index({ 'against.kind': 1, 'against.id': 1 });
+PaymentVoucherSchema.index({ supplierId: 1, date: 1 });
 export const PaymentVoucherModel: Model<AggregateDoc> =
 	(models.PaymentVoucher as Model<AggregateDoc>) ?? model<AggregateDoc>('PaymentVoucher', PaymentVoucherSchema);

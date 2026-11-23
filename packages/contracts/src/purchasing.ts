@@ -166,6 +166,11 @@ export const SupplierStatementRow = z.object({
 		'refund_received',
 		/** The supplier refused a debit note and it was written off. */
 		'claim_written_off',
+		/** Reverse charge (accounts brief D): a self-invoice we made for their supply, and its payment vouchers. */
+		'self_invoice',
+		'self_invoice_cancelled',
+		'self_invoice_payment',
+		'self_invoice_payment_cancelled',
 	]),
 	documentId: Id,
 	documentNumber: z.string(),

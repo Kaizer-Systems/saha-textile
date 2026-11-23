@@ -13,8 +13,10 @@ import {
 	panFromGstin,
 } from '@saha-textile/contracts';
 import {
+	type PaymentVoucherRepository,
 	type PurchaseEntryRepository,
 	type PurchaseReturnRepository,
+	type SelfInvoiceRepository,
 	type SupplierItemCodeRepository,
 	type SupplierPaymentRepository,
 	type SupplierRepository,
@@ -26,8 +28,10 @@ import {
 } from '@saha-textile/core-domain';
 
 import {
+	PAYMENT_VOUCHER_REPOSITORY,
 	PURCHASE_ENTRY_REPOSITORY,
 	PURCHASE_RETURN_REPOSITORY,
+	SELF_INVOICE_REPOSITORY,
 	SUPPLIER_ITEM_CODE_REPOSITORY,
 	SUPPLIER_PAYMENT_REPOSITORY,
 	SUPPLIER_REPOSITORY,
@@ -49,6 +53,8 @@ export class SuppliersService {
 		@Inject(SUPPLIER_PAYMENT_REPOSITORY) private readonly payments: SupplierPaymentRepository,
 		@Inject(PURCHASE_RETURN_REPOSITORY) private readonly returns: PurchaseReturnRepository,
 		private readonly support: PurchasingSupport,
+		@Inject(SELF_INVOICE_REPOSITORY) private readonly selfInvoices: Pick<SelfInvoiceRepository, 'forSupplier'>,
+		@Inject(PAYMENT_VOUCHER_REPOSITORY) private readonly vouchers: Pick<PaymentVoucherRepository, 'forSupplier'>,
 	) {}
 
 	/** What each supplier is owed across their posted, unpaid bills. */
@@ -98,14 +104,20 @@ export class SuppliersService {
 		return supplier;
 	}
 
-	/** The supplier page (s03): tiles and the statement. */
+	/** The supplier page (s03): tiles and the statement, with self-invoices for their reverse-charge supplies. */
 	async summary(id: string): Promise<SupplierSummary> {
 		const supplier = await this.get(id);
-		const [entries, payments, returns] = await Promise.all([
+		const [entries, payments, returns, selfInvoices, vouchers] = await Promise.all([
 			this.entries.forSupplier(id),
 			this.payments.forSupplier(id),
 			this.returns.forSupplier(id),
+			this.selfInvoices.forSupplier(id),
+			this.vouchers.forSupplier(id),
 		]);
+		// An issued self-invoice is owed to the supplier until its payment vouchers settle it.
+		const selfInvoicesOwed = selfInvoices
+			.filter((invoice) => invoice.status === 'issued')
+			.reduce((sum, invoice) => sum + Math.max(0, invoice.taxableINR - invoice.paidINR), 0);
 		const today = this.support.today();
 		const yearStart = fiscalYearStart(fiscalYearOf(today));
 		const posted = entries.filter((entry) => entry.status === 'posted');
@@ -118,7 +130,9 @@ export class SuppliersService {
 		const thisYear = posted.filter((entry) => entry.billDate >= yearStart);
 		return {
 			supplier,
-			owedINR: Math.round(posted.reduce((sum, entry) => sum + entryOutstanding(entry), 0) * 100) / 100,
+			owedINR:
+				Math.round((posted.reduce((sum, entry) => sum + entryOutstanding(entry), 0) + selfInvoicesOwed) * 100) /
+				100,
 			owedBills: open.length,
 			nextDueOn: open.reduce<string | null>(
 				(next, entry) => (!next || entry.dueOn < next ? entry.dueOn : next),
@@ -129,7 +143,13 @@ export class SuppliersService {
 			returnedThisYearINR: Math.round(sentThisYear.reduce((sum, doc) => sum + doc.totalINR, 0) * 100) / 100,
 			debitNotesThisYear: sentThisYear.length,
 			oldestUnpaidDays: oldest ? Math.max(0, daysBetween(oldest, today)) : null,
-			statement: supplierStatement({ entries, payments, returns }),
+			statement: supplierStatement({
+				entries,
+				payments,
+				returns,
+				selfInvoices,
+				selfInvoicePayments: vouchers,
+			}),
 		};
 	}
 
@@ -161,9 +181,11 @@ export class SuppliersService {
 			pan,
 			taxType: purchaseTaxType('regular', stateCode, await this.support.homeState()),
 			sameGstin: same && same.id !== excludeId ? { id: same.id, name: same.legalName } : null,
-			samePan: panMatches
-				.filter((row) => row.id !== excludeId && row.gstin !== value && row.gstin)
-				.map((row) => ({ id: row.id, name: row.legalName, gstin: row.gstin ?? '' })),
+			samePan: panMatches.flatMap((row) =>
+				row.id !== excludeId && row.gstin && row.gstin !== value
+					? [{ id: row.id, name: row.legalName, gstin: row.gstin }]
+					: [],
+			),
 		};
 	}
 

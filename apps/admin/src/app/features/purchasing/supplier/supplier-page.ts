@@ -24,6 +24,13 @@ export type SupplierTab = 'purchases' | 'payments' | 'returns' | 'statement' | '
 
 /** Where a statement row's document opens. */
 export function statementLink(row: SupplierStatementRow): string[] | null {
+	// Reverse charge (accounts brief D): the self-invoice, or the payment voucher that paid it.
+	if (row.kind === 'self_invoice' || row.kind === 'self_invoice_cancelled') {
+		return ['/accounts/self-invoices', row.documentId];
+	}
+	if (row.kind === 'self_invoice_payment' || row.kind === 'self_invoice_payment_cancelled') {
+		return ['/accounts/payment-vouchers', row.documentId];
+	}
 	if (row.kind === 'bill' || row.kind === 'payment' || row.kind === 'payment_reversed') {
 		return ['/purchase-entries', row.documentId];
 	}

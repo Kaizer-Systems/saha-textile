@@ -1,4 +1,11 @@
-import type { PurchaseEntry, PurchaseReturn, SupplierPayment, SupplierStatementRow } from '@saha-textile/contracts';
+import type {
+	PaymentVoucher,
+	PurchaseEntry,
+	PurchaseReturn,
+	SelfInvoice,
+	SupplierPayment,
+	SupplierStatementRow,
+} from '@saha-textile/contracts';
 
 import { fromPaise, toPaise } from './money';
 
@@ -51,12 +58,15 @@ export function paymentsTotal(payments: readonly SupplierPayment[]): number {
 /**
  * The statement: every bill, debit note, settlement and payment in date order with a running
  * balance. Same-day rows go bills first, then debit notes, then money, so a bill paid the day
- * it arrived never shows a negative balance in between.
+ * it arrived never shows a negative balance in between. Self-invoices made for their reverse-charge supplies, and
+ * the payment vouchers that paid them, sit on the same statement (accounts brief D).
  */
 export function supplierStatement(input: {
 	entries: readonly PurchaseEntry[];
 	payments: readonly SupplierPayment[];
 	returns: readonly PurchaseReturn[];
+	selfInvoices?: readonly SelfInvoice[];
+	selfInvoicePayments?: readonly PaymentVoucher[];
 }): SupplierStatementRow[] {
 	type Row = Omit<SupplierStatementRow, 'balanceINR'> & { order: number; billPaise: number; creditPaise: number };
 	const rows: Row[] = [];
@@ -153,6 +163,51 @@ export function supplierStatement(input: {
 				creditPaise: 0,
 			});
 		}
+	}
+
+	for (const invoice of input.selfInvoices ?? []) {
+		if (!invoice.number || !invoice.date) continue;
+		const row = { documentId: invoice.id, documentNumber: invoice.number, details: invoice.rule.name };
+		push({
+			...row,
+			date: invoice.date,
+			kind: 'self_invoice',
+			order: 0,
+			billPaise: toPaise(invoice.taxableINR),
+			creditPaise: 0,
+		});
+		if (invoice.cancelledAt)
+			push({
+				...row,
+				date: invoice.cancelledAt.slice(0, 10),
+				kind: 'self_invoice_cancelled',
+				details: invoice.cancelReason ?? '',
+				order: 1,
+				billPaise: 0,
+				creditPaise: toPaise(invoice.taxableINR),
+			});
+	}
+	for (const voucher of (input.selfInvoicePayments ?? []).filter((pv) => pv.against.kind === 'selfInvoice')) {
+		const row = { documentId: voucher.id, documentNumber: voucher.number };
+		push({
+			...row,
+			date: voucher.date,
+			kind: 'self_invoice_payment',
+			details: voucher.against.number,
+			order: 3,
+			billPaise: 0,
+			creditPaise: toPaise(voucher.amountINR),
+		});
+		if (voucher.cancelledAt)
+			push({
+				...row,
+				date: voucher.cancelledAt.slice(0, 10),
+				kind: 'self_invoice_payment_cancelled',
+				details: voucher.cancelReason ?? '',
+				order: 4,
+				billPaise: toPaise(voucher.amountINR),
+				creditPaise: 0,
+			});
 	}
 
 	rows.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);

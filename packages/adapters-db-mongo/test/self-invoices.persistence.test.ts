@@ -131,6 +131,8 @@ describe.skipIf(!hasMongoEnv())('self-invoices and payment vouchers persistence 
 		);
 		await expect(vouchers.insert({ ...voucher, id: 'pv_4', number: undefined as never })).rejects.toThrow(/number/);
 		expect((await vouchers.forDocument('selfInvoice', 'si_1')).map((v) => v.id)).toEqual(['pv_1']);
+		expect((await vouchers.forSupplier('sup_bose')).map((v) => v.id)).toEqual(['pv_1', 'pv_2']);
+		expect(await vouchers.forSupplier('sup_none')).toEqual([]);
 		expect(await vouchers.get('pv_2')).toMatchObject({ supplierPaymentId: 'pay_1' });
 		expect(await vouchers.get('pv_x')).toBeNull();
 		const paid = (await vouchers.get('pv_1'))!;

@@ -137,6 +137,14 @@ export class MongoPaymentVoucherRepository implements PaymentVoucherRepository {
 		);
 	}
 
+	async forSupplier(supplierId: string): Promise<PaymentVoucher[]> {
+		const docs = await PaymentVoucherModel.find({ supplierId })
+			.sort({ date: 1, number: 1 })
+			.lean<AggregateDoc[]>()
+			.exec();
+		return docs.map(paymentVoucherOf);
+	}
+
 	async cancel(voucher: PaymentVoucher, context?: TransactionContext): Promise<void> {
 		const { id, ...rest } = voucher;
 		const result = await PaymentVoucherModel.replaceOne({ _id: id, status: { $ne: 'cancelled' } }, rest, {

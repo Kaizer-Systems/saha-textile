@@ -30,6 +30,8 @@ export interface PaymentVoucherRepository {
 	forDocument(kind: PaymentVoucher['against']['kind'], id: string): Promise<PaymentVoucher[]>;
 	/** Saves a cancelled voucher over the paid one; refused with `payment_voucher_changed` when it is no longer paid. */
 	cancel(voucher: PaymentVoucher, context?: TransactionContext): Promise<void>;
+	/** A supplier's vouchers (their statement). */
+	forSupplier(supplierId: string): Promise<PaymentVoucher[]>;
 	/** A6: one page and every chip's count. */
 	list(query: PaymentVoucherListQuery): Promise<PaymentVoucherList>;
 }

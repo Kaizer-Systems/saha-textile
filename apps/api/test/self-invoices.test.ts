@@ -127,6 +127,7 @@ function setup(
 			get: async (id: string) => vouchers.get(id) ?? null,
 			insert: async (v: PaymentVoucher) => void vouchers.set(v.id, v),
 			list: vi.fn(async (query: unknown) => ({ items: [], total: 0, counts: {}, query }) as never),
+			forSupplier: async () => [],
 			cancel: async (v: PaymentVoucher) => {
 				if (vouchers.get(v.id)?.status === 'cancelled') throw new Error('payment_voucher_changed');
 				vouchers.set(v.id, v);

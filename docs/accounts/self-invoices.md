@@ -75,6 +75,10 @@ A super admin cancels a voucher while its month is open for its cash or bank par
 - Against a self-invoice: the payment's posting is reversed (a voucher dated the day of the cancel) and the self-invoice is owed again.
 - Against a purchase entry: the purchases page's own payment reversal runs, so the bill is owed again.
 
+## On the supplier's statement
+
+A supplier's page (Purchases › Suppliers) lists their self-invoices and the payment vouchers that paid them with their bills and payments, in date order with the running balance: a self-invoice adds what is owed (its taxable value; the tax is ours to pay), a voucher settles it, and a cancelled one puts it back. What the supplier is owed includes issued self-invoices not yet paid in full.
+
 ## Screens
 
 - Accounts › Self-invoices (A7): chips All, Drafts, Due soon (drafts still inside the 30 days), Unpaid, Paid, each counted; period and search (number, supplier, what); the 30-day clock; Record a reverse-charge supply.

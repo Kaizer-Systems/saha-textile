@@ -90,8 +90,10 @@ export class InvoiceViewPage {
 	detail(check: InvoiceCheck): string {
 		const t = (key: string, params: Record<string, string> = {}) => this.transloco.translate(key, params);
 		switch (check.key) {
-			case 'period_open':
-				return this.month(check.params['month'] ?? '');
+			case 'period_open': {
+				const month = check.params['month'];
+				return month ? this.month(month) : '';
+			}
 			case 'number_in_series':
 				return check.ok
 					? check.params['previous']
